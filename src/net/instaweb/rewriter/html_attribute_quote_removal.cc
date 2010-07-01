@@ -52,12 +52,14 @@ HtmlAttributeQuoteRemoval::HtmlAttributeQuoteRemoval(HtmlParse* html_parse)
 
 bool HtmlAttributeQuoteRemoval::NeedsQuotes(const char *val) {
   bool needs_quotes = false;
-  for (int i = 0; val[i] != '\0'; ++i) {
-    // Explicit cast to unsigned char ensures that our offset
-    // into needs_no_quotes_ is positive.
-    needs_quotes = !needs_no_quotes_[static_cast<unsigned char>(val[i])];
-    if (needs_quotes) {
-      break;
+  if (val != NULL) {
+    for (int i = 0; val[i] != '\0'; ++i) {
+      // Explicit cast to unsigned char ensures that our offset
+      // into needs_no_quotes_ is positive.
+      needs_quotes = !needs_no_quotes_[static_cast<unsigned char>(val[i])];
+      if (needs_quotes) {
+        break;
+      }
     }
   }
   return needs_quotes;

@@ -35,34 +35,35 @@ bool IsHtmlWhiteSpace(char ch) {
   return ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t' || ch == '\f';
 }
 
+// Sentinel value for use in the CollapseWhitespace function:
+const char kNotInWhitespace = '\0';
+
 // Append the input to the output with whitespace collapsed.  Specifically,
 // each contiguous sequence of whitespace is replaced with the first
 // (whitespace) character in the sequence, except that any sequence containing
 // a newline is collapsed to a newline.
 void CollapseWhitespace(const std::string& input, std::string* output) {
   // This variable stores the first whitespace character in each whitespace
-  // sequence, or '\0' when we're not currently in the middle of a whitespace
-  // sequence.  (There's nothing special about '\0'; we could just as easily
-  // use any other non-whitespace character.)
-  char whitespace = '\0';
+  // sequence, or kNotInWhitespace.
+  char whitespace = kNotInWhitespace;
   for (std::string::const_iterator iter = input.begin(), end = input.end();
        iter != end; ++iter) {
     const char ch = *iter;
     if (IsHtmlWhiteSpace(ch)) {
       // We let newlines take precedence over other kinds of whitespace, for
       // aesthetic reasons.
-      if (whitespace == '\0' || ch == '\n') {
+      if (whitespace == kNotInWhitespace || ch == '\n') {
         whitespace = ch;
       }
     } else {
-      if (whitespace != '\0') {
+      if (whitespace != kNotInWhitespace) {
         *output += whitespace;
-        whitespace = '\0';
+        whitespace = kNotInWhitespace;
       }
       *output += ch;
     }
   }
-  if (whitespace != '\0') {
+  if (whitespace != kNotInWhitespace) {
     *output += whitespace;
   }
 }

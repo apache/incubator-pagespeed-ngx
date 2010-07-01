@@ -65,12 +65,28 @@ class HtmlElement : public HtmlNode {
 
     // The result of value() is still owned by this, and will be invalidated by
     // a subsequent call to set_value().
+    //
+    // The result will be a NUL-terminated string containing the value of the
+    // attribute, or NULL if the attribute has no value at all (this is
+    // distinct from having the empty string for a value).
     const char* value() const { return value_.get(); }
+
+    // See comment about quote on constructor for Attribute.
     const char* quote() const { return quote_; }
 
     // Modify value of attribute (eg to rewrite dest of src or href).
     // As with the constructor, copies the string in, so caller retains
     // ownership of value.
+    //
+    // A StringPiece pointing to an empty string (that is, a char array {'\0'})
+    // indicates that the attribute value is the empty string (e.g. <foo
+    // bar="">); however, a StringPiece with a data() pointer of NULL indicates
+    // that the attribute has no value at all (e.g. <foo bar>).  This is an
+    // important distinction.
+    //
+    // Note that passing a value containing NULs in the middle will cause
+    // breakage, but this isn't currently checked for.
+    // TODO(mdsteele): Perhaps we should check for this?
     void set_value(const StringPiece& value) {
       if (value.data() == NULL) {
         value_.reset(NULL);
