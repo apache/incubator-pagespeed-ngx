@@ -13,24 +13,16 @@
 # limitations under the License.
 
 {
-  'variables': {
-    'base64_root': '<(DEPTH)/third_party/base64',
-  },
   'targets': [
     {
       'target_name': 'base64',
       'type': '<(library)',
       'sources': [
-        '<(base64_root)/base64.cc',
+        'base64.cc',
       ],
-     'include_dirs': [
-        '<(base64_root)',
+      'include_dirs': [
+        '.',
       ],
-      'direct_dependent_settings': {
-        'include_dirs': [
-          '<(base64_root)',
-        ],
-      },
     }
   ],
 }
