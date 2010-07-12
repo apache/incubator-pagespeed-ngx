@@ -42,10 +42,12 @@
       ],
       'include_dirs': [
         '<(instaweb_root)',
+        '<(DEPTH)',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
           '<(instaweb_root)',
+          '<(DEPTH)',
         ],
       },
     },
@@ -89,10 +91,12 @@
       ],
       'include_dirs': [
         '<(instaweb_root)',
+        '<(DEPTH)',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
           '<(instaweb_root)',
+          '<(DEPTH)',
         ],
       },
     },
@@ -146,10 +150,12 @@
       ],
       'include_dirs': [
         '<(instaweb_root)',
+        '<(DEPTH)',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
           '<(instaweb_root)',
+          '<(DEPTH)',
         ],
       },
       'export_dependent_settings': [
