@@ -14,6 +14,7 @@
 
 {
   'variables': {
+    'instaweb_root': '../..',
     'protobuf_src': '<(DEPTH)/third_party/protobuf2/src/src',
     'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
   },
@@ -102,7 +103,7 @@
       'dependencies': [
         'util_pb',
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/base64/base64.gyp:base64',
+        '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
       ],
       'sources': [
