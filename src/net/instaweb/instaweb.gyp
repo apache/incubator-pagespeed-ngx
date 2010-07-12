@@ -15,15 +15,14 @@
 {
   'variables': {
     'instaweb_root': '../..',
-    'protobuf_src': '<(DEPTH)/third_party/protobuf2/src/src',
     'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
   },
   'targets': [
     {
-      'target_name': 'htmlparse',
+      'target_name': 'instaweb_htmlparse',
       'type': '<(library)',
       'dependencies': [
-        'util',
+        'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
@@ -42,20 +41,20 @@
         'htmlparse/statistics_log.cc',
       ],
       'include_dirs': [
-        '.',
+        '<(DEPTH)',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
-          '.',
+          '<(DEPTH)',
         ],
       },
     },
     {
-      'target_name': 'rewriter',
+      'target_name': 'instaweb_rewriter',
       'type': '<(library)',
       'dependencies': [
-        'rewrite_pb',
-        'util',
+        'instaweb_rewrite_pb',
+        'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/image_compression/image_compression.gyp:pagespeed_jpeg_optimizer',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/image_compression/image_compression.gyp:pagespeed_png_optimizer',
@@ -89,19 +88,20 @@
         'rewriter/url_input_resource.cc',
       ],
       'include_dirs': [
-        '.',
+        '<(DEPTH)',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
-          '.',
+          '<(DEPTH)',
         ],
       },
     },
     {
-      'target_name': 'util',
+      'target_name': 'instaweb_util',
       'type': '<(library)',
       'dependencies': [
-        'util_pb',
+        'instaweb_protobuf_gzip',
+        'instaweb_util_pb',
         '<(DEPTH)/base/base.gyp:base',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
@@ -145,20 +145,19 @@
         'util/writer.cc',
       ],
       'include_dirs': [
-        '.',
         '<(DEPTH)',
-        '<(protobuf_src)',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
-          '.',
           '<(DEPTH)',
-          '<(protobuf_src)',
         ],
       },
+      'export_dependent_settings': [
+        'instaweb_protobuf_gzip',
+      ],
     },
     {
-      'target_name': 'rewriter_genproto',
+      'target_name': 'instaweb_rewriter_genproto',
       'type': 'none',
       'sources': [
         'rewriter/rewrite.proto',
@@ -197,7 +196,7 @@
       ],
     },
     {
-      'target_name': 'util_genproto',
+      'target_name': 'instaweb_util_genproto',
       'type': 'none',
       'sources': [
         'util/util.proto',
@@ -236,36 +235,53 @@
       ],
     },
     {
-      'target_name': 'rewrite_pb',
+      'target_name': 'instaweb_rewrite_pb',
       'type': '<(library)',
       'hard_dependency': 1,
       'dependencies': [
-        'rewriter_genproto',
+        'instaweb_rewriter_genproto',
         '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
        ],
       'sources': [
         '<(protoc_out_dir)/net/instaweb/rewriter/rewrite.pb.cc',
       ],
       'export_dependent_settings': [
-        'rewriter_genproto',
+        'instaweb_rewriter_genproto',
         '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
       ]
     },
     {
-      'target_name': 'util_pb',
+      'target_name': 'instaweb_util_pb',
       'type': '<(library)',
       'hard_dependency': 1,
       'dependencies': [
-        'util_genproto',
+        'instaweb_util_genproto',
         '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
        ],
       'sources': [
         '<(protoc_out_dir)/net/instaweb/util/util.pb.cc',
       ],
       'export_dependent_settings': [
-        'util_genproto',
+        'instaweb_util_genproto',
         '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
       ]
+    },
+    {
+      # Unfortunately, the inherited protobuf target in protobuf.gyp
+      # does not build gzip_stream.cc, which we require. Thus we're
+      # required to define our own target that includes protobuf as
+      # well as gzip_stream.cc.
+      'target_name': 'instaweb_protobuf_gzip',
+      'type': '<(library)',
+      'dependencies': [
+        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf',
+      ],
+      'sources': [
+        '<(DEPTH)/third_party/protobuf2/src/src/google/protobuf/io/gzip_stream.cc',
+      ],
+      'export_dependent_settings': [
+        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf',
+      ],
     },
   ],
 }
