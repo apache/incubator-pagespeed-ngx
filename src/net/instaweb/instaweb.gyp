@@ -41,11 +41,11 @@
         'htmlparse/statistics_log.cc',
       ],
       'include_dirs': [
-        '<(DEPTH)',
+        '<(instaweb_root)',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
-          '<(DEPTH)',
+          '<(instaweb_root)',
         ],
       },
     },
@@ -88,11 +88,11 @@
         'rewriter/url_input_resource.cc',
       ],
       'include_dirs': [
-        '<(DEPTH)',
+        '<(instaweb_root)',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
-          '<(DEPTH)',
+          '<(instaweb_root)',
         ],
       },
     },
@@ -145,11 +145,11 @@
         'util/writer.cc',
       ],
       'include_dirs': [
-        '<(DEPTH)',
+        '<(instaweb_root)',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
-          '<(DEPTH)',
+          '<(instaweb_root)',
         ],
       },
       'export_dependent_settings': [
