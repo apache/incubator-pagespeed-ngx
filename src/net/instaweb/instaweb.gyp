@@ -281,6 +281,7 @@
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf',
+        '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [
         '<(DEPTH)/third_party/protobuf2/src/src/google/protobuf/io/gzip_stream.cc',
