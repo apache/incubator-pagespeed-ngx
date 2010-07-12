@@ -20,6 +20,25 @@
   },
   'targets': [
     {
+      'target_name': 'flann',
+      'type': '<(library)',
+      'sources': [
+        'src/opencv/3rdparty/flann/algorithms/dist.cpp',
+        'src/opencv/3rdparty/flann/flann.cpp',
+        'src/opencv/3rdparty/flann/nn/index_testing.cpp',
+        'src/opencv/3rdparty/flann/util/logger.cpp',
+        'src/opencv/3rdparty/flann/util/random.cpp',
+        'src/opencv/3rdparty/flann/util/saving.cpp',
+      ],
+      'include_dirs': [
+        '<(opencv_src)/opencv/3rdparty/flann/algorithms',
+        '<(opencv_src)/opencv/3rdparty/flann/nn',
+        '<(opencv_src)/opencv/3rdparty/flann/util',
+        '<(opencv_src)/opencv/3rdparty/include',
+        '<(opencv_src)/opencv/3rdparty/include/flann',
+      ],
+    },
+    {
       'target_name': 'lapack',
       'type': '<(library)',
       'sources': [
@@ -334,7 +353,9 @@
       'target_name': 'cxcore',
       'type': '<(library)',
       'dependencies': [
+        'flann',
         'lapack',
+        '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [
         'src/opencv/src/cxcore/cxalloc.cpp',
@@ -359,6 +380,10 @@
         'src/opencv/src/cxcore/cxtables.cpp',
       ],
      'include_dirs': [
+        # opencv provides its own copy of zlib.h, but we want to use
+        # our version in third_party/zlib, so third_party/zlib must
+        # appear early in the list of include dirs.
+        '<(DEPTH)/third_party/zlib',
         '<(opencv_src)/opencv/include/opencv',
         '<(opencv_src)/opencv/3rdparty/include',
       ],
@@ -376,6 +401,8 @@
         'src/opencv/src/cv/cvcalibration.cpp',
         'src/opencv/src/cv/cvcamshift.cpp',
         'src/opencv/src/cv/cvcanny.cpp',
+        'src/opencv/src/cv/cvcascadedetect.cpp',
+        'src/opencv/src/cv/cvcheckchessboard.cpp',
         'src/opencv/src/cv/cvcolor.cpp',
         'src/opencv/src/cv/cvcontours.cpp',
         'src/opencv/src/cv/cvcontourtree.cpp',
@@ -397,6 +424,7 @@
         'src/opencv/src/cv/cvlinefit.cpp',
         'src/opencv/src/cv/cvlkpyramid.cpp',
         'src/opencv/src/cv/cvmatchcontours.cpp',
+        'src/opencv/src/cv/cvmodelest.cpp',
         'src/opencv/src/cv/cvmoments.cpp',
         'src/opencv/src/cv/cvmorph.cpp',
         'src/opencv/src/cv/cvmotempl.cpp',
@@ -438,6 +466,7 @@
          'src/opencv/src/highgui/bitstrm.cpp',
          'src/opencv/src/highgui/cvcap.cpp',
          'src/opencv/src/highgui/cvcap_dc1394.cpp',
+         'src/opencv/src/highgui/cvcap_images.cpp',
          'src/opencv/src/highgui/cvcap_v4l.cpp',
          'src/opencv/src/highgui/grfmt_base.cpp',
          'src/opencv/src/highgui/grfmt_bmp.cpp',
