@@ -74,6 +74,9 @@ deps = {
   "src/third_party/opencv/src/opencv/include":
     Var("opencv_src") + "/opencv/include" + Var("opencv_revision"),
 
+  "src/third_party/opencv/src/opencv/3rdparty/flann":
+    Var("opencv_src") + "/opencv/3rdparty/flann" + Var("opencv_revision"),
+
   "src/third_party/opencv/src/opencv/3rdparty/lapack":
     Var("opencv_src") + "/opencv/3rdparty/lapack" + Var("opencv_revision"),
 
