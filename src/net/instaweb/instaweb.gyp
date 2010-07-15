@@ -35,6 +35,7 @@
         'util/auto_make_dir_file_system.cc',
         'util/cache_url_async_fetcher.cc',
         'util/cache_url_fetcher.cc',
+        'util/data_url.cc',
         'util/delay_controller.cc',
         'util/dummy_url_fetcher.cc',
         'util/fake_url_async_fetcher.cc',
