@@ -30,6 +30,7 @@
       ],
       'export_dependent_settings': [
         '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf',
+        '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
     },
   ],
