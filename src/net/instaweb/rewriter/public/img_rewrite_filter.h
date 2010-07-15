@@ -53,7 +53,8 @@ class ImgRewriteFilter : public RewriteFilter {
                    FileSystem* file_system);
   virtual void EndElement(HtmlElement* element);
   virtual void Flush();
-  virtual bool Fetch(StringPiece resource, Writer* writer,
+  virtual bool Fetch(OutputResource* resource,
+                     Writer* writer,
                      const MetaData& request_header,
                      MetaData* response_headers,
                      UrlAsyncFetcher* fetcher,
@@ -62,6 +63,9 @@ class ImgRewriteFilter : public RewriteFilter {
 
  private:
   // Helper methods.
+  Image* GetImage(const ImgRewriteUrl& url_proto, InputResource* img_resource);
+  OutputResource* ImageOutputResource(const std::string& url_string,
+                                      Image* image);
   void OptimizeImage(
       const ImgRewriteUrl& url_proto, Image* image, OutputResource* result);
   OutputResource* OptimizedImageFor(

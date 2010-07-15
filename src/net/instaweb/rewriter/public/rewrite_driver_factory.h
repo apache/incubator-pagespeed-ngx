@@ -135,6 +135,8 @@ class RewriteDriverFactory {
   RewriteDriver* NewRewriteDriver();
 
  protected:
+  virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
+
   // Provide default fetchers.
   virtual UrlFetcher* DefaultUrlFetcher() = 0;
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher() = 0;

@@ -46,7 +46,11 @@ class OutputResource {
   virtual Writer* BeginWrite(MessageHandler* message_handler) = 0;
   virtual bool EndWrite(Writer* writer, MessageHandler* message_handler) = 0;
 
-  virtual StringPiece url() const = 0;
+  virtual std::string url() const = 0;
+  virtual std::string filename() const = 0;
+
+  virtual StringPiece name() const = 0;
+  virtual StringPiece suffix() const = 0;
   virtual const MetaData* metadata() const = 0;
   virtual MetaData* metadata() = 0;
 
@@ -61,8 +65,9 @@ class OutputResource {
   virtual bool IsWritten() const = 0;
 
   // Read the output resource back in and send it to a writer.
-  virtual bool Read(Writer* writer, MetaData*,
-                    MessageHandler* message_handller) const = 0;
+  virtual bool Read(const StringPiece& filename, Writer* writer,
+                    MetaData* response_headers, MessageHandler* handler)
+      const = 0;
 
  private:
   Writer* writer_;

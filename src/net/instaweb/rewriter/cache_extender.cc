@@ -20,6 +20,7 @@
 
 #include <assert.h>
 #include "net/instaweb/rewriter/public/input_resource.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/rewrite.pb.h"  // for ResourceUrl
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -100,7 +101,7 @@ void CacheExtender::StartElement(HtmlElement* element) {
   }
 }
 
-bool CacheExtender::Fetch(StringPiece url_safe_id,
+bool CacheExtender::Fetch(OutputResource* output_resource,
                           Writer* writer,
                           const MetaData& request_headers,
                           MetaData* response_headers,
@@ -110,13 +111,13 @@ bool CacheExtender::Fetch(StringPiece url_safe_id,
   std::string url, decoded_resource;
   bool ret = false;
   ResourceUrl resource_url;
-  if (Decode(url_safe_id, &resource_url)) {
+  if (Decode(output_resource->name(), &resource_url)) {
     const std::string& url = resource_url.origin_url();
     fetcher->StreamingFetch(url, request_headers, response_headers,
                             writer, message_handler, callback);
     ret = true;
   } else {
-    url_safe_id.CopyToString(&url);
+    output_resource->name().CopyToString(&url);
     message_handler->Error(url.c_str(), 0, "Unable to decode resource string");
   }
   return ret;

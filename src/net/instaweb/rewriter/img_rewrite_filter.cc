@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/img_rewrite_filter.h"
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/image.h"
@@ -38,7 +39,7 @@
 namespace net_instaweb {
 
 // Rewritten image must be < kMaxRewrittenRatio * origSize to be worth
-// rewriting.
+// redirecting references to it.
 // TODO(jmaessen): Make this ratio adjustable.
 const double kMaxRewrittenRatio = 1.0;
 
@@ -47,6 +48,19 @@ const double kMaxRewrittenRatio = 1.0;
 // Might need to differ depending upon img format.
 // TODO(jmaessen): Make adjustable.
 const double kMaxAreaRatio = 1.0;
+
+// Threshold size (in bytes) below which we should just inline images
+// encountered.
+// TODO(jmaessen): Heuristic must be more sophisticated.  Does this image touch
+// a fresh domain?  Require opening a new connection?  If so we can afford to
+// inline quite large images (basically anything we could transmit in the
+// resulting RTTs)---but of course we don't know about RTT here.  In the absence
+// of such information, we ought to inline if header length + url size can be
+// saved by inlining image, without increasing the size in packets of the html.
+// Otherwise we end up loading the image in favor of the html, which might be a
+// lose.  More work is needed here to figure out the exact tradeoffs involved,
+// especially as we also undermine image cacheability.
+const int kImageInlineThreshold = 2048;
 
 // Should we log each image element as we encounter it?  Handy for debug.
 // TODO(jmaessen): Hook into event logging infrastructure.
@@ -74,63 +88,63 @@ ImgRewriteFilter::ImgRewriteFilter(StringPiece path_prefix,
 
 void ImgRewriteFilter::OptimizeImage(
     const ImgRewriteUrl& url_proto, Image* image, OutputResource* result) {
-  int img_width, img_height, width, height;
-  if (url_proto.has_width() && url_proto.has_height() &&
-      image->Dimensions(&img_width, &img_height)) {
-    width = url_proto.width();
-    height = url_proto.height();
-    int64 area = static_cast<int64>(width) * height;
-    int64 img_area = static_cast<int64>(img_width) * img_height;
-    if (area < img_area * kMaxAreaRatio) {
-      if (image->ResizeTo(width, height)) {
+  if (result != NULL && !result->IsWritten() && image != NULL) {
+    int img_width, img_height, width, height;
+    if (url_proto.has_width() && url_proto.has_height() &&
+        image->Dimensions(&img_width, &img_height)) {
+      width = url_proto.width();
+      height = url_proto.height();
+      int64 area = static_cast<int64>(width) * height;
+      int64 img_area = static_cast<int64>(img_width) * img_height;
+      if (area < img_area * kMaxAreaRatio) {
+        if (image->ResizeTo(width, height)) {
           html_parse_->InfoHere("Resized from %dx%d to %dx%d",
                                 img_width, img_height, width, height);
-      } else {
+        } else {
           html_parse_->InfoHere("Couldn't resize from %dx%d to %dx%d",
                                 img_width, img_height, width, height);
+        }
+      } else if (area < img_area) {
+        html_parse_->InfoHere("Not worth resizing from %dx%d to %dx%d",
+                              img_width, img_height, width, height);
       }
-    } else if (area < img_area) {
-      html_parse_->InfoHere("Not worth resizing from %dx%d to %dx%d",
-                            img_width, img_height, width, height);
     }
-  }
-  // Unconditionally write resource back so we don't re-attempt optimization.
-  MessageHandler* message_handler = html_parse_->message_handler();
-  if (image->output_size() < image->input_size() * kMaxRewrittenRatio) {
-    Writer* writer = result->BeginWrite(message_handler);
-    if (writer != NULL) {
-      image->WriteTo(writer);
-      result->EndWrite(writer, message_handler);
-    }
-    if (rewrite_saved_bytes_ != NULL) {
-      // Note: if we are serving a request from a different server
-      // than the server that rewrote the <img> tag, and they don't
-      // share a file system, then we will be bumping the byte-count
-      // here without bumping the rewrite count.  This seems ok,
-      // though perhaps we may need to revisit.
-      //
-      // Currently this will be a problem even when serving on a
-      // different file that *does* share a filesystem,
-      // HashResourceManager does not yet load its internal map
-      // by scanning the filesystemon startup.
-      rewrite_saved_bytes_->Add(image->input_size() - image->output_size());
-    }
-  } else {
-    // Write nothing and set status code to indicate not to rewrite
-    // in future.
-    result->metadata()->set_status_code(HttpStatus::INTERNAL_SERVER_ERROR);
-    Writer* writer = result->BeginWrite(message_handler);
-    if (writer != NULL) {
-      result->EndWrite(writer, message_handler);
+    // Unconditionally write resource back so we don't re-attempt optimization.
+    MessageHandler* message_handler = html_parse_->message_handler();
+    if (image->output_size() < image->input_size() * kMaxRewrittenRatio) {
+      Writer* writer = result->BeginWrite(message_handler);
+      if (writer != NULL) {
+        image->WriteTo(writer);
+        result->EndWrite(writer, message_handler);
+      }
+      if (rewrite_saved_bytes_ != NULL) {
+        // Note: if we are serving a request from a different server
+        // than the server that rewrote the <img> tag, and they don't
+        // share a file system, then we will be bumping the byte-count
+        // here without bumping the rewrite count.  This seems ok,
+        // though perhaps we may need to revisit.
+        //
+        // Currently this will be a problem even when serving on a
+        // different file that *does* share a filesystem,
+        // HashResourceManager does not yet load its internal map
+        // by scanning the filesystem on startup.
+        rewrite_saved_bytes_->Add(image->input_size() - image->output_size());
+      }
+    } else {
+      // Write nothing and set status code to indicate not to rewrite
+      // in future.
+      result->metadata()->set_status_code(HttpStatus::INTERNAL_SERVER_ERROR);
+      Writer* writer = result->BeginWrite(message_handler);
+      if (writer != NULL) {
+        result->EndWrite(writer, message_handler);
+      }
     }
   }
 }
 
-OutputResource* ImgRewriteFilter::OptimizedImageFor(
-    const ImgRewriteUrl& url_proto,
-    const std::string& url_string,
-    InputResource* img_resource) {
-  OutputResource* result = NULL;
+Image* ImgRewriteFilter::GetImage(const ImgRewriteUrl& url_proto,
+                                  InputResource* img_resource) {
+  Image* image = NULL;
   MessageHandler* message_handler = html_parse_->message_handler();
   if (img_resource == NULL) {
     html_parse_->WarningHere("no input resource for %s",
@@ -142,22 +156,32 @@ OutputResource* ImgRewriteFilter::OptimizedImageFor(
     html_parse_->WarningHere("Img contents from %s are invalid.",
                              img_resource->url().c_str());
   } else {
-    // TODO(jmaessen): Be even lazier about resource loading!
-    // [hard b/c of content type; right now this loads whole file, whereas we
-    // can learn image type from the first few bytes of the file.]
-    Image image = Image(img_resource->contents(), img_resource->url(),
-                        resource_manager_->file_prefix(), file_system_,
-                        message_handler);
-    // TODO(jmaessen): content type can change after re-compression.
-    const ContentType* content_type = image.content_type();
+    image = new Image(img_resource->contents(), img_resource->url(),
+                      resource_manager_->file_prefix(), file_system_,
+                      message_handler);
+  }
+  return image;
+}
+
+OutputResource* ImgRewriteFilter::ImageOutputResource(
+    const std::string& url_string, Image* image) {
+  OutputResource* result = NULL;
+  if (image != NULL) {
+    const ContentType* content_type = image->content_type();
     if (content_type != NULL) {
       result = resource_manager_->NamedOutputResource(
           filter_prefix_, url_string, *content_type);
     }
-    if (result != NULL && !result->IsWritten()) {
-      OptimizeImage(url_proto, &image, result);
-    }
   }
+  return result;
+}
+
+OutputResource* ImgRewriteFilter::OptimizedImageFor(
+    const ImgRewriteUrl& url_proto, const std::string& url_string,
+    InputResource* img_resource) {
+  scoped_ptr<Image> image(GetImage(url_proto, img_resource));
+  OutputResource* result = ImageOutputResource(url_string, image.get());
+  OptimizeImage(url_proto, image.get(), result);
   return result;
 }
 
@@ -167,7 +191,7 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
   // How do we deal with that given only URL?
   // Separate input and output content type?
   int width, height;
-  ImgRewriteUrl rewrite_url;
+  ImgRewriteUrl rewritten_url_proto;
   std::string rewritten_url;
   MessageHandler* message_handler = html_parse_->message_handler();
   InputResource* input_resource =
@@ -175,22 +199,30 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
   if (input_resource != NULL) {
     // Always rewrite to absolute url used to obtain resource.
     // This lets us do context-free fetches of content.
-    rewrite_url.set_origin_url(input_resource->absolute_url());
-    OutputResource* output_resource;
+    rewritten_url_proto.set_origin_url(input_resource->absolute_url());
     if (element.IntAttributeValue(s_width_, &width) &&
         element.IntAttributeValue(s_height_, &height)) {
       // Specific image size is called for.  Rewrite to that size.
-      rewrite_url.set_width(width);
-      rewrite_url.set_height(height);
+      rewritten_url_proto.set_width(width);
+      rewritten_url_proto.set_height(height);
     }
-    Encode(rewrite_url, &rewritten_url);
-    output_resource =
-        OptimizedImageFor(rewrite_url, rewritten_url, input_resource);
-    if (output_resource != NULL && output_resource->IsWritten() &&
+    Encode(rewritten_url_proto, &rewritten_url);
+    scoped_ptr<Image> image(GetImage(rewritten_url_proto, input_resource));
+    OutputResource* output_resource =
+        ImageOutputResource(rewritten_url, image.get());
+    OptimizeImage(rewritten_url_proto, image.get(), output_resource);
+    std::string inlined_url;
+    int img_width, img_height;
+    if (image != NULL && image->output_size() < kImageInlineThreshold &&
+        image->Dimensions(&img_width, &img_height) &&
+        (img_width > 1 || img_height > 1) &&  // Rule out marker images <= 1x1
+        image->AsInlineData(&inlined_url)) {
+      html_parse_->InfoHere("%s inlined", src->value());
+      src->set_value(inlined_url);
+    } else if (output_resource != NULL && output_resource->IsWritten() &&
         output_resource->metadata()->status_code() == HttpStatus::OK) {
       html_parse_->InfoHere("%s remapped to %s",
-                            src->value(),
-                            output_resource->url().as_string().c_str());
+                            src->value(), output_resource->url().c_str());
       src->set_value(output_resource->url());
       if (rewrite_count_ != NULL) {
         rewrite_count_->Add(1);
@@ -219,7 +251,7 @@ void ImgRewriteFilter::Flush() {
   // TODO(jmaessen): wait here for resources to have been rewritten??
 }
 
-bool ImgRewriteFilter::Fetch(StringPiece url,
+bool ImgRewriteFilter::Fetch(OutputResource* resource,
                              Writer* writer,
                              const MetaData& request_header,
                              MetaData* response_headers,
@@ -228,11 +260,10 @@ bool ImgRewriteFilter::Fetch(StringPiece url,
                              UrlAsyncFetcher::Callback* callback) {
   bool ok = true;
   const char* failure_reason = "";
-  const ContentType *content_type =
-      NameExtensionToContentType(url);
+  StringPiece suffix = resource->suffix();
+  const ContentType *content_type = NameExtensionToContentType(suffix);
+  StringPiece stripped_url = resource->name();
   if (content_type != NULL) {
-    StringPiece stripped_url =
-        url.substr(0, url.size() - strlen(content_type->file_extension()));
     ImgRewriteUrl url_proto;
     if (Decode(stripped_url, &url_proto)) {
       std::string stripped_url_string = stripped_url.as_string();
@@ -242,7 +273,8 @@ bool ImgRewriteFilter::Fetch(StringPiece url,
           url_proto, stripped_url_string, input_image);
       if (image_resource != NULL) {
         assert(image_resource->IsWritten());
-        if (image_resource->Read(writer, response_headers, message_handler)) {
+        if (image_resource->Read(image_resource->filename(), writer,
+                                 response_headers, message_handler)) {
           resource_manager_->SetDefaultHeaders(*content_type, response_headers);
           callback->Done(true);
         } else {
@@ -255,7 +287,7 @@ bool ImgRewriteFilter::Fetch(StringPiece url,
           // it does.  We *could* serve / redirect to the origin_url as a fail
           // safe, but it's probably not worth it.  Instead we log and hope that
           // this causes us to find and fix the problem.
-          message_handler->Error(url.as_string().c_str(), 0,
+          message_handler->Error(resource->name().as_string().c_str(), 0,
                                  "Rewriting of %s rejected, "
                                  "but URL requested (mistaken rewriting?).",
                                  url_proto.origin_url().c_str());
@@ -272,7 +304,8 @@ bool ImgRewriteFilter::Fetch(StringPiece url,
         if (ok) {
           resource_manager_->SetDefaultHeaders(*content_type, response_headers);
         } else {
-          message_handler->Error(url.as_string().c_str(), 0, failure_reason);
+          message_handler->Error(resource->name().as_string().c_str(), 0,
+                                 failure_reason);
           ok = writer->Write("<img src=\"", message_handler);
           ok &= writer->Write(url_proto.origin_url(), message_handler);
           ok &= writer->Write("\" alt=\"Temporarily Moved\"/>",
@@ -301,7 +334,8 @@ bool ImgRewriteFilter::Fetch(StringPiece url,
     writer->Write(failure_reason, message_handler);
     response_headers->set_status_code(HttpStatus::NOT_FOUND);
     response_headers->set_reason_phrase(failure_reason);
-    message_handler->Error(url.as_string().c_str(), 0, failure_reason);
+    message_handler->Error(resource->name().as_string().c_str(), 0,
+                           failure_reason);
   }
   return ok;
 }

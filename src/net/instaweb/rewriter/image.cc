@@ -21,6 +21,7 @@
 #include "net/instaweb/rewriter/public/input_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
@@ -382,35 +383,34 @@ bool Image::ComputeOutputContents() {
   return output_valid_;
 }
 
-bool Image::WriteTo(Writer* writer) {
-  bool ok = false;
-  const ContentType* content_type = this->content_type();
-  if (content_type != NULL) {
-    const std::string* contents = &original_contents_;
+const std::string* Image::Contents() {
+  const std::string* contents = NULL;
+  if (this->image_type() != IMAGE_UNKNOWN) {
+    contents = &original_contents_;
     if (output_valid_ || ComputeOutputContents()) {
       contents = &output_contents_;
     }
+  }
+  return contents;
+}
+
+bool Image::WriteTo(Writer* writer) {
+  const std::string* contents = Contents();
+  bool ok = (contents != NULL);
+  if (ok) {
     ok = writer->Write(*contents, handler_);
   }
   return ok;
 }
 
-std::string Image::AsInlineData() {
-  std::string result = "data:...TODO...";
-  // TODO(jmaessen): finish this so we can use it.
-  return result;
-}
-
-const ContentType* NameExtensionToContentType(const StringPiece& name) {
-  const ContentType* res = NULL;
-  if (name.ends_with(kContentTypeJpeg.file_extension())) {
-    res = &kContentTypeJpeg;
-  } else if (name.ends_with(kContentTypePng.file_extension())) {
-    res = &kContentTypePng;
-  } else if (name.ends_with(kContentTypeGif.file_extension())) {
-    res = &kContentTypeGif;
+bool Image::AsInlineData(std::string* data_url) {
+  const std::string* contents = Contents();
+  const ContentType* content_type = this->content_type();
+  bool ok = content_type != NULL && contents != NULL;
+  if (ok) {
+    DataUrl(*content_type, BASE64, *contents, data_url);
   }
-  return res;
+  return ok;
 }
 
 }  // namespace net_instaweb

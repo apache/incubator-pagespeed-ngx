@@ -46,9 +46,13 @@ class HashOutputResource : public OutputResource {
 
   virtual Writer* BeginWrite(MessageHandler* message_handler);
   virtual bool EndWrite(Writer* writer, MessageHandler* message_handler);
-  virtual StringPiece url() const;
-  virtual bool Read(Writer* writer, MetaData* response_headers,
-                    MessageHandler* handler) const;
+  virtual StringPiece name() const { return name_; }
+  virtual StringPiece suffix() const { return suffix_; }
+  virtual bool Read(const StringPiece& filename, Writer* writer,
+                    MetaData* response_headers, MessageHandler* handler) const;
+
+  virtual std::string filename() const;
+  virtual std::string url() const;
 
   virtual bool IsReadable() const;
   virtual bool IsWritten() const;
@@ -58,9 +62,8 @@ class HashOutputResource : public OutputResource {
 
  private:
   virtual std::string TempPrefix() const;
+  std::string NameTail() const;
 
-  std::string url_;
-  std::string filename_;
   bool write_http_headers_;
   FileSystem* file_system_;
   FileSystem::OutputFile* output_file_;

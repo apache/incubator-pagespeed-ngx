@@ -112,6 +112,8 @@ class RewriteDriver {
   HtmlParse* html_parse() { return html_parse_; }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
 
+  ResourceManager* resource_manager() const { return resource_manager_; }
+
  private:
   // Note that the use of StringPiece as the map key here implies that
   // the storage for the keys outlive the map, e.g. they should be

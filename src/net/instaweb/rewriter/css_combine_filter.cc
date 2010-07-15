@@ -33,13 +33,6 @@
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
 
-namespace {
-
-static const char kCssExtension[] = ".css";
-static size_t kCssExtensionLen = sizeof(kCssExtension) - 1;
-
-}  // namespace
-
 namespace net_instaweb {
 
 // TODO(jmarantz) We exhibit zero intelligence about which css files to
@@ -224,55 +217,45 @@ bool CssCombineFilter::WriteCombination(
   return written;
 }
 
-bool CssCombineFilter::Fetch(StringPiece resource, Writer* writer,
+bool CssCombineFilter::Fetch(OutputResource* combination,
+                             Writer* writer,
                              const MetaData& request_header,
                              MetaData* response_headers,
                              UrlAsyncFetcher* fetcher,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
   bool ret = false;
+  StringPiece url_safe_id = combination->name();
+  CssCombineUrl css_combine_url;
+  if (Decode(url_safe_id, &css_combine_url)) {
+    std::string url, decoded_resource;
+    ret = true;
+    InputResourceVector combine_resources;
 
-  // Strip off .css extension.  Note that this extension is always
-  // added by our resource managers when we rewrite references,
-  // independent of the filenames found at the origin.
-  if ((resource.size() > kCssExtensionLen) &&
-      resource.substr(resource.size() - kCssExtensionLen) == kCssExtension) {
-    StringPiece url_safe_id =
-        resource.substr(0, resource.size() - kCssExtensionLen);
+    // TODO(jmarantz): This code reports failure if we do not have the
+    // input .css files in cache.  Instead we should issue fetches for
+    // each sub-resource and write the aggregate once we have all of them,
+    // then call the callback.
+    for (int i = 0; i < css_combine_url.element_size(); ++i)  {
+      const CssUrl& css_url = css_combine_url.element(i);
 
-    OutputResource* combination = resource_manager_->NamedOutputResource(
-        filter_prefix_, url_safe_id, kContentTypeCss);
-    if (combination->IsWritten() &&
-        combination->Read(writer, response_headers, message_handler)) {
-      ret = true;
-    } else {
-      CssCombineUrl css_combine_url;
-      if (Decode(url_safe_id, &css_combine_url)) {
-        std::string url, decoded_resource;
-        ret = true;
-        InputResourceVector combine_resources;
-
-        // TODO(jmarantz): Fix this code.  It will fail if we do not have the
-        // input .css files in cache.  Instead we must issue fetches for
-        // each sub-resources and write the aggregate once we have all of them.
-        for (int i = 0; ret && (i < css_combine_url.element_size()); ++i)  {
-          const CssUrl& css_url = css_combine_url.element(i);
-
-          InputResource* css_resource =
-              resource_manager_->CreateInputResource(css_url.origin_url(),
-                                                     message_handler);
-          if ((css_resource != NULL) && css_resource->Read(message_handler)) {
-            combine_resources.push_back(css_resource);
-          }
-        }
-
-        if (ret) {
-          ret = (WriteCombination(combine_resources, combination,
-                                  message_handler) &&
-                 combination->IsWritten() &&
-                 combination->Read(writer, response_headers, message_handler));
-        }
+      InputResource* css_resource =
+          resource_manager_->CreateInputResource(css_url.origin_url(),
+                                                 message_handler);
+      if ((css_resource != NULL) && css_resource->Read(message_handler) &&
+          css_resource->ContentsValid()) {
+        combine_resources.push_back(css_resource);
+      } else {
+        ret = false;
       }
+    }
+
+    if (ret) {
+      ret = (WriteCombination(combine_resources, combination,
+                              message_handler) &&
+             combination->IsWritten() &&
+             combination->Read(combination->filename(), writer,
+                               response_headers, message_handler));
     }
   }
 
@@ -280,7 +263,7 @@ bool CssCombineFilter::Fetch(StringPiece resource, Writer* writer,
     resource_manager_->SetDefaultHeaders(kContentTypeCss, response_headers);
     callback->Done(true);
   } else {
-    message_handler->Error(resource.as_string().c_str(), 0,
+    message_handler->Error(url_safe_id.as_string().c_str(), 0,
                            "Unable to decode resource string");
   }
   return ret;

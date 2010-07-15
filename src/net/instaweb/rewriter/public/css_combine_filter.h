@@ -43,7 +43,7 @@ class CssCombineFilter : public RewriteFilter {
   virtual void EndElement(HtmlElement* element);
   virtual void Flush();
   virtual void IEDirective(const std::string& directive);
-  virtual bool Fetch(StringPiece url_safe_id,
+  virtual bool Fetch(OutputResource* resource,
                      Writer* writer,
                      const MetaData& request_header,
                      MetaData* response_headers,

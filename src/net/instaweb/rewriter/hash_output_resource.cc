@@ -102,16 +102,28 @@ std::string HashOutputResource::TempPrefix() const {
   return StrCat(filename_prefix_, "temp_");
 }
 
+std::string HashOutputResource::NameTail() const {
+  CHECK(writing_complete_)
+      << "to compute the OutputResource filename or URL, we must have "
+      << "completed writing, otherwise the contents hash is not known.";
+  std::string separator = RewriteFilter::prefix_separator();
+  return StrCat(filter_prefix_, separator, hash_, separator, name_, suffix_);
+}
+
+std::string HashOutputResource::filename() const {
+  std::string filename;
+  filename_encoder_->Encode(filename_prefix_, NameTail(), &filename);
+  return filename;
+}
+
+std::string HashOutputResource::url() const {
+  return StrCat(url_prefix_, NameTail());
+}
+
 bool HashOutputResource::EndWrite(Writer* writer, MessageHandler* handler) {
   assert(!writing_complete_);
   assert(output_file_ != NULL);
   hasher_->ComputeHash(&hash_);
-  std::string separator = RewriteFilter::prefix_separator();
-  std::string tail = StrCat(
-      filter_prefix_, separator, hash_, separator, name_, suffix_);
-  url_ = StrCat(url_prefix_, tail);
-  filename_encoder_->Encode(filename_prefix_, tail, &filename_);
-
   writing_complete_ = true;
   std::string temp_filename = output_file_->filename();
   bool ret = file_system_->Close(output_file_, handler);
@@ -119,7 +131,7 @@ bool HashOutputResource::EndWrite(Writer* writer, MessageHandler* handler) {
   // Now that we are done writing, we can rename to the filename we
   // really want.
   if (ret) {
-    ret = file_system_->RenameFile(temp_filename.c_str(), filename_.c_str(),
+    ret = file_system_->RenameFile(temp_filename.c_str(), filename().c_str(),
                                    handler);
   }
 
@@ -128,20 +140,13 @@ bool HashOutputResource::EndWrite(Writer* writer, MessageHandler* handler) {
   return ret;
 }
 
-StringPiece HashOutputResource::url() const {
-  if (url_.empty()) {
-    // Error: tried to get url before Writing file.
-    assert(false);
-  }
-  return url_;
-}
-
-bool HashOutputResource::Read(Writer* writer, MetaData* response_headers,
+bool HashOutputResource::Read(const StringPiece& filename,
+                              Writer* writer, MetaData* response_headers,
                               MessageHandler* handler) const {
-  assert(writing_complete_);
   bool ret = true;
+  std::string path = StrCat(filename_prefix_, filename);
   FileSystem::InputFile* file = file_system_->OpenInputFile(
-      filename_.c_str(), handler);
+      path.c_str(), handler);
   if (file == NULL) {
     ret = false;
   } else {

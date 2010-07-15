@@ -108,8 +108,13 @@ class Image {
   // Return image-appropriate content type, or NULL if no content type is known.
   // Result is a top-level const pointer.
   const ContentType* content_type();
+
+  // Returns the best known image contents if image type is understood, or NULL.
+  const std::string* Contents();
+  // Writes Contents() to output_resource.  May avoid copy.
   bool WriteTo(Writer* output_resource);
-  std::string AsInlineData();
+  // Encode contents directly into data_url if image type is understood
+  bool AsInlineData(std::string* data_url);
 
  private:
   void ComputeImageType();
@@ -150,10 +155,6 @@ class Image {
   const std::string& url_;
   int width_, height_;
 };
-
-// Given a name (file or url), see if it has the canonical extension
-// corresponding to a particular content type.
-const ContentType* NameExtensionToContentType(const StringPiece& name);
 
 }  // namespace net_instaweb
 

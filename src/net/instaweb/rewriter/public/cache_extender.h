@@ -43,7 +43,8 @@ class CacheExtender : public RewriteFilter {
                 Hasher* hasher, Timer* timer);
 
   virtual void StartElement(HtmlElement* element);
-  virtual bool Fetch(StringPiece resource, Writer* writer,
+  virtual bool Fetch(OutputResource* resource,
+                     Writer* writer,
                      const MetaData& request_header,
                      MetaData* response_headers,
                      UrlAsyncFetcher* fetcher,

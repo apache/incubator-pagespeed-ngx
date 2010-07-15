@@ -33,6 +33,7 @@
         'util/abstract_mutex.cc',
         'util/cache_interface.cc',
         'util/content_type.cc',
+        'util/data_url.cc',
         'util/file_message_handler.cc',
         'util/file_system.cc',
         'util/hasher.cc',

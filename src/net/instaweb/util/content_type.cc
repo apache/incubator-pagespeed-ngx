@@ -17,15 +17,43 @@
 // Author: sligocki@google.com (Shawn Ligocki)
 
 #include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-const ContentType kContentTypeJavascript = {"text/javascript", ".js"};
-const ContentType kContentTypeCss = {"text/css", ".css"};
-const ContentType kContentTypeText = {"text/plain", ".txt"};
+namespace {
 
-const ContentType kContentTypePng = {"image/png", ".png"};
-const ContentType kContentTypeGif = {"image/gif", ".gif"};
-const ContentType kContentTypeJpeg = {"image/jpeg", ".jpg"};
+const ContentType kTypes[] = {
+  {"text/javascript", ".js"},
+  {"text/css", ".css"},
+  {"text/plain", ".txt"},
+
+  {"image/png", ".png"},
+  {"image/gif", ".gif"},
+  {"image/jpeg", ".jpg"},
+};
+const int kNumTypes = arraysize(kTypes);
+
+}  // namespace
+
+const ContentType& kContentTypeJavascript = kTypes[0];
+const ContentType& kContentTypeCss = kTypes[1];
+const ContentType& kContentTypeText = kTypes[2];
+
+const ContentType& kContentTypePng = kTypes[3];
+const ContentType& kContentTypeGif = kTypes[4];
+const ContentType& kContentTypeJpeg = kTypes[5];
+
+const ContentType* NameExtensionToContentType(const StringPiece& name) {
+  // TODO(jmarantz): convert to a map if the list gets large.
+  const ContentType* res = NULL;
+  for (int i = 0; i < kNumTypes; ++i) {
+    if (name.ends_with(kTypes[i].file_extension())) {
+      res = &kTypes[i];
+      break;
+    }
+  }
+  return res;
+}
 
 }  // namespace net_instaweb

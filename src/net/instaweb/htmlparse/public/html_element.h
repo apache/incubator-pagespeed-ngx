@@ -62,6 +62,7 @@ class HtmlElement : public HtmlNode {
     }
 
     Atom name() const { return name_; }
+    void set_name(Atom name) { name_ = name; }
 
     // The result of value() is still owned by this, and will be invalidated by
     // a subsequent call to set_value().

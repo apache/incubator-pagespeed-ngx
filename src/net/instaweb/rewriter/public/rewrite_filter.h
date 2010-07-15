@@ -26,8 +26,10 @@
 
 namespace net_instaweb {
 
+class OutputResource;
 class UrlAsyncFetcher;
 class Writer;
+
 class RewriteFilter : public EmptyHtmlFilter {
  public:
   explicit RewriteFilter(StringPiece filter_prefix)
@@ -50,7 +52,7 @@ class RewriteFilter : public EmptyHtmlFilter {
   // the original URL.  For "ir" (ImgRewriterFilter) the protobuf
   // might include the original image URL, plus the pixel-dimensions
   // to which the image was resized.
-  virtual bool Fetch(StringPiece resource_id,
+  virtual bool Fetch(OutputResource* output_resource,
                      Writer* writer,
                      const MetaData& request_header,
                      MetaData* response_headers,

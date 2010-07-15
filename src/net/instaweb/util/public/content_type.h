@@ -21,7 +21,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_CONTENT_TYPE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_CONTENT_TYPE_H_
 
-#include <assert.h>
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -34,13 +34,17 @@ struct ContentType {
   const char* file_extension_;
 };
 
-extern const ContentType kContentTypeJavascript;
-extern const ContentType kContentTypeCss;
-extern const ContentType kContentTypeText;
+extern const ContentType& kContentTypeJavascript;
+extern const ContentType& kContentTypeCss;
+extern const ContentType& kContentTypeText;
 
-extern const ContentType kContentTypePng;
-extern const ContentType kContentTypeGif;
-extern const ContentType kContentTypeJpeg;
+extern const ContentType& kContentTypePng;
+extern const ContentType& kContentTypeGif;
+extern const ContentType& kContentTypeJpeg;
+
+// Given a name (file or url), see if it has the canonical extension
+// corresponding to a particular content type.
+const ContentType* NameExtensionToContentType(const StringPiece& name);
 
 }  // namespace net_instaweb
 

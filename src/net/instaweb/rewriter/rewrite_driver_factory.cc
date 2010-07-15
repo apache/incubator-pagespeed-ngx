@@ -226,13 +226,11 @@ Timer* RewriteDriverFactory::timer() {
 RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
   RewriteDriver* rewrite_driver =  new RewriteDriver(
       html_parse(), file_system(), url_async_fetcher());
-  if (combine_css_ || outline_css_ || outline_javascript_ ||
-      rewrite_images_ || extend_cache_) {
-    rewrite_driver->SetResourceManager(resource_manager());
-  }
+  rewrite_driver->SetResourceManager(resource_manager());
   if (add_head_) {
     rewrite_driver->AddHead();
   }
+  AddPlatformSpecificRewritePasses(rewrite_driver);
   if (add_base_tag_) {
     rewrite_driver->AddBaseTagFilter();
   }
@@ -256,6 +254,10 @@ RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
     rewrite_drivers_.push_back(rewrite_driver);
   }
   return rewrite_driver;
+}
+
+void RewriteDriverFactory::AddPlatformSpecificRewritePasses(
+    RewriteDriver* driver) {
 }
 
 }  // namespace net_instaweb

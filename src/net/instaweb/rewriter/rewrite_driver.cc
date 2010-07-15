@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/public/outline_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
 namespace {
@@ -158,16 +159,18 @@ void RewriteDriver::FetchResource(
   const char* separator = RewriteFilter::prefix_separator();
   std::vector<StringPiece> components;
   SplitStringPieceToVector(resource, separator, &components, false);
-  if (components.size() == 4) {
+  const ContentType* content_type = NameExtensionToContentType(resource);
+  if ((content_type != NULL) && (components.size() == 4)) {
     // For now, ignore the hash, which is in components[1]
     const StringPiece& id = components[0];
     const StringPiece& name = components[2];
     const StringPiece& ext = components[3];
 
-    OutputResource* resource =
-        resource_manager_->FindNamedOutputResource(id, name, ext);
-    if ((resource != NULL) &&
-        resource->Read(writer, response_headers, message_handler)) {
+    OutputResource* output_resource = resource_manager_->NamedOutputResource(
+        id, name, *content_type);
+
+    if (output_resource->Read(resource, writer, response_headers,
+                              message_handler)) {
       callback->Done(true);
       queued = true;
     } else {
@@ -175,7 +178,7 @@ void RewriteDriver::FetchResource(
       if (p != resource_filter_map_.end()) {
         RewriteFilter* filter = p->second;
         std::string resource_ext = StrCat(name, ".", ext);
-        queued = filter->Fetch(resource_ext, writer,
+        queued = filter->Fetch(output_resource, writer,
                                request_headers, response_headers,
                                url_async_fetcher_, message_handler, callback);
       }
