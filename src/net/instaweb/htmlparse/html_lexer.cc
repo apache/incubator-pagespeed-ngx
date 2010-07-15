@@ -102,7 +102,7 @@ void HtmlLexer::EvalStart(char c) {
 
 bool HtmlLexer::IsLegalTagChar(char c) {
   return (IsI18nChar(c) ||
-          (isalnum(c) || (c == '-') || (c == '#') || (c == '_')));
+          (isalnum(c) || (c == '-') || (c == '#') || (c == '_') || (c == ':')));
 }
 
 bool HtmlLexer::IsLegalAttrNameChar(char c) {
@@ -615,7 +615,7 @@ void HtmlLexer::MakeAttribute(bool has_value) {
   } else {
     CHECK(attr_value_.empty());
   }
-  element_->AddAttribute(name, value, attr_quote_);
+  element_->AddEscapedAttribute(name, value, attr_quote_);
   attr_value_.clear();
   attr_quote_ = "";
   state_ = TAG_ATTRIBUTE;

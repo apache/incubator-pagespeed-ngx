@@ -50,19 +50,20 @@ class HtmlElement : public HtmlNode {
 
   class Attribute {
    public:
-    // TODO(sligocki): check sanity of values (ex: no stray quotes).
-    //
-    // TODO(jmarantz): arg 'quote' must be a static string, or NULL,
-    // if quoting is not yet known (e.g. this is a synthesized attribute.
-    // This is hard-to-describe and we should probably use an Atom for
-    // the quote, and decide how to handle NULL.
-    Attribute(Atom name, const StringPiece& value, const char* quote)
-        : name_(name), quote_(quote) {
-      set_value(value);
-    }
+    // A large quantity of HTML in the wild has attributes that are
+    // improperly escaped.  Browsers are generally tolerant of this.
+    // But we want to avoid corrupting pages we do not understand.
+
+    // The result of value() and escaped_value() is still owned by this, and
+    // will be invalidated by a subsequent call to SetValue() or
+    // SetUnescapedValue
 
     Atom name() const { return name_; }
     void set_name(Atom name) { name_ = name; }
+
+    // Returns the value in its original directly from the HTML source.
+    // This may have HTML escapes in it, such as "&amp;".
+    const char* escaped_value() const { return escaped_value_.get(); }
 
     // The result of value() is still owned by this, and will be invalidated by
     // a subsequent call to set_value().
@@ -70,14 +71,19 @@ class HtmlElement : public HtmlNode {
     // The result will be a NUL-terminated string containing the value of the
     // attribute, or NULL if the attribute has no value at all (this is
     // distinct from having the empty string for a value).
+
+    // Returns the unescaped value, suitable for directly operating on
+    // in filters as URLs or other data.
     const char* value() const { return value_.get(); }
 
     // See comment about quote on constructor for Attribute.
+    // Returns the quotation mark associated with this URL, typically
+    // ", ', or an empty string.
     const char* quote() const { return quote_; }
 
-    // Modify value of attribute (eg to rewrite dest of src or href).
-    // As with the constructor, copies the string in, so caller retains
-    // ownership of value.
+    // Two related methods to modify the value of attribute (eg to rewrite
+    // dest of src or href). As  with the constructor, copies the string in,
+    // so caller retains ownership of value.
     //
     // A StringPiece pointing to an empty string (that is, a char array {'\0'})
     // indicates that the attribute value is the empty string (e.g. <foo
@@ -88,36 +94,59 @@ class HtmlElement : public HtmlNode {
     // Note that passing a value containing NULs in the middle will cause
     // breakage, but this isn't currently checked for.
     // TODO(mdsteele): Perhaps we should check for this?
-    void set_value(const StringPiece& value) {
-      if (value.data() == NULL) {
-        value_.reset(NULL);
-      } else {
-        char* buf = new char[value.size() + 1];
-        memcpy(buf, value.data(), value.size());
-        buf[value.size()] = '\0';
-        value_.reset(buf);
-      }
-    }
+
+    // Sets the value of the attribute.  No HTML escaping is expected.
+    // This call causes the HTML-escaped value to be automatically computed
+    // by scanning the value and escaping any characters required in HTML
+    // attributes.
+    void SetValue(const StringPiece& value);
+
+    // Sets the escaped value.  This is intended to be called from the HTML
+    // Lexer, and results in the Value being computed automatically by
+    // scanning the value for escape sequences.
+    void SetEscapedValue(const StringPiece& value);
 
     // See comment about quote on constructor for Attribute.
     void set_quote(const char *quote) {
       quote_ = quote;
     }
 
+    friend class HtmlElement;
+
    private:
+    // TODO(jmarantz): arg 'quote' must be a static string, or NULL,
+    // if quoting is not yet known (e.g. this is a synthesized attribute.
+    // This is hard-to-describe and we should probably use an Atom for
+    // the quote, and decide how to handle NULL.
+    //
+    // This should only be called from AddAttribute
+    Attribute(Atom name, const StringPiece& value,
+              const StringPiece& escaped_value, const char* quote);
+
+    static inline void CopyValue(const StringPiece& src,
+                                 scoped_array<char>* dst);
+
     Atom name_;
+    scoped_array<char> escaped_value_;
     scoped_array<char> value_;
     const char* quote_;
   };
 
   virtual ~HtmlElement();
 
+  // Add a copy of an attribute to this element.  The attribute may come
+  // from this element, or another one.
+  void AddAttribute(const Attribute& attr);
+
   // Unconditionally add attribute, copying value.
   // Quote is assumed to be a static const char *.
   // Doesn't check for attribute duplication (which is illegal in html).
-  void AddAttribute(Atom name, const StringPiece& value, const char* quote) {
-    attributes_.push_back(new Attribute(name, value, quote));
-  }
+  //
+  // The value, if non-null, is assumed to be unescaped.  See also
+  // AddEscapedAttribute.
+  void AddAttribute(Atom name, const StringPiece& value, const char* quote);
+  void AddEscapedAttribute(Atom name, const StringPiece& escaped_value,
+                           const char* quote);
 
   // Removes the attribute at the given index, shifting higher-indexed
   // attributes down.  Note that this operation is linear in the number of

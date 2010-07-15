@@ -151,7 +151,7 @@ void ElideAttributesFilter::StartElement(HtmlElement* element) {
         HtmlElement::Attribute& attribute = element->attribute(i);
         if (attribute.value() != NULL &&
             oneValueAttrs.count(attribute.name()) > 0) {
-          attribute.set_value(NULL);
+          attribute.SetValue(NULL);
         }
       }
     }

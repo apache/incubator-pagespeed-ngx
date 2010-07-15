@@ -92,7 +92,7 @@ void CacheExtender::StartElement(HtmlElement* element) {
         std::string new_url = StrCat(
             resource_manager_->url_prefix(), filter_prefix_,
             prefix_separator(), url_safe_id);
-        href->set_value(new_url.c_str());
+        href->SetValue(new_url.c_str());
         if (extension_count_ != NULL) {
           extension_count_->Add(1);
         }

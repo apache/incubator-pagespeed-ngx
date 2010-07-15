@@ -15,6 +15,7 @@
 {
   'variables': {
     'instaweb_root': '../..',
+    'chromium_code': 1,
   },
   'targets': [
     {
@@ -68,6 +69,7 @@
       'sources': [
         'htmlparse/empty_html_filter.cc',
         'htmlparse/html_element.cc',
+        'htmlparse/html_escape.cc',
         'htmlparse/html_event.cc',
         'htmlparse/html_filter.cc',
         'htmlparse/html_lexer.cc',

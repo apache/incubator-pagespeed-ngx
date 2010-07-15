@@ -53,6 +53,7 @@ class HtmlParse {
   // ParseText on the file contents (in whatever size chunks are convenient),
   // then call FinishParse().
   void ParseText(const char* content, int size);
+  void ParseText(const StringPiece& sp) { ParseText(sp.data(), sp.size()); }
 
   // Flush the currently queued events through the filters.  It is desirable
   // for large web pages, particularly dynamically generated ones, to start

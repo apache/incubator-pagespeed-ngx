@@ -218,12 +218,12 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
         (img_width > 1 || img_height > 1) &&  // Rule out marker images <= 1x1
         image->AsInlineData(&inlined_url)) {
       html_parse_->InfoHere("%s inlined", src->value());
-      src->set_value(inlined_url);
+      src->SetValue(inlined_url);
     } else if (output_resource != NULL && output_resource->IsWritten() &&
         output_resource->metadata()->status_code() == HttpStatus::OK) {
       html_parse_->InfoHere("%s remapped to %s",
                             src->value(), output_resource->url().c_str());
-      src->set_value(output_resource->url());
+      src->SetValue(output_resource->url());
       if (rewrite_count_ != NULL) {
         rewrite_count_->Add(1);
       }
@@ -305,7 +305,7 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
           resource_manager_->SetDefaultHeaders(*content_type, response_headers);
         } else {
           message_handler->Error(resource->name().as_string().c_str(), 0,
-                                 failure_reason);
+                                 "%s", failure_reason);
           ok = writer->Write("<img src=\"", message_handler);
           ok &= writer->Write(url_proto.origin_url(), message_handler);
           ok &= writer->Write("\" alt=\"Temporarily Moved\"/>",
@@ -335,7 +335,7 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
     response_headers->set_status_code(HttpStatus::NOT_FOUND);
     response_headers->set_reason_phrase(failure_reason);
     message_handler->Error(resource->name().as_string().c_str(), 0,
-                           failure_reason);
+                           "%s", failure_reason);
   }
   return ok;
 }

@@ -28,6 +28,7 @@
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/html_lexer.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_escape.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
@@ -41,6 +42,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       deleted_current_(false),
       message_handler_(message_handler),
       line_number_(1) {
+  HtmlEscape::Init();
 }
 
 HtmlParse::~HtmlParse() {

@@ -16,6 +16,7 @@
   'variables': {
     'instaweb_root': '../..',
     'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
+    'chromium_code': 1,
   },
   'targets': [
     {
@@ -23,8 +24,8 @@
       'target_name': 'instaweb_util',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_protobuf_gzip',
         'instaweb_core.gyp:instaweb_util_core',
+        'instaweb_protobuf_gzip.gyp:instaweb_protobuf_gzip',
         'instaweb_util_pb',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/base/base.gyp:base',
@@ -68,7 +69,7 @@
         ],
       },
       'export_dependent_settings': [
-        'instaweb_protobuf_gzip',
+        'instaweb_protobuf_gzip.gyp:instaweb_protobuf_gzip',
       ],
     },
     {
@@ -277,24 +278,6 @@
         'instaweb_util_genproto',
         '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
       ]
-    },
-    {
-      # Unfortunately, the inherited protobuf target in protobuf.gyp
-      # does not build gzip_stream.cc, which we require. Thus we're
-      # required to define our own target that includes protobuf as
-      # well as gzip_stream.cc.
-      'target_name': 'instaweb_protobuf_gzip',
-      'type': '<(library)',
-      'dependencies': [
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf',
-        '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
-      ],
-      'sources': [
-        '<(DEPTH)/third_party/protobuf2/src/src/google/protobuf/io/gzip_stream.cc',
-      ],
-      'export_dependent_settings': [
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf',
-      ],
     },
   ],
 }

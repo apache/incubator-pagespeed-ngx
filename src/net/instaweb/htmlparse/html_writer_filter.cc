@@ -83,8 +83,8 @@ void HtmlWriterFilter::StartElement(HtmlElement* element) {
     // to insert whitespace in the middle of tag parameters.
     int attr_length = 1 + attribute.name().size();
     if (max_column_ > 0) {
-      if (attribute.value() != NULL) {
-        attr_length += 1 + strlen(attribute.value());
+      if (attribute.escaped_value() != NULL) {
+        attr_length += 1 + strlen(attribute.escaped_value());
       }
       if ((column_ + attr_length) > max_column_) {
         EmitBytes("\n");
@@ -93,10 +93,10 @@ void HtmlWriterFilter::StartElement(HtmlElement* element) {
     EmitBytes(" ");
     EmitBytes(attribute.name().c_str());
     last_is_unquoted = false;
-    if (attribute.value() != NULL) {
+    if (attribute.escaped_value() != NULL) {
       EmitBytes("=");
       EmitBytes(attribute.quote());
-      EmitBytes(attribute.value());
+      EmitBytes(attribute.escaped_value());
       EmitBytes(attribute.quote());
       last_is_unquoted = (attribute.quote()[0] == '\0');
     }

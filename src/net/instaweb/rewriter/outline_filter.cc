@@ -170,7 +170,7 @@ void OutlineFilter::OutlineStyle(HtmlElement* style_element,
         // Add all style atrributes to link.
         for (int i = 0; i < style_element->attribute_size(); ++i) {
           const HtmlElement::Attribute& attr = style_element->attribute(i);
-          link_element->AddAttribute(attr.name(), attr.value(), attr.quote());
+          link_element->AddAttribute(attr);
         }
         // Add link to DOM.
         html_parse_->InsertElementAfterElement(style_element, link_element);
@@ -210,8 +210,7 @@ void OutlineFilter::OutlineScript(HtmlElement* inline_element,
         // Add all atrributes from old script element to new script src element.
         for (int i = 0; i < inline_element->attribute_size(); ++i) {
           const HtmlElement::Attribute& attr = inline_element->attribute(i);
-          outline_element->AddAttribute(attr.name(), attr.value(),
-                                        attr.quote());
+          outline_element->AddAttribute(attr);
         }
         // Add <script src=...> element to DOM.
         html_parse_->InsertElementBeforeElement(inline_element,

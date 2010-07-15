@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 
+#include "net/instaweb/htmlparse/public/html_escape.h"
 #include "net/instaweb/htmlparse/html_event.h"
 #include <string>
 
@@ -112,6 +113,67 @@ void HtmlElement::DebugPrint() const {
   std::string buf;
   ToString(&buf);
   fprintf(stdout, "%s\n", buf.c_str());
+}
+
+void HtmlElement::AddAttribute(const Attribute& src_attr) {
+  Attribute* attr = new Attribute(src_attr.name(), src_attr.value(),
+                                  src_attr.escaped_value(), src_attr.quote());
+  attributes_.push_back(attr);
+}
+
+void HtmlElement::AddAttribute(Atom name, const StringPiece& value,
+                               const char* quote) {
+  std::string buf;
+  Attribute* attr = new Attribute(name, value, HtmlEscape::Escape(value, &buf),
+                                  quote);
+  attributes_.push_back(attr);
+}
+
+void HtmlElement::AddEscapedAttribute(Atom name,
+                                      const StringPiece& escaped_value,
+                                      const char* quote) {
+  std::string buf;
+  Attribute* attr = new Attribute(name,
+                                  HtmlEscape::Unescape(escaped_value, &buf),
+                                  escaped_value, quote);
+  attributes_.push_back(attr);
+}
+
+void HtmlElement::Attribute::CopyValue(const StringPiece& src,
+                                       scoped_array<char>* dst) {
+  if (src.data() == NULL) {
+    // This case indicates attribute without value <tag attr>, as opposed
+    // to data()=="", which implies an empty value <tag attr=>.
+    dst->reset(NULL);
+  } else {
+    char* buf = new char[src.size() + 1];
+    memcpy(buf, src.data(), src.size());
+    buf[src.size()] = '\0';
+    dst->reset(buf);
+  }
+}
+
+HtmlElement::Attribute::Attribute(Atom name, const StringPiece& value,
+                                  const StringPiece& escaped_value,
+                                  const char* quote)
+    : name_(name), quote_(quote) {
+  CopyValue(value, &value_);
+  CopyValue(escaped_value, &escaped_value_);
+}
+
+// Modify value of attribute (eg to rewrite dest of src or href).
+// As with the constructor, copies the string in, so caller retains
+// ownership of value.
+void HtmlElement::Attribute::SetValue(const StringPiece& value) {
+  std::string buf;
+  CopyValue(value, &value_);
+  CopyValue(HtmlEscape::Escape(value, &buf), &escaped_value_);
+}
+
+void HtmlElement::Attribute::SetEscapedValue(const StringPiece& escaped_value) {
+  std::string buf;
+  CopyValue(escaped_value, &escaped_value_);
+  CopyValue(HtmlEscape::Unescape(escaped_value, &buf), &value_);
 }
 
 }  // namespace net_instaweb
