@@ -24,7 +24,6 @@
 #include <string>
 
 #include "base/string_util.h"
-#include "third_party/base64/base64.h"
 #include "third_party/chromium/src/base/string_piece.h"
 #include "third_party/protobuf2/src/src/google/protobuf/stubs/strutil.h"
 
@@ -36,26 +35,6 @@ inline std::string IntegerToString(int i) {
   return IntToString(i);
 }
 
-
-inline void Web64Encode(const StringPiece& in, std::string* out) {
-  *out = web64_encode(reinterpret_cast<const unsigned char*>(in.data()),
-                      in.size());
-}
-
-inline bool Web64Decode(const StringPiece& in, std::string* out) {
-  bool ret = web64_decode(in.as_string(), out);
-  return ret;
-}
-
-inline void Mime64Encode(const StringPiece& in, std::string* out) {
-  *out = base64_encode(reinterpret_cast<const unsigned char*>(in.data()),
-                      in.size());
-}
-
-inline bool Mime64Decode(const StringPiece& in, std::string* out) {
-  bool ret = base64_decode(in.as_string(), out);
-  return ret;
-}
 
 const StringPiece kEmptyString;
 std::string StrCat(const StringPiece& a,

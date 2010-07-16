@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"

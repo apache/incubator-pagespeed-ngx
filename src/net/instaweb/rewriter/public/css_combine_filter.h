@@ -36,7 +36,7 @@ class Variable;
 class CssCombineFilter : public RewriteFilter {
  public:
   CssCombineFilter(const char* path_prefix, HtmlParse* html_parse,
-                  ResourceManager* resource_manager);
+                   ResourceManager* resource_manager);
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
@@ -68,7 +68,6 @@ class CssCombineFilter : public RewriteFilter {
   Atom s_link_;
   Atom s_href_;
   Atom s_rel_;
-  Atom s_media_;
 
   std::vector<HtmlElement*> css_elements_;
   HtmlParse* html_parse_;

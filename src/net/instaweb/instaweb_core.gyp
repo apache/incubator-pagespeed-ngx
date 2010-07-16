@@ -24,11 +24,6 @@
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
-
-        # TODO: we need base64 because we depend on string_util, but
-        # not everyone that wants string_util wants base64. We should
-        # split the base64 dependency from string_util.
-        '<(instaweb_root)/third_party/base64/base64.gyp:base64',
       ],
       'sources': [
         'util/abstract_mutex.cc',

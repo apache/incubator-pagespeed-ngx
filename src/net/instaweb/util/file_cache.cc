@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/file_cache.h"
 
 #include <assert.h>
+#include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
