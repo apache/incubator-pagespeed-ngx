@@ -128,6 +128,30 @@
       },
     },
     {
+      'target_name': 'instaweb_rewriter_javascript',
+      'type': '<(library)',
+      'dependencies': [
+        'instaweb_rewrite_pb',
+        'instaweb_core.gyp:instaweb_rewriter_base',
+        'instaweb_util',
+        '<(DEPTH)/base/base.gyp:base',
+      ],
+      'sources': [
+        'rewriter/javascript_filter.cc',
+        'rewriter/javascript_minification.cc',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(instaweb_root)',
+          '<(DEPTH)',
+        ],
+      },
+    },
+    {
       'target_name': 'instaweb_rewriter',
       'type': '<(library)',
       'dependencies': [
@@ -135,6 +159,7 @@
         'instaweb_core.gyp:instaweb_rewriter_base',
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_rewriter_image',
+        'instaweb_rewriter_javascript',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
       ],
@@ -147,8 +172,6 @@
         'rewriter/css_tag_scanner.cc',
         'rewriter/elide_attributes_filter.cc',
         'rewriter/file_input_resource.cc',
-        'rewriter/hash_output_resource.cc',
-        'rewriter/hash_resource_manager.cc',
         'rewriter/html_attribute_quote_removal.cc',
         'rewriter/outline_filter.cc',
         'rewriter/remove_comments_filter.cc',

@@ -23,8 +23,8 @@
 #include <vector>
 #include <string>
 
+#include "base/string_piece.h"
 #include "base/string_util.h"
-#include "third_party/chromium/src/base/string_piece.h"
 #include "third_party/protobuf2/src/src/google/protobuf/stubs/strutil.h"
 
 namespace net_instaweb {

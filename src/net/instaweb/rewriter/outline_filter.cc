@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/outline_filter.h"
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -73,10 +74,8 @@ void OutlineFilter::StartElement(HtmlElement* element) {
     inline_element_ = element;
     buffer_.clear();
     // script elements which already have a src should not be outlined.
-    for (int i = 0; i < element->attribute_size(); ++i) {
-      if (element->attribute(i).name() == s_src_) {
-        inline_element_ = NULL;
-      }
+    if (element->FindAttribute(s_src_) != NULL) {
+      inline_element_ = NULL;
     }
   }
 }
@@ -159,10 +158,11 @@ void OutlineFilter::OutlineStyle(HtmlElement* style_element,
     // We only deal with CSS styles.  If no type specified, CSS is assumed.
     // TODO(sligocki): Is this assumption appropriate?
     if (type == NULL || strcmp(type, kTextCss) == 0) {
-      OutputResource* resource =
-          resource_manager_->GenerateOutputResource("of", kContentTypeCss);
+      scoped_ptr<OutputResource> resource(
+          resource_manager_->CreateGeneratedOutputResource(
+              "of", kContentTypeCss));
       MessageHandler* handler = html_parse_->message_handler();
-      if (WriteResource(content, resource, handler)) {
+      if (WriteResource(content, resource.get(), handler)) {
         HtmlElement* link_element = html_parse_->NewElement(
             style_element->parent(), s_link_);
         link_element->AddAttribute(s_rel_, kStylesheet, "'");
@@ -200,10 +200,11 @@ void OutlineFilter::OutlineScript(HtmlElement* inline_element,
     // We only deal with javascript styles. If no type specified, JS is assumed.
     // TODO(sligocki): Is this assumption appropriate?
     if (type == NULL || strcmp(type, kTextJavascript) == 0) {
-      OutputResource* resource = resource_manager_->GenerateOutputResource(
-          "of", kContentTypeJavascript);
+      scoped_ptr<OutputResource> resource(
+          resource_manager_->CreateGeneratedOutputResource(
+              "of", kContentTypeJavascript));
       MessageHandler* handler = html_parse_->message_handler();
-      if (WriteResource(content, resource, handler)) {
+      if (WriteResource(content, resource.get(), handler)) {
         HtmlElement* outline_element = html_parse_->NewElement(
             inline_element->parent(), s_script_);
         outline_element->AddAttribute(s_src_, resource->url(), "'");

@@ -20,20 +20,41 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
 
+#include <map>
+#include <vector>
+#include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
+#include <string>
 #include "net/instaweb/util/public/string_util.h"
+
+class GURL;
 
 namespace net_instaweb {
 
 class ContentType;
+class FileSystem;
+class FilenameEncoder;
+class HTTPCache;
+class Hasher;
 class InputResource;
 class MessageHandler;
 class MetaData;
 class OutputResource;
 class Statistics;
+class UrlFetcher;
+class Writer;
 
 class ResourceManager {
  public:
-  virtual ~ResourceManager();
+  ResourceManager(const StringPiece& file_prefix,
+                  const StringPiece& url_prefix,
+                  const int num_shards,
+                  FileSystem* file_system,
+                  FilenameEncoder* filename_encoder,
+                  UrlFetcher* url_fetcher,
+                  Hasher* hasher,
+                  HTTPCache* http_cache);
+  ~ResourceManager();
 
   // Created resources are managed by ResourceManager and eventually deleted
   // by ResourceManager's destructor.
@@ -48,9 +69,8 @@ class ResourceManager {
   // If this is not available in the current deployment, then NULL is returned.
   //
   // Every time this method is called, a new resource is generated.
-  virtual OutputResource* GenerateOutputResource(
-      const StringPiece& filter_prefix, const ContentType& type) = 0;
-
+  OutputResource* CreateGeneratedOutputResource(
+      const StringPiece& filter_prefix, const ContentType& type);
 
   // Creates an output resource where the name is provided by the rewriter.
   // The intent is to be able to derive the content from the name, for example,
@@ -65,35 +85,50 @@ class ResourceManager {
   // and hrefs are:
   //    $(URL_PREFIX)$(FILTER_PREFIX).$(HASH).$(NAME).$(CONTENT_TYPE_EXT)
   //
-  virtual OutputResource* NamedOutputResource(const StringPiece& filter_prefix,
-                                              const StringPiece& name,
-                                              const ContentType& type) = 0;
+  OutputResource* CreateNamedOutputResource(
+      const StringPiece& filter_prefix, const StringPiece& name,
+      const ContentType& type);
 
-  // Returns the named output resource, if it exists, or returns NULL.
-  virtual OutputResource* FindNamedOutputResource(
-      const StringPiece& filter_prefix,
-      const StringPiece& name,
-      const StringPiece& ext) const = 0;
+  // Creates a resource based on the fields extracted from a URL.  This
+  // is used for serving output resources.
+  OutputResource* CreateUrlOutputResource(
+      const StringPiece& filter_prefix, const StringPiece& name,
+      const StringPiece& hash, const ContentType& type);
 
-  virtual InputResource* CreateInputResource(const StringPiece& url,
-                                             MessageHandler* handler) = 0;
+  InputResource* CreateInputResource(const StringPiece& url,
+                                             MessageHandler* handler);
 
   // Set up a basic header for a given content_type.
-  virtual void SetDefaultHeaders(const ContentType& content_type,
-                                 MetaData* header) = 0;
+  void SetDefaultHeaders(const ContentType& content_type,
+                                 MetaData* header);
 
-  // Call when resources are not needed anymore to free up memory.
-  virtual void CleanupResources() = 0;
+  StringPiece file_prefix() const { return file_prefix_; }
+  StringPiece url_prefix() const { return url_prefix_; }
+  std::string base_url() const;
 
-  virtual StringPiece file_prefix() const = 0;
-  virtual StringPiece url_prefix() const = 0;
-  virtual std::string base_url() const = 0;
+  void set_file_prefix(const StringPiece& file_prefix);
+  void set_url_prefix(const StringPiece& url_prefix);
+  void set_base_url(const StringPiece& url);
+  Statistics* statistics() const { return statistics_; }
+  void set_statistics(Statistics* s) { statistics_ = s; }
 
-  virtual void set_file_prefix(const StringPiece& file_prefix) = 0;
-  virtual void set_url_prefix(const StringPiece& url_prefix) = 0;
-  virtual void set_base_url(const StringPiece& url) = 0;
-  virtual void set_statistics(Statistics* stats) = 0;
-  virtual Statistics* statistics() const = 0;
+  bool FetchOutputResource(
+    const OutputResource* output_resource,
+    Writer* writer, MetaData* response_headers,
+    MessageHandler* handler) const;
+
+ private:
+  scoped_ptr<GURL> base_url_;  // Base url to resolve relative urls against.
+  std::string file_prefix_;
+  std::string url_prefix_;
+  int num_shards_;   // NYI: For server sharding of OutputResources.
+  int resource_id_;  // Sequential ids for temporary OutputResource filenames.
+  FileSystem* file_system_;
+  FilenameEncoder* filename_encoder_;
+  UrlFetcher* url_fetcher_;
+  Hasher* hasher_;
+  Statistics* statistics_;
+  HTTPCache* http_cache_;
 };
 
 }  // namespace net_instaweb

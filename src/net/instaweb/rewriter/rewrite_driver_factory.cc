@@ -19,7 +19,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 
 #include "base/logging.h"
-#include "net/instaweb/rewriter/public/hash_resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_url_async_fetcher.h"
@@ -46,6 +46,7 @@ RewriteDriverFactory::RewriteDriverFactory()
       outline_css_(false),
       outline_javascript_(false),
       rewrite_images_(false),
+      rewrite_javascript_(false),
       extend_cache_(false),
       add_head_(false),
       add_base_tag_(false),
@@ -209,9 +210,10 @@ ResourceManager* RewriteDriverFactory::resource_manager() {
     CHECK(!url_prefix_.empty())
         << "Must specify --url_prefix or call "
         << "RewriteDriverFactory::set_url_prefix.";
-    resource_manager_.reset(new HashResourceManager(
+    resource_manager_.reset(new ResourceManager(
         filename_prefix_, url_prefix_, num_shards_,
-        file_system(), filename_encoder(), url_fetcher(), hasher()));
+        file_system(), filename_encoder(), url_fetcher(), hasher(),
+        http_cache()));
   }
   return resource_manager_.get();
 }
@@ -242,6 +244,9 @@ RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
   }
   if (rewrite_images_) {
     rewrite_driver->RewriteImages();
+  }
+  if (rewrite_javascript_) {
+    rewrite_driver->RewriteJavascript();
   }
   if (extend_cache_) {
     rewrite_driver->ExtendCacheLifetime(hasher(), timer());

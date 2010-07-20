@@ -74,6 +74,7 @@ class RewriteDriverFactory {
   void set_outline_css(bool x) { outline_css_ = x; }
   void set_outline_javascript(bool x) { outline_javascript_ = x; }
   void set_rewrite_images(bool x) { rewrite_images_ = x; }
+  void set_rewrite_javascript(bool x) { rewrite_javascript_ = x; }
   void set_extend_cache(bool x) { extend_cache_ = x; }
   void set_add_head(bool x) { add_head_ = x; }
   void set_add_base_tag(bool x) { add_base_tag_ = x; }
@@ -173,6 +174,7 @@ class RewriteDriverFactory {
   bool outline_css_;
   bool outline_javascript_;
   bool rewrite_images_;
+  bool rewrite_javascript_;
   bool extend_cache_;
   bool add_head_;
   bool add_base_tag_;

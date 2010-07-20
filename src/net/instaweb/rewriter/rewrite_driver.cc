@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
-#include <assert.h>
 #include <vector>
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
@@ -28,6 +27,7 @@
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/img_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/outline_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -40,6 +40,7 @@ const char kCssCombiner[] = "cc";
 const char kCacheExtender[] = "ce";
 const char kFileSystem[] = "fs";
 const char kImageCompression[] = "ic";
+const char kJavascriptMin[] = "jm";
 
 }  // namespace
 
@@ -76,7 +77,7 @@ void RewriteDriver::SetBaseUrl(const StringPiece& base) {
 
 void RewriteDriver::AddHead() {
   if (add_head_filter_ == NULL) {
-    assert(html_writer_filter_ == NULL);
+    CHECK(html_writer_filter_ == NULL);
     add_head_filter_.reset(new AddHeadFilter(html_parse_));
     html_parse_->AddFilter(add_head_filter_.get());
   }
@@ -85,16 +86,16 @@ void RewriteDriver::AddHead() {
 void RewriteDriver::AddBaseTagFilter() {
   AddHead();
   if (base_tag_filter_ == NULL) {
-    assert(html_writer_filter_ == NULL);
+    CHECK(html_writer_filter_ == NULL);
     base_tag_filter_.reset(new BaseTagFilter(html_parse_));
     html_parse_->AddFilter(base_tag_filter_.get());
   }
 }
 
 void RewriteDriver::ExtendCacheLifetime(Hasher* hasher, Timer* timer) {
-  assert(html_writer_filter_ == NULL);
-  assert(resource_manager_ != NULL);
-  assert(cache_extender_ == NULL);
+  CHECK(html_writer_filter_ == NULL);
+  CHECK(resource_manager_ != NULL);
+  CHECK(cache_extender_ == NULL);
   cache_extender_.reset(new CacheExtender(kCacheExtender, html_parse_,
                                           resource_manager_, hasher, timer));
   resource_filter_map_[kCacheExtender] = cache_extender_.get();
@@ -102,9 +103,9 @@ void RewriteDriver::ExtendCacheLifetime(Hasher* hasher, Timer* timer) {
 }
 
 void RewriteDriver::CombineCssFiles() {
-  assert(html_writer_filter_ == NULL);
-  assert(resource_manager_ != NULL);
-  assert(css_combine_filter_.get() == NULL);
+  CHECK(html_writer_filter_ == NULL);
+  CHECK(resource_manager_ != NULL);
+  CHECK(css_combine_filter_.get() == NULL);
   css_combine_filter_.reset(
       new CssCombineFilter(kCssCombiner, html_parse_, resource_manager_));
   resource_filter_map_[kCssCombiner] = css_combine_filter_.get();
@@ -113,18 +114,17 @@ void RewriteDriver::CombineCssFiles() {
 
 void RewriteDriver::OutlineResources(bool outline_styles,
                                      bool outline_scripts) {
-  // TODO(sligocki): Use FatalError rather than assert.
-  assert(html_writer_filter_ == NULL);
-  assert(resource_manager_ != NULL);
+  CHECK(html_writer_filter_ == NULL);
+  CHECK(resource_manager_ != NULL);
   outline_filter_.reset(new OutlineFilter(html_parse_, resource_manager_,
                                           outline_styles, outline_scripts));
   html_parse_->AddFilter(outline_filter_.get());
 }
 
 void RewriteDriver::RewriteImages() {
-  assert(html_writer_filter_ == NULL);
-  assert(resource_manager_ != NULL);
-  assert(img_rewrite_filter_ == NULL);
+  CHECK(html_writer_filter_ == NULL);
+  CHECK(resource_manager_ != NULL);
+  CHECK(img_rewrite_filter_ == NULL);
   img_rewrite_filter_.reset(
       new ImgRewriteFilter(kImageCompression, html_parse_,
                            resource_manager_, file_system_));
@@ -132,9 +132,19 @@ void RewriteDriver::RewriteImages() {
   html_parse_->AddFilter(img_rewrite_filter_.get());
 }
 
+void RewriteDriver::RewriteJavascript() {
+  CHECK(html_writer_filter_ == NULL);
+  CHECK(resource_manager_ != NULL);
+  CHECK(javascript_filter_ == NULL);
+  javascript_filter_.reset(
+      new JavascriptFilter(kJavascriptMin, html_parse_, resource_manager_));
+  resource_filter_map_[kJavascriptMin] = javascript_filter_.get();
+  html_parse_->AddFilter(javascript_filter_.get());
+}
+
 void RewriteDriver::RemoveQuotes() {
-  assert(html_writer_filter_ == NULL);
-  assert(attribute_quote_removal_.get() == NULL);
+  CHECK(html_writer_filter_ == NULL);
+  CHECK(attribute_quote_removal_.get() == NULL);
   attribute_quote_removal_.reset(
       new HtmlAttributeQuoteRemoval(html_parse_));
   html_parse_->AddFilter(attribute_quote_removal_.get());
@@ -147,6 +157,30 @@ void RewriteDriver::SetWriter(Writer* writer) {
   }
   html_writer_filter_->set_writer(writer);
 }
+
+namespace {
+
+// Wraps an async fetcher callback, in order to delete the output
+// resource.
+class ResourceDeleterCallback : public UrlAsyncFetcher::Callback {
+ public:
+  ResourceDeleterCallback(OutputResource* output_resource,
+                          UrlAsyncFetcher::Callback* callback)
+      : output_resource_(output_resource),
+        callback_(callback) {
+  }
+
+  virtual void Done(bool status) {
+    callback_->Done(status);
+    delete this;
+  }
+
+ private:
+  scoped_ptr<OutputResource> output_resource_;
+  UrlAsyncFetcher::Callback* callback_;
+};
+
+}  // namespace
 
 void RewriteDriver::FetchResource(
     const StringPiece& resource,
@@ -161,16 +195,20 @@ void RewriteDriver::FetchResource(
   SplitStringPieceToVector(resource, separator, &components, false);
   const ContentType* content_type = NameExtensionToContentType(resource);
   if ((content_type != NULL) && (components.size() == 4)) {
-    // For now, ignore the hash, which is in components[1]
     const StringPiece& id = components[0];
+    const StringPiece& hash = components[1];
     const StringPiece& name = components[2];
     const StringPiece& ext = components[3];
 
-    OutputResource* output_resource = resource_manager_->NamedOutputResource(
-        id, name, *content_type);
+    OutputResource* output_resource =
+        resource_manager_->CreateUrlOutputResource(
+            id, name, hash, *content_type);
+    CHECK(StrCat(resource_manager_->file_prefix(), resource) ==
+          output_resource->filename());
 
-    if (output_resource->Read(resource, writer, response_headers,
-                              message_handler)) {
+    callback = new ResourceDeleterCallback(output_resource, callback);
+    if (resource_manager_->FetchOutputResource(
+            output_resource, writer, response_headers, message_handler)) {
       callback->Done(true);
       queued = true;
     } else {

@@ -169,7 +169,7 @@ OutputResource* ImgRewriteFilter::ImageOutputResource(
   if (image != NULL) {
     const ContentType* content_type = image->content_type();
     if (content_type != NULL) {
-      result = resource_manager_->NamedOutputResource(
+      result = resource_manager_->CreateNamedOutputResource(
           filter_prefix_, url_string, *content_type);
     }
   }
@@ -194,8 +194,8 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
   ImgRewriteUrl rewritten_url_proto;
   std::string rewritten_url;
   MessageHandler* message_handler = html_parse_->message_handler();
-  InputResource* input_resource =
-      resource_manager_->CreateInputResource(src->value(), message_handler);
+  scoped_ptr<InputResource> input_resource(
+      resource_manager_->CreateInputResource(src->value(), message_handler));
   if (input_resource != NULL) {
     // Always rewrite to absolute url used to obtain resource.
     // This lets us do context-free fetches of content.
@@ -207,10 +207,11 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
       rewritten_url_proto.set_height(height);
     }
     Encode(rewritten_url_proto, &rewritten_url);
-    scoped_ptr<Image> image(GetImage(rewritten_url_proto, input_resource));
-    OutputResource* output_resource =
-        ImageOutputResource(rewritten_url, image.get());
-    OptimizeImage(rewritten_url_proto, image.get(), output_resource);
+    scoped_ptr<Image> image(GetImage(rewritten_url_proto,
+                                     input_resource.get()));
+    scoped_ptr<OutputResource> output_resource(
+        ImageOutputResource(rewritten_url, image.get()));
+    OptimizeImage(rewritten_url_proto, image.get(), output_resource.get());
     std::string inlined_url;
     int img_width, img_height;
     if (image != NULL && image->output_size() < kImageInlineThreshold &&
@@ -267,14 +268,16 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
     ImgRewriteUrl url_proto;
     if (Decode(stripped_url, &url_proto)) {
       std::string stripped_url_string = stripped_url.as_string();
-      InputResource* input_image = resource_manager_->CreateInputResource(
-          url_proto.origin_url(), message_handler);
-      OutputResource* image_resource = OptimizedImageFor(
-          url_proto, stripped_url_string, input_image);
+      scoped_ptr<InputResource> input_image(
+          resource_manager_->CreateInputResource(
+              url_proto.origin_url(), message_handler));
+      scoped_ptr<OutputResource> image_resource(OptimizedImageFor(
+          url_proto, stripped_url_string, input_image.get()));
       if (image_resource != NULL) {
         assert(image_resource->IsWritten());
-        if (image_resource->Read(image_resource->filename(), writer,
-                                 response_headers, message_handler)) {
+        if (resource_manager_->FetchOutputResource(
+                image_resource.get(), writer, response_headers,
+                message_handler)) {
           resource_manager_->SetDefaultHeaders(*content_type, response_headers);
           callback->Done(true);
         } else {

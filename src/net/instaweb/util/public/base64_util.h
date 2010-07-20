@@ -22,8 +22,8 @@
 
 #include <string>
 
+#include "base/string_piece.h"
 #include "third_party/base64/base64.h"
-#include "third_party/chromium/src/base/string_piece.h"
 
 namespace net_instaweb {
 

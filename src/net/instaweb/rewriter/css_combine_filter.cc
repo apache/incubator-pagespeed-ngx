@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 
 #include <assert.h>
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -30,6 +31,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
 
@@ -171,10 +173,11 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
 
     // Start building up the combination.  At this point we are still
     // not committed to the combination, because the 'write' can fail.
-    OutputResource* combination = resource_manager_->NamedOutputResource(
-        filter_prefix_, url_safe_id, kContentTypeCss);
+    scoped_ptr<OutputResource> combination(
+        resource_manager_->CreateNamedOutputResource(
+            filter_prefix_, url_safe_id, kContentTypeCss));
     bool written = combination->IsWritten() ||
-        WriteCombination(combine_resources, combination, handler);
+        WriteCombination(combine_resources, combination.get(), handler);
 
     // We've collected at least two CSS files to combine, and whose
     // HTML elements are in the current flush window.  Last step
@@ -194,6 +197,8 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
     }
   }
   css_elements_.clear();
+  STLDeleteContainerPointers(combine_resources.begin(),
+                             combine_resources.end());
 }
 
 bool CssCombineFilter::WriteCombination(
@@ -254,8 +259,8 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
       ret = (WriteCombination(combine_resources, combination,
                               message_handler) &&
              combination->IsWritten() &&
-             combination->Read(combination->filename(), writer,
-                               response_headers, message_handler));
+             resource_manager_->FetchOutputResource(
+                 combination, writer, response_headers, message_handler));
     }
   }
 

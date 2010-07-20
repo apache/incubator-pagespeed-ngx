@@ -37,6 +37,7 @@ class HtmlAttributeQuoteRemoval;
 class HtmlParse;
 class HtmlWriterFilter;
 class ImgRewriteFilter;
+class JavascriptFilter;
 class OutlineFilter;
 class ResourceManager;
 class RewriteFilter;
@@ -80,6 +81,9 @@ class RewriteDriver {
   // Extend the cache lifetime of resources.  This can only be called once and
   // requires a resource_manager to be set.
   void ExtendCacheLifetime(Hasher* hasher, Timer* timer);
+
+  // Rewrite (minify etc.) JavaScript code to reduce time to first interaction.
+  void RewriteJavascript();
 
   // Remove extraneous quotes from html attributes.  Does this save enough bytes
   // to be worth it after compression?  If we do it everywhere it seems to give
@@ -134,6 +138,7 @@ class RewriteDriver {
   scoped_ptr<OutlineFilter> outline_filter_;
   scoped_ptr<ImgRewriteFilter> img_rewrite_filter_;
   scoped_ptr<CacheExtender> cache_extender_;
+  scoped_ptr<JavascriptFilter> javascript_filter_;
   scoped_ptr<HtmlAttributeQuoteRemoval> attribute_quote_removal_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
 };
