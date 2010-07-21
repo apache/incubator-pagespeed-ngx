@@ -265,4 +265,19 @@ void RewriteDriverFactory::AddPlatformSpecificRewritePasses(
     RewriteDriver* driver) {
 }
 
+void RewriteDriverFactory::ShutDown() {
+  file_system_.reset(NULL);
+  url_fetcher_.reset(NULL);
+  url_async_fetcher_.reset(NULL);
+  hasher_.reset(NULL);
+  filename_encoder_.reset(NULL);
+  timer_.reset(NULL);
+  resource_manager_.reset(NULL);
+  html_parse_message_handler_.reset(NULL);
+  http_cache_.reset(NULL);
+  threadsafe_cache_.reset(NULL);
+  cache_fetcher_.reset(NULL);
+  cache_async_fetcher_.reset(NULL);
+}
+
 }  // namespace net_instaweb

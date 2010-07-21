@@ -30,6 +30,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 
+#include <vector>
 #include "base/scoped_ptr.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -155,6 +156,16 @@ class RewriteDriverFactory {
   // Implementors of RewriteDriverFactory must supply two mutexes.
   virtual AbstractMutex* cache_mutex() = 0;
   virtual AbstractMutex* rewrite_drivers_mutex() = 0;
+
+  // Clean up all the resources. When shutdown Apache, and destroy the process
+  // sub-pool.  The RewriteDriverFactory owns some elements that were created
+  // from that sub-pool. The sub-pool is destroyed in ApacheRewriteFactory,
+  // which happens before the destruction of the base class. When the base class
+  // destroys, the sub-pool has been destroyed, but the elements in base class
+  // are still trying to destroy the sub-pool of the sub-pool. Call this
+  // function before destroying the process sub-pool.
+  void ShutDown();
+
 
  private:
   scoped_ptr<FileSystem> file_system_;
