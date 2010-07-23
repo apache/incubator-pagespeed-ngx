@@ -31,6 +31,7 @@
         'util/content_type.cc',
         'util/file_message_handler.cc',
         'util/file_system.cc',
+        'util/google_message_handler.cc',
         'util/hasher.cc',
         'util/message_handler.cc',
         'util/meta_data.cc',
