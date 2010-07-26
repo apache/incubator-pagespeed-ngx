@@ -48,6 +48,7 @@
         'util/mock_hasher.cc',
         'util/mock_timer.cc',
         'util/pthread_mutex.cc',
+        'util/ref_counted.cc',
         'util/simple_meta_data.cc',
         'util/statistics.cc',
         'util/stdio_file_system.cc',

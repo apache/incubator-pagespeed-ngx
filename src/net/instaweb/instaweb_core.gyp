@@ -90,12 +90,12 @@
       'target_name': 'instaweb_rewriter_base',
       'type': '<(library)',
       'dependencies': [
+        'instaweb_protobuf_gzip.gyp:instaweb_protobuf_gzip',
         'instaweb_util_core',
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
       ],
       'sources': [
-        'rewriter/input_resource.cc',
+        'rewriter/resource.cc',
         'rewriter/output_resource.cc',
         'rewriter/resource_manager.cc',
       ],
