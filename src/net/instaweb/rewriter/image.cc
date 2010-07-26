@@ -18,7 +18,7 @@
 
 #include "net/instaweb/rewriter/public/image.h"
 
-#include "net/instaweb/rewriter/public/input_resource.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/data_url.h"
@@ -392,15 +392,6 @@ const std::string* Image::Contents() {
     }
   }
   return contents;
-}
-
-bool Image::WriteTo(Writer* writer) {
-  const std::string* contents = Contents();
-  bool ok = (contents != NULL);
-  if (ok) {
-    ok = writer->Write(*contents, handler_);
-  }
-  return ok;
 }
 
 bool Image::AsInlineData(std::string* data_url) {

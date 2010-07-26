@@ -17,17 +17,33 @@
 // Author: sligocki@google.com (Shawn Ligocki)
 
 #include "net/instaweb/util/public/filename_encoder.h"
+#include <vector>
+#include "net/instaweb/util/public/hasher.h"
 
 namespace net_instaweb {
 
 FilenameEncoder::~FilenameEncoder() {
 }
 
-void FilenameEncoder::Encode(const std::string& filename_prefix,
-                             const std::string& filename_ending,
+void FilenameEncoder::Encode(const StringPiece& filename_prefix,
+                             const StringPiece& filename_ending,
                              std::string* encoded_filename) {
-  // Default filename encoder does no encoding.
-  *encoded_filename = StrCat(filename_prefix, filename_ending);
+  // TODO(jmarantz): Use a better encoder for long names to avoid
+  // losing all the readability in filenames.
+  if (filename_ending.size() > 200) {
+    std::vector<StringPiece> components;
+    const char* separator = ".";
+    SplitStringPieceToVector(filename_ending, separator, &components, false);
+    CHECK(components.size() == 4);
+    std::string new_name = hasher_->Hash(components[2]);
+    *encoded_filename = StrCat(filename_prefix,
+                               components[0], separator,
+                               components[1], separator,
+                               new_name, separator,
+                               components[3]);
+  } else {
+    *encoded_filename = StrCat(filename_prefix, filename_ending);
+  }
 }
 
 }  // namespace net_instaweb

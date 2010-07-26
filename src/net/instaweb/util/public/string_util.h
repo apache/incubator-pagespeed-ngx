@@ -42,7 +42,9 @@ std::string StrCat(const StringPiece& a,
                     const StringPiece& c = kEmptyString,
                     const StringPiece& d = kEmptyString,
                     const StringPiece& e = kEmptyString,
-                    const StringPiece& f = kEmptyString);
+                    const StringPiece& f = kEmptyString,
+                    const StringPiece& g = kEmptyString,
+                    const StringPiece& h = kEmptyString);
 
 void SplitStringPieceToVector(const StringPiece& sp, const char* separator,
                               std::vector<StringPiece>* components,

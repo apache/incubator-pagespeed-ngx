@@ -25,9 +25,9 @@
 
 namespace net_instaweb {
 
-class OutputResource;
 class MessageHandler;
 class MetaData;
+class OutputResource;
 class ResourceManager;
 
 // Filter to take explicit <style> and <script> tags and outline them to files.

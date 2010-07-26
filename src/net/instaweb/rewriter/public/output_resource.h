@@ -23,47 +23,32 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/util/public/file_writer.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/rewriter/public/resource.h"
 
 namespace net_instaweb {
 
 class FilenameEncoder;
 class Hasher;
 class MessageHandler;
-class MetaData;
-class Writer;
 
-class OutputResource {
+class OutputResource : public Resource {
  public:
-  OutputResource(const StringPiece& url_prefix,
-                 const StringPiece& filename_prefix,
+  OutputResource(ResourceManager* manager,
+                 const ContentType* type,
                  const StringPiece& filter_prefix,
-                 const StringPiece& name,
-                 const StringPiece& suffix,
-                 FileSystem* file_system,
-                 FilenameEncoder* filename_encoder,
-                 Hasher* hasher);
+                 const StringPiece& name);
   ~OutputResource();
 
-  // Deprecated interface for writing the output file in chunks.  To
-  // be removed soon.
-  bool StartWrite(MessageHandler* message_handler);
-  bool WriteChunk(const StringPiece& buf, MessageHandler* handler);
-  bool EndWrite(MessageHandler* message_handler);
+  virtual bool Read(MessageHandler* message_handler);
+  virtual std::string url() const;
 
-  // Writer-based interface for writing the output file.
-  Writer* BeginWrite(MessageHandler* message_handler);
-  bool EndWrite(Writer* writer, MessageHandler* message_handler);
-
-  std::string url() const;
-  std::string filename() const;
-
+  // output-specific
   StringPiece name() const { return name_; }
-  StringPiece suffix() const { return suffix_; }
-  const MetaData* metadata() const { return &metadata_; }
-  MetaData* metadata() { return &metadata_; }
+  std::string filename() const;
+  StringPiece suffix() const;
 
   // In a scalable installation where the sprites must be kept in a
   // database, we cannot serve HTML that references new resources
@@ -72,36 +57,35 @@ class OutputResource {
   // to refactor this to check to see whether the desired resource is
   // already known.  For now we'll assume we can commit to serving the
   // resource during the HTML rewriter.
-  bool IsReadable() const;
   bool IsWritten() const;
-
-  // Read the output resource back in and send it to a writer.  This
-  // version always reads the file from disk, and will not use the
-  // cache.  Consider using ResourceManager::FetchOutputResource.
-  bool ReadNoCache(Writer* writer, MetaData* response_headers,
-                           MessageHandler* handler) const;
 
  private:
   friend class ResourceManager;
+  class OutputWriter : public FileWriter {
+   public:
+    OutputWriter(FileSystem::OutputFile* file, Hasher* hasher)
+        : FileWriter(file),
+          hasher_(hasher) {
+    }
+
+    virtual bool Write(const StringPiece& data, MessageHandler* handler);
+    Hasher* hasher() const { return hasher_; }
+   private:
+    Hasher* hasher_;
+  };
+
   void SetHash(const StringPiece& hash);
+  OutputWriter* BeginWrite(MessageHandler* message_handler);
+  bool EndWrite(OutputWriter* writer, MessageHandler* message_handler);
 
   std::string TempPrefix() const;
   std::string NameTail() const;
 
-  bool write_http_headers_;
-  FileSystem* file_system_;
   FileSystem::OutputFile* output_file_;
-  SimpleMetaData metadata_;
   bool writing_complete_;
-  std::string url_prefix_;
-  std::string filename_prefix_;
   std::string filter_prefix_;
   std::string name_;
-  std::string suffix_;
   std::string hash_;
-  FilenameEncoder* filename_encoder_;
-  Hasher* hasher_;
-  Writer* writer_;
 };
 
 }  // namespace net_instaweb

@@ -17,11 +17,13 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/stdio_file_system.h"
-#include <assert.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/errno.h>
 #include <sys/stat.h>
+
+#include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
 
@@ -38,7 +40,7 @@ class StdioFileHelper {
   }
 
   ~StdioFileHelper() {
-    assert(file_ == NULL);
+    CHECK(file_ == NULL);
   }
 
   void CountNewlines(const char* buf, int size) {

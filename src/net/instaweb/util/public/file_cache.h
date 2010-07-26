@@ -48,19 +48,16 @@ class FileCache : public CacheInterface {
   FileCache(const std::string& path, FileSystem* file_system,
             MessageHandler* message_handler);
   virtual ~FileCache();
-  // Get the content for key. key encodes to a filename.
-  virtual bool Get(const std::string& key, Writer* writer,
+
+  virtual bool Get(const std::string& key, SharedString* value,
                    MessageHandler* message_handler);
-  // Pub the content for key. key encodes to a filename.
-  virtual void Put(const std::string& key, const std::string& value,
+  virtual void Put(const std::string& key, SharedString& value,
                    MessageHandler* message_handler);
-  // Delete the file.
-  // TODO(lsong): FileSystem does not have a Delete interface. This function
-  // does nothing for now.
-  virtual void Delete(const std::string& key, MessageHandler* message_handler);
-  // Query the file.
-  virtual CacheInterface::KeyState Query(const std::string& key,
-                                         MessageHandler* message_handler);
+  virtual void Delete(const std::string& key,
+                      MessageHandler* message_handler);
+  virtual KeyState Query(const std::string& key,
+                         MessageHandler* message_handler);
+
  private:
   bool EncodeFilename(const std::string& key, std::string* filename);
 

@@ -18,12 +18,12 @@
 
 #include "net/instaweb/rewriter/public/img_rewrite_filter.h"
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
-#include "net/instaweb/rewriter/public/input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/rewrite.pb.h"  // for ImgRewriteUrl
@@ -87,7 +87,10 @@ ImgRewriteFilter::ImgRewriteFilter(StringPiece path_prefix,
 }
 
 void ImgRewriteFilter::OptimizeImage(
+    const Resource* input_resource,
     const ImgRewriteUrl& url_proto, Image* image, OutputResource* result) {
+  // TODO(jmarantz): OptimizeImage should embed input_resource.
+
   if (result != NULL && !result->IsWritten() && image != NULL) {
     int img_width, img_height, width, height;
     if (url_proto.has_width() && url_proto.has_height() &&
@@ -112,11 +115,11 @@ void ImgRewriteFilter::OptimizeImage(
     // Unconditionally write resource back so we don't re-attempt optimization.
     MessageHandler* message_handler = html_parse_->message_handler();
     if (image->output_size() < image->input_size() * kMaxRewrittenRatio) {
-      Writer* writer = result->BeginWrite(message_handler);
-      if (writer != NULL) {
-        image->WriteTo(writer);
-        result->EndWrite(writer, message_handler);
-      }
+      int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
+      resource_manager_->Write(
+          *image->Contents(), result, origin_expire_time_ms, message_handler);
+      // TODO(jmarantz): what happens if Write returns false?
+
       if (rewrite_saved_bytes_ != NULL) {
         // Note: if we are serving a request from a different server
         // than the server that rewrote the <img> tag, and they don't
@@ -133,17 +136,16 @@ void ImgRewriteFilter::OptimizeImage(
     } else {
       // Write nothing and set status code to indicate not to rewrite
       // in future.
-      result->metadata()->set_status_code(HttpStatus::INTERNAL_SERVER_ERROR);
-      Writer* writer = result->BeginWrite(message_handler);
-      if (writer != NULL) {
-        result->EndWrite(writer, message_handler);
-      }
+      MetaData* meta_data = result->metadata();
+      meta_data->set_status_code(HttpStatus::INTERNAL_SERVER_ERROR);
+      meta_data->ComputeCaching();
+      resource_manager_->Write("", result, 0, message_handler);
     }
   }
 }
 
 Image* ImgRewriteFilter::GetImage(const ImgRewriteUrl& url_proto,
-                                  InputResource* img_resource) {
+                                  Resource* img_resource) {
   Image* image = NULL;
   MessageHandler* message_handler = html_parse_->message_handler();
   if (img_resource == NULL) {
@@ -157,7 +159,7 @@ Image* ImgRewriteFilter::GetImage(const ImgRewriteUrl& url_proto,
                              img_resource->url().c_str());
   } else {
     image = new Image(img_resource->contents(), img_resource->url(),
-                      resource_manager_->file_prefix(), file_system_,
+                      resource_manager_->filename_prefix(), file_system_,
                       message_handler);
   }
   return image;
@@ -169,8 +171,9 @@ OutputResource* ImgRewriteFilter::ImageOutputResource(
   if (image != NULL) {
     const ContentType* content_type = image->content_type();
     if (content_type != NULL) {
+      MessageHandler* message_handler = html_parse_->message_handler();
       result = resource_manager_->CreateNamedOutputResource(
-          filter_prefix_, url_string, *content_type);
+          filter_prefix_, url_string, *content_type, message_handler);
     }
   }
   return result;
@@ -178,10 +181,10 @@ OutputResource* ImgRewriteFilter::ImageOutputResource(
 
 OutputResource* ImgRewriteFilter::OptimizedImageFor(
     const ImgRewriteUrl& url_proto, const std::string& url_string,
-    InputResource* img_resource) {
+    Resource* img_resource) {
   scoped_ptr<Image> image(GetImage(url_proto, img_resource));
   OutputResource* result = ImageOutputResource(url_string, image.get());
-  OptimizeImage(url_proto, image.get(), result);
+  OptimizeImage(img_resource, url_proto, image.get(), result);
   return result;
 }
 
@@ -194,12 +197,12 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
   ImgRewriteUrl rewritten_url_proto;
   std::string rewritten_url;
   MessageHandler* message_handler = html_parse_->message_handler();
-  scoped_ptr<InputResource> input_resource(
+  scoped_ptr<Resource> input_resource(
       resource_manager_->CreateInputResource(src->value(), message_handler));
   if (input_resource != NULL) {
     // Always rewrite to absolute url used to obtain resource.
     // This lets us do context-free fetches of content.
-    rewritten_url_proto.set_origin_url(input_resource->absolute_url());
+    rewritten_url_proto.set_origin_url(input_resource->url());
     if (element.IntAttributeValue(s_width_, &width) &&
         element.IntAttributeValue(s_height_, &height)) {
       // Specific image size is called for.  Rewrite to that size.
@@ -209,9 +212,33 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
     Encode(rewritten_url_proto, &rewritten_url);
     scoped_ptr<Image> image(GetImage(rewritten_url_proto,
                                      input_resource.get()));
+
+    if (image != NULL) {
+      // TODO(jmarantz): not sure if this is needed.  In a test, where
+      // we were getting an image from a file:// URL, we were not getting
+      // the content type filled in because we get no response headers
+      // from a file:// request.
+      switch (image->image_type()) {
+        case Image::IMAGE_JPEG:
+          input_resource->set_type(&kContentTypeJpeg);
+          break;
+        case Image::IMAGE_PNG:
+          input_resource->set_type(&kContentTypePng);
+          break;
+        case Image::IMAGE_GIF:
+          input_resource->set_type(&kContentTypeGif);
+          break;
+          // TODO(jmarantz): report error here?
+        default:
+          break;
+      }
+      resource_manager_->SetDefaultHeaders(input_resource->type(),
+                                           input_resource->metadata());
+    }
     scoped_ptr<OutputResource> output_resource(
         ImageOutputResource(rewritten_url, image.get()));
-    OptimizeImage(rewritten_url_proto, image.get(), output_resource.get());
+    OptimizeImage(input_resource.get(), rewritten_url_proto, image.get(),
+                  output_resource.get());
     std::string inlined_url;
     int img_width, img_height;
     if (image != NULL && image->output_size() < kImageInlineThreshold &&
@@ -268,17 +295,17 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
     ImgRewriteUrl url_proto;
     if (Decode(stripped_url, &url_proto)) {
       std::string stripped_url_string = stripped_url.as_string();
-      scoped_ptr<InputResource> input_image(
+      scoped_ptr<Resource> input_image(
           resource_manager_->CreateInputResource(
               url_proto.origin_url(), message_handler));
       scoped_ptr<OutputResource> image_resource(OptimizedImageFor(
           url_proto, stripped_url_string, input_image.get()));
       if (image_resource != NULL) {
-        assert(image_resource->IsWritten());
+        CHECK(image_resource->IsWritten());
         if (resource_manager_->FetchOutputResource(
                 image_resource.get(), writer, response_headers,
                 message_handler)) {
-          resource_manager_->SetDefaultHeaders(*content_type, response_headers);
+          resource_manager_->SetDefaultHeaders(content_type, response_headers);
           callback->Done(true);
         } else {
           ok = false;
@@ -305,7 +332,7 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
           ok = writer->Write(input_image->contents(), message_handler);
         }
         if (ok) {
-          resource_manager_->SetDefaultHeaders(*content_type, response_headers);
+          resource_manager_->SetDefaultHeaders(content_type, response_headers);
         } else {
           message_handler->Error(resource->name().as_string().c_str(), 0,
                                  "%s", failure_reason);

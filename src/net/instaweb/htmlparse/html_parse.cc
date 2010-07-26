@@ -18,7 +18,6 @@
 
 #include "net/instaweb/htmlparse/public/html_parse.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -92,7 +91,7 @@ void HtmlParse::AddEvent(HtmlEvent* event) {
   HtmlLeafNode* leaf = event->GetLeafNode();
   if (leaf != NULL) {
     leaf->set_iter(Last());
-    assert(IsRewritable(leaf));
+    CHECK(IsRewritable(leaf));
   }
 }
 
@@ -354,14 +353,14 @@ bool HtmlParse::DeleteElement(HtmlNode* node) {
       HtmlElement* nested_element = event->GetEndElement();
       if (nested_element != NULL) {
         std::set<HtmlNode*>::iterator iter = nodes_.find(nested_element);
-        assert(iter != nodes_.end());
+        CHECK(iter != nodes_.end());
         nodes_.erase(iter);
         delete nested_element;
       } else {
         HtmlLeafNode* leaf_node = event->GetLeafNode();
         if (leaf_node != NULL) {
           std::set<HtmlNode*>::iterator iter = nodes_.find(leaf_node);
-          assert(iter != nodes_.end());
+          CHECK(iter != nodes_.end());
           nodes_.erase(iter);
           delete leaf_node;
         }
@@ -380,7 +379,7 @@ bool HtmlParse::DeleteElement(HtmlNode* node) {
     }
 
     // Our iteration should have covered the passed-in element as well.
-    assert(nodes_.find(node) == nodes_.end());
+    CHECK(nodes_.find(node) == nodes_.end());
     deleted = true;
   }
   return deleted;

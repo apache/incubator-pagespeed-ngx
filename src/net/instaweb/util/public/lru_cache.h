@@ -50,16 +50,20 @@ class LRUCache : public CacheInterface {
         num_deletes_(0) {
   }
   virtual ~LRUCache();
-  virtual bool Get(const std::string& key, Writer* writer,
+
+  virtual bool Get(const std::string& key, SharedString* value,
                    MessageHandler* message_handler);
-  virtual void Put(const std::string& key, const std::string& value,
+
+  // Puts an object into the cache, sharing the bytes.
+  //
+  // TODO(jmarantz): currently if the caller mutates the
+  // SharedString after having called Put, it will actually
+  // modify the value in the cache.  We should change
+  // SharedString to Copy-On-Write semantics.
+  virtual void Put(const std::string& key, SharedString& new_value,
                    MessageHandler* message_handler);
   virtual void Delete(const std::string& key,
                       MessageHandler* message_handler);
-
-  // Determines the current state of a key.  In the case of an LRU
-  // cache, objects are never kInTransit -- they are either kAvailable
-  // or kNotFound.
   virtual KeyState Query(const std::string& key,
                          MessageHandler* message_handler);
 
@@ -79,18 +83,12 @@ class LRUCache : public CacheInterface {
   void SanityCheck();
 
  private:
-  typedef std::pair<const std::string*, std::string> KeyValuePair;
+  typedef std::pair<const std::string*, SharedString> KeyValuePair;
   typedef std::list<KeyValuePair*> EntryList;
   // STL guarantees lifetime of list itererators as long as the node is in list.
   typedef EntryList::iterator ListNode;
   typedef std::map<std::string, ListNode> Map;
-
-  // TODO(jmarantz): consider accounting for overhead for list cells, map
-  // cells, string objects, etc.  Currently we are only accounting for the
-  // actual characters in the key and value.
-  int entry_size(KeyValuePair* kvp) const {
-    return kvp->first->size() + kvp->second.size();
-  }
+  inline int entry_size(KeyValuePair* kvp) const;
   inline ListNode Freshen(KeyValuePair* key_value);
   bool EvictIfNecessary(size_t bytes_needed);
 

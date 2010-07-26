@@ -115,6 +115,8 @@ class RewriteDriverFactory {
 
   MessageHandler* html_parse_message_handler();
   FileSystem* file_system();
+  // TODO(sligocki): Remove hasher() and force people to make a NewHasher when
+  // they need one.
   Hasher* hasher();
   FilenameEncoder* filename_encoder();
   HtmlParse* html_parse();
@@ -127,8 +129,9 @@ class RewriteDriverFactory {
   int num_shards() { return num_shards_; }
   ResourceManager* resource_manager();
 
-  // Generates a mutex.
+  // Generates a new mutex, hasher.
   virtual AbstractMutex* NewMutex() = 0;
+  virtual Hasher* NewHasher() = 0;
 
   // Generates a new RewriteDriver.  Each RewriteDriver is not
   // thread-safe, but you can generate a RewriteDriver* for each
@@ -139,19 +142,16 @@ class RewriteDriverFactory {
  protected:
   virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
 
-  // Provide default fetchers.
-  virtual UrlFetcher* DefaultUrlFetcher() = 0;
-  virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher() = 0;
-
   // Implementors of RewriteDriverFactory must supply default definitions
   // for each of these methods, although they may be overridden via set_
   // methods above
-  virtual MessageHandler* NewHtmlParseMessageHandler() = 0;
-  virtual FileSystem* NewFileSystem() = 0;
-  virtual Hasher* NewHasher() = 0;
-  virtual HtmlParse* NewHtmlParse() = 0;
-  virtual Timer* NewTimer() = 0;
-  virtual CacheInterface* NewCacheInterface() = 0;
+  virtual UrlFetcher* DefaultUrlFetcher() = 0;
+  virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher() = 0;
+  virtual MessageHandler* DefaultHtmlParseMessageHandler() = 0;
+  virtual FileSystem* DefaultFileSystem() = 0;
+  virtual HtmlParse* DefaultHtmlParse() = 0;
+  virtual Timer* DefaultTimer() = 0;
+  virtual CacheInterface* DefaultCacheInterface() = 0;
 
   // Implementors of RewriteDriverFactory must supply two mutexes.
   virtual AbstractMutex* cache_mutex() = 0;

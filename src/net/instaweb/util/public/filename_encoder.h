@@ -23,14 +23,19 @@
 
 namespace net_instaweb {
 
+class Hasher;
+
 class FilenameEncoder {
  public:
-  FilenameEncoder() {}
+  explicit FilenameEncoder(Hasher* hasher) : hasher_(hasher) {}
   virtual ~FilenameEncoder();
 
-  virtual void Encode(const std::string& filename_prefix,
-                      const std::string& filename_ending,
+  virtual void Encode(const StringPiece& filename_prefix,
+                      const StringPiece& filename_ending,
                       std::string* encoded_filename);
+
+ protected:
+  Hasher* hasher_;
 };
 
 }  // namespace net_instaweb

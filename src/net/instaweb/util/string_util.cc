@@ -44,7 +44,9 @@ std::string StrCat(const StringPiece& a,
                     const StringPiece& c,
                     const StringPiece& d,
                     const StringPiece& e,
-                    const StringPiece& f) {
+                    const StringPiece& f,
+                    const StringPiece& g,
+                    const StringPiece& h) {
   std::string res;
   a.AppendToString(&res);
   b.AppendToString(&res);
@@ -52,6 +54,8 @@ std::string StrCat(const StringPiece& a,
   d.AppendToString(&res);
   e.AppendToString(&res);
   f.AppendToString(&res);
+  g.AppendToString(&res);
+  h.AppendToString(&res);
   return res;
 }
 

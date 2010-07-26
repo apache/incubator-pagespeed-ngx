@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/outline_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
@@ -200,10 +201,9 @@ void RewriteDriver::FetchResource(
     const StringPiece& name = components[2];
     const StringPiece& ext = components[3];
 
-    OutputResource* output_resource =
-        resource_manager_->CreateUrlOutputResource(
-            id, name, hash, *content_type);
-    CHECK(StrCat(resource_manager_->file_prefix(), resource) ==
+    OutputResource* output_resource = resource_manager_->
+        CreateUrlOutputResource(id, name, hash, *content_type);
+    CHECK(StrCat(resource_manager_->filename_prefix(), resource) ==
           output_resource->filename());
 
     callback = new ResourceDeleterCallback(output_resource, callback);

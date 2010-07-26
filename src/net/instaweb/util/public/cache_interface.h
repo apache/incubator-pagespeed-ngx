@@ -20,11 +20,12 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_CACHE_INTERFACE_H_
 
 #include <string>
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
-class Writer;
+class SharedString;
 
 // Abstract interface for a cache.
 class CacheInterface {
@@ -36,10 +37,18 @@ class CacheInterface {
   };
 
   virtual ~CacheInterface();
-  virtual bool Get(const std::string& key, Writer* writer,
+
+  // Gets an object from the cache, returning false on a cache miss
+  virtual bool Get(const std::string& key,
+                   SharedString* value,
                    MessageHandler* message_handler) = 0;
-  virtual void Put(const std::string& key, const std::string& value,
+
+  // Puts a value into the cache.  The value that is passed in is not modified,
+  // but the SharedString is passed by non-const reference because its reference
+  // count is bumped.
+  virtual void Put(const std::string& key, SharedString& value,
                    MessageHandler* message_handler) = 0;
+
   virtual void Delete(const std::string& key,
                       MessageHandler* message_handler) = 0;
   virtual KeyState Query(const std::string& key,

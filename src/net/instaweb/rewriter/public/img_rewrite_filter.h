@@ -24,7 +24,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
-#include "net/instaweb/rewriter/public/input_resource.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 
@@ -63,14 +63,15 @@ class ImgRewriteFilter : public RewriteFilter {
 
  private:
   // Helper methods.
-  Image* GetImage(const ImgRewriteUrl& url_proto, InputResource* img_resource);
+  Image* GetImage(const ImgRewriteUrl& url_proto, Resource* img_resource);
   OutputResource* ImageOutputResource(const std::string& url_string,
                                       Image* image);
   void OptimizeImage(
-      const ImgRewriteUrl& url_proto, Image* image, OutputResource* result);
+      const Resource* input_resource, const ImgRewriteUrl& url_proto,
+      Image* image, OutputResource* result);
   OutputResource* OptimizedImageFor(
       const ImgRewriteUrl& url_proto, const std::string& url_string,
-      InputResource* input_resource);
+      Resource* input_resource);
   void RewriteImageUrl(const HtmlElement& element, HtmlElement::Attribute* src);
 
   FileSystem* file_system_;

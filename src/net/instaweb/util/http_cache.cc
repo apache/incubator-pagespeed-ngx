@@ -20,7 +20,7 @@
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/meta_data.h"
-#include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/util.pb.h"
@@ -38,15 +38,14 @@ bool HTTPCache::IsCurrentlyValid(const MetaData& headers) {
 bool HTTPCache::Get(const char* key, MetaData* headers, Writer* writer,
                     MessageHandler* handler) {
   bool ret = false;
-  std::string cache_buffer;
-  StringWriter string_writer(&cache_buffer);
-  if (cache_->Get(key, &string_writer, handler)) {
+  SharedString cache_buffer;
+  if (cache_->Get(key, &cache_buffer, handler)) {
     // Decode the raw cached contents.  TODO(jmarantz): put this
     // in a templatized wrapper around the cache interface.
     CachedResponse cached_response;
     // TODO(jmarantz): use a MetaData factory so callers can override the
     // code used to handle cache headers.
-    if (cached_response.ParseFromString(cache_buffer)) {
+    if (cached_response.ParseFromString(*cache_buffer)) {
       headers->set_status_code(cached_response.status_code());
       headers->set_reason_phrase(cached_response.reason_phrase());
       headers->set_major_version(cached_response.major_version());
@@ -74,7 +73,7 @@ bool HTTPCache::Get(const char* key, MetaData* headers, Writer* writer,
 }
 
 void HTTPCache::Put(const char* key, const MetaData& headers,
-                    const std::string& content,
+                    const StringPiece& content,
                     MessageHandler* handler) {
   if (!IsCurrentlyValid(headers)) {
     return;
@@ -91,9 +90,9 @@ void HTTPCache::Put(const char* key, const MetaData& headers,
     header->set_value(headers.Value(i));
   }
 
-  cached_response.set_content(content);
-  std::string serialized_cache_response;
-  cached_response.SerializeToString(&serialized_cache_response);
+  content.CopyToString(cached_response.mutable_content());
+  SharedString serialized_cache_response;
+  cached_response.SerializeToString(serialized_cache_response.get());
   cache_->Put(key, serialized_cache_response, handler);
 }
 

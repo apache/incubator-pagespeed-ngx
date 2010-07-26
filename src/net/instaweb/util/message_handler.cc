@@ -18,7 +18,7 @@
 
 #include "net/instaweb/util/public/message_handler.h"
 
-#include <assert.h>
+#include "base/logging.h"
 
 namespace net_instaweb {
 
@@ -36,7 +36,7 @@ const char* MessageHandler::MessageTypeToString(const MessageType type) const {
     case kFatal:
       return "Fatal";
     default:
-      assert(false);
+      CHECK(false);
       return "INVALID MessageType!";
   }
 }

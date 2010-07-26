@@ -111,8 +111,6 @@ class Image {
 
   // Returns the best known image contents if image type is understood, or NULL.
   const std::string* Contents();
-  // Writes Contents() to output_resource.  May avoid copy.
-  bool WriteTo(Writer* output_resource);
   // Encode contents directly into data_url if image type is understood
   bool AsInlineData(std::string* data_url);
 

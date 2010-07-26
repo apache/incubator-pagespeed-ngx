@@ -21,42 +21,30 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_FILE_INPUT_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_FILE_INPUT_RESOURCE_H_
 
-#include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/input_resource.h"
-#include <string>
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/rewriter/public/resource.h"
 
 namespace net_instaweb {
 
-class FileSystem;
-class MessageHandler;
-
-class FileInputResource : public InputResource {
+class FileInputResource : public Resource {
  public:
-  FileInputResource(const StringPiece& url,
-                    const StringPiece& absolute_url,
-                    const StringPiece& filename,
-                    FileSystem* file_system);
-  ~FileInputResource();
+  FileInputResource(ResourceManager* manager,
+                    const ContentType* type,
+                    const StringPiece& url,
+                    const StringPiece& filename)
+      : Resource(manager, type),
+        url_(url.data(), url.size()),
+        filename_(filename.data(), filename.size()) {
+  }
+
+  virtual ~FileInputResource();
 
   // Read complete resource, content is stored in contents_.
   virtual bool Read(MessageHandler* message_handler);
-
-  virtual const std::string& url() const { return url_; }
-  virtual const std::string& absolute_url() const { return absolute_url_; }
-  virtual bool loaded() const { return meta_data_ != NULL; }
-  // contents are only available when loaded()
-  virtual bool ContentsValid() const { return loaded(); }
-  virtual const std::string& contents() const { return contents_; }
-  virtual const MetaData* metadata() const;
+  virtual std::string url() const { return url_; }
 
  private:
   std::string url_;
-  std::string absolute_url_;
   std::string filename_;
-  std::string contents_;
-  FileSystem* file_system_;
-  scoped_ptr<MetaData> meta_data_;
 };
 
 }  // namespace net_instaweb

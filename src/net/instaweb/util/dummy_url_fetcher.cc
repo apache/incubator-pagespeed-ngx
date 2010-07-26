@@ -18,7 +18,6 @@
 
 #include "net/instaweb/util/public/dummy_url_fetcher.h"
 
-#include <assert.h>
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
 

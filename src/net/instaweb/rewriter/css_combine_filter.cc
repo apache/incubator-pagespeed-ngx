@@ -18,9 +18,7 @@
 
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 
-#include <assert.h>
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/rewrite.pb.h"  // for CssCombineUrl
@@ -53,7 +51,7 @@ CssCombineFilter::CssCombineFilter(const char* filter_prefix,
     : RewriteFilter(filter_prefix),
       html_parse_(html_parse),
       resource_manager_(resource_manager),
-      css_filter_(html_parse),
+      css_tag_scanner_(html_parse),
       counter_(NULL) {
   s_head_ = html_parse->Intern("head");
   s_link_ = html_parse->Intern("link");
@@ -80,7 +78,7 @@ void CssCombineFilter::StartElement(HtmlElement* element) {
 void CssCombineFilter::EndElement(HtmlElement* element) {
   HtmlElement::Attribute* href;
   const char* media;
-  if (css_filter_.ParseCssElement(element, &href, &media)) {
+  if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
     css_elements_.push_back(element);
   } else if (element->tag() == s_head_) {
     EmitCombinations(element);
@@ -121,18 +119,18 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
   // do a combine if we have more than one css element that successfully
   // loaded.
   std::vector<HtmlElement*> combine_elements;
-  InputResourceVector combine_resources;
+  ResourceVector combine_resources;
   std::vector<std::string> media_attributes;
   for (int i = 0, n = css_elements_.size(); i < n; ++i) {
     HtmlElement* element = css_elements_[i];
     const char* media;
     HtmlElement::Attribute* href;
-    if (css_filter_.ParseCssElement(element, &href, &media) &&
+    if (css_tag_scanner_.ParseCssElement(element, &href, &media) &&
         html_parse_->IsRewritable(element)) {
       // TODO(jmarantz): consider async loads; exclude css file
       // from the combination that are not yet loaded.  For now, our
       // loads are blocking.  Need to understand Apache module
-      InputResource* css_resource =
+      Resource* css_resource =
           resource_manager_->CreateInputResource(href->value(), handler);
       if ((css_resource != NULL) && css_resource->Read(handler)) {
         media_attributes.push_back(media);
@@ -160,9 +158,9 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
     CssCombineUrl css_combine_url;
     std::string url_safe_id;
     for (int i = 0, n = combine_resources.size(); i < n; ++i) {
-      InputResource* css_element = combine_resources[i];
+      Resource* css_resource = combine_resources[i];
       CssUrl* css_url = css_combine_url.add_element();
-      css_url->set_origin_url(css_element->absolute_url());
+      css_url->set_origin_url(css_resource->url());
       css_url->set_media(media_attributes[i]);
     }
     Encode(css_combine_url, &url_safe_id);
@@ -175,14 +173,14 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
     // not committed to the combination, because the 'write' can fail.
     scoped_ptr<OutputResource> combination(
         resource_manager_->CreateNamedOutputResource(
-            filter_prefix_, url_safe_id, kContentTypeCss));
+            filter_prefix_, url_safe_id, kContentTypeCss, handler));
     bool written = combination->IsWritten() ||
         WriteCombination(combine_resources, combination.get(), handler);
 
     // We've collected at least two CSS files to combine, and whose
     // HTML elements are in the current flush window.  Last step
     // is to write the combination.
-    if (written && combination->IsReadable()) {
+    if (written && combination->IsWritten()) {
       // commit by removing the elements from the DOM.
       for (size_t i = 0; i < combine_elements.size(); ++i) {
         html_parse_->DeleteElement(combine_elements[i]);
@@ -202,22 +200,31 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
 }
 
 bool CssCombineFilter::WriteCombination(
-    const InputResourceVector& combine_resources,
+    const ResourceVector& combine_resources,
     OutputResource* combination,
     MessageHandler* handler) {
-  Writer* writer = combination->BeginWrite(handler);
-  bool written = (writer != NULL);
-  if (written) {
-    for (int i = 0, n = combine_resources.size(); written && (i < n); ++i) {
-      InputResource* input = combine_resources[i];
-      const std::string& contents = input->contents();
+  bool written = true;
+  std::string combined_contents;
+  StringWriter writer(&combined_contents);
+  int64 min_origin_expiration_time_ms = 0;
 
-      // We need a real CSS parser.  But for now we have to make
-      // any URLs absolute.
-      written = css_filter_.AbsolutifyUrls(contents, input->url(),
-                                           writer, handler);
+  for (int i = 0, n = combine_resources.size(); written && (i < n); ++i) {
+    Resource* input = combine_resources[i];
+    const std::string& contents = input->contents();
+    int64 input_expire_time_ms = input->CacheExpirationTimeMs();
+    if ((min_origin_expiration_time_ms == 0) ||
+        (input_expire_time_ms < min_origin_expiration_time_ms)) {
+      min_origin_expiration_time_ms = input_expire_time_ms;
     }
-    written &= combination->EndWrite(writer, handler);
+
+    // We need a real CSS parser.  But for now we have to make
+    // any URLs absolute.
+    written = css_tag_scanner_.AbsolutifyUrls(contents, input->url(),
+                                              &writer, handler);
+  }
+  if (written) {
+    resource_manager_->Write(combined_contents, combination,
+                             min_origin_expiration_time_ms, handler);
   }
   return written;
 }
@@ -235,7 +242,7 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
   if (Decode(url_safe_id, &css_combine_url)) {
     std::string url, decoded_resource;
     ret = true;
-    InputResourceVector combine_resources;
+    ResourceVector combine_resources;
 
     // TODO(jmarantz): This code reports failure if we do not have the
     // input .css files in cache.  Instead we should issue fetches for
@@ -244,7 +251,7 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
     for (int i = 0; i < css_combine_url.element_size(); ++i)  {
       const CssUrl& css_url = css_combine_url.element(i);
 
-      InputResource* css_resource =
+      Resource* css_resource =
           resource_manager_->CreateInputResource(css_url.origin_url(),
                                                  message_handler);
       if ((css_resource != NULL) && css_resource->Read(message_handler) &&
@@ -265,7 +272,7 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
   }
 
   if (ret) {
-    resource_manager_->SetDefaultHeaders(kContentTypeCss, response_headers);
+    resource_manager_->SetDefaultHeaders(&kContentTypeCss, response_headers);
     callback->Done(true);
   } else {
     message_handler->Error(url_safe_id.as_string().c_str(), 0,

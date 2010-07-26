@@ -19,6 +19,7 @@
 #include "net/instaweb/util/public/string_buffer.h"
 
 #include <algorithm>  // for std::min
+#include "base/logging.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
@@ -145,21 +146,21 @@ char* StringBuffer::AllocReadBuffer() {
 
 void StringBuffer::CommitReadBuffer(char* read_buffer, int size) {
   std::string* buffer = strings_.back();
-  assert(buffer->data() == read_buffer);  // pointer comparison
-  assert(size <= static_cast<int>(kReadBufferSize));
+  CHECK(buffer->data() == read_buffer);  // pointer comparison
+  CHECK(size <= static_cast<int>(kReadBufferSize));
   buffer->resize(size);
   size_ += size;
 }
 
 void StringBuffer::AbandonReadBuffer(char* read_buffer) {
   std::string* buffer = strings_.back();
-  assert(buffer->data() == read_buffer);  // pointer comparison
+  CHECK(buffer->data() == read_buffer);  // pointer comparison
   delete buffer;
   strings_.pop_back();
 }
 
 std::string StringBuffer::SubString(size_t pos, size_t size) const {
-  assert(pos <= static_cast<size_t>(size_));
+  CHECK(pos <= static_cast<size_t>(size_));
   if ((size == npos) || (size + pos > static_cast<size_t>(size_))) {
     size = size_ - pos;
   }

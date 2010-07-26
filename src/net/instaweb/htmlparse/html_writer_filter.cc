@@ -18,7 +18,7 @@
 
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 
-#include <assert.h>
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include <string>
@@ -149,7 +149,7 @@ void HtmlWriterFilter::EndElement(HtmlElement* element) {
     case HtmlElement::AUTO_CLOSE:
       // This cannot happen because GetCloseStyle prevents won't
       // return AUTO_CLOSE.
-      assert(false);
+      CHECK(false);
       break;
     case HtmlElement::IMPLICIT_CLOSE:
       // Nothing new to write; the ">" was written in StartElement

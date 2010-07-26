@@ -93,21 +93,21 @@ void RewriteDriverFactory::set_filename_encoder(FilenameEncoder* e) {
 
 MessageHandler* RewriteDriverFactory::html_parse_message_handler() {
   if (html_parse_message_handler_ == NULL) {
-    html_parse_message_handler_.reset(NewHtmlParseMessageHandler());
+    html_parse_message_handler_.reset(DefaultHtmlParseMessageHandler());
   }
   return html_parse_message_handler_.get();
 }
 
 FileSystem* RewriteDriverFactory::file_system() {
   if (file_system_ == NULL) {
-    file_system_.reset(NewFileSystem());
+    file_system_.reset(DefaultFileSystem());
   }
   return file_system_.get();
 }
 
 HTTPCache* RewriteDriverFactory::http_cache() {
   if (http_cache_ == NULL) {
-    CacheInterface* cache = NewCacheInterface();
+    CacheInterface* cache = DefaultCacheInterface();
     if (use_threadsafe_cache_) {
       threadsafe_cache_.reset(new ThreadsafeCache(cache, cache_mutex()));
       cache = threadsafe_cache_.get();
@@ -179,14 +179,14 @@ Hasher* RewriteDriverFactory::hasher() {
 
 FilenameEncoder* RewriteDriverFactory::filename_encoder() {
   if (filename_encoder_ == NULL) {
-    filename_encoder_.reset(new FilenameEncoder);
+    filename_encoder_.reset(new FilenameEncoder(hasher()));
   }
   return filename_encoder_.get();
 }
 
 HtmlParse* RewriteDriverFactory::html_parse() {
   if (html_parse_ == NULL) {
-    html_parse_ = NewHtmlParse();
+    html_parse_ = DefaultHtmlParse();
   }
   return html_parse_;
 }
@@ -220,7 +220,7 @@ ResourceManager* RewriteDriverFactory::resource_manager() {
 
 Timer* RewriteDriverFactory::timer() {
   if (timer_ == NULL) {
-    timer_.reset(Timer::NewSystemTimer());
+    timer_.reset(DefaultTimer());
   }
   return timer_.get();
 }

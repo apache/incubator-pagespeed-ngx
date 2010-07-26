@@ -18,7 +18,7 @@
 
 #include "net/instaweb/util/public/timer.h"
 
-#include <assert.h>
+#include "base/logging.h"
 #include <sys/time.h>
 #include <time.h>
 #include "pagespeed/core/resource_util.h"
@@ -55,7 +55,8 @@ class RealSystemTimer : public Timer {
     struct timeval tv;
     struct timezone tz = { 0, 0 };  // UTC
     if (gettimeofday(&tv, &tz) != 0) {
-      assert(0 == "Could not determine time of day");
+      // TODO(sligocki): ... what is this?
+      CHECK(0 == "Could not determine time of day");
     }
     return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
   }

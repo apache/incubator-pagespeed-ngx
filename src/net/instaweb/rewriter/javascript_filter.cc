@@ -23,7 +23,7 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/javascript_minification.h"
-#include "net/instaweb/rewriter/public/input_resource.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/rewrite.pb.h"  // for ResourceUrl
@@ -117,9 +117,9 @@ void JavascriptFilter::RewriteInlineScript() {
 
 // Load script resource located at the given URL,
 // on error report & return NULL (caller need not report)
-InputResource* JavascriptFilter::ScriptAtUrl(const std::string& script_url) {
+Resource* JavascriptFilter::ScriptAtUrl(const std::string& script_url) {
   MessageHandler* message_handler = html_parse_->message_handler();
-  InputResource* script_input =
+  Resource* script_input =
       resource_manager_->CreateInputResource(script_url, message_handler);
   if (script_input == NULL ||
       !(script_input->Read(message_handler) &&
@@ -135,23 +135,20 @@ InputResource* JavascriptFilter::ScriptAtUrl(const std::string& script_url) {
 // and write it to script_dest.
 // Returns true on success, reports failures itself.
 bool JavascriptFilter::WriteExternalScriptTo(
-    const std::string& script_url,
+    const Resource* script_resource,
     const std::string& script_out, OutputResource* script_dest) {
   bool ok = false;
   MessageHandler* message_handler = html_parse_->message_handler();
-  Writer* script_writer = script_dest->BeginWrite(message_handler);
-  if (script_writer != NULL) {
-    script_writer->Write(script_out, message_handler);
-    if (script_dest->EndWrite(script_writer, message_handler)) {
-      ok = true;
-      html_parse_->InfoHere("Rewrite script %s to %s",
-                            script_url.c_str(),
-                            script_dest->url().c_str());
-    } else {
-      html_parse_->ErrorHere("Write failed for %s", script_url.c_str());
-    }
+  int64 origin_expire_time_ms = script_resource->CacheExpirationTimeMs();
+  if (resource_manager_->Write(script_out, script_dest,
+                               origin_expire_time_ms, message_handler)) {
+    ok = true;
+    html_parse_->InfoHere("Rewrite script %s to %s",
+                          script_resource->url().c_str(),
+                          script_dest->url().c_str());
   } else {
-    html_parse_->ErrorHere("No writer for %s", script_url.c_str());
+    html_parse_->ErrorHere("Write failed for %s",
+                           script_resource->url().c_str());
   }
   return ok;
 }
@@ -164,16 +161,16 @@ void JavascriptFilter::RewriteExternalScript() {
   rewritten_url_proto.set_origin_url(script_url);
   std::string rewritten_url;
   Encode(rewritten_url_proto, &rewritten_url);
-  OutputResource* script_dest =
-      resource_manager_->CreateNamedOutputResource(
-          filter_prefix_, rewritten_url, kContentTypeJavascript);
+  MessageHandler* message_handler = html_parse_->message_handler();
+  OutputResource* script_dest = resource_manager_->CreateNamedOutputResource(
+      filter_prefix_, rewritten_url, kContentTypeJavascript, message_handler);
   if (script_dest != NULL) {
     bool ok;
     if (script_dest->IsWritten()) {
       // Only rewrite URL if we have usable rewritten data.
       ok = script_dest->metadata()->status_code() == HttpStatus::OK;
     } else {
-      InputResource* script_input = ScriptAtUrl(script_url);
+      Resource* script_input = ScriptAtUrl(script_url);
       ok = script_input != NULL;
       if (ok) {
         const std::string& script = script_input->contents();
@@ -181,18 +178,16 @@ void JavascriptFilter::RewriteExternalScript() {
         MinifyJavascript(script, &script_out);
         ok = script.size() > script_out.size();
         if (ok) {
-          ok = WriteExternalScriptTo(script_url, script_out, script_dest);
+          ok = WriteExternalScriptTo(script_input, script_out, script_dest);
         } else {
           // Rewriting happened but wasn't useful; remember this for later
           // so we don't attempt to rewrite twice.
           html_parse_->InfoHere("Script %s didn't shrink", script_url.c_str());
           script_dest->metadata()->set_status_code(
               HttpStatus::INTERNAL_SERVER_ERROR);
-          MessageHandler* message_handler = html_parse_->message_handler();
-          Writer* writer = script_dest->BeginWrite(message_handler);
-          if (writer != NULL) {
-            script_dest->EndWrite(writer, message_handler);
-          }
+          int64 origin_expire_time_ms = script_input->CacheExpirationTimeMs();
+          resource_manager_->Write("", script_dest, origin_expire_time_ms,
+                                   message_handler);
         }
       } else {
         some_missing_scripts_ = true;
@@ -267,7 +262,7 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
   bool ok = false;
   if (Decode(output_resource->name(), &url_proto)) {
     const std::string& script_url = url_proto.origin_url();
-    InputResource* script_input =
+    Resource* script_input =
         resource_manager_->CreateInputResource(script_url, message_handler);
     if (script_input != NULL &&
         script_input->Read(message_handler) &&
@@ -275,7 +270,7 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
       const std::string& script = script_input->contents();
       std::string script_out;
       MinifyJavascript(script, &script_out);
-      ok = WriteExternalScriptTo(script_url, script_out, output_resource);
+      ok = WriteExternalScriptTo(script_input, script_out, output_resource);
     } else {
       message_handler->Error(output_resource->name().as_string().c_str(), 0,
                              "Could not load original source %s",

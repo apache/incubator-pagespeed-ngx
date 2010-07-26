@@ -21,6 +21,7 @@
 
 #include "net/instaweb/util/public/cache_interface.h"
 #include <string>
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -44,11 +45,13 @@ class HTTPCache {
            MessageHandler* message_handler);
 
   void Put(const char* key, const MetaData& headers,
-           const std::string& content,
+           const StringPiece& content,
            MessageHandler* handler);
 
   CacheInterface::KeyState Query(const char* key, MessageHandler* handler);
   void set_force_caching(bool force) { force_caching_ = true; }
+
+  Timer* timer() const { return timer_; }
 
  private:
   bool IsCurrentlyValid(const MetaData& headers);

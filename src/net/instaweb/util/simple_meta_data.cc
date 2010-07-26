@@ -17,8 +17,9 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/simple_meta_data.h"
-#include <assert.h>
+
 #include <stdio.h>
+#include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/writer.h"
@@ -144,7 +145,7 @@ bool SimpleMetaData::WriteHeaders(Writer* writer,
 //  line with at least one SP or HT.
 int SimpleMetaData::ParseChunk(const StringPiece& text,
                                MessageHandler* handler) {
-  assert(!headers_complete_);
+  CHECK(!headers_complete_);
   int num_consumed = 0;
   int num_bytes = text.size();
 
@@ -206,19 +207,19 @@ bool SimpleMetaData::IsCacheable() const {
   // We do not compute caching from accessors so that the
   // accessors can be easier to call from multiple threads
   // without mutexing.
-  assert(!cache_fields_dirty_);
+  CHECK(!cache_fields_dirty_);
   return is_cacheable_;
 }
 
 bool SimpleMetaData::IsProxyCacheable() const {
-  assert(!cache_fields_dirty_);
+  CHECK(!cache_fields_dirty_);
   return is_proxy_cacheable_;
 }
 
 // Returns the ms-since-1970 absolute time when this resource
 // should be expired out of caches.
 int64 SimpleMetaData::CacheExpirationTimeMs() const {
-  assert(!cache_fields_dirty_);
+  CHECK(!cache_fields_dirty_);
   return expiration_time_ms_;
 }
 

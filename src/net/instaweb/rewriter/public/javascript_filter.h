@@ -30,10 +30,10 @@
 
 namespace net_instaweb {
 class HtmlParse;
-class InputResource;
 class MessageHandler;
 class MetaData;
 class OutputResource;
+class Resource;
 class ResourceManager;
 class Writer;
 
@@ -80,8 +80,8 @@ class JavascriptFilter : public RewriteFilter {
   inline void CompleteScriptInProgress();
   inline void RewriteInlineScript();
   inline void RewriteExternalScript();
-  inline InputResource* ScriptAtUrl(const std::string& script_url);
-  bool WriteExternalScriptTo(const std::string& script_url,
+  inline Resource* ScriptAtUrl(const std::string& script_url);
+  bool WriteExternalScriptTo(const Resource* script_resource,
                              const std::string& script_out,
                              OutputResource* script_dest);
 

@@ -143,10 +143,11 @@ void OutlineFilter::IEDirective(const std::string& directive) {
 bool OutlineFilter::WriteResource(const std::string& content,
                                   OutputResource* resource,
                                   MessageHandler* handler) {
-  bool write_worked = resource->StartWrite(handler);
-  write_worked &= resource->WriteChunk(content, handler);
-  write_worked &= resource->EndWrite(handler);
-  return write_worked;
+  // We set the TTL of the origin->hashed_name map to 0 because this is
+  // derived from the inlined HTML.
+  int64 origin_expire_time_ms = 0;
+  return resource_manager_->Write(content, resource, origin_expire_time_ms,
+                                  handler);
 }
 
 // Create file with style content and remove that element from DOM.
@@ -158,10 +159,10 @@ void OutlineFilter::OutlineStyle(HtmlElement* style_element,
     // We only deal with CSS styles.  If no type specified, CSS is assumed.
     // TODO(sligocki): Is this assumption appropriate?
     if (type == NULL || strcmp(type, kTextCss) == 0) {
+      MessageHandler* handler = html_parse_->message_handler();
       scoped_ptr<OutputResource> resource(
           resource_manager_->CreateGeneratedOutputResource(
-              "of", kContentTypeCss));
-      MessageHandler* handler = html_parse_->message_handler();
+              "of", kContentTypeCss, handler));
       if (WriteResource(content, resource.get(), handler)) {
         HtmlElement* link_element = html_parse_->NewElement(
             style_element->parent(), s_link_);
@@ -200,10 +201,10 @@ void OutlineFilter::OutlineScript(HtmlElement* inline_element,
     // We only deal with javascript styles. If no type specified, JS is assumed.
     // TODO(sligocki): Is this assumption appropriate?
     if (type == NULL || strcmp(type, kTextJavascript) == 0) {
+      MessageHandler* handler = html_parse_->message_handler();
       scoped_ptr<OutputResource> resource(
           resource_manager_->CreateGeneratedOutputResource(
-              "of", kContentTypeJavascript));
-      MessageHandler* handler = html_parse_->message_handler();
+              "of", kContentTypeJavascript, handler));
       if (WriteResource(content, resource.get(), handler)) {
         HtmlElement* outline_element = html_parse_->NewElement(
             inline_element->parent(), s_script_);

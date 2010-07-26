@@ -16,10 +16,11 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_URL_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_URL_H_
+// This file works around an apparent omission in the Chromium
+// libraries.  The Chromium source tree includes classes for reference
+// counting, but the implementation files are not included in the
+// Chromium library.  The easiest way to ensure they are compiled into
+// Instaweb is to include them in a new .cc file:
 
-
-#include "googleurl/src/gurl.h"
-
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_URL_H_
+#include "base/ref_counted.cc"
+#include "base/thread_collision_warner.cc"

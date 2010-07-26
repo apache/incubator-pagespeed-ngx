@@ -30,12 +30,10 @@
 
 #include "net/instaweb/util/public/file_cache.h"
 
-#include <assert.h>
 #include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/writer.h"
-#include "net/instaweb/util/stack_buffer.h"
 
 namespace net_instaweb {
 
@@ -50,51 +48,27 @@ FileCache::FileCache(const std::string& path, FileSystem* file_system,
 FileCache::~FileCache() {
 }
 
-bool FileCache::Get(const std::string& key, Writer* writer,
-                   MessageHandler* message_handler) {
+bool FileCache::Get(const std::string& key, SharedString* value,
+                    MessageHandler* message_handler) {
   std::string filename;
   if (!EncodeFilename(key, &filename)) {
     return false;
   }
-  FileSystem::InputFile* in_file
-      = file_system_->OpenInputFile(filename.c_str(), message_handler);
-  if (in_file == NULL) {
+  std::string* buffer = value->get();
+  if (!file_system_->ReadFile(filename.c_str(), buffer, message_handler)) {
     return false;
   }
-  char buffer[kStackBufferSize];
-  int bytes = 0;
-  while ((bytes = in_file->Read(buffer, kStackBufferSize, message_handler))
-          > 0 ) {
-    if (!writer->Write(StringPiece(buffer, bytes), message_handler)) {
-      file_system_->Close(in_file, message_handler_);
-      return false;
-    }
-  }
-  writer->Flush(message_handler);
-  file_system_->Close(in_file, message_handler_);
   return true;
 }
 
-void FileCache::Put(const std::string& key, const std::string& new_value,
+void FileCache::Put(const std::string& key, SharedString& value,
                     MessageHandler* message_handler) {
   std::string filename;
   if (!EncodeFilename(key, &filename)) {
     return;
   }
-  FileSystem::OutputFile* out_file =
-      file_system_->OpenOutputFile(filename.c_str(), message_handler_);
-  if (out_file == NULL) {
-    return;  // Failed to open the output file.
-  }
-
-  if (!out_file->Write(new_value, message_handler_)) {
-    file_system_->Close(out_file, message_handler_);
-    return;  // Failed to write the file.
-  }
-
-  out_file->Flush(message_handler_);
-  file_system_->Close(out_file, message_handler_);
-  return;
+  const std::string& buffer = *value;
+  file_system_->WriteFile(filename.c_str(), buffer, message_handler_);
 }
 
 void FileCache::Delete(const std::string& key,

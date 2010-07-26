@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/cache_extender.h"
 
-#include <assert.h>
-#include "net/instaweb/rewriter/public/input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/rewrite.pb.h"  // for ResourceUrl
@@ -66,7 +64,7 @@ void CacheExtender::StartElement(HtmlElement* element) {
   MessageHandler* message_handler = html_parse_->message_handler();
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
   if ((href != NULL) && html_parse_->IsRewritable(element)) {
-    InputResource* input_resource =
+    Resource* input_resource =
         resource_manager_->CreateInputResource(href->value(), message_handler);
 
     // TODO(jmarantz): create an output resource to generate a new url,

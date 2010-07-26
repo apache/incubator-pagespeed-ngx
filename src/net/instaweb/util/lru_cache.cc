@@ -17,8 +17,9 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/lru_cache.h"
-#include <assert.h>
-#include "net/instaweb/util/public/writer.h"
+
+#include "base/logging.h"
+#include "net/instaweb/util/public/shared_string.h"
 
 namespace net_instaweb {
 
@@ -38,9 +39,9 @@ LRUCache::ListNode LRUCache::Freshen(KeyValuePair* key_value) {
   return lru_ordered_list_.begin();
 }
 
-bool LRUCache::Get(const std::string& key, Writer* writer,
+bool LRUCache::Get(const std::string& key, SharedString* value,
                    MessageHandler* message_handler) {
-  Map::iterator p = map_.find(key);
+  Map::iterator p = map_.find(std::string(key.data(), key.size()));
   bool ret = false;
   if (p != map_.end()) {
     ret = true;
@@ -48,8 +49,8 @@ bool LRUCache::Get(const std::string& key, Writer* writer,
     KeyValuePair* key_value = *cell;
     lru_ordered_list_.erase(cell);
     p->second = Freshen(key_value);
-    const std::string& value = key_value->second;
-    ret = writer->Write(value, message_handler);
+    *value = key_value->second;
+    ret = true;
     ++num_hits_;
   } else {
     ++num_misses_;
@@ -57,7 +58,7 @@ bool LRUCache::Get(const std::string& key, Writer* writer,
   return ret;
 }
 
-void LRUCache::Put(const std::string& key, const std::string& new_value,
+void LRUCache::Put(const std::string& key, SharedString& new_value,
                    MessageHandler* message_handler) {
   // Just do one map operation, calling the awkward 'insert' which returns
   // a pair.  The bool indicates whether a new value was inserted, and the
@@ -79,7 +80,7 @@ void LRUCache::Put(const std::string& key, const std::string& new_value,
     // it from the entry_list prior to calling EvictIfNecessary,
     // which can't find it if it isn't in the list.
     lru_ordered_list_.erase(cell);
-    if (new_value == key_value->second) {
+    if (*new_value == *(key_value->second)) {
       map_iter->second = Freshen(key_value);
       need_to_insert = false;
       // TODO(jmarantz): count number of re-inserts of existing value?
@@ -96,9 +97,10 @@ void LRUCache::Put(const std::string& key, const std::string& new_value,
     // insertions the same way.  In both cases, the new key is in the map
     // as a result of the call to map_.insert above.
 
-    if (EvictIfNecessary(key.size() + new_value.size())) {
+    if (EvictIfNecessary(key.size() + new_value->size())) {
       // The new value fits.  Put it in the LRU-list.
-      map_iter->second = Freshen(new KeyValuePair(&map_iter->first, new_value));
+      KeyValuePair* kvp = new KeyValuePair(&map_iter->first, new_value);
+      map_iter->second = Freshen(kvp);
       ++num_inserts_;
     } else {
       // The new value was too big to fit.  Remove it from the map.
@@ -121,7 +123,7 @@ bool LRUCache::EvictIfNecessary(size_t bytes_needed) {
       lru_ordered_list_.pop_back();
       current_bytes_in_cache_ -= entry_size(key_value);
       map_.erase(*key_value->first);
-      assert(current_bytes_in_cache_ >= 0);
+      CHECK(current_bytes_in_cache_ >= 0);
       delete key_value;
       ++num_evictions_;
     }
@@ -148,7 +150,7 @@ void LRUCache::Delete(const std::string& key,
 }
 
 void LRUCache::SanityCheck() {
-  assert(map_.size() == lru_ordered_list_.size());
+  CHECK(map_.size() == lru_ordered_list_.size());
   size_t count = 0;
   size_t bytes_used = 0;
 
@@ -158,21 +160,21 @@ void LRUCache::SanityCheck() {
        cell != e; ++cell, ++count) {
     KeyValuePair* key_value = *cell;
     Map::iterator map_iter = map_.find(*key_value->first);
-    assert(map_iter != map_.end());
-    assert(&map_iter->first == key_value->first);
-    assert(map_iter->second == cell);
+    CHECK(map_iter != map_.end());
+    CHECK(&map_iter->first == key_value->first);
+    CHECK(map_iter->second == cell);
     bytes_used += entry_size(key_value);
   }
-  assert(count == map_.size());
-  assert(current_bytes_in_cache_ == bytes_used);
-  assert(current_bytes_in_cache_ <= max_bytes_in_cache_);
+  CHECK(count == map_.size());
+  CHECK(current_bytes_in_cache_ == bytes_used);
+  CHECK(current_bytes_in_cache_ <= max_bytes_in_cache_);
 
   // Walk backward through the list, making sure it's coherent as well.
   count = 0;
   for (EntryList::reverse_iterator cell = lru_ordered_list_.rbegin(),
            e = lru_ordered_list_.rend(); cell != e; ++cell, ++count) {
   }
-  assert(count == map_.size());
+  CHECK(count == map_.size());
 }
 
 CacheInterface::KeyState LRUCache::Query(const std::string& key,
@@ -183,6 +185,13 @@ CacheInterface::KeyState LRUCache::Query(const std::string& key,
     state = kAvailable;
   }
   return state;
+}
+
+// TODO(jmarantz): consider accounting for overhead for list cells, map
+// cells, string objects, etc.  Currently we are only accounting for the
+// actual characters in the key and value.
+int LRUCache::entry_size(KeyValuePair* kvp) const {
+  return kvp->first->size() + kvp->second->size();
 }
 
 }  // namespace net_instaweb

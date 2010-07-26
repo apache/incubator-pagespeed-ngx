@@ -36,10 +36,10 @@ class FileSystem;
 class FilenameEncoder;
 class HTTPCache;
 class Hasher;
-class InputResource;
 class MessageHandler;
 class MetaData;
 class OutputResource;
+class Resource;
 class Statistics;
 class UrlFetcher;
 class Writer;
@@ -70,7 +70,8 @@ class ResourceManager {
   //
   // Every time this method is called, a new resource is generated.
   OutputResource* CreateGeneratedOutputResource(
-      const StringPiece& filter_prefix, const ContentType& type);
+      const StringPiece& filter_prefix, const ContentType& type,
+      MessageHandler* handler);
 
   // Creates an output resource where the name is provided by the rewriter.
   // The intent is to be able to derive the content from the name, for example,
@@ -87,7 +88,7 @@ class ResourceManager {
   //
   OutputResource* CreateNamedOutputResource(
       const StringPiece& filter_prefix, const StringPiece& name,
-      const ContentType& type);
+      const ContentType& type, MessageHandler* handler);
 
   // Creates a resource based on the fields extracted from a URL.  This
   // is used for serving output resources.
@@ -95,40 +96,53 @@ class ResourceManager {
       const StringPiece& filter_prefix, const StringPiece& name,
       const StringPiece& hash, const ContentType& type);
 
-  InputResource* CreateInputResource(const StringPiece& url,
-                                             MessageHandler* handler);
+  Resource* CreateInputResource(const StringPiece& url,
+                                MessageHandler* handler);
 
   // Set up a basic header for a given content_type.
-  void SetDefaultHeaders(const ContentType& content_type,
-                                 MetaData* header);
+  // If content_type is null, the Content-Type is omitted.
+  void SetDefaultHeaders(const ContentType* content_type, MetaData* header);
 
-  StringPiece file_prefix() const { return file_prefix_; }
-  StringPiece url_prefix() const { return url_prefix_; }
   std::string base_url() const;
+  StringPiece filename_prefix() const { return file_prefix_; }
+  StringPiece url_prefix() const { return url_prefix_; }
 
-  void set_file_prefix(const StringPiece& file_prefix);
+  void set_filename_prefix(const StringPiece& file_prefix);
   void set_url_prefix(const StringPiece& url_prefix);
   void set_base_url(const StringPiece& url);
   Statistics* statistics() const { return statistics_; }
   void set_statistics(Statistics* s) { statistics_ = s; }
+  void set_relative_path(bool x) { relative_path_ = x; }
 
   bool FetchOutputResource(
-    const OutputResource* output_resource,
+    OutputResource* output_resource,
     Writer* writer, MetaData* response_headers,
     MessageHandler* handler) const;
+
+  // Writes the specified contents into the output resource, retaining
+  // both a name->filename map and the filename->contents map.
+  bool Write(const StringPiece& contents, OutputResource* output,
+             int64 origin_expire_time_ms, MessageHandler* handler);
+
+  // TODO(jmarantz): check thread safety in Apache.
+  Hasher* hasher() { return hasher_; }
+  FileSystem* file_system() { return file_system_; }
+  FilenameEncoder* filename_encoder() { return filename_encoder_; }
+  UrlFetcher* url_fetcher() { return url_fetcher_; }
 
  private:
   scoped_ptr<GURL> base_url_;  // Base url to resolve relative urls against.
   std::string file_prefix_;
   std::string url_prefix_;
-  int num_shards_;   // NYI: For server sharding of OutputResources.
-  int resource_id_;  // Sequential ids for temporary OutputResource filenames.
+  int num_shards_;   // NYI: For server sharding of Resources.
+  int resource_id_;  // Sequential ids for temporary Resource filenames.
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
   UrlFetcher* url_fetcher_;
   Hasher* hasher_;
   Statistics* statistics_;
   HTTPCache* http_cache_;
+  bool relative_path_;
 };
 
 }  // namespace net_instaweb

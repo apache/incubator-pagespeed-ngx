@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 
-#include <assert.h>
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -42,7 +41,7 @@ CssTagScanner::CssTagScanner(HtmlParse* html_parse) {
   s_media_ = html_parse->Intern("media");
 }
 
-// TODO(jmarantz): add test for this method to css_filter_test.cc
+// TODO(jmarantz): add test for this method to css_tag_scanner_test.cc
 bool CssTagScanner::ParseCssElement(
     HtmlElement* element, HtmlElement::Attribute** href, const char** media) {
   bool ret = false;

@@ -18,34 +18,22 @@
 
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 
 namespace net_instaweb {
 
-FileInputResource::FileInputResource(const StringPiece& url,
-                                     const StringPiece& absolute_url,
-                                     const StringPiece& filename,
-                                     FileSystem* file_system)
-    : file_system_(file_system) {
-  url.CopyToString(&url_);
-  absolute_url.CopyToString(&absolute_url_);
-  filename.CopyToString(&filename_);
-}
-
 FileInputResource::~FileInputResource() {
 }
 
 bool FileInputResource::Read(MessageHandler* message_handler) {
+  FileSystem* file_system = resource_manager_->file_system();
   if (!loaded() &&
-      file_system_->ReadFile(filename_.c_str(), &contents_, message_handler)) {
-    meta_data_.reset(new SimpleMetaData());
+      file_system->ReadFile(filename_.c_str(), &contents_, message_handler)) {
+    resource_manager_->SetDefaultHeaders(type_, &meta_data_);
   }
-  return meta_data_.get() != NULL;
-}
-
-const MetaData* FileInputResource::metadata() const {
-  return meta_data_.get();
+  return loaded();
 }
 
 }  // namespace net_instaweb
