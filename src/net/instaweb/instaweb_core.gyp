@@ -87,30 +87,6 @@
       ],
     },
     {
-      'target_name': 'instaweb_rewriter_base',
-      'type': '<(library)',
-      'dependencies': [
-        'instaweb_protobuf_gzip.gyp:instaweb_protobuf_gzip',
-        'instaweb_util_core',
-        '<(DEPTH)/base/base.gyp:base',
-      ],
-      'sources': [
-        'rewriter/resource.cc',
-        'rewriter/output_resource.cc',
-        'rewriter/resource_manager.cc',
-      ],
-      'include_dirs': [
-        '<(instaweb_root)',
-        '<(DEPTH)',
-      ],
-      'direct_dependent_settings': {
-        'include_dirs': [
-          '<(instaweb_root)',
-          '<(DEPTH)',
-        ],
-      },
-    },
-    {
       'target_name': 'instaweb_rewriter_html',
       'type': '<(library)',
       'dependencies': [

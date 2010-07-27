@@ -101,11 +101,35 @@
       },
     },
     {
+      'target_name': 'instaweb_rewriter_base',
+      'type': '<(library)',
+      'dependencies': [
+        'instaweb_protobuf_gzip.gyp:instaweb_protobuf_gzip',
+        'instaweb_util',
+        '<(DEPTH)/base/base.gyp:base',
+      ],
+      'sources': [
+        'rewriter/resource.cc',
+        'rewriter/output_resource.cc',
+        'rewriter/resource_manager.cc',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(instaweb_root)',
+          '<(DEPTH)',
+        ],
+      },
+    },
+    {
       'target_name': 'instaweb_rewriter_image',
       'type': '<(library)',
       'dependencies': [
         'instaweb_rewrite_pb',
-        'instaweb_core.gyp:instaweb_rewriter_base',
+        'instaweb_rewriter_base',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/image_compression/image_compression.gyp:pagespeed_jpeg_optimizer',
@@ -133,7 +157,7 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_rewrite_pb',
-        'instaweb_core.gyp:instaweb_rewriter_base',
+        'instaweb_rewriter_base',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
       ],
@@ -157,7 +181,7 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_rewrite_pb',
-        'instaweb_core.gyp:instaweb_rewriter_base',
+        'instaweb_rewriter_base',
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_rewriter_image',
         'instaweb_rewriter_javascript',
