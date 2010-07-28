@@ -210,7 +210,7 @@ bool CssCombineFilter::WriteCombination(
 
   for (int i = 0, n = combine_resources.size(); written && (i < n); ++i) {
     Resource* input = combine_resources[i];
-    const std::string& contents = input->contents();
+    StringPiece contents = input->contents();
     int64 input_expire_time_ms = input->CacheExpirationTimeMs();
     if ((min_origin_expiration_time_ms == 0) ||
         (input_expire_time_ms < min_origin_expiration_time_ms)) {

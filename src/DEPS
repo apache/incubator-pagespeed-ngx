@@ -45,6 +45,10 @@ deps = {
     (Var("libpagespeed_trunk") + "/src/googleurl_noicu" +
      Var("libpagespeed_revision")),
 
+  "src/third_party/chromium/src/net/tools/dump_cache":
+     Var("chromium_trunk") + "/src/net/tools/dump_cache" +
+     Var("chromium_revision"),
+
   "src/third_party/libpagespeed/src/build":
     (Var("libpagespeed_trunk") + "/src/build" +
      Var("libpagespeed_revision")),
@@ -95,6 +99,7 @@ deps = {
   "src/third_party/zlib": From(Var("libpagespeed_deps_root")),
   "src/third_party/chromium/src/base": From(Var("libpagespeed_deps_root")),
   "src/third_party/chromium/src/build": From(Var("libpagespeed_deps_root")),
+  "src/third_party/chromium/src/net/base": From(Var("libpagespeed_deps_root")),
   "src/tools/data_pack": From(Var("libpagespeed_deps_root")),
   "src/tools/grit": From(Var("libpagespeed_deps_root")),
 

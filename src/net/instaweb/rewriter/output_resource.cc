@@ -158,7 +158,6 @@ bool OutputResource::Read(MessageHandler* handler) {
   if (file == NULL) {
     ret = false;
   } else {
-    StringWriter writer(&contents_);
     char buf[kStackBufferSize];
     int nread = 0, num_consumed = 0;
     // TODO(jmarantz): this logic is duplicated in util/wget_url_fetcher.cc,
@@ -168,10 +167,11 @@ bool OutputResource::Read(MessageHandler* handler) {
       num_consumed = meta_data_.ParseChunk(
           StringPiece(buf, nread), handler);
     }
-    ret = writer.Write(StringPiece(buf + num_consumed, nread - num_consumed),
-                        handler);
+    value_.SetHeaders(meta_data_);
+    ret = value_.Write(StringPiece(buf + num_consumed, nread - num_consumed),
+                       handler);
     while (ret && ((nread = file->Read(buf, sizeof(buf), handler)) != 0)) {
-      ret = writer.Write(StringPiece(buf, nread), handler);
+      ret = value_.Write(StringPiece(buf, nread), handler);
     }
     file_system->Close(file, handler);
   }

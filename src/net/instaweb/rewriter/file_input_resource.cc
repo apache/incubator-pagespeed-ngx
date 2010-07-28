@@ -30,8 +30,9 @@ FileInputResource::~FileInputResource() {
 bool FileInputResource::Read(MessageHandler* message_handler) {
   FileSystem* file_system = resource_manager_->file_system();
   if (!loaded() &&
-      file_system->ReadFile(filename_.c_str(), &contents_, message_handler)) {
+      file_system->ReadFile(filename_.c_str(), &value_, message_handler)) {
     resource_manager_->SetDefaultHeaders(type_, &meta_data_);
+    value_.SetHeaders(meta_data_);
   }
   return loaded();
 }

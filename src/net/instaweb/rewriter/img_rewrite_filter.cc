@@ -117,7 +117,7 @@ void ImgRewriteFilter::OptimizeImage(
     if (image->output_size() < image->input_size() * kMaxRewrittenRatio) {
       int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
       resource_manager_->Write(
-          *image->Contents(), result, origin_expire_time_ms, message_handler);
+          image->Contents(), result, origin_expire_time_ms, message_handler);
       // TODO(jmarantz): what happens if Write returns false?
 
       if (rewrite_saved_bytes_ != NULL) {

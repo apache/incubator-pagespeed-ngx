@@ -27,6 +27,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_H_
 
 #include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -52,7 +53,12 @@ class Resource {
     return (meta_data_.status_code() == HttpStatus::OK);
   }
   int64 CacheExpirationTimeMs() const;
-  const std::string& contents() const { return contents_; }
+  StringPiece contents() const {
+    StringPiece val;
+    bool got_contents = value_.ExtractContents(&val);
+    CHECK(got_contents) << "Resource contents read before loading";
+    return val;
+  }
   MetaData* metadata() { return &meta_data_; }
   const MetaData* metadata() const { return &meta_data_; }
   const ContentType* type() { return type_; }
@@ -67,7 +73,7 @@ class Resource {
  protected:
   ResourceManager* resource_manager_;
   const ContentType* type_;
-  std::string contents_;
+  HTTPValue value_;  // contains contents and meta-data
   SimpleMetaData meta_data_;
 };
 

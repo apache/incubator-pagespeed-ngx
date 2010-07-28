@@ -48,7 +48,7 @@ class Image {
   // original_contents in particular) must outlive the Image object itself.  The
   // intent is that an Image is created in a scoped fashion from an existing
   // known resource.
-  Image(const std::string& original_contents,
+  Image(const StringPiece& original_contents,
         const std::string& url,
         const StringPiece& file_prefix,
         FileSystem* file_system,
@@ -109,8 +109,9 @@ class Image {
   // Result is a top-level const pointer.
   const ContentType* content_type();
 
-  // Returns the best known image contents if image type is understood, or NULL.
-  const std::string* Contents();
+  // Returns the best known image contents.  If image type is not understood,
+  // then Contents() will have NULL data().
+  StringPiece Contents();
   // Encode contents directly into data_url if image type is understood
   bool AsInlineData(std::string* data_url);
 
@@ -143,7 +144,7 @@ class Image {
   FileSystem* file_system_;
   MessageHandler* handler_;
   Type image_type_;
-  const std::string& original_contents_;
+  StringPiece original_contents_;
   std::string output_contents_;
   bool output_valid_;
   std::string opencv_filename_;

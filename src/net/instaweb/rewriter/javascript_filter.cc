@@ -173,7 +173,7 @@ void JavascriptFilter::RewriteExternalScript() {
       Resource* script_input = ScriptAtUrl(script_url);
       ok = script_input != NULL;
       if (ok) {
-        const std::string& script = script_input->contents();
+        StringPiece script = script_input->contents();
         std::string script_out;
         MinifyJavascript(script, &script_out);
         ok = script.size() > script_out.size();
@@ -267,7 +267,7 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
     if (script_input != NULL &&
         script_input->Read(message_handler) &&
         script_input->ContentsValid()) {
-      const std::string& script = script_input->contents();
+      StringPiece script = script_input->contents();
       std::string script_out;
       MinifyJavascript(script, &script_out);
       ok = WriteExternalScriptTo(script_input, script_out, output_resource);

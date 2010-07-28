@@ -32,7 +32,9 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
 namespace {
@@ -60,6 +62,7 @@ RewriteDriver::RewriteDriver(HtmlParse* html_parse, FileSystem* file_system,
 }
 
 RewriteDriver::~RewriteDriver() {
+  STLDeleteContainerPointers(other_filters_.begin(), other_filters_.end());
 }
 
 void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
@@ -151,6 +154,17 @@ void RewriteDriver::RemoveQuotes() {
   html_parse_->AddFilter(attribute_quote_removal_.get());
 }
 
+void RewriteDriver::AddFilter(HtmlFilter* filter) {
+  other_filters_.push_back(filter);
+  html_parse_->AddFilter(filter);
+}
+
+void RewriteDriver::AddRewriteFilter(const StringPiece& id,
+                                     RewriteFilter* filter) {
+  AddFilter(filter);
+  resource_filter_map_[id] = filter;
+}
+
 void RewriteDriver::SetWriter(Writer* writer) {
   if (html_writer_filter_ == NULL) {
     html_writer_filter_.reset(new HtmlWriterFilter(html_parse_));
@@ -203,8 +217,10 @@ void RewriteDriver::FetchResource(
 
     OutputResource* output_resource = resource_manager_->
         CreateUrlOutputResource(id, name, hash, *content_type);
-    CHECK(StrCat(resource_manager_->filename_prefix(), resource) ==
-          output_resource->filename());
+    std::string resource_name;
+    resource_manager_->filename_encoder()->Encode(
+        resource_manager_->filename_prefix(), resource, &resource_name);
+    CHECK(resource_name == output_resource->filename());
 
     callback = new ResourceDeleterCallback(output_resource, callback);
     if (resource_manager_->FetchOutputResource(

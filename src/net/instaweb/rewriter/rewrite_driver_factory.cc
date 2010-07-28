@@ -179,7 +179,7 @@ Hasher* RewriteDriverFactory::hasher() {
 
 FilenameEncoder* RewriteDriverFactory::filename_encoder() {
   if (filename_encoder_ == NULL) {
-    filename_encoder_.reset(new FilenameEncoder(hasher()));
+    filename_encoder_.reset(new FilenameEncoder);
   }
   return filename_encoder_.get();
 }

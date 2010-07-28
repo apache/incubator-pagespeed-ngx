@@ -29,6 +29,7 @@
         'instaweb_util_pb',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/chromium/src/net/tools/dump_cache.gyp:url_to_filename_encoder',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
       ],
       'sources': [
@@ -49,6 +50,7 @@
         'util/hasher.cc',
         'util/http_cache.cc',
         'util/http_response_parser.cc',
+        'util/http_value.cc',
         'util/lru_cache.cc',
         'util/meta_data.cc',
         'util/mock_hasher.cc',

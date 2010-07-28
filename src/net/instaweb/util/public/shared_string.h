@@ -15,6 +15,12 @@
  */
 
 // Author: jmarantz@google.com (Joshua Marantz)
+//
+// Implements a ref-counted string class, with full sharing.  This
+// class does *not* implement copy-on-write semantics, however, it
+// does support a unique() method for determining, prior to writing,
+// whether other references exist.  Thus it is feasible to implement
+// copy-on-write as a layer over this class.
 
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_SHARED_STRING_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_SHARED_STRING_H_
@@ -57,6 +63,10 @@ class SharedString : public scoped_refptr<RefCountedString> {
   }
   std::string& operator*() { return ptr_->value(); }
   std::string* get() { return &(ptr_->value()); }
+  const std::string* get() const { return &(ptr_->value()); }
+  std::string* operator->() { return &(ptr_->value()); }
+  const std::string* operator->() const { return &(ptr_->value()); }
+  bool unique() const { return ptr_->HasOneRef(); }
 };
 
 

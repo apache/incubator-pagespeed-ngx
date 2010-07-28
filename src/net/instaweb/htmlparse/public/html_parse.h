@@ -27,6 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/printf_format.h"
 #include <string>
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/symbol_table.h"
 
 namespace net_instaweb {
@@ -72,13 +73,13 @@ class HtmlParse {
   // Utility methods for implementing filters
 
   HtmlCdataNode* NewCdataNode(HtmlElement* parent,
-                              const std::string& contents);
+                              const StringPiece& contents);
   HtmlCharactersNode* NewCharactersNode(HtmlElement* parent,
-                                        const std::string& literal);
+                                        const StringPiece& literal);
   HtmlCommentNode* NewCommentNode(HtmlElement* parent,
-                                  const std::string& contents);
+                                  const StringPiece& contents);
   HtmlDirectiveNode* NewDirectiveNode(HtmlElement* parent,
-                                      const std::string& contents);
+                                      const StringPiece& contents);
 
   // TODO(mdsteele): Rename these methods to e.g. InsertNodeBeforeNode.
   // This and downstream filters will then see inserted elements but upstream

@@ -50,6 +50,7 @@ class BoolOrError {
 };
 
 class MessageHandler;
+class Writer;
 
 // Provides abstract file system interface.  This isolation layer helps us:
 //   - write unit tests that don't test the physical filesystem via a
@@ -107,6 +108,9 @@ class FileSystem {
   virtual bool ReadFile(const char* filename,
                         std::string* buffer,
                         MessageHandler* message_handler);
+  virtual bool ReadFile(const char* filename,
+                        Writer* writer,
+                        MessageHandler* message_handler);
   virtual bool WriteFile(const char* filename,
                          const StringPiece& buffer,
                          MessageHandler* message_handler);
@@ -153,6 +157,15 @@ class FileSystem {
   // Fails if we do not have permission to make any directory in chain.
   virtual bool RecursivelyMakeDir(const StringPiece& directory_path,
                                   MessageHandler* handler);
+
+ protected:
+  // Create directories for writing files.
+  // TODO(lsong): refactor to provide implementions of RenameFile, OpenTempFile,
+  // and OpenOutputFile that call SetupFileDir, and then RenameFileHelper,
+  // OpenTempFileHelper, and OpenOutputFileHelper, which are virtual=0
+  // functions.  Then we'd have to do a simple rename in *_file_system.cc/h
+  // rather than adding in these new calls.
+  void SetupFileDir(const StringPiece& filename, MessageHandler* handler);
 };
 
 // Does a path end in slash?

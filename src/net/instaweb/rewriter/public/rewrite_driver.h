@@ -34,6 +34,7 @@ class CssCombineFilter;
 class FileSystem;
 class Hasher;
 class HtmlAttributeQuoteRemoval;
+class HtmlFilter;
 class HtmlParse;
 class HtmlWriterFilter;
 class ImgRewriteFilter;
@@ -90,6 +91,12 @@ class RewriteDriver {
   // a small savings.
   void RemoveQuotes();
 
+  // Add any HtmlFilter to the HtmlParse chain and take ownership of the filter.
+  void AddFilter(HtmlFilter* filter);
+
+  // Add any RewriteFilter and register the id with the RewriteDriver.
+  void AddRewriteFilter(const StringPiece& id, RewriteFilter* filter);
+
   // Controls how HTML output is written.  Be sure to call this last, after
   // all other filters have been established.
   //
@@ -141,6 +148,7 @@ class RewriteDriver {
   scoped_ptr<JavascriptFilter> javascript_filter_;
   scoped_ptr<HtmlAttributeQuoteRemoval> attribute_quote_removal_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
+  std::vector<HtmlFilter*> other_filters_;
 };
 
 }  // namespace net_instaweb

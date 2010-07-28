@@ -55,7 +55,7 @@ namespace {
 
 bool WriteTempFileWithContentType(
     const StringPiece& prefix_name, const ContentType& content_type,
-    const std::string& buffer, std::string* filename,
+    const StringPiece& buffer, std::string* filename,
     FileSystem* file_system, MessageHandler* handler) {
   std::string tmp_filename;
   bool ok = file_system->WriteTempFile(
@@ -68,19 +68,19 @@ bool WriteTempFileWithContentType(
   return ok;
 }
 
-inline int JpegIntAtPosition(const std::string& buf, size_t pos) {
+inline int JpegIntAtPosition(const StringPiece& buf, size_t pos) {
   return static_cast<int>(
       (static_cast<unsigned int>(buf[pos]) << 8) +
       (static_cast<unsigned int>(buf[pos + 1])));
 }
 
-inline int GifIntAtPosition(const std::string& buf, size_t pos) {
+inline int GifIntAtPosition(const StringPiece& buf, size_t pos) {
   return static_cast<int>(
       (static_cast<unsigned int>(buf[pos + 1]) << 8) +
       (static_cast<unsigned int>(buf[pos])));
 }
 
-inline int PngIntAtPosition(const std::string& buf, size_t pos) {
+inline int PngIntAtPosition(const StringPiece& buf, size_t pos) {
   return static_cast<int>(
       (static_cast<unsigned int>(buf[pos    ]) << 24) +
       (static_cast<unsigned int>(buf[pos + 1]) << 16) +
@@ -90,7 +90,7 @@ inline int PngIntAtPosition(const std::string& buf, size_t pos) {
 
 }  // namespace
 
-Image::Image(const std::string& original_contents,
+Image::Image(const StringPiece& original_contents,
              const std::string& url,
              const StringPiece& file_prefix,
              FileSystem* file_system,
@@ -117,7 +117,7 @@ Image::Image(const std::string& original_contents,
 // Loosely based on code and FAQs found here:
 //    http://www.faqs.org/faqs/jpeg-faq/part1/
 void Image::FindJpegSize() {
-  const std::string& buf = original_contents_;
+  const StringPiece& buf = original_contents_;
   size_t pos = 2;  // Position of first data block after header.
   while (pos < buf.size()) {
     // Read block identifier
@@ -162,10 +162,10 @@ void Image::FindJpegSize() {
 // Look at first (IHDR) block of png stream to find image dimensions.
 // See also: http://www.w3.org/TR/PNG/
 void Image::FindPngSize() {
-  const std::string& buf = original_contents_;
+  const StringPiece& buf = original_contents_;
   if (buf.size() >= kIHDRDataStart + 2 * kPngIntSize &&  // Not truncated
-      buf.compare(kPngHeaderLength, kPngIHDRLength,
-                  kPngIHDR, kPngIHDRLength) == 0) {
+      buf.substr(kPngHeaderLength, kPngIHDRLength).compare(
+          StringPiece(kPngIHDR, kPngIHDRLength)) == 0) {
     width_ = PngIntAtPosition(buf, kIHDRDataStart);
     height_ = PngIntAtPosition(buf, kIHDRDataStart+kPngIntSize);
   } else {
@@ -178,7 +178,7 @@ void Image::FindPngSize() {
 // Look at header of GIF file to extract image dimensions
 // See also: http://en.wikipedia.org/wiki/Graphics_Interchange_Format
 void Image::FindGifSize() {
-  const std::string& buf = original_contents_;
+  const StringPiece& buf = original_contents_;
   if (buf.size() >= kGifDimStart + 2 * kGifIntSize) {  // Not truncated
     width_ = GifIntAtPosition(buf, kGifDimStart);
     height_ = GifIntAtPosition(buf, kGifDimStart + kGifIntSize);
@@ -193,7 +193,7 @@ void Image::ComputeImageType() {
   // but based on well-documented headers (see Wikipedia etc.).
   // Note that we can be fooled if we're passed random binary data;
   // we make the call based on as few as two bytes (JPEG)
-  const std::string& buf = original_contents_;
+  const StringPiece& buf = original_contents_;
   if (buf.size() >= 8) {
     // Note that gcc rightly complains about constant ranges with the
     // negative char constants unless we cast.
@@ -208,16 +208,16 @@ void Image::ComputeImageType() {
         break;
       case 0x89:
         // possible png
-        if (buf.compare(0, kPngHeaderLength,
-                        kPngHeader, kPngHeaderLength) == 0) {
+        if (buf.substr(0, kPngHeaderLength).compare(
+                StringPiece(kPngHeader, kPngHeaderLength)) == 0) {
           image_type_ = IMAGE_PNG;
           FindPngSize();
         }
         break;
       case 'G':
         // possible gif
-        if (buf.compare(0, kGifHeaderLength,
-                        kGifHeader, kGifHeaderLength) == 0 &&
+        if (buf.substr(0, kGifHeaderLength).compare(
+                StringPiece(kGifHeader, kGifHeaderLength)) == 0 &&
             (buf[4] == '7' || buf[4] == '9') && buf[5] == 'a') {
           image_type_ = IMAGE_GIF;
           FindGifSize();
@@ -336,7 +336,7 @@ bool Image::ComputeOutputContents() {
   if (!output_valid_) {
     bool ok = true;
     std::string opencv_contents;
-    const std::string* contents = &original_contents_;
+    StringPiece contents = original_contents_;
     // Choose appropriate source for image contents.
     // Favor original contents if image unchanged.
     if (resized_ && opencv_image_ != NULL) {
@@ -345,7 +345,7 @@ bool Image::ComputeOutputContents() {
                                   &opencv_contents, handler_);
       file_system_->RemoveFile(opencv_filename_.c_str(), handler_);
       if (ok) {
-        contents = &opencv_contents;
+        contents = opencv_contents;
       }
     }
     // Take image contents and re-compress them.
@@ -356,20 +356,26 @@ bool Image::ComputeOutputContents() {
         case IMAGE_UNKNOWN:
           break;
         case IMAGE_JPEG:
-          ok = pagespeed::image_compression::OptimizeJpeg(*contents,
-                                                          &output_contents_);
+          // TODO(jmarantz): The PageSpeed library should, ideally, take
+          // StringPiece args rather than const string&.  We would save
+          // lots of string-copying if we made that change.
+          ok = pagespeed::image_compression::OptimizeJpeg(
+              std::string(contents.data(), contents.size()),
+              &output_contents_);
           break;
         case IMAGE_PNG: {
           pagespeed::image_compression::PngReader png_reader;
           ok = pagespeed::image_compression::PngOptimizer::OptimizePng(
-              png_reader, *contents, &output_contents_);
+              png_reader,
+              std::string(contents.data(), contents.size()),
+              &output_contents_);
           break;
         }
         case IMAGE_GIF: {
 #if PAGESPEED_PNG_OPTIMIZER_GIF_READER
           pagespeed::image_compression::GifReader gif_reader;
           ok = pagespeed::image_compression::PngOptimizer::OptimizePng(
-              gif_reader, *contents, &output_contents_);
+              gif_reader, contents, &output_contents_);
           if (ok) {
             image_type_ = IMAGE_PNG;
           }
@@ -383,23 +389,23 @@ bool Image::ComputeOutputContents() {
   return output_valid_;
 }
 
-const std::string* Image::Contents() {
-  const std::string* contents = NULL;
+StringPiece Image::Contents() {
+  StringPiece contents;
   if (this->image_type() != IMAGE_UNKNOWN) {
-    contents = &original_contents_;
+    contents = original_contents_;
     if (output_valid_ || ComputeOutputContents()) {
-      contents = &output_contents_;
+      contents = output_contents_;
     }
   }
   return contents;
 }
 
 bool Image::AsInlineData(std::string* data_url) {
-  const std::string* contents = Contents();
+  StringPiece contents = Contents();
   const ContentType* content_type = this->content_type();
-  bool ok = content_type != NULL && contents != NULL;
+  bool ok = content_type != NULL && (contents.data() != NULL);
   if (ok) {
-    DataUrl(*content_type, BASE64, *contents, data_url);
+    DataUrl(*content_type, BASE64, contents, data_url);
   }
   return ok;
 }

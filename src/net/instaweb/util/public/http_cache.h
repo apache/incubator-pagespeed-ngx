@@ -26,10 +26,10 @@
 namespace net_instaweb {
 
 class CacheInterface;
+class HTTPValue;
 class MessageHandler;
 class MetaData;
 class Timer;
-class Writer;
 
 // Implements HTTP caching semantics, including cache expiration and
 // retention of the originally served cache headers.
@@ -41,12 +41,13 @@ class HTTPCache {
         force_caching_(false) {
   }
 
-  bool Get(const char* key, MetaData* headers, Writer* writer,
-           MessageHandler* message_handler);
+  bool Get(const char* key, HTTPValue* value, MessageHandler* handler);
 
+  // Note that Put takes a non-const pointer for HTTPValue so it can
+  // bump the reference count.
+  void Put(const char* key, HTTPValue* value, MessageHandler* handler);
   void Put(const char* key, const MetaData& headers,
-           const StringPiece& content,
-           MessageHandler* handler);
+           const StringPiece& content, MessageHandler* handler);
 
   CacheInterface::KeyState Query(const char* key, MessageHandler* handler);
   void set_force_caching(bool force) { force_caching_ = true; }

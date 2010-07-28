@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/url_fetcher.h"
 
 namespace net_instaweb {
@@ -29,14 +28,14 @@ UrlInputResource::~UrlInputResource() {
 bool UrlInputResource::Read(MessageHandler* message_handler) {
   bool ret = true;
   if (!loaded()) {
-    StringWriter writer(&contents_);
-
     // TODO(jmarantz): consider request_headers.  E.g. will we ever
     // get different resources depending on user-agent?
     SimpleMetaData request_headers;
     ret = resource_manager_->url_fetcher()->StreamingFetchUrl(
-        url_, request_headers, &meta_data_, &writer,
-        message_handler);
+        url_, request_headers, &meta_data_, &value_, message_handler);
+    if (ret) {
+      value_.SetHeaders(meta_data_);
+    }
   }
   return ret;
 }

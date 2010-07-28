@@ -159,6 +159,7 @@ FileSystem::InputFile* StdioFileSystem::OpenInputFile(
 
 FileSystem::OutputFile* StdioFileSystem::OpenOutputFile(
     const char* filename, MessageHandler* message_handler) {
+  SetupFileDir(filename, message_handler);
   FileSystem::OutputFile* output_file = NULL;
   if (strcmp(filename, "-") == 0) {
     output_file = new StdioOutputFile(stdout, "<stdout>");
@@ -183,6 +184,7 @@ FileSystem::OutputFile* StdioFileSystem::OpenTempFile(
   // us.  More importantly, our usage scenario is that we will be
   // closing the file and renaming it to a permanent name.  tmpfiles
   // automatically are deleted when they are closed.
+  SetupFileDir(prefix, message_handler);
   int prefix_len = prefix.length();
   static char mkstemp_hook[] = "XXXXXX";
   char* template_name = new char[prefix_len + sizeof(mkstemp_hook)];
@@ -220,6 +222,7 @@ bool StdioFileSystem::RemoveFile(const char* filename,
 
 bool StdioFileSystem::RenameFile(const char* old_file, const char* new_file,
                                  MessageHandler* handler) {
+  SetupFileDir(new_file, handler);
   bool ret = (rename(old_file, new_file) == 0);
   if (!ret) {
     handler->Message(kError, "Failed to rename file %s to %s: %s",

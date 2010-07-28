@@ -22,6 +22,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include <string>
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -95,9 +96,10 @@ class HtmlCdataNode : public HtmlLeafNode {
 
  private:
   HtmlCdataNode(HtmlElement* parent,
-                const std::string& contents,
+                const StringPiece& contents,
                 const HtmlEventListIterator& iter)
-      : HtmlLeafNode(parent, iter), contents_(contents) {}
+      : HtmlLeafNode(parent, iter),
+        contents_(contents.data(), contents.size()) {}
   const std::string contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCdataNode);
 };
@@ -115,9 +117,10 @@ class HtmlCharactersNode : public HtmlLeafNode {
 
  private:
   HtmlCharactersNode(HtmlElement* parent,
-                     const std::string& contents,
+                     const StringPiece& contents,
                      const HtmlEventListIterator& iter)
-      : HtmlLeafNode(parent, iter), contents_(contents) {}
+      : HtmlLeafNode(parent, iter),
+        contents_(contents.data(), contents.size()) {}
   const std::string contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCharactersNode);
 };
@@ -135,9 +138,10 @@ class HtmlCommentNode : public HtmlLeafNode {
 
  private:
   HtmlCommentNode(HtmlElement* parent,
-                  const std::string& contents,
+                  const StringPiece& contents,
                   const HtmlEventListIterator& iter)
-      : HtmlLeafNode(parent, iter), contents_(contents) {}
+      : HtmlLeafNode(parent, iter),
+        contents_(contents.data(), contents.size()) {}
   const std::string contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCommentNode);
 };
@@ -155,9 +159,10 @@ class HtmlDirectiveNode : public HtmlLeafNode {
 
  private:
   HtmlDirectiveNode(HtmlElement* parent,
-                    const std::string& contents,
+                    const StringPiece& contents,
                     const HtmlEventListIterator& iter)
-      : HtmlLeafNode(parent, iter), contents_(contents) {}
+      : HtmlLeafNode(parent, iter),
+        contents_(contents.data(), contents.size()) {}
   const std::string contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlDirectiveNode);
 };

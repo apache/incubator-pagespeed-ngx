@@ -96,14 +96,14 @@ void HtmlParse::AddEvent(HtmlEvent* event) {
 }
 
 HtmlCdataNode* HtmlParse::NewCdataNode(HtmlElement* parent,
-                                       const std::string& contents) {
+                                       const StringPiece& contents) {
   HtmlCdataNode* cdata = new HtmlCdataNode(parent, contents, queue_.end());
   nodes_.insert(cdata);
   return cdata;
 }
 
 HtmlCharactersNode* HtmlParse::NewCharactersNode(HtmlElement* parent,
-                                                 const std::string& literal) {
+                                                 const StringPiece& literal) {
   HtmlCharactersNode* characters =
       new HtmlCharactersNode(parent, literal, queue_.end());
   nodes_.insert(characters);
@@ -111,7 +111,7 @@ HtmlCharactersNode* HtmlParse::NewCharactersNode(HtmlElement* parent,
 }
 
 HtmlCommentNode* HtmlParse::NewCommentNode(HtmlElement* parent,
-                                           const std::string& contents) {
+                                           const StringPiece& contents) {
   HtmlCommentNode* comment = new HtmlCommentNode(parent, contents,
                                                  queue_.end());
   nodes_.insert(comment);
@@ -119,7 +119,7 @@ HtmlCommentNode* HtmlParse::NewCommentNode(HtmlElement* parent,
 }
 
 HtmlDirectiveNode* HtmlParse::NewDirectiveNode(HtmlElement* parent,
-                                               const std::string& contents) {
+                                               const StringPiece& contents) {
   HtmlDirectiveNode* directive = new HtmlDirectiveNode(parent, contents,
                                                        queue_.end());
   nodes_.insert(directive);

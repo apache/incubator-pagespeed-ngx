@@ -26,9 +26,9 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/http_cache.h"
+#include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
-#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace {
@@ -40,10 +40,10 @@ const char kCacheControl[] = "Cache-control";
 // http cache.
 //
 // We want to store a mapping from the base name of a resource into
-// the fully content-hashed name.  This mapping has a TTL based
-// the minimum TTL of the input resources used to construct the
-// resource.  After that TTL has expired, we will need to re-fetch
-// the resources from their origin, and recompute the hash.
+// the hash.  This mapping has a TTL based the minimum TTL of the
+// input resources used to construct the resource.  After that TTL has
+// expired, we will need to re-fetch the resources from their origin,
+// and recompute the hash.
 const char kFilenameCacheKeyPrefix[] = "ResourceName:";
 
 // We also store a mapping from the hashed name to the resource
@@ -111,15 +111,16 @@ OutputResource* ResourceManager::CreateNamedOutputResource(
       this, &content_type, filter_prefix, name);
 
   // Determine whether this output resource is still valid by looking
-  // up by name in the http cache.  Note that this cache entry will expire
-  // when any of the origin resources expire.
+  // up by hash in the http cache.  Note that this cache entry will
+  // expire when any of the origin resources expire.
   std::string separator = RewriteFilter::prefix_separator();
   std::string prefix_name = StrCat(filter_prefix, separator, name);
   SimpleMetaData meta_data;
-  std::string hash;
-  StringWriter hash_writer(&hash);
+  StringPiece hash;
+  HTTPValue value;
   std::string name_key = StrCat(kFilenameCacheKeyPrefix, prefix_name);
-  if (http_cache_->Get(name_key.c_str(), &meta_data, &hash_writer, handler)) {
+  if (http_cache_->Get(name_key.c_str(), &value, handler) &&
+      value.ExtractContents(&hash)) {
     resource->SetHash(hash);
   }
   return resource;
@@ -238,12 +239,16 @@ bool ResourceManager::FetchOutputResource(
   std::string content_key = StrCat(kContentsCacheKeyPrefix,
                                     output_resource->filename());
   bool ret = false;
-  if (http_cache_->Get(content_key.c_str(), response_headers, writer,
-                       handler)) {
+  HTTPValue value;
+  StringPiece content;
+  if (http_cache_->Get(content_key.c_str(), &value, handler) &&
+      value.ExtractContents(&content) &&
+      value.ExtractHeaders(response_headers, handler) &&
+      writer->Write(content, handler)) {
     ret = true;
   } else {
     if (output_resource->Read(handler)) {
-      const std::string& contents = output_resource->contents();
+      StringPiece contents = output_resource->contents();
       http_cache_->Put(content_key.c_str(), *(output_resource->metadata()),
                        contents, handler);
       ret = writer->Write(contents, handler);
@@ -252,12 +257,6 @@ bool ResourceManager::FetchOutputResource(
   }
   return ret;
 }
-
-/*
-bool ResourceManager::LoadFromCache(Resource* output) {
-  return false;
-}
-*/
 
 bool ResourceManager::Write(const StringPiece& contents,
                             OutputResource* output,
@@ -305,7 +304,7 @@ bool ResourceManager::Write(const StringPiece& contents,
       origin_meta_data.Add(kCacheControl, cache_control.c_str());
       origin_meta_data.ComputeCaching();
       std::string name_key = StrCat(kFilenameCacheKeyPrefix, output->name());
-      http_cache_->Put(name_key.c_str(), origin_meta_data, output->filename(),
+      http_cache_->Put(name_key.c_str(), origin_meta_data, output->hash(),
                        handler);
     }
   }

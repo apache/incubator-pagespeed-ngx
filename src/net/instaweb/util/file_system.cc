@@ -20,6 +20,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/stack_buffer.h"
 
 namespace net_instaweb {
@@ -38,15 +39,23 @@ FileSystem::OutputFile::~OutputFile() {
 
 bool FileSystem::ReadFile(const char* filename, std::string* buffer,
                           MessageHandler* message_handler) {
+  StringWriter writer(buffer);
+  return ReadFile(filename, &writer, message_handler);
+}
+
+bool FileSystem::ReadFile(const char* filename, Writer* writer,
+                          MessageHandler* message_handler) {
   InputFile* input_file = OpenInputFile(filename, message_handler);
   bool ret = false;
   if (input_file != NULL) {
     char buf[kStackBufferSize];
     int nread;
-    while ((nread = input_file->Read(buf, sizeof(buf), message_handler)) > 0) {
-      buffer->append(buf, nread);
+    ret = true;
+    while (ret && ((nread = input_file->Read(
+               buf, sizeof(buf), message_handler)) > 0)) {
+      ret = writer->Write(buf, nread, message_handler);
     }
-    ret = (nread == 0);
+    ret &= (nread == 0);
     ret &= Close(input_file, message_handler);
   }
   return ret;
@@ -117,6 +126,20 @@ bool FileSystem::RecursivelyMakeDir(const StringPiece& full_path_const,
     old_pos = new_pos;
   }
   return ret;
+}
+
+// Try to make directories to store file.
+void FileSystem::SetupFileDir(const StringPiece& filename,
+                              MessageHandler* handler) {
+  size_t last_slash = filename.rfind('/');
+  if (last_slash != StringPiece::npos) {
+    StringPiece directory_name = filename.substr(0, last_slash);
+    if (!RecursivelyMakeDir(directory_name, handler)) {
+      // TODO(sligocki): Specify where dir creation failed?
+      handler->Message(kError, "Could not create directories for file %s",
+                       filename.as_string().c_str());
+    }
+  }
 }
 
 }  // namespace net_instaweb

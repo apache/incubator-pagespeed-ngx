@@ -19,6 +19,7 @@
 #include "net/instaweb/util/public/cache_url_async_fetcher.h"
 #include "net/instaweb/util/public/cache_url_fetcher.h"
 #include "net/instaweb/util/public/http_cache.h"
+#include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_writer.h"
 
@@ -73,8 +74,13 @@ void CacheUrlAsyncFetcher::StreamingFetch(
     const std::string& url, const MetaData& request_headers,
     MetaData* response_headers, Writer* writer, MessageHandler* handler,
     Callback* callback) {
-  if (http_cache_->Get(url.c_str(), response_headers, writer, handler)) {
-    callback->Done(true);
+  HTTPValue value;
+  StringPiece contents;
+  if (http_cache_->Get(url.c_str(), &value, handler) &&
+      value.ExtractHeaders(response_headers, handler) &&
+      value.ExtractContents(&contents)) {
+    bool ret = writer->Write(contents, handler);
+    callback->Done(ret);
   } else {
     ForwardingAsyncFetch* fetch = new ForwardingAsyncFetch(
         url, http_cache_, handler, callback, writer, response_headers,

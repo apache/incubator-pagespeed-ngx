@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/cache_url_fetcher.h"
 #include "net/instaweb/util/public/http_cache.h"
+#include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -96,29 +97,36 @@ bool CacheUrlFetcher::StreamingFetchUrl(
     const std::string& url, const MetaData& request_headers,
     MetaData* response_headers, Writer* writer, MessageHandler* handler) {
   bool ret = false;
-  ret = http_cache_->Get(url.c_str(), response_headers, writer, handler);
-  if (!ret) {
-    if (sync_fetcher_ != NULL) {
-      // We need to hang onto a copy of the data so we can shove it
-      // into the cache, which currently lacks a streaming Put.
-      std::string content;
-      StringWriter string_writer(&content);
-      ret = sync_fetcher_->StreamingFetchUrl(
-          url, request_headers, response_headers, &string_writer, handler);
-      writer->Write(content, handler);
-      if (ret) {
-        if (force_caching_ || response_headers->IsCacheable()) {
-          http_cache_->Put(url.c_str(), *response_headers, content, handler);
-        }
-        ret = true;
-      } else {
-        // TODO(jmarantz): Consider caching that this request is not fetchable
+  HTTPValue value;
+  StringPiece contents;
+  ret = (http_cache_->Get(url.c_str(), &value, handler) &&
+         value.ExtractHeaders(response_headers, handler) &&
+         value.ExtractContents(&contents));
+  if (ret) {
+    ret = writer->Write(contents, handler);
+  } else if (sync_fetcher_ != NULL) {
+    // We need to hang onto a copy of the data so we can shove it
+    // into the cache, which lacks a streaming Put.
+    std::string content;
+    StringWriter string_writer(&content);
+    ret = sync_fetcher_->StreamingFetchUrl(
+        url, request_headers, response_headers, &string_writer, handler);
+    writer->Write(content, handler);
+    if (ret) {
+      if (force_caching_ || response_headers->IsCacheable()) {
+        value.Clear();
+        value.SetHeaders(*response_headers);
+        value.Write(content, handler);
+        http_cache_->Put(url.c_str(), &value, handler);
       }
     } else {
-      AsyncFetch* fetch = new AsyncFetchWithHeaders(url, http_cache_, handler,
-                                                    force_caching_);
-      fetch->Start(async_fetcher_, request_headers);
+      // TODO(jmarantz): Consider caching that this request is not fetchable
+      ret = false;
     }
+  } else {
+    AsyncFetch* fetch = new AsyncFetchWithHeaders(url, http_cache_, handler,
+                                                  force_caching_);
+    fetch->Start(async_fetcher_, request_headers);
   }
   return ret;
 }

@@ -75,6 +75,7 @@ class OutputResource : public Resource {
   };
 
   void SetHash(const StringPiece& hash);
+  StringPiece hash() const { return hash_; }
   OutputWriter* BeginWrite(MessageHandler* message_handler);
   bool EndWrite(OutputWriter* writer, MessageHandler* message_handler);
 

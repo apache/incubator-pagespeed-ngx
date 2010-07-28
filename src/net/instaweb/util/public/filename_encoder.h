@@ -20,22 +20,20 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_FILENAME_ENCODER_H_
 
 #include "net/instaweb/util/public/string_util.h"
-
+#include "net/tools/dump_cache/url_to_filename_encoder.h"
 namespace net_instaweb {
-
-class Hasher;
 
 class FilenameEncoder {
  public:
-  explicit FilenameEncoder(Hasher* hasher) : hasher_(hasher) {}
-  virtual ~FilenameEncoder();
+  FilenameEncoder() {}
+  ~FilenameEncoder();
 
-  virtual void Encode(const StringPiece& filename_prefix,
+  void Encode(const StringPiece& filename_prefix,
                       const StringPiece& filename_ending,
                       std::string* encoded_filename);
 
- protected:
-  Hasher* hasher_;
+  bool Decode(const StringPiece& encoded_filename,
+                             std::string* decoded_url);
 };
 
 }  // namespace net_instaweb

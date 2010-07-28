@@ -98,4 +98,5 @@ class JavascriptFilter : public RewriteFilter {
 };
 
 }  // namespace net_instaweb
+
 #endif  // NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_FILTER_H_
