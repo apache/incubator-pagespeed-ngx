@@ -33,6 +33,7 @@
 
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/filename_encoder.h"
 #include <string>
 
 namespace net_instaweb {
@@ -46,6 +47,7 @@ namespace net_instaweb {
 class FileCache : public CacheInterface {
  public:
   FileCache(const std::string& path, FileSystem* file_system,
+            FilenameEncoder* filename_encoder,
             MessageHandler* message_handler);
   virtual ~FileCache();
 
@@ -63,6 +65,7 @@ class FileCache : public CacheInterface {
 
   std::string path_;
   FileSystem* file_system_;
+  FilenameEncoder* filename_encoder_;
   MessageHandler* message_handler_;
 };
 

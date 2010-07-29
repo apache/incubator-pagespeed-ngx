@@ -38,10 +38,12 @@
 namespace net_instaweb {
 
 // TODO(lsong): Need to create an LRU mechanism to manage the cache.
-FileCache::FileCache(const std::string& path, FileSystem* file_system,
-                     MessageHandler* message_handler)
+  FileCache::FileCache(const std::string& path, FileSystem* file_system,
+                       FilenameEncoder* filename_encoder,
+                       MessageHandler* message_handler)
     : path_(path),
       file_system_(file_system),
+      filename_encoder_(filename_encoder),
       message_handler_(message_handler) {
 }
 
@@ -83,11 +85,7 @@ void FileCache::Delete(const std::string& key,
 
 bool FileCache::EncodeFilename(const std::string& key,
                                std::string* filename) {
-  std::string encoded_key;
-  Web64Encode(key, &encoded_key);
-  *filename = path_;
-  filename->append("/");
-  filename->append(encoded_key);
+  filename_encoder_->Encode(path_, key, filename);
   return true;
 }
 
@@ -98,14 +96,10 @@ CacheInterface::KeyState FileCache::Query(const std::string& key,
   if (!EncodeFilename(key, &filename)) {
     return CacheInterface::kNotFound;
   }
-
-  FileSystem::InputFile* in_file
-      = file_system_->OpenInputFile(filename.c_str(), message_handler);
-  if (in_file == NULL) {
-    return CacheInterface::kNotFound;
+  if (file_system_->Exists(filename.c_str(), message_handler).is_true()) {
+    return CacheInterface::kAvailable;
   }
-  file_system_->Close(in_file, message_handler);
-  return CacheInterface::kAvailable;
+  return CacheInterface::kNotFound;
 }
 
 }  // namespace net_instaweb
