@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 #include <string>
 
 namespace net_instaweb {
@@ -66,7 +67,7 @@ class FileCache : public CacheInterface {
   std::string path_;
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
-  MessageHandler* message_handler_;
+  NullMessageHandler message_handler_;
 };
 
 }  // namespace net_instaweb

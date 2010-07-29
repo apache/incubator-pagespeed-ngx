@@ -55,6 +55,7 @@
         'util/meta_data.cc',
         'util/mock_hasher.cc',
         'util/mock_timer.cc',
+        'util/null_message_handler.cc',
         'util/pthread_mutex.cc',
         'util/ref_counted.cc',
         'util/simple_meta_data.cc',

@@ -31,55 +31,54 @@
 #include "net/instaweb/util/public/file_cache.h"
 
 #include "net/instaweb/util/public/base64_util.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
+// TODO(lsong): Remove the MessageHandler arg. They are not used.
 // TODO(lsong): Need to create an LRU mechanism to manage the cache.
-  FileCache::FileCache(const std::string& path, FileSystem* file_system,
+FileCache::FileCache(const std::string& path, FileSystem* file_system,
                        FilenameEncoder* filename_encoder,
-                       MessageHandler* message_handler)
+                       MessageHandler* /*message_handler*/)
     : path_(path),
       file_system_(file_system),
-      filename_encoder_(filename_encoder),
-      message_handler_(message_handler) {
+      filename_encoder_(filename_encoder) {
 }
 
 FileCache::~FileCache() {
 }
 
 bool FileCache::Get(const std::string& key, SharedString* value,
-                    MessageHandler* message_handler) {
+                    MessageHandler* /*message_handler*/) {
   std::string filename;
   if (!EncodeFilename(key, &filename)) {
     return false;
   }
   std::string* buffer = value->get();
-  if (!file_system_->ReadFile(filename.c_str(), buffer, message_handler)) {
+  if (!file_system_->ReadFile(filename.c_str(), buffer, &message_handler_)) {
     return false;
   }
   return true;
 }
 
 void FileCache::Put(const std::string& key, SharedString& value,
-                    MessageHandler* message_handler) {
+                    MessageHandler* /*message_handler*/) {
   std::string filename;
   if (!EncodeFilename(key, &filename)) {
     return;
   }
   const std::string& buffer = *value;
-  file_system_->WriteFile(filename.c_str(), buffer, message_handler_);
+  file_system_->WriteFile(filename.c_str(), buffer, &message_handler_);
 }
 
 void FileCache::Delete(const std::string& key,
-                       MessageHandler* message_handler) {
+                       MessageHandler* /*message_handler*/) {
   std::string filename;
   if (!EncodeFilename(key, &filename)) {
     return;
   }
-  file_system_->RemoveFile(filename.c_str(), message_handler_);
+  file_system_->RemoveFile(filename.c_str(), &message_handler_);
   return;
 }
 
@@ -91,12 +90,12 @@ bool FileCache::EncodeFilename(const std::string& key,
 
 // TODO(lsong): Inefficient to use open to check if the file available.
 CacheInterface::KeyState FileCache::Query(const std::string& key,
-                                          MessageHandler* message_handler) {
+                                          MessageHandler* /*message_handler*/) {
   std::string filename;
   if (!EncodeFilename(key, &filename)) {
     return CacheInterface::kNotFound;
   }
-  if (file_system_->Exists(filename.c_str(), message_handler).is_true()) {
+  if (file_system_->Exists(filename.c_str(), &message_handler_).is_true()) {
     return CacheInterface::kAvailable;
   }
   return CacheInterface::kNotFound;
