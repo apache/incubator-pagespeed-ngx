@@ -24,12 +24,16 @@
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
+#include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
+#include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
+#include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/img_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/outline_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -116,6 +120,35 @@ void RewriteDriver::CombineCssFiles() {
   html_parse_->AddFilter(css_combine_filter_.get());
 }
 
+void RewriteDriver::MoveCssToHead() {
+  CHECK(html_writer_filter_ == NULL);
+  CHECK(css_move_to_head_filter_.get() == NULL);
+  css_move_to_head_filter_.reset(
+      new CssMoveToHeadFilter(html_parse_, statistics()));
+  html_parse_->AddFilter(css_move_to_head_filter_.get());
+}
+
+void RewriteDriver::CollapseHtmlWhitespace() {
+  CHECK(html_writer_filter_ == NULL);
+  CHECK(collapse_whitespace_filter_.get() == NULL);
+  collapse_whitespace_filter_.reset(new CollapseWhitespaceFilter(html_parse_));
+  html_parse_->AddFilter(collapse_whitespace_filter_.get());
+}
+
+void RewriteDriver::RemoveHtmlComments() {
+  CHECK(html_writer_filter_ == NULL);
+  CHECK(remove_html_comments_filter_.get() == NULL);
+  remove_html_comments_filter_.reset(new RemoveCommentsFilter(html_parse_));
+  html_parse_->AddFilter(remove_html_comments_filter_.get());
+}
+
+void RewriteDriver::ElideAttributes() {
+  CHECK(html_writer_filter_ == NULL);
+  CHECK(elide_attributes_filter_.get() == NULL);
+  elide_attributes_filter_.reset(new ElideAttributesFilter(html_parse_));
+  html_parse_->AddFilter(elide_attributes_filter_.get());
+}
+
 void RewriteDriver::OutlineResources(bool outline_styles,
                                      bool outline_scripts) {
   CHECK(html_writer_filter_ == NULL);
@@ -173,6 +206,10 @@ void RewriteDriver::SetWriter(Writer* writer) {
   html_writer_filter_->set_writer(writer);
 }
 
+Statistics* RewriteDriver::statistics() const {
+  return (resource_manager_ == NULL) ? NULL : resource_manager_->statistics();
+}
+
 namespace {
 
 // Wraps an async fetcher callback, in order to delete the output
@@ -216,7 +253,7 @@ void RewriteDriver::FetchResource(
     const StringPiece& ext = components[3];
 
     OutputResource* output_resource = resource_manager_->
-        CreateUrlOutputResource(id, name, hash, *content_type);
+        CreateUrlOutputResource(id, name, hash, content_type);
     std::string resource_name;
     resource_manager_->filename_encoder()->Encode(
         resource_manager_->filename_prefix(), resource, &resource_name);

@@ -23,7 +23,7 @@ namespace {
 
 struct HtmlEscapeSequence {
   const char* sequence;
-  const char value[3];
+  const unsigned char value[3];
 };
 
 // TODO(jmarantz): the multi-byte sequences are not working yet.
@@ -142,7 +142,8 @@ HtmlEscape::HtmlEscape() {
   for (size_t i = 0; i < arraysize(kHtmlEscapeSequences); ++i) {
     // Put all symbols in the case-sensitive map
     const HtmlEscapeSequence& seq = kHtmlEscapeSequences[i];
-    unescape_sensitive_map_[seq.sequence] = seq.value;
+    unescape_sensitive_map_[seq.sequence] =
+        reinterpret_cast<const char*>(seq.value);
 
     // Don't populate the case-insensitive map for symbols that we've
     // already determined are case-sensitive.
@@ -161,13 +162,14 @@ HtmlEscape::HtmlEscape() {
         unescape_insensitive_map_.erase(p);
         case_sensitive_symbols.insert(seq.sequence);
       } else {
-        unescape_insensitive_map_[seq.sequence] = seq.value;
+        unescape_insensitive_map_[seq.sequence] =
+            reinterpret_cast<const char*>(seq.value);
       }
 
       // For now, we will only generate symbolic escaped-names for
       // single-byte sequences
-      if (strlen(seq.value) == 1) {
-        escape_map_[seq.value] = seq.sequence;
+      if (strlen(reinterpret_cast<const char*>(seq.value)) == 1) {
+        escape_map_[reinterpret_cast<const char*>(seq.value)] = seq.sequence;
       }
     }
   }

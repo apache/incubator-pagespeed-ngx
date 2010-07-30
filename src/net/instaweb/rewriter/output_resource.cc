@@ -39,6 +39,9 @@ OutputResource::OutputResource(ResourceManager* manager,
       writing_complete_(false) {
   filter_prefix.CopyToString(&filter_prefix_);
   name.CopyToString(&name_);
+  if (type_ != NULL) {
+    suffix_ = type_->file_extension();
+  }
 }
 
 OutputResource::~OutputResource() {
@@ -106,11 +109,6 @@ bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
 
   output_file_ = NULL;
   delete writer;
-
-  if (ret) {
-    resource_manager_->SetDefaultHeaders(type_, &meta_data_);
-  }
-
   return ret;
 }
 
@@ -129,7 +127,8 @@ std::string OutputResource::NameTail() const {
 }
 
 StringPiece OutputResource::suffix() const {
-  return type_->file_extension();
+  CHECK(!suffix_.empty());
+  return suffix_;
 }
 
 std::string OutputResource::filename() const {

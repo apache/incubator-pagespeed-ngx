@@ -37,14 +37,11 @@ class ThreadsafeCache : public CacheInterface {
   }
   virtual ~ThreadsafeCache();
 
-  virtual bool Get(const std::string& key, SharedString* value,
-                   MessageHandler* message_handler);
-  virtual void Put(const std::string& key, SharedString& value,
-                   MessageHandler* message_handler);
-  virtual void Delete(const std::string& key,
-                      MessageHandler* message_handler);
-  virtual KeyState Query(const std::string& key,
-                         MessageHandler* message_handler);
+  virtual bool Get(const std::string& key, SharedString* value);
+  virtual void Put(const std::string& key, SharedString* value);
+  virtual void Delete(const std::string& key);
+  virtual KeyState Query(const std::string& key);
+
  private:
   CacheInterface* cache_;
   AbstractMutex* mutex_;

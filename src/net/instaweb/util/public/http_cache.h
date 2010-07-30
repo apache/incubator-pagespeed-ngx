@@ -49,7 +49,7 @@ class HTTPCache {
   void Put(const char* key, const MetaData& headers,
            const StringPiece& content, MessageHandler* handler);
 
-  CacheInterface::KeyState Query(const char* key, MessageHandler* handler);
+  CacheInterface::KeyState Query(const char* key);
   void set_force_caching(bool force) { force_caching_ = true; }
 
   Timer* timer() const { return timer_; }

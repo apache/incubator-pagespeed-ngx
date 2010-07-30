@@ -63,6 +63,14 @@ inline void LowerString(std::string* str) {
   google::protobuf::LowerString(str);
 }
 
+inline char* strdup(const char* str) {
+  return base::strdup(str);
+}
+
+inline int strcasecmp(const char* s1, const char* s2) {
+  return base::strcasecmp(s1, s2);
+}
+
 struct CharStarCompareInsensitive {
   bool operator()(const char* s1, const char* s2) const {
     return strcasecmp(s1, s2) < 0;

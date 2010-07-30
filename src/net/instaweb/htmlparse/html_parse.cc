@@ -35,12 +35,15 @@
 namespace net_instaweb {
 
 HtmlParse::HtmlParse(MessageHandler* message_handler)
-    : lexer_(new HtmlLexer(this)),
+    : lexer_(NULL),  // Can't initialize here, since "this" should not be used
+                     // in the initializer list (it generates an error in
+                     // Visual Studio builds).
       sequence_(0),
       current_(queue_.end()),
       deleted_current_(false),
       message_handler_(message_handler),
       line_number_(1) {
+  lexer_ = new HtmlLexer(this);
   HtmlEscape::Init();
 }
 
@@ -78,6 +81,7 @@ void HtmlParse::CheckParentFromAddEvent(HtmlEvent* event) {
   }
 }
 
+// Testing helper method
 void HtmlParse::AddEvent(HtmlEvent* event) {
   CheckParentFromAddEvent(event);
   queue_.push_back(event);
@@ -93,6 +97,11 @@ void HtmlParse::AddEvent(HtmlEvent* event) {
     leaf->set_iter(Last());
     CHECK(IsRewritable(leaf));
   }
+}
+
+// Testing helper method
+void HtmlParse::SetCurrent(HtmlNode* node) {
+  current_ = node->begin();
 }
 
 HtmlCdataNode* HtmlParse::NewCdataNode(HtmlElement* parent,
@@ -213,11 +222,13 @@ void HtmlParse::SanityCheck() {
     HtmlElement* actual_parent = NULL;
     if (start_element != NULL) {
       CheckEventParent(event, expect_parent, start_element->parent());
+      CHECK(start_element->begin() == current_);
       element_stack.push_back(start_element);
       expect_parent = start_element;
     } else {
       HtmlElement* end_element = event->GetEndElement();
       if (end_element != NULL) {
+        CHECK(end_element->end() == current_);
         if (!element_stack.empty()) {
           // The element stack can be empty on End can happen due
           // to this sequence:
@@ -235,6 +246,7 @@ void HtmlParse::SanityCheck() {
         // a start_element.
         HtmlLeafNode* leaf_node = event->GetLeafNode();
         if (leaf_node != NULL) {   // Start/EndDocument are not leaf nodes
+          CHECK(leaf_node->end() == current_);
           CheckEventParent(event, expect_parent, leaf_node->parent());
         }
       }
@@ -320,22 +332,62 @@ bool HtmlParse::AddParentToSequence(HtmlNode* first, HtmlNode* last,
     HtmlEventListIterator p = last->end();
     ++p;
     new_parent->set_end(queue_.insert(p, end_element_event));
-
-    // Loop over all the nodes from first->begin() to last->end(), inclusive,
-    // and set the parent pointer for the node, if there is one.  A few
-    // event types don't have HtmlNodes, such as Comments and IEDirectives.
-    HtmlEventListIterator end = last->end();
-    CHECK(end != queue_.end());
-    ++end;
-    for (p = first->begin(); p != end; ++p) {
-      HtmlNode* node = (*p)->GetNode();
-      if ((node != NULL) && (node->parent() == original_parent)) {
-        node->set_parent(new_parent);
-      }
-    }
+    FixParents(first, last, new_parent);
     added = true;
   }
   return added;
+}
+
+void HtmlParse::FixParents(HtmlNode* first, HtmlNode* last,
+                           HtmlElement* new_parent) {
+  HtmlElement* original_parent = first->parent();
+  // Loop over all the nodes from first->begin() to last->end(), inclusive,
+  // and set the parent pointer for the node, if there is one.  A few
+  // event types don't have HtmlNodes, such as Comments and IEDirectives.
+  HtmlEventListIterator end = last->end();
+  CHECK(end != queue_.end());
+  ++end;
+  for (HtmlEventListIterator p = first->begin(); p != end; ++p) {
+    HtmlNode* node = (*p)->GetNode();
+    if ((node != NULL) && (node->parent() == original_parent)) {
+      node->set_parent(new_parent);
+    }
+  }
+}
+
+bool HtmlParse::MoveCurrentIntoParent(HtmlElement* new_parent) {
+  bool moved = false;
+  HtmlNode* node = (*current_)->GetNode();
+  if ((node != NULL) && (node != new_parent) &&
+      IsRewritable(node) && IsRewritable(new_parent)) {
+    HtmlEventListIterator begin = node->begin();
+    HtmlEventListIterator end = node->end();
+    ++end;  // splice is non-inclusive for the 'end' iterator.
+
+    // Manipulate current_ so that when Flush() iterates it lands
+    // you on object after current_'s original position, rather
+    // than re-iterating over the new_parent's EndElement event.
+    current_ = end;
+    queue_.splice(new_parent->end(), queue_, begin, end);
+    --current_;
+
+    // TODO(jmarantz): According to
+    // http://www.cplusplus.com/reference/stl/list/splice/
+    // the moved iterators are no longer valid, and we
+    // are retaining them in the HtmlNode, so we need to fix them.
+    //
+    // However, in practice they appear to remain valid.  And
+    // I can't think of a reason they should be invalidated,
+    // as the iterator is a pointer to a node structure with
+    // next/prev pointers.  splice can mutate the next/prev pointers
+    // in place.
+    //
+    // See http://stackoverflow.com/questions/143156
+
+    FixParents(node, node, new_parent);
+    moved = true;
+  }
+  return moved;
 }
 
 bool HtmlParse::DeleteElement(HtmlNode* node) {

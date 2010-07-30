@@ -169,8 +169,10 @@
         'instaweb_rewriter_base',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/libpagespeed/src/third_party/jsmin/jsmin.gyp:jsmin',
       ],
       'sources': [
+        'rewriter/javascript_code_block.cc',
         'rewriter/javascript_filter.cc',
         'rewriter/javascript_minification.cc',
       ],
@@ -203,6 +205,7 @@
         'rewriter/cache_extender.cc',
         'rewriter/collapse_whitespace_filter.cc',
         'rewriter/css_combine_filter.cc',
+        'rewriter/css_move_to_head_filter.cc',
         'rewriter/css_tag_scanner.cc',
         'rewriter/elide_attributes_filter.cc',
         'rewriter/file_input_resource.cc',

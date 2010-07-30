@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
@@ -76,13 +77,19 @@ class JavascriptFilter : public RewriteFilter {
                      UrlAsyncFetcher* fetcher,
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
+  // Configuration settings for javascript filtering:
+  // Set whether to minify javascript code blocks encountered.
+  void set_minify(bool minify)  {
+    config_.set_minify(minify);
+  }
  private:
   inline void CompleteScriptInProgress();
   inline void RewriteInlineScript();
   inline void RewriteExternalScript();
   inline Resource* ScriptAtUrl(const std::string& script_url);
+  const StringPiece FlattenBuffer(std::string* script_buffer);
   bool WriteExternalScriptTo(const Resource* script_resource,
-                             const std::string& script_out,
+                             const StringPiece& script_out,
                              OutputResource* script_dest);
 
   std::vector<HtmlCharactersNode*> buffer_;
@@ -93,8 +100,9 @@ class JavascriptFilter : public RewriteFilter {
   // some_missing_scripts indicates that we stopped processing a script and
   // therefore can't assume we know all of the Javascript on a page.
   bool some_missing_scripts_;
-  Atom s_script_;
-  Atom s_src_;
+  JavascriptRewriteConfig config_;
+  const Atom s_script_;
+  const Atom s_src_;
 };
 
 }  // namespace net_instaweb

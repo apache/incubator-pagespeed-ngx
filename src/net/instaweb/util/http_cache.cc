@@ -40,7 +40,7 @@ bool HTTPCache::Get(const char* key, HTTPValue* value,
                     MessageHandler* handler) {
   SharedString cache_buffer;
   SimpleMetaData headers;
-  return (cache_->Get(key, &cache_buffer, handler) &&
+  return (cache_->Get(key, &cache_buffer) &&
           value->Link(&cache_buffer, handler) &&
           value->ExtractHeaders(&headers, handler) &&
           IsCurrentlyValid(headers));
@@ -48,7 +48,8 @@ bool HTTPCache::Get(const char* key, HTTPValue* value,
 
 void HTTPCache::Put(const char* key, HTTPValue* value,
                     MessageHandler* handler) {
-  cache_->Put(key, value->share(), handler);
+  SharedString& shared_string = value->share();
+  cache_->Put(key, &shared_string);
 }
 
 void HTTPCache::Put(const char* key, const MetaData& headers,
@@ -64,9 +65,8 @@ void HTTPCache::Put(const char* key, const MetaData& headers,
   Put(key, &value, handler);
 }
 
-CacheInterface::KeyState HTTPCache::Query(const char* key,
-                                          MessageHandler* handler) {
-  return cache_->Query(key, handler);
+CacheInterface::KeyState HTTPCache::Query(const char* key) {
+  return cache_->Query(key);
 }
 
 }  // namespace net_instaweb

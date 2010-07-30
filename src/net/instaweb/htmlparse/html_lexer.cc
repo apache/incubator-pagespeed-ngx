@@ -23,6 +23,7 @@
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace {
 // These tags can be specified in documents without a brief "/>",

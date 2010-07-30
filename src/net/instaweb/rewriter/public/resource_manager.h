@@ -69,8 +69,11 @@ class ResourceManager {
   // If this is not available in the current deployment, then NULL is returned.
   //
   // Every time this method is called, a new resource is generated.
+  //
+  // 'type' arg can be null if it's not known, or is not in our ContentType
+  // library.
   OutputResource* CreateGeneratedOutputResource(
-      const StringPiece& filter_prefix, const ContentType& type,
+      const StringPiece& filter_prefix, const ContentType* type,
       MessageHandler* handler);
 
   // Creates an output resource where the name is provided by the rewriter.
@@ -86,22 +89,36 @@ class ResourceManager {
   // and hrefs are:
   //    $(URL_PREFIX)$(FILTER_PREFIX).$(HASH).$(NAME).$(CONTENT_TYPE_EXT)
   //
+  // 'type' arg can be null if it's not known, or is not in our ContentType
+  // library.
+  //
+  // TODO(jmarantz): add a new variant which creates an output resource from
+  // an input resource, to inherit content type, cache expiration,
+  // last-modified, etc.
   OutputResource* CreateNamedOutputResource(
       const StringPiece& filter_prefix, const StringPiece& name,
-      const ContentType& type, MessageHandler* handler);
+      const ContentType* type, MessageHandler* handler);
 
   // Creates a resource based on the fields extracted from a URL.  This
   // is used for serving output resources.
+  //
+  // 'type' arg can be null if it's not known, or is not in our ContentType
+  // library.
   OutputResource* CreateUrlOutputResource(
       const StringPiece& filter_prefix, const StringPiece& name,
-      const StringPiece& hash, const ContentType& type);
+      const StringPiece& hash, const ContentType* type);
 
   Resource* CreateInputResource(const StringPiece& url,
                                 MessageHandler* handler);
 
   // Set up a basic header for a given content_type.
   // If content_type is null, the Content-Type is omitted.
-  void SetDefaultHeaders(const ContentType* content_type, MetaData* header);
+  // This method may only be called once on a header.
+  static void SetDefaultHeaders(const ContentType* content_type,
+                                MetaData* header);
+
+  // Changes the content type of a pre-initialized header.
+  void SetContentType(const ContentType* content_type, MetaData* header);
 
   std::string base_url() const;
   StringPiece filename_prefix() const { return file_prefix_; }
@@ -121,6 +138,8 @@ class ResourceManager {
 
   // Writes the specified contents into the output resource, retaining
   // both a name->filename map and the filename->contents map.
+  //
+  // TODO(jmarantz): add status-code and last_modified args.
   bool Write(const StringPiece& contents, OutputResource* output,
              int64 origin_expire_time_ms, MessageHandler* handler);
 

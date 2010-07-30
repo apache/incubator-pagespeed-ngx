@@ -43,10 +43,14 @@ RewriteDriverFactory::RewriteDriverFactory()
       use_http_cache_(false),
       use_threadsafe_cache_(false),
       combine_css_(false),
+      move_css_to_head_(false),
       outline_css_(false),
       outline_javascript_(false),
       rewrite_images_(false),
       rewrite_javascript_(false),
+      elide_attributes_(false),
+      remove_comments_(false),
+      collapse_whitespace_(false),
       extend_cache_(false),
       add_head_(false),
       add_base_tag_(false),
@@ -236,17 +240,34 @@ RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
   if (add_base_tag_) {
     rewrite_driver->AddBaseTagFilter();
   }
+  if (outline_css_ || outline_javascript_) {
+    // Outline any resources into links before moving them into
+    // the head.
+    rewrite_driver->OutlineResources(outline_css_, outline_javascript_);
+  }
+  if (move_css_to_head_) {
+    // It's good to move CSS links to the head prior to running CSS combine,
+    // which only combines CSS links that are already in the head.
+    rewrite_driver->MoveCssToHead();
+  }
+  // Combine external CSS resources after we've outlined them.
   if (combine_css_) {
     rewrite_driver->CombineCssFiles();
-  }
-  if (outline_css_ || outline_javascript_) {
-    rewrite_driver->OutlineResources(outline_css_, outline_javascript_);
   }
   if (rewrite_images_) {
     rewrite_driver->RewriteImages();
   }
   if (rewrite_javascript_) {
     rewrite_driver->RewriteJavascript();
+  }
+  if (remove_comments_) {
+    rewrite_driver->RemoveHtmlComments();
+  }
+  if (collapse_whitespace_) {
+    rewrite_driver->CollapseHtmlWhitespace();
+  }
+  if (elide_attributes_) {
+    rewrite_driver->ElideAttributes();
   }
   if (extend_cache_) {
     rewrite_driver->ExtendCacheLifetime(hasher(), timer());

@@ -48,18 +48,13 @@ namespace net_instaweb {
 class FileCache : public CacheInterface {
  public:
   FileCache(const std::string& path, FileSystem* file_system,
-            FilenameEncoder* filename_encoder,
-            MessageHandler* message_handler);
+            FilenameEncoder* filename_encoder);
   virtual ~FileCache();
 
-  virtual bool Get(const std::string& key, SharedString* value,
-                   MessageHandler* message_handler);
-  virtual void Put(const std::string& key, SharedString& value,
-                   MessageHandler* message_handler);
-  virtual void Delete(const std::string& key,
-                      MessageHandler* message_handler);
-  virtual KeyState Query(const std::string& key,
-                         MessageHandler* message_handler);
+  virtual bool Get(const std::string& key, SharedString* value);
+  virtual void Put(const std::string& key, SharedString* value);
+  virtual void Delete(const std::string& key);
+  virtual KeyState Query(const std::string& key);
 
  private:
   bool EncodeFilename(const std::string& key, std::string* filename);

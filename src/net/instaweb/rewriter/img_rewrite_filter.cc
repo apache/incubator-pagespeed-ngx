@@ -173,7 +173,7 @@ OutputResource* ImgRewriteFilter::ImageOutputResource(
     if (content_type != NULL) {
       MessageHandler* message_handler = html_parse_->message_handler();
       result = resource_manager_->CreateNamedOutputResource(
-          filter_prefix_, url_string, *content_type, message_handler);
+          filter_prefix_, url_string, content_type, message_handler);
     }
   }
   return result;
@@ -232,8 +232,8 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
         default:
           break;
       }
-      resource_manager_->SetDefaultHeaders(input_resource->type(),
-                                           input_resource->metadata());
+      resource_manager_->SetContentType(input_resource->type(),
+                                        input_resource->metadata());
     }
     scoped_ptr<OutputResource> output_resource(
         ImageOutputResource(rewritten_url, image.get()));

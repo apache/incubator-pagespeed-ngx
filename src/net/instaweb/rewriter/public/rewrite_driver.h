@@ -30,7 +30,10 @@ namespace net_instaweb {
 class AddHeadFilter;
 class BaseTagFilter;
 class CacheExtender;
+class CollapseWhitespaceFilter;
 class CssCombineFilter;
+class CssMoveToHeadFilter;
+class ElideAttributesFilter;
 class FileSystem;
 class Hasher;
 class HtmlAttributeQuoteRemoval;
@@ -40,8 +43,10 @@ class HtmlWriterFilter;
 class ImgRewriteFilter;
 class JavascriptFilter;
 class OutlineFilter;
+class RemoveCommentsFilter;
 class ResourceManager;
 class RewriteFilter;
+class Statistics;
 class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
@@ -71,6 +76,20 @@ class RewriteDriver {
   // Combine CSS files in html document.  This can only be called once and
   // requires a resource_manager to be set.
   void CombineCssFiles();
+
+  // Moves CSS links to the <head> section.
+  void MoveCssToHead();
+
+  // Remove excess whitespace in HTML
+  void CollapseHtmlWhitespace();
+
+  // Remove comments in HTML
+  void RemoveHtmlComments();
+
+  // Remove HTML element attribute values where
+  // http://www.w3.org/TR/html4/loose.dtd says that the name is all
+  // that's necessary
+  void ElideAttributes();
 
   // Cut out inlined styles and scripts and make them into external resources.
   // This can only be called once and requires a resource_manager to be set.
@@ -124,6 +143,7 @@ class RewriteDriver {
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
 
   ResourceManager* resource_manager() const { return resource_manager_; }
+  Statistics* statistics() const;
 
  private:
   // Note that the use of StringPiece as the map key here implies that
@@ -142,12 +162,16 @@ class RewriteDriver {
   scoped_ptr<AddHeadFilter> add_head_filter_;
   scoped_ptr<BaseTagFilter> base_tag_filter_;
   scoped_ptr<CssCombineFilter> css_combine_filter_;
+  scoped_ptr<CssMoveToHeadFilter> css_move_to_head_filter_;
   scoped_ptr<OutlineFilter> outline_filter_;
   scoped_ptr<ImgRewriteFilter> img_rewrite_filter_;
   scoped_ptr<CacheExtender> cache_extender_;
   scoped_ptr<JavascriptFilter> javascript_filter_;
   scoped_ptr<HtmlAttributeQuoteRemoval> attribute_quote_removal_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
+  scoped_ptr<CollapseWhitespaceFilter> collapse_whitespace_filter_;
+  scoped_ptr<RemoveCommentsFilter> remove_html_comments_filter_;
+  scoped_ptr<ElideAttributesFilter> elide_attributes_filter_;
   std::vector<HtmlFilter*> other_filters_;
 };
 

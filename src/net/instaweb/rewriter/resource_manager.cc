@@ -79,8 +79,10 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
 ResourceManager::~ResourceManager() {
 }
 
+// TODO(jmarantz): consider moving this method to MetaData
 void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
                                         MetaData* header) {
+  CHECK(header->major_version() == 0);
   header->set_major_version(1);
   header->set_minor_version(1);
   header->set_status_code(HttpStatus::OK);
@@ -89,12 +91,29 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
     header->Add("Content-Type", content_type->mime_type());
   }
   header->Add(kCacheControl, "public, max-age=31536000");
+  header->Add("Vary", "Accept-Encoding");
+
+  // TODO(jmarantz): Page-speed suggested adding a "Last-Modified",header
+  // for cache validation.  To do this we must track the max of all
+  // Last-Modified values for all input resources that are used to
+  // create this output resource.
+
+  header->ComputeCaching();
+}
+
+// TODO(jmarantz): consider moving this method to MetaData
+void ResourceManager::SetContentType(const ContentType* content_type,
+                                     MetaData* header) {
+  CHECK(header->major_version() != 0);
+  CHECK(content_type != NULL);
+  header->RemoveAll("Content-Type");
+  header->Add("Content-Type", content_type->mime_type());
   header->ComputeCaching();
 }
 
 OutputResource* ResourceManager::CreateGeneratedOutputResource(
     const StringPiece& filter_prefix,
-    const ContentType& content_type,
+    const ContentType* content_type,
     MessageHandler* handler) {
   int id = resource_id_++;
   std::string id_string = IntegerToString(id);
@@ -105,10 +124,10 @@ OutputResource* ResourceManager::CreateGeneratedOutputResource(
 OutputResource* ResourceManager::CreateNamedOutputResource(
     const StringPiece& filter_prefix,
     const StringPiece& name,
-    const ContentType& content_type,
+    const ContentType* content_type,
     MessageHandler* handler) {
   OutputResource* resource = new OutputResource(
-      this, &content_type, filter_prefix, name);
+      this, content_type, filter_prefix, name);
 
   // Determine whether this output resource is still valid by looking
   // up by hash in the http cache.  Note that this cache entry will
@@ -128,9 +147,9 @@ OutputResource* ResourceManager::CreateNamedOutputResource(
 
 OutputResource* ResourceManager::CreateUrlOutputResource(
     const StringPiece& filter_prefix, const StringPiece& name,
-    const StringPiece& hash, const ContentType& content_type) {
+    const StringPiece& hash, const ContentType* content_type) {
   OutputResource* resource = new OutputResource(
-      this, &content_type, filter_prefix, name);
+      this, content_type, filter_prefix, name);
   resource->SetHash(hash);
   return resource;
 }
@@ -249,10 +268,10 @@ bool ResourceManager::FetchOutputResource(
   } else {
     if (output_resource->Read(handler)) {
       StringPiece contents = output_resource->contents();
-      http_cache_->Put(content_key.c_str(), *(output_resource->metadata()),
-                       contents, handler);
+      MetaData* meta_data = output_resource->metadata();
+      http_cache_->Put(content_key.c_str(), *meta_data, contents, handler);
       ret = writer->Write(contents, handler);
-      response_headers->CopyFrom(*output_resource->metadata());
+      response_headers->CopyFrom(*meta_data);
     }
   }
   return ret;
@@ -263,13 +282,12 @@ bool ResourceManager::Write(const StringPiece& contents,
                             int64 origin_expire_time_ms,
                             MessageHandler* handler) {
   MetaData* meta_data = output->metadata();
-  if (meta_data->status_code() == 0) {
-    SetDefaultHeaders(output->type(), meta_data);
-  }
+  SetDefaultHeaders(output->type(), meta_data);
+
   OutputResource::OutputWriter* writer = output->BeginWrite(handler);
   bool ret = (writer != NULL);
   if (ret) {
-    ret &= writer->Write(contents, handler);
+    ret = writer->Write(contents, handler);
     ret &= output->EndWrite(writer, handler);
 
     // Map the name of this resource to the fully expanded filename.  The
@@ -288,7 +306,12 @@ bool ResourceManager::Write(const StringPiece& contents,
     // to cache forever.
     std::string content_key = StrCat(kContentsCacheKeyPrefix,
                                       output->filename());
-    http_cache_->Put(content_key.c_str(), *meta_data, contents, handler);
+    if (ret) {
+      http_cache_->Put(content_key.c_str(), *meta_data, contents, handler);
+    } else {
+      meta_data->set_status_code(HttpStatus::NOT_FOUND);
+      meta_data->set_reason_phrase("Not-Found");
+    }
 
     // Now we'll mutate meta_data to expire when the origin expires, and
     // map the name to the filename.

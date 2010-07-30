@@ -162,7 +162,7 @@ void OutlineFilter::OutlineStyle(HtmlElement* style_element,
       MessageHandler* handler = html_parse_->message_handler();
       scoped_ptr<OutputResource> resource(
           resource_manager_->CreateGeneratedOutputResource(
-              "of", kContentTypeCss, handler));
+              "of", &kContentTypeCss, handler));
       if (WriteResource(content, resource.get(), handler)) {
         HtmlElement* link_element = html_parse_->NewElement(
             style_element->parent(), s_link_);
@@ -204,7 +204,7 @@ void OutlineFilter::OutlineScript(HtmlElement* inline_element,
       MessageHandler* handler = html_parse_->message_handler();
       scoped_ptr<OutputResource> resource(
           resource_manager_->CreateGeneratedOutputResource(
-              "of", kContentTypeJavascript, handler));
+              "of", &kContentTypeJavascript, handler));
       if (WriteResource(content, resource.get(), handler)) {
         HtmlElement* outline_element = html_parse_->NewElement(
             inline_element->parent(), s_script_);

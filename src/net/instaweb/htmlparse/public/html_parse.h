@@ -93,11 +93,25 @@ class HtmlParse {
 
 
   // Enclose element around two elements in a sequence.  The first
-  // element must precede the second element in the event-stream, and
-  // this is not checked, but the two elements do not need to be adjacent.
-  // They must have the same parent to start with.
+  // element must be the same as, or precede the last element in the
+  // event-stream, and this is not checked, but the two elements do
+  // not need to be adjacent.  They must have the same parent to start
+  // with.
+  //
+  // This differs from MoveSequenceToParent in that the new parent is
+  // not yet in the DOM tree, and will be inserted around the
+  // elements.
   bool AddParentToSequence(HtmlNode* first, HtmlNode* last,
                            HtmlElement* new_parent);
+
+  // Moves a node-sequence to an already-existing parent, where they
+  // will be placed as the last elements in that parent.  Returns false
+  // if the operation could not be performed because either the node
+  // or its parent was partially or wholy flushed.
+  //
+  // This differs from AddParentToSequence in that the parent is already
+  // in the DOM-tree.
+  bool MoveCurrentIntoParent(HtmlElement* new_parent);
 
   HtmlElement* NewElement(HtmlElement* parent, Atom tag);
 
@@ -182,6 +196,7 @@ class HtmlParse {
   // TODO(jmarantz): Consider using a Peer class that is declared as a friend,
   // and instantiating that from the tests.
   void AddEvent(HtmlEvent* event);
+  void SetCurrent(HtmlNode* node);
 
  private:
   void AddElement(HtmlElement* element, int line_number);
@@ -193,6 +208,7 @@ class HtmlParse {
   void CheckEventParent(HtmlEvent* event, HtmlElement* expect,
                         HtmlElement* actual);
   void CheckParentFromAddEvent(HtmlEvent* event);
+  void FixParents(HtmlNode* first, HtmlNode* last, HtmlElement* new_parent);
 
   SymbolTableInsensitive string_table_;
   std::vector<HtmlFilter*> filters_;

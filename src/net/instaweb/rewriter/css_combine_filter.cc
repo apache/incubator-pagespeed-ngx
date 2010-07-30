@@ -173,7 +173,7 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
     // not committed to the combination, because the 'write' can fail.
     scoped_ptr<OutputResource> combination(
         resource_manager_->CreateNamedOutputResource(
-            filter_prefix_, url_safe_id, kContentTypeCss, handler));
+            filter_prefix_, url_safe_id, &kContentTypeCss, handler));
     bool written = combination->IsWritten() ||
         WriteCombination(combine_resources, combination.get(), handler);
 
@@ -272,7 +272,6 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
   }
 
   if (ret) {
-    resource_manager_->SetDefaultHeaders(&kContentTypeCss, response_headers);
     callback->Done(true);
   } else {
     message_handler->Error(url_safe_id.as_string().c_str(), 0,

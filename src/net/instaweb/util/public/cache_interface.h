@@ -39,20 +39,14 @@ class CacheInterface {
   virtual ~CacheInterface();
 
   // Gets an object from the cache, returning false on a cache miss
-  virtual bool Get(const std::string& key,
-                   SharedString* value,
-                   MessageHandler* message_handler) = 0;
+  virtual bool Get(const std::string& key, SharedString* value) = 0;
 
   // Puts a value into the cache.  The value that is passed in is not modified,
-  // but the SharedString is passed by non-const reference because its reference
+  // but the SharedString is passed by non-const pointer because its reference
   // count is bumped.
-  virtual void Put(const std::string& key, SharedString& value,
-                   MessageHandler* message_handler) = 0;
-
-  virtual void Delete(const std::string& key,
-                      MessageHandler* message_handler) = 0;
-  virtual KeyState Query(const std::string& key,
-                         MessageHandler* message_handler) = 0;
+  virtual void Put(const std::string& key, SharedString* value) = 0;
+  virtual void Delete(const std::string& key) = 0;
+  virtual KeyState Query(const std::string& key) = 0;
 };
 
 }  // namespace net_instaweb

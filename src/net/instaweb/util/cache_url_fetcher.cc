@@ -66,8 +66,7 @@ void CacheUrlFetcher::AsyncFetch::UpdateCache() {
   // IsProxyCacheable, e.g. for content served from the same host
   MetaData* response_headers = ResponseHeaders();
   if ((force_caching_ || response_headers->IsCacheable()) &&
-      (http_cache_->Query(url_.c_str(), message_handler_) ==
-       CacheInterface::kNotFound)) {
+      (http_cache_->Query(url_.c_str()) == CacheInterface::kNotFound)) {
     http_cache_->Put(url_.c_str(), *response_headers, content_,
                      message_handler_);
   }

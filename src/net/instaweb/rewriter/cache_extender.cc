@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/cache_extender.h"
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/rewrite.pb.h"  // for ResourceUrl
@@ -64,12 +65,18 @@ void CacheExtender::StartElement(HtmlElement* element) {
   MessageHandler* message_handler = html_parse_->message_handler();
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
   if ((href != NULL) && html_parse_->IsRewritable(element)) {
+    const char* origin_url = href->value();
     Resource* input_resource =
-        resource_manager_->CreateInputResource(href->value(), message_handler);
+        resource_manager_->CreateInputResource(origin_url, message_handler);
+
+    const char* suffix = strrchr(origin_url, '.');
+    if (suffix == NULL) {
+      suffix = "";
+    }
 
     // TODO(jmarantz): create an output resource to generate a new url,
     // rather than doing the content-hashing here.
-    if (input_resource->Read(message_handler)) {
+    if ((input_resource != NULL) && input_resource->Read(message_handler)) {
       const MetaData* headers = input_resource->metadata();
       int64 now_ms = timer_->NowMs();
 
@@ -82,15 +89,39 @@ void CacheExtender::StartElement(HtmlElement* element) {
       } else if ((headers->CacheExpirationTimeMs() - now_ms) <
                  kMinThresholdMs) {
         ResourceUrl resource_url;
-        resource_url.set_origin_url(href->value());
+        resource_url.set_origin_url(origin_url);
         resource_url.set_content_hash(hasher_->Hash(
             input_resource->contents()));
         std::string url_safe_id;
         Encode(resource_url, &url_safe_id);
-        std::string new_url = StrCat(
-            resource_manager_->url_prefix(), filter_prefix_,
-            prefix_separator(), url_safe_id);
-        href->SetValue(new_url.c_str());
+        scoped_ptr<OutputResource> output(
+            resource_manager_->CreateNamedOutputResource(
+                filter_prefix_, url_safe_id, NULL, message_handler));
+        output->set_suffix(suffix);
+
+        // Determine the content, either from the headers or the extension
+        // of the origin URL.
+        CharStarVector content_types;
+        MetaData* output_headers = output->metadata();
+        if (headers->Lookup("Content-type", &content_types)) {
+          for (int i = 0, n = content_types.size(); i < n; ++i) {
+            output_headers->Add("Content-type", content_types[i]);
+          }
+        } else {
+          // If there is no content type in input headers, then try to
+          // determine it from the name.
+          const ContentType* type = NameExtensionToContentType(origin_url);
+          if (type == NULL) {
+            html_parse_->WarningHere("Resource %s lacks a content type",
+                                     origin_url);
+          } else {
+            output_headers->Add("Content-Type", type->mime_type());
+          }
+        }
+
+        resource_manager_->Write(input_resource->contents(), output.get(),
+                      headers->CacheExpirationTimeMs(), message_handler);
+        href->SetValue(output->url());
         if (extension_count_ != NULL) {
           extension_count_->Add(1);
         }

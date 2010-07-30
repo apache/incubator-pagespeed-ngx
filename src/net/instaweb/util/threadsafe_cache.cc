@@ -24,28 +24,24 @@ namespace net_instaweb {
 ThreadsafeCache::~ThreadsafeCache() {
 }
 
-bool ThreadsafeCache::Get(const std::string& key, SharedString* value,
-                          MessageHandler* message_handler) {
+bool ThreadsafeCache::Get(const std::string& key, SharedString* value) {
   ScopedMutex mutex(mutex_);
-  return cache_->Get(key, value, message_handler);
+  return cache_->Get(key, value);
 }
 
-void ThreadsafeCache::Put(const std::string& key, SharedString& value,
-                          MessageHandler* message_handler) {
+void ThreadsafeCache::Put(const std::string& key, SharedString* value) {
   ScopedMutex mutex(mutex_);
-  cache_->Put(key, value, message_handler);
+  cache_->Put(key, value);
 }
 
-void ThreadsafeCache::Delete(const std::string& key,
-                             MessageHandler* message_handler) {
+void ThreadsafeCache::Delete(const std::string& key) {
   ScopedMutex mutex(mutex_);
-  cache_->Delete(key, message_handler);
+  cache_->Delete(key);
 }
 
-CacheInterface::KeyState ThreadsafeCache::Query(
-    const std::string& key, MessageHandler* message_handler) {
+CacheInterface::KeyState ThreadsafeCache::Query(const std::string& key) {
   ScopedMutex mutex(mutex_);
-  return cache_->Query(key, message_handler);
+  return cache_->Query(key);
 }
 
 }  // namespace net_instaweb

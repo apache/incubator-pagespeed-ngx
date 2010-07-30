@@ -51,17 +51,16 @@ template<class SymbolCompare> class SymbolTable {
     while (!string_set_.empty()) {
       // Note: This should perform OK for rb-trees, but will perform
       // poorly if a hash-table is used.
-      typename StringSet::iterator p = string_set_.begin();
-      char* str = *p;
+      typename StringSet::const_iterator p = string_set_.begin();
+      const char* str = *p;
       string_set_.erase(p);
-      free(str);
+      free(const_cast<char*>(str));
     }
   }
 
   Atom Intern(const char* src) {
     Atom atom(src);
-    typename StringSet::iterator iter =
-        string_set_.find(const_cast<char*>(src));
+    typename StringSet::const_iterator iter = string_set_.find(src);
     if (iter == string_set_.end()) {
       char* str = strdup(src);
       string_set_.insert(str);
@@ -75,7 +74,7 @@ template<class SymbolCompare> class SymbolTable {
   }
 
  private:
-  typedef std::set<char*, SymbolCompare> StringSet;
+  typedef std::set<const char*, SymbolCompare> StringSet;
   StringSet string_set_;
 };
 

@@ -1,0 +1,57 @@
+/**
+ * Copyright 2010 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Author: jmarantz@google.com (Joshua Marantz)
+
+#include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
+
+#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/util/public/statistics.h"
+
+namespace net_instaweb {
+
+CssMoveToHeadFilter::CssMoveToHeadFilter(HtmlParse* html_parse,
+                                         Statistics* statistics)
+    : html_parse_(html_parse),
+      css_tag_scanner_(html_parse),
+      counter_(NULL) {
+  s_head_ = html_parse->Intern("head");
+  head_element_ = NULL;
+  if (statistics != NULL) {
+    counter_ = statistics->AddVariable("css_elements_");
+  }
+}
+
+void CssMoveToHeadFilter::StartDocument() {
+  head_element_ = NULL;
+}
+
+void CssMoveToHeadFilter::EndElement(HtmlElement* element) {
+  if ((head_element_ == NULL) && (element->tag() == s_head_)) {
+    head_element_ = element;
+  } else {
+    HtmlElement::Attribute* href;
+    const char* media;
+    if ((head_element_ != NULL) &&
+        html_parse_->IsRewritable(head_element_) &&
+        css_tag_scanner_.ParseCssElement(element, &href, &media)) {
+      html_parse_->MoveCurrentIntoParent(head_element_);
+    }
+  }
+}
+
+}  // namespace net_instaweb

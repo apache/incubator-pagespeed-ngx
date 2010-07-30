@@ -59,6 +59,12 @@ class OutputResource : public Resource {
   // resource during the HTML rewriter.
   bool IsWritten() const;
 
+  // Sets the suffix for an output resource.  This must be called prior
+  // to Write if the content_type ctor arg was NULL.  This can happen if
+  // we are managing a resource whose content-type is not known to us.
+  // CacheExtender is currently the only place where we need this.
+  void set_suffix(const StringPiece& ext) { ext.CopyToString(&suffix_); }
+
  private:
   friend class ResourceManager;
   class OutputWriter : public FileWriter {
@@ -87,6 +93,7 @@ class OutputResource : public Resource {
   std::string filter_prefix_;
   std::string name_;
   std::string hash_;
+  std::string suffix_;
 };
 
 }  // namespace net_instaweb

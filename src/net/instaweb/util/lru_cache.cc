@@ -39,8 +39,7 @@ LRUCache::ListNode LRUCache::Freshen(KeyValuePair* key_value) {
   return lru_ordered_list_.begin();
 }
 
-bool LRUCache::Get(const std::string& key, SharedString* value,
-                   MessageHandler* message_handler) {
+bool LRUCache::Get(const std::string& key, SharedString* value) {
   Map::iterator p = map_.find(std::string(key.data(), key.size()));
   bool ret = false;
   if (p != map_.end()) {
@@ -58,8 +57,7 @@ bool LRUCache::Get(const std::string& key, SharedString* value,
   return ret;
 }
 
-void LRUCache::Put(const std::string& key, SharedString& new_value,
-                   MessageHandler* message_handler) {
+void LRUCache::Put(const std::string& key, SharedString* new_value) {
   // Just do one map operation, calling the awkward 'insert' which returns
   // a pair.  The bool indicates whether a new value was inserted, and the
   // iterator provides access to the element, whether it's new or old.
@@ -80,7 +78,7 @@ void LRUCache::Put(const std::string& key, SharedString& new_value,
     // it from the entry_list prior to calling EvictIfNecessary,
     // which can't find it if it isn't in the list.
     lru_ordered_list_.erase(cell);
-    if (*new_value == *(key_value->second)) {
+    if (**new_value == *(key_value->second)) {
       map_iter->second = Freshen(key_value);
       need_to_insert = false;
       // TODO(jmarantz): count number of re-inserts of existing value?
@@ -97,9 +95,9 @@ void LRUCache::Put(const std::string& key, SharedString& new_value,
     // insertions the same way.  In both cases, the new key is in the map
     // as a result of the call to map_.insert above.
 
-    if (EvictIfNecessary(key.size() + new_value->size())) {
+    if (EvictIfNecessary(key.size() + (*new_value)->size())) {
       // The new value fits.  Put it in the LRU-list.
-      KeyValuePair* kvp = new KeyValuePair(&map_iter->first, new_value);
+      KeyValuePair* kvp = new KeyValuePair(&map_iter->first, *new_value);
       map_iter->second = Freshen(kvp);
       ++num_inserts_;
     } else {
@@ -133,8 +131,7 @@ bool LRUCache::EvictIfNecessary(size_t bytes_needed) {
   return ret;
 }
 
-void LRUCache::Delete(const std::string& key,
-                      MessageHandler* message_handler) {
+void LRUCache::Delete(const std::string& key) {
   Map::iterator p = map_.find(key);
   if (p != map_.end()) {
     ListNode cell = p->second;
@@ -177,8 +174,7 @@ void LRUCache::SanityCheck() {
   CHECK(count == map_.size());
 }
 
-CacheInterface::KeyState LRUCache::Query(const std::string& key,
-                                         MessageHandler* message_handler) {
+CacheInterface::KeyState LRUCache::Query(const std::string& key) {
   Map::iterator p = map_.find(key);
   KeyState state = kNotFound;
   if (p != map_.end()) {

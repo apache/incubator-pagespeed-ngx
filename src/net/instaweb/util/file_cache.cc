@@ -39,8 +39,7 @@ namespace net_instaweb {
 // TODO(lsong): Remove the MessageHandler arg. They are not used.
 // TODO(lsong): Need to create an LRU mechanism to manage the cache.
 FileCache::FileCache(const std::string& path, FileSystem* file_system,
-                       FilenameEncoder* filename_encoder,
-                       MessageHandler* /*message_handler*/)
+                     FilenameEncoder* filename_encoder)
     : path_(path),
       file_system_(file_system),
       filename_encoder_(filename_encoder) {
@@ -49,8 +48,7 @@ FileCache::FileCache(const std::string& path, FileSystem* file_system,
 FileCache::~FileCache() {
 }
 
-bool FileCache::Get(const std::string& key, SharedString* value,
-                    MessageHandler* /*message_handler*/) {
+bool FileCache::Get(const std::string& key, SharedString* value) {
   std::string filename;
   if (!EncodeFilename(key, &filename)) {
     return false;
@@ -62,18 +60,16 @@ bool FileCache::Get(const std::string& key, SharedString* value,
   return true;
 }
 
-void FileCache::Put(const std::string& key, SharedString& value,
-                    MessageHandler* /*message_handler*/) {
+void FileCache::Put(const std::string& key, SharedString* value) {
   std::string filename;
   if (!EncodeFilename(key, &filename)) {
     return;
   }
-  const std::string& buffer = *value;
+  const std::string& buffer = **value;
   file_system_->WriteFile(filename.c_str(), buffer, &message_handler_);
 }
 
-void FileCache::Delete(const std::string& key,
-                       MessageHandler* /*message_handler*/) {
+void FileCache::Delete(const std::string& key) {
   std::string filename;
   if (!EncodeFilename(key, &filename)) {
     return;
@@ -88,9 +84,7 @@ bool FileCache::EncodeFilename(const std::string& key,
   return true;
 }
 
-// TODO(lsong): Inefficient to use open to check if the file available.
-CacheInterface::KeyState FileCache::Query(const std::string& key,
-                                          MessageHandler* /*message_handler*/) {
+CacheInterface::KeyState FileCache::Query(const std::string& key) {
   std::string filename;
   if (!EncodeFilename(key, &filename)) {
     return CacheInterface::kNotFound;

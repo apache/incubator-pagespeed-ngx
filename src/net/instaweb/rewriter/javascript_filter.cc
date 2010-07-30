@@ -22,7 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/rewriter/public/javascript_minification.h"
+#include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -64,25 +64,27 @@ void JavascriptFilter::StartElement(HtmlElement* element) {
 
 void JavascriptFilter::Characters(HtmlCharactersNode* characters) {
   if (script_in_progress_ != NULL) {
-    if (script_src_ == NULL) {
-      // Note that we're keeping a vector of nodes here,
-      // and appending them lazily at the end.  This is
-      // because there's usually only 1 HtmlCharactersNode involved,
-      // and we end up not actually needing to copy the string.
-      buffer_.push_back(characters);
-    } else {
-      // A script with contents; they're ignored (TODO(jmaessen): Verify on IE).
-      // Delete them.  Don't bother complaining if it's just whitespace.
-      const std::string& contents = characters->contents();
-      for (size_t i = 0; i < contents.size(); i++) {
-        char c = contents[i];
-        if (!isspace(c)) {
-          html_parse_->ErrorHere("Dropping contents inside script with src");
-          break;
-        }
-      }
-      html_parse_->DeleteElement(characters);
+    // Note that we're keeping a vector of nodes here,
+    // and appending them lazily at the end.  This is
+    // because there's usually only 1 HtmlCharactersNode involved,
+    // and we end up not actually needing to copy the string.
+    buffer_.push_back(characters);
+  }
+}
+
+// Flatten script fragments in buffer_, using script_buffer to hold
+// the data if necessary.  Return a StringPiece referring to the data.
+const StringPiece JavascriptFilter::FlattenBuffer(std::string* script_buffer) {
+  const int buffer_size = buffer_.size();
+  if (buffer_.size() == 1) {
+    StringPiece result(buffer_[0]->contents());
+    return result;
+  } else {
+    for (int i = 0; i < buffer_size; i++) {
+      script_buffer->append(buffer_[i]->contents());
     }
+    StringPiece result(*script_buffer);
+    return result;
   }
 }
 
@@ -91,26 +93,19 @@ void JavascriptFilter::RewriteInlineScript() {
   if (buffer_size > 0) {
     // First buffer up script data and minify it.
     std::string script_buffer;
-    const std::string* script = &script_buffer;
-    if (buffer_.size() == 1) {
-      // Just use the single characters node as script src.
-      script = &(buffer_[0]->contents());
-    } else {
-      // Concatenate contents of all the characters nodes to
-      // form the script src.
-      for (int i = 0; i < buffer_size; i++) {
-        script_buffer.append(buffer_[i]->contents());
+    const StringPiece script = FlattenBuffer(&script_buffer);
+    MessageHandler* message_handler = html_parse_->message_handler();
+    JavascriptCodeBlock code_block(script, config_, message_handler);
+    if (code_block.ProfitableToRewrite()) {
+      // Now replace all CharactersNodes with a single CharactersNode containing
+      // the minified script.
+      HtmlCharactersNode* new_script =
+          html_parse_->NewCharactersNode(buffer_[0]->parent(),
+                                         code_block.Rewritten());
+      html_parse_->ReplaceNode(buffer_[0], new_script);
+      for (int i = 1; i < buffer_size; i++) {
+        html_parse_->DeleteElement(buffer_[i]);
       }
-    }
-    std::string script_out;
-    MinifyJavascript(*script, &script_out);
-    // Now replace all CharactersNodes with a single CharactersNode containing
-    // the minified script.
-    HtmlCharactersNode* new_script =
-        html_parse_->NewCharactersNode(buffer_[0]->parent(), script_out);
-    html_parse_->ReplaceNode(buffer_[0], new_script);
-    for (int i = 1; i < buffer_size; i++) {
-      html_parse_->DeleteElement(buffer_[i]);
     }
   }
 }
@@ -136,7 +131,7 @@ Resource* JavascriptFilter::ScriptAtUrl(const std::string& script_url) {
 // Returns true on success, reports failures itself.
 bool JavascriptFilter::WriteExternalScriptTo(
     const Resource* script_resource,
-    const std::string& script_out, OutputResource* script_dest) {
+    const StringPiece& script_out, OutputResource* script_dest) {
   bool ok = false;
   MessageHandler* message_handler = html_parse_->message_handler();
   int64 origin_expire_time_ms = script_resource->CacheExpirationTimeMs();
@@ -163,7 +158,7 @@ void JavascriptFilter::RewriteExternalScript() {
   Encode(rewritten_url_proto, &rewritten_url);
   MessageHandler* message_handler = html_parse_->message_handler();
   OutputResource* script_dest = resource_manager_->CreateNamedOutputResource(
-      filter_prefix_, rewritten_url, kContentTypeJavascript, message_handler);
+      filter_prefix_, rewritten_url, &kContentTypeJavascript, message_handler);
   if (script_dest != NULL) {
     bool ok;
     if (script_dest->IsWritten()) {
@@ -174,11 +169,12 @@ void JavascriptFilter::RewriteExternalScript() {
       ok = script_input != NULL;
       if (ok) {
         StringPiece script = script_input->contents();
-        std::string script_out;
-        MinifyJavascript(script, &script_out);
-        ok = script.size() > script_out.size();
+        MessageHandler* message_handler = html_parse_->message_handler();
+        JavascriptCodeBlock code_block(script, config_, message_handler);
+        ok = code_block.ProfitableToRewrite();
         if (ok) {
-          ok = WriteExternalScriptTo(script_input, script_out, script_dest);
+          ok = WriteExternalScriptTo(script_input, code_block.Rewritten(),
+                                     script_dest);
         } else {
           // Rewriting happened but wasn't useful; remember this for later
           // so we don't attempt to rewrite twice.
@@ -200,13 +196,33 @@ void JavascriptFilter::RewriteExternalScript() {
     html_parse_->ErrorHere("Couldn't create new destination for %s",
                            script_url.c_str());
   }
+  // Finally, note that the script might contain body data.
+  // We erase this if it is just whitespace; otherwise we leave it alone.
+  // The script body is ignored by all browsers we know of.
+  // However, various sources have encouraged using the body of an
+  // external script element to store a post-load callback.
+  // As this technique is preferable to storing callbacks in, say, html
+  // comments, we support it for now.
+  bool allSpaces = true;
+  for (size_t i = 0; allSpaces && i < buffer_.size(); ++i) {
+    const std::string& contents = buffer_[i]->contents();
+    for (size_t j = 0; allSpaces && j < contents.size(); ++j) {
+      char c = contents[j];
+      if (!isspace(c) && c != 0) {
+        html_parse_->WarningHere("Retaining contents of script tag"
+                                 " even though script is external.");
+        allSpaces = false;
+      }
+    }
+  }
+  for (size_t i = 0; allSpaces && i < buffer_.size(); ++i) {
+    html_parse_->DeleteElement(buffer_[i]);
+  }
 }
 
 // Reset state at end of script.
 void JavascriptFilter::CompleteScriptInProgress() {
-  if (script_src_ == NULL) {
-    buffer_.clear();
-  }
+  buffer_.clear();
   script_in_progress_ = NULL;
   script_src_ = NULL;
 }
@@ -246,7 +262,7 @@ void JavascriptFilter::Flush() {
 }
 
 void JavascriptFilter::IEDirective(const std::string& directive) {
-  CHECK(script_in_progress_ = NULL);
+  CHECK(script_in_progress_ == NULL);
   // We presume an IE directive is concealing some js code.
   some_missing_scripts_ = true;
 }
@@ -269,8 +285,9 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
         script_input->ContentsValid()) {
       StringPiece script = script_input->contents();
       std::string script_out;
-      MinifyJavascript(script, &script_out);
-      ok = WriteExternalScriptTo(script_input, script_out, output_resource);
+      JavascriptCodeBlock code_block(script, config_, message_handler);
+      ok = WriteExternalScriptTo(script_input, code_block.Rewritten(),
+                                 output_resource);
     } else {
       message_handler->Error(output_resource->name().as_string().c_str(), 0,
                              "Could not load original source %s",
