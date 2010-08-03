@@ -130,6 +130,8 @@ class MetaData {
   virtual bool IsCacheable() const = 0;
   virtual bool IsProxyCacheable() const = 0;
   virtual int64 CacheExpirationTimeMs() const = 0;
+  virtual void SetDate(int64 date_ms) = 0;
+  virtual void SetLastModified(int64 last_modified_ms) = 0;
 
   virtual bool headers_complete() const = 0;
 
@@ -142,6 +144,10 @@ class MetaData {
 
   virtual void set_major_version(int major_version) = 0;
   virtual void set_minor_version(int minor_version) = 0;
+
+  // Sets the status code and reason_phrase based on an internal table.
+  void SetStatusAndReason(HttpStatus::Code code);
+
   virtual void set_status_code(int status_code) = 0;
   virtual void set_reason_phrase(const StringPiece& reason_phrase) = 0;
   // Set whole first line.

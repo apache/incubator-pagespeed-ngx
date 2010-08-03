@@ -38,6 +38,8 @@
 
 namespace net_instaweb {
 
+namespace {
+
 // Rewritten image must be < kMaxRewrittenRatio * origSize to be worth
 // redirecting references to it.
 // TODO(jmaessen): Make this ratio adjustable.
@@ -65,6 +67,19 @@ const int kImageInlineThreshold = 2048;
 // Should we log each image element as we encounter it?  Handy for debug.
 // TODO(jmaessen): Hook into event logging infrastructure.
 const bool kLogImageElements = false;
+
+// We overload some http status codes for our own purposes
+
+// This is used to retain the knowledge that a particular image is not
+// profitable to optimize.
+const HttpStatus::Code kNotCacheable = HttpStatus::INTERNAL_SERVER_ERROR;
+
+// This is used to indicate that an image has been determined to be so
+// small that we should inline it in the HTML, rather than serving it as
+// an external resource.
+const HttpStatus::Code kInlineImage = HttpStatus::SEE_OTHER;
+
+}  // namespace
 
 ImgRewriteFilter::ImgRewriteFilter(StringPiece path_prefix,
                                    HtmlParse* html_parse,
@@ -101,23 +116,37 @@ void ImgRewriteFilter::OptimizeImage(
       int64 img_area = static_cast<int64>(img_width) * img_height;
       if (area < img_area * kMaxAreaRatio) {
         if (image->ResizeTo(width, height)) {
-          html_parse_->InfoHere("Resized from %dx%d to %dx%d",
+          html_parse_->InfoHere("Resized image `%s' from %dx%d to %dx%d",
+                                url_proto.origin_url().c_str(),
                                 img_width, img_height, width, height);
         } else {
-          html_parse_->InfoHere("Couldn't resize from %dx%d to %dx%d",
-                                img_width, img_height, width, height);
+          html_parse_->InfoHere(
+              "Couldn't resize image `%s' from %dx%d to %dx%d",
+              url_proto.origin_url().c_str(),
+              img_width, img_height, width, height);
         }
-      } else if (area < img_area) {
-        html_parse_->InfoHere("Not worth resizing from %dx%d to %dx%d",
-                              img_width, img_height, width, height);
+      } else {
+        html_parse_->InfoHere(
+            "Not worth resizing image `%s' from %dx%d to %dx%d",
+            url_proto.origin_url().c_str(),
+            img_width, img_height, width, height);
       }
     }
     // Unconditionally write resource back so we don't re-attempt optimization.
     MessageHandler* message_handler = html_parse_->message_handler();
-    if (image->output_size() < image->input_size() * kMaxRewrittenRatio) {
-      int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
+
+    std::string inlined_url;
+    int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
+    if (image->output_size() < kImageInlineThreshold &&
+        (img_width > 1 || img_height > 1) &&  // Rule out marker images <= 1x1
+        image->AsInlineData(&inlined_url)) {
+      resource_manager_->Write(kInlineImage, inlined_url, result,
+                               origin_expire_time_ms, message_handler);
+    } else if (image->output_size() <
+               image->input_size() * kMaxRewrittenRatio) {
       resource_manager_->Write(
-          image->Contents(), result, origin_expire_time_ms, message_handler);
+          HttpStatus::OK, image->Contents(), result, origin_expire_time_ms,
+          message_handler);
       // TODO(jmarantz): what happens if Write returns false?
 
       if (rewrite_saved_bytes_ != NULL) {
@@ -136,10 +165,7 @@ void ImgRewriteFilter::OptimizeImage(
     } else {
       // Write nothing and set status code to indicate not to rewrite
       // in future.
-      MetaData* meta_data = result->metadata();
-      meta_data->set_status_code(HttpStatus::INTERNAL_SERVER_ERROR);
-      meta_data->ComputeCaching();
-      resource_manager_->Write("", result, 0, message_handler);
+      resource_manager_->Write(kNotCacheable, "", result, 0, message_handler);
     }
   }
 }
@@ -199,7 +225,8 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
   MessageHandler* message_handler = html_parse_->message_handler();
   scoped_ptr<Resource> input_resource(
       resource_manager_->CreateInputResource(src->value(), message_handler));
-  if (input_resource != NULL) {
+
+  if ((input_resource != NULL) && input_resource->Read(message_handler)) {
     // Always rewrite to absolute url used to obtain resource.
     // This lets us do context-free fetches of content.
     rewritten_url_proto.set_origin_url(input_resource->url());
@@ -210,50 +237,63 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
       rewritten_url_proto.set_height(height);
     }
     Encode(rewritten_url_proto, &rewritten_url);
-    scoped_ptr<Image> image(GetImage(rewritten_url_proto,
-                                     input_resource.get()));
 
-    if (image != NULL) {
-      // TODO(jmarantz): not sure if this is needed.  In a test, where
-      // we were getting an image from a file:// URL, we were not getting
-      // the content type filled in because we get no response headers
-      // from a file:// request.
-      switch (image->image_type()) {
-        case Image::IMAGE_JPEG:
-          input_resource->set_type(&kContentTypeJpeg);
-          break;
-        case Image::IMAGE_PNG:
-          input_resource->set_type(&kContentTypePng);
-          break;
-        case Image::IMAGE_GIF:
-          input_resource->set_type(&kContentTypeGif);
-          break;
-          // TODO(jmarantz): report error here?
-        default:
-          break;
-      }
-      resource_manager_->SetContentType(input_resource->type(),
-                                        input_resource->metadata());
-    }
+    // Create an output output resource and fetch it, as that will tell
+    // us if we have already optimized it, or determined that it was not
+    // worth optimizing.
     scoped_ptr<OutputResource> output_resource(
-        ImageOutputResource(rewritten_url, image.get()));
-    OptimizeImage(input_resource.get(), rewritten_url_proto, image.get(),
-                  output_resource.get());
-    std::string inlined_url;
-    int img_width, img_height;
-    if (image != NULL && image->output_size() < kImageInlineThreshold &&
-        image->Dimensions(&img_width, &img_height) &&
-        (img_width > 1 || img_height > 1) &&  // Rule out marker images <= 1x1
-        image->AsInlineData(&inlined_url)) {
-      html_parse_->InfoHere("%s inlined", src->value());
-      src->SetValue(inlined_url);
-    } else if (output_resource != NULL && output_resource->IsWritten() &&
-        output_resource->metadata()->status_code() == HttpStatus::OK) {
-      html_parse_->InfoHere("%s remapped to %s",
-                            src->value(), output_resource->url().c_str());
-      src->SetValue(output_resource->url());
-      if (rewrite_count_ != NULL) {
-        rewrite_count_->Add(1);
+       resource_manager_->CreateNamedOutputResource(
+           filter_prefix_, rewritten_url, NULL, message_handler));
+    if (!output_resource->IsWritten() ||
+        !resource_manager_->FetchOutputResource(
+            output_resource.get(), NULL, NULL, message_handler)) {
+      scoped_ptr<Image> image(GetImage(rewritten_url_proto,
+                                       input_resource.get()));
+      const ContentType* content_type = NULL;
+
+      if (image != NULL) {
+        // Even if we know the content type from the extension coming
+        // in, the content-type can change as a result of compression,
+        // e.g. gif to png, or anying to vp8.
+        //
+        // TODO(jmaessen): test this.
+        switch (image->image_type()) {
+          case Image::IMAGE_JPEG:
+            content_type = &kContentTypeJpeg;
+            break;
+          case Image::IMAGE_PNG:
+            content_type = &kContentTypePng;
+            break;
+          case Image::IMAGE_GIF:
+            content_type = &kContentTypeGif;
+            break;
+          default:
+            html_parse_->ErrorHere(
+                "Cannot detect content type of image url `%s`", src->value());
+            break;
+        }
+        if (content_type != NULL) {
+          output_resource->SetType(content_type);
+          OptimizeImage(input_resource.get(), rewritten_url_proto, image.get(),
+                        output_resource.get());
+        }
+      }
+    }
+
+    if (output_resource->IsWritten()) {
+      if (output_resource->metadata()->status_code() == HttpStatus::OK) {
+        html_parse_->InfoHere("%s remapped to %s",
+                              src->value(), output_resource->url().c_str());
+        src->SetValue(output_resource->url());
+        if (rewrite_count_ != NULL) {
+          rewrite_count_->Add(1);
+        }
+      } else if (output_resource->metadata()->status_code() == kInlineImage) {
+        html_parse_->InfoHere("%s inlined", src->value());
+        src->SetValue(output_resource->contents());
+      } else {
+        html_parse_->InfoHere("%s not rewritten due to lack of benefit",
+                              src->value());
       }
     }
   }
@@ -342,8 +382,7 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
                               message_handler);
           response_headers->set_major_version(1);
           response_headers->set_minor_version(1);
-          response_headers->set_status_code(HttpStatus::TEMPORARY_REDIRECT);
-          response_headers->set_reason_phrase("Temporary redirect");
+          response_headers->SetStatusAndReason(HttpStatus::TEMPORARY_REDIRECT);
           response_headers->Add("Location", url_proto.origin_url().c_str());
           response_headers->Add("Content-Type", "text/html");
         }

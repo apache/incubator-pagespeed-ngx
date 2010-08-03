@@ -50,11 +50,14 @@ OutputResource::~OutputResource() {
 bool OutputResource::OutputWriter::Write(
     const StringPiece& data, MessageHandler* handler) {
   hasher_->Add(data);
-  return FileWriter::Write(data, handler);
+  bool ret = http_value_->Write(data, handler);
+  ret &= FileWriter::Write(data, handler);
+  return ret;
 }
 
 OutputResource::OutputWriter* OutputResource::BeginWrite(
     MessageHandler* handler) {
+  value_.Clear();
   Hasher* hasher = resource_manager_->hasher();
   hasher->Reset();
   CHECK(!writing_complete_);
@@ -80,7 +83,7 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
   }
   OutputWriter* writer = NULL;
   if (success) {
-    writer = new OutputWriter(output_file_, hasher);
+    writer = new OutputWriter(output_file_, hasher, &value_);
   }
   return writer;
 }
@@ -88,6 +91,7 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
 bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
   CHECK(!writing_complete_);
   CHECK(output_file_ != NULL);
+  value_.SetHeaders(meta_data_);
   Hasher* hasher = writer->hasher();
   hasher->ComputeHash(&hash_);
   writing_complete_ = true;
@@ -179,6 +183,11 @@ bool OutputResource::Read(MessageHandler* handler) {
 
 bool OutputResource::IsWritten() const {
   return writing_complete_;
+}
+
+void OutputResource::SetType(const ContentType* content_type) {
+  Resource::SetType(content_type);
+  set_suffix(content_type->file_extension());
 }
 
 }  // namespace net_instaweb

@@ -135,7 +135,7 @@ bool JavascriptFilter::WriteExternalScriptTo(
   bool ok = false;
   MessageHandler* message_handler = html_parse_->message_handler();
   int64 origin_expire_time_ms = script_resource->CacheExpirationTimeMs();
-  if (resource_manager_->Write(script_out, script_dest,
+  if (resource_manager_->Write(HttpStatus::OK, script_out, script_dest,
                                origin_expire_time_ms, message_handler)) {
     ok = true;
     html_parse_->InfoHere("Rewrite script %s to %s",
@@ -179,10 +179,9 @@ void JavascriptFilter::RewriteExternalScript() {
           // Rewriting happened but wasn't useful; remember this for later
           // so we don't attempt to rewrite twice.
           html_parse_->InfoHere("Script %s didn't shrink", script_url.c_str());
-          script_dest->metadata()->set_status_code(
-              HttpStatus::INTERNAL_SERVER_ERROR);
           int64 origin_expire_time_ms = script_input->CacheExpirationTimeMs();
-          resource_manager_->Write("", script_dest, origin_expire_time_ms,
+          resource_manager_->Write(HttpStatus::INTERNAL_SERVER_ERROR,
+                                   "", script_dest, origin_expire_time_ms,
                                    message_handler);
         }
       } else {

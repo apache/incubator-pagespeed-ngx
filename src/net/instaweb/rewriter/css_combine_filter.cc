@@ -223,7 +223,7 @@ bool CssCombineFilter::WriteCombination(
                                               &writer, handler);
   }
   if (written) {
-    resource_manager_->Write(combined_contents, combination,
+    resource_manager_->Write(HttpStatus::OK, combined_contents, combination,
                              min_origin_expiration_time_ms, handler);
   }
   return written;

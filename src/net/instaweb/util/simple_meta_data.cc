@@ -19,6 +19,7 @@
 #include "net/instaweb/util/public/simple_meta_data.h"
 
 #include <stdio.h>
+#include <time.h>
 #include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -221,6 +222,18 @@ bool SimpleMetaData::IsProxyCacheable() const {
 int64 SimpleMetaData::CacheExpirationTimeMs() const {
   CHECK(!cache_fields_dirty_);
   return expiration_time_ms_;
+}
+
+void SimpleMetaData::SetDate(int64 date_ms) {
+  time_t time = date_ms / 1000;
+  char buf[100];  // man ctime says buffer should be at least 26.
+  Add("Date", ctime_r(&time, buf));
+}
+
+void SimpleMetaData::SetLastModified(int64 last_modified_ms) {
+  time_t time = last_modified_ms / 1000;
+  char buf[100];  // man ctime says buffer should be at least 26.
+  Add("Last-Modified", ctime_r(&time, buf));
 }
 
 void SimpleMetaData::ComputeCaching() {

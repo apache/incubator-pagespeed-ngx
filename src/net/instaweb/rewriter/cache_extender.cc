@@ -119,8 +119,9 @@ void CacheExtender::StartElement(HtmlElement* element) {
           }
         }
 
-        resource_manager_->Write(input_resource->contents(), output.get(),
-                      headers->CacheExpirationTimeMs(), message_handler);
+        resource_manager_->Write(HttpStatus::OK, input_resource->contents(),
+                                 output.get(), headers->CacheExpirationTimeMs(),
+                                 message_handler);
         href->SetValue(output->url());
         if (extension_count_ != NULL) {
           extension_count_->Add(1);

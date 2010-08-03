@@ -174,7 +174,6 @@
       'sources': [
         'rewriter/javascript_code_block.cc',
         'rewriter/javascript_filter.cc',
-        'rewriter/javascript_minification.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

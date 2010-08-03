@@ -64,6 +64,8 @@ class SimpleMetaData : public MetaData {
   virtual bool IsCacheable() const;
   virtual bool IsProxyCacheable() const;
   virtual int64 CacheExpirationTimeMs() const;
+  virtual void SetDate(int64 date_ms);
+  virtual void SetLastModified(int64 last_modified_ms);
 
   virtual bool headers_complete() const { return headers_complete_; }
 

@@ -81,17 +81,35 @@ ResourceManager::~ResourceManager() {
 
 // TODO(jmarantz): consider moving this method to MetaData
 void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
-                                        MetaData* header) {
+                                        MetaData* header) const {
   CHECK(header->major_version() == 0);
+  CHECK(header->NumAttributes() == 0);
   header->set_major_version(1);
   header->set_minor_version(1);
-  header->set_status_code(HttpStatus::OK);
-  header->set_reason_phrase("OK");
+  header->SetStatusAndReason(HttpStatus::OK);
   if (content_type != NULL) {
     header->Add("Content-Type", content_type->mime_type());
   }
   header->Add(kCacheControl, "public, max-age=31536000");
+
+  // PageSpeed claims the "Vary" header is needed to avoid proxy cache
+  // issues for clients where some accept gzipped content and some don't.
   header->Add("Vary", "Accept-Encoding");
+
+  // TODO(jmarantz): add date/last-modified headers by default.  This
+  // will require a fair bit of regolding.  This should also be coupled
+  // with a change to rewriter_main.cc to use a mock timer so that the
+  // regolds will be stable.
+#if 0
+  int64 now_ms = http_cache_->timer()->NowMs();
+  CharStarVector v;
+  if (!header->Lookup("Date", &v)) {
+    header->SetDate(now_ms);
+  }
+  if (!header->Lookup("Last-Modified", &v)) {
+    header->SetLastModified(now_ms);
+  }
+#endif
 
   // TODO(jmarantz): Page-speed suggested adding a "Last-Modified",header
   // for cache validation.  To do this we must track the max of all
@@ -104,7 +122,6 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
 // TODO(jmarantz): consider moving this method to MetaData
 void ResourceManager::SetContentType(const ContentType* content_type,
                                      MetaData* header) {
-  CHECK(header->major_version() != 0);
   CHECK(content_type != NULL);
   header->RemoveAll("Content-Type");
   header->Add("Content-Type", content_type->mime_type());
@@ -243,6 +260,11 @@ Resource* ResourceManager::CreateInputResource(
   return resource;
 }
 
+// TODO(jmarantz): remove writer/response_headers args from this function
+// and force caller to pull those directly from output_resource, as that will
+// save the effort of copying the headers.
+//
+// It will also simplify this routine quite a bit.
 bool ResourceManager::FetchOutputResource(
     OutputResource* output_resource,
     Writer* writer, MetaData* response_headers,
@@ -255,34 +277,39 @@ bool ResourceManager::FetchOutputResource(
   //
   // TODO(jmarantz): consider formalizing this in the HTTPCache API and
   // doing the StrCat inside.
+  bool ret = false;
   std::string content_key = StrCat(kContentsCacheKeyPrefix,
                                     output_resource->filename());
-  bool ret = false;
   HTTPValue value;
   StringPiece content;
   if (http_cache_->Get(content_key.c_str(), &value, handler) &&
-      value.ExtractContents(&content) &&
-      value.ExtractHeaders(response_headers, handler) &&
-      writer->Write(content, handler)) {
+      ((writer == NULL) || value.ExtractContents(&content)) &&
+      ((response_headers == NULL) ||
+       value.ExtractHeaders(response_headers, handler)) &&
+      ((writer == NULL) || writer->Write(content, handler))) {
     ret = true;
   } else {
     if (output_resource->Read(handler)) {
       StringPiece contents = output_resource->contents();
       MetaData* meta_data = output_resource->metadata();
       http_cache_->Put(content_key.c_str(), *meta_data, contents, handler);
-      ret = writer->Write(contents, handler);
-      response_headers->CopyFrom(*meta_data);
+      ret = ((writer == NULL) || writer->Write(contents, handler));
+      if (response_headers != NULL) {
+        response_headers->CopyFrom(*meta_data);
+      }
     }
   }
   return ret;
 }
 
-bool ResourceManager::Write(const StringPiece& contents,
+bool ResourceManager::Write(HttpStatus::Code status_code,
+                            const StringPiece& contents,
                             OutputResource* output,
                             int64 origin_expire_time_ms,
                             MessageHandler* handler) {
   MetaData* meta_data = output->metadata();
   SetDefaultHeaders(output->type(), meta_data);
+  meta_data->SetStatusAndReason(status_code);
 
   OutputResource::OutputWriter* writer = output->BeginWrite(handler);
   bool ret = (writer != NULL);
@@ -306,12 +333,7 @@ bool ResourceManager::Write(const StringPiece& contents,
     // to cache forever.
     std::string content_key = StrCat(kContentsCacheKeyPrefix,
                                       output->filename());
-    if (ret) {
-      http_cache_->Put(content_key.c_str(), *meta_data, contents, handler);
-    } else {
-      meta_data->set_status_code(HttpStatus::NOT_FOUND);
-      meta_data->set_reason_phrase("Not-Found");
-    }
+    http_cache_->Put(content_key.c_str(), &output->value_, handler);
 
     // Now we'll mutate meta_data to expire when the origin expires, and
     // map the name to the filename.

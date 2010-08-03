@@ -34,4 +34,9 @@ int64 Resource::CacheExpirationTimeMs() const {
   return input_expire_time_ms;
 }
 
+// Note: OutputResource overrides this to also set the file extension.
+void Resource::SetType(const ContentType* type) {
+  type_ = type;
+}
+
 }  // namespace net_instaweb

@@ -62,7 +62,7 @@ class Resource {
   MetaData* metadata() { return &meta_data_; }
   const MetaData* metadata() const { return &meta_data_; }
   const ContentType* type() { return type_; }
-  void set_type(const ContentType* type) { type_ = type; }
+  virtual void SetType(const ContentType* type);
 
   // Read complete resource, storing MetaData and contents.
   virtual bool Read(MessageHandler* message_handler) = 0;

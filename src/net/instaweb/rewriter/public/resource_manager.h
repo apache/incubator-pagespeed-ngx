@@ -24,6 +24,7 @@
 #include <vector>
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/util/public/meta_data.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 
@@ -114,8 +115,8 @@ class ResourceManager {
   // Set up a basic header for a given content_type.
   // If content_type is null, the Content-Type is omitted.
   // This method may only be called once on a header.
-  static void SetDefaultHeaders(const ContentType* content_type,
-                                MetaData* header);
+  void SetDefaultHeaders(const ContentType* content_type,
+                         MetaData* header) const;
 
   // Changes the content type of a pre-initialized header.
   void SetContentType(const ContentType* content_type, MetaData* header);
@@ -139,8 +140,9 @@ class ResourceManager {
   // Writes the specified contents into the output resource, retaining
   // both a name->filename map and the filename->contents map.
   //
-  // TODO(jmarantz): add status-code and last_modified args.
-  bool Write(const StringPiece& contents, OutputResource* output,
+  // TODO(jmarantz): add last_modified arg.
+  bool Write(HttpStatus::Code status_code,
+             const StringPiece& contents, OutputResource* output,
              int64 origin_expire_time_ms, MessageHandler* handler);
 
   // TODO(jmarantz): check thread safety in Apache.

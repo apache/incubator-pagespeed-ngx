@@ -65,19 +65,25 @@ class OutputResource : public Resource {
   // CacheExtender is currently the only place where we need this.
   void set_suffix(const StringPiece& ext) { ext.CopyToString(&suffix_); }
 
+  // Sets the type of the output resource, and thus also its suffix.
+  virtual void SetType(const ContentType* type);
+
  private:
   friend class ResourceManager;
   class OutputWriter : public FileWriter {
    public:
-    OutputWriter(FileSystem::OutputFile* file, Hasher* hasher)
+    OutputWriter(FileSystem::OutputFile* file, Hasher* hasher,
+                 HTTPValue* http_value)
         : FileWriter(file),
-          hasher_(hasher) {
+          hasher_(hasher),
+          http_value_(http_value) {
     }
 
     virtual bool Write(const StringPiece& data, MessageHandler* handler);
     Hasher* hasher() const { return hasher_; }
    private:
     Hasher* hasher_;
+    HTTPValue* http_value_;
   };
 
   void SetHash(const StringPiece& hash);
