@@ -296,13 +296,12 @@ bool ResourceManager::FetchOutputResource(
   // TODO(jmarantz): consider formalizing this in the HTTPCache API and
   // doing the StrCat inside.
   bool ret = false;
-  HTTPValue value;
   StringPiece content;
   std::string url = output_resource->url();
   MetaData* meta_data = output_resource->metadata();
-  if (http_cache_->Get(url, &value, handler) &&
-      ((writer == NULL) || value.ExtractContents(&content)) &&
-      value.ExtractHeaders(meta_data, handler) &&
+  if (http_cache_->Get(url, &output_resource->value_, handler) &&
+      ((writer == NULL) || output_resource->value_.ExtractContents(&content)) &&
+      output_resource->value_.ExtractHeaders(meta_data, handler) &&
       ((writer == NULL) || writer->Write(content, handler))) {
     ret = true;
   } else {

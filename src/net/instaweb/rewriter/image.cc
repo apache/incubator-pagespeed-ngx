@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/image.h"
 
+#include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
@@ -68,24 +69,27 @@ bool WriteTempFileWithContentType(
   return ok;
 }
 
+// char to int *without sign extension*.
+inline int charToInt(char c) {
+  uint8 uc = static_cast<uint8>(c);
+  return static_cast<int>(uc);
+}
+
 inline int JpegIntAtPosition(const StringPiece& buf, size_t pos) {
-  return static_cast<int>(
-      (static_cast<unsigned int>(buf[pos]) << 8) +
-      (static_cast<unsigned int>(buf[pos + 1])));
+  return (charToInt(buf[pos]) << 8) |
+         (charToInt(buf[pos + 1]));
 }
 
 inline int GifIntAtPosition(const StringPiece& buf, size_t pos) {
-  return static_cast<int>(
-      (static_cast<unsigned int>(buf[pos + 1]) << 8) +
-      (static_cast<unsigned int>(buf[pos])));
+  return (charToInt(buf[pos + 1]) << 8) |
+         (charToInt(buf[pos]));
 }
 
 inline int PngIntAtPosition(const StringPiece& buf, size_t pos) {
-  return static_cast<int>(
-      (static_cast<unsigned int>(buf[pos    ]) << 24) +
-      (static_cast<unsigned int>(buf[pos + 1]) << 16) +
-      (static_cast<unsigned int>(buf[pos + 2]) << 8) +
-      (static_cast<unsigned int>(buf[pos + 3])));
+  return (charToInt(buf[pos    ]) << 24) |
+         (charToInt(buf[pos + 1]) << 16) |
+         (charToInt(buf[pos + 2]) << 8) |
+         (charToInt(buf[pos + 3]));
 }
 
 }  // namespace
@@ -121,7 +125,7 @@ void Image::FindJpegSize() {
   size_t pos = 2;  // Position of first data block after header.
   while (pos < buf.size()) {
     // Read block identifier
-    unsigned char id = static_cast<unsigned char>(buf[pos++]);
+    int id = charToInt(buf[pos++]);
     if (id == 0xff) {  // Padding byte
       continue;
     }
@@ -197,11 +201,11 @@ void Image::ComputeImageType() {
   if (buf.size() >= 8) {
     // Note that gcc rightly complains about constant ranges with the
     // negative char constants unless we cast.
-    switch (static_cast<unsigned char>(buf[0])) {
+    switch (charToInt(buf[0])) {
       case 0xff:
         // either jpeg or jpeg2
         // (the latter we don't handle yet, and don't bother looking for).
-        if (static_cast<unsigned char>(buf[1]) == 0xd8) {
+        if (charToInt(buf[1]) == 0xd8) {
           image_type_ = IMAGE_JPEG;
           FindJpegSize();
         }

@@ -71,13 +71,14 @@ const bool kLogImageElements = false;
 // We overload some http status codes for our own purposes
 
 // This is used to retain the knowledge that a particular image is not
-// profitable to optimize.
-const HttpStatus::Code kNotCacheable = HttpStatus::INTERNAL_SERVER_ERROR;
+// profitable to optimize.  According to pagespeed, 200, 203, 206, and
+// 304 are cacheable.  So we must select from those.
+const HttpStatus::Code kNotOptimizable = HttpStatus::NOT_MODIFIED;  // 304
 
 // This is used to indicate that an image has been determined to be so
 // small that we should inline it in the HTML, rather than serving it as
-// an external resource.
-const HttpStatus::Code kInlineImage = HttpStatus::SEE_OTHER;
+// an external resource.  This must be a cacheable code.
+const HttpStatus::Code kInlineImage = HttpStatus::NO_CONTENT;  // 204
 
 }  // namespace
 
@@ -165,8 +166,8 @@ void ImgRewriteFilter::OptimizeImage(
     } else {
       // Write nothing and set status code to indicate not to rewrite
       // in future.
-      resource_manager_->Write(kNotCacheable, "", result, origin_expire_time_ms,
-                               message_handler);
+      resource_manager_->Write(kNotOptimizable, "", result,
+                               origin_expire_time_ms, message_handler);
     }
   }
 }
