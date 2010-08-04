@@ -21,6 +21,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/http_cache.h"
+#include "net/instaweb/util/public/http_value.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -38,6 +39,16 @@ class UrlAsyncFetcher;
 // This fetcher will return true and provide an immediate result for
 // entries in the cache.  When entries are not in the cache, it will
 // initiate an asynchronous 'get' and store the result in the cache.
+//
+// When the supplied url fetcher indicates that the entry is not
+// cacheable, then we cache the fact that the resource is not cacheable
+// for 5 minutes, and during that time we will not request the element
+// again, but instead will return false from StreamingUrlFetch.  This
+// will allow us to quickly punt on rewrites for non-cacheable items.
+//
+// TODO(jmarantz): allow experimental adjustment of the timeout
+// period, and whether or not we will retain resources marked as
+// cache-control:private.
 //
 // See also CacheUrlAsyncFetcher, which will yield its results asynchronously
 // for elements not in the cache, and immediately for results that are.
@@ -84,12 +95,11 @@ class CacheUrlFetcher : public UrlFetcher {
     void UpdateCache();
 
    protected:
-    std::string content_;
+    HTTPValue value_;
     MessageHandler* message_handler_;
 
    private:
     std::string url_;
-    StringWriter writer_;
     HTTPCache* http_cache_;
     Callback* callback_;
     bool force_caching_;
@@ -99,6 +109,12 @@ class CacheUrlFetcher : public UrlFetcher {
     force_caching_ = force;
     http_cache_->set_force_caching(force);
   }
+
+  // Determines whether the HTTP response headers indicate a response that
+  // we have cached to indicate that the response is not cacheable.  This
+  // is in this header file so the functionality can be shared between
+  // CacheUrlAsyncFetcher and CacheUrlFetcher.
+  static bool RememberNotCached(const MetaData& headers);
 
  private:
   HTTPCache* http_cache_;

@@ -111,13 +111,17 @@ class HtmlParse {
   //
   // This differs from AddParentToSequence in that the parent is already
   // in the DOM-tree.
-  bool MoveCurrentIntoParent(HtmlElement* new_parent);
+  bool MoveCurrentInto(HtmlElement* new_parent);
 
   HtmlElement* NewElement(HtmlElement* parent, Atom tag);
 
   // If the given node is rewritable, delete it and all of its children (if
   // any) and return true; otherwise, do nothing and return false.
   bool DeleteElement(HtmlNode* node);
+
+  // Delete a parent element, retaining any children and moving them to
+  // reside under the parent's parent.
+  bool DeleteSavingChildren(HtmlElement* element);
 
   // If possible, replace the existing node with the new node and return true;
   // otherwise, do nothing and return false.
@@ -208,7 +212,9 @@ class HtmlParse {
   void CheckEventParent(HtmlEvent* event, HtmlElement* expect,
                         HtmlElement* actual);
   void CheckParentFromAddEvent(HtmlEvent* event);
-  void FixParents(HtmlNode* first, HtmlNode* last, HtmlElement* new_parent);
+  void FixParents(const HtmlEventListIterator& begin,
+                  const HtmlEventListIterator& end_inclusive,
+                  HtmlElement* new_parent);
 
   SymbolTableInsensitive string_table_;
   std::vector<HtmlFilter*> filters_;

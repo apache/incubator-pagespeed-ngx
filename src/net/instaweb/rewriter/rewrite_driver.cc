@@ -121,6 +121,7 @@ void RewriteDriver::CombineCssFiles() {
 }
 
 void RewriteDriver::MoveCssToHead() {
+  AddHead();
   CHECK(html_writer_filter_ == NULL);
   CHECK(css_move_to_head_filter_.get() == NULL);
   css_move_to_head_filter_.reset(
@@ -257,7 +258,11 @@ void RewriteDriver::FetchResource(
     std::string resource_name;
     resource_manager_->filename_encoder()->Encode(
         resource_manager_->filename_prefix(), resource, &resource_name);
-    CHECK(resource_name == output_resource->filename());
+
+    // strcasecmp is needed for this check because we will canonicalize
+    // file extensions based on the table in util/content_type.cc.
+    CHECK(strcasecmp(resource_name.c_str(),
+                     output_resource->filename().c_str()) == 0);
 
     callback = new ResourceDeleterCallback(output_resource, callback);
     if (resource_manager_->FetchOutputResource(

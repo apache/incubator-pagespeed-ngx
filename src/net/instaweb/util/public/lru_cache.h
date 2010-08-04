@@ -78,6 +78,10 @@ class LRUCache : public CacheInterface {
   // Sanity check the cache data structures.
   void SanityCheck();
 
+  // Clear the entire cache.  Used primarily for testing.  Note that this
+  // will not clear the stats, however it will update current_bytes_in_cache_.
+  void Clear();
+
  private:
   typedef std::pair<const std::string*, SharedString> KeyValuePair;
   typedef std::list<KeyValuePair*> EntryList;

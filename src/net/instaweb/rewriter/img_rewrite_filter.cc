@@ -165,7 +165,8 @@ void ImgRewriteFilter::OptimizeImage(
     } else {
       // Write nothing and set status code to indicate not to rewrite
       // in future.
-      resource_manager_->Write(kNotCacheable, "", result, 0, message_handler);
+      resource_manager_->Write(kNotCacheable, "", result, origin_expire_time_ms,
+                               message_handler);
     }
   }
 }
@@ -177,7 +178,7 @@ Image* ImgRewriteFilter::GetImage(const ImgRewriteUrl& url_proto,
   if (img_resource == NULL) {
     html_parse_->WarningHere("no input resource for %s",
                              url_proto.origin_url().c_str());
-  } else if (!img_resource->Read(message_handler)) {
+  } else if (!resource_manager_->Read(img_resource, message_handler)) {
     html_parse_->WarningHere("%s wasn't loaded",
                              img_resource->url().c_str());
   } else if (!img_resource->ContentsValid()) {
@@ -226,7 +227,8 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
   scoped_ptr<Resource> input_resource(
       resource_manager_->CreateInputResource(src->value(), message_handler));
 
-  if ((input_resource != NULL) && input_resource->Read(message_handler)) {
+  if ((input_resource != NULL) &&
+      resource_manager_->Read(input_resource.get(), message_handler)) {
     // Always rewrite to absolute url used to obtain resource.
     // This lets us do context-free fetches of content.
     rewritten_url_proto.set_origin_url(input_resource->url());

@@ -44,7 +44,7 @@ CssTagScanner::CssTagScanner(HtmlParse* html_parse) {
 // TODO(jmarantz): add test for this method to css_tag_scanner_test.cc
 bool CssTagScanner::ParseCssElement(
     HtmlElement* element, HtmlElement::Attribute** href, const char** media) {
-  bool ret = false;
+  int num_required_attributes_found = 0;
   *media = "";
   *href = NULL;
   if (element->tag() == s_link_) {
@@ -57,28 +57,43 @@ bool CssTagScanner::ParseCssElement(
     // 'media=' is optional, but our filter requires href=*, and rel=stylesheet,
     // and type=text/css.
     //
+    // type should be "text/css", but if it's omitted, that's OK.
+    //
     // TODO(jmarantz): Consider recognizing a wider variety of CSS references,
     // including inline css so that the outline_filter can use it.
-    if ((num_attrs == 3) || (num_attrs == 4)) {
+    if ((num_attrs >= 2) || (num_attrs <= 4)) {
       for (int i = 0; i < num_attrs; ++i) {
         HtmlElement::Attribute& attr = element->attribute(i);
         if (attr.name() == s_href_) {
           *href = &attr;
-          ret = true;
+          ++num_required_attributes_found;
+        } else if (attr.name() == s_rel_) {
+          if (strcasecmp(attr.value(), kStylesheet) == 0) {
+            ++num_required_attributes_found;
+          } else {
+            // rel=something_else.  abort.
+            num_required_attributes_found = 0;
+            break;
+          }
         } else if (attr.name() == s_media_) {
           *media = attr.value();
-        } else if (!(((attr.name() == s_rel_) &&
-                      (strcasecmp(attr.value(), kStylesheet) == 0)) ||
-                     ((attr.name() == s_type_) &&
-                      (strcasecmp(attr.value(), kTextCss) == 0)))) {
-          // TODO(jmarantz): warn when CSS elements aren't quite what we expect?
-          ret = false;
-          break;
+        } else {
+          // The only other attribute we should see is type=text/css.  This
+          // attribute is not required, but if the attribute we are
+          // finding here is anything else then abort.
+          if ((attr.name() != s_type_) ||
+              (strcasecmp(attr.value(), kTextCss) != 0)) {
+            num_required_attributes_found = 0;
+            break;
+          }
         }
       }
     }
   }
-  return ret;
+
+  // we require both 'href=...' and 'rel=stylesheet'.
+  // TODO(jmarantz): warn when CSS elements aren't quite what we expect?
+  return (num_required_attributes_found >= 2);
 }
 
 namespace {

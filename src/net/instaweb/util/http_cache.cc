@@ -36,7 +36,7 @@ bool HTTPCache::IsCurrentlyValid(const MetaData& headers) {
   return headers.CacheExpirationTimeMs() > timer_->NowMs();
 }
 
-bool HTTPCache::Get(const char* key, HTTPValue* value,
+bool HTTPCache::Get(const std::string& key, HTTPValue* value,
                     MessageHandler* handler) {
   SharedString cache_buffer;
   SimpleMetaData headers;
@@ -46,13 +46,13 @@ bool HTTPCache::Get(const char* key, HTTPValue* value,
           IsCurrentlyValid(headers));
 }
 
-void HTTPCache::Put(const char* key, HTTPValue* value,
+void HTTPCache::Put(const std::string& key, HTTPValue* value,
                     MessageHandler* handler) {
   SharedString& shared_string = value->share();
   cache_->Put(key, &shared_string);
 }
 
-void HTTPCache::Put(const char* key, const MetaData& headers,
+void HTTPCache::Put(const std::string& key, const MetaData& headers,
                     const StringPiece& content,
                     MessageHandler* handler) {
   if (!IsCurrentlyValid(headers)) {
@@ -65,7 +65,7 @@ void HTTPCache::Put(const char* key, const MetaData& headers,
   Put(key, &value, handler);
 }
 
-CacheInterface::KeyState HTTPCache::Query(const char* key) {
+CacheInterface::KeyState HTTPCache::Query(const std::string& key) {
   return cache_->Query(key);
 }
 

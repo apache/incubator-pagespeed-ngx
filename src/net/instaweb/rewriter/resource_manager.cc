@@ -35,21 +35,17 @@ namespace {
 
 const char kCacheControl[] = "Cache-control";
 
-// These two constants are used to segragate the keys contained in
-// the HTTP cache.  We want to store two distinct mappings in the
-// http cache.
+// Our HTTP cache mostly stores full URLs, including the http: prefix,
+// mapping them into the URL contents and HTTP headers.  Howwever, we
+// also put name->hash mappings into the HTTP cache, and we prefix
+// these with "ResourceName:" to disambiguate them.
 //
-// We want to store a mapping from the base name of a resource into
-// the hash.  This mapping has a TTL based the minimum TTL of the
-// input resources used to construct the resource.  After that TTL has
-// expired, we will need to re-fetch the resources from their origin,
-// and recompute the hash.
+// Cache entries prefixed this way map the base name of a resource
+// into the hash-code of the contents.  This mapping has a TTL based
+// on the minimum TTL of the input resources used to construct the
+// resource.  After that TTL has expired, we will need to re-fetch the
+// resources from their origin, and recompute the hash.
 const char kFilenameCacheKeyPrefix[] = "ResourceName:";
-
-// We also store a mapping from the hashed name to the resource
-// contents.  This can have an arbitrarily long TTL since the hash
-// of the content is in the key.
-const char kContentsCacheKeyPrefix[] = "ResourceContents:";
 
 }  // namespace
 
@@ -96,11 +92,7 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
   // issues for clients where some accept gzipped content and some don't.
   header->Add("Vary", "Accept-Encoding");
 
-  // TODO(jmarantz): add date/last-modified headers by default.  This
-  // will require a fair bit of regolding.  This should also be coupled
-  // with a change to rewriter_main.cc to use a mock timer so that the
-  // regolds will be stable.
-#if 0
+  // TODO(jmarantz): add date/last-modified headers by default.
   int64 now_ms = http_cache_->timer()->NowMs();
   CharStarVector v;
   if (!header->Lookup("Date", &v)) {
@@ -109,12 +101,12 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
   if (!header->Lookup("Last-Modified", &v)) {
     header->SetLastModified(now_ms);
   }
-#endif
 
   // TODO(jmarantz): Page-speed suggested adding a "Last-Modified",header
   // for cache validation.  To do this we must track the max of all
   // Last-Modified values for all input resources that are used to
-  // create this output resource.
+  // create this output resource.  For now we are using the current
+  // time.
 
   header->ComputeCaching();
 }
@@ -138,6 +130,27 @@ OutputResource* ResourceManager::CreateGeneratedOutputResource(
                                    handler);
 }
 
+// Constructs a name key to help map all the parts of a resource name,
+// excluding the hash, to the hash.  In other words, the full name of
+// a resource is of the form
+//    prefix.encoded_resource_name.hash.extension
+// we know prefix and name, but not the hash, and we don't always even
+// have the extension, which might have changes as the result of, for
+// exmaple image optimization (e.g. gif->png).  But We can "remember"
+// the hash/extension for as long as the origin URL was cacheable.  So we
+// construct this as a key:
+//    ResourceName:prefix.encoded_resource_name
+// and use that to map to the hash-code and extension.  If we know the
+// hash-code then we may also be able to look up the contents in the same
+// cache.
+std::string ResourceManager::ConstructNameKey(OutputResource* output) const {
+  const char* separator = RewriteFilter::prefix_separator();
+  std::string name_key = StrCat(
+      kFilenameCacheKeyPrefix, output->filter_prefix(), separator,
+      output->name());
+  return name_key;
+}
+
 OutputResource* ResourceManager::CreateNamedOutputResource(
     const StringPiece& filter_prefix,
     const StringPiece& name,
@@ -149,15 +162,20 @@ OutputResource* ResourceManager::CreateNamedOutputResource(
   // Determine whether this output resource is still valid by looking
   // up by hash in the http cache.  Note that this cache entry will
   // expire when any of the origin resources expire.
-  std::string separator = RewriteFilter::prefix_separator();
-  std::string prefix_name = StrCat(filter_prefix, separator, name);
   SimpleMetaData meta_data;
-  StringPiece hash;
+  StringPiece hash_extension;
   HTTPValue value;
-  std::string name_key = StrCat(kFilenameCacheKeyPrefix, prefix_name);
-  if (http_cache_->Get(name_key.c_str(), &value, handler) &&
-      value.ExtractContents(&hash)) {
-    resource->SetHash(hash);
+
+  if (http_cache_->Get(ConstructNameKey(resource), &value, handler) &&
+      value.ExtractContents(&hash_extension)) {
+    std::vector<StringPiece> components;
+    const char* separator = RewriteFilter::prefix_separator();
+    SplitStringPieceToVector(hash_extension, separator, &components, false);
+    if (components.size() == 2) {
+      resource->SetHash(components[0]);
+      // Note that the '.' must be included in the suffix
+      resource->set_suffix(StrCat(separator, components[1]));
+    }
   }
   return resource;
 }
@@ -278,26 +296,24 @@ bool ResourceManager::FetchOutputResource(
   // TODO(jmarantz): consider formalizing this in the HTTPCache API and
   // doing the StrCat inside.
   bool ret = false;
-  std::string content_key = StrCat(kContentsCacheKeyPrefix,
-                                    output_resource->filename());
   HTTPValue value;
   StringPiece content;
-  if (http_cache_->Get(content_key.c_str(), &value, handler) &&
+  std::string url = output_resource->url();
+  MetaData* meta_data = output_resource->metadata();
+  if (http_cache_->Get(url, &value, handler) &&
       ((writer == NULL) || value.ExtractContents(&content)) &&
-      ((response_headers == NULL) ||
-       value.ExtractHeaders(response_headers, handler)) &&
+      value.ExtractHeaders(meta_data, handler) &&
       ((writer == NULL) || writer->Write(content, handler))) {
     ret = true;
   } else {
     if (output_resource->Read(handler)) {
       StringPiece contents = output_resource->contents();
-      MetaData* meta_data = output_resource->metadata();
-      http_cache_->Put(content_key.c_str(), *meta_data, contents, handler);
+      http_cache_->Put(url, *meta_data, contents, handler);
       ret = ((writer == NULL) || writer->Write(contents, handler));
-      if (response_headers != NULL) {
-        response_headers->CopyFrom(*meta_data);
-      }
     }
+  }
+  if (ret && (response_headers != NULL) && (response_headers != meta_data)) {
+    response_headers->CopyFrom(*meta_data);
   }
   return ret;
 }
@@ -331,12 +347,10 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
     // However, the hashed output filename can live, essentially, forever.
     // This is what we'll hash first as meta_data's default headers are
     // to cache forever.
-    std::string content_key = StrCat(kContentsCacheKeyPrefix,
-                                      output->filename());
-    http_cache_->Put(content_key.c_str(), &output->value_, handler);
+    http_cache_->Put(output->url(), &output->value_, handler);
 
     // Now we'll mutate meta_data to expire when the origin expires, and
-    // map the name to the filename.
+    // map the name to the hash.
     int64 delta_ms = origin_expire_time_ms - http_cache_->timer()->NowMs();
     int64 delta_sec = delta_ms / 1000;
     if (delta_sec > 0) {
@@ -348,9 +362,42 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
       origin_meta_data.RemoveAll(kCacheControl);
       origin_meta_data.Add(kCacheControl, cache_control.c_str());
       origin_meta_data.ComputeCaching();
-      std::string name_key = StrCat(kFilenameCacheKeyPrefix, output->name());
-      http_cache_->Put(name_key.c_str(), origin_meta_data, output->hash(),
-                       handler);
+      // Note: the '.' is already in the suffix.
+      // TODO(jmarantz): rationalize that we've theoretically made it possible
+      // to change the separator from '.' to soemthing else, when in reality
+      // that would be a real pain.
+      std::string hash_extension = StrCat(output->hash(), output->suffix());
+      http_cache_->Put(ConstructNameKey(output), origin_meta_data,
+                       hash_extension, handler);
+    }
+  }
+  return ret;
+}
+
+bool ResourceManager::Read(Resource* resource, MessageHandler* handler) {
+  bool ret = resource->Read(handler);
+  if (ret) {
+    // Try to determine the content type from the URL extension, or
+    // the response headers.
+    CharStarVector content_types;
+    MetaData* headers = resource->metadata();
+    const ContentType* content_type = NULL;
+    if (headers->Lookup("Content-type", &content_types)) {
+      for (int i = 0, n = content_types.size(); (i < n) && content_type == NULL;
+           ++i) {
+        content_type = MimeTypeToContentType(content_types[i]);
+      }
+    }
+
+    if (content_type == NULL) {
+      // If there is no content type in input headers, then try to
+      // determine it from the name.
+      std::string trimmed_url;
+      TrimWhitespace(resource->url(), &trimmed_url);
+      content_type = NameExtensionToContentType(trimmed_url);
+      if (content_type != NULL) {
+        resource->SetType(content_type);
+      }
     }
   }
   return ret;

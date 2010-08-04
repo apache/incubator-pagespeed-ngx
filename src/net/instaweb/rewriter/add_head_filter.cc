@@ -24,27 +24,58 @@
 namespace net_instaweb {
 
 AddHeadFilter::AddHeadFilter(HtmlParse* html_parse)
-    : html_parse_(html_parse) {
-  found_head_ = false;
-  s_head_ = html_parse->Intern("head");
-  s_body_ = html_parse->Intern("body");
+    : html_parse_(html_parse),
+      found_head_(false),
+      s_head_(html_parse->Intern("head")),
+      s_body_(html_parse->Intern("body")),
+      head_element_(NULL) {
 }
 
 void AddHeadFilter::StartDocument() {
   found_head_ = false;
+  head_element_ = NULL;
 }
 
 void AddHeadFilter::StartElement(HtmlElement* element) {
   if (!found_head_) {
     if (element->tag() == s_body_) {
-      HtmlElement* head_element = html_parse_->NewElement(
+      head_element_ = html_parse_->NewElement(
           element->parent(), s_head_);
-      html_parse_->InsertElementBeforeElement(element, head_element);
+      html_parse_->InsertElementBeforeElement(element, head_element_);
       found_head_ = true;
     } else if (element->tag() == s_head_) {
       found_head_ = true;
+      head_element_ = element;
     }
   }
+}
+
+void AddHeadFilter::EndElement(HtmlElement* element) {
+  // Detect elements that are children of a subsequent head.  Move them
+  // into the first head if possible.
+  if (found_head_ && (head_element_ != NULL) &&
+      html_parse_->IsRewritable(head_element_)) {
+    if ((element->tag() == s_head_) && (element != head_element_)) {
+      // There should be no elements left in the subsequent head, so
+      // remove it.
+      //
+      // TODO(jmarantz): split this merging functionality into its
+      // own separate filter, as it's riskier than the original
+      // intent of this filter, which was to add an empty head to
+      // an HTML document that lacked one.  We might want to
+      // be able to turn off head-merging but leave on add-head.
+      // We could also do this via a modifier flag rather than making
+      // a new filter.
+      bool moved = html_parse_->MoveCurrentInto(head_element_);
+      CHECK(moved) << "failed to move new head under old head";
+      bool deleted = html_parse_->DeleteSavingChildren(element);
+      CHECK(deleted) << "failed to delete extra head";
+    }
+  }
+}
+
+void AddHeadFilter::Flush() {
+  head_element_ = NULL;
 }
 
 void AddHeadFilter::EndDocument() {

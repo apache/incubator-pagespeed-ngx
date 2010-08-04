@@ -32,22 +32,36 @@ const int64 TIME_UNINITIALIZED = -1;
 
 namespace net_instaweb {
 
-SimpleMetaData::SimpleMetaData()
-    : parsing_http_(false),
-      parsing_value_(false),
-      headers_complete_(false),
-      cache_fields_dirty_(true),
-      expiration_time_ms_(TIME_UNINITIALIZED),
-      timestamp_ms_(TIME_UNINITIALIZED),
-      major_version_(0),
-      minor_version_(0),
-      status_code_(0) {
+SimpleMetaData::SimpleMetaData() {
+  Clear();
 }
 
 SimpleMetaData::~SimpleMetaData() {
+  Clear();
+}
+
+void SimpleMetaData::Clear() {
   for (int i = 0, n = attribute_vector_.size(); i < n; ++i) {
     delete [] attribute_vector_[i].second;
   }
+  attribute_map_.clear();
+  attribute_vector_.clear();
+
+  parsing_http_ = false;
+  parsing_value_ = false;
+  headers_complete_ = false;
+  cache_fields_dirty_ = false;
+  is_cacheable_ = false;
+  is_proxy_cacheable_ = false;   // accurate only if !cache_fields_dirty_
+  expiration_time_ms_= TIME_UNINITIALIZED;
+  timestamp_ms_= TIME_UNINITIALIZED;
+  parse_name_.clear();
+  parse_value_.clear();
+
+  major_version_ = 0;
+  minor_version_ = 0;
+  status_code_ = 0;
+  reason_phrase_.clear();
 }
 
 int SimpleMetaData::NumAttributes() const {
@@ -227,13 +241,17 @@ int64 SimpleMetaData::CacheExpirationTimeMs() const {
 void SimpleMetaData::SetDate(int64 date_ms) {
   time_t time = date_ms / 1000;
   char buf[100];  // man ctime says buffer should be at least 26.
-  Add("Date", ctime_r(&time, buf));
+  std::string trim_buffer;
+  TrimWhitespace(ctime_r(&time, buf), &trim_buffer);
+  Add("Date", trim_buffer.c_str());
 }
 
 void SimpleMetaData::SetLastModified(int64 last_modified_ms) {
   time_t time = last_modified_ms / 1000;
   char buf[100];  // man ctime says buffer should be at least 26.
-  Add("Last-Modified", ctime_r(&time, buf));
+  std::string trim_buffer;
+  TrimWhitespace(ctime_r(&time, buf), &trim_buffer);
+  Add("Last-Modified", trim_buffer.c_str());
 }
 
 void SimpleMetaData::ComputeCaching() {

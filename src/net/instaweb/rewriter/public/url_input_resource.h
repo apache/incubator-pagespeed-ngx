@@ -39,9 +39,11 @@ class UrlInputResource : public Resource {
   }
   virtual ~UrlInputResource();
 
+  virtual std::string url() const { return url_; }
+
+ protected:
   // Read complete resource, content is stored in contents_.
   virtual bool Read(MessageHandler* message_handler);
-  virtual std::string url() const { return url_; }
 
  private:
   std::string url_;

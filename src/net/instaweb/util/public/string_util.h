@@ -71,6 +71,11 @@ inline int strcasecmp(const char* s1, const char* s2) {
   return base::strcasecmp(s1, s2);
 }
 
+inline void TrimWhitespace(const StringPiece& in, std::string* output) {
+  static const char whitespace[] = " \r\n\t";
+  TrimString(std::string(in.data(), in.size()), whitespace, output);
+}
+
 struct CharStarCompareInsensitive {
   bool operator()(const char* s1, const char* s2) const {
     return strcasecmp(s1, s2) < 0;

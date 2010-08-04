@@ -117,7 +117,7 @@ Resource* JavascriptFilter::ScriptAtUrl(const std::string& script_url) {
   Resource* script_input =
       resource_manager_->CreateInputResource(script_url, message_handler);
   if (script_input == NULL ||
-      !(script_input->Read(message_handler) &&
+      !(resource_manager_->Read(script_input, message_handler) &&
         script_input->ContentsValid())) {
     script_input = NULL;
     html_parse_->ErrorHere("Couldn't get external script %s",
@@ -161,7 +161,9 @@ void JavascriptFilter::RewriteExternalScript() {
       filter_prefix_, rewritten_url, &kContentTypeJavascript, message_handler);
   if (script_dest != NULL) {
     bool ok;
-    if (script_dest->IsWritten()) {
+    if (script_dest->IsWritten() &&
+        resource_manager_->FetchOutputResource(script_dest, NULL, NULL,
+                                               message_handler)) {
       // Only rewrite URL if we have usable rewritten data.
       ok = script_dest->metadata()->status_code() == HttpStatus::OK;
     } else {
@@ -180,6 +182,12 @@ void JavascriptFilter::RewriteExternalScript() {
           // so we don't attempt to rewrite twice.
           html_parse_->InfoHere("Script %s didn't shrink", script_url.c_str());
           int64 origin_expire_time_ms = script_input->CacheExpirationTimeMs();
+
+          // TODO(jmarantz): currently this will not work, because HTTPCache
+          // will not report a 'hit' on any status other than OK.  This should
+          // be fixed by either:
+          //   1. adding a few other codes that HTTPCache will return hits for
+          //   2. using a special header to indicate failed-to-optimize.
           resource_manager_->Write(HttpStatus::INTERNAL_SERVER_ERROR,
                                    "", script_dest, origin_expire_time_ms,
                                    message_handler);
@@ -280,7 +288,7 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
     Resource* script_input =
         resource_manager_->CreateInputResource(script_url, message_handler);
     if (script_input != NULL &&
-        script_input->Read(message_handler) &&
+        resource_manager_->Read(script_input, message_handler) &&
         script_input->ContentsValid()) {
       StringPiece script = script_input->contents();
       std::string script_out;

@@ -24,11 +24,7 @@
 namespace net_instaweb {
 
 LRUCache::~LRUCache() {
-  for (ListNode p = lru_ordered_list_.begin(), e = lru_ordered_list_.end();
-       p != e; ++p) {
-    KeyValuePair* key_value  = *p;
-    delete key_value;
-  }
+  Clear();
 }
 
 // Freshen a key-value pair by putting it in the front of the
@@ -49,7 +45,6 @@ bool LRUCache::Get(const std::string& key, SharedString* value) {
     lru_ordered_list_.erase(cell);
     p->second = Freshen(key_value);
     *value = key_value->second;
-    ret = true;
     ++num_hits_;
   } else {
     ++num_misses_;
@@ -188,6 +183,18 @@ CacheInterface::KeyState LRUCache::Query(const std::string& key) {
 // actual characters in the key and value.
 int LRUCache::entry_size(KeyValuePair* kvp) const {
   return kvp->first->size() + kvp->second->size();
+}
+
+void LRUCache::Clear() {
+  current_bytes_in_cache_ = 0;
+
+  for (ListNode p = lru_ordered_list_.begin(), e = lru_ordered_list_.end();
+       p != e; ++p) {
+    KeyValuePair* key_value  = *p;
+    delete key_value;
+  }
+  lru_ordered_list_.clear();
+  map_.clear();
 }
 
 }  // namespace net_instaweb

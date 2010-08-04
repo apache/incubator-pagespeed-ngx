@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/cache_extender.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/rewrite.pb.h"  // for ResourceUrl
@@ -29,6 +30,7 @@
 #include "net/instaweb/util/public/meta_data.h"
 #include "net/instaweb/util/public/statistics.h"
 #include <string>
+#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -69,14 +71,10 @@ void CacheExtender::StartElement(HtmlElement* element) {
     Resource* input_resource =
         resource_manager_->CreateInputResource(origin_url, message_handler);
 
-    const char* suffix = strrchr(origin_url, '.');
-    if (suffix == NULL) {
-      suffix = "";
-    }
-
     // TODO(jmarantz): create an output resource to generate a new url,
     // rather than doing the content-hashing here.
-    if ((input_resource != NULL) && input_resource->Read(message_handler)) {
+    if ((input_resource != NULL) &&
+        resource_manager_->Read(input_resource, message_handler)) {
       const MetaData* headers = input_resource->metadata();
       int64 now_ms = timer_->NowMs();
 
@@ -86,42 +84,38 @@ void CacheExtender::StartElement(HtmlElement* element) {
         if (not_cacheable_count_ != NULL) {
           not_cacheable_count_->Add(1);
         }
-      } else if ((headers->CacheExpirationTimeMs() - now_ms) <
-                 kMinThresholdMs) {
+      } else if (((headers->CacheExpirationTimeMs() - now_ms) <
+                  kMinThresholdMs) &&
+                 (input_resource->type() != NULL)) {
         ResourceUrl resource_url;
-        resource_url.set_origin_url(origin_url);
+        std::string trimmed_url;
+        TrimWhitespace(origin_url, &trimmed_url);
+        resource_url.set_origin_url(trimmed_url);
         resource_url.set_content_hash(hasher_->Hash(
             input_resource->contents()));
         std::string url_safe_id;
         Encode(resource_url, &url_safe_id);
         scoped_ptr<OutputResource> output(
             resource_manager_->CreateNamedOutputResource(
-                filter_prefix_, url_safe_id, NULL, message_handler));
-        output->set_suffix(suffix);
+                filter_prefix_, url_safe_id, input_resource->type(),
+                message_handler));
 
-        // Determine the content, either from the headers or the extension
-        // of the origin URL.
-        CharStarVector content_types;
-        MetaData* output_headers = output->metadata();
-        if (headers->Lookup("Content-type", &content_types)) {
-          for (int i = 0, n = content_types.size(); i < n; ++i) {
-            output_headers->Add("Content-type", content_types[i]);
+        if (!output->IsWritten()) {
+          StringPiece contents(input_resource->contents());
+          std::string absolutified;
+          if (input_resource->type() == &kContentTypeCss) {
+            // TODO(jmarantz): find a mechanism to write this directly into
+            // the HTTPValue so we can reduce the number of times that we
+            // copy entire resources.
+            StringWriter writer(&absolutified);
+            CssTagScanner::AbsolutifyUrls(contents, input_resource->url(),
+                                          &writer, message_handler);
+            contents = absolutified;
           }
-        } else {
-          // If there is no content type in input headers, then try to
-          // determine it from the name.
-          const ContentType* type = NameExtensionToContentType(origin_url);
-          if (type == NULL) {
-            html_parse_->WarningHere("Resource %s lacks a content type",
-                                     origin_url);
-          } else {
-            output_headers->Add("Content-Type", type->mime_type());
-          }
+          resource_manager_->Write(HttpStatus::OK, contents, output.get(),
+                                   headers->CacheExpirationTimeMs(),
+                                   message_handler);
         }
-
-        resource_manager_->Write(HttpStatus::OK, input_resource->contents(),
-                                 output.get(), headers->CacheExpirationTimeMs(),
-                                 message_handler);
         href->SetValue(output->url());
         if (extension_count_ != NULL) {
           extension_count_->Add(1);

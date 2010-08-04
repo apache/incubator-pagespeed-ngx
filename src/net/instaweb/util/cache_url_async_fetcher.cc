@@ -45,13 +45,20 @@ class ForwardingAsyncFetch : public CacheUrlFetcher::AsyncFetch {
   virtual void Done(bool success) {
     // Copy the data to the client even with a failure; there may be useful
     // error messages in the content.
-    client_writer_->Write(content_, message_handler_);
+    StringPiece contents;
+    if (value_.ExtractContents(&contents)) {
+      client_writer_->Write(contents, message_handler_);
+    } else {
+      success = false;
+    }
 
     // Update the cache before calling the client Done callback, which might
-    // delete the headers.
-    if (success) {
-      UpdateCache();
-    }
+    // delete the headers.  Note that if the value is not cacheable, we will
+    // record in the cache that this entry is not cacheable, but we will still
+    // call the async fetcher callback with the value.  This allows us to
+    // do resource-serving via CacheUrlAsyncFetcher, where we need to serve
+    // the resources even if they are not cacheable.
+    UpdateCache();
 
     callback_->Done(success);
     delete this;
@@ -78,10 +85,12 @@ void CacheUrlAsyncFetcher::StreamingFetch(
   StringPiece contents;
   if (http_cache_->Get(url.c_str(), &value, handler) &&
       value.ExtractHeaders(response_headers, handler) &&
+      !CacheUrlFetcher::RememberNotCached(*response_headers) &&
       value.ExtractContents(&contents)) {
     bool ret = writer->Write(contents, handler);
     callback->Done(ret);
   } else {
+    response_headers->Clear();
     ForwardingAsyncFetch* fetch = new ForwardingAsyncFetch(
         url, http_cache_, handler, callback, writer, response_headers,
         force_caching_);

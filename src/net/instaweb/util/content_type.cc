@@ -46,9 +46,27 @@ const ContentType& kContentTypeJpeg = kTypes[5];
 
 const ContentType* NameExtensionToContentType(const StringPiece& name) {
   // TODO(jmarantz): convert to a map if the list gets large.
+  std::string lower_cased_name(name.data(), name.size());
+  LowerString(&lower_cased_name);
+  StringPiece lower_cased_piece(lower_cased_name);
   const ContentType* res = NULL;
   for (int i = 0; i < kNumTypes; ++i) {
-    if (name.ends_with(kTypes[i].file_extension())) {
+    if (lower_cased_piece.ends_with(kTypes[i].file_extension())) {
+      res = &kTypes[i];
+      break;
+    }
+  }
+  return res;
+}
+
+const ContentType* MimeTypeToContentType(const StringPiece& mime_type) {
+  // TODO(jmarantz): convert to a map if the list gets large.
+  std::string lower_cased_mime_type(mime_type.data(), mime_type.size());
+  LowerString(&lower_cased_mime_type);
+  StringPiece lower_cased_piece(lower_cased_mime_type);
+  const ContentType* res = NULL;
+  for (int i = 0; i < kNumTypes; ++i) {
+    if (lower_cased_piece.ends_with(kTypes[i].mime_type())) {
       res = &kTypes[i];
       break;
     }

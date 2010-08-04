@@ -22,11 +22,14 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 
 namespace {
+
+const char kRememberNotCached[] = "X-Instaweb-Disable-cache";
 
 // The synchronous version of the caching fetch must supply a
 // response_headers buffer that will still be valid at when the fetch
@@ -53,7 +56,6 @@ CacheUrlFetcher::AsyncFetch::AsyncFetch(const StringPiece& url,
                                         bool force_caching)
     : message_handler_(handler),
       url_(url.data(), url.size()),
-      writer_(&content_),
       http_cache_(cache),
       force_caching_(force_caching) {
 }
@@ -65,10 +67,31 @@ void CacheUrlFetcher::AsyncFetch::UpdateCache() {
   // TODO(jmarantz): allow configuration of whether we ignore
   // IsProxyCacheable, e.g. for content served from the same host
   MetaData* response_headers = ResponseHeaders();
-  if ((force_caching_ || response_headers->IsCacheable()) &&
-      (http_cache_->Query(url_.c_str()) == CacheInterface::kNotFound)) {
-    http_cache_->Put(url_.c_str(), *response_headers, content_,
-                     message_handler_);
+  if ((http_cache_->Query(url_.c_str()) == CacheInterface::kNotFound)) {
+    if (force_caching_ || response_headers->IsCacheable()) {
+      value_.SetHeaders(*response_headers);
+      http_cache_->Put(url_.c_str(), &value_, message_handler_);
+    } else {
+      // Leave value_ alone as we prep a cache entry to indicate that
+      // this url is not cacheable.  This is because this code is
+      // shared with cache_url_async_fetcher.cc, which needs to
+      // actually pass through the real value and headers, even while
+      // remembering the non-cachability of the URL.
+      HTTPValue dummy_value;
+      SimpleMetaData remember_not_cached;
+
+      // We need to set the header status code to 'OK' to satisfy
+      // HTTPCache::IsCurrentlyValid.  We rely on the detection of the
+      // header X-Instaweb-Disable-cache to avoid letting this escape into
+      // the wild.  We may want to revisit if this proves problematic.
+      remember_not_cached.SetStatusAndReason(HttpStatus::OK);
+      remember_not_cached.SetDate(http_cache_->timer()->NowMs());
+      remember_not_cached.Add("Cache-control", "public, max-age=300");
+      remember_not_cached.Add(kRememberNotCached, "1");  // value doesn't matter
+      dummy_value.Write("", message_handler_);
+      dummy_value.SetHeaders(remember_not_cached);
+      http_cache_->Put(url_.c_str(), &dummy_value, message_handler_);
+    }
   }
 }
 
@@ -85,12 +108,16 @@ void CacheUrlFetcher::AsyncFetch::Done(bool success) {
 void CacheUrlFetcher::AsyncFetch::Start(
     UrlAsyncFetcher* fetcher, const MetaData& request_headers) {
   fetcher->StreamingFetch(url_, request_headers, ResponseHeaders(),
-                          &writer_, message_handler_, this);
+                          &value_, message_handler_, this);
 }
 
 CacheUrlFetcher::~CacheUrlFetcher() {
 }
 
+bool CacheUrlFetcher::RememberNotCached(const MetaData& headers) {
+  CharStarVector not_cached_values;
+  return headers.Lookup(kRememberNotCached, &not_cached_values);
+}
 
 bool CacheUrlFetcher::StreamingFetchUrl(
     const std::string& url, const MetaData& request_headers,
@@ -102,7 +129,17 @@ bool CacheUrlFetcher::StreamingFetchUrl(
          value.ExtractHeaders(response_headers, handler) &&
          value.ExtractContents(&contents));
   if (ret) {
-    ret = writer->Write(contents, handler);
+    // If we have remembered that this value is not cachable, then mutate
+    // the reponse code and return false.  Note that we must use an X-code
+    // in the headers, rather than the status code, so that HTTPCache will
+    // not reject the item on retrieval, spoiling our ability to remember
+    // fact that the item is uncacheable.
+    if (RememberNotCached(*response_headers)) {
+      response_headers->SetStatusAndReason(HttpStatus::UNAVAILABLE);
+      ret = false;
+    } else {
+      ret = writer->Write(contents, handler);
+    }
   } else if (sync_fetcher_ != NULL) {
     // We need to hang onto a copy of the data so we can shove it
     // into the cache, which lacks a streaming Put.

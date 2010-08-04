@@ -45,6 +45,7 @@ extern const ContentType& kContentTypeJpeg;
 // Given a name (file or url), see if it has the canonical extension
 // corresponding to a particular content type.
 const ContentType* NameExtensionToContentType(const StringPiece& name);
+const ContentType* MimeTypeToContentType(const StringPiece& mime_type);
 
 }  // namespace net_instaweb
 

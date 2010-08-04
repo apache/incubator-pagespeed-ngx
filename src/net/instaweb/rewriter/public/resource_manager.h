@@ -145,6 +145,9 @@ class ResourceManager {
              const StringPiece& contents, OutputResource* output,
              int64 origin_expire_time_ms, MessageHandler* handler);
 
+  // Read complete resource, content is stored in contents_.
+  bool Read(Resource* resource, MessageHandler* message_handler);
+
   // TODO(jmarantz): check thread safety in Apache.
   Hasher* hasher() { return hasher_; }
   FileSystem* file_system() { return file_system_; }
@@ -152,6 +155,8 @@ class ResourceManager {
   UrlFetcher* url_fetcher() { return url_fetcher_; }
 
  private:
+  std::string ConstructNameKey(OutputResource* output) const;
+
   scoped_ptr<GURL> base_url_;  // Base url to resolve relative urls against.
   std::string file_prefix_;
   std::string url_prefix_;

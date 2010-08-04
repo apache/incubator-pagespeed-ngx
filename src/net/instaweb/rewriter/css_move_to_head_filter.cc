@@ -49,7 +49,7 @@ void CssMoveToHeadFilter::EndElement(HtmlElement* element) {
     if ((head_element_ != NULL) &&
         html_parse_->IsRewritable(head_element_) &&
         css_tag_scanner_.ParseCssElement(element, &href, &media)) {
-      html_parse_->MoveCurrentIntoParent(head_element_);
+      html_parse_->MoveCurrentInto(head_element_);
     }
   }
 }

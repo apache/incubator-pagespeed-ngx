@@ -49,6 +49,7 @@ class OutputResource : public Resource {
   StringPiece name() const { return name_; }
   std::string filename() const;
   StringPiece suffix() const;
+  StringPiece filter_prefix() const { return filter_prefix_; }
 
   // In a scalable installation where the sprites must be kept in a
   // database, we cannot serve HTML that references new resources

@@ -41,15 +41,15 @@ class HTTPCache {
         force_caching_(false) {
   }
 
-  bool Get(const char* key, HTTPValue* value, MessageHandler* handler);
+  bool Get(const std::string& key, HTTPValue* value, MessageHandler* handler);
 
   // Note that Put takes a non-const pointer for HTTPValue so it can
   // bump the reference count.
-  void Put(const char* key, HTTPValue* value, MessageHandler* handler);
-  void Put(const char* key, const MetaData& headers,
+  void Put(const std::string& key, HTTPValue* value, MessageHandler* handler);
+  void Put(const std::string& key, const MetaData& headers,
            const StringPiece& content, MessageHandler* handler);
 
-  CacheInterface::KeyState Query(const char* key);
+  CacheInterface::KeyState Query(const std::string& key);
   void set_force_caching(bool force) { force_caching_ = true; }
 
   Timer* timer() const { return timer_; }

@@ -91,6 +91,10 @@ void RewriteDriverFactory::set_hasher(Hasher* hasher) {
   hasher_.reset(hasher);
 }
 
+void RewriteDriverFactory::set_timer(Timer* timer) {
+  timer_.reset(timer);
+}
+
 void RewriteDriverFactory::set_filename_encoder(FilenameEncoder* e) {
   filename_encoder_.reset(e);
 }

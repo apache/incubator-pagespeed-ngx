@@ -36,6 +36,8 @@ class SimpleMetaData : public MetaData {
   SimpleMetaData();
   virtual ~SimpleMetaData();
 
+  virtual void Clear();
+
   // Raw access for random access to attribute name/value pairs.
   virtual int NumAttributes() const;
   virtual const char* Name(int index) const;

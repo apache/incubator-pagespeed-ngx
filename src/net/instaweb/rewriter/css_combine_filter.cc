@@ -132,7 +132,8 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
       // loads are blocking.  Need to understand Apache module
       Resource* css_resource =
           resource_manager_->CreateInputResource(href->value(), handler);
-      if ((css_resource != NULL) && css_resource->Read(handler)) {
+      if ((css_resource != NULL) &&
+          resource_manager_->Read(css_resource, handler)) {
         media_attributes.push_back(media);
         combine_resources.push_back(css_resource);
 
@@ -254,7 +255,8 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
       Resource* css_resource =
           resource_manager_->CreateInputResource(css_url.origin_url(),
                                                  message_handler);
-      if ((css_resource != NULL) && css_resource->Read(message_handler) &&
+      if ((css_resource != NULL) &&
+          resource_manager_->Read(css_resource, message_handler) &&
           css_resource->ContentsValid()) {
         combine_resources.push_back(css_resource);
       } else {

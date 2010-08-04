@@ -20,6 +20,8 @@
 
 namespace net_instaweb {
 
+const int64 MockTimer::kApr_5_2010_ms = 1270493486000LL;
+
 MockTimer::~MockTimer() {
 }
 

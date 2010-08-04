@@ -98,6 +98,9 @@ class MetaData {
 
   void CopyFrom(const MetaData& other);
 
+  // Reset headers to initial state.
+  virtual void Clear() = 0;
+
   // Raw access for random access to attribute name/value pairs.
   virtual int NumAttributes() const = 0;
   virtual const char* Name(int index) const = 0;

@@ -64,14 +64,17 @@ class Resource {
   const ContentType* type() { return type_; }
   virtual void SetType(const ContentType* type);
 
-  // Read complete resource, storing MetaData and contents.
-  virtual bool Read(MessageHandler* message_handler) = 0;
-
   // Gets the absolute URL of the resource
   virtual std::string url() const = 0;
 
  protected:
+  friend class ResourceManager;
+
+  // Read complete resource, storing MetaData and contents.
+  virtual bool Read(MessageHandler* message_handler) = 0;
+
   ResourceManager* resource_manager_;
+
   const ContentType* type_;
   HTTPValue value_;  // contains contents and meta-data
   SimpleMetaData meta_data_;

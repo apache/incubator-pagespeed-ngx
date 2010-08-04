@@ -332,22 +332,25 @@ bool HtmlParse::AddParentToSequence(HtmlNode* first, HtmlNode* last,
     HtmlEventListIterator p = last->end();
     ++p;
     new_parent->set_end(queue_.insert(p, end_element_event));
-    FixParents(first, last, new_parent);
+    FixParents(first->begin(), last->end(), new_parent);
     added = true;
   }
   return added;
 }
 
-void HtmlParse::FixParents(HtmlNode* first, HtmlNode* last,
+void HtmlParse::FixParents(const HtmlEventListIterator& begin,
+                           const HtmlEventListIterator& end_inclusive,
                            HtmlElement* new_parent) {
+  HtmlEvent* event = *begin;
+  HtmlNode* first = event->GetNode();
   HtmlElement* original_parent = first->parent();
-  // Loop over all the nodes from first->begin() to last->end(), inclusive,
+  // Loop over all the nodes from begin to end, inclusive,
   // and set the parent pointer for the node, if there is one.  A few
   // event types don't have HtmlNodes, such as Comments and IEDirectives.
-  HtmlEventListIterator end = last->end();
-  CHECK(end != queue_.end());
+  CHECK(end_inclusive != queue_.end());
+  HtmlEventListIterator end = end_inclusive;
   ++end;
-  for (HtmlEventListIterator p = first->begin(); p != end; ++p) {
+  for (HtmlEventListIterator p = begin; p != end; ++p) {
     HtmlNode* node = (*p)->GetNode();
     if ((node != NULL) && (node->parent() == original_parent)) {
       node->set_parent(new_parent);
@@ -355,7 +358,7 @@ void HtmlParse::FixParents(HtmlNode* first, HtmlNode* last,
   }
 }
 
-bool HtmlParse::MoveCurrentIntoParent(HtmlElement* new_parent) {
+bool HtmlParse::MoveCurrentInto(HtmlElement* new_parent) {
   bool moved = false;
   HtmlNode* node = (*current_)->GetNode();
   if ((node != NULL) && (node != new_parent) &&
@@ -384,7 +387,7 @@ bool HtmlParse::MoveCurrentIntoParent(HtmlElement* new_parent) {
     //
     // See http://stackoverflow.com/questions/143156
 
-    FixParents(node, node, new_parent);
+    FixParents(node->begin(), node->end(), new_parent);
     moved = true;
   }
   return moved;
@@ -437,6 +440,23 @@ bool HtmlParse::DeleteElement(HtmlNode* node) {
   return deleted;
 }
 
+bool HtmlParse::DeleteSavingChildren(HtmlElement* element) {
+  bool deleted = false;
+  if (IsRewritable(element)) {
+    HtmlElement* new_parent = element->parent();
+    HtmlEventListIterator first = element->begin();
+    ++first;
+    HtmlEventListIterator last = element->end();
+    if (first != last) {
+      --last;
+      FixParents(first, last, new_parent);
+      queue_.splice(element->begin(), queue_, first, element->end());
+    }
+    deleted = DeleteElement(element);
+  }
+  return deleted;
+}
+
 bool HtmlParse::ReplaceNode(HtmlNode* existing_node, HtmlNode* new_node) {
   bool replaced = false;
   if (IsRewritable(existing_node)) {
@@ -469,11 +489,13 @@ void HtmlParse::DebugPrintQueue() {
   for (HtmlEventList::iterator p = queue_.begin(), e = queue_.end();
        p != e; ++p) {
     std::string buf;
-    (*p)->ToString(&buf);
+    HtmlEvent* event = *p;
+    event->ToString(&buf);
+    long node_ptr = reinterpret_cast<long>(event->GetNode());
     if (p == current_) {
-      fprintf(stdout, "* %s\n", buf.c_str());
+      fprintf(stdout, "* %s (0x%lx)\n", buf.c_str(), node_ptr);
     } else {
-      fprintf(stdout, "  %s\n", buf.c_str());
+      fprintf(stdout, "  %s (0x%lx)\n", buf.c_str(), node_ptr);
     }
   }
   fflush(stdout);

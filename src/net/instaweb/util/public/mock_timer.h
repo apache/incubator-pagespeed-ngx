@@ -25,6 +25,9 @@ namespace net_instaweb {
 
 class MockTimer : public Timer {
  public:
+  // A useful recent time-constant for testing.
+  static const int64 kApr_5_2010_ms;
+
   explicit MockTimer(int64 time_ms) : time_ms_(time_ms) {}
   virtual ~MockTimer();
 

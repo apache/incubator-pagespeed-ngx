@@ -70,6 +70,7 @@ class RewriteDriverFactory {
   void set_file_system(FileSystem* file_system);
   void set_hasher(Hasher* hasher);
   void set_filename_encoder(FilenameEncoder* filename_encoder);
+  void set_timer(Timer* timer);
 
   void set_combine_css(bool x) { combine_css_ = x; }
   void set_move_css_to_head(bool x) { move_css_to_head_ = x; }

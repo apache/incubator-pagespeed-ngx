@@ -34,12 +34,15 @@ class AddHeadFilter : public EmptyHtmlFilter {
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
   virtual void EndDocument();
+  virtual void EndElement(HtmlElement* element);
+  virtual void Flush();
 
  private:
+  HtmlParse* html_parse_;
   bool found_head_;
   Atom s_head_;
   Atom s_body_;
-  HtmlParse* html_parse_;
+  HtmlElement* head_element_;
 };
 
 }  // namespace net_instaweb
