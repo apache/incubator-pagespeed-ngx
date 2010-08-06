@@ -24,6 +24,7 @@
 #include <string>
 
 #include "base/string_piece.h"
+#include "base/string_number_conversions.h"
 #include "base/string_util.h"
 #include "third_party/protobuf2/src/src/google/protobuf/stubs/strutil.h"
 
@@ -32,9 +33,12 @@ namespace net_instaweb {
 typedef base::StringPiece StringPiece;
 
 inline std::string IntegerToString(int i) {
-  return IntToString(i);
+  return base::IntToString(i);
 }
 
+inline bool StringToInt(const std::string& in, int* out) {
+  return base::StringToInt(in, out);
+}
 
 const StringPiece kEmptyString;
 std::string StrCat(const StringPiece& a,
