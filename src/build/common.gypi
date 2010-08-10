@@ -13,6 +13,11 @@
 # limitations under the License.
 
 {
+  'variables': {
+    # We're building a shared library, so everything needs to be built
+    # with Position-Independent Code.
+    'linux_fpic': 1,
+  },
   'includes': [
     '../third_party/libpagespeed/src/build/common.gypi',
   ],
