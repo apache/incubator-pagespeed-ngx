@@ -53,6 +53,11 @@ void HtmlElement::SynthesizeEvents(const HtmlEventListIterator& iter,
   set_end(queue->insert(iter, end_tag));
 }
 
+void HtmlElement::InvalidateIterators(const HtmlEventListIterator& end) {
+  set_begin(end);
+  set_end(end);
+}
+
 void HtmlElement::DeleteAttribute(int i) {
   std::vector<Attribute*>::iterator iter = attributes_.begin() + i;
   delete *iter;
@@ -166,14 +171,28 @@ HtmlElement::Attribute::Attribute(Atom name, const StringPiece& value,
 // ownership of value.
 void HtmlElement::Attribute::SetValue(const StringPiece& value) {
   std::string buf;
-  CopyValue(value, &value_);
+  // Note that we execute the lines in this order in case value
+  // is a substring of value_.  This copies the value just prior
+  // to deallocation of the old value_.
+  const char* escaped_chars = escaped_value_.get();
+  CHECK(value.data() + value.size() < escaped_chars ||
+        escaped_chars + strlen(escaped_chars) < value.data())
+      << "Setting unescaped value from substring of escaped value.";
   CopyValue(HtmlEscape::Escape(value, &buf), &escaped_value_);
+  CopyValue(value, &value_);
 }
 
 void HtmlElement::Attribute::SetEscapedValue(const StringPiece& escaped_value) {
   std::string buf;
-  CopyValue(escaped_value, &escaped_value_);
+  // Note that we execute the lines in this order in case value
+  // is a substring of value_.  This copies the value just prior
+  // to deallocation of the old value_.
+  const char* value_chars = value_.get();
+  CHECK(value_chars + strlen(value_chars) < escaped_value.data() ||
+        escaped_value.data() + escaped_value.size() < value_chars)
+      << "Setting escaped value from substring of unescaped value.";
   CopyValue(HtmlEscape::Unescape(escaped_value, &buf), &value_);
+  CopyValue(escaped_value, &escaped_value_);
 }
 
 }  // namespace net_instaweb

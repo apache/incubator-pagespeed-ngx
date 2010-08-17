@@ -21,100 +21,56 @@
 
 #include <map>
 #include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 
-class AddHeadFilter;
 class BaseTagFilter;
-class CacheExtender;
-class CollapseWhitespaceFilter;
-class CssCombineFilter;
-class CssMoveToHeadFilter;
-class ElideAttributesFilter;
 class FileSystem;
 class Hasher;
-class HtmlAttributeQuoteRemoval;
 class HtmlFilter;
 class HtmlParse;
 class HtmlWriterFilter;
-class ImgRewriteFilter;
-class JavascriptFilter;
-class OutlineFilter;
-class RemoveCommentsFilter;
 class ResourceManager;
 class RewriteFilter;
 class Statistics;
 class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
+class UrlLeftTrimFilter;
+class Variable;
 class Writer;
 
 class RewriteDriver {
  public:
-  explicit RewriteDriver(HtmlParse* html_parse, FileSystem* file_system,
-                         UrlAsyncFetcher* url_async_fetcher);
+  RewriteDriver(MessageHandler* message_handler,
+                FileSystem* file_system,
+                UrlAsyncFetcher* url_async_fetcher);
+
+  // Need explicit destructors to allow destruction of scoped_ptr-controlled
+  // instances without propagating the include files.
   ~RewriteDriver();
 
   // Adds a resource manager and/or resource_server, enabling the rewriting of
   // resources. This will replace any previous resource managers.
   void SetResourceManager(ResourceManager* resource_manager);
 
-  // Adds a filter that adds a 'head' section to html documents if
-  // none found prior to the body.
-  void AddHead();
+  // Adds the filters, specified by name in enabled_filters.
+  void AddFilters(const StringSet& enabled_filters);
 
-  // Adds a filter that establishes a base tag for the HTML document.
-  // This is required when implementing a proxy server.  The base
-  // tag used can be changed for every request with SetBaseUrl.
-  // Adding the base-tag filter will establish the AddHeadFilter
-  // if needed.
-  void AddBaseTagFilter();
+  void AddHead() { AddFiltersByCommaSeparatedList("add_head"); }
 
-  // Combine CSS files in html document.  This can only be called once and
-  // requires a resource_manager to be set.
-  void CombineCssFiles();
-
-  // Moves CSS links to the <head> section.
-  void MoveCssToHead();
-
-  // Remove excess whitespace in HTML
-  void CollapseHtmlWhitespace();
-
-  // Remove comments in HTML
-  void RemoveHtmlComments();
-
-  // Remove HTML element attribute values where
-  // http://www.w3.org/TR/html4/loose.dtd says that the name is all
-  // that's necessary
-  void ElideAttributes();
-
-  // Cut out inlined styles and scripts and make them into external resources.
-  // This can only be called once and requires a resource_manager to be set.
-  void OutlineResources(bool outline_styles, bool outline_scripts);
-
-  // Rewrite image urls to reduce space usage.
-  void RewriteImages();
-
-  // Extend the cache lifetime of resources.  This can only be called once and
-  // requires a resource_manager to be set.
-  void ExtendCacheLifetime(Hasher* hasher, Timer* timer);
-
-  // Rewrite (minify etc.) JavaScript code to reduce time to first interaction.
-  void RewriteJavascript();
-
-  // Remove extraneous quotes from html attributes.  Does this save enough bytes
-  // to be worth it after compression?  If we do it everywhere it seems to give
-  // a small savings.
-  void RemoveQuotes();
+  // Add filters by comma-separated list
+  void AddFiltersByCommaSeparatedList(const StringPiece& filters);
 
   // Add any HtmlFilter to the HtmlParse chain and take ownership of the filter.
   void AddFilter(HtmlFilter* filter);
 
   // Add any RewriteFilter and register the id with the RewriteDriver.
-  void AddRewriteFilter(const StringPiece& id, RewriteFilter* filter);
+  void AddRewriteFilter(RewriteFilter* filter);
 
   // Controls how HTML output is written.  Be sure to call this last, after
   // all other filters have been established.
@@ -139,40 +95,28 @@ class RewriteDriver {
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
 
-  HtmlParse* html_parse() { return html_parse_; }
+  HtmlParse* html_parse() { return &html_parse_; }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
 
   ResourceManager* resource_manager() const { return resource_manager_; }
   Statistics* statistics() const;
 
  private:
-  // Note that the use of StringPiece as the map key here implies that
-  // the storage for the keys outlive the map, e.g. they should be
-  // string literals.
-  typedef std::map<StringPiece, RewriteFilter*> ResourceFilterMap;
-  ResourceFilterMap resource_filter_map_;
+  typedef std::map<std::string, RewriteFilter*> StringFilterMap;
+  StringFilterMap resource_filter_map_;
 
   // These objects are provided on construction or later, and are
   // owned by the caller.
-  HtmlParse* html_parse_;
+  HtmlParse html_parse_;
   FileSystem* file_system_;
   UrlAsyncFetcher* url_async_fetcher_;
   ResourceManager* resource_manager_;
 
-  scoped_ptr<AddHeadFilter> add_head_filter_;
-  scoped_ptr<BaseTagFilter> base_tag_filter_;
-  scoped_ptr<CssCombineFilter> css_combine_filter_;
-  scoped_ptr<CssMoveToHeadFilter> css_move_to_head_filter_;
-  scoped_ptr<OutlineFilter> outline_filter_;
-  scoped_ptr<ImgRewriteFilter> img_rewrite_filter_;
-  scoped_ptr<CacheExtender> cache_extender_;
-  scoped_ptr<JavascriptFilter> javascript_filter_;
-  scoped_ptr<HtmlAttributeQuoteRemoval> attribute_quote_removal_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
-  scoped_ptr<CollapseWhitespaceFilter> collapse_whitespace_filter_;
-  scoped_ptr<RemoveCommentsFilter> remove_html_comments_filter_;
-  scoped_ptr<ElideAttributesFilter> elide_attributes_filter_;
-  std::vector<HtmlFilter*> other_filters_;
+  scoped_ptr<BaseTagFilter> base_tag_filter_;
+  scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
+  std::vector<HtmlFilter*> filters_;
+  Variable* resource_fetches_;
 };
 
 }  // namespace net_instaweb

@@ -54,6 +54,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   // Provide defaults.
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
+  virtual MessageHandler* DefaultMessageHandler();
   virtual FileSystem* DefaultFileSystem();
   virtual HtmlParse* DefaultHtmlParse();
   virtual Timer* DefaultTimer();

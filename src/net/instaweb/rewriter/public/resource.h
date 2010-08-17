@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 
@@ -67,11 +68,37 @@ class Resource {
   // Gets the absolute URL of the resource
   virtual std::string url() const = 0;
 
+  virtual void DetermineContentType();
+
+  // We define a new Callback type here because we need to
+  // pass in the HTTPValue to the Done callback so it can
+  // colllect the fetched data.
+  //
+  // TODO(jmarantz): This will not be necessary once we
+  // change AsyncFetch to guarantee to annotate the resource
+  // itself when the data becomes available.
+  class AsyncCallback {
+   public:
+    virtual ~AsyncCallback();
+    virtual void Done(bool success, HTTPValue* value) = 0;
+  };
+
+  // Links in the HTTP contents and header from a fetched value.
+  // The contents are linked by sharing.  The HTTPValue also
+  // contains a serialization of the headers, and this routine
+  // parses them into meta_data_ and return whether that was
+  // successful.
+  bool Link(HTTPValue* source, MessageHandler* handler);
+
  protected:
   friend class ResourceManager;
+  friend class UrlInputResourceCallback;
 
   // Read complete resource, storing MetaData and contents.
-  virtual bool Read(MessageHandler* message_handler) = 0;
+  virtual void ReadAsync(AsyncCallback* callback,
+                         MessageHandler* message_handler);
+
+  virtual bool ReadIfCached(MessageHandler* message_handler) = 0;
 
   ResourceManager* resource_manager_;
 

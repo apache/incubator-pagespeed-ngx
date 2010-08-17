@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/resource_manager.h"
 
+#include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -56,14 +57,14 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
                                  const int num_shards,
                                  FileSystem* file_system,
                                  FilenameEncoder* filename_encoder,
-                                 UrlFetcher* url_fetcher,
+                                 UrlAsyncFetcher* url_async_fetcher,
                                  Hasher* hasher,
                                  HTTPCache* http_cache)
     : num_shards_(num_shards),
       resource_id_(0),
       file_system_(file_system),
       filename_encoder_(filename_encoder),
-      url_fetcher_(url_fetcher),
+      url_async_fetcher_(url_async_fetcher),
       hasher_(hasher),
       statistics_(NULL),
       http_cache_(http_cache),
@@ -244,36 +245,44 @@ Resource* ResourceManager::CreateInputResource(
     url_string.append(url.spec().data(), url.spec().size());
   }
 
-  const ContentType* type = NameExtensionToContentType(input_url);
-  // Note that the type may be null if, for example, an image has an
-  // unexpected extension.  We will have to figure out the image type
-  // from the content, but we will not be able to do that until it's
-  // been read in.
-
-  if (url.SchemeIs("http")) {
-    // TODO(sligocki): Figure out if these are actually local by
-    // seing if the serving path matches url_prefix_, in which case
-    // we can do a local file read.
-    // TODO(jmaessen): In order to permit url loading from a context
-    // where the base url isn't set, we must keep the normalized url
-    // in the UrlInputResource rather than the original input_url.
-    // This is ugly and yields unnecessarily verbose rewritten urls.
-    resource = new UrlInputResource(this, type, url_string);
-    // TODO(sligocki): Probably shouldn't support file:// scheme.
-    // (but it's used extensively in eg rewriter_test.)
-  } else if (url.SchemeIsFile()) {
-    // NOTE: This is raw filesystem access, no filename-encoding, etc.
-    if (relative_path_) {
-      resource = new FileInputResource(this, type, url_string,
-                                       input_url_string);
-    } else {
-      const std::string& filename = url.path();
-      resource = new FileInputResource(this, type, url_string,
-                                       filename);
+  if (url.SchemeIs("data")) {
+    resource = DataUrlInputResource::Make(url_string, this);
+    if (resource == NULL) {
+      handler->Message(kError, "Badly formatted data url '%s'",
+                       url_string.c_str());
     }
   } else {
-    handler->Message(kError, "Unsupported scheme '%s' for url '%s'",
-                     url.scheme().c_str(), url_string.c_str());
+    const ContentType* type = NameExtensionToContentType(input_url);
+    // Note that the type may be null if, for example, an image has an
+    // unexpected extension.  We will have to figure out the image type
+    // from the content, but we will not be able to do that until it's
+    // been read in.
+
+    if (url.SchemeIs("http")) {
+      // TODO(sligocki): Figure out if these are actually local by
+      // seing if the serving path matches url_prefix_, in which case
+      // we can do a local file read.
+      // TODO(jmaessen): In order to permit url loading from a context
+      // where the base url isn't set, we must keep the normalized url
+      // in the UrlInputResource rather than the original input_url.
+      // This is ugly and yields unnecessarily verbose rewritten urls.
+      resource = new UrlInputResource(this, type, url_string);
+      // TODO(sligocki): Probably shouldn't support file:// scheme.
+      // (but it's used extensively in eg rewriter_test.)
+    } else if (url.SchemeIsFile()) {
+      // NOTE: This is raw filesystem access, no filename-encoding, etc.
+      if (relative_path_) {
+        resource = new FileInputResource(this, type, url_string,
+                                         input_url_string);
+      } else {
+        const std::string& filename = url.path();
+        resource = new FileInputResource(this, type, url_string,
+                                         filename);
+      }
+    } else {
+      handler->Message(kError, "Unsupported scheme '%s' for url '%s'",
+                       url.scheme().c_str(), url_string.c_str());
+    }
   }
   return resource;
 }
@@ -297,18 +306,24 @@ bool ResourceManager::FetchOutputResource(
   // doing the StrCat inside.
   bool ret = false;
   StringPiece content;
-  std::string url = output_resource->url();
   MetaData* meta_data = output_resource->metadata();
-  if (http_cache_->Get(url, &output_resource->value_, handler) &&
-      ((writer == NULL) || output_resource->value_.ExtractContents(&content)) &&
-      output_resource->value_.ExtractHeaders(meta_data, handler) &&
-      ((writer == NULL) || writer->Write(content, handler))) {
-    ret = true;
-  } else {
-    if (output_resource->Read(handler)) {
-      StringPiece contents = output_resource->contents();
-      http_cache_->Put(url, *meta_data, contents, handler);
-      ret = ((writer == NULL) || writer->Write(contents, handler));
+  if (output_resource->IsWritten()) {
+    ret = ((writer == NULL) ||
+           ((output_resource->value_.ExtractContents(&content)) &&
+            writer->Write(content, handler)));
+  } else if (output_resource->has_hash()) {
+    std::string url = output_resource->url();
+    if (http_cache_->Get(url, &output_resource->value_, handler) &&
+        ((writer == NULL) ||
+         output_resource->value_.ExtractContents(&content)) &&
+        output_resource->value_.ExtractHeaders(meta_data, handler) &&
+        ((writer == NULL) || writer->Write(content, handler))) {
+      output_resource->set_written(true);
+      ret = true;
+    } else if (ReadIfCached(output_resource, handler)) {
+      content = output_resource->contents();
+      http_cache_->Put(url, *meta_data, content, handler);
+      ret = ((writer == NULL) || writer->Write(content, handler));
     }
   }
   if (ret && (response_headers != NULL) && (response_headers != meta_data)) {
@@ -373,31 +388,17 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
   return ret;
 }
 
-bool ResourceManager::Read(Resource* resource, MessageHandler* handler) {
-  bool ret = resource->Read(handler);
-  if (ret) {
-    // Try to determine the content type from the URL extension, or
-    // the response headers.
-    CharStarVector content_types;
-    MetaData* headers = resource->metadata();
-    const ContentType* content_type = NULL;
-    if (headers->Lookup("Content-type", &content_types)) {
-      for (int i = 0, n = content_types.size(); (i < n) && content_type == NULL;
-           ++i) {
-        content_type = MimeTypeToContentType(content_types[i]);
-      }
-    }
+void ResourceManager::ReadAsync(Resource* resource,
+                                Resource::AsyncCallback* callback,
+                                MessageHandler* handler) {
+  resource->ReadAsync(callback, handler);
+}
 
-    if (content_type == NULL) {
-      // If there is no content type in input headers, then try to
-      // determine it from the name.
-      std::string trimmed_url;
-      TrimWhitespace(resource->url(), &trimmed_url);
-      content_type = NameExtensionToContentType(trimmed_url);
-      if (content_type != NULL) {
-        resource->SetType(content_type);
-      }
-    }
+bool ResourceManager::ReadIfCached(Resource* resource,
+                                   MessageHandler* handler) const {
+  bool ret = resource->loaded() || resource->ReadIfCached(handler);
+  if (ret) {
+    resource->DetermineContentType();
   }
   return ret;
 }

@@ -40,7 +40,6 @@
         'util/cache_url_fetcher.cc',
         'util/content_type.cc',
         'util/data_url.cc',
-        'util/delay_controller.cc',
         'util/dummy_url_fetcher.cc',
         'util/fake_url_async_fetcher.cc',
         'util/file_cache.cc',
@@ -207,6 +206,7 @@
         'rewriter/css_move_to_head_filter.cc',
         'rewriter/css_tag_scanner.cc',
         'rewriter/elide_attributes_filter.cc',
+        'rewriter/data_url_input_resource.cc',
         'rewriter/file_input_resource.cc',
         'rewriter/html_attribute_quote_removal.cc',
         'rewriter/outline_filter.cc',
@@ -217,6 +217,7 @@
         'rewriter/rewrite_filter.cc',
         'rewriter/script_tag_scanner.cc',
         'rewriter/url_input_resource.cc',
+        'rewriter/url_left_trim_filter.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

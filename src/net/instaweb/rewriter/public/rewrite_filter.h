@@ -91,6 +91,7 @@ class RewriteFilter : public EmptyHtmlFilter {
   }
 
   static const char* prefix_separator() { return "."; }
+  const std::string& id() const { return filter_prefix_; }
 
  protected:
   std::string filter_prefix_;  // Prefix that should be used in front of all

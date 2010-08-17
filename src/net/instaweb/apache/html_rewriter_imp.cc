@@ -49,15 +49,11 @@ HtmlRewriterImp::HtmlRewriterImp(PageSpeedServerContext* context,
   // apache bucket.
   rewrite_driver_->SetWriter(&string_writer_);
   rewrite_driver_->html_parse()->StartParse(url_.c_str());
-  pid_t pid = getpid();
-  LOG(INFO) << pid << " LSONG_DEBUG create html_rewriter_imp=" << this; 
 }
 
 HtmlRewriterImp::~HtmlRewriterImp() {
   context_->rewrite_driver_factory()->ReleaseRewriteDriver(rewrite_driver_);
   delete inflater_;
-  pid_t pid = getpid();
-  LOG(INFO) << pid << " LSONG_DEBUG delete html_rewriter_imp=" << this; 
 }
 
 void HtmlRewriterImp::Finish() {

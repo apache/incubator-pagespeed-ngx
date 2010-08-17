@@ -42,7 +42,9 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       current_(queue_.end()),
       deleted_current_(false),
       message_handler_(message_handler),
-      line_number_(1) {
+      line_number_(1),
+      need_sanity_check_(false),
+      coalesce_characters_(true) {
   lexer_ = new HtmlLexer(this);
   HtmlEscape::Init();
 }
@@ -85,6 +87,7 @@ void HtmlParse::CheckParentFromAddEvent(HtmlEvent* event) {
 void HtmlParse::AddEvent(HtmlEvent* event) {
   CheckParentFromAddEvent(event);
   queue_.push_back(event);
+  need_sanity_check_ = true;
 
   // If this is a leaf-node event, we need to set the iterator of the
   // corresponding leaf node to point to this event's position in the queue.
@@ -167,6 +170,9 @@ void HtmlParse::FinishParse() {
 
 void HtmlParse::ParseText(const char* text, int size) {
   lexer_->Parse(text, size);
+  if (coalesce_characters_) {
+    CoalesceAdjacentCharactersNodes();
+  }
 }
 
 // This is factored out of Flush() for testing purposes.
@@ -180,7 +186,31 @@ void HtmlParse::ApplyFilter(HtmlFilter* filter) {
   }
   filter->Flush();
 
-  SanityCheck();
+  if (need_sanity_check_) {
+    if (coalesce_characters_) {
+      CoalesceAdjacentCharactersNodes();
+    }
+    SanityCheck();
+    need_sanity_check_ = false;
+  }
+}
+
+void HtmlParse::CoalesceAdjacentCharactersNodes() {
+  HtmlCharactersNode* prev = NULL;
+  for (current_ = queue_.begin(); current_ != queue_.end(); ) {
+    HtmlEvent* event = *current_;
+    HtmlCharactersNode* node = event->GetCharactersNode();
+    if ((node != NULL) && (prev != NULL)) {
+      prev->Append(node->contents());
+      current_ = queue_.erase(current_);  // returns element after erased
+      delete event;
+      node->MarkAsDead(queue_.end());
+      need_sanity_check_ = true;
+    } else {
+      ++current_;
+      prev = node;
+    }
+  }
 }
 
 void HtmlParse::CheckEventParent(HtmlEvent* event, HtmlElement* expect,
@@ -223,12 +253,14 @@ void HtmlParse::SanityCheck() {
     if (start_element != NULL) {
       CheckEventParent(event, expect_parent, start_element->parent());
       CHECK(start_element->begin() == current_);
+      CHECK(start_element->live());
       element_stack.push_back(start_element);
       expect_parent = start_element;
     } else {
       HtmlElement* end_element = event->GetEndElement();
       if (end_element != NULL) {
         CHECK(end_element->end() == current_);
+        CHECK(end_element->live());
         if (!element_stack.empty()) {
           // The element stack can be empty on End can happen due
           // to this sequence:
@@ -246,6 +278,7 @@ void HtmlParse::SanityCheck() {
         // a start_element.
         HtmlLeafNode* leaf_node = event->GetLeafNode();
         if (leaf_node != NULL) {   // Start/EndDocument are not leaf nodes
+          CHECK(leaf_node->live());
           CHECK(leaf_node->end() == current_);
           CheckEventParent(event, expect_parent, leaf_node->parent());
         }
@@ -282,6 +315,7 @@ void HtmlParse::Flush() {
     delete event;
   }
   queue_.clear();
+  need_sanity_check_ = false;
 }
 
 bool HtmlParse::InsertElementBeforeElement(const HtmlNode* existing_node,
@@ -309,6 +343,7 @@ bool HtmlParse::InsertElementBeforeCurrent(HtmlNode* new_node) {
 bool HtmlParse::InsertElementBeforeEvent(const HtmlEventListIterator& event,
                                          HtmlNode* new_node) {
   new_node->SynthesizeEvents(event, &queue_);
+  need_sanity_check_ = true;
   // TODO(jmarantz): make this routine return void, as well as the other
   // wrappers around it.
   return true;
@@ -334,6 +369,7 @@ bool HtmlParse::AddParentToSequence(HtmlNode* first, HtmlNode* last,
     new_parent->set_end(queue_.insert(p, end_element_event));
     FixParents(first->begin(), last->end(), new_parent);
     added = true;
+    need_sanity_check_ = true;
   }
   return added;
 }
@@ -389,6 +425,7 @@ bool HtmlParse::MoveCurrentInto(HtmlElement* new_parent) {
 
     FixParents(node->begin(), node->end(), new_parent);
     moved = true;
+    need_sanity_check_ = true;
   }
   return moved;
 }
@@ -405,20 +442,15 @@ bool HtmlParse::DeleteElement(HtmlNode* node) {
 
       // Clean up any nested elements/leaves as we get to their 'end' event.
       HtmlEvent* event = *p;
-      HtmlElement* nested_element = event->GetEndElement();
-      if (nested_element != NULL) {
-        std::set<HtmlNode*>::iterator iter = nodes_.find(nested_element);
+      HtmlNode* nested_node = event->GetEndElement();
+      if (nested_node == NULL) {
+        nested_node = event->GetLeafNode();
+      }
+      if (nested_node != NULL) {
+        std::set<HtmlNode*>::iterator iter = nodes_.find(nested_node);
         CHECK(iter != nodes_.end());
-        nodes_.erase(iter);
-        delete nested_element;
-      } else {
-        HtmlLeafNode* leaf_node = event->GetLeafNode();
-        if (leaf_node != NULL) {
-          std::set<HtmlNode*>::iterator iter = nodes_.find(leaf_node);
-          CHECK(iter != nodes_.end());
-          nodes_.erase(iter);
-          delete leaf_node;
-        }
+        CHECK(nested_node->live());
+        nested_node->MarkAsDead(queue_.end());
       }
 
       // Check if we're about to delete the current event.
@@ -434,8 +466,9 @@ bool HtmlParse::DeleteElement(HtmlNode* node) {
     }
 
     // Our iteration should have covered the passed-in element as well.
-    CHECK(nodes_.find(node) == nodes_.end());
+    CHECK(!node->live());
     deleted = true;
+    need_sanity_check_ = true;
   }
   return deleted;
 }
@@ -451,6 +484,7 @@ bool HtmlParse::DeleteSavingChildren(HtmlElement* element) {
       --last;
       FixParents(first, last, new_parent);
       queue_.splice(element->begin(), queue_, first, element->end());
+      need_sanity_check_ = true;
     }
     deleted = DeleteElement(element);
   }

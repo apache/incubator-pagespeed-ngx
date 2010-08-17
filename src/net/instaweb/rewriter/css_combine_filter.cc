@@ -52,7 +52,7 @@ CssCombineFilter::CssCombineFilter(const char* filter_prefix,
       html_parse_(html_parse),
       resource_manager_(resource_manager),
       css_tag_scanner_(html_parse),
-      counter_(NULL) {
+      css_file_count_reduction_(NULL) {
   s_head_ = html_parse->Intern("head");
   s_link_ = html_parse->Intern("link");
   s_href_ = html_parse->Intern("href");
@@ -61,7 +61,7 @@ CssCombineFilter::CssCombineFilter(const char* filter_prefix,
   head_element_ = NULL;
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
-    counter_ = stats->AddVariable("css_file_count_reduction");
+    css_file_count_reduction_ = stats->AddVariable("css_file_count_reduction");
   }
 }
 
@@ -133,7 +133,8 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
       Resource* css_resource =
           resource_manager_->CreateInputResource(href->value(), handler);
       if ((css_resource != NULL) &&
-          resource_manager_->Read(css_resource, handler)) {
+          resource_manager_->ReadIfCached(css_resource, handler) &&
+          css_resource->ContentsValid()) {
         media_attributes.push_back(media);
         combine_resources.push_back(css_resource);
 
@@ -190,8 +191,8 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
       html_parse_->InsertElementBeforeCurrent(combine_element);
       html_parse_->InfoHere("Combined %d CSS files into one",
                             static_cast<int>(combine_elements.size()));
-      if (counter_ != NULL) {
-        counter_->Add(combine_elements.size() - 1);
+      if (css_file_count_reduction_ != NULL) {
+        css_file_count_reduction_->Add(combine_elements.size() - 1);
       }
     }
   }
@@ -230,6 +231,129 @@ bool CssCombineFilter::WriteCombination(
   return written;
 }
 
+// Callback to run whenever a CSS resource is collected.  This keeps a
+// count of the resources collected so far.  When the last one is collected,
+// it aggregates the results and calls the final callback with the result.
+class CssCombineResourceCallback;
+class CssCombiner {
+ public:
+  CssCombiner(CssCombineFilter* filter,
+              MessageHandler* handler,
+              UrlAsyncFetcher::Callback* callback,
+              OutputResource* combination,
+              Writer* writer,
+              MetaData* response_headers) :
+      enable_completion_(false),
+      done_count_(0),
+      fail_count_(0),
+      filter_(filter),
+      message_handler_(handler),
+      callback_(callback),
+      combination_(combination),
+      writer_(writer),
+      response_headers_(response_headers) {
+  }
+
+  virtual ~CssCombiner() {
+    STLDeleteContainerPointers(combine_resources_.begin(),
+                               combine_resources_.end());
+  }
+
+  void AddResource(Resource* resource) {
+    combine_resources_.push_back(resource);
+  }
+
+  void ResourceDone(bool success) {
+    if (!success) {
+      ++fail_count_;
+    }
+    ++done_count_;
+
+    if (Ready()) {
+      DoCombination();
+    }
+  }
+
+  bool Ready() {
+    return (enable_completion_ &&
+            (done_count_ == combine_resources_.size()));
+  }
+
+  void EnableCompletion() {
+    enable_completion_ = true;
+    if (Ready()) {
+      DoCombination();
+    }
+  }
+
+  void DoCombination() {
+    bool ok = fail_count_ == 0;
+    for (size_t i = 0; ok && (i < combine_resources_.size()); ++i) {
+      Resource* css_resource = combine_resources_[i];
+      ok = css_resource->ContentsValid();
+    }
+    if (ok) {
+      if (response_headers_ != NULL) {
+        response_headers_->CopyFrom(*combination_->metadata());
+      }
+      ok = (filter_->WriteCombination(combine_resources_, combination_,
+                                      message_handler_) &&
+            combination_->IsWritten() &&
+            ((writer_ == NULL) ||
+             writer_->Write(combination_->contents(), message_handler_)));
+    }
+    callback_->Done(ok);
+    delete this;
+  }
+
+ private:
+  bool enable_completion_;
+  size_t done_count_;
+  size_t fail_count_;
+  CssCombineFilter* filter_;
+  MessageHandler* message_handler_;
+  UrlAsyncFetcher::Callback* callback_;
+  OutputResource* combination_;
+  CssCombineFilter::ResourceVector combine_resources_;
+  Writer* writer_;
+  MetaData* response_headers_;
+};
+
+// Every input CSS file to a combination must have its own callback
+// structure, so it can fill in Resource value/headers in the Done
+// callback.  The reason that the Resource cannot do this itself is
+// because the Resource doesn't know whether it will live beyond the
+// callback.
+//
+// Once the Resource can fill in its own value/headers prior to
+// the Done callback, then this extra callback can be removed.
+//
+// TODO(jmarantz): do this in the ReadAsync implementation instead,
+// so that other multi-input combiners can avoid repeating this
+// logic.
+class CssCombineResourceCallback : public Resource::AsyncCallback {
+ public:
+  CssCombineResourceCallback(Resource* input_resource, CssCombiner* combiner,
+                             MessageHandler* handler)
+      : input_resource_(input_resource),
+        combiner_(combiner),
+        message_handler_(handler) {
+  }
+
+  virtual void Done(bool success, HTTPValue* value) {
+    if (success) {
+      success = input_resource_->Link(value, message_handler_);
+    }
+    combiner_->ResourceDone(success);
+    delete this;
+  }
+
+ private:
+  Resource* input_resource_;
+  CssCombiner* combiner_;
+  MessageHandler* message_handler_;
+};
+
 bool CssCombineFilter::Fetch(OutputResource* combination,
                              Writer* writer,
                              const MetaData& request_header,
@@ -243,38 +367,25 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
   if (Decode(url_safe_id, &css_combine_url)) {
     std::string url, decoded_resource;
     ret = true;
-    ResourceVector combine_resources;
-
-    // TODO(jmarantz): This code reports failure if we do not have the
-    // input .css files in cache.  Instead we should issue fetches for
-    // each sub-resource and write the aggregate once we have all of them,
-    // then call the callback.
+    CssCombiner* combiner = new CssCombiner(
+        this, message_handler, callback, combination, writer, response_headers);
     for (int i = 0; i < css_combine_url.element_size(); ++i)  {
       const CssUrl& css_url = css_combine_url.element(i);
-
+      std::string url = css_url.origin_url();
       Resource* css_resource =
-          resource_manager_->CreateInputResource(css_url.origin_url(),
-                                                 message_handler);
-      if ((css_resource != NULL) &&
-          resource_manager_->Read(css_resource, message_handler) &&
-          css_resource->ContentsValid()) {
-        combine_resources.push_back(css_resource);
-      } else {
-        ret = false;
-      }
+          resource_manager_->CreateInputResource(url, message_handler);
+      combiner->AddResource(css_resource);
+      CssCombineResourceCallback* callback = new CssCombineResourceCallback(
+          css_resource, combiner, message_handler);
+      resource_manager_->ReadAsync(css_resource, callback, message_handler);
     }
 
-    if (ret) {
-      ret = (WriteCombination(combine_resources, combination,
-                              message_handler) &&
-             combination->IsWritten() &&
-             resource_manager_->FetchOutputResource(
-                 combination, writer, response_headers, message_handler));
-    }
-  }
-
-  if (ret) {
-    callback->Done(true);
+    // In the case where the first input CSS files is already cached,
+    // ReadAsync will directly call the CssCombineCallback, which, if
+    // already enabled, would think it was complete and run DoCombination
+    // prematurely.  So we wait until the resources are all added before
+    // enabling the callback to complete.
+    combiner->EnableCompletion();
   } else {
     message_handler->Error(url_safe_id.as_string().c_str(), 0,
                            "Unable to decode resource string");

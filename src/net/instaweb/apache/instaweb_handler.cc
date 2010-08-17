@@ -15,6 +15,7 @@
 #include "net/instaweb/apache/instaweb_handler.h"
 
 #include <string>
+#include "apr_strings.h"
 #include "base/string_util.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/html_parser_message_handler.h"
@@ -28,15 +29,14 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "third_party/apache/apr/src/include/apr_strings.h"
 // The httpd header must be after the pagepseed_server_context.h. Otherwise,
 // the compiler will complain
 // "strtoul_is_not_a_portable_function_use_strtol_instead".
-#include "third_party/apache/httpd/src/include/httpd.h"
-#include "third_party/apache/httpd/src/include/http_config.h"
-#include "third_party/apache/httpd/src/include/http_core.h"
-#include "third_party/apache/httpd/src/include/http_log.h"
-#include "third_party/apache/httpd/src/include/http_protocol.h"
+#include "httpd.h"
+#include "http_config.h"
+#include "http_core.h"
+#include "http_log.h"
+#include "http_protocol.h"
 
 namespace {
 
@@ -84,7 +84,7 @@ int instaweb_check_request(request_rec* request, std::string* resource) {
   // Decline the request so that other handler may process
   if (!request->handler || strcmp(request->handler, "instaweb")) {
     ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
-                  "Not instaweb request.");
+                  "Not instaweb request: %s.", request->handler);
     return DECLINED;
   }
 
@@ -94,9 +94,18 @@ int instaweb_check_request(request_rec* request, std::string* resource) {
                   "Not GET request: %d.", request->method_number);
     return HTTP_METHOD_NOT_ALLOWED;
   }
+  /*
+   * In some contexts we are seeing relative URLs passed
+   * into request->unparsed_uri.  But when using mod_slurp, the rewritten
+   * HTML contains complete URLs, so this construction yields the host:port
+   * prefix twice.
+   *
+   * TODO(jmarantz): Figure out how to do this correctly at all times.
   std::string full_url(ap_construct_url(request->pool,
                                         request->unparsed_uri,
                                         request));
+  */
+  std::string full_url = request->unparsed_uri;
   html_rewriter::PageSpeedServerContext* context =
       html_rewriter::mod_pagespeed_get_config_server_context(request->server);
   std::string url_prefix = html_rewriter::GetUrlPrefix(context);
@@ -122,30 +131,38 @@ bool fetch_resource(const request_rec* request,
   html_rewriter::HtmlParserMessageHandler message_handler;
   AsyncCallback callback(&message_handler);
 
+  message_handler.Message(net_instaweb::kWarning, "Fetching resource %s...",
+                          resource.c_str());
+
   rewrite_driver->FetchResource(resource, request_headers,
                                 response_headers,
                                 &writer,
                                 &message_handler,
                                 &callback);
-  html_rewriter::SerfUrlAsyncFetcher* async_fetcher =
-      reinterpret_cast<html_rewriter::SerfUrlAsyncFetcher*>(
-          context->rewrite_driver_factory()->url_async_fetcher());
-  html_rewriter::AprTimer timer;
-  int64 max_ms = html_rewriter::GetResourceFetcherTimeOutMs(context);
-  for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
-       !callback.done() && now_ms - start_ms < max_ms;
-       now_ms = timer.NowMs()) {
-    int64 remaining_us = max_ms - (now_ms - start_ms);
-    async_fetcher->Poll(remaining_us, &message_handler);
+  bool ret = callback.done() && callback.success();
+  if (!ret) {
+    html_rewriter::SerfUrlAsyncFetcher* serf_async_fetcher =
+        context->rewrite_driver_factory()->serf_url_async_fetcher();
+    html_rewriter::AprTimer timer;
+    int64 max_ms = html_rewriter::GetResourceFetcherTimeOutMs(context);
+    for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
+         !callback.done() && now_ms - start_ms < max_ms;
+         now_ms = timer.NowMs()) {
+      int64 remaining_us = max_ms - (now_ms - start_ms);
+      serf_async_fetcher->Poll(remaining_us);
+    }
+    if (!callback.done()) {
+      message_handler.Error(resource.c_str(), 0,
+                            "Timeout waiting for response");
+    } else if (!callback.success()) {
+      message_handler.Error(resource.c_str(), 0, "Fetch failed.");
+    }
+    ret = callback.done() && callback.success();
   }
-  if (!callback.done()) {
-    message_handler.Error(resource.c_str(), 0, "Timeout waiting for response");
-    return false;
-  } else if (!callback.success()) {
-    message_handler.Error(resource.c_str(), 0, "Fetch failed.");
-    return false;
-  }
-  return true;
+  message_handler.Message(net_instaweb::kWarning,
+                          "...Fetched resource %s, ret=%d",
+                          resource.c_str(), ret);
+  return ret;
 }
 
 void send_out_headers_and_body(

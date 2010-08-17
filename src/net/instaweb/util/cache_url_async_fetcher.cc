@@ -58,7 +58,11 @@ class ForwardingAsyncFetch : public CacheUrlFetcher::AsyncFetch {
     // call the async fetcher callback with the value.  This allows us to
     // do resource-serving via CacheUrlAsyncFetcher, where we need to serve
     // the resources even if they are not cacheable.
-    UpdateCache();
+    //
+    // We do not update the cache at all if the fetch failed.
+    if (success) {
+      UpdateCache();
+    }
 
     callback_->Done(success);
     delete this;

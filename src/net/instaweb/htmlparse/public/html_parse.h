@@ -189,6 +189,7 @@ class HtmlParse {
     FatalErrorV(filename_.c_str(), line_number_, msg, args);
   }
 
+  void AddElement(HtmlElement* element, int line_number);
   void CloseElement(HtmlElement* element, HtmlElement::CloseStyle close_style,
                     int line_number);
 
@@ -196,15 +197,8 @@ class HtmlParse {
   // for testing.
   void ApplyFilter(HtmlFilter* filter);
 
-  // Visible for testing only.
-  // TODO(jmarantz): Consider using a Peer class that is declared as a friend,
-  // and instantiating that from the tests.
-  void AddEvent(HtmlEvent* event);
-  void SetCurrent(HtmlNode* node);
-
  private:
-  void AddElement(HtmlElement* element, int line_number);
-    HtmlEventListIterator Last();  // Last element in queue
+  HtmlEventListIterator Last();  // Last element in queue
   bool IsInEventWindow(const HtmlEventListIterator& iter) const;
   bool InsertElementBeforeEvent(const HtmlEventListIterator& event,
                                 HtmlNode* new_node);
@@ -215,6 +209,13 @@ class HtmlParse {
   void FixParents(const HtmlEventListIterator& begin,
                   const HtmlEventListIterator& end_inclusive,
                   HtmlElement* new_parent);
+  void CoalesceAdjacentCharactersNodes();
+
+  // Visible for testing only, via HtmlTestingPeer
+  friend class HtmlTestingPeer;
+  void AddEvent(HtmlEvent* event);
+  void SetCurrent(HtmlNode* node);
+  void set_coalesce_characters(bool x) { coalesce_characters_ = x; }
 
   SymbolTableInsensitive string_table_;
   std::vector<HtmlFilter*> filters_;
@@ -228,6 +229,8 @@ class HtmlParse {
   MessageHandler* message_handler_;
   std::string filename_;
   int line_number_;
+  bool need_sanity_check_;
+  bool coalesce_characters_;
 };
 
 }  // namespace net_instaweb

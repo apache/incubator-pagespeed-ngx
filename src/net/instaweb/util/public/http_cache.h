@@ -54,6 +54,8 @@ class HTTPCache {
 
   Timer* timer() const { return timer_; }
 
+  void Delete(const std::string& key);
+
  private:
   bool IsCurrentlyValid(const MetaData& headers);
 

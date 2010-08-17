@@ -26,6 +26,7 @@
 namespace net_instaweb {
 
 enum Encoding {
+  UNKNOWN,  // Used only for output of ParseDataUrl.
   BASE64,
 //   LATIN1,  // TODO(jmaessen): implement non-BASE64 encodings.
 //   UTF8,
@@ -45,6 +46,18 @@ enum Encoding {
 // compressed as we tend to base64-encode the content.
 void DataUrl(const ContentType& content_type, const Encoding encoding,
              const StringPiece& content, std::string* result);
+
+// Dismantle a data: url into its component pieces, but do not decode the
+// content.  Note that encoded_content will be a substring of the input url and
+// shares its lifetime.  Invalidates all outputs if url does not parse.
+bool ParseDataUrl(const StringPiece& url,
+                  const ContentType** content_type,
+                  Encoding* encoding,
+                  StringPiece* encoded_content);
+
+bool DecodeDataUrlContent(Encoding encoding,
+                          const StringPiece& encoded_content,
+                          std::string* decoded_content);
 
 }  // namespace net_instaweb
 

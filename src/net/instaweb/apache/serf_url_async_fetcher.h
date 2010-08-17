@@ -33,12 +33,14 @@ using net_instaweb::UrlAsyncFetcher;
 
 namespace html_rewriter {
 
-class SerfFetch;
 class AprMutex;
+class SerfFetch;
+class SerfThreadedFetcher;
 
 class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
   explicit SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool);
+  explicit SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent, const char* proxy);
   virtual ~SerfUrlAsyncFetcher();
   virtual void StreamingFetch(const std::string& url,
                               const MetaData& request_headers,
@@ -47,7 +49,7 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
                               MessageHandler* message_handler,
                               UrlAsyncFetcher::Callback* callback);
 
-  bool Poll(int microseconds, MessageHandler* message_handler);
+  bool Poll(int64 microseconds);
   bool WaitForInProgressFetches(int64 max_milliseconds,
                                 MessageHandler* message_handler);
 
@@ -57,14 +59,20 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   apr_pool_t* pool() const { return pool_; }
   serf_context_t* serf_context() const { return serf_context_; }
 
- private:
+  void PrintOutstandingFetches(MessageHandler* handler) const;
+
+ protected:
   bool SetupProxy(const char* proxy);
+  size_t NumActiveFetches();
+  void CancelOutstandingFetches();
 
   apr_pool_t* pool_;
   AprMutex* mutex_;
   serf_context_t* serf_context_;
-  std::set<SerfFetch*> active_fetches_;
+  typedef std::set<SerfFetch*> FetchSet;
+  FetchSet active_fetches_;
   std::vector<SerfFetch*> completed_fetches_;
+  SerfThreadedFetcher* threaded_fetcher_;
 };
 
 }  // namespace html_rewriter

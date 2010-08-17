@@ -16,11 +16,11 @@
 
 #include <string>
 
+#include "apr_file_io.h"
+#include "apr_pools.h"
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "third_party/apache/apr/src/include/apr_file_io.h"
-#include "third_party/apache/apr/src/include/apr_pools.h"
 
 using net_instaweb::MessageHandler;
 

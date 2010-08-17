@@ -39,8 +39,7 @@ class Variable;
 class CacheExtender : public RewriteFilter {
  public:
   CacheExtender(const char* path_prefix, HtmlParse* html_parse,
-                ResourceManager* resource_manager,
-                Hasher* hasher, Timer* timer);
+                ResourceManager* resource_manager);
 
   virtual void StartElement(HtmlElement* element);
   virtual bool Fetch(OutputResource* resource,

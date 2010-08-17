@@ -18,6 +18,7 @@
 //         jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/util/public/content_type.h"
 
 namespace net_instaweb {
 
@@ -37,6 +38,48 @@ int64 Resource::CacheExpirationTimeMs() const {
 // Note: OutputResource overrides this to also set the file extension.
 void Resource::SetType(const ContentType* type) {
   type_ = type;
+}
+
+void Resource::DetermineContentType() {
+  // Try to determine the content type from the URL extension, or
+  // the response headers.
+  CharStarVector content_types;
+  MetaData* headers = metadata();
+  const ContentType* content_type = NULL;
+  if (headers->Lookup("Content-type", &content_types)) {
+    for (int i = 0, n = content_types.size(); (i < n) && content_type == NULL;
+         ++i) {
+      content_type = MimeTypeToContentType(content_types[i]);
+    }
+  }
+
+  if (content_type == NULL) {
+    // If there is no content type in input headers, then try to
+    // determine it from the name.
+    std::string trimmed_url;
+    TrimWhitespace(url(), &trimmed_url);
+    content_type = NameExtensionToContentType(trimmed_url);
+    if (content_type != NULL) {
+      SetType(content_type);
+    }
+  }
+}
+
+// Default implementation of an async callback for a resource, which
+// calls ReadIfCached.  Resources which can fetch asynchronously should
+// override this.
+void Resource::ReadAsync(AsyncCallback* callback,
+                         MessageHandler* message_handler) {
+  callback->Done(ReadIfCached(message_handler), &value_);
+}
+
+Resource::AsyncCallback::~AsyncCallback() {
+}
+
+bool Resource::Link(HTTPValue* value, MessageHandler* handler) {
+  SharedString& contents_and_headers = value->share();
+  value_.Link(&contents_and_headers, handler);
+  return value_.ExtractHeaders(&meta_data_, handler);
 }
 
 }  // namespace net_instaweb

@@ -52,6 +52,7 @@ class CssCombineFilter : public RewriteFilter {
                      UrlAsyncFetcher::Callback* callback);
 
  private:
+  friend class CssCombiner;
   typedef std::vector<Resource*> ResourceVector;
 
   void EmitCombinations(HtmlElement* head);
@@ -74,7 +75,7 @@ class CssCombineFilter : public RewriteFilter {
   HtmlElement* head_element_;  // Pointer to head element for future use
   ResourceManager* resource_manager_;
   CssTagScanner css_tag_scanner_;
-  Variable* counter_;
+  Variable* css_file_count_reduction_;
 };
 
 }  // namespace net_instaweb

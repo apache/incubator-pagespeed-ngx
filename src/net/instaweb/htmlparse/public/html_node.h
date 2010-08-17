@@ -33,6 +33,12 @@ class HtmlNode {
   friend class HtmlParse;
 
   HtmlElement* parent() const { return parent_; }
+  bool live() const { return live_; }
+
+  // Marks a node as dead.  The queue's end iterator should be passed in,
+  // to remove references to stale iterators, and to force IsRewritable to
+  // return false.
+  void MarkAsDead(const HtmlEventListIterator& end);
 
  protected:
   // TODO(jmarantz): jmaessen suggests instantiating the html nodes
@@ -40,7 +46,7 @@ class HtmlNode {
   // are instantiated from the lexer.  This is a little more difficult
   // when synthesizing new nodes, however.  We assert sanity, however,
   // when calling HtmlParse::ApplyFilter.
-  explicit HtmlNode(HtmlElement* parent) : parent_(parent) {}
+  explicit HtmlNode(HtmlElement* parent) : parent_(parent), live_(true) {}
 
   // Create new event object(s) representing this node, and insert them into
   // the queue just before the given iterator; also, update this node object as
@@ -48,6 +54,7 @@ class HtmlNode {
   // the new event(s).  The line number for each event should probably be -1.
   virtual void SynthesizeEvents(const HtmlEventListIterator& iter,
                                 HtmlEventList* queue) = 0;
+  virtual void InvalidateIterators(const HtmlEventListIterator& end) = 0;
 
   // Return an iterator pointing to the first event associated with this node.
   virtual HtmlEventListIterator begin() const = 0;
@@ -55,12 +62,15 @@ class HtmlNode {
   virtual HtmlEventListIterator end() const = 0;
 
  private:
+  friend class HtmlTestingPeer;
+
   // Note: setting the parent doesn't change the DOM -- it just updates
   // the pointer.  This is intended to be called only from the DOM manipulation
   // methods in HtmlParse.
   void set_parent(HtmlElement* parent) { parent_ = parent; }
 
   HtmlElement* parent_;
+  bool live_;
   DISALLOW_COPY_AND_ASSIGN(HtmlNode);
 };
 
@@ -77,6 +87,7 @@ class HtmlLeafNode : public HtmlNode {
   virtual HtmlEventListIterator begin() const { return iter_; }
   virtual HtmlEventListIterator end() const { return iter_; }
   void set_iter(const HtmlEventListIterator& iter) { iter_ = iter; }
+  virtual void InvalidateIterators(const HtmlEventListIterator& end);
 
  private:
   HtmlEventListIterator iter_;
@@ -109,6 +120,9 @@ class HtmlCharactersNode : public HtmlLeafNode {
  public:
   virtual ~HtmlCharactersNode();
   const std::string& contents() { return contents_; }
+  void Append(const StringPiece& str) {
+    contents_.append(str.data(), str.size());
+  }
   friend class HtmlParse;
 
  protected:
@@ -121,7 +135,7 @@ class HtmlCharactersNode : public HtmlLeafNode {
                      const HtmlEventListIterator& iter)
       : HtmlLeafNode(parent, iter),
         contents_(contents.data(), contents.size()) {}
-  const std::string contents_;
+  std::string contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCharactersNode);
 };
 

@@ -36,9 +36,11 @@
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
 namespace {
@@ -57,152 +59,168 @@ namespace net_instaweb {
 // asynchronous fetchers, employing FakeUrlAsyncFetcher as needed
 // for running functional regression-tests where we don't mind blocking
 // behavior.
-RewriteDriver::RewriteDriver(HtmlParse* html_parse, FileSystem* file_system,
+RewriteDriver::RewriteDriver(MessageHandler* message_handler,
+                             FileSystem* file_system,
                              UrlAsyncFetcher* url_async_fetcher)
-    : html_parse_(html_parse),
+    : html_parse_(message_handler),
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
-      resource_manager_(NULL) {
+      resource_manager_(NULL),
+      resource_fetches_(NULL) {
 }
 
 RewriteDriver::~RewriteDriver() {
-  STLDeleteContainerPointers(other_filters_.begin(), other_filters_.end());
+  STLDeleteContainerPointers(filters_.begin(), filters_.end());
 }
 
 void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   resource_manager_ = resource_manager;
 }
 
+namespace {
+
+class ContainmentChecker {
+ public:
+  explicit ContainmentChecker(const StringSet& strings) : strings_(strings) {}
+  bool contains(const std::string& str) {
+    return strings_.find(str) != strings_.end();
+  }
+ private:
+  const StringSet& strings_;
+};
+
+}  // namespace
+
+void RewriteDriver::AddFiltersByCommaSeparatedList(const StringPiece& filters) {
+  StringSet filter_set;
+  std::vector<StringPiece> names;
+  SplitStringPieceToVector(filters, ",", &names, true);
+  for (int i = 0, n = names.size(); i < n; ++i) {
+    filter_set.insert(std::string(names[i].data(), names[i].size()));
+  }
+  AddFilters(filter_set);
+}
+
+// TODO(jmarantz): validate the set of enabled_features to make sure
+// that no invalid ones are specified.
+void RewriteDriver::AddFilters(const StringSet& enabled_filters) {
+  CHECK(html_writer_filter_ == NULL);
+  ContainmentChecker enabled(enabled_filters);
+  if (enabled.contains("add_head") ||
+      enabled.contains("add_base_tag") ||
+      enabled.contains("move_css_to_head")) {
+    // Adds a filter that adds a 'head' section to html documents if
+    // none found prior to the body.
+    AddFilter(new AddHeadFilter(&html_parse_));
+  }
+  if (enabled.contains("add_base_tag")) {
+    // Adds a filter that establishes a base tag for the HTML document.
+    // This is required when implementing a proxy server.  The base
+    // tag used can be changed for every request with SetBaseUrl.
+    // Adding the base-tag filter will establish the AddHeadFilter
+    // if needed.
+    base_tag_filter_.reset(new BaseTagFilter(&html_parse_));
+    html_parse_.AddFilter(base_tag_filter_.get());
+  }
+  if (enabled.contains("outline_css") ||
+      enabled.contains("outline_javascript")) {
+    // Cut out inlined styles and scripts and make them into external resources.
+    // This can only be called once and requires a resource_manager to be set.
+    CHECK(resource_manager_ != NULL);
+    AddFilter(new OutlineFilter(&html_parse_, resource_manager_,
+                                enabled.contains("outline_css"),
+                                enabled.contains("outline_javascript")));
+  }
+  if (enabled.contains("move_css_to_head")) {
+    // It's good to move CSS links to the head prior to running CSS combine,
+    // which only combines CSS links that are already in the head.
+    AddFilter(new CssMoveToHeadFilter(&html_parse_, statistics()));
+  }
+  if (enabled.contains("combine_css")) {
+    // Combine external CSS resources after we've outlined them.
+    // CSS files in html document.  This can only be called
+    // once and requires a resource_manager to be set.
+    AddRewriteFilter(new CssCombineFilter(kCssCombiner, &html_parse_,
+                                          resource_manager_));
+  }
+  if (enabled.contains("rewrite_images")) {
+    AddRewriteFilter(new ImgRewriteFilter(kImageCompression, &html_parse_,
+                                          resource_manager_, file_system_));
+  }
+  if (enabled.contains("rewrite_javascript")) {
+    // Rewrite (minify etc.) JavaScript code to reduce time to first
+    // interaction.
+    AddRewriteFilter(new JavascriptFilter(kJavascriptMin, &html_parse_,
+                                          resource_manager_));
+  }
+  if (enabled.contains("remove_comments")) {
+    AddFilter(new RemoveCommentsFilter(&html_parse_));
+  }
+  if (enabled.contains("collapse_whitespace")) {
+    // Remove excess whitespace in HTML
+    AddFilter(new CollapseWhitespaceFilter(&html_parse_));
+  }
+  if (enabled.contains("elide_attributes")) {
+    // Remove HTML element attribute values where
+    // http://www.w3.org/TR/html4/loose.dtd says that the name is all
+    // that's necessary
+    AddFilter(new ElideAttributesFilter(&html_parse_));
+  }
+  if (enabled.contains("extend_cache")) {
+    // Extend the cache lifetime of resources.
+    AddRewriteFilter(new CacheExtender(kCacheExtender, &html_parse_,
+                                       resource_manager_));
+  }
+  if (enabled.contains("left_trim_urls")) {
+    // Trim extraneous prefixes from urls in attribute values.
+    // Happens before RemoveQuotes but after everything else.  Note:
+    // we Must left trim urls BEFORE quote removal.
+    left_trim_filter_.reset(
+        new UrlLeftTrimFilter(&html_parse_,
+                              resource_manager_->statistics()));
+    html_parse_.AddFilter(left_trim_filter_.get());
+  }
+  if (enabled.contains("remove_quotes")) {
+    // Remove extraneous quotes from html attributes.  Does this save
+    // enough bytes to be worth it after compression?  If we do it
+    // everywhere it seems to give a small savings.
+    AddFilter(new HtmlAttributeQuoteRemoval(&html_parse_));
+  }
+}
+
 void RewriteDriver::SetBaseUrl(const StringPiece& base) {
   if (base_tag_filter_ != NULL) {
     base_tag_filter_->set_base_url(base);
+  }
+  if (left_trim_filter_ != NULL) {
+    left_trim_filter_->AddBaseUrl(base);
   }
   if (resource_manager_ != NULL) {
     resource_manager_->set_base_url(base);
   }
 }
 
-
-void RewriteDriver::AddHead() {
-  if (add_head_filter_ == NULL) {
-    CHECK(html_writer_filter_ == NULL);
-    add_head_filter_.reset(new AddHeadFilter(html_parse_));
-    html_parse_->AddFilter(add_head_filter_.get());
-  }
-}
-
-void RewriteDriver::AddBaseTagFilter() {
-  AddHead();
-  if (base_tag_filter_ == NULL) {
-    CHECK(html_writer_filter_ == NULL);
-    base_tag_filter_.reset(new BaseTagFilter(html_parse_));
-    html_parse_->AddFilter(base_tag_filter_.get());
-  }
-}
-
-void RewriteDriver::ExtendCacheLifetime(Hasher* hasher, Timer* timer) {
-  CHECK(html_writer_filter_ == NULL);
-  CHECK(resource_manager_ != NULL);
-  CHECK(cache_extender_ == NULL);
-  cache_extender_.reset(new CacheExtender(kCacheExtender, html_parse_,
-                                          resource_manager_, hasher, timer));
-  resource_filter_map_[kCacheExtender] = cache_extender_.get();
-  html_parse_->AddFilter(cache_extender_.get());
-}
-
-void RewriteDriver::CombineCssFiles() {
-  CHECK(html_writer_filter_ == NULL);
-  CHECK(resource_manager_ != NULL);
-  CHECK(css_combine_filter_.get() == NULL);
-  css_combine_filter_.reset(
-      new CssCombineFilter(kCssCombiner, html_parse_, resource_manager_));
-  resource_filter_map_[kCssCombiner] = css_combine_filter_.get();
-  html_parse_->AddFilter(css_combine_filter_.get());
-}
-
-void RewriteDriver::MoveCssToHead() {
-  AddHead();
-  CHECK(html_writer_filter_ == NULL);
-  CHECK(css_move_to_head_filter_.get() == NULL);
-  css_move_to_head_filter_.reset(
-      new CssMoveToHeadFilter(html_parse_, statistics()));
-  html_parse_->AddFilter(css_move_to_head_filter_.get());
-}
-
-void RewriteDriver::CollapseHtmlWhitespace() {
-  CHECK(html_writer_filter_ == NULL);
-  CHECK(collapse_whitespace_filter_.get() == NULL);
-  collapse_whitespace_filter_.reset(new CollapseWhitespaceFilter(html_parse_));
-  html_parse_->AddFilter(collapse_whitespace_filter_.get());
-}
-
-void RewriteDriver::RemoveHtmlComments() {
-  CHECK(html_writer_filter_ == NULL);
-  CHECK(remove_html_comments_filter_.get() == NULL);
-  remove_html_comments_filter_.reset(new RemoveCommentsFilter(html_parse_));
-  html_parse_->AddFilter(remove_html_comments_filter_.get());
-}
-
-void RewriteDriver::ElideAttributes() {
-  CHECK(html_writer_filter_ == NULL);
-  CHECK(elide_attributes_filter_.get() == NULL);
-  elide_attributes_filter_.reset(new ElideAttributesFilter(html_parse_));
-  html_parse_->AddFilter(elide_attributes_filter_.get());
-}
-
-void RewriteDriver::OutlineResources(bool outline_styles,
-                                     bool outline_scripts) {
-  CHECK(html_writer_filter_ == NULL);
-  CHECK(resource_manager_ != NULL);
-  outline_filter_.reset(new OutlineFilter(html_parse_, resource_manager_,
-                                          outline_styles, outline_scripts));
-  html_parse_->AddFilter(outline_filter_.get());
-}
-
-void RewriteDriver::RewriteImages() {
-  CHECK(html_writer_filter_ == NULL);
-  CHECK(resource_manager_ != NULL);
-  CHECK(img_rewrite_filter_ == NULL);
-  img_rewrite_filter_.reset(
-      new ImgRewriteFilter(kImageCompression, html_parse_,
-                           resource_manager_, file_system_));
-  resource_filter_map_[kImageCompression] = img_rewrite_filter_.get();
-  html_parse_->AddFilter(img_rewrite_filter_.get());
-}
-
-void RewriteDriver::RewriteJavascript() {
-  CHECK(html_writer_filter_ == NULL);
-  CHECK(resource_manager_ != NULL);
-  CHECK(javascript_filter_ == NULL);
-  javascript_filter_.reset(
-      new JavascriptFilter(kJavascriptMin, html_parse_, resource_manager_));
-  resource_filter_map_[kJavascriptMin] = javascript_filter_.get();
-  html_parse_->AddFilter(javascript_filter_.get());
-}
-
-void RewriteDriver::RemoveQuotes() {
-  CHECK(html_writer_filter_ == NULL);
-  CHECK(attribute_quote_removal_.get() == NULL);
-  attribute_quote_removal_.reset(
-      new HtmlAttributeQuoteRemoval(html_parse_));
-  html_parse_->AddFilter(attribute_quote_removal_.get());
-}
-
 void RewriteDriver::AddFilter(HtmlFilter* filter) {
-  other_filters_.push_back(filter);
-  html_parse_->AddFilter(filter);
+  filters_.push_back(filter);
+  html_parse_.AddFilter(filter);
 }
 
-void RewriteDriver::AddRewriteFilter(const StringPiece& id,
-                                     RewriteFilter* filter) {
+void RewriteDriver::AddRewriteFilter(RewriteFilter* filter) {
+  // Track resource_fetches if we care about statistics.  Note that
+  // the statistics are owned by the resource manager, which generally
+  // should be set up prior to the rewrite_driver.
+  Statistics* stats = statistics();
+  if ((stats != NULL) && (resource_fetches_ == NULL)) {
+    resource_fetches_ = stats->AddVariable("resource_fetches");
+  }
+  resource_filter_map_[filter->id()] = filter;
   AddFilter(filter);
-  resource_filter_map_[id] = filter;
 }
 
 void RewriteDriver::SetWriter(Writer* writer) {
   if (html_writer_filter_ == NULL) {
-    html_writer_filter_.reset(new HtmlWriterFilter(html_parse_));
-    html_parse_->AddFilter(html_writer_filter_.get());
+    html_writer_filter_.reset(new HtmlWriterFilter(&html_parse_));
+    html_parse_.AddFilter(html_writer_filter_.get());
   }
   html_writer_filter_->set_writer(writer);
 }
@@ -270,13 +288,17 @@ void RewriteDriver::FetchResource(
       callback->Done(true);
       queued = true;
     } else {
-      ResourceFilterMap::iterator p = resource_filter_map_.find(id);
+      StringFilterMap::iterator p = resource_filter_map_.find(
+          std::string(id.data(), id.size()));
       if (p != resource_filter_map_.end()) {
         RewriteFilter* filter = p->second;
         std::string resource_ext = StrCat(name, ".", ext);
         queued = filter->Fetch(output_resource, writer,
                                request_headers, response_headers,
                                url_async_fetcher_, message_handler, callback);
+        if (resource_fetches_ != NULL) {
+          resource_fetches_->Add(1);
+        }
       }
     }
   }

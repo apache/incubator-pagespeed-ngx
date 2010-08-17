@@ -123,7 +123,7 @@ std::string OutputResource::TempPrefix() const {
 }
 
 std::string OutputResource::NameTail() const {
-  CHECK(writing_complete_)
+  CHECK(!hash_.empty())
       << "to compute the Resource filename or URL, we must have "
       << "completed writing, otherwise the contents hash is not known.";
   std::string separator = RewriteFilter::prefix_separator();
@@ -148,37 +148,39 @@ std::string OutputResource::url() const {
 
 void OutputResource::SetHash(const StringPiece& hash) {
   CHECK(!writing_complete_);
-  writing_complete_ = true;
+  CHECK(hash_.empty());
   hash.CopyToString(&hash_);
 }
 
-bool OutputResource::Read(MessageHandler* handler) {
-  bool ret = true;
-  CHECK(writing_complete_);
-  FileSystem* file_system = resource_manager_->file_system();
-  FileSystem::InputFile* file = file_system->OpenInputFile(
-      filename().c_str(), handler);
-  if (file == NULL) {
-    ret = false;
-  } else {
-    char buf[kStackBufferSize];
-    int nread = 0, num_consumed = 0;
-    // TODO(jmarantz): this logic is duplicated in util/wget_url_fetcher.cc,
-    // consider a refactor to merge it.
-    while (!meta_data_.headers_complete() &&
-           ((nread = file->Read(buf, sizeof(buf), handler)) != 0)) {
-      num_consumed = meta_data_.ParseChunk(
-          StringPiece(buf, nread), handler);
+bool OutputResource::ReadIfCached(MessageHandler* handler) {
+  if (!writing_complete_) {
+    FileSystem* file_system = resource_manager_->file_system();
+    FileSystem::InputFile* file = file_system->OpenInputFile(
+        filename().c_str(), handler);
+    if (file != NULL) {
+      char buf[kStackBufferSize];
+      int nread = 0, num_consumed = 0;
+      // TODO(jmarantz): this logic is duplicated in util/wget_url_fetcher.cc,
+      // consider a refactor to merge it.
+      meta_data_.Clear();
+      value_.Clear();
+      while (!meta_data_.headers_complete() &&
+             ((nread = file->Read(buf, sizeof(buf), handler)) != 0)) {
+        num_consumed = meta_data_.ParseChunk(
+            StringPiece(buf, nread), handler);
+      }
+      value_.SetHeaders(meta_data_);
+      writing_complete_ = value_.Write(
+          StringPiece(buf + num_consumed, nread - num_consumed),
+          handler);
+      while (writing_complete_ &&
+             ((nread = file->Read(buf, sizeof(buf), handler)) != 0)) {
+        writing_complete_ = value_.Write(StringPiece(buf, nread), handler);
+      }
+      file_system->Close(file, handler);
     }
-    value_.SetHeaders(meta_data_);
-    ret = value_.Write(StringPiece(buf + num_consumed, nread - num_consumed),
-                       handler);
-    while (ret && ((nread = file->Read(buf, sizeof(buf), handler)) != 0)) {
-      ret = value_.Write(StringPiece(buf, nread), handler);
-    }
-    file_system->Close(file, handler);
   }
-  return ret;
+  return writing_complete_;
 }
 
 bool OutputResource::IsWritten() const {

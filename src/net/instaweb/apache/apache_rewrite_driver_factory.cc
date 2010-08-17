@@ -14,6 +14,7 @@
 
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 
+#include "apr_pools.h"
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/apache/apr_timer.h"
@@ -25,7 +26,6 @@
 #include "net/instaweb/apache/serf_url_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/util/public/file_cache.h"
-#include "third_party/apache/apr/src/include/apr_pools.h"
 
 using html_rewriter::SerfUrlAsyncFetcher;
 
@@ -66,6 +66,10 @@ MessageHandler* ApacheRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
   return new html_rewriter::HtmlParserMessageHandler();
 }
 
+MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
+  return new html_rewriter::HtmlParserMessageHandler();
+}
+
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
   return new FileCache(html_rewriter::GetFileCachePath(context_),
                        file_system(),
@@ -100,17 +104,12 @@ AbstractMutex* ApacheRewriteDriverFactory::NewMutex() {
 
 RewriteDriver* ApacheRewriteDriverFactory::GetRewriteDriver() {
   RewriteDriver* rewrite_driver = NULL;
-  pid_t pid = getpid();
-  LOG(INFO) << pid << " LSONG_DEBUG getdriver from factory=" << this; 
-  
   if (!available_rewrite_drivers_.empty()) {
     rewrite_driver = available_rewrite_drivers_.back();
     available_rewrite_drivers_.pop_back();
-    LOG(INFO) << pid << " LSONG_DEBUG available driver=" << rewrite_driver; 
   } else {
     // Create a RewriteDriver using base class.
     rewrite_driver = NewRewriteDriver();
-    LOG(INFO) << pid << " LSONG_DEBUG create new driver=" << rewrite_driver; 
   }
   active_rewrite_drivers_.insert(rewrite_driver);
   return rewrite_driver;
@@ -123,9 +122,6 @@ void ApacheRewriteDriverFactory::ReleaseRewriteDriver(
     LOG(ERROR) << "Remove rewrite driver from the active list.";
   } else {
     available_rewrite_drivers_.push_back(rewrite_driver);
-
-    pid_t pid = getpid();
-    LOG(INFO) << pid << " LSONG_DEBUG recycled driver=" << rewrite_driver; 
   }
 }
 

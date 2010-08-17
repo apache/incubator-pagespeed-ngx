@@ -33,6 +33,10 @@ class HtmlEscape {
   // threads then there will be no races.
   static void Init();
 
+  // Tear down the singleton instance of this class, freeing any
+  // allocated memory. This call is inherently thread unsafe.
+  static void ShutDown();
+
   // Take a raw text and escape it so it's safe for an HTML attribute,
   // e.g.    a&b --> a&amp;b
   static StringPiece Escape(const StringPiece& unescaped, std::string* buf) {

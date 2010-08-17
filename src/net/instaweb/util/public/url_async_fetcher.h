@@ -35,6 +35,10 @@ class UrlAsyncFetcher {
   struct Callback {
     virtual ~Callback();
     virtual void Done(bool success) = 0;
+
+    // Set to true if it's OK to call the callback from a different
+    // thread.  The base class implementation returns false.
+    virtual bool EnableThreaded() const;
   };
 
   virtual ~UrlAsyncFetcher();

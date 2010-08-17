@@ -70,7 +70,7 @@ bool SerfUrlFetcher::StreamingFetchUrl(const std::string& url,
        now_ms = timer.NowMs()) {
     int64 remaining_us = std::max(static_cast<int64>(0),
                                   1000 * (max_ms - now_ms));
-    async_fetcher_->Poll(remaining_us, message_handler);
+    async_fetcher_->Poll(remaining_us);
   }
   if (!callback.done()) {
     message_handler->Error(url.c_str(), 0, "Timeout waiting response for %d ms",

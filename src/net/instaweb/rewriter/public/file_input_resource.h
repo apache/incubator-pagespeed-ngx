@@ -42,7 +42,7 @@ class FileInputResource : public Resource {
 
  protected:
   // Read complete resource, content is stored in contents_.
-  virtual bool Read(MessageHandler* message_handler);
+  virtual bool ReadIfCached(MessageHandler* message_handler);
 
  private:
   std::string url_;

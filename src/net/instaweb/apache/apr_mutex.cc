@@ -14,8 +14,8 @@
 
 #include "net/instaweb/apache/apr_mutex.h"
 
-#include "third_party/apache/apr/src/include/apr_pools.h"
-#include "third_party/apache/apr/src/include/apr_thread_mutex.h"
+#include "apr_pools.h"
+#include "apr_thread_mutex.h"
 
 namespace html_rewriter {
 

@@ -66,6 +66,7 @@ void FileCache::Put(const std::string& key, SharedString* value) {
     return;
   }
   const std::string& buffer = **value;
+  // TODO(jmarantz): write as temp file
   file_system_->WriteFile(filename.c_str(), buffer, &message_handler_);
 }
 

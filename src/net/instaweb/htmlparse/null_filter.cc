@@ -34,7 +34,8 @@ int null_filter(int argc, char** argv) {
   const char* infile = argv[1];
   net_instaweb::FileMessageHandler message_handler(stderr);
   net_instaweb::StdioFileSystem file_system;
-  net_instaweb::FileDriver file_driver(&message_handler, &file_system);
+  net_instaweb::HtmlParse html_parse(&message_handler);
+  net_instaweb::FileDriver file_driver(&html_parse, &file_system);
   const char* outfile = NULL;
   std::string outfile_buffer;
   const char* statsfile = NULL;

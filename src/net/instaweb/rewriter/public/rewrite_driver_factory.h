@@ -67,28 +67,23 @@ class RewriteDriverFactory {
   // replaced before creating the RewriteDriver.
   // Note: RewriteDriver takes ownership of these.
   void set_html_parse_message_handler(MessageHandler* message_handler);
+  void set_message_handler(MessageHandler* message_handler);
   void set_file_system(FileSystem* file_system);
   void set_hasher(Hasher* hasher);
   void set_filename_encoder(FilenameEncoder* filename_encoder);
   void set_timer(Timer* timer);
 
-  void set_combine_css(bool x) { combine_css_ = x; }
-  void set_move_css_to_head(bool x) { move_css_to_head_ = x; }
-  void set_outline_css(bool x) { outline_css_ = x; }
-  void set_outline_javascript(bool x) { outline_javascript_ = x; }
-  void set_rewrite_images(bool x) { rewrite_images_ = x; }
-  void set_rewrite_javascript(bool x) { rewrite_javascript_ = x; }
-  void set_elide_attributes(bool x) { elide_attributes_ = x; }
-  void set_remove_comments(bool x) { remove_comments_ = x; }
-  void set_collapse_whitespace(bool x) { collapse_whitespace_ = x; }
-  void set_extend_cache(bool x) { extend_cache_ = x; }
-  void set_add_head(bool x) { add_head_ = x; }
-  void set_add_base_tag(bool x) { add_base_tag_ = x; }
-  void set_remove_quotes(bool x) { remove_quotes_ = x; }
-  void set_force_caching(bool x) { force_caching_ = x; }
+  void enable_filter(const std::string& filter) {
+    enabled_filters_.insert(filter);
+  }
+
+  // Sets the enabled filters, based on a comma-separated list of
+  // filter names
+  void SetEnabledFilters(const StringPiece& filter_names);
 
   // Setting HTTP caching on causes both the fetcher and the async
   // fecher to return cached versions.
+  void set_force_caching(bool u) { force_caching_ = u; }
   void set_use_http_cache(bool u) { use_http_cache_ = u; }
   void set_use_threadsafe_cache(bool u) { use_threadsafe_cache_ = u; }
 
@@ -119,12 +114,12 @@ class RewriteDriverFactory {
   void set_num_shards(int num_shards) { num_shards_ = num_shards; }
 
   MessageHandler* html_parse_message_handler();
+  MessageHandler* message_handler();
   FileSystem* file_system();
   // TODO(sligocki): Remove hasher() and force people to make a NewHasher when
   // they need one.
   Hasher* hasher();
   FilenameEncoder* filename_encoder();
-  HtmlParse* html_parse();
   Timer* timer();
   HTTPCache* http_cache();
 
@@ -153,8 +148,8 @@ class RewriteDriverFactory {
   virtual UrlFetcher* DefaultUrlFetcher() = 0;
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher() = 0;
   virtual MessageHandler* DefaultHtmlParseMessageHandler() = 0;
+  virtual MessageHandler* DefaultMessageHandler() = 0;
   virtual FileSystem* DefaultFileSystem() = 0;
-  virtual HtmlParse* DefaultHtmlParse() = 0;
   virtual Timer* DefaultTimer() = 0;
   virtual CacheInterface* DefaultCacheInterface() = 0;
 
@@ -173,6 +168,8 @@ class RewriteDriverFactory {
 
 
  private:
+  scoped_ptr<MessageHandler> html_parse_message_handler_;
+  scoped_ptr<MessageHandler> message_handler_;
   scoped_ptr<FileSystem> file_system_;
   scoped_ptr<UrlFetcher> url_fetcher_;
   scoped_ptr<UrlAsyncFetcher> url_async_fetcher_;
@@ -183,22 +180,10 @@ class RewriteDriverFactory {
 
   std::string filename_prefix_;
   std::string url_prefix_;
+  StringSet enabled_filters_;
   int num_shards_;
   bool use_http_cache_;
   bool use_threadsafe_cache_;
-  bool combine_css_;
-  bool move_css_to_head_;
-  bool outline_css_;
-  bool outline_javascript_;
-  bool rewrite_images_;
-  bool rewrite_javascript_;
-  bool elide_attributes_;
-  bool remove_comments_;
-  bool collapse_whitespace_;
-  bool extend_cache_;
-  bool add_head_;
-  bool add_base_tag_;
-  bool remove_quotes_;
   bool force_caching_;
 
   scoped_ptr<ResourceManager> resource_manager_;
@@ -206,7 +191,6 @@ class RewriteDriverFactory {
   std::vector<RewriteDriver*> rewrite_drivers_;
 
   // Caching support
-  scoped_ptr<MessageHandler> html_parse_message_handler_;
   scoped_ptr<HTTPCache> http_cache_;
   scoped_ptr<CacheInterface> threadsafe_cache_;
   scoped_ptr<CacheUrlFetcher> cache_fetcher_;

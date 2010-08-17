@@ -52,8 +52,9 @@ HtmlAttributeQuoteRemoval::HtmlAttributeQuoteRemoval(HtmlParse* html_parse)
 
 bool HtmlAttributeQuoteRemoval::NeedsQuotes(const char *val) {
   bool needs_quotes = false;
+  int i = 0;
   if (val != NULL) {
-    for (int i = 0; val[i] != '\0'; ++i) {
+    for (; val[i] != '\0'; ++i) {
       // Explicit cast to unsigned char ensures that our offset
       // into needs_no_quotes_ is positive.
       needs_quotes = !needs_no_quotes_[static_cast<unsigned char>(val[i])];
@@ -62,7 +63,10 @@ bool HtmlAttributeQuoteRemoval::NeedsQuotes(const char *val) {
       }
     }
   }
-  return needs_quotes;
+  // Note that due to inconsistencies in empty attribute parsing between Firefox
+  // and Chrome (Chrome seems to parse the next thing it sees after whitespace
+  // as the attribute value) we leave empty attributes intact.
+  return needs_quotes || i == 0;
 }
 
 void HtmlAttributeQuoteRemoval::StartElement(HtmlElement* element) {

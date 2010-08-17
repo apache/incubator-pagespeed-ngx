@@ -23,11 +23,15 @@
 #include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/core/resource_util.h"
 
 namespace {
+
 const int64 TIME_UNINITIALIZED = -1;
+const int64 kImplicitCacheTtlMs = 5 * net_instaweb::Timer::kMinuteMs;
+
 }
 
 namespace net_instaweb {
@@ -259,6 +263,7 @@ void SimpleMetaData::ComputeCaching() {
   for (int i = 0, n = NumAttributes(); i < n; ++i) {
     resource.AddResponseHeader(Name(i), Value(i));
   }
+  resource.SetResponseStatusCode(status_code_);
 
   CharStarVector values;
   int64 date;
@@ -278,20 +283,30 @@ void SimpleMetaData::ComputeCaching() {
   // policies will differ for Instaweb vs Pagespeed.
   bool explicit_no_cache =
       pagespeed::resource_util::HasExplicitNoCacheDirective(resource);
-  bool explicit_cacheable =
-      pagespeed::resource_util::IsCacheableResource(resource);
+  bool likely_static =
+      pagespeed::resource_util::IsLikelyStaticResource(resource);
   bool status_cacheable =
       pagespeed::resource_util::IsCacheableResourceStatusCode(status_code_);
-  is_cacheable_ = ((!explicit_no_cache || explicit_cacheable) &&
+  int64 freshness_lifetime_ms;
+  bool explicit_cacheable =
+      pagespeed::resource_util::GetFreshnessLifetimeMillis(
+          resource, &freshness_lifetime_ms) && has_timestamp_ms();
+  is_cacheable_ = (!explicit_no_cache &&
+                   (explicit_cacheable || likely_static) &&
                    status_cacheable);
+
   if (is_cacheable_) {
-    int64 freshness_lifetime_ms;
-    if (pagespeed::resource_util::GetFreshnessLifetimeMillis(
-            resource, &freshness_lifetime_ms) &&
-        has_timestamp_ms()) {
+    if (explicit_cacheable) {
+      // TODO(jmarantz): check "Age" resource and use that to reduce
+      // the expiration_time_ms_.  This is, says, bmcquade@google.com,
+      // typically use to indicate how long a resource has been sitting
+      // in a proxy-cache.
       expiration_time_ms_ = timestamp_ms_ + freshness_lifetime_ms;
     } else {
-      expiration_time_ms_ = 0;  // no date: was cacheable, but expired in 1970.
+      // implicitly cached items stay alive in our system for 5 minutes
+      // TODO(jmarantz): consider making this a flag, or getting some
+      // other heuristic value from the PageSpeed libraries.
+      expiration_time_ms_ = timestamp_ms_ + kImplicitCacheTtlMs;
     }
 
     // Assume it's proxy cacheable.  Then iterate over all the headers

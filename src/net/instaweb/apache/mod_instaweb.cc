@@ -14,6 +14,8 @@
 
 #include <string>
 
+#include "apr_strings.h"
+#include "apr_version.h"
 #include "base/string_util.h"
 #include "net/instaweb/apache/html_rewriter.h"
 #include "net/instaweb/apache/html_rewriter_config.h"
@@ -22,57 +24,44 @@
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/apache/mod_instaweb.h"
+#include "net/instaweb/util/public/simple_meta_data.h"
 #include "mod_spdy/apache/log_message_handler.h"
 #include "mod_spdy/apache/pool_util.h"
-#include "third_party/apache/apr/src/include/apr_strings.h"
 // The httpd header must be after the pagepseed_server_context.h. Otherwise,
 // the compiler will complain
 // "strtoul_is_not_a_portable_function_use_strtol_instead".
-#include "third_party/apache/httpd/src/include/httpd.h"
-#include "third_party/apache/httpd/src/include/http_config.h"
-#include "third_party/apache/httpd/src/include/http_core.h"
-#include "third_party/apache/httpd/src/include/http_log.h"
-#include "third_party/apache/httpd/src/include/http_protocol.h"
+#include "httpd.h"
+#include "http_config.h"
+#include "http_core.h"
+// When HAVE_SYSLOG, syslog.h is included and #defined LOG_*, which conflicts
+// with mod_spdy's log_message_handler.
+#undef HAVE_SYSLOG
+#include "http_log.h"
+#include "http_protocol.h"
 
 using html_rewriter::HtmlRewriter;
 
 extern "C" {
-extern module AP_MODULE_DECLARE_DATA pagespeed_module;
+extern module AP_MODULE_DECLARE_DATA instaweb_module;
 
-// Pagespeed directive names.
-const char* kPagespeed = "Pagespeed";
-const char* kPagespeedRewriteUrlPrefix = "PagespeedRewriteUrlPrefix";
-const char* kPagespeedFetchProxy = "PagespeedFetchProxy";
-const char* kPagespeedGeneratedFilePrefix = "PagespeedGeneratedFilePrefix";
-const char* kPagespeedFileCachePath = "PagespeedFileCachePath";
-const char* kPagespeedFetcherTimeoutMs = "PagespeedFetcherTimeOutMs";
-const char* kPagespeedResourceTimeoutMs = "PagespeedResourceTimeOutMs";
-const char* kPagespeedRewriterNumShards = "PagespeedRewriterNumShards";
-const char* kPagespeedRewriterUseHttpCache = "PagespeedRewriterUseHttpCache";
-const char* kPagespeedRewriterUseThreadsafeCache =
-    "PagespeedRewriterUseThreadsafeCache";
-const char* kPagespeedRewriterCombineCss = "PagespeedRewriterCombineCss";
-const char* kPagespeedRewriterOutlineCss = "PagespeedRewriterOutlineCss";
-const char* kPagespeedRewriterOutlineJavascript =
-    "PagespeedRewriterOutlineJavascript";
-const char* kPagespeedRewriterRewrieImages = "PagespeedRewriterRewriteImages";
-const char* kPagespeedRewriterExtendCache = "PagespeedRewriterExtendCache";
-const char* kPagespeedRewriterAddHead = "PagespeedRewriterAddHead";
-const char* kPagespeedRewriterAddBaseTag = "PagespeedRewriterAddBaseTag";
-const char* kPagespeedRewriterRemoveQuotes = "PagespeedRewriterRemoveQuotes";
-const char* kPagespeedRewriterForceCaching = "PagespeedRewriterForceCaching";
-const char* kPagespeedRewriterMoveCssToHead = "PagespeedRewriterMoveCssToHead";
-const char* kPagespeedRewriterElideAttributes
-    = "PagespeedRewriterElideAttributes";
-const char* kPagespeedRewriterRemoveComments
-    = "PagespeedRewriterRemoveComments";
-const char* kPagespeedRewriterCollapseWhiteSpace
-    = "PagespeedRewriterCollapseWhiteSpace";
+// Instaweb directive names -- these must match ../scripts/instaweb.conf
+const char* kInstaweb = "Instaweb";
+const char* kInstawebRewriteUrlPrefix = "InstawebRewriteUrlPrefix";
+const char* kInstawebFetchProxy = "InstawebFetchProxy";
+const char* kInstawebGeneratedFilePrefix = "InstawebGeneratedFilePrefix";
+const char* kInstawebFileCachePath = "InstawebFileCachePath";
+const char* kInstawebFetcherTimeoutMs = "InstawebFetcherTimeOutMs";
+const char* kInstawebResourceTimeoutMs = "InstawebResourceTimeOutMs";
+const char* kInstawebRewriterNumShards = "InstawebRewriterNumShards";
+const char* kInstawebRewriterUseHttpCache = "InstawebRewriterUseHttpCache";
+const char* kInstawebRewriterUseThreadsafeCache =
+    "InstawebRewriterUseThreadsafeCache";
+const char* kInstawebRewriters = "InstawebRewriters";
 }  // extern "C"
 
 namespace {
 
-const char* pagespeed_filter_name = "PAGESPEED";
+const char* pagespeed_filter_name = "INSTAWEB";
 
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
 enum ConfigSwitch {CONFIG_ON, CONFIG_OFF, CONFIG_ERROR};
@@ -181,6 +170,14 @@ html_rewriter::ContentEncoding get_content_encoding(request_rec* request) {
   }
 }
 
+static int fill_in_req_header_cb(void *rec, const char *key,
+                                  const char *value) {
+  net_instaweb::SimpleMetaData* meta_data =
+      static_cast<net_instaweb::SimpleMetaData*>(rec);
+  meta_data->Add(key, value);
+  return 1;
+}
+
 apr_status_t pagespeed_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   // Check if pagespeed is enabled.
   html_rewriter::PageSpeedConfig* server_config =
@@ -206,13 +203,13 @@ apr_status_t pagespeed_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
 
   // Initialize pagespeed context structure.
   if (context == NULL) {
-    // Check if mod_pagespeed has already rewritten the HTML.  If the server is
+    // Check if mod_instaweb has already rewritten the HTML.  If the server is
     // setup as both the original and the proxy server, mod_pagespeed filter may
     // be applied twice. To avoid this, skip the content if it is already
     // optimized by mod_pagespeed.
-    if (apr_table_get(request->headers_out, "x-pagespeed") != NULL) {
+    if (apr_table_get(request->headers_out, "x-instaweb") != NULL) {
       ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                    "Already has x-pagespeed");
+                    "Already has x-instaweb");
       ap_remove_output_filter(filter);
       return ap_pass_brigade(filter->next, bb);
     }
@@ -236,13 +233,28 @@ apr_status_t pagespeed_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     std::string base_url(ap_construct_url(request->pool,
                                           request->unparsed_uri,
                                           request));
+
+    net_instaweb::SimpleMetaData request_headers, response_headers;
+    apr_table_do(fill_in_req_header_cb, &request_headers, request->headers_in,
+                 NULL);
+    apr_table_do(fill_in_req_header_cb, &response_headers, request->headers_out,
+                 NULL);
+    LOG(WARNING) << "Request headers:\n" << request_headers.ToString();
+    LOG(WARNING) << "Response headers:\n" << response_headers.ToString();
+
+    // Hack for mod_proxy to figure out where it's proxying from
+    if ((request->filename != NULL) &&
+        (strncmp(request->filename, "proxy:", 6) == 0)) {
+      base_url.assign(request->filename + 6, strlen(request->filename) - 6);
+    }
+
     context->rewriter = new HtmlRewriter(server_config->context,
                                          encoding,
                                          base_url,
                                          request->unparsed_uri,
                                          &context->output);
     mod_spdy::PoolRegisterDelete(request->pool, context->rewriter);
-    apr_table_setn(request->headers_out, "x-pagespeed", "1");
+    apr_table_setn(request->headers_out, "x-instaweb", "1");
     apr_table_unset(request->headers_out, "Content-Length");
     apr_table_unset(request->headers_out, "Content-MD5");
   }
@@ -322,7 +334,12 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
     if (html_rewriter::CreatePageSpeedServerContext(pool, config)) {
       // Free memory used in config before the pool is destroyed, because
       // some the components in config use sub-pool of the pool.
+
+      // Also consider checking AP_MODULE_MAGIC_AT_LEAST(20051115, 15)
+#if ((APR_MAJOR_VERSION > 1) ||                         \
+     ((APR_MAJOR_VERSION == 1) && APR_PATCH_VERSION > 11))
       apr_pool_pre_cleanup_register(pool, config, pagespeed_child_exit);
+#endif
     }
     next_server = next_server->next;
   }
@@ -340,44 +357,20 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
           config->file_cache_path == NULL) {
         LOG(ERROR) << "Page speed is enabled. "
                    << "The following directives must not be NULL";
-        LOG(ERROR) << kPagespeedRewriteUrlPrefix << "="
+        LOG(ERROR) << kInstawebRewriteUrlPrefix << "="
                    << config->rewrite_url_prefix;
-        LOG(ERROR) << kPagespeedFileCachePath << "="
+        LOG(ERROR) << kInstawebFileCachePath << "="
                    << config->file_cache_path;
-        LOG(ERROR) << kPagespeedGeneratedFilePrefix << "="
+        LOG(ERROR) << kInstawebGeneratedFilePrefix << "="
                    << config->generated_file_prefix;
         return HTTP_INTERNAL_SERVER_ERROR;
       }
-      LOG(INFO) << kPagespeedRewriterUseHttpCache << " "
+      LOG(INFO) << kInstawebRewriterUseHttpCache << " "
                 << config->use_http_cache;
-      LOG(INFO) << kPagespeedRewriterUseThreadsafeCache << " "
+      LOG(INFO) << kInstawebRewriterUseThreadsafeCache << " "
                 << config->use_threadsafe_cache;
-      LOG(INFO) << kPagespeedRewriterCombineCss << " "
-                << config->combine_css;
-      LOG(INFO) << kPagespeedRewriterOutlineCss << " "
-                << config->outline_css;
-      LOG(INFO) << kPagespeedRewriterOutlineJavascript << " "
-                << config->outline_javascript;
-      LOG(INFO) << kPagespeedRewriterRewrieImages << " "
-                << config->rewrite_images;
-      LOG(INFO) << kPagespeedRewriterExtendCache << " "
-                << config->extend_cache;
-      LOG(INFO) << kPagespeedRewriterAddHead << " "
-                << config->add_head;
-      LOG(INFO) << kPagespeedRewriterAddBaseTag << " "
-                << config->add_base_tag;
-      LOG(INFO) << kPagespeedRewriterRemoveQuotes << " "
-                << config->remove_quotes;
-      LOG(INFO) << kPagespeedRewriterForceCaching << " "
-                << config->force_caching;
-      LOG(INFO) << kPagespeedRewriterMoveCssToHead << " "
-                << config->move_css_to_head;
-      LOG(INFO) << kPagespeedRewriterElideAttributes << " "
-                << config->elide_attributes;
-      LOG(INFO) << kPagespeedRewriterRemoveComments << " "
-                << config->remove_comments;
-      LOG(INFO) << kPagespeedRewriterCollapseWhiteSpace << " "
-                << config->collapse_whitespace;
+      LOG(INFO) << kInstawebRewriters << " "
+                << config->rewriters;
     }
     next_server = next_server->next;
   }
@@ -394,6 +387,7 @@ apr_status_t pagespeed_log_transaction(request_rec *request) {
       config->context->rewrite_driver_factory() == NULL) {
     return DECLINED;
   }
+#if 0
   html_rewriter::SerfUrlAsyncFetcher* url_async_fetcher =
       config->context->rewrite_driver_factory()->serf_url_async_fetcher();
   if (url_async_fetcher == NULL) {
@@ -403,8 +397,9 @@ apr_status_t pagespeed_log_transaction(request_rec *request) {
   html_rewriter::HtmlParserMessageHandler handler;
   if (!url_async_fetcher->WaitForInProgressFetches(max_ms, &handler)) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                  "SerfFetch timeout reuqest=%s", request->unparsed_uri);
+                  "SerfFetch timeout request=%s", request->unparsed_uri);
   }
+#endif
   return DECLINED;
 }
 
@@ -456,7 +451,7 @@ namespace html_rewriter {
 
 PageSpeedConfig* mod_pagespeed_get_server_config(server_rec* server) {
   return static_cast<PageSpeedConfig*> ap_get_module_config(
-      server->module_config, &pagespeed_module);
+      server->module_config, &instaweb_module);
 }
 
 PageSpeedServerContext* mod_pagespeed_get_config_server_context(
@@ -481,133 +476,44 @@ static const char* mod_pagespeed_config_one_string(cmd_parms* cmd, void* data,
   html_rewriter::PageSpeedConfig* config =
       html_rewriter::mod_pagespeed_get_server_config(cmd->server);
   const char* directive = (cmd->directive->directive);
-  if (strcasecmp(directive, kPagespeed) == 0) {
+  if (strcasecmp(directive, kInstaweb) == 0) {
     ConfigSwitch config_switch = get_config_switch(arg);
     if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kPagespeed, " on|off", NULL);
+      return apr_pstrcat(cmd->pool, kInstaweb, " on|off", NULL);
     }
     config->pagespeed_enable = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriteUrlPrefix) == 0) {
+  } else if (strcasecmp(directive, kInstawebRewriteUrlPrefix) == 0) {
     config->rewrite_url_prefix = apr_pstrdup(cmd->pool, arg);
-  } else if (strcasecmp(directive, kPagespeedFetchProxy) == 0) {
+  } else if (strcasecmp(directive, kInstawebFetchProxy) == 0) {
     config->fetch_proxy = apr_pstrdup(cmd->pool, arg);
-  } else if (strcasecmp(directive, kPagespeedGeneratedFilePrefix) == 0) {
+  } else if (strcasecmp(directive, kInstawebGeneratedFilePrefix) == 0) {
     config->generated_file_prefix = apr_pstrdup(cmd->pool, arg);
-  } else if (strcasecmp(directive, kPagespeedFileCachePath) == 0) {
+  } else if (strcasecmp(directive, kInstawebFileCachePath) == 0) {
     config->file_cache_path = apr_pstrdup(cmd->pool, arg);
-  } else if (strcasecmp(directive, kPagespeedFetcherTimeoutMs) == 0) {
+  } else if (strcasecmp(directive, kInstawebFetcherTimeoutMs) == 0) {
     config->fetcher_timeout_ms = static_cast<int64>(
         apr_strtoi64(arg, NULL, 10));
-  } else if (strcasecmp(directive, kPagespeedResourceTimeoutMs) == 0) {
+  } else if (strcasecmp(directive, kInstawebResourceTimeoutMs) == 0) {
     config->resource_timeout_ms = static_cast<int64>(
         apr_strtoi64(arg, NULL, 10));
-  } else if (strcasecmp(directive, kPagespeedRewriterNumShards) == 0) {
+  } else if (strcasecmp(directive, kInstawebRewriterNumShards) == 0) {
     config->num_shards = static_cast<int>(apr_strtoi64(arg, NULL, 10));
-  } else if (strcasecmp(directive, kPagespeedRewriterUseHttpCache) == 0) {
+  } else if (strcasecmp(directive, kInstawebRewriterUseHttpCache) == 0) {
     ConfigSwitch config_switch = get_config_switch(arg);
     if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kPagespeedRewriterUseHttpCache,
+      return apr_pstrcat(cmd->pool, kInstawebRewriterUseHttpCache,
                          " on|off", NULL);
     }
     config->use_http_cache = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterUseThreadsafeCache) == 0) {
+  } else if (strcasecmp(directive, kInstawebRewriterUseThreadsafeCache) == 0) {
     ConfigSwitch config_switch = get_config_switch(arg);
     if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kPagespeedRewriterUseThreadsafeCache,
+      return apr_pstrcat(cmd->pool, kInstawebRewriterUseThreadsafeCache,
                          " on|off", NULL);
     }
     config->use_threadsafe_cache = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterCombineCss) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kPagespeedRewriterCombineCss,
-                         " on|off", NULL);
-    }
-    config->combine_css = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterOutlineCss) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kPagespeedRewriterOutlineCss,
-                         " on|off", NULL);
-    }
-    config->outline_css = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterOutlineJavascript) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kPagespeedRewriterOutlineJavascript,
-                         " on|off", NULL);
-    }
-    config->outline_javascript = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterRewrieImages) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kPagespeedRewriterRewrieImages,
-                         " on|off", NULL);
-    }
-    config->rewrite_images = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterExtendCache) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kPagespeedRewriterExtendCache,
-                         " on|off", NULL);
-    }
-    config->extend_cache = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterAddHead) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kPagespeedRewriterAddHead,
-                         " on|off", NULL);
-    }
-    config->add_head = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterAddBaseTag) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kPagespeedRewriterAddBaseTag,
-                         " on|off", NULL);
-    }
-    config->add_base_tag = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterRemoveQuotes) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kPagespeedRewriterRemoveQuotes,
-                         " on|off", NULL);
-    }
-    config->remove_quotes = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterForceCaching) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kPagespeedRewriterForceCaching,
-                         " on|off", NULL);
-    }
-    config->force_caching = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterMoveCssToHead) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, directive,
-                         " on|off", NULL);
-    }
-    config->move_css_to_head = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterElideAttributes) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, directive,
-                         " on|off", NULL);
-    }
-    config->elide_attributes = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterRemoveComments) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, directive,
-                         " on|off", NULL);
-    }
-    config->remove_comments = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kPagespeedRewriterCollapseWhiteSpace) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, directive,
-                         " on|off", NULL);
-    }
-    config->collapse_whitespace = (config_switch == CONFIG_ON);
+  } else if (strcasecmp(directive, kInstawebRewriters) == 0) {
+    config->rewriters = apr_pstrdup(cmd->pool, arg);
   } else {
     return "Unknown directive.";
   }
@@ -616,128 +522,68 @@ static const char* mod_pagespeed_config_one_string(cmd_parms* cmd, void* data,
 
 // TODO(lsong): Refactor this to make it simple if possible.
 static const command_rec mod_pagespeed_filter_cmds[] = {
-  AP_INIT_TAKE1(kPagespeed,
+  AP_INIT_TAKE1(kInstaweb,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
-                "Enable pagespeed"),
-  AP_INIT_TAKE1(kPagespeedRewriteUrlPrefix,
+                "Enable instaweb"),
+  AP_INIT_TAKE1(kInstawebRewriteUrlPrefix,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set the url prefix"),
-  AP_INIT_TAKE1(kPagespeedFetchProxy,
+  AP_INIT_TAKE1(kInstawebFetchProxy,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set the fetch proxy"),
-  AP_INIT_TAKE1(kPagespeedGeneratedFilePrefix,
+  AP_INIT_TAKE1(kInstawebGeneratedFilePrefix,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set generated file's prefix"),
-  AP_INIT_TAKE1(kPagespeedFileCachePath,
+  AP_INIT_TAKE1(kInstawebFileCachePath,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set the path for file cache"),
-  AP_INIT_TAKE1(kPagespeedFetcherTimeoutMs,
+  AP_INIT_TAKE1(kInstawebFetcherTimeoutMs,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set internal fetcher timeout in milliseconds"),
-  AP_INIT_TAKE1(kPagespeedResourceTimeoutMs,
+  AP_INIT_TAKE1(kInstawebResourceTimeoutMs,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set resource fetcher timeout in milliseconds"),
-  AP_INIT_TAKE1(kPagespeedRewriterNumShards,
+  AP_INIT_TAKE1(kInstawebRewriterNumShards,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set number of shards"),
-  AP_INIT_TAKE1(kPagespeedRewriterUseHttpCache,
+  AP_INIT_TAKE1(kInstawebRewriterUseHttpCache,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set if to use http cache"),
-  AP_INIT_TAKE1(kPagespeedRewriterUseThreadsafeCache,
+  AP_INIT_TAKE1(kInstawebRewriterUseThreadsafeCache,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set if to use thread-safe cache"),
-  AP_INIT_TAKE1(kPagespeedRewriterCombineCss,
+  AP_INIT_TAKE1(kInstawebRewriters,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
-                "Set if to combine css"),
-  AP_INIT_TAKE1(kPagespeedRewriterOutlineCss,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to outline css"),
-  AP_INIT_TAKE1(kPagespeedRewriterOutlineJavascript,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to outline javascript"),
-  AP_INIT_TAKE1(kPagespeedRewriterRewrieImages,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to rewrite images"),
-  AP_INIT_TAKE1(kPagespeedRewriterExtendCache,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to extend cache"),
-  AP_INIT_TAKE1(kPagespeedRewriterAddHead,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to add head"),
-  AP_INIT_TAKE1(kPagespeedRewriterAddBaseTag,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to add base tag"),
-  AP_INIT_TAKE1(kPagespeedRewriterRemoveQuotes,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to remove quotes"),
-  AP_INIT_TAKE1(kPagespeedRewriterForceCaching,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to force caching"),
-  AP_INIT_TAKE1(kPagespeedRewriterMoveCssToHead,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to move the css to head"),
-  AP_INIT_TAKE1(kPagespeedRewriterElideAttributes,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to elide attributes"),
-  AP_INIT_TAKE1(kPagespeedRewriterRemoveComments,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to remove comments"),
-  AP_INIT_TAKE1(kPagespeedRewriterCollapseWhiteSpace,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to collapse whitespace"),
+                "Comma-separated list of rewriting filters"),
   {NULL}
 };
 // Declare and populate the module's data structure.  The
-// name of this structure ('pagespeed_module') is important - it
+// name of this structure ('instaweb_module') is important - it
 // must match the name of the module.  This structure is the
 // only "glue" between the httpd core and the module.
-module AP_MODULE_DECLARE_DATA pagespeed_module = {
+module AP_MODULE_DECLARE_DATA instaweb_module = {
   // Only one callback function is provided.  Real
   // modules will need to declare callback functions for
   // server/directory configuration, configuration merging

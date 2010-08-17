@@ -69,29 +69,6 @@ bool WriteTempFileWithContentType(
   return ok;
 }
 
-// char to int *without sign extension*.
-inline int charToInt(char c) {
-  uint8 uc = static_cast<uint8>(c);
-  return static_cast<int>(uc);
-}
-
-inline int JpegIntAtPosition(const StringPiece& buf, size_t pos) {
-  return (charToInt(buf[pos]) << 8) |
-         (charToInt(buf[pos + 1]));
-}
-
-inline int GifIntAtPosition(const StringPiece& buf, size_t pos) {
-  return (charToInt(buf[pos + 1]) << 8) |
-         (charToInt(buf[pos]));
-}
-
-inline int PngIntAtPosition(const StringPiece& buf, size_t pos) {
-  return (charToInt(buf[pos    ]) << 24) |
-         (charToInt(buf[pos + 1]) << 16) |
-         (charToInt(buf[pos + 2]) << 8) |
-         (charToInt(buf[pos + 3]));
-}
-
 }  // namespace
 
 Image::Image(const StringPiece& original_contents,

@@ -179,7 +179,7 @@ Image* ImgRewriteFilter::GetImage(const ImgRewriteUrl& url_proto,
   if (img_resource == NULL) {
     html_parse_->WarningHere("no input resource for %s",
                              url_proto.origin_url().c_str());
-  } else if (!resource_manager_->Read(img_resource, message_handler)) {
+  } else if (!resource_manager_->ReadIfCached(img_resource, message_handler)) {
     html_parse_->WarningHere("%s wasn't loaded",
                              img_resource->url().c_str());
   } else if (!img_resource->ContentsValid()) {
@@ -229,7 +229,8 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
       resource_manager_->CreateInputResource(src->value(), message_handler));
 
   if ((input_resource != NULL) &&
-      resource_manager_->Read(input_resource.get(), message_handler)) {
+      resource_manager_->ReadIfCached(input_resource.get(), message_handler) &&
+      input_resource->ContentsValid()) {
     // Always rewrite to absolute url used to obtain resource.
     // This lets us do context-free fetches of content.
     rewritten_url_proto.set_origin_url(input_resource->url());
@@ -247,8 +248,7 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
     scoped_ptr<OutputResource> output_resource(
        resource_manager_->CreateNamedOutputResource(
            filter_prefix_, rewritten_url, NULL, message_handler));
-    if (!output_resource->IsWritten() ||
-        !resource_manager_->FetchOutputResource(
+    if (!resource_manager_->FetchOutputResource(
             output_resource.get(), NULL, NULL, message_handler)) {
       scoped_ptr<Image> image(GetImage(rewritten_url_proto,
                                        input_resource.get()));
@@ -341,14 +341,17 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
       scoped_ptr<Resource> input_image(
           resource_manager_->CreateInputResource(
               url_proto.origin_url(), message_handler));
+
+      // TODO(jmarantz): this needs to be refactored slightly to
+      // allow for asynchronous fetches of the input image, if
+      // it's not obtained via cache or local filesystem read.
+
       scoped_ptr<OutputResource> image_resource(OptimizedImageFor(
           url_proto, stripped_url_string, input_image.get()));
       if (image_resource != NULL) {
-        CHECK(image_resource->IsWritten());
         if (resource_manager_->FetchOutputResource(
                 image_resource.get(), writer, response_headers,
                 message_handler)) {
-          resource_manager_->SetDefaultHeaders(content_type, response_headers);
           callback->Done(true);
         } else {
           ok = false;

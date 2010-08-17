@@ -23,10 +23,12 @@
 #include <map>
 #include <vector>
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/util/public/http_cache.h"
 #include "net/instaweb/util/public/meta_data.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/url_async_fetcher.h"
 
 class GURL;
 
@@ -36,13 +38,13 @@ class ContentType;
 class FileSystem;
 class FilenameEncoder;
 class HTTPCache;
+class HTTPValue;
 class Hasher;
 class MessageHandler;
 class MetaData;
 class OutputResource;
-class Resource;
 class Statistics;
-class UrlFetcher;
+class UrlAsyncFetcher;
 class Writer;
 
 class ResourceManager {
@@ -52,7 +54,7 @@ class ResourceManager {
                   const int num_shards,
                   FileSystem* file_system,
                   FilenameEncoder* filename_encoder,
-                  UrlFetcher* url_fetcher,
+                  UrlAsyncFetcher* url_async_fetcher,
                   Hasher* hasher,
                   HTTPCache* http_cache);
   ~ResourceManager();
@@ -145,14 +147,28 @@ class ResourceManager {
              const StringPiece& contents, OutputResource* output,
              int64 origin_expire_time_ms, MessageHandler* handler);
 
-  // Read complete resource, content is stored in contents_.
-  bool Read(Resource* resource, MessageHandler* message_handler);
+  // Read resource contents & headers, returning false if the resource
+  // is not already cached, in which case an async request is queued.
+  bool ReadIfCached(Resource* resource, MessageHandler* message_handler) const;
+
+  // Read contents of resource asynchronously, calling callback when
+  // done.  If the resource contents is cached, the callback will
+  // be called directly, rather than asynchronously.
+  //
+  // TODO(jmarantz): currently, ReadAsync does *not* fill in the contents
+  // and meta-data in the Resource, because it doesn't assume that the
+  // Resource will live till the callback is called.  This is actually
+  // harder to use, but was easier to implement.  We will change this in
+  // the future so that the burden is placed on the implementation.
+  void ReadAsync(Resource* resource, Resource::AsyncCallback* callback,
+                 MessageHandler* message_handler);
 
   // TODO(jmarantz): check thread safety in Apache.
   Hasher* hasher() { return hasher_; }
   FileSystem* file_system() { return file_system_; }
   FilenameEncoder* filename_encoder() { return filename_encoder_; }
-  UrlFetcher* url_fetcher() { return url_fetcher_; }
+  UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
+  Timer* timer() const { return http_cache_->timer(); }
 
  private:
   std::string ConstructNameKey(OutputResource* output) const;
@@ -164,7 +180,7 @@ class ResourceManager {
   int resource_id_;  // Sequential ids for temporary Resource filenames.
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
-  UrlFetcher* url_fetcher_;
+  UrlAsyncFetcher* url_async_fetcher_;
   Hasher* hasher_;
   Statistics* statistics_;
   HTTPCache* http_cache_;

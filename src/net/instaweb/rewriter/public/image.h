@@ -30,6 +30,33 @@ class FileSystem;
 class MessageHandler;
 class Writer;
 
+// The following four helper functions were moved here for testability.  We ran
+// into problems with sign extension under different compiler versions, and we'd
+// like to catch regressions on that front in the future.
+
+// char to int *without sign extension*.
+inline int charToInt(char c) {
+  uint8 uc = static_cast<uint8>(c);
+  return static_cast<int>(uc);
+}
+
+inline int JpegIntAtPosition(const StringPiece& buf, size_t pos) {
+  return (charToInt(buf[pos]) << 8) |
+         (charToInt(buf[pos + 1]));
+}
+
+inline int GifIntAtPosition(const StringPiece& buf, size_t pos) {
+  return (charToInt(buf[pos + 1]) << 8) |
+         (charToInt(buf[pos]));
+}
+
+inline int PngIntAtPosition(const StringPiece& buf, size_t pos) {
+  return (charToInt(buf[pos    ]) << 24) |
+         (charToInt(buf[pos + 1]) << 16) |
+         (charToInt(buf[pos + 2]) << 8) |
+         (charToInt(buf[pos + 3]));
+}
+
 class Image {
  public:
   // Images that are in the process of being transformed are represented by an

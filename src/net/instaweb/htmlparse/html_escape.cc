@@ -181,6 +181,13 @@ void HtmlEscape::Init() {
   }
 }
 
+void HtmlEscape::ShutDown() {
+  if (singleton_ != NULL) {
+    delete singleton_;
+    singleton_ = NULL;
+  }
+}
+
 bool HtmlEscape::AccumulateHexValue(char c, int* value) {
   *value *= 16;
   bool ret = true;

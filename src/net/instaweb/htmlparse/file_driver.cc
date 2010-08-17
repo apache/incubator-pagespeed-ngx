@@ -46,11 +46,10 @@ bool GenerateFilename(
 
 namespace net_instaweb {
 
-FileDriver::FileDriver(MessageHandler* html_parse_message_handler,
-                       FileSystem* file_system)
-    : html_parse_(html_parse_message_handler),
+FileDriver::FileDriver(HtmlParse* html_parse, FileSystem* file_system)
+    : html_parse_(html_parse),
       logging_filter_(),
-      html_write_filter_(&html_parse_),
+      html_write_filter_(html_parse_),
       filters_added_(false),
       file_system_(file_system) {
 }
@@ -76,8 +75,8 @@ bool FileDriver::ParseFile(const char* infilename,
   if (outf != NULL) {
     if (!filters_added_) {
       filters_added_ = true;
-      html_parse_.AddFilter(&logging_filter_);
-      html_parse_.AddFilter(&html_write_filter_);
+      html_parse_->AddFilter(&logging_filter_);
+      html_parse_->AddFilter(&html_write_filter_);
     }
     logging_filter_.Reset();
     FileWriter file_writer(outf);
@@ -85,14 +84,14 @@ bool FileDriver::ParseFile(const char* infilename,
     FileSystem::InputFile* f =
         file_system_->OpenInputFile(infilename, message_handler);
     if (f != NULL) {
-      html_parse_.StartParse(infilename);
+      html_parse_->StartParse(infilename);
       char buf[1000];
       int nread;
       while ((nread = f->Read(buf, sizeof(buf), message_handler)) > 0) {
-        html_parse_.ParseText(buf, nread);
+        html_parse_->ParseText(buf, nread);
       }
       file_system_->Close(f, message_handler);
-      html_parse_.FinishParse();
+      html_parse_->FinishParse();
       ret = true;
       if (statsfilename != NULL) {
         FileSystem::OutputFile* statsfile =

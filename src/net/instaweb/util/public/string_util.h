@@ -20,11 +20,12 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_UTIL_H_
 
 
+#include <set>
 #include <vector>
 #include <string>
 
-#include "base/string_piece.h"
 #include "base/string_number_conversions.h"
+#include "base/string_piece.h"
 #include "base/string_util.h"
 #include "third_party/protobuf2/src/src/google/protobuf/stubs/strutil.h"
 
@@ -100,6 +101,7 @@ struct StringCompareInsensitive {
 
 typedef std::vector<const char*> CharStarVector;
 typedef std::vector<std::string> StringVector;
+typedef std::set<std::string> StringSet;
 
 }  // namespace net_instaweb
 

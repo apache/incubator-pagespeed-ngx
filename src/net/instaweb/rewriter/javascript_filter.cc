@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 
 #include <ctype.h>
+#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -117,9 +118,12 @@ Resource* JavascriptFilter::ScriptAtUrl(const std::string& script_url) {
   Resource* script_input =
       resource_manager_->CreateInputResource(script_url, message_handler);
   if (script_input == NULL ||
-      !(resource_manager_->Read(script_input, message_handler) &&
+      !(resource_manager_->ReadIfCached(script_input, message_handler) &&
         script_input->ContentsValid())) {
-    script_input = NULL;
+    if (script_input != NULL) {
+      delete script_input;
+      script_input = NULL;
+    }
     html_parse_->ErrorHere("Couldn't get external script %s",
                            script_url.c_str());
   }
@@ -161,13 +165,12 @@ void JavascriptFilter::RewriteExternalScript() {
       filter_prefix_, rewritten_url, &kContentTypeJavascript, message_handler);
   if (script_dest != NULL) {
     bool ok;
-    if (script_dest->IsWritten() &&
-        resource_manager_->FetchOutputResource(script_dest, NULL, NULL,
+    if (resource_manager_->FetchOutputResource(script_dest, NULL, NULL,
                                                message_handler)) {
       // Only rewrite URL if we have usable rewritten data.
       ok = script_dest->metadata()->status_code() == HttpStatus::OK;
     } else {
-      Resource* script_input = ScriptAtUrl(script_url);
+      scoped_ptr<Resource> script_input(ScriptAtUrl(script_url));
       ok = script_input != NULL;
       if (ok) {
         StringPiece script = script_input->contents();
@@ -175,7 +178,7 @@ void JavascriptFilter::RewriteExternalScript() {
         JavascriptCodeBlock code_block(script, config_, message_handler);
         ok = code_block.ProfitableToRewrite();
         if (ok) {
-          ok = WriteExternalScriptTo(script_input, code_block.Rewritten(),
+          ok = WriteExternalScriptTo(script_input.get(), code_block.Rewritten(),
                                      script_dest);
         } else {
           // Rewriting happened but wasn't useful; remember this for later
@@ -285,15 +288,15 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
   bool ok = false;
   if (Decode(output_resource->name(), &url_proto)) {
     const std::string& script_url = url_proto.origin_url();
-    Resource* script_input =
-        resource_manager_->CreateInputResource(script_url, message_handler);
+    scoped_ptr<Resource> script_input(
+        resource_manager_->CreateInputResource(script_url, message_handler));
     if (script_input != NULL &&
-        resource_manager_->Read(script_input, message_handler) &&
+        resource_manager_->ReadIfCached(script_input.get(), message_handler) &&
         script_input->ContentsValid()) {
       StringPiece script = script_input->contents();
       std::string script_out;
       JavascriptCodeBlock code_block(script, config_, message_handler);
-      ok = WriteExternalScriptTo(script_input, code_block.Rewritten(),
+      ok = WriteExternalScriptTo(script_input.get(), code_block.Rewritten(),
                                  output_resource);
     } else {
       message_handler->Error(output_resource->name().as_string().c_str(), 0,

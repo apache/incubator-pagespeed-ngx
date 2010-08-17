@@ -27,10 +27,9 @@ namespace net_instaweb {
 FileInputResource::~FileInputResource() {
 }
 
-bool FileInputResource::Read(MessageHandler* message_handler) {
+bool FileInputResource::ReadIfCached(MessageHandler* message_handler) {
   FileSystem* file_system = resource_manager_->file_system();
-  if (!loaded() &&
-      file_system->ReadFile(filename_.c_str(), &value_, message_handler)) {
+  if (file_system->ReadFile(filename_.c_str(), &value_, message_handler)) {
     resource_manager_->SetDefaultHeaders(type_, &meta_data_);
     value_.SetHeaders(meta_data_);
   }

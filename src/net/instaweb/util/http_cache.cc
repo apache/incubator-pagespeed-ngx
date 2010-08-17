@@ -24,7 +24,6 @@
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/util.pb.h"
 
 namespace net_instaweb {
 
@@ -67,6 +66,10 @@ void HTTPCache::Put(const std::string& key, const MetaData& headers,
 
 CacheInterface::KeyState HTTPCache::Query(const std::string& key) {
   return cache_->Query(key);
+}
+
+void HTTPCache::Delete(const std::string& key) {
+  return cache_->Delete(key);
 }
 
 }  // namespace net_instaweb

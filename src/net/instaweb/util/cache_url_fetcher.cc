@@ -63,6 +63,11 @@ CacheUrlFetcher::AsyncFetch::AsyncFetch(const StringPiece& url,
 CacheUrlFetcher::AsyncFetch::~AsyncFetch() {
 }
 
+/*
+ * Note: this can be called from a different thread than the one where
+ * the request was made.  We are depending on the caches being thread-safe
+ * if necessary.
+ */
 void CacheUrlFetcher::AsyncFetch::UpdateCache() {
   // TODO(jmarantz): allow configuration of whether we ignore
   // IsProxyCacheable, e.g. for content served from the same host
@@ -103,6 +108,12 @@ void CacheUrlFetcher::AsyncFetch::Done(bool success) {
     // TODO(jmarantz): cache that this request is not fetchable
   }
   delete this;
+}
+
+bool CacheUrlFetcher::AsyncFetch::EnableThreaded() const {
+  // Our cache implementations are thread-safe, so it's OK to update
+  // them asynchronously.
+  return true;
 }
 
 void CacheUrlFetcher::AsyncFetch::Start(

@@ -45,14 +45,11 @@ namespace net_instaweb {
 // TODO(jmarantz): consider factoring out the code that finds external resources
 
 CacheExtender::CacheExtender(const char* filter_prefix, HtmlParse* html_parse,
-                             ResourceManager* resource_manager,
-                             Hasher* hasher, Timer* timer)
+                             ResourceManager* resource_manager)
     : RewriteFilter(filter_prefix),
       html_parse_(html_parse),
       resource_manager_(resource_manager),
-      hasher_(hasher),
       tag_scanner_(html_parse),
-      timer_(timer),
       extension_count_(NULL),
       not_cacheable_count_(NULL) {
   s_href_ = html_parse->Intern("href");
@@ -68,15 +65,16 @@ void CacheExtender::StartElement(HtmlElement* element) {
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
   if ((href != NULL) && html_parse_->IsRewritable(element)) {
     const char* origin_url = href->value();
-    Resource* input_resource =
-        resource_manager_->CreateInputResource(origin_url, message_handler);
+    scoped_ptr<Resource> input_resource(
+        resource_manager_->CreateInputResource(origin_url, message_handler));
 
     // TODO(jmarantz): create an output resource to generate a new url,
     // rather than doing the content-hashing here.
     if ((input_resource != NULL) &&
-        resource_manager_->Read(input_resource, message_handler)) {
+        resource_manager_->ReadIfCached(input_resource.get(),
+                                        message_handler)) {
       const MetaData* headers = input_resource->metadata();
-      int64 now_ms = timer_->NowMs();
+      int64 now_ms = resource_manager_->timer()->NowMs();
 
       // We cannot cache-extend a resource that's completely uncacheable,
       // as our serving-side image would b
@@ -91,8 +89,6 @@ void CacheExtender::StartElement(HtmlElement* element) {
         std::string trimmed_url;
         TrimWhitespace(origin_url, &trimmed_url);
         resource_url.set_origin_url(trimmed_url);
-        resource_url.set_content_hash(hasher_->Hash(
-            input_resource->contents()));
         std::string url_safe_id;
         Encode(resource_url, &url_safe_id);
         scoped_ptr<OutputResource> output(

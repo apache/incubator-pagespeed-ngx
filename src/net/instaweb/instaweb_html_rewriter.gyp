@@ -69,59 +69,5 @@
         'apache/gzip_inflater.cc',
       ],
     },
-    {
-      'target_name': 'apr_file_system_test',
-      'type': 'executable',
-      'dependencies': [
-        'html_rewriter',
-        '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/testing/gtest.gyp:gtest',
-        '<(DEPTH)/testing/gtest.gyp:gtestmain',
-        '<(DEPTH)/third_party/apache/apr/apr.gyp:apr',
-        '<(DEPTH)/third_party/apache/aprutil/aprutil.gyp:aprutil',
-      ],
-      'include_dirs': [
-        '<(DEPTH)',
-      ],
-      'sources': [
-        'apache/apr_file_system_test.cc',
-      ],
-    },
-    {
-      'target_name': 'serf_url_async_fetcher_test',
-      'type': 'executable',
-      'dependencies': [
-        'html_rewriter',
-        '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/testing/gtest.gyp:gtest',
-        '<(DEPTH)/testing/gtest.gyp:gtestmain',
-        '<(DEPTH)/third_party/apache/apr/apr.gyp:apr',
-        '<(DEPTH)/third_party/apache/aprutil/aprutil.gyp:aprutil',
-        '<(DEPTH)/third_party/serf/serf.gyp:serf',
-        '<(instaweb_root)/instaweb.gyp:instaweb_util',
-      ],
-      'include_dirs': [
-        '<(DEPTH)',
-      ],
-      'sources': [
-        'apache/serf_url_async_fetcher_test.cc',
-      ],
-    },
-    {
-      'target_name': 'gzip_inflater_test',
-      'type': 'executable',
-      'dependencies': [
-        'gzip_inflater',
-        '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/testing/gtest.gyp:gtest',
-        '<(DEPTH)/testing/gtest.gyp:gtestmain',
-      ],
-      'include_dirs': [
-        '<(DEPTH)',
-      ],
-      'sources': [
-        'apache/gzip_inflater_test.cc',
-      ],
-    },
   ],
 }

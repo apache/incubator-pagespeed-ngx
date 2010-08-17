@@ -42,7 +42,7 @@ class OutputResource : public Resource {
                  const StringPiece& name);
   ~OutputResource();
 
-  virtual bool Read(MessageHandler* message_handler);
+  virtual bool ReadIfCached(MessageHandler* message_handler);
   virtual std::string url() const;
 
   // output-specific
@@ -89,6 +89,8 @@ class OutputResource : public Resource {
 
   void SetHash(const StringPiece& hash);
   StringPiece hash() const { return hash_; }
+  bool has_hash() const { return !hash_.empty(); }
+  void set_written(bool written) { writing_complete_ = true; }
   OutputWriter* BeginWrite(MessageHandler* message_handler);
   bool EndWrite(OutputWriter* writer, MessageHandler* message_handler);
 

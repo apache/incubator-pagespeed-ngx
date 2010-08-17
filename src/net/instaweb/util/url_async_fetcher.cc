@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-// Author: sligocki@google.com (Shawn Ligocki)
+// Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/meta_data.h"
@@ -26,6 +26,12 @@ UrlAsyncFetcher::~UrlAsyncFetcher() {
 }
 
 UrlAsyncFetcher::Callback::~Callback() {
+}
+
+bool UrlAsyncFetcher::Callback::EnableThreaded() const {
+  // Most fetcher callbacks are not prepared to be called from a different
+  // thread.
+  return false;
 }
 
 }  // namespace instaweb

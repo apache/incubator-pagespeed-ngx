@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "apr_time.h"
 #include "net/instaweb/apache/apr_timer.h"
-#include "third_party/apache/apr/src/include/apr_time.h"
 
 namespace html_rewriter {
 

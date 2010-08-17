@@ -38,6 +38,7 @@ class HtmlEvent {
   virtual HtmlElement* GetEndElement() { return NULL; }
   virtual HtmlLeafNode* GetLeafNode() { return NULL; }
   virtual HtmlNode* GetNode() { return NULL; }
+  virtual HtmlCharactersNode* GetCharactersNode() { return NULL; }
   void DebugPrint();
 
   int line_number() const { return line_number_; }
@@ -158,6 +159,7 @@ class HtmlCharactersEvent: public HtmlLeafNodeEvent {
     *str += characters_->contents();
   }
   virtual HtmlLeafNode* GetLeafNode() { return characters_; }
+  virtual HtmlCharactersNode* GetCharactersNode() { return characters_; }
  private:
   HtmlCharactersNode* characters_;
 };

@@ -32,11 +32,10 @@ namespace net_instaweb {
 // a chain of HTML filters, and writing an output file.
 class FileDriver {
  public:
-  FileDriver(MessageHandler* html_parse_message_handler,
-             FileSystem* file_system);
+  FileDriver(HtmlParse* html_parse, FileSystem* file_system);
 
   // Return the parser.  This can be used to add filters.
-  HtmlParse* html_parse() { return &html_parse_; }
+  HtmlParse* html_parse() { return html_parse_; }
 
   // Helper function to generate an output .html filename from
   // an input filename.  Given "/a/b/c.html" returns "a/b/c.out.html".
@@ -58,7 +57,7 @@ class FileDriver {
                  MessageHandler* handler);
 
  private:
-  HtmlParse html_parse_;
+  HtmlParse* html_parse_;
   LoggingFilter logging_filter_;
   StatisticsLog* stats_log_;
   HtmlWriterFilter html_write_filter_;

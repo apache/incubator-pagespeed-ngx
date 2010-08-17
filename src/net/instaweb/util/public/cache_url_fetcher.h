@@ -94,6 +94,8 @@ class CacheUrlFetcher : public UrlFetcher {
 
     void UpdateCache();
 
+    virtual bool EnableThreaded() const;
+
    protected:
     HTTPValue value_;
     MessageHandler* message_handler_;
@@ -101,7 +103,6 @@ class CacheUrlFetcher : public UrlFetcher {
    private:
     std::string url_;
     HTTPCache* http_cache_;
-    Callback* callback_;
     bool force_caching_;
   };
 
