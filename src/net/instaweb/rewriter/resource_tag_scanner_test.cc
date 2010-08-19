@@ -46,6 +46,8 @@ class ResourceTagScannerTest : public HtmlParseTestBase {
       }
     }
 
+    virtual const char* Name() const { return "ResourceCollector"; }
+
    private:
     StringVector* resources_;
     ResourceTagScanner resource_tag_scanner_;

@@ -37,13 +37,10 @@ class Timer {
   virtual ~Timer();
 
   // Returns number of milliseconds since 1970.
-  virtual int64 NowMs() const = 0;
+  virtual int64 NowMs() const;
 
-  // Allocates and returns a system timer, owned by caller.
-  static Timer* NewSystemTimer();
-
-  // Parses an arbitrary string into milliseconds since 1970
-  static bool ParseTime(const char* time_str, int64* time_ms);
+  // Returns number of microseconds since 1970.
+  virtual int64 NowUs() const = 0;
 };
 
 }  // namespace net_instaweb

@@ -20,9 +20,9 @@ namespace html_rewriter {
 AprTimer::~AprTimer() {
 }
 
-int64 AprTimer::NowMs() const {
+int64 AprTimer::NowUs() const {
   // apr_time_now returns microseconds.
-  return apr_time_now() / 1000;
+  return apr_time_now();
 }
 
 }  // namespace html_rewriter

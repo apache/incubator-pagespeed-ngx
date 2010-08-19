@@ -75,6 +75,7 @@ RewriteDriver::~RewriteDriver() {
 
 void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   resource_manager_ = resource_manager;
+  html_parse_.set_timer(resource_manager->timer());
 }
 
 namespace {

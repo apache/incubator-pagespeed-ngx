@@ -79,7 +79,8 @@ class SerfFetch {
     apr_pool_destroy(pool_);
   }
 
-  // Start the fetch. It returns immediately.
+  // Start the fetch. It returns immediately.  This can only be run when
+  // locked with fetcher->mutex_.
   bool Start(SerfUrlAsyncFetcher* fetcher);
 
   const char* str_url() { return str_url_.c_str(); }
@@ -283,6 +284,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
       SerfUrlAsyncFetcher(parent, proxy),
       active_mutex_(pool_),
       initiate_mutex_(pool_),
+      need_wait_(true),
       terminate_mutex_(pool_),
       thread_done_(false) {
     // Before starting the thread, lock the active mutex so SerfThread() doesn't
@@ -295,7 +297,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
 
   ~SerfThreadedFetcher() {
     // Although Cancel will be called in the base class destructor, we
-    // want to call it here as well, as it will maek it easier for the
+    // want to call it here as well, as it will make it easier for the
     // thread to terminate.
     CancelOutstandingFetches();
 
@@ -308,6 +310,19 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     terminate_mutex_.Unlock();
   }
 
+  // Called from mainline to queue up a fetch for the thread.  If the
+  // thread is idle then we can unlock it.
+  void InitiateFetch(SerfFetch* fetch) {
+    net_instaweb::ScopedMutex lock(&initiate_mutex_);
+    initiate_fetches_.push_back(fetch);
+    if (need_wait_) {
+      SERF_DEBUG(LOG(WARNING) << "Unlocking threaded fetcher");
+      active_mutex_.Unlock();
+      need_wait_ = false;
+    }
+  }
+
+ private:
   static void* SerfThreadFn(apr_thread_t* thread_id, void* context) {
     SerfThreadedFetcher* stc = static_cast<SerfThreadedFetcher*>(context);
     CHECK_EQ(thread_id, stc->thread_id_);
@@ -315,31 +330,41 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     return NULL;
   }
 
-  void InitiateFetch(SerfFetch* fetch) {
-    // TODO(jmarantz): We have a very coarse-grained lock
-    // for transmitting fetch-requests from mainline to
-    // the thread.  If the thread is currently polling, then
-    // mainline can be blocked for half a second waiting
-    // for the lock to add to the active_fetches_ set.  We
-    // should use a separate mutex and a vector to do the
-    // transfer from mainline to thread, but we will have to
-    // sort out how to wake up sleeping thread in that case.
-    // initiate_mutex_ has been allocated for this purpose
-    // but is not yet being used.
-    net_instaweb::ScopedMutex lock(mutex_);
-
-    if (fetch->Start(this)) {
-      active_fetches_.insert(fetch);
-    } else {
-      delete fetch;
+  // Thread-called function to transfer fetches from initiate_fetches_ vector
+  // to the active_fetches_ set.
+  void TransferFetches() {
+    // Use a temp that to minimize the amount of time we hold the
+    // initiate_mutex_ lock, so that the parent thread doesn't get
+    // blocked trying to initiate fetches.
+    FetchVector xfer_fetches;
+    {
+      net_instaweb::ScopedMutex lock(&initiate_mutex_);
+      xfer_fetches.swap(initiate_fetches_);
     }
-    SERF_DEBUG(LOG(WARNING) << "Adding threaded fetch to url "
-               << fetch->str_url() << " (" << active_fetches_.size() << ")");
 
-    if (active_fetches_.size() == 1) {
-      SERF_DEBUG(LOG(WARNING) << "Unlocking threaded fetcher");
-      active_mutex_.Unlock();
+    // Now that we've unblocked the parent thread, we can leasurely
+    // queue up the fetches, employing the proper lock for the active_fetches_
+    // set.  Actually we expect we wll never have contention on this mutex
+    // from the thread.
+    if (!xfer_fetches.empty()) {
+      net_instaweb::ScopedMutex lock(mutex_);
+      for (int i = 0, n = xfer_fetches.size(); i < n; ++i) {
+        SerfFetch* fetch = xfer_fetches[i];
+        if (fetch->Start(this)) {
+          SERF_DEBUG(LOG(WARNING) << "Adding threaded fetch to url "
+                     << fetch->str_url()
+                     << " (" << active_fetches_.size() << ")");
+          active_fetches_.insert(fetch);
+        } else {
+          delete fetch;
+        }
+      }
     }
+  }
+
+  bool NeedWait() {
+    net_instaweb::ScopedMutex lock(&initiate_mutex_);
+    return need_wait_;
   }
 
   void WaitForActiveFetches() {
@@ -350,45 +375,50 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   }
 
   void SerfThread() {
-    bool need_wait = true;
     terminate_mutex_.Lock();
     while (!thread_done_) {
-      if (need_wait) {
+      // Race/deadlock-check.  NeedWait needs to grab initiate_mutex_, but
+      // it releases it before returning.  We will grab it again below, when
+      // transferring the fetches.
+      if (NeedWait()) {
         WaitForActiveFetches();
       }
+      TransferFetches();
 
       const int64 kPollIntervalUs = 500000;
       SERF_DEBUG(LOG(WARNING) << "Polling from serf thread (" << this << ")");
-      Poll(kPollIntervalUs);
+      int num_outstanding_fetches = Poll(kPollIntervalUs);
       SERF_DEBUG(LOG(WARNING) << "Finished polling from serf thread ("
                  << this << ")");
 
-      // If there are no active fetches after the Poll, then prevent
-      // us from spinning the loop by locking the mutex.  It will be
-      // unlocked the next time a fetch is initiated.
-      {
-        net_instaweb::ScopedMutex lock(mutex_);
-        if (active_fetches_.empty()) {
-          SERF_DEBUG(LOG(WARNING) << "Threaded Fetches exhausted, ...locking");
-          active_mutex_.Lock();
-          need_wait = true;
-        } else {
-          SERF_DEBUG(LOG(WARNING) << "Still looking at "
-                     << active_fetches_.size() << " fetches");
-          need_wait = false;
-        }
+      if (num_outstanding_fetches == 0) {
+        net_instaweb::ScopedMutex lock(&initiate_mutex_);
+        SERF_DEBUG(LOG(WARNING) << "Threaded Fetches exhausted, ...locking");
+        active_mutex_.Lock();
+        need_wait_ = true;
+      } else {
+        SERF_DEBUG(LOG(WARNING) << "Still looking at "
+                   << num_outstanding_fetches << " fetches");
       }
     }
-
     terminate_mutex_.Unlock();
   }
 
  private:
   apr_thread_t* thread_id_;
-  AprMutex active_mutex_;
-  AprMutex initiate_mutex_;  // protectes initiate_fetches_
+
+  AprMutex active_mutex_;    // Prevents thread from spinning with no data.
+
+  AprMutex initiate_mutex_;  // protectes initiate_fetches_, need_wait_
   std::vector<SerfFetch*> initiate_fetches_;
-  AprMutex terminate_mutex_;
+
+  // image of active_fetches_.empty() for mainline to determine
+  // whether thread is idle.  We don't want to make the parent acquire
+  // mutex_, which protects active_fetches_, because that is locked
+  // for the entire duration of a Poll, which could be 500ms.
+  bool need_wait_;
+
+  AprMutex terminate_mutex_;  // Allows parent to block till thread exits
   bool thread_done_;
 };
 
@@ -529,22 +559,27 @@ void SerfUrlAsyncFetcher::PrintOutstandingFetches(
   }
 }
 
-bool SerfUrlAsyncFetcher::Poll(int64 microseconds) {
+
+int SerfUrlAsyncFetcher::Poll(int64 microseconds) {
   // Run serf polling up to microseconds.
   net_instaweb::ScopedMutex mutex(mutex_);
-  SERF_DEBUG(LOG(WARNING) << "Polling for " << active_fetches_.size()
-             << ((threaded_fetcher_ == NULL)
-                 ? ": (threaded)"
-                 : ": (non-blocking)")
-             << " (" << this << ") for " << microseconds/1.0e6 << " seconds");
-  apr_status_t status = serf_context_run(serf_context_, microseconds, pool_);
-  // Clear the completed fetches.
-  STLDeleteElements(&completed_fetches_);
-  bool ret = ((status == APR_SUCCESS) || APR_STATUS_IS_TIMEUP(status));
-  // TODO(lsong): log error if !ret?
-  SERF_DEBUG(LOG(WARNING) << "Poll return status " << ret
-             << " (" << status << ")");
-  return ret;
+  if (!active_fetches_.empty()) {
+    SERF_DEBUG(LOG(WARNING) << "Polling for " << active_fetches_.size()
+               << ((threaded_fetcher_ == NULL)
+                   ? ": (threaded)"
+                   : ": (non-blocking)")
+               << " (" << this << ") for " << microseconds/1.0e6 << " seconds");
+    apr_status_t status = serf_context_run(serf_context_, microseconds, pool_);
+    // Clear the completed fetches.
+    STLDeleteElements(&completed_fetches_);
+    bool success = ((status == APR_SUCCESS) || APR_STATUS_IS_TIMEUP(status));
+    // TODO(lsong): log error if !ret?
+    // TODO(jmarantz): provide the success status to the caller if there is a
+    // need.
+    SERF_DEBUG(LOG(WARNING) << "Poll success status " << success
+               << " (" << status << ")");
+  }
+  return active_fetches_.size();
 }
 
 void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch) {
@@ -565,16 +600,20 @@ size_t SerfUrlAsyncFetcher::NumActiveFetches() {
 }
 
 bool SerfUrlAsyncFetcher::WaitForInProgressFetches(
-    int64 max_ms, MessageHandler* message_handler) {
-
-  // TODO(jmarantz): Use a bool flag to trigger waiting
-  // for the threaded fetches.  We probably don't want
-  // to wait for them in production, but we currently
-  // test for this.
-  if (threaded_fetcher_ != NULL) {
-    threaded_fetcher_->WaitForInProgressFetches(max_ms, message_handler);
+    int64 max_ms, MessageHandler* message_handler, WaitChoice wait_choice) {
+  bool ret = true;
+  if ((threaded_fetcher_ != NULL) && (wait_choice != kMainlineOnly)) {
+    ret &= threaded_fetcher_->WaitForInProgressFetchesHelper(
+        max_ms, message_handler);
   }
+  if (wait_choice != kThreadedOnly) {
+    ret &= WaitForInProgressFetchesHelper(max_ms, message_handler);
+  }
+  return ret;
+}
 
+bool SerfUrlAsyncFetcher::WaitForInProgressFetchesHelper(
+    int64 max_ms, MessageHandler* message_handler) {
   int num_active_fetches = NumActiveFetches();
   if (num_active_fetches != 0) {
     AprTimer timer;

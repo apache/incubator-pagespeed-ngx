@@ -42,7 +42,7 @@ class HTTPCacheTest : public testing::Test {
  protected:
   static int64 ParseDate(const char* start_date) {
     int64 time_ms;
-    Timer::ParseTime(start_date, &time_ms);
+    MetaData::ParseTime(start_date, &time_ms);
     return time_ms;
   }
 
@@ -63,7 +63,7 @@ TEST_F(HTTPCacheTest, PutGet) {
   meta_data_in.Add("name", "value");
   meta_data_in.Add("Date", kStartDate);
   meta_data_in.Add("Cache-control", "public, max-age=300");
-  meta_data_in.set_status_code(HttpStatus::OK);
+  meta_data_in.set_status_code(HttpStatus::kOK);
   meta_data_in.ComputeCaching();
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query("mykey"));
@@ -90,7 +90,7 @@ TEST_F(HTTPCacheTest, Uncacheable) {
   SimpleMetaData meta_data_in;
   meta_data_in.Add("name", "value");
   meta_data_in.Add("Date", kStartDate);
-  meta_data_in.set_status_code(HttpStatus::OK);
+  meta_data_in.set_status_code(HttpStatus::kOK);
   meta_data_in.ComputeCaching();
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query("mykey"));

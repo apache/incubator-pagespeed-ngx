@@ -146,7 +146,7 @@ bool OutlineFilter::WriteResource(const std::string& content,
   // We set the TTL of the origin->hashed_name map to 0 because this is
   // derived from the inlined HTML.
   int64 origin_expire_time_ms = 0;
-  return resource_manager_->Write(HttpStatus::OK, content, resource,
+  return resource_manager_->Write(HttpStatus::kOK, content, resource,
                                   origin_expire_time_ms, handler);
 }
 

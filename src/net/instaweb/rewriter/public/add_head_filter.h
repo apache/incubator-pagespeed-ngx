@@ -36,6 +36,7 @@ class AddHeadFilter : public EmptyHtmlFilter {
   virtual void EndDocument();
   virtual void EndElement(HtmlElement* element);
   virtual void Flush();
+  virtual const char* Name() const { return "AddHead"; }
 
  private:
   HtmlParse* html_parse_;

@@ -45,6 +45,7 @@ class ScriptTagScannerTest : public HtmlParseTestBase {
         script_srcs_->push_back(src->value());
       }
     }
+    virtual const char* Name() const { return "ScriptCollector"; }
 
    private:
     StringVector* script_srcs_;

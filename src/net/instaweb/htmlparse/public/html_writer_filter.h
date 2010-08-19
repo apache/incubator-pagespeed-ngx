@@ -47,6 +47,8 @@ class HtmlWriterFilter : public HtmlFilter {
 
   void set_max_column(int max_column) { max_column_ = max_column; }
 
+  virtual const char* Name() const { return "HtmlWriter"; }
+
  private:
   void EmitBytes(const StringPiece& str);
   HtmlElement::CloseStyle GetCloseStyle(HtmlElement* element);

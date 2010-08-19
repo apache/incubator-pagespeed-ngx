@@ -63,7 +63,6 @@
         'util/string_buffer.cc',
         'util/string_buffer_writer.cc',
         'util/threadsafe_cache.cc',
-        'util/timer.cc',
         'util/url_async_fetcher.cc',
         'util/url_fetcher.cc',
         'util/wget_url_fetcher.cc',

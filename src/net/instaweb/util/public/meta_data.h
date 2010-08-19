@@ -36,51 +36,51 @@ namespace HttpStatus {
 // Http status codes.
 // Grokked from http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
 enum Code {
-  CONTINUE = 100,
-  SWITCHING_PROTOCOLS = 101,
+  kContinue = 100,
+  kSwitchingProtocols = 101,
 
-  OK = 200,
-  CREATED = 201,
-  ACCEPTED = 202,
-  NON_AUTHORITATIVE = 203,
-  NO_CONTENT = 204,
-  RESET_CONTENT = 205,
-  PARTIAL_CONTENT = 206,
+  kOK = 200,
+  kCreated = 201,
+  kAccepted = 202,
+  kNonAuthoritative = 203,
+  kNoContent = 204,
+  kResetContent = 205,
+  kPartialContent = 206,
 
-  MULTIPLE_CHOICES = 300,
-  MOVED_PERMANENTLY = 301,
-  FOUND = 302,
-  SEE_OTHER = 303,
-  NOT_MODIFIED = 304,
-  USE_PROXY = 305,
-  SWITCH_PROXY = 306,  // In old spec; no longer used.
-  TEMPORARY_REDIRECT = 307,
+  kMultipleChoices = 300,
+  kMovedPermanently = 301,
+  kFound = 302,
+  kSeeOther = 303,
+  kNotModified = 304,
+  kUseProxy = 305,
+  kSwitchProxy = 306,  // In old spec; no longer used.
+  kTemporaryRedirect = 307,
 
-  BAD_REQUEST = 400,
-  UNAUTHORIZED = 401,
-  PAYMENT_REQUIRED = 402,
-  FORBIDDEN = 403,
-  NOT_FOUND = 404,
-  METHOD_NOT_ALLOWED = 405,
-  NOT_ACCEPTABLE = 406,
-  PROXY_AUTH_REQUIRED = 407,
-  REQUEST_TIMEOUT = 408,
-  CONFLICT = 409,
-  GONE = 410,
-  LENGTH_REQUIRED = 411,
-  PRECONDITION_FAILED = 412,
-  ENTITY_TOO_LARGE = 413,
-  URI_TOO_LONG = 414,
-  UNSUPPORTED_MEDIA_TYPE = 415,
-  RANGE_NOT_SATISFIABLE = 416,
-  EXPECTATION_FAILED = 417,
+  kBadRequest = 400,
+  kUnauthorized = 401,
+  kPaymentRequired = 402,
+  kForbidden = 403,
+  kNotFound = 404,
+  kMethodNotAllowed = 405,
+  kNotAcceptable = 406,
+  kProxyAuthRequired = 407,
+  kRequestTimeout = 408,
+  kConflict = 409,
+  kGone = 410,
+  kLengthRequired = 411,
+  kPreconditionFailed = 412,
+  kEntityTooLarge = 413,
+  kUriTooLong = 414,
+  kUnsupportedMediaType = 415,
+  kRangeNotSatisfiable = 416,
+  kExpectationFailed = 417,
 
-  INTERNAL_SERVER_ERROR = 500,
-  NOT_IMPLEMENTED = 501,
-  BAD_GATEWAY = 502,
-  UNAVAILABLE = 503,
-  GATEWAY_TIMEOUT = 504,
-  HTTP_VERSION_NOT_SUPPORTED = 505,
+  kInternalServerError = 500,
+  kNotImplemented = 501,
+  kBadGateway = 502,
+  kUnavailable = 503,
+  kGatewayTimeout = 504,
+  kHttpVersionNotSupported = 505,
 };
 }  // namespace HttpStatus
 
@@ -165,6 +165,9 @@ class MetaData {
   }
 
   virtual std::string ToString() const = 0;
+
+  // Parses an arbitrary string into milliseconds since 1970
+  static bool ParseTime(const char* time_str, int64* time_ms);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MetaData);

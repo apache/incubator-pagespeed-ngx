@@ -42,6 +42,9 @@ class EmptyHtmlFilter : public HtmlFilter {
   virtual void Characters(HtmlCharactersNode* characters);
   virtual void Directive(HtmlDirectiveNode* directive);
   virtual void Flush();
+
+  // Note -- this does not provide an implementation for Name().  This
+  // must be supplied by derived classes.
 };
 
 }  // namespace net_instaweb

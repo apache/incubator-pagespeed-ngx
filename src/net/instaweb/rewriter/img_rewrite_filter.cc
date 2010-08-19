@@ -73,12 +73,12 @@ const bool kLogImageElements = false;
 // This is used to retain the knowledge that a particular image is not
 // profitable to optimize.  According to pagespeed, 200, 203, 206, and
 // 304 are cacheable.  So we must select from those.
-const HttpStatus::Code kNotOptimizable = HttpStatus::NOT_MODIFIED;  // 304
+const HttpStatus::Code kNotOptimizable = HttpStatus::kNotModified;  // 304
 
 // This is used to indicate that an image has been determined to be so
 // small that we should inline it in the HTML, rather than serving it as
 // an external resource.  This must be a cacheable code.
-const HttpStatus::Code kInlineImage = HttpStatus::NO_CONTENT;  // 204
+const HttpStatus::Code kInlineImage = HttpStatus::kNoContent;  // 204
 
 }  // namespace
 
@@ -146,7 +146,7 @@ void ImgRewriteFilter::OptimizeImage(
     } else if (image->output_size() <
                image->input_size() * kMaxRewrittenRatio) {
       resource_manager_->Write(
-          HttpStatus::OK, image->Contents(), result, origin_expire_time_ms,
+          HttpStatus::kOK, image->Contents(), result, origin_expire_time_ms,
           message_handler);
       // TODO(jmarantz): what happens if Write returns false?
 
@@ -284,7 +284,7 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
     }
 
     if (output_resource->IsWritten()) {
-      if (output_resource->metadata()->status_code() == HttpStatus::OK) {
+      if (output_resource->metadata()->status_code() == HttpStatus::kOK) {
         html_parse_->InfoHere("%s remapped to %s",
                               src->value(), output_resource->url().c_str());
         src->SetValue(output_resource->url());
@@ -357,7 +357,7 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
           ok = false;
           failure_reason = "Server could not read image resource.";
         }
-        if (image_resource->metadata()->status_code() != HttpStatus::OK) {
+        if (image_resource->metadata()->status_code() != HttpStatus::kOK) {
           // Note that this should not happen, because the url should not have
           // escaped into the wild.  We're content serving an empty response if
           // it does.  We *could* serve / redirect to the origin_url as a fail
@@ -388,7 +388,7 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
                               message_handler);
           response_headers->set_major_version(1);
           response_headers->set_minor_version(1);
-          response_headers->SetStatusAndReason(HttpStatus::TEMPORARY_REDIRECT);
+          response_headers->SetStatusAndReason(HttpStatus::kTemporaryRedirect);
           response_headers->Add("Location", url_proto.origin_url().c_str());
           response_headers->Add("Content-Type", "text/html");
         }
@@ -407,7 +407,7 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
 
   if (!ok) {
     writer->Write(failure_reason, message_handler);
-    response_headers->set_status_code(HttpStatus::NOT_FOUND);
+    response_headers->set_status_code(HttpStatus::kNotFound);
     response_headers->set_reason_phrase(failure_reason);
     message_handler->Error(resource->name().as_string().c_str(), 0,
                            "%s", failure_reason);

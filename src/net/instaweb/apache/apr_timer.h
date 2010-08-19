@@ -24,8 +24,7 @@ namespace html_rewriter {
 class AprTimer : public Timer {
  public:
   virtual ~AprTimer();
-  // Returns number of milliseconds since 1970.
-  virtual int64 NowMs() const;
+  virtual int64 NowUs() const;
 };
 
 }  // namespace html_rewriter

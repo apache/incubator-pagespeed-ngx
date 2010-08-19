@@ -36,7 +36,7 @@ namespace net_instaweb {
 class HTTPValueTest : public testing::Test {
  protected:
   void FillMetaData(MetaData* meta_data) {
-    meta_data->SetStatusAndReason(HttpStatus::OK);
+    meta_data->SetStatusAndReason(HttpStatus::kOK);
     meta_data->set_major_version(1);
     meta_data->set_minor_version(0);
     meta_data->set_reason_phrase("OK");

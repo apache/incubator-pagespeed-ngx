@@ -73,6 +73,9 @@ class HtmlFilter {
   //
   // Flush() is called after all other handlers during a HttpParse::Flush().
   virtual void Flush() = 0;
+
+  // The name of this filter -- used for logging and debugging.
+  virtual const char* Name() const = 0;
 };
 
 }  // namespace net_instaweb

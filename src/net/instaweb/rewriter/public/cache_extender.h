@@ -49,6 +49,7 @@ class CacheExtender : public RewriteFilter {
                      UrlAsyncFetcher* fetcher,
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
+  virtual const char* Name() const { return "CacheExtender"; }
 
  private:
   Atom s_href_;

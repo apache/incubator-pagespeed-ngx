@@ -32,6 +32,8 @@
 
 namespace net_instaweb {
 
+class Timer;
+
 class HtmlParse {
  public:
   explicit HtmlParse(MessageHandler* message_handler);
@@ -197,6 +199,10 @@ class HtmlParse {
   // for testing.
   void ApplyFilter(HtmlFilter* filter);
 
+  // Provide timer to helping to report timing of each filter.  In the absense
+  // of a timer, reporting will be suppressed.
+  void set_timer(Timer* timer) { timer_ = timer; }
+
  private:
   HtmlEventListIterator Last();  // Last element in queue
   bool IsInEventWindow(const HtmlEventListIterator& iter) const;
@@ -210,6 +216,7 @@ class HtmlParse {
                   const HtmlEventListIterator& end_inclusive,
                   HtmlElement* new_parent);
   void CoalesceAdjacentCharactersNodes();
+  void ShowProgress(const char* message);
 
   // Visible for testing only, via HtmlTestingPeer
   friend class HtmlTestingPeer;
@@ -231,6 +238,8 @@ class HtmlParse {
   int line_number_;
   bool need_sanity_check_;
   bool coalesce_characters_;
+  int64 parse_start_time_us_;
+  Timer* timer_;
 };
 
 }  // namespace net_instaweb

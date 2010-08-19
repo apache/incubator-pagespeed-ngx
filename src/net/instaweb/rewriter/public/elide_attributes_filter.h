@@ -35,6 +35,7 @@ class ElideAttributesFilter : public EmptyHtmlFilter {
   virtual void StartDocument();
   virtual void Directive(HtmlDirectiveNode* directive);
   virtual void StartElement(HtmlElement* element);
+  virtual const char* Name() const { return "ElideAttributes"; }
 
  private:
   typedef std::map<Atom, const char*, AtomCompare> AtomMap;

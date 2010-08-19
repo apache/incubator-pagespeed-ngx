@@ -82,6 +82,9 @@ class JavascriptFilter : public RewriteFilter {
   void set_minify(bool minify)  {
     config_.set_minify(minify);
   }
+
+  virtual const char* Name() const { return "Javascript"; }
+
  private:
   inline void CompleteScriptInProgress();
   inline void RewriteInlineScript();

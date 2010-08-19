@@ -50,6 +50,7 @@ class CssCombineFilter : public RewriteFilter {
                      UrlAsyncFetcher* fetcher,
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
+  virtual const char* Name() const { return "CssCombine"; }
 
  private:
   friend class CssCombiner;

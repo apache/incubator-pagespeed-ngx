@@ -49,9 +49,19 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
                               MessageHandler* message_handler,
                               UrlAsyncFetcher::Callback* callback);
 
-  bool Poll(int64 microseconds);
+  // Poll the active fetches, returning the number of fetches
+  // still outstanding.
+  int Poll(int64 microseconds);
+
+  enum WaitChoice {
+    kThreadedOnly,
+    kMainlineOnly,
+    kThreadedAndMainline
+  };
+
   bool WaitForInProgressFetches(int64 max_milliseconds,
-                                MessageHandler* message_handler);
+                                MessageHandler* message_handler,
+                                WaitChoice wait_choice);
 
   // Remove the completed fetch from the active fetch set, and put it into a
   // completed fetch list to be cleaned up.
@@ -65,13 +75,17 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   bool SetupProxy(const char* proxy);
   size_t NumActiveFetches();
   void CancelOutstandingFetches();
+  bool WaitForInProgressFetchesHelper(int64 max_ms,
+                                      MessageHandler* message_handler);
 
   apr_pool_t* pool_;
-  AprMutex* mutex_;
+  AprMutex* mutex_;  // protects serf_context_ and active_fetches_
   serf_context_t* serf_context_;
   typedef std::set<SerfFetch*> FetchSet;
   FetchSet active_fetches_;
-  std::vector<SerfFetch*> completed_fetches_;
+
+  typedef std::vector<SerfFetch*> FetchVector;
+  FetchVector completed_fetches_;
   SerfThreadedFetcher* threaded_fetcher_;
 };
 

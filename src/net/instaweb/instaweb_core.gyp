@@ -31,6 +31,7 @@
         'util/message_handler.cc',
         'util/string_util.cc',
         'util/string_writer.cc',
+        'util/timer.cc',
         'util/writer.cc',
       ],
       'include_dirs': [

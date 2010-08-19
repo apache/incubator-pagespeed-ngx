@@ -89,7 +89,7 @@ void CacheUrlFetcher::AsyncFetch::UpdateCache() {
       // HTTPCache::IsCurrentlyValid.  We rely on the detection of the
       // header X-Instaweb-Disable-cache to avoid letting this escape into
       // the wild.  We may want to revisit if this proves problematic.
-      remember_not_cached.SetStatusAndReason(HttpStatus::OK);
+      remember_not_cached.SetStatusAndReason(HttpStatus::kOK);
       remember_not_cached.SetDate(http_cache_->timer()->NowMs());
       remember_not_cached.Add("Cache-control", "public, max-age=300");
       remember_not_cached.Add(kRememberNotCached, "1");  // value doesn't matter
@@ -146,7 +146,7 @@ bool CacheUrlFetcher::StreamingFetchUrl(
     // not reject the item on retrieval, spoiling our ability to remember
     // fact that the item is uncacheable.
     if (RememberNotCached(*response_headers)) {
-      response_headers->SetStatusAndReason(HttpStatus::UNAVAILABLE);
+      response_headers->SetStatusAndReason(HttpStatus::kUnavailable);
       ret = false;
     } else {
       ret = writer->Write(contents, handler);

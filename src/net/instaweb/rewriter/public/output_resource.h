@@ -69,6 +69,15 @@ class OutputResource : public Resource {
   // Sets the type of the output resource, and thus also its suffix.
   virtual void SetType(const ContentType* type);
 
+  // Determines whether the output resource has a valid URL.  If so,
+  // we don't need to actually load the output-resource content from
+  // cache during the Rewriting process -- we can immediately rewrite
+  // the href to it.
+  //
+  // Note that when serving content, we must actually load it, but
+  // when rewriting it we can, in some cases, exploit a URL swap.
+  bool HasValidUrl() const { return has_hash(); }
+
  private:
   friend class ResourceManager;
   class OutputWriter : public FileWriter {

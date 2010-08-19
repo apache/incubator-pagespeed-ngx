@@ -139,7 +139,7 @@ bool JavascriptFilter::WriteExternalScriptTo(
   bool ok = false;
   MessageHandler* message_handler = html_parse_->message_handler();
   int64 origin_expire_time_ms = script_resource->CacheExpirationTimeMs();
-  if (resource_manager_->Write(HttpStatus::OK, script_out, script_dest,
+  if (resource_manager_->Write(HttpStatus::kOK, script_out, script_dest,
                                origin_expire_time_ms, message_handler)) {
     ok = true;
     html_parse_->InfoHere("Rewrite script %s to %s",
@@ -168,7 +168,7 @@ void JavascriptFilter::RewriteExternalScript() {
     if (resource_manager_->FetchOutputResource(script_dest, NULL, NULL,
                                                message_handler)) {
       // Only rewrite URL if we have usable rewritten data.
-      ok = script_dest->metadata()->status_code() == HttpStatus::OK;
+      ok = script_dest->metadata()->status_code() == HttpStatus::kOK;
     } else {
       scoped_ptr<Resource> script_input(ScriptAtUrl(script_url));
       ok = script_input != NULL;
@@ -191,7 +191,7 @@ void JavascriptFilter::RewriteExternalScript() {
           // be fixed by either:
           //   1. adding a few other codes that HTTPCache will return hits for
           //   2. using a special header to indicate failed-to-optimize.
-          resource_manager_->Write(HttpStatus::INTERNAL_SERVER_ERROR,
+          resource_manager_->Write(HttpStatus::kInternalServerError,
                                    "", script_dest, origin_expire_time_ms,
                                    message_handler);
         }

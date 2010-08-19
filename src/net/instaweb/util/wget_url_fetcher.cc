@@ -96,7 +96,7 @@ bool WgetUrlFetcher::StreamingFetchUrl(const std::string& url,
       // The wget failed.  wget does not always (ever?) write appropriate
       // headers when it fails, so invent some.
       if (response_headers->status_code() == 0) {
-        response_headers->set_first_line(1, 1, HttpStatus::BAD_REQUEST,
+        response_headers->set_first_line(1, 1, HttpStatus::kBadRequest,
                                          "Wget Failed");
         response_headers->ComputeCaching();
         writer->Write("wget failed: ", handler);

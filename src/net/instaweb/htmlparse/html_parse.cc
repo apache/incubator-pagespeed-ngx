@@ -31,6 +31,7 @@
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -44,7 +45,9 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       message_handler_(message_handler),
       line_number_(1),
       need_sanity_check_(false),
-      coalesce_characters_(true) {
+      coalesce_characters_(true),
+      parse_start_time_us_(0),
+      timer_(NULL) {
   lexer_ = new HtmlLexer(this);
   HtmlEscape::Init();
 }
@@ -157,8 +160,20 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
 void HtmlParse::StartParse(const char* url) {
   line_number_ = 1;
   filename_ = url;
+  if (timer_ != NULL) {
+    parse_start_time_us_ = timer_->NowUs();
+    message_handler_->Info(url, 0, "HtmlParse::StartParse");
+  }
   AddEvent(new HtmlStartDocumentEvent(line_number_));
   lexer_->StartParse(url);
+}
+
+void HtmlParse::ShowProgress(const char* message) {
+  if (timer_ != NULL) {
+    long delta = timer_->NowUs() - parse_start_time_us_;
+    message_handler_->Info(filename_.c_str(), 0, "%ldus: HtmlParse::%s",
+                              delta, message);
+  }
 }
 
 void HtmlParse::FinishParse() {
@@ -166,6 +181,7 @@ void HtmlParse::FinishParse() {
   AddEvent(new HtmlEndDocumentEvent(line_number_));
   Flush();
   ClearElements();
+  ShowProgress("FinishParse");
 }
 
 void HtmlParse::ParseText(const char* text, int size) {
@@ -177,6 +193,7 @@ void HtmlParse::ParseText(const char* text, int size) {
 
 // This is factored out of Flush() for testing purposes.
 void HtmlParse::ApplyFilter(HtmlFilter* filter) {
+  ShowProgress(StrCat("ApplyFilter:", filter->Name()).c_str());
   for (current_ = queue_.begin(); current_ != queue_.end(); ) {
     HtmlEvent* event = *current_;
     line_number_ = event->line_number();
@@ -196,6 +213,7 @@ void HtmlParse::ApplyFilter(HtmlFilter* filter) {
 }
 
 void HtmlParse::CoalesceAdjacentCharactersNodes() {
+  ShowProgress("CoalesceAdjacentCharactersNodes");
   HtmlCharactersNode* prev = NULL;
   for (current_ = queue_.begin(); current_ != queue_.end(); ) {
     HtmlEvent* event = *current_;
@@ -232,6 +250,8 @@ void HtmlParse::CheckEventParent(HtmlEvent* event, HtmlElement* expect,
 }
 
 void HtmlParse::SanityCheck() {
+  ShowProgress("SanityCheck");
+
   // Sanity check that the Node parent-pointers are consistent with the
   // begin/end-element events.  This is done in a second pass to avoid
   // confusion when the filter mutates the event-stream.  Also note that
@@ -288,6 +308,8 @@ void HtmlParse::SanityCheck() {
 }
 
 void HtmlParse::Flush() {
+  ShowProgress("Flush");
+
   for (size_t i = 0; i < filters_.size(); ++i) {
     HtmlFilter* filter = filters_[i];
     ApplyFilter(filter);

@@ -33,6 +33,7 @@ class RemoveCommentsFilter : public EmptyHtmlFilter {
   explicit RemoveCommentsFilter(HtmlParse* html_parse);
 
   virtual void Comment(HtmlCommentNode* comment);
+  virtual const char* Name() const { return "RemoveComments"; }
 
  private:
   HtmlParse* html_parse_;

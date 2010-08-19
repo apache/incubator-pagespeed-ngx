@@ -243,6 +243,7 @@ class HandlerCalledFilter : public HtmlFilter {
     called_directive_ = true;
   }
   virtual void Flush() { called_flush_ = true; }
+  virtual const char* Name() const { return "HandlerCalled"; }
 
   Bool called_start_document_;
   Bool called_end_document_;

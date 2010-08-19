@@ -96,7 +96,7 @@ void CacheExtender::StartElement(HtmlElement* element) {
                 filter_prefix_, url_safe_id, input_resource->type(),
                 message_handler));
 
-        if (!output->IsWritten()) {
+        if (!output->IsWritten() && !output->HasValidUrl()) {
           StringPiece contents(input_resource->contents());
           std::string absolutified;
           if (input_resource->type() == &kContentTypeCss) {
@@ -108,7 +108,7 @@ void CacheExtender::StartElement(HtmlElement* element) {
                                           &writer, message_handler);
             contents = absolutified;
           }
-          resource_manager_->Write(HttpStatus::OK, contents, output.get(),
+          resource_manager_->Write(HttpStatus::kOK, contents, output.get(),
                                    headers->CacheExpirationTimeMs(),
                                    message_handler);
         }

@@ -37,8 +37,9 @@ class UrlLeftTrimFilter : public EmptyHtmlFilter {
  public:
   explicit UrlLeftTrimFilter(HtmlParse* html_parse,
                              Statistics* resource_manager);
-  void StartElement(HtmlElement* element);
-  void AddBaseUrl(const StringPiece& base_url);
+  virtual void StartElement(HtmlElement* element);
+  virtual void AddBaseUrl(const StringPiece& base_url);
+  virtual const char* Name() const { return "UrlLeftTrim"; }
 
  protected:
   friend class UrlLeftTrimFilterTest;

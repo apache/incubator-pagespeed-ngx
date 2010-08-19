@@ -83,7 +83,7 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
   CHECK(header->NumAttributes() == 0);
   header->set_major_version(1);
   header->set_minor_version(1);
-  header->SetStatusAndReason(HttpStatus::OK);
+  header->SetStatusAndReason(HttpStatus::kOK);
   if (content_type != NULL) {
     header->Add("Content-Type", content_type->mime_type());
   }

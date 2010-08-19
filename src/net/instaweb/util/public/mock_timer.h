@@ -31,8 +31,8 @@ class MockTimer : public Timer {
   explicit MockTimer(int64 time_ms) : time_ms_(time_ms) {}
   virtual ~MockTimer();
 
-  // Returns number of milliseconds since 1970.
-  virtual int64 NowMs() const;
+  // Returns number of microseconds since 1970.
+  virtual int64 NowUs() const;
 
   void set_time_ms(int64 time_ms) { time_ms_ = time_ms; }
   void advance_ms(int64 delta_ms) { time_ms_ += delta_ms; }

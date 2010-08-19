@@ -80,6 +80,7 @@ class LoggingFilter : public EmptyHtmlFilter {
   virtual void Comment(HtmlCommentNode* comment);
   virtual void IEDirective(const std::string& directive);
   virtual void Directive(HtmlDirectiveNode* directive);
+  virtual const char* Name() const { return "Logging"; }
 
   // Getter for individual statistics; NO BOUNDS CHECKS.
   inline int get(const Statistic statistic) const {

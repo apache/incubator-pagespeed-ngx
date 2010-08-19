@@ -39,10 +39,19 @@ bool HTTPCache::Get(const std::string& key, HTTPValue* value,
                     MessageHandler* handler) {
   SharedString cache_buffer;
   SimpleMetaData headers;
-  return (cache_->Get(key, &cache_buffer) &&
-          value->Link(&cache_buffer, handler) &&
-          value->ExtractHeaders(&headers, handler) &&
-          IsCurrentlyValid(headers));
+
+  int64 start_us = timer_->NowUs();
+
+  bool ret = (cache_->Get(key, &cache_buffer) &&
+              value->Link(&cache_buffer, handler) &&
+              value->ExtractHeaders(&headers, handler) &&
+              IsCurrentlyValid(headers));
+
+  long delta_us = timer_->NowUs() - start_us;
+  handler->Info(key.c_str(), 0, "%ldus: HTTPCache::Get: %s",
+                delta_us, ret ? "HIT" : "MISS");
+
+  return ret;
 }
 
 void HTTPCache::Put(const std::string& key, HTTPValue* value,

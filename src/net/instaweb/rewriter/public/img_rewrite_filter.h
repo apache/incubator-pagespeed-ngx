@@ -60,6 +60,7 @@ class ImgRewriteFilter : public RewriteFilter {
                      UrlAsyncFetcher* fetcher,
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
+  virtual const char* Name() const { return "ImgRewrite"; }
 
  private:
   // Helper methods.

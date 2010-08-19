@@ -34,6 +34,7 @@ class CssMoveToHeadFilter : public EmptyHtmlFilter {
 
   virtual void StartDocument();
   virtual void EndElement(HtmlElement* element);
+  virtual const char* Name() const { return "CssMoveToHead"; }
 
  private:
   Atom s_head_;

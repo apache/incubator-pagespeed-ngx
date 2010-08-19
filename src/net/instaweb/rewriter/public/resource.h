@@ -51,7 +51,7 @@ class Resource {
   ResourceManager* resource_manager() const { return resource_manager_; }
   bool loaded() const { return meta_data_.status_code() != 0; }
   bool ContentsValid() const {
-    return (meta_data_.status_code() == HttpStatus::OK);
+    return (meta_data_.status_code() == HttpStatus::kOK);
   }
   int64 CacheExpirationTimeMs() const;
   StringPiece contents() const {

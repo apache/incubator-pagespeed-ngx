@@ -44,6 +44,7 @@ class BaseTagFilter : public EmptyHtmlFilter {
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
+  virtual const char* Name() const { return "BaseTag"; }
 
   void set_base_url(const StringPiece& url) { url.CopyToString(&base_url_); }
 

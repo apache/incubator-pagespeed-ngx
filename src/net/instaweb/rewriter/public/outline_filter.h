@@ -55,6 +55,8 @@ class OutlineFilter : public HtmlFilter {
   virtual void EndDocument() {}
   virtual void Directive(HtmlDirectiveNode* directive) {}
 
+  virtual const char* Name() const { return "Outline"; }
+
  private:
   bool WriteResource(const std::string& content, OutputResource* resource,
                      MessageHandler* handler);

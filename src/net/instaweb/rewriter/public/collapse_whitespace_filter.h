@@ -44,6 +44,7 @@ class CollapseWhitespaceFilter : public EmptyHtmlFilter {
   virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
+  virtual const char* Name() const { return "CollapseWhitespace"; }
 
  private:
   HtmlParse* html_parse_;

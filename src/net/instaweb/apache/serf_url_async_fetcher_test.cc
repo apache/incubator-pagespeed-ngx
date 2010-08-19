@@ -204,21 +204,24 @@ TEST_F(SerfUrlAsyncFetcherTest, TestCancelTwoThreadedOneSync) {
 TEST_F(SerfUrlAsyncFetcherTest, TestWaitThreeThreaded) {
   StartFetches(0, 3, true);
   serf_url_async_fetcher_->WaitForInProgressFetches(
-      kWaitTimeoutMs, &message_handler_);
+      kWaitTimeoutMs, &message_handler_,
+      html_rewriter::SerfUrlAsyncFetcher::kThreadedOnly);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestWaitOneThreadedTwoSync) {
   StartFetches(0, 1, true);
   StartFetches(1, 3, false);
   serf_url_async_fetcher_->WaitForInProgressFetches(
-      kWaitTimeoutMs, &message_handler_);
+      kWaitTimeoutMs, &message_handler_,
+      html_rewriter::SerfUrlAsyncFetcher::kThreadedAndMainline);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestWaitTwoThreadedOneSync) {
   StartFetches(0, 1, false),
   StartFetches(1, 3, true);
   serf_url_async_fetcher_->WaitForInProgressFetches(
-      kWaitTimeoutMs, &message_handler_);
+      kWaitTimeoutMs, &message_handler_,
+      html_rewriter::SerfUrlAsyncFetcher::kThreadedAndMainline);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreaded) {
