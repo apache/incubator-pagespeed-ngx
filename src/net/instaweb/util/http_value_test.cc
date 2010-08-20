@@ -144,17 +144,16 @@ TEST_F(HTTPValueTest, TestShare) {
     FillMetaData(&headers);
     value.SetHeaders(headers);
     value.Write("body", &message_handler_);
-    storage = value.share();
+    storage = *value.share();
   }
 
   {
     HTTPValue value;
-    ASSERT_TRUE(value.Link(&storage, &message_handler_));
     SimpleMetaData check_headers;
+    ASSERT_TRUE(value.Link(&storage, &check_headers, &message_handler_));
     StringPiece body;
     ASSERT_TRUE(value.ExtractContents(&body));
     EXPECT_EQ("body", body.as_string());
-    ASSERT_TRUE(value.ExtractHeaders(&check_headers, &message_handler_));
     CheckMetaData(check_headers);
   }
 }
@@ -162,23 +161,25 @@ TEST_F(HTTPValueTest, TestShare) {
 TEST_F(HTTPValueTest, LinkEmpty) {
   SharedString storage;
   HTTPValue value;
-  ASSERT_FALSE(value.Link(&storage, &message_handler_));
+  SimpleMetaData headers;
+  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
 }
 
 TEST_F(HTTPValueTest, LinkCorrupt) {
   SharedString storage("h");
   HTTPValue value;
-  ASSERT_FALSE(value.Link(&storage, &message_handler_));
+  SimpleMetaData headers;
+  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
   storage->append("9999");
-  ASSERT_FALSE(value.Link(&storage, &message_handler_));
+  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
   storage->append("xyz");
-  ASSERT_FALSE(value.Link(&storage, &message_handler_));
+  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
   *storage = "b";
-  ASSERT_FALSE(value.Link(&storage, &message_handler_));
+  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
   storage->append("9999");
-  ASSERT_FALSE(value.Link(&storage, &message_handler_));
+  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
   storage->append("xyz");
-  ASSERT_FALSE(value.Link(&storage, &message_handler_));
+  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
 }
 
 }  // namespace net_instaweb

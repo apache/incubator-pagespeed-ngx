@@ -136,8 +136,7 @@ bool CacheUrlFetcher::StreamingFetchUrl(
   bool ret = false;
   HTTPValue value;
   StringPiece contents;
-  ret = (http_cache_->Get(url.c_str(), &value, handler) &&
-         value.ExtractHeaders(response_headers, handler) &&
+  ret = (http_cache_->Get(url.c_str(), &value, response_headers, handler) &&
          value.ExtractContents(&contents));
   if (ret) {
     // If we have remembered that this value is not cachable, then mutate

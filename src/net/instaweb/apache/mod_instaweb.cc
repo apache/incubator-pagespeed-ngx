@@ -201,6 +201,9 @@ apr_status_t pagespeed_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   request_rec* request = filter->r;
   PagespeedContext* context = static_cast<PagespeedContext*>(filter->ctx);
 
+  LOG(INFO) << "Instaweb OutputFilter called for request "
+            << request->unparsed_uri;
+
   // Initialize pagespeed context structure.
   if (context == NULL) {
     // Check if mod_instaweb has already rewritten the HTML.  If the server is
@@ -239,8 +242,8 @@ apr_status_t pagespeed_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
                  NULL);
     apr_table_do(fill_in_req_header_cb, &response_headers, request->headers_out,
                  NULL);
-    LOG(WARNING) << "Request headers:\n" << request_headers.ToString();
-    LOG(WARNING) << "Response headers:\n" << response_headers.ToString();
+    LOG(INFO) << "Request headers:\n" << request_headers.ToString();
+    LOG(INFO) << "Response headers:\n" << response_headers.ToString();
 
     // Hack for mod_proxy to figure out where it's proxying from
     if ((request->filename != NULL) &&

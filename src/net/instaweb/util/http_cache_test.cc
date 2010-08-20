@@ -46,12 +46,10 @@ class HTTPCacheTest : public testing::Test {
     return time_ms;
   }
 
-  HTTPCacheTest() : lru_cache_(kMaxSize),
-                    mock_timer_(ParseDate(kStartDate)),
-                    http_cache_(&lru_cache_, &mock_timer_) {
+  HTTPCacheTest() : mock_timer_(ParseDate(kStartDate)),
+                    http_cache_(new LRUCache(kMaxSize), &mock_timer_) {
   }
 
-  LRUCache lru_cache_;
   MockTimer mock_timer_;
   HTTPCache http_cache_;
   GoogleMessageHandler message_handler_;
@@ -68,7 +66,8 @@ TEST_F(HTTPCacheTest, PutGet) {
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query("mykey"));
   HTTPValue value;
-  bool found = http_cache_.Get("mykey", &value, &message_handler_);
+  bool found = http_cache_.Get("mykey", &value, &meta_data_out,
+                               &message_handler_);
   ASSERT_TRUE(found);
   ASSERT_TRUE(value.ExtractHeaders(&meta_data_out, &message_handler_));
   StringPiece contents;
@@ -82,12 +81,12 @@ TEST_F(HTTPCacheTest, PutGet) {
   // Now advance time 301 seconds and the we should no longer
   // be able to fetch this resource out of the cache.
   mock_timer_.advance_ms(301 * 1000);
-  found = http_cache_.Get("mykey", &value, &message_handler_);
+  found = http_cache_.Get("mykey", &value, &meta_data_out, &message_handler_);
   EXPECT_FALSE(found);
 }
 
 TEST_F(HTTPCacheTest, Uncacheable) {
-  SimpleMetaData meta_data_in;
+  SimpleMetaData meta_data_in, meta_data_out;
   meta_data_in.Add("name", "value");
   meta_data_in.Add("Date", kStartDate);
   meta_data_in.set_status_code(HttpStatus::kOK);
@@ -95,7 +94,8 @@ TEST_F(HTTPCacheTest, Uncacheable) {
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query("mykey"));
   HTTPValue value;
-  bool found = http_cache_.Get("mykey", &value, &message_handler_);
+  bool found = http_cache_.Get("mykey", &value, &meta_data_out,
+                               &message_handler_);
   ASSERT_FALSE(found);
 }
 

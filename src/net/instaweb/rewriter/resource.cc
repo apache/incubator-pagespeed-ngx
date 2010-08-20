@@ -70,16 +70,15 @@ void Resource::DetermineContentType() {
 // override this.
 void Resource::ReadAsync(AsyncCallback* callback,
                          MessageHandler* message_handler) {
-  callback->Done(ReadIfCached(message_handler), &value_);
+  callback->Done(ReadIfCached(message_handler), this);
 }
 
 Resource::AsyncCallback::~AsyncCallback() {
 }
 
 bool Resource::Link(HTTPValue* value, MessageHandler* handler) {
-  SharedString& contents_and_headers = value->share();
-  value_.Link(&contents_and_headers, handler);
-  return value_.ExtractHeaders(&meta_data_, handler);
+  SharedString* contents_and_headers = value->share();
+  return value_.Link(contents_and_headers, &meta_data_, handler);
 }
 
 }  // namespace net_instaweb

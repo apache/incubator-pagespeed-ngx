@@ -77,10 +77,12 @@ class HTTPValue : public Writer {
   // Assigns the storage of an HTTPValue based on the provided storage.  This
   // can be used for a cache Get.  Returns false if the string is not
   // well-formed.
-  bool Link(SharedString* src, MessageHandler* handler);
+  //
+  // Extracts the headers into the provided MetaData buffer.
+  bool Link(SharedString* src, MetaData* headers, MessageHandler* handler);
 
   // Access the shared string, for insertion into a cache via Put.
-  SharedString& share() { return storage_; }
+  SharedString* share() { return &storage_; }
 
  private:
   char type_identifier() const { return (*storage_.get())[0]; }

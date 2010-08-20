@@ -16,8 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_THREADSAFE_CACHE_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_THREADSAFE_CACHE_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_WRITE_THROUGH_CACHE_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_WRITE_THROUGH_CACHE_H_
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -29,15 +29,15 @@ class MessageHandler;
 class Writer;
 class AbstractMutex;
 
-// Composes a cache with a Mutex to form a threadsafe cache.
-class ThreadsafeCache : public CacheInterface {
+// Composes two caches to form a write-through cache.
+class WriteThroughCache : public CacheInterface {
  public:
-  // Takes ownership of the cache that's passed in.
-  ThreadsafeCache(CacheInterface* cache, AbstractMutex* mutex)
-      : cache_(cache),
-        mutex_(mutex) {
+  // Takes ownership of both caches passed in.
+  WriteThroughCache(CacheInterface* cache1, CacheInterface* cache2)
+      : cache1_(cache1),
+        cache2_(cache2) {
   }
-  virtual ~ThreadsafeCache();
+  virtual ~WriteThroughCache();
 
   virtual bool Get(const std::string& key, SharedString* value);
   virtual void Put(const std::string& key, SharedString* value);
@@ -45,10 +45,10 @@ class ThreadsafeCache : public CacheInterface {
   virtual KeyState Query(const std::string& key);
 
  private:
-  scoped_ptr<CacheInterface> cache_;
-  AbstractMutex* mutex_;
+  scoped_ptr<CacheInterface> cache1_;
+  scoped_ptr<CacheInterface> cache2_;
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_THREADSAFE_CACHE_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_WRITE_THROUGH_CACHE_H_

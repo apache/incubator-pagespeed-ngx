@@ -66,6 +66,7 @@
         'util/http_value_test.cc',
         'util/lru_cache_test.cc',
         'util/string_util_test.cc',
+        'util/write_through_cache_test.cc',
         'rewriter/collapse_whitespace_filter_test.cc',
         'rewriter/css_tag_scanner_test.cc',
         'rewriter/elide_attributes_filter_test.cc',

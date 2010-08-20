@@ -149,17 +149,17 @@ class ResourceManager {
 
   // Read resource contents & headers, returning false if the resource
   // is not already cached, in which case an async request is queued.
+  // The Resource remains owned by the caller.
   bool ReadIfCached(Resource* resource, MessageHandler* message_handler) const;
 
   // Read contents of resource asynchronously, calling callback when
   // done.  If the resource contents is cached, the callback will
-  // be called directly, rather than asynchronously.
+  // be called directly, rather than asynchronously.  The Resource
+  // will be passed to the callback, which will be responsible for
+  // ultimately freeing the resource.  The Resource will have its
+  // contents and headers filled in.
   //
-  // TODO(jmarantz): currently, ReadAsync does *not* fill in the contents
-  // and meta-data in the Resource, because it doesn't assume that the
-  // Resource will live till the callback is called.  This is actually
-  // harder to use, but was easier to implement.  We will change this in
-  // the future so that the burden is placed on the implementation.
+  // The resource can be deleted only after the callback is called.
   void ReadAsync(Resource* resource, Resource::AsyncCallback* callback,
                  MessageHandler* message_handler);
 
@@ -168,7 +168,8 @@ class ResourceManager {
   FileSystem* file_system() { return file_system_; }
   FilenameEncoder* filename_encoder() { return filename_encoder_; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
-  Timer* timer() const { return http_cache_->timer(); }
+  Timer* timer() { return http_cache_->timer(); }
+  HTTPCache* http_cache() { return http_cache_; }
 
  private:
   std::string ConstructNameKey(OutputResource* output) const;

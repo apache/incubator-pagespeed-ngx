@@ -57,7 +57,8 @@ class CacheUrlFetcher : public UrlFetcher {
   CacheUrlFetcher(HTTPCache* cache, UrlFetcher* fetcher)
       : http_cache_(cache),
         sync_fetcher_(fetcher),
-        async_fetcher_(NULL) {
+        async_fetcher_(NULL),
+        force_caching_(false) {
   }
   CacheUrlFetcher(HTTPCache* cache, UrlAsyncFetcher* fetcher)
       : http_cache_(cache),

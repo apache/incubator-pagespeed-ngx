@@ -71,16 +71,12 @@ class Resource {
   virtual void DetermineContentType();
 
   // We define a new Callback type here because we need to
-  // pass in the HTTPValue to the Done callback so it can
-  // colllect the fetched data.
-  //
-  // TODO(jmarantz): This will not be necessary once we
-  // change AsyncFetch to guarantee to annotate the resource
-  // itself when the data becomes available.
+  // pass in the Resource to the Done callback so it can
+  // collect the fetched data.
   class AsyncCallback {
    public:
     virtual ~AsyncCallback();
-    virtual void Done(bool success, HTTPValue* value) = 0;
+    virtual void Done(bool success, Resource* resource) = 0;
   };
 
   // Links in the HTTP contents and header from a fetched value.
@@ -92,12 +88,18 @@ class Resource {
 
  protected:
   friend class ResourceManager;
-  friend class UrlInputResourceCallback;
+  friend class UrlReadAsyncFetchCallback;
 
   // Read complete resource, storing MetaData and contents.
   virtual void ReadAsync(AsyncCallback* callback,
                          MessageHandler* message_handler);
 
+  // This method is named exactly the wrong thing.  It is only called
+  // if the resource manager does *not* find the resource in the
+  // cache, and it's expected to either read the resource
+  // synchronously, or to queue up an asynchronous fetch.
+  //
+  // TODO(jmarantz): rename the method.
   virtual bool ReadIfCached(MessageHandler* message_handler) = 0;
 
   ResourceManager* resource_manager_;

@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_HTTP_CACHE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_HTTP_CACHE_H_
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -35,13 +36,15 @@ class Timer;
 // retention of the originally served cache headers.
 class HTTPCache {
  public:
-  explicit HTTPCache(CacheInterface* cache, Timer* timer)
+  // Takes over ownership of the cache.
+  HTTPCache(CacheInterface* cache, Timer* timer)
       : cache_(cache),
         timer_(timer),
         force_caching_(false) {
   }
 
-  bool Get(const std::string& key, HTTPValue* value, MessageHandler* handler);
+  bool Get(const std::string& key, HTTPValue* value, MetaData* headers,
+           MessageHandler* handler);
 
   // Note that Put takes a non-const pointer for HTTPValue so it can
   // bump the reference count.
@@ -59,7 +62,7 @@ class HTTPCache {
  private:
   bool IsCurrentlyValid(const MetaData& headers);
 
-  CacheInterface* cache_;
+  scoped_ptr<CacheInterface> cache_;
   Timer* timer_;
   bool force_caching_;
 };

@@ -85,7 +85,7 @@ class RewriteDriverFactory {
   // fecher to return cached versions.
   void set_force_caching(bool u) { force_caching_ = u; }
   void set_use_http_cache(bool u) { use_http_cache_ = u; }
-  void set_use_threadsafe_cache(bool u) { use_threadsafe_cache_ = u; }
+  void set_use_threadsafe_cache(bool u) { }  // TODO(jmarantz): kill this
 
   // You should either call set_url_fetcher, set_url_async_fetcher, or
   // neither.  Do not set both.  If you want to enable real async
@@ -183,7 +183,6 @@ class RewriteDriverFactory {
   StringSet enabled_filters_;
   int num_shards_;
   bool use_http_cache_;
-  bool use_threadsafe_cache_;
   bool force_caching_;
 
   scoped_ptr<ResourceManager> resource_manager_;
@@ -192,7 +191,6 @@ class RewriteDriverFactory {
 
   // Caching support
   scoped_ptr<HTTPCache> http_cache_;
-  scoped_ptr<CacheInterface> threadsafe_cache_;
   scoped_ptr<CacheUrlFetcher> cache_fetcher_;
   scoped_ptr<CacheUrlAsyncFetcher> cache_async_fetcher_;
 };

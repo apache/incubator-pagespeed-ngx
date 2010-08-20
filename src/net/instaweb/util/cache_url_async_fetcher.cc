@@ -87,8 +87,7 @@ void CacheUrlAsyncFetcher::StreamingFetch(
     Callback* callback) {
   HTTPValue value;
   StringPiece contents;
-  if (http_cache_->Get(url.c_str(), &value, handler) &&
-      value.ExtractHeaders(response_headers, handler) &&
+  if (http_cache_->Get(url.c_str(), &value, response_headers, handler) &&
       !CacheUrlFetcher::RememberNotCached(*response_headers) &&
       value.ExtractContents(&contents)) {
     bool ret = writer->Write(contents, handler);

@@ -130,6 +130,7 @@ unsigned int HTTPValue::SizeOfFirstChunk() const {
 bool HTTPValue::ExtractHeaders(MetaData* headers, MessageHandler* handler)
     const {
   bool ret = false;
+  headers->Clear();
   if (storage_->size() >= kStorageOverhead) {
     char type_id = type_identifier();
     const char* start = storage_->data() + kStorageOverhead;
@@ -173,7 +174,8 @@ bool HTTPValue::ExtractContents(StringPiece* val) const {
   return ret;
 }
 
-bool HTTPValue::Link(SharedString* src, MessageHandler* handler) {
+bool HTTPValue::Link(SharedString* src, MetaData* headers,
+                     MessageHandler* handler) {
   bool ok = false;
   if ((*src)->size() >= kStorageOverhead) {
     // The simplest way to ensure that src is well formed is to save the
@@ -184,14 +186,12 @@ bool HTTPValue::Link(SharedString* src, MessageHandler* handler) {
     // the integrity checks.
     SharedString temp(storage_);
     storage_ = *src;
-    SimpleMetaData headers;
-    StringPiece contents;
 
     // TODO(jmarantz): this could be a lot lighter weight, but we are going
     // to be sure at this point that both the headers and the contents are
     // valid.  It would be nice to have an HTML headers parser that didn't
     // actually create new temp copies of all the names/values.
-    ok = ExtractHeaders(&headers, handler);
+    ok = ExtractHeaders(headers, handler);
     if (!ok) {
       storage_ = temp;
     }

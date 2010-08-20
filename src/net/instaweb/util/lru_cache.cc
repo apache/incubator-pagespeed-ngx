@@ -36,7 +36,7 @@ LRUCache::ListNode LRUCache::Freshen(KeyValuePair* key_value) {
 }
 
 bool LRUCache::Get(const std::string& key, SharedString* value) {
-  Map::iterator p = map_.find(std::string(key.data(), key.size()));
+  Map::iterator p = map_.find(key);
   bool ret = false;
   if (p != map_.end()) {
     ret = true;

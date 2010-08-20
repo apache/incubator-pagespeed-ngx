@@ -234,8 +234,7 @@ bool CssCombineFilter::WriteCombination(
 // Callback to run whenever a CSS resource is collected.  This keeps a
 // count of the resources collected so far.  When the last one is collected,
 // it aggregates the results and calls the final callback with the result.
-class CssCombineResourceCallback;
-class CssCombiner {
+class CssCombiner : public Resource::AsyncCallback {
  public:
   CssCombiner(CssCombineFilter* filter,
               MessageHandler* handler,
@@ -263,7 +262,7 @@ class CssCombiner {
     combine_resources_.push_back(resource);
   }
 
-  void ResourceDone(bool success) {
+  virtual void Done(bool success, Resource* resource) {
     if (!success) {
       ++fail_count_;
     }
@@ -319,41 +318,6 @@ class CssCombiner {
   MetaData* response_headers_;
 };
 
-// Every input CSS file to a combination must have its own callback
-// structure, so it can fill in Resource value/headers in the Done
-// callback.  The reason that the Resource cannot do this itself is
-// because the Resource doesn't know whether it will live beyond the
-// callback.
-//
-// Once the Resource can fill in its own value/headers prior to
-// the Done callback, then this extra callback can be removed.
-//
-// TODO(jmarantz): do this in the ReadAsync implementation instead,
-// so that other multi-input combiners can avoid repeating this
-// logic.
-class CssCombineResourceCallback : public Resource::AsyncCallback {
- public:
-  CssCombineResourceCallback(Resource* input_resource, CssCombiner* combiner,
-                             MessageHandler* handler)
-      : input_resource_(input_resource),
-        combiner_(combiner),
-        message_handler_(handler) {
-  }
-
-  virtual void Done(bool success, HTTPValue* value) {
-    if (success) {
-      success = input_resource_->Link(value, message_handler_);
-    }
-    combiner_->ResourceDone(success);
-    delete this;
-  }
-
- private:
-  Resource* input_resource_;
-  CssCombiner* combiner_;
-  MessageHandler* message_handler_;
-};
-
 bool CssCombineFilter::Fetch(OutputResource* combination,
                              Writer* writer,
                              const MetaData& request_header,
@@ -375,9 +339,7 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
       Resource* css_resource =
           resource_manager_->CreateInputResource(url, message_handler);
       combiner->AddResource(css_resource);
-      CssCombineResourceCallback* callback = new CssCombineResourceCallback(
-          css_resource, combiner, message_handler);
-      resource_manager_->ReadAsync(css_resource, callback, message_handler);
+      resource_manager_->ReadAsync(css_resource, combiner, message_handler);
     }
 
     // In the case where the first input CSS files is already cached,

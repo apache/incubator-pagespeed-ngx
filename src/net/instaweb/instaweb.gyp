@@ -66,6 +66,7 @@
         'util/url_async_fetcher.cc',
         'util/url_fetcher.cc',
         'util/wget_url_fetcher.cc',
+        'util/write_through_cache.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

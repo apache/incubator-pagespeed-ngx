@@ -26,6 +26,9 @@
 #include "net/instaweb/apache/serf_url_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/util/public/file_cache.h"
+#include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/threadsafe_cache.h"
+#include "net/instaweb/util/public/write_through_cache.h"
 
 using html_rewriter::SerfUrlAsyncFetcher;
 
@@ -71,9 +74,20 @@ MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
 }
 
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
-  return new FileCache(html_rewriter::GetFileCachePath(context_),
-                       file_system(),
-                       filename_encoder());
+  // TODO(jmarantz): Allow configuration of the amount of memory to devote
+  // to the LRU cache.
+  LRUCache* lru_cache = new LRUCache(1 * 1000 * 1000);
+
+  // We only add the threasafe-wrapper to the LRUCache.  The FileCache
+  // is naturally thread-safe because it's got no writable member variables.
+  // And surrounding that slower-running class with a mutex would likely
+  // cause contention.
+  ThreadsafeCache* ts_cache = new ThreadsafeCache(lru_cache, cache_mutex());
+  FileCache* file_cache = new FileCache(
+      html_rewriter::GetFileCachePath(context_),
+      file_system(),
+      filename_encoder());
+  return new WriteThroughCache(ts_cache, file_cache);
 }
 
 UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {

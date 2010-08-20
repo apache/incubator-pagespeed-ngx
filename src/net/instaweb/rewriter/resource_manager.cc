@@ -21,6 +21,7 @@
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/util/public/content_type.h"
@@ -167,7 +168,8 @@ OutputResource* ResourceManager::CreateNamedOutputResource(
   StringPiece hash_extension;
   HTTPValue value;
 
-  if (http_cache_->Get(ConstructNameKey(resource), &value, handler) &&
+  if (http_cache_->Get(ConstructNameKey(resource), &value, &meta_data,
+                       handler) &&
       value.ExtractContents(&hash_extension)) {
     std::vector<StringPiece> components;
     const char* separator = RewriteFilter::prefix_separator();
@@ -313,10 +315,9 @@ bool ResourceManager::FetchOutputResource(
             writer->Write(content, handler)));
   } else if (output_resource->has_hash()) {
     std::string url = output_resource->url();
-    if (http_cache_->Get(url, &output_resource->value_, handler) &&
+    if (http_cache_->Get(url, &output_resource->value_, meta_data, handler) &&
         ((writer == NULL) ||
          output_resource->value_.ExtractContents(&content)) &&
-        output_resource->value_.ExtractHeaders(meta_data, handler) &&
         ((writer == NULL) || writer->Write(content, handler))) {
       output_resource->set_written(true);
       ret = true;
@@ -391,12 +392,21 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
 void ResourceManager::ReadAsync(Resource* resource,
                                 Resource::AsyncCallback* callback,
                                 MessageHandler* handler) {
-  resource->ReadAsync(callback, handler);
+  if (http_cache_->Get(resource->url(), &resource->value_,
+                       resource->metadata(), handler)) {
+    callback->Done(true, resource);
+  } else {
+    resource->ReadAsync(callback, handler);
+  }
 }
 
 bool ResourceManager::ReadIfCached(Resource* resource,
                                    MessageHandler* handler) const {
-  bool ret = resource->loaded() || resource->ReadIfCached(handler);
+  bool ret =
+      (resource->loaded() ||
+       http_cache_->Get(resource->url(), &resource->value_,
+                        resource->metadata(), handler) ||
+       resource->ReadIfCached(handler));
   if (ret) {
     resource->DetermineContentType();
   }

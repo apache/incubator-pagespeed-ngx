@@ -30,7 +30,6 @@
 #include "net/instaweb/util/public/http_cache.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -41,7 +40,6 @@ RewriteDriverFactory::RewriteDriverFactory()
       url_prefix_(""),
       num_shards_(0),
       use_http_cache_(false),
-      use_threadsafe_cache_(false),
       force_caching_(false) {
 }
 
@@ -123,10 +121,6 @@ FileSystem* RewriteDriverFactory::file_system() {
 HTTPCache* RewriteDriverFactory::http_cache() {
   if (http_cache_ == NULL) {
     CacheInterface* cache = DefaultCacheInterface();
-    if (use_threadsafe_cache_) {
-      threadsafe_cache_.reset(new ThreadsafeCache(cache, cache_mutex()));
-      cache = threadsafe_cache_.get();
-    }
     http_cache_.reset(new HTTPCache(cache, timer()));
   }
   return http_cache_.get();
@@ -140,21 +134,6 @@ UrlFetcher* RewriteDriverFactory::url_fetcher() {
     url_fetcher_.reset(fetcher);
   }
 
-  if (use_http_cache_) {
-    if (cache_fetcher_ == NULL) {
-      if (url_async_fetcher_ != NULL) {
-        // If an asynchronous fetcher has already been established, then
-        // use that to seed the cache, even for the synchronous interface.
-        cache_fetcher_.reset(
-            new CacheUrlFetcher(http_cache(), url_async_fetcher_.get()));
-      } else {
-        cache_fetcher_.reset(new CacheUrlFetcher(http_cache(), fetcher));
-      }
-      cache_fetcher_->set_force_caching(force_caching_);
-    }
-    fetcher = cache_fetcher_.get();
-  }
-
   return fetcher;
 }
 
@@ -166,20 +145,6 @@ UrlAsyncFetcher* RewriteDriverFactory::url_async_fetcher() {
   if (async_fetcher == NULL) {
     async_fetcher = DefaultAsyncUrlFetcher();
     url_async_fetcher_.reset(async_fetcher);
-  }
-
-  if (use_http_cache_) {
-    if (cache_fetcher_ == NULL) {
-      cache_fetcher_.reset(
-          new CacheUrlFetcher(http_cache(), async_fetcher));
-      cache_fetcher_->set_force_caching(force_caching_);
-    }
-    if (cache_async_fetcher_ == NULL) {
-      cache_async_fetcher_.reset(
-          new CacheUrlAsyncFetcher(http_cache(), async_fetcher));
-      cache_async_fetcher_->set_force_caching(force_caching_);
-    }
-    async_fetcher = cache_async_fetcher_.get();
   }
 
   return async_fetcher;
@@ -260,7 +225,6 @@ void RewriteDriverFactory::ShutDown() {
   resource_manager_.reset(NULL);
   html_parse_message_handler_.reset(NULL);
   http_cache_.reset(NULL);
-  threadsafe_cache_.reset(NULL);
   cache_fetcher_.reset(NULL);
   cache_async_fetcher_.reset(NULL);
 }
