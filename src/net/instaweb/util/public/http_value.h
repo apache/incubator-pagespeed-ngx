@@ -84,6 +84,8 @@ class HTTPValue : public Writer {
   // Access the shared string, for insertion into a cache via Put.
   SharedString* share() { return &storage_; }
 
+  size_t size() const { return storage_->size(); }
+
  private:
   char type_identifier() const { return (*storage_.get())[0]; }
   unsigned int SizeOfFirstChunk() const;

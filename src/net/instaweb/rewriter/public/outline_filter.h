@@ -38,6 +38,11 @@ class OutlineFilter : public HtmlFilter {
 
   virtual void StartDocument();
 
+  // By default, OutlineFilter will convert *all* inline styles and
+  // scripts to external resources.  To set a byte-threshold so that
+  // small resources are left inlined, call this function.
+  void set_size_threshold_bytes(size_t t) { size_threshold_bytes_ = t; }
+
   virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
 
@@ -80,6 +85,7 @@ class OutlineFilter : public HtmlFilter {
   ResourceManager* resource_manager_;
   bool outline_styles_;
   bool outline_scripts_;
+  size_t size_threshold_bytes_;
 };
 
 }  // namespace net_instaweb

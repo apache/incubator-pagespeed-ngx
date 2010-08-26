@@ -48,6 +48,8 @@ std::string StrCat(const StringPiece& a,
                     const StringPiece& g,
                     const StringPiece& h) {
   std::string res;
+  res.reserve(a.size() + b.size() + c.size() + d.size() + e.size() + f.size() +
+              g.size() + h.size());
   a.AppendToString(&res);
   b.AppendToString(&res);
   c.AppendToString(&res);

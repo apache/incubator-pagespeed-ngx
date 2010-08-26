@@ -34,7 +34,6 @@
       ],
       'sources': [
         'util/abstract_mutex.cc',
-        'util/auto_make_dir_file_system.cc',
         'util/cache_interface.cc',
         'util/cache_url_async_fetcher.cc',
         'util/cache_url_fetcher.cc',
@@ -216,6 +215,7 @@
         'rewriter/rewrite_driver_factory.cc',
         'rewriter/rewrite_filter.cc',
         'rewriter/script_tag_scanner.cc',
+        'rewriter/strip_scripts_filter.cc',
         'rewriter/url_input_resource.cc',
         'rewriter/url_left_trim_filter.cc',
       ],

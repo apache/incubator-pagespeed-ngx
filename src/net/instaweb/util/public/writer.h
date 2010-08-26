@@ -34,11 +34,6 @@ class Writer {
   virtual bool Write(const StringPiece& str, MessageHandler* handler) = 0;
 
   virtual bool Flush(MessageHandler* message_handler) = 0;
-
-  // Deprecated old interface. Do not use for new code.
-  bool Write(const char* str, int len, MessageHandler* handler) {
-    return Write(StringPiece(str, len), handler);
-  }
 };
 
 }  // namespace net_instaweb

@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_HTTP_RESPONSE_PARSER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_HTTP_RESPONSE_PARSER_H_
 
+// TODO(sligocki): Find a way to forward declare FileSystem::InputFile.
+#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -37,15 +39,19 @@ class HttpResponseParser {
         ok_(true),
         response_headers_(response_headers),
         writer_(writer),
-        message_handler_(handler) {
+        handler_(handler) {
   }
+
+  // Parse complete HTTP response from a file.
+  bool ParseFile(FileSystem::InputFile* file);
+
+  // Parse complete HTTP response from a FILE stream.
+  // TODO(sligocki): We need a Readable abstraction (like Writer)
+  bool Parse(FILE* stream);
 
   // Read a chunk of HTTP response, populating response_headers and call
   // writer on output body, returning true if the status is ok.
   bool ParseChunk(const StringPiece& data);
-
-  // Parse complete HTTP response from a FILE stream.
-  bool Parse(FILE* stream);
 
   bool ok() const { return ok_; }
 
@@ -54,7 +60,7 @@ class HttpResponseParser {
   bool ok_;
   MetaData* response_headers_;
   Writer* writer_;
-  MessageHandler* message_handler_;
+  MessageHandler* handler_;
 };
 
 }  // namespace net_instaweb

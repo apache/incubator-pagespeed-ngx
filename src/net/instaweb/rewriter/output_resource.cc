@@ -36,7 +36,8 @@ OutputResource::OutputResource(ResourceManager* manager,
                                const StringPiece& name)
     : Resource(manager, type),
       output_file_(NULL),
-      writing_complete_(false) {
+      writing_complete_(false),
+      generated_(false) {
   filter_prefix.CopyToString(&filter_prefix_);
   name.CopyToString(&name_);
   if (type_ != NULL) {
@@ -58,6 +59,7 @@ bool OutputResource::OutputWriter::Write(
 OutputResource::OutputWriter* OutputResource::BeginWrite(
     MessageHandler* handler) {
   value_.Clear();
+  hash_.clear();
   Hasher* hasher = resource_manager_->hasher();
   hasher->Reset();
   CHECK(!writing_complete_);

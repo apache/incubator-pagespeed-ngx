@@ -67,6 +67,7 @@ class SharedString : public scoped_refptr<RefCountedString> {
   std::string* operator->() { return &(ptr_->value()); }
   const std::string* operator->() const { return &(ptr_->value()); }
   bool unique() const { return ptr_->HasOneRef(); }
+  std::string::size_type size() const { return ptr_->value().size(); }
 };
 
 

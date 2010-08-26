@@ -20,6 +20,7 @@
 // pages, but we generate these urls as a result of image inlining and
 // this confuses subsequent filters in certain cases.
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/data_url.h"
 
@@ -40,36 +41,41 @@ class DataUrlInputResource : public Resource {
     const ContentType* type;
     Encoding encoding;
     StringPiece encoded_contents;
-    if (!ParseDataUrl(url, &type, &encoding, &encoded_contents)) {
+    // We create the local copy of the url early, because
+    // encoded_contents will in general be a substring of this
+    // local copy and must have the same lifetime.
+    std::string* url_copy = new std::string();
+    url.CopyToString(url_copy);
+    if (!ParseDataUrl(*url_copy, &type, &encoding, &encoded_contents)) {
       return NULL;
     }
-    return new DataUrlInputResource(url, encoding, type, encoded_contents,
+    return new DataUrlInputResource(url_copy, encoding, type, encoded_contents,
                                     manager);
   }
 
   virtual ~DataUrlInputResource() { }
 
-  virtual std::string url() const { return url_; }
+  virtual std::string url() const { return *url_.get(); }
 
  protected:
-  // Read complete resource, content is stored in contents_.
   virtual bool ReadIfCached(MessageHandler* message_handler);
+  virtual bool IsCacheable() const;
 
  private:
-  DataUrlInputResource(const StringPiece& url,
+  DataUrlInputResource(const std::string* url,
                        Encoding encoding,
                        const ContentType* type,
                        const StringPiece& encoded_contents,
                        ResourceManager* manager)
       : Resource(manager, type),
-        url_(url.data(), url.size()),
+        url_(url),
         encoding_(encoding),
         encoded_contents_(encoded_contents) {
   }
 
-  const std::string url_;
+  scoped_ptr<const std::string> url_;
   const Encoding encoding_;
-  const StringPiece encoded_contents_;
+  const StringPiece encoded_contents_;  // substring of url.
   std::string decoded_contents_;
 };
 

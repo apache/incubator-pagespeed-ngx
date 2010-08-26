@@ -32,10 +32,13 @@ class AbstractMutex;
 // Composes two caches to form a write-through cache.
 class WriteThroughCache : public CacheInterface {
  public:
+  static const size_t kUnlimited;
+
   // Takes ownership of both caches passed in.
   WriteThroughCache(CacheInterface* cache1, CacheInterface* cache2)
       : cache1_(cache1),
-        cache2_(cache2) {
+        cache2_(cache2),
+        cache1_size_limit_(kUnlimited) {
   }
   virtual ~WriteThroughCache();
 
@@ -44,9 +47,18 @@ class WriteThroughCache : public CacheInterface {
   virtual void Delete(const std::string& key);
   virtual KeyState Query(const std::string& key);
 
+  // By default, all data goes into both cache1 and cache2.  But
+  // if you only want to put small items in cache1, you can set the
+  // size limit.  Note that both the key and value will count
+  // torward the size.
+  void set_cache1_limit(size_t limit) { cache1_size_limit_ = limit; }
+
  private:
+  void PutInCache1(const std::string& key, SharedString* value);
+
   scoped_ptr<CacheInterface> cache1_;
   scoped_ptr<CacheInterface> cache2_;
+  size_t cache1_size_limit_;
 };
 
 }  // namespace net_instaweb

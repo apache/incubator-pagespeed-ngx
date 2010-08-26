@@ -48,6 +48,10 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   html_rewriter::SerfUrlAsyncFetcher* serf_url_async_fetcher() {
     return serf_url_async_fetcher_;
   }
+
+  void set_lru_cache_kb_per_process(int64 x) { lru_cache_kb_per_process_ = x; }
+  void set_lru_cache_byte_limit(int64 x) { lru_cache_byte_limit_ = x; }
+
  protected:
   virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
@@ -76,6 +80,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   std::set<RewriteDriver*> active_rewrite_drivers_;
   html_rewriter::SerfUrlFetcher* serf_url_fetcher_;
   html_rewriter::SerfUrlAsyncFetcher* serf_url_async_fetcher_;
+  int64 lru_cache_kb_per_process_;
+  int64 lru_cache_byte_limit_;
 };
 
 }  // namespace net_instaweb

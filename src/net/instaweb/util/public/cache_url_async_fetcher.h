@@ -48,7 +48,7 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
   }
   virtual ~CacheUrlAsyncFetcher();
 
-  virtual void StreamingFetch(
+  virtual bool StreamingFetch(
       const std::string& url,
       const MetaData& request_headers,
       MetaData* response_headers,

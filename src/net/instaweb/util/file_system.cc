@@ -53,7 +53,7 @@ bool FileSystem::ReadFile(const char* filename, Writer* writer,
     ret = true;
     while (ret && ((nread = input_file->Read(
                buf, sizeof(buf), message_handler)) > 0)) {
-      ret = writer->Write(buf, nread, message_handler);
+      ret = writer->Write(StringPiece(buf, nread), message_handler);
     }
     ret &= (nread == 0);
     ret &= Close(input_file, message_handler);
@@ -106,6 +106,7 @@ bool FileSystem::RecursivelyMakeDir(const StringPiece& full_path_const,
   std::string full_path = full_path_const.as_string();
   EnsureEndsInSlash(&full_path);
   std::string subpath;
+  subpath.reserve(full_path.size());
   size_t old_pos = 0, new_pos;
   // Note that we intentionally start searching at pos = 1 to avoid having
   // subpath be "" on absolute paths.

@@ -80,14 +80,42 @@ TEST_F(WriteThroughCacheTest, PutGetDelete) {
   // The first item will still be available in the write-through,
   // and in the big-cache, but will have been evicted from the
   // small cache.
-  CheckGet(&write_through_cache_, "Name", "Value");
   CheckNotFound(small_cache_, "Name");
   CheckGet(big_cache_, "Name", "Value");
+  CheckNotFound(small_cache_, "Name");
+
+  CheckGet(&write_through_cache_, "Name", "Value");
+
+  // But now, once we've gotten in out of the write-through cache,
+  // the small cache will have the value "freshened."
+  CheckGet(small_cache_, "Name", "Value");
 
   write_through_cache_.Delete("Name2");
   CheckNotFound(&write_through_cache_, "Name2");
   CheckNotFound(small_cache_, "Name2");
   CheckNotFound(big_cache_, "Name2");
+}
+
+// Check size-limits for the small cache
+TEST_F(WriteThroughCacheTest, SizeLimit) {
+  write_through_cache_.set_cache1_limit(10);
+
+  // This one will fit.
+  Put("Name", "Value");
+  CheckGet(&write_through_cache_, "Name", "Value");
+  CheckGet(small_cache_, "Name", "Value");
+  CheckGet(big_cache_, "Name", "Value");
+
+  // This one will not.
+  Put("Name2", "TooBig");
+  CheckGet(&write_through_cache_, "Name2", "TooBig");
+  CheckNotFound(small_cache_, "Name2");
+  CheckGet(big_cache_, "Name2", "TooBig");
+
+  // However "Name" is still in both caches.
+  CheckGet(small_cache_, "Name", "Value");
+  CheckGet(&write_through_cache_, "Name", "Value");
+  CheckGet(big_cache_, "Name", "Value");
 }
 
 }  // namespace net_instaweb

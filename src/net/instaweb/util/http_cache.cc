@@ -46,8 +46,9 @@ bool HTTPCache::Get(const std::string& key, HTTPValue* value,
               IsCurrentlyValid(*headers));
 
   long delta_us = timer_->NowUs() - start_us;
-  handler->Info(key.c_str(), 0, "%ldus: HTTPCache::Get: %s",
-                delta_us, ret ? "HIT" : "MISS");
+  handler->Info(key.c_str(), 0, "%ldus: HTTPCache::Get: %s (%d bytes)",
+                delta_us, ret ? "HIT" : "MISS",
+                static_cast<int>(key.size() + value->size()));
 
   return ret;
 }

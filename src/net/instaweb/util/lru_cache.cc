@@ -197,4 +197,12 @@ void LRUCache::Clear() {
   map_.clear();
 }
 
+void LRUCache::ClearStats() {
+  num_evictions_ = 0;
+  num_hits_ = 0;
+  num_misses_ = 0;
+  num_inserts_ = 0;
+  num_deletes_ = 0;
+}
+
 }  // namespace net_instaweb

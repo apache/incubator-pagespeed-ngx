@@ -126,10 +126,10 @@ OutputResource* ResourceManager::CreateGeneratedOutputResource(
     const StringPiece& filter_prefix,
     const ContentType* content_type,
     MessageHandler* handler) {
-  int id = resource_id_++;
-  std::string id_string = IntegerToString(id);
-  return CreateNamedOutputResource(filter_prefix, id_string, content_type,
-                                   handler);
+  OutputResource* resource = new OutputResource(
+      this, content_type, filter_prefix, "_");
+  resource->set_generated(true);
+  return resource;
 }
 
 // Constructs a name key to help map all the parts of a resource name,
@@ -219,39 +219,36 @@ Resource* ResourceManager::CreateInputResource(
   // set base_url_ in response to an html page request, but we may need to
   // satisfy requests for rewritten for resources before any html has been
   // rewritten, or which don't come from the most-recently-rewritten html.
-
-  // TODO(jmaessen): rewrite idiomatically.  We want a
-  // GURL that is constructed in one of two different ways.
-  // Calling new is clearly wrong, so we end up constructing and copying
-  // down each branch which is ugly albeit ever so slightly less wrong.
-  const std::string input_url_string = input_url.as_string();
-  std::string url_string;
+  std::string url_buffer;
   GURL url;
+  StringPiece actual_url;
   if (base_url_ == NULL) {
-    GURL input_gurl(input_url_string);
-    url = input_gurl;
+    input_url.CopyToString(&url_buffer);
+    url = GURL(url_buffer);
     if (!url.is_valid()) {
       handler->Message(kError,
                        "CreateInputResource called before base_url set.");
       return NULL;
     }
+    actual_url.set(url_buffer.data(), url_buffer.size());
   } else if (relative_path_) {
-    url_string = base_url_->scheme();
-    url_string += ":";
-    url_string += input_url_string;
-    url = GURL(url_string);
+    url_buffer = base_url_->scheme();
+    url_buffer += ":";
+    input_url.AppendToString(&url_buffer);
+    url = GURL(url_buffer);
+    actual_url.set(url_buffer.data(), url_buffer.size());
   } else {
     // Get absolute url based on the (possibly relative) input_url.
-    url = base_url_->Resolve(input_url_string);
-    url_string.clear();
-    url_string.append(url.spec().data(), url.spec().size());
+    input_url.CopyToString(&url_buffer);
+    url = base_url_->Resolve(url_buffer);
+    actual_url.set(url.spec().data(), url.spec().size());
   }
 
   if (url.SchemeIs("data")) {
-    resource = DataUrlInputResource::Make(url_string, this);
+    resource = DataUrlInputResource::Make(actual_url, this);
     if (resource == NULL) {
       handler->Message(kError, "Badly formatted data url '%s'",
-                       url_string.c_str());
+                       actual_url.as_string().c_str());
     }
   } else {
     const ContentType* type = NameExtensionToContentType(input_url);
@@ -268,22 +265,22 @@ Resource* ResourceManager::CreateInputResource(
       // where the base url isn't set, we must keep the normalized url
       // in the UrlInputResource rather than the original input_url.
       // This is ugly and yields unnecessarily verbose rewritten urls.
-      resource = new UrlInputResource(this, type, url_string);
+      resource = new UrlInputResource(this, type, actual_url);
       // TODO(sligocki): Probably shouldn't support file:// scheme.
       // (but it's used extensively in eg rewriter_test.)
     } else if (url.SchemeIsFile()) {
       // NOTE: This is raw filesystem access, no filename-encoding, etc.
       if (relative_path_) {
-        resource = new FileInputResource(this, type, url_string,
-                                         input_url_string);
+        resource = new FileInputResource(this, type, actual_url,
+                                         input_url);
       } else {
         const std::string& filename = url.path();
-        resource = new FileInputResource(this, type, url_string,
+        resource = new FileInputResource(this, type, actual_url,
                                          filename);
       }
     } else {
       handler->Message(kError, "Unsupported scheme '%s' for url '%s'",
-                       url.scheme().c_str(), url_string.c_str());
+                       url.scheme().c_str(), actual_url.as_string().c_str());
     }
   }
   return resource;
@@ -347,43 +344,45 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
   if (ret) {
     ret = writer->Write(contents, handler);
     ret &= output->EndWrite(writer, handler);
-
-    // Map the name of this resource to the fully expanded filename.  The
-    // name of the output resource is usually a function of how it is
-    // constructed from input resources.  For example, with combine_css,
-    // output->name() encodes all the component CSS filenames.  The filename
-    // this maps to includes the hash of the content.  Thus the two mappings
-    // have different lifetimes.
-    //
-    // The name->filename map expires when any of the origin files expire.
-    // When that occurs, fresh content must be read, and the output must
-    // be recomputed and re-hashed.
-    //
-    // However, the hashed output filename can live, essentially, forever.
-    // This is what we'll hash first as meta_data's default headers are
-    // to cache forever.
     http_cache_->Put(output->url(), &output->value_, handler);
 
-    // Now we'll mutate meta_data to expire when the origin expires, and
-    // map the name to the hash.
-    int64 delta_ms = origin_expire_time_ms - http_cache_->timer()->NowMs();
-    int64 delta_sec = delta_ms / 1000;
-    if (delta_sec > 0) {
-      SimpleMetaData origin_meta_data;
-      SetDefaultHeaders(output->type(), &origin_meta_data);
-      std::string cache_control = StringPrintf(
-          "public, max-age=%ld",
-          static_cast<long>(delta_sec));  // NOLINT
-      origin_meta_data.RemoveAll(kCacheControl);
-      origin_meta_data.Add(kCacheControl, cache_control.c_str());
-      origin_meta_data.ComputeCaching();
-      // Note: the '.' is already in the suffix.
-      // TODO(jmarantz): rationalize that we've theoretically made it possible
-      // to change the separator from '.' to soemthing else, when in reality
-      // that would be a real pain.
-      std::string hash_extension = StrCat(output->hash(), output->suffix());
-      http_cache_->Put(ConstructNameKey(output), origin_meta_data,
-                       hash_extension, handler);
+    if (!output->generated()) {
+      // Map the name of this resource to the fully expanded filename.  The
+      // name of the output resource is usually a function of how it is
+      // constructed from input resources.  For example, with combine_css,
+      // output->name() encodes all the component CSS filenames.  The filename
+      // this maps to includes the hash of the content.  Thus the two mappings
+      // have different lifetimes.
+      //
+      // The name->filename map expires when any of the origin files expire.
+      // When that occurs, fresh content must be read, and the output must
+      // be recomputed and re-hashed.
+      //
+      // However, the hashed output filename can live, essentially, forever.
+      // This is what we'll hash first as meta_data's default headers are
+      // to cache forever.
+
+      // Now we'll mutate meta_data to expire when the origin expires, and
+      // map the name to the hash.
+      int64 delta_ms = origin_expire_time_ms - http_cache_->timer()->NowMs();
+      int64 delta_sec = delta_ms / 1000;
+      if ((delta_sec > 0) || http_cache_->force_caching()) {
+        SimpleMetaData origin_meta_data;
+        SetDefaultHeaders(output->type(), &origin_meta_data);
+        std::string cache_control = StringPrintf(
+            "public, max-age=%ld",
+            static_cast<long>(delta_sec));  // NOLINT
+        origin_meta_data.RemoveAll(kCacheControl);
+        origin_meta_data.Add(kCacheControl, cache_control.c_str());
+        origin_meta_data.ComputeCaching();
+        // Note: the '.' is already in the suffix.
+        // TODO(jmarantz): rationalize that we've theoretically made it possible
+        // to change the separator from '.' to soemthing else, when in reality
+        // that would be a real pain.
+        std::string hash_extension = StrCat(output->hash(), output->suffix());
+        http_cache_->Put(ConstructNameKey(output), origin_meta_data,
+                         hash_extension, handler);
+      }
     }
   }
   return ret;
@@ -404,8 +403,9 @@ bool ResourceManager::ReadIfCached(Resource* resource,
                                    MessageHandler* handler) const {
   bool ret =
       (resource->loaded() ||
-       http_cache_->Get(resource->url(), &resource->value_,
-                        resource->metadata(), handler) ||
+       (resource->IsCacheable() &&
+        http_cache_->Get(resource->url(), &resource->value_,
+                         resource->metadata(), handler)) ||
        resource->ReadIfCached(handler));
   if (ret) {
     resource->DetermineContentType();

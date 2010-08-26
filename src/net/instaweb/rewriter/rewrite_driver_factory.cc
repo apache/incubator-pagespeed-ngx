@@ -32,6 +32,32 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/timer.h"
 
+namespace {
+// TODO(jmarantz): consider merging this threshold with the image-inlining
+// threshold, which is currently defaulting at 2000, so we have a single
+// byte-count threshold, above which inlined resources get outlined, and
+// below which outlined resources get inlined.
+//
+// TODO(jmarantz): user-agent-specific selection of inline threshold so that
+// mobile phones are more prone to inlining.
+//
+// Further notes; jmaessen says:
+//
+// I suspect we do not want these bounds to match, and inlining for
+// images is a bit more complicated because base64 encoding inflates
+// the byte count of data: urls.  This is a non-issue for other
+// resources (there may be some weirdness with iframes I haven't
+// thought about...).
+//
+// jmarantz says:
+//
+// One thing we could do, if we believe they should be conceptually
+// merged, is in img_rewrite_filter you could apply the
+// base64-bloat-factor before comparing against the threshold.  Then
+// we could use one number if we like that idea.
+static const size_t kDefaultOutlineThreshold = 1000;
+}
+
 namespace net_instaweb {
 
 RewriteDriverFactory::RewriteDriverFactory()
@@ -39,6 +65,7 @@ RewriteDriverFactory::RewriteDriverFactory()
       filename_prefix_(""),
       url_prefix_(""),
       num_shards_(0),
+      outline_threshold_(kDefaultOutlineThreshold),
       use_http_cache_(false),
       force_caching_(false) {
 }
@@ -50,6 +77,7 @@ RewriteDriverFactory::~RewriteDriverFactory() {
 void RewriteDriverFactory::SetEnabledFilters(const StringPiece& filter_names) {
   std::vector<StringPiece> names;
   SplitStringPieceToVector(filter_names, ",", &names, true);
+  enabled_filters_.clear();
   for (int i = 0, n = names.size(); i < n; ++i) {
     enable_filter(std::string(names[i].data(), names[i].size()));
   }
@@ -122,6 +150,7 @@ HTTPCache* RewriteDriverFactory::http_cache() {
   if (http_cache_ == NULL) {
     CacheInterface* cache = DefaultCacheInterface();
     http_cache_.reset(new HTTPCache(cache, timer()));
+    http_cache_->set_force_caching(force_caching_);
   }
   return http_cache_.get();
 }
@@ -202,6 +231,7 @@ RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
   RewriteDriver* rewrite_driver =  new RewriteDriver(
       message_handler(), file_system(), url_async_fetcher());
   rewrite_driver->SetResourceManager(resource_manager());
+  rewrite_driver->set_outline_threshold(outline_threshold_);
   AddPlatformSpecificRewritePasses(rewrite_driver);
   rewrite_driver->AddFilters(enabled_filters_);
   {

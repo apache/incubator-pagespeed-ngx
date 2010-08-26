@@ -81,4 +81,8 @@ bool Resource::Link(HTTPValue* value, MessageHandler* handler) {
   return value_.Link(contents_and_headers, &meta_data_, handler);
 }
 
+bool Resource::IsCacheable() const {
+  return true;
+}
+
 }  // namespace net_instaweb

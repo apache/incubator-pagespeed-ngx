@@ -27,6 +27,7 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/meta_data.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 #include "third_party/serf/src/serf.h"
 #include "third_party/serf/src/serf_bucket_util.h"
@@ -159,7 +160,8 @@ class SerfFetch {
              == APR_SUCCESS || APR_STATUS_IS_EOF(status) ||
              APR_STATUS_IS_EAGAIN(status)) {
         if (len > 0 &&
-            !fetched_content_writer_->Write(data, len, message_handler_)) {
+            !fetched_content_writer_->Write(
+                net_instaweb::StringPiece(data, len), message_handler_)) {
           status = APR_EGENERAL;
           break;
         }
@@ -527,7 +529,7 @@ void SerfUrlAsyncFetcher::CancelOutstandingFetches() {
   }
 }
 
-void SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
+bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
                                          const MetaData& request_headers,
                                          MetaData* response_headers,
                                          Writer* fetched_content_writer,
@@ -546,6 +548,7 @@ void SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
       delete fetch;
     }
   }
+  return false;
 }
 
 void SerfUrlAsyncFetcher::PrintOutstandingFetches(

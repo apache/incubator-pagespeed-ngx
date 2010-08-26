@@ -81,7 +81,7 @@ bool WgetUrlFetcher::StreamingFetchUrl(const std::string& url,
 
   BackslashEscape(url, kEscapeChars, &escaped_url);
   cmd += StrCat(" \"", escaped_url, "\"");
-  handler->Message(kInfo, "Executing: %s", cmd.c_str());
+  handler->Message(kInfo, "wget %s\n", url.c_str());
   FILE* wget_stdout = popen(cmd.c_str(), "r");
 
   bool ret = false;

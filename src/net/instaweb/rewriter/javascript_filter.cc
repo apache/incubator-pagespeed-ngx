@@ -49,17 +49,35 @@ JavascriptFilter::JavascriptFilter(const StringPiece& path_prefix,
       resource_manager_(resource_manager),
       some_missing_scripts_(false),
       s_script_(html_parse->Intern("script")),
-      s_src_(html_parse->Intern("src")) { }
+      s_src_(html_parse->Intern("src")),
+      s_type_(html_parse->Intern("type")) { }
 
 JavascriptFilter::~JavascriptFilter() { }
 
-void JavascriptFilter::StartElement(HtmlElement* element) {
-  CHECK(script_in_progress_ == NULL);
-  if (element->tag() == s_script_) {
+void JavascriptFilter::StartScriptElement(HtmlElement* element) {
+  static const char kTextJavascript[] = "text/javascript";
+  static const char kTextEcmascript[] = "text/ecmascript";
+  static const char kAppJavascript[] = "application/javascript";
+  static const char kAppEcmascript[] = "application/ecmascript";
+  const char* script_type = element->AttributeValue(s_type_);
+  if (script_type == NULL ||
+      strncmp(kTextJavascript, script_type, sizeof(kTextJavascript)) == 0 ||
+      strncmp(kTextEcmascript, script_type, sizeof(kTextEcmascript)) == 0 ||
+      strncmp(kAppJavascript, script_type, sizeof(kAppJavascript)) == 0 ||
+      strncmp(kAppEcmascript, script_type, sizeof(kAppEcmascript)) == 0) {
     script_in_progress_ = element;
     if ((script_src_ = element->FindAttribute(s_src_)) != NULL) {
       html_parse_->InfoHere("Found script with src %s", script_src_->value());
     }
+  } else {
+    html_parse_->InfoHere("Unrecognized script type='%s'", script_type);
+  }
+}
+
+void JavascriptFilter::StartElement(HtmlElement* element) {
+  CHECK(script_in_progress_ == NULL);
+  if (element->tag() == s_script_) {
+    StartScriptElement(element);
   }
 }
 

@@ -101,11 +101,15 @@ int instaweb_check_request(request_rec* request, std::string* resource) {
    * prefix twice.
    *
    * TODO(jmarantz): Figure out how to do this correctly at all times.
-  std::string full_url(ap_construct_url(request->pool,
-                                        request->unparsed_uri,
-                                        request));
-  */
-  std::string full_url = request->unparsed_uri;
+   */
+  std::string full_url;
+  if (strncmp(request->unparsed_uri, "http:", 5) == 0) {
+    full_url = request->unparsed_uri;
+  } else {
+    full_url = ap_construct_url(request->pool,
+                                request->unparsed_uri,
+                                request);
+  }
   html_rewriter::PageSpeedServerContext* context =
       html_rewriter::mod_pagespeed_get_config_server_context(request->server);
   std::string url_prefix = html_rewriter::GetUrlPrefix(context);

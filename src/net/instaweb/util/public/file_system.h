@@ -73,7 +73,7 @@ class FileSystem {
    protected:
     // Use public interface provided by FileSystem::Close.
     friend class FileSystem;
-    virtual bool Close(MessageHandler* message_handler) = 0;
+    virtual bool Close(MessageHandler* handler) = 0;
   };
 
   class InputFile : public File {
@@ -81,7 +81,7 @@ class FileSystem {
     // TODO(sligocki): Perhaps this should be renamed to avoid confusing
     // that it returns a bool to indicate success like all other Read methods
     // in our codebase.
-    virtual int Read(char* buf, int size, MessageHandler* message_handler) = 0;
+    virtual int Read(char* buf, int size, MessageHandler* handler) = 0;
 
    protected:
     friend class FileSystem;
@@ -96,8 +96,8 @@ class FileSystem {
     // TODO(sligocki): Would we like a version that returns the amound written?
     // If so, it should be named so that it is clear it is returning int.
     virtual bool Write(const StringPiece& buf, MessageHandler* handler) = 0;
-    virtual bool Flush(MessageHandler* message_handler) = 0;
-    virtual bool SetWorldReadable(MessageHandler* message_handler) = 0;
+    virtual bool Flush(MessageHandler* handler) = 0;
+    virtual bool SetWorldReadable(MessageHandler* handler) = 0;
 
    protected:
     friend class FileSystem;
@@ -107,47 +107,59 @@ class FileSystem {
   // High level support to read/write entire files in one shot.
   virtual bool ReadFile(const char* filename,
                         std::string* buffer,
-                        MessageHandler* message_handler);
+                        MessageHandler* handler);
   virtual bool ReadFile(const char* filename,
                         Writer* writer,
-                        MessageHandler* message_handler);
+                        MessageHandler* handler);
   virtual bool WriteFile(const char* filename,
                          const StringPiece& buffer,
-                         MessageHandler* message_handler);
+                         MessageHandler* handler);
   // Writes given data to a temp file in one shot, storing the filename
   // in filename on success.  Returns false and clears filename on failure.
   virtual bool WriteTempFile(const StringPiece& prefix_name,
                              const StringPiece& buffer,
                              std::string* filename,
-                             MessageHandler* message_handler);
+                             MessageHandler* handler);
 
   virtual InputFile* OpenInputFile(const char* filename,
-                                   MessageHandler* message_handler) = 0;
-  virtual OutputFile* OpenOutputFile(const char* filename,
-                                     MessageHandler* message_handler) = 0;
+                                   MessageHandler* handler) = 0;
+  // Automatically creates sub-directories to filename.
+  OutputFile* OpenOutputFile(const char* filename,
+                             MessageHandler* handler) {
+    SetupFileDir(filename, handler);
+    return OpenOutputFileHelper(filename, handler);
+  }
   // Opens a temporary file to write, with the specified prefix.
   // If successful, the filename can be obtained from File::filename().
+  // Automatically creates sub-directories to filename.
   //
   // NULL is returned on failure.
-  virtual OutputFile* OpenTempFile(const StringPiece& prefix_name,
-                                   MessageHandler* message_handle) = 0;
+  OutputFile* OpenTempFile(const StringPiece& prefix_name,
+                           MessageHandler* handler) {
+    SetupFileDir(prefix_name, handler);
+    return OpenTempFileHelper(prefix_name, handler);
+  }
 
   // Closes the File and cleans up memory.
-  virtual bool Close(File* file, MessageHandler* message_handler);
+  virtual bool Close(File* file, MessageHandler* handler);
 
 
   // Like POSIX 'rm'.
   virtual bool RemoveFile(const char* filename, MessageHandler* handler) = 0;
 
-  // Like POSIX 'mv'.
-  virtual bool RenameFile(const char* old_filename, const char* new_filename,
-                          MessageHandler* handler) = 0;
+  // Like POSIX 'mv', except it automatically creates sub-directories for
+  // new_filename.
+  bool RenameFile(const char* old_filename, const char* new_filename,
+                          MessageHandler* handler) {
+    SetupFileDir(new_filename, handler);
+    return RenameFileHelper(old_filename, new_filename, handler);
+  }
 
   // Like POSIX 'mkdir', makes a directory only if parent directory exists.
   // Fails if directory_name already exists or parent directory doesn't exist.
   virtual bool MakeDir(const char* directory_path, MessageHandler* handler) = 0;
 
-  // Like POSIX 'text -e', checks if path exists (is a file, directory, etc.).
+  // Like POSIX 'test -e', checks if path exists (is a file, directory, etc.).
   virtual BoolOrError Exists(const char* path, MessageHandler* handler) = 0;
 
   // Like POSIX 'test -d', checks if path exists and refers to a directory.
@@ -159,12 +171,18 @@ class FileSystem {
                                   MessageHandler* handler);
 
  protected:
-  // Create directories for writing files.
-  // TODO(lsong): refactor to provide implementions of RenameFile, OpenTempFile,
-  // and OpenOutputFile that call SetupFileDir, and then RenameFileHelper,
-  // OpenTempFileHelper, and OpenOutputFileHelper, which are virtual=0
-  // functions.  Then we'd have to do a simple rename in *_file_system.cc/h
-  // rather than adding in these new calls.
+  // These interfaces must be defined by implementers of FileSystem.
+  // They may assume the directory already exists.
+  virtual OutputFile* OpenOutputFileHelper(const char* filename,
+                                           MessageHandler* handler) = 0;
+  virtual OutputFile* OpenTempFileHelper(const StringPiece& filename,
+                                         MessageHandler* handler) = 0;
+  virtual bool RenameFileHelper(const char* old_filename,
+                                const char* new_filename,
+                                MessageHandler* handler) = 0;
+
+ private:
+  // RecursiveMakeDir the directory needed for filename.
   void SetupFileDir(const StringPiece& filename, MessageHandler* handler);
 };
 

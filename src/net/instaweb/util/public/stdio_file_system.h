@@ -30,14 +30,14 @@ class StdioFileSystem : public FileSystem {
 
   virtual InputFile* OpenInputFile(const char* filename,
                                    MessageHandler* message_handler);
-  virtual OutputFile* OpenOutputFile(const char* filename,
-                                     MessageHandler* message_handler);
-  virtual OutputFile* OpenTempFile(const StringPiece& prefix_name,
-                                   MessageHandler* message_handle);
+  virtual OutputFile* OpenOutputFileHelper(const char* filename,
+                                          MessageHandler* message_handler);
+  virtual OutputFile* OpenTempFileHelper(const StringPiece& prefix_name,
+                                        MessageHandler* message_handle);
 
   virtual bool RemoveFile(const char* filename, MessageHandler* handler);
-  virtual bool RenameFile(const char* old_file, const char* new_file,
-                          MessageHandler* handler);
+  virtual bool RenameFileHelper(const char* old_file, const char* new_file,
+                               MessageHandler* handler);
   virtual bool MakeDir(const char* directory_path, MessageHandler* handler);
   virtual BoolOrError Exists(const char* path, MessageHandler* handler);
   virtual BoolOrError IsDir(const char* path, MessageHandler* handler);

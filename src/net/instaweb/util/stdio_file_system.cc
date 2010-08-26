@@ -157,9 +157,8 @@ FileSystem::InputFile* StdioFileSystem::OpenInputFile(
 }
 
 
-FileSystem::OutputFile* StdioFileSystem::OpenOutputFile(
+FileSystem::OutputFile* StdioFileSystem::OpenOutputFileHelper(
     const char* filename, MessageHandler* message_handler) {
-  SetupFileDir(filename, message_handler);
   FileSystem::OutputFile* output_file = NULL;
   if (strcmp(filename, "-") == 0) {
     output_file = new StdioOutputFile(stdout, "<stdout>");
@@ -175,7 +174,7 @@ FileSystem::OutputFile* StdioFileSystem::OpenOutputFile(
   return output_file;
 }
 
-FileSystem::OutputFile* StdioFileSystem::OpenTempFile(
+FileSystem::OutputFile* StdioFileSystem::OpenTempFileHelper(
     const StringPiece& prefix, MessageHandler* message_handler) {
   // TODO(jmarantz): As jmaessen points out, mkstemp warns "Don't use
   // this function, use tmpfile(3) instead.  It is better defined and
@@ -184,7 +183,6 @@ FileSystem::OutputFile* StdioFileSystem::OpenTempFile(
   // us.  More importantly, our usage scenario is that we will be
   // closing the file and renaming it to a permanent name.  tmpfiles
   // automatically are deleted when they are closed.
-  SetupFileDir(prefix, message_handler);
   int prefix_len = prefix.length();
   static char mkstemp_hook[] = "XXXXXX";
   char* template_name = new char[prefix_len + sizeof(mkstemp_hook)];
@@ -220,9 +218,9 @@ bool StdioFileSystem::RemoveFile(const char* filename,
   return ret;
 }
 
-bool StdioFileSystem::RenameFile(const char* old_file, const char* new_file,
-                                 MessageHandler* handler) {
-  SetupFileDir(new_file, handler);
+bool StdioFileSystem::RenameFileHelper(const char* old_file,
+                                       const char* new_file,
+                                       MessageHandler* handler) {
   bool ret = (rename(old_file, new_file) == 0);
   if (!ret) {
     handler->Message(kError, "Failed to rename file %s to %s: %s",

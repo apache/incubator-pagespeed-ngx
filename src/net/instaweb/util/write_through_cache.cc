@@ -17,18 +17,36 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/write_through_cache.h"
+#include "net/instaweb/util/public/shared_string.h"
 
 namespace net_instaweb {
+
+const size_t WriteThroughCache::kUnlimited = static_cast<size_t>(-1);
 
 WriteThroughCache::~WriteThroughCache() {
 }
 
+void WriteThroughCache::PutInCache1(const std::string& key,
+                                    SharedString* value) {
+  if ((cache1_size_limit_ == kUnlimited) ||
+      (key.size() + value->size() < cache1_size_limit_)) {
+    cache1_->Put(key, value);
+  }
+}
+
 bool WriteThroughCache::Get(const std::string& key, SharedString* value) {
-  return (cache1_->Get(key, value) || cache2_->Get(key, value));
+  bool ret = cache1_->Get(key, value);
+  if (!ret) {
+    ret = cache2_->Get(key, value);
+    if (ret) {
+      PutInCache1(key, value);
+    }
+  }
+  return ret;
 }
 
 void WriteThroughCache::Put(const std::string& key, SharedString* value) {
-  cache1_->Put(key, value);
+  PutInCache1(key, value);
   cache2_->Put(key, value);
 }
 

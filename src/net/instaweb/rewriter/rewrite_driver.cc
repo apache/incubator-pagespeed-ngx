@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/content_type.h"
@@ -66,7 +67,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),
-      resource_fetches_(NULL) {
+      resource_fetches_(NULL),
+      outline_threshold_(0) {
 }
 
 RewriteDriver::~RewriteDriver() {
@@ -123,14 +125,21 @@ void RewriteDriver::AddFilters(const StringSet& enabled_filters) {
     base_tag_filter_.reset(new BaseTagFilter(&html_parse_));
     html_parse_.AddFilter(base_tag_filter_.get());
   }
+  if (enabled.contains("strip_scripts")) {
+    // Experimental filter that blindly scripts all strips from a page.
+    AddFilter(new StripScriptsFilter(&html_parse_));
+  }
   if (enabled.contains("outline_css") ||
       enabled.contains("outline_javascript")) {
     // Cut out inlined styles and scripts and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
     CHECK(resource_manager_ != NULL);
-    AddFilter(new OutlineFilter(&html_parse_, resource_manager_,
-                                enabled.contains("outline_css"),
-                                enabled.contains("outline_javascript")));
+    OutlineFilter* outline_filter =
+        new OutlineFilter(&html_parse_, resource_manager_,
+                          enabled.contains("outline_css"),
+                          enabled.contains("outline_javascript"));
+    outline_filter->set_size_threshold_bytes(outline_threshold_);
+    AddFilter(outline_filter);
   }
   if (enabled.contains("move_css_to_head")) {
     // It's good to move CSS links to the head prior to running CSS combine,

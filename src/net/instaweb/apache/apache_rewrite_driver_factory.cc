@@ -38,7 +38,9 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     html_rewriter::PageSpeedServerContext* context)
   : context_(context),
     serf_url_fetcher_(NULL),
-    serf_url_async_fetcher_(NULL) {
+    serf_url_async_fetcher_(NULL),
+    lru_cache_kb_per_process_(0),
+    lru_cache_byte_limit_(0) {
   apr_pool_create(&pool_, context->pool());
   set_filename_prefix(html_rewriter::GetCachePrefix(context_));
   set_url_prefix(html_rewriter::GetUrlPrefix(context_));
@@ -74,20 +76,30 @@ MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
 }
 
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
-  // TODO(jmarantz): Allow configuration of the amount of memory to devote
-  // to the LRU cache.
-  LRUCache* lru_cache = new LRUCache(1 * 1000 * 1000);
-
-  // We only add the threasafe-wrapper to the LRUCache.  The FileCache
-  // is naturally thread-safe because it's got no writable member variables.
-  // And surrounding that slower-running class with a mutex would likely
-  // cause contention.
-  ThreadsafeCache* ts_cache = new ThreadsafeCache(lru_cache, cache_mutex());
-  FileCache* file_cache = new FileCache(
+  CacheInterface* cache = new FileCache(
       html_rewriter::GetFileCachePath(context_),
       file_system(),
       filename_encoder());
-  return new WriteThroughCache(ts_cache, file_cache);
+  if (lru_cache_kb_per_process_ != 0) {
+    // TODO(jmarantz): Allow configuration of the amount of memory to devote
+    // to the LRU cache.
+    LRUCache* lru_cache = new LRUCache(lru_cache_kb_per_process_ * 1024);
+
+    // We only add the threasafe-wrapper to the LRUCache.  The FileCache
+    // is naturally thread-safe because it's got no writable member variables.
+    // And surrounding that slower-running class with a mutex would likely
+    // cause contention.
+    ThreadsafeCache* ts_cache = new ThreadsafeCache(lru_cache, cache_mutex());
+    WriteThroughCache* write_through_cache =
+        new WriteThroughCache(ts_cache, cache);
+    // By default, WriteThroughCache does not limit the size of entries going
+    // into its front cache.
+    if (lru_cache_byte_limit_ != 0) {
+      write_through_cache->set_cache1_limit(lru_cache_byte_limit_);
+    }
+    cache = write_through_cache;
+  }
+  return cache;
 }
 
 UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {

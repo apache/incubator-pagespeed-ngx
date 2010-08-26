@@ -53,11 +53,11 @@ class HTTPCache {
            const StringPiece& content, MessageHandler* handler);
 
   CacheInterface::KeyState Query(const std::string& key);
-  void set_force_caching(bool force) { force_caching_ = true; }
-
-  Timer* timer() const { return timer_; }
-
   void Delete(const std::string& key);
+
+  void set_force_caching(bool force) { force_caching_ = force; }
+  bool force_caching() const { return force_caching_; }
+  Timer* timer() const { return timer_; }
 
  private:
   bool IsCurrentlyValid(const MetaData& headers);

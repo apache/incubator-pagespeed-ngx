@@ -42,12 +42,8 @@ class LRUCache : public CacheInterface {
  public:
   explicit LRUCache(size_t max_size)
       : max_bytes_in_cache_(max_size),
-        current_bytes_in_cache_(0),
-        num_evictions_(0),
-        num_hits_(0),
-        num_misses_(0),
-        num_inserts_(0),
-        num_deletes_(0) {
+        current_bytes_in_cache_(0) {
+    ClearStats();
   }
   virtual ~LRUCache();
 
@@ -81,6 +77,9 @@ class LRUCache : public CacheInterface {
   // Clear the entire cache.  Used primarily for testing.  Note that this
   // will not clear the stats, however it will update current_bytes_in_cache_.
   void Clear();
+
+  // Clear the stats -- note that this will not clear the content.
+  void ClearStats();
 
  private:
   typedef std::pair<const std::string*, SharedString> KeyValuePair;

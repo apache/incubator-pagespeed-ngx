@@ -44,13 +44,13 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
     }
   }
 
-  void Fetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
+  bool Fetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
     // TODO(jmarantz): consider request_headers.  E.g. will we ever
     // get different resources depending on user-agent?
     const SimpleMetaData request_headers;
     message_handler_ = handler;
-    fetcher->StreamingFetch(url(), request_headers, response_headers(),
-                            http_value(), handler, this);
+    return fetcher->StreamingFetch(url(), request_headers, response_headers(),
+                                   http_value(), handler, this);
   }
 
   // The two derived classes differ in how they provide the
@@ -69,52 +69,18 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
 
 class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
  public:
-  UrlReadIfCachedCallback(const std::string& url,
-                          bool* data_available,
-                          bool* callback_called,
-                          Resource* resource)
+  UrlReadIfCachedCallback(const std::string& url, HTTPCache* http_cache)
       : url_(url),
-        data_available_(data_available),
-        callback_called_(callback_called),
-        http_cache_(resource->resource_manager()->http_cache()),
-        resource_(resource) {
+        http_cache_(http_cache) {
   }
 
   virtual void Done(bool success) {
     AddToCache(success);
-    if (resource_ != NULL) {
-      success = resource_->Link(&http_value_, message_handler_);
-      // TODO(jmarantz): We should never fail here -- a failure means that
-      // our URL fetcher generated bogus headers.  But this fails in
-      // net/instaweb/validator:validation_regtest so for now we comment out
-      // the CHECK and turn it into an if.
-      //
-      // CHECK(success);
-      if (success) {
-        CHECK_EQ(response_headers_.status_code(),
-                 resource_->metadata()->status_code());
-      }
-      *callback_called_ = true;
-      *data_available_ = success;
-    }
     delete this;
   }
 
-  // If the fetcher has not called our Done() method by the time ReadIfCached
-  // must return, then it will leave this callback alive, but "detach" itself
-  // so that we don't try to access resources that have gone out of scope.
-  // Just to be clear we'll null all those out.
-  void Detach() {
-    if (*callback_called_) {
-      delete this;
-    } else {
-      resource_ = NULL;
-      data_available_ = NULL;
-      callback_called_ = NULL;
-    }
-  }
-
-  // Indicate that it's OK for the callback to be executed on a different thread
+  // Indicate that it's OK for the callback to be executed on a different
+  // thread, as it only populates the cache, which is thread-safe.
   virtual bool EnableThreaded() const { return true; }
 
   virtual MetaData* response_headers() { return &response_headers_; }
@@ -124,56 +90,23 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
 
  private:
   std::string url_;
-  bool* data_available_;
-  bool* callback_called_;
   HTTPCache* http_cache_;
   HTTPValue http_value_;
   SimpleMetaData response_headers_;
-  Resource* resource_;
 };
 
 bool UrlInputResource::ReadIfCached(MessageHandler* handler) {
-  // TODO(jmarantz): This code is more complicated than it needs
-  // to be.  In a live server, ReadIfCached will generally return
-  // false, as the asynchronous fetch will not complete before
-  // the if-statement that follows.  However, in testing and
-  // file-rewriting scenarios where we are the underlying fetch
-  // is reading from the file system and blocking until completion,
-  // then this code will be needed.  We should simplify the code
-  // and change the file-rewriting infrastructure to accomodate that.
-  //
-  // Ones simple way to do this is to change UrlAsyncFetcher::StreamingFetch
-  // to return a bool indicating whether it short-circuited the async
-  // fetch and called the callback directly.  This is much simpler to
-  // use and the existing clients of async fetchers can ignore this
-  // if they like.
-  //
-  // In the meantime we definitely have a race right now in Apache
-  // because the callback will be delivered in another thread.
-
-  // Be very careful -- we are issuing an async fetch, but we only
-  // care about the result if it's cached.  If it's not cached, then
-  // our callback will still get called, but the stack-variable which
-  // we are giving it to write the result will be out of scope.  So if
-  // the callback was not immediately called then we "detach" the
-  // callback from the stack variables, to avoid corrupting memory.
   meta_data_.Clear();
   value_.Clear();
-  bool data_available = false;
-  bool callback_called = false;
-  UrlReadIfCachedCallback* cb = new UrlReadIfCachedCallback(
-      url_, &data_available, &callback_called, this);
-  cb->Fetch(resource_manager_->url_async_fetcher(), handler);
-  if (!callback_called) {
-    // If the data is not cached, then we have queued an async fetch.   Tell
-    // the fetch callback *not* to write the status code into our local
-    // variable, since we are going to return now.
-    //
-    // Note, there is no real concurrency or async behavior at this time --
-    // the async callbacks must be called by some kind of event loop and
-    // will not interrupt execution.
-    cb->Detach();
-  }
+
+  HTTPCache* http_cache = resource_manager()->http_cache();
+  UrlReadIfCachedCallback* cb = new UrlReadIfCachedCallback(url_, http_cache);
+
+  // If the fetcher can satisfy the request instantly, then we
+  // can try to populate the resource from the cache.
+  bool data_available =
+      (cb->Fetch(resource_manager_->url_async_fetcher(), handler) &&
+       http_cache->Get(url_, &value_, &meta_data_, handler));
   return data_available;
 }
 

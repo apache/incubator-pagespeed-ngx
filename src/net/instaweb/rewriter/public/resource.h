@@ -64,6 +64,7 @@ class Resource {
   const MetaData* metadata() const { return &meta_data_; }
   const ContentType* type() { return type_; }
   virtual void SetType(const ContentType* type);
+  virtual bool IsCacheable() const;
 
   // Gets the absolute URL of the resource
   virtual std::string url() const = 0;

@@ -42,7 +42,7 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   explicit SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool);
   explicit SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent, const char* proxy);
   virtual ~SerfUrlAsyncFetcher();
-  virtual void StreamingFetch(const std::string& url,
+  virtual bool StreamingFetch(const std::string& url,
                               const MetaData& request_headers,
                               MetaData* response_headers,
                               Writer* fetched_content_writer,

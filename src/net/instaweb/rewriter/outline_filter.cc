@@ -42,7 +42,8 @@ OutlineFilter::OutlineFilter(HtmlParse* html_parse,
       html_parse_(html_parse),
       resource_manager_(resource_manager),
       outline_styles_(outline_styles),
-      outline_scripts_(outline_scripts) {
+      outline_scripts_(outline_scripts),
+      size_threshold_bytes_(0) {
   s_link_ = html_parse_->Intern("link");
   s_script_ = html_parse_->Intern("script");
   s_style_ = html_parse_->Intern("style");
@@ -87,16 +88,18 @@ void OutlineFilter::EndElement(HtmlElement* element) {
       html_parse_->ErrorHere("Tag '%s' found inside style/script.",
                              element->tag().c_str());
 
-    } else if (inline_element_->tag() == s_style_) {
-      OutlineStyle(inline_element_, buffer_);
+    } else if (buffer_.size() >= size_threshold_bytes_) {
+      if (inline_element_->tag() == s_style_) {
+        OutlineStyle(inline_element_, buffer_);
 
-    } else if (inline_element_->tag() == s_script_) {
-      OutlineScript(inline_element_, buffer_);
+      } else if (inline_element_->tag() == s_script_) {
+        OutlineScript(inline_element_, buffer_);
 
-    } else {
-      html_parse_->ErrorHere("OutlineFilter::inline_element_ "
-                             "Expected: 'style' or 'script', Actual: '%s'",
-                             inline_element_->tag().c_str());
+      } else {
+        html_parse_->ErrorHere("OutlineFilter::inline_element_ "
+                               "Expected: 'style' or 'script', Actual: '%s'",
+                               inline_element_->tag().c_str());
+      }
     }
     inline_element_ = NULL;
     buffer_.clear();

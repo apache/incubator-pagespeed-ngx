@@ -181,9 +181,8 @@ FileSystem::InputFile* AprFileSystem::OpenInputFile(
   return new HtmlWriterInputFile(file, filename);
 }
 
-FileSystem::OutputFile* AprFileSystem::OpenOutputFile(
+FileSystem::OutputFile* AprFileSystem::OpenOutputFileHelper(
     const char* filename, MessageHandler* message_handler) {
-  SetupFileDir(filename, message_handler);
   apr_file_t* file;
   apr_status_t ret = apr_file_open(&file, filename,
                                    APR_WRITE | APR_CREATE | APR_TRUNCATE,
@@ -196,10 +195,9 @@ FileSystem::OutputFile* AprFileSystem::OpenOutputFile(
   return new HtmlWriterOutputFile(file, filename);
 }
 
-FileSystem::OutputFile* AprFileSystem::OpenTempFile(
+FileSystem::OutputFile* AprFileSystem::OpenTempFileHelper(
     const net_instaweb::StringPiece& prefix_name,
     MessageHandler* message_handler) {
-  SetupFileDir(prefix_name, message_handler);
   static const char mkstemp_hook[] = "XXXXXX";
   scoped_array<char> template_name(
       new char[prefix_name.size() + sizeof(mkstemp_hook)]);
@@ -223,10 +221,9 @@ FileSystem::OutputFile* AprFileSystem::OpenTempFile(
   return new HtmlWriterOutputFile(file, template_name.get());
 }
 
-bool AprFileSystem::RenameFile(
+bool AprFileSystem::RenameFileHelper(
     const char* old_filename, const char* new_filename,
     MessageHandler* message_handler) {
-  SetupFileDir(new_filename, message_handler);
   apr_status_t ret = apr_file_rename(old_filename, new_filename, pool_);
   if (ret != APR_SUCCESS) {
     AprReportError(message_handler, new_filename,

@@ -81,17 +81,19 @@ class ForwardingAsyncFetch : public CacheUrlFetcher::AsyncFetch {
 CacheUrlAsyncFetcher::~CacheUrlAsyncFetcher() {
 }
 
-void CacheUrlAsyncFetcher::StreamingFetch(
+bool CacheUrlAsyncFetcher::StreamingFetch(
     const std::string& url, const MetaData& request_headers,
     MetaData* response_headers, Writer* writer, MessageHandler* handler,
     Callback* callback) {
   HTTPValue value;
   StringPiece contents;
+  bool ret = false;
   if (http_cache_->Get(url.c_str(), &value, response_headers, handler) &&
       !CacheUrlFetcher::RememberNotCached(*response_headers) &&
       value.ExtractContents(&contents)) {
-    bool ret = writer->Write(contents, handler);
-    callback->Done(ret);
+    bool success = writer->Write(contents, handler);
+    callback->Done(success);
+    ret = true;
   } else {
     response_headers->Clear();
     ForwardingAsyncFetch* fetch = new ForwardingAsyncFetch(
@@ -99,6 +101,7 @@ void CacheUrlAsyncFetcher::StreamingFetch(
         force_caching_);
     fetch->Start(fetcher_, request_headers);
   }
+  return ret;
 }
 
 }  // namespace net_instaweb

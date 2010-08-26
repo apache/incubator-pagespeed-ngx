@@ -100,6 +100,8 @@ class OutputResource : public Resource {
   StringPiece hash() const { return hash_; }
   bool has_hash() const { return !hash_.empty(); }
   void set_written(bool written) { writing_complete_ = true; }
+  void set_generated(bool x) { generated_ = x; }
+  bool generated() { return generated_; }
   OutputWriter* BeginWrite(MessageHandler* message_handler);
   bool EndWrite(OutputWriter* writer, MessageHandler* message_handler);
 
@@ -108,6 +110,13 @@ class OutputResource : public Resource {
 
   FileSystem::OutputFile* output_file_;
   bool writing_complete_;
+
+  // Generated via ResourceManager::CreateGeneratedOutputResource,
+  // meaning that it does not have a name that is derived from an
+  // input URL.  We must regenerate it every time, but the output name
+  // will be distinct because it's based on the hash of the content.
+  bool generated_;
+
   std::string filter_prefix_;
   std::string name_;
   std::string hash_;

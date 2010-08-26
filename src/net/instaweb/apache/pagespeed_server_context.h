@@ -34,8 +34,10 @@ struct PageSpeedConfig {
   int64 fetcher_timeout_ms;
   int64 resource_timeout_ms;
   int num_shards;
+  int outline_threshold;
   bool use_http_cache;
-  bool use_threadsafe_cache;
+  int64 lru_cache_kb_per_process;
+  int64 lru_cache_byte_limit;
   bool force_caching;
   const char* rewriters;
 };

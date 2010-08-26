@@ -46,6 +46,19 @@ class Writer;
 
 class RewriteDriver {
  public:
+  // TODO(jmarantz): provide string-constants so that callers, in particular,
+  // tests, that want to enable a specific pass, can reference these rather
+  // than replicating the string literatls.  Also provide programmatic mechanism
+  // to generate simple and detailed help strings for the user enumerating the
+  // naems of the filters.
+  /*
+  static const char kAddHead[];
+  static const char kAddBaseTag[];
+  static const char kMoveCssToHead[];
+  static const char kOutlineCss[];
+  static const char kOutlineJavascript[];
+  */
+
   RewriteDriver(MessageHandler* message_handler,
                 FileSystem* file_system,
                 UrlAsyncFetcher* url_async_fetcher);
@@ -101,6 +114,8 @@ class RewriteDriver {
   ResourceManager* resource_manager() const { return resource_manager_; }
   Statistics* statistics() const;
 
+  void set_outline_threshold(size_t t) { outline_threshold_ = t; }
+
  private:
   typedef std::map<std::string, RewriteFilter*> StringFilterMap;
   StringFilterMap resource_filter_map_;
@@ -117,6 +132,7 @@ class RewriteDriver {
   scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
   std::vector<HtmlFilter*> filters_;
   Variable* resource_fetches_;
+  size_t outline_threshold_;
 };
 
 }  // namespace net_instaweb

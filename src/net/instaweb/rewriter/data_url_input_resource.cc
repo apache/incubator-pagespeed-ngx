@@ -35,4 +35,9 @@ bool DataUrlInputResource::ReadIfCached(MessageHandler* message_handler) {
   return loaded();
 }
 
+
+bool DataUrlInputResource::IsCacheable() const {
+  return false;
+}
+
 }

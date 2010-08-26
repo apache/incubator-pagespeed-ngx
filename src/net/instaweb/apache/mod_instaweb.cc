@@ -50,12 +50,13 @@ const char* kInstawebRewriteUrlPrefix = "InstawebRewriteUrlPrefix";
 const char* kInstawebFetchProxy = "InstawebFetchProxy";
 const char* kInstawebGeneratedFilePrefix = "InstawebGeneratedFilePrefix";
 const char* kInstawebFileCachePath = "InstawebFileCachePath";
+const char* kInstawebLRUCacheKBPerProcess = "InstawebLRUCacheKBPerProcess";
+const char* kInstawebLRUCacheByteLimit = "kInstawebLRUCacheByteLimit";
 const char* kInstawebFetcherTimeoutMs = "InstawebFetcherTimeOutMs";
 const char* kInstawebResourceTimeoutMs = "InstawebResourceTimeOutMs";
-const char* kInstawebRewriterNumShards = "InstawebRewriterNumShards";
-const char* kInstawebRewriterUseHttpCache = "InstawebRewriterUseHttpCache";
-const char* kInstawebRewriterUseThreadsafeCache =
-    "InstawebRewriterUseThreadsafeCache";
+const char* kInstawebNumShards = "InstawebNumShards";
+const char* kInstawebOutlineThreshold = "InstawebOutlineThreshold";
+const char* kInstawebUseHttpCache = "InstawebUseHttpCache";
 const char* kInstawebRewriters = "InstawebRewriters";
 }  // extern "C"
 
@@ -368,10 +369,8 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                    << config->generated_file_prefix;
         return HTTP_INTERNAL_SERVER_ERROR;
       }
-      LOG(INFO) << kInstawebRewriterUseHttpCache << " "
+      LOG(INFO) << kInstawebUseHttpCache << " "
                 << config->use_http_cache;
-      LOG(INFO) << kInstawebRewriterUseThreadsafeCache << " "
-                << config->use_threadsafe_cache;
       LOG(INFO) << kInstawebRewriters << " "
                 << config->rewriters;
     }
@@ -499,22 +498,22 @@ static const char* mod_pagespeed_config_one_string(cmd_parms* cmd, void* data,
   } else if (strcasecmp(directive, kInstawebResourceTimeoutMs) == 0) {
     config->resource_timeout_ms = static_cast<int64>(
         apr_strtoi64(arg, NULL, 10));
-  } else if (strcasecmp(directive, kInstawebRewriterNumShards) == 0) {
+  } else if (strcasecmp(directive, kInstawebNumShards) == 0) {
     config->num_shards = static_cast<int>(apr_strtoi64(arg, NULL, 10));
-  } else if (strcasecmp(directive, kInstawebRewriterUseHttpCache) == 0) {
+  } else if (strcasecmp(directive, kInstawebOutlineThreshold) == 0) {
+    config->outline_threshold = static_cast<int>(apr_strtoi64(arg, NULL, 10));
+  } else if (strcasecmp(directive, kInstawebLRUCacheKBPerProcess) == 0) {
+    config->lru_cache_kb_per_process =
+        static_cast<int64>(apr_strtoi64(arg, NULL, 10));
+  } else if (strcasecmp(directive, kInstawebLRUCacheByteLimit) == 0) {
+    config->lru_cache_byte_limit =
+        static_cast<int64>(apr_strtoi64(arg, NULL, 10));
+  } else if (strcasecmp(directive, kInstawebUseHttpCache) == 0) {
     ConfigSwitch config_switch = get_config_switch(arg);
     if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kInstawebRewriterUseHttpCache,
-                         " on|off", NULL);
+      return apr_pstrcat(cmd->pool, kInstawebUseHttpCache, " on|off", NULL);
     }
     config->use_http_cache = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kInstawebRewriterUseThreadsafeCache) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kInstawebRewriterUseThreadsafeCache,
-                         " on|off", NULL);
-    }
-    config->use_threadsafe_cache = (config_switch == CONFIG_ON);
   } else if (strcasecmp(directive, kInstawebRewriters) == 0) {
     config->rewriters = apr_pstrdup(cmd->pool, arg);
   } else {
@@ -560,21 +559,28 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set resource fetcher timeout in milliseconds"),
-  AP_INIT_TAKE1(kInstawebRewriterNumShards,
+  AP_INIT_TAKE1(kInstawebNumShards,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set number of shards"),
-  AP_INIT_TAKE1(kInstawebRewriterUseHttpCache,
+  AP_INIT_TAKE1(kInstawebLRUCacheKBPerProcess,
+                reinterpret_cast<const char*(*)()>(
+                    mod_pagespeed_config_one_string),
+                NULL, RSRC_CONF,
+                "Set the total size, in KB, of the per-process "
+                "in-memory LRU cache"),
+  AP_INIT_TAKE1(kInstawebLRUCacheByteLimit,
+                reinterpret_cast<const char*(*)()>(
+                    mod_pagespeed_config_one_string),
+                NULL, RSRC_CONF,
+                "Set the maximum byte size entry to store in the per-process "
+                "in-memory LRU cache"),
+  AP_INIT_TAKE1(kInstawebUseHttpCache,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set if to use http cache"),
-  AP_INIT_TAKE1(kInstawebRewriterUseThreadsafeCache,
-                reinterpret_cast<const char*(*)()>(
-                    mod_pagespeed_config_one_string),
-                NULL, RSRC_CONF,
-                "Set if to use thread-safe cache"),
   AP_INIT_TAKE1(kInstawebRewriters,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),

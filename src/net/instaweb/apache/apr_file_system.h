@@ -33,13 +33,15 @@ class AprFileSystem : public FileSystem {
 
   virtual InputFile* OpenInputFile(
       const char* file, MessageHandler* message_handler);
-  virtual OutputFile* OpenOutputFile(
+  virtual OutputFile* OpenOutputFileHelper(
       const char* file, MessageHandler* message_handler);
   // See FileSystem interface for specifics of OpenTempFile.
-  virtual OutputFile* OpenTempFile(const net_instaweb::StringPiece& prefix_name,
-                                   MessageHandler* message_handler);
-  virtual bool RenameFile(const char* old_filename, const char* new_filename,
-                          MessageHandler* message_handler);
+  virtual OutputFile* OpenTempFileHelper(
+      const net_instaweb::StringPiece& prefix_name,
+      MessageHandler* message_handler);
+  virtual bool RenameFileHelper(const char* old_filename,
+                                const char* new_filename,
+                                MessageHandler* message_handler);
   virtual bool RemoveFile(const char* filename,
                           MessageHandler* message_handler);
 
@@ -47,7 +49,7 @@ class AprFileSystem : public FileSystem {
   // Fails if directory_name already exists or parent directory doesn't exist.
   virtual bool MakeDir(const char* directory_path, MessageHandler* handler);
 
-  // Like POSIX 'text -e', checks if path exists (is a file, directory, etc.).
+  // Like POSIX 'test -e', checks if path exists (is a file, directory, etc.).
   virtual BoolOrError Exists(const char* path, MessageHandler* handler);
 
   // Like POSIX 'test -d', checks if path exists and refers to a directory.

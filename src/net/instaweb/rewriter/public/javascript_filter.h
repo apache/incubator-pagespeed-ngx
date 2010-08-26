@@ -89,6 +89,7 @@ class JavascriptFilter : public RewriteFilter {
   inline void CompleteScriptInProgress();
   inline void RewriteInlineScript();
   inline void RewriteExternalScript();
+  inline void StartScriptElement(HtmlElement* element);
   inline Resource* ScriptAtUrl(const std::string& script_url);
   const StringPiece FlattenBuffer(std::string* script_buffer);
   bool WriteExternalScriptTo(const Resource* script_resource,
@@ -106,6 +107,7 @@ class JavascriptFilter : public RewriteFilter {
   JavascriptRewriteConfig config_;
   const Atom s_script_;
   const Atom s_src_;
+  const Atom s_type_;
 };
 
 }  // namespace net_instaweb

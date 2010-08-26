@@ -40,7 +40,7 @@ class FakeUrlAsyncFetcher : public UrlAsyncFetcher {
   }
   virtual ~FakeUrlAsyncFetcher();
 
-  virtual void StreamingFetch(const std::string& url,
+  virtual bool StreamingFetch(const std::string& url,
                               const MetaData& request_headers,
                               MetaData* response_headers,
                               Writer* writer,
@@ -49,6 +49,7 @@ class FakeUrlAsyncFetcher : public UrlAsyncFetcher {
     bool ret = url_fetcher_->StreamingFetchUrl(
         url, request_headers, response_headers, writer, handler);
     callback->Done(ret);
+    return true;
   }
 
  private:

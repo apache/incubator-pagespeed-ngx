@@ -48,9 +48,10 @@ class UrlAsyncFetcher {
   // response_headers and fetched_content_writer must be valid until
   // the call to Done().
   //
-  // This function returns false if the request is determined to be invalid
-  // before asynchronous, say, because the url had invalid syntax.
-  virtual void StreamingFetch(const std::string& url,
+  // This function returns true if the request was immediately satisfied.
+  // In either case, the callback will be called with the completion status,
+  // so it's safe to ignore the return value.
+  virtual bool StreamingFetch(const std::string& url,
                               const MetaData& request_headers,
                               MetaData* response_headers,
                               Writer* fetched_content_writer,

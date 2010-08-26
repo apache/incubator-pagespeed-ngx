@@ -71,6 +71,7 @@ void CacheExtender::StartElement(HtmlElement* element) {
     // TODO(jmarantz): create an output resource to generate a new url,
     // rather than doing the content-hashing here.
     if ((input_resource != NULL) &&
+        input_resource->IsCacheable() &&
         resource_manager_->ReadIfCached(input_resource.get(),
                                         message_handler)) {
       const MetaData* headers = input_resource->metadata();
