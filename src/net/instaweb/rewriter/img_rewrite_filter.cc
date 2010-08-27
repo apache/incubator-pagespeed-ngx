@@ -94,23 +94,23 @@ ImgRewriteFilter::ImgRewriteFilter(StringPiece path_prefix,
       s_width_(html_parse->Intern("width")),
       s_height_(html_parse->Intern("height")),
       rewrite_count_(NULL),
+      inline_count_(NULL),
       rewrite_saved_bytes_(NULL) {
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
     rewrite_count_ = stats->AddVariable("image_rewrites");
     rewrite_saved_bytes_ = stats->AddVariable("image_rewrite_saved_bytes");
+    inline_count_ = stats->AddVariable("image_inline");
   }
 }
 
 void ImgRewriteFilter::OptimizeImage(
     const Resource* input_resource,
     const ImgRewriteUrl& url_proto, Image* image, OutputResource* result) {
-  // TODO(jmarantz): OptimizeImage should embed input_resource.
-
   if (result != NULL && !result->IsWritten() && image != NULL) {
     int img_width, img_height, width, height;
-    if (url_proto.has_width() && url_proto.has_height() &&
-        image->Dimensions(&img_width, &img_height)) {
+    bool has_dimensions = image->Dimensions(&img_width, &img_height);
+    if (url_proto.has_width() && url_proto.has_height() && has_dimensions) {
       width = url_proto.width();
       height = url_proto.height();
       int64 area = static_cast<int64>(width) * height;
@@ -139,8 +139,12 @@ void ImgRewriteFilter::OptimizeImage(
     std::string inlined_url;
     int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
     if (image->output_size() < kImageInlineThreshold &&
-        (img_width > 1 || img_height > 1) &&  // Rule out marker images <= 1x1
+        // Rule out marker images <= 1x1
+        (has_dimensions && (img_width > 1 || img_height > 1)) &&
         image->AsInlineData(&inlined_url)) {
+      html_parse_->InfoHere("Inlining image `%s' (%d bytes)",
+                            url_proto.origin_url().c_str(),
+                            image->output_size());
       resource_manager_->Write(kInlineImage, inlined_url, result,
                                origin_expire_time_ms, message_handler);
     } else if (image->output_size() <
@@ -149,6 +153,10 @@ void ImgRewriteFilter::OptimizeImage(
           HttpStatus::kOK, image->Contents(), result, origin_expire_time_ms,
           message_handler);
       // TODO(jmarantz): what happens if Write returns false?
+      html_parse_->InfoHere(
+          "Shrinking image `%s' (%d bytes) to `%s' (%d bytes)",
+          url_proto.origin_url().c_str(), image->input_size(),
+          result->url().c_str(), image->output_size());
 
       if (rewrite_saved_bytes_ != NULL) {
         // Note: if we are serving a request from a different server
@@ -285,18 +293,15 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
 
     if (output_resource->IsWritten()) {
       if (output_resource->metadata()->status_code() == HttpStatus::kOK) {
-        html_parse_->InfoHere("%s remapped to %s",
-                              src->value(), output_resource->url().c_str());
         src->SetValue(output_resource->url());
         if (rewrite_count_ != NULL) {
           rewrite_count_->Add(1);
         }
       } else if (output_resource->metadata()->status_code() == kInlineImage) {
-        html_parse_->InfoHere("%s inlined", src->value());
         src->SetValue(output_resource->contents());
-      } else {
-        html_parse_->InfoHere("%s not rewritten due to lack of benefit",
-                              src->value());
+        if (inline_count_ != NULL) {
+          inline_count_->Add(1);
+        }
       }
     }
   }

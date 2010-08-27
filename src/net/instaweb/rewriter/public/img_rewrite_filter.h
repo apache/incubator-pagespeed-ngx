@@ -82,6 +82,7 @@ class ImgRewriteFilter : public RewriteFilter {
   const Atom s_width_;
   const Atom s_height_;
   Variable* rewrite_count_;
+  Variable* inline_count_;
   Variable* rewrite_saved_bytes_;
 };
 

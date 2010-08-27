@@ -39,16 +39,21 @@ bool HTTPCache::Get(const std::string& key, HTTPValue* value,
                     MetaData* headers, MessageHandler* handler) {
   SharedString cache_buffer;
 
+#define CACHE_SPEW 0
+#if CACHE_SPEW
   int64 start_us = timer_->NowUs();
+#endif
 
   bool ret = (cache_->Get(key, &cache_buffer) &&
               value->Link(&cache_buffer, headers, handler) &&
               IsCurrentlyValid(*headers));
 
+#if CACHE_SPEW
   long delta_us = timer_->NowUs() - start_us;
   handler->Info(key.c_str(), 0, "%ldus: HTTPCache::Get: %s (%d bytes)",
                 delta_us, ret ? "HIT" : "MISS",
                 static_cast<int>(key.size() + value->size()));
+#endif
 
   return ret;
 }
