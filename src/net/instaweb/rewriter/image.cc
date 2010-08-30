@@ -252,23 +252,10 @@ bool Image::LoadOpenCV() {
       opencv_load_possible_ = (opencv_image_ != NULL);
     }
   }
-  return opencv_load_possible_;
-}
-
-void Image::CleanOpenCV() {
-  if (opencv_image_ != NULL) {
-    cvReleaseImage(&opencv_image_);
-  }
-}
-
-bool Image::Dimensions(int* width, int* height) {
-  bool ok = false;
-  ok = opencv_image_ != NULL || LoadOpenCV();
-  if (ok) {
-    // Check our width and height against openCV.
-    // Believe OpenCV.
-    // TODO(jmaessen): rip out belt and suspenders when
-    // we're confident it works.
+  if (opencv_load_possible_) {
+    // A bit of belt and suspenders dimension checking.  We used to do this for
+    // every image we loaded, but now we only do it when we're already paying
+    // the cost of OpenCV image conversion.
     if (0 <= width_ && width_ != opencv_image_->width) {
       handler_->Error(url_.c_str(), 0,
                       "Computed width %d doesn't match OpenCV %d",
@@ -279,13 +266,21 @@ bool Image::Dimensions(int* width, int* height) {
                       "Computed height %d doesn't match OpenCV %d",
                       height_, opencv_image_->height);
     }
-    width_ = opencv_image_->width;
-    height_ = opencv_image_->height;
   }
-  if (0 <= width_ && 0 <= height_) {
+  return opencv_load_possible_;
+}
+
+void Image::CleanOpenCV() {
+  if (opencv_image_ != NULL) {
+    cvReleaseImage(&opencv_image_);
+  }
+}
+
+bool Image::Dimensions(int* width, int* height) {
+  bool ok = (0 <= width_) && (0 <= height_);
+  if (ok) {
     *width = width_;
     *height = height_;
-    ok = true;
   }
   return ok;
 }

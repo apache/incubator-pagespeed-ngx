@@ -163,9 +163,6 @@ bool JavascriptFilter::WriteExternalScriptTo(
     html_parse_->InfoHere("Rewrite script %s to %s",
                           script_resource->url().c_str(),
                           script_dest->url().c_str());
-  } else {
-    html_parse_->ErrorHere("Write failed for %s",
-                           script_resource->url().c_str());
   }
   return ok;
 }

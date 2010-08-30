@@ -55,9 +55,11 @@ class StdioFileHelper {
 
   bool Close(MessageHandler* message_handler) {
     bool ret = true;
-    if (fclose(file_) != 0) {
-      ReportError(message_handler, "closing file: %s");
-      ret = false;
+    if (file_ != stdout && file_ != stderr && file_ != stdin) {
+      if (fclose(file_) != 0) {
+        ReportError(message_handler, "closing file: %s");
+        ret = false;
+      }
     }
     file_ = NULL;
     return ret;

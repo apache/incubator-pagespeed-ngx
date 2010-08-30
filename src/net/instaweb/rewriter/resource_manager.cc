@@ -384,6 +384,12 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
                          hash_extension, handler);
       }
     }
+  } else {
+    // Note that we've already gotten a "could not open file" message;
+    // this just serves to explain why and suggest a remedy.
+    handler->Message(kInfo, "Could not create output resource"
+                     " (bad filename prefix '%s'?)",
+                     file_prefix_.c_str());
   }
   return ret;
 }

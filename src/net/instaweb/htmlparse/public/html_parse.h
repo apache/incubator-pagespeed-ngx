@@ -47,7 +47,7 @@ class HtmlParse {
   // Initiate a chunked parsing session.  Finish with FinishParse.  The
   // url_or_filename is only used for error messages; the contents are not
   // directly fetched.  The caller must supply the text and call ParseText.
-  void StartParse(const char* url_or_filename);
+  void StartParse(const StringPiece& url_or_filename);
 
   // Parses an arbitrary block of an html file, queuing up the events.  Call
   // Flush to send the events through the Filter.

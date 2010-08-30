@@ -554,10 +554,10 @@ void HtmlLexer::MakeElement() {
   }
 }
 
-void HtmlLexer::StartParse(const char* url) {
+void HtmlLexer::StartParse(const StringPiece& url) {
   line_ = 1;
   tag_start_line_ = -1;
-  filename_ = url;
+  url.CopyToString(&filename_);
   has_attr_value_ = false;
   attr_quote_ = "";
   state_ = START;

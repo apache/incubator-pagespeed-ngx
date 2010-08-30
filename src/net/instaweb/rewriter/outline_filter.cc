@@ -100,6 +100,11 @@ void OutlineFilter::EndElement(HtmlElement* element) {
                                "Expected: 'style' or 'script', Actual: '%s'",
                                inline_element_->tag().c_str());
       }
+    } else {
+      html_parse_->InfoHere("Inline element not outlined because its size %d, "
+                            "is below threshold %d",
+                            static_cast<int>(buffer_.size()),
+                            static_cast<int>(size_threshold_bytes_));
     }
     inline_element_ = NULL;
     buffer_.clear();
@@ -182,8 +187,6 @@ void OutlineFilter::OutlineStyle(HtmlElement* style_element,
         if (!html_parse_->DeleteElement(style_element)) {
           html_parse_->FatalErrorHere("Failed to delete inline sytle element");
         }
-      } else {
-        html_parse_->ErrorHere("Failed to write outlined style resource.");
       }
     } else {
       std::string element_string;

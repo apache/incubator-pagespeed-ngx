@@ -113,9 +113,11 @@ void CacheExtender::StartElement(HtmlElement* element) {
                                    headers->CacheExpirationTimeMs(),
                                    message_handler);
         }
-        href->SetValue(output->url());
-        if (extension_count_ != NULL) {
-          extension_count_->Add(1);
+        if (output->IsWritten()) {
+          href->SetValue(output->url());
+          if (extension_count_ != NULL) {
+            extension_count_->Add(1);
+          }
         }
       }
     }

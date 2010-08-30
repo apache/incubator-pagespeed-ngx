@@ -42,7 +42,7 @@ class HtmlLexer {
   ~HtmlLexer();
 
   // Initialize a new parse session, establishing name used for error messages.
-  void StartParse(const char* url_or_filename);
+  void StartParse(const StringPiece& url_or_filename);
 
   // Parse a chunk of text, adding events to the parser by calling
   // html_parse_->AddEvent(...).

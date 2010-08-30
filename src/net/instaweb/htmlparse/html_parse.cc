@@ -157,12 +157,12 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
   element->set_begin_line_number(line_number);
 }
 
-void HtmlParse::StartParse(const char* url) {
+void HtmlParse::StartParse(const StringPiece& url) {
   line_number_ = 1;
-  filename_ = url;
+  url.CopyToString(&filename_);
   if (timer_ != NULL) {
     parse_start_time_us_ = timer_->NowUs();
-    message_handler_->Info(url, 0, "HtmlParse::StartParse");
+    InfoHere("HtmlParse::StartParse");
   }
   AddEvent(new HtmlStartDocumentEvent(line_number_));
   lexer_->StartParse(url);
@@ -171,8 +171,7 @@ void HtmlParse::StartParse(const char* url) {
 void HtmlParse::ShowProgress(const char* message) {
   if (timer_ != NULL) {
     long delta = timer_->NowUs() - parse_start_time_us_;
-    message_handler_->Info(filename_.c_str(), 0, "%ldus: HtmlParse::%s",
-                              delta, message);
+    InfoHere("%ldus: HtmlParse::%s", delta, message);
   }
 }
 

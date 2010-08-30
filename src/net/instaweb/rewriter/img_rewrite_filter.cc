@@ -108,11 +108,11 @@ void ImgRewriteFilter::OptimizeImage(
     const Resource* input_resource,
     const ImgRewriteUrl& url_proto, Image* image, OutputResource* result) {
   if (result != NULL && !result->IsWritten() && image != NULL) {
-    int img_width, img_height, width, height;
+    int img_width = 0, img_height = 0;
     bool has_dimensions = image->Dimensions(&img_width, &img_height);
-    if (url_proto.has_width() && url_proto.has_height() && has_dimensions) {
-      width = url_proto.width();
-      height = url_proto.height();
+    if (has_dimensions && url_proto.has_width() && url_proto.has_height()) {
+      int width = url_proto.width();
+      int height = url_proto.height();
       int64 area = static_cast<int64>(width) * height;
       int64 img_area = static_cast<int64>(img_width) * img_height;
       if (area < img_area * kMaxAreaRatio) {
@@ -149,27 +149,27 @@ void ImgRewriteFilter::OptimizeImage(
                                origin_expire_time_ms, message_handler);
     } else if (image->output_size() <
                image->input_size() * kMaxRewrittenRatio) {
-      resource_manager_->Write(
-          HttpStatus::kOK, image->Contents(), result, origin_expire_time_ms,
-          message_handler);
-      // TODO(jmarantz): what happens if Write returns false?
-      html_parse_->InfoHere(
-          "Shrinking image `%s' (%d bytes) to `%s' (%d bytes)",
-          url_proto.origin_url().c_str(), image->input_size(),
-          result->url().c_str(), image->output_size());
+      if (resource_manager_->Write(
+              HttpStatus::kOK, image->Contents(), result,
+              origin_expire_time_ms, message_handler)) {
+        html_parse_->InfoHere(
+            "Shrinking image `%s' (%d bytes) to `%s' (%d bytes)",
+            url_proto.origin_url().c_str(), image->input_size(),
+            result->url().c_str(), image->output_size());
 
-      if (rewrite_saved_bytes_ != NULL) {
-        // Note: if we are serving a request from a different server
-        // than the server that rewrote the <img> tag, and they don't
-        // share a file system, then we will be bumping the byte-count
-        // here without bumping the rewrite count.  This seems ok,
-        // though perhaps we may need to revisit.
-        //
-        // Currently this will be a problem even when serving on a
-        // different file that *does* share a filesystem,
-        // HashResourceManager does not yet load its internal map
-        // by scanning the filesystem on startup.
-        rewrite_saved_bytes_->Add(image->input_size() - image->output_size());
+        if (rewrite_saved_bytes_ != NULL) {
+          // Note: if we are serving a request from a different server
+          // than the server that rewrote the <img> tag, and they don't
+          // share a file system, then we will be bumping the byte-count
+          // here without bumping the rewrite count.  This seems ok,
+          // though perhaps we may need to revisit.
+          //
+          // Currently this will be a problem even when serving on a
+          // different file that *does* share a filesystem,
+          // HashResourceManager does not yet load its internal map
+          // by scanning the filesystem on startup.
+          rewrite_saved_bytes_->Add(image->input_size() - image->output_size());
+        }
       }
     } else {
       // Write nothing and set status code to indicate not to rewrite
