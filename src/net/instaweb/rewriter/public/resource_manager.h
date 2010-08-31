@@ -49,8 +49,10 @@ class Writer;
 
 class ResourceManager {
  public:
+  static const int kNotSharded;
+
   ResourceManager(const StringPiece& file_prefix,
-                  const StringPiece& url_prefix,
+                  const StringPiece& url_prefix_pattern,
                   const int num_shards,
                   FileSystem* file_system,
                   FilenameEncoder* filename_encoder,
@@ -125,10 +127,13 @@ class ResourceManager {
 
   std::string base_url() const;
   StringPiece filename_prefix() const { return file_prefix_; }
-  StringPiece url_prefix() const { return url_prefix_; }
+
+  // Sets the URL prefix pattern.  The pattern must have exactly one %d
+  // in it, if num_shards is not 0.  If num shards is 0, then it should
+  // not have any % characters in it.
+  void SetUrlPrefixPattern(const StringPiece& url_prefix_pattern);
 
   void set_filename_prefix(const StringPiece& file_prefix);
-  void set_url_prefix(const StringPiece& url_prefix);
   void set_base_url(const StringPiece& url);
   Statistics* statistics() const { return statistics_; }
   void set_statistics(Statistics* s) { statistics_ = s; }
@@ -170,14 +175,27 @@ class ResourceManager {
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
   Timer* timer() { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
+  int num_shards() const { return num_shards_; }
+
+  // Generates a URL for a name, sharding based on num shards and a hash
+  // of the name.
+  std::string GenerateUrl(const StringPiece& key) const;
+
+  // Splits the shard number from a possibly sharded URL, based on the
+  // current prefix.  If successful, returns the resource -- the tail
+  // of the URL following the prefix, otherwise returns NULL.  If sharding
+  // is enabled, the shard number is returned in *shard, otherwise,
+  // *shard is set to kNotSharded.
+  const char* SplitUrl(const char* url, int* shard) const;
 
  private:
   std::string ConstructNameKey(OutputResource* output) const;
+  void ValidateShardsAgainstUrlPrefixPattern();
 
   scoped_ptr<GURL> base_url_;  // Base url to resolve relative urls against.
   std::string file_prefix_;
-  std::string url_prefix_;
-  int num_shards_;   // NYI: For server sharding of Resources.
+  std::string url_prefix_pattern_;
+  int num_shards_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;

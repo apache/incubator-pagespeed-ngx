@@ -145,7 +145,7 @@ std::string OutputResource::filename() const {
 }
 
 std::string OutputResource::url() const {
-  return StrCat(resource_manager_->url_prefix(), NameTail());
+  return resource_manager_->GenerateUrl(NameTail());
 }
 
 void OutputResource::SetHash(const StringPiece& hash) {

@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
+#include "net/instaweb/util/public/string_hash.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace {
@@ -53,8 +54,10 @@ const char kFilenameCacheKeyPrefix[] = "ResourceName:";
 
 namespace net_instaweb {
 
+const int ResourceManager::kNotSharded = -1;
+
 ResourceManager::ResourceManager(const StringPiece& file_prefix,
-                                 const StringPiece& url_prefix,
+                                 const StringPiece& url_prefix_pattern,
                                  const int num_shards,
                                  FileSystem* file_system,
                                  FilenameEncoder* filename_encoder,
@@ -71,10 +74,70 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       http_cache_(http_cache),
       relative_path_(false) {
   file_prefix.CopyToString(&file_prefix_);
-  url_prefix.CopyToString(&url_prefix_);
+  SetUrlPrefixPattern(url_prefix_pattern);
 }
 
 ResourceManager::~ResourceManager() {
+}
+
+void ResourceManager::SetUrlPrefixPattern(const StringPiece& pattern) {
+  pattern.CopyToString(&url_prefix_pattern_);
+  ValidateShardsAgainstUrlPrefixPattern();
+}
+
+std::string ResourceManager::GenerateUrl(const StringPiece& name) const {
+  std::string url_prefix;
+  if (num_shards_ == 0) {
+    url_prefix = url_prefix_pattern_;
+  } else {
+    size_t hash = HashString(name.data(), name.size());
+    int shard = hash % num_shards_;
+    CHECK_NE(std::string::npos, url_prefix_pattern_.find("%d"));
+    url_prefix = StringPrintf(url_prefix_pattern_.c_str(), shard);
+  }
+  return StrCat(url_prefix, name);
+}
+
+const char* ResourceManager::SplitUrl(const char* url, int* shard) const {
+  const char* resource = NULL;
+  if (num_shards_ == 0) {
+    CHECK_EQ(std::string::npos, url_prefix_pattern_.find("%d"));
+    if (strncmp(url, url_prefix_pattern_.data(),
+                url_prefix_pattern_.size()) == 0) {
+      resource = url + url_prefix_pattern_.size();
+      *shard = kNotSharded;
+    }
+  } else {
+    CHECK_NE(std::string::npos, url_prefix_pattern_.find("%d"));
+    if (sscanf(url, url_prefix_pattern_.c_str(), shard) == 1) {
+      // Get the actual prefix length by re-generating the URL.
+      std::string prefix = StringPrintf(url_prefix_pattern_.c_str(), *shard);
+      size_t prefix_length = prefix.size();
+      resource = url + prefix_length;
+    }
+  }
+  return resource;
+}
+
+void ResourceManager::ValidateShardsAgainstUrlPrefixPattern() {
+  std::string::size_type pos = url_prefix_pattern_.find('%');
+  if (num_shards_ == 0) {
+    CHECK(pos == StringPiece::npos) << "URL prefix should not have a percent "
+                                    << "when num_shards==0";
+  } else {
+    // Ensure that the % is followed by a 'd'.  But be careful because
+    // the percent may have appeared at the end of the string, which
+    // is not necessarily null-terminated.
+    if ((pos == std::string::npos) ||
+        ((pos + 1) == url_prefix_pattern_.size()) ||
+        (url_prefix_pattern_.substr(pos + 1, 1) != "d")) {
+      CHECK(false) << "url_prefix must contain exactly one %d";
+    } else {
+      // make sure there is not another percent
+      pos = url_prefix_pattern_.find('%', pos + 2);
+      CHECK(pos == std::string::npos) << "Extra % found in url_prefix_pattern";
+    }
+  }
 }
 
 // TODO(jmarantz): consider moving this method to MetaData
@@ -196,10 +259,6 @@ void ResourceManager::set_filename_prefix(const StringPiece& file_prefix) {
   file_prefix.CopyToString(&file_prefix_);
 }
 
-void ResourceManager::set_url_prefix(const StringPiece& url_prefix) {
-  url_prefix.CopyToString(&url_prefix_);
-}
-
 void ResourceManager::set_base_url(const StringPiece& url) {
   // TODO(sligocki): Is there any way to init GURL w/o alloc a whole new string?
   base_url_.reset(new GURL(url.as_string()));
@@ -259,8 +318,8 @@ Resource* ResourceManager::CreateInputResource(
 
     if (url.SchemeIs("http")) {
       // TODO(sligocki): Figure out if these are actually local by
-      // seing if the serving path matches url_prefix_, in which case
-      // we can do a local file read.
+      // seing if the serving path matches url_prefix_pattern_, in
+      // which case we can do a local file read.
       // TODO(jmaessen): In order to permit url loading from a context
       // where the base url isn't set, we must keep the normalized url
       // in the UrlInputResource rather than the original input_url.
