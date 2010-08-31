@@ -43,7 +43,6 @@ class BaseTagFilter : public EmptyHtmlFilter {
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
-  virtual void EndElement(HtmlElement* element);
   virtual const char* Name() const { return "BaseTag"; }
 
   void set_base_url(const StringPiece& url) { url.CopyToString(&base_url_); }
@@ -52,8 +51,7 @@ class BaseTagFilter : public EmptyHtmlFilter {
   Atom s_head_;
   Atom s_base_;
   Atom s_href_;
-  HtmlElement* s_head_element_;
-  bool found_base_tag_;
+  bool found_head_;
   std::string base_url_;
   HtmlParse* html_parse_;
 };

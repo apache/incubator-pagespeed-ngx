@@ -356,7 +356,18 @@ TEST_F(EventListManipulationTest, TestInsertElementBeforeCurrent) {
   html_parse_.InsertElementBeforeCurrent(node2_);
   // Current is left at queue_.end() after the AddEvent.
   CheckExpected("12");
+
+  HtmlTestingPeer::SetCurrent(&html_parse_, node1_);
   html_parse_.InsertElementBeforeCurrent(node3_);
+  CheckExpected("312");
+}
+
+TEST_F(EventListManipulationTest, TestInsertElementAfterCurrent) {
+  HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
+  HtmlTestingPeer::SetCurrent(&html_parse_, node1_);
+  html_parse_.InsertElementAfterCurrent(node2_);
+  // Note that if we call CheckExpected here it will mutate current_.
+  html_parse_.InsertElementAfterCurrent(node3_);
   CheckExpected("123");
 }
 

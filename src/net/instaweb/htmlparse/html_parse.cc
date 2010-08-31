@@ -355,8 +355,8 @@ bool HtmlParse::InsertElementAfterElement(const HtmlNode* existing_node,
 
 bool HtmlParse::InsertElementBeforeCurrent(HtmlNode* new_node) {
   if (deleted_current_) {
-    message_handler_->Message(kError, "InsertElementBeforeCurrent after "
-                                      "current has been deleted.");
+    FatalErrorHere("InsertElementBeforeCurrent after current has been "
+                   "deleted.");
   }
   return InsertElementBeforeEvent(current_, new_node);
 }
@@ -368,6 +368,23 @@ bool HtmlParse::InsertElementBeforeEvent(const HtmlEventListIterator& event,
   // TODO(jmarantz): make this routine return void, as well as the other
   // wrappers around it.
   return true;
+}
+
+bool HtmlParse::InsertElementAfterCurrent(HtmlNode* new_node) {
+  if (deleted_current_) {
+    FatalErrorHere("InsertElementAfterCurrent after current has been "
+                   "deleted.");
+  }
+  if (current_ == queue_.end()) {
+    FatalErrorHere("InsertElementAfterCurrent called with queue at end.");
+  }
+  ++current_;
+  bool ret = InsertElementBeforeEvent(current_, new_node);
+
+  // We want to leave current_ pointing to the newly created element.
+  --current_;
+  CHECK_EQ((*current_)->GetNode(), new_node);
+  return ret;
 }
 
 bool HtmlParse::AddParentToSequence(HtmlNode* first, HtmlNode* last,

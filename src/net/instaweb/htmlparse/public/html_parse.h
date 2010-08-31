@@ -90,9 +90,14 @@ class HtmlParse {
                                   HtmlNode* new_node);
   bool InsertElementAfterElement(const HtmlNode* existing_node,
                                  HtmlNode* new_node);
-  // Insert element before current event.
+
+  // Insert element before the current one.  current_ remains unchanged.
   bool InsertElementBeforeCurrent(HtmlNode* node);
 
+  // Insert element after the current one, moving current_ to the new
+  // element.  In a Filter, the flush-loop will advance past this on
+  // the next iteration.
+  bool InsertElementAfterCurrent(HtmlNode* node);
 
   // Enclose element around two elements in a sequence.  The first
   // element must be the same as, or precede the last element in the

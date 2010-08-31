@@ -17,6 +17,8 @@
     # We're building a shared library, so everything needs to be built
     # with Position-Independent Code.
     'linux_fpic': 1,
+
+   'use_system_apache_dev': 0,
   },
   'includes': [
     '../third_party/libpagespeed/src/build/common.gypi',

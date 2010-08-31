@@ -28,14 +28,12 @@ BaseTagFilter::BaseTagFilter(HtmlParse* html_parse) {
   s_head_ = html_parse->Intern("head");
   s_base_ = html_parse->Intern("base");
   s_href_ = html_parse->Intern("href");
-  s_head_element_ = NULL;
-  found_base_tag_ = false;
+  found_head_ = false;
   html_parse_ = html_parse;
 }
 
 void BaseTagFilter::StartDocument() {
-  s_head_element_ = NULL;
-  found_base_tag_ = false;
+  found_head_ = false;
 }
 
 // In a proxy server, we will want to set a base tag according to the current
@@ -45,34 +43,21 @@ void BaseTagFilter::StartDocument() {
 // have no specific URL to set the base tag to, then we should avoid
 // adding an empty base tag.
 void BaseTagFilter::StartElement(HtmlElement* element) {
-  if (element->tag() == s_head_) {
-    s_head_element_ = element;
-  } else if ((s_head_element_ != NULL) && !base_url_.empty()) {
-    if (element->tag() == s_base_) {
-      // There is already a base tag.  See if it's specified an href.
-      for (int i = 0; i < element->attribute_size(); ++i) {
-        HtmlElement::Attribute& attribute = element->attribute(i);
-        if (attribute.name() == s_href_) {
-          // For now let's assume that the explicit base-tag in
-          // the source should left alone if it has an href.
-          found_base_tag_ = true;
-          break;
-        }
+  if ((element->tag() == s_head_) && !found_head_) {
+    found_head_ = true;
+    HtmlElement* new_element = html_parse_->NewElement(element, s_base_);
+    new_element->set_close_style(HtmlElement::IMPLICIT_CLOSE);
+    new_element->AddAttribute(s_href_, base_url_.c_str(), "\"");
+    html_parse_->InsertElementAfterCurrent(new_element);
+  } else if (element->tag() == s_base_) {
+    // There is was a pre-existing base tag.  See if it specifies an href.
+    // If so, delete it, as it's now superseded by the one we added above.
+    for (int i = 0; i < element->attribute_size(); ++i) {
+      HtmlElement::Attribute& attribute = element->attribute(i);
+      if (attribute.name() == s_href_) {
+        html_parse_->DeleteElement(element);
+        break;
       }
-    }
-  }
-}
-
-void BaseTagFilter::EndElement(HtmlElement* element) {
-  if ((element == s_head_element_) && !base_url_.empty()) {
-    s_head_element_ = NULL;
-    if (!found_base_tag_) {
-      found_base_tag_ = true;
-      HtmlElement* new_element = html_parse_->NewElement(element, s_base_);
-      new_element->set_close_style(HtmlElement::IMPLICIT_CLOSE);
-      new_element->AddAttribute(s_href_, base_url_.c_str(), "\"");
-      html_parse_->InsertElementBeforeCurrent(new_element);
-      found_base_tag_ = true;
     }
   }
 }
