@@ -170,7 +170,7 @@ void HtmlParse::StartParse(const StringPiece& url) {
 
 void HtmlParse::ShowProgress(const char* message) {
   if (timer_ != NULL) {
-    long delta = timer_->NowUs() - parse_start_time_us_;
+    long delta = static_cast<long>(timer_->NowUs() - parse_start_time_us_);
     InfoHere("%ldus: HtmlParse::%s", delta, message);
   }
 }
