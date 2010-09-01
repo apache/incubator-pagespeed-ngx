@@ -61,9 +61,8 @@ class Writer;
  */
 class JavascriptFilter : public RewriteFilter {
  public:
-  JavascriptFilter(const StringPiece& path_prefix,
-                   HtmlParse* html_parse,
-                   ResourceManager* resource_manager);
+  JavascriptFilter(RewriteDriver* rewrite_driver,
+                   const StringPiece& path_prefix);
   virtual ~JavascriptFilter();
   virtual void StartElement(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);

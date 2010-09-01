@@ -36,8 +36,7 @@ class Variable;
 
 class CssCombineFilter : public RewriteFilter {
  public:
-  CssCombineFilter(const char* path_prefix, HtmlParse* html_parse,
-                   ResourceManager* resource_manager);
+  CssCombineFilter(RewriteDriver* rewrite_driver, const char* path_prefix);
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);

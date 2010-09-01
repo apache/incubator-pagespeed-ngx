@@ -45,19 +45,18 @@ namespace net_instaweb {
 // TODO(jmarantz): allow combining of CSS elements found in the body, whether
 // or not the head has already been flushed.
 
-CssCombineFilter::CssCombineFilter(const char* filter_prefix,
-                                   HtmlParse* html_parse,
-                                   ResourceManager* resource_manager)
-    : RewriteFilter(filter_prefix),
-      html_parse_(html_parse),
-      resource_manager_(resource_manager),
-      css_tag_scanner_(html_parse),
+CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
+                                   const char* filter_prefix)
+    : RewriteFilter(driver, filter_prefix),
+      html_parse_(driver->html_parse()),
+      resource_manager_(driver->resource_manager()),
+      css_tag_scanner_(html_parse_),
       css_file_count_reduction_(NULL) {
-  s_head_ = html_parse->Intern("head");
-  s_link_ = html_parse->Intern("link");
-  s_href_ = html_parse->Intern("href");
-  s_type_ = html_parse->Intern("type");
-  s_rel_  = html_parse->Intern("rel");
+  s_head_ = html_parse_->Intern("head");
+  s_link_ = html_parse_->Intern("link");
+  s_href_ = html_parse_->Intern("href");
+  s_type_ = html_parse_->Intern("type");
+  s_rel_  = html_parse_->Intern("rel");
   head_element_ = NULL;
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {

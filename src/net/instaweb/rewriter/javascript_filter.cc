@@ -39,18 +39,17 @@
 
 namespace net_instaweb {
 
-JavascriptFilter::JavascriptFilter(const StringPiece& path_prefix,
-                                   HtmlParse* html_parse,
-                                   ResourceManager* resource_manager)
-    : RewriteFilter(path_prefix),
-      html_parse_(html_parse),
+JavascriptFilter::JavascriptFilter(RewriteDriver* driver,
+                                   const StringPiece& path_prefix)
+    : RewriteFilter(driver, path_prefix),
+      html_parse_(driver->html_parse()),
       script_in_progress_(NULL),
       script_src_(NULL),
-      resource_manager_(resource_manager),
+      resource_manager_(driver->resource_manager()),
       some_missing_scripts_(false),
-      s_script_(html_parse->Intern("script")),
-      s_src_(html_parse->Intern("src")),
-      s_type_(html_parse->Intern("type")) { }
+      s_script_(html_parse_->Intern("script")),
+      s_src_(html_parse_->Intern("src")),
+      s_type_(html_parse_->Intern("type")) { }
 
 JavascriptFilter::~JavascriptFilter() { }
 

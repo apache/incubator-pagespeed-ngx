@@ -150,18 +150,15 @@ void RewriteDriver::AddFilters(const StringSet& enabled_filters) {
     // Combine external CSS resources after we've outlined them.
     // CSS files in html document.  This can only be called
     // once and requires a resource_manager to be set.
-    AddRewriteFilter(new CssCombineFilter(kCssCombiner, &html_parse_,
-                                          resource_manager_));
+    AddRewriteFilter(new CssCombineFilter(this, kCssCombiner));
   }
   if (enabled.contains("rewrite_images")) {
-    AddRewriteFilter(new ImgRewriteFilter(kImageCompression, &html_parse_,
-                                          resource_manager_, file_system_));
+    AddRewriteFilter(new ImgRewriteFilter(this, kImageCompression));
   }
   if (enabled.contains("rewrite_javascript")) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
     // interaction.
-    AddRewriteFilter(new JavascriptFilter(kJavascriptMin, &html_parse_,
-                                          resource_manager_));
+    AddRewriteFilter(new JavascriptFilter(this, kJavascriptMin));
   }
   if (enabled.contains("remove_comments")) {
     AddFilter(new RemoveCommentsFilter(&html_parse_));
@@ -178,8 +175,7 @@ void RewriteDriver::AddFilters(const StringSet& enabled_filters) {
   }
   if (enabled.contains("extend_cache")) {
     // Extend the cache lifetime of resources.
-    AddRewriteFilter(new CacheExtender(kCacheExtender, &html_parse_,
-                                       resource_manager_));
+    AddRewriteFilter(new CacheExtender(this, kCacheExtender));
   }
   if (enabled.contains("left_trim_urls")) {
     // Trim extraneous prefixes from urls in attribute values.

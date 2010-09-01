@@ -47,10 +47,7 @@ class Variable;
 //     rewritten urls, when in general those urls will be in a different domain.
 class ImgRewriteFilter : public RewriteFilter {
  public:
-  ImgRewriteFilter(StringPiece path_prefix,
-                   HtmlParse* html_parse,
-                   ResourceManager* resource_manager,
-                   FileSystem* file_system);
+  ImgRewriteFilter(RewriteDriver* driver, StringPiece path_prefix);
   virtual void EndElement(HtmlElement* element);
   virtual void Flush();
   virtual bool Fetch(OutputResource* resource,

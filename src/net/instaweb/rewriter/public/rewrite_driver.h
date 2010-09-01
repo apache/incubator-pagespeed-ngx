@@ -22,6 +22,7 @@
 #include <map>
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
@@ -34,7 +35,6 @@ class Hasher;
 class HtmlFilter;
 class HtmlParse;
 class HtmlWriterFilter;
-class ResourceManager;
 class RewriteFilter;
 class Statistics;
 class Timer;
@@ -109,6 +109,7 @@ class RewriteDriver {
                      UrlAsyncFetcher::Callback* callback);
 
   HtmlParse* html_parse() { return &html_parse_; }
+  FileSystem* file_system() { return resource_manager_->file_system(); }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
 
   ResourceManager* resource_manager() const { return resource_manager_; }

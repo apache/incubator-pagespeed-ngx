@@ -46,12 +46,12 @@ extern module AP_MODULE_DECLARE_DATA instaweb_module;
 
 // Instaweb directive names -- these must match ../scripts/instaweb.conf
 const char* kInstaweb = "Instaweb";
-const char* kInstawebRewriteUrlPrefix = "InstawebRewriteUrlPrefix";
+const char* kInstawebUrlPrefix = "InstawebUrlPrefix";
 const char* kInstawebFetchProxy = "InstawebFetchProxy";
 const char* kInstawebGeneratedFilePrefix = "InstawebGeneratedFilePrefix";
 const char* kInstawebFileCachePath = "InstawebFileCachePath";
 const char* kInstawebLRUCacheKBPerProcess = "InstawebLRUCacheKBPerProcess";
-const char* kInstawebLRUCacheByteLimit = "kInstawebLRUCacheByteLimit";
+const char* kInstawebLRUCacheByteLimit = "InstawebLRUCacheByteLimit";
 const char* kInstawebFetcherTimeoutMs = "InstawebFetcherTimeOutMs";
 const char* kInstawebResourceTimeoutMs = "InstawebResourceTimeOutMs";
 const char* kInstawebNumShards = "InstawebNumShards";
@@ -62,7 +62,7 @@ const char* kInstawebRewriters = "InstawebRewriters";
 
 namespace {
 
-const char* pagespeed_filter_name = "INSTAWEB";
+const char* instaweb_filter_name = "INSTAWEB_OUTPUT_FILTER";
 
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
 enum ConfigSwitch {CONFIG_ON, CONFIG_OFF, CONFIG_ERROR};
@@ -71,7 +71,7 @@ enum ConfigSwitch {CONFIG_ON, CONFIG_OFF, CONFIG_ERROR};
 // rewriter will put the rewritten content into the output string when flushed
 // or finished. We call Flush when we see the FLUSH bucket, and call Finish when
 // we see the EOS bucket.
-struct PagespeedContext {
+struct InstawebContext {
   std::string output;  // content after instaweb rewritten.
   HtmlRewriter* rewriter;
   apr_bucket_brigade* bucket_brigade;
@@ -115,7 +115,7 @@ bool check_pagespeed_applicable(ap_filter_t* filter,
 apr_bucket* rewrite_html(ap_filter_t *filter, RewriteOperation operation,
                          const char* buf, int len) {
   request_rec* request = filter->r;
-  PagespeedContext* context = static_cast<PagespeedContext*>(filter->ctx);
+  InstawebContext* context = static_cast<InstawebContext*>(filter->ctx);
   if (context == NULL) {
     LOG(DFATAL) << "Context is null";
     return NULL;
@@ -179,7 +179,7 @@ static int fill_in_req_header_cb(void *rec, const char *key,
   return 1;
 }
 
-apr_status_t pagespeed_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
+apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   // Check if pagespeed is enabled.
   html_rewriter::PageSpeedConfig* server_config =
       html_rewriter::mod_pagespeed_get_server_config(filter->r->server);
@@ -200,7 +200,7 @@ apr_status_t pagespeed_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   }
 
   request_rec* request = filter->r;
-  PagespeedContext* context = static_cast<PagespeedContext*>(filter->ctx);
+  InstawebContext* context = static_cast<InstawebContext*>(filter->ctx);
 
   LOG(INFO) << "Instaweb OutputFilter called for request "
             << request->unparsed_uri;
@@ -229,7 +229,7 @@ apr_status_t pagespeed_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
       ap_remove_output_filter(filter);
       return ap_pass_brigade(filter->next, bb);
     }
-    filter->ctx = context = new PagespeedContext;
+    filter->ctx = context = new InstawebContext;
     mod_spdy::PoolRegisterDelete(request->pool, context);
     context->bucket_brigade = apr_brigade_create(
         request->pool,
@@ -361,7 +361,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
           config->file_cache_path == NULL) {
         LOG(ERROR) << "Page speed is enabled. "
                    << "The following directives must not be NULL";
-        LOG(ERROR) << kInstawebRewriteUrlPrefix << "="
+        LOG(ERROR) << kInstawebUrlPrefix << "="
                    << config->rewrite_url_prefix;
         LOG(ERROR) << kInstawebFileCachePath << "="
                    << config->file_cache_path;
@@ -416,8 +416,8 @@ void mod_pagespeed_register_hooks(apr_pool_t *p) {
 
   // Use instaweb to handle generated resources.
   ap_hook_handler(mod_pagespeed::instaweb_handler, NULL, NULL, -1);
-  ap_register_output_filter(pagespeed_filter_name,
-                            pagespeed_out_filter,
+  ap_register_output_filter(instaweb_filter_name,
+                            instaweb_out_filter,
                             NULL,
                             AP_FTYPE_RESOURCE);
   ap_hook_post_config(pagespeed_post_config, NULL, NULL, APR_HOOK_MIDDLE);
@@ -484,7 +484,7 @@ static const char* mod_pagespeed_config_one_string(cmd_parms* cmd, void* data,
       return apr_pstrcat(cmd->pool, kInstaweb, " on|off", NULL);
     }
     config->pagespeed_enable = (config_switch == CONFIG_ON);
-  } else if (strcasecmp(directive, kInstawebRewriteUrlPrefix) == 0) {
+  } else if (strcasecmp(directive, kInstawebUrlPrefix) == 0) {
     config->rewrite_url_prefix = apr_pstrdup(cmd->pool, arg);
   } else if (strcasecmp(directive, kInstawebFetchProxy) == 0) {
     config->fetch_proxy = apr_pstrdup(cmd->pool, arg);
@@ -529,7 +529,7 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Enable instaweb"),
-  AP_INIT_TAKE1(kInstawebRewriteUrlPrefix,
+  AP_INIT_TAKE1(kInstawebUrlPrefix,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,

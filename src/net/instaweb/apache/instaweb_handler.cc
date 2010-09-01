@@ -82,7 +82,8 @@ int instaweb_default_handler(const std::string& url, request_rec* request) {
 int instaweb_check_request(request_rec* request, std::string* resource) {
   // Check if the request is for instaweb content generator
   // Decline the request so that other handler may process
-  if (!request->handler || strcmp(request->handler, "instaweb")) {
+  if (!request->handler ||
+      (strcmp(request->handler, "instaweb_resource_generator") != 0)) {
     ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
                   "Not instaweb request: %s.", request->handler);
     return DECLINED;
@@ -110,15 +111,22 @@ int instaweb_check_request(request_rec* request, std::string* resource) {
                                 request->unparsed_uri,
                                 request);
   }
+
+  // Determine whether this URL matches our prefix pattern.  Note that
+  // the URL may have a shard applied to it.
   html_rewriter::PageSpeedServerContext* context =
       html_rewriter::mod_pagespeed_get_config_server_context(request->server);
-  std::string url_prefix = html_rewriter::GetUrlPrefix(context);
-  if (full_url.compare(0, url_prefix.size(), url_prefix) != 0) {
+  net_instaweb::RewriteDriverFactory* factory =
+      context->rewrite_driver_factory();
+  net_instaweb::ResourceManager* resource_manager = factory->resource_manager();
+  int shard;
+  const char* r = resource_manager->SplitUrl(full_url.c_str(), &shard);
+  if (r == NULL) {
     ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
                   "INSTAWEB: Declined request %s", full_url.c_str());
     return DECLINED;
   }
-  *resource = full_url.substr(url_prefix.size());
+  *resource = r;
   return OK;
 }
 

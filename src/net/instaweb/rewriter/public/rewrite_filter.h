@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -33,8 +34,9 @@ class Writer;
 
 class RewriteFilter : public EmptyHtmlFilter {
  public:
-  explicit RewriteFilter(StringPiece filter_prefix)
-      : filter_prefix_(filter_prefix.data(), filter_prefix.size()) {
+  explicit RewriteFilter(RewriteDriver* driver, StringPiece filter_prefix)
+      : driver_(driver),
+        filter_prefix_(filter_prefix.data(), filter_prefix.size()) {
   }
   virtual ~RewriteFilter();
 
@@ -92,8 +94,11 @@ class RewriteFilter : public EmptyHtmlFilter {
 
   static const char* prefix_separator() { return "."; }
   const std::string& id() const { return filter_prefix_; }
+  HtmlParse* html_parse() { return driver_->html_parse(); }
+  ResourceManager* resource_manager() { return driver_->resource_manager(); }
 
  protected:
+  RewriteDriver* driver_;
   std::string filter_prefix_;  // Prefix that should be used in front of all
                                 // rewritten URLs
 };

@@ -38,8 +38,7 @@ class Variable;
 // data.
 class CacheExtender : public RewriteFilter {
  public:
-  CacheExtender(const char* path_prefix, HtmlParse* html_parse,
-                ResourceManager* resource_manager);
+  CacheExtender(RewriteDriver* driver, const char* path_prefix);
 
   virtual void StartElement(HtmlElement* element);
   virtual bool Fetch(OutputResource* resource,
@@ -52,12 +51,9 @@ class CacheExtender : public RewriteFilter {
   virtual const char* Name() const { return "CacheExtender"; }
 
  private:
-  Atom s_href_;
   HtmlParse* html_parse_;
   ResourceManager* resource_manager_;
-  Hasher* hasher_;
   ResourceTagScanner tag_scanner_;
-  Timer* timer_;
   Variable* extension_count_;
   Variable* not_cacheable_count_;
 };

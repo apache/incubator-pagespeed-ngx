@@ -44,15 +44,13 @@ const int64 kMinThresholdMs = Timer::kMonthMs;
 namespace net_instaweb {
 // TODO(jmarantz): consider factoring out the code that finds external resources
 
-CacheExtender::CacheExtender(const char* filter_prefix, HtmlParse* html_parse,
-                             ResourceManager* resource_manager)
-    : RewriteFilter(filter_prefix),
-      html_parse_(html_parse),
-      resource_manager_(resource_manager),
-      tag_scanner_(html_parse),
+CacheExtender::CacheExtender(RewriteDriver* driver, const char* filter_prefix)
+    : RewriteFilter(driver, filter_prefix),
+      html_parse_(driver->html_parse()),
+      resource_manager_(driver->resource_manager()),
+      tag_scanner_(html_parse_),
       extension_count_(NULL),
       not_cacheable_count_(NULL) {
-  s_href_ = html_parse->Intern("href");
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
     extension_count_ = stats->AddVariable("cache_extensions");

@@ -82,17 +82,15 @@ const HttpStatus::Code kInlineImage = HttpStatus::kNoContent;  // 204
 
 }  // namespace
 
-ImgRewriteFilter::ImgRewriteFilter(StringPiece path_prefix,
-                                   HtmlParse* html_parse,
-                                   ResourceManager* resource_manager,
-                                   FileSystem* file_system)
-    : RewriteFilter(path_prefix),
-      file_system_(file_system),
-      html_parse_(html_parse),
-      img_filter_(new ImgTagScanner(html_parse)),
-      resource_manager_(resource_manager),
-      s_width_(html_parse->Intern("width")),
-      s_height_(html_parse->Intern("height")),
+ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
+                                   StringPiece path_prefix)
+    : RewriteFilter(driver, path_prefix),
+      file_system_(driver->file_system()),
+      html_parse_(driver->html_parse()),
+      img_filter_(new ImgTagScanner(html_parse_)),
+      resource_manager_(driver->resource_manager()),
+      s_width_(html_parse_->Intern("width")),
+      s_height_(html_parse_->Intern("height")),
       rewrite_count_(NULL),
       inline_count_(NULL),
       rewrite_saved_bytes_(NULL) {
