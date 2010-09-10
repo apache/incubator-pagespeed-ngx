@@ -29,6 +29,7 @@ void MetaData::CopyFrom(const MetaData& other) {
   set_minor_version(other.minor_version());
   set_status_code(other.status_code());
   set_reason_phrase(other.reason_phrase());
+  set_headers_complete(other.headers_complete());
   for (int i = 0; i < other.NumAttributes(); ++i) {
     Add(other.Name(i), other.Value(i));
   }

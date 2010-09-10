@@ -170,6 +170,40 @@ class FileSystem {
   virtual bool RecursivelyMakeDir(const StringPiece& directory_path,
                                   MessageHandler* handler);
 
+  // Like POSIX 'ls -a', lists all files and directories under the given
+  // directory (but omits "." and "..").  Full paths (not just filenames) will
+  // be pushed onto the back of the supplied vector (without clearing it).
+  // Returns true on success (even if the dir was empty), false on error (even
+  // if some files were pushed onto the vector).  This is generally not
+  // threadsafe!  Use a mutex.
+  virtual bool ListContents(const StringPiece& dir, StringVector* files,
+                            MessageHandler* handler) = 0;
+
+  // Stores in *timestamp_sec the timestamp (in seconds since the
+  // epoch) of the last time the file was accessed (through one of our
+  // Read methods, or by someone else accessing the filesystem
+  // directly).  Returns true on success, false on failure.
+  // TODO(abliss): replace this with a single Stat() function.
+  virtual bool Atime(const StringPiece& path, int64* timestamp_sec,
+                     MessageHandler* handler) = 0;
+
+  // Given a directory, recursively computes the total size of all its
+  // files and directories, and increments *size by the sum total.  We
+  // assume no circular links.  Returns true on success, false on
+  // failure.  If the files are modified while we traverse, we are not
+  // guaranteed to represent their final state.
+  // The path name should NOT end in a "/".
+  // TODO(abliss): unify all slash-ending assumptions
+  virtual bool RecursiveDirSize(const StringPiece& path, int64* size,
+                                MessageHandler* handler);
+
+  // Given a file, computes its size in bytes and store it in *size.  Returns
+  // true on success, false on failure.  Behavior is undefined if path refers to
+  // a directory.
+  // TODO(abliss): replace this with a single Stat() function.
+  virtual bool Size(const StringPiece& path, int64* size,
+                    MessageHandler* handler) = 0;
+
  protected:
   // These interfaces must be defined by implementers of FileSystem.
   // They may assume the directory already exists.

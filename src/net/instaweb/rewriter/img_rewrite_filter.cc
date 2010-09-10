@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/meta_data.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
@@ -62,7 +63,7 @@ const double kMaxAreaRatio = 1.0;
 // Otherwise we end up loading the image in favor of the html, which might be a
 // lose.  More work is needed here to figure out the exact tradeoffs involved,
 // especially as we also undermine image cacheability.
-const int kImageInlineThreshold = 2048;
+const size_t kImageInlineThreshold = 2048;
 
 // Should we log each image element as we encounter it?  Handy for debug.
 // TODO(jmaessen): Hook into event logging infrastructure.
@@ -140,9 +141,9 @@ void ImgRewriteFilter::OptimizeImage(
         // Rule out marker images <= 1x1
         (has_dimensions && (img_width > 1 || img_height > 1)) &&
         image->AsInlineData(&inlined_url)) {
-      html_parse_->InfoHere("Inlining image `%s' (%d bytes)",
+      html_parse_->InfoHere("Inlining image `%s' (%u bytes)",
                             url_proto.origin_url().c_str(),
-                            image->output_size());
+                            static_cast<unsigned>(image->output_size()));
       resource_manager_->Write(kInlineImage, inlined_url, result,
                                origin_expire_time_ms, message_handler);
     } else if (image->output_size() <
@@ -151,9 +152,11 @@ void ImgRewriteFilter::OptimizeImage(
               HttpStatus::kOK, image->Contents(), result,
               origin_expire_time_ms, message_handler)) {
         html_parse_->InfoHere(
-            "Shrinking image `%s' (%d bytes) to `%s' (%d bytes)",
-            url_proto.origin_url().c_str(), image->input_size(),
-            result->url().c_str(), image->output_size());
+            "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",
+            url_proto.origin_url().c_str(),
+            static_cast<unsigned>(image->input_size()),
+            result->url().c_str(),
+            static_cast<unsigned>(image->output_size()));
 
         if (rewrite_saved_bytes_ != NULL) {
           // Note: if we are serving a request from a different server
@@ -166,7 +169,8 @@ void ImgRewriteFilter::OptimizeImage(
           // different file that *does* share a filesystem,
           // HashResourceManager does not yet load its internal map
           // by scanning the filesystem on startup.
-          rewrite_saved_bytes_->Add(image->input_size() - image->output_size());
+          rewrite_saved_bytes_->Add(
+              image->input_size() - image->output_size());
         }
       }
     } else {

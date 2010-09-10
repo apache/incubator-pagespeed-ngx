@@ -27,11 +27,11 @@ namespace net_instaweb {
 // Implementation of an HTML parser message handler that uses Google
 // logging to emit messsages.
 class GoogleMessageHandler : public MessageHandler {
- public:
-  virtual void MessageV(MessageType type, const char* msg, va_list args);
+ protected:
+  virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
 
-  virtual void FileMessageV(MessageType type, const char* filename, int line,
-                            const char* msg, va_list args);
+  virtual void FileMessageVImpl(MessageType type, const char* filename,
+                                int line, const char* msg, va_list args);
 
  private:
   const std::string& Format(const char* msg, va_list args);

@@ -18,7 +18,6 @@
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/html_parser_message_handler.h"
 #include "net/instaweb/apache/html_rewriter_config.h"
 #include "net/instaweb/apache/md5_hasher.h"
 #include "net/instaweb/apache/pagespeed_server_context.h"
@@ -26,6 +25,7 @@
 #include "net/instaweb/apache/serf_url_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/util/public/file_cache.h"
+#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
@@ -68,11 +68,11 @@ Timer* ApacheRewriteDriverFactory::DefaultTimer() {
 }
 
 MessageHandler* ApacheRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
-  return new html_rewriter::HtmlParserMessageHandler();
+  return new net_instaweb::GoogleMessageHandler();
 }
 
 MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
-  return new html_rewriter::HtmlParserMessageHandler();
+  return new net_instaweb::GoogleMessageHandler();
 }
 
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {

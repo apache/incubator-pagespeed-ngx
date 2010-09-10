@@ -55,7 +55,12 @@ class FileCache : public CacheInterface {
   virtual void Put(const std::string& key, SharedString* value);
   virtual void Delete(const std::string& key);
   virtual KeyState Query(const std::string& key);
-
+  // Attempts to clean the cache.  Returns false if we failed and the
+  // cache still needs to be cleaned.  Returns true if everything's
+  // fine.  This may take a while.  It's OK for others to write and
+  // read from the cache while this is going on, but try to avoid
+  // Cleaning from two threads at the same time.
+  virtual bool Clean(int64 target_cache_size);
  private:
   bool EncodeFilename(const std::string& key, std::string* filename);
 

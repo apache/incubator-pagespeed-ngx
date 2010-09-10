@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_H_
 
+#include "base/basictypes.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "third_party/opencv/src/opencv/include/opencv/cv.h"
@@ -35,27 +36,44 @@ class Writer;
 // like to catch regressions on that front in the future.
 
 // char to int *without sign extension*.
-inline int charToInt(char c) {
+inline int CharToInt(char c) {
   uint8 uc = static_cast<uint8>(c);
   return static_cast<int>(uc);
 }
 
 inline int JpegIntAtPosition(const StringPiece& buf, size_t pos) {
-  return (charToInt(buf[pos]) << 8) |
-         (charToInt(buf[pos + 1]));
+  return (CharToInt(buf[pos]) << 8) |
+         (CharToInt(buf[pos + 1]));
 }
 
 inline int GifIntAtPosition(const StringPiece& buf, size_t pos) {
-  return (charToInt(buf[pos + 1]) << 8) |
-         (charToInt(buf[pos]));
+  return (CharToInt(buf[pos + 1]) << 8) |
+         (CharToInt(buf[pos]));
 }
 
 inline int PngIntAtPosition(const StringPiece& buf, size_t pos) {
-  return (charToInt(buf[pos    ]) << 24) |
-         (charToInt(buf[pos + 1]) << 16) |
-         (charToInt(buf[pos + 2]) << 8) |
-         (charToInt(buf[pos + 3]));
+  return (CharToInt(buf[pos    ]) << 24) |
+         (CharToInt(buf[pos + 1]) << 16) |
+         (CharToInt(buf[pos + 2]) << 8) |
+         (CharToInt(buf[pos + 3]));
 }
+
+namespace ImageHeaders {
+  // Constants that are shared by Image and its tests.
+  extern const char kPngHeader[];
+  extern const size_t kPngHeaderLength;
+  extern const char kPngIHDR[];
+  extern const size_t kPngIHDRLength;
+  extern const size_t kIHDRDataStart;
+  extern const size_t kPngIntSize;
+
+  extern const char kGifHeader[];
+  extern const size_t kGifHeaderLength;
+  extern const size_t kGifDimStart;
+  extern const size_t kGifIntSize;
+
+  extern const size_t kJpegIntSize;
+}  // namespace ImageHeaders
 
 class Image {
  public:
@@ -71,6 +89,13 @@ class Image {
   // metadata is retrieved; the object is to do so locally in this class without
   // disrupting any of its clients.
 
+  enum Type {
+    IMAGE_UNKNOWN = 0,
+    IMAGE_JPEG,
+    IMAGE_PNG,
+    IMAGE_GIF,
+  };
+
   // Image owns none of its inputs.  All of the arguments to Image(...) (the
   // original_contents in particular) must outlive the Image object itself.  The
   // intent is that an Image is created in a scoped fashion from an existing
@@ -81,30 +106,23 @@ class Image {
         FileSystem* file_system,
         MessageHandler* handler);
 
-  ~Image() {
-    CleanOpenCV();
-  }
+  ~Image();
 
-  enum Type {
-    IMAGE_UNKNOWN = 0,
-    IMAGE_JPEG,
-    IMAGE_PNG,
-    IMAGE_GIF,
-  };
-
-  // Note that at the moment asking for image dimensions can be expensive as it
-  // invokes an external library.  This method can fail (returning false) for
-  // various reasons: we don't understand the image format (eg a gif), we can't
-  // find the headers, the library doesn't support a particular encoding, etc.
-  // In general, we deal with failure here by passing data through unaltered.
+  // Stores the image dimensions in width and height.  This method can fail
+  // (returning false) for various reasons: we don't understand the image format
+  // (eg a gif), we can't find the headers, the library doesn't support a
+  // particular encoding, etc.  In general, we deal with failure of any Image
+  // operation by passing data through unaltered.
   bool Dimensions(int* width, int* height);
 
-  int input_size() const {
+  // Returns the size of original input in bytes.
+  size_t input_size() const {
     return original_contents_.size();
   }
 
-  int output_size() {
-    int ret;
+  // Returns the size of output image in bytes.
+  size_t output_size() {
+    size_t ret;
     if (output_valid_ || ComputeOutputContents()) {
       ret = output_contents_.size();
     } else {
@@ -120,29 +138,27 @@ class Image {
     return image_type_;
   }
 
+  // Changes the size of the image to the given width and height.  This will run
+  // image processing on the image, and return false if the image processing
+  // fails.  Otherwise the image contents and type can change.
   bool ResizeTo(int width, int height);
 
-  // Method that lets us bail out if a resize actually cost space!
-  void UndoResize() {
-    if (resized_) {
-      CleanOpenCV();
-      output_valid_ = false;
-      image_type_ = IMAGE_UNKNOWN;
-      resized_ = false;
-    }
-  }
+  // UndoResize lets us bail out if a resize actually cost space!
+  void UndoResize();
 
-  // Return image-appropriate content type, or NULL if no content type is known.
-  // Result is a top-level const pointer.
+  // Returns image-appropriate content type, or NULL if no content type is
+  // known.  Result is a top-level const pointer and should not be deleted etc.
   const ContentType* content_type();
 
   // Returns the best known image contents.  If image type is not understood,
   // then Contents() will have NULL data().
   StringPiece Contents();
-  // Encode contents directly into data_url if image type is understood
+
+  // Encodes contents directly into data_url if image type is understood.
   bool AsInlineData(std::string* data_url);
 
  private:
+  // Internal methods used only in image.cc (see there for more).
   void ComputeImageType();
   void FindJpegSize();
   inline void FindPngSize();
@@ -151,35 +167,22 @@ class Image {
   void CleanOpenCV();
   bool ComputeOutputContents();
 
-  friend class ImageTest;
-
-  static const char kPngHeader[];
-  static const size_t kPngHeaderLength;
-  static const char kPngIHDR[];
-  static const size_t kPngIHDRLength;
-  static const size_t kIHDRDataStart;
-  static const size_t kPngIntSize;
-
-  static const char kGifHeader[];
-  static const size_t kGifHeaderLength;
-  static const size_t kGifDimStart;
-  static const size_t kGifIntSize;
-
-  static const size_t kJpegIntSize;
-
-  std::string file_prefix_;
+  const std::string file_prefix_;
   FileSystem* file_system_;
   MessageHandler* handler_;
-  Type image_type_;
-  StringPiece original_contents_;
-  std::string output_contents_;
-  bool output_valid_;
-  std::string opencv_filename_;
-  IplImage* opencv_image_;
-  bool opencv_load_possible_;
+  Type image_type_;  // Lazily initialized, initially IMAGE_UNKNOWN.
+  const StringPiece original_contents_;
+  std::string output_contents_;  // Lazily filled.
+  bool output_valid_;             // Indicates output_contents_ now correct.
+  std::string opencv_filename_;  // Lazily holds generated name of temp file.
+  IplImage* opencv_image_;        // Lazily filled on OpenCV load.
+  bool opencv_load_possible_;     // Attempt opencv_load in future?
   bool resized_;
   const std::string& url_;
+  // The following are lazily initialized and contain -1 until valid:
   int width_, height_;
+
+  DISALLOW_COPY_AND_ASSIGN(Image);
 };
 
 }  // namespace net_instaweb

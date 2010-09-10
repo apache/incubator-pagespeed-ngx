@@ -108,7 +108,7 @@ class HtmlLexer {
   void EmitDirective();
 
   // Emits an error message.
-  void Error(const char* format, ...) INSTAWEB_PRINTF_FORMAT(2, 3);
+  void Warning(const char* format, ...) INSTAWEB_PRINTF_FORMAT(2, 3);
 
   // Takes an interned tag, and tries to find a matching HTML element on
   // the stack.  If it finds it, it pops all the intervening elements off
@@ -136,6 +136,9 @@ class HtmlLexer {
 
   // Determines whether a character can be used in an attribute name.
   static inline bool IsLegalAttrNameChar(char c);
+
+  // Determines whether a character can be used in an attribute value.
+  static inline bool IsLegalAttrValChar(char c);
 
   // The lexer is implemented as a pure state machine.  There is
   // no lookahead.  The state is understood primarily in this

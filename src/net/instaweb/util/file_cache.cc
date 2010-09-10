@@ -30,14 +30,37 @@
 
 #include "net/instaweb/util/public/file_cache.h"
 
+#include <vector>
+#include <queue>
 #include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-// TODO(lsong): Remove the MessageHandler arg. They are not used.
-// TODO(lsong): Need to create an LRU mechanism to manage the cache.
+namespace {  // For structs used only in Clean().
+
+class CacheFileInfo {
+ public:
+  CacheFileInfo(int64 size, int64 atime, const std::string& name)
+      : size_(size), atime_(atime), name_(name) {}
+  int64 size_;
+  int64 atime_;
+  std::string name_;
+ private:
+  DISALLOW_COPY_AND_ASSIGN(CacheFileInfo);
+};
+
+struct CompareByAtime {
+ public:
+  bool operator()(const CacheFileInfo* one,
+                  const CacheFileInfo* two) const {
+    return one->atime_ < two->atime_;
+  }
+};
+
+}  // namespace for structs used only in Clean().
+
 FileCache::FileCache(const std::string& path, FileSystem* file_system,
                      FilenameEncoder* filename_encoder)
     : path_(path),
@@ -66,8 +89,11 @@ void FileCache::Put(const std::string& key, SharedString* value) {
     return;
   }
   const std::string& buffer = **value;
-  // TODO(jmarantz): write as temp file
-  file_system_->WriteFile(filename.c_str(), buffer, &message_handler_);
+  std::string temp_filename;
+  file_system_->WriteTempFile(filename.c_str(), buffer, &temp_filename,
+                              &message_handler_);
+  file_system_->RenameFile(temp_filename.c_str(), filename.c_str(),
+                           &message_handler_);
 }
 
 void FileCache::Delete(const std::string& key) {
@@ -81,7 +107,11 @@ void FileCache::Delete(const std::string& key) {
 
 bool FileCache::EncodeFilename(const std::string& key,
                                std::string* filename) {
-  filename_encoder_->Encode(path_, key, filename);
+  std::string prefix = path_;
+  // TODO(abliss): unify and make explicit everyone's assumptions
+  // about trailing slashes.
+  EnsureEndsInSlash(&prefix);
+  filename_encoder_->Encode(prefix, key, filename);
   return true;
 }
 
@@ -94,6 +124,76 @@ CacheInterface::KeyState FileCache::Query(const std::string& key) {
     return CacheInterface::kAvailable;
   }
   return CacheInterface::kNotFound;
+}
+
+bool FileCache::Clean(int64 target_size) {
+  StringVector files;
+  int64 file_size;
+  int64 file_atime;
+  int64 total_size = 0;
+  if (!file_system_->RecursiveDirSize(path_, &total_size, &message_handler_)) {
+    return false;
+  }
+  if (total_size < target_size * 1.25) {
+    return true;
+  }
+
+  bool everything_ok = true;
+  everything_ok &= file_system_->ListContents(path_, &files, &message_handler_);
+
+  // We will now iterate over the entire directory and its children,
+  // keeping a heap of files to be deleted.  Our goal is to delete the
+  // oldest set of files that sum to enough space to bring us below
+  // our target.
+  std::priority_queue<CacheFileInfo*, std::vector<CacheFileInfo*>,
+      CompareByAtime> heap;
+  int64 total_heap_size = 0;
+  int64 target_heap_size = total_size - target_size * .75;
+
+  std::string prefix = path_;
+  EnsureEndsInSlash(&prefix);
+  for (size_t i = 0; i < files.size(); i++) {
+    std::string file_name = files[i];
+    BoolOrError isDir = file_system_->IsDir(file_name.c_str(),
+                                            &message_handler_);
+    if (isDir.is_error()) {
+      return false;
+    } else if (isDir.is_true()) {
+      // add files in this directory to the end of the vector, to be
+      // examined later.
+      everything_ok &= file_system_->ListContents(file_name, &files,
+                                                  &message_handler_);
+    } else {
+      everything_ok &= file_system_->Size(file_name, &file_size,
+                                          &message_handler_);
+      everything_ok &= file_system_->Atime(file_name, &file_atime,
+                                           &message_handler_);
+      // If our heap is still too small; add everything in.
+      // Otherwise, add the file in only if it's older than the newest
+      // thing in the heap.
+      if ((total_heap_size < target_heap_size) ||
+          (file_atime < heap.top()->atime_)) {
+        CacheFileInfo* info =
+            new CacheFileInfo(file_size, file_atime, file_name);
+        heap.push(info);
+        total_heap_size += file_size;
+        // Now remove new things from the heap which are not needed
+        // to keep the heap size over its target size.
+        while (total_heap_size - heap.top()->size_ > target_heap_size) {
+          total_heap_size -= heap.top()->size_;
+          delete heap.top();
+          heap.pop();
+        }
+      }
+    }
+  }
+  for (size_t i = heap.size(); i > 0; i--) {
+    everything_ok &= file_system_->RemoveFile(heap.top()->name_.c_str(),
+                                              &message_handler_);
+    delete heap.top();
+    heap.pop();
+  }
+  return everything_ok;
 }
 
 }  // namespace net_instaweb

@@ -46,6 +46,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       line_number_(1),
       need_sanity_check_(false),
       coalesce_characters_(true),
+      need_coalesce_characters_(false),
       parse_start_time_us_(0),
       timer_(NULL) {
   lexer_ = new HtmlLexer(this);
@@ -91,6 +92,7 @@ void HtmlParse::AddEvent(HtmlEvent* event) {
   CheckParentFromAddEvent(event);
   queue_.push_back(event);
   need_sanity_check_ = true;
+  need_coalesce_characters_ = true;
 
   // If this is a leaf-node event, we need to set the iterator of the
   // corresponding leaf node to point to this event's position in the queue.
@@ -185,13 +187,15 @@ void HtmlParse::FinishParse() {
 
 void HtmlParse::ParseText(const char* text, int size) {
   lexer_->Parse(text, size);
-  if (coalesce_characters_) {
-    CoalesceAdjacentCharactersNodes();
-  }
 }
 
 // This is factored out of Flush() for testing purposes.
 void HtmlParse::ApplyFilter(HtmlFilter* filter) {
+  if (coalesce_characters_ && need_coalesce_characters_) {
+    CoalesceAdjacentCharactersNodes();
+    need_coalesce_characters_ = false;
+  }
+
   ShowProgress(StrCat("ApplyFilter:", filter->Name()).c_str());
   for (current_ = queue_.begin(); current_ != queue_.end(); ) {
     HtmlEvent* event = *current_;
@@ -203,9 +207,6 @@ void HtmlParse::ApplyFilter(HtmlFilter* filter) {
   filter->Flush();
 
   if (need_sanity_check_) {
-    if (coalesce_characters_) {
-      CoalesceAdjacentCharactersNodes();
-    }
     SanityCheck();
     need_sanity_check_ = false;
   }
@@ -337,6 +338,7 @@ void HtmlParse::Flush() {
   }
   queue_.clear();
   need_sanity_check_ = false;
+  need_coalesce_characters_ = false;
 }
 
 bool HtmlParse::InsertElementBeforeElement(const HtmlNode* existing_node,
@@ -365,6 +367,7 @@ bool HtmlParse::InsertElementBeforeEvent(const HtmlEventListIterator& event,
                                          HtmlNode* new_node) {
   new_node->SynthesizeEvents(event, &queue_);
   need_sanity_check_ = true;
+  need_coalesce_characters_ = true;
   // TODO(jmarantz): make this routine return void, as well as the other
   // wrappers around it.
   return true;
@@ -408,6 +411,7 @@ bool HtmlParse::AddParentToSequence(HtmlNode* first, HtmlNode* last,
     FixParents(first->begin(), last->end(), new_parent);
     added = true;
     need_sanity_check_ = true;
+    need_coalesce_characters_ = true;
   }
   return added;
 }
@@ -464,6 +468,7 @@ bool HtmlParse::MoveCurrentInto(HtmlElement* new_parent) {
     FixParents(node->begin(), node->end(), new_parent);
     moved = true;
     need_sanity_check_ = true;
+    need_coalesce_characters_ = true;
   }
   return moved;
 }
@@ -507,6 +512,7 @@ bool HtmlParse::DeleteElement(HtmlNode* node) {
     CHECK(!node->live());
     deleted = true;
     need_sanity_check_ = true;
+    need_coalesce_characters_ = true;
   }
   return deleted;
 }
@@ -523,6 +529,7 @@ bool HtmlParse::DeleteSavingChildren(HtmlElement* element) {
       FixParents(first, last, new_parent);
       queue_.splice(element->begin(), queue_, first, element->end());
       need_sanity_check_ = true;
+      need_coalesce_characters_ = true;
     }
     deleted = DeleteElement(element);
   }

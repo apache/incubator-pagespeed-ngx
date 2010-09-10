@@ -22,15 +22,15 @@
 struct request_rec;
 
 namespace net_instaweb {
-// Forward declaration.
+
+class GzipInflater;
 class RewriteDriver;
+
 }  // namespace net_instaweb
 
 namespace html_rewriter {
 
-// Forward declaration.
 class PageSpeedServerContext;
-class GzipInflater;
 
 // TODO(lsong): Make HtmlRewriterImp a re-usable object because creating an
 // object for every request involves creating all the internal objects.
@@ -66,7 +66,7 @@ class HtmlRewriterImp {
   std::string url_;
   net_instaweb::RewriteDriver* rewrite_driver_;
   net_instaweb::StringWriter string_writer_;
-  GzipInflater* inflater_;
+  net_instaweb::GzipInflater* inflater_;
 };
 
 }  // namespace html_rewriter

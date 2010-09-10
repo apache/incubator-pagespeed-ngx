@@ -22,8 +22,8 @@
 
 namespace net_instaweb {
 
-void GoogleMessageHandler::MessageV(MessageType type, const char* msg,
-                                    va_list args) {
+void GoogleMessageHandler::MessageVImpl(MessageType type, const char* msg,
+                                        va_list args) {
   switch (type) {
     case kInfo:
       LOG(INFO) << Format(msg, args);
@@ -40,9 +40,9 @@ void GoogleMessageHandler::MessageV(MessageType type, const char* msg,
   }
 }
 
-void GoogleMessageHandler::FileMessageV(MessageType type, const char* file,
-                                        int line, const char* msg,
-                                        va_list args) {
+void GoogleMessageHandler::FileMessageVImpl(MessageType type, const char* file,
+                                            int line, const char* msg,
+                                            va_list args) {
   switch (type) {
     case kInfo:
       LOG(INFO) << file << ":" << line << ": " << Format(msg, args);

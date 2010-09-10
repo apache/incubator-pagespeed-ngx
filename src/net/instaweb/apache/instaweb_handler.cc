@@ -18,7 +18,6 @@
 #include "apr_strings.h"
 #include "base/string_util.h"
 #include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/html_parser_message_handler.h"
 #include "net/instaweb/apache/html_rewriter.h"
 #include "net/instaweb/apache/html_rewriter_config.h"
 #include "net/instaweb/apache/pagespeed_server_context.h"
@@ -26,6 +25,7 @@
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "mod_spdy/apache/log_message_handler.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -140,7 +140,7 @@ bool fetch_resource(const request_rec* request,
       context->rewrite_driver_factory()->GetRewriteDriver();
   net_instaweb::SimpleMetaData request_headers;
   net_instaweb::StringWriter writer(output);
-  html_rewriter::HtmlParserMessageHandler message_handler;
+  net_instaweb::GoogleMessageHandler message_handler;
   AsyncCallback callback(&message_handler);
 
   message_handler.Message(net_instaweb::kWarning, "Fetching resource %s...",

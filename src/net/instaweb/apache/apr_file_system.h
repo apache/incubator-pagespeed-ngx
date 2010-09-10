@@ -30,7 +30,8 @@ class AprFileSystem : public FileSystem {
  public:
   explicit AprFileSystem(apr_pool_t* pool);
   ~AprFileSystem();
-
+  virtual bool Atime(const net_instaweb::StringPiece& path,
+                     int64* timestamp_sec, MessageHandler* handler);
   virtual InputFile* OpenInputFile(
       const char* file, MessageHandler* message_handler);
   virtual OutputFile* OpenOutputFileHelper(
@@ -44,7 +45,8 @@ class AprFileSystem : public FileSystem {
                                 MessageHandler* message_handler);
   virtual bool RemoveFile(const char* filename,
                           MessageHandler* message_handler);
-
+  virtual bool Size(const net_instaweb::StringPiece& path, int64* size,
+                    MessageHandler* handler);
   // Like POSIX 'mkdir', makes a directory only if parent directory exists.
   // Fails if directory_name already exists or parent directory doesn't exist.
   virtual bool MakeDir(const char* directory_path, MessageHandler* handler);
@@ -54,6 +56,10 @@ class AprFileSystem : public FileSystem {
 
   // Like POSIX 'test -d', checks if path exists and refers to a directory.
   virtual BoolOrError IsDir(const char* path, MessageHandler* handler);
+
+  virtual bool ListContents(const net_instaweb::StringPiece& dir,
+                            net_instaweb::StringVector* files,
+                            MessageHandler* handler);
 
  private:
   apr_pool_t* pool_;

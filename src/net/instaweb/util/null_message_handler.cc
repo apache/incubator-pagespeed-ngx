@@ -20,13 +20,13 @@
 
 namespace net_instaweb {
 
-void NullMessageHandler::MessageV(MessageType type, const char* msg,
-                                  va_list args) {
+void NullMessageHandler::MessageVImpl(MessageType type, const char* msg,
+                                      va_list args) {
 }
 
-void NullMessageHandler::FileMessageV(MessageType type, const char* file,
-                                      int line, const char* msg,
-                                      va_list args) {
+void NullMessageHandler::FileMessageVImpl(MessageType type, const char* file,
+                                          int line, const char* msg,
+                                          va_list args) {
 }
 
 }  // namespace net_instaweb

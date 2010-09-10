@@ -29,10 +29,8 @@ namespace net_instaweb {
 static const int kDefaultMaxColumn = -1;
 
 HtmlWriterFilter::HtmlWriterFilter(HtmlParse* html_parse)
-    : writer_(NULL),
-      write_errors_(0) {
+    : writer_(NULL) {
   html_parse_ = html_parse;
-  lazy_close_element_ = NULL;
 
   // Pre-intern a set of common symbols that can be used for
   // fast comparisons when matching tags, and for pointer-based
@@ -45,10 +43,16 @@ HtmlWriterFilter::HtmlWriterFilter(HtmlParse* html_parse)
   symbol_src_ = html_parse->Intern("src");
   symbol_alt_ = html_parse->Intern("alt");
   max_column_ = kDefaultMaxColumn;
-  column_ = 0;
+  Clear();
 }
 
 HtmlWriterFilter::~HtmlWriterFilter() {
+}
+
+void HtmlWriterFilter::Clear() {
+  lazy_close_element_ = NULL;
+  column_ = 0;
+  write_errors_ = 0;
 }
 
 void HtmlWriterFilter::EmitBytes(const StringPiece& str) {
@@ -76,7 +80,7 @@ void HtmlWriterFilter::EmitBytes(const StringPiece& str) {
 void HtmlWriterFilter::StartElement(HtmlElement* element) {
   EmitBytes("<");
   EmitBytes(element->tag().c_str());
-  bool last_is_unquoted = false;
+
   for (int i = 0; i < element->attribute_size(); ++i) {
     const HtmlElement::Attribute& attribute = element->attribute(i);
     // If the column has grown too large, insert a newline.  It's always safe
@@ -92,19 +96,12 @@ void HtmlWriterFilter::StartElement(HtmlElement* element) {
     }
     EmitBytes(" ");
     EmitBytes(attribute.name().c_str());
-    last_is_unquoted = false;
     if (attribute.escaped_value() != NULL) {
       EmitBytes("=");
       EmitBytes(attribute.quote());
       EmitBytes(attribute.escaped_value());
       EmitBytes(attribute.quote());
-      last_is_unquoted = (attribute.quote()[0] == '\0');
     }
-  }
-
-  // If the last element was not quoted, then delimit with a space.
-  if (last_is_unquoted) {
-    EmitBytes(" ");
   }
 
   // Attempt to briefly terminate any legal tag that was explicitly terminated
@@ -160,6 +157,18 @@ void HtmlWriterFilter::EndElement(HtmlElement* element) {
       // explicitly close it, so we fall through.
       if (lazy_close_element_ == element) {
         lazy_close_element_ = NULL;
+
+        // If this attribute was unquoted, or lacked a value, then we'll need
+        // to add a space here to ensure that HTML parsers don't interpret the
+        // '/' in the '/>' as part of the attribute.
+        if (element->attribute_size() != 0) {
+          const HtmlElement::Attribute& attribute = element->attribute(
+              element->attribute_size() - 1);
+          if ((attribute.escaped_value() == NULL) ||
+              (attribute.quote()[0] == '\0')) {
+            EmitBytes(" ");
+          }
+        }
         EmitBytes("/>");
         break;
       }
@@ -204,8 +213,7 @@ void HtmlWriterFilter::Directive(HtmlDirectiveNode* directive) {
 }
 
 void HtmlWriterFilter::StartDocument() {
-  column_ = 0;
-  lazy_close_element_ = NULL;
+  Clear();
 }
 
 void HtmlWriterFilter::EndDocument() {

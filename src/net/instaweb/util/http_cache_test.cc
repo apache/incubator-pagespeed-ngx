@@ -69,7 +69,7 @@ TEST_F(HTTPCacheTest, PutGet) {
   bool found = http_cache_.Get("mykey", &value, &meta_data_out,
                                &message_handler_);
   ASSERT_TRUE(found);
-  ASSERT_TRUE(value.ExtractHeaders(&meta_data_out, &message_handler_));
+  ASSERT_TRUE(meta_data_out.headers_complete());
   StringPiece contents;
   ASSERT_TRUE(value.ExtractContents(&contents));
   CharStarVector values;
@@ -83,6 +83,7 @@ TEST_F(HTTPCacheTest, PutGet) {
   mock_timer_.advance_ms(301 * 1000);
   found = http_cache_.Get("mykey", &value, &meta_data_out, &message_handler_);
   EXPECT_FALSE(found);
+  ASSERT_FALSE(meta_data_out.headers_complete());
 }
 
 TEST_F(HTTPCacheTest, Uncacheable) {
@@ -97,6 +98,7 @@ TEST_F(HTTPCacheTest, Uncacheable) {
   bool found = http_cache_.Get("mykey", &value, &meta_data_out,
                                &message_handler_);
   ASSERT_FALSE(found);
+  ASSERT_FALSE(meta_data_out.headers_complete());
 }
 
 }  // namespace net_instaweb

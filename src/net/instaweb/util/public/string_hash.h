@@ -23,7 +23,7 @@
 
 namespace net_instaweb {
 
-size_t HashString(const char* s, size_t len) {
+inline size_t HashString(const char* s, size_t len) {
   // TODO(jmarantz): The portability layers defined in
   //   third_party/chromium/src/base/hash_tables.h
   //   third_party/protobuf2/src/src/google/protobuf/stubs/hash.h

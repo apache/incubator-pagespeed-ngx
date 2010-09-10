@@ -38,19 +38,23 @@
 
 namespace net_instaweb {
 
-const char Image::kPngHeader[] = "\x89PNG\r\n\x1a\n";
-const size_t Image::kPngHeaderLength = sizeof(kPngHeader) - 1;
-const char Image::kPngIHDR[] = "\0\0\0\x0dIHDR";
-const size_t Image::kPngIHDRLength = sizeof(kPngIHDR) - 1;
-const size_t Image::kIHDRDataStart = kPngHeaderLength + kPngIHDRLength;
-const size_t Image::kPngIntSize = 4;
+namespace ImageHeaders {
 
-const char Image::kGifHeader[] = "GIF8";
-const size_t Image::kGifHeaderLength = sizeof(kGifHeader) - 1;
-const size_t Image::kGifDimStart = kGifHeaderLength + 2;
-const size_t Image::kGifIntSize = 2;
+const char kPngHeader[] = "\x89PNG\r\n\x1a\n";
+const size_t kPngHeaderLength = sizeof(kPngHeader) - 1;
+const char kPngIHDR[] = "\0\0\0\x0dIHDR";
+const size_t kPngIHDRLength = sizeof(kPngIHDR) - 1;
+const size_t kIHDRDataStart = kPngHeaderLength + kPngIHDRLength;
+const size_t kPngIntSize = 4;
 
-const size_t Image::kJpegIntSize = 2;
+const char kGifHeader[] = "GIF8";
+const size_t kGifHeaderLength = sizeof(kGifHeader) - 1;
+const size_t kGifDimStart = kGifHeaderLength + 2;
+const size_t kGifIntSize = 2;
+
+const size_t kJpegIntSize = 2;
+
+}  // namespace ImageHeaders
 
 namespace {
 
@@ -76,7 +80,7 @@ Image::Image(const StringPiece& original_contents,
              const StringPiece& file_prefix,
              FileSystem* file_system,
              MessageHandler* handler)
-    : file_prefix_(),
+    : file_prefix_(file_prefix.data(), file_prefix.size()),
       file_system_(file_system),
       handler_(handler),
       image_type_(IMAGE_UNKNOWN),
@@ -89,11 +93,13 @@ Image::Image(const StringPiece& original_contents,
       resized_(false),
       url_(url),
       width_(-1),                   // Lazily initialized.  Catch errors.
-      height_(-1) {
-  file_prefix.CopyToString(&file_prefix_);
+      height_(-1) { }
+
+Image::~Image() {
+  CleanOpenCV();
 }
 
-// Look through blocks of jpeg stream to find SOFn block
+// Looks through blocks of jpeg stream to find SOFn block
 // indicating encoding and dimensions of image.
 // Loosely based on code and FAQs found here:
 //    http://www.faqs.org/faqs/jpeg-faq/part1/
@@ -102,21 +108,21 @@ void Image::FindJpegSize() {
   size_t pos = 2;  // Position of first data block after header.
   while (pos < buf.size()) {
     // Read block identifier
-    int id = charToInt(buf[pos++]);
+    int id = CharToInt(buf[pos++]);
     if (id == 0xff) {  // Padding byte
       continue;
     }
     // At this point pos points to first data byte in block.  In any block,
     // first two data bytes are size (including these 2 bytes).  But first,
     // make sure block wasn't truncated on download.
-    if (pos + kJpegIntSize > buf.size()) {
+    if (pos + ImageHeaders::kJpegIntSize > buf.size()) {
       break;
     }
     int length = JpegIntAtPosition(buf, pos);
     // Now check for a SOFn header, which describes image dimensions.
     if (0xc0 <= id && id <= 0xcf &&  // SOFn header
         length >= 8 &&               // Valid SOFn block size
-        pos + 1 + 3 * kJpegIntSize <= buf.size() &&
+        pos + 1 + 3 * ImageHeaders::kJpegIntSize <= buf.size() &&
         // Above avoids case where dimension data was truncated
         id != 0xc4 && id != 0xc8 && id != 0xcc) {
       // 0xc4, 0xc8, 0xcc aren't actually valid SOFn headers.
@@ -128,8 +134,8 @@ void Image::FindJpegSize() {
       // actually 8 + 3 * buf[pos+2], but for our purposes this
       // will suffice as we don't parse subsequent metadata (which
       // describes the formatting of chunks of image data).
-      height_ = JpegIntAtPosition(buf, pos + 1 + kJpegIntSize);
-      width_ = JpegIntAtPosition(buf, pos + 1 + 2 * kJpegIntSize);
+      height_ = JpegIntAtPosition(buf, pos + 1 + ImageHeaders::kJpegIntSize);
+      width_ = JpegIntAtPosition(buf, pos + 1 + 2 * ImageHeaders::kJpegIntSize);
       break;
     }
     pos += length;
@@ -140,15 +146,18 @@ void Image::FindJpegSize() {
   }
 }
 
-// Look at first (IHDR) block of png stream to find image dimensions.
+// Looks at first (IHDR) block of png stream to find image dimensions.
 // See also: http://www.w3.org/TR/PNG/
 void Image::FindPngSize() {
   const StringPiece& buf = original_contents_;
-  if (buf.size() >= kIHDRDataStart + 2 * kPngIntSize &&  // Not truncated
-      buf.substr(kPngHeaderLength, kPngIHDRLength).compare(
-          StringPiece(kPngIHDR, kPngIHDRLength)) == 0) {
-    width_ = PngIntAtPosition(buf, kIHDRDataStart);
-    height_ = PngIntAtPosition(buf, kIHDRDataStart+kPngIntSize);
+  if ((buf.size() >=  // Not truncated
+       ImageHeaders::kIHDRDataStart + 2 * ImageHeaders::kPngIntSize) &&
+      (StringPiece(buf.data() + ImageHeaders::kPngHeaderLength,
+                   ImageHeaders::kPngIHDRLength) ==
+       StringPiece(ImageHeaders::kPngIHDR, ImageHeaders::kPngIHDRLength))) {
+    width_ = PngIntAtPosition(buf, ImageHeaders::kIHDRDataStart);
+    height_ = PngIntAtPosition(
+        buf, ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize);
   } else {
     handler_->Error(url_.c_str(), 0,
                     "Couldn't find png dimensions "
@@ -156,49 +165,56 @@ void Image::FindPngSize() {
   }
 }
 
-// Look at header of GIF file to extract image dimensions
+// Looks at header of GIF file to extract image dimensions.
 // See also: http://en.wikipedia.org/wiki/Graphics_Interchange_Format
 void Image::FindGifSize() {
   const StringPiece& buf = original_contents_;
-  if (buf.size() >= kGifDimStart + 2 * kGifIntSize) {  // Not truncated
-    width_ = GifIntAtPosition(buf, kGifDimStart);
-    height_ = GifIntAtPosition(buf, kGifDimStart + kGifIntSize);
+  if (buf.size() >=
+      ImageHeaders::kGifDimStart + 2 * ImageHeaders::kGifIntSize) {
+    // Not truncated
+    width_ = GifIntAtPosition(buf, ImageHeaders::kGifDimStart);
+    height_ = GifIntAtPosition(
+        buf, ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize);
   } else {
     handler_->Error(url_.c_str(), 0,
                     "Couldn't find gif dimensions (data truncated)");
   }
 }
 
+// Looks at image data in order to determine image type, and also fills in any
+// dimension information it can (setting image_type_, width_, and height_).
 void Image::ComputeImageType() {
   // Image classification based on buffer contents gakked from leptonica,
   // but based on well-documented headers (see Wikipedia etc.).
   // Note that we can be fooled if we're passed random binary data;
-  // we make the call based on as few as two bytes (JPEG)
+  // we make the call based on as few as two bytes (JPEG).
   const StringPiece& buf = original_contents_;
   if (buf.size() >= 8) {
     // Note that gcc rightly complains about constant ranges with the
     // negative char constants unless we cast.
-    switch (charToInt(buf[0])) {
+    switch (CharToInt(buf[0])) {
       case 0xff:
-        // either jpeg or jpeg2
+        // Either jpeg or jpeg2
         // (the latter we don't handle yet, and don't bother looking for).
-        if (charToInt(buf[1]) == 0xd8) {
+        if (CharToInt(buf[1]) == 0xd8) {
           image_type_ = IMAGE_JPEG;
           FindJpegSize();
         }
         break;
       case 0x89:
-        // possible png
-        if (buf.substr(0, kPngHeaderLength).compare(
-                StringPiece(kPngHeader, kPngHeaderLength)) == 0) {
+        // Possible png.
+        if (StringPiece(buf.data(), ImageHeaders::kPngHeaderLength) ==
+            StringPiece(ImageHeaders::kPngHeader,
+                        ImageHeaders::kPngHeaderLength)) {
           image_type_ = IMAGE_PNG;
           FindPngSize();
         }
         break;
       case 'G':
-        // possible gif
-        if (buf.substr(0, kGifHeaderLength).compare(
-                StringPiece(kGifHeader, kGifHeaderLength)) == 0 &&
+        // Possible gif.
+        if ((StringPiece(buf.data(), ImageHeaders::kGifHeaderLength) ==
+             StringPiece(ImageHeaders::kGifHeader,
+                         ImageHeaders::kGifHeaderLength)) &&
             (buf[4] == '7' || buf[4] == '9') && buf[5] == 'a') {
           image_type_ = IMAGE_GIF;
           FindGifSize();
@@ -229,7 +245,7 @@ const ContentType* Image::content_type() {
 }
 
 
-// Make sure OpenCV version of image is loaded if that is possible.
+// Makes sure OpenCV version of image is loaded if that is possible.
 // Returns value of opencv_load_possible_ after load attempted.
 // Note that if the load fails, opencv_load_possible_ will be false
 // and future calls to LoadOpenCV will fail fast.
@@ -270,6 +286,7 @@ bool Image::LoadOpenCV() {
   return opencv_load_possible_;
 }
 
+// Get rid of OpenCV image data gracefully (requires a call to OpenCV).
 void Image::CleanOpenCV() {
   if (opencv_image_ != NULL) {
     cvReleaseImage(&opencv_image_);
@@ -307,7 +324,16 @@ bool Image::ResizeTo(int width, int height) {
   return resized_;
 }
 
-// Perform image optimization and output
+void Image::UndoResize() {
+  if (resized_) {
+    CleanOpenCV();
+    output_valid_ = false;
+    image_type_ = IMAGE_UNKNOWN;
+    resized_ = false;
+  }
+}
+
+// Performs image optimization and output
 bool Image::ComputeOutputContents() {
   if (!output_valid_) {
     bool ok = true;

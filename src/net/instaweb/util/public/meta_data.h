@@ -137,6 +137,7 @@ class MetaData {
   virtual void SetLastModified(int64 last_modified_ms) = 0;
 
   virtual bool headers_complete() const = 0;
+  virtual void set_headers_complete(bool x) = 0;
 
   virtual int major_version() const = 0;
   virtual int minor_version() const = 0;

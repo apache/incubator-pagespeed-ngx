@@ -22,6 +22,9 @@
 
 namespace net_instaweb {
 
+MessageHandler::MessageHandler() : min_message_type_(kInfo) {
+}
+
 MessageHandler::~MessageHandler() {
 }
 
@@ -48,12 +51,25 @@ void MessageHandler::Message(MessageType type, const char* msg, ...) {
   va_end(args);
 }
 
+void MessageHandler::MessageV(MessageType type, const char* msg, va_list args) {
+  if (type >= min_message_type_) {
+    MessageVImpl(type, msg, args);
+  }
+}
+
 void MessageHandler::FileMessage(MessageType type, const char* file, int line,
                                  const char* msg, ...) {
   va_list args;
   va_start(args, msg);
   FileMessageV(type, file, line, msg, args);
   va_end(args);
+}
+
+void MessageHandler::FileMessageV(MessageType type, const char* filename,
+                                  int line, const char* msg, va_list args) {
+  if (type >= min_message_type_) {
+    FileMessageVImpl(type, filename, line, msg, args);
+  }
 }
 
 void MessageHandler::Check(bool condition, const char* msg, ...) {

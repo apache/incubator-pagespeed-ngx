@@ -34,21 +34,26 @@ enum MessageType {
 
 class MessageHandler {
  public:
+  MessageHandler();
   virtual ~MessageHandler();
 
   // String representation for MessageType.
-  virtual const char* MessageTypeToString(const MessageType type) const;
+  const char* MessageTypeToString(const MessageType type) const;
+
+  // Specify the minimum message type. Lower message types will not be
+  // logged.
+  void set_min_message_type(MessageType min) { min_message_type_ = min; }
 
   // Log an info, warning, error or fatal error message.
   void Message(MessageType type, const char* msg, ...)
       INSTAWEB_PRINTF_FORMAT(3, 4);
-  virtual void MessageV(MessageType type, const char* msg, va_list args) = 0;
+  void MessageV(MessageType type, const char* msg, va_list args);
 
   // Log a message with a filename and line number attached.
   void FileMessage(MessageType type, const char* filename, int line,
                    const char* msg, ...) INSTAWEB_PRINTF_FORMAT(5, 6);
-  virtual void FileMessageV(MessageType type, const char* filename, int line,
-                            const char* msg, va_list args) = 0;
+  void FileMessageV(MessageType type, const char* filename, int line,
+                    const char* msg, va_list args);
 
 
   // Conditional errors.
@@ -80,6 +85,17 @@ class MessageHandler {
   void FatalErrorV(const char* fname, int line, const char* msg, va_list a) {
     FileMessageV(kFatal, fname, line, msg, a);
   }
+
+ protected:
+  virtual void MessageVImpl(MessageType type, const char* msg,
+                            va_list args) = 0;
+  virtual void FileMessageVImpl(MessageType type, const char* filename,
+                                int line, const char* msg, va_list args) = 0;
+
+ private:
+  // The minimum message type to log at. Any messages below this level
+  // will not be logged.
+  MessageType min_message_type_;
 };
 
 }  // namespace net_instaweb

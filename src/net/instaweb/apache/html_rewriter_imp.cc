@@ -19,11 +19,11 @@
 
 #include "base/logging.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
-#include "net/instaweb/apache/gzip_inflater.h"
 #include "net/instaweb/apache/html_rewriter_config.h"
 #include "net/instaweb/apache/pagespeed_server_context.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/public/gzip_inflater.h"
 
 namespace {
 const int kBufSize = 1024;
@@ -41,7 +41,7 @@ HtmlRewriterImp::HtmlRewriterImp(PageSpeedServerContext* context,
       string_writer_(output),
       inflater_(NULL) {
   if (encoding == GZIP) {
-    inflater_ = new GzipInflater();
+    inflater_ = new net_instaweb::GzipInflater();
     inflater_->Init();
   }
   rewrite_driver_->SetBaseUrl(base_url);

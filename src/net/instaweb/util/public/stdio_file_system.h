@@ -28,6 +28,8 @@ class StdioFileSystem : public FileSystem {
   StdioFileSystem() {}
   virtual ~StdioFileSystem();
 
+  virtual bool Atime(const StringPiece& path, int64* timestamp_sec,
+                     MessageHandler* handler);
   virtual InputFile* OpenInputFile(const char* filename,
                                    MessageHandler* message_handler);
   virtual OutputFile* OpenOutputFileHelper(const char* filename,
@@ -41,6 +43,10 @@ class StdioFileSystem : public FileSystem {
   virtual bool MakeDir(const char* directory_path, MessageHandler* handler);
   virtual BoolOrError Exists(const char* path, MessageHandler* handler);
   virtual BoolOrError IsDir(const char* path, MessageHandler* handler);
+  virtual bool ListContents(const StringPiece& dir, StringVector* files,
+                            MessageHandler* handler);
+  virtual bool Size(const StringPiece& path, int64* size,
+                    MessageHandler* handler);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(StdioFileSystem);

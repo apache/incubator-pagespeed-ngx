@@ -99,6 +99,7 @@ bool WgetUrlFetcher::StreamingFetchUrl(const std::string& url,
         response_headers->set_first_line(1, 1, HttpStatus::kBadRequest,
                                          "Wget Failed");
         response_headers->ComputeCaching();
+        response_headers->set_headers_complete(true);
         writer->Write("wget failed: ", handler);
         writer->Write(url, handler);
         writer->Write("<br>\nExit Status: ", handler);

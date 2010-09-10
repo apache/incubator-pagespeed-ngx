@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include "apr_file_info.h"
 #include "apr_file_io.h"
 #include "apr_pools.h"
 #include "base/logging.h"
@@ -279,6 +280,69 @@ BoolOrError AprFileSystem::IsDir(const char* path, MessageHandler* handler) {
     is_dir.set(ret == APR_SUCCESS && finfo.filetype == APR_DIR);
   }
   return is_dir;
+}
+
+bool AprFileSystem::ListContents(const net_instaweb::StringPiece& dir,
+                                 net_instaweb::StringVector* files,
+                                 MessageHandler* handler) {
+  std::string dirString = dir.as_string();
+  net_instaweb::EnsureEndsInSlash(&dirString);
+  const char* dirname = dirString.c_str();
+  apr_dir_t* mydir;
+  apr_status_t ret = apr_dir_open(&mydir, dirname, pool_);
+  if (ret != APR_SUCCESS) {
+      AprReportError(handler, dirname, "failed to opendir", ret);
+      return false;
+  } else {
+    apr_finfo_t finfo;
+    apr_int32_t wanted = APR_FINFO_NAME;
+    while (apr_dir_read(&finfo, wanted, mydir) != APR_ENOENT) {
+      if ((strcmp(finfo.name, ".") != 0) &&
+          (strcmp(finfo.name, "..") != 0)) {
+        files->push_back(dirString + finfo.name);
+      }
+    }
+  }
+  ret = apr_dir_close(mydir);
+  if (ret != APR_SUCCESS) {
+      AprReportError(handler, dirname, "failed to closedir", ret);
+      return false;
+  }
+  return true;
+}
+
+bool AprFileSystem::Atime(const net_instaweb::StringPiece& path,
+                            int64* timestamp_sec, MessageHandler* handler) {
+  // TODO(abliss): there are some situations where this doesn't work
+  // -- e.g. if the filesystem is mounted noatime.
+  const std::string path_string = path.as_string();
+  const char* path_str = path_string.c_str();
+  apr_int32_t wanted = APR_FINFO_ATIME;
+  apr_finfo_t finfo;
+  apr_status_t ret = apr_stat(&finfo, path_str, wanted, pool_);
+  if (ret != APR_SUCCESS) {
+      AprReportError(handler, path_str, "failed to stat", ret);
+      return false;
+  } else {
+    *timestamp_sec = finfo.atime;
+    return true;
+  }
+}
+
+bool AprFileSystem::Size(const net_instaweb::StringPiece& path, int64* size,
+                           MessageHandler* handler) {
+  const std::string path_string = path.as_string();
+  const char* path_str = path_string.c_str();
+  apr_int32_t wanted = APR_FINFO_SIZE;
+  apr_finfo_t finfo;
+  apr_status_t ret = apr_stat(&finfo, path_str, wanted, pool_);
+  if (ret != APR_SUCCESS) {
+    AprReportError(handler, path_str, "failed to stat", ret);
+    return false;
+  } else {
+    *size = finfo.size;
+    return true;
+  }
 }
 
 }  // namespace html_rewriter

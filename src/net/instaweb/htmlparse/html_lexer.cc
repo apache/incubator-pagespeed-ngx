@@ -101,6 +101,10 @@ void HtmlLexer::EvalStart(char c) {
   }
 }
 
+// TODO(jmarantz): revisit these predicates based on
+// http://www.w3.org/TR/REC-xml/#NT-NameChar .  This
+// XML spec may or may not inform of us of what we need to do
+// to parse all HTML on the web.
 bool HtmlLexer::IsLegalTagChar(char c) {
   return (IsI18nChar(c) ||
           (isalnum(c) || (c == '-') || (c == '#') || (c == '_') || (c == ':')));
@@ -110,6 +114,12 @@ bool HtmlLexer::IsLegalAttrNameChar(char c) {
   return (IsI18nChar(c) ||
           ((c != '=') && (c != '>') && (c != '/') && (c != '<') &&
            !isspace(c)));
+}
+
+bool HtmlLexer::IsLegalAttrValChar(char c) {
+  return (IsI18nChar(c) ||
+          ((c != '=') && (c != '>') && (c != '/') && (c != '<') &&
+           (c != '"') && (c != '\'') && !isspace(c)));
 }
 
 // Handle the case where "<" was recently parsed.
@@ -123,7 +133,7 @@ void HtmlLexer::EvalTag(char c) {
     state_ = COMMENT_START1;
   } else {
     //  Illegal tag syntax; just pass it through as raw characters
-    Error("Invalid tag syntax: unexpected sequence `<%c'", c);
+    Warning("Invalid tag syntax: unexpected sequence `<%c'", c);
     EvalStart(c);
   }
 }
@@ -138,7 +148,7 @@ void HtmlLexer::EvalTagOpen(char c) {
     EmitTagOpen(true);
   } else if (c == '<') {
     // Chrome transforms "<tag<tag>" into "<tag><tag>";
-    Error("Invalid tag syntax: expected close tag before opener");
+    Warning("Invalid tag syntax: expected close tag before opener");
     EmitTagOpen(true);
     literal_ = "<";  // will be removed by EvalStart.
     EvalStart(c);
@@ -149,7 +159,7 @@ void HtmlLexer::EvalTagOpen(char c) {
   } else {
     // Some other punctuation.  Not sure what to do.  Let's run this
     // on the web and see what breaks & decide what to do.  E.g. "<x&"
-    Error("Invalid character `%c` while parsing tag `%s'", c, token_.c_str());
+    Warning("Invalid character `%c` while parsing tag `%s'", c, token_.c_str());
     token_.clear();
     state_ = START;
   }
@@ -214,8 +224,8 @@ void HtmlLexer::EvalTagBriefClose(char c) {
     EmitTagBriefClose();
   } else {
     std::string expected(literal_.data(), literal_.size() - 1);
-    Error("Invalid close tag syntax: expected %s>, got %s",
-          expected.c_str(), literal_.c_str());
+    Warning("Invalid close tag syntax: expected %s>, got %s",
+            expected.c_str(), literal_.c_str());
     // Recover by returning to the mode from whence we came.
     if (element_ != NULL) {
       token_ += '/';
@@ -247,8 +257,8 @@ void HtmlLexer::EvalTagClose(char c) {
   } else if (c == '>') {
     EmitTagClose(HtmlElement::EXPLICIT_CLOSE);
   } else {
-    Error("Invalid tag syntax: expected `>' after `</%s' got `%c'",
-          token_.c_str(), c);
+    Warning("Invalid tag syntax: expected `>' after `</%s' got `%c'",
+            token_.c_str(), c);
     token_.clear();
     EvalStart(c);
   }
@@ -275,7 +285,7 @@ void HtmlLexer::EvalCommentStart1(char c) {
     state_ = DIRECTIVE;
     EvalDirective(c);
   } else {
-    Error("Invalid comment syntax");
+    Warning("Invalid comment syntax");
     EmitLiteral();
     EvalStart(c);
   }
@@ -286,7 +296,7 @@ void HtmlLexer::EvalCommentStart2(char c) {
   if (c == '-') {
     state_ = COMMENT_BODY;
   } else {
-    Error("Invalid comment syntax");
+    Warning("Invalid comment syntax");
     EmitLiteral();
     EvalStart(c);
   }
@@ -324,6 +334,10 @@ void HtmlLexer::EvalCommentEnd2(char c) {
   if (c == '>') {
     EmitComment();
     state_ = START;
+  } else if (c == '-') {
+    // There could be an arbitrarily long stream of dashes before
+    // we see the >.  Keep looking.
+    token_ += "-";
   } else {
     // thought we were ending a comment cause we saw '--', but
     // now we changed our minds.   No worries mate.  Those
@@ -339,7 +353,7 @@ void HtmlLexer::EvalCdataStart1(char c) {
   if (c == 'C') {
     state_ = CDATA_START2;
   } else {
-    Error("Invalid CDATA syntax");
+    Warning("Invalid CDATA syntax");
     EmitLiteral();
     EvalStart(c);
   }
@@ -350,7 +364,7 @@ void HtmlLexer::EvalCdataStart2(char c) {
   if (c == 'D') {
     state_ = CDATA_START3;
   } else {
-    Error("Invalid CDATA syntax");
+    Warning("Invalid CDATA syntax");
     EmitLiteral();
     EvalStart(c);
   }
@@ -361,7 +375,7 @@ void HtmlLexer::EvalCdataStart3(char c) {
   if (c == 'A') {
     state_ = CDATA_START4;
   } else {
-    Error("Invalid CDATA syntax");
+    Warning("Invalid CDATA syntax");
     EmitLiteral();
     EvalStart(c);
   }
@@ -372,7 +386,7 @@ void HtmlLexer::EvalCdataStart4(char c) {
   if (c == 'T') {
     state_ = CDATA_START5;
   } else {
-    Error("Invalid CDATA syntax");
+    Warning("Invalid CDATA syntax");
     EmitLiteral();
     EvalStart(c);
   }
@@ -383,7 +397,7 @@ void HtmlLexer::EvalCdataStart5(char c) {
   if (c == 'A') {
     state_ = CDATA_START6;
   } else {
-    Error("Invalid CDATA syntax");
+    Warning("Invalid CDATA syntax");
     EmitLiteral();
     EvalStart(c);
   }
@@ -394,7 +408,7 @@ void HtmlLexer::EvalCdataStart6(char c) {
   if (c == '[') {
     state_ = CDATA_BODY;
   } else {
-    Error("Invalid CDATA syntax");
+    Warning("Invalid CDATA syntax");
     EmitLiteral();
     EvalStart(c);
   }
@@ -545,7 +559,7 @@ HtmlElement* HtmlLexer::Parent() const {
 void HtmlLexer::MakeElement() {
   if (element_ == NULL) {
     if (token_.empty()) {
-      Error("Making element with empty tag name");
+      Warning("Making element with empty tag name");
     }
     toLower(&token_);
     element_ = html_parse_->NewElement(Parent(), html_parse_->Intern(token_));
@@ -573,15 +587,15 @@ void HtmlLexer::StartParse(const StringPiece& url) {
 
 void HtmlLexer::FinishParse() {
   if (!token_.empty()) {
-    Error("End-of-file in mid-token: %s", token_.c_str());
+    Warning("End-of-file in mid-token: %s", token_.c_str());
     token_.clear();
   }
   if (!attr_name_.empty()) {
-    Error("End-of-file in mid-attribute-name: %s", attr_name_.c_str());
+    Warning("End-of-file in mid-attribute-name: %s", attr_name_.c_str());
     attr_name_.clear();
   }
   if (!attr_value_.empty()) {
-    Error("End-of-file in mid-attribute-value: %s", attr_value_.c_str());
+    Warning("End-of-file in mid-attribute-value: %s", attr_value_.c_str());
     attr_value_.clear();
   }
 
@@ -636,7 +650,7 @@ void HtmlLexer::EvalAttribute(char c) {
     attr_name_ += c;
     state_ = TAG_ATTR_NAME;
   } else if (!isspace(c)) {
-    Error("Unexpected char `%c' in attribute list", c);
+    Warning("Unexpected char `%c' in attribute list", c);
   }
 }
 
@@ -692,7 +706,7 @@ void HtmlLexer::FinishAttribute(char c, bool has_value, bool brief_close) {
 
     if (c == '<') {
       // Chrome transforms "<tag a<tag>" into "<tag a><tag>"; we should too.
-      Error("Invalid tag syntax: expected close tag before opener");
+      Warning("Invalid tag syntax: expected close tag before opener");
       literal_ += '<';
       EvalStart(c);
     }
@@ -701,15 +715,14 @@ void HtmlLexer::FinishAttribute(char c, bool has_value, bool brief_close) {
     // Some other funny character within a tag.  Probably can't
     // trust the tag at all.  Check the web and see when this
     // happens.
-    Error("Unexpected character in attribute: %c", c);
-    EmitLiteral();
-    state_ = START;
+    Warning("Unexpected character in attribute: %c", c);
+    MakeAttribute(has_value);
     has_attr_value_ = false;
   }
 }
 
 void HtmlLexer::EvalAttrEq(char c) {
-  if (IsLegalTagChar(c)) {
+  if (IsLegalAttrValChar(c)) {
     state_ = TAG_ATTR_VAL;
     attr_quote_ = "";
     EvalAttrVal(c);
@@ -758,7 +771,7 @@ void HtmlLexer::EmitTagClose(HtmlElement::CloseStyle close_style) {
     element->set_end_line_number(line_);
     html_parse_->CloseElement(element, close_style, line_);
   } else {
-    Error("Unexpected close-tag `%s', no tags are open", token_.c_str());
+    Warning("Unexpected close-tag `%s', no tags are open", token_.c_str());
     EmitLiteral();
   }
 
@@ -865,8 +878,8 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(Atom tag) {
         // TODO(jmarantz): Should this be a Warning rather than an Error?
         // In fact, should we actually perform this optimization ourselves
         // in a filter to omit closing tags that can be inferred?
-        html_parse_->Error(filename_.c_str(), skipped->begin_line_number(),
-                           "Unclosed element `%s'", skipped->tag().c_str());
+        html_parse_->Warning(filename_.c_str(), skipped->begin_line_number(),
+                             "Unclosed element `%s'", skipped->tag().c_str());
         // Before closing the skipped element, pop it off the stack.  Otherwise,
         // the parent redundancy check in HtmlParse::AddEvent will fail.
         element_stack_.resize(j);
@@ -880,10 +893,10 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(Atom tag) {
   return element;
 }
 
-void HtmlLexer::Error(const char* msg, ...) {
+void HtmlLexer::Warning(const char* msg, ...) {
   va_list args;
   va_start(args, msg);
-  html_parse_->ErrorV(filename_.c_str(), line_, msg, args);
+  html_parse_->WarningV(filename_.c_str(), line_, msg, args);
   va_end(args);
 }
 

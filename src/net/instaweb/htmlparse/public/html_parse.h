@@ -243,6 +243,7 @@ class HtmlParse {
   int line_number_;
   bool need_sanity_check_;
   bool coalesce_characters_;
+  bool need_coalesce_characters_;
   int64 parse_start_time_us_;
   Timer* timer_;
 };

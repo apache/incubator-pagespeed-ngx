@@ -30,10 +30,11 @@ class FileMessageHandler : public MessageHandler {
  public:
   explicit FileMessageHandler(FILE* file);
 
-  virtual void MessageV(MessageType type, const char* msg, va_list args);
+ protected:
+  virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
 
-  virtual void FileMessageV(MessageType type, const char* filename, int line,
-                    const char* msg, va_list args);
+  virtual void FileMessageVImpl(MessageType type, const char* filename,
+                                int line, const char* msg, va_list args);
 
  private:
   FILE* file_;

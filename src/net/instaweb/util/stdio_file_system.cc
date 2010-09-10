@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/stdio_file_system.h"
 
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/errno.h>
@@ -263,6 +264,62 @@ BoolOrError StdioFileSystem::IsDir(const char* path, MessageHandler* handler) {
     ret.set_error();
   }
   return ret;
+}
+
+bool StdioFileSystem::ListContents(const StringPiece& dir, StringVector* files,
+                                   MessageHandler* handler) {
+  std::string dir_string = dir.as_string();
+  EnsureEndsInSlash(&dir_string);
+  const char* dirname = dir_string.c_str();
+  DIR* mydir = opendir(dirname);
+  if (mydir == NULL) {
+      handler->Error(dirname, 0, "Failed to opendir: %s", strerror(errno));
+    return false;
+  } else {
+    dirent* dirent = NULL;
+    while ((dirent = readdir(mydir))) {
+      if ((strcmp(dirent->d_name, ".") != 0) &&
+          (strcmp(dirent->d_name, "..") != 0)) {
+        files->push_back(dir_string + dirent->d_name);
+      }
+    }
+    if (closedir(mydir) != 0) {
+      handler->Error(dirname, 0, "Failed to closedir: %s", strerror(errno));
+      return false;
+    }
+    return true;
+  }
+}
+bool StdioFileSystem::Atime(const StringPiece& path, int64* timestamp_sec,
+                            MessageHandler* handler) {
+  // TODO(abliss): there are some situations where this doesn't work
+  // -- e.g. if the filesystem is mounted noatime.  We should try to
+  // detect that and provide a workaround.
+  const std::string path_string = path.as_string();
+  const char* path_str = path_string.c_str();
+  struct stat statbuf;
+  if (stat(path_str, &statbuf) == 0) {
+    *timestamp_sec = statbuf.st_atime;
+    return true;
+  } else {
+    handler->Message(kError, "Failed to stat %s: %s",
+                     path_str, strerror(errno));
+    return false;
+  }
+}
+bool StdioFileSystem::Size(const StringPiece& path, int64* size,
+                           MessageHandler* handler) {
+  const std::string path_string = path.as_string();
+  const char* path_str = path_string.c_str();
+  struct stat statbuf;
+  if (stat(path_str, &statbuf) == 0) {
+    *size = statbuf.st_size;
+    return true;
+  } else {
+    handler->Message(kError, "Failed to stat %s: %s",
+                     path_str, strerror(errno));
+    return false;
+  }
 }
 
 }  // namespace net_instaweb

@@ -157,7 +157,7 @@ bool CacheUrlFetcher::StreamingFetchUrl(
     StringWriter string_writer(&content);
     ret = sync_fetcher_->StreamingFetchUrl(
         url, request_headers, response_headers, &string_writer, handler);
-    writer->Write(content, handler);
+    ret &= writer->Write(content, handler);
     if (ret) {
       if (force_caching_ || response_headers->IsCacheable()) {
         value.Clear();
@@ -167,7 +167,6 @@ bool CacheUrlFetcher::StreamingFetchUrl(
       }
     } else {
       // TODO(jmarantz): Consider caching that this request is not fetchable
-      ret = false;
     }
   } else {
     AsyncFetch* fetch = new AsyncFetchWithHeaders(url, http_cache_, handler,

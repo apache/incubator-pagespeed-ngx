@@ -70,6 +70,7 @@ class SimpleMetaData : public MetaData {
   virtual void SetLastModified(int64 last_modified_ms);
 
   virtual bool headers_complete() const { return headers_complete_; }
+  virtual void set_headers_complete(bool x) { headers_complete_ = x; }
 
   virtual int major_version() const { return major_version_; }
   virtual int minor_version() const { return minor_version_; }

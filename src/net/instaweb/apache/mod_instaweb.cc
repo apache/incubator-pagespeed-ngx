@@ -19,11 +19,11 @@
 #include "base/string_util.h"
 #include "net/instaweb/apache/html_rewriter.h"
 #include "net/instaweb/apache/html_rewriter_config.h"
-#include "net/instaweb/apache/html_parser_message_handler.h"
 #include "net/instaweb/apache/pagespeed_server_context.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/apache/mod_instaweb.h"
+#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "mod_spdy/apache/log_message_handler.h"
 #include "mod_spdy/apache/pool_util.h"
@@ -396,7 +396,7 @@ apr_status_t pagespeed_log_transaction(request_rec *request) {
     return DECLINED;
   }
   int64 max_ms = GetFetcherTimeOut(config->context);  // milliseconds.
-  html_rewriter::HtmlParserMessageHandler handler;
+  net_instaweb::GoogleMessageHandler handler;
   if (!url_async_fetcher->WaitForInProgressFetches(max_ms, &handler)) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "SerfFetch timeout request=%s", request->unparsed_uri);

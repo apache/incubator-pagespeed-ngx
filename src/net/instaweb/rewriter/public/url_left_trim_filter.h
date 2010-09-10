@@ -4,7 +4,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_URL_LEFT_TRIM_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_URL_LEFT_TRIM_FILTER_H_
 
-#include <vector>
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -30,13 +30,12 @@ namespace net_instaweb {
 // TODO(jmaessen): Do we care to introduce ../ in order to relativize more urls?
 // Do we have a library solution to do so with minimal effort?
 
-class Variable;
 class Statistics;
+class Variable;
 
 class UrlLeftTrimFilter : public EmptyHtmlFilter {
  public:
-  explicit UrlLeftTrimFilter(HtmlParse* html_parse,
-                             Statistics* resource_manager);
+  UrlLeftTrimFilter(HtmlParse* html_parse, Statistics* resource_manager);
   virtual void StartElement(HtmlElement* element);
   virtual void AddBaseUrl(const StringPiece& base_url);
   virtual const char* Name() const { return "UrlLeftTrim"; }

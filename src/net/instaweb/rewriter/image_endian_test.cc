@@ -21,15 +21,17 @@
 #include "net/instaweb/rewriter/public/image.h"
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {
+namespace {
 
 TEST(ImageEndianTest, CharToIntTest) {
-  EXPECT_EQ(0xff, charToInt(-1));
+  EXPECT_EQ(0xff, CharToInt(-1));
   // Worried about C++ implicit conversions to/from int for arg passing:
-  EXPECT_EQ(0x05, charToInt(static_cast<char>(0xffffff05)));
-  EXPECT_EQ(0x83, charToInt(static_cast<char>(0xffffff83)));
-  EXPECT_EQ(0x33, charToInt(0x33));
+  EXPECT_EQ(0x05, CharToInt(static_cast<char>(0xffffff05)));
+  EXPECT_EQ(0x83, CharToInt(static_cast<char>(0xffffff83)));
+  EXPECT_EQ(0x33, CharToInt(0x33));
   // Now test deserialization from buffer full of negative values
   const char buf[] = { 0xf1, 0xf2, 0xf3, 0xf4 };
   EXPECT_EQ(0xf1f2, JpegIntAtPosition(buf, 0));
@@ -39,4 +41,5 @@ TEST(ImageEndianTest, CharToIntTest) {
   EXPECT_EQ(static_cast<int>(0xf1f2f3f4), PngIntAtPosition(buf, 0));
 }
 
+}  // namespace
 }  // namespace net_instaweb

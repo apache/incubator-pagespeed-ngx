@@ -160,7 +160,7 @@ TEST_F(HtmlParseTest, OpenBracketUnquoted) {
       "<input type=\"text\" name=username"
       "<input type=\"password\" name=\"password\"/>";
   const char expected[] =
-      "<input type=\"text\" name=username >"  // note added ' >'
+      "<input type=\"text\" name=username>"  // note added '>'
       "<input type=\"password\" name=\"password\"/>";
   ValidateExpected("open_bracket_unquoted", input, expected);
 }
@@ -171,7 +171,7 @@ TEST_F(HtmlParseTest, OpenBracketAfterEquals) {
       "<input type=\"text\" name="
       "<input type=\"password\" name=\"password\"/>";
   const char expected[] =
-      "<input type=\"text\" name= >"  // note added ' >'
+      "<input type=\"text\" name=>"  // note added '>'
       "<input type=\"password\" name=\"password\"/>";
   ValidateExpected("open_brack_after_equals", input, expected);
 }

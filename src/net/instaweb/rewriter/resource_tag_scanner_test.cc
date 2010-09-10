@@ -68,7 +68,7 @@ TEST_F(ResourceTagScannerTest, FindTags) {
       "<script src='myscript.js'></script>\n"
       "<img src=\"image.jpg\"/>\n"
       "<link rel=\"stylesheet\" type=\"text/css\" href=\"nomedia.css\">\n"
-      "<link rel=stylesheet type=text/css href=media.css media=print >");
+      "<link rel=stylesheet type=text/css href=media.css media=print>");
   ASSERT_EQ(static_cast<size_t>(4), resources.size());
   EXPECT_EQ(std::string("myscript.js"), resources[0]);
   EXPECT_EQ(std::string("image.jpg"), resources[1]);

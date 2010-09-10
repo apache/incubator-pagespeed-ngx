@@ -26,7 +26,6 @@
       'target_name': 'html_rewriter',
       'type': '<(library)',
       'dependencies': [
-        'gzip_inflater',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/apache/httpd/httpd.gyp:include',
         '<(DEPTH)/third_party/serf/serf.gyp:serf',
@@ -42,7 +41,6 @@
         'apache/apr_file_system.cc',
         'apache/apr_mutex.cc',
         'apache/apr_timer.cc',
-        'apache/html_parser_message_handler.cc',
         'apache/html_rewriter.cc',
         'apache/html_rewriter_config.cc',
         'apache/html_rewriter_imp.cc',
@@ -53,20 +51,6 @@
       ],
       'export_dependent_settings': [
         '<(instaweb_root)/instaweb.gyp:instaweb_util',
-      ],
-    },
-    {
-      'target_name': 'gzip_inflater',
-      'type': '<(library)',
-      'dependencies': [
-        '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
-      ],
-      'include_dirs': [
-        '<(DEPTH)',
-      ],
-      'sources': [
-        'apache/gzip_inflater.cc',
       ],
     },
   ],

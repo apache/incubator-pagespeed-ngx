@@ -45,8 +45,11 @@ bool HTTPCache::Get(const std::string& key, HTTPValue* value,
 #endif
 
   bool ret = (cache_->Get(key, &cache_buffer) &&
-              value->Link(&cache_buffer, headers, handler) &&
-              IsCurrentlyValid(*headers));
+              value->Link(&cache_buffer, headers, handler));
+  if (ret && !IsCurrentlyValid(*headers)) {
+    headers->Clear();
+    ret = false;
+  }
 
 #if CACHE_SPEW
   long delta_us = timer_->NowUs() - start_us;

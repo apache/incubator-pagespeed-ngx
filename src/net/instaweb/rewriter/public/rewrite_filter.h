@@ -69,13 +69,22 @@ class RewriteFilter : public EmptyHtmlFilter {
   template<class Protobuf>
   static void Encode(const Protobuf& protobuf, std::string* url_safe_id) {
     std::string serialized_url;
-    StringOutputStream sstream(&serialized_url);
-    GzipOutputStream::Options options;
-    options.format = GzipOutputStream::ZLIB;
-    GzipOutputStream zostream(&sstream, options);
-    options.compression_level = 9;
-    protobuf.SerializeToZeroCopyStream(&zostream);
-    zostream.Flush();
+
+    // Add extra scope to ensure that StringOutputStream is destructed
+    // prior to using the string it has encoded.  See comment in declaration
+    // of StringOutputStream in protobuf/io/zero_copy_stream_impl_lite.h,
+    // which says:
+    //    The string remains property of the caller, but it MUST NOT be
+    //    accessed in any way until the stream is destroyed.
+    {
+      StringOutputStream sstream(&serialized_url);
+      GzipOutputStream::Options options;
+      options.format = GzipOutputStream::ZLIB;
+      GzipOutputStream zostream(&sstream, options);
+      options.compression_level = 9;
+      protobuf.SerializeToZeroCopyStream(&zostream);
+      zostream.Flush();
+    }
     Web64Encode(serialized_url, url_safe_id);
   }
 

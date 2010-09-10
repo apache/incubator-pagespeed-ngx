@@ -26,14 +26,13 @@
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/html_parser_message_handler.h"
+#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/serf/src/serf.h"
 
 using html_rewriter::AprFileSystem;
-using html_rewriter::HtmlParserMessageHandler;
 
 namespace {
 
@@ -173,7 +172,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   std::vector<TestCallback*> callbacks_;
   // The fetcher to be tested.
   scoped_ptr<html_rewriter::SerfUrlAsyncFetcher> serf_url_async_fetcher_;
-  html_rewriter::HtmlParserMessageHandler message_handler_;
+  net_instaweb::GoogleMessageHandler message_handler_;
   size_t prev_done_count;
   html_rewriter::AprMutex* mutex_;
 };

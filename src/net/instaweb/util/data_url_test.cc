@@ -3,12 +3,14 @@
 
 #include "net/instaweb/util/public/data_url.h"
 
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/content_type.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {
+namespace {
 
 const std::string kAsciiData =
     "A_Rather=Long,But-conventional?looking_string#with;some:odd,characters.";
@@ -20,17 +22,20 @@ const std::string kAsciiDataBase64 =
 // truncation.
 const char kMixedDataChars[] =
     "This string\ncontains\0lots of\tunusual\xe3~characters\xd7\xa5";
-const std::string kMixedData(kMixedDataChars, sizeof(kMixedDataChars)-1);
-const std::string kMixedDataBase64 =
+const char kMixedDataBase64[] =
     "VGhpcyBzdHJpbmcKY29udGFpbnMAbG90cyBvZgl1bnVzdWFs435jaGFyYWN0ZXJz16U=";
 
-const std::string kPlainPrefix = "data:text/plain,";
-const std::string kBase64Prefix = "data:text/plain;base64,";
+const char kPlainPrefix[] = "data:text/plain,";
+const char kBase64Prefix[] = "data:text/plain;base64,";
 
-const std::string kGifPlainPrefix = "data:image/gif,";
-const std::string kGifBase64Prefix = "data:image/gif;base64,";
+const char kGifPlainPrefix[] = "data:image/gif,";
+const char kGifBase64Prefix[] = "data:image/gif;base64,";
 
 class DataUrlTest : public testing::Test {
+ public:
+  DataUrlTest()
+      : mixed_data_(kMixedDataChars, sizeof(kMixedDataChars) - 1) { }
+
  protected:
   // Make a ContentType yield readable failure output.  Needed this to fix bugs
   // in the tests!  (No actual program bugs found here...)
@@ -65,6 +70,11 @@ class DataUrlTest : public testing::Test {
               DecodeDataUrlContent(encoding, parsed_encoded, &parsed_decoded));
     EXPECT_EQ(decoded, parsed_decoded);
   }
+
+  std::string mixed_data_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(DataUrlTest);
 };
 
 TEST_F(DataUrlTest, TestDataPlain) {
@@ -81,14 +91,14 @@ TEST_F(DataUrlTest, TestDataBase64) {
 
 TEST_F(DataUrlTest, TestData1Plain) {
   std::string url;
-  DataUrl(kContentTypeGif, PLAIN, kMixedData, &url);
-  EXPECT_EQ(kGifPlainPrefix + kMixedData, url);
+  DataUrl(kContentTypeGif, PLAIN, mixed_data_, &url);
+  EXPECT_EQ(kGifPlainPrefix + mixed_data_, url);
 }
 
 TEST_F(DataUrlTest, TestData1Base64) {
   std::string url;
-  DataUrl(kContentTypeGif, BASE64, kMixedData, &url);
-  EXPECT_EQ(kGifBase64Prefix + kMixedDataBase64, url);
+  DataUrl(kContentTypeGif, BASE64, mixed_data_, &url);
+  EXPECT_EQ(StrCat(kGifBase64Prefix, kMixedDataBase64), url);
 }
 
 TEST_F(DataUrlTest, ParseDataPlain) {
@@ -102,13 +112,13 @@ TEST_F(DataUrlTest, ParseDataBase64) {
 }
 
 TEST_F(DataUrlTest, ParseData1Plain) {
-  TestDecoding(true, true, kPlainPrefix, kMixedData,
-               &kContentTypeText, PLAIN, kMixedData);
+  TestDecoding(true, true, kPlainPrefix, mixed_data_,
+               &kContentTypeText, PLAIN, mixed_data_);
 }
 
 TEST_F(DataUrlTest, ParseData1Base64) {
   TestDecoding(true, true, kBase64Prefix, kMixedDataBase64,
-               &kContentTypeText, BASE64, kMixedData);
+               &kContentTypeText, BASE64, mixed_data_);
 }
 
 TEST_F(DataUrlTest, ParseBadProtocol) {
@@ -117,23 +127,24 @@ TEST_F(DataUrlTest, ParseBadProtocol) {
 }
 
 TEST_F(DataUrlTest, ParseNoComma) {
-  TestDecoding(false, false, "data:text/plain;base64;"+kMixedDataBase64, "",
+  TestDecoding(false, false,
+               StrCat("data:text/plain;base64;", kMixedDataBase64), "",
                NULL, UNKNOWN, "");
 }
 
 TEST_F(DataUrlTest, ParseNoMime) {
-  TestDecoding(true, true, "data:;base64,",kMixedDataBase64,
-               NULL, BASE64, kMixedData);
+  TestDecoding(true, true, "data:;base64,", kMixedDataBase64,
+               NULL, BASE64, mixed_data_);
 }
 
 TEST_F(DataUrlTest, ParseCorruptMime) {
   TestDecoding(true, true, "data:#$!;base64,", kMixedDataBase64,
-               NULL, BASE64, kMixedData);
+               NULL, BASE64, mixed_data_);
 }
 
 TEST_F(DataUrlTest, ParseBadEncodingIsPlain) {
-  TestDecoding(true, true, "data:text/plain;mumbledypeg,", kMixedData,
-               &kContentTypeText, PLAIN, kMixedData);
+  TestDecoding(true, true, "data:text/plain;mumbledypeg,", mixed_data_,
+               &kContentTypeText, PLAIN, mixed_data_);
 }
 
 TEST_F(DataUrlTest, ParseBadBase64) {
@@ -141,4 +152,5 @@ TEST_F(DataUrlTest, ParseBadBase64) {
                &kContentTypeText, BASE64, "");
 }
 
+}  // namespace
 }  // namespace net_instaweb
