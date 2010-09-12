@@ -21,6 +21,7 @@
 
 #include <vector>
 
+#include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/util/public/atom.h"
@@ -78,6 +79,8 @@ class CssCombineFilter : public RewriteFilter {
   ResourceManager* resource_manager_;
   CssTagScanner css_tag_scanner_;
   Variable* css_file_count_reduction_;
+
+  DISALLOW_COPY_AND_ASSIGN(CssCombineFilter);
 };
 
 }  // namespace net_instaweb

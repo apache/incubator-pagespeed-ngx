@@ -1,0 +1,132 @@
+# This is a sample configuration file for Instaweb.  It must be edited by
+# the installer to provide the correct HOSTNAME under InstawebUrlPrefix.
+
+<IfModule instaweb_module>
+    # Direct Apache to send all HTML output to the instaweb output handler.
+    SetOutputFilter INSTAWEB_OUTPUT_FILTER
+
+    # Direct Apache to handle all URL requests for resources written with the
+    # "/instaweb/" path prefix to be handled by Instaweb's resource generator.
+    <Location /instaweb>
+          SetHandler instaweb_resource_generator
+    </Location>
+    Instaweb on
+    
+    InstawebUrlPrefix             "http://HOSTNAME/instaweb/"
+    InstawebFileCachePath         "INSTAWEB_FILE_ROOT/cache/"
+    InstawebGeneratedFilePrefix   "INSTAWEB_FILE_ROOT/files/"
+    InstawebUseHttpCache          on
+    InstawebLRUCacheKBPerProcess  1024
+    InstawebLRUCacheByteLimit     16384
+
+    # The following rewrite passes are safe to run on most web pages.
+    # Of course, any web page can examine itself using Javascript, and
+    # may not expect any changes to be made by Instaweb.  However,
+    # these passes have been shown to be robust over a large number of
+    # web sites.
+    InstawebRewriters combine_css,rewrite_images,extend_cache,add_head,remove_quotes,move_css_to_head,collapse_whitespace,elide_attributes,rewrite_javascript
+
+    # investigating: left_trim_urls
+
+    # The following passes are known to be riskier.
+    # InstawebRewriters outline_css,outline_javascript,remove_comments
+</IfModule>
+
+
+# Most servers should configure mod_deflate.  Serving compressed
+# content is a critical ingredient to low-latency web-serving.
+#
+# In this example, from http://httpd.apache.org/docs/2.0/mod/mod_deflate.html
+# we compress everything except images
+#
+# mod_deflate will run after mod_instaweb, because mod_instaweb is registered
+# as type AP_FTYPE_RESOURCE, and mod_deflate is registered as type 
+# AP_FTYPE_CONTENT_SET.
+
+<IfModule mod_deflate>
+    <Location />
+        # Insert filter
+        SetOutputFilter DEFLATE
+    
+        # Netscape 4.x has some problems...
+        BrowserMatch ^Mozilla/4 gzip-only-text/html
+    
+        # Netscape 4.06-4.08 have some more problems
+        BrowserMatch ^Mozilla/4\.0[678] no-gzip
+    
+        # MSIE masquerades as Netscape, but it is fine
+        # BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
+    
+        # NOTE: Due to a bug in mod_setenvif up to Apache 2.0.48
+        # the above regex won't work. You can use the following
+        # workaround to get the desired effect:
+        BrowserMatch \bMSI[E] !no-gzip !gzip-only-text/html
+    
+        # Don't compress images
+        SetEnvIfNoCase Request_URI \
+        \.(?:gif|jpe?g|png)$ no-gzip dont-vary
+    
+        # Make sure proxies don't deliver the wrong content
+        Header append Vary User-Agent env=!dont-vary
+    </Location>
+</IfModule>
+
+# Also on http://httpd.apache.org/docs/2.0/mod/mod_deflate.html is a simpler
+# mechanism to compress specific types:
+#   AddOutputFilterByType DEFLATE text/html text/plain text/xml
+
+
+# These caching headers are set up for the Instaweb example, and
+# also serve as a demonstration of good values to set for the entire
+# site, if it is to be optimized by Instaweb.
+<Directory APACHE_DOC_ROOT/instaweb_example>
+  # To enable to show that Instaweb to rewrites web pages, we must
+  # turn off Etags for HTML files and eliminate caching altogether.
+  # Instaweb should rewrite HTML files each time they are served.
+  # The first time Instaweb sees an HTML file, it may not optimize
+  # it fully.  It will optimize better after the second view.  Caching
+  # defeats this behavior.
+  <FilesMatch "\.(html|htm)$">
+    Header unset Etag
+    Header set Cache-control "max-age=0, no-cache, no-store"
+  </FilesMatch>
+
+  # Images, styles, and javascript are all cache-extended for
+  # a year by rewriting URLs to include a content hash..  Instaweb,
+  # can only do this if the resources are cacheable in the first place.
+  # The origin caching policy, set here to 10 minutes, dictates how
+  # frequently Instaweb must re-read the content files and recompute
+  # the content-hash.  As long as the content doesn't actually change,
+  # the content-hash will remain the same, and the resources stored
+  # in browser caches will stay relevant.
+  <FilesMatch "\.(jpg|jpeg|gif|png|js|css)$">
+    Header unset Etag
+    Header set Cache-control "public, max-age=600"
+  </FilesMatch>
+</Directory>
+
+# <Location /instaweb_example>
+#   # Insert filter
+#   SetOutputFilter DEFLATE
+#   
+#   # Netscape 4.x has some problems...
+#   BrowserMatch ^Mozilla/4 gzip-only-text/html
+#   
+#   # Netscape 4.06-4.08 have some more problems
+#   BrowserMatch ^Mozilla/4\.0[678] no-gzip
+#   
+#   # MSIE masquerades as Netscape, but it is fine
+#   # BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
+#   
+#   # NOTE: Due to a bug in mod_setenvif up to Apache 2.0.48
+#   # the above regex won't work. You can use the following
+#   # workaround to get the desired effect:
+#   BrowserMatch \bMSI[E] !no-gzip !gzip-only-text/html
+#   
+#   # Don't compress images
+#   SetEnvIfNoCase Request_URI \
+#   \.(?:gif|jpe?g|png)$ no-gzip dont-vary
+#   
+#   # Make sure proxies don't deliver the wrong content
+#   Header append Vary User-Agent env=!dont-vary
+# </Location>

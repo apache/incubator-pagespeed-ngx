@@ -22,6 +22,7 @@
 #include "apr_strings.h"
 #include "apr_thread_proc.h"
 #include "apr_version.h"
+#include "base/basictypes.h"
 #include "base/stl_util-inl.h"
 #include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/apache/apr_timer.h"
@@ -278,6 +279,8 @@ class SerfFetch {
   serf_bucket_alloc_t* bucket_alloc_;
   apr_uri_t url_;
   serf_connection_t* connection_;
+
+  DISALLOW_COPY_AND_ASSIGN(SerfFetch);
 };
 
 class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
@@ -406,7 +409,6 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     terminate_mutex_.Unlock();
   }
 
- private:
   apr_thread_t* thread_id_;
 
   AprMutex active_mutex_;    // Prevents thread from spinning with no data.
@@ -422,6 +424,8 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
 
   AprMutex terminate_mutex_;  // Allows parent to block till thread exits
   bool thread_done_;
+
+  DISALLOW_COPY_AND_ASSIGN(SerfThreadedFetcher);
 };
 
 bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher) {

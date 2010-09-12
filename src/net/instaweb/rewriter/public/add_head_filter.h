@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_ADD_HEAD_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_ADD_HEAD_FILTER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/util/public/atom.h"
 
@@ -44,6 +45,8 @@ class AddHeadFilter : public EmptyHtmlFilter {
   Atom s_head_;
   Atom s_body_;
   HtmlElement* head_element_;
+
+  DISALLOW_COPY_AND_ASSIGN(AddHeadFilter);
 };
 
 }  // namespace net_instaweb

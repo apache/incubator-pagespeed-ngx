@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_HTTP_RESPONSE_PARSER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_HTTP_RESPONSE_PARSER_H_
 
+#include "base/basictypes.h"
 // TODO(sligocki): Find a way to forward declare FileSystem::InputFile.
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -61,6 +62,8 @@ class HttpResponseParser {
   MetaData* response_headers_;
   Writer* writer_;
   MessageHandler* handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(HttpResponseParser);
 };
 
 }  // namespace net_instaweb

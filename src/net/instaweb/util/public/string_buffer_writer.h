@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_STRING_BUFFER_WRITER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_BUFFER_WRITER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
@@ -34,6 +35,8 @@ class StringBufferWriter : public Writer {
   virtual bool Flush(MessageHandler* message_handler);
  private:
   StringBuffer* string_;
+
+  DISALLOW_COPY_AND_ASSIGN(StringBufferWriter);
 };
 
 }  // namespace net_instaweb

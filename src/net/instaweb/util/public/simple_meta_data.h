@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <map>
 #include <vector>
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/meta_data.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"

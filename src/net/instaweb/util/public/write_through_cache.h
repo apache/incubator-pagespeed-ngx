@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_WRITE_THROUGH_CACHE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_WRITE_THROUGH_CACHE_H_
 
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include <string>
@@ -59,6 +60,8 @@ class WriteThroughCache : public CacheInterface {
   scoped_ptr<CacheInterface> cache1_;
   scoped_ptr<CacheInterface> cache2_;
   size_t cache1_size_limit_;
+
+  DISALLOW_COPY_AND_ASSIGN(WriteThroughCache);
 };
 
 }  // namespace net_instaweb

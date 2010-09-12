@@ -37,6 +37,10 @@ inline std::string IntegerToString(int i) {
   return base::IntToString(i);
 }
 
+inline bool StringToInt(const char* in, int* out) {
+  return base::StringToInt(in, out);
+}
+
 inline bool StringToInt(const std::string& in, int* out) {
   return base::StringToInt(in, out);
 }

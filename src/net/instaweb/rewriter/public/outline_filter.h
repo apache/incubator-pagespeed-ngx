@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_OUTLINE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_OUTLINE_FILTER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
@@ -86,6 +87,8 @@ class OutlineFilter : public HtmlFilter {
   bool outline_styles_;
   bool outline_scripts_;
   size_t size_threshold_bytes_;
+
+  DISALLOW_COPY_AND_ASSIGN(OutlineFilter);
 };
 
 }  // namespace net_instaweb

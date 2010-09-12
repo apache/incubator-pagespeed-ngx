@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HTML_REWRITER_APR_FILE_SYSTEM_H_
-#define HTML_REWRITER_APR_FILE_SYSTEM_H_
+#ifndef NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_
+#define NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 
@@ -63,8 +64,10 @@ class AprFileSystem : public FileSystem {
 
  private:
   apr_pool_t* pool_;
+
+  DISALLOW_COPY_AND_ASSIGN(AprFileSystem);
 };
 
 }  // namespace html_rewriter
 
-#endif  // HTML_REWRITER_APR_FILE_SYSTEM_H_
+#endif  // NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_

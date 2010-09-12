@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_HTMLPARSE_HTML_EVENT_H_
 
 #include <list>
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -44,6 +45,8 @@ class HtmlEvent {
   int line_number() const { return line_number_; }
  private:
   int line_number_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlEvent);
 };
 
 class HtmlStartDocumentEvent: public HtmlEvent {
@@ -51,6 +54,9 @@ class HtmlStartDocumentEvent: public HtmlEvent {
   explicit HtmlStartDocumentEvent(int line_number) : HtmlEvent(line_number) {}
   virtual void Run(HtmlFilter* filter) { filter->StartDocument(); }
   virtual void ToString(std::string* str) { *str += "StartDocument"; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HtmlStartDocumentEvent);
 };
 
 class HtmlEndDocumentEvent: public HtmlEvent {
@@ -58,6 +64,9 @@ class HtmlEndDocumentEvent: public HtmlEvent {
   explicit HtmlEndDocumentEvent(int line_number) : HtmlEvent(line_number) {}
   virtual void Run(HtmlFilter* filter) { filter->EndDocument(); }
   virtual void ToString(std::string* str) { *str += "EndDocument"; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HtmlEndDocumentEvent);
 };
 
 class HtmlIEDirectiveEvent: public HtmlEvent {
@@ -73,6 +82,8 @@ class HtmlIEDirectiveEvent: public HtmlEvent {
   }
  private:
   std::string directive_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlIEDirectiveEvent);
 };
 
 class HtmlStartElementEvent: public HtmlEvent {
@@ -90,6 +101,8 @@ class HtmlStartElementEvent: public HtmlEvent {
   virtual HtmlElement* GetNode() { return element_; }
  private:
   HtmlElement* element_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlStartElementEvent);
 };
 
 class HtmlEndElementEvent: public HtmlEvent {
@@ -107,12 +120,17 @@ class HtmlEndElementEvent: public HtmlEvent {
   virtual HtmlElement* GetNode() { return element_; }
  private:
   HtmlElement* element_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlEndElementEvent);
 };
 
 class HtmlLeafNodeEvent: public HtmlEvent {
  public:
   explicit HtmlLeafNodeEvent(int line_number) : HtmlEvent(line_number) { }
   virtual HtmlNode* GetNode() { return GetLeafNode(); }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HtmlLeafNodeEvent);
 };
 
 class HtmlCdataEvent: public HtmlLeafNodeEvent {
@@ -129,6 +147,8 @@ class HtmlCdataEvent: public HtmlLeafNodeEvent {
   virtual HtmlLeafNode* GetLeafNode() { return cdata_; }
  private:
   HtmlCdataNode* cdata_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlCdataEvent);
 };
 
 class HtmlCommentEvent: public HtmlLeafNodeEvent {
@@ -143,8 +163,11 @@ class HtmlCommentEvent: public HtmlLeafNodeEvent {
     *str += comment_->contents();
   }
   virtual HtmlLeafNode* GetLeafNode() { return comment_; }
+
  private:
   HtmlCommentNode* comment_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlCommentEvent);
 };
 
 class HtmlCharactersEvent: public HtmlLeafNodeEvent {
@@ -162,6 +185,8 @@ class HtmlCharactersEvent: public HtmlLeafNodeEvent {
   virtual HtmlCharactersNode* GetCharactersNode() { return characters_; }
  private:
   HtmlCharactersNode* characters_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlCharactersEvent);
 };
 
 class HtmlDirectiveEvent: public HtmlLeafNodeEvent {
@@ -178,6 +203,8 @@ class HtmlDirectiveEvent: public HtmlLeafNodeEvent {
   virtual HtmlLeafNode* GetLeafNode() { return directive_; }
  private:
   HtmlDirectiveNode* directive_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlDirectiveEvent);
 };
 
 }  // namespace net_instaweb

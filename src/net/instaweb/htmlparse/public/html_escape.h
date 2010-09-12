@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_ESCAPE_H_
 
 #include <map>
+#include "base/basictypes.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 
@@ -78,6 +79,8 @@ class HtmlEscape {
   StringStringMapInsensitive unescape_insensitive_map_;
   StringStringMapSensitive unescape_sensitive_map_;
   StringStringMapSensitive escape_map_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlEscape);
 };
 
 }  // namespace net_instaweb

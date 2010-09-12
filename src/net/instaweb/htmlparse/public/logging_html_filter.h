@@ -41,6 +41,7 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_LOGGING_HTML_FILTER_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_LOGGING_HTML_FILTER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include <string>
 
@@ -111,6 +112,8 @@ class LoggingFilter : public EmptyHtmlFilter {
 
  private:
   int stats_[MAX_STAT];
+
+  DISALLOW_COPY_AND_ASSIGN(LoggingFilter);
 };
 
 }  // namespace net_instaweb

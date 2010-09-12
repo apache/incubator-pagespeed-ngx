@@ -19,6 +19,7 @@
 // Unit-test the lru cache
 
 #include "net/instaweb/util/public/http_cache.h"
+#include "base/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -53,6 +54,9 @@ class HTTPCacheTest : public testing::Test {
   MockTimer mock_timer_;
   HTTPCache http_cache_;
   GoogleMessageHandler message_handler_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HTTPCacheTest);
 };
 
 // Simple flow of putting in an item, getting it.

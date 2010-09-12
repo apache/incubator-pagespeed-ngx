@@ -24,6 +24,7 @@
 #include <sys/errno.h>
 #include <sys/stat.h>
 
+#include "base/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
@@ -69,6 +70,9 @@ class StdioFileHelper {
   FILE* file_;
   std::string filename_;
   int line_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(StdioFileHelper);
 };
 
 class StdioInputFile : public FileSystem::InputFile {
@@ -94,6 +98,8 @@ class StdioInputFile : public FileSystem::InputFile {
 
  private:
   StdioFileHelper file_helper_;
+
+  DISALLOW_COPY_AND_ASSIGN(StdioInputFile);
 };
 
 class StdioOutputFile : public FileSystem::OutputFile {
@@ -141,6 +147,8 @@ class StdioOutputFile : public FileSystem::OutputFile {
 
  private:
   StdioFileHelper file_helper_;
+
+  DISALLOW_COPY_AND_ASSIGN(StdioOutputFile);
 };
 
 StdioFileSystem::~StdioFileSystem() {

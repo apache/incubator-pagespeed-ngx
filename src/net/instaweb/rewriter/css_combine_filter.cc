@@ -332,6 +332,8 @@ class CssCombiner : public Resource::AsyncCallback {
   StringVector combine_media_;
   Writer* writer_;
   MetaData* response_headers_;
+
+  DISALLOW_COPY_AND_ASSIGN(CssCombiner);
 };
 
 bool CssCombineFilter::Fetch(OutputResource* combination,

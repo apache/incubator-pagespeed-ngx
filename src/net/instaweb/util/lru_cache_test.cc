@@ -19,6 +19,7 @@
 // Unit-test the lru cache
 
 #include "net/instaweb/util/public/lru_cache.h"
+#include "base/basictypes.h"
 #include "base/logging.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -59,6 +60,9 @@ class LRUCacheTest : public testing::Test {
   }
 
   LRUCache cache_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(LRUCacheTest);
 };
 
 // Simple flow of putting in an item, getting it, deleting it.

@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_MUTEX_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_MUTEX_H_
 
+#include "base/basictypes.h"
+
 namespace net_instaweb {
 
 // Abstract interface for implementing a mutex.
@@ -41,6 +43,8 @@ class ScopedMutex {
   }
  private:
   AbstractMutex* mutex_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedMutex);
 };
 
 }  // namespace net_instaweb

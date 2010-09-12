@@ -130,6 +130,8 @@ class HtmlElement : public HtmlNode {
     scoped_array<char> escaped_value_;
     scoped_array<char> value_;
     const char* quote_;
+
+    DISALLOW_COPY_AND_ASSIGN(Attribute);
   };
 
   virtual ~HtmlElement();

@@ -19,12 +19,15 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_HTML_TESTING_PEER_H_
 #define NET_INSTAWEB_HTMLPARSE_HTML_TESTING_PEER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 
 namespace net_instaweb {
 
 class HtmlTestingPeer {
  public:
+  HtmlTestingPeer() { }
+
   static void SetNodeParent(HtmlNode* node, HtmlElement* parent) {
     node->set_parent(parent);
   }
@@ -37,6 +40,9 @@ class HtmlTestingPeer {
   static void set_coalesce_characters(HtmlParse* parser, bool x) {
     parser->set_coalesce_characters(x);
   }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HtmlTestingPeer);
 };
 
 }  // namespace net_instaweb

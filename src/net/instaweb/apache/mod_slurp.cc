@@ -19,6 +19,7 @@
 #include "net/instaweb/util/public/simple_meta_data.h"
 
 #include "apr_strings.h"
+#include "base/basictypes.h"
 #include "base/string_util.h"
 #include "httpd.h"
 #include "http_core.h"
@@ -55,7 +56,7 @@ int SlurpDefaultHandler(const std::string& filename, request_rec* r) {
 #if 0
 class ApacheWriter : public net_instaweb::Writer {
  public:
-  ApacheWriter(request_rec* r)
+  explicit ApacheWriter(request_rec* r)
       : request_(r),
         size_(0) {
   }
@@ -76,6 +77,8 @@ class ApacheWriter : public net_instaweb::Writer {
  private:
   request_rec* request_;
   int size_;
+
+  DISALLOW_COPY_AND_ASSIGN(ApacheWriter);
 };
 #endif
 

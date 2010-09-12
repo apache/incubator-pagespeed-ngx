@@ -21,6 +21,7 @@
 #include "apr_pools.h"
 #include "apr_strings.h"
 #include "apr_version.h"
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "base/stl_util-inl.h"
 #include "net/instaweb/apache/apr_file_system.h"
@@ -67,6 +68,8 @@ class TestCallback : public net_instaweb::UrlAsyncFetcher::Callback {
   html_rewriter::AprMutex* mutex_;
   std::string url_;
   bool enable_threaded_;
+
+  DISALLOW_COPY_AND_ASSIGN(TestCallback);
 };
 
 class SerfUrlAsyncFetcherTest: public ::testing::Test {
@@ -77,6 +80,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   }
 
  protected:
+  SerfUrlAsyncFetcherTest() { }
+
   virtual void SetUp() {
     apr_pool_create(&pool_, NULL);
     serf_url_async_fetcher_.reset(
@@ -175,6 +180,9 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   net_instaweb::GoogleMessageHandler message_handler_;
   size_t prev_done_count;
   html_rewriter::AprMutex* mutex_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcherTest);
 };
 
 TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {

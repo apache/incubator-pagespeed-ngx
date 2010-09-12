@@ -19,6 +19,7 @@
 // Unit-test the html reader/writer to ensure that a few tricky
 // constructs come through without corruption.
 
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/html_testing_peer.h"
@@ -223,6 +224,8 @@ class Bool {
 // Class simply keeps track of which handlers have been called.
 class HandlerCalledFilter : public HtmlFilter {
  public:
+  HandlerCalledFilter() { }
+
   virtual void StartDocument() { called_start_document_ = true; }
   virtual void EndDocument() { called_end_document_ = true;}
   virtual void StartElement(HtmlElement* element) {
@@ -255,6 +258,9 @@ class HandlerCalledFilter : public HtmlFilter {
   Bool called_characters_;
   Bool called_directive_;
   Bool called_flush_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HandlerCalledFilter);
 };
 
 class HandlerCalledTest : public HtmlParseTest {
@@ -264,6 +270,9 @@ class HandlerCalledTest : public HtmlParseTest {
   }
 
   HandlerCalledFilter handler_called_filter_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HandlerCalledTest);
 };
 
 // Check that StartDocument and EndDocument were called for filters.
@@ -303,6 +312,8 @@ TEST_F(HandlerCalledTest, IEDirectiveCalled) {
 // event-list manipulation methods and make sure they render as expected.
 class EventListManipulationTest : public HtmlParseTest {
  protected:
+  EventListManipulationTest() { }
+
   virtual void SetUp() {
     HtmlParseTest::SetUp();
     html_parse_.StartParse("event_list_manipulation_test");
@@ -328,6 +339,8 @@ class EventListManipulationTest : public HtmlParseTest {
   HtmlCharactersNode* node1_;
   HtmlCharactersNode* node2_;
   HtmlCharactersNode* node3_;
+ private:
+  DISALLOW_COPY_AND_ASSIGN(EventListManipulationTest);
 };
 
 TEST_F(EventListManipulationTest, TestReplace) {
@@ -525,6 +538,8 @@ TEST_F(EventListManipulationTest, TestCoalesceOnDelete) {
 // while manipulating attribute values.
 class AttributeManipulationTest : public HtmlParseTest {
  protected:
+  AttributeManipulationTest() { }
+
   virtual void SetUp() {
     HtmlParseTest::SetUp();
     html_parse_.StartParse("attribute_manipulation_test");
@@ -552,6 +567,9 @@ class AttributeManipulationTest : public HtmlParseTest {
   }
 
   HtmlElement* node_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(AttributeManipulationTest);
 };
 
 TEST_F(AttributeManipulationTest, PropertiesAndDeserialize) {

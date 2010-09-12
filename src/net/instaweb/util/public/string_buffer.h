@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_BUFFER_H_
 
 #include <vector>
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

@@ -22,6 +22,7 @@
 #include <stdarg.h>
 #include <set>
 #include <vector>
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
@@ -246,6 +247,8 @@ class HtmlParse {
   bool need_coalesce_characters_;
   int64 parse_start_time_us_;
   Timer* timer_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlParse);
 };
 
 }  // namespace net_instaweb

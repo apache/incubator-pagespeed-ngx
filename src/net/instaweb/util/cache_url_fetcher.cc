@@ -17,6 +17,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/cache_url_fetcher.h"
+
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/http_cache.h"
 #include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -46,6 +48,8 @@ class AsyncFetchWithHeaders : public CacheUrlFetcher::AsyncFetch {
   }
  private:
   SimpleMetaData response_headers_;
+
+  DISALLOW_COPY_AND_ASSIGN(AsyncFetchWithHeaders);
 };
 
 }  // namespace

@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HTML_REWRITER_PAGESPEED_SERVER_CONTEXT_H_
-#define HTML_REWRITER_PAGESPEED_SERVER_CONTEXT_H_
+#ifndef NET_INSTAWEB_APACHE_PAGESPEED_SERVER_CONTEXT_H_
+#define NET_INSTAWEB_APACHE_PAGESPEED_SERVER_CONTEXT_H_
 
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 
@@ -62,12 +63,14 @@ class PageSpeedServerContext {
  private:
   apr_pool_t* pool_;
   PageSpeedConfig* config_;
-  //scoped_ptr<net_instaweb::ApacheRewriteDriverFactory> rewrite_driver_factory_;
+// scoped_ptr<net_instaweb::ApacheRewriteDriverFactory> rewrite_driver_factory_;
   net_instaweb::ApacheRewriteDriverFactory* rewrite_driver_factory_;
+
+  DISALLOW_COPY_AND_ASSIGN(PageSpeedServerContext);
 };
 
 bool CreatePageSpeedServerContext(apr_pool_t* pool, PageSpeedConfig* config);
 
 }  // namespace html_rewriter
 
-#endif  // HTML_REWRITER_PAGESPEED_SERVER_CONTEXT_H_
+#endif  // NET_INSTAWEB_APACHE_PAGESPEED_SERVER_CONTEXT_H_

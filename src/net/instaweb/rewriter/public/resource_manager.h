@@ -22,6 +22,7 @@
 
 #include <map>
 #include <vector>
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/http_cache.h"
 #include "net/instaweb/util/public/meta_data.h"
@@ -204,6 +205,8 @@ class ResourceManager {
   Statistics* statistics_;
   HTTPCache* http_cache_;
   bool relative_path_;
+
+  DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };
 
 }  // namespace net_instaweb

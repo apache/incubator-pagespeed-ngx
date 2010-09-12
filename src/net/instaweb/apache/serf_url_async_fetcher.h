@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HTML_REWRITER_SERF_URL_ASYNC_FETCHER_H_
-#define HTML_REWRITER_SERF_URL_ASYNC_FETCHER_H_
+#ifndef NET_INSTAWEB_APACHE_SERF_URL_ASYNC_FETCHER_H_
+#define NET_INSTAWEB_APACHE_SERF_URL_ASYNC_FETCHER_H_
 
 #include <set>
 #include <string>
@@ -87,8 +87,11 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   typedef std::vector<SerfFetch*> FetchVector;
   FetchVector completed_fetches_;
   SerfThreadedFetcher* threaded_fetcher_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcher);
 };
 
 }  // namespace html_rewriter
 
-#endif  // HTML_REWRITER_SERF_URL_ASYNC_FETCHER_H_
+#endif  // NET_INSTAWEB_APACHE_SERF_URL_ASYNC_FETCHER_H_

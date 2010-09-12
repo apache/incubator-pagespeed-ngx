@@ -23,6 +23,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/util/public/atom.h"
@@ -107,6 +108,8 @@ class JavascriptFilter : public RewriteFilter {
   const Atom s_script_;
   const Atom s_src_;
   const Atom s_type_;
+
+  DISALLOW_COPY_AND_ASSIGN(JavascriptFilter);
 };
 
 }  // namespace net_instaweb

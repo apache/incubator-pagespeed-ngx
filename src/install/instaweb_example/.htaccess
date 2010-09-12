@@ -1,0 +1,8 @@
+Header set Josh "is the best"
+
+  Header unset Etag
+  Header set Cache-control "public, max-age=600"
+  <FilesMatch "\.(html)$">
+    Header set Cache-control "max-age=0, no-cache, no-store"
+  </FilesMatch>
+

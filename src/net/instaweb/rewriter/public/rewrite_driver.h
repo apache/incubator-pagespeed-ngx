@@ -20,6 +20,8 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_H_
 
 #include <map>
+#include <vector>
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -134,6 +136,8 @@ class RewriteDriver {
   std::vector<HtmlFilter*> filters_;
   Variable* resource_fetches_;
   size_t outline_threshold_;
+
+  DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };
 
 }  // namespace net_instaweb

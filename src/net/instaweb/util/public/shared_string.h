@@ -25,6 +25,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_SHARED_STRING_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_SHARED_STRING_H_
 
+#include "base/basictypes.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 

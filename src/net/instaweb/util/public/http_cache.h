@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_HTTP_CACHE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_HTTP_CACHE_H_
 
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include <string>
@@ -65,6 +66,8 @@ class HTTPCache {
   scoped_ptr<CacheInterface> cache_;
   Timer* timer_;
   bool force_caching_;
+
+  DISALLOW_COPY_AND_ASSIGN(HTTPCache);
 };
 
 }  // namespace net_instaweb

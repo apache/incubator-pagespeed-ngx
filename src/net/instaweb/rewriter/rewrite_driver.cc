@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 #include <vector>
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
@@ -90,6 +91,8 @@ class ContainmentChecker {
   }
  private:
   const StringSet& strings_;
+
+  DISALLOW_COPY_AND_ASSIGN(ContainmentChecker);
 };
 
 }  // namespace
@@ -255,6 +258,8 @@ class ResourceDeleterCallback : public UrlAsyncFetcher::Callback {
  private:
   scoped_ptr<OutputResource> output_resource_;
   UrlAsyncFetcher::Callback* callback_;
+
+  DISALLOW_COPY_AND_ASSIGN(ResourceDeleterCallback);
 };
 
 }  // namespace

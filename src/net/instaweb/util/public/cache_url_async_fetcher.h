@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_CACHE_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_CACHE_URL_ASYNC_FETCHER_H_
 
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/http_cache.h"
 #include <string>
@@ -65,6 +66,8 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
   HTTPCache* http_cache_;
   UrlAsyncFetcher* fetcher_;
   bool force_caching_;
+
+  DISALLOW_COPY_AND_ASSIGN(CacheUrlAsyncFetcher);
 };
 
 }  // namespace net_instaweb

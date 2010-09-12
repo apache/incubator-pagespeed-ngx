@@ -22,6 +22,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
 #include <string>
@@ -121,6 +122,8 @@ class OutputResource : public Resource {
   std::string name_;
   std::string hash_;
   std::string suffix_;
+
+  DISALLOW_COPY_AND_ASSIGN(OutputResource);
 };
 
 }  // namespace net_instaweb

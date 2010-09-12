@@ -31,6 +31,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_FILE_CACHE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_FILE_CACHE_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
@@ -68,6 +69,8 @@ class FileCache : public CacheInterface {
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
   NullMessageHandler message_handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(FileCache);
 };
 
 }  // namespace net_instaweb

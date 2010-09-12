@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_WRITER_FILTER_H_
 
 #include <string.h>
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include <string>
@@ -78,6 +79,8 @@ class HtmlWriterFilter : public HtmlFilter {
   int column_;
   int max_column_;
   int write_errors_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlWriterFilter);
 };
 
 }  // namespace net_instaweb

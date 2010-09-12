@@ -19,6 +19,7 @@
 #include "apr_file_info.h"
 #include "apr_file_io.h"
 #include "apr_pools.h"
+#include "base/basictypes.h"
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -62,6 +63,8 @@ class FileHelper {
  private:
   apr_file_t* const file_;
   const std::string filename_;
+
+  DISALLOW_COPY_AND_ASSIGN(FileHelper);
 };
 
 bool FileHelper::Close(MessageHandler* message_handler) {
@@ -84,6 +87,8 @@ class HtmlWriterInputFile : public FileSystem::InputFile {
   virtual const char* filename() { return helper_.filename().c_str(); }
  private:
   FileHelper helper_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlWriterInputFile);
 };
 
 class HtmlWriterOutputFile : public FileSystem::OutputFile {
@@ -99,6 +104,8 @@ class HtmlWriterOutputFile : public FileSystem::OutputFile {
   virtual const char* filename() { return helper_.filename().c_str(); }
  private:
   FileHelper helper_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlWriterOutputFile);
 };
 
 HtmlWriterInputFile::HtmlWriterInputFile(apr_file_t* file, const char* filename)

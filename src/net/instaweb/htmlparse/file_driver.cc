@@ -97,8 +97,7 @@ bool FileDriver::ParseFile(const char* infilename,
         FileSystem::OutputFile* statsfile =
             file_system_->OpenOutputFile(statsfilename, message_handler);
         if (statsfile != NULL) {
-          FileStatisticsLog statslog =
-              FileStatisticsLog(statsfile, message_handler);
+          FileStatisticsLog statslog(statsfile, message_handler);
           logging_filter_.LogStatistics(&statslog);
           file_system_->Close(statsfile, message_handler);
         } else {

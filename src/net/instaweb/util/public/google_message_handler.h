@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_MESSAGE_HANDLER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_MESSAGE_HANDLER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
 
@@ -27,6 +28,9 @@ namespace net_instaweb {
 // Implementation of an HTML parser message handler that uses Google
 // logging to emit messsages.
 class GoogleMessageHandler : public MessageHandler {
+ public:
+  GoogleMessageHandler() { }
+
  protected:
   virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
 
@@ -36,6 +40,8 @@ class GoogleMessageHandler : public MessageHandler {
  private:
   const std::string& Format(const char* msg, va_list args);
   std::string buffer_;
+
+  DISALLOW_COPY_AND_ASSIGN(GoogleMessageHandler);
 };
 
 }  // namespace net_instaweb

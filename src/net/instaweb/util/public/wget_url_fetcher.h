@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_WGET_URL_FETCHER_H_
 
 #include <stdio.h>
+#include "base/basictypes.h"
 #include <string>
 #include "net/instaweb/util/public/url_fetcher.h"
 
@@ -28,6 +29,7 @@ namespace net_instaweb {
 // Runs 'wget' via popen for blocking URL fetches.
 class WgetUrlFetcher : public UrlFetcher {
  public:
+  WgetUrlFetcher() { }
   virtual ~WgetUrlFetcher();
 
   // TODO(sligocki): Allow protocol version number (e.g. HTTP/1.1)
@@ -40,6 +42,9 @@ class WgetUrlFetcher : public UrlFetcher {
 
   // Default user agent to use.
   static const char kDefaultUserAgent[];
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(WgetUrlFetcher);
 };
 
 }  // namespace net_instaweb

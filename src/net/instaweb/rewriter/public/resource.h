@@ -26,6 +26,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
@@ -108,6 +109,9 @@ class Resource {
   const ContentType* type_;
   HTTPValue value_;  // contains contents and meta-data
   SimpleMetaData meta_data_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Resource);
 };
 
 }  // namespace net_instaweb

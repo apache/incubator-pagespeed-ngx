@@ -21,6 +21,7 @@
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 
 #include <string>
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -55,6 +56,9 @@ class CssTagScannerTest : public testing::Test {
   std::string output_buffer_;
   StringWriter writer_;
   GoogleMessageHandler message_handler_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(CssTagScannerTest);
 };
 
 TEST_F(CssTagScannerTest, TestAbsolutifyUrlsEmpty) {

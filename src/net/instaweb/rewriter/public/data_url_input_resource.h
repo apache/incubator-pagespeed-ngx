@@ -20,6 +20,7 @@
 // pages, but we generate these urls as a result of image inlining and
 // this confuses subsequent filters in certain cases.
 
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/data_url.h"
@@ -77,6 +78,8 @@ class DataUrlInputResource : public Resource {
   const Encoding encoding_;
   const StringPiece encoded_contents_;  // substring of url.
   std::string decoded_contents_;
+
+  DISALLOW_COPY_AND_ASSIGN(DataUrlInputResource);
 };
 
 }  // namespace net_instaweb

@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_FILE_MESSAGE_HANDLER_H_
 
 #include <stdio.h>
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 
 namespace net_instaweb {
@@ -38,6 +39,8 @@ class FileMessageHandler : public MessageHandler {
 
  private:
   FILE* file_;
+
+  DISALLOW_COPY_AND_ASSIGN(FileMessageHandler);
 };
 
 }  // namespace net_instaweb

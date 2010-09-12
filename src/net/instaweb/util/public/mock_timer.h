@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_MOCK_TIMER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_MOCK_TIMER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -39,6 +40,8 @@ class MockTimer : public Timer {
 
  private:
   int64 time_ms_;
+
+  DISALLOW_COPY_AND_ASSIGN(MockTimer);
 };
 
 }  // namespace net_instaweb

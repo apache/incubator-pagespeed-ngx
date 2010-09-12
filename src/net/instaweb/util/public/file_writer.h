@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_FILE_WRITER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_FILE_WRITER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/writer.h"
 
@@ -33,6 +34,8 @@ class FileWriter : public Writer {
   virtual bool Flush(MessageHandler* message_handler);
  private:
   FileSystem::OutputFile* file_;
+
+  DISALLOW_COPY_AND_ASSIGN(FileWriter);
 };
 
 }  // namespace net_instaweb

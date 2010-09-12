@@ -19,14 +19,20 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_STATISTICS_LOG_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_STATISTICS_LOG_H_
 
+#include "base/basictypes.h"
+
 namespace net_instaweb {
 
 class StatisticsLog {
  public:
+  StatisticsLog() { }
   virtual ~StatisticsLog();
   virtual void LogStat(const char *statName, int value) = 0;
   virtual void LogDifference(const char *statName,
                              int value1, int value2) = 0;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(StatisticsLog);
 };
 
 }  // namespace net_instaweb

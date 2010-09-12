@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_FILTER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/base64_util.h"
@@ -110,6 +111,9 @@ class RewriteFilter : public EmptyHtmlFilter {
   RewriteDriver* driver_;
   std::string filter_prefix_;  // Prefix that should be used in front of all
                                 // rewritten URLs
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(RewriteFilter);
 };
 
 }  // namespace net_instaweb

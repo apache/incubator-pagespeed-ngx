@@ -21,6 +21,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
@@ -81,6 +82,8 @@ class ImgRewriteFilter : public RewriteFilter {
   Variable* rewrite_count_;
   Variable* inline_count_;
   Variable* rewrite_saved_bytes_;
+
+  DISALLOW_COPY_AND_ASSIGN(ImgRewriteFilter);
 };
 
 }  // namespace net_instaweb

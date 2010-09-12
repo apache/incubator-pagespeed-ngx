@@ -44,6 +44,8 @@ HtmlRewriterImp::HtmlRewriterImp(PageSpeedServerContext* context,
     inflater_ = new net_instaweb::GzipInflater();
     inflater_->Init();
   }
+
+  LOG(INFO) << "Setting base url to " << base_url;
   rewrite_driver_->SetBaseUrl(base_url);
   // TODO(lsong): Bypass the string buffer, writer data directly to the next
   // apache bucket.

@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_HTML_ATTRIBUTE_QUOTE_REMOVAL_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_HTML_ATTRIBUTE_QUOTE_REMOVAL_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 
 namespace net_instaweb {
@@ -57,6 +58,8 @@ class HtmlAttributeQuoteRemoval : public EmptyHtmlFilter {
   HtmlParse* html_parse_;
   bool needs_no_quotes_[256];  // lookup chars for quotability
   // should be const, but C++ initializer rules are broken.
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlAttributeQuoteRemoval);
 };
 
 }  // namespace net_instaweb

@@ -16,6 +16,7 @@
 
 #include "apr_file_io.h"
 #include "apr_pools.h"
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/util/public/file_system_test.h"
@@ -38,6 +39,8 @@ void AprReportError(MessageHandler* message_handler, const char* filename,
 
 class AprFileSystemTest : public net_instaweb::FileSystemTest {
  protected:
+  AprFileSystemTest() { }
+
   virtual void DeleteRecursively(const net_instaweb::StringPiece& filename) {
     MyDeleteFileRecursively(filename.as_string(), NULL, NULL);
   }
@@ -118,6 +121,8 @@ class AprFileSystemTest : public net_instaweb::FileSystemTest {
   scoped_ptr<AprFileSystem> file_system_;
   apr_pool_t* pool_;
   std::string test_tmpdir_;
+
+  DISALLOW_COPY_AND_ASSIGN(AprFileSystemTest);
 };
 
 TEST_F(AprFileSystemTest, TestWriteRead) {

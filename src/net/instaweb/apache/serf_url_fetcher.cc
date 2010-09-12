@@ -15,6 +15,7 @@
 #include "net/instaweb/apache/serf_url_fetcher.h"
 
 #include <algorithm>
+#include "base/basictypes.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/html_rewriter_config.h"
 #include "net/instaweb/apache/pagespeed_server_context.h"
@@ -38,6 +39,8 @@ class AsyncCallback : public net_instaweb::UrlAsyncFetcher::Callback {
   bool done_;
   bool success_;
   net_instaweb::MessageHandler* message_handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(AsyncCallback);
 };
 
 }  // namespace

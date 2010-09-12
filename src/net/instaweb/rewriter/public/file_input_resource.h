@@ -21,6 +21,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_FILE_INPUT_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_FILE_INPUT_RESOURCE_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/resource.h"
 
 namespace net_instaweb {
@@ -47,6 +48,8 @@ class FileInputResource : public Resource {
  private:
   std::string url_;
   std::string filename_;
+
+  DISALLOW_COPY_AND_ASSIGN(FileInputResource);
 };
 
 }  // namespace net_instaweb

@@ -22,6 +22,7 @@
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_PARSE_TEST_BASE_H_
 
 #include <string>
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
@@ -121,6 +122,9 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   std::string output_buffer_;
   bool added_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HtmlParseTestBaseNoAlloc);
 };
 
 class HtmlParseTestBase : public HtmlParseTestBaseNoAlloc {
@@ -131,6 +135,9 @@ class HtmlParseTestBase : public HtmlParseTestBaseNoAlloc {
   virtual HtmlParse* html_parse() { return &html_parse_; }
 
   HtmlParse html_parse_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HtmlParseTestBase);
 };
 
 }  // namespace net_instaweb

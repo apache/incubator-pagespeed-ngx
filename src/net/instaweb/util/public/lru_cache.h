@@ -21,6 +21,7 @@
 
 #include <list>
 #include <map>
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include <string>
 
@@ -100,6 +101,8 @@ class LRUCache : public CacheInterface {
   size_t num_deletes_;
   EntryList lru_ordered_list_;
   Map map_;
+
+  DISALLOW_COPY_AND_ASSIGN(LRUCache);
 };
 
 }  // namespace net_instaweb

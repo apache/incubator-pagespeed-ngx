@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HTML_REWRITER_HTML_REWRITER_IMP_H_
-#define HTML_REWRITER_HTML_REWRITER_IMP_H_
+#ifndef NET_INSTAWEB_APACHE_HTML_REWRITER_IMP_H_
+#define NET_INSTAWEB_APACHE_HTML_REWRITER_IMP_H_
 
 #include <string>
+#include "base/basictypes.h"
 #include "net/instaweb/apache/html_rewriter.h"
 #include "net/instaweb/util/public/string_writer.h"
 
@@ -67,8 +68,10 @@ class HtmlRewriterImp {
   net_instaweb::RewriteDriver* rewrite_driver_;
   net_instaweb::StringWriter string_writer_;
   net_instaweb::GzipInflater* inflater_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlRewriterImp);
 };
 
 }  // namespace html_rewriter
 
-#endif  // HTML_REWRITER_HTML_REWRITER_IMP_H_
+#endif  // NET_INSTAWEB_APACHE_HTML_REWRITER_IMP_H_

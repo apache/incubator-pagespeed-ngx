@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HTML_REWRITER_HTML_REWRITER_H_
-#define HTML_REWRITER_HTML_REWRITER_H_
+#ifndef NET_INSTAWEB_APACHE_HTML_REWRITER_H_
+#define NET_INSTAWEB_APACHE_HTML_REWRITER_H_
 
 #include <string>
+#include "base/basictypes.h"
 
 struct request_rec;
 
@@ -57,8 +58,10 @@ class HtmlRewriter {
   const std::string& set_url(const std::string& url);
  private:
   HtmlRewriterImp* html_rewriter_imp_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlRewriter);
 };
 
 }  // namespace html_rewriter
 
-#endif  // HTML_REWRITER_HTML_REWRITER_H_
+#endif  // NET_INSTAWEB_APACHE_HTML_REWRITER_H_

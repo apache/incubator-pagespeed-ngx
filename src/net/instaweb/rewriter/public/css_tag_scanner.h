@@ -21,6 +21,7 @@
 
 #include <vector>
 
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/atom.h"
@@ -51,6 +52,8 @@ class CssTagScanner {
   Atom s_type_;
   Atom s_rel_;
   Atom s_media_;
+
+  DISALLOW_COPY_AND_ASSIGN(CssTagScanner);
 };
 
 }  // namespace net_instaweb

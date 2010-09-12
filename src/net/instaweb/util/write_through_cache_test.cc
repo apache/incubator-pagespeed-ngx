@@ -19,6 +19,8 @@
 // Unit-test the write-through cache
 
 #include "net/instaweb/util/public/write_through_cache.h"
+
+#include "base/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -57,6 +59,9 @@ class WriteThroughCacheTest : public testing::Test {
   LRUCache* small_cache_;
   LRUCache* big_cache_;
   WriteThroughCache write_through_cache_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(WriteThroughCacheTest);
 };
 
 // Simple flow of putting in an item, getting it, deleting it.

@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_TAG_SCANNER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_TAG_SCANNER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
@@ -37,6 +38,8 @@ class ResourceTagScanner {
   CssTagScanner css_tag_scanner_;
   ImgTagScanner img_tag_scanner_;
   ScriptTagScanner script_tag_scanner_;
+
+  DISALLOW_COPY_AND_ASSIGN(ResourceTagScanner);
 };
 
 }  // namespace net_instaweb

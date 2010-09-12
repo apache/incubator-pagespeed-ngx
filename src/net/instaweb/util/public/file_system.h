@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_FILE_SYSTEM_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_FILE_SYSTEM_H_
 
+#include "base/basictypes.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 
@@ -39,6 +40,16 @@ class BoolOrError {
  public:
   BoolOrError() : choice_(kIsError) { }
   explicit BoolOrError(bool t_or_f) : choice_(t_or_f ? kIsTrue : kIsFalse) { }
+
+  // Intended to be passed by value; explicitly support copy & assign
+  BoolOrError(const BoolOrError& src) : choice_(src.choice_) { }
+  BoolOrError& operator=(const BoolOrError& src) {
+    if (&src != this) {
+      choice_ = src.choice_;
+    }
+    return *this;
+  }
+
   bool is_false() const { return choice_ == kIsFalse; }
   bool is_true() const { return choice_ == kIsTrue; }
   bool is_error() const { return choice_ == kIsError; }

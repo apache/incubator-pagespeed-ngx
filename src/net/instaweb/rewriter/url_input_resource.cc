@@ -18,6 +18,8 @@
 //         jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/rewriter/public/url_input_resource.h"
+
+#include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/http_value.h"
@@ -65,6 +67,9 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
 
  protected:
   MessageHandler* message_handler_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(UrlResourceFetchCallback);
 };
 
 class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
@@ -93,6 +98,8 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
   HTTPCache* http_cache_;
   HTTPValue http_value_;
   SimpleMetaData response_headers_;
+
+  DISALLOW_COPY_AND_ASSIGN(UrlReadIfCachedCallback);
 };
 
 bool UrlInputResource::ReadIfCached(MessageHandler* handler) {
@@ -135,6 +142,8 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
  private:
   UrlInputResource* resource_;
   Resource::AsyncCallback* callback_;
+
+  DISALLOW_COPY_AND_ASSIGN(UrlReadAsyncFetchCallback);
 };
 
 void UrlInputResource::ReadAsync(AsyncCallback* callback,

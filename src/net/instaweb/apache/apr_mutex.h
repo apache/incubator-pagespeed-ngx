@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HTML_REWRITER_APR_MUTEX_H_
-#define HTML_REWRITER_APR_MUTEX_H_
+#ifndef NET_INSTAWEB_APACHE_APR_MUTEX_H_
+#define NET_INSTAWEB_APACHE_APR_MUTEX_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 
 // Forward declaration.
@@ -31,8 +32,10 @@ class AprMutex : public net_instaweb::AbstractMutex {
   virtual void Unlock();
  private:
   apr_thread_mutex_t* thread_mutex_;
+
+  DISALLOW_COPY_AND_ASSIGN(AprMutex);
 };
 
 }  // namespace html_rewriter
 
-#endif  // HTML_REWRITER_APR_MUTEX_H_
+#endif  // NET_INSTAWEB_APACHE_APR_MUTEX_H_

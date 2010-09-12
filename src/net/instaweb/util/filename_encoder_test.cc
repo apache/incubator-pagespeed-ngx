@@ -20,6 +20,7 @@
 
 #include <string>
 #include <vector>
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace {
@@ -38,6 +39,9 @@ namespace net_instaweb {
 //   2. The URL can be recovered from the filename
 //   3. No invalid filename characters are present.
 class FilenameEncoderTest : public ::testing::Test {
+ public:
+  FilenameEncoderTest() { }
+
  protected:
   void CheckSegmentLength(const StringPiece& escaped_word) {
     std::vector<StringPiece> components;
@@ -68,6 +72,9 @@ class FilenameEncoderTest : public ::testing::Test {
   }
 
   FilenameEncoder encoder;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(FilenameEncoderTest);
 };
 
 TEST_F(FilenameEncoderTest, DoesNotEscapeAlphanum) {

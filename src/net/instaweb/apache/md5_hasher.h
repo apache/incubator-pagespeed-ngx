@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HTML_REWRITER_MD5_HASHER_H_
-#define HTML_REWRITER_MD5_HASHER_H_
+#ifndef NET_INSTAWEB_APACHE_MD5_HASHER_H_
+#define NET_INSTAWEB_APACHE_MD5_HASHER_H_
 
 #include <string>
 
+#include "base/basictypes.h"
 #include "base/md5.h"
 #include "net/instaweb/util/public/hasher.h"
 
@@ -26,6 +27,7 @@ namespace html_rewriter {
 
 class Md5Hasher : public Hasher {
  public:
+  Md5Hasher() { }
   virtual ~Md5Hasher();
 
   // Interface to accummulate a hash of data.
@@ -36,8 +38,10 @@ class Md5Hasher : public Hasher {
   virtual void ComputeHash(std::string* hash);
  private:
   MD5Context ctx_;
+
+  DISALLOW_COPY_AND_ASSIGN(Md5Hasher);
 };
 
 }  // namespace html_rewriter
 
-#endif  // HTML_REWRITER_MD5_HASHER_H_
+#endif  // NET_INSTAWEB_APACHE_MD5_HASHER_H_

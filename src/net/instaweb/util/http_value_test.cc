@@ -19,6 +19,7 @@
 // Unit-test the lru cache
 
 #include "net/instaweb/util/public/http_value.h"
+#include "base/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include <string>
@@ -35,6 +36,8 @@ namespace net_instaweb {
 
 class HTTPValueTest : public testing::Test {
  protected:
+  HTTPValueTest() { }
+
   void FillMetaData(MetaData* meta_data) {
     meta_data->SetStatusAndReason(HttpStatus::kOK);
     meta_data->set_major_version(1);
@@ -50,6 +53,9 @@ class HTTPValueTest : public testing::Test {
   }
 
   GoogleMessageHandler message_handler_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(HTTPValueTest);
 };
 
 TEST_F(HTTPValueTest, Empty) {

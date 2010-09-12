@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <set>
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -47,6 +48,7 @@ namespace net_instaweb {
 // whether it's better to use separate symbol tables in each thread.
 template<class SymbolCompare> class SymbolTable {
  public:
+  SymbolTable() { }
   ~SymbolTable() {
     while (!string_set_.empty()) {
       // Note: This should perform OK for rb-trees, but will perform
@@ -76,11 +78,21 @@ template<class SymbolCompare> class SymbolTable {
  private:
   typedef std::set<const char*, SymbolCompare> SymbolSet;
   SymbolSet string_set_;
+
+  DISALLOW_COPY_AND_ASSIGN(SymbolTable);
 };
 
 class SymbolTableInsensitive : public SymbolTable<CharStarCompareInsensitive> {
+ public:
+  SymbolTableInsensitive() { }
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SymbolTableInsensitive);
 };
 class SymbolTableSensitive : public SymbolTable<CharStarCompareSensitive> {
+ public:
+  SymbolTableSensitive() { }
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SymbolTableSensitive);
 };
 
 }  // namespace net_instaweb

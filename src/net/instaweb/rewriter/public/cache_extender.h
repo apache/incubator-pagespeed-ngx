@@ -21,6 +21,7 @@
 
 #include <vector>
 
+#include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/util/public/atom.h"
@@ -56,6 +57,8 @@ class CacheExtender : public RewriteFilter {
   ResourceTagScanner tag_scanner_;
   Variable* extension_count_;
   Variable* not_cacheable_count_;
+
+  DISALLOW_COPY_AND_ASSIGN(CacheExtender);
 };
 
 }  // namespace net_instaweb

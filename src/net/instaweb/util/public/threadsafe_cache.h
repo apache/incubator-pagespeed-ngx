@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_THREADSAFE_CACHE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_THREADSAFE_CACHE_H_
 
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include <string>
@@ -47,6 +48,8 @@ class ThreadsafeCache : public CacheInterface {
  private:
   scoped_ptr<CacheInterface> cache_;
   AbstractMutex* mutex_;
+
+  DISALLOW_COPY_AND_ASSIGN(ThreadsafeCache);
 };
 
 }  // namespace net_instaweb

@@ -20,11 +20,12 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_MUTEX_H_
 
 #include <pthread.h>
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 
 namespace net_instaweb {
 
-// Implementation of AbstractMutext for Pthread mutexes.
+// Implementation of AbstractMutex for Pthread mutexes.
 class PthreadMutex : public AbstractMutex {
  public:
   PthreadMutex();
@@ -33,6 +34,8 @@ class PthreadMutex : public AbstractMutex {
   virtual void Unlock();
  private:
   pthread_mutex_t mutex_;
+
+  DISALLOW_COPY_AND_ASSIGN(PthreadMutex);
 };
 
 }  // namespace net_instaweb

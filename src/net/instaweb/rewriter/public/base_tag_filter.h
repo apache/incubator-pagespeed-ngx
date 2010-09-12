@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_BASE_TAG_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_BASE_TAG_FILTER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
@@ -54,6 +55,8 @@ class BaseTagFilter : public EmptyHtmlFilter {
   bool found_head_;
   std::string base_url_;
   HtmlParse* html_parse_;
+
+  DISALLOW_COPY_AND_ASSIGN(BaseTagFilter);
 };
 
 }  // namespace net_instaweb

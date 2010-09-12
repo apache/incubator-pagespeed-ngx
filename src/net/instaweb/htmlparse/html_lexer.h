@@ -22,6 +22,7 @@
 #include <stdarg.h>
 #include <set>
 #include <vector>
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/printf_format.h"
 #include <string>
@@ -197,6 +198,8 @@ class HtmlLexer {
   AtomSet non_brief_terminated_tags_;
   AtomSet literal_tags_;
   std::vector<HtmlElement*> element_stack_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlLexer);
 };
 
 }  // namespace net_instaweb

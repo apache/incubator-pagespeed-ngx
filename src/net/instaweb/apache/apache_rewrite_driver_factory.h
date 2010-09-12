@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HTML_REWRITER_APACHE_REWRITE_DRIVER_FACTORY_H_
-#define HTML_REWRITER_APACHE_REWRITE_DRIVER_FACTORY_H_
+#ifndef NET_INSTAWEB_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
+#define NET_INSTAWEB_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
 
 #include <stdio.h>
 #include <set>
 #include <vector>
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 
@@ -82,8 +83,10 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   html_rewriter::SerfUrlAsyncFetcher* serf_url_async_fetcher_;
   int64 lru_cache_kb_per_process_;
   int64 lru_cache_byte_limit_;
+
+  DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };
 
 }  // namespace net_instaweb
 
-#endif  // HTML_REWRITER_APACHE_REWRITE_DRIVER_FACTORY_H_
+#endif  // NET_INSTAWEB_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_

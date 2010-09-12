@@ -17,6 +17,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/cache_url_async_fetcher.h"
+
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/cache_url_fetcher.h"
 #include "net/instaweb/util/public/http_cache.h"
 #include "net/instaweb/util/public/http_value.h"
@@ -74,6 +76,8 @@ class ForwardingAsyncFetch : public CacheUrlFetcher::AsyncFetch {
   Callback* callback_;
   Writer* client_writer_;
   MetaData* response_headers_;
+
+  DISALLOW_COPY_AND_ASSIGN(ForwardingAsyncFetch);
 };
 
 }  // namespace

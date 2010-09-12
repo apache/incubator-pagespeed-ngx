@@ -31,6 +31,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 
 #include <vector>
+#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -194,6 +195,8 @@ class RewriteDriverFactory {
   scoped_ptr<HTTPCache> http_cache_;
   scoped_ptr<CacheUrlFetcher> cache_fetcher_;
   scoped_ptr<CacheUrlAsyncFetcher> cache_async_fetcher_;
+
+  DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };
 
 }  // namespace net_instaweb

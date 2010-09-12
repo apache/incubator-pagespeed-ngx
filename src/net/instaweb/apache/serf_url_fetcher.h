@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HTML_REWRITER_SERF_URL_FETCHER_H_
-#define HTML_REWRITER_SERF_URL_FETCHER_H_
+#ifndef NET_INSTAWEB_APACHE_SERF_URL_FETCHER_H_
+#define NET_INSTAWEB_APACHE_SERF_URL_FETCHER_H_
 
 #include <string>
+#include "base/basictypes.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/util/public/url_fetcher.h"
 
@@ -43,8 +44,10 @@ class SerfUrlFetcher : public UrlFetcher {
  private:
   PageSpeedServerContext* context_;
   SerfUrlAsyncFetcher* async_fetcher_;
+
+  DISALLOW_COPY_AND_ASSIGN(SerfUrlFetcher);
 };
 
 }  // namespace html_rewriter
 
-#endif  // HTML_REWRITER_SERF_URL_FETCHER_H_
+#endif  // NET_INSTAWEB_APACHE_SERF_URL_FETCHER_H_

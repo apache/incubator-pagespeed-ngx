@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMG_TAG_SCANNER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMG_TAG_SCANNER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/atom.h"
 
@@ -41,6 +42,8 @@ class ImgTagScanner {
  private:
   const Atom s_img_;
   const Atom s_src_;
+
+  DISALLOW_COPY_AND_ASSIGN(ImgTagScanner);
 };
 
 }  // namespace net_instaweb

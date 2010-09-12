@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_CODE_BLOCK_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_CODE_BLOCK_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -96,6 +97,8 @@ class JavascriptCodeBlock {
   bool rewritten_;
   std::string rewritten_code_;
   StringPiece output_code_;
+
+  DISALLOW_COPY_AND_ASSIGN(JavascriptCodeBlock);
 };
 
 }  // namespace net_instaweb
