@@ -127,6 +127,16 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     }
   }
 
+  int CountCompletedFetches(size_t begin, size_t end) {
+    int completed = 0;
+    for (size_t idx = begin; idx < end; ++idx) {
+      if (callbacks_[idx]->IsDone()) {
+        ++completed;
+      }
+    }
+    return completed;
+  }
+
   void ValidateFetches(size_t begin, size_t end) {
     for (size_t idx = begin; idx < end; ++idx) {
       ASSERT_TRUE(callbacks_[idx]->IsDone());
@@ -213,6 +223,32 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitThreeThreaded) {
   serf_url_async_fetcher_->WaitForInProgressFetches(
       kWaitTimeoutMs, &message_handler_,
       html_rewriter::SerfUrlAsyncFetcher::kThreadedOnly);
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreadedAsync) {
+  StartFetches(0, 1, true);
+  serf_url_async_fetcher_->WaitForInProgressFetches(
+      10 /* milliseconds */, &message_handler_,
+      html_rewriter::SerfUrlAsyncFetcher::kThreadedOnly);
+  StartFetches(1, 3, true);
+
+  // In this test case, we are not going to call the explicit threaded
+  // wait function, WaitForInProgressFetches.  We have initiated async
+  // fetches and we are hoping they will complete within a certain amount
+  // of time.  If the system is running well then we they will finish
+  // within a 100ms or so, so we'll loop in 50ms sleep intervals until
+  // we hit a max.  We'll give it 5 seconds before declaring failure.
+  const int kMaxSeconds = 5;
+  const int kPollTimeUs = 50000;
+  const int kPollsPerSecond = 1000000 / kPollTimeUs;
+  const int kMaxIters = kMaxSeconds * kPollsPerSecond;
+  int completed = 0;
+  for (int i = 0; (completed < 3) && (i < kMaxIters); ++i) {
+    usleep(kPollTimeUs);
+    completed = CountCompletedFetches(0, 3);
+  }
+  ASSERT_EQ(3, completed) << "Async fetches times out before completing";
+  EXPECT_TRUE(TestFetch(0, 3));
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestWaitOneThreadedTwoSync) {

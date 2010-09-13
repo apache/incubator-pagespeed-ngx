@@ -14,22 +14,21 @@
  * limitations under the License.
  */
 
-// Author: lsong@google.com (Libo Song)
+// Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/simple_stats.h"
 
 namespace net_instaweb {
 
-NullMessageHandler::~NullMessageHandler() {
+SimpleStatsVariable::~SimpleStatsVariable() {
 }
 
-void NullMessageHandler::MessageVImpl(MessageType type, const char* msg,
-                                      va_list args) {
+SimpleStats::~SimpleStats() {
 }
 
-void NullMessageHandler::FileMessageVImpl(MessageType type, const char* file,
-                                          int line, const char* msg,
-                                          va_list args) {
+SimpleStatsVariable* SimpleStats::NewVariable(
+    const StringPiece& name, int index) {
+  return new SimpleStatsVariable;
 }
 
 }  // namespace net_instaweb

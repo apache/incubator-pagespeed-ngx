@@ -33,6 +33,7 @@
 #include <vector>
 #include <queue>
 #include "net/instaweb/util/public/base64_util.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -62,10 +63,12 @@ struct CompareByAtime {
 }  // namespace for structs used only in Clean().
 
 FileCache::FileCache(const std::string& path, FileSystem* file_system,
-                     FilenameEncoder* filename_encoder)
+                     FilenameEncoder* filename_encoder,
+                     MessageHandler* handler)
     : path_(path),
       file_system_(file_system),
-      filename_encoder_(filename_encoder) {
+      filename_encoder_(filename_encoder),
+      message_handler_(handler) {
 }
 
 FileCache::~FileCache() {
@@ -73,27 +76,31 @@ FileCache::~FileCache() {
 
 bool FileCache::Get(const std::string& key, SharedString* value) {
   std::string filename;
-  if (!EncodeFilename(key, &filename)) {
-    return false;
+  bool ret = EncodeFilename(key, &filename);
+  if (ret) {
+    std::string* buffer = value->get();
+
+    // Suppress read errors.  Note that we want to show Write errors,
+    // as they likely indicate a permissions or disk-space problem
+    // which is best not eaten.  It's cheap enough to construct
+    // a NullMessageHandler on the stack when we want one.
+    NullMessageHandler null_handler;
+    ret = file_system_->ReadFile(filename.c_str(), buffer, &null_handler);
   }
-  std::string* buffer = value->get();
-  if (!file_system_->ReadFile(filename.c_str(), buffer, &message_handler_)) {
-    return false;
-  }
-  return true;
+  return ret;
 }
 
 void FileCache::Put(const std::string& key, SharedString* value) {
   std::string filename;
-  if (!EncodeFilename(key, &filename)) {
-    return;
+  if (EncodeFilename(key, &filename)) {
+    const std::string& buffer = **value;
+    std::string temp_filename;
+    if (file_system_->WriteTempFile(filename.c_str(), buffer,
+                                    &temp_filename, message_handler_)) {
+      file_system_->RenameFile(temp_filename.c_str(), filename.c_str(),
+                               message_handler_);
+    }
   }
-  const std::string& buffer = **value;
-  std::string temp_filename;
-  file_system_->WriteTempFile(filename.c_str(), buffer, &temp_filename,
-                              &message_handler_);
-  file_system_->RenameFile(temp_filename.c_str(), filename.c_str(),
-                           &message_handler_);
 }
 
 void FileCache::Delete(const std::string& key) {
@@ -101,7 +108,7 @@ void FileCache::Delete(const std::string& key) {
   if (!EncodeFilename(key, &filename)) {
     return;
   }
-  file_system_->RemoveFile(filename.c_str(), &message_handler_);
+  file_system_->RemoveFile(filename.c_str(), message_handler_);
   return;
 }
 
@@ -120,7 +127,8 @@ CacheInterface::KeyState FileCache::Query(const std::string& key) {
   if (!EncodeFilename(key, &filename)) {
     return CacheInterface::kNotFound;
   }
-  if (file_system_->Exists(filename.c_str(), &message_handler_).is_true()) {
+  NullMessageHandler null_handler;
+  if (file_system_->Exists(filename.c_str(), &null_handler).is_true()) {
     return CacheInterface::kAvailable;
   }
   return CacheInterface::kNotFound;
@@ -131,7 +139,7 @@ bool FileCache::Clean(int64 target_size) {
   int64 file_size;
   int64 file_atime;
   int64 total_size = 0;
-  if (!file_system_->RecursiveDirSize(path_, &total_size, &message_handler_)) {
+  if (!file_system_->RecursiveDirSize(path_, &total_size, message_handler_)) {
     return false;
   }
   if (total_size < target_size * 1.25) {
@@ -139,7 +147,7 @@ bool FileCache::Clean(int64 target_size) {
   }
 
   bool everything_ok = true;
-  everything_ok &= file_system_->ListContents(path_, &files, &message_handler_);
+  everything_ok &= file_system_->ListContents(path_, &files, message_handler_);
 
   // We will now iterate over the entire directory and its children,
   // keeping a heap of files to be deleted.  Our goal is to delete the
@@ -155,19 +163,19 @@ bool FileCache::Clean(int64 target_size) {
   for (size_t i = 0; i < files.size(); i++) {
     std::string file_name = files[i];
     BoolOrError isDir = file_system_->IsDir(file_name.c_str(),
-                                            &message_handler_);
+                                            message_handler_);
     if (isDir.is_error()) {
       return false;
     } else if (isDir.is_true()) {
       // add files in this directory to the end of the vector, to be
       // examined later.
       everything_ok &= file_system_->ListContents(file_name, &files,
-                                                  &message_handler_);
+                                                  message_handler_);
     } else {
       everything_ok &= file_system_->Size(file_name, &file_size,
-                                          &message_handler_);
+                                          message_handler_);
       everything_ok &= file_system_->Atime(file_name, &file_atime,
-                                           &message_handler_);
+                                           message_handler_);
       // If our heap is still too small; add everything in.
       // Otherwise, add the file in only if it's older than the newest
       // thing in the heap.
@@ -189,7 +197,7 @@ bool FileCache::Clean(int64 target_size) {
   }
   for (size_t i = heap.size(); i > 0; i--) {
     everything_ok &= file_system_->RemoveFile(heap.top()->name_.c_str(),
-                                              &message_handler_);
+                                              message_handler_);
     delete heap.top();
     heap.pop();
   }

@@ -29,19 +29,27 @@ MessageHandler::~MessageHandler() {
 }
 
 const char* MessageHandler::MessageTypeToString(const MessageType type) const {
+  const char* type_string = NULL;
+
+  // Don't include a 'default:' clause so that the compiler can tell us when
+  // we are missing an enum value.  Intead use a null check for 'type_string' to
+  // indicate a data corruption that avoids hitting any of the cases.
   switch (type) {
     case kInfo:
-      return "Info";
+      type_string = "Info";
+      break;
     case kWarning:
-      return "Warning";
+      type_string = "Warning";
+      break;
     case kError:
-      return "Error";
+      type_string = "Error";
+      break;
     case kFatal:
-      return "Fatal";
-    default:
-      CHECK(false);
-      return "INVALID MessageType!";
+      type_string = "Fatal";
+      break;
   }
+  CHECK(type_string != NULL) << "INVALID MessageType!";
+  return type_string;
 }
 
 void MessageHandler::Message(MessageType type, const char* msg, ...) {

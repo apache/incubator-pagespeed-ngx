@@ -24,6 +24,7 @@
 #include <vector>
 #include <string>
 
+#include <stdlib.h>
 #include "base/string_number_conversions.h"
 #include "base/string_piece.h"
 #include "base/string_util.h"
@@ -38,7 +39,12 @@ inline std::string IntegerToString(int i) {
 }
 
 inline bool StringToInt(const char* in, int* out) {
-  return base::StringToInt(in, out);
+  // Chromium lacks StringToInt(const char*...).
+  char* endptr = NULL;
+  long long_val = strtol(const_cast<char*>(in), &endptr, 10);
+  *out = long_val;
+  return ((endptr != NULL) && (*endptr == '\0') &&
+          (long_val <= INT_MAX) && (long_val >= INT_MIN));
 }
 
 inline bool StringToInt(const std::string& in, int* out) {

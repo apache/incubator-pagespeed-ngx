@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO(jmarantz): Avoid initiating fetches for resources already in flight.
+// The challenge is that we would want to call all the callbacks that indicated
+// interest in a particular URL once the callback completed.  Alternatively,
+// this could be done in a level above the URL fetcher.
+
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 
 #include <algorithm>
@@ -289,7 +294,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
       SerfUrlAsyncFetcher(parent, proxy),
       active_mutex_(pool_),
       initiate_mutex_(pool_),
-      need_wait_(true),
+      active_fetches_empty_(true),
       terminate_mutex_(pool_),
       thread_done_(false) {
     // Before starting the thread, lock the active mutex so SerfThread() doesn't
@@ -320,10 +325,10 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   void InitiateFetch(SerfFetch* fetch) {
     net_instaweb::ScopedMutex lock(&initiate_mutex_);
     initiate_fetches_.push_back(fetch);
-    if (need_wait_) {
+    if (active_fetches_empty_) {
       SERF_DEBUG(LOG(WARNING) << "Unlocking threaded fetcher");
       active_mutex_.Unlock();
-      need_wait_ = false;
+      active_fetches_empty_ = false;
     }
   }
 
@@ -369,13 +374,12 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
 
   bool NeedWait() {
     net_instaweb::ScopedMutex lock(&initiate_mutex_);
-    return need_wait_;
+    return active_fetches_empty_ && initiate_fetches_.empty();
   }
 
   void WaitForActiveFetches() {
     SERF_DEBUG(LOG(WARNING) << "Waiting for a fetch to activate");
-    active_mutex_.Lock();
-    active_mutex_.Unlock();
+    net_instaweb::ScopedMutex lock(&active_mutex_);
     SERF_DEBUG(LOG(WARNING) << "Found a fetch");
   }
 
@@ -400,7 +404,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
         net_instaweb::ScopedMutex lock(&initiate_mutex_);
         SERF_DEBUG(LOG(WARNING) << "Threaded Fetches exhausted, ...locking");
         active_mutex_.Lock();
-        need_wait_ = true;
+        active_fetches_empty_ = true;
       } else {
         SERF_DEBUG(LOG(WARNING) << "Still looking at "
                    << num_outstanding_fetches << " fetches");
@@ -413,14 +417,14 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
 
   AprMutex active_mutex_;    // Prevents thread from spinning with no data.
 
-  AprMutex initiate_mutex_;  // protectes initiate_fetches_, need_wait_
+  AprMutex initiate_mutex_;  // protects initiate_fetches_ active_fetches_empty_
   std::vector<SerfFetch*> initiate_fetches_;
 
   // image of active_fetches_.empty() for mainline to determine
   // whether thread is idle.  We don't want to make the parent acquire
   // mutex_, which protects active_fetches_, because that is locked
   // for the entire duration of a Poll, which could be 500ms.
-  bool need_wait_;
+  bool active_fetches_empty_;
 
   AprMutex terminate_mutex_;  // Allows parent to block till thread exits
   bool thread_done_;
@@ -543,6 +547,7 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
       pool_, url, request_headers, response_headers, fetched_content_writer,
       message_handler, callback);
   if (callback->EnableThreaded()) {
+    LOG(WARNING) << "Initiating async fetch for " << url;
     threaded_fetcher_->InitiateFetch(fetch);
   } else {
     net_instaweb::ScopedMutex mutex(mutex_);

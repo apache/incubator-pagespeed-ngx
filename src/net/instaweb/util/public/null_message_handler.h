@@ -19,17 +19,25 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_NULL_MESSAGE_HANDLER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_NULL_MESSAGE_HANDLER_H_
 
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 
 namespace net_instaweb {
 
 // Implementation of a message handler that does nothing.
 class NullMessageHandler : public MessageHandler {
+ public:
+  NullMessageHandler() {}
+  virtual ~NullMessageHandler();
+
  protected:
   virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
 
   virtual void FileMessageVImpl(MessageType type, const char* filename,
                                 int line, const char* msg, va_list args);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(NullMessageHandler);
 };
 
 }  // namespace net_instaweb

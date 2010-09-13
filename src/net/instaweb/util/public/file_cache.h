@@ -35,21 +35,16 @@
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
-#include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include <string>
 
 namespace net_instaweb {
 
 // Simple C++ implementation of file cache.
-//
-// Also of note: the Get interface allows for streaming.  To get into
-// a std::string, use a StringWriter.
-//
-// The Put interface does not currently stream, but this should be added.
 class FileCache : public CacheInterface {
  public:
   FileCache(const std::string& path, FileSystem* file_system,
-            FilenameEncoder* filename_encoder);
+            FilenameEncoder* filename_encoder, MessageHandler* handler);
   virtual ~FileCache();
 
   virtual bool Get(const std::string& key, SharedString* value);
@@ -68,7 +63,7 @@ class FileCache : public CacheInterface {
   std::string path_;
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
-  NullMessageHandler message_handler_;
+  MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(FileCache);
 };
