@@ -27,6 +27,7 @@
       },
       'include_dirs': [
         '<(gflags_gen_arch_root)/src',  # For config.h
+        '<(gflags_gen_arch_root)/include',  # For configured files.
         'src',  # For everything else.
         ],
       'sources': [
