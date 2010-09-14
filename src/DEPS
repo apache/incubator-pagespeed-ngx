@@ -34,7 +34,9 @@ vars = {
   "opencv_src": "https://code.ros.org/svn/opencv/tags/2.1",
   "opencv_revision": "@head",
   "gflags_root": "http://google-gflags.googlecode.com/svn/tags/gflags-1.3/src",
+  "gflags_revision": "@head",
   "google_sparsehash_root": "http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.8.1/src",
+  "google_sparsehash_revision": "@head",
 }
 
 deps = {
@@ -139,8 +141,9 @@ deps = {
   "src/third_party/apache/httpd/src/include": From(Var("mod_spdy_deps_root")),
   "src/third_party/apache/httpd/src/os": From(Var("mod_spdy_deps_root")),
 
-  "src/third_party/gflags/src": Var("gflags_root"),
-  "src/third_party/google-sparsehash/src": Var("google_sparsehash_root"),
+  "src/third_party/gflags/src": Var("gflags_root") + Var("gflags_revision"),
+  "src/third_party/google-sparsehash/src":
+    Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
 }
 
 
