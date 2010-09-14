@@ -22,7 +22,8 @@
       'type': 'none',
       'direct_dependent_settings': {
         'include_dirs': [
-          '<(sparsehash_gen_arch_root)/include', # To catch #includes
+          '<(sparsehash_gen_arch_root)/include', # For sparseconfig.h
+	  'src',  # For everything else.
         ],
       },
     },
