@@ -26,9 +26,10 @@
 #    (b) Run "sudo make install" to install them automatically.
 #
 #
-# To install Instaweb properly, we need to know, as variables specified on
-# the make command line.  These all have defaults, which will often need to
-# be changed.
+# To install Instaweb properly, we need to know the locations of
+# Apache configuration scripts and binaries.  These can are specified
+# as Makefile variables which can be overridden on the command line.
+# They have defaults, which will often need to be changed.
 
 
 # The hostname used in URLs to find this Apache server.  This may be
@@ -94,17 +95,29 @@ echo_vars:
 	@echo "   STAGING_DIR=$(STAGING_DIR)"
 
 
+# In some Linux distributions, such as Ubuntu, there are two commands
+# in the default root config file:
+#    Include /etc/apache2/modes-enabled/*.load
+#    Include /etc/apache2/modes-enabled/*.conf
+# we need to write a one-line '.load' file and put that and our '.conf' file
+# into .../mods-enabled.
+#
+# In other distributions, such as CentOS, there is an 'Include DIR/*.conf',
+# but there is no implicit loading of modules, so we write our Load line
+# directly into our config file
+
 ifeq ($(MODS_ENABLED_DIR),)
 
-# The installation directory for configuration files (*.conf)
-APACHE_CONF = $(APACHE_ROOT)/conf
+# This is a CentOS-like installation, where there is no explicit .load
+# file, and we instead pre-pend the LoadModule command to the .conf file.
+APACHE_CONF = $(APACHE_ROOT)/conf.d
+CONF_SOURCES = $(STAGING_DIR)/instaweb.load $(STAGING_DIR)/instaweb.conf
 
 else
 
-MODS_ENABLED_STAGING_COMMANDS = \
-	echo "LoadModule instaweb_module $(APACHE_MODULES)/mod_instaweb.so" \
-	 	> $(STAGING_DIR)/instaweb.load
-
+# This is an Ubuntu-like installation, where the .load files are placed
+# separately into a mods-enabled directory, and the .conf file is loaded
+# independently.
 MODS_ENABLED_INSTALL_COMMANDS = \
 	cp $(STAGING_DIR)/instaweb.load $(MODS_ENABLED_DIR) ; \
 	rm -f $(MODS_ENABLED_DIR)/headers.load ; \
@@ -113,15 +126,18 @@ MODS_ENABLED_INSTALL_COMMANDS = \
 	cd $(MODS_ENABLED_DIR) && ln -s ../mods-available/deflate.load
 
 APACHE_CONF = $(MODS_ENABLED_DIR)
+CONF_SOURCES = $(STAGING_DIR)/instaweb.conf
 
 endif
 
 
 # Generate a configuration file and copy it to the staging area.
-# Also copy the example tree, and the build Apache module
-staging: echo_vars
+# Also copy the example tree, and the built Apache module
+staging:
 	rm -rf $(STAGING_DIR)
 	mkdir -p $(STAGING_DIR)
+	echo "LoadModule instaweb_module $(APACHE_MODULES)/mod_instaweb.so" \
+	 	> $(STAGING_DIR)/instaweb.load
 	$(MODS_ENABLED_STAGING_COMMANDS)
 	sed -e s@/HOSTNAME/@/$(HOSTNAME)/@g \
             -e s@APACHE_DOC_ROOT@$(APACHE_DOC_ROOT)@g \
@@ -133,11 +149,12 @@ staging: echo_vars
 
 # To install the Instaweb configuration into the system, you must
 # run this as root, or under sudo.
-install : echo_vars instaweb_file_root
+install : instaweb_file_root
 	$(MODS_ENABLED_INSTALL_COMMANDS)
-	cp $(STAGING_DIR)/instaweb.conf $(APACHE_CONF)
+	cat $(CONF_SOURCES) > $(APACHE_CONF)/instaweb.conf
 	rm -rf $(APACHE_DOC_ROOT)/instaweb_example
 	cp -r $(STAGING_DIR)/instaweb_example $(APACHE_DOC_ROOT)
+	chown -R $(APACHE_USER) $(APACHE_DOC_ROOT)/instaweb_example
 	cp $(STAGING_DIR)/mod_instaweb.so $(APACHE_MODULES)
 
 instaweb_file_root :
@@ -145,7 +162,7 @@ instaweb_file_root :
 	mkdir -p $(INSTAWEB_FILE_ROOT)/files
 	chown -R $(APACHE_USER) $(INSTAWEB_FILE_ROOT)
 
-flush :
+flush_disk_cache :
 	rm -rf $(INSTAWEB_FILE_ROOT)
 	$(MAKE) INSTAWEB_FILE_ROOT=$(INSTAWEB_FILE_ROOT) \
 		APACHE_USER=$(APACHE_USER) instaweb_file_root
@@ -160,7 +177,27 @@ restart : staging
 	    STAGING_DIR=$(STAGING_DIR) \
 	    APACHE_CONF=$(APACHE_CONF) \
 	    APACHE_MODULES=$(APACHE_MODULES) \
-	    MODS_ENABLED_DIR=$(MODS_ENABLED_DIR)
+	    MODS_ENABLED_DIR=$(MODS_ENABLED_DIR) \
+	    APACHE_USER=$(APACHE_USER)
 	sudo $(APACHE_START)
 
-flush : 
+# Tests that the installed Instaweb server is working.
+test : verify_instaweb_header verify_css_files_combined
+
+SAMPLE_URL = http://$(HOSTNAME)/instaweb_example/combine_mixed.html
+
+# Verify that HTML files are served with the expected Instaweb header.
+verify_instaweb_header :
+	wget -O - --save-headers $(SAMPLE_URL) 2>&1 | grep x-instaweb
+	@echo Instaweb is running in Apache and returning the expected header
+
+TMP_DIR = /tmp
+
+# Verify that Instaweb successfully combines four CSS files into one.
+verify_css_files_combined :
+	wget -O - $(SAMPLE_URL) > /dev/null 2>&1
+	wget -O - $(SAMPLE_URL) 2>&1 | grep text/css | wc -l > $(TMP_DIR)/css_count.txt
+	echo 1 > $(TMP_DIR)/css_count_expected.txt
+	diff $(TMP_DIR)/css_count.txt $(TMP_DIR)/css_count_expected.txt
+	rm -f $(TMP_DIR)/css_count.txt $(TMP_DIR)/css_count_expected.txt
+	@echo Instaweb successfully combined 4 CSS files into 1
