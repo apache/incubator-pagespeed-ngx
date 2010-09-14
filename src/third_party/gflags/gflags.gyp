@@ -22,12 +22,12 @@
       'type': '<(library)',
       'direct_dependent_settings': {
         'include_dirs': [
-          '<(gflags_gen_arch_root)/include', # To allow #include "gtest/gtest.h"
+          '<(gflags_gen_arch_root)/include',  # For configured files.
         ],
       },
       'include_dirs': [
-        '<(gflags_gen_arch_root)/include',
-        '<(gflags_gen_arch_root)/src', # For config.h
+        '<(gflags_gen_arch_root)/src',  # For config.h
+        'src',  # For everything else.
         ],
       'sources': [
         'src/gflags.cc',
