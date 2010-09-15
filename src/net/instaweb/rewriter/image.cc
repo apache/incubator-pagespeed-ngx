@@ -310,7 +310,7 @@ bool Image::ResizeTo(int width, int height) {
   bool ok = opencv_image_ != NULL || LoadOpenCV();
   if (ok) {
     IplImage* rescaled_image =
-        cvCreateImage(cvSize(width * 1.0, height * 1.0),
+        cvCreateImage(cvSize(width, height),
                       opencv_image_->depth,
                       opencv_image_->nChannels);
     ok = rescaled_image != NULL;

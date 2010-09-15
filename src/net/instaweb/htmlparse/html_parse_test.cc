@@ -580,7 +580,7 @@ TEST_F(AttributeManipulationTest, PropertiesAndDeserialize) {
   EXPECT_EQ(google, node_->AttributeValue(MakeAtom("href")));
   EXPECT_EQ(number37, node_->AttributeValue(MakeAtom("id")));
   EXPECT_EQ(search, node_->AttributeValue(MakeAtom("class")));
-  EXPECT_EQ(NULL, node_->AttributeValue(MakeAtom("absent")));
+  EXPECT_TRUE(NULL == node_->AttributeValue(MakeAtom("absent")));
   int val = -35;
   EXPECT_FALSE(node_->IntAttributeValue(MakeAtom("absent"), &val));
   EXPECT_EQ(-35, val);
@@ -588,7 +588,7 @@ TEST_F(AttributeManipulationTest, PropertiesAndDeserialize) {
   EXPECT_EQ(0, val);
   EXPECT_TRUE(node_->IntAttributeValue(MakeAtom("id"), &val));
   EXPECT_EQ(37, val);
-  EXPECT_EQ(NULL, node_->FindAttribute(MakeAtom("absent")));
+  EXPECT_TRUE(NULL == node_->FindAttribute(MakeAtom("absent")));
   EXPECT_EQ(google, node_->FindAttribute(MakeAtom("href"))->value());
   EXPECT_EQ(number37, node_->FindAttribute(MakeAtom("id"))->value());
   EXPECT_EQ(search, node_->FindAttribute(MakeAtom("class"))->value());

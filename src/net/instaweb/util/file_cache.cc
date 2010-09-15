@@ -142,7 +142,10 @@ bool FileCache::Clean(int64 target_size) {
   if (!file_system_->RecursiveDirSize(path_, &total_size, message_handler_)) {
     return false;
   }
-  if (total_size < target_size * 1.25) {
+
+  // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
+  // but this really should be factored into a settable member var.
+  if (total_size < ((target_size * 5) / 4)) {
     return true;
   }
 
@@ -156,7 +159,9 @@ bool FileCache::Clean(int64 target_size) {
   std::priority_queue<CacheFileInfo*, std::vector<CacheFileInfo*>,
       CompareByAtime> heap;
   int64 total_heap_size = 0;
-  int64 target_heap_size = total_size - target_size * .75;
+  // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
+  // but this really should be factored into a settable member var.
+  int64 target_heap_size = total_size - ((target_size * 3 / 4));
 
   std::string prefix = path_;
   EnsureEndsInSlash(&prefix);

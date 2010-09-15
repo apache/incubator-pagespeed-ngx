@@ -58,7 +58,7 @@ class FilenameEncoderTest : public ::testing::Test {
     static const char kInvalidChars[] = "<>:\"\\|?*'";
     for (size_t i = 0; i < escaped_word.size(); ++i) {
       char c = escaped_word[i];
-      EXPECT_EQ(NULL, strchr(kInvalidChars, c));
+      EXPECT_TRUE(NULL == strchr(kInvalidChars, c));
     }
   }
 

@@ -103,7 +103,9 @@ TEST_F(FileCacheTest, Clean) {
     CheckGet(names2[i % 9], values2[i % 9]);
   }
 
-  int64 target_size = total_size  / 1.25 - 1;
+  // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
+  // but this really should be factored into a settable member var.
+  int64 target_size = (4 * total_size) / 5 - 1;
   EXPECT_TRUE(cache_.Clean(target_size));
   // Common files should stay
   for (int i = 0; i < 3; i++) {
