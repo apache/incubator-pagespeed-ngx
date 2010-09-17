@@ -121,6 +121,10 @@ TEST_F(MemFileSystemTest, TestAtime) {
   EXPECT_LT(atime2, atime1);
 }
 
+TEST_F(MemFileSystemTest, TestLock) {
+  TestLock();
+}
+
 // Since this filesystem doesn't support directories, we skip these tests:
 // TestIsDir
 // TestRecursivelyMakeDir

@@ -1,0 +1,75 @@
+==================== Dependencies ==========================
+
+CSS parser depends upon:
+ * gflags: http://code.google.com/p/google-gflags/
+ * googletest: http://code.google.com/p/googletest/
+ * google-sparsehash: http://code.google.com/p/google-sparsehash/
+ * page-speed: http://code.google.com/p/page-speed/
+
+It also uses
+ * gperf: http://www.gnu.org/software/gperf/
+to generate .cc files. However, the generated .cc files are included in this
+distribution for convenience, so that gperf is not needed to build.
+
+To prepare gflags:
+
+$ cd $SRC_DIR
+$ wget http://google-gflags.googlecode.com/files/gflags-1.3.tar.gz
+$ tar -xzf gflags-1.3.tar.gz
+$ cd gflags-1.3
+$ ./configure --prefix=$PWD/install
+$ make
+$ make install
+
+To prepare googletest:
+
+$ cd $SRC_DIR
+$ wget http://googletest.googlecode.com/files/gtest-1.5.0.tar.gz
+$ tar -xzf gtest-1.5.0.tar.gz
+$ cd gtext-1.5.0
+$ ./configure --prefix=$PWD/install
+$ make
+$ make install
+
+To prepare google-sparsehash:
+
+$ cd $SRC_DIR
+$ wget http://google-sparsehash.googlecode.com/files/sparsehash-1.8.1.tar.gz
+$ tar -xzf sparsehash-1.8.1.tar.gz
+$ cd sparsehash-1.8.1
+$ ./configure --prefix=$PWD/install
+$ make
+$ make install
+
+To prepare pagespeed:
+
+$ cd $SRC_DIR
+$ mkdir pagespeed
+$ cd pagespeed
+$ gclient config http://page-speed.googlecode.com/svn/lib/trunk/src
+$ gclient update --force
+$ cd src
+$ BUILDTYPE=Release make -j4
+
+You will need gclient installed, see pagespeed documentation:
+  http://code.google.com/p/page-speed/wiki/HowToBuildNativeLibraries
+
+
+==================== Building ==============================
+
+Once the dependencies have been built as described above (in some directory
+$SRC_DIR) build UnicodeText:
+
+$ make SRC_DIR=$SRC_DIR
+
+This builds the libraries and a simple program parse_args you can use
+to test. Ex:
+
+$ ./parse_args "body,p,h1 { font-size:70%; color:#000000; background-color:#f1f1ed;} this.is&not#valid"
+Parsing:
+body,p,h1 { font-size:70%; color:#000000; background-color:#f1f1ed;} this.is&not#valid
+
+Stylesheet:
+/* AUTHOR */
+
+body,p,h1 {font-size: 70%;color: #000000;background-color: #f1f1ed}

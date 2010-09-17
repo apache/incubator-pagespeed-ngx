@@ -352,4 +352,33 @@ bool AprFileSystem::Size(const net_instaweb::StringPiece& path, int64* size,
   }
 }
 
+BoolOrError AprFileSystem::TryLock(const net_instaweb::StringPiece& lock_name,
+                                   MessageHandler* handler) {
+  const std::string lock_string = lock_name.as_string();
+  const char* lock_str = lock_string.c_str();
+  // TODO(abliss): mkdir is not atomic on all platforms.  We should
+  // perhaps use an apr_global_mutex_t here.
+  apr_status_t ret = apr_dir_make(lock_str, APR_FPROT_OS_DEFAULT, pool_);
+  if (ret == APR_SUCCESS) {
+    return BoolOrError(true);
+  } else if (errno == EEXIST) {
+    return BoolOrError(false);
+  } else {
+    AprReportError(handler, lock_str, "creating dir", ret);
+    return BoolOrError();
+  }
+}
+
+bool AprFileSystem::Unlock(const net_instaweb::StringPiece& lock_name,
+                           MessageHandler* handler) {
+  const std::string lock_string = lock_name.as_string();
+  const char* lock_str = lock_string.c_str();
+  apr_status_t ret = apr_dir_remove(lock_str, pool_);
+  if (ret != APR_SUCCESS) {
+    AprReportError(handler, lock_str, "removing dir", ret);
+    return false;
+  }
+  return true;
+}
+
 }  // namespace html_rewriter

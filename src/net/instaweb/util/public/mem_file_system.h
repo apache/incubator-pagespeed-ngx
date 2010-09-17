@@ -26,8 +26,9 @@
 
 namespace net_instaweb {
 
-// An in-memory implementation of the FileSystem interface, e.g. for use in
-// unit tests.  Does not support directories.  Not particularly efficient.
+// An in-memory implementation of the FileSystem interface, for use in
+// unit tests.  Does not fully support directories.  Not particularly efficient.
+// Not threadsafe.
 // TODO(abliss): add an ability to block writes for arbitrarily long, to
 // enable testing resilience to concurrency problems with real filesystems.
 class MemFileSystem : public FileSystem {
@@ -58,6 +59,10 @@ class MemFileSystem : public FileSystem {
                                MessageHandler* handler);
   virtual bool Size(const StringPiece& path, int64* size,
                     MessageHandler* handler);
+  virtual BoolOrError TryLock(const StringPiece& lock_name,
+                              MessageHandler* handler);
+  virtual bool Unlock(const StringPiece& lock_name,
+                      MessageHandler* handler);
 
   // Empties out the entire filesystem.  Should not be called while files
   // are open.
@@ -68,6 +73,7 @@ class MemFileSystem : public FileSystem {
   std::map<std::string, int64> atime_map_;
   int temp_file_index_;
   int current_time_;
+  std::map<std::string, bool> lock_map_;
   DISALLOW_COPY_AND_ASSIGN(MemFileSystem);
 };
 

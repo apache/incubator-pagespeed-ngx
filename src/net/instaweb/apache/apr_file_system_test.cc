@@ -182,4 +182,8 @@ TEST_F(AprFileSystemTest, TestSize) {
   TestSize();
 }
 
+TEST_F(AprFileSystemTest, TestLock) {
+  TestLock();
+}
+
 }  // namespace

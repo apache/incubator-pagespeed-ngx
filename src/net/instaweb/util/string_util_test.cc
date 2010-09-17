@@ -43,6 +43,26 @@ class IntegerToStringToIntTest : public testing::Test {
   void ValidateIntegerToStringToInt(int i) {
     ValidateStringToInt(IntegerToString(i), i);
   }
+
+  // Second verse, same as the first, a little more bits...
+  void ValidateInteger64ToString(int64 i, std::string s) {
+    EXPECT_EQ(s, Integer64ToString(i));
+  }
+
+  void ValidateStringToInt64(std::string s, int64 i) {
+    int64 i2;
+    EXPECT_TRUE(StringToInt64(s, &i2));
+    EXPECT_EQ(i, i2);
+  }
+
+  void InvalidStringToInt64(std::string s) {
+    int64 i;
+    EXPECT_FALSE(StringToInt64(s, &i));
+  }
+
+  void ValidateInteger64ToStringToInt64(int64 i) {
+    ValidateStringToInt64(Integer64ToString(i), i);
+  }
 };
 
 TEST_F(IntegerToStringToIntTest, TestIntegerToString) {
@@ -52,6 +72,14 @@ TEST_F(IntegerToStringToIntTest, TestIntegerToString) {
   ValidateIntegerToString(-5, "-5");
   ValidateIntegerToString(123456789, "123456789");
   ValidateIntegerToString(-123456789, "-123456789");
+  ValidateInteger64ToString(0LL, "0");
+  ValidateInteger64ToString(1LL, "1");
+  ValidateInteger64ToString(10LL, "10");
+  ValidateInteger64ToString(-5LL, "-5");
+  ValidateInteger64ToString(123456789LL, "123456789");
+  ValidateInteger64ToString(-123456789LL, "-123456789");
+  ValidateInteger64ToString(99123456789LL, "99123456789");
+  ValidateInteger64ToString(-99123456789LL, "-99123456789");
 }
 
 TEST_F(IntegerToStringToIntTest, TestStringToInt) {
@@ -66,6 +94,18 @@ TEST_F(IntegerToStringToIntTest, TestStringToInt) {
   ValidateStringToInt("0001", 1);
   ValidateStringToInt("-0000005", -5);
   ValidateStringToInt("-0005", -5);
+  ValidateStringToInt64("0", 0LL);
+  ValidateStringToInt64("1", 1LL);
+  ValidateStringToInt64("10", 10LL);
+  ValidateStringToInt64("-5", -5LL);
+  ValidateStringToInt64("+5", 5LL);
+  ValidateStringToInt64("123456789", 123456789LL);
+  ValidateStringToInt64("-123456789", -123456789LL);
+  ValidateStringToInt64("00000", 0LL);
+  ValidateStringToInt64("0001", 1LL);
+  ValidateStringToInt64("-0000005", -5LL);
+  ValidateStringToInt64("-0005", -5LL);
+  ValidateStringToInt64("-99123456789", -99123456789LL);
 }
 
 TEST_F(IntegerToStringToIntTest, TestInvalidString) {
@@ -81,13 +121,30 @@ TEST_F(IntegerToStringToIntTest, TestInvalidString) {
   InvalidStringToInt("1e2");
   InvalidStringToInt("10^3");
   InvalidStringToInt("1+3");
+  InvalidStringToInt64("");
+  InvalidStringToInt64("-");
+  InvalidStringToInt64("+");
+  InvalidStringToInt64("--1");
+  InvalidStringToInt64("++1");
+  InvalidStringToInt64("1-");
+  InvalidStringToInt64("1+");
+  InvalidStringToInt64("1 000");
+  InvalidStringToInt64("a");
+  InvalidStringToInt64("1e2");
+  InvalidStringToInt64("10^3");
+  InvalidStringToInt64("1+3");
 }
 
 TEST_F(IntegerToStringToIntTest, TestIntegerToStringToInt) {
   int n = 1;
   for (int i = 0; i < 1000; ++i) {
-    ValidateIntegerToStringToInt(i);
+    ValidateIntegerToStringToInt(n);
     n *= -3;  // This will overflow, that's fine, we just want a range of ints.
+  }
+  int64 n64 = 1LL;
+  for (int i = 0; i < 1000; ++i) {
+    ValidateInteger64ToStringToInt64(n64);
+    n64 *= -3;  // This will overflow, that's fine, we just want a range of ints
   }
 }
 

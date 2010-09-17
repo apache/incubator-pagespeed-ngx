@@ -48,6 +48,10 @@ class StdioFileSystem : public FileSystem {
                             MessageHandler* handler);
   virtual bool Size(const StringPiece& path, int64* size,
                     MessageHandler* handler);
+  virtual BoolOrError TryLock(const StringPiece& lock_name,
+                              MessageHandler* handler);
+  virtual bool Unlock(const StringPiece& lock_name,
+                      MessageHandler* handler);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(StdioFileSystem);

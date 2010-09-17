@@ -61,6 +61,10 @@ class AprFileSystem : public FileSystem {
   virtual bool ListContents(const net_instaweb::StringPiece& dir,
                             net_instaweb::StringVector* files,
                             MessageHandler* handler);
+  virtual BoolOrError TryLock(const net_instaweb::StringPiece& lock_name,
+                              MessageHandler* handler);
+  virtual bool Unlock(const net_instaweb::StringPiece& lock_name,
+                      MessageHandler* handler);
 
  private:
   apr_pool_t* pool_;

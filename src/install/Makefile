@@ -78,6 +78,9 @@ INSTAWEB_FILE_ROOT = /var/instaweb
 # used to store instaweb files and cache data.
 APACHE_USER = www-data
 
+# Set this to 1 to enable mod_proxy and mod_rewrite
+ENABLE_PROXY = 0
+
 .PHONY: config_file echo_vars
 
 echo_vars:
@@ -131,21 +134,36 @@ CONF_SOURCES = $(STAGING_DIR)/instaweb.conf
 endif
 
 
-# Generate a configuration file and copy it to the staging area.
-# Also copy the example tree, and the built Apache module
-staging:
+# We will generate 'proxy.conf' in the staging area
+# unconditiontionally, but we will load it into the
+# Apache server only if the user installs with ENABLE_PROXY=1
+ifeq ($(ENABLE_PROXY),1)
+CONF_SOURCES += $(STAGING_DIR)/proxy.conf
+endif
+
+$(STAGING_DIR)/%.conf : %.conf.template
+	sed -e s@HOSTNAME@$(HOSTNAME)@g \
+            -e s@APACHE_DOC_ROOT@$(APACHE_DOC_ROOT)@g \
+	    -e s@INSTAWEB_FILE_ROOT@$(INSTAWEB_FILE_ROOT)@g \
+		< $< > $@
+
+CONF_TEMPLATES = $(STAGING_DIR)/instaweb.conf \
+		 $(STAGING_DIR)/proxy.conf
+
+setup_staging_dir :
 	rm -rf $(STAGING_DIR)
 	mkdir -p $(STAGING_DIR)
+
+# Generate a configuration file and copy it to the staging area.
+# Also copy the example tree, and the built Apache module
+staging: setup_staging_dir $(CONF_TEMPLATES)
 	echo "LoadModule instaweb_module $(APACHE_MODULES)/mod_instaweb.so" \
 	 	> $(STAGING_DIR)/instaweb.load
 	$(MODS_ENABLED_STAGING_COMMANDS)
-	sed -e s@/HOSTNAME/@/$(HOSTNAME)/@g \
-            -e s@APACHE_DOC_ROOT@$(APACHE_DOC_ROOT)@g \
-	    -e s@INSTAWEB_FILE_ROOT@$(INSTAWEB_FILE_ROOT)@g \
-		< instaweb.conf.template \
-		> $(STAGING_DIR)/instaweb.conf
 	cp -rp instaweb_example $(STAGING_DIR)
 	cp $(INSTAWEB_MODULE) $(STAGING_DIR)/mod_instaweb.so
+	echo "LoadModule instaweb_module $(APACHE_MODULES)/mod_instaweb.so" \
+	 	> $(STAGING_DIR)/instaweb.load
 
 # To install the Instaweb configuration into the system, you must
 # run this as root, or under sudo.
@@ -167,6 +185,12 @@ flush_disk_cache :
 	$(MAKE) INSTAWEB_FILE_ROOT=$(INSTAWEB_FILE_ROOT) \
 		APACHE_USER=$(APACHE_USER) instaweb_file_root
 
+# Starts Apache server
+start :
+	sudo $(APACHE_START)
+stop :
+	sudo $(APACHE_STOP)
+
 # To run a complete iteration, stopping Apache, reconfiguring
 # it, and and restarting it, you can run 'make restart [args...]
 restart : staging
@@ -178,7 +202,8 @@ restart : staging
 	    APACHE_CONF=$(APACHE_CONF) \
 	    APACHE_MODULES=$(APACHE_MODULES) \
 	    MODS_ENABLED_DIR=$(MODS_ENABLED_DIR) \
-	    APACHE_USER=$(APACHE_USER)
+	    APACHE_USER=$(APACHE_USER) \
+	    ENABLE_PROXY=$(ENABLE_PROXY)
 	sudo $(APACHE_START)
 
 # Tests that the installed Instaweb server is working.
@@ -193,9 +218,13 @@ verify_instaweb_header :
 
 TMP_DIR = /tmp
 
-# Verify that Instaweb successfully combines four CSS files into one.
+# Verify that Instaweb successfully combines four CSS files into one.  The
+# first call to 'wget' initiates async fetches for the 4 CSS files.  The sleep
+# statement helps make sure those async fetches complete so the CSS files are
+# in cache by the time the next call to wget is made.
 verify_css_files_combined :
 	wget -O - $(SAMPLE_URL) > /dev/null 2>&1
+	sleep 2
 	wget -O - $(SAMPLE_URL) 2>&1 | grep text/css | wc -l > $(TMP_DIR)/css_count.txt
 	echo 1 > $(TMP_DIR)/css_count_expected.txt
 	diff $(TMP_DIR)/css_count.txt $(TMP_DIR)/css_count_expected.txt

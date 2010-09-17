@@ -200,12 +200,39 @@
       },
     },
     {
+      'target_name': 'instaweb_rewriter_css',
+      'type': '<(library)',
+      'dependencies': [
+        'instaweb_rewrite_pb',
+        'instaweb_rewriter_base',
+        'instaweb_util',
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
+      ],
+      'sources': [
+        'rewriter/css_filter.cc',
+        'rewriter/css_minify.cc',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+        '<(DEPTH)/third_party/css_parser/src',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(instaweb_root)',
+          '<(DEPTH)',
+        ],
+      },
+    },
+    {
       'target_name': 'instaweb_rewriter',
       'type': '<(library)',
       'dependencies': [
         'instaweb_rewrite_pb',
         'instaweb_rewriter_base',
         'instaweb_core.gyp:instaweb_rewriter_html',
+        'instaweb_rewriter_css',
         'instaweb_rewriter_image',
         'instaweb_rewriter_javascript',
         'instaweb_util',

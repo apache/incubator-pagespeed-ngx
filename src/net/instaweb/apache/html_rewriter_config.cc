@@ -48,6 +48,14 @@ const char* GetFileCachePath(PageSpeedServerContext* context) {
   return file_cache_path;
 }
 
+const int64 GetFileCacheSize(PageSpeedServerContext* context) {
+  return context->config()->file_cache_size_kb;
+}
+
+const int64 GetFileCacheCleanInterval(PageSpeedServerContext* context) {
+  return context->config()->file_cache_clean_interval_ms;
+}
+
 const char* GetFetcherProxy(PageSpeedServerContext* context) {
   const char* fetch_proxy = context->config()->fetch_proxy;
   return fetch_proxy;

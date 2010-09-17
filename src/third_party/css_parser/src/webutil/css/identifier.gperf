@@ -1,0 +1,227 @@
+/**
+ * Copyright 2010 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+%{
+#include "webutil/css/identifier.h"
+
+#include "base/googleinit.h"
+#include "base/logging.h"
+#include "webutil/css/string_util.h"
+
+namespace Css {
+%}
+// This is the set of identifiers.
+struct idents {
+    const char *name;
+    Identifier::Ident id;
+};
+%%
+--goog-unknown--, Identifier::GOOG_UNKNOWN
+inherit, Identifier::INHERIT
+none, Identifier::NONE
+auto, Identifier::AUTO
+normal, Identifier::NORMAL
+visible, Identifier::VISIBLE
+hidden, Identifier::HIDDEN
+always, Identifier::ALWAYS
+avoid, Identifier::AVOID
+medium, Identifier::MEDIUM
+repeat, Identifier::REPEAT
+collapse, Identifier::COLLAPSE
+left, Identifier::LEFT
+center, Identifier::CENTER
+right, Identifier::RIGHT
+top, Identifier::TOP
+bottom, Identifier::BOTTOM
+both, Identifier::BOTH
+scroll, Identifier::SCROLL
+fixed, Identifier::FIXED
+transparent, Identifier::TRANSPARENT
+repeat-x, Identifier::REPEAT_X
+repeat-y, Identifier::REPEAT_Y
+no-repeat, Identifier::NO_REPEAT
+separate, Identifier::SEPARATE
+dotted, Identifier::DOTTED
+dashed, Identifier::DASHED
+solid, Identifier::SOLID
+double, Identifier::DOUBLE
+groove, Identifier::GROOVE
+ridge, Identifier::RIDGE
+inset, Identifier::INSET
+outset, Identifier::OUTSET
+thin, Identifier::THIN
+thick, Identifier::THICK
+open-quote, Identifier::OPEN_QUOTE
+close-quote, Identifier::CLOSE_QUOTE
+no-open-quote, Identifier::NO_OPEN_QUOTE
+no-close-quote, Identifier::NO_CLOSE_QUOTE
+crosshair, Identifier::CROSSHAIR
+default, Identifier::DEFAULT
+pointer, Identifier::POINTER
+move, Identifier::MOVE
+e-resize, Identifier::E_RESIZE
+ne-resize, Identifier::NE_RESIZE
+nw-resize, Identifier::NW_RESIZE
+n-resize, Identifier::N_RESIZE
+se-resize, Identifier::SE_RESIZE
+sw-resize, Identifier::SW_RESIZE
+s-resize, Identifier::S_RESIZE
+w-resize, Identifier::W_RESIZE
+text, Identifier::TEXT
+wait, Identifier::WAIT
+help, Identifier::HELP
+progress, Identifier::PROGRESS
+ltr, Identifier::LTR,
+rtl, Identifier::RTL,
+inline, Identifier::INLINE
+block, Identifier::BLOCK
+list-item, Identifier::LIST_ITEM
+run-in, Identifier::RUN_IN
+inline-block, Identifier::INLINE_BLOCK
+table, Identifier::TABLE
+inline-table, Identifier::INLINE_TABLE
+table-row-group, Identifier::TABLE_ROW_GROUP
+table-header-group, Identifier::TABLE_HEADER_GROUP
+table-footer-group, Identifier::TABLE_FOOTER_GROUP
+table-row, Identifier::TABLE_ROW
+table-column-group, Identifier::TABLE_COLUMN_GROUP
+table-column, Identifier::TABLE_COLUMN
+table-cell, Identifier::TABLE_CELL
+table-caption, Identifier::TABLE_CAPTION
+show, Identifier::SHOW
+hide, Identifier::HIDE
+serif, Identifier::SERIF
+sans-serif, Identifier::SANS_SERIF
+cursive, Identifier::CURSIVE
+fantasy, Identifier::FANTASY
+monospace, Identifier::MONOSPACE
+xx-small, Identifier::XX_SMALL
+x-small, Identifier::X_SMALL
+small, Identifier::SMALL
+large, Identifier::LARGE
+x-large, Identifier::X_LARGE
+xx-large, Identifier::XX_LARGE
+smaller, Identifier::SMALLER
+larger, Identifier::LARGER
+italic, Identifier::ITALIC
+oblique, Identifier::OBLIQUE
+small-caps, Identifier::SMALL_CAPS
+bold, Identifier::BOLD
+bolder, Identifier::BOLDER
+lighter, Identifier::LIGHTER
+caption, Identifier::CAPTION
+icon, Identifier::ICON
+menu, Identifier::MENU
+message-box, Identifier::MESSAGE_BOX
+small-caption, Identifier::SMALL_CAPTION
+status-bar, Identifier::STATUS_BAR
+inside, Identifier::INSIDE
+outside, Identifier::OUTSIDE
+disc, Identifier::DISC
+circle, Identifier::CIRCLE
+square, Identifier::SQUARE
+decimal, Identifier::DECIMAL
+decimal-leading-zero, Identifier::DECIMAL_LEADING_ZERO
+lower-roman, Identifier::LOWER_ROMAN
+upper-roman, Identifier::UPPER_ROMAN
+lower-greek, Identifier::LOWER_GREEK
+lower-latin, Identifier::LOWER_LATIN,
+upper-latin, Identifier::UPPER_LATIN
+armenian, Identifier::ARMENIAN
+georgian, Identifier::GEORGIAN
+lower-alpha, Identifier::LOWER_ALPHA
+upper-alpha, Identifier::UPPER_ALPHA
+invert, Identifier::INVERT
+static, Identifier::STATIC
+relative, Identifier::RELATIVE
+absolute, Identifier::ABSOLUTE
+justify, Identifier::JUSTIFY
+underline, Identifier::UNDERLINE
+overline, Identifier::OVERLINE
+line-through, Identifier::LINE_THROUGH
+blink, Identifier::BLINK
+capitalize, Identifier::CAPITALIZE
+uppercase, Identifier::UPPERCASE
+lowercase, Identifier::LOWERCASE
+embed, Identifier::EMBED
+bidi-override, Identifier::BIDI_OVERRIDE
+baseline, Identifier::BASELINE
+sub, Identifier::SUB
+super, Identifier::SUPER
+text-top, Identifier::TEXT_TOP
+middle, Identifier::MIDDLE
+text-bottom, Identifier::TEXT_BOTTOM
+pre, Identifier::PRE
+nowrap, Identifier::NOWRAP
+pre-wrap, Identifier::PRE_WRAP
+pre-line, Identifier::PRE_LINE
+--goog-initial--, Identifier::GOOG_INITIAL
+--goog-body-color--, Identifier::GOOG_BODY_COLOR
+--goog-body-link-color--, Identifier::GOOG_BODY_LINK_COLOR
+--goog-big--, Identifier::GOOG_BIG
+--goog-small--, Identifier::GOOG_SMALL
+%%
+
+//
+// Constructor.
+//
+
+Identifier::Identifier(const UnicodeText& s) : ident_(IdentFromText(s)) {
+  if (ident_ == OTHER)
+    other_ = LowercaseAscii(s);
+}
+
+//
+// Static methods mapping Ident's to strings
+//
+
+Identifier::Ident Identifier::IdentFromText(const UnicodeText& s) {
+  const idents* a = IdentifierMapper::in_word_set(s.utf8_data(),
+                                                  s.utf8_length());
+  if (a)
+    return a->id;
+  else
+    return OTHER;
+}
+
+static struct {
+  const char* name;
+  int len;
+} gKnownIdentifiers[TOTAL_KEYWORDS];
+
+static void InitializeIdentifierNameLookupTable() {
+  for (int i = 0; i < TOTAL_KEYWORDS; ++i) {
+    gKnownIdentifiers[wordlist[i].id].name = wordlist[i].name;
+    gKnownIdentifiers[wordlist[i].id].len = strlen(wordlist[i].name);
+  }
+}
+
+UnicodeText Identifier::TextFromIdent(Ident p) {
+  if (p == OTHER) {
+    return UTF8ToUnicodeText("OTHER", 5, false);
+  } else {
+    DCHECK_LT(p, OTHER);
+    return UTF8ToUnicodeText(gKnownIdentifiers[p].name,
+                             gKnownIdentifiers[p].len,
+                             false);
+  }
+}
+
+} // namespace
+
+REGISTER_MODULE_INITIALIZER(identifier, {
+  Css::InitializeIdentifierNameLookupTable();
+});

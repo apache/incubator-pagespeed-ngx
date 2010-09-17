@@ -30,6 +30,7 @@
 
 #include "net/instaweb/util/public/file_cache.h"
 
+#include <stdlib.h>
 #include <vector>
 #include <queue>
 #include "net/instaweb/util/public/base64_util.h"
@@ -62,13 +63,27 @@ struct CompareByAtime {
 
 }  // namespace for structs used only in Clean().
 
+// Filenames for the next scheduled clean time and the lockfile.  In
+// order to prevent these from colliding with actual cachefiles, they
+// contain characters that our filename encoder would escape.
+const char FileCache::kCleanTimeName[] = "!clean!time!";
+const char FileCache::kCleanLockName[] = "!clean!lock!";
+
+// TODO(abliss): remove policy from constructor; provide defaults here
+// and setters below.
 FileCache::FileCache(const std::string& path, FileSystem* file_system,
                      FilenameEncoder* filename_encoder,
+                     CachePolicy* policy,
                      MessageHandler* handler)
     : path_(path),
       file_system_(file_system),
       filename_encoder_(filename_encoder),
-      message_handler_(handler) {
+      message_handler_(handler),
+      cache_policy_(policy),
+      // NOTE(abliss): We don't want all the caches racing for the
+      // lock at startup, so each one gets a random offset.
+      next_clean_ms_(policy->timer->NowMs()
+          + (random() % policy->clean_interval_ms)) {
 }
 
 FileCache::~FileCache() {
@@ -101,6 +116,7 @@ void FileCache::Put(const std::string& key, SharedString* value) {
                                message_handler_);
     }
   }
+  CheckClean();
 }
 
 void FileCache::Delete(const std::string& key) {
@@ -146,9 +162,10 @@ bool FileCache::Clean(int64 target_size) {
   // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
   // but this really should be factored into a settable member var.
   if (total_size < ((target_size * 5) / 4)) {
+    LOG(INFO) << "File cache size is" << total_size << "; no cleanup needed.";
     return true;
   }
-
+  LOG(INFO) << "File cache size is" << total_size << "; beginning cleanup.";
   bool everything_ok = true;
   everything_ok &= file_system_->ListContents(path_, &files, message_handler_);
 
@@ -206,7 +223,62 @@ bool FileCache::Clean(int64 target_size) {
     delete heap.top();
     heap.pop();
   }
+  LOG(INFO) << "File cache cleanup complete; freed" << total_heap_size
+            << "bytes.";
   return everything_ok;
+}
+
+bool FileCache::CheckClean() {
+  const int64 now_ms = cache_policy_->timer->NowMs();
+  if (now_ms < next_clean_ms_) {
+    return false;
+  }
+  std::string lock_name(path_);
+  EnsureEndsInSlash(&lock_name);
+  lock_name += kCleanLockName;
+  bool to_return = false;
+  if (file_system_->TryLock(lock_name, message_handler_).is_true()) {
+    std::string clean_time_name(path_);
+    EnsureEndsInSlash(&clean_time_name);
+    clean_time_name += kCleanTimeName;
+    std::string clean_time_str;
+    // TODO(abliss): Sometime before 2038, change this to use int64.
+    int64 clean_time_ms = 0;
+    int64 new_clean_time_ms = now_ms + cache_policy_->clean_interval_ms;
+    if (file_system_->ReadFile(clean_time_name.c_str(), &clean_time_str,
+                               message_handler_)) {
+      StringToInt64(clean_time_str, &clean_time_ms);
+    }
+    // If the "clean time" written in the file is older than now, we
+    // clean.
+    if (clean_time_ms < now_ms) {
+      LOG(INFO) << "Checking file cache size against target "
+                << cache_policy_->target_size;
+      to_return = true;
+    }
+    // If the "clean time" is  later than now plus one interval, something
+    // went wrong (like the system clock moving backwards or the file
+    // getting corrupt) so we clean and reset it.
+    if (clean_time_ms > new_clean_time_ms) {
+      LOG(ERROR) << "Next scheduled file cache clean time " << clean_time_ms
+                 << " is implausibly remote.  Cleaning now.";
+      to_return = true;
+    }
+    if (to_return) {
+      clean_time_str = Integer64ToString(new_clean_time_ms);
+      file_system_->WriteFile(clean_time_name.c_str(), clean_time_str,
+                              message_handler_);
+    }
+    file_system_->Unlock(lock_name, message_handler_);
+  } else {
+    // TODO(abliss): add a way to break a stale lock
+  }
+  next_clean_ms_ = now_ms + cache_policy_->clean_interval_ms;
+  if (to_return) {
+    // TODO(abliss): add a thread here so we don't block the unlucky request.
+    to_return &= Clean(cache_policy_->target_size);
+  }
+  return to_return;
 }
 
 }  // namespace net_instaweb

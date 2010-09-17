@@ -10,6 +10,7 @@
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/mem_file_system.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include <string>
 
@@ -18,7 +19,12 @@ namespace net_instaweb {
 class FileCacheTest : public testing::Test {
  protected:
   FileCacheTest()
-      : cache_(GTestTempDir(), &file_system_, &filename_encoder_,
+      : mock_timer_(0),
+        kCleanIntervalMs(Timer::kMinuteMs),
+        kTargetSize(409600),
+        cache_(GTestTempDir(), &file_system_, &filename_encoder_,
+               new FileCache::CachePolicy(
+                   &mock_timer_, kCleanIntervalMs, kTargetSize),
                &message_handler_) {
   }
 
@@ -43,6 +49,9 @@ class FileCacheTest : public testing::Test {
  protected:
   MemFileSystem file_system_;
   FilenameEncoder filename_encoder_;
+  MockTimer mock_timer_;
+  const int64 kCleanIntervalMs;
+  const int64 kTargetSize;
   FileCache cache_;
   GoogleMessageHandler message_handler_;
 
@@ -116,5 +125,5 @@ TEST_F(FileCacheTest, Clean) {
     CheckNotFound(names2[i]);
   }
 }
-
+// TODO(abliss): add test for CheckClean
 }  // namespace net_instaweb

@@ -32,6 +32,8 @@ struct PageSpeedConfig {
   const char* fetch_proxy;
   const char* generated_file_prefix;
   const char* file_cache_path;
+  int64 file_cache_clean_interval_ms;
+  int64 file_cache_size_kb;
   int64 fetcher_timeout_ms;
   int64 resource_timeout_ms;
   int num_shards;

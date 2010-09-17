@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <sys/errno.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "base/basictypes.h"
 #include "base/logging.h"
@@ -298,6 +299,7 @@ bool StdioFileSystem::ListContents(const StringPiece& dir, StringVector* files,
     return true;
   }
 }
+
 bool StdioFileSystem::Atime(const StringPiece& path, int64* timestamp_sec,
                             MessageHandler* handler) {
   // TODO(abliss): there are some situations where this doesn't work
@@ -315,6 +317,7 @@ bool StdioFileSystem::Atime(const StringPiece& path, int64* timestamp_sec,
     return false;
   }
 }
+
 bool StdioFileSystem::Size(const StringPiece& path, int64* size,
                            MessageHandler* handler) {
   const std::string path_string = path.as_string();
@@ -326,6 +329,36 @@ bool StdioFileSystem::Size(const StringPiece& path, int64* size,
   } else {
     handler->Message(kError, "Failed to stat %s: %s",
                      path_str, strerror(errno));
+    return false;
+  }
+}
+
+BoolOrError StdioFileSystem::TryLock(const StringPiece& lock_name,
+                                     MessageHandler* handler) {
+  const std::string lock_string = lock_name.as_string();
+  const char* lock_str = lock_string.c_str();
+  // POSIX mkdir is widely believed to be atomic, although I have
+  // found no reliable documentation of this fact.
+  if (mkdir(lock_str, 0777) == 0) {
+    return BoolOrError(true);
+  } else if (errno == EEXIST) {
+    return BoolOrError(false);
+  } else {
+    handler->Message(kError, "Failed to mkdir %s: %s",
+                     lock_str, strerror(errno));
+    return BoolOrError();
+  }
+}
+
+bool StdioFileSystem::Unlock(const StringPiece& lock_name,
+                             MessageHandler* handler) {
+  const std::string lock_string = lock_name.as_string();
+  const char* lock_str = lock_string.c_str();
+  if (rmdir(lock_str) == 0) {
+    return true;
+  } else {
+    handler->Message(kError, "Failed to rmdir %s: %s",
+                     lock_str, strerror(errno));
     return false;
   }
 }

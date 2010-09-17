@@ -229,4 +229,21 @@ bool MemFileSystem::Size(const StringPiece& path, int64* size,
   }
 }
 
+BoolOrError MemFileSystem::TryLock(const StringPiece& lock_name,
+                                   MessageHandler* handler) {
+  // Not actually threadsafe!  This is just for tests.
+  if (lock_map_[lock_name.as_string()]) {
+    return BoolOrError(false);
+  } else {
+    lock_map_[lock_name.as_string()] = true;
+    return BoolOrError(true);
+  }
+}
+
+bool MemFileSystem::Unlock(const StringPiece& lock_name,
+                           MessageHandler* handler) {
+  lock_map_[lock_name.as_string()] = false;
+  return true;
+}
+
 }  // namespace net_instaweb

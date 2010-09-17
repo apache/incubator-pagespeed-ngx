@@ -76,10 +76,14 @@ MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
 }
 
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
+  FileCache::CachePolicy* policy = new FileCache::CachePolicy(timer(),
+      html_rewriter::GetFileCacheCleanInterval(context_),
+      html_rewriter::GetFileCacheSize(context_));
   CacheInterface* cache = new FileCache(
       html_rewriter::GetFileCachePath(context_),
       file_system(),
       filename_encoder(),
+      policy,
       message_handler());
   if (lru_cache_kb_per_process_ != 0) {
     // TODO(jmarantz): Allow configuration of the amount of memory to devote

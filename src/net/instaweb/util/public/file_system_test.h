@@ -69,6 +69,7 @@ class FileSystemTest : public testing::Test {
   void TestListContents();
   void TestAtime();
   void TestSize();
+  void TestLock();
 
   GoogleMessageHandler handler_;
 

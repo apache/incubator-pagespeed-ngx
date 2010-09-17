@@ -32,6 +32,8 @@
         ],
       'sources': [
         'src/gflags.cc',
+        'src/gflags_completions.cc',
+        'src/gflags_reporting.cc',
       ],
     },
   ],

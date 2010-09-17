@@ -1,0 +1,21 @@
+# Proxy configuration file to enable Instaweb to rewrite external
+# content.  In this configuration we use assume a browser proxy,
+# pointing to HOSTNAME:80.
+
+<VirtualHost HOSTNAME:80>
+  DocumentRoot APACHE_DOC_ROOT
+  <IfModule mod_proxy.c>
+    ProxyRequests On
+    ProxyVia On
+
+    # limit connections to LAN clients
+    <Proxy *>
+      AddDefaultCharset off
+      Order Deny,Allow
+      Allow from all
+    </Proxy>
+    ProxyPreserveHost On
+    ProxyStatus On
+    ProxyBadHeader Ignore
+  </IfModule>
+</VirtualHost>

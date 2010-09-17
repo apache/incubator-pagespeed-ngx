@@ -50,7 +50,10 @@ const char* kInstawebUrlPrefix = "InstawebUrlPrefix";
 const char* kInstawebFetchProxy = "InstawebFetchProxy";
 const char* kInstawebGeneratedFilePrefix = "InstawebGeneratedFilePrefix";
 const char* kInstawebFileCachePath = "InstawebFileCachePath";
-const char* kInstawebLRUCacheKBPerProcess = "InstawebLRUCacheKBPerProcess";
+const char* kInstawebFileCacheSizeKb = "InstawebFileCacheSizeKb";
+const char* kInstawebFileCacheCleanIntervalMs
+    = "InstawebFileCacheCleanIntervalMs";
+const char* kInstawebLRUCacheKbPerProcess = "InstawebLRUCacheKbPerProcess";
 const char* kInstawebLRUCacheByteLimit = "InstawebLRUCacheByteLimit";
 const char* kInstawebFetcherTimeoutMs = "InstawebFetcherTimeOutMs";
 const char* kInstawebResourceTimeoutMs = "InstawebResourceTimeOutMs";
@@ -369,6 +372,14 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                    << config->generated_file_prefix;
         return HTTP_INTERNAL_SERVER_ERROR;
       }
+      if (config->file_cache_clean_interval_ms == 0) {
+        // Default to 1 hour
+        config->file_cache_clean_interval_ms = 60 * 60 * 1000;
+      }
+      if (config->file_cache_size_kb == 0) {
+        // Default to 100M
+        config->file_cache_size_kb = 100 * 1024;
+      }
       LOG(INFO) << kInstawebUseHttpCache << " "
                 << config->use_http_cache;
       LOG(INFO) << kInstawebRewriters << " "
@@ -492,6 +503,12 @@ static const char* mod_pagespeed_config_one_string(cmd_parms* cmd, void* data,
     config->generated_file_prefix = apr_pstrdup(cmd->pool, arg);
   } else if (strcasecmp(directive, kInstawebFileCachePath) == 0) {
     config->file_cache_path = apr_pstrdup(cmd->pool, arg);
+  } else if (strcasecmp(directive, kInstawebFileCacheSizeKb) == 0) {
+    config->file_cache_size_kb = static_cast<int64>(
+        apr_strtoi64(arg, NULL, 10));
+  } else if (strcasecmp(directive, kInstawebFileCacheCleanIntervalMs) == 0) {
+    config->file_cache_clean_interval_ms = static_cast<int64>(
+        apr_strtoi64(arg, NULL, 10));
   } else if (strcasecmp(directive, kInstawebFetcherTimeoutMs) == 0) {
     config->fetcher_timeout_ms = static_cast<int64>(
         apr_strtoi64(arg, NULL, 10));
@@ -502,7 +519,7 @@ static const char* mod_pagespeed_config_one_string(cmd_parms* cmd, void* data,
     config->num_shards = static_cast<int>(apr_strtoi64(arg, NULL, 10));
   } else if (strcasecmp(directive, kInstawebOutlineThreshold) == 0) {
     config->outline_threshold = static_cast<int>(apr_strtoi64(arg, NULL, 10));
-  } else if (strcasecmp(directive, kInstawebLRUCacheKBPerProcess) == 0) {
+  } else if (strcasecmp(directive, kInstawebLRUCacheKbPerProcess) == 0) {
     config->lru_cache_kb_per_process =
         static_cast<int64>(apr_strtoi64(arg, NULL, 10));
   } else if (strcasecmp(directive, kInstawebLRUCacheByteLimit) == 0) {
@@ -549,6 +566,16 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set the path for file cache"),
+  AP_INIT_TAKE1(kInstawebFileCacheSizeKb,
+                reinterpret_cast<const char*(*)()>(
+                    mod_pagespeed_config_one_string),
+                NULL, RSRC_CONF,
+                "Set the target size (in kilobytes) for file cache"),
+  AP_INIT_TAKE1(kInstawebFileCacheCleanIntervalMs,
+                reinterpret_cast<const char*(*)()>(
+                    mod_pagespeed_config_one_string),
+                NULL, RSRC_CONF,
+                "Set the interval (in ms) for cleaning the file cache"),
   AP_INIT_TAKE1(kInstawebFetcherTimeoutMs,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
@@ -564,7 +591,7 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Set number of shards"),
-  AP_INIT_TAKE1(kInstawebLRUCacheKBPerProcess,
+  AP_INIT_TAKE1(kInstawebLRUCacheKbPerProcess,
                 reinterpret_cast<const char*(*)()>(
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,

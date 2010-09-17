@@ -35,6 +35,10 @@ const char* GetCachePrefix(PageSpeedServerContext* context);
 const char* GetUrlPrefix(PageSpeedServerContext* context);
 // Get the path name of file cache.
 const char* GetFileCachePath(PageSpeedServerContext* context);
+// Get the target size of file cache.
+const int64 GetFileCacheSize(PageSpeedServerContext* context);
+// Get the cleaning interval of file cache.
+const int64 GetFileCacheCleanInterval(PageSpeedServerContext* context);
 // Get the fetcher proxy
 const char* GetFetcherProxy(PageSpeedServerContext* context);
 // Get the fetcher time out value in milliseconds.

@@ -32,19 +32,36 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_FILE_CACHE_H_
 
 #include "base/basictypes.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+
+class Timer;
 
 // Simple C++ implementation of file cache.
 class FileCache : public CacheInterface {
  public:
+
+  struct CachePolicy {
+    CachePolicy(Timer* timer, int64 clean_interval_ms, int64 target_size)
+        : timer(timer), clean_interval_ms(clean_interval_ms),
+          target_size(target_size) {}
+    const Timer* timer;
+    const int64 clean_interval_ms;
+    const int64 target_size;
+   private:
+    DISALLOW_COPY_AND_ASSIGN(CachePolicy);
+  };
+
   FileCache(const std::string& path, FileSystem* file_system,
-            FilenameEncoder* filename_encoder, MessageHandler* handler);
+            FilenameEncoder* filename_encoder, CachePolicy* policy,
+            MessageHandler* handler);
   virtual ~FileCache();
 
   virtual bool Get(const std::string& key, SharedString* value);
@@ -56,7 +73,10 @@ class FileCache : public CacheInterface {
   // fine.  This may take a while.  It's OK for others to write and
   // read from the cache while this is going on, but try to avoid
   // Cleaning from two threads at the same time.
-  virtual bool Clean(int64 target_cache_size);
+  bool Clean(int64 target_size);
+  // Check to see if it's time to clean the cache, and if so start
+  // cleaning.  Return true if we cleaned, false if we didn't.
+  bool CheckClean();
  private:
   bool EncodeFilename(const std::string& key, std::string* filename);
 
@@ -64,7 +84,12 @@ class FileCache : public CacheInterface {
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
   MessageHandler* message_handler_;
-
+  const scoped_ptr<CachePolicy> cache_policy_;
+  int64 next_clean_ms_;
+  // The file where we keep the next scheduled cleanup time in seconds.
+  static const char kCleanTimeName[];
+  // The name of the global mutex protecting reads and writes to that file.
+  static const char kCleanLockName[];
   DISALLOW_COPY_AND_ASSIGN(FileCache);
 };
 

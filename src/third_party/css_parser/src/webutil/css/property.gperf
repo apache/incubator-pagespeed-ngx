@@ -1,0 +1,255 @@
+/**
+ * Copyright 2010 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+%{
+#include "webutil/css/property.h"
+
+#include "base/googleinit.h"
+#include "base/logging.h"
+#include "webutil/css/string_util.h"
+
+namespace Css {
+%}
+// This is the set of properties supported by WebKit.
+struct props {
+    const char *name;
+    Property::Prop id;
+};
+%%
+-webkit-appearance, Property::_WEBKIT_APPEARANCE
+background-attachment, Property::BACKGROUND_ATTACHMENT
+-webkit-background-clip, Property::_WEBKIT_BACKGROUND_CLIP
+background-color, Property::BACKGROUND_COLOR
+-webkit-background-composite, Property::_WEBKIT_BACKGROUND_COMPOSITE
+background-image, Property::BACKGROUND_IMAGE
+-webkit-background-origin, Property::_WEBKIT_BACKGROUND_ORIGIN
+background-position, Property::BACKGROUND_POSITION
+background-position-x, Property::BACKGROUND_POSITION_X
+background-position-y, Property::BACKGROUND_POSITION_Y
+background-repeat, Property::BACKGROUND_REPEAT
+-webkit-background-size, Property::_WEBKIT_BACKGROUND_SIZE
+-webkit-binding, Property::_WEBKIT_BINDING
+border-collapse, Property::BORDER_COLLAPSE
+-webkit-border-image, Property::_WEBKIT_BORDER_IMAGE
+border-spacing, Property::BORDER_SPACING
+-webkit-border-horizontal-spacing, Property::_WEBKIT_BORDER_HORIZONTAL_SPACING
+-webkit-border-vertical-spacing, Property::_WEBKIT_BORDER_VERTICAL_SPACING
+-webkit-border-radius, Property::_WEBKIT_BORDER_RADIUS
+-webkit-border-top-left-radius, Property::_WEBKIT_BORDER_TOP_LEFT_RADIUS
+-webkit-border-top-right-radius, Property::_WEBKIT_BORDER_TOP_RIGHT_RADIUS
+-webkit-border-bottom-left-radius, Property::_WEBKIT_BORDER_BOTTOM_LEFT_RADIUS
+-webkit-border-bottom-right-radius, Property::_WEBKIT_BORDER_BOTTOM_RIGHT_RADIUS
+border-top-color, Property::BORDER_TOP_COLOR
+border-right-color, Property::BORDER_RIGHT_COLOR
+border-bottom-color, Property::BORDER_BOTTOM_COLOR
+border-left-color, Property::BORDER_LEFT_COLOR
+border-top-style, Property::BORDER_TOP_STYLE
+border-right-style, Property::BORDER_RIGHT_STYLE
+border-bottom-style, Property::BORDER_BOTTOM_STYLE
+border-left-style, Property::BORDER_LEFT_STYLE
+border-top-width, Property::BORDER_TOP_WIDTH
+border-right-width, Property::BORDER_RIGHT_WIDTH
+border-bottom-width, Property::BORDER_BOTTOM_WIDTH
+border-left-width, Property::BORDER_LEFT_WIDTH
+bottom, Property::BOTTOM
+-webkit-box-align, Property::_WEBKIT_BOX_ALIGN
+-webkit-box-direction, Property::_WEBKIT_BOX_DIRECTION
+-webkit-box-flex, Property::_WEBKIT_BOX_FLEX
+-webkit-box-flex-group, Property::_WEBKIT_BOX_FLEX_GROUP
+-webkit-box-lines, Property::_WEBKIT_BOX_LINES
+-webkit-box-ordinal-group, Property::_WEBKIT_BOX_ORDINAL_GROUP
+-webkit-box-orient, Property::_WEBKIT_BOX_ORIENT
+-webkit-box-pack, Property::_WEBKIT_BOX_PACK
+box-sizing, Property::BOX_SIZING
+caption-side, Property::CAPTION_SIDE
+clear, Property::CLEAR
+clip, Property::CLIP
+color, Property::COLOR
+content, Property::CONTENT
+counter-increment, Property::COUNTER_INCREMENT
+counter-reset, Property::COUNTER_RESET
+cursor, Property::CURSOR
+direction, Property::DIRECTION
+display, Property::DISPLAY
+empty-cells, Property::EMPTY_CELLS
+float, Property::FLOAT
+font-family, Property::FONT_FAMILY
+font-size, Property::FONT_SIZE
+-webkit-font-size-delta, Property::_WEBKIT_FONT_SIZE_DELTA
+font-stretch, Property::FONT_STRETCH
+font-style, Property::FONT_STYLE
+font-variant, Property::FONT_VARIANT
+font-weight, Property::FONT_WEIGHT
+height, Property::HEIGHT
+-webkit-highlight, Property::_WEBKIT_HIGHLIGHT
+left, Property::LEFT
+letter-spacing, Property::LETTER_SPACING
+-webkit-line-clamp, Property::_WEBKIT_LINE_CLAMP
+line-height, Property::LINE_HEIGHT
+list-style-image, Property::LIST_STYLE_IMAGE
+list-style-position, Property::LIST_STYLE_POSITION
+list-style-type, Property::LIST_STYLE_TYPE
+margin-top, Property::MARGIN_TOP
+margin-right, Property::MARGIN_RIGHT
+margin-bottom, Property::MARGIN_BOTTOM
+margin-left, Property::MARGIN_LEFT
+-webkit-line-break, Property::_WEBKIT_LINE_BREAK
+-webkit-margin-collapse, Property::_WEBKIT_MARGIN_COLLAPSE
+-webkit-margin-top-collapse, Property::_WEBKIT_MARGIN_TOP_COLLAPSE
+-webkit-margin-bottom-collapse, Property::_WEBKIT_MARGIN_BOTTOM_COLLAPSE
+-webkit-margin-start, Property::_WEBKIT_MARGIN_START
+-webkit-marquee, Property::_WEBKIT_MARQUEE
+-webkit-marquee-direction, Property::_WEBKIT_MARQUEE_DIRECTION
+-webkit-marquee-increment, Property::_WEBKIT_MARQUEE_INCREMENT
+-webkit-marquee-repetition, Property::_WEBKIT_MARQUEE_REPETITION
+-webkit-marquee-speed, Property::_WEBKIT_MARQUEE_SPEED
+-webkit-marquee-style, Property::_WEBKIT_MARQUEE_STYLE
+-webkit-match-nearest-mail-blockquote-color, Property::_WEBKIT_MATCH_NEAREST_MAIL_BLOCKQUOTE_COLOR
+max-height, Property::MAX_HEIGHT
+max-width, Property::MAX_WIDTH
+min-height, Property::MIN_HEIGHT
+min-width, Property::MIN_WIDTH
+-webkit-nbsp-mode, Property::_WEBKIT_NBSP_MODE
+opacity, Property::OPACITY
+orphans, Property::ORPHANS
+outline-color, Property::OUTLINE_COLOR
+outline-offset, Property::OUTLINE_OFFSET
+outline-style, Property::OUTLINE_STYLE
+outline-width, Property::OUTLINE_WIDTH
+overflow, Property::OVERFLOW
+overflow-x, Property::OVERFLOW_X
+overflow-y, Property::OVERFLOW_Y
+padding-top, Property::PADDING_TOP
+padding-right, Property::PADDING_RIGHT
+padding-bottom, Property::PADDING_BOTTOM
+padding-left, Property::PADDING_LEFT
+-webkit-padding-start, Property::_WEBKIT_PADDING_START
+page, Property::PAGE
+page-break-after, Property::PAGE_BREAK_AFTER
+page-break-before, Property::PAGE_BREAK_BEFORE
+page-break-inside, Property::PAGE_BREAK_INSIDE
+position, Property::POSITION
+quotes, Property::QUOTES
+right, Property::RIGHT
+size, Property::SIZE
+table-layout, Property::TABLE_LAYOUT
+text-align, Property::TEXT_ALIGN
+text-decoration, Property::TEXT_DECORATION
+text-indent, Property::TEXT_INDENT
+text-line-through, Property::TEXT_LINE_THROUGH
+text-line-through-color, Property::TEXT_LINE_THROUGH_COLOR
+text-line-through-mode, Property::TEXT_LINE_THROUGH_MODE
+text-line-through-style, Property::TEXT_LINE_THROUGH_STYLE
+text-line-through-width, Property::TEXT_LINE_THROUGH_WIDTH
+text-overflow, Property::TEXT_OVERFLOW
+text-overline, Property::TEXT_OVERLINE
+text-overline-color, Property::TEXT_OVERLINE_COLOR
+text-overline-mode, Property::TEXT_OVERLINE_MODE
+text-overline-style, Property::TEXT_OVERLINE_STYLE
+text-overline-width, Property::TEXT_OVERLINE_WIDTH
+-webkit-text-security, Property::_WEBKIT_TEXT_SECURITY
+text-shadow, Property::TEXT_SHADOW
+text-transform, Property::TEXT_TRANSFORM
+text-underline, Property::TEXT_UNDERLINE
+text-underline-color, Property::TEXT_UNDERLINE_COLOR
+text-underline-mode, Property::TEXT_UNDERLINE_MODE
+text-underline-style, Property::TEXT_UNDERLINE_STYLE
+text-underline-width, Property::TEXT_UNDERLINE_WIDTH
+resize, Property::RESIZE
+-webkit-text-size-adjust, Property::_WEBKIT_TEXT_SIZE_ADJUST
+-webkit-dashboard-region, Property::_WEBKIT_DASHBOARD_REGION
+top, Property::TOP
+unicode-bidi, Property::UNICODE_BIDI
+-webkit-user-drag, Property::_WEBKIT_USER_DRAG
+-webkit-user-modify, Property::_WEBKIT_USER_MODIFY
+-webkit-user-select, Property::_WEBKIT_USER_SELECT
+vertical-align, Property::VERTICAL_ALIGN
+visibility, Property::VISIBILITY
+white-space, Property::WHITE_SPACE
+widows, Property::WIDOWS
+width, Property::WIDTH
+word-wrap, Property::WORD_WRAP
+word-spacing, Property::WORD_SPACING
+z-index, Property::Z_INDEX
+background, Property::BACKGROUND
+border, Property::BORDER
+border-color, Property::BORDER_COLOR
+border-style, Property::BORDER_STYLE
+border-top, Property::BORDER_TOP
+border-right, Property::BORDER_RIGHT
+border-bottom, Property::BORDER_BOTTOM
+border-left, Property::BORDER_LEFT
+border-width, Property::BORDER_WIDTH
+font, Property::FONT
+list-style, Property::LIST_STYLE
+margin, Property::MARGIN
+outline, Property::OUTLINE
+padding, Property::PADDING
+scrollbar-face-color, Property::SCROLLBAR_FACE_COLOR
+scrollbar-shadow-color, Property::SCROLLBAR_SHADOW_COLOR
+scrollbar-highlight-color, Property::SCROLLBAR_HIGHLIGHT_COLOR
+scrollbar-3dlight-color, Property::SCROLLBAR_3DLIGHT_COLOR
+scrollbar-darkshadow-color, Property::SCROLLBAR_DARKSHADOW_COLOR
+scrollbar-track-color, Property::SCROLLBAR_TRACK_COLOR
+scrollbar-arrow-color, Property::SCROLLBAR_ARROW_COLOR
+-webkit-text-decorations-in-effect, Property::_WEBKIT_TEXT_DECORATIONS_IN_EFFECT
+-webkit-rtl-ordering, Property::_WEBKIT_RTL_ORDERING
+%%
+
+//
+// Constructor.
+//
+
+Property::Property(UnicodeText s)
+  : prop_(PropFromText(s.utf8_data(), s.utf8_length()))
+{
+    if (prop_ == OTHER)
+      other_ = LowercaseAscii(s);
+}
+
+//
+// Static methods mapping Prop's to strings
+//
+
+Property::Prop Property::PropFromText(const char* str, int len) {
+  const props* a = PropertyMapper::in_word_set(str, len);
+  if (a)
+    return a->id;
+  else
+    return OTHER;
+}
+
+static const char* name_lookup[TOTAL_KEYWORDS];
+
+static void InitializeNameLookupTable() {
+  for (int i = 0; i < TOTAL_KEYWORDS; ++i)
+    name_lookup[wordlist[i].id] = wordlist[i].name;
+}
+
+const char* Property::TextFromProp(Prop p) {
+  if (p == OTHER) {
+    return "OTHER";
+  } else {
+    DCHECK_LT(p, OTHER);
+    return name_lookup[p];
+  }
+}
+
+} // namespace
+
+REGISTER_MODULE_INITIALIZER(property, {
+  Css::InitializeNameLookupTable();
+});

@@ -11,13 +11,15 @@
           SetHandler instaweb_resource_generator
     </Location>
     Instaweb on
-    
-    InstawebUrlPrefix             "http://HOSTNAME/instaweb/"
-    InstawebFileCachePath         "INSTAWEB_FILE_ROOT/cache/"
-    InstawebGeneratedFilePrefix   "INSTAWEB_FILE_ROOT/files/"
-    InstawebUseHttpCache          on
-    InstawebLRUCacheKBPerProcess  1024
-    InstawebLRUCacheByteLimit     16384
+
+    InstawebUrlPrefix                "http://HOSTNAME/instaweb/"
+    InstawebFileCachePath            "INSTAWEB_FILE_ROOT/cache/"
+    InstawebFileCacheSizeKb          102400
+    InstawebFileCacheCleanIntervalMs 3600000
+    InstawebGeneratedFilePrefix      "INSTAWEB_FILE_ROOT/files/"
+    InstawebUseHttpCache             on
+    InstawebLRUCacheKbPerProcess     1024
+    InstawebLRUCacheByteLimit        16384
 
     # The following rewrite passes are safe to run on most web pages.
     # Of course, any web page can examine itself using Javascript, and
@@ -40,32 +42,32 @@
 # we compress everything except images
 #
 # mod_deflate will run after mod_instaweb, because mod_instaweb is registered
-# as type AP_FTYPE_RESOURCE, and mod_deflate is registered as type 
+# as type AP_FTYPE_RESOURCE, and mod_deflate is registered as type
 # AP_FTYPE_CONTENT_SET.
 
 <IfModule mod_deflate>
     <Location />
         # Insert filter
         SetOutputFilter DEFLATE
-    
+
         # Netscape 4.x has some problems...
         BrowserMatch ^Mozilla/4 gzip-only-text/html
-    
+
         # Netscape 4.06-4.08 have some more problems
         BrowserMatch ^Mozilla/4\.0[678] no-gzip
-    
+
         # MSIE masquerades as Netscape, but it is fine
         # BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
-    
+
         # NOTE: Due to a bug in mod_setenvif up to Apache 2.0.48
         # the above regex won't work. You can use the following
         # workaround to get the desired effect:
         BrowserMatch \bMSI[E] !no-gzip !gzip-only-text/html
-    
+
         # Don't compress images
         SetEnvIfNoCase Request_URI \
         \.(?:gif|jpe?g|png)$ no-gzip dont-vary
-    
+
         # Make sure proxies don't deliver the wrong content
         Header append Vary User-Agent env=!dont-vary
     </Location>
@@ -108,25 +110,25 @@
 # <Location /instaweb_example>
 #   # Insert filter
 #   SetOutputFilter DEFLATE
-#   
+#
 #   # Netscape 4.x has some problems...
 #   BrowserMatch ^Mozilla/4 gzip-only-text/html
-#   
+#
 #   # Netscape 4.06-4.08 have some more problems
 #   BrowserMatch ^Mozilla/4\.0[678] no-gzip
-#   
+#
 #   # MSIE masquerades as Netscape, but it is fine
 #   # BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
-#   
+#
 #   # NOTE: Due to a bug in mod_setenvif up to Apache 2.0.48
 #   # the above regex won't work. You can use the following
 #   # workaround to get the desired effect:
 #   BrowserMatch \bMSI[E] !no-gzip !gzip-only-text/html
-#   
+#
 #   # Don't compress images
 #   SetEnvIfNoCase Request_URI \
 #   \.(?:gif|jpe?g|png)$ no-gzip dont-vary
-#   
+#
 #   # Make sure proxies don't deliver the wrong content
 #   Header append Vary User-Agent env=!dont-vary
 # </Location>

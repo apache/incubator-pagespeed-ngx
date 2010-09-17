@@ -270,4 +270,21 @@ void FileSystemTest::TestSize() {
   EXPECT_EQ(content1.size() + content2.size(), size_t(size));
 }
 
+void FileSystemTest::TestLock() {
+  std::string dir_name = test_tmpdir() + "/make_dir";
+  DeleteRecursively(dir_name);
+  ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
+  std::string lock_name = dir_name + "/lock";
+  // Acquire the lock
+  EXPECT_TRUE(file_system()->TryLock(lock_name, &handler_).is_true());
+  // Can't re-acquire the lock
+  EXPECT_TRUE(file_system()->TryLock(lock_name, &handler_).is_false());
+  // Release the lock
+  EXPECT_TRUE(file_system()->Unlock(lock_name, &handler_));
+  // Do it all again to make sure the release worked.
+  EXPECT_TRUE(file_system()->TryLock(lock_name, &handler_).is_true());
+  EXPECT_TRUE(file_system()->TryLock(lock_name, &handler_).is_false());
+  EXPECT_TRUE(file_system()->Unlock(lock_name, &handler_));
+}
+
 }  // namespace net_instaweb

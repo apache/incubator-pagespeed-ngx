@@ -38,6 +38,10 @@ inline std::string IntegerToString(int i) {
   return base::IntToString(i);
 }
 
+inline std::string Integer64ToString(int64 i) {
+  return base::Int64ToString(i);
+}
+
 inline bool StringToInt(const char* in, int* out) {
   // Chromium lacks StringToInt(const char*...).
   char* endptr = NULL;
@@ -47,8 +51,20 @@ inline bool StringToInt(const char* in, int* out) {
           (long_val <= INT_MAX) && (long_val >= INT_MIN));
 }
 
+inline bool StringToInt64(const char* in, int* out) {
+  // Chromium lacks StringToInt(const char*...).
+  char* endptr = NULL;
+  int64 long_val = strtoll(const_cast<char*>(in), &endptr, 10);
+  *out = long_val;
+  return ((endptr != NULL) && (*endptr == '\0'));
+}
+
 inline bool StringToInt(const std::string& in, int* out) {
   return base::StringToInt(in, out);
+}
+
+inline bool StringToInt64(const std::string& in, int64* out) {
+  return base::StringToInt64(in, out);
 }
 
 const StringPiece kEmptyString;

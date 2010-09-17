@@ -215,6 +215,22 @@ class FileSystem {
   virtual bool Size(const StringPiece& path, int64* size,
                     MessageHandler* handler) = 0;
 
+  // Attempts to obtain a global (cross-process, cross-thread) lock of the given
+  // name (which should be a valid filename, not otherwise used, in an extant
+  // directory).  If someone else has this lock, returns False immediately.  If
+  // anything goes wrong, returns Error.  On success, returns True: then you
+  // must call Unlock when you are done.
+  virtual BoolOrError TryLock(const StringPiece& lock_name,
+                              MessageHandler* handler) = 0;
+
+  // Attempts to release a lock previously obtained through TryLock.  If your
+  // thread did not prevously obtain the lock, the behavior is undefined.
+  // Returns true if we successfully release the lock.  Returns false if we were
+  // unable to release the lock (e.g. somebody came along and write-protected
+  // the lockfile).  You might try again, or start using a different lock name.
+  virtual bool Unlock(const StringPiece& lock_name,
+                      MessageHandler* handler) = 0;
+
  protected:
   // These interfaces must be defined by implementers of FileSystem.
   // They may assume the directory already exists.

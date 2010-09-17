@@ -1,0 +1,7 @@
+CC=gcc
+CFLAGS+=-Wall -Wno-missing-braces -Wno-parentheses -Wno-switch -fPIC -O2 -g -c -I. -I../..
+O=o
+AR=ar
+ARFLAGS=rvc
+NAN=nan64.$O	# default, can be overriden by Make.$(SYSNAME)
+NAN=nan64.$O

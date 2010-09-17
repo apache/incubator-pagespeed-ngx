@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
+#include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
@@ -48,6 +49,7 @@
 namespace {
 
 const char kCssCombiner[] = "cc";
+const char kCssFilter[] = "cf";
 const char kCacheExtender[] = "ce";
 const char kFileSystem[] = "fs";
 const char kImageCompression[] = "ic";
@@ -154,6 +156,9 @@ void RewriteDriver::AddFilters(const StringSet& enabled_filters) {
     // CSS files in html document.  This can only be called
     // once and requires a resource_manager to be set.
     AddRewriteFilter(new CssCombineFilter(this, kCssCombiner));
+  }
+  if (enabled.contains("rewrite_css")) {
+    AddRewriteFilter(new CssFilter(this, kCssFilter));
   }
   if (enabled.contains("rewrite_images")) {
     AddRewriteFilter(new ImgRewriteFilter(this, kImageCompression));
