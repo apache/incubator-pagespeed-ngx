@@ -33,10 +33,14 @@
           # set in libpagespeed's common.gypi. Now enable it.
           '-fasynchronous-unwind-tables',
         ],
+        'cflags_cc': [
+          '-frtti',  # Hardy's g++ 4.2 <trl/function> uses typeid
+        ],
       }],
       ['OS == "mac"', {
         'xcode_settings':{
           'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',        # -fexceptions
+          'GCC_ENABLE_CPP_RTTI': 'YES',              # -frtti
         },
       }],
     ],
