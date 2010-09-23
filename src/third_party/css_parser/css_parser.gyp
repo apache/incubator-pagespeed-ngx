@@ -42,7 +42,7 @@
         '<(css_parser_root)',
         '<(DEPTH)',
       ],
-      'cflags': ['-Wno-sign-compare', '-Wno-return-type'],
+      'cflags': ['-funsigned-char', '-Wno-sign-compare', '-Wno-return-type'],
       'sources': [
         '<(css_parser_root)/string_using.h',
         '<(css_parser_root)/webutil/css/identifier.cc',
