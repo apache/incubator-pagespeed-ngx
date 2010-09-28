@@ -78,6 +78,15 @@ class RewriteDriverFactory {
     enabled_filters_.insert(filter);
   }
 
+  // Set up a directory for slurped files for HTML and resources.  If
+  // read_only is true, then it will only read from these files, and
+  // this will eliminate the usage of any other url_fetcher.  If
+  // read_only is false, then the existing url fetcher will be used as
+  // a fallback if the slurped file is not found, and slurped files will
+  // be subsequently written so they don't have to be fetched from
+  // the Internet again.
+  void SetSlurpDirectory(const StringPiece& directory, bool read_only);
+
   // Sets the enabled filters, based on a comma-separated list of
   // filter names
   void SetEnabledFilters(const StringPiece& filter_names);
@@ -167,6 +176,8 @@ class RewriteDriverFactory {
   // function before destroying the process sub-pool.
   void ShutDown();
 
+  // Called before creating the resource manager
+  virtual void SetupHooks();
 
  private:
   scoped_ptr<MessageHandler> html_parse_message_handler_;

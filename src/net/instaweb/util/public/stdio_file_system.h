@@ -52,6 +52,9 @@ class StdioFileSystem : public FileSystem {
                               MessageHandler* handler);
   virtual bool Unlock(const StringPiece& lock_name,
                       MessageHandler* handler);
+  InputFile* Stdin();
+  OutputFile* Stdout();
+  OutputFile* Stderr();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(StdioFileSystem);

@@ -43,6 +43,8 @@ struct PageSpeedConfig {
   int64 lru_cache_byte_limit;
   bool force_caching;
   const char* rewriters;
+  const char* slurp_directory;
+  bool slurp_write;
 };
 
 class PageSpeedServerContext {

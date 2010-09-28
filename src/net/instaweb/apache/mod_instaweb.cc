@@ -16,17 +16,19 @@
 
 #include "apr_strings.h"
 #include "apr_version.h"
+#include "base/basictypes.h"
+#include "base/scoped_ptr.h"
 #include "base/string_util.h"
+#include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/html_rewriter.h"
 #include "net/instaweb/apache/html_rewriter_config.h"
+#include "net/instaweb/apache/log_message_handler.h"
 #include "net/instaweb/apache/pagespeed_server_context.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
-#include "mod_spdy/apache/log_message_handler.h"
-#include "mod_spdy/apache/pool_util.h"
 // The httpd header must be after the pagepseed_server_context.h. Otherwise,
 // the compiler will complain
 // "strtoul_is_not_a_portable_function_use_strtol_instead".
@@ -34,7 +36,7 @@
 #include "http_config.h"
 #include "http_core.h"
 // When HAVE_SYSLOG, syslog.h is included and #defined LOG_*, which conflicts
-// with mod_spdy's log_message_handler.
+// with log_message_handler.
 #undef HAVE_SYSLOG
 #include "http_log.h"
 #include "http_protocol.h"
@@ -61,6 +63,9 @@ const char* kInstawebNumShards = "InstawebNumShards";
 const char* kInstawebOutlineThreshold = "InstawebOutlineThreshold";
 const char* kInstawebUseHttpCache = "InstawebUseHttpCache";
 const char* kInstawebRewriters = "InstawebRewriters";
+const char* kInstawebSlurpDirectory = "InstawebSlurpDirectory";
+const char* kInstawebSlurpWrite = "InstawebSlurpWrite";
+const char* kInstawebForceCaching = "InstawebForceCaching";
 }  // extern "C"
 
 namespace {
@@ -74,10 +79,22 @@ enum ConfigSwitch {CONFIG_ON, CONFIG_OFF, CONFIG_ERROR};
 // rewriter will put the rewritten content into the output string when flushed
 // or finished. We call Flush when we see the FLUSH bucket, and call Finish when
 // we see the EOS bucket.
-struct InstawebContext {
+class InstawebContext {
+ public:
+  static apr_status_t Cleanup(void* object) {
+    InstawebContext* ic = static_cast<InstawebContext*>(object);
+    delete ic;
+    return APR_SUCCESS;
+  }
+  InstawebContext(apr_pool_t* pool) {
+    apr_pool_cleanup_register(pool, this, Cleanup, apr_pool_cleanup_null);
+  }
   std::string output;  // content after instaweb rewritten.
-  HtmlRewriter* rewriter;
+  scoped_ptr<HtmlRewriter> rewriter;
   apr_bucket_brigade* bucket_brigade;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(InstawebContext);
 };
 
 // Determine the resource type from a Content-Type string
@@ -103,9 +120,16 @@ bool check_pagespeed_applicable(ap_filter_t* filter,
   // Only rewrite text/html.
   if (!is_html_content(request->content_type)) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                  "Content-Type=%s URI=%s%s",
+                  "Content-Type=%s Host=%s Uri=%s",
                   request->content_type, request->hostname,
                   request->unparsed_uri);
+    return false;
+  }
+
+  // Pass-through mode.
+  // TODO(jmarantz): strip the param from the URL.
+  if ((strstr(request->unparsed_uri, "?instaweb=0") != NULL) ||
+      (strstr(request->unparsed_uri, "&instaweb=0") != NULL)) {
     return false;
   }
 
@@ -174,14 +198,6 @@ html_rewriter::ContentEncoding get_content_encoding(request_rec* request) {
   }
 }
 
-static int fill_in_req_header_cb(void *rec, const char *key,
-                                  const char *value) {
-  net_instaweb::SimpleMetaData* meta_data =
-      static_cast<net_instaweb::SimpleMetaData*>(rec);
-  meta_data->Add(key, value);
-  return 1;
-}
-
 apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   // Check if pagespeed is enabled.
   html_rewriter::PageSpeedConfig* server_config =
@@ -208,7 +224,9 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   LOG(INFO) << "Instaweb OutputFilter called for request "
             << request->unparsed_uri;
 
-  // Initialize pagespeed context structure.
+  // Initialize per-request context structure.  Note that instaweb_out_filter
+  // may get called multiple times per HTTP request, and this occurs only
+  // on the first call.
   if (context == NULL) {
     // Check if mod_instaweb has already rewritten the HTML.  If the server is
     // setup as both the original and the proxy server, mod_pagespeed filter may
@@ -232,39 +250,50 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
       ap_remove_output_filter(filter);
       return ap_pass_brigade(filter->next, bb);
     }
-    filter->ctx = context = new InstawebContext;
-    mod_spdy::PoolRegisterDelete(request->pool, context);
+    filter->ctx = context = new InstawebContext(request->pool);
     context->bucket_brigade = apr_brigade_create(
         request->pool,
         request->connection->bucket_alloc);
-    std::string base_url(ap_construct_url(request->pool,
-                                          request->unparsed_uri,
-                                          request));
+    std::string base_url;
+    if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
+      base_url = request->unparsed_uri;
+    } else {
+      base_url = ap_construct_url(request->pool, request->unparsed_uri,
+                                  request);
+    }
+    LOG(INFO) << "unparsed=" << request->unparsed_uri
+              << ", base_url=" << base_url;
 
     net_instaweb::SimpleMetaData request_headers, response_headers;
-    apr_table_do(fill_in_req_header_cb, &request_headers, request->headers_in,
-                 NULL);
-    apr_table_do(fill_in_req_header_cb, &response_headers, request->headers_out,
-                 NULL);
+    net_instaweb::ApacheHeaderToMetaData(request->headers_in, 0,
+                                         request->proto_num, &request_headers);
     LOG(INFO) << "Request headers:\n" << request_headers.ToString();
-    LOG(INFO) << "Response headers:\n" << response_headers.ToString();
 
     // Hack for mod_proxy to figure out where it's proxying from
+    LOG(INFO) << "request->filename=" << request->filename << ", uri="
+              << request->unparsed_uri;
     if ((request->filename != NULL) &&
         (strncmp(request->filename, "proxy:", 6) == 0)) {
       base_url.assign(request->filename + 6, strlen(request->filename) - 6);
     }
 
-    context->rewriter = new HtmlRewriter(server_config->context,
-                                         encoding,
-                                         base_url,
-                                         request->unparsed_uri,
-                                         &context->output);
-    mod_spdy::PoolRegisterDelete(request->pool, context->rewriter);
+    context->rewriter.reset(new HtmlRewriter(server_config->context,
+                                             encoding,
+                                             base_url,
+                                             request->unparsed_uri,
+                                             &context->output));
     apr_table_setn(request->headers_out, "x-instaweb", "1");
     apr_table_unset(request->headers_out, "Content-Length");
     apr_table_unset(request->headers_out, "Content-MD5");
+    apr_table_unset(request->headers_out, "Content-Encoding");
+
+    // Note that downstream output filters may further mutate the response
+    // headers, and this will not show those mutations.
+    net_instaweb::ApacheHeaderToMetaData(request->headers_out, request->status,
+                                         request->proto_num, &response_headers);
+    LOG(INFO) << "Instaweb Response headers:\n" << response_headers.ToString();
   }
+
   apr_bucket* new_bucket = NULL;
   while (!APR_BRIGADE_EMPTY(bb)) {
     apr_bucket* bucket = APR_BRIGADE_FIRST(bb);
@@ -423,7 +452,7 @@ apr_status_t pagespeed_log_transaction(request_rec *request) {
 // other events.
 void mod_pagespeed_register_hooks(apr_pool_t *p) {
   // Enable logging using pagespeed style
-  mod_spdy::InstallLogMessageHandler();
+  html_rewriter::InstallLogMessageHandler(p);
 
   // Use instaweb to handle generated resources.
   ap_hook_handler(mod_pagespeed::instaweb_handler, NULL, NULL, -1);
@@ -533,6 +562,20 @@ static const char* mod_pagespeed_config_one_string(cmd_parms* cmd, void* data,
     config->use_http_cache = (config_switch == CONFIG_ON);
   } else if (strcasecmp(directive, kInstawebRewriters) == 0) {
     config->rewriters = apr_pstrdup(cmd->pool, arg);
+  } else if (strcasecmp(directive, kInstawebSlurpDirectory) == 0) {
+    config->slurp_directory = apr_pstrdup(cmd->pool, arg);
+  } else if (strcasecmp(directive, kInstawebSlurpWrite) == 0) {
+    ConfigSwitch config_switch = get_config_switch(arg);
+    if (config_switch == CONFIG_ERROR) {
+      return apr_pstrcat(cmd->pool, kInstawebUseHttpCache, " on|off", NULL);
+    }
+    config->slurp_write = (config_switch == CONFIG_ON);
+  } else if (strcasecmp(directive, kInstawebForceCaching) == 0) {
+    ConfigSwitch config_switch = get_config_switch(arg);
+    if (config_switch == CONFIG_ERROR) {
+      return apr_pstrcat(cmd->pool, kInstawebForceCaching, " on|off", NULL);
+    }
+    config->force_caching = (config_switch == CONFIG_ON);
   } else {
     return "Unknown directive.";
   }
@@ -613,6 +656,21 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
                     mod_pagespeed_config_one_string),
                 NULL, RSRC_CONF,
                 "Comma-separated list of rewriting filters"),
+  AP_INIT_TAKE1(kInstawebSlurpDirectory,
+                reinterpret_cast<const char*(*)()>(
+                    mod_pagespeed_config_one_string),
+                NULL, RSRC_CONF,
+                "Directory from which to read slurped resources"),
+  AP_INIT_TAKE1(kInstawebSlurpWrite,
+                reinterpret_cast<const char*(*)()>(
+                    mod_pagespeed_config_one_string),
+                NULL, RSRC_CONF,
+                "Directory from which to read slurped resources"),
+  AP_INIT_TAKE1(kInstawebForceCaching,
+                reinterpret_cast<const char*(*)()>(
+                    mod_pagespeed_config_one_string),
+                NULL, RSRC_CONF,
+                "Ignore HTTP cache headers and TTLs"),
   {NULL}
 };
 // Declare and populate the module's data structure.  The
@@ -625,10 +683,10 @@ module AP_MODULE_DECLARE_DATA instaweb_module = {
   // server/directory configuration, configuration merging
   // and other tasks.
   STANDARD20_MODULE_STUFF,
-  NULL,
-  NULL,
+  NULL,  // create per-directory config structure
+  NULL,  // merge per-directory config structures
   mod_pagespeed_create_server_config,
-  NULL,
+  NULL,  // merge per-server config structures
   mod_pagespeed_filter_cmds,
   mod_pagespeed_register_hooks,      // callback for registering hooks
 };

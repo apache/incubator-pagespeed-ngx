@@ -285,11 +285,12 @@ bool StdioFileSystem::ListContents(const StringPiece& dir, StringVector* files,
       handler->Error(dirname, 0, "Failed to opendir: %s", strerror(errno));
     return false;
   } else {
-    dirent* dirent = NULL;
-    while ((dirent = readdir(mydir))) {
-      if ((strcmp(dirent->d_name, ".") != 0) &&
-          (strcmp(dirent->d_name, "..") != 0)) {
-        files->push_back(dir_string + dirent->d_name);
+    dirent* entry = NULL;
+    dirent buffer;
+    while (readdir_r(mydir, &buffer, &entry) == 0 && entry != NULL) {
+      if ((strcmp(entry->d_name, ".") != 0) &&
+          (strcmp(entry->d_name, "..") != 0)) {
+        files->push_back(dir_string + entry->d_name);
       }
     }
     if (closedir(mydir) != 0) {
@@ -361,6 +362,18 @@ bool StdioFileSystem::Unlock(const StringPiece& lock_name,
                      lock_str, strerror(errno));
     return false;
   }
+}
+
+FileSystem::InputFile* StdioFileSystem::Stdin() {
+  return new StdioInputFile(stdin, "stdin");
+}
+
+FileSystem::OutputFile* StdioFileSystem::Stdout() {
+  return new StdioOutputFile(stdout, "stdout");
+}
+
+FileSystem::OutputFile* StdioFileSystem::Stderr() {
+  return new StdioOutputFile(stdout, "stdout");
 }
 
 }  // namespace net_instaweb

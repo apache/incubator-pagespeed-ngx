@@ -18,7 +18,6 @@
     # third-party code and should be subjected to strict compiler
     # warnings/errors in order to catch programming mistakes.
     'chromium_code': 1,
-    'mod_spdy_root': '<(DEPTH)/third_party/mod_spdy/src',
   },
 
   'targets': [
@@ -30,14 +29,9 @@
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/apache/httpd/httpd.gyp:include',
       ],
-      'include_dirs': [
-        '<(DEPTH)',
-        '<(mod_spdy_root)',
-      ],
       'sources': [
         'apache/mod_slurp.cc',
-        # TODO(lsong): Move this to a seperate gyp and depends on it.
-        '<(mod_spdy_root)/mod_spdy/apache/log_message_handler.cc',
+        'apache/log_message_handler.cc',
       ],
     },
   ],

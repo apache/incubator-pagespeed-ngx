@@ -28,6 +28,7 @@
 #include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -85,7 +86,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   virtual void SetUp() {
     apr_pool_create(&pool_, NULL);
     serf_url_async_fetcher_.reset(
-        new html_rewriter::SerfUrlAsyncFetcher(kProxy, pool_));
+        new net_instaweb::SerfUrlAsyncFetcher(kProxy, pool_));
     mutex_ = new html_rewriter::AprMutex(pool_);
     AddTestUrl("http://www.google.com/", "<!doctype html>");
     AddTestUrl("http://www.google.com/favicon.ico",
@@ -186,7 +187,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   std::vector<net_instaweb::StringWriter*> writers_;
   std::vector<TestCallback*> callbacks_;
   // The fetcher to be tested.
-  scoped_ptr<html_rewriter::SerfUrlAsyncFetcher> serf_url_async_fetcher_;
+  scoped_ptr<net_instaweb::SerfUrlAsyncFetcher> serf_url_async_fetcher_;
   net_instaweb::GoogleMessageHandler message_handler_;
   size_t prev_done_count;
   html_rewriter::AprMutex* mutex_;
@@ -197,8 +198,37 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
 
 TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {
   EXPECT_TRUE(TestFetch(0, 1));
+  EXPECT_FALSE(response_headers_[0]->IsGzipped());
 }
 
+TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
+  request_headers_[0]->Add(net_instaweb::HttpAttributes::kAcceptEncoding,
+                           net_instaweb::HttpAttributes::kGzip);
+
+  // www.google.com doesn't respect our 'gzip' encoding request unless
+  // we have a reasonable user agent.
+  const char kDefaultUserAgent[] =
+    "Mozilla/5.0 (X11; U; Linux x86_64; en-US) "
+    "AppleWebKit/534.0 (KHTML, like Gecko) Chrome/6.0.408.1 Safari/534.0";
+
+  request_headers_[0]->Add(net_instaweb::HttpAttributes::kUserAgent,
+                           kDefaultUserAgent);
+  StartFetches(0, 1, false);
+  ASSERT_TRUE(WaitTillDone(0, 1, kMaxMs));
+  ASSERT_TRUE(callbacks_[0]->IsDone());
+  EXPECT_LT(static_cast<size_t>(0), contents_[0]->size());
+  EXPECT_EQ(200, response_headers_[0]->status_code());
+  ASSERT_TRUE(response_headers_[0]->IsGzipped());
+
+  net_instaweb::GzipInflater inflater;
+  ASSERT_TRUE(inflater.Init());
+  ASSERT_TRUE(inflater.SetInput(contents_[0]->data(), contents_[0]->size()));
+  ASSERT_TRUE(inflater.HasUnconsumedInput());
+  int size = content_starts_[0].size();
+  scoped_array<char> buf(new char[size]);
+  ASSERT_EQ(size, inflater.InflateBytes(buf.get(), size));
+  EXPECT_EQ(content_starts_[0], std::string(buf.get(), size));
+}
 
 TEST_F(SerfUrlAsyncFetcherTest, FetchTwoURLs) {
   EXPECT_TRUE(TestFetch(1, 3));
@@ -222,14 +252,14 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitThreeThreaded) {
   StartFetches(0, 3, true);
   serf_url_async_fetcher_->WaitForInProgressFetches(
       kWaitTimeoutMs, &message_handler_,
-      html_rewriter::SerfUrlAsyncFetcher::kThreadedOnly);
+      net_instaweb::SerfUrlAsyncFetcher::kThreadedOnly);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreadedAsync) {
   StartFetches(0, 1, true);
   serf_url_async_fetcher_->WaitForInProgressFetches(
       10 /* milliseconds */, &message_handler_,
-      html_rewriter::SerfUrlAsyncFetcher::kThreadedOnly);
+      net_instaweb::SerfUrlAsyncFetcher::kThreadedOnly);
   StartFetches(1, 3, true);
 
   // In this test case, we are not going to call the explicit threaded
@@ -256,7 +286,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitOneThreadedTwoSync) {
   StartFetches(1, 3, false);
   serf_url_async_fetcher_->WaitForInProgressFetches(
       kWaitTimeoutMs, &message_handler_,
-      html_rewriter::SerfUrlAsyncFetcher::kThreadedAndMainline);
+      net_instaweb::SerfUrlAsyncFetcher::kThreadedAndMainline);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestWaitTwoThreadedOneSync) {
@@ -264,7 +294,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitTwoThreadedOneSync) {
   StartFetches(1, 3, true);
   serf_url_async_fetcher_->WaitForInProgressFetches(
       kWaitTimeoutMs, &message_handler_,
-      html_rewriter::SerfUrlAsyncFetcher::kThreadedAndMainline);
+      net_instaweb::SerfUrlAsyncFetcher::kThreadedAndMainline);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreaded) {

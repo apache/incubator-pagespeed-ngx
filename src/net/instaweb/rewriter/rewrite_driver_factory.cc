@@ -24,10 +24,13 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_url_async_fetcher.h"
 #include "net/instaweb/util/public/cache_url_fetcher.h"
+#include "net/instaweb/util/public/fake_url_async_fetcher.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/http_cache.h"
+#include "net/instaweb/util/public/http_dump_url_fetcher.h"
+#include "net/instaweb/util/public/http_dump_url_writer.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -100,7 +103,6 @@ void RewriteDriverFactory::set_file_system(FileSystem* file_system) {
 void RewriteDriverFactory::set_url_fetcher(UrlFetcher* url_fetcher) {
   CHECK(url_async_fetcher_.get() == NULL)
       << "Only call one of set_url_fetcher and set_url_async_fetcher";
-  CHECK(url_fetcher_.get() == NULL) << "Only call set_url_fetcher once";
   url_fetcher_.reset(url_fetcher);
 }
 
@@ -168,14 +170,10 @@ UrlFetcher* RewriteDriverFactory::url_fetcher() {
 
 UrlAsyncFetcher* RewriteDriverFactory::url_async_fetcher() {
   UrlAsyncFetcher* async_fetcher = url_async_fetcher_.get();
-
-  // If no asynchronous fetcher was explicitly set, then build a fake
-  // one using the synchronous fetcher.
   if (async_fetcher == NULL) {
     async_fetcher = DefaultAsyncUrlFetcher();
     url_async_fetcher_.reset(async_fetcher);
   }
-
   return async_fetcher;
 }
 
@@ -206,6 +204,8 @@ StringPiece RewriteDriverFactory::url_prefix() {
 
 ResourceManager* RewriteDriverFactory::resource_manager() {
   if (resource_manager_ == NULL) {
+    SetupHooks();
+
     CHECK(!filename_prefix_.empty())
         << "Must specify --filename_prefix or call "
         << "RewriteDriverFactory::set_filename_prefix.";
@@ -218,6 +218,9 @@ ResourceManager* RewriteDriverFactory::resource_manager() {
         http_cache()));
   }
   return resource_manager_.get();
+}
+
+void RewriteDriverFactory::SetupHooks() {
 }
 
 Timer* RewriteDriverFactory::timer() {
@@ -243,6 +246,26 @@ RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
 
 void RewriteDriverFactory::AddPlatformSpecificRewritePasses(
     RewriteDriver* driver) {
+}
+
+void RewriteDriverFactory::SetSlurpDirectory(const StringPiece& directory,
+                                             bool read_only) {
+  if (read_only) {
+    url_async_fetcher_.reset(NULL);
+    url_fetcher_.reset(new HttpDumpUrlFetcher(directory, file_system(),
+                                              timer()));
+  } else {
+    url_fetcher();  // calls DefaultUrlFetcher if not already set.
+    UrlFetcher* fetcher = url_fetcher_.release();
+    fetcher = new HttpDumpUrlWriter(directory, fetcher, file_system(), timer());
+    url_fetcher_.reset(fetcher);
+  }
+  url_async_fetcher_.reset(new FakeUrlAsyncFetcher(url_fetcher_.get()));
+
+  // TODO(jmarantz): do I really want the output resources written directly
+  // to the slurp directory?  I think this will just be redundant.  This is
+  // what websim was doing however.
+  set_filename_prefix(directory);
 }
 
 void RewriteDriverFactory::ShutDown() {

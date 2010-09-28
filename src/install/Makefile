@@ -145,6 +145,7 @@ $(STAGING_DIR)/%.conf : %.conf.template
 	sed -e s@HOSTNAME@$(HOSTNAME)@g \
             -e s@APACHE_DOC_ROOT@$(APACHE_DOC_ROOT)@g \
 	    -e s@INSTAWEB_FILE_ROOT@$(INSTAWEB_FILE_ROOT)@g \
+	    -e s@APACHE_MODULES@$(APACHE_MODULES)@g \
 		< $< > $@
 
 CONF_TEMPLATES = $(STAGING_DIR)/instaweb.conf \
@@ -162,8 +163,6 @@ staging: setup_staging_dir $(CONF_TEMPLATES)
 	$(MODS_ENABLED_STAGING_COMMANDS)
 	cp -rp instaweb_example $(STAGING_DIR)
 	cp $(INSTAWEB_MODULE) $(STAGING_DIR)/mod_instaweb.so
-	echo "LoadModule instaweb_module $(APACHE_MODULES)/mod_instaweb.so" \
-	 	> $(STAGING_DIR)/instaweb.load
 
 # To install the Instaweb configuration into the system, you must
 # run this as root, or under sudo.

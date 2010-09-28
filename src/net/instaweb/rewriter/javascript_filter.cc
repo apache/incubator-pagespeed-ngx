@@ -24,6 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
+#include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -114,6 +115,11 @@ void JavascriptFilter::RewriteInlineScript() {
     const StringPiece script = FlattenBuffer(&script_buffer);
     MessageHandler* message_handler = html_parse_->message_handler();
     JavascriptCodeBlock code_block(script, config_, message_handler);
+    JavascriptLibraryId library = code_block.ComputeJavascriptLibrary();
+    if (library.recognized()) {
+      html_parse_->InfoHere("Script is %s %s",
+                            library.name(), library.version());
+    }
     if (code_block.ProfitableToRewrite()) {
       // Now replace all CharactersNodes with a single CharactersNode containing
       // the minified script.
@@ -190,6 +196,11 @@ void JavascriptFilter::RewriteExternalScript() {
         StringPiece script = script_input->contents();
         MessageHandler* message_handler = html_parse_->message_handler();
         JavascriptCodeBlock code_block(script, config_, message_handler);
+        JavascriptLibraryId library = code_block.ComputeJavascriptLibrary();
+        if (library.recognized()) {
+          html_parse_->InfoHere("Script %s is %s %s", script_url.c_str(),
+                                library.name(), library.version());
+        }
         ok = code_block.ProfitableToRewrite();
         if (ok) {
           ok = WriteExternalScriptTo(script_input.get(), code_block.Rewritten(),

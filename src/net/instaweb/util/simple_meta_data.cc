@@ -19,11 +19,11 @@
 #include "net/instaweb/util/public/simple_meta_data.h"
 
 #include <stdio.h>
-#include <time.h>
 #include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/core/resource_util.h"
 
@@ -243,19 +243,15 @@ int64 SimpleMetaData::CacheExpirationTimeMs() const {
 }
 
 void SimpleMetaData::SetDate(int64 date_ms) {
-  time_t time = date_ms / 1000;
-  char buf[100];  // man ctime says buffer should be at least 26.
-  std::string trim_buffer;
-  TrimWhitespace(ctime_r(&time, buf), &trim_buffer);
-  Add("Date", trim_buffer.c_str());
+  std::string time_string;
+  ConvertTimeToString(date_ms, &time_string);
+  Add("Date", time_string.c_str());
 }
 
 void SimpleMetaData::SetLastModified(int64 last_modified_ms) {
-  time_t time = last_modified_ms / 1000;
-  char buf[100];  // man ctime says buffer should be at least 26.
-  std::string trim_buffer;
-  TrimWhitespace(ctime_r(&time, buf), &trim_buffer);
-  Add("Last-Modified", trim_buffer.c_str());
+  std::string time_string;
+  ConvertTimeToString(last_modified_ms, &time_string);
+  Add("Last-Modified", time_string.c_str());
 }
 
 void SimpleMetaData::ComputeCaching() {
@@ -269,7 +265,7 @@ void SimpleMetaData::ComputeCaching() {
   int64 date;
   // Compute the timestamp if we can find it
   if (Lookup("Date", &values) && (values.size() == 1) &&
-      pagespeed::resource_util::ParseTimeValuedHeader(values[0], &date)) {
+      ConvertStringToTime(values[0], &date)) {
     timestamp_ms_ = date;
   }
 

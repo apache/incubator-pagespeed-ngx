@@ -32,6 +32,23 @@ namespace net_instaweb {
 class MessageHandler;
 class Writer;
 
+// Global constants for common HTML attribues names and values.
+//
+// TODO(jmarantz): proactively change all the occurences of the static strings
+// to use these shared constants.
+struct HttpAttributes {
+  static const char kAcceptEncoding[];
+  static const char kContentEncoding[];
+  static const char kContentLength[];
+  static const char kContentType[];
+  static const char kDate[];
+  static const char kExpires[];
+  static const char kGzip[];
+  static const char kLastModified[];
+  static const char kTransferEncoding[];
+  static const char kUserAgent[];
+};
+
 namespace HttpStatus {
 // Http status codes.
 // Grokked from http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
@@ -166,9 +183,25 @@ class MetaData {
   }
 
   virtual std::string ToString() const = 0;
+  void DebugPrint() const;
 
   // Parses an arbitrary string into milliseconds since 1970
   static bool ParseTime(const char* time_str, int64* time_ms);
+
+  // Determines whether a response header is marked as gzipped.
+  bool IsGzipped() const;
+
+  // Determines whether a request header accepts gzipped content.
+  bool AcceptsGzip() const;
+
+  // Parses a date header such as HttpAttributes::kDate or
+  // HttpAttributes::kExpires, returning the timestamp as
+  // number of milliseconds since 1970.
+  bool ParseDateHeader(const char* attr, int64* date_ms) const;
+
+  // Updates a date header using time specified as a number of milliseconds
+  // since 1970.
+  void UpdateDateHeader(const char* attr, int64 date_ms);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MetaData);

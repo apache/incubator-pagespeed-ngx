@@ -115,9 +115,9 @@ void CssFilter::EndElement(HtmlElement* element) {
 bool CssFilter::RewriteCssText(const StringPiece& in_text,
                                std::string* out_text,
                                MessageHandler* handler) {
-  // Load stylesheet.
+  // Load stylesheet w/o expanding background attributes.
   // TODO(sligocki): Figure out how we know if this failed.
-  Css::Stylesheet* stylesheet = Css::Parser(in_text).ParseStylesheet();
+  Css::Stylesheet* stylesheet = Css::Parser(in_text).ParseRawStylesheet();
 
   // TODO(sligocki): Edit stylesheet.
 

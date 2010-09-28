@@ -24,7 +24,6 @@
 #include "net/instaweb/apache/pagespeed_server_context.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/mod_instaweb.h"
-#include "mod_spdy/apache/log_message_handler.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -156,7 +155,7 @@ bool fetch_resource(const request_rec* request,
                                 &callback);
   bool ret = callback.done() && callback.success();
   if (!ret) {
-    html_rewriter::SerfUrlAsyncFetcher* serf_async_fetcher =
+    net_instaweb::SerfUrlAsyncFetcher* serf_async_fetcher =
         context->rewrite_driver_factory()->serf_url_async_fetcher();
     html_rewriter::AprTimer timer;
     int64 max_ms = html_rewriter::GetResourceFetcherTimeOutMs(context);

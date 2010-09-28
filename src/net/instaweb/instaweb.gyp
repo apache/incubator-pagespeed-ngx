@@ -32,6 +32,7 @@
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/chromium/src/net/tools/dump_cache.gyp:url_to_filename_encoder',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
+        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
       ],
       'sources': [
         'util/abstract_mutex.cc',
@@ -50,6 +51,8 @@
         'util/hasher.cc',
         'util/http_cache.cc',
         'util/http_response_parser.cc',
+        'util/http_dump_url_fetcher.cc',
+        'util/http_dump_url_writer.cc',
         'util/http_value.cc',
         'util/lru_cache.cc',
         'util/meta_data.cc',
@@ -58,6 +61,7 @@
         'util/null_message_handler.cc',
         'util/pthread_mutex.cc',
         'util/ref_counted.cc',
+        'util/rolling_hash.cc',
         'util/simple_meta_data.cc',
         'util/simple_stats.cc',
         'util/statistics.cc',
@@ -65,6 +69,7 @@
         'util/string_buffer.cc',
         'util/string_buffer_writer.cc',
         'util/threadsafe_cache.cc',
+        'util/time_util.cc',
         'util/url_async_fetcher.cc',
         'util/url_fetcher.cc',
         'util/wget_url_fetcher.cc',
@@ -187,6 +192,7 @@
       'sources': [
         'rewriter/javascript_code_block.cc',
         'rewriter/javascript_filter.cc',
+        'rewriter/javascript_library_identification.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

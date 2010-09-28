@@ -72,7 +72,9 @@ class ResourceManager {
   // database, network attached storage, or a shared cache such as
   // memcached.
   //
-  // If this is not available in the current deployment, then NULL is returned.
+  // If this is not available in the current deployment, it is illegal
+  // to call this routine.
+  // TODO(jmarantz): enforce this with a check.
   //
   // Every time this method is called, a new resource is generated.
   //
@@ -190,7 +192,7 @@ class ResourceManager {
   const char* SplitUrl(const char* url, int* shard) const;
 
  private:
-  std::string ConstructNameKey(OutputResource* output) const;
+  std::string ConstructNameKey(const OutputResource* output) const;
   void ValidateShardsAgainstUrlPrefixPattern();
 
   scoped_ptr<GURL> base_url_;  // Base url to resolve relative urls against.

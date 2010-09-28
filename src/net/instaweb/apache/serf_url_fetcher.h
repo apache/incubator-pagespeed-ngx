@@ -20,19 +20,11 @@
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/util/public/url_fetcher.h"
 
-using net_instaweb::MessageHandler;
-using net_instaweb::Writer;
-using net_instaweb::MetaData;
-using net_instaweb::UrlFetcher;
-
-
-namespace html_rewriter {
-
-class PageSpeedServerContext;
+namespace net_instaweb {
 
 class SerfUrlFetcher : public UrlFetcher {
  public:
-  SerfUrlFetcher(PageSpeedServerContext* context,
+  SerfUrlFetcher(int64 fetcher_timeout_ms,
                  SerfUrlAsyncFetcher* async_fetcher);
   virtual ~SerfUrlFetcher();
   virtual bool StreamingFetchUrl(const std::string& url,
@@ -42,7 +34,7 @@ class SerfUrlFetcher : public UrlFetcher {
                                  MessageHandler* message_handler);
 
  private:
-  PageSpeedServerContext* context_;
+  int64 fetcher_timeout_ms_;
   SerfUrlAsyncFetcher* async_fetcher_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfUrlFetcher);

@@ -30,8 +30,6 @@
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 
-using html_rewriter::SerfUrlAsyncFetcher;
-
 namespace net_instaweb {
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
@@ -110,8 +108,8 @@ CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
 UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
   if (serf_url_fetcher_ == NULL) {
     DefaultAsyncUrlFetcher();  // Create async fetcher if necessary.
-    serf_url_fetcher_ = new html_rewriter::SerfUrlFetcher(
-        context_, serf_url_async_fetcher_);
+    serf_url_fetcher_ = new SerfUrlFetcher(
+        GetFetcherTimeOut(context_), serf_url_async_fetcher_);
   }
   return serf_url_fetcher_;
 }

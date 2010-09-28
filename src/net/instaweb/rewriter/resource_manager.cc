@@ -39,7 +39,7 @@ namespace {
 const char kCacheControl[] = "Cache-control";
 
 // Our HTTP cache mostly stores full URLs, including the http: prefix,
-// mapping them into the URL contents and HTTP headers.  Howwever, we
+// mapping them into the URL contents and HTTP headers.  However, we
 // also put name->hash mappings into the HTTP cache, and we prefix
 // these with "ResourceName:" to disambiguate them.
 //
@@ -201,14 +201,15 @@ OutputResource* ResourceManager::CreateGeneratedOutputResource(
 //    prefix.encoded_resource_name.hash.extension
 // we know prefix and name, but not the hash, and we don't always even
 // have the extension, which might have changes as the result of, for
-// exmaple image optimization (e.g. gif->png).  But We can "remember"
+// example image optimization (e.g. gif->png).  But We can "remember"
 // the hash/extension for as long as the origin URL was cacheable.  So we
 // construct this as a key:
 //    ResourceName:prefix.encoded_resource_name
 // and use that to map to the hash-code and extension.  If we know the
 // hash-code then we may also be able to look up the contents in the same
 // cache.
-std::string ResourceManager::ConstructNameKey(OutputResource* output) const {
+std::string ResourceManager::ConstructNameKey(const OutputResource* output)
+    const {
   const char* separator = RewriteFilter::prefix_separator();
   std::string name_key = StrCat(
       kFilenameCacheKeyPrefix, output->filter_prefix(), separator,
@@ -318,7 +319,7 @@ Resource* ResourceManager::CreateInputResource(
 
     if (url.SchemeIs("http")) {
       // TODO(sligocki): Figure out if these are actually local by
-      // seing if the serving path matches url_prefix_pattern_, in
+      // seeing if the serving path matches url_prefix_pattern_, in
       // which case we can do a local file read.
       // TODO(jmaessen): In order to permit url loading from a context
       // where the base url isn't set, we must keep the normalized url
@@ -436,7 +437,7 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
         origin_meta_data.ComputeCaching();
         // Note: the '.' is already in the suffix.
         // TODO(jmarantz): rationalize that we've theoretically made it possible
-        // to change the separator from '.' to soemthing else, when in reality
+        // to change the separator from '.' to something else, when in reality
         // that would be a real pain.
         std::string hash_extension = StrCat(output->hash(), output->suffix());
         http_cache_->Put(ConstructNameKey(output), origin_meta_data,

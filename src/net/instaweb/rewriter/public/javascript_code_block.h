@@ -20,11 +20,11 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_CODE_BLOCK_H_
 
 #include "base/basictypes.h"
+#include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class JavascriptFilter;
 class MessageHandler;
 
 // Class wrapping up configuration information for javascript
@@ -33,17 +33,29 @@ class MessageHandler;
 class JavascriptRewriteConfig {
  public:
   JavascriptRewriteConfig()
-      : minify_(true) { }
+      : minify_(true),
+        redirect_(true) { }
   // Whether to minify javascript output (using jsmin).
   // true by default.
-  const bool minify() const {
+  bool minify() const {
     return minify_;
   }
   void set_minify(bool minify) {
     minify_ = minify;
   }
+  // whether to redirect external javascript libraries to
+  // Google-as-a-CDN
+  bool redirect() const {
+    return redirect_;
+  }
+  void set_redirect(bool redirect) {
+    redirect_ = redirect;
+  }
  private:
   bool minify_;
+  bool redirect_;
+
+  DISALLOW_COPY_AND_ASSIGN(JavascriptRewriteConfig);
 };
 
 // Object representing a block of Javascript code that might be a
@@ -57,18 +69,14 @@ class JavascriptCodeBlock {
  public:
   JavascriptCodeBlock(const StringPiece& original_code,
                       const JavascriptRewriteConfig& config,
-                      MessageHandler* handler)
-      : config_(config),
-        handler_(handler),
-        original_code_(original_code),
-        rewritten_(false),
-        output_code_(original_code) { }
-  virtual ~JavascriptCodeBlock() { }
+                      MessageHandler* handler);
+
+  virtual ~JavascriptCodeBlock();
+
   // Is it profitable to replace js code with rewritten version?
   bool ProfitableToRewrite() {
     RewriteIfNecessary();
-    return (output_code_.data() == rewritten_code_.data() &&
-            rewritten_code_.size() < original_code_.size());
+    return (output_code_.size() < original_code_.size());
   }
   // TODO(jmaessen): Other questions we might reasonably ask:
   //   Can this code be floated downwards?
@@ -78,6 +86,19 @@ class JavascriptCodeBlock {
   const StringPiece Rewritten() {
     RewriteIfNecessary();
     return output_code_;
+  }
+
+  // Is the current block a JS library that can be redirected to Google?
+  // If so, return the info necessary to do so.  Otherwise returns a
+  // block for which .recognized() is false.
+  const JavascriptLibraryId ComputeJavascriptLibrary() {
+    // We always RewriteIfNecessary just to provide a degree of
+    // predictability to the rewrite flow.
+    RewriteIfNecessary();
+    if (!config_.redirect()) {
+      return JavascriptLibraryId();
+    }
+    return JavascriptLibraryId::Find(rewritten_code_);
   }
 
  private:
@@ -93,10 +114,10 @@ class JavascriptCodeBlock {
 
   const JavascriptRewriteConfig& config_;
   MessageHandler* handler_;
-  const StringPiece& original_code_;
+  const std::string original_code_;
+  StringPiece output_code_;
   bool rewritten_;
   std::string rewritten_code_;
-  StringPiece output_code_;
 
   DISALLOW_COPY_AND_ASSIGN(JavascriptCodeBlock);
 };

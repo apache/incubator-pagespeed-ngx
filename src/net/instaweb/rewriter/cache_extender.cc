@@ -94,8 +94,8 @@ void CacheExtender::StartElement(HtmlElement* element) {
             resource_manager_->CreateNamedOutputResource(
                 filter_prefix_, url_safe_id, input_resource->type(),
                 message_handler));
-
-        if (!output->IsWritten() && !output->HasValidUrl()) {
+        CHECK(!output->IsWritten());
+        if (!output->HasValidUrl()) {
           StringPiece contents(input_resource->contents());
           std::string absolutified;
           if (input_resource->type() == &kContentTypeCss) {

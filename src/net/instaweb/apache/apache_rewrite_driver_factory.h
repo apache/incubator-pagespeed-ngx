@@ -27,11 +27,12 @@ struct server_rec;
 
 namespace html_rewriter {
 class PageSpeedServerContext;
-class SerfUrlAsyncFetcher;
-class SerfUrlFetcher;
 }  // namespace html_rewriter.
 
 namespace net_instaweb {
+
+class SerfUrlAsyncFetcher;
+class SerfUrlFetcher;
 
 // Creates an Apache RewriteDriver.
 class ApacheRewriteDriverFactory : public RewriteDriverFactory {
@@ -46,7 +47,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   virtual Hasher* NewHasher();
   virtual AbstractMutex* NewMutex();
 
-  html_rewriter::SerfUrlAsyncFetcher* serf_url_async_fetcher() {
+  SerfUrlAsyncFetcher* serf_url_async_fetcher() {
     return serf_url_async_fetcher_;
   }
 
@@ -79,8 +80,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   scoped_ptr<AbstractMutex> rewrite_drivers_mutex_;
   std::vector<RewriteDriver*> available_rewrite_drivers_;
   std::set<RewriteDriver*> active_rewrite_drivers_;
-  html_rewriter::SerfUrlFetcher* serf_url_fetcher_;
-  html_rewriter::SerfUrlAsyncFetcher* serf_url_async_fetcher_;
+  SerfUrlFetcher* serf_url_fetcher_;
+  SerfUrlAsyncFetcher* serf_url_async_fetcher_;
   int64 lru_cache_kb_per_process_;
   int64 lru_cache_byte_limit_;
 

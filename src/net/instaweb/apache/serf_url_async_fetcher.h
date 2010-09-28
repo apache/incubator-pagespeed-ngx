@@ -26,14 +26,15 @@ struct apr_pool_t;
 struct serf_context_t;
 struct apr_thread_mutex_t;
 
-using net_instaweb::MessageHandler;
-using net_instaweb::Writer;
-using net_instaweb::MetaData;
-using net_instaweb::UrlAsyncFetcher;
-
 namespace html_rewriter {
 
 class AprMutex;
+
+}  // namespace html_rewriter
+
+
+namespace net_instaweb {
+
 class SerfFetch;
 class SerfThreadedFetcher;
 
@@ -79,7 +80,9 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
                                       MessageHandler* message_handler);
 
   apr_pool_t* pool_;
-  AprMutex* mutex_;  // protects serf_context_ and active_fetches_
+
+  // protects serf_context_ and active_fetches_
+  html_rewriter::AprMutex* mutex_;
   serf_context_t* serf_context_;
   typedef std::set<SerfFetch*> FetchSet;
   FetchSet active_fetches_;
@@ -92,6 +95,6 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcher);
 };
 
-}  // namespace html_rewriter
+}  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_APACHE_SERF_URL_ASYNC_FETCHER_H_

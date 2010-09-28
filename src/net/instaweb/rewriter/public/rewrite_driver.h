@@ -50,9 +50,9 @@ class RewriteDriver {
  public:
   // TODO(jmarantz): provide string-constants so that callers, in particular,
   // tests, that want to enable a specific pass, can reference these rather
-  // than replicating the string literatls.  Also provide programmatic mechanism
+  // than replicating the string literals.  Also provide programmatic mechanism
   // to generate simple and detailed help strings for the user enumerating the
-  // naems of the filters.
+  // names of the filters.
   /*
   static const char kAddHead[];
   static const char kAddBaseTag[];

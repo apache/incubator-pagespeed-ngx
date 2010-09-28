@@ -79,12 +79,18 @@ void CssMinify::Write(const StringPiece& str) {
   }
 }
 
-// Write out each element of vector using supplied function seperated by sep.
+// Write out minified version of each element of vector using supplied function
+// seperated by sep.
 template<typename Container>
-void CssMinify::JoinWrite(const Container& container, const StringPiece& sep) {
-  for (typename Container::const_iterator iter = container.begin();
-       iter != container.end(); ++iter) {
-    if (iter != container.begin()) {
+void CssMinify::JoinMinify(const Container& container, const StringPiece& sep) {
+  JoinMinifyIter(container.begin(), container.end(), sep);
+}
+
+template<typename Iterator>
+void CssMinify::JoinMinifyIter(Iterator begin, Iterator end,
+                               const StringPiece& sep) {
+  for (Iterator iter = begin; iter != end; ++iter) {
+    if (iter != begin) {
       Write(sep);
     }
     Minify(**iter);
@@ -92,8 +98,8 @@ void CssMinify::JoinWrite(const Container& container, const StringPiece& sep) {
 }
 
 template<typename Container>
-void CssMinify::JoinMediaWrite(const Container& container,
-                               const StringPiece& sep) {
+void CssMinify::JoinMediaMinify(const Container& container,
+                                const StringPiece& sep) {
   for (typename Container::const_iterator iter = container.begin();
        iter != container.end(); ++iter) {
     if (iter != container.begin()) {
@@ -104,14 +110,17 @@ void CssMinify::JoinMediaWrite(const Container& container,
 }
 
 
-// Write the minified versions of each type.
+// Write the minified versions of each type. Most of these are called via
+// templated instantiations of JoinMinify (or JoinMinifyIter) so that we can
+// abstract the idea of minifying all sub-elements of a vector and joining them
+// together.
 //   Adapted from webutil/css/tostring.cc
 
 void CssMinify::Minify(const Css::Stylesheet& stylesheet) {
   // We might want to add in unnecessary newlines between rules and imports
   // so that some readability is preserved.
-  JoinWrite(stylesheet.imports(), "");
-  JoinWrite(stylesheet.rulesets(), "");
+  JoinMinify(stylesheet.imports(), "");
+  JoinMinify(stylesheet.rulesets(), "");
 }
 
 void CssMinify::Minify(const Css::Import& import) {
@@ -119,20 +128,20 @@ void CssMinify::Minify(const Css::Import& import) {
   // TODO(sligocki): Make a URL printer method that absolutifies and prints.
   Write(CSSEscapeString(import.link));
   Write(") ");
-  JoinMediaWrite(import.media, ",");
+  JoinMediaMinify(import.media, ",");
   Write(";");
 }
 
 void CssMinify::Minify(const Css::Ruleset& ruleset) {
   if (!ruleset.media().empty()) {
     Write("@media ");
-    JoinMediaWrite(ruleset.media(), ",");
+    JoinMediaMinify(ruleset.media(), ",");
     Write("{");
   }
 
-  JoinWrite(ruleset.selectors(), ",");
+  JoinMinify(ruleset.selectors(), ",");
   Write("{");
-  JoinWrite(ruleset.declarations(), ";");
+  JoinMinify(ruleset.declarations(), ";");
   Write("}");
 
   if (!ruleset.media().empty()) {
@@ -142,17 +151,25 @@ void CssMinify::Minify(const Css::Ruleset& ruleset) {
 
 void CssMinify::Minify(const Css::Selector& selector) {
   // Note Css::Selector == std::vector<Css::SimpleSelectors*>
-  JoinWrite(selector, " ");
+  Css::Selector::const_iterator iter = selector.begin();
+  if (iter != selector.end()) {
+    bool isfirst = true;
+    Minify(**iter, isfirst);
+    ++iter;
+    JoinMinifyIter(iter, selector.end(), "");
+  }
 }
 
-void CssMinify::Minify(const Css::SimpleSelectors& sselectors) {
+void CssMinify::Minify(const Css::SimpleSelectors& sselectors, bool isfirst) {
   if (sselectors.combinator() == Css::SimpleSelectors::CHILD) {
-    Write("> ");
+    Write(">");
   } else if (sselectors.combinator() == Css::SimpleSelectors::SIBLING) {
-    Write("+ ");
+    Write("+");
+  } else if (!isfirst) {
+    Write(" ");
   }
   // Note Css::SimpleSelectors == std::vector<Css::SimpleSelector*>
-  JoinWrite(sselectors, "");
+  JoinMinify(sselectors, "");
 }
 
 void CssMinify::Minify(const Css::SimpleSelector& sselector) {
@@ -193,17 +210,17 @@ void CssMinify::Minify(const Css::Declaration& declaration) {
   Write(":");
   switch (declaration.prop()) {
     case Css::Property::FONT_FAMILY:
-      JoinWrite(*declaration.values(), ",");
+      JoinMinify(*declaration.values(), ",");
       break;
     case Css::Property::FONT:
       Write(FontToString(*declaration.values()));
       break;
     default:
-      JoinWrite(*declaration.values(), " ");
+      JoinMinify(*declaration.values(), " ");
       break;
   }
   if (declaration.IsImportant()) {
-    Write(" !important");
+    Write("!important");
   }
 }
 

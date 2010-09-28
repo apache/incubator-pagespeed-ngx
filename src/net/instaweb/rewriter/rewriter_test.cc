@@ -5,25 +5,19 @@
 // Unit-test the html rewriter
 
 #include "base/basictypes.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
 #include "net/instaweb/rewriter/public/outline_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/content_type.h"
-#include "net/instaweb/util/public/dummy_url_fetcher.h"
-#include "net/instaweb/util/public/fake_url_async_fetcher.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/http_cache.h"
-#include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/simple_stats.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -34,23 +28,10 @@ namespace net_instaweb {
 const std::string kTestData = "/net/instaweb/rewriter/testdata/";
 const std::string kPuzzle = "Puzzle.jpg";
 
-class RewriterTest : public HtmlParseTestBaseNoAlloc {
+class RewriterTest : public ResourceManagerTestBase {
  protected:
-  RewriterTest() : dummy_url_async_fetcher_(&dummy_url_fetcher_),
-                   rewrite_driver_(&message_handler_, &file_system_,
-                                   &dummy_url_async_fetcher_),
-                   nobase_driver_(&message_handler_, &file_system_,
-                                    &dummy_url_async_fetcher_),
-                   lru_cache_(new LRUCache(100 * 1000 * 1000)),
-                   mock_timer_(0),
-                   http_cache_(lru_cache_, &mock_timer_) {
-  }
-
-  virtual void SetUp() {
-    HtmlParseTestBaseNoAlloc::SetUp();
-    file_prefix_ = GTestTempDir() + "/";
-    url_prefix_ = "http://mysite/";
-    num_shards_ = 0;
+  RewriterTest() : nobase_driver_(&message_handler_, &file_system_,
+                                    &dummy_url_async_fetcher_) {
   }
 
   void DeleteFileIfExists(const std::string& filename) {
@@ -60,13 +41,6 @@ class RewriterTest : public HtmlParseTestBaseNoAlloc {
   }
 
 
-  // In this set of tests, we will provide explicit body tags, so
-  // the test harness should not add them in for our convenience.
-  // It can go ahead and add the <html> and </html>, however.
-  virtual bool AddBody() const {
-    return false;
-  }
-
   void AppendDefaultHeaders(const ContentType& content_type,
                             ResourceManager* resource_manager,
                             std::string* text) {
@@ -74,13 +48,6 @@ class RewriterTest : public HtmlParseTestBaseNoAlloc {
     resource_manager->SetDefaultHeaders(&content_type, &header);
     StringWriter writer(text);
     header.Write(&writer, &message_handler_);
-  }
-
-  // Create new ResourceManager. These are owned by the caller.
-  ResourceManager* NewResourceManager(Hasher* hasher) {
-    return new ResourceManager(
-        file_prefix_, url_prefix_, num_shards_, &file_system_,
-        &filename_encoder_, &dummy_url_async_fetcher_, hasher, &http_cache_);
   }
 
   // The async fetchers in these tests are really fake async fetchers, and
@@ -582,47 +549,9 @@ class RewriterTest : public HtmlParseTestBaseNoAlloc {
     html_parse.FinishParse();
   }
 
-  // FileSystem that rejects requests for unrooted input files
-  // and allows the opening of input files to be temporarily
-  // disabled.
-  class RootedFileSystem : public StdioFileSystem {
-   public:
-    RootedFileSystem() : enabled_(true) { }
-    virtual InputFile* OpenInputFile(const char* filename,
-                                     MessageHandler* message_handler) {
-      EXPECT_EQ('/', filename[0]);
-      if (!enabled_) {
-        return NULL;
-      }
-      return StdioFileSystem::OpenInputFile(filename, message_handler);
-    }
-    void enable() {
-      enabled_ = true;
-    }
-    void disable() {
-      enabled_ = false;
-    }
-   private:
-    bool enabled_;
-
-    DISALLOW_COPY_AND_ASSIGN(RootedFileSystem);
-  };
-
   virtual HtmlParse* html_parse() { return rewrite_driver_.html_parse(); }
 
-  DummyUrlFetcher dummy_url_fetcher_;
-  FakeUrlAsyncFetcher dummy_url_async_fetcher_;
-  RootedFileSystem file_system_;
-  FilenameEncoder filename_encoder_;
-  RewriteDriver rewrite_driver_;
   RewriteDriver nobase_driver_;  // No base url, for testing bare resource get
-  LRUCache* lru_cache_;
-  MockTimer mock_timer_;
-  HTTPCache http_cache_;
-  MockHasher mock_hasher_;
-  std::string file_prefix_;
-  std::string url_prefix_;
-  int num_shards_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriterTest);
 };

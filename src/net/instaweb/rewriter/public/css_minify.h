@@ -52,9 +52,11 @@ class CssMinify {
   void Write(const StringPiece& str);
 
   template<typename Container>
-  void JoinWrite(const Container& container, const StringPiece& sep);
+  void JoinMinify(const Container& container, const StringPiece& sep);
+  template<typename Iterator>
+  void JoinMinifyIter(Iterator begin, Iterator end, const StringPiece& sep);
   template<typename Container>
-  void JoinMediaWrite(const Container& container, const StringPiece& sep);
+  void JoinMediaMinify(const Container& container, const StringPiece& sep);
 
   // We name all of these methods identically to simplify the writing of the
   // templated Join* methods.
@@ -62,7 +64,7 @@ class CssMinify {
   void Minify(const Css::Import& import);
   void Minify(const Css::Ruleset& ruleset);
   void Minify(const Css::Selector& selector);
-  void Minify(const Css::SimpleSelectors& sselectors);
+  void Minify(const Css::SimpleSelectors& sselectors, bool isfirst = false);
   void Minify(const Css::SimpleSelector& sselector);
   void Minify(const Css::Declaration& declaration);
   void Minify(const Css::Value& value);

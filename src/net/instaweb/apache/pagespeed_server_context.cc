@@ -48,6 +48,11 @@ bool CreatePageSpeedServerContext(apr_pool_t* pool, PageSpeedConfig* config) {
   factory->set_force_caching(config->force_caching);
   factory->set_lru_cache_kb_per_process(config->lru_cache_kb_per_process);
   factory->set_lru_cache_byte_limit(config->lru_cache_byte_limit);
+  if ((config->slurp_directory != NULL) && (*config->slurp_directory != '\0')) {
+    bool read_only = !config->slurp_write;
+    factory->SetSlurpDirectory(config->slurp_directory, read_only);
+  }
+
   return true;
 }
 

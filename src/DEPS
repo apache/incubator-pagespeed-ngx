@@ -16,7 +16,7 @@ vars = {
   "chromium_trunk": "http://src.chromium.org/svn/trunk",
   "chromium_revision": "@55218",
   "chromium_deps_root": "src/third_party/chromium_deps",
-  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/trunk",
+  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.9.0.0",
   "libpagespeed_revision": "@head",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
   "mod_spdy_trunk": "http://mod-spdy.googlecode.com/svn/trunk",
@@ -49,9 +49,6 @@ deps = {
     File(Var("libpagespeed_trunk") + "/src/DEPS" +
       Var("libpagespeed_revision")),
 
-  Var("mod_spdy_deps_root"):
-    File(Var("mod_spdy_trunk") + "/src/DEPS" + Var("mod_spdy_revision")),
-
   "src/base":
     Var("libpagespeed_trunk") + "/src/base" + Var("libpagespeed_revision"),
 
@@ -63,9 +60,9 @@ deps = {
     (Var("libpagespeed_trunk") + "/src/googleurl_noicu" +
      Var("libpagespeed_revision")),
 
-  "src/third_party/apache":
-    Var("mod_spdy_trunk") + "/src/third_party/apache" +
-    Var("mod_spdy_revision"),
+#  "src/third_party/apache":
+#    Var("mod_spdy_trunk") + "/src/third_party/apache" +
+#    Var("mod_spdy_revision"),
 
   "src/third_party/chromium/src/net/tools/dump_cache":
      Var("chromium_trunk") + "/src/net/tools/dump_cache" +
@@ -93,9 +90,6 @@ deps = {
   "src/third_party/libpagespeed/src/third_party":
     (Var("libpagespeed_trunk") + "/src/third_party" +
      Var("libpagespeed_revision")),
-
-  "src/third_party/mod_spdy/src/mod_spdy/apache":
-    Var("mod_spdy_trunk") + "/src/mod_spdy/apache" + Var("mod_spdy_revision"),
 
   "src/third_party/opencv/src/opencv/src":
     Var("opencv_src") + "/opencv/src" + Var("opencv_revision"),
@@ -136,10 +130,21 @@ deps = {
   "src/third_party/protobuf2/src": From(Var("chromium_deps_root")),
   "src/tools/gyp": From(Var("chromium_deps_root")),
 
-  "src/third_party/apache/apr/src": From(Var("mod_spdy_deps_root")),
-  "src/third_party/apache/aprutil/src": From(Var("mod_spdy_deps_root")),
-  "src/third_party/apache/httpd/src/include": From(Var("mod_spdy_deps_root")),
-  "src/third_party/apache/httpd/src/os": From(Var("mod_spdy_deps_root")),
+  "src/third_party/apache":
+    Var("mod_spdy_trunk") + "/src/third_party/apache" +
+    Var("mod_spdy_revision"),
+
+  "src/third_party/apache/apr/src":
+    Var("apr_src") + Var("apr_revision"),
+
+  "src/third_party/apache/aprutil/src":
+    Var("aprutil_src") + Var("aprutil_revision"),
+
+  "src/third_party/apache/httpd/src/include":
+    Var("apache_httpd_src") + "/include" + Var("apache_httpd_revision"),
+
+  "src/third_party/apache/httpd/src/os":
+    Var("apache_httpd_src") + "/os" + Var("apache_httpd_revision"),
 
   "src/third_party/gflags/src": Var("gflags_root") + Var("gflags_revision"),
   "src/third_party/google-sparsehash/src":
