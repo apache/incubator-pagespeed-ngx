@@ -12,8 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- * This is an Instaweb-specific copy of
+ * This is an Instaweb-specific modification of
  *   src/third_party/serf/src/buckets/response_buckets.c
+ *
+ * 1. Fix a buffer overrun in fetch_headers() by guarding the call to
+ *    serf_bucket_headers_setx.
+ * 2. Removing the block of code responsible for gunzipping zipped content.
+ *    If the caller as specified Accept-Encoding:gzip then serf should not
+ *    unzip it.
  */
 
 #include <apr_lib.h>
@@ -162,10 +168,18 @@ static apr_status_t fetch_headers(serf_bucket_t *bkt, response_context_t *ctx)
 
         /* Always copy the headers (from the linebuf into new mem). */
         /* ### we should be able to optimize some mem copies */
-        serf_bucket_headers_setx(
-            ctx->headers,
-            ctx->linebuf.line, end_key - ctx->linebuf.line, 1,
-            c, ctx->linebuf.line + ctx->linebuf.used - c, 1);
+
+        /*
+         * In Instaweb, we noticed that this code needs to be fixed to
+         * avoid risking a buffer overrun.
+         */
+        if (ctx->linebuf.line + ctx->linebuf.used > c) {
+            apr_size_t value_size = ctx->linebuf.line + ctx->linebuf.used - c;
+            serf_bucket_headers_setx(
+                ctx->headers,
+                ctx->linebuf.line, end_key - ctx->linebuf.line, 1,
+                c, value_size, 1);
+        }
     }
 
     return status;
@@ -253,20 +267,27 @@ static apr_status_t run_machine(serf_bucket_t *bkt, response_context_t *ctx)
                     ctx->state = STATE_DONE;
                 }
             }
-            v = serf_bucket_headers_get(ctx->headers, "Content-Encoding");
-            if (v) {
-                /* Need to handle multiple content-encoding. */
-                if (v && strcasecmp("gzip", v) == 0) {
-                    ctx->body =
-                        serf_bucket_deflate_create(ctx->body, bkt->allocator,
-                                                   SERF_DEFLATE_GZIP);
-                }
-                else if (v && strcasecmp("deflate", v) == 0) {
-                    ctx->body =
-                        serf_bucket_deflate_create(ctx->body, bkt->allocator,
-                                                   SERF_DEFLATE_DEFLATE);
-                }
-            }
+
+            /*
+             * Instaweb would prefer to receive gzipped output if that's what
+             * was asked for.
+             *
+             * v = serf_bucket_headers_get(ctx->headers, "Content-Encoding");
+             * if (v) {
+             *     * Need to handle multiple content-encoding. *
+             *     if (v && strcasecmp("gzip", v) == 0) {
+             *         ctx->body =
+             *             serf_bucket_deflate_create(ctx->body, bkt->allocator,
+             *                                        SERF_DEFLATE_GZIP);
+             *     }
+             *     else if (v && strcasecmp("deflate", v) == 0) {
+             *         ctx->body =
+             *             serf_bucket_deflate_create(ctx->body, bkt->allocator,
+             *                                        SERF_DEFLATE_DEFLATE);
+             *     }
+             * }
+             */
+
             /* If we're a HEAD request, we don't receive a body. */
             if (ctx->head_req) {
                 ctx->state = STATE_DONE;
