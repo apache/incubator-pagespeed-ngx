@@ -87,7 +87,7 @@ void CssMinify::JoinMinify(const Container& container, const StringPiece& sep) {
 }
 
 template<typename Iterator>
-void CssMinify::JoinMinifyIter(Iterator begin, Iterator end,
+void CssMinify::JoinMinifyIter(const Iterator& begin, const Iterator& end,
                                const StringPiece& sep) {
   for (Iterator iter = begin; iter != end; ++iter) {
     if (iter != begin) {

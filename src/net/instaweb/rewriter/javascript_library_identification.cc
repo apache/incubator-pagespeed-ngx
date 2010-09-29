@@ -30,7 +30,7 @@ static const LibraryInfo& kUnrecognizedLibraryInfo = kLibraryMetadata[0];
 static const size_t kLibrarySize = arraysize(kLibraryMetadata);
 
 JavascriptLibraryId JavascriptLibraryId::Find(
-    StringPiece minified_code) {
+    const StringPiece& minified_code) {
   const LibraryInfo* library = &kUnrecognizedLibraryInfo;
   if (minified_code.size() >= kJavascriptHashIdBlockSize) {
     uint64 block_hash =

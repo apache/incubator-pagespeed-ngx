@@ -373,7 +373,7 @@ FileSystem::OutputFile* StdioFileSystem::Stdout() {
 }
 
 FileSystem::OutputFile* StdioFileSystem::Stderr() {
-  return new StdioOutputFile(stdout, "stdout");
+  return new StdioOutputFile(stderr, "stderr");
 }
 
 }  // namespace net_instaweb

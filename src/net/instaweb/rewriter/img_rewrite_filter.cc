@@ -252,7 +252,7 @@ void ImgRewriteFilter::RewriteImageUrl(const HtmlElement& element,
     }
     Encode(rewritten_url_proto, &rewritten_url);
 
-    // Create an output output resource and fetch it, as that will tell
+    // Create an output resource and fetch it, as that will tell
     // us if we have already optimized it, or determined that it was not
     // worth optimizing.
     scoped_ptr<OutputResource> output_resource(

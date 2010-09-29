@@ -261,7 +261,8 @@ class SerfFetch {
     }
     if (!found_user_agent) {
       const char* user_agent = "Serf/" SERF_VERSION_STRING;
-      serf_bucket_headers_setn(hdrs_bkt, HttpAttributes::kUserAgent, user_agent);
+      serf_bucket_headers_setn(hdrs_bkt, HttpAttributes::kUserAgent,
+                               user_agent);
     }
 
     // TODO(jmarantz): add accept-encoding:gzip even if not requested by

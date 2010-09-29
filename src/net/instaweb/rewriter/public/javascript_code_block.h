@@ -91,15 +91,7 @@ class JavascriptCodeBlock {
   // Is the current block a JS library that can be redirected to Google?
   // If so, return the info necessary to do so.  Otherwise returns a
   // block for which .recognized() is false.
-  const JavascriptLibraryId ComputeJavascriptLibrary() {
-    // We always RewriteIfNecessary just to provide a degree of
-    // predictability to the rewrite flow.
-    RewriteIfNecessary();
-    if (!config_.redirect()) {
-      return JavascriptLibraryId();
-    }
-    return JavascriptLibraryId::Find(rewritten_code_);
-  }
+  const JavascriptLibraryId ComputeJavascriptLibrary();
 
  private:
   void RewriteIfNecessary() {
@@ -115,6 +107,9 @@ class JavascriptCodeBlock {
   const JavascriptRewriteConfig& config_;
   MessageHandler* handler_;
   const std::string original_code_;
+  // Note that output_code_ points to either original_code_ or
+  // to rewritten_code_ depending upon the results of processing
+  // (ie it's an indirection to locally-owned data).
   StringPiece output_code_;
   bool rewritten_;
   std::string rewritten_code_;

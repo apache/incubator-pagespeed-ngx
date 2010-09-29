@@ -285,7 +285,6 @@ void RewriteDriver::FetchResource(
     const StringPiece& id = components[0];
     const StringPiece& hash = components[1];
     const StringPiece& name = components[2];
-    const StringPiece& ext = components[3];
 
     OutputResource* output_resource = resource_manager_->
         CreateUrlOutputResource(id, name, hash, content_type);
@@ -308,7 +307,6 @@ void RewriteDriver::FetchResource(
           std::string(id.data(), id.size()));
       if (p != resource_filter_map_.end()) {
         RewriteFilter* filter = p->second;
-        std::string resource_ext = StrCat(name, ".", ext);
         queued = filter->Fetch(output_resource, writer,
                                request_headers, response_headers,
                                url_async_fetcher_, message_handler, callback);

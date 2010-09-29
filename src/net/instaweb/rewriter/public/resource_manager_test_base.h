@@ -44,14 +44,20 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                                               &dummy_url_async_fetcher_),
                               lru_cache_(new LRUCache(100 * 1000 * 1000)),
                               mock_timer_(0),
-                              http_cache_(lru_cache_, &mock_timer_) {
+                              http_cache_(lru_cache_, &mock_timer_),
+                              url_prefix_("http://mysite/"),
+                              num_shards_(0) {
   }
 
   virtual void SetUp() {
     HtmlParseTestBaseNoAlloc::SetUp();
     file_prefix_ = GTestTempDir() + "/";
-    url_prefix_ = "http://mysite/";
-    num_shards_ = 0;
+    resource_manager_ = NewResourceManager(&mock_hasher_);
+  }
+
+  virtual void TearDown() {
+    delete resource_manager_;
+    HtmlParseTestBaseNoAlloc::TearDown();
   }
 
   // In this set of tests, we will provide explicit body tags, so
@@ -107,6 +113,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   std::string file_prefix_;
   std::string url_prefix_;
   int num_shards_;
+  ResourceManager* resource_manager_;
 };
 
 }  // namespace net_instaweb

@@ -32,7 +32,6 @@ class AprMutex;
 
 }  // namespace html_rewriter
 
-
 namespace net_instaweb {
 
 class SerfFetch;

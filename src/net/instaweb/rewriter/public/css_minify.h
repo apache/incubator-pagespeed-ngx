@@ -54,7 +54,8 @@ class CssMinify {
   template<typename Container>
   void JoinMinify(const Container& container, const StringPiece& sep);
   template<typename Iterator>
-  void JoinMinifyIter(Iterator begin, Iterator end, const StringPiece& sep);
+  void JoinMinifyIter(const Iterator& begin, const Iterator& end,
+                      const StringPiece& sep);
   template<typename Container>
   void JoinMediaMinify(const Container& container, const StringPiece& sep);
 

@@ -198,7 +198,7 @@ class ResourceManager {
   scoped_ptr<GURL> base_url_;  // Base url to resolve relative urls against.
   std::string file_prefix_;
   std::string url_prefix_pattern_;
-  int num_shards_;
+  const int num_shards_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;

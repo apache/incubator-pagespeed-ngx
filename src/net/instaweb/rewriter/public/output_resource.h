@@ -81,6 +81,7 @@ class OutputResource : public Resource {
 
  private:
   friend class ResourceManager;
+  friend class ResourceManagerTestingPeer;
   class OutputWriter : public FileWriter {
    public:
     OutputWriter(FileSystem::OutputFile* file, Hasher* hasher,
@@ -102,7 +103,7 @@ class OutputResource : public Resource {
   bool has_hash() const { return !hash_.empty(); }
   void set_written(bool written) { writing_complete_ = true; }
   void set_generated(bool x) { generated_ = x; }
-  bool generated() { return generated_; }
+  bool generated() const { return generated_; }
   OutputWriter* BeginWrite(MessageHandler* message_handler);
   bool EndWrite(OutputWriter* writer, MessageHandler* message_handler);
 

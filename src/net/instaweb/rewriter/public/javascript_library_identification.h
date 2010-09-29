@@ -48,7 +48,7 @@ class JavascriptLibraryId {
 
   // Find the JavascriptLibraryId object associated with the given
   // minified_code.  This might be an unrecognized library.
-  static JavascriptLibraryId Find(StringPiece minified_code);
+  static JavascriptLibraryId Find(const StringPiece& minified_code);
 
   // Is this a recognized library?  Otherwise we should ignore it.
   bool recognized() const {

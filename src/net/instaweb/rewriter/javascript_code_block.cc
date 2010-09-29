@@ -35,6 +35,16 @@ JavascriptCodeBlock::JavascriptCodeBlock(
 
 JavascriptCodeBlock::~JavascriptCodeBlock() { }
 
+const JavascriptLibraryId JavascriptCodeBlock::ComputeJavascriptLibrary() {
+  // We always RewriteIfNecessary just to provide a degree of
+  // predictability to the rewrite flow.
+  RewriteIfNecessary();
+  if (!config_.redirect()) {
+    return JavascriptLibraryId();
+  }
+  return JavascriptLibraryId::Find(rewritten_code_);
+}
+
 void JavascriptCodeBlock::Rewrite() {
   std::string untrimmed;
   // Before attempting library identification, we minify.  However, we only
