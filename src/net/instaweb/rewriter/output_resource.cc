@@ -48,11 +48,13 @@ OutputResource::OutputResource(ResourceManager* manager,
 OutputResource::~OutputResource() {
 }
 
-bool OutputResource::OutputWriter::Write(
-    const StringPiece& data, MessageHandler* handler) {
+bool OutputResource::OutputWriter::Write(const StringPiece& data,
+                                         MessageHandler* handler) {
   hasher_->Add(data);
   bool ret = http_value_->Write(data, handler);
-  ret &= FileWriter::Write(data, handler);
+  if (file_writer_.get() != NULL) {
+    ret &= file_writer_->Write(data, handler);
+  }
   return ret;
 }
 
@@ -64,58 +66,66 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
   hasher->Reset();
   CHECK(!writing_complete_);
   CHECK(output_file_ == NULL);
-
-  // Always write to a tempfile, so that if we get interrupted in the middle
-  // we won't leave a half-baked file in the serving path.
-  std::string temp_prefix = TempPrefix();
-  output_file_ = resource_manager_->file_system()->OpenTempFile(
-      temp_prefix.c_str(), handler);
-  bool success = (output_file_ != NULL);
-  if (success) {
-    std::string header;
-    StringWriter string_writer(&header);
-    meta_data_.Write(&string_writer, handler);  // Serialize header.
-    // It does not make sense to have the headers in the hash.
-    // call output_file_->Write directly, rather than going through
-    // OutputWriter.
-    //
-    // TODO(jmarantz): consider refactoring to split out the header-file
-    // writing in a different way, e.g. to a separate file.
-    success &= output_file_->Write(header, handler);
-  }
-  OutputWriter* writer = NULL;
-  if (success) {
-    writer = new OutputWriter(output_file_, hasher, &value_);
-  }
-  return writer;
+  if (resource_manager_->store_outputs_in_file_system()) {
+    FileSystem* file_system = resource_manager_->file_system();
+    // Always write to a tempfile, so that if we get interrupted in the middle
+    // we won't leave a half-baked file in the serving path.
+    std::string temp_prefix = TempPrefix();
+    output_file_ = file_system->OpenTempFile(
+        temp_prefix.c_str(), handler);
+    bool success = (output_file_ != NULL);
+    if (success) {
+      std::string header;
+      StringWriter string_writer(&header);
+      meta_data_.Write(&string_writer, handler);  // Serialize header.
+      // It does not make sense to have the headers in the hash.
+      // call output_file_->Write directly, rather than going through
+      // OutputWriter.
+      //
+      // TODO(jmarantz): consider refactoring to split out the header-file
+      // writing in a different way, e.g. to a separate file.
+      success &= output_file_->Write(header, handler);
+    }
+    OutputWriter* writer = NULL;
+    if (success) {
+      writer = new OutputWriter(output_file_, hasher, &value_);
+    }
+    return writer;
+  } else {
+    return new OutputWriter(NULL, hasher, &value_);
+  };
 }
 
 bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
   CHECK(!writing_complete_);
-  CHECK(output_file_ != NULL);
   value_.SetHeaders(meta_data_);
   Hasher* hasher = writer->hasher();
   hasher->ComputeHash(&hash_);
   writing_complete_ = true;
-  std::string temp_filename = output_file_->filename();
-  FileSystem* file_system = resource_manager_->file_system();
-  bool ret = file_system->Close(output_file_, handler);
+  if (output_file_ == NULL) {
+    return true;
+  } else {
+    FileSystem* file_system = resource_manager_->file_system();
+    CHECK(file_system != NULL);
+    std::string temp_filename = output_file_->filename();
+    bool ret = file_system->Close(output_file_, handler);
 
-  // Now that we are done writing, we can rename to the filename we
-  // really want.
-  if (ret) {
-    ret = file_system->RenameFile(temp_filename.c_str(), filename().c_str(),
-                                  handler);
+    // Now that we are done writing, we can rename to the filename we
+    // really want.
+    if (ret) {
+      ret = file_system->RenameFile(temp_filename.c_str(), filename().c_str(),
+                                    handler);
+    }
+
+    // TODO(jmarantz): Consider writing to the HTTP cache as we write the
+    // file, so same-process write-then-read never has to read from disk.
+    // This is moderately inconvenient because HTTPCache lacks a streaming
+    // Put interface.
+
+    output_file_ = NULL;
+    delete writer;
+    return ret;
   }
-
-  // TODO(jmarantz): Consider writing to the HTTP cache as we write the
-  // file, so same-process write-then-read never has to read from disk.
-  // This is moderately inconvenient because HTTPCache lacks a streaming
-  // Put interface.
-
-  output_file_ = NULL;
-  delete writer;
-  return ret;
 }
 
 // Called by FilenameOutputResource::BeginWrite to determine how
@@ -155,7 +165,7 @@ void OutputResource::SetHash(const StringPiece& hash) {
 }
 
 bool OutputResource::ReadIfCached(MessageHandler* handler) {
-  if (!writing_complete_) {
+  if (!writing_complete_ && resource_manager_->store_outputs_in_file_system()) {
     FileSystem* file_system = resource_manager_->file_system();
     FileSystem::InputFile* file = file_system->OpenInputFile(
         filename().c_str(), handler);

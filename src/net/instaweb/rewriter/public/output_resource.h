@@ -23,6 +23,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 
 #include "base/basictypes.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
 #include <string>
@@ -82,18 +83,26 @@ class OutputResource : public Resource {
  private:
   friend class ResourceManager;
   friend class ResourceManagerTestingPeer;
-  class OutputWriter : public FileWriter {
+  class OutputWriter {
    public:
+    // file may be null if we shouldn't write to the filesystem.
     OutputWriter(FileSystem::OutputFile* file, Hasher* hasher,
                  HTTPValue* http_value)
-        : FileWriter(file),
-          hasher_(hasher),
+        : hasher_(hasher),
           http_value_(http_value) {
+      if (file != NULL) {
+        file_writer_.reset(new FileWriter(file));
+      } else {
+        file_writer_.reset(NULL);
+      }
     }
 
-    virtual bool Write(const StringPiece& data, MessageHandler* handler);
+    // Adds the given data to our hasher, our http_value, and, if
+    // non-null, our file.
+    bool Write(const StringPiece& data, MessageHandler* handler);
     Hasher* hasher() const { return hasher_; }
    private:
+    scoped_ptr<FileWriter> file_writer_;
     Hasher* hasher_;
     HTTPValue* http_value_;
   };

@@ -88,7 +88,7 @@ CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
     // to the LRU cache.
     LRUCache* lru_cache = new LRUCache(lru_cache_kb_per_process_ * 1024);
 
-    // We only add the threasafe-wrapper to the LRUCache.  The FileCache
+    // We only add the threadsafe-wrapper to the LRUCache.  The FileCache
     // is naturally thread-safe because it's got no writable member variables.
     // And surrounding that slower-running class with a mutex would likely
     // cause contention.

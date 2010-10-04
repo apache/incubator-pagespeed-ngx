@@ -72,7 +72,8 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       hasher_(hasher),
       statistics_(NULL),
       http_cache_(http_cache),
-      relative_path_(false) {
+      relative_path_(false),
+      store_outputs_in_file_system_(true) {
   file_prefix.CopyToString(&file_prefix_);
   SetUrlPrefixPattern(url_prefix_pattern);
 }

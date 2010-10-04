@@ -179,6 +179,10 @@ class RewriteDriverFactory {
   // Called before creating the resource manager
   virtual void SetupHooks();
 
+  // Override this to return false if you don't want the resource
+  // manager to write resources to the filesystem.
+  virtual bool ShouldWriteResourcesToFileSystem() { return true; }
+
  private:
   scoped_ptr<MessageHandler> html_parse_message_handler_;
   scoped_ptr<MessageHandler> message_handler_;

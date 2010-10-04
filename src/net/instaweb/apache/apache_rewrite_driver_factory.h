@@ -69,6 +69,12 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   virtual AbstractMutex* rewrite_drivers_mutex() {
     return rewrite_drivers_mutex_.get(); }
 
+  // Disable the Resource Manager's filesystem since we have a
+  // write-through http_cache.
+  virtual bool ShouldWriteResourcesToFileSystem() {
+    return false;
+  }
+
   // Release all the resources. It also calls the base class ShutDown to release
   // the base class resources.
   void ShutDown();

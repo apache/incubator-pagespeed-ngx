@@ -1,4 +1,19 @@
-// Copyright 2010 Google Inc. All Rights Reserved.
+/**
+ * Copyright 2010 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/http_dump_url_writer.h"
@@ -19,7 +34,7 @@ HttpDumpUrlWriter::~HttpDumpUrlWriter() {
 bool HttpDumpUrlWriter::StreamingFetchUrl(const std::string& url,
                                           const MetaData& request_headers,
                                           MetaData* response_headers,
-                                          Writer* writer,
+                                          Writer* response_writer,
                                           MessageHandler* handler) {
   bool ret = true;
   std::string filename;
@@ -36,7 +51,7 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(const std::string& url,
     // avoid opening up a zero-size file when the URL fetch fails.
     std::string contents;
     StringWriter string_writer(&contents);
-    // TODO(sligocki): Have this actually stream to writer.
+    // TODO(sligocki): Have this actually stream to response_writer.
 
     // In general we will want to always ask the origin for gzipped output,
     // but we are leaving in variable so this could be overridden by the
@@ -95,7 +110,7 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(const std::string& url,
     // system so we better pass the error message through.
     if (!ret) {
       response_headers->CopyFrom(compressed_response);
-      writer->Write(contents, handler);
+      response_writer->Write(contents, handler);
     }
   }
 
@@ -103,7 +118,7 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(const std::string& url,
   // ourselves.  Thus the problem of inflating gzipped requests for requesters
   // that want cleartext only is solved only in that file.
   return ret && dump_fetcher_.StreamingFetchUrl(
-      url, request_headers, response_headers, writer, handler);
+      url, request_headers, response_headers, response_writer, handler);
 }
 
 }  // namespace net_instaweb

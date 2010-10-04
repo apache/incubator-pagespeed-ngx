@@ -111,7 +111,7 @@ class RewriteDriver {
                      UrlAsyncFetcher::Callback* callback);
 
   HtmlParse* html_parse() { return &html_parse_; }
-  FileSystem* file_system() { return resource_manager_->file_system(); }
+  FileSystem* file_system() { return file_system_; }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
 
   ResourceManager* resource_manager() const { return resource_manager_; }

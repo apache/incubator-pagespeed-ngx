@@ -216,6 +216,8 @@ ResourceManager* RewriteDriverFactory::resource_manager() {
         filename_prefix_, url_prefix_, num_shards_,
         file_system(), filename_encoder(), url_async_fetcher(), hasher(),
         http_cache()));
+    resource_manager_->set_store_outputs_in_file_system(
+        ShouldWriteResourcesToFileSystem());
   }
   return resource_manager_.get();
 }

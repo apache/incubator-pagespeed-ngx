@@ -191,6 +191,11 @@ class ResourceManager {
   // *shard is set to kNotSharded.
   const char* SplitUrl(const char* url, int* shard) const;
 
+  // Whether or not resources should hit the filesystem.
+  bool store_outputs_in_file_system() { return store_outputs_in_file_system_; }
+  void set_store_outputs_in_file_system(bool store) {
+    store_outputs_in_file_system_ = store;
+  }
  private:
   std::string ConstructNameKey(const OutputResource* output) const;
   void ValidateShardsAgainstUrlPrefixPattern();
@@ -207,7 +212,7 @@ class ResourceManager {
   Statistics* statistics_;
   HTTPCache* http_cache_;
   bool relative_path_;
-
+  bool store_outputs_in_file_system_;
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };
 
