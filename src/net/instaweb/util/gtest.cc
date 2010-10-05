@@ -17,6 +17,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //
 
+#include <unistd.h>  // For getpid()
+
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/stack_buffer.h"
@@ -53,7 +55,7 @@ std::string GTestSrcDir() {
 }
 
 std::string GTestTempDir() {
-  return "/tmp";
+  return StringPrintf("/tmp/gtest.%d", getpid());
 }
 
 

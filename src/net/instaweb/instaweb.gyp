@@ -51,6 +51,7 @@
         'util/hasher.cc',
         'util/http_cache.cc',
         'util/http_response_parser.cc',
+        'util/http_dump_url_async_writer.cc',
         'util/http_dump_url_fetcher.cc',
         'util/http_dump_url_writer.cc',
         'util/http_value.cc',
