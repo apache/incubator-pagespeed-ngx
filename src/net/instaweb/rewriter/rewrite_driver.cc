@@ -78,6 +78,18 @@ RewriteDriver::~RewriteDriver() {
   STLDeleteContainerPointers(filters_.begin(), filters_.end());
 }
 
+// names for Statistics variables.
+const char RewriteDriver::kResourceFetches[] = "resource_fetches";
+
+void RewriteDriver::Initialize(Statistics* statistics) {
+  statistics->AddVariable(kResourceFetches);
+  CacheExtender::Initialize(statistics);
+  CssCombineFilter::Initialize(statistics);
+  CssMoveToHeadFilter::Initialize(statistics);
+  ImgRewriteFilter::Initialize(statistics);
+  UrlLeftTrimFilter::Initialize(statistics);
+}
+
 void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   resource_manager_ = resource_manager;
   html_parse_.set_timer(resource_manager->timer());
@@ -200,6 +212,9 @@ void RewriteDriver::AddFilters(const StringSet& enabled_filters) {
     // everywhere it seems to give a small savings.
     AddFilter(new HtmlAttributeQuoteRemoval(&html_parse_));
   }
+  // NOTE(abliss): Adding a new filter?  Does it export anystatistics?  If it
+  // doesn't, it probably should.  If it does, be sure to add it to the
+  // Initialize() function above or it will break under Apache!
 }
 
 void RewriteDriver::SetBaseUrl(const StringPiece& base) {
@@ -225,7 +240,7 @@ void RewriteDriver::AddRewriteFilter(RewriteFilter* filter) {
   // should be set up prior to the rewrite_driver.
   Statistics* stats = statistics();
   if ((stats != NULL) && (resource_fetches_ == NULL)) {
-    resource_fetches_ = stats->AddVariable("resource_fetches");
+    resource_fetches_ = stats->GetVariable(kResourceFetches);
   }
   resource_filter_map_[filter->id()] = filter;
   AddFilter(filter);

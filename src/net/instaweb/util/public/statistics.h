@@ -45,6 +45,13 @@ class Statistics {
 
   // Find a variable from a name, returning NULL if not found.
   virtual Variable* FindVariable(const StringPiece& name) const = 0;
+
+  // Find a variable from a name, aborting if not found.
+  virtual Variable* GetVariable(const StringPiece& name) const {
+    Variable* var = FindVariable(name);
+    CHECK(var != NULL) << "Variable not found: " << name;
+    return var;
+  }
 };
 
 }  // namespace net_instaweb

@@ -20,6 +20,7 @@
 // constructs come through without corruption.
 
 #include "base/basictypes.h"
+#include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/html_testing_peer.h"
@@ -54,6 +55,33 @@ TEST_F(HtmlParseTest, AmpersandInHref) {
   // Note that we will escape the "&" in the href.
   ValidateNoChanges("ampersand_in_href",
       "<a href=\"http://myhost.com/path?arg1=val1&arg2=val2\">Hello</a>");
+}
+
+class AttrValuesSaverFilter : public EmptyHtmlFilter {
+ public:
+  AttrValuesSaverFilter() { }
+
+  virtual void StartElement(HtmlElement* element) {
+    for (int i = 0; i < element->attribute_size(); ++i) {
+      value_ += element->attribute(i).value();
+    }
+  }
+
+  const std::string& value() { return value_; }
+  virtual const char* Name() const { return "attr_saver"; }
+
+ private:
+  std::string value_;
+
+  DISALLOW_COPY_AND_ASSIGN(AttrValuesSaverFilter);
+};
+
+TEST_F(HtmlParseTest, EscapedSingleQuote) {
+  AttrValuesSaverFilter attr_saver;
+  html_parse_.AddFilter(&attr_saver);
+  Parse("escaped_single_quote",
+        "<img src='my&#39;single_quoted_image.jpg'/>");
+  EXPECT_EQ("my'single_quoted_image.jpg", attr_saver.value());
 }
 
 TEST_F(HtmlParseTest, UnclosedQuote) {

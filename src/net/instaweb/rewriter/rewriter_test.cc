@@ -88,15 +88,17 @@ class RewriterTest : public ResourceManagerTestBase {
                                    const std::string& output_filename,
                                    const StringPiece& expected_content,
                                    const std::string& filter_names) {
-    RewriteDriver driver(&message_handler_, &file_system_,
-                         &dummy_url_async_fetcher_);
     scoped_ptr<ResourceManager> resource_manager(
         NewResourceManager(&mock_hasher_));
     SimpleStats stats;
+    RewriteDriver::Initialize(&stats);
     resource_manager->set_statistics(&stats);
+    RewriteDriver driver(&message_handler_, &file_system_,
+                         &dummy_url_async_fetcher_);
     driver.SetResourceManager(resource_manager.get());
     driver.AddFiltersByCommaSeparatedList(filter_names);
-    Variable* resource_fetches = stats.AddVariable("resource_fetches");
+    Variable* resource_fetches =
+        stats.GetVariable(RewriteDriver::kResourceFetches);
     SimpleMetaData request_headers, response_headers;
     std::string contents;
     StringWriter writer(&contents);

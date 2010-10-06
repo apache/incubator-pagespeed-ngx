@@ -81,6 +81,11 @@ const HttpStatus::Code kNotOptimizable = HttpStatus::kNotModified;  // 304
 // an external resource.  This must be a cacheable code.
 const HttpStatus::Code kInlineImage = HttpStatus::kNoContent;  // 204
 
+// names for Statistics variables.
+const char kImageRewrites[] = "image_rewrites";
+const char kImageRewriteSavedBytes[] = "image_rewrite_saved_bytes";
+const char kImageInline[] = "image_inline";
+
 }  // namespace
 
 ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
@@ -97,10 +102,17 @@ ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
       rewrite_saved_bytes_(NULL) {
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
-    rewrite_count_ = stats->AddVariable("image_rewrites");
-    rewrite_saved_bytes_ = stats->AddVariable("image_rewrite_saved_bytes");
-    inline_count_ = stats->AddVariable("image_inline");
+    rewrite_count_ = stats->GetVariable(kImageRewrites);
+    rewrite_saved_bytes_ = stats->GetVariable(
+        kImageRewriteSavedBytes);
+    inline_count_ = stats->GetVariable(kImageInline);
   }
+}
+
+void ImgRewriteFilter::Initialize(Statistics* statistics) {
+  statistics->AddVariable(kImageInline);
+  statistics->AddVariable(kImageRewriteSavedBytes);
+  statistics->AddVariable(kImageRewrites);
 }
 
 void ImgRewriteFilter::OptimizeImage(

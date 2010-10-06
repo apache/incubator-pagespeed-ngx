@@ -33,6 +33,13 @@
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
 
+namespace {
+
+// names for Statistics variables.
+const char kCssFileCountReduction[] = "css_file_count_reduction";
+
+} // namespace
+
 namespace net_instaweb {
 
 // TODO(jmarantz) We exhibit zero intelligence about which css files to
@@ -60,8 +67,12 @@ CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
   head_element_ = NULL;
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
-    css_file_count_reduction_ = stats->AddVariable("css_file_count_reduction");
+    css_file_count_reduction_ = stats->GetVariable(kCssFileCountReduction);
   }
+}
+
+void CssCombineFilter::Initialize(Statistics* statistics) {
+  statistics->AddVariable(kCssFileCountReduction);
 }
 
 void CssCombineFilter::StartDocument() {

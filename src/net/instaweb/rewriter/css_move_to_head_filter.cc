@@ -22,6 +22,13 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/statistics.h"
 
+namespace {
+
+// names for Statistics variables.
+const char kCssElements[] = "css_elements";
+
+} // namespace
+
 namespace net_instaweb {
 
 CssMoveToHeadFilter::CssMoveToHeadFilter(HtmlParse* html_parse,
@@ -32,8 +39,12 @@ CssMoveToHeadFilter::CssMoveToHeadFilter(HtmlParse* html_parse,
   s_head_ = html_parse->Intern("head");
   head_element_ = NULL;
   if (statistics != NULL) {
-    counter_ = statistics->AddVariable("css_elements_");
+    counter_ = statistics->GetVariable(kCssElements);
   }
+}
+
+void CssMoveToHeadFilter::Initialize(Statistics* statistics) {
+  statistics->AddVariable(kCssElements);
 }
 
 void CssMoveToHeadFilter::StartDocument() {

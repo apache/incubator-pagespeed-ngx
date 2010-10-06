@@ -49,6 +49,7 @@ class Variable;
 class ImgRewriteFilter : public RewriteFilter {
  public:
   ImgRewriteFilter(RewriteDriver* driver, StringPiece path_prefix);
+  static void Initialize(Statistics* statistics);
   virtual void EndElement(HtmlElement* element);
   virtual void Flush();
   virtual bool Fetch(OutputResource* resource,

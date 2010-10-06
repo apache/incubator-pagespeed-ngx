@@ -33,6 +33,7 @@ class CssMoveToHeadFilter : public EmptyHtmlFilter {
  public:
   CssMoveToHeadFilter(HtmlParse* html_parse, Statistics* statistics);
 
+  static void Initialize(Statistics* statistics);
   virtual void StartDocument();
   virtual void EndElement(HtmlElement* element);
   virtual const char* Name() const { return "CssMoveToHead"; }

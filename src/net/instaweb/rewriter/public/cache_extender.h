@@ -41,6 +41,8 @@ class CacheExtender : public RewriteFilter {
  public:
   CacheExtender(RewriteDriver* driver, const char* path_prefix);
 
+  static void Initialize(Statistics* statistics);
+
   virtual void StartElement(HtmlElement* element);
   virtual bool Fetch(OutputResource* resource,
                      Writer* writer,

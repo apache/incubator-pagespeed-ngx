@@ -39,6 +39,7 @@ class CssCombineFilter : public RewriteFilter {
  public:
   CssCombineFilter(RewriteDriver* rewrite_driver, const char* path_prefix);
 
+  static void Initialize(Statistics* statistics);
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);

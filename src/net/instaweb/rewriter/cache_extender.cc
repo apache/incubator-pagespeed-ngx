@@ -33,15 +33,20 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 
+namespace {
+
+// names for Statistics variables.
+const char kCacheExtensions[] = "cache_extensions";
+const char kNotCacheable[] = "not_cacheable";
+
+} // namespace
+
 namespace net_instaweb {
 
 // We do not want to bother to extend the cache lifetime for any resource
 // that is already cached for a month.
 const int64 kMinThresholdMs = Timer::kMonthMs;
 
-}  // namespace
-
-namespace net_instaweb {
 // TODO(jmarantz): consider factoring out the code that finds external resources
 
 CacheExtender::CacheExtender(RewriteDriver* driver, const char* filter_prefix)
@@ -53,9 +58,14 @@ CacheExtender::CacheExtender(RewriteDriver* driver, const char* filter_prefix)
       not_cacheable_count_(NULL) {
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
-    extension_count_ = stats->AddVariable("cache_extensions");
-    not_cacheable_count_ = stats->AddVariable("not_cacheable");
+    extension_count_ = stats->GetVariable(kCacheExtensions);
+    not_cacheable_count_ = stats->GetVariable(kNotCacheable);
   }
+}
+
+void CacheExtender::Initialize(Statistics* statistics) {
+  statistics->AddVariable(kCacheExtensions);
+  statistics->AddVariable(kNotCacheable);
 }
 
 void CacheExtender::StartElement(HtmlElement* element) {

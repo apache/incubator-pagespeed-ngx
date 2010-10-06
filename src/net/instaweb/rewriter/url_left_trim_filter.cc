@@ -24,6 +24,14 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 
+namespace {
+
+// names for Statistics variables.
+const char kUrlTrims[] = "url_trims";
+const char kUrlTrimSavedBytes[] = "url_trim_saved_bytes";
+
+} // namespace
+
 namespace net_instaweb {
 
 UrlLeftTrimFilter::UrlLeftTrimFilter(HtmlParse* html_parse,
@@ -32,9 +40,14 @@ UrlLeftTrimFilter::UrlLeftTrimFilter(HtmlParse* html_parse,
       s_base_(html_parse->Intern("base")),
       s_href_(html_parse->Intern("href")),
       s_src_(html_parse->Intern("src")),
-      trim_count_((stats == NULL) ? NULL : stats->AddVariable("url_trims")),
+      trim_count_((stats == NULL) ? NULL : stats->GetVariable(kUrlTrims)),
       trim_saved_bytes_(
-          (stats == NULL) ? NULL : stats->AddVariable("url_trim_saved_bytes")) {
+          (stats == NULL) ? NULL : stats->GetVariable(kUrlTrimSavedBytes)) {
+}
+
+void UrlLeftTrimFilter::Initialize(Statistics* statistics) {
+  statistics->AddVariable(kUrlTrims);
+  statistics->AddVariable(kUrlTrimSavedBytes);
 }
 
 void UrlLeftTrimFilter::StartElement(HtmlElement* element) {

@@ -69,6 +69,9 @@ class RewriteDriver {
   // instances without propagating the include files.
   ~RewriteDriver();
 
+  // Calls Initialize on all known rewrite_drivers.
+  static void Initialize(Statistics* statistics);
+
   // Adds a resource manager and/or resource_server, enabling the rewriting of
   // resources. This will replace any previous resource managers.
   void SetResourceManager(ResourceManager* resource_manager);
@@ -120,6 +123,8 @@ class RewriteDriver {
   void set_outline_threshold(size_t t) { outline_threshold_ = t; }
 
  private:
+  friend class RewriterTest;
+  static const char kResourceFetches[];
   typedef std::map<std::string, RewriteFilter*> StringFilterMap;
   StringFilterMap resource_filter_map_;
 

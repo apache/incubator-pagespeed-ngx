@@ -64,7 +64,7 @@ class HtmlEscape {
  private:
   HtmlEscape();
   const char* UnescapeAttributeValue();
-  static bool AccumulateHexValue(char c, int* value);
+  static bool AccumulateDecimalValue(char c, int* value);
 
   static HtmlEscape* singleton_;
 

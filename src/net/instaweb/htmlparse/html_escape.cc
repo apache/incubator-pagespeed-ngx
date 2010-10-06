@@ -188,15 +188,11 @@ void HtmlEscape::ShutDown() {
   }
 }
 
-bool HtmlEscape::AccumulateHexValue(char c, int* value) {
-  *value *= 16;
+bool HtmlEscape::AccumulateDecimalValue(char c, int* value) {
+  *value *= 10;
   bool ret = true;
   if ((c >= '0') && (c <= '9')) {
     *value += c - '0';
-  } else if ((c >= 'a') && (c <= 'f')) {
-    *value += 10 + c - 'a';
-  } else if ((c >= 'A') && (c <= 'F')) {
-    *value += 10 + c - 'A';
   } else {
     ret = false;
   }
@@ -215,8 +211,8 @@ StringPiece HtmlEscape::UnescapeHelper(const StringPiece& escaped,
   // Un-escape the attribute value here before populating the
   // attribute data structure.
   std::string escape;
-  int hex_value = 0;
-  bool accumulate_hex_code = false;
+  int decimal_value = 0;
+  bool accumulate_decimal_code = false;
   bool in_escape = false;
   for (size_t i = 0; i < escaped.size(); ++i) {
     char ch = escaped[i];
@@ -225,17 +221,17 @@ StringPiece HtmlEscape::UnescapeHelper(const StringPiece& escaped,
       if (ch == '&') {
         in_escape = true;
         escape.clear();
-        hex_value = 0;
-        accumulate_hex_code = false;
+        decimal_value = 0;
+        accumulate_decimal_code = false;
       } else {
         *buf += ch;
       }
     } else if (escape.empty() && (ch == '#')) {
       escape += ch;
-      accumulate_hex_code = true;
+      accumulate_decimal_code = true;
     } else if (ch == ';') {
-      if (accumulate_hex_code && (escape.size() > 1)) {
-        *buf += static_cast<char>(hex_value);
+      if (accumulate_decimal_code && (escape.size() > 1)) {
+        *buf += static_cast<char>(decimal_value);
       } else {
         // Some symbols are case-sensitive (AElig vs aelig are different
         // code-points) where as some are case-insensitive (&quot; and
@@ -259,7 +255,8 @@ StringPiece HtmlEscape::UnescapeHelper(const StringPiece& escaped,
         }
       }
       in_escape = false;
-    } else if (accumulate_hex_code && !AccumulateHexValue(ch, &hex_value)) {
+    } else if (accumulate_decimal_code &&
+               !AccumulateDecimalValue(ch, &decimal_value)) {
       bogus_escape = true;
     } else {
       escape += ch;
@@ -299,7 +296,7 @@ StringPiece HtmlEscape::EscapeHelper(const StringPiece& unescaped,
       StringStringMapSensitive::const_iterator p =
           escape_map_.find(char_to_escape);
       if (p == escape_map_.end()) {
-        *buf += StringPrintf("&#%02x;", static_cast<int>(ch));
+        *buf += StringPrintf("&#%02d;", static_cast<int>(ch));
       } else {
         *buf += '&';
         *buf += p->second;

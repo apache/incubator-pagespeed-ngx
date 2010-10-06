@@ -233,6 +233,10 @@ Timer* RewriteDriverFactory::timer() {
 }
 
 RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
+  Statistics* stats = resource_manager()->statistics();
+  if (stats != NULL) {
+    RewriteDriver::Initialize(stats);
+  }
   RewriteDriver* rewrite_driver =  new RewriteDriver(
       message_handler(), file_system(), url_async_fetcher());
   rewrite_driver->SetResourceManager(resource_manager());

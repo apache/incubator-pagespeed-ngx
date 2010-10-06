@@ -51,6 +51,7 @@ class Variable;
 class UrlLeftTrimFilter : public EmptyHtmlFilter {
  public:
   UrlLeftTrimFilter(HtmlParse* html_parse, Statistics* resource_manager);
+  static void Initialize(Statistics* statistics);
   virtual void StartElement(HtmlElement* element);
   virtual void AddBaseUrl(const StringPiece& base_url);
   virtual const char* Name() const { return "UrlLeftTrim"; }
