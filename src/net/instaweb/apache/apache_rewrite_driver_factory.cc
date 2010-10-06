@@ -18,9 +18,7 @@
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/html_rewriter_config.h"
 #include "net/instaweb/apache/md5_hasher.h"
-#include "net/instaweb/apache/pagespeed_server_context.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/serf_url_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -32,16 +30,16 @@
 
 namespace net_instaweb {
 
-ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
-    html_rewriter::PageSpeedServerContext* context)
-  : context_(context),
-    serf_url_fetcher_(NULL),
+ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(apr_pool_t* pool)
+  : serf_url_fetcher_(NULL),
     serf_url_async_fetcher_(NULL),
     lru_cache_kb_per_process_(0),
-    lru_cache_byte_limit_(0) {
-  apr_pool_create(&pool_, context->pool());
-  set_filename_prefix(html_rewriter::GetCachePrefix(context_));
-  set_url_prefix(html_rewriter::GetUrlPrefix(context_));
+    lru_cache_byte_limit_(0),
+    file_cache_clean_interval_ms_(Timer::kHourMs),
+    file_cache_clean_size_kb_(100 * 1024),  // 100 megabytes
+    fetcher_time_out_ms_(0),
+    enabled_(true) {
+  apr_pool_create(&pool_, pool);
   cache_mutex_.reset(NewMutex());
   rewrite_drivers_mutex_.reset(NewMutex());
 }
@@ -74,14 +72,10 @@ MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
 }
 
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
-  FileCache::CachePolicy* policy = new FileCache::CachePolicy(timer(),
-      html_rewriter::GetFileCacheCleanInterval(context_),
-      html_rewriter::GetFileCacheSize(context_));
+  FileCache::CachePolicy* policy = new FileCache::CachePolicy(
+      timer(), file_cache_clean_interval_ms_, file_cache_clean_size_kb_);
   CacheInterface* cache = new FileCache(
-      html_rewriter::GetFileCachePath(context_),
-      file_system(),
-      filename_encoder(),
-      policy,
+      file_cache_path_, file_system(), filename_encoder(), policy,
       message_handler());
   if (lru_cache_kb_per_process_ != 0) {
     // TODO(jmarantz): Allow configuration of the amount of memory to devote
@@ -109,7 +103,7 @@ UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
   if (serf_url_fetcher_ == NULL) {
     DefaultAsyncUrlFetcher();  // Create async fetcher if necessary.
     serf_url_fetcher_ = new SerfUrlFetcher(
-        GetFetcherTimeOut(context_), serf_url_async_fetcher_);
+        fetcher_time_out_ms_, serf_url_async_fetcher_);
   }
   return serf_url_fetcher_;
 }
@@ -117,7 +111,7 @@ UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
 UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   if (serf_url_async_fetcher_ == NULL) {
     serf_url_async_fetcher_ = new SerfUrlAsyncFetcher(
-        html_rewriter::GetFetcherProxy(context_), pool_);
+        fetcher_proxy_.c_str(), pool_);
   }
   return serf_url_async_fetcher_;
 }

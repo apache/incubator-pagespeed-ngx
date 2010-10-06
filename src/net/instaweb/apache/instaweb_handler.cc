@@ -19,9 +19,7 @@
 #include "base/basictypes.h"
 #include "base/string_util.h"
 #include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/html_rewriter.h"
-#include "net/instaweb/apache/html_rewriter_config.h"
-#include "net/instaweb/apache/pagespeed_server_context.h"
+#include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -116,10 +114,8 @@ int instaweb_check_request(request_rec* request, std::string* resource) {
 
   // Determine whether this URL matches our prefix pattern.  Note that
   // the URL may have a shard applied to it.
-  html_rewriter::PageSpeedServerContext* context =
-      html_rewriter::mod_pagespeed_get_config_server_context(request->server);
-  net_instaweb::RewriteDriverFactory* factory =
-      context->rewrite_driver_factory();
+  net_instaweb::ApacheRewriteDriverFactory* factory =
+      net_instaweb::InstawebContext::Factory(request->server);
   net_instaweb::ResourceManager* resource_manager = factory->resource_manager();
   int shard;
   const char* r = resource_manager->SplitUrl(full_url.c_str(), &shard);
@@ -136,10 +132,9 @@ bool fetch_resource(const request_rec* request,
                     const std::string& resource,
                     net_instaweb::SimpleMetaData* response_headers,
                     std::string* output) {
-  html_rewriter::PageSpeedServerContext* context =
-      html_rewriter::mod_pagespeed_get_config_server_context(request->server);
-  net_instaweb::RewriteDriver* rewrite_driver =
-      context->rewrite_driver_factory()->GetRewriteDriver();
+  net_instaweb::ApacheRewriteDriverFactory* factory =
+      net_instaweb::InstawebContext::Factory(request->server);
+  net_instaweb::RewriteDriver* rewrite_driver = factory->GetRewriteDriver();
   net_instaweb::SimpleMetaData request_headers;
   net_instaweb::StringWriter writer(output);
   net_instaweb::GoogleMessageHandler message_handler;
@@ -156,9 +151,9 @@ bool fetch_resource(const request_rec* request,
   bool ret = callback.done() && callback.success();
   if (!ret) {
     net_instaweb::SerfUrlAsyncFetcher* serf_async_fetcher =
-        context->rewrite_driver_factory()->serf_url_async_fetcher();
+        factory->serf_url_async_fetcher();
     html_rewriter::AprTimer timer;
-    int64 max_ms = html_rewriter::GetResourceFetcherTimeOutMs(context);
+    int64 max_ms = factory->fetcher_time_out_ms();
     for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
          !callback.done() && now_ms - start_ms < max_ms;
          now_ms = timer.NowMs()) {

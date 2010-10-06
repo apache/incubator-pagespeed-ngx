@@ -69,7 +69,7 @@ RewriteDriverFactory::RewriteDriverFactory()
       url_prefix_(""),
       num_shards_(0),
       outline_threshold_(kDefaultOutlineThreshold),
-      use_http_cache_(false),
+      use_http_cache_(true),
       force_caching_(false) {
 }
 
@@ -267,11 +267,6 @@ void RewriteDriverFactory::SetSlurpDirectory(const StringPiece& directory,
     url_fetcher_.reset(fetcher);
   }
   url_async_fetcher_.reset(new FakeUrlAsyncFetcher(url_fetcher_.get()));
-
-  // TODO(jmarantz): do I really want the output resources written directly
-  // to the slurp directory?  I think this will just be redundant.  This is
-  // what websim was doing however.
-  set_filename_prefix(directory);
 }
 
 void RewriteDriverFactory::ShutDown() {

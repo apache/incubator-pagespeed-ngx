@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <set>
+#include <string>
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
@@ -24,10 +25,6 @@
 
 struct apr_pool_t;
 struct server_rec;
-
-namespace html_rewriter {
-class PageSpeedServerContext;
-}  // namespace html_rewriter.
 
 namespace net_instaweb {
 
@@ -37,8 +34,7 @@ class SerfUrlFetcher;
 // Creates an Apache RewriteDriver.
 class ApacheRewriteDriverFactory : public RewriteDriverFactory {
  public:
-  explicit ApacheRewriteDriverFactory(
-      html_rewriter::PageSpeedServerContext* context);
+  explicit ApacheRewriteDriverFactory(apr_pool_t* pool);
   virtual ~ApacheRewriteDriverFactory();
 
   RewriteDriver* GetRewriteDriver();
@@ -53,6 +49,23 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   void set_lru_cache_kb_per_process(int64 x) { lru_cache_kb_per_process_ = x; }
   void set_lru_cache_byte_limit(int64 x) { lru_cache_byte_limit_ = x; }
+  void set_file_cache_clean_interval_ms(int64 x) {
+    file_cache_clean_interval_ms_ = x;
+  }
+  void set_file_cache_clean_size_kb(int64 x) { file_cache_clean_size_kb_ = x; }
+  void set_fetcher_time_out_ms(int64 x) { fetcher_time_out_ms_ = x; }
+  void set_file_cache_path(const StringPiece& x) {
+    x.CopyToString(&file_cache_path_);
+  }
+  void set_fetcher_proxy(const StringPiece& x) {
+    x.CopyToString(&fetcher_proxy_);
+  }
+  void set_enabled(bool x) { enabled_ = x; }
+  bool enabled() { return enabled_; }
+
+  StringPiece file_cache_path() { return file_cache_path_; }
+  int64 file_cache_clean_size_kb() { return file_cache_clean_size_kb_; }
+  int64 fetcher_time_out_ms() { return fetcher_time_out_ms_; }
 
  protected:
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -80,7 +93,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   void ShutDown();
 
  private:
-  html_rewriter::PageSpeedServerContext* context_;
   apr_pool_t* pool_;
   scoped_ptr<AbstractMutex> cache_mutex_;
   scoped_ptr<AbstractMutex> rewrite_drivers_mutex_;
@@ -88,8 +100,19 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   std::set<RewriteDriver*> active_rewrite_drivers_;
   SerfUrlFetcher* serf_url_fetcher_;
   SerfUrlAsyncFetcher* serf_url_async_fetcher_;
+
+  // TODO(jmarantz): These options could be consolidated in a protobuf or
+  // some other struct, which would keep them distinct from the rest of the
+  // state.  Note also that some of the options are in the base class,
+  // RewriteDriverFactory, so we'd have to sort out how that worked.
   int64 lru_cache_kb_per_process_;
   int64 lru_cache_byte_limit_;
+  int64 file_cache_clean_interval_ms_;
+  int64 file_cache_clean_size_kb_;
+  int64 fetcher_time_out_ms_;
+  std::string file_cache_path_;
+  std::string fetcher_proxy_;
+  bool enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };

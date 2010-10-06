@@ -17,8 +17,6 @@
 #include <algorithm>
 #include "base/basictypes.h"
 #include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/html_rewriter_config.h"
-#include "net/instaweb/apache/pagespeed_server_context.h"
 
 namespace {
 
