@@ -16,25 +16,33 @@ vars = {
   "chromium_trunk": "http://src.chromium.org/svn/trunk",
   "chromium_revision": "@55218",
   "chromium_deps_root": "src/third_party/chromium_deps",
+
   "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.9.0.0",
   "libpagespeed_revision": "@head",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
+
   "mod_spdy_trunk": "http://mod-spdy.googlecode.com/svn/trunk",
-  "mod_spdy_revision": "@head",
+  "mod_spdy_revision": "@142",
   "mod_spdy_deps_root": "src/third_party/mod_spdy_deps",
+
   "serf_src": "http://serf.googlecode.com/svn/tags/0.3.1",
   "serf_revision": "@head",
+
   "apr_src": "http://svn.apache.org/repos/asf/apr/apr/tags/1.4.2",
   "apr_revision": "@head",
+
   "aprutil_src": "http://svn.apache.org/repos/asf/apr/apr-util/tags/1.3.9",
   "aprutil_revision": "@head",
+
   "apache_httpd_src": "http://svn.apache.org/repos/asf/httpd/httpd/tags/2.2.15",
   "apache_httpd_revision": "@head",
-  "instaweb_deps_root": "src/third_party/instaweb_deps",
+
   "opencv_src": "https://code.ros.org/svn/opencv/tags/2.1",
   "opencv_revision": "@head",
+
   "gflags_root": "http://google-gflags.googlecode.com/svn/tags/gflags-1.3/src",
   "gflags_revision": "@head",
+
   "google_sparsehash_root": "http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.8.1/src",
   "google_sparsehash_revision": "@head",
 }
@@ -49,6 +57,7 @@ deps = {
     File(Var("libpagespeed_trunk") + "/src/DEPS" +
       Var("libpagespeed_revision")),
 
+  # Other dependencies.
   "src/base":
     Var("libpagespeed_trunk") + "/src/base" + Var("libpagespeed_revision"),
 
@@ -56,17 +65,49 @@ deps = {
     Var("libpagespeed_trunk") + "/src/build/temp_gyp" +
       Var("libpagespeed_revision"),
 
+  "src/build/internal": From(Var("libpagespeed_deps_root")),
+  "src/build/linux": From(Var("libpagespeed_deps_root")),
+  "src/build/mac": From(Var("libpagespeed_deps_root")),
+  "src/build/util": From(Var("libpagespeed_deps_root")),
+  "src/build/win": From(Var("libpagespeed_deps_root")),
+
+  "src/googleurl": From(Var("chromium_deps_root")),
+
   "src/googleurl_noicu":
     (Var("libpagespeed_trunk") + "/src/googleurl_noicu" +
      Var("libpagespeed_revision")),
 
-#  "src/third_party/apache":
-#    Var("mod_spdy_trunk") + "/src/third_party/apache" +
-#    Var("mod_spdy_revision"),
+  "src/testing": From(Var("libpagespeed_deps_root")),
+  "src/testing/gtest": From(Var("chromium_deps_root")),
+
+  "src/third_party/apache":
+    Var("mod_spdy_trunk") + "/src/third_party/apache" +
+    Var("mod_spdy_revision"),
+
+  "src/third_party/apache/apr/src":
+    Var("apr_src") + Var("apr_revision"),
+
+  "src/third_party/apache/aprutil/src":
+    Var("aprutil_src") + Var("aprutil_revision"),
+
+  "src/third_party/apache/httpd/src/include":
+    Var("apache_httpd_src") + "/include" + Var("apache_httpd_revision"),
+
+  "src/third_party/apache/httpd/src/os":
+    Var("apache_httpd_src") + "/os" + Var("apache_httpd_revision"),
+
+  "src/third_party/chromium/src/base": From(Var("libpagespeed_deps_root")),
+  "src/third_party/chromium/src/build": From(Var("libpagespeed_deps_root")),
+  "src/third_party/chromium/src/net/base": From(Var("libpagespeed_deps_root")),
 
   "src/third_party/chromium/src/net/tools/dump_cache":
      Var("chromium_trunk") + "/src/net/tools/dump_cache" +
      Var("chromium_revision"),
+
+  "src/third_party/gflags/src": Var("gflags_root") + Var("gflags_revision"),
+  "src/third_party/google-sparsehash/src":
+    Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
+  "src/third_party/libjpeg": From(Var("libpagespeed_deps_root")),
 
   "src/third_party/libpagespeed/src/build":
     (Var("libpagespeed_trunk") + "/src/build" +
@@ -91,6 +132,11 @@ deps = {
     (Var("libpagespeed_trunk") + "/src/third_party" +
      Var("libpagespeed_revision")),
 
+  "src/third_party/libpng": From(Var("libpagespeed_deps_root")),
+
+  "src/third_party/protobuf2": From(Var("libpagespeed_deps_root")),
+  "src/third_party/protobuf2/src": From(Var("chromium_deps_root")),
+
   "src/third_party/opencv/src/opencv/src":
     Var("opencv_src") + "/opencv/src" + Var("opencv_revision"),
 
@@ -106,49 +152,13 @@ deps = {
   "src/third_party/opencv/src/opencv/3rdparty/include":
     Var("opencv_src") + "/opencv/3rdparty/include" + Var("opencv_revision"),
 
-  "src/third_party/serf/src":
-    Var("serf_src") + Var("serf_revision"),
+  "src/third_party/serf/src": Var("serf_src") + Var("serf_revision"),
 
-  "src/build/internal": From(Var("libpagespeed_deps_root")),
-  "src/build/linux": From(Var("libpagespeed_deps_root")),
-  "src/build/mac": From(Var("libpagespeed_deps_root")),
-  "src/build/util": From(Var("libpagespeed_deps_root")),
-  "src/build/win": From(Var("libpagespeed_deps_root")),
-  "src/testing": From(Var("libpagespeed_deps_root")),
-  "src/third_party/libjpeg": From(Var("libpagespeed_deps_root")),
-  "src/third_party/libpng": From(Var("libpagespeed_deps_root")),
-  "src/third_party/protobuf2": From(Var("libpagespeed_deps_root")),
   "src/third_party/zlib": From(Var("libpagespeed_deps_root")),
-  "src/third_party/chromium/src/base": From(Var("libpagespeed_deps_root")),
-  "src/third_party/chromium/src/build": From(Var("libpagespeed_deps_root")),
-  "src/third_party/chromium/src/net/base": From(Var("libpagespeed_deps_root")),
+
   "src/tools/data_pack": From(Var("libpagespeed_deps_root")),
   "src/tools/grit": From(Var("libpagespeed_deps_root")),
-
-  "src/googleurl": From(Var("chromium_deps_root")),
-  "src/testing/gtest": From(Var("chromium_deps_root")),
-  "src/third_party/protobuf2/src": From(Var("chromium_deps_root")),
   "src/tools/gyp": From(Var("chromium_deps_root")),
-
-  "src/third_party/apache":
-    Var("mod_spdy_trunk") + "/src/third_party/apache" +
-    Var("mod_spdy_revision"),
-
-  "src/third_party/apache/apr/src":
-    Var("apr_src") + Var("apr_revision"),
-
-  "src/third_party/apache/aprutil/src":
-    Var("aprutil_src") + Var("aprutil_revision"),
-
-  "src/third_party/apache/httpd/src/include":
-    Var("apache_httpd_src") + "/include" + Var("apache_httpd_revision"),
-
-  "src/third_party/apache/httpd/src/os":
-    Var("apache_httpd_src") + "/os" + Var("apache_httpd_revision"),
-
-  "src/third_party/gflags/src": Var("gflags_root") + Var("gflags_revision"),
-  "src/third_party/google-sparsehash/src":
-    Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
 }
 
 
