@@ -52,23 +52,23 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
 }
 
 FileSystem* ApacheRewriteDriverFactory::DefaultFileSystem() {
-  return new html_rewriter::AprFileSystem(pool_);
+  return new AprFileSystem(pool_);
 }
 
 Hasher* ApacheRewriteDriverFactory::NewHasher() {
-  return new html_rewriter::Md5Hasher();
+  return new Md5Hasher();
 }
 
 Timer* ApacheRewriteDriverFactory::DefaultTimer() {
-  return new html_rewriter::AprTimer();
+  return new AprTimer();
 }
 
 MessageHandler* ApacheRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
-  return new net_instaweb::GoogleMessageHandler();
+  return new GoogleMessageHandler();
 }
 
 MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
-  return new net_instaweb::GoogleMessageHandler();
+  return new GoogleMessageHandler();
 }
 
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
@@ -122,7 +122,7 @@ HtmlParse* ApacheRewriteDriverFactory::DefaultHtmlParse() {
 }
 
 AbstractMutex* ApacheRewriteDriverFactory::NewMutex() {
-  return new html_rewriter::AprMutex(pool_);
+  return new AprMutex(pool_);
 }
 
 RewriteDriver* ApacheRewriteDriverFactory::GetRewriteDriver() {

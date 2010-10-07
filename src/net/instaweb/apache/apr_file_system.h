@@ -20,18 +20,17 @@
 #include "net/instaweb/util/public/message_handler.h"
 
 struct apr_pool_t;
-using net_instaweb::FileSystem;
-using net_instaweb::MessageHandler;
-using net_instaweb::BoolOrError;
 
+namespace net_instaweb {
 
-namespace html_rewriter {
+void AprReportError(MessageHandler* message_handler, const char* filename,
+                    int line, const char* message, int error_code);
 
 class AprFileSystem : public FileSystem {
  public:
   explicit AprFileSystem(apr_pool_t* pool);
   ~AprFileSystem();
-  virtual bool Atime(const net_instaweb::StringPiece& path,
+  virtual bool Atime(const StringPiece& path,
                      int64* timestamp_sec, MessageHandler* handler);
   virtual InputFile* OpenInputFile(
       const char* file, MessageHandler* message_handler);
@@ -39,14 +38,14 @@ class AprFileSystem : public FileSystem {
       const char* file, MessageHandler* message_handler);
   // See FileSystem interface for specifics of OpenTempFile.
   virtual OutputFile* OpenTempFileHelper(
-      const net_instaweb::StringPiece& prefix_name,
+      const StringPiece& prefix_name,
       MessageHandler* message_handler);
   virtual bool RenameFileHelper(const char* old_filename,
                                 const char* new_filename,
                                 MessageHandler* message_handler);
   virtual bool RemoveFile(const char* filename,
                           MessageHandler* message_handler);
-  virtual bool Size(const net_instaweb::StringPiece& path, int64* size,
+  virtual bool Size(const StringPiece& path, int64* size,
                     MessageHandler* handler);
   // Like POSIX 'mkdir', makes a directory only if parent directory exists.
   // Fails if directory_name already exists or parent directory doesn't exist.
@@ -58,13 +57,11 @@ class AprFileSystem : public FileSystem {
   // Like POSIX 'test -d', checks if path exists and refers to a directory.
   virtual BoolOrError IsDir(const char* path, MessageHandler* handler);
 
-  virtual bool ListContents(const net_instaweb::StringPiece& dir,
-                            net_instaweb::StringVector* files,
+  virtual bool ListContents(const StringPiece& dir, StringVector* files,
                             MessageHandler* handler);
-  virtual BoolOrError TryLock(const net_instaweb::StringPiece& lock_name,
+  virtual BoolOrError TryLock(const StringPiece& lock_name,
                               MessageHandler* handler);
-  virtual bool Unlock(const net_instaweb::StringPiece& lock_name,
-                      MessageHandler* handler);
+  virtual bool Unlock(const StringPiece& lock_name, MessageHandler* handler);
 
  private:
   apr_pool_t* pool_;
@@ -72,6 +69,6 @@ class AprFileSystem : public FileSystem {
   DISALLOW_COPY_AND_ASSIGN(AprFileSystem);
 };
 
-}  // namespace html_rewriter
+}  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_

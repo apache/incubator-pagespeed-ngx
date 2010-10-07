@@ -19,7 +19,7 @@
 
 using net_instaweb::Timer;
 
-namespace html_rewriter {
+namespace net_instaweb {
 
 class AprTimer : public Timer {
  public:
@@ -27,6 +27,6 @@ class AprTimer : public Timer {
   virtual int64 NowUs() const;
 };
 
-}  // namespace html_rewriter
+}  // namespace net_instaweb
 
 #endif  // HTML_REWRITER_APR_TIMER_H_

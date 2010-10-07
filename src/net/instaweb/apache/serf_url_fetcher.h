@@ -40,6 +40,6 @@ class SerfUrlFetcher : public UrlFetcher {
   DISALLOW_COPY_AND_ASSIGN(SerfUrlFetcher);
 };
 
-}  // namespace html_rewriter
+}  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_APACHE_SERF_URL_FETCHER_H_

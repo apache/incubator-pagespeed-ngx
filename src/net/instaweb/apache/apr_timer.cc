@@ -15,7 +15,7 @@
 #include "apr_time.h"
 #include "net/instaweb/apache/apr_timer.h"
 
-namespace html_rewriter {
+namespace net_instaweb {
 
 AprTimer::~AprTimer() {
 }
@@ -25,4 +25,4 @@ int64 AprTimer::NowUs() const {
   return apr_time_now();
 }
 
-}  // namespace html_rewriter
+}  // namespace net_instaweb

@@ -17,12 +17,12 @@
 
 #include "apr_pools.h"
 
-namespace html_rewriter {
+namespace net_instaweb {
 
 // Install a log message handler that routes LOG() messages to the
 // apache error log. Should be called once at startup.
 void InstallLogMessageHandler(apr_pool_t* pool);
 
-}  // namespace html_rewriter
+}  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_APACHE_LOG_MESSAGE_HANDLER_H_

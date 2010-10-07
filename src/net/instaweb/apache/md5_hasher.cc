@@ -14,7 +14,7 @@
 
 #include "net/instaweb/apache/md5_hasher.h"
 
-namespace html_rewriter {
+namespace net_instaweb {
 
 Md5Hasher::~Md5Hasher() {
 }
@@ -25,4 +25,4 @@ void Md5Hasher::ComputeHash(std::string* hash) {
   *hash = MD5DigestToBase16(digest);
 }
 
-}  // namespace html_rewriter
+}  // namespace net_instaweb

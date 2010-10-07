@@ -85,11 +85,11 @@ bool LogMessageHandler(int severity, const std::string& str) {
 }  // namespace
 
 
-namespace html_rewriter {
+namespace net_instaweb {
 
 void InstallLogMessageHandler(apr_pool_t* pool) {
   log_pool = pool;
   logging::SetLogMessageHandler(&LogMessageHandler);
 }
 
-}  // namespace html_rewriter
+}  // namespace net_instaweb

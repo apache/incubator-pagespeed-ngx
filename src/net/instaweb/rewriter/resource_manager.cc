@@ -33,6 +33,7 @@
 #include <string>
 #include "net/instaweb/util/public/string_hash.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/url_escaper.h"
 
 namespace {
 
@@ -72,6 +73,7 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       hasher_(hasher),
       statistics_(NULL),
       http_cache_(http_cache),
+      url_escaper_(new UrlEscaper()),
       relative_path_(false),
       store_outputs_in_file_system_(true) {
   file_prefix.CopyToString(&file_prefix_);

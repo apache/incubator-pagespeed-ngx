@@ -24,10 +24,6 @@ option optimize_for = LITE_RUNTIME;
 
 package net_instaweb;
 
-message ResourceUrl {
-  optional string origin_url = 1 [default = "" ];
-};
-
 message CssUrl {
   optional string origin_url = 1 [default = "" ];
   optional string media = 2 [default = "" ];

@@ -74,9 +74,9 @@ void InstawebContext::Rewrite(const char* input, int size) {
 }
 
 apr_status_t InstawebContext::Cleanup(void* object) {
-    InstawebContext* ic = static_cast<InstawebContext*>(object);
-    delete ic;
-    return APR_SUCCESS;
+  InstawebContext* ic = static_cast<InstawebContext*>(object);
+  delete ic;
+  return APR_SUCCESS;
 }
 
 void InstawebContext::ComputeContentEncoding(request_rec* request) {

@@ -18,13 +18,13 @@
 // Forward declaration.
 struct request_rec;
 
-namespace mod_pagespeed {
+namespace net_instaweb {
 
 // The content generator for instaweb generated content, for example, the
 // combined CSS file.  Requests for not-instab generated content will be
 // declined so that other Apache handlers may operate on them.
 int instaweb_handler(request_rec* request);
 
-}  // namespace mod_pageseed
+}  // namespace net_instaweb
 
 #endif  // MOD_INSTAWEB_INSTAWEB_HANDLER_H_

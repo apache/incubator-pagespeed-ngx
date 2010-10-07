@@ -17,7 +17,7 @@
 #include "apr_pools.h"
 #include "apr_thread_mutex.h"
 
-namespace html_rewriter {
+namespace net_instaweb {
 
 AprMutex::AprMutex(apr_pool_t* pool) {
   apr_thread_mutex_create(&thread_mutex_, APR_THREAD_MUTEX_DEFAULT, pool);
@@ -35,4 +35,4 @@ void AprMutex::Unlock() {
     apr_thread_mutex_unlock(thread_mutex_);
 }
 
-}  // namespace html_rewriter
+}  // namespace net_instaweb

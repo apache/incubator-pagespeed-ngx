@@ -23,25 +23,13 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-using html_rewriter::AprFileSystem;
+namespace net_instaweb {
 
-namespace {
-const int kErrorMessageBufferSize = 1024;
-
-void AprReportError(MessageHandler* message_handler, const char* filename,
-                    int line, const char* message, int error_code) {
-  char buf[kErrorMessageBufferSize];
-  apr_strerror(error_code, buf, sizeof(buf));
-  std::string error_format(message);
-  error_format.append(" (code=%d %s)");
-  message_handler->Error(filename, line, error_format.c_str(), error_code, buf);
-}
-
-class AprFileSystemTest : public net_instaweb::FileSystemTest {
+class AprFileSystemTest : public FileSystemTest {
  protected:
   AprFileSystemTest() { }
 
-  virtual void DeleteRecursively(const net_instaweb::StringPiece& filename) {
+  virtual void DeleteRecursively(const StringPiece& filename) {
     MyDeleteFileRecursively(filename.as_string(), NULL, NULL);
   }
   virtual FileSystem* file_system() {
@@ -117,7 +105,7 @@ class AprFileSystemTest : public net_instaweb::FileSystemTest {
   }
 
  protected:
-  net_instaweb::GoogleMessageHandler handler_;
+  GoogleMessageHandler handler_;
   scoped_ptr<AprFileSystem> file_system_;
   apr_pool_t* pool_;
   std::string test_tmpdir_;
@@ -186,4 +174,4 @@ TEST_F(AprFileSystemTest, TestLock) {
   TestLock();
 }
 
-}  // namespace
+}  // namespace net_instaweb

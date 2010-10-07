@@ -18,16 +18,18 @@
 #include "base/basictypes.h"
 #include "net/instaweb/apache/apr_timer.h"
 
+namespace net_instaweb {
+
 namespace {
 
-class AsyncCallback : public net_instaweb::UrlAsyncFetcher::Callback {
+class SerfAsyncCallback : public UrlAsyncFetcher::Callback {
  public:
-  explicit AsyncCallback(net_instaweb::MessageHandler* message_handler)
+  explicit SerfAsyncCallback(MessageHandler* message_handler)
       : done_(false),
         success_(false),
         released_(false),
         message_handler_(message_handler) {}
-  virtual ~AsyncCallback() {}
+  virtual ~SerfAsyncCallback() {}
   virtual void Done(bool success)  {
     done_ = true;
     success_ = success;
@@ -49,14 +51,12 @@ class AsyncCallback : public net_instaweb::UrlAsyncFetcher::Callback {
   bool done_;
   bool success_;
   bool released_;
-  net_instaweb::MessageHandler* message_handler_;
+  MessageHandler* message_handler_;
 
-  DISALLOW_COPY_AND_ASSIGN(AsyncCallback);
+  DISALLOW_COPY_AND_ASSIGN(SerfAsyncCallback);
 };
 
 }  // namespace
-
-namespace net_instaweb {
 
 SerfUrlFetcher::SerfUrlFetcher(int64 fetcher_timeout_ms,
                                SerfUrlAsyncFetcher* async_fetcher)
@@ -72,12 +72,12 @@ bool SerfUrlFetcher::StreamingFetchUrl(const std::string& url,
                                        MetaData* response_headers,
                                        Writer* fetched_content_writer,
                                        MessageHandler* message_handler) {
-  AsyncCallback* callback = new AsyncCallback(message_handler);
+  SerfAsyncCallback* callback = new SerfAsyncCallback(message_handler);
   async_fetcher_->StreamingFetch(
       url, request_headers, response_headers,
       fetched_content_writer, message_handler, callback);
 
-  html_rewriter::AprTimer timer;
+  AprTimer timer;
   for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
        !callback->done() && now_ms - start_ms < fetcher_timeout_ms_;
        now_ms = timer.NowMs()) {

@@ -22,7 +22,7 @@
 struct apr_thread_mutex_t;
 struct apr_pool_t;
 
-namespace html_rewriter {
+namespace net_instaweb {
 
 class AprMutex : public net_instaweb::AbstractMutex {
  public:
@@ -36,6 +36,6 @@ class AprMutex : public net_instaweb::AbstractMutex {
   DISALLOW_COPY_AND_ASSIGN(AprMutex);
 };
 
-}  // namespace html_rewriter
+}  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_APACHE_APR_MUTEX_H_

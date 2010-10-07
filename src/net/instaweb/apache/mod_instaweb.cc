@@ -42,6 +42,8 @@
 #include "http_log.h"
 #include "http_protocol.h"
 
+namespace net_instaweb {
+
 namespace {
 
 // Instaweb directive names -- these must match ../scripts/instaweb.conf,
@@ -63,7 +65,7 @@ const char* kInstawebNumShards = "InstawebNumShards";
 const char* kInstawebOutlineThreshold = "InstawebOutlineThreshold";
 const char* kInstawebRewriters = "InstawebRewriters";
 const char* kInstawebSlurpDirectory = "InstawebSlurpDirectory";
-const char* kInstawebSlurpWrite = "InstawebSlurpWrite";
+const char* kInstawebSlurpReadOnly = "InstawebSlurpReadOnly";
 const char* kInstawebForceCaching = "InstawebForceCaching";
 const char* instaweb_filter_name = "INSTAWEB_OUTPUT_FILTER";
 
@@ -118,8 +120,8 @@ bool check_pagespeed_applicable(ap_filter_t* filter,
 apr_bucket* rewrite_html(ap_filter_t *filter, RewriteOperation operation,
                          const char* buf, int len) {
   request_rec* request = filter->r;
-  net_instaweb::InstawebContext* context =
-      static_cast<net_instaweb::InstawebContext*>(filter->ctx);
+  InstawebContext* context =
+      static_cast<InstawebContext*>(filter->ctx);
   if (context == NULL) {
     LOG(DFATAL) << "Context is null";
     return NULL;
@@ -150,8 +152,9 @@ apr_bucket* rewrite_html(ap_filter_t *filter, RewriteOperation operation,
 
 apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   // Check if pagespeed is enabled.
-  net_instaweb::ApacheRewriteDriverFactory* factory =
-      net_instaweb::InstawebContext::Factory(filter->r->server);
+  request_rec* request = filter->r;
+  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(
+      request->server);
   if (!factory->enabled()) {
     ap_remove_output_filter(filter);
     return ap_pass_brigade(filter->next, bb);
@@ -168,9 +171,8 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     return ap_pass_brigade(filter->next, bb);
   }
 
-  request_rec* request = filter->r;
-  net_instaweb::InstawebContext* context =
-      static_cast<net_instaweb::InstawebContext*>(filter->ctx);
+  InstawebContext* context =
+      static_cast<InstawebContext*>(filter->ctx);
 
   LOG(INFO) << "Instaweb OutputFilter called for request "
             << request->unparsed_uri;
@@ -200,24 +202,24 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     LOG(INFO) << "unparsed=" << request->unparsed_uri
               << ", base_url=" << base_url;
 
-    context = new net_instaweb::InstawebContext(request, factory, base_url);
+    context = new InstawebContext(request, factory, base_url);
     filter->ctx = context;
 
-    net_instaweb::InstawebContext::ContentEncoding encoding =
+    InstawebContext::ContentEncoding encoding =
         context->content_encoding();
-    if (encoding == net_instaweb::InstawebContext::kGzip) {
-      // Unset the content encoding because the html_rewriter will decode the
+    if (encoding == InstawebContext::kGzip) {
+      // Unset the content encoding because the InstawebContext will decode the
       // content before parsing.
       apr_table_unset(request->headers_out, "Content-Encoding");
       apr_table_unset(request->err_headers_out, "Content-Encoding");
-    } else if (encoding == net_instaweb::InstawebContext::kOther) {
+    } else if (encoding == InstawebContext::kOther) {
       // We don't know the encoding, so we cannot rewrite the HTML.
       ap_remove_output_filter(filter);
       return ap_pass_brigade(filter->next, bb);
     }
 
-    net_instaweb::SimpleMetaData request_headers, response_headers;
-    net_instaweb::ApacheHeaderToMetaData(request->headers_in, 0,
+    SimpleMetaData request_headers, response_headers;
+    ApacheHeaderToMetaData(request->headers_in, 0,
                                          request->proto_num, &request_headers);
     LOG(INFO) << "Request headers:\n" << request_headers.ToString();
 
@@ -236,7 +238,7 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
 
     // Note that downstream output filters may further mutate the response
     // headers, and this will not show those mutations.
-    net_instaweb::ApacheHeaderToMetaData(request->headers_out, request->status,
+    ApacheHeaderToMetaData(request->headers_out, request->status,
                                          request->proto_num, &response_headers);
     LOG(INFO) << "Instaweb Response headers:\n" << response_headers.ToString();
   }
@@ -300,8 +302,8 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
 }
 
 apr_status_t pagespeed_child_exit(void* data) {
-  net_instaweb::ApacheRewriteDriverFactory* factory =
-      static_cast<net_instaweb::ApacheRewriteDriverFactory*>(data);
+  ApacheRewriteDriverFactory* factory =
+      static_cast<ApacheRewriteDriverFactory*>(data);
   delete factory;
   return APR_SUCCESS;
 }
@@ -312,7 +314,7 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   // server lists in server->next.
   server_rec* next_server = server;
   while (next_server) {
-    net_instaweb::InstawebContext::Factory(next_server);
+    InstawebContext::Factory(next_server);
     next_server = next_server->next;
   }
 }
@@ -321,8 +323,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                           server_rec *server) {
   server_rec* next_server = server;
   while (next_server) {
-    net_instaweb::ApacheRewriteDriverFactory* factory =
-        net_instaweb::InstawebContext::Factory(next_server);
+    ApacheRewriteDriverFactory* factory = InstawebContext::Factory(next_server);
     if (factory->enabled()) {
       if (factory->url_prefix().empty() ||
           factory->filename_prefix().empty() ||
@@ -347,24 +348,10 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
 // finish.
 apr_status_t pagespeed_log_transaction(request_rec *request) {
   server_rec* server = request->server;
-  net_instaweb::ApacheRewriteDriverFactory* factory =
-      net_instaweb::InstawebContext::Factory(server);
+  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
   if (factory == NULL) {
     return DECLINED;
   }
-#if 0
-  html_rewriter::SerfUrlAsyncFetcher* url_async_fetcher =
-      factory->context->rewrite_driver_factory()->serf_url_async_fetcher();
-  if (url_async_fetcher == NULL) {
-    return DECLINED;
-  }
-  int64 max_ms = GetFetcherTimeOut(factory->context);  // milliseconds.
-  net_instaweb::GoogleMessageHandler handler;
-  if (!url_async_fetcher->WaitForInProgressFetches(max_ms, &handler)) {
-    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                  "SerfFetch timeout request=%s", request->unparsed_uri);
-  }
-#endif
   return DECLINED;
 }
 
@@ -375,10 +362,10 @@ apr_status_t pagespeed_log_transaction(request_rec *request) {
 // other events.
 void mod_pagespeed_register_hooks(apr_pool_t *p) {
   // Enable logging using pagespeed style
-  html_rewriter::InstallLogMessageHandler(p);
+  InstallLogMessageHandler(p);
 
   // Use instaweb to handle generated resources.
-  ap_hook_handler(mod_pagespeed::instaweb_handler, NULL, NULL, -1);
+  ap_hook_handler(instaweb_handler, NULL, NULL, -1);
   ap_register_output_filter(instaweb_filter_name,
                             instaweb_out_filter,
                             NULL,
@@ -389,10 +376,9 @@ void mod_pagespeed_register_hooks(apr_pool_t *p) {
 }
 
 void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
-  net_instaweb::ApacheRewriteDriverFactory* factory =
-      net_instaweb::InstawebContext::Factory(server);
+  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
   if (factory == NULL) {
-    factory = new net_instaweb::ApacheRewriteDriverFactory(pool);
+    factory = new ApacheRewriteDriverFactory(pool);
 
     // Also consider checking AP_MODULE_MAGIC_AT_LEAST(20051115, 15)
 #if ((APR_MAJOR_VERSION > 1) ||                                 \
@@ -403,38 +389,55 @@ void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
   return factory;
 }
 
-ConfigSwitch get_config_switch(const char* arg) {
+typedef void (ApacheRewriteDriverFactory::*SetBoolFn)(bool val);
+typedef void (ApacheRewriteDriverFactory::*SetInt64Fn)(int64 val);
+typedef void (ApacheRewriteDriverFactory::*SetIntFn)(int val);
+
+const char* ParseBoolOption(cmd_parms* cmd, SetBoolFn fn, const char* arg) {
+  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
+  const char* ret = NULL;
   if (strcasecmp(arg, "on") == 0) {
-    return CONFIG_ON;
+    (factory->*fn)(true);
   } else if (strcasecmp(arg, "off") == 0) {
-    return CONFIG_OFF;
+    (factory->*fn)(false);
   } else {
-    return CONFIG_ERROR;
+    ret = apr_pstrcat(cmd->pool, cmd->directive->directive, " on|off", NULL);
   }
+  return ret;
 }
 
-}  // namespace
+const char* ParseInt64Option(cmd_parms* cmd, SetInt64Fn fn, const char* arg) {
+  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
+  int64 val;
+  const char* ret = NULL;
+  if (StringToInt64(arg, &val)) {
+    (factory->*fn)(val);
+  } else {
+    ret = apr_pstrcat(cmd->pool, cmd->directive->directive,
+                      " must specify a 64-bit integer", NULL);
+  }
+  return ret;
+}
 
-extern "C" {
-// Export our module so Apache is able to load us.
-// See http://gcc.gnu.org/wiki/Visibility for more information.
-#if defined(__linux)
-#pragma GCC visibility push(default)
-#endif
+const char* ParseIntOption(cmd_parms* cmd, SetIntFn fn, const char* arg) {
+  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
+  int val;
+  const char* ret = NULL;
+  if (StringToInt(arg, &val)) {
+    (factory->*fn)(val);
+  } else {
+    ret = apr_pstrcat(cmd->pool, cmd->directive->directive,
+                      " must specify a 32-bit integer", NULL);
+  }
+  return ret;
+}
 
-// TODO(lsong): Refactor the on/off options check. Use a function to replace the
-// repeated statements.
-static const char* mod_pagespeed_config_one_string(cmd_parms* cmd, void* data,
-                                                   const char* arg) {
-  net_instaweb::ApacheRewriteDriverFactory* factory =
-      net_instaweb::InstawebContext::Factory(cmd->server);
-  const char* directive = (cmd->directive->directive);
+static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
+  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
+  const char* directive = cmd->directive->directive;
+  const char* ret = NULL;
   if (strcasecmp(directive, kInstaweb) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kInstaweb, " on|off", NULL);
-    }
-    factory->set_enabled(config_switch == CONFIG_ON);
+    ret = ParseBoolOption(cmd, &ApacheRewriteDriverFactory::set_enabled, arg);
   } else if (strcasecmp(directive, kInstawebUrlPrefix) == 0) {
     factory->set_url_prefix(arg);
   } else if (strcasecmp(directive, kInstawebFetchProxy) == 0) {
@@ -444,49 +447,41 @@ static const char* mod_pagespeed_config_one_string(cmd_parms* cmd, void* data,
   } else if (strcasecmp(directive, kInstawebFileCachePath) == 0) {
     factory->set_file_cache_path(arg);
   } else if (strcasecmp(directive, kInstawebFileCacheSizeKb) == 0) {
-    factory->set_file_cache_clean_size_kb(static_cast<int64>(
-        apr_strtoi64(arg, NULL, 10)));
+    ret = ParseInt64Option(
+        cmd, &ApacheRewriteDriverFactory::set_file_cache_clean_size_kb, arg);
   } else if (strcasecmp(directive, kInstawebFileCacheCleanIntervalMs) == 0) {
-    factory->set_file_cache_clean_interval_ms(static_cast<int64>(
-        apr_strtoi64(arg, NULL, 10)));
+    ret = ParseInt64Option(
+        cmd, &ApacheRewriteDriverFactory::set_file_cache_clean_interval_ms,
+        arg);
   } else if (strcasecmp(directive, kInstawebFetcherTimeoutMs) == 0) {
-    factory->set_fetcher_time_out_ms(static_cast<int64>(
-        apr_strtoi64(arg, NULL, 10)));
+    ret = ParseInt64Option(
+        cmd, &ApacheRewriteDriverFactory::set_fetcher_time_out_ms, arg);
   } else if (strcasecmp(directive, kInstawebNumShards) == 0) {
-    factory->set_num_shards(static_cast<int>(apr_strtoi64(arg, NULL, 10)));
+    ret = ParseIntOption(cmd, &ApacheRewriteDriverFactory::set_num_shards, arg);
   } else if (strcasecmp(directive, kInstawebOutlineThreshold) == 0) {
-    factory->set_outline_threshold(static_cast<int>(
-        apr_strtoi64(arg, NULL, 10)));
+    ret = ParseInt64Option(
+        cmd, &ApacheRewriteDriverFactory::set_outline_threshold, arg);
   } else if (strcasecmp(directive, kInstawebLRUCacheKbPerProcess) == 0) {
-    factory->set_lru_cache_kb_per_process(
-        static_cast<int64>(apr_strtoi64(arg, NULL, 10)));
+    ret = ParseInt64Option(
+        cmd, &ApacheRewriteDriverFactory::set_lru_cache_kb_per_process, arg);
   } else if (strcasecmp(directive, kInstawebLRUCacheByteLimit) == 0) {
-    factory->set_lru_cache_byte_limit(
-        static_cast<int64>(apr_strtoi64(arg, NULL, 10)));
+    ret = ParseInt64Option(
+        cmd, &ApacheRewriteDriverFactory::set_lru_cache_byte_limit, arg);
   } else if (strcasecmp(directive, kInstawebRewriters) == 0) {
     factory->SetEnabledFilters(arg);
   } else if (strcasecmp(directive, kInstawebSlurpDirectory) == 0) {
-    factory->SetSlurpDirectory(arg, false);
-    // TODO(jmarantz): This is broken in RewriteDriverFactory which
-    // needs to be changed to defer the creation of the fetcher until
-    // the fetchers are actually needed.
-  } else if (strcasecmp(directive, kInstawebSlurpWrite) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kInstawebSlurpWrite, " on|off", NULL);
-    }
-    factory->SetSlurpDirectory("", (config_switch == CONFIG_ON));
+    factory->set_slurp_directory(arg);
+  } else if (strcasecmp(directive, kInstawebSlurpReadOnly) == 0) {
+    ret = ParseBoolOption(
+        cmd, &ApacheRewriteDriverFactory::set_slurp_read_only, arg);
   } else if (strcasecmp(directive, kInstawebForceCaching) == 0) {
-    ConfigSwitch config_switch = get_config_switch(arg);
-    if (config_switch == CONFIG_ERROR) {
-      return apr_pstrcat(cmd->pool, kInstawebForceCaching, " on|off", NULL);
-    }
-    factory->set_force_caching(config_switch == CONFIG_ON);
+    ret = ParseBoolOption(
+        cmd, &ApacheRewriteDriverFactory::set_force_caching, arg);
   } else {
     return "Unknown directive.";
   }
 
-  return NULL;
+  return ret;
 }
 
 // Setting up Apache options is cumbersome for several reasons:
@@ -495,10 +490,10 @@ static const char* mod_pagespeed_config_one_string(cmd_parms* cmd, void* data,
 //    using static data.  So we cannot use helper functions to create the
 //    helper table, so that we can populate it from another table.
 // 2. You have to fill in the table with a function pointer with a K&R
-//    C declaration that does not specifiy its argument types.  There appears
+//    C declaration that does not specify its argument types.  There appears
 //    to be a type-correct union hidden behind an ifdef for
-//    AP_HAVE_DESIGNATED_INITIALIZER, but that doesn't seem to work.  It
-//    gives a syntax error.
+//    AP_HAVE_DESIGNATED_INITIALIZER, but that doesn't work.  It gives a
+//    syntax error; its comments indicate it is there for Doxygen.
 // 3. Although you have to pre-declare all the options, you need to again
 //    dispatch based on the name of the options.  You could, conceivably,
 //    provide a different function pointer for each call.  This might look
@@ -510,9 +505,7 @@ static const char* mod_pagespeed_config_one_string(cmd_parms* cmd, void* data,
 // using a style suitable for programming after 1980.  So all we can do is make
 // this a little less ugly with wrapper macros and helper functions.
 #define APACHE_CONFIG_OPTION(name, help) \
-  AP_INIT_TAKE1(name, \
-                reinterpret_cast<const char*(*)()>( \
-                    mod_pagespeed_config_one_string), \
+  AP_INIT_TAKE1(name, reinterpret_cast<const char*(*)()>(ParseDirective), \
                 NULL, RSRC_CONF, help)
 
 static const command_rec mod_pagespeed_filter_cmds[] = {
@@ -539,12 +532,25 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
                        "Comma-separated list of rewriting filters"),
   APACHE_CONFIG_OPTION(kInstawebSlurpDirectory,
         "Directory from which to read slurped resources"),
-  APACHE_CONFIG_OPTION(kInstawebSlurpWrite,
-                       "Directory from which to read slurped resources"),
+  APACHE_CONFIG_OPTION(kInstawebSlurpReadOnly,
+                       "Only read from the slurped directory, fail to fetch "
+                       "URLs not already in the slurped directory"),
   APACHE_CONFIG_OPTION(kInstawebForceCaching,
                        "Ignore HTTP cache headers and TTLs"),
   {NULL}
 };
+
+}  // namespace net_instaweb
+
+}  // namespace
+
+extern "C" {
+// Export our module so Apache is able to load us.
+// See http://gcc.gnu.org/wiki/Visibility for more information.
+#if defined(__linux)
+#pragma GCC visibility push(default)
+#endif
+
 // Declare and populate the module's data structure.  The
 // name of this structure ('instaweb_module') is important - it
 // must match the name of the module.  This structure is the
@@ -557,10 +563,10 @@ module AP_MODULE_DECLARE_DATA instaweb_module = {
   STANDARD20_MODULE_STUFF,
   NULL,  // create per-directory config structure
   NULL,  // merge per-directory config structures
-  mod_pagespeed_create_server_config,
+  net_instaweb::mod_pagespeed_create_server_config,
   NULL,  // merge per-server config structures
-  mod_pagespeed_filter_cmds,
-  mod_pagespeed_register_hooks,      // callback for registering hooks
+  net_instaweb::mod_pagespeed_filter_cmds,
+  net_instaweb::mod_pagespeed_register_hooks,
 };
 
 #if defined(__linux)

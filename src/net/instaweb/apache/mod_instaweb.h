@@ -21,7 +21,7 @@
 // Forward declaration.
 struct server_rec;
 
-namespace html_rewriter {
+namespace net_instaweb {
 
 struct PageSpeedConfig;
 class PageSpeedServerContext;
@@ -29,6 +29,6 @@ class PageSpeedServerContext;
 PageSpeedConfig* mod_pagespeed_get_server_config(server_rec* server);
 PageSpeedServerContext* mod_pagespeed_get_config_server_context(
     server_rec* server);
-}  // namespace html_rewriter
+}  // namespace net_instaweb
 
 #endif  // MOD_INSTAWEB_MOD_INSTAWEB_H_

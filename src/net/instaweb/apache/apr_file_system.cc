@@ -23,24 +23,18 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/stack_buffer.h"
 
-using net_instaweb::MessageHandler;
-
-namespace {
-const int kErrorMessageBufferSize = 1024;
+namespace net_instaweb {
 
 void AprReportError(MessageHandler* message_handler, const char* filename,
-                    const char* message, int error_code) {
-  char buf[kErrorMessageBufferSize];
+                    int line, const char* message, int error_code) {
+  char buf[kStackBufferSize];
   apr_strerror(error_code, buf, sizeof(buf));
   std::string error_format(message);
   error_format.append(" (code=%d %s)");
-  message_handler->Error(filename, 0, error_format.c_str(), error_code, buf);
+  message_handler->Error(filename, line, error_format.c_str(), error_code, buf);
 }
-
-}  // namespace
-
-namespace html_rewriter {
 
 // Helper class to factor out common implementation details between Input and
 // Output files, in lieu of multiple inheritance.
@@ -53,7 +47,7 @@ class FileHelper {
 
   void ReportError(MessageHandler* message_handler, const char* format,
                    int error_code) {
-    AprReportError(message_handler, filename_.c_str(), format, error_code);
+    AprReportError(message_handler, filename_.c_str(), 0, format, error_code);
   }
 
   bool Close(MessageHandler* message_handler);
@@ -94,7 +88,7 @@ class HtmlWriterInputFile : public FileSystem::InputFile {
 class HtmlWriterOutputFile : public FileSystem::OutputFile {
  public:
   HtmlWriterOutputFile(apr_file_t* file, const char* filename);
-  virtual bool Write(const net_instaweb::StringPiece& buf,
+  virtual bool Write(const StringPiece& buf,
                      MessageHandler* message_handler);
   virtual bool Flush(MessageHandler* message_handler);
   virtual bool Close(MessageHandler* message_handler) {
@@ -132,7 +126,7 @@ HtmlWriterOutputFile::HtmlWriterOutputFile(apr_file_t* file,
     : helper_(file, filename) {
 }
 
-bool HtmlWriterOutputFile::Write(const net_instaweb::StringPiece& buf,
+bool HtmlWriterOutputFile::Write(const StringPiece& buf,
                                  MessageHandler* message_handler) {
   bool success = false;
   apr_size_t bytes = buf.size();
@@ -182,8 +176,7 @@ FileSystem::InputFile* AprFileSystem::OpenInputFile(
   apr_status_t ret = apr_file_open(&file, filename, APR_FOPEN_READ,
                                    APR_OS_DEFAULT, pool_);
   if (ret != APR_SUCCESS) {
-    AprReportError(message_handler, filename, "open input file",
-                   ret);
+    AprReportError(message_handler, filename, 0, "open input file", ret);
     return NULL;
   }
   return new HtmlWriterInputFile(file, filename);
@@ -196,15 +189,14 @@ FileSystem::OutputFile* AprFileSystem::OpenOutputFileHelper(
                                    APR_WRITE | APR_CREATE | APR_TRUNCATE,
                                    APR_OS_DEFAULT, pool_);
   if (ret != APR_SUCCESS) {
-    AprReportError(message_handler, filename, "open output file",
-                   ret);
+    AprReportError(message_handler, filename, 0, "open output file", ret);
     return NULL;
   }
   return new HtmlWriterOutputFile(file, filename);
 }
 
 FileSystem::OutputFile* AprFileSystem::OpenTempFileHelper(
-    const net_instaweb::StringPiece& prefix_name,
+    const StringPiece& prefix_name,
     MessageHandler* message_handler) {
   static const char mkstemp_hook[] = "XXXXXX";
   scoped_array<char> template_name(
@@ -222,7 +214,7 @@ FileSystem::OutputFile* AprFileSystem::OpenTempFileHelper(
       &file, template_name.get(),
       APR_CREATE | APR_READ | APR_WRITE | APR_EXCL, pool_);
   if (ret != APR_SUCCESS) {
-    AprReportError(message_handler, template_name.get(),
+    AprReportError(message_handler, template_name.get(), 0,
                    "open temp file", ret);
     return NULL;
   }
@@ -234,8 +226,7 @@ bool AprFileSystem::RenameFileHelper(
     MessageHandler* message_handler) {
   apr_status_t ret = apr_file_rename(old_filename, new_filename, pool_);
   if (ret != APR_SUCCESS) {
-    AprReportError(message_handler, new_filename,
-                   "renaming temp file", ret);
+    AprReportError(message_handler, new_filename, 0, "renaming temp file", ret);
     return false;
   }
   return true;
@@ -244,8 +235,7 @@ bool AprFileSystem::RemoveFile(const char* filename,
                                MessageHandler* message_handler) {
   apr_status_t ret = apr_file_remove(filename, pool_);
   if (ret != APR_SUCCESS) {
-    AprReportError(message_handler, filename,
-                   "removing file", ret);
+    AprReportError(message_handler, filename, 0, "removing file", ret);
     return false;
   }
   return true;
@@ -255,7 +245,7 @@ bool AprFileSystem::MakeDir(const char* directory_path,
                             MessageHandler* handler) {
   apr_status_t ret = apr_dir_make(directory_path, APR_FPROT_OS_DEFAULT, pool_);
   if (ret != APR_SUCCESS) {
-    AprReportError(handler, directory_path, "creating dir", ret);
+    AprReportError(handler, directory_path, 0, "creating dir", ret);
     return false;
   }
   return true;
@@ -267,8 +257,8 @@ BoolOrError AprFileSystem::Exists(const char* path, MessageHandler* handler) {
   apr_finfo_t finfo;
   apr_status_t ret = apr_stat(&finfo, path, wanted, pool_);
   if (ret != APR_SUCCESS && ret != APR_ENOENT) {
-      AprReportError(handler, path, "failed to stat", ret);
-      exists.set_error();
+    AprReportError(handler, path, 0, "failed to stat", ret);
+    exists.set_error();
   } else {
     exists.set(ret == APR_SUCCESS);
   }
@@ -281,25 +271,25 @@ BoolOrError AprFileSystem::IsDir(const char* path, MessageHandler* handler) {
   apr_finfo_t finfo;
   apr_status_t ret = apr_stat(&finfo, path, wanted, pool_);
   if (ret != APR_SUCCESS && ret != APR_ENOENT) {
-      AprReportError(handler, path, "failed to stat", ret);
-      is_dir.set_error();
+    AprReportError(handler, path, 0, "failed to stat", ret);
+    is_dir.set_error();
   } else {
     is_dir.set(ret == APR_SUCCESS && finfo.filetype == APR_DIR);
   }
   return is_dir;
 }
 
-bool AprFileSystem::ListContents(const net_instaweb::StringPiece& dir,
-                                 net_instaweb::StringVector* files,
+bool AprFileSystem::ListContents(const StringPiece& dir,
+                                 StringVector* files,
                                  MessageHandler* handler) {
   std::string dirString = dir.as_string();
-  net_instaweb::EnsureEndsInSlash(&dirString);
+  EnsureEndsInSlash(&dirString);
   const char* dirname = dirString.c_str();
   apr_dir_t* mydir;
   apr_status_t ret = apr_dir_open(&mydir, dirname, pool_);
   if (ret != APR_SUCCESS) {
-      AprReportError(handler, dirname, "failed to opendir", ret);
-      return false;
+    AprReportError(handler, dirname, 0, "failed to opendir", ret);
+    return false;
   } else {
     apr_finfo_t finfo;
     apr_int32_t wanted = APR_FINFO_NAME;
@@ -312,13 +302,13 @@ bool AprFileSystem::ListContents(const net_instaweb::StringPiece& dir,
   }
   ret = apr_dir_close(mydir);
   if (ret != APR_SUCCESS) {
-      AprReportError(handler, dirname, "failed to closedir", ret);
-      return false;
+    AprReportError(handler, dirname, 0, "failed to closedir", ret);
+    return false;
   }
   return true;
 }
 
-bool AprFileSystem::Atime(const net_instaweb::StringPiece& path,
+bool AprFileSystem::Atime(const StringPiece& path,
                             int64* timestamp_sec, MessageHandler* handler) {
   // TODO(abliss): there are some situations where this doesn't work
   // -- e.g. if the filesystem is mounted noatime.
@@ -328,15 +318,15 @@ bool AprFileSystem::Atime(const net_instaweb::StringPiece& path,
   apr_finfo_t finfo;
   apr_status_t ret = apr_stat(&finfo, path_str, wanted, pool_);
   if (ret != APR_SUCCESS) {
-      AprReportError(handler, path_str, "failed to stat", ret);
-      return false;
+    AprReportError(handler, path_str, 0, "failed to stat", ret);
+    return false;
   } else {
     *timestamp_sec = finfo.atime;
     return true;
   }
 }
 
-bool AprFileSystem::Size(const net_instaweb::StringPiece& path, int64* size,
+bool AprFileSystem::Size(const StringPiece& path, int64* size,
                            MessageHandler* handler) {
   const std::string path_string = path.as_string();
   const char* path_str = path_string.c_str();
@@ -344,7 +334,7 @@ bool AprFileSystem::Size(const net_instaweb::StringPiece& path, int64* size,
   apr_finfo_t finfo;
   apr_status_t ret = apr_stat(&finfo, path_str, wanted, pool_);
   if (ret != APR_SUCCESS) {
-    AprReportError(handler, path_str, "failed to stat", ret);
+    AprReportError(handler, path_str, 0, "failed to stat", ret);
     return false;
   } else {
     *size = finfo.size;
@@ -352,7 +342,7 @@ bool AprFileSystem::Size(const net_instaweb::StringPiece& path, int64* size,
   }
 }
 
-BoolOrError AprFileSystem::TryLock(const net_instaweb::StringPiece& lock_name,
+BoolOrError AprFileSystem::TryLock(const StringPiece& lock_name,
                                    MessageHandler* handler) {
   const std::string lock_string = lock_name.as_string();
   const char* lock_str = lock_string.c_str();
@@ -364,21 +354,21 @@ BoolOrError AprFileSystem::TryLock(const net_instaweb::StringPiece& lock_name,
   } else if (errno == EEXIST) {
     return BoolOrError(false);
   } else {
-    AprReportError(handler, lock_str, "creating dir", ret);
+    AprReportError(handler, lock_str, 0, "creating dir", ret);
     return BoolOrError();
   }
 }
 
-bool AprFileSystem::Unlock(const net_instaweb::StringPiece& lock_name,
+bool AprFileSystem::Unlock(const StringPiece& lock_name,
                            MessageHandler* handler) {
   const std::string lock_string = lock_name.as_string();
   const char* lock_str = lock_string.c_str();
   apr_status_t ret = apr_dir_remove(lock_str, pool_);
   if (ret != APR_SUCCESS) {
-    AprReportError(handler, lock_str, "removing dir", ret);
+    AprReportError(handler, lock_str, 0, "removing dir", ret);
     return false;
   }
   return true;
 }
 
-}  // namespace html_rewriter
+}  // namespace net_instaweb

@@ -23,7 +23,7 @@
 
 using net_instaweb::Hasher;
 
-namespace html_rewriter {
+namespace net_instaweb {
 
 class Md5Hasher : public Hasher {
  public:
@@ -42,6 +42,6 @@ class Md5Hasher : public Hasher {
   DISALLOW_COPY_AND_ASSIGN(Md5Hasher);
 };
 
-}  // namespace html_rewriter
+}  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_APACHE_MD5_HASHER_H_

@@ -98,6 +98,7 @@
         'util/symbol_table_test.cc',
 #        'util/threadsafe_cache_test.cc',
         'util/time_util_test.cc',
+        'util/url_escaper_test.cc',
         'util/write_through_cache_test.cc',
         'rewriter/collapse_whitespace_filter_test.cc',
 # TODO(sligocki): Fix. Fails in chromium/src/base/at_exit.cc(40).

@@ -28,7 +28,6 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/rewriter/rewrite.pb.h"  // for ResourceUrl
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -36,6 +35,7 @@
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
+#include "net/instaweb/util/public/url_escaper.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
@@ -176,10 +176,9 @@ bool JavascriptFilter::WriteExternalScriptTo(
 void JavascriptFilter::RewriteExternalScript() {
   // External script; minify and replace with rewritten version.
   const std::string& script_url = script_src_->value();
-  ResourceUrl rewritten_url_proto;
-  rewritten_url_proto.set_origin_url(script_url);
   std::string rewritten_url;
-  Encode(rewritten_url_proto, &rewritten_url);
+  resource_manager_->url_escaper()->EncodeToUrlSegment(
+      script_url, &rewritten_url);
   MessageHandler* message_handler = html_parse_->message_handler();
   OutputResource* script_dest = resource_manager_->CreateNamedOutputResource(
       filter_prefix_, rewritten_url, &kContentTypeJavascript, message_handler);
@@ -309,10 +308,10 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
                              UrlAsyncFetcher* fetcher,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
-  ResourceUrl url_proto;
+  std::string script_url;
   bool ok = false;
-  if (Decode(output_resource->name(), &url_proto)) {
-    const std::string& script_url = url_proto.origin_url();
+  if (resource_manager_->url_escaper()->DecodeFromUrlSegment(
+          output_resource->name(), &script_url)) {
     scoped_ptr<Resource> script_input(
         resource_manager_->CreateInputResource(script_url, message_handler));
     if (script_input != NULL &&

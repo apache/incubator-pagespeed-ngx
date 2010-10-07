@@ -87,7 +87,6 @@ ConfigSwitch get_config_switch(const char* arg) {
 
 namespace net_instaweb {
 
-
 class SlurpContext {
  public:
   SlurpContext() : read_only_(false) {
@@ -130,7 +129,7 @@ class SlurpContext {
   bool read_only_;
   scoped_ptr<UrlFetcher> url_fetcher_;
   GoogleMessageHandler message_handler_;
-  html_rewriter::AprTimer timer_;
+  AprTimer timer_;
 };
 
 SlurpContext* GetSlurpContext(server_rec* server) {

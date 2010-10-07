@@ -24,10 +24,10 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/rewriter/rewrite.pb.h"  // for ResourceUrl
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/url_escaper.h"
 #include "net/instaweb/util/public/writer.h"
 #include "webutil/css/parser.h"
 
@@ -205,10 +205,8 @@ Resource* CssFilter::GetInputResource(const StringPiece& url) {
 
 // Create an output resource based on url of input resource.
 OutputResource* CssFilter::CreateCssOutputResource(const StringPiece& in_url) {
-  ResourceUrl resource_proto;
-  resource_proto.set_origin_url(in_url.data(), in_url.size());
-  std::string name;  // Protobuf encoded url.
-  Encode(resource_proto, &name);
+  std::string name;  // UrlEscaper encoded url.
+  resource_manager_->url_escaper()->EncodeToUrlSegment(in_url, &name);
   return resource_manager_->CreateNamedOutputResource(
       filter_prefix_, name, &kContentTypeCss, html_parse_->message_handler());
 }
@@ -274,10 +272,10 @@ bool CssFilter::Fetch(OutputResource* output_resource,
   // TODO(sligocki): We do not use writer, *_headers or fetcher ... should we?
   // It looks like nobody is using the fetcher, I'll let someone else get this
   // right first.
-  ResourceUrl url_proto;
   bool ret = false;
-  if (Decode(output_resource->name(), &url_proto)) {
-    const std::string& in_url = url_proto.origin_url();
+  std::string in_url;
+  if (resource_manager_->url_escaper()->DecodeFromUrlSegment(
+          output_resource->name(), &in_url)) {
     // TODO(sligocki): If this doesn't work, we need to wait for it to finish
     // fetching and then rewrite.
     ret = RewriteExternalCssToResource(in_url, output_resource);

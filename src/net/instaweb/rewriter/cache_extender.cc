@@ -22,7 +22,6 @@
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/rewriter/rewrite.pb.h"  // for ResourceUrl
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -32,6 +31,7 @@
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/url_escaper.h"
 
 namespace {
 
@@ -39,7 +39,7 @@ namespace {
 const char kCacheExtensions[] = "cache_extensions";
 const char kNotCacheable[] = "not_cacheable";
 
-} // namespace
+}  // namespace
 
 namespace net_instaweb {
 
@@ -94,12 +94,11 @@ void CacheExtender::StartElement(HtmlElement* element) {
       } else if (((headers->CacheExpirationTimeMs() - now_ms) <
                   kMinThresholdMs) &&
                  (input_resource->type() != NULL)) {
-        ResourceUrl resource_url;
         std::string trimmed_url;
         TrimWhitespace(origin_url, &trimmed_url);
-        resource_url.set_origin_url(trimmed_url);
         std::string url_safe_id;
-        Encode(resource_url, &url_safe_id);
+        resource_manager_->url_escaper()->EncodeToUrlSegment(
+            trimmed_url, &url_safe_id);
         scoped_ptr<OutputResource> output(
             resource_manager_->CreateNamedOutputResource(
                 filter_prefix_, url_safe_id, input_resource->type(),
@@ -141,9 +140,8 @@ bool CacheExtender::Fetch(OutputResource* output_resource,
                           UrlAsyncFetcher::Callback* callback) {
   std::string url, decoded_resource;
   bool ret = false;
-  ResourceUrl resource_url;
-  if (Decode(output_resource->name(), &resource_url)) {
-    const std::string& url = resource_url.origin_url();
+  if (resource_manager_->url_escaper()->DecodeFromUrlSegment(
+          output_resource->name(), &url)) {
     fetcher->StreamingFetch(url, request_headers, response_headers,
                             writer, message_handler, callback);
     ret = true;

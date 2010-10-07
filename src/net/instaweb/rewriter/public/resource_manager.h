@@ -46,6 +46,7 @@ class MetaData;
 class OutputResource;
 class Statistics;
 class UrlAsyncFetcher;
+class UrlEscaper;
 class Writer;
 
 class ResourceManager {
@@ -178,6 +179,7 @@ class ResourceManager {
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
   Timer* timer() { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
+  UrlEscaper* url_escaper() { return url_escaper_.get(); }
   int num_shards() const { return num_shards_; }
 
   // Generates a URL for a name, sharding based on num shards and a hash
@@ -211,6 +213,7 @@ class ResourceManager {
   Hasher* hasher_;
   Statistics* statistics_;
   HTTPCache* http_cache_;
+  scoped_ptr<UrlEscaper> url_escaper_;
   bool relative_path_;
   bool store_outputs_in_file_system_;
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);

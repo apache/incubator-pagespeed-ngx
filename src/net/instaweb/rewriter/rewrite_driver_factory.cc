@@ -69,8 +69,8 @@ RewriteDriverFactory::RewriteDriverFactory()
       url_prefix_(""),
       num_shards_(0),
       outline_threshold_(kDefaultOutlineThreshold),
-      use_http_cache_(true),
-      force_caching_(false) {
+      force_caching_(false),
+      slurp_read_only_(false) {
 }
 
 RewriteDriverFactory::~RewriteDriverFactory() {
@@ -100,6 +100,7 @@ void RewriteDriverFactory::set_file_system(FileSystem* file_system) {
   file_system_.reset(file_system);
 }
 
+// TODO(jmarantz): Change this to set_base_url_fetcher
 void RewriteDriverFactory::set_url_fetcher(UrlFetcher* url_fetcher) {
   CHECK(url_async_fetcher_.get() == NULL)
       << "Only call one of set_url_fetcher and set_url_async_fetcher";
@@ -157,22 +158,34 @@ HTTPCache* RewriteDriverFactory::http_cache() {
   return http_cache_.get();
 }
 
+// TODO(jmarantz): Change this to ComputeUrlFetcher(), and put
+// CHECKs in all the setter functions that can affect how the url
+// fetcher is computed.
 UrlFetcher* RewriteDriverFactory::url_fetcher() {
   UrlFetcher* fetcher = url_fetcher_.get();
 
   if (fetcher == NULL) {
-    fetcher = DefaultUrlFetcher();
-    url_fetcher_.reset(fetcher);
+    if (slurp_directory_.empty()) {
+      fetcher = DefaultUrlFetcher();
+      url_fetcher_.reset(fetcher);
+    } else {
+      SetupSlurpDirectories();
+      fetcher = url_fetcher_.get();
+    }
   }
-
   return fetcher;
 }
 
 UrlAsyncFetcher* RewriteDriverFactory::url_async_fetcher() {
   UrlAsyncFetcher* async_fetcher = url_async_fetcher_.get();
   if (async_fetcher == NULL) {
-    async_fetcher = DefaultAsyncUrlFetcher();
-    url_async_fetcher_.reset(async_fetcher);
+    if (slurp_directory_.empty()) {
+      async_fetcher = DefaultAsyncUrlFetcher();
+      url_async_fetcher_.reset(async_fetcher);
+    } else {
+      SetupSlurpDirectories();
+      async_fetcher = url_async_fetcher_.get();
+    }
   }
   return async_fetcher;
 }
@@ -254,16 +267,23 @@ void RewriteDriverFactory::AddPlatformSpecificRewritePasses(
     RewriteDriver* driver) {
 }
 
-void RewriteDriverFactory::SetSlurpDirectory(const StringPiece& directory,
-                                             bool read_only) {
-  if (read_only) {
+void RewriteDriverFactory::SetupSlurpDirectories() {
+  if (slurp_read_only_) {
     url_async_fetcher_.reset(NULL);
-    url_fetcher_.reset(new HttpDumpUrlFetcher(directory, file_system(),
-                                              timer()));
+    url_fetcher_.reset(new HttpDumpUrlFetcher(
+        slurp_directory_, file_system(), timer()));
   } else {
-    url_fetcher();  // calls DefaultUrlFetcher if not already set.
+    // Check to see if the factory already had set_url_fetcher
+    // called on it.  If so, then we'll want to use that fetcher
+    // as the mechanism for the dump-writer to retrieve missing
+    // content from the internet so it can be saved in the slurp
+    // directory.
     UrlFetcher* fetcher = url_fetcher_.release();
-    fetcher = new HttpDumpUrlWriter(directory, fetcher, file_system(), timer());
+    if (fetcher == NULL) {
+      fetcher = DefaultUrlFetcher();
+    }
+    fetcher = new HttpDumpUrlWriter(slurp_directory_, fetcher,
+                                    file_system(), timer());
     url_fetcher_.reset(fetcher);
   }
   url_async_fetcher_.reset(new FakeUrlAsyncFetcher(url_fetcher_.get()));

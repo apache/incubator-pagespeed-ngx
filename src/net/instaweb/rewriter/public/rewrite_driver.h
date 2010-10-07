@@ -120,7 +120,7 @@ class RewriteDriver {
   ResourceManager* resource_manager() const { return resource_manager_; }
   Statistics* statistics() const;
 
-  void set_outline_threshold(size_t t) { outline_threshold_ = t; }
+  void set_outline_threshold(int64 t) { outline_threshold_ = t; }
 
  private:
   friend class RewriterTest;
@@ -140,7 +140,7 @@ class RewriteDriver {
   scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
   std::vector<HtmlFilter*> filters_;
   Variable* resource_fetches_;
-  size_t outline_threshold_;
+  int64 outline_threshold_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

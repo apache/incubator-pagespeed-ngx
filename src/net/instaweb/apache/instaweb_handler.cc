@@ -152,7 +152,7 @@ bool fetch_resource(const request_rec* request,
   if (!ret) {
     net_instaweb::SerfUrlAsyncFetcher* serf_async_fetcher =
         factory->serf_url_async_fetcher();
-    html_rewriter::AprTimer timer;
+    net_instaweb::AprTimer timer;
     int64 max_ms = factory->fetcher_time_out_ms();
     for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
          !callback.done() && now_ms - start_ms < max_ms;
@@ -203,7 +203,7 @@ void send_out_headers_and_body(
 
 }  // namespace
 
-namespace mod_pagespeed {
+namespace net_instaweb {
 
 int instaweb_handler(request_rec* request) {
   std::string resource;
@@ -220,4 +220,4 @@ int instaweb_handler(request_rec* request) {
   return OK;
 }
 
-}  // namespace mod_pagespeed
+}  // namespace net_instaweb
