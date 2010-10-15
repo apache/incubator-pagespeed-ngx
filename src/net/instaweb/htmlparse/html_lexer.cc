@@ -568,10 +568,10 @@ void HtmlLexer::MakeElement() {
   }
 }
 
-void HtmlLexer::StartParse(const StringPiece& url) {
+void HtmlLexer::StartParse(const StringPiece& id) {
   line_ = 1;
   tag_start_line_ = -1;
-  url.CopyToString(&filename_);
+  id.CopyToString(&id_);
   has_attr_value_ = false;
   attr_quote_ = "";
   state_ = START;
@@ -608,7 +608,7 @@ void HtmlLexer::FinishParse() {
   CHECK(element_stack_[0] == NULL);
   for (size_t i = kStartStack; i < element_stack_.size(); ++i) {
     HtmlElement* element = element_stack_[i];
-    html_parse_->Warning(filename_.c_str(), element->begin_line_number(),
+    html_parse_->Warning(id_.c_str(), element->begin_line_number(),
                          "End-of-file with open tag: %s",
                          element->tag().c_str());
   }
@@ -878,7 +878,7 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(Atom tag) {
         // TODO(jmarantz): Should this be a Warning rather than an Error?
         // In fact, should we actually perform this optimization ourselves
         // in a filter to omit closing tags that can be inferred?
-        html_parse_->Warning(filename_.c_str(), skipped->begin_line_number(),
+        html_parse_->Warning(id_.c_str(), skipped->begin_line_number(),
                              "Unclosed element `%s'", skipped->tag().c_str());
         // Before closing the skipped element, pop it off the stack.  Otherwise,
         // the parent redundancy check in HtmlParse::AddEvent will fail.
@@ -896,7 +896,7 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(Atom tag) {
 void HtmlLexer::Warning(const char* msg, ...) {
   va_list args;
   va_start(args, msg);
-  html_parse_->WarningV(filename_.c_str(), line_, msg, args);
+  html_parse_->WarningV(id_.c_str(), line_, msg, args);
   va_end(args);
 }
 

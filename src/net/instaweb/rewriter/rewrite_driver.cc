@@ -302,9 +302,6 @@ void RewriteDriver::SetBaseUrl(const StringPiece& base) {
   if (left_trim_filter_ != NULL) {
     left_trim_filter_->AddBaseUrl(base);
   }
-  if (resource_manager_ != NULL) {
-    resource_manager_->set_base_url(base);
-  }
 }
 
 void RewriteDriver::AddFilter(HtmlFilter* filter) {

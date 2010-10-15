@@ -41,18 +41,20 @@ bool MockUrlFetcher::StreamingFetchUrl(const std::string& url,
                                        Writer* response_writer,
                                        MessageHandler* message_handler) {
   bool ret = false;
-  ResponseMap::iterator iter = response_map_.find(url);
-  if (iter != response_map_.end()) {
-    const HttpResponse* response = iter->second;
-    response_headers->CopyFrom(response->header());
-    response_writer->Write(response->body(), message_handler);
-    ret = true;
-  } else {
-    // This is used in tests and we do not expect the test to request a resource
-    // that we don't have. So fail if we do.
-    //
-    // If you want a 404 response, you must set it explicitly using SetResponse.
-    message_handler->Message(kFatal, "Requested unset url %s", url.c_str());
+  if (enabled_) {
+    ResponseMap::iterator iter = response_map_.find(url);
+    if (iter != response_map_.end()) {
+      const HttpResponse* response = iter->second;
+      response_headers->CopyFrom(response->header());
+      response_writer->Write(response->body(), message_handler);
+      ret = true;
+    } else {
+      // This is used in tests and we do not expect the test to request a
+      // resource that we don't have. So fail if we do.
+      //
+      // If you want a 404 response, you must explicitly use SetResponse.
+      message_handler->Message(kFatal, "Requested unset url %s", url.c_str());
+    }
   }
   return ret;
 }

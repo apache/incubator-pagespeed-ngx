@@ -41,12 +41,11 @@
 namespace net_instaweb {
 
 const std::string kTestData = "/net/instaweb/rewriter/testdata/";
-const std::string kPuzzle = "Puzzle.jpg";
 
 class RewriterTest : public ResourceManagerTestBase {
  protected:
-  RewriterTest() : nobase_driver_(&message_handler_, &file_system_,
-                                    &dummy_url_async_fetcher_) {
+  RewriterTest() : other_driver_(&message_handler_, &file_system_,
+                                 &mock_url_async_fetcher_) {
   }
 
   void DeleteFileIfExists(const std::string& filename) {
@@ -94,7 +93,7 @@ class RewriterTest : public ResourceManagerTestBase {
     RewriteDriver::Initialize(&stats);
     resource_manager->set_statistics(&stats);
     RewriteDriver driver(&message_handler_, &file_system_,
-                         &dummy_url_async_fetcher_);
+                         &mock_url_async_fetcher_);
     driver.SetResourceManager(resource_manager.get());
     driver.AddFiltersByCommaSeparatedList(filter_names);
     Variable* resource_fetches =
@@ -120,44 +119,34 @@ class RewriterTest : public ResourceManagerTestBase {
   }
 
   // Test spriting CSS with options to write headers and use a hasher.
-  // Use hasher = NULL to use FilenameResources.
-  void CombineCss(const char* id, Hasher* hasher) {
-    // Here nobase_driver_ is used to do resource-only fetches for testing.
-    // The nobase_resource_manager is the corresponding resource manager
-    // (a resource manager for resource-only requests).
-    // We initialize rewrite_driver_ and nobase_driver_ together as they
-    // ought to match *except for the call to rewrite_driver_.SetBaseUrl*.
-    // TODO(jmaessen): Actually do resource fetch testing here.
+  void CombineCss(const StringPiece& id, Hasher* hasher) {
+    // Here other_driver_ is used to do resource-only fetches for testing.
+    //
+    // The idea is that rewrite_driver_ (and its resource_manager) are running
+    // on server A, while other_driver_ (and its other_resource_manager) are
+    // running on server B. Server A gets a request that calls for combining
+    // CSS. We test that server A can deal with a request for the combined
+    // CSS file, but we also check that server B can (this requires server B to
+    // decode the instructions for which files to combine and combining them).
+    //
+    // TODO(sligocki): These need to be isolated! Specifically, they both
+    // use the same filename_prefix and http_cache. They should use separate
+    // ones so that their memory is not shared.
     scoped_ptr<ResourceManager> resource_manager(NewResourceManager(hasher));
     scoped_ptr<ResourceManager>
-        nobase_resource_manager(NewResourceManager(hasher));
+        other_resource_manager(NewResourceManager(hasher));
 
     rewrite_driver_.SetResourceManager(resource_manager.get());
-    nobase_driver_.SetResourceManager(nobase_resource_manager.get());
+    other_driver_.SetResourceManager(other_resource_manager.get());
 
     rewrite_driver_.AddFiltersByCommaSeparatedList("combine_css");
-    nobase_driver_.AddFiltersByCommaSeparatedList("combine_css");
+    other_driver_.AddFiltersByCommaSeparatedList("combine_css");
 
-    const char a_css[] = ".c1 {\n background-color: blue;\n}\n";
-    const char b_css[] = ".c2 {\n color: yellow;\n}\n";
-
-    std::string headers, expected_combination;
-    AppendDefaultHeaders(kContentTypeCss, resource_manager.get(), &headers);
-
-    // This syntax must match that in css_combine_filter
-    expected_combination = StrCat(headers, a_css,
-                                  "\n@Media print {\n",
-                                  b_css,
-                                  "\n}\n");
-    std::string hash = (hasher == NULL) ? "0" :
-        hasher->Hash(expected_combination);
-    std::string combine_url = StrCat(url_prefix_, hash, ".css");
-    std::string a_css_file = GTestTempDir() + "/a.css";
-    std::string b_css_file = GTestTempDir() + "/b.css";
-    ASSERT_TRUE(file_system_.WriteFile(a_css_file.c_str(),
-                                       a_css, &message_handler_));
-    ASSERT_TRUE(file_system_.WriteFile(b_css_file.c_str(),
-                                       b_css, &message_handler_));
+    // URLs and content for HTML document and resources.
+    CHECK_EQ(StringPiece::npos, id.find("/"));
+    std::string html_url = StrCat("http://combine_css.test/", id, ".html");
+    const char a_css_url[] = "http://combine_css.test/a.css";
+    const char b_css_url[] = "http://combine_css.test/b.css";
 
     static const char html_input[] =
         "<head>\n"
@@ -166,20 +155,37 @@ class RewriterTest : public ResourceManagerTestBase {
         "</head>\n"
         "<body><div class=\"c1\"><div class=\"c2\"><p>\n"
         "  Yellow on Blue</p></div></div></body>";
+    const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
+    const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
 
-    std::string base_url("file://");
-    base_url += GTestTempDir() + "/";
-    rewrite_driver_.SetBaseUrl(base_url.c_str());
+    // Put original CSS files into our fetcher.
+    SimpleMetaData default_css_header;
+    resource_manager->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+    mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
+    mock_url_fetcher_.SetResponse(b_css_url, default_css_header, b_css_body);
 
-    Parse(id, html_input);
-    StringVector css_hrefs;
-    CollectCssLinks(id, output_buffer_, &css_hrefs);
+    // Rewrite the HTML page.
+    ParseUrl(html_url, html_input);
+
+    // Expected CSS combination.
+    // This syntax must match that in css_combine_filter
+    std::string expected_combination = StrCat(a_css_body, "\n"
+                                               "@Media print {\n",
+                                               b_css_body, "\n"
+                                               "}\n");
+
+    std::string headers;
+    AppendDefaultHeaders(kContentTypeCss, resource_manager.get(), &headers);
+
+    // Check for CSS files in the rewritten page.
+    StringVector css_urls;
+    CollectCssLinks(id, output_buffer_, &css_urls);
     // output_buffer_ should have exactly one CSS file (the combined one).
-    EXPECT_EQ(1UL, css_hrefs.size());
-    const std::string& href_string = css_hrefs[0];
+    EXPECT_EQ(1UL, css_urls.size());
+    const std::string& combine_url = css_urls[0];
     int shard;
     const char* resource = resource_manager->SplitUrl(
-        href_string.c_str(), &shard);
+        combine_url.c_str(), &shard);
     EXPECT_TRUE(resource != NULL);
 
     std::string combine_filename;
@@ -190,7 +196,7 @@ class RewriterTest : public ResourceManagerTestBase {
         "  \n"  // The whitespace from the original links is preserved
         "  \n"
         "<link rel=\"stylesheet\" type=\"text/css\" "
-        "href=\"" + href_string + "\"></head>\n"
+        "href=\"" + combine_url + "\"></head>\n"
         "<body><div class=\"c1\"><div class=\"c2\"><p>\n"
         "  Yellow on Blue</p></div></div></body>";
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
@@ -198,9 +204,9 @@ class RewriterTest : public ResourceManagerTestBase {
     std::string actual_combination;
     ASSERT_TRUE(file_system_.ReadFile(combine_filename.c_str(),
                                       &actual_combination, &message_handler_));
-    EXPECT_EQ(expected_combination, actual_combination);
+    EXPECT_EQ(headers + expected_combination, actual_combination);
 
-    // Also fetch the resource to ensure it can be created dynamically
+    // Fetch the combination to make sure we can serve the result from above.
     SimpleMetaData request_headers, response_headers;
     std::string fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
@@ -209,73 +215,68 @@ class RewriterTest : public ResourceManagerTestBase {
                                   &response_headers, &writer,
                                   &message_handler_, &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
-    EXPECT_EQ(expected_combination, headers + fetched_resource_content);
-    // TODO(jmaessen): How do we deal with the "initial fetch" problem
-    // for css concatenation?  We can't redirect, as we aren't doing a
-    // 1-for-1 replacement.  It is likely we will need to support async
-    // resource provision so that the server can block until the resources
-    // are available.  Perhaps we need a listener-type interface for
-    // resources that are being fetched.
-    //     SimpleMetaData redirect_headers;
-    //     file_system_.disable();
-    //     fetched_resource_content.clear();
-    //     nobase_driver_.FetchResource(resource, request_headers,
-    //                                  &redirect_headers, &writer,
-    //                                  &message_handler_, &dummy_callback);
-    //     std::string expected_redirect = ???
-    //     EXPECT_EQ(???, redirect_headers.status_code());
-    //     EXPECT_EQ(expected_redirect, fetched_resource_content);
-    // Now we switch the file system back on, corresponding to the case where a
-    // prior async fetch completed and we're ready to rewrite.  This should
-    // yield the same results as the original html- driven rewrite.
-    SimpleMetaData nobase_headers;
+    EXPECT_EQ(expected_combination, fetched_resource_content);
+
+    // Now try to fetch from another server (other_driver_) that does not
+    // already have the combination cached.
+    // TODO(sligocki): This has too much shared state with the first server.
+    // See RewriteImage for details.
+    SimpleMetaData other_response_headers;
+    fetched_resource_content.clear();
     message_handler_.Message(kInfo, "Now with serving.");
     file_system_.enable();
-    fetched_resource_content.clear();
-    nobase_driver_.FetchResource(resource, request_headers,
-                                 &nobase_headers, &writer,
-                                 &message_handler_, &dummy_callback);
-    EXPECT_EQ(HttpStatus::kOK, nobase_headers.status_code());
-    EXPECT_EQ(expected_combination, headers + fetched_resource_content);
+    other_driver_.FetchResource(resource, request_headers,
+                                &other_response_headers, &writer,
+                                &message_handler_, &dummy_callback);
+    EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code());
+    EXPECT_EQ(expected_combination, fetched_resource_content);
     ServeResourceFromNewContext(resource, combine_filename,
                                 fetched_resource_content, "combine_css");
   }
 
   // Simple image rewrite test to check resource fetching functionality.
   void RewriteImage() {
-    static const char* kId = "RewriteImage";
-    // As above, here nobase_driver_ is used to do resource-only fetches for
-    // testing.  The nobase_resource_manager is the corresponding resource
-    // manager (a resource manager for resource-only requests).  We again
-    // initialize rewrite_driver_ and nobase_driver_ together as they ought to
-    // match *except for the call to rewrite_driver_.SetBaseUrl*.
+    // other_* are used as in CombineCss.
+    // TODO(sligocki): Isolate resource managers from each other and share the
+    // objects with those in CombineCss.
     scoped_ptr<ResourceManager>
         resource_manager(NewResourceManager(&mock_hasher_));
     scoped_ptr<ResourceManager>
-        nobase_resource_manager(NewResourceManager(&mock_hasher_));
+        other_resource_manager(NewResourceManager(&mock_hasher_));
 
     rewrite_driver_.SetResourceManager(resource_manager.get());
-    nobase_driver_.SetResourceManager(nobase_resource_manager.get());
+    other_driver_.SetResourceManager(other_resource_manager.get());
 
     rewrite_driver_.AddFiltersByCommaSeparatedList(
         "rewrite_images,img_inline_max_bytes=2000,insert_img_dimensions");
-    nobase_driver_.AddFiltersByCommaSeparatedList("rewrite_images");
+    other_driver_.AddFiltersByCommaSeparatedList("rewrite_images");
 
     EXPECT_EQ(2000, rewrite_driver_.img_inline_max_bytes());
-    EXPECT_EQ(2048, nobase_driver_.img_inline_max_bytes());  // Default setting.
+    EXPECT_EQ(2048, other_driver_.img_inline_max_bytes());  // Default setting.
 
-    std::string baseUrl = StrCat("file://", GTestSrcDir(), kTestData);
-    rewrite_driver_.SetBaseUrl(baseUrl);
+    // URLs and content for HTML document and resources.
+    const char html_url[] = "http://rewrite_image.test/RewriteImage.html";
+    const char image_url[] = "http://rewrite_image.test/Puzzle.jpg";
 
-    const std::string image_html =
-        StrCat("<head/><body><img src=\"", kPuzzle, "\"/></body>");
+    const char image_html[] = "<head/><body><img src=\"Puzzle.jpg\"/></body>";
 
-    std::string headers;
-    AppendDefaultHeaders(kContentTypeJpeg, resource_manager.get(), &headers);
+    // Store image contents in a string.
+    // TODO(sligocki): There's probably a lot of wasteful copying here.
+    std::string image_filename =
+        StrCat(GTestSrcDir(), kTestData, "Puzzle.jpg");
+    std::string image_body;
+    file_system_.ReadFile(image_filename.c_str(), &image_body,
+                          &message_handler_);
 
-    Parse(kId, image_html.c_str());
+    // Put original image into our fetcher.
+    SimpleMetaData default_jpg_header;
+    resource_manager->SetDefaultHeaders(&kContentTypeJpeg, &default_jpg_header);
+    mock_url_fetcher_.SetResponse(image_url, default_jpg_header, image_body);
+
+    // Rewrite the HTML page.
+    ParseUrl(html_url, image_html);
     StringVector img_srcs;
-    CollectImgSrcs(kId, output_buffer_, &img_srcs);
+    CollectImgSrcs("RewriteImage/collect_sources", output_buffer_, &img_srcs);
     // output_buffer_ should have exactly one image file (Puzzle.jpg).
     EXPECT_EQ(1UL, img_srcs.size());
     const std::string& src_string = img_srcs[0];
@@ -303,6 +304,10 @@ class RewriterTest : public ResourceManagerTestBase {
     std::string fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
     DummyCallback dummy_callback;
+
+    std::string headers;
+    AppendDefaultHeaders(kContentTypeJpeg, resource_manager.get(), &headers);
+
     writer.Write(headers, &message_handler_);
     rewrite_driver_.FetchResource(resource, request_headers,
                                   &response_headers, &writer,
@@ -315,41 +320,47 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_EQ(rewritten_image_data.substr(0, 100),
               fetched_resource_content.substr(0, 100));
     EXPECT_TRUE(rewritten_image_data == fetched_resource_content);
-    // Now fetch without a base url set.  First simulate the "first get" of a
-    // rewritten url that this server instance has never seen before.  We do
-    // this by disabling the file system, which corresponds to having the
-    // initial resource fetch fail while an asynchronous fetch is initiated.  We
-    // want to make sure that FetchResource deals with this case robustly so the
-    // client doesn't notice.
-    //
-    // We must also flush the cache.
-    lru_cache_->Clear();
-    SimpleMetaData redirect_headers;
-    file_system_.disable();
-    fetched_resource_content.clear();
 
-    nobase_driver_.FetchResource(resource, request_headers,
-                                 &redirect_headers, &writer,
-                                 &message_handler_, &dummy_callback);
+    // Now we fetch from the "other" server. To simulate first fetch, we
+    // need to:
+    // 1) Clear the cache, so we don't just find the result there.
+    // TODO(sligocki): We should just use a separate cache.
+    lru_cache_->Clear();
+    // 2) Disable the file system, so we don't find the resource there.
+    // TODO(sligocki): We should just use a separate mem_file_system.
+    file_system_.disable();
+    // 3) Disable the fetcher, so that the fetch doesn't finish imidiately.
+    // TODO(sligocki): We could use the CallCallbacks() trick to get a more
+    // correct response, rather than effectively shutting off our network.
+    mock_url_fetcher_.Disable();
+
+    fetched_resource_content.clear();
+    SimpleMetaData redirect_headers;
+    other_driver_.FetchResource(resource, request_headers,
+                                &redirect_headers, &writer,
+                                &message_handler_, &dummy_callback);
     std::string expected_redirect =
-        StrCat("<img src=\"", baseUrl, kPuzzle,
-               "\" alt=\"Temporarily Moved\"/>");
+        StrCat("<img src=\"", image_url, "\" alt=\"Temporarily Moved\"/>");
+
     EXPECT_EQ(HttpStatus::kTemporaryRedirect, redirect_headers.status_code());
     EXPECT_EQ(expected_redirect, fetched_resource_content);
-    // Now we switch the file system back on, corresponding to the case where a
-    // prior async fetch completed and we're ready to rewrite.  This should
-    // yield the same results as the original html- driven rewrite.
-    SimpleMetaData nobase_headers;
-    message_handler_.Message(kInfo, "Now with serving.");
+
+    // Now we switch the file system and fetcher back on, corresponding to
+    // the case where a prior async fetch completed and we're ready to rewrite.
+    // This should yield the same results as the original html- driven rewrite.
     file_system_.enable();
+    mock_url_fetcher_.Enable();
+
+    message_handler_.Message(kInfo, "Now with serving.");
     fetched_resource_content.clear();
     writer.Write(headers, &message_handler_);
     EXPECT_EQ(headers, fetched_resource_content);
+    SimpleMetaData other_headers;
     size_t header_size = fetched_resource_content.size();
-    nobase_driver_.FetchResource(resource, request_headers,
-                                 &nobase_headers, &writer,
+    other_driver_.FetchResource(resource, request_headers,
+                                 &other_headers, &writer,
                                  &message_handler_, &dummy_callback);
-    EXPECT_EQ(HttpStatus::kOK, nobase_headers.status_code());
+    EXPECT_EQ(HttpStatus::kOK, other_headers.status_code());
     EXPECT_EQ(rewritten_image_data.substr(0, 100),
               fetched_resource_content.substr(0, 100));
     EXPECT_TRUE(rewritten_image_data == fetched_resource_content);
@@ -389,7 +400,8 @@ class RewriterTest : public ResourceManagerTestBase {
         "kEenp/8oyIBf2ZEWaEfyv8BsICdAZ/XeTCAAAAAElFTkSuQmCC";
     std::string cuppa_string(kCuppaData);
     scoped_ptr<Resource> cuppa_resource(
-        resource_manager->CreateInputResource(cuppa_string, &message_handler_));
+        resource_manager->CreateInputResourceAbsolute(cuppa_string,
+                                                      &message_handler_));
     ASSERT_TRUE(cuppa_resource != NULL);
     EXPECT_TRUE(resource_manager->ReadIfCached(cuppa_resource.get(),
                                                &message_handler_));
@@ -398,7 +410,8 @@ class RewriterTest : public ResourceManagerTestBase {
     // Now make sure axing the original cuppa_string doesn't affect the
     // internals of the cuppa_resource.
     scoped_ptr<Resource> other_resource(
-        resource_manager->CreateInputResource(cuppa_string, &message_handler_));
+        resource_manager->CreateInputResourceAbsolute(cuppa_string,
+                                                      &message_handler_));
     ASSERT_TRUE(other_resource != NULL);
     cuppa_string.clear();
     EXPECT_TRUE(resource_manager->ReadIfCached(other_resource.get(),
@@ -410,7 +423,7 @@ class RewriterTest : public ResourceManagerTestBase {
 
   // Test outlining styles with options to write headers and use a hasher.
   // Use hasher = NULL to use FilenameResources.
-  void OutlineStyle(const char* id, Hasher* hasher) {
+  void OutlineStyle(const StringPiece& id, Hasher* hasher) {
     scoped_ptr<ResourceManager> resource_manager(NewResourceManager(hasher));
     rewrite_driver_.SetResourceManager(resource_manager.get());
     rewrite_driver_.AddFiltersByCommaSeparatedList("outline_css");
@@ -458,7 +471,7 @@ class RewriterTest : public ResourceManagerTestBase {
   // TODO(sligocki): factor out common elements in OutlineStyle and Script.
   // Test outlining scripts with options to write headers and use a hasher.
   // Use hasher = NULL to use FilenameResources.
-  void OutlineScript(const char* id, Hasher* hasher) {
+  void OutlineScript(const StringPiece& id, Hasher* hasher) {
     scoped_ptr<ResourceManager> resource_manager(NewResourceManager(hasher));
     rewrite_driver_.SetResourceManager(resource_manager.get());
     rewrite_driver_.AddFiltersByCommaSeparatedList("outline_javascript");
@@ -526,12 +539,13 @@ class RewriterTest : public ResourceManagerTestBase {
     DISALLOW_COPY_AND_ASSIGN(CssCollector);
   };
 
-  void CollectCssLinks(const char* name, const StringPiece& html,
+  void CollectCssLinks(const StringPiece& id, const StringPiece& html,
                        StringVector* css_links) {
     HtmlParse html_parse(&message_handler_);
     CssCollector collector(&html_parse, css_links);
     html_parse.AddFilter(&collector);
-    html_parse.StartParse(name);
+    std::string dummy_url = StrCat("http://collect.css.links/", id, ".html");
+    html_parse.StartParse(dummy_url);
     html_parse.ParseText(html.data(), html.size());
     html_parse.FinishParse();
   }
@@ -561,19 +575,22 @@ class RewriterTest : public ResourceManagerTestBase {
   };
 
   // Fills `img_srcs` with the urls in img src attributes in `html`
-  void CollectImgSrcs(const char* name, const StringPiece& html,
+  void CollectImgSrcs(const StringPiece& id, const StringPiece& html,
                        StringVector* img_srcs) {
     HtmlParse html_parse(&message_handler_);
     ImgCollector collector(&html_parse, img_srcs);
     html_parse.AddFilter(&collector);
-    html_parse.StartParse(name);
+    std::string dummy_url = StrCat("http://collect.css.links/", id, ".html");
+    html_parse.StartParse(dummy_url);
     html_parse.ParseText(html.data(), html.size());
     html_parse.FinishParse();
   }
 
   virtual HtmlParse* html_parse() { return rewrite_driver_.html_parse(); }
 
-  RewriteDriver nobase_driver_;  // No base url, for testing bare resource get
+  // Another driver on a different server. For testing resource fetchs on
+  // servers that did not perform the original HTML rewrite.
+  RewriteDriver other_driver_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriterTest);
 };

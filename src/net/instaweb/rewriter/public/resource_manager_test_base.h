@@ -24,7 +24,6 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/util/public/dummy_url_fetcher.h"
 #include "net/instaweb/util/public/fake_url_async_fetcher.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -32,6 +31,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/mock_url_fetcher.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include <string>
 
@@ -39,9 +39,9 @@ namespace net_instaweb {
 
 class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
  protected:
-  ResourceManagerTestBase() : dummy_url_async_fetcher_(&dummy_url_fetcher_),
+  ResourceManagerTestBase() : mock_url_async_fetcher_(&mock_url_fetcher_),
                               rewrite_driver_(&message_handler_, &file_system_,
-                                              &dummy_url_async_fetcher_),
+                                              &mock_url_async_fetcher_),
                               lru_cache_(new LRUCache(100 * 1000 * 1000)),
                               mock_timer_(0),
                               http_cache_(lru_cache_, &mock_timer_),
@@ -71,7 +71,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   ResourceManager* NewResourceManager(Hasher* hasher) {
     return new ResourceManager(
         file_prefix_, url_prefix_, num_shards_, &file_system_,
-        &filename_encoder_, &dummy_url_async_fetcher_, hasher, &http_cache_);
+        &filename_encoder_, &mock_url_async_fetcher_, hasher, &http_cache_);
   }
 
 
@@ -101,8 +101,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   virtual HtmlParse* html_parse() { return rewrite_driver_.html_parse(); }
 
-  DummyUrlFetcher dummy_url_fetcher_;
-  FakeUrlAsyncFetcher dummy_url_async_fetcher_;
+  MockUrlFetcher mock_url_fetcher_;
+  FakeUrlAsyncFetcher mock_url_async_fetcher_;
   RootedFileSystem file_system_;
   FilenameEncoder filename_encoder_;
   RewriteDriver rewrite_driver_;

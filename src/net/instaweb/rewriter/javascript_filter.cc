@@ -144,7 +144,8 @@ void JavascriptFilter::RewriteInlineScript() {
 Resource* JavascriptFilter::ScriptAtUrl(const std::string& script_url) {
   MessageHandler* message_handler = html_parse_->message_handler();
   Resource* script_input =
-      resource_manager_->CreateInputResource(script_url, message_handler);
+      resource_manager_->CreateInputResource(html_parse_->url(), script_url,
+                                             message_handler);
   if (script_input == NULL ||
       !(resource_manager_->ReadIfCached(script_input, message_handler) &&
         script_input->ContentsValid())) {
@@ -318,7 +319,8 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
   if (resource_manager_->url_escaper()->DecodeFromUrlSegment(
           output_resource->name(), &script_url)) {
     scoped_ptr<Resource> script_input(
-        resource_manager_->CreateInputResource(script_url, message_handler));
+        resource_manager_->CreateInputResourceAbsolute(script_url,
+                                                       message_handler));
     if (script_input != NULL &&
         resource_manager_->ReadIfCached(script_input.get(), message_handler) &&
         script_input->ContentsValid()) {

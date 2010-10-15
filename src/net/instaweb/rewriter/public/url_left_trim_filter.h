@@ -53,6 +53,8 @@ class UrlLeftTrimFilter : public EmptyHtmlFilter {
   UrlLeftTrimFilter(HtmlParse* html_parse, Statistics* resource_manager);
   static void Initialize(Statistics* statistics);
   virtual void StartElement(HtmlElement* element);
+  // TODO(sligocki): This is broken and only adds base_urls. We need to be able
+  // to ResetBaseUrl to a new value. There is only one base_url at a time.
   virtual void AddBaseUrl(const StringPiece& base_url);
   virtual const char* Name() const { return "UrlLeftTrim"; }
 

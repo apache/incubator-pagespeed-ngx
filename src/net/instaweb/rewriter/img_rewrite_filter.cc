@@ -313,7 +313,8 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
   // Separate input and output content type?
   MessageHandler* message_handler = html_parse_->message_handler();
   scoped_ptr<Resource> input_resource(
-      resource_manager_->CreateInputResource(src->value(), message_handler));
+      resource_manager_->CreateInputResource(html_parse_->url(), src->value(),
+                                             message_handler));
 
   if ((input_resource != NULL) &&
       resource_manager_->ReadIfCached(input_resource.get(), message_handler) &&
@@ -405,7 +406,7 @@ void ImgRewriteFilter::EndElement(HtmlElement* element) {
       std::string tagstring;
       element->ToString(&tagstring);
       html_parse_->Info(
-          html_parse_->url(), element->begin_line_number(),
+          html_parse_->id(), element->begin_line_number(),
           "Found image: %s", tagstring.c_str());
     }
     RewriteImageUrl(element, src);
@@ -435,7 +436,8 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
                        stripped_url, &origin_url, &page_dim)) {
       std::string stripped_url_string = stripped_url.as_string();
       scoped_ptr<Resource> input_image(
-          resource_manager_->CreateInputResource(origin_url, message_handler));
+          resource_manager_->CreateInputResourceAbsolute(origin_url,
+                                                         message_handler));
 
       // TODO(jmarantz): this needs to be refactored slightly to
       // allow for asynchronous fetches of the input image, if

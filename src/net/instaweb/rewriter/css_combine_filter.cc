@@ -141,7 +141,8 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
       // from the combination that are not yet loaded.  For now, our
       // loads are blocking.  Need to understand Apache module
       Resource* css_resource =
-          resource_manager_->CreateInputResource(href->value(), handler);
+          resource_manager_->CreateInputResource(html_parse_->url(),
+                                                 href->value(), handler);
       if ((css_resource != NULL) &&
           resource_manager_->ReadIfCached(css_resource, handler) &&
           css_resource->ContentsValid()) {
@@ -366,7 +367,7 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
       const CssUrl& css_url = css_combine_url.element(i);
       std::string url = css_url.origin_url();
       Resource* css_resource =
-          resource_manager_->CreateInputResource(url, message_handler);
+          resource_manager_->CreateInputResourceAbsolute(url, message_handler);
       combiner->AddResource(css_resource, css_url.media().c_str());
       resource_manager_->ReadAsync(css_resource, combiner, message_handler);
     }

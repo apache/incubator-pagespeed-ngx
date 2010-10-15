@@ -74,7 +74,8 @@ void CacheExtender::StartElement(HtmlElement* element) {
   if ((href != NULL) && html_parse_->IsRewritable(element)) {
     const char* origin_url = href->value();
     scoped_ptr<Resource> input_resource(
-        resource_manager_->CreateInputResource(origin_url, message_handler));
+        resource_manager_->CreateInputResource(html_parse_->url(), origin_url,
+                                               message_handler));
 
     // TODO(jmarantz): create an output resource to generate a new url,
     // rather than doing the content-hashing here.

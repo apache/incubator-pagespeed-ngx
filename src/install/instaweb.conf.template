@@ -36,7 +36,10 @@
     # may not expect any changes to be made by Instaweb.  However,
     # these passes have been shown to be robust over a large number of
     # web sites.
-    InstawebRewriters combine_css,rewrite_images,extend_cache,add_head,remove_quotes,move_css_to_head,collapse_whitespace,elide_attributes,rewrite_javascript,add_instrumentation
+    InstawebRewriters combine_css,rewrite_images,extend_cache
+    InstawebRewriters add_head,remove_quotes,move_css_to_head
+    InstawebRewriters collapse_whitespace,elide_attributes
+    InstawebRewriters rewrite_javascript,add_instrumentation
 
     # investigating: left_trim_urls
 

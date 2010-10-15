@@ -117,8 +117,14 @@ class ResourceManager {
       const StringPiece& filter_prefix, const StringPiece& name,
       const StringPiece& hash, const ContentType* type);
 
-  Resource* CreateInputResource(const StringPiece& url,
+  // Creates an input resource with the url evaluated based on input_url
+  // which may need to be absolutified relative to base_url.
+  Resource* CreateInputResource(const StringPiece& base_url,
+                                const StringPiece& input_url,
                                 MessageHandler* handler);
+
+  Resource* CreateInputResourceAbsolute(const StringPiece& absolute_url,
+                                        MessageHandler* handler);
 
   // Set up a basic header for a given content_type.
   // If content_type is null, the Content-Type is omitted.
@@ -129,7 +135,6 @@ class ResourceManager {
   // Changes the content type of a pre-initialized header.
   void SetContentType(const ContentType* content_type, MetaData* header);
 
-  std::string base_url() const;
   StringPiece filename_prefix() const { return file_prefix_; }
 
   // Sets the URL prefix pattern.  The pattern must have exactly one %d
@@ -138,7 +143,6 @@ class ResourceManager {
   void SetUrlPrefixPattern(const StringPiece& url_prefix_pattern);
 
   void set_filename_prefix(const StringPiece& file_prefix);
-  void set_base_url(const StringPiece& url);
   Statistics* statistics() const { return statistics_; }
   void set_statistics(Statistics* s) { statistics_ = s; }
   void set_relative_path(bool x) { relative_path_ = x; }
@@ -199,10 +203,10 @@ class ResourceManager {
     store_outputs_in_file_system_ = store;
   }
  private:
+  Resource* CreateInputResourceGURL(const GURL& url, MessageHandler* handler);
   std::string ConstructNameKey(const OutputResource* output) const;
   void ValidateShardsAgainstUrlPrefixPattern();
 
-  scoped_ptr<GURL> base_url_;  // Base url to resolve relative urls against.
   std::string file_prefix_;
   std::string url_prefix_pattern_;
   const int num_shards_;

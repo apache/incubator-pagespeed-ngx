@@ -29,6 +29,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_escape.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
 #include "net/instaweb/util/public/timer.h"
@@ -159,15 +160,20 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
   element->set_begin_line_number(line_number);
 }
 
-void HtmlParse::StartParse(const StringPiece& url) {
+void HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id) {
+  // TODO(sligocki): Change to a warning.
+  GURL gurl(url.as_string());
+  CHECK(gurl.is_valid()) << "Invalid url " << url;
+
   line_number_ = 1;
   url.CopyToString(&url_);
+  id.CopyToString(&id_);
   if (timer_ != NULL) {
     parse_start_time_us_ = timer_->NowUs();
     InfoHere("HtmlParse::StartParse");
   }
   AddEvent(new HtmlStartDocumentEvent(line_number_));
-  lexer_->StartParse(url);
+  lexer_->StartParse(id);
 }
 
 void HtmlParse::ShowProgress(const char* message) {
@@ -343,6 +349,7 @@ void HtmlParse::Flush() {
 
 bool HtmlParse::InsertElementBeforeElement(const HtmlNode* existing_node,
                                            HtmlNode* new_node) {
+  // TODO(sligocki): Why don't we just set_parent() here?
   CHECK(existing_node->parent() == new_node->parent());
   return InsertElementBeforeEvent(existing_node->begin(), new_node);
 }
@@ -350,9 +357,21 @@ bool HtmlParse::InsertElementBeforeElement(const HtmlNode* existing_node,
 bool HtmlParse::InsertElementAfterElement(const HtmlNode* existing_node,
                                           HtmlNode* new_node) {
   CHECK(existing_node->parent() == new_node->parent());
-  HtmlEventListIterator event = existing_node->end();
-  ++event;
-  return InsertElementBeforeEvent(event, new_node);
+  return InsertElementAfterEvent(existing_node->end(), new_node);
+}
+
+bool HtmlParse::PrependChild(const HtmlElement* existing_parent,
+                             HtmlNode* new_child) {
+  new_child->set_parent(const_cast<HtmlElement*>(existing_parent));
+  // TODO(sligocki): These should return false if existing_parent has been
+  // flushed. (i.e. if existing_parent->begin() == queue_->end())
+  return InsertElementAfterEvent(existing_parent->begin(), new_child);
+}
+
+bool HtmlParse::AppendChild(const HtmlElement* existing_parent,
+                            HtmlNode* new_child) {
+  new_child->set_parent(const_cast<HtmlElement*>(existing_parent));
+  return InsertElementBeforeEvent(existing_parent->end(), new_child);
 }
 
 bool HtmlParse::InsertElementBeforeCurrent(HtmlNode* new_node) {
@@ -365,13 +384,21 @@ bool HtmlParse::InsertElementBeforeCurrent(HtmlNode* new_node) {
 
 bool HtmlParse::InsertElementBeforeEvent(const HtmlEventListIterator& event,
                                          HtmlNode* new_node) {
-  new_node->SynthesizeEvents(event, &queue_);
   need_sanity_check_ = true;
   need_coalesce_characters_ = true;
-  // TODO(jmarantz): make this routine return void, as well as the other
-  // wrappers around it.
+  new_node->SynthesizeEvents(event, &queue_);
+  // TODO(jmarantz): make this routine return void.
   return true;
 }
+
+bool HtmlParse::InsertElementAfterEvent(const HtmlEventListIterator& event,
+                                        HtmlNode* new_node) {
+  CHECK(event != queue_.end());
+  HtmlEventListIterator next_event = event;
+  ++next_event;
+  return InsertElementBeforeEvent(next_event, new_node);
+}
+
 
 bool HtmlParse::InsertElementAfterCurrent(HtmlNode* new_node) {
   if (deleted_current_) {

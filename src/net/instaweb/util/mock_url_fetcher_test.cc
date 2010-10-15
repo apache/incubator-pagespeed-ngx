@@ -55,6 +55,7 @@ TEST_F(MockUrlFetcherTest, GetsCorrectMappedResponse) {
   const char body2[] = "File Not Found :(";
 
   // We can't fetch the URLs before they're set.
+  // Note: this does not crash because we are using NullMessageHandler.
   EXPECT_FALSE(fetcher.StreamingFetchUrl(url1, dummy_header, &response_header,
                                          &response_writer, &handler));
   EXPECT_FALSE(fetcher.StreamingFetchUrl(url2, dummy_header, &response_header,
@@ -78,6 +79,23 @@ TEST_F(MockUrlFetcherTest, GetsCorrectMappedResponse) {
   EXPECT_EQ(body2, response_body);
   response_header.Clear();
   response_body.clear();
+
+  // Check that we can fetch the same URL multiple times.
+  EXPECT_TRUE(fetcher.StreamingFetchUrl(url1, dummy_header, &response_header,
+                                        &response_writer, &handler));
+  ExpectEqualMetaData(header1, response_header);
+  EXPECT_EQ(body1, response_body);
+  response_header.Clear();
+  response_body.clear();
+
+  // Check that fetches fail after disabling the fetcher.
+  fetcher.Disable();
+  EXPECT_FALSE(fetcher.StreamingFetchUrl(url1, dummy_header, &response_header,
+                                         &response_writer, &handler));
+  // And then work again when re-enabled.
+  fetcher.Enable();
+  EXPECT_TRUE(fetcher.StreamingFetchUrl(url1, dummy_header, &response_header,
+                                        &response_writer, &handler));
 }
 
 }  // namespace

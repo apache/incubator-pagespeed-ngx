@@ -30,6 +30,7 @@ namespace net_instaweb {
 // Simple UrlFetcher meant for tests, you can set responses for individual URLs.
 class MockUrlFetcher : public UrlFetcher {
  public:
+  MockUrlFetcher() : enabled_(true) {}
   virtual ~MockUrlFetcher();
 
   void SetResponse(const StringPiece& url, const MetaData& response_header,
@@ -40,6 +41,11 @@ class MockUrlFetcher : public UrlFetcher {
                                  MetaData* response_headers,
                                  Writer* response_writer,
                                  MessageHandler* message_handler);
+
+  // When disabled, fetcher will fail (but not crash) for all requests.
+  // Use to simulate temporarily not having access to resources, for example.
+  void Disable() { enabled_ = false; }
+  void Enable() { enabled_ = true; }
 
  private:
   class HttpResponse {
@@ -61,6 +67,7 @@ class MockUrlFetcher : public UrlFetcher {
   typedef std::map<const std::string, const HttpResponse*> ResponseMap;
 
   ResponseMap response_map_;
+  bool enabled_;
 };
 
 }  // namespace net_instaweb

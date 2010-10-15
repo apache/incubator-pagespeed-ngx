@@ -42,15 +42,14 @@ class HtmlLexer {
   explicit HtmlLexer(HtmlParse* html_parse);
   ~HtmlLexer();
 
-  // Initialize a new parse session, establishing name used for error messages.
-  void StartParse(const StringPiece& url_or_filename);
+  // Initialize a new parse session, id is only used for error messages.
+  void StartParse(const StringPiece& id);
 
   // Parse a chunk of text, adding events to the parser by calling
   // html_parse_->AddEvent(...).
   void Parse(const char* text, int size);
 
-  // Completes parsing a file or url, reporting any leftover text as a final
-  // HtmlCharacterEvent.
+  // Completes parse, reporting any leftover text as a final HtmlCharacterEvent.
   void FinishParse();
 
   // Determines whether a tag should be terminated in HTML.
@@ -191,7 +190,7 @@ class HtmlLexer {
   HtmlElement* element_;    // current element; used to collect attributes
   int line_;
   int tag_start_line_;      // line at which we last transitioned to TAG state
-  std::string filename_;
+  std::string id_;
   std::string literal_close_;  // specific tag go close, e.g </script>
 
   AtomSet implicitly_closed_;

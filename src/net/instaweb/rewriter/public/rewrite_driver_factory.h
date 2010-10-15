@@ -123,7 +123,13 @@ class RewriteDriverFactory {
 
   // Sets the enabled filters, based on a comma-separated list of
   // filter names
-  void SetEnabledFilters(const StringPiece& filter_names);
+  void SetEnabledFilters(const StringPiece& filter_names) {
+    enabled_filters_.clear();
+    AddEnabledFilters(filter_names);
+  }
+
+  // Adds an additional set of filters the enabled set
+  void AddEnabledFilters(const StringPiece& filter_names);
 
   // Computes URL fetchers using the based fetcher, and optionally,
   // slurp_directory and slurp_read_only.

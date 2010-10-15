@@ -66,12 +66,13 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
 
   // Check that the output HTML is serialized to string-compare
   // precisely with the input.
-  void ValidateNoChanges(const char* case_id, const std::string& html_input) {
+  void ValidateNoChanges(const StringPiece& case_id,
+                         const std::string& html_input) {
     ValidateExpected(case_id, html_input, html_input);
   }
 
   // Fail to ValidateNoChanges.
-  void ValidateNoChangesFail(const char* case_id,
+  void ValidateNoChangesFail(const StringPiece& case_id,
                              const std::string& html_input) {
     ValidateExpectedFail(case_id, html_input, html_input);
   }
@@ -86,11 +87,19 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   }
 
   // Parse html_input, the result is stored in output_buffer_.
-  void Parse(const char* case_id, const std::string& html_input) {
+  void Parse(const StringPiece& case_id, const std::string& html_input) {
+    // HtmlParser needs a valid HTTP URL to evaluate relative paths,
+    // so we create a dummy URL.
+    std::string dummy_url = StrCat("http://test.com/", case_id, ".html");
+    ParseUrl(dummy_url, html_input);
+  }
+
+  // Parse given an explicit URL rather than an id to build URL around.
+  void ParseUrl(const StringPiece& url, const std::string& html_input) {
     // We don't add the filter in the constructor because it needs to be the
     // last filter added.
     SetupWriter();
-    html_parse()->StartParse(case_id);
+    html_parse()->StartParse(url);
     std::string html_body = AddHtmlBody(html_input);
     html_parse()->ParseText(html_body.c_str(), html_body.size());
     html_parse()->FinishParse();
@@ -98,8 +107,9 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
 
   // Validate that the output HTML serializes as specified in
   // 'expected', which might not be identical to the input.
-  void ValidateExpected(const char* case_id, const std::string& html_input,
-      const std::string& expected) {
+  void ValidateExpected(const StringPiece& case_id,
+                        const std::string& html_input,
+                        const std::string& expected) {
     Parse(case_id, html_input);
     std::string xbody = AddHtmlBody(expected);
     EXPECT_EQ(xbody, output_buffer_);
@@ -107,7 +117,8 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   }
 
   // Fail to ValidateExpected.
-  void ValidateExpectedFail(const char* case_id, const std::string& html_input,
+  void ValidateExpectedFail(const StringPiece& case_id,
+                            const std::string& html_input,
       const std::string& expected) {
     Parse(case_id, html_input);
     std::string xbody = AddHtmlBody(expected);

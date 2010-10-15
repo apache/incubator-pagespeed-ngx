@@ -478,7 +478,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_lru_cache_byte_limit, arg);
   } else if (strcasecmp(directive, kInstawebRewriters) == 0) {
-    factory->SetEnabledFilters(arg);
+    factory->AddEnabledFilters(arg);
   } else if (strcasecmp(directive, kInstawebSlurpDirectory) == 0) {
     factory->set_slurp_directory(arg);
   } else if (strcasecmp(directive, kInstawebSlurpReadOnly) == 0) {

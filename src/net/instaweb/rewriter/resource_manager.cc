@@ -262,88 +262,66 @@ void ResourceManager::set_filename_prefix(const StringPiece& file_prefix) {
   file_prefix.CopyToString(&file_prefix_);
 }
 
-void ResourceManager::set_base_url(const StringPiece& url) {
-  // TODO(sligocki): Is there any way to init GURL w/o alloc a whole new string?
-  base_url_.reset(new GURL(url.as_string()));
-}
+Resource* ResourceManager::CreateInputResource(const StringPiece& base_url,
+                                               const StringPiece& input_url,
+                                               MessageHandler* handler) {
+  // TODO(sligocki): Get GURL to accept (char*, size) pair for construction so
+  // that we don't have to perform the extra copy here.
+  std::string base_url_string(base_url.data(), base_url.size());
+  std::string input_url_string(input_url.data(), input_url.size());
 
-std::string ResourceManager::base_url() const {
-  CHECK(base_url_->is_valid());
-  return base_url_->spec();
-}
-
-Resource* ResourceManager::CreateInputResource(
-    const StringPiece& input_url, MessageHandler* handler) {
-  Resource* resource = NULL;
-
-  // We must deal robustly with calls to CreateInputResource on absolute urls
-  // even when base_url_ has not been set, since in some contexts we can only
-  // set base_url_ in response to an html page request, but we may need to
-  // satisfy requests for rewritten for resources before any html has been
-  // rewritten, or which don't come from the most-recently-rewritten html.
-  std::string url_buffer;
-  GURL url;
-  StringPiece actual_url;
-  if (base_url_ == NULL) {
-    input_url.CopyToString(&url_buffer);
-    url = GURL(url_buffer);
-    if (!url.is_valid()) {
-      handler->Message(kError,
-                       "CreateInputResource called before base_url set.");
-      return NULL;
-    }
-    actual_url.set(url_buffer.data(), url_buffer.size());
-  } else if (relative_path_) {
-    url_buffer = base_url_->scheme();
-    url_buffer += ":";
-    input_url.AppendToString(&url_buffer);
-    url = GURL(url_buffer);
-    actual_url.set(url_buffer.data(), url_buffer.size());
-  } else {
-    // Get absolute url based on the (possibly relative) input_url.
-    input_url.CopyToString(&url_buffer);
-    url = base_url_->Resolve(url_buffer);
-    actual_url.set(url.spec().data(), url.spec().size());
+  // TODO(sligocki): Hoist GURLification of base_url up so that it isn't done
+  // repeatedly.
+  GURL base_gurl(base_url_string);
+  GURL url = base_gurl.Resolve(input_url_string);
+  if (!url.is_valid()) {
+    // Note: Bad user-content can leave us here.
+    handler->Message(kWarning, "Invalid url '%s' relative to base '%s'",
+                     input_url_string.c_str(), base_url_string.c_str());
+    return NULL;
   }
 
-  if (url.SchemeIs("data")) {
-    resource = DataUrlInputResource::Make(actual_url, this);
-    if (resource == NULL) {
-      handler->Message(kError, "Badly formatted data url '%s'",
-                       actual_url.as_string().c_str());
-    }
-  } else {
-    const ContentType* type = NameExtensionToContentType(input_url);
-    // Note that the type may be null if, for example, an image has an
-    // unexpected extension.  We will have to figure out the image type
-    // from the content, but we will not be able to do that until it's
-    // been read in.
+  return CreateInputResourceGURL(url, handler);
+}
 
-    if (url.SchemeIs("http")) {
-      // TODO(sligocki): Figure out if these are actually local by
-      // seeing if the serving path matches url_prefix_pattern_, in
-      // which case we can do a local file read.
-      // TODO(jmaessen): In order to permit url loading from a context
-      // where the base url isn't set, we must keep the normalized url
-      // in the UrlInputResource rather than the original input_url.
-      // This is ugly and yields unnecessarily verbose rewritten urls.
-      resource = new UrlInputResource(this, type, actual_url);
-      // TODO(sligocki): Probably shouldn't support file:// scheme.
-      // (but it's used extensively in eg rewriter_test.)
-    } else if (url.SchemeIsFile()) {
-      // NOTE: This is raw filesystem access, no filename-encoding, etc.
-      if (relative_path_) {
-        resource = new FileInputResource(this, type, actual_url,
-                                         input_url);
-      } else {
-        const std::string& filename = url.path();
-        resource = new FileInputResource(this, type, actual_url,
-                                         filename);
-      }
-    } else {
-      handler->Message(kError, "Unsupported scheme '%s' for url '%s'",
-                       url.scheme().c_str(), actual_url.as_string().c_str());
+Resource* ResourceManager::CreateInputResourceAbsolute(
+    const StringPiece& absolute_url, MessageHandler* handler) {
+  std::string url_string(absolute_url.data(), absolute_url.size());
+  GURL url(url_string);
+  if (!url.is_valid()) {
+    // Note Bad user-content can leave us here.
+    handler->Message(kWarning, "Invalid url '%s'", url_string.c_str());
+    return NULL;
+  }
+
+  return CreateInputResourceGURL(url, handler);
+}
+
+Resource* ResourceManager::CreateInputResourceGURL(const GURL& url,
+                                                   MessageHandler* handler) {
+  CHECK(url.is_valid());
+  const std::string& url_string = url.spec();
+
+  Resource* resource = NULL;
+
+  if (url.SchemeIs("data")) {
+    resource = DataUrlInputResource::Make(url_string, this);
+    if (resource == NULL) {
+      // Note: Bad user-content can leave us here.
+      handler->Message(kWarning, "Badly formatted data url '%s'",
+                       url_string.c_str());
     }
+  } else if (url.SchemeIs("http")) {
+    // TODO(sligocki): Figure out if these are actually local, in
+    // which case we can do a local file read.
+
+    // Note: type may be NULL if url has an unexpected or malformed extension.
+    const ContentType* type = NameExtensionToContentType(url_string);
+    resource = new UrlInputResource(this, type, url_string);
+  } else {
+    // Note: Bad user-content can leave us here.
+    handler->Message(kWarning, "Unsupported scheme '%s' for url '%s'",
+                     url.scheme().c_str(), url_string.c_str());
   }
   return resource;
 }
@@ -468,12 +446,19 @@ void ResourceManager::ReadAsync(Resource* resource,
 
 bool ResourceManager::ReadIfCached(Resource* resource,
                                    MessageHandler* handler) const {
-  bool ret =
-      (resource->loaded() ||
-       (resource->IsCacheable() &&
-        http_cache_->Get(resource->url(), &resource->value_,
-                         resource->metadata(), handler)) ||
-       resource->ReadIfCached(handler));
+  bool ret = resource->loaded();
+  if (!ret && resource->IsCacheable()) {
+    ret = http_cache_->Get(resource->url(), &resource->value_,
+                           resource->metadata(), handler);
+  }
+  // TODO(sligocki): How is ReadIfCached different from http_cache_->Get?
+  // It appears what's going on is that we check the cache first, then send out
+  // and async fetch and if that fetch was actually synchronous, retrieve the
+  // result from the cache.
+  // TODO(sligocki): More thorough comments and analysis of this.
+  if (!ret) {
+    ret = resource->ReadIfCached(handler);
+  }
   if (ret) {
     resource->DetermineContentType();
   }

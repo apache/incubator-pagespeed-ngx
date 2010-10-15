@@ -48,7 +48,10 @@ class HtmlParse {
   // Initiate a chunked parsing session.  Finish with FinishParse.  The
   // url is only used to resolve relative URLs; the contents are not
   // directly fetched.  The caller must supply the text and call ParseText.
-  void StartParse(const StringPiece& url);
+  void StartParse(const StringPiece& url) { StartParseId(url, url); }
+  // Use an error message id that is distinct from the url.
+  // Mostly useful for testing.
+  void StartParseId(const StringPiece& url, const StringPiece& id);
 
   // Parses an arbitrary block of an html file, queuing up the events.  Call
   // Flush to send the events through the Filter.
@@ -84,13 +87,24 @@ class HtmlParse {
   HtmlDirectiveNode* NewDirectiveNode(HtmlElement* parent,
                                       const StringPiece& contents);
 
+  // DOM-manipulation methods.
+  // TODO(sligocki): Find Javascript equivalents and list them or even change
+  // our names to be consistent.
+
   // TODO(mdsteele): Rename these methods to e.g. InsertNodeBeforeNode.
   // This and downstream filters will then see inserted elements but upstream
   // filters will not.
+  // Note: In Javascript the first is called insertBefore and takes the arg
+  // in the oposite order.
   bool InsertElementBeforeElement(const HtmlNode* existing_node,
                                   HtmlNode* new_node);
   bool InsertElementAfterElement(const HtmlNode* existing_node,
                                  HtmlNode* new_node);
+
+  // Add child element at the begining or end of existing_parent's children.
+  // Named after Javascript's appendChild method.
+  bool PrependChild(const HtmlElement* existing_parent, HtmlNode* new_child);
+  bool AppendChild(const HtmlElement* existing_parent, HtmlNode* new_child);
 
   // Insert element before the current one.  current_ remains unchanged.
   bool InsertElementBeforeCurrent(HtmlNode* node);
@@ -121,10 +135,9 @@ class HtmlParse {
   // in the DOM-tree.
   bool MoveCurrentInto(HtmlElement* new_parent);
 
-  HtmlElement* NewElement(HtmlElement* parent, Atom tag);
-
   // If the given node is rewritable, delete it and all of its children (if
   // any) and return true; otherwise, do nothing and return false.
+  // Note: Javascript appears to use removeChild for this.
   bool DeleteElement(HtmlNode* node);
 
   // Delete a parent element, retaining any children and moving them to
@@ -134,6 +147,9 @@ class HtmlParse {
   // If possible, replace the existing node with the new node and return true;
   // otherwise, do nothing and return false.
   bool ReplaceNode(HtmlNode* existing_node, HtmlNode* new_node);
+
+
+  HtmlElement* NewElement(HtmlElement* parent, Atom tag);
 
   bool IsRewritable(const HtmlNode* node) const;
 
@@ -161,6 +177,7 @@ class HtmlParse {
   // Gets the current location information; typically to help with error
   // messages.
   const char* url() const { return url_.c_str(); }
+  const char* id() const { return id_.c_str(); }
   int line_number() const { return line_number_; }
 
   // Interface for any caller to report an error message via the message handler
@@ -185,16 +202,16 @@ class HtmlParse {
   void FatalErrorHere(const char* msg, ...) INSTAWEB_PRINTF_FORMAT(2, 3);
 
   void InfoHereV(const char *msg, va_list args) {
-    InfoV(url_.c_str(), line_number_, msg, args);
+    InfoV(id_.c_str(), line_number_, msg, args);
   }
   void WarningHereV(const char *msg, va_list args) {
-    WarningV(url_.c_str(), line_number_, msg, args);
+    WarningV(id_.c_str(), line_number_, msg, args);
   }
   void ErrorHereV(const char *msg, va_list args) {
-    ErrorV(url_.c_str(), line_number_, msg, args);
+    ErrorV(id_.c_str(), line_number_, msg, args);
   }
   void FatalErrorHereV(const char* msg, va_list args) {
-    FatalErrorV(url_.c_str(), line_number_, msg, args);
+    FatalErrorV(id_.c_str(), line_number_, msg, args);
   }
 
   void AddElement(HtmlElement* element, int line_number);
@@ -214,6 +231,8 @@ class HtmlParse {
   bool IsInEventWindow(const HtmlEventListIterator& iter) const;
   bool InsertElementBeforeEvent(const HtmlEventListIterator& event,
                                 HtmlNode* new_node);
+  bool InsertElementAfterEvent(const HtmlEventListIterator& event,
+                               HtmlNode* new_node);
   void SanityCheck();
   void CheckEventParent(HtmlEvent* event, HtmlElement* expect,
                         HtmlElement* actual);
@@ -241,6 +260,7 @@ class HtmlParse {
   bool deleted_current_;
   MessageHandler* message_handler_;
   std::string url_;
+  std::string id_;  // Per-request identifier string used in error messages.
   int line_number_;
   bool need_sanity_check_;
   bool coalesce_characters_;

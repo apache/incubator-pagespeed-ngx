@@ -84,7 +84,10 @@ bool FileDriver::ParseFile(const char* infilename,
     FileSystem::InputFile* f =
         file_system_->OpenInputFile(infilename, message_handler);
     if (f != NULL) {
-      html_parse_->StartParse(infilename);
+      // HtmlParser needs a valid HTTP URL to evaluate relative paths,
+      // so we create a dummy URL.
+      std::string dummy_url = StrCat("http://file.name/", infilename);
+      html_parse_->StartParseId(dummy_url, infilename);
       char buf[1000];
       int nread;
       while ((nread = f->Read(buf, sizeof(buf), message_handler)) > 0) {

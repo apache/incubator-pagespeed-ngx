@@ -344,7 +344,8 @@ class EventListManipulationTest : public HtmlParseTest {
 
   virtual void SetUp() {
     HtmlParseTest::SetUp();
-    html_parse_.StartParse("event_list_manipulation_test");
+    static const char kUrl[] = "http://html.parse.test/event_list_test.html";
+    html_parse_.StartParse(kUrl);
     node1_ = html_parse_.NewCharactersNode(NULL, "1");
     HtmlTestingPeer::AddEvent(&html_parse_,
                               new HtmlCharactersEvent(node1_, -1));
@@ -473,6 +474,34 @@ TEST_F(EventListManipulationTest, TestAddParentToSequence) {
   CheckExpected("<html><div><span>12</span>3</div></html>");
 }
 
+TEST_F(EventListManipulationTest, TestPrependChild) {
+  HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
+  HtmlElement* div = html_parse_.NewElement(NULL, html_parse_.Intern("div"));
+  EXPECT_TRUE(html_parse_.InsertElementBeforeCurrent(div));
+  CheckExpected("1<div></div>");
+
+  EXPECT_TRUE(html_parse_.PrependChild(div, node2_));
+  CheckExpected("1<div>2</div>");
+  EXPECT_TRUE(html_parse_.PrependChild(div, node3_));
+  CheckExpected("1<div>32</div>");
+
+  // TODO(sligocki): Test with elements that don't explicitly end like image.
+}
+
+TEST_F(EventListManipulationTest, TestAppendChild) {
+  HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
+  HtmlElement* div = html_parse_.NewElement(NULL, html_parse_.Intern("div"));
+  EXPECT_TRUE(html_parse_.InsertElementBeforeCurrent(div));
+  CheckExpected("1<div></div>");
+
+  EXPECT_TRUE(html_parse_.AppendChild(div, node2_));
+  CheckExpected("1<div>2</div>");
+  EXPECT_TRUE(html_parse_.AppendChild(div, node3_));
+  CheckExpected("1<div>23</div>");
+
+  // TODO(sligocki): Test with elements that don't explicitly end like image.
+}
+
 TEST_F(EventListManipulationTest, TestAddParentToSequenceDifferentParents) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
@@ -570,7 +599,9 @@ class AttributeManipulationTest : public HtmlParseTest {
 
   virtual void SetUp() {
     HtmlParseTest::SetUp();
-    html_parse_.StartParse("attribute_manipulation_test");
+    static const char kUrl[] =
+        "http://html.parse.test/attribute_manipulation_test.html";
+    html_parse_.StartParse(kUrl);
     node_ = html_parse_.NewElement(NULL, MakeAtom("a"));
     html_parse_.AddElement(node_, 0);
     node_->AddAttribute(MakeAtom("href"), "http://www.google.com/", "\"");

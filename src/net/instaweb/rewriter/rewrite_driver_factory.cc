@@ -82,10 +82,9 @@ RewriteDriverFactory::~RewriteDriverFactory() {
   ShutDown();
 }
 
-void RewriteDriverFactory::SetEnabledFilters(const StringPiece& filter_names) {
+void RewriteDriverFactory::AddEnabledFilters(const StringPiece& filter_names) {
   std::vector<StringPiece> names;
   SplitStringPieceToVector(filter_names, ",", &names, true);
-  enabled_filters_.clear();
   for (int i = 0, n = names.size(); i < n; ++i) {
     enable_filter(std::string(names[i].data(), names[i].size()));
   }

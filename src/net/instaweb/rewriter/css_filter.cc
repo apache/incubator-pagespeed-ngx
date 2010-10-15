@@ -199,7 +199,8 @@ bool CssFilter::LoadAllSubStylesheets(
 
 
 Resource* CssFilter::GetInputResource(const StringPiece& url) {
-  return resource_manager_->CreateInputResource(url,
+  // TODO(sligocki): Use base_url() not document->url().
+  return resource_manager_->CreateInputResource(html_parse_->url(), url,
                                                 html_parse_->message_handler());
 }
 
