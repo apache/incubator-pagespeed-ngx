@@ -10,6 +10,17 @@
     <Location /instaweb>
           SetHandler instaweb_resource_generator
     </Location>
+    # This page lets you view statistics about the instaweb module.
+    # TODO(abliss): add access controls to this handler
+    <Location /instaweb_statistics>
+          SetHandler instaweb_statistics
+    </Location>
+    # This handles the client-side instrumentation callbacks which are injected
+    # by the add_instrumentation filter.
+    <Location /instaweb_beacon>
+          SetHandler instaweb_beacon
+    </Location>
+
     Instaweb on
 
     InstawebUrlPrefix                "http://HOSTNAME/instaweb/"
@@ -25,7 +36,7 @@
     # may not expect any changes to be made by Instaweb.  However,
     # these passes have been shown to be robust over a large number of
     # web sites.
-    InstawebRewriters combine_css,rewrite_images,extend_cache,add_head,remove_quotes,move_css_to_head,collapse_whitespace,elide_attributes,rewrite_javascript
+    InstawebRewriters combine_css,rewrite_images,extend_cache,add_head,remove_quotes,move_css_to_head,collapse_whitespace,elide_attributes,rewrite_javascript,add_instrumentation
 
     # investigating: left_trim_urls
 

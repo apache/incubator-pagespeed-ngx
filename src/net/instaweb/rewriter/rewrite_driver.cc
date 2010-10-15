@@ -23,6 +23,7 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
+#include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
@@ -37,23 +38,32 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_encoder.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
 namespace {
 
+// Filter prefixes
 const char kCssCombiner[] = "cc";
 const char kCssFilter[] = "cf";
 const char kCacheExtender[] = "ce";
 const char kFileSystem[] = "fs";
 const char kImageCompression[] = "ic";
 const char kJavascriptMin[] = "jm";
+
+// key/value options
+const char kImgInlineMaxBytes[] = "img_inline_max_bytes=";
+
+// key/value defaults
+const int64 kDefaultImgInlineMaxBytes = 2048;
 
 }  // namespace
 
@@ -71,7 +81,11 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),
       resource_fetches_(NULL),
-      outline_threshold_(0) {
+      // Note the following value is actually defaulted by
+      // RewriteDriverFactory; these values are used only for
+      // construction.
+      outline_threshold_(0),
+      img_inline_max_bytes_(kDefaultImgInlineMaxBytes) {
 }
 
 RewriteDriver::~RewriteDriver() {
@@ -83,10 +97,12 @@ const char RewriteDriver::kResourceFetches[] = "resource_fetches";
 
 void RewriteDriver::Initialize(Statistics* statistics) {
   statistics->AddVariable(kResourceFetches);
+  AddInstrumentationFilter::Initialize(statistics);
   CacheExtender::Initialize(statistics);
   CssCombineFilter::Initialize(statistics);
   CssMoveToHeadFilter::Initialize(statistics);
   ImgRewriteFilter::Initialize(statistics);
+  JavascriptFilter::Initialize(statistics);
   UrlLeftTrimFilter::Initialize(statistics);
 }
 
@@ -111,6 +127,43 @@ class ContainmentChecker {
 
 }  // namespace
 
+// If flag starts with key (a string ending in "="), call m on the remainder of
+// flag (the piece after the "=").  Always returns true if the key matched; m is
+// free to complain about invalid input using html_parse_->message_handler().
+bool RewriteDriver::ParseKeyString(const StringPiece& key, SetStringMethod m,
+                                   const std::string& flag) {
+  if (flag.rfind(key.data(), 0, key.size()) == 0) {
+    StringPiece sp(flag);
+    (this->*m)(flag.substr(key.size()));
+    return true;
+  } else {
+    return false;
+  }
+}
+
+// If flag starts with key (a string ending in "="), convert rest of flag after
+// the "=" to Int64, and call m on it.  Always returns true if the key matched;
+// m is free to complain about invalid input using
+// html_parse_->message_handler() (failure to parse a number does so and never
+// calls m).
+bool RewriteDriver::ParseKeyInt64(const StringPiece& key, SetInt64Method m,
+                                  const std::string& flag) {
+  if (flag.rfind(key.data(), 0, key.size()) == 0) {
+    std::string str_value = flag.substr(key.size());
+    int64 value;
+    if (StringToInt64(str_value, &value)) {
+      (this->*m)(value);
+    } else {
+      html_parse_.message_handler()->Message(
+          kError, "'%s': ignoring value (should have been int64) after %s",
+          flag.c_str(), key.as_string().c_str());
+    }
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void RewriteDriver::AddFiltersByCommaSeparatedList(const StringPiece& filters) {
   StringSet filter_set;
   std::vector<StringPiece> names;
@@ -125,10 +178,25 @@ void RewriteDriver::AddFiltersByCommaSeparatedList(const StringPiece& filters) {
 // that no invalid ones are specified.
 void RewriteDriver::AddFilters(const StringSet& enabled_filters) {
   CHECK(html_writer_filter_ == NULL);
+  // Start by processing non-boolean options (strings of the form key=value).
+  // This is a bit of a hack given that they remain in enabled_filters, and also
+  // given that duplicate key=value pairs will be processed in arbitrary order.
+  for (StringSet::iterator i = enabled_filters.begin();
+       i != enabled_filters.end(); ++i) {
+    if (ParseKeyInt64("img_inline_max_bytes=",
+                      &RewriteDriver::set_img_inline_max_bytes, *i)) {
+    } else if (i->find("=") != i->npos) {
+      html_parse_.message_handler()->Message(
+          kError, "'%s': Didn't recognize key in flag setting.", i->c_str());
+    }
+  }
+  // Now process boolean options, which may include propagating non-boolean
+  // and boolean parameter settings to filters.
   ContainmentChecker enabled(enabled_filters);
   if (enabled.contains("add_head") ||
       enabled.contains("add_base_tag") ||
-      enabled.contains("move_css_to_head")) {
+      enabled.contains("move_css_to_head") ||
+      enabled.contains("add_instrumentation")) {
     // Adds a filter that adds a 'head' section to html documents if
     // none found prior to the body.
     AddFilter(new AddHeadFilter(&html_parse_));
@@ -152,10 +220,9 @@ void RewriteDriver::AddFilters(const StringSet& enabled_filters) {
     // This can only be called once and requires a resource_manager to be set.
     CHECK(resource_manager_ != NULL);
     OutlineFilter* outline_filter =
-        new OutlineFilter(&html_parse_, resource_manager_,
+        new OutlineFilter(&html_parse_, resource_manager_, outline_threshold_,
                           enabled.contains("outline_css"),
                           enabled.contains("outline_javascript"));
-    outline_filter->set_size_threshold_bytes(outline_threshold_);
     AddFilter(outline_filter);
   }
   if (enabled.contains("move_css_to_head")) {
@@ -173,7 +240,11 @@ void RewriteDriver::AddFilters(const StringSet& enabled_filters) {
     AddRewriteFilter(new CssFilter(this, kCssFilter));
   }
   if (enabled.contains("rewrite_images")) {
-    AddRewriteFilter(new ImgRewriteFilter(this, kImageCompression));
+    AddRewriteFilter(
+        new ImgRewriteFilter(this,
+                             enabled.contains("debug_log_img_tags"),
+                             enabled.contains("insert_img_dimensions"),
+                             kImageCompression));
   }
   if (enabled.contains("rewrite_javascript")) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
@@ -212,7 +283,14 @@ void RewriteDriver::AddFilters(const StringSet& enabled_filters) {
     // everywhere it seems to give a small savings.
     AddFilter(new HtmlAttributeQuoteRemoval(&html_parse_));
   }
-  // NOTE(abliss): Adding a new filter?  Does it export anystatistics?  If it
+  if (enabled.contains("add_instrumentation")) {
+    // Inject javascript to instrument loading-time.
+    add_instrumentation_filter_.reset(
+        new AddInstrumentationFilter(&html_parse_,
+                                     resource_manager_->statistics()));
+    AddFilter(add_instrumentation_filter_.get());
+  }
+  // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
   // doesn't, it probably should.  If it does, be sure to add it to the
   // Initialize() function above or it will break under Apache!
 }
@@ -292,17 +370,15 @@ void RewriteDriver::FetchResource(
     MessageHandler* message_handler,
     UrlAsyncFetcher::Callback* callback) {
   bool queued = false;
-  const char* separator = RewriteFilter::prefix_separator();
-  std::vector<StringPiece> components;
-  SplitStringPieceToVector(resource, separator, &components, false);
-  const ContentType* content_type = NameExtensionToContentType(resource);
-  if ((content_type != NULL) && (components.size() == 4)) {
-    const StringPiece& id = components[0];
-    const StringPiece& hash = components[1];
-    const StringPiece& name = components[2];
-
+  ResourceEncoder resource_encoder;
+  const ContentType* content_type = NULL;
+  if (resource_encoder.Decode(resource) &&
+      ((content_type = NameExtensionToContentType(resource)) != NULL)) {
+    // TODO(jmarantz): pass the ResourceEncoder directly to
+    // CreateUrlOutputResource.
     OutputResource* output_resource = resource_manager_->
-        CreateUrlOutputResource(id, name, hash, content_type);
+        CreateUrlOutputResource(resource_encoder.id(), resource_encoder.name(),
+                                resource_encoder.hash(), content_type);
     std::string resource_name;
     resource_manager_->filename_encoder()->Encode(
         resource_manager_->filename_prefix(), resource, &resource_name);
@@ -318,6 +394,7 @@ void RewriteDriver::FetchResource(
       callback->Done(true);
       queued = true;
     } else {
+      StringPiece id = resource_encoder.id();
       StringFilterMap::iterator p = resource_filter_map_.find(
           std::string(id.data(), id.size()));
       if (p != resource_filter_map_.end()) {

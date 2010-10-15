@@ -127,7 +127,7 @@ bool FetcherTest::MockFetcher::Populate(const char* cache_control,
                                         Writer* writer,
                                         MessageHandler* message_handler) {
   response_headers->set_status_code(HttpStatus::kOK);
-  response_headers->Add("Cache-Control", cache_control);
+  response_headers->Add(HttpAttributes::kCacheControl, cache_control);
   response_headers->Add("Date", kStartDate);
   response_headers->Add(kHeaderName, kHeaderValue);
   response_headers->ComputeCaching();

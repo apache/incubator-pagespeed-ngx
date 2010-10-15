@@ -87,7 +87,8 @@ void CacheExtender::StartElement(HtmlElement* element) {
 
       // We cannot cache-extend a resource that's completely uncacheable,
       // as our serving-side image would b
-      if (!headers->IsCacheable()) {
+      if (!resource_manager_->http_cache()->force_caching() &&
+          !headers->IsCacheable()) {
         if (not_cacheable_count_ != NULL) {
           not_cacheable_count_->Add(1);
         }

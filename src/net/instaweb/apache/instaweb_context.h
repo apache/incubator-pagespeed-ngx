@@ -18,11 +18,10 @@
 #ifndef NET_INSTAWEB_APACHE_INSTAWEB_CONTEXT_H_
 #define NET_INSTAWEB_APACHE_INSTAWEB_CONTEXT_H_
 
-#include <string>
-
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include <string>
 #include "net/instaweb/util/public/string_writer.h"
 
 // The httpd header must be after the

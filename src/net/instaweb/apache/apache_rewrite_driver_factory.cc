@@ -17,11 +17,13 @@
 #include "apr_pools.h"
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mutex.h"
+#include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/md5_hasher.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/serf_url_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -33,11 +35,12 @@ namespace net_instaweb {
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(apr_pool_t* pool)
   : serf_url_fetcher_(NULL),
     serf_url_async_fetcher_(NULL),
+    statistics_(NULL),
     lru_cache_kb_per_process_(0),
     lru_cache_byte_limit_(0),
     file_cache_clean_interval_ms_(Timer::kHourMs),
     file_cache_clean_size_kb_(100 * 1024),  // 100 megabytes
-    fetcher_time_out_ms_(0),
+    fetcher_time_out_ms_(5 * Timer::kSecondMs),
     enabled_(true) {
   apr_pool_create(&pool_, pool);
   cache_mutex_.reset(NewMutex());
@@ -131,6 +134,7 @@ RewriteDriver* ApacheRewriteDriverFactory::GetRewriteDriver() {
     rewrite_driver = available_rewrite_drivers_.back();
     available_rewrite_drivers_.pop_back();
   } else {
+    ComputeResourceManager()->set_statistics(statistics_);
     // Create a RewriteDriver using base class.
     rewrite_driver = NewRewriteDriver();
   }

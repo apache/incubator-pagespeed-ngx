@@ -21,6 +21,7 @@
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/resource_encoder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
@@ -152,13 +153,13 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
   header->set_minor_version(1);
   header->SetStatusAndReason(HttpStatus::kOK);
   if (content_type != NULL) {
-    header->Add("Content-Type", content_type->mime_type());
+    header->Add(HttpAttributes::kContentType, content_type->mime_type());
   }
   header->Add(kCacheControl, "public, max-age=31536000");
 
   // PageSpeed claims the "Vary" header is needed to avoid proxy cache
   // issues for clients where some accept gzipped content and some don't.
-  header->Add("Vary", "Accept-Encoding");
+  header->Add("Vary", HttpAttributes::kAcceptEncoding);
 
   // TODO(jmarantz): add date/last-modified headers by default.
   int64 now_ms = http_cache_->timer()->NowMs();
@@ -166,11 +167,11 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
   if (!header->Lookup("Date", &v)) {
     header->SetDate(now_ms);
   }
-  if (!header->Lookup("Last-Modified", &v)) {
+  if (!header->Lookup(HttpAttributes::kLastModified, &v)) {
     header->SetLastModified(now_ms);
   }
 
-  // TODO(jmarantz): Page-speed suggested adding a "Last-Modified",header
+  // TODO(jmarantz): Page-speed suggested adding a "Last-Modified" header
   // for cache validation.  To do this we must track the max of all
   // Last-Modified values for all input resources that are used to
   // create this output resource.  For now we are using the current
@@ -183,8 +184,8 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
 void ResourceManager::SetContentType(const ContentType* content_type,
                                      MetaData* header) {
   CHECK(content_type != NULL);
-  header->RemoveAll("Content-Type");
-  header->Add("Content-Type", content_type->mime_type());
+  header->RemoveAll(HttpAttributes::kContentType);
+  header->Add(HttpAttributes::kContentType, content_type->mime_type());
   header->ComputeCaching();
 }
 
@@ -211,13 +212,12 @@ OutputResource* ResourceManager::CreateGeneratedOutputResource(
 // and use that to map to the hash-code and extension.  If we know the
 // hash-code then we may also be able to look up the contents in the same
 // cache.
-std::string ResourceManager::ConstructNameKey(const OutputResource* output)
-    const {
-  const char* separator = RewriteFilter::prefix_separator();
-  std::string name_key = StrCat(
-      kFilenameCacheKeyPrefix, output->filter_prefix(), separator,
-      output->name());
-  return name_key;
+std::string ResourceManager::ConstructNameKey(
+    const OutputResource* output) const {
+  ResourceEncoder encoder;
+  encoder.set_id(output->filter_prefix());
+  encoder.set_name(output->name());
+  return encoder.EncodeNameKey();
 }
 
 OutputResource* ResourceManager::CreateNamedOutputResource(
@@ -238,13 +238,12 @@ OutputResource* ResourceManager::CreateNamedOutputResource(
   if (http_cache_->Get(ConstructNameKey(resource), &value, &meta_data,
                        handler) &&
       value.ExtractContents(&hash_extension)) {
-    std::vector<StringPiece> components;
-    const char* separator = RewriteFilter::prefix_separator();
-    SplitStringPieceToVector(hash_extension, separator, &components, false);
-    if (components.size() == 2) {
-      resource->SetHash(components[0]);
+    ResourceEncoder encoder;
+    if (encoder.DecodeHashExt(hash_extension)) {
+      resource->SetHash(encoder.hash());
       // Note that the '.' must be included in the suffix
-      resource->set_suffix(StrCat(separator, components[1]));
+      // TODO(jmarantz): remove this from the suffix.
+      resource->set_suffix(StrCat(".", encoder.ext()));
     }
   }
   return resource;
@@ -438,13 +437,12 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
         origin_meta_data.RemoveAll(kCacheControl);
         origin_meta_data.Add(kCacheControl, cache_control.c_str());
         origin_meta_data.ComputeCaching();
-        // Note: the '.' is already in the suffix.
-        // TODO(jmarantz): rationalize that we've theoretically made it possible
-        // to change the separator from '.' to something else, when in reality
-        // that would be a real pain.
-        std::string hash_extension = StrCat(output->hash(), output->suffix());
+
+        ResourceEncoder encoder;
+        encoder.set_hash(output->hash());
+        encoder.set_ext(output->suffix().substr(1));  // skip the "."
         http_cache_->Put(ConstructNameKey(output), origin_meta_data,
-                         hash_extension, handler);
+                         encoder.EncodeHashExt(), handler);
       }
     }
   } else {

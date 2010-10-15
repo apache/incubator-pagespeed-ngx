@@ -11,21 +11,27 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Author: lsong@google.com (Libo Song)
+//         jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/apache/instaweb_handler.h"
 
-#include <string>
 #include "apr_strings.h"
 #include "base/basictypes.h"
 #include "base/string_util.h"
+#include "net/instaweb/apache/apache_slurp.h"
+#include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/mod_instaweb.h"
+#include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 // The httpd header must be after the pagepseed_server_context.h. Otherwise,
 // the compiler will complain
@@ -36,14 +42,16 @@
 #include "http_log.h"
 #include "http_protocol.h"
 
+namespace net_instaweb {
+
 namespace {
 
 // Callback for asynchronous fetch. When instaweb handles a request, it will
 // fetch the resource for that request with an asynchronous fetcher. We need to
 // run the Poll method periodically to check if the fetch finishes.
-class AsyncCallback : public net_instaweb::UrlAsyncFetcher::Callback {
+class AsyncCallback : public UrlAsyncFetcher::Callback {
  public:
-  explicit AsyncCallback(net_instaweb::MessageHandler* message_handler)
+  explicit AsyncCallback(MessageHandler* message_handler)
       : done_(false),
         success_(false),
         message_handler_(message_handler) {}
@@ -57,7 +65,7 @@ class AsyncCallback : public net_instaweb::UrlAsyncFetcher::Callback {
  private:
   bool done_;
   bool success_;
-  net_instaweb::MessageHandler* message_handler_;
+  MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncCallback);
 };
@@ -74,73 +82,19 @@ int instaweb_default_handler(const std::string& url, request_rec* request) {
   return OK;
 }
 
-// Check if the request is for instaweb. If it is, set the instaweb resource.
-// A instaweb resource string is the full url without the URL prefix. For
-// example, http://localhost:9999/cache/cache_pre_cc.8736a.css, and the prefix
-// is http://localhost:9999/cache/cache_pre_, then the resource string is
-// cc.8736a.css.
-int instaweb_check_request(request_rec* request, std::string* resource) {
-  // Check if the request is for instaweb content generator
-  // Decline the request so that other handler may process
-  if (!request->handler ||
-      (strcmp(request->handler, "instaweb_resource_generator") != 0)) {
-    ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
-                  "Not instaweb request: %s.", request->handler);
-    return DECLINED;
-  }
-
-  // Only handle GET request
-  if (request->method_number != M_GET) {
-    ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
-                  "Not GET request: %d.", request->method_number);
-    return HTTP_METHOD_NOT_ALLOWED;
-  }
-  /*
-   * In some contexts we are seeing relative URLs passed
-   * into request->unparsed_uri.  But when using mod_slurp, the rewritten
-   * HTML contains complete URLs, so this construction yields the host:port
-   * prefix twice.
-   *
-   * TODO(jmarantz): Figure out how to do this correctly at all times.
-   */
-  std::string full_url;
-  if (strncmp(request->unparsed_uri, "http:", 5) == 0) {
-    full_url = request->unparsed_uri;
-  } else {
-    full_url = ap_construct_url(request->pool,
-                                request->unparsed_uri,
-                                request);
-  }
-
-  // Determine whether this URL matches our prefix pattern.  Note that
-  // the URL may have a shard applied to it.
-  net_instaweb::ApacheRewriteDriverFactory* factory =
-      net_instaweb::InstawebContext::Factory(request->server);
-  net_instaweb::ResourceManager* resource_manager = factory->resource_manager();
-  int shard;
-  const char* r = resource_manager->SplitUrl(full_url.c_str(), &shard);
-  if (r == NULL) {
-    ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
-                  "INSTAWEB: Declined request %s", full_url.c_str());
-    return DECLINED;
-  }
-  *resource = r;
-  return OK;
-}
-
 bool fetch_resource(const request_rec* request,
                     const std::string& resource,
-                    net_instaweb::SimpleMetaData* response_headers,
+                    SimpleMetaData* response_headers,
                     std::string* output) {
-  net_instaweb::ApacheRewriteDriverFactory* factory =
-      net_instaweb::InstawebContext::Factory(request->server);
-  net_instaweb::RewriteDriver* rewrite_driver = factory->GetRewriteDriver();
-  net_instaweb::SimpleMetaData request_headers;
-  net_instaweb::StringWriter writer(output);
-  net_instaweb::GoogleMessageHandler message_handler;
+  ApacheRewriteDriverFactory* factory =
+      InstawebContext::Factory(request->server);
+  RewriteDriver* rewrite_driver = factory->GetRewriteDriver();
+  SimpleMetaData request_headers;
+  StringWriter writer(output);
+  GoogleMessageHandler message_handler;
   AsyncCallback callback(&message_handler);
 
-  message_handler.Message(net_instaweb::kWarning, "Fetching resource %s...",
+  message_handler.Message(kWarning, "Fetching resource %s...",
                           resource.c_str());
 
   rewrite_driver->FetchResource(resource, request_headers,
@@ -150,9 +104,9 @@ bool fetch_resource(const request_rec* request,
                                 &callback);
   bool ret = callback.done() && callback.success();
   if (!ret) {
-    net_instaweb::SerfUrlAsyncFetcher* serf_async_fetcher =
+    SerfUrlAsyncFetcher* serf_async_fetcher =
         factory->serf_url_async_fetcher();
-    net_instaweb::AprTimer timer;
+    AprTimer timer;
     int64 max_ms = factory->fetcher_time_out_ms();
     for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
          !callback.done() && now_ms - start_ms < max_ms;
@@ -168,7 +122,7 @@ bool fetch_resource(const request_rec* request,
     }
     ret = callback.done() && callback.success();
   }
-  message_handler.Message(net_instaweb::kWarning,
+  message_handler.Message(kWarning,
                           "...Fetched resource %s, ret=%d",
                           resource.c_str(), ret);
   return ret;
@@ -176,7 +130,7 @@ bool fetch_resource(const request_rec* request,
 
 void send_out_headers_and_body(
     request_rec* request,
-    const net_instaweb::SimpleMetaData& response_headers,
+    const SimpleMetaData& response_headers,
     const std::string& output) {
   for (int idx = 0; idx < response_headers.NumAttributes(); ++idx) {
     std::string lowercase_header(response_headers.Name(idx));
@@ -203,21 +157,75 @@ void send_out_headers_and_body(
 
 }  // namespace
 
-namespace net_instaweb {
-
 int instaweb_handler(request_rec* request) {
+  ApacheRewriteDriverFactory* factory =
+      InstawebContext::Factory(request->server);
   std::string resource;
-  int ret = instaweb_check_request(request, &resource);
-  if (ret != OK) {
-    return ret;
+  int ret = OK;
+
+  // Only handle GET request
+  if (request->method_number != M_GET) {
+    ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
+                  "Not GET request: %d.", request->method_number);
+    ret = HTTP_METHOD_NOT_ALLOWED;
+  } else if (strcmp(request->handler, "instaweb_statistics") == 0) {
+    std::string output;
+    SimpleMetaData response_headers;
+    StringWriter writer(&output);
+    if (factory->statistics()) {
+      factory->statistics()->Dump(&writer, factory->message_handler());
+    }
+    send_out_headers_and_body(request, response_headers, output);
+  } else if (strcmp(request->handler, "instaweb_beacon") == 0) {
+    RewriteDriver* driver = factory->GetRewriteDriver();
+    AddInstrumentationFilter* aif = driver->add_instrumentation_filter();
+    if (aif && aif->HandleBeacon(request->unparsed_uri)) {
+      ret = HTTP_NO_CONTENT;
+    } else {
+      ret = DECLINED;
+    }
+    factory->ReleaseRewriteDriver(driver);
+  } else if (strcmp(request->handler, "instaweb_resource_generator") == 0){
+    /*
+     * In some contexts we are seeing relative URLs passed
+     * into request->unparsed_uri.  But when using mod_slurp, the rewritten
+     * HTML contains complete URLs, so this construction yields the host:port
+     * prefix twice.
+     *
+     * TODO(jmarantz): Figure out how to do this correctly at all times.
+     */
+    std::string url;
+    if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
+      url = request->unparsed_uri;
+    } else {
+      url = ap_construct_url(request->pool, request->unparsed_uri, request);
+    }
+
+    ResourceManager* resource_manager = factory->ComputeResourceManager();
+    // Determine whether this URL matches our prefix pattern.  Note that
+    // the URL may have a shard applied to it.
+    int shard;
+    const char* resource = resource_manager->SplitUrl(url.c_str(), &shard);
+    if (resource != NULL) {
+      SimpleMetaData response_headers;
+      std::string output;
+      if (!fetch_resource(request, resource, &response_headers, &output)) {
+        return instaweb_default_handler(resource, request);
+      }
+      send_out_headers_and_body(request, response_headers, output);
+    } else if (factory->slurping_enabled()) {
+      SlurpUrl(url, factory, request);
+    } else {
+      ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
+                    "INSTAWEB: Declined request %s", url.c_str());
+      ret = DECLINED;
+    }
+  } else {
+    ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
+                  "Not instaweb request: %s.", request->handler);
+    ret = DECLINED;
   }
-  net_instaweb::SimpleMetaData response_headers;
-  std::string output;
-  if (!fetch_resource(request, resource, &response_headers, &output)) {
-    return instaweb_default_handler(resource, request);
-  }
-  send_out_headers_and_body(request, response_headers, output);
-  return OK;
+  return ret;
 }
 
 }  // namespace net_instaweb

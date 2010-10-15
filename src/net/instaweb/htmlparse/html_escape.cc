@@ -188,17 +188,6 @@ void HtmlEscape::ShutDown() {
   }
 }
 
-bool HtmlEscape::AccumulateDecimalValue(char c, int* value) {
-  *value *= 10;
-  bool ret = true;
-  if ((c >= '0') && (c <= '9')) {
-    *value += c - '0';
-  } else {
-    ret = false;
-  }
-  return ret;
-}
-
 StringPiece HtmlEscape::UnescapeHelper(const StringPiece& escaped,
                                        std::string* buf) const {
   if (escaped.data() == NULL) {
@@ -211,8 +200,9 @@ StringPiece HtmlEscape::UnescapeHelper(const StringPiece& escaped,
   // Un-escape the attribute value here before populating the
   // attribute data structure.
   std::string escape;
-  int decimal_value = 0;
-  bool accumulate_decimal_code = false;
+  int numeric_value = 0;
+  bool accumulate_numeric_code = false;
+  bool hex_mode = false;
   bool in_escape = false;
   for (size_t i = 0; i < escaped.size(); ++i) {
     char ch = escaped[i];
@@ -221,17 +211,22 @@ StringPiece HtmlEscape::UnescapeHelper(const StringPiece& escaped,
       if (ch == '&') {
         in_escape = true;
         escape.clear();
-        decimal_value = 0;
-        accumulate_decimal_code = false;
+        numeric_value = 0;
+        accumulate_numeric_code = false;
+        hex_mode = false;
       } else {
         *buf += ch;
       }
     } else if (escape.empty() && (ch == '#')) {
       escape += ch;
-      accumulate_decimal_code = true;
+      accumulate_numeric_code = true;
+      if (((i + 1) < escaped.size()) && (toupper(escaped[i + 1]) == 'X')) {
+        hex_mode = true;
+        ++i;
+      }
     } else if (ch == ';') {
-      if (accumulate_decimal_code && (escape.size() > 1)) {
-        *buf += static_cast<char>(decimal_value);
+      if (accumulate_numeric_code && (escape.size() > 1)) {
+        *buf += static_cast<char>(numeric_value);
       } else {
         // Some symbols are case-sensitive (AElig vs aelig are different
         // code-points) where as some are case-insensitive (&quot; and
@@ -255,8 +250,9 @@ StringPiece HtmlEscape::UnescapeHelper(const StringPiece& escaped,
         }
       }
       in_escape = false;
-    } else if (accumulate_decimal_code &&
-               !AccumulateDecimalValue(ch, &decimal_value)) {
+    } else if (accumulate_numeric_code &&
+               ((hex_mode && !AccumulateHexValue(ch, &numeric_value)) ||
+                (!hex_mode && !AccumulateDecimalValue(ch, &numeric_value)))) {
       bogus_escape = true;
     } else {
       escape += ch;

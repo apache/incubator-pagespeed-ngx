@@ -51,6 +51,16 @@ class HTTPCacheTest : public testing::Test {
                     http_cache_(new LRUCache(kMaxSize), &mock_timer_) {
   }
 
+  void InitHeaders(MetaData* headers, const char* cache_control) {
+    headers->Add("name", "value");
+    headers->Add("Date", kStartDate);
+    if (cache_control != NULL) {
+      headers->Add("Cache-control", cache_control);
+    }
+    headers->set_status_code(HttpStatus::kOK);
+    headers->ComputeCaching();
+  }
+
   MockTimer mock_timer_;
   HTTPCache http_cache_;
   GoogleMessageHandler message_handler_;
@@ -62,11 +72,7 @@ class HTTPCacheTest : public testing::Test {
 // Simple flow of putting in an item, getting it.
 TEST_F(HTTPCacheTest, PutGet) {
   SimpleMetaData meta_data_in, meta_data_out;
-  meta_data_in.Add("name", "value");
-  meta_data_in.Add("Date", kStartDate);
-  meta_data_in.Add("Cache-control", "public, max-age=300");
-  meta_data_in.set_status_code(HttpStatus::kOK);
-  meta_data_in.ComputeCaching();
+  InitHeaders(&meta_data_in, "public, max-age=300");
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query("mykey"));
   HTTPValue value;
@@ -92,10 +98,19 @@ TEST_F(HTTPCacheTest, PutGet) {
 
 TEST_F(HTTPCacheTest, Uncacheable) {
   SimpleMetaData meta_data_in, meta_data_out;
-  meta_data_in.Add("name", "value");
-  meta_data_in.Add("Date", kStartDate);
-  meta_data_in.set_status_code(HttpStatus::kOK);
-  meta_data_in.ComputeCaching();
+  InitHeaders(&meta_data_in, NULL);
+  http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
+  EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query("mykey"));
+  HTTPValue value;
+  bool found = http_cache_.Get("mykey", &value, &meta_data_out,
+                               &message_handler_);
+  ASSERT_FALSE(found);
+  ASSERT_FALSE(meta_data_out.headers_complete());
+}
+
+TEST_F(HTTPCacheTest, UncacheablePrivate) {
+  SimpleMetaData meta_data_in, meta_data_out;
+  InitHeaders(&meta_data_in, "private, max-age=300");
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query("mykey"));
   HTTPValue value;

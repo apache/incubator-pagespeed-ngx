@@ -27,6 +27,7 @@
 namespace net_instaweb {
 
 struct ContentType;
+struct ImageDim;
 class FileSystem;
 class MessageHandler;
 class Writer;
@@ -108,12 +109,13 @@ class Image {
 
   ~Image();
 
-  // Stores the image dimensions in width and height.  This method can fail
-  // (returning false) for various reasons: we don't understand the image format
-  // (eg a gif), we can't find the headers, the library doesn't support a
-  // particular encoding, etc.  In general, we deal with failure of any Image
-  // operation by passing data through unaltered.
-  bool Dimensions(int* width, int* height);
+  // Stores the image dimensions in natural_dim (on success, sets
+  // natural_dim->{width, height} and natural_dim->valid = true).  This method
+  // can fail (natural_dim->valid == false) for various reasons: we don't
+  // understand the image format (eg a gif), we can't find the headers, the
+  // library doesn't support a particular encoding, etc.  In that case the other
+  // fields are left alone.
+  void Dimensions(ImageDim* natural_dim);
 
   // Returns the size of original input in bytes.
   size_t input_size() const {
@@ -141,7 +143,7 @@ class Image {
   // Changes the size of the image to the given width and height.  This will run
   // image processing on the image, and return false if the image processing
   // fails.  Otherwise the image contents and type can change.
-  bool ResizeTo(int width, int height);
+  bool ResizeTo(const ImageDim& new_dim);
 
   // UndoResize lets us bail out if a resize actually cost space!
   void UndoResize();

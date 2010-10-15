@@ -26,6 +26,7 @@
 #include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
@@ -210,8 +211,9 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     if (encoding == InstawebContext::kGzip) {
       // Unset the content encoding because the InstawebContext will decode the
       // content before parsing.
-      apr_table_unset(request->headers_out, "Content-Encoding");
-      apr_table_unset(request->err_headers_out, "Content-Encoding");
+      apr_table_unset(request->headers_out, HttpAttributes::kContentEncoding);
+      apr_table_unset(request->err_headers_out,
+                      HttpAttributes::kContentEncoding);
     } else if (encoding == InstawebContext::kOther) {
       // We don't know the encoding, so we cannot rewrite the HTML.
       ap_remove_output_filter(filter);
@@ -220,7 +222,7 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
 
     SimpleMetaData request_headers, response_headers;
     ApacheHeaderToMetaData(request->headers_in, 0,
-                                         request->proto_num, &request_headers);
+                           request->proto_num, &request_headers);
     LOG(INFO) << "Request headers:\n" << request_headers.ToString();
 
     // Hack for mod_proxy to figure out where it's proxying from
@@ -232,14 +234,14 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     }
 
     apr_table_setn(request->headers_out, "x-instaweb", kInstawebVersion);
-    apr_table_unset(request->headers_out, "Content-Length");
+    apr_table_unset(request->headers_out, HttpAttributes::kContentLength);
     apr_table_unset(request->headers_out, "Content-MD5");
-    apr_table_unset(request->headers_out, "Content-Encoding");
+    apr_table_unset(request->headers_out, HttpAttributes::kContentEncoding);
 
     // Note that downstream output filters may further mutate the response
     // headers, and this will not show those mutations.
     ApacheHeaderToMetaData(request->headers_out, request->status,
-                                         request->proto_num, &response_headers);
+                           request->proto_num, &response_headers);
     LOG(INFO) << "Instaweb Response headers:\n" << response_headers.ToString();
   }
 
@@ -314,17 +316,25 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   // server lists in server->next.
   server_rec* next_server = server;
   while (next_server) {
-    InstawebContext::Factory(next_server);
+    ApacheRewriteDriverFactory* factory = InstawebContext::Factory(next_server);
+    if (factory->statistics()) {
+      factory->statistics()->InitVariables(pool, false);
+    }
     next_server = next_server->next;
   }
 }
 
 int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                           server_rec *server) {
+  AprStatistics* statistics = new AprStatistics();
+  RewriteDriver::Initialize(statistics);
+  statistics->InitVariables(pool, true);
+
   server_rec* next_server = server;
   while (next_server) {
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(next_server);
     if (factory->enabled()) {
+      factory->set_statistics(statistics);
       if (factory->url_prefix().empty() ||
           factory->filename_prefix().empty() ||
           factory->file_cache_path().empty()) {
@@ -360,9 +370,9 @@ apr_status_t pagespeed_log_transaction(request_rec *request) {
 // processing and configuration requests. This
 // callback function declares the Handlers for
 // other events.
-void mod_pagespeed_register_hooks(apr_pool_t *p) {
+void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   // Enable logging using pagespeed style
-  InstallLogMessageHandler(p);
+  InstallLogMessageHandler(pool);
 
   // Use instaweb to handle generated resources.
   ap_hook_handler(instaweb_handler, NULL, NULL, -1);
@@ -540,9 +550,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   {NULL}
 };
 
-}  // namespace net_instaweb
-
 }  // namespace
+
+}  // namespace net_instaweb
 
 extern "C" {
 // Export our module so Apache is able to load us.

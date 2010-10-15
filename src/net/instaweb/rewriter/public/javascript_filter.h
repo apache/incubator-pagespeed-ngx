@@ -37,6 +37,7 @@ class MetaData;
 class OutputResource;
 class Resource;
 class ResourceManager;
+class Statistics;
 class Writer;
 
 /**
@@ -64,6 +65,7 @@ class JavascriptFilter : public RewriteFilter {
  public:
   JavascriptFilter(RewriteDriver* rewrite_driver,
                    const StringPiece& path_prefix);
+  static void Initialize(Statistics* statistics);
   virtual ~JavascriptFilter();
   virtual void StartElement(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);

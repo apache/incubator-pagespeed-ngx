@@ -22,19 +22,21 @@
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/statistics.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
+class Statistics;
+class Variable;
 
 // Class wrapping up configuration information for javascript
 // rewriting, in order to minimize footprint of later changes
 // to javascript rewriting.
 class JavascriptRewriteConfig {
  public:
-  JavascriptRewriteConfig()
-      : minify_(true),
-        redirect_(true) { }
+  explicit JavascriptRewriteConfig(Statistics* statistics);
+  static void Initialize(Statistics* statistics);
   // Whether to minify javascript output (using jsmin).
   // true by default.
   bool minify() const {
@@ -51,9 +53,29 @@ class JavascriptRewriteConfig {
   void set_redirect(bool redirect) {
     redirect_ = redirect;
   }
+  void AddBytesSaved(size_t bytes) {
+    if (bytes_saved_ != NULL) {
+      bytes_saved_->Add(bytes);
+      blocks_minified_->Add(1);
+    }
+  }
+  void AddMinificationFailure() {
+    if (minification_failures_ != NULL) {
+      minification_failures_->Add(1);
+    }
+  }
+  void AddBlock() {
+    if (total_blocks_ != NULL) {
+      total_blocks_->Add(1);
+    }
+  }
  private:
   bool minify_;
   bool redirect_;
+  Variable* blocks_minified_;
+  Variable* bytes_saved_;
+  Variable* minification_failures_;
+  Variable* total_blocks_;
 
   DISALLOW_COPY_AND_ASSIGN(JavascriptRewriteConfig);
 };
@@ -68,7 +90,7 @@ class JavascriptRewriteConfig {
 class JavascriptCodeBlock {
  public:
   JavascriptCodeBlock(const StringPiece& original_code,
-                      const JavascriptRewriteConfig& config,
+                      JavascriptRewriteConfig* config,
                       MessageHandler* handler);
 
   virtual ~JavascriptCodeBlock();
@@ -104,7 +126,7 @@ class JavascriptCodeBlock {
  protected:
   void Rewrite();
 
-  const JavascriptRewriteConfig& config_;
+  JavascriptRewriteConfig* config_;
   MessageHandler* handler_;
   const std::string original_code_;
   // Note that output_code_ points to either original_code_ or

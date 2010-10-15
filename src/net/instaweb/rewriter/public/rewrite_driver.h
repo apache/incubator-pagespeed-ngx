@@ -31,6 +31,7 @@
 
 namespace net_instaweb {
 
+class AddInstrumentationFilter;
 class BaseTagFilter;
 class FileSystem;
 class Hasher;
@@ -120,12 +121,34 @@ class RewriteDriver {
   ResourceManager* resource_manager() const { return resource_manager_; }
   Statistics* statistics() const;
 
+  // Setters for non-boolean config options
   void set_outline_threshold(int64 t) { outline_threshold_ = t; }
+  void set_img_inline_max_bytes(int64 t) {
+    img_inline_max_bytes_ = t;
+  }
+
+  // Getters for config options used when constructing filters
+  int64 img_inline_max_bytes() {
+    return img_inline_max_bytes_;
+  }
+
+  AddInstrumentationFilter* add_instrumentation_filter() {
+    return add_instrumentation_filter_.get();
+  }
 
  private:
   friend class RewriterTest;
   static const char kResourceFetches[];
   typedef std::map<std::string, RewriteFilter*> StringFilterMap;
+  typedef void (RewriteDriver::*SetStringMethod)(const StringPiece& value);
+  typedef void (RewriteDriver::*SetInt64Method)(int64 value);
+
+  bool ParseKeyString(const StringPiece& key, SetStringMethod m,
+                      const std::string& flag);
+  bool ParseKeyInt64(const StringPiece& key, SetInt64Method m,
+                     const std::string& flag);
+
+
   StringFilterMap resource_filter_map_;
 
   // These objects are provided on construction or later, and are
@@ -135,12 +158,14 @@ class RewriteDriver {
   UrlAsyncFetcher* url_async_fetcher_;
   ResourceManager* resource_manager_;
 
+  scoped_ptr<AddInstrumentationFilter> add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
   scoped_ptr<BaseTagFilter> base_tag_filter_;
   scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
   std::vector<HtmlFilter*> filters_;
   Variable* resource_fetches_;
   int64 outline_threshold_;
+  int64 img_inline_max_bytes_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

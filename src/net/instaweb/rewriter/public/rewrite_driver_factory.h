@@ -14,18 +14,7 @@
  * limitations under the License.
  */
 
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Author: sligocki@google.com (Shawn Ligocki)
 
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
@@ -85,40 +74,32 @@ class RewriteDriverFactory {
   // a fallback if the slurped file is not found, and slurped files will
   // be subsequently written so they don't have to be fetched from
   // the Internet again.
-  void set_slurp_directory(const StringPiece& d) {
-    d.CopyToString(&slurp_directory_);
-  }
-  void set_slurp_read_only(bool x) { slurp_read_only_ = x; }
+  //
+  // You must set the slurp directory prior to calling ComputeUrlFetcher
+  // or ComputeUrlAsyncFetcher.
+  void set_slurp_directory(const StringPiece& directory);
+  void set_slurp_read_only(bool read_only);
 
-  // Sets the enabled filters, based on a comma-separated list of
-  // filter names
-  void SetEnabledFilters(const StringPiece& filter_names);
+  // Determines whether Slurping is enabled.
+  bool slurping_enabled() const { return !slurp_directory_.empty(); }
 
   // Setting HTTP caching on causes both the fetcher and the async
   // fecher to return cached versions.
   void set_force_caching(bool u) { force_caching_ = u; }
 
-  // You should either call set_url_fetcher, set_url_async_fetcher, or
-  // neither.  Do not set both.  If you want to enable real async
-  // fetching, because you are serving or want to model live traffic,
-  // then turn on http caching, and call url_async_fetcher or
-  // set_url_async_fetcher before calling url_fetcher.
+  // You should either call set_base_url_fetcher,
+  // set_base_url_async_fetcher, or neither.  Do not set both.  If you
+  // want to enable real async fetching, because you are serving or
+  // want to model live traffic, then call set_base_url_async_fetcher
+  // before calling url_fetcher.
   //
-  // There is an asymmetry because a synchronous URL fetcher can be
-  // created from an asynchronous one only if it's cached.
+  // These fetchers may be used directly when serving traffic, or they
+  // may be aggregated with other fetchers (e.g. for slurping).
   //
-  // In that scenario,  url_fetcher() will  provide a fetcher that will
-  // return a cached entry, or will return
-  // false on a fetch, but will queue up an async request to prime the
-  // cache for the next query.
-  //
-  // Before you set an async fetcher, you must turn on http caching.
-  void set_url_fetcher(UrlFetcher* url_fetcher);
-  void set_url_async_fetcher(UrlAsyncFetcher* url_fetcher);
-
-  // if http_caching is on, these methods return cached fetchers.
-  virtual UrlFetcher* url_fetcher();
-  virtual UrlAsyncFetcher* url_async_fetcher();
+  // You cannot set either base URL fetcher once ComputeUrlFetcher has
+  // been called.
+  void set_base_url_fetcher(UrlFetcher* url_fetcher);
+  void set_base_url_async_fetcher(UrlAsyncFetcher* url_fetcher);
 
   void set_filename_prefix(StringPiece p) { p.CopyToString(&filename_prefix_); }
   void set_url_prefix(StringPiece p) { p.CopyToString(&url_prefix_); }
@@ -139,7 +120,16 @@ class RewriteDriverFactory {
   StringPiece filename_prefix();
   StringPiece url_prefix();
   int num_shards() { return num_shards_; }
-  ResourceManager* resource_manager();
+
+  // Sets the enabled filters, based on a comma-separated list of
+  // filter names
+  void SetEnabledFilters(const StringPiece& filter_names);
+
+  // Computes URL fetchers using the based fetcher, and optionally,
+  // slurp_directory and slurp_read_only.
+  virtual UrlFetcher* ComputeUrlFetcher();
+  virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
+  ResourceManager* ComputeResourceManager();
 
   // Generates a new mutex, hasher.
   virtual AbstractMutex* NewMutex() = 0;
@@ -153,6 +143,7 @@ class RewriteDriverFactory {
 
  protected:
   virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
+  bool FetchersComputed() const;
 
   // Implementors of RewriteDriverFactory must supply default definitions
   // for each of these methods, although they may be overridden via set_
@@ -178,8 +169,8 @@ class RewriteDriverFactory {
   // function before destroying the process sub-pool.
   void ShutDown();
 
-  // Called before creating the resource manager
-  virtual void SetupHooks();
+  // Called before creating the url fetchers.
+  virtual void FetcherSetupHooks();
 
   // Override this to return false if you don't want the resource
   // manager to write resources to the filesystem.
@@ -191,8 +182,10 @@ class RewriteDriverFactory {
   scoped_ptr<MessageHandler> html_parse_message_handler_;
   scoped_ptr<MessageHandler> message_handler_;
   scoped_ptr<FileSystem> file_system_;
-  scoped_ptr<UrlFetcher> url_fetcher_;
-  scoped_ptr<UrlAsyncFetcher> url_async_fetcher_;
+  UrlFetcher* url_fetcher_;
+  UrlAsyncFetcher* url_async_fetcher_;
+  scoped_ptr<UrlFetcher> base_url_fetcher_;
+  scoped_ptr<UrlAsyncFetcher> base_url_async_fetcher_;
   scoped_ptr<Hasher> hasher_;
   scoped_ptr<FilenameEncoder> filename_encoder_;
   scoped_ptr<Timer> timer_;

@@ -46,14 +46,14 @@ class HtmlParse {
   void AddFilter(HtmlFilter* filter);
 
   // Initiate a chunked parsing session.  Finish with FinishParse.  The
-  // url_or_filename is only used for error messages; the contents are not
+  // url is only used to resolve relative URLs; the contents are not
   // directly fetched.  The caller must supply the text and call ParseText.
-  void StartParse(const StringPiece& url_or_filename);
+  void StartParse(const StringPiece& url);
 
   // Parses an arbitrary block of an html file, queuing up the events.  Call
   // Flush to send the events through the Filter.
   //
-  // To parse an entire file, first call StartParse(filename), then call
+  // To parse an entire file, first call StartParse(), then call
   // ParseText on the file contents (in whatever size chunks are convenient),
   // then call FinishParse().
   void ParseText(const char* content, int size);
@@ -160,7 +160,7 @@ class HtmlParse {
   MessageHandler* message_handler() const { return message_handler_; }
   // Gets the current location information; typically to help with error
   // messages.
-  const char* filename() const { return filename_.c_str(); }
+  const char* url() const { return url_.c_str(); }
   int line_number() const { return line_number_; }
 
   // Interface for any caller to report an error message via the message handler
@@ -185,16 +185,16 @@ class HtmlParse {
   void FatalErrorHere(const char* msg, ...) INSTAWEB_PRINTF_FORMAT(2, 3);
 
   void InfoHereV(const char *msg, va_list args) {
-    InfoV(filename_.c_str(), line_number_, msg, args);
+    InfoV(url_.c_str(), line_number_, msg, args);
   }
   void WarningHereV(const char *msg, va_list args) {
-    WarningV(filename_.c_str(), line_number_, msg, args);
+    WarningV(url_.c_str(), line_number_, msg, args);
   }
   void ErrorHereV(const char *msg, va_list args) {
-    ErrorV(filename_.c_str(), line_number_, msg, args);
+    ErrorV(url_.c_str(), line_number_, msg, args);
   }
   void FatalErrorHereV(const char* msg, va_list args) {
-    FatalErrorV(filename_.c_str(), line_number_, msg, args);
+    FatalErrorV(url_.c_str(), line_number_, msg, args);
   }
 
   void AddElement(HtmlElement* element, int line_number);
@@ -240,7 +240,7 @@ class HtmlParse {
   // Have we deleted current? Then we shouldn't do certain manipulations to it.
   bool deleted_current_;
   MessageHandler* message_handler_;
-  std::string filename_;
+  std::string url_;
   int line_number_;
   bool need_sanity_check_;
   bool coalesce_characters_;

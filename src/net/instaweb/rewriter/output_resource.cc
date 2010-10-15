@@ -20,6 +20,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 
 #include "base/logging.h"
+#include "net/instaweb/rewriter/public/resource_encoder.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -138,8 +139,12 @@ std::string OutputResource::NameTail() const {
   CHECK(!hash_.empty())
       << "to compute the Resource filename or URL, we must have "
       << "completed writing, otherwise the contents hash is not known.";
-  std::string separator = RewriteFilter::prefix_separator();
-  return StrCat(filter_prefix_, separator, hash_, separator, name_, suffix());
+  ResourceEncoder encoder;
+  encoder.set_id(filter_prefix_);
+  encoder.set_hash(hash_);
+  encoder.set_name(name_);
+  encoder.set_ext(suffix().substr(1));  // Skip the '.' already in suffix
+  return encoder.Encode();
 }
 
 StringPiece OutputResource::suffix() const {

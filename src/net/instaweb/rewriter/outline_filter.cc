@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/outline_filter.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -36,6 +37,7 @@ const char kStylesheet[] = "stylesheet";
 
 OutlineFilter::OutlineFilter(HtmlParse* html_parse,
                              ResourceManager* resource_manager,
+                             size_t size_threshold_bytes,
                              bool outline_styles,
                              bool outline_scripts)
     : inline_element_(NULL),
@@ -43,15 +45,14 @@ OutlineFilter::OutlineFilter(HtmlParse* html_parse,
       resource_manager_(resource_manager),
       outline_styles_(outline_styles),
       outline_scripts_(outline_scripts),
-      size_threshold_bytes_(0) {
-  s_link_ = html_parse_->Intern("link");
-  s_script_ = html_parse_->Intern("script");
-  s_style_ = html_parse_->Intern("style");
-  s_rel_ = html_parse_->Intern("rel");
-  s_href_ = html_parse_->Intern("href");
-  s_src_ = html_parse_->Intern("src");
-  s_type_ = html_parse_->Intern("type");
-}
+      size_threshold_bytes_(size_threshold_bytes),
+      s_link_(html_parse->Intern("link")),
+      s_script_(html_parse->Intern("script")),
+      s_style_(html_parse->Intern("style")),
+      s_rel_(html_parse->Intern("rel")),
+      s_href_(html_parse->Intern("href")),
+      s_src_(html_parse->Intern("src")),
+      s_type_(html_parse->Intern("type")) { }
 
 void OutlineFilter::StartDocument() {
   inline_element_ = NULL;
@@ -171,7 +172,14 @@ void OutlineFilter::OutlineStyle(HtmlElement* style_element,
       scoped_ptr<OutputResource> resource(
           resource_manager_->CreateGeneratedOutputResource(
               "of", &kContentTypeCss, handler));
-      if (WriteResource(content, resource.get(), handler)) {
+      // Absolutify URLs in content.
+      std::string absolute_content;
+      StringWriter absolute_writer(&absolute_content);
+      // TODO(sligocki): Use CssParser instead of CssTagScanner hack.
+      // TODO(sligocki): Use settable base URL rather than always HTML's URL.
+      if (CssTagScanner::AbsolutifyUrls(content, html_parse_->url(),
+                                        &absolute_writer, handler) &&
+          WriteResource(absolute_content, resource.get(), handler)) {
         HtmlElement* link_element = html_parse_->NewElement(
             style_element->parent(), s_link_);
         link_element->AddAttribute(s_rel_, kStylesheet, "'");
@@ -198,7 +206,7 @@ void OutlineFilter::OutlineStyle(HtmlElement* style_element,
 }
 
 // Create file with script content and remove that element from DOM.
-// TODO(sligocki): Combine similar code from OutlineStyle.
+// TODO(sligocki): We probably will break any relative URL references here.
 void OutlineFilter::OutlineScript(HtmlElement* inline_element,
                                   const std::string& content) {
   if (html_parse_->IsRewritable(inline_element)) {

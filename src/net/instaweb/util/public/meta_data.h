@@ -38,13 +38,18 @@ class Writer;
 // to use these shared constants.
 struct HttpAttributes {
   static const char kAcceptEncoding[];
+  static const char kCacheControl[];
   static const char kContentEncoding[];
   static const char kContentLength[];
   static const char kContentType[];
   static const char kDate[];
+  static const char kEtag[];
   static const char kExpires[];
   static const char kGzip[];
   static const char kLastModified[];
+  static const char kLocation[];
+  static const char kServer[];
+  static const char kSetCookie[];
   static const char kTransferEncoding[];
   static const char kUserAgent[];
 };

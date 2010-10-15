@@ -134,6 +134,12 @@ void HtmlElement::AddAttribute(Atom name, const StringPiece& value,
   attributes_.push_back(attr);
 }
 
+void HtmlElement::AddAttribute(Atom name, int value) {
+  std::string buf = IntegerToString(value);
+  Attribute* attr = new Attribute(name, buf, buf, "");
+  attributes_.push_back(attr);
+}
+
 void HtmlElement::AddEscapedAttribute(Atom name,
                                       const StringPiece& escaped_value,
                                       const char* quote) {

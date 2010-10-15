@@ -36,8 +36,8 @@ class Writer;
 class RewriteFilter : public EmptyHtmlFilter {
  public:
   explicit RewriteFilter(RewriteDriver* driver, StringPiece filter_prefix)
-      : driver_(driver),
-        filter_prefix_(filter_prefix.data(), filter_prefix.size()) {
+      : filter_prefix_(filter_prefix.data(), filter_prefix.size()),
+        driver_(driver) {
   }
   virtual ~RewriteFilter();
 
@@ -102,17 +102,17 @@ class RewriteFilter : public EmptyHtmlFilter {
     return ret;
   }
 
-  static const char* prefix_separator() { return "."; }
   const std::string& id() const { return filter_prefix_; }
   HtmlParse* html_parse() { return driver_->html_parse(); }
   ResourceManager* resource_manager() { return driver_->resource_manager(); }
 
  protected:
-  RewriteDriver* driver_;
   std::string filter_prefix_;  // Prefix that should be used in front of all
                                 // rewritten URLs
 
  private:
+  RewriteDriver* driver_;
+
   DISALLOW_COPY_AND_ASSIGN(RewriteFilter);
 };
 

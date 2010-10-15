@@ -20,6 +20,16 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
 
+namespace {
+
+// We pass through a few special characters unchanged, and we
+// accept those characters, plus ',', as acceptable in the encoded
+// URLs.
+static const char kAcceptableSpecialChars[] = ",_+-=&?";
+static const char kPassThruChars[]          =  "_+-=&?";
+
+}  // namespace
+
 namespace net_instaweb {
 
 class UrlEscaperTest : public testing::Test {
@@ -31,7 +41,7 @@ class UrlEscaperTest : public testing::Test {
     // Make sure there are only alphanumerics and _+-=%
     for (size_t i = 0; i < encoded.size(); ++i) {
       char c = encoded[i];
-      EXPECT_TRUE(isalnum(c) || (strchr("^_+-=%&?", c) != NULL));
+      EXPECT_TRUE(isalnum(c) || (strchr(kAcceptableSpecialChars, c) != NULL));
     }
 
     EXPECT_TRUE(escaper_.DecodeFromUrlSegment(encoded, &decoded));
@@ -57,6 +67,8 @@ TEST_F(UrlEscaperTest, TestUrls) {
   CheckEncoding("http://www.foo.bar/z1234/b_c.d?e=f&g=h");
   CheckEncoding("http://china.com/\u591a\u5e74\u7ecf\u5178\u5361\u7247\u673a");
   CheckEncoding("http://中国 汪 世 孟");
+  CheckEncoding("/static/f.1.js?v=120");
+  CheckEncoding("!@#$%^&*()_+=-[]{}?><,./");
 }
 
 TEST_F(UrlEscaperTest, TestUnchanged) {
@@ -64,6 +76,7 @@ TEST_F(UrlEscaperTest, TestUnchanged) {
   CheckUnchanged("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
   CheckUnchanged("0123456789");
   CheckUnchanged("?&=+-_");
+  CheckUnchanged(kPassThruChars);
 }
 
 }  // namespace net_instaweb

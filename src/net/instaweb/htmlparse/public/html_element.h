@@ -147,6 +147,9 @@ class HtmlElement : public HtmlNode {
   // The value, if non-null, is assumed to be unescaped.  See also
   // AddEscapedAttribute.
   void AddAttribute(Atom name, const StringPiece& value, const char* quote);
+  // Unconditionally add attribute with int value.
+  void AddAttribute(Atom name, int value);
+  // As AddAttribute, but assumes value has been escaped for html output.
   void AddEscapedAttribute(Atom name, const StringPiece& escaped_value,
                            const char* quote);
 

@@ -257,8 +257,12 @@ class RewriterTest : public ResourceManagerTestBase {
     rewrite_driver_.SetResourceManager(resource_manager.get());
     nobase_driver_.SetResourceManager(nobase_resource_manager.get());
 
-    rewrite_driver_.AddFiltersByCommaSeparatedList("rewrite_images");
+    rewrite_driver_.AddFiltersByCommaSeparatedList(
+        "rewrite_images,img_inline_max_bytes=2000,insert_img_dimensions");
     nobase_driver_.AddFiltersByCommaSeparatedList("rewrite_images");
+
+    EXPECT_EQ(2000, rewrite_driver_.img_inline_max_bytes());
+    EXPECT_EQ(2048, nobase_driver_.img_inline_max_bytes());  // Default setting.
 
     std::string baseUrl = StrCat("file://", GTestSrcDir(), kTestData);
     rewrite_driver_.SetBaseUrl(baseUrl);
@@ -282,7 +286,8 @@ class RewriterTest : public ResourceManagerTestBase {
     std::string rewritten_data;
 
     std::string expected_output =
-        StrCat("<head/><body><img src=\"", src_string, "\"/></body>");
+        StrCat("<head/><body><img src=\"", src_string,
+               "\" width=1023 height=766 /></body>");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
     std::string rewritten_filename;

@@ -32,8 +32,6 @@
 #include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/stack_buffer.h"
 
-#include "pagespeed/core/resource_util.h"
-
 namespace net_instaweb {
 
 namespace {

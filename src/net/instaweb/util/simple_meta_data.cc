@@ -251,7 +251,7 @@ void SimpleMetaData::SetDate(int64 date_ms) {
 void SimpleMetaData::SetLastModified(int64 last_modified_ms) {
   std::string time_string;
   ConvertTimeToString(last_modified_ms, &time_string);
-  Add("Last-Modified", time_string.c_str());
+  Add(HttpAttributes::kLastModified, time_string.c_str());
 }
 
 void SimpleMetaData::ComputeCaching() {
@@ -306,11 +306,11 @@ void SimpleMetaData::ComputeCaching() {
     }
 
     // Assume it's proxy cacheable.  Then iterate over all the headers
-    // with key "Cache-Control", and all the comma-separated values within
-    // those values, and look for 'private'.
+    // with key HttpAttributes::kCacheControl, and all the comma-separated
+    // values within those values, and look for 'private'.
     is_proxy_cacheable_ = true;
     values.clear();
-    if (Lookup("Cache-Control", &values)) {
+    if (Lookup(HttpAttributes::kCacheControl, &values)) {
       for (int i = 0, n = values.size(); i < n; ++i) {
         const char* cache_control = values[i];
         pagespeed::resource_util::DirectiveMap directive_map;

@@ -38,8 +38,10 @@
       ],
       'sources': [
         'apache/apache_rewrite_driver_factory.cc',
+        'apache/apache_slurp.cc',
         'apache/apr_file_system.cc',
         'apache/apr_mutex.cc',
+        'apache/apr_statistics.cc',
         'apache/apr_timer.cc',
         'apache/header_util.cc',
         'apache/instaweb_context.cc',

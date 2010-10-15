@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/image.h"
 
 #include "base/basictypes.h"
+#include "net/instaweb/rewriter/public/img_rewrite_filter.h"  // for ImageDim
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
@@ -293,16 +294,17 @@ void Image::CleanOpenCV() {
   }
 }
 
-bool Image::Dimensions(int* width, int* height) {
+void Image::Dimensions(ImageDim* natural_dim) {
   bool ok = (0 <= width_) && (0 <= height_);
   if (ok) {
-    *width = width_;
-    *height = height_;
+    natural_dim->width = width_;
+    natural_dim->height = height_;
   }
-  return ok;
+  natural_dim->valid = ok;
 }
 
-bool Image::ResizeTo(int width, int height) {
+bool Image::ResizeTo(const ImageDim& new_dim) {
+  CHECK(new_dim.valid);
   if (resized_) {
     // If we already resized, drop data and work with original image.
     UndoResize();
@@ -310,7 +312,7 @@ bool Image::ResizeTo(int width, int height) {
   bool ok = opencv_image_ != NULL || LoadOpenCV();
   if (ok) {
     IplImage* rescaled_image =
-        cvCreateImage(cvSize(width, height),
+        cvCreateImage(cvSize(new_dim.width, new_dim.height),
                       opencv_image_->depth,
                       opencv_image_->nChannels);
     ok = rescaled_image != NULL;

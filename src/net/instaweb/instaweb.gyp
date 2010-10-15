@@ -59,6 +59,7 @@
         'util/meta_data.cc',
         'util/mock_hasher.cc',
         'util/mock_timer.cc',
+        'util/mock_url_fetcher.cc',
         'util/null_message_handler.cc',
         'util/pthread_mutex.cc',
         'util/ref_counted.cc',
@@ -128,6 +129,7 @@
       'sources': [
         'rewriter/resource.cc',
         'rewriter/output_resource.cc',
+        'rewriter/resource_encoder.cc',
         'rewriter/resource_manager.cc',
       ],
       'include_dirs': [
@@ -248,6 +250,7 @@
       ],
       'sources': [
         'rewriter/add_head_filter.cc',
+        'rewriter/add_instrumentation_filter.cc',
         'rewriter/base_tag_filter.cc',
         'rewriter/cache_extender.cc',
         'rewriter/collapse_whitespace_filter.cc',

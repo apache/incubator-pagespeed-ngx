@@ -35,10 +35,20 @@ class ContentType;
 class FileSystem;
 class HtmlParse;
 class Image;
-class ImgRewriteUrl;
 class OutputResource;
 class ResourceManager;
+class UrlEscaper;
 class Variable;
+
+// Specification for image dimensions as given in the page source.
+struct ImageDim {
+  // Constructor ensures repeatable field values.
+  ImageDim() : valid(false), width(-1), height(-1) { }
+
+  bool valid;  // If false, other two fields have arbitrary values.
+  int width;
+  int height;
+};
 
 // Identify img tags in html and optimize them.
 // TODO(jmaessen): See which ones have immediately-obvious size info.
@@ -48,8 +58,21 @@ class Variable;
 //     rewritten urls, when in general those urls will be in a different domain.
 class ImgRewriteFilter : public RewriteFilter {
  public:
-  ImgRewriteFilter(RewriteDriver* driver, StringPiece path_prefix);
+  ImgRewriteFilter(RewriteDriver* driver,
+                   bool log_image_elements,
+                   bool insert_image_dimensions,
+                   StringPiece path_prefix);
   static void Initialize(Statistics* statistics);
+  // Encode an origin_url and a page_dim to a rewritten_url.
+  static void EncodeImageUrl(
+      UrlEscaper* escaper, const StringPiece& origin_url,
+      const ImageDim& page_dim, std::string* rewritten_url);
+  // Decode an origin_url and a page_dim from a rewritten_url,
+  // returning false on parse failure (invalidating output vars).
+  static bool DecodeImageUrl(
+      UrlEscaper* escaper, StringPiece rewritten_url,
+      std::string* origin_url, ImageDim* page_dim);
+
   virtual void EndElement(HtmlElement* element);
   virtual void Flush();
   virtual bool Fetch(OutputResource* resource,
@@ -63,21 +86,42 @@ class ImgRewriteFilter : public RewriteFilter {
 
  private:
   // Helper methods.
-  Image* GetImage(const ImgRewriteUrl& url_proto, Resource* img_resource);
+  Image* GetImage(const StringPiece& origin_url, Resource* img_resource);
   OutputResource* ImageOutputResource(const std::string& url_string,
                                       Image* image);
+  const ContentType* ImageToContentType(const std::string& origin_url,
+                                        Image* image);
   void OptimizeImage(
-      const Resource* input_resource, const ImgRewriteUrl& url_proto,
-      Image* image, OutputResource* result);
+      const Resource* input_resource, const StringPiece& origin_url,
+      const ImageDim& page_dim, Image* image, OutputResource* result);
   OutputResource* OptimizedImageFor(
-      const ImgRewriteUrl& url_proto, const std::string& url_string,
-      Resource* input_resource);
-  void RewriteImageUrl(const HtmlElement& element, HtmlElement::Attribute* src);
+      const StringPiece& origin_url, const ImageDim& page_dim,
+      const std::string& url_string, Resource* input_resource);
+  void RewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
+  void UpdateTargetElement(const OutputResource *output_resource,
+                           const ImageDim& page_dim, const ImageDim& actual_dim,
+                           HtmlElement* element, HtmlElement::Attribute* src);
 
   FileSystem* file_system_;
   HtmlParse* html_parse_;
   scoped_ptr<ImgTagScanner> img_filter_;
   ResourceManager* resource_manager_;
+  // Threshold size (in bytes) below which we should just inline images
+  // encountered.
+  // TODO(jmaessen): Heuristic must be more sophisticated.  Does this image
+  // touch a fresh domain?  Require opening a new connection?  If so we can
+  // afford to inline quite large images (basically anything we could transmit
+  // in the resulting RTTs)---but of course we don't know about RTT here.  In
+  // the absence of such information, we ought to inline if header length + url
+  // size can be saved by inlining image, without increasing the size in packets
+  // of the html.  Otherwise we end up loading the image in favor of the html,
+  // which might be a lose.  More work is needed here to figure out the exact
+  // tradeoffs involved, especially as we also undermine image cacheability.
+  size_t img_inline_max_bytes_;
+  // Should we log each image element as we encounter it?  Handy for debug.
+  bool log_image_elements_;
+  // Should we insert image dimensions into html if they are absent?
+  bool insert_image_dimensions_;
   const Atom s_width_;
   const Atom s_height_;
   Variable* rewrite_count_;

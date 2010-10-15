@@ -77,7 +77,7 @@ void CacheUrlFetcher::AsyncFetch::UpdateCache() {
   // IsProxyCacheable, e.g. for content served from the same host
   MetaData* response_headers = ResponseHeaders();
   if ((http_cache_->Query(url_.c_str()) == CacheInterface::kNotFound)) {
-    if (force_caching_ || response_headers->IsCacheable()) {
+    if (force_caching_ || response_headers->IsProxyCacheable()) {
       value_.SetHeaders(*response_headers);
       http_cache_->Put(url_.c_str(), &value_, message_handler_);
     } else {
@@ -163,7 +163,7 @@ bool CacheUrlFetcher::StreamingFetchUrl(
         url, request_headers, response_headers, &string_writer, handler);
     ret &= writer->Write(content, handler);
     if (ret) {
-      if (force_caching_ || response_headers->IsCacheable()) {
+      if (force_caching_ || response_headers->IsProxyCacheable()) {
         value.Clear();
         value.SetHeaders(*response_headers);
         value.Write(content, handler);

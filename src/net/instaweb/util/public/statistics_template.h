@@ -76,7 +76,7 @@ template<class Var> class StatisticsTemplate : public Statistics {
 
   virtual Var* NewVariable(const StringPiece& name, int index) = 0;
 
- private:
+ protected:
   typedef std::vector<Var*> VarVector;
   typedef std::map<std::string, Var*> VarMap;
   VarVector variables_;

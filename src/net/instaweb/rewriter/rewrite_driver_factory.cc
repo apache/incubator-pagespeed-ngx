@@ -58,13 +58,18 @@ namespace {
 // merged, is in img_rewrite_filter you could apply the
 // base64-bloat-factor before comparing against the threshold.  Then
 // we could use one number if we like that idea.
-static const size_t kDefaultOutlineThreshold = 1000;
+//
+// jmaessen: For the moment, there's a separate threshold for img inline.
+static const size_t kDefaultOutlineThreshold = 3000;
+static const size_t kDefaultImageInlineMaxBytes = 2048;
 }
 
 namespace net_instaweb {
 
 RewriteDriverFactory::RewriteDriverFactory()
-    : html_parse_(NULL),
+    : url_fetcher_(NULL),
+      url_async_fetcher_(NULL),
+      html_parse_(NULL),
       filename_prefix_(""),
       url_prefix_(""),
       num_shards_(0),
@@ -74,7 +79,7 @@ RewriteDriverFactory::RewriteDriverFactory()
 }
 
 RewriteDriverFactory::~RewriteDriverFactory() {
-  STLDeleteContainerPointers(rewrite_drivers_.begin(), rewrite_drivers_.end());
+  ShutDown();
 }
 
 void RewriteDriverFactory::SetEnabledFilters(const StringPiece& filter_names) {
@@ -96,24 +101,46 @@ void RewriteDriverFactory::set_message_handler(
   message_handler_.reset(message_handler);
 }
 
+bool RewriteDriverFactory::FetchersComputed() const {
+  return (url_fetcher_ != NULL) || (url_async_fetcher_ != NULL);
+}
+
+void RewriteDriverFactory::set_slurp_directory(const StringPiece& dir) {
+  CHECK(!FetchersComputed())
+      << "Cannot call set_slurp_directory "
+      << " after ComputeUrl*Fetcher has been called";
+  dir.CopyToString(&slurp_directory_);
+}
+
+void RewriteDriverFactory::set_slurp_read_only(bool read_only) {
+  CHECK(!FetchersComputed())
+      << "Cannot call set_slurp_read_only "
+      << " after ComputeUrl*Fetcher has been called";
+  slurp_read_only_ = read_only;
+}
+
 void RewriteDriverFactory::set_file_system(FileSystem* file_system) {
   file_system_.reset(file_system);
 }
 
 // TODO(jmarantz): Change this to set_base_url_fetcher
-void RewriteDriverFactory::set_url_fetcher(UrlFetcher* url_fetcher) {
-  CHECK(url_async_fetcher_.get() == NULL)
-      << "Only call one of set_url_fetcher and set_url_async_fetcher";
-  url_fetcher_.reset(url_fetcher);
+void RewriteDriverFactory::set_base_url_fetcher(UrlFetcher* url_fetcher) {
+  CHECK(!FetchersComputed())
+      << "Cannot call set_base_url_fetcher "
+      << " after ComputeUrl*Fetcher has been called";
+  CHECK(base_url_async_fetcher_.get() == NULL)
+      << "Only call one of set_base_url_fetcher and set_base_url_async_fetcher";
+  base_url_fetcher_.reset(url_fetcher);
 }
 
-void RewriteDriverFactory::set_url_async_fetcher(
+void RewriteDriverFactory::set_base_url_async_fetcher(
     UrlAsyncFetcher* url_async_fetcher) {
-  CHECK(url_fetcher_.get() == NULL)
-      << "Only call one of set_url_fetcher and set_url_async_fetcher";
-  CHECK(url_async_fetcher_.get() == NULL)
-      << "Only call set_url_async_fetcher once";
-  url_async_fetcher_.reset(url_async_fetcher);
+  CHECK(!FetchersComputed())
+      << "Cannot call set_base_url_fetcher "
+      << " after ComputeUrl*Fetcher has been called";
+  CHECK(base_url_fetcher_.get() == NULL)
+      << "Only call one of set_base_url_fetcher and set_base_url_async_fetcher";
+  base_url_async_fetcher_.reset(url_async_fetcher);
 }
 
 void RewriteDriverFactory::set_hasher(Hasher* hasher) {
@@ -149,45 +176,11 @@ FileSystem* RewriteDriverFactory::file_system() {
   return file_system_.get();
 }
 
-HTTPCache* RewriteDriverFactory::http_cache() {
-  if (http_cache_ == NULL) {
-    CacheInterface* cache = DefaultCacheInterface();
-    http_cache_.reset(new HTTPCache(cache, timer()));
-    http_cache_->set_force_caching(force_caching_);
+Timer* RewriteDriverFactory::timer() {
+  if (timer_ == NULL) {
+    timer_.reset(DefaultTimer());
   }
-  return http_cache_.get();
-}
-
-// TODO(jmarantz): Change this to ComputeUrlFetcher(), and put
-// CHECKs in all the setter functions that can affect how the url
-// fetcher is computed.
-UrlFetcher* RewriteDriverFactory::url_fetcher() {
-  UrlFetcher* fetcher = url_fetcher_.get();
-
-  if (fetcher == NULL) {
-    if (slurp_directory_.empty()) {
-      fetcher = DefaultUrlFetcher();
-      url_fetcher_.reset(fetcher);
-    } else {
-      SetupSlurpDirectories();
-      fetcher = url_fetcher_.get();
-    }
-  }
-  return fetcher;
-}
-
-UrlAsyncFetcher* RewriteDriverFactory::url_async_fetcher() {
-  UrlAsyncFetcher* async_fetcher = url_async_fetcher_.get();
-  if (async_fetcher == NULL) {
-    if (slurp_directory_.empty()) {
-      async_fetcher = DefaultAsyncUrlFetcher();
-      url_async_fetcher_.reset(async_fetcher);
-    } else {
-      SetupSlurpDirectories();
-      async_fetcher = url_async_fetcher_.get();
-    }
-  }
-  return async_fetcher;
+  return timer_.get();
 }
 
 Hasher* RewriteDriverFactory::hasher() {
@@ -211,14 +204,21 @@ StringPiece RewriteDriverFactory::filename_prefix() {
 StringPiece RewriteDriverFactory::url_prefix() {
   // Check this lazily, so an application can look at the default value from
   // the factory before deciding whether to update it.  It's checked before
-  // use in resource_manager() beflow.
+  // use in ComputeResourceManager() below.
   return url_prefix_;
 }
 
-ResourceManager* RewriteDriverFactory::resource_manager() {
-  if (resource_manager_ == NULL) {
-    SetupHooks();
+HTTPCache* RewriteDriverFactory::http_cache() {
+  if (http_cache_ == NULL) {
+    CacheInterface* cache = DefaultCacheInterface();
+    http_cache_.reset(new HTTPCache(cache, timer()));
+    http_cache_->set_force_caching(force_caching_);
+  }
+  return http_cache_.get();
+}
 
+ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
+  if (resource_manager_ == NULL) {
     CHECK(!filename_prefix_.empty())
         << "Must specify --filename_prefix or call "
         << "RewriteDriverFactory::set_filename_prefix.";
@@ -227,7 +227,7 @@ ResourceManager* RewriteDriverFactory::resource_manager() {
         << "RewriteDriverFactory::set_url_prefix.";
     resource_manager_.reset(new ResourceManager(
         filename_prefix_, url_prefix_, num_shards_,
-        file_system(), filename_encoder(), url_async_fetcher(), hasher(),
+        file_system(), filename_encoder(), ComputeUrlAsyncFetcher(), hasher(),
         http_cache()));
     resource_manager_->set_store_outputs_in_file_system(
         ShouldWriteResourcesToFileSystem());
@@ -235,24 +235,10 @@ ResourceManager* RewriteDriverFactory::resource_manager() {
   return resource_manager_.get();
 }
 
-void RewriteDriverFactory::SetupHooks() {
-}
-
-Timer* RewriteDriverFactory::timer() {
-  if (timer_ == NULL) {
-    timer_.reset(DefaultTimer());
-  }
-  return timer_.get();
-}
-
 RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
-  Statistics* stats = resource_manager()->statistics();
-  if (stats != NULL) {
-    RewriteDriver::Initialize(stats);
-  }
   RewriteDriver* rewrite_driver =  new RewriteDriver(
-      message_handler(), file_system(), url_async_fetcher());
-  rewrite_driver->SetResourceManager(resource_manager());
+      message_handler(), file_system(), ComputeUrlAsyncFetcher());
+  rewrite_driver->SetResourceManager(ComputeResourceManager());
   rewrite_driver->set_outline_threshold(outline_threshold_);
   AddPlatformSpecificRewritePasses(rewrite_driver);
   rewrite_driver->AddFilters(enabled_filters_);
@@ -267,32 +253,83 @@ void RewriteDriverFactory::AddPlatformSpecificRewritePasses(
     RewriteDriver* driver) {
 }
 
+UrlFetcher* RewriteDriverFactory::ComputeUrlFetcher() {
+  if (url_fetcher_ == NULL) {
+    // Run any hooks like setting up slurp directory.
+    FetcherSetupHooks();
+    if (slurp_directory_.empty()) {
+      if (base_url_fetcher_.get() == NULL) {
+        url_fetcher_ = DefaultUrlFetcher();
+      } else {
+        url_fetcher_ = base_url_fetcher_.get();
+      }
+    } else {
+      SetupSlurpDirectories();
+    }
+  }
+  return url_fetcher_;
+}
+
+UrlAsyncFetcher* RewriteDriverFactory::ComputeUrlAsyncFetcher() {
+  if (url_async_fetcher_ == NULL) {
+    // Run any hooks like setting up slurp directory.
+    FetcherSetupHooks();
+    if (slurp_directory_.empty()) {
+      if (base_url_async_fetcher_.get() == NULL) {
+        url_async_fetcher_ = DefaultAsyncUrlFetcher();
+      } else {
+        url_async_fetcher_ = base_url_async_fetcher_.get();
+      }
+    } else {
+      SetupSlurpDirectories();
+    }
+  }
+  return url_async_fetcher_;
+}
+
 void RewriteDriverFactory::SetupSlurpDirectories() {
+  CHECK(!FetchersComputed());
   if (slurp_read_only_) {
-    url_async_fetcher_.reset(NULL);
-    url_fetcher_.reset(new HttpDumpUrlFetcher(
-        slurp_directory_, file_system(), timer()));
+    CHECK(!FetchersComputed());
+    url_fetcher_ = new HttpDumpUrlFetcher(
+        slurp_directory_, file_system(), timer());
   } else {
-    // Check to see if the factory already had set_url_fetcher
+    // Check to see if the factory already had set_base_url_fetcher
     // called on it.  If so, then we'll want to use that fetcher
     // as the mechanism for the dump-writer to retrieve missing
     // content from the internet so it can be saved in the slurp
     // directory.
-    UrlFetcher* fetcher = url_fetcher_.release();
-    if (fetcher == NULL) {
-      fetcher = DefaultUrlFetcher();
+    url_fetcher_ = base_url_fetcher_.get();
+    if (url_fetcher_ == NULL) {
+      url_fetcher_ = DefaultUrlFetcher();
     }
-    fetcher = new HttpDumpUrlWriter(slurp_directory_, fetcher,
-                                    file_system(), timer());
-    url_fetcher_.reset(fetcher);
+    url_fetcher_ = new HttpDumpUrlWriter(slurp_directory_, url_fetcher_,
+                                         file_system(), timer());
   }
-  url_async_fetcher_.reset(new FakeUrlAsyncFetcher(url_fetcher_.get()));
+
+  // We do not use real async fetches when slurping.
+  url_async_fetcher_ = new FakeUrlAsyncFetcher(url_fetcher_);
+}
+
+void RewriteDriverFactory::FetcherSetupHooks() {
 }
 
 void RewriteDriverFactory::ShutDown() {
+  // Avoid double-destructing the url fetchers if they were not overridden
+  // programmatically
+  if ((url_async_fetcher_ != NULL) &&
+      (url_async_fetcher_ != base_url_async_fetcher_.get())) {
+    delete url_async_fetcher_;
+  }
+  url_async_fetcher_ = NULL;
+  if ((url_fetcher_ != NULL) && (url_fetcher_ != base_url_fetcher_.get())) {
+    delete url_fetcher_;
+  }
+  url_fetcher_ = NULL;
+  STLDeleteContainerPointers(rewrite_drivers_.begin(), rewrite_drivers_.end());
+  rewrite_drivers_.clear();
+
   file_system_.reset(NULL);
-  url_fetcher_.reset(NULL);
-  url_async_fetcher_.reset(NULL);
   hasher_.reset(NULL);
   filename_encoder_.reset(NULL);
   timer_.reset(NULL);

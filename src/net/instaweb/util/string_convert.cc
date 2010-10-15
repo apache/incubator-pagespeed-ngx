@@ -16,19 +16,34 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-// Protobufs to help encode rewritten resources as URLs.
+#include "net/instaweb/util/public/string_util.h"
 
-syntax = "proto2";
+namespace net_instaweb {
 
-option optimize_for = LITE_RUNTIME;
+bool AccumulateDecimalValue(char c, int* value) {
+  bool ret = true;
+  if ((c >= '0') && (c <= '9')) {
+    *value *= 10;
+    *value += c - '0';
+  } else {
+    ret = false;
+  }
+  return ret;
+}
 
-package net_instaweb;
+bool AccumulateHexValue(char c, int* value) {
+  int digit = 0;
+  if ((c >= '0') && (c <= '9')) {
+    digit = c - '0';
+  } else if ((c >= 'a') && (c <= 'f')) {
+    digit = 10 + c - 'a';
+  } else if ((c >= 'A') && (c <= 'F')) {
+    digit = 10 + c - 'A';
+  } else {
+    return false;
+  }
+  *value = *value * 16 + digit;
+  return true;
+}
 
-message CssUrl {
-  optional string origin_url = 1 [default = "" ];
-  optional string media = 2 [default = "" ];
-};
-
-message CssCombineUrl {
-  repeated CssUrl element = 1;
-};
+}  // namespace

@@ -29,7 +29,7 @@ class Variable {
   virtual int Get() const = 0;
   virtual void Set(int delta) = 0;
 
-  void Add(int delta) { Set(delta + Get()); }
+  virtual void Add(int delta) { Set(delta + Get()); }
   void Clear() { Set(0); }
 };
 

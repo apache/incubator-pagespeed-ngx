@@ -32,6 +32,11 @@ bool HTTPCache::IsCurrentlyValid(const MetaData& headers) {
   if (force_caching_) {
     return true;
   }
+  if (!headers.IsCacheable() || !headers.IsProxyCacheable()) {
+    // TODO(jmarantz): Should we have a separate 'force' bit that doesn't
+    // expired resources to be valid, but does ignore cache-control:private?
+    return false;
+  }
   return headers.CacheExpirationTimeMs() > timer_->NowMs();
 }
 

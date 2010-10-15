@@ -107,6 +107,14 @@ inline void TrimWhitespace(const StringPiece& in, std::string* output) {
   TrimString(std::string(in.data(), in.size()), whitespace, output);
 }
 
+// Accumulates a decimal value from 'c' into *value.
+// Returns false and leaves *value unchanged if c is not a decimal digit.
+bool AccumulateDecimalValue(char c, int* value);
+
+// Accumulates a hex value from 'c' into *value
+// Returns false and leaves *value unchanged if c is not a hex digit.
+bool AccumulateHexValue(char c, int* value);
+
 struct CharStarCompareInsensitive {
   bool operator()(const char* s1, const char* s2) const {
     return strcasecmp(s1, s2) < 0;

@@ -82,21 +82,22 @@ apr_status_t InstawebContext::Cleanup(void* object) {
 void InstawebContext::ComputeContentEncoding(request_rec* request) {
   // Check if the content is gzipped. Steal from mod_deflate.
   const char* encoding = apr_table_get(
-      request->headers_out, "Content-Encoding");
+      request->headers_out, HttpAttributes::kContentEncoding);
   if (encoding) {
     const char* err_enc = apr_table_get(request->err_headers_out,
-                                        "Content-Encoding");
+                                        HttpAttributes::kContentEncoding);
     if (err_enc) {
       // We don't properly handle stacked encodings now.
       content_encoding_ = kOther;
     }
   } else {
-    encoding = apr_table_get(request->err_headers_out, "Content-Encoding");
+    encoding = apr_table_get(request->err_headers_out,
+                             HttpAttributes::kContentEncoding);
   }
 
   if (encoding) {
     // TODO(jmarantz): handle 'deflate'
-    if (strcasecmp(encoding, "gzip") == 0) {
+    if (strcasecmp(encoding, HttpAttributes::kGzip) == 0) {
       content_encoding_ = kGzip;
     } else {
       content_encoding_ = kOther;

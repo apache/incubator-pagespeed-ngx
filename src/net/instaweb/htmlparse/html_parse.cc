@@ -161,7 +161,7 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
 
 void HtmlParse::StartParse(const StringPiece& url) {
   line_number_ = 1;
-  url.CopyToString(&filename_);
+  url.CopyToString(&url_);
   if (timer_ != NULL) {
     parse_start_time_us_ = timer_->NowUs();
     InfoHere("HtmlParse::StartParse");

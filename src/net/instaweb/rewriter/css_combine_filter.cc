@@ -238,7 +238,7 @@ bool CssCombineFilter::WriteCombination(
       combined_contents += " {\n";
     }
 
-    // We need a real CSS parser.  But for now we have to make
+    // TODO(sligocki): We need a real CSS parser.  But for now we have to make
     // any URLs absolute.
     written = css_tag_scanner_.AbsolutifyUrls(contents, input->url(),
                                               &writer, handler);

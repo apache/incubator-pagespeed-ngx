@@ -28,6 +28,7 @@ struct server_rec;
 
 namespace net_instaweb {
 
+class AprStatistics;
 class SerfUrlAsyncFetcher;
 class SerfUrlFetcher;
 
@@ -66,6 +67,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   StringPiece file_cache_path() { return file_cache_path_; }
   int64 file_cache_clean_size_kb() { return file_cache_clean_size_kb_; }
   int64 fetcher_time_out_ms() { return fetcher_time_out_ms_; }
+  AprStatistics* statistics() { return statistics_; }
+  void set_statistics(AprStatistics* x) { statistics_ = x; }
 
  protected:
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -100,6 +103,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   std::set<RewriteDriver*> active_rewrite_drivers_;
   SerfUrlFetcher* serf_url_fetcher_;
   SerfUrlAsyncFetcher* serf_url_async_fetcher_;
+  AprStatistics* statistics_;
 
   // TODO(jmarantz): These options could be consolidated in a protobuf or
   // some other struct, which would keep them distinct from the rest of the

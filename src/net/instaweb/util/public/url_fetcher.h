@@ -44,7 +44,7 @@ class UrlFetcher {
   virtual bool StreamingFetchUrl(const std::string& url,
                                  const MetaData& request_headers,
                                  MetaData* response_headers,
-                                 Writer* fetched_content_writer,
+                                 Writer* response_writer,
                                  MessageHandler* message_handler) = 0;
 
   // Convenience method for fetching URL into a string, with no headers in

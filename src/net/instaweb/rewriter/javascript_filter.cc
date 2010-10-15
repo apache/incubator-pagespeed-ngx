@@ -48,11 +48,16 @@ JavascriptFilter::JavascriptFilter(RewriteDriver* driver,
       script_src_(NULL),
       resource_manager_(driver->resource_manager()),
       some_missing_scripts_(false),
+      config_(driver->resource_manager()->statistics()),
       s_script_(html_parse_->Intern("script")),
       s_src_(html_parse_->Intern("src")),
       s_type_(html_parse_->Intern("type")) { }
 
 JavascriptFilter::~JavascriptFilter() { }
+
+void JavascriptFilter::Initialize(Statistics* statistics) {
+  JavascriptRewriteConfig::Initialize(statistics);
+}
 
 void JavascriptFilter::StartScriptElement(HtmlElement* element) {
   static const char kTextJavascript[] = "text/javascript";
@@ -114,7 +119,7 @@ void JavascriptFilter::RewriteInlineScript() {
     std::string script_buffer;
     const StringPiece script = FlattenBuffer(&script_buffer);
     MessageHandler* message_handler = html_parse_->message_handler();
-    JavascriptCodeBlock code_block(script, config_, message_handler);
+    JavascriptCodeBlock code_block(script, &config_, message_handler);
     JavascriptLibraryId library = code_block.ComputeJavascriptLibrary();
     if (library.recognized()) {
       html_parse_->InfoHere("Script is %s %s",
@@ -194,7 +199,7 @@ void JavascriptFilter::RewriteExternalScript() {
       if (ok) {
         StringPiece script = script_input->contents();
         MessageHandler* message_handler = html_parse_->message_handler();
-        JavascriptCodeBlock code_block(script, config_, message_handler);
+        JavascriptCodeBlock code_block(script, &config_, message_handler);
         JavascriptLibraryId library = code_block.ComputeJavascriptLibrary();
         if (library.recognized()) {
           html_parse_->InfoHere("Script %s is %s %s", script_url.c_str(),
@@ -319,7 +324,7 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
         script_input->ContentsValid()) {
       StringPiece script = script_input->contents();
       std::string script_out;
-      JavascriptCodeBlock code_block(script, config_, message_handler);
+      JavascriptCodeBlock code_block(script, &config_, message_handler);
       ok = WriteExternalScriptTo(script_input.get(), code_block.Rewritten(),
                                  output_resource);
     } else {

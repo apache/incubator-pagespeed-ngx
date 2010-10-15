@@ -19,9 +19,12 @@
 
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include <string>
 
 namespace net_instaweb {
+
+namespace {
 
 // This sample code comes from Douglas Crockford's jsmin example.
 // The same code is used to test jsmin in pagespeed.
@@ -103,54 +106,95 @@ std::string kAfterCompilation =
     "is.ie=is.ns=false;is.opera=true;}\n"
     "if(is.ua.indexOf('gecko')>=0){is.ie=is.ns=false;is.gecko=true;}";
 
+const char kJavascriptBlocksMinified[] = "javascript_blocks_minified";
+const char kJavascriptBytesSaved[] = "javascript_bytes_saved";
+const char kJavascriptMinificationFailures[] =
+    "javascript_minification_failures";
+const char kJavascriptTotalBlocks[] = "javascript_total_blocks";
+
+void ExpectStats(const SimpleStats& stats,
+                 int total_blocks, int minified_blocks, int failures,
+                 int saved_bytes) {
+  EXPECT_EQ(minified_blocks,
+            stats.GetVariable(kJavascriptBlocksMinified)->Get());
+  EXPECT_EQ(total_blocks,
+            stats.GetVariable(kJavascriptTotalBlocks)->Get());
+  EXPECT_EQ(failures,
+            stats.GetVariable(kJavascriptMinificationFailures)->Get());
+  EXPECT_EQ(saved_bytes,
+            stats.GetVariable(kJavascriptBytesSaved)->Get());
+}
+
 TEST(JsCodeBlockTest, Config) {
-  JavascriptRewriteConfig config;
+  SimpleStats stats;
+  JavascriptRewriteConfig::Initialize(&stats);
+  JavascriptRewriteConfig config(&stats);
   EXPECT_TRUE(config.minify());
   config.set_minify(false);
   EXPECT_FALSE(config.minify());
   config.set_minify(true);
   EXPECT_TRUE(config.minify());
+  ExpectStats(stats, 0, 0, 0, 0);
 }
 
 TEST(JsCodeBlockTest, Rewrite) {
-  JavascriptRewriteConfig config;
+  SimpleStats stats;
+  JavascriptRewriteConfig::Initialize(&stats);
+  JavascriptRewriteConfig config(&stats);
   GoogleMessageHandler handler;
-  JavascriptCodeBlock block(kBeforeCompilation, config, &handler);
+  JavascriptCodeBlock block(kBeforeCompilation, &config, &handler);
   EXPECT_TRUE(block.ProfitableToRewrite());
   EXPECT_EQ(kAfterCompilation, block.Rewritten());
+  ExpectStats(stats, 1, 1, 0,
+              kBeforeCompilation.size() - kAfterCompilation.size());
 }
 
 TEST(JsCodeBlockTest, NoRewrite) {
-  JavascriptRewriteConfig config;
+  SimpleStats stats;
+  JavascriptRewriteConfig::Initialize(&stats);
+  JavascriptRewriteConfig config(&stats);
   GoogleMessageHandler handler;
-  JavascriptCodeBlock block(kAfterCompilation, config, &handler);
+  JavascriptCodeBlock block(kAfterCompilation, &config, &handler);
   EXPECT_FALSE(block.ProfitableToRewrite());
   EXPECT_EQ(kAfterCompilation, block.Rewritten());
+  ExpectStats(stats, 1, 0, 0, 0);
 }
 
 TEST(JsCodeBlockTest, TruncatedComment) {
-  JavascriptRewriteConfig config;
+  SimpleStats stats;
+  JavascriptRewriteConfig::Initialize(&stats);
+  JavascriptRewriteConfig config(&stats);
   GoogleMessageHandler handler;
-  JavascriptCodeBlock block(kTruncatedComment, config, &handler);
+  JavascriptCodeBlock block(kTruncatedComment, &config, &handler);
   EXPECT_TRUE(block.ProfitableToRewrite());
   EXPECT_EQ(kTruncatedRewritten, block.Rewritten());
+  ExpectStats(stats, 1, 1, 1,
+              kTruncatedComment.size() - kTruncatedRewritten.size());
 }
 
 TEST(JsCodeBlockTest, TruncatedString) {
-  JavascriptRewriteConfig config;
+  SimpleStats stats;
+  JavascriptRewriteConfig::Initialize(&stats);
+  JavascriptRewriteConfig config(&stats);
   GoogleMessageHandler handler;
-  JavascriptCodeBlock block(kTruncatedString, config, &handler);
+  JavascriptCodeBlock block(kTruncatedString, &config, &handler);
   EXPECT_FALSE(block.ProfitableToRewrite());
   EXPECT_EQ(kTruncatedString, block.Rewritten());
+  ExpectStats(stats, 1, 0, 1, 0);
 }
 
 TEST(JsCodeBlockTest, NoMinification) {
-  JavascriptRewriteConfig config;
+  SimpleStats stats;
+  JavascriptRewriteConfig::Initialize(&stats);
+  JavascriptRewriteConfig config(&stats);
   config.set_minify(false);
   GoogleMessageHandler handler;
-  JavascriptCodeBlock block(kBeforeCompilation, config, &handler);
+  JavascriptCodeBlock block(kBeforeCompilation, &config, &handler);
   EXPECT_FALSE(block.ProfitableToRewrite());
   EXPECT_EQ(kBeforeCompilation, block.Rewritten());
+  ExpectStats(stats, 1, 0, 0, 0);
 }
+
+}  // namespace
 
 }  // namespace net_instaweb
