@@ -1,22 +1,27 @@
 # This is a sample configuration file for Instaweb.  It must be edited by
 # the installer to provide the correct HOSTNAME under InstawebUrlPrefix.
 
+# TODO(jmarantz): rename to pagespeed_module
 <IfModule instaweb_module>
     # Direct Apache to send all HTML output to the instaweb output handler.
-    SetOutputFilter INSTAWEB_OUTPUT_FILTER
+    SetOutputFilter INSTAWEB_OUTPUT_FILTER;DEFLATE
 
-    # Direct Apache to handle all URL requests for resources written with the
-    # "/instaweb/" path prefix to be handled by Instaweb's resource generator.
-    <Location /instaweb>
+    # Give mod_pagespeed as chance to handle all requests.
+    # TODO(jmarantz): rename to pagespeed_handler
+    <Location />
           SetHandler instaweb_resource_generator
     </Location>
+
     # This page lets you view statistics about the instaweb module.
     # TODO(abliss): add access controls to this handler
+    # TODO(jmarantz): rename to 'pagespeed_statistics'
     <Location /instaweb_statistics>
           SetHandler instaweb_statistics
     </Location>
+
     # This handles the client-side instrumentation callbacks which are injected
     # by the add_instrumentation filter.
+    # TODO(jmarantz): rename to 'pagespeed_beacon'
     <Location /instaweb_beacon>
           SetHandler instaweb_beacon
     </Location>
@@ -24,10 +29,10 @@
     Instaweb on
 
     InstawebUrlPrefix                "http://HOSTNAME/instaweb/"
-    InstawebFileCachePath            "INSTAWEB_FILE_ROOT/cache/"
+    InstawebFileCachePath            "MOD_PAGESPEED_FILE_ROOT/cache/"
     InstawebFileCacheSizeKb          102400
     InstawebFileCacheCleanIntervalMs 3600000
-    InstawebGeneratedFilePrefix      "INSTAWEB_FILE_ROOT/files/"
+    InstawebGeneratedFilePrefix      "MOD_PAGESPEED_FILE_ROOT/files/"
     InstawebLRUCacheKbPerProcess     1024
     InstawebLRUCacheByteLimit        16384
 
@@ -45,6 +50,13 @@
 
     # The following passes are known to be riskier.
     # InstawebRewriters outline_css,outline_javascript,remove_comments
+
+
+    # When Apache is set up as a browser proxy, mod_pagespeed can record
+    # web-sites as they are requested, so that an image of the web is built
+    # up in the directory of a users choosing.
+    SLURP_DIR_COMMAND
+    SLURP_READ_ONLY_COMMAND
 </IfModule>
 
 
@@ -54,7 +66,7 @@
 # In this example, from http://httpd.apache.org/docs/2.0/mod/mod_deflate.html
 # we compress everything except images
 #
-# mod_deflate will run after mod_instaweb, because mod_instaweb is registered
+# mod_deflate will run after mod_pagespeed, because mod_pagespeed is registered
 # as type AP_FTYPE_RESOURCE, and mod_deflate is registered as type
 # AP_FTYPE_CONTENT_SET.
 

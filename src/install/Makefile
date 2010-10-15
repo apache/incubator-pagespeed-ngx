@@ -1,4 +1,4 @@
-# This Makefile is used to help drive the installation of mod_instaweb into
+# This Makefile is used to help drive the installation of mod_pagespeed into
 # an Apache installation.
 #
 # Note that the location of the Apache configuration files may vary by
@@ -10,7 +10,7 @@
 #     Custom Apache build from source	/usr/local/apache2/conf/extra/
 #
 # In the case of the custom Apache build, you must also
-# edit /usr/local/apache2/conf # to add "Include conf/extra/instaweb.conf"
+# edit /usr/local/apache2/conf # to add "Include conf/extra/pagespeed.conf"
 #
 # The goal of this Makefile is to help generate basic default
 # configuration files that can then be edited to tune the HTML
@@ -26,7 +26,7 @@
 #    (b) Run "sudo make install" to install them automatically.
 #
 #
-# To install Instaweb properly, we need to know the locations of
+# To install mod_pagespeed properly, we need to know the locations of
 # Apache configuration scripts and binaries.  These can are specified
 # as Makefile variables which can be overridden on the command line.
 # They have defaults, which will often need to be changed.
@@ -56,26 +56,26 @@ APACHE_STOP = $(APACHE_CONTROL_PROGRAM) stop
 
 # A temp directory to stage generated configuration files.  This must be
 # writable by the user, and readable by root.
-STAGING_DIR = /tmp/instaweb.install
+STAGING_DIR = /tmp/mod_pagespeed.install
 
-# The instaweb module is specified relative to the install directory,
+# The mod_pagespeed module is specified relative to the install directory,
 # which is src/install.
-INSTAWEB_ROOT = ..
-INSTAWEB_MODULE = $(INSTAWEB_ROOT)/out/Release/libmod_instaweb.so
+MOD_PAGESPEED_ROOT = ..
+PAGESPEED_MODULE = $(MOD_PAGESPEED_ROOT)/out/Release/libmod_pagespeed.so
 
 # On systems dervied from the NCSA configuration files by Rob McCool,
 # you enable a module by writing its .conf file into 
-# $(APACHE_ROOT)/mods-enabled/instaweb.conf, and a single Load command into
-# $(APACHE_ROOT)/mods-enabled/instaweb.conf.  So if that exists, then we'll
+# $(APACHE_ROOT)/mods-enabled/pagespeed.conf, and a single Load command into
+# $(APACHE_ROOT)/mods-enabled/pagespeed.conf.  So if that exists, then we'll
 # try to automate that.
 MODS_ENABLED_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-enabled ]; then \
 	echo $(APACHE_ROOT)/mods-enabled; fi)
 
-# Determines should Instaweb should write files
-INSTAWEB_FILE_ROOT = /var/instaweb
+# Determines should mod_pagespeed should write files
+MOD_PAGESPEED_FILE_ROOT = /var/mod_pagespeed
 
 # The username used to run apache.  This is needed to create the directory
-# used to store instaweb files and cache data.
+# used to store mod_pagespeed files and cache data.
 APACHE_USER = www-data
 
 # Set this to 1 to enable mod_proxy and mod_rewrite
@@ -93,7 +93,7 @@ echo_vars:
 	@echo "   APACHE_ROOT=$(APACHE_ROOT)"
 	@echo "   APACHE_START=$(APACHE_START)"
 	@echo "   APACHE_STOP=$(APACHE_STOP)"
-	@echo "   INSTAWEB_FILE_ROOT=$(INSTAWEB_FILE_ROOT)"
+	@echo "   MOD_PAGESPEED_FILE_ROOT=$(MOD_PAGESPEED_FILE_ROOT)"
 	@echo "   MODS_ENABLED_DIR=$(MODS_ENABLED_DIR)"
 	@echo "   STAGING_DIR=$(STAGING_DIR)"
 
@@ -114,7 +114,7 @@ ifeq ($(MODS_ENABLED_DIR),)
 # This is a CentOS-like installation, where there is no explicit .load
 # file, and we instead pre-pend the LoadModule command to the .conf file.
 APACHE_CONF = $(APACHE_ROOT)/conf.d
-CONF_SOURCES = $(STAGING_DIR)/instaweb.load $(STAGING_DIR)/instaweb.conf
+CONF_SOURCES = $(STAGING_DIR)/pagespeed.load $(STAGING_DIR)/pagespeed.conf
 
 else
 
@@ -122,14 +122,14 @@ else
 # separately into a mods-enabled directory, and the .conf file is loaded
 # independently.
 MODS_ENABLED_INSTALL_COMMANDS = \
-	cp $(STAGING_DIR)/instaweb.load $(MODS_ENABLED_DIR) ; \
+	cp $(STAGING_DIR)/pagespeed.load $(MODS_ENABLED_DIR) ; \
 	rm -f $(MODS_ENABLED_DIR)/headers.load ; \
 	cd $(MODS_ENABLED_DIR) && ln -s ../mods-available/headers.load ; \
 	rm -f $(MODS_ENABLED_DIR)/deflate.load ; \
 	cd $(MODS_ENABLED_DIR) && ln -s ../mods-available/deflate.load
 
 APACHE_CONF = $(MODS_ENABLED_DIR)
-CONF_SOURCES = $(STAGING_DIR)/instaweb.conf
+CONF_SOURCES = $(STAGING_DIR)/pagespeed.conf
 
 endif
 
@@ -141,14 +141,29 @@ ifeq ($(ENABLE_PROXY),1)
 CONF_SOURCES += $(STAGING_DIR)/proxy.conf
 endif
 
+APACHE_SLURP_READ_ONLY_COMMAND=\#InstawebSlurpReadOnly on
+
+ifeq ($(SLURP_DIR),)
+  APACHE_SLURP_DIR_COMMAND = \#InstawebSlurpDirectory ...
+else
+  APACHE_SLURP_DIR_COMMAND = InstawebSlurpDirectory $(SLURP_DIR)
+  ifeq ($(SLURP_WRITE),1)
+    APACHE_SLURP_READ_ONLY_COMMAND=InstawebSlurpReadOnly off
+  else
+    APACHE_SLURP_READ_ONLY_COMMAND=InstawebSlurpReadOnly on
+  endif
+endif
+
 $(STAGING_DIR)/%.conf : %.conf.template
 	sed -e s@HOSTNAME@$(HOSTNAME)@g \
             -e s@APACHE_DOC_ROOT@$(APACHE_DOC_ROOT)@g \
-	    -e s@INSTAWEB_FILE_ROOT@$(INSTAWEB_FILE_ROOT)@g \
+	    -e s@MOD_PAGESPEED_FILE_ROOT@$(MOD_PAGESPEED_FILE_ROOT)@g \
 	    -e s@APACHE_MODULES@$(APACHE_MODULES)@g \
+	    -e "s@SLURP_DIR_COMMAND@$(APACHE_SLURP_DIR_COMMAND)@g" \
+	    -e "s@SLURP_READ_ONLY_COMMAND@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
 		< $< > $@
 
-CONF_TEMPLATES = $(STAGING_DIR)/instaweb.conf \
+CONF_TEMPLATES = $(STAGING_DIR)/pagespeed.conf \
 		 $(STAGING_DIR)/proxy.conf
 
 setup_staging_dir :
@@ -157,32 +172,33 @@ setup_staging_dir :
 
 # Generate a configuration file and copy it to the staging area.
 # Also copy the example tree, and the built Apache module
+# TODO(jmarantz): change 'instaweb_module' to 'pagespeed_module'
 staging: setup_staging_dir $(CONF_TEMPLATES)
-	echo "LoadModule instaweb_module $(APACHE_MODULES)/mod_instaweb.so" \
-	 	> $(STAGING_DIR)/instaweb.load
+	echo "LoadModule instaweb_module $(APACHE_MODULES)/mod_pagespeed.so" \
+	 	> $(STAGING_DIR)/pagespeed.load
 	$(MODS_ENABLED_STAGING_COMMANDS)
-	cp -rp instaweb_example $(STAGING_DIR)
-	cp $(INSTAWEB_MODULE) $(STAGING_DIR)/mod_instaweb.so
+	cp -rp mod_pagespeed_example $(STAGING_DIR)
+	cp $(PAGESPEED_MODULE) $(STAGING_DIR)/mod_pagespeed.so
 
-# To install the Instaweb configuration into the system, you must
+# To install the mod_pagespeed configuration into the system, you must
 # run this as root, or under sudo.
-install : instaweb_file_root
+install : mod_pagespeed_file_root
 	$(MODS_ENABLED_INSTALL_COMMANDS)
-	cat $(CONF_SOURCES) > $(APACHE_CONF)/instaweb.conf
-	rm -rf $(APACHE_DOC_ROOT)/instaweb_example
-	cp -r $(STAGING_DIR)/instaweb_example $(APACHE_DOC_ROOT)
-	chown -R $(APACHE_USER) $(APACHE_DOC_ROOT)/instaweb_example
-	cp $(STAGING_DIR)/mod_instaweb.so $(APACHE_MODULES)
+	cat $(CONF_SOURCES) > $(APACHE_CONF)/pagespeed.conf
+	rm -rf $(APACHE_DOC_ROOT)/mod_pagespeed_example
+	cp -r $(STAGING_DIR)/mod_pagespeed_example $(APACHE_DOC_ROOT)
+	chown -R $(APACHE_USER) $(APACHE_DOC_ROOT)/mod_pagespeed_example
+	cp $(STAGING_DIR)/mod_pagespeed.so $(APACHE_MODULES)
 
-instaweb_file_root :
-	mkdir -p $(INSTAWEB_FILE_ROOT)/cache
-	mkdir -p $(INSTAWEB_FILE_ROOT)/files
-	chown -R $(APACHE_USER) $(INSTAWEB_FILE_ROOT)
+mod_pagespeed_file_root :
+	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)/cache
+	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)/files
+	chown -R $(APACHE_USER) $(MOD_PAGESPEED_FILE_ROOT)
 
 flush_disk_cache :
-	rm -rf $(INSTAWEB_FILE_ROOT)
-	$(MAKE) INSTAWEB_FILE_ROOT=$(INSTAWEB_FILE_ROOT) \
-		APACHE_USER=$(APACHE_USER) instaweb_file_root
+	rm -rf $(MOD_PAGESPEED_FILE_ROOT)
+	$(MAKE) MOD_PAGESPEED_FILE_ROOT=$(MOD_PAGESPEED_FILE_ROOT) \
+		APACHE_USER=$(APACHE_USER) mod_pagespeed_file_root
 
 # Starts Apache server
 start :
@@ -205,22 +221,24 @@ restart : staging
 	    ENABLE_PROXY=$(ENABLE_PROXY)
 	sudo $(APACHE_START)
 
-# Tests that the installed Instaweb server is working.
+# Tests that the installed mod_pagespeed server is working.
 test : verify_instaweb_header verify_css_files_combined
 
-SAMPLE_URL = http://$(HOSTNAME)/instaweb_example/combine_mixed.html
+SAMPLE_URL = http://$(HOSTNAME)/mod_pagespeed_example/combine_mixed.html
 
-# Verify that HTML files are served with the expected Instaweb header.
+# Verify that HTML files are served with the expected instaweb header.
+# TODO(jmarantz): rename header to X-mod-pagespeed
 verify_instaweb_header :
 	wget -O - --save-headers $(SAMPLE_URL) 2>&1 | grep x-instaweb
-	@echo Instaweb is running in Apache and returning the expected header
+	@echo mod_pagespeed is running in Apache and returning the expected header
 
 TMP_DIR = /tmp
 
-# Verify that Instaweb successfully combines four CSS files into one.  The
+# Verify that mod_pagespeed successfully combines four CSS files into one.  The
 # first call to 'wget' initiates async fetches for the 4 CSS files.  The sleep
 # statement helps make sure those async fetches complete so the CSS files are
-# in cache by the time the next call to wget is made.
+# in cache by the time the next call to wget is made.  A final call to 'wget'
+# ensures that the rewritten css file can be fetched.
 verify_css_files_combined :
 	wget -O - $(SAMPLE_URL) > /dev/null 2>&1
 	sleep 2
@@ -228,4 +246,5 @@ verify_css_files_combined :
 	echo 1 > $(TMP_DIR)/css_count_expected.txt
 	diff $(TMP_DIR)/css_count.txt $(TMP_DIR)/css_count_expected.txt
 	rm -f $(TMP_DIR)/css_count.txt $(TMP_DIR)/css_count_expected.txt
-	@echo Instaweb successfully combined 4 CSS files into 1
+	wget -r -O - $(SAMPLE_URL) > /dev/null 2>&1
+	@echo mod_pagespeed successfully combined 4 CSS files into 1

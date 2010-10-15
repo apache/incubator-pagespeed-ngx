@@ -34,7 +34,7 @@ TEST_F(ResourceEncoderTest, TestEncode) {
   encoder_.set_hash("hash");
   encoder_.set_ext("ext");
   EXPECT_EQ(std::string("id.hash.name.ext"), encoder_.Encode());
-  EXPECT_EQ(std::string("id.name"), encoder_.EncodeNameKey());
+  EXPECT_EQ(std::string("id.name"), encoder_.EncodeIdName());
   EXPECT_EQ(std::string("hash.ext"), encoder_.EncodeHashExt());
 }
 

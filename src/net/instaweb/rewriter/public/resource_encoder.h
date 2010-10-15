@@ -38,10 +38,13 @@ class ResourceEncoder {
   // format "ID.HASH.NAME.EXT".
   std::string Encode() const;
 
-  // Encode a key that can used to do a lookup based on the filter-prefix
+  // Encode a key that can used to do a lookup based on an id
   // and the name.  This key can be used to find the hash-code for a
   // resource within the origin TTL.
-  std::string EncodeNameKey() const;
+  //
+  // The 'id' is a short code indicating which Instaweb rewriter was
+  // used to generate the resource.
+  std::string EncodeIdName() const;
 
   // Note: there is no need at this time to decode the name key.
 

@@ -217,7 +217,7 @@ std::string ResourceManager::ConstructNameKey(
   ResourceEncoder encoder;
   encoder.set_id(output->filter_prefix());
   encoder.set_name(output->name());
-  return encoder.EncodeNameKey();
+  return encoder.EncodeIdName();
 }
 
 OutputResource* ResourceManager::CreateNamedOutputResource(

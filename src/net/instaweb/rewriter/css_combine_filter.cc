@@ -90,8 +90,6 @@ void CssCombineFilter::EndElement(HtmlElement* element) {
   const char* media;
   if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
     css_elements_.push_back(element);
-  } else if (element->tag() == s_head_) {
-    EmitCombinations(element);
   }
 }
 
@@ -105,27 +103,25 @@ void CssCombineFilter::IEDirective(const std::string& directive) {
 }
 
 void CssCombineFilter::Flush() {
-  // TODO(jmarantz): Ideally, all the css links will be encountered in the
-  // <head>, before the first flush.  It's possible we'll get a Flush,
-  // during the <head> parse, and there may be some css files before it,
-  // and some afterward.  And there may be css links encountered in the body,
-  // and there may have Flushed our head css combinations first.  So all of that
-  // will have to be dealt with by calling EmitCombinations, after finding the
-  // appropriate place in the DOM to insert the combination.
-  //
-  // The best performance will come when the entire document is parsed
-  // without a Flush, in which case we can move all the css links into
-  // the <head>, but even that is not yet implemented.
+  // TODO(sligocki): We could probably combine CSS files in a second flush as
+  // well. Where would we put the styles? Wherever the first one was?
+  if (head_element_ != NULL) {
+    EmitCombinations(head_element_);
+  }
+  head_element_ = NULL; // Head element cannot be editted after we flush.
   css_elements_.clear();
 }
 
-void CssCombineFilter::EmitCombinations(HtmlElement* head) {
+// Try to combine all the CSS files we have seen so far. Place the result in
+// destination_parent.
+void CssCombineFilter::EmitCombinations(HtmlElement* destination_parent) {
+  CHECK(html_parse_->IsRewritable(destination_parent));
   MessageHandler* handler = html_parse_->message_handler();
 
   // It's possible that we'll have found 2 css files to combine, but one
   // of them became non-rewritable due to a flush, and thus we'll wind
   // up spriting just one file, so do a first pass counting rewritable
-  // css linkes.  Also, load the CSS content in this pass.  We will only
+  // css links.  Also, load the CSS content in this pass.  We will only
   // do a combine if we have more than one css element that successfully
   // loaded.
   std::vector<HtmlElement*> combine_elements;
@@ -178,7 +174,8 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
     }
     Encode(css_combine_url, &url_safe_id);
 
-    HtmlElement* combine_element = html_parse_->NewElement(head, s_link_);
+    HtmlElement* combine_element =
+        html_parse_->NewElement(destination_parent, s_link_);
     combine_element->AddAttribute(s_rel_, "stylesheet", "\"");
     combine_element->AddAttribute(s_type_, "text/css", "\"");
 
@@ -200,7 +197,10 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
         html_parse_->DeleteElement(combine_elements[i]);
       }
       combine_element->AddAttribute(s_href_, combination->url(), "\"");
-      html_parse_->InsertElementBeforeCurrent(combine_element);
+      // TODO(sligocki): Put at top of head.
+      // Right now it's going in the bottom because then if this is called
+      // multiple times subsequent calls place CSS elements below previous ones.
+      html_parse_->AppendChild(destination_parent, combine_element);
       html_parse_->InfoHere("Combined %d CSS files into one",
                             static_cast<int>(combine_elements.size()));
       if (css_file_count_reduction_ != NULL) {
@@ -213,11 +213,10 @@ void CssCombineFilter::EmitCombinations(HtmlElement* head) {
                              combine_resources.end());
 }
 
-bool CssCombineFilter::WriteCombination(
-    const ResourceVector& combine_resources,
-    const StringVector& combine_media,
-    OutputResource* combination,
-    MessageHandler* handler) {
+bool CssCombineFilter::WriteCombination(const ResourceVector& combine_resources,
+                                        const StringVector& combine_media,
+                                        OutputResource* combination,
+                                        MessageHandler* handler) {
   bool written = true;
   std::string combined_contents;
   StringWriter writer(&combined_contents);
@@ -232,6 +231,7 @@ bool CssCombineFilter::WriteCombination(
       min_origin_expiration_time_ms = input_expire_time_ms;
     }
 
+    // TODO(sligocki): Stop combining multiple media types.
     const std::string& media = combine_media[i];
     if (!media.empty()) {
       combined_contents += "\n@Media ";

@@ -55,7 +55,7 @@ std::string ResourceEncoder::Encode() const {
                 ext_);
 }
 
-std::string ResourceEncoder::EncodeNameKey() const {
+std::string ResourceEncoder::EncodeIdName() const {
   CHECK(id_.find(kSeparatorChar) == StringPiece::npos);
   CHECK(name_.find(kSeparatorChar) == StringPiece::npos);
   return StrCat(id_, kSeparatorString, name_);

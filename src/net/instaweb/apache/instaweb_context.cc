@@ -28,7 +28,7 @@ namespace net_instaweb {
 
 InstawebContext::InstawebContext(request_rec* request,
                                  ApacheRewriteDriverFactory* factory,
-                                 const std::string& base_url)
+                                 const std::string& absolute_url)
     : content_encoding_(kNone),
       factory_(factory),
       rewrite_driver_(factory->GetRewriteDriver()),
@@ -48,12 +48,10 @@ InstawebContext::InstawebContext(request_rec* request,
     inflater_->Init();
   }
 
-  LOG(INFO) << "Setting base url to " << base_url;
-  rewrite_driver_->SetBaseUrl(base_url);
   // TODO(lsong): Bypass the string buffer, writer data directly to the next
   // apache bucket.
   rewrite_driver_->SetWriter(&string_writer_);
-  rewrite_driver_->html_parse()->StartParse(request->unparsed_uri);
+  rewrite_driver_->html_parse()->StartParse(absolute_url);
 }
 
 InstawebContext::~InstawebContext() {

@@ -193,17 +193,17 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
       return ap_pass_brigade(filter->next, bb);
     }
 
-    std::string base_url;
+    std::string absolute_url;
     if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
-      base_url = request->unparsed_uri;
+      absolute_url = request->unparsed_uri;
     } else {
-      base_url = ap_construct_url(request->pool, request->unparsed_uri,
+      absolute_url = ap_construct_url(request->pool, request->unparsed_uri,
                                   request);
     }
     LOG(INFO) << "unparsed=" << request->unparsed_uri
-              << ", base_url=" << base_url;
+              << ", absolute_url=" << absolute_url;
 
-    context = new InstawebContext(request, factory, base_url);
+    context = new InstawebContext(request, factory, absolute_url);
     filter->ctx = context;
 
     InstawebContext::ContentEncoding encoding =
@@ -230,7 +230,7 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
               << request->unparsed_uri;
     if ((request->filename != NULL) &&
         (strncmp(request->filename, "proxy:", 6) == 0)) {
-      base_url.assign(request->filename + 6, strlen(request->filename) - 6);
+      absolute_url.assign(request->filename + 6, strlen(request->filename) - 6);
     }
 
     apr_table_setn(request->headers_out, "x-instaweb", kInstawebVersion);

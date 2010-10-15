@@ -52,13 +52,15 @@ class MessageHandler;
 class AprVariable : public Variable {
  public:
   explicit AprVariable(const StringPiece& name);
+  int64 Get64() const;
   virtual int Get() const;
   virtual void Set(int newValue);
   virtual void Add(int delta);
  private:
   friend class AprStatistics;
   // Logs an error message and returns false if the result is not SUCCESS.
-  bool CheckResult(const apr_status_t result, const StringPiece& verb) const;
+  bool CheckResult(const apr_status_t result, const StringPiece& verb,
+                   const StringPiece& filename = kEmptyString) const;
   // Initialize this variable's mutex
   bool InitMutex(apr_pool_t* pool, bool parent);
   // Initialize this variable's shared memory segment.
@@ -72,7 +74,7 @@ class AprVariable : public Variable {
   // Pointer to the shared-memory segment containing our current value.
   apr_shm_t* shm_;
   // Offset within the shared-memory segment for our current value.
-  int* value_ptr_;
+  int64* value_ptr_;
 };
 
 class AprStatistics : public StatisticsTemplate<AprVariable> {

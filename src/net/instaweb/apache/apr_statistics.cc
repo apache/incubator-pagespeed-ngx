@@ -34,6 +34,7 @@ extern "C" {
 
 namespace {
 
+const char* kStatisticsDir = "mod_instaweb";
 const char* kStatisticsMutexPrefix = "mod_instaweb/stats_mutex.";
 const char* kStatisticsValuePrefix = "mod_instaweb/stats_value.";
 
@@ -45,8 +46,8 @@ AprVariable::AprVariable(const StringPiece& name)
     : mutex_(NULL), name_(name.as_string()), shm_(NULL), value_ptr_(NULL) {
 }
 
-int AprVariable::Get() const {
-  int value = -1;
+int64 AprVariable::Get64() const {
+  int64 value = -1;
   if (mutex_ == NULL) {
     // This variable was not properly initialized.
     return value;
@@ -57,6 +58,10 @@ int AprVariable::Get() const {
   value = *value_ptr_;
   CheckResult(apr_global_mutex_unlock(mutex_), "unlock mutex");
   return value;
+}
+
+int AprVariable::Get() const {
+  return Get64();
 }
 
 void AprVariable::Set(int newValue) {
@@ -83,12 +88,14 @@ void AprVariable::Add(int delta) {
   CheckResult(apr_global_mutex_unlock(mutex_), "unlock mutex");
 }
 
-bool AprVariable::CheckResult(const apr_status_t result,
-                              const StringPiece& verb) const {
+bool AprVariable::CheckResult(
+    const apr_status_t result, const StringPiece& verb,
+    const StringPiece& filename) const {
   if (result != APR_SUCCESS) {
    char buf[kStackBufferSize];
    apr_strerror(result, buf, sizeof(buf));
-   LOG(ERROR) << "Variable " << name_ << " cannot " << verb << ": " << buf;
+   LOG(ERROR) << "Variable " << name_ << " cannot " << verb << ": " << buf
+              << " " << filename;
    return false;
   }
   return true;
@@ -100,14 +107,20 @@ bool AprVariable::InitMutex(apr_pool_t* pool, bool parent) {
       pool, StrCat(kStatisticsMutexPrefix, name_).c_str());
   if (parent) {
     // We're being called from post_config.  Must create mutex.
+    // Ensure the directory exists
+    apr_dir_make(ap_server_root_relative(
+        pool, kStatisticsDir), APR_FPROT_OS_DEFAULT, pool);
+    // TODO(abliss): do we need to destroy this mutex later?
     if (CheckResult(apr_global_mutex_create(
-            &mutex_, filename, APR_LOCK_DEFAULT, pool), "create mutex")) {
+            &mutex_, filename, APR_LOCK_DEFAULT, pool),
+                    "create mutex", filename)) {
       // On apache installations which (a) are unix-based, (b) use a
       // flock-based mutex, and (c) start the parent process as root but child
       // processes as a less-privileged user, we need this extra code to set
       // up the permissions of the lock.
 #ifdef AP_NEED_SET_MUTEX_PERMS
-      CheckResult(unixd_set_global_mutex_perms(mutex_), "chown mutex");
+      CheckResult(unixd_set_global_mutex_perms(mutex_), "chown mutex",
+                  filename);
 #endif
       return true;
     }
@@ -115,14 +128,14 @@ bool AprVariable::InitMutex(apr_pool_t* pool, bool parent) {
     // We're being called from child_init.  Mutex must already exist.
     if (mutex_) {
       if (CheckResult(apr_global_mutex_child_init(&mutex_, filename, pool),
-                       "attach mutex")) {
+                      "attach mutex", filename)) {
         return true;
       } else {
         // Something went wrong; disable this variable by nulling its mutex.
         mutex_ = NULL;
       }
     } else {
-      CheckResult(APR_ENOLOCK, "attach mutex");
+      CheckResult(APR_ENOLOCK, "attach mutex", filename);
     }
   }
   return false;
@@ -135,18 +148,19 @@ bool AprVariable::InitShm(apr_pool_t* pool, bool parent) {
     const char* filename = ap_server_root_relative(
         pool, StrCat(kStatisticsValuePrefix, name_).c_str());
     if (parent) {
-      int foo;
+      int64 foo;
+      // TODO(abliss): do we need to destroy this shm later?
       CheckResult(apr_shm_create(&shm_, sizeof(foo), filename, pool),
-                  "create shared memory");
+                  "create shared memory", filename);
     } else {
       CheckResult(apr_shm_attach(&shm_, filename, pool),
-                  "attach to shared memory");
+                  "attach to shared memory", filename);
     }
   }
   if (shm_) {
     // value_ptr always needs to be reset, even if shm was inherited,
     // since its base address may have changed.
-    value_ptr_ = reinterpret_cast<int*>(apr_shm_baseaddr_get(shm_));
+    value_ptr_ = reinterpret_cast<int64*>(apr_shm_baseaddr_get(shm_));
     return true;
   } else {
     // Something went wrong; disable this variable by nulling its mutex.
@@ -190,7 +204,7 @@ void AprStatistics::Dump(Writer* writer, MessageHandler* message_handler) {
     AprVariable* var = variables_[i];
     writer->Write(var->name(), message_handler);
     writer->Write(": ", message_handler);
-    writer->Write(IntegerToString(var->Get()), message_handler);
+    writer->Write(Integer64ToString(var->Get64()), message_handler);
     writer->Write("\n", message_handler);
   }
 }

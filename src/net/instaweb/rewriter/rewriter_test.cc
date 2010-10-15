@@ -151,10 +151,15 @@ class RewriterTest : public ResourceManagerTestBase {
     static const char html_input[] =
         "<head>\n"
         "  <link rel='stylesheet' href='a.css' type='text/css'>\n"
-        "  <link rel='stylesheet' href='b.css' type='text/css' media='print'>\n"
         "</head>\n"
-        "<body><div class=\"c1\"><div class=\"c2\"><p>\n"
-        "  Yellow on Blue</p></div></div></body>";
+        "<body>\n"
+        "  <div class=\"c1\">\n"
+        "    <div class=\"c2\">\n"
+        "      Yellow on Blue\n"
+        "    </div>\n"
+        "  </div>\n"
+        "  <link rel='stylesheet' href='b.css' type='text/css' media='print'>\n"
+        "</body>\n";
     const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
     const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
 
@@ -193,12 +198,17 @@ class RewriterTest : public ResourceManagerTestBase {
 
     std::string expected_output =
         "<head>\n"
-        "  \n"  // The whitespace from the original links is preserved
-        "  \n"
-        "<link rel=\"stylesheet\" type=\"text/css\" "
-        "href=\"" + combine_url + "\"></head>\n"
-        "<body><div class=\"c1\"><div class=\"c2\"><p>\n"
-        "  Yellow on Blue</p></div></div></body>";
+        "  \n"  // The whitespace from the original link is preserved here ...
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"" + combine_url +
+        "\"></head>\n"
+        "<body>\n"
+        "  <div class=\"c1\">\n"
+        "    <div class=\"c2\">\n"
+        "      Yellow on Blue\n"
+        "    </div>\n"
+        "  </div>\n"
+        "  \n"  // ... and here.
+        "</body>\n";
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
     std::string actual_combination;

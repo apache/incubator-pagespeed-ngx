@@ -19,6 +19,6 @@
       'type': 'none',
       'xcode_create_dependents_test_runner': 1,
       'dependencies': [
-        '../net/instaweb/instaweb_mod_instaweb.gyp:*',
+        '../net/instaweb/mod_pagespeed.gyp:*',
       ],} ]
 }

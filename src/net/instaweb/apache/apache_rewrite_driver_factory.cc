@@ -81,8 +81,6 @@ CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
       file_cache_path_, file_system(), filename_encoder(), policy,
       message_handler());
   if (lru_cache_kb_per_process_ != 0) {
-    // TODO(jmarantz): Allow configuration of the amount of memory to devote
-    // to the LRU cache.
     LRUCache* lru_cache = new LRUCache(lru_cache_kb_per_process_ * 1024);
 
     // We only add the threadsafe-wrapper to the LRUCache.  The FileCache
