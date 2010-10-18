@@ -28,15 +28,15 @@ namespace net_instaweb {
 
 class Hasher {
  public:
+  Hasher() { }
   virtual ~Hasher();
 
-  // Interface to compute a hash of a single string.
-  std::string Hash(const StringPiece& content);
+  // Interface to compute a hash of a single string.  This
+  // operation is thread-safe.
+  virtual std::string Hash(const StringPiece& content) const = 0;
 
-  // Interface to accummulate a hash of data.
-  virtual void Reset() = 0;
-  virtual void Add(const StringPiece& content) = 0;
-  virtual void ComputeHash(std::string* hash) = 0;
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Hasher);
 };
 
 }  // namespace net_instaweb

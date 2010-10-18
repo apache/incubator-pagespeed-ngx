@@ -158,6 +158,10 @@ class HtmlElement : public HtmlNode {
   // attributes.
   void DeleteAttribute(int i);
 
+  // Remove the attribute with the given name.  Return true if the attribute
+  // was deleted, false if it wasn't there to begin with.
+  bool DeleteAttribute(Atom name);
+
   // Look up attribute by name.  NULL if no attribute exists.
   // Use this for attributes whose value you might want to change
   // after lookup.

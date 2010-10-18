@@ -51,7 +51,6 @@ OutputResource::~OutputResource() {
 
 bool OutputResource::OutputWriter::Write(const StringPiece& data,
                                          MessageHandler* handler) {
-  hasher_->Add(data);
   bool ret = http_value_->Write(data, handler);
   if (file_writer_.get() != NULL) {
     ret &= file_writer_->Write(data, handler);
@@ -63,8 +62,6 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
     MessageHandler* handler) {
   value_.Clear();
   hash_.clear();
-  Hasher* hasher = resource_manager_->hasher();
-  hasher->Reset();
   CHECK(!writing_complete_);
   CHECK(output_file_ == NULL);
   if (resource_manager_->store_outputs_in_file_system()) {
@@ -89,19 +86,19 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
     }
     OutputWriter* writer = NULL;
     if (success) {
-      writer = new OutputWriter(output_file_, hasher, &value_);
+      writer = new OutputWriter(output_file_, &value_);
     }
     return writer;
   } else {
-    return new OutputWriter(NULL, hasher, &value_);
+    return new OutputWriter(NULL, &value_);
   };
 }
 
 bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
   CHECK(!writing_complete_);
   value_.SetHeaders(meta_data_);
-  Hasher* hasher = writer->hasher();
-  hasher->ComputeHash(&hash_);
+  Hasher* hasher = resource_manager_->hasher();
+  hash_ = hasher->Hash(contents());
   writing_complete_ = true;
   if (output_file_ == NULL) {
     return true;

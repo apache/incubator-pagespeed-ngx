@@ -74,13 +74,14 @@ const char kImageInline[] = "image_inline";
 ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
                                    bool log_image_elements,
                                    bool insert_image_dimensions,
-                                   StringPiece path_prefix)
+                                   StringPiece path_prefix,
+                                   size_t img_inline_max_bytes)
     : RewriteFilter(driver, path_prefix),
       file_system_(driver->file_system()),
       html_parse_(driver->html_parse()),
       img_filter_(new ImgTagScanner(html_parse_)),
       resource_manager_(driver->resource_manager()),
-      img_inline_max_bytes_(driver->img_inline_max_bytes()),
+      img_inline_max_bytes_(img_inline_max_bytes),
       log_image_elements_(log_image_elements),
       insert_image_dimensions_(insert_image_dimensions),
       s_width_(html_parse_->Intern("width")),

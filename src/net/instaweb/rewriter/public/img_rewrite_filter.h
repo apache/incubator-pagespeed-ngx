@@ -61,7 +61,8 @@ class ImgRewriteFilter : public RewriteFilter {
   ImgRewriteFilter(RewriteDriver* driver,
                    bool log_image_elements,
                    bool insert_image_dimensions,
-                   StringPiece path_prefix);
+                   StringPiece path_prefix,
+                   size_t img_inline_max_bytes);
   static void Initialize(Statistics* statistics);
   // Encode an origin_url and a page_dim to a rewritten_url.
   static void EncodeImageUrl(

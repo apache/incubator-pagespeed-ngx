@@ -87,8 +87,9 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
 
   virtual void SetUp() {
     apr_pool_create(&pool_, NULL);
+    apr_timer_.reset(new AprTimer());
     serf_url_async_fetcher_.reset(
-        new SerfUrlAsyncFetcher(kProxy, pool_));
+        new SerfUrlAsyncFetcher(kProxy, pool_, NULL, apr_timer_.get()));
     mutex_ = new AprMutex(pool_);
     AddTestUrl("http://www.google.com/", "<!doctype html>");
     AddTestUrl("http://www.google.com/favicon.ico",
@@ -190,6 +191,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   std::vector<SerfTestCallback*> callbacks_;
   // The fetcher to be tested.
   scoped_ptr<SerfUrlAsyncFetcher> serf_url_async_fetcher_;
+  scoped_ptr<AprTimer> apr_timer_;
   GoogleMessageHandler message_handler_;
   size_t prev_done_count;
   AprMutex* mutex_;

@@ -25,6 +25,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
@@ -78,9 +79,9 @@ class RewriteDriver {
   void SetResourceManager(ResourceManager* resource_manager);
 
   // Adds the filters, specified by name in enabled_filters.
-  void AddFilters(const StringSet& enabled_filters);
+  void AddFilters(const RewriteOptions& options);
 
-  void AddHead() { AddFiltersByCommaSeparatedList("add_head"); }
+  void AddHead() { AddFiltersByCommaSeparatedList(RewriteOptions::kAddHead); }
 
   // Add filters by comma-separated list
   void AddFiltersByCommaSeparatedList(const StringPiece& filters);
@@ -98,13 +99,14 @@ class RewriteDriver {
   // install filters in any order and the writer will always be last.
   void SetWriter(Writer* writer);
 
-  // Sets the base url for resolving relative URLs in a document.  This
-  // will *not* necessarily add a base-tag filter, but will change
-  // it if AddBaseTagFilter has been called to use this base.
-  //
-  // SetBaseUrl may be called multiple times to change the base url.
-  //
-  // Neither AddBaseTagFilter or SetResourceManager should be called after this.
+  // Sets the url that BaseTagFilter will set as the base for the document.
+  // This is an no-op if you haven't added BaseTagFilter.
+  // Call this for each new document you are processing or the old values will
+  // leak through.
+  // Note: Use this only to *change* the base URL, not to note the original
+  // base URL.
+  // TODO(sligocki): Do we need this? We should have some way of noting the
+  // base URL of a site if it is explicitly set.
   void SetBaseUrl(const StringPiece& base);
 
   void FetchResource(const StringPiece& resource,
@@ -120,17 +122,6 @@ class RewriteDriver {
 
   ResourceManager* resource_manager() const { return resource_manager_; }
   Statistics* statistics() const;
-
-  // Setters for non-boolean config options
-  void set_outline_threshold(int64 t) { outline_threshold_ = t; }
-  void set_img_inline_max_bytes(int64 t) {
-    img_inline_max_bytes_ = t;
-  }
-
-  // Getters for config options used when constructing filters
-  int64 img_inline_max_bytes() {
-    return img_inline_max_bytes_;
-  }
 
   AddInstrumentationFilter* add_instrumentation_filter() {
     return add_instrumentation_filter_.get();
@@ -164,8 +155,6 @@ class RewriteDriver {
   scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
   std::vector<HtmlFilter*> filters_;
   Variable* resource_fetches_;
-  int64 outline_threshold_;
-  int64 img_inline_max_bytes_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

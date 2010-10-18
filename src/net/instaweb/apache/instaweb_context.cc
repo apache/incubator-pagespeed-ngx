@@ -21,7 +21,7 @@
 #include "http_config.h"
 
 extern "C" {
-extern module AP_MODULE_DECLARE_DATA instaweb_module;
+extern module AP_MODULE_DECLARE_DATA pagespeed_module;
 }
 
 namespace net_instaweb {
@@ -105,7 +105,7 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
 
 ApacheRewriteDriverFactory* InstawebContext::Factory(server_rec* server) {
   return static_cast<ApacheRewriteDriverFactory*>
-      ap_get_module_config(server->module_config, &instaweb_module);
+      ap_get_module_config(server->module_config, &pagespeed_module);
 }
 
 }  // namespace net_instaweb

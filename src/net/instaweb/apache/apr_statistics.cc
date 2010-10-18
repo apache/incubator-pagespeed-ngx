@@ -34,9 +34,9 @@ extern "C" {
 
 namespace {
 
-const char* kStatisticsDir = "mod_instaweb";
-const char* kStatisticsMutexPrefix = "mod_instaweb/stats_mutex.";
-const char* kStatisticsValuePrefix = "mod_instaweb/stats_value.";
+const char kStatisticsDir[] = "mod_pagespeed";
+const char kStatisticsMutexPrefix[] = "mod_pagespeed/stats_mutex.";
+const char kStatisticsValuePrefix[] = "mod_pagespeed/stats_value.";
 
 }  // namespace
 

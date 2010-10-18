@@ -37,7 +37,7 @@ const char kHeadScript[] =
 // TODO(abliss): make this more configurable?  E.g. custom beacon url?
 const char kTailScript[] =
     "<script type='text/javascript'>"
-    "function g(){new Image().src='/instaweb_beacon?ets=load:'+"
+    "function g(){new Image().src='/mod_pagespeed_beacon?ets=load:'+"
     "(Number(new Date())-window.instaweb_start);};"
     "var f=window.addEventListener;if(f){f('load',g,false);}else{"
     "f=window.attachEvent;if(f){f('onload',g);}}"

@@ -45,7 +45,7 @@ class MessageHandler;
 // memory segment not working), it will not increment in that process (and a
 // warning message will be logged).  Other variables will work normally.  If the
 // variable fails to initialize in the process that happens to serve the
-// instaweb_statistics page, then the variable will show up with value -1.
+// mod_pagespeed_statistics page, then the variable will show up with value -1.
 //
 // Implementation details heavily cribbed from mod_shm_counter by Aaron Bannert.
 

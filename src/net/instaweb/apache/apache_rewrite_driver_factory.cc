@@ -19,7 +19,6 @@
 #include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/md5_hasher.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/serf_url_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -27,6 +26,7 @@
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 
@@ -59,7 +59,7 @@ FileSystem* ApacheRewriteDriverFactory::DefaultFileSystem() {
 }
 
 Hasher* ApacheRewriteDriverFactory::NewHasher() {
-  return new Md5Hasher();
+  return new MD5Hasher();
 }
 
 Timer* ApacheRewriteDriverFactory::DefaultTimer() {
@@ -112,7 +112,7 @@ UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
 UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   if (serf_url_async_fetcher_ == NULL) {
     serf_url_async_fetcher_ = new SerfUrlAsyncFetcher(
-        fetcher_proxy_.c_str(), pool_);
+        fetcher_proxy_.c_str(), pool_, statistics_, timer());
   }
   return serf_url_async_fetcher_;
 }

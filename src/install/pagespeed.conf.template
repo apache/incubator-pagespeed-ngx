@@ -1,55 +1,64 @@
-# This is a sample configuration file for Instaweb.  It must be edited by
-# the installer to provide the correct HOSTNAME under InstawebUrlPrefix.
+# This is a sample configuration file for mod_pagespeed.  It must be edited by
+# the installer to provide the correct HOSTNAME under ModPagespeedUrlPrefix.
+#
+# This sample config file also turns on "gzip" for html, css, and javascript,
+# which is generally best practice.
 
-# TODO(jmarantz): rename to pagespeed_module
-<IfModule instaweb_module>
-    # Direct Apache to send all HTML output to the instaweb output handler.
-    SetOutputFilter INSTAWEB_OUTPUT_FILTER;DEFLATE
+<IfModule pagespeed_module>
+    # Direct Apache to send all HTML output to the mod_pagespeed output handler.
+    # TODO(jmarantz): iterate and minimize this output filter arrangement with
+    # the mod_deflate section below.
+    SetOutputFilter MOD_PAGESPEED_OUTPUT_FILTER;DEFLATE
 
     # Give mod_pagespeed as chance to handle all requests.
-    # TODO(jmarantz): rename to pagespeed_handler
     <Location />
-          SetHandler instaweb_resource_generator
+          SetHandler mod_pagespeed_resource_generator
     </Location>
 
-    # This page lets you view statistics about the instaweb module.
-    # TODO(abliss): add access controls to this handler
-    # TODO(jmarantz): rename to 'pagespeed_statistics'
-    <Location /instaweb_statistics>
-          SetHandler instaweb_statistics
+    # This page lets you view statistics about the mod_pagespeed module.
+    <Location /mod_pagespeed_statistics>
+        Order allow,deny
+        Allow from localhost
+        SetHandler mod_pagespeed_statistics
     </Location>
 
     # This handles the client-side instrumentation callbacks which are injected
     # by the add_instrumentation filter.
-    # TODO(jmarantz): rename to 'pagespeed_beacon'
-    <Location /instaweb_beacon>
-          SetHandler instaweb_beacon
+    <Location /mod_pagespeed_beacon>
+          SetHandler mod_pagespeed_beacon
     </Location>
 
-    Instaweb on
+    ModPagespeed on
 
-    InstawebUrlPrefix                "http://HOSTNAME/instaweb/"
-    InstawebFileCachePath            "MOD_PAGESPEED_FILE_ROOT/cache/"
-    InstawebFileCacheSizeKb          102400
-    InstawebFileCacheCleanIntervalMs 3600000
-    InstawebGeneratedFilePrefix      "MOD_PAGESPEED_FILE_ROOT/files/"
-    InstawebLRUCacheKbPerProcess     1024
-    InstawebLRUCacheByteLimit        16384
+    # TODO(jmaessen) This parameter will no longer be relevant once the new
+    # resource naming spec is implemented.
+    ModPagespeedUrlPrefix                "http://HOSTNAME/mod_pagespeed/"
+
+    ModPagespeedFileCachePath            "MOD_PAGESPEED_FILE_ROOT/cache/"
+    ModPagespeedFileCacheSizeKb          102400
+    ModPagespeedFileCacheCleanIntervalMs 3600000
+    ModPagespeedGeneratedFilePrefix      "MOD_PAGESPEED_FILE_ROOT/files/"
+    ModPagespeedLRUCacheKbPerProcess     1024
+    ModPagespeedLRUCacheByteLimit        16384
+    ModPagespeedCssInlineMaxBytes        2048
+    ModPagespeedImgInlineMaxBytes        2048
+    ModPagespeedJsInlineMaxBytes         2048
+    ModPagespeedOutlineThreshold         3000
 
     # The following rewrite passes are safe to run on most web pages.
     # Of course, any web page can examine itself using Javascript, and
-    # may not expect any changes to be made by Instaweb.  However,
+    # may not expect any changes to be made by ModPagespeed.  However,
     # these passes have been shown to be robust over a large number of
     # web sites.
-    InstawebRewriters combine_css,rewrite_images,extend_cache
-    InstawebRewriters add_head,remove_quotes,move_css_to_head
-    InstawebRewriters collapse_whitespace,elide_attributes
-    InstawebRewriters rewrite_javascript,add_instrumentation
+    ModPagespeedRewriters combine_css,rewrite_images,extend_cache
+    ModPagespeedRewriters add_head,remove_quotes,move_css_to_head
+    ModPagespeedRewriters collapse_whitespace,elide_attributes
+    ModPagespeedRewriters rewrite_javascript,add_instrumentation
 
     # investigating: left_trim_urls
 
     # The following passes are known to be riskier.
-    # InstawebRewriters outline_css,outline_javascript,remove_comments
+    # ModPagespeedRewriters outline_css,outline_javascript,remove_comments
 
 
     # When Apache is set up as a browser proxy, mod_pagespeed can record
@@ -103,14 +112,14 @@
 #   AddOutputFilterByType DEFLATE text/html text/plain text/xml
 
 
-# These caching headers are set up for the Instaweb example, and
+# These caching headers are set up for the mod_pagespeed example, and
 # also serve as a demonstration of good values to set for the entire
-# site, if it is to be optimized by Instaweb.
-<Directory APACHE_DOC_ROOT/instaweb_example>
-  # To enable to show that Instaweb to rewrites web pages, we must
+# site, if it is to be optimized by mod_pagespeed.
+<Directory APACHE_DOC_ROOT/mod_pagespeed_example>
+  # To enable to show that mod_pagespeed to rewrites web pages, we must
   # turn off Etags for HTML files and eliminate caching altogether.
-  # Instaweb should rewrite HTML files each time they are served.
-  # The first time Instaweb sees an HTML file, it may not optimize
+  # mod_pagespeed should rewrite HTML files each time they are served.
+  # The first time mod_pagespeed sees an HTML file, it may not optimize
   # it fully.  It will optimize better after the second view.  Caching
   # defeats this behavior.
   <FilesMatch "\.(html|htm)$">
@@ -119,10 +128,10 @@
   </FilesMatch>
 
   # Images, styles, and javascript are all cache-extended for
-  # a year by rewriting URLs to include a content hash..  Instaweb,
+  # a year by rewriting URLs to include a content hash..  mod_pagespeed,
   # can only do this if the resources are cacheable in the first place.
   # The origin caching policy, set here to 10 minutes, dictates how
-  # frequently Instaweb must re-read the content files and recompute
+  # frequently mod_pagespeed must re-read the content files and recompute
   # the content-hash.  As long as the content doesn't actually change,
   # the content-hash will remain the same, and the resources stored
   # in browser caches will stay relevant.

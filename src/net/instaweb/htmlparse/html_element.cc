@@ -64,6 +64,17 @@ void HtmlElement::DeleteAttribute(int i) {
   attributes_.erase(iter);
 }
 
+bool HtmlElement::DeleteAttribute(Atom name) {
+  for (int i = 0; i < attribute_size(); ++i) {
+    const Attribute* attribute = attributes_[i];
+    if (attribute->name() == name) {
+      DeleteAttribute(i);
+      return true;
+    }
+  }
+  return false;
+}
+
 const HtmlElement::Attribute* HtmlElement::FindAttribute(
     const Atom name) const {
   const Attribute* ret = NULL;

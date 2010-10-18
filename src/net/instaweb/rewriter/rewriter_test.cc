@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
@@ -139,8 +140,8 @@ class RewriterTest : public ResourceManagerTestBase {
     rewrite_driver_.SetResourceManager(resource_manager.get());
     other_driver_.SetResourceManager(other_resource_manager.get());
 
-    rewrite_driver_.AddFiltersByCommaSeparatedList("combine_css");
-    other_driver_.AddFiltersByCommaSeparatedList("combine_css");
+    rewrite_driver_.AddFiltersByCommaSeparatedList(RewriteOptions::kCombineCss);
+    other_driver_.AddFiltersByCommaSeparatedList(RewriteOptions::kCombineCss);
 
     // URLs and content for HTML document and resources.
     CHECK_EQ(StringPiece::npos, id.find("/"));
@@ -241,7 +242,8 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
     ServeResourceFromNewContext(resource, combine_filename,
-                                fetched_resource_content, "combine_css");
+                                fetched_resource_content,
+                                RewriteOptions::kCombineCss);
   }
 
   // Simple image rewrite test to check resource fetching functionality.
@@ -257,12 +259,13 @@ class RewriterTest : public ResourceManagerTestBase {
     rewrite_driver_.SetResourceManager(resource_manager.get());
     other_driver_.SetResourceManager(other_resource_manager.get());
 
-    rewrite_driver_.AddFiltersByCommaSeparatedList(
-        "rewrite_images,img_inline_max_bytes=2000,insert_img_dimensions");
-    other_driver_.AddFiltersByCommaSeparatedList("rewrite_images");
-
-    EXPECT_EQ(2000, rewrite_driver_.img_inline_max_bytes());
-    EXPECT_EQ(2048, other_driver_.img_inline_max_bytes());  // Default setting.
+    RewriteOptions options;
+    options.AddFilter(RewriteOptions::kRewriteImages);
+    options.AddFilter(RewriteOptions::kInsertImgDimensions);
+    options.set_img_inline_max_bytes(2000);
+    rewrite_driver_.AddFilters(options);
+    other_driver_.AddFiltersByCommaSeparatedList(
+        RewriteOptions::kRewriteImages);
 
     // URLs and content for HTML document and resources.
     const char html_url[] = "http://rewrite_image.test/RewriteImage.html";
@@ -431,12 +434,49 @@ class RewriterTest : public ResourceManagerTestBase {
     ASSERT_EQ(cuppa_contents, other_contents);
   }
 
+  void TestInlineJavascript(const std::string& html_url,
+                            const std::string& js_url,
+                            const std::string& js_inline_body,
+                            const std::string& js_outline_body,
+                            bool expect_inline) {
+    scoped_ptr<ResourceManager> resource_manager(
+        NewResourceManager(&mock_hasher_));
+    rewrite_driver_.SetResourceManager(resource_manager.get());
+    rewrite_driver_.AddFiltersByCommaSeparatedList(
+        RewriteOptions::kInlineJavascript);
+
+    const std::string html_input =
+        "<head>\n"
+        "  <script src=\"" + js_url + "\">" + js_inline_body + "</script>\n"
+        "</head>\n"
+        "<body>Hello, world!</body>\n";
+
+    // Put original Javascript file into our fetcher.
+    SimpleMetaData default_js_header;
+    resource_manager->SetDefaultHeaders(&kContentTypeJavascript,
+                                        &default_js_header);
+    mock_url_fetcher_.SetResponse(js_url, default_js_header, js_outline_body);
+
+    // Rewrite the HTML page.
+    ParseUrl(html_url, html_input);
+
+    const std::string expected_output =
+        (!expect_inline ? html_input :
+         "<head>\n"
+         "  <script>" + js_outline_body + "</script>\n"
+         "</head>\n"
+         "<body>Hello, world!</body>\n");
+    EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
+  }
+
   // Test outlining styles with options to write headers and use a hasher.
-  // Use hasher = NULL to use FilenameResources.
   void OutlineStyle(const StringPiece& id, Hasher* hasher) {
     scoped_ptr<ResourceManager> resource_manager(NewResourceManager(hasher));
     rewrite_driver_.SetResourceManager(resource_manager.get());
-    rewrite_driver_.AddFiltersByCommaSeparatedList("outline_css");
+    RewriteOptions options;
+    options.AddFiltersByCommaSeparatedList(RewriteOptions::kOutlineCss);
+    options.set_outline_threshold(0);
+    rewrite_driver_.AddFilters(options);
 
     std::string style_text = "background_blue { background-color: blue; }\n"
                               "foreground_yellow { color: yellow; }\n";
@@ -445,8 +485,7 @@ class RewriterTest : public ResourceManagerTestBase {
                          &outline_text);
     outline_text += style_text;
 
-    std::string hash = (hasher == NULL) ? "0" : hasher->Hash(style_text);
-
+    std::string hash = hasher->Hash(style_text);
     std::string outline_filename;
     std::string ending = StrCat("of.", hash, "._.css");
     filename_encoder_.Encode(file_prefix_, ending, &outline_filename);
@@ -480,11 +519,13 @@ class RewriterTest : public ResourceManagerTestBase {
 
   // TODO(sligocki): factor out common elements in OutlineStyle and Script.
   // Test outlining scripts with options to write headers and use a hasher.
-  // Use hasher = NULL to use FilenameResources.
   void OutlineScript(const StringPiece& id, Hasher* hasher) {
     scoped_ptr<ResourceManager> resource_manager(NewResourceManager(hasher));
     rewrite_driver_.SetResourceManager(resource_manager.get());
-    rewrite_driver_.AddFiltersByCommaSeparatedList("outline_javascript");
+    RewriteOptions options;
+    options.AddFiltersByCommaSeparatedList(RewriteOptions::kOutlineJavascript);
+    options.set_outline_threshold(0);
+    rewrite_driver_.AddFilters(options);
 
     std::string script_text = "FOOBAR";
     std::string outline_text;
@@ -492,7 +533,7 @@ class RewriterTest : public ResourceManagerTestBase {
                          &outline_text);
     outline_text += script_text;
 
-    std::string hash = (hasher == NULL) ? "0" : hasher->Hash(script_text);
+    std::string hash = hasher->Hash(script_text);
     std::string outline_filename;
     std::string ending = StrCat("of.", hash, "._.js");
     filename_encoder_.Encode(file_prefix_, ending, &outline_filename);
@@ -601,6 +642,7 @@ class RewriterTest : public ResourceManagerTestBase {
   // Another driver on a different server. For testing resource fetchs on
   // servers that did not perform the original HTML rewrite.
   RewriteDriver other_driver_;
+  MD5Hasher md5_hasher_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriterTest);
 };
@@ -625,7 +667,7 @@ TEST_F(RewriterTest, MergeHead) {
 }
 
 TEST_F(RewriterTest, BaseTagNoHead) {
-  rewrite_driver_.AddFiltersByCommaSeparatedList("add_base_tag");
+  rewrite_driver_.AddFiltersByCommaSeparatedList(RewriteOptions::kAddBaseTag);
   rewrite_driver_.SetBaseUrl("http://base");
   ValidateExpected("base_tag",
       "<body><p>text</p></body>",
@@ -633,7 +675,7 @@ TEST_F(RewriterTest, BaseTagNoHead) {
 }
 
 TEST_F(RewriterTest, BaseTagExistingHead) {
-  rewrite_driver_.AddFiltersByCommaSeparatedList("add_base_tag");
+  rewrite_driver_.AddFiltersByCommaSeparatedList(RewriteOptions::kAddBaseTag);
   rewrite_driver_.SetBaseUrl("http://base");
   ValidateExpected("base_tag",
       "<head><meta></head><body><p>text</p></body>",
@@ -641,7 +683,7 @@ TEST_F(RewriterTest, BaseTagExistingHead) {
 }
 
 TEST_F(RewriterTest, BaseTagExistingHeadAndNonHrefBase) {
-  rewrite_driver_.AddFiltersByCommaSeparatedList("add_base_tag");
+  rewrite_driver_.AddFiltersByCommaSeparatedList(RewriteOptions::kAddBaseTag);
   rewrite_driver_.SetBaseUrl("http://base");
   ValidateExpected("base_tag",
       "<head><base x><meta></head><body></body>",
@@ -649,7 +691,7 @@ TEST_F(RewriterTest, BaseTagExistingHeadAndNonHrefBase) {
 }
 
 TEST_F(RewriterTest, BaseTagExistingHeadAndHrefBase) {
-  rewrite_driver_.AddFiltersByCommaSeparatedList("add_base_tag");
+  rewrite_driver_.AddFiltersByCommaSeparatedList(RewriteOptions::kAddBaseTag);
   rewrite_driver_.SetBaseUrl("http://base");
   ValidateExpected("base_tag",
       "<head><meta><base href=\"http://old\"></head><body></body>",
@@ -658,6 +700,10 @@ TEST_F(RewriterTest, BaseTagExistingHeadAndHrefBase) {
 
 TEST_F(RewriterTest, CombineCss) {
   CombineCss("combine_no_hash", &mock_hasher_);
+}
+
+TEST_F(RewriterTest, CombineCssMD5) {
+  CombineCss("combine_md5", &md5_hasher_);
 }
 
 
@@ -680,10 +726,60 @@ TEST_F(RewriterTest, CombineCssNoInput) {
 
 // TODO(sligocki): Test that using the DummyUrlFetcher causes FatalError.
 
+TEST_F(RewriterTest, DoInlineJavascript1) {
+  // Simple case:
+  TestInlineJavascript("http://www.example.com/index.html",
+                       "http://www.example.com/script.js",
+                       "",
+                       "function id(x) { return x; }\n",
+                       true);
+}
+
+TEST_F(RewriterTest, DoInlineJavascript2) {
+  // Whitespace between <script> and </script>:
+  TestInlineJavascript("http://www.example.com/index2.html",
+                       "http://www.example.com/script2.js",
+                       "\n    \n  ",
+                       "function id(x) { return x; }\n",
+                       true);
+}
+
+TEST_F(RewriterTest, DoNotInlineJavascript1) {
+  // Different domains:
+  TestInlineJavascript("http://www.example.net/index.html",
+                       "http://scripts.example.org/script.js",
+                       "",
+                       "function id(x) { return x; }\n",
+                       false);
+}
+
+TEST_F(RewriterTest, DoNotInlineJavascript2) {
+  // Inline contents:
+  TestInlineJavascript("http://www.example.com/index.html",
+                       "http://www.example.com/script.js",
+                       "{\"json\": true}",
+                       "function id(x) { return x; }\n",
+                       false);
+}
+
+TEST_F(RewriterTest, DoNotInlineJavascript3) {
+  // Javascript too long:
+  const int64 length = 2 * RewriteOptions::kDefaultJsInlineMaxBytes;
+  TestInlineJavascript("http://www.example.com/index.html",
+                       "http://www.example.com/script.js",
+                       "",
+                       ("function longstr() { return '" +
+                        std::string(length, 'z') + "'; }\n"),
+                       false);
+}
 
 // Tests for Outlining styles.
 TEST_F(RewriterTest, OutlineStyle) {
   OutlineStyle("outline_styles_no_hash", &mock_hasher_);
+}
+
+TEST_F(RewriterTest, OutlineStyleMD5) {
+  OutlineStyle("outline_styles_md5", &md5_hasher_);
 }
 
 
@@ -700,8 +796,10 @@ TEST_F(RewriterTest, NoOutlineScript) {
   Hasher* hasher = NULL;
   scoped_ptr<ResourceManager> resource_manager(NewResourceManager(hasher));
   rewrite_driver_.SetResourceManager(resource_manager.get());
-  rewrite_driver_.AddFiltersByCommaSeparatedList(
-      "outline_css,outline_javascript");
+  RewriteOptions options;
+  options.AddFilter(RewriteOptions::kOutlineCss);
+  options.AddFilter(RewriteOptions::kOutlineJavascript);
+  rewrite_driver_.AddFilters(options);
 
   // We need to make sure we don't create this file, so rm any old one
   DeleteFileIfExists(file_prefix + "of.0._.js");

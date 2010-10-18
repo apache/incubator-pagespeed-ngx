@@ -22,6 +22,7 @@
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 
@@ -63,10 +64,6 @@ class RewriteDriverFactory {
   void set_filename_encoder(FilenameEncoder* filename_encoder);
   void set_timer(Timer* timer);
 
-  void enable_filter(const std::string& filter) {
-    enabled_filters_.insert(filter);
-  }
-
   // Set up a directory for slurped files for HTML and resources.  If
   // read_only is true, then it will only read from these files, and
   // this will eliminate the usage of any other url_fetcher.  If
@@ -103,8 +100,20 @@ class RewriteDriverFactory {
 
   void set_filename_prefix(StringPiece p) { p.CopyToString(&filename_prefix_); }
   void set_url_prefix(StringPiece p) { p.CopyToString(&url_prefix_); }
-  void set_num_shards(int num_shards) { num_shards_ = num_shards; }
-  void set_outline_threshold(int64 t) { outline_threshold_ = t; }
+
+  // TODO(jmarantz):
+  // Remove all these methods in favor of simply exposing the RewriteOptions*.
+  void set_num_shards(int num_shards) { options_.set_num_shards(num_shards); }
+  void set_outline_threshold(int64 t) { options_.set_outline_threshold(t); }
+  void set_img_inline_max_bytes(int64 x) {
+    options_.set_img_inline_max_bytes(x);
+  }
+  void set_css_inline_max_bytes(int64 x) {
+    options_.set_css_inline_max_bytes(x);
+  }
+  void set_js_inline_max_bytes(int64 x) {
+    options_.set_js_inline_max_bytes(x);
+  }
 
   MessageHandler* html_parse_message_handler();
   MessageHandler* message_handler();
@@ -119,12 +128,12 @@ class RewriteDriverFactory {
 
   StringPiece filename_prefix();
   StringPiece url_prefix();
-  int num_shards() { return num_shards_; }
+  int num_shards() const { return options_.num_shards(); }
 
   // Sets the enabled filters, based on a comma-separated list of
   // filter names
   void SetEnabledFilters(const StringPiece& filter_names) {
-    enabled_filters_.clear();
+    options_.ClearFilters();
     AddEnabledFilters(filter_names);
   }
 
@@ -200,9 +209,7 @@ class RewriteDriverFactory {
   std::string filename_prefix_;
   std::string url_prefix_;
   std::string slurp_directory_;
-  StringSet enabled_filters_;
-  int num_shards_;
-  int64 outline_threshold_;
+  RewriteOptions options_;
   bool force_caching_;
   bool slurp_read_only_;
 

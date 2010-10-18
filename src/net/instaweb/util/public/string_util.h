@@ -94,6 +94,10 @@ inline void LowerString(std::string* str) {
   google::protobuf::LowerString(str);
 }
 
+inline bool OnlyWhitespace(const std::string& str) {
+  return ContainsOnlyWhitespaceASCII(str);
+}
+
 inline char* strdup(const char* str) {
   return base::strdup(str);
 }

@@ -35,35 +35,6 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/timer.h"
 
-namespace {
-// TODO(jmarantz): consider merging this threshold with the image-inlining
-// threshold, which is currently defaulting at 2000, so we have a single
-// byte-count threshold, above which inlined resources get outlined, and
-// below which outlined resources get inlined.
-//
-// TODO(jmarantz): user-agent-specific selection of inline threshold so that
-// mobile phones are more prone to inlining.
-//
-// Further notes; jmaessen says:
-//
-// I suspect we do not want these bounds to match, and inlining for
-// images is a bit more complicated because base64 encoding inflates
-// the byte count of data: urls.  This is a non-issue for other
-// resources (there may be some weirdness with iframes I haven't
-// thought about...).
-//
-// jmarantz says:
-//
-// One thing we could do, if we believe they should be conceptually
-// merged, is in img_rewrite_filter you could apply the
-// base64-bloat-factor before comparing against the threshold.  Then
-// we could use one number if we like that idea.
-//
-// jmaessen: For the moment, there's a separate threshold for img inline.
-static const size_t kDefaultOutlineThreshold = 3000;
-static const size_t kDefaultImageInlineMaxBytes = 2048;
-}
-
 namespace net_instaweb {
 
 RewriteDriverFactory::RewriteDriverFactory()
@@ -72,8 +43,6 @@ RewriteDriverFactory::RewriteDriverFactory()
       html_parse_(NULL),
       filename_prefix_(""),
       url_prefix_(""),
-      num_shards_(0),
-      outline_threshold_(kDefaultOutlineThreshold),
       force_caching_(false),
       slurp_read_only_(false) {
 }
@@ -83,11 +52,7 @@ RewriteDriverFactory::~RewriteDriverFactory() {
 }
 
 void RewriteDriverFactory::AddEnabledFilters(const StringPiece& filter_names) {
-  std::vector<StringPiece> names;
-  SplitStringPieceToVector(filter_names, ",", &names, true);
-  for (int i = 0, n = names.size(); i < n; ++i) {
-    enable_filter(std::string(names[i].data(), names[i].size()));
-  }
+  options_.AddFiltersByCommaSeparatedList(filter_names);
 }
 
 void RewriteDriverFactory::set_html_parse_message_handler(
@@ -225,7 +190,7 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
         << "Must specify --url_prefix or call "
         << "RewriteDriverFactory::set_url_prefix.";
     resource_manager_.reset(new ResourceManager(
-        filename_prefix_, url_prefix_, num_shards_,
+        filename_prefix_, url_prefix_, num_shards(),
         file_system(), filename_encoder(), ComputeUrlAsyncFetcher(), hasher(),
         http_cache()));
     resource_manager_->set_store_outputs_in_file_system(
@@ -238,9 +203,8 @@ RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
   RewriteDriver* rewrite_driver =  new RewriteDriver(
       message_handler(), file_system(), ComputeUrlAsyncFetcher());
   rewrite_driver->SetResourceManager(ComputeResourceManager());
-  rewrite_driver->set_outline_threshold(outline_threshold_);
   AddPlatformSpecificRewritePasses(rewrite_driver);
-  rewrite_driver->AddFilters(enabled_filters_);
+  rewrite_driver->AddFilters(options_);
   {
     ScopedMutex lock(rewrite_drivers_mutex());
     rewrite_drivers_.push_back(rewrite_driver);

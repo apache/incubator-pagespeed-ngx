@@ -29,14 +29,19 @@ struct apr_thread_mutex_t;
 namespace net_instaweb {
 
 class AprMutex;
+class Statistics;
 class SerfFetch;
 class SerfThreadedFetcher;
+class Timer;
+class Variable;
 
 class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
-  explicit SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool);
-  explicit SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent, const char* proxy);
+  SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
+                      Statistics* statistics, Timer* timer);
+  SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent, const char* proxy);
   virtual ~SerfUrlAsyncFetcher();
+  static void Initialize(Statistics* statistics);
   virtual bool StreamingFetch(const std::string& url,
                               const MetaData& request_headers,
                               MetaData* response_headers,
@@ -74,6 +79,7 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
                                       MessageHandler* message_handler);
 
   apr_pool_t* pool_;
+  Timer* timer_;
 
   // protects serf_context_ and active_fetches_
   AprMutex* mutex_;
@@ -86,6 +92,10 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   SerfThreadedFetcher* threaded_fetcher_;
 
  private:
+  Variable* request_count_;
+  Variable* byte_count_;
+  Variable* time_duration_ms_;
+  Variable* cancel_count_;
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcher);
 };
 

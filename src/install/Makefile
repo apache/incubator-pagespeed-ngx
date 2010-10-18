@@ -141,18 +141,21 @@ ifeq ($(ENABLE_PROXY),1)
 CONF_SOURCES += $(STAGING_DIR)/proxy.conf
 endif
 
-APACHE_SLURP_READ_ONLY_COMMAND=\#InstawebSlurpReadOnly on
+APACHE_SLURP_READ_ONLY_COMMAND=\#ModPagespeedSlurpReadOnly on
 
 ifeq ($(SLURP_DIR),)
-  APACHE_SLURP_DIR_COMMAND = \#InstawebSlurpDirectory ...
+  APACHE_SLURP_DIR_COMMAND = \#ModPagespeedSlurpDirectory ...
 else
-  APACHE_SLURP_DIR_COMMAND = InstawebSlurpDirectory $(SLURP_DIR)
+  APACHE_SLURP_DIR_COMMAND = ModPagespeedSlurpDirectory $(SLURP_DIR)
   ifeq ($(SLURP_WRITE),1)
-    APACHE_SLURP_READ_ONLY_COMMAND=InstawebSlurpReadOnly off
+    APACHE_SLURP_READ_ONLY_COMMAND=ModPagespeedSlurpReadOnly off
   else
-    APACHE_SLURP_READ_ONLY_COMMAND=InstawebSlurpReadOnly on
+    APACHE_SLURP_READ_ONLY_COMMAND=ModPagespeedSlurpReadOnly on
   endif
 endif
+
+# Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because
+# that might have embedded spaces, and 'sed' is interpreted first by bash.
 
 $(STAGING_DIR)/%.conf : %.conf.template
 	sed -e s@HOSTNAME@$(HOSTNAME)@g \
@@ -172,9 +175,8 @@ setup_staging_dir :
 
 # Generate a configuration file and copy it to the staging area.
 # Also copy the example tree, and the built Apache module
-# TODO(jmarantz): change 'instaweb_module' to 'pagespeed_module'
 staging: setup_staging_dir $(CONF_TEMPLATES)
-	echo "LoadModule instaweb_module $(APACHE_MODULES)/mod_pagespeed.so" \
+	echo "LoadModule pagespeed_module $(APACHE_MODULES)/mod_pagespeed.so" \
 	 	> $(STAGING_DIR)/pagespeed.load
 	$(MODS_ENABLED_STAGING_COMMANDS)
 	cp -rp mod_pagespeed_example $(STAGING_DIR)
@@ -222,14 +224,13 @@ restart : staging
 	sudo $(APACHE_START)
 
 # Tests that the installed mod_pagespeed server is working.
-test : verify_instaweb_header verify_css_files_combined
+test : verify_pagespeed_header verify_css_files_combined
 
 SAMPLE_URL = http://$(HOSTNAME)/mod_pagespeed_example/combine_mixed.html
 
-# Verify that HTML files are served with the expected instaweb header.
-# TODO(jmarantz): rename header to X-mod-pagespeed
-verify_instaweb_header :
-	wget -O - --save-headers $(SAMPLE_URL) 2>&1 | grep x-instaweb
+# Verify that HTML files are served with the expected pagespeed header.
+verify_pagespeed_header :
+	wget -O - --save-headers $(SAMPLE_URL) 2>&1 | grep X-Mod-Pagespeed
 	@echo mod_pagespeed is running in Apache and returning the expected header
 
 TMP_DIR = /tmp

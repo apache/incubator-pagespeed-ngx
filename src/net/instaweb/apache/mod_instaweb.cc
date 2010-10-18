@@ -47,31 +47,34 @@ namespace net_instaweb {
 
 namespace {
 
-// Instaweb directive names -- these must match ../scripts/instaweb.conf,
-// install/instaweb.conf.template.
-//
-// TODO(jmarantz): Eliminate one of those two templates.
-const char* kInstaweb = "Instaweb";
-const char* kInstawebUrlPrefix = "InstawebUrlPrefix";
-const char* kInstawebFetchProxy = "InstawebFetchProxy";
-const char* kInstawebGeneratedFilePrefix = "InstawebGeneratedFilePrefix";
-const char* kInstawebFileCachePath = "InstawebFileCachePath";
-const char* kInstawebFileCacheSizeKb = "InstawebFileCacheSizeKb";
-const char* kInstawebFileCacheCleanIntervalMs
-    = "InstawebFileCacheCleanIntervalMs";
-const char* kInstawebLRUCacheKbPerProcess = "InstawebLRUCacheKbPerProcess";
-const char* kInstawebLRUCacheByteLimit = "InstawebLRUCacheByteLimit";
-const char* kInstawebFetcherTimeoutMs = "InstawebFetcherTimeOutMs";
-const char* kInstawebNumShards = "InstawebNumShards";
-const char* kInstawebOutlineThreshold = "InstawebOutlineThreshold";
-const char* kInstawebRewriters = "InstawebRewriters";
-const char* kInstawebSlurpDirectory = "InstawebSlurpDirectory";
-const char* kInstawebSlurpReadOnly = "InstawebSlurpReadOnly";
-const char* kInstawebForceCaching = "InstawebForceCaching";
-const char* instaweb_filter_name = "INSTAWEB_OUTPUT_FILTER";
+// Instaweb directive names -- these must match install/instaweb.conf.template.
+const char* kModPagespeed = "ModPagespeed";
+const char* kModPagespeedUrlPrefix = "ModPagespeedUrlPrefix";
+const char* kModPagespeedFetchProxy = "ModPagespeedFetchProxy";
+const char* kModPagespeedGeneratedFilePrefix =
+    "ModPagespeedGeneratedFilePrefix";
+const char* kModPagespeedFileCachePath = "ModPagespeedFileCachePath";
+const char* kModPagespeedFileCacheSizeKb = "ModPagespeedFileCacheSizeKb";
+const char* kModPagespeedFileCacheCleanIntervalMs
+    = "ModPagespeedFileCacheCleanIntervalMs";
+const char* kModPagespeedLRUCacheKbPerProcess =
+    "ModPagespeedLRUCacheKbPerProcess";
+const char* kModPagespeedLRUCacheByteLimit = "ModPagespeedLRUCacheByteLimit";
+const char* kModPagespeedFetcherTimeoutMs = "ModPagespeedFetcherTimeOutMs";
+const char* kModPagespeedNumShards = "ModPagespeedNumShards";
+const char* kModPagespeedOutlineThreshold = "ModPagespeedOutlineThreshold";
+const char* kModPagespeedRewriters = "ModPagespeedRewriters";
+const char* kModPagespeedSlurpDirectory = "ModPagespeedSlurpDirectory";
+const char* kModPagespeedSlurpReadOnly = "ModPagespeedSlurpReadOnly";
+const char* kModPagespeedForceCaching = "ModPagespeedForceCaching";
+const char* kModPagespeedCssInlineMaxBytes = "ModPagespeedCssInlineMaxBytes";
+const char* kModPagespeedImgInlineMaxBytes = "ModPagespeedImgInlineMaxBytes";
+const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
+const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
-const char kInstawebVersion[] = "1";
+const char kModPagespeedVersion[] = "1";
+const char kModPagespeedHeader[] = "X-Mod-Pagespeed";
 
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
 enum ConfigSwitch {CONFIG_ON, CONFIG_OFF, CONFIG_ERROR};
@@ -175,7 +178,7 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   InstawebContext* context =
       static_cast<InstawebContext*>(filter->ctx);
 
-  LOG(INFO) << "Instaweb OutputFilter called for request "
+  LOG(INFO) << "ModPagespeed OutputFilter called for request "
             << request->unparsed_uri;
 
   // Initialize per-request context structure.  Note that instaweb_out_filter
@@ -186,9 +189,9 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     // setup as both the original and the proxy server, mod_pagespeed filter may
     // be applied twice. To avoid this, skip the content if it is already
     // optimized by mod_pagespeed.
-    if (apr_table_get(request->headers_out, "x-instaweb") != NULL) {
+    if (apr_table_get(request->headers_out, kModPagespeedHeader) != NULL) {
       ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                    "Already has x-instaweb");
+                    "Already has x-mod-pagespeed");
       ap_remove_output_filter(filter);
       return ap_pass_brigade(filter->next, bb);
     }
@@ -233,7 +236,8 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
       absolute_url.assign(request->filename + 6, strlen(request->filename) - 6);
     }
 
-    apr_table_setn(request->headers_out, "x-instaweb", kInstawebVersion);
+    apr_table_setn(request->headers_out, kModPagespeedHeader,
+                   kModPagespeedVersion);
     apr_table_unset(request->headers_out, HttpAttributes::kContentLength);
     apr_table_unset(request->headers_out, "Content-MD5");
     apr_table_unset(request->headers_out, HttpAttributes::kContentEncoding);
@@ -242,7 +246,8 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     // headers, and this will not show those mutations.
     ApacheHeaderToMetaData(request->headers_out, request->status,
                            request->proto_num, &response_headers);
-    LOG(INFO) << "Instaweb Response headers:\n" << response_headers.ToString();
+    LOG(INFO) << "ModPagespeed Response headers:\n"
+              << response_headers.ToString();
   }
 
   apr_bucket* new_bucket = NULL;
@@ -328,6 +333,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                           server_rec *server) {
   AprStatistics* statistics = new AprStatistics();
   RewriteDriver::Initialize(statistics);
+  SerfUrlAsyncFetcher::Initialize(statistics);
   statistics->InitVariables(pool, true);
 
   server_rec* next_server = server;
@@ -340,10 +346,10 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
           factory->file_cache_path().empty()) {
         LOG(ERROR) << "Page speed is enabled.  "
                    << "The following directives must not be NULL";
-        LOG(ERROR) << kInstawebUrlPrefix << "=" << factory->url_prefix();
-        LOG(ERROR) << kInstawebFileCachePath << "="
+        LOG(ERROR) << kModPagespeedUrlPrefix << "=" << factory->url_prefix();
+        LOG(ERROR) << kModPagespeedFileCachePath << "="
                    << factory->file_cache_path();
-        LOG(ERROR) << kInstawebGeneratedFilePrefix << "="
+        LOG(ERROR) << kModPagespeedGeneratedFilePrefix << "="
                    << factory->filename_prefix();
         return HTTP_INTERNAL_SERVER_ERROR;
       }
@@ -376,7 +382,7 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
 
   // Use instaweb to handle generated resources.
   ap_hook_handler(instaweb_handler, NULL, NULL, -1);
-  ap_register_output_filter(instaweb_filter_name,
+  ap_register_output_filter(kModPagespeedFilterName,
                             instaweb_out_filter,
                             NULL,
                             AP_FTYPE_RESOURCE);
@@ -446,45 +452,55 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
   const char* directive = cmd->directive->directive;
   const char* ret = NULL;
-  if (strcasecmp(directive, kInstaweb) == 0) {
+  if (strcasecmp(directive, kModPagespeed) == 0) {
     ret = ParseBoolOption(cmd, &ApacheRewriteDriverFactory::set_enabled, arg);
-  } else if (strcasecmp(directive, kInstawebUrlPrefix) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedUrlPrefix) == 0) {
     factory->set_url_prefix(arg);
-  } else if (strcasecmp(directive, kInstawebFetchProxy) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedFetchProxy) == 0) {
     factory->set_fetcher_proxy(arg);
-  } else if (strcasecmp(directive, kInstawebGeneratedFilePrefix) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedGeneratedFilePrefix) == 0) {
     factory->set_filename_prefix(arg);
-  } else if (strcasecmp(directive, kInstawebFileCachePath) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedFileCachePath) == 0) {
     factory->set_file_cache_path(arg);
-  } else if (strcasecmp(directive, kInstawebFileCacheSizeKb) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedFileCacheSizeKb) == 0) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_file_cache_clean_size_kb, arg);
-  } else if (strcasecmp(directive, kInstawebFileCacheCleanIntervalMs) == 0) {
+  } else if (strcasecmp(directive,
+                        kModPagespeedFileCacheCleanIntervalMs) == 0) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_file_cache_clean_interval_ms,
         arg);
-  } else if (strcasecmp(directive, kInstawebFetcherTimeoutMs) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedFetcherTimeoutMs) == 0) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_fetcher_time_out_ms, arg);
-  } else if (strcasecmp(directive, kInstawebNumShards) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedNumShards) == 0) {
     ret = ParseIntOption(cmd, &ApacheRewriteDriverFactory::set_num_shards, arg);
-  } else if (strcasecmp(directive, kInstawebOutlineThreshold) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedOutlineThreshold) == 0) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_outline_threshold, arg);
-  } else if (strcasecmp(directive, kInstawebLRUCacheKbPerProcess) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedImgInlineMaxBytes) == 0) {
+    ret = ParseInt64Option(
+        cmd, &ApacheRewriteDriverFactory::set_img_inline_max_bytes, arg);
+  } else if (strcasecmp(directive, kModPagespeedJsInlineMaxBytes) == 0) {
+    ret = ParseInt64Option(
+        cmd, &ApacheRewriteDriverFactory::set_js_inline_max_bytes, arg);
+  } else if (strcasecmp(directive, kModPagespeedCssInlineMaxBytes) == 0) {
+    ret = ParseInt64Option(
+        cmd, &ApacheRewriteDriverFactory::set_css_inline_max_bytes, arg);
+  } else if (strcasecmp(directive, kModPagespeedLRUCacheKbPerProcess) == 0) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_lru_cache_kb_per_process, arg);
-  } else if (strcasecmp(directive, kInstawebLRUCacheByteLimit) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedLRUCacheByteLimit) == 0) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_lru_cache_byte_limit, arg);
-  } else if (strcasecmp(directive, kInstawebRewriters) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedRewriters) == 0) {
     factory->AddEnabledFilters(arg);
-  } else if (strcasecmp(directive, kInstawebSlurpDirectory) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedSlurpDirectory) == 0) {
     factory->set_slurp_directory(arg);
-  } else if (strcasecmp(directive, kInstawebSlurpReadOnly) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedSlurpReadOnly) == 0) {
     ret = ParseBoolOption(
         cmd, &ApacheRewriteDriverFactory::set_slurp_read_only, arg);
-  } else if (strcasecmp(directive, kInstawebForceCaching) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedForceCaching) == 0) {
     ret = ParseBoolOption(
         cmd, &ApacheRewriteDriverFactory::set_force_caching, arg);
   } else {
@@ -519,34 +535,44 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
                 NULL, RSRC_CONF, help)
 
 static const command_rec mod_pagespeed_filter_cmds[] = {
-  APACHE_CONFIG_OPTION(kInstaweb, "Enable instaweb"),
-  APACHE_CONFIG_OPTION(kInstawebUrlPrefix, "Set the url prefix"),
-  APACHE_CONFIG_OPTION(kInstawebFetchProxy, "Set the fetch proxy"),
-  APACHE_CONFIG_OPTION(kInstawebGeneratedFilePrefix,
+  APACHE_CONFIG_OPTION(kModPagespeed, "Enable instaweb"),
+  APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "Set the url prefix"),
+  APACHE_CONFIG_OPTION(kModPagespeedFetchProxy, "Set the fetch proxy"),
+  APACHE_CONFIG_OPTION(kModPagespeedGeneratedFilePrefix,
                        "Set generated file's prefix"),
-  APACHE_CONFIG_OPTION(kInstawebFileCachePath, "Set the path for file cache"),
-  APACHE_CONFIG_OPTION(kInstawebFileCacheSizeKb,
+  APACHE_CONFIG_OPTION(kModPagespeedFileCachePath,
+                       "Set the path for file cache"),
+  APACHE_CONFIG_OPTION(kModPagespeedFileCacheSizeKb,
         "Set the target size (in kilobytes) for file cache"),
-  APACHE_CONFIG_OPTION(kInstawebFileCacheCleanIntervalMs,
+  APACHE_CONFIG_OPTION(kModPagespeedFileCacheCleanIntervalMs,
         "Set the interval (in ms) for cleaning the file cache"),
-  APACHE_CONFIG_OPTION(kInstawebFetcherTimeoutMs,
+  APACHE_CONFIG_OPTION(kModPagespeedFetcherTimeoutMs,
         "Set internal fetcher timeout in milliseconds"),
-  APACHE_CONFIG_OPTION(kInstawebNumShards, "Set number of shards"),
-  APACHE_CONFIG_OPTION(kInstawebLRUCacheKbPerProcess,
+  APACHE_CONFIG_OPTION(kModPagespeedNumShards, "Set number of shards"),
+  APACHE_CONFIG_OPTION(kModPagespeedLRUCacheKbPerProcess,
         "Set the total size, in KB, of the per-process "
         "in-memory LRU cache"),
-  APACHE_CONFIG_OPTION(kInstawebLRUCacheByteLimit,
+  APACHE_CONFIG_OPTION(kModPagespeedLRUCacheByteLimit,
         "Set the maximum byte size entry to store in the per-process "
         "in-memory LRU cache"),
-  APACHE_CONFIG_OPTION(kInstawebRewriters,
+  APACHE_CONFIG_OPTION(kModPagespeedRewriters,
                        "Comma-separated list of rewriting filters"),
-  APACHE_CONFIG_OPTION(kInstawebSlurpDirectory,
+  APACHE_CONFIG_OPTION(kModPagespeedSlurpDirectory,
         "Directory from which to read slurped resources"),
-  APACHE_CONFIG_OPTION(kInstawebSlurpReadOnly,
-                       "Only read from the slurped directory, fail to fetch "
-                       "URLs not already in the slurped directory"),
-  APACHE_CONFIG_OPTION(kInstawebForceCaching,
-                       "Ignore HTTP cache headers and TTLs"),
+  APACHE_CONFIG_OPTION(kModPagespeedSlurpReadOnly,
+        "Only read from the slurped directory, fail to fetch "
+        "URLs not already in the slurped directory"),
+  APACHE_CONFIG_OPTION(kModPagespeedForceCaching,
+        "Ignore HTTP cache headers and TTLs"),
+  APACHE_CONFIG_OPTION(kModPagespeedOutlineThreshold,
+        "Number of bytes above which inline "
+        "resources will be outlined."),
+  APACHE_CONFIG_OPTION(kModPagespeedImgInlineMaxBytes,
+        "Number of bytes below which images will be inlined."),
+  APACHE_CONFIG_OPTION(kModPagespeedJsInlineMaxBytes,
+        "Number of bytes below which javascript will be inlined."),
+  APACHE_CONFIG_OPTION(kModPagespeedCssInlineMaxBytes,
+        "Number of bytes below which stylesheets will be inlined."),
   {NULL}
 };
 
@@ -562,10 +588,10 @@ extern "C" {
 #endif
 
 // Declare and populate the module's data structure.  The
-// name of this structure ('instaweb_module') is important - it
+// name of this structure ('pagespeed_module') is important - it
 // must match the name of the module.  This structure is the
 // only "glue" between the httpd core and the module.
-module AP_MODULE_DECLARE_DATA instaweb_module = {
+module AP_MODULE_DECLARE_DATA pagespeed_module = {
   // Only one callback function is provided.  Real
   // modules will need to declare callback functions for
   // server/directory configuration, configuration merging

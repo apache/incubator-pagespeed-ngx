@@ -74,8 +74,8 @@ class AsyncCallback : public UrlAsyncFetcher::Callback {
 int instaweb_default_handler(const std::string& url, request_rec* request) {
   request->status = HTTP_NOT_FOUND;
   ap_set_content_type(request, "text/html; charset=utf-8");
-  ap_rputs("<html><head><title>Wow, instaweb server</title></head>", request);
-  ap_rputs("<body><h1>Instaweb Server is running</h1>OK", request);
+  ap_rputs("<html><head><title>Not Found</title></head>", request);
+  ap_rputs("<body><h1>Apache server with mod_pagespeed</h1>OK", request);
   ap_rputs("<hr>NOT FOUND:", request);
   ap_rputs(url.c_str(), request);
   ap_rputs("</body></html>", request);
@@ -168,7 +168,7 @@ int instaweb_handler(request_rec* request) {
     ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
                   "Not GET request: %d.", request->method_number);
     ret = HTTP_METHOD_NOT_ALLOWED;
-  } else if (strcmp(request->handler, "instaweb_statistics") == 0) {
+  } else if (strcmp(request->handler, "mod_pagespeed_statistics") == 0) {
     std::string output;
     SimpleMetaData response_headers;
     StringWriter writer(&output);
@@ -176,7 +176,7 @@ int instaweb_handler(request_rec* request) {
       factory->statistics()->Dump(&writer, factory->message_handler());
     }
     send_out_headers_and_body(request, response_headers, output);
-  } else if (strcmp(request->handler, "instaweb_beacon") == 0) {
+  } else if (strcmp(request->handler, "mod_pagespeed_beacon") == 0) {
     RewriteDriver* driver = factory->GetRewriteDriver();
     AddInstrumentationFilter* aif = driver->add_instrumentation_filter();
     if (aif && aif->HandleBeacon(request->unparsed_uri)) {
@@ -185,7 +185,8 @@ int instaweb_handler(request_rec* request) {
       ret = DECLINED;
     }
     factory->ReleaseRewriteDriver(driver);
-  } else if (strcmp(request->handler, "instaweb_resource_generator") == 0){
+  } else if (strcmp(request->handler,
+                    "mod_pagespeed_resource_generator") == 0) {
     /*
      * In some contexts we are seeing relative URLs passed
      * into request->unparsed_uri.  But when using mod_slurp, the rewritten
@@ -217,12 +218,13 @@ int instaweb_handler(request_rec* request) {
       SlurpUrl(url, factory, request);
     } else {
       ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
-                    "INSTAWEB: Declined request %s", url.c_str());
+                    "mod_pagespeed: Declined request %s", url.c_str());
       ret = DECLINED;
     }
   } else {
     ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
-                  "Not instaweb request: %s.", request->handler);
+                  "Not mod_pagespeed request -- passing to next handler: %s.",
+                  request->handler);
     ret = DECLINED;
   }
   return ret;

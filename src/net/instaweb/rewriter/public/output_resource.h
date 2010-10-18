@@ -33,7 +33,6 @@
 namespace net_instaweb {
 
 class FilenameEncoder;
-class Hasher;
 class MessageHandler;
 
 class OutputResource : public Resource {
@@ -86,10 +85,8 @@ class OutputResource : public Resource {
   class OutputWriter {
    public:
     // file may be null if we shouldn't write to the filesystem.
-    OutputWriter(FileSystem::OutputFile* file, Hasher* hasher,
-                 HTTPValue* http_value)
-        : hasher_(hasher),
-          http_value_(http_value) {
+    OutputWriter(FileSystem::OutputFile* file, HTTPValue* http_value)
+        : http_value_(http_value) {
       if (file != NULL) {
         file_writer_.reset(new FileWriter(file));
       } else {
@@ -97,13 +94,11 @@ class OutputResource : public Resource {
       }
     }
 
-    // Adds the given data to our hasher, our http_value, and, if
+    // Adds the given data to our http_value, and, if
     // non-null, our file.
     bool Write(const StringPiece& data, MessageHandler* handler);
-    Hasher* hasher() const { return hasher_; }
    private:
     scoped_ptr<FileWriter> file_writer_;
-    Hasher* hasher_;
     HTTPValue* http_value_;
   };
 

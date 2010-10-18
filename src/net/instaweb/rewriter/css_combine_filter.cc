@@ -38,7 +38,7 @@ namespace {
 // names for Statistics variables.
 const char kCssFileCountReduction[] = "css_file_count_reduction";
 
-} // namespace
+}  // namespace
 
 namespace net_instaweb {
 
@@ -79,43 +79,45 @@ void CssCombineFilter::StartDocument() {
   head_element_ = NULL;
 }
 
-void CssCombineFilter::StartElement(HtmlElement* element) {
-  if (element->tag() == s_head_) {
-    head_element_ = element;
-  }
-}
-
 void CssCombineFilter::EndElement(HtmlElement* element) {
   HtmlElement::Attribute* href;
   const char* media;
   if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
     css_elements_.push_back(element);
+  } else if (element->tag() == s_head_) {
+    // We set the element here rather than at StartElement so that we don't
+    // AppendChild before we've finished parsing head (mis-ordering CSS).
+    head_element_ = element;
   }
 }
 
 // An IE directive that includes any stylesheet info should be a barrier
-// for css spriting.  It's OK to emit the spriting we've seen so far.
+// for css combining.  It's OK to emit the combination we've seen so far.
 void CssCombineFilter::IEDirective(const std::string& directive) {
   // TODO(jmarantz): consider recursively invoking the parser and
   // parsing all the IE-specific code properly.
   if (directive.find("stylesheet") != std::string::npos) {
+    // TO BE REVERTED.  SKIP CSS COMBINE WITH IE DIRECTIVES SO IT
+    // DOES NOT CRASH.
+    css_elements_.clear();
   }
 }
 
 void CssCombineFilter::Flush() {
   // TODO(sligocki): We could probably combine CSS files in a second flush as
   // well. Where would we put the styles? Wherever the first one was?
-  if (head_element_ != NULL) {
-    EmitCombinations(head_element_);
+  if (head_element_ != NULL && html_parse_->IsRewritable(head_element_)) {
+    EmitCombinations(true, head_element_);
   }
-  head_element_ = NULL; // Head element cannot be editted after we flush.
+  head_element_ = NULL;  // Head element cannot be edited after we flush.
   css_elements_.clear();
 }
 
-// Try to combine all the CSS files we have seen so far. Place the result in
-// destination_parent.
-void CssCombineFilter::EmitCombinations(HtmlElement* destination_parent) {
-  CHECK(html_parse_->IsRewritable(destination_parent));
+void CssCombineFilter::EmitCombinations(bool append_child,
+                                        HtmlElement* destination_parent) {
+  if (append_child) {
+    CHECK(html_parse_->IsRewritable(destination_parent));
+  }
   MessageHandler* handler = html_parse_->message_handler();
 
   // It's possible that we'll have found 2 css files to combine, but one
@@ -142,6 +144,14 @@ void CssCombineFilter::EmitCombinations(HtmlElement* destination_parent) {
       if ((css_resource != NULL) &&
           resource_manager_->ReadIfCached(css_resource, handler) &&
           css_resource->ContentsValid()) {
+        if (i != 0 &&
+            CssTagScanner::HasImport(css_resource->contents(), handler)) {
+          // If any stylesheet after the first has imports, don't combine.
+          // TODO(sligocki): We could try to flatten imports.
+          // TODO(sligocki): We could combine all the sheets up to here.
+          // It's unclear how often this happens -> how valueable this would be.
+          break;
+        }
         media_attributes.push_back(media);
         combine_resources.push_back(css_resource);
 
@@ -174,8 +184,7 @@ void CssCombineFilter::EmitCombinations(HtmlElement* destination_parent) {
     }
     Encode(css_combine_url, &url_safe_id);
 
-    HtmlElement* combine_element =
-        html_parse_->NewElement(destination_parent, s_link_);
+    HtmlElement* combine_element = html_parse_->NewElement(NULL, s_link_);
     combine_element->AddAttribute(s_rel_, "stylesheet", "\"");
     combine_element->AddAttribute(s_type_, "text/css", "\"");
 
@@ -200,7 +209,13 @@ void CssCombineFilter::EmitCombinations(HtmlElement* destination_parent) {
       // TODO(sligocki): Put at top of head.
       // Right now it's going in the bottom because then if this is called
       // multiple times subsequent calls place CSS elements below previous ones.
-      html_parse_->AppendChild(destination_parent, combine_element);
+      if (append_child) {
+        html_parse_->AppendChild(destination_parent, combine_element);
+      } else {
+        // Hack: for now we just have two options of where to put it.
+        // AppendChild or InsertBeforeCurrent.
+        html_parse_->InsertElementBeforeCurrent(combine_element);
+      }
       html_parse_->InfoHere("Combined %d CSS files into one",
                             static_cast<int>(combine_elements.size()));
       if (css_file_count_reduction_ != NULL) {

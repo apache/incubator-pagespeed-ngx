@@ -23,12 +23,4 @@ namespace net_instaweb {
 Hasher::~Hasher() {
 }
 
-std::string Hasher::Hash(const StringPiece& content) {
-  Reset();
-  Add(content);
-  std::string hash;
-  ComputeHash(&hash);
-  return hash;
-}
-
 }  // namespace net_instaweb

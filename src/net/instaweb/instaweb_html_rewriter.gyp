@@ -46,7 +46,6 @@
         'apache/header_util.cc',
         'apache/instaweb_context.cc',
         'apache/log_message_handler.cc',
-        'apache/md5_hasher.cc',
         'apache/serf_url_async_fetcher.cc',
         'apache/serf_url_fetcher.cc',
       ],

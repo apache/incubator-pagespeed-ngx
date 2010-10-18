@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/meta_data.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 #include "third_party/serf/src/serf.h"
@@ -47,6 +48,10 @@
 namespace {
 const int kBufferSize = 2048;
 const char kFetchMethod[] = "GET";
+const char kSerfFetchRequestCount[] = "serf_fetch_request_count";
+const char kSerfFetchByteCount[] = "serff_fetch_bytes_count";
+const char kSerfFetchTimeDurationMs[] = "serf_fetch_time_duration_ms";
+const char kSerfFetchCancelCount[] = "serf_fetch_cancel_count";
 }  // namespace
 
 namespace net_instaweb {
@@ -67,14 +72,19 @@ class SerfFetch {
             MetaData* response_headers,
             Writer* fetched_content_writer,
             MessageHandler* message_handler,
-            UrlAsyncFetcher::Callback* callback)
+            UrlAsyncFetcher::Callback* callback,
+            Timer* timer)
       : fetcher_(NULL),
+        timer_(timer),
         str_url_(url),
         response_headers_(response_headers),
         fetched_content_writer_(fetched_content_writer),
         message_handler_(message_handler),
         callback_(callback),
-        connection_(NULL) {
+        connection_(NULL),
+        byte_received_(0),
+        fetch_start_ms_(0),
+        fetch_end_ms_(0) {
     request_headers_.CopyFrom(request_headers);
     apr_pool_create(&pool_, pool);
     bucket_alloc_ = serf_bucket_allocator_create(pool_, NULL, NULL);
@@ -96,6 +106,17 @@ class SerfFetch {
   void Cancel() {
     callback_->Done(false);
     delete this;
+  }
+  int64 TimeDuration() const {
+    if ((fetch_start_ms_ !=0) && (fetch_end_ms_ != 0)) {
+      return fetch_end_ms_ - fetch_start_ms_;
+    } else {
+      return 0;
+    }
+  }
+
+  size_t byte_received() const {
+    return byte_received_;
   }
 
  private:
@@ -166,6 +187,7 @@ class SerfFetch {
       while ((status = serf_bucket_read(response, kBufferSize, &data, &len))
              == APR_SUCCESS || APR_STATUS_IS_EOF(status) ||
              APR_STATUS_IS_EAGAIN(status)) {
+        byte_received_ += len;
         if (len > 0 &&
             !fetched_content_writer_->Write(
                 StringPiece(data, len), message_handler_)) {
@@ -185,6 +207,7 @@ class SerfFetch {
     }
     if (!APR_STATUS_IS_EAGAIN(status)) {
       bool success = APR_STATUS_IS_EOF(status);
+      fetch_end_ms_ = timer_->NowMs();
       callback_->Done(success);
       fetcher_->FetchComplete(this);
     }
@@ -297,6 +320,7 @@ class SerfFetch {
   }
 
   SerfUrlAsyncFetcher* fetcher_;
+  Timer* timer_;
   const std::string str_url_;
   SimpleMetaData request_headers_;
   MetaData* response_headers_;
@@ -308,6 +332,10 @@ class SerfFetch {
   serf_bucket_alloc_t* bucket_alloc_;
   apr_uri_t url_;
   serf_connection_t* connection_;
+  size_t byte_received_;
+  int64 fetch_start_ms_;
+  int64 fetch_end_ms_;
+
 
   DISALLOW_COPY_AND_ASSIGN(SerfFetch);
 };
@@ -460,6 +488,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
 };
 
 bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher) {
+  fetch_start_ms_ = timer_->NowMs();
   fetcher_ = fetcher;
   // Parse and validate the URL.
   if (!ParseUrl()) {
@@ -516,30 +545,47 @@ bool SerfUrlAsyncFetcher::SetupProxy(const char* proxy) {
   return true;
 }
 
-SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool)
+SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
+                                         Statistics* statistics, Timer* timer)
     : pool_(pool),
+      timer_(timer),
       mutex_(NULL),
       serf_context_(NULL),
-      threaded_fetcher_(NULL) {
+      threaded_fetcher_(NULL),
+      request_count_(NULL),
+      byte_count_(NULL),
+      time_duration_ms_(NULL),
+      cancel_count_(NULL) {
+  if (statistics != NULL) {
+    request_count_  = statistics->GetVariable(kSerfFetchRequestCount);
+    byte_count_ = statistics->GetVariable(kSerfFetchByteCount);
+    time_duration_ms_ = statistics->GetVariable(kSerfFetchTimeDurationMs);
+    cancel_count_ = statistics->GetVariable(kSerfFetchCancelCount);
+  }
   mutex_ = new AprMutex(pool_);
   serf_context_ = serf_context_create(pool_);
   threaded_fetcher_ = new SerfThreadedFetcher(this, proxy);
   if (SetupProxy(proxy)) {
-    // TODO(lsong): What to do if the proxy setup fails?
+    LOG(WARNING) << "Proxy failed: " << proxy;
   }
 }
 
 SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
                                          const char* proxy)
     : pool_(parent->pool_),
+      timer_(parent->timer_),
       mutex_(NULL),
       serf_context_(NULL),
-      threaded_fetcher_(NULL) {
+      threaded_fetcher_(NULL),
+      request_count_(parent->request_count_),
+      byte_count_(parent->byte_count_),
+      time_duration_ms_(parent->time_duration_ms_),
+      cancel_count_(parent->cancel_count_) {
   mutex_ = new AprMutex(pool_);
   serf_context_ = serf_context_create(pool_);
   threaded_fetcher_ = NULL;
   if (SetupProxy(proxy)) {
-    // TODO(lsong): What to do if the proxy setup fails?
+    LOG(WARNING) << "Proxy failed: " << proxy;
   }
 }
 
@@ -561,6 +607,9 @@ void SerfUrlAsyncFetcher::CancelOutstandingFetches() {
     LOG(WARNING) << "Aborting fetch of " << fetch->str_url();
     active_fetches_.erase(p);
     fetch->Cancel();
+    if (cancel_count_) {
+      cancel_count_->Add(1);
+    }
   }
 }
 
@@ -572,7 +621,10 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
                                          UrlAsyncFetcher::Callback* callback) {
   SerfFetch* fetch = new SerfFetch(
       pool_, url, request_headers, response_headers, fetched_content_writer,
-      message_handler, callback);
+      message_handler, callback, timer_);
+  if (request_count_ != NULL) {
+    request_count_->Add(1);
+  }
   if (callback->EnableThreaded()) {
     LOG(INFO) << "Initiating async fetch for " << url;
     threaded_fetcher_->InitiateFetch(fetch);
@@ -629,6 +681,12 @@ void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch) {
   LOG(INFO) << "Fetch complete: " << fetch->str_url();
   CHECK_EQ(1, erased);
   completed_fetches_.push_back(fetch);
+  if (time_duration_ms_) {
+    time_duration_ms_->Add(fetch->TimeDuration());
+  }
+  if (byte_count_) {
+    byte_count_->Add(fetch->byte_received());
+  }
 }
 
 size_t SerfUrlAsyncFetcher::NumActiveFetches() {
@@ -653,8 +711,7 @@ bool SerfUrlAsyncFetcher::WaitForInProgressFetchesHelper(
     int64 max_ms, MessageHandler* message_handler) {
   int num_active_fetches = NumActiveFetches();
   if (num_active_fetches != 0) {
-    AprTimer timer;
-    int64 now_ms = timer.NowMs();
+    int64 now_ms = timer_->NowMs();
     int64 end_ms = now_ms + max_ms;
     while ((now_ms < end_ms) && (num_active_fetches != 0)) {
       int64 remaining_ms = end_ms - now_ms;
@@ -662,7 +719,7 @@ bool SerfUrlAsyncFetcher::WaitForInProgressFetchesHelper(
                  << "ms for " << active_fetches_.size() << " to complete");
       SERF_DEBUG(PrintOutstandingFetches(message_handler));
       Poll(1000 * remaining_ms);
-      now_ms = timer.NowMs();
+      now_ms = timer_->NowMs();
       num_active_fetches = NumActiveFetches();
     }
     if (!active_fetches_.empty()) {
@@ -673,6 +730,14 @@ bool SerfUrlAsyncFetcher::WaitForInProgressFetchesHelper(
     SERF_DEBUG(LOG(INFO) << "Serf successfully completed outstanding fetches");
   }
   return true;
+}
+void SerfUrlAsyncFetcher::Initialize(Statistics* statistics) {
+  if (statistics != NULL) {
+    statistics->AddVariable(kSerfFetchRequestCount);
+    statistics->AddVariable(kSerfFetchByteCount);
+    statistics->AddVariable(kSerfFetchTimeDurationMs);
+    statistics->AddVariable(kSerfFetchCancelCount);
+  }
 }
 
 }  // namespace net_instaweb

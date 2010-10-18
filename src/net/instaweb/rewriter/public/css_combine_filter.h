@@ -41,7 +41,6 @@ class CssCombineFilter : public RewriteFilter {
 
   static void Initialize(Statistics* statistics);
   virtual void StartDocument();
-  virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
   virtual void Flush();
   virtual void IEDirective(const std::string& directive);
@@ -58,7 +57,10 @@ class CssCombineFilter : public RewriteFilter {
   friend class CssCombiner;
   typedef std::vector<Resource*> ResourceVector;
 
-  void EmitCombinations(HtmlElement* head);
+  // Try to combine all the CSS files we have seen so far.
+  // If append_child == true, AppendChild to destination element.
+  // Else, InsertBeforeCurrent.
+  void EmitCombinations(bool append_child, HtmlElement* destination);
   bool WriteWithAbsoluteUrls(const StringPiece& contents,
                              OutputResource* combination,
                              const std::string& base_url,

@@ -27,10 +27,11 @@ namespace net_instaweb {
 class MockHasher : public Hasher {
  public:
   MockHasher() {}
-  ~MockHasher();
-  virtual void Reset();
-  virtual void Add(const StringPiece& content);
-  virtual void ComputeHash(std::string* hash);
+  virtual ~MockHasher();
+  virtual std::string Hash(const StringPiece& content) const;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockHasher);
 };
 
 }  // namespace net_instaweb

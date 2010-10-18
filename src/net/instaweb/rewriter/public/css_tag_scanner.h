@@ -46,6 +46,10 @@ class CssTagScanner {
                              const std::string& base_url,
                              Writer* writer, MessageHandler* handler);
 
+  // Does this CSS file contain @import? If so, it cannot be combined with
+  // previous CSS files. This may give false-positives, but no false-negatives.
+  static bool HasImport(const StringPiece& contents, MessageHandler* handler);
+
  private:
   Atom s_link_;
   Atom s_href_;

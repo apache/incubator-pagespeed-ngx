@@ -167,4 +167,40 @@ TEST_F(CssTagScannerTest, TestFull) {
   // TODO(jmarantz): test removal of 'rel' and 'href' attributes
 }
 
+TEST_F(CssTagScannerTest, TestHasImport) {
+  // Should work.
+  EXPECT_TRUE(CssTagScanner::HasImport("@import", &message_handler_));
+  EXPECT_TRUE(CssTagScanner::HasImport("@Import", &message_handler_));
+  EXPECT_TRUE(CssTagScanner::HasImport(
+      "@charset 'iso-8859-1';\n"
+      "@import url('http://foo.com');\n", &message_handler_));
+  EXPECT_TRUE(CssTagScanner::HasImport(
+      "@charset 'iso-8859-1';\n"
+      "@iMPorT url('http://foo.com');\n", &message_handler_));
+
+  // Should fail.
+  EXPECT_FALSE(CssTagScanner::HasImport("", &message_handler_));
+  EXPECT_FALSE(CssTagScanner::HasImport("@impor", &message_handler_));
+  EXPECT_FALSE(CssTagScanner::HasImport(
+      "@charset 'iso-8859-1';\n"
+      "@impor", &message_handler_));
+  // Make sure we aren't overflowing the buffer.
+  std::string import_string = "@import";
+  StringPiece truncated_import(import_string.data(), import_string.size() - 1);
+  EXPECT_FALSE(CssTagScanner::HasImport(truncated_import, &message_handler_));
+
+  // False positives.
+  EXPECT_TRUE(CssTagScanner::HasImport(
+      "@charset 'iso-8859-1';\n"
+      "@importinvalid url('http://foo.com');\n", &message_handler_));
+  EXPECT_TRUE(CssTagScanner::HasImport(
+      "@charset 'iso-8859-1';\n"
+      "/* @import url('http://foo.com'); */\n", &message_handler_));
+  EXPECT_TRUE(CssTagScanner::HasImport(
+      "@charset 'iso-8859-1';\n"
+      "a { color: pink; }\n"
+      "/* @import after rulesets is invalid */\n"
+      "@import url('http://foo.com');\n", &message_handler_));
+}
+
 }  // namespace net_instaweb
