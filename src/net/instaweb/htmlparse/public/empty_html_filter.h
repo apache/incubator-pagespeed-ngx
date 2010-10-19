@@ -38,7 +38,7 @@ class EmptyHtmlFilter : public HtmlFilter {
   virtual void EndElement(HtmlElement* element);
   virtual void Cdata(HtmlCdataNode* cdata);
   virtual void Comment(HtmlCommentNode* comment);
-  virtual void IEDirective(const std::string& directive);
+  virtual void IEDirective(HtmlIEDirectiveNode* directive);
   virtual void Characters(HtmlCharactersNode* characters);
   virtual void Directive(HtmlDirectiveNode* directive);
   virtual void Flush();

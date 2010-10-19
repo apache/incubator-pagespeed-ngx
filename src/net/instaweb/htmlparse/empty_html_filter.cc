@@ -44,7 +44,7 @@ void EmptyHtmlFilter::Cdata(HtmlCdataNode* cdata) {
 void EmptyHtmlFilter::Comment(HtmlCommentNode* comment) {
 }
 
-void EmptyHtmlFilter::IEDirective(const std::string& directive) {
+void EmptyHtmlFilter::IEDirective(HtmlIEDirectiveNode* directive) {
 }
 
 void EmptyHtmlFilter::Characters(HtmlCharactersNode* characters) {

@@ -200,9 +200,9 @@ void HtmlWriterFilter::Comment(HtmlCommentNode* comment) {
   EmitBytes("-->");
 }
 
-void HtmlWriterFilter::IEDirective(const std::string& value) {
+void HtmlWriterFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   EmitBytes("<!--");
-  EmitBytes(value);
+  EmitBytes(directive->contents());
   EmitBytes("-->");
 }
 

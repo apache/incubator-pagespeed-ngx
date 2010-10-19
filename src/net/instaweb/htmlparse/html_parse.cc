@@ -136,6 +136,14 @@ HtmlCommentNode* HtmlParse::NewCommentNode(HtmlElement* parent,
   return comment;
 }
 
+HtmlIEDirectiveNode* HtmlParse::NewIEDirectiveNode(
+    HtmlElement* parent, const StringPiece& contents) {
+  HtmlIEDirectiveNode* directive =
+      new HtmlIEDirectiveNode(parent, contents, queue_.end());
+  nodes_.insert(directive);
+  return directive;
+}
+
 HtmlDirectiveNode* HtmlParse::NewDirectiveNode(HtmlElement* parent,
                                                const StringPiece& contents) {
   HtmlDirectiveNode* directive = new HtmlDirectiveNode(parent, contents,
@@ -349,14 +357,13 @@ void HtmlParse::Flush() {
 
 bool HtmlParse::InsertElementBeforeElement(const HtmlNode* existing_node,
                                            HtmlNode* new_node) {
-  // TODO(sligocki): Why don't we just set_parent() here?
-  CHECK(existing_node->parent() == new_node->parent());
+  new_node->set_parent(existing_node->parent());
   return InsertElementBeforeEvent(existing_node->begin(), new_node);
 }
 
 bool HtmlParse::InsertElementAfterElement(const HtmlNode* existing_node,
                                           HtmlNode* new_node) {
-  CHECK(existing_node->parent() == new_node->parent());
+  new_node->set_parent(existing_node->parent());
   return InsertElementAfterEvent(existing_node->end(), new_node);
 }
 
@@ -378,6 +385,24 @@ bool HtmlParse::InsertElementBeforeCurrent(HtmlNode* new_node) {
   if (deleted_current_) {
     FatalErrorHere("InsertElementBeforeCurrent after current has been "
                    "deleted.");
+  }
+  if ((new_node->parent() == NULL) && (current_ != queue_.end())) {
+    // Add a parent if one was not provided in new_node.  We figure out
+    // what the parent should be by looking at current_.  If that's an
+    // EndElement event, then that means that we are adding a new child
+    // of that element.  In all other cases, we are adding a sibling.
+    HtmlEvent* current_event = *current_;
+    HtmlElement* end_element = current_event->GetEndElement();
+    if (end_element != NULL) {
+      // The node pointed to by Current will be our new parent.
+      new_node->set_parent(end_element);
+    } else {
+      // The node pointed to by Current will be our new sibling, so
+      // we should grab its parent.
+      HtmlNode* node = current_event->GetNode();
+      CHECK(node) << "Cannot compute parent for new node";
+      new_node->set_parent(node->parent());
+    }
   }
   return InsertElementBeforeEvent(current_, new_node);
 }

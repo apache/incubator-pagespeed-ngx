@@ -89,7 +89,7 @@ void LoggingFilter::Comment(HtmlCommentNode* comment) {
   ++stats_[NUM_COMMENTS];
 }
 
-void LoggingFilter::IEDirective(const std::string& directive) {
+void LoggingFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   ++stats_[NUM_IE_DIRECTIVES];
 }
 

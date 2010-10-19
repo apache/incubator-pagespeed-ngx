@@ -264,7 +264,7 @@ class HandlerCalledFilter : public HtmlFilter {
   }
   virtual void Cdata(HtmlCdataNode* cdata) { called_cdata_ = true; }
   virtual void Comment(HtmlCommentNode* comment) { called_comment_ = true; }
-  virtual void IEDirective(const std::string& directive) {
+  virtual void IEDirective(HtmlIEDirectiveNode* directive) {
     called_ie_directive_ = true;
   }
   virtual void Characters(HtmlCharactersNode* characters) {

@@ -79,7 +79,7 @@ class LoggingFilter : public EmptyHtmlFilter {
   virtual void EndElement(HtmlElement* element);
   virtual void Cdata(HtmlCdataNode* cdata);
   virtual void Comment(HtmlCommentNode* comment);
-  virtual void IEDirective(const std::string& directive);
+  virtual void IEDirective(HtmlIEDirectiveNode* directive);
   virtual void Directive(HtmlDirectiveNode* directive);
   virtual const char* Name() const { return "Logging"; }
 

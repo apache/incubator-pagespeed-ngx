@@ -35,8 +35,17 @@ class HtmlEvent {
   virtual ~HtmlEvent();
   virtual void Run(HtmlFilter* filter) = 0;
   virtual void ToString(std::string* buffer) = 0;
+
+  // If this is a StartElement event, returns the HtmlElement that is being
+  // started.  Otherwise returns NULL.
+  // TODO(jmarantz): Rename this to GetElementIfStartEvent()
   virtual HtmlElement* GetStartElement() { return NULL; }
+
+  // If this is an EndElement event, returns the HtmlElement that is being
+  // ended.  Otherwise returns NULL.
+  // TODO(jmarantz): Rename this to GetElementIfEndEvent()
   virtual HtmlElement* GetEndElement() { return NULL; }
+
   virtual HtmlLeafNode* GetLeafNode() { return NULL; }
   virtual HtmlNode* GetNode() { return NULL; }
   virtual HtmlCharactersNode* GetCharactersNode() { return NULL; }
@@ -67,23 +76,6 @@ class HtmlEndDocumentEvent: public HtmlEvent {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HtmlEndDocumentEvent);
-};
-
-class HtmlIEDirectiveEvent: public HtmlEvent {
- public:
-  HtmlIEDirectiveEvent(const std::string& directive, int line_number)
-      : HtmlEvent(line_number),
-        directive_(directive) {
-  }
-  virtual void Run(HtmlFilter* filter) { filter->IEDirective(directive_); }
-  virtual void ToString(std::string* str) {
-    *str += "IEDirective ";
-    *str += directive_;
-  }
- private:
-  std::string directive_;
-
-  DISALLOW_COPY_AND_ASSIGN(HtmlIEDirectiveEvent);
 };
 
 class HtmlStartElementEvent: public HtmlEvent {
@@ -131,6 +123,24 @@ class HtmlLeafNodeEvent: public HtmlEvent {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HtmlLeafNodeEvent);
+};
+
+class HtmlIEDirectiveEvent: public HtmlLeafNodeEvent {
+ public:
+  HtmlIEDirectiveEvent(HtmlIEDirectiveNode* directive, int line_number)
+      : HtmlLeafNodeEvent(line_number),
+        directive_(directive) {
+  }
+  virtual void Run(HtmlFilter* filter) { filter->IEDirective(directive_); }
+  virtual void ToString(std::string* str) {
+    *str += "IEDirective ";
+    *str += directive_->contents();
+  }
+  virtual HtmlLeafNode* GetLeafNode() { return directive_; }
+ private:
+  HtmlIEDirectiveNode* directive_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlIEDirectiveEvent);
 };
 
 class HtmlCdataEvent: public HtmlLeafNodeEvent {

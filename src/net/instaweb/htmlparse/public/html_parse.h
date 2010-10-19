@@ -86,6 +86,8 @@ class HtmlParse {
                                   const StringPiece& contents);
   HtmlDirectiveNode* NewDirectiveNode(HtmlElement* parent,
                                       const StringPiece& contents);
+  HtmlIEDirectiveNode* NewIEDirectiveNode(HtmlElement* parent,
+                                          const StringPiece& contents);
 
   // DOM-manipulation methods.
   // TODO(sligocki): Find Javascript equivalents and list them or even change

@@ -160,6 +160,27 @@ class HtmlCommentNode : public HtmlLeafNode {
   DISALLOW_COPY_AND_ASSIGN(HtmlCommentNode);
 };
 
+// Leaf node representing an HTML IE directive
+class HtmlIEDirectiveNode : public HtmlLeafNode {
+ public:
+  virtual ~HtmlIEDirectiveNode();
+  const std::string& contents() { return contents_; }
+  friend class HtmlParse;
+
+ protected:
+  virtual void SynthesizeEvents(const HtmlEventListIterator& iter,
+                                HtmlEventList* queue);
+
+ private:
+  HtmlIEDirectiveNode(HtmlElement* parent,
+                      const StringPiece& contents,
+                      const HtmlEventListIterator& iter)
+      : HtmlLeafNode(parent, iter),
+        contents_(contents.data(), contents.size()) {}
+  const std::string contents_;
+  DISALLOW_COPY_AND_ASSIGN(HtmlIEDirectiveNode);
+};
+
 // Leaf node representing an HTML directive
 class HtmlDirectiveNode : public HtmlLeafNode {
  public:

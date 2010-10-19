@@ -51,7 +51,7 @@ class OutlineFilter : public HtmlFilter {
   // HTML Events we do not expect to be in <style> and <script> elements.
   virtual void Comment(HtmlCommentNode* comment);
   virtual void Cdata(HtmlCdataNode* cdata);
-  virtual void IEDirective(const std::string& directive);
+  virtual void IEDirective(HtmlIEDirectiveNode* directive);
 
   // Ignored HTML Events.
   virtual void EndDocument() {}

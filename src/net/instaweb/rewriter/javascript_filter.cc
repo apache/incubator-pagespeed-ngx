@@ -301,7 +301,7 @@ void JavascriptFilter::Flush() {
   }
 }
 
-void JavascriptFilter::IEDirective(const std::string& directive) {
+void JavascriptFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   CHECK(script_in_progress_ == NULL);
   // We presume an IE directive is concealing some js code.
   some_missing_scripts_ = true;

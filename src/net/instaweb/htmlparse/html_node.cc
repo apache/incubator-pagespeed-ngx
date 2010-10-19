@@ -62,6 +62,15 @@ void HtmlCommentNode::SynthesizeEvents(const HtmlEventListIterator& iter,
   set_iter(queue->insert(iter, event));
 }
 
+HtmlIEDirectiveNode::~HtmlIEDirectiveNode() {}
+
+void HtmlIEDirectiveNode::SynthesizeEvents(const HtmlEventListIterator& iter,
+                                         HtmlEventList* queue) {
+  // We use -1 as a bogus line number, since the event is synthetic.
+  HtmlIEDirectiveEvent* event = new HtmlIEDirectiveEvent(this, -1);
+  set_iter(queue->insert(iter, event));
+}
+
 HtmlDirectiveNode::~HtmlDirectiveNode() {}
 
 void HtmlDirectiveNode::SynthesizeEvents(const HtmlEventListIterator& iter,

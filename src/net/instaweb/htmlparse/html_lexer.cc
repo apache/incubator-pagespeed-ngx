@@ -495,10 +495,12 @@ void HtmlLexer::EmitComment() {
   literal_.clear();
   if ((token_.find("[if IE") != std::string::npos) &&
       (token_.find("<![endif]") != std::string::npos)) {
-    html_parse_->AddEvent(new HtmlIEDirectiveEvent(token_, tag_start_line_));
+    HtmlIEDirectiveNode* node =
+        html_parse_->NewIEDirectiveNode(Parent(), token_);
+    html_parse_->AddEvent(new HtmlIEDirectiveEvent(node, tag_start_line_));
   } else {
-    html_parse_->AddEvent(new HtmlCommentEvent(
-        html_parse_->NewCommentNode(Parent(), token_), tag_start_line_));
+    HtmlCommentNode* node = html_parse_->NewCommentNode(Parent(), token_);
+    html_parse_->AddEvent(new HtmlCommentEvent(node, tag_start_line_));
   }
   token_.clear();
   state_ = START;

@@ -31,6 +31,7 @@ class HtmlDirectiveNode;
 class HtmlElement;
 class HtmlEvent;
 class HtmlFilter;
+class HtmlIEDirectiveNode;
 class HtmlLeafNode;
 class HtmlLexer;
 class HtmlNode;

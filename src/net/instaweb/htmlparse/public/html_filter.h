@@ -53,10 +53,9 @@ class HtmlFilter {
   // Called for an IE directive; typically used for CSS styling.
   // See http://msdn.microsoft.com/en-us/library/ms537512(VS.85).aspx
   //
-  // TODO(mdsteele): IE directives should probably have their own node class as
-  // well.  Should we try to maintain the nested structure of the conditionals,
-  // in the same way that we maintain nesting of elements?
-  virtual void IEDirective(const std::string& directive) = 0;
+  // TODO(mdsteele): Should we try to maintain the nested structure of
+  // the conditionals, in the same way that we maintain nesting of elements?
+  virtual void IEDirective(HtmlIEDirectiveNode* directive) = 0;
 
   // Called for raw characters between tags.
   virtual void Characters(HtmlCharactersNode* characters) = 0;

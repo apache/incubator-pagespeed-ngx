@@ -93,12 +93,14 @@ void CssCombineFilter::EndElement(HtmlElement* element) {
 
 // An IE directive that includes any stylesheet info should be a barrier
 // for css combining.  It's OK to emit the combination we've seen so far.
-void CssCombineFilter::IEDirective(const std::string& directive) {
+void CssCombineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   // TODO(jmarantz): consider recursively invoking the parser and
   // parsing all the IE-specific code properly.
-  if (directive.find("stylesheet") != std::string::npos) {
-    // TO BE REVERTED.  SKIP CSS COMBINE WITH IE DIRECTIVES SO IT
-    // DOES NOT CRASH.
+  // TODO(jmarantz): is looking for 'stylesheet' enough?  Or could there
+  // be other ways of sneaking CSS into the IE conditional that would
+  // cause us to break something by aggregating CSS across it?
+  if (directive->contents().find("stylesheet") != std::string::npos) {
+    EmitCombinations(false, NULL);
     css_elements_.clear();
   }
 }
@@ -214,6 +216,9 @@ void CssCombineFilter::EmitCombinations(bool append_child,
       } else {
         // Hack: for now we just have two options of where to put it.
         // AppendChild or InsertBeforeCurrent.
+        // TODO(jmarantz): replace css_elements[0] rather than inserting
+        // at the IE directive or whatever other event caused us to
+        // flush out our pending CSS combination.
         html_parse_->InsertElementBeforeCurrent(combine_element);
       }
       html_parse_->InfoHere("Combined %d CSS files into one",

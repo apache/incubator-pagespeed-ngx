@@ -140,7 +140,7 @@ void OutlineFilter::Cdata(HtmlCdataNode* cdata) {
   }
 }
 
-void OutlineFilter::IEDirective(const std::string& directive) {
+void OutlineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   if (inline_element_ != NULL) {
     html_parse_->ErrorHere("IE Directive found inside style/script.");
     inline_element_ = NULL;  // Don't outline what we don't understand.
