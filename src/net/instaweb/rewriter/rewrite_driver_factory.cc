@@ -32,10 +32,14 @@
 #include "net/instaweb/util/public/http_dump_url_fetcher.h"
 #include "net/instaweb/util/public/http_dump_url_writer.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+
+const char kInstawebResource404Count[] = "resource_404_count";
+const char kInstawebSlurp404Count[] = "slurp_404_count";
 
 RewriteDriverFactory::RewriteDriverFactory()
     : url_fetcher_(NULL),
@@ -44,7 +48,9 @@ RewriteDriverFactory::RewriteDriverFactory()
       filename_prefix_(""),
       url_prefix_(""),
       force_caching_(false),
-      slurp_read_only_(false) {
+      slurp_read_only_(false),
+      resource_404_count_(NULL),
+      slurp_404_count_(NULL) {
 }
 
 RewriteDriverFactory::~RewriteDriverFactory() {
@@ -301,6 +307,34 @@ void RewriteDriverFactory::ShutDown() {
   http_cache_.reset(NULL);
   cache_fetcher_.reset(NULL);
   cache_async_fetcher_.reset(NULL);
+}
+
+void RewriteDriverFactory::Initialize(Statistics* statistics) {
+  if (statistics) {
+    RewriteDriver::Initialize(statistics);
+    statistics->AddVariable(kInstawebResource404Count);
+    statistics->AddVariable(kInstawebSlurp404Count);
+  }
+}
+
+void RewriteDriverFactory::Increment404Count() {
+  Statistics* statistics = resource_manager_->statistics();
+  if (statistics != NULL) {
+    if (resource_404_count_ == NULL) {
+      resource_404_count_ = statistics->GetVariable(kInstawebResource404Count);
+    }
+    resource_404_count_->Add(1);
+  }
+}
+
+void RewriteDriverFactory::IncrementSlurpCount() {
+  Statistics* statistics = resource_manager_->statistics();
+  if (statistics != NULL) {
+    if (slurp_404_count_ == NULL) {
+      slurp_404_count_ = statistics->GetVariable(kInstawebSlurp404Count);
+    }
+    slurp_404_count_->Add(1);
+  }
 }
 
 }  // namespace net_instaweb

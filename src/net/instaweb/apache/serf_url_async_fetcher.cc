@@ -108,7 +108,7 @@ class SerfFetch {
     delete this;
   }
   int64 TimeDuration() const {
-    if ((fetch_start_ms_ !=0) && (fetch_end_ms_ != 0)) {
+    if ((fetch_start_ms_ != 0) && (fetch_end_ms_ != 0)) {
       return fetch_end_ms_ - fetch_start_ms_;
     } else {
       return 0;

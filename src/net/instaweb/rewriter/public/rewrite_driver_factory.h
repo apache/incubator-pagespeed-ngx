@@ -43,9 +43,11 @@ class LRUCache;
 class MessageHandler;
 class ResourceManager;
 class RewriteDriver;
+class Statistics;
 class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
+class Variable;
 
 // A base RewriteDriverFactory.
 class RewriteDriverFactory {
@@ -156,6 +158,13 @@ class RewriteDriverFactory {
   // not need to be deleted by the allocator.
   RewriteDriver* NewRewriteDriver();
 
+  // Initialize statistics variables for 404 responses.
+  static void Initialize(Statistics* statistics);
+  // Increment the count of resource returning 404.
+  void Increment404Count();
+  // Increment the cournt of slurp returning 404.
+  void IncrementSlurpCount();
+
  protected:
   virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
   bool FetchersComputed() const;
@@ -221,6 +230,8 @@ class RewriteDriverFactory {
   scoped_ptr<HTTPCache> http_cache_;
   scoped_ptr<CacheUrlFetcher> cache_fetcher_;
   scoped_ptr<CacheUrlAsyncFetcher> cache_async_fetcher_;
+  Variable* resource_404_count_;
+  Variable* slurp_404_count_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };

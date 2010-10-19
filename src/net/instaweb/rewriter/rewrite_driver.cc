@@ -140,9 +140,9 @@ bool RewriteDriver::ParseKeyInt64(const StringPiece& key, SetInt64Method m,
   }
 }
 
-void RewriteDriver::AddFiltersByCommaSeparatedList(const StringPiece& filters) {
+void RewriteDriver::AddFilter(RewriteOptions::Filter filter) {
   RewriteOptions options;
-  options.AddFiltersByCommaSeparatedList(filters);
+  options.AddFilter(filter);
   AddFilters(options);
 }
 

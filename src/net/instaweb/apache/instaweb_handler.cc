@@ -172,8 +172,9 @@ int instaweb_handler(request_rec* request) {
     std::string output;
     SimpleMetaData response_headers;
     StringWriter writer(&output);
-    if (factory->statistics()) {
-      factory->statistics()->Dump(&writer, factory->message_handler());
+    AprStatistics* statistics = factory->statistics();
+    if (statistics) {
+      statistics->Dump(&writer, factory->message_handler());
     }
     send_out_headers_and_body(request, response_headers, output);
   } else if (strcmp(request->handler, "mod_pagespeed_beacon") == 0) {
@@ -211,11 +212,15 @@ int instaweb_handler(request_rec* request) {
       SimpleMetaData response_headers;
       std::string output;
       if (!fetch_resource(request, resource, &response_headers, &output)) {
+        factory->Increment404Count();
         return instaweb_default_handler(resource, request);
       }
       send_out_headers_and_body(request, response_headers, output);
     } else if (factory->slurping_enabled()) {
       SlurpUrl(url, factory, request);
+      if (request->status == HTTP_NOT_FOUND) {
+        factory->IncrementSlurpCount();
+      }
     } else {
       ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
                     "mod_pagespeed: Declined request %s", url.c_str());

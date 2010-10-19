@@ -14,7 +14,8 @@
 
 {
   'variables': {
-    'sparsehash_gen_arch_root': 'gen/arch/<(OS)/<(target_arch)',
+    'sparsehash_root': '<(DEPTH)/third_party/google-sparsehash',
+    'sparsehash_gen_arch_root': '<(sparsehash_root)/gen/arch/<(OS)/<(target_arch)',
   },
   'targets': [
     {
@@ -22,8 +23,8 @@
       'type': 'none',
       'direct_dependent_settings': {
         'include_dirs': [
-          '<(sparsehash_gen_arch_root)/include', # For sparseconfig.h
-	  'src',  # For everything else.
+          '<(sparsehash_gen_arch_root)/include',  # For sparseconfig.h
+          '<(sparsehash_root)/src',  # For everything else.
         ],
       },
     },

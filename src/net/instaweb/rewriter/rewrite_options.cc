@@ -20,28 +20,6 @@
 
 namespace net_instaweb {
 
-const char RewriteOptions::kAddBaseTag[] = "add_base_tag";
-const char RewriteOptions::kAddHead[] = "add_head";
-const char RewriteOptions::kAddInstrumentation[] = "add_instrumentation";
-const char RewriteOptions::kCollapseWhitespace[] = "collapse_whitespace";
-const char RewriteOptions::kCombineCss[] = "combine_css";
-const char RewriteOptions::kDebugLogImgTags[] = "debug_log_img_tags";
-const char RewriteOptions::kElideAttributes[] = "elide_attributes";
-const char RewriteOptions::kExtendCache[] = "extend_cache";
-const char RewriteOptions::kInlineCss[] = "inline_css";
-const char RewriteOptions::kInlineJavascript[] = "inline_javascript";
-const char RewriteOptions::kInsertImgDimensions[] = "insert_img_dimensions";
-const char RewriteOptions::kLeftTrimUrls[] = "left_trim_urls";
-const char RewriteOptions::kMoveCssToHead[] = "move_css_to_head";
-const char RewriteOptions::kOutlineCss[] = "outline_css";
-const char RewriteOptions::kOutlineJavascript[] = "outline_javascript";
-const char RewriteOptions::kRemoveComments[] = "remove_comments";
-const char RewriteOptions::kRemoveQuotes[] = "remove_quotes";
-const char RewriteOptions::kRewriteCss[] = "rewrite_css";
-const char RewriteOptions::kRewriteImages[] = "rewrite_images";
-const char RewriteOptions::kRewriteJavascript[] = "rewrite_javascript";
-const char RewriteOptions::kStripScripts[] = "strip_scripts";
-
 // TODO(jmarantz): consider merging this threshold with the image-inlining
 // threshold, which is currently defaulting at 2000, so we have a single
 // byte-count threshold, above which inlined resources get outlined, and
@@ -78,27 +56,27 @@ RewriteOptions::RewriteOptions()
       js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
       outline_threshold_(kDefaultOutlineThreshold),
       num_shards_(0) {
-  all_filters_.insert(kAddBaseTag);
-  all_filters_.insert(kAddHead);
-  all_filters_.insert(kAddInstrumentation);
-  all_filters_.insert(kCollapseWhitespace);
-  all_filters_.insert(kCombineCss);
-  all_filters_.insert(kDebugLogImgTags);
-  all_filters_.insert(kElideAttributes);
-  all_filters_.insert(kExtendCache);
-  all_filters_.insert(kInlineCss);
-  all_filters_.insert(kInlineJavascript);
-  all_filters_.insert(kInsertImgDimensions);
-  all_filters_.insert(kLeftTrimUrls);
-  all_filters_.insert(kMoveCssToHead);
-  all_filters_.insert(kOutlineCss);
-  all_filters_.insert(kOutlineJavascript);
-  all_filters_.insert(kRemoveComments);
-  all_filters_.insert(kRemoveQuotes);
-  all_filters_.insert(kRewriteCss);
-  all_filters_.insert(kRewriteImages);
-  all_filters_.insert(kRewriteJavascript);
-  all_filters_.insert(kStripScripts);
+  name_filter_map_["add_base_tag"] = kAddBaseTag;
+  name_filter_map_["add_head"] = kAddHead;
+  name_filter_map_["add_instrumentation"] = kAddInstrumentation;
+  name_filter_map_["collapse_whitespace"] = kCollapseWhitespace;
+  name_filter_map_["combine_css"] = kCombineCss;
+  name_filter_map_["debug_log_img_tags"] = kDebugLogImgTags;
+  name_filter_map_["elide_attributes"] = kElideAttributes;
+  name_filter_map_["extend_cache"] = kExtendCache;
+  name_filter_map_["inline_css"] = kInlineCss;
+  name_filter_map_["inline_javascript"] = kInlineJavascript;
+  name_filter_map_["insert_img_dimensions"] = kInsertImgDimensions;
+  name_filter_map_["left_trim_urls"] = kLeftTrimUrls;
+  name_filter_map_["move_css_to_head"] = kMoveCssToHead;
+  name_filter_map_["outline_css"] = kOutlineCss;
+  name_filter_map_["outline_javascript"] = kOutlineJavascript;
+  name_filter_map_["remove_comments"] = kRemoveComments;
+  name_filter_map_["remove_quotes"] = kRemoveQuotes;
+  name_filter_map_["rewrite_css"] = kRewriteCss;
+  name_filter_map_["rewrite_images"] = kRewriteImages;
+  name_filter_map_["rewrite_javascript"] = kRewriteJavascript;
+  name_filter_map_["strip_scripts"] = kStripScripts;
 }
 
 void RewriteOptions::AddFiltersByCommaSeparatedList(
@@ -106,21 +84,21 @@ void RewriteOptions::AddFiltersByCommaSeparatedList(
   std::vector<StringPiece> names;
   SplitStringPieceToVector(filters, ",", &names, true);
   for (int i = 0, n = names.size(); i < n; ++i) {
-    AddFilter(names[i]);
+    // TODO(jmarantz): consider returning a bool and taking a message
+    // handler to make this a more user-friendly error message.
+    std::string option(names[i].data(), names[i].size());
+    NameFilterMap::iterator p = name_filter_map_.find(option);
+    CHECK(p != name_filter_map_.end()) << "Invalid filter name: " << option;
+    AddFilter(p->second);
   }
 }
 
-void RewriteOptions::AddFilter(const StringPiece& filter) {
-  std::string option(filter.data(), filter.size());
-
-  // TODO(jmarantz): consider returning a bool and taking a message
-  // handler to make this a more user-friendly error message.
-  CHECK(all_filters_.find(option) != all_filters_.end());
-  filters_.insert(option);
+void RewriteOptions::AddFilter(Filter filter) {
+  filters_.insert(filter);
 }
 
-bool RewriteOptions::Enabled(const StringPiece& filter) const {
-  return (filters_.find(filter.as_string()) != filters_.end());
+bool RewriteOptions::Enabled(Filter filter) const {
+  return (filters_.find(filter) != filters_.end());
 }
 
 }  // namespace net_instaweb

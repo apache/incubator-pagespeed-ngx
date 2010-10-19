@@ -332,7 +332,7 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
 int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                           server_rec *server) {
   AprStatistics* statistics = new AprStatistics();
-  RewriteDriver::Initialize(statistics);
+  RewriteDriverFactory::Initialize(statistics);
   SerfUrlAsyncFetcher::Initialize(statistics);
   statistics->InitVariables(pool, true);
 

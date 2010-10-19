@@ -14,7 +14,8 @@
 
 {
   'variables': {
-    'gflags_gen_arch_root': 'gen/arch/<(OS)/<(target_arch)',
+    'gflags_root': '<(DEPTH)/third_party/gflags',
+    'gflags_gen_arch_root': '<(gflags_root)/gen/arch/<(OS)/<(target_arch)',
   },
   'targets': [
     {
@@ -23,13 +24,14 @@
       'direct_dependent_settings': {
         'include_dirs': [
           '<(gflags_gen_arch_root)/include',  # For configured files.
+          '<(gflags_root)/src',  # For everything else.
         ],
       },
       'include_dirs': [
-        '<(gflags_gen_arch_root)/src',  # For config.h
+        '<(gflags_gen_arch_root)/include/private',  # For config.h
         '<(gflags_gen_arch_root)/include',  # For configured files.
-        'src',  # For everything else.
-        ],
+        '<(gflags_root)/src',  # For everything else.
+      ],
       'sources': [
         'src/gflags.cc',
         'src/gflags_completions.cc',

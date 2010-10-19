@@ -80,11 +80,9 @@ class RewriteDriver {
 
   // Adds the filters, specified by name in enabled_filters.
   void AddFilters(const RewriteOptions& options);
+  void AddFilter(RewriteOptions::Filter filter);
 
-  void AddHead() { AddFiltersByCommaSeparatedList(RewriteOptions::kAddHead); }
-
-  // Add filters by comma-separated list
-  void AddFiltersByCommaSeparatedList(const StringPiece& filters);
+  void AddHead() { AddFilter(RewriteOptions::kAddHead); }
 
   // Add any HtmlFilter to the HtmlParse chain and take ownership of the filter.
   void AddFilter(HtmlFilter* filter);

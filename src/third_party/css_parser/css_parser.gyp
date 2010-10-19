@@ -27,17 +27,12 @@
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
-	'<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
-	'<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
+        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
+        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
       ],
-      # For .h files included in these .h files.
-      'direct_dependent_settings': {
-        'include_dirs': [
-          # TODO(sligocki): Import these from google-sparsehash.gyp
-          '<(DEPTH)/third_party/google-sparsehash/gen/arch/<(OS)/<(target_arch)/include',
-          '<(DEPTH)/third_party/google-sparsehash/src',
-        ],
-      },
+      'export_dependent_settings': [
+        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
+      ],
       'include_dirs': [
         '<(css_parser_root)',
         '<(DEPTH)',
@@ -65,8 +60,8 @@
         '<(css_parser_root)/webutil/css/valuevalidator.h',
 
         #'<(css_parser_root)/webutil/css/parse_arg.cc',
-	# Tests
-	#'<(css_parser_root)/webutil/css/gtest_main.cc',
+        # Tests
+        #'<(css_parser_root)/webutil/css/gtest_main.cc',
         #'<(css_parser_root)/webutil/css/identifier_test.cc',
         #'<(css_parser_root)/webutil/css/parser_unittest.cc',
         #'<(css_parser_root)/webutil/css/property_test.cc',
@@ -81,14 +76,14 @@
         '<(css_parser_root)/webutil/html/htmltagindex.cc',
         '<(css_parser_root)/webutil/html/htmltagindex.h',
 
-	# UnicodeText
+        # UnicodeText
         '<(css_parser_root)/util/utf8/internal/unicodetext.cc',
         '<(css_parser_root)/util/utf8/internal/unilib.cc',
         '<(css_parser_root)/util/utf8/public/config.h',
         '<(css_parser_root)/util/utf8/public/unicodetext.h',
         '<(css_parser_root)/util/utf8/public/unilib.h',
 
-	# libutf
+        # libutf
         #'<(css_parser_root)/third_party/utf/Make.Linux-x86_64',
         #'<(css_parser_root)/third_party/utf/Makefile',
         #'<(css_parser_root)/third_party/utf/NOTICE',
@@ -118,7 +113,7 @@
         '<(css_parser_root)/third_party/utf/utfrune.c',
         '<(css_parser_root)/third_party/utf/utfutf.c',
 
-	# Supporting interfaces.
+        # Supporting interfaces.
         '<(css_parser_root)/base/commandlineflags.h',
         '<(css_parser_root)/base/googleinit.h',
         '<(css_parser_root)/base/macros.h',
@@ -143,7 +138,7 @@
         '<(css_parser_root)/util/gtl/singleton.h',
         '<(css_parser_root)/util/gtl/stl_util-inl.h',
         '<(css_parser_root)/util/hash/hash.h',
-	],
+      ],
     },
   ],
 }

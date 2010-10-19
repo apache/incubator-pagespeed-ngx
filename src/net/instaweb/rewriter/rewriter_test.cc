@@ -87,7 +87,7 @@ class RewriterTest : public ResourceManagerTestBase {
   void ServeResourceFromNewContext(const StringPiece& resource,
                                    const std::string& output_filename,
                                    const StringPiece& expected_content,
-                                   const std::string& filter_names) {
+                                   RewriteOptions::Filter filter) {
     scoped_ptr<ResourceManager> resource_manager(
         NewResourceManager(&mock_hasher_));
     SimpleStats stats;
@@ -96,7 +96,7 @@ class RewriterTest : public ResourceManagerTestBase {
     RewriteDriver driver(&message_handler_, &file_system_,
                          &mock_url_async_fetcher_);
     driver.SetResourceManager(resource_manager.get());
-    driver.AddFiltersByCommaSeparatedList(filter_names);
+    driver.AddFilter(filter);
     Variable* resource_fetches =
         stats.GetVariable(RewriteDriver::kResourceFetches);
     SimpleMetaData request_headers, response_headers;
@@ -141,8 +141,8 @@ class RewriterTest : public ResourceManagerTestBase {
     rewrite_driver_.SetResourceManager(resource_manager.get());
     other_driver_.SetResourceManager(other_resource_manager.get());
 
-    rewrite_driver_.AddFiltersByCommaSeparatedList(RewriteOptions::kCombineCss);
-    other_driver_.AddFiltersByCommaSeparatedList(RewriteOptions::kCombineCss);
+    rewrite_driver_.AddFilter(RewriteOptions::kCombineCss);
+    other_driver_.AddFilter(RewriteOptions::kCombineCss);
 
     // URLs and content for HTML document and resources.
     CHECK_EQ(StringPiece::npos, id.find("/"));
@@ -280,8 +280,7 @@ class RewriterTest : public ResourceManagerTestBase {
     options.AddFilter(RewriteOptions::kInsertImgDimensions);
     options.set_img_inline_max_bytes(2000);
     rewrite_driver_.AddFilters(options);
-    other_driver_.AddFiltersByCommaSeparatedList(
-        RewriteOptions::kRewriteImages);
+    other_driver_.AddFilter(RewriteOptions::kRewriteImages);
 
     // URLs and content for HTML document and resources.
     const char html_url[] = "http://rewrite_image.test/RewriteImage.html";
@@ -403,7 +402,7 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_EQ(rewritten_image_data, secondary_image_data);
     ServeResourceFromNewContext(resource, rewritten_filename,
                                 fetched_resource_content.substr(header_size),
-                                "rewrite_images");
+                                RewriteOptions::kRewriteImages);
   }
 
   void DataUrlResource() {
@@ -458,8 +457,7 @@ class RewriterTest : public ResourceManagerTestBase {
     scoped_ptr<ResourceManager> resource_manager(
         NewResourceManager(&mock_hasher_));
     rewrite_driver_.SetResourceManager(resource_manager.get());
-    rewrite_driver_.AddFiltersByCommaSeparatedList(
-        RewriteOptions::kInlineJavascript);
+    rewrite_driver_.AddFilter(RewriteOptions::kInlineJavascript);
 
     const std::string html_input =
         "<head>\n"
@@ -490,7 +488,7 @@ class RewriterTest : public ResourceManagerTestBase {
     scoped_ptr<ResourceManager> resource_manager(NewResourceManager(hasher));
     rewrite_driver_.SetResourceManager(resource_manager.get());
     RewriteOptions options;
-    options.AddFiltersByCommaSeparatedList(RewriteOptions::kOutlineCss);
+    options.AddFilter(RewriteOptions::kOutlineCss);
     options.set_outline_threshold(0);
     rewrite_driver_.AddFilters(options);
 
@@ -539,7 +537,7 @@ class RewriterTest : public ResourceManagerTestBase {
     scoped_ptr<ResourceManager> resource_manager(NewResourceManager(hasher));
     rewrite_driver_.SetResourceManager(resource_manager.get());
     RewriteOptions options;
-    options.AddFiltersByCommaSeparatedList(RewriteOptions::kOutlineJavascript);
+    options.AddFilter(RewriteOptions::kOutlineJavascript);
     options.set_outline_threshold(0);
     rewrite_driver_.AddFilters(options);
 
@@ -683,7 +681,7 @@ TEST_F(RewriterTest, MergeHead) {
 }
 
 TEST_F(RewriterTest, BaseTagNoHead) {
-  rewrite_driver_.AddFiltersByCommaSeparatedList(RewriteOptions::kAddBaseTag);
+  rewrite_driver_.AddFilter(RewriteOptions::kAddBaseTag);
   rewrite_driver_.SetBaseUrl("http://base");
   ValidateExpected("base_tag",
       "<body><p>text</p></body>",
@@ -691,7 +689,7 @@ TEST_F(RewriterTest, BaseTagNoHead) {
 }
 
 TEST_F(RewriterTest, BaseTagExistingHead) {
-  rewrite_driver_.AddFiltersByCommaSeparatedList(RewriteOptions::kAddBaseTag);
+  rewrite_driver_.AddFilter(RewriteOptions::kAddBaseTag);
   rewrite_driver_.SetBaseUrl("http://base");
   ValidateExpected("base_tag",
       "<head><meta></head><body><p>text</p></body>",
@@ -699,7 +697,7 @@ TEST_F(RewriterTest, BaseTagExistingHead) {
 }
 
 TEST_F(RewriterTest, BaseTagExistingHeadAndNonHrefBase) {
-  rewrite_driver_.AddFiltersByCommaSeparatedList(RewriteOptions::kAddBaseTag);
+  rewrite_driver_.AddFilter(RewriteOptions::kAddBaseTag);
   rewrite_driver_.SetBaseUrl("http://base");
   ValidateExpected("base_tag",
       "<head><base x><meta></head><body></body>",
@@ -707,7 +705,7 @@ TEST_F(RewriterTest, BaseTagExistingHeadAndNonHrefBase) {
 }
 
 TEST_F(RewriterTest, BaseTagExistingHeadAndHrefBase) {
-  rewrite_driver_.AddFiltersByCommaSeparatedList(RewriteOptions::kAddBaseTag);
+  rewrite_driver_.AddFilter(RewriteOptions::kAddBaseTag);
   rewrite_driver_.SetBaseUrl("http://base");
   ValidateExpected("base_tag",
       "<head><meta><base href=\"http://old\"></head><body></body>",

@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
 
+#include <map>
+#include <set>
 #include "base/basictypes.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -27,27 +29,29 @@ namespace net_instaweb {
 
 class RewriteOptions {
  public:
-  static const char kAddBaseTag[];
-  static const char kAddHead[];
-  static const char kAddInstrumentation[];
-  static const char kCollapseWhitespace[];
-  static const char kCombineCss[];
-  static const char kDebugLogImgTags[];
-  static const char kElideAttributes[];
-  static const char kExtendCache[];
-  static const char kInlineCss[];
-  static const char kInlineJavascript[];
-  static const char kInsertImgDimensions[];
-  static const char kLeftTrimUrls[];
-  static const char kMoveCssToHead[];
-  static const char kOutlineCss[];
-  static const char kOutlineJavascript[];
-  static const char kRemoveComments[];
-  static const char kRemoveQuotes[];
-  static const char kRewriteCss[];
-  static const char kRewriteImages[];
-  static const char kRewriteJavascript[];
-  static const char kStripScripts[];
+  enum Filter {
+    kAddBaseTag,
+    kAddHead,
+    kAddInstrumentation,
+    kCollapseWhitespace,
+    kCombineCss,
+    kDebugLogImgTags,
+    kElideAttributes,
+    kExtendCache,
+    kInlineCss,
+    kInlineJavascript,
+    kInsertImgDimensions,
+    kLeftTrimUrls,
+    kMoveCssToHead,
+    kOutlineCss,
+    kOutlineJavascript,
+    kRemoveComments,
+    kRemoveQuotes,
+    kRewriteCss,
+    kRewriteImages,
+    kRewriteJavascript,
+    kStripScripts,
+  };
 
   static const int64 kDefaultCssInlineMaxBytes;
   static const int64 kDefaultImgInlineMaxBytes;
@@ -57,13 +61,10 @@ class RewriteOptions {
   RewriteOptions();
 
   void AddFiltersByCommaSeparatedList(const StringPiece& filters);
-  void AddFilters(const StringSet& filters) {
-    filters_.insert(filters.begin(), filters.end());
-  }
   void ClearFilters() { filters_.clear(); }
-  void AddFilter(const StringPiece& filter);
+  void AddFilter(Filter filter);
 
-  bool Enabled(const StringPiece& filter_name) const;
+  bool Enabled(Filter filter) const;
 
   int64 outline_threshold() const { return outline_threshold_; }
   void set_outline_threshold(int64 x) { outline_threshold_ = x; }
@@ -77,8 +78,10 @@ class RewriteOptions {
   void set_num_shards(int x) { num_shards_ = x; }
 
  public:
-  StringSet all_filters_;  // used for checking against misspelled options
-  StringSet filters_;
+  typedef std::map<std::string, Filter> NameFilterMap;
+  NameFilterMap name_filter_map_;
+  typedef std::set<Filter> FilterSet;
+  FilterSet filters_;
   int64 css_inline_max_bytes_;
   int64 img_inline_max_bytes_;
   int64 js_inline_max_bytes_;
