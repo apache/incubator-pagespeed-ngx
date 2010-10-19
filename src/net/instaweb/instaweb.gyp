@@ -130,7 +130,7 @@
       'sources': [
         'rewriter/resource.cc',
         'rewriter/output_resource.cc',
-        'rewriter/resource_encoder.cc',
+        'rewriter/resource_namer.cc',
         'rewriter/resource_manager.cc',
       ],
       'include_dirs': [

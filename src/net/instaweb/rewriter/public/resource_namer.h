@@ -14,21 +14,23 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_ENCODER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_ENCODER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_NAMER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_NAMER_H_
 
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-// Encapsulates the encoding and decoding of resource URL leafs.  The class
-// holds the context of the current leaf, and is not intended for re-use.  We
-// could, of course, add a Clear(), but it is a stateful class.
-class ResourceEncoder {
+// Encapsulates the naming of resource URL leafs.  The class holds the context
+// of a single resource, and is not intended for re-use.  We could, of course,
+// add a Clear(), but it is a stateful class.
+class ResourceNamer {
  public:
-  ResourceEncoder() {}
-  ~ResourceEncoder() {}
+  ResourceNamer() {}
+  ~ResourceNamer() {}
+
+  // Encoding and decoding in various formats.
 
   // Decodes an entire resource name (ID.HASH.NAME.EXT), placing
   // the result in the fields in this encoder.
@@ -53,15 +55,26 @@ class ResourceEncoder {
   std::string EncodeHashExt() const;
   bool DecodeHashExt(const StringPiece& encoded_hash_ext);
 
+  // Simple getters
+  StringPiece id() const { return id_; }
+  StringPiece name() const { return name_; }
+  StringPiece hash() const { return hash_; }
+  StringPiece ext() const { return ext_; }
+
+  // Simple setters
   void set_id(const StringPiece& p) { p.CopyToString(&id_); }
   void set_name(const StringPiece& n) { n.CopyToString(&name_); }
   void set_hash(const StringPiece& h) { h.CopyToString(&hash_); }
-  void set_ext(const StringPiece& e) { e.CopyToString(&ext_); }
+  void set_ext(const StringPiece& e) {
+    // TODO(jmaessen): Remove check after transitioning to undotted extensions
+    // everywhere.
+    CHECK(e.empty() || e[0] != '.');
+    e.CopyToString(&ext_);
+  }
 
-  StringPiece id() { return id_; }
-  StringPiece name() { return name_; }
-  StringPiece hash() { return hash_; }
-  StringPiece ext() { return ext_; }
+  // Other setter-like operations
+  void ClearHash() { hash_.clear(); }
+  void CopyFrom(const ResourceNamer& other);
 
  private:
   std::string id_;
@@ -69,9 +82,9 @@ class ResourceEncoder {
   std::string hash_;
   std::string ext_;
 
-  DISALLOW_COPY_AND_ASSIGN(ResourceEncoder);
+  DISALLOW_COPY_AND_ASSIGN(ResourceNamer);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_ENCODER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_NAMER_H_

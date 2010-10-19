@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/rewriter/public/resource_encoder.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include <vector>
 
 namespace {
@@ -28,7 +28,7 @@ static const char kSeparatorChar = kSeparatorString[0];
 
 namespace net_instaweb {
 
-bool ResourceEncoder::Decode(const StringPiece& encoded_string) {
+bool ResourceNamer::Decode(const StringPiece& encoded_string) {
   std::vector<StringPiece> names;
   SplitStringPieceToVector(encoded_string, kSeparatorString, &names, true);
   bool ret = (names.size() == 4);
@@ -44,7 +44,7 @@ bool ResourceEncoder::Decode(const StringPiece& encoded_string) {
 // The current encoding assumes there are no dots in any of the components.
 // This restriction may be relaxed in the future, but check it aggressively
 // for now.
-std::string ResourceEncoder::Encode() const {
+std::string ResourceNamer::Encode() const {
   CHECK(id_.find(kSeparatorChar) == StringPiece::npos);
   CHECK(name_.find(kSeparatorChar) == StringPiece::npos);
   CHECK(hash_.find(kSeparatorChar) == StringPiece::npos);
@@ -55,7 +55,7 @@ std::string ResourceEncoder::Encode() const {
                 ext_);
 }
 
-std::string ResourceEncoder::EncodeIdName() const {
+std::string ResourceNamer::EncodeIdName() const {
   CHECK(id_.find(kSeparatorChar) == StringPiece::npos);
   CHECK(name_.find(kSeparatorChar) == StringPiece::npos);
   return StrCat(id_, kSeparatorString, name_);
@@ -63,13 +63,13 @@ std::string ResourceEncoder::EncodeIdName() const {
 
 // Note: there is no need at this time to decode the name key.
 
-std::string ResourceEncoder::EncodeHashExt() const {
+std::string ResourceNamer::EncodeHashExt() const {
   CHECK(hash_.find(kSeparatorChar) == StringPiece::npos);
   CHECK(ext_.find(kSeparatorChar) == StringPiece::npos);
   return StrCat(hash_, kSeparatorString, ext_);
 }
 
-bool ResourceEncoder::DecodeHashExt(const StringPiece& encoded_hash_ext) {
+bool ResourceNamer::DecodeHashExt(const StringPiece& encoded_hash_ext) {
   std::vector<StringPiece> names;
   SplitStringPieceToVector(encoded_hash_ext, kSeparatorString, &names, true);
   bool ret = (names.size() == 2);
@@ -78,6 +78,13 @@ bool ResourceEncoder::DecodeHashExt(const StringPiece& encoded_hash_ext) {
     names[1].CopyToString(&ext_);
   }
   return ret;
+}
+
+void ResourceNamer::CopyFrom(const ResourceNamer& other) {
+  other.id().CopyToString(&id_);
+  other.name().CopyToString(&name_);
+  other.hash().CopyToString(&hash_);
+  other.ext().CopyToString(&ext_);
 }
 
 }  // namespace net_instaweb

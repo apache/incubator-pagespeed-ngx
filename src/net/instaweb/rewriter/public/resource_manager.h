@@ -44,6 +44,7 @@ class Hasher;
 class MessageHandler;
 class MetaData;
 class OutputResource;
+class ResourceNamer;
 class Statistics;
 class UrlAsyncFetcher;
 class UrlEscaper;
@@ -113,9 +114,8 @@ class ResourceManager {
   //
   // 'type' arg can be null if it's not known, or is not in our ContentType
   // library.
-  OutputResource* CreateUrlOutputResource(
-      const StringPiece& filter_prefix, const StringPiece& name,
-      const StringPiece& hash, const ContentType* type);
+  OutputResource* CreateUrlOutputResource(const ResourceNamer& resource_name,
+                                          const ContentType* type);
 
   // Creates an input resource with the url evaluated based on input_url
   // which may need to be absolutified relative to base_url.

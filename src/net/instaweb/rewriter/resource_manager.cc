@@ -21,7 +21,7 @@
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
-#include "net/instaweb/rewriter/public/resource_encoder.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
@@ -193,8 +193,14 @@ OutputResource* ResourceManager::CreateGeneratedOutputResource(
     const StringPiece& filter_prefix,
     const ContentType* content_type,
     MessageHandler* handler) {
-  OutputResource* resource = new OutputResource(
-      this, content_type, filter_prefix, "_");
+  CHECK(content_type != NULL);
+  ResourceNamer full_name;
+  full_name.set_id(filter_prefix);
+  full_name.set_name("_");
+  // TODO(jmaessen): The addition of 1 below avoids the leading ".";
+  // make this convention consistent and fix all code.
+  full_name.set_ext(content_type->file_extension() + 1);
+  OutputResource* resource = new OutputResource(this, full_name, content_type);
   resource->set_generated(true);
   return resource;
 }
@@ -214,10 +220,10 @@ OutputResource* ResourceManager::CreateGeneratedOutputResource(
 // cache.
 std::string ResourceManager::ConstructNameKey(
     const OutputResource* output) const {
-  ResourceEncoder encoder;
-  encoder.set_id(output->filter_prefix());
-  encoder.set_name(output->name());
-  return encoder.EncodeIdName();
+  ResourceNamer full_name;
+  full_name.set_id(output->filter_prefix());
+  full_name.set_name(output->name());
+  return full_name.EncodeIdName();
 }
 
 OutputResource* ResourceManager::CreateNamedOutputResource(
@@ -225,8 +231,14 @@ OutputResource* ResourceManager::CreateNamedOutputResource(
     const StringPiece& name,
     const ContentType* content_type,
     MessageHandler* handler) {
-  OutputResource* resource = new OutputResource(
-      this, content_type, filter_prefix, name);
+  assert(content_type != NULL);
+  ResourceNamer full_name;
+  full_name.set_id(filter_prefix);
+  full_name.set_name(name);
+  // TODO(jmaessen): The addition of 1 below avoids the leading ".";
+  // make this convention consistent and fix all code.
+  full_name.set_ext(content_type->file_extension() + 1);
+  OutputResource* resource = new OutputResource(this, full_name, content_type);
 
   // Determine whether this output resource is still valid by looking
   // up by hash in the http cache.  Note that this cache entry will
@@ -235,26 +247,23 @@ OutputResource* ResourceManager::CreateNamedOutputResource(
   StringPiece hash_extension;
   HTTPValue value;
 
-  if (http_cache_->Get(ConstructNameKey(resource), &value, &meta_data,
-                       handler) &&
+  if (http_cache_->Get(full_name.EncodeIdName(), &value, &meta_data, handler) &&
       value.ExtractContents(&hash_extension)) {
-    ResourceEncoder encoder;
-    if (encoder.DecodeHashExt(hash_extension)) {
-      resource->SetHash(encoder.hash());
+    ResourceNamer hash_ext;
+    if (hash_ext.DecodeHashExt(hash_extension)) {
+      resource->SetHash(hash_ext.hash());
       // Note that the '.' must be included in the suffix
       // TODO(jmarantz): remove this from the suffix.
-      resource->set_suffix(StrCat(".", encoder.ext()));
+      resource->set_suffix(StrCat(".", hash_ext.ext()));
     }
   }
   return resource;
 }
 
 OutputResource* ResourceManager::CreateUrlOutputResource(
-    const StringPiece& filter_prefix, const StringPiece& name,
-    const StringPiece& hash, const ContentType* content_type) {
-  OutputResource* resource = new OutputResource(
-      this, content_type, filter_prefix, name);
-  resource->SetHash(hash);
+    const ResourceNamer& resource_id, const ContentType* type) {
+  CHECK(!resource_id.hash().empty());
+  OutputResource* resource = new OutputResource(this, resource_id, type);
   return resource;
 }
 
@@ -416,11 +425,11 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
         origin_meta_data.Add(kCacheControl, cache_control.c_str());
         origin_meta_data.ComputeCaching();
 
-        ResourceEncoder encoder;
-        encoder.set_hash(output->hash());
-        encoder.set_ext(output->suffix().substr(1));  // skip the "."
+        ResourceNamer full_name;
+        full_name.set_hash(output->hash());
+        full_name.set_ext(output->suffix().substr(1));  // skip the "."
         http_cache_->Put(ConstructNameKey(output), origin_meta_data,
-                         encoder.EncodeHashExt(), handler);
+                         full_name.EncodeHashExt(), handler);
       }
     }
   } else {

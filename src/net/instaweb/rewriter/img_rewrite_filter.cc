@@ -334,30 +334,30 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
     EncodeImageUrl(resource_manager_->url_escaper(),
                    origin_url, page_dim, &rewritten_url);
 
-    // Create an output resource and fetch it, as that will tell
-    // us if we have already optimized it, or determined that it was not
-    // worth optimizing.
-    scoped_ptr<OutputResource> output_resource(
-       resource_manager_->CreateNamedOutputResource(
-           filter_prefix_, rewritten_url, NULL, message_handler));
     ImageDim actual_dim;
     actual_dim.valid = false;
     scoped_ptr<Image> image(GetImage(origin_url,
                                      input_resource.get()));
     const ContentType* content_type =
         ImageToContentType(origin_url, image.get());
+
     if (content_type != NULL) {
       image->Dimensions(&actual_dim);
+      // Create an output resource and fetch it, as that will tell
+      // us if we have already optimized it, or determined that it was not
+      // worth optimizing.
+      scoped_ptr<OutputResource> output_resource(
+          resource_manager_->CreateNamedOutputResource(
+              filter_prefix_, rewritten_url, content_type, message_handler));
       if (!resource_manager_->FetchOutputResource(
               output_resource.get(), NULL, NULL, message_handler)) {
-        output_resource->SetType(content_type);
         OptimizeImage(input_resource.get(), origin_url, page_dim, image.get(),
                       output_resource.get());
       }
-    }
-    if (output_resource->IsWritten()) {
-      UpdateTargetElement(output_resource.get(), page_dim, actual_dim,
-                          element, src);
+      if (output_resource->IsWritten()) {
+        UpdateTargetElement(output_resource.get(), page_dim, actual_dim,
+                            element, src);
+      }
     }
   }
 }

@@ -20,9 +20,10 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 
 #include "base/logging.h"
-#include "net/instaweb/rewriter/public/resource_encoder.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
@@ -32,17 +33,20 @@
 namespace net_instaweb {
 
 OutputResource::OutputResource(ResourceManager* manager,
-                               const ContentType* type,
-                               const StringPiece& filter_prefix,
-                               const StringPiece& name)
+                               const ResourceNamer& full_name,
+                               const ContentType* type)
     : Resource(manager, type),
       output_file_(NULL),
       writing_complete_(false),
-      generated_(false) {
-  filter_prefix.CopyToString(&filter_prefix_);
-  name.CopyToString(&name_);
-  if (type_ != NULL) {
-    suffix_ = type_->file_extension();
+      generated_(false),
+      full_name_() {
+  full_name_.CopyFrom(full_name);
+  if (type != NULL) {
+    // This if + check used to be a 1-liner, but it was failing and this
+    // yields debuggable output.
+    // TODO(jmaessen): The addition of 1 below avoids the leading ".";
+    // make this convention consistent and fix all code.
+    CHECK_EQ((type->file_extension() + 1), full_name.ext());
   }
 }
 
@@ -61,7 +65,7 @@ bool OutputResource::OutputWriter::Write(const StringPiece& data,
 OutputResource::OutputWriter* OutputResource::BeginWrite(
     MessageHandler* handler) {
   value_.Clear();
-  hash_.clear();
+  full_name_.ClearHash();
   CHECK(!writing_complete_);
   CHECK(output_file_ == NULL);
   if (resource_manager_->store_outputs_in_file_system()) {
@@ -98,7 +102,7 @@ bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
   CHECK(!writing_complete_);
   value_.SetHeaders(meta_data_);
   Hasher* hasher = resource_manager_->hasher();
-  hash_ = hasher->Hash(contents());
+  full_name_.set_hash(hasher->Hash(contents()));
   writing_complete_ = true;
   if (output_file_ == NULL) {
     return true;
@@ -133,20 +137,26 @@ std::string OutputResource::TempPrefix() const {
 }
 
 std::string OutputResource::NameTail() const {
-  CHECK(!hash_.empty())
+  CHECK(!full_name_.hash().empty())
       << "to compute the Resource filename or URL, we must have "
       << "completed writing, otherwise the contents hash is not known.";
-  ResourceEncoder encoder;
-  encoder.set_id(filter_prefix_);
-  encoder.set_hash(hash_);
-  encoder.set_name(name_);
-  encoder.set_ext(suffix().substr(1));  // Skip the '.' already in suffix
-  return encoder.Encode();
+  return full_name_.Encode();
 }
 
 StringPiece OutputResource::suffix() const {
-  CHECK(!suffix_.empty());
-  return suffix_;
+  CHECK(type_ != NULL);
+  return type_->file_extension();
+}
+
+void OutputResource::set_suffix(const StringPiece& ext) {
+  type_ = NameExtensionToContentType(ext);
+  if (type_ != NULL) {
+    // TODO(jmaessen): The addition of 1 below avoids the leading ".";
+    // make this convention consistent and fix all code.
+    full_name_.set_ext(type_->file_extension() + 1);
+  } else {
+    full_name_.set_ext(ext.substr(1));
+  }
 }
 
 std::string OutputResource::filename() const {
@@ -162,8 +172,8 @@ std::string OutputResource::url() const {
 
 void OutputResource::SetHash(const StringPiece& hash) {
   CHECK(!writing_complete_);
-  CHECK(hash_.empty());
-  hash.CopyToString(&hash_);
+  CHECK(!has_hash());
+  full_name_.set_hash(hash);
 }
 
 bool OutputResource::ReadIfCached(MessageHandler* handler) {
@@ -203,7 +213,9 @@ bool OutputResource::IsWritten() const {
 
 void OutputResource::SetType(const ContentType* content_type) {
   Resource::SetType(content_type);
-  set_suffix(content_type->file_extension());
+  // TODO(jmaessen): The addition of 1 below avoids the leading ".";
+  // make this convention consistent and fix all code.
+  full_name_.set_ext(content_type->file_extension() + 1);
 }
 
 }  // namespace net_instaweb

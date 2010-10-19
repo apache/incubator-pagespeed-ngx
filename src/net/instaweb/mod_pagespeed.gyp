@@ -111,7 +111,7 @@
 #        'rewriter/image_test.cc',
         'rewriter/javascript_code_block_test.cc',
         'rewriter/remove_comments_filter_test.cc',
-        'rewriter/resource_encoder_test.cc',
+        'rewriter/resource_namer_test.cc',
         'rewriter/resource_manager_test.cc',
         'rewriter/resource_tag_scanner_test.cc',
         'rewriter/rewrite_driver_test.cc',

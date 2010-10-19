@@ -309,6 +309,7 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_EQ(1UL, img_srcs.size());
     const std::string& src_string = img_srcs[0];
     EXPECT_EQ(url_prefix_, src_string.substr(0, url_prefix_.size()));
+    EXPECT_EQ(".jpg", src_string.substr(src_string.size() - 4, 4));
 
     const StringPiece resource =
         StringPiece(src_string).substr(url_prefix_.size());
@@ -340,14 +341,17 @@ class RewriterTest : public ResourceManagerTestBase {
     rewrite_driver_.FetchResource(resource, request_headers,
                                   &response_headers, &writer,
                                   &message_handler_, &dummy_callback);
-    EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+    EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) <<
+        "Looking for " << resource;
     // For readability, only do EXPECT_EQ on initial portions of data
     // as most of it isn't human-readable.  This will show us the headers
     // and the start of the image data.  So far every failure fails this
     // first, and we caught doubled headers this way.
     EXPECT_EQ(rewritten_image_data.substr(0, 100),
-              fetched_resource_content.substr(0, 100));
-    EXPECT_TRUE(rewritten_image_data == fetched_resource_content);
+              fetched_resource_content.substr(0, 100)) <<
+        "In " << resource;
+    EXPECT_TRUE(rewritten_image_data == fetched_resource_content) <<
+        "In " << resource;
 
     // Now we fetch from the "other" server. To simulate first fetch, we
     // need to:

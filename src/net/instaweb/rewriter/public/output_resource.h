@@ -29,6 +29,7 @@
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 
 namespace net_instaweb {
 
@@ -37,20 +38,24 @@ class MessageHandler;
 
 class OutputResource : public Resource {
  public:
+  // Construct an OutputResource.  For the moment, we pass in type redundantly
+  // even though full_name embeds an extension.  This reflects current code
+  // structure rather than a principled stand on anything.
+  // TODO(jmaessen): remove redundancy.
   OutputResource(ResourceManager* manager,
-                 const ContentType* type,
-                 const StringPiece& filter_prefix,
-                 const StringPiece& name);
+                 const ResourceNamer& resource_id,
+                 const ContentType* type);
   ~OutputResource();
 
   virtual bool ReadIfCached(MessageHandler* message_handler);
   virtual std::string url() const;
 
   // output-specific
-  StringPiece name() const { return name_; }
+  const ResourceNamer& full_name() const { return full_name_; }
+  StringPiece name() const { return full_name_.name(); }
   std::string filename() const;
   StringPiece suffix() const;
-  StringPiece filter_prefix() const { return filter_prefix_; }
+  StringPiece filter_prefix() const { return full_name_.id(); }
 
   // In a scalable installation where the sprites must be kept in a
   // database, we cannot serve HTML that references new resources
@@ -65,7 +70,7 @@ class OutputResource : public Resource {
   // to Write if the content_type ctor arg was NULL.  This can happen if
   // we are managing a resource whose content-type is not known to us.
   // CacheExtender is currently the only place where we need this.
-  void set_suffix(const StringPiece& ext) { ext.CopyToString(&suffix_); }
+  void set_suffix(const StringPiece& ext);
 
   // Sets the type of the output resource, and thus also its suffix.
   virtual void SetType(const ContentType* type);
@@ -103,8 +108,8 @@ class OutputResource : public Resource {
   };
 
   void SetHash(const StringPiece& hash);
-  StringPiece hash() const { return hash_; }
-  bool has_hash() const { return !hash_.empty(); }
+  StringPiece hash() const { return full_name_.hash(); }
+  bool has_hash() const { return !hash().empty(); }
   void set_written(bool written) { writing_complete_ = true; }
   void set_generated(bool x) { generated_ = x; }
   bool generated() const { return generated_; }
@@ -123,10 +128,7 @@ class OutputResource : public Resource {
   // will be distinct because it's based on the hash of the content.
   bool generated_;
 
-  std::string filter_prefix_;
-  std::string name_;
-  std::string hash_;
-  std::string suffix_;
+  ResourceNamer full_name_;
 
   DISALLOW_COPY_AND_ASSIGN(OutputResource);
 };

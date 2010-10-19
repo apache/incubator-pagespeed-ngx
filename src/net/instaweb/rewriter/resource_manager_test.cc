@@ -20,7 +20,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
-#include "net/instaweb/rewriter/public/resource_encoder.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -134,22 +134,21 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // first cut off the "http://mysite{,.0,.1}/" from the front.
     RemoveUrlPrefix(&url);
 
-    ResourceEncoder encoder;
-    ASSERT_TRUE(encoder.Decode(url));
+    ResourceNamer full_name;
+    ASSERT_TRUE(full_name.Decode(url));
     EXPECT_EQ(content_type, NameExtensionToContentType(url));
-    EXPECT_EQ(filter_prefix, encoder.id());
-    EXPECT_EQ(name, encoder.name());
+    EXPECT_EQ(filter_prefix, full_name.id());
+    EXPECT_EQ(name, full_name.name());
     scoped_ptr<OutputResource> nor4(
-        resource_manager_->CreateUrlOutputResource(
-            filter_prefix, name, encoder.hash(), content_type));
+        resource_manager_->CreateUrlOutputResource(full_name, content_type));
     EXPECT_EQ(nor->url(), nor4->url());
     EXPECT_EQ(contents, FetchOutputResource(nor4.get()));
 
     // If it's evicted from the http_cache, we can also retrieve it from the
     // filesystem.
     lru_cache_->Clear();
-    nor4.reset(resource_manager_->CreateUrlOutputResource(
-        filter_prefix, name, encoder.hash(), content_type));
+    nor4.reset(
+        resource_manager_->CreateUrlOutputResource(full_name, content_type));
     EXPECT_EQ(nor->url(), nor4->url());
     EXPECT_EQ(contents, FetchOutputResource(nor4.get()));
     // This also works asynchronously.

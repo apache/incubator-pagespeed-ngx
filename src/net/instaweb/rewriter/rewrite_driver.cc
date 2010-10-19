@@ -39,7 +39,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_encoder.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
@@ -330,19 +330,15 @@ void RewriteDriver::FetchResource(
     MessageHandler* message_handler,
     UrlAsyncFetcher::Callback* callback) {
   bool queued = false;
-  ResourceEncoder resource_encoder;
+  ResourceNamer resource_namer;
   const ContentType* content_type = NULL;
-  if (resource_encoder.Decode(resource) &&
+  if (resource_namer.Decode(resource) &&
       ((content_type = NameExtensionToContentType(resource)) != NULL)) {
-    // TODO(jmarantz): pass the ResourceEncoder directly to
-    // CreateUrlOutputResource.
     OutputResource* output_resource = resource_manager_->
-        CreateUrlOutputResource(resource_encoder.id(), resource_encoder.name(),
-                                resource_encoder.hash(), content_type);
+        CreateUrlOutputResource(resource_namer, content_type);
     std::string resource_name;
     resource_manager_->filename_encoder()->Encode(
         resource_manager_->filename_prefix(), resource, &resource_name);
-
     // strcasecmp is needed for this check because we will canonicalize
     // file extensions based on the table in util/content_type.cc.
     CHECK(strcasecmp(resource_name.c_str(),
@@ -354,7 +350,7 @@ void RewriteDriver::FetchResource(
       callback->Done(true);
       queued = true;
     } else {
-      StringPiece id = resource_encoder.id();
+      StringPiece id = resource_namer.id();
       StringFilterMap::iterator p = resource_filter_map_.find(
           std::string(id.data(), id.size()));
       if (p != resource_filter_map_.end()) {

@@ -224,10 +224,11 @@ restart : staging
 	sudo $(APACHE_START)
 
 # Tests that the installed mod_pagespeed server is working.
-test : verify_pagespeed_header verify_css_files_combined
+test : verify_pagespeed_header verify_css_files_combined verify_404_response_recorded
 
 SAMPLE_URL = http://$(HOSTNAME)/mod_pagespeed_example/combine_mixed.html
-
+STATISTICS_URL = http://localhost/mod_pagespeed_statistics
+BAD_RESOURCE_URL =  http://$(HOSTNAME)/mod_pagespeed/ic.a.bad.css
 # Verify that HTML files are served with the expected pagespeed header.
 verify_pagespeed_header :
 	wget -O - --save-headers $(SAMPLE_URL) 2>&1 | grep X-Mod-Pagespeed
@@ -247,5 +248,10 @@ verify_css_files_combined :
 	echo 1 > $(TMP_DIR)/css_count_expected.txt
 	diff $(TMP_DIR)/css_count.txt $(TMP_DIR)/css_count_expected.txt
 	rm -f $(TMP_DIR)/css_count.txt $(TMP_DIR)/css_count_expected.txt
-	wget -r -O - $(SAMPLE_URL) > /dev/null 2>&1
+	wget -r -O - $(SAMPLE_URL) > /dev/null 2>&1 < /dev/null
 	@echo mod_pagespeed successfully combined 4 CSS files into 1
+
+verify_404_response_recorded :
+	wget -O - $(STATISTICS_URL) 2>&1| grep "resource_404_count: 0"
+	wget -O - $(BAD_RESOURCE_URL) 2>&1 | grep "404 Not Found"
+	wget -O - $(STATISTICS_URL) 2>&1| grep "resource_404_count: 1"
