@@ -22,7 +22,24 @@
     # with Position-Independent Code.
     'linux_fpic': 1,
 
-    'use_system_apache_dev%': 0,
+    # Define the overridable use_system_libs variable in its own
+    # nested block, so it's available for use in the conditions block
+    # below.
+    'variables': {
+      'use_system_libs%': 0,
+    },
+
+    'conditions': [
+      ['use_system_libs==1', {
+        'use_system_apache_dev': 1,
+        'use_system_libjpeg': 1,
+        'use_system_libpng': 1,
+        'use_system_opencv': 1,
+        'use_system_zlib': 1,
+      },{
+        'use_system_apache_dev%': 0,
+      }],
+    ],
   },
   'includes': [
     '../third_party/libpagespeed/src/build/common.gypi',

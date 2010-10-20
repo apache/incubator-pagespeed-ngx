@@ -15,7 +15,7 @@ TIMEOUT=10
 START=`date +%s`
 STOP=$((START+$TIMEOUT))
 
-#echo Fetching $URL until '`'$COMMAND'`' = $RESULT
+echo Fetching $URL until '`'$COMMAND'`' = $RESULT
 while test -t; do
   if [ `wget -q -O - $URL 2>&1 | $COMMAND` = $RESULT ]; then
     /bin/echo "Success."

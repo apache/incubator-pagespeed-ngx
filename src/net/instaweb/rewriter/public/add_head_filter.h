@@ -30,7 +30,7 @@ namespace net_instaweb {
 // that there will be a head.
 class AddHeadFilter : public EmptyHtmlFilter {
  public:
-  explicit AddHeadFilter(HtmlParse* parser);
+  explicit AddHeadFilter(HtmlParse* parser, bool combine_multiple_heads);
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
@@ -41,6 +41,7 @@ class AddHeadFilter : public EmptyHtmlFilter {
 
  private:
   HtmlParse* html_parse_;
+  bool combine_multiple_heads_;
   bool found_head_;
   Atom s_head_;
   Atom s_body_;

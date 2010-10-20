@@ -161,12 +161,14 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
   // Now process boolean options, which may include propagating non-boolean
   // and boolean parameter settings to filters.
   if (options.Enabled(RewriteOptions::kAddHead) ||
+      options.Enabled(RewriteOptions::kCombineHeads) ||
       options.Enabled(RewriteOptions::kAddBaseTag) ||
       options.Enabled(RewriteOptions::kMoveCssToHead) ||
       options.Enabled(RewriteOptions::kAddInstrumentation)) {
     // Adds a filter that adds a 'head' section to html documents if
     // none found prior to the body.
-    AddFilter(new AddHeadFilter(&html_parse_));
+    AddFilter(new AddHeadFilter(
+        &html_parse_, options.Enabled(RewriteOptions::kCombineHeads)));
   }
   if (options.Enabled(RewriteOptions::kAddBaseTag)) {
     // Adds a filter that establishes a base tag for the HTML document.
@@ -207,12 +209,24 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
   if (options.Enabled(RewriteOptions::kRewriteCss)) {
     AddRewriteFilter(new CssFilter(this, kCssFilter));
   }
+  if (options.Enabled(RewriteOptions::kRewriteJavascript)) {
+    // Rewrite (minify etc.) JavaScript code to reduce time to first
+    // interaction.
+    AddRewriteFilter(new JavascriptFilter(this, kJavascriptMin));
+  }
   if (options.Enabled(RewriteOptions::kInlineCss)) {
     // Inline small CSS files.  Give CssCombineFilter and CSS minification a
     // chance to run before we decide what counts as "small".
     CHECK(resource_manager_ != NULL);
     AddFilter(new CssInlineFilter(&html_parse_, resource_manager_,
                                   options.css_inline_max_bytes()));
+  }
+  if (options.Enabled(RewriteOptions::kInlineJavascript)) {
+    // Inline small Javascript files.  Give JS minification a chance to run
+    // before we decide what counts as "small".
+    CHECK(resource_manager_ != NULL);
+    AddFilter(new JsInlineFilter(&html_parse_, resource_manager_,
+                                 options.js_inline_max_bytes()));
   }
   if (options.Enabled(RewriteOptions::kRewriteImages)) {
     AddRewriteFilter(
@@ -222,18 +236,6 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
             options.Enabled(RewriteOptions::kInsertImgDimensions),
             kImageCompression,
             options.img_inline_max_bytes()));
-  }
-  if (options.Enabled(RewriteOptions::kRewriteJavascript)) {
-    // Rewrite (minify etc.) JavaScript code to reduce time to first
-    // interaction.
-    AddRewriteFilter(new JavascriptFilter(this, kJavascriptMin));
-  }
-  if (options.Enabled(RewriteOptions::kInlineJavascript)) {
-    // Inline small Javascript files.  Give JS minification a chance to run
-    // before we decide what counts as "small".
-    CHECK(resource_manager_ != NULL);
-    AddFilter(new JsInlineFilter(&html_parse_, resource_manager_,
-                                 options.js_inline_max_bytes()));
   }
   if (options.Enabled(RewriteOptions::kRemoveComments)) {
     AddFilter(new RemoveCommentsFilter(&html_parse_));

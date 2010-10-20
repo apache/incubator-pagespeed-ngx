@@ -1,3 +1,48 @@
 .big {
   font-size: 8em;
 }
+
+/*
+ * The class names below are just here to prevent the minifier and inlining from
+ * working on this file, to allow the css combiner to be demonstrated.
+ */
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_a0 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_a1 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_a0 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_a1 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_a0 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_a1 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_a6 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_a7 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_a8 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_a9 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_b0 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_b1 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_b2 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_b3 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_b4 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_b5 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_b6 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_b7 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_b8 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_b9 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_c0 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_c1 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_c2 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_c3 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_c4 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_c5 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_c6 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_c7 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_c8 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_c9 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_d0 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_d1 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_d2 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_d3 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_d4 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_d5 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_d6 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_d7 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_d8 { font-size: 8em; }
+.very_large_class_name_that_will_be_hard_to_minify_to_keep_file_above_threshold_d9 { font-size: 8em; }

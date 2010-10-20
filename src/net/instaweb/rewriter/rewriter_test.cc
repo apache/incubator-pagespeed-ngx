@@ -708,7 +708,7 @@ TEST_F(RewriterTest, AddHead) {
 }
 
 TEST_F(RewriterTest, MergeHead) {
-  rewrite_driver_.AddHead();
+  rewrite_driver_.AddFilter(RewriteOptions::kCombineHeads);
   ValidateExpected("merge_2_heads",
       "<head a><p>1</p></head>4<head b>2<link x>3</head><link y>end",
       "<head a><p>1</p>2<link x>3</head>4<link y>end");

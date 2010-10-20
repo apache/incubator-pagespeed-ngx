@@ -59,24 +59,87 @@
     # Several other filters turn this on automatically even if it is not
     # specified explicitly.
     ModPagespeedRewriters add_head
-    
+
+    # Combines multiple heads into one.  Technically HTML documents are
+    # not allowed to have multiple <head>s, but when sites which aggregate
+    # content from multiple sources sometimes have them.  This filter
+    # moves the content from later <head>s into the first head.  This filter
+    # can change the order of content (e.g. CSS and JS) in the later <head>s
+    # relative to intervening <body> elements.
+    # ModPagespeedRewriters combine_heads
+
     # Experimental filter to completely remove scripts from a page.  Obviously
-    # this will break functionality.
-    ModPagespeedRewriters combine_css,rewrite_images,extend_cache
-    ModPagespeedRewriters add_head,remove_quotes,move_css_to_head
-    ModPagespeedRewriters collapse_whitespace,elide_attributes
-    ModPagespeedRewriters rewrite_javascript,add_instrumentation
-    ModPagespeedRewriters rewrite_css,inline_javascript
+    # this will break functionality, and is disabled by default.  This can be
+    # used to facilitate timing tests showing the maximum benefits of improving
+    # javascript.
+    # ModPagespeedRewriters strip_scripts
 
-    # Temporarily comment this out to allow combine_css system test to work.
-    # ModPagespeedRewriters inline_css
-
-    # investigating: left_trim_urls
-
-    # The following passes are known to be riskier.
+    # Large blocks of inline Javascript and CSS can benefit from moving into
+    # external files so they can be cached in the browser, even if the HTML
+    # is not cacheable.  See ModPagespeedOutlineThreshold.
+    # TODO(jmarantz): test and enable these OR
     # TODO(abliss): these are included by default so that we can check
     # these filters in our system test.  Comment these out before ship.
-    ModPagespeedRewriters outline_css,outline_javascript,remove_comments
+    ModPagespeedRewriters outline_css,outline_javascript
+
+    # Moves CSS elements into the <head>  This filter requires add_head.
+    ModPagespeedRewriters move_css_to_head
+
+    # Combines multiple CSS elements into one
+    ModPagespeedRewriters combine_css
+
+    # Rewrites Javscript and CSS files to remove excess whitespace and comments
+    ModPagespeedRewriters rewrite_css,rewrite_javascript
+
+    # Inlines small CSS and JS files into the HTML document.  See
+    # ModPagespeedCssInlineMaxBytes
+    ModPagespeedRewriters inline_css,inline_javascript
+
+    # Optimizes images, re-encoding them for smaller byte-size, removing
+    # excess pixels that will not be displayed, and inlining small images.
+    # See ModPagespeedImgInlineMaxBytes
+    ModPagespeedRewriters rewrite_images
+
+    # Adds width/height attributes to <img> tags that lack them.
+    ModPagespeedRewriters insert_img_dimensions
+
+    # Removes comments in HTML files.  This is turned off by default to avoid
+    # breaking common techniques for deferring javascript execution by running
+    # javascript that searches the DOM for HTML comments.
+    # TODO(abliss): these are included by default so that we can check
+    # these filters in our system test.  Comment these out before ship.
+    ModPagespeedRewriters remove_comments
+
+    # Removes excess whitespace in HTML files (avoiding "pre", "script", "style",
+    # and "textarea").  This is off by default as it's possible to apply these
+    # tags to the DOM in a way that is not statically detected.  If your web-site
+    # only uses those attributes directly in HTML markup, and does not apply them
+    # via CSS and javascript, then it's safe to enable this filter.
+    # ModPagespeedRewriters collapse_whitespace
+
+    # Removes attributes which are not significant according to the HTML spec.
+    ModPagespeedRewriters elide_attributes
+
+    # Finds all images, css, and javascript resources that are publically
+    # cacheable for less than one month, and extend their cache lifetime to
+    # one year.  This is safe because this transformation adds a content
+    # hash to the URL so that if the content changes the URL will change, and
+    # we will get the desired caching behavior.  All other filters that write
+    # resources use the same content-hashing technique to allow safe caching
+    # for one year.
+    ModPagespeedRewriters extend_cache
+
+    # Reduces the size of URLs by removing common prefixes with the HTML file.
+    # TODO(jmarantz): turn this on by default
+    # ModPagespeedRewriters left_trim_urls
+
+    # Removes quotes around HTML attributes that are not lexically required
+    ModPagespeedRewriters remove_quotes
+
+    # Adds javascript at the beginning and end of the page to allow latency
+    # information to be sent back to the server.  This information can be
+    # viewed from a web browser from /mod_pagespeed_statistics
+    ModPagespeedRewriters add_instrumentation
 
     # When Apache is set up as a browser proxy, mod_pagespeed can record
     # web-sites as they are requested, so that an image of the web is built
