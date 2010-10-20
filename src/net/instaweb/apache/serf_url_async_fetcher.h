@@ -35,6 +35,13 @@ class SerfThreadedFetcher;
 class Timer;
 class Variable;
 
+struct SerfStats {
+  static const char kSerfFetchRequestCount[];
+  static const char kSerfFetchByteCount[];
+  static const char kSerfFetchTimeDurationMs[];
+  static const char kSerfFetchCancelCount[];
+};
+
 class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
   SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,

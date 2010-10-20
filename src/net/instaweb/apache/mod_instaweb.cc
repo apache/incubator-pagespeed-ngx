@@ -398,7 +398,11 @@ void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
 
     // Also consider checking AP_MODULE_MAGIC_AT_LEAST(20051115, 15)
 #if ((APR_MAJOR_VERSION > 1) ||                                 \
-     ((APR_MAJOR_VERSION == 1) && APR_PATCH_VERSION > 11))
+     ((APR_MAJOR_VERSION == 1) && APR_MINOR_VERSION > 2))
+    // This method was added in apr 1.3. It's just a shutdown hook, so
+    // it's safe to not call it if we're compiling against an older
+    // version of apr. We will leak memory on shutdown, but since
+    // we're about to shut down, it's not really an issue.
     apr_pool_pre_cleanup_register(pool, factory, pagespeed_child_exit);
 #endif
   }

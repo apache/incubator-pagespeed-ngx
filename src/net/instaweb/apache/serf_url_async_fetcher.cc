@@ -48,13 +48,15 @@
 namespace {
 const int kBufferSize = 2048;
 const char kFetchMethod[] = "GET";
-const char kSerfFetchRequestCount[] = "serf_fetch_request_count";
-const char kSerfFetchByteCount[] = "serff_fetch_bytes_count";
-const char kSerfFetchTimeDurationMs[] = "serf_fetch_time_duration_ms";
-const char kSerfFetchCancelCount[] = "serf_fetch_cancel_count";
 }  // namespace
 
 namespace net_instaweb {
+
+const char SerfStats::kSerfFetchRequestCount[] = "serf_fetch_request_count";
+const char SerfStats::kSerfFetchByteCount[] = "serf_fetch_bytes_count";
+const char SerfStats::kSerfFetchTimeDurationMs[] =
+    "serf_fetch_time_duration_ms";
+const char SerfStats::kSerfFetchCancelCount[] = "serf_fetch_cancel_count";
 
 std::string GetAprErrorString(apr_status_t status) {
   char error_str[1024];
@@ -557,10 +559,12 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       time_duration_ms_(NULL),
       cancel_count_(NULL) {
   if (statistics != NULL) {
-    request_count_  = statistics->GetVariable(kSerfFetchRequestCount);
-    byte_count_ = statistics->GetVariable(kSerfFetchByteCount);
-    time_duration_ms_ = statistics->GetVariable(kSerfFetchTimeDurationMs);
-    cancel_count_ = statistics->GetVariable(kSerfFetchCancelCount);
+    request_count_  =
+        statistics->GetVariable(SerfStats::kSerfFetchRequestCount);
+    byte_count_ = statistics->GetVariable(SerfStats::kSerfFetchByteCount);
+    time_duration_ms_ =
+        statistics->GetVariable(SerfStats::kSerfFetchTimeDurationMs);
+    cancel_count_ = statistics->GetVariable(SerfStats::kSerfFetchCancelCount);
   }
   mutex_ = new AprMutex(pool_);
   serf_context_ = serf_context_create(pool_);
@@ -733,10 +737,10 @@ bool SerfUrlAsyncFetcher::WaitForInProgressFetchesHelper(
 }
 void SerfUrlAsyncFetcher::Initialize(Statistics* statistics) {
   if (statistics != NULL) {
-    statistics->AddVariable(kSerfFetchRequestCount);
-    statistics->AddVariable(kSerfFetchByteCount);
-    statistics->AddVariable(kSerfFetchTimeDurationMs);
-    statistics->AddVariable(kSerfFetchCancelCount);
+    statistics->AddVariable(SerfStats::kSerfFetchRequestCount);
+    statistics->AddVariable(SerfStats::kSerfFetchByteCount);
+    statistics->AddVariable(SerfStats::kSerfFetchTimeDurationMs);
+    statistics->AddVariable(SerfStats::kSerfFetchCancelCount);
   }
 }
 

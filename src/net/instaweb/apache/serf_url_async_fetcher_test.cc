@@ -29,19 +29,21 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/serf/src/serf.h"
 
 namespace net_instaweb {
 
 namespace {
-
 const char kProxy[] = "";
 const int kMaxMs = 10000;
 const int kThreadedPollMs = 1000;
 const int kWaitTimeoutMs = 5 * 1000;
+const int kTimerAdvanceMs = 10;
 
 class SerfTestCallback : public UrlAsyncFetcher::Callback {
  public:
@@ -87,9 +89,11 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
 
   virtual void SetUp() {
     apr_pool_create(&pool_, NULL);
-    apr_timer_.reset(new AprTimer());
+    timer_.reset(new MockTimer(MockTimer::kApr_5_2010_ms));
+    SerfUrlAsyncFetcher::Initialize(&statistics_);
     serf_url_async_fetcher_.reset(
-        new SerfUrlAsyncFetcher(kProxy, pool_, NULL, apr_timer_.get()));
+        new SerfUrlAsyncFetcher(kProxy, pool_, &statistics_,
+                                timer_.get()));
     mutex_ = new AprMutex(pool_);
     AddTestUrl("http://www.google.com/", "<!doctype html>");
     AddTestUrl("http://www.google.com/favicon.ico",
@@ -101,6 +105,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   virtual void TearDown() {
     // Need to free the fetcher before destroy the pool.
     serf_url_async_fetcher_.reset(NULL);
+    timer_.reset(NULL);
     STLDeleteElements(&request_headers_);
     STLDeleteElements(&response_headers_);
     STLDeleteElements(&contents_);
@@ -176,6 +181,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
 
   bool TestFetch(size_t begin, size_t end) {
     StartFetches(begin, end, false);
+    timer_->advance_ms(kTimerAdvanceMs);
     bool done = WaitTillDone(begin, end, kMaxMs);
     ValidateFetches(begin, end);
     return done;
@@ -191,7 +197,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   std::vector<SerfTestCallback*> callbacks_;
   // The fetcher to be tested.
   scoped_ptr<SerfUrlAsyncFetcher> serf_url_async_fetcher_;
-  scoped_ptr<AprTimer> apr_timer_;
+  scoped_ptr<MockTimer> timer_;
+  SimpleStats statistics_;
   GoogleMessageHandler message_handler_;
   size_t prev_done_count;
   AprMutex* mutex_;
@@ -203,6 +210,16 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
 TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {
   EXPECT_TRUE(TestFetch(0, 1));
   EXPECT_FALSE(response_headers_[0]->IsGzipped());
+  int request_count =
+      statistics_.GetVariable(SerfStats::kSerfFetchRequestCount)->Get();
+  EXPECT_EQ(1, request_count);
+  int bytes_count =
+      statistics_.GetVariable(SerfStats::kSerfFetchByteCount)->Get();
+  // google.com is changing every time, check if we get a rough number.
+  EXPECT_LT(8000, bytes_count);
+  int time_duration =
+      statistics_.GetVariable(SerfStats::kSerfFetchTimeDurationMs)->Get();
+  EXPECT_EQ(kTimerAdvanceMs, time_duration);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
@@ -236,6 +253,17 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
 
 TEST_F(SerfUrlAsyncFetcherTest, FetchTwoURLs) {
   EXPECT_TRUE(TestFetch(1, 3));
+  int request_count =
+      statistics_.GetVariable(SerfStats::kSerfFetchRequestCount)->Get();
+  EXPECT_EQ(2, request_count);
+  int bytes_count =
+      statistics_.GetVariable(SerfStats::kSerfFetchByteCount)->Get();
+  // Maybe also need a rough number here. We will break if google's icon or logo
+  // changes.
+  EXPECT_EQ(9708, bytes_count);
+  int time_duration =
+      statistics_.GetVariable(SerfStats::kSerfFetchTimeDurationMs)->Get();
+  EXPECT_EQ(2 * kTimerAdvanceMs, time_duration);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestCancelThreeThreaded) {
