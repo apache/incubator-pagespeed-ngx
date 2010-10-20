@@ -69,6 +69,7 @@ class CssFilter : public RewriteFilter {
                      UrlAsyncFetcher::Callback* callback);
 
   virtual const char* Name() const { return "CssFilter"; }
+  static void Initialize(Statistics* statistics);
 
  private:
   static bool RewriteCssText(const StringPiece& in_text,

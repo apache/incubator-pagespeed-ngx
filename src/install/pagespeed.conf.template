@@ -50,16 +50,33 @@
     # may not expect any changes to be made by ModPagespeed.  However,
     # these passes have been shown to be robust over a large number of
     # web sites.
+    #
+    # Note that the order of the filters specified in the configuration file
+    # does not matter -- mod_pagespeed applies the filters in a predefined
+    # order.
+
+    # Adds a 'head' element do the document if one is not supplied already.
+    # Several other filters turn this on automatically even if it is not
+    # specified explicitly.
+    ModPagespeedRewriters add_head
+    
+    # Experimental filter to completely remove scripts from a page.  Obviously
+    # this will break functionality.
     ModPagespeedRewriters combine_css,rewrite_images,extend_cache
     ModPagespeedRewriters add_head,remove_quotes,move_css_to_head
     ModPagespeedRewriters collapse_whitespace,elide_attributes
     ModPagespeedRewriters rewrite_javascript,add_instrumentation
+    ModPagespeedRewriters rewrite_css,inline_javascript
+
+    # Temporarily comment this out to allow combine_css system test to work.
+    # ModPagespeedRewriters inline_css
 
     # investigating: left_trim_urls
 
     # The following passes are known to be riskier.
-    # ModPagespeedRewriters outline_css,outline_javascript,remove_comments
-
+    # TODO(abliss): these are included by default so that we can check
+    # these filters in our system test.  Comment these out before ship.
+    ModPagespeedRewriters outline_css,outline_javascript,remove_comments
 
     # When Apache is set up as a browser proxy, mod_pagespeed can record
     # web-sites as they are requested, so that an image of the web is built

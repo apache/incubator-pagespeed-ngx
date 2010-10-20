@@ -102,8 +102,7 @@
         'util/url_escaper_test.cc',
         'util/write_through_cache_test.cc',
         'rewriter/collapse_whitespace_filter_test.cc',
-# TODO(sligocki): Fix. Fails in chromium/src/base/at_exit.cc(40).
-#        'rewriter/css_filter_test.cc',
+        'rewriter/css_filter_test.cc',
         'rewriter/css_tag_scanner_test.cc',
         'rewriter/elide_attributes_filter_test.cc',
         'rewriter/html_attribute_quote_removal_test.cc',

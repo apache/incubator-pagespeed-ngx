@@ -500,6 +500,17 @@
           'include_dirs': [
             '<(opencv_system_include)',
           ],
+          'direct_dependent_settings': {
+            'defines': [
+              'USE_SYSTEM_OPENCV',
+            ],
+            'include_dirs': [
+              '<(opencv_system_include)',
+            ],
+          },
+          'defines': [
+            'USE_SYSTEM_OPENCV',
+          ],
           'link_settings': {
             'libraries': [
               '-lcv',

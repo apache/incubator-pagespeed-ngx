@@ -453,6 +453,41 @@ class RewriterTest : public ResourceManagerTestBase {
     ASSERT_EQ(cuppa_contents, other_contents);
   }
 
+  void TestInlineCss(const std::string& html_url,
+                     const std::string& css_url,
+                     const std::string& css_original_body,
+                     bool expect_inline,
+                     const std::string& css_rewritten_body) {
+    scoped_ptr<ResourceManager> resource_manager(
+        NewResourceManager(&mock_hasher_));
+    rewrite_driver_.SetResourceManager(resource_manager.get());
+    rewrite_driver_.AddFilter(RewriteOptions::kInlineCss);
+
+    const std::string html_input =
+        "<head>\n"
+        "  <link rel=\"stylesheet\" href=\"" + css_url + "\">\n"
+        "</head>\n"
+        "<body>Hello, world!</body>\n";
+
+    // Put original CSS file into our fetcher.
+    SimpleMetaData default_css_header;
+    resource_manager->SetDefaultHeaders(&kContentTypeCss,
+                                        &default_css_header);
+    mock_url_fetcher_.SetResponse(css_url, default_css_header,
+                                  css_original_body);
+
+    // Rewrite the HTML page.
+    ParseUrl(html_url, html_input);
+
+    const std::string expected_output =
+        (!expect_inline ? html_input :
+         "<head>\n"
+         "  <style>" + css_rewritten_body + "</style>\n"
+         "</head>\n"
+         "<body>Hello, world!</body>\n");
+    EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
+  }
+
   void TestInlineJavascript(const std::string& html_url,
                             const std::string& js_url,
                             const std::string& js_inline_body,
@@ -748,7 +783,56 @@ TEST_F(RewriterTest, CombineCssNoInput) {
 
 // TODO(sligocki): Test that using the DummyUrlFetcher causes FatalError.
 
-TEST_F(RewriterTest, DoInlineJavascript1) {
+TEST_F(RewriterTest, InlineCssSimple) {
+  const std::string css = "BODY { color: red; }\n";
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/styles.css",
+                css, true, css);
+}
+
+TEST_F(RewriterTest, InlineCssAbsolutifyUrls1) {
+  // CSS with a relative URL that needs to be changed:
+  const std::string css1 =
+      "BODY { background-image: url('bg.png'); }\n";
+  const std::string css2 =
+      "BODY { background-image: "
+      "url('http://www.example.com/foo/bar/bg.png'); }\n";
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/foo/bar/baz.css",
+                css1, true, css2);
+}
+
+TEST_F(RewriterTest, InlineCssAbsolutifyUrls2) {
+  // CSS with a relative URL, this time with ".." in it:
+  const std::string css1 =
+      "BODY { background-image: url('../quux/bg.png'); }\n";
+  const std::string css2 =
+      "BODY { background-image: "
+      "url('http://www.example.com/foo/quux/bg.png'); }\n";
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/foo/bar/baz.css",
+                css1, true, css2);
+}
+
+TEST_F(RewriterTest, DoNotInlineCssTooBig) {
+  // CSS too large to inline:
+  const int64 length = 2 * RewriteOptions::kDefaultCssInlineMaxBytes;
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/styles.css",
+                ("BODY { background-image: url('" +
+                 std::string(length, 'z') + ".png'); }\n"),
+                false, "");
+}
+
+TEST_F(RewriterTest, DoNotInlineCssDifferentDomain) {
+  // TODO(mdsteele): Is switching domains in fact an issue for CSS?
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.org/styles.css",
+                "BODY { color: red; }\n",
+                false, "");
+}
+
+TEST_F(RewriterTest, DoInlineJavascriptSimple) {
   // Simple case:
   TestInlineJavascript("http://www.example.com/index.html",
                        "http://www.example.com/script.js",
@@ -757,7 +841,7 @@ TEST_F(RewriterTest, DoInlineJavascript1) {
                        true);
 }
 
-TEST_F(RewriterTest, DoInlineJavascript2) {
+TEST_F(RewriterTest, DoInlineJavascriptWhitespace) {
   // Whitespace between <script> and </script>:
   TestInlineJavascript("http://www.example.com/index2.html",
                        "http://www.example.com/script2.js",
@@ -766,7 +850,7 @@ TEST_F(RewriterTest, DoInlineJavascript2) {
                        true);
 }
 
-TEST_F(RewriterTest, DoNotInlineJavascript1) {
+TEST_F(RewriterTest, DoNotInlineJavascriptDifferentDomain) {
   // Different domains:
   TestInlineJavascript("http://www.example.net/index.html",
                        "http://scripts.example.org/script.js",
@@ -775,7 +859,7 @@ TEST_F(RewriterTest, DoNotInlineJavascript1) {
                        false);
 }
 
-TEST_F(RewriterTest, DoNotInlineJavascript2) {
+TEST_F(RewriterTest, DoNotInlineJavascriptInlineContents) {
   // Inline contents:
   TestInlineJavascript("http://www.example.com/index.html",
                        "http://www.example.com/script.js",
@@ -784,7 +868,7 @@ TEST_F(RewriterTest, DoNotInlineJavascript2) {
                        false);
 }
 
-TEST_F(RewriterTest, DoNotInlineJavascript3) {
+TEST_F(RewriterTest, DoNotInlineJavascriptTooBig) {
   // Javascript too long:
   const int64 length = 2 * RewriteOptions::kDefaultJsInlineMaxBytes;
   TestInlineJavascript("http://www.example.com/index.html",

@@ -31,8 +31,13 @@
 #include "net/instaweb/util/public/writer.h"
 #undef PAGESPEED_PNG_OPTIMIZER_GIF_READER
 #define PAGESPEED_PNG_OPTIMIZER_GIF_READER 0
+#ifdef USE_SYSTEM_OPENCV
+#include "cv.h"
+#include "highgui.h"
+#else
 #include "third_party/opencv/src/opencv/include/opencv/cv.h"
 #include "third_party/opencv/src/opencv/include/opencv/highgui.h"
+#endif
 #include "pagespeed/image_compression/gif_reader.h"
 #include "pagespeed/image_compression/jpeg_optimizer.h"
 #include "pagespeed/image_compression/png_optimizer.h"

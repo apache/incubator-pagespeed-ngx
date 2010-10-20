@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/css_filter.h"
 
+#include "base/at_exit.h"
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
@@ -30,6 +32,12 @@
 #include "net/instaweb/util/public/url_escaper.h"
 #include "net/instaweb/util/public/writer.h"
 #include "webutil/css/parser.h"
+
+namespace {
+
+base::AtExitManager* at_exit_manager = NULL;
+
+}
 
 namespace net_instaweb {
 
@@ -289,6 +297,15 @@ bool CssFilter::Fetch(OutputResource* output_resource,
     callback->Done(ret);
   }
   return ret;
+}
+
+void CssFilter::Initialize(Statistics* statistics) {
+  // TODO(jmarantz): Add statistics for CSS rewrites.
+
+  // Note: This is not thread-safe, but I don't believe we need it to be.
+  if (at_exit_manager == NULL) {
+    at_exit_manager = new base::AtExitManager;
+  }
 }
 
 }  // namespace net_instaweb

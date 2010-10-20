@@ -256,6 +256,7 @@
         'rewriter/cache_extender.cc',
         'rewriter/collapse_whitespace_filter.cc',
         'rewriter/css_combine_filter.cc',
+        'rewriter/css_inline_filter.cc',
         'rewriter/css_move_to_head_filter.cc',
         'rewriter/css_tag_scanner.cc',
         'rewriter/elide_attributes_filter.cc',

@@ -22,7 +22,11 @@
 #include "base/basictypes.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
+#ifdef USE_SYSTEM_OPENCV
+#include "cv.h"
+#else
 #include "third_party/opencv/src/opencv/include/opencv/cv.h"
+#endif
 
 namespace net_instaweb {
 

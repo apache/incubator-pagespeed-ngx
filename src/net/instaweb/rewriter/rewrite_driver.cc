@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
+#include "net/instaweb/rewriter/public/css_inline_filter.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
@@ -91,6 +92,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     AddInstrumentationFilter::Initialize(statistics);
     CacheExtender::Initialize(statistics);
     CssCombineFilter::Initialize(statistics);
+    CssFilter::Initialize(statistics);
     CssMoveToHeadFilter::Initialize(statistics);
     ImgRewriteFilter::Initialize(statistics);
     JavascriptFilter::Initialize(statistics);
@@ -149,6 +151,13 @@ void RewriteDriver::AddFilter(RewriteOptions::Filter filter) {
 void RewriteDriver::AddFilters(const RewriteOptions& options) {
   CHECK(html_writer_filter_ == NULL);
 
+  // This function defines the order that filters are run.  We document
+  // in pagespeed.conf.template that the order specified in the conf
+  // file does not matter, but we give the filters there in the order
+  // they are actually applied, for the benefit of the understanding
+  // of the site owner.  So if you change that here, change it in
+  // install/pagespeed.conf.template as well.
+
   // Now process boolean options, which may include propagating non-boolean
   // and boolean parameter settings to filters.
   if (options.Enabled(RewriteOptions::kAddHead) ||
@@ -184,11 +193,6 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
                           options.Enabled(RewriteOptions::kOutlineJavascript));
     AddFilter(outline_filter);
   }
-  if (options.Enabled(RewriteOptions::kInlineJavascript)) {
-    CHECK(resource_manager_ != NULL);
-    AddFilter(new JsInlineFilter(&html_parse_, resource_manager_,
-                                 options.js_inline_max_bytes()));
-  }
   if (options.Enabled(RewriteOptions::kMoveCssToHead)) {
     // It's good to move CSS links to the head prior to running CSS combine,
     // which only combines CSS links that are already in the head.
@@ -203,6 +207,13 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
   if (options.Enabled(RewriteOptions::kRewriteCss)) {
     AddRewriteFilter(new CssFilter(this, kCssFilter));
   }
+  if (options.Enabled(RewriteOptions::kInlineCss)) {
+    // Inline small CSS files.  Give CssCombineFilter and CSS minification a
+    // chance to run before we decide what counts as "small".
+    CHECK(resource_manager_ != NULL);
+    AddFilter(new CssInlineFilter(&html_parse_, resource_manager_,
+                                  options.css_inline_max_bytes()));
+  }
   if (options.Enabled(RewriteOptions::kRewriteImages)) {
     AddRewriteFilter(
         new ImgRewriteFilter(
@@ -216,6 +227,13 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
     // interaction.
     AddRewriteFilter(new JavascriptFilter(this, kJavascriptMin));
+  }
+  if (options.Enabled(RewriteOptions::kInlineJavascript)) {
+    // Inline small Javascript files.  Give JS minification a chance to run
+    // before we decide what counts as "small".
+    CHECK(resource_manager_ != NULL);
+    AddFilter(new JsInlineFilter(&html_parse_, resource_manager_,
+                                 options.js_inline_max_bytes()));
   }
   if (options.Enabled(RewriteOptions::kRemoveComments)) {
     AddFilter(new RemoveCommentsFilter(&html_parse_));
