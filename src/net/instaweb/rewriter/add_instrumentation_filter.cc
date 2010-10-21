@@ -31,19 +31,19 @@ namespace {
 // as early as possible in the html.  It must be short and fast.
 const char kHeadScript[] =
     "<script type='text/javascript'>"
-    "window.instaweb_start = Number(new Date());"
+    "window.mod_pagespeed_start = Number(new Date());"
     "</script>";
 // The javascript tag to insert at the bottom of document.
 // TODO(abliss): make this more configurable?  E.g. custom beacon url?
 const char kTailScript[] =
     "<script type='text/javascript'>"
     "function g(){new Image().src='/mod_pagespeed_beacon?ets=load:'+"
-    "(Number(new Date())-window.instaweb_start);};"
+    "(Number(new Date())-window.mod_pagespeed_start);};"
     "var f=window.addEventListener;if(f){f('load',g,false);}else{"
     "f=window.attachEvent;if(f){f('onload',g);}}"
     "</script>";
 // Variables for the beacon to increment.  These are currently handled in
-// instaweb_handler on apache.  The average load time in milliseconds is
+// mod_pagespeed_handler on apache.  The average load time in milliseconds is
 // total_page_load_ms / page_load_count.  Note that these are not updated
 // together atomically, so you might get a slightly bogus value.
 const char kTotalPageLoadMs[] = "total_page_load_ms";

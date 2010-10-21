@@ -355,7 +355,7 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
                       output_resource.get());
       }
       if (output_resource->IsWritten()) {
-        UpdateTargetElement(output_resource.get(), page_dim, actual_dim,
+        UpdateTargetElement(*output_resource, page_dim, actual_dim,
                             element, src);
       }
     }
@@ -366,17 +366,17 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
 // actually update the element (particularly the src attribute), and log
 // statistics on what happened.
 void ImgRewriteFilter::UpdateTargetElement(
-    const OutputResource *output_resource, const ImageDim& page_dim,
+    const OutputResource& output_resource, const ImageDim& page_dim,
     const ImageDim& actual_dim,
     HtmlElement* element, HtmlElement::Attribute* src) {
-  if (output_resource->metadata()->status_code() == kInlineImage) {
-    src->SetValue(output_resource->contents());
+  if (output_resource.metadata()->status_code() == kInlineImage) {
+    src->SetValue(output_resource.contents());
     if (inline_count_ != NULL) {
       inline_count_->Add(1);
     }
   } else {
-    if (output_resource->metadata()->status_code() == HttpStatus::kOK) {
-      src->SetValue(output_resource->url());
+    if (output_resource.metadata()->status_code() == HttpStatus::kOK) {
+      src->SetValue(output_resource.url());
       if (rewrite_count_ != NULL) {
         rewrite_count_->Add(1);
       }

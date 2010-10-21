@@ -131,7 +131,9 @@ class HtmlLexer {
   // more encodings we may need to turn this into a non-static method.
   static inline bool IsI18nChar(char c) {return (((c) & 0x80) != 0); }
 
-  // Determines whether a character can be used in a tag name.
+  // Determines whether a character can be used in a tag name as first char ...
+  static inline bool IsLegalTagFirstChar(char c);
+  // ... or subsequent char.
   static inline bool IsLegalTagChar(char c);
 
   // Determines whether a character can be used in an attribute name.

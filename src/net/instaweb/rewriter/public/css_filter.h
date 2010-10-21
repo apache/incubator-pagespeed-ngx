@@ -55,6 +55,8 @@ class CssFilter : public RewriteFilter {
  public:
   CssFilter(RewriteDriver* driver, const StringPiece& filter_prefix);
 
+  static void Initialize(Statistics* statistics);
+
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
@@ -69,12 +71,14 @@ class CssFilter : public RewriteFilter {
                      UrlAsyncFetcher::Callback* callback);
 
   virtual const char* Name() const { return "CssFilter"; }
-  static void Initialize(Statistics* statistics);
+
+  static const char kFilesMinified[];
+  static const char kMinifiedBytesSaved[];
+  static const char kParseFailures[];
 
  private:
-  static bool RewriteCssText(const StringPiece& in_text,
-                             std::string* out_text,
-                             MessageHandler* handler);
+  bool RewriteCssText(const StringPiece& in_text, std::string* out_text,
+                      MessageHandler* handler);
   bool RewriteExternalCss(const StringPiece& in_url, std::string* out_url);
   bool RewriteExternalCssToResource(const StringPiece& in_url,
                                     OutputResource* output_resource);
@@ -101,6 +105,11 @@ class CssFilter : public RewriteFilter {
   Atom s_link_;
   Atom s_rel_;
   Atom s_href_;
+
+  // Statistics
+  Variable* num_files_minified_;
+  Variable* minified_bytes_saved_;
+  Variable* num_parse_failures_;
 
   DISALLOW_COPY_AND_ASSIGN(CssFilter);
 };

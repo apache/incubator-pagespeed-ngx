@@ -136,13 +136,6 @@ std::string OutputResource::TempPrefix() const {
   return StrCat(resource_manager_->filename_prefix(), "temp_");
 }
 
-std::string OutputResource::NameTail() const {
-  CHECK(!full_name_.hash().empty())
-      << "to compute the Resource filename or URL, we must have "
-      << "completed writing, otherwise the contents hash is not known.";
-  return full_name_.Encode();
-}
-
 StringPiece OutputResource::suffix() const {
   CHECK(type_ != NULL);
   return type_->file_extension();
@@ -160,14 +153,11 @@ void OutputResource::set_suffix(const StringPiece& ext) {
 }
 
 std::string OutputResource::filename() const {
-  std::string filename;
-  FilenameEncoder* encoder = resource_manager_->filename_encoder();
-  encoder->Encode(resource_manager_->filename_prefix(), NameTail(), &filename);
-  return filename;
+  return full_name_.Filename(resource_manager_);
 }
 
 std::string OutputResource::url() const {
-  return resource_manager_->GenerateUrl(NameTail());
+  return full_name_.AbsoluteUrl(resource_manager_);
 }
 
 void OutputResource::SetHash(const StringPiece& hash) {

@@ -179,23 +179,23 @@ class ResourceManager {
   // TODO(jmarantz): check thread safety in Apache.
   Hasher* hasher() { return hasher_; }
   FileSystem* file_system() { return file_system_; }
-  FilenameEncoder* filename_encoder() { return filename_encoder_; }
+  FilenameEncoder* filename_encoder() const { return filename_encoder_; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
   Timer* timer() { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
   UrlEscaper* url_escaper() { return url_escaper_.get(); }
   int num_shards() const { return num_shards_; }
 
-  // Generates a URL for a name, sharding based on num shards and a hash
-  // of the name.
-  std::string GenerateUrl(const StringPiece& key) const;
+  // Given a ResourceNamer, generates the prefix (everything but the file name)
+  // for the corresponding URL.
+  std::string UrlPrefixFor(const ResourceNamer& namer) const;
 
-  // Splits the shard number from a possibly sharded URL, based on the
-  // current prefix.  If successful, returns the resource -- the tail
-  // of the URL following the prefix, otherwise returns NULL.  If sharding
-  // is enabled, the shard number is returned in *shard, otherwise,
-  // *shard is set to kNotSharded.
-  const char* SplitUrl(const char* url, int* shard) const;
+  // Decode an absolute url into a shard number and ResourceNamer.  If the url
+  // in question isn't recognized as an instaweb resource, return false and
+  // leave the outputs in an undefined state.  Set *shard to kNotSharded if
+  // sharding is not enabled for url.
+  bool UrlToResourceNamer(
+      const StringPiece& url, int* shard, ResourceNamer* resource) const;
 
   // Whether or not resources should hit the filesystem.
   bool store_outputs_in_file_system() { return store_outputs_in_file_system_; }
@@ -204,7 +204,7 @@ class ResourceManager {
   }
  private:
   Resource* CreateInputResourceGURL(const GURL& url, MessageHandler* handler);
-  std::string ConstructNameKey(const OutputResource* output) const;
+  std::string ConstructNameKey(const OutputResource& output) const;
   void ValidateShardsAgainstUrlPrefixPattern();
 
   std::string file_prefix_;

@@ -32,7 +32,6 @@
 #include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
-#include "net/instaweb/util/public/string_hash.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
 
@@ -89,38 +88,42 @@ void ResourceManager::SetUrlPrefixPattern(const StringPiece& pattern) {
   ValidateShardsAgainstUrlPrefixPattern();
 }
 
-std::string ResourceManager::GenerateUrl(const StringPiece& name) const {
+std::string ResourceManager::UrlPrefixFor(
+    const ResourceNamer& namer) const {
+  CHECK(!namer.hash().empty());
   std::string url_prefix;
   if (num_shards_ == 0) {
     url_prefix = url_prefix_pattern_;
   } else {
-    size_t hash = HashString(name.data(), name.size());
+    size_t hash = namer.Hash();
     int shard = hash % num_shards_;
     CHECK_NE(std::string::npos, url_prefix_pattern_.find("%d"));
     url_prefix = StringPrintf(url_prefix_pattern_.c_str(), shard);
   }
-  return StrCat(url_prefix, name);
+  return url_prefix;
 }
 
-const char* ResourceManager::SplitUrl(const char* url, int* shard) const {
-  const char* resource = NULL;
+bool ResourceManager::UrlToResourceNamer(
+    const StringPiece& url, int* shard, ResourceNamer* resource) const {
+  StringPiece suffix;
   if (num_shards_ == 0) {
     CHECK_EQ(std::string::npos, url_prefix_pattern_.find("%d"));
-    if (strncmp(url, url_prefix_pattern_.data(),
-                url_prefix_pattern_.size()) == 0) {
-      resource = url + url_prefix_pattern_.size();
+    if (url.starts_with(url_prefix_pattern_)) {
+      suffix = url.substr(url_prefix_pattern_.size());
       *shard = kNotSharded;
     }
   } else {
     CHECK_NE(std::string::npos, url_prefix_pattern_.find("%d"));
-    if (sscanf(url, url_prefix_pattern_.c_str(), shard) == 1) {
+    // TODO(jmaessen): Ugh.  Lint hates this sscanf call and so do I.  Can parse
+    // based on the results of the above find.
+    if (sscanf(url.as_string().c_str(),
+               url_prefix_pattern_.c_str(), shard) == 1) {
       // Get the actual prefix length by re-generating the URL.
       std::string prefix = StringPrintf(url_prefix_pattern_.c_str(), *shard);
-      size_t prefix_length = prefix.size();
-      resource = url + prefix_length;
+      suffix = url.substr(prefix.size());
     }
   }
-  return resource;
+  return (!suffix.empty() && resource->Decode(this, suffix));
 }
 
 void ResourceManager::ValidateShardsAgainstUrlPrefixPattern() {
@@ -147,8 +150,8 @@ void ResourceManager::ValidateShardsAgainstUrlPrefixPattern() {
 // TODO(jmarantz): consider moving this method to MetaData
 void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
                                         MetaData* header) const {
-  CHECK(header->major_version() == 0);
-  CHECK(header->NumAttributes() == 0);
+  CHECK_EQ(0, header->major_version());
+  CHECK_EQ(0, header->NumAttributes());
   header->set_major_version(1);
   header->set_minor_version(1);
   header->SetStatusAndReason(HttpStatus::kOK);
@@ -219,11 +222,11 @@ OutputResource* ResourceManager::CreateGeneratedOutputResource(
 // hash-code then we may also be able to look up the contents in the same
 // cache.
 std::string ResourceManager::ConstructNameKey(
-    const OutputResource* output) const {
+    const OutputResource& output) const {
   ResourceNamer full_name;
-  full_name.set_id(output->filter_prefix());
-  full_name.set_name(output->name());
-  return full_name.EncodeIdName();
+  full_name.set_id(output.filter_prefix());
+  full_name.set_name(output.name());
+  return full_name.EncodeIdName(this);
 }
 
 OutputResource* ResourceManager::CreateNamedOutputResource(
@@ -247,7 +250,8 @@ OutputResource* ResourceManager::CreateNamedOutputResource(
   StringPiece hash_extension;
   HTTPValue value;
 
-  if (http_cache_->Get(full_name.EncodeIdName(), &value, &meta_data, handler) &&
+  if (http_cache_->Get(
+          full_name.EncodeIdName(this), &value, &meta_data, handler) &&
       value.ExtractContents(&hash_extension)) {
     ResourceNamer hash_ext;
     if (hash_ext.DecodeHashExt(hash_extension)) {
@@ -428,7 +432,7 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
         ResourceNamer full_name;
         full_name.set_hash(output->hash());
         full_name.set_ext(output->suffix().substr(1));  // skip the "."
-        http_cache_->Put(ConstructNameKey(output), origin_meta_data,
+        http_cache_->Put(ConstructNameKey(*output), origin_meta_data,
                          full_name.EncodeHashExt(), handler);
       }
     }

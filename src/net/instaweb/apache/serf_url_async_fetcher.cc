@@ -569,7 +569,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
   mutex_ = new AprMutex(pool_);
   serf_context_ = serf_context_create(pool_);
   threaded_fetcher_ = new SerfThreadedFetcher(this, proxy);
-  if (SetupProxy(proxy)) {
+  if (!SetupProxy(proxy)) {
     LOG(WARNING) << "Proxy failed: " << proxy;
   }
 }
@@ -588,7 +588,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
   mutex_ = new AprMutex(pool_);
   serf_context_ = serf_context_create(pool_);
   threaded_fetcher_ = NULL;
-  if (SetupProxy(proxy)) {
+  if (!SetupProxy(proxy)) {
     LOG(WARNING) << "Proxy failed: " << proxy;
   }
 }

@@ -16,6 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/util/public/gtest.h"
 
@@ -25,21 +26,33 @@ namespace {
 
 class ResourceNamerTest : public testing::Test {
  protected:
+  ResourceNamerTest()
+      : manager_("file_prefix/", "url_prefix/", 0,
+                 NULL, NULL, NULL, NULL, NULL) { }
+
   ResourceNamer full_name_;
+  ResourceManager manager_;
 };
 
 TEST_F(ResourceNamerTest, TestEncode) {
+  // Stand up a minimal resource manager that only has the
+  // resources we should need to encode.
   full_name_.set_id("id");
   full_name_.set_name("name");
   full_name_.set_hash("hash");
   full_name_.set_ext("ext");
-  EXPECT_EQ(std::string("id.hash.name.ext"), full_name_.Encode());
-  EXPECT_EQ(std::string("id.name"), full_name_.EncodeIdName());
+  EXPECT_EQ(std::string("url_prefix/id.hash.name.ext"),
+            full_name_.AbsoluteUrl(&manager_));
+  EXPECT_EQ(std::string("file_prefix/id.hash.name.ext,"),
+            full_name_.Filename(&manager_));
+  EXPECT_EQ(std::string("id.name"), full_name_.EncodeIdName(&manager_));
   EXPECT_EQ(std::string("hash.ext"), full_name_.EncodeHashExt());
 }
 
 TEST_F(ResourceNamerTest, TestDecode) {
-  EXPECT_TRUE(full_name_.Decode("id.hash.name.ext"));
+  ResourceManager manager("file_prefix/", "url_prefix/", 0,
+                          NULL, NULL, NULL, NULL, NULL);
+  EXPECT_TRUE(full_name_.Decode(&manager_, "id.hash.name.ext"));
   EXPECT_EQ("id", full_name_.id());
   EXPECT_EQ("name", full_name_.name());
   EXPECT_EQ("hash", full_name_.hash());
@@ -47,12 +60,12 @@ TEST_F(ResourceNamerTest, TestDecode) {
 }
 
 TEST_F(ResourceNamerTest, TestDecodeTooMany) {
-  EXPECT_FALSE(full_name_.Decode("id.name.hash.ext.extra_dot"));
+  EXPECT_FALSE(full_name_.Decode(&manager_, "id.name.hash.ext.extra_dot"));
   EXPECT_FALSE(full_name_.DecodeHashExt("id.hash.ext"));
 }
 
 TEST_F(ResourceNamerTest, TestDecodeNotEnough) {
-  EXPECT_FALSE(full_name_.Decode("id.name.hash"));
+  EXPECT_FALSE(full_name_.Decode(&manager_, "id.name.hash"));
   EXPECT_FALSE(full_name_.DecodeHashExt("ext"));
 }
 

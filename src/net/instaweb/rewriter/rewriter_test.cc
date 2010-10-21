@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/outline_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -84,6 +85,20 @@ class RewriterTest : public ResourceManagerTestBase {
     DISALLOW_COPY_AND_ASSIGN(DummyCallback);
   };
 
+  void CheckedResourceNamer(
+      const ResourceManager* manager,
+      const StringPiece& url,
+      ResourceNamer* namer) {
+    int shard = ResourceManager::kNotSharded - 1;
+    CHECK(manager->UrlToResourceNamer(url, &shard, namer));
+    if (num_shards_ == 0) {
+      EXPECT_EQ(ResourceManager::kNotSharded, shard);
+    } else {
+      EXPECT_LE(0, shard);
+      EXPECT_GT(num_shards_, shard);
+    }
+  }
+
   void ServeResourceFromNewContext(const StringPiece& resource,
                                    const std::string& output_filename,
                                    const StringPiece& expected_content,
@@ -104,8 +119,12 @@ class RewriterTest : public ResourceManagerTestBase {
     StringWriter writer(&contents);
     DummyCallback callback;
 
+    // Parse resource name.
+    ResourceNamer namer;
+    CheckedResourceNamer(resource_manager.get(), resource, &namer);
+
     // Delete the output resource from the cache and the file system.
-    std::string cache_key = resource_manager->GenerateUrl(resource);
+    std::string cache_key = namer.AbsoluteUrl(resource_manager.get());
     EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(cache_key));
     lru_cache_->Clear();
 
@@ -113,7 +132,7 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_TRUE(file_system_.RemoveFile(output_filename.c_str(),
                                         &message_handler_));
 
-    driver.FetchResource(resource, request_headers, &response_headers, &writer,
+    driver.FetchResource(namer, request_headers, &response_headers, &writer,
                          &message_handler_, &callback);
     EXPECT_EQ(expected_content, contents);
     EXPECT_EQ(1, resource_fetches->Get());
@@ -201,13 +220,10 @@ class RewriterTest : public ResourceManagerTestBase {
     // output_buffer_ should have exactly one CSS file (the combined one).
     EXPECT_EQ(1UL, css_urls.size());
     const std::string& combine_url = css_urls[0];
-    int shard;
-    const char* resource = resource_manager->SplitUrl(
-        combine_url.c_str(), &shard);
-    EXPECT_TRUE(resource != NULL);
+    ResourceNamer namer;
+    CheckedResourceNamer(resource_manager.get(), combine_url, &namer);
 
-    std::string combine_filename;
-    filename_encoder_.Encode(file_prefix_, resource, &combine_filename);
+    std::string combine_filename = namer.Filename(resource_manager.get());
 
     static const char expected_output_format[] =
         "<head>\n"
@@ -238,7 +254,7 @@ class RewriterTest : public ResourceManagerTestBase {
     std::string fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
     DummyCallback dummy_callback;
-    rewrite_driver_.FetchResource(resource, request_headers,
+    rewrite_driver_.FetchResource(namer, request_headers,
                                   &response_headers, &writer,
                                   &message_handler_, &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
@@ -252,12 +268,13 @@ class RewriterTest : public ResourceManagerTestBase {
     fetched_resource_content.clear();
     message_handler_.Message(kInfo, "Now with serving.");
     file_system_.enable();
-    other_driver_.FetchResource(resource, request_headers,
+    CheckedResourceNamer(other_resource_manager.get(), combine_url, &namer);
+    other_driver_.FetchResource(namer, request_headers,
                                 &other_response_headers, &writer,
                                 &message_handler_, &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
-    ServeResourceFromNewContext(resource, combine_filename,
+    ServeResourceFromNewContext(combine_url, combine_filename,
                                 fetched_resource_content,
                                 RewriteOptions::kCombineCss);
   }
@@ -311,8 +328,6 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_EQ(url_prefix_, src_string.substr(0, url_prefix_.size()));
     EXPECT_EQ(".jpg", src_string.substr(src_string.size() - 4, 4));
 
-    const StringPiece resource =
-        StringPiece(src_string).substr(url_prefix_.size());
     std::string rewritten_data;
 
     std::string expected_output =
@@ -320,8 +335,10 @@ class RewriterTest : public ResourceManagerTestBase {
                "\" width=1023 height=766 /></body>");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
-    std::string rewritten_filename;
-    filename_encoder_.Encode(file_prefix_, resource, &rewritten_filename);
+    ResourceNamer namer;
+    CheckedResourceNamer(resource_manager.get(), src_string, &namer);
+
+    std::string rewritten_filename = namer.Filename(resource_manager.get());
 
     std::string rewritten_image_data;
     ASSERT_TRUE(file_system_.ReadFile(rewritten_filename.c_str(),
@@ -338,20 +355,20 @@ class RewriterTest : public ResourceManagerTestBase {
     AppendDefaultHeaders(kContentTypeJpeg, resource_manager.get(), &headers);
 
     writer.Write(headers, &message_handler_);
-    rewrite_driver_.FetchResource(resource, request_headers,
+    rewrite_driver_.FetchResource(namer, request_headers,
                                   &response_headers, &writer,
                                   &message_handler_, &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) <<
-        "Looking for " << resource;
+        "Looking for " << namer.PrettyName();
     // For readability, only do EXPECT_EQ on initial portions of data
     // as most of it isn't human-readable.  This will show us the headers
     // and the start of the image data.  So far every failure fails this
     // first, and we caught doubled headers this way.
     EXPECT_EQ(rewritten_image_data.substr(0, 100),
               fetched_resource_content.substr(0, 100)) <<
-        "In " << resource;
+        "In " << namer.PrettyName();
     EXPECT_TRUE(rewritten_image_data == fetched_resource_content) <<
-        "In " << resource;
+        "In " << namer.PrettyName();
 
     // Now we fetch from the "other" server. To simulate first fetch, we
     // need to:
@@ -368,7 +385,8 @@ class RewriterTest : public ResourceManagerTestBase {
 
     fetched_resource_content.clear();
     SimpleMetaData redirect_headers;
-    other_driver_.FetchResource(resource, request_headers,
+    CheckedResourceNamer(other_resource_manager.get(), src_string, &namer);
+    other_driver_.FetchResource(namer, request_headers,
                                 &redirect_headers, &writer,
                                 &message_handler_, &dummy_callback);
     std::string expected_redirect =
@@ -389,9 +407,10 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_EQ(headers, fetched_resource_content);
     SimpleMetaData other_headers;
     size_t header_size = fetched_resource_content.size();
-    other_driver_.FetchResource(resource, request_headers,
-                                 &other_headers, &writer,
-                                 &message_handler_, &dummy_callback);
+    CheckedResourceNamer(other_resource_manager.get(), src_string, &namer);
+    other_driver_.FetchResource(namer, request_headers,
+                                &other_headers, &writer,
+                                &message_handler_, &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, other_headers.status_code());
     EXPECT_EQ(rewritten_image_data.substr(0, 100),
               fetched_resource_content.substr(0, 100));
@@ -404,7 +423,7 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_EQ(rewritten_image_data.substr(0, 100),
               secondary_image_data.substr(0, 100));
     EXPECT_EQ(rewritten_image_data, secondary_image_data);
-    ServeResourceFromNewContext(resource, rewritten_filename,
+    ServeResourceFromNewContext(src_string, rewritten_filename,
                                 fetched_resource_content.substr(header_size),
                                 RewriteOptions::kRewriteImages);
   }

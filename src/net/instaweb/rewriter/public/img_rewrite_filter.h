@@ -99,7 +99,7 @@ class ImgRewriteFilter : public RewriteFilter {
       const StringPiece& origin_url, const ImageDim& page_dim,
       const std::string& url_string, Resource* input_resource);
   void RewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
-  void UpdateTargetElement(const OutputResource *output_resource,
+  void UpdateTargetElement(const OutputResource& output_resource,
                            const ImageDim& page_dim, const ImageDim& actual_dim,
                            HtmlElement* element, HtmlElement::Attribute* src);
 

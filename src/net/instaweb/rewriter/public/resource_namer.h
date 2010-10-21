@@ -22,6 +22,9 @@
 
 namespace net_instaweb {
 
+class ContentType;
+class ResourceManager;
+
 // Encapsulates the naming of resource URL leafs.  The class holds the context
 // of a single resource, and is not intended for re-use.  We could, of course,
 // add a Clear(), but it is a stateful class.
@@ -34,11 +37,21 @@ class ResourceNamer {
 
   // Decodes an entire resource name (ID.HASH.NAME.EXT), placing
   // the result in the fields in this encoder.
-  bool Decode(const StringPiece& encoded_string);
+  bool Decode(const ResourceManager* resource_manager,
+              const StringPiece& encoded_string);
 
-  // Encodes the fields in this encoder into a resource name, in the
-  // format "ID.HASH.NAME.EXT".
-  std::string Encode() const;
+  // Encodes the fields in this encoder into an absolute url, with the
+  // trailing portion "ID.HASH.NAME.EXT".
+  std::string AbsoluteUrl(const ResourceManager* resource_manager) const;
+
+  // Encodes the fields in this encoder into a url suitable for inclusion
+  // in the document currently being rewritten.
+  std::string RelativeUrl(const ResourceManager* resource_manager) const {
+    return AbsoluteUrl(resource_manager);
+  }
+
+  // Returns absolute path where the encoded resource should be stored.
+  std::string Filename(const ResourceManager* resource_manager) const;
 
   // Encode a key that can used to do a lookup based on an id
   // and the name.  This key can be used to find the hash-code for a
@@ -46,7 +59,7 @@ class ResourceNamer {
   //
   // The 'id' is a short code indicating which Instaweb rewriter was
   // used to generate the resource.
-  std::string EncodeIdName() const;
+  std::string EncodeIdName(const ResourceManager* resource_manager) const;
 
   // Note: there is no need at this time to decode the name key.
 
@@ -76,7 +89,20 @@ class ResourceNamer {
   void ClearHash() { hash_.clear(); }
   void CopyFrom(const ResourceNamer& other);
 
+  // Utility functions
+
+  // Name suitable for debugging and logging
+  const char* PrettyName() const;
+
+  // Compute a hash of non-path portions of the represented url.
+  size_t Hash() const;
+
+  // Compute a content-type based on ext().  NULL if unrecognized.
+  const ContentType* ContentTypeFromExt() const;
+
  private:
+  std::string InternalEncode() const;
+
   std::string id_;
   std::string name_;
   std::string hash_;

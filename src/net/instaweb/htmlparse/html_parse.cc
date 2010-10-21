@@ -84,7 +84,8 @@ HtmlEventListIterator HtmlParse::Last() {
 void HtmlParse::CheckParentFromAddEvent(HtmlEvent* event) {
   HtmlNode* node = event->GetNode();
   if (node != NULL) {
-    CHECK(lexer_->Parent() == node->parent());
+    message_handler_->Check(lexer_->Parent() == node->parent(),
+                            "lexer_->Parent() != node->parent()");
   }
 }
 
@@ -104,7 +105,7 @@ void HtmlParse::AddEvent(HtmlEvent* event) {
   HtmlLeafNode* leaf = event->GetLeafNode();
   if (leaf != NULL) {
     leaf->set_iter(Last());
-    CHECK(IsRewritable(leaf));
+    message_handler_->Check(IsRewritable(leaf), "!IsRewritable(leaf)");
   }
 }
 
@@ -170,8 +171,9 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
 
 void HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id) {
   // TODO(sligocki): Change to a warning.
-  GURL gurl(url.as_string());
-  CHECK(gurl.is_valid()) << "Invalid url " << url;
+  std::string url_str = url.as_string();
+  GURL gurl(url_str);
+  message_handler_->Check(gurl.is_valid(), "Invalid url %s", url_str.c_str());
 
   line_number_ = 1;
   url.CopyToString(&url_);
@@ -286,22 +288,26 @@ void HtmlParse::SanityCheck() {
     HtmlElement* actual_parent = NULL;
     if (start_element != NULL) {
       CheckEventParent(event, expect_parent, start_element->parent());
-      CHECK(start_element->begin() == current_);
-      CHECK(start_element->live());
+      message_handler_->Check(start_element->begin() == current_,
+                              "start_element->begin() != current_");
+      message_handler_->Check(start_element->live(), "!start_element->live()");
       element_stack.push_back(start_element);
       expect_parent = start_element;
     } else {
       HtmlElement* end_element = event->GetEndElement();
       if (end_element != NULL) {
-        CHECK(end_element->end() == current_);
-        CHECK(end_element->live());
+        message_handler_->Check(end_element->end() == current_,
+                                "end_element->end() != current_");
+        message_handler_->Check(end_element->live(),
+                                "!end_element->live()");
         if (!element_stack.empty()) {
           // The element stack can be empty on End can happen due
           // to this sequence:
           //   <tag1>
           //     FLUSH
           //   </tag1>   <!-- tag1 close seen with empty stack -->
-          CHECK(element_stack.back() == end_element);
+          message_handler_->Check(element_stack.back() == end_element,
+                                  "element_stack.back() != end_element");
           element_stack.pop_back();
         }
         actual_parent = end_element->parent();
@@ -312,8 +318,9 @@ void HtmlParse::SanityCheck() {
         // a start_element.
         HtmlLeafNode* leaf_node = event->GetLeafNode();
         if (leaf_node != NULL) {   // Start/EndDocument are not leaf nodes
-          CHECK(leaf_node->live());
-          CHECK(leaf_node->end() == current_);
+          message_handler_->Check(leaf_node->live(), "!leaf_node->live()");
+          message_handler_->Check(leaf_node->end() == current_,
+                                  "leaf_node->end() != current_");
           CheckEventParent(event, expect_parent, leaf_node->parent());
         }
       }
@@ -400,7 +407,7 @@ bool HtmlParse::InsertElementBeforeCurrent(HtmlNode* new_node) {
       // The node pointed to by Current will be our new sibling, so
       // we should grab its parent.
       HtmlNode* node = current_event->GetNode();
-      CHECK(node) << "Cannot compute parent for new node";
+      message_handler_->Check(node, "Cannot compute parent for new node");
       new_node->set_parent(node->parent());
     }
   }
@@ -418,7 +425,7 @@ bool HtmlParse::InsertElementBeforeEvent(const HtmlEventListIterator& event,
 
 bool HtmlParse::InsertElementAfterEvent(const HtmlEventListIterator& event,
                                         HtmlNode* new_node) {
-  CHECK(event != queue_.end());
+  message_handler_->Check(event != queue_.end(), "event == queue_.end()");
   HtmlEventListIterator next_event = event;
   ++next_event;
   return InsertElementBeforeEvent(next_event, new_node);
@@ -438,7 +445,8 @@ bool HtmlParse::InsertElementAfterCurrent(HtmlNode* new_node) {
 
   // We want to leave current_ pointing to the newly created element.
   --current_;
-  CHECK_EQ((*current_)->GetNode(), new_node);
+  message_handler_->Check((*current_)->GetNode() == new_node,
+                          "(*current_)->GetNode() != new_node");
   return ret;
 }
 
@@ -477,7 +485,8 @@ void HtmlParse::FixParents(const HtmlEventListIterator& begin,
   // Loop over all the nodes from begin to end, inclusive,
   // and set the parent pointer for the node, if there is one.  A few
   // event types don't have HtmlNodes, such as Comments and IEDirectives.
-  CHECK(end_inclusive != queue_.end());
+  message_handler_->Check(end_inclusive != queue_.end(),
+                          "end_inclusive == queue_.end()");
   HtmlEventListIterator end = end_inclusive;
   ++end;
   for (HtmlEventListIterator p = begin; p != end; ++p) {
@@ -543,8 +552,8 @@ bool HtmlParse::DeleteElement(HtmlNode* node) {
       }
       if (nested_node != NULL) {
         std::set<HtmlNode*>::iterator iter = nodes_.find(nested_node);
-        CHECK(iter != nodes_.end());
-        CHECK(nested_node->live());
+        message_handler_->Check(iter != nodes_.end(), "iter == nodes_.end()");
+        message_handler_->Check(nested_node->live(), "!nested_node->live()");
         nested_node->MarkAsDead(queue_.end());
       }
 
@@ -561,7 +570,7 @@ bool HtmlParse::DeleteElement(HtmlNode* node) {
     }
 
     // Our iteration should have covered the passed-in element as well.
-    CHECK(!node->live());
+    message_handler_->Check(!node->live(), "node->live()");
     deleted = true;
     need_sanity_check_ = true;
     need_coalesce_characters_ = true;
@@ -592,9 +601,9 @@ bool HtmlParse::ReplaceNode(HtmlNode* existing_node, HtmlNode* new_node) {
   bool replaced = false;
   if (IsRewritable(existing_node)) {
     replaced = InsertElementBeforeElement(existing_node, new_node);
-    CHECK(replaced);
+    message_handler_->Check(replaced, "!replaced");
     replaced = DeleteElement(existing_node);
-    CHECK(replaced);
+    message_handler_->Check(replaced, "!replaced");
   }
   return replaced;
 }

@@ -36,7 +36,7 @@ namespace net_instaweb {
 
 class VerifyContentsCallback : public Resource::AsyncCallback {
  public:
-  VerifyContentsCallback(const std::string& contents) :
+  explicit VerifyContentsCallback(const std::string& contents) :
       contents_(contents), called_(false) {
   }
   virtual void Done(bool success, Resource* resource) {
@@ -118,10 +118,10 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // Grab the URL for later
     EXPECT_TRUE(nor2->HasValidUrl());
     std::string url = nor2->url();
-    EXPECT_TRUE(url.length() > 0);
+    EXPECT_LT(0, url.length());
 
-    // Now expire it from the HTTP cache.  Since we don't know its hash,
-    // we cannot fetch it (even though the contents are still in the filesystem).
+    // Now expire it from the HTTP cache.  Since we don't know its hash, we
+    // cannot fetch it (even though the contents are still in the filesystem).
     mock_timer_.advance_ms(2 * origin_expire_time_ms);
     scoped_ptr<OutputResource> nor3(
         resource_manager_->CreateNamedOutputResource(
@@ -135,7 +135,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     RemoveUrlPrefix(&url);
 
     ResourceNamer full_name;
-    ASSERT_TRUE(full_name.Decode(url));
+    ASSERT_TRUE(full_name.Decode(resource_manager_, url));
     EXPECT_EQ(content_type, NameExtensionToContentType(url));
     EXPECT_EQ(filter_prefix, full_name.id());
     EXPECT_EQ(name, full_name.name());
@@ -156,7 +156,6 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     VerifyContentsCallback callback2(contents);
     resource_manager_->ReadAsync(nor4.get(), &callback2, &message_handler_);
     callback2.AssertCalled();
-
   }
 };
 
@@ -174,7 +173,6 @@ class ResourceManagerShardedTest : public ResourceManagerTest {
     // "%d" -> "0" (or "1") loses 1 char.
     url->erase(0, url_prefix_.length() - 1);
   }
-
 };
 
 TEST_F(ResourceManagerTest, TestNamed) {

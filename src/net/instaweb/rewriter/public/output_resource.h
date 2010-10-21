@@ -117,7 +117,6 @@ class OutputResource : public Resource {
   bool EndWrite(OutputWriter* writer, MessageHandler* message_handler);
 
   std::string TempPrefix() const;
-  std::string NameTail() const;
 
   FileSystem::OutputFile* output_file_;
   bool writing_complete_;

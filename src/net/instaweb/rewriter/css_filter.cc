@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/url_escaper.h"
 #include "net/instaweb/util/public/writer.h"
@@ -47,6 +48,11 @@ const char kStylesheet[] = "stylesheet";
 
 }  // namespace
 
+// Statistics variable names.
+const char CssFilter::kFilesMinified[] = "css_filter_files_minified";
+const char CssFilter::kMinifiedBytesSaved[] = "css_filter_minified_bytes_saved";
+const char CssFilter::kParseFailures[] = "css_filter_parse_failures";
+
 CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix)
     : RewriteFilter(driver, path_prefix),
       html_parse_(driver->html_parse()),
@@ -55,7 +61,28 @@ CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix)
       s_style_(html_parse_->Intern("style")),
       s_link_(html_parse_->Intern("link")),
       s_rel_(html_parse_->Intern("rel")),
-      s_href_(html_parse_->Intern("href")) {
+      s_href_(html_parse_->Intern("href")),
+      num_files_minified_(NULL),
+      minified_bytes_saved_(NULL) {
+  Statistics* stats = resource_manager_->statistics();
+  if (stats != NULL) {
+    num_files_minified_ = stats->GetVariable(CssFilter::kFilesMinified);
+    minified_bytes_saved_ = stats->GetVariable(CssFilter::kMinifiedBytesSaved);
+    num_parse_failures_ = stats->GetVariable(CssFilter::kParseFailures);
+    // TODO(sligocki): rm this when we are recording failures.
+    num_parse_failures_->Set(-1);
+  }
+}
+
+void CssFilter::Initialize(Statistics* statistics) {
+  statistics->AddVariable(CssFilter::kFilesMinified);
+  statistics->AddVariable(CssFilter::kMinifiedBytesSaved);
+  statistics->AddVariable(CssFilter::kParseFailures);
+
+  // Note: This is not thread-safe, but I don't believe we need it to be.
+  if (at_exit_manager == NULL) {
+    at_exit_manager = new base::AtExitManager;
+  }
 }
 
 void CssFilter::StartDocument() {
@@ -120,12 +147,15 @@ void CssFilter::EndElement(HtmlElement* element) {
   }
 }
 
+// Return value answers the question: May we rewrite?
+// If return false, out_text is undefined.
 bool CssFilter::RewriteCssText(const StringPiece& in_text,
                                std::string* out_text,
                                MessageHandler* handler) {
   // Load stylesheet w/o expanding background attributes.
   // TODO(sligocki): Figure out how we know if this failed.
   Css::Stylesheet* stylesheet = Css::Parser(in_text).ParseRawStylesheet();
+  // TODO(sligocki): Conditionally increment num_parse_failures_.
 
   // TODO(sligocki): Edit stylesheet.
 
@@ -135,7 +165,21 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
 
   // TODO(sligocki): Do we want to save the AST somewhere? Deleting for now.
   delete stylesheet;
-  return true;
+
+  // Get signed versions so that we can subtract them.
+  int64 out_text_size = static_cast<int64>(out_text->size());
+  int64 in_text_size = static_cast<int64>(in_text.size());
+
+  // Don't rewrite if we (for some reason) make it bigger.
+  bool ret = (out_text_size < in_text_size);
+
+  // Statistics
+  if (ret && num_files_minified_ != NULL) {
+    num_files_minified_->Add(1);
+    minified_bytes_saved_->Add(in_text_size - out_text_size);
+  }
+
+  return ret;
 }
 
 
@@ -223,10 +267,10 @@ OutputResource* CssFilter::CreateCssOutputResource(const StringPiece& in_url) {
 // Read an external CSS file, rewrite it and write a new external CSS file.
 bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
                                    std::string* out_url) {
-  OutputResource* output_resource = CreateCssOutputResource(in_url);
+  scoped_ptr<OutputResource> output_resource(CreateCssOutputResource(in_url));
   bool ret = false;
   if (output_resource != NULL) {
-    ret = RewriteExternalCssToResource(in_url, output_resource);
+    ret = RewriteExternalCssToResource(in_url, output_resource.get());
     if (ret) {
       *out_url = output_resource->url();
     }
@@ -255,8 +299,6 @@ bool CssFilter::RewriteExternalCssToResource(const StringPiece& in_url,
     std::string out_contents;
     if (!RewriteCssText(in_contents, &out_contents,
                         html_parse_->message_handler())) {
-      html_parse_->ErrorHere("Failed to rewrite resource %s",
-                             in_url.as_string().c_str());
       return false;
     }
 
@@ -297,15 +339,6 @@ bool CssFilter::Fetch(OutputResource* output_resource,
     callback->Done(ret);
   }
   return ret;
-}
-
-void CssFilter::Initialize(Statistics* statistics) {
-  // TODO(jmarantz): Add statistics for CSS rewrites.
-
-  // Note: This is not thread-safe, but I don't believe we need it to be.
-  if (at_exit_manager == NULL) {
-    at_exit_manager = new base::AtExitManager;
-  }
 }
 
 }  // namespace net_instaweb

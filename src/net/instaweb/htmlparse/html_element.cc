@@ -192,8 +192,8 @@ void HtmlElement::Attribute::SetValue(const StringPiece& value) {
   // is a substring of value_.  This copies the value just prior
   // to deallocation of the old value_.
   const char* escaped_chars = escaped_value_.get();
-  CHECK(value.data() + value.size() < escaped_chars ||
-        escaped_chars + strlen(escaped_chars) < value.data())
+  DCHECK(value.data() + value.size() < escaped_chars ||
+         escaped_chars + strlen(escaped_chars) < value.data())
       << "Setting unescaped value from substring of escaped value.";
   CopyValue(HtmlEscape::Escape(value, &buf), &escaped_value_);
   CopyValue(value, &value_);
@@ -205,8 +205,8 @@ void HtmlElement::Attribute::SetEscapedValue(const StringPiece& escaped_value) {
   // is a substring of value_.  This copies the value just prior
   // to deallocation of the old value_.
   const char* value_chars = value_.get();
-  CHECK(value_chars + strlen(value_chars) < escaped_value.data() ||
-        escaped_value.data() + escaped_value.size() < value_chars)
+  DCHECK(value_chars + strlen(value_chars) < escaped_value.data() ||
+         escaped_value.data() + escaped_value.size() < value_chars)
       << "Setting escaped value from substring of unescaped value.";
   CopyValue(HtmlEscape::Unescape(escaped_value, &buf), &value_);
   CopyValue(escaped_value, &escaped_value_);

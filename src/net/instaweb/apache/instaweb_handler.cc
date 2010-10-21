@@ -27,6 +27,7 @@
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -71,19 +72,20 @@ class AsyncCallback : public UrlAsyncFetcher::Callback {
 };
 
 // Default handler when the file is not found
-int instaweb_default_handler(const std::string& url, request_rec* request) {
+int instaweb_default_handler(const ResourceNamer& resource,
+                             request_rec* request) {
   request->status = HTTP_NOT_FOUND;
   ap_set_content_type(request, "text/html; charset=utf-8");
   ap_rputs("<html><head><title>Not Found</title></head>", request);
   ap_rputs("<body><h1>Apache server with mod_pagespeed</h1>OK", request);
   ap_rputs("<hr>NOT FOUND:", request);
-  ap_rputs(url.c_str(), request);
+  ap_rputs(resource.PrettyName(), request);
   ap_rputs("</body></html>", request);
   return OK;
 }
 
 bool fetch_resource(const request_rec* request,
-                    const std::string& resource,
+                    const ResourceNamer& resource,
                     SimpleMetaData* response_headers,
                     std::string* output) {
   ApacheRewriteDriverFactory* factory =
@@ -95,7 +97,7 @@ bool fetch_resource(const request_rec* request,
   AsyncCallback callback(&message_handler);
 
   message_handler.Message(kWarning, "Fetching resource %s...",
-                          resource.c_str());
+                          resource.PrettyName());
 
   rewrite_driver->FetchResource(resource, request_headers,
                                 response_headers,
@@ -115,16 +117,16 @@ bool fetch_resource(const request_rec* request,
       serf_async_fetcher->Poll(remaining_us);
     }
     if (!callback.done()) {
-      message_handler.Error(resource.c_str(), 0,
+      message_handler.Error(resource.PrettyName(), 0,
                             "Timeout waiting for response");
     } else if (!callback.success()) {
-      message_handler.Error(resource.c_str(), 0, "Fetch failed.");
+      message_handler.Error(resource.PrettyName(), 0, "Fetch failed.");
     }
     ret = callback.done() && callback.success();
   }
   message_handler.Message(kWarning,
                           "...Fetched resource %s, ret=%d",
-                          resource.c_str(), ret);
+                          resource.PrettyName(), ret);
   return ret;
 }
 
@@ -207,8 +209,8 @@ int instaweb_handler(request_rec* request) {
     // Determine whether this URL matches our prefix pattern.  Note that
     // the URL may have a shard applied to it.
     int shard;
-    const char* resource = resource_manager->SplitUrl(url.c_str(), &shard);
-    if (resource != NULL) {
+    ResourceNamer resource;
+    if (resource_manager->UrlToResourceNamer(url, &shard, &resource)) {
       SimpleMetaData response_headers;
       std::string output;
       if (!fetch_resource(request, resource, &response_headers, &output)) {

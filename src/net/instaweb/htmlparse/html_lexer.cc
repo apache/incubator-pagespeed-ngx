@@ -23,6 +23,7 @@
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace {
@@ -101,6 +102,14 @@ void HtmlLexer::EvalStart(char c) {
   }
 }
 
+// Browsers appear to only allow letters for first char in tag name ...
+bool HtmlLexer::IsLegalTagFirstChar(char c) {
+  return isalpha(c);
+}
+
+// ... and letters, digits, unicode and some symbols for subsequent chars.
+// Based on a test of Firefox and Chrome.
+//
 // TODO(jmarantz): revisit these predicates based on
 // http://www.w3.org/TR/REC-xml/#NT-NameChar .  This
 // XML spec may or may not inform of us of what we need to do
@@ -126,7 +135,7 @@ bool HtmlLexer::IsLegalAttrValChar(char c) {
 void HtmlLexer::EvalTag(char c) {
   if (c == '/') {
     state_ = TAG_CLOSE;
-  } else if (IsLegalTagChar(c)) {   // "<x"
+  } else if (IsLegalTagFirstChar(c)) {   // "<x"
     state_ = TAG_OPEN;
     token_ += c;
   } else if (c == '!') {
@@ -464,7 +473,8 @@ void HtmlLexer::EvalLiteralTag(char c) {
   // TODO(jmarantz): check for whitespace in unexpected places.
   if (c == '>') {
     // expecting "</x>" for tag x.
-    CHECK(literal_close_.size() > 3);  // NOLINT
+    html_parse_->message_handler()->Check(
+        literal_close_.size() > 3, "literal_close_.size() <= 3");  // NOLINT
     int literal_minus_close_size = literal_.size() - literal_close_.size();
     if ((literal_minus_close_size >= 0) &&
         (strcasecmp(literal_.c_str() + literal_minus_close_size,
@@ -554,7 +564,8 @@ static void toLower(std::string* str) {
 }
 
 HtmlElement* HtmlLexer::Parent() const {
-  CHECK(!element_stack_.empty());
+  html_parse_->message_handler()->Check(!element_stack_.empty(),
+                                        "element_stack_.empty()");
   return element_stack_.back();
 }
 
@@ -606,8 +617,10 @@ void HtmlLexer::FinishParse() {
   }
 
   // Any unclosed tags?  These should be noted.
-  CHECK(!element_stack_.empty());
-  CHECK(element_stack_[0] == NULL);
+  html_parse_->message_handler()->Check(!element_stack_.empty(),
+                                        "element_stack_.empty()");
+  html_parse_->message_handler()->Check(element_stack_[0] == NULL,
+                                        "element_stack_[0] != NULL");
   for (size_t i = kStartStack; i < element_stack_.size(); ++i) {
     HtmlElement* element = element_stack_[i];
     html_parse_->Warning(id_.c_str(), element->begin_line_number(),
@@ -620,17 +633,19 @@ void HtmlLexer::FinishParse() {
 }
 
 void HtmlLexer::MakeAttribute(bool has_value) {
-  CHECK(element_ != NULL);
+  html_parse_->message_handler()->Check(element_ != NULL, "element_ == NULL");
   toLower(&attr_name_);
   Atom name = html_parse_->Intern(attr_name_);
   attr_name_.clear();
   const char* value = NULL;
-  CHECK(has_value == has_attr_value_);
+  html_parse_->message_handler()->Check(has_value == has_attr_value_,
+                                        "has_value != has_attr_value_");
   if (has_value) {
     value = attr_value_.c_str();
     has_attr_value_ = false;
   } else {
-    CHECK(attr_value_.empty());
+    html_parse_->message_handler()->Check(attr_value_.empty(),
+                                          "!attr_value_.empty()");
   }
   element_->AddEscapedAttribute(name, value, attr_quote_);
   attr_value_.clear();
@@ -877,7 +892,6 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(Atom tag) {
       // this in reverse order so that we maintain stack discipline.
       for (int j = element_stack_.size() - 1; j > i; --j) {
         HtmlElement* skipped = element_stack_[j];
-        // TODO(jmarantz): Should this be a Warning rather than an Error?
         // In fact, should we actually perform this optimization ourselves
         // in a filter to omit closing tags that can be inferred?
         html_parse_->Warning(id_.c_str(), skipped->begin_line_number(),

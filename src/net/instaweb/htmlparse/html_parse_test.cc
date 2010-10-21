@@ -57,6 +57,23 @@ TEST_F(HtmlParseTest, AmpersandInHref) {
       "<a href=\"http://myhost.com/path?arg1=val1&arg2=val2\">Hello</a>");
 }
 
+TEST_F(HtmlParseTest, CorrectTaggify) {
+  // Don't turn <2 -> <2>
+  ValidateNoChanges("no_taggify_digit", "<p>1<2</p>");
+  ValidateNoChanges("no_taggify_unicode", "<p>☃<☕</p>");
+  ValidateExpected("taggify_letter", "<p>x<y</p>", "<p>x<y></p>");
+
+  ValidateExpected("taggify_letter+digit", "<p>x1<y2</p>", "<p>x1<y2></p>");
+  ValidateExpected("taggify_letter+unicode", "<p>x☃<y☕</p>", "<p>x☃<y☕></p>");
+
+  ValidateNoChanges("no_taggify_digit+letter", "<p>1x<2y</p>");
+  ValidateNoChanges("no_taggify_unicode+letter", "<p>☃x<☕y</p>");
+
+  // Found on http://www.taobao.com/
+  // Don't turn <1... -> <1...>
+  ValidateNoChanges("taobao", "<a>1+1<1母婴全场加1元超值购</a>");
+}
+
 class AttrValuesSaverFilter : public EmptyHtmlFilter {
  public:
   AttrValuesSaverFilter() { }

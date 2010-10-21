@@ -27,6 +27,7 @@
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apr_statistics.h"
+#include "net/instaweb/public/version.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
@@ -73,7 +74,8 @@ const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
 const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
-const char kModPagespeedVersion[] = "1";
+const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
+    LASTCHANGE_STRING;
 const char kModPagespeedHeader[] = "X-Mod-Pagespeed";
 
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
@@ -396,15 +398,35 @@ void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
   if (factory == NULL) {
     factory = new ApacheRewriteDriverFactory(pool);
 
-    // Also consider checking AP_MODULE_MAGIC_AT_LEAST(20051115, 15)
-#if ((APR_MAJOR_VERSION > 1) ||                                 \
-     ((APR_MAJOR_VERSION == 1) && APR_MINOR_VERSION > 2))
-    // This method was added in apr 1.3. It's just a shutdown hook, so
-    // it's safe to not call it if we're compiling against an older
-    // version of apr. We will leak memory on shutdown, but since
-    // we're about to shut down, it's not really an issue.
-    apr_pool_pre_cleanup_register(pool, factory, pagespeed_child_exit);
-#endif
+    // To clean up the factory on process shutdown, we need to run
+    // pagespeed_child_exit *before* the pool is destroyed.  If we run
+    // that hook with apr_pool_cleanup_register then the pool will
+    // already be destroyed, and the factory destruction will crash.
+    // The proper way to fix this is with:
+    //
+    //   apr_pool_pre_cleanup_register(pool, factory, pagespeed_child_exit);
+    //
+    // However, this method was added in apr 1.3.  We can do a compile-time
+    // check such as
+    //
+    //   #if ((APR_MAJOR_VERSION > 1) ||
+    //     ((APR_MAJOR_VERSION == 1) && APR_MINOR_VERSION > 2))
+    //
+    // However, the Apache include files that we depend on during the
+    // build process may not correspond to the Apache version into
+    // which that mod_pagespeed.so will be dynamically loaded.  At
+    // some point in the future, we may be able to make apr 1.3 a
+    // minimum requirement for mod_pagespeed.  In the meantime, we
+    // will not call the factory destructor and will instead rely on
+    // the process memory clean up to do what's necessary.
+    //
+    // TODO(jmarantz): Start employing apr_pool_pre_cleanup_register when
+    // it is generaly available
+    //
+    // TODO(jmarantz): Figure out how to segregate the pool-dependent
+    // cleanups (e.g. apr_mutex) from the pool-independent cleanups
+    // (e.g. memory allocated with new) so we can clean those up using
+    // apr_pool_cleanup_register.
   }
   return factory;
 }

@@ -10,7 +10,7 @@
     # the mod_deflate section below.
     SetOutputFilter MOD_PAGESPEED_OUTPUT_FILTER;DEFLATE
 
-    # Give mod_pagespeed as chance to handle all requests.
+    # Give mod_pagespeed a chance to handle all requests.
     <Location />
           SetHandler mod_pagespeed_resource_generator
     </Location>
@@ -18,6 +18,13 @@
     # This page lets you view statistics about the mod_pagespeed module.
     <Location /mod_pagespeed_statistics>
         Order allow,deny
+        # You may insert other "Allow from" lines to add hosts you want to
+        # allow to look at generated statistics.  Another possibility is
+        # to comment out the "Order" and "Allow" options from the config
+        # file, to allow any client that can reach your server to examine
+        # statistics.  This might be appropriate in an experimental setup or
+        # if the Apache server is protected by a reverse proxy that will
+        # filter URLs in some fashion.
         Allow from localhost
         SetHandler mod_pagespeed_statistics
     </Location>
@@ -60,12 +67,13 @@
     # specified explicitly.
     ModPagespeedRewriters add_head
 
-    # Combines multiple heads into one.  Technically HTML documents are
-    # not allowed to have multiple <head>s, but when sites which aggregate
-    # content from multiple sources sometimes have them.  This filter
-    # moves the content from later <head>s into the first head.  This filter
-    # can change the order of content (e.g. CSS and JS) in the later <head>s
-    # relative to intervening <body> elements.
+    # Combines multiple heads into one.  Technically HTML documents
+    # are not allowed to have multiple <head>s, but sites which
+    # aggregate content from multiple sources sometimes have them.
+    # This filter moves the content from later <head>s into the first
+    # head.  This filter can change the order of content (e.g. CSS and
+    # JS) in the later <head>s relative to intervening <body>
+    # elements.
     # ModPagespeedRewriters combine_heads
 
     # Experimental filter to completely remove scripts from a page.  Obviously
@@ -74,9 +82,11 @@
     # javascript.
     # ModPagespeedRewriters strip_scripts
 
-    # Large blocks of inline Javascript and CSS can benefit from moving into
-    # external files so they can be cached in the browser, even if the HTML
-    # is not cacheable.  See ModPagespeedOutlineThreshold.
+    # Large blocks of inline Javascript and CSS can benefit from
+    # moving into external files so they can be cached in the browser,
+    # even if the HTML is not cacheable.  See
+    # ModPagespeedOutlineThreshold.  These filters can currently only be
+    # enabled in a single-server configuration.
     # TODO(jmarantz): test and enable these OR
     # TODO(abliss): these are included by default so that we can check
     # these filters in our system test.  Comment these out before ship.
@@ -110,11 +120,12 @@
     # these filters in our system test.  Comment these out before ship.
     ModPagespeedRewriters remove_comments
 
-    # Removes excess whitespace in HTML files (avoiding "pre", "script", "style",
-    # and "textarea").  This is off by default as it's possible to apply these
-    # tags to the DOM in a way that is not statically detected.  If your web-site
-    # only uses those attributes directly in HTML markup, and does not apply them
-    # via CSS and javascript, then it's safe to enable this filter.
+    # Removes excess whitespace in HTML files (avoiding "pre",
+    # "script", "style", and "textarea").  This is off by default as
+    # it's possible to apply these tags to the DOM in a way that is
+    # not statically detected.  If your web-site only uses those
+    # attributes directly in HTML markup, and does not apply them via
+    # CSS and javascript, then it's safe to enable this filter.
     # ModPagespeedRewriters collapse_whitespace
 
     # Removes attributes which are not significant according to the HTML spec.

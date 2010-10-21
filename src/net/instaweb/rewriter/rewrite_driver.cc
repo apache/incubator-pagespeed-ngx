@@ -343,26 +343,17 @@ class ResourceDeleterCallback : public UrlAsyncFetcher::Callback {
 }  // namespace
 
 void RewriteDriver::FetchResource(
-    const StringPiece& resource,
+    const ResourceNamer& resource,
     const MetaData& request_headers,
     MetaData* response_headers,
     Writer* writer,
     MessageHandler* message_handler,
     UrlAsyncFetcher::Callback* callback) {
   bool queued = false;
-  ResourceNamer resource_namer;
-  const ContentType* content_type = NULL;
-  if (resource_namer.Decode(resource) &&
-      ((content_type = NameExtensionToContentType(resource)) != NULL)) {
+  const ContentType* content_type = resource.ContentTypeFromExt();
+  if (content_type != NULL) {
     OutputResource* output_resource = resource_manager_->
-        CreateUrlOutputResource(resource_namer, content_type);
-    std::string resource_name;
-    resource_manager_->filename_encoder()->Encode(
-        resource_manager_->filename_prefix(), resource, &resource_name);
-    // strcasecmp is needed for this check because we will canonicalize
-    // file extensions based on the table in util/content_type.cc.
-    CHECK(strcasecmp(resource_name.c_str(),
-                     output_resource->filename().c_str()) == 0);
+        CreateUrlOutputResource(resource, content_type);
 
     callback = new ResourceDeleterCallback(output_resource, callback);
     if (resource_manager_->FetchOutputResource(
@@ -370,7 +361,7 @@ void RewriteDriver::FetchResource(
       callback->Done(true);
       queued = true;
     } else {
-      StringPiece id = resource_namer.id();
+      StringPiece id = resource.id();
       StringFilterMap::iterator p = resource_filter_map_.find(
           std::string(id.data(), id.size()));
       if (p != resource_filter_map_.end()) {

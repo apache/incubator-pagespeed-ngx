@@ -21,6 +21,7 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include <string>
 #include "net/instaweb/util/public/writer.h"
 
@@ -146,7 +147,8 @@ void HtmlWriterFilter::EndElement(HtmlElement* element) {
     case HtmlElement::AUTO_CLOSE:
       // This cannot happen because GetCloseStyle prevents won't
       // return AUTO_CLOSE.
-      CHECK(false);
+      html_parse_->message_handler()->FatalError(
+          __FILE__, __LINE__, "GetCloseStyle should never return AUTO_CLOSE.");
       break;
     case HtmlElement::IMPLICIT_CLOSE:
       // Nothing new to write; the ">" was written in StartElement

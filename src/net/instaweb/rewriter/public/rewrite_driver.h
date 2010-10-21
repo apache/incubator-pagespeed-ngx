@@ -39,6 +39,7 @@ class Hasher;
 class HtmlFilter;
 class HtmlParse;
 class HtmlWriterFilter;
+class ResourceNamer;
 class RewriteFilter;
 class Statistics;
 class Timer;
@@ -107,7 +108,7 @@ class RewriteDriver {
   // base URL of a site if it is explicitly set.
   void SetBaseUrl(const StringPiece& base);
 
-  void FetchResource(const StringPiece& resource,
+  void FetchResource(const ResourceNamer& resource,
                      const MetaData& request_headers,
                      MetaData* response_headers,
                      Writer* writer,

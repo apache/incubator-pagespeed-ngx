@@ -41,6 +41,12 @@ inline size_t HashString(const char* s, size_t len) {
   return result;
 }
 
+// Combine two hash values in a reasonable way.  Here to avoid
+// excessive mysticism in the remainder of the code.
+inline size_t JoinHash(size_t a, size_t b) {
+  return (a + 56) * 137 + b * 151;  // Uses different prime multipliers.
+}
+
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_STRING_HASH_H_

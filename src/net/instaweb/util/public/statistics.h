@@ -26,6 +26,7 @@ namespace net_instaweb {
 class Variable {
  public:
   virtual ~Variable();
+  // TODO(sligocki): int -> int64
   virtual int Get() const = 0;
   virtual void Set(int delta) = 0;
 
