@@ -98,6 +98,9 @@ deps = {
 
   "src/third_party/chromium/src/base": From(Var("libpagespeed_deps_root")),
   "src/third_party/chromium/src/build": From(Var("libpagespeed_deps_root")),
+  "src/third_party/chromium/src/chrome/tools/build":
+    File(Var("chromium_trunk") + "/src/chrome/tools/build/version.py" +
+         Var("chromium_revision")),
   "src/third_party/chromium/src/net/base": From(Var("libpagespeed_deps_root")),
 
   "src/third_party/chromium/src/net/tools/dump_cache":

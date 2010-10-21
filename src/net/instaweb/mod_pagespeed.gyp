@@ -28,6 +28,7 @@
         'instaweb_html_rewriter.gyp:html_rewriter',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/apache/httpd/httpd.gyp:include',
+        '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
       ],
       'include_dirs': [
         '<(DEPTH)',
