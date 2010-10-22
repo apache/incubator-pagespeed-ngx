@@ -135,8 +135,6 @@ deps = {
     (Var("libpagespeed_trunk") + "/src/third_party" +
      Var("libpagespeed_revision")),
 
-  "src/third_party/libpng": From(Var("libpagespeed_deps_root")),
-
   "src/third_party/protobuf2": From(Var("libpagespeed_deps_root")),
   "src/third_party/protobuf2/src": From(Var("chromium_deps_root")),
 
