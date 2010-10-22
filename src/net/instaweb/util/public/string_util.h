@@ -51,11 +51,10 @@ inline bool StringToInt(const char* in, int* out) {
           (long_val <= INT_MAX) && (long_val >= INT_MIN));
 }
 
-inline bool StringToInt64(const char* in, int* out) {
+inline bool StringToInt64(const char* in, int64* out) {
   // Chromium lacks StringToInt(const char*...).
   char* endptr = NULL;
-  int64 long_val = strtoll(const_cast<char*>(in), &endptr, 10);
-  *out = long_val;
+  *out = strtoll(const_cast<char*>(in), &endptr, 10);
   return ((endptr != NULL) && (*endptr == '\0'));
 }
 

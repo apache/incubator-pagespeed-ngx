@@ -28,12 +28,20 @@ namespace net_instaweb {
 
 InstawebContext::InstawebContext(request_rec* request,
                                  ApacheRewriteDriverFactory* factory,
-                                 const std::string& absolute_url)
+                                 const std::string& absolute_url,
+                                 bool use_custom_options,
+                                 const RewriteOptions& custom_options)
     : content_encoding_(kNone),
       factory_(factory),
-      rewrite_driver_(factory->GetRewriteDriver()),
       string_writer_(&output_),
       inflater_(NULL) {
+  if (use_custom_options) {
+    custom_rewriter_.reset(factory->NewCustomRewriteDriver(custom_options));
+    rewrite_driver_ = custom_rewriter_.get();
+  } else {
+    rewrite_driver_ = factory->GetRewriteDriver();
+  }
+
   ComputeContentEncoding(request);
   apr_pool_cleanup_register(request->pool, this, Cleanup,
                             apr_pool_cleanup_null);

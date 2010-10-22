@@ -32,6 +32,7 @@
 namespace net_instaweb {
 
 class GzipInflater;
+class RewriteOptions;
 
 // We use the following structure to keep the instaweb module context. The
 // rewriter will put the rewritten content into the output string when flushed
@@ -43,7 +44,9 @@ class InstawebContext {
 
   InstawebContext(request_rec* request,
                   net_instaweb::ApacheRewriteDriverFactory* factory,
-                  const std::string& base_url);
+                  const std::string& base_url,
+                  bool use_custom_options,
+                  const RewriteOptions& custom_options);
   ~InstawebContext();
 
   void Rewrite(const char* input, int size);
@@ -72,6 +75,7 @@ class InstawebContext {
   net_instaweb::RewriteDriver* rewrite_driver_;
   net_instaweb::StringWriter string_writer_;
   scoped_ptr<GzipInflater> inflater_;
+  scoped_ptr<RewriteDriver> custom_rewriter_;
 
   DISALLOW_COPY_AND_ASSIGN(InstawebContext);
 };

@@ -127,20 +127,22 @@ class RewriteDriverFactory {
   Timer* timer();
   HTTPCache* http_cache();
 
-
   StringPiece filename_prefix();
   StringPiece url_prefix();
   int num_shards() const { return options_.num_shards(); }
 
   // Sets the enabled filters, based on a comma-separated list of
   // filter names
-  void SetEnabledFilters(const StringPiece& filter_names) {
+  bool SetEnabledFilters(const StringPiece& filter_names) {
     options_.ClearFilters();
-    AddEnabledFilters(filter_names);
+    return AddEnabledFilters(filter_names, message_handler());
   }
 
-  // Adds an additional set of filters the enabled set
-  void AddEnabledFilters(const StringPiece& filter_names);
+  // Adds an additional set of filters the enabled set.  Returns false
+  // if any of the filter names are invalid, but all the valid ones
+  // will be added anyway.
+  bool AddEnabledFilters(const StringPiece& filter_names,
+                         MessageHandler* handler);
 
   // Computes URL fetchers using the based fetcher, and optionally,
   // slurp_directory and slurp_read_only.
@@ -152,11 +154,17 @@ class RewriteDriverFactory {
   virtual AbstractMutex* NewMutex() = 0;
   virtual Hasher* NewHasher() = 0;
 
-  // Generates a new RewriteDriver.  Each RewriteDriver is not
-  // thread-safe, but you can generate a RewriteDriver* for each
-  // thread.  The returned drivers are deleted by the factory; they do
-  // not need to be deleted by the allocator.
+  // Generates a new managed RewriteDriver using the RewriteOptions
+  // managed by this class.  Each RewriteDriver is not thread-safe,
+  // but you can generate a RewriteDriver* for each thread.  The
+  // returned drivers are deleted by the factory; they do not need to
+  // be deleted by the allocator.
   RewriteDriver* NewRewriteDriver();
+
+  // Generates a custom RewriteDriver using the passed-in options.  This
+  // driver is *not* managed by the factory: you must delete it after
+  // you are done with it.
+  RewriteDriver* NewCustomRewriteDriver(const RewriteOptions& options);
 
   // Initialize statistics variables for 404 responses.
   static void Initialize(Statistics* statistics);

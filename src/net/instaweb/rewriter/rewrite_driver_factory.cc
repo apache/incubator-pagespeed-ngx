@@ -57,8 +57,9 @@ RewriteDriverFactory::~RewriteDriverFactory() {
   ShutDown();
 }
 
-void RewriteDriverFactory::AddEnabledFilters(const StringPiece& filter_names) {
-  options_.AddFiltersByCommaSeparatedList(filter_names);
+bool RewriteDriverFactory::AddEnabledFilters(const StringPiece& filter_names,
+                                             MessageHandler* handler) {
+  return options_.AddFiltersByCommaSeparatedList(filter_names, handler);
 }
 
 void RewriteDriverFactory::set_html_parse_message_handler(
@@ -205,12 +206,18 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
   return resource_manager_.get();
 }
 
-RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
+RewriteDriver* RewriteDriverFactory::NewCustomRewriteDriver(
+    const RewriteOptions& options) {
   RewriteDriver* rewrite_driver =  new RewriteDriver(
       message_handler(), file_system(), ComputeUrlAsyncFetcher());
   rewrite_driver->SetResourceManager(ComputeResourceManager());
   AddPlatformSpecificRewritePasses(rewrite_driver);
-  rewrite_driver->AddFilters(options_);
+  rewrite_driver->AddFilters(options);
+  return rewrite_driver;
+}
+
+RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
+  RewriteDriver* rewrite_driver = NewCustomRewriteDriver(options_);
   {
     ScopedMutex lock(rewrite_drivers_mutex());
     rewrite_drivers_.push_back(rewrite_driver);

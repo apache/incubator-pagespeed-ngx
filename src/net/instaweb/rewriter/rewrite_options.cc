@@ -17,6 +17,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
 #include <vector>
+#include "net/instaweb/util/public/message_handler.h"
 
 namespace net_instaweb {
 
@@ -80,18 +81,22 @@ RewriteOptions::RewriteOptions()
   name_filter_map_["strip_scripts"] = kStripScripts;
 }
 
-void RewriteOptions::AddFiltersByCommaSeparatedList(
-    const StringPiece& filters) {
+bool RewriteOptions::AddFiltersByCommaSeparatedList(
+    const StringPiece& filters, MessageHandler* handler) {
   std::vector<StringPiece> names;
   SplitStringPieceToVector(filters, ",", &names, true);
+  bool ret = true;
   for (int i = 0, n = names.size(); i < n; ++i) {
-    // TODO(jmarantz): consider returning a bool and taking a message
-    // handler to make this a more user-friendly error message.
     std::string option(names[i].data(), names[i].size());
     NameFilterMap::iterator p = name_filter_map_.find(option);
-    CHECK(p != name_filter_map_.end()) << "Invalid filter name: " << option;
-    AddFilter(p->second);
+    if (p == name_filter_map_.end()) {
+      handler->Message(kWarning, "Invalid filter name: %s", option.c_str());
+      ret = false;
+    } else {
+      AddFilter(p->second);
+    }
   }
+  return ret;
 }
 
 void RewriteOptions::AddFilter(Filter filter) {

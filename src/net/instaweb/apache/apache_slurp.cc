@@ -37,6 +37,7 @@
 // For now use wget when slurping additional files.
 
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/url_fetcher.h"
@@ -102,6 +103,43 @@ class ApacheWriter : public Writer {
 
 }  // namespace
 
+// Remove any mod-pagespeed-specific modifiers before we go to our slurped
+// fetcher.
+//
+// TODO(jmarantz): share the string constants from mod_instaweb.cc and
+// formalize the prefix-matching assumed here.
+std::string RemoveModPageSpeedQueryParams(
+    const std::string& uri, const char* query_param_string) {
+  QueryParams query_params, stripped_query_params;
+  query_params.Parse(query_param_string);
+  bool rewrite_query_params = false;
+
+  for (int i = 0; i < query_params.size(); ++i) {
+    const char* name = query_params.name(i);
+    static const char kModPagespeed[] = "ModPagespeed";
+    if (strncmp(name, kModPagespeed, sizeof(kModPagespeed) - 1) == 0) {
+      rewrite_query_params = true;
+    } else {
+      stripped_query_params.Add(name, query_params.value(i));
+    }
+  }
+
+  std::string stripped_url;
+  if (rewrite_query_params) {
+    // TODO(jmarantz): It would be nice to use GoogleUrl to do this but
+    // it's not clear how it would help.  Instead just hack the string.
+    std::string::size_type question_mark = uri.find('?');
+    CHECK(question_mark != std::string::npos);
+    stripped_url.append(uri.data(), question_mark);  // does not include "?" yet
+    if (stripped_query_params.size() != 0) {
+      stripped_url += StrCat("?", stripped_query_params.ToString());
+    }
+  } else {
+    stripped_url = uri;
+  }
+  return stripped_url;
+}
+
 void SlurpUrl(const std::string& uri, ApacheRewriteDriverFactory* factory,
               request_rec* r) {
   SimpleMetaData request_headers, response_headers;
@@ -109,15 +147,14 @@ void SlurpUrl(const std::string& uri, ApacheRewriteDriverFactory* factory,
   std::string contents;
   StringWriter writer(&contents);
 
-  // TODO(jmarantz) Strip out instaweb pass-through directive,
-  // changing "?instaweb=0&" --> "?", "?instaweb=0" --> "", and
-  // "&instaweb=0" --> "".
+  std::string stripped_url = RemoveModPageSpeedQueryParams(
+      uri, r->parsed_uri.query);
 
   UrlFetcher* fetcher = factory->ComputeUrlFetcher();
-  if (!fetcher->StreamingFetchUrl(uri, request_headers,
+  if (!fetcher->StreamingFetchUrl(stripped_url, request_headers,
                                   &response_headers, &writer,
                                   factory->message_handler())) {
-    LOG(ERROR) << "mod_slurp: fetch of url " << uri
+    LOG(ERROR) << "mod_slurp: fetch of url " << stripped_url
                << " failed.\nRequest Headers: " << request_headers.ToString()
                << "\n\nResponse Headers: " << response_headers.ToString();
     SlurpDefaultHandler(r);

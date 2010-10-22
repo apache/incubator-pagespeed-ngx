@@ -30,7 +30,9 @@
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/util/public/query_params.h"
 
 // The httpd header must be after the pagepseed_server_context.h. Otherwise,
 // the compiler will complain
@@ -91,8 +93,8 @@ bool is_html_content(const char* content_type) {
 }
 
 // Check if pagespeed optimization rules applicable.
-bool check_pagespeed_applicable(ap_filter_t* filter,
-                                apr_bucket_brigade* bb) {
+bool check_pagespeed_applicable(ap_filter_t* filter, apr_bucket_brigade* bb,
+                                const QueryParams& query_params) {
   request_rec* request = filter->r;
   // We can't operate on Content-Ranges.
   if (apr_table_get(request->headers_out, "Content-Range") != NULL) {
@@ -112,8 +114,9 @@ bool check_pagespeed_applicable(ap_filter_t* filter,
 
   // Pass-through mode.
   // TODO(jmarantz): strip the param from the URL.
-  if ((strstr(request->unparsed_uri, "?instaweb=0") != NULL) ||
-      (strstr(request->unparsed_uri, "&instaweb=0") != NULL)) {
+  CharStarVector v;
+  if (query_params.Lookup(kModPagespeed, &v) &&
+      (v.size() == 1) && (strcasecmp(v[0], "off") == 0)) {
     return false;
   }
 
@@ -156,6 +159,49 @@ apr_bucket* rewrite_html(ap_filter_t *filter, RewriteOperation operation,
   return bucket;
 }
 
+// To support query-specific rewriter sets, scan the query parameters to
+// see whether we have any options we want to set.  We will only allow
+// a limited number of options to be set.  In particular, some options are
+// risky to set per query, such as image inline threshold, which exposes
+// a DOS vulnerability and a risk of poisoning our internal cache.  Domain
+// adjustments can potentially introduce a security vulnerability.
+//
+// So we will check for explicit parameters we want to support.
+bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
+                                       const QueryParams& query_params,
+                                       RewriteOptions* options) {
+  MessageHandler* handler = factory->message_handler();
+  bool ret = true;
+  int option_count = 0;
+  for (int i = 0; i < query_params.size(); ++i) {
+    const char* name = query_params.name(i);
+    const char* value = query_params.value(i);
+    if (value == NULL) {
+      handler->Message(kWarning, "Empty value for %s", name);
+      ret = false;
+    }
+    int64 int_val;
+      // TODO(jmarantz): add js inlinine threshold, outline threshold.
+    if (strcmp(name, kModPagespeedCssInlineMaxBytes) == 0) {
+      if (StringToInt64(value, &int_val)) {
+        options->set_css_inline_max_bytes(int_val);
+        ++option_count;
+      } else {
+        handler->Message(kWarning, "Invalid integer value for %s: %s",
+                         name, value);
+        ret = false;
+      }
+    } else if (strcmp(name, kModPagespeedRewriters) == 0) {
+      if (options->AddFiltersByCommaSeparatedList(value, handler)) {
+        ++option_count;
+      } else {
+        ret = false;
+      }
+    }
+  }
+  return ret && (option_count > 0);
+}
+
 apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   // Check if pagespeed is enabled.
   request_rec* request = filter->r;
@@ -171,8 +217,11 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     return APR_SUCCESS;
   }
 
+  QueryParams query_params;
+  query_params.Parse(request->parsed_uri.query);
+
   // Check if pagespeed optimization applicable and get the resource type.
-  if (!check_pagespeed_applicable(filter, bb)) {
+  if (!check_pagespeed_applicable(filter, bb, query_params)) {
     ap_remove_output_filter(filter);
     return ap_pass_brigade(filter->next, bb);
   }
@@ -208,7 +257,11 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     LOG(INFO) << "unparsed=" << request->unparsed_uri
               << ", absolute_url=" << absolute_url;
 
-    context = new InstawebContext(request, factory, absolute_url);
+    RewriteOptions custom_options;
+    bool use_custom_options = ScanQueryParamsForRewriterOptions(
+        factory, query_params, &custom_options);
+    context = new InstawebContext(request, factory, absolute_url,
+                                  use_custom_options, custom_options);
     filter->ctx = context;
 
     InstawebContext::ContentEncoding encoding =
@@ -520,7 +573,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_lru_cache_byte_limit, arg);
   } else if (strcasecmp(directive, kModPagespeedRewriters) == 0) {
-    factory->AddEnabledFilters(arg);
+    if (!factory->AddEnabledFilters(arg, factory->message_handler())) {
+      ret = NULL;
+    }
   } else if (strcasecmp(directive, kModPagespeedSlurpDirectory) == 0) {
     factory->set_slurp_directory(arg);
   } else if (strcasecmp(directive, kModPagespeedSlurpReadOnly) == 0) {

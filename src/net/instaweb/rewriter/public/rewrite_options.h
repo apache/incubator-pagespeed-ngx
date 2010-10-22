@@ -27,6 +27,8 @@
 
 namespace net_instaweb {
 
+class MessageHandler;
+
 class RewriteOptions {
  public:
   enum Filter {
@@ -61,7 +63,11 @@ class RewriteOptions {
 
   RewriteOptions();
 
-  void AddFiltersByCommaSeparatedList(const StringPiece& filters);
+  // Adds a set of filters the enabled set.  Returns false if any of
+  // the filter names are invalid, but all the valid ones will be
+  // added anyway.
+  bool AddFiltersByCommaSeparatedList(const StringPiece& filters,
+                                      MessageHandler* handler);
   void ClearFilters() { filters_.clear(); }
   void AddFilter(Filter filter);
 
