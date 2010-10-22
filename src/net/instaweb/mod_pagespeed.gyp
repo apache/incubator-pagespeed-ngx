@@ -101,6 +101,7 @@
 #        'util/threadsafe_cache_test.cc',
         'util/time_util_test.cc',
         'util/url_escaper_test.cc',
+        'util/user_agent_test.cc',
         'util/write_through_cache_test.cc',
         'rewriter/collapse_whitespace_filter_test.cc',
         'rewriter/css_filter_test.cc',

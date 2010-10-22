@@ -29,6 +29,7 @@
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
+#include "net/instaweb/util/public/user_agent.h"
 
 namespace net_instaweb {
 
@@ -78,6 +79,15 @@ class RewriteDriver {
   // Adds a resource manager and/or resource_server, enabling the rewriting of
   // resources. This will replace any previous resource managers.
   void SetResourceManager(ResourceManager* resource_manager);
+
+
+  void SetUserAgent(const char* user_agent_string) {
+    user_agent_.set_user_agent(user_agent_string);
+  }
+
+  const UserAgent& user_agent() const {
+    return user_agent_;
+  }
 
   // Adds the filters, specified by name in enabled_filters.
   void AddFilters(const RewriteOptions& options);
@@ -152,6 +162,7 @@ class RewriteDriver {
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
   scoped_ptr<BaseTagFilter> base_tag_filter_;
   scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
+  UserAgent user_agent_;
   std::vector<HtmlFilter*> filters_;
   Variable* resource_fetches_;
 

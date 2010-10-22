@@ -133,7 +133,8 @@ void ImgRewriteFilter::OptimizeImage(
 
     std::string inlined_url;
     int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
-    if (image->output_size() <= img_inline_max_bytes_ &&
+    bool ie6or7 = driver_->user_agent().IsIe6or7();
+    if (!ie6or7 && image->output_size() <= img_inline_max_bytes_ &&
         // Rule out marker images <= 1x1
         (img_dim.valid && (img_dim.width > 1 || img_dim.height > 1)) &&
         image->AsInlineData(&inlined_url)) {

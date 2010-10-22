@@ -109,10 +109,9 @@ class RewriteFilter : public EmptyHtmlFilter {
  protected:
   std::string filter_prefix_;  // Prefix that should be used in front of all
                                 // rewritten URLs
-
- private:
   RewriteDriver* driver_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(RewriteFilter);
 };
 
