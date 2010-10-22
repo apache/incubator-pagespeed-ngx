@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/file_system.h"
 #include <string>
 #include "net/instaweb/util/public/message_handler.h"
@@ -58,11 +59,6 @@ const double kMaxAreaRatio = 1.0;
 // profitable to optimize.  According to pagespeed, 200, 203, 206, and
 // 304 are cacheable.  So we must select from those.
 const HttpStatus::Code kNotOptimizable = HttpStatus::kNotModified;  // 304
-
-// This is used to indicate that an image has been determined to be so
-// small that we should inline it in the HTML, rather than serving it as
-// an external resource.  This must be a cacheable code.
-const HttpStatus::Code kInlineImage = HttpStatus::kNoContent;  // 204
 
 // names for Statistics variables.
 const char kImageRewrites[] = "image_rewrites";
@@ -131,20 +127,9 @@ void ImgRewriteFilter::OptimizeImage(
     // Unconditionally write resource back so we don't re-attempt optimization.
     MessageHandler* message_handler = html_parse_->message_handler();
 
-    std::string inlined_url;
     int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
-    bool ie6or7 = driver_->user_agent().IsIe6or7();
-    if (!ie6or7 && image->output_size() <= img_inline_max_bytes_ &&
-        // Rule out marker images <= 1x1
-        (img_dim.valid && (img_dim.width > 1 || img_dim.height > 1)) &&
-        image->AsInlineData(&inlined_url)) {
-      html_parse_->InfoHere("Inlining image `%s' (%u bytes)",
-                            origin_url.as_string().c_str(),
-                            static_cast<unsigned>(image->output_size()));
-      resource_manager_->Write(kInlineImage, inlined_url, result,
-                               origin_expire_time_ms, message_handler);
-    } else if (image->output_size() <
-               image->input_size() * kMaxRewrittenRatio) {
+    if (image->output_size() <
+        image->input_size() * kMaxRewrittenRatio) {
       if (resource_manager_->Write(
               HttpStatus::kOK, image->Contents(), result,
               origin_expire_time_ms, message_handler)) {
@@ -259,8 +244,6 @@ bool DecodeIntX(StringPiece* source, int *result) {
 
 }  // namespace
 
-// Rather than pass in a StringPiece& rewritten_url and then copy internally, we
-// pass rewritten_url by value.
 bool ImgRewriteFilter::DecodeImageUrl(
     UrlEscaper* escaper, StringPiece rewritten_url,
     std::string* origin_url, ImageDim* page_dims) {
@@ -356,45 +339,68 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
                       output_resource.get());
       }
       if (output_resource->IsWritten()) {
-        UpdateTargetElement(*output_resource, page_dim, actual_dim,
-                            element, src);
+        UpdateTargetElement(*input_resource, *output_resource,
+                            page_dim, actual_dim, element, src);
       }
     }
   }
+}
+
+bool ImgRewriteFilter::CanInline(
+    int img_inline_max_bytes, const StringPiece& contents,
+    const ContentType* content_type, std::string* data_url) {
+  bool ok = false;
+  if (content_type != NULL && contents.size() <= img_inline_max_bytes) {
+    DataUrl(*content_type, BASE64, contents, data_url);
+    ok = true;
+  }
+  return ok;
 }
 
 // Given image processing reflected in the already-written output_resource,
 // actually update the element (particularly the src attribute), and log
 // statistics on what happened.
 void ImgRewriteFilter::UpdateTargetElement(
-    const OutputResource& output_resource, const ImageDim& page_dim,
-    const ImageDim& actual_dim,
+    const Resource& input_resource, const OutputResource& output_resource,
+    const ImageDim& page_dim, const ImageDim& actual_dim,
     HtmlElement* element, HtmlElement::Attribute* src) {
-  if (output_resource.metadata()->status_code() == kInlineImage) {
-    src->SetValue(output_resource.contents());
-    if (inline_count_ != NULL) {
-      inline_count_->Add(1);
-    }
-  } else {
-    if (output_resource.metadata()->status_code() == HttpStatus::kOK) {
-      src->SetValue(output_resource.url());
-      if (rewrite_count_ != NULL) {
-        rewrite_count_->Add(1);
+
+  if (actual_dim.valid && (actual_dim.width > 1 || actual_dim.height > 1)) {
+    std::string inlined_url;
+    bool output_ok =
+        output_resource.metadata()->status_code() == HttpStatus::kOK;
+    bool ie6or7 = driver_->user_agent().IsIe6or7();
+    if (!ie6or7 &&
+        ((output_ok &&
+          CanInline(img_inline_max_bytes_, output_resource.contents(),
+                    output_resource.type(), &inlined_url)) ||
+         CanInline(img_inline_max_bytes_, input_resource.contents(),
+                   input_resource.type(), &inlined_url))) {
+      src->SetValue(inlined_url);
+      if (inline_count_ != NULL) {
+        inline_count_->Add(1);
       }
-    }
-    int dummy;
-    if (insert_image_dimensions_ && actual_dim.valid && !page_dim.valid &&
-        !element->IntAttributeValue(s_width_, &dummy) &&
-        !element->IntAttributeValue(s_height_, &dummy)) {
-      // Add image dimensions.  We don't bother if even a single image dimension
-      // is already specified---even though we don't resize in that case,
-      // either, because we might be off by a pixel in the other dimension from
-      // the size chosen by the browser.  But note that we DO attempt to include
-      // image dimensions even if we otherwise choose not to optimize an image.
-      // This may require examining the image contents if we didn't just perform
-      // the image processing.
-      element->AddAttribute(s_width_, actual_dim.width);
-      element->AddAttribute(s_height_, actual_dim.height);
+    } else {
+      if (output_ok) {
+        src->SetValue(output_resource.url());
+        if (rewrite_count_ != NULL) {
+          rewrite_count_->Add(1);
+        }
+      }
+      int dummy;
+      if (insert_image_dimensions_ && actual_dim.valid && !page_dim.valid &&
+          !element->IntAttributeValue(s_width_, &dummy) &&
+          !element->IntAttributeValue(s_height_, &dummy)) {
+        // Add image dimensions.  We don't bother if even a single image
+        // dimension is already specified---even though we don't resize in that
+        // case, either, because we might be off by a pixel in the other
+        // dimension from the size chosen by the browser.  But note that we DO
+        // attempt to include image dimensions even if we otherwise choose not
+        // to optimize an image.  This may require examining the image contents
+        // if we didn't just perform the image processing.
+        element->AddAttribute(s_width_, actual_dim.width);
+        element->AddAttribute(s_height_, actual_dim.height);
+      }
     }
   }
 }

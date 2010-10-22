@@ -63,7 +63,7 @@ class Resource {
   }
   MetaData* metadata() { return &meta_data_; }
   const MetaData* metadata() const { return &meta_data_; }
-  const ContentType* type() { return type_; }
+  const ContentType* type() const { return type_; }
   virtual void SetType(const ContentType* type);
   virtual bool IsCacheable() const;
 

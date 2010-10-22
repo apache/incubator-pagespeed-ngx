@@ -23,7 +23,6 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
-#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
@@ -407,16 +406,6 @@ StringPiece Image::Contents() {
     }
   }
   return contents;
-}
-
-bool Image::AsInlineData(std::string* data_url) {
-  StringPiece contents = Contents();
-  const ContentType* content_type = this->content_type();
-  bool ok = content_type != NULL && (contents.data() != NULL);
-  if (ok) {
-    DataUrl(*content_type, BASE64, contents, data_url);
-  }
-  return ok;
 }
 
 }  // namespace net_instaweb

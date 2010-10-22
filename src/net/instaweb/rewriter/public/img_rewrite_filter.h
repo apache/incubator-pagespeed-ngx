@@ -64,16 +64,6 @@ class ImgRewriteFilter : public RewriteFilter {
                    StringPiece path_prefix,
                    size_t img_inline_max_bytes);
   static void Initialize(Statistics* statistics);
-  // Encode an origin_url and a page_dim to a rewritten_url.
-  static void EncodeImageUrl(
-      UrlEscaper* escaper, const StringPiece& origin_url,
-      const ImageDim& page_dim, std::string* rewritten_url);
-  // Decode an origin_url and a page_dim from a rewritten_url,
-  // returning false on parse failure (invalidating output vars).
-  static bool DecodeImageUrl(
-      UrlEscaper* escaper, StringPiece rewritten_url,
-      std::string* origin_url, ImageDim* page_dim);
-
   virtual void EndElement(HtmlElement* element);
   virtual void Flush();
   virtual bool Fetch(OutputResource* resource,
@@ -84,6 +74,23 @@ class ImgRewriteFilter : public RewriteFilter {
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
   virtual const char* Name() const { return "ImgRewrite"; }
+
+  // Encode an origin_url and a page_dim to a rewritten_url.
+  static void EncodeImageUrl(
+      UrlEscaper* escaper, const StringPiece& origin_url,
+      const ImageDim& page_dim, std::string* rewritten_url);
+  // Decode an origin_url and a page_dim from a rewritten_url, returning false
+  // on parse failure (invalidating output vars).  Rather than pass in a
+  // StringPiece& rewritten_url and then copy internally, we pass rewritten_url
+  // by value.
+  static bool DecodeImageUrl(
+      UrlEscaper* escaper, StringPiece rewritten_url,
+      std::string* origin_url, ImageDim* page_dim);
+  // Can we inline resource?  If so, encode its contents into the data_url,
+  // otherwise leave data_url alone.
+  static bool CanInline(
+      int img_inline_max_bytes, const StringPiece& contents,
+      const ContentType* content_type, std::string* data_url);
 
  private:
   // Helper methods.
@@ -99,7 +106,8 @@ class ImgRewriteFilter : public RewriteFilter {
       const StringPiece& origin_url, const ImageDim& page_dim,
       const std::string& url_string, Resource* input_resource);
   void RewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
-  void UpdateTargetElement(const OutputResource& output_resource,
+  void UpdateTargetElement(const Resource& input_resource,
+                           const OutputResource& output_resource,
                            const ImageDim& page_dim, const ImageDim& actual_dim,
                            HtmlElement* element, HtmlElement::Attribute* src);
 

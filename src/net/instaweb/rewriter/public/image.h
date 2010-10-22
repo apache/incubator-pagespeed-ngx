@@ -160,9 +160,6 @@ class Image {
   // then Contents() will have NULL data().
   StringPiece Contents();
 
-  // Encodes contents directly into data_url if image type is understood.
-  bool AsInlineData(std::string* data_url);
-
  private:
   // Internal methods used only in image.cc (see there for more).
   void ComputeImageType();
