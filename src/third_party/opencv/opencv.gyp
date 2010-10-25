@@ -465,6 +465,8 @@
           'dependencies': [
             'cv',
             '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
+            '<(DEPTH)/third_party/libjpeg/libjpeg.gyp:libjpeg',
+            '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
           ],
           'sources': [
             'src/opencv/src/highgui/bitstrm.cpp',
