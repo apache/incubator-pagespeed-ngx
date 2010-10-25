@@ -32,6 +32,7 @@ class Variable;
 class AddInstrumentationFilter : public EmptyHtmlFilter {
  public:
   explicit AddInstrumentationFilter(HtmlParse* parser,
+                                    const StringPiece& beacon_url,
                                     Statistics* statistics);
 
   static void Initialize(Statistics* statistics);
@@ -51,6 +52,7 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   Atom s_body_;
   Variable* total_page_load_ms_;
   Variable* page_load_count_;
+  std::string beacon_url_;
 
   DISALLOW_COPY_AND_ASSIGN(AddInstrumentationFilter);
 };

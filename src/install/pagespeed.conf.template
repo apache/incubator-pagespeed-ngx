@@ -31,6 +31,8 @@
 
     # This handles the client-side instrumentation callbacks which are injected
     # by the add_instrumentation filter.
+    # You can use a different location by adding the ModPagespeedBeaconUrl
+    # directive; see the documentation on add_instrumentation.
     <Location /mod_pagespeed_beacon>
           SetHandler mod_pagespeed_beacon
     </Location>

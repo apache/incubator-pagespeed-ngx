@@ -46,6 +46,7 @@ class CssInlineFilter : public EmptyHtmlFilter {
   ResourceManager* const resource_manager_;
   const Atom href_atom_;
   const Atom link_atom_;
+  const Atom media_atom_;
   const Atom rel_atom_;
   const Atom style_atom_;
   const size_t size_threshold_bytes_;

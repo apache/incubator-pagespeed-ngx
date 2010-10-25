@@ -60,6 +60,7 @@ class RewriteOptions {
   static const int64 kDefaultImgInlineMaxBytes;
   static const int64 kDefaultJsInlineMaxBytes;
   static const int64 kDefaultOutlineThreshold;
+  static const std::string kDefaultBeaconUrl;
 
   RewriteOptions();
 
@@ -83,6 +84,8 @@ class RewriteOptions {
   void set_js_inline_max_bytes(int64 x) { js_inline_max_bytes_ = x; }
   int num_shards() const { return num_shards_; }
   void set_num_shards(int x) { num_shards_ = x; }
+  const std::string& beacon_url() const { return beacon_url_; }
+  void set_beacon_url(const StringPiece& p) { p.CopyToString(&beacon_url_); }
 
  public:
   typedef std::map<std::string, Filter> NameFilterMap;
@@ -94,6 +97,7 @@ class RewriteOptions {
   int64 js_inline_max_bytes_;
   int64 outline_threshold_;
   int num_shards_;
+  std::string beacon_url_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteOptions);
 };

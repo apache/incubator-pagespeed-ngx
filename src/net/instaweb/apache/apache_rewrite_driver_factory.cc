@@ -41,6 +41,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(apr_pool_t* pool)
     file_cache_clean_interval_ms_(Timer::kHourMs),
     file_cache_clean_size_kb_(100 * 1024),  // 100 megabytes
     fetcher_time_out_ms_(5 * Timer::kSecondMs),
+    slurp_flush_limit_(0),
     enabled_(true) {
   apr_pool_create(&pool_, pool);
   cache_mutex_.reset(NewMutex());

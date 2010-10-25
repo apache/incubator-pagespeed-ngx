@@ -116,6 +116,9 @@ class RewriteDriverFactory {
   void set_js_inline_max_bytes(int64 x) {
     options_.set_js_inline_max_bytes(x);
   }
+  void set_beacon_url(const StringPiece& p) {
+    options_.set_beacon_url(p);
+  }
 
   MessageHandler* html_parse_message_handler();
   MessageHandler* message_handler();

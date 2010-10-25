@@ -273,6 +273,7 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
     // Inject javascript to instrument loading-time.
     add_instrumentation_filter_.reset(
         new AddInstrumentationFilter(&html_parse_,
+                                     options.beacon_url(),
                                      resource_manager_->statistics()));
     AddFilter(add_instrumentation_filter_.get());
   }

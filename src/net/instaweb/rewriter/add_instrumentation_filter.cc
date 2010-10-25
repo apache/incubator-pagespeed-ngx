@@ -33,15 +33,22 @@ const char kHeadScript[] =
     "<script type='text/javascript'>"
     "window.mod_pagespeed_start = Number(new Date());"
     "</script>";
-// The javascript tag to insert at the bottom of document.
-// TODO(abliss): make this more configurable?  E.g. custom beacon url?
+
+// The javascript tag to insert at the bottom of document.  The %s will be
+// replaced with the custom beacon url, by default
+// "./mod_pagespeed_beacon?ets=".  Then our timing info, e.g. "load:123", will
+// be appended.
 const char kTailScript[] =
     "<script type='text/javascript'>"
-    "function g(){new Image().src='/mod_pagespeed_beacon?ets=load:'+"
+    "function g(){new Image().src='%sload:'+"
     "(Number(new Date())-window.mod_pagespeed_start);};"
     "var f=window.addEventListener;if(f){f('load',g,false);}else{"
     "f=window.attachEvent;if(f){f('onload',g);}}"
     "</script>";
+
+// Timing tag for total page load time.  Also embedded in kTailScript above!
+const char kLoadTag[] = "load:";
+
 // Variables for the beacon to increment.  These are currently handled in
 // mod_pagespeed_handler on apache.  The average load time in milliseconds is
 // total_page_load_ms / page_load_count.  Note that these are not updated
@@ -51,8 +58,8 @@ const char kPageLoadCount[] = "page_load_count";
 
 }  // namespace
 
-AddInstrumentationFilter::AddInstrumentationFilter(HtmlParse* html_parse,
-                                                   Statistics* stats)
+AddInstrumentationFilter::AddInstrumentationFilter(
+    HtmlParse* html_parse, const StringPiece& beacon_url, Statistics* stats)
     : html_parse_(html_parse),
       found_head_(false),
       s_head_(html_parse->Intern("head")),
@@ -61,6 +68,7 @@ AddInstrumentationFilter::AddInstrumentationFilter(HtmlParse* html_parse,
                           stats->GetVariable(kTotalPageLoadMs)),
       page_load_count_((stats == NULL) ? NULL :
                        stats->GetVariable(kPageLoadCount)) {
+  beacon_url.CopyToString(&beacon_url_);
 }
 
 void AddInstrumentationFilter::Initialize(Statistics* statistics) {
@@ -91,8 +99,9 @@ void AddInstrumentationFilter::EndElement(HtmlElement* element) {
     // assured by add_head_filter.
     CHECK(found_head_) << "Reached end of document without finding <head>."
         "  Please turn on the add_head filter.";
+    std::string tailScript = StringPrintf(kTailScript, beacon_url_.c_str());
     HtmlCharactersNode* script =
-        html_parse_->NewCharactersNode(element, kTailScript);
+        html_parse_->NewCharactersNode(element, tailScript);
     html_parse_->InsertElementBeforeCurrent(script);
   }
 }
@@ -103,12 +112,11 @@ bool AddInstrumentationFilter::HandleBeacon(const StringPiece& unparsed_url) {
   }
   std::string url = unparsed_url.as_string();
   // TODO(abliss): proper query parsing
-  const std::string marker = "?ets=load:";
-  size_t index = url.find(marker);
+  size_t index = url.find(kLoadTag);
   if (index == std::string::npos) {
     return false;
   }
-  url = url.substr(index + marker.length());
+  url = url.substr(index + strlen(kLoadTag));
   int value = 0;
   if (!StringToInt(url, &value)) {
     return false;

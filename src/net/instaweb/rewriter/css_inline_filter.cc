@@ -35,6 +35,7 @@ CssInlineFilter::CssInlineFilter(HtmlParse* html_parse,
       resource_manager_(resource_manager),
       href_atom_(html_parse_->Intern("href")),
       link_atom_(html_parse_->Intern("link")),
+      media_atom_(html_parse_->Intern("media")),
       rel_atom_(html_parse_->Intern("rel")),
       style_atom_(html_parse_->Intern("style")),
       size_threshold_bytes_(size_threshold_bytes) {}
@@ -52,6 +53,12 @@ void CssInlineFilter::EndElement(HtmlElement* element) {
   if (element->tag() == link_atom_) {
     const char* rel = element->AttributeValue(rel_atom_);
     if (rel == NULL || strcmp(rel, "stylesheet")) {
+      return;
+    }
+
+    // Check if the link tag has a media attribute.  If so, don't inline.
+    const char* media = element->AttributeValue(media_atom_);
+    if (media != NULL) {
       return;
     }
 

@@ -50,13 +50,16 @@ const int64 RewriteOptions::kDefaultCssInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultImgInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultOutlineThreshold = 3000;
+const std::string RewriteOptions::kDefaultBeaconUrl =
+    "/mod_pagespeed_beacon?ets=";
 
 RewriteOptions::RewriteOptions()
     : css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
       img_inline_max_bytes_(kDefaultImgInlineMaxBytes),
       js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
       outline_threshold_(kDefaultOutlineThreshold),
-      num_shards_(0) {
+      num_shards_(0),
+      beacon_url_(kDefaultBeaconUrl) {
   name_filter_map_["add_base_tag"] = kAddBaseTag;
   name_filter_map_["add_head"] = kAddHead;
   name_filter_map_["add_instrumentation"] = kAddInstrumentation;

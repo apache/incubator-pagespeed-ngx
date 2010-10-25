@@ -69,11 +69,13 @@ const char* kModPagespeedOutlineThreshold = "ModPagespeedOutlineThreshold";
 const char* kModPagespeedRewriters = "ModPagespeedRewriters";
 const char* kModPagespeedSlurpDirectory = "ModPagespeedSlurpDirectory";
 const char* kModPagespeedSlurpReadOnly = "ModPagespeedSlurpReadOnly";
+const char* kModPagespeedSlurpFlushLimit = "ModPagespeedSlurpFlushLimit";
 const char* kModPagespeedForceCaching = "ModPagespeedForceCaching";
 const char* kModPagespeedCssInlineMaxBytes = "ModPagespeedCssInlineMaxBytes";
 const char* kModPagespeedImgInlineMaxBytes = "ModPagespeedImgInlineMaxBytes";
 const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
 const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
+const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -581,9 +583,14 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (strcasecmp(directive, kModPagespeedSlurpReadOnly) == 0) {
     ret = ParseBoolOption(
         cmd, &ApacheRewriteDriverFactory::set_slurp_read_only, arg);
+  } else if (strcasecmp(directive, kModPagespeedSlurpFlushLimit) == 0) {
+    ret = ParseInt64Option(
+        cmd, &ApacheRewriteDriverFactory::set_slurp_flush_limit, arg);
   } else if (strcasecmp(directive, kModPagespeedForceCaching) == 0) {
     ret = ParseBoolOption(
         cmd, &ApacheRewriteDriverFactory::set_force_caching, arg);
+  } else if (strcasecmp(directive, kModPagespeedBeaconUrl) == 0) {
+      factory->set_beacon_url(arg);
   } else {
     return "Unknown directive.";
   }
@@ -643,6 +650,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedSlurpReadOnly,
         "Only read from the slurped directory, fail to fetch "
         "URLs not already in the slurped directory"),
+  APACHE_CONFIG_OPTION(kModPagespeedSlurpFlushLimit,
+        "Set the maximum byte size for the slurped content to hold before "
+        "a flush"),
   APACHE_CONFIG_OPTION(kModPagespeedForceCaching,
         "Ignore HTTP cache headers and TTLs"),
   APACHE_CONFIG_OPTION(kModPagespeedOutlineThreshold,
@@ -654,6 +664,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Number of bytes below which javascript will be inlined."),
   APACHE_CONFIG_OPTION(kModPagespeedCssInlineMaxBytes,
         "Number of bytes below which stylesheets will be inlined."),
+  APACHE_CONFIG_OPTION(kModPagespeedBeaconUrl, "URL for beacon callback"
+                       " injected by add_instrumentation."),
+
   {NULL}
 };
 

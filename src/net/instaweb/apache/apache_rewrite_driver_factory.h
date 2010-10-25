@@ -50,6 +50,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   void set_lru_cache_kb_per_process(int64 x) { lru_cache_kb_per_process_ = x; }
   void set_lru_cache_byte_limit(int64 x) { lru_cache_byte_limit_ = x; }
+  void set_slurp_flush_limit(int64 x) { slurp_flush_limit_ = x; }
+  int slurp_flush_limit() const { return slurp_flush_limit_; }
   void set_file_cache_clean_interval_ms(int64 x) {
     file_cache_clean_interval_ms_ = x;
   }
@@ -114,6 +116,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   int64 file_cache_clean_interval_ms_;
   int64 file_cache_clean_size_kb_;
   int64 fetcher_time_out_ms_;
+  int64 slurp_flush_limit_;
   std::string file_cache_path_;
   std::string fetcher_proxy_;
   bool enabled_;

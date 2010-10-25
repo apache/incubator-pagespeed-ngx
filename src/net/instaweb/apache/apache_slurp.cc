@@ -73,33 +73,86 @@ void SlurpDefaultHandler(request_rec* r) {
 // For some reason, this did not work when I tried it, but it's
 // worth another look.
 
-#if 0
 class ApacheWriter : public Writer {
  public:
-  explicit ApacheWriter(request_rec* r)
+  ApacheWriter(request_rec* r, SimpleMetaData* response_headers,
+               int64 flush_limit)
       : request_(r),
-        size_(0) {
+        response_headers_(response_headers),
+        size_(0),
+        flush_limit_(flush_limit),
+        headers_out_(false) {
   }
 
   virtual bool Write(const StringPiece& str, MessageHandler* handler) {
+    if (!headers_out_) {
+      OutputHeaders();
+    }
     ap_rwrite(str.data(), str.size(), request_);
     size_ += str.size();
+    if ((flush_limit_ != 0) && (size_ > flush_limit_)) {
+      Flush(handler);
+    }
     return true;
   }
 
   virtual bool Flush(MessageHandler* handler) {
+    ap_rflush(request_);
+    size_ = 0;
     return true;
   }
 
-  int size() const { return size_; }
+  int64 size() const { return size_; }
+
+  void OutputHeaders() {
+    if (headers_out_) {
+      return;
+    }
+    headers_out_ = true;
+
+    // Apache2 defaults to set the status line as HTTP/1.1.  If the
+    // original content was HTTP/1.0, we need to force the server to use
+    // HTTP/1.0.  I'm not sure why/whether we need to do this; it was in
+    // mod_static from the sdpy project, which is where I copied this
+    // code from.
+    if ((response_headers_->major_version() == 1) &&
+        (response_headers_->minor_version() == 0)) {
+      apr_table_set(request_->subprocess_env, "force-response-1.0", "1");
+    }
+
+    char* content_type = NULL;
+    CharStarVector v;
+    CHECK(response_headers_->headers_complete());
+    if (response_headers_->Lookup(HttpAttributes::kContentType, &v)) {
+      CHECK(!v.empty());
+      // ap_set_content_type does not make a copy of the string, we need
+      // to duplicate it.  Note that we will update the content type below,
+      // after transforming the headers.
+      content_type = apr_pstrdup(request_->pool, v[v.size() - 1]);
+      response_headers_->RemoveAll(HttpAttributes::kContentType);
+    }
+    response_headers_->RemoveAll(HttpAttributes::kTransferEncoding);
+    response_headers_->RemoveAll(HttpAttributes::kContentLength);
+    MetaDataToApacheHeader(*response_headers_, request_->headers_out,
+                           &request_->status, &request_->proto_num);
+    if (content_type != NULL) {
+      ap_set_content_type(request_, content_type);
+    }
+
+    // Recompute the content-length, because the content is decoded.
+    // TODO(lsong): We don't know the content size, do we?
+    // ap_set_content_length(request_, contents.size());
+  }
 
  private:
   request_rec* request_;
+  SimpleMetaData* response_headers_;
   int size_;
+  int flush_limit_;
+  bool headers_out_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheWriter);
 };
-#endif
 
 }  // namespace
 
@@ -145,57 +198,24 @@ void SlurpUrl(const std::string& uri, ApacheRewriteDriverFactory* factory,
   SimpleMetaData request_headers, response_headers;
   ApacheHeaderToMetaData(r->headers_in, 0, 0, &request_headers);
   std::string contents;
-  StringWriter writer(&contents);
+  ApacheWriter writer(r, &response_headers, factory->slurp_flush_limit());
 
   std::string stripped_url = RemoveModPageSpeedQueryParams(
       uri, r->parsed_uri.query);
 
   UrlFetcher* fetcher = factory->ComputeUrlFetcher();
-  if (!fetcher->StreamingFetchUrl(stripped_url, request_headers,
-                                  &response_headers, &writer,
-                                  factory->message_handler())) {
+  if (fetcher->StreamingFetchUrl(stripped_url, request_headers,
+                                 &response_headers, &writer,
+                                 factory->message_handler())) {
+    // In the event of empty content, the writer's Write method may not be
+    // called, but we should still emit headers.
+    writer.OutputHeaders();
+  } else {
     LOG(ERROR) << "mod_slurp: fetch of url " << stripped_url
                << " failed.\nRequest Headers: " << request_headers.ToString()
                << "\n\nResponse Headers: " << response_headers.ToString();
     SlurpDefaultHandler(r);
-    return;
   }
-
-  // Apache2 defaults to set the status line as HTTP/1.1.  If the
-  // original content was HTTP/1.0, we need to force the server to use
-  // HTTP/1.0.  I'm not sure why/whether we need to do this; it was in
-  // mod_static from the sdpy project, which is where I copied this
-  // code from.
-  if ((response_headers.major_version() == 1) &&
-      (response_headers.minor_version() == 0)) {
-    apr_table_set(r->subprocess_env, "force-response-1.0", "1");
-  }
-
-  char* content_type = NULL;
-  CharStarVector v;
-  if (response_headers.Lookup("content-type", &v)) {
-    CHECK(!v.empty());
-    // ap_set_content_type does not make a copy of the string, we need
-    // to duplicate it.  Note that we will update the content type below,
-    // after transforming the headers.
-    content_type = apr_pstrdup(r->pool, v[v.size() - 1]);
-    response_headers.RemoveAll("content-type");
-  }
-  response_headers.RemoveAll("transfer-encoding");
-
-  // TODO(jmarantz): centralize standard header names; probably as
-  // static const member variables in util/public/meta_data.h.
-  response_headers.RemoveAll("content-length");  // we will recompute
-  MetaDataToApacheHeader(response_headers, r->headers_out,
-                         &r->status, &r->proto_num);
-  LOG(INFO) << "slurp output headers: " << response_headers.ToString();
-  if (content_type != NULL) {
-    ap_set_content_type(r, content_type);
-  }
-
-  // Recompute the content-length, because the content is decoded.
-  ap_set_content_length(r, contents.size());
-  ap_rwrite(contents.c_str(), contents.size(), r);
 }
 
 }  // namespace net_instaweb

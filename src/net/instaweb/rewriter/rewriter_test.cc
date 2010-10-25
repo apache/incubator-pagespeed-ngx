@@ -474,6 +474,7 @@ class RewriterTest : public ResourceManagerTestBase {
 
   void TestInlineCss(const std::string& html_url,
                      const std::string& css_url,
+                     const std::string& other_attrs,
                      const std::string& css_original_body,
                      bool expect_inline,
                      const std::string& css_rewritten_body) {
@@ -484,7 +485,8 @@ class RewriterTest : public ResourceManagerTestBase {
 
     const std::string html_input =
         "<head>\n"
-        "  <link rel=\"stylesheet\" href=\"" + css_url + "\">\n"
+        "  <link rel=\"stylesheet\" href=\"" + css_url + "\"" +
+        (other_attrs.empty() ? "" : " " + other_attrs) + ">\n"
         "</head>\n"
         "<body>Hello, world!</body>\n";
 
@@ -806,7 +808,7 @@ TEST_F(RewriterTest, InlineCssSimple) {
   const std::string css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
-                css, true, css);
+                "", css, true, css);
 }
 
 TEST_F(RewriterTest, InlineCssAbsolutifyUrls1) {
@@ -818,7 +820,7 @@ TEST_F(RewriterTest, InlineCssAbsolutifyUrls1) {
       "url('http://www.example.com/foo/bar/bg.png'); }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/foo/bar/baz.css",
-                css1, true, css2);
+                "", css1, true, css2);
 }
 
 TEST_F(RewriterTest, InlineCssAbsolutifyUrls2) {
@@ -830,14 +832,21 @@ TEST_F(RewriterTest, InlineCssAbsolutifyUrls2) {
       "url('http://www.example.com/foo/quux/bg.png'); }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/foo/bar/baz.css",
-                css1, true, css2);
+                "", css1, true, css2);
+}
+
+TEST_F(RewriterTest, DoNotInlineCssWithMediaAttr) {
+  const std::string css = "BODY { color: red; }\n";
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/styles.css",
+                "media=\"print\"", css, false, "");
 }
 
 TEST_F(RewriterTest, DoNotInlineCssTooBig) {
   // CSS too large to inline:
   const int64 length = 2 * RewriteOptions::kDefaultCssInlineMaxBytes;
   TestInlineCss("http://www.example.com/index.html",
-                "http://www.example.com/styles.css",
+                "http://www.example.com/styles.css", "",
                 ("BODY { background-image: url('" +
                  std::string(length, 'z') + ".png'); }\n"),
                 false, "");
@@ -847,8 +856,7 @@ TEST_F(RewriterTest, DoNotInlineCssDifferentDomain) {
   // TODO(mdsteele): Is switching domains in fact an issue for CSS?
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.org/styles.css",
-                "BODY { color: red; }\n",
-                false, "");
+                "", "BODY { color: red; }\n", false, "");
 }
 
 TEST_F(RewriterTest, DoInlineJavascriptSimple) {
