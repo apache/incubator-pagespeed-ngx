@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
+#include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
 
@@ -35,19 +36,33 @@ class ContentType;
 class FileSystem;
 class HtmlParse;
 class Image;
+class ImageDim;
 class OutputResource;
 class ResourceManager;
 class UrlEscaper;
 class Variable;
 
-// Specification for image dimensions as given in the page source.
-struct ImageDim {
-  // Constructor ensures repeatable field values.
-  ImageDim() : valid(false), width(-1), height(-1) { }
+// This class supports the encoding of image urls with optional
+// additional dimension metadata.  The passed-in stored_dim is used as
+// the source and/or destination of this metadata during encode/decode
+// respectively.
+class ImageUrlEncoder : public UrlSegmentEncoder {
+ public:
+  ImageUrlEncoder(UrlEscaper* url_escaper, ImageDim* stored_dim);
+  virtual ~ImageUrlEncoder();
 
-  bool valid;  // If false, other two fields have arbitrary values.
-  int width;
-  int height;
+  // Encode an origin_url and stored_dim from origin page to a rewritten_url.
+  virtual void EncodeToUrlSegment(
+      const StringPiece& origin_url, std::string* rewritten_url);
+
+  // Decode an origin_url and stored_dim from a rewritten_url, returning false
+  // on parse failure (invalidating output vars).
+  virtual bool DecodeFromUrlSegment(const StringPiece& rewritten_url,
+                                    std::string* origin_url);
+
+ private:
+  UrlEscaper* url_escaper_;
+  ImageDim* stored_dim_;
 };
 
 // Identify img tags in html and optimize them.
@@ -75,17 +90,6 @@ class ImgRewriteFilter : public RewriteFilter {
                      UrlAsyncFetcher::Callback* callback);
   virtual const char* Name() const { return "ImgRewrite"; }
 
-  // Encode an origin_url and a page_dim to a rewritten_url.
-  static void EncodeImageUrl(
-      UrlEscaper* escaper, const StringPiece& origin_url,
-      const ImageDim& page_dim, std::string* rewritten_url);
-  // Decode an origin_url and a page_dim from a rewritten_url, returning false
-  // on parse failure (invalidating output vars).  Rather than pass in a
-  // StringPiece& rewritten_url and then copy internally, we pass rewritten_url
-  // by value.
-  static bool DecodeImageUrl(
-      UrlEscaper* escaper, StringPiece rewritten_url,
-      std::string* origin_url, ImageDim* page_dim);
   // Can we inline resource?  If so, encode its contents into the data_url,
   // otherwise leave data_url alone.
   static bool CanInline(

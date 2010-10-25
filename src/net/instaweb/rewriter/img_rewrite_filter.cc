@@ -23,6 +23,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/image.h"
+#include "net/instaweb/rewriter/public/image_dim.h"
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -67,6 +68,26 @@ const char kImageInline[] = "image_inline";
 
 }  // namespace
 
+
+ImageUrlEncoder::ImageUrlEncoder(UrlEscaper* url_escaper, ImageDim* stored_dim)
+    : url_escaper_(url_escaper), stored_dim_(stored_dim) { }
+
+ImageUrlEncoder::~ImageUrlEncoder() { }
+
+void ImageUrlEncoder::EncodeToUrlSegment(
+    const StringPiece& origin_url, std::string* rewritten_url) {
+  stored_dim_->EncodeTo(rewritten_url);
+  url_escaper_->EncodeToUrlSegment(origin_url, rewritten_url);
+}
+
+bool ImageUrlEncoder::DecodeFromUrlSegment(
+    const StringPiece& rewritten_url, std::string* origin_url) {
+  // Note that "remaining" is shortened from the left as we parse.
+  StringPiece remaining(rewritten_url.data(), rewritten_url.size());
+  return (stored_dim_->DecodeFrom(&remaining) &&
+          url_escaper_->DecodeFromUrlSegment(remaining, origin_url));
+}
+
 ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
                                    bool log_image_elements,
                                    bool insert_image_dimensions,
@@ -107,9 +128,10 @@ void ImgRewriteFilter::OptimizeImage(
     ImageDim img_dim;
     image->Dimensions(&img_dim);
     const char* message;  // Informational message for logging only.
-    if (page_dim.valid && img_dim.valid) {
-      int64 page_area = static_cast<int64>(page_dim.width) * page_dim.height;
-      int64 img_area = static_cast<int64>(img_dim.width) * img_dim.height;
+    if (page_dim.valid() && img_dim.valid()) {
+      int64 page_area =
+          static_cast<int64>(page_dim.width()) * page_dim.height();
+      int64 img_area = static_cast<int64>(img_dim.width()) * img_dim.height();
       if (page_area < img_area * kMaxAreaRatio) {
         if (image->ResizeTo(page_dim)) {
           message = "Resized image";
@@ -121,8 +143,8 @@ void ImgRewriteFilter::OptimizeImage(
       }
       html_parse_->InfoHere("%s `%s' from %dx%d to %dx%d", message,
                             origin_url.as_string().c_str(),
-                            img_dim.width, img_dim.height,
-                            page_dim.width, page_dim.height);
+                            img_dim.width(), img_dim.height(),
+                            page_dim.width(), page_dim.height());
     }
     // Unconditionally write resource back so we don't re-attempt optimization.
     MessageHandler* message_handler = html_parse_->message_handler();
@@ -208,60 +230,6 @@ OutputResource* ImgRewriteFilter::OptimizedImageFor(
   return result;
 }
 
-void ImgRewriteFilter::EncodeImageUrl(
-    UrlEscaper* escaper, const StringPiece& origin_url,
-    const ImageDim& page_dim, std::string* rewritten_url) {
-  rewritten_url->clear();
-  if (page_dim.valid) {
-    rewritten_url->append(StrCat(IntegerToString(page_dim.width), "x",
-                                IntegerToString(page_dim.height)));
-  }
-  rewritten_url->append("x");
-  escaper->EncodeToUrlSegment(origin_url, rewritten_url);
-}
-
-namespace {
-
-// decodes decimal int followed by x at start of source, removing
-// them from source.  Returns true on success.
-bool DecodeIntX(StringPiece* source, int *result) {
-  *result = 0;
-  for (; !source->empty(); source->remove_prefix(1)) {
-    // TODO(jmaessen): roll strtol-like functionality for StringPiece in util
-    if (!AccumulateDecimalValue((*source)[0], result)) {
-      break;
-    }
-  }
-  if (source->empty()) {
-    return false;
-  }
-  if ((*source)[0] != 'x') {
-    return false;
-  }
-  source->remove_prefix(1);
-  return true;
-}
-
-}  // namespace
-
-bool ImgRewriteFilter::DecodeImageUrl(
-    UrlEscaper* escaper, StringPiece rewritten_url,
-    std::string* origin_url, ImageDim* page_dims) {
-  page_dims->valid = false;
-  if (rewritten_url.empty()) {
-    return false;
-  } else if (rewritten_url[0] == 'x') {
-    // No dimensions given.
-    rewritten_url.remove_prefix(1);
-  } else if (DecodeIntX(&rewritten_url, &page_dims->width) &&
-             DecodeIntX(&rewritten_url, &page_dims->height)) {
-    page_dims->valid = true;
-  } else {
-    // Badly-formatted dimensions given.
-    return false;
-  }
-  return escaper->DecodeFromUrlSegment(rewritten_url, origin_url);
-}
 
 // Convert (possibly NULL) Image* to corresponding (possibly NULL) ContentType*
 const ContentType* ImgRewriteFilter::ImageToContentType(
@@ -307,19 +275,18 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
     std::string origin_url(input_resource->url());
     ImageDim page_dim;
     std::string rewritten_url;
-    page_dim.valid = false;
     // Always rewrite to absolute url used to obtain resource.
     // This lets us do context-free fetches of content.
-    if (element->IntAttributeValue(s_width_, &page_dim.width) &&
-        element->IntAttributeValue(s_height_, &page_dim.height)) {
+    int width, height;
+    if (element->IntAttributeValue(s_width_, &width) &&
+        element->IntAttributeValue(s_height_, &height)) {
       // Specific image size is called for.  Rewrite to that size.
-      page_dim.valid = true;
+      page_dim.set_dims(width, height);
     }
-    EncodeImageUrl(resource_manager_->url_escaper(),
-                   origin_url, page_dim, &rewritten_url);
+    ImageUrlEncoder encoder(resource_manager_->url_escaper(), &page_dim);
+    encoder.EncodeToUrlSegment(origin_url, &rewritten_url);
 
     ImageDim actual_dim;
-    actual_dim.valid = false;
     scoped_ptr<Image> image(GetImage(origin_url,
                                      input_resource.get()));
     const ContentType* content_type =
@@ -365,7 +332,8 @@ void ImgRewriteFilter::UpdateTargetElement(
     const ImageDim& page_dim, const ImageDim& actual_dim,
     HtmlElement* element, HtmlElement::Attribute* src) {
 
-  if (actual_dim.valid && (actual_dim.width > 1 || actual_dim.height > 1)) {
+  if (actual_dim.valid() &&
+      (actual_dim.width() > 1 || actual_dim.height() > 1)) {
     std::string inlined_url;
     bool output_ok =
         output_resource.metadata()->status_code() == HttpStatus::kOK;
@@ -388,7 +356,7 @@ void ImgRewriteFilter::UpdateTargetElement(
         }
       }
       int dummy;
-      if (insert_image_dimensions_ && actual_dim.valid && !page_dim.valid &&
+      if (insert_image_dimensions_ && actual_dim.valid() && !page_dim.valid() &&
           !element->IntAttributeValue(s_width_, &dummy) &&
           !element->IntAttributeValue(s_height_, &dummy)) {
         // Add image dimensions.  We don't bother if even a single image
@@ -398,8 +366,8 @@ void ImgRewriteFilter::UpdateTargetElement(
         // attempt to include image dimensions even if we otherwise choose not
         // to optimize an image.  This may require examining the image contents
         // if we didn't just perform the image processing.
-        element->AddAttribute(s_width_, actual_dim.width);
-        element->AddAttribute(s_height_, actual_dim.height);
+        element->AddAttribute(s_width_, actual_dim.width());
+        element->AddAttribute(s_height_, actual_dim.height());
       }
     }
   }
@@ -440,8 +408,8 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
   if (content_type != NULL) {
     std::string origin_url;
     ImageDim page_dim;  // Dimensions given in source page (invalid if absent).
-    if (DecodeImageUrl(resource_manager_->url_escaper(),
-                       stripped_url, &origin_url, &page_dim)) {
+    ImageUrlEncoder encoder(resource_manager_->url_escaper(), &page_dim);
+    if (encoder.DecodeFromUrlSegment(stripped_url, &origin_url)) {
       std::string stripped_url_string = stripped_url.as_string();
       scoped_ptr<Resource> input_image(
           resource_manager_->CreateInputResourceAbsolute(origin_url,
@@ -457,21 +425,22 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
         if (resource_manager_->FetchOutputResource(
                 image_resource.get(), writer, response_headers,
                 message_handler)) {
+          if (resource->metadata()->status_code() != HttpStatus::kOK) {
+            // Note that this should not happen, because the url
+            // should not have escaped into the wild.  We're content
+            // serving an empty response if it does.  We *could* serve
+            // / redirect to the origin_url as a fail safe, but it's
+            // probably not worth it.  Instead we log and hope that
+            // this causes us to find and fix the problem.
+            message_handler->Error(resource->name().as_string().c_str(), 0,
+                                   "Rewriting of %s rejected, "
+                                   "but URL requested (mistaken rewriting?).",
+                                   origin_url.c_str());
+          }
           callback->Done(true);
         } else {
           ok = false;
           failure_reason = "Server could not read image resource.";
-        }
-        if (image_resource->metadata()->status_code() != HttpStatus::kOK) {
-          // Note that this should not happen, because the url should not have
-          // escaped into the wild.  We're content serving an empty response if
-          // it does.  We *could* serve / redirect to the origin_url as a fail
-          // safe, but it's probably not worth it.  Instead we log and hope that
-          // this causes us to find and fix the problem.
-          message_handler->Error(resource->name().as_string().c_str(), 0,
-                                 "Rewriting of %s rejected, "
-                                 "but URL requested (mistaken rewriting?).",
-                                 origin_url.c_str());
         }
       } else {
         ok = false;

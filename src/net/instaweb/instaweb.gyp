@@ -77,6 +77,7 @@
         'util/url_async_fetcher.cc',
         'util/url_escaper.cc',
         'util/url_fetcher.cc',
+        'util/url_segment_encoder.cc',
         'util/user_agent.cc',
         'util/wget_url_fetcher.cc',
         'util/wildcard.cc',
@@ -173,6 +174,7 @@
       ],
       'sources': [
         'rewriter/image.cc',
+        'rewriter/image_dim.cc',
         'rewriter/img_rewrite_filter.cc',
         'rewriter/img_tag_scanner.cc',
       ],

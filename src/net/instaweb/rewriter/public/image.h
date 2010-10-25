@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_H_
 
 #include "base/basictypes.h"
+#include "net/instaweb/rewriter/public/image_dim.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #ifdef USE_SYSTEM_OPENCV
@@ -182,8 +183,7 @@ class Image {
   bool opencv_load_possible_;     // Attempt opencv_load in future?
   bool resized_;
   const std::string& url_;
-  // The following are lazily initialized and contain -1 until valid:
-  int width_, height_;
+  ImageDim dims_;
 
   DISALLOW_COPY_AND_ASSIGN(Image);
 };

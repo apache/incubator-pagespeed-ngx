@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/image.h"
 
 #include "base/basictypes.h"
-#include "net/instaweb/rewriter/public/img_rewrite_filter.h"  // for ImageDim
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
@@ -96,9 +95,7 @@ Image::Image(const StringPiece& original_contents,
       opencv_image_(NULL),
       opencv_load_possible_(true),
       resized_(false),
-      url_(url),
-      width_(-1),                   // Lazily initialized.  Catch errors.
-      height_(-1) { }
+      url_(url) { }
 
 Image::~Image() {
   CleanOpenCV();
@@ -139,13 +136,16 @@ void Image::FindJpegSize() {
       // actually 8 + 3 * buf[pos+2], but for our purposes this
       // will suffice as we don't parse subsequent metadata (which
       // describes the formatting of chunks of image data).
-      height_ = JpegIntAtPosition(buf, pos + 1 + ImageHeaders::kJpegIntSize);
-      width_ = JpegIntAtPosition(buf, pos + 1 + 2 * ImageHeaders::kJpegIntSize);
+      int height = JpegIntAtPosition(buf, pos + 1 + ImageHeaders::kJpegIntSize);
+      int width = JpegIntAtPosition(buf,
+                                    pos + 1 + 2 * ImageHeaders::kJpegIntSize);
+      dims_.set_dims(width, height);
       break;
     }
     pos += length;
   }
-  if (width_ <= 0 || height_ <= 0) {
+  if (dims_.height() <= 0 || dims_.width() <= 0) {
+    dims_.invalidate();
     handler_->Error(url_.c_str(), 0,
                     "Couldn't find jpeg dimensions (data truncated?).");
   }
@@ -160,9 +160,10 @@ void Image::FindPngSize() {
       (StringPiece(buf.data() + ImageHeaders::kPngHeaderLength,
                    ImageHeaders::kPngIHDRLength) ==
        StringPiece(ImageHeaders::kPngIHDR, ImageHeaders::kPngIHDRLength))) {
-    width_ = PngIntAtPosition(buf, ImageHeaders::kIHDRDataStart);
-    height_ = PngIntAtPosition(
+    int width = PngIntAtPosition(buf, ImageHeaders::kIHDRDataStart);
+    int height = PngIntAtPosition(
         buf, ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize);
+    dims_.set_dims(width, height);
   } else {
     handler_->Error(url_.c_str(), 0,
                     "Couldn't find png dimensions "
@@ -177,9 +178,10 @@ void Image::FindGifSize() {
   if (buf.size() >=
       ImageHeaders::kGifDimStart + 2 * ImageHeaders::kGifIntSize) {
     // Not truncated
-    width_ = GifIntAtPosition(buf, ImageHeaders::kGifDimStart);
-    height_ = GifIntAtPosition(
+    int width = GifIntAtPosition(buf, ImageHeaders::kGifDimStart);
+    int height = GifIntAtPosition(
         buf, ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize);
+    dims_.set_dims(width, height);
   } else {
     handler_->Error(url_.c_str(), 0,
                     "Couldn't find gif dimensions (data truncated)");
@@ -187,7 +189,7 @@ void Image::FindGifSize() {
 }
 
 // Looks at image data in order to determine image type, and also fills in any
-// dimension information it can (setting image_type_, width_, and height_).
+// dimension information it can (setting image_type_ and dims_).
 void Image::ComputeImageType() {
   // Image classification based on buffer contents gakked from leptonica,
   // but based on well-documented headers (see Wikipedia etc.).
@@ -277,15 +279,15 @@ bool Image::LoadOpenCV() {
     // A bit of belt and suspenders dimension checking.  We used to do this for
     // every image we loaded, but now we only do it when we're already paying
     // the cost of OpenCV image conversion.
-    if (0 <= width_ && width_ != opencv_image_->width) {
+    if (dims_.valid() && dims_.width() != opencv_image_->width) {
       handler_->Error(url_.c_str(), 0,
                       "Computed width %d doesn't match OpenCV %d",
-                      width_, opencv_image_->width);
+                      dims_.width(), opencv_image_->width);
     }
-    if (0 <= height_ && height_ != opencv_image_->height) {
+    if (dims_.valid() && dims_.height() != opencv_image_->height) {
       handler_->Error(url_.c_str(), 0,
                       "Computed height %d doesn't match OpenCV %d",
-                      height_, opencv_image_->height);
+                      dims_.height(), opencv_image_->height);
     }
   }
   return opencv_load_possible_;
@@ -299,16 +301,15 @@ void Image::CleanOpenCV() {
 }
 
 void Image::Dimensions(ImageDim* natural_dim) {
-  bool ok = (0 <= width_) && (0 <= height_);
-  if (ok) {
-    natural_dim->width = width_;
-    natural_dim->height = height_;
+  if (dims_.valid()) {
+    natural_dim->set_dims(dims_.width(), dims_.height());
+  } else {
+    natural_dim->invalidate();
   }
-  natural_dim->valid = ok;
 }
 
 bool Image::ResizeTo(const ImageDim& new_dim) {
-  CHECK(new_dim.valid);
+  CHECK(new_dim.valid());
   if (resized_) {
     // If we already resized, drop data and work with original image.
     UndoResize();
@@ -316,7 +317,7 @@ bool Image::ResizeTo(const ImageDim& new_dim) {
   bool ok = opencv_image_ != NULL || LoadOpenCV();
   if (ok) {
     IplImage* rescaled_image =
-        cvCreateImage(cvSize(new_dim.width, new_dim.height),
+        cvCreateImage(cvSize(new_dim.width(), new_dim.height()),
                       opencv_image_->depth,
                       opencv_image_->nChannels);
     ok = rescaled_image != NULL;
