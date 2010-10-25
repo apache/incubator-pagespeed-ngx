@@ -37,14 +37,18 @@
 #include "webutil/css/valuevalidator.h"
 
 
-
 namespace Css {
+
+const uint64 Parser::kNoError;
+const uint64 Parser::kUtf8Error;
+const uint64 Parser::kDeclarationError;
+const uint64 Parser::kSelectorError;
+
 
 // Using isascii with signed chars is unfortunately undefined.
 static inline bool IsAscii(char c) {
   return isascii(static_cast<unsigned char>(c));
 }
-
 
 class Tracer {  // in opt mode, do nothing.
  public:
@@ -52,6 +56,30 @@ class Tracer {  // in opt mode, do nothing.
 };
 
 
+// ****************
+// constructors
+// ****************
+
+Parser::Parser(const char* utf8text, const char* textend)
+    : in_(utf8text),
+      end_(textend),
+      quirks_mode_(true),
+      errors_seen_mask_(kNoError) {
+}
+
+Parser::Parser(const char* utf8text)
+    : in_(utf8text),
+      end_(utf8text + strlen(utf8text)),
+      quirks_mode_(true),
+      errors_seen_mask_(kNoError) {
+}
+
+Parser::Parser(StringPiece s)
+    : in_(s.begin()),
+      end_(s.end()),
+      quirks_mode_(true),
+      errors_seen_mask_(kNoError) {
+}
 
 // ****************
 // Helper functions
@@ -205,6 +233,7 @@ UnicodeText Parser::ParseIdent() {
           return s;
         }
       } else {  // Encoding error.  Be a little forgiving.
+        errors_seen_mask_ |= kUtf8Error;
         in_++;
       }
     } else if (*in_ == '\\') {
@@ -233,6 +262,7 @@ char32 Parser::ParseEscape() {
     if (len && rune != Runeerror) {
       in_ += len;
     } else {
+      errors_seen_mask_ |= kUtf8Error;
       in_++;
     }
     return rune;
@@ -287,6 +317,7 @@ UnicodeText Parser::ParseString() {
             s.push_back(rune);
             in_ += len;
           } else {
+            errors_seen_mask_ |= kUtf8Error;
             in_++;
           }
         } else {
@@ -516,6 +547,7 @@ Value* Parser::ParseUrl() {
           s.push_back(rune);
           in_ += len;
         } else {
+          errors_seen_mask_ |= kUtf8Error;
           in_++;
         }
       } else {
@@ -1228,6 +1260,7 @@ Declarations* Parser::ParseRawDeclarations() {
     }
     SkipSpace();
     if (ignore_this_decl) {  // on bad syntax, we skip till the next declaration
+      errors_seen_mask_ |= kDeclarationError;
       while (in_ < end_ && *in_ != ';' && *in_ != '}') {
         // IE (and IE only) ignores {} blocks in quirks mode.
         if (*in_ == '{' && !quirks_mode_) {
@@ -1522,6 +1555,7 @@ Ruleset* Parser::ParseRuleset() {
     // valid CSS 2.1), it must ignore the declaration block as
     // well.
     success = false;
+    errors_seen_mask_ |= kSelectorError;
   } else {
     ruleset->set_selectors(selectors.release());
   }

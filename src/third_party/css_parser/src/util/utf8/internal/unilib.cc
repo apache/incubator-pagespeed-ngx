@@ -26,7 +26,6 @@ namespace UniLib {
 namespace {
 
 // MOE: start_strip
-
 // MOE: end_strip
 // Codepoints not allowed for interchange are:
 //   C0 (ASCII) controls: U+0000 to U+001F excluding Space (SP, U+0020),

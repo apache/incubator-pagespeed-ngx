@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-
 // Copyright 2003 and onwards Google Inc.
-// Author: Anurag Acharya
 //
 // Utility functions for operating on StringPieces
 // Collected here for convenience

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef WEBUTIL_CSS_OPEN_SOURCE_TESTING_PRODUCTION_STUB_PUBLIC_GUNIT_PROD_H_
 #define WEBUTIL_CSS_OPEN_SOURCE_TESTING_PRODUCTION_STUB_PUBLIC_GUNIT_PROD_H_
 

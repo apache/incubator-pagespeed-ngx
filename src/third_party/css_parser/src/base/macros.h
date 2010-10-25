@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef BASE_MACROS_H_
 #define BASE_MACROS_H_
 

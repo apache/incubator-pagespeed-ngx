@@ -96,12 +96,9 @@ class Ruleset;
 // for the difference in Mozilla browsers.
 class Parser {
  public:
-  Parser(const char* utf8text, const char* textend)
-      : in_(utf8text), end_(textend), quirks_mode_(true) {}
-  explicit Parser(const char* utf8text)
-      : in_(utf8text), end_(utf8text + strlen(utf8text)), quirks_mode_(true) { }
-  explicit Parser(StringPiece s)
-      : in_(s.begin()), end_(s.end()), quirks_mode_(true) { }
+  Parser(const char* utf8text, const char* textend);
+  explicit Parser(const char* utf8text);
+  explicit Parser(StringPiece s);
 
   // ParseRawSytlesheet and ParseStylesheet consume the entire document and
   // return a Stylesheet* containing all the imports and rulesets that it
@@ -151,6 +148,14 @@ class Parser {
   // without a leading # is not allowed.
   bool quirks_mode() const { return quirks_mode_; }
   void set_quirks_mode(bool quirks_mode) { quirks_mode_ = quirks_mode; }
+
+  // This is a bitmask of errors seen during the parse.  This is decidedly
+  // incomplete --- there are definitely many errors that are not reported here.
+  static const uint64 kNoError          = 0;
+  static const uint64 kUtf8Error        = 1ULL << 0;
+  static const uint64 kDeclarationError = 1ULL << 1;
+  static const uint64 kSelectorError    = 1ULL << 2;
+  uint64 errors_seen_mask() const { return errors_seen_mask_; }
 
   friend class ParserTest;  // we need to unit test private Parse functions.
 
@@ -459,6 +464,7 @@ class Parser {
   const char *end_;  // The end of the document to parse.
 
   bool quirks_mode_;  // Whether we are in quirks mode.
+  uint64 errors_seen_mask_;
 
   FRIEND_TEST(ParserTest, color);
   FRIEND_TEST(ParserTest, url);

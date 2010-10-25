@@ -15,7 +15,6 @@
  */
 
 /* C++ code produced by gperf version 3.0.3 */
-
 /* Computed positions: -k'1-2,13,$' */
 
 #if !((' ' == 32) && ('!' == 33) && ('"' == 34) && ('#' == 35) \

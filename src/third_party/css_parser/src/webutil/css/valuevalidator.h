@@ -42,13 +42,11 @@ class ValueValidator {
 
   // TODO(sligocki): Chromium's Singleton<> is not playing well with this class
   // and so we've had to make the constructor/destructor public. Look into this.
-
   // Default Constructor; only used for the Singleton, default instance
   ValueValidator();
   ~ValueValidator();
 
 private:
-
   // Is type is a valid type for property prop?
   bool IsValidType(Property::Prop prop, Value::ValueType type) const;
 

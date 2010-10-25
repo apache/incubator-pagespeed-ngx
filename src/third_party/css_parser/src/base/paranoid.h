@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef BASE_PARANOID_H_
 #define BASE_PARANOID_H_
 

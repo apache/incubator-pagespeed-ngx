@@ -27,7 +27,6 @@
 #include "testing/base/public/gunit.h"
 
 
-
 namespace Css {
 
 class ParserTest : public testing::Test {
@@ -698,7 +697,6 @@ TEST_F(ParserTest, ParseBlock) {
     EXPECT_EQ(0, values.size());
   }
 
-
 }
 
 
@@ -1310,6 +1308,7 @@ TEST_F(ParserTest, stylesheets) {
     "H1 + *[REL-up] {}"));
 
   scoped_ptr<Stylesheet> t(a->ParseStylesheet());
+  EXPECT_EQ(Parser::kNoError, a->errors_seen_mask());
   ASSERT_EQ(2, t->imports().size());
   EXPECT_EQ("mystyle.css", UnicodeTextToUTF8(t->import(0).link));
   ASSERT_EQ(1, t->import(0).media.size());
@@ -1365,6 +1364,27 @@ TEST_F(ParserTest, value_equality) {
   EXPECT_TRUE(hundred.Equals(hundred2));
   EXPECT_FALSE(hundred.Equals(zero));
   EXPECT_FALSE(hundred.Equals(ident));
+}
+
+TEST_F(ParserTest, Utf8Error) {
+  Parser p("font-family: \"\xCB\xCE\xCC\xE5\"");
+  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
+  EXPECT_EQ(1, declarations->size());
+  EXPECT_EQ(Parser::kUtf8Error, p.errors_seen_mask());
+}
+
+TEST_F(ParserTest, DeclarationError) {
+  Parser p("font-family ; ");
+  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
+  EXPECT_EQ(0, declarations->size());
+  EXPECT_EQ(Parser::kDeclarationError, p.errors_seen_mask());
+}
+
+TEST_F(ParserTest, SelectorError) {
+  Parser p(".bold: { font-weight: bold }");
+  scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
+  EXPECT_EQ(0, stylesheet->rulesets().size());
+  EXPECT_EQ(Parser::kSelectorError, p.errors_seen_mask());
 }
 
 }  // namespace

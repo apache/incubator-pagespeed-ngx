@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef UTIL_GTL_DENSE_HASH_MAP_H_
 #define UTIL_GTL_DENSE_HASH_MAP_H_
 

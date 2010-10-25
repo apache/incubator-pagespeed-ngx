@@ -30,7 +30,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // ---
-// Author: Jacob Hoffman-Andrews
 
 #ifndef _GOOGLEINIT_H
 #define _GOOGLEINIT_H

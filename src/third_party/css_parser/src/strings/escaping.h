@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef STRINGS_ESCAPING_H_
 #define STRINGS_ESCAPING_H_
 

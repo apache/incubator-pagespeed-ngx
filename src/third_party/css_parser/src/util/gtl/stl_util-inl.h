@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef UTIL_GTL_STL_UTIL_INL_H_
 #define UTIL_GTL_STL_UTIL_INL_H_
 

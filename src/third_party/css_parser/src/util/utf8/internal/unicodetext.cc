@@ -18,7 +18,6 @@
 // Author: jrm@google.com (Jim Meehan)
 
 
-
 #include "util/utf8/public/unicodetext.h"
 
 #include "base/logging.h"

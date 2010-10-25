@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 // Routines to do manipulation of Unicode characters or text
 //
 // The StructurallyValid routines accept buffers of arbitrary bytes.

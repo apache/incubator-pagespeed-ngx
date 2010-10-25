@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef BASE_STRINGPRINTF_H_
 #define BASE_STRINGPRINTF_H_
 

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef STRINGS_STRUTIL_H_
 #define STRINGS_STRUTIL_H_
 

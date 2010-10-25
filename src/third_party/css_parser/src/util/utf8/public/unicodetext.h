@@ -18,7 +18,6 @@
 // Author: jrm@google.com (Jim Meehan)
 
 
-
 #ifndef UTIL_UTF8_UNICODETEXT_H__
 #define UTIL_UTF8_UNICODETEXT_H__
 
