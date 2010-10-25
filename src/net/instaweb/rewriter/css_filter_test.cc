@@ -85,6 +85,24 @@ TEST_F(CssFilterTest, RewriteEmptyCssTest) {
   ValidateRewriteInlineCss("rewrite_empty_css", "", "");
 }
 
+// Make sure we don't change CSS with errors. Note: We can move these tests
+// to expected rewrites if we find safe ways to edit them.
+TEST_F(CssFilterTest, NoRewriteError) {
+  ValidateNoChangeRewriteInlineCss("non_unicode_charset",
+                                   "a { font-family: \"\xCB\xCE\xCC\xE5\"; }");
+  // From http://www.baidu.com/
+  ValidateNoChangeRewriteInlineCss("non_unicode_baidu",
+                                   "#lk span {font:14px \"\xCB\xCE\xCC\xE5\"}");
+  // From http://www.yahoo.com/
+  const char confusing_value[] =
+      "a { background-image:-webkit-gradient(linear, 50% 0%, 50% 100%,"
+      " from(rgb(232, 237, 240)), to(rgb(252, 252, 253)));}";
+  ValidateNoChangeRewriteInlineCss("non_standard_value", confusing_value);
+
+  ValidateNoChangeRewriteInlineCss("bad_char_in_selector",
+                                   ".bold: { font-weight: bold }");
+}
+
 TEST_F(CssFilterTest, RewriteVariousCss) {
   // Distilled examples.
   const char* examples[] = {

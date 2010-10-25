@@ -63,14 +63,13 @@ CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix)
       s_rel_(html_parse_->Intern("rel")),
       s_href_(html_parse_->Intern("href")),
       num_files_minified_(NULL),
-      minified_bytes_saved_(NULL) {
+      minified_bytes_saved_(NULL),
+      num_parse_failures_(NULL) {
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
     num_files_minified_ = stats->GetVariable(CssFilter::kFilesMinified);
     minified_bytes_saved_ = stats->GetVariable(CssFilter::kMinifiedBytesSaved);
     num_parse_failures_ = stats->GetVariable(CssFilter::kParseFailures);
-    // TODO(sligocki): rm this when we are recording failures.
-    num_parse_failures_->Set(-1);
   }
 }
 
@@ -153,30 +152,35 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
                                std::string* out_text,
                                MessageHandler* handler) {
   // Load stylesheet w/o expanding background attributes.
-  // TODO(sligocki): Figure out how we know if this failed.
-  Css::Stylesheet* stylesheet = Css::Parser(in_text).ParseRawStylesheet();
-  // TODO(sligocki): Conditionally increment num_parse_failures_.
+  Css::Parser parser(in_text);
+  scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
 
-  // TODO(sligocki): Edit stylesheet.
+  bool ret = false;
+  if (parser.errors_seen_mask() != Css::Parser::kNoError) {
+    if (num_parse_failures_ != NULL) {
+      num_parse_failures_->Add(1);
+    }
+  } else {
+    // TODO(sligocki): Edit stylesheet.
 
-  // Re-serialize stylesheet.
-  StringWriter writer(out_text);
-  CssMinify::Stylesheet(*stylesheet, &writer, handler);
+    // Re-serialize stylesheet.
+    StringWriter writer(out_text);
+    CssMinify::Stylesheet(*stylesheet, &writer, handler);
 
-  // TODO(sligocki): Do we want to save the AST somewhere? Deleting for now.
-  delete stylesheet;
+    // Get signed versions so that we can subtract them.
+    int64 out_text_size = static_cast<int64>(out_text->size());
+    int64 in_text_size = static_cast<int64>(in_text.size());
 
-  // Get signed versions so that we can subtract them.
-  int64 out_text_size = static_cast<int64>(out_text->size());
-  int64 in_text_size = static_cast<int64>(in_text.size());
+    // Don't rewrite if we (for some reason) make it bigger.
+    ret = (out_text_size < in_text_size);
 
-  // Don't rewrite if we (for some reason) make it bigger.
-  bool ret = (out_text_size < in_text_size);
-
-  // Statistics
-  if (ret && num_files_minified_ != NULL) {
-    num_files_minified_->Add(1);
-    minified_bytes_saved_->Add(in_text_size - out_text_size);
+    // Statistics
+    if (ret && num_files_minified_ != NULL) {
+      num_files_minified_->Add(1);
+      minified_bytes_saved_->Add(in_text_size - out_text_size);
+    }
+    // TODO(sligocki): Do we want to save the AST 'stylesheet' somewhere?
+    // It currently, deletes itself at the end of the function.
   }
 
   return ret;
