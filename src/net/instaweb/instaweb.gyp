@@ -132,6 +132,7 @@
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
+        'rewriter/domain_lawyer.cc',
         'rewriter/resource.cc',
         'rewriter/output_resource.cc',
         'rewriter/resource_namer.cc',

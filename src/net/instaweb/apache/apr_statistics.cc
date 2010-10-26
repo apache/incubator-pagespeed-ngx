@@ -148,8 +148,11 @@ bool AprVariable::InitShm(apr_pool_t* pool, bool parent) {
     const char* filename = ap_server_root_relative(
         pool, StrCat(kStatisticsValuePrefix, name_).c_str());
     if (parent) {
+      // Sometimes the shm/file are leftover from a previous unclean exit.
+      apr_shm_remove(filename, pool);
+      apr_file_remove(filename, pool);
       int64 foo;
-      // TODO(abliss): do we need to destroy this shm later?
+      // This shm is destroyed when apache is shutdown cleanly.
       CheckResult(apr_shm_create(&shm_, sizeof(foo), filename, pool),
                   "create shared memory", filename);
     } else {
