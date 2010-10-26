@@ -46,8 +46,27 @@ DomainLawyer::~DomainLawyer() {
 
 bool DomainLawyer::AddDomain(const StringPiece& domain_name,
                              MessageHandler* handler) {
-  Domain* domain = new Domain(domain_name);
-  std::string domain_name_str(domain_name.data(), domain_name.size());
+  if (domain_name.empty()) {
+    handler->Message(kWarning, "Empty domain passed to AddDomain");
+    return false;
+  }
+
+  // Ensure that the following specifications are treated identically:
+  //     www.google.com
+  //     http://www.google.com
+  //     www.google.com/
+  //     http://www.google.com/
+  // all come out the same.
+  std::string domain_name_str;
+  if (domain_name.find("://") == std::string::npos) {
+    domain_name_str = StrCat("http://", domain_name);
+  } else {
+    domain_name.CopyToString(&domain_name_str);
+  }
+  if (!domain_name.ends_with("/")) {
+    domain_name_str += "/";
+  }
+  Domain* domain = new Domain(domain_name_str);
   std::pair<DomainMap::iterator, bool> p = domain_map_.insert(
       DomainMap::value_type(domain_name_str, domain));
   bool ret = p.second;
@@ -75,15 +94,11 @@ bool DomainLawyer::MapRequestToDomain(
   GURL resolved = original_request.Resolve(url_str);
   bool ret = false;
   if (resolved.is_valid() && resolved.SchemeIs("http")) {
-    // TODO(jmarantz): This domain-construction code should try to
-    // re-use the GURL spec construction.  See GURL::GetOrigin(),
-    // which might be just what we want.
-    std::string resolved_domain = StrCat("http://", resolved.host().c_str());
-    if (resolved.has_port()) {
-      resolved_domain += StrCat(":", resolved.port().c_str());
-    }
-    if ((resolved.host() == original_request.host()) &&
-        (resolved.port() == original_request.port())) {
+    GURL resolved_origin = resolved.GetOrigin();
+    GURL original_origin = original_request.GetOrigin();
+    std::string resolved_domain(resolved_origin.spec().c_str());
+
+    if (resolved_origin == original_origin) {
       *mapped_domain_name = resolved_domain;
       ret = true;
     } else {

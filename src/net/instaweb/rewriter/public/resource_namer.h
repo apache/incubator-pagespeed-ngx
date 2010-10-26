@@ -59,7 +59,7 @@ class ResourceNamer {
   //
   // The 'id' is a short code indicating which Instaweb rewriter was
   // used to generate the resource.
-  std::string EncodeIdName(const ResourceManager* resource_manager) const;
+  std::string EncodeIdName() const;
 
   // Note: there is no need at this time to decode the name key.
 

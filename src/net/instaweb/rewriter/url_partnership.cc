@@ -69,7 +69,14 @@ namespace {
 std::string AllExceptLeaf(const GURL& gurl) {
   CHECK(gurl.is_valid());
   std::string spec_str = gurl.spec();
-  std::string::size_type last_slash = spec_str.find_last_of('/');
+
+  // Find the last slash before the question-mark, if any.  See
+  // http://en.wikipedia.org/wiki/URI_scheme -- the query-string
+  // syntax is not well-defined.  But the query-separator is well-defined:
+  // it's a ? so I believe this implies that the first ? has to delimit
+  // the query string.
+  std::string::size_type question = spec_str.find('?');
+  std::string::size_type last_slash = spec_str.find_last_of('/', question);
   CHECK(last_slash != std::string::npos);
   return std::string(spec_str.data(), last_slash);
 
@@ -128,37 +135,40 @@ void UrlPartnership::Resolve() {
       std::vector<StringPiece> common_components;
       std::string base = AllExceptLeaf(*gurl_vector_[0]);
 
-      // TODO(jmarantz): bypass the logic below for a single element.
-      bool omit_empty = false;  // don't corrupt "http://x" by losing '/'
-      SplitStringPieceToVector(base, "/", &common_components, omit_empty);
-      int num_components = common_components.size();
-      CHECK_LE(3, num_components);  // expect at least {"http:", "", "x"}
+      if (gurl_vector_.size() == 1) {
+        resolved_base_ = base + "/";
+      } else {
+        bool omit_empty = false;  // don't corrupt "http://x" by losing '/'
+        SplitStringPieceToVector(base, "/", &common_components, omit_empty);
+        int num_components = common_components.size();
+        CHECK_LE(3, num_components);  // expect at least {"http:", "", "x"}
 
-      // Split each string on / boundaries, then compare these path elements
-      // until one doesn't match, then shortening common_components.
-      for (int i = 1, n = gurl_vector_.size(); i < n; ++i) {
-        std::string all_except_leaf = AllExceptLeaf(*gurl_vector_[i]);
-        std::vector<StringPiece> components;
-        SplitStringPieceToVector(all_except_leaf, "/", &components, omit_empty);
-        CHECK_LE(3U, components.size());  // expect at least {"http:", "", "x"}
+        // Split each string on / boundaries, then compare these path elements
+        // until one doesn't match, then shortening common_components.
+        for (int i = 1, n = gurl_vector_.size(); i < n; ++i) {
+          std::string all_but_leaf = AllExceptLeaf(*gurl_vector_[i]);
+          std::vector<StringPiece> components;
+          SplitStringPieceToVector(all_but_leaf, "/", &components, omit_empty);
+          CHECK_LE(3U, components.size());  // expect {"http:", "", "x"...}
 
-        if (static_cast<int>(components.size()) < num_components) {
-          num_components = components.size();
-        }
-        for (int c = 0; c < num_components; ++c) {
-          if (common_components[c] != components[c]) {
-            num_components = c;
-            break;
+          if (static_cast<int>(components.size()) < num_components) {
+            num_components = components.size();
+          }
+          for (int c = 0; c < num_components; ++c) {
+            if (common_components[c] != components[c]) {
+              num_components = c;
+              break;
+            }
           }
         }
-      }
 
-      // Now resurrect the resolved base using the common components.
-      CHECK(resolved_base_.empty());
-      CHECK_LE(3, num_components);
-      for (int c = 0; c < num_components; ++c) {
-        common_components[c].AppendToString(&resolved_base_);
-        resolved_base_ += "/";  // initial segment is "http" with no leading /
+        // Now resurrect the resolved base using the common components.
+        CHECK(resolved_base_.empty());
+        CHECK_LE(3, num_components);
+        for (int c = 0; c < num_components; ++c) {
+          common_components[c].AppendToString(&resolved_base_);
+          resolved_base_ += "/";  // initial segment is "http" with no leading /
+        }
       }
 
       // TODO(jmarantz): resolve the domain shard if needed.

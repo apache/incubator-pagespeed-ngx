@@ -27,6 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
@@ -92,7 +93,7 @@ class JavascriptFilter : public RewriteFilter {
   inline void RewriteInlineScript();
   inline void RewriteExternalScript();
   inline void StartScriptElement(HtmlElement* element);
-  inline Resource* ScriptAtUrl(const std::string& script_url);
+  inline Resource* ScriptAtUrl(const GURL& script_url);
   const StringPiece FlattenBuffer(std::string* script_buffer);
   bool WriteExternalScriptTo(const Resource* script_resource,
                              const StringPiece& script_out,

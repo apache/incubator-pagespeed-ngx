@@ -170,13 +170,13 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
 }
 
 void HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id) {
-  // TODO(sligocki): Change to a warning.
-  std::string url_str = url.as_string();
-  GURL gurl(url_str);
-  message_handler_->Check(gurl.is_valid(), "Invalid url %s", url_str.c_str());
-
-  line_number_ = 1;
   url.CopyToString(&url_);
+  GURL gurl(url_);
+  // TODO(jmaessen): warn and propagate upwards.  This will require
+  // major changes to the callers.
+  message_handler_->Check(gurl.is_valid(), "Invalid url %s", url_.c_str());
+  gurl_.Swap(&gurl);
+  line_number_ = 1;
   id.CopyToString(&id_);
   if (timer_ != NULL) {
     parse_start_time_us_ = timer_->NowUs();

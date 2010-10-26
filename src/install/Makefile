@@ -84,6 +84,9 @@ ENABLE_PROXY = 0
 .PHONY: config_file echo_vars
 
 echo_vars:
+	@echo Run "sudo ... restart" to add default instaweb config to apache
+	@echo Or run "sudo ... stop", "... staging", "sudo ... install",
+	@echo   and "sudo ... start".
 	@echo These configuration variables can be reset on the make command line,
 	@echo e.g. \"make config_file HOSTNAME=www.yoursite.com\"
 	@echo ""
@@ -96,6 +99,8 @@ echo_vars:
 	@echo "   MOD_PAGESPEED_FILE_ROOT=$(MOD_PAGESPEED_FILE_ROOT)"
 	@echo "   MODS_ENABLED_DIR=$(MODS_ENABLED_DIR)"
 	@echo "   STAGING_DIR=$(STAGING_DIR)"
+	@echo "   ENABLE_PROXY=${ENABLE_PROXY}"
+#	@echo "   SLURP_DIR=${SLURP_DIR}"
 
 
 # In some Linux distributions, such as Ubuntu, there are two commands

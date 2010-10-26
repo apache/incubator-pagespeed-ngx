@@ -74,6 +74,7 @@ const char* kModPagespeedForceCaching = "ModPagespeedForceCaching";
 const char* kModPagespeedCssInlineMaxBytes = "ModPagespeedCssInlineMaxBytes";
 const char* kModPagespeedImgInlineMaxBytes = "ModPagespeedImgInlineMaxBytes";
 const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
+const char* kModPagespeedDomain = "ModPagespeedDomain";
 const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
 const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
 
@@ -591,6 +592,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
         cmd, &ApacheRewriteDriverFactory::set_force_caching, arg);
   } else if (strcasecmp(directive, kModPagespeedBeaconUrl) == 0) {
       factory->set_beacon_url(arg);
+  } else if (strcasecmp(directive, kModPagespeedDomain) == 0) {
+    factory->domain_lawyer()->AddDomain(arg, factory->message_handler());
   } else {
     return "Unknown directive.";
   }
@@ -666,7 +669,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Number of bytes below which stylesheets will be inlined."),
   APACHE_CONFIG_OPTION(kModPagespeedBeaconUrl, "URL for beacon callback"
                        " injected by add_instrumentation."),
-
+  APACHE_CONFIG_OPTION(kModPagespeedDomain,
+        "Authorize mod_pagespeed to rewrite resources in a domain."),
   {NULL}
 };
 

@@ -64,7 +64,8 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
                                  FilenameEncoder* filename_encoder,
                                  UrlAsyncFetcher* url_async_fetcher,
                                  Hasher* hasher,
-                                 HTTPCache* http_cache)
+                                 HTTPCache* http_cache,
+                                 DomainLawyer* domain_lawyer)
     : num_shards_(num_shards),
       resource_id_(0),
       file_system_(file_system),
@@ -75,7 +76,8 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       http_cache_(http_cache),
       url_escaper_(new UrlEscaper()),
       relative_path_(false),
-      store_outputs_in_file_system_(true) {
+      store_outputs_in_file_system_(true),
+      domain_lawyer_(domain_lawyer) {
   file_prefix.CopyToString(&file_prefix_);
   SetUrlPrefixPattern(url_prefix_pattern);
 }
@@ -226,7 +228,7 @@ std::string ResourceManager::ConstructNameKey(
   ResourceNamer full_name;
   full_name.set_id(output.filter_prefix());
   full_name.set_name(output.name());
-  return full_name.EncodeIdName(this);
+  return full_name.EncodeIdName();
 }
 
 OutputResource* ResourceManager::CreateNamedOutputResource(
@@ -251,7 +253,7 @@ OutputResource* ResourceManager::CreateNamedOutputResource(
   HTTPValue value;
 
   if (http_cache_->Get(
-          full_name.EncodeIdName(this), &value, &meta_data, handler) &&
+          full_name.EncodeIdName(), &value, &meta_data, handler) &&
       value.ExtractContents(&hash_extension)) {
     ResourceNamer hash_ext;
     if (hash_ext.DecodeHashExt(hash_extension)) {
@@ -275,22 +277,16 @@ void ResourceManager::set_filename_prefix(const StringPiece& file_prefix) {
   file_prefix.CopyToString(&file_prefix_);
 }
 
-Resource* ResourceManager::CreateInputResource(const StringPiece& base_url,
+Resource* ResourceManager::CreateInputResource(const GURL& base_gurl,
                                                const StringPiece& input_url,
                                                MessageHandler* handler) {
-  // TODO(sligocki): Get GURL to accept (char*, size) pair for construction so
-  // that we don't have to perform the extra copy here.
-  std::string base_url_string(base_url.data(), base_url.size());
+  CHECK(base_gurl.is_valid());
   std::string input_url_string(input_url.data(), input_url.size());
-
-  // TODO(sligocki): Hoist GURLification of base_url up so that it isn't done
-  // repeatedly.
-  GURL base_gurl(base_url_string);
   GURL url = base_gurl.Resolve(input_url_string);
   if (!url.is_valid()) {
     // Note: Bad user-content can leave us here.
     handler->Message(kWarning, "Invalid url '%s' relative to base '%s'",
-                     input_url_string.c_str(), base_url_string.c_str());
+                     input_url_string.c_str(), base_gurl.spec().c_str());
     return NULL;
   }
 

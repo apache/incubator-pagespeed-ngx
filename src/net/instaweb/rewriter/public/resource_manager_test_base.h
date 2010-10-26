@@ -22,6 +22,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_TEST_BASE_H_
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/fake_url_async_fetcher.h"
@@ -53,6 +54,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     HtmlParseTestBaseNoAlloc::SetUp();
     file_prefix_ = GTestTempDir() + "/";
     resource_manager_ = NewResourceManager(&mock_hasher_);
+    rewrite_driver_.SetResourceManager(resource_manager_);
   }
 
   virtual void TearDown() {
@@ -71,7 +73,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   ResourceManager* NewResourceManager(Hasher* hasher) {
     return new ResourceManager(
         file_prefix_, url_prefix_, num_shards_, &file_system_,
-        &filename_encoder_, &mock_url_async_fetcher_, hasher, &http_cache_);
+        &filename_encoder_, &mock_url_async_fetcher_, hasher, &http_cache_,
+                               &domain_lawyer_);
   }
 
 
@@ -109,6 +112,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   LRUCache* lru_cache_;
   MockTimer mock_timer_;
   HTTPCache http_cache_;
+  DomainLawyer domain_lawyer_;
   MockHasher mock_hasher_;
   std::string file_prefix_;
   std::string url_prefix_;

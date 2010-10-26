@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -134,9 +135,14 @@ void CssFilter::EndElement(HtmlElement* element) {
     if (relation == kStylesheet) {
       HtmlElement::Attribute* element_href = element->FindAttribute(s_href_);
       if (element_href != NULL) {  // If it has a href= attribute
-        StringPiece old_url(element_href->value());
+        std::string old_url(element_href->value());
+        // TODO(jmaessen, jmarantz): rewrite in terms of partnership
+        GURL old_gurl = html_parse_->gurl().Resolve(old_url);
         std::string new_url;
-        if (RewriteExternalCss(old_url, &new_url)) {
+        const std::string& old_gurl_spec = old_gurl.spec();
+        StringPiece absolute_url(old_gurl_spec.data(), old_gurl_spec.size());
+        if (old_gurl.is_valid() &&
+            RewriteExternalCss(absolute_url, &new_url)) {
           element_href->SetValue(new_url);  // Update the href= attribute.
         }
       } else {
@@ -256,8 +262,8 @@ bool CssFilter::LoadAllSubStylesheets(
 
 Resource* CssFilter::GetInputResource(const StringPiece& url) {
   // TODO(sligocki): Use base_url() not document->url().
-  return resource_manager_->CreateInputResource(html_parse_->url(), url,
-                                                html_parse_->message_handler());
+  return resource_manager_->CreateInputResourceAbsolute(
+      url, html_parse_->message_handler());
 }
 
 // Create an output resource based on url of input resource.

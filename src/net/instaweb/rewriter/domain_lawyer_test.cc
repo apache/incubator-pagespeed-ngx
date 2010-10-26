@@ -24,8 +24,8 @@ namespace {
 
 const char kResourceUrl[] = "styles/style.css?appearance=reader";
 const char kCdnPrefix[] = "http://graphics8.nytimes.com/";
-const char kRequestDomain[] = "http://www.nytimes.com";
-const char kRequestDomainPort[] = "http://www.nytimes.com:8080";
+const char kRequestDomain[] = "http://www.nytimes.com/";
+const char kRequestDomainPort[] = "http://www.nytimes.com:8080/";
 
 }  // namespace
 
@@ -55,7 +55,7 @@ TEST_F(DomainLawyerTest, RelativeDomain) {
 TEST_F(DomainLawyerTest, AbsoluteDomain) {
   std::string mapped_domain_name;
   ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
-      orig_request_, StrCat(kRequestDomain, "/", kResourceUrl),
+      orig_request_, StrCat(kRequestDomain, kResourceUrl),
       &mapped_domain_name, &message_handler_));
   EXPECT_EQ(kRequestDomain, mapped_domain_name);
 }
@@ -68,17 +68,39 @@ TEST_F(DomainLawyerTest, ExternalDomainNotDeclared) {
 }
 
 TEST_F(DomainLawyerTest, ExternalDomainDeclared) {
-  StringPiece cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
+  StringPiece cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 1);
   ASSERT_TRUE(domain_lawyer_.AddDomain(cdn_domain, &message_handler_));
   std::string mapped_domain_name;
   ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
-      orig_request_, StrCat(kCdnPrefix, "/", kResourceUrl), &mapped_domain_name,
+      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name,
+      &message_handler_));
+  EXPECT_EQ(cdn_domain, mapped_domain_name);
+}
+
+TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutScheme) {
+  StringPiece cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 1);
+  ASSERT_TRUE(domain_lawyer_.AddDomain(kCdnPrefix + strlen("http://"),
+                                       &message_handler_));
+  std::string mapped_domain_name;
+  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
+      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name,
+      &message_handler_));
+  EXPECT_EQ(cdn_domain, mapped_domain_name);
+}
+
+TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutTrailingSlash) {
+  StringPiece cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 1);
+  StringPiece cdn_domain_no_slash(kCdnPrefix, sizeof(kCdnPrefix) - 2);
+  ASSERT_TRUE(domain_lawyer_.AddDomain(cdn_domain_no_slash, &message_handler_));
+  std::string mapped_domain_name;
+  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
+      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name,
       &message_handler_));
   EXPECT_EQ(cdn_domain, mapped_domain_name);
 }
 
 TEST_F(DomainLawyerTest, WildcardDomainDeclared) {
-  StringPiece cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
+  StringPiece cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 1);
   ASSERT_TRUE(domain_lawyer_.AddDomain("*.nytimes.com", &message_handler_));
   std::string mapped_domain_name;
   ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
@@ -97,7 +119,7 @@ TEST_F(DomainLawyerTest, RelativeDomainPort) {
 TEST_F(DomainLawyerTest, AbsoluteDomainPort) {
   std::string mapped_domain_name;
   ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
-      port_request_, StrCat(kRequestDomainPort, "/", kResourceUrl),
+      port_request_, StrCat(kRequestDomainPort, kResourceUrl),
       &mapped_domain_name, &message_handler_));
   EXPECT_EQ(kRequestDomainPort, mapped_domain_name);
 }
@@ -111,22 +133,22 @@ TEST_F(DomainLawyerTest, PortExternalDomainNotDeclared) {
 
 TEST_F(DomainLawyerTest, PortExternalDomainDeclared) {
   std::string port_cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
-  port_cdn_domain += ":8080";
+  port_cdn_domain += ":8080/";
   ASSERT_TRUE(domain_lawyer_.AddDomain(port_cdn_domain, &message_handler_));
   std::string mapped_domain_name;
   ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
-      port_request_, StrCat(port_cdn_domain, "/", kResourceUrl),
+      port_request_, StrCat(port_cdn_domain, kResourceUrl),
       &mapped_domain_name, &message_handler_));
   EXPECT_EQ(port_cdn_domain, mapped_domain_name);
 }
 
 TEST_F(DomainLawyerTest, PortWildcardDomainDeclared) {
   std::string port_cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
-  port_cdn_domain += ":8080";
+  port_cdn_domain += ":8080/";
   ASSERT_TRUE(domain_lawyer_.AddDomain("*.nytimes.com:*", &message_handler_));
   std::string mapped_domain_name;
   ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
-      port_request_, StrCat(port_cdn_domain, "/", kResourceUrl),
+      port_request_, StrCat(port_cdn_domain, kResourceUrl),
       &mapped_domain_name, &message_handler_));
   EXPECT_EQ(port_cdn_domain, mapped_domain_name);
 }
@@ -140,7 +162,7 @@ TEST_F(DomainLawyerTest, ResourceFromHttpsPage) {
       https_request_, kResourceUrl,
       &mapped_domain_name, &message_handler_));
   ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
-      https_request_, StrCat(kRequestDomain, "/", kResourceUrl),
+      https_request_, StrCat(kRequestDomain, kResourceUrl),
       &mapped_domain_name, &message_handler_));
 }
 

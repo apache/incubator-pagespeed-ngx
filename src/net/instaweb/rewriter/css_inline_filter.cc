@@ -41,8 +41,7 @@ CssInlineFilter::CssInlineFilter(HtmlParse* html_parse,
       size_threshold_bytes_(size_threshold_bytes) {}
 
 void CssInlineFilter::StartDocument() {
-  GURL url(html_parse_->url());
-  domain_ = url.host();
+  domain_ = html_parse_->gurl().host();
 }
 
 void CssInlineFilter::EndDocument() {
@@ -70,7 +69,7 @@ void CssInlineFilter::EndElement(HtmlElement* element) {
 
     // Make sure we're not moving across domains -- CSS can potentially contain
     // Javascript expressions.
-    GURL url(href);
+    GURL url = html_parse_->gurl().Resolve(href);
     if (!url.is_valid() || !url.DomainIs(domain_.data(), domain_.size())) {
       return;
     }
@@ -78,10 +77,12 @@ void CssInlineFilter::EndElement(HtmlElement* element) {
     // Get the text of the CSS file.
     // TODO(mdsteele): I feel like the below code should be a single
     //   convenience method somewhere, but I'm not sure where.
+    //   [Agreed; it belongs in ResourceManager and should refactor
+    //    all the similar code.  This formula is all over the place.
+    //    - jmaessen)]
     MessageHandler* message_handler = html_parse_->message_handler();
     scoped_ptr<Resource> resource(
-        resource_manager_->CreateInputResource(html_parse_->url(), href,
-                                               message_handler));
+        resource_manager_->CreateInputResourceGURL(url, message_handler));
     if (resource == NULL ||
         !resource_manager_->ReadIfCached(resource.get(), message_handler) ||
         !resource->ContentsValid()) {
@@ -97,7 +98,7 @@ void CssInlineFilter::EndElement(HtmlElement* element) {
     // Absolutify the URLs in the CSS -- relative URLs will break otherwise.
     std::string rewritten;
     StringWriter writer(&rewritten);
-    if (!CssTagScanner::AbsolutifyUrls(contents, href, &writer,
+    if (!CssTagScanner::AbsolutifyUrls(contents, url.spec(), &writer,
                                        message_handler)) {
       return;
     }

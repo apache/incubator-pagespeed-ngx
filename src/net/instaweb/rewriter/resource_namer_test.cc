@@ -28,7 +28,7 @@ class ResourceNamerTest : public testing::Test {
  protected:
   ResourceNamerTest()
       : manager_("file_prefix/", "url_prefix/", 0,
-                 NULL, NULL, NULL, NULL, NULL) { }
+                 NULL, NULL, NULL, NULL, NULL, NULL) { }
 
   ResourceNamer full_name_;
   ResourceManager manager_;
@@ -45,13 +45,13 @@ TEST_F(ResourceNamerTest, TestEncode) {
             full_name_.AbsoluteUrl(&manager_));
   EXPECT_EQ(std::string("file_prefix/id.hash.name.ext,"),
             full_name_.Filename(&manager_));
-  EXPECT_EQ(std::string("id.name"), full_name_.EncodeIdName(&manager_));
+  EXPECT_EQ(std::string("id.name"), full_name_.EncodeIdName());
   EXPECT_EQ(std::string("hash.ext"), full_name_.EncodeHashExt());
 }
 
 TEST_F(ResourceNamerTest, TestDecode) {
   ResourceManager manager("file_prefix/", "url_prefix/", 0,
-                          NULL, NULL, NULL, NULL, NULL);
+                          NULL, NULL, NULL, NULL, NULL, NULL);
   EXPECT_TRUE(full_name_.Decode(&manager_, "id.hash.name.ext"));
   EXPECT_EQ("id", full_name_.id());
   EXPECT_EQ("name", full_name_.name());

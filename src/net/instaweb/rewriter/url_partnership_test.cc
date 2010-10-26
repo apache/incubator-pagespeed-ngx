@@ -17,6 +17,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/rewriter/public/url_partnership.h"
+
+#include <string>
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -25,14 +27,14 @@
 namespace {
 
 const char kOriginalRequest[] = "http://www.nytimes.com/index.html";
-const char kResourceUrl1[] = "r/styles/style.css?appearance=reader";
+const char kResourceUrl1[] = "r/styles/style.css?appearance=reader/writer?";
 const char kResourceUrl2[] = "r/styles/style2.css?appearance=reader";
 const char kResourceUrl3[] = "r/main.css";
 const char kCdnResourceUrl[] = "http://graphics8.nytimes.com/styles/style.css";
 
 // Resources 1-3 but specified absolutely
 const char kAbsoluteResourceUrl1[] =
-    "http://www.nytimes.com/r/styles/style.css?appearance=reader";
+    "http://www.nytimes.com/r/styles/style.css?appearance=reader/writer?";
 const char kAbsoluteResourceUrl2[] =
     "http://www.nytimes.com/r/styles/style2.css?appearance=reader";
 const char kAbsoluteResourceUrl3[] = "http://www.nytimes.com/r/main.css";
@@ -48,7 +50,7 @@ class UrlPartnershipTest : public testing::Test {
       : partnership_(&domain_lawyer_, GURL(kOriginalRequest)),
         styles_path_("http://www.nytimes.com/r/styles/"),
         r_path_("http://www.nytimes.com/r/"),
-        style_url_("style.css?appearance=reader"),
+        style_url_("style.css?appearance=reader/writer?"),
         style2_url_("style2.css?appearance=reader") {
   }
 

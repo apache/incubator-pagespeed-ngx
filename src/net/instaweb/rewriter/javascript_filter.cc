@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/meta_data.h"
 #include <string>
@@ -141,11 +142,10 @@ void JavascriptFilter::RewriteInlineScript() {
 
 // Load script resource located at the given URL,
 // on error report & return NULL (caller need not report)
-Resource* JavascriptFilter::ScriptAtUrl(const std::string& script_url) {
+Resource* JavascriptFilter::ScriptAtUrl(const GURL& script_gurl) {
   MessageHandler* message_handler = html_parse_->message_handler();
   Resource* script_input =
-      resource_manager_->CreateInputResource(html_parse_->url(), script_url,
-                                             message_handler);
+      resource_manager_->CreateInputResourceGURL(script_gurl, message_handler);
   if (script_input == NULL ||
       !(resource_manager_->ReadIfCached(script_input, message_handler) &&
         script_input->ContentsValid())) {
@@ -154,7 +154,7 @@ Resource* JavascriptFilter::ScriptAtUrl(const std::string& script_url) {
       script_input = NULL;
     }
     html_parse_->ErrorHere("Couldn't get external script %s",
-                           script_url.c_str());
+                           script_gurl.spec().c_str());
   }
   return script_input;
 }
@@ -181,82 +181,89 @@ bool JavascriptFilter::WriteExternalScriptTo(
 // External script; minify and replace with rewritten version (also external).
 void JavascriptFilter::RewriteExternalScript() {
   // External script; minify and replace with rewritten version.
-  const std::string& script_url = script_src_->value();
-  std::string rewritten_url;
-  resource_manager_->url_escaper()->EncodeToUrlSegment(
-      script_url, &rewritten_url);
-  MessageHandler* message_handler = html_parse_->message_handler();
-  OutputResource* script_dest = resource_manager_->CreateNamedOutputResource(
-      filter_prefix_, rewritten_url, &kContentTypeJavascript, message_handler);
-  if (script_dest != NULL) {
-    bool ok;
-    if (resource_manager_->FetchOutputResource(script_dest, NULL, NULL,
-                                               message_handler)) {
-      // Only rewrite URL if we have usable rewritten data.
-      ok = script_dest->metadata()->status_code() == HttpStatus::kOK;
-    } else {
-      scoped_ptr<Resource> script_input(ScriptAtUrl(script_url));
-      ok = script_input != NULL;
-      if (ok) {
-        StringPiece script = script_input->contents();
-        MessageHandler* message_handler = html_parse_->message_handler();
-        JavascriptCodeBlock code_block(script, &config_, message_handler);
-        JavascriptLibraryId library = code_block.ComputeJavascriptLibrary();
-        if (library.recognized()) {
-          html_parse_->InfoHere("Script %s is %s %s", script_url.c_str(),
-                                library.name(), library.version());
-        }
-        ok = code_block.ProfitableToRewrite();
-        if (ok) {
-          ok = WriteExternalScriptTo(script_input.get(), code_block.Rewritten(),
-                                     script_dest);
-        } else {
-          // Rewriting happened but wasn't useful; remember this for later
-          // so we don't attempt to rewrite twice.
-          html_parse_->InfoHere("Script %s didn't shrink", script_url.c_str());
-          int64 origin_expire_time_ms = script_input->CacheExpirationTimeMs();
-
-          // TODO(jmarantz): currently this will not work, because HTTPCache
-          // will not report a 'hit' on any status other than OK.  This should
-          // be fixed by either:
-          //   1. adding a few other codes that HTTPCache will return hits for
-          //   2. using a special header to indicate failed-to-optimize.
-          resource_manager_->Write(HttpStatus::kInternalServerError,
-                                   "", script_dest, origin_expire_time_ms,
-                                   message_handler);
-        }
+  std::string script_url = script_src_->value();
+  GURL script_gurl = html_parse_->gurl().Resolve(script_url);
+  if (script_gurl.is_valid()) {
+    const std::string& script_spec = script_gurl.spec();
+    StringPiece absolute_url(script_spec.data(), script_spec.size());
+    std::string rewritten_url;
+    resource_manager_->url_escaper()->
+        EncodeToUrlSegment(absolute_url, &rewritten_url);
+    MessageHandler* message_handler = html_parse_->message_handler();
+    OutputResource* script_dest = resource_manager_->CreateNamedOutputResource(
+        filter_prefix_, rewritten_url, &kContentTypeJavascript, message_handler);
+    if (script_dest != NULL) {
+      bool ok;
+      if (resource_manager_->FetchOutputResource(script_dest, NULL, NULL,
+                                                 message_handler)) {
+        // Only rewrite URL if we have usable rewritten data.
+        ok = script_dest->metadata()->status_code() == HttpStatus::kOK;
       } else {
-        some_missing_scripts_ = true;
+        scoped_ptr<Resource> script_input(ScriptAtUrl(script_gurl));
+        ok = script_input != NULL;
+        if (ok) {
+          StringPiece script = script_input->contents();
+          MessageHandler* message_handler = html_parse_->message_handler();
+          JavascriptCodeBlock code_block(script, &config_, message_handler);
+          JavascriptLibraryId library = code_block.ComputeJavascriptLibrary();
+          if (library.recognized()) {
+            html_parse_->InfoHere("Script %s is %s %s",
+                                  script_gurl.spec().c_str(),
+                                  library.name(), library.version());
+          }
+          ok = code_block.ProfitableToRewrite();
+          if (ok) {
+            ok = WriteExternalScriptTo(script_input.get(), code_block.Rewritten(),
+                                       script_dest);
+          } else {
+            // Rewriting happened but wasn't useful; remember this for later
+            // so we don't attempt to rewrite twice.
+            html_parse_->InfoHere("Script %s didn't shrink",
+                                  script_gurl.spec().c_str());
+            int64 origin_expire_time_ms = script_input->CacheExpirationTimeMs();
+
+            // TODO(jmarantz): currently this will not work, because HTTPCache
+            // will not report a 'hit' on any status other than OK.  This should
+            // be fixed by either:
+            //   1. adding a few other codes that HTTPCache will return hits for
+            //   2. using a special header to indicate failed-to-optimize.
+            resource_manager_->Write(HttpStatus::kInternalServerError,
+                                     "", script_dest, origin_expire_time_ms,
+                                     message_handler);
+          }
+        } else {
+          some_missing_scripts_ = true;
+        }
+      }
+      if (ok) {
+        script_src_->SetValue(script_dest->url());
+      }
+    } else {
+      html_parse_->ErrorHere("Couldn't create new destination for %s",
+                             script_gurl.spec().c_str());
+    }
+    // Finally, note that the script might contain body data.
+    // We erase this if it is just whitespace; otherwise we leave it alone.
+    // The script body is ignored by all browsers we know of.
+    // However, various sources have encouraged using the body of an
+    // external script element to store a post-load callback.
+    // As this technique is preferable to storing callbacks in, say, html
+    // comments, we support it for now.
+    bool allSpaces = true;
+    for (size_t i = 0; allSpaces && i < buffer_.size(); ++i) {
+      const std::string& contents = buffer_[i]->contents();
+      for (size_t j = 0; allSpaces && j < contents.size(); ++j) {
+        char c = contents[j];
+        if (!isspace(c) && c != 0) {
+          html_parse_->WarningHere("Retaining contents of script tag"
+                                   " even though script is external.");
+          allSpaces = false;
+        }
       }
     }
-    if (ok) {
-      script_src_->SetValue(script_dest->url());
+    for (size_t i = 0; allSpaces && i < buffer_.size(); ++i) {
+      html_parse_->DeleteElement(buffer_[i]);
     }
-  } else {
-    html_parse_->ErrorHere("Couldn't create new destination for %s",
-                           script_url.c_str());
-  }
-  // Finally, note that the script might contain body data.
-  // We erase this if it is just whitespace; otherwise we leave it alone.
-  // The script body is ignored by all browsers we know of.
-  // However, various sources have encouraged using the body of an
-  // external script element to store a post-load callback.
-  // As this technique is preferable to storing callbacks in, say, html
-  // comments, we support it for now.
-  bool allSpaces = true;
-  for (size_t i = 0; allSpaces && i < buffer_.size(); ++i) {
-    const std::string& contents = buffer_[i]->contents();
-    for (size_t j = 0; allSpaces && j < contents.size(); ++j) {
-      char c = contents[j];
-      if (!isspace(c) && c != 0) {
-        html_parse_->WarningHere("Retaining contents of script tag"
-                                 " even though script is external.");
-        allSpaces = false;
-      }
-    }
-  }
-  for (size_t i = 0; allSpaces && i < buffer_.size(); ++i) {
-    html_parse_->DeleteElement(buffer_[i]);
   }
 }
 

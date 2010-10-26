@@ -39,8 +39,7 @@ JsInlineFilter::JsInlineFilter(HtmlParse* html_parse,
 JsInlineFilter::~JsInlineFilter() {}
 
 void JsInlineFilter::StartDocument() {
-  GURL url(html_parse_->url());
-  domain_ = url.host();
+  domain_ = html_parse_->gurl().host();
   should_inline_ = false;
 }
 
@@ -52,12 +51,7 @@ void JsInlineFilter::StartElement(HtmlElement* element) {
   DCHECK(!should_inline_);
   if (element->tag() == script_atom_) {
     const char* src = element->AttributeValue(src_atom_);
-    if (src != NULL) {
-      GURL url(src);
-      if (url.is_valid() && url.DomainIs(domain_.data(), domain_.size())) {
-        should_inline_ = true;
-      }
-    }
+    should_inline_ = (src != NULL);
   }
 }
 
@@ -68,19 +62,21 @@ void JsInlineFilter::EndElement(HtmlElement* element) {
     DCHECK(src != NULL);
     should_inline_ = false;
 
-    // Inline the script.
-    MessageHandler* message_handler = html_parse_->message_handler();
-    scoped_ptr<Resource> resource(
-        resource_manager_->CreateInputResource(html_parse_->url(), src,
-                                               message_handler));
-    if ((resource != NULL) &&
-        resource_manager_->ReadIfCached(resource.get(), message_handler) &&
-        resource->ContentsValid()) {
-      StringPiece contents = resource->contents();
-      if (contents.size() <= size_threshold_bytes_ &&
-          element->DeleteAttribute(src_atom_)) {
-        html_parse_->InsertElementBeforeCurrent(
-            html_parse_->NewCharactersNode(element, contents));
+    GURL url = html_parse_->gurl().Resolve(src);
+    if (url.is_valid() && url.DomainIs(domain_.data(), domain_.size())) {
+      // Inline the script.
+      MessageHandler* message_handler = html_parse_->message_handler();
+      scoped_ptr<Resource> resource(
+          resource_manager_->CreateInputResourceGURL(url, message_handler));
+      if ((resource != NULL) &&
+          resource_manager_->ReadIfCached(resource.get(), message_handler) &&
+          resource->ContentsValid()) {
+        StringPiece contents = resource->contents();
+        if (contents.size() <= size_threshold_bytes_ &&
+            element->DeleteAttribute(src_atom_)) {
+          html_parse_->InsertElementBeforeCurrent(
+              html_parse_->NewCharactersNode(element, contents));
+        }
       }
     }
   }

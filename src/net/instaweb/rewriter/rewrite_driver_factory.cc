@@ -199,7 +199,7 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
     resource_manager_.reset(new ResourceManager(
         filename_prefix_, url_prefix_, num_shards(),
         file_system(), filename_encoder(), ComputeUrlAsyncFetcher(), hasher(),
-        http_cache()));
+        http_cache(), &domain_lawyer_));
     resource_manager_->set_store_outputs_in_file_system(
         ShouldWriteResourcesToFileSystem());
   }

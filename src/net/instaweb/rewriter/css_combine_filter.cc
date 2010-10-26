@@ -83,7 +83,15 @@ void CssCombineFilter::EndElement(HtmlElement* element) {
   HtmlElement::Attribute* href;
   const char* media;
   if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
-    css_elements_.push_back(element);
+    // TODO(jmaessen, jmarantz): extend partnership here.
+    GURL url = html_parse_->gurl().Resolve(href->value());
+    if (url.is_valid()) {
+      css_elements_.push_back(element);
+    } else {
+      // It's invalid, so just skip it a la IEDirective below.
+      EmitCombinations(false, NULL);
+      css_elements_.clear();
+    }
   } else if (element->tag() == s_head_) {
     // We set the element here rather than at StartElement so that we don't
     // AppendChild before we've finished parsing head (mis-ordering CSS).
@@ -140,8 +148,10 @@ void CssCombineFilter::EmitCombinations(bool append_child,
       // TODO(jmarantz): consider async loads; exclude css file
       // from the combination that are not yet loaded.  For now, our
       // loads are blocking.  Need to understand Apache module
+      // TODO(jmaessen, jmarantz): use partnership url data here,
+      // hand off to CreateInputResourceGURL.
       Resource* css_resource =
-          resource_manager_->CreateInputResource(html_parse_->url(),
+          resource_manager_->CreateInputResource(html_parse_->gurl(),
                                                  href->value(), handler);
       if ((css_resource != NULL) &&
           resource_manager_->ReadIfCached(css_resource, handler) &&
@@ -181,6 +191,10 @@ void CssCombineFilter::EmitCombinations(bool append_child,
     for (int i = 0, n = combine_resources.size(); i < n; ++i) {
       Resource* css_resource = combine_resources[i];
       CssUrl* css_url = css_combine_url.add_element();
+      // Note that css_resource has been checked for eligibility for rewriting
+      // in advance, and it's url is now absolute.  For the moment we're just
+      // gathering up absolute urls.
+      // TODO(jmaessen): Use relative urls as soon as we understand the semantics.
       css_url->set_origin_url(css_resource->url());
       css_url->set_media(media_attributes[i]);
     }
@@ -192,6 +206,7 @@ void CssCombineFilter::EmitCombinations(bool append_child,
 
     // Start building up the combination.  At this point we are still
     // not committed to the combination, because the 'write' can fail.
+    // TODO(jmaessen, jmarantz): encode based on partnership
     scoped_ptr<OutputResource> combination(
         resource_manager_->CreateNamedOutputResource(
             filter_prefix_, url_safe_id, &kContentTypeCss, handler));

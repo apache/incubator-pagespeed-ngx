@@ -73,59 +73,65 @@ void CacheExtender::StartElement(HtmlElement* element) {
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
   if ((href != NULL) && html_parse_->IsRewritable(element)) {
     const char* origin_url = href->value();
-    scoped_ptr<Resource> input_resource(
-        resource_manager_->CreateInputResource(html_parse_->url(), origin_url,
-                                               message_handler));
+    // TODO(jmaessen, jmarantz): Replace with partnership construction and
+    // check.
+    GURL origin_gurl = html_parse_->gurl().Resolve(origin_url);
+    if (origin_gurl.is_valid()) {
+      scoped_ptr<Resource> input_resource(
+          resource_manager_->CreateInputResourceGURL(
+              origin_gurl, message_handler));
 
-    // TODO(jmarantz): create an output resource to generate a new url,
-    // rather than doing the content-hashing here.
-    if ((input_resource != NULL) &&
-        input_resource->IsCacheable() &&
-        resource_manager_->ReadIfCached(input_resource.get(),
-                                        message_handler)) {
-      const MetaData* headers = input_resource->metadata();
-      int64 now_ms = resource_manager_->timer()->NowMs();
+      // TODO(jmarantz): create an output resource to generate a new url,
+      // rather than doing the content-hashing here.
+      if ((input_resource != NULL) &&
+          input_resource->IsCacheable() &&
+          resource_manager_->ReadIfCached(input_resource.get(),
+                                          message_handler)) {
+        const MetaData* headers = input_resource->metadata();
+        int64 now_ms = resource_manager_->timer()->NowMs();
 
-      // We cannot cache-extend a resource that's completely uncacheable,
-      // as our serving-side image would b
-      if (!resource_manager_->http_cache()->force_caching() &&
-          !headers->IsCacheable()) {
-        if (not_cacheable_count_ != NULL) {
-          not_cacheable_count_->Add(1);
-        }
-      } else if (((headers->CacheExpirationTimeMs() - now_ms) <
-                  kMinThresholdMs) &&
-                 (input_resource->type() != NULL)) {
-        std::string trimmed_url;
-        TrimWhitespace(origin_url, &trimmed_url);
-        std::string url_safe_id;
-        resource_manager_->url_escaper()->EncodeToUrlSegment(
-            trimmed_url, &url_safe_id);
-        scoped_ptr<OutputResource> output(
-            resource_manager_->CreateNamedOutputResource(
-                filter_prefix_, url_safe_id, input_resource->type(),
-                message_handler));
-        CHECK(!output->IsWritten());
-        if (!output->HasValidUrl()) {
-          StringPiece contents(input_resource->contents());
-          std::string absolutified;
-          if (input_resource->type() == &kContentTypeCss) {
-            // TODO(jmarantz): find a mechanism to write this directly into
-            // the HTTPValue so we can reduce the number of times that we
-            // copy entire resources.
-            StringWriter writer(&absolutified);
-            CssTagScanner::AbsolutifyUrls(contents, input_resource->url(),
-                                          &writer, message_handler);
-            contents = absolutified;
+        // We cannot cache-extend a resource that's completely uncacheable,
+        // as our serving-side image would b
+        if (!resource_manager_->http_cache()->force_caching() &&
+            !headers->IsCacheable()) {
+          if (not_cacheable_count_ != NULL) {
+            not_cacheable_count_->Add(1);
           }
-          resource_manager_->Write(HttpStatus::kOK, contents, output.get(),
-                                   headers->CacheExpirationTimeMs(),
-                                   message_handler);
-        }
-        if (output->IsWritten()) {
-          href->SetValue(output->url());
-          if (extension_count_ != NULL) {
-            extension_count_->Add(1);
+        } else if (((headers->CacheExpirationTimeMs() - now_ms) <
+                    kMinThresholdMs) &&
+                   (input_resource->type() != NULL)) {
+          std::string url_safe_id;
+          const std::string& origin_gurl_spec = origin_gurl.spec();
+          StringPiece origin_url(origin_gurl_spec.data(),
+                                 origin_gurl_spec.size());
+          resource_manager_->url_escaper()->EncodeToUrlSegment(
+              origin_url, &url_safe_id);
+          scoped_ptr<OutputResource> output(
+              resource_manager_->CreateNamedOutputResource(
+                  filter_prefix_, url_safe_id, input_resource->type(),
+                  message_handler));
+          CHECK(!output->IsWritten());
+          if (!output->HasValidUrl()) {
+            StringPiece contents(input_resource->contents());
+            std::string absolutified;
+            if (input_resource->type() == &kContentTypeCss) {
+              // TODO(jmarantz): find a mechanism to write this directly into
+              // the HTTPValue so we can reduce the number of times that we
+              // copy entire resources.
+              StringWriter writer(&absolutified);
+              CssTagScanner::AbsolutifyUrls(contents, input_resource->url(),
+                                            &writer, message_handler);
+              contents = absolutified;
+            }
+            resource_manager_->Write(HttpStatus::kOK, contents, output.get(),
+                                     headers->CacheExpirationTimeMs(),
+                                     message_handler);
+          }
+          if (output->IsWritten()) {
+            href->SetValue(output->url());
+            if (extension_count_ != NULL) {
+              extension_count_->Add(1);
+            }
           }
         }
       }

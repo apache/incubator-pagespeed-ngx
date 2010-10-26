@@ -64,6 +64,10 @@ class DomainLawyer {
   // Note the the returned mapped domain name cannot be directly used in a
   // URL.  A GURL shold be composed via ResolvePath, below, which will
   // take care of any sharding.
+  //
+  // The returned mapped_domain_name will always end with a slash on success.
+  //
+  // Returns false on failure.
   bool MapRequestToDomain(const GURL& original_request,
                           const StringPiece& resource_url,
                           std::string* mapped_domain_name,

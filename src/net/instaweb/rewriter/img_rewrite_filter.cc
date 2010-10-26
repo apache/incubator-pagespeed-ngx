@@ -265,49 +265,53 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
   // How do we deal with that given only URL?
   // Separate input and output content type?
   MessageHandler* message_handler = html_parse_->message_handler();
-  scoped_ptr<Resource> input_resource(
-      resource_manager_->CreateInputResource(html_parse_->url(), src->value(),
-                                             message_handler));
+  // TODO(jmaessen, jmarantz): transition to partnership here.
+  GURL input_gurl = html_parse_->gurl().Resolve(src->value());
+  if (input_gurl.is_valid()) {
+    scoped_ptr<Resource> input_resource(
+        resource_manager_->CreateInputResourceGURL(
+            input_gurl, message_handler));
 
-  if ((input_resource != NULL) &&
-      resource_manager_->ReadIfCached(input_resource.get(), message_handler) &&
-      input_resource->ContentsValid()) {
-    std::string origin_url(input_resource->url());
-    ImageDim page_dim;
-    std::string rewritten_url;
-    // Always rewrite to absolute url used to obtain resource.
-    // This lets us do context-free fetches of content.
-    int width, height;
-    if (element->IntAttributeValue(s_width_, &width) &&
-        element->IntAttributeValue(s_height_, &height)) {
-      // Specific image size is called for.  Rewrite to that size.
-      page_dim.set_dims(width, height);
-    }
-    ImageUrlEncoder encoder(resource_manager_->url_escaper(), &page_dim);
-    encoder.EncodeToUrlSegment(origin_url, &rewritten_url);
-
-    ImageDim actual_dim;
-    scoped_ptr<Image> image(GetImage(origin_url,
-                                     input_resource.get()));
-    const ContentType* content_type =
-        ImageToContentType(origin_url, image.get());
-
-    if (content_type != NULL) {
-      image->Dimensions(&actual_dim);
-      // Create an output resource and fetch it, as that will tell
-      // us if we have already optimized it, or determined that it was not
-      // worth optimizing.
-      scoped_ptr<OutputResource> output_resource(
-          resource_manager_->CreateNamedOutputResource(
-              filter_prefix_, rewritten_url, content_type, message_handler));
-      if (!resource_manager_->FetchOutputResource(
-              output_resource.get(), NULL, NULL, message_handler)) {
-        OptimizeImage(input_resource.get(), origin_url, page_dim, image.get(),
-                      output_resource.get());
+    if ((input_resource != NULL) &&
+        resource_manager_->ReadIfCached(input_resource.get(), message_handler) &&
+        input_resource->ContentsValid()) {
+      std::string origin_url(input_resource->url());
+      ImageDim page_dim;
+      std::string rewritten_url;
+      // Always rewrite to absolute url used to obtain resource.
+      // This lets us do context-free fetches of content.
+      int width, height;
+      if (element->IntAttributeValue(s_width_, &width) &&
+          element->IntAttributeValue(s_height_, &height)) {
+        // Specific image size is called for.  Rewrite to that size.
+        page_dim.set_dims(width, height);
       }
-      if (output_resource->IsWritten()) {
-        UpdateTargetElement(*input_resource, *output_resource,
-                            page_dim, actual_dim, element, src);
+      ImageUrlEncoder encoder(resource_manager_->url_escaper(), &page_dim);
+      encoder.EncodeToUrlSegment(origin_url, &rewritten_url);
+
+      ImageDim actual_dim;
+      scoped_ptr<Image> image(GetImage(origin_url,
+                                       input_resource.get()));
+      const ContentType* content_type =
+          ImageToContentType(origin_url, image.get());
+
+      if (content_type != NULL) {
+        image->Dimensions(&actual_dim);
+        // Create an output resource and fetch it, as that will tell
+        // us if we have already optimized it, or determined that it was not
+        // worth optimizing.
+        scoped_ptr<OutputResource> output_resource(
+            resource_manager_->CreateNamedOutputResource(
+                filter_prefix_, rewritten_url, content_type, message_handler));
+        if (!resource_manager_->FetchOutputResource(
+                output_resource.get(), NULL, NULL, message_handler)) {
+          OptimizeImage(input_resource.get(), origin_url, page_dim, image.get(),
+                        output_resource.get());
+        }
+        if (output_resource->IsWritten()) {
+          UpdateTargetElement(*input_resource, *output_resource,
+                              page_dim, actual_dim, element, src);
+        }
       }
     }
   }

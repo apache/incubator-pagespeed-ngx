@@ -22,6 +22,7 @@
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -176,6 +177,9 @@ class RewriteDriverFactory {
   // Increment the cournt of slurp returning 404.
   void IncrementSlurpCount();
 
+  DomainLawyer* domain_lawyer() { return &domain_lawyer_; }
+  const DomainLawyer* domain_lawyer() const { return &domain_lawyer_; }
+
  protected:
   virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
   bool FetchersComputed() const;
@@ -243,6 +247,9 @@ class RewriteDriverFactory {
   scoped_ptr<CacheUrlAsyncFetcher> cache_async_fetcher_;
   Variable* resource_404_count_;
   Variable* slurp_404_count_;
+
+  // Keep track of authorized domains, sharding, and mappings.
+  DomainLawyer domain_lawyer_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };

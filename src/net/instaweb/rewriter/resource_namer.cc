@@ -85,8 +85,7 @@ std::string ResourceNamer::Filename(
 }
 
 
-std::string ResourceNamer::EncodeIdName(
-    const ResourceManager* resource_manager) const {
+std::string ResourceNamer::EncodeIdName() const {
   CHECK(id_.find(kSeparatorChar) == StringPiece::npos);
   CHECK(name_.find(kSeparatorChar) == StringPiece::npos);
   return StrCat(id_, kSeparatorString, name_);

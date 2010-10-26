@@ -38,10 +38,6 @@ class CssFilterTest : public ResourceManagerTestBase {
   void ValidateRewriteInlineCss(const char* id,
                                 const StringPiece& css_input,
                                 const StringPiece& css_expected_output) {
-    scoped_ptr<ResourceManager> resource_manager(
-        NewResourceManager(&mock_hasher_));
-    rewrite_driver_.SetResourceManager(resource_manager.get());
-
     // TODO(sligocki): When we open-source, replace this with
     //   rewrite_driver_.RewriteCss()
     CssFilter* css_filter = new CssFilter(&rewrite_driver_, "cf");

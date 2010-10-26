@@ -26,6 +26,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -179,6 +180,8 @@ class HtmlParse {
   // Gets the current location information; typically to help with error
   // messages.
   const char* url() const { return url_.c_str(); }
+  // Gets a parsed GURL& corresponding to url().
+  const GURL& gurl() const { return gurl_; }
   const char* id() const { return id_.c_str(); }
   int line_number() const { return line_number_; }
 
@@ -262,6 +265,7 @@ class HtmlParse {
   bool deleted_current_;
   MessageHandler* message_handler_;
   std::string url_;
+  GURL gurl_;
   std::string id_;  // Per-request identifier string used in error messages.
   int line_number_;
   bool need_sanity_check_;

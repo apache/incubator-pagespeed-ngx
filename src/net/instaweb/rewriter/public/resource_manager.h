@@ -36,6 +36,7 @@ class GURL;
 namespace net_instaweb {
 
 class ContentType;
+class DomainLawyer;
 class FileSystem;
 class FilenameEncoder;
 class HTTPCache;
@@ -61,7 +62,8 @@ class ResourceManager {
                   FilenameEncoder* filename_encoder,
                   UrlAsyncFetcher* url_async_fetcher,
                   Hasher* hasher,
-                  HTTPCache* http_cache);
+                  HTTPCache* http_cache,
+                  DomainLawyer* domain_lawyer);
   ~ResourceManager();
 
   // Created resources are managed by ResourceManager and eventually deleted
@@ -119,9 +121,15 @@ class ResourceManager {
 
   // Creates an input resource with the url evaluated based on input_url
   // which may need to be absolutified relative to base_url.
-  Resource* CreateInputResource(const StringPiece& base_url,
+  // TODO(jmaessen, jmarantz): Axe after switchover to avoid
+  // input resource creation without permission?  Only remaining call site
+  // is in css_combine_filter.
+  Resource* CreateInputResource(const GURL& base_url,
                                 const StringPiece& input_url,
                                 MessageHandler* handler);
+
+  // Creates an input resource with the given gurl, already absolute and valid.
+  Resource* CreateInputResourceGURL(const GURL& gurl, MessageHandler* handler);
 
   Resource* CreateInputResourceAbsolute(const StringPiece& absolute_url,
                                         MessageHandler* handler);
@@ -202,8 +210,11 @@ class ResourceManager {
   void set_store_outputs_in_file_system(bool store) {
     store_outputs_in_file_system_ = store;
   }
+
+  DomainLawyer* domain_lawyer() { return domain_lawyer_; }
+  const DomainLawyer* domain_lawyer() const { return domain_lawyer_; }
+
  private:
-  Resource* CreateInputResourceGURL(const GURL& url, MessageHandler* handler);
   std::string ConstructNameKey(const OutputResource& output) const;
   void ValidateShardsAgainstUrlPrefixPattern();
 
@@ -220,6 +231,8 @@ class ResourceManager {
   scoped_ptr<UrlEscaper> url_escaper_;
   bool relative_path_;
   bool store_outputs_in_file_system_;
+  DomainLawyer* domain_lawyer_;
+
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };
 
