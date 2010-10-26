@@ -281,6 +281,7 @@
         'rewriter/strip_scripts_filter.cc',
         'rewriter/url_input_resource.cc',
         'rewriter/url_left_trim_filter.cc',
+        'rewriter/url_partnership.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

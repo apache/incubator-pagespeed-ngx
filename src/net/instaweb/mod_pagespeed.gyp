@@ -122,6 +122,7 @@
         'rewriter/script_tag_scanner_test.cc',
         'rewriter/strip_scripts_filter_test.cc',
         'rewriter/url_left_trim_filter_test.cc',
+        'rewriter/url_partnership_test.cc',
 #        'htmlparse/html_escape_test.cc',
         'htmlparse/html_parse_test.cc',
       ],
