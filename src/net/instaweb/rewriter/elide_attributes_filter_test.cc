@@ -53,7 +53,7 @@ TEST_F(ElideAttributesFilterTest, RemoveAttrWithDefaultValue) {
 
 TEST_F(ElideAttributesFilterTest, RemoveAttrWithIgnoredValue) {
   ValidateExpected("remove_attr_with_ignored_value",
-                   "<head><script src=\"foo.js\" language=\"bleh\"></script>"
+                   "<head><script src=\"foo.js\" type=\"bleh\"></script>"
                    "</head><body></body>",
                    "<head><script src=\"foo.js\"></script>"
                    "</head><body></body>");
@@ -68,6 +68,19 @@ TEST_F(ElideAttributesFilterTest, RemoveValueFromAttr) {
                    "<input type=checkbox checked=checked></form></body>",
                    "<head></head><body><form>"
                    "<input type=checkbox checked></form></body>");
+}
+
+TEST_F(ElideAttributesFilterTest, DoNotBreakVBScript) {
+  ValidateExpected("do_not_break_vbscript",
+                   "<head><script language=\"JavaScript\">var x=1;</script>"
+                   "<script language=\"VBScript\">"
+                   "Sub foo(ByVal bar)\n  call baz(bar)\nend sub"
+                   "</script></head><body></body>",
+                   // Remove language="JavaScript", but not the VBScript one:
+                   "<head><script>var x=1;</script>"
+                   "<script language=\"VBScript\">"
+                   "Sub foo(ByVal bar)\n  call baz(bar)\nend sub"
+                   "</script></head><body></body>");
 }
 
 }  // namespace net_instaweb

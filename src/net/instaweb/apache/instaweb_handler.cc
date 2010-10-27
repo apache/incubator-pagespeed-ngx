@@ -27,7 +27,6 @@
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
-#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -50,6 +49,9 @@ namespace {
 // Callback for asynchronous fetch. When instaweb handles a request, it will
 // fetch the resource for that request with an asynchronous fetcher. We need to
 // run the Poll method periodically to check if the fetch finishes.
+//
+// TODO(jmarantz): copy Release() code from SerfUrlFetcher to avoid
+// corrupting stack on a timeout.
 class AsyncCallback : public UrlAsyncFetcher::Callback {
  public:
   explicit AsyncCallback(MessageHandler* message_handler)
@@ -72,62 +74,71 @@ class AsyncCallback : public UrlAsyncFetcher::Callback {
 };
 
 // Default handler when the file is not found
-int instaweb_default_handler(const ResourceNamer& resource,
-                             request_rec* request) {
+int instaweb_default_handler(const std::string& url, request_rec* request) {
   request->status = HTTP_NOT_FOUND;
   ap_set_content_type(request, "text/html; charset=utf-8");
   ap_rputs("<html><head><title>Not Found</title></head>", request);
   ap_rputs("<body><h1>Apache server with mod_pagespeed</h1>OK", request);
   ap_rputs("<hr>NOT FOUND:", request);
-  ap_rputs(resource.PrettyName().c_str(), request);
+  ap_rputs(url.c_str(), request);
   ap_rputs("</body></html>", request);
   return OK;
 }
 
-bool fetch_resource(const request_rec* request,
-                    const ResourceNamer& resource,
-                    SimpleMetaData* response_headers,
-                    std::string* output) {
-  ApacheRewriteDriverFactory* factory =
-      InstawebContext::Factory(request->server);
+// predeclare to minimize diffs for now.  TODO(jmarantz): reorder
+void send_out_headers_and_body(
+    request_rec* request,
+    const SimpleMetaData& response_headers,
+    const std::string& output);
+
+// Determines whether the url can be handled as a mod_pagespeed resource,
+// and handles it, returning true.  A 'true' routine means that this
+// method believed the URL was a mod_pagespeed resource -- it does not
+// imply that it was handled successfully.  That information will be
+// in the status code in the response headers.
+bool handle_as_resource(ApacheRewriteDriverFactory* factory,
+                        request_rec* request,
+                        const std::string& url) {
   RewriteDriver* rewrite_driver = factory->GetRewriteDriver();
-  SimpleMetaData request_headers;
-  StringWriter writer(output);
+
+  SimpleMetaData request_headers, response_headers;
+  std::string output;  // TODO(jmarantz): quit buffering resource output
+  StringWriter writer(&output);
   GoogleMessageHandler message_handler;
   AsyncCallback callback(&message_handler);
-
-  message_handler.Message(kWarning, "Fetching resource %s...",
-                          resource.PrettyName().c_str());
-
-  rewrite_driver->FetchResource(resource, request_headers,
-                                response_headers,
-                                &writer,
-                                &message_handler,
-                                &callback);
-  bool ret = callback.done() && callback.success();
-  if (!ret) {
-    SerfUrlAsyncFetcher* serf_async_fetcher =
-        factory->serf_url_async_fetcher();
-    AprTimer timer;
-    int64 max_ms = factory->fetcher_time_out_ms();
-    for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
-         !callback.done() && now_ms - start_ms < max_ms;
-         now_ms = timer.NowMs()) {
-      int64 remaining_us = max_ms - (now_ms - start_ms);
-      serf_async_fetcher->Poll(remaining_us);
-    }
+  bool handled = rewrite_driver->FetchResource(
+      url, request_headers, &response_headers, &writer, &message_handler,
+      &callback);
+  if (handled) {
+    message_handler.Message(kWarning, "Fetching resource %s...", url.c_str());
     if (!callback.done()) {
-      message_handler.Error(resource.PrettyName().c_str(), 0,
-                            "Timeout waiting for response");
-    } else if (!callback.success()) {
-      message_handler.Error(resource.PrettyName().c_str(), 0, "Fetch failed.");
+      SerfUrlAsyncFetcher* serf_async_fetcher =
+          factory->serf_url_async_fetcher();
+      AprTimer timer;
+      int64 max_ms = factory->fetcher_time_out_ms();
+      for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
+           !callback.done() && now_ms - start_ms < max_ms;
+           now_ms = timer.NowMs()) {
+        int64 remaining_us = max_ms - (now_ms - start_ms);
+        serf_async_fetcher->Poll(remaining_us);
+      }
+
+      if (!callback.done()) {
+        message_handler.Message(kError, "Timeout on url %s", url.c_str());
+      }
     }
-    ret = callback.done() && callback.success();
+    if (callback.success()) {
+      message_handler.Message(kInfo, "Fetch succeeded for %s, status=%d",
+                              url.c_str(), response_headers.status_code());
+      send_out_headers_and_body(request, response_headers, output);
+    } else {
+      message_handler.Message(kError, "Fetch failed for %s, status=%d",
+                              url.c_str(), response_headers.status_code());
+      factory->Increment404Count();
+      return instaweb_default_handler(url, request);
+    }
   }
-  message_handler.Message(kWarning,
-                          "...Fetched resource %s, ret=%d",
-                          resource.PrettyName().c_str(), ret);
-  return ret;
+  return handled;
 }
 
 void send_out_headers_and_body(
@@ -162,7 +173,6 @@ void send_out_headers_and_body(
 int instaweb_handler(request_rec* request) {
   ApacheRewriteDriverFactory* factory =
       InstawebContext::Factory(request->server);
-  std::string resource;
   int ret = OK;
 
   // Only handle GET request
@@ -204,28 +214,17 @@ int instaweb_handler(request_rec* request) {
       url = ap_construct_url(request->pool, request->unparsed_uri, request);
     }
 
-    ResourceManager* resource_manager = factory->ComputeResourceManager();
-    // Determine whether this URL matches our prefix pattern.  Note that
-    // the URL may have a shard applied to it.
-    int shard;
-    ResourceNamer resource;
-    if (resource_manager->UrlToResourceNamer(url, &shard, &resource)) {
-      SimpleMetaData response_headers;
-      std::string output;
-      if (!fetch_resource(request, resource, &response_headers, &output)) {
-        factory->Increment404Count();
-        return instaweb_default_handler(resource, request);
+    if (!handle_as_resource(factory, request, url)) {
+      if (factory->slurping_enabled()) {
+        SlurpUrl(url, factory, request);
+        if (request->status == HTTP_NOT_FOUND) {
+          factory->IncrementSlurpCount();
+        }
+      } else {
+        ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
+                      "mod_pagespeed: Declined request %s", url.c_str());
+        ret = DECLINED;
       }
-      send_out_headers_and_body(request, response_headers, output);
-    } else if (factory->slurping_enabled()) {
-      SlurpUrl(url, factory, request);
-      if (request->status == HTTP_NOT_FOUND) {
-        factory->IncrementSlurpCount();
-      }
-    } else {
-      ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
-                    "mod_pagespeed: Declined request %s", url.c_str());
-      ret = DECLINED;
     }
   }
   return ret;

@@ -45,6 +45,8 @@ OUTDIR=/tmp/mod_pagespeed_test/fetched_directory
 # means to fetch all prerequisites; -nd puts all results in one directory; -P
 # specifies that directory.  We can then run commands on $OUTDIR/$FILE
 # and nuke $OUTDIR when we're done.
+# TODO(abliss): some of these will fail on windows where wget escapes saved
+# filenames differently.
 
 WGET_DUMP="wget -q -O - --save-headers"
 WGET_PREREQ="wget -H -p -q -nd -P $OUTDIR"
@@ -100,29 +102,44 @@ NUM_404=$(($NUM_404+1))
 check "wget -O /dev/null $BAD_RESOURCE_URL 2>&1| grep -q '404 Not Found'"
 check "$WGET_DUMP $STATISTICS_URL | grep -q 'resource_404_count: $NUM_404'"
 
+echo TEST: directory is mapped to index.html.
+check "$WGET_PREREQ $EXAMPLE_ROOT"
+check "$WGET_PREREQ $EXAMPLE_ROOT/index.html"
+check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
+
 # Individual filter tests
 
 echo TEST: combine_css successfully combines 4 CSS files into 1.
-fetch_until $EXAMPLE_ROOT/combine_css.html 'grep -c text/css' 1
-check $WGET_PREREQ $EXAMPLE_ROOT/outline_css.html
+URL=$EXAMPLE_ROOT/combine_css.html?ModPagespeedRewriters=combine_css
+fetch_until $URL 'grep -c text/css' 1
+check $WGET_PREREQ $URL
 rm -rf $OUTDIR
 
 echo TEST: outline_css outlines large styles, but not small ones.
-FILE=outline_css.html
+FILE=outline_css.html?ModPagespeedRewriters=outline_css
 check $WGET_PREREQ $EXAMPLE_ROOT/$FILE
 check egrep -q "'<link.*text/css.*large'" $OUTDIR/$FILE  # outlined
 check egrep -q "'<style.*small'" $OUTDIR/$FILE           # not outlined
 rm -rf $OUTDIR
 
 echo TEST: outline_javascript outlines large scripts, but not small ones.
-FILE=outline_javascript.html
+FILE=outline_javascript.html?ModPagespeedRewriters=outline_javascript
 check $WGET_PREREQ $EXAMPLE_ROOT/$FILE
 check egrep -q "'<script.*src=.*large'" $OUTDIR/$FILE       # outlined
 check egrep -q "'<script.*small.*var hello'" $OUTDIR/$FILE  # not outlined
 rm -rf $OUTDIR
 
-echo TEST: directory is mapped to index.html.
-check "$WGET_PREREQ $EXAMPLE_ROOT"
-check "$WGET_PREREQ $EXAMPLE_ROOT/index.html"
-check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
+echo TEST: combine_heads combines heads.
+FILE=combine_heads.html?ModPagespeedRewriters=combine_heads
+check $WGET_PREREQ $EXAMPLE_ROOT/$FILE
+check [ `grep -ce '<head>' $OUTDIR/$FILE` = 1 ]
+rm -rf $OUTDIR
 
+echo TEST: rewrite_images inlines, compresses, and resizes.
+FILE=rewrite_images.html?ModPagespeedRewriters=rewrite_images
+URL=$EXAMPLE_ROOT/$FILE
+fetch_until $URL 'grep -c image/png' 1    # inlined
+check $WGET_PREREQ $EXAMPLE_ROOT/$FILE
+check [ `stat -c %s $OUTDIR/*1023x766*Puzzle*` -lt 241260 ]  # compressed
+check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
+rm -rf $OUTDIR

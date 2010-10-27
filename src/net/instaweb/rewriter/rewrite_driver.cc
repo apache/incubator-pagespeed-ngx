@@ -343,26 +343,34 @@ class ResourceDeleterCallback : public UrlAsyncFetcher::Callback {
 
 }  // namespace
 
-void RewriteDriver::FetchResource(
-    const ResourceNamer& resource,
+bool RewriteDriver::FetchResource(
+    const StringPiece& url,
     const MetaData& request_headers,
     MetaData* response_headers,
     Writer* writer,
     MessageHandler* message_handler,
     UrlAsyncFetcher::Callback* callback) {
   bool queued = false;
-  const ContentType* content_type = resource.ContentTypeFromExt();
-  if (content_type != NULL) {
-    OutputResource* output_resource = resource_manager_->
-        CreateUrlOutputResource(resource, content_type);
+  bool handled = false;
 
+  // Determine whether this URL matches our prefix pattern.  Note that
+  // the URL may have a shard applied to it.
+  ResourceNamer resource_namer;
+  int shard;
+  const ContentType* content_type = NULL;
+  if (resource_manager_->UrlToResourceNamer(url, &shard, &resource_namer) &&
+      ((content_type = NameExtensionToContentType(
+          StrCat(".", resource_namer.ext()))) != NULL)) {
+    handled = true;
+    OutputResource* output_resource = resource_manager_->
+        CreateUrlOutputResource(resource_namer, content_type);
     callback = new ResourceDeleterCallback(output_resource, callback);
     if (resource_manager_->FetchOutputResource(
             output_resource, writer, response_headers, message_handler)) {
       callback->Done(true);
       queued = true;
     } else {
-      StringPiece id = resource.id();
+      StringPiece id = resource_namer.id();
       StringFilterMap::iterator p = resource_filter_map_.find(
           std::string(id.data(), id.size()));
       if (p != resource_filter_map_.end()) {
@@ -381,6 +389,7 @@ void RewriteDriver::FetchResource(
     // no filter.
     callback->Done(false);
   }
+  return handled;
 }
 
 }  // namespace net_instaweb

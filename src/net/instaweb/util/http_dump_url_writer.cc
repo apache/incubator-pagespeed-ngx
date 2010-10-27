@@ -110,6 +110,11 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(const std::string& url,
     // system so we better pass the error message through.
     if (!ret) {
       response_headers->CopyFrom(compressed_response);
+      if (!response_headers->headers_complete()) {
+        response_headers->SetStatusAndReason(HttpStatus::kNotFound);
+        response_headers->ComputeCaching();
+        response_headers->set_headers_complete(true);
+      }
       response_writer->Write(contents, handler);
     }
   }

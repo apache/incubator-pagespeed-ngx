@@ -33,8 +33,7 @@ static const char kSeparatorChar = kSeparatorString[0];
 
 namespace net_instaweb {
 
-bool ResourceNamer::Decode(const ResourceManager* resource_manager,
-                           const StringPiece& encoded_string) {
+bool ResourceNamer::Decode(const StringPiece& encoded_string) {
   std::vector<StringPiece> names;
   SplitStringPieceToVector(encoded_string, kSeparatorString, &names, true);
   bool ret = (names.size() == 4);

@@ -132,8 +132,9 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_TRUE(file_system_.RemoveFile(output_filename.c_str(),
                                         &message_handler_));
 
-    driver.FetchResource(namer, request_headers, &response_headers, &writer,
-                         &message_handler_, &callback);
+    EXPECT_TRUE(driver.FetchResource(
+        resource, request_headers, &response_headers, &writer,
+        &message_handler_, &callback));
     EXPECT_EQ(expected_content, contents);
     EXPECT_EQ(1, resource_fetches->Get());
   }
@@ -259,7 +260,7 @@ class RewriterTest : public ResourceManagerTestBase {
     std::string fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
     DummyCallback dummy_callback;
-    rewrite_driver_.FetchResource(namer, request_headers,
+    rewrite_driver_.FetchResource(combine_url, request_headers,
                                   &response_headers, &writer,
                                   &message_handler_, &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
@@ -274,7 +275,7 @@ class RewriterTest : public ResourceManagerTestBase {
     message_handler_.Message(kInfo, "Now with serving.");
     file_system_.enable();
     CheckedResourceNamer(other_resource_manager.get(), combine_url, &namer);
-    other_driver_.FetchResource(namer, request_headers,
+    other_driver_.FetchResource(combine_url, request_headers,
                                 &other_response_headers, &writer,
                                 &message_handler_, &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code());
@@ -360,7 +361,7 @@ class RewriterTest : public ResourceManagerTestBase {
     AppendDefaultHeaders(kContentTypeJpeg, resource_manager.get(), &headers);
 
     writer.Write(headers, &message_handler_);
-    rewrite_driver_.FetchResource(namer, request_headers,
+    rewrite_driver_.FetchResource(src_string, request_headers,
                                   &response_headers, &writer,
                                   &message_handler_, &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) <<
@@ -391,7 +392,7 @@ class RewriterTest : public ResourceManagerTestBase {
     fetched_resource_content.clear();
     SimpleMetaData redirect_headers;
     CheckedResourceNamer(other_resource_manager.get(), src_string, &namer);
-    other_driver_.FetchResource(namer, request_headers,
+    other_driver_.FetchResource(src_string, request_headers,
                                 &redirect_headers, &writer,
                                 &message_handler_, &dummy_callback);
     std::string expected_redirect =
@@ -413,7 +414,7 @@ class RewriterTest : public ResourceManagerTestBase {
     SimpleMetaData other_headers;
     size_t header_size = fetched_resource_content.size();
     CheckedResourceNamer(other_resource_manager.get(), src_string, &namer);
-    other_driver_.FetchResource(namer, request_headers,
+    other_driver_.FetchResource(src_string, request_headers,
                                 &other_headers, &writer,
                                 &message_handler_, &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, other_headers.status_code());

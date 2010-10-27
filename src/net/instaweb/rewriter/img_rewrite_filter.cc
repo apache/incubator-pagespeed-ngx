@@ -238,7 +238,7 @@ const ContentType* ImgRewriteFilter::ImageToContentType(
   if (image != NULL) {
     // Even if we know the content type from the extension coming
     // in, the content-type can change as a result of compression,
-    // e.g. gif to png, or anying to vp8.
+    // e.g. gif to png, or anything to vp8.
     switch (image->image_type()) {
       case Image::IMAGE_JPEG:
         content_type = &kContentTypeJpeg;

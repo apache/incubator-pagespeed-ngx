@@ -135,7 +135,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     RemoveUrlPrefix(&url);
 
     ResourceNamer full_name;
-    ASSERT_TRUE(full_name.Decode(resource_manager_, url));
+    ASSERT_TRUE(full_name.Decode(url));
     EXPECT_EQ(content_type, NameExtensionToContentType(url));
     EXPECT_EQ(filter_prefix, full_name.id());
     EXPECT_EQ(name, full_name.name());

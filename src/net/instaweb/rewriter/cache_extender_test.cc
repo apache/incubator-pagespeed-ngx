@@ -46,6 +46,12 @@ namespace net_instaweb {
 class CacheExtenderTest : public ResourceManagerTestBase {
  protected:
 
+  virtual void SetUp() {
+    ResourceManagerTestBase::SetUp();
+    CacheExtender* extender = new CacheExtender(&rewrite_driver_, kFilterId);
+    rewrite_driver_.AddRewriteFilter(extender);
+  }
+
   void InitMetaData(const StringPiece& resource_name,
                     const ContentType& content_type,
                     const StringPiece& content,
@@ -64,8 +70,6 @@ class CacheExtenderTest : public ResourceManagerTestBase {
     InitMetaData("a.css", kContentTypeCss, kCssData, ttl, &css_header_);
     InitMetaData("b.jpg", kContentTypeJpeg, kImageData, ttl, &img_header_);
     InitMetaData("c.js", kContentTypeJavascript, kJsData, ttl, &js_header_);
-    CacheExtender* extender = new CacheExtender(&rewrite_driver_, kFilterId);
-    rewrite_driver_.AddRewriteFilter(extender);
   }
 
   // Generate HTML loading 3 resources with the specified URLs
@@ -83,20 +87,23 @@ class CacheExtenderTest : public ResourceManagerTestBase {
     bool done_;
   };
 
-  bool ServeResource(const StringPiece& resource, const char* ext,
+  bool ServeResource(const StringPiece& name, const char* ext,
                      std::string* content) {
-    ResourceNamer namer;
-    namer.set_id(kFilterId);
-    namer.set_name(resource);
-    namer.set_hash("0");  // mock hasher makes this easy
-    namer.set_ext(ext);
     SimpleMetaData request_headers, response_headers;
     content->clear();
     StringWriter writer(content);
     FetchCallback callback;
-    rewrite_driver_.FetchResource(namer, request_headers, &response_headers,
-                                  &writer, &message_handler_, &callback);
-    return callback.success();
+    ResourceNamer namer;
+    namer.set_id(kFilterId);
+    namer.set_name(name);
+    namer.set_hash("0");
+    namer.set_ext(ext);
+    std::string url = StrCat(
+        resource_manager_->UrlPrefixFor(namer), namer.PrettyName());
+    bool fetched = rewrite_driver_.FetchResource(
+        url, request_headers, &response_headers, &writer, &message_handler_,
+        &callback);
+    return fetched && callback.success();
   }
 
   SimpleMetaData css_header_;
@@ -130,12 +137,19 @@ TEST_F(CacheExtenderTest, NoExtendOriginUncacheable) {
 
 TEST_F(CacheExtenderTest, ServeFiles) {
   std::string content;
+
+  InitTest(100);
   ASSERT_TRUE(ServeResource(",htest,c,_a,s", "css", &content));
   EXPECT_EQ(std::string(kCssData), content);
   ASSERT_TRUE(ServeResource(",htest,c,_b,j", "jpg", &content));
   EXPECT_EQ(std::string(kImageData), content);
   ASSERT_TRUE(ServeResource(",htest,c,_c,l", "js", &content));
   EXPECT_EQ(std::string(kJsData), content);
+
+  // TODO(jmarantz): make 3 variations of this test:
+  //  1. Gets the data from the cache, with no mock fetchers, null file system
+  //  2. Gets the data from the file system, with no cache, no mock fetchers.
+  //  3. Gets the data from the mock fetchers: no cache, no file system.
 }
 
 }  // namespace net_instaweb

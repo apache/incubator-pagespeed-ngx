@@ -37,8 +37,7 @@ class ResourceNamer {
 
   // Decodes an entire resource name (ID.HASH.NAME.EXT), placing
   // the result in the fields in this encoder.
-  bool Decode(const ResourceManager* resource_manager,
-              const StringPiece& encoded_string);
+  bool Decode(const StringPiece& encoded_string);
 
   // Encodes the fields in this encoder into an absolute url, with the
   // trailing portion "ID.HASH.NAME.EXT".

@@ -52,7 +52,7 @@ TEST_F(ResourceNamerTest, TestEncode) {
 TEST_F(ResourceNamerTest, TestDecode) {
   ResourceManager manager("file_prefix/", "url_prefix/", 0,
                           NULL, NULL, NULL, NULL, NULL, NULL);
-  EXPECT_TRUE(full_name_.Decode(&manager_, "id.hash.name.ext"));
+  EXPECT_TRUE(full_name_.Decode("id.hash.name.ext"));
   EXPECT_EQ("id", full_name_.id());
   EXPECT_EQ("name", full_name_.name());
   EXPECT_EQ("hash", full_name_.hash());
@@ -60,12 +60,12 @@ TEST_F(ResourceNamerTest, TestDecode) {
 }
 
 TEST_F(ResourceNamerTest, TestDecodeTooMany) {
-  EXPECT_FALSE(full_name_.Decode(&manager_, "id.name.hash.ext.extra_dot"));
+  EXPECT_FALSE(full_name_.Decode("id.name.hash.ext.extra_dot"));
   EXPECT_FALSE(full_name_.DecodeHashExt("id.hash.ext"));
 }
 
 TEST_F(ResourceNamerTest, TestDecodeNotEnough) {
-  EXPECT_FALSE(full_name_.Decode(&manager_, "id.name.hash"));
+  EXPECT_FALSE(full_name_.Decode("id.name.hash"));
   EXPECT_FALSE(full_name_.DecodeHashExt("ext"));
 }
 

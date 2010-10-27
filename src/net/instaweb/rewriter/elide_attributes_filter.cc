@@ -81,7 +81,7 @@ struct TagAttrValue {
 };
 
 const TagAttrValue kDefaultList[] = {
-  {"script", "language", NULL},
+  {"script", "language", "javascript"},
   {"script", "type", NULL},
   {"style", "type", NULL},
   {"br", "clear", "none"},

@@ -28,7 +28,7 @@ namespace {
 
 // This sample code comes from Douglas Crockford's jsmin example.
 // The same code is used to test jsmin in pagespeed.
-std::string kBeforeCompilation =
+const std::string kBeforeCompilation =
     "// is.js\n"
     "\n"
     "// (c) 2001 Douglas Crockford\n"
@@ -64,7 +64,7 @@ std::string kBeforeCompilation =
     "    is.gecko = true;\n"
     "}\n";
 
-std::string kTruncatedComment =
+const std::string kTruncatedComment =
     "// is.js\n"
     "\n"
     "// (c) 2001 Douglas Crockford\n"
@@ -78,7 +78,7 @@ std::string kTruncatedComment =
     "   identifies itself, but there is no standard way of doing it, "
     "and some of\n";
 
-std::string kTruncatedRewritten =
+const std::string kTruncatedRewritten =
     "// is.js\n"
     "\n"
     "// (c) 2001 Douglas Crockford\n"
@@ -92,11 +92,11 @@ std::string kTruncatedRewritten =
     "   identifies itself, but there is no standard way of doing it, "
     "and some of";
 
-std::string kTruncatedString =
+const std::string kTruncatedString =
     "var is = {\n"
     "    ie:      navigator.appName == 'Microsoft Internet Explo";
 
-std::string kAfterCompilation =
+const std::string kAfterCompilation =
     "var is={ie:navigator.appName=='Microsoft Internet Explorer',"
     "java:navigator.javaEnabled(),ns:navigator.appName=='Netscape',"
     "ua:navigator.userAgent.toLowerCase(),version:parseFloat("
@@ -193,6 +193,19 @@ TEST(JsCodeBlockTest, NoMinification) {
   EXPECT_FALSE(block.ProfitableToRewrite());
   EXPECT_EQ(kBeforeCompilation, block.Rewritten());
   ExpectStats(stats, 1, 0, 0, 0);
+}
+
+TEST(JsCodeBlockTest, DealWithSgmlComment) {
+  SimpleStats stats;
+  JavascriptRewriteConfig::Initialize(&stats);
+  JavascriptRewriteConfig config(&stats);
+  GoogleMessageHandler handler;
+  const std::string original = "  <!--  \nvar x = 1;\n  //-->  ";
+  const std::string expected = "<!--\nvar x=1;\n//-->";
+  JavascriptCodeBlock block(original, &config, &handler);
+  EXPECT_TRUE(block.ProfitableToRewrite());
+  EXPECT_EQ(expected, block.Rewritten());
+  ExpectStats(stats, 1, 1, 0, original.size() - expected.size());
 }
 
 }  // namespace

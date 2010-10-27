@@ -125,7 +125,7 @@ bool ResourceManager::UrlToResourceNamer(
       suffix = url.substr(prefix.size());
     }
   }
-  return (!suffix.empty() && resource->Decode(this, suffix));
+  return (!suffix.empty() && resource->Decode(suffix));
 }
 
 void ResourceManager::ValidateShardsAgainstUrlPrefixPattern() {

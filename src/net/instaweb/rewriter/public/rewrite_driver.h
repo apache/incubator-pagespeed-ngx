@@ -118,7 +118,16 @@ class RewriteDriver {
   // base URL of a site if it is explicitly set.
   void SetBaseUrl(const StringPiece& base);
 
-  void FetchResource(const ResourceNamer& resource,
+  // Initiates an async fetch for a rewritten resource with the specified name.
+  // If resource matches the pattern of what the driver is authorized to serve,
+  // then true is returned and the caller must listen on the callback for the
+  // completion of the request.
+  //
+  // If the pattern does not match, then false is returned, and the request will
+  // have to be 404'd by the server passed to some other software to handle.
+  // In this case, the callback will be called with Done(false) immediately
+  // before the return.
+  bool FetchResource(const StringPiece& resource,
                      const MetaData& request_headers,
                      MetaData* response_headers,
                      Writer* writer,
