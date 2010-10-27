@@ -92,7 +92,7 @@ class ResourceNamer {
   // Utility functions
 
   // Name suitable for debugging and logging
-  const char* PrettyName() const;
+  std::string PrettyName() const {return  InternalEncode(); }
 
   // Compute a hash of non-path portions of the represented url.
   size_t Hash() const;

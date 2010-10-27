@@ -30,6 +30,7 @@
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
+#include "net/instaweb/util/public/url_segment_encoder.h"
 
 class GURL;
 
@@ -88,6 +89,16 @@ class ResourceManager {
       const StringPiece& filter_prefix, const ContentType* type,
       MessageHandler* handler);
 
+  // Constructs an output resource corresponding to the specified input resource
+  // and encoded using the provided encoder.
+  OutputResource* CreateOutputResourceFromResource(
+    const StringPiece& filter_prefix,
+    const ContentType* content_type,
+    UrlSegmentEncoder* encoder,
+    Resource* input_resource,
+    MessageHandler* handler);
+
+
   // Creates an output resource where the name is provided by the rewriter.
   // The intent is to be able to derive the content from the name, for example,
   // by encoding URLs and metadata.
@@ -120,7 +131,9 @@ class ResourceManager {
                                           const ContentType* type);
 
   // Creates an input resource with the url evaluated based on input_url
-  // which may need to be absolutified relative to base_url.
+  // which may need to be absolutified relative to base_url.  Returns NULL if
+  // the input resource url isn't valid, or can't legally be rewritten in the
+  // context of this page.
   // TODO(jmaessen, jmarantz): Axe after switchover to avoid
   // input resource creation without permission?  Only remaining call site
   // is in css_combine_filter.
@@ -128,9 +141,30 @@ class ResourceManager {
                                 const StringPiece& input_url,
                                 MessageHandler* handler);
 
+  // Create input resource from input_url, if it is legal in the context of
+  // base_gurl, and if the resource can be read from cache.  This is a common
+  // case for filters.
+  Resource* CreateInputResourceAndReadIfCached(const GURL& base_gurl,
+                                               const StringPiece& input_url,
+                                               MessageHandler* handler);
+
+  // Create an input resource by decoding output_resource using the given
+  // encoder, checking the decoded url for legality.
+  Resource* CreateInputResourceFromOutputResource(
+    UrlSegmentEncoder* encoder,
+    OutputResource* output_resource,
+    MessageHandler* handler);
+
   // Creates an input resource with the given gurl, already absolute and valid.
+  // Use only for resource fetches that lack a page context.  Does not check
+  // that the given resource can subsequently be rewritten in the context of a
+  // particular page url.
   Resource* CreateInputResourceGURL(const GURL& gurl, MessageHandler* handler);
 
+  // Creates an input resource from the given absolute url.  Does not check that
+  // the given resource can subsequently be rewritten in the context of a
+  // particular page url.  If you have a GURL, prefer CreateInputResourceGURL,
+  // otherwise use this.
   Resource* CreateInputResourceAbsolute(const StringPiece& absolute_url,
                                         MessageHandler* handler);
 

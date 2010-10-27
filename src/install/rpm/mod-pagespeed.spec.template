@@ -1,0 +1,169 @@
+#------------------------------------------------------------------------------
+#   mod-pagespeed.spec
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+#   Prologue information
+#------------------------------------------------------------------------------
+Summary         : @@PACKAGE@@
+License         : Apache Software License
+Name            : @@PACKAGE@@-@@CHANNEL@@
+Version         : @@VERSION@@
+Release         : @@REVISION@@
+Group           : System Environment/Daemons
+Vendor          : @@COMPANY_FULLNAME@@
+Url             : @@PRODUCTURL@@
+Packager        : @@MAINTNAME@@ <@@MAINTMAIL@@>
+
+#------------------------------------------------------------------------------
+# Tested on:
+# TODO
+#------------------------------------------------------------------------------
+
+Provides        : @@PROVIDES@@ = %{version}
+Requires        : @@DEPENDS@@
+Conflicts       : @@REPLACES@@
+
+#------------------------------------------------------------------------------
+#   Description
+#------------------------------------------------------------------------------
+%Description
+@@SHORTDESC@@
+
+@@FULLDESC@@
+
+#------------------------------------------------------------------------------
+#   Build rule - How to make the package
+#------------------------------------------------------------------------------
+%build
+
+#------------------------------------------------------------------------------
+#       Installation rule - how to install it (note that it
+#   gets installed into a temp directory given by $RPM_BUILD_ROOT)
+#------------------------------------------------------------------------------
+%install
+rm -rf "$RPM_BUILD_ROOT"
+
+if [ -z "@@STAGEDIR@@" -o ! -d "@@STAGEDIR@@" ] ; then
+    echo "@@STAGEDIR@@ appears to be incorrectly set - aborting"
+    exit 1
+fi
+
+install -m 755 -d \
+  "$RPM_BUILD_ROOT/etc" \
+  "$RPM_BUILD_ROOT/usr" \
+  "$RPM_BUILD_ROOT/var"
+# This is hard coded for now
+cp -a "@@STAGEDIR@@/etc/" "$RPM_BUILD_ROOT/"
+cp -a "@@STAGEDIR@@/usr/" "$RPM_BUILD_ROOT/"
+cp -a "@@STAGEDIR@@/var/" "$RPM_BUILD_ROOT/"
+
+#------------------------------------------------------------------------------
+#   Rule to clean up a build
+#------------------------------------------------------------------------------
+%clean
+rm -rf "$RPM_BUILD_ROOT"
+
+#------------------------------------------------------------------------------
+#   Files listing.
+#------------------------------------------------------------------------------
+%files
+%defattr(-,root,root)
+@@APACHE_MODULEDIR@@/mod_pagespeed.so
+@@APACHE_CONFDIR@@/pagespeed.conf
+/etc/cron.daily/mod-pagespeed
+%attr(-, @@APACHE_USER@@, @@APACHE_USER@@) /var/mod_pagespeed/cache
+%attr(-, @@APACHE_USER@@, @@APACHE_USER@@) /var/mod_pagespeed/files
+
+#------------------------------------------------------------------------------
+#   Pre install script
+#------------------------------------------------------------------------------
+%pre
+
+exit 0
+
+
+
+
+#------------------------------------------------------------------------------
+#   Post install script
+#------------------------------------------------------------------------------
+%post
+
+@@include@@../common/rpm.include
+
+DEFAULTS_FILE="/etc/default/@@PACKAGE@@"
+if [ ! -e "$DEFAULTS_FILE" ]; then
+  echo 'repo_add_once="true"' > "$DEFAULTS_FILE"
+fi
+
+. "$DEFAULTS_FILE"
+
+if [ "$repo_add_once" = "true" ]; then
+  determine_rpm_package_manager
+
+  case $PACKAGEMANAGER in
+  "yum")
+    install_yum
+    ;;
+  "urpmi")
+    install_urpmi
+    ;;
+  "yast")
+    install_yast
+    ;;
+  esac
+fi
+
+# Some package managers have locks that prevent everything from being
+# configured at install time, so wait a bit then kick the cron job to do
+# whatever is left. Probably the db will be unlocked by then, but if not, the
+# cron job will keep retrying.
+# Do this with 'at' instead of a backgrounded shell because zypper waits on all
+# sub-shells to finish before it finishes, which is exactly the opposite of
+# what we want here. Also preemptively start atd because for some reason it's
+# not always running, which kind of defeats the purpose of having 'at' as a
+# required LSB command.
+service atd start
+echo "sh /etc/cron.daily/@@PACKAGE@@" | at now + 2 minute
+exit 0
+
+
+#------------------------------------------------------------------------------
+#   Pre uninstallation script
+#------------------------------------------------------------------------------
+%preun
+
+if [ "$1" -eq "0" ]; then
+  mode="uninstall"
+elif [ "$1" -eq "1" ]; then
+  mode="upgrade"
+fi
+
+@@include@@../common/rpm.include
+
+# On Debian we only remove when we purge. However, RPM has no equivalent to
+# dpkg --purge, so this is all disabled.
+#
+#determine_rpm_package_manager
+#
+#case $PACKAGEMANAGER in
+#"yum")
+#  remove_yum
+#  ;;
+#"urpmi")
+#  remove_urpmi
+#  ;;
+#"yast")
+#  remove_yast
+#  ;;
+#esac
+
+exit 0
+
+#------------------------------------------------------------------------------
+#   Post uninstallation script
+#------------------------------------------------------------------------------
+%postun
+
+exit 0

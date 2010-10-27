@@ -79,7 +79,7 @@ int instaweb_default_handler(const ResourceNamer& resource,
   ap_rputs("<html><head><title>Not Found</title></head>", request);
   ap_rputs("<body><h1>Apache server with mod_pagespeed</h1>OK", request);
   ap_rputs("<hr>NOT FOUND:", request);
-  ap_rputs(resource.PrettyName(), request);
+  ap_rputs(resource.PrettyName().c_str(), request);
   ap_rputs("</body></html>", request);
   return OK;
 }
@@ -97,7 +97,7 @@ bool fetch_resource(const request_rec* request,
   AsyncCallback callback(&message_handler);
 
   message_handler.Message(kWarning, "Fetching resource %s...",
-                          resource.PrettyName());
+                          resource.PrettyName().c_str());
 
   rewrite_driver->FetchResource(resource, request_headers,
                                 response_headers,
@@ -117,16 +117,16 @@ bool fetch_resource(const request_rec* request,
       serf_async_fetcher->Poll(remaining_us);
     }
     if (!callback.done()) {
-      message_handler.Error(resource.PrettyName(), 0,
+      message_handler.Error(resource.PrettyName().c_str(), 0,
                             "Timeout waiting for response");
     } else if (!callback.success()) {
-      message_handler.Error(resource.PrettyName(), 0, "Fetch failed.");
+      message_handler.Error(resource.PrettyName().c_str(), 0, "Fetch failed.");
     }
     ret = callback.done() && callback.success();
   }
   message_handler.Message(kWarning,
                           "...Fetched resource %s, ret=%d",
-                          resource.PrettyName(), ret);
+                          resource.PrettyName().c_str(), ret);
   return ret;
 }
 
@@ -188,8 +188,7 @@ int instaweb_handler(request_rec* request) {
       ret = DECLINED;
     }
     factory->ReleaseRewriteDriver(driver);
-  } else if (strcmp(request->handler,
-                    "mod_pagespeed_resource_generator") == 0) {
+  } else {
     /*
      * In some contexts we are seeing relative URLs passed
      * into request->unparsed_uri.  But when using mod_slurp, the rewritten
@@ -228,11 +227,6 @@ int instaweb_handler(request_rec* request) {
                     "mod_pagespeed: Declined request %s", url.c_str());
       ret = DECLINED;
     }
-  } else {
-    ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
-                  "Not mod_pagespeed request -- passing to next handler: %s.",
-                  request->handler);
-    ret = DECLINED;
   }
   return ret;
 }

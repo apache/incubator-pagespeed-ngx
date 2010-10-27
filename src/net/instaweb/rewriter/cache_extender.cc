@@ -72,66 +72,51 @@ void CacheExtender::StartElement(HtmlElement* element) {
   MessageHandler* message_handler = html_parse_->message_handler();
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
   if ((href != NULL) && html_parse_->IsRewritable(element)) {
-    const char* origin_url = href->value();
-    // TODO(jmaessen, jmarantz): Replace with partnership construction and
-    // check.
-    GURL origin_gurl = html_parse_->gurl().Resolve(origin_url);
-    if (origin_gurl.is_valid()) {
-      scoped_ptr<Resource> input_resource(
-          resource_manager_->CreateInputResourceGURL(
-              origin_gurl, message_handler));
+    scoped_ptr<Resource> input_resource(
+        resource_manager_->CreateInputResourceAndReadIfCached(
+            html_parse_->gurl(), href->value(), message_handler));
+    // TODO(jmarantz): create an output resource to generate a new url,
+    // rather than doing the content-hashing here.
+    if (input_resource != NULL) {
+      const MetaData* headers = input_resource->metadata();
+      int64 now_ms = resource_manager_->timer()->NowMs();
 
-      // TODO(jmarantz): create an output resource to generate a new url,
-      // rather than doing the content-hashing here.
-      if ((input_resource != NULL) &&
-          input_resource->IsCacheable() &&
-          resource_manager_->ReadIfCached(input_resource.get(),
-                                          message_handler)) {
-        const MetaData* headers = input_resource->metadata();
-        int64 now_ms = resource_manager_->timer()->NowMs();
-
-        // We cannot cache-extend a resource that's completely uncacheable,
-        // as our serving-side image would b
-        if (!resource_manager_->http_cache()->force_caching() &&
-            !headers->IsCacheable()) {
-          if (not_cacheable_count_ != NULL) {
-            not_cacheable_count_->Add(1);
+      // We cannot cache-extend a resource that's completely uncacheable,
+      // as our serving-side image would b
+      if (!resource_manager_->http_cache()->force_caching() &&
+          !headers->IsCacheable()) {
+        if (not_cacheable_count_ != NULL) {
+          not_cacheable_count_->Add(1);
+        }
+      } else if (((headers->CacheExpirationTimeMs() - now_ms) <
+                  kMinThresholdMs) &&
+                 (input_resource->type() != NULL)) {
+        scoped_ptr<OutputResource> output(
+            resource_manager_->CreateOutputResourceFromResource(
+                filter_prefix_, input_resource->type(),
+                resource_manager_->url_escaper(), input_resource.get(),
+                message_handler));
+        CHECK(!output->IsWritten());
+        if (!output->HasValidUrl()) {
+          StringPiece contents(input_resource->contents());
+          std::string absolutified;
+          if (input_resource->type() == &kContentTypeCss) {
+            // TODO(jmarantz): find a mechanism to write this directly into
+            // the HTTPValue so we can reduce the number of times that we
+            // copy entire resources.
+            StringWriter writer(&absolutified);
+            CssTagScanner::AbsolutifyUrls(contents, input_resource->url(),
+                                          &writer, message_handler);
+            contents = absolutified;
           }
-        } else if (((headers->CacheExpirationTimeMs() - now_ms) <
-                    kMinThresholdMs) &&
-                   (input_resource->type() != NULL)) {
-          std::string url_safe_id;
-          const std::string& origin_gurl_spec = origin_gurl.spec();
-          StringPiece origin_url(origin_gurl_spec.data(),
-                                 origin_gurl_spec.size());
-          resource_manager_->url_escaper()->EncodeToUrlSegment(
-              origin_url, &url_safe_id);
-          scoped_ptr<OutputResource> output(
-              resource_manager_->CreateNamedOutputResource(
-                  filter_prefix_, url_safe_id, input_resource->type(),
-                  message_handler));
-          CHECK(!output->IsWritten());
-          if (!output->HasValidUrl()) {
-            StringPiece contents(input_resource->contents());
-            std::string absolutified;
-            if (input_resource->type() == &kContentTypeCss) {
-              // TODO(jmarantz): find a mechanism to write this directly into
-              // the HTTPValue so we can reduce the number of times that we
-              // copy entire resources.
-              StringWriter writer(&absolutified);
-              CssTagScanner::AbsolutifyUrls(contents, input_resource->url(),
-                                            &writer, message_handler);
-              contents = absolutified;
-            }
-            resource_manager_->Write(HttpStatus::kOK, contents, output.get(),
-                                     headers->CacheExpirationTimeMs(),
-                                     message_handler);
-          }
-          if (output->IsWritten()) {
-            href->SetValue(output->url());
-            if (extension_count_ != NULL) {
-              extension_count_->Add(1);
-            }
+          resource_manager_->Write(HttpStatus::kOK, contents, output.get(),
+                                   headers->CacheExpirationTimeMs(),
+                                   message_handler);
+        }
+        if (output->IsWritten()) {
+          href->SetValue(output->url());
+          if (extension_count_ != NULL) {
+            extension_count_->Add(1);
           }
         }
       }
@@ -148,9 +133,15 @@ bool CacheExtender::Fetch(OutputResource* output_resource,
                           UrlAsyncFetcher::Callback* callback) {
   std::string url, decoded_resource;
   bool ret = false;
-  if (resource_manager_->url_escaper()->DecodeFromUrlSegment(
-          output_resource->name(), &url)) {
-    fetcher->StreamingFetch(url, request_headers, response_headers,
+  // Here we construct a Resource in order to permission check the url, but do
+  // not read it; instead we simply pass the checked absolute url along to
+  // StreamingFetch.
+  scoped_ptr<Resource> input(
+      resource_manager_->CreateInputResourceFromOutputResource(
+          resource_manager_->url_escaper(), output_resource,
+          message_handler));
+  if (input != NULL) {
+    fetcher->StreamingFetch(input->url(), request_headers, response_headers,
                             writer, message_handler, callback);
     ret = true;
   } else {

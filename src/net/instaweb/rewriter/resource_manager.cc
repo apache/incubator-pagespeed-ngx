@@ -231,6 +231,20 @@ std::string ResourceManager::ConstructNameKey(
   return full_name.EncodeIdName();
 }
 
+// Constructs an output resource corresponding to the specified input resource
+// and encoded using the provided encoder.
+OutputResource* ResourceManager::CreateOutputResourceFromResource(
+    const StringPiece& filter_prefix,
+    const ContentType* content_type,
+    UrlSegmentEncoder* encoder,
+    Resource* input_resource,
+    MessageHandler* handler) {
+  // TODO: use prefix and suffix here, which ought to be stored in resource.
+  std::string name;
+  encoder->EncodeToUrlSegment(input_resource->url(), &name);
+  return CreateNamedOutputResource(filter_prefix, name, content_type, handler);
+}
+
 OutputResource* ResourceManager::CreateNamedOutputResource(
     const StringPiece& filter_prefix,
     const StringPiece& name,
@@ -291,6 +305,34 @@ Resource* ResourceManager::CreateInputResource(const GURL& base_gurl,
   }
 
   return CreateInputResourceGURL(url, handler);
+}
+
+Resource* ResourceManager::CreateInputResourceAndReadIfCached(
+    const GURL& base_gurl, const StringPiece& input_url,
+    MessageHandler* handler) {
+  Resource* input_resource =
+      CreateInputResource(base_gurl, input_url, handler);
+  if (input_resource == NULL ||
+      !input_resource->IsCacheable() ||
+      !ReadIfCached(input_resource, handler)) {
+    delete input_resource;
+    input_resource = NULL;
+  }
+  return input_resource;
+}
+
+Resource* ResourceManager::CreateInputResourceFromOutputResource(
+    UrlSegmentEncoder* encoder,
+    OutputResource* output_resource,
+    MessageHandler* handler) {
+  // TODO(jmaessen): do lawyer checking here, and preferably call
+  // CreateInputResourceGURL instead.
+  Resource* input_resource = NULL;
+  std::string input_url;
+  if (encoder->DecodeFromUrlSegment(output_resource->name(), &input_url)) {
+    input_resource = CreateInputResourceAbsolute(input_url, handler);
+  }
+  return input_resource;
 }
 
 Resource* ResourceManager::CreateInputResourceAbsolute(

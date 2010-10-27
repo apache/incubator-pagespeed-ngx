@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# Copyright (c) 2009 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# TODO
+# - handle other distros (e.g. non-apt).
+
+@@include@@apt.include
+
+if [ -x "$APT_GET" ]; then
+  update_sources_lists
+  # If the repo was just added, force a cache update.
+  if [ $? -eq 1 ]; then
+    install_key
+    "$APT_GET" -qq update
+  fi
+
+  # TODO(mmoss) detect if apt cache is stale (> 1 day) and force update?
+
+  # Just try to install the packge. If it's already installed, apt-get won't do
+  # anything.
+  "$APT_GET" install -y -q @@PACKAGE@@
+fi
+

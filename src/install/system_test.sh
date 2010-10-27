@@ -121,3 +121,8 @@ check egrep -q "'<script.*src=.*large'" $OUTDIR/$FILE       # outlined
 check egrep -q "'<script.*small.*var hello'" $OUTDIR/$FILE  # not outlined
 rm -rf $OUTDIR
 
+echo TEST: directory is mapped to index.html.
+check "$WGET_PREREQ $EXAMPLE_ROOT"
+check "$WGET_PREREQ $EXAMPLE_ROOT/index.html"
+check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
+

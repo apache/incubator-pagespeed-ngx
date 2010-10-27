@@ -1,0 +1,42 @@
+#!/bin/sh
+#
+# Copyright (c) 2009 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# This script is part of the @@PACKAGE@@ package.
+#
+# It creates the repository configuration file for package updates, and it
+# monitors that config to see if it has been disabled by the overly aggressive
+# distro upgrade process (e.g.  intrepid -> jaunty). When this situation is
+# detected, the respository will be re-enabled. If the respository is disabled
+# for any other reason, this won't re-enable it.
+#
+# This functionality can be controlled by creating the $DEFAULTS_FILE and
+# setting "repo_add_once" and/or "repo_reenable_on_distupgrade" to "true" or
+# "false" as desired. An empty $DEFAULTS_FILE is the same as setting both values
+# to "false".
+
+@@include@@apt.include
+
+## MAIN ##
+DEFAULTS_FILE="/etc/default/@@PACKAGE@@"
+if [ -r "$DEFAULTS_FILE" ]; then
+  . "$DEFAULTS_FILE"
+fi
+
+if [ "$repo_add_once" = "true" ]; then
+  install_key
+  create_sources_lists
+  RES=$?
+  # Sources creation succeeded, so stop trying.
+  if [ $RES -ne 2 ]; then
+    sed -i -e 's/[[:space:]]*repo_add_once=.*/repo_add_once="false"/' "$DEFAULTS_FILE"
+  fi
+else
+  update_bad_sources
+fi
+
+if [ "$repo_reenable_on_distupgrade" = "true" ]; then
+  handle_distro_upgrade
+fi

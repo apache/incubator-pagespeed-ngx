@@ -1,0 +1,116 @@
+# Recursively replace @@include@@ template variables with the referenced file,
+# and write the resulting text to stdout.
+process_template_includes() {
+  INCSTACK+="$1->"
+  # Includes are relative to the file that does the include.
+  INCDIR=$(dirname $1)
+  # Clear IFS so 'read' doesn't trim whitespace
+  local OLDIFS="$IFS"
+  IFS=''
+  while read -r LINE
+  do
+    INCLINE=$(sed -e '/^[[:space:]]*@@include@@/!d' <<<$LINE)
+    if [ -n "$INCLINE" ]; then
+      INCFILE=$(echo $INCLINE | sed -e "s#@@include@@\(.*\)#\1#")
+      # Simple filename match to detect cyclic includes.
+      CYCLE=$(sed -e "\#$INCFILE#"'!d' <<<$INCSTACK)
+      if [ "$CYCLE" ]; then
+        echo "ERROR: Possible cyclic include detected." 1>&2
+        echo "$INCSTACK$INCFILE" 1>&2
+        exit 1
+      fi
+      if [ ! -r "$INCDIR/$INCFILE" ]; then
+        echo "ERROR: Couldn't read include file: $INCDIR/$INCFILE" 1>&2
+        exit 1
+      fi
+      process_template_includes "$INCDIR/$INCFILE"
+    else
+      echo "$LINE"
+    fi
+  done < "$1"
+  IFS="$OLDIFS"
+  INCSTACK=${INCSTACK%"$1->"}
+}
+
+# Replace template variables (@@VARNAME@@) in the given template file. If a
+# second argument is given, save the processed text to that filename, otherwise
+# modify the template file in place.
+process_template() (
+  # Don't worry if some of these substitution variables aren't set.
+  # Note that this function is run in a sub-shell so we don't leak this
+  # setting, since we still want unbound variables to be an error elsewhere.
+  set +u
+
+  local TMPLIN="$1"
+  if [ -z "$2" ]; then
+    local TMPLOUT="$TMPLIN"
+  else
+    local TMPLOUT="$2"
+  fi
+  # Process includes first so included text also gets substitutions.
+  TMPLINCL="$(process_template_includes "$TMPLIN")"
+  sed \
+    -e "s#@@PACKAGE@@#${PACKAGE}#g" \
+    -e "s#@@CHANNEL@@#${CHANNEL}#g" \
+    -e "s#@@COMPANY_FULLNAME@@#${COMPANY_FULLNAME}#g" \
+    -e "s#@@VERSION@@#${VERSION}#g" \
+    -e "s#@@REVISION@@#${REVISION}#g" \
+    -e "s#@@VERSIONFULL@@#${VERSIONFULL}#g" \
+    -e "s#@@BUILDDIR@@#${BUILDDIR}#g" \
+    -e "s#@@STAGEDIR@@#${STAGEDIR}#g" \
+    -e "s#@@SCRIPTDIR@@#${SCRIPTDIR}#g" \
+    -e "s#@@PRODUCTURL@@#${PRODUCTURL}#g" \
+    -e "s#@@PREDEPENDS@@#${PREDEPENDS}#g" \
+    -e "s#@@DEPENDS@@#${DEPENDS}#g" \
+    -e "s#@@PROVIDES@@#${PROVIDES}#g" \
+    -e "s#@@REPLACES@@#${REPLACES}#g" \
+    -e "s#@@CONFLICTS@@#${CONFLICTS}#g" \
+    -e "s#@@ARCHITECTURE@@#${HOST_ARCH}#g" \
+    -e "s#@@MAINTNAME@@#${MAINTNAME}#g" \
+    -e "s#@@MAINTMAIL@@#${MAINTMAIL}#g" \
+    -e "s#@@REPOCONFIG@@#${REPOCONFIG}#g" \
+    -e "s#@@SHORTDESC@@#${SHORTDESC}#g" \
+    -e "s#@@FULLDESC@@#${FULLDESC}#g" \
+    -e "s#@@APACHE_CONFDIR@@#${APACHE_CONFDIR}#g" \
+    -e "s#@@APACHE_MODULEDIR@@#${APACHE_MODULEDIR}#g" \
+    -e "s#@@APACHE_USER@@#${APACHE_USER}#g" \
+    -e "s#@@MODPAGESPEED_CACHE_ROOT@@#${MODPAGESPEED_CACHE_ROOT}#g" \
+    > "$TMPLOUT" <<< "$TMPLINCL"
+)
+
+# Setup the installation directory hierachy in the package staging area.
+prep_staging_common() {
+  install -m 755 -d \
+    "${STAGEDIR}${APACHE_CONFDIR}" \
+    "${STAGEDIR}${APACHE_MODULEDIR}" \
+    "${STAGEDIR}${MODPAGESPEED_CACHE_ROOT}/files" \
+    "${STAGEDIR}${MODPAGESPEED_CACHE_ROOT}/cache"
+}
+
+get_version_info() {
+  # Default to a bogus low version, so if somebody creates and installs
+  # a package with no version info, it won't prevent upgrading when
+  # trying to install a properly versioned package (i.e. a proper
+  # package will always be "newer").
+  VERSION="0.0.0.0"
+  # Use epoch timestamp so packages with bogus versions still increment
+  # and will upgrade older bogus-versioned packages.
+  REVISION=$(date +"%s")
+  # Default to non-official build since official builds set this
+  # properly.
+  OFFICIAL_BUILD=0
+
+  VERSIONFILE="${BUILDDIR}/installer/version.txt"
+  if [ -f "${VERSIONFILE}" ]; then
+    source "${VERSIONFILE}"
+    VERSION="${MAJOR}.${MINOR}.${BUILD}.${PATCH}"
+    REVISION="${LASTCHANGE}"
+  fi
+}
+
+stage_install_common() {
+  echo "Staging common install files in '${STAGEDIR}'..."
+
+  # app and resources
+  install -m 644 -s "${BUILDDIR}/libmod_pagespeed.so" "${STAGEDIR}${APACHE_MODULEDIR}/mod_pagespeed.so"
+}

@@ -1,0 +1,1 @@
+LoadModule pagespeed_module @@APACHE_MODULEDIR@@/mod_pagespeed.so

@@ -10,6 +10,11 @@
     # the mod_deflate section below.
     SetOutputFilter MOD_PAGESPEED_OUTPUT_FILTER;DEFLATE
 
+    # Give mod_pagespeed a chance to handle all requests.
+    <Location />
+          SetHandler mod_pagespeed_resource_generator
+    </Location>
+
     # This page lets you view statistics about the mod_pagespeed module.
     <Location /mod_pagespeed_statistics>
         Order allow,deny
@@ -26,8 +31,6 @@
 
     # This handles the client-side instrumentation callbacks which are injected
     # by the add_instrumentation filter.
-    # You can use a different location by adding the ModPagespeedBeaconUrl
-    # directive; see the documentation on add_instrumentation.
     <Location /mod_pagespeed_beacon>
           SetHandler mod_pagespeed_beacon
     </Location>
@@ -36,12 +39,12 @@
 
     # TODO(jmaessen) This parameter will no longer be relevant once the new
     # resource naming spec is implemented.
-    ModPagespeedUrlPrefix                "http://HOSTNAME/mod_pagespeed/"
+    ModPagespeedUrlPrefix                "http://localhost/mod_pagespeed/"
 
-    ModPagespeedFileCachePath            "MOD_PAGESPEED_FILE_ROOT/cache/"
+    ModPagespeedFileCachePath            "/var/mod_pagespeed/cache/"
     ModPagespeedFileCacheSizeKb          102400
     ModPagespeedFileCacheCleanIntervalMs 3600000
-    ModPagespeedGeneratedFilePrefix      "MOD_PAGESPEED_FILE_ROOT/files/"
+    ModPagespeedGeneratedFilePrefix      "/var/mod_pagespeed/files/"
     ModPagespeedLRUCacheKbPerProcess     1024
     ModPagespeedLRUCacheByteLimit        16384
     ModPagespeedCssInlineMaxBytes        2048
@@ -152,79 +155,6 @@
     # When Apache is set up as a browser proxy, mod_pagespeed can record
     # web-sites as they are requested, so that an image of the web is built
     # up in the directory of a users choosing.
-    SLURP_DIR_COMMAND
-    SLURP_READ_ONLY_COMMAND
+    # SLURP_DIR_COMMAND
+    # SLURP_READ_ONLY_COMMAND
 </IfModule>
-
-
-# Most servers should configure mod_deflate.  Serving compressed
-# content is a critical ingredient to low-latency web-serving.
-#
-# In this example, from http://httpd.apache.org/docs/2.0/mod/mod_deflate.html
-# we compress everything except images
-#
-# mod_deflate will run after mod_pagespeed, because mod_pagespeed is registered
-# as type AP_FTYPE_RESOURCE, and mod_deflate is registered as type
-# AP_FTYPE_CONTENT_SET.
-
-<IfModule mod_deflate>
-    <Location />
-        # Insert filter
-        SetOutputFilter DEFLATE
-
-        # Netscape 4.x has some problems...
-        BrowserMatch ^Mozilla/4 gzip-only-text/html
-
-        # Netscape 4.06-4.08 have some more problems
-        BrowserMatch ^Mozilla/4\.0[678] no-gzip
-
-        # MSIE masquerades as Netscape, but it is fine
-        # BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
-
-        # NOTE: Due to a bug in mod_setenvif up to Apache 2.0.48
-        # the above regex won't work. You can use the following
-        # workaround to get the desired effect:
-        BrowserMatch \bMSI[E] !no-gzip !gzip-only-text/html
-
-        # Don't compress images
-        SetEnvIfNoCase Request_URI \
-        \.(?:gif|jpe?g|png)$ no-gzip dont-vary
-
-        # Make sure proxies don't deliver the wrong content
-        Header append Vary User-Agent env=!dont-vary
-    </Location>
-</IfModule>
-
-# Also on http://httpd.apache.org/docs/2.0/mod/mod_deflate.html is a simpler
-# mechanism to compress specific types:
-#   AddOutputFilterByType DEFLATE text/html text/plain text/xml
-
-
-# These caching headers are set up for the mod_pagespeed example, and
-# also serve as a demonstration of good values to set for the entire
-# site, if it is to be optimized by mod_pagespeed.
-<Directory APACHE_DOC_ROOT/mod_pagespeed_example>
-  # To enable to show that mod_pagespeed to rewrites web pages, we must
-  # turn off Etags for HTML files and eliminate caching altogether.
-  # mod_pagespeed should rewrite HTML files each time they are served.
-  # The first time mod_pagespeed sees an HTML file, it may not optimize
-  # it fully.  It will optimize better after the second view.  Caching
-  # defeats this behavior.
-  <FilesMatch "\.(html|htm)$">
-    Header unset Etag
-    Header set Cache-control "max-age=0, no-cache, no-store"
-  </FilesMatch>
-
-  # Images, styles, and javascript are all cache-extended for
-  # a year by rewriting URLs to include a content hash..  mod_pagespeed,
-  # can only do this if the resources are cacheable in the first place.
-  # The origin caching policy, set here to 10 minutes, dictates how
-  # frequently mod_pagespeed must re-read the content files and recompute
-  # the content-hash.  As long as the content doesn't actually change,
-  # the content-hash will remain the same, and the resources stored
-  # in browser caches will stay relevant.
-  <FilesMatch "\.(jpg|jpeg|gif|png|js|css)$">
-    Header unset Etag
-    Header set Cache-control "public, max-age=600"
-  </FilesMatch>
-</Directory>

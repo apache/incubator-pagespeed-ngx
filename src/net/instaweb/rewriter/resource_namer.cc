@@ -130,8 +130,4 @@ void ResourceNamer::CopyFrom(const ResourceNamer& other) {
   other.ext().CopyToString(&ext_);
 }
 
-const char* ResourceNamer::PrettyName() const {
-  return InternalEncode().c_str();
-}
-
 }  // namespace net_instaweb

@@ -1,0 +1,16 @@
+Source: @@PACKAGE@@-@@CHANNEL@@
+Section: httpd
+Priority: optional
+Maintainer: @@MAINTNAME@@ <@@MAINTMAIL@@>
+Build-Depends: dpkg-dev, devscripts, fakeroot
+Standards-Version: 3.8.0
+
+Package: @@PACKAGE@@-@@CHANNEL@@
+Provides: @@PROVIDES@@
+Replaces: @@REPLACES@@
+Conflicts: @@CONFLICTS@@
+Pre-Depends: @@PREDEPENDS@@
+Depends: ${shlibs:Depends}, @@DEPENDS@@
+Architecture: @@ARCHITECTURE@@
+Description: @@SHORTDESC@@
+ @@FULLDESC@@
