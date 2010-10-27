@@ -48,8 +48,7 @@ class CacheExtenderTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    CacheExtender* extender = new CacheExtender(&rewrite_driver_, kFilterId);
-    rewrite_driver_.AddRewriteFilter(extender);
+    rewrite_driver_.AddFilter(RewriteOptions::kExtendCache);
   }
 
   void InitMetaData(const StringPiece& resource_name,

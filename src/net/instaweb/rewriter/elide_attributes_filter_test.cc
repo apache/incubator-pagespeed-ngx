@@ -51,14 +51,6 @@ TEST_F(ElideAttributesFilterTest, RemoveAttrWithDefaultValue) {
                    "<head></head><body><form></form></body>");
 }
 
-TEST_F(ElideAttributesFilterTest, RemoveAttrWithIgnoredValue) {
-  ValidateExpected("remove_attr_with_ignored_value",
-                   "<head><script src=\"foo.js\" type=\"bleh\"></script>"
-                   "</head><body></body>",
-                   "<head><script src=\"foo.js\"></script>"
-                   "</head><body></body>");
-}
-
 // TODO(mdsteele): Add a test that ensures that this _doesn't_ happen for an
 // XHTML document (but HtmlParseTestBase automatically adds <html> around the
 // string, so we need to make sure the doctype is in the right place).

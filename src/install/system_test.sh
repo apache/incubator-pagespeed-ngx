@@ -90,6 +90,18 @@ function fetch_until() {
   done;
 }
 
+# Helper to set up most filter tests
+function test_filter() {
+  rm -rf $OUTDIR
+  FILTER_NAME=$1;
+  shift;
+  FILTER_DESCRIPTION=$@
+  echo TEST: $FILTER_NAME $FILTER_DESCRIPTION
+  FILE=$FILTER_NAME.html?ModPagespeedRewriters=$FILTER_NAME
+  URL=$EXAMPLE_ROOT/$FILE
+  FETCHED=$OUTDIR/$FILE
+}
+
 
 # General system tests
 
@@ -107,39 +119,34 @@ check "$WGET_PREREQ $EXAMPLE_ROOT"
 check "$WGET_PREREQ $EXAMPLE_ROOT/index.html"
 check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
-# Individual filter tests
+# Individual filter tests, in alphabetical order
 
-echo TEST: combine_css successfully combines 4 CSS files into 1.
-URL=$EXAMPLE_ROOT/combine_css.html?ModPagespeedRewriters=combine_css
+test_filter add_instrumentation adds 2 script tags
+check $WGET_PREREQ $URL
+check [ `cat $FETCHED | sed 's/>/>\n/g' | grep -c '<script'` = 2 ]
+
+test_filter combine_css combines 4 CSS files into 1.
 fetch_until $URL 'grep -c text/css' 1
 check $WGET_PREREQ $URL
-rm -rf $OUTDIR
 
-echo TEST: outline_css outlines large styles, but not small ones.
-FILE=outline_css.html?ModPagespeedRewriters=outline_css
-check $WGET_PREREQ $EXAMPLE_ROOT/$FILE
-check egrep -q "'<link.*text/css.*large'" $OUTDIR/$FILE  # outlined
-check egrep -q "'<style.*small'" $OUTDIR/$FILE           # not outlined
-rm -rf $OUTDIR
+test_filter combine_heads combines 2 heads into 1
+check $WGET_PREREQ $URL
+check [ `grep -ce '<head>' $FETCHED` = 1 ]
 
-echo TEST: outline_javascript outlines large scripts, but not small ones.
-FILE=outline_javascript.html?ModPagespeedRewriters=outline_javascript
-check $WGET_PREREQ $EXAMPLE_ROOT/$FILE
-check egrep -q "'<script.*src=.*large'" $OUTDIR/$FILE       # outlined
-check egrep -q "'<script.*small.*var hello'" $OUTDIR/$FILE  # not outlined
-rm -rf $OUTDIR
+test_filter outline_css outlines large styles, but not small ones.
+check $WGET_PREREQ $URL
+check egrep -q "'<link.*text/css.*large'" $FETCHED  # outlined
+check egrep -q "'<style.*small'" $FETCHED           # not outlined
 
-echo TEST: combine_heads combines heads.
-FILE=combine_heads.html?ModPagespeedRewriters=combine_heads
-check $WGET_PREREQ $EXAMPLE_ROOT/$FILE
-check [ `grep -ce '<head>' $OUTDIR/$FILE` = 1 ]
-rm -rf $OUTDIR
+test_filter outline_javascript outlines large scripts, but not small ones.
+check $WGET_PREREQ $URL
+check egrep -q "'<script.*src=.*large'" $FETCHED       # outlined
+check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
 
-echo TEST: rewrite_images inlines, compresses, and resizes.
-FILE=rewrite_images.html?ModPagespeedRewriters=rewrite_images
-URL=$EXAMPLE_ROOT/$FILE
+test_filter rewrite_images inlines, compresses, and resizes.
 fetch_until $URL 'grep -c image/png' 1    # inlined
-check $WGET_PREREQ $EXAMPLE_ROOT/$FILE
+check $WGET_PREREQ $URL
 check [ `stat -c %s $OUTDIR/*1023x766*Puzzle*` -lt 241260 ]  # compressed
 check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
+
 rm -rf $OUTDIR

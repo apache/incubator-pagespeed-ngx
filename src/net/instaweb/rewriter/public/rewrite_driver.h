@@ -98,9 +98,6 @@ class RewriteDriver {
   // Add any HtmlFilter to the HtmlParse chain and take ownership of the filter.
   void AddFilter(HtmlFilter* filter);
 
-  // Add any RewriteFilter and register the id with the RewriteDriver.
-  void AddRewriteFilter(RewriteFilter* filter);
-
   // Controls how HTML output is written.  Be sure to call this last, after
   // all other filters have been established.
   //
@@ -134,15 +131,6 @@ class RewriteDriver {
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
 
-  // TODO(jmarantz): eliminate FetchResource above
-  void FetchResourceFromPath(const StringPiece& path,
-                             const ResourceNamer& resource,
-                             const MetaData& request_headers,
-                             MetaData* response_headers,
-                             Writer* writer,
-                             MessageHandler* message_handler,
-                             UrlAsyncFetcher::Callback* callback);
-
   HtmlParse* html_parse() { return &html_parse_; }
   FileSystem* file_system() { return file_system_; }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
@@ -166,14 +154,12 @@ class RewriteDriver {
   bool ParseKeyInt64(const StringPiece& key, SetInt64Method m,
                      const std::string& flag);
 
-  void FetchHelper(
-      const ResourceNamer& resource,
-      OutputResource* output_resource,
-      const MetaData& request_headers,
-      MetaData* response_headers,
-      Writer* writer,
-      MessageHandler* message_handler,
-      UrlAsyncFetcher::Callback* callback);
+  // Adds RewriteFilter to the map, but does not put it in the html parse filter
+  // filter chain.  This allows it to serve resource requests.
+  void AddRewriteFilter(RewriteFilter* filter);
+
+  // Adds a pre-added rewrite filter to the html parse chain.
+  void EnableRewriteFilter(const char* id);
 
   StringFilterMap resource_filter_map_;
 

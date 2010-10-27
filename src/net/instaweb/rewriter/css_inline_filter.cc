@@ -55,9 +55,11 @@ void CssInlineFilter::EndElement(HtmlElement* element) {
       return;
     }
 
-    // Check if the link tag has a media attribute.  If so, don't inline.
+    // If the link tag has a media attribute whose value isn't "all", don't
+    // inline.  (Note that "all" is equivalent to having no media attribute;
+    // see http://www.w3.org/TR/html5/semantics.html#the-style-element)
     const char* media = element->AttributeValue(media_atom_);
-    if (media != NULL) {
+    if (media != NULL && strcmp(media, "all") != 0) {
       return;
     }
 

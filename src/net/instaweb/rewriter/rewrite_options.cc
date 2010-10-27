@@ -116,7 +116,6 @@ void RewriteOptions::SetUp() {
 
   // Core filter level includes the "core" filter set.
   level_filter_set_map_[kCoreFilters].insert(kAddHead);
-  level_filter_set_map_[kCoreFilters].insert(kMoveCssToHead);
   level_filter_set_map_[kCoreFilters].insert(kCombineCss);
   level_filter_set_map_[kCoreFilters].insert(kRewriteCss);
   level_filter_set_map_[kCoreFilters].insert(kRewriteJavascript);
@@ -124,7 +123,6 @@ void RewriteOptions::SetUp() {
   level_filter_set_map_[kCoreFilters].insert(kInlineJavascript);
   level_filter_set_map_[kCoreFilters].insert(kRewriteImages);
   level_filter_set_map_[kCoreFilters].insert(kInsertImgDimensions);
-  level_filter_set_map_[kCoreFilters].insert(kElideAttributes);
   level_filter_set_map_[kCoreFilters].insert(kExtendCache);
   level_filter_set_map_[kCoreFilters].insert(kRemoveQuotes);
   level_filter_set_map_[kCoreFilters].insert(kAddInstrumentation);

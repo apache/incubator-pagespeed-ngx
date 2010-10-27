@@ -22,7 +22,7 @@ vars = {
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
 
   "mod_spdy_trunk": "http://mod-spdy.googlecode.com/svn/trunk",
-  "mod_spdy_revision": "@142",
+  "mod_spdy_revision": "@143",
   "mod_spdy_deps_root": "src/third_party/mod_spdy_deps",
 
   "serf_src": "http://serf.googlecode.com/svn/tags/0.3.1",

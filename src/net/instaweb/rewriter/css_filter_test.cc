@@ -38,10 +38,7 @@ class CssFilterTest : public ResourceManagerTestBase {
   void ValidateRewriteInlineCss(const char* id,
                                 const StringPiece& css_input,
                                 const StringPiece& css_expected_output) {
-    // TODO(sligocki): When we open-source, replace this with
-    //   rewrite_driver_.RewriteCss()
-    CssFilter* css_filter = new CssFilter(&rewrite_driver_, "cf");
-    rewrite_driver_.AddRewriteFilter(css_filter);
+    rewrite_driver_.AddFilter(RewriteOptions::kRewriteCss);
 
     static const char prefix[] =
         "<head>\n"

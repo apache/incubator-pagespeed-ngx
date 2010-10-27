@@ -151,6 +151,22 @@ void RewriteDriver::AddFilter(RewriteOptions::Filter filter) {
 void RewriteDriver::AddFilters(const RewriteOptions& options) {
   CHECK(html_writer_filter_ == NULL);
 
+  // Add the rewriting filters to the map unconditionally -- we may
+  // need the to process resource requests due to a query-specific
+  // 'rewriters' specification.  We still use the passed-in options
+  // to determine whether they get added to the html parse filter chain.
+  AddRewriteFilter(new CssCombineFilter(this, kCssCombiner));
+  AddRewriteFilter(new CssFilter(this, kCssFilter));
+  AddRewriteFilter(new JavascriptFilter(this, kJavascriptMin));
+  AddRewriteFilter(
+      new ImgRewriteFilter(
+          this,
+          options.Enabled(RewriteOptions::kDebugLogImgTags),
+          options.Enabled(RewriteOptions::kInsertImgDimensions),
+          kImageCompression,
+          options.img_inline_max_bytes()));
+  AddRewriteFilter(new CacheExtender(this, kCacheExtender));
+
   // This function defines the order that filters are run.  We document
   // in pagespeed.conf.template that the order specified in the conf
   // file does not matter, but we give the filters there in the order
@@ -204,15 +220,15 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
     // Combine external CSS resources after we've outlined them.
     // CSS files in html document.  This can only be called
     // once and requires a resource_manager to be set.
-    AddRewriteFilter(new CssCombineFilter(this, kCssCombiner));
+    EnableRewriteFilter(kCssCombiner);
   }
   if (options.Enabled(RewriteOptions::kRewriteCss)) {
-    AddRewriteFilter(new CssFilter(this, kCssFilter));
+    EnableRewriteFilter(kCssFilter);
   }
   if (options.Enabled(RewriteOptions::kRewriteJavascript)) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
     // interaction.
-    AddRewriteFilter(new JavascriptFilter(this, kJavascriptMin));
+    EnableRewriteFilter(kJavascriptMin);
   }
   if (options.Enabled(RewriteOptions::kInlineCss)) {
     // Inline small CSS files.  Give CssCombineFilter and CSS minification a
@@ -229,13 +245,7 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
                                  options.js_inline_max_bytes()));
   }
   if (options.Enabled(RewriteOptions::kRewriteImages)) {
-    AddRewriteFilter(
-        new ImgRewriteFilter(
-            this,
-            options.Enabled(RewriteOptions::kDebugLogImgTags),
-            options.Enabled(RewriteOptions::kInsertImgDimensions),
-            kImageCompression,
-            options.img_inline_max_bytes()));
+    EnableRewriteFilter(kImageCompression);
   }
   if (options.Enabled(RewriteOptions::kRemoveComments)) {
     AddFilter(new RemoveCommentsFilter(&html_parse_));
@@ -252,7 +262,7 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
   }
   if (options.Enabled(RewriteOptions::kExtendCache)) {
     // Extend the cache lifetime of resources.
-    AddRewriteFilter(new CacheExtender(this, kCacheExtender));
+    EnableRewriteFilter(kCacheExtender);
   }
   if (options.Enabled(RewriteOptions::kLeftTrimUrls)) {
     // Trim extraneous prefixes from urls in attribute values.
@@ -293,6 +303,12 @@ void RewriteDriver::AddFilter(HtmlFilter* filter) {
   html_parse_.AddFilter(filter);
 }
 
+void RewriteDriver::EnableRewriteFilter(const char* id) {
+  RewriteFilter* filter = resource_filter_map_[id];
+  CHECK(filter);
+  html_parse_.AddFilter(filter);
+}
+
 void RewriteDriver::AddRewriteFilter(RewriteFilter* filter) {
   // Track resource_fetches if we care about statistics.  Note that
   // the statistics are owned by the resource manager, which generally
@@ -302,7 +318,7 @@ void RewriteDriver::AddRewriteFilter(RewriteFilter* filter) {
     resource_fetches_ = stats->GetVariable(kResourceFetches);
   }
   resource_filter_map_[filter->id()] = filter;
-  AddFilter(filter);
+  filters_.push_back(filter);
 }
 
 void RewriteDriver::SetWriter(Writer* writer) {

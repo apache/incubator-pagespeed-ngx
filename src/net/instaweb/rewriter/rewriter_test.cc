@@ -875,6 +875,13 @@ TEST_F(RewriterTest, DoNotInlineCssWithMediaAttr) {
                 "media=\"print\"", css, false, "");
 }
 
+TEST_F(RewriterTest, DoInlineCssWithMediaAll) {
+  const std::string css = "BODY { color: red; }\n";
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/styles.css",
+                "media=\"all\"", css, true, css);
+}
+
 TEST_F(RewriterTest, DoNotInlineCssTooBig) {
   // CSS too large to inline:
   const int64 length = 2 * RewriteOptions::kDefaultCssInlineMaxBytes;
