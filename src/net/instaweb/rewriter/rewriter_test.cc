@@ -140,7 +140,7 @@ class RewriterTest : public ResourceManagerTestBase {
 
   // Test spriting CSS with options to write headers and use a hasher.
   void CombineCss(const StringPiece& id, Hasher* hasher,
-                  bool with_ie_directive) {
+                  const char* barrier_text, bool is_barrier) {
     // Here other_driver_ is used to do resource-only fetches for testing.
     //
     // The idea is that rewrite_driver_ (and its resource_manager) are running
@@ -168,12 +168,13 @@ class RewriterTest : public ResourceManagerTestBase {
     std::string html_url = StrCat("http://combine_css.test/", id, ".html");
     const char a_css_url[] = "http://combine_css.test/a.css";
     const char b_css_url[] = "http://combine_css.test/b.css";
+    const char c_css_url[] = "http://combine_css.test/c.css";
 
     static const char html_input_format[] =
         "<head>\n"
         "  <link rel='stylesheet' href='a.css' type='text/css'>\n"
         "  <link rel='stylesheet' href='b.css' type='text/css' media='print'>\n"
-        "  <title>Hello, Instaweb</title>"
+        "  <title>Hello, Instaweb</title>\n"
         "%s"
         "</head>\n"
         "<body>\n"
@@ -182,34 +183,21 @@ class RewriterTest : public ResourceManagerTestBase {
         "      Yellow on Blue\n"
         "    </div>\n"
         "  </div>\n"
+        "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
         "</body>\n";
+    std::string html_input = StringPrintf(html_input_format, barrier_text);
     const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
     const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
+    const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
 
     // Put original CSS files into our fetcher.
     SimpleMetaData default_css_header;
     resource_manager->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
     mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
     mock_url_fetcher_.SetResponse(b_css_url, default_css_header, b_css_body);
+    mock_url_fetcher_.SetResponse(c_css_url, default_css_header, c_css_body);
 
-    // Rewrite the HTML page.
-    const char ie_directive[] =
-        "<!--[if IE]>\n"
-        "<link rel=\"stylesheet\" type=\"text/css\" "
-        "href=\"http://graphics8.nytimes.com/css/"
-        "0.1/screen/build/homepage/ie.css\">\n"
-        "<![endif]-->";
-    std::string html_input = StringPrintf(
-        html_input_format,
-        with_ie_directive ? ie_directive : "");
     ParseUrl(html_url, html_input);
-
-    // Expected CSS combination.
-    // This syntax must match that in css_combine_filter
-    std::string expected_combination = StrCat(a_css_body, "\n"
-                                               "@Media print {\n",
-                                               b_css_body, "\n"
-                                               "}\n");
 
     std::string headers;
     AppendDefaultHeaders(kContentTypeCss, resource_manager.get(), &headers);
@@ -217,31 +205,48 @@ class RewriterTest : public ResourceManagerTestBase {
     // Check for CSS files in the rewritten page.
     StringVector css_urls;
     CollectCssLinks(id, output_buffer_, &css_urls);
-    // output_buffer_ should have exactly one CSS file (the combined one).
-    EXPECT_EQ(1UL, css_urls.size());
+    // output_buffer_ should have exactly one CSS file (the combined one) or
+    // one more if there was a barrier halfway through.
+    if (is_barrier) {
+      EXPECT_EQ(2UL, css_urls.size());
+    } else {
+      EXPECT_EQ(1UL, css_urls.size());
+    }
     const std::string& combine_url = css_urls[0];
     ResourceNamer namer;
     CheckedResourceNamer(resource_manager.get(), combine_url, &namer);
 
     std::string combine_filename = namer.Filename(resource_manager.get());
 
+    // Expected CSS combination.
+    // This syntax must match that in css_combine_filter
+    std::string expected_combination = StrCat(a_css_body, "\n"
+                                               "@Media print {\n",
+                                               b_css_body, "\n"
+                                               "}\n");
+    if (!is_barrier) {
+      expected_combination.append(c_css_body);
+    }
+
     static const char expected_output_format[] =
         "<head>\n"
+        "  <link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">\n"
         "  \n"  // The whitespace from the original link is preserved here ...
-        "  \n"
-        "  <title>Hello, Instaweb</title>"
-        "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s"
-        "\">%s</head>\n"
+        "  <title>Hello, Instaweb</title>\n"
+        "%s"
+        "</head>\n"
         "<body>\n"
         "  <div class=\"c1\">\n"
         "    <div class=\"c2\">\n"
         "      Yellow on Blue\n"
         "    </div>\n"
         "  </div>\n"
+        "  %s\n"
         "</body>\n";
     std::string expected_output = StringPrintf(
-        expected_output_format, combine_url.c_str(),
-        with_ie_directive ? ie_directive : "");
+        expected_output_format, combine_url.c_str(), barrier_text,
+        is_barrier ? "<link rel='stylesheet' href='c.css' type='text/css'>"
+                   : "");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
     std::string actual_combination;
@@ -773,25 +778,39 @@ TEST_F(RewriterTest, BaseTagExistingHeadAndHrefBase) {
 }
 
 TEST_F(RewriterTest, CombineCss) {
-  CombineCss("combine_no_hash", &mock_hasher_, false);
+  CombineCss("combine_css_no_hash", &mock_hasher_, "", false);
 }
 
 TEST_F(RewriterTest, CombineCssMD5) {
-  CombineCss("combine_md5", &md5_hasher_, false);
+  CombineCss("combine_css_md5", &md5_hasher_, "", false);
 }
+
 
 TEST_F(RewriterTest, CombineCssWithIEDirective) {
-  CombineCss("combine_no_hash_ie", &md5_hasher_, true);
+  const char ie_directive_barrier[] =
+      "<!--[if IE]>\n"
+      "<link rel=\"stylesheet\" type=\"text/css\" "
+      "href=\"http://graphics8.nytimes.com/css/"
+      "0.1/screen/build/homepage/ie.css\">\n"
+      "<![endif]-->";
+  CombineCss("combine_css_ie", &md5_hasher_, ie_directive_barrier, true);
 }
 
+TEST_F(RewriterTest, CombineCssWithStyle) {
+  const char style_barrier[] = "<style>a { color: red }</style>\n";
+  CombineCss("combine_css_style", &md5_hasher_, style_barrier, true);
+}
 
 TEST_F(RewriterTest, CombineCssShards) {
   num_shards_ = 10;
   url_prefix_ = "http://mysite%d/";
-  CombineCss("combine_sha1", &mock_hasher_, false);
+  CombineCss("combine_css_sha1", &mock_hasher_, "", false);
 }
 
 TEST_F(RewriterTest, CombineCssNoInput) {
+  // TODO(sligocki): This is probably not working correctly, we need to put
+  // a_broken.css and b.css in mock_fetcher_ ... not sure why this isn't
+  // crashing right now.
   static const char html_input[] =
       "<head>\n"
       "  <link rel='stylesheet' href='a_broken.css' type='text/css'>\n"
@@ -799,7 +818,7 @@ TEST_F(RewriterTest, CombineCssNoInput) {
       "</head>\n"
       "<body><div class=\"c1\"><div class=\"c2\"><p>\n"
       "  Yellow on Blue</p></div></div></body>";
-  ValidateNoChanges("combine_css_no_input", html_input);
+  ValidateNoChanges("combine_css_missing_input", html_input);
 }
 
 // TODO(sligocki): Test that using the DummyUrlFetcher causes FatalError.

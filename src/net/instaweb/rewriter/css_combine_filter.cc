@@ -59,12 +59,11 @@ CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
       resource_manager_(driver->resource_manager()),
       css_tag_scanner_(html_parse_),
       css_file_count_reduction_(NULL) {
-  s_head_ = html_parse_->Intern("head");
   s_link_ = html_parse_->Intern("link");
   s_href_ = html_parse_->Intern("href");
   s_type_ = html_parse_->Intern("type");
   s_rel_  = html_parse_->Intern("rel");
-  head_element_ = NULL;
+  s_style_ = html_parse_->Intern("style");
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
     css_file_count_reduction_ = stats->GetVariable(kCssFileCountReduction);
@@ -76,7 +75,8 @@ void CssCombineFilter::Initialize(Statistics* statistics) {
 }
 
 void CssCombineFilter::StartDocument() {
-  head_element_ = NULL;
+  // This should already be clear, but just in case.
+  css_elements_.clear();
 }
 
 void CssCombineFilter::EndElement(HtmlElement* element) {
@@ -89,45 +89,30 @@ void CssCombineFilter::EndElement(HtmlElement* element) {
       css_elements_.push_back(element);
     } else {
       // It's invalid, so just skip it a la IEDirective below.
-      EmitCombinations(false, NULL);
-      css_elements_.clear();
+      EmitCombinations();
     }
-  } else if (element->tag() == s_head_) {
-    // We set the element here rather than at StartElement so that we don't
-    // AppendChild before we've finished parsing head (mis-ordering CSS).
-    head_element_ = element;
+  } else if (element->tag() == s_style_) {
+    // We can't reorder styles on a page, so if we are only combining <link>
+    // tags, we can't combine them across a <style> tag.
+    // TODO(sligocki): Maybe we should just combine <style>s too?
+    // We can run outline_css first for now to make all <style>s into <link>s.
+    EmitCombinations();
   }
 }
 
 // An IE directive that includes any stylesheet info should be a barrier
 // for css combining.  It's OK to emit the combination we've seen so far.
 void CssCombineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
-  // TODO(jmarantz): consider recursively invoking the parser and
-  // parsing all the IE-specific code properly.
-  // TODO(jmarantz): is looking for 'stylesheet' enough?  Or could there
-  // be other ways of sneaking CSS into the IE conditional that would
-  // cause us to break something by aggregating CSS across it?
-  if (directive->contents().find("stylesheet") != std::string::npos) {
-    EmitCombinations(false, NULL);
-    css_elements_.clear();
-  }
+  // TODO(sligocki): Figure out how to safely parse IEDirectives, for now we
+  // just consider them black boxes / solid barriers.
+  EmitCombinations();
 }
 
 void CssCombineFilter::Flush() {
-  // TODO(sligocki): We could probably combine CSS files in a second flush as
-  // well. Where would we put the styles? Wherever the first one was?
-  if (head_element_ != NULL && html_parse_->IsRewritable(head_element_)) {
-    EmitCombinations(true, head_element_);
-  }
-  head_element_ = NULL;  // Head element cannot be edited after we flush.
-  css_elements_.clear();
+  EmitCombinations();
 }
 
-void CssCombineFilter::EmitCombinations(bool append_child,
-                                        HtmlElement* destination_parent) {
-  if (append_child) {
-    CHECK(html_parse_->IsRewritable(destination_parent));
-  }
+void CssCombineFilter::EmitCombinations() {
   MessageHandler* handler = html_parse_->message_handler();
 
   // It's possible that we'll have found 2 css files to combine, but one
@@ -194,7 +179,8 @@ void CssCombineFilter::EmitCombinations(bool append_child,
       // Note that css_resource has been checked for eligibility for rewriting
       // in advance, and it's url is now absolute.  For the moment we're just
       // gathering up absolute urls.
-      // TODO(jmaessen): Use relative urls as soon as we understand the semantics.
+      // TODO(jmaessen): Use relative urls as soon as we understand the
+      // semantics.
       css_url->set_origin_url(css_resource->url());
       css_url->set_media(media_attributes[i]);
     }
@@ -218,23 +204,15 @@ void CssCombineFilter::EmitCombinations(bool append_child,
     // HTML elements are in the current flush window.  Last step
     // is to write the combination.
     if (written && combination->IsWritten()) {
-      // commit by removing the elements from the DOM.
+      // Commit by adding combine element ...
+      combine_element->AddAttribute(s_href_, combination->url(), "\"");
+      // TODO(sligocki): Put at top of head/flush-window.
+      // Right now we're putting it where the first original element used to be.
+      html_parse_->InsertElementBeforeElement(css_elements_[0],
+                                              combine_element);
+      // ... and removing originals from the DOM.
       for (size_t i = 0; i < combine_elements.size(); ++i) {
         html_parse_->DeleteElement(combine_elements[i]);
-      }
-      combine_element->AddAttribute(s_href_, combination->url(), "\"");
-      // TODO(sligocki): Put at top of head.
-      // Right now it's going in the bottom because then if this is called
-      // multiple times subsequent calls place CSS elements below previous ones.
-      if (append_child) {
-        html_parse_->AppendChild(destination_parent, combine_element);
-      } else {
-        // Hack: for now we just have two options of where to put it.
-        // AppendChild or InsertBeforeCurrent.
-        // TODO(jmarantz): replace css_elements[0] rather than inserting
-        // at the IE directive or whatever other event caused us to
-        // flush out our pending CSS combination.
-        html_parse_->InsertElementBeforeCurrent(combine_element);
       }
       html_parse_->InfoHere("Combined %d CSS files into one",
                             static_cast<int>(combine_elements.size()));

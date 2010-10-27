@@ -20,6 +20,5 @@
       'xcode_create_dependents_test_runner': 1,
       'dependencies': [
         '../net/instaweb/mod_pagespeed.gyp:*',
-        '../install/install.gyp:*',
       ],} ]
 }

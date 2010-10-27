@@ -364,26 +364,35 @@ void HtmlParse::Flush() {
 
 bool HtmlParse::InsertElementBeforeElement(const HtmlNode* existing_node,
                                            HtmlNode* new_node) {
+  // begin() == queue_.end() -> this is an invalid element.
+  // TODO(sligocki): Rather than checks, we should probably return this as
+  // the status.
+  message_handler_->Check(existing_node->begin() != queue_.end(),
+                          "InsertElementBeforeElement: existing_node invalid");
   new_node->set_parent(existing_node->parent());
   return InsertElementBeforeEvent(existing_node->begin(), new_node);
 }
 
 bool HtmlParse::InsertElementAfterElement(const HtmlNode* existing_node,
                                           HtmlNode* new_node) {
+  message_handler_->Check(existing_node->end() != queue_.end(),
+                          "InsertElementAfterElement: existing_node invalid");
   new_node->set_parent(existing_node->parent());
   return InsertElementAfterEvent(existing_node->end(), new_node);
 }
 
 bool HtmlParse::PrependChild(const HtmlElement* existing_parent,
                              HtmlNode* new_child) {
+  message_handler_->Check(existing_parent->begin() != queue_.end(),
+                          "PrependChild: existing_parent invalid");
   new_child->set_parent(const_cast<HtmlElement*>(existing_parent));
-  // TODO(sligocki): These should return false if existing_parent has been
-  // flushed. (i.e. if existing_parent->begin() == queue_->end())
   return InsertElementAfterEvent(existing_parent->begin(), new_child);
 }
 
 bool HtmlParse::AppendChild(const HtmlElement* existing_parent,
                             HtmlNode* new_child) {
+  message_handler_->Check(existing_parent->end() != queue_.end(),
+                          "AppendChild: existing_parent invalid");
   new_child->set_parent(const_cast<HtmlElement*>(existing_parent));
   return InsertElementBeforeEvent(existing_parent->end(), new_child);
 }

@@ -58,9 +58,8 @@ class CssCombineFilter : public RewriteFilter {
   typedef std::vector<Resource*> ResourceVector;
 
   // Try to combine all the CSS files we have seen so far.
-  // If append_child == true, AppendChild to destination element.
-  // Else, InsertBeforeCurrent.
-  void EmitCombinations(bool append_child, HtmlElement* destination);
+  // Insert the combined resource where the first original CSS link was.
+  void EmitCombinations();
   bool WriteWithAbsoluteUrls(const StringPiece& contents,
                              OutputResource* combination,
                              const std::string& base_url,
@@ -70,15 +69,14 @@ class CssCombineFilter : public RewriteFilter {
                         OutputResource* combination,
                         MessageHandler* handler);
 
-  Atom s_head_;
   Atom s_type_;
   Atom s_link_;
   Atom s_href_;
   Atom s_rel_;
+  Atom s_style_;
 
   std::vector<HtmlElement*> css_elements_;
   HtmlParse* html_parse_;
-  HtmlElement* head_element_;  // Pointer to head element for future use
   ResourceManager* resource_manager_;
   CssTagScanner css_tag_scanner_;
   Variable* css_file_count_reduction_;
