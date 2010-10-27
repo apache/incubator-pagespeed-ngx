@@ -53,13 +53,38 @@ const int64 RewriteOptions::kDefaultOutlineThreshold = 3000;
 const std::string RewriteOptions::kDefaultBeaconUrl =
     "/mod_pagespeed_beacon?ets=";
 
+bool RewriteOptions::ParseRewriteLevel(
+    const StringPiece& in, RewriteLevel* out) {
+  bool ret = false;
+  if (in != NULL) {
+    if (strcasecmp(in.data(), "CoreFilters") == 0) {
+      *out = kCoreFilters;
+      ret = true;
+    } else if (strcasecmp(in.data(), "InstrumentationOnly") == 0) {
+      *out = kInstrumentationOnly;
+      ret = true;
+    } else if (strcasecmp(in.data(), "PassThrough") == 0) {
+      *out = kPassThrough;
+      ret = true;
+    }
+  }
+  return ret;
+}
+
 RewriteOptions::RewriteOptions()
-    : css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
+    : level_(kPassThrough),
+      css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
       img_inline_max_bytes_(kDefaultImgInlineMaxBytes),
       js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
       outline_threshold_(kDefaultOutlineThreshold),
       num_shards_(0),
       beacon_url_(kDefaultBeaconUrl) {
+  // TODO: If we instantiate many RewriteOptions, this should become a
+  // public static method called once at startup.
+  SetUp();
+}
+
+void RewriteOptions::SetUp() {
   name_filter_map_["add_base_tag"] = kAddBaseTag;
   name_filter_map_["add_head"] = kAddHead;
   name_filter_map_["add_instrumentation"] = kAddInstrumentation;
@@ -82,32 +107,80 @@ RewriteOptions::RewriteOptions()
   name_filter_map_["rewrite_images"] = kRewriteImages;
   name_filter_map_["rewrite_javascript"] = kRewriteJavascript;
   name_filter_map_["strip_scripts"] = kStripScripts;
+
+  // Create an empty set for the pass-through level.
+  level_filter_set_map_[kPassThrough];
+
+  // Instrumentation level includes only the instrumentation filter.
+  level_filter_set_map_[kInstrumentationOnly].insert(kAddInstrumentation);
+
+  // Core filter level includes the "core" filter set.
+  level_filter_set_map_[kCoreFilters].insert(kAddHead);
+  level_filter_set_map_[kCoreFilters].insert(kMoveCssToHead);
+  level_filter_set_map_[kCoreFilters].insert(kCombineCss);
+  level_filter_set_map_[kCoreFilters].insert(kRewriteCss);
+  level_filter_set_map_[kCoreFilters].insert(kRewriteJavascript);
+  level_filter_set_map_[kCoreFilters].insert(kInlineCss);
+  level_filter_set_map_[kCoreFilters].insert(kInlineJavascript);
+  level_filter_set_map_[kCoreFilters].insert(kRewriteImages);
+  level_filter_set_map_[kCoreFilters].insert(kInsertImgDimensions);
+  level_filter_set_map_[kCoreFilters].insert(kElideAttributes);
+  level_filter_set_map_[kCoreFilters].insert(kExtendCache);
+  level_filter_set_map_[kCoreFilters].insert(kRemoveQuotes);
+  level_filter_set_map_[kCoreFilters].insert(kAddInstrumentation);
 }
 
-bool RewriteOptions::AddFiltersByCommaSeparatedList(
+bool RewriteOptions::EnableFiltersByCommaSeparatedList(
     const StringPiece& filters, MessageHandler* handler) {
+  return AddCommaSeparatedListToFilterSet(
+      filters, handler, &enabled_filters_);
+}
+
+bool RewriteOptions::DisableFiltersByCommaSeparatedList(
+    const StringPiece& filters, MessageHandler* handler) {
+  return AddCommaSeparatedListToFilterSet(
+      filters, handler, &disabled_filters_);
+}
+
+bool RewriteOptions::AddCommaSeparatedListToFilterSet(
+    const StringPiece& filters, MessageHandler* handler, FilterSet* set) {
   std::vector<StringPiece> names;
   SplitStringPieceToVector(filters, ",", &names, true);
   bool ret = true;
   for (int i = 0, n = names.size(); i < n; ++i) {
     std::string option(names[i].data(), names[i].size());
-    NameFilterMap::iterator p = name_filter_map_.find(option);
+    NameToFilterMap::iterator p = name_filter_map_.find(option);
     if (p == name_filter_map_.end()) {
       handler->Message(kWarning, "Invalid filter name: %s", option.c_str());
       ret = false;
     } else {
-      AddFilter(p->second);
+      set->insert(p->second);
     }
   }
   return ret;
 }
 
-void RewriteOptions::AddFilter(Filter filter) {
-  filters_.insert(filter);
+void RewriteOptions::Reset() {
+  level_ = kPassThrough;
+  enabled_filters_.clear();
+  disabled_filters_.clear();
 }
 
 bool RewriteOptions::Enabled(Filter filter) const {
-  return (filters_.find(filter) != filters_.end());
+  if (disabled_filters_.find(filter) != disabled_filters_.end()) {
+    return false;
+  }
+
+  RewriteLevelToFilterSetMap::const_iterator it =
+      level_filter_set_map_.find(level_);
+  if (it != level_filter_set_map_.end()) {
+    const FilterSet& filters = it->second;
+    if (filters.find(filter) != filters.end()) {
+      return true;
+    }
+  }
+
+  return (enabled_filters_.find(filter) != enabled_filters_.end());
 }
 
 }  // namespace net_instaweb

@@ -144,7 +144,7 @@ bool RewriteDriver::ParseKeyInt64(const StringPiece& key, SetInt64Method m,
 
 void RewriteDriver::AddFilter(RewriteOptions::Filter filter) {
   RewriteOptions options;
-  options.AddFilter(filter);
+  options.EnableFilter(filter);
   AddFilters(options);
 }
 
@@ -355,12 +355,38 @@ bool RewriteDriver::FetchResource(
 
   // Determine whether this URL matches our prefix pattern.  Note that
   // the URL may have a shard applied to it.
-  ResourceNamer resource_namer;
-  int shard;
   const ContentType* content_type = NULL;
-  if (resource_manager_->UrlToResourceNamer(url, &shard, &resource_namer) &&
-      ((content_type = NameExtensionToContentType(
-          StrCat(".", resource_namer.ext()))) != NULL)) {
+
+  // TODO(jmarantz): we have disabled domain sharding for now.  This was
+  // previously implemented via
+  // resource_manager_->UrlToResourceNamer(url, &shard, &resource_namer) &&
+  // but now if the leaf is a 4-part URL with a cache-prefix and a known
+  // extension then we will consider it valid.  Later we should add checksum
+  // or, better yet, a private key established by the server owner in his
+  // configuration file.
+  GURL gurl(url.as_string().c_str());
+  if (!gurl.is_valid()) {
+    return false;
+  }
+  std::string leaf = GoogleUrlLeaf(gurl);
+  ResourceNamer resource_namer;
+  if (!resource_namer.Decode(leaf)) {
+    return false;
+  }
+
+  // For now let's reject as mal-formed if the id string is not
+  // in the rewrite drivers.
+  // TODO(jmarantz): it might be better to 'handle' requests with known
+  // IDs even if that filter is not enabled, rather rejecting the request.
+  // TODO(jmarantz): consider query-specific rewrites.  We may need to
+  // enable filters for this driver based on the referrer.
+  StringPiece id = resource_namer.id();
+  StringFilterMap::iterator p = resource_filter_map_.find(
+      std::string(id.data(), id.size()));
+
+  if ((p != resource_filter_map_.end()) &&
+       ((content_type = NameExtensionToContentType(
+           StrCat(".", resource_namer.ext()))) != NULL)) {
     handled = true;
     OutputResource* output_resource = resource_manager_->
         CreateUrlOutputResource(resource_namer, content_type);
@@ -375,6 +401,7 @@ bool RewriteDriver::FetchResource(
           std::string(id.data(), id.size()));
       if (p != resource_filter_map_.end()) {
         RewriteFilter* filter = p->second;
+        output_resource->set_resolved_base(GoogleUrlAllExceptLeaf(gurl));
         queued = filter->Fetch(output_resource, writer,
                                request_headers, response_headers,
                                url_async_fetcher_, message_handler, callback);

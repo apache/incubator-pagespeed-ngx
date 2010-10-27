@@ -156,8 +156,16 @@ std::string OutputResource::filename() const {
   return full_name_.Filename(resource_manager_);
 }
 
+// TODO(jmarantz): change the name to reflect the fact that it is not
+// just an accessor now.
 std::string OutputResource::url() const {
-  return full_name_.AbsoluteUrl(resource_manager_);
+  if (resolved_base_.empty()) {
+    return full_name_.AbsoluteUrl(resource_manager_);
+  }
+  GURL gurl(resolved_base_);
+  CHECK(gurl.is_valid());
+  GURL resolved = gurl.Resolve(full_name_.PrettyName());
+  return GoogleUrlSpec(resolved);
 }
 
 void OutputResource::SetHash(const StringPiece& hash) {

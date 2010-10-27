@@ -119,6 +119,7 @@
         'rewriter/resource_manager_test.cc',
         'rewriter/resource_tag_scanner_test.cc',
         'rewriter/rewrite_driver_test.cc',
+        'rewriter/rewrite_options_test.cc',
         'rewriter/rewriter_test.cc',
         'rewriter/script_tag_scanner_test.cc',
         'rewriter/strip_scripts_filter_test.cc',

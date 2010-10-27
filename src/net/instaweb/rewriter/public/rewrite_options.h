@@ -56,21 +56,55 @@ class RewriteOptions {
     kStripScripts,
   };
 
+  enum RewriteLevel {
+    // Run in pass-through mode. Parse HTML but do not perform any
+    // transformations. This is the default value. Most users should
+    // explcitly enable the kCoreFilters level by calling
+    // SetRewriteLevel(kCoreFilters).
+    kPassThrough,
+
+    // Enable instrumentation filters only. Do not perform any content
+    // optimizations.
+    kInstrumentationOnly,
+
+    // Enable the core set of filters. These filters are considered
+    // generally safe for most sites, though even safe filters can
+    // break some sites. Most users should specify this option, and
+    // then optionally add or remove specific filters based on
+    // specific needs.
+    kCoreFilters,
+  };
+
+  // Used for enumerating over all entries in the Filter enum.
+  static const Filter kFirstFilter = kAddBaseTag;
+  static const Filter kLastFilter = kStripScripts;
+
   static const int64 kDefaultCssInlineMaxBytes;
   static const int64 kDefaultImgInlineMaxBytes;
   static const int64 kDefaultJsInlineMaxBytes;
   static const int64 kDefaultOutlineThreshold;
   static const std::string kDefaultBeaconUrl;
 
+  static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
+
   RewriteOptions();
 
-  // Adds a set of filters the enabled set.  Returns false if any of
-  // the filter names are invalid, but all the valid ones will be
+  void SetRewriteLevel(RewriteLevel level) { level_ = level; }
+
+  // Adds a set of filters to the enabled set.  Returns false if any
+  // of the filter names are invalid, but all the valid ones will be
   // added anyway.
-  bool AddFiltersByCommaSeparatedList(const StringPiece& filters,
-                                      MessageHandler* handler);
-  void ClearFilters() { filters_.clear(); }
-  void AddFilter(Filter filter);
+  bool EnableFiltersByCommaSeparatedList(const StringPiece& filters,
+                                         MessageHandler* handler);
+
+  // Adds a set of filters to the disabled set.  Returns false if any
+  // of the filter names are invalid, but all the valid ones will be
+  // added anyway.
+  bool DisableFiltersByCommaSeparatedList(const StringPiece& filters,
+                                          MessageHandler* handler);
+  void Reset();
+  void EnableFilter(Filter filter) { enabled_filters_.insert(filter); }
+  void DisableFilter(Filter filter) { disabled_filters_.insert(filter); }
 
   bool Enabled(Filter filter) const;
 
@@ -87,11 +121,20 @@ class RewriteOptions {
   const std::string& beacon_url() const { return beacon_url_; }
   void set_beacon_url(const StringPiece& p) { p.CopyToString(&beacon_url_); }
 
- public:
-  typedef std::map<std::string, Filter> NameFilterMap;
-  NameFilterMap name_filter_map_;
+ private:
   typedef std::set<Filter> FilterSet;
-  FilterSet filters_;
+  typedef std::map<std::string, Filter> NameToFilterMap;
+  typedef std::map<RewriteLevel, FilterSet> RewriteLevelToFilterSetMap;
+
+  void SetUp();
+  bool AddCommaSeparatedListToFilterSet(
+      const StringPiece& filters, MessageHandler* handler, FilterSet* set);
+
+  NameToFilterMap name_filter_map_;
+  RewriteLevelToFilterSetMap level_filter_set_map_;
+  FilterSet enabled_filters_;
+  FilterSet disabled_filters_;
+  RewriteLevel level_;
   int64 css_inline_max_bytes_;
   int64 img_inline_max_bytes_;
   int64 js_inline_max_bytes_;

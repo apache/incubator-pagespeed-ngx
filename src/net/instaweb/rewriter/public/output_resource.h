@@ -84,6 +84,14 @@ class OutputResource : public Resource {
   // when rewriting it we can, in some cases, exploit a URL swap.
   bool HasValidUrl() const { return has_hash(); }
 
+  // Resources rewritten via a UrlPartnership will have a resolved
+  // base to use in lieu of the legacy UrlPrefix held by the resource
+  // manager.
+  void set_resolved_base(const StringPiece& base) {
+    base.CopyToString(&resolved_base_);
+  }
+  StringPiece resolved_base() const { return resolved_base_; }
+
  private:
   friend class ResourceManager;
   friend class ResourceManagerTestingPeer;
@@ -128,6 +136,11 @@ class OutputResource : public Resource {
   bool generated_;
 
   ResourceNamer full_name_;
+
+  // If this output url was created via a partnership then this field
+  // will be non-empty, and we will not need to use the resource manager's
+  // prefix.
+  std::string resolved_base_;
 
   DISALLOW_COPY_AND_ASSIGN(OutputResource);
 };

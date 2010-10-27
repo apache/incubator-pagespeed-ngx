@@ -21,6 +21,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/rewriter/rewrite.pb.h"  // for CssCombineUrl
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -41,6 +42,27 @@ const char kCssFileCountReduction[] = "css_file_count_reduction";
 }  // namespace
 
 namespace net_instaweb {
+
+class CssCombineFilter::Partnership : public UrlPartnership {
+ public:
+  Partnership(DomainLawyer* domain_lawyer, const GURL& gurl)
+      : UrlPartnership(domain_lawyer, gurl) {
+  }
+
+  bool AddElement(HtmlElement* element, const StringPiece& href,
+                  MessageHandler* handler) {
+    bool added = AddUrl(href, handler);
+    if (added) {
+      css_elements_.push_back(element);
+    }
+    return added;
+  }
+
+  HtmlElement* element(int i) { return css_elements_[i]; }
+
+ private:
+  std::vector<HtmlElement*> css_elements_;
+};
 
 // TODO(jmarantz) We exhibit zero intelligence about which css files to
 // combine; we combine whatever is possible.  This can reduce performance
@@ -70,24 +92,29 @@ CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
   }
 }
 
+CssCombineFilter::~CssCombineFilter() {
+}
+
 void CssCombineFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kCssFileCountReduction);
 }
 
 void CssCombineFilter::StartDocument() {
   // This should already be clear, but just in case.
-  css_elements_.clear();
+  partnership_.reset(NULL);
 }
 
 void CssCombineFilter::EndElement(HtmlElement* element) {
   HtmlElement::Attribute* href;
   const char* media;
   if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
-    // TODO(jmaessen, jmarantz): extend partnership here.
-    GURL url = html_parse_->gurl().Resolve(href->value());
-    if (url.is_valid()) {
-      css_elements_.push_back(element);
-    } else {
+    if (partnership_.get() == NULL) {
+      partnership_.reset(new Partnership(
+          resource_manager_->domain_lawyer(),
+          html_parse_->gurl()));
+    }
+    MessageHandler* handler = html_parse_->message_handler();
+    if (!partnership_->AddElement(element, href->value(), handler)) {
       // It's invalid, so just skip it a la IEDirective below.
       EmitCombinations();
     }
@@ -113,6 +140,10 @@ void CssCombineFilter::Flush() {
 }
 
 void CssCombineFilter::EmitCombinations() {
+  if (partnership_.get() == NULL) {
+    return;
+  }
+  partnership_->Resolve();
   MessageHandler* handler = html_parse_->message_handler();
 
   // It's possible that we'll have found 2 css files to combine, but one
@@ -124,8 +155,8 @@ void CssCombineFilter::EmitCombinations() {
   std::vector<HtmlElement*> combine_elements;
   ResourceVector combine_resources;
   StringVector media_attributes;
-  for (int i = 0, n = css_elements_.size(); i < n; ++i) {
-    HtmlElement* element = css_elements_[i];
+  for (int i = 0, n = partnership_->num_urls(); i < n; ++i) {
+    HtmlElement* element = partnership_->element(i);
     const char* media;
     HtmlElement::Attribute* href;
     if (css_tag_scanner_.ParseCssElement(element, &href, &media) &&
@@ -208,7 +239,7 @@ void CssCombineFilter::EmitCombinations() {
       combine_element->AddAttribute(s_href_, combination->url(), "\"");
       // TODO(sligocki): Put at top of head/flush-window.
       // Right now we're putting it where the first original element used to be.
-      html_parse_->InsertElementBeforeElement(css_elements_[0],
+      html_parse_->InsertElementBeforeElement(partnership_->element(0),
                                               combine_element);
       // ... and removing originals from the DOM.
       for (size_t i = 0; i < combine_elements.size(); ++i) {
@@ -221,9 +252,10 @@ void CssCombineFilter::EmitCombinations() {
       }
     }
   }
-  css_elements_.clear();
   STLDeleteContainerPointers(combine_resources.begin(),
                              combine_resources.end());
+
+  partnership_.reset(NULL);
 }
 
 bool CssCombineFilter::WriteCombination(const ResourceVector& combine_resources,
@@ -262,6 +294,9 @@ bool CssCombineFilter::WriteCombination(const ResourceVector& combine_resources,
     }
   }
   if (written) {
+    if (combination->resolved_base().empty()) {
+      combination->set_resolved_base(partnership_->ResolvedBase());
+    }
     written =
         resource_manager_->Write(
             HttpStatus::kOK, combined_contents, combination,

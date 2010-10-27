@@ -29,6 +29,7 @@
 #include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
@@ -67,6 +68,8 @@ const char* kModPagespeedFetcherTimeoutMs = "ModPagespeedFetcherTimeOutMs";
 const char* kModPagespeedNumShards = "ModPagespeedNumShards";
 const char* kModPagespeedOutlineThreshold = "ModPagespeedOutlineThreshold";
 const char* kModPagespeedRewriters = "ModPagespeedRewriters";
+const char* kModPagespeedRewriteLevel = "ModPagespeedRewriteLevel";
+const char* kModPagespeedDisableFilters = "ModPagespeedDisableFilters";
 const char* kModPagespeedSlurpDirectory = "ModPagespeedSlurpDirectory";
 const char* kModPagespeedSlurpReadOnly = "ModPagespeedSlurpReadOnly";
 const char* kModPagespeedSlurpFlushLimit = "ModPagespeedSlurpFlushLimit";
@@ -195,7 +198,13 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
         ret = false;
       }
     } else if (strcmp(name, kModPagespeedRewriters) == 0) {
-      if (options->AddFiltersByCommaSeparatedList(value, handler)) {
+      if (options->EnableFiltersByCommaSeparatedList(value, handler)) {
+        ++option_count;
+      } else {
+        ret = false;
+      }
+    } else if (strcmp(name, kModPagespeedDisableFilters) == 0) {
+      if (options->DisableFiltersByCommaSeparatedList(value, handler)) {
         ++option_count;
       } else {
         ret = false;
@@ -576,8 +585,19 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_lru_cache_byte_limit, arg);
   } else if (strcasecmp(directive, kModPagespeedRewriters) == 0) {
-    if (!factory->AddEnabledFilters(arg, factory->message_handler())) {
-      ret = NULL;
+    if (!factory->AddEnabledFilters(arg)) {
+      ret = "Failed to enable some filters.";
+    }
+  } else if (strcasecmp(directive, kModPagespeedDisableFilters) == 0) {
+    if (!factory->AddDisabledFilters(arg)) {
+      ret = "Failed to disable some filters.";
+    }
+  } else if (strcasecmp(directive, kModPagespeedRewriteLevel) == 0) {
+    RewriteOptions::RewriteLevel level = RewriteOptions::kPassThrough;
+    if (RewriteOptions::ParseRewriteLevel(arg, &level)) {
+      factory->SetRewriteLevel(level);
+    } else {
+      ret = "Failed to parse RewriteLevel.";
     }
   } else if (strcasecmp(directive, kModPagespeedSlurpDirectory) == 0) {
     factory->set_slurp_directory(arg);
@@ -647,7 +667,12 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Set the maximum byte size entry to store in the per-process "
         "in-memory LRU cache"),
   APACHE_CONFIG_OPTION(kModPagespeedRewriters,
-                       "Comma-separated list of rewriting filters"),
+                       "Comma-separated list of enabled filters"),
+  APACHE_CONFIG_OPTION(kModPagespeedRewriteLevel,
+                       "Base level of rewriting "
+                       "(PassThrough, InstrumentationOnly, CoreFilters)"),
+  APACHE_CONFIG_OPTION(kModPagespeedDisableFilters,
+                       "Comma-separated list of disabled filters"),
   APACHE_CONFIG_OPTION(kModPagespeedSlurpDirectory,
         "Directory from which to read slurped resources"),
   APACHE_CONFIG_OPTION(kModPagespeedSlurpReadOnly,

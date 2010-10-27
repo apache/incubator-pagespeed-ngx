@@ -134,6 +134,15 @@ class RewriteDriver {
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
 
+  // TODO(jmarantz): eliminate FetchResource above
+  void FetchResourceFromPath(const StringPiece& path,
+                             const ResourceNamer& resource,
+                             const MetaData& request_headers,
+                             MetaData* response_headers,
+                             Writer* writer,
+                             MessageHandler* message_handler,
+                             UrlAsyncFetcher::Callback* callback);
+
   HtmlParse* html_parse() { return &html_parse_; }
   FileSystem* file_system() { return file_system_; }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
@@ -157,6 +166,14 @@ class RewriteDriver {
   bool ParseKeyInt64(const StringPiece& key, SetInt64Method m,
                      const std::string& flag);
 
+  void FetchHelper(
+      const ResourceNamer& resource,
+      OutputResource* output_resource,
+      const MetaData& request_headers,
+      MetaData* response_headers,
+      Writer* writer,
+      MessageHandler* message_handler,
+      UrlAsyncFetcher::Callback* callback);
 
   StringFilterMap resource_filter_map_;
 

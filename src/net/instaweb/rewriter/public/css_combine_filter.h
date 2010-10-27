@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "base/basictypes.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/util/public/atom.h"
@@ -38,6 +39,7 @@ class Variable;
 class CssCombineFilter : public RewriteFilter {
  public:
   CssCombineFilter(RewriteDriver* rewrite_driver, const char* path_prefix);
+  virtual ~CssCombineFilter();
 
   static void Initialize(Statistics* statistics);
   virtual void StartDocument();
@@ -75,7 +77,9 @@ class CssCombineFilter : public RewriteFilter {
   Atom s_rel_;
   Atom s_style_;
 
-  std::vector<HtmlElement*> css_elements_;
+  class Partnership;
+
+  scoped_ptr<Partnership> partnership_;
   HtmlParse* html_parse_;
   ResourceManager* resource_manager_;
   CssTagScanner css_tag_scanner_;

@@ -19,7 +19,21 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_URL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_URL_H_
 
+#include <string>
+
 
 #include "googleurl/src/gurl.h"
+
+namespace net_instaweb {
+
+inline std::string GoogleUrlSpec(const GURL& gurl) { return gurl.spec(); }
+
+// For "http://a/b/c/d?e=f/g returns "http://a/b/c", omitting trailing slash.
+std::string GoogleUrlAllExceptLeaf(const GURL& gurl);
+
+// For "http://a/b/c/d?e=f/g returns "d?e=f/g", omitting leading slash.
+std::string GoogleUrlLeaf(const GURL& gurl);
+
+}  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_URL_H_

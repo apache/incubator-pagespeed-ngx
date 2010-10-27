@@ -102,7 +102,8 @@ class RewriterTest : public ResourceManagerTestBase {
   void ServeResourceFromNewContext(const StringPiece& resource,
                                    const std::string& output_filename,
                                    const StringPiece& expected_content,
-                                   RewriteOptions::Filter filter) {
+                                   RewriteOptions::Filter filter,
+                                   const char* leaf) {
     scoped_ptr<ResourceManager> resource_manager(
         NewResourceManager(&mock_hasher_));
     SimpleStats stats;
@@ -121,10 +122,18 @@ class RewriterTest : public ResourceManagerTestBase {
 
     // Parse resource name.
     ResourceNamer namer;
-    CheckedResourceNamer(resource_manager.get(), resource, &namer);
+    std::string cache_key;
+    StringPiece path;
+    if (leaf == NULL) {
+      CheckedResourceNamer(resource_manager.get(), resource, &namer);
+      cache_key = namer.AbsoluteUrl(resource_manager.get());
+    } else {
+      EXPECT_TRUE(namer.Decode(leaf));
+      resource.CopyToString(&cache_key);
+      path = resource.substr(0, resource.size() - strlen(leaf));
+    }
 
     // Delete the output resource from the cache and the file system.
-    std::string cache_key = namer.AbsoluteUrl(resource_manager.get());
     EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(cache_key));
     lru_cache_->Clear();
 
@@ -214,8 +223,13 @@ class RewriterTest : public ResourceManagerTestBase {
       EXPECT_EQ(1UL, css_urls.size());
     }
     const std::string& combine_url = css_urls[0];
+
+    GURL gurl(combine_url);
+    std::string spec = GoogleUrlSpec(gurl);
+    std::string path = spec.substr(gurl.GetWithEmptyPath().spec().size());
+
     ResourceNamer namer;
-    CheckedResourceNamer(resource_manager.get(), combine_url, &namer);
+    EXPECT_TRUE(namer.Decode(path));
 
     std::string combine_filename = namer.Filename(resource_manager.get());
 
@@ -274,7 +288,6 @@ class RewriterTest : public ResourceManagerTestBase {
     fetched_resource_content.clear();
     message_handler_.Message(kInfo, "Now with serving.");
     file_system_.enable();
-    CheckedResourceNamer(other_resource_manager.get(), combine_url, &namer);
     other_driver_.FetchResource(combine_url, request_headers,
                                 &other_response_headers, &writer,
                                 &message_handler_, &dummy_callback);
@@ -282,7 +295,7 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_EQ(expected_combination, fetched_resource_content);
     ServeResourceFromNewContext(combine_url, combine_filename,
                                 fetched_resource_content,
-                                RewriteOptions::kCombineCss);
+                                RewriteOptions::kCombineCss, path.c_str());
   }
 
   // Simple image rewrite test to check resource fetching functionality.
@@ -299,8 +312,8 @@ class RewriterTest : public ResourceManagerTestBase {
     other_driver_.SetResourceManager(other_resource_manager.get());
 
     RewriteOptions options;
-    options.AddFilter(RewriteOptions::kRewriteImages);
-    options.AddFilter(RewriteOptions::kInsertImgDimensions);
+    options.EnableFilter(RewriteOptions::kRewriteImages);
+    options.EnableFilter(RewriteOptions::kInsertImgDimensions);
     options.set_img_inline_max_bytes(2000);
     rewrite_driver_.AddFilters(options);
     other_driver_.AddFilter(RewriteOptions::kRewriteImages);
@@ -431,7 +444,7 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_EQ(rewritten_image_data, secondary_image_data);
     ServeResourceFromNewContext(src_string, rewritten_filename,
                                 fetched_resource_content.substr(header_size),
-                                RewriteOptions::kRewriteImages);
+                                RewriteOptions::kRewriteImages, NULL);
   }
 
   void DataUrlResource() {
@@ -554,7 +567,7 @@ class RewriterTest : public ResourceManagerTestBase {
     scoped_ptr<ResourceManager> resource_manager(NewResourceManager(hasher));
     rewrite_driver_.SetResourceManager(resource_manager.get());
     RewriteOptions options;
-    options.AddFilter(RewriteOptions::kOutlineCss);
+    options.EnableFilter(RewriteOptions::kOutlineCss);
     options.set_outline_threshold(0);
     rewrite_driver_.AddFilters(options);
 
@@ -603,7 +616,7 @@ class RewriterTest : public ResourceManagerTestBase {
     scoped_ptr<ResourceManager> resource_manager(NewResourceManager(hasher));
     rewrite_driver_.SetResourceManager(resource_manager.get());
     RewriteOptions options;
-    options.AddFilter(RewriteOptions::kOutlineJavascript);
+    options.EnableFilter(RewriteOptions::kOutlineJavascript);
     options.set_outline_threshold(0);
     rewrite_driver_.AddFilters(options);
 
@@ -950,8 +963,8 @@ TEST_F(RewriterTest, NoOutlineScript) {
   scoped_ptr<ResourceManager> resource_manager(NewResourceManager(hasher));
   rewrite_driver_.SetResourceManager(resource_manager.get());
   RewriteOptions options;
-  options.AddFilter(RewriteOptions::kOutlineCss);
-  options.AddFilter(RewriteOptions::kOutlineJavascript);
+  options.EnableFilter(RewriteOptions::kOutlineCss);
+  options.EnableFilter(RewriteOptions::kOutlineJavascript);
   rewrite_driver_.AddFilters(options);
 
   // We need to make sure we don't create this file, so rm any old one

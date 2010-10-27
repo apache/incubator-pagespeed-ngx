@@ -135,18 +135,18 @@ class RewriteDriverFactory {
   StringPiece url_prefix();
   int num_shards() const { return options_.num_shards(); }
 
-  // Sets the enabled filters, based on a comma-separated list of
-  // filter names
-  bool SetEnabledFilters(const StringPiece& filter_names) {
-    options_.ClearFilters();
-    return AddEnabledFilters(filter_names, message_handler());
-  }
+  // Sets the rewrite level.
+  void SetRewriteLevel(RewriteOptions::RewriteLevel level);
 
   // Adds an additional set of filters the enabled set.  Returns false
   // if any of the filter names are invalid, but all the valid ones
   // will be added anyway.
-  bool AddEnabledFilters(const StringPiece& filter_names,
-                         MessageHandler* handler);
+  bool AddEnabledFilters(const StringPiece& filter_names);
+
+  // Adds an additional set of filters the disabled set.  Returns false
+  // if any of the filter names are invalid, but all the valid ones
+  // will be added anyway.
+  bool AddDisabledFilters(const StringPiece& filter_names);
 
   // Computes URL fetchers using the based fetcher, and optionally,
   // slurp_directory and slurp_read_only.
