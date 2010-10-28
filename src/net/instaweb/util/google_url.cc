@@ -22,7 +22,7 @@
 namespace net_instaweb {
 
 
-std::string GoogleUrlAllExceptLeaf(const GURL& gurl) {
+std::string GoogleUrl::AllExceptLeaf(const GURL& gurl) {
   CHECK(gurl.is_valid());
   std::string spec_str = gurl.spec();
 
@@ -80,13 +80,36 @@ std::string GoogleUrlAllExceptLeaf(const GURL& gurl) {
   //  around for an extension and splits off the query params.
 }
 
-std::string GoogleUrlLeaf(const GURL& gurl) {
+std::string GoogleUrl::Leaf(const GURL& gurl) {
   std::string spec_str = gurl.spec();
   std::string::size_type question = spec_str.find('?');
   std::string::size_type last_slash = spec_str.find_last_of('/', question);
   CHECK(last_slash != std::string::npos);
   return std::string(spec_str.data() + last_slash + 1,
                       spec_str.size() - (last_slash + 1));
+}
+
+// For "http://a.com/b/c/d?e=f/g returns "http://a.com" without trailing slash
+std::string GoogleUrl::Origin(const GURL& gurl) {
+  std::string spec = gurl.spec();
+  size_t origin_size = gurl.GetWithEmptyPath().spec().size();
+  CHECK_LT(0, static_cast<int>(origin_size));
+  --origin_size;  // skip trailing slash
+  CHECK_LE(origin_size, spec.size());
+  CHECK_EQ('/', spec[origin_size]);
+  return std::string(spec.data(), origin_size);
+}
+
+// For "http://a.com/b/c/d?e=f/g returns "/b/c/d?e=f/g" including leading slash
+std::string GoogleUrl::PathAndLeaf(const GURL& gurl) {
+  std::string spec = gurl.spec();
+  size_t origin_size = gurl.GetWithEmptyPath().spec().size();
+  CHECK_LT(0, static_cast<int>(origin_size));
+  --origin_size;  // include trailing slash
+  CHECK_LE(origin_size, spec.size());
+  CHECK_EQ('/', spec[origin_size]);
+  CHECK_LE(origin_size, spec.size());
+  return std::string(spec.data() + origin_size, spec.size() - origin_size);
 }
 
 }  // namespace net_instaweb

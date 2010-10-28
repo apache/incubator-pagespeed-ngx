@@ -79,6 +79,7 @@
         'util/file_cache_test.cc',
         'util/file_system_test.cc',
         'util/filename_encoder_test.cc',
+        'util/google_url_test.cc',
         'util/gtest.cc',
         'util/gzip_inflater_test.cc',
         'util/http_cache_test.cc',

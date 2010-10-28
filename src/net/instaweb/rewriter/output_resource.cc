@@ -165,7 +165,7 @@ std::string OutputResource::url() const {
   GURL gurl(resolved_base_);
   CHECK(gurl.is_valid());
   GURL resolved = gurl.Resolve(full_name_.PrettyName());
-  return GoogleUrlSpec(resolved);
+  return GoogleUrl::Spec(resolved);
 }
 
 void OutputResource::SetHash(const StringPiece& hash) {

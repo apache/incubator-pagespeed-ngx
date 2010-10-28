@@ -46,35 +46,8 @@ namespace net_instaweb {
 
 namespace {
 
-// Callback for asynchronous fetch. When instaweb handles a request, it will
-// fetch the resource for that request with an asynchronous fetcher. We need to
-// run the Poll method periodically to check if the fetch finishes.
-//
-// TODO(jmarantz): copy Release() code from SerfUrlFetcher to avoid
-// corrupting stack on a timeout.
-class AsyncCallback : public UrlAsyncFetcher::Callback {
- public:
-  explicit AsyncCallback(MessageHandler* message_handler)
-      : done_(false),
-        success_(false),
-        message_handler_(message_handler) {}
-  virtual ~AsyncCallback() {}
-  virtual void Done(bool success)  {
-    done_ = true;
-    success_ = success;
-  }
-  bool done() const { return done_; }
-  bool success() const { return success_; }
- private:
-  bool done_;
-  bool success_;
-  MessageHandler* message_handler_;
-
-  DISALLOW_COPY_AND_ASSIGN(AsyncCallback);
-};
-
 // Default handler when the file is not found
-int instaweb_default_handler(const std::string& url, request_rec* request) {
+void instaweb_default_handler(const std::string& url, request_rec* request) {
   request->status = HTTP_NOT_FOUND;
   ap_set_content_type(request, "text/html; charset=utf-8");
   ap_rputs("<html><head><title>Not Found</title></head>", request);
@@ -82,7 +55,6 @@ int instaweb_default_handler(const std::string& url, request_rec* request) {
   ap_rputs("<hr>NOT FOUND:", request);
   ap_rputs(url.c_str(), request);
   ap_rputs("</body></html>", request);
-  return OK;
 }
 
 // predeclare to minimize diffs for now.  TODO(jmarantz): reorder
@@ -105,29 +77,29 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
   std::string output;  // TODO(jmarantz): quit buffering resource output
   StringWriter writer(&output);
   GoogleMessageHandler message_handler;
-  AsyncCallback callback(&message_handler);
+  SerfAsyncCallback* callback = new SerfAsyncCallback();
   bool handled = rewrite_driver->FetchResource(
       url, request_headers, &response_headers, &writer, &message_handler,
-      &callback);
+      callback);
   if (handled) {
     message_handler.Message(kWarning, "Fetching resource %s...", url.c_str());
-    if (!callback.done()) {
+    if (!callback->done()) {
       SerfUrlAsyncFetcher* serf_async_fetcher =
           factory->serf_url_async_fetcher();
       AprTimer timer;
       int64 max_ms = factory->fetcher_time_out_ms();
       for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
-           !callback.done() && now_ms - start_ms < max_ms;
+           !callback->done() && now_ms - start_ms < max_ms;
            now_ms = timer.NowMs()) {
         int64 remaining_us = max_ms - (now_ms - start_ms);
         serf_async_fetcher->Poll(remaining_us);
       }
 
-      if (!callback.done()) {
+      if (!callback->done()) {
         message_handler.Message(kError, "Timeout on url %s", url.c_str());
       }
     }
-    if (callback.success()) {
+    if (callback->success()) {
       message_handler.Message(kInfo, "Fetch succeeded for %s, status=%d",
                               url.c_str(), response_headers.status_code());
       send_out_headers_and_body(request, response_headers, output);
@@ -135,9 +107,10 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
       message_handler.Message(kError, "Fetch failed for %s, status=%d",
                               url.c_str(), response_headers.status_code());
       factory->Increment404Count();
-      return instaweb_default_handler(url, request);
+      instaweb_default_handler(url, request);
     }
   }
+  callback->Release();
   return handled;
 }
 
@@ -146,20 +119,17 @@ void send_out_headers_and_body(
     const SimpleMetaData& response_headers,
     const std::string& output) {
   for (int idx = 0; idx < response_headers.NumAttributes(); ++idx) {
-    std::string lowercase_header(response_headers.Name(idx));
-    // Force to lower case.
-    StringToLowerASCII(&lowercase_header);
-    if (lowercase_header == "content-type") {
+    const char* name = response_headers.Name(idx);
+    const char* value = response_headers.Value(idx);
+    if (strcasecmp(name, HttpAttributes::kContentType) == 0) {
       // ap_set_content_type does not make a copy of the string, we need
       // to duplicate it.
-      char* ptr = apr_pstrdup(request->pool, response_headers.Value(idx));
+      char* ptr = apr_pstrdup(request->pool, value);
       ap_set_content_type(request, ptr);
     } else {
       // apr_table_add makes copies of both head key and value, so we do not
       // have to duplicate them.
-      apr_table_add(request->headers_out,
-                    response_headers.Name(idx),
-                    response_headers.Value(idx));
+      apr_table_add(request->headers_out, name, value);
     }
   }
   // Recompute the content-length, because the content may have changed.

@@ -85,6 +85,7 @@ CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
   s_href_ = html_parse_->Intern("href");
   s_type_ = html_parse_->Intern("type");
   s_rel_  = html_parse_->Intern("rel");
+  s_media_ = html_parse_->Intern("media");
   s_style_ = html_parse_->Intern("style");
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
@@ -108,10 +109,17 @@ void CssCombineFilter::EndElement(HtmlElement* element) {
   HtmlElement::Attribute* href;
   const char* media;
   if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
+    // We only want to combine CSS files with the same media type to avoid
+    // loading unneeded content. So, if the media changes, we'll emit what we
+    // have and start over.
+    if (partnership_.get() != NULL && combine_media_ != media) {
+      EmitCombinations();
+    }
     if (partnership_.get() == NULL) {
       partnership_.reset(new Partnership(
           resource_manager_->domain_lawyer(),
           html_parse_->gurl()));
+      combine_media_ = media;
     }
     MessageHandler* handler = html_parse_->message_handler();
     if (!partnership_->AddElement(element, href->value(), handler)) {
@@ -154,13 +162,13 @@ void CssCombineFilter::EmitCombinations() {
   // loaded.
   std::vector<HtmlElement*> combine_elements;
   ResourceVector combine_resources;
-  StringVector media_attributes;
   for (int i = 0, n = partnership_->num_urls(); i < n; ++i) {
     HtmlElement* element = partnership_->element(i);
     const char* media;
     HtmlElement::Attribute* href;
     if (css_tag_scanner_.ParseCssElement(element, &href, &media) &&
         html_parse_->IsRewritable(element)) {
+      CHECK(combine_media_ == media);
       // TODO(jmarantz): consider async loads; exclude css file
       // from the combination that are not yet loaded.  For now, our
       // loads are blocking.  Need to understand Apache module
@@ -180,7 +188,6 @@ void CssCombineFilter::EmitCombinations() {
           // It's unclear how often this happens -> how valueable this would be.
           break;
         }
-        media_attributes.push_back(media);
         combine_resources.push_back(css_resource);
 
         // Try to add this resource to the combination.  We are not yet
@@ -206,20 +213,21 @@ void CssCombineFilter::EmitCombinations() {
     std::string url_safe_id;
     for (int i = 0, n = combine_resources.size(); i < n; ++i) {
       Resource* css_resource = combine_resources[i];
-      CssUrl* css_url = css_combine_url.add_element();
       // Note that css_resource has been checked for eligibility for rewriting
       // in advance, and it's url is now absolute.  For the moment we're just
       // gathering up absolute urls.
       // TODO(jmaessen): Use relative urls as soon as we understand the
       // semantics.
-      css_url->set_origin_url(css_resource->url());
-      css_url->set_media(media_attributes[i]);
+      css_combine_url.add_element_url(css_resource->url());
     }
     Encode(css_combine_url, &url_safe_id);
 
     HtmlElement* combine_element = html_parse_->NewElement(NULL, s_link_);
     combine_element->AddAttribute(s_rel_, "stylesheet", "\"");
     combine_element->AddAttribute(s_type_, "text/css", "\"");
+    if (!combine_media_.empty()) {
+      combine_element->AddAttribute(s_media_, combine_media_, "\"");
+    }
 
     // Start building up the combination.  At this point we are still
     // not committed to the combination, because the 'write' can fail.
@@ -228,8 +236,7 @@ void CssCombineFilter::EmitCombinations() {
         resource_manager_->CreateNamedOutputResource(
             filter_prefix_, url_safe_id, &kContentTypeCss, handler));
     bool written = combination->IsWritten() ||
-        WriteCombination(combine_resources, media_attributes, combination.get(),
-                         handler);
+        WriteCombination(combine_resources, combination.get(), handler);
 
     // We've collected at least two CSS files to combine, and whose
     // HTML elements are in the current flush window.  Last step
@@ -259,7 +266,6 @@ void CssCombineFilter::EmitCombinations() {
 }
 
 bool CssCombineFilter::WriteCombination(const ResourceVector& combine_resources,
-                                        const StringVector& combine_media,
                                         OutputResource* combination,
                                         MessageHandler* handler) {
   bool written = true;
@@ -276,22 +282,10 @@ bool CssCombineFilter::WriteCombination(const ResourceVector& combine_resources,
       min_origin_expiration_time_ms = input_expire_time_ms;
     }
 
-    // TODO(sligocki): Stop combining multiple media types.
-    const std::string& media = combine_media[i];
-    if (!media.empty()) {
-      combined_contents += "\n@Media ";
-      combined_contents += media;
-      combined_contents += " {\n";
-    }
-
     // TODO(sligocki): We need a real CSS parser.  But for now we have to make
     // any URLs absolute.
     written = css_tag_scanner_.AbsolutifyUrls(contents, input->url(),
                                               &writer, handler);
-
-    if (!media.empty()) {
-      combined_contents += "\n}\n";
-    }
   }
   if (written) {
     if (combination->resolved_base().empty()) {
@@ -332,9 +326,8 @@ class CssCombiner : public Resource::AsyncCallback {
                                combine_resources_.end());
   }
 
-  void AddResource(Resource* resource, const char* media) {
+  void AddResource(Resource* resource) {
     combine_resources_.push_back(resource);
-    combine_media_.push_back(media);
   }
 
   virtual void Done(bool success, Resource* resource) {
@@ -370,8 +363,8 @@ class CssCombiner : public Resource::AsyncCallback {
       if (response_headers_ != NULL) {
         response_headers_->CopyFrom(*combination_->metadata());
       }
-      ok = (filter_->WriteCombination(combine_resources_, combine_media_,
-                                      combination_, message_handler_) &&
+      ok = (filter_->WriteCombination(combine_resources_, combination_,
+                                      message_handler_) &&
             combination_->IsWritten() &&
             ((writer_ == NULL) ||
              writer_->Write(combination_->contents(), message_handler_)));
@@ -389,7 +382,6 @@ class CssCombiner : public Resource::AsyncCallback {
   UrlAsyncFetcher::Callback* callback_;
   OutputResource* combination_;
   CssCombineFilter::ResourceVector combine_resources_;
-  StringVector combine_media_;
   Writer* writer_;
   MetaData* response_headers_;
 
@@ -411,12 +403,11 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
     ret = true;
     CssCombiner* combiner = new CssCombiner(
         this, message_handler, callback, combination, writer, response_headers);
-    for (int i = 0; i < css_combine_url.element_size(); ++i)  {
-      const CssUrl& css_url = css_combine_url.element(i);
-      std::string url = css_url.origin_url();
+    for (int i = 0; i < css_combine_url.element_url_size(); ++i)  {
+      const std::string& url = css_combine_url.element_url(i);
       Resource* css_resource =
           resource_manager_->CreateInputResourceAbsolute(url, message_handler);
-      combiner->AddResource(css_resource, css_url.media().c_str());
+      combiner->AddResource(css_resource);
       resource_manager_->ReadAsync(css_resource, combiner, message_handler);
     }
 

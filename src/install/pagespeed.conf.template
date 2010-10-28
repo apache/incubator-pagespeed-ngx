@@ -49,47 +49,103 @@
     ModPagespeedJsInlineMaxBytes         2048
     ModPagespeedOutlineThreshold         3000
 
-    # Override the mod_pagespeed 'rewrite level'. The default level
-    # "CoreFilters" uses a set of rewrite filters that are generally
-    # safe for most web pages. Most sites should not need to change
-    # this value and can instead fine-tune the configuration using the
-    # ModPagespeedDisableFilters and ModPagespeedEnableFilters
-    # directives, below. Valid values for ModPagespeedRewriteLevel are
-    # PassThrough, InstrumentationOnly, and CoreFilters.
+    # The following rewrite passes are safe to run on most web pages.
+    # Of course, any web page can examine itself using Javascript, and
+    # may not expect any changes to be made by ModPagespeed.  However,
+    # these passes have been shown to be robust over a large number of
+    # web sites.
     #
-    # ModPagespeedRewriteLevel CoreFilters
+    # Note that the order of the filters specified in the configuration file
+    # does not matter -- mod_pagespeed applies the filters in a predefined
+    # order.
 
-    # Explicitly disables specific filters. This is useful in
-    # conjuction with ModPagespeedRewriteLevel. For instance, if one
-    # of the filters in the CoreFilters needs to be disabled for a
-    # site, that filter can be added to
-    # ModPagespeedDisableFilters. This directive contains a
-    # comma-separated list of filter names, and can be repeated.
-    #
-    # ModPagespeedDisableFilters rewrite_javascript
+    # Adds a 'head' element do the document if one is not supplied already.
+    # Several other filters turn this on automatically even if it is not
+    # specified explicitly.
+    ModPagespeedRewriters add_head
 
-    # Explicitly enables specific filters. This is useful in
-    # conjuction with ModPagespeedRewriteLevel. For instance, filters
-    # not included in the CoreFilters may be enabled using this
-    # directive. This directive contains a comma-separated list of
-    # filter names, and can be repeated.
-    #
-    # ModPagespeedEnableFilters collapse_whitespace,elide_attributes
+    # Combines multiple heads into one.  Technically HTML documents
+    # are not allowed to have multiple <head>s, but sites which
+    # aggregate content from multiple sources sometimes have them.
+    # This filter moves the content from later <head>s into the first
+    # head.  This filter can change the order of content (e.g. CSS and
+    # JS) in the later <head>s relative to intervening <body>
+    # elements.
+    # ModPagespeedRewriters combine_heads
 
-    # ModPagespeedDomain
-    # authorizes rewriting of JS, CSS, and Image files found in this
-    # domain. By default only resources with the same origin as the
-    # HTML file are rewritten. For example:
-    #
-    #   ModPagespeedDomain cdn.myhost.com
-    #
-    # This will allow resources found on http://cdn.myhost.com to be
-    # rewritten in addition to those in the same domain as the HTML.
-    #
-    # Wildcards (* and ?) are allowed in the domain specification. Be
-    # careful when using them as if you rewrite domains that do not
-    # send you traffic, then the site receiving the traffic will not
-    # know how to serve the rewritten content.
+    # Experimental filter to completely remove scripts from a page.  Obviously
+    # this will break functionality, and is disabled by default.  This can be
+    # used to facilitate timing tests showing the maximum benefits of improving
+    # javascript.
+    # ModPagespeedRewriters strip_scripts
+
+    # Large blocks of inline Javascript and CSS can benefit from
+    # moving into external files so they can be cached in the browser,
+    # even if the HTML is not cacheable.  See
+    # ModPagespeedOutlineThreshold.  These filters can currently only be
+    # enabled in a single-server configuration.
+    # TODO(sligocki): can we enable these?
+    # ModPagespeedRewriters outline_css,outline_javascript
+
+    # Moves CSS elements into the <head>  This filter requires add_head.
+    # //TODO(aoates): can we enable this?
+    # ModPagespeedRewriters move_css_to_head
+
+    # Combines multiple CSS elements into one
+    ModPagespeedRewriters combine_css
+
+    # Rewrites Javscript and CSS files to remove excess whitespace and comments
+    ModPagespeedRewriters rewrite_css,rewrite_javascript
+
+    # Inlines small CSS and JS files into the HTML document.  See
+    # ModPagespeedCssInlineMaxBytes
+    ModPagespeedRewriters inline_css,inline_javascript
+
+    # Optimizes images, re-encoding them for smaller byte-size, removing
+    # excess pixels that will not be displayed, and inlining small images.
+    # See ModPagespeedImgInlineMaxBytes
+    ModPagespeedRewriters rewrite_images
+
+    # Adds width/height attributes to <img> tags that lack them.
+    ModPagespeedRewriters insert_img_dimensions
+
+    # Removes comments in HTML files.  This is turned off by default to avoid
+    # breaking common techniques for deferring javascript execution by running
+    # javascript that searches the DOM for HTML comments.
+    # ModPagespeedRewriters remove_comments
+
+    # Removes excess whitespace in HTML files (avoiding "pre",
+    # "script", "style", and "textarea").  This is off by default as
+    # it's possible to apply these tags to the DOM in a way that is
+    # not statically detected.  If your web-site only uses those
+    # attributes directly in HTML markup, and does not apply them via
+    # CSS and javascript, then it's safe to enable this filter.
+    # ModPagespeedRewriters collapse_whitespace
+
+    # Removes attributes which are not significant according to the HTML spec.
+    # //TODO(mdsteele): can we enable this?
+    # ModPagespeedRewriters elide_attributes
+
+    # Finds all images, css, and javascript resources that are publically
+    # cacheable for less than one month, and extend their cache lifetime to
+    # one year.  This is safe because this transformation adds a content
+    # hash to the URL so that if the content changes the URL will change, and
+    # we will get the desired caching behavior.  All other filters that write
+    # resources use the same content-hashing technique to allow safe caching
+    # for one year.
+    ModPagespeedRewriters extend_cache
+
+    # Reduces the size of URLs by removing common prefixes with the HTML file.
+    # TODO(jmarantz): turn this on by default
+    # ModPagespeedRewriters left_trim_urls
+
+    # Removes quotes around HTML attributes that are not lexically required
+    ModPagespeedRewriters remove_quotes
+
+    # Adds javascript at the beginning and end of the page to allow latency
+    # information to be sent back to the server.  This information can be
+    # viewed from a web browser from /mod_pagespeed_statistics
+    ModPagespeedRewriters add_instrumentation
 
     # When Apache is set up as a browser proxy, mod_pagespeed can record
     # web-sites as they are requested, so that an image of the web is built

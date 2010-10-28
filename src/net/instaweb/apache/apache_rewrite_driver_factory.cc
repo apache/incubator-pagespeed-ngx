@@ -23,7 +23,6 @@
 #include "net/instaweb/apache/serf_url_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -47,9 +46,6 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(apr_pool_t* pool)
   apr_pool_create(&pool_, pool);
   cache_mutex_.reset(NewMutex());
   rewrite_drivers_mutex_.reset(NewMutex());
-
-  // In Apache, we default to using the "core filters".
-  SetRewriteLevel(RewriteOptions::kCoreFilters);
 }
 
 ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {

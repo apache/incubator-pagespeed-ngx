@@ -24,11 +24,6 @@ option optimize_for = LITE_RUNTIME;
 
 package net_instaweb;
 
-message CssUrl {
-  optional string origin_url = 1 [default = "" ];
-  optional string media = 2 [default = "" ];
-};
-
 message CssCombineUrl {
-  repeated CssUrl element = 1;
+  repeated string element_url = 1;
 };

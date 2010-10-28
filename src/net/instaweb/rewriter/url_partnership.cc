@@ -70,7 +70,7 @@ void UrlPartnership::Resolve() {
     resolved_ = true;
     if (!gurl_vector_.empty()) {
       std::vector<StringPiece> common_components;
-      std::string base = GoogleUrlAllExceptLeaf(*gurl_vector_[0]);
+      std::string base = GoogleUrl::AllExceptLeaf(*gurl_vector_[0]);
 
       if (gurl_vector_.size() == 1) {
         resolved_base_ = base + "/";
@@ -83,7 +83,8 @@ void UrlPartnership::Resolve() {
         // Split each string on / boundaries, then compare these path elements
         // until one doesn't match, then shortening common_components.
         for (int i = 1, n = gurl_vector_.size(); i < n; ++i) {
-          std::string all_but_leaf = GoogleUrlAllExceptLeaf(*gurl_vector_[i]);
+          std::string all_but_leaf =
+              GoogleUrl::AllExceptLeaf(*gurl_vector_[i]);
           std::vector<StringPiece> components;
           SplitStringPieceToVector(all_but_leaf, "/", &components, omit_empty);
           CHECK_LE(3U, components.size());  // expect {"http:", "", "x"...}

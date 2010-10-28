@@ -67,7 +67,6 @@ class CssCombineFilter : public RewriteFilter {
                              const std::string& base_url,
                              MessageHandler* handler);
   bool WriteCombination(const ResourceVector& combine_resources,
-                        const StringVector& combine_media,
                         OutputResource* combination,
                         MessageHandler* handler);
 
@@ -75,11 +74,13 @@ class CssCombineFilter : public RewriteFilter {
   Atom s_link_;
   Atom s_href_;
   Atom s_rel_;
+  Atom s_media_;
   Atom s_style_;
 
   class Partnership;
 
   scoped_ptr<Partnership> partnership_;
+  std::string combine_media_;
   HtmlParse* html_parse_;
   ResourceManager* resource_manager_;
   CssTagScanner css_tag_scanner_;

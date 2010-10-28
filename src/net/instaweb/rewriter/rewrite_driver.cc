@@ -384,7 +384,7 @@ bool RewriteDriver::FetchResource(
   if (!gurl.is_valid()) {
     return false;
   }
-  std::string leaf = GoogleUrlLeaf(gurl);
+  std::string leaf = GoogleUrl::Leaf(gurl);
   ResourceNamer resource_namer;
   if (!resource_namer.Decode(leaf)) {
     return false;
@@ -417,7 +417,7 @@ bool RewriteDriver::FetchResource(
           std::string(id.data(), id.size()));
       if (p != resource_filter_map_.end()) {
         RewriteFilter* filter = p->second;
-        output_resource->set_resolved_base(GoogleUrlAllExceptLeaf(gurl));
+        output_resource->set_resolved_base(GoogleUrl::AllExceptLeaf(gurl));
         queued = filter->Fetch(output_resource, writer,
                                request_headers, response_headers,
                                url_async_fetcher_, message_handler, callback);

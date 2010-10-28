@@ -90,6 +90,7 @@ class RewriterTest : public ResourceManagerTestBase {
       const StringPiece& url,
       ResourceNamer* namer) {
     int shard = ResourceManager::kNotSharded - 1;
+    CHECK(GURL(url.as_string()).is_valid()) << url;
     CHECK(manager->UrlToResourceNamer(url, &shard, namer));
     if (num_shards_ == 0) {
       EXPECT_EQ(ResourceManager::kNotSharded, shard);
@@ -183,7 +184,7 @@ class RewriterTest : public ResourceManagerTestBase {
     static const char html_input_format[] =
         "<head>\n"
         "  <link rel='stylesheet' href='a.css' type='text/css'>\n"
-        "  <link rel='stylesheet' href='b.css' type='text/css' media='print'>\n"
+        "  <link rel='stylesheet' href='b.css' type='text/css'>\n"
         "  <title>Hello, Instaweb</title>\n"
         "%s"
         "</head>\n"
@@ -215,18 +216,11 @@ class RewriterTest : public ResourceManagerTestBase {
     // Check for CSS files in the rewritten page.
     StringVector css_urls;
     CollectCssLinks(id, output_buffer_, &css_urls);
-    // output_buffer_ should have exactly one CSS file (the combined one) or
-    // one more if there was a barrier halfway through.
-    if (is_barrier) {
-      EXPECT_EQ(2UL, css_urls.size());
-    } else {
-      EXPECT_EQ(1UL, css_urls.size());
-    }
+    EXPECT_LE(1UL, css_urls.size());
     const std::string& combine_url = css_urls[0];
 
     GURL gurl(combine_url);
-    std::string spec = GoogleUrlSpec(gurl);
-    std::string path = spec.substr(gurl.GetWithEmptyPath().spec().size());
+    std::string path = GoogleUrl::PathAndLeaf(gurl);
 
     ResourceNamer namer;
     EXPECT_TRUE(namer.Decode(path));
@@ -235,10 +229,7 @@ class RewriterTest : public ResourceManagerTestBase {
 
     // Expected CSS combination.
     // This syntax must match that in css_combine_filter
-    std::string expected_combination = StrCat(a_css_body, "\n"
-                                               "@Media print {\n",
-                                               b_css_body, "\n"
-                                               "}\n");
+    std::string expected_combination = StrCat(a_css_body, b_css_body);
     if (!is_barrier) {
       expected_combination.append(c_css_body);
     }
@@ -813,6 +804,72 @@ TEST_F(RewriterTest, CombineCssWithIEDirective) {
 TEST_F(RewriterTest, CombineCssWithStyle) {
   const char style_barrier[] = "<style>a { color: red }</style>\n";
   CombineCss("combine_css_style", &md5_hasher_, style_barrier, true);
+}
+
+TEST_F(RewriterTest, CombineCssWithMediaBarrier) {
+  const char media_barrier[] =
+      "<link rel='stylesheet' type='text/css' href='d.css' media='print'>\n";
+
+  const char d_css_url[] = "http://combine_css.test/d.css";
+  const char d_css_body[] = ".c4 {\n color: green;\n}\n";
+  SimpleMetaData default_css_header;
+  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  mock_url_fetcher_.SetResponse(d_css_url, default_css_header, d_css_body);
+
+  CombineCss("combine_css_media", &md5_hasher_, media_barrier, true);
+}
+
+TEST_F(RewriterTest, CombineCssWithNonMediaBarrier) {
+  // Put original CSS files into our fetcher.
+  const char html_url[] = "http://combine_css.test/no_media_barrier.html";
+  const char a_css_url[] = "http://combine_css.test/a.css";
+  const char b_css_url[] = "http://combine_css.test/b.css";
+  const char c_css_url[] = "http://combine_css.test/c.css";
+  const char d_css_url[] = "http://combine_css.test/d.css";
+
+  const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
+  const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
+  const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
+  const char d_css_body[] = ".c4 {\n color: green;\n}\n";
+
+  SimpleMetaData default_css_header;
+  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
+  mock_url_fetcher_.SetResponse(b_css_url, default_css_header, b_css_body);
+  mock_url_fetcher_.SetResponse(c_css_url, default_css_header, c_css_body);
+  mock_url_fetcher_.SetResponse(d_css_url, default_css_header, d_css_body);
+
+  // Only the first two CSS files should be combined.
+  const char html_input[] =
+      "<head>\n"
+      "  <link rel='stylesheet' type='text/css' href='a.css' media='print'>\n"
+      "  <link rel='stylesheet' type='text/css' href='b.css' media='print'>\n"
+      "  <link rel='stylesheet' type='text/css' href='c.css'>\n"
+      "  <link rel='stylesheet' type='text/css' href='d.css' media='print'>\n"
+      "</head>";
+
+  // Rewrite
+  rewrite_driver_.AddFilter(RewriteOptions::kCombineCss);
+  ParseUrl(html_url, html_input);
+
+  // Check for CSS files in the rewritten page.
+  StringVector css_urls;
+  CollectCssLinks("combine_css_no_media-links", output_buffer_, &css_urls);
+  EXPECT_EQ(3UL, css_urls.size());
+  const std::string& combine_url = css_urls[0];
+
+  const char expected_output_format[] =
+      "<head>\n"
+      "  <link rel=\"stylesheet\" type=\"text/css\" media=\"print\" "
+      "href=\"%s\">\n"
+      "  \n"
+      "  <link rel='stylesheet' type='text/css' href='c.css'>\n"
+      "  <link rel='stylesheet' type='text/css' href='d.css' media='print'>\n"
+      "</head>";
+  std::string expected_output = StringPrintf(expected_output_format,
+                                              combine_url.c_str());
+
+  EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 }
 
 TEST_F(RewriterTest, CombineCssShards) {

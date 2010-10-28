@@ -67,8 +67,8 @@ const char* kModPagespeedLRUCacheByteLimit = "ModPagespeedLRUCacheByteLimit";
 const char* kModPagespeedFetcherTimeoutMs = "ModPagespeedFetcherTimeOutMs";
 const char* kModPagespeedNumShards = "ModPagespeedNumShards";
 const char* kModPagespeedOutlineThreshold = "ModPagespeedOutlineThreshold";
+const char* kModPagespeedRewriters = "ModPagespeedRewriters";
 const char* kModPagespeedRewriteLevel = "ModPagespeedRewriteLevel";
-const char* kModPagespeedEnableFilters = "ModPagespeedEnableFilters";
 const char* kModPagespeedDisableFilters = "ModPagespeedDisableFilters";
 const char* kModPagespeedSlurpDirectory = "ModPagespeedSlurpDirectory";
 const char* kModPagespeedSlurpReadOnly = "ModPagespeedSlurpReadOnly";
@@ -197,7 +197,15 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
                          name, value);
         ret = false;
       }
-    } else if (strcmp(name, kModPagespeedEnableFilters) == 0) {
+    } else if (strcmp(name, kModPagespeedRewriteLevel) == 0) {
+      RewriteOptions::RewriteLevel level;
+      if (RewriteOptions::ParseRewriteLevel(value, &level)) {
+        options->SetRewriteLevel(level);
+        ++option_count;
+      } else {
+        ret = false;
+      }
+    } else if (strcmp(name, kModPagespeedRewriters) == 0) {
       if (options->EnableFiltersByCommaSeparatedList(value, handler)) {
         ++option_count;
       } else {
@@ -584,7 +592,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (strcasecmp(directive, kModPagespeedLRUCacheByteLimit) == 0) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_lru_cache_byte_limit, arg);
-  } else if (strcasecmp(directive, kModPagespeedEnableFilters) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedRewriters) == 0) {
     if (!factory->AddEnabledFilters(arg)) {
       ret = "Failed to enable some filters.";
     }
@@ -666,11 +674,11 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheByteLimit,
         "Set the maximum byte size entry to store in the per-process "
         "in-memory LRU cache"),
+  APACHE_CONFIG_OPTION(kModPagespeedRewriters,
+                       "Comma-separated list of enabled filters"),
   APACHE_CONFIG_OPTION(kModPagespeedRewriteLevel,
                        "Base level of rewriting "
                        "(PassThrough, InstrumentationOnly, CoreFilters)"),
-  APACHE_CONFIG_OPTION(kModPagespeedEnableFilters,
-                       "Comma-separated list of enabled filters"),
   APACHE_CONFIG_OPTION(kModPagespeedDisableFilters,
                        "Comma-separated list of disabled filters"),
   APACHE_CONFIG_OPTION(kModPagespeedSlurpDirectory,

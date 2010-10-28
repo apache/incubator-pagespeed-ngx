@@ -20,44 +20,6 @@
 
 namespace net_instaweb {
 
-namespace {
-
-class SerfAsyncCallback : public UrlAsyncFetcher::Callback {
- public:
-  explicit SerfAsyncCallback(MessageHandler* message_handler)
-      : done_(false),
-        success_(false),
-        released_(false),
-        message_handler_(message_handler) {}
-  virtual ~SerfAsyncCallback() {}
-  virtual void Done(bool success)  {
-    done_ = true;
-    success_ = success;
-    if (released_) {
-      delete this;
-    }
-  }
-
-  void Release() {
-    released_ = true;
-    if (done_) {
-      delete this;
-    }
-  }
-
-  bool done() const { return done_; }
-  bool success() const { return success_; }
- private:
-  bool done_;
-  bool success_;
-  bool released_;
-  MessageHandler* message_handler_;
-
-  DISALLOW_COPY_AND_ASSIGN(SerfAsyncCallback);
-};
-
-}  // namespace
-
 SerfUrlFetcher::SerfUrlFetcher(int64 fetcher_timeout_ms,
                                SerfUrlAsyncFetcher* async_fetcher)
     : fetcher_timeout_ms_(fetcher_timeout_ms),
@@ -72,7 +34,7 @@ bool SerfUrlFetcher::StreamingFetchUrl(const std::string& url,
                                        MetaData* response_headers,
                                        Writer* fetched_content_writer,
                                        MessageHandler* message_handler) {
-  SerfAsyncCallback* callback = new SerfAsyncCallback(message_handler);
+  SerfAsyncCallback* callback = new SerfAsyncCallback();
   async_fetcher_->StreamingFetch(
       url, request_headers, response_headers,
       fetched_content_writer, message_handler, callback);

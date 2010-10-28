@@ -26,13 +26,24 @@
 
 namespace net_instaweb {
 
-inline std::string GoogleUrlSpec(const GURL& gurl) { return gurl.spec(); }
+namespace GoogleUrl {
 
-// For "http://a/b/c/d?e=f/g returns "http://a/b/c", omitting trailing slash.
-std::string GoogleUrlAllExceptLeaf(const GURL& gurl);
+// Helper functions around GURL to make it a little easier to use
+inline std::string Spec(const GURL& gurl) { return gurl.spec(); }
 
-// For "http://a/b/c/d?e=f/g returns "d?e=f/g", omitting leading slash.
-std::string GoogleUrlLeaf(const GURL& gurl);
+// For "http://a.com/b/c/d?e=f/g returns "http://a/b/c", omitting trailing slash.
+std::string AllExceptLeaf(const GURL& gurl);
+
+// For "http://a.com/b/c/d?e=f/g returns "d?e=f/g", omitting leading slash.
+std::string Leaf(const GURL& gurl);
+
+// For "http://a.com/b/c/d?e=f/g returns "http://a.com" without trailing slash
+std::string Origin(const GURL& gurl);
+
+// For "http://a.com/b/c/d?E=f/g returns "/b/c/d?e=f/g" including leading slash
+std::string PathAndLeaf(const GURL& gurl);
+
+}  // namespace GoogleUrl
 
 }  // namespace net_instaweb
 
