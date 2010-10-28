@@ -68,7 +68,7 @@ do_package() {
   fi
 
   DEPENDS="httpd >= 2.2, \
-  libstdc++ >= 4.1.2,
+  libstdc++ >= 4.1.2, \
   at"
   gen_spec
 
