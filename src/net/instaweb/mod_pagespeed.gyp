@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO(sligocki): This is a confusing name for the gyp file where tests live.
+
 {
   'variables': {
     # chromium_code indicates that the code is not
@@ -102,12 +104,14 @@
 #        'util/threadsafe_cache_test.cc',
         'util/time_util_test.cc',
         'util/url_escaper_test.cc',
+        'util/url_multipart_encoder_test.cc',
         'util/user_agent_test.cc',
         'util/wildcard_test.cc',
         'util/write_through_cache_test.cc',
         'rewriter/cache_extender_test.cc',
         'rewriter/collapse_whitespace_filter_test.cc',
         'rewriter/css_filter_test.cc',
+        'rewriter/css_move_to_head_filter_test.cc',
         'rewriter/css_tag_scanner_test.cc',
         'rewriter/domain_lawyer_test.cc',
         'rewriter/elide_attributes_filter_test.cc',
@@ -115,6 +119,7 @@
         'rewriter/image_endian_test.cc',
 #        'rewriter/image_test.cc',
         'rewriter/javascript_code_block_test.cc',
+        'rewriter/javascript_filter_test.cc',
         'rewriter/remove_comments_filter_test.cc',
         'rewriter/resource_namer_test.cc',
         'rewriter/resource_manager_test.cc',

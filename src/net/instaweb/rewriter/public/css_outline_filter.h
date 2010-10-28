@@ -16,8 +16,8 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_OUTLINE_FILTER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_OUTLINE_FILTER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_OUTLINE_FILTER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_CSS_OUTLINE_FILTER_H_
 
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
@@ -32,11 +32,11 @@ class OutputResource;
 class ResourceManager;
 
 // Filter to take explicit <style> and <script> tags and outline them to files.
-class OutlineFilter : public HtmlFilter {
+class CssOutlineFilter : public HtmlFilter {
  public:
-  OutlineFilter(HtmlParse* html_parse, ResourceManager* resource_manager,
-                size_t size_threshold_bytes,
-                bool outline_styles, bool outline_scripts);
+  CssOutlineFilter(HtmlParse* html_parse, ResourceManager* resource_manager,
+                   size_t size_threshold_bytes);
+  static const char kFilterId[];
 
   virtual void StartDocument();
 
@@ -45,7 +45,7 @@ class OutlineFilter : public HtmlFilter {
 
   virtual void Flush();
 
-  // HTML Events we expect to be in <style> and <script> elements.
+  // HTML Events we expect to be in <style> elements.
   virtual void Characters(HtmlCharactersNode* characters);
 
   // HTML Events we do not expect to be in <style> and <script> elements.
@@ -57,13 +57,12 @@ class OutlineFilter : public HtmlFilter {
   virtual void EndDocument() {}
   virtual void Directive(HtmlDirectiveNode* directive) {}
 
-  virtual const char* Name() const { return "Outline"; }
+  virtual const char* Name() const { return "OutlineCss"; }
 
  private:
   bool WriteResource(const std::string& content, OutputResource* resource,
                      MessageHandler* handler);
   void OutlineStyle(HtmlElement* element, const std::string& content);
-  void OutlineScript(HtmlElement* element, const std::string& content);
 
   // The style or script element we are in (if it hasn't been flushed).
   // If we are not in a script or style element, inline_element_ == NULL.
@@ -72,21 +71,17 @@ class OutlineFilter : public HtmlFilter {
   std::string buffer_;
   HtmlParse* html_parse_;
   ResourceManager* resource_manager_;
-  bool outline_styles_;
-  bool outline_scripts_;
   size_t size_threshold_bytes_;
   // HTML strings interned into a symbol table.
   Atom s_link_;
-  Atom s_script_;
   Atom s_style_;
   Atom s_rel_;
   Atom s_href_;
-  Atom s_src_;
   Atom s_type_;
 
-  DISALLOW_COPY_AND_ASSIGN(OutlineFilter);
+  DISALLOW_COPY_AND_ASSIGN(CssOutlineFilter);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_OUTLINE_FILTER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_CSS_OUTLINE_FILTER_H_

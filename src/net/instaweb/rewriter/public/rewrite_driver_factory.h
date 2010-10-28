@@ -107,7 +107,12 @@ class RewriteDriverFactory {
   // TODO(jmarantz):
   // Remove all these methods in favor of simply exposing the RewriteOptions*.
   void set_num_shards(int num_shards) { options_.set_num_shards(num_shards); }
-  void set_outline_threshold(int64 t) { options_.set_outline_threshold(t); }
+  void set_css_outline_min_bytes(int64 t) {
+    options_.set_css_outline_min_bytes(t);
+  }
+  void set_js_outline_min_bytes(int64 t) {
+    options_.set_js_outline_min_bytes(t);
+  }
   void set_img_inline_max_bytes(int64 x) {
     options_.set_img_inline_max_bytes(x);
   }

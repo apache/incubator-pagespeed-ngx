@@ -322,7 +322,7 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
   std::string script_url;
-  bool ok = false;
+  bool queued = false;
   if (resource_manager_->url_escaper()->DecodeFromUrlSegment(
           output_resource->name(), &script_url)) {
     scoped_ptr<Resource> script_input(
@@ -334,8 +334,13 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
       StringPiece script = script_input->contents();
       std::string script_out;
       JavascriptCodeBlock code_block(script, &config_, message_handler);
-      ok = WriteExternalScriptTo(script_input.get(), code_block.Rewritten(),
-                                 output_resource);
+      bool ok = WriteExternalScriptTo(script_input.get(),
+                                      code_block.Rewritten(), output_resource);
+      if (ok) {
+        ok = writer->Write(output_resource->contents(), message_handler);
+      }
+      callback->Done(ok);
+      queued = true;
     } else {
       message_handler->Error(output_resource->name().as_string().c_str(), 0,
                              "Could not load original source %s",
@@ -345,7 +350,7 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
     message_handler->Error(output_resource->name().as_string().c_str(), 0,
                            "Could not decode original js url");
   }
-  return ok;
+  return queued;
 }
 
 }  // namespace net_instaweb

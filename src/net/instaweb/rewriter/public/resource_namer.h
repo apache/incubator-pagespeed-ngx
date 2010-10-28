@@ -41,16 +41,7 @@ class ResourceNamer {
 
   // Encodes the fields in this encoder into an absolute url, with the
   // trailing portion "ID.HASH.NAME.EXT".
-  std::string AbsoluteUrl(const ResourceManager* resource_manager) const;
-
-  // Encodes the fields in this encoder into a url suitable for inclusion
-  // in the document currently being rewritten.
-  std::string RelativeUrl(const ResourceManager* resource_manager) const {
-    return AbsoluteUrl(resource_manager);
-  }
-
-  // Returns absolute path where the encoded resource should be stored.
-  std::string Filename(const ResourceManager* resource_manager) const;
+  std::string Encode() const;
 
   // Encode a key that can used to do a lookup based on an id
   // and the name.  This key can be used to find the hash-code for a

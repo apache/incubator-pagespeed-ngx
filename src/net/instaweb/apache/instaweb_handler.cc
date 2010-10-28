@@ -46,6 +46,36 @@ namespace net_instaweb {
 
 namespace {
 
+bool IsCompressibleContentType(const char* content_type) {
+  if (content_type == NULL) {
+    return false;
+  }
+  std::string type = content_type;
+  size_t separator_idx = type.find(";");
+  if (separator_idx != std::string::npos) {
+    type.erase(separator_idx);
+  }
+
+  bool res = false;
+  if (type.find("text/") == 0) {
+    res = true;
+  } else if (type.find("application/") == 0) {
+    if (type.find("javascript") != type.npos ||
+        type.find("json") != type.npos ||
+        type.find("ecmascript") != type.npos ||
+        type == "application/livescript" ||
+        type == "application/js" ||
+        type == "application/jscript" ||
+        type == "application/x-js" ||
+        type == "application/xhtml+xml" ||
+        type == "application/xml") {
+      res = true;
+    }
+  }
+
+  return res;
+}
+
 // Default handler when the file is not found
 void instaweb_default_handler(const std::string& url, request_rec* request) {
   request->status = HTTP_NOT_FOUND;
@@ -132,6 +162,12 @@ void send_out_headers_and_body(
       apr_table_add(request->headers_out, name, value);
     }
   }
+  if (response_headers.status_code() == HttpStatus::kOK &&
+      IsCompressibleContentType(request->content_type)) {
+    // Make sure compression is enabled for this response.
+    ap_add_output_filter("DEFLATE", NULL, request, request->connection);
+  }
+
   // Recompute the content-length, because the content may have changed.
   ap_set_content_length(request, output.size());
   // Send the body

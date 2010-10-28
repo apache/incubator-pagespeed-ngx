@@ -182,6 +182,8 @@ setup_staging_dir :
 staging: setup_staging_dir $(CONF_TEMPLATES)
 	echo "LoadModule pagespeed_module $(APACHE_MODULES)/mod_pagespeed.so" \
 	 	> $(STAGING_DIR)/pagespeed.load
+	echo "LoadModule deflate_module $(APACHE_MODULES)/mod_deflate.so" \
+	 	>> $(STAGING_DIR)/pagespeed.load
 	$(MODS_ENABLED_STAGING_COMMANDS)
 	cp -rp mod_pagespeed_example $(STAGING_DIR)
 	cp $(PAGESPEED_MODULE) $(STAGING_DIR)/mod_pagespeed.so

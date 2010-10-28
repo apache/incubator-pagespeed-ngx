@@ -24,6 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/fake_url_async_fetcher.h"
 #include "net/instaweb/util/public/filename_encoder.h"
@@ -36,6 +37,8 @@
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include <string>
 
+#define URL_PREFIX "http://www.example.com/"
+
 namespace net_instaweb {
 
 class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
@@ -46,7 +49,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                               lru_cache_(new LRUCache(100 * 1000 * 1000)),
                               mock_timer_(0),
                               http_cache_(lru_cache_, &mock_timer_),
-                              url_prefix_("http://mysite/"),
+                              url_prefix_(URL_PREFIX),
                               num_shards_(0) {
   }
 
@@ -103,6 +106,58 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   };
 
   virtual HtmlParse* html_parse() { return rewrite_driver_.html_parse(); }
+
+  // Initializes a resource for mock fetching.
+  void InitMetaData(const StringPiece& resource_name,
+                    const ContentType& content_type,
+                    const StringPiece& content,
+                    int64 ttl) {
+    std::string name = StrCat("http://test.com/", resource_name);
+    SimpleMetaData response_headers;
+    resource_manager_->SetDefaultHeaders(&content_type, &response_headers);
+    response_headers.RemoveAll(HttpAttributes::kCacheControl);
+    response_headers.Add(
+        HttpAttributes::kCacheControl,
+        StringPrintf("public, max-age=%ld", static_cast<long>(ttl)).c_str());
+    mock_url_fetcher_.SetResponse(name, response_headers, content);
+  }
+
+  // Callback that can be used for testing resource fetches.  As all the
+  // async fetchers in unit-tests call their callbacks immediately, it
+  // is safe to put this on the stack, rather than having it self-delete.
+  class FetchCallback : public UrlAsyncFetcher::Callback {
+   public:
+    FetchCallback() : success_(false), done_(false) {}
+    virtual void Done(bool success) {
+      success_ = success;
+      done_ = true;
+    }
+    bool success() const { return success_; }
+   private:
+    bool success_;
+    bool done_;
+  };
+
+  // Helper function to test resource fetching, returning true if the fetch
+  // succeeded, and modifying content.  It is up to the caller to EXPECT_TRUE
+  // on the status and EXPECT_EQ on the content.
+  bool ServeResource(const char* id, const StringPiece& name, const char* ext,
+                     std::string* content) {
+    SimpleMetaData request_headers, response_headers;
+    content->clear();
+    StringWriter writer(content);
+    FetchCallback callback;
+    ResourceNamer namer;
+    namer.set_id(id);
+    namer.set_name(name);
+    namer.set_hash("0");
+    namer.set_ext(ext);
+    std::string url = StrCat(URL_PREFIX, namer.Encode());
+    bool fetched = rewrite_driver_.FetchResource(
+        url, request_headers, &response_headers, &writer, &message_handler_,
+        &callback);
+    return fetched && callback.success();
+  }
 
   MockUrlFetcher mock_url_fetcher_;
   FakeUrlAsyncFetcher mock_url_async_fetcher_;

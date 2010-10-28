@@ -31,12 +31,13 @@
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_inline_filter.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
+#include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/img_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
-#include "net/instaweb/rewriter/public/outline_filter.h"
+#include "net/instaweb/rewriter/public/js_outline_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -53,7 +54,7 @@
 
 namespace {
 
-// Filter prefixes
+// RewriteFilter prefixes
 const char kCssCombiner[] = "cc";
 const char kCssFilter[] = "cf";
 const char kCacheExtender[] = "ce";
@@ -199,17 +200,23 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
     // Experimental filter that blindly scripts all strips from a page.
     AddFilter(new StripScriptsFilter(&html_parse_));
   }
-  if (options.Enabled(RewriteOptions::kOutlineCss) ||
-      options.Enabled(RewriteOptions::kOutlineJavascript)) {
-    // Cut out inlined styles and scripts and make them into external resources.
+  if (options.Enabled(RewriteOptions::kOutlineCss)) {
+    // Cut out inlined styles and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
     CHECK(resource_manager_ != NULL);
-    OutlineFilter* outline_filter =
-        new OutlineFilter(&html_parse_, resource_manager_,
-                          options.outline_threshold(),
-                          options.Enabled(RewriteOptions::kOutlineCss),
-                          options.Enabled(RewriteOptions::kOutlineJavascript));
-    AddFilter(outline_filter);
+    CssOutlineFilter* css_outline_filter =
+        new CssOutlineFilter(&html_parse_, resource_manager_,
+                             options.css_outline_min_bytes());
+    AddFilter(css_outline_filter);
+  }
+  if (options.Enabled(RewriteOptions::kOutlineJavascript)) {
+    // Cut out inlined scripts and make them into external resources.
+    // This can only be called once and requires a resource_manager to be set.
+    CHECK(resource_manager_ != NULL);
+    JsOutlineFilter* js_outline_filter =
+        new JsOutlineFilter(&html_parse_, resource_manager_,
+                            options.js_outline_min_bytes());
+    AddFilter(js_outline_filter);
   }
   if (options.Enabled(RewriteOptions::kMoveCssToHead)) {
     // It's good to move CSS links to the head prior to running CSS combine,
@@ -340,19 +347,35 @@ namespace {
 class ResourceDeleterCallback : public UrlAsyncFetcher::Callback {
  public:
   ResourceDeleterCallback(OutputResource* output_resource,
-                          UrlAsyncFetcher::Callback* callback)
+                          UrlAsyncFetcher::Callback* callback,
+                          HTTPCache* http_cache,
+                          MessageHandler* message_handler)
       : output_resource_(output_resource),
-        callback_(callback) {
+        callback_(callback),
+        http_cache_(http_cache),
+        message_handler_(message_handler) {
   }
 
   virtual void Done(bool status) {
     callback_->Done(status);
+    // Filters should generally write their output to the OutputResource,
+    // in which case when they are done we can insert it into the cache.
+    // However, not all filters do this yet notably img_rewrite_filter,
+    // so check for ContentsValid().
+    if (status && output_resource_->ContentsValid()) {
+      http_cache_->Put(output_resource_->url(),
+                       *output_resource_->metadata(),
+                       output_resource_->contents(),
+                       message_handler_);
+    }
     delete this;
   }
 
  private:
   scoped_ptr<OutputResource> output_resource_;
   UrlAsyncFetcher::Callback* callback_;
+  HTTPCache* http_cache_;
+  MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceDeleterCallback);
 };
@@ -369,24 +392,15 @@ bool RewriteDriver::FetchResource(
   bool queued = false;
   bool handled = false;
 
-  // Determine whether this URL matches our prefix pattern.  Note that
-  // the URL may have a shard applied to it.
-  const ContentType* content_type = NULL;
+  // Note that this does permission checking and parsing of the url, but doesn't
+  // actually fetch any data until we specifically ask it to.
+  OutputResource* output_resource =
+      resource_manager_->CreateFetchOutputResource(
+          url, NULL, message_handler);
 
-  // TODO(jmarantz): we have disabled domain sharding for now.  This was
-  // previously implemented via
-  // resource_manager_->UrlToResourceNamer(url, &shard, &resource_namer) &&
-  // but now if the leaf is a 4-part URL with a cache-prefix and a known
-  // extension then we will consider it valid.  Later we should add checksum
-  // or, better yet, a private key established by the server owner in his
-  // configuration file.
-  GURL gurl(url.as_string().c_str());
-  if (!gurl.is_valid()) {
-    return false;
-  }
-  std::string leaf = GoogleUrl::Leaf(gurl);
-  ResourceNamer resource_namer;
-  if (!resource_namer.Decode(leaf)) {
+  // If the resource name was ill-formed or unrecognized, we reject the request
+  // so it can be passed along.
+  if (output_resource == NULL) {
     return false;
   }
 
@@ -396,34 +410,35 @@ bool RewriteDriver::FetchResource(
   // IDs even if that filter is not enabled, rather rejecting the request.
   // TODO(jmarantz): consider query-specific rewrites.  We may need to
   // enable filters for this driver based on the referrer.
-  StringPiece id = resource_namer.id();
+  StringPiece id = output_resource->filter_prefix();
   StringFilterMap::iterator p = resource_filter_map_.find(
       std::string(id.data(), id.size()));
 
-  if ((p != resource_filter_map_.end()) &&
-       ((content_type = NameExtensionToContentType(
-           StrCat(".", resource_namer.ext()))) != NULL)) {
+  // OutlineFilter is special because it's not a RewriteFilter -- it's
+  // just an HtmlFilter, but it does encode rewritten resources that
+  // must be served from the cache.
+  //
+  // TODO(jmarantz): figure out a better way to refactor this.
+  // TODO(jmarantz): add a unit-test to show serving outline-filter resources.
+  if (((p != resource_filter_map_.end()) ||
+       (id == CssOutlineFilter::kFilterId) ||
+       (id == JsOutlineFilter::kFilterId)) &&
+      output_resource->type() != NULL) {
     handled = true;
-    OutputResource* output_resource = resource_manager_->
-        CreateUrlOutputResource(resource_namer, content_type);
-    callback = new ResourceDeleterCallback(output_resource, callback);
+    callback = new ResourceDeleterCallback(output_resource, callback,
+                                           resource_manager_->http_cache(),
+                                           message_handler);
     if (resource_manager_->FetchOutputResource(
             output_resource, writer, response_headers, message_handler)) {
       callback->Done(true);
       queued = true;
-    } else {
-      StringPiece id = resource_namer.id();
-      StringFilterMap::iterator p = resource_filter_map_.find(
-          std::string(id.data(), id.size()));
-      if (p != resource_filter_map_.end()) {
-        RewriteFilter* filter = p->second;
-        output_resource->set_resolved_base(GoogleUrl::AllExceptLeaf(gurl));
-        queued = filter->Fetch(output_resource, writer,
-                               request_headers, response_headers,
-                               url_async_fetcher_, message_handler, callback);
-        if (resource_fetches_ != NULL) {
-          resource_fetches_->Add(1);
-        }
+    } else if (p != resource_filter_map_.end()) {
+      RewriteFilter* filter = p->second;
+      queued = filter->Fetch(output_resource, writer,
+                             request_headers, response_headers,
+                             url_async_fetcher_, message_handler, callback);
+      if (resource_fetches_ != NULL) {
+        resource_fetches_->Add(1);
       }
     }
   }

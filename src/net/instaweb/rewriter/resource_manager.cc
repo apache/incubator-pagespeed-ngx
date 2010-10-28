@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
+#include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -90,8 +91,7 @@ void ResourceManager::SetUrlPrefixPattern(const StringPiece& pattern) {
   ValidateShardsAgainstUrlPrefixPattern();
 }
 
-std::string ResourceManager::UrlPrefixFor(
-    const ResourceNamer& namer) const {
+std::string ResourceManager::UrlPrefixFor(const ResourceNamer& namer) const {
   CHECK(!namer.hash().empty());
   std::string url_prefix;
   if (num_shards_ == 0) {
@@ -105,27 +105,25 @@ std::string ResourceManager::UrlPrefixFor(
   return url_prefix;
 }
 
-bool ResourceManager::UrlToResourceNamer(
-    const StringPiece& url, int* shard, ResourceNamer* resource) const {
-  StringPiece suffix;
+StringPiece ResourceManager::CanonicalizeBase(
+    const StringPiece& base, int* shard) const {
+  std::string base_str = base.as_string();
+  base_str += "/";
+  StringPiece result;
   if (num_shards_ == 0) {
     CHECK_EQ(std::string::npos, url_prefix_pattern_.find("%d"));
-    if (url.starts_with(url_prefix_pattern_)) {
-      suffix = url.substr(url_prefix_pattern_.size());
-      *shard = kNotSharded;
+    if (url_prefix_pattern_.compare(base_str) != 0) {
+      result = base;
     }
   } else {
     CHECK_NE(std::string::npos, url_prefix_pattern_.find("%d"));
     // TODO(jmaessen): Ugh.  Lint hates this sscanf call and so do I.  Can parse
     // based on the results of the above find.
-    if (sscanf(url.as_string().c_str(),
-               url_prefix_pattern_.c_str(), shard) == 1) {
-      // Get the actual prefix length by re-generating the URL.
-      std::string prefix = StringPrintf(url_prefix_pattern_.c_str(), *shard);
-      suffix = url.substr(prefix.size());
+    if (!sscanf(base_str.c_str(), url_prefix_pattern_.c_str(), shard) == 1) {
+      result = base;
     }
   }
-  return (!suffix.empty() && resource->Decode(suffix));
+  return result;
 }
 
 void ResourceManager::ValidateShardsAgainstUrlPrefixPattern() {
@@ -205,7 +203,8 @@ OutputResource* ResourceManager::CreateGeneratedOutputResource(
   // TODO(jmaessen): The addition of 1 below avoids the leading ".";
   // make this convention consistent and fix all code.
   full_name.set_ext(content_type->file_extension() + 1);
-  OutputResource* resource = new OutputResource(this, full_name, content_type);
+  OutputResource* resource =
+      new OutputResource(this, NULL, full_name, content_type);
   resource->set_generated(true);
   return resource;
 }
@@ -240,24 +239,37 @@ OutputResource* ResourceManager::CreateOutputResourceFromResource(
     Resource* input_resource,
     MessageHandler* handler) {
   // TODO: use prefix and suffix here, which ought to be stored in resource.
-  std::string name;
-  encoder->EncodeToUrlSegment(input_resource->url(), &name);
-  return CreateNamedOutputResource(filter_prefix, name, content_type, handler);
+  // Instead we're building a bogus partnership just to fish around for them.
+  OutputResource* output_resource = NULL;
+  GURL input_gurl(input_resource->url());
+  UrlPartnership partnership(domain_lawyer_, input_gurl);
+  if (partnership.AddUrl(input_resource->url(), handler)) {
+    partnership.Resolve();
+    const StringPiece& base = partnership.ResolvedBase();
+    std::string relative_url = partnership.RelativePath(0);
+    std::string name;
+    encoder->EncodeToUrlSegment(relative_url, &name);
+    output_resource = CreateNamedOutputResourceWithPath(
+        base, filter_prefix, name, content_type, handler);
+  }
+  return output_resource;
 }
 
-OutputResource* ResourceManager::CreateNamedOutputResource(
+OutputResource* ResourceManager::CreateNamedOutputResourceWithPath(
+    const StringPiece& path,
     const StringPiece& filter_prefix,
     const StringPiece& name,
     const ContentType* content_type,
     MessageHandler* handler) {
-  assert(content_type != NULL);
+  CHECK(content_type != NULL);
   ResourceNamer full_name;
   full_name.set_id(filter_prefix);
   full_name.set_name(name);
   // TODO(jmaessen): The addition of 1 below avoids the leading ".";
   // make this convention consistent and fix all code.
   full_name.set_ext(content_type->file_extension() + 1);
-  OutputResource* resource = new OutputResource(this, full_name, content_type);
+  OutputResource* resource =
+      new OutputResource(this, path, full_name, content_type);
 
   // Determine whether this output resource is still valid by looking
   // up by hash in the http cache.  Note that this cache entry will
@@ -283,7 +295,32 @@ OutputResource* ResourceManager::CreateNamedOutputResource(
 OutputResource* ResourceManager::CreateUrlOutputResource(
     const ResourceNamer& resource_id, const ContentType* type) {
   CHECK(!resource_id.hash().empty());
-  OutputResource* resource = new OutputResource(this, resource_id, type);
+  OutputResource* resource =
+      new OutputResource(this, NULL, resource_id, type);
+  return resource;
+}
+
+OutputResource* ResourceManager::CreateFetchOutputResource(
+    const StringPiece& url,
+    const ContentType* type,
+    MessageHandler* handler) {
+  OutputResource* resource = NULL;
+  // Here we gin up a single-source partnership so we can check permission
+  // and extract path & name.
+  std::string url_string(url.data(), url.size());
+  GURL gurl(url_string);
+  UrlPartnership partnership(domain_lawyer_, gurl);
+  if (partnership.AddUrl(url, handler)) {
+    partnership.Resolve();
+    std::string name = partnership.RelativePath(0);
+    ResourceNamer namer;
+    if (namer.Decode(name)) {
+      int shard;
+      StringPiece base =
+          CanonicalizeBase(partnership.ResolvedBase(), &shard);
+      resource = new OutputResource(this, base, namer, type);
+    }
+  }
   return resource;
 }
 
@@ -310,8 +347,16 @@ Resource* ResourceManager::CreateInputResource(const GURL& base_gurl,
 Resource* ResourceManager::CreateInputResourceAndReadIfCached(
     const GURL& base_gurl, const StringPiece& input_url,
     MessageHandler* handler) {
-  Resource* input_resource =
-      CreateInputResource(base_gurl, input_url, handler);
+  // TODO(jmaessen): next few lines (to end of 1st if) move to CreateInputResource.
+  UrlPartnership partnership(domain_lawyer_, base_gurl);
+  Resource* input_resource = NULL;
+  if (partnership.AddUrl(input_url, handler)) {
+    // TODO(jmaessen): When more fully plumbed, stash partnership
+    // (or at least ResolvedBase) in input resource.
+    partnership.Resolve();
+    input_resource =
+        CreateInputResourceGURL(*partnership.FullPath(0), handler);
+  }
   if (input_resource == NULL ||
       !input_resource->IsCacheable() ||
       !ReadIfCached(input_resource, handler)) {
@@ -325,12 +370,15 @@ Resource* ResourceManager::CreateInputResourceFromOutputResource(
     UrlSegmentEncoder* encoder,
     OutputResource* output_resource,
     MessageHandler* handler) {
-  // TODO(jmaessen): do lawyer checking here, and preferably call
-  // CreateInputResourceGURL instead.
+  // Assumes output_resource has a url that's been checked by a lawyer.
   Resource* input_resource = NULL;
-  std::string input_url;
-  if (encoder->DecodeFromUrlSegment(output_resource->name(), &input_url)) {
-    input_resource = CreateInputResourceAbsolute(input_url, handler);
+  std::string input_name;
+  if (encoder->DecodeFromUrlSegment(output_resource->name(), &input_name)) {
+    // TODO(jmaessen): Transient check for resource path here?  I guess the
+    // Resolve does that work for now.
+    GURL base_gurl(output_resource->resolved_base());
+    GURL input_gurl = base_gurl.Resolve(input_name);
+    input_resource = CreateInputResourceGURL(input_gurl, handler);
   }
   return input_resource;
 }

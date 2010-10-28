@@ -16,7 +16,7 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/rewriter/public/outline_filter.h"
+#include "net/instaweb/rewriter/public/css_outline_filter.h"
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
@@ -31,76 +31,52 @@
 
 namespace net_instaweb {
 
-const char kTextCss[] = "text/css";
-const char kTextJavascript[] = "text/javascript";
 const char kStylesheet[] = "stylesheet";
 
-OutlineFilter::OutlineFilter(HtmlParse* html_parse,
-                             ResourceManager* resource_manager,
-                             size_t size_threshold_bytes,
-                             bool outline_styles,
-                             bool outline_scripts)
+const char CssOutlineFilter::kFilterId[] = "co";
+
+CssOutlineFilter::CssOutlineFilter(HtmlParse* html_parse,
+                                   ResourceManager* resource_manager,
+                                   size_t size_threshold_bytes)
     : inline_element_(NULL),
       html_parse_(html_parse),
       resource_manager_(resource_manager),
-      outline_styles_(outline_styles),
-      outline_scripts_(outline_scripts),
       size_threshold_bytes_(size_threshold_bytes),
       s_link_(html_parse->Intern("link")),
-      s_script_(html_parse->Intern("script")),
       s_style_(html_parse->Intern("style")),
       s_rel_(html_parse->Intern("rel")),
       s_href_(html_parse->Intern("href")),
-      s_src_(html_parse->Intern("src")),
       s_type_(html_parse->Intern("type")) { }
 
-void OutlineFilter::StartDocument() {
+void CssOutlineFilter::StartDocument() {
   inline_element_ = NULL;
   buffer_.clear();
 }
 
-void OutlineFilter::StartElement(HtmlElement* element) {
-  // No tags allowed inside style or script element.
+void CssOutlineFilter::StartElement(HtmlElement* element) {
+  // No tags allowed inside style element.
   if (inline_element_ != NULL) {
     // TODO(sligocki): Add negative unit tests to hit these errors.
-    html_parse_->ErrorHere("Tag '%s' found inside style/script.",
+    html_parse_->ErrorHere("Tag '%s' found inside style.",
                            element->tag().c_str());
     inline_element_ = NULL;  // Don't outline what we don't understand.
     buffer_.clear();
   }
-  if (outline_styles_ && element->tag() == s_style_) {
+  if (element->tag() == s_style_) {
     inline_element_ = element;
     buffer_.clear();
-
-  } else if (outline_scripts_ && element->tag() == s_script_) {
-    inline_element_ = element;
-    buffer_.clear();
-    // script elements which already have a src should not be outlined.
-    if (element->FindAttribute(s_src_) != NULL) {
-      inline_element_ = NULL;
-    }
   }
 }
 
-void OutlineFilter::EndElement(HtmlElement* element) {
+void CssOutlineFilter::EndElement(HtmlElement* element) {
   if (inline_element_ != NULL) {
     if (element != inline_element_) {
-      // No other tags allowed inside style or script element.
-      html_parse_->ErrorHere("Tag '%s' found inside style/script.",
+      // No other tags allowed inside style element.
+      html_parse_->ErrorHere("Tag '%s' found inside style.",
                              element->tag().c_str());
 
     } else if (buffer_.size() >= size_threshold_bytes_) {
-      if (inline_element_->tag() == s_style_) {
-        OutlineStyle(inline_element_, buffer_);
-
-      } else if (inline_element_->tag() == s_script_) {
-        OutlineScript(inline_element_, buffer_);
-
-      } else {
-        html_parse_->ErrorHere("OutlineFilter::inline_element_ "
-                               "Expected: 'style' or 'script', Actual: '%s'",
-                               inline_element_->tag().c_str());
-      }
+      OutlineStyle(inline_element_, buffer_);
     } else {
       html_parse_->InfoHere("Inline element not outlined because its size %d, "
                             "is below threshold %d",
@@ -112,46 +88,46 @@ void OutlineFilter::EndElement(HtmlElement* element) {
   }
 }
 
-void OutlineFilter::Flush() {
-  // If we were flushed in a style/script element, we cannot outline it.
+void CssOutlineFilter::Flush() {
+  // If we were flushed in a style element, we cannot outline it.
   inline_element_ = NULL;
   buffer_.clear();
 }
 
-void OutlineFilter::Characters(HtmlCharactersNode* characters) {
+void CssOutlineFilter::Characters(HtmlCharactersNode* characters) {
   if (inline_element_ != NULL) {
     buffer_ += characters->contents();
   }
 }
 
-void OutlineFilter::Comment(HtmlCommentNode* comment) {
+void CssOutlineFilter::Comment(HtmlCommentNode* comment) {
   if (inline_element_ != NULL) {
-    html_parse_->ErrorHere("Comment found inside style/script.");
+    html_parse_->ErrorHere("Comment found inside style.");
     inline_element_ = NULL;  // Don't outline what we don't understand.
     buffer_.clear();
   }
 }
 
-void OutlineFilter::Cdata(HtmlCdataNode* cdata) {
+void CssOutlineFilter::Cdata(HtmlCdataNode* cdata) {
   if (inline_element_ != NULL) {
-    html_parse_->ErrorHere("CDATA found inside style/script.");
+    html_parse_->ErrorHere("CDATA found inside style.");
     inline_element_ = NULL;  // Don't outline what we don't understand.
     buffer_.clear();
   }
 }
 
-void OutlineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
+void CssOutlineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   if (inline_element_ != NULL) {
-    html_parse_->ErrorHere("IE Directive found inside style/script.");
+    html_parse_->ErrorHere("IE Directive found inside style.");
     inline_element_ = NULL;  // Don't outline what we don't understand.
     buffer_.clear();
   }
 }
 
 // Try to write content and possibly header to resource.
-bool OutlineFilter::WriteResource(const std::string& content,
-                                  OutputResource* resource,
-                                  MessageHandler* handler) {
+bool CssOutlineFilter::WriteResource(const std::string& content,
+                                     OutputResource* resource,
+                                     MessageHandler* handler) {
   // We set the TTL of the origin->hashed_name map to 0 because this is
   // derived from the inlined HTML.
   int64 origin_expire_time_ms = 0;
@@ -160,18 +136,19 @@ bool OutlineFilter::WriteResource(const std::string& content,
 }
 
 // Create file with style content and remove that element from DOM.
-void OutlineFilter::OutlineStyle(HtmlElement* style_element,
-                                 const std::string& content) {
+void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
+                                    const std::string& content) {
   if (html_parse_->IsRewritable(style_element)) {
     // Create style file from content.
     const char* type = style_element->AttributeValue(s_type_);
     // We only deal with CSS styles.  If no type specified, CSS is assumed.
-    // TODO(sligocki): Is this assumption appropriate?
-    if (type == NULL || strcmp(type, kTextCss) == 0) {
+    // See http://www.w3.org/TR/html5/semantics.html#the-style-element
+    if (type == NULL || strcmp(type, kContentTypeCss.mime_type()) == 0) {
       MessageHandler* handler = html_parse_->message_handler();
       scoped_ptr<OutputResource> resource(
-          resource_manager_->CreateGeneratedOutputResource(
-              "of", &kContentTypeCss, handler));
+          resource_manager_->CreateNamedOutputResourceWithPath(
+              GoogleUrl::AllExceptLeaf(html_parse_->gurl()), kFilterId, "_",
+              &kContentTypeCss, handler));
       // Absolutify URLs in content.
       std::string absolute_content;
       StringWriter absolute_writer(&absolute_content);
@@ -200,48 +177,6 @@ void OutlineFilter::OutlineStyle(HtmlElement* style_element,
       std::string element_string;
       style_element->ToString(&element_string);
       html_parse_->InfoHere("Cannot outline non-css stylesheet %s",
-                            element_string.c_str());
-    }
-  }
-}
-
-// Create file with script content and remove that element from DOM.
-// TODO(sligocki): We probably will break any relative URL references here.
-void OutlineFilter::OutlineScript(HtmlElement* inline_element,
-                                  const std::string& content) {
-  if (html_parse_->IsRewritable(inline_element)) {
-    // Create script file from content.
-    const char* type = inline_element->AttributeValue(s_type_);
-    // We only deal with javascript styles. If no type specified, JS is assumed.
-    // TODO(sligocki): Is this assumption appropriate?
-    if (type == NULL || strcmp(type, kTextJavascript) == 0) {
-      MessageHandler* handler = html_parse_->message_handler();
-      scoped_ptr<OutputResource> resource(
-          resource_manager_->CreateGeneratedOutputResource(
-              "of", &kContentTypeJavascript, handler));
-      if (WriteResource(content, resource.get(), handler)) {
-        HtmlElement* outline_element = html_parse_->NewElement(
-            inline_element->parent(), s_script_);
-        outline_element->AddAttribute(s_src_, resource->url(), "'");
-        // Add all atrributes from old script element to new script src element.
-        for (int i = 0; i < inline_element->attribute_size(); ++i) {
-          const HtmlElement::Attribute& attr = inline_element->attribute(i);
-          outline_element->AddAttribute(attr);
-        }
-        // Add <script src=...> element to DOM.
-        html_parse_->InsertElementBeforeElement(inline_element,
-                                                outline_element);
-        // Remove original script element from DOM.
-        if (!html_parse_->DeleteElement(inline_element)) {
-          html_parse_->FatalErrorHere("Failed to delete inline script element");
-        }
-      } else {
-        html_parse_->ErrorHere("Failed to write outlined script resource.");
-      }
-    } else {
-      std::string element_string;
-      inline_element->ToString(&element_string);
-      html_parse_->InfoHere("Cannot outline non-javascript script %s",
                             element_string.c_str());
     }
   }

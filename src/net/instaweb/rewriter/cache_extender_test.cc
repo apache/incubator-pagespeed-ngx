@@ -51,73 +51,27 @@ class CacheExtenderTest : public ResourceManagerTestBase {
     rewrite_driver_.AddFilter(RewriteOptions::kExtendCache);
   }
 
-  void InitMetaData(const StringPiece& resource_name,
-                    const ContentType& content_type,
-                    const StringPiece& content,
-                    int64 ttl,
-                    MetaData* meta_data) {
-    std::string name = StrCat("http://test.com/", resource_name);
-    resource_manager_->SetDefaultHeaders(&content_type, meta_data);
-    meta_data->RemoveAll(HttpAttributes::kCacheControl);
-    meta_data->Add(
-        HttpAttributes::kCacheControl,
-        StringPrintf("public, max-age=%ld", static_cast<long>(ttl)).c_str());
-    mock_url_fetcher_.SetResponse(name, *meta_data, content);
-  }
-
   void InitTest(int64 ttl) {
-    InitMetaData("a.css", kContentTypeCss, kCssData, ttl, &css_header_);
-    InitMetaData("b.jpg", kContentTypeJpeg, kImageData, ttl, &img_header_);
-    InitMetaData("c.js", kContentTypeJavascript, kJsData, ttl, &js_header_);
+    InitMetaData("a.css", kContentTypeCss, kCssData, ttl);
+    InitMetaData("b.jpg", kContentTypeJpeg, kImageData, ttl);
+    InitMetaData("c.js", kContentTypeJavascript, kJsData, ttl);
   }
 
   // Generate HTML loading 3 resources with the specified URLs
   std::string GenerateHtml(const char* a, const char* b, const char* c) {
     return StringPrintf(kHtmlFormat, a, b, c);
   }
-
-  class FetchCallback : public UrlAsyncFetcher::Callback {
-   public:
-    FetchCallback() : success_(false), done_(false) {}
-    virtual void Done(bool success) { success_ = success; done_ = true; }
-    bool success() const { return success_; }
-   private:
-    bool success_;
-    bool done_;
-  };
-
-  bool ServeResource(const StringPiece& name, const char* ext,
-                     std::string* content) {
-    SimpleMetaData request_headers, response_headers;
-    content->clear();
-    StringWriter writer(content);
-    FetchCallback callback;
-    ResourceNamer namer;
-    namer.set_id(kFilterId);
-    namer.set_name(name);
-    namer.set_hash("0");
-    namer.set_ext(ext);
-    std::string url = StrCat(
-        resource_manager_->UrlPrefixFor(namer), namer.PrettyName());
-    bool fetched = rewrite_driver_.FetchResource(
-        url, request_headers, &response_headers, &writer, &message_handler_,
-        &callback);
-    return fetched && callback.success();
-  }
-
-  SimpleMetaData css_header_;
-  SimpleMetaData img_header_;
-  SimpleMetaData js_header_;
-  GoogleMessageHandler message_handler_;
 };
 
 TEST_F(CacheExtenderTest, DoExtend) {
   InitTest(100);
-  ValidateExpected("do_extend",
-                   GenerateHtml("a", "b", "c").c_str(),
-                   GenerateHtml("http://mysite/ce.0.,htest,c,_a,s",
-                                "http://mysite/ce.0.,htest,c,_b,j",
-                                "http://mysite/ce.0.,htest,c,_c,l").c_str());
+  for (int i = 0; i < 3; i++) {
+    ValidateExpected("do_extend",
+                     GenerateHtml("a", "b", "c").c_str(),
+                     GenerateHtml("http://test.com/ce.0.a,s",
+                                  "http://test.com/ce.0.b,j",
+                                  "http://test.com/ce.0.c,l").c_str());
+  }
 }
 
 TEST_F(CacheExtenderTest, NoExtendAlreadyCachedProperly) {
@@ -138,11 +92,11 @@ TEST_F(CacheExtenderTest, ServeFiles) {
   std::string content;
 
   InitTest(100);
-  ASSERT_TRUE(ServeResource(",htest,c,_a,s", "css", &content));
+  ASSERT_TRUE(ServeResource(kFilterId, ",htest,c,_a,s", "css", &content));
   EXPECT_EQ(std::string(kCssData), content);
-  ASSERT_TRUE(ServeResource(",htest,c,_b,j", "jpg", &content));
+  ASSERT_TRUE(ServeResource(kFilterId, ",htest,c,_b,j", "jpg", &content));
   EXPECT_EQ(std::string(kImageData), content);
-  ASSERT_TRUE(ServeResource(",htest,c,_c,l", "js", &content));
+  ASSERT_TRUE(ServeResource(kFilterId, ",htest,c,_c,l", "js", &content));
   EXPECT_EQ(std::string(kJsData), content);
 
   // TODO(jmarantz): make 3 variations of this test:

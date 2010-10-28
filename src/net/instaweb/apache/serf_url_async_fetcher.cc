@@ -354,7 +354,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     // Before starting the thread, lock the active mutex so SerfThread() doesn't
     // spin.  It will be unlocked when the first fetch is initiated.
     active_mutex_.Lock();
-
+    terminate_mutex_.Lock();
     CHECK_EQ(APR_SUCCESS,
              apr_thread_create(&thread_id_, NULL, SerfThreadFn, this, pool_));
   }
@@ -438,7 +438,6 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   }
 
   void SerfThread() {
-    terminate_mutex_.Lock();
     while (!thread_done_) {
       // Race/deadlock-check.  NeedWait needs to grab initiate_mutex_, but
       // it releases it before returning.  We will grab it again below, when

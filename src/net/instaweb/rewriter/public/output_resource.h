@@ -43,6 +43,7 @@ class OutputResource : public Resource {
   // structure rather than a principled stand on anything.
   // TODO(jmaessen): remove redundancy.
   OutputResource(ResourceManager* manager,
+                 const StringPiece& resolved_base,
                  const ResourceNamer& resource_id,
                  const ContentType* type);
   ~OutputResource();
@@ -51,6 +52,7 @@ class OutputResource : public Resource {
   virtual std::string url() const;
 
   // output-specific
+  const std::string& resolved_base() const { return resolved_base_; }
   const ResourceNamer& full_name() const { return full_name_; }
   StringPiece name() const { return full_name_.name(); }
   std::string filename() const;
@@ -90,7 +92,6 @@ class OutputResource : public Resource {
   void set_resolved_base(const StringPiece& base) {
     base.CopyToString(&resolved_base_);
   }
-  StringPiece resolved_base() const { return resolved_base_; }
 
  private:
   friend class ResourceManager;
@@ -135,12 +136,11 @@ class OutputResource : public Resource {
   // will be distinct because it's based on the hash of the content.
   bool generated_;
 
-  ResourceNamer full_name_;
-
   // If this output url was created via a partnership then this field
   // will be non-empty, and we will not need to use the resource manager's
   // prefix.
   std::string resolved_base_;
+  ResourceNamer full_name_;
 
   DISALLOW_COPY_AND_ASSIGN(OutputResource);
 };

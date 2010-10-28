@@ -169,7 +169,7 @@ class ResourceManagerShardedTest : public ResourceManagerTest {
     // One of these two should match.
     StringPiece prefix(url->data(), 16);
     EXPECT_TRUE((prefix == "http://mysite.0/") ||
-                (prefix == "http://mysite.1/"));
+                (prefix == "http://mysite.1/")) << *url;
     // "%d" -> "0" (or "1") loses 1 char.
     url->erase(0, url_prefix_.length() - 1);
   }

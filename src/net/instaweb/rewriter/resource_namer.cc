@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 
 #include <vector>
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/string_hash.h"
@@ -58,31 +57,14 @@ std::string ResourceNamer::InternalEncode() const {
 // The current encoding assumes there are no dots in any of the components.
 // This restriction may be relaxed in the future, but check it aggressively
 // for now.
-std::string ResourceNamer::AbsoluteUrl(
-    const ResourceManager* resource_manager) const {
+std::string ResourceNamer::Encode() const {
   CHECK_EQ(StringPiece::npos, id_.find(kSeparatorChar));
   CHECK_EQ(StringPiece::npos, name_.find(kSeparatorChar));
   CHECK(!hash_.empty());
   CHECK_EQ(StringPiece::npos, hash_.find(kSeparatorChar));
   CHECK_EQ(StringPiece::npos, ext_.find(kSeparatorChar));
-  std::string url_prefix(resource_manager->UrlPrefixFor(*this));
-  return StrCat(url_prefix, InternalEncode());
+  return InternalEncode();
 }
-
-std::string ResourceNamer::Filename(
-    const ResourceManager* resource_manager) const {
-  CHECK_EQ(StringPiece::npos, id_.find(kSeparatorChar));
-  CHECK_EQ(StringPiece::npos, name_.find(kSeparatorChar));
-  CHECK(!hash_.empty());
-  CHECK_EQ(StringPiece::npos, hash_.find(kSeparatorChar));
-  CHECK_EQ(StringPiece::npos, ext_.find(kSeparatorChar));
-  std::string filename;
-  FilenameEncoder* encoder = resource_manager->filename_encoder();
-  encoder->Encode(
-      resource_manager->filename_prefix(), InternalEncode(), &filename);
-  return filename;
-}
-
 
 std::string ResourceNamer::EncodeIdName() const {
   CHECK(id_.find(kSeparatorChar) == StringPiece::npos);

@@ -33,6 +33,8 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/url_escaper.h"
+#include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace {
 
@@ -115,12 +117,15 @@ void CssCombineFilter::EndElement(HtmlElement* element) {
     if (partnership_.get() != NULL && combine_media_ != media) {
       EmitCombinations();
     }
+    combine_media_ = media;
+
+    // Establish a new partnership if there is not one open already.
     if (partnership_.get() == NULL) {
       partnership_.reset(new Partnership(
           resource_manager_->domain_lawyer(),
           html_parse_->gurl()));
-      combine_media_ = media;
     }
+
     MessageHandler* handler = html_parse_->message_handler();
     if (!partnership_->AddElement(element, href->value(), handler)) {
       // It's invalid, so just skip it a la IEDirective below.
@@ -209,18 +214,18 @@ void CssCombineFilter::EmitCombinations() {
 
     // First, compute the name of the new resource based on the names of
     // the CSS files.
-    CssCombineUrl css_combine_url;
+    std::string css_combine_url;
     std::string url_safe_id;
+    UrlMultipartEncoder multipart_encoder;
+    CHECK_EQ(static_cast<int>(combine_resources.size()),
+             partnership_->num_urls());
     for (int i = 0, n = combine_resources.size(); i < n; ++i) {
-      Resource* css_resource = combine_resources[i];
-      // Note that css_resource has been checked for eligibility for rewriting
-      // in advance, and it's url is now absolute.  For the moment we're just
-      // gathering up absolute urls.
-      // TODO(jmaessen): Use relative urls as soon as we understand the
-      // semantics.
-      css_combine_url.add_element_url(css_resource->url());
+      // We can use relative URLs now because we don't move the
+      // combined resource, so know the absolute prefix from that.
+      multipart_encoder.AddUrl(partnership_->RelativePath(i));
     }
-    Encode(css_combine_url, &url_safe_id);
+    UrlEscaper* escaper = resource_manager_->url_escaper();
+    escaper->EncodeToUrlSegment(multipart_encoder.Encode(), &url_safe_id);
 
     HtmlElement* combine_element = html_parse_->NewElement(NULL, s_link_);
     combine_element->AddAttribute(s_rel_, "stylesheet", "\"");
@@ -397,14 +402,22 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
                              UrlAsyncFetcher::Callback* callback) {
   bool ret = false;
   StringPiece url_safe_id = combination->name();
-  CssCombineUrl css_combine_url;
-  if (Decode(url_safe_id, &css_combine_url)) {
+  UrlMultipartEncoder multipart_encoder;
+  UrlEscaper* escaper = resource_manager_->url_escaper();
+  std::string multipart_encoding;
+  GURL gurl(combination->url());
+  if (gurl.is_valid() &&
+      escaper->DecodeFromUrlSegment(url_safe_id, &multipart_encoding) &&
+      multipart_encoder.Decode(multipart_encoding, message_handler)) {
     std::string url, decoded_resource;
     ret = true;
     CssCombiner* combiner = new CssCombiner(
         this, message_handler, callback, combination, writer, response_headers);
-    for (int i = 0; i < css_combine_url.element_url_size(); ++i)  {
-      const std::string& url = css_combine_url.element_url(i);
+
+    std::string root = GoogleUrl::AllExceptLeaf(gurl);
+    root += "/";  // google_url.h says AllExceptLeaf omits the slash.
+    for (int i = 0; i < multipart_encoder.num_urls(); ++i)  {
+      std::string url = StrCat(root, multipart_encoder.url(i));
       Resource* css_resource =
           resource_manager_->CreateInputResourceAbsolute(url, message_handler);
       combiner->AddResource(css_resource);

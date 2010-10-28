@@ -21,9 +21,10 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
+#include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/rewriter/public/js_outline_filter.h"
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
-#include "net/instaweb/rewriter/public/outline_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -85,22 +86,7 @@ class RewriterTest : public ResourceManagerTestBase {
     DISALLOW_COPY_AND_ASSIGN(DummyCallback);
   };
 
-  void CheckedResourceNamer(
-      const ResourceManager* manager,
-      const StringPiece& url,
-      ResourceNamer* namer) {
-    int shard = ResourceManager::kNotSharded - 1;
-    CHECK(GURL(url.as_string()).is_valid()) << url;
-    CHECK(manager->UrlToResourceNamer(url, &shard, namer));
-    if (num_shards_ == 0) {
-      EXPECT_EQ(ResourceManager::kNotSharded, shard);
-    } else {
-      EXPECT_LE(0, shard);
-      EXPECT_GT(num_shards_, shard);
-    }
-  }
-
-  void ServeResourceFromNewContext(const StringPiece& resource,
+  void ServeResourceFromNewContext(const std::string& resource,
                                    const std::string& output_filename,
                                    const StringPiece& expected_content,
                                    RewriteOptions::Filter filter,
@@ -121,21 +107,8 @@ class RewriterTest : public ResourceManagerTestBase {
     StringWriter writer(&contents);
     DummyCallback callback;
 
-    // Parse resource name.
-    ResourceNamer namer;
-    std::string cache_key;
-    StringPiece path;
-    if (leaf == NULL) {
-      CheckedResourceNamer(resource_manager.get(), resource, &namer);
-      cache_key = namer.AbsoluteUrl(resource_manager.get());
-    } else {
-      EXPECT_TRUE(namer.Decode(leaf));
-      resource.CopyToString(&cache_key);
-      path = resource.substr(0, resource.size() - strlen(leaf));
-    }
-
     // Delete the output resource from the cache and the file system.
-    EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(cache_key));
+    EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(resource)) << resource;
     lru_cache_->Clear();
 
     // Now delete it from the file system, so it must be recomputed.
@@ -144,7 +117,7 @@ class RewriterTest : public ResourceManagerTestBase {
 
     EXPECT_TRUE(driver.FetchResource(
         resource, request_headers, &response_headers, &writer,
-        &message_handler_, &callback));
+        &message_handler_, &callback)) << resource;
     EXPECT_EQ(expected_content, contents);
     EXPECT_EQ(1, resource_fetches->Get());
   }
@@ -222,10 +195,8 @@ class RewriterTest : public ResourceManagerTestBase {
     GURL gurl(combine_url);
     std::string path = GoogleUrl::PathAndLeaf(gurl);
 
-    ResourceNamer namer;
-    EXPECT_TRUE(namer.Decode(path));
-
-    std::string combine_filename = namer.Filename(resource_manager.get());
+    std::string combine_filename;
+    filename_encoder_.Encode(file_prefix_, combine_url, &combine_filename);
 
     // Expected CSS combination.
     // This syntax must match that in css_combine_filter
@@ -268,7 +239,7 @@ class RewriterTest : public ResourceManagerTestBase {
     rewrite_driver_.FetchResource(combine_url, request_headers,
                                   &response_headers, &writer,
                                   &message_handler_, &dummy_callback);
-    EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+    EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) << combine_url;
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
     // Now try to fetch from another server (other_driver_) that does not
@@ -282,7 +253,7 @@ class RewriterTest : public ResourceManagerTestBase {
     other_driver_.FetchResource(combine_url, request_headers,
                                 &other_response_headers, &writer,
                                 &message_handler_, &dummy_callback);
-    EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code());
+    EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code()) << combine_url;
     EXPECT_EQ(expected_combination, fetched_resource_content);
     ServeResourceFromNewContext(combine_url, combine_filename,
                                 fetched_resource_content,
@@ -345,10 +316,8 @@ class RewriterTest : public ResourceManagerTestBase {
                "\" width=1023 height=766 /></body>");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
-    ResourceNamer namer;
-    CheckedResourceNamer(resource_manager.get(), src_string, &namer);
-
-    std::string rewritten_filename = namer.Filename(resource_manager.get());
+    std::string rewritten_filename;
+    filename_encoder_.Encode(file_prefix_, src_string, &rewritten_filename);
 
     std::string rewritten_image_data;
     ASSERT_TRUE(file_system_.ReadFile(rewritten_filename.c_str(),
@@ -369,16 +338,16 @@ class RewriterTest : public ResourceManagerTestBase {
                                   &response_headers, &writer,
                                   &message_handler_, &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) <<
-        "Looking for " << namer.PrettyName();
+        "Looking for " << src_string;
     // For readability, only do EXPECT_EQ on initial portions of data
     // as most of it isn't human-readable.  This will show us the headers
     // and the start of the image data.  So far every failure fails this
     // first, and we caught doubled headers this way.
     EXPECT_EQ(rewritten_image_data.substr(0, 100),
               fetched_resource_content.substr(0, 100)) <<
-        "In " << namer.PrettyName();
+        "In " << src_string;
     EXPECT_TRUE(rewritten_image_data == fetched_resource_content) <<
-        "In " << namer.PrettyName();
+        "In " << src_string;
 
     // Now we fetch from the "other" server. To simulate first fetch, we
     // need to:
@@ -395,7 +364,6 @@ class RewriterTest : public ResourceManagerTestBase {
 
     fetched_resource_content.clear();
     SimpleMetaData redirect_headers;
-    CheckedResourceNamer(other_resource_manager.get(), src_string, &namer);
     other_driver_.FetchResource(src_string, request_headers,
                                 &redirect_headers, &writer,
                                 &message_handler_, &dummy_callback);
@@ -417,7 +385,6 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_EQ(headers, fetched_resource_content);
     SimpleMetaData other_headers;
     size_t header_size = fetched_resource_content.size();
-    CheckedResourceNamer(other_resource_manager.get(), src_string, &namer);
     other_driver_.FetchResource(src_string, request_headers,
                                 &other_headers, &writer,
                                 &message_handler_, &dummy_callback);
@@ -559,7 +526,7 @@ class RewriterTest : public ResourceManagerTestBase {
     rewrite_driver_.SetResourceManager(resource_manager.get());
     RewriteOptions options;
     options.EnableFilter(RewriteOptions::kOutlineCss);
-    options.set_outline_threshold(0);
+    options.set_css_outline_min_bytes(0);
     rewrite_driver_.AddFilters(options);
 
     std::string style_text = "background_blue { background-color: blue; }\n"
@@ -571,9 +538,9 @@ class RewriterTest : public ResourceManagerTestBase {
 
     std::string hash = hasher->Hash(style_text);
     std::string outline_filename;
-    std::string ending = StrCat("of.", hash, "._.css");
-    filename_encoder_.Encode(file_prefix_, ending, &outline_filename);
-    std::string outline_url = StrCat(url_prefix_, "of.", hash, "._.css");
+    std::string outline_url = StrCat(
+        "http://test.com/", CssOutlineFilter::kFilterId, ".", hash, "._.css");
+    filename_encoder_.Encode(file_prefix_, outline_url, &outline_filename);
 
     // Make sure the file we check later was written this time, rm any old one.
     DeleteFileIfExists(outline_filename);
@@ -608,7 +575,7 @@ class RewriterTest : public ResourceManagerTestBase {
     rewrite_driver_.SetResourceManager(resource_manager.get());
     RewriteOptions options;
     options.EnableFilter(RewriteOptions::kOutlineJavascript);
-    options.set_outline_threshold(0);
+    options.set_js_outline_min_bytes(0);
     rewrite_driver_.AddFilters(options);
 
     std::string script_text = "FOOBAR";
@@ -619,9 +586,9 @@ class RewriterTest : public ResourceManagerTestBase {
 
     std::string hash = hasher->Hash(script_text);
     std::string outline_filename;
-    std::string ending = StrCat("of.", hash, "._.js");
-    filename_encoder_.Encode(file_prefix_, ending, &outline_filename);
-    std::string outline_url = StrCat(url_prefix_, "of.", hash, "._.js");
+    std::string outline_url = StrCat(
+        "http://test.com/", JsOutlineFilter::kFilterId, ".", hash, "._.js");
+    filename_encoder_.Encode(file_prefix_, outline_url, &outline_filename);
 
     // Make sure the file we check later was written this time, rm any old one.
     DeleteFileIfExists(outline_filename);
@@ -1032,7 +999,8 @@ TEST_F(RewriterTest, NoOutlineScript) {
   rewrite_driver_.AddFilters(options);
 
   // We need to make sure we don't create this file, so rm any old one
-  DeleteFileIfExists(file_prefix + "of.0._.js");
+  DeleteFileIfExists(StrCat(file_prefix, JsOutlineFilter::kFilterId,
+                            ".0._.js"));
 
   static const char html_input[] =
       "<head>\n"
@@ -1063,36 +1031,5 @@ TEST_F(RewriterTest, DataUrlTest) {
 // TODO(jmarantz): add CacheExtender test.  I want to refactor CombineCss,
 // RewriteImage, and OutlineStyle first if I can cause there should be more
 // sharing.
-
-TEST_F(RewriterTest, MoveCssToHeadTest) {
-  static const char html_input[] =
-      "<head>\n"
-      "  <title>Example</title>\n"
-      "</head>\n"
-      "<body>\n"
-      "  Hello,\n"
-      "  <link rel='stylesheet' href='a.css' type='text/css'>"  // no newline
-      "<link rel='stylesheet' href='b.css' type='text/css'>\n"  // no indent
-      "  World!\n"
-      "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
-      "</body>\n";
-
-  static const char expected_output[] =
-      "<head>\n"
-      "  <title>Example</title>\n"
-      "<link rel='stylesheet' href='a.css' type='text/css'>"  // no newline
-      "<link rel='stylesheet' href='b.css' type='text/css'>"  // no newline
-      "<link rel='stylesheet' href='c.css' type='text/css'>"  // no newline
-      "</head>\n"
-      "<body>\n"
-      "  Hello,\n"
-      "  \n"
-      "  World!\n"
-      "  \n"
-      "</body>\n";
-  CssMoveToHeadFilter move_to_head(rewrite_driver_.html_parse(), NULL);
-  rewrite_driver_.html_parse()->AddFilter(&move_to_head);
-  ValidateExpected("move_css_to_head", html_input, expected_output);
-}
 
 }  // namespace net_instaweb

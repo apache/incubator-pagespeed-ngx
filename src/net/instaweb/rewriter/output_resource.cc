@@ -27,21 +27,27 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/stack_buffer.h"
 
 namespace net_instaweb {
 
 OutputResource::OutputResource(ResourceManager* manager,
+                               const StringPiece& resolved_base,
                                const ResourceNamer& full_name,
                                const ContentType* type)
     : Resource(manager, type),
       output_file_(NULL),
       writing_complete_(false),
       generated_(false),
+      resolved_base_(resolved_base.data(), resolved_base.size()),
       full_name_() {
   full_name_.CopyFrom(full_name);
-  if (type != NULL) {
+  if (type == NULL) {
+    std::string ext_with_dot = StrCat(".", full_name.ext());
+    type_ = NameExtensionToContentType(ext_with_dot);
+  } else {
     // This if + check used to be a 1-liner, but it was failing and this
     // yields debuggable output.
     // TODO(jmaessen): The addition of 1 below avoids the leading ".";
@@ -153,19 +159,28 @@ void OutputResource::set_suffix(const StringPiece& ext) {
 }
 
 std::string OutputResource::filename() const {
-  return full_name_.Filename(resource_manager_);
+  std::string filename;
+  resource_manager_->filename_encoder()->Encode(
+      resource_manager_->filename_prefix(), url(), &filename);
+  return filename;
 }
 
 // TODO(jmarantz): change the name to reflect the fact that it is not
 // just an accessor now.
 std::string OutputResource::url() const {
+  std::string encoded = full_name_.Encode();
   if (resolved_base_.empty()) {
-    return full_name_.AbsoluteUrl(resource_manager_);
+    // Resolves sharding, shoddily.
+    std::string base =
+        resource_manager_->UrlPrefixFor(full_name_);
+    encoded = StrCat(base, encoded);
+  } else {
+    GURL gurl(resolved_base_);
+    CHECK(gurl.is_valid());
+    GURL resolved = gurl.Resolve(full_name_.Encode());
+    encoded = GoogleUrl::Spec(resolved);
   }
-  GURL gurl(resolved_base_);
-  CHECK(gurl.is_valid());
-  GURL resolved = gurl.Resolve(full_name_.PrettyName());
-  return GoogleUrl::Spec(resolved);
+  return encoded;
 }
 
 void OutputResource::SetHash(const StringPiece& hash) {

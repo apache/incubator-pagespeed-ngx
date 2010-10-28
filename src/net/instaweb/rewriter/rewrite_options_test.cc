@@ -52,16 +52,17 @@ TEST_F(RewriteOptionsTest, NoneEnabledByDefault) {
   AssertNoneEnabled();
 }
 
-TEST_F(RewriteOptionsTest, InstrumentationOnly) {
-  options.SetRewriteLevel(RewriteOptions::kInstrumentationOnly);
-  FilterSet s;
-  s.insert(RewriteOptions::kAddInstrumentation);
-  AssertEnabled(s);
-}
-
 TEST_F(RewriteOptionsTest, InstrumentationDisabled) {
-  options.SetRewriteLevel(RewriteOptions::kInstrumentationOnly);
-  options.DisableFilter(RewriteOptions::kAddInstrumentation);
+  // Make sure the kCoreFilters enables some filters.
+  options.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  ASSERT_TRUE(options.Enabled(RewriteOptions::kAddInstrumentation));
+
+  // Now disable all filters and make sure none are enabled.
+  for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
+       f <= RewriteOptions::kLastFilter;
+       f = static_cast<RewriteOptions::Filter>(f + 1)) {
+    options.DisableFilter(f);
+  }
   AssertNoneEnabled();
 }
 
@@ -121,10 +122,9 @@ TEST_F(RewriteOptionsTest, ParseRewriteLevel) {
   ASSERT_TRUE(RewriteOptions::ParseRewriteLevel("PassThrough", &level));
   ASSERT_EQ(RewriteOptions::kPassThrough, level);
 
-  ASSERT_TRUE(RewriteOptions::ParseRewriteLevel("InstrumentationOnly", &level));
-  ASSERT_EQ(RewriteOptions::kInstrumentationOnly, level);
   ASSERT_TRUE(RewriteOptions::ParseRewriteLevel("CoreFilters", &level));
   ASSERT_EQ(RewriteOptions::kCoreFilters, level);
+
   ASSERT_FALSE(RewriteOptions::ParseRewriteLevel(NULL, &level));
   ASSERT_FALSE(RewriteOptions::ParseRewriteLevel("", &level));
   ASSERT_FALSE(RewriteOptions::ParseRewriteLevel("Garbage", &level));

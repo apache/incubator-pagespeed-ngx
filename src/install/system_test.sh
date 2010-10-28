@@ -12,14 +12,15 @@ if [ $# != 1 ]; then
 fi;
 
 HOSTNAME=$1
-
+PORT=${HOSTNAME/*:/};
+if [ $PORT = $HOSTNAME ]; then
+  PORT=80
+fi;
 EXAMPLE_ROOT=http://$HOSTNAME/mod_pagespeed_example
-STATISTICS_URL=http://localhost/mod_pagespeed_statistics
+STATISTICS_URL=http://localhost:$PORT/mod_pagespeed_statistics
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/ic.a.bad.css
 
-OUTFILE=/tmp/mod_pagespeed_test/fetched_example.html
-OUTDIR=/tmp/mod_pagespeed_test/fetched_directory
-
+OUTDIR=/tmp/mod_pagespeed_test.$USER/fetched_directory
 
 # Wget is used three different ways.  The first way is nonrecursive and dumps a
 # single page (with headers) to standard out.  This is useful for grepping for a
@@ -56,7 +57,7 @@ WGET_PREREQ="wget -H -p -q -nd -P $OUTDIR"
 function check() {
   echo "     " $@
   if eval "$@"; then
-    echo PASS.
+    return;
   else
     echo FAIL.
     exit 1;
@@ -78,7 +79,6 @@ function fetch_until() {
   echo "     " Fetching $URL until '`'$COMMAND'`' = $RESULT
   while test -t; do
     if [ `wget -q -O - $URL 2>&1 | $COMMAND` = $RESULT ]; then
-      /bin/echo "PASS."
       return;
     fi;
     if [ `date +%s` -gt $STOP ]; then
@@ -97,7 +97,7 @@ function test_filter() {
   shift;
   FILTER_DESCRIPTION=$@
   echo TEST: $FILTER_NAME $FILTER_DESCRIPTION
-  FILE=$FILTER_NAME.html?ModPagespeedRewriters=$FILTER_NAME
+  FILE=$FILTER_NAME.html?ModPagespeedFilters=$FILTER_NAME
   URL=$EXAMPLE_ROOT/$FILE
   FETCHED=$OUTDIR/$FILE
 }
@@ -112,20 +112,26 @@ echo TEST: 404s are served and properly recorded.
 NUM_404=$($WGET_DUMP $STATISTICS_URL | grep resource_404_count | cut -d: -f2)
 NUM_404=$(($NUM_404+1))
 check "wget -O /dev/null $BAD_RESOURCE_URL 2>&1| grep -q '404 Not Found'"
-# TODO(lsong) FIXME
-#check "$WGET_DUMP $STATISTICS_URL | grep -q 'resource_404_count: $NUM_404'"
+check "$WGET_DUMP $STATISTICS_URL | grep -q 'resource_404_count: $NUM_404'"
 
 echo TEST: directory is mapped to index.html.
-# TODO(lsong) FIXME
-#check "$WGET_PREREQ $EXAMPLE_ROOT"
-#check "$WGET_PREREQ $EXAMPLE_ROOT/index.html"
-#check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
+check "$WGET_PREREQ $EXAMPLE_ROOT"
+check "$WGET_PREREQ $EXAMPLE_ROOT/index.html"
+check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
+
+echo TEST: compression is enabled for HTML.
+check "wget -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+  $EXAMPLE_ROOT/ 2>&1 | grep -qi 'Content-Encoding: gzip'"
 
 # Individual filter tests, in alphabetical order
 
 test_filter add_instrumentation adds 2 script tags
 check $WGET_PREREQ $URL
 check [ `cat $FETCHED | sed 's/>/>\n/g' | grep -c '<script'` = 2 ]
+
+test_filter collapse_whitespace removes whitespace, but not from pre tags.
+check $WGET_PREREQ $URL
+check [ `egrep -c '^ +<' $FETCHED` = 1 ]
 
 test_filter combine_css combines 4 CSS files into 1.
 fetch_until $URL 'grep -c text/css' 1
@@ -135,23 +141,75 @@ test_filter combine_heads combines 2 heads into 1
 check $WGET_PREREQ $URL
 check [ `grep -ce '<head>' $FETCHED` = 1 ]
 
+test_filter elide_attributes removes boolean and default attributes.
+check $WGET_PREREQ $URL
+grep "disabled=" $FETCHED   # boolean, should not find
+check [ $? != 0 ]
+grep "type=" $FETCHED       # default, should not find
+check [ $? != 0 ]
+
+test_filter extend_cache rewrites an image tag.
+fetch_until $URL 'grep -c src.*40265e' 1
+check $WGET_PREREQ $URL
+
+test_filter move_css_to_head does what it says on the tin.
+check $WGET_PREREQ $URL
+check grep -q "'<head><link'" $FETCHED  # link moved to head
+
+test_filter inline_css converts a link tag to a style tag
+fetch_until $URL 'grep -c style' 2
+
+test_filter inline_javascript inlines a small JS file
+fetch_until $URL 'grep -c document.write' 1
+
 test_filter outline_css outlines large styles, but not small ones.
-#TODO(jmarantz) FIXME
-#check $WGET_PREREQ $URL
-#check egrep -q "'<link.*text/css.*large'" $FETCHED  # outlined
-#check egrep -q "'<style.*small'" $FETCHED           # not outlined
+check $WGET_PREREQ $URL
+check egrep -q "'<link.*text/css.*large'" $FETCHED  # outlined
+check egrep -q "'<style.*small'" $FETCHED           # not outlined
 
 test_filter outline_javascript outlines large scripts, but not small ones.
-#TODO(jmarantz) FIXME
-#check $WGET_PREREQ $URL
-#check egrep -q "'<script.*src=.*large'" $FETCHED       # outlined
-#check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
+check $WGET_PREREQ $URL
+check egrep -q "'<script.*src=.*large'" $FETCHED       # outlined
+check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
+
+echo TEST: compression is enabled for rewritten JS.
+JS_URL=$(egrep -o http://.*.js $FETCHED)
+check "wget -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+  $JS_URL 2>&1 | grep -qi 'Content-Encoding: gzip'"
+
+test_filter remove_comments removes comments but not IE directives.
+check $WGET_PREREQ $URL
+grep "removed" $FETCHED                # comment, should not find
+check [ $? != 0 ]
+check grep -q preserved $FETCHED       # preserves IE directives
+
+test_filter remove_quotes does what it says on the tin.
+check $WGET_PREREQ $URL
+check [ `sed 's/ /\n/g' $FETCHED | grep -c '"' ` = 2 ]  # 2 quoted attrs
+check [ `grep -c "'" $FETCHED` = 0 ]                    # no apostrophes
+
+test_filter rewrite_css removes comments and saves a bunch of bytes.
+check $WGET_PREREQ $URL
+grep "comment" $FETCHED                   # comment, should not find
+check [ $? != 0 ]
+check [ `stat -c %s $FETCHED` -lt 315 ]   # down from 472
 
 test_filter rewrite_images inlines, compresses, and resizes.
 fetch_until $URL 'grep -c image/png' 1    # inlined
-#TODO(jmarantz) FIXME
-#check $WGET_PREREQ $URL
-#check [ `stat -c %s $OUTDIR/*1023x766*Puzzle*` -lt 241260 ]  # compressed
-#check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
+check $WGET_PREREQ $URL
+check [ `stat -c %s $OUTDIR/*1023x766*Puzzle*` -lt 241260 ]  # compressed
+check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
+
+echo TEST: compression is not enabled for rewritten images.
+IMG_URL=$(egrep -o http://.*.jpg $FETCHED | head -n1)
+IMG_HEADERS=$(wget -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+  $IMG_URL 2>&1)
+# Make sure we have some valid headers.
+echo \"$IMG_HEADERS\" | grep -qi 'Content-Type: image/jpeg'
+check [ $? = 0 ]
+# Make sure the response was not gzipped.
+echo "$IMG_HEADERS" | grep -qi 'Content-Encoding: gzip'
+check [ $? != 0 ]
 
 rm -rf $OUTDIR
+echo "PASS."

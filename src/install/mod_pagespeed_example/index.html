@@ -1,25 +1,361 @@
 <html>
   <head>
     <title>mod_pagespeed Examples Directory</title>
+    <style type="text/css">
+      table { width: 100%; border-collapse: collapse; text-color: black;}
+      td { padding: 1em }
+      tr { background-color: #eee; border: 1px solid black;  }
+      td.doc { width: 20%;}
+      .code {font-family:monospace;}
+      td.before, td.after { width: 10% }
+    </style>
   </head>
   <body>
-    <p><a href="add_instrumentation.html?ModPagespeed=off">Add Instrumentation</a>
-      (<a href="add_instrumentation.html?ModPagespeed=on&ModPagespeedRewriters=add_instrumentation">with
-        mod_pagespeed</a>)
-    <p><a href="combine_css.html?ModPagespeed=off">Combine CSS files</a>
-      (<a href="combine_css.html?ModPagespeed=on&ModPagespeedRewriters=combine_css">with
-        mod_pagespeed</a>)
-    <p><a href="combine_heads.html?ModPagespeed=off">Combine multiple &lt;head&gt;s</a>
-      (<a href="combine_heads.html?ModPagespeed=on&ModPagespeedRewriters=combine_heads">with
-        mod_pagespeed</a>)
-    <p><a href="outline_css.html?ModPagespeed=off">Outline (externalize) CSS files</a>
-      (<a href="outline_css.html?ModPagespeed=on&ModPagespeedRewriters=outline_css">with
-        mod_pagespeed</a>)
-    <p><a href="outline_javascript.html?ModPagespeed=off">Outline (externalize) javascript files</a>
-      (<a href="outline_javascript.html?ModPagespeed=on&ModPagespeedRewriters=outline_javascript">with
-        mod_pagespeed</a>)
-    <p><a href="rewrite_images.html?ModPagespeed=off">Optimize Images</a>
-      (<a href="rewrite_images.html?ModPagespeed=on&ModPagespeedRewriters=rewrite_images">with
-        mod_pagespeed</a>)
+    <h2><span class="code">mod_pagespeed</span> Filter Examples</h2>
+    <p>
+      Here are some of the most useful filters provided by mod_pagespeed.  Each
+      one has a simple HTML example attached; click "before" to see the original
+      file, and "after" to see what mod_pagespeed produces with that filter (and
+      only that filter) enabled.  The two versions should look exactly the same,
+      but the "after" one will be (slightly) speedier.  Use "view source" to see
+      the <span class="code">mod_pagespeed</span> difference!
+    </p>
+    <table>
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-instrumentation-add.html">
+      add_instrumentation
+    </a>
+  </td>
+  <td class="desc">
+    Adds client-side latency instrumentation.
+  </td>
+  <td class="before">
+    <a href="add_instrumentation.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="add_instrumentation.html?ModPagespeed=on&ModPagespeedFilters=add_instrumentation">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-cache-extend.html">
+      extend_cache
+    </a>
+  </td>
+  <td class="desc">
+    Improves cacheability.
+  </td>
+  <td class="before">
+    <a href="extend_cache.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="extend_cache.html?ModPagespeed=on&ModPagespeedFilters=extend_cache">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-whitespace-collapse.html">
+collapse_whitespace
+    </a>
+  </td>
+  <td class="desc">
+    Removes unnecessary whitespace in HTML.
+  </td>
+  <td class="before">
+    <a href="collapse_whitespace.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="collapse_whitespace.html?ModPagespeed=on&ModPagespeedFilters=collapse_whitespace">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-css-combine.html">
+combine_css
+    </a>
+  </td>
+  <td class="desc">
+    Combines multiple CSS files into one.
+  </td>
+  <td class="before">
+    <a href="combine_css.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="combine_css.html?ModPagespeed=on&ModPagespeedFilters=combine_css">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-head-combine.html">
+combine_heads
+    </a>
+  </td>
+  <td class="desc">
+    Combines multiple &lt;head&gt; elements into one.
+  </td>
+  <td class="before">
+    <a href="combine_heads.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="combine_heads.html?ModPagespeed=on&ModPagespeedFilters=combine_heads">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-css-to-head.html">
+move_css_to_head
+    </a>
+  </td>
+  <td class="desc">
+    Moves CSS into the &lt;head&gt; element.
+  </td>
+  <td class="before">
+    <a href="move_css_to_head.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="move_css_to_head.html?ModPagespeed=on&ModPagespeedFilters=move_css_to_head">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-attribute-elide.html">
+elide_attributes
+    </a>
+  </td>
+  <td class="desc">
+    Removes unnecessary attributes in HTML tags.
+  </td>
+  <td class="before">
+    <a href="elide_attributes.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="elide_attributes.html?ModPagespeed=on&ModPagespeedFilters=elide_attributes">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-css-inline.html">
+inline_css
+    </a>
+  </td>
+  <td class="desc">
+    Inlines small external CSS files.
+  </td>
+  <td class="before">
+    <a href="inline_css.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="inline_css.html?ModPagespeed=on&ModPagespeedFilters=inline_css">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-js-inline.html">
+inline_javascript
+    </a>
+  </td>
+  <td class="desc">
+    Inlines small external Javascript files.
+  </td>
+  <td class="before">
+    <a href="inline_javascript.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="inline_javascript.html?ModPagespeed=on&ModPagespeedFilters=inline_javascript">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-css-outline.html">
+outline_css
+    </a>
+  </td>
+  <td class="desc">
+    Moves large inline &lt;style&gt; tags into external files for cacheability.
+  </td>
+  <td class="before">
+    <a href="outline_css.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="outline_css.html?ModPagespeed=on&ModPagespeedFilters=outline_css">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-js-outline.html">
+outline_javascript
+    </a>
+  </td>
+  <td class="desc">
+    Moves large inline &lt;script&gt; tags into external files for cacheability.
+  </td>
+  <td class="before">
+    <a href="outline_javascript.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="outline_javascript.html?ModPagespeed=on&ModPagespeedFilters=outline_javascript">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-quote-remove.html">
+remove_quotes
+    </a>
+  </td>
+  <td class="desc">
+    Removes unnecessary quotes in HTML tags.
+  </td>
+  <td class="before">
+    <a href="remove_quotes.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="remove_quotes.html?ModPagespeed=on&ModPagespeedFilters=remove_quotes">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-comment-remove.html">
+remove_comments
+    </a>
+  </td>
+  <td class="desc">
+    Removes HTML comments.
+  </td>
+  <td class="before">
+    <a href="remove_comments.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="remove_comments.html?ModPagespeed=on&ModPagespeedFilters=remove_comments">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-css-minify.html">
+rewrite_css
+    </a>
+  </td>
+  <td class="desc">
+    Minifies CSS.
+  </td>
+  <td class="before">
+    <a href="rewrite_css.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="rewrite_css.html?ModPagespeed=on&ModPagespeedFilters=rewrite_css">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-image-optimize.html">
+rewrite_images
+    </a>
+  </td>
+  <td class="desc">
+    Rescales, and compresses images; inlines small ones.
+  </td>
+  <td class="before">
+    <a href="rewrite_images.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="rewrite_images.html?ModPagespeed=on&ModPagespeedFilters=rewrite_images">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://codesite-staging.corp.google.com:9967/speed/page-speed/docs/filter-js-minify.html">
+rewrite_javascript
+    </a>
+  </td>
+  <td class="desc">
+    Minifies Javascript.
+  </td>
+  <td class="before">
+    <a href="rewrite_javascript.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="rewrite_javascript.html?ModPagespeed=on&ModPagespeedFilters=rewrite_javascript">
+      after
+    </a>
+  </td>
+</tr>
+    </table>
   </body>
 <html>

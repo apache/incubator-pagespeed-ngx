@@ -83,7 +83,7 @@ const TagAttr kBooleanAttrs[] = {
   {"option", "defaultselected"},
   {"option", "disabled"},
   {"option", "selected"},
-  // http://www.w3.org/TR/html5/scripting-1.html
+  // http://www.w3.org/TR/html5/scripting-1.html#script
   {"script", "async"},
   {"script", "defer"},
   // http://www.w3.org/TR/html5/the-button-element.html#the-select-element

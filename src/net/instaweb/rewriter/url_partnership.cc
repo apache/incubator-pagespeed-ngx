@@ -124,7 +124,7 @@ StringPiece UrlPartnership::ResolvedBase() const {
 std::string UrlPartnership::RelativePath(int index) const {
   CHECK(resolved_);
   std::string spec = gurl_vector_[index]->spec();
-  CHECK_GT(spec.size(), resolved_base_.size());
+  CHECK_GE(spec.size(), resolved_base_.size());
   CHECK_EQ(StringPiece(spec.data(), resolved_base_.size()),
            StringPiece(resolved_base_));
   return std::string(spec.data() + resolved_base_.size(),

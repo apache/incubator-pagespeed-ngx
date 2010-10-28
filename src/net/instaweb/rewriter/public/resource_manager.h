@@ -98,7 +98,6 @@ class ResourceManager {
     Resource* input_resource,
     MessageHandler* handler);
 
-
   // Creates an output resource where the name is provided by the rewriter.
   // The intent is to be able to derive the content from the name, for example,
   // by encoding URLs and metadata.
@@ -119,7 +118,18 @@ class ResourceManager {
   // an input resource, to inherit content type, cache expiration,
   // last-modified, etc.
   OutputResource* CreateNamedOutputResource(
-      const StringPiece& filter_prefix, const StringPiece& name,
+      const StringPiece& filter_prefix,
+      const StringPiece& name,
+      const ContentType* content_type,
+      MessageHandler* handler) {
+    return CreateNamedOutputResourceWithPath(
+        NULL, filter_prefix, name, content_type, handler);
+  }
+
+  // As above, but using the specified path in place of url_prefix.
+  OutputResource* CreateNamedOutputResourceWithPath(
+      const StringPiece& path, const StringPiece& filter_prefix,
+      const StringPiece& name,
       const ContentType* type, MessageHandler* handler);
 
   // Creates a resource based on the fields extracted from a URL.  This
@@ -127,8 +137,18 @@ class ResourceManager {
   //
   // 'type' arg can be null if it's not known, or is not in our ContentType
   // library.
-  OutputResource* CreateUrlOutputResource(const ResourceNamer& resource_name,
-                                          const ContentType* type);
+  OutputResource* CreateUrlOutputResource(
+      const ResourceNamer& resource_id, const ContentType* type);
+
+  // Creates a resource based on a URL.  This is used for serving rewritten
+  // resources.  Permission checks are performed on the URL.
+  //
+  // 'type' arg can be null if it's not known, or is not in our ContentType
+  // library.
+  OutputResource* CreateFetchOutputResource(
+      const StringPiece& url,
+      const ContentType* type,
+      MessageHandler* handler);
 
   // Creates an input resource with the url evaluated based on input_url
   // which may need to be absolutified relative to base_url.  Returns NULL if
@@ -232,12 +252,10 @@ class ResourceManager {
   // for the corresponding URL.
   std::string UrlPrefixFor(const ResourceNamer& namer) const;
 
-  // Decode an absolute url into a shard number and ResourceNamer.  If the url
-  // in question isn't recognized as an instaweb resource, return false and
-  // leave the outputs in an undefined state.  Set *shard to kNotSharded if
-  // sharding is not enabled for url.
-  bool UrlToResourceNamer(
-      const StringPiece& url, int* shard, ResourceNamer* resource) const;
+  // Decode a base path into a shard number and canonical base url.
+  // Right now the canonical base url is empty for the old resource
+  // naming scheme, and non-empty otherwise.
+  StringPiece CanonicalizeBase(const StringPiece& base, int* shard) const;
 
   // Whether or not resources should hit the filesystem.
   bool store_outputs_in_file_system() { return store_outputs_in_file_system_; }

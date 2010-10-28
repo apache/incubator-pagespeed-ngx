@@ -37,7 +37,8 @@ CssMoveToHeadFilter::CssMoveToHeadFilter(HtmlParse* html_parse,
       css_tag_scanner_(html_parse),
       counter_(NULL) {
   s_head_ = html_parse->Intern("head");
-  head_element_ = NULL;
+  s_noscript_ = html_parse->Intern("noscript");
+  s_style_ = html_parse->Intern("style");
   if (statistics != NULL) {
     counter_ = statistics->GetVariable(kCssElements);
   }
@@ -49,18 +50,35 @@ void CssMoveToHeadFilter::Initialize(Statistics* statistics) {
 
 void CssMoveToHeadFilter::StartDocument() {
   head_element_ = NULL;
+  noscript_element_ = NULL;
+}
+
+void CssMoveToHeadFilter::StartElement(HtmlElement* element) {
+  if (noscript_element_ == NULL && element->tag() == s_noscript_) {
+    noscript_element_ = element;  // Record top-level <noscript>.
+  }
 }
 
 void CssMoveToHeadFilter::EndElement(HtmlElement* element) {
   if ((head_element_ == NULL) && (element->tag() == s_head_)) {
     head_element_ = element;
-  } else {
+
+  } else if (element == noscript_element_) {
+    noscript_element_ = NULL; // We are exitting the top level </noscript>.
+
+  // Do not move anything out of a <noscript> element and we can only move
+  // this to <head> if <head> is still rewritable.
+  } else if (noscript_element_ == NULL && head_element_ != NULL &&
+             html_parse_->IsRewritable(head_element_)){
     HtmlElement::Attribute* href;
     const char* media;
-    if ((head_element_ != NULL) &&
-        html_parse_->IsRewritable(head_element_) &&
+    if (element->tag() == s_style_ ||
         css_tag_scanner_.ParseCssElement(element, &href, &media)) {
       html_parse_->MoveCurrentInto(head_element_);
+      // TODO(sligocki): It'd be nice to have this pattern simplified.
+      if (counter_ != NULL) {
+        counter_->Add(1);
+      }
     }
   }
 }

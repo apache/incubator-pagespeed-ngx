@@ -66,9 +66,11 @@ const char* kModPagespeedLRUCacheKbPerProcess =
 const char* kModPagespeedLRUCacheByteLimit = "ModPagespeedLRUCacheByteLimit";
 const char* kModPagespeedFetcherTimeoutMs = "ModPagespeedFetcherTimeOutMs";
 const char* kModPagespeedNumShards = "ModPagespeedNumShards";
-const char* kModPagespeedOutlineThreshold = "ModPagespeedOutlineThreshold";
-const char* kModPagespeedRewriters = "ModPagespeedRewriters";
+const char* kModPagespeedCssOutlineMinBytes = "ModPagespeedCssOutlineMinBytes";
+const char* kModPagespeedJsOutlineMinBytes = "ModPagespeedJsOutlineMinBytes";
+const char* kModPagespeedFilters = "ModPagespeedFilters";
 const char* kModPagespeedRewriteLevel = "ModPagespeedRewriteLevel";
+const char* kModPagespeedEnableFilters = "ModPagespeedEnableFilters";
 const char* kModPagespeedDisableFilters = "ModPagespeedDisableFilters";
 const char* kModPagespeedSlurpDirectory = "ModPagespeedSlurpDirectory";
 const char* kModPagespeedSlurpReadOnly = "ModPagespeedSlurpReadOnly";
@@ -197,22 +199,11 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
                          name, value);
         ret = false;
       }
-    } else if (strcmp(name, kModPagespeedRewriteLevel) == 0) {
-      RewriteOptions::RewriteLevel level;
-      if (RewriteOptions::ParseRewriteLevel(value, &level)) {
-        options->SetRewriteLevel(level);
-        ++option_count;
-      } else {
-        ret = false;
-      }
-    } else if (strcmp(name, kModPagespeedRewriters) == 0) {
+    } else if (strcmp(name, kModPagespeedFilters) == 0) {
+      // When using ModPagespeedFilters query param, only the
+      // specified filters should be enabled.
+      options->SetRewriteLevel(RewriteOptions::kPassThrough);
       if (options->EnableFiltersByCommaSeparatedList(value, handler)) {
-        ++option_count;
-      } else {
-        ret = false;
-      }
-    } else if (strcmp(name, kModPagespeedDisableFilters) == 0) {
-      if (options->DisableFiltersByCommaSeparatedList(value, handler)) {
         ++option_count;
       } else {
         ret = false;
@@ -323,6 +314,9 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
                            request->proto_num, &response_headers);
     LOG(INFO) << "ModPagespeed Response headers:\n"
               << response_headers.ToString();
+
+    // Make sure compression is enabled for this response.
+    ap_add_output_filter("DEFLATE", NULL, request, request->connection);
   }
 
   apr_bucket* new_bucket = NULL;
@@ -574,9 +568,12 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
         cmd, &ApacheRewriteDriverFactory::set_fetcher_time_out_ms, arg);
   } else if (strcasecmp(directive, kModPagespeedNumShards) == 0) {
     ret = ParseIntOption(cmd, &ApacheRewriteDriverFactory::set_num_shards, arg);
-  } else if (strcasecmp(directive, kModPagespeedOutlineThreshold) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedCssOutlineMinBytes) == 0) {
     ret = ParseInt64Option(
-        cmd, &ApacheRewriteDriverFactory::set_outline_threshold, arg);
+        cmd, &ApacheRewriteDriverFactory::set_css_outline_min_bytes, arg);
+  } else if (strcasecmp(directive, kModPagespeedJsOutlineMinBytes) == 0) {
+    ret = ParseInt64Option(
+        cmd, &ApacheRewriteDriverFactory::set_js_outline_min_bytes, arg);
   } else if (strcasecmp(directive, kModPagespeedImgInlineMaxBytes) == 0) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_img_inline_max_bytes, arg);
@@ -592,7 +589,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (strcasecmp(directive, kModPagespeedLRUCacheByteLimit) == 0) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_lru_cache_byte_limit, arg);
-  } else if (strcasecmp(directive, kModPagespeedRewriters) == 0) {
+  } else if (strcasecmp(directive, kModPagespeedEnableFilters) == 0) {
     if (!factory->AddEnabledFilters(arg)) {
       ret = "Failed to enable some filters.";
     }
@@ -674,11 +671,10 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheByteLimit,
         "Set the maximum byte size entry to store in the per-process "
         "in-memory LRU cache"),
-  APACHE_CONFIG_OPTION(kModPagespeedRewriters,
-                       "Comma-separated list of enabled filters"),
   APACHE_CONFIG_OPTION(kModPagespeedRewriteLevel,
-                       "Base level of rewriting "
-                       "(PassThrough, InstrumentationOnly, CoreFilters)"),
+                       "Base level of rewriting (PassThrough, CoreFilters)"),
+  APACHE_CONFIG_OPTION(kModPagespeedEnableFilters,
+                       "Comma-separated list of enabled filters"),
   APACHE_CONFIG_OPTION(kModPagespeedDisableFilters,
                        "Comma-separated list of disabled filters"),
   APACHE_CONFIG_OPTION(kModPagespeedSlurpDirectory,
@@ -691,9 +687,12 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "a flush"),
   APACHE_CONFIG_OPTION(kModPagespeedForceCaching,
         "Ignore HTTP cache headers and TTLs"),
-  APACHE_CONFIG_OPTION(kModPagespeedOutlineThreshold,
+  APACHE_CONFIG_OPTION(kModPagespeedCssOutlineMinBytes,
         "Number of bytes above which inline "
-        "resources will be outlined."),
+        "CSS resources will be outlined."),
+  APACHE_CONFIG_OPTION(kModPagespeedJsOutlineMinBytes,
+        "Number of bytes above which inline "
+        "Javascript resources will be outlined."),
   APACHE_CONFIG_OPTION(kModPagespeedImgInlineMaxBytes,
         "Number of bytes below which images will be inlined."),
   APACHE_CONFIG_OPTION(kModPagespeedJsInlineMaxBytes,

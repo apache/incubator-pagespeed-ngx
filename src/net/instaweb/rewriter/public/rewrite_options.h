@@ -63,10 +63,6 @@ class RewriteOptions {
     // SetRewriteLevel(kCoreFilters).
     kPassThrough,
 
-    // Enable instrumentation filters only. Do not perform any content
-    // optimizations.
-    kInstrumentationOnly,
-
     // Enable the core set of filters. These filters are considered
     // generally safe for most sites, though even safe filters can
     // break some sites. Most users should specify this option, and
@@ -82,7 +78,8 @@ class RewriteOptions {
   static const int64 kDefaultCssInlineMaxBytes;
   static const int64 kDefaultImgInlineMaxBytes;
   static const int64 kDefaultJsInlineMaxBytes;
-  static const int64 kDefaultOutlineThreshold;
+  static const int64 kDefaultCssOutlineMinBytes;
+  static const int64 kDefaultJsOutlineMinBytes;
   static const std::string kDefaultBeaconUrl;
 
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
@@ -108,8 +105,10 @@ class RewriteOptions {
 
   bool Enabled(Filter filter) const;
 
-  int64 outline_threshold() const { return outline_threshold_; }
-  void set_outline_threshold(int64 x) { outline_threshold_ = x; }
+  int64 css_outline_min_bytes() const { return css_outline_min_bytes_; }
+  void set_css_outline_min_bytes(int64 x) { css_outline_min_bytes_ = x; }
+  int64 js_outline_min_bytes() const { return js_outline_min_bytes_; }
+  void set_js_outline_min_bytes(int64 x) { js_outline_min_bytes_ = x; }
   int64 img_inline_max_bytes() const { return img_inline_max_bytes_; }
   void set_img_inline_max_bytes(int64 x) { img_inline_max_bytes_ = x; }
   int64 css_inline_max_bytes() const { return css_inline_max_bytes_; }
@@ -138,7 +137,8 @@ class RewriteOptions {
   int64 css_inline_max_bytes_;
   int64 img_inline_max_bytes_;
   int64 js_inline_max_bytes_;
-  int64 outline_threshold_;
+  int64 css_outline_min_bytes_;
+  int64 js_outline_min_bytes_;
   int num_shards_;
   std::string beacon_url_;
 

@@ -175,4 +175,9 @@ TEST_F(UrlPartnershipTest, AbsExternalDomainDeclaredButNotMapped) {
   EXPECT_FALSE(partnership_.AddUrl(kAbsoluteResourceUrl1, &message_handler_));
 }
 
+TEST_F(UrlPartnershipTest, EmptyTail) {
+  AddUrls("http:/www.nytimes.com/", NULL, NULL);
+  EXPECT_EQ(std::string(""), partnership_.RelativePath(0));
+}
+
 }  // namespace net_instaweb

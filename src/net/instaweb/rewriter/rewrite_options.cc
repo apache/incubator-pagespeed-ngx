@@ -49,7 +49,8 @@ namespace net_instaweb {
 const int64 RewriteOptions::kDefaultCssInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultImgInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
-const int64 RewriteOptions::kDefaultOutlineThreshold = 3000;
+const int64 RewriteOptions::kDefaultCssOutlineMinBytes = 3000;
+const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
 const std::string RewriteOptions::kDefaultBeaconUrl =
     "/mod_pagespeed_beacon?ets=";
 
@@ -59,9 +60,6 @@ bool RewriteOptions::ParseRewriteLevel(
   if (in != NULL) {
     if (strcasecmp(in.data(), "CoreFilters") == 0) {
       *out = kCoreFilters;
-      ret = true;
-    } else if (strcasecmp(in.data(), "InstrumentationOnly") == 0) {
-      *out = kInstrumentationOnly;
       ret = true;
     } else if (strcasecmp(in.data(), "PassThrough") == 0) {
       *out = kPassThrough;
@@ -76,7 +74,8 @@ RewriteOptions::RewriteOptions()
       css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
       img_inline_max_bytes_(kDefaultImgInlineMaxBytes),
       js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
-      outline_threshold_(kDefaultOutlineThreshold),
+      css_outline_min_bytes_(kDefaultCssInlineMaxBytes),
+      js_outline_min_bytes_(kDefaultJsInlineMaxBytes),
       num_shards_(0),
       beacon_url_(kDefaultBeaconUrl) {
   // TODO: If we instantiate many RewriteOptions, this should become a
@@ -111,12 +110,8 @@ void RewriteOptions::SetUp() {
   // Create an empty set for the pass-through level.
   level_filter_set_map_[kPassThrough];
 
-  // Instrumentation level includes only the instrumentation filter.
-  level_filter_set_map_[kInstrumentationOnly].insert(kAddInstrumentation);
-
   // Core filter level includes the "core" filter set.
   level_filter_set_map_[kCoreFilters].insert(kAddHead);
-  level_filter_set_map_[kCoreFilters].insert(kMoveCssToHead);
   level_filter_set_map_[kCoreFilters].insert(kCombineCss);
   level_filter_set_map_[kCoreFilters].insert(kRewriteCss);
   level_filter_set_map_[kCoreFilters].insert(kRewriteJavascript);
@@ -124,10 +119,10 @@ void RewriteOptions::SetUp() {
   level_filter_set_map_[kCoreFilters].insert(kInlineJavascript);
   level_filter_set_map_[kCoreFilters].insert(kRewriteImages);
   level_filter_set_map_[kCoreFilters].insert(kInsertImgDimensions);
-  level_filter_set_map_[kCoreFilters].insert(kElideAttributes);
   level_filter_set_map_[kCoreFilters].insert(kExtendCache);
   level_filter_set_map_[kCoreFilters].insert(kRemoveQuotes);
   level_filter_set_map_[kCoreFilters].insert(kAddInstrumentation);
+  level_filter_set_map_[kCoreFilters].insert(kElideAttributes);
 }
 
 bool RewriteOptions::EnableFiltersByCommaSeparatedList(

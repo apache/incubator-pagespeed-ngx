@@ -101,7 +101,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
     SetupWriter();
     html_parse()->StartParse(url);
     std::string html_body = AddHtmlBody(html_input);
-    html_parse()->ParseText(html_body.c_str(), html_body.size());
+    html_parse()->ParseText(html_body);
     html_parse()->FinishParse();
   }
 

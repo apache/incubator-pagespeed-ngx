@@ -67,9 +67,9 @@ do_package() {
     local PKG_ARCH=""
   fi
 
-  # TODO(bmcquade): specify a version here, and make sure rpm
-  # determines other dependencies automatically.
-  DEPENDS="httpd"
+  DEPENDS="httpd >= 2.2, \
+  libstdc++ >= 4.1.2,
+  at"
   gen_spec
 
   # Create temporary rpmbuild dirs.

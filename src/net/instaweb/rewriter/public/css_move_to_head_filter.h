@@ -35,14 +35,18 @@ class CssMoveToHeadFilter : public EmptyHtmlFilter {
 
   static void Initialize(Statistics* statistics);
   virtual void StartDocument();
+  virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
   virtual const char* Name() const { return "CssMoveToHead"; }
 
  private:
   Atom s_head_;
+  Atom s_noscript_;
+  Atom s_style_;
 
   HtmlParse* html_parse_;
   HtmlElement* head_element_;
+  HtmlElement* noscript_element_;
   CssTagScanner css_tag_scanner_;
   Variable* counter_;
 
