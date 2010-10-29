@@ -166,7 +166,7 @@ class HttpResponseWriter : public Writer {
       CHECK(response_->headers_complete());
       CharStarVector v;
       if (!want_gzip_ && response_->IsGzipped()) {
-        inflater_.reset(new GzipInflater);
+        inflater_.reset(new GzipInflater(GzipInflater::kGzip));
         CHECK(inflater_->Init());
         response_->RemoveAll(HttpAttributes::kContentEncoding);
       }

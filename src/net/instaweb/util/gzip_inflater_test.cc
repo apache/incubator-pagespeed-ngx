@@ -33,12 +33,16 @@ const unsigned char kCompressed[] = {
   0x00, 0x16, 0x35, 0x96, 0x31, 0x06, 0x00, 0x00, 0x00
 };
 
+// This is the word "test" deflated
+const char kTestDeflate[] ="\x2b\x49\x2d\x2e\x01";
+const char kTest[] = "test";
+
 const size_t kBufSize = 256;
 
 TEST(GzipInflaterTest, Simple) {
   std::string buf;
   buf.reserve(kBufSize);
-  GzipInflater inflater;
+  GzipInflater inflater(GzipInflater::kGzip);
   inflater.Init();
   ASSERT_FALSE(inflater.HasUnconsumedInput());
   ASSERT_TRUE(inflater.SetInput(kCompressed, sizeof(kCompressed)));
@@ -57,7 +61,7 @@ TEST(GzipInflaterTest, Simple) {
 TEST(GzipInflaterTest, OneByteAtATime) {
   std::string buf;
   buf.reserve(kBufSize);
-  GzipInflater inflater;
+  GzipInflater inflater(GzipInflater::kGzip);
   inflater.Init();
   int num_inflated_bytes = 0;
   ASSERT_FALSE(inflater.HasUnconsumedInput());
@@ -79,6 +83,52 @@ TEST(GzipInflaterTest, OneByteAtATime) {
   inflater.ShutDown();
   ASSERT_STREQ(kBasic, buf.c_str());
 }
+
+TEST(GzipInflaterTest, SimpleDeflate) {
+  std::string buf;
+  buf.reserve(kBufSize);
+  GzipInflater inflater(GzipInflater::kDeflate);
+  inflater.Init();
+  ASSERT_FALSE(inflater.HasUnconsumedInput());
+  ASSERT_TRUE(inflater.SetInput(kTestDeflate, sizeof(kTestDeflate)));
+  ASSERT_TRUE(inflater.HasUnconsumedInput());
+  int num_inflated_bytes = inflater.InflateBytes(&buf[0], kBufSize);
+  ASSERT_EQ(strlen(kTest), static_cast<size_t>(num_inflated_bytes));
+  // null-terminate the buffer
+  buf[num_inflated_bytes] = '\0';
+  ASSERT_FALSE(inflater.HasUnconsumedInput());
+  ASSERT_TRUE(inflater.finished());
+  ASSERT_FALSE(inflater.error());
+  inflater.ShutDown();
+  ASSERT_STREQ(kTest, buf.c_str());
+}
+
+TEST(GzipInflaterTest, OneByteAtATimeDeflate) {
+  std::string buf;
+  buf.reserve(kBufSize);
+  GzipInflater inflater(GzipInflater::kDeflate);
+  inflater.Init();
+  int num_inflated_bytes = 0;
+  ASSERT_FALSE(inflater.HasUnconsumedInput());
+  for (size_t input_offset = 0;
+       input_offset < sizeof(kTestDeflate);
+       ++input_offset) {
+    ASSERT_TRUE(inflater.SetInput(&kTestDeflate[input_offset], 1));
+    ASSERT_TRUE(inflater.HasUnconsumedInput());
+    num_inflated_bytes +=
+        inflater.InflateBytes(&buf[num_inflated_bytes],
+                              kBufSize - num_inflated_bytes);
+  }
+  ASSERT_EQ(strlen(kTest), static_cast<size_t>(num_inflated_bytes));
+  // null-terminate the buffer
+  buf[num_inflated_bytes] = '\0';
+  ASSERT_FALSE(inflater.HasUnconsumedInput());
+  ASSERT_TRUE(inflater.finished());
+  ASSERT_FALSE(inflater.error());
+  inflater.ShutDown();
+  ASSERT_STREQ(kTest, buf.c_str());
+}
+
 
 }  // namespace
 

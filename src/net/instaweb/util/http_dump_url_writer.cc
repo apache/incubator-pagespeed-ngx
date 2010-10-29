@@ -76,7 +76,7 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(const std::string& url,
     if (ret) {
       // Check to see if a response marked as gzipped are really unzippable.
       if (compressed_response.IsGzipped()) {
-        GzipInflater inflater;
+        GzipInflater inflater(GzipInflater::kGzip);
         inflater.Init();
         CHECK(inflater.SetInput(contents.data(), contents.size()));
         while (inflater.HasUnconsumedInput()) {

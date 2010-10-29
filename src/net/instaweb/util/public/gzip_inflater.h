@@ -26,7 +26,9 @@ namespace net_instaweb {
 
 class GzipInflater {
  public:
-  GzipInflater();
+  enum InflateType {kGzip, kDeflate};
+
+  explicit GzipInflater(InflateType type);
   ~GzipInflater();
 
   // Should be called once, before inflating any data.
@@ -65,6 +67,7 @@ class GzipInflater {
   z_stream *zlib_;
   bool finished_;
   bool error_;
+  InflateType type_;
 
   DISALLOW_COPY_AND_ASSIGN(GzipInflater);
 };

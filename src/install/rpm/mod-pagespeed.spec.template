@@ -97,6 +97,7 @@ if [ -n "${MODPAGESPEED_ENABLE_UPDATES}" -a ! -e "$DEFAULTS_FILE" ]; then
   echo 'repo_add_once="true"' > "$DEFAULTS_FILE"
 fi
 
+if [ -e "$DEFAULTS_FILE" ]; then
 . "$DEFAULTS_FILE"
 
 if [ "$repo_add_once" = "true" ]; then
@@ -126,6 +127,8 @@ fi
 # required LSB command.
 service atd start
 echo "sh /etc/cron.daily/@@PACKAGE@@" | at now + 2 minute
+fi
+
 exit 0
 
 

@@ -241,7 +241,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
   EXPECT_EQ(200, response_headers_[0]->status_code());
   ASSERT_TRUE(response_headers_[0]->IsGzipped());
 
-  GzipInflater inflater;
+  GzipInflater inflater(GzipInflater::kGzip);
   ASSERT_TRUE(inflater.Init());
   ASSERT_TRUE(inflater.SetInput(contents_[0]->data(), contents_[0]->size()));
   ASSERT_TRUE(inflater.HasUnconsumedInput());

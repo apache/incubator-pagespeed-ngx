@@ -49,12 +49,17 @@ InstawebContext::InstawebContext(request_rec* request,
   bucket_brigade_ = apr_brigade_create(request->pool,
                                        request->connection->bucket_alloc);
 
-  if (content_encoding_ == kGzip) {
+  if (content_encoding_ == kGzip || content_encoding_ == kDeflate) {
     // TODO(jmarantz): consider keeping a pool of these if they are expensive
     // to initialize.
-    inflater_.reset(new GzipInflater());
+    if (content_encoding_ == kGzip) {
+      inflater_.reset(new GzipInflater(GzipInflater::kGzip));
+    } else {
+      inflater_.reset(new GzipInflater(GzipInflater::kDeflate));
+    }
     inflater_->Init();
   }
+
 
   const char* user_agent = apr_table_get(request->headers_in,
                                          HttpAttributes::kUserAgent);
@@ -105,9 +110,10 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
   }
 
   if (encoding) {
-    // TODO(jmarantz): handle 'deflate'
     if (strcasecmp(encoding, HttpAttributes::kGzip) == 0) {
       content_encoding_ = kGzip;
+    } else if (strcasecmp(encoding, HttpAttributes::kDeflate) == 0) {
+      content_encoding_ = kDeflate;
     } else {
       content_encoding_ = kOther;
     }

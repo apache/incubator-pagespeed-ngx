@@ -26,10 +26,11 @@
 
 namespace net_instaweb {
 
-GzipInflater::GzipInflater()
+GzipInflater::GzipInflater(InflateType type)
     : zlib_(NULL),
       finished_(false),
-      error_(false) {
+      error_(false),
+      type_(type) {
 }
 
 GzipInflater::~GzipInflater() {
@@ -63,10 +64,12 @@ bool GzipInflater::Init() {
   }
   memset(zlib_, 0, sizeof(z_stream));
 
-  // Tell zlib that the data is gzip-encoded.
-  int err = inflateInit2(
-      zlib_,
-      31);  // window size of 15, plus 16 for gzip
+  // Tell zlib that the data is gzip-encoded or deflate-encode.
+  int window_size = 31;  // window size of 15, plus 16 for gzip
+  if (type_ == kDeflate) {
+    window_size = -15;  // window size of -15 for row deflate.
+  }
+  int err = inflateInit2(zlib_, window_size);
 
   if (err != Z_OK) {
     Free();
