@@ -11,6 +11,20 @@ if [ $# != 1 ]; then
   exit 2
 fi;
 
+# If the user has specified an alternate WGET as an environment variable, then
+# use that, otherwise use the one in the path.
+if [ "$WGET" == "" ]; then
+  WGET=wget
+else
+  echo WGET = $WGET
+fi
+
+$WGET --version | head -1 | grep 1.12 >/dev/null
+if [ $? != 0 ]; then
+  echo You have the wrong version of wget.  1.12 is required.
+  exit 1
+fi
+
 HOSTNAME=$1
 PORT=${HOSTNAME/*:/};
 if [ $PORT = $HOSTNAME ]; then
@@ -21,6 +35,7 @@ STATISTICS_URL=http://localhost:$PORT/mod_pagespeed_statistics
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/ic.a.bad.css
 
 OUTDIR=/tmp/mod_pagespeed_test.$USER/fetched_directory
+rm -rf $OUTDIR
 
 # Wget is used three different ways.  The first way is nonrecursive and dumps a
 # single page (with headers) to standard out.  This is useful for grepping for a
@@ -49,8 +64,8 @@ OUTDIR=/tmp/mod_pagespeed_test.$USER/fetched_directory
 # TODO(abliss): some of these will fail on windows where wget escapes saved
 # filenames differently.
 
-WGET_DUMP="wget -q -O - --save-headers"
-WGET_PREREQ="wget -H -p -q -nd -P $OUTDIR"
+WGET_DUMP="$WGET -q -O - --save-headers"
+WGET_PREREQ="$WGET -H -p -q -nd -P $OUTDIR"
 
 # Call with a command and its args.  Echos the command, then tries to eval it.
 # If it returns false, fail the tests.
@@ -78,7 +93,7 @@ function fetch_until() {
 
   echo "     " Fetching $URL until '`'$COMMAND'`' = $RESULT
   while test -t; do
-    if [ `wget -q -O - $URL 2>&1 | $COMMAND` = $RESULT ]; then
+    if [ `$WGET -q -O - $URL 2>&1 | $COMMAND` = $RESULT ]; then
       return;
     fi;
     if [ `date +%s` -gt $STOP ]; then
@@ -111,29 +126,18 @@ check "$WGET_DUMP $EXAMPLE_ROOT/combine_css.html | grep -q X-Mod-Pagespeed"
 echo TEST: 404s are served and properly recorded.
 NUM_404=$($WGET_DUMP $STATISTICS_URL | grep resource_404_count | cut -d: -f2)
 NUM_404=$(($NUM_404+1))
-check "wget -O /dev/null $BAD_RESOURCE_URL 2>&1| grep -q '404 Not Found'"
+check "$WGET -O /dev/null $BAD_RESOURCE_URL 2>&1| grep -q '404 Not Found'"
 check "$WGET_DUMP $STATISTICS_URL | grep -q 'resource_404_count: $NUM_404'"
 
 echo TEST: directory is mapped to index.html.
+rm -rf $OUTDIR
 check "$WGET_PREREQ $EXAMPLE_ROOT"
 check "$WGET_PREREQ $EXAMPLE_ROOT/index.html"
 check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
 echo TEST: compression is enabled for HTML.
-check "wget -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+check "$WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $EXAMPLE_ROOT/ 2>&1 | grep -qi 'Content-Encoding: gzip'"
-
-#TODO(bmcquade): FIXME
-#echo TEST: compression is not enabled for rewritten images.
-#IMG_URL=$(egrep -o http://.*.jpg $FETCHED | head -n1)
-#IMG_HEADERS=$(wget -O /dev/null -q -S --header='Accept-Encoding: gzip' \
-#  $IMG_URL 2>&1)
-# Make sure we have some valid headers.
-#echo \"$IMG_HEADERS\" | grep -qi 'Content-Type: image/jpeg'
-# check [ $? = 0 ]
-# Make sure the response was not gzipped.
-# echo "$IMG_HEADERS" | grep -qi 'Content-Encoding: gzip'
-# check [ $? != 0 ]
 
 # Individual filter tests, in alphabetical order
 
@@ -186,7 +190,7 @@ check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
 
 echo TEST: compression is enabled for rewritten JS.
 JS_URL=$(egrep -o http://.*.js $FETCHED)
-check "wget -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+check "$WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1 | grep -qi 'Content-Encoding: gzip'"
 
 test_filter remove_comments removes comments but not IE directives.
@@ -211,6 +215,25 @@ fetch_until $URL 'grep -c image/png' 1    # inlined
 check $WGET_PREREQ $URL
 check [ `stat -c %s $OUTDIR/*1023x766*Puzzle*` -lt 241260 ]  # compressed
 check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
+
+echo TEST: compression is not enabled for rewritten images.
+IMG_URL=$(egrep -o http://.*.jpg $FETCHED | head -n1)
+IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+  $IMG_URL 2>&1)
+# Make sure we have some valid headers.
+echo \"$IMG_HEADERS\" | grep -qi 'Content-Type: image/jpeg'
+check [ $? = 0 ]
+# Make sure the response was not gzipped.
+echo "$IMG_HEADERS" | grep -qi 'Content-Encoding: gzip'
+check [ $? != 0 ]
+
+test_filter rewrite_javascript removes comments and saves a bunch of bytes.
+fetch_until $URL 'grep -c src.*9257c' 2   # external scripts rewritten
+check $WGET_PREREQ $URL
+grep -R "removed" $OUTDIR                 # comments, should not find any
+check [ $? != 0 ]
+check [ `stat -c %s $FETCHED` -lt 1560 ]  # net savings
+check grep -q preserved $FETCHED          # preserves certain comments
 
 rm -rf $OUTDIR
 echo "PASS."

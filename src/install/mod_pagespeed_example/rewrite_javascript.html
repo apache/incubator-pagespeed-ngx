@@ -1,0 +1,44 @@
+<html>
+  <head>
+  </head>
+  <body>
+    <p>
+      Expected: Internal 0 External 1 External 2<br/>
+      Actual:
+      <script type="text/javascript" id="int1">
+        // This comment will be removed
+        var state = 0;
+        document.write("Internal " + state);
+        state = 1
+      </script>
+      <script src="rewrite_javascript.js" type="text/javascript" id="ext1">
+      </script>
+      <script src="rewrite_javascript.js" id="ext2">
+        /* Note that the contents and comments of a script block are preserved
+        if a src is specified.  Since they are not executed, it is assumed the
+        code will be using the script block contents as data. */
+        document.write("Internal script; state = " + state); state = 42
+      </script>
+    </p><p>
+      External script url: 
+      <script type="text/javascript">
+        /* This comment will also be removed */
+        document.write(document.getElementById("ext1").src);
+      </script>
+    </p><p>
+      Comment in internal script: 
+      <script type="text/javascript">
+        // This comment will be removed too.
+        var source = document.getElementById("int1").innerHTML;
+        document.write(source.match("comment") ? "yes" : "no");
+      </script>
+    </p><p>
+      Comment in external script: 
+      <script type="text/javascript">
+        /* Of course, this comment will be removed as well. */
+        var source = document.getElementById("ext2").innerHTML;
+        document.write(source.match("comment") ? "yes" : "no");
+      </script>
+    </p>
+  </body>
+</html>

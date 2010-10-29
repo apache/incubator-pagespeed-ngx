@@ -441,6 +441,10 @@ bool ResourceManager::FetchOutputResource(
     OutputResource* output_resource,
     Writer* writer, MetaData* response_headers,
     MessageHandler* handler) const {
+  if (output_resource == NULL) {
+    return false;
+  }
+
   // TODO(jmarantz): we are making lots of copies of the data.  We should
   // retrieve the data from the cache without copying it.
 

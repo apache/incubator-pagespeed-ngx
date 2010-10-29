@@ -281,14 +281,16 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
           resource_manager_->CreateOutputResourceForRewrittenUrl(
               base_gurl(), filter_prefix_, input_resource->url(),
               content_type, &encoder, message_handler));
-      if (!resource_manager_->FetchOutputResource(
-              output_resource.get(), NULL, NULL, message_handler)) {
-        OptimizeImage(*input_resource, page_dim, image.get(),
-                      output_resource.get());
-      }
-      if (output_resource->IsWritten()) {
-        UpdateTargetElement(*input_resource, *output_resource,
-                            page_dim, actual_dim, element, src);
+      if (output_resource.get() != NULL) {
+        if (!resource_manager_->FetchOutputResource(
+                output_resource.get(), NULL, NULL, message_handler)) {
+          OptimizeImage(*input_resource, page_dim, image.get(),
+                        output_resource.get());
+        }
+        if (output_resource->IsWritten()) {
+          UpdateTargetElement(*input_resource, *output_resource,
+                              page_dim, actual_dim, element, src);
+        }
       }
     }
   }

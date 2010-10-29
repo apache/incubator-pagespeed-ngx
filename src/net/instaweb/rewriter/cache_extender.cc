@@ -96,27 +96,29 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
                 filter_prefix_, input_resource->type(),
                 resource_manager_->url_escaper(), input_resource.get(),
                 message_handler));
-        CHECK(!output->IsWritten());
-        if (!output->HasValidUrl()) {
-          StringPiece contents(input_resource->contents());
-          std::string absolutified;
-          if (input_resource->type() == &kContentTypeCss) {
-            // TODO(jmarantz): find a mechanism to write this directly into
-            // the HTTPValue so we can reduce the number of times that we
-            // copy entire resources.
-            StringWriter writer(&absolutified);
-            CssTagScanner::AbsolutifyUrls(contents, input_resource->url(),
-                                          &writer, message_handler);
-            contents = absolutified;
+        if (output.get() != NULL) {
+          CHECK(!output->IsWritten());
+          if (!output->HasValidUrl()) {
+            StringPiece contents(input_resource->contents());
+            std::string absolutified;
+            if (input_resource->type() == &kContentTypeCss) {
+              // TODO(jmarantz): find a mechanism to write this directly into
+              // the HTTPValue so we can reduce the number of times that we
+              // copy entire resources.
+              StringWriter writer(&absolutified);
+              CssTagScanner::AbsolutifyUrls(contents, input_resource->url(),
+                                            &writer, message_handler);
+              contents = absolutified;
+            }
+            resource_manager_->Write(HttpStatus::kOK, contents, output.get(),
+                                     headers->CacheExpirationTimeMs(),
+                                     message_handler);
           }
-          resource_manager_->Write(HttpStatus::kOK, contents, output.get(),
-                                   headers->CacheExpirationTimeMs(),
-                                   message_handler);
-        }
-        if (output->HasValidUrl()) {
-          href->SetValue(output->url());
-          if (extension_count_ != NULL) {
-            extension_count_->Add(1);
+          if (output->HasValidUrl()) {
+            href->SetValue(output->url());
+            if (extension_count_ != NULL) {
+              extension_count_->Add(1);
+            }
           }
         }
       }
