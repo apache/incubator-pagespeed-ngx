@@ -30,12 +30,13 @@ namespace net_instaweb {
 // Simple UrlFetcher meant for tests, you can set responses for individual URLs.
 class MockUrlFetcher : public UrlFetcher {
  public:
-  MockUrlFetcher() : enabled_(true) {}
+  MockUrlFetcher() : enabled_(true), fail_on_unexpected_(true) {}
   virtual ~MockUrlFetcher();
 
   void SetResponse(const StringPiece& url, const MetaData& response_header,
                    const StringPiece& response_body);
 
+  // Fetching unset URLs will cause EXPECT failures as well as return false.
   virtual bool StreamingFetchUrl(const std::string& url,
                                  const MetaData& request_headers,
                                  MetaData* response_headers,
@@ -46,6 +47,10 @@ class MockUrlFetcher : public UrlFetcher {
   // Use to simulate temporarily not having access to resources, for example.
   void Disable() { enabled_ = false; }
   void Enable() { enabled_ = true; }
+
+  // Set to false if you don't want the fetcher to EXPECT fail on unfound URL.
+  // Useful in MockUrlFetcher unittest :)
+  void set_fail_on_unexpected(bool x) { fail_on_unexpected_ = x; }
 
  private:
   class HttpResponse {
@@ -68,6 +73,7 @@ class MockUrlFetcher : public UrlFetcher {
 
   ResponseMap response_map_;
   bool enabled_;
+  bool fail_on_unexpected_;  // Should we EXPECT if unexpected url called?
 };
 
 }  // namespace net_instaweb

@@ -79,7 +79,9 @@ class ImgRewriteFilter : public RewriteFilter {
                    StringPiece path_prefix,
                    size_t img_inline_max_bytes);
   static void Initialize(Statistics* statistics);
-  virtual void EndElement(HtmlElement* element);
+  virtual void StartDocumentImpl() {}
+  virtual void StartElementImpl(HtmlElement* element) {}
+  virtual void EndElementImpl(HtmlElement* element);
   virtual void Flush();
   virtual bool Fetch(OutputResource* resource,
                      Writer* writer,
@@ -103,12 +105,11 @@ class ImgRewriteFilter : public RewriteFilter {
                                       Image* image);
   const ContentType* ImageToContentType(const std::string& origin_url,
                                         Image* image);
-  void OptimizeImage(
-      const Resource* input_resource, const StringPiece& origin_url,
-      const ImageDim& page_dim, Image* image, OutputResource* result);
-  OutputResource* OptimizedImageFor(
+  void OptimizeImage(const Resource& input_resource, const ImageDim& page_dim,
+                     Image* image, OutputResource* result);
+  bool OptimizedImageFor(
       const StringPiece& origin_url, const ImageDim& page_dim,
-      const std::string& url_string, Resource* input_resource);
+      Resource* img_resource, OutputResource* output);
   void RewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
   void UpdateTargetElement(const Resource& input_resource,
                            const OutputResource& output_resource,

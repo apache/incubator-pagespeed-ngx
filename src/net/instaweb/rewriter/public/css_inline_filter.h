@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_INLINE_FILTER_H_
 
 #include "base/basictypes.h"
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 
@@ -30,15 +30,16 @@ class ResourceManager;
 class RewriteDriver;
 
 // Inline small CSS files.
-class CssInlineFilter : public EmptyHtmlFilter {
+class CssInlineFilter : public CommonFilter {
  public:
   CssInlineFilter(HtmlParse* html_parse,
                   ResourceManager* resource_manager,
                   size_t size_threshold_bytes);
 
-  virtual void StartDocument();
+  virtual void StartDocumentImpl();
   virtual void EndDocument();
-  virtual void EndElement(HtmlElement* element);
+  virtual void StartElementImpl(HtmlElement* element) {}
+  virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "InlineCss"; }
 
  private:

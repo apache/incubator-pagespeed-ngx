@@ -141,7 +141,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Helper function to test resource fetching, returning true if the fetch
   // succeeded, and modifying content.  It is up to the caller to EXPECT_TRUE
   // on the status and EXPECT_EQ on the content.
-  bool ServeResource(const char* id, const StringPiece& name, const char* ext,
+  bool ServeResource(const char* path, const char* id,
+                     const StringPiece& name, const char* ext,
                      std::string* content) {
     SimpleMetaData request_headers, response_headers;
     content->clear();
@@ -152,7 +153,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     namer.set_name(name);
     namer.set_hash("0");
     namer.set_ext(ext);
-    std::string url = StrCat(URL_PREFIX, namer.Encode());
+    std::string url = StrCat(path, namer.Encode());
     bool fetched = rewrite_driver_.FetchResource(
         url, request_headers, &response_headers, &writer, &message_handler_,
         &callback);

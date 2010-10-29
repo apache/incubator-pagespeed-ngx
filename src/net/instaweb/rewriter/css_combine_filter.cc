@@ -102,12 +102,12 @@ void CssCombineFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kCssFileCountReduction);
 }
 
-void CssCombineFilter::StartDocument() {
+void CssCombineFilter::StartDocumentImpl() {
   // This should already be clear, but just in case.
   partnership_.reset(NULL);
 }
 
-void CssCombineFilter::EndElement(HtmlElement* element) {
+void CssCombineFilter::EndElementImpl(HtmlElement* element) {
   HtmlElement::Attribute* href;
   const char* media;
   if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
@@ -119,17 +119,23 @@ void CssCombineFilter::EndElement(HtmlElement* element) {
     }
     combine_media_ = media;
 
-    // Establish a new partnership if there is not one open already.
-    if (partnership_.get() == NULL) {
-      partnership_.reset(new Partnership(
-          resource_manager_->domain_lawyer(),
-          html_parse_->gurl()));
-    }
-
-    MessageHandler* handler = html_parse_->message_handler();
-    if (!partnership_->AddElement(element, href->value(), handler)) {
-      // It's invalid, so just skip it a la IEDirective below.
+    // We cannot combine with a link in <noscript> tag and we cannot combine
+    // over a link in a <noscript> tag, so this is a barrier.
+    if (noscript_element() != NULL) {
       TryCombineAccumulated();
+
+    } else {
+      // Establish a new partnership if there is not one open already.
+      if (partnership_.get() == NULL) {
+        partnership_.reset(new Partnership(
+            resource_manager_->domain_lawyer(), base_gurl()));
+      }
+
+      MessageHandler* handler = html_parse_->message_handler();
+      if (!partnership_->AddElement(element, href->value(), handler)) {
+        // It's invalid, so just skip it a la IEDirective below.
+        TryCombineAccumulated();
+      }
     }
   } else if (element->tag() == s_style_) {
     // We can't reorder styles on a page, so if we are only combining <link>
@@ -180,8 +186,9 @@ void CssCombineFilter::TryCombineAccumulated() {
       // loads are blocking.  Need to understand Apache module
       // TODO(jmaessen, jmarantz): use partnership url data here,
       // hand off to CreateInputResourceGURL.
+      // TODO(jmaessen): Use CreateInputResourceAndReadIfCached.
       scoped_ptr<Resource> css_resource(
-          resource_manager_->CreateInputResource(html_parse_->gurl(),
+          resource_manager_->CreateInputResource(base_gurl(),
                                                  href->value(), handler));
 
       if ((css_resource == NULL) ||

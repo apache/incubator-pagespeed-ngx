@@ -75,8 +75,12 @@ stage_install_debian() {
 
 # Build the deb file within a fakeroot.
 do_package_in_fakeroot() {
-  chown -R ${APACHE_USER}:${APACHE_USER} ${STAGEDIR}${MODPAGESPEED_CACHE_ROOT}
-  dpkg-deb -b "${STAGEDIR}" .
+  FAKEROOTFILE=$(mktemp -t fakeroot.tmp.XXXXXX) || exit 1
+  fakeroot -s "${FAKEROOTFILE}" -- \
+    chown -R ${APACHE_USER}:${APACHE_USER} ${STAGEDIR}${MODPAGESPEED_CACHE_ROOT}
+  fakeroot -i "${FAKEROOTFILE}" -- \
+    dpkg-deb -b "${STAGEDIR}" .
+  rm -f "${FAKEROOTFILE}"
 }
 
 # Actually generate the package file.
@@ -93,12 +97,7 @@ do_package() {
     gen_control
   fi
 
-  # Export all variables needed by the fakeroot operations.
-  export -f do_package_in_fakeroot
-  export STAGEDIR
-  export APACHE_USER
-  export MODPAGESPEED_CACHE_ROOT
-  fakeroot do_package_in_fakeroot
+  do_package_in_fakeroot
 }
 
 # Remove temporary files and unwanted packaging output.

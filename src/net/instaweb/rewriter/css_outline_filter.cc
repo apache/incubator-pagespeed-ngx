@@ -38,7 +38,8 @@ const char CssOutlineFilter::kFilterId[] = "co";
 CssOutlineFilter::CssOutlineFilter(HtmlParse* html_parse,
                                    ResourceManager* resource_manager,
                                    size_t size_threshold_bytes)
-    : inline_element_(NULL),
+    : CommonFilter(html_parse),
+      inline_element_(NULL),
       html_parse_(html_parse),
       resource_manager_(resource_manager),
       size_threshold_bytes_(size_threshold_bytes),
@@ -48,12 +49,12 @@ CssOutlineFilter::CssOutlineFilter(HtmlParse* html_parse,
       s_href_(html_parse->Intern("href")),
       s_type_(html_parse->Intern("type")) { }
 
-void CssOutlineFilter::StartDocument() {
+void CssOutlineFilter::StartDocumentImpl() {
   inline_element_ = NULL;
   buffer_.clear();
 }
 
-void CssOutlineFilter::StartElement(HtmlElement* element) {
+void CssOutlineFilter::StartElementImpl(HtmlElement* element) {
   // No tags allowed inside style element.
   if (inline_element_ != NULL) {
     // TODO(sligocki): Add negative unit tests to hit these errors.
@@ -68,7 +69,7 @@ void CssOutlineFilter::StartElement(HtmlElement* element) {
   }
 }
 
-void CssOutlineFilter::EndElement(HtmlElement* element) {
+void CssOutlineFilter::EndElementImpl(HtmlElement* element) {
   if (inline_element_ != NULL) {
     if (element != inline_element_) {
       // No other tags allowed inside style element.
@@ -145,6 +146,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
     // See http://www.w3.org/TR/html5/semantics.html#the-style-element
     if (type == NULL || strcmp(type, kContentTypeCss.mime_type()) == 0) {
       MessageHandler* handler = html_parse_->message_handler();
+      // Create outline resource at the document location, not base URL location
       scoped_ptr<OutputResource> resource(
           resource_manager_->CreateNamedOutputResourceWithPath(
               GoogleUrl::AllExceptLeaf(html_parse_->gurl()), kFilterId, "_",
@@ -153,8 +155,8 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       std::string absolute_content;
       StringWriter absolute_writer(&absolute_content);
       // TODO(sligocki): Use CssParser instead of CssTagScanner hack.
-      // TODO(sligocki): Use settable base URL rather than always HTML's URL.
-      if (CssTagScanner::AbsolutifyUrls(content, html_parse_->url(),
+      // TODO(sligocki): Perhaps, only absolutify if base URL != dest path?
+      if (CssTagScanner::AbsolutifyUrls(content, GoogleUrl::Spec(base_gurl()),
                                         &absolute_writer, handler) &&
           WriteResource(absolute_content, resource.get(), handler)) {
         HtmlElement* link_element = html_parse_->NewElement(

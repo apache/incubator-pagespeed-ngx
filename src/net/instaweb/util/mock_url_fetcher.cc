@@ -16,6 +16,7 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/mock_url_fetcher.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -53,7 +54,9 @@ bool MockUrlFetcher::StreamingFetchUrl(const std::string& url,
       // resource that we don't have. So fail if we do.
       //
       // If you want a 404 response, you must explicitly use SetResponse.
-      message_handler->Message(kFatal, "Requested unset url %s", url.c_str());
+      if (fail_on_unexpected_) {
+        EXPECT_TRUE(false) << "Requested unset url " << url;
+      }
     }
   }
   return ret;

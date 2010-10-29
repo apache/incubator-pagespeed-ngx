@@ -48,18 +48,16 @@ bool CssTagScanner::ParseCssElement(
   *media = "";
   *href = NULL;
   if (element->tag() == s_link_) {
-    // We must have attributes rel='stylesheet' href='name.css',
-    // although they can be in any order.  If there are, other
-    // attributes, we better learn about them so we don't lose them in
-    // css_combine_filter.cc.
+    // We must have all attributes rel='stylesheet' href='name.css', and
+    // type='text/css', although they can be in any order.  If there are,
+    // other attributes, we better learn about them so we don't lose them
+    // in css_combine_filter.cc.
     int num_attrs = element->attribute_size();
 
-    // 'media=' is optional, but our filter requires href=*, and rel=stylesheet.
+    // 'media=' is optional, but our filter requires href=*, and rel=stylesheet,
+    // and type=text/css.
     //
-    // We only deal with CSS styles.  If no type specified, CSS is assumed.
-    // See http://www.w3.org/TR/html5/semantics.html#the-style-element
-    //
-    // So type should be "text/css", but if it's omitted, that's OK.
+    // type should be "text/css", but if it's omitted, that's OK.
     //
     // TODO(jmarantz): Consider recognizing a wider variety of CSS references,
     // including inline css so that the outline_filter can use it.

@@ -108,7 +108,7 @@ class RewriterTest : public ResourceManagerTestBase {
     DummyCallback callback;
 
     // Delete the output resource from the cache and the file system.
-    EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(resource)) << resource;
+    EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(resource));
     lru_cache_->Clear();
 
     // Now delete it from the file system, so it must be recomputed.
@@ -253,7 +253,7 @@ class RewriterTest : public ResourceManagerTestBase {
     other_driver_.FetchResource(combine_url, request_headers,
                                 &other_response_headers, &writer,
                                 &message_handler_, &dummy_callback);
-    EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code()) << combine_url;
+    EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
     ServeResourceFromNewContext(combine_url, combine_filename,
                                 fetched_resource_content,
@@ -281,6 +281,7 @@ class RewriterTest : public ResourceManagerTestBase {
     other_driver_.AddFilter(RewriteOptions::kRewriteImages);
 
     // URLs and content for HTML document and resources.
+    const char domain[] = "http://rewrite_image.test/";
     const char html_url[] = "http://rewrite_image.test/RewriteImage.html";
     const char image_url[] = "http://rewrite_image.test/Puzzle.jpg";
 
@@ -306,7 +307,7 @@ class RewriterTest : public ResourceManagerTestBase {
     // output_buffer_ should have exactly one image file (Puzzle.jpg).
     EXPECT_EQ(1UL, img_srcs.size());
     const std::string& src_string = img_srcs[0];
-    EXPECT_EQ(url_prefix_, src_string.substr(0, url_prefix_.size()));
+    EXPECT_EQ(domain, src_string.substr(0, strlen(domain)));
     EXPECT_EQ(".jpg", src_string.substr(src_string.size() - 4, 4));
 
     std::string rewritten_data;
@@ -793,6 +794,30 @@ TEST_F(RewriterTest, CombineCssWithImport) {
   CombineCss("combine_css_import", &md5_hasher_, import_barrier, true);
 }
 
+TEST_F(RewriterTest, CombineCssWithNoscriptBarrier) {
+  const char noscript_barrier[] =
+      "<noscript>\n"
+      "  <link rel='stylesheet' type='text/css' href='d.css'>\n"
+      "</noscript>\n";
+
+  // Put this in the Test class to remove repetition here and below.
+  const char d_css_url[] = "http://combine_css.test/d.css";
+  const char d_css_body[] = ".c4 {\n color: green;\n}\n";
+  SimpleMetaData default_css_header;
+  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  mock_url_fetcher_.SetResponse(d_css_url, default_css_header, d_css_body);
+
+  CombineCss("combine_css_noscript", &md5_hasher_, noscript_barrier, true);
+}
+
+TEST_F(RewriterTest, CombineCssWithFakeNoscriptBarrier) {
+  const char non_barrier[] =
+      "<noscript>\n"
+      "  <p>You have no scripts installed</p>\n"
+      "</noscript>\n";
+  CombineCss("combine_css_fake_noscript", &md5_hasher_, non_barrier, false);
+}
+
 TEST_F(RewriterTest, CombineCssWithMediaBarrier) {
   const char media_barrier[] =
       "<link rel='stylesheet' type='text/css' href='d.css' media='print'>\n";
@@ -857,6 +882,55 @@ TEST_F(RewriterTest, CombineCssWithNonMediaBarrier) {
                                               combine_url.c_str());
 
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
+}
+
+TEST_F(RewriterTest, CombineCssBaseUrl) {
+  // Put original CSS files into our fetcher.
+  const char html_url[] = "http://combine_css.test/base_url.html";
+  // TODO(sligocki): This is broken, but much less so than before. Now we are
+  // just failing to keep track of the old base URL long enough.
+  //const char a_css_url[] = "http://combine_css.test/a.css";
+  const char a_css_url[] = "http://other_domain.test/foo/a.css";
+  const char b_css_url[] = "http://other_domain.test/foo/b.css";
+
+  const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
+  const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
+
+  SimpleMetaData default_css_header;
+  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
+  mock_url_fetcher_.SetResponse(b_css_url, default_css_header, b_css_body);
+
+  // Second stylesheet is on other domain.
+  const char html_input[] =
+      "<head>\n"
+      "  <link rel='stylesheet' type='text/css' href='a.css'>\n"
+      "  <base href='http://other_domain.test/foo/'>\n"
+      "  <link rel='stylesheet' type='text/css' href='b.css'>\n"
+      "</head>\n";
+
+  // Rewrite
+  rewrite_driver_.AddFilter(RewriteOptions::kCombineCss);
+  ParseUrl(html_url, html_input);
+
+  // Check for CSS files in the rewritten page.
+  StringVector css_urls;
+  CollectCssLinks("combine_css_no_media-links", output_buffer_, &css_urls);
+  EXPECT_EQ(1UL, css_urls.size());
+  const std::string& combine_url = css_urls[0];
+
+  const char expected_output_format[] =
+      "<head>\n"
+      "  <link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">\n"
+      "  <base href='http://other_domain.test/foo/'>\n"
+      "  \n"
+      "</head>\n";
+  std::string expected_output = StringPrintf(expected_output_format,
+                                              combine_url.c_str());
+
+  EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
+
+  EXPECT_TRUE(GURL(combine_url.c_str()).is_valid());
 }
 
 TEST_F(RewriterTest, CombineCssShards) {

@@ -43,8 +43,9 @@ class CssCombineFilter : public RewriteFilter {
   virtual ~CssCombineFilter();
 
   static void Initialize(Statistics* statistics);
-  virtual void StartDocument();
-  virtual void EndElement(HtmlElement* element);
+  virtual void StartDocumentImpl();
+  virtual void StartElementImpl(HtmlElement* element) {}
+  virtual void EndElementImpl(HtmlElement* element);
   virtual void Flush();
   virtual void IEDirective(HtmlIEDirectiveNode* directive);
   virtual bool Fetch(OutputResource* resource,

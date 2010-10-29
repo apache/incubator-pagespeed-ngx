@@ -29,7 +29,8 @@ namespace net_instaweb {
 JsInlineFilter::JsInlineFilter(HtmlParse* html_parse,
                                ResourceManager* resource_manager,
                                size_t size_threshold_bytes)
-    : html_parse_(html_parse),
+    : CommonFilter(html_parse),
+      html_parse_(html_parse),
       resource_manager_(resource_manager),
       script_atom_(html_parse_->Intern("script")),
       src_atom_(html_parse_->Intern("src")),
@@ -38,7 +39,8 @@ JsInlineFilter::JsInlineFilter(HtmlParse* html_parse,
 
 JsInlineFilter::~JsInlineFilter() {}
 
-void JsInlineFilter::StartDocument() {
+void JsInlineFilter::StartDocumentImpl() {
+  // TODO(sligocki): This should go in the domain lawyer, right?
   domain_ = html_parse_->gurl().host();
   should_inline_ = false;
 }
@@ -47,7 +49,7 @@ void JsInlineFilter::EndDocument() {
   domain_.clear();
 }
 
-void JsInlineFilter::StartElement(HtmlElement* element) {
+void JsInlineFilter::StartElementImpl(HtmlElement* element) {
   DCHECK(!should_inline_);
   if (element->tag() == script_atom_) {
     const char* src = element->AttributeValue(src_atom_);
@@ -55,14 +57,15 @@ void JsInlineFilter::StartElement(HtmlElement* element) {
   }
 }
 
-void JsInlineFilter::EndElement(HtmlElement* element) {
+void JsInlineFilter::EndElementImpl(HtmlElement* element) {
   if (should_inline_) {
     DCHECK(element->tag() == script_atom_);
     const char* src = element->AttributeValue(src_atom_);
     DCHECK(src != NULL);
     should_inline_ = false;
 
-    GURL url = html_parse_->gurl().Resolve(src);
+    GURL url = base_gurl().Resolve(src);
+    // TODO(sligocki): domain lawyerify.
     if (url.is_valid() && url.DomainIs(domain_.data(), domain_.size())) {
       // Inline the script.
       MessageHandler* message_handler = html_parse_->message_handler();

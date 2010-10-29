@@ -105,6 +105,7 @@ std::string ResourceManager::UrlPrefixFor(const ResourceNamer& namer) const {
   return url_prefix;
 }
 
+// TODO(jmaessen): Either axe or adapt to sharding post-url_prefix.
 StringPiece ResourceManager::CanonicalizeBase(
     const StringPiece& base, int* shard) const {
   std::string base_str = base.as_string();
@@ -232,18 +233,29 @@ std::string ResourceManager::ConstructNameKey(
 
 // Constructs an output resource corresponding to the specified input resource
 // and encoded using the provided encoder.
+// TODO(jmaessen): Depracate after cleanup is done.
 OutputResource* ResourceManager::CreateOutputResourceFromResource(
     const StringPiece& filter_prefix,
     const ContentType* content_type,
     UrlSegmentEncoder* encoder,
     Resource* input_resource,
     MessageHandler* handler) {
-  // TODO: use prefix and suffix here, which ought to be stored in resource.
-  // Instead we're building a bogus partnership just to fish around for them.
+  std::string url = input_resource->url();
+  GURL input_gurl(url);
+  return CreateOutputResourceForRewrittenUrl(
+      input_gurl, filter_prefix, url, content_type, encoder, handler);
+}
+
+OutputResource* ResourceManager::CreateOutputResourceForRewrittenUrl(
+    const GURL& document_gurl,
+    const StringPiece& filter_prefix,
+    const StringPiece& resource_url,
+    const ContentType* content_type,
+    UrlSegmentEncoder* encoder,
+    MessageHandler* handler) {
   OutputResource* output_resource = NULL;
-  GURL input_gurl(input_resource->url());
-  UrlPartnership partnership(domain_lawyer_, input_gurl);
-  if (partnership.AddUrl(input_resource->url(), handler)) {
+  UrlPartnership partnership(domain_lawyer_, document_gurl);
+  if (partnership.AddUrl(resource_url, handler)) {
     partnership.Resolve();
     const StringPiece& base = partnership.ResolvedBase();
     std::string relative_url = partnership.RelativePath(0);
@@ -336,7 +348,7 @@ Resource* ResourceManager::CreateInputResource(const GURL& base_gurl,
   GURL url = base_gurl.Resolve(input_url_string);
   if (!url.is_valid()) {
     // Note: Bad user-content can leave us here.
-    handler->Message(kWarning, "Invalid url '%s' relative to base '%s'",
+    handler->Message(kWarning, "%s: Invalid url relative to '%s'",
                      input_url_string.c_str(), base_gurl.spec().c_str());
     return NULL;
   }
@@ -347,19 +359,14 @@ Resource* ResourceManager::CreateInputResource(const GURL& base_gurl,
 Resource* ResourceManager::CreateInputResourceAndReadIfCached(
     const GURL& base_gurl, const StringPiece& input_url,
     MessageHandler* handler) {
-  // TODO(jmaessen): next few lines (to end of 1st if) move to CreateInputResource.
-  UrlPartnership partnership(domain_lawyer_, base_gurl);
-  Resource* input_resource = NULL;
-  if (partnership.AddUrl(input_url, handler)) {
-    // TODO(jmaessen): When more fully plumbed, stash partnership
-    // (or at least ResolvedBase) in input resource.
-    partnership.Resolve();
-    input_resource =
-        CreateInputResourceGURL(*partnership.FullPath(0), handler);
-  }
-  if (input_resource == NULL ||
-      !input_resource->IsCacheable() ||
-      !ReadIfCached(input_resource, handler)) {
+  Resource* input_resource =
+      CreateInputResource(base_gurl, input_url, handler);
+  if (input_resource != NULL &&
+      (!input_resource->IsCacheable() ||
+       !ReadIfCached(input_resource, handler))) {
+    handler->Message(kInfo,
+                     "%s: Couldn't fetch resource %s to rewrite.",
+                     base_gurl.spec().c_str(), input_url.as_string().c_str());
     delete input_resource;
     input_resource = NULL;
   }

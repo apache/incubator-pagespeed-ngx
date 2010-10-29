@@ -36,11 +36,12 @@ const char kJsData[] = "alert     (    'hello, world!'    )  ";
 const char kJsMinData[] = "alert('hello, world!')";
 const char kFilterId[] = "jm";
 
-#define REWRITTEN_JS_NAME ",htest,c,_hello,l"
+#define REWRITTEN_JS_NAME "hello,l"
 #define REWRITTEN_JS_ID_HASH_NAME "jm.0." REWRITTEN_JS_NAME
+#define SOURCE_PREFIX "http://test.com/"
 
-const char kRewrittenJsPath[] = URL_PREFIX REWRITTEN_JS_ID_HASH_NAME;
-const char kRewrittenJsPathExt[] = URL_PREFIX REWRITTEN_JS_ID_HASH_NAME ".js";
+const char kRewrittenJsPath[] = SOURCE_PREFIX REWRITTEN_JS_ID_HASH_NAME;
+const char kRewrittenJsPathExt[] = SOURCE_PREFIX REWRITTEN_JS_ID_HASH_NAME ".js";
 const char kRewrittenJsName[] = REWRITTEN_JS_NAME;
 
 }  // namespace
@@ -100,7 +101,8 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   resource_manager_->SetDefaultHeaders(&kContentTypeJavascript, &headers);
   http_cache_.Put(kRewrittenJsPathExt, headers, kJsMinData, &message_handler_);
   EXPECT_EQ(0, lru_cache_->num_hits());
-  ASSERT_TRUE(ServeResource(kFilterId, kRewrittenJsName, "js", &content));
+  ASSERT_TRUE(ServeResource(SOURCE_PREFIX, kFilterId,
+                            kRewrittenJsName, "js", &content));
   EXPECT_EQ(1, lru_cache_->num_hits());
   EXPECT_EQ(std::string(kJsMinData), content);
 
@@ -120,7 +122,8 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   ASSERT_TRUE(file_system_.WriteFile(filename.c_str(), data,
                                      &message_handler_));
 
-  ASSERT_TRUE(ServeResource(kFilterId, kRewrittenJsName, "js", &content));
+  ASSERT_TRUE(ServeResource(SOURCE_PREFIX, kFilterId,
+                            kRewrittenJsName, "js", &content));
   EXPECT_EQ(std::string(kJsMinData), content);
 
   // After serving from the disk, we should have seeded our cache.  Check it.
@@ -131,7 +134,8 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   ASSERT_TRUE(file_system_.RemoveFile(filename.c_str(), &message_handler_));
   lru_cache_->Clear();
   InitTest(100);
-  ASSERT_TRUE(ServeResource(kFilterId, kRewrittenJsName, "js", &content));
+  ASSERT_TRUE(ServeResource(SOURCE_PREFIX, kFilterId,
+                            kRewrittenJsName, "js", &content));
   EXPECT_EQ(std::string(kJsMinData), content);
 
   // Now we expect both the file and the cache entry to be there.

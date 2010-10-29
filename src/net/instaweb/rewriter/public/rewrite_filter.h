@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_FILTER_H_
 
 #include "base/basictypes.h"
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/proto_util.h"
@@ -33,10 +33,11 @@ class OutputResource;
 class UrlAsyncFetcher;
 class Writer;
 
-class RewriteFilter : public EmptyHtmlFilter {
+class RewriteFilter : public CommonFilter {
  public:
   explicit RewriteFilter(RewriteDriver* driver, StringPiece filter_prefix)
-      : filter_prefix_(filter_prefix.data(), filter_prefix.size()),
+      : CommonFilter(driver->html_parse()),
+        filter_prefix_(filter_prefix.data(), filter_prefix.size()),
         driver_(driver) {
   }
   virtual ~RewriteFilter();

@@ -57,10 +57,10 @@ class CssFilter : public RewriteFilter {
 
   static void Initialize(Statistics* statistics);
 
-  virtual void StartDocument();
-  virtual void StartElement(HtmlElement* element);
+  virtual void StartDocumentImpl();
+  virtual void StartElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
-  virtual void EndElement(HtmlElement* element);
+  virtual void EndElementImpl(HtmlElement* element);
 
   virtual bool Fetch(OutputResource* output_resource,
                      Writer* writer,
@@ -80,7 +80,7 @@ class CssFilter : public RewriteFilter {
   bool RewriteCssText(const StringPiece& in_text, std::string* out_text,
                       MessageHandler* handler);
   bool RewriteExternalCss(const StringPiece& in_url, std::string* out_url);
-  bool RewriteExternalCssToResource(const StringPiece& in_url,
+  bool RewriteExternalCssToResource(Resource* input_resource,
                                     OutputResource* output_resource);
 
   Css::Stylesheet* CombineStylesheets(
@@ -89,9 +89,6 @@ class CssFilter : public RewriteFilter {
                              std::vector<Css::Stylesheet*>* result_stylesheets);
 
   Css::Stylesheet* LoadStylesheet(const StringPiece& url) { return NULL; }
-
-  Resource* GetInputResource(const StringPiece& url);
-  OutputResource* CreateCssOutputResource(const StringPiece& in_url);
 
   HtmlParse* html_parse_;
   ResourceManager* resource_manager_;

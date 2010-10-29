@@ -38,6 +38,7 @@ class MockUrlFetcherTest : public ::testing::Test {
 
 TEST_F(MockUrlFetcherTest, GetsCorrectMappedResponse) {
   MockUrlFetcher fetcher;
+  fetcher.set_fail_on_unexpected(false);
   const SimpleMetaData dummy_header;
   SimpleMetaData response_header;
   std::string response_body;

@@ -71,7 +71,9 @@ InstawebContext::InstawebContext(request_rec* request,
 }
 
 InstawebContext::~InstawebContext() {
-  factory_->ReleaseRewriteDriver(rewrite_driver_);
+  if (custom_rewriter_ == NULL) {
+    factory_->ReleaseRewriteDriver(rewrite_driver_);
+  }
 }
 
 void InstawebContext::Rewrite(const char* input, int size) {

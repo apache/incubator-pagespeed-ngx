@@ -31,7 +31,8 @@ namespace net_instaweb {
 CssInlineFilter::CssInlineFilter(HtmlParse* html_parse,
                                  ResourceManager* resource_manager,
                                  size_t size_threshold_bytes)
-    : html_parse_(html_parse),
+    : CommonFilter(html_parse),
+      html_parse_(html_parse),
       resource_manager_(resource_manager),
       href_atom_(html_parse_->Intern("href")),
       link_atom_(html_parse_->Intern("link")),
@@ -40,7 +41,8 @@ CssInlineFilter::CssInlineFilter(HtmlParse* html_parse,
       style_atom_(html_parse_->Intern("style")),
       size_threshold_bytes_(size_threshold_bytes) {}
 
-void CssInlineFilter::StartDocument() {
+void CssInlineFilter::StartDocumentImpl() {
+  // TODO(sligocki): Domain lawyerify.
   domain_ = html_parse_->gurl().host();
 }
 
@@ -48,7 +50,7 @@ void CssInlineFilter::EndDocument() {
   domain_.clear();
 }
 
-void CssInlineFilter::EndElement(HtmlElement* element) {
+void CssInlineFilter::EndElementImpl(HtmlElement* element) {
   if (element->tag() == link_atom_) {
     const char* rel = element->AttributeValue(rel_atom_);
     if (rel == NULL || strcmp(rel, "stylesheet")) {
@@ -71,7 +73,8 @@ void CssInlineFilter::EndElement(HtmlElement* element) {
 
     // Make sure we're not moving across domains -- CSS can potentially contain
     // Javascript expressions.
-    GURL url = html_parse_->gurl().Resolve(href);
+    // TODO(sligocki): Domain lawyerify.
+    GURL url = base_gurl().Resolve(href);
     if (!url.is_valid() || !url.DomainIs(domain_.data(), domain_.size())) {
       return;
     }

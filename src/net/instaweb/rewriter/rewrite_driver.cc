@@ -288,11 +288,11 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
   }
   if (options.Enabled(RewriteOptions::kAddInstrumentation)) {
     // Inject javascript to instrument loading-time.
-    add_instrumentation_filter_.reset(
+    add_instrumentation_filter_ =
         new AddInstrumentationFilter(&html_parse_,
                                      options.beacon_url(),
-                                     resource_manager_->statistics()));
-    AddFilter(add_instrumentation_filter_.get());
+                                     resource_manager_->statistics());
+    AddFilter(add_instrumentation_filter_);
   }
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
   // doesn't, it probably should.  If it does, be sure to add it to the

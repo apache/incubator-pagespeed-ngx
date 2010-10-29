@@ -122,8 +122,8 @@ void ImgRewriteFilter::Initialize(Statistics* statistics) {
 }
 
 void ImgRewriteFilter::OptimizeImage(
-    const Resource* input_resource, const StringPiece& origin_url,
-    const ImageDim& page_dim, Image* image, OutputResource* result) {
+    const Resource& input_resource, const ImageDim& page_dim,
+    Image* image, OutputResource* result) {
   if (result != NULL && !result->IsWritten() && image != NULL) {
     ImageDim img_dim;
     image->Dimensions(&img_dim);
@@ -142,14 +142,14 @@ void ImgRewriteFilter::OptimizeImage(
         message = "Not worth resizing image";
       }
       html_parse_->InfoHere("%s `%s' from %dx%d to %dx%d", message,
-                            origin_url.as_string().c_str(),
+                            input_resource.url().c_str(),
                             img_dim.width(), img_dim.height(),
                             page_dim.width(), page_dim.height());
     }
     // Unconditionally write resource back so we don't re-attempt optimization.
     MessageHandler* message_handler = html_parse_->message_handler();
 
-    int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
+    int64 origin_expire_time_ms = input_resource.CacheExpirationTimeMs();
     if (image->output_size() <
         image->input_size() * kMaxRewrittenRatio) {
       if (resource_manager_->Write(
@@ -157,7 +157,7 @@ void ImgRewriteFilter::OptimizeImage(
               origin_expire_time_ms, message_handler)) {
         html_parse_->InfoHere(
             "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",
-            origin_url.as_string().c_str(),
+            input_resource.url().c_str(),
             static_cast<unsigned>(image->input_size()),
             result->url().c_str(),
             static_cast<unsigned>(image->output_size()));
@@ -207,29 +207,16 @@ Image* ImgRewriteFilter::GetImage(const StringPiece& origin_url,
   return image;
 }
 
-OutputResource* ImgRewriteFilter::ImageOutputResource(
-    const std::string& url_string, Image* image) {
-  OutputResource* result = NULL;
-  if (image != NULL) {
-    const ContentType* content_type = image->content_type();
-    if (content_type != NULL) {
-      MessageHandler* message_handler = html_parse_->message_handler();
-      result = resource_manager_->CreateNamedOutputResource(
-          filter_prefix_, url_string, content_type, message_handler);
-    }
-  }
-  return result;
-}
-
-OutputResource* ImgRewriteFilter::OptimizedImageFor(
+bool ImgRewriteFilter::OptimizedImageFor(
     const StringPiece& origin_url, const ImageDim& page_dim,
-    const std::string& url_string, Resource* img_resource) {
+    Resource* img_resource, OutputResource* output) {
   scoped_ptr<Image> image(GetImage(origin_url, img_resource));
-  OutputResource* result = ImageOutputResource(url_string, image.get());
-  OptimizeImage(img_resource, origin_url, page_dim, image.get(), result);
-  return result;
+  bool ok = image.get() != NULL && image->image_type() != Image::IMAGE_UNKNOWN;
+  if (ok) {
+    OptimizeImage(*img_resource, page_dim, image.get(), output);
+  }
+  return ok;
 }
-
 
 // Convert (possibly NULL) Image* to corresponding (possibly NULL) ContentType*
 const ContentType* ImgRewriteFilter::ImageToContentType(
@@ -265,53 +252,43 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
   // How do we deal with that given only URL?
   // Separate input and output content type?
   MessageHandler* message_handler = html_parse_->message_handler();
-  // TODO(jmaessen, jmarantz): transition to partnership here.
-  GURL input_gurl = html_parse_->gurl().Resolve(src->value());
-  if (input_gurl.is_valid()) {
-    scoped_ptr<Resource> input_resource(
-        resource_manager_->CreateInputResourceGURL(
-            input_gurl, message_handler));
+  scoped_ptr<Resource> input_resource(
+      resource_manager_->CreateInputResourceAndReadIfCached(
+          base_gurl(), src->value(), message_handler));
+  if (input_resource != NULL && input_resource->ContentsValid()) {
+    ImageDim page_dim;
+    // Always rewrite to absolute url used to obtain resource.
+    // This lets us do context-free fetches of content.
+    int width, height;
+    if (element->IntAttributeValue(s_width_, &width) &&
+        element->IntAttributeValue(s_height_, &height)) {
+      // Specific image size is called for.  Rewrite to that size.
+      page_dim.set_dims(width, height);
+    }
+    scoped_ptr<Image> image(GetImage(src->value(), input_resource.get()));
+    const ContentType* content_type =
+        ImageToContentType(src->value(), image.get());
 
-    if ((input_resource != NULL) &&
-        resource_manager_->ReadIfCached(input_resource.get(), message_handler) &&
-        input_resource->ContentsValid()) {
-      std::string origin_url(input_resource->url());
-      ImageDim page_dim;
-      std::string rewritten_url;
-      // Always rewrite to absolute url used to obtain resource.
-      // This lets us do context-free fetches of content.
-      int width, height;
-      if (element->IntAttributeValue(s_width_, &width) &&
-          element->IntAttributeValue(s_height_, &height)) {
-        // Specific image size is called for.  Rewrite to that size.
-        page_dim.set_dims(width, height);
-      }
-      ImageUrlEncoder encoder(resource_manager_->url_escaper(), &page_dim);
-      encoder.EncodeToUrlSegment(origin_url, &rewritten_url);
-
+    if (content_type != NULL) {
       ImageDim actual_dim;
-      scoped_ptr<Image> image(GetImage(origin_url,
-                                       input_resource.get()));
-      const ContentType* content_type =
-          ImageToContentType(origin_url, image.get());
-
-      if (content_type != NULL) {
-        image->Dimensions(&actual_dim);
-        // Create an output resource and fetch it, as that will tell
-        // us if we have already optimized it, or determined that it was not
-        // worth optimizing.
-        scoped_ptr<OutputResource> output_resource(
-            resource_manager_->CreateNamedOutputResource(
-                filter_prefix_, rewritten_url, content_type, message_handler));
-        if (!resource_manager_->FetchOutputResource(
-                output_resource.get(), NULL, NULL, message_handler)) {
-          OptimizeImage(input_resource.get(), origin_url, page_dim, image.get(),
-                        output_resource.get());
-        }
-        if (output_resource->IsWritten()) {
-          UpdateTargetElement(*input_resource, *output_resource,
-                              page_dim, actual_dim, element, src);
-        }
+      image->Dimensions(&actual_dim);
+      // Create an output resource and fetch it, as that will tell
+      // us if we have already optimized it, or determined that it was not
+      // worth optimizing.
+      std::string rewritten_name;
+      ImageUrlEncoder encoder(resource_manager_->url_escaper(), &page_dim);
+      scoped_ptr<OutputResource> output_resource(
+          resource_manager_->CreateOutputResourceForRewrittenUrl(
+              base_gurl(), filter_prefix_, input_resource->url(),
+              content_type, &encoder, message_handler));
+      if (!resource_manager_->FetchOutputResource(
+              output_resource.get(), NULL, NULL, message_handler)) {
+        OptimizeImage(*input_resource, page_dim, image.get(),
+                      output_resource.get());
+      }
+      if (output_resource->IsWritten()) {
+        UpdateTargetElement(*input_resource, *output_resource,
+                            page_dim, actual_dim, element, src);
       }
     }
   }
@@ -377,7 +354,7 @@ void ImgRewriteFilter::UpdateTargetElement(
   }
 }
 
-void ImgRewriteFilter::EndElement(HtmlElement* element) {
+void ImgRewriteFilter::EndElementImpl(HtmlElement* element) {
   HtmlElement::Attribute *src = img_filter_->ParseImgElement(element);
   if (src != NULL) {
     if (log_image_elements_) {
@@ -406,29 +383,23 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
                              UrlAsyncFetcher::Callback* callback) {
   bool ok = true;
   const char* failure_reason = "";
-  StringPiece suffix = resource->suffix();
-  const ContentType *content_type = NameExtensionToContentType(suffix);
-  StringPiece stripped_url = resource->name();
+  const ContentType *content_type = resource->type();
   if (content_type != NULL) {
-    std::string origin_url;
     ImageDim page_dim;  // Dimensions given in source page (invalid if absent).
     ImageUrlEncoder encoder(resource_manager_->url_escaper(), &page_dim);
-    if (encoder.DecodeFromUrlSegment(stripped_url, &origin_url)) {
-      std::string stripped_url_string = stripped_url.as_string();
-      scoped_ptr<Resource> input_image(
-          resource_manager_->CreateInputResourceAbsolute(origin_url,
-                                                         message_handler));
-
+    scoped_ptr<Resource> input_image(
+        resource_manager_->CreateInputResourceFromOutputResource(
+            &encoder, resource, message_handler));
+    if (input_image.get() != NULL) {
+      std::string origin_url = input_image->url();
       // TODO(jmarantz): this needs to be refactored slightly to
       // allow for asynchronous fetches of the input image, if
       // it's not obtained via cache or local filesystem read.
 
-      scoped_ptr<OutputResource> image_resource(OptimizedImageFor(
-          origin_url, page_dim, stripped_url_string, input_image.get()));
-      if (image_resource != NULL) {
+      if (OptimizedImageFor(
+              origin_url, page_dim, input_image.get(), resource)) {
         if (resource_manager_->FetchOutputResource(
-                image_resource.get(), writer, response_headers,
-                message_handler)) {
+                resource, writer, response_headers, message_handler)) {
           if (resource->metadata()->status_code() != HttpStatus::kOK) {
             // Note that this should not happen, because the url
             // should not have escaped into the wild.  We're content
@@ -436,8 +407,8 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
             // / redirect to the origin_url as a fail safe, but it's
             // probably not worth it.  Instead we log and hope that
             // this causes us to find and fix the problem.
-            message_handler->Error(resource->name().as_string().c_str(), 0,
-                                   "Rewriting of %s rejected, "
+            message_handler->Error(resource->url().c_str(), 0,
+                                   "Rewriting %s rejected, "
                                    "but URL requested (mistaken rewriting?).",
                                    origin_url.c_str());
           }
@@ -474,15 +445,11 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
           callback->Done(true);
         }
       }
-    } else {
-      ok = false;
-      failure_reason = "Server could not decode image source.";
     }
   } else {
     ok = false;
     failure_reason = "Unrecognized image content type.";
   }
-
   if (!ok) {
     writer->Write(failure_reason, message_handler);
     response_headers->set_status_code(HttpStatus::kNotFound);

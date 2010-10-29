@@ -85,11 +85,11 @@ void CssFilter::Initialize(Statistics* statistics) {
   }
 }
 
-void CssFilter::StartDocument() {
+void CssFilter::StartDocumentImpl() {
   in_style_element_ = false;
 }
 
-void CssFilter::StartElement(HtmlElement* element) {
+void CssFilter::StartElementImpl(HtmlElement* element) {
   // HtmlParse should not pass us elements inside a style element.
   CHECK(!in_style_element_);
   if (element->tag() == s_style_) {
@@ -111,7 +111,7 @@ void CssFilter::Characters(HtmlCharactersNode* characters_node) {
   }
 }
 
-void CssFilter::EndElement(HtmlElement* element) {
+void CssFilter::EndElementImpl(HtmlElement* element) {
   // Rewrite an inline style.
   if (in_style_element_) {
     CHECK(style_element_ == element);  // HtmlParse should not pass unmatching.
@@ -137,12 +137,10 @@ void CssFilter::EndElement(HtmlElement* element) {
       if (element_href != NULL) {  // If it has a href= attribute
         std::string old_url(element_href->value());
         // TODO(jmaessen, jmarantz): rewrite in terms of partnership
-        GURL old_gurl = html_parse_->gurl().Resolve(old_url);
+        GURL old_gurl = base_gurl().Resolve(old_url);
         std::string new_url;
-        const std::string& old_gurl_spec = old_gurl.spec();
-        StringPiece absolute_url(old_gurl_spec.data(), old_gurl_spec.size());
         if (old_gurl.is_valid() &&
-            RewriteExternalCss(absolute_url, &new_url)) {
+            RewriteExternalCss(GoogleUrl::Spec(old_gurl), &new_url)) {
           element_href->SetValue(new_url);  // Update the href= attribute.
         }
       } else {
@@ -260,47 +258,41 @@ bool CssFilter::LoadAllSubStylesheets(
 }
 
 
-Resource* CssFilter::GetInputResource(const StringPiece& url) {
-  // TODO(sligocki): Use base_url() not document->url().
-  return resource_manager_->CreateInputResourceAbsolute(
-      url, html_parse_->message_handler());
-}
-
-// Create an output resource based on url of input resource.
-OutputResource* CssFilter::CreateCssOutputResource(const StringPiece& in_url) {
-  std::string name;  // UrlEscaper encoded url.
-  resource_manager_->url_escaper()->EncodeToUrlSegment(in_url, &name);
-  return resource_manager_->CreateNamedOutputResource(
-      filter_prefix_, name, &kContentTypeCss, html_parse_->message_handler());
-}
-
 // Read an external CSS file, rewrite it and write a new external CSS file.
 bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
                                    std::string* out_url) {
-  scoped_ptr<OutputResource> output_resource(CreateCssOutputResource(in_url));
   bool ret = false;
-  if (output_resource != NULL) {
-    ret = RewriteExternalCssToResource(in_url, output_resource.get());
-    if (ret) {
-      *out_url = output_resource->url();
+  scoped_ptr<Resource> input_resource(
+      resource_manager_->CreateInputResourceAbsolute(
+          in_url, html_parse_->message_handler()));
+  if (input_resource.get() != NULL) {
+    scoped_ptr<OutputResource> output_resource(
+        resource_manager_->CreateOutputResourceFromResource(
+            filter_prefix_, &kContentTypeCss, resource_manager_->url_escaper(),
+            input_resource.get(), html_parse_->message_handler()));
+    if (output_resource.get() != NULL) {
+      ret = RewriteExternalCssToResource(input_resource.get(),
+                                         output_resource.get());
+      if (ret) {
+        *out_url = output_resource->url();
+      }
     }
   }
   return ret;
 }
 
-bool CssFilter::RewriteExternalCssToResource(const StringPiece& in_url,
+bool CssFilter::RewriteExternalCssToResource(Resource* input_resource,
                                              OutputResource* output_resource) {
   // If this OutputResource has not already been created, create it.
   if (!output_resource->IsWritten()) {
     // Load input stylesheet.
-    scoped_ptr<Resource> input_resource(GetInputResource(in_url));
     MessageHandler* handler = html_parse_->message_handler();
     if (input_resource == NULL ||
-        !resource_manager_->ReadIfCached(input_resource.get(), handler) ||
+        !resource_manager_->ReadIfCached(input_resource, handler) ||
         !input_resource->ContentsValid()) {
       // TODO(sligocki): Should these really be HtmlParse errors?
       html_parse_->ErrorHere("Failed to load resource %s",
-                             in_url.as_string().c_str());
+                             input_resource->url().c_str());
       return false;
     }
 
@@ -333,17 +325,13 @@ bool CssFilter::Fetch(OutputResource* output_resource,
   // TODO(sligocki): We do not use writer, *_headers or fetcher ... should we?
   // It looks like nobody is using the fetcher, I'll let someone else get this
   // right first.
-  bool ret = false;
-  std::string in_url;
-  if (resource_manager_->url_escaper()->DecodeFromUrlSegment(
-          output_resource->name(), &in_url)) {
-    // TODO(sligocki): If this doesn't work, we need to wait for it to finish
-    // fetching and then rewrite.
-    ret = RewriteExternalCssToResource(in_url, output_resource);
-  } else {
-    message_handler->Message(kError, "Could not decode original CSS url %s",
-                             output_resource->name().as_string().c_str());
-  }
+  // TODO(sligocki): If this doesn't work, we need to wait for it to finish
+  // fetching and then rewrite.
+  scoped_ptr<Resource>  input_resource(
+      resource_manager_->CreateInputResourceFromOutputResource(
+          resource_manager_->url_escaper(), output_resource, message_handler));
+  bool ret = RewriteExternalCssToResource(input_resource.get(),
+                                          output_resource);
   // For some reason we only call the callback if we succeed.
   if (ret) {
     callback->Done(ret);

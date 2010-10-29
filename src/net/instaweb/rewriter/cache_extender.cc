@@ -68,13 +68,13 @@ void CacheExtender::Initialize(Statistics* statistics) {
   statistics->AddVariable(kNotCacheable);
 }
 
-void CacheExtender::StartElement(HtmlElement* element) {
+void CacheExtender::StartElementImpl(HtmlElement* element) {
   MessageHandler* message_handler = html_parse_->message_handler();
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
   if ((href != NULL) && html_parse_->IsRewritable(element)) {
     scoped_ptr<Resource> input_resource(
         resource_manager_->CreateInputResourceAndReadIfCached(
-            html_parse_->gurl(), href->value(), message_handler));
+            base_gurl(), href->value(), message_handler));
     // TODO(jmarantz): create an output resource to generate a new url,
     // rather than doing the content-hashing here.
     if (input_resource != NULL) {

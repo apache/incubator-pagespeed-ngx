@@ -68,9 +68,10 @@ class JavascriptFilter : public RewriteFilter {
                    const StringPiece& path_prefix);
   static void Initialize(Statistics* statistics);
   virtual ~JavascriptFilter();
-  virtual void StartElement(HtmlElement* element);
+  virtual void StartDocumentImpl() {}
+  virtual void StartElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
-  virtual void EndElement(HtmlElement* element);
+  virtual void EndElementImpl(HtmlElement* element);
   virtual void Flush();
   virtual void IEDirective(HtmlIEDirectiveNode* directive);
   virtual bool Fetch(OutputResource* output_resource,
@@ -93,7 +94,7 @@ class JavascriptFilter : public RewriteFilter {
   inline void RewriteInlineScript();
   inline void RewriteExternalScript();
   inline void StartScriptElement(HtmlElement* element);
-  inline Resource* ScriptAtUrl(const GURL& script_url);
+  inline Resource* ScriptAtUrl(const StringPiece& script_url);
   const StringPiece FlattenBuffer(std::string* script_buffer);
   bool WriteExternalScriptTo(const Resource* script_resource,
                              const StringPiece& script_out,

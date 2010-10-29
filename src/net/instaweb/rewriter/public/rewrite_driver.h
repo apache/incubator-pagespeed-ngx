@@ -139,7 +139,7 @@ class RewriteDriver {
   Statistics* statistics() const;
 
   AddInstrumentationFilter* add_instrumentation_filter() {
-    return add_instrumentation_filter_.get();
+    return add_instrumentation_filter_;
   }
 
  private:
@@ -170,7 +170,7 @@ class RewriteDriver {
   UrlAsyncFetcher* url_async_fetcher_;
   ResourceManager* resource_manager_;
 
-  scoped_ptr<AddInstrumentationFilter> add_instrumentation_filter_;
+  AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
   scoped_ptr<BaseTagFilter> base_tag_filter_;
   scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;

@@ -29,6 +29,8 @@
 
 namespace {
 
+#define DOMAIN "http://test.com/"
+
 const char kHtmlFormat[] =
     "<link rel='stylesheet' href='%s.css' type='text/css'>\n"
     "<img src='%s.jpg'/>\n"
@@ -68,9 +70,9 @@ TEST_F(CacheExtenderTest, DoExtend) {
   for (int i = 0; i < 3; i++) {
     ValidateExpected("do_extend",
                      GenerateHtml("a", "b", "c").c_str(),
-                     GenerateHtml("http://test.com/ce.0.a,s",
-                                  "http://test.com/ce.0.b,j",
-                                  "http://test.com/ce.0.c,l").c_str());
+                     GenerateHtml(DOMAIN "ce.0.a,s",
+                                  DOMAIN "ce.0.b,j",
+                                  DOMAIN "ce.0.c,l").c_str());
   }
 }
 
@@ -92,11 +94,11 @@ TEST_F(CacheExtenderTest, ServeFiles) {
   std::string content;
 
   InitTest(100);
-  ASSERT_TRUE(ServeResource(kFilterId, ",htest,c,_a,s", "css", &content));
+  ASSERT_TRUE(ServeResource(DOMAIN, kFilterId, "a,s", "css", &content));
   EXPECT_EQ(std::string(kCssData), content);
-  ASSERT_TRUE(ServeResource(kFilterId, ",htest,c,_b,j", "jpg", &content));
+  ASSERT_TRUE(ServeResource(DOMAIN, kFilterId, "b,j", "jpg", &content));
   EXPECT_EQ(std::string(kImageData), content);
-  ASSERT_TRUE(ServeResource(kFilterId, ",htest,c,_c,l", "js", &content));
+  ASSERT_TRUE(ServeResource(DOMAIN, kFilterId, "c,l", "js", &content));
   EXPECT_EQ(std::string(kJsData), content);
 
   // TODO(jmarantz): make 3 variations of this test:
