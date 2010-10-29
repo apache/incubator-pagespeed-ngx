@@ -35,7 +35,7 @@ const char kEscapedSeparator[] = "=+";
 
 namespace net_instaweb {
 
-std::string UrlMultipartEncoder::Encode() {
+std::string UrlMultipartEncoder::Encode() const {
   std::string encoding;
   for (int i = 0, n = urls_.size(); i <n; ++i) {
     if (i != 0) {

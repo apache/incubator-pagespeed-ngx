@@ -773,6 +773,26 @@ TEST_F(RewriterTest, CombineCssWithStyle) {
   CombineCss("combine_css_style", &md5_hasher_, style_barrier, true);
 }
 
+TEST_F(RewriterTest, CombineCssWithBogusLink) {
+  const char bogus_barrier[] = "<link rel='stylesheet' type='text/css' "
+      "href='crazee://big/blue/fake'>\n";
+  CombineCss("combine_css_bogus_link", &md5_hasher_, bogus_barrier, true);
+}
+
+TEST_F(RewriterTest, CombineCssWithImport) {
+  const char import_barrier[] =
+      "<link rel='stylesheet' type='text/css' href='d.css'>\n";
+
+  const char d_css_url[] = "http://combine_css.test/d.css";
+  // Note: We cannot combine a CSS file with @import.
+  const char d_css_body[] = "@import \"c.css\";\n.c4 { color: green; }\n";
+  SimpleMetaData default_css_header;
+  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  mock_url_fetcher_.SetResponse(d_css_url, default_css_header, d_css_body);
+
+  CombineCss("combine_css_import", &md5_hasher_, import_barrier, true);
+}
+
 TEST_F(RewriterTest, CombineCssWithMediaBarrier) {
   const char media_barrier[] =
       "<link rel='stylesheet' type='text/css' href='d.css' media='print'>\n";

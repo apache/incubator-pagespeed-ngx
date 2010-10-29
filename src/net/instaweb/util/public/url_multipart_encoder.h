@@ -53,7 +53,7 @@ class UrlMultipartEncoder {
   }
 
   // Encode the URLs added to this class into a single string.
-  std::string Encode();
+  std::string Encode() const;
 
   // Decodde an encoding produced by Encode() above to populate
   // this class.

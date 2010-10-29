@@ -115,7 +115,7 @@ void CssCombineFilter::EndElement(HtmlElement* element) {
     // loading unneeded content. So, if the media changes, we'll emit what we
     // have and start over.
     if (partnership_.get() != NULL && combine_media_ != media) {
-      EmitCombinations();
+      TryCombineAccumulated();
     }
     combine_media_ = media;
 
@@ -129,14 +129,14 @@ void CssCombineFilter::EndElement(HtmlElement* element) {
     MessageHandler* handler = html_parse_->message_handler();
     if (!partnership_->AddElement(element, href->value(), handler)) {
       // It's invalid, so just skip it a la IEDirective below.
-      EmitCombinations();
+      TryCombineAccumulated();
     }
   } else if (element->tag() == s_style_) {
     // We can't reorder styles on a page, so if we are only combining <link>
     // tags, we can't combine them across a <style> tag.
     // TODO(sligocki): Maybe we should just combine <style>s too?
     // We can run outline_css first for now to make all <style>s into <link>s.
-    EmitCombinations();
+    TryCombineAccumulated();
   }
 }
 
@@ -145,14 +145,14 @@ void CssCombineFilter::EndElement(HtmlElement* element) {
 void CssCombineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   // TODO(sligocki): Figure out how to safely parse IEDirectives, for now we
   // just consider them black boxes / solid barriers.
-  EmitCombinations();
+  TryCombineAccumulated();
 }
 
 void CssCombineFilter::Flush() {
-  EmitCombinations();
+  TryCombineAccumulated();
 }
 
-void CssCombineFilter::EmitCombinations() {
+void CssCombineFilter::TryCombineAccumulated() {
   if (partnership_.get() == NULL) {
     return;
   }
@@ -167,6 +167,7 @@ void CssCombineFilter::EmitCombinations() {
   // loaded.
   std::vector<HtmlElement*> combine_elements;
   ResourceVector combine_resources;
+  UrlMultipartEncoder multipart_encoder;
   for (int i = 0, n = partnership_->num_urls(); i < n; ++i) {
     HtmlElement* element = partnership_->element(i);
     const char* media;
@@ -179,35 +180,50 @@ void CssCombineFilter::EmitCombinations() {
       // loads are blocking.  Need to understand Apache module
       // TODO(jmaessen, jmarantz): use partnership url data here,
       // hand off to CreateInputResourceGURL.
-      Resource* css_resource =
+      scoped_ptr<Resource> css_resource(
           resource_manager_->CreateInputResource(html_parse_->gurl(),
-                                                 href->value(), handler);
-      if ((css_resource != NULL) &&
-          resource_manager_->ReadIfCached(css_resource, handler) &&
-          css_resource->ContentsValid()) {
-        if (i != 0 &&
-            CssTagScanner::HasImport(css_resource->contents(), handler)) {
-          // If any stylesheet after the first has imports, don't combine.
-          // TODO(sligocki): We could try to flatten imports.
-          // TODO(sligocki): We could combine all the sheets up to here.
-          // It's unclear how often this happens -> how valueable this would be.
-          break;
-        }
-        combine_resources.push_back(css_resource);
+                                                 href->value(), handler));
 
-        // Try to add this resource to the combination.  We are not yet
-        // committed to the combination because we haven't written the
-        // contents to disk yet, so don't mutate the DOM but keep
-        // track of which elements will be involved
-        combine_elements.push_back(element);
-      } else {
+      if ((css_resource == NULL) ||
+          !resource_manager_->ReadIfCached(css_resource.get(), handler) ||
+          !css_resource->ContentsValid()) {
         handler->Message(kWarning, "Failed to create or read input resource %s",
                          href->value());
+        // Combine what we have so far.
+        CombineResources(&combine_elements, &combine_resources,
+                         &multipart_encoder);
+
+      } else if (i != 0 &&
+                 CssTagScanner::HasImport(css_resource->contents(), handler)) {
+        // Cannot combine a CSS file with @import (other than the first). So,
+        // for now, just Combine what we have up to here.
+        CombineResources(&combine_elements, &combine_resources,
+                         &multipart_encoder);
+
+      } else {
+        // We collect the resources. Don't mutate the DOM until we've
+        // successfully created the output resource.
+        combine_elements.push_back(element);
+        combine_resources.push_back(css_resource.release());
+        // We can use relative URLs now because we don't move the
+        // combined resource, so know the absolute prefix from that.
+        multipart_encoder.AddUrl(partnership_->RelativePath(i));
       }
     }
   }
 
-  if (combine_elements.size() > 1) {
+  CombineResources(&combine_elements, &combine_resources, &multipart_encoder);
+
+  // Clear the queue of files to rewrite.
+  partnership_.reset(NULL);
+}
+
+void CssCombineFilter::CombineResources(
+    std::vector<HtmlElement*>* combine_elements,
+    ResourceVector* combine_resources,
+    UrlMultipartEncoder* multipart_encoder) {
+  MessageHandler* handler = html_parse_->message_handler();
+  if (combine_elements->size() > 1) {
     // Ideally like to have a data-driven service tell us which elements should
     // be combined together.  Note that both the resources and the elements
     // are managed, so we don't delete them even if the spriting fails.
@@ -216,16 +232,8 @@ void CssCombineFilter::EmitCombinations() {
     // the CSS files.
     std::string css_combine_url;
     std::string url_safe_id;
-    UrlMultipartEncoder multipart_encoder;
-    CHECK_EQ(static_cast<int>(combine_resources.size()),
-             partnership_->num_urls());
-    for (int i = 0, n = combine_resources.size(); i < n; ++i) {
-      // We can use relative URLs now because we don't move the
-      // combined resource, so know the absolute prefix from that.
-      multipart_encoder.AddUrl(partnership_->RelativePath(i));
-    }
     UrlEscaper* escaper = resource_manager_->url_escaper();
-    escaper->EncodeToUrlSegment(multipart_encoder.Encode(), &url_safe_id);
+    escaper->EncodeToUrlSegment(multipart_encoder->Encode(), &url_safe_id);
 
     HtmlElement* combine_element = html_parse_->NewElement(NULL, s_link_);
     combine_element->AddAttribute(s_rel_, "stylesheet", "\"");
@@ -241,7 +249,7 @@ void CssCombineFilter::EmitCombinations() {
         resource_manager_->CreateNamedOutputResource(
             filter_prefix_, url_safe_id, &kContentTypeCss, handler));
     bool written = combination->IsWritten() ||
-        WriteCombination(combine_resources, combination.get(), handler);
+        WriteCombination(*combine_resources, combination.get(), handler);
 
     // We've collected at least two CSS files to combine, and whose
     // HTML elements are in the current flush window.  Last step
@@ -251,23 +259,24 @@ void CssCombineFilter::EmitCombinations() {
       combine_element->AddAttribute(s_href_, combination->url(), "\"");
       // TODO(sligocki): Put at top of head/flush-window.
       // Right now we're putting it where the first original element used to be.
-      html_parse_->InsertElementBeforeElement(partnership_->element(0),
+      html_parse_->InsertElementBeforeElement(combine_elements->at(0),
                                               combine_element);
       // ... and removing originals from the DOM.
-      for (size_t i = 0; i < combine_elements.size(); ++i) {
-        html_parse_->DeleteElement(combine_elements[i]);
+      for (size_t i = 0; i < combine_elements->size(); ++i) {
+        html_parse_->DeleteElement(combine_elements->at(i));
       }
       html_parse_->InfoHere("Combined %d CSS files into one",
-                            static_cast<int>(combine_elements.size()));
+                            static_cast<int>(combine_elements->size()));
       if (css_file_count_reduction_ != NULL) {
-        css_file_count_reduction_->Add(combine_elements.size() - 1);
+        css_file_count_reduction_->Add(combine_elements->size() - 1);
       }
     }
   }
-  STLDeleteContainerPointers(combine_resources.begin(),
-                             combine_resources.end());
-
-  partnership_.reset(NULL);
+  combine_elements->clear();
+  STLDeleteContainerPointers(combine_resources->begin(),
+                             combine_resources->end());
+  combine_resources->clear();
+  multipart_encoder->clear();
 }
 
 bool CssCombineFilter::WriteCombination(const ResourceVector& combine_resources,

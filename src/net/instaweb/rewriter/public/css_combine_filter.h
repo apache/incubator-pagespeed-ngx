@@ -34,6 +34,7 @@ namespace net_instaweb {
 class OutputResource;
 class Resource;
 class ResourceManager;
+class UrlMultipartEncoder;
 class Variable;
 
 class CssCombineFilter : public RewriteFilter {
@@ -61,7 +62,13 @@ class CssCombineFilter : public RewriteFilter {
 
   // Try to combine all the CSS files we have seen so far.
   // Insert the combined resource where the first original CSS link was.
-  void EmitCombinations();
+  void TryCombineAccumulated();
+
+  // Combine a specific set of resources.
+  // Clears and deletes all resources, elements and the multipart_encoder.
+  void CombineResources(std::vector<HtmlElement*>* combine_elements,
+                        ResourceVector* combine_resources,
+                        UrlMultipartEncoder* multipart_encoder);
   bool WriteWithAbsoluteUrls(const StringPiece& contents,
                              OutputResource* combination,
                              const std::string& base_url,
