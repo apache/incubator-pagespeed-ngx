@@ -239,6 +239,7 @@ grep -R "removed" $OUTDIR                 # comments, should not find any
 check [ $? != 0 ]
 check [ `stat -c %s $FETCHED` -lt 1560 ]  # net savings
 check grep -q preserved $FETCHED          # preserves certain comments
-check grep -q 31536000 $WGET_OUTPUT       # rewritten JS is cache-extended
+# rewritten JS is cache-extended
+check grep -q "'Cache-control: public, max-age=31536000'" $WGET_OUTPUT
 rm -rf $OUTDIR
 echo "PASS."

@@ -15,8 +15,11 @@
 #ifndef MOD_INSTAWEB_INSTAWEB_HANDLER_H_
 #define MOD_INSTAWEB_INSTAWEB_HANDLER_H_
 
-// Forward declaration.
-struct request_rec;
+// The httpd header must be after the instaweb_context.h. Otherwise,
+// the compiler will complain
+// "strtoul_is_not_a_portable_function_use_strtol_instead".
+#include "net/instaweb/apache/instaweb_context.h"
+#include "httpd.h"  // NOLINT
 
 namespace net_instaweb {
 
@@ -24,6 +27,14 @@ namespace net_instaweb {
 // combined CSS file.  Requests for not-instab generated content will be
 // declined so that other Apache handlers may operate on them.
 int instaweb_handler(request_rec* request);
+
+// output-filter function to repair caching headers, which might have
+// been altered by a directive like:
+//
+//     <FilesMatch "\.(jpg|jpeg|gif|png|js|css)$">
+//       Header set Cache-control "public, max-age=600"
+//     </FilesMatch>
+apr_status_t repair_caching_header(ap_filter_t *filter, apr_bucket_brigade *bb);
 
 }  // namespace net_instaweb
 

@@ -46,6 +46,9 @@
 #undef HAVE_SYSLOG
 #include "http_log.h"
 #include "http_protocol.h"
+#if USE_FIXUP_HOOK
+#include "http_request.h"  // NOLINT
+#endif
 
 namespace net_instaweb {
 
@@ -81,6 +84,7 @@ const char* kModPagespeedImgInlineMaxBytes = "ModPagespeedImgInlineMaxBytes";
 const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
 const char* kModPagespeedDomain = "ModPagespeedDomain";
 const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
+const char* kRepairHeadersFilterName = "MOD_PAGESPEED_REPAIR_HEADERS";
 const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
@@ -451,10 +455,15 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
 
   // Use instaweb to handle generated resources.
   ap_hook_handler(instaweb_handler, NULL, NULL, -1);
-  ap_register_output_filter(kModPagespeedFilterName,
-                            instaweb_out_filter,
-                            NULL,
-                            AP_FTYPE_RESOURCE);
+  ap_register_output_filter(
+      kModPagespeedFilterName, instaweb_out_filter, NULL, AP_FTYPE_RESOURCE);
+  // We need our repair headers filter to run after mod_headers. The
+  // mod_headers, which is the filter that is used to add the cache settings, is
+  // AP_FTYPE_CONTENT_SET. Using (AP_FTYPE_CONTENT_SET + 2) to make sure that we
+  // run after mod_headers.
+  ap_register_output_filter(
+      kRepairHeadersFilterName, repair_caching_header, NULL,
+      static_cast<ap_filter_type>(AP_FTYPE_CONTENT_SET + 2));
   ap_hook_post_config(pagespeed_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(pagespeed_child_init, NULL, NULL, APR_HOOK_LAST);
   ap_hook_log_transaction(pagespeed_log_transaction, NULL, NULL, APR_HOOK_LAST);

@@ -23,6 +23,7 @@
 #include "net/instaweb/apache/apache_slurp.h"
 #include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/apache/apr_timer.h"
+#include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/mod_instaweb.h"
@@ -33,10 +34,6 @@
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-// The httpd header must be after the pagepseed_server_context.h. Otherwise,
-// the compiler will complain
-// "strtoul_is_not_a_portable_function_use_strtol_instead".
-#include "httpd.h"
 #include "http_config.h"
 #include "http_core.h"
 #include "http_log.h"
@@ -45,6 +42,8 @@
 namespace net_instaweb {
 
 namespace {
+
+const char kRepairCachingHeader[] = "X-Mod-Pagespeed-Repair";
 
 bool IsCompressibleContentType(const char* content_type) {
   if (content_type == NULL) {
@@ -157,6 +156,18 @@ void send_out_headers_and_body(
       char* ptr = apr_pstrdup(request->pool, value);
       ap_set_content_type(request, ptr);
     } else {
+      if (strcasecmp(name, HttpAttributes::kCacheControl) == 0) {
+        // In case Apache configuration directives set up caching headers,
+        // we will need override our cache-extended resources in a late-running
+        // output filter.
+        // TODO(jmarantz): Do not use headers_out as out message passing
+        // mechanism. Switch to configuration vectors or something like that
+        // instead.
+        apr_table_add(request->headers_out, kRepairCachingHeader, value);
+        // Add the repair headers filter to fix the cacheing header.
+        ap_add_output_filter("MOD_PAGESPEED_REPAIR_HEADERS", NULL, request,
+                             request->connection);
+      }
       // apr_table_add makes copies of both head key and value, so we do not
       // have to duplicate them.
       apr_table_add(request->headers_out, name, value);
@@ -175,6 +186,21 @@ void send_out_headers_and_body(
 }
 
 }  // namespace
+
+apr_status_t repair_caching_header(ap_filter_t *filter,
+                                   apr_bucket_brigade *bb) {
+  request_rec* request = filter->r;
+  SimpleMetaData response_headers;
+  ApacheHeaderToMetaData(request->headers_out, request->status,
+                         request->proto_num, &response_headers);
+  CharStarVector v;
+  if (response_headers.Lookup(kRepairCachingHeader, &v) == 1) {
+    apr_table_unset(request->headers_out, kRepairCachingHeader);
+    apr_table_set(request->headers_out, HttpAttributes::kCacheControl, v[0]);
+  }
+  ap_remove_output_filter(filter);
+  return ap_pass_brigade(filter->next, bb);
+}
 
 int instaweb_handler(request_rec* request) {
   ApacheRewriteDriverFactory* factory =

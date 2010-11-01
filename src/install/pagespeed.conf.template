@@ -102,14 +102,29 @@
 # also serve as a demonstration of good values to set for the entire
 # site, if it is to be optimized by mod_pagespeed.
 <Directory APACHE_DOC_ROOT/mod_pagespeed_example>
-  # To enable to show that mod_pagespeed to rewrites web pages, we must
-  # turn off Etags for HTML files and eliminate caching altogether.
-  # mod_pagespeed should rewrite HTML files each time they are served.
-  # The first time mod_pagespeed sees an HTML file, it may not optimize
-  # it fully.  It will optimize better after the second view.  Caching
-  # defeats this behavior.
-  <FilesMatch "\.(html|htm)$">
-    Header unset Etag
-    Header set Cache-control "max-age=0, no-cache, no-store"
-  </FilesMatch>
+  <IfModule headers_module>
+    # To enable to show that mod_pagespeed to rewrites web pages, we must
+    # turn off Etags for HTML files and eliminate caching altogether.
+    # mod_pagespeed should rewrite HTML files each time they are served.
+    # The first time mod_pagespeed sees an HTML file, it may not optimize
+    # it fully.  It will optimize better after the second view.  Caching
+    # defeats this behavior.
+    <FilesMatch "\.(html|htm)$">
+      Header unset Etag
+      Header set Cache-control "max-age=0, no-cache, no-store"
+    </FilesMatch>
+
+    # Images, styles, and javascript are all cache-extended for
+    # a year by rewriting URLs to include a content hash.  mod_pagespeed
+    # can only do this if the resources are cacheable in the first place.
+    # The origin caching policy, set here to 10 minutes, dictates how
+    # frequently mod_pagespeed must re-read the content files and recompute
+    # the content-hash.  As long as the content doesn't actually change,
+    # the content-hash will remain the same, and the resources stored
+    # in browser caches will stay relevant.
+    <FilesMatch "\.(jpg|jpeg|gif|png|js|css)$">
+      Header unset Etag
+      Header set Cache-control "public, max-age=600"
+    </FilesMatch>
+  </IfModule>
 </Directory>

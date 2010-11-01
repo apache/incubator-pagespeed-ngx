@@ -55,26 +55,36 @@
     # send you traffic, then the site receiving the traffic will not
     # know how to serve the rewritten content.
 
+    # Enables server-side instrumentation and statistics.  If this rewriter is
+    # enabled, then each rewritten HTML page will have instrumentation javacript
+    # added that sends latency beacons to /mod_pagespeed_beacon.  These
+    # statistics can be accessed at /mod_pagespeed_statistics.  You must also
+    # enable the mod_pagespeed_statistics and mod_pagespeed_beacon handlers
+    # below.
+    #
+    # ModPagespeedEnableFilters add_instrumentation
 
     # This page lets you view statistics about the mod_pagespeed module.
-    <Location /mod_pagespeed_statistics>
-        Order allow,deny
-        # You may insert other "Allow from" lines to add hosts you want to
-        # allow to look at generated statistics.  Another possibility is
-        # to comment out the "Order" and "Allow" options from the config
-        # file, to allow any client that can reach your server to examine
-        # statistics.  This might be appropriate in an experimental setup or
-        # if the Apache server is protected by a reverse proxy that will
-        # filter URLs in some fashion.
-        Allow from localhost
-        SetHandler mod_pagespeed_statistics
-    </Location>
+    #
+    # <Location /mod_pagespeed_statistics>
+    #     Order allow,deny
+    #     # You may insert other "Allow from" lines to add hosts you want to
+    #     # allow to look at generated statistics.  Another possibility is
+    #     # to comment out the "Order" and "Allow" options from the config
+    #     # file, to allow any client that can reach your server to examine
+    #     # statistics.  This might be appropriate in an experimental setup or
+    #     # if the Apache server is protected by a reverse proxy that will
+    #     # filter URLs in some fashion.
+    #     Allow from localhost
+    #     SetHandler mod_pagespeed_statistics
+    # </Location>
 
     # This handles the client-side instrumentation callbacks which are injected
     # by the add_instrumentation filter.
     # You can use a different location by adding the ModPagespeedBeaconUrl
     # directive; see the documentation on add_instrumentation.
-    <Location /mod_pagespeed_beacon>
-          SetHandler mod_pagespeed_beacon
-    </Location>
+    #
+    # <Location /mod_pagespeed_beacon>
+    #       SetHandler mod_pagespeed_beacon
+    # </Location>
 </IfModule>
