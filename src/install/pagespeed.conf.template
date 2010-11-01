@@ -112,17 +112,4 @@
     Header unset Etag
     Header set Cache-control "max-age=0, no-cache, no-store"
   </FilesMatch>
-
-  # Images, styles, and javascript are all cache-extended for
-  # a year by rewriting URLs to include a content hash..  mod_pagespeed,
-  # can only do this if the resources are cacheable in the first place.
-  # The origin caching policy, set here to 10 minutes, dictates how
-  # frequently mod_pagespeed must re-read the content files and recompute
-  # the content-hash.  As long as the content doesn't actually change,
-  # the content-hash will remain the same, and the resources stored
-  # in browser caches will stay relevant.
-  <FilesMatch "\.(jpg|jpeg|gif|png|js|css)$">
-    Header unset Etag
-    Header set Cache-control "public, max-age=600"
-  </FilesMatch>
 </Directory>

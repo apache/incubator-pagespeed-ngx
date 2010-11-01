@@ -120,9 +120,7 @@ void RewriteOptions::SetUp() {
   level_filter_set_map_[kCoreFilters].insert(kRewriteImages);
   level_filter_set_map_[kCoreFilters].insert(kInsertImgDimensions);
   level_filter_set_map_[kCoreFilters].insert(kExtendCache);
-  level_filter_set_map_[kCoreFilters].insert(kRemoveQuotes);
   level_filter_set_map_[kCoreFilters].insert(kAddInstrumentation);
-  level_filter_set_map_[kCoreFilters].insert(kElideAttributes);
 }
 
 bool RewriteOptions::EnableFiltersByCommaSeparatedList(

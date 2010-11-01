@@ -77,13 +77,31 @@ class RewriterTest : public ResourceManagerTestBase {
       EXPECT_TRUE(done_);
     }
     virtual void Done(bool success) {
+      EXPECT_FALSE(done_) << "Already Done; perhaps you reused without Reset()";
       done_ = true;
       EXPECT_TRUE(success);
+    }
+    void Reset() {
+      done_ = false;
     }
     bool done_;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(DummyCallback);
+  };
+
+  class FailCallback : public DummyCallback {
+   public:
+    FailCallback() : DummyCallback() { }
+    virtual ~FailCallback() { }
+    virtual void Done(bool success) {
+      EXPECT_FALSE(done_) << "Already Done; perhaps you reused without Reset()";
+      done_ = true;
+      EXPECT_FALSE(success);
+    }
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(FailCallback);
   };
 
   void ServeResourceFromNewContext(const std::string& resource,
@@ -250,6 +268,7 @@ class RewriterTest : public ResourceManagerTestBase {
     fetched_resource_content.clear();
     message_handler_.Message(kInfo, "Now with serving.");
     file_system_.enable();
+    dummy_callback.Reset();
     other_driver_.FetchResource(combine_url, request_headers,
                                 &other_response_headers, &writer,
                                 &message_handler_, &dummy_callback);
@@ -258,6 +277,71 @@ class RewriterTest : public ResourceManagerTestBase {
     ServeResourceFromNewContext(combine_url, combine_filename,
                                 fetched_resource_content,
                                 RewriteOptions::kCombineCss, path.c_str());
+  }
+
+  // Test what happens when CSS combine can't find a previously-rewritten
+  // resource during a subsequent resource fetch.  This used to segfault.
+  void CssCombineMissingResource() {
+    const char a_css_url[] = "http://combine_css.test/a.css";
+    const char c_css_url[] = "http://combine_css.test/c.css";
+
+    const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
+    const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
+    std::string expected_combination = StrCat(a_css_body, c_css_body);
+
+    rewrite_driver_.AddFilter(RewriteOptions::kCombineCss);
+
+    // Put original CSS files into our fetcher.
+    SimpleMetaData default_css_header;
+    resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+    mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
+    mock_url_fetcher_.SetResponse(c_css_url, default_css_header, c_css_body);
+
+    // First make sure we can serve the combination of a & c.  This is to avoid
+    // spurious test successes.
+
+    const char kACUrl[] = "http://combine_css.test/cc.0.a,s+c,s.css";
+    const char kABCUrl[] = "http://combine_css.test/cc.0.a,s+bbb,s+c,s.css";
+    SimpleMetaData request_headers, response_headers;
+    std::string fetched_resource_content;
+    StringWriter writer(&fetched_resource_content);
+    DummyCallback dummy_callback;
+
+    // NOTE: This first fetch used to return status 0 because response_headers
+    // weren't initialized by the first resource fetch (but were cached
+    // correctly).  Content was correct.
+    EXPECT_TRUE(
+        rewrite_driver_.FetchResource(kACUrl, request_headers,
+                                      &response_headers, &writer,
+                                      &message_handler_, &dummy_callback));
+    EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+    EXPECT_EQ(expected_combination, fetched_resource_content);
+
+    // We repeat the fetch to prove that it succeeds from cache:
+    fetched_resource_content.clear();
+    dummy_callback.Reset();
+    response_headers.Clear();
+    EXPECT_TRUE(
+        rewrite_driver_.FetchResource(kACUrl, request_headers,
+                                      &response_headers, &writer,
+                                      &message_handler_, &dummy_callback));
+    EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+    EXPECT_EQ(expected_combination, fetched_resource_content);
+
+    // Now let's try fetching the url that references a missing resource
+    // (bbb.css) in addition to the two that do exist, a.css and c.css.  Using
+    // an entirely non-existent resource appears to test a strict superset of
+    // filter code paths when compared with returning a 404 for the resource.
+    mock_url_fetcher_.set_fail_on_unexpected(false);
+    FailCallback fail_callback;
+    fetched_resource_content.clear();
+    response_headers.Clear();
+    EXPECT_TRUE(
+        rewrite_driver_.FetchResource(kABCUrl, request_headers,
+                                      &response_headers, &writer,
+                                      &message_handler_, &fail_callback));
+    EXPECT_EQ(HttpStatus::kNotFound, response_headers.status_code());
+    EXPECT_EQ("", fetched_resource_content);
   }
 
   // Simple image rewrite test to check resource fetching functionality.
@@ -364,6 +448,7 @@ class RewriterTest : public ResourceManagerTestBase {
     mock_url_fetcher_.Disable();
 
     fetched_resource_content.clear();
+    dummy_callback.Reset();
     SimpleMetaData redirect_headers;
     other_driver_.FetchResource(src_string, request_headers,
                                 &redirect_headers, &writer,
@@ -386,6 +471,7 @@ class RewriterTest : public ResourceManagerTestBase {
     EXPECT_EQ(headers, fetched_resource_content);
     SimpleMetaData other_headers;
     size_t header_size = fetched_resource_content.size();
+    dummy_callback.Reset();
     other_driver_.FetchResource(src_string, request_headers,
                                 &other_headers, &writer,
                                 &message_handler_, &dummy_callback);
@@ -951,6 +1037,10 @@ TEST_F(RewriterTest, CombineCssNoInput) {
       "<body><div class=\"c1\"><div class=\"c2\"><p>\n"
       "  Yellow on Blue</p></div></div></body>";
   ValidateNoChanges("combine_css_missing_input", html_input);
+}
+
+TEST_F(RewriterTest, CombineCssMissingResource) {
+  CssCombineMissingResource();
 }
 
 // TODO(sligocki): Test that using the DummyUrlFetcher causes FatalError.

@@ -347,8 +347,22 @@ class CssCombiner : public Resource::AsyncCallback {
                                combine_resources_.end());
   }
 
-  void AddResource(Resource* resource) {
-    combine_resources_.push_back(resource);
+  // Note that the passed-in resource might be NULL; this gives us a chance
+  // to note failure.
+  bool AddResource(Resource* resource) {
+    bool ret = false;
+    if (resource == NULL) {
+      // Whoops, we've failed to even obtain a resource.
+      ++fail_count_;
+    } else if (fail_count_ > 0) {
+      // Another of the resource fetches failed.  Drop this resource
+      // and don't fetch it.
+      delete resource;
+    } else {
+      combine_resources_.push_back(resource);
+      ret = true;
+    }
+    return ret;
   }
 
   virtual void Done(bool success, Resource* resource) {
@@ -381,16 +395,23 @@ class CssCombiner : public Resource::AsyncCallback {
       ok = css_resource->ContentsValid();
     }
     if (ok) {
-      if (response_headers_ != NULL) {
-        response_headers_->CopyFrom(*combination_->metadata());
-      }
       ok = (filter_->WriteCombination(combine_resources_, combination_,
                                       message_handler_) &&
             combination_->IsWritten() &&
             ((writer_ == NULL) ||
              writer_->Write(combination_->contents(), message_handler_)));
+      // Above code fills in combination_->metadata(); now propagate to
+      // repsonse_headers_.
     }
-    callback_->Done(ok);
+    if (ok) {
+      response_headers_->CopyFrom(*combination_->metadata());
+      callback_->Done(ok);
+    } else {
+      response_headers_->SetStatusAndReason(HttpStatus::kNotFound);
+      // We assume that on failure the callback will be invoked by
+      // RewriteDriver::FetchResource.  Since callbacks are self-deleting,
+      // calling callback_->Done(false) here first would cause seg faults.
+    }
     delete this;
   }
 
@@ -416,6 +437,7 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
                              UrlAsyncFetcher* fetcher,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
+  CHECK(response_headers != NULL);
   bool ret = false;
   StringPiece url_safe_id = combination->name();
   UrlMultipartEncoder multipart_encoder;
@@ -432,12 +454,14 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
 
     std::string root = GoogleUrl::AllExceptLeaf(gurl);
     root += "/";  // google_url.h says AllExceptLeaf omits the slash.
-    for (int i = 0; i < multipart_encoder.num_urls(); ++i)  {
+    for (int i = 0; ret && (i < multipart_encoder.num_urls()); ++i)  {
       std::string url = StrCat(root, multipart_encoder.url(i));
       Resource* css_resource =
           resource_manager_->CreateInputResourceAbsolute(url, message_handler);
-      combiner->AddResource(css_resource);
-      resource_manager_->ReadAsync(css_resource, combiner, message_handler);
+      ret = combiner->AddResource(css_resource);
+      if (ret) {
+        resource_manager_->ReadAsync(css_resource, combiner, message_handler);
+      }
     }
 
     // In the case where the first input CSS files is already cached,
