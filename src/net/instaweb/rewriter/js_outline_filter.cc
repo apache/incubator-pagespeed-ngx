@@ -148,7 +148,7 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
       MessageHandler* handler = html_parse_->message_handler();
       // Create outline resource at the document location, not base URL location
       scoped_ptr<OutputResource> resource(
-          resource_manager_->CreateNamedOutputResourceWithPath(
+          resource_manager_->CreateOutputResourceWithPath(
               GoogleUrl::AllExceptLeaf(html_parse_->gurl()), kFilterId, "_",
               &kContentTypeJavascript, handler));
       if (WriteResource(content, resource.get(), handler)) {

@@ -93,10 +93,14 @@ bool DomainLawyer::MapRequestToDomain(
   CHECK(original_request.is_valid());
   GURL resolved = original_request.Resolve(url_str);
   bool ret = false;
+  // At present we're not sure about appropriate resource
+  // policies for https: etc., so we only permit http resources
+  // to be rewritten.
+  // TODO(jmaessen): Figure out if this is appropriate.
   if (resolved.is_valid() && resolved.SchemeIs("http")) {
     GURL resolved_origin = resolved.GetOrigin();
     GURL original_origin = original_request.GetOrigin();
-    std::string resolved_domain(resolved_origin.spec().c_str());
+    std::string resolved_domain = GoogleUrl::Spec(resolved_origin);
 
     if (resolved_origin == original_origin) {
       *mapped_domain_name = resolved_domain;

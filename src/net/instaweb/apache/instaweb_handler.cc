@@ -211,7 +211,7 @@ int instaweb_handler(request_rec* request) {
   if (request->method_number != M_GET) {
     ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
                   "Not GET request: %d.", request->method_number);
-    ret = HTTP_METHOD_NOT_ALLOWED;
+    ret = DECLINED;
   } else if (strcmp(request->handler, "mod_pagespeed_statistics") == 0) {
     std::string output;
     SimpleMetaData response_headers;

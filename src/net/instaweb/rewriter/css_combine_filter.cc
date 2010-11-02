@@ -253,7 +253,8 @@ void CssCombineFilter::CombineResources(
     // not committed to the combination, because the 'write' can fail.
     // TODO(jmaessen, jmarantz): encode based on partnership
     scoped_ptr<OutputResource> combination(
-        resource_manager_->CreateNamedOutputResource(
+        resource_manager_->CreateOutputResourceWithPath(
+            partnership_->ResolvedBase(),
             filter_prefix_, url_safe_id, &kContentTypeCss, handler));
     bool written = combination->IsWritten() ||
         WriteCombination(*combine_resources, combination.get(), handler);
@@ -272,8 +273,9 @@ void CssCombineFilter::CombineResources(
       for (size_t i = 0; i < combine_elements->size(); ++i) {
         html_parse_->DeleteElement(combine_elements->at(i));
       }
-      html_parse_->InfoHere("Combined %d CSS files into one",
-                            static_cast<int>(combine_elements->size()));
+      html_parse_->InfoHere("Combined %d CSS files into one at %s",
+                            static_cast<int>(combine_elements->size()),
+                            combination->url().c_str());
       if (css_file_count_reduction_ != NULL) {
         css_file_count_reduction_->Add(combine_elements->size() - 1);
       }

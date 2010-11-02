@@ -395,8 +395,8 @@ bool RewriteDriver::FetchResource(
   // Note that this does permission checking and parsing of the url, but doesn't
   // actually fetch any data until we specifically ask it to.
   OutputResource* output_resource =
-      resource_manager_->CreateFetchOutputResource(
-          url, NULL, message_handler);
+      resource_manager_->CreateOutputResourceForFetch(
+          url, message_handler);
 
   // If the resource name was ill-formed or unrecognized, we reject the request
   // so it can be passed along.

@@ -105,23 +105,26 @@ std::string ResourceManager::UrlPrefixFor(const ResourceNamer& namer) const {
   return url_prefix;
 }
 
+// Decode a base path into a shard number and canonical base url.
+// Right now the canonical base url is empty for the old resource
+// naming scheme, and non-empty otherwise.
 // TODO(jmaessen): Either axe or adapt to sharding post-url_prefix.
-StringPiece ResourceManager::CanonicalizeBase(
+std::string ResourceManager::CanonicalizeBase(
     const StringPiece& base, int* shard) const {
   std::string base_str = base.as_string();
   base_str += "/";
-  StringPiece result;
+  std::string result;
   if (num_shards_ == 0) {
     CHECK_EQ(std::string::npos, url_prefix_pattern_.find("%d"));
     if (url_prefix_pattern_.compare(base_str) != 0) {
-      result = base;
+      base.CopyToString(&result);
     }
   } else {
     CHECK_NE(std::string::npos, url_prefix_pattern_.find("%d"));
     // TODO(jmaessen): Ugh.  Lint hates this sscanf call and so do I.  Can parse
     // based on the results of the above find.
     if (!sscanf(base_str.c_str(), url_prefix_pattern_.c_str(), shard) == 1) {
-      result = base;
+      base.CopyToString(&result);
     }
   }
   return result;
@@ -193,23 +196,6 @@ void ResourceManager::SetContentType(const ContentType* content_type,
   header->ComputeCaching();
 }
 
-OutputResource* ResourceManager::CreateGeneratedOutputResource(
-    const StringPiece& filter_prefix,
-    const ContentType* content_type,
-    MessageHandler* handler) {
-  CHECK(content_type != NULL);
-  ResourceNamer full_name;
-  full_name.set_id(filter_prefix);
-  full_name.set_name("_");
-  // TODO(jmaessen): The addition of 1 below avoids the leading ".";
-  // make this convention consistent and fix all code.
-  full_name.set_ext(content_type->file_extension() + 1);
-  OutputResource* resource =
-      new OutputResource(this, NULL, full_name, content_type);
-  resource->set_generated(true);
-  return resource;
-}
-
 // Constructs a name key to help map all the parts of a resource name,
 // excluding the hash, to the hash.  In other words, the full name of
 // a resource is of the form
@@ -233,17 +219,24 @@ std::string ResourceManager::ConstructNameKey(
 
 // Constructs an output resource corresponding to the specified input resource
 // and encoded using the provided encoder.
-// TODO(jmaessen): Depracate after cleanup is done.
 OutputResource* ResourceManager::CreateOutputResourceFromResource(
     const StringPiece& filter_prefix,
     const ContentType* content_type,
     UrlSegmentEncoder* encoder,
     Resource* input_resource,
     MessageHandler* handler) {
-  std::string url = input_resource->url();
-  GURL input_gurl(url);
-  return CreateOutputResourceForRewrittenUrl(
-      input_gurl, filter_prefix, url, content_type, encoder, handler);
+  OutputResource* result = NULL;
+  if (input_resource != NULL) {
+    std::string url = input_resource->url();
+    GURL input_gurl(url);
+    CHECK(input_gurl.is_valid());  // or input_resource should have been NULL.
+    std::string name;
+    encoder->EncodeToUrlSegment(GoogleUrl::Leaf(input_gurl), &name);
+    result = CreateOutputResourceWithPath(
+        GoogleUrl::AllExceptLeaf(input_gurl),
+        filter_prefix, name, content_type, handler);
+  }
+  return result;
 }
 
 OutputResource* ResourceManager::CreateOutputResourceForRewrittenUrl(
@@ -261,13 +254,13 @@ OutputResource* ResourceManager::CreateOutputResourceForRewrittenUrl(
     std::string relative_url = partnership.RelativePath(0);
     std::string name;
     encoder->EncodeToUrlSegment(relative_url, &name);
-    output_resource = CreateNamedOutputResourceWithPath(
+    output_resource = CreateOutputResourceWithPath(
         base, filter_prefix, name, content_type, handler);
   }
   return output_resource;
 }
 
-OutputResource* ResourceManager::CreateNamedOutputResourceWithPath(
+OutputResource* ResourceManager::CreateOutputResourceWithPath(
     const StringPiece& path,
     const StringPiece& filter_prefix,
     const StringPiece& name,
@@ -304,33 +297,20 @@ OutputResource* ResourceManager::CreateNamedOutputResourceWithPath(
   return resource;
 }
 
-OutputResource* ResourceManager::CreateUrlOutputResource(
-    const ResourceNamer& resource_id, const ContentType* type) {
-  CHECK(!resource_id.hash().empty());
-  OutputResource* resource =
-      new OutputResource(this, NULL, resource_id, type);
-  return resource;
-}
-
-OutputResource* ResourceManager::CreateFetchOutputResource(
+OutputResource* ResourceManager::CreateOutputResourceForFetch(
     const StringPiece& url,
-    const ContentType* type,
     MessageHandler* handler) {
   OutputResource* resource = NULL;
-  // Here we gin up a single-source partnership so we can check permission
-  // and extract path & name.
   std::string url_string(url.data(), url.size());
   GURL gurl(url_string);
-  UrlPartnership partnership(domain_lawyer_, gurl);
-  if (partnership.AddUrl(url, handler)) {
-    partnership.Resolve();
-    std::string name = partnership.RelativePath(0);
+  if (gurl.is_valid()) {
+    std::string name = GoogleUrl::Leaf(gurl);
     ResourceNamer namer;
     if (namer.Decode(name)) {
       int shard;
-      StringPiece base =
-          CanonicalizeBase(partnership.ResolvedBase(), &shard);
-      resource = new OutputResource(this, base, namer, type);
+      std::string base =
+          CanonicalizeBase(GoogleUrl::AllExceptLeaf(gurl), &shard);
+      resource = new OutputResource(this, base, namer, NULL);
     }
   }
   return resource;
@@ -343,17 +323,19 @@ void ResourceManager::set_filename_prefix(const StringPiece& file_prefix) {
 Resource* ResourceManager::CreateInputResource(const GURL& base_gurl,
                                                const StringPiece& input_url,
                                                MessageHandler* handler) {
-  CHECK(base_gurl.is_valid());
-  std::string input_url_string(input_url.data(), input_url.size());
-  GURL url = base_gurl.Resolve(input_url_string);
-  if (!url.is_valid()) {
+  UrlPartnership partnership(domain_lawyer_, base_gurl);
+  Resource* resource = NULL;
+  if (partnership.AddUrl(input_url, handler)) {
+    partnership.Resolve();
+    const GURL* input_gurl = partnership.FullPath(0);
+    resource = CreateInputResourceUnchecked(*input_gurl, handler);
+  } else {
     // Note: Bad user-content can leave us here.
     handler->Message(kWarning, "%s: Invalid url relative to '%s'",
-                     input_url_string.c_str(), base_gurl.spec().c_str());
-    return NULL;
+                     input_url.as_string().c_str(), base_gurl.spec().c_str());
+    resource = NULL;
   }
-
-  return CreateInputResourceGURL(url, handler);
+  return resource;
 }
 
 Resource* ResourceManager::CreateInputResourceAndReadIfCached(
@@ -377,15 +359,15 @@ Resource* ResourceManager::CreateInputResourceFromOutputResource(
     UrlSegmentEncoder* encoder,
     OutputResource* output_resource,
     MessageHandler* handler) {
-  // Assumes output_resource has a url that's been checked by a lawyer.
+  // Assumes output_resource has a url that's been checked by a lawyer.  We
+  // should already have checked the signature on the encoded resource name and
+  // failed to create output_resource if it didn't match.
   Resource* input_resource = NULL;
   std::string input_name;
   if (encoder->DecodeFromUrlSegment(output_resource->name(), &input_name)) {
-    // TODO(jmaessen): Transient check for resource path here?  I guess the
-    // Resolve does that work for now.
     GURL base_gurl(output_resource->resolved_base());
     GURL input_gurl = base_gurl.Resolve(input_name);
-    input_resource = CreateInputResourceGURL(input_gurl, handler);
+    input_resource = CreateInputResourceUnchecked(input_gurl, handler);
   }
   return input_resource;
 }
@@ -394,19 +376,20 @@ Resource* ResourceManager::CreateInputResourceAbsolute(
     const StringPiece& absolute_url, MessageHandler* handler) {
   std::string url_string(absolute_url.data(), absolute_url.size());
   GURL url(url_string);
-  if (!url.is_valid()) {
-    // Note Bad user-content can leave us here.
-    handler->Message(kWarning, "Invalid url '%s'", url_string.c_str());
-    return NULL;
-  }
-
-  return CreateInputResourceGURL(url, handler);
+  return CreateInputResourceUnchecked(url, handler);
 }
 
-Resource* ResourceManager::CreateInputResourceGURL(const GURL& url,
-                                                   MessageHandler* handler) {
-  CHECK(url.is_valid());
-  const std::string& url_string = url.spec();
+Resource* ResourceManager::CreateInputResourceUnchecked(
+    const GURL& url, MessageHandler* handler) {
+  if (!url.is_valid()) {
+    // Note: Bad user-content can leave us here.  But it's really hard
+    // to concatenate a valid protocol and domain onto an arbitrary string
+    // and end up with an invalid GURL.
+    handler->Message(kWarning, "%s: Invalid url",
+                     url.possibly_invalid_spec().c_str());
+    return NULL;
+  }
+  const std::string& url_string = GoogleUrl::Spec(url);
 
   Resource* resource = NULL;
 

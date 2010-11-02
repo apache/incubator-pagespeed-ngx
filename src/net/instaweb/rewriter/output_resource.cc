@@ -175,10 +175,17 @@ std::string OutputResource::url() const {
         resource_manager_->UrlPrefixFor(full_name_);
     encoded = StrCat(base, encoded);
   } else {
-    GURL gurl(resolved_base_);
-    CHECK(gurl.is_valid());
-    GURL resolved = gurl.Resolve(full_name_.Encode());
-    encoded = GoogleUrl::Spec(resolved);
+    // TODO(jmaessen): this is a band aid compensating for the fact that we
+    // aren't consistent about trailing / in resolved_base.  If we believe we're
+    // always getting these from GoogleUrl::AllExceptLeaf they ought to lack the
+    // trailing /.  But partnership->ResolvedBase() appears to have a trailing /
+    // in some circumstances (cf css_combine for examples that go wrong).
+    if (!resolved_base_.empty() &&
+        resolved_base_[resolved_base_.size() - 1] == '/') {
+      encoded = StrCat(resolved_base_, encoded);
+    } else {
+      encoded = StrCat(resolved_base_, "/", encoded);
+    }
   }
   return encoded;
 }

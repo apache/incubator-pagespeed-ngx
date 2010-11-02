@@ -73,24 +73,15 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
 
     // Make sure we're not moving across domains -- CSS can potentially contain
     // Javascript expressions.
-    // TODO(sligocki): Domain lawyerify.
-    GURL url = base_gurl().Resolve(href);
-    if (!url.is_valid() || !url.DomainIs(domain_.data(), domain_.size())) {
-      return;
-    }
-
-    // Get the text of the CSS file.
-    // TODO(mdsteele): I feel like the below code should be a single
-    //   convenience method somewhere, but I'm not sure where.
-    //   [Agreed; it belongs in ResourceManager and should refactor
-    //    all the similar code.  This formula is all over the place.
-    //    - jmaessen)]
+    // TODO(jmaessen): Is the domain lawyer policy the appropriate one here?
+    // Or do we still have to check for strict domain equivalence?
+    // If so, add an inline-in-page policy to domainlawyer in some form,
+    // as we make a similar policy decision in js_inline_filter.
     MessageHandler* message_handler = html_parse_->message_handler();
     scoped_ptr<Resource> resource(
-        resource_manager_->CreateInputResourceGURL(url, message_handler));
-    if (resource == NULL ||
-        !resource_manager_->ReadIfCached(resource.get(), message_handler) ||
-        !resource->ContentsValid()) {
+        resource_manager_->CreateInputResourceAndReadIfCached(
+            base_gurl(), href, message_handler));
+    if (resource == NULL  || !resource->ContentsValid()) {
       return;
     }
 
@@ -103,7 +94,7 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
     // Absolutify the URLs in the CSS -- relative URLs will break otherwise.
     std::string rewritten;
     StringWriter writer(&rewritten);
-    if (!CssTagScanner::AbsolutifyUrls(contents, url.spec(), &writer,
+    if (!CssTagScanner::AbsolutifyUrls(contents, resource->url(), &writer,
                                        message_handler)) {
       return;
     }

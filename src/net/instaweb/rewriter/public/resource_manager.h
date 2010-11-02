@@ -67,31 +67,21 @@ class ResourceManager {
                   DomainLawyer* domain_lawyer);
   ~ResourceManager();
 
-  // Created resources are managed by ResourceManager and eventually deleted
-  // by ResourceManager's destructor.
-
-  // Creates an output resource with a generated name.  Such a
-  // resource can only be meaningfully created in a deployment with
-  // shared persistent storage, such as the local disk on a
-  // single-server system, or a multi-server configuration with a
-  // database, network attached storage, or a shared cache such as
-  // memcached.
-  //
-  // If this is not available in the current deployment, it is illegal
-  // to call this routine.
-  // TODO(jmarantz): enforce this with a check.
-  //
-  // Every time this method is called, a new resource is generated.
-  //
-  // 'type' arg can be null if it's not known, or is not in our ContentType
-  // library.
-  OutputResource* CreateGeneratedOutputResource(
-      const StringPiece& filter_prefix, const ContentType* type,
-      MessageHandler* handler);
+  // Created resources are managed by ResourceManager and eventually deleted by
+  // ResourceManager's destructor.  Every time a Create...Resource... method is
+  // called, a fresh Resource object is generated (or the creation fails and
+  // NULL is returned).  All content_type arguments can be NULL if the content
+  // type isn't known or isn't covered by the ContentType library.  Where
+  // necessary, the extension is used to infer a content type if one is needed
+  // and none is provided.  It is faster and more reliable to provide one
+  // explicitly when it is known.
 
   // Constructs an output resource corresponding to the specified input resource
-  // and encoded using the provided encoder.  Doesn't do permissions checking
-  // with respect to a page context, so don't all this anymore.
+  // and encoded using the provided encoder.  Assumes permissions checking
+  // occurred when the input resource was constructed, and does not do it again.
+  // To avoid if-chains, tolerates a NULL input_resource (by returning NULL).
+  // TODO(jmaessen, jmarantz): Do we want to permit NULL input_resources here?
+  // jmarantz has evinced a distaste.
   OutputResource* CreateOutputResourceFromResource(
       const StringPiece& filter_prefix,
       const ContentType* content_type,
@@ -100,9 +90,9 @@ class ResourceManager {
       MessageHandler* handler);
 
   // Constructs and permissions-checks an output resource for the specified url,
-  // which occurs in the context of document_gurl.  Returns NULL on failure.  The
-  // content_type argument cannot be NULL.  The resource name will be encoded
-  // using the provided encoder.
+  // which occurs in the context of document_gurl.  Returns NULL on failure.
+  // The content_type argument cannot be NULL.  The resource name will be
+  // encoded using the provided encoder.
   OutputResource* CreateOutputResourceForRewrittenUrl(
       const GURL& document_gurl,
       const StringPiece& filter_prefix,
@@ -118,88 +108,64 @@ class ResourceManager {
   // This method is not dependent on shared persistent storage, and always
   // succeeds.
   //
-  // This name is prepended with url_prefix for writing hrefs, and
-  // file_prefix when working with the file system.  So files are:
-  //    $(FILE_PREFIX)$(FILTER_PREFIX).$(HASH).$(NAME).$(CONTENT_TYPE_EXT)
-  // and hrefs are:
-  //    $(URL_PREFIX)$(FILTER_PREFIX).$(HASH).$(NAME).$(CONTENT_TYPE_EXT)
+  // This name is prepended with path for writing hrefs, and the resulting url
+  // is encoded and stored at file_prefix when working with the file system.  So
+  // hrefs are:
+  //    $(PATH)/$(FILTER_PREFIX).$(HASH).$(NAME).$(CONTENT_TYPE_EXT)
   //
   // 'type' arg can be null if it's not known, or is not in our ContentType
   // library.
-  //
-  // TODO(jmarantz): add a new variant which creates an output resource from
-  // an input resource, to inherit content type, cache expiration,
-  // last-modified, etc.
-  OutputResource* CreateNamedOutputResource(
-      const StringPiece& filter_prefix,
-      const StringPiece& name,
-      const ContentType* content_type,
-      MessageHandler* handler) {
-    return CreateNamedOutputResourceWithPath(
-        NULL, filter_prefix, name, content_type, handler);
-  }
-
-  // As above, but using the specified path in place of url_prefix.
-  OutputResource* CreateNamedOutputResourceWithPath(
+  OutputResource* CreateOutputResourceWithPath(
       const StringPiece& path, const StringPiece& filter_prefix,
-      const StringPiece& name,
-      const ContentType* type, MessageHandler* handler);
-
-  // Creates a resource based on the fields extracted from a URL.  This
-  // is used for serving output resources.
-  //
-  // 'type' arg can be null if it's not known, or is not in our ContentType
-  // library.
-  OutputResource* CreateUrlOutputResource(
-      const ResourceNamer& resource_id, const ContentType* type);
+      const StringPiece& name,  const ContentType* type,
+      MessageHandler* handler);
 
   // Creates a resource based on a URL.  This is used for serving rewritten
-  // resources.  Permission checks are performed on the URL.
-  //
-  // 'type' arg can be null if it's not known, or is not in our ContentType
-  // library.
-  OutputResource* CreateFetchOutputResource(
+  // resources.  No permission checks are performed on the url, though it
+  // is parsed to see if it looks like the url of a generated resource (which
+  // should mean checking the hash to ensure we generated it ourselves).
+  // TODO(jmaessen): add url hash & check thereof.
+  OutputResource* CreateOutputResourceForFetch(
       const StringPiece& url,
-      const ContentType* type,
       MessageHandler* handler);
 
   // Creates an input resource with the url evaluated based on input_url
   // which may need to be absolutified relative to base_url.  Returns NULL if
   // the input resource url isn't valid, or can't legally be rewritten in the
   // context of this page.
-  // TODO(jmaessen, jmarantz): Axe after switchover to avoid
-  // input resource creation without permission?  Only remaining call site
-  // is in css_combine_filter.
   Resource* CreateInputResource(const GURL& base_url,
                                 const StringPiece& input_url,
                                 MessageHandler* handler);
 
   // Create input resource from input_url, if it is legal in the context of
-  // base_gurl, and if the resource can be read from cache.  This is a common
-  // case for filters.
+  // base_gurl, and if the resource can be read from cache.  If it's not in
+  // cache, initiate an asynchronous fetch so it will be on next access.  This
+  // is a common case for filters.
   Resource* CreateInputResourceAndReadIfCached(const GURL& base_gurl,
                                                const StringPiece& input_url,
                                                MessageHandler* handler);
 
   // Create an input resource by decoding output_resource using the given
-  // encoder, checking the decoded url for legality.
+  // encoder.  Assures legality by checking hash signatures, rather than
+  // explicitly permission-checking the result.
   Resource* CreateInputResourceFromOutputResource(
     UrlSegmentEncoder* encoder,
     OutputResource* output_resource,
     MessageHandler* handler);
 
-  // Creates an input resource with the given gurl, already absolute and valid.
-  // Use only for resource fetches that lack a page context.  Does not check
-  // that the given resource can subsequently be rewritten in the context of a
-  // particular page url.
-  Resource* CreateInputResourceGURL(const GURL& gurl, MessageHandler* handler);
-
-  // Creates an input resource from the given absolute url.  Does not check that
-  // the given resource can subsequently be rewritten in the context of a
-  // particular page url.  If you have a GURL, prefer CreateInputResourceGURL,
+  // Creates an input resource from the given absolute url.  Requires that the
+  // provided url has been checked, and can legally be rewritten in the current
+  // page context.  If you have a GURL, prefer CreateInputResourceUnchecked,
   // otherwise use this.
   Resource* CreateInputResourceAbsolute(const StringPiece& absolute_url,
                                         MessageHandler* handler);
+
+  // Creates an input resource with the given gurl, already absolute and valid.
+  // Use only for resource fetches that lack a page context, or in places where
+  // permission checking has been done explicitly on the caller side (for
+  // example css_combine_filter, which constructs its own url_partnership).
+  Resource* CreateInputResourceUnchecked(const GURL& gurl,
+                                         MessageHandler* handler);
 
   // Set up a basic header for a given content_type.
   // If content_type is null, the Content-Type is omitted.
@@ -265,11 +231,6 @@ class ResourceManager {
   // for the corresponding URL.
   std::string UrlPrefixFor(const ResourceNamer& namer) const;
 
-  // Decode a base path into a shard number and canonical base url.
-  // Right now the canonical base url is empty for the old resource
-  // naming scheme, and non-empty otherwise.
-  StringPiece CanonicalizeBase(const StringPiece& base, int* shard) const;
-
   // Whether or not resources should hit the filesystem.
   bool store_outputs_in_file_system() { return store_outputs_in_file_system_; }
   void set_store_outputs_in_file_system(bool store) {
@@ -282,6 +243,7 @@ class ResourceManager {
  private:
   std::string ConstructNameKey(const OutputResource& output) const;
   void ValidateShardsAgainstUrlPrefixPattern();
+  std::string CanonicalizeBase(const StringPiece& base, int* shard) const;
 
   std::string file_prefix_;
   std::string url_prefix_pattern_;

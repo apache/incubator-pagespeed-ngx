@@ -39,7 +39,7 @@ namespace {
 
 base::AtExitManager* at_exit_manager = NULL;
 
-}
+}  // namespace
 
 namespace net_instaweb {
 
@@ -134,13 +134,10 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
     StringPiece relation(element->AttributeValue(s_rel_));
     if (relation == kStylesheet) {
       HtmlElement::Attribute* element_href = element->FindAttribute(s_href_);
-      if (element_href != NULL) {  // If it has a href= attribute
-        std::string old_url(element_href->value());
-        // TODO(jmaessen, jmarantz): rewrite in terms of partnership
-        GURL old_gurl = base_gurl().Resolve(old_url);
+      if (element_href != NULL) {
+        // If it has a href= attribute
         std::string new_url;
-        if (old_gurl.is_valid() &&
-            RewriteExternalCss(GoogleUrl::Spec(old_gurl), &new_url)) {
+        if (RewriteExternalCss(element_href->value(), &new_url)) {
           element_href->SetValue(new_url);  // Update the href= attribute.
         }
       } else {
@@ -263,20 +260,17 @@ bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
                                    std::string* out_url) {
   bool ret = false;
   scoped_ptr<Resource> input_resource(
-      resource_manager_->CreateInputResourceAbsolute(
-          in_url, html_parse_->message_handler()));
-  if (input_resource.get() != NULL) {
-    scoped_ptr<OutputResource> output_resource(
-        resource_manager_->CreateOutputResourceFromResource(
-            filter_prefix_, &kContentTypeCss, resource_manager_->url_escaper(),
-            input_resource.get(), html_parse_->message_handler()));
-    if (output_resource.get() != NULL) {
-      ret = RewriteExternalCssToResource(input_resource.get(),
-                                         output_resource.get());
-      if (ret) {
-        *out_url = output_resource->url();
-      }
-    }
+      resource_manager_->CreateInputResource(
+          base_gurl(), in_url, html_parse_->message_handler()));
+  scoped_ptr<OutputResource> output_resource(
+      resource_manager_->CreateOutputResourceFromResource(
+          filter_prefix_, &kContentTypeCss, resource_manager_->url_escaper(),
+          input_resource.get(), html_parse_->message_handler()));
+  if (output_resource.get() != NULL &&
+      RewriteExternalCssToResource(input_resource.get(),
+                                   output_resource.get())) {
+    ret = true;
+    *out_url = output_resource->url();
   }
   return ret;
 }

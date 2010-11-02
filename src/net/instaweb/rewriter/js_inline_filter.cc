@@ -64,22 +64,20 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
     DCHECK(src != NULL);
     should_inline_ = false;
 
-    GURL url = base_gurl().Resolve(src);
-    // TODO(sligocki): domain lawyerify.
-    if (url.is_valid() && url.DomainIs(domain_.data(), domain_.size())) {
-      // Inline the script.
-      MessageHandler* message_handler = html_parse_->message_handler();
-      scoped_ptr<Resource> resource(
-          resource_manager_->CreateInputResourceGURL(url, message_handler));
-      if ((resource != NULL) &&
-          resource_manager_->ReadIfCached(resource.get(), message_handler) &&
-          resource->ContentsValid()) {
-        StringPiece contents = resource->contents();
-        if (contents.size() <= size_threshold_bytes_ &&
-            element->DeleteAttribute(src_atom_)) {
-          html_parse_->InsertElementBeforeCurrent(
-              html_parse_->NewCharactersNode(element, contents));
-        }
+    MessageHandler* message_handler = html_parse_->message_handler();
+    scoped_ptr<Resource> resource(
+        resource_manager_->CreateInputResourceAndReadIfCached(
+            base_gurl(), src, message_handler));
+    // TODO(jmaessen): Is the domain lawyer policy the appropriate one here?
+    // Or do we still have to check for strict domain equivalence?
+    // If so, add an inline-in-page policy to domainlawyer in some form,
+    // as we make a similar policy decision in css_inline_filter.
+    if (resource != NULL && resource->ContentsValid()) {
+      StringPiece contents = resource->contents();
+      if (contents.size() <= size_threshold_bytes_ &&
+          element->DeleteAttribute(src_atom_)) {
+        html_parse_->InsertElementBeforeCurrent(
+            html_parse_->NewCharactersNode(element, contents));
       }
     }
   }
