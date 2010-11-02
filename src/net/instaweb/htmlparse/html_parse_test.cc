@@ -74,6 +74,21 @@ TEST_F(HtmlParseTest, CorrectTaggify) {
   ValidateNoChanges("taobao", "<a>1+1<1母婴全场加1元超值购</a>");
 }
 
+TEST_F(HtmlParseTest, BooleanSpaceCloseInTag) {
+  ValidateExpected("bool_space_close", "<a b >foo</a>", "<a b>foo</a>");
+  ValidateNoChanges("bool_close", "<a b>foo</a>");
+  ValidateExpected("space_close_sq", "<a b='c' >foo</a>", "<a b='c'>foo</a>");
+  ValidateExpected("space_close_dq",
+                   "<a b=\"c\" >foo</a>", "<a b=\"c\">foo</a>");
+  ValidateExpected("space_close_nq", "<a b=c >foo</a>", "<a b=c>foo</a>");
+  // Distilled from http://www.gougou.com/
+  // Unclear exactly what we should do here, maybe leave it as it was without
+  // the space?
+  ValidateExpected("allow_semicolon",
+                   "<a onclick='return m(this)'; >foo</a>",
+                   "<a onclick='return m(this)' ;>foo</a>");
+}
+
 class AttrValuesSaverFilter : public EmptyHtmlFilter {
  public:
   AttrValuesSaverFilter() { }

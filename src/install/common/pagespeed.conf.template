@@ -64,20 +64,6 @@
     #
     # ModPagespeedEnableFilters add_instrumentation
 
-    # This page lets you view statistics about the mod_pagespeed module.
-    #
-    # <Location /mod_pagespeed_statistics>
-    #     Order allow,deny
-    #     # You may insert other "Allow from" lines to add hosts you want to
-    #     # allow to look at generated statistics.  Another possibility is
-    #     # to comment out the "Order" and "Allow" options from the config
-    #     # file, to allow any client that can reach your server to examine
-    #     # statistics.  This might be appropriate in an experimental setup or
-    #     # if the Apache server is protected by a reverse proxy that will
-    #     # filter URLs in some fashion.
-    #     Allow from localhost
-    #     SetHandler mod_pagespeed_statistics
-    # </Location>
 
     # This handles the client-side instrumentation callbacks which are injected
     # by the add_instrumentation filter.
@@ -87,4 +73,18 @@
     # <Location /mod_pagespeed_beacon>
     #       SetHandler mod_pagespeed_beacon
     # </Location>
+
+    # This page lets you view statistics about the mod_pagespeed module.
+    <Location /mod_pagespeed_statistics>
+        Order allow,deny
+        # You may insert other "Allow from" lines to add hosts you want to
+        # allow to look at generated statistics.  Another possibility is
+        # to comment out the "Order" and "Allow" options from the config
+        # file, to allow any client that can reach your server to examine
+        # statistics.  This might be appropriate in an experimental setup or
+        # if the Apache server is protected by a reverse proxy that will
+        # filter URLs in some fashion.
+        Allow from localhost
+        SetHandler mod_pagespeed_statistics
+    </Location>
 </IfModule>

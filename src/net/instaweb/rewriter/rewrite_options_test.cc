@@ -55,7 +55,7 @@ TEST_F(RewriteOptionsTest, NoneEnabledByDefault) {
 TEST_F(RewriteOptionsTest, InstrumentationDisabled) {
   // Make sure the kCoreFilters enables some filters.
   options.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  ASSERT_TRUE(options.Enabled(RewriteOptions::kAddInstrumentation));
+  ASSERT_TRUE(options.Enabled(RewriteOptions::kExtendCache));
 
   // Now disable all filters and make sure none are enabled.
   for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;

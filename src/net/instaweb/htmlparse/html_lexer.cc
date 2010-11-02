@@ -680,6 +680,9 @@ void HtmlLexer::EvalAttrName(char c) {
     attr_name_ += c;
   } else if (isspace(c)) {
     state_ = TAG_ATTR_NAME_SPACE;
+  } else if (c == '>') {
+    MakeAttribute(false);
+    EmitTagOpen(true);
   } else {
     if (state_ == TAG_ATTR_NAME_SPACE) {
       // "<x y z".  Now that we see the 'z', we need
