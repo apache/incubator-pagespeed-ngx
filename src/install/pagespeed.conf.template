@@ -6,7 +6,7 @@
 
 <IfModule pagespeed_module>
     # Direct Apache to send all HTML output to the mod_pagespeed output handler.
-    SetOutputFilter MOD_PAGESPEED_OUTPUT_FILTER
+    AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER text/html
 
     # This page lets you view statistics about the mod_pagespeed module.
     <Location /mod_pagespeed_statistics>

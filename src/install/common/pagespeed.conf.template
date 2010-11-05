@@ -1,22 +1,23 @@
 <IfModule pagespeed_module>
-    SetOutputFilter MOD_PAGESPEED_OUTPUT_FILTER
+    # Turn on mod_pagespeed. To completely disable mod_pagespeed, you
+    # can set this to "off".
     ModPagespeed on
 
-    # ModPagespeedUrlPrefix is the prefix assigned to some types of
-    # rewritten resources. This directive will be removed in a future
-    # release. For now, you must specify a URL and path for a hostname
-    # that is served by this Apache
-    # instance. http://yourhostname/mod_pagespeed is a good default
-    # value (replace localhost, below, with the hostname of your
-    # Apache instance).
+    # Direct Apache to send all HTML output to the mod_pagespeed
+    # output handler.
+    AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER text/html
+
+    # ModPagespeedUrlPrefix is deprecated. mod_pagespeed still depends
+    # on its being set, but does not use its value. This directive
+    # will be removed in a future release.
     ModPagespeedUrlPrefix                "http://localhost/mod_pagespeed/"
 
     # The ModPagespeedFileCachePath and
     # ModPagespeedGeneratedFilePrefix directories must exist and be
     # writable by the apache user (as specified by the User
     # directive).
-    ModPagespeedFileCachePath            "/var/mod_pagespeed/cache/"
-    ModPagespeedGeneratedFilePrefix      "/var/mod_pagespeed/files/"
+    ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@/cache/"
+    ModPagespeedGeneratedFilePrefix      "@@MODPAGESPEED_CACHE_ROOT@@/files/"
 
     # Override the mod_pagespeed 'rewrite level'. The default level
     # "CoreFilters" uses a set of rewrite filters that are generally

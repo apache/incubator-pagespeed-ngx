@@ -150,10 +150,14 @@ bool FileCache::Clean(int64 target_size) {
   // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
   // but this really should be factored into a settable member var.
   if (total_size < ((target_size * 5) / 4)) {
-    LOG(INFO) << "File cache size is" << total_size << "; no cleanup needed.";
+    message_handler_->Message(kInfo,
+                              "File cache size is %ld; no cleanup needed.",
+                              static_cast<long>(total_size));
     return true;
   }
-  LOG(INFO) << "File cache size is" << total_size << "; beginning cleanup.";
+  message_handler_->Message(kInfo,
+                            "File cache size is %ld; beginning cleanup.",
+                            static_cast<long>(total_size));
   bool everything_ok = true;
   everything_ok &= file_system_->ListContents(path_, &files, message_handler_);
 
@@ -211,8 +215,9 @@ bool FileCache::Clean(int64 target_size) {
     delete heap.top();
     heap.pop();
   }
-  LOG(INFO) << "File cache cleanup complete; freed" << total_heap_size
-            << "bytes.";
+  message_handler_->Message(kInfo,
+                            "File cache cleanup complete; freed %ld bytes\n",
+                            static_cast<long>(total_heap_size));
   return everything_ok;
 }
 
@@ -239,16 +244,19 @@ bool FileCache::CheckClean() {
     // If the "clean time" written in the file is older than now, we
     // clean.
     if (clean_time_ms < now_ms) {
-      LOG(INFO) << "Checking file cache size against target "
-                << cache_policy_->target_size;
+      message_handler_->Message(kInfo,
+                                "Checking file cache size against target %ld",
+                                static_cast<long>(cache_policy_->target_size));
       to_return = true;
     }
     // If the "clean time" is  later than now plus one interval, something
     // went wrong (like the system clock moving backwards or the file
     // getting corrupt) so we clean and reset it.
     if (clean_time_ms > new_clean_time_ms) {
-      LOG(ERROR) << "Next scheduled file cache clean time " << clean_time_ms
-                 << " is implausibly remote.  Cleaning now.";
+      message_handler_->Message(kError,
+                                "Next scheduled file cache clean time %ld"
+                                " is implausibly remote.  Cleaning now.",
+                                static_cast<long>(clean_time_ms));
       to_return = true;
     }
     if (to_return) {

@@ -113,8 +113,13 @@ void RewriteOptions::SetUp() {
   // Core filter level includes the "core" filter set.
   level_filter_set_map_[kCoreFilters].insert(kAddHead);
   level_filter_set_map_[kCoreFilters].insert(kCombineCss);
-  level_filter_set_map_[kCoreFilters].insert(kRewriteCss);
-  level_filter_set_map_[kCoreFilters].insert(kRewriteJavascript);
+
+  // TODO(jmarantz): re-enable javascript and CSS minification in
+  // the core set after the reported bugs have been fixed.  They
+  // can still be enabled individually.
+  // level_filter_set_map_[kCoreFilters].insert(kRewriteJavascript);
+  // level_filter_set_map_[kCoreFilters].insert(kRewriteCss);
+
   level_filter_set_map_[kCoreFilters].insert(kInlineCss);
   level_filter_set_map_[kCoreFilters].insert(kInlineJavascript);
   level_filter_set_map_[kCoreFilters].insert(kRewriteImages);

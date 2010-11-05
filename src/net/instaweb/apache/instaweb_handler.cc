@@ -105,13 +105,13 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
   SimpleMetaData request_headers, response_headers;
   std::string output;  // TODO(jmarantz): quit buffering resource output
   StringWriter writer(&output);
-  GoogleMessageHandler message_handler;
+  MessageHandler* message_handler = factory->message_handler();
   SerfAsyncCallback* callback = new SerfAsyncCallback();
   bool handled = rewrite_driver->FetchResource(
-      url, request_headers, &response_headers, &writer, &message_handler,
+      url, request_headers, &response_headers, &writer, message_handler,
       callback);
   if (handled) {
-    message_handler.Message(kWarning, "Fetching resource %s...", url.c_str());
+    message_handler->Message(kInfo, "Fetching resource %s...", url.c_str());
     if (!callback->done()) {
       SerfUrlAsyncFetcher* serf_async_fetcher =
           factory->serf_url_async_fetcher();
@@ -125,21 +125,22 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
       }
 
       if (!callback->done()) {
-        message_handler.Message(kError, "Timeout on url %s", url.c_str());
+        message_handler->Message(kError, "Timeout on url %s", url.c_str());
       }
     }
     if (callback->success()) {
-      message_handler.Message(kInfo, "Fetch succeeded for %s, status=%d",
+      message_handler->Message(kInfo, "Fetch succeeded for %s, status=%d",
                               url.c_str(), response_headers.status_code());
       send_out_headers_and_body(request, response_headers, output);
     } else {
-      message_handler.Message(kError, "Fetch failed for %s, status=%d",
+      message_handler->Message(kError, "Fetch failed for %s, status=%d",
                               url.c_str(), response_headers.status_code());
       factory->Increment404Count();
       instaweb_default_handler(url, request);
     }
   }
   callback->Release();
+  factory->ReleaseRewriteDriver(rewrite_driver);
   return handled;
 }
 

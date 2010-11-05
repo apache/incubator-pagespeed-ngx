@@ -38,8 +38,7 @@ class GoogleMessageHandler : public MessageHandler {
                                 int line, const char* msg, va_list args);
 
  private:
-  const std::string& Format(const char* msg, va_list args);
-  std::string buffer_;
+  std::string Format(const char* msg, va_list args);
 
   DISALLOW_COPY_AND_ASSIGN(GoogleMessageHandler);
 };

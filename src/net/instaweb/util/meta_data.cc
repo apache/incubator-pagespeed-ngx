@@ -56,9 +56,7 @@ void MetaData::CopyFrom(const MetaData& other) {
   ComputeCaching();
 }
 
-namespace {
-
-const char* GetReasonPhrase(HttpStatus::Code rc) {
+const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
   switch (rc) {
     case HttpStatus::kContinue                : return "Continue";
     case HttpStatus::kSwitchingProtocols      : return "Switching Protocols";
@@ -118,11 +116,9 @@ const char* GetReasonPhrase(HttpStatus::Code rc) {
   return "";
 }
 
-}  // namespace
-
 void MetaData::SetStatusAndReason(HttpStatus::Code code) {
   set_status_code(code);
-  set_reason_phrase(GetReasonPhrase(code));
+  set_reason_phrase(HttpStatus::GetReasonPhrase(code));
 }
 
 bool MetaData::ParseTime(const char* time_str, int64* time_ms) {

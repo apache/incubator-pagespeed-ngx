@@ -105,6 +105,10 @@ enum Code {
   kGatewayTimeout = 504,
   kHttpVersionNotSupported = 505,
 };
+
+// Transform a status code into the equivalent reason phrase.
+const char* GetReasonPhrase(Code rc);
+
 }  // namespace HttpStatus
 
 // Container for required meta-data.  General HTTP headers can be added

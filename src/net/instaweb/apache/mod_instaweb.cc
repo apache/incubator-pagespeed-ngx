@@ -244,8 +244,9 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   InstawebContext* context =
       static_cast<InstawebContext*>(filter->ctx);
 
-  LOG(INFO) << "ModPagespeed OutputFilter called for request "
-            << request->unparsed_uri;
+  ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                "ModPagespeed OutputFilter called for request %s",
+                request->unparsed_uri);
 
   // Initialize per-request context structure.  Note that instaweb_out_filter
   // may get called multiple times per HTTP request, and this occurs only
@@ -269,8 +270,6 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
       absolute_url = ap_construct_url(request->pool, request->unparsed_uri,
                                   request);
     }
-    LOG(INFO) << "unparsed=" << request->unparsed_uri
-              << ", absolute_url=" << absolute_url;
 
     RewriteOptions custom_options;
     bool use_custom_options = ScanQueryParamsForRewriterOptions(
@@ -296,11 +295,6 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     SimpleMetaData request_headers, response_headers;
     ApacheHeaderToMetaData(request->headers_in, 0,
                            request->proto_num, &request_headers);
-    LOG(INFO) << "Request headers:\n" << request_headers.ToString();
-
-    // Hack for mod_proxy to figure out where it's proxying from
-    LOG(INFO) << "request->filename=" << request->filename << ", uri="
-              << request->unparsed_uri;
     if ((request->filename != NULL) &&
         (strncmp(request->filename, "proxy:", 6) == 0)) {
       absolute_url.assign(request->filename + 6, strlen(request->filename) - 6);
@@ -316,8 +310,6 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     // headers, and this will not show those mutations.
     ApacheHeaderToMetaData(request->headers_out, request->status,
                            request->proto_num, &response_headers);
-    LOG(INFO) << "ModPagespeed Response headers:\n"
-              << response_headers.ToString();
 
     // Make sure compression is enabled for this response.
     ap_add_output_filter("DEFLATE", NULL, request, request->connection);
@@ -417,13 +409,14 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       if (factory->url_prefix().empty() ||
           factory->filename_prefix().empty() ||
           factory->file_cache_path().empty()) {
-        LOG(ERROR) << "Page speed is enabled.  "
-                   << "The following directives must not be NULL";
-        LOG(ERROR) << kModPagespeedUrlPrefix << "=" << factory->url_prefix();
-        LOG(ERROR) << kModPagespeedFileCachePath << "="
-                   << factory->file_cache_path();
-        LOG(ERROR) << kModPagespeedGeneratedFilePrefix << "="
-                   << factory->filename_prefix();
+        std::string buf("mod_pagespeed is enabled.  ");
+        buf += "The following directives must not be NULL\n";
+        buf += StrCat(kModPagespeedUrlPrefix, "=", factory->url_prefix(), "\n");
+        buf += StrCat(kModPagespeedFileCachePath, "=");
+        buf += StrCat(factory->file_cache_path(), "\n");
+        buf += StrCat(kModPagespeedGeneratedFilePrefix, "=");
+        buf += StrCat(factory->filename_prefix(), "\n");
+        factory->message_handler()->Message(kError, "%s", buf.c_str());
         return HTTP_INTERNAL_SERVER_ERROR;
       }
       // TODO(jmarantz): spew the rewriters
@@ -472,7 +465,7 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
 void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
   if (factory == NULL) {
-    factory = new ApacheRewriteDriverFactory(pool);
+    factory = new ApacheRewriteDriverFactory(pool, server);
 
     // To clean up the factory on process shutdown, we need to run
     // pagespeed_child_exit *before* the pool is destroyed.  If we run

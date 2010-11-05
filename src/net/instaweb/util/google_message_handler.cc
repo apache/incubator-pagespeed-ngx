@@ -59,14 +59,14 @@ void GoogleMessageHandler::FileMessageVImpl(MessageType type, const char* file,
   }
 }
 
-const std::string& GoogleMessageHandler::Format(
-    const char* msg, va_list args) {
-  buffer_.clear();
+// TODO(sligocki): It'd be nice not to do so much string copying.
+std::string GoogleMessageHandler::Format(const char* msg, va_list args) {
+  std::string buffer;
 
   // Ignore the name of this routine: it formats with vsnprintf.
   // See base/stringprintf.cc.
-  StringAppendV(&buffer_, msg, args);
-  return buffer_;
+  StringAppendV(&buffer, msg, args);
+  return buffer;
 }
 
 }  // namespace net_instaweb

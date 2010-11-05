@@ -57,7 +57,7 @@ class HTTPCacheTest : public testing::Test {
     if (cache_control != NULL) {
       headers->Add("Cache-control", cache_control);
     }
-    headers->set_status_code(HttpStatus::kOK);
+    headers->SetStatusAndReason(HttpStatus::kOK);
     headers->ComputeCaching();
   }
 

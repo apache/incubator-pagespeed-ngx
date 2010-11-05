@@ -37,6 +37,7 @@
 // For now use wget when slurping additional files.
 
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -211,9 +212,12 @@ void SlurpUrl(const std::string& uri, ApacheRewriteDriverFactory* factory,
     // called, but we should still emit headers.
     writer.OutputHeaders();
   } else {
-    LOG(ERROR) << "mod_slurp: fetch of url " << stripped_url
-               << " failed.\nRequest Headers: " << request_headers.ToString()
-               << "\n\nResponse Headers: " << response_headers.ToString();
+    MessageHandler* handler = factory->message_handler();
+    handler->Message(kError, "mod_slurp: fetch of url %s"
+                     " failed.\nRequest Headers: %s\n\nResponse Headers: %s",
+                     stripped_url.c_str(),
+                     request_headers.ToString().c_str(),
+                     response_headers.ToString().c_str());
     SlurpDefaultHandler(r);
   }
 }

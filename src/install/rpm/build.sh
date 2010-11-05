@@ -202,7 +202,7 @@ verify_channel
 
 APACHE_MODULEDIR="/usr/lib/httpd/modules"
 APACHE_CONFDIR="/etc/httpd/conf.d"
-MODPAGESPEED_CACHE_ROOT="/var/mod_pagespeed"
+MODPAGESPEED_CACHE_ROOT="/var/www/mod_pagespeed"
 APACHE_USER="apache"
 
 # Make everything happen in the OUTPUTDIR.

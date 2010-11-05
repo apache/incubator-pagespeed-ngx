@@ -117,9 +117,8 @@ class SerfFetch {
     }
   }
 
-  size_t byte_received() const {
-    return byte_received_;
-  }
+  size_t byte_received() const { return byte_received_; }
+  MessageHandler* message_handler() { return message_handler_; }
 
  private:
 
@@ -181,7 +180,8 @@ class SerfFetch {
     if ((response != NULL) &&
         ((status = serf_bucket_response_status(response, &status_line))
          == APR_SUCCESS)) {
-      response_headers_->set_status_code(status_line.code);
+      response_headers_->SetStatusAndReason(
+          static_cast<HttpStatus::Code>(status_line.code));
       response_headers_->set_major_version(status_line.version / 1000);
       response_headers_->set_minor_version(status_line.version % 1000);
       const char* data = NULL;
@@ -346,14 +346,9 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
  public:
   SerfThreadedFetcher(SerfUrlAsyncFetcher* parent, const char* proxy) :
       SerfUrlAsyncFetcher(parent, proxy),
-      active_mutex_(pool_),
       initiate_mutex_(pool_),
-      active_fetches_empty_(true),
       terminate_mutex_(pool_),
       thread_done_(false) {
-    // Before starting the thread, lock the active mutex so SerfThread() doesn't
-    // spin.  It will be unlocked when the first fetch is initiated.
-    active_mutex_.Lock();
     terminate_mutex_.Lock();
     CHECK_EQ(APR_SUCCESS,
              apr_thread_create(&thread_id_, NULL, SerfThreadFn, this, pool_));
@@ -367,7 +362,6 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
 
     // Let the thread terminate naturally by unlocking its mutexes.
     thread_done_ = true;
-    active_mutex_.Unlock();
     mutex_->Unlock();
     LOG(INFO) << "Waiting for threaded serf fetcher to terminate";
     terminate_mutex_.Lock();
@@ -379,11 +373,6 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   void InitiateFetch(SerfFetch* fetch) {
     ScopedMutex lock(&initiate_mutex_);
     initiate_fetches_.push_back(fetch);
-    if (active_fetches_empty_) {
-      SERF_DEBUG(LOG(INFO) << "Unlocking threaded fetcher");
-      active_mutex_.Unlock();
-      active_fetches_empty_ = false;
-    }
   }
 
  private:
@@ -395,7 +384,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   }
 
   // Thread-called function to transfer fetches from initiate_fetches_ vector
-  // to the active_fetches_ set.
+  // to the active_fetches_ set.  Does no work if initiate_fetches_ is empty.
   void TransferFetches() {
     // Use a temp that to minimize the amount of time we hold the
     // initiate_mutex_ lock, so that the parent thread doesn't get
@@ -406,7 +395,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
       xfer_fetches.swap(initiate_fetches_);
     }
 
-    // Now that we've unblocked the parent thread, we can leasurely
+    // Now that we've unblocked the parent thread, we can leisurely
     // queue up the fetches, employing the proper lock for the active_fetches_
     // set.  Actually we expect we wll never have contention on this mutex
     // from the thread.
@@ -426,41 +415,22 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     }
   }
 
-  bool NeedWait() {
-    ScopedMutex lock(&initiate_mutex_);
-    return active_fetches_empty_ && initiate_fetches_.empty();
-  }
-
-  void WaitForActiveFetches() {
-    SERF_DEBUG(LOG(INFO) << "Waiting for a fetch to activate");
-    ScopedMutex lock(&active_mutex_);
-    SERF_DEBUG(LOG(INFO) << "Found a fetch");
-  }
-
   void SerfThread() {
     while (!thread_done_) {
-      // Race/deadlock-check.  NeedWait needs to grab initiate_mutex_, but
-      // it releases it before returning.  We will grab it again below, when
-      // transferring the fetches.
-      if (NeedWait()) {
-        WaitForActiveFetches();
-      }
+      // If initiate_fetches is empty, we will not do any work.
       TransferFetches();
 
       const int64 kPollIntervalUs = 500000;
       SERF_DEBUG(LOG(INFO) << "Polling from serf thread (" << this << ")");
+      // If active_fetches_ is empty, we will not do any work.
       int num_outstanding_fetches = Poll(kPollIntervalUs);
       SERF_DEBUG(LOG(INFO) << "Finished polling from serf thread ("
                  << this << ")");
-
+      // We don't want to spin busily waiting for new fetches.  We could use a
+      // semaphore, but we're not really concerned with latency here, so we can
+      // just check every once in a while.
       if (num_outstanding_fetches == 0) {
-        ScopedMutex lock(&initiate_mutex_);
-        SERF_DEBUG(LOG(INFO) << "Threaded Fetches exhausted, ...locking");
-        active_mutex_.Lock();
-        active_fetches_empty_ = true;
-      } else {
-        SERF_DEBUG(LOG(INFO) << "Still looking at "
-                   << num_outstanding_fetches << " fetches");
+        sleep(1);
       }
     }
     terminate_mutex_.Unlock();
@@ -468,18 +438,10 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
 
   apr_thread_t* thread_id_;
 
-  // Prevents thread from spinning with no data.
-  AprMutex active_mutex_;
-
-  // protects initiate_fetches_ active_fetches_empty_
+  // protects initiate_fetches_
   AprMutex initiate_mutex_;
+  // pushed in the main thread; popped in the serf thread.
   std::vector<SerfFetch*> initiate_fetches_;
-
-  // image of active_fetches_.empty() for mainline to determine
-  // whether thread is idle.  We don't want to make the parent acquire
-  // mutex_, which protects active_fetches_, because that is locked
-  // for the entire duration of a Poll, which could be 500ms.
-  bool active_fetches_empty_;
 
   // Allows parent to block till thread exits
   AprMutex terminate_mutex_;
@@ -629,10 +591,12 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
     request_count_->Add(1);
   }
   if (callback->EnableThreaded()) {
-    LOG(INFO) << "Initiating async fetch for " << url;
+    message_handler->Message(kInfo, "Initiating async fetch for %s",
+                             url.c_str());
     threaded_fetcher_->InitiateFetch(fetch);
   } else {
-    LOG(INFO) << "Initiating blocking fetch for " << url;
+    message_handler->Message(kInfo, "Initiating blocking fetch for %s",
+                             url.c_str());
     ScopedMutex mutex(mutex_);
     if (fetch->Start(this)) {
       active_fetches_.insert(fetch);
@@ -654,7 +618,7 @@ void SerfUrlAsyncFetcher::PrintOutstandingFetches(
   }
 }
 
-
+// If active_fetches_ is empty, this does no work and returns 0.
 int SerfUrlAsyncFetcher::Poll(int64 microseconds) {
   // Run serf polling up to microseconds.
   ScopedMutex mutex(mutex_);
@@ -681,7 +645,8 @@ void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch) {
   // We do not have a ScopedMutex in FetchComplete, because it is only
   // called from Poll, which has a ScopedMutex.
   int erased = active_fetches_.erase(fetch);
-  LOG(INFO) << "Fetch complete: " << fetch->str_url();
+  fetch->message_handler()->Message(kInfo, "Fetch complete: %s",
+                                    fetch->str_url());
   CHECK_EQ(1, erased);
   completed_fetches_.push_back(fetch);
   if (time_duration_ms_) {
@@ -726,8 +691,9 @@ bool SerfUrlAsyncFetcher::WaitForInProgressFetchesHelper(
       num_active_fetches = NumActiveFetches();
     }
     if (!active_fetches_.empty()) {
-      LOG(ERROR) << "Serf timeout waiting for " << num_active_fetches
-                 << " to complete";
+      message_handler->Message(
+          kError, "Serf timeout waiting for %d to complete",
+          num_active_fetches);
       return false;
     }
     SERF_DEBUG(LOG(INFO) << "Serf successfully completed outstanding fetches");

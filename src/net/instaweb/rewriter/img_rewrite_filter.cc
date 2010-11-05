@@ -338,17 +338,18 @@ void ImgRewriteFilter::UpdateTargetElement(
           rewrite_count_->Add(1);
         }
       }
-      int dummy;
       if (insert_image_dimensions_ && actual_dim.valid() && !page_dim.valid() &&
-          !element->IntAttributeValue(s_width_, &dummy) &&
-          !element->IntAttributeValue(s_height_, &dummy)) {
+          !element->FindAttribute(s_width_) &&
+          !element->FindAttribute(s_height_)) {
         // Add image dimensions.  We don't bother if even a single image
         // dimension is already specified---even though we don't resize in that
         // case, either, because we might be off by a pixel in the other
-        // dimension from the size chosen by the browser.  But note that we DO
-        // attempt to include image dimensions even if we otherwise choose not
-        // to optimize an image.  This may require examining the image contents
-        // if we didn't just perform the image processing.
+        // dimension from the size chosen by the browser.  We also don't bother
+        // to resize if either dimension is specified with units (px, em, %)
+        // rather than as absolute pixes.  But note that we DO attempt to
+        // include image dimensions even if we otherwise choose not to optimize
+        // an image.  This may require examining the image contents if we didn't
+        // just perform the image processing.
         element->AddAttribute(s_width_, actual_dim.width());
         element->AddAttribute(s_height_, actual_dim.height());
       }

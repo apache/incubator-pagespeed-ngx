@@ -37,8 +37,9 @@ void FileMessageHandler::MessageVImpl(MessageType type, const char* msg,
   }
 }
 
-void FileMessageHandler::FileMessageVImpl(MessageType type, const char* filename,
-                                          int line, const char *msg, va_list args) {
+void FileMessageHandler::FileMessageVImpl(MessageType type,
+                                          const char* filename, int line,
+                                          const char *msg, va_list args) {
   fprintf(file_, "%s: %s:%d: ", MessageTypeToString(type), filename, line);
   vfprintf(file_, msg, args);
   fputc('\n', file_);

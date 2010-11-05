@@ -15,6 +15,7 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 
 #include "apr_pools.h"
+#include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/apache/apr_statistics.h"
@@ -25,7 +26,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/file_cache.h"
-#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
@@ -33,17 +33,19 @@
 
 namespace net_instaweb {
 
-ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(apr_pool_t* pool)
-  : serf_url_fetcher_(NULL),
-    serf_url_async_fetcher_(NULL),
-    statistics_(NULL),
-    lru_cache_kb_per_process_(0),
-    lru_cache_byte_limit_(0),
-    file_cache_clean_interval_ms_(Timer::kHourMs),
-    file_cache_clean_size_kb_(100 * 1024),  // 100 megabytes
-    fetcher_time_out_ms_(5 * Timer::kSecondMs),
-    slurp_flush_limit_(0),
-    enabled_(true) {
+ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(apr_pool_t* pool,
+                                                       server_rec* server)
+    : server_rec_(server),
+      serf_url_fetcher_(NULL),
+      serf_url_async_fetcher_(NULL),
+      statistics_(NULL),
+      lru_cache_kb_per_process_(0),
+      lru_cache_byte_limit_(0),
+      file_cache_clean_interval_ms_(Timer::kHourMs),
+      file_cache_clean_size_kb_(100 * 1024),  // 100 megabytes
+      fetcher_time_out_ms_(5 * Timer::kSecondMs),
+      slurp_flush_limit_(0),
+      enabled_(true) {
   apr_pool_create(&pool_, pool);
   cache_mutex_.reset(NewMutex());
   rewrite_drivers_mutex_.reset(NewMutex());
@@ -72,11 +74,11 @@ Timer* ApacheRewriteDriverFactory::DefaultTimer() {
 }
 
 MessageHandler* ApacheRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
-  return new GoogleMessageHandler();
+  return new ApacheMessageHandler(server_rec_);
 }
 
 MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
-  return new GoogleMessageHandler();
+  return new ApacheMessageHandler(server_rec_);
 }
 
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {

@@ -71,8 +71,8 @@ bool LogMessageHandler(int severity, const std::string& str) {
     message.resize(last_msg_character_index);
   }
 
-  ap_log_perror(APLOG_MARK, log_level, APR_SUCCESS, log_pool, "%s",
-                message.c_str());
+  ap_log_perror(APLOG_MARK, log_level, APR_SUCCESS, log_pool,
+                "log_message_handler: %s", message.c_str());
 
   if (severity == logging::LOG_FATAL) {
     // Crash the process to generate a dump.
