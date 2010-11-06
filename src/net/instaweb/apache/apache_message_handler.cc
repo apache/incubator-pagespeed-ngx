@@ -38,6 +38,10 @@ int ApacheMessageHandler::GetApacheLogLevel(MessageType type) {
     case kFatal:
       return APLOG_ALERT;
   }
+
+  // This should never fall through, but some compilers seem to complain if
+  // we don't include this.
+  return APLOG_ALERT;
 }
 
 void ApacheMessageHandler::MessageVImpl(MessageType type, const char* msg,
