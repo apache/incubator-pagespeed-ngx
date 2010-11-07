@@ -75,6 +75,16 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclared) {
       orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name,
       &message_handler_));
   EXPECT_EQ(cdn_domain, mapped_domain_name);
+
+  // Make sure that we do not allow requests when the port is present; we've
+  // only authorized origin "http://www.nytimes.com/",
+  // not "http://www.nytimes.com:8080/
+  std::string orig_cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
+  std::string port_cdn_domain(cdn_domain.data(), cdn_domain.size() - 1);
+  port_cdn_domain += ":8080/";
+  EXPECT_FALSE(domain_lawyer_.MapRequestToDomain(
+      orig_request_, StrCat(port_cdn_domain, "/", kResourceUrl),
+      &mapped_domain_name, &message_handler_));
 }
 
 TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutScheme) {
@@ -140,6 +150,15 @@ TEST_F(DomainLawyerTest, PortExternalDomainDeclared) {
       port_request_, StrCat(port_cdn_domain, kResourceUrl),
       &mapped_domain_name, &message_handler_));
   EXPECT_EQ(port_cdn_domain, mapped_domain_name);
+
+  // Make sure that we do not allow requests when the port is missing; we've
+  // only authorized origin "http://www.nytimes.com:8080/",
+  // not "http://www.nytimes.com:8080
+  std::string orig_cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
+  orig_cdn_domain += "/";
+  EXPECT_FALSE(domain_lawyer_.MapRequestToDomain(
+      port_request_, StrCat(orig_cdn_domain, kResourceUrl),
+      &mapped_domain_name, &message_handler_));
 }
 
 TEST_F(DomainLawyerTest, PortWildcardDomainDeclared) {
@@ -171,6 +190,37 @@ TEST_F(DomainLawyerTest, AddDomainRedundantly) {
   ASSERT_FALSE(domain_lawyer_.AddDomain("www.nytimes.com", &message_handler_));
   ASSERT_TRUE(domain_lawyer_.AddDomain("*", &message_handler_));
   ASSERT_FALSE(domain_lawyer_.AddDomain("*", &message_handler_));
+}
+
+TEST_F(DomainLawyerTest, VerifyPortIsDistinct1) {
+  ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com", &message_handler_));
+  std::string mapped_domain_name;
+  EXPECT_FALSE(domain_lawyer_.MapRequestToDomain(
+      GURL("http://www.other.com/index.html"),
+      "http://www.example.com:81/styles.css",
+      &mapped_domain_name, &message_handler_));
+}
+
+TEST_F(DomainLawyerTest, VerifyPortIsDistinct2) {
+  ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com:81", &message_handler_));
+  std::string mapped_domain_name;
+  EXPECT_FALSE(domain_lawyer_.MapRequestToDomain(
+      GURL("http://www.other.com/index.html"),
+      "http://www.example.com/styles.css",
+      &mapped_domain_name, &message_handler_));
+}
+
+TEST_F(DomainLawyerTest, VerifyWildcardedPortSpec) {
+  ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com*", &message_handler_));
+  std::string mapped_domain_name;
+  EXPECT_TRUE(domain_lawyer_.MapRequestToDomain(
+      GURL("http://www.other.com/index.html"),
+      "http://www.example.com/styles.css",
+      &mapped_domain_name, &message_handler_));
+  EXPECT_TRUE(domain_lawyer_.MapRequestToDomain(
+      GURL("http://www.other.com/index.html"),
+      "http://www.example.com:81/styles.css",
+      &mapped_domain_name, &message_handler_));
 }
 
 }  // namespace net_instaweb

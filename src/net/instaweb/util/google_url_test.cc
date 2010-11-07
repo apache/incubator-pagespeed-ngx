@@ -24,6 +24,7 @@
 namespace {
 
 const char kUrl[] = "http://a.com/b/c/d.ext?f=g/h";
+const char kUrlWithPort[] = "http://a.com:8080/b/c/d.ext?f=g/h";
 
 }  // namespace
 
@@ -31,9 +32,10 @@ namespace net_instaweb {
 
 class GoogleUrlTest : public testing::Test {
  protected:
-  GoogleUrlTest() : gurl_(kUrl) {}
+  GoogleUrlTest() : gurl_(kUrl), gurl_with_port_(kUrlWithPort) {}
 
   GURL gurl_;
+  GURL gurl_with_port_;
 };
 
 TEST_F(GoogleUrlTest, TestSpec) {
@@ -42,6 +44,16 @@ TEST_F(GoogleUrlTest, TestSpec) {
   EXPECT_EQ(std::string("d.ext?f=g/h"), GoogleUrl::Leaf(gurl_));
   EXPECT_EQ(std::string("http://a.com"), GoogleUrl::Origin(gurl_));
   EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"), GoogleUrl::PathAndLeaf(gurl_));
+}
+
+TEST_F(GoogleUrlTest, TestSpecWithPort) {
+  EXPECT_EQ(std::string(kUrlWithPort), GoogleUrl::Spec(gurl_with_port_));
+  EXPECT_EQ(std::string("http://a.com:8080/b/c"),
+            GoogleUrl::AllExceptLeaf(gurl_with_port_));
+  EXPECT_EQ(std::string("d.ext?f=g/h"), GoogleUrl::Leaf(gurl_with_port_));
+  EXPECT_EQ(std::string("http://a.com:8080"), GoogleUrl::Origin(gurl_with_port_));
+  EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"),
+            GoogleUrl::PathAndLeaf(gurl_with_port_));
 }
 
 }  // namespace net_instaweb
