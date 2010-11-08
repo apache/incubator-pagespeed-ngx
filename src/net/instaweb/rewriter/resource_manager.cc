@@ -32,7 +32,9 @@
 #include "net/instaweb/util/public/http_cache.h"
 #include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/statistics.h"
 #include <string>
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
 
@@ -51,6 +53,11 @@ const char kCacheControl[] = "Cache-control";
 // resource.  After that TTL has expired, we will need to re-fetch the
 // resources from their origin, and recompute the hash.
 const char kFilenameCacheKeyPrefix[] = "ResourceName:";
+
+// resource_url_domain_rejections counts the number of urls on a page that we
+// could have rewritten, except that they lay in a domain that did not
+// permit resource rewriting relative to the current page.
+const char kResourceUrlDomainRejections[] = "resource_url_domain_rejections";
 
 }  // namespace
 
@@ -74,6 +81,7 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       url_async_fetcher_(url_async_fetcher),
       hasher_(hasher),
       statistics_(NULL),
+      resource_url_domain_rejections_(NULL),
       http_cache_(http_cache),
       url_escaper_(new UrlEscaper()),
       relative_path_(false),
@@ -84,6 +92,10 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
 }
 
 ResourceManager::~ResourceManager() {
+}
+
+void ResourceManager::Initialize(Statistics* statistics) {
+  statistics->AddVariable(kResourceUrlDomainRejections);
 }
 
 void ResourceManager::SetUrlPrefixPattern(const StringPiece& pattern) {
@@ -320,6 +332,21 @@ void ResourceManager::set_filename_prefix(const StringPiece& file_prefix) {
   file_prefix.CopyToString(&file_prefix_);
 }
 
+// Implements lazy initialization of resource_url_domain_rejections_,
+// necessitated by the fact that we can set_statistics before
+// Initialize(...) has been called and thus can't safely look
+// for the variable until first use.
+void ResourceManager::IncrementResourceUrlDomainRejections() {
+  if (resource_url_domain_rejections_ == NULL) {
+    if (statistics_ == NULL) {
+      return;
+    }
+    resource_url_domain_rejections_ =
+        statistics_->GetVariable(kResourceUrlDomainRejections);
+  }
+  resource_url_domain_rejections_->Add(1);
+}
+
 Resource* ResourceManager::CreateInputResource(const GURL& base_gurl,
                                                const StringPiece& input_url,
                                                MessageHandler* handler) {
@@ -330,9 +357,9 @@ Resource* ResourceManager::CreateInputResource(const GURL& base_gurl,
     const GURL* input_gurl = partnership.FullPath(0);
     resource = CreateInputResourceUnchecked(*input_gurl, handler);
   } else {
-    // Note: Bad user-content can leave us here.
-    handler->Message(kWarning, "%s: Invalid url relative to '%s'",
+    handler->Message(kInfo, "%s: Invalid url relative to '%s'",
                      input_url.as_string().c_str(), base_gurl.spec().c_str());
+    IncrementResourceUrlDomainRejections();
     resource = NULL;
   }
   return resource;

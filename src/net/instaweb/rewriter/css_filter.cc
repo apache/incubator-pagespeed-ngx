@@ -172,8 +172,14 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
     int64 out_text_size = static_cast<int64>(out_text->size());
     int64 in_text_size = static_cast<int64>(in_text.size());
 
-    // Don't rewrite if we (for some reason) make it bigger.
+    // Don't rewrite if we don't make it smaller.
     ret = (out_text_size < in_text_size);
+
+    // Don't rewrite if we blanked the CSS file! (This is a parse error)
+    if (out_text_size == 0) {
+      ret = false;
+      num_parse_failures_->Add(1);
+    }
 
     // Statistics
     if (ret && num_files_minified_ != NULL) {

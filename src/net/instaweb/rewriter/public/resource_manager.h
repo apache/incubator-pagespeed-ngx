@@ -50,6 +50,7 @@ class ResourceNamer;
 class Statistics;
 class UrlAsyncFetcher;
 class UrlEscaper;
+class Variable;
 class Writer;
 
 class ResourceManager {
@@ -66,6 +67,9 @@ class ResourceManager {
                   HTTPCache* http_cache,
                   DomainLawyer* domain_lawyer);
   ~ResourceManager();
+
+  // Initialize statistics gathering.
+  static void Initialize(Statistics* statistics);
 
   // Created resources are managed by ResourceManager and eventually deleted by
   // ResourceManager's destructor.  Every time a Create...Resource... method is
@@ -185,7 +189,10 @@ class ResourceManager {
 
   void set_filename_prefix(const StringPiece& file_prefix);
   Statistics* statistics() const { return statistics_; }
-  void set_statistics(Statistics* s) { statistics_ = s; }
+  void set_statistics(Statistics* s) {
+    statistics_ = s;
+    resource_url_domain_rejections_ = NULL;  // Lazily initialized.
+  }
   void set_relative_path(bool x) { relative_path_ = x; }
 
   bool FetchOutputResource(
@@ -241,6 +248,7 @@ class ResourceManager {
   const DomainLawyer* domain_lawyer() const { return domain_lawyer_; }
 
  private:
+  inline void IncrementResourceUrlDomainRejections();
   std::string ConstructNameKey(const OutputResource& output) const;
   void ValidateShardsAgainstUrlPrefixPattern();
   std::string CanonicalizeBase(const StringPiece& base, int* shard) const;
@@ -254,6 +262,7 @@ class ResourceManager {
   UrlAsyncFetcher* url_async_fetcher_;
   Hasher* hasher_;
   Statistics* statistics_;
+  Variable* resource_url_domain_rejections_;
   HTTPCache* http_cache_;
   scoped_ptr<UrlEscaper> url_escaper_;
   bool relative_path_;

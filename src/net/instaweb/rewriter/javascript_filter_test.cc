@@ -41,7 +41,8 @@ const char kFilterId[] = "jm";
 #define SOURCE_PREFIX "http://test.com/"
 
 const char kRewrittenJsPath[] = SOURCE_PREFIX REWRITTEN_JS_ID_HASH_NAME;
-const char kRewrittenJsPathExt[] = SOURCE_PREFIX REWRITTEN_JS_ID_HASH_NAME ".js";
+const char kRewrittenJsPathExt[] =
+    SOURCE_PREFIX REWRITTEN_JS_ID_HASH_NAME ".js";
 const char kRewrittenJsName[] = REWRITTEN_JS_NAME;
 
 }  // namespace

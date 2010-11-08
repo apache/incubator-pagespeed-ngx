@@ -97,6 +97,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     CssMoveToHeadFilter::Initialize(statistics);
     ImgRewriteFilter::Initialize(statistics);
     JavascriptFilter::Initialize(statistics);
+    ResourceManager::Initialize(statistics);
     UrlLeftTrimFilter::Initialize(statistics);
   }
 }

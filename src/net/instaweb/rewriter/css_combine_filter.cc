@@ -194,8 +194,6 @@ void CssCombineFilter::TryCombineAccumulated() {
       if ((css_resource == NULL) ||
           !resource_manager_->ReadIfCached(css_resource.get(), handler) ||
           !css_resource->ContentsValid()) {
-        handler->Message(kWarning, "Failed to create or read input resource %s",
-                         href->value());
         // Combine what we have so far.
         CombineResources(&combine_elements, &combine_resources,
                          &multipart_encoder);
