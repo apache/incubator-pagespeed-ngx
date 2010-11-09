@@ -51,6 +51,17 @@ const int64 RewriteOptions::kDefaultImgInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultCssOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
+
+// IE limits URL size overall to about 2k characters.  See
+// http://support.microsoft.com/kb/208427/EN-US
+const int RewriteOptions::kMaxUrlSize = 2083;
+
+// See http://code.google.com/p/modpagespeed/issues/detail?id=9
+// Apache evidently limits each URL path segment (between /) to
+// about 256 characters.  This is not a fundamental URL limitation
+// but is Apache specific.
+const int64 RewriteOptions::kMaxUrlSegmentSize = 0;  // unlimited
+
 const std::string RewriteOptions::kDefaultBeaconUrl =
     "/mod_pagespeed_beacon?ets=";
 

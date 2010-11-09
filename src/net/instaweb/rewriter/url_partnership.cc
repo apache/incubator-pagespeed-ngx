@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/url_partnership.h"
 
+#include <algorithm>  // for std::min
 #include <string>
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -34,7 +35,6 @@ UrlPartnership::~UrlPartnership() {
 // after Resolve (CHECK failure).
 bool UrlPartnership::AddUrl(const StringPiece& resource_url,
                             MessageHandler* handler) {
-  CHECK(!resolved_);
   std::string mapped_domain_name;
   bool ret = false;
   if (!original_request_.is_valid()) {
@@ -52,83 +52,88 @@ bool UrlPartnership::AddUrl(const StringPiece& resource_url,
 
     if (ret) {
       // TODO(jmarantz): Consider getting the GURL out of the
-      // DomainLawyer instead of recomputing it.  This is deferred
-      // for now because DomainLawyer is under review and I don't
-      // want to change it.
-      std::string url_str(resource_url.data(), resource_url.size());
-      GURL gurl = original_request_.Resolve(url_str);
+      // DomainLawyer instead of recomputing it.
+      GURL gurl = GoogleUrl::Resolve(original_request_, resource_url);
       CHECK(gurl.is_valid() && gurl.SchemeIs("http"));
       gurl_vector_.push_back(new GURL(gurl));
+      IncrementalResolve(gurl_vector_.size() - 1);
     }
   }
   return ret;
 }
 
-// Call after finishing all URLs.
-void UrlPartnership::Resolve() {
-  if (!resolved_) {
-    resolved_ = true;
-    if (!gurl_vector_.empty()) {
-      std::vector<StringPiece> common_components;
-      std::string base = GoogleUrl::AllExceptLeaf(*gurl_vector_[0]);
+void UrlPartnership::RemoveLast() {
+  CHECK(!gurl_vector_.empty());
+  int last = gurl_vector_.size() - 1;
+  delete gurl_vector_[last];
+  gurl_vector_.resize(last);
 
-      if (gurl_vector_.size() == 1) {
-        resolved_base_ = base + "/";
-      } else {
-        bool omit_empty = false;  // don't corrupt "http://x" by losing '/'
-        SplitStringPieceToVector(base, "/", &common_components, omit_empty);
-        int num_components = common_components.size();
-        CHECK_LE(3, num_components);  // expect at least {"http:", "", "x"}
+  // Re-resolve the entire partnership in the absense of the influence of the
+  // ex-partner, by re-adding the GURLs one at a time.
+  common_components_.clear();
+  for (int i = 0, n = gurl_vector_.size(); i < n; ++i) {
+    IncrementalResolve(i);
+  }
+}
 
-        // Split each string on / boundaries, then compare these path elements
-        // until one doesn't match, then shortening common_components.
-        for (int i = 1, n = gurl_vector_.size(); i < n; ++i) {
-          std::string all_but_leaf =
-              GoogleUrl::AllExceptLeaf(*gurl_vector_[i]);
-          std::vector<StringPiece> components;
-          SplitStringPieceToVector(all_but_leaf, "/", &components, omit_empty);
-          CHECK_LE(3U, components.size());  // expect {"http:", "", "x"...}
+void UrlPartnership::IncrementalResolve(int index) {
+  CHECK_LE(0, index);
+  CHECK_LT(index, static_cast<int>(gurl_vector_.size()));
 
-          if (static_cast<int>(components.size()) < num_components) {
-            num_components = components.size();
-          }
-          for (int c = 0; c < num_components; ++c) {
-            if (common_components[c] != components[c]) {
-              num_components = c;
-              break;
-            }
-          }
-        }
+  // When tokenizing a URL, we don't want to omit empty segments
+  // because we need to avoid aliasing "http://x" with "http://x".
+  bool omit_empty = false;
+  std::vector<StringPiece> components;
 
-        // Now resurrect the resolved base using the common components.
-        CHECK(resolved_base_.empty());
-        CHECK_LE(3, num_components);
-        for (int c = 0; c < num_components; ++c) {
-          common_components[c].AppendToString(&resolved_base_);
-          resolved_base_ += "/";  // initial segment is "http" with no leading /
-        }
+  if (index == 0) {
+    std::string base = GoogleUrl::AllExceptLeaf(*gurl_vector_[0]);
+    SplitStringPieceToVector(base, "/", &components, omit_empty);
+    CHECK_LE(3U, components.size());  // expect {"http:", "", "x"...}
+    for (size_t i = 0; i < components.size(); ++i) {
+      const StringPiece& sp = components[i];
+      common_components_.push_back(std::string(sp.data(), sp.size()));
+    }
+  } else {
+    // Split each string on / boundaries, then compare these path elements
+    // until one doesn't match, then shortening common_components.
+    std::string all_but_leaf = GoogleUrl::AllExceptLeaf(*gurl_vector_[index]);
+    SplitStringPieceToVector(all_but_leaf, "/", &components, omit_empty);
+    CHECK_LE(3U, components.size());  // expect {"http:", "", "x"...}
+
+    if (components.size() < common_components_.size()) {
+      common_components_.resize(components.size());
+    }
+    for (size_t c = 0; c < common_components_.size(); ++c) {
+      if (common_components_[c] != components[c]) {
+        common_components_.resize(c);
+        break;
       }
-
-      // TODO(jmarantz): resolve the domain shard if needed.
     }
   }
 }
 
-StringPiece UrlPartnership::ResolvedBase() const {
-  CHECK(resolved_);
-  return resolved_base_;
+std::string UrlPartnership::ResolvedBase() const {
+  std::string ret;
+  if (!common_components_.empty()) {
+    for (size_t c = 0; c < common_components_.size(); ++c) {
+      const std::string& component = common_components_[c];
+      ret += component;
+      ret += "/";  // initial segment is "http" with no leading /
+    }
+  }
+  return ret;
 }
 
 // Returns the relative path of a particular URL that was added into
 // the partnership.  This requires that Resolve() be called first.
 std::string UrlPartnership::RelativePath(int index) const {
-  CHECK(resolved_);
+  std::string resolved_base = ResolvedBase();
   std::string spec = gurl_vector_[index]->spec();
-  CHECK_GE(spec.size(), resolved_base_.size());
-  CHECK_EQ(StringPiece(spec.data(), resolved_base_.size()),
-           StringPiece(resolved_base_));
-  return std::string(spec.data() + resolved_base_.size(),
-                      spec.size() - resolved_base_.size());
+  CHECK_GE(spec.size(), resolved_base.size());
+  CHECK_EQ(StringPiece(spec.data(), resolved_base.size()),
+           StringPiece(resolved_base));
+  return std::string(spec.data() + resolved_base.size(),
+                      spec.size() - resolved_base.size());
 }
 
 }  // namespace net_instaweb

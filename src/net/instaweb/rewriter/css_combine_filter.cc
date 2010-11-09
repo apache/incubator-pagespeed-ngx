@@ -83,6 +83,10 @@ CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
       resource_manager_(driver->resource_manager()),
       css_tag_scanner_(html_parse_),
       css_file_count_reduction_(NULL) {
+  // This CHECK is here because RewriteDriver is constructed with it's
+  // resource_manager_ == NULL.
+  // TODO(sligocki): Construct RewriteDriver with a ResourceManager.
+  CHECK(resource_manager_ != NULL);
   s_link_ = html_parse_->Intern("link");
   s_href_ = html_parse_->Intern("href");
   s_type_ = html_parse_->Intern("type");
@@ -162,7 +166,6 @@ void CssCombineFilter::TryCombineAccumulated() {
   if (partnership_.get() == NULL) {
     return;
   }
-  partnership_->Resolve();
   MessageHandler* handler = html_parse_->message_handler();
 
   // It's possible that we'll have found 2 css files to combine, but one

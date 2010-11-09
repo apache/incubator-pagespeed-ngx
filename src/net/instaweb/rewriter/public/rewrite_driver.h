@@ -143,7 +143,7 @@ class RewriteDriver {
   }
 
  private:
-  friend class RewriterTest;
+  friend class ResourceManagerTestBase;
   static const char kResourceFetches[];
   typedef std::map<std::string, RewriteFilter*> StringFilterMap;
   typedef void (RewriteDriver::*SetStringMethod)(const StringPiece& value);

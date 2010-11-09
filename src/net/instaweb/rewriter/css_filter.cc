@@ -178,7 +178,9 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
     // Don't rewrite if we blanked the CSS file! (This is a parse error)
     if (out_text_size == 0) {
       ret = false;
-      num_parse_failures_->Add(1);
+      if (num_parse_failures_ != NULL) {
+        num_parse_failures_->Add(1);
+      }
     }
 
     // Statistics

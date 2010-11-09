@@ -210,7 +210,7 @@ int instaweb_handler(request_rec* request) {
 
   // Only handle GET request
   if (request->method_number != M_GET) {
-    ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Not GET request: %d.", request->method_number);
     ret = DECLINED;
   } else if (strcmp(request->handler, "mod_pagespeed_statistics") == 0) {

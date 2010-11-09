@@ -128,6 +128,10 @@ bool MemFileSystem::MakeDir(const char* path, MessageHandler* handler) {
 
 FileSystem::InputFile* MemFileSystem::OpenInputFile(
     const char* filename, MessageHandler* message_handler) {
+  if (!enabled_) {
+    return NULL;
+  }
+
   StringMap::const_iterator iter = string_map_.find(filename);
   if (iter == string_map_.end()) {
     message_handler->Error(filename, 0, "opening input file: %s",

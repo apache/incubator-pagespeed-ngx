@@ -63,9 +63,6 @@ class UrlPartnershipTest : public testing::Test {
     if (url3 != NULL) {
       ret &= partnership_.AddUrl(url3, &message_handler_);
     }
-    if (ret) {
-      partnership_.Resolve();
-    }
     return ret;
   }
 
@@ -178,6 +175,13 @@ TEST_F(UrlPartnershipTest, AbsExternalDomainDeclaredButNotMapped) {
 TEST_F(UrlPartnershipTest, EmptyTail) {
   AddUrls("http:/www.nytimes.com/", NULL, NULL);
   EXPECT_EQ(std::string(""), partnership_.RelativePath(0));
+}
+
+TEST_F(UrlPartnershipTest, RemoveLast) {
+  AddUrls(kAbsoluteResourceUrl1, kAbsoluteResourceUrl2, kAbsoluteResourceUrl3);
+  EXPECT_EQ(r_path_, partnership_.ResolvedBase());
+  partnership_.RemoveLast();
+  EXPECT_EQ(styles_path_, partnership_.ResolvedBase());
 }
 
 }  // namespace net_instaweb

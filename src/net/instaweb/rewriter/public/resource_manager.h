@@ -226,6 +226,9 @@ class ResourceManager {
 
   // TODO(jmarantz): check thread safety in Apache.
   Hasher* hasher() { return hasher_; }
+  // This setter should probably only be used in testing.
+  void set_hasher(Hasher* hasher) { hasher_ = hasher; }
+
   FileSystem* file_system() { return file_system_; }
   FilenameEncoder* filename_encoder() const { return filename_encoder_; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
@@ -268,6 +271,8 @@ class ResourceManager {
   bool relative_path_;
   bool store_outputs_in_file_system_;
   DomainLawyer* domain_lawyer_;
+  int max_url_segment_size_;  // for http://a/b/c.d, this is == strlen("c.d")
+  int max_url_size_;          // but this is strlen("http://a/b/c.d")
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

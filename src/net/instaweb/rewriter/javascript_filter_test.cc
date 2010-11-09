@@ -41,8 +41,7 @@ const char kFilterId[] = "jm";
 #define SOURCE_PREFIX "http://test.com/"
 
 const char kRewrittenJsPath[] = SOURCE_PREFIX REWRITTEN_JS_ID_HASH_NAME;
-const char kRewrittenJsPathExt[] =
-    SOURCE_PREFIX REWRITTEN_JS_ID_HASH_NAME ".js";
+const char kRewrittenJsPathExt[] = SOURCE_PREFIX REWRITTEN_JS_ID_HASH_NAME ".js";
 const char kRewrittenJsName[] = REWRITTEN_JS_NAME;
 
 }  // namespace
@@ -97,7 +96,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
 
   // When we start, there are no mock fetchers, so we'll need to get it
   // from the cache or the disk.  Start with the cache.
-  file_system_.disable();
+  file_system_.Disable();
   SimpleMetaData headers;
   resource_manager_->SetDefaultHeaders(&kContentTypeJavascript, &headers);
   http_cache_.Put(kRewrittenJsPathExt, headers, kJsMinData, &message_handler_);
@@ -109,7 +108,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
 
   // Now remove it from the cache, but put it in the file system.  Make sure
   // that works.  Still there is no mock fetcher.
-  file_system_.enable();
+  file_system_.Enable();
   lru_cache_->Clear();
 
   // Getting the filename is kind of a drag, isn't it.  But someone's
@@ -131,7 +130,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(kRewrittenJsPathExt));
 
   // Finally, nuke the file, nuke the cache, get it via a fetch.
-  file_system_.disable();
+  file_system_.Disable();
   ASSERT_TRUE(file_system_.RemoveFile(filename.c_str(), &message_handler_));
   lru_cache_->Clear();
   InitTest(100);
@@ -141,7 +140,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
 
   // Now we expect both the file and the cache entry to be there.
   EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(kRewrittenJsPathExt));
-  file_system_.enable();
+  file_system_.Enable();
   EXPECT_TRUE(file_system_.Exists(filename.c_str(), &message_handler_)
               .is_true());
 }

@@ -41,22 +41,17 @@ class UrlPartnership {
   explicit UrlPartnership(const DomainLawyer* domain_lawyer,
                           const GURL& original_request)
       : domain_lawyer_(domain_lawyer),
-        original_request_(original_request),
-        resolved_(false) {
+        original_request_(original_request) {
   }
   ~UrlPartnership();
 
   // Adds a URL to a combination.  If it can be legally added, consulting
-  // the DomainLaywer, then true is returned.  AddUrl cannot be called
-  // after Resolve (CHECK failure).
+  // the DomainLaywer, then true is returned.
   bool AddUrl(const StringPiece& resource_url, MessageHandler* handler);
 
-  // Call after finishing all URLs.
-  void Resolve();
-
-  // Returns the resolved base common to all URLs.  This will always
+  // Computes the resolved base common to all URLs.  This will always
   // have a trailing slash.
-  StringPiece ResolvedBase() const;
+  std::string ResolvedBase() const;
 
   // Returns the number of URLs that have been successfully added.
   int num_urls() { return gurl_vector_.size(); }
@@ -68,14 +63,21 @@ class UrlPartnership {
   // Returns the full resolved path
   const GURL* FullPath(int index) const { return gurl_vector_[index]; }
 
+  // Removes the last URL that was added to the partnership.
+  void RemoveLast();
+
  private:
+  void IncrementalResolve(int index);
+
   typedef std::vector<GURL*> GurlVector;
   GurlVector gurl_vector_;
-  std::string resolved_base_;
   std::string domain_;
   const DomainLawyer* domain_lawyer_;
   GURL original_request_;
-  bool resolved_;
+
+  // common_components_ is updated while adding Urls to support incremental
+  // resolution.
+  StringVector common_components_;
 
   DISALLOW_COPY_AND_ASSIGN(UrlPartnership);
 };

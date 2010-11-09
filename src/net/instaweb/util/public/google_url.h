@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_URL_H_
 
 #include <string>
+#include "net/instaweb/util/public/string_util.h"
 
 
 #include "googleurl/src/gurl.h"
@@ -30,6 +31,21 @@ namespace GoogleUrl {
 
 // Helper functions around GURL to make it a little easier to use
 inline std::string Spec(const GURL& gurl) { return gurl.spec(); }
+
+// Makes a GURL object from a StringPiece.
+inline GURL Create(const StringPiece& sp) { return GURL(sp.as_string()); }
+
+// Makes a GURL object from a string.
+inline GURL Create(const std::string& str) { return GURL(str.c_str()); }
+
+// Resolves a GURL object and a new path into a new GURL.
+inline GURL Resolve(const GURL& gurl, const StringPiece& sp) {
+  return gurl.Resolve(sp.as_string()); }
+
+// Resolves a GURL object and a new path into a new GURL.
+inline GURL Resolve(const GURL& gurl, const std::string& str) {
+  return gurl.Resolve(str.c_str());
+}
 
 // For "http://a.com/b/c/d?e=f/g returns "http://a/b/c", omitting trailing slash.
 std::string AllExceptLeaf(const GURL& gurl);

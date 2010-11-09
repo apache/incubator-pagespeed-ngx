@@ -107,8 +107,8 @@ class HtmlLexer {
   void EmitTagBriefClose();
   void EmitDirective();
 
-  // Emits an error message.
-  void Warning(const char* format, ...) INSTAWEB_PRINTF_FORMAT(2, 3);
+  // Emits a syntax error message.
+  void SyntaxError(const char* format, ...) INSTAWEB_PRINTF_FORMAT(2, 3);
 
   // Takes an interned tag, and tries to find a matching HTML element on
   // the stack.  If it finds it, it pops all the intervening elements off

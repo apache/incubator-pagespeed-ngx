@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/content_type.h"
@@ -86,7 +87,9 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       url_escaper_(new UrlEscaper()),
       relative_path_(false),
       store_outputs_in_file_system_(true),
-      domain_lawyer_(domain_lawyer) {
+      domain_lawyer_(domain_lawyer),
+      max_url_segment_size_(RewriteOptions::kMaxUrlSegmentSize),
+      max_url_size_(RewriteOptions::kMaxUrlSize) {
   file_prefix.CopyToString(&file_prefix_);
   SetUrlPrefixPattern(url_prefix_pattern);
 }
@@ -261,8 +264,7 @@ OutputResource* ResourceManager::CreateOutputResourceForRewrittenUrl(
   OutputResource* output_resource = NULL;
   UrlPartnership partnership(domain_lawyer_, document_gurl);
   if (partnership.AddUrl(resource_url, handler)) {
-    partnership.Resolve();
-    const StringPiece& base = partnership.ResolvedBase();
+    std::string base = partnership.ResolvedBase();
     std::string relative_url = partnership.RelativePath(0);
     std::string name;
     encoder->EncodeToUrlSegment(relative_url, &name);
@@ -353,7 +355,6 @@ Resource* ResourceManager::CreateInputResource(const GURL& base_gurl,
   UrlPartnership partnership(domain_lawyer_, base_gurl);
   Resource* resource = NULL;
   if (partnership.AddUrl(input_url, handler)) {
-    partnership.Resolve();
     const GURL* input_gurl = partnership.FullPath(0);
     resource = CreateInputResourceUnchecked(*input_gurl, handler);
   } else {

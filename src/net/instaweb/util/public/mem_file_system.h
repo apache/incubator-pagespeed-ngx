@@ -33,7 +33,7 @@ namespace net_instaweb {
 // enable testing resilience to concurrency problems with real filesystems.
 class MemFileSystem : public FileSystem {
  public:
-  MemFileSystem() : temp_file_index_(0), current_time_(0) {}
+  MemFileSystem() : enabled_(true), temp_file_index_(0), current_time_(0) {}
   virtual ~MemFileSystem();
 
   // We offer a "simulated atime" in which the clock ticks forward one
@@ -67,13 +67,20 @@ class MemFileSystem : public FileSystem {
   // Empties out the entire filesystem.  Should not be called while files
   // are open.
   void Clear();
+
+  // Test-specific functionality to disable and re-enabele the file-system.
+  void Disable() { enabled_ = false; }
+  void Enable() { enabled_ = true; }
+
  private:
+  bool enabled_;  // When disabled, OpenInputFile returns NULL.
   typedef std::map<std::string, std::string> StringMap;
   StringMap string_map_;
   std::map<std::string, int64> atime_map_;
   int temp_file_index_;
   int current_time_;
   std::map<std::string, bool> lock_map_;
+
   DISALLOW_COPY_AND_ASSIGN(MemFileSystem);
 };
 

@@ -66,6 +66,9 @@ class UrlMultipartEncoder {
   // Returns the url at the index.
   const std::string& url(int index) const { return urls_[index]; }
 
+  // Removes the last URL.
+  void pop_back() { urls_.pop_back(); }
+
  private:
   StringVector urls_;
 

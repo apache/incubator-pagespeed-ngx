@@ -82,6 +82,16 @@ class RewriteOptions {
   static const int64 kDefaultJsOutlineMinBytes;
   static const std::string kDefaultBeaconUrl;
 
+  // IE limits URL size overall to about 2k characters.  See
+  // http://support.microsoft.com/kb/208427/EN-US
+  static const int kMaxUrlSize;
+
+  // See http://code.google.com/p/modpagespeed/issues/detail?id=9
+  // Apache evidently limits each URL path segment (between /) to
+  // about 256 characters.  This is not fundamental URL limitation
+  // but is Apache specific.
+  static const int64 kMaxUrlSegmentSize;
+
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
 
   RewriteOptions();
@@ -120,6 +130,15 @@ class RewriteOptions {
   const std::string& beacon_url() const { return beacon_url_; }
   void set_beacon_url(const StringPiece& p) { p.CopyToString(&beacon_url_); }
 
+  // The maximum length of a URL segment.
+  // for http://a/b/c.d, this is == strlen("c.d")
+  int max_url_segment_size() const { return max_url_segment_size_; }
+  void set_max_url_segment_size(int x) { max_url_segment_size_ = x; }
+
+  // The maximum size of the entire URL.  If '0', this is left unlimited.
+  int max_url_size() const { return max_url_size_; }
+  void set_max_url_size(int x) { max_url_size_ = x; }
+
  private:
   typedef std::set<Filter> FilterSet;
   typedef std::map<std::string, Filter> NameToFilterMap;
@@ -141,6 +160,8 @@ class RewriteOptions {
   int64 js_outline_min_bytes_;
   int num_shards_;
   std::string beacon_url_;
+  int max_url_segment_size_;  // for http://a/b/c.d, this is == strlen("c.d")
+  int max_url_size_;          // but this is strlen("http://a/b/c.d")
 
   DISALLOW_COPY_AND_ASSIGN(RewriteOptions);
 };
