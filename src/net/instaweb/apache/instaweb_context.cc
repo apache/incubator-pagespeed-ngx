@@ -39,7 +39,7 @@ InstawebContext::InstawebContext(request_rec* request,
     custom_rewriter_.reset(factory->NewCustomRewriteDriver(custom_options));
     rewrite_driver_ = custom_rewriter_.get();
   } else {
-    rewrite_driver_ = factory->GetRewriteDriver();
+    rewrite_driver_ = factory->NewRewriteDriver();
   }
 
   ComputeContentEncoding(request);

@@ -309,6 +309,19 @@ TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreadedAsync) {
     usleep(kPollTimeUs);
     completed = CountCompletedFetches(0, 3);
   }
+
+  // TODO(jmarantz): I have seen this test fail; then pass when it was
+  // run a second time.  Find the flakiness and fix it.
+  //    Value of: completed
+  //    Actual: 0
+  //    Expected: 3
+  //
+  // In the meantime, if this fails, re-running will help you determine whether
+  // this is due to your CL or not.  It's possible this is associated with a
+  // recent change to the thread loop in serf_url_async_fetcher.cc to use
+  // sleep(1) rather than a mutex to keep from spinning when there is nothing
+  // to do.  Maybe a little more than 5 seconds is now needed to complete 3
+  // async fetches.
   ASSERT_EQ(3, completed) << "Async fetches times out before completing";
   EXPECT_TRUE(TestFetch(0, 3));
 }

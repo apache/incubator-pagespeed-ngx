@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 
+#include <set>
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
@@ -157,7 +158,7 @@ class RewriteDriverFactory {
   // slurp_directory and slurp_read_only.
   virtual UrlFetcher* ComputeUrlFetcher();
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
-  ResourceManager* ComputeResourceManager();
+  virtual ResourceManager* ComputeResourceManager();
 
   // Generates a new mutex, hasher.
   virtual AbstractMutex* NewMutex() = 0;
@@ -169,6 +170,10 @@ class RewriteDriverFactory {
   // returned drivers are deleted by the factory; they do not need to
   // be deleted by the allocator.
   RewriteDriver* NewRewriteDriver();
+
+  // Releases a rewrite driver back into the pool.  These are free-listed
+  // because they are not cheap to construct.
+  void ReleaseRewriteDriver(RewriteDriver* rewrite_driver);
 
   // Generates a custom RewriteDriver using the passed-in options.  This
   // driver is *not* managed by the factory: you must delete it after
@@ -244,7 +249,16 @@ class RewriteDriverFactory {
 
   scoped_ptr<ResourceManager> resource_manager_;
 
-  std::vector<RewriteDriver*> rewrite_drivers_;
+  // RewriteDrivers that were previously allocated, but have
+  // been released with ReleaseRewriteDriver, and are ready
+  // for re-use with NewRewriteDriver.
+  std::vector<RewriteDriver*> available_rewrite_drivers_;
+
+  // RewriteDrivers that are currently in use.  This is retained
+  // as a sanity check to make sure our system is coherent,
+  // and to facilitate complete cleanup if a Shutdown occurs
+  // while a request is in flight.
+  std::set<RewriteDriver*> active_rewrite_drivers_;
 
   // Caching support
   scoped_ptr<HTTPCache> http_cache_;

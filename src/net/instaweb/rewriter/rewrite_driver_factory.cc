@@ -215,6 +215,15 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
   return resource_manager_.get();
 }
 
+// TODO(jmaessen): Note that we *could* re-structure the
+// rewrite_driver freelist code as follows: Keep a
+// std::vector<RewriteDriver*> of all rewrite drivers.  Have each
+// driver hold its index in the vector (as a number or iterator).
+// Keep index of first in use.  To free, swap with first in use,
+// adjusting indexes, and increment first in use.  To allocate,
+// decrement first in use and return that driver.  If first in use was
+// 0, allocate a fresh driver and push it.
+
 RewriteDriver* RewriteDriverFactory::NewCustomRewriteDriver(
     const RewriteOptions& options) {
   RewriteDriver* rewrite_driver =  new RewriteDriver(
@@ -225,13 +234,29 @@ RewriteDriver* RewriteDriverFactory::NewCustomRewriteDriver(
   return rewrite_driver;
 }
 
+
 RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
-  RewriteDriver* rewrite_driver = NewCustomRewriteDriver(options_);
-  {
-    ScopedMutex lock(rewrite_drivers_mutex());
-    rewrite_drivers_.push_back(rewrite_driver);
+  ScopedMutex lock(rewrite_drivers_mutex());
+  RewriteDriver* rewrite_driver = NULL;
+  if (!available_rewrite_drivers_.empty()) {
+    rewrite_driver = available_rewrite_drivers_.back();
+    available_rewrite_drivers_.pop_back();
+  } else {
+    rewrite_driver = NewCustomRewriteDriver(options_);
   }
+  active_rewrite_drivers_.insert(rewrite_driver);
   return rewrite_driver;
+}
+
+void RewriteDriverFactory::ReleaseRewriteDriver(
+    RewriteDriver* rewrite_driver) {
+  ScopedMutex lock(rewrite_drivers_mutex());
+  int count = active_rewrite_drivers_.erase(rewrite_driver);
+  if (count != 1) {
+    LOG(ERROR) << "ReleaseRewriteDriver called with driver not in active set.";
+  } else {
+    available_rewrite_drivers_.push_back(rewrite_driver);
+  }
 }
 
 void RewriteDriverFactory::AddPlatformSpecificRewritePasses(
@@ -311,8 +336,8 @@ void RewriteDriverFactory::ShutDown() {
     delete url_fetcher_;
   }
   url_fetcher_ = NULL;
-  STLDeleteContainerPointers(rewrite_drivers_.begin(), rewrite_drivers_.end());
-  rewrite_drivers_.clear();
+  STLDeleteElements(&active_rewrite_drivers_);
+  STLDeleteElements(&available_rewrite_drivers_);
 
   file_system_.reset(NULL);
   hasher_.reset(NULL);

@@ -38,9 +38,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   explicit ApacheRewriteDriverFactory(apr_pool_t* pool, server_rec* server);
   virtual ~ApacheRewriteDriverFactory();
 
-  RewriteDriver* GetRewriteDriver();
-  void ReleaseRewriteDriver(RewriteDriver* rewrite_driver);
-
   virtual Hasher* NewHasher();
   virtual AbstractMutex* NewMutex();
 
@@ -89,9 +86,11 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   // Disable the Resource Manager's filesystem since we have a
   // write-through http_cache.
-  virtual bool ShouldWriteResourcesToFileSystem() {
-    return false;
-  }
+  virtual bool ShouldWriteResourcesToFileSystem() { return false; }
+
+  // When computing the resource manager for Apache, be sure to set up
+  // the statistics.
+  virtual ResourceManager* ComputeResourceManager();
 
   // Release all the resources. It also calls the base class ShutDown to release
   // the base class resources.
@@ -102,8 +101,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   server_rec* server_rec_;
   scoped_ptr<AbstractMutex> cache_mutex_;
   scoped_ptr<AbstractMutex> rewrite_drivers_mutex_;
-  std::vector<RewriteDriver*> available_rewrite_drivers_;
-  std::set<RewriteDriver*> active_rewrite_drivers_;
   SerfUrlFetcher* serf_url_fetcher_;
   SerfUrlAsyncFetcher* serf_url_async_fetcher_;
   AprStatistics* statistics_;

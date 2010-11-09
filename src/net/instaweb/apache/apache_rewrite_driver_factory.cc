@@ -133,28 +133,11 @@ AbstractMutex* ApacheRewriteDriverFactory::NewMutex() {
   return new AprMutex(pool_);
 }
 
-RewriteDriver* ApacheRewriteDriverFactory::GetRewriteDriver() {
-  RewriteDriver* rewrite_driver = NULL;
-  if (!available_rewrite_drivers_.empty()) {
-    rewrite_driver = available_rewrite_drivers_.back();
-    available_rewrite_drivers_.pop_back();
-  } else {
-    ComputeResourceManager()->set_statistics(statistics_);
-    // Create a RewriteDriver using base class.
-    rewrite_driver = NewRewriteDriver();
-  }
-  active_rewrite_drivers_.insert(rewrite_driver);
-  return rewrite_driver;
-}
-
-void ApacheRewriteDriverFactory::ReleaseRewriteDriver(
-    RewriteDriver* rewrite_driver) {
-  int count = active_rewrite_drivers_.erase(rewrite_driver);
-  if (count != 1) {
-    LOG(ERROR) << "Remove rewrite driver from the active list.";
-  } else {
-    available_rewrite_drivers_.push_back(rewrite_driver);
-  }
+ResourceManager* ApacheRewriteDriverFactory::ComputeResourceManager() {
+  ResourceManager* resource_manager =
+      RewriteDriverFactory::ComputeResourceManager();
+  resource_manager->set_statistics(statistics_);
+  return resource_manager;
 }
 
 void ApacheRewriteDriverFactory::ShutDown() {

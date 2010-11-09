@@ -100,7 +100,7 @@ void send_out_headers_and_body(
 bool handle_as_resource(ApacheRewriteDriverFactory* factory,
                         request_rec* request,
                         const std::string& url) {
-  RewriteDriver* rewrite_driver = factory->GetRewriteDriver();
+  RewriteDriver* rewrite_driver = factory->NewRewriteDriver();
 
   SimpleMetaData request_headers, response_headers;
   std::string output;  // TODO(jmarantz): quit buffering resource output
@@ -223,7 +223,7 @@ int instaweb_handler(request_rec* request) {
     }
     send_out_headers_and_body(request, response_headers, output);
   } else if (strcmp(request->handler, "mod_pagespeed_beacon") == 0) {
-    RewriteDriver* driver = factory->GetRewriteDriver();
+    RewriteDriver* driver = factory->NewRewriteDriver();
     AddInstrumentationFilter* aif = driver->add_instrumentation_filter();
     if (aif && aif->HandleBeacon(request->unparsed_uri)) {
       ret = HTTP_NO_CONTENT;
