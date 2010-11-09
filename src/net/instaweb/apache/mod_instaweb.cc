@@ -222,7 +222,10 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   request_rec* request = filter->r;
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(
       request->server);
-  if (!factory->enabled()) {
+  if (!factory->enabled() || (request->unparsed_uri == NULL)) {
+    // TODO(jmarantz): consider adding Debug message if unparsed_uri is NULL,
+    // possibly of request->the_request which was non-null in the case where
+    // I found this in the debugger.
     ap_remove_output_filter(filter);
     return ap_pass_brigade(filter->next, bb);
   }
@@ -233,7 +236,9 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   }
 
   QueryParams query_params;
-  query_params.Parse(request->parsed_uri.query);
+  if (request->parsed_uri.query != NULL) {
+    query_params.Parse(request->parsed_uri.query);
+  }
 
   // Check if pagespeed optimization applicable and get the resource type.
   if (!check_pagespeed_applicable(filter, bb, query_params)) {

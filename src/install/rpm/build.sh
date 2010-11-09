@@ -200,7 +200,6 @@ eval $(sed -e "s/^\([^=]\+\)=\(.*\)$/export \1='\2'/" \
 REPOCONFIG="http://dl.google.com/linux/${PACKAGE#google-}/rpm/stable"
 verify_channel
 
-APACHE_MODULEDIR="/usr/lib/httpd/modules"
 APACHE_CONFDIR="/etc/httpd/conf.d"
 MODPAGESPEED_CACHE_ROOT="/var/www/mod_pagespeed"
 APACHE_USER="apache"
@@ -210,10 +209,12 @@ cd "${OUTPUTDIR}"
 
 case "$TARGETARCH" in
   ia32 )
+    export APACHE_MODULEDIR="/usr/lib/httpd/modules"
     export HOST_ARCH="i386"
     stage_install_rpm
     ;;
   x64 )
+    export APACHE_MODULEDIR="/usr/lib64/httpd/modules"
     export HOST_ARCH="x86_64"
     stage_install_rpm
     ;;

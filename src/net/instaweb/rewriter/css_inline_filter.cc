@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Author: mdsteele@google.com (Matthew D. Steele)
+
 #include "net/instaweb/rewriter/public/css_inline_filter.h"
 
 #include "base/logging.h"

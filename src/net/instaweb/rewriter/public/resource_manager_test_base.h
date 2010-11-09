@@ -32,6 +32,7 @@
 #include "net/instaweb/util/public/http_cache.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mem_file_system.h"
+#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/mock_url_fetcher.h"
@@ -252,7 +253,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   MockUrlFetcher mock_url_fetcher_;
   FakeUrlAsyncFetcher mock_url_async_fetcher_;
   FilenameEncoder filename_encoder_;
+
   MockHasher mock_hasher_;
+  MD5Hasher md5_hasher_;
+
   MockTimer mock_timer_;
   std::string file_prefix_;
   std::string url_prefix_;

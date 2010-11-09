@@ -465,7 +465,9 @@ bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher) {
                                                 ClosedConnection, this,
                                                 pool_);
   if (status != APR_SUCCESS) {
-    message_handler_->Error(__FILE__, __LINE__, "Creating connection");
+    message_handler_->Error(str_url_.c_str(), 0,
+                            "Error status=%d (%s) serf_connection_create2",
+                            status, GetAprErrorString(status).c_str());
     return false;
   }
   serf_connection_request_create(connection_, SetupRequest, this);

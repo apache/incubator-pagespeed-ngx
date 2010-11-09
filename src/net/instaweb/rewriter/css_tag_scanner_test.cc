@@ -93,6 +93,15 @@ TEST_F(CssTagScannerTest, TestAbsolutifyUrlsRelativeSQuote) {
         "a url('http://base/dir/subdir/image.png') b");
 }
 
+/*
+ * This test fails due to Issue 60.
+ *
+ * TEST_F(CssTagScannerTest, TestAbsolutifyUrlsRelativeSQuoteSpaced) {
+ *   Check("a url( 'subdir/image.png' ) b",
+ *         "a url( 'http://base/dir/subdir/image.png' ) b");
+ * }
+ */
+
 TEST_F(CssTagScannerTest, TestAbsolutifyUrlsRelativeDQuote) {
   Check("a url(\"subdir/image.png\") b",
         "a url(\"http://base/dir/subdir/image.png\") b");
