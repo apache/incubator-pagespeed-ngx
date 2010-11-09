@@ -1387,4 +1387,18 @@ TEST_F(ParserTest, SelectorError) {
   EXPECT_EQ(Parser::kSelectorError, p.errors_seen_mask());
 }
 
+TEST_F(ParserTest, FunctionError) {
+  Parser p("box-shadow: -1px -2px 2px rgba(0, 0, 0, .15)");
+  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
+  EXPECT_EQ(1, declarations->size());
+  EXPECT_EQ(Parser::kFunctionError, p.errors_seen_mask());
+}
+
+TEST_F(ParserTest, MediaError) {
+  Parser p("@media screen and (max-width: 290px) {}");
+  scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
+  EXPECT_EQ(0, stylesheet->rulesets().size());
+  EXPECT_EQ(Parser::kMediaError, p.errors_seen_mask());
+}
+
 }  // namespace

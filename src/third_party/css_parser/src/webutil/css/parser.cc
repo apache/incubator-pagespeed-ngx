@@ -43,6 +43,8 @@ const uint64 Parser::kNoError;
 const uint64 Parser::kUtf8Error;
 const uint64 Parser::kDeclarationError;
 const uint64 Parser::kSelectorError;
+const uint64 Parser::kFunctionError;
+const uint64 Parser::kMediaError;
 
 
 // Using isascii with signed chars is unfortunately undefined.
@@ -692,6 +694,7 @@ Value* Parser::ParseAny() {
                    && memcasecmp("rect", id.utf8_data(), 4) == 0) {
           toret = ParseRect();
         } else {
+          errors_seen_mask_ |= kFunctionError;
           // TODO(yian): parse FUNCTION parameters
           toret = new Value(id, new Values());
         }
@@ -1589,7 +1592,8 @@ void Parser::ParseMediumList(std::vector<UnicodeText>* media) {
         scoped_ptr<Value> v(ParseAny());
         if (v.get() && v->GetLexicalUnitType() == Value::IDENT)
           media->push_back(v->GetIdentifierText());
-
+        else
+          errors_seen_mask_ |= kMediaError;
         break;
     }
     SkipSpace();

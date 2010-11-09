@@ -107,6 +107,10 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{padding:0.01em 0.25em}",  // fractions and em
     "a{-moz-border-radius-topleft:0}",  // Browser-specific (-moz)
     "a{background:none}",  // CSS Parser used to expand this.
+    // http://code.google.com/p/modpagespeed/issues/detail?id=50
+    "@media screen and (max-width:290px){a{color:red}}",  // CSS3 "and (...)"
+    // http://code.google.com/p/modpagespeed/issues/detail?id=51
+    "a{box-shadow:-1px -2px 2px rgba(0, 0, 0, .15)}",  // CSS3 rgba
     };
   for (int i = 0; i < arraysize(examples); ++i) {
     ValidateNoChangeRewriteInlineCss("distilled_css", examples[i]);
@@ -194,13 +198,21 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "  height: 200px; /*must have*/\n"
       "}\n",
 
-      // TODO(sligocki): Do we care about stripping /**/?
-      // Comment says it's for IE5.
+      // TODO(sligocki): Right now we bail on parsing this. Could probably be:
       //".ui-datepicker-cover{display:none;display/**/:block;position:absolute;"
       //"z-index:-1;filter:mask();top:-4px;left:-4px;width:200px;height:200px}"
 
-      ".ui-datepicker-cover{display:none;display:block;position:absolute;"
-      "z-index:-1;filter:mask();top:-4px;left:-4px;width:200px;height:200px}"}
+      ".ui-datepicker-cover {\n"
+      "  display: none; /*sorry for IE5*/\n"
+      "  display/**/: block; /*sorry for IE5*/\n"
+      "  position: absolute; /*must have*/\n"
+      "  z-index: -1; /*must have*/\n"
+      "  filter: mask(); /*must have*/\n"
+      "  top: -4px; /*must have*/\n"
+      "  left: -4px; /*must have*/\n"
+      "  width: 200px; /*must have*/\n"
+      "  height: 200px; /*must have*/\n"
+      "}\n"}
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
