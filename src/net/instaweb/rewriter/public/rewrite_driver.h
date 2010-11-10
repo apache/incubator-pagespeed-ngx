@@ -144,7 +144,6 @@ class RewriteDriver {
 
  private:
   friend class ResourceManagerTestBase;
-  static const char kResourceFetches[];
   typedef std::map<std::string, RewriteFilter*> StringFilterMap;
   typedef void (RewriteDriver::*SetStringMethod)(const StringPiece& value);
   typedef void (RewriteDriver::*SetInt64Method)(int64 value);
@@ -176,7 +175,15 @@ class RewriteDriver {
   scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
   UserAgent user_agent_;
   std::vector<HtmlFilter*> filters_;
-  Variable* resource_fetches_;
+
+  // Statistics
+  static const char kResourceFetchesCached[];
+  static const char kResourceFetchConstructSuccesses[];
+  static const char kResourceFetchConstructFailures[];
+
+  Variable* cached_resource_fetches_;
+  Variable* succeeded_filter_resource_fetches_;
+  Variable* failed_filter_resource_fetches_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

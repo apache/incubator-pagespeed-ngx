@@ -148,8 +148,14 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                          &mock_url_async_fetcher_);
     driver.SetResourceManager(resource_manager.get());
     driver.AddFilter(filter);
-    Variable* resource_fetches =
-        stats.GetVariable(RewriteDriver::kResourceFetches);
+
+    Variable* cached_resource_fetches =
+        stats.GetVariable(RewriteDriver::kResourceFetchesCached);
+    Variable* succeeded_filter_resource_fetches =
+        stats.GetVariable(RewriteDriver::kResourceFetchConstructSuccesses);
+    Variable* failed_filter_resource_fetches =
+        stats.GetVariable(RewriteDriver::kResourceFetchConstructFailures);
+
     SimpleMetaData request_headers, response_headers;
     std::string contents;
     StringWriter writer(&contents);
@@ -167,7 +173,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
         resource, request_headers, &response_headers, &writer,
         &message_handler_, &callback)) << resource;
     EXPECT_EQ(expected_content, contents);
-    EXPECT_EQ(1, resource_fetches->Get());
+    // Check that stats say we took the construct resource path.
+    EXPECT_EQ(0, cached_resource_fetches->Get());
+    EXPECT_EQ(1, succeeded_filter_resource_fetches->Get());
+    EXPECT_EQ(0, failed_filter_resource_fetches->Get());
     // TODO(sligocki): Should this work? It's failing for some CssCombine tests.
     //EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(resource));
   }

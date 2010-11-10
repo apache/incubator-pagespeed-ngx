@@ -47,9 +47,14 @@ namespace ImageHeaders {
 const char kPngHeader[] = "\x89PNG\r\n\x1a\n";
 const size_t kPngHeaderLength = sizeof(kPngHeader) - 1;
 const char kPngIHDR[] = "\0\0\0\x0dIHDR";
-const size_t kPngIHDRLength = sizeof(kPngIHDR) - 1;
-const size_t kIHDRDataStart = kPngHeaderLength + kPngIHDRLength;
 const size_t kPngIntSize = 4;
+const size_t kPngSectionHeaderLength = 2 * kPngIntSize;
+const size_t kIHDRDataStart = kPngHeaderLength + kPngSectionHeaderLength;
+const size_t kPngSectionMinSize = kPngSectionHeaderLength + kPngIntSize;
+const size_t kPngColourTypeOffset = kIHDRDataStart + 2 * kPngIntSize + 1;
+const char kPngAlphaChannel = 0x4;  // bit of ColourType set for alpha channel
+const char kPngIDAT[] = "IDAT";
+const char kPngtRNS[] = "tRNS";
 
 const char kGifHeader[] = "GIF8";
 const size_t kGifHeaderLength = sizeof(kGifHeader) - 1;
@@ -155,11 +160,16 @@ void Image::FindJpegSize() {
 // See also: http://www.w3.org/TR/PNG/
 void Image::FindPngSize() {
   const StringPiece& buf = original_contents_;
+  // Here we make sure that buf contains at least enough data that we'll be able
+  // to decipher the image dimensions first, before we actually check for the
+  // headers and attempt to decode the dimensions (which are the first two ints
+  // after the IHDR section label).
   if ((buf.size() >=  // Not truncated
        ImageHeaders::kIHDRDataStart + 2 * ImageHeaders::kPngIntSize) &&
       (StringPiece(buf.data() + ImageHeaders::kPngHeaderLength,
-                   ImageHeaders::kPngIHDRLength) ==
-       StringPiece(ImageHeaders::kPngIHDR, ImageHeaders::kPngIHDRLength))) {
+                   ImageHeaders::kPngSectionHeaderLength) ==
+       StringPiece(ImageHeaders::kPngIHDR,
+                   ImageHeaders::kPngSectionHeaderLength))) {
     int width = PngIntAtPosition(buf, ImageHeaders::kIHDRDataStart);
     int height = PngIntAtPosition(
         buf, ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize);
@@ -175,6 +185,8 @@ void Image::FindPngSize() {
 // See also: http://en.wikipedia.org/wiki/Graphics_Interchange_Format
 void Image::FindGifSize() {
   const StringPiece& buf = original_contents_;
+  // Make sure that buf contains enough data that we'll be able to
+  // decipher the image dimensions before we attempt to do so.
   if (buf.size() >=
       ImageHeaders::kGifDimStart + 2 * ImageHeaders::kGifIntSize) {
     // Not truncated
@@ -251,6 +263,61 @@ const ContentType* Image::content_type() {
   return res;
 }
 
+// Compute whether a PNG can have transparent / semi-transparent pixels
+// by walking the image data in accordance with the spec:
+//   http://www.w3.org/TR/PNG/
+// If the colour type (UK spelling from spec) includes an alpha channel, or
+// there is a tRNS section with at least one entry before IDAT, then we assume
+// the image contains non-opaque pixels and return true.
+bool Image::ComputePngTransparency() {
+  // We assume the image has transparency until we prove otherwise.
+  // This allows us to deal conservatively with truncation etc.
+  bool has_transparency = true;
+  const StringPiece& buf = original_contents_;
+  if (buf.size() > ImageHeaders::kPngColourTypeOffset &&
+      ((buf[ImageHeaders::kPngColourTypeOffset] &
+        ImageHeaders::kPngAlphaChannel) == 0)) {
+    // The colour type indicates that there is no dedicated alpha channel.  Now
+    // we must look for a tRNS section indicating the existence of transparent
+    // colors or palette entries.
+    size_t section_start = ImageHeaders::kPngHeaderLength;
+    while (section_start + ImageHeaders::kPngSectionHeaderLength < buf.size()) {
+      size_t section_size = PngIntAtPosition(buf, section_start);
+      if (PngSectionIdIs(ImageHeaders::kPngIDAT, buf, section_start)) {
+        // tRNS section must occur before first IDAT.  This image doesn't have a
+        // tRNS section, and thus doesn't have transparency.
+        has_transparency = false;
+        break;
+      } else if (PngSectionIdIs(ImageHeaders::kPngtRNS, buf, section_start) &&
+                 section_size > 0) {
+        // Found a nonempty tRNS section.  This image has_transparency.
+        break;
+      } else {
+        // Move on to next section.
+        section_start += section_size + ImageHeaders::kPngSectionMinSize;
+      }
+    }
+  }
+  return has_transparency;
+}
+
+bool Image::HasTransparency() {
+  bool result;
+  switch (image_type()) {
+    case IMAGE_PNG:
+      result = ComputePngTransparency();
+      break;
+    case IMAGE_GIF:
+      // Conservative.
+      // TODO(jmaessen): fix when gif transcoding is enabled.
+      result = true;
+      break;
+    default:
+      result = false;
+      break;
+  }
+  return result;
+}
 
 // Makes sure OpenCV version of image is loaded if that is possible.
 // Returns value of opencv_load_possible_ after load attempted.
@@ -261,7 +328,8 @@ bool Image::LoadOpenCV() {
     Image::Type image_type = this->image_type();
     const ContentType* content_type = this->content_type();
     opencv_load_possible_ = (content_type != NULL &&
-                             image_type != IMAGE_GIF);
+                             image_type != IMAGE_GIF &&
+                             !HasTransparency());
     if (opencv_load_possible_) {
       opencv_load_possible_ =
           WriteTempFileWithContentType(

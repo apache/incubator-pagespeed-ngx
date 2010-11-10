@@ -64,6 +64,14 @@ inline int PngIntAtPosition(const StringPiece& buf, size_t pos) {
          (CharToInt(buf[pos + 3]));
 }
 
+inline bool PngSectionIdIs(const char* hdr,
+                           const StringPiece& buf, size_t pos) {
+  return ((buf[pos + 4] == hdr[0]) &&
+          (buf[pos + 5] == hdr[1]) &&
+          (buf[pos + 6] == hdr[2]) &&
+          (buf[pos + 7] == hdr[3]));
+}
+
 namespace ImageHeaders {
   // Constants that are shared by Image and its tests.
   extern const char kPngHeader[];
@@ -145,6 +153,14 @@ class Image {
     return image_type_;
   }
 
+  // Returns true if the image has transparency (an alpha channel, or a
+  // transparent color).  Note that certain ambiguously-formatted images might
+  // yield false positive results here; we don't check whether alpha channels
+  // contain non-opaque data, nor do we check if a distinguished transparent
+  // color is actually used in an image.  We assume that if the image file
+  // contains flags for transparency, it does so for a reason.
+  bool HasTransparency();
+
   // Changes the size of the image to the given width and height.  This will run
   // image processing on the image, and return false if the image processing
   // fails.  Otherwise the image contents and type can change.
@@ -166,6 +182,7 @@ class Image {
   void ComputeImageType();
   void FindJpegSize();
   inline void FindPngSize();
+  bool ComputePngTransparency();
   inline void FindGifSize();
   bool LoadOpenCV();
   void CleanOpenCV();
@@ -182,7 +199,7 @@ class Image {
   IplImage* opencv_image_;        // Lazily filled on OpenCV load.
   bool opencv_load_possible_;     // Attempt opencv_load in future?
   bool resized_;
-  const std::string& url_;
+  const std::string url_;
   ImageDim dims_;
 
   DISALLOW_COPY_AND_ASSIGN(Image);

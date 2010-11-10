@@ -77,7 +77,9 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),
-      resource_fetches_(NULL) {
+      cached_resource_fetches_(NULL),
+      succeeded_filter_resource_fetches_(NULL),
+      failed_filter_resource_fetches_(NULL) {
 }
 
 RewriteDriver::~RewriteDriver() {
@@ -85,11 +87,17 @@ RewriteDriver::~RewriteDriver() {
 }
 
 // names for Statistics variables.
-const char RewriteDriver::kResourceFetches[] = "resource_fetches";
+const char RewriteDriver::kResourceFetchesCached[] = "resource_fetches_cached";
+const char RewriteDriver::kResourceFetchConstructSuccesses[] =
+    "resource_fetch_construct_successes";
+const char RewriteDriver::kResourceFetchConstructFailures[] =
+    "resource_fetch_construct_failures";
 
 void RewriteDriver::Initialize(Statistics* statistics) {
   if (statistics != NULL) {
-    statistics->AddVariable(kResourceFetches);
+    statistics->AddVariable(kResourceFetchesCached);
+    statistics->AddVariable(kResourceFetchConstructSuccesses);
+    statistics->AddVariable(kResourceFetchConstructFailures);
     AddInstrumentationFilter::Initialize(statistics);
     CacheExtender::Initialize(statistics);
     CssCombineFilter::Initialize(statistics);
@@ -321,9 +329,15 @@ void RewriteDriver::AddRewriteFilter(RewriteFilter* filter) {
   // Track resource_fetches if we care about statistics.  Note that
   // the statistics are owned by the resource manager, which generally
   // should be set up prior to the rewrite_driver.
+  //
+  // TODO(sligocki): It'd be nice to get this into the constructor.
   Statistics* stats = statistics();
-  if ((stats != NULL) && (resource_fetches_ == NULL)) {
-    resource_fetches_ = stats->GetVariable(kResourceFetches);
+  if ((stats != NULL) && (cached_resource_fetches_ == NULL)) {
+    cached_resource_fetches_ = stats->GetVariable(kResourceFetchesCached);
+    succeeded_filter_resource_fetches_ =
+        stats->GetVariable(kResourceFetchConstructSuccesses);
+    failed_filter_resource_fetches_ =
+        stats->GetVariable(kResourceFetchConstructFailures);
   }
   resource_filter_map_[filter->id()] = filter;
   filters_.push_back(filter);
@@ -433,13 +447,22 @@ bool RewriteDriver::FetchResource(
             output_resource, writer, response_headers, message_handler)) {
       callback->Done(true);
       queued = true;
+      if (cached_resource_fetches_ != NULL) {
+        cached_resource_fetches_->Add(1);
+      }
     } else if (p != resource_filter_map_.end()) {
       RewriteFilter* filter = p->second;
       queued = filter->Fetch(output_resource, writer,
                              request_headers, response_headers,
                              url_async_fetcher_, message_handler, callback);
-      if (resource_fetches_ != NULL) {
-        resource_fetches_->Add(1);
+      if (queued) {
+        if (succeeded_filter_resource_fetches_ != NULL) {
+          succeeded_filter_resource_fetches_->Add(1);
+        }
+      } else {
+        if (failed_filter_resource_fetches_ != NULL) {
+          failed_filter_resource_fetches_->Add(1);
+        }
       }
     }
   }
