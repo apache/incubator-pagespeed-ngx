@@ -58,6 +58,9 @@ class HtmlLexer {
   // Determines whether a tag can be terminated briefly (e.g. <tag/>)
   bool TagAllowsBriefTermination(Atom tag) const;
 
+  // Determines whether it's OK to leave a tag unclosed.
+  bool IsOptionallyClosedTag(Atom tag) const;
+
   // Print element stack to stdout (for debugging).
   void DebugPrintStack();
 
@@ -198,6 +201,7 @@ class HtmlLexer {
   AtomSet implicitly_closed_;
   AtomSet non_brief_terminated_tags_;
   AtomSet literal_tags_;
+  AtomSet optionally_closed_tags_;
   std::vector<HtmlElement*> element_stack_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlLexer);

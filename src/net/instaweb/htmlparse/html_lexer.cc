@@ -54,6 +54,104 @@ const char* kLiteralTags[] = {
   NULL
 };
 
+// These tags do not need to be explicitly closed, but can be.  See
+// http://www.w3.org/TR/html5/syntax.html#optional-tags .  Note that this
+// is *not* consistent with http://www.w3schools.com/tags/tag_p.asp which
+// claims this tag works the same in XHTML as HTML.
+//
+// TODO(jmarantz): http://www.w3.org/TR/html5/syntax.html#optional-tags
+// specifies complex rules, in some cases, dictating whether the closing
+// elements are optional or not.  For now we just will eliminate the
+// messages for any of these tags in any case.  These rules are echoed below
+// in case we want to add code to emit the 'unclosed tag' messages when they
+// are appropriate.  For now we err on the side of silence.
+const char* kOptionallyClosedTags[] = {
+  // An html element's end tag may be omitted if the html element is not
+  // immediately followed by a comment.
+  "html",
+
+  // A body element's end tag may be omitted if the body element is not
+  // immediately followed by a comment.
+  "body",
+
+  // A li element's end tag may be omitted if the li element is immediately
+  // followed by another li element or if there is no more content in the
+  // parent element.
+  "li",
+
+  // A dt element's end tag may be omitted if the dt element is immediately
+  // followed by another dt element or a dd element.
+  "dt",
+
+  // A dd element's end tag may be omitted if the dd element is immediately
+  // followed by another dd element or a dt element, or if there is no more
+  // content in the parent element.
+  "dd",
+
+  // A p element's end tag may be omitted if the p element is immediately
+  // followed by an address, article, aside, blockquote, dir, div, dl, fieldset,
+  // footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, menu, nav, ol, p,
+  // pre, section, table, or ul, element, or if there is no more content in the
+  // parent element and the parent element is not an a element.
+  "p",
+
+  // An rt element's end tag may be omitted if the rt element is immediately
+  // followed by an rt or rp element, or if there is no more content in the
+  // parent element.
+  "rt",
+
+  // An rp element's end tag may be omitted if the rp element is immediately
+  // followed by an rt or rp element, or if there is no more content in the
+  // parent element.
+  "rp",
+
+  // An optgroup element's end tag may be omitted if the optgroup element is
+  // immediately followed by another optgroup element, or if there is no more
+  // content in the parent element.
+  "optgroup",
+
+  // An option element's end tag may be omitted if the option element is
+  // immediately followed by another option element, or if it is immediately
+  // followed by an optgroup element, or if there is no more content in the
+  // parent element.
+  "option",
+
+  // A colgroup element's end tag may be omitted if the colgroup element is not
+  // immediately followed by a space character or a comment.
+  "colgroup",
+
+  // A thead element's end tag may be omitted if the thead element is
+  // immediately followed by a tbody or tfoot element.
+  "thead",
+
+  // A tbody element's end tag may be omitted if the tbody element is
+  // immediately followed by a tbody or tfoot element, or if there is no more
+  // content in the parent element.
+  "tbody",
+
+  // A tfoot element's end tag may be omitted if the tfoot element is
+  // immediately followed by a tbody element, or if there is no more content in
+  // the parent element.
+  "tfoot",
+
+  // A tr element's end tag may be omitted if the tr element is immediately
+  // followed by another tr element, or if there is no more content in the
+  // parent element.
+  "tr",
+
+  // A td element's end tag may be omitted if the td element is immediately
+  // followed by a td or th element, or if there is no more content in the
+  // parent element.
+  "td",
+
+  // A th element's end tag may be omitted if the th element is immediately
+  // followed by a td or th element, or if there is no more content in the
+  // parent element.
+  "th",
+
+  NULL
+};
+
 // We start our stack-iterations from 1, because we put a NULL into
 // position 0 to reduce special-cases.
 const int kStartStack = 1;
@@ -84,6 +182,9 @@ HtmlLexer::HtmlLexer(HtmlParse* html_parse)
   }
   for (const char** p = kLiteralTags; *p != NULL; ++p) {
     literal_tags_.insert(html_parse->Intern(*p));
+  }
+  for (const char** p = kOptionallyClosedTags; *p != NULL; ++p) {
+    optionally_closed_tags_.insert(html_parse->Intern(*p));
   }
 }
 
@@ -624,9 +725,12 @@ void HtmlLexer::FinishParse() {
                                         "element_stack_[0] != NULL");
   for (size_t i = kStartStack; i < element_stack_.size(); ++i) {
     HtmlElement* element = element_stack_[i];
-    html_parse_->Info(id_.c_str(), element->begin_line_number(),
-                         "End-of-file with open tag: %s",
-                         element->tag().c_str());
+    Atom tag = element->tag();
+    if (!IsOptionallyClosedTag(tag)) {
+      html_parse_->Info(id_.c_str(), element->begin_line_number(),
+                        "End-of-file with open tag: %s",
+                        tag.c_str());
+    }
   }
   element_stack_.clear();
   element_stack_.push_back(NULL);
@@ -867,6 +971,10 @@ bool HtmlLexer::TagAllowsBriefTermination(Atom tag) const {
           non_brief_terminated_tags_.end());
 }
 
+bool HtmlLexer::IsOptionallyClosedTag(Atom tag) const {
+  return (optionally_closed_tags_.find(tag) != optionally_closed_tags_.end());
+}
+
 void HtmlLexer::DebugPrintStack() {
   for (size_t i = kStartStack; i < element_stack_.size(); ++i) {
     std::string buf;
@@ -898,8 +1006,11 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(Atom tag) {
         HtmlElement* skipped = element_stack_[j];
         // In fact, should we actually perform this optimization ourselves
         // in a filter to omit closing tags that can be inferred?
-        html_parse_->Info(id_.c_str(), skipped->begin_line_number(),
-                          "Unclosed element `%s'", skipped->tag().c_str());
+        Atom tag = skipped->tag();
+        if (!IsOptionallyClosedTag(tag)) {
+          html_parse_->Info(id_.c_str(), skipped->begin_line_number(),
+                            "Unclosed element `%s'", skipped->tag().c_str());
+        }
         // Before closing the skipped element, pop it off the stack.  Otherwise,
         // the parent redundancy check in HtmlParse::AddEvent will fail.
         element_stack_.resize(j);
