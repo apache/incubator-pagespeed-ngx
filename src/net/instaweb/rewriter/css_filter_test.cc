@@ -111,6 +111,8 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@media screen and (max-width:290px){a{color:red}}",  // CSS3 "and (...)"
     // http://code.google.com/p/modpagespeed/issues/detail?id=51
     "a{box-shadow:-1px -2px 2px rgba(0, 0, 0, .15)}",  // CSS3 rgba
+    // http://code.google.com/p/modpagespeed/issues/detail?id=66
+    "a{-moz-transform:rotate(7deg)}"
     };
   for (int i = 0; i < arraysize(examples); ++i) {
     ValidateNoChangeRewriteInlineCss("distilled_css", examples[i]);
@@ -212,8 +214,37 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "  left: -4px; /*must have*/\n"
       "  width: 200px; /*must have*/\n"
       "  height: 200px; /*must have*/\n"
-      "}\n"}
-  };
+      "}\n"},
+
+    { ".shift {\n"
+      "  -moz-transform: rotate(7deg);\n"
+      "  -webkit-transform: rotate(7deg);\n"
+      "  -moz-transform: skew(-25deg);\n"
+      "  -webkit-transform: skew(-25deg);\n"
+      "  -moz-transform: scale(0.5);\n"
+      "  -webkit-transform: scale(0.5);\n"
+      "  -moz-transform: translate(3em, 0);\n"
+      "  -webkit-transform: translate(3em, 0);\n"
+      "}\n",
+
+      // TODO(sligocki): Right now we bail on parsing this. Could probably be:
+      //".shift{-moz-transform:rotate(7deg);-webkit-transform:rotate(7deg);"
+      //"-moz-transform:skew(-25deg);-webkit-transform:skew(-25deg);"
+      //"-moz-transform:scale(0.5);-webkit-transform:scale(0.5);"
+      //"-moz-transform:translate(3em,0);-webkit-transform:translate(3em,0);}"
+
+      ".shift {\n"
+      "  -moz-transform: rotate(7deg);\n"
+      "  -webkit-transform: rotate(7deg);\n"
+      "  -moz-transform: skew(-25deg);\n"
+      "  -webkit-transform: skew(-25deg);\n"
+      "  -moz-transform: scale(0.5);\n"
+      "  -webkit-transform: scale(0.5);\n"
+      "  -moz-transform: translate(3em, 0);\n"
+      "  -webkit-transform: translate(3em, 0);\n"
+      "}\n"},
+
+    };
 
   for (int i = 0; i < arraysize(examples); ++i) {
     ValidateRewriteInlineCss("complex_css", examples[i][0], examples[i][1]);
