@@ -21,11 +21,13 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/rewriter/rewrite.pb.h"  // for CssCombineUrl
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
@@ -36,34 +38,161 @@
 #include "net/instaweb/util/public/url_escaper.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 
+namespace net_instaweb {
+
 namespace {
 
 // names for Statistics variables.
 const char kCssFileCountReduction[] = "css_file_count_reduction";
 
-}  // namespace
+// TODO(jmarantz): This is arguably fragile.
+//
+// Another approach is to put a CHECK that the final URL with the
+// resource naming does not exceed the limit.
+//
+// Another option too is to just instantiate a ResourceNamer and a
+// hasher put in the correct ID and EXT and leave the name blank and
+// take size of that.
+const int kIdOverhead = 2;   // strlen("cc")
+const int kExtOverhead = 3;  // strlen("css");
+const int kUrlOverhead = kIdOverhead + ResourceNamer::kOverhead +
+    Hasher::kHashSizeInChars + kExtOverhead;
 
-namespace net_instaweb {
+}  // namespace
 
 class CssCombineFilter::Partnership : public UrlPartnership {
  public:
-  Partnership(DomainLawyer* domain_lawyer, const GURL& gurl)
-      : UrlPartnership(domain_lawyer, gurl) {
+  Partnership(ResourceManager* resource_manager, const GURL& gurl)
+      : UrlPartnership(resource_manager->domain_lawyer(), gurl),
+        resource_manager_(resource_manager),
+        prev_num_components_(0),
+        accumulated_leaf_size_(0) {
+  }
+
+  virtual ~Partnership() {
+    STLDeleteElements(&resources_);
   }
 
   bool AddElement(HtmlElement* element, const StringPiece& href,
+                  const StringPiece& media, scoped_ptr<Resource>* resource,
                   MessageHandler* handler) {
-    bool added = AddUrl(href, handler);
+    // Assert the sanity of three parallel vectors.
+    CHECK_EQ(num_urls(), static_cast<int>(resources_.size()));
+    CHECK_EQ(num_urls(), static_cast<int>(css_elements_.size()));
+    CHECK_EQ(num_urls(), static_cast<int>(multipart_encoder_.num_urls()));
+
+    bool added = true;
+    if (num_urls() == 0) {
+      // TODO(jmarantz): do media='' and media='display mean the same
+      // thing?  sligocki thinks mdsteele looked into this and it
+      // depended on HTML version.  In one display was default, in the
+      // other screen was IIRC.
+      media.CopyToString(&media_);
+    } else {
+      // After the first CSS file, subsequent CSS files must have matching
+      // media and no @import tags.
+      added = ((media_ == media) &&
+               !CssTagScanner::HasImport((*resource)->contents(), handler));
+    }
     if (added) {
-      css_elements_.push_back(element);
+      added = AddUrl(href, handler);
+    }
+    if (added) {
+      int index = num_urls() - 1;
+      CHECK_EQ(index, static_cast<int>(css_elements_.size()));
+
+      if (num_components() != prev_num_components_) {
+        UpdateResolvedBase();
+      }
+      const std::string relative_path = RelativePath(index);
+      multipart_encoder_.AddUrl(relative_path);
+
+      if (accumulated_leaf_size_ == 0) {
+        ComputeLeafSize();
+      } else {
+        AccumulateLeafSize(relative_path);
+      }
+
+      if (UrlTooBig()) {
+        added = false;
+        RemoveLast();
+        multipart_encoder_.pop_back();
+      } else {
+        css_elements_.push_back(element);
+        resources_.push_back(resource->release());
+      }
     }
     return added;
   }
 
+  // Computes a name for the URL that meets all known character-set and
+  // size restrictions.
+  std::string UrlSafeId() const {
+    UrlEscaper* escaper = resource_manager_->url_escaper();
+    std::string segment;
+    escaper->EncodeToUrlSegment(multipart_encoder_.Encode(), &segment);
+    return segment;
+  }
+
+  // Computes the total size
+  void ComputeLeafSize() {
+    std::string segment = UrlSafeId();
+    accumulated_leaf_size_ = segment.size() + kUrlOverhead;
+  }
+
+  // Incrementally updates the accumulated leaf size without re-examining
+  // every element in the combined css file.
+  void AccumulateLeafSize(const StringPiece& url) {
+    std::string segment;
+    UrlEscaper* escaper = resource_manager_->url_escaper();
+    escaper->EncodeToUrlSegment(url, &segment);
+    const int kMultipartOverhead = 1;  // for the '+'
+    accumulated_leaf_size_ += segment.size() + kMultipartOverhead;
+  }
+
+  // Determines whether our accumulated leaf size is too big, taking into
+  // account both per-segment and total-url limitations.
+  bool UrlTooBig() {
+    if (accumulated_leaf_size_ > resource_manager_->max_url_segment_size()) {
+      return true;
+    }
+    if ((accumulated_leaf_size_ + static_cast<int>(resolved_base_.size())) >
+        resource_manager_->max_url_size()) {
+      return true;
+    }
+    return false;
+  }
+
+  void UpdateResolvedBase() {
+    // If the addition of this URL changes the base path,
+    // then we will have to recompute the multi-part encoding.
+    // This is n^2 in the pathalogical case and if this code
+    // is copied from CSS combining to image spriting then this
+    // algorithm should be revisited.  For CSS we expect N to
+    // be relatively small.
+    prev_num_components_ = num_components();
+    resolved_base_ = ResolvedBase();
+    multipart_encoder_.clear();
+    for (size_t i = 0; i < css_elements_.size(); ++i) {
+      multipart_encoder_.AddUrl(RelativePath(i));
+    }
+
+    accumulated_leaf_size_ = 0;
+  }
+
   HtmlElement* element(int i) { return css_elements_[i]; }
+  const ResourceVector& resources() const { return resources_; }
+  const std::string& media() const { return media_; }
 
  private:
+  ResourceManager* resource_manager_;
   std::vector<HtmlElement*> css_elements_;
+  std::vector<Resource*> resources_;
+  UrlMultipartEncoder multipart_encoder_;
+  int prev_num_components_;
+  int accumulated_leaf_size_;
+  std::string resolved_base_;
+  std::string media_;
 };
 
 // TODO(jmarantz) We exhibit zero intelligence about which css files to
@@ -108,37 +237,38 @@ void CssCombineFilter::Initialize(Statistics* statistics) {
 
 void CssCombineFilter::StartDocumentImpl() {
   // This should already be clear, but just in case.
-  partnership_.reset(NULL);
+  partnership_.reset(new Partnership(resource_manager_, base_gurl()));
 }
 
 void CssCombineFilter::EndElementImpl(HtmlElement* element) {
   HtmlElement::Attribute* href;
   const char* media;
   if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
-    // We only want to combine CSS files with the same media type to avoid
-    // loading unneeded content. So, if the media changes, we'll emit what we
-    // have and start over.
-    if (partnership_.get() != NULL && combine_media_ != media) {
-      TryCombineAccumulated();
-    }
-    combine_media_ = media;
-
     // We cannot combine with a link in <noscript> tag and we cannot combine
     // over a link in a <noscript> tag, so this is a barrier.
     if (noscript_element() != NULL) {
       TryCombineAccumulated();
-
     } else {
-      // Establish a new partnership if there is not one open already.
-      if (partnership_.get() == NULL) {
-        partnership_.reset(new Partnership(
-            resource_manager_->domain_lawyer(), base_gurl()));
-      }
-
+      const char* url = href->value();
       MessageHandler* handler = html_parse_->message_handler();
-      if (!partnership_->AddElement(element, href->value(), handler)) {
-        // It's invalid, so just skip it a la IEDirective below.
+      scoped_ptr<Resource> resource (resource_manager_->CreateInputResource(
+          base_gurl(), url, handler));
+      if (resource.get() == NULL) {
         TryCombineAccumulated();
+      } else {
+        if (!resource_manager_->ReadIfCached(resource.get(), handler) ||
+            !resource->ContentsValid()) {
+          TryCombineAccumulated();
+        } else if (!partnership_->AddElement(element, url, media, &resource,
+                                             handler)) {
+          TryCombineAccumulated();
+
+          // Now we'll try to start a new partnership with this CSS file --
+          // perhaps we ran out out of space in the previous combination
+          // or this file is simply in a different authorized domain, or
+          // contained @Import.
+          partnership_->AddElement(element, url, media, &resource, handler);
+        }
       }
     }
   } else if (element->tag() == s_style_) {
@@ -163,91 +293,22 @@ void CssCombineFilter::Flush() {
 }
 
 void CssCombineFilter::TryCombineAccumulated() {
-  if (partnership_.get() == NULL) {
-    return;
-  }
+  CHECK(partnership_.get() != NULL);
   MessageHandler* handler = html_parse_->message_handler();
-
-  // It's possible that we'll have found 2 css files to combine, but one
-  // of them became non-rewritable due to a flush, and thus we'll wind
-  // up spriting just one file, so do a first pass counting rewritable
-  // css links.  Also, load the CSS content in this pass.  We will only
-  // do a combine if we have more than one css element that successfully
-  // loaded.
-  std::vector<HtmlElement*> combine_elements;
-  ResourceVector combine_resources;
-  UrlMultipartEncoder multipart_encoder;
-  for (int i = 0, n = partnership_->num_urls(); i < n; ++i) {
-    HtmlElement* element = partnership_->element(i);
-    const char* media;
-    HtmlElement::Attribute* href;
-    if (css_tag_scanner_.ParseCssElement(element, &href, &media) &&
-        html_parse_->IsRewritable(element)) {
-      CHECK(combine_media_ == media);
-      // TODO(jmarantz): consider async loads; exclude css file
-      // from the combination that are not yet loaded.  For now, our
-      // loads are blocking.  Need to understand Apache module
-      // TODO(jmaessen, jmarantz): use partnership url data here,
-      // hand off to CreateInputResourceGURL.
-      // TODO(jmaessen): Use CreateInputResourceAndReadIfCached.
-      scoped_ptr<Resource> css_resource(
-          resource_manager_->CreateInputResource(base_gurl(),
-                                                 href->value(), handler));
-
-      if ((css_resource == NULL) ||
-          !resource_manager_->ReadIfCached(css_resource.get(), handler) ||
-          !css_resource->ContentsValid()) {
-        // Combine what we have so far.
-        CombineResources(&combine_elements, &combine_resources,
-                         &multipart_encoder);
-
-      } else if (i != 0 &&
-                 CssTagScanner::HasImport(css_resource->contents(), handler)) {
-        // Cannot combine a CSS file with @import (other than the first). So,
-        // for now, just Combine what we have up to here.
-        CombineResources(&combine_elements, &combine_resources,
-                         &multipart_encoder);
-
-      } else {
-        // We collect the resources. Don't mutate the DOM until we've
-        // successfully created the output resource.
-        combine_elements.push_back(element);
-        combine_resources.push_back(css_resource.release());
-        // We can use relative URLs now because we don't move the
-        // combined resource, so know the absolute prefix from that.
-        multipart_encoder.AddUrl(partnership_->RelativePath(i));
-      }
-    }
-  }
-
-  CombineResources(&combine_elements, &combine_resources, &multipart_encoder);
-
-  // Clear the queue of files to rewrite.
-  partnership_.reset(NULL);
-}
-
-void CssCombineFilter::CombineResources(
-    std::vector<HtmlElement*>* combine_elements,
-    ResourceVector* combine_resources,
-    UrlMultipartEncoder* multipart_encoder) {
-  MessageHandler* handler = html_parse_->message_handler();
-  if (combine_elements->size() > 1) {
+  if (partnership_->num_urls() > 1) {
     // Ideally like to have a data-driven service tell us which elements should
     // be combined together.  Note that both the resources and the elements
     // are managed, so we don't delete them even if the spriting fails.
 
     // First, compute the name of the new resource based on the names of
     // the CSS files.
-    std::string css_combine_url;
-    std::string url_safe_id;
-    UrlEscaper* escaper = resource_manager_->url_escaper();
-    escaper->EncodeToUrlSegment(multipart_encoder->Encode(), &url_safe_id);
-
+    std::string url_safe_id = partnership_->UrlSafeId();
     HtmlElement* combine_element = html_parse_->NewElement(NULL, s_link_);
     combine_element->AddAttribute(s_rel_, "stylesheet", "\"");
     combine_element->AddAttribute(s_type_, "text/css", "\"");
-    if (!combine_media_.empty()) {
-      combine_element->AddAttribute(s_media_, combine_media_, "\"");
+    StringPiece media = partnership_->media();
+    if (!media.empty()) {
+      combine_element->AddAttribute(s_media_, media, "\"");
     }
 
     // Start building up the combination.  At this point we are still
@@ -258,7 +319,7 @@ void CssCombineFilter::CombineResources(
             partnership_->ResolvedBase(),
             filter_prefix_, url_safe_id, &kContentTypeCss, handler));
     bool written = combination->IsWritten() ||
-        WriteCombination(*combine_resources, combination.get(), handler);
+        WriteCombination(partnership_->resources(), combination.get(), handler);
 
     // We've collected at least two CSS files to combine, and whose
     // HTML elements are in the current flush window.  Last step
@@ -268,25 +329,21 @@ void CssCombineFilter::CombineResources(
       combine_element->AddAttribute(s_href_, combination->url(), "\"");
       // TODO(sligocki): Put at top of head/flush-window.
       // Right now we're putting it where the first original element used to be.
-      html_parse_->InsertElementBeforeElement(combine_elements->at(0),
+      html_parse_->InsertElementBeforeElement(partnership_->element(0),
                                               combine_element);
       // ... and removing originals from the DOM.
-      for (size_t i = 0; i < combine_elements->size(); ++i) {
-        html_parse_->DeleteElement(combine_elements->at(i));
+      for (int i = 0; i < partnership_->num_urls(); ++i) {
+        html_parse_->DeleteElement(partnership_->element(i));
       }
       html_parse_->InfoHere("Combined %d CSS files into one at %s",
-                            static_cast<int>(combine_elements->size()),
+                            partnership_->num_urls(),
                             combination->url().c_str());
       if (css_file_count_reduction_ != NULL) {
-        css_file_count_reduction_->Add(combine_elements->size() - 1);
+        css_file_count_reduction_->Add(partnership_->num_urls() - 1);
       }
     }
   }
-  combine_elements->clear();
-  STLDeleteContainerPointers(combine_resources->begin(),
-                             combine_resources->end());
-  combine_resources->clear();
-  multipart_encoder->clear();
+  partnership_.reset(new Partnership(resource_manager_, base_gurl()));
 }
 
 bool CssCombineFilter::WriteCombination(const ResourceVector& combine_resources,

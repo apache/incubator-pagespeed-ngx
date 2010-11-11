@@ -32,6 +32,8 @@ static const char kSeparatorChar = kSeparatorString[0];
 
 namespace net_instaweb {
 
+const int ResourceNamer::kOverhead = 3;  // The three '.' separators.
+
 bool ResourceNamer::Decode(const StringPiece& encoded_string) {
   std::vector<StringPiece> names;
   SplitStringPieceToVector(encoded_string, kSeparatorString, &names, true);

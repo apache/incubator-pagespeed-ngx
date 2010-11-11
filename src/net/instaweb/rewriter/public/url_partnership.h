@@ -66,6 +66,9 @@ class UrlPartnership {
   // Removes the last URL that was added to the partnership.
   void RemoveLast();
 
+ protected:
+  int num_components() const { return common_components_.size(); }
+
  private:
   void IncrementalResolve(int index);
 

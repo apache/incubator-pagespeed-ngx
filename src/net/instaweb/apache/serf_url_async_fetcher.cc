@@ -625,19 +625,35 @@ int SerfUrlAsyncFetcher::Poll(int64 microseconds) {
   // Run serf polling up to microseconds.
   ScopedMutex mutex(mutex_);
   if (!active_fetches_.empty()) {
-    SERF_DEBUG(LOG(INFO) << "Polling for " << active_fetches_.size()
-               << ((threaded_fetcher_ == NULL)
-                   ? ": (threaded)"
-                   : ": (non-blocking)")
-               << " (" << this << ") for " << microseconds/1.0e6 << " seconds");
     apr_status_t status = serf_context_run(serf_context_, microseconds, pool_);
     STLDeleteElements(&completed_fetches_);
     bool success = ((status == APR_SUCCESS) || APR_STATUS_IS_TIMEUP(status));
-    // TODO(lsong): log error if !ret?
     // TODO(jmarantz): provide the success status to the caller if there is a
     // need.
     if (!success) {
-      LOG(ERROR) << "Poll success status " << success << " (" << status << ")";
+      // TODO(jmarantz): I have a new theory that we are getting
+      // behind when our self-directed URL fetches queue up multiple
+      // requests for the same URL, which might be sending the Serf
+      // library into an n^2 situation with its polling, even though
+      // we are using an rb_tree to hold the outstanding fetches.  We
+      // should fix this by keeping a map from url->SerfFetch, where
+      // we'd have to store lists of Callback*, ResponseHeader*, Writer* so
+      // all interested parties were updated if and when the fetch finally
+      // completed.
+      //
+      // We should also have a maximum timeout for a fetch where we just
+      // give up and issue a 404.
+      //
+      // In the meantime by putting more detail into the log here, we'll
+      // know whether we are accumulating outstanding fetches to make the
+      // server fall over.
+      LOG(ERROR) << "Serf status " << status << " ("
+                 << GetAprErrorString(status) << " ) polling for "
+                 << active_fetches_.size()
+                 << ((threaded_fetcher_ == NULL) ? ": (threaded)"
+                     : ": (non-blocking)")
+                 << " (" << this << ") for " << microseconds/1.0e6
+                 << " seconds";
     }
   }
   return active_fetches_.size();

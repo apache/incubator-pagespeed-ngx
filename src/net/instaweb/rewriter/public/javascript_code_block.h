@@ -37,7 +37,7 @@ class JavascriptRewriteConfig {
  public:
   explicit JavascriptRewriteConfig(Statistics* statistics);
   static void Initialize(Statistics* statistics);
-  // Whether to minify javascript output (using jsmin).
+  // Whether to minify javascript output (using jsminify).
   // true by default.
   bool minify() const {
     return minify_;

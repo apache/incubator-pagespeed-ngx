@@ -28,6 +28,9 @@ namespace net_instaweb {
 
 class Hasher {
  public:
+  // Returns the target size, in characters, of the hash string.
+  static const int kHashSizeInChars;
+
   Hasher() { }
   virtual ~Hasher();
 

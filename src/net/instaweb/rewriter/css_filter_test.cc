@@ -113,6 +113,8 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{box-shadow:-1px -2px 2px rgba(0, 0, 0, .15)}",  // CSS3 rgba
     // http://code.google.com/p/modpagespeed/issues/detail?id=66
     "a{-moz-transform:rotate(7deg)}"
+    // http://code.google.com/p/modpagespeed/issues/detail?id=5
+    "a {font-family:trebuchet ms}"  // Keep space between trebuchet and ms.
     };
   for (int i = 0; i < arraysize(examples); ++i) {
     ValidateNoChangeRewriteInlineCss("distilled_css", examples[i]);

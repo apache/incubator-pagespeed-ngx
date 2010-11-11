@@ -105,9 +105,8 @@ bool is_html_content(const char* content_type) {
 }
 
 // Check if pagespeed optimization rules applicable.
-bool check_pagespeed_applicable(ap_filter_t* filter, apr_bucket_brigade* bb,
+bool check_pagespeed_applicable(request_rec* request,
                                 const QueryParams& query_params) {
-  request_rec* request = filter->r;
   // We can't operate on Content-Ranges.
   if (apr_table_get(request->headers_out, "Content-Range") != NULL) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
@@ -138,11 +137,8 @@ bool check_pagespeed_applicable(ap_filter_t* filter, apr_bucket_brigade* bb,
 // Create a new bucket from buf using HtmlRewriter.
 // TODO(lsong): the content is copied multiple times. The buf is
 // copied/processed to string output, then output is copied to new bucket.
-apr_bucket* rewrite_html(ap_filter_t *filter, RewriteOperation operation,
-                         const char* buf, int len) {
-  request_rec* request = filter->r;
-  InstawebContext* context =
-      static_cast<InstawebContext*>(filter->ctx);
+apr_bucket* rewrite_html(InstawebContext* context, request_rec* request,
+                         RewriteOperation operation, const char* buf, int len) {
   if (context == NULL) {
     LOG(DFATAL) << "Context is null";
     return NULL;
@@ -217,23 +213,19 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
   return ret && (option_count > 0);
 }
 
-apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
-  // Check if pagespeed is enabled.
-  request_rec* request = filter->r;
+InstawebContext* initialize_context(request_rec* request) {
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(
       request->server);
   if (!factory->enabled() || (request->unparsed_uri == NULL)) {
     // TODO(jmarantz): consider adding Debug message if unparsed_uri is NULL,
     // possibly of request->the_request which was non-null in the case where
     // I found this in the debugger.
-    ap_remove_output_filter(filter);
-    return ap_pass_brigade(filter->next, bb);
+    return NULL;
   }
 
-  // Do nothing if there is nothing, and stop passing to other filters.
-  if (APR_BRIGADE_EMPTY(bb)) {
-    return APR_SUCCESS;
-  }
+  ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                "ModPagespeed OutputFilter called for request %s",
+                request->unparsed_uri);
 
   QueryParams query_params;
   if (request->parsed_uri.query != NULL) {
@@ -241,141 +233,160 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   }
 
   // Check if pagespeed optimization applicable and get the resource type.
-  if (!check_pagespeed_applicable(filter, bb, query_params)) {
-    ap_remove_output_filter(filter);
-    return ap_pass_brigade(filter->next, bb);
+  if (!check_pagespeed_applicable(request, query_params)) {
+    return NULL;
+  }
+
+  // Check if mod_instaweb has already rewritten the HTML.  If the server is
+  // setup as both the original and the proxy server, mod_pagespeed filter may
+  // be applied twice. To avoid this, skip the content if it is already
+  // optimized by mod_pagespeed.
+  if (apr_table_get(request->headers_out, kModPagespeedHeader) != NULL) {
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                  "Already has x-mod-pagespeed");
+    return NULL;
+  }
+
+  std::string absolute_url;
+  if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
+    absolute_url = request->unparsed_uri;
+  } else {
+    absolute_url = ap_construct_url(request->pool, request->unparsed_uri,
+                                    request);
+  }
+  if ((request->filename != NULL) &&
+      (strncmp(request->filename, "proxy:", 6) == 0)) {
+    absolute_url.assign(request->filename + 6, strlen(request->filename) - 6);
+  }
+
+  RewriteOptions custom_options;
+  bool use_custom_options = ScanQueryParamsForRewriterOptions(
+      factory, query_params, &custom_options);
+  InstawebContext* context = new InstawebContext(request, factory, absolute_url,
+                                use_custom_options, custom_options);
+
+  InstawebContext::ContentEncoding encoding =
+      context->content_encoding();
+  if (encoding == InstawebContext::kGzip) {
+    // Unset the content encoding because the InstawebContext will decode the
+    // content before parsing.
+    apr_table_unset(request->headers_out, HttpAttributes::kContentEncoding);
+    apr_table_unset(request->err_headers_out,
+                    HttpAttributes::kContentEncoding);
+  } else if (encoding == InstawebContext::kOther) {
+    // We don't know the encoding, so we cannot rewrite the HTML.
+    return NULL;
+  }
+
+  SimpleMetaData request_headers, response_headers;
+  ApacheHeaderToMetaData(request->headers_in, 0,
+                         request->proto_num, &request_headers);
+  apr_table_setn(request->headers_out, kModPagespeedHeader,
+                 kModPagespeedVersion);
+  apr_table_unset(request->headers_out, HttpAttributes::kContentLength);
+  apr_table_unset(request->headers_out, "Content-MD5");
+  apr_table_unset(request->headers_out, HttpAttributes::kContentEncoding);
+
+  // Note that downstream output filters may further mutate the response
+  // headers, and this will not show those mutations.
+  ApacheHeaderToMetaData(request->headers_out, request->status,
+                         request->proto_num, &response_headers);
+
+  // Make sure compression is enabled for this response.
+  ap_add_output_filter("DEFLATE", NULL, request, request->connection);
+  return context;
+}
+
+bool process_bucket(ap_filter_t *filter, request_rec* request,
+                    InstawebContext* context, apr_bucket* bucket,
+                    apr_status_t* return_code) {
+  // Remove the bucket from the old brigade. We will create new bucket or
+  // reuse the bucket to insert into the new brigade.
+  APR_BUCKET_REMOVE(bucket);
+  *return_code = APR_SUCCESS;
+  apr_bucket_brigade* context_bucket_brigade = context->bucket_brigade();
+  apr_bucket* new_bucket = NULL;
+  if (!APR_BUCKET_IS_METADATA(bucket)) {
+    const char* buf = NULL;
+    size_t bytes = 0;
+    *return_code = apr_bucket_read(bucket, &buf, &bytes, APR_BLOCK_READ);
+    if (*return_code == APR_SUCCESS) {
+      new_bucket = rewrite_html(context, request, REWRITE, buf, bytes);
+    } else {
+      ap_log_rerror(APLOG_MARK, APLOG_ERR, *return_code, request,
+                    "Reading bucket failed (rcode=%d)", *return_code);
+      apr_bucket_delete(bucket);
+      return true;
+    }
+    // Processed the bucket, now delete it.
+    apr_bucket_delete(bucket);
+    if (new_bucket != NULL) {
+      APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, new_bucket);
+    }
+  } else if (APR_BUCKET_IS_EOS(bucket)) {
+    new_bucket = rewrite_html(context, request, FINISH, NULL, 0);
+    if (new_bucket != NULL) {
+      APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, new_bucket);
+    }
+    // Insert the EOS bucket to the new brigade.
+    APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, bucket);
+    // OK, we have seen the EOS. Time to pass it along down the chain.
+    *return_code = ap_pass_brigade(filter->next, context_bucket_brigade);
+    return true;
+  } else if (APR_BUCKET_IS_FLUSH(bucket)) {
+    new_bucket = rewrite_html(context, request, FLUSH, NULL, 0);
+    if (new_bucket != NULL) {
+      APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, new_bucket);
+    }
+    APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, bucket);
+    // OK, Time to flush, pass it along down the chain.
+    *return_code = ap_pass_brigade(filter->next, context_bucket_brigade);
+    if (*return_code != APR_SUCCESS) {
+      return true;
+    }
+  } else {
+    // TODO(lsong): remove this log.
+    ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
+                  "Unknown meta data");
+    APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, bucket);
+  }
+  return false;
+}
+
+apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
+  // Check if pagespeed is enabled.
+  request_rec* request = filter->r;
+
+  // Do nothing if there is nothing, and stop passing to other filters.
+  if (APR_BRIGADE_EMPTY(bb)) {
+    return APR_SUCCESS;
   }
 
   InstawebContext* context =
       static_cast<InstawebContext*>(filter->ctx);
 
-  ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                "ModPagespeed OutputFilter called for request %s",
-                request->unparsed_uri);
-
   // Initialize per-request context structure.  Note that instaweb_out_filter
   // may get called multiple times per HTTP request, and this occurs only
   // on the first call.
   if (context == NULL) {
-    // Check if mod_instaweb has already rewritten the HTML.  If the server is
-    // setup as both the original and the proxy server, mod_pagespeed filter may
-    // be applied twice. To avoid this, skip the content if it is already
-    // optimized by mod_pagespeed.
-    if (apr_table_get(request->headers_out, kModPagespeedHeader) != NULL) {
-      ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                    "Already has x-mod-pagespeed");
+    context = initialize_context(request);
+    if (context == NULL) {
       ap_remove_output_filter(filter);
       return ap_pass_brigade(filter->next, bb);
     }
-
-    std::string absolute_url;
-    if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
-      absolute_url = request->unparsed_uri;
-    } else {
-      absolute_url = ap_construct_url(request->pool, request->unparsed_uri,
-                                  request);
-    }
-
-    RewriteOptions custom_options;
-    bool use_custom_options = ScanQueryParamsForRewriterOptions(
-        factory, query_params, &custom_options);
-    context = new InstawebContext(request, factory, absolute_url,
-                                  use_custom_options, custom_options);
     filter->ctx = context;
-
-    InstawebContext::ContentEncoding encoding =
-        context->content_encoding();
-    if (encoding == InstawebContext::kGzip) {
-      // Unset the content encoding because the InstawebContext will decode the
-      // content before parsing.
-      apr_table_unset(request->headers_out, HttpAttributes::kContentEncoding);
-      apr_table_unset(request->err_headers_out,
-                      HttpAttributes::kContentEncoding);
-    } else if (encoding == InstawebContext::kOther) {
-      // We don't know the encoding, so we cannot rewrite the HTML.
-      ap_remove_output_filter(filter);
-      return ap_pass_brigade(filter->next, bb);
-    }
-
-    SimpleMetaData request_headers, response_headers;
-    ApacheHeaderToMetaData(request->headers_in, 0,
-                           request->proto_num, &request_headers);
-    if ((request->filename != NULL) &&
-        (strncmp(request->filename, "proxy:", 6) == 0)) {
-      absolute_url.assign(request->filename + 6, strlen(request->filename) - 6);
-    }
-
-    apr_table_setn(request->headers_out, kModPagespeedHeader,
-                   kModPagespeedVersion);
-    apr_table_unset(request->headers_out, HttpAttributes::kContentLength);
-    apr_table_unset(request->headers_out, "Content-MD5");
-    apr_table_unset(request->headers_out, HttpAttributes::kContentEncoding);
-
-    // Note that downstream output filters may further mutate the response
-    // headers, and this will not show those mutations.
-    ApacheHeaderToMetaData(request->headers_out, request->status,
-                           request->proto_num, &response_headers);
-
-    // Make sure compression is enabled for this response.
-    ap_add_output_filter("DEFLATE", NULL, request, request->connection);
   }
 
-  apr_bucket* new_bucket = NULL;
-  apr_bucket_brigade* context_bucket_brigade = context->bucket_brigade();
+  apr_status_t return_code = APR_SUCCESS;
   while (!APR_BRIGADE_EMPTY(bb)) {
     apr_bucket* bucket = APR_BRIGADE_FIRST(bb);
-    // Remove the bucket from the old brigade. We will create new bucket or
-    // reuse the bucket to insert into the new brigade.
-    APR_BUCKET_REMOVE(bucket);
-    if (!APR_BUCKET_IS_METADATA(bucket)) {
-      const char* buf = NULL;
-      size_t bytes = 0;
-      apr_status_t ret_code =
-          apr_bucket_read(bucket, &buf, &bytes, APR_BLOCK_READ);
-      if (ret_code == APR_SUCCESS) {
-        new_bucket = rewrite_html(filter, REWRITE, buf, bytes);
-      } else {
-        ap_log_rerror(APLOG_MARK, APLOG_ERR, ret_code, request,
-                      "Reading bucket failed (rcode=%d)", ret_code);
-        apr_bucket_delete(bucket);
-        return ret_code;
-      }
-      // Processed the bucket, now delete it.
-      apr_bucket_delete(bucket);
-      if (new_bucket != NULL) {
-        APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, new_bucket);
-      }
-    } else if (APR_BUCKET_IS_EOS(bucket)) {
-      new_bucket = rewrite_html(filter, FINISH, NULL, 0);
-      if (new_bucket != NULL) {
-        APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, new_bucket);
-      }
-      // Insert the EOS bucket to the new brigade.
-      APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, bucket);
-      // OK, we have seen the EOS. Time to pass it along down the chain.
-      return ap_pass_brigade(filter->next, context_bucket_brigade);
-    } else if (APR_BUCKET_IS_FLUSH(bucket)) {
-      new_bucket = rewrite_html(filter, FLUSH, NULL, 0);
-      if (new_bucket != NULL) {
-        APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, new_bucket);
-      }
-      APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, bucket);
-      // OK, Time to flush, pass it along down the chain.
-      apr_status_t ret_code =
-          ap_pass_brigade(filter->next, context_bucket_brigade);
-      if (ret_code != APR_SUCCESS) {
-        return ret_code;
-      }
-    } else {
-      // TODO(lsong): remove this log.
-      ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
-                    "Unknown meta data");
-      APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, bucket);
+    if (process_bucket(filter, request, context, bucket, &return_code)) {
+      return return_code;
     }
   }
 
   apr_brigade_cleanup(bb);
-  return APR_SUCCESS;
+  return return_code;
 }
 
 apr_status_t pagespeed_child_exit(void* data) {

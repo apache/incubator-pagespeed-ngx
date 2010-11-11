@@ -27,7 +27,7 @@ namespace net_instaweb {
 namespace {
 
 // This sample code comes from Douglas Crockford's jsmin example.
-// The same code is used to test jsmin in pagespeed.
+// The same code is used to test jsminify in pagespeed.
 const std::string kBeforeCompilation =
     "// is.js\n"
     "\n"
@@ -201,7 +201,7 @@ TEST(JsCodeBlockTest, DealWithSgmlComment) {
   JavascriptRewriteConfig config(&stats);
   GoogleMessageHandler handler;
   const std::string original = "  <!--  \nvar x = 1;\n  //-->  ";
-  const std::string expected = "<!--\nvar x=1;\n//-->";
+  const std::string expected = "var x=1;";
   JavascriptCodeBlock block(original, &config, &handler);
   EXPECT_TRUE(block.ProfitableToRewrite());
   EXPECT_EQ(expected, block.Rewritten());

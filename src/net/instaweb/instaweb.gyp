@@ -79,6 +79,7 @@
         'util/url_multipart_encoder.cc',
         'util/url_segment_encoder.cc',
         'util/user_agent.cc',
+        'util/wait_url_async_fetcher.cc',
         'util/wget_url_fetcher.cc',
         'util/wildcard.cc',
         'util/write_through_cache.cc',
@@ -198,6 +199,7 @@
         'instaweb_rewriter_base',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/jsminify/js_minify.gyp:pagespeed_jsminify',
         '<(DEPTH)/third_party/libpagespeed/src/third_party/jsmin/jsmin.gyp:jsmin',
       ],
       'sources': [

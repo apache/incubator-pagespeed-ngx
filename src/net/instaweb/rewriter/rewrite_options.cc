@@ -59,8 +59,11 @@ const int RewriteOptions::kMaxUrlSize = 2083;
 // See http://code.google.com/p/modpagespeed/issues/detail?id=9
 // Apache evidently limits each URL path segment (between /) to
 // about 256 characters.  This is not a fundamental URL limitation
-// but is Apache specific.
-const int64 RewriteOptions::kMaxUrlSegmentSize = 0;  // unlimited
+// but is Apache specific.  For the moment we will impose the
+// Apache limitation in general -- there is concern that even an
+// nginx server might fail if resources are then served through
+// an Apache proxy.  Until then let's just set a reasonable limit.
+const int64 RewriteOptions::kMaxUrlSegmentSize = 250;
 
 const std::string RewriteOptions::kDefaultBeaconUrl =
     "/mod_pagespeed_beacon?ets=";

@@ -216,7 +216,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {
   int bytes_count =
       statistics_.GetVariable(SerfStats::kSerfFetchByteCount)->Get();
   // google.com is changing every time, check if we get a rough number.
-  EXPECT_LT(8000, bytes_count);
+  EXPECT_LT(7500, bytes_count);
   int time_duration =
       statistics_.GetVariable(SerfStats::kSerfFetchTimeDurationMs)->Get();
   EXPECT_EQ(kTimerAdvanceMs, time_duration);

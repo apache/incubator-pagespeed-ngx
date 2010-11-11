@@ -127,6 +127,10 @@ deps = {
     (Var("libpagespeed_trunk") + "/src/pagespeed/image_compression" +
      Var("libpagespeed_revision")),
 
+  "src/third_party/libpagespeed/src/pagespeed/jsminify":
+    (Var("libpagespeed_trunk") + "/src/pagespeed/jsminify" +
+     Var("libpagespeed_revision")),
+
   "src/third_party/libpagespeed/src/pagespeed/proto":
     (Var("libpagespeed_trunk") + "/src/pagespeed/proto" +
      Var("libpagespeed_revision")),

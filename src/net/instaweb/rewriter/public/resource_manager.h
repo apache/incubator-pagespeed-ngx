@@ -250,6 +250,9 @@ class ResourceManager {
   DomainLawyer* domain_lawyer() { return domain_lawyer_; }
   const DomainLawyer* domain_lawyer() const { return domain_lawyer_; }
 
+  int max_url_segment_size() const { return max_url_segment_size_; }
+  int max_url_size() const { return max_url_size_; }
+
  private:
   inline void IncrementResourceUrlDomainRejections();
   std::string ConstructNameKey(const OutputResource& output) const;

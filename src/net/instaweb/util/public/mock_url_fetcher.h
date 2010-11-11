@@ -74,6 +74,8 @@ class MockUrlFetcher : public UrlFetcher {
   ResponseMap response_map_;
   bool enabled_;
   bool fail_on_unexpected_;  // Should we EXPECT if unexpected url called?
+
+  DISALLOW_COPY_AND_ASSIGN(MockUrlFetcher);
 };
 
 }  // namespace net_instaweb

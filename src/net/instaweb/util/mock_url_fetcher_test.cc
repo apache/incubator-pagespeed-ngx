@@ -16,9 +16,10 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_url_fetcher.h"
-#include "net/instaweb/util/public/null_message_handler.h"
+
+#include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/gtest.h"
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
@@ -43,7 +44,7 @@ TEST_F(MockUrlFetcherTest, GetsCorrectMappedResponse) {
   SimpleMetaData response_header;
   std::string response_body;
   StringWriter response_writer(&response_body);
-  NullMessageHandler handler;
+  GoogleMessageHandler handler;
 
   const char url1[] = "http://www.example.com/successs.html";
   SimpleMetaData header1;

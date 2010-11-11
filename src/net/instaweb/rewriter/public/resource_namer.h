@@ -30,6 +30,10 @@ class ResourceManager;
 // add a Clear(), but it is a stateful class.
 class ResourceNamer {
  public:
+  // This determines the overhead imposed on each URL by the ResourceNamer
+  // syntax, such as separators.
+  static const int kOverhead;
+
   ResourceNamer() {}
   ~ResourceNamer() {}
 
