@@ -16,6 +16,7 @@
 //         lsong@google.com (Libo Song)
 
 #include "net/instaweb/apache/instaweb_context.h"
+#include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/stack_buffer.h"
 #include "http_config.h"
@@ -34,7 +35,9 @@ InstawebContext::InstawebContext(request_rec* request,
     : content_encoding_(kNone),
       factory_(factory),
       string_writer_(&output_),
-      inflater_(NULL) {
+      inflater_(NULL),
+      content_detection_state_(kStart),
+      absolute_url_(absolute_url) {
   if (use_custom_options) {
     custom_rewriter_.reset(factory->NewCustomRewriteDriver(custom_options));
     rewrite_driver_ = custom_rewriter_.get();
@@ -67,7 +70,6 @@ InstawebContext::InstawebContext(request_rec* request,
   // TODO(lsong): Bypass the string buffer, writer data directly to the next
   // apache bucket.
   rewrite_driver_->SetWriter(&string_writer_);
-  rewrite_driver_->html_parse()->StartParse(absolute_url);
 }
 
 InstawebContext::~InstawebContext() {
@@ -82,10 +84,58 @@ void InstawebContext::Rewrite(const char* input, int size) {
     inflater_->SetInput(input, size);
     while (inflater_->HasUnconsumedInput()) {
       int num_inflated_bytes = inflater_->InflateBytes(buf, kStackBufferSize);
-      rewrite_driver_->html_parse()->ParseText(buf, num_inflated_bytes);
+      ProcessBytes(buf, num_inflated_bytes);
     }
   } else {
-    rewrite_driver_->html_parse()->ParseText(input, size);
+    ProcessBytes(input, size);
+  }
+}
+
+void InstawebContext::ProcessBytes(const char* input, int size) {
+  // Try to figure out whether this looks like HTML or not, if we haven't
+  // figured it out already.  We just scan past whitespace for '<'.
+  for (int i = 0; (content_detection_state_ == kStart) && (i < size); ++i) {
+    char c = input[i];
+    if (c == '<') {
+      content_detection_state_ = kHtml;
+      rewrite_driver_->html_parse()->StartParse(absolute_url_);
+    } else if (!isspace(c)) {
+      // TODO(jmarantz): figure out whether it's possible to remove our
+      // filter from the chain entirely.
+      //
+      // TODO(jmarantz): look for 'gzip' data.  We do not expect to see
+      // this if the Content-Encoding header is set upstream of mod_pagespeed,
+      // but we have heard evidence from the field that WordPress plugins and
+      // possibly other modules send compressed data through without that
+      // header.
+      content_detection_state_ = kNotHtml;
+    }
+  }
+
+  switch (content_detection_state_) {
+    case kStart:
+      // Handle the corner where the first buffer of text contains
+      // only whitespace, which we will retain for the next call.
+      buffer_.append(input, size);
+      break;
+
+    case kHtml:
+      // Looks like HTML: send it through the HTML rewriter.
+      if (!buffer_.empty()) {
+        rewrite_driver_->html_parse()->ParseText(
+            buffer_.data(), buffer_.size());
+        buffer_.clear();
+      }
+      rewrite_driver_->html_parse()->ParseText(input, size);
+      break;
+
+    case kNotHtml:
+      // Looks like something that's not HTML.  Send it directly to the
+      // output buffer.
+      output_.append(buffer_.data(), buffer_.size());
+      buffer_.clear();
+      output_.append(input, size);
+      break;
   }
 }
 
@@ -120,6 +170,11 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
       content_encoding_ = kOther;
     }
   }
+
+  // Copy the output headers coming into our own filter into response_headers_.
+  // This is purely for debugging context.
+  ApacheHeaderToMetaData(request->headers_out, request->status,
+                         request->proto_num, &response_headers_);
 }
 
 ApacheRewriteDriverFactory* InstawebContext::Factory(server_rec* server) {

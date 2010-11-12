@@ -173,8 +173,24 @@ TEST_F(UrlPartnershipTest, AbsExternalDomainDeclaredButNotMapped) {
 }
 
 TEST_F(UrlPartnershipTest, EmptyTail) {
-  AddUrls("http:/www.nytimes.com/", NULL, NULL);
-  EXPECT_EQ(std::string(""), partnership_.RelativePath(0));
+  EXPECT_FALSE(partnership_.AddUrl("", &message_handler_));
+  EXPECT_TRUE(partnership_.AddUrl("http://www.nytimes.com",
+                                  &message_handler_));
+  EXPECT_TRUE(partnership_.AddUrl("http://www.nytimes.com/",
+                                  &message_handler_));
+}
+
+TEST_F(UrlPartnershipTest, EmptyWithPartner) {
+  UrlPartnership p(&domain_lawyer_, GURL("http://www.google.com/styles/x.html"));
+  EXPECT_TRUE(p.AddUrl("/styles", &message_handler_));
+  EXPECT_FALSE(p.AddUrl("", &message_handler_));
+  EXPECT_TRUE(p.AddUrl("/", &message_handler_));
+  EXPECT_TRUE(p.AddUrl("..", &message_handler_));
+}
+
+TEST_F(UrlPartnershipTest, NeedsATrim) {
+  AddUrls(" http://www.nytimes.com/needs_a_trim.jpg ", NULL, NULL);
+  EXPECT_EQ(std::string("needs_a_trim.jpg"), partnership_.RelativePath(0));
 }
 
 TEST_F(UrlPartnershipTest, RemoveLast) {

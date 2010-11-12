@@ -48,7 +48,7 @@ class OutputResource : public Resource {
                  const ContentType* type);
   ~OutputResource();
 
-  virtual bool ReadIfCached(MessageHandler* message_handler);
+  virtual bool Load(MessageHandler* message_handler);
   virtual std::string url() const;
 
   // The NameKey describes the source url and rewriter used, without hash and

@@ -92,17 +92,12 @@ class Resource {
   friend class ResourceManager;
   friend class UrlReadAsyncFetchCallback;
 
-  // Read complete resource, storing MetaData and contents.
-  virtual void ReadAsync(AsyncCallback* callback,
-                         MessageHandler* message_handler);
-
-  // This method is named exactly the wrong thing.  It is only called
-  // if the resource manager does *not* find the resource in the
-  // cache, and it's expected to either read the resource
-  // synchronously, or to queue up an asynchronous fetch.
-  //
-  // TODO(jmarantz): rename the method.
-  virtual bool ReadIfCached(MessageHandler* message_handler) = 0;
+  // Load the resource asynchronously, storing MetaData and contents in cache.
+  // Returns true, if the resource is already loaded or loaded synchronously.
+  virtual bool Load(MessageHandler* message_handler) = 0;
+  // Same as Load, but calls a callback when finished.
+  virtual void LoadAndCallback(AsyncCallback* callback,
+                                MessageHandler* message_handler);
 
   ResourceManager* resource_manager_;
 

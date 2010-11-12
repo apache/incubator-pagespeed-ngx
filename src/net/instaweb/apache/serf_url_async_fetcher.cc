@@ -228,8 +228,8 @@ class SerfFetch {
            APR_STATUS_IS_EAGAIN(status)) {
       if (response_headers_->headers_complete()) {
         status = APR_EGENERAL;
-        message_handler_->Error(str_url_.c_str(), 0,
-                                "headers complete but more data coming");
+        message_handler_->Info(str_url_.c_str(), 0,
+                               "headers complete but more data coming");
       } else {
         StringPiece str_piece(data, num_bytes);
         apr_size_t parsed_len =
@@ -669,7 +669,7 @@ int SerfUrlAsyncFetcher::Poll(int64 microseconds) {
     bool success = ((status == APR_SUCCESS) || APR_STATUS_IS_TIMEUP(status));
     // TODO(jmarantz): provide the success status to the caller if there is a
     // need.
-    if (!success) {
+    if (!success && !active_fetches_.empty()) {
       // TODO(jmarantz): I have a new theory that we are getting
       // behind when our self-directed URL fetches queue up multiple
       // requests for the same URL, which might be sending the Serf

@@ -36,7 +36,7 @@ namespace {
 //
 // TODO(jmarantz): examine doctype for xhtml for implicitly closed tags
 const char* kImplicitlyClosedHtmlTags[] = {
-  "meta", "input", "link", "br", "img", "area", "hr", "wbr", "param",
+  "meta", "input", "link", "br", "img", "area", "hr", "wbr", "param", "?xml",
   NULL
 };
 
@@ -203,9 +203,10 @@ void HtmlLexer::EvalStart(char c) {
   }
 }
 
-// Browsers appear to only allow letters for first char in tag name ...
+// Browsers appear to only allow letters for first char in tag name,
+// plus ? for <?xml version="1.0" encoding="UTF-8"?>
 bool HtmlLexer::IsLegalTagFirstChar(char c) {
-  return isalpha(c);
+  return isalpha(c) || (c == '?');
 }
 
 // ... and letters, digits, unicode and some symbols for subsequent chars.

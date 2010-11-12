@@ -26,6 +26,15 @@
 
 namespace net_instaweb {
 
+UrlPartnership::UrlPartnership(const DomainLawyer* domain_lawyer,
+                               const GURL& original_request)
+    : domain_lawyer_(domain_lawyer) {
+  if (original_request.is_valid()) {
+    original_origin_and_path_ = GoogleUrl::Create(
+        GoogleUrl::AllExceptLeaf(original_request) + "/");
+  }
+}
+
 UrlPartnership::~UrlPartnership() {
   STLDeleteElements(&gurl_vector_);
 }
@@ -33,16 +42,23 @@ UrlPartnership::~UrlPartnership() {
 // Adds a URL to a combination.  If it can be legally added, consulting
 // the DomainLaywer, then true is returned.  AddUrl cannot be called
 // after Resolve (CHECK failure).
-bool UrlPartnership::AddUrl(const StringPiece& resource_url,
+bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
                             MessageHandler* handler) {
-  std::string mapped_domain_name;
+  std::string resource_url, mapped_domain_name;
   bool ret = false;
-  if (!original_request_.is_valid()) {
-    handler->Message(kWarning, "Cannot rewrite %s relative to invalid url %s",
-                     resource_url.as_string().c_str(),
-                     original_request_.possibly_invalid_spec().c_str());
+  TrimWhitespace(untrimmed_resource_url, &resource_url);
+
+  if (resource_url.empty()) {
+    handler->Message(kInfo, "Cannot rewrite empty URL relative to %s",
+                     original_origin_and_path_.possibly_invalid_spec().c_str());
+  }
+  else if (!original_origin_and_path_.is_valid()) {
+    handler->Message(kInfo, "Cannot rewrite %s relative to invalid url %s",
+                     resource_url.c_str(),
+                     original_origin_and_path_.possibly_invalid_spec().c_str());
   } else if (domain_lawyer_->MapRequestToDomain(
-      original_request_, resource_url, &mapped_domain_name, handler)) {
+      original_origin_and_path_, resource_url, &mapped_domain_name,
+      handler)) {
     if (gurl_vector_.empty()) {
       domain_.swap(mapped_domain_name);
       ret = true;
@@ -53,10 +69,11 @@ bool UrlPartnership::AddUrl(const StringPiece& resource_url,
     if (ret) {
       // TODO(jmarantz): Consider getting the GURL out of the
       // DomainLawyer instead of recomputing it.
-      GURL gurl = GoogleUrl::Resolve(original_request_, resource_url);
+      GURL gurl = GoogleUrl::Resolve(original_origin_and_path_, resource_url);
       CHECK(gurl.is_valid() && gurl.SchemeIs("http"));
       gurl_vector_.push_back(new GURL(gurl));
-      IncrementalResolve(gurl_vector_.size() - 1);
+      int index = gurl_vector_.size() - 1;
+      IncrementalResolve(index);
     }
   }
   return ret;

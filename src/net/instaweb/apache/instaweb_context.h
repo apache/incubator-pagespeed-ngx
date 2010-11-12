@@ -41,6 +41,7 @@ class RewriteOptions;
 class InstawebContext {
  public:
   enum ContentEncoding {kNone, kGzip, kDeflate, kOther};
+  enum ContentDetectionState {kStart, kHtml, kNotHtml};
 
   InstawebContext(request_rec* request,
                   net_instaweb::ApacheRewriteDriverFactory* factory,
@@ -50,8 +51,16 @@ class InstawebContext {
   ~InstawebContext();
 
   void Rewrite(const char* input, int size);
-  void Flush() { rewrite_driver_->html_parse()->Flush(); }
-  void Finish() { rewrite_driver_->html_parse()->FinishParse(); }
+  void Flush() {
+    if (content_detection_state_ == kHtml) {
+      rewrite_driver_->html_parse()->Flush();
+    }
+  }
+  void Finish() {
+    if (content_detection_state_ == kHtml) {
+      rewrite_driver_->html_parse()->FinishParse();
+    }
+  }
   bool empty() const { return output_.empty(); }
   apr_bucket_brigade* bucket_brigade() const { return bucket_brigade_; }
   const std::string& output() { return output_; }
@@ -65,6 +74,7 @@ class InstawebContext {
 
  private:
   void ComputeContentEncoding(request_rec* request);
+  void ProcessBytes(const char* input, int size);
   static apr_status_t Cleanup(void* object);
 
   std::string output_;  // content after instaweb rewritten.
@@ -76,6 +86,10 @@ class InstawebContext {
   net_instaweb::StringWriter string_writer_;
   scoped_ptr<GzipInflater> inflater_;
   scoped_ptr<RewriteDriver> custom_rewriter_;
+  std::string buffer_;
+  SimpleMetaData response_headers_;
+  ContentDetectionState content_detection_state_;
+  std::string absolute_url_;
 
   DISALLOW_COPY_AND_ASSIGN(InstawebContext);
 };

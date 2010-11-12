@@ -212,7 +212,7 @@ void OutputResource::SetHash(const StringPiece& hash) {
   full_name_.set_hash(hash);
 }
 
-bool OutputResource::ReadIfCached(MessageHandler* handler) {
+bool OutputResource::Load(MessageHandler* handler) {
   if (!writing_complete_ && resource_manager_->store_outputs_in_file_system()) {
     FileSystem* file_system = resource_manager_->file_system();
     FileSystem::InputFile* file = file_system->OpenInputFile(

@@ -348,8 +348,7 @@ Resource* ResourceManager::CreateInputResource(const GURL& base_gurl,
 Resource* ResourceManager::CreateInputResourceAndReadIfCached(
     const GURL& base_gurl, const StringPiece& input_url,
     MessageHandler* handler) {
-  Resource* input_resource =
-      CreateInputResource(base_gurl, input_url, handler);
+  Resource* input_resource = CreateInputResource(base_gurl, input_url, handler);
   if (input_resource != NULL &&
       (!input_resource->IsCacheable() ||
        !ReadIfCached(input_resource, handler))) {
@@ -533,28 +532,37 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
 void ResourceManager::ReadAsync(Resource* resource,
                                 Resource::AsyncCallback* callback,
                                 MessageHandler* handler) {
-  if (http_cache_->Get(resource->url(), &resource->value_,
-                       resource->metadata(), handler)) {
-    callback->Done(true, resource);
-  } else {
-    resource->ReadAsync(callback, handler);
-  }
-}
-
-bool ResourceManager::ReadIfCached(Resource* resource,
-                                   MessageHandler* handler) const {
+  // Is it loaded already?
   bool ret = resource->loaded();
+  // If not, is it in the cache?
   if (!ret && resource->IsCacheable()) {
     ret = http_cache_->Get(resource->url(), &resource->value_,
                            resource->metadata(), handler);
   }
-  // TODO(sligocki): How is ReadIfCached different from http_cache_->Get?
-  // It appears what's going on is that we check the cache first, then send out
-  // and async fetch and if that fetch was actually synchronous, retrieve the
-  // result from the cache.
-  // TODO(sligocki): More thorough comments and analysis of this.
+
+  if (ret) {
+    // If so, call callback directly.
+    callback->Done(true, resource);
+  } else {
+    // If not, load it asynchronously.
+    resource->LoadAndCallback(callback, handler);
+  }
+
+  // TODO(sligocki): Do we need to call DetermineContentType like below?
+}
+
+bool ResourceManager::ReadIfCached(Resource* resource,
+                                   MessageHandler* handler) const {
+  // Is it loaded already?
+  bool ret = resource->loaded();
+  // If not, is it in the cache?
+  if (!ret && resource->IsCacheable()) {
+    ret = http_cache_->Get(resource->url(), &resource->value_,
+                           resource->metadata(), handler);
+  }
+  // If not, load it explicitly.
   if (!ret) {
-    ret = resource->ReadIfCached(handler);
+    ret = resource->Load(handler);
   }
   if (ret) {
     resource->DetermineContentType();

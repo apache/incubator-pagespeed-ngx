@@ -130,7 +130,6 @@ class ApacheWriter : public Writer {
       // to duplicate it.  Note that we will update the content type below,
       // after transforming the headers.
       content_type = apr_pstrdup(request_->pool, v[v.size() - 1]);
-      response_headers_->RemoveAll(HttpAttributes::kContentType);
     }
     response_headers_->RemoveAll(HttpAttributes::kTransferEncoding);
     response_headers_->RemoveAll(HttpAttributes::kContentLength);

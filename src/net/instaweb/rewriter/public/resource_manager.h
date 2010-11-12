@@ -208,16 +208,19 @@ class ResourceManager {
              const StringPiece& contents, OutputResource* output,
              int64 origin_expire_time_ms, MessageHandler* handler);
 
-  // Read resource contents & headers, returning false if the resource
-  // is not already cached, in which case an async request is queued.
-  // The Resource remains owned by the caller.
+  // Load the resource if it is cached (or if it can be fetched quickly).
+  // If not send off an asynchronous fetch and store the result in the cache.
+  //
+  // Returns true if the resource is loaded.
+  //
+  // The resource remains owned by the caller.
   bool ReadIfCached(Resource* resource, MessageHandler* message_handler) const;
 
-  // Read contents of resource asynchronously, calling callback when
+  // Loads contents of resource asynchronously, calling callback when
   // done.  If the resource contents is cached, the callback will
-  // be called directly, rather than asynchronously.  The Resource
+  // be called directly, rather than asynchronously.  The resource
   // will be passed to the callback, which will be responsible for
-  // ultimately freeing the resource.  The Resource will have its
+  // ultimately freeing the resource.  The resource will have its
   // contents and headers filled in.
   //
   // The resource can be deleted only after the callback is called.

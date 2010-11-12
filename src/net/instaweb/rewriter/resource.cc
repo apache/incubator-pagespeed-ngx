@@ -65,12 +65,11 @@ void Resource::DetermineContentType() {
   }
 }
 
-// Default implementation of an async callback for a resource, which
-// calls ReadIfCached.  Resources which can fetch asynchronously should
-// override this.
-void Resource::ReadAsync(AsyncCallback* callback,
-                         MessageHandler* message_handler) {
-  callback->Done(ReadIfCached(message_handler), this);
+// Default, blocking implementation which calls Load.
+// Resources which can fetch asynchronously should override this.
+void Resource::LoadAndCallback(AsyncCallback* callback,
+                                MessageHandler* message_handler) {
+  callback->Done(Load(message_handler), this);
 }
 
 Resource::AsyncCallback::~AsyncCallback() {

@@ -102,7 +102,7 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
   DISALLOW_COPY_AND_ASSIGN(UrlReadIfCachedCallback);
 };
 
-bool UrlInputResource::ReadIfCached(MessageHandler* handler) {
+bool UrlInputResource::Load(MessageHandler* handler) {
   meta_data_.Clear();
   value_.Clear();
 
@@ -146,8 +146,8 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
   DISALLOW_COPY_AND_ASSIGN(UrlReadAsyncFetchCallback);
 };
 
-void UrlInputResource::ReadAsync(AsyncCallback* callback,
-                                 MessageHandler* message_handler) {
+void UrlInputResource::LoadAndCallback(AsyncCallback* callback,
+                                       MessageHandler* message_handler) {
   CHECK(callback != NULL) << "A callback must be supplied, or else it will "
       "not be possible to determine when it's safe to delete the resource.";
   if (loaded()) {

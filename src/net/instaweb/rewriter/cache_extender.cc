@@ -127,7 +127,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
 }
 
 bool CacheExtender::Fetch(OutputResource* output_resource,
-                          Writer* writer,
+                          Writer* response_writer,
                           const MetaData& request_headers,
                           MetaData* response_headers,
                           UrlAsyncFetcher* fetcher,
@@ -146,7 +146,7 @@ bool CacheExtender::Fetch(OutputResource* output_resource,
     // TODO(sligocki): Async StreamingFetches are not being added to cache
     // because response_headers are not being saved into output_resource.
     fetcher->StreamingFetch(input->url(), request_headers, response_headers,
-                            writer, message_handler, callback);
+                            response_writer, message_handler, callback);
     ret = true;
   } else {
     output_resource->name().CopyToString(&url);

@@ -59,7 +59,7 @@ class DataUrlInputResource : public Resource {
   virtual std::string url() const { return *url_.get(); }
 
  protected:
-  virtual bool ReadIfCached(MessageHandler* message_handler);
+  virtual bool Load(MessageHandler* message_handler);
   virtual bool IsCacheable() const;
 
  private:

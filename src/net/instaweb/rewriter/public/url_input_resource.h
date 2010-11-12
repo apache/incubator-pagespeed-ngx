@@ -43,10 +43,9 @@ class UrlInputResource : public Resource {
   virtual std::string url() const { return url_; }
 
  protected:
-  // Read complete resource, content is stored in contents_.
-  virtual void ReadAsync(AsyncCallback* callback,
-                         MessageHandler* message_handler);
-  virtual bool ReadIfCached(MessageHandler* message_handler);
+  virtual bool Load(MessageHandler* message_handler);
+  virtual void LoadAndCallback(AsyncCallback* callback,
+                               MessageHandler* message_handler);
 
  private:
   std::string url_;

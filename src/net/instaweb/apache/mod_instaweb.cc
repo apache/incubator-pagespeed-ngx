@@ -268,8 +268,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
   RewriteOptions custom_options;
   bool use_custom_options = ScanQueryParamsForRewriterOptions(
       factory, query_params, &custom_options);
-  InstawebContext* context = new InstawebContext(request, factory, absolute_url,
-                                use_custom_options, custom_options);
+  InstawebContext* context = new InstawebContext(
+      request, factory, absolute_url, use_custom_options, custom_options);
 
   InstawebContext::ContentEncoding encoding =
       context->content_encoding();
@@ -278,26 +278,18 @@ InstawebContext* build_context_for_request(request_rec* request) {
     // Unset the content encoding because the InstawebContext will decode the
     // content before parsing.
     apr_table_unset(request->headers_out, HttpAttributes::kContentEncoding);
-    apr_table_unset(request->err_headers_out,
-                    HttpAttributes::kContentEncoding);
+    apr_table_unset(request->err_headers_out, HttpAttributes::kContentEncoding);
   } else if (encoding == InstawebContext::kOther) {
     // We don't know the encoding, so we cannot rewrite the HTML.
     return NULL;
   }
 
-  SimpleMetaData request_headers, response_headers;
-  ApacheHeaderToMetaData(request->headers_in, 0,
-                         request->proto_num, &request_headers);
   apr_table_setn(request->headers_out, kModPagespeedHeader,
                  kModPagespeedVersion);
+
   apr_table_unset(request->headers_out, HttpAttributes::kContentLength);
   apr_table_unset(request->headers_out, "Content-MD5");
   apr_table_unset(request->headers_out, HttpAttributes::kContentEncoding);
-
-  // Note that downstream output filters may further mutate the response
-  // headers, and this will not show those mutations.
-  ApacheHeaderToMetaData(request->headers_out, request->status,
-                         request->proto_num, &response_headers);
 
   // Make sure compression is enabled for this response.
   ap_add_output_filter("DEFLATE", NULL, request, request->connection);

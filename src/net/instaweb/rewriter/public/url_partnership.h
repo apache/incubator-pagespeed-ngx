@@ -38,11 +38,8 @@ class MessageHandler;
 //   3. What are the unique suffices for the elements.
 class UrlPartnership {
  public:
-  explicit UrlPartnership(const DomainLawyer* domain_lawyer,
-                          const GURL& original_request)
-      : domain_lawyer_(domain_lawyer),
-        original_request_(original_request) {
-  }
+  UrlPartnership(const DomainLawyer* domain_lawyer,
+                 const GURL& original_request);
   ~UrlPartnership();
 
   // Adds a URL to a combination.  If it can be legally added, consulting
@@ -76,7 +73,7 @@ class UrlPartnership {
   GurlVector gurl_vector_;
   std::string domain_;
   const DomainLawyer* domain_lawyer_;
-  GURL original_request_;
+  GURL original_origin_and_path_;
 
   // common_components_ is updated while adding Urls to support incremental
   // resolution.

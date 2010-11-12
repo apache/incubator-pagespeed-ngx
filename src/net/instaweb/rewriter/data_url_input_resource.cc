@@ -25,7 +25,7 @@
 
 namespace net_instaweb {
 
-bool DataUrlInputResource::ReadIfCached(MessageHandler* message_handler) {
+bool DataUrlInputResource::Load(MessageHandler* message_handler) {
   if (DecodeDataUrlContent(encoding_, encoded_contents_,
                            &decoded_contents_) &&
       value_.Write(decoded_contents_, message_handler)) {
@@ -34,7 +34,6 @@ bool DataUrlInputResource::ReadIfCached(MessageHandler* message_handler) {
   }
   return loaded();
 }
-
 
 bool DataUrlInputResource::IsCacheable() const {
   return false;
