@@ -86,11 +86,15 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     const char* contents = "contents";
     const int64 origin_expire_time_ms = 1000;
     const ContentType* content_type = &kContentTypeText;
-    // Create a NamedOutputResource and write it.
     scoped_ptr<OutputResource> nor(
         resource_manager_->CreateOutputResourceWithPath(
             url_prefix_, filter_prefix, name, content_type, &message_handler_));
     ASSERT_TRUE(nor.get() != NULL);
+    // Check name_key against url_prefix/fp.name
+    std::string name_key = nor->name_key();
+    RemoveUrlPrefix(&name_key);
+    EXPECT_EQ(nor->full_name().EncodeIdName(), name_key);
+    // Write some data
     EXPECT_FALSE(nor->IsWritten());
     EXPECT_FALSE(ResourceManagerTestingPeer::HasHash(nor.get()));
     EXPECT_FALSE(ResourceManagerTestingPeer::Generated(nor.get()));
@@ -98,6 +102,11 @@ class ResourceManagerTest : public ResourceManagerTestBase {
                                          origin_expire_time_ms,
                                          &message_handler_));
     EXPECT_TRUE(nor->IsWritten());
+    // Check that hash_ext() is correct.
+    ResourceNamer full_name;
+    EXPECT_TRUE(full_name.DecodeHashExt(nor->hash_ext()));
+    EXPECT_EQ("0", full_name.hash());
+    EXPECT_EQ("txt", full_name.ext());
     // Retrieve the same NOR from the cache.
     scoped_ptr<OutputResource> nor2(
         resource_manager_->CreateOutputResourceWithPath(
@@ -132,16 +141,15 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     EXPECT_FALSE(resource_manager_->FetchOutputResource(
         nor3.get(), NULL, NULL, &message_handler_));
 
-    // But with the URL (which contains the hash), we can retrieve it
-    // from the http_cache.
-    // first cut off the "http://mysite{,.0,.1}/" from the front.
     RemoveUrlPrefix(&url);
-
-    ResourceNamer full_name;
     ASSERT_TRUE(full_name.Decode(url));
     EXPECT_EQ(content_type, NameExtensionToContentType(url));
     EXPECT_EQ(filter_prefix, full_name.id());
     EXPECT_EQ(name, full_name.name());
+
+    // But with the URL (which contains the hash), we can retrieve it
+    // from the http_cache.
+    // first cut off the "http://mysite{,.0,.1}/" from the front.
     scoped_ptr<OutputResource> nor4(
         resource_manager_->CreateOutputResourceForFetch(
             nor->url(), &message_handler_));

@@ -51,6 +51,25 @@ class OutputResource : public Resource {
   virtual bool ReadIfCached(MessageHandler* message_handler);
   virtual std::string url() const;
 
+  // The NameKey describes the source url and rewriter used, without hash and
+  // content type information.  This is used to find previously-computed filter
+  // results whose output hash and content type is unknown.  The full name of a
+  // resource is of the form
+  //    path/prefix.encoded_resource_name.hash.extension
+  // we know prefix and name, but not the hash, and we don't always even have
+  // the extension, which might have changes as the result of, for example image
+  // optimization (e.g. gif->png).  But We can "remember" the hash/extension for
+  // as long as the origin URL was cacheable.  So we construct this as a key:
+  //    path/prefix.encoded_resource_name
+  // and use that to map to the hash-code and extension.  If we know the
+  // hash-code then we may also be able to look up the contents in the same
+  // cache.
+  virtual std::string name_key() const;
+  // The hash_ext describes the hash and content type of the resource;
+  // to index already-computed resources we lookup name_key() and obtain
+  // the corresponding hash_ext().
+  virtual std::string hash_ext() const;
+
   // output-specific
   const std::string& resolved_base() const { return resolved_base_; }
   const ResourceNamer& full_name() const { return full_name_; }

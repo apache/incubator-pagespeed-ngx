@@ -79,6 +79,10 @@ void CssFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(CssFilter::kMinifiedBytesSaved);
   statistics->AddVariable(CssFilter::kParseFailures);
 
+  InitializeAtExitManager();
+}
+
+void CssFilter::InitializeAtExitManager() {
   // Note: This is not thread-safe, but I don't believe we need it to be.
   if (at_exit_manager == NULL) {
     at_exit_manager = new base::AtExitManager;

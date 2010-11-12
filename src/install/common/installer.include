@@ -76,6 +76,7 @@ process_template() (
     -e "s#@@APACHE_USER@@#${APACHE_USER}#g" \
     -e "s#@@MODPAGESPEED_CACHE_ROOT@@#${MODPAGESPEED_CACHE_ROOT}#g" \
     -e "s#@@MODPAGESPEED_ENABLE_UPDATES@@#${MODPAGESPEED_ENABLE_UPDATES}#g" \
+    -e "s#@@COMMENT_OUT_DEFLATE@@#${COMMENT_OUT_DEFLATE}#g" \
     > "$TMPLOUT" <<< "$TMPLINCL"
 )
 

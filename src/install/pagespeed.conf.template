@@ -128,3 +128,9 @@
     </FilesMatch>
   </IfModule>
 </Directory>
+
+#STRESS # These lines are only needed for the stress test.
+#STRESS <Directory /usr/local/apache2/htdocs/mod_pagespeed_example/cgi>
+#STRESS   Options +ExecCGI
+#STRESS </Directory>
+#STRESS AddHandler cgi-script .cgi

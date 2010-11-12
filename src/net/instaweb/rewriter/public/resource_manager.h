@@ -255,7 +255,6 @@ class ResourceManager {
 
  private:
   inline void IncrementResourceUrlDomainRejections();
-  std::string ConstructNameKey(const OutputResource& output) const;
   void ValidateShardsAgainstUrlPrefixPattern();
   std::string CanonicalizeBase(const StringPiece& base, int* shard) const;
 

@@ -211,27 +211,6 @@ void ResourceManager::SetContentType(const ContentType* content_type,
   header->ComputeCaching();
 }
 
-// Constructs a name key to help map all the parts of a resource name,
-// excluding the hash, to the hash.  In other words, the full name of
-// a resource is of the form
-//    prefix.encoded_resource_name.hash.extension
-// we know prefix and name, but not the hash, and we don't always even
-// have the extension, which might have changes as the result of, for
-// example image optimization (e.g. gif->png).  But We can "remember"
-// the hash/extension for as long as the origin URL was cacheable.  So we
-// construct this as a key:
-//    ResourceName:prefix.encoded_resource_name
-// and use that to map to the hash-code and extension.  If we know the
-// hash-code then we may also be able to look up the contents in the same
-// cache.
-std::string ResourceManager::ConstructNameKey(
-    const OutputResource& output) const {
-  ResourceNamer full_name;
-  full_name.set_id(output.filter_prefix());
-  full_name.set_name(output.name());
-  return full_name.EncodeIdName();
-}
-
 // Constructs an output resource corresponding to the specified input resource
 // and encoded using the provided encoder.
 OutputResource* ResourceManager::CreateOutputResourceFromResource(
@@ -298,7 +277,7 @@ OutputResource* ResourceManager::CreateOutputResourceWithPath(
   HTTPValue value;
 
   if (http_cache_->Get(
-          full_name.EncodeIdName(), &value, &meta_data, handler) &&
+          resource->name_key(), &value, &meta_data, handler) &&
       value.ExtractContents(&hash_extension)) {
     ResourceNamer hash_ext;
     if (hash_ext.DecodeHashExt(hash_extension)) {
@@ -537,11 +516,8 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
         origin_meta_data.Add(kCacheControl, cache_control.c_str());
         origin_meta_data.ComputeCaching();
 
-        ResourceNamer full_name;
-        full_name.set_hash(output->hash());
-        full_name.set_ext(output->suffix().substr(1));  // skip the "."
-        http_cache_->Put(ConstructNameKey(*output), origin_meta_data,
-                         full_name.EncodeHashExt(), handler);
+        http_cache_->Put(output->name_key(), origin_meta_data,
+                         output->hash_ext(), handler);
       }
     }
   } else {

@@ -203,6 +203,7 @@ verify_channel
 APACHE_CONFDIR="/etc/httpd/conf.d"
 MODPAGESPEED_CACHE_ROOT="/var/www/mod_pagespeed"
 APACHE_USER="apache"
+COMMENT_OUT_DEFLATE=
 
 # Make everything happen in the OUTPUTDIR.
 cd "${OUTPUTDIR}"

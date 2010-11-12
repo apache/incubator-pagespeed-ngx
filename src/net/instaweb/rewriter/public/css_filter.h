@@ -57,6 +57,11 @@ class CssFilter : public RewriteFilter {
 
   static void Initialize(Statistics* statistics);
 
+  // Note: AtExitManager needs to be initialized or you get a nasty error:
+  // Check failed: false. Tried to RegisterCallback without an AtExitManager.
+  // This is called by Initialize.
+  static void InitializeAtExitManager();
+
   virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);

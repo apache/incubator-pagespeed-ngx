@@ -27,6 +27,8 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/string_writer.h"
 
+namespace net_instaweb {
+
 namespace {
 
 #define DOMAIN "http://test.com/"
@@ -40,10 +42,6 @@ const char kCssData[] = ".blue {color: blue;}";
 const char kImageData[] = "Invalid JPEG but it does not matter for this test";
 const char kJsData[] = "alert('hello, world!')";
 const char kFilterId[] = "ce";
-
-}  // namespace
-
-namespace net_instaweb {
 
 class CacheExtenderTest : public ResourceManagerTestBase {
  protected:
@@ -106,5 +104,23 @@ TEST_F(CacheExtenderTest, ServeFiles) {
   //  2. Gets the data from the file system, with no cache, no mock fetchers.
   //  3. Gets the data from the mock fetchers: no cache, no file system.
 }
+
+/*  TODO(sligocki): Get Serving from new context to work.
+ *   Only problem right now is new resource isn't getting cached.
+TEST_F(CacheExtenderTest, ServeFilesFromDelayedFetch) {
+  InitTest(100);
+  ServeResourceFromManyContexts(DOMAIN "ce.0.a,s.css",
+                                RewriteOptions::kExtendCache,
+                                &mock_hasher_, kCssData);
+  ServeResourceFromManyContexts(DOMAIN "ce.0.b,j.jpg",
+                                RewriteOptions::kExtendCache,
+                                &mock_hasher_, kImageData);
+  ServeResourceFromManyContexts(DOMAIN "ce.0.c,l.js",
+                                RewriteOptions::kExtendCache,
+                                &mock_hasher_, kJsData);
+}
+*/
+
+}  // namespace
 
 }  // namespace net_instaweb

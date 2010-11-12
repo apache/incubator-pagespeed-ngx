@@ -158,6 +158,14 @@ else
   endif
 endif
 
+ifeq ($(STRESS_TEST),1)
+  # remove prefix
+  STRESS_TEST_SED_PATTERN=^\#STRESS
+else
+  # remove whole line
+  STRESS_TEST_SED_PATTERN=^\#STRESS.*
+endif
+
 # Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because
 # that might have embedded spaces, and 'sed' is interpreted first by bash.
 
@@ -168,6 +176,7 @@ $(STAGING_DIR)/%.conf : %.conf.template
 	    -e s@APACHE_MODULES@$(APACHE_MODULES)@g \
 	    -e "s@SLURP_DIR_COMMAND@$(APACHE_SLURP_DIR_COMMAND)@g" \
 	    -e "s@SLURP_READ_ONLY_COMMAND@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
+	    -e "s@$(STRESS_TEST_SED_PATTERN)@@" \
 		< $< > $@
 
 CONF_TEMPLATES = $(STAGING_DIR)/pagespeed.conf \

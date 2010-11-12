@@ -136,6 +136,11 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     }
   }
 
+  int OutstandingFetches() {
+    return statistics_.GetVariable(SerfStats::kSerfFetchOutstandingCount)
+        ->Get();
+  }
+
   int CountCompletedFetches(size_t begin, size_t end) {
     int completed = 0;
     for (size_t idx = begin; idx < end; ++idx) {
@@ -198,7 +203,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   // The fetcher to be tested.
   scoped_ptr<SerfUrlAsyncFetcher> serf_url_async_fetcher_;
   scoped_ptr<MockTimer> timer_;
-  SimpleStats statistics_;
+  SimpleStats statistics_;  // TODO(jmarantz): make this thread-safe
   GoogleMessageHandler message_handler_;
   size_t prev_done_count;
   AprMutex* mutex_;
@@ -235,6 +240,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
   request_headers_[0]->Add(HttpAttributes::kUserAgent,
                            kDefaultUserAgent);
   StartFetches(0, 1, false);
+  EXPECT_EQ(1, OutstandingFetches());
   ASSERT_TRUE(WaitTillDone(0, 1, kMaxMs));
   ASSERT_TRUE(callbacks_[0]->IsDone());
   EXPECT_LT(static_cast<size_t>(0), contents_[0]->size());
@@ -249,6 +255,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
   scoped_array<char> buf(new char[size]);
   ASSERT_EQ(size, inflater.InflateBytes(buf.get(), size));
   EXPECT_EQ(content_starts_[0], std::string(buf.get(), size));
+  EXPECT_EQ(0, OutstandingFetches());
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, FetchTwoURLs) {
@@ -264,6 +271,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchTwoURLs) {
   int time_duration =
       statistics_.GetVariable(SerfStats::kSerfFetchTimeDurationMs)->Get();
   EXPECT_EQ(2 * kTimerAdvanceMs, time_duration);
+  EXPECT_EQ(0, OutstandingFetches());
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestCancelThreeThreaded) {
@@ -285,6 +293,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitThreeThreaded) {
   serf_url_async_fetcher_->WaitForInProgressFetches(
       kWaitTimeoutMs, &message_handler_,
       SerfUrlAsyncFetcher::kThreadedOnly);
+  EXPECT_EQ(0, OutstandingFetches());
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreadedAsync) {
@@ -324,6 +333,11 @@ TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreadedAsync) {
   // async fetches.
   ASSERT_EQ(3, completed) << "Async fetches times out before completing";
   EXPECT_TRUE(TestFetch(0, 3));
+
+  // TODO(jmarantz): some race -- perhaps a reasonable one as we are not
+  // really 'waiting' for threads in this test; just sleeping -- is preventing
+  // us from seeing the correct value when we test this.
+  // EXPECT_EQ(0, OutstandingFetches());
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestWaitOneThreadedTwoSync) {
@@ -332,6 +346,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitOneThreadedTwoSync) {
   serf_url_async_fetcher_->WaitForInProgressFetches(
       kWaitTimeoutMs, &message_handler_,
       SerfUrlAsyncFetcher::kThreadedAndMainline);
+  EXPECT_EQ(0, OutstandingFetches());
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestWaitTwoThreadedOneSync) {
@@ -340,6 +355,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitTwoThreadedOneSync) {
   serf_url_async_fetcher_->WaitForInProgressFetches(
       kWaitTimeoutMs, &message_handler_,
       SerfUrlAsyncFetcher::kThreadedAndMainline);
+  EXPECT_EQ(0, OutstandingFetches());
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreaded) {

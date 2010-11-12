@@ -31,7 +31,9 @@ namespace net_instaweb {
 
 class CssFilterTest : public ResourceManagerTestBase {
  protected:
-
+  CssFilterTest() {
+    CssFilter::InitializeAtExitManager();
+  }
 
   // Check that inline CSS get's rewritten correctly.
   void ValidateRewriteInlineCss(const char* id,
@@ -58,6 +60,8 @@ class CssFilterTest : public ResourceManagerTestBase {
                                         const StringPiece& css_input) {
     ValidateRewriteInlineCss(id, css_input, css_input);
   }
+
+  // TODO(sligocki): Resource serving.
 };
 
 

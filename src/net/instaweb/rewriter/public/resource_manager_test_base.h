@@ -38,10 +38,17 @@
 #include "net/instaweb/util/public/mock_url_fetcher.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include <string>
+#include "net/instaweb/util/public/wait_url_async_fetcher.h"
 
 #define URL_PREFIX "http://www.example.com/"
 
 namespace net_instaweb {
+
+namespace {
+
+const int kCacheSize = 100 * 1000 * 1000;
+
+}  // namespace
 
 class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
  protected:
@@ -53,26 +60,36 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
         url_prefix_(URL_PREFIX),
         num_shards_(0),
 
-        lru_cache_(new LRUCache(100 * 1000 * 1000)),
+        lru_cache_(new LRUCache(kCacheSize)),
         http_cache_(lru_cache_, &mock_timer_),
+        // TODO(sligocki): Why can't I init it here ...
+        //resource_manager_(new ResourceManager(
+        //    file_prefix_, url_prefix_, num_shards_, &file_system_,
+        //    &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
+        //    &http_cache_, &domain_lawyer_)),
         rewrite_driver_(&message_handler_, &file_system_,
                         &mock_url_async_fetcher_),
 
-        other_lru_cache_(new LRUCache(100 * 1000 * 1000)),
+        other_lru_cache_(new LRUCache(kCacheSize)),
         other_http_cache_(other_lru_cache_, &mock_timer_),
         other_resource_manager_(
-            file_prefix_, url_prefix_, num_shards_, &file_system_,
+            file_prefix_, url_prefix_, num_shards_, &other_file_system_,
             &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
             &other_http_cache_, &other_domain_lawyer_),
-        other_rewrite_driver_(&message_handler_, &file_system_,
+        other_rewrite_driver_(&message_handler_, &other_file_system_,
                               &mock_url_async_fetcher_) {
+    //rewrite_driver_.SetResourceManager(resource_manager_);
     other_rewrite_driver_.SetResourceManager(&other_resource_manager_);
   }
 
   virtual void SetUp() {
     HtmlParseTestBaseNoAlloc::SetUp();
     file_prefix_ = GTestTempDir() + "/";
-    resource_manager_ = NewResourceManager(&mock_hasher_);
+    // TODO(sligocki): Init this in constructor.
+    resource_manager_ = new ResourceManager(
+        file_prefix_, url_prefix_, num_shards_, &file_system_,
+        &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
+        &http_cache_, &domain_lawyer_);
     rewrite_driver_.SetResourceManager(resource_manager_);
   }
 
@@ -81,41 +98,38 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     HtmlParseTestBaseNoAlloc::TearDown();
   }
 
+  // In this set of tests, we will provide explicit body tags, so
+  // the test harness should not add them in for our convenience.
+  // It can go ahead and add the <html> and </html>, however.
+  virtual bool AddBody() const {
+    return false;
+  }
+
+
   // The async fetchers in these tests are really fake async fetchers, and
   // will call their callbacks directly.  Hence we don't really need
   // any functionality in the async callback.
   class DummyCallback : public UrlAsyncFetcher::Callback {
    public:
-    DummyCallback() : done_(false) {}
+    DummyCallback(bool expect_success) : done_(false),
+                                         expect_success_(expect_success) {}
     virtual ~DummyCallback() {
       EXPECT_TRUE(done_);
     }
     virtual void Done(bool success) {
       EXPECT_FALSE(done_) << "Already Done; perhaps you reused without Reset()";
       done_ = true;
-      EXPECT_TRUE(success);
+      EXPECT_EQ(expect_success_, success);
     }
     void Reset() {
       done_ = false;
     }
+
     bool done_;
+    bool expect_success_;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(DummyCallback);
-  };
-
-  class FailCallback : public DummyCallback {
-   public:
-    FailCallback() : DummyCallback() { }
-    virtual ~FailCallback() { }
-    virtual void Done(bool success) {
-      EXPECT_FALSE(done_) << "Already Done; perhaps you reused without Reset()";
-      done_ = true;
-      EXPECT_FALSE(success);
-    }
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(FailCallback);
   };
 
   void DeleteFileIfExists(const std::string& filename) {
@@ -133,21 +147,49 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     header.Write(&writer, &message_handler_);
   }
 
-  // TODO(sligocki): Remove this or make it use other_rewrite_driver_.
-  void ServeResourceFromNewContext(const std::string& resource,
-                                   const std::string& output_filename,
-                                   const StringPiece& expected_content,
-                                   RewriteOptions::Filter filter,
-                                   const char* leaf) {
-    scoped_ptr<ResourceManager> resource_manager(
-        NewResourceManager(&mock_hasher_));
+  void ServeResourceFromManyContexts(const std::string& resource_url,
+                                     RewriteOptions::Filter filter,
+                                     Hasher* hasher,
+                                     const StringPiece& expected_content) {
+    // TODO(sligocki): Serve the resource under several contexts. For example:
+    //   1) With output-resource cached,
+    //   2) With output-resource not cached, but in a file,
+    //   3) With output-resource unavailable, but input-resource cached,
+    //   4) With output-resource unavailable and input-resource not cached,
+    //      but still fetchable,
+    ServeResourceFromNewContext(resource_url, filter, hasher, expected_content);
+    //   5) With nothing available (failure).
+  }
+
+  // Test that a resource can be served from an new server that has not already
+  // constructed it.
+  void ServeResourceFromNewContext(
+      const std::string& resource_url,
+      RewriteOptions::Filter filter,
+      Hasher* hasher,
+      const StringPiece& expected_content) {
+    // New objects for the new server.
+    MemFileSystem other_file_system;
+    // other_lru_cache is owned by other_http_cache_.
+    LRUCache* other_lru_cache(new LRUCache(kCacheSize));
+    MockTimer other_mock_timer(0);
+    HTTPCache other_http_cache(other_lru_cache, &other_mock_timer);
+    DomainLawyer other_domain_lawyer;
+    WaitUrlAsyncFetcher wait_url_async_fetcher(&mock_url_fetcher_);
+    ResourceManager other_resource_manager(
+        file_prefix_, url_prefix_, num_shards_, &other_file_system,
+        &filename_encoder_, &wait_url_async_fetcher, hasher,
+        &other_http_cache, &other_domain_lawyer);
+
     SimpleStats stats;
     RewriteDriver::Initialize(&stats);
-    resource_manager->set_statistics(&stats);
-    RewriteDriver driver(&message_handler_, &file_system_,
-                         &mock_url_async_fetcher_);
-    driver.SetResourceManager(resource_manager.get());
-    driver.AddFilter(filter);
+    other_resource_manager.set_statistics(&stats);
+
+    RewriteDriver other_rewrite_driver(&message_handler_, &other_file_system,
+                                       &wait_url_async_fetcher);
+    other_rewrite_driver.SetResourceManager(&other_resource_manager);
+
+    other_rewrite_driver.AddFilter(filter);
 
     Variable* cached_resource_fetches =
         stats.GetVariable(RewriteDriver::kResourceFetchesCached);
@@ -156,48 +198,35 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     Variable* failed_filter_resource_fetches =
         stats.GetVariable(RewriteDriver::kResourceFetchConstructFailures);
 
-    SimpleMetaData request_headers, response_headers;
-    std::string contents;
-    StringWriter writer(&contents);
-    DummyCallback callback;
+    SimpleMetaData request_headers;
+    // TODO(sligocki): We should set default request headers.
+    SimpleMetaData response_headers;
+    std::string response_contents;
+    StringWriter response_writer(&response_contents);
+    DummyCallback callback(true);
 
-    // Delete the output resource from the cache and the file system.
-    lru_cache_->Clear();
-    EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query(resource));
+    // Check that we don't already have it in cache.
+    EXPECT_EQ(CacheInterface::kNotFound, other_http_cache.Query(resource_url));
 
-    // Now delete it from the file system, so it must be recomputed.
-    EXPECT_TRUE(file_system_.RemoveFile(output_filename.c_str(),
-                                        &message_handler_));
+    // Initiate fetch.
+    EXPECT_EQ(true, other_rewrite_driver.FetchResource(
+        resource_url, request_headers, &response_headers, &response_writer,
+        &message_handler_, &callback));
 
-    EXPECT_TRUE(driver.FetchResource(
-        resource, request_headers, &response_headers, &writer,
-        &message_handler_, &callback)) << resource;
-    EXPECT_EQ(expected_content, contents);
+    // Content should not be set until we call the callback.
+    EXPECT_EQ(false, callback.done_);
+    EXPECT_EQ("", response_contents);
+
+    // After we call the callback, it should be correct.
+    wait_url_async_fetcher.CallCallbacks();
+    EXPECT_EQ(true, callback.done_);
+    EXPECT_EQ(expected_content, response_contents);
+    EXPECT_EQ(CacheInterface::kAvailable, other_http_cache.Query(resource_url));
+
     // Check that stats say we took the construct resource path.
     EXPECT_EQ(0, cached_resource_fetches->Get());
     EXPECT_EQ(1, succeeded_filter_resource_fetches->Get());
     EXPECT_EQ(0, failed_filter_resource_fetches->Get());
-    // TODO(sligocki): Should this work? It's failing for some CssCombine tests.
-    //EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(resource));
-  }
-
-
-  // In this set of tests, we will provide explicit body tags, so
-  // the test harness should not add them in for our convenience.
-  // It can go ahead and add the <html> and </html>, however.
-  virtual bool AddBody() const {
-    return false;
-  }
-
-  // TODO(sligocki): Get rid of this, the new manager is of limited use because
-  // it uses the same cache and file_system as the original.
-  //
-  // Create new ResourceManager. These are owned by the caller.
-  ResourceManager* NewResourceManager(Hasher* hasher) {
-    return new ResourceManager(
-        file_prefix_, url_prefix_, num_shards_, &file_system_,
-        &filename_encoder_, &mock_url_async_fetcher_, hasher, &http_cache_,
-        &domain_lawyer_);
   }
 
 
@@ -277,7 +306,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Server A runs rewrite_driver_ and will be used to rewrite pages and
   // served the rewritten resources.
   MemFileSystem file_system_;
-  LRUCache* lru_cache_;
+  LRUCache* lru_cache_;  // Owned by http_cache_
   HTTPCache http_cache_;
   DomainLawyer domain_lawyer_;
   ResourceManager* resource_manager_;  // TODO(sligocki): Make not a pointer.
@@ -288,7 +317,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // of yet. Thus, server B will have to decode the instructions on how
   // to rewrite the resource just from the request.
   MemFileSystem other_file_system_;
-  LRUCache* other_lru_cache_;
+  LRUCache* other_lru_cache_;  // Owned by other_http_cache_
   HTTPCache other_http_cache_;
   DomainLawyer other_domain_lawyer_;
   ResourceManager other_resource_manager_;

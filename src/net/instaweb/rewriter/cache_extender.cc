@@ -143,6 +143,8 @@ bool CacheExtender::Fetch(OutputResource* output_resource,
           resource_manager_->url_escaper(), output_resource,
           message_handler));
   if (input != NULL) {
+    // TODO(sligocki): Async StreamingFetches are not being added to cache
+    // because response_headers are not being saved into output_resource.
     fetcher->StreamingFetch(input->url(), request_headers, response_headers,
                             writer, message_handler, callback);
     ret = true;

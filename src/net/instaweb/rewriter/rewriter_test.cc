@@ -77,8 +77,4 @@ TEST_F(RewriterTest, BaseTagExistingHeadAndHrefBase) {
       "<head><base href=\"http://base\"><meta></head><body></body>");
 }
 
-// TODO(jmarantz): add CacheExtender test.  I want to refactor CombineCss,
-// RewriteImage, and OutlineStyle first if I can cause there should be more
-// sharing.
-
 }  // namespace net_instaweb

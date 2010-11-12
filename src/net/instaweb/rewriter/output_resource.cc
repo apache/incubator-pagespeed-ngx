@@ -165,6 +165,23 @@ std::string OutputResource::filename() const {
   return filename;
 }
 
+std::string OutputResource::name_key() const {
+  std::string id_name = full_name_.EncodeIdName();
+  std::string result;
+  CHECK(!resolved_base_.empty());  // Corresponding path in url() is dead code
+  // TODO(jmaessen): Fix when we're consistent; see url() below.
+  if (resolved_base_[resolved_base_.size() - 1] == '/') {
+    result = StrCat(resolved_base_, id_name);
+  } else {
+    result = StrCat(resolved_base_, "/", id_name);
+  }
+  return result;
+}
+
+std::string OutputResource::hash_ext() const {
+  return full_name_.EncodeHashExt();
+}
+
 // TODO(jmarantz): change the name to reflect the fact that it is not
 // just an accessor now.
 std::string OutputResource::url() const {
@@ -180,8 +197,7 @@ std::string OutputResource::url() const {
     // always getting these from GoogleUrl::AllExceptLeaf they ought to lack the
     // trailing /.  But partnership->ResolvedBase() appears to have a trailing /
     // in some circumstances (cf css_combine for examples that go wrong).
-    if (!resolved_base_.empty() &&
-        resolved_base_[resolved_base_.size() - 1] == '/') {
+    if (resolved_base_[resolved_base_.size() - 1] == '/') {
       encoded = StrCat(resolved_base_, encoded);
     } else {
       encoded = StrCat(resolved_base_, "/", encoded);

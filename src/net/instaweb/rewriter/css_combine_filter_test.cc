@@ -127,7 +127,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     SimpleMetaData request_headers, response_headers;
     std::string fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
-    DummyCallback dummy_callback;
+    DummyCallback dummy_callback(true);
     rewrite_driver_.FetchResource(combine_url, request_headers,
                                   &response_headers, &writer,
                                   &message_handler_, &dummy_callback);
@@ -148,9 +148,10 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
                                         &message_handler_, &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
-    ServeResourceFromNewContext(combine_url, combine_filename,
-                                fetched_resource_content,
-                                RewriteOptions::kCombineCss, path.c_str());
+
+    // Try to fetch from an independent server.
+    ServeResourceFromManyContexts(combine_url, RewriteOptions::kCombineCss,
+                                  hasher, fetched_resource_content);
   }
 
   // Test what happens when CSS combine can't find a previously-rewritten
@@ -179,7 +180,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     SimpleMetaData request_headers, response_headers;
     std::string fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
-    DummyCallback dummy_callback;
+    DummyCallback dummy_callback(true);
 
     // NOTE: This first fetch used to return status 0 because response_headers
     // weren't initialized by the first resource fetch (but were cached
@@ -207,7 +208,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     // an entirely non-existent resource appears to test a strict superset of
     // filter code paths when compared with returning a 404 for the resource.
     mock_url_fetcher_.set_fail_on_unexpected(false);
-    FailCallback fail_callback;
+    DummyCallback fail_callback(false);
     fetched_resource_content.clear();
     response_headers.Clear();
     EXPECT_TRUE(

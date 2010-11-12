@@ -213,7 +213,9 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
   return ret && (option_count > 0);
 }
 
-InstawebContext* initialize_context(request_rec* request) {
+// Builds a new context for an HTTP request, returning NULL if we decide
+// that we should not handle the request.
+InstawebContext* build_context_for_request(request_rec* request) {
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(
       request->server);
   if (!factory->enabled() || (request->unparsed_uri == NULL)) {
@@ -232,7 +234,7 @@ InstawebContext* initialize_context(request_rec* request) {
     query_params.Parse(request->parsed_uri.query);
   }
 
-  // Check if pagespeed optimization applicable and get the resource type.
+  // Check if pagespeed optimization applicable.
   if (!check_pagespeed_applicable(request, query_params)) {
     return NULL;
   }
@@ -243,10 +245,14 @@ InstawebContext* initialize_context(request_rec* request) {
   // optimized by mod_pagespeed.
   if (apr_table_get(request->headers_out, kModPagespeedHeader) != NULL) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                  "Already has x-mod-pagespeed");
+                  "URL %s already has been processed by mod_pagespeed",
+                  request->unparsed_uri);
     return NULL;
   }
 
+  // Determine the absolute URL for this request, which might take on different
+  // forms in the request structure depending on whether this request comes
+  // from a browser proxy, or whether mod_proxy is enabled.
   std::string absolute_url;
   if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
     absolute_url = request->unparsed_uri;
@@ -267,7 +273,8 @@ InstawebContext* initialize_context(request_rec* request) {
 
   InstawebContext::ContentEncoding encoding =
       context->content_encoding();
-  if (encoding == InstawebContext::kGzip) {
+  if ((encoding == InstawebContext::kGzip) ||
+      (encoding == InstawebContext::kDeflate)) {
     // Unset the content encoding because the InstawebContext will decode the
     // content before parsing.
     apr_table_unset(request->headers_out, HttpAttributes::kContentEncoding);
@@ -297,6 +304,8 @@ InstawebContext* initialize_context(request_rec* request) {
   return context;
 }
 
+// This returns 'false' if the output filter should stop its loop over
+// the brigade and return an error.
 bool process_bucket(ap_filter_t *filter, request_rec* request,
                     InstawebContext* context, apr_bucket* bucket,
                     apr_status_t* return_code) {
@@ -316,7 +325,7 @@ bool process_bucket(ap_filter_t *filter, request_rec* request,
       ap_log_rerror(APLOG_MARK, APLOG_ERR, *return_code, request,
                     "Reading bucket failed (rcode=%d)", *return_code);
       apr_bucket_delete(bucket);
-      return true;
+      return false;
     }
     // Processed the bucket, now delete it.
     apr_bucket_delete(bucket);
@@ -332,7 +341,7 @@ bool process_bucket(ap_filter_t *filter, request_rec* request,
     APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, bucket);
     // OK, we have seen the EOS. Time to pass it along down the chain.
     *return_code = ap_pass_brigade(filter->next, context_bucket_brigade);
-    return true;
+    return false;
   } else if (APR_BUCKET_IS_FLUSH(bucket)) {
     new_bucket = rewrite_html(context, request, FLUSH, NULL, 0);
     if (new_bucket != NULL) {
@@ -342,7 +351,7 @@ bool process_bucket(ap_filter_t *filter, request_rec* request,
     // OK, Time to flush, pass it along down the chain.
     *return_code = ap_pass_brigade(filter->next, context_bucket_brigade);
     if (*return_code != APR_SUCCESS) {
-      return true;
+      return false;
     }
   } else {
     // TODO(lsong): remove this log.
@@ -350,18 +359,16 @@ bool process_bucket(ap_filter_t *filter, request_rec* request,
                   "Unknown meta data");
     APR_BRIGADE_INSERT_TAIL(context_bucket_brigade, bucket);
   }
-  return false;
+  return true;
 }
 
 apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
-  // Check if pagespeed is enabled.
-  request_rec* request = filter->r;
-
   // Do nothing if there is nothing, and stop passing to other filters.
   if (APR_BRIGADE_EMPTY(bb)) {
     return APR_SUCCESS;
   }
 
+  request_rec* request = filter->r;
   InstawebContext* context =
       static_cast<InstawebContext*>(filter->ctx);
 
@@ -369,7 +376,7 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   // may get called multiple times per HTTP request, and this occurs only
   // on the first call.
   if (context == NULL) {
-    context = initialize_context(request);
+    context = build_context_for_request(request);
     if (context == NULL) {
       ap_remove_output_filter(filter);
       return ap_pass_brigade(filter->next, bb);
@@ -380,7 +387,7 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   apr_status_t return_code = APR_SUCCESS;
   while (!APR_BRIGADE_EMPTY(bb)) {
     apr_bucket* bucket = APR_BRIGADE_FIRST(bb);
-    if (process_bucket(filter, request, context, bucket, &return_code)) {
+    if (!process_bucket(filter, request, context, bucket, &return_code)) {
       return return_code;
     }
   }

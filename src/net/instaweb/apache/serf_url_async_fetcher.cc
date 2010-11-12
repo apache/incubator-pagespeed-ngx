@@ -57,6 +57,8 @@ const char SerfStats::kSerfFetchByteCount[] = "serf_fetch_bytes_count";
 const char SerfStats::kSerfFetchTimeDurationMs[] =
     "serf_fetch_time_duration_ms";
 const char SerfStats::kSerfFetchCancelCount[] = "serf_fetch_cancel_count";
+const char SerfStats::kSerfFetchOutstandingCount[] =
+    "serf_fetch_outstanding_count";
 
 std::string GetAprErrorString(apr_status_t status) {
   char error_str[1024];
@@ -400,6 +402,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     // set.  Actually we expect we wll never have contention on this mutex
     // from the thread.
     if (!xfer_fetches.empty()) {
+      int num_started = 0;
       ScopedMutex lock(mutex_);
       for (int i = 0, n = xfer_fetches.size(); i < n; ++i) {
         SerfFetch* fetch = xfer_fetches[i];
@@ -408,9 +411,13 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
                      << fetch->str_url()
                      << " (" << active_fetches_.size() << ")");
           active_fetches_.insert(fetch);
+          ++num_started;
         } else {
           delete fetch;
         }
+      }
+      if ((num_started != 0) && (outstanding_count_ != NULL)) {
+        outstanding_count_->Add(num_started);
       }
     }
   }
@@ -517,6 +524,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       mutex_(NULL),
       serf_context_(NULL),
       threaded_fetcher_(NULL),
+      outstanding_count_(NULL),
       request_count_(NULL),
       byte_count_(NULL),
       time_duration_ms_(NULL),
@@ -528,6 +536,8 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
     time_duration_ms_ =
         statistics->GetVariable(SerfStats::kSerfFetchTimeDurationMs);
     cancel_count_ = statistics->GetVariable(SerfStats::kSerfFetchCancelCount);
+    outstanding_count_ = statistics->GetVariable(
+        SerfStats::kSerfFetchOutstandingCount);
   }
   mutex_ = new AprMutex(pool_);
   serf_context_ = serf_context_create(pool_);
@@ -544,6 +554,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       mutex_(NULL),
       serf_context_(NULL),
       threaded_fetcher_(NULL),
+      outstanding_count_(parent->outstanding_count_),
       request_count_(parent->request_count_),
       byte_count_(parent->byte_count_),
       time_duration_ms_(parent->time_duration_ms_),
@@ -558,6 +569,18 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
 
 SerfUrlAsyncFetcher::~SerfUrlAsyncFetcher() {
   CancelOutstandingFetches();
+  int orphaned_fetches = active_fetches_.size();
+  if (orphaned_fetches != 0) {
+    LOG(ERROR) << "SerfFecher destructed with " << orphaned_fetches
+               << " orphaned fetches.";
+    if (outstanding_count_ != NULL) {
+      outstanding_count_->Add(-orphaned_fetches);
+    }
+    if (cancel_count_ != NULL) {
+      cancel_count_->Add(orphaned_fetches);
+    }
+  }
+
   STLDeleteElements(&active_fetches_);
   if (threaded_fetcher_ != NULL) {
     delete threaded_fetcher_;
@@ -567,15 +590,24 @@ SerfUrlAsyncFetcher::~SerfUrlAsyncFetcher() {
 
 void SerfUrlAsyncFetcher::CancelOutstandingFetches() {
   // If there are still active requests, cancel them.
-  ScopedMutex lock(mutex_);
-  while (!active_fetches_.empty()) {
-    FetchSet::iterator p = active_fetches_.begin();
-    SerfFetch* fetch = *p;
-    LOG(WARNING) << "Aborting fetch of " << fetch->str_url();
-    active_fetches_.erase(p);
-    fetch->Cancel();
-    if (cancel_count_) {
-      cancel_count_->Add(1);
+  int num_canceled = 0;
+  {
+    ScopedMutex lock(mutex_);
+    while (!active_fetches_.empty()) {
+      FetchSet::iterator p = active_fetches_.begin();
+      SerfFetch* fetch = *p;
+      LOG(WARNING) << "Aborting fetch of " << fetch->str_url();
+      active_fetches_.erase(p);
+      ++num_canceled;
+      fetch->Cancel();
+    }
+  }
+  if (num_canceled != 0) {
+    if (cancel_count_ != NULL) {
+      cancel_count_->Add(num_canceled);
+    }
+    if (outstanding_count_ != NULL) {
+      outstanding_count_->Add(-num_canceled);
     }
   }
 }
@@ -599,11 +631,18 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
   } else {
     message_handler->Message(kInfo, "Initiating blocking fetch for %s",
                              url.c_str());
-    ScopedMutex mutex(mutex_);
-    if (fetch->Start(this)) {
-      active_fetches_.insert(fetch);
-    } else {
-      delete fetch;
+    bool started = false;
+    {
+      ScopedMutex mutex(mutex_);
+      started = fetch->Start(this);
+      if (started) {
+        active_fetches_.insert(fetch);
+        if (outstanding_count_ != NULL) {
+          outstanding_count_->Add(1);
+        }
+      } else {
+        delete fetch;
+      }
     }
   }
   return false;
@@ -673,6 +712,9 @@ void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch) {
   if (byte_count_) {
     byte_count_->Add(fetch->byte_received());
   }
+  if (outstanding_count_) {
+    outstanding_count_->Add(-1);
+  }
 }
 
 size_t SerfUrlAsyncFetcher::NumActiveFetches() {
@@ -724,6 +766,7 @@ void SerfUrlAsyncFetcher::Initialize(Statistics* statistics) {
     statistics->AddVariable(SerfStats::kSerfFetchByteCount);
     statistics->AddVariable(SerfStats::kSerfFetchTimeDurationMs);
     statistics->AddVariable(SerfStats::kSerfFetchCancelCount);
+    statistics->AddVariable(SerfStats::kSerfFetchOutstandingCount);
   }
 }
 

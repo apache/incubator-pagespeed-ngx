@@ -40,6 +40,7 @@ struct SerfStats {
   static const char kSerfFetchByteCount[];
   static const char kSerfFetchTimeDurationMs[];
   static const char kSerfFetchCancelCount[];
+  static const char kSerfFetchOutstandingCount[];
 };
 
 class SerfAsyncCallback : public UrlAsyncFetcher::Callback {
@@ -129,6 +130,10 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   typedef std::vector<SerfFetch*> FetchVector;
   FetchVector completed_fetches_;
   SerfThreadedFetcher* threaded_fetcher_;
+
+  // This is protected because it's updated along with active_fetches_,
+  // which happens in subclass SerfThreadedFetcher as well as this class.
+  Variable* outstanding_count_;
 
  private:
   Variable* request_count_;

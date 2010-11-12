@@ -227,6 +227,7 @@ APACHE_MODULEDIR="/usr/lib/apache2/modules"
 APACHE_CONFDIR="/etc/apache2/mods-available"
 MODPAGESPEED_CACHE_ROOT="/var/mod_pagespeed"
 APACHE_USER="www-data"
+COMMENT_OUT_DEFLATE=
 
 case "$TARGETARCH" in
   ia32 )
