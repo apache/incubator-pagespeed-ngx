@@ -421,12 +421,10 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(next_server);
     if (factory->enabled()) {
       factory->set_statistics(statistics);
-      if (factory->url_prefix().empty() ||
-          factory->filename_prefix().empty() ||
+      if (factory->filename_prefix().empty() ||
           factory->file_cache_path().empty()) {
         std::string buf("mod_pagespeed is enabled.  ");
         buf += "The following directives must not be NULL\n";
-        buf += StrCat(kModPagespeedUrlPrefix, "=", factory->url_prefix(), "\n");
         buf += StrCat(kModPagespeedFileCachePath, "=");
         buf += StrCat(factory->file_cache_path(), "\n");
         buf += StrCat(kModPagespeedGeneratedFilePrefix, "=");
@@ -558,6 +556,12 @@ const char* ParseIntOption(cmd_parms* cmd, SetIntFn fn, const char* arg) {
   return ret;
 }
 
+void warn_deprecated(cmd_parms* cmd, const char* remedy) {
+  ap_log_error(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, cmd->server,
+               "%s is deprecated.  %s",
+               cmd->directive->directive, remedy);
+}
+
 static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
   const char* directive = cmd->directive->directive;
@@ -565,7 +569,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   if (strcasecmp(directive, kModPagespeed) == 0) {
     ret = ParseBoolOption(cmd, &ApacheRewriteDriverFactory::set_enabled, arg);
   } else if (strcasecmp(directive, kModPagespeedUrlPrefix) == 0) {
-    factory->set_url_prefix(arg);
+    warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (strcasecmp(directive, kModPagespeedFetchProxy) == 0) {
     factory->set_fetcher_proxy(arg);
   } else if (strcasecmp(directive, kModPagespeedGeneratedFilePrefix) == 0) {
@@ -584,7 +588,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_fetcher_time_out_ms, arg);
   } else if (strcasecmp(directive, kModPagespeedNumShards) == 0) {
-    ret = ParseIntOption(cmd, &ApacheRewriteDriverFactory::set_num_shards, arg);
+    warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (strcasecmp(directive, kModPagespeedCssOutlineMinBytes) == 0) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_css_outline_min_bytes, arg);

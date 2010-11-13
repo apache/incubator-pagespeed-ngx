@@ -67,16 +67,13 @@ namespace net_instaweb {
 const int ResourceManager::kNotSharded = -1;
 
 ResourceManager::ResourceManager(const StringPiece& file_prefix,
-                                 const StringPiece& url_prefix_pattern,
-                                 const int num_shards,
                                  FileSystem* file_system,
                                  FilenameEncoder* filename_encoder,
                                  UrlAsyncFetcher* url_async_fetcher,
                                  Hasher* hasher,
                                  HTTPCache* http_cache,
                                  DomainLawyer* domain_lawyer)
-    : num_shards_(num_shards),
-      resource_id_(0),
+    : resource_id_(0),
       file_system_(file_system),
       filename_encoder_(filename_encoder),
       url_async_fetcher_(url_async_fetcher),
@@ -91,7 +88,6 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       max_url_segment_size_(RewriteOptions::kMaxUrlSegmentSize),
       max_url_size_(RewriteOptions::kMaxUrlSize) {
   file_prefix.CopyToString(&file_prefix_);
-  SetUrlPrefixPattern(url_prefix_pattern);
 }
 
 ResourceManager::~ResourceManager() {
@@ -101,10 +97,8 @@ void ResourceManager::Initialize(Statistics* statistics) {
   statistics->AddVariable(kResourceUrlDomainRejections);
 }
 
-void ResourceManager::SetUrlPrefixPattern(const StringPiece& pattern) {
-  pattern.CopyToString(&url_prefix_pattern_);
-  ValidateShardsAgainstUrlPrefixPattern();
-}
+#if 0
+// Preserved for the sake of making it easier to revive sharding.
 
 std::string ResourceManager::UrlPrefixFor(const ResourceNamer& namer) const {
   CHECK(!namer.hash().empty());
@@ -165,6 +159,7 @@ void ResourceManager::ValidateShardsAgainstUrlPrefixPattern() {
     }
   }
 }
+#endif
 
 // TODO(jmarantz): consider moving this method to MetaData
 void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
@@ -300,9 +295,7 @@ OutputResource* ResourceManager::CreateOutputResourceForFetch(
     std::string name = GoogleUrl::Leaf(gurl);
     ResourceNamer namer;
     if (namer.Decode(name)) {
-      int shard;
-      std::string base =
-          CanonicalizeBase(GoogleUrl::AllExceptLeaf(gurl), &shard);
+      std::string base = GoogleUrl::AllExceptLeaf(gurl);
       resource = new OutputResource(this, base, namer, NULL);
     }
   }

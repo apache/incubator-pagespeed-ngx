@@ -186,22 +186,15 @@ std::string OutputResource::hash_ext() const {
 // just an accessor now.
 std::string OutputResource::url() const {
   std::string encoded = full_name_.Encode();
-  if (resolved_base_.empty()) {
-    // Resolves sharding, shoddily.
-    std::string base =
-        resource_manager_->UrlPrefixFor(full_name_);
-    encoded = StrCat(base, encoded);
+  // TODO(jmaessen): this is a band aid compensating for the fact that we
+  // aren't consistent about trailing / in resolved_base.  If we believe we're
+  // always getting these from GoogleUrl::AllExceptLeaf they ought to lack the
+  // trailing /.  But partnership->ResolvedBase() appears to have a trailing /
+  // in some circumstances (cf css_combine for examples that go wrong).
+  if (resolved_base_[resolved_base_.size() - 1] == '/') {
+    encoded = StrCat(resolved_base_, encoded);
   } else {
-    // TODO(jmaessen): this is a band aid compensating for the fact that we
-    // aren't consistent about trailing / in resolved_base.  If we believe we're
-    // always getting these from GoogleUrl::AllExceptLeaf they ought to lack the
-    // trailing /.  But partnership->ResolvedBase() appears to have a trailing /
-    // in some circumstances (cf css_combine for examples that go wrong).
-    if (resolved_base_[resolved_base_.size() - 1] == '/') {
-      encoded = StrCat(resolved_base_, encoded);
-    } else {
-      encoded = StrCat(resolved_base_, "/", encoded);
-    }
+    encoded = StrCat(resolved_base_, "/", encoded);
   }
   return encoded;
 }

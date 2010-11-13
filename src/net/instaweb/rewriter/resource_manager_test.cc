@@ -172,25 +172,26 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   }
 };
 
-class ResourceManagerShardedTest : public ResourceManagerTest {
- protected:
-  ResourceManagerShardedTest() {
-    url_prefix_ ="http://mysite.%d/";
-    num_shards_ = 2;
-  }
-  virtual void RemoveUrlPrefix(std::string* url) {
-    // One of these two should match.
-    StringPiece prefix(url->data(), 16);
-    EXPECT_TRUE((prefix == "http://mysite.0/") ||
-                (prefix == "http://mysite.1/")) << *url;
-    // "%d" -> "0" (or "1") loses 1 char.
-    url->erase(0, url_prefix_.length() - 1);
-  }
-};
-
 TEST_F(ResourceManagerTest, TestNamed) {
   TestNamed();
 }
+
+// TODO(jmaessen): re-enable after sharding works again.
+// class ResourceManagerShardedTest : public ResourceManagerTest {
+//  protected:
+//   ResourceManagerShardedTest() {
+//     url_prefix_ ="http://mysite.%d/";
+//     num_shards_ = 2;
+//   }
+//   virtual void RemoveUrlPrefix(std::string* url) {
+//     // One of these two should match.
+//     StringPiece prefix(url->data(), 16);
+//     EXPECT_TRUE((prefix == "http://mysite.0/") ||
+//                 (prefix == "http://mysite.1/")) << *url;
+//     // "%d" -> "0" (or "1") loses 1 char.
+//     url->erase(0, url_prefix_.length() - 1);
+//   }
+// };
 
 // TODO(jmaessen): re-enable after sharding works again.
 // TEST_F(ResourceManagerShardedTest, TestNamed) {

@@ -105,8 +105,6 @@ TEST_F(CacheExtenderTest, ServeFiles) {
   //  3. Gets the data from the mock fetchers: no cache, no file system.
 }
 
-/*  TODO(sligocki): Get Serving from new context to work.
- *   Only problem right now is new resource isn't getting cached.
 TEST_F(CacheExtenderTest, ServeFilesFromDelayedFetch) {
   InitTest(100);
   ServeResourceFromManyContexts(DOMAIN "ce.0.a,s.css",
@@ -119,7 +117,6 @@ TEST_F(CacheExtenderTest, ServeFilesFromDelayedFetch) {
                                 RewriteOptions::kExtendCache,
                                 &mock_hasher_, kJsData);
 }
-*/
 
 }  // namespace
 

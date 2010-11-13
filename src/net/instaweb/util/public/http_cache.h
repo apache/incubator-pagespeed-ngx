@@ -44,6 +44,8 @@ class HTTPCache {
         force_caching_(false) {
   }
 
+  ~HTTPCache();
+
   bool Get(const std::string& key, HTTPValue* value, MetaData* headers,
            MessageHandler* handler);
 

@@ -46,7 +46,6 @@ RewriteDriverFactory::RewriteDriverFactory()
       url_async_fetcher_(NULL),
       html_parse_(NULL),
       filename_prefix_(""),
-      url_prefix_(""),
       force_caching_(false),
       slurp_read_only_(false),
       resource_404_count_(NULL),
@@ -181,13 +180,6 @@ StringPiece RewriteDriverFactory::filename_prefix() {
   return filename_prefix_;
 }
 
-StringPiece RewriteDriverFactory::url_prefix() {
-  // Check this lazily, so an application can look at the default value from
-  // the factory before deciding whether to update it.  It's checked before
-  // use in ComputeResourceManager() below.
-  return url_prefix_;
-}
-
 HTTPCache* RewriteDriverFactory::http_cache() {
   if (http_cache_ == NULL) {
     CacheInterface* cache = DefaultCacheInterface();
@@ -202,12 +194,9 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
     CHECK(!filename_prefix_.empty())
         << "Must specify --filename_prefix or call "
         << "RewriteDriverFactory::set_filename_prefix.";
-    CHECK(!url_prefix_.empty())
-        << "Must specify --url_prefix or call "
-        << "RewriteDriverFactory::set_url_prefix.";
     resource_manager_.reset(new ResourceManager(
-        filename_prefix_, url_prefix_, num_shards(),
-        file_system(), filename_encoder(), ComputeUrlAsyncFetcher(), hasher(),
+        filename_prefix_, file_system(), filename_encoder(),
+        ComputeUrlAsyncFetcher(), hasher(),
         http_cache(), &domain_lawyer_));
     resource_manager_->set_store_outputs_in_file_system(
         ShouldWriteResourcesToFileSystem());

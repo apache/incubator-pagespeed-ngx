@@ -1,5 +1,4 @@
-# This is a sample configuration file for mod_pagespeed.  It must be edited by
-# the installer to provide the correct HOSTNAME under ModPagespeedUrlPrefix.
+# This is a sample configuration file for mod_pagespeed.
 #
 # This sample config file also turns on "gzip" for html, css, and javascript,
 # which is generally best practice.
@@ -31,10 +30,6 @@
     </Location>
 
     ModPagespeed on
-
-    # TODO(jmaessen) This parameter will no longer be relevant once the new
-    # resource naming spec is implemented.
-    ModPagespeedUrlPrefix                "http://HOSTNAME/mod_pagespeed/"
 
     ModPagespeedFileCachePath            "MOD_PAGESPEED_FILE_ROOT/cache/"
     ModPagespeedFileCacheSizeKb          102400

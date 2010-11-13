@@ -56,6 +56,8 @@ class CacheExtender : public RewriteFilter {
   virtual const char* Name() const { return "CacheExtender"; }
 
  private:
+  class Callback;
+
   HtmlParse* html_parse_;
   ResourceManager* resource_manager_;
   ResourceTagScanner tag_scanner_;

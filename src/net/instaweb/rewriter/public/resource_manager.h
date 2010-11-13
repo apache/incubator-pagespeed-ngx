@@ -58,8 +58,6 @@ class ResourceManager {
   static const int kNotSharded;
 
   ResourceManager(const StringPiece& file_prefix,
-                  const StringPiece& url_prefix_pattern,
-                  const int num_shards,
                   FileSystem* file_system,
                   FilenameEncoder* filename_encoder,
                   UrlAsyncFetcher* url_async_fetcher,
@@ -182,11 +180,6 @@ class ResourceManager {
 
   StringPiece filename_prefix() const { return file_prefix_; }
 
-  // Sets the URL prefix pattern.  The pattern must have exactly one %d
-  // in it, if num_shards is not 0.  If num shards is 0, then it should
-  // not have any % characters in it.
-  void SetUrlPrefixPattern(const StringPiece& url_prefix_pattern);
-
   void set_filename_prefix(const StringPiece& file_prefix);
   Statistics* statistics() const { return statistics_; }
   void set_statistics(Statistics* s) {
@@ -238,11 +231,6 @@ class ResourceManager {
   Timer* timer() { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
   UrlEscaper* url_escaper() { return url_escaper_.get(); }
-  int num_shards() const { return num_shards_; }
-
-  // Given a ResourceNamer, generates the prefix (everything but the file name)
-  // for the corresponding URL.
-  std::string UrlPrefixFor(const ResourceNamer& namer) const;
 
   // Whether or not resources should hit the filesystem.
   bool store_outputs_in_file_system() { return store_outputs_in_file_system_; }
@@ -258,12 +246,8 @@ class ResourceManager {
 
  private:
   inline void IncrementResourceUrlDomainRejections();
-  void ValidateShardsAgainstUrlPrefixPattern();
-  std::string CanonicalizeBase(const StringPiece& base, int* shard) const;
 
   std::string file_prefix_;
-  std::string url_prefix_pattern_;
-  const int num_shards_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;

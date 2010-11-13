@@ -101,6 +101,8 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
           if (!output->HasValidUrl()) {
             StringPiece contents(input_resource->contents());
             std::string absolutified;
+            // TODO(sligocki): We don't need to do this anymore because we don't
+            // move the file, right?
             if (input_resource->type() == &kContentTypeCss) {
               // TODO(jmarantz): find a mechanism to write this directly into
               // the HTTPValue so we can reduce the number of times that we
@@ -110,6 +112,10 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
                                             &writer, message_handler);
               contents = absolutified;
             }
+            // TODO(sligocki): Should we preserve the response headers from the
+            // original resource?
+            // TODO(sligocki): Maybe we shouldn't cache the rewritten resource,
+            // just the input_resource.
             resource_manager_->Write(HttpStatus::kOK, contents, output.get(),
                                      headers->CacheExpirationTimeMs(),
                                      message_handler);
@@ -126,27 +132,76 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
   }
 }
 
+class CacheExtender::Callback : public Resource::AsyncCallback {
+ public:
+  Callback(ResourceManager* resource_manager, Resource* input_resource,
+           OutputResource* output_resource,
+           MetaData* response_headers, Writer* response_writer,
+           MessageHandler* handler, UrlAsyncFetcher::Callback* base_callback)
+      : resource_manager_(resource_manager),
+        input_resource_(input_resource),
+        output_resource_(output_resource),
+        response_headers_(response_headers),
+        response_writer_(response_writer),
+        handler_(handler),
+        base_callback_(base_callback) {}
+
+  virtual void Done(bool success, Resource* resource) {
+    CHECK_EQ(input_resource_.get(), resource);
+    if (success) {
+      // TODO(sligocki): Should we preserve the response headers from the
+      // original resource?
+      // TODO(sligocki): Maybe we shouldn't cache the rewritten resource,
+      // just the input_resource.
+      resource_manager_->Write(
+          HttpStatus::kOK, input_resource_->contents(), output_resource_,
+          input_resource_->metadata()->CacheExpirationTimeMs(), handler_);
+      // TODO(sligocki): We shouldn't have to deal with this stuff, it
+      // should just be grabbed from output_resource.
+      response_headers_->CopyFrom(*output_resource_->metadata());
+      response_writer_->Write(input_resource_->contents(), handler_);
+    }
+    base_callback_->Done(success);
+    delete this;
+  }
+
+ private:
+  ResourceManager* resource_manager_;
+  scoped_ptr<Resource> input_resource_;
+  OutputResource* output_resource_;
+  MetaData* response_headers_;
+  Writer* response_writer_;
+  MessageHandler* handler_;
+  UrlAsyncFetcher::Callback* base_callback_;
+
+  DISALLOW_COPY_AND_ASSIGN(Callback);
+};
+
 bool CacheExtender::Fetch(OutputResource* output_resource,
                           Writer* response_writer,
                           const MetaData& request_headers,
                           MetaData* response_headers,
                           UrlAsyncFetcher* fetcher,
                           MessageHandler* message_handler,
-                          UrlAsyncFetcher::Callback* callback) {
+                          UrlAsyncFetcher::Callback* base_callback) {
   std::string url, decoded_resource;
   bool ret = false;
   // Here we construct a Resource in order to permission check the url, but do
   // not read it; instead we simply pass the checked absolute url along to
   // StreamingFetch.
-  scoped_ptr<Resource> input(
+  Resource* input_resource =
       resource_manager_->CreateInputResourceFromOutputResource(
           resource_manager_->url_escaper(), output_resource,
-          message_handler));
-  if (input != NULL) {
+          message_handler);
+  if (input_resource != NULL) {
+    // Callback takes ownership of input_resoruce.
+    CacheExtender::Callback* filter_callback = new CacheExtender::Callback(
+        resource_manager_, input_resource, output_resource,
+        response_headers, response_writer, message_handler, base_callback);
     // TODO(sligocki): Async StreamingFetches are not being added to cache
     // because response_headers are not being saved into output_resource.
-    fetcher->StreamingFetch(input->url(), request_headers, response_headers,
-                            response_writer, message_handler, callback);
+    resource_manager_->ReadAsync(input_resource, filter_callback,
+                                 message_handler);
     ret = true;
   } else {
     output_resource->name().CopyToString(&url);

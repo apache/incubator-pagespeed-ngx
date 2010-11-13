@@ -22,7 +22,10 @@
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/http_value.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
 namespace net_instaweb {
@@ -30,10 +33,12 @@ namespace net_instaweb {
 UrlInputResource::~UrlInputResource() {
 }
 
-// Shared fetch callback, used by both ReadAsync and ReadIfCached
+// Shared fetch callback, used by both Load and LoadAndCallback
 class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
  public:
-  UrlResourceFetchCallback() : message_handler_(NULL) { }
+  UrlResourceFetchCallback(ResourceManager* resource_manager) :
+      resource_manager_(resource_manager),
+      message_handler_(NULL) { }
   virtual ~UrlResourceFetchCallback() {}
 
   void AddToCache(bool success) {
@@ -51,8 +56,34 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
     // get different resources depending on user-agent?
     const SimpleMetaData request_headers;
     message_handler_ = handler;
+    std::string lock_name = StrCat(
+        resource_manager_->filename_prefix(),
+        resource_manager_->hasher()->Hash(url()),
+        ".lock");
+    if (resource_manager_->file_system()->TryLock(
+            lock_name, message_handler_).is_false()) {
+      message_handler_->Warning(lock_name.c_str(), 0,
+                                "Someone is already fetching %s ",
+                                url().c_str());
+      if (should_yield()) {
+        Done(false);
+        return false;
+      }
+    } else {
+      lock_name_ = lock_name;
+    }
+
     return fetcher->StreamingFetch(url(), request_headers, response_headers(),
                                    http_value(), handler, this);
+  }
+
+  virtual void Done(bool success) {
+    AddToCache(success);
+    DoneInternal(success);
+    if (!lock_name_.empty()) {
+      resource_manager_->file_system()->Unlock(lock_name_, message_handler_);
+    }
+    delete this;
   }
 
   // The two derived classes differ in how they provide the
@@ -64,24 +95,30 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   virtual HTTPValue* http_value() = 0;
   virtual std::string url() const = 0;
   virtual HTTPCache* http_cache() = 0;
+  // If someone is already fetching this resource, should we yield to them and
+  // try again later?  If so, return true.  Otherwise, if we must fetch the
+  // resource regardless, return false.
+  // TODO(abliss): unit test this
+  virtual bool should_yield() = 0;
 
  protected:
+  ResourceManager* resource_manager_;
   MessageHandler* message_handler_;
+  virtual void DoneInternal(bool success) {
+  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UrlResourceFetchCallback);
+  std::string lock_name_;
 };
 
 class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
  public:
-  UrlReadIfCachedCallback(const std::string& url, HTTPCache* http_cache)
-      : url_(url),
+  UrlReadIfCachedCallback(const std::string& url, HTTPCache* http_cache,
+                          ResourceManager* resource_manager)
+      : UrlResourceFetchCallback(resource_manager),
+        url_(url),
         http_cache_(http_cache) {
-  }
-
-  virtual void Done(bool success) {
-    AddToCache(success);
-    delete this;
   }
 
   // Indicate that it's OK for the callback to be executed on a different
@@ -92,6 +129,7 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
   virtual HTTPValue* http_value() { return &http_value_; }
   virtual std::string url() const { return url_; }
   virtual HTTPCache* http_cache() { return http_cache_; }
+  virtual bool should_yield() { return true; }
 
  private:
   std::string url_;
@@ -107,7 +145,8 @@ bool UrlInputResource::Load(MessageHandler* handler) {
   value_.Clear();
 
   HTTPCache* http_cache = resource_manager()->http_cache();
-  UrlReadIfCachedCallback* cb = new UrlReadIfCachedCallback(url_, http_cache);
+  UrlReadIfCachedCallback* cb = new UrlReadIfCachedCallback(url_, http_cache,
+                                                            resource_manager());
 
   // If the fetcher can satisfy the request instantly, then we
   // can try to populate the resource from the cache.
@@ -122,14 +161,13 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
  public:
   explicit UrlReadAsyncFetchCallback(Resource::AsyncCallback* callback,
                                     UrlInputResource* resource)
-      : resource_(resource),
+      : UrlResourceFetchCallback(resource->resource_manager()),
+        resource_(resource),
         callback_(callback) {
   }
 
-  virtual void Done(bool success) {
-    AddToCache(success);
+  virtual void DoneInternal(bool success) {
     callback_->Done(success, resource_);
-    delete this;
   }
 
   virtual MetaData* response_headers() { return &resource_->meta_data_; }
@@ -138,6 +176,7 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
   virtual HTTPCache* http_cache() {
     return resource_->resource_manager()->http_cache();
   }
+  virtual bool should_yield() { return false; }
 
  private:
   UrlInputResource* resource_;

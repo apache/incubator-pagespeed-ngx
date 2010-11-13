@@ -32,8 +32,17 @@ MockUrlFetcher::~MockUrlFetcher() {
 void MockUrlFetcher::SetResponse(const StringPiece& url,
                                  const MetaData& response_header,
                                  const StringPiece& response_body) {
+  std::string url_string = url.as_string();
+  // Delete any old response.
+  ResponseMap::iterator iter = response_map_.find(url_string);
+  if (iter != response_map_.end()) {
+    delete iter->second;
+    response_map_.erase(iter);
+  }
+
+  // Add new response.
   HttpResponse* response = new HttpResponse(response_header, response_body);
-  response_map_.insert(ResponseMap::value_type(url.as_string(), response));
+  response_map_.insert(ResponseMap::value_type(url_string, response));
 }
 
 bool MockUrlFetcher::StreamingFetchUrl(const std::string& url,

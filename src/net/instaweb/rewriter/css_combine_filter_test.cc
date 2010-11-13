@@ -33,6 +33,13 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
   // Test spriting CSS with options to write headers and use a hasher.
   void CombineCss(const StringPiece& id, Hasher* hasher,
                   const char* barrier_text, bool is_barrier) {
+    CombineCssWithNames(id, hasher, barrier_text, is_barrier, "a.css", "b.css");
+  }
+
+  void CombineCssWithNames(const StringPiece& id, Hasher* hasher,
+                           const char* barrier_text, bool is_barrier,
+                           const char* a_css_name,
+                           const char* b_css_name) {
     resource_manager_->set_hasher(hasher);
     other_resource_manager_.set_hasher(hasher);
 
@@ -42,14 +49,14 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     // URLs and content for HTML document and resources.
     CHECK_EQ(StringPiece::npos, id.find("/"));
     std::string html_url = StrCat("http://combine_css.test/", id, ".html");
-    const char a_css_url[] = "http://combine_css.test/a.css";
-    const char b_css_url[] = "http://combine_css.test/b.css";
+    std::string a_css_url = StrCat("http://combine_css.test/", a_css_name);
+    std::string b_css_url = StrCat("http://combine_css.test/", b_css_name);
     const char c_css_url[] = "http://combine_css.test/c.css";
 
     static const char html_input_format[] =
         "<head>\n"
-        "  <link rel='stylesheet' href='a.css' type='text/css'>\n"
-        "  <link rel='stylesheet' href='b.css' type='text/css'>\n"
+        "  <link rel='stylesheet' href='%s' type='text/css'>\n"
+        "  <link rel='stylesheet' href='%s' type='text/css'>\n"
         "  <title>Hello, Instaweb</title>\n"
         "%s"
         "</head>\n"
@@ -61,7 +68,8 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         "  </div>\n"
         "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
         "</body>\n";
-    std::string html_input = StringPrintf(html_input_format, barrier_text);
+    std::string html_input =
+        StringPrintf(html_input_format, a_css_name, b_css_name, barrier_text);
     const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
     const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
     const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
@@ -380,6 +388,12 @@ TEST_F(CssCombineFilterTest, CombineCssMD5) {
 }
 
 
+// http://code.google.com/p/modpagespeed/issues/detail?q=css&id=39
+TEST_F(CssCombineFilterTest, DealWithParams) {
+  CombineCssWithNames("deal_with_params", &mock_hasher_, "", false,
+                      "a.css?U", "b.css?rev=138");
+}
+
 TEST_F(CssCombineFilterTest, CombineCssWithIEDirective) {
   const char ie_directive_barrier[] =
       "<!--[if IE]>\n"
@@ -556,11 +570,12 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrl) {
   EXPECT_TRUE(GURL(combine_url.c_str()).is_valid());
 }
 
-TEST_F(CssCombineFilterTest, CombineCssShards) {
-  num_shards_ = 10;
-  url_prefix_ = "http://mysite%d/";
-  CombineCss("combine_css_sha1", &mock_hasher_, "", false);
-}
+// TODO(jmaessen): Re-write for new sharding story when it exists.
+// TEST_F(CssCombineFilterTest, CombineCssShards) {
+//   num_shards_ = 10;
+//   url_prefix_ = "http://mysite%d/";
+//   CombineCss("combine_css_sha1", &mock_hasher_, "", false);
+// }
 
 TEST_F(CssCombineFilterTest, CombineCssNoInput) {
   // TODO(sligocki): This is probably not working correctly, we need to put

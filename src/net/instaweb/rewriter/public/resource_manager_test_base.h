@@ -44,11 +44,7 @@
 
 namespace net_instaweb {
 
-namespace {
-
 const int kCacheSize = 100 * 1000 * 1000;
-
-}  // namespace
 
 class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
  protected:
@@ -58,13 +54,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
         // TODO(sligocki): Someone removed setting the file_prefix, but we
         // still appear to be using it. We should see what's going on with that.
         url_prefix_(URL_PREFIX),
-        num_shards_(0),
 
         lru_cache_(new LRUCache(kCacheSize)),
         http_cache_(lru_cache_, &mock_timer_),
         // TODO(sligocki): Why can't I init it here ...
-        //resource_manager_(new ResourceManager(
-        //    file_prefix_, url_prefix_, num_shards_, &file_system_,
+        // resource_manager_(new ResourceManager(
+        //    file_prefix_, &file_system_,
         //    &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
         //    &http_cache_, &domain_lawyer_)),
         rewrite_driver_(&message_handler_, &file_system_,
@@ -73,12 +68,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
         other_lru_cache_(new LRUCache(kCacheSize)),
         other_http_cache_(other_lru_cache_, &mock_timer_),
         other_resource_manager_(
-            file_prefix_, url_prefix_, num_shards_, &other_file_system_,
+            file_prefix_, &other_file_system_,
             &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
             &other_http_cache_, &other_domain_lawyer_),
         other_rewrite_driver_(&message_handler_, &other_file_system_,
                               &mock_url_async_fetcher_) {
-    //rewrite_driver_.SetResourceManager(resource_manager_);
+    // rewrite_driver_.SetResourceManager(resource_manager_);
     other_rewrite_driver_.SetResourceManager(&other_resource_manager_);
   }
 
@@ -87,7 +82,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     file_prefix_ = GTestTempDir() + "/";
     // TODO(sligocki): Init this in constructor.
     resource_manager_ = new ResourceManager(
-        file_prefix_, url_prefix_, num_shards_, &file_system_,
+        file_prefix_, &file_system_,
         &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
         &http_cache_, &domain_lawyer_);
     rewrite_driver_.SetResourceManager(resource_manager_);
@@ -111,8 +106,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // any functionality in the async callback.
   class DummyCallback : public UrlAsyncFetcher::Callback {
    public:
-    DummyCallback(bool expect_success) : done_(false),
-                                         expect_success_(expect_success) {}
+    explicit DummyCallback(bool expect_success)
+        : done_(false),
+          expect_success_(expect_success) {}
     virtual ~DummyCallback() {
       EXPECT_TRUE(done_);
     }
@@ -177,7 +173,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     DomainLawyer other_domain_lawyer;
     WaitUrlAsyncFetcher wait_url_async_fetcher(&mock_url_fetcher_);
     ResourceManager other_resource_manager(
-        file_prefix_, url_prefix_, num_shards_, &other_file_system,
+        file_prefix_, &other_file_system,
         &filename_encoder_, &wait_url_async_fetcher, hasher,
         &other_http_cache, &other_domain_lawyer);
 
@@ -298,7 +294,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   MockTimer mock_timer_;
   std::string file_prefix_;
   std::string url_prefix_;
-  int num_shards_;
 
   // We have two independent RewriteDrivers representing two completely
   // separate servers for the same domain (say behind a load-balancer).

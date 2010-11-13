@@ -103,11 +103,9 @@ class RewriteDriverFactory {
   void set_base_url_async_fetcher(UrlAsyncFetcher* url_fetcher);
 
   void set_filename_prefix(StringPiece p) { p.CopyToString(&filename_prefix_); }
-  void set_url_prefix(StringPiece p) { p.CopyToString(&url_prefix_); }
 
   // TODO(jmarantz):
   // Remove all these methods in favor of simply exposing the RewriteOptions*.
-  void set_num_shards(int num_shards) { options_.set_num_shards(num_shards); }
   void set_css_outline_min_bytes(int64 t) {
     options_.set_css_outline_min_bytes(t);
   }
@@ -138,8 +136,6 @@ class RewriteDriverFactory {
   HTTPCache* http_cache();
 
   StringPiece filename_prefix();
-  StringPiece url_prefix();
-  int num_shards() const { return options_.num_shards(); }
 
   // Sets the rewrite level.
   void SetRewriteLevel(RewriteOptions::RewriteLevel level);
@@ -241,7 +237,6 @@ class RewriteDriverFactory {
   HtmlParse* html_parse_;
 
   std::string filename_prefix_;
-  std::string url_prefix_;
   std::string slurp_directory_;
   RewriteOptions options_;
   bool force_caching_;

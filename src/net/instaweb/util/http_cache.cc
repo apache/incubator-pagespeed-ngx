@@ -28,6 +28,8 @@
 namespace net_instaweb {
 
 
+HTTPCache::~HTTPCache() {}
+
 bool HTTPCache::IsCurrentlyValid(const MetaData& headers) {
   if (force_caching_) {
     return true;

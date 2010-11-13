@@ -97,7 +97,7 @@ class Resource {
   virtual bool Load(MessageHandler* message_handler) = 0;
   // Same as Load, but calls a callback when finished.
   virtual void LoadAndCallback(AsyncCallback* callback,
-                                MessageHandler* message_handler);
+                               MessageHandler* message_handler);
 
   ResourceManager* resource_manager_;
 

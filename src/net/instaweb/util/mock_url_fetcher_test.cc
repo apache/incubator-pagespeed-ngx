@@ -32,20 +32,39 @@ namespace {
 
 class MockUrlFetcherTest : public ::testing::Test {
  protected:
-  void ExpectEqualMetaData(const MetaData& expected, const MetaData& actual) {
-    EXPECT_EQ(expected.ToString(), actual.ToString());
+  MockUrlFetcherTest() {
+    fetcher_.set_fail_on_unexpected(false);
   }
+
+  void TestResponse(const std::string& url, const MetaData& expected_header,
+                    const std::string& expected_body) {
+    const SimpleMetaData dummy_header;
+    SimpleMetaData response_header;
+    std::string response_body;
+    StringWriter response_writer(&response_body);
+    GoogleMessageHandler handler;
+
+    EXPECT_TRUE(fetcher_.StreamingFetchUrl(url, dummy_header, &response_header,
+                                           &response_writer, &handler));
+    EXPECT_EQ(expected_header.ToString(), response_header.ToString());
+    EXPECT_EQ(expected_body, response_body);
+  }
+
+  void TestFetchFail(const std::string& url) {
+    const SimpleMetaData dummy_header;
+    SimpleMetaData response_header;
+    std::string response_body;
+    StringWriter response_writer(&response_body);
+    GoogleMessageHandler handler;
+
+    EXPECT_FALSE(fetcher_.StreamingFetchUrl(url, dummy_header, &response_header,
+                                            &response_writer, &handler));
+  }
+
+  MockUrlFetcher fetcher_;
 };
 
 TEST_F(MockUrlFetcherTest, GetsCorrectMappedResponse) {
-  MockUrlFetcher fetcher;
-  fetcher.set_fail_on_unexpected(false);
-  const SimpleMetaData dummy_header;
-  SimpleMetaData response_header;
-  std::string response_body;
-  StringWriter response_writer(&response_body);
-  GoogleMessageHandler handler;
-
   const char url1[] = "http://www.example.com/successs.html";
   SimpleMetaData header1;
   header1.set_first_line(1, 1, 200, "OK");
@@ -58,46 +77,38 @@ TEST_F(MockUrlFetcherTest, GetsCorrectMappedResponse) {
 
   // We can't fetch the URLs before they're set.
   // Note: this does not crash because we are using NullMessageHandler.
-  EXPECT_FALSE(fetcher.StreamingFetchUrl(url1, dummy_header, &response_header,
-                                         &response_writer, &handler));
-  EXPECT_FALSE(fetcher.StreamingFetchUrl(url2, dummy_header, &response_header,
-                                         &response_writer, &handler));
+  TestFetchFail(url1);
+  TestFetchFail(url2);
 
   // Set the responses.
-  fetcher.SetResponse(url1, header1, body1);
-  fetcher.SetResponse(url2, header2, body2);
+  fetcher_.SetResponse(url1, header1, body1);
+  fetcher_.SetResponse(url2, header2, body2);
 
   // Now we can fetch the correct URLs
-  EXPECT_TRUE(fetcher.StreamingFetchUrl(url1, dummy_header, &response_header,
-                                        &response_writer, &handler));
-  ExpectEqualMetaData(header1, response_header);
-  EXPECT_EQ(body1, response_body);
-  response_header.Clear();
-  response_body.clear();
-
-  EXPECT_TRUE(fetcher.StreamingFetchUrl(url2, dummy_header, &response_header,
-                                        &response_writer, &handler));
-  ExpectEqualMetaData(header2, response_header);
-  EXPECT_EQ(body2, response_body);
-  response_header.Clear();
-  response_body.clear();
+  TestResponse(url1, header1, body1);
+  TestResponse(url2, header2, body2);
 
   // Check that we can fetch the same URL multiple times.
-  EXPECT_TRUE(fetcher.StreamingFetchUrl(url1, dummy_header, &response_header,
-                                        &response_writer, &handler));
-  ExpectEqualMetaData(header1, response_header);
-  EXPECT_EQ(body1, response_body);
-  response_header.Clear();
-  response_body.clear();
+  TestResponse(url1, header1, body1);
 
-  // Check that fetches fail after disabling the fetcher.
-  fetcher.Disable();
-  EXPECT_FALSE(fetcher.StreamingFetchUrl(url1, dummy_header, &response_header,
-                                         &response_writer, &handler));
+
+  // Check that fetches fail after disabling the fetcher_.
+  fetcher_.Disable();
+  TestFetchFail(url1);
   // And then work again when re-enabled.
-  fetcher.Enable();
-  EXPECT_TRUE(fetcher.StreamingFetchUrl(url1, dummy_header, &response_header,
-                                        &response_writer, &handler));
+  fetcher_.Enable();
+  TestResponse(url1, header1, body1);
+
+
+  // Change the response. Test both editability and memory management.
+  fetcher_.SetResponse(url1, header2, body2);
+
+  // Check that we get the new response.
+  TestResponse(url1, header2, body2);
+
+  // Change it back.
+  fetcher_.SetResponse(url1, header1, body1);
+  TestResponse(url1, header1, body1);
 }
 
 }  // namespace

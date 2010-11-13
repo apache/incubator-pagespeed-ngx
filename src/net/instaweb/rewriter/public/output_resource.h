@@ -33,7 +33,6 @@
 
 namespace net_instaweb {
 
-class FilenameEncoder;
 class MessageHandler;
 
 class OutputResource : public Resource {
