@@ -45,9 +45,9 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
     if (success) {
       HTTPValue* value = http_value();
       value->SetHeaders(*response_headers());
-      http_cache()->Put(url(), value, NULL);
+      http_cache()->Put(url(), value, message_handler_);
     } else {
-      // TODO(jmarantz): consider caching our failure to fetch this resource
+      http_cache()->RememberNotCacheable(url(), message_handler_);
     }
   }
 
@@ -66,10 +66,13 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
                                 "Someone is already fetching %s ",
                                 url().c_str());
       if (should_yield()) {
-        Done(false);
+        DoneInternal(false);
         return false;
       }
     } else {
+      message_handler_->Info(lock_name.c_str(), 0,
+                             "Locking %s for PID %ld",
+                             url().c_str(), static_cast<long>(getpid()));
       lock_name_ = lock_name;
     }
 
@@ -79,10 +82,14 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
 
   virtual void Done(bool success) {
     AddToCache(success);
-    DoneInternal(success);
     if (!lock_name_.empty()) {
+      message_handler_->Info(lock_name_.c_str(), 0,
+                             "Unlocking %s for PID %ld with success=%s",
+                             url().c_str(), static_cast<long>(getpid()),
+                             success ? "true" : "false");
       resource_manager_->file_system()->Unlock(lock_name_, message_handler_);
     }
+    DoneInternal(success);
     delete this;
   }
 
@@ -152,7 +159,8 @@ bool UrlInputResource::Load(MessageHandler* handler) {
   // can try to populate the resource from the cache.
   bool data_available =
       (cb->Fetch(resource_manager_->url_async_fetcher(), handler) &&
-       http_cache->Get(url_, &value_, &meta_data_, handler));
+       (http_cache->Find(url_, &value_, &meta_data_, handler) ==
+        HTTPCache::kFound));
   return data_available;
 }
 

@@ -16,15 +16,32 @@
 
 #include "net/instaweb/apache/apache_message_handler.h"
 
-#include "net/instaweb/util/public/string_util.h"
-
 #include "httpd.h"
 // When HAVE_SYSLOG is defined, apache http_log.h will include syslog.h, which
 // #defined LOG_* as numbers. This conflicts with what we are using those here.
 #undef HAVE_SYSLOG
 #include "http_log.h"
 
+namespace {
+
+// This name will be prefixed to every logged message.  This could be made
+// smaller if people think it's too long.  In my opinion it's probably OK,
+// and it would be good to let people know where messages are coming from.
+const char kModuleName[] = "mod_pagespeed";
+
+}
+
 namespace net_instaweb {
+
+ApacheMessageHandler::ApacheMessageHandler(const server_rec* server,
+                                           const StringPiece& version)
+    : server_rec_(server),
+      version_(version.data(), version.size()) {
+
+  // TODO(jmarantz): consider making this a little terser by default.
+  // The string we expect in is something like "0.9.1.1-171" and we will
+  // may be able to pick off some of the 5 fields that prove to be boring.
+}
 
 int ApacheMessageHandler::GetApacheLogLevel(MessageType type) {
   switch (type) {
@@ -49,7 +66,8 @@ void ApacheMessageHandler::MessageVImpl(MessageType type, const char* msg,
   int log_level = GetApacheLogLevel(type);
   std::string formatted_message = Format(msg, args);
   ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
-               "%s", formatted_message.c_str());
+               "[%s %s] %s",
+               kModuleName, version_.c_str(), formatted_message.c_str());
 }
 
 void ApacheMessageHandler::FileMessageVImpl(MessageType type, const char* file,
@@ -58,7 +76,9 @@ void ApacheMessageHandler::FileMessageVImpl(MessageType type, const char* file,
   int log_level = GetApacheLogLevel(type);
   std::string formatted_message = Format(msg, args);
   ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
-               "%s:%d: %s", file, line, formatted_message.c_str());
+               "[%s %s] %s:%d: %s",
+               kModuleName, version_.c_str(), file, line,
+               formatted_message.c_str());
 }
 
 // TODO(sligocki): It'd be nice not to do so much string copying.

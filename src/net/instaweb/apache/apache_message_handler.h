@@ -17,9 +17,11 @@
 #ifndef NET_INSTAWEB_APACHE_APACHE_MESSAGE_HANDLER_H_
 #define NET_INSTAWEB_APACHE_APACHE_MESSAGE_HANDLER_H_
 
+#include <string>
 #include "base/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include <string>
+#include "net/instaweb/util/public/string_util.h"
 
 struct server_rec;
 
@@ -29,7 +31,7 @@ namespace net_instaweb {
 // logging to emit messsages.
 class ApacheMessageHandler : public MessageHandler {
  public:
-  ApacheMessageHandler(const server_rec* server) : server_rec_(server) {}
+  ApacheMessageHandler(const server_rec* server, const StringPiece& version);
 
  protected:
   virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
@@ -42,6 +44,7 @@ class ApacheMessageHandler : public MessageHandler {
   std::string Format(const char* msg, va_list args);
 
   const server_rec* server_rec_;
+  const std::string version_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheMessageHandler);
 };

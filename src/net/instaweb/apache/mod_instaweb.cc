@@ -478,7 +478,8 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
 void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
   if (factory == NULL) {
-    factory = new ApacheRewriteDriverFactory(pool, server);
+    factory = new ApacheRewriteDriverFactory(pool, server,
+                                             kModPagespeedVersion);
 
     // To clean up the factory on process shutdown, we need to run
     // pagespeed_child_exit *before* the pool is destroyed.  If we run

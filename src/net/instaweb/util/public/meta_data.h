@@ -104,6 +104,11 @@ enum Code {
   kUnavailable = 503,
   kGatewayTimeout = 504,
   kHttpVersionNotSupported = 505,
+
+  // Instaweb-specific response codes: these are intentionally chosen to be
+  // outside the normal HTTP range, but we consider these response codes
+  // to be 'cacheable' in our own cache.
+  kRememberNotFoundStatusCode = 10001,
 };
 
 // Transform a status code into the equivalent reason phrase.

@@ -281,8 +281,15 @@ void SimpleMetaData::ComputeCaching() {
       pagespeed::resource_util::HasExplicitNoCacheDirective(resource);
   bool likely_static =
       pagespeed::resource_util::IsLikelyStaticResource(resource);
+
+  // status_cacheable implies that either the resource content was
+  // cacheable, or the status code indicated some other aspect of
+  // our system that we want to remember in the cache, such as
+  // that fact that a fetch failed for a resource, and we don't want
+  // to try again until some time has passed.
   bool status_cacheable =
-      pagespeed::resource_util::IsCacheableResourceStatusCode(status_code_);
+      ((status_code_ == HttpStatus::kRememberNotFoundStatusCode) ||
+       pagespeed::resource_util::IsCacheableResourceStatusCode(status_code_));
   int64 freshness_lifetime_ms;
   bool explicit_cacheable =
       pagespeed::resource_util::GetFreshnessLifetimeMillis(

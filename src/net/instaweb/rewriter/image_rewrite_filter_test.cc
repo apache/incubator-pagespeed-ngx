@@ -146,12 +146,33 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     file_system_.Enable();
     mock_url_fetcher_.Enable();
 
-    message_handler_.Message(kInfo, "Now with serving.");
+    // TODO(jmarantz): Refactor this code which tries the serving-fetch twice,
+    // the second after the cache stops 'remembering' that the origin fetch
+    // failed.
+    message_handler_.Message(
+        kInfo, "Now with serving, but with a recent fetch failure.");
+    SimpleMetaData other_headers;
+    //size_t header_size = fetched_resource_content.size();
+    dummy_callback.Reset();
+
+    // Trying this twice.  The first time, we will again fail to rewrite
+    // the resource because the cache will 'remembered' that the image origin
+    // fetch failed and so the resource manager will not try again for 5
+    // minutes.
+    fetched_resource_content.clear();
+    other_rewrite_driver_.FetchResource(src_string, request_headers,
+                                        &other_headers, &writer,
+                                        &message_handler_, &dummy_callback);
+    EXPECT_EQ(HttpStatus::kTemporaryRedirect, redirect_headers.status_code());
+    EXPECT_EQ(expected_redirect, fetched_resource_content);
+
+    // Now let some time go by and try again.
+    message_handler_.Message(
+        kInfo, "Now with serving, but 5 minutes expired since fetch failure.");
+    mock_timer_.advance_ms(5 * Timer::kMinuteMs + 1 * Timer::kSecondMs);
     fetched_resource_content.clear();
     writer.Write(headers, &message_handler_);
     EXPECT_EQ(headers, fetched_resource_content);
-    SimpleMetaData other_headers;
-    //size_t header_size = fetched_resource_content.size();
     dummy_callback.Reset();
     other_rewrite_driver_.FetchResource(src_string, request_headers,
                                         &other_headers, &writer,

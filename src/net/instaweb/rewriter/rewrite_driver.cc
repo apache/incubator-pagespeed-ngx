@@ -77,6 +77,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),
+      add_instrumentation_filter_(NULL),
       cached_resource_fetches_(NULL),
       succeeded_filter_resource_fetches_(NULL),
       failed_filter_resource_fetches_(NULL) {

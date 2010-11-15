@@ -46,8 +46,22 @@ class HTTPCache {
 
   ~HTTPCache();
 
-  bool Get(const std::string& key, HTTPValue* value, MetaData* headers,
-           MessageHandler* handler);
+  // When a lookup is done in the HTTP Cache, it returns one of these values.
+  // 2 of these are obvious, one is used to help avoid frequently re-fetching
+  // the same content that failed to fetch, or was fetched but was not cacheable.
+  //
+  // TODO(jmarantz): consider merging these 3 into the 3 status codes defined
+  // CacheInterface, making 4 distinct codes.  That would be a little clearer,
+  // but would require that all callers of Find handle kInTransit which no
+  // cache implementations currently generate.
+  enum FindResult {
+    kFound,
+    kRecentFetchFailedDoNotRefetch,
+    kNotFound
+  };
+
+  FindResult Find(const std::string& key, HTTPValue* value, MetaData* headers,
+                  MessageHandler* handler);
 
   // Note that Put takes a non-const pointer for HTTPValue so it can
   // bump the reference count.
@@ -61,6 +75,21 @@ class HTTPCache {
   void set_force_caching(bool force) { force_caching_ = force; }
   bool force_caching() const { return force_caching_; }
   Timer* timer() const { return timer_; }
+
+  // Tell the HTTP Cache to remember that a particular key is not cacheable.
+  // This may be due to the associated URL failing Fetch, or it may be because
+  // the URL was fetched but was marked with Cache-Control 'nocache' or
+  // Cache-Control 'private'.  In any case we would like to avoid DOSing
+  // the origin server or spinning our own wheels trying to re-fetch this
+  // resource.
+  //
+  // The not-cacheable setting will be 'remembered' for 5 minutes -- currently
+  // hard-coded in http_cache.cc.
+  //
+  // TODO(jmarantz): if fetch failed, maybe we should try back soon,
+  // but if it is Cache-Control: private, we can probably assume that
+  // it still will be in 5 minutes.
+  void RememberNotCacheable(const std::string& key, MessageHandler * handler);
 
  private:
   bool IsCurrentlyValid(const MetaData& headers);

@@ -8,4 +8,73 @@ namespace net_instaweb {
 const char ResourceManagerTestBase::kTestData[] =
     "/net/instaweb/rewriter/testdata/";
 
+// Test that a resource can be served from an new server that has not already
+// constructed it.
+void ResourceManagerTestBase::ServeResourceFromNewContext(
+    const std::string& resource_url,
+    RewriteOptions::Filter filter,
+    Hasher* hasher,
+    const StringPiece& expected_content) {
+
+  // New objects for the new server.
+  MemFileSystem other_file_system;
+  // other_lru_cache is owned by other_http_cache_.
+  LRUCache* other_lru_cache(new LRUCache(kCacheSize));
+  MockTimer other_mock_timer(0);
+  HTTPCache other_http_cache(other_lru_cache, &other_mock_timer);
+  DomainLawyer other_domain_lawyer;
+  WaitUrlAsyncFetcher wait_url_async_fetcher(&mock_url_fetcher_);
+  ResourceManager other_resource_manager(
+      file_prefix_, &other_file_system,
+      &filename_encoder_, &wait_url_async_fetcher, hasher,
+      &other_http_cache, &other_domain_lawyer);
+
+  SimpleStats stats;
+  RewriteDriver::Initialize(&stats);
+  other_resource_manager.set_statistics(&stats);
+
+  RewriteDriver other_rewrite_driver(&message_handler_, &other_file_system,
+                                     &wait_url_async_fetcher);
+  other_rewrite_driver.SetResourceManager(&other_resource_manager);
+
+  other_rewrite_driver.AddFilter(filter);
+
+  Variable* cached_resource_fetches =
+      stats.GetVariable(RewriteDriver::kResourceFetchesCached);
+  Variable* succeeded_filter_resource_fetches =
+      stats.GetVariable(RewriteDriver::kResourceFetchConstructSuccesses);
+  Variable* failed_filter_resource_fetches =
+      stats.GetVariable(RewriteDriver::kResourceFetchConstructFailures);
+
+  SimpleMetaData request_headers;
+  // TODO(sligocki): We should set default request headers.
+  SimpleMetaData response_headers;
+  std::string response_contents;
+  StringWriter response_writer(&response_contents);
+  DummyCallback callback(true);
+
+  // Check that we don't already have it in cache.
+  EXPECT_EQ(CacheInterface::kNotFound, other_http_cache.Query(resource_url));
+
+  // Initiate fetch.
+  EXPECT_EQ(true, other_rewrite_driver.FetchResource(
+      resource_url, request_headers, &response_headers, &response_writer,
+      &message_handler_, &callback));
+
+  // Content should not be set until we call the callback.
+  EXPECT_EQ(false, callback.done_);
+  EXPECT_EQ("", response_contents);
+
+  // After we call the callback, it should be correct.
+  wait_url_async_fetcher.CallCallbacks();
+  EXPECT_EQ(true, callback.done_);
+  EXPECT_EQ(expected_content, response_contents);
+  EXPECT_EQ(CacheInterface::kAvailable, other_http_cache.Query(resource_url));
+
+  // Check that stats say we took the construct resource path.
+  EXPECT_EQ(0, cached_resource_fetches->Get());
+  EXPECT_EQ(1, succeeded_filter_resource_fetches->Get());
+  EXPECT_EQ(0, failed_filter_resource_fetches->Get());
+}
+
 }

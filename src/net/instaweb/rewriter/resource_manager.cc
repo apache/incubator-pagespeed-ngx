@@ -271,8 +271,8 @@ OutputResource* ResourceManager::CreateOutputResourceWithPath(
   StringPiece hash_extension;
   HTTPValue value;
 
-  if (http_cache_->Get(
-          resource->name_key(), &value, &meta_data, handler) &&
+  if ((http_cache_->Find(resource->name_key(), &value, &meta_data, handler)
+       == HTTPCache::kFound) &&
       value.ExtractContents(&hash_extension)) {
     ResourceNamer hash_ext;
     if (hash_ext.DecodeHashExt(hash_extension)) {
@@ -444,7 +444,8 @@ bool ResourceManager::FetchOutputResource(
             writer->Write(content, handler)));
   } else if (output_resource->has_hash()) {
     std::string url = output_resource->url();
-    if (http_cache_->Get(url, &output_resource->value_, meta_data, handler) &&
+    if ((http_cache_->Find(url, &output_resource->value_, meta_data, handler)
+         == HTTPCache::kFound) &&
         ((writer == NULL) ||
          output_resource->value_.ExtractContents(&content)) &&
         ((writer == NULL) || writer->Write(content, handler))) {
@@ -525,42 +526,62 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
 void ResourceManager::ReadAsync(Resource* resource,
                                 Resource::AsyncCallback* callback,
                                 MessageHandler* handler) {
-  // Is it loaded already?
-  bool ret = resource->loaded();
-  // If not, is it in the cache?
-  if (!ret && resource->IsCacheable()) {
-    ret = http_cache_->Get(resource->url(), &resource->value_,
-                           resource->metadata(), handler);
+  HTTPCache::FindResult result = HTTPCache::kNotFound;
+
+  // If the resource is not already loaded, and this type of resource (e.g.
+  // URL vs File vs Data) is cacheable, then try to load it.
+  if (resource->loaded()) {
+    result = HTTPCache::kFound;
+  } else if (resource->IsCacheable()) {
+    result = http_cache_->Find(resource->url(), &resource->value_,
+                               resource->metadata(), handler);
   }
 
-  if (ret) {
-    // If so, call callback directly.
-    callback->Done(true, resource);
-  } else {
-    // If not, load it asynchronously.
-    resource->LoadAndCallback(callback, handler);
+  switch (result) {
+    case HTTPCache::kFound:
+      callback->Done(true, resource);
+      break;
+    case HTTPCache::kRecentFetchFailedDoNotRefetch:
+      // TODO(jmarantz): in this path, should we try to fetch again
+      // sooner than 5 minutes?  The issue is that in this path we are
+      // serving for the user, not for a rewrite.  This could get
+      // frustrating, even if the software is functioning as intended,
+      // because a missing resource that is put in place by a site
+      // admin will not be checked again for 5 minutes.
+      //
+      // The "good" news is that if the admin is willing to crank up
+      // logging to 'info' then http_cache.cc will log the
+      // 'remembered' failure.
+      callback->Done(false, resource);
+      break;
+    case HTTPCache::kNotFound:
+      // If not, load it asynchronously.
+      resource->LoadAndCallback(callback, handler);
+      break;
   }
-
   // TODO(sligocki): Do we need to call DetermineContentType like below?
 }
 
 bool ResourceManager::ReadIfCached(Resource* resource,
                                    MessageHandler* handler) const {
-  // Is it loaded already?
-  bool ret = resource->loaded();
-  // If not, is it in the cache?
-  if (!ret && resource->IsCacheable()) {
-    ret = http_cache_->Get(resource->url(), &resource->value_,
-                           resource->metadata(), handler);
+  HTTPCache::FindResult result = HTTPCache::kNotFound;
+
+  // If the resource is not already loaded, and this type of resource (e.g.
+  // URL vs File vs Data) is cacheable, then try to load it.
+  if (resource->loaded()) {
+    result = HTTPCache::kFound;
+  } else if (resource->IsCacheable()) {
+    result = http_cache_->Find(resource->url(), &resource->value_,
+                               resource->metadata(), handler);
   }
-  // If not, load it explicitly.
-  if (!ret) {
-    ret = resource->Load(handler);
+  if ((result == HTTPCache::kNotFound) && resource->Load(handler)) {
+    result = HTTPCache::kFound;
   }
-  if (ret) {
+  if (result == HTTPCache::kFound) {
     resource->DetermineContentType();
+    return true;
   }
-  return ret;
+  return false;
 }
 
 }  // namespace net_instaweb

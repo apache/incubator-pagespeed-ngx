@@ -76,9 +76,9 @@ TEST_F(HTTPCacheTest, PutGet) {
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query("mykey"));
   HTTPValue value;
-  bool found = http_cache_.Get("mykey", &value, &meta_data_out,
-                               &message_handler_);
-  ASSERT_TRUE(found);
+  HTTPCache::FindResult found = http_cache_.Find(
+      "mykey", &value, &meta_data_out, &message_handler_);
+  ASSERT_EQ(HTTPCache::kFound, found);
   ASSERT_TRUE(meta_data_out.headers_complete());
   StringPiece contents;
   ASSERT_TRUE(value.ExtractContents(&contents));
@@ -91,9 +91,27 @@ TEST_F(HTTPCacheTest, PutGet) {
   // Now advance time 301 seconds and the we should no longer
   // be able to fetch this resource out of the cache.
   mock_timer_.advance_ms(301 * 1000);
-  found = http_cache_.Get("mykey", &value, &meta_data_out, &message_handler_);
-  EXPECT_FALSE(found);
+  found = http_cache_.Find("mykey", &value, &meta_data_out, &message_handler_);
+  ASSERT_EQ(HTTPCache::kNotFound, found);
   ASSERT_FALSE(meta_data_out.headers_complete());
+}
+
+// Verifies that the cache will 'remember' that a fetch should not be
+// cached for 5 minutes.
+TEST_F(HTTPCacheTest, RememberNotCacheable) {
+  SimpleMetaData meta_data_out;
+  http_cache_.RememberNotCacheable("mykey", &message_handler_);
+  HTTPValue value;
+  EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
+            http_cache_.Find("mykey", &value, &meta_data_out,
+                             &message_handler_));
+
+  // Now advance time 301 seconds; the cache should allow us to try fetching
+  // again.
+  mock_timer_.advance_ms(301 * 1000);
+  EXPECT_EQ(HTTPCache::kNotFound,
+            http_cache_.Find("mykey", &value, &meta_data_out,
+                             &message_handler_));
 }
 
 TEST_F(HTTPCacheTest, Uncacheable) {
@@ -102,9 +120,9 @@ TEST_F(HTTPCacheTest, Uncacheable) {
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query("mykey"));
   HTTPValue value;
-  bool found = http_cache_.Get("mykey", &value, &meta_data_out,
-                               &message_handler_);
-  ASSERT_FALSE(found);
+  HTTPCache::FindResult found = http_cache_.Find(
+      "mykey", &value, &meta_data_out, &message_handler_);
+  ASSERT_EQ(HTTPCache::kNotFound, found);
   ASSERT_FALSE(meta_data_out.headers_complete());
 }
 
@@ -114,9 +132,9 @@ TEST_F(HTTPCacheTest, UncacheablePrivate) {
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query("mykey"));
   HTTPValue value;
-  bool found = http_cache_.Get("mykey", &value, &meta_data_out,
-                               &message_handler_);
-  ASSERT_FALSE(found);
+  HTTPCache::FindResult found = http_cache_.Find(
+      "mykey", &value, &meta_data_out, &message_handler_);
+  ASSERT_EQ(HTTPCache::kNotFound, found);
   ASSERT_FALSE(meta_data_out.headers_complete());
 }
 

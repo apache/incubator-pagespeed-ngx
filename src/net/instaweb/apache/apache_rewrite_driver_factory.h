@@ -35,7 +35,8 @@ class SerfUrlFetcher;
 // Creates an Apache RewriteDriver.
 class ApacheRewriteDriverFactory : public RewriteDriverFactory {
  public:
-  explicit ApacheRewriteDriverFactory(apr_pool_t* pool, server_rec* server);
+  explicit ApacheRewriteDriverFactory(apr_pool_t* pool, server_rec* server,
+                                      const StringPiece& version);
   virtual ~ApacheRewriteDriverFactory();
 
   virtual Hasher* NewHasher();
@@ -117,6 +118,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   int64 slurp_flush_limit_;
   std::string file_cache_path_;
   std::string fetcher_proxy_;
+  std::string version_;
   bool enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);

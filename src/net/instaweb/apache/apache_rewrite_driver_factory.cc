@@ -33,8 +33,8 @@
 
 namespace net_instaweb {
 
-ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(apr_pool_t* pool,
-                                                       server_rec* server)
+ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
+    apr_pool_t* pool, server_rec* server, const StringPiece& version)
     : server_rec_(server),
       serf_url_fetcher_(NULL),
       serf_url_async_fetcher_(NULL),
@@ -45,6 +45,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(apr_pool_t* pool,
       file_cache_clean_size_kb_(100 * 1024),  // 100 megabytes
       fetcher_time_out_ms_(5 * Timer::kSecondMs),
       slurp_flush_limit_(0),
+      version_(version.data(), version.size()),
       enabled_(true) {
   apr_pool_create(&pool_, pool);
   cache_mutex_.reset(NewMutex());
@@ -74,11 +75,11 @@ Timer* ApacheRewriteDriverFactory::DefaultTimer() {
 }
 
 MessageHandler* ApacheRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
-  return new ApacheMessageHandler(server_rec_);
+  return new ApacheMessageHandler(server_rec_, version_);
 }
 
 MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
-  return new ApacheMessageHandler(server_rec_);
+  return new ApacheMessageHandler(server_rec_, version_);
 }
 
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {

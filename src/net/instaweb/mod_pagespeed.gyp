@@ -38,6 +38,7 @@
       'sources': [
         'apache/instaweb_handler.cc',
         'apache/log_message_handler.cc',
+        'apache/mem_debug.cc',
         'apache/mod_instaweb.cc',
       ],
     },
@@ -72,6 +73,7 @@
       'sources': [
         'apache/serf_url_async_fetcher_test.cc',
         'apache/apr_file_system_test.cc',
+        'apache/mem_debug.cc',
         'util/base64_test.cc',
         'util/cache_fetcher_test.cc',
         'util/cache_url_async_fetcher_test.cc',
