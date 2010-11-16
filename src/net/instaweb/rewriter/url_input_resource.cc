@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
 namespace net_instaweb {
@@ -60,8 +61,17 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
         resource_manager_->filename_prefix(),
         resource_manager_->hasher()->Hash(url()),
         ".lock");
-    if (resource_manager_->file_system()->TryLock(
-            lock_name, message_handler_).is_false()) {
+    int64 lock_timeout = fetcher->timeout_ms();
+    if (lock_timeout == UrlAsyncFetcher::kUnspecifiedTimeout) {
+      // Even if the fetcher never explicitly times out requests, they probably
+      // won't succeed after more than 2 minutes.
+      lock_timeout = 2 * Timer::kMinuteMs;
+    } else {
+      // Give a little slack for polling, writing the file, freeing the lock.
+      lock_timeout *= 2;
+    }
+    if (resource_manager_->file_system()->TryLockWithTimeout(
+            lock_name, lock_timeout, message_handler_).is_false()) {
       message_handler_->Warning(lock_name.c_str(), 0,
                                 "Someone is already fetching %s ",
                                 url().c_str());

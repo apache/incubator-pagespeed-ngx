@@ -29,7 +29,10 @@
 
 namespace net_instaweb {
 
+class HtmlParse;
 class OutputResource;
+class ResourceManager;
+class RewriteDriver;
 class UrlAsyncFetcher;
 class Writer;
 
@@ -54,14 +57,13 @@ class RewriteFilter : public CommonFilter {
   //   HOST://PREFIX/ce/WEB64_ENCODED_PROTOBUF
   // The WEB64_ENCODED_PROTOBUF can then be decoded.  for
   // CacheExtender, the protobuf contains the content hash plus
-  // the original URL.  For "ir" (ImgRewriterFilter) the protobuf
+  // the original URL.  For "ic" (ImgRewriterFilter) the protobuf
   // might include the original image URL, plus the pixel-dimensions
   // to which the image was resized.
   virtual bool Fetch(OutputResource* output_resource,
-                     Writer* writer,
+                     Writer* response_writer,
                      const MetaData& request_header,
                      MetaData* response_headers,
-                     UrlAsyncFetcher* fetcher,
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback) = 0;
 

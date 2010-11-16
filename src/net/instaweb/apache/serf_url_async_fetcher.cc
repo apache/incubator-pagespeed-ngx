@@ -518,7 +518,8 @@ bool SerfUrlAsyncFetcher::SetupProxy(const char* proxy) {
 }
 
 SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
-                                         Statistics* statistics, Timer* timer)
+                                         Statistics* statistics, Timer* timer,
+                                         int64 timeout_ms)
     : pool_(pool),
       timer_(timer),
       mutex_(NULL),
@@ -528,7 +529,8 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       request_count_(NULL),
       byte_count_(NULL),
       time_duration_ms_(NULL),
-      cancel_count_(NULL) {
+      cancel_count_(NULL),
+      timeout_ms_(timeout_ms) {
   if (statistics != NULL) {
     request_count_  =
         statistics->GetVariable(SerfStats::kSerfFetchRequestCount);
@@ -558,7 +560,8 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       request_count_(parent->request_count_),
       byte_count_(parent->byte_count_),
       time_duration_ms_(parent->time_duration_ms_),
-      cancel_count_(parent->cancel_count_) {
+      cancel_count_(parent->cancel_count_),
+      timeout_ms_(parent->timeout_ms()) {
   mutex_ = new AprMutex(pool_);
   serf_context_ = serf_context_create(pool_);
   threaded_fetcher_ = NULL;

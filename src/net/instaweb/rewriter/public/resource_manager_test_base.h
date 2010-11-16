@@ -201,15 +201,16 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Helper function to test resource fetching, returning true if the fetch
   // succeeded, and modifying content.  It is up to the caller to EXPECT_TRUE
   // on the status and EXPECT_EQ on the content.
-  bool ServeResource(const char* path, const char* id,
-                     const StringPiece& name, const char* ext,
+  // TODO(sligocki): Allow this to take a namer instead of all the pieces.
+  bool ServeResource(const StringPiece& path, const StringPiece& filter_id,
+                     const StringPiece& name, const StringPiece& ext,
                      std::string* content) {
     SimpleMetaData request_headers, response_headers;
     content->clear();
     StringWriter writer(content);
     FetchCallback callback;
     ResourceNamer namer;
-    namer.set_id(id);
+    namer.set_id(filter_id);
     namer.set_name(name);
     namer.set_hash("0");
     namer.set_ext(ext);

@@ -574,7 +574,10 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (strcasecmp(directive, kModPagespeedFetchProxy) == 0) {
     factory->set_fetcher_proxy(arg);
   } else if (strcasecmp(directive, kModPagespeedGeneratedFilePrefix) == 0) {
-    factory->set_filename_prefix(arg);
+    if (!factory->set_filename_prefix(arg)) {
+      ret = apr_pstrcat(cmd->pool, "Directory ", arg,
+                        " does not exist and can't be created.", NULL);
+    }
   } else if (strcasecmp(directive, kModPagespeedFileCachePath) == 0) {
     factory->set_file_cache_path(arg);
   } else if (strcasecmp(directive, kModPagespeedFileCacheSizeKb) == 0) {

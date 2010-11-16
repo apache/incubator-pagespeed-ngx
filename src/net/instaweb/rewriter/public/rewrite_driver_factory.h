@@ -102,7 +102,7 @@ class RewriteDriverFactory {
   void set_base_url_fetcher(UrlFetcher* url_fetcher);
   void set_base_url_async_fetcher(UrlAsyncFetcher* url_fetcher);
 
-  void set_filename_prefix(StringPiece p) { p.CopyToString(&filename_prefix_); }
+  bool set_filename_prefix(StringPiece p);
 
   // TODO(jmarantz):
   // Remove all these methods in favor of simply exposing the RewriteOptions*.

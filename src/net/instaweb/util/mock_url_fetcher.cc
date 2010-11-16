@@ -25,8 +25,7 @@
 namespace net_instaweb {
 
 MockUrlFetcher::~MockUrlFetcher() {
-  STLDeleteContainerPairSecondPointers(response_map_.begin(),
-                                       response_map_.end());
+  Clear();
 }
 
 void MockUrlFetcher::SetResponse(const StringPiece& url,
@@ -43,6 +42,12 @@ void MockUrlFetcher::SetResponse(const StringPiece& url,
   // Add new response.
   HttpResponse* response = new HttpResponse(response_header, response_body);
   response_map_.insert(ResponseMap::value_type(url_string, response));
+}
+
+void MockUrlFetcher::Clear() {
+  STLDeleteContainerPairSecondPointers(response_map_.begin(),
+                                       response_map_.end());
+  response_map_.clear();
 }
 
 bool MockUrlFetcher::StreamingFetchUrl(const std::string& url,

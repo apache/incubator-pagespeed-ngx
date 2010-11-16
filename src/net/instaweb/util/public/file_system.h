@@ -223,6 +223,17 @@ class FileSystem {
   virtual BoolOrError TryLock(const StringPiece& lock_name,
                               MessageHandler* handler) = 0;
 
+  // Like TryLock, but may attempt to break the lock if it appears to be staler
+  // than the given number of milliseconds.  (The default implementation never
+  // actually breaks locks.)  If you obtain a lock through this method, there
+  // are no hard guarantees that nobody else has it too.
+   // <blink> If you use this function, your lock becomes "best-effort". </blink>
+  virtual BoolOrError TryLockWithTimeout(const StringPiece& lock_name,
+                                         int64 timeout_millis,
+                                         MessageHandler* handler) {
+    return TryLock(lock_name, handler);
+  }
+
   // Attempts to release a lock previously obtained through TryLock.  If your
   // thread did not prevously obtain the lock, the behavior is undefined.
   // Returns true if we successfully release the lock.  Returns false if we were

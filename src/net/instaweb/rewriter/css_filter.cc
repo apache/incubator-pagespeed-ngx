@@ -55,7 +55,7 @@ const char CssFilter::kMinifiedBytesSaved[] = "css_filter_minified_bytes_saved";
 const char CssFilter::kParseFailures[] = "css_filter_parse_failures";
 
 CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix)
-    : RewriteFilter(driver, path_prefix),
+    : RewriteSingleResourceFilter(driver, path_prefix),
       html_parse_(driver->html_parse()),
       resource_manager_(driver->resource_manager()),
       in_style_element_(false),
@@ -287,8 +287,10 @@ bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
   return ret;
 }
 
+// Rewrite in input_resource once it has already been loaded.
 bool CssFilter::RewriteExternalCssToResource(Resource* input_resource,
                                              OutputResource* output_resource) {
+  bool ret = false;
   // If this OutputResource has not already been created, create it.
   if (!output_resource->IsWritten()) {
     // Load input stylesheet.
@@ -299,9 +301,18 @@ bool CssFilter::RewriteExternalCssToResource(Resource* input_resource,
       // TODO(sligocki): Should these really be HtmlParse errors?
       html_parse_->ErrorHere("Failed to load resource %s",
                              input_resource->url().c_str());
-      return false;
+    } else {
+      ret = RewriteLoadedResource(input_resource, output_resource);
     }
+  }
 
+  return ret;
+}
+
+bool CssFilter::RewriteLoadedResource(const Resource* input_resource,
+                                      OutputResource* output_resource) {
+  CHECK(input_resource->loaded());
+  if (input_resource->ContentsValid()) {
     // Rewrite stylesheet.
     StringPiece in_contents = input_resource->contents();
     std::string out_contents;
@@ -313,36 +324,13 @@ bool CssFilter::RewriteExternalCssToResource(Resource* input_resource,
     // Write new stylesheet.
     // TODO(sligocki): Set expire time.
     if (!resource_manager_->Write(HttpStatus::kOK, out_contents,
-                                  output_resource, -1, handler)) {
+                                  output_resource, -1,
+                                  html_parse_->message_handler())) {
       return false;
     }
   }
 
   return output_resource->IsWritten();
-}
-
-bool CssFilter::Fetch(OutputResource* output_resource,
-                      Writer* writer,
-                      const MetaData& request_header,
-                      MetaData* response_headers,
-                      UrlAsyncFetcher* fetcher,
-                      MessageHandler* message_handler,
-                      UrlAsyncFetcher::Callback* callback) {
-  // TODO(sligocki): We do not use writer, *_headers or fetcher ... should we?
-  // It looks like nobody is using the fetcher, I'll let someone else get this
-  // right first.
-  // TODO(sligocki): If this doesn't work, we need to wait for it to finish
-  // fetching and then rewrite.
-  scoped_ptr<Resource>  input_resource(
-      resource_manager_->CreateInputResourceFromOutputResource(
-          resource_manager_->url_escaper(), output_resource, message_handler));
-  bool ret = RewriteExternalCssToResource(input_resource.get(),
-                                          output_resource);
-  // For some reason we only call the callback if we succeed.
-  if (ret) {
-    callback->Done(ret);
-  }
-  return ret;
 }
 
 }  // namespace net_instaweb

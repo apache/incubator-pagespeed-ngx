@@ -120,7 +120,8 @@ UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
 UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   if (serf_url_async_fetcher_ == NULL) {
     serf_url_async_fetcher_ = new SerfUrlAsyncFetcher(
-        fetcher_proxy_.c_str(), pool_, statistics_, timer());
+        fetcher_proxy_.c_str(), pool_, statistics_, timer(),
+        fetcher_time_out_ms_);
   }
   return serf_url_async_fetcher_;
 }

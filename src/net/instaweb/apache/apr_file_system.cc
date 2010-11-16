@@ -23,6 +23,7 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"
 
 namespace net_instaweb {
@@ -309,7 +310,7 @@ bool AprFileSystem::ListContents(const StringPiece& dir,
 }
 
 bool AprFileSystem::Atime(const StringPiece& path,
-                            int64* timestamp_sec, MessageHandler* handler) {
+                          int64* timestamp_sec, MessageHandler* handler) {
   // TODO(abliss): there are some situations where this doesn't work
   // -- e.g. if the filesystem is mounted noatime.
   const std::string path_string = path.as_string();
@@ -322,6 +323,22 @@ bool AprFileSystem::Atime(const StringPiece& path,
     return false;
   } else {
     *timestamp_sec = finfo.atime;
+    return true;
+  }
+}
+
+bool AprFileSystem::Ctime(const StringPiece& path,
+                          int64* timestamp_sec, MessageHandler* handler) {
+  const std::string path_string = path.as_string();
+  const char* path_str = path_string.c_str();
+  apr_int32_t wanted = APR_FINFO_CTIME;
+  apr_finfo_t finfo;
+  apr_status_t ret = apr_stat(&finfo, path_str, wanted, pool_);
+  if (ret != APR_SUCCESS) {
+    AprReportError(handler, path_str, 0, "failed to stat", ret);
+    return false;
+  } else {
+    *timestamp_sec = finfo.ctime;
     return true;
   }
 }
@@ -357,6 +374,38 @@ BoolOrError AprFileSystem::TryLock(const StringPiece& lock_name,
     AprReportError(handler, lock_str, 0, "creating dir", ret);
     return BoolOrError();
   }
+}
+
+BoolOrError AprFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
+                                              int64 timeout_ms,
+                                              MessageHandler* handler) {
+  const std::string lock_string = lock_name.as_string();
+  const char* lock_str = lock_string.c_str();
+  BoolOrError result = TryLock(lock_name, handler);
+  if (result.is_true() || result.is_error()) {
+    // We got the lock, or the lock is ungettable.
+    return result;
+  }
+  int64 c_time_us;
+  if (!Ctime(lock_name, &c_time_us, handler)) {
+    // We can't stat the lockfile.
+    return BoolOrError();
+  }
+
+  if (apr_time_now() - c_time_us < timeout_ms * 1000) {
+    // The lock is insufficiently stale.
+    return BoolOrError(false);
+  }
+  if (!Unlock(lock_name, handler)) {
+    // We couldn't break the lock.  Maybe someone else beat us to it.
+    return BoolOrError();
+  }
+  handler->Info(lock_str, 0, "Breaking lock! now-ctime=%d-%d > %d (sec)",
+                static_cast<int>(apr_time_now() / Timer::kSecondUs),
+                static_cast<int>(c_time_us / Timer::kSecondUs),
+                static_cast<int>(timeout_ms / Timer::kSecondMs));
+
+  return TryLock(lock_name, handler);
 }
 
 bool AprFileSystem::Unlock(const StringPiece& lock_name,

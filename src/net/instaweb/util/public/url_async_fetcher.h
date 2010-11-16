@@ -22,6 +22,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_URL_ASYNC_FETCHER_H_
 
+#include "base/basictypes.h"
 #include <string>
 
 namespace net_instaweb {
@@ -32,6 +33,7 @@ class Writer;
 
 class UrlAsyncFetcher {
  public:
+  static const int64 kUnspecifiedTimeout;
   struct Callback {
     virtual ~Callback();
     virtual void Done(bool success) = 0;
@@ -57,6 +59,9 @@ class UrlAsyncFetcher {
                               Writer* response_writer,
                               MessageHandler* message_handler,
                               Callback* callback) = 0;
+  // Returns a maximum time that we will allow fetches to take, or
+  // kUnspecifiedTimeout (the default) if we don't promise to timeout fetches.
+  virtual int64 timeout_ms() { return kUnspecifiedTimeout; }
 };
 
 }  // namespace net_instaweb

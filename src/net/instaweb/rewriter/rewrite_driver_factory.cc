@@ -176,6 +176,17 @@ FilenameEncoder* RewriteDriverFactory::filename_encoder() {
   return filename_encoder_.get();
 }
 
+bool RewriteDriverFactory::set_filename_prefix(StringPiece p) {
+  p.CopyToString(&filename_prefix_);
+  if (!file_system()->RecursivelyMakeDir(filename_prefix_, message_handler())) {
+    message_handler()->FatalError(
+        filename_prefix_.c_str(), 0,
+        "Directory does not exist and cannot be created");
+    return false;
+  }
+  return true;
+}
+
 StringPiece RewriteDriverFactory::filename_prefix() {
   return filename_prefix_;
 }

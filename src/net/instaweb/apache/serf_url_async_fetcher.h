@@ -77,8 +77,9 @@ class SerfAsyncCallback : public UrlAsyncFetcher::Callback {
 
 class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
+  // TODO(abliss): we currently ignore timeout_ms.
   SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
-                      Statistics* statistics, Timer* timer);
+                      Statistics* statistics, Timer* timer, int64 timeout_ms);
   SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent, const char* proxy);
   virtual ~SerfUrlAsyncFetcher();
   static void Initialize(Statistics* statistics);
@@ -110,6 +111,7 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   serf_context_t* serf_context() const { return serf_context_; }
 
   void PrintOutstandingFetches(MessageHandler* handler) const;
+  virtual int64 timeout_ms() { return timeout_ms_; }
 
  protected:
   bool SetupProxy(const char* proxy);
@@ -140,6 +142,8 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   Variable* byte_count_;
   Variable* time_duration_ms_;
   Variable* cancel_count_;
+  const int64 timeout_ms_;
+
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcher);
 };
 

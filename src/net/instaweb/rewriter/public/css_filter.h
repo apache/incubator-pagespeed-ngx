@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "base/basictypes.h"
-#include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -51,7 +51,7 @@ class ResourceManager;
 //
 // Currently only deals with inline <style> tags and external <link> resources.
 // It does not consider style= attributes on arbitrary elements.
-class CssFilter : public RewriteFilter {
+class CssFilter : public RewriteSingleResourceFilter {
  public:
   CssFilter(RewriteDriver* driver, const StringPiece& filter_prefix);
 
@@ -67,14 +67,6 @@ class CssFilter : public RewriteFilter {
   virtual void Characters(HtmlCharactersNode* characters);
   virtual void EndElementImpl(HtmlElement* element);
 
-  virtual bool Fetch(OutputResource* output_resource,
-                     Writer* writer,
-                     const MetaData& request_header,
-                     MetaData* response_headers,
-                     UrlAsyncFetcher* fetcher,
-                     MessageHandler* message_handler,
-                     UrlAsyncFetcher::Callback* callback);
-
   virtual const char* Name() const { return "CssFilter"; }
 
   static const char kFilesMinified[];
@@ -87,6 +79,9 @@ class CssFilter : public RewriteFilter {
   bool RewriteExternalCss(const StringPiece& in_url, std::string* out_url);
   bool RewriteExternalCssToResource(Resource* input_resource,
                                     OutputResource* output_resource);
+
+  virtual bool RewriteLoadedResource(const Resource* input_resource,
+                                     OutputResource* output_resource);
 
   Css::Stylesheet* CombineStylesheets(
       std::vector<Css::Stylesheet*>* stylesheets);

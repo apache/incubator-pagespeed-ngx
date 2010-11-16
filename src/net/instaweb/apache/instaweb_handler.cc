@@ -254,8 +254,6 @@ int instaweb_handler(request_rec* request) {
           factory->IncrementSlurpCount();
         }
       } else {
-        ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
-                      "mod_pagespeed: Declined request %s", url.c_str());
         ret = DECLINED;
       }
     }

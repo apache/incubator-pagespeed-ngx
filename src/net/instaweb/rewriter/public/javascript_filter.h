@@ -78,7 +78,6 @@ class JavascriptFilter : public RewriteFilter {
                      Writer* writer,
                      const MetaData& request_header,
                      MetaData* response_headers,
-                     UrlAsyncFetcher* fetcher,
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
   // Configuration settings for javascript filtering:

@@ -305,7 +305,6 @@ bool JavascriptFilter::Fetch(OutputResource* output_resource,
                              Writer* writer,
                              const MetaData& request_header,
                              MetaData* response_headers,
-                             UrlAsyncFetcher* fetcher,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
   bool queued = false;

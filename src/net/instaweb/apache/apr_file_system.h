@@ -32,6 +32,8 @@ class AprFileSystem : public FileSystem {
   ~AprFileSystem();
   virtual bool Atime(const StringPiece& path,
                      int64* timestamp_sec, MessageHandler* handler);
+  bool Ctime(const StringPiece& path,
+             int64* timestamp_sec, MessageHandler* handler);
   virtual InputFile* OpenInputFile(
       const char* file, MessageHandler* message_handler);
   virtual OutputFile* OpenOutputFileHelper(
@@ -61,6 +63,9 @@ class AprFileSystem : public FileSystem {
                             MessageHandler* handler);
   virtual BoolOrError TryLock(const StringPiece& lock_name,
                               MessageHandler* handler);
+  virtual BoolOrError TryLockWithTimeout(const StringPiece& lock_name,
+                                         int64 timeout_ms,
+                                         MessageHandler* handler);
   virtual bool Unlock(const StringPiece& lock_name, MessageHandler* handler);
 
  private:

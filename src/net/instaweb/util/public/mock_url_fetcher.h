@@ -43,6 +43,9 @@ class MockUrlFetcher : public UrlFetcher {
                                  Writer* response_writer,
                                  MessageHandler* message_handler);
 
+  // Clear all set responses.
+  void Clear();
+
   // When disabled, fetcher will fail (but not crash) for all requests.
   // Use to simulate temporarily not having access to resources, for example.
   void Disable() { enabled_ = false; }

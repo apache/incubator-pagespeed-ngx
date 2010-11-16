@@ -93,7 +93,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     SerfUrlAsyncFetcher::Initialize(&statistics_);
     serf_url_async_fetcher_.reset(
         new SerfUrlAsyncFetcher(kProxy, pool_, &statistics_,
-                                timer_.get()));
+                                timer_.get(), 5 * Timer::kSecondMs));
     mutex_ = new AprMutex(pool_);
     AddTestUrl("http://www.google.com/", "<!doctype html>");
     AddTestUrl("http://www.google.com/favicon.ico",

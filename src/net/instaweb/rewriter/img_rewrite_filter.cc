@@ -381,7 +381,6 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
                              Writer* writer,
                              const MetaData& request_header,
                              MetaData* response_headers,
-                             UrlAsyncFetcher* fetcher,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
   bool ok = true;

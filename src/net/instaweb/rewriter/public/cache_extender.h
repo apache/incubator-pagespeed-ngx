@@ -23,7 +23,7 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
-#include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 
@@ -37,7 +37,7 @@ class Variable;
 // Rewrites resources to extend their cache lifetime, encoding the
 // content hash into the new URL to ensure we do not serve stale
 // data.
-class CacheExtender : public RewriteFilter {
+class CacheExtender : public RewriteSingleResourceFilter {
  public:
   CacheExtender(RewriteDriver* driver, const char* path_prefix);
 
@@ -46,18 +46,14 @@ class CacheExtender : public RewriteFilter {
   virtual void StartDocumentImpl() {}
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element) {}
-  virtual bool Fetch(OutputResource* resource,
-                     Writer* writer,
-                     const MetaData& request_header,
-                     MetaData* response_headers,
-                     UrlAsyncFetcher* fetcher,
-                     MessageHandler* message_handler,
-                     UrlAsyncFetcher::Callback* callback);
+
   virtual const char* Name() const { return "CacheExtender"; }
 
- private:
-  class Callback;
+ protected:
+  virtual bool RewriteLoadedResource(const Resource* input_resource,
+                                     OutputResource* output_resource);
 
+ private:
   HtmlParse* html_parse_;
   ResourceManager* resource_manager_;
   ResourceTagScanner tag_scanner_;

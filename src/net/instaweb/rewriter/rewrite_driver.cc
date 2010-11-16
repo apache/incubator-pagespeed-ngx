@@ -455,7 +455,7 @@ bool RewriteDriver::FetchResource(
       RewriteFilter* filter = p->second;
       queued = filter->Fetch(output_resource, writer,
                              request_headers, response_headers,
-                             url_async_fetcher_, message_handler, callback);
+                             message_handler, callback);
       if (queued) {
         if (succeeded_filter_resource_fetches_ != NULL) {
           succeeded_filter_resource_fetches_->Add(1);

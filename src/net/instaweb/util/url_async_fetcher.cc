@@ -22,6 +22,8 @@
 
 namespace net_instaweb {
 
+const int64 UrlAsyncFetcher::kUnspecifiedTimeout = 0;
+
 UrlAsyncFetcher::~UrlAsyncFetcher() {
 }
 
