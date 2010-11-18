@@ -23,14 +23,37 @@
 
 namespace net_instaweb {
 
-void ConvertTimeToString(int64 time_ms, std::string* time_string) {
+bool ConvertTimeToString(int64 time_ms, std::string* time_string) {
   time_t time_sec = time_ms / 1000;
   struct tm time_buf;
   struct tm* time_info = gmtime_r(&time_sec, &time_buf);
+  if ((time_info == NULL) ||
+      (time_buf.tm_wday < 0) ||
+      (time_buf.tm_wday > 6) ||
+      (time_buf.tm_mon < 0) ||
+      (time_buf.tm_mon > 11)) {
+    return false;
+  }
 
-  char buf[100];  // man ctime says buffer should be at least 26.
-  TrimWhitespace(asctime_r(time_info, buf), time_string);
-  *time_string += " GMT";
+  static const char* kWeekDay[] = {
+    "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+  static const char* kMonth[] = {
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov",
+    "Dec"};
+
+  // RFC 822 says to format like this:
+  //                Thu Nov 18 02:15:22 2010 GMT
+  // See http://www.faqs.org/rfcs/rfc822.html
+  *time_string = StrCat(kWeekDay[time_buf.tm_wday], " ",
+                        kMonth[time_buf.tm_mon], " ",
+                        StringPrintf("%02d %02d:%02d:%02d %4d",
+                                     time_buf.tm_mday,
+                                     time_buf.tm_hour,
+                                     time_buf.tm_min,
+                                     time_buf.tm_sec,
+                                     1900 + time_buf.tm_year),
+                        " GMT");
+  return true;
 }
 
 bool ConvertStringToTime(const StringPiece& time_string, int64 *time_ms) {

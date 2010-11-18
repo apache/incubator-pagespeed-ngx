@@ -34,7 +34,7 @@ namespace {
 //
 // TODO(jmarantz): We could handle cc-private a little differently:
 // in this case we could arguably remember it using the original cc-private ttl.
-const char kRememberNotFoundCacheControl[] = "public, max-age=300";
+const char kRememberNotFoundCacheControl[] = "max-age=300";
 
 }  // namespace
 

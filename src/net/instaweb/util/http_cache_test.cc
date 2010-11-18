@@ -72,7 +72,7 @@ class HTTPCacheTest : public testing::Test {
 // Simple flow of putting in an item, getting it.
 TEST_F(HTTPCacheTest, PutGet) {
   SimpleMetaData meta_data_in, meta_data_out;
-  InitHeaders(&meta_data_in, "public, max-age=300");
+  InitHeaders(&meta_data_in, "max-age=300");
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query("mykey"));
   HTTPValue value;

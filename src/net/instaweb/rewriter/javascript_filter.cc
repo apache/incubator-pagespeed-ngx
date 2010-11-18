@@ -48,7 +48,7 @@ const HttpStatus::Code kNotOptimizable = HttpStatus::kNotModified;
 
 JavascriptFilter::JavascriptFilter(RewriteDriver* driver,
                                    const StringPiece& path_prefix)
-    : RewriteFilter(driver, path_prefix),
+    : RewriteSingleResourceFilter(driver, path_prefix),
       html_parse_(driver->html_parse()),
       script_in_progress_(NULL),
       script_src_(NULL),
@@ -301,32 +301,14 @@ void JavascriptFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   some_missing_scripts_ = true;
 }
 
-bool JavascriptFilter::Fetch(OutputResource* output_resource,
-                             Writer* writer,
-                             const MetaData& request_header,
-                             MetaData* response_headers,
-                             MessageHandler* message_handler,
-                             UrlAsyncFetcher::Callback* callback) {
-  bool queued = false;
-  scoped_ptr<Resource> script_input(
-      resource_manager_->CreateInputResourceFromOutputResource(
-          resource_manager_->url_escaper(), output_resource,
-          message_handler));
-  if (script_input != NULL &&
-      resource_manager_->ReadIfCached(script_input.get(), message_handler) &&
-      script_input->ContentsValid()) {
-    StringPiece script = script_input->contents();
-    std::string script_out;
-    JavascriptCodeBlock code_block(script, &config_, message_handler);
-    bool ok = WriteExternalScriptTo(script_input.get(),
-                                    code_block.Rewritten(), output_resource);
-    if (ok) {
-      ok = writer->Write(output_resource->contents(), message_handler);
-    }
-    callback->Done(ok);
-    queued = true;
-  }
-  return queued;
+bool JavascriptFilter::RewriteLoadedResource(const Resource* script_input,
+                                             OutputResource* output_resource) {
+  StringPiece script = script_input->contents();
+  std::string script_out;
+  JavascriptCodeBlock code_block(script, &config_,
+                                 html_parse_->message_handler());
+  return WriteExternalScriptTo(script_input,
+                               code_block.Rewritten(), output_resource);
 }
 
 }  // namespace net_instaweb

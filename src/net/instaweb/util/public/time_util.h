@@ -25,10 +25,11 @@
 
 namespace net_instaweb {
 
-// Converts time, in milliseconds, to a string.
-void ConvertTimeToString(int64 time_ms, std::string* time_string);
+// Converts time, in milliseconds, to a string.  Returns false on failure.
+bool ConvertTimeToString(int64 time_ms, std::string* time_string);
 
 // Converts time in string format, to the number of milliseconds since 1970.
+// Returns false on failure.
 bool ConvertStringToTime(const StringPiece& time_string, int64 *time_ms);
 
 }  // namespace net_instaweb

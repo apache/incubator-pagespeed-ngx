@@ -51,6 +51,7 @@ class Resource {
   // Common methods across all deriviations
   ResourceManager* resource_manager() const { return resource_manager_; }
   bool loaded() const { return meta_data_.status_code() != 0; }
+  // TODO(sligocki): Change name to HttpStatusOk?
   bool ContentsValid() const {
     return (meta_data_.status_code() == HttpStatus::kOK);
   }

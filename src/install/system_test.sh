@@ -240,6 +240,7 @@ check [ $? != 0 ]
 check [ `stat -c %s $FETCHED` -lt 1560 ]  # net savings
 check grep -q preserved $FETCHED          # preserves certain comments
 # rewritten JS is cache-extended
-check grep -q "'Cache-control: public, max-age=31536000'" $WGET_OUTPUT
+check grep -qi "'Cache-control: max-age=31536000'" $WGET_OUTPUT
+check grep -qi "'Expires:'" $WGET_OUTPUT
 rm -rf $OUTDIR
 echo "PASS."

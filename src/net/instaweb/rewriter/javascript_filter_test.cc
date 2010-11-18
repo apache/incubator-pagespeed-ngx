@@ -145,12 +145,10 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
               .is_true());
 
   // Finally, serve from a completely separate server.
-  /* TODO(sligocki): Get this working. Right now it calls callback->Done(false).
   ServeResourceFromManyContexts(kRewrittenJsPathExt,
                                 RewriteOptions::kRewriteJavascript,
                                 &mock_hasher_,
                                 kJsMinData);
-  */
 }
 
 }  // namespace net_instaweb

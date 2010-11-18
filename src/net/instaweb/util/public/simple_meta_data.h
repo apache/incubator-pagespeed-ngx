@@ -46,7 +46,7 @@ class SimpleMetaData : public MetaData {
   virtual bool Lookup(const char* name, CharStarVector* values) const;
 
   // Add a new header.
-  virtual void Add(const char* name, const char* value);
+  virtual void Add(const StringPiece& name, const StringPiece& value);
 
   // Remove all headers by name.
   virtual void RemoveAll(const char* name);

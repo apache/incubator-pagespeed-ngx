@@ -53,6 +53,7 @@ struct HttpAttributes {
   static const char kSetCookie[];
   static const char kTransferEncoding[];
   static const char kUserAgent[];
+  static const char kVary[];
 };
 
 namespace HttpStatus {
@@ -144,7 +145,7 @@ class MetaData {
   virtual bool Lookup(const char* name, CharStarVector* values) const = 0;
 
   // Add a new header.
-  virtual void Add(const char* name, const char* value) = 0;
+  virtual void Add(const StringPiece& name, const StringPiece& value) = 0;
 
   // Remove all headers by name.
   virtual void RemoveAll(const char* name) = 0;

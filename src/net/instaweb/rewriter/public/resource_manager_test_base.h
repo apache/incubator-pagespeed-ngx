@@ -37,6 +37,7 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/mock_url_fetcher.h"
 #include "net/instaweb/util/public/simple_stats.h"
+#include "net/instaweb/util/public/stdio_file_system.h"
 #include <string>
 #include "net/instaweb/util/public/wait_url_async_fetcher.h"
 
@@ -180,6 +181,26 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
         HttpAttributes::kCacheControl,
         StringPrintf("public, max-age=%ld", static_cast<long>(ttl)).c_str());
     mock_url_fetcher_.SetResponse(name, response_headers, content);
+  }
+
+  // TODO(sligocki): Take a ttl and share code with InitMetaData.
+  void AddFileToMockFetcher(const StringPiece& url,
+                            const std::string& filename,
+                            const ContentType& content_type) {
+    // TODO(sligocki): There's probably a lot of wasteful copying here.
+
+    // We need to load a file from the testdata directory. Don't use this
+    // physical filesystem for anything else, use file_system_ which can be
+    // abstracted as a MemFileSystem instead.
+    std::string contents;
+    StdioFileSystem stdio_file_system;
+    ASSERT_TRUE(stdio_file_system.ReadFile(filename.c_str(), &contents,
+                                           &message_handler_));
+
+    // Put file into our fetcher.
+    SimpleMetaData default_header;
+    resource_manager_->SetDefaultHeaders(&content_type, &default_header);
+    mock_url_fetcher_.SetResponse(url, default_header, contents);
   }
 
   // Callback that can be used for testing resource fetches.  As all the

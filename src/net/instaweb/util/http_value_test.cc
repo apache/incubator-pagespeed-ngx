@@ -43,7 +43,7 @@ class HTTPValueTest : public testing::Test {
     meta_data->set_major_version(1);
     meta_data->set_minor_version(0);
     meta_data->set_reason_phrase("OK");
-    meta_data->Add("Cache-control", "public, max-age=300");
+    meta_data->Add("Cache-control", "max-age=300");
   }
 
   void CheckMetaData(const MetaData& meta_data) {

@@ -22,7 +22,6 @@
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
 
 namespace net_instaweb {
 
@@ -47,23 +46,10 @@ class ImageRewriteTest : public ResourceManagerTestBase {
 
     const char image_html[] = "<head/><body><img src=\"Puzzle.jpg\"/></body>";
 
-    // Store image contents in a string.
-    // TODO(sligocki): There's probably a lot of wasteful copying here.
+    // Store image contents into fetcher.
     std::string image_filename =
         StrCat(GTestSrcDir(), kTestData, "Puzzle.jpg");
-    std::string image_body;
-    // We need to load a file from the testdata directory. Don't use this
-    // physical filesystem for anything else, use file_system_ which can be
-    // abstracted as a MemFileSystem instead.
-    StdioFileSystem stdio_file_system;
-    ASSERT_TRUE(stdio_file_system.ReadFile(image_filename.c_str(), &image_body,
-                                           &message_handler_));
-
-    // Put original image into our fetcher.
-    SimpleMetaData default_jpeg_header;
-    resource_manager_->SetDefaultHeaders(&kContentTypeJpeg,
-                                         &default_jpeg_header);
-    mock_url_fetcher_.SetResponse(image_url, default_jpeg_header, image_body);
+    AddFileToMockFetcher(image_url, image_filename, kContentTypeJpeg);
 
     // Rewrite the HTML page.
     ParseUrl(html_url, image_html);
@@ -282,6 +268,70 @@ TEST_F(ImageRewriteTest, ImageRewriteTest) {
 
 TEST_F(ImageRewriteTest, DataUrlTest) {
   DataUrlResource();
+}
+
+TEST_F(ImageRewriteTest, RespectsBaseUrl) {
+  // Put original files into our fetcher.
+  const char html_url[] = "http://image.test/base_url.html";
+  const char png_url[]  = "http://other_domain.test/foo/bar/a.png";
+  const char jpeg_url[] = "http://other_domain.test/baz/b.jpeg";
+
+  AddFileToMockFetcher(png_url,
+                       StrCat(GTestSrcDir(), kTestData, "BikeCrashIcn.png"),
+                       kContentTypePng);
+  AddFileToMockFetcher(jpeg_url,
+                       StrCat(GTestSrcDir(), kTestData, "Puzzle.jpg"),
+                       kContentTypeJpeg);
+
+  // Second stylesheet is on other domain.
+  const char html_input[] =
+      "<head>\n"
+      "  <base href='http://other_domain.test/foo/'>\n"
+      "</head>\n"
+      "<body>\n"
+      "  <img src='bar/a.png'>\n"
+      "  <img src='/baz/b.jpeg'>\n"
+      "</body>";
+
+  // Rewrite
+  rewrite_driver_.AddFilter(RewriteOptions::kRewriteImages);
+  ParseUrl(html_url, html_input);
+
+  // Check for CSS files in the rewritten page.
+  StringVector image_urls;
+  CollectImgSrcs("base_url-links", output_buffer_, &image_urls);
+  EXPECT_EQ(2UL, image_urls.size());
+  const std::string& new_png_url = image_urls[0];
+  const std::string& new_jpeg_url = image_urls[1];
+
+  // Sanity check that we changed the URL.
+  EXPECT_NE("a.png", new_png_url);
+  EXPECT_NE("b.jpeg", new_jpeg_url);
+
+  LOG(INFO) << "new_png_url: " << new_png_url;
+  LOG(INFO) << "new_jpeg_url: " << new_jpeg_url;
+
+  const char expected_output_format[] =
+      "<head>\n"
+      "  <base href='http://other_domain.test/foo/'>\n"
+      "</head>\n"
+      "<body>\n"
+      "  <img src='%s'>\n"
+      "  <img src='%s'>\n"
+      "</body>";
+  std::string expected_output = StringPrintf(expected_output_format,
+                                              new_png_url.c_str(),
+                                              new_jpeg_url.c_str());
+
+  EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
+
+  GURL new_png_gurl = GoogleUrl::Create(new_png_url);
+  EXPECT_TRUE(new_png_gurl.is_valid());
+  EXPECT_EQ("other_domain.test", new_png_gurl.host());
+
+  GURL new_jpeg_gurl = GoogleUrl::Create(new_jpeg_url);
+  EXPECT_TRUE(new_jpeg_gurl.is_valid());
+  EXPECT_EQ("other_domain.test", new_jpeg_gurl.host());
 }
 
 }  // namespace

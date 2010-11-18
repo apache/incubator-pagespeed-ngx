@@ -90,7 +90,7 @@ bool SimpleMetaData::Lookup(const char* name, CharStarVector* values) const {
   return ret;
 }
 
-void SimpleMetaData::Add(const char* name, const char* value) {
+void SimpleMetaData::Add(const StringPiece& name, const StringPiece& value) {
   // TODO(jmarantz): Parse comma-separated values.  bmcquade sez:
   // you probably want to normalize these by splitting on commas and
   // adding a separate k,v pair for each comma-separated value. then
@@ -104,12 +104,13 @@ void SimpleMetaData::Add(const char* name, const char* value) {
 
   CharStarVector dummy_values;
   std::pair<AttributeMap::iterator, bool> iter_inserted =
-      attribute_map_.insert(AttributeMap::value_type(name, dummy_values));
+      attribute_map_.insert(AttributeMap::value_type(name.as_string(),
+                                                     dummy_values));
   AttributeMap::iterator iter = iter_inserted.first;
   CharStarVector& values = iter->second;
-  int value_buf_size = strlen(value) + 1;
+  int value_buf_size = value.size() + 1;
   char* value_copy = new char[value_buf_size];
-  memcpy(value_copy, value, value_buf_size);
+  memcpy(value_copy, value.data(), value_buf_size);
   values.push_back(value_copy);
   attribute_vector_.push_back(StringPair(iter->first.c_str(), value_copy));
   cache_fields_dirty_ = true;
@@ -244,14 +245,16 @@ int64 SimpleMetaData::CacheExpirationTimeMs() const {
 
 void SimpleMetaData::SetDate(int64 date_ms) {
   std::string time_string;
-  ConvertTimeToString(date_ms, &time_string);
-  Add("Date", time_string.c_str());
+  if (ConvertTimeToString(date_ms, &time_string)) {
+    Add("Date", time_string.c_str());
+  }
 }
 
 void SimpleMetaData::SetLastModified(int64 last_modified_ms) {
   std::string time_string;
-  ConvertTimeToString(last_modified_ms, &time_string);
-  Add(HttpAttributes::kLastModified, time_string.c_str());
+  if (ConvertTimeToString(last_modified_ms, &time_string)) {
+    Add(HttpAttributes::kLastModified, time_string.c_str());
+  }
 }
 
 void SimpleMetaData::ComputeCaching() {

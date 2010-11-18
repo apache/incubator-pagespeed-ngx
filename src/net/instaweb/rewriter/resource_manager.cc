@@ -36,12 +36,13 @@
 #include "net/instaweb/util/public/statistics.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
 
-namespace {
+namespace net_instaweb {
 
-const char kCacheControl[] = "Cache-control";
+namespace {
 
 // Our HTTP cache mostly stores full URLs, including the http: prefix,
 // mapping them into the URL contents and HTTP headers.  However, we
@@ -60,9 +61,10 @@ const char kFilenameCacheKeyPrefix[] = "ResourceName:";
 // permit resource rewriting relative to the current page.
 const char kResourceUrlDomainRejections[] = "resource_url_domain_rejections";
 
-}  // namespace
+const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
+const int64 kGeneratedMaxAgeSec = Timer::kYearMs / Timer::kSecondMs;
 
-namespace net_instaweb {
+}  // namespace
 
 const int ResourceManager::kNotSharded = -1;
 
@@ -86,7 +88,9 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       store_outputs_in_file_system_(true),
       domain_lawyer_(domain_lawyer),
       max_url_segment_size_(RewriteOptions::kMaxUrlSegmentSize),
-      max_url_size_(RewriteOptions::kMaxUrlSize) {
+      max_url_size_(RewriteOptions::kMaxUrlSize),
+      max_age_string_(StringPrintf("max-age=%d",
+                                   static_cast<int>(kGeneratedMaxAgeSec))) {
   file_prefix.CopyToString(&file_prefix_);
 }
 
@@ -172,16 +176,20 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
   if (content_type != NULL) {
     header->Add(HttpAttributes::kContentType, content_type->mime_type());
   }
-  header->Add(kCacheControl, "public, max-age=31536000");
+  int64 now_ms = http_cache_->timer()->NowMs();
+  header->Add(HttpAttributes::kCacheControl, max_age_string_);
+  std::string expires_string;
+  if (ConvertTimeToString(now_ms + kGeneratedMaxAgeMs, &expires_string)) {
+    header->Add(HttpAttributes::kExpires, expires_string);
+  }
 
   // PageSpeed claims the "Vary" header is needed to avoid proxy cache
   // issues for clients where some accept gzipped content and some don't.
   header->Add("Vary", HttpAttributes::kAcceptEncoding);
 
   // TODO(jmarantz): add date/last-modified headers by default.
-  int64 now_ms = http_cache_->timer()->NowMs();
   CharStarVector v;
-  if (!header->Lookup("Date", &v)) {
+  if (!header->Lookup(HttpAttributes::kDate, &v)) {
     header->SetDate(now_ms);
   }
   if (!header->Lookup(HttpAttributes::kLastModified, &v)) {
@@ -503,10 +511,10 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
         SimpleMetaData origin_meta_data;
         SetDefaultHeaders(output->type(), &origin_meta_data);
         std::string cache_control = StringPrintf(
-            "public, max-age=%ld",
+            "max-age=%ld",
             static_cast<long>(delta_sec));  // NOLINT
-        origin_meta_data.RemoveAll(kCacheControl);
-        origin_meta_data.Add(kCacheControl, cache_control.c_str());
+        origin_meta_data.RemoveAll(HttpAttributes::kCacheControl);
+        origin_meta_data.Add(HttpAttributes::kCacheControl, cache_control);
         origin_meta_data.ComputeCaching();
 
         http_cache_->Put(output->name_key(), origin_meta_data,

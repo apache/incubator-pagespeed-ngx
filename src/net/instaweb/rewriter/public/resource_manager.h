@@ -262,6 +262,7 @@ class ResourceManager {
   DomainLawyer* domain_lawyer_;
   int max_url_segment_size_;  // for http://a/b/c.d, this is == strlen("c.d")
   int max_url_size_;          // but this is strlen("http://a/b/c.d")
+  std::string max_age_string_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

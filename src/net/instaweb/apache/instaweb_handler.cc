@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/time_util.h"
 #include "http_config.h"
 #include "http_core.h"
 #include "http_log.h"
@@ -194,10 +195,35 @@ apr_status_t repair_caching_header(ap_filter_t *filter,
   SimpleMetaData response_headers;
   ApacheHeaderToMetaData(request->headers_out, request->status,
                          request->proto_num, &response_headers);
+
+  // TODO(jmarantz): Define a better policy, or at least document this
+  // one, for what we do when we do a meta-data lookup and find more
+  // than one response for our query.  In this case the query is our
+  // special "repair" header and something would be very wrong if
+  // there was more than one.
   CharStarVector v;
-  if (response_headers.Lookup(kRepairCachingHeader, &v) == 1) {
+  if (response_headers.Lookup(kRepairCachingHeader, &v) && (v.size() == 1)) {
     apr_table_unset(request->headers_out, kRepairCachingHeader);
-    apr_table_set(request->headers_out, HttpAttributes::kCacheControl, v[0]);
+    std::string desired_cache_control(v[0]);
+    apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
+                  desired_cache_control.c_str());
+
+    // Convert the our own cache-control data into an Expires header.
+    apr_table_unset(request->headers_out, HttpAttributes::kExpires);
+    response_headers.RemoveAll(HttpAttributes::kCacheControl);
+    response_headers.Add(HttpAttributes::kCacheControl,
+                         desired_cache_control);
+    response_headers.ComputeCaching();
+    if (response_headers.IsCacheable()) {
+      int64 expire_time_ms = response_headers.CacheExpirationTimeMs();
+      if (expire_time_ms > 0) {
+        std::string time_string;
+        if (ConvertTimeToString(expire_time_ms, &time_string)) {
+          apr_table_set(request->headers_out, HttpAttributes::kExpires,
+                        time_string.c_str());
+        }
+      }
+    }
   }
   ap_remove_output_filter(filter);
   return ap_pass_brigade(filter->next, bb);

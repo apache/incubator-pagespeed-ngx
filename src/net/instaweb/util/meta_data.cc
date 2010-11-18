@@ -40,6 +40,7 @@ const char HttpAttributes::kServer[] = "Server";
 const char HttpAttributes::kSetCookie[] = "Set-Cookie";
 const char HttpAttributes::kTransferEncoding[] = "Transfer-Encoding";
 const char HttpAttributes::kUserAgent[] = "User-Agent";
+const char HttpAttributes::kVary[] = "Vary";
 
 MetaData::~MetaData() {
 }
@@ -159,8 +160,9 @@ bool MetaData::ParseDateHeader(const char* attr, int64* date_ms) const {
 void MetaData::UpdateDateHeader(const char* attr, int64 date_ms) {
   RemoveAll(attr);
   std::string buf;
-  ConvertTimeToString(date_ms, &buf);
-  Add(attr, buf.c_str());
+  if (ConvertTimeToString(date_ms, &buf)) {
+    Add(attr, buf.c_str());
+  }
 }
 
 void MetaData::DebugPrint() const {

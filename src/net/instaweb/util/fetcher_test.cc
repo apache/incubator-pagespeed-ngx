@@ -110,7 +110,7 @@ bool FetcherTest::MockFetcher::StreamingFetchUrl(
     MessageHandler* message_handler) {
   bool ret = false;
   if (url == kGoodUrl) {
-    ret = Populate("public, max-age=300", response_headers, writer,
+    ret = Populate("max-age=300", response_headers, writer,
                    message_handler);
   } else if (url == kNotCachedUrl) {
     ret = Populate("no-cache", response_headers, writer,

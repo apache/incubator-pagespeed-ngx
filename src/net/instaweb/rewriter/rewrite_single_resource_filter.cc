@@ -48,6 +48,10 @@ class RewriteSingleResourceFilter::FetchCallback
   virtual void Done(bool success, Resource* resource) {
     CHECK_EQ(input_resource_.get(), resource);
     if (success) {
+      // This checks HTTP status was 200 OK.
+      success = input_resource_->ContentsValid();
+    }
+    if (success) {
       // Call the rewrite hook.
       success = filter_->RewriteLoadedResource(input_resource_.get(),
                                                output_resource_);

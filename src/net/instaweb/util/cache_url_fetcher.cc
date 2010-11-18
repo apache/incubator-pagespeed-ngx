@@ -95,7 +95,7 @@ void CacheUrlFetcher::AsyncFetch::UpdateCache() {
       // the wild.  We may want to revisit if this proves problematic.
       remember_not_cached.SetStatusAndReason(HttpStatus::kOK);
       remember_not_cached.SetDate(http_cache_->timer()->NowMs());
-      remember_not_cached.Add("Cache-control", "public, max-age=300");
+      remember_not_cached.Add("Cache-control", "max-age=300");
       remember_not_cached.Add(kRememberNotCached, "1");  // value doesn't matter
       dummy_value.Write("", message_handler_);
       dummy_value.SetHeaders(remember_not_cached);

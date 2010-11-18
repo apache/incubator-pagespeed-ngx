@@ -392,6 +392,8 @@ void HtmlLexer::EvalDirective(char c) {
 // being emitted.  Then re-inserted for so that EvalStart can attempt to
 // re-evaluate this character as potentialy starting a new lexical token.
 void HtmlLexer::Restart(char c) {
+  CHECK_LE(1U, literal_.size());
+  CHECK_EQ(c, literal_[literal_.size() - 1]);
   literal_.resize(literal_.size() - 1);
   EmitLiteral();
   literal_ += c;

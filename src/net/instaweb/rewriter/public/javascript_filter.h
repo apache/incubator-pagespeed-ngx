@@ -21,7 +21,7 @@
 
 #include <vector>
 
-#include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -62,24 +62,20 @@ class Writer;
  * feedback to change the runtime instrumentation in future pages as we serve
  * them.
  */
-class JavascriptFilter : public RewriteFilter {
+class JavascriptFilter : public RewriteSingleResourceFilter {
  public:
   JavascriptFilter(RewriteDriver* rewrite_driver,
                    const StringPiece& path_prefix);
-  static void Initialize(Statistics* statistics);
   virtual ~JavascriptFilter();
+  static void Initialize(Statistics* statistics);
+
   virtual void StartDocumentImpl() {}
   virtual void StartElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
   virtual void EndElementImpl(HtmlElement* element);
   virtual void Flush();
   virtual void IEDirective(HtmlIEDirectiveNode* directive);
-  virtual bool Fetch(OutputResource* output_resource,
-                     Writer* writer,
-                     const MetaData& request_header,
-                     MetaData* response_headers,
-                     MessageHandler* message_handler,
-                     UrlAsyncFetcher::Callback* callback);
+
   // Configuration settings for javascript filtering:
   // Set whether to minify javascript code blocks encountered.
   void set_minify(bool minify)  {
@@ -87,6 +83,10 @@ class JavascriptFilter : public RewriteFilter {
   }
 
   virtual const char* Name() const { return "Javascript"; }
+
+ protected:
+  virtual bool RewriteLoadedResource(const Resource* input_resource,
+                                     OutputResource* output_resource);
 
  private:
   inline void CompleteScriptInProgress();

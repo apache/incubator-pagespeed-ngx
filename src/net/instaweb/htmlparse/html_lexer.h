@@ -68,6 +68,7 @@ class HtmlLexer {
   HtmlElement* Parent() const;
 
  private:
+  // Most of these routines expect c to be the last character of literal_
   inline void EvalStart(char c);
   inline void EvalTag(char c);
   inline void EvalTagOpen(char c);
