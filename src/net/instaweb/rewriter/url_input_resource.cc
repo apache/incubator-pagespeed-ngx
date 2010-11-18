@@ -72,9 +72,10 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
     }
     if (resource_manager_->file_system()->TryLockWithTimeout(
             lock_name, lock_timeout, message_handler_).is_false()) {
-      message_handler_->Warning(lock_name.c_str(), 0,
-                                "Someone is already fetching %s ",
-                                url().c_str());
+      message_handler_->Info(lock_name.c_str(), 0,
+                             "Someone is already fetching %s ",
+                             url().c_str());
+      // TODO(abliss): a per-unit-time statistic would be useful here.
       if (should_yield()) {
         DoneInternal(false);
         return false;

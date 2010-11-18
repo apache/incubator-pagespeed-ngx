@@ -86,6 +86,8 @@ class RewriteOptions {
   // http://support.microsoft.com/kb/208427/EN-US
   static const int kMaxUrlSize;
 
+  static const int kDefaultImgMaxRewritesAtOnce;
+
   // See http://code.google.com/p/modpagespeed/issues/detail?id=9
   // Apache evidently limits each URL path segment (between /) to
   // about 256 characters.  This is not fundamental URL limitation
@@ -135,6 +137,9 @@ class RewriteOptions {
   int max_url_segment_size() const { return max_url_segment_size_; }
   void set_max_url_segment_size(int x) { max_url_segment_size_ = x; }
 
+  int img_max_rewrites_at_once() const { return img_max_rewrites_at_once_; }
+  void set_img_max_rewrites_at_once(int x) { img_max_rewrites_at_once_ = x; }
+
   // The maximum size of the entire URL.  If '0', this is left unlimited.
   int max_url_size() const { return max_url_size_; }
   void set_max_url_size(int x) { max_url_size_ = x; }
@@ -155,6 +160,7 @@ class RewriteOptions {
   RewriteLevel level_;
   int64 css_inline_max_bytes_;
   int64 img_inline_max_bytes_;
+  int64 img_max_rewrites_at_once_;
   int64 js_inline_max_bytes_;
   int64 css_outline_min_bytes_;
   int64 js_outline_min_bytes_;

@@ -74,13 +74,10 @@ HTTPCache::FindResult HTTPCache::Find(
         handler->Info(key.c_str(), 0,
                       "HTTPCache: remembering not-found status for %ld seconds",
                       (remember_not_found_time_ms) / 1000);
-        headers->Clear();
         ret = kRecentFetchFailedDoNotRefetch;
       } else {
         ret = kFound;
       }
-    } else {
-      headers->Clear();
     }
   }
 
@@ -91,6 +88,10 @@ HTTPCache::FindResult HTTPCache::Find(
                 static_cast<int>(key.size() + value->size()));
 #endif
 
+  if (ret != kFound) {
+    headers->Clear();
+    value->Clear();
+  }
   return ret;
 }
 

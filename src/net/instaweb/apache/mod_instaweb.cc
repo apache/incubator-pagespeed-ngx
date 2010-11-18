@@ -54,7 +54,7 @@ namespace net_instaweb {
 
 namespace {
 
-// Instaweb directive names -- these must match install/instaweb.conf.template.
+// Instaweb directive names -- these must match install/common/pagespeed.conf.template.
 const char* kModPagespeed = "ModPagespeed";
 const char* kModPagespeedUrlPrefix = "ModPagespeedUrlPrefix";
 const char* kModPagespeedFetchProxy = "ModPagespeedFetchProxy";
@@ -81,6 +81,8 @@ const char* kModPagespeedSlurpFlushLimit = "ModPagespeedSlurpFlushLimit";
 const char* kModPagespeedForceCaching = "ModPagespeedForceCaching";
 const char* kModPagespeedCssInlineMaxBytes = "ModPagespeedCssInlineMaxBytes";
 const char* kModPagespeedImgInlineMaxBytes = "ModPagespeedImgInlineMaxBytes";
+const char* kModPagespeedImgMaxRewritesAtOnce =
+    "ModPagespeedImgMaxRewritesAtOnce";
 const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
 const char* kModPagespeedDomain = "ModPagespeedDomain";
 const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
@@ -457,7 +459,7 @@ apr_status_t pagespeed_log_transaction(request_rec *request) {
 // other events.
 void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   // Enable logging using pagespeed style
-  InstallLogMessageHandler(pool);
+  log_message_handler::InstallLogMessageHandler(pool);
 
   // Use instaweb to handle generated resources.
   ap_hook_handler(instaweb_handler, NULL, NULL, -1);
@@ -614,6 +616,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (strcasecmp(directive, kModPagespeedLRUCacheByteLimit) == 0) {
     ret = ParseInt64Option(
         cmd, &ApacheRewriteDriverFactory::set_lru_cache_byte_limit, arg);
+  } else if (strcasecmp(directive, kModPagespeedImgMaxRewritesAtOnce) == 0) {
+    ret = ParseIntOption(
+        cmd, &ApacheRewriteDriverFactory::set_img_max_rewrites_at_once, arg);
   } else if (strcasecmp(directive, kModPagespeedEnableFilters) == 0) {
     if (!factory->AddEnabledFilters(arg)) {
       ret = "Failed to enable some filters.";

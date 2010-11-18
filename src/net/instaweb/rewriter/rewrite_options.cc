@@ -52,6 +52,10 @@ const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultCssOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
 
+// Limit on concurrent ongoing img rewrites.
+// TODO(jmaessen): Determine a sane default for this value.
+const int RewriteOptions::kDefaultImgMaxRewritesAtOnce = 8;
+
 // IE limits URL size overall to about 2k characters.  See
 // http://support.microsoft.com/kb/208427/EN-US
 const int RewriteOptions::kMaxUrlSize = 2083;
@@ -87,6 +91,7 @@ RewriteOptions::RewriteOptions()
     : level_(kPassThrough),
       css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
       img_inline_max_bytes_(kDefaultImgInlineMaxBytes),
+      img_max_rewrites_at_once_(kDefaultImgMaxRewritesAtOnce),
       js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
       css_outline_min_bytes_(kDefaultCssInlineMaxBytes),
       js_outline_min_bytes_(kDefaultJsInlineMaxBytes),

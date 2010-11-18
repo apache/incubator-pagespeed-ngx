@@ -56,6 +56,30 @@
     # send you traffic, then the site receiving the traffic will not
     # know how to serve the rewritten content.
 
+    # Other defaults (cache sizes and thresholds):
+    # ModPagespeedFileCacheSizeKb          102400
+    # ModPagespeedFileCacheCleanIntervalMs 3600000
+    # ModPagespeedLRUCacheKbPerProcess     1024
+    # ModPagespeedLRUCacheByteLimit        16384
+    # ModPagespeedCssInlineMaxBytes        2048
+    # ModPagespeedImgInlineMaxBytes        2048
+    # ModPagespeedJsInlineMaxBytes         2048
+    # ModPagespeedCssOutlineMinBytes       3000
+    # ModPagespeedJsOutlineMinBytes        3000
+
+    # Bound the number of images that can be rewritten at any one time; this
+    # avoids overloading the CPU.  Set this to 0 to remove the bound.
+    # ModPagespeedImgMaxRewritesAtOnce        8
+
+    # When Apache is set up as a browser proxy, mod_pagespeed can record
+    # web-sites as they are requested, so that an image of the web is built up
+    # in the directory of the proxy administrator's choosing.  When ReadOnly is
+    # on, only files already present in the SlurpDirectory are served by the
+    # proxy.
+    # ModPagespeedSlurpDirectory ...
+    # ModPagespeedSlurpReadOnly on
+
+
     # Enables server-side instrumentation and statistics.  If this rewriter is
     # enabled, then each rewritten HTML page will have instrumentation javacript
     # added that sends latency beacons to /mod_pagespeed_beacon.  These

@@ -175,7 +175,8 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
           options.Enabled(RewriteOptions::kDebugLogImgTags),
           options.Enabled(RewriteOptions::kInsertImgDimensions),
           kImageCompression,
-          options.img_inline_max_bytes()));
+          options.img_inline_max_bytes(),
+          options.img_max_rewrites_at_once()));
   AddRewriteFilter(new CacheExtender(this, kCacheExtender));
 
   // This function defines the order that filters are run.  We document
@@ -183,7 +184,7 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
   // file does not matter, but we give the filters there in the order
   // they are actually applied, for the benefit of the understanding
   // of the site owner.  So if you change that here, change it in
-  // install/pagespeed.conf.template as well.
+  // install/common/pagespeed.conf.template as well.
 
   // Now process boolean options, which may include propagating non-boolean
   // and boolean parameter settings to filters.

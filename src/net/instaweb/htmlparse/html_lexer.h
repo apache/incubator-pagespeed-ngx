@@ -109,6 +109,7 @@ class HtmlLexer {
   void EmitTagClose(HtmlElement::CloseStyle close_style);
   void EmitTagBriefClose();
   void EmitDirective();
+  void Restart(char c);
 
   // Emits a syntax error message.
   void SyntaxError(const char* format, ...) INSTAWEB_PRINTF_FORMAT(2, 3);

@@ -68,6 +68,7 @@
         'util/simple_meta_data.cc',
         'util/simple_stats.cc',
         'util/statistics.cc',
+        'util/statistics_work_bound.cc',
         'util/stdio_file_system.cc',
         'util/string_buffer.cc',
         'util/string_buffer_writer.cc',
@@ -82,6 +83,7 @@
         'util/wait_url_async_fetcher.cc',
         'util/wget_url_fetcher.cc',
         'util/wildcard.cc',
+        'util/work_bound.cc',
         'util/write_through_cache.cc',
       ],
       'include_dirs': [

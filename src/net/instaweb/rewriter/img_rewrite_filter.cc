@@ -35,6 +35,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/meta_data.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/statistics_work_bound.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/url_escaper.h"
@@ -66,6 +67,9 @@ const char kImageRewrites[] = "image_rewrites";
 const char kImageRewriteSavedBytes[] = "image_rewrite_saved_bytes";
 const char kImageInline[] = "image_inline";
 
+// name for statistic used to bound rewriting work.
+const char kImageOngoingRewrites[] = "image_ongoing_rewrites";
+
 }  // namespace
 
 
@@ -92,7 +96,8 @@ ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
                                    bool log_image_elements,
                                    bool insert_image_dimensions,
                                    StringPiece path_prefix,
-                                   size_t img_inline_max_bytes)
+                                   size_t img_inline_max_bytes,
+                                   size_t img_max_rewrites_at_once)
     : RewriteFilter(driver, path_prefix),
       file_system_(driver->file_system()),
       html_parse_(driver->html_parse()),
@@ -107,18 +112,24 @@ ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
       inline_count_(NULL),
       rewrite_saved_bytes_(NULL) {
   Statistics* stats = resource_manager_->statistics();
+  Variable* ongoing_rewrites = NULL;
   if (stats != NULL) {
     rewrite_count_ = stats->GetVariable(kImageRewrites);
     rewrite_saved_bytes_ = stats->GetVariable(
         kImageRewriteSavedBytes);
     inline_count_ = stats->GetVariable(kImageInline);
+    ongoing_rewrites = stats->GetVariable(kImageOngoingRewrites);
   }
+  work_bound_.reset(
+      new StatisticsWorkBound(ongoing_rewrites, img_max_rewrites_at_once));
 }
 
 void ImgRewriteFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kImageInline);
   statistics->AddVariable(kImageRewriteSavedBytes);
   statistics->AddVariable(kImageRewrites);
+
+  statistics->AddVariable(kImageOngoingRewrites);
 }
 
 void ImgRewriteFilter::OptimizeImage(
@@ -237,7 +248,7 @@ const ContentType* ImgRewriteFilter::ImageToContentType(
         content_type = &kContentTypeGif;
         break;
       default:
-        html_parse_->ErrorHere(
+        html_parse_->InfoHere(
             "Cannot detect content type of image url `%s`",
             origin_url.c_str());
         break;
@@ -284,8 +295,15 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
       if (output_resource.get() != NULL) {
         if (!resource_manager_->FetchOutputResource(
                 output_resource.get(), NULL, NULL, message_handler)) {
-          OptimizeImage(*input_resource, page_dim, image.get(),
-                        output_resource.get());
+          if (work_bound_->TryToWork()) {
+            OptimizeImage(*input_resource, page_dim, image.get(),
+                          output_resource.get());
+            work_bound_->WorkComplete();
+          } else {
+            html_parse_->InfoHere(
+                "Too many images being rewritten to work on %s",
+                input_resource->url().c_str());
+          }
         }
         if (output_resource->IsWritten()) {
           UpdateTargetElement(*input_resource, *output_resource,
@@ -397,31 +415,33 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
       // TODO(jmarantz): this needs to be refactored slightly to
       // allow for asynchronous fetches of the input image, if
       // it's not obtained via cache or local filesystem read.
-
-      if (OptimizedImageFor(
-              origin_url, page_dim, input_image.get(), resource)) {
-        if (resource_manager_->FetchOutputResource(
-                resource, writer, response_headers, message_handler)) {
+      if (!work_bound_->TryToWork()) {
+        ok = false;
+        failure_reason = "Too many rewrites in progress already.";
+      } else {
+        if (!OptimizedImageFor(
+                origin_url, page_dim, input_image.get(), resource)) {
+          ok = false;
+          failure_reason = "Server could not find source image.";
+        } else if (!resource_manager_->FetchOutputResource(
+                       resource, writer, response_headers, message_handler)) {
+          ok = false;
+          failure_reason = "Server could not read image resource.";
+        } else {
           if (resource->metadata()->status_code() != HttpStatus::kOK) {
-            // Note that this should not happen, because the url
-            // should not have escaped into the wild.  We're content
-            // serving an empty response if it does.  We *could* serve
-            // / redirect to the origin_url as a fail safe, but it's
-            // probably not worth it.  Instead we log and hope that
-            // this causes us to find and fix the problem.
+            // Note that this should not happen, because the url should not have
+            // escaped into the wild.  We're content serving an empty response
+            // if it does.  We *could* serve / redirect to the origin_url as a
+            // fail safe, but it's probably not worth it.  Instead we log and
+            // hope that this causes us to find and fix the problem.
             message_handler->Error(resource->url().c_str(), 0,
                                    "Rewriting %s rejected, "
                                    "but URL requested (mistaken rewriting?).",
                                    origin_url.c_str());
           }
           callback->Done(true);
-        } else {
-          ok = false;
-          failure_reason = "Server could not read image resource.";
         }
-      } else {
-        ok = false;
-        failure_reason = "Server could not find source image.";
+        work_bound_->WorkComplete();
       }
       // Image processing has failed, forward the original image data.
       if (!ok && input_image != NULL) {

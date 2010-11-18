@@ -99,6 +99,7 @@
         'util/mock_url_fetcher_test.cc',
 #        'util/simple_meta_data_test.cc',
 #        'util/simple_stats_test.cc',
+        'util/statistics_work_bound_test.cc',
 #        'util/split_writer_test.cc',
 #        'util/stdio_file_system_test.cc',
         'util/string_buffer_test.cc',

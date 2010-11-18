@@ -387,6 +387,17 @@ void HtmlLexer::EvalDirective(char c) {
   }
 }
 
+// After a partial match of a multi-character lexical sequence, a mismatched
+// character needs to temporarily removed from the retained literal_ before
+// being emitted.  Then re-inserted for so that EvalStart can attempt to
+// re-evaluate this character as potentialy starting a new lexical token.
+void HtmlLexer::Restart(char c) {
+  literal_.resize(literal_.size() - 1);
+  EmitLiteral();
+  literal_ += c;
+  EvalStart(c);
+}
+
 // Handle the case where "<!" was recently parsed.
 void HtmlLexer::EvalCommentStart1(char c) {
   if (c == '-') {
@@ -398,8 +409,7 @@ void HtmlLexer::EvalCommentStart1(char c) {
     EvalDirective(c);
   } else {
     SyntaxError("Invalid comment syntax");
-    EmitLiteral();
-    EvalStart(c);
+    Restart(c);
   }
 }
 
@@ -409,8 +419,7 @@ void HtmlLexer::EvalCommentStart2(char c) {
     state_ = COMMENT_BODY;
   } else {
     SyntaxError("Invalid comment syntax");
-    EmitLiteral();
-    EvalStart(c);
+    Restart(c);
   }
 }
 
@@ -466,8 +475,7 @@ void HtmlLexer::EvalCdataStart1(char c) {
     state_ = CDATA_START2;
   } else {
     SyntaxError("Invalid CDATA syntax");
-    EmitLiteral();
-    EvalStart(c);
+    Restart(c);
   }
 }
 
@@ -477,8 +485,7 @@ void HtmlLexer::EvalCdataStart2(char c) {
     state_ = CDATA_START3;
   } else {
     SyntaxError("Invalid CDATA syntax");
-    EmitLiteral();
-    EvalStart(c);
+    Restart(c);
   }
 }
 
@@ -488,8 +495,7 @@ void HtmlLexer::EvalCdataStart3(char c) {
     state_ = CDATA_START4;
   } else {
     SyntaxError("Invalid CDATA syntax");
-    EmitLiteral();
-    EvalStart(c);
+    Restart(c);
   }
 }
 
@@ -499,8 +505,7 @@ void HtmlLexer::EvalCdataStart4(char c) {
     state_ = CDATA_START5;
   } else {
     SyntaxError("Invalid CDATA syntax");
-    EmitLiteral();
-    EvalStart(c);
+    Restart(c);
   }
 }
 
@@ -510,8 +515,7 @@ void HtmlLexer::EvalCdataStart5(char c) {
     state_ = CDATA_START6;
   } else {
     SyntaxError("Invalid CDATA syntax");
-    EmitLiteral();
-    EvalStart(c);
+    Restart(c);
   }
 }
 
@@ -521,8 +525,7 @@ void HtmlLexer::EvalCdataStart6(char c) {
     state_ = CDATA_BODY;
   } else {
     SyntaxError("Invalid CDATA syntax");
-    EmitLiteral();
-    EvalStart(c);
+    Restart(c);
   }
 }
 

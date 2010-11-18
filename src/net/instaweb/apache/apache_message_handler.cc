@@ -16,6 +16,8 @@
 
 #include "net/instaweb/apache/apache_message_handler.h"
 
+#include "net/instaweb/apache/log_message_handler.h"
+
 #include "httpd.h"
 // When HAVE_SYSLOG is defined, apache http_log.h will include syslog.h, which
 // #defined LOG_* as numbers. This conflicts with what we are using those here.
@@ -37,6 +39,8 @@ ApacheMessageHandler::ApacheMessageHandler(const server_rec* server,
                                            const StringPiece& version)
     : server_rec_(server),
       version_(version.data(), version.size()) {
+  // Tell log_message_handler about this server_rec and version.
+  log_message_handler::AddServerConfig(server_rec_, version);
 
   // TODO(jmarantz): consider making this a little terser by default.
   // The string we expect in is something like "0.9.1.1-171" and we will

@@ -121,6 +121,9 @@ class RewriteDriverFactory {
   void set_js_inline_max_bytes(int64 x) {
     options_.set_js_inline_max_bytes(x);
   }
+  void set_img_max_rewrites_at_once(int x) {
+    options_.set_img_max_rewrites_at_once(x);
+  }
   void set_beacon_url(const StringPiece& p) {
     options_.set_beacon_url(p);
   }

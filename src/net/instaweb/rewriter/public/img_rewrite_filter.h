@@ -29,6 +29,7 @@
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "net/instaweb/util/public/work_bound.h"
 
 namespace net_instaweb {
 
@@ -77,7 +78,8 @@ class ImgRewriteFilter : public RewriteFilter {
                    bool log_image_elements,
                    bool insert_image_dimensions,
                    StringPiece path_prefix,
-                   size_t img_inline_max_bytes);
+                   size_t img_inline_max_bytes,
+                   size_t img_max_rewrites_at_once);
   static void Initialize(Statistics* statistics);
   virtual void StartDocumentImpl() {}
   virtual void StartElementImpl(HtmlElement* element) {}
@@ -119,6 +121,7 @@ class ImgRewriteFilter : public RewriteFilter {
   HtmlParse* html_parse_;
   scoped_ptr<ImgTagScanner> img_filter_;
   ResourceManager* resource_manager_;
+  scoped_ptr<WorkBound> work_bound_;
   // Threshold size (in bytes) below which we should just inline images
   // encountered.
   // TODO(jmaessen): Heuristic must be more sophisticated.  Does this image

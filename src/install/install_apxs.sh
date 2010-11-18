@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Install Page Speed, using the Apache apxs tool to determine the
 # installation locations.

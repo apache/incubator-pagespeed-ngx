@@ -169,15 +169,18 @@ endif
 # Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because
 # that might have embedded spaces, and 'sed' is interpreted first by bash.
 
-$(STAGING_DIR)/%.conf : %.conf.template
-	sed -e s@HOSTNAME@$(HOSTNAME)@g \
-            -e s@APACHE_DOC_ROOT@$(APACHE_DOC_ROOT)@g \
-	    -e s@MOD_PAGESPEED_FILE_ROOT@$(MOD_PAGESPEED_FILE_ROOT)@g \
-	    -e s@APACHE_MODULES@$(APACHE_MODULES)@g \
-	    -e "s@SLURP_DIR_COMMAND@$(APACHE_SLURP_DIR_COMMAND)@g" \
-	    -e "s@SLURP_READ_ONLY_COMMAND@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
+$(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.template
+	sed -e s@APACHE_DOC_ROOT@$(APACHE_DOC_ROOT)@g \
+	    -e s!@@MODPAGESPEED_CACHE_ROOT@@!$(MOD_PAGESPEED_FILE_ROOT)!g \
+	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
+	    -e "s@# ModPagespeedSlurpReadOnly on@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
 	    -e "s@$(STRESS_TEST_SED_PATTERN)@@" \
-		< $< > $@
+		$^ > $@
+
+$(STAGING_DIR)/proxy.conf : proxy.conf.template
+	sed -e s@HOSTNAME@$(HOSTNAME)@g \
+            -e s@APACHE_MODULES@$(APACHE_MODULES)@g \
+		$< > $@
 
 CONF_TEMPLATES = $(STAGING_DIR)/pagespeed.conf \
 		 $(STAGING_DIR)/proxy.conf

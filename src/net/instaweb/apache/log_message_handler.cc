@@ -14,6 +14,7 @@
 
 #include "net/instaweb/apache/log_message_handler.h"
 
+#include <limits>
 #include <string>
 #include "base/debug_util.h"
 #include "base/logging.h"
@@ -30,6 +31,12 @@
 #define LOG USING_LOG_HERE_WOULD_CAUSE_INFINITE_RECURSION
 
 namespace {
+
+apr_pool_t* log_pool = NULL;
+
+const int kMaxInt = std::numeric_limits<int>::max();
+int log_level_cutoff = kMaxInt;
+std::string* mod_pagespeed_version = NULL;
 
 int GetApacheLogLevel(int severity) {
   switch (severity) {
@@ -48,10 +55,8 @@ int GetApacheLogLevel(int severity) {
   }
 }
 
-apr_pool_t* log_pool = NULL;
-
 bool LogMessageHandler(int severity, const std::string& str) {
-  const int log_level = GetApacheLogLevel(severity);
+  const int this_log_level = GetApacheLogLevel(severity);
 
   std::string message = str;
   if (severity == logging::LOG_FATAL) {
@@ -71,8 +76,14 @@ bool LogMessageHandler(int severity, const std::string& str) {
     message.resize(last_msg_character_index);
   }
 
-  ap_log_perror(APLOG_MARK, log_level, APR_SUCCESS, log_pool,
-                "log_message_handler: %s", message.c_str());
+  if (this_log_level <= log_level_cutoff || log_level_cutoff == kMaxInt) {
+    ap_log_perror(APLOG_MARK, this_log_level, APR_SUCCESS, log_pool,
+                  "[mod_pagespeed %s] %s",
+                  (mod_pagespeed_version == NULL)
+                    ? ""
+                    : mod_pagespeed_version->c_str(),
+                  message.c_str());
+  }
 
   if (severity == logging::LOG_FATAL) {
     // Crash the process to generate a dump.
@@ -87,9 +98,25 @@ bool LogMessageHandler(int severity, const std::string& str) {
 
 namespace net_instaweb {
 
+namespace log_message_handler {
+
 void InstallLogMessageHandler(apr_pool_t* pool) {
   log_pool = pool;
   logging::SetLogMessageHandler(&LogMessageHandler);
 }
+
+// TODO(sligocki): This is not thread-safe, do we care? Error case is when
+// you have multiple server_rec's with different LogLevels which start-up
+// simultaniously. In which case we might get a non-min global LogLevel
+void AddServerConfig(const server_rec* server, const StringPiece& version) {
+  // TODO(sligocki): Maybe use ap_log_error(server) if there is exactly one
+  // server added?
+  log_level_cutoff = std::min(server->loglevel, log_level_cutoff);
+  // This leaks.
+  mod_pagespeed_version = new std::string(version.as_string());
+}
+
+
+}  // namespace log_message_handler
 
 }  // namespace net_instaweb
