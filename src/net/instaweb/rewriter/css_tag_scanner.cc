@@ -98,7 +98,7 @@ bool CssTagScanner::ParseCssElement(
 
 namespace {
 
-bool ExtractQuote(StringPiece* url, char* quote) {
+bool ExtractQuote(std::string* url, char* quote) {
   bool ret = false;
   int size = url->size();
   if (size > 2) {
@@ -140,7 +140,8 @@ bool CssTagScanner::AbsolutifyUrls(
       pos += 4;
       size_t end_of_url = contents.find(')', pos);
       if ((end_of_url != StringPiece::npos) && (end_of_url != pos)) {
-        StringPiece url = contents.substr(pos, end_of_url - pos);
+        std::string url;
+        TrimWhitespace(contents.substr(pos, end_of_url - pos), &url);
         char quote;
         bool is_quoted = ExtractQuote(&url, &quote);
         std::string url_string(url.data(), url.size());

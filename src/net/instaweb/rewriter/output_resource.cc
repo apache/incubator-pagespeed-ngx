@@ -54,6 +54,7 @@ OutputResource::OutputResource(ResourceManager* manager,
     // make this convention consistent and fix all code.
     CHECK_EQ((type->file_extension() + 1), full_name.ext());
   }
+  CHECK(EndsInSlash(resolved_base)) << "resolved_base must end in a slash.";
 }
 
 OutputResource::~OutputResource() {
@@ -169,12 +170,7 @@ std::string OutputResource::name_key() const {
   std::string id_name = full_name_.EncodeIdName();
   std::string result;
   CHECK(!resolved_base_.empty());  // Corresponding path in url() is dead code
-  // TODO(jmaessen): Fix when we're consistent; see url() below.
-  if (resolved_base_[resolved_base_.size() - 1] == '/') {
-    result = StrCat(resolved_base_, id_name);
-  } else {
-    result = StrCat(resolved_base_, "/", id_name);
-  }
+  result = StrCat(resolved_base_, id_name);
   return result;
 }
 
@@ -186,16 +182,7 @@ std::string OutputResource::hash_ext() const {
 // just an accessor now.
 std::string OutputResource::url() const {
   std::string encoded = full_name_.Encode();
-  // TODO(jmaessen): this is a band aid compensating for the fact that we
-  // aren't consistent about trailing / in resolved_base.  If we believe we're
-  // always getting these from GoogleUrl::AllExceptLeaf they ought to lack the
-  // trailing /.  But partnership->ResolvedBase() appears to have a trailing /
-  // in some circumstances (cf css_combine for examples that go wrong).
-  if (resolved_base_[resolved_base_.size() - 1] == '/') {
-    encoded = StrCat(resolved_base_, encoded);
-  } else {
-    encoded = StrCat(resolved_base_, "/", encoded);
-  }
+  encoded = StrCat(resolved_base_, encoded);
   return encoded;
 }
 

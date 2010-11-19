@@ -109,6 +109,7 @@ class OutputResource : public Resource {
   // manager.
   void set_resolved_base(const StringPiece& base) {
     base.CopyToString(&resolved_base_);
+    CHECK(EndsInSlash(base)) << "resolved_base must end in a slash.";
   }
 
  private:

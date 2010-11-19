@@ -618,13 +618,13 @@ TEST_F(CssCombineFilterTest, CombineCssManyFiles) {
   StringVector segments;
   ASSERT_TRUE(css_out[0]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
-  EXPECT_EQ("http://test.com/styles", base);
+  EXPECT_EQ("http://test.com/styles/", base);
   EXPECT_EQ(kNumCssInCombination, segments.size());
 
   segments.clear();
   ASSERT_TRUE(css_out[1]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
-  EXPECT_EQ("http://test.com/styles", base);
+  EXPECT_EQ("http://test.com/styles/", base);
   EXPECT_EQ(kNumCssLinks - kNumCssInCombination, segments.size());
 }
 
@@ -646,7 +646,7 @@ TEST_F(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
   StringVector segments;
   ASSERT_TRUE(css_out[0]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
-  EXPECT_EQ("http://test.com/styles", base);
+  EXPECT_EQ("http://test.com/styles/", base);
   EXPECT_EQ(kNumCssInCombination, segments.size());
   EXPECT_EQ("styles/yellow20.css", css_out[1]->url_);
 }

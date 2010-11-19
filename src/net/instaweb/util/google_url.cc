@@ -34,7 +34,7 @@ std::string GoogleUrl::AllExceptLeaf(const GURL& gurl) {
   std::string::size_type question = spec_str.find('?');
   std::string::size_type last_slash = spec_str.find_last_of('/', question);
   CHECK(last_slash != std::string::npos);
-  return std::string(spec_str.data(), last_slash);
+  return std::string(spec_str.data(), last_slash + 1);
 
   // TODO(jmarantz): jmaessen suggests using GURL to do the above this
   // way:

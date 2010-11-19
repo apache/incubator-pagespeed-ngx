@@ -369,9 +369,6 @@ bool CssCombineFilter::WriteCombination(const ResourceVector& combine_resources,
                                               &writer, handler);
   }
   if (written) {
-    if (combination->resolved_base().empty()) {
-      combination->set_resolved_base(partnership_->ResolvedBase());
-    }
     written =
         resource_manager_->Write(
             HttpStatus::kOK, combined_contents, combination,
@@ -512,7 +509,6 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
         this, message_handler, callback, combination, writer, response_headers);
 
     std::string root = GoogleUrl::AllExceptLeaf(gurl);
-    root += "/";  // google_url.h says AllExceptLeaf omits the slash.
     for (int i = 0; ret && (i < multipart_encoder.num_urls()); ++i)  {
       std::string url = StrCat(root, multipart_encoder.url(i));
       Resource* css_resource =

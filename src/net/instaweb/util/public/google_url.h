@@ -47,7 +47,8 @@ inline GURL Resolve(const GURL& gurl, const std::string& str) {
   return gurl.Resolve(str.c_str());
 }
 
-// For "http://a.com/b/c/d?e=f/g returns "http://a/b/c", omitting trailing slash.
+// For "http://a.com/b/c/d?e=f/g returns "http://a/b/c/",
+// including trailing slash.
 std::string AllExceptLeaf(const GURL& gurl);
 
 // For "http://a.com/b/c/d?e=f/g returns "d?e=f/g", omitting leading slash.

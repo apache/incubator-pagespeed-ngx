@@ -40,6 +40,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
+#include <string>
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/url_fetcher.h"
 
@@ -193,6 +194,47 @@ std::string RemoveModPageSpeedQueryParams(
   return stripped_url;
 }
 
+// Some of the sites we are trying to slurp have mod-pagespeed enabled already.
+// We actually want to start with the non-pagespeed-enabled site.  But we'd
+// rather not send ModPagespeed=off to servers that are not expecting it.
+class ModPagespeedStrippingFetcher : public UrlFetcher {
+ public:
+  ModPagespeedStrippingFetcher(UrlFetcher* fetcher) : fetcher_(fetcher) {}
+  virtual bool StreamingFetchUrl(const std::string& url,
+                                 const MetaData& request_headers,
+                                 MetaData* response_headers,
+                                 Writer* fetched_content_writer,
+                                 MessageHandler* message_handler) {
+    std::string contents;
+    StringWriter writer(&contents);
+    bool fetched = fetcher_->StreamingFetchUrl(
+        url, request_headers, response_headers, &writer, message_handler);
+    if (fetched) {
+      CharStarVector v;
+      if (response_headers->Lookup("X-Mod-Pagespeed", &v)) {
+        response_headers->Clear();
+        std::string::size_type question = url.find('?');
+        std::string url_pagespeed_off(url);
+        if (question == std::string::npos) {
+          url_pagespeed_off += "?ModPagespeed=off";
+        } else {
+          url_pagespeed_off += "&ModPagespeed=off";
+        }
+        fetched = fetcher_->StreamingFetchUrl(
+            url_pagespeed_off, request_headers, response_headers,
+            fetched_content_writer, message_handler);
+      } else {
+        // It was not mod-pagespeed in the first place; just pass it through
+        // so it can be saved in the slurp directory.
+        fetched = fetched_content_writer->Write(contents, message_handler);
+      }
+    }
+    return fetched;
+  }
+ private:
+  UrlFetcher* fetcher_;
+};
+
 void SlurpUrl(const std::string& uri, ApacheRewriteDriverFactory* factory,
               request_rec* r) {
   SimpleMetaData request_headers, response_headers;
@@ -204,9 +246,11 @@ void SlurpUrl(const std::string& uri, ApacheRewriteDriverFactory* factory,
       uri, r->parsed_uri.query);
 
   UrlFetcher* fetcher = factory->ComputeUrlFetcher();
-  if (fetcher->StreamingFetchUrl(stripped_url, request_headers,
-                                 &response_headers, &writer,
-                                 factory->message_handler())) {
+  ModPagespeedStrippingFetcher stripping_fetcher(fetcher);
+
+  if (stripping_fetcher.StreamingFetchUrl(stripped_url, request_headers,
+                                          &response_headers, &writer,
+                                          factory->message_handler())) {
     // In the event of empty content, the writer's Write method may not be
     // called, but we should still emit headers.
     writer.OutputHeaders();

@@ -31,7 +31,7 @@ UrlPartnership::UrlPartnership(const DomainLawyer* domain_lawyer,
     : domain_lawyer_(domain_lawyer) {
   if (original_request.is_valid()) {
     original_origin_and_path_ = GoogleUrl::Create(
-        GoogleUrl::AllExceptLeaf(original_request) + "/");
+        GoogleUrl::AllExceptLeaf(original_request));
   }
 }
 
@@ -98,13 +98,14 @@ void UrlPartnership::IncrementalResolve(int index) {
   CHECK_LT(index, static_cast<int>(gurl_vector_.size()));
 
   // When tokenizing a URL, we don't want to omit empty segments
-  // because we need to avoid aliasing "http://x" with "http://x".
+  // because we need to avoid aliasing "http://x" with "/http:/x".
   bool omit_empty = false;
   std::vector<StringPiece> components;
 
   if (index == 0) {
     std::string base = GoogleUrl::AllExceptLeaf(*gurl_vector_[0]);
     SplitStringPieceToVector(base, "/", &components, omit_empty);
+    components.pop_back(); // base ends with "/"
     CHECK_LE(3U, components.size());  // expect {"http:", "", "x"...}
     for (size_t i = 0; i < components.size(); ++i) {
       const StringPiece& sp = components[i];
@@ -115,6 +116,7 @@ void UrlPartnership::IncrementalResolve(int index) {
     // until one doesn't match, then shortening common_components.
     std::string all_but_leaf = GoogleUrl::AllExceptLeaf(*gurl_vector_[index]);
     SplitStringPieceToVector(all_but_leaf, "/", &components, omit_empty);
+    components.pop_back(); // base ends with "/"
     CHECK_LE(3U, components.size());  // expect {"http:", "", "x"...}
 
     if (components.size() < common_components_.size()) {

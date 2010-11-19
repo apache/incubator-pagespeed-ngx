@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/url_escaper.h"
 
 namespace net_instaweb {
 
@@ -174,6 +175,19 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
 TEST_F(ResourceManagerTest, TestNamed) {
   TestNamed();
+}
+
+TEST_F(ResourceManagerTest, TestOutputInputUrl) {
+  std::string url = "http://example.com/dir/123/jm.0.orig.js";
+  scoped_ptr<OutputResource> output_resource(
+      resource_manager_->CreateOutputResourceForFetch(url, &message_handler_));
+  ASSERT_TRUE(output_resource.get());
+  scoped_ptr<Resource> input_resource(
+      resource_manager_->CreateInputResourceFromOutputResource(
+          resource_manager_->url_escaper(),
+          output_resource.get(),
+          &message_handler_));
+  EXPECT_EQ("http://example.com/dir/123/orig", input_resource->url());
 }
 
 // TODO(jmaessen): re-enable after sharding works again.

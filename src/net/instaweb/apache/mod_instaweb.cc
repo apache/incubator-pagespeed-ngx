@@ -187,8 +187,9 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
     const char* name = query_params.name(i);
     const char* value = query_params.value(i);
     if (value == NULL) {
-      handler->Message(kWarning, "Empty value for %s", name);
-      ret = false;
+      // Empty; all our options require a value, so skip.  It might be a
+      // perfectly legitimate query param for the underlying page.
+      continue;
     }
     int64 int_val;
       // TODO(jmarantz): add js inlinine threshold, outline threshold.

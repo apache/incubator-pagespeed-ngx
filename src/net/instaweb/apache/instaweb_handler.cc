@@ -208,7 +208,7 @@ apr_status_t repair_caching_header(ap_filter_t *filter,
     apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
                   desired_cache_control.c_str());
 
-    // Convert the our own cache-control data into an Expires header.
+    // Convert our own cache-control data into an Expires header.
     apr_table_unset(request->headers_out, HttpAttributes::kExpires);
     response_headers.RemoveAll(HttpAttributes::kCacheControl);
     response_headers.Add(HttpAttributes::kCacheControl,
