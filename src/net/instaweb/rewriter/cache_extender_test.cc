@@ -48,10 +48,10 @@ class CacheExtenderTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    rewrite_driver_.AddFilter(RewriteOptions::kExtendCache);
   }
 
   void InitTest(int64 ttl) {
+    rewrite_driver_.AddFilter(RewriteOptions::kExtendCache);
     InitMetaData("a.css", kContentTypeCss, kCssData, ttl);
     InitMetaData("b.jpg", kContentTypeJpeg, kImageData, ttl);
     InitMetaData("c.js", kContentTypeJavascript, kJsData, ttl);
@@ -116,6 +116,27 @@ TEST_F(CacheExtenderTest, ServeFilesFromDelayedFetch) {
   ServeResourceFromManyContexts(DOMAIN "ce.0.c,l.js",
                                 RewriteOptions::kExtendCache,
                                 &mock_hasher_, kJsData);
+}
+
+TEST_F(CacheExtenderTest, MinimizeCacheHits) {
+  RewriteOptions options;
+  options.EnableFilter(RewriteOptions::kOutlineCss);
+  options.EnableFilter(RewriteOptions::kExtendCache);
+  options.set_css_outline_min_bytes(1);
+  rewrite_driver_.AddFilters(options);
+  std::string html_input = StrCat("<style>", kCssData, "</style>");
+  const char html_output[] =
+      "<link rel='stylesheet' href='http://test.com/co.0._.css'>";
+  ValidateExpected("no_extend_origin_not_cacheable", html_input, html_output);
+
+  // The key thing about this test is that the CacheExtendFilter should
+  // not pound the cache looking to see if it's already rewritten this
+  // resource.  If we try, in the cache extend filter, to this already-optimized
+  // resource from the cache, then we'll get a cache-hit and decide that
+  // it's already got a long cache lifetime.  But we should know, just from
+  // the name of the resource, that it should not be cache extended.
+  EXPECT_EQ(0, lru_cache_->num_hits());
+  EXPECT_EQ(1, lru_cache_->num_misses());
 }
 
 }  // namespace

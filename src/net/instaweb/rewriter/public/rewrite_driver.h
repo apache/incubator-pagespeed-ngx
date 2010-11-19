@@ -131,6 +131,11 @@ class RewriteDriver {
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
 
+  // Attempts to decodes an output resource based on the URL pattern
+  // without actually rewriting it.
+  OutputResource* DecodeOutputResource(const StringPiece& url,
+                                       RewriteFilter** filter);
+
   HtmlParse* html_parse() { return &html_parse_; }
   FileSystem* file_system() { return file_system_; }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }

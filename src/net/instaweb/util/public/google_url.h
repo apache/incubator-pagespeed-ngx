@@ -36,7 +36,9 @@ inline std::string Spec(const GURL& gurl) { return gurl.spec(); }
 inline GURL Create(const StringPiece& sp) { return GURL(sp.as_string()); }
 
 // Makes a GURL object from a string.
-inline GURL Create(const std::string& str) { return GURL(str.c_str()); }
+inline GURL Create(const std::string& str) {
+  return GURL(str);
+}
 
 // Resolves a GURL object and a new path into a new GURL.
 inline GURL Resolve(const GURL& gurl, const StringPiece& sp) {
@@ -44,7 +46,12 @@ inline GURL Resolve(const GURL& gurl, const StringPiece& sp) {
 
 // Resolves a GURL object and a new path into a new GURL.
 inline GURL Resolve(const GURL& gurl, const std::string& str) {
-  return gurl.Resolve(str.c_str());
+  return gurl.Resolve(str);
+}
+
+// Resolves a GURL object and a new path into a new GURL.
+inline GURL Resolve(const GURL& gurl, const char* str) {
+  return gurl.Resolve(str);
 }
 
 // For "http://a.com/b/c/d?e=f/g returns "http://a/b/c/",

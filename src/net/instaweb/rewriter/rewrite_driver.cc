@@ -399,6 +399,45 @@ class ResourceDeleterCallback : public UrlAsyncFetcher::Callback {
 
 }  // namespace
 
+OutputResource* RewriteDriver::DecodeOutputResource(
+    const StringPiece& url,
+    RewriteFilter** filter) {
+  // Note that this does permission checking and parsing of the url, but doesn't
+  // actually fetch any data until we specifically ask it to.
+  OutputResource* output_resource =
+      resource_manager_->CreateOutputResourceForFetch(url);
+
+  // If the resource name was ill-formed or unrecognized, we reject the request
+  // so it can be passed along.
+  if (output_resource != NULL) {
+    // For now let's reject as mal-formed if the id string is not
+    // in the rewrite drivers.
+    // TODO(jmarantz): it might be better to 'handle' requests with known
+    // IDs even if that filter is not enabled, rather rejecting the request.
+    // TODO(jmarantz): consider query-specific rewrites.  We may need to
+    // enable filters for this driver based on the referrer.
+    StringPiece id = output_resource->filter_prefix();
+    StringFilterMap::iterator p = resource_filter_map_.find(
+        std::string(id.data(), id.size()));
+
+    // OutlineFilter is special because it's not a RewriteFilter -- it's
+    // just an HtmlFilter, but it does encode rewritten resources that
+    // must be served from the cache.
+    //
+    // TODO(jmarantz): figure out a better way to refactor this.
+    // TODO(jmarantz): add a unit-test to show serving outline-filter resources.
+    if (p != resource_filter_map_.end()) {
+      *filter = p->second;
+    } else if (((id != CssOutlineFilter::kFilterId) &&
+                (id != JsOutlineFilter::kFilterId)) ||
+               (output_resource->type() == NULL)) {
+      delete output_resource;
+      output_resource = NULL;
+    }
+  }
+  return output_resource;
+}
+
 bool RewriteDriver::FetchResource(
     const StringPiece& url,
     const MetaData& request_headers,
@@ -411,36 +450,10 @@ bool RewriteDriver::FetchResource(
 
   // Note that this does permission checking and parsing of the url, but doesn't
   // actually fetch any data until we specifically ask it to.
-  OutputResource* output_resource =
-      resource_manager_->CreateOutputResourceForFetch(
-          url, message_handler);
+  RewriteFilter* filter = NULL;
+  OutputResource* output_resource = DecodeOutputResource(url, &filter);
 
-  // If the resource name was ill-formed or unrecognized, we reject the request
-  // so it can be passed along.
-  if (output_resource == NULL) {
-    return false;
-  }
-
-  // For now let's reject as mal-formed if the id string is not
-  // in the rewrite drivers.
-  // TODO(jmarantz): it might be better to 'handle' requests with known
-  // IDs even if that filter is not enabled, rather rejecting the request.
-  // TODO(jmarantz): consider query-specific rewrites.  We may need to
-  // enable filters for this driver based on the referrer.
-  StringPiece id = output_resource->filter_prefix();
-  StringFilterMap::iterator p = resource_filter_map_.find(
-      std::string(id.data(), id.size()));
-
-  // OutlineFilter is special because it's not a RewriteFilter -- it's
-  // just an HtmlFilter, but it does encode rewritten resources that
-  // must be served from the cache.
-  //
-  // TODO(jmarantz): figure out a better way to refactor this.
-  // TODO(jmarantz): add a unit-test to show serving outline-filter resources.
-  if (((p != resource_filter_map_.end()) ||
-       (id == CssOutlineFilter::kFilterId) ||
-       (id == JsOutlineFilter::kFilterId)) &&
-      output_resource->type() != NULL) {
+  if (output_resource != NULL) {
     handled = true;
     callback = new ResourceDeleterCallback(output_resource, callback,
                                            resource_manager_->http_cache(),
@@ -452,8 +465,7 @@ bool RewriteDriver::FetchResource(
       if (cached_resource_fetches_ != NULL) {
         cached_resource_fetches_->Add(1);
       }
-    } else if (p != resource_filter_map_.end()) {
-      RewriteFilter* filter = p->second;
+    } else if (filter != NULL) {
       queued = filter->Fetch(output_resource, writer,
                              request_headers, response_headers,
                              message_handler, callback);

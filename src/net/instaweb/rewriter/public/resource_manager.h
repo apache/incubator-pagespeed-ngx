@@ -128,8 +128,7 @@ class ResourceManager {
   // should mean checking the hash to ensure we generated it ourselves).
   // TODO(jmaessen): add url hash & check thereof.
   OutputResource* CreateOutputResourceForFetch(
-      const StringPiece& url,
-      MessageHandler* handler);
+      const StringPiece& url);
 
   // Creates an input resource with the url evaluated based on input_url
   // which may need to be absolutified relative to base_url.  Returns NULL if

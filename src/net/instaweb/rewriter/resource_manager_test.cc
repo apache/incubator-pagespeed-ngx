@@ -152,17 +152,14 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // from the http_cache.
     // first cut off the "http://mysite{,.0,.1}/" from the front.
     scoped_ptr<OutputResource> nor4(
-        resource_manager_->CreateOutputResourceForFetch(
-            nor->url(), &message_handler_));
+        resource_manager_->CreateOutputResourceForFetch(nor->url()));
     EXPECT_EQ(nor->url(), nor4->url());
     EXPECT_EQ(contents, FetchOutputResource(nor4.get()));
 
     // If it's evicted from the http_cache, we can also retrieve it from the
     // filesystem.
     lru_cache_->Clear();
-    nor4.reset(
-        resource_manager_->CreateOutputResourceForFetch(
-            nor->url(), &message_handler_));
+    nor4.reset(resource_manager_->CreateOutputResourceForFetch(nor->url()));
     EXPECT_EQ(nor->url(), nor4->url());
     EXPECT_EQ(contents, FetchOutputResource(nor4.get()));
     // This also works asynchronously.
@@ -180,7 +177,7 @@ TEST_F(ResourceManagerTest, TestNamed) {
 TEST_F(ResourceManagerTest, TestOutputInputUrl) {
   std::string url = "http://example.com/dir/123/jm.0.orig.js";
   scoped_ptr<OutputResource> output_resource(
-      resource_manager_->CreateOutputResourceForFetch(url, &message_handler_));
+      resource_manager_->CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   scoped_ptr<Resource> input_resource(
       resource_manager_->CreateInputResourceFromOutputResource(

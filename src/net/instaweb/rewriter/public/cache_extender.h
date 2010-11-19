@@ -54,6 +54,8 @@ class CacheExtender : public RewriteSingleResourceFilter {
                                      OutputResource* output_resource);
 
  private:
+  bool IsRewrittenResource(const StringPiece& url) const;
+
   HtmlParse* html_parse_;
   ResourceManager* resource_manager_;
   ResourceTagScanner tag_scanner_;

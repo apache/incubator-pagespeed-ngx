@@ -59,7 +59,7 @@ TEST_F(GoogleUrlTest, TestSpecWithPort) {
 TEST_F(GoogleUrlTest, ResolveRelative) {
   GURL base = GoogleUrl::Create(StringPiece("http://www.google.com"));
   ASSERT_TRUE(base.is_valid());
-  GURL resolved = GoogleUrl::Resolve(base, StringPiece("test.html"));
+  GURL resolved = GoogleUrl::Resolve(base, "test.html");
   ASSERT_TRUE(resolved.is_valid());
   EXPECT_EQ(std::string("http://www.google.com/test.html"),
             GoogleUrl::Spec(resolved));
@@ -68,8 +68,7 @@ TEST_F(GoogleUrlTest, ResolveRelative) {
 TEST_F(GoogleUrlTest, ResolveAbsolute) {
   GURL base = GoogleUrl::Create(StringPiece("http://www.google.com"));
   ASSERT_TRUE(base.is_valid());
-  GURL resolved = GoogleUrl::Resolve(
-      base, StringPiece("http://www.google.com"));
+  GURL resolved = GoogleUrl::Resolve(base, "http://www.google.com");
   ASSERT_TRUE(resolved.is_valid());
   EXPECT_EQ(std::string("http://www.google.com/"),
             GoogleUrl::Spec(resolved));

@@ -294,8 +294,7 @@ OutputResource* ResourceManager::CreateOutputResourceWithPath(
 }
 
 OutputResource* ResourceManager::CreateOutputResourceForFetch(
-    const StringPiece& url,
-    MessageHandler* handler) {
+    const StringPiece& url) {
   OutputResource* resource = NULL;
   std::string url_string(url.data(), url.size());
   GURL gurl(url_string);

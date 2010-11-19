@@ -68,7 +68,7 @@ rm -rf "$RPM_BUILD_ROOT"
 %files
 %defattr(-,root,root)
 @@APACHE_MODULEDIR@@/mod_pagespeed.so
-%config @@APACHE_CONFDIR@@/pagespeed.conf
+%config(noreplace) @@APACHE_CONFDIR@@/pagespeed.conf
 /etc/cron.daily/mod-pagespeed
 %attr(-, @@APACHE_USER@@, @@APACHE_USER@@) @@MODPAGESPEED_CACHE_ROOT@@/cache
 %attr(-, @@APACHE_USER@@, @@APACHE_USER@@) @@MODPAGESPEED_CACHE_ROOT@@/files

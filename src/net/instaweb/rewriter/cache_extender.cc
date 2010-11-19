@@ -73,11 +73,12 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
   if ((href != NULL) && html_parse_->IsRewritable(element)) {
     scoped_ptr<Resource> input_resource(
-        resource_manager_->CreateInputResourceAndReadIfCached(
+        resource_manager_->CreateInputResource(
             base_gurl(), href->value(), message_handler));
-    // TODO(jmarantz): create an output resource to generate a new url,
-    // rather than doing the content-hashing here.
-    if (input_resource != NULL) {
+    if ((input_resource.get() != NULL) &&
+        !IsRewrittenResource(input_resource->url()) &&
+        resource_manager_->ReadIfCached(input_resource.get(),
+                                        message_handler)) {
       const MetaData* headers = input_resource->metadata();
       int64 now_ms = resource_manager_->timer()->NowMs();
 
@@ -115,6 +116,23 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
       }
     }
   }
+}
+
+// Just based on the pattern of the URL, see if we think this was
+// already the result of a rewrite.  It should, in general, be
+// functionally correct to apply a new filter to an
+// already-rewritten resoure.  However, in the case of cache
+// extension, there is no benefit because every rewriter generates
+// URLs that are served with long cache lifetimes.  This filter
+// just wants to pick up the scraps.  Note that we would discover
+// this anywahy in the cache expiration time below, but it's worth
+// going to the extra trouble to reduce the cache lookups since this
+// happens for basically every resource.
+bool CacheExtender::IsRewrittenResource(const StringPiece& url) const {
+  RewriteFilter* filter;
+  scoped_ptr<OutputResource> output_resource(driver_->DecodeOutputResource(
+      url, &filter));
+  return (output_resource.get() != NULL);
 }
 
 bool CacheExtender::RewriteLoadedResource(const Resource* input_resource,
