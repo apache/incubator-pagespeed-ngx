@@ -133,6 +133,22 @@ bool check_pagespeed_applicable(request_rec* request,
     return false;
   }
 
+  // mod_pagespeed often creates requests while rewriting an HTML.  These
+  // requests are only intended to fetch resources (images, css, javascript) but
+  // in some circumstances they can end up fetching HTML.  This HTML, if
+  // rewrittten, could in turn spawn more requests which could cascade into a
+  // bad situation.  To mod_pagespeed, any fetched HTML is an error condition,
+  // so there's no reason to rewrite it anyway.
+  const char* user_agent = apr_table_get(request->headers_in,
+                                         HttpAttributes::kUserAgent);
+  // TODO(abliss): unify this string literal with the one in
+  // serf_url_async_fetcher.cc
+  if ((user_agent != NULL) && strstr(user_agent, "mod_pagespeed")) {
+    ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
+                  "Not rewriting mod_pagespeed's own fetch");
+    return false;
+  }
+
   return true;
 }
 

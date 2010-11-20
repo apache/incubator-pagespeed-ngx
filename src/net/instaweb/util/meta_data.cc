@@ -36,6 +36,7 @@ const char HttpAttributes::kExpires[] = "Expires";
 const char HttpAttributes::kGzip[] = "gzip";
 const char HttpAttributes::kLastModified[] = "Last-Modified";
 const char HttpAttributes::kLocation[] = "Location";
+const char HttpAttributes::kReferer[] = "Referer"; // sic
 const char HttpAttributes::kServer[] = "Server";
 const char HttpAttributes::kSetCookie[] = "Set-Cookie";
 const char HttpAttributes::kTransferEncoding[] = "Transfer-Encoding";

@@ -27,6 +27,7 @@
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
         '<(DEPTH)/third_party/apache/httpd/httpd.gyp:include',
         '<(DEPTH)/third_party/serf/serf.gyp:serf',
         '<(instaweb_root)/instaweb.gyp:instaweb_htmlparse',

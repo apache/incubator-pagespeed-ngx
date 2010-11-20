@@ -60,6 +60,7 @@
       'dependencies': [
         'instaweb_html_rewriter.gyp:html_rewriter',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
         '<(DEPTH)/testing/gtest.gyp:gtest',
         '<(DEPTH)/testing/gtest.gyp:gtestmain',
         '<(DEPTH)/third_party/apache/apr/apr.gyp:apr',

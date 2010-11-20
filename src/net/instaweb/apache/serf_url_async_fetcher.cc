@@ -31,6 +31,7 @@
 #include "base/stl_util-inl.h"
 #include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/apache/apr_timer.h"
+#include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/meta_data.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
@@ -272,14 +273,20 @@ class SerfFetch {
     serf_bucket_t* hdrs_bkt = serf_bucket_request_get_headers(*req_bkt);
 
     bool found_user_agent = false;
+    // TODO(abliss): get this from the SerfFetch
+    const char* user_agent_suffix =
+        " mod_pagespeed/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING;
     for (int i = 0; i < fetch->request_headers_.NumAttributes(); ++i) {
       const char* name = fetch->request_headers_.Name(i);
       const char* value = fetch->request_headers_.Value(i);
       bool add = false;
       if (strcasecmp(name, HttpAttributes::kUserAgent) == 0) {
         found_user_agent = true;
+        value = apr_pstrcat(pool, value, user_agent_suffix, NULL);
         add = true;
       } else if (strcasecmp(name, HttpAttributes::kAcceptEncoding) == 0) {
+        add = true;
+      } else if (strcasecmp(name, HttpAttributes::kReferer) == 0) {
         add = true;
       }
       if (add) {
@@ -287,9 +294,10 @@ class SerfFetch {
       }
     }
     if (!found_user_agent) {
-      const char* user_agent = "Serf/" SERF_VERSION_STRING;
+      const char* default_user_agent = apr_pstrcat(
+          pool, "Serf/" SERF_VERSION_STRING, user_agent_suffix, NULL);
       serf_bucket_headers_setn(hdrs_bkt, HttpAttributes::kUserAgent,
-                               user_agent);
+                               default_user_agent);
     }
 
     // TODO(jmarantz): add accept-encoding:gzip even if not requested by
