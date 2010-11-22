@@ -20,9 +20,11 @@
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 
 #include "base/basictypes.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -55,7 +57,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   bool Fetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
     // TODO(jmarantz): consider request_headers.  E.g. will we ever
     // get different resources depending on user-agent?
-    const SimpleMetaData request_headers;
+    SimpleMetaData request_headers;
     message_handler_ = handler;
     std::string lock_name = StrCat(
         resource_manager_->filename_prefix(),
@@ -87,8 +89,23 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
       lock_name_ = lock_name;
     }
 
-    return fetcher->StreamingFetch(url(), request_headers, response_headers(),
-                                   http_value(), handler, this);
+    std::string url_string = url(), origin_url;
+    bool ret = false;
+    DomainLawyer* lawyer = resource_manager_->domain_lawyer();
+    if (lawyer->MapOrigin(url_string, &origin_url)) {
+      if (origin_url != url_string) {
+        // If mapping the URL changes its host, then add a 'Host' header
+        // pointing to the origin URL's hostname.
+        GURL gurl = GoogleUrl::Create(url_string);
+        if (gurl.is_valid()) {
+          request_headers.Add(HttpAttributes::kHost, gurl.host().c_str());
+        }
+      }
+      ret = fetcher->StreamingFetch(
+          origin_url, request_headers, response_headers(), http_value(),
+          handler, this);
+    }
+    return ret;
   }
 
   virtual void Done(bool success) {

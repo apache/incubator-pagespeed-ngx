@@ -85,6 +85,8 @@ const char* kModPagespeedImgMaxRewritesAtOnce =
     "ModPagespeedImgMaxRewritesAtOnce";
 const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
 const char* kModPagespeedDomain = "ModPagespeedDomain";
+const char* kModPagespeedMapRewriteDomain = "ModPagespeedMapRewriteDomain";
+const char* kModPagespeedMapOriginDomain = "ModPagespeedMapOriginDomain";
 const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
 const char* kRepairHeadersFilterName = "MOD_PAGESPEED_REPAIR_HEADERS";
 const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
@@ -582,6 +584,8 @@ void warn_deprecated(cmd_parms* cmd, const char* remedy) {
                cmd->directive->directive, remedy);
 }
 
+// Callback function that parses a single-argument directive.  This is called
+// by the Apache config parser.
 static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
   const char* directive = cmd->directive->directive;
@@ -673,6 +677,25 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   return ret;
 }
 
+// Callback function that parses a two-argument directive.  This is called
+// by the Apache config parser.
+static const char* ParseDirective2(cmd_parms* cmd, void* data,
+                                   const char* arg1, const char* arg2) {
+  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
+  const char* directive = cmd->directive->directive;
+  const char* ret = NULL;
+  if (strcasecmp(directive, kModPagespeedMapRewriteDomain) == 0) {
+    factory->domain_lawyer()->AddRewriteDomainMapping(
+        arg1, arg2, factory->message_handler());
+  } else if (strcasecmp(directive, kModPagespeedMapOriginDomain) == 0) {
+    factory->domain_lawyer()->AddOriginDomainMapping(
+        arg1, arg2, factory->message_handler());
+  } else {
+    return "Unknown directive.";
+  }
+  return ret;
+}
+
 // Setting up Apache options is cumbersome for several reasons:
 //
 // 1. Apache appears to require the option table be entirely constructed
@@ -693,8 +716,18 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
 // Googling for AP_MODULE_DECLARE_DATA didn't shed any light on how to do this
 // using a style suitable for programming after 1980.  So all we can do is make
 // this a little less ugly with wrapper macros and helper functions.
+//
+// TODO(jmarantz): investigate usage of RSRC_CONF -- perhaps many of these
+// options should be allowable inside a Directory or Location by ORing in
+// ACCESS_CONF to RSRC_CONF.
+
 #define APACHE_CONFIG_OPTION(name, help) \
   AP_INIT_TAKE1(name, reinterpret_cast<const char*(*)()>(ParseDirective), \
+                NULL, RSRC_CONF, help)
+
+// Like APACHE_CONFIG_OPTION, but gets 2 arguments.
+#define APACHE_CONFIG_OPTION2(name, help) \
+  AP_INIT_TAKE2(name, reinterpret_cast<const char*(*)()>(ParseDirective2), \
                 NULL, RSRC_CONF, help)
 
 static const command_rec mod_pagespeed_filter_cmds[] = {
@@ -750,6 +783,10 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
                        " injected by add_instrumentation."),
   APACHE_CONFIG_OPTION(kModPagespeedDomain,
         "Authorize mod_pagespeed to rewrite resources in a domain."),
+  APACHE_CONFIG_OPTION2(kModPagespeedMapRewriteDomain,
+                        "to_domain from_domain[,from_domain]*"),
+  APACHE_CONFIG_OPTION2(kModPagespeedMapOriginDomain,
+                        "to_domain from_domain[,from_domain]*"),
   {NULL}
 };
 

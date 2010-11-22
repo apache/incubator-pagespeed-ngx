@@ -18,9 +18,9 @@
 
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 
-#include <string>
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/wildcard.h"
 
 namespace net_instaweb {
@@ -29,15 +29,40 @@ class DomainLawyer::Domain {
  public:
   explicit Domain(const StringPiece& name)
       : wildcard_(name),
-        num_shards_(0) {
+        name_(name.data(), name.size()),
+        num_shards_(0),
+        rewrite_domain_(NULL),
+        origin_domain_(NULL) {
   }
 
   bool IsWildcarded() const { return !wildcard_.IsSimple(); }
   bool Match(const StringPiece& domain) { return wildcard_.Match(domain); }
+  Domain* rewrite_domain() const { return rewrite_domain_; }
+  Domain* origin_domain() const { return origin_domain_; }
+  StringPiece name() const { return name_; }
+
+  // TODO(jmarantz): check for cycles
+  void set_rewrite_domain(Domain* x) { rewrite_domain_ = x; }
+  void set_origin_domain(Domain* x) { origin_domain_ = x; }
 
  private:
   Wildcard wildcard_;
+  std::string name_;
   int num_shards_;
+
+  // The rewrite_domain, if non-null, gives the location of where this
+  // Domain should be rewritten.  This can be used to move resources onto
+  // a CDN or onto a cookieless domain.
+  Domain* rewrite_domain_;
+
+  // The origin_domain, if non-null, gives the location of where
+  // resources should be fetched from by mod_pagespeed, in lieu of how
+  // it is specified in the HTML.  This allows, for example, a CDN to
+  // fetch content from an origin domain, or an origin server behind a
+  // load-balancer to specify localhost or an IP address of a host to
+  // go to directly, skipping DNS resolution and reducing outbound
+  // traffic.
+  Domain* origin_domain_;
 };
 
 DomainLawyer::~DomainLawyer() {
@@ -46,9 +71,15 @@ DomainLawyer::~DomainLawyer() {
 
 bool DomainLawyer::AddDomain(const StringPiece& domain_name,
                              MessageHandler* handler) {
+  return (AddDomainHelper(domain_name, true, handler) != NULL);
+}
+
+DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
+    const StringPiece& domain_name, bool warn_on_duplicate,
+    MessageHandler* handler) {
   if (domain_name.empty()) {
     handler->Message(kWarning, "Empty domain passed to AddDomain");
-    return false;
+    return NULL;
   }
 
   // Ensure that the following specifications are treated identically:
@@ -63,66 +94,163 @@ bool DomainLawyer::AddDomain(const StringPiece& domain_name,
   } else {
     domain_name.CopyToString(&domain_name_str);
   }
-  if (!domain_name.ends_with("/")) {
-    domain_name_str += "/";
-  }
-  Domain* domain = new Domain(domain_name_str);
+  EnsureEndsInSlash(&domain_name_str);
+  Domain* domain = NULL;
   std::pair<DomainMap::iterator, bool> p = domain_map_.insert(
       DomainMap::value_type(domain_name_str, domain));
-  bool ret = p.second;
-  if (ret) {
-    DomainMap::iterator iter = p.first;
+  DomainMap::iterator iter = p.first;
+  if (p.second) {
+    domain = new Domain(domain_name_str);
     iter->second = domain;
     if (domain->IsWildcarded()) {
       wildcarded_domains_.push_back(domain);
     }
-  } else {
-    delete domain;
+    iter->second = domain;
+  } else if (warn_on_duplicate) {
     handler->Message(kWarning, "AddDomain of domain already in map: %s",
                      domain_name_str.c_str());
+  } else {
+    domain = iter->second;
   }
-  return ret;
+  return domain;
+}
+
+// Looks up the Domain* object by name.  From the Domain object
+// we can tell if it's wildcarded, in which case it cannot be
+// the 'to' field for a map, and whether resources from it should
+// be mapped to a different domain, either for rewriting or for
+// fetching.
+DomainLawyer::Domain* DomainLawyer::FindDomain(
+    const std::string& domain_name) const {
+  DomainMap::const_iterator p = domain_map_.find(domain_name);
+  Domain* domain = NULL;
+  if (p != domain_map_.end()) {
+    domain = p->second;
+  } else {
+    // TODO(jmarantz): use a better lookup structure for this
+    for (int i = 0, n = wildcarded_domains_.size(); i < n; ++i) {
+      domain = wildcarded_domains_[i];
+      if (domain->Match(domain_name)) {
+        break;
+      } else {
+        domain = NULL;
+      }
+    }
+  }
+  return domain;
 }
 
 bool DomainLawyer::MapRequestToDomain(
     const GURL& original_request,
     const StringPiece& resource_url,  // relative to original_request
     std::string* mapped_domain_name,
+    GURL* resolved_request,
     MessageHandler* handler) const {
-  std::string url_str(resource_url.data(), resource_url.size());
   CHECK(original_request.is_valid());
   GURL original_origin = original_request.GetOrigin();
-  GURL resolved = original_origin.Resolve(url_str);
+  *resolved_request = GoogleUrl::Resolve(original_request, resource_url);
   bool ret = false;
   // At present we're not sure about appropriate resource
   // policies for https: etc., so we only permit http resources
   // to be rewritten.
   // TODO(jmaessen): Figure out if this is appropriate.
-  if (resolved.is_valid() && resolved.SchemeIs("http")) {
-    GURL resolved_origin = resolved.GetOrigin();
-    std::string resolved_domain = GoogleUrl::Spec(resolved_origin);
+  if (resolved_request->is_valid() && resolved_request->SchemeIs("http")) {
+    GURL resolved_origin = resolved_request->GetOrigin();
+    std::string resolved_domain_name = GoogleUrl::Spec(resolved_origin);
 
-    if (resolved_origin == original_origin) {
-      *mapped_domain_name = resolved_domain;
+    // Looks at the resovled domain name from the original request and
+    // the resource_url (which might override the original request).
+    // Gets the Domain* object out of that.
+    Domain* resolved_domain = FindDomain(resolved_domain_name);
+
+    // The origin domain is authorized by default.
+    if ((resolved_origin == original_origin) || (resolved_domain != NULL)) {
+      *mapped_domain_name = resolved_domain_name;
       ret = true;
-    } else {
-      DomainMap::const_iterator p = domain_map_.find(resolved_domain);
-      Domain* domain = NULL;
-      if (p != domain_map_.end()) {
-        domain = p->second;
-      } else {
-        for (int i = 0, n = wildcarded_domains_.size(); i < n; ++i) {
-          domain = wildcarded_domains_[i];
-          if (domain->Match(resolved_domain)) {
-            break;
-          } else {
-            domain = NULL;
-          }
+
+      // If we actually got a Domain* out of the lookups so far, then a
+      // mapping to a different rewrite_domain may be contained there.  This
+      // helps move resources to CDNs or cookieless domains.
+      //
+      // Note that at this point, we are not really caring where we fetch
+      // from.  We are only concerned here with what URLs we will write into
+      // HTML files.  See MapOrigin below which is used to redirect fetch
+      // requests to a different domain (e.g. localhost).
+      if (resolved_domain != NULL) {
+        Domain* mapped_domain = resolved_domain->rewrite_domain();
+        if (mapped_domain != NULL) {
+          CHECK(!mapped_domain->IsWildcarded());
+          mapped_domain->name().CopyToString(mapped_domain_name);
+          *resolved_request = GoogleUrl::Create(*mapped_domain_name).Resolve(
+              GoogleUrl::PathAndLeaf(*resolved_request));
         }
       }
-      if (domain != NULL) {
-        *mapped_domain_name = resolved_domain;
-        // TODO(jmarantz): find mapping from Domain* to support domain mapping.
+    }
+  }
+  return ret;
+}
+
+bool DomainLawyer::MapOrigin(const StringPiece& in, std::string* out) const {
+  bool ret = false;
+  GURL gurl = GoogleUrl::Create(in);
+  // At present we're not sure about appropriate resource
+  // policies for https: etc., so we only permit http resources
+  // to be rewritten.
+  if (gurl.is_valid() && gurl.SchemeIs("http")) {
+    ret = true;
+    in.CopyToString(out);
+    GURL origin = gurl.GetOrigin();
+    std::string origin_name = GoogleUrl::Spec(origin);
+    Domain* domain = FindDomain(origin_name);
+    if (domain != NULL) {
+      Domain* origin_domain = domain->origin_domain();
+      if (origin_domain != NULL) {
+        CHECK(!origin_domain->IsWildcarded());
+        GURL mapped_gurl = GoogleUrl::Create(origin_domain->name()).Resolve(
+            GoogleUrl::PathAndLeaf(gurl));
+        if (mapped_gurl.is_valid()) {
+          *out = GoogleUrl::Spec(mapped_gurl);
+        }
+      }
+    }
+  }
+  return ret;
+}
+
+bool DomainLawyer::AddRewriteDomainMapping(
+    const StringPiece& to_domain_name,
+    const StringPiece& comma_separated_from_domains,
+    MessageHandler* handler) {
+  return MapDomainHelper(to_domain_name, comma_separated_from_domains,
+                         &Domain::set_rewrite_domain, handler);
+}
+
+bool DomainLawyer::AddOriginDomainMapping(
+    const StringPiece& to_domain_name,
+    const StringPiece& comma_separated_from_domains,
+    MessageHandler* handler) {
+  return MapDomainHelper(to_domain_name, comma_separated_from_domains,
+                         &Domain::set_origin_domain, handler);
+}
+
+bool DomainLawyer::MapDomainHelper(
+    const StringPiece& to_domain_name,
+    const StringPiece& comma_separated_from_domains,
+    SetDomainFn set_domain_fn,
+    MessageHandler* handler) {
+  Domain* to_domain = AddDomainHelper(to_domain_name, false, handler);
+  bool ret = false;
+  if (to_domain->IsWildcarded()) {
+    handler->Message(kError, "Cannot map to a wildcarded domain: %s",
+                     to_domain_name.as_string().c_str());
+  } else if (to_domain != NULL) {
+    std::vector<StringPiece> domains;
+    SplitStringPieceToVector(comma_separated_from_domains, ",", &domains, true);
+    for (int i = 0, n = domains.size(); i < n; ++i) {
+      const StringPiece& domain_name = domains[i];
+      Domain* from_domain = AddDomainHelper(domain_name, false, handler);
+      if (from_domain != NULL) {
+        (from_domain->*set_domain_fn)(to_domain);
         ret = true;
       }
     }

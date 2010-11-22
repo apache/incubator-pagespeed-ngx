@@ -67,6 +67,11 @@ std::string Origin(const GURL& gurl);
 // For "http://a.com/b/c/d?E=f/g returns "/b/c/d?e=f/g" including leading slash
 std::string PathAndLeaf(const GURL& gurl);
 
+// For "http://a.com/b/c/d?E=f/g returns "/b/c/d" including leading slash
+inline std::string Path(const GURL& gurl) {
+  return gurl.path();
+}
+
 }  // namespace GoogleUrl
 
 }  // namespace net_instaweb

@@ -72,6 +72,7 @@ class UrlPartnership {
   typedef std::vector<GURL*> GurlVector;
   GurlVector gurl_vector_;
   std::string domain_;
+  GURL domain_gurl_;
   const DomainLawyer* domain_lawyer_;
   GURL original_origin_and_path_;
 

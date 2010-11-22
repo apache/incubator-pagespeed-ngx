@@ -44,6 +44,7 @@ TEST_F(GoogleUrlTest, TestSpec) {
   EXPECT_EQ(std::string("d.ext?f=g/h"), GoogleUrl::Leaf(gurl_));
   EXPECT_EQ(std::string("http://a.com"), GoogleUrl::Origin(gurl_));
   EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"), GoogleUrl::PathAndLeaf(gurl_));
+  EXPECT_EQ(std::string("/b/c/d.ext"), GoogleUrl::Path(gurl_));
 }
 
 TEST_F(GoogleUrlTest, TestSpecWithPort) {
@@ -54,6 +55,7 @@ TEST_F(GoogleUrlTest, TestSpecWithPort) {
   EXPECT_EQ(std::string("http://a.com:8080"), GoogleUrl::Origin(gurl_with_port_));
   EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"),
             GoogleUrl::PathAndLeaf(gurl_with_port_));
+  EXPECT_EQ(std::string("/b/c/d.ext"), GoogleUrl::Path(gurl_));
 }
 
 TEST_F(GoogleUrlTest, ResolveRelative) {
@@ -63,6 +65,7 @@ TEST_F(GoogleUrlTest, ResolveRelative) {
   ASSERT_TRUE(resolved.is_valid());
   EXPECT_EQ(std::string("http://www.google.com/test.html"),
             GoogleUrl::Spec(resolved));
+  EXPECT_EQ(std::string("/test.html"), GoogleUrl::Path(resolved));
 }
 
 TEST_F(GoogleUrlTest, ResolveAbsolute) {
@@ -72,6 +75,7 @@ TEST_F(GoogleUrlTest, ResolveAbsolute) {
   ASSERT_TRUE(resolved.is_valid());
   EXPECT_EQ(std::string("http://www.google.com/"),
             GoogleUrl::Spec(resolved));
+  EXPECT_EQ(std::string("/"), GoogleUrl::Path(resolved));
 }
 
 }  // namespace net_instaweb

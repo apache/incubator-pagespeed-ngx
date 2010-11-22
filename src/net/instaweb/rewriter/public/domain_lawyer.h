@@ -61,23 +61,26 @@ class DomainLawyer {
   // it is always accessible to rewrite resources in the same domain as the
   // original.
   //
-  // Note the the returned mapped domain name cannot be directly used in a
-  // URL.  A GURL shold be composed via ResolvePath, below, which will
-  // take care of any sharding.
+  // TODO(jmarantz): the mapped domain name will not incorporate any sharding.
+  // This must be handled by another mapping function which has not yet
+  // been implemented.
   //
   // The returned mapped_domain_name will always end with a slash on success.
+  // The returned resolved_request incorporates rewrite-domain mapping and
+  // the original URL.
   //
   // Returns false on failure.
   bool MapRequestToDomain(const GURL& original_request,
                           const StringPiece& resource_url,
                           std::string* mapped_domain_name,
+                          GURL* resolved_request,
                           MessageHandler* handler) const;
 
-  // Note that ResolvePath does not perform any validation on the
-  // mapped domain name -- that's assumed to have been supplied
-  // by MapRequestToDomain above.
-  GURL ResolvePath(const StringPiece& mapped_domain_name,
-                   const StringPiece& path) const;
+  // Maps an origin resource; just prior to fetching it.  This fails
+  // if the input URL is not valid.  It succeeds even if there is no
+  // mapping done.  You must compare 'in' to 'out' to determine if
+  // mapping was done.
+  bool MapOrigin(const StringPiece& in, std::string* out) const;
 
   // The methods below this comment are intended only to be run only
   // at configuration time.
@@ -98,14 +101,22 @@ class DomainLawyer {
   // in the from_domains.
   //
   // This routine can be called multiple times for the same to_domain.  If
-  // the 'from' domains overlap due to wildcards, this will not be detected
-  // and the results will not be determined until MapRequestToDomain runs,
-  // which will report the ambiguity and return false.
+  // the 'from' domains overlap due to wildcards, this will not be detected.
+  bool AddRewriteDomainMapping(const StringPiece& to_domain,
+                               const StringPiece& comma_separated_from_domains,
+                               MessageHandler* handler);
+
+  // Adds a domain mapping, to assist with fetching resources from locally
+  // signficant names/ip-addresses.
   //
-  // TODO(jmarantz): implement this
-  bool AddDomainMapping(const StringPiece& to_domain,
-                        const StringPiece& comma_separated_from_domains,
-                        MessageHandler* handler);
+  // Wildcards may not be used in the to_domain, but they can be used
+  // in the from_domains.
+  //
+  // This routine can be called multiple times for the same to_domain.  If
+  // the 'from' domains overlap due to wildcards, this will not be detected.
+  bool AddOriginDomainMapping(const StringPiece& to_domain,
+                              const StringPiece& comma_separated_from_domains,
+                              MessageHandler* handler);
 
   // Specifies domain-sharding.  This implicitly calls AddDomain(to_domain).
   // The shard_pattern must include exactly one '%d'.
@@ -119,6 +130,19 @@ class DomainLawyer {
 
  private:
   class Domain;
+  typedef void (Domain::*SetDomainFn)(Domain* domain);
+
+  bool MapDomainHelper(
+      const StringPiece& to_domain_name,
+      const StringPiece& comma_separated_from_domains,
+      SetDomainFn set_domain_fn,
+      MessageHandler* handler);
+
+  Domain* AddDomainHelper(const StringPiece& domain_name,
+                          bool warn_on_duplicate,
+                          MessageHandler* handler);
+
+  Domain* FindDomain(const std::string& domain_name) const;
 
   typedef std::map<std::string, Domain*> DomainMap;
   DomainMap domain_map_;

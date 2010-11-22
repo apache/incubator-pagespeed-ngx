@@ -200,4 +200,18 @@ TEST_F(UrlPartnershipTest, RemoveLast) {
   EXPECT_EQ(styles_path_, partnership_.ResolvedBase());
 }
 
+TEST_F(UrlPartnershipTest, ResourcesFromMappedDomains) {
+  domain_lawyer_.AddRewriteDomainMapping(
+      "http://graphics8.nytimes.com", "http://www.nytimes.com",
+      &message_handler_);
+  domain_lawyer_.AddRewriteDomainMapping(
+      "http://graphics8.nytimes.com", "http://styles.com", &message_handler_);
+
+  // We can legally combine resources across multiple domains if they are
+  // all mapped together
+  ASSERT_TRUE(AddUrls(kCdnResourceUrl, kResourceUrl1,
+                      "http://styles.com/external.css"));
+  EXPECT_EQ("http://graphics8.nytimes.com/", partnership_.ResolvedBase());
+}
+
 }  // namespace net_instaweb

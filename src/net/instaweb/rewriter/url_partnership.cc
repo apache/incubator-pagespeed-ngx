@@ -40,13 +40,14 @@ UrlPartnership::~UrlPartnership() {
 }
 
 // Adds a URL to a combination.  If it can be legally added, consulting
-// the DomainLaywer, then true is returned.  AddUrl cannot be called
+// the DomainLawyer, then true is returned.  AddUrl cannot be called
 // after Resolve (CHECK failure).
 bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
                             MessageHandler* handler) {
   std::string resource_url, mapped_domain_name;
   bool ret = false;
   TrimWhitespace(untrimmed_resource_url, &resource_url);
+  GURL resolved_request;
 
   if (resource_url.empty()) {
     handler->Message(kInfo, "Cannot rewrite empty URL relative to %s",
@@ -58,20 +59,18 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
                      original_origin_and_path_.possibly_invalid_spec().c_str());
   } else if (domain_lawyer_->MapRequestToDomain(
       original_origin_and_path_, resource_url, &mapped_domain_name,
-      handler)) {
+      &resolved_request, handler)) {
     if (gurl_vector_.empty()) {
       domain_.swap(mapped_domain_name);
+      domain_gurl_ = GoogleUrl::Create(domain_).Resolve(
+          GoogleUrl::Path(original_origin_and_path_));
       ret = true;
     } else {
       ret = (domain_ == mapped_domain_name);
     }
 
     if (ret) {
-      // TODO(jmarantz): Consider getting the GURL out of the
-      // DomainLawyer instead of recomputing it.
-      GURL gurl = GoogleUrl::Resolve(original_origin_and_path_, resource_url);
-      CHECK(gurl.is_valid() && gurl.SchemeIs("http"));
-      gurl_vector_.push_back(new GURL(gurl));
+      gurl_vector_.push_back(new GURL(resolved_request));
       int index = gurl_vector_.size() - 1;
       IncrementalResolve(index);
     }

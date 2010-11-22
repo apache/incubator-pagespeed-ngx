@@ -395,7 +395,7 @@ Resource* ResourceManager::CreateInputResourceUnchecked(
                      url.possibly_invalid_spec().c_str());
     return NULL;
   }
-  const std::string& url_string = GoogleUrl::Spec(url);
+  std::string url_string = GoogleUrl::Spec(url);
 
   Resource* resource = NULL;
 

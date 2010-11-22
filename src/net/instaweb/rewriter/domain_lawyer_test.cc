@@ -38,6 +38,17 @@ class DomainLawyerTest : public testing::Test {
         port_request_("http://www.nytimes.com:8080/index.html"),
         https_request_("https://www.nytimes.com/index.html") {
   }
+
+  // Syntactic sugar to map a request.
+  bool MapRequest(const GURL& original_request,
+                  const StringPiece& resource_url,
+                  std::string* mapped_domain_name) {
+    GURL resolved_request;
+    return domain_lawyer_.MapRequestToDomain(
+        original_request, resource_url, mapped_domain_name, &resolved_request,
+        &message_handler_);
+  }
+
   GURL orig_request_;
   GURL port_request_;
   GURL https_request_;
@@ -47,33 +58,31 @@ class DomainLawyerTest : public testing::Test {
 
 TEST_F(DomainLawyerTest, RelativeDomain) {
   std::string mapped_domain_name;
-  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
-      orig_request_, kResourceUrl, &mapped_domain_name, &message_handler_));
+  ASSERT_TRUE(MapRequest(
+      orig_request_, kResourceUrl, &mapped_domain_name));
   EXPECT_EQ(kRequestDomain, mapped_domain_name);
 }
 
 TEST_F(DomainLawyerTest, AbsoluteDomain) {
   std::string mapped_domain_name;
-  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
+  ASSERT_TRUE(MapRequest(
       orig_request_, StrCat(kRequestDomain, kResourceUrl),
-      &mapped_domain_name, &message_handler_));
+      &mapped_domain_name));
   EXPECT_EQ(kRequestDomain, mapped_domain_name);
 }
 
 TEST_F(DomainLawyerTest, ExternalDomainNotDeclared) {
   std::string mapped_domain_name;
-  EXPECT_FALSE(domain_lawyer_.MapRequestToDomain(
-      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name,
-      &message_handler_));
+  EXPECT_FALSE(MapRequest(
+      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name));
 }
 
 TEST_F(DomainLawyerTest, ExternalDomainDeclared) {
   StringPiece cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 1);
   ASSERT_TRUE(domain_lawyer_.AddDomain(cdn_domain, &message_handler_));
   std::string mapped_domain_name;
-  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
-      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name,
-      &message_handler_));
+  ASSERT_TRUE(MapRequest(
+      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name));
   EXPECT_EQ(cdn_domain, mapped_domain_name);
 
   // Make sure that we do not allow requests when the port is present; we've
@@ -82,9 +91,9 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclared) {
   std::string orig_cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
   std::string port_cdn_domain(cdn_domain.data(), cdn_domain.size() - 1);
   port_cdn_domain += ":8080/";
-  EXPECT_FALSE(domain_lawyer_.MapRequestToDomain(
+  EXPECT_FALSE(MapRequest(
       orig_request_, StrCat(port_cdn_domain, "/", kResourceUrl),
-      &mapped_domain_name, &message_handler_));
+      &mapped_domain_name));
 }
 
 TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutScheme) {
@@ -92,9 +101,8 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutScheme) {
   ASSERT_TRUE(domain_lawyer_.AddDomain(kCdnPrefix + strlen("http://"),
                                        &message_handler_));
   std::string mapped_domain_name;
-  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
-      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name,
-      &message_handler_));
+  ASSERT_TRUE(MapRequest(
+      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name));
   EXPECT_EQ(cdn_domain, mapped_domain_name);
 }
 
@@ -103,9 +111,8 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutTrailingSlash) {
   StringPiece cdn_domain_no_slash(kCdnPrefix, sizeof(kCdnPrefix) - 2);
   ASSERT_TRUE(domain_lawyer_.AddDomain(cdn_domain_no_slash, &message_handler_));
   std::string mapped_domain_name;
-  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
-      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name,
-      &message_handler_));
+  ASSERT_TRUE(MapRequest(
+      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name));
   EXPECT_EQ(cdn_domain, mapped_domain_name);
 }
 
@@ -113,32 +120,30 @@ TEST_F(DomainLawyerTest, WildcardDomainDeclared) {
   StringPiece cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 1);
   ASSERT_TRUE(domain_lawyer_.AddDomain("*.nytimes.com", &message_handler_));
   std::string mapped_domain_name;
-  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
-      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name,
-      &message_handler_));
+  ASSERT_TRUE(MapRequest(
+      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name));
   EXPECT_EQ(cdn_domain, mapped_domain_name);
 }
 
 TEST_F(DomainLawyerTest, RelativeDomainPort) {
   std::string mapped_domain_name;
-  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
-      port_request_, kResourceUrl, &mapped_domain_name, &message_handler_));
+  ASSERT_TRUE(MapRequest(
+      port_request_, kResourceUrl, &mapped_domain_name));
   EXPECT_EQ(kRequestDomainPort, mapped_domain_name);
 }
 
 TEST_F(DomainLawyerTest, AbsoluteDomainPort) {
   std::string mapped_domain_name;
-  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
+  ASSERT_TRUE(MapRequest(
       port_request_, StrCat(kRequestDomainPort, kResourceUrl),
-      &mapped_domain_name, &message_handler_));
+      &mapped_domain_name));
   EXPECT_EQ(kRequestDomainPort, mapped_domain_name);
 }
 
 TEST_F(DomainLawyerTest, PortExternalDomainNotDeclared) {
   std::string mapped_domain_name;
-  EXPECT_FALSE(domain_lawyer_.MapRequestToDomain(
-      port_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name,
-      &message_handler_));
+  EXPECT_FALSE(MapRequest(
+      port_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name));
 }
 
 TEST_F(DomainLawyerTest, PortExternalDomainDeclared) {
@@ -146,9 +151,9 @@ TEST_F(DomainLawyerTest, PortExternalDomainDeclared) {
   port_cdn_domain += ":8080/";
   ASSERT_TRUE(domain_lawyer_.AddDomain(port_cdn_domain, &message_handler_));
   std::string mapped_domain_name;
-  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
+  ASSERT_TRUE(MapRequest(
       port_request_, StrCat(port_cdn_domain, kResourceUrl),
-      &mapped_domain_name, &message_handler_));
+      &mapped_domain_name));
   EXPECT_EQ(port_cdn_domain, mapped_domain_name);
 
   // Make sure that we do not allow requests when the port is missing; we've
@@ -156,9 +161,9 @@ TEST_F(DomainLawyerTest, PortExternalDomainDeclared) {
   // not "http://www.nytimes.com:8080
   std::string orig_cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
   orig_cdn_domain += "/";
-  EXPECT_FALSE(domain_lawyer_.MapRequestToDomain(
+  EXPECT_FALSE(MapRequest(
       port_request_, StrCat(orig_cdn_domain, kResourceUrl),
-      &mapped_domain_name, &message_handler_));
+      &mapped_domain_name));
 }
 
 TEST_F(DomainLawyerTest, PortWildcardDomainDeclared) {
@@ -166,9 +171,9 @@ TEST_F(DomainLawyerTest, PortWildcardDomainDeclared) {
   port_cdn_domain += ":8080/";
   ASSERT_TRUE(domain_lawyer_.AddDomain("*.nytimes.com:*", &message_handler_));
   std::string mapped_domain_name;
-  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
+  ASSERT_TRUE(MapRequest(
       port_request_, StrCat(port_cdn_domain, kResourceUrl),
-      &mapped_domain_name, &message_handler_));
+      &mapped_domain_name));
   EXPECT_EQ(port_cdn_domain, mapped_domain_name);
 }
 
@@ -177,12 +182,12 @@ TEST_F(DomainLawyerTest, ResourceFromHttpsPage) {
   std::string mapped_domain_name;
 
   // When a relative resource is requested from an https page we will fail.
-  ASSERT_FALSE(domain_lawyer_.MapRequestToDomain(
+  ASSERT_FALSE(MapRequest(
       https_request_, kResourceUrl,
-      &mapped_domain_name, &message_handler_));
-  ASSERT_TRUE(domain_lawyer_.MapRequestToDomain(
+      &mapped_domain_name));
+  ASSERT_TRUE(MapRequest(
       https_request_, StrCat(kRequestDomain, kResourceUrl),
-      &mapped_domain_name, &message_handler_));
+      &mapped_domain_name));
 }
 
 TEST_F(DomainLawyerTest, AddDomainRedundantly) {
@@ -195,32 +200,76 @@ TEST_F(DomainLawyerTest, AddDomainRedundantly) {
 TEST_F(DomainLawyerTest, VerifyPortIsDistinct1) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com", &message_handler_));
   std::string mapped_domain_name;
-  EXPECT_FALSE(domain_lawyer_.MapRequestToDomain(
+  EXPECT_FALSE(MapRequest(
       GURL("http://www.other.com/index.html"),
       "http://www.example.com:81/styles.css",
-      &mapped_domain_name, &message_handler_));
+      &mapped_domain_name));
 }
 
 TEST_F(DomainLawyerTest, VerifyPortIsDistinct2) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com:81", &message_handler_));
   std::string mapped_domain_name;
-  EXPECT_FALSE(domain_lawyer_.MapRequestToDomain(
+  EXPECT_FALSE(MapRequest(
       GURL("http://www.other.com/index.html"),
       "http://www.example.com/styles.css",
-      &mapped_domain_name, &message_handler_));
+      &mapped_domain_name));
 }
 
 TEST_F(DomainLawyerTest, VerifyWildcardedPortSpec) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com*", &message_handler_));
   std::string mapped_domain_name;
-  EXPECT_TRUE(domain_lawyer_.MapRequestToDomain(
+  EXPECT_TRUE(MapRequest(
       GURL("http://www.other.com/index.html"),
       "http://www.example.com/styles.css",
-      &mapped_domain_name, &message_handler_));
-  EXPECT_TRUE(domain_lawyer_.MapRequestToDomain(
+      &mapped_domain_name));
+  EXPECT_TRUE(MapRequest(
       GURL("http://www.other.com/index.html"),
       "http://www.example.com:81/styles.css",
-      &mapped_domain_name, &message_handler_));
+      &mapped_domain_name));
+}
+
+TEST_F(DomainLawyerTest, MapRewriteDomain) {
+  ASSERT_TRUE(domain_lawyer_.AddDomain("http://cdn.com/", &message_handler_));
+  ASSERT_TRUE(domain_lawyer_.AddDomain("http://origin.com/",
+                                       &message_handler_));
+  ASSERT_TRUE(domain_lawyer_.AddRewriteDomainMapping("http://cdn.com",
+                                              "http://origin.com",
+                                              &message_handler_));
+  // First try the mapping from origin.com to cdn.com
+  std::string mapped_domain_name;
+  ASSERT_TRUE(MapRequest(
+      GoogleUrl::Create(StringPiece("http://www.origin.com/index.html")),
+      "http://origin.com/styles/blue.css",
+      &mapped_domain_name));
+  EXPECT_EQ("http://cdn.com/", mapped_domain_name);
+
+  // But a relative reference will not map because we mapped origin.com,
+  // not www.origin.com
+  ASSERT_TRUE(MapRequest(
+      GoogleUrl::Create(StringPiece("http://www.origin.com/index.html")),
+      "styles/blue.css",
+      &mapped_domain_name));
+  EXPECT_EQ("http://www.origin.com/", mapped_domain_name);
+
+  // Now add the mapping from www.
+  ASSERT_TRUE(domain_lawyer_.AddRewriteDomainMapping("http://cdn.com",
+                                                     "http://www.origin.com",
+                                                     &message_handler_));
+
+  ASSERT_TRUE(MapRequest(
+      GoogleUrl::Create(StringPiece("http://www.origin.com/index.html")),
+      "styles/blue.css",
+      &mapped_domain_name));
+  EXPECT_EQ("http://cdn.com/", mapped_domain_name);
+}
+
+TEST_F(DomainLawyerTest, MapOriginDomain) {
+  ASSERT_TRUE(domain_lawyer_.AddOriginDomainMapping(
+      "http://localhost:8080", "http://origin.com:8080", &message_handler_));
+  std::string mapped;
+  ASSERT_TRUE(domain_lawyer_.MapOrigin("http://origin.com:8080/a/b/c?d=f",
+                                       &mapped));
+  EXPECT_EQ("http://localhost:8080/a/b/c?d=f", mapped);
 }
 
 }  // namespace net_instaweb

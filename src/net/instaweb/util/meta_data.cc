@@ -34,6 +34,7 @@ const char HttpAttributes::kDeflate[] = "deflate";
 const char HttpAttributes::kEtag[] = "Etag";
 const char HttpAttributes::kExpires[] = "Expires";
 const char HttpAttributes::kGzip[] = "gzip";
+const char HttpAttributes::kHost[] = "Host";
 const char HttpAttributes::kLastModified[] = "Last-Modified";
 const char HttpAttributes::kLocation[] = "Location";
 const char HttpAttributes::kReferer[] = "Referer"; // sic
