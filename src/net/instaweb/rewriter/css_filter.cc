@@ -124,6 +124,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
       CHECK(element == style_char_node_->parent());  // Sanity check.
       std::string new_content;
       if (RewriteCssText(style_char_node_->contents(), &new_content,
+                         StrCat("inline CSS in ", html_parse_->url()),
                          html_parse_->message_handler())) {
         // Note: Copy of new_content here.
         HtmlCharactersNode* new_style_char_node =
@@ -153,8 +154,11 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
 
 // Return value answers the question: May we rewrite?
 // If return false, out_text is undefined.
+// id should be the URL for external CSS and other identifying info
+// for inline CSS. It is used to log where the CSS parsing error was.
 bool CssFilter::RewriteCssText(const StringPiece& in_text,
                                std::string* out_text,
+                               const std::string& id,
                                MessageHandler* handler) {
   // Load stylesheet w/o expanding background attributes.
   Css::Parser parser(in_text);
@@ -162,6 +166,7 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
 
   bool ret = false;
   if (parser.errors_seen_mask() != Css::Parser::kNoError) {
+    html_parse_->InfoHere("CSS parsing error in %s", id.c_str());
     if (num_parse_failures_ != NULL) {
       num_parse_failures_->Add(1);
     }
@@ -182,6 +187,7 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
     // Don't rewrite if we blanked the CSS file! (This is a parse error)
     if (out_text_size == 0) {
       ret = false;
+      html_parse_->InfoHere("CSS parsing error in %s", id.c_str());
       if (num_parse_failures_ != NULL) {
         num_parse_failures_->Add(1);
       }
@@ -316,7 +322,7 @@ bool CssFilter::RewriteLoadedResource(const Resource* input_resource,
     // Rewrite stylesheet.
     StringPiece in_contents = input_resource->contents();
     std::string out_contents;
-    if (!RewriteCssText(in_contents, &out_contents,
+    if (!RewriteCssText(in_contents, &out_contents, input_resource->url(),
                         html_parse_->message_handler())) {
       return false;
     }

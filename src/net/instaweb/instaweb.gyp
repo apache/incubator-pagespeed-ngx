@@ -61,6 +61,7 @@
         'util/mock_hasher.cc',
         'util/mock_timer.cc',
         'util/null_message_handler.cc',
+        'util/null_writer.cc',
         'util/pthread_mutex.cc',
         'util/ref_counted.cc',
         'util/rolling_hash.cc',

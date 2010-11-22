@@ -75,7 +75,7 @@ class CssFilter : public RewriteSingleResourceFilter {
 
  private:
   bool RewriteCssText(const StringPiece& in_text, std::string* out_text,
-                      MessageHandler* handler);
+                      const std::string& id, MessageHandler* handler);
   bool RewriteExternalCss(const StringPiece& in_url, std::string* out_url);
   bool RewriteExternalCssToResource(Resource* input_resource,
                                     OutputResource* output_resource);

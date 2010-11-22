@@ -19,8 +19,9 @@
 #include <string>
 #include <vector>
 #include "base/basictypes.h"
-#include "net/instaweb/util/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/util/public/url_async_fetcher.h"
 
 struct apr_pool_t;
 struct serf_context_t;
@@ -41,38 +42,6 @@ struct SerfStats {
   static const char kSerfFetchTimeDurationMs[];
   static const char kSerfFetchCancelCount[];
   static const char kSerfFetchOutstandingCount[];
-};
-
-class SerfAsyncCallback : public UrlAsyncFetcher::Callback {
- public:
-  SerfAsyncCallback()
-      : done_(false),
-        success_(false),
-        released_(false) {}
-  virtual ~SerfAsyncCallback() {}
-  virtual void Done(bool success)  {
-    done_ = true;
-    success_ = success;
-    if (released_) {
-      delete this;
-    }
-  }
-
-  void Release() {
-    released_ = true;
-    if (done_) {
-      delete this;
-    }
-  }
-
-  bool done() const { return done_; }
-  bool success() const { return success_; }
- private:
-  bool done_;
-  bool success_;
-  bool released_;
-
-  DISALLOW_COPY_AND_ASSIGN(SerfAsyncCallback);
 };
 
 class SerfUrlAsyncFetcher : public UrlAsyncFetcher {

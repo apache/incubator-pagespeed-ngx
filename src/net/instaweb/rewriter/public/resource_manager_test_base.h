@@ -36,6 +36,7 @@
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/mock_url_fetcher.h"
+#include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include <string>
@@ -206,6 +207,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Callback that can be used for testing resource fetches.  As all the
   // async fetchers in unit-tests call their callbacks immediately, it
   // is safe to put this on the stack, rather than having it self-delete.
+  // TODO(sligocki): Do we need this and DummyCallback, could we give this
+  // a more descriptive name? MockCallback?
   class FetchCallback : public UrlAsyncFetcher::Callback {
    public:
     FetchCallback() : success_(false), done_(false) {}
@@ -213,7 +216,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
       success_ = success;
       done_ = true;
     }
+
     bool success() const { return success_; }
+    bool done() const { return done_; }
+
    private:
     bool success_;
     bool done_;
@@ -239,6 +245,19 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     bool fetched = rewrite_driver_.FetchResource(
         url, request_headers, &response_headers, &writer, &message_handler_,
         &callback);
+    EXPECT_TRUE(callback.done());
+    return fetched && callback.success();
+  }
+
+  // Just check if we can fetch a resource successfully, ignore response.
+  bool TryFetchResource(const StringPiece& url) {
+    SimpleMetaData request_headers, response_headers;
+    NullWriter response_writer;
+    FetchCallback callback;
+    bool fetched = rewrite_driver_.FetchResource(
+        url, request_headers, &response_headers, &response_writer,
+        &message_handler_, &callback);
+    EXPECT_TRUE(callback.done());
     return fetched && callback.success();
   }
 

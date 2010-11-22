@@ -50,6 +50,7 @@
         'apache/log_message_handler.cc',
         'apache/serf_url_async_fetcher.cc',
         'apache/serf_url_fetcher.cc',
+        'apache/serf_async_callback.cc',
       ],
       'export_dependent_settings': [
         '<(instaweb_root)/instaweb.gyp:instaweb_util',

@@ -17,6 +17,7 @@
 #include <algorithm>
 #include "base/basictypes.h"
 #include "net/instaweb/apache/apr_timer.h"
+#include "net/instaweb/apache/serf_async_callback.h"
 
 namespace net_instaweb {
 
@@ -34,10 +35,11 @@ bool SerfUrlFetcher::StreamingFetchUrl(const std::string& url,
                                        MetaData* response_headers,
                                        Writer* fetched_content_writer,
                                        MessageHandler* message_handler) {
-  SerfAsyncCallback* callback = new SerfAsyncCallback();
+  SerfAsyncCallback* callback = new SerfAsyncCallback(
+      response_headers, fetched_content_writer);
   async_fetcher_->StreamingFetch(
-      url, request_headers, response_headers,
-      fetched_content_writer, message_handler, callback);
+      url, request_headers, callback->response_headers(),
+      callback->writer(), message_handler, callback);
 
   AprTimer timer;
   for (int64 start_ms = timer.NowMs(), now_ms = start_ms;

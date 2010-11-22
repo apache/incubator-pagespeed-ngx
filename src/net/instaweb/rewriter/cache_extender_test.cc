@@ -98,11 +98,6 @@ TEST_F(CacheExtenderTest, ServeFiles) {
   EXPECT_EQ(std::string(kImageData), content);
   ASSERT_TRUE(ServeResource(DOMAIN, kFilterId, "c,l", "js", &content));
   EXPECT_EQ(std::string(kJsData), content);
-
-  // TODO(jmarantz): make 3 variations of this test:
-  //  1. Gets the data from the cache, with no mock fetchers, null file system
-  //  2. Gets the data from the file system, with no cache, no mock fetchers.
-  //  3. Gets the data from the mock fetchers: no cache, no file system.
 }
 
 TEST_F(CacheExtenderTest, ServeFilesFromDelayedFetch) {
@@ -116,6 +111,11 @@ TEST_F(CacheExtenderTest, ServeFilesFromDelayedFetch) {
   ServeResourceFromManyContexts(DOMAIN "ce.0.c,l.js",
                                 RewriteOptions::kExtendCache,
                                 &mock_hasher_, kJsData);
+
+  // TODO(jmarantz): make ServeResourceFromManyContexts check:
+  //  1. Gets the data from the cache, with no mock fetchers, null file system
+  //  2. Gets the data from the file system, with no cache, no mock fetchers.
+  //  3. Gets the data from the mock fetchers: no cache, no file system.
 }
 
 TEST_F(CacheExtenderTest, MinimizeCacheHits) {
