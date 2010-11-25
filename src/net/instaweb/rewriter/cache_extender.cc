@@ -142,8 +142,10 @@ bool CacheExtender::RewriteLoadedResource(const Resource* input_resource,
   MessageHandler* message_handler = html_parse_->message_handler();
   StringPiece contents(input_resource->contents());
   std::string absolutified;
-  // TODO(sligocki): Don't absolutify if same directory.
-  if (input_resource->type() == &kContentTypeCss) {
+  std::string input_dir =
+      GoogleUrl::AllExceptLeaf(GoogleUrl::Create(input_resource->url()));
+  if ((input_resource->type() == &kContentTypeCss) &&
+      (input_dir != output_resource->resolved_base())) {
     // TODO(jmarantz): find a mechanism to write this directly into
     // the HTTPValue so we can reduce the number of times that we
     // copy entire resources.

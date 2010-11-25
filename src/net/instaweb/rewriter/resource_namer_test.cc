@@ -35,25 +35,27 @@ TEST_F(ResourceNamerTest, TestEncode) {
   // Stand up a minimal resource manager that only has the
   // resources we should need to encode.
   full_name_.set_id("id");
-  full_name_.set_name("name");
+  full_name_.set_name("name.ext.as.many.as.I.like");
   full_name_.set_hash("hash");
   full_name_.set_ext("ext");
-  EXPECT_EQ(std::string("id.hash.name.ext"),
+  EXPECT_EQ(std::string("name.ext.as.many.as.I.like.pagespeed.id.hash.ext"),
             full_name_.Encode());
-  EXPECT_EQ(std::string("id.name"), full_name_.EncodeIdName());
+  EXPECT_EQ(std::string("id.name.ext.as.many.as.I.like"),
+            full_name_.EncodeIdName());
   EXPECT_EQ(std::string("hash.ext"), full_name_.EncodeHashExt());
 }
 
 TEST_F(ResourceNamerTest, TestDecode) {
-  EXPECT_TRUE(full_name_.Decode("id.hash.name.ext"));
+  EXPECT_TRUE(full_name_.Decode(
+      "name.ext.as.many.as.I.like.pagespeed.id.hash.ext"));
   EXPECT_EQ("id", full_name_.id());
-  EXPECT_EQ("name", full_name_.name());
+  EXPECT_EQ("name.ext.as.many.as.I.like", full_name_.name());
   EXPECT_EQ("hash", full_name_.hash());
   EXPECT_EQ("ext", full_name_.ext());
 }
 
 TEST_F(ResourceNamerTest, TestDecodeTooMany) {
-  EXPECT_FALSE(full_name_.Decode("id.name.hash.ext.extra_dot"));
+  EXPECT_TRUE(full_name_.Decode("name.extra_dot.pagespeed.id.hash.ext"));
   EXPECT_FALSE(full_name_.DecodeHashExt("id.hash.ext"));
 }
 

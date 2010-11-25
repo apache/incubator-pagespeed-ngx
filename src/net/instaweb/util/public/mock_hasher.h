@@ -28,7 +28,9 @@ class MockHasher : public Hasher {
  public:
   MockHasher() {}
   virtual ~MockHasher();
-  virtual std::string Hash(const StringPiece& content) const;
+
+  virtual std::string Hash(const StringPiece& content) const { return "0"; }
+  virtual int HashSizeInChars() const { return 1; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockHasher);

@@ -104,30 +104,7 @@ class RewriteDriverFactory {
 
   bool set_filename_prefix(StringPiece p);
 
-  // TODO(jmarantz):
-  // Remove all these methods in favor of simply exposing the RewriteOptions*.
-  void set_css_outline_min_bytes(int64 t) {
-    options_.set_css_outline_min_bytes(t);
-  }
-  void set_js_outline_min_bytes(int64 t) {
-    options_.set_js_outline_min_bytes(t);
-  }
-  void set_img_inline_max_bytes(int64 x) {
-    options_.set_img_inline_max_bytes(x);
-  }
-  void set_css_inline_max_bytes(int64 x) {
-    options_.set_css_inline_max_bytes(x);
-  }
-  void set_js_inline_max_bytes(int64 x) {
-    options_.set_js_inline_max_bytes(x);
-  }
-  void set_img_max_rewrites_at_once(int x) {
-    options_.set_img_max_rewrites_at_once(x);
-  }
-  void set_beacon_url(const StringPiece& p) {
-    options_.set_beacon_url(p);
-  }
-
+  RewriteOptions* options() { return &options_; }
   MessageHandler* html_parse_message_handler();
   MessageHandler* message_handler();
   FileSystem* file_system();
@@ -139,19 +116,6 @@ class RewriteDriverFactory {
   HTTPCache* http_cache();
 
   StringPiece filename_prefix();
-
-  // Sets the rewrite level.
-  void SetRewriteLevel(RewriteOptions::RewriteLevel level);
-
-  // Adds an additional set of filters the enabled set.  Returns false
-  // if any of the filter names are invalid, but all the valid ones
-  // will be added anyway.
-  bool AddEnabledFilters(const StringPiece& filter_names);
-
-  // Adds an additional set of filters the disabled set.  Returns false
-  // if any of the filter names are invalid, but all the valid ones
-  // will be added anyway.
-  bool AddDisabledFilters(const StringPiece& filter_names);
 
   // Computes URL fetchers using the based fetcher, and optionally,
   // slurp_directory and slurp_read_only.

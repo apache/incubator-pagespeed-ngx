@@ -31,12 +31,12 @@ namespace net_instaweb {
 
 namespace {
 
-#define DOMAIN "http://test.com/"
+static const char kDomain[] = "http://test.com/";
 
 const char kHtmlFormat[] =
-    "<link rel='stylesheet' href='%s.css' type='text/css'>\n"
-    "<img src='%s.jpg'/>\n"
-    "<script type='text/javascript' src='%s.js'></script>\n";
+    "<link rel='stylesheet' href='%s' type='text/css'>\n"
+    "<img src='%s'/>\n"
+    "<script type='text/javascript' src='%s'></script>\n";
 
 const char kCssData[] = ".blue {color: blue;}";
 const char kImageData[] = "Invalid JPEG but it does not matter for this test";
@@ -58,57 +58,61 @@ class CacheExtenderTest : public ResourceManagerTestBase {
   }
 
   // Generate HTML loading 3 resources with the specified URLs
-  std::string GenerateHtml(const char* a, const char* b, const char* c) {
-    return StringPrintf(kHtmlFormat, a, b, c);
+  std::string GenerateHtml(const std::string& a,
+                            const std::string& b,
+                            const std::string& c) {
+    return StringPrintf(kHtmlFormat, a.c_str(), b.c_str(), c.c_str());
   }
 };
 
 TEST_F(CacheExtenderTest, DoExtend) {
   InitTest(100);
   for (int i = 0; i < 3; i++) {
-    ValidateExpected("do_extend",
-                     GenerateHtml("a", "b", "c").c_str(),
-                     GenerateHtml(DOMAIN "ce.0.a,s",
-                                  DOMAIN "ce.0.b,j",
-                                  DOMAIN "ce.0.c,l").c_str());
+    ValidateExpected(
+        "do_extend",
+        GenerateHtml("a.css", "b.jpg", "c.js"),
+        GenerateHtml(
+            Encode(kDomain, "ce", "0", "a.css", "css"),
+            Encode(kDomain, "ce", "0", "b.jpg", "jpg"),
+            Encode(kDomain, "ce", "0", "c.js", "js")));
   }
 }
 
 TEST_F(CacheExtenderTest, NoExtendAlreadyCachedProperly) {
   InitTest(100000000);  // cached for a long time to begin with
   ValidateExpected("no_extend_cached_properly",
-                   GenerateHtml("a", "b", "c").c_str(),
-                   GenerateHtml("a", "b", "c").c_str());
+                   GenerateHtml("a.css", "b.jpg", "c.js"),
+                   GenerateHtml("a.css", "b.jpg", "c.js"));
 }
 
 TEST_F(CacheExtenderTest, NoExtendOriginUncacheable) {
   InitTest(0);  // origin not cacheable
   ValidateExpected("no_extend_origin_not_cacheable",
-                   GenerateHtml("a", "b", "c").c_str(),
-                   GenerateHtml("a", "b", "c").c_str());
+                   GenerateHtml("a.css", "b.jpg", "c.js"),
+                   GenerateHtml("a.css", "b.jpg", "c.js"));
 }
 
 TEST_F(CacheExtenderTest, ServeFiles) {
   std::string content;
 
   InitTest(100);
-  ASSERT_TRUE(ServeResource(DOMAIN, kFilterId, "a,s", "css", &content));
+  ASSERT_TRUE(ServeResource(kDomain, kFilterId, "a.css", "css", &content));
   EXPECT_EQ(std::string(kCssData), content);
-  ASSERT_TRUE(ServeResource(DOMAIN, kFilterId, "b,j", "jpg", &content));
+  ASSERT_TRUE(ServeResource(kDomain, kFilterId, "b.jpg", "jpg", &content));
   EXPECT_EQ(std::string(kImageData), content);
-  ASSERT_TRUE(ServeResource(DOMAIN, kFilterId, "c,l", "js", &content));
+  ASSERT_TRUE(ServeResource(kDomain, kFilterId, "c.js", "js", &content));
   EXPECT_EQ(std::string(kJsData), content);
 }
 
 TEST_F(CacheExtenderTest, ServeFilesFromDelayedFetch) {
   InitTest(100);
-  ServeResourceFromManyContexts(DOMAIN "ce.0.a,s.css",
+  ServeResourceFromManyContexts(Encode(kDomain, "ce", "0", "a.css", "css"),
                                 RewriteOptions::kExtendCache,
                                 &mock_hasher_, kCssData);
-  ServeResourceFromManyContexts(DOMAIN "ce.0.b,j.jpg",
+  ServeResourceFromManyContexts(Encode(kDomain, "ce", "0", "b.jpg", "jpg"),
                                 RewriteOptions::kExtendCache,
                                 &mock_hasher_, kImageData);
-  ServeResourceFromManyContexts(DOMAIN "ce.0.c,l.js",
+  ServeResourceFromManyContexts(Encode(kDomain, "ce", "0", "c.js", "js"),
                                 RewriteOptions::kExtendCache,
                                 &mock_hasher_, kJsData);
 
@@ -125,8 +129,9 @@ TEST_F(CacheExtenderTest, MinimizeCacheHits) {
   options.set_css_outline_min_bytes(1);
   rewrite_driver_.AddFilters(options);
   std::string html_input = StrCat("<style>", kCssData, "</style>");
-  const char html_output[] =
-      "<link rel='stylesheet' href='http://test.com/co.0._.css'>";
+  std::string html_output = StringPrintf(
+      "<link rel='stylesheet' href='%s'>",
+      Encode(kDomain, "co", "0", "_", "css").c_str());
   ValidateExpected("no_extend_origin_not_cacheable", html_input, html_output);
 
   // The key thing about this test is that the CacheExtendFilter should

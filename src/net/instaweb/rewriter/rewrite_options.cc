@@ -96,7 +96,10 @@ RewriteOptions::RewriteOptions()
       css_outline_min_bytes_(kDefaultCssInlineMaxBytes),
       js_outline_min_bytes_(kDefaultJsInlineMaxBytes),
       num_shards_(0),
-      beacon_url_(kDefaultBeaconUrl) {
+      beacon_url_(kDefaultBeaconUrl),
+      max_url_segment_size_(kMaxUrlSegmentSize),
+      max_url_size_(kMaxUrlSize),
+      enabled_(true) {
   // TODO: If we instantiate many RewriteOptions, this should become a
   // public static method called once at startup.
   SetUp();
@@ -176,19 +179,13 @@ bool RewriteOptions::AddCommaSeparatedListToFilterSet(
   return ret;
 }
 
-void RewriteOptions::Reset() {
-  level_ = kPassThrough;
-  enabled_filters_.clear();
-  disabled_filters_.clear();
-}
-
 bool RewriteOptions::Enabled(Filter filter) const {
   if (disabled_filters_.find(filter) != disabled_filters_.end()) {
     return false;
   }
 
   RewriteLevelToFilterSetMap::const_iterator it =
-      level_filter_set_map_.find(level_);
+      level_filter_set_map_.find(level_.value());
   if (it != level_filter_set_map_.end()) {
     const FilterSet& filters = it->second;
     if (filters.find(filter) != filters.end()) {
@@ -197,6 +194,45 @@ bool RewriteOptions::Enabled(Filter filter) const {
   }
 
   return (enabled_filters_.find(filter) != enabled_filters_.end());
+}
+
+void RewriteOptions::Merge(const RewriteOptions& first,
+                           const RewriteOptions& second) {
+  enabled_filters_ = first.enabled_filters_;
+  disabled_filters_ = first.disabled_filters_;
+  for (FilterSet::const_iterator p = second.enabled_filters_.begin(),
+           e = second.enabled_filters_.end(); p != e; ++p) {
+    Filter filter = *p;
+    disabled_filters_.erase(filter);
+    enabled_filters_.insert(filter);
+  }
+  disabled_filters_.insert(second.disabled_filters_.begin(),
+                           second.disabled_filters_.end());
+
+  // TODO(jmarantz): Use a virtual base class for Option so we can put
+  // this in a loop.  Or something.
+  level_.Merge(first.level_,
+               second.level_);
+  css_inline_max_bytes_.Merge(first.css_inline_max_bytes_,
+                              second.css_inline_max_bytes_);
+  img_inline_max_bytes_.Merge(first.img_inline_max_bytes_,
+                              second.img_inline_max_bytes_);
+  img_max_rewrites_at_once_.Merge(first.img_max_rewrites_at_once_,
+                                  second.img_max_rewrites_at_once_);
+  js_inline_max_bytes_.Merge(first.js_inline_max_bytes_,
+                             second.js_inline_max_bytes_);
+  css_outline_min_bytes_.Merge(first.css_outline_min_bytes_,
+                               second.css_outline_min_bytes_);
+  js_outline_min_bytes_.Merge(first.js_outline_min_bytes_,
+                              second.js_outline_min_bytes_);
+  num_shards_.Merge(first.num_shards_,
+                    second.num_shards_);
+  beacon_url_.Merge(first.beacon_url_,
+                    second.beacon_url_);
+  max_url_segment_size_.Merge(first.max_url_segment_size_,
+                              second.max_url_segment_size_);
+  max_url_size_.Merge(first.max_url_size_,
+                      second.max_url_size_);
 }
 
 }  // namespace net_instaweb

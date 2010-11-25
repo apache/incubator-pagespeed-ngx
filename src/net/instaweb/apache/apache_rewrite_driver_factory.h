@@ -61,8 +61,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   void set_fetcher_proxy(const StringPiece& x) {
     x.CopyToString(&fetcher_proxy_);
   }
-  void set_enabled(bool x) { enabled_ = x; }
-  bool enabled() { return enabled_; }
 
   StringPiece file_cache_path() { return file_cache_path_; }
   int64 file_cache_clean_size_kb() { return file_cache_clean_size_kb_; }
@@ -119,7 +117,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   std::string file_cache_path_;
   std::string fetcher_proxy_;
   std::string version_;
-  bool enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };

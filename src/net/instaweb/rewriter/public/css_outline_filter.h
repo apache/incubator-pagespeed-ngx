@@ -60,7 +60,7 @@ class CssOutlineFilter : public CommonFilter {
   virtual const char* Name() const { return "OutlineCss"; }
 
  private:
-  bool WriteResource(const std::string& content, OutputResource* resource,
+  bool WriteResource(const StringPiece& content, OutputResource* resource,
                      MessageHandler* handler);
   void OutlineStyle(HtmlElement* element, const std::string& content);
 

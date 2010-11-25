@@ -36,4 +36,8 @@ int64 Timer::NowMs() const {
   return NowUs() / 1000;
 }
 
+void Timer::SleepMs(int64 ms) {
+  SleepUs(ms * 1000);
+}
+
 }  // namespace net_instaweb

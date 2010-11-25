@@ -25,8 +25,4 @@ const int64 MockTimer::kApr_5_2010_ms = 1270493486000LL;
 MockTimer::~MockTimer() {
 }
 
-int64 MockTimer::NowUs() const {
-  return time_ms_ * 1000;
-}
-
 }  // namespace net_instaweb

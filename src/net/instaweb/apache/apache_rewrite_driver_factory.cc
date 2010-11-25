@@ -45,14 +45,13 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       file_cache_clean_size_kb_(100 * 1024),  // 100 megabytes
       fetcher_time_out_ms_(5 * Timer::kSecondMs),
       slurp_flush_limit_(0),
-      version_(version.data(), version.size()),
-      enabled_(true) {
+      version_(version.data(), version.size()) {
   apr_pool_create(&pool_, pool);
   cache_mutex_.reset(NewMutex());
   rewrite_drivers_mutex_.reset(NewMutex());
 
   // In Apache, we default to using the "core filters".
-  SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options()->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
 }
 
 ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {

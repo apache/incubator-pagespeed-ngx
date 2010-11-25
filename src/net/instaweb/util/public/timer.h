@@ -42,6 +42,12 @@ class Timer {
 
   // Returns number of microseconds since 1970.
   virtual int64 NowUs() const = 0;
+
+  // Sleep for given number of milliseconds.
+  virtual void SleepMs(int64 ms);
+
+  // Sleep for given number of microseconds.
+  virtual void SleepUs(int64 us) = 0;
 };
 
 }  // namespace net_instaweb

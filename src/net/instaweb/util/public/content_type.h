@@ -27,11 +27,21 @@ namespace net_instaweb {
 
 struct ContentType {
  public:
+  enum Type {
+    kCss,
+    kJavascript,
+    kPng,
+    kGif,
+    kJpeg,
+    kText,
+  };
+
   const char* mime_type() const { return mime_type_; }
   const char* file_extension() const { return file_extension_; }
 
   const char* mime_type_;
-  const char* file_extension_;
+  const char* file_extension_;  // includes ".", e.g. ".ext"
+  Type type_;
 };
 
 extern const ContentType& kContentTypeJavascript;

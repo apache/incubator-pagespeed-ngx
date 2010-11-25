@@ -23,37 +23,73 @@
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/string_hash.h"
 
+namespace net_instaweb {
+
 namespace {
 
+// The format of all resource names is:
+//
+//  ORIGINAL_NAME.ID.pagespeed.HASH.EXT
+//
+// "pagespeed" is what we'll call the system ID.  Rationale:
+//   1. Any abbreviation of this will not be well known, e.g.
+//         ps, mps (mod page speed), psa (page speed automatic)
+//      and early reports from users indicate confusion over
+//      the gibberish names in our resources.
+//   2. "pagespeed" is the family of products now, not just the
+//      firebug plug in.  Page Speed Automatic is the proper name for
+//      the rewriting technology but it's longer, and "pagespeed" solves the
+//      "WTF is this garbage in my URL" problem.
+//   3. "mod_pagespeed" is slightly longer if/when this technology
+//      is ported to other servers then the "mod_" is less relevant.
+//
+// If you change this, or the structure of the encoded string,
+// you will also need to change:
+//
+// apache/install/system_test.sh
+//
+// Plus a few constants in _test.cc files.
+
+static const char kSystemId[] = "pagespeed";
+static const int kNumSegments = 5;
 static const char kSeparatorString[] = ".";
 static const char kSeparatorChar = kSeparatorString[0];
 
+bool TokenizeSegmentFromRight(StringPiece* src, std::string* dest) {
+  StringPiece::size_type pos = src->rfind(kSeparatorChar);
+  if (pos == StringPiece::npos) {
+    return false;
+  }
+  src->substr(pos + 1).CopyToString(dest);
+  *src = src->substr(0, pos);
+  return true;
+}
+
 }  // namespace
 
-namespace net_instaweb {
-
-const int ResourceNamer::kOverhead = 3;  // The three '.' separators.
+const int ResourceNamer::kOverhead = 4 + sizeof(kSystemId) - 1;
 
 bool ResourceNamer::Decode(const StringPiece& encoded_string) {
-  std::vector<StringPiece> names;
-  SplitStringPieceToVector(encoded_string, kSeparatorString, &names, true);
-  bool ret = (names.size() == 4);
-  if (ret) {
-    names[0].CopyToString(&id_);
-    names[1].CopyToString(&hash_);
-    names[2].CopyToString(&name_);
-    names[3].CopyToString(&ext_);
+  StringPiece src(encoded_string);
+  std::string system_id;
+  if (TokenizeSegmentFromRight(&src, &ext_) &&
+      TokenizeSegmentFromRight(&src, &hash_) &&
+      TokenizeSegmentFromRight(&src, &id_) &&
+      TokenizeSegmentFromRight(&src, &system_id) &&
+      (system_id == kSystemId)) {
+    src.CopyToString(&name_);
+    return true;
   }
-  return ret;
+  return false;
 }
 
 // This is used for legacy compatibility as we transition to the grand new
 // world.
 std::string ResourceNamer::InternalEncode() const {
-  return StrCat(id_, kSeparatorString,
-                hash_, kSeparatorString,
-                name_, kSeparatorString,
-                ext_);
+  return StrCat(name_, kSeparatorString,
+                kSystemId, kSeparatorString,
+                id_, kSeparatorString,
+                StrCat(hash_, kSeparatorString, ext_));
 }
 
 // The current encoding assumes there are no dots in any of the components.
@@ -61,24 +97,22 @@ std::string ResourceNamer::InternalEncode() const {
 // for now.
 std::string ResourceNamer::Encode() const {
   CHECK_EQ(StringPiece::npos, id_.find(kSeparatorChar));
-  CHECK_EQ(StringPiece::npos, name_.find(kSeparatorChar));
   CHECK(!hash_.empty());
   CHECK_EQ(StringPiece::npos, hash_.find(kSeparatorChar));
   CHECK_EQ(StringPiece::npos, ext_.find(kSeparatorChar));
-  return InternalEncode();
+ return InternalEncode();
 }
 
 std::string ResourceNamer::EncodeIdName() const {
   CHECK(id_.find(kSeparatorChar) == StringPiece::npos);
-  CHECK(name_.find(kSeparatorChar) == StringPiece::npos);
   return StrCat(id_, kSeparatorString, name_);
 }
 
 // Note: there is no need at this time to decode the name key.
 
 std::string ResourceNamer::EncodeHashExt() const {
-  CHECK(hash_.find(kSeparatorChar) == StringPiece::npos);
-  CHECK(ext_.find(kSeparatorChar) == StringPiece::npos);
+  CHECK_EQ(StringPiece::npos, hash_.find(kSeparatorChar));
+  CHECK_EQ(StringPiece::npos, ext_.find(kSeparatorChar));
   return StrCat(hash_, kSeparatorString, ext_);
 }
 

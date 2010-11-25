@@ -94,10 +94,22 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
     }
 
     // Absolutify the URLs in the CSS -- relative URLs will break otherwise.
-    std::string rewritten;
-    StringWriter writer(&rewritten);
-    if (!CssTagScanner::AbsolutifyUrls(contents, resource->url(), &writer,
-                                       message_handler)) {
+    std::string rewritten_contents;
+    StringWriter writer(&rewritten_contents);
+    std::string input_dir =
+        GoogleUrl::AllExceptLeaf(GoogleUrl::Create(resource->url()));
+    std::string base_dir = GoogleUrl::AllExceptLeaf(base_gurl());
+    bool written;
+    if (input_dir == base_dir) {
+      // We don't need to absolutify URLs if input directory is same as base.
+      written = writer.Write(contents, message_handler);
+    } else {
+      // If they are different directories, we need to absolutify.
+      // TODO(sligocki): Perhaps we should use the real CSS parser.
+      written = CssTagScanner::AbsolutifyUrls(contents, resource->url(),
+                                              &writer, message_handler);
+    }
+    if (!written) {
       return;
     }
 
@@ -106,7 +118,8 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
         html_parse_->NewElement(element->parent(), style_atom_);
     if (html_parse_->ReplaceNode(element, style_element)) {
       html_parse_->AppendChild(
-          style_element, html_parse_->NewCharactersNode(element, rewritten));
+          style_element, html_parse_->NewCharactersNode(element,
+                                                        rewritten_contents));
     }
   }
 }

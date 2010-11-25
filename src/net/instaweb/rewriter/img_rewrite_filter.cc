@@ -135,7 +135,8 @@ void ImgRewriteFilter::Initialize(Statistics* statistics) {
 void ImgRewriteFilter::OptimizeImage(
     const Resource& input_resource, const ImageDim& page_dim,
     Image* image, OutputResource* result) {
-  if (result != NULL && !result->IsWritten() && image != NULL) {
+  if (result != NULL && !result->IsWritten() && image != NULL &&
+      work_bound_->TryToWork()) {
     ImageDim img_dim;
     image->Dimensions(&img_dim);
     const char* message;  // Informational message for logging only.
@@ -194,6 +195,7 @@ void ImgRewriteFilter::OptimizeImage(
       resource_manager_->Write(kNotOptimizable, "", result,
                                origin_expire_time_ms, message_handler);
     }
+    work_bound_->WorkComplete();
   }
 }
 
@@ -295,15 +297,8 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
       if (output_resource.get() != NULL) {
         if (!resource_manager_->FetchOutputResource(
                 output_resource.get(), NULL, NULL, message_handler)) {
-          if (work_bound_->TryToWork()) {
-            OptimizeImage(*input_resource, page_dim, image.get(),
-                          output_resource.get());
-            work_bound_->WorkComplete();
-          } else {
-            html_parse_->InfoHere(
-                "Too many images being rewritten to work on %s",
-                input_resource->url().c_str());
-          }
+          OptimizeImage(*input_resource, page_dim, image.get(),
+                        output_resource.get());
         }
         if (output_resource->IsWritten()) {
           UpdateTargetElement(*input_resource, *output_resource,
@@ -412,36 +407,30 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
             &encoder, resource, message_handler));
     if (input_image.get() != NULL) {
       std::string origin_url = input_image->url();
-      // TODO(jmarantz): this needs to be refactored slightly to
-      // allow for asynchronous fetches of the input image, if
-      // it's not obtained via cache or local filesystem read.
-      if (!work_bound_->TryToWork()) {
+      // TODO(jmarantz): this needs to be refactored slightly to allow for
+      // asynchronous fetches of the input image, if it's not obtained via cache
+      // or local filesystem read.
+      if (!OptimizedImageFor(
+              origin_url, page_dim, input_image.get(), resource)) {
         ok = false;
-        failure_reason = "Too many rewrites in progress already.";
+        failure_reason = "Server could not find source image.";
+      } else if (!resource_manager_->FetchOutputResource(
+                     resource, writer, response_headers, message_handler)) {
+        ok = false;
+        failure_reason = "Server could not read image resource.";
       } else {
-        if (!OptimizedImageFor(
-                origin_url, page_dim, input_image.get(), resource)) {
-          ok = false;
-          failure_reason = "Server could not find source image.";
-        } else if (!resource_manager_->FetchOutputResource(
-                       resource, writer, response_headers, message_handler)) {
-          ok = false;
-          failure_reason = "Server could not read image resource.";
-        } else {
-          if (resource->metadata()->status_code() != HttpStatus::kOK) {
-            // Note that this should not happen, because the url should not have
-            // escaped into the wild.  We're content serving an empty response
-            // if it does.  We *could* serve / redirect to the origin_url as a
-            // fail safe, but it's probably not worth it.  Instead we log and
-            // hope that this causes us to find and fix the problem.
-            message_handler->Error(resource->url().c_str(), 0,
-                                   "Rewriting %s rejected, "
-                                   "but URL requested (mistaken rewriting?).",
-                                   origin_url.c_str());
-          }
-          callback->Done(true);
+        if (resource->metadata()->status_code() != HttpStatus::kOK) {
+          // Note that this should not happen, because the url should not have
+          // escaped into the wild.  We're content serving an empty response if
+          // it does.  We *could* serve / redirect to the origin_url as a fail
+          // safe, but it's probably not worth it.  Instead we log and hope that
+          // this causes us to find and fix the problem.
+          message_handler->Error(resource->url().c_str(), 0,
+                                 "Rewriting %s rejected, "
+                                 "but URL requested (mistaken rewriting?).",
+                                 origin_url.c_str());
         }
-        work_bound_->WorkComplete();
+        callback->Done(true);
       }
       // Image processing has failed, forward the original image data.
       if (!ok && input_image != NULL) {

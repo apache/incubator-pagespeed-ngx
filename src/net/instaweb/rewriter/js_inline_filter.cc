@@ -76,7 +76,14 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
     // as we make a similar policy decision in css_inline_filter.
     if (resource != NULL && resource->ContentsValid()) {
       StringPiece contents = resource->contents();
+      // Only inline if it's small enough, and if it doesn't contain
+      // "</script>" anywhere.  If we inline an external script containing
+      // "</script>", the <script> tag will be ended early.
+      // See http://code.google.com/p/modpagespeed/issues/detail?id=106
+      // TODO(mdsteele): We should consider rewriting "</script>" to
+      //                 "<\/script>" instead of just bailing.
       if (contents.size() <= size_threshold_bytes_ &&
+          contents.find("</script>") == StringPiece::npos &&
           element->DeleteAttribute(src_atom_)) {
         html_parse_->InsertElementBeforeCurrent(
             html_parse_->NewCharactersNode(element, contents));

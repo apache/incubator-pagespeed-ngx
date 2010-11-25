@@ -261,6 +261,11 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     return fetched && callback.success();
   }
 
+  // Helper function to encode a resource name from its pieces.
+  std::string Encode(const StringPiece& path,
+                      const StringPiece& id, const StringPiece& hash,
+                      const StringPiece& name, const StringPiece& ext);
+
   // Testdata directory.
   static const char kTestData[];
 

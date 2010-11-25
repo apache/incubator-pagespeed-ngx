@@ -54,9 +54,8 @@ const char kCssFileCountReduction[] = "css_file_count_reduction";
 // hasher put in the correct ID and EXT and leave the name blank and
 // take size of that.
 const int kIdOverhead = 2;   // strlen("cc")
-const int kExtOverhead = 3;  // strlen("css");
-const int kUrlOverhead = kIdOverhead + ResourceNamer::kOverhead +
-    Hasher::kHashSizeInChars + kExtOverhead;
+const int kExtOverhead = 3;  // strlen("css")
+const int kUrlOverhead = kIdOverhead + ResourceNamer::kOverhead + kExtOverhead;
 
 }  // namespace
 
@@ -137,7 +136,9 @@ class CssCombineFilter::Partnership : public UrlPartnership {
   // Computes the total size
   void ComputeLeafSize() {
     std::string segment = UrlSafeId();
-    accumulated_leaf_size_ = segment.size() + kUrlOverhead;
+    // TODO(sligocki): Use hasher for custom overhead.
+    accumulated_leaf_size_ = segment.size() + kUrlOverhead
+        + resource_manager_->hasher()->HashSizeInChars();
   }
 
   // Incrementally updates the accumulated leaf size without re-examining
@@ -350,6 +351,8 @@ bool CssCombineFilter::WriteCombination(const ResourceVector& combine_resources,
                                         OutputResource* combination,
                                         MessageHandler* handler) {
   bool written = true;
+  // TODO(sligocki): Write directly to a temp file rather than doing the extra
+  // string copy.
   std::string combined_contents;
   StringWriter writer(&combined_contents);
   int64 min_origin_expiration_time_ms = 0;
@@ -363,10 +366,17 @@ bool CssCombineFilter::WriteCombination(const ResourceVector& combine_resources,
       min_origin_expiration_time_ms = input_expire_time_ms;
     }
 
-    // TODO(sligocki): We need a real CSS parser.  But for now we have to make
-    // any URLs absolute.
-    written = css_tag_scanner_.AbsolutifyUrls(contents, input->url(),
-                                              &writer, handler);
+    std::string input_dir =
+        GoogleUrl::AllExceptLeaf(GoogleUrl::Create(input->url()));
+    if (input_dir == combination->resolved_base()) {
+      // We don't need to absolutify URLs if input directory is same as output.
+      written = writer.Write(contents, handler);
+    } else {
+      // If they are different directories, we need to absolutify.
+      // TODO(sligocki): Perhaps we should use the real CSS parser.
+      written = css_tag_scanner_.AbsolutifyUrls(contents, input->url(),
+                                                &writer, handler);
+    }
   }
   if (written) {
     written =

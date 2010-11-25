@@ -126,7 +126,7 @@ class CssFilterTest : public ResourceManagerTestBase {
     namer.set_ext("css");
     // TODO(sligocki): Derive these from css_url the "right" way.
     std::string url_prefix = "http://test.com/";
-    namer.set_name(StrCat(id, ",s"));
+    namer.set_name(StrCat(id, ".css"));
 
     std::string expected_new_url = StrCat(url_prefix, namer.Encode());
 

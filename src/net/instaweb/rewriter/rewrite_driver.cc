@@ -479,10 +479,8 @@ bool RewriteDriver::FetchResource(
         }
       }
     }
-  } else {
-    delete output_resource;
   }
-  if (!queued) {
+  if (!queued && handled) {
     // If we got here, we were asked to decode a resource for which we have
     // no filter.
     callback->Done(false);

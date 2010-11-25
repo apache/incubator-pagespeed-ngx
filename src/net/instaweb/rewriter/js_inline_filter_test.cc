@@ -103,6 +103,15 @@ TEST_F(JsInlineFilterTest, DoNotInlineJavascriptTooBig) {
                        false);
 }
 
+TEST_F(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag) {
+  // External script contains "</script>":
+  TestInlineJavascript("http://www.example.com/index.html",
+                       "http://www.example.com/script.js",
+                       "",
+                       "function close() { return '</script>'; }\n",
+                       false);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

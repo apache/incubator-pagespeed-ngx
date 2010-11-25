@@ -36,7 +36,7 @@ namespace {
 // currently excludes both '.' and '/' due to rules enforced primarily
 // in net/instaweb/rewriter/resource_manager.cc, but are distributed a bit
 // more widely.
-const char kPassThroughChars[] = "_=+-&?";
+const char kPassThroughChars[] = "._=+-&?";
 
 // Checks for 'search' at start of 'src'.  If found, appends
 // 'replacement' into 'out', and advances the start-point in 'src'
@@ -74,16 +74,9 @@ void UrlEscaper::EncodeToUrlSegment(const StringPiece& in,
           // don't have to work hard to keep the encoder and decoder
           // in sync.
           !ReplaceSubstring(".com", ",c", &src, url_segment) &&
-          !ReplaceSubstring(".css", ",s", &src, url_segment) &&
           !ReplaceSubstring(".edu", ",e", &src, url_segment) &&
-          !ReplaceSubstring(".gif", ",g", &src, url_segment) &&
           !ReplaceSubstring(".html", ",t", &src, url_segment) &&
-          !ReplaceSubstring(".jpeg", ",k", &src, url_segment) &&
-          !ReplaceSubstring(".jpg", ",j", &src, url_segment) &&
-          !ReplaceSubstring(".js", ",l", &src, url_segment) &&
           !ReplaceSubstring(".net", ",n", &src, url_segment) &&
-          !ReplaceSubstring(".png", ",p", &src, url_segment) &&
-          !ReplaceSubstring(".", ",o", &src, url_segment) &&
           !ReplaceSubstring("^", ",u", &src, url_segment) &&
           !ReplaceSubstring("%", ",P", &src, url_segment) &&
           !ReplaceSubstring("/", ",_", &src, url_segment) &&
@@ -114,20 +107,25 @@ bool UrlEscaper::DecodeFromUrlSegment(const StringPiece& url_segment,
         case '-': *out += "\\"; break;
         case ',': *out += ","; break;
         case 'c': *out += ".com"; break;
-        case 's': *out += ".css"; break;
         case 'e': *out += ".edu"; break;
-        case 'g': *out += ".gif"; break;
         case 'h': *out += "http://"; break;
-        case 'k': *out += ".jpeg"; break;
-        case 'j': *out += ".jpg"; break;
-        case 'l': *out += ".js"; break;
         case 'n': *out += ".net"; break;
-        case 'o': *out += "."; break;
-        case 'p': *out += ".png"; break;
         case 'P': *out += "%"; break;
         case 't': *out += ".html"; break;
         case 'u': *out += "^"; break;
         case 'w': *out += "www."; break;
+
+        // The following legacy encodings are no longer made.  However
+        // we should continue to decode what we previously encoded in
+        // November 2010 to avoid (for example) breaking image search.
+        case 's': *out += ".css"; break;
+        case 'g': *out += ".gif"; break;
+        case 'k': *out += ".jpeg"; break;
+        case 'j': *out += ".jpg"; break;
+        case 'l': *out += ".js"; break;
+        case 'o': *out += "."; break;
+        case 'p': *out += ".png"; break;
+
         default:
           if (remaining < 2) {
             return false;

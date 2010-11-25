@@ -44,8 +44,8 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
 
     std::string hash = hasher->Hash(style_text);
     std::string outline_filename;
-    std::string outline_url = StrCat(
-        "http://test.com/", CssOutlineFilter::kFilterId, ".", hash, "._.css");
+    std::string outline_url = Encode(
+        "http://test.com/", CssOutlineFilter::kFilterId, hash, "_", "css");
     filename_encoder_.Encode(file_prefix_, outline_url, &outline_filename);
 
     // Make sure the file we check later was written this time, rm any old one.

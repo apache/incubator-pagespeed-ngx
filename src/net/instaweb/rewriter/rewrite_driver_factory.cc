@@ -56,20 +56,6 @@ RewriteDriverFactory::~RewriteDriverFactory() {
   ShutDown();
 }
 
-bool RewriteDriverFactory::AddEnabledFilters(const StringPiece& filter_names) {
-  return options_.EnableFiltersByCommaSeparatedList(
-      filter_names, message_handler());
-}
-
-bool RewriteDriverFactory::AddDisabledFilters(const StringPiece& filter_names) {
-  return options_.DisableFiltersByCommaSeparatedList(
-      filter_names, message_handler());
-}
-
-void RewriteDriverFactory::SetRewriteLevel(RewriteOptions::RewriteLevel level) {
-  options_.SetRewriteLevel(level);
-}
-
 void RewriteDriverFactory::set_html_parse_message_handler(
     MessageHandler* message_handler) {
   html_parse_message_handler_.reset(message_handler);

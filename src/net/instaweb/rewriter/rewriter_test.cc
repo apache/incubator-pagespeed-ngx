@@ -91,18 +91,29 @@ TEST_F(RewriterTest, FailGracefullyOnInvalidUrls) {
   // TODO(sligocki): This will need to be regolded if naming format changes.
   std::string hash = hasher->Hash(kCssData);
   EXPECT_TRUE(
-      TryFetchResource(StrCat("http://test.com/ce.", hash, ".a,s.css")));
+      TryFetchResource(Encode("http://test.com/", "ce", hash, "a.css", "css")));
 
   // Fetching variants should not cause system problems.
   // Changing hash still works.
   // Note: If any of these switch from true to false, that's probably fine.
   // We'd just like to keep track of what causes errors and what doesn't.
-  EXPECT_TRUE(TryFetchResource("http://test.com/ce.foobar.a,s.css"));
+  EXPECT_TRUE(TryFetchResource(Encode("http://test.com/", "ce", "foobar",
+                                      "a.css", "css")));
   EXPECT_TRUE(
-      TryFetchResource(StrCat("http://test.com/ce.", hash, ".a,s.ext")));
+      TryFetchResource(Encode("http://test.com/", "ce", hash, "a.css",
+                              "ext")));
+
   // Changing other fields can lead to error.
-  EXPECT_FALSE(
-      TryFetchResource(StrCat("http://test.com/xz.", hash, ".a,s.css")));
+  std::string bad_url = Encode("http://test.com/", "xz", hash, "a.css", "css");
+
+  // Note that although we pass in a real value for 'request headers', we
+  // null out the response and writer as those should never be called.
+  SimpleMetaData request_headers;
+  FetchCallback callback;
+  bool fetched = rewrite_driver_.FetchResource(
+      bad_url, request_headers, NULL, NULL, &message_handler_, &callback);
+  EXPECT_FALSE(fetched);
+  EXPECT_FALSE(callback.done());
 }
 
 }  // namespace

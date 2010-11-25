@@ -144,7 +144,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     RemoveUrlPrefix(&url);
     ASSERT_TRUE(full_name.Decode(url));
-    EXPECT_EQ(content_type, NameExtensionToContentType(url));
+    EXPECT_EQ(content_type, full_name.ContentTypeFromExt());
     EXPECT_EQ(filter_prefix, full_name.id());
     EXPECT_EQ(name, full_name.name());
 
@@ -175,7 +175,8 @@ TEST_F(ResourceManagerTest, TestNamed) {
 }
 
 TEST_F(ResourceManagerTest, TestOutputInputUrl) {
-  std::string url = "http://example.com/dir/123/jm.0.orig.js";
+  std::string url = Encode("http://example.com/dir/123/",
+                            "jm", "0", "orig", "js");
   scoped_ptr<OutputResource> output_resource(
       resource_manager_->CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());

@@ -141,6 +141,8 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
       factory->Increment404Count();
       instaweb_default_handler(url, request);
     }
+  } else {
+    callback->Done(false);
   }
   callback->Release();
   factory->ReleaseRewriteDriver(rewrite_driver);

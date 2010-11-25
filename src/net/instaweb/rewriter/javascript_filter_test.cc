@@ -30,19 +30,14 @@
 namespace {
 
 const char kHtmlFormat[] =
-    "<script type='text/javascript' src='%s.js'></script>\n";
+    "<script type='text/javascript' src='%s'></script>\n";
 
 const char kJsData[] = "alert     (    'hello, world!'    )  ";
 const char kJsMinData[] = "alert('hello, world!')";
 const char kFilterId[] = "jm";
-
-#define REWRITTEN_JS_NAME "hello,l"
-#define REWRITTEN_JS_ID_HASH_NAME "jm.0." REWRITTEN_JS_NAME
-#define SOURCE_PREFIX "http://test.com/"
-
-const char kRewrittenJsPath[] = SOURCE_PREFIX REWRITTEN_JS_ID_HASH_NAME;
-const char kRewrittenJsPathExt[] = SOURCE_PREFIX REWRITTEN_JS_ID_HASH_NAME ".js";
-const char kRewrittenJsName[] = REWRITTEN_JS_NAME;
+const char kOrigJsName[] = "hello.js";
+const char kRewrittenJsName[] = "hello.js";
+const char kSourcePrefix[] = "http://test.com/";
 
 }  // namespace
 
@@ -50,42 +45,49 @@ namespace net_instaweb {
 
 class JavascriptFilterTest : public ResourceManagerTestBase {
  protected:
-
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     rewrite_driver_.AddFilter(RewriteOptions::kRewriteJavascript);
+    ResourceNamer namer;
+    namer.set_id(kFilterId);
+    namer.set_name(kRewrittenJsName);
+    namer.set_ext("js");
+    namer.set_hash("0");
+    expected_rewritten_path_ = StrCat(kSourcePrefix, namer.Encode());
   }
 
   void InitTest(int64 ttl) {
-    InitMetaData("hello.js", kContentTypeJavascript, kJsData, ttl);
+    InitMetaData(kOrigJsName, kContentTypeJavascript, kJsData, ttl);
   }
 
   // Generate HTML loading 3 resources with the specified URLs
   std::string GenerateHtml(const char* a) {
     return StringPrintf(kHtmlFormat, a);
   }
+
+  std::string expected_rewritten_path_;
 };
 
 TEST_F(JavascriptFilterTest, DoRewrite) {
   InitTest(100);
   ValidateExpected("do_rewrite",
-                   GenerateHtml("hello").c_str(),
-                   GenerateHtml(kRewrittenJsPath).c_str());
+                   GenerateHtml(kOrigJsName).c_str(),
+                   GenerateHtml(expected_rewritten_path_.c_str()).c_str());
 }
 
 TEST_F(JavascriptFilterTest, RewriteAlreadyCachedProperly) {
   InitTest(100000000);  // cached for a long time to begin with
   // But we will rewrite because we can make the data smaller.
   ValidateExpected("rewrite_despite_being_cached_properly",
-                   GenerateHtml("hello").c_str(),
-                   GenerateHtml(kRewrittenJsPath).c_str());
+                   GenerateHtml(kOrigJsName).c_str(),
+                   GenerateHtml(expected_rewritten_path_.c_str()).c_str());
 }
 
 TEST_F(JavascriptFilterTest, NoRewriteOriginUncacheable) {
   InitTest(0);  // origin not cacheable
   ValidateExpected("no_extend_origin_not_cacheable",
-                   GenerateHtml("hello").c_str(),
-                   GenerateHtml("hello").c_str());
+                   GenerateHtml(kOrigJsName).c_str(),
+                   GenerateHtml(kOrigJsName).c_str());
 }
 
 TEST_F(JavascriptFilterTest, ServeFiles) {
@@ -99,9 +101,10 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   file_system_.Disable();
   SimpleMetaData headers;
   resource_manager_->SetDefaultHeaders(&kContentTypeJavascript, &headers);
-  http_cache_.Put(kRewrittenJsPathExt, headers, kJsMinData, &message_handler_);
+  http_cache_.Put(expected_rewritten_path_, headers, kJsMinData,
+                  &message_handler_);
   EXPECT_EQ(0, lru_cache_->num_hits());
-  ASSERT_TRUE(ServeResource(SOURCE_PREFIX, kFilterId,
+  ASSERT_TRUE(ServeResource(kSourcePrefix, kFilterId,
                             kRewrittenJsName, "js", &content));
   EXPECT_EQ(1, lru_cache_->num_hits());
   EXPECT_EQ(std::string(kJsMinData), content);
@@ -117,35 +120,37 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   std::string filename;
   FilenameEncoder* encoder = resource_manager_->filename_encoder();
   encoder->Encode(resource_manager_->filename_prefix(),
-                  kRewrittenJsPathExt, &filename);
+                  expected_rewritten_path_, &filename);
   std::string data = StrCat(headers.ToString(), kJsMinData);
   ASSERT_TRUE(file_system_.WriteFile(filename.c_str(), data,
                                      &message_handler_));
 
-  ASSERT_TRUE(ServeResource(SOURCE_PREFIX, kFilterId,
+  ASSERT_TRUE(ServeResource(kSourcePrefix, kFilterId,
                             kRewrittenJsName, "js", &content));
   EXPECT_EQ(std::string(kJsMinData), content);
 
   // After serving from the disk, we should have seeded our cache.  Check it.
-  EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(kRewrittenJsPathExt));
+  EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(
+      expected_rewritten_path_));
 
   // Finally, nuke the file, nuke the cache, get it via a fetch.
   file_system_.Disable();
   ASSERT_TRUE(file_system_.RemoveFile(filename.c_str(), &message_handler_));
   lru_cache_->Clear();
   InitTest(100);
-  ASSERT_TRUE(ServeResource(SOURCE_PREFIX, kFilterId,
+  ASSERT_TRUE(ServeResource(kSourcePrefix, kFilterId,
                             kRewrittenJsName, "js", &content));
   EXPECT_EQ(std::string(kJsMinData), content);
 
   // Now we expect both the file and the cache entry to be there.
-  EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(kRewrittenJsPathExt));
+  EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(
+      expected_rewritten_path_));
   file_system_.Enable();
   EXPECT_TRUE(file_system_.Exists(filename.c_str(), &message_handler_)
               .is_true());
 
   // Finally, serve from a completely separate server.
-  ServeResourceFromManyContexts(kRewrittenJsPathExt,
+  ServeResourceFromManyContexts(expected_rewritten_path_,
                                 RewriteOptions::kRewriteJavascript,
                                 &mock_hasher_,
                                 kJsMinData);

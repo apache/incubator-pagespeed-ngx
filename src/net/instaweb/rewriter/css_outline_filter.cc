@@ -126,7 +126,7 @@ void CssOutlineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
 }
 
 // Try to write content and possibly header to resource.
-bool CssOutlineFilter::WriteResource(const std::string& content,
+bool CssOutlineFilter::WriteResource(const StringPiece& content,
                                      OutputResource* resource,
                                      MessageHandler* handler) {
   // We set the TTL of the origin->hashed_name map to 0 because this is
@@ -138,7 +138,8 @@ bool CssOutlineFilter::WriteResource(const std::string& content,
 
 // Create file with style content and remove that element from DOM.
 void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
-                                    const std::string& content) {
+                                    const std::string& content_str) {
+  StringPiece content(content_str);
   if (html_parse_->IsRewritable(style_element)) {
     // Create style file from content.
     const char* type = style_element->AttributeValue(s_type_);
@@ -147,23 +148,30 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
     if (type == NULL || strcmp(type, kContentTypeCss.mime_type()) == 0) {
       MessageHandler* handler = html_parse_->message_handler();
       // Create outline resource at the document location, not base URL location
-      scoped_ptr<OutputResource> resource(
+      scoped_ptr<OutputResource> output_resource(
           resource_manager_->CreateOutputResourceWithPath(
               GoogleUrl::AllExceptLeaf(html_parse_->gurl()),
               kFilterId, "_",
               &kContentTypeCss, handler));
+
       // Absolutify URLs in content.
       std::string absolute_content;
       StringWriter absolute_writer(&absolute_content);
-      // TODO(sligocki): Use CssParser instead of CssTagScanner hack.
-      // TODO(sligocki): Perhaps, only absolutify if base URL != dest path?
-      if (CssTagScanner::AbsolutifyUrls(content, GoogleUrl::Spec(base_gurl()),
-                                        &absolute_writer, handler) &&
-          WriteResource(absolute_content, resource.get(), handler)) {
+      std::string base_dir = GoogleUrl::AllExceptLeaf(base_gurl());
+      bool content_valid = true;
+      if (base_dir != output_resource->resolved_base()) {
+        // TODO(sligocki): Use CssParser instead of CssTagScanner hack.
+        content_valid = CssTagScanner::AbsolutifyUrls(
+            content, GoogleUrl::Spec(base_gurl()), &absolute_writer, handler);
+        content = absolute_content;  // StringPiece point to the new string.
+
+      }
+      if (content_valid &&
+          WriteResource(content, output_resource.get(), handler)) {
         HtmlElement* link_element = html_parse_->NewElement(
             style_element->parent(), s_link_);
         link_element->AddAttribute(s_rel_, kStylesheet, "'");
-        link_element->AddAttribute(s_href_, resource->url(), "'");
+        link_element->AddAttribute(s_href_, output_resource->url(), "'");
         // Add all style atrributes to link.
         for (int i = 0; i < style_element->attribute_size(); ++i) {
           const HtmlElement::Attribute& attr = style_element->attribute(i);

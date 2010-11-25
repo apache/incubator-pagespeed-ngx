@@ -23,8 +23,4 @@ namespace net_instaweb {
 MockHasher::~MockHasher() {
 }
 
-std::string MockHasher::Hash(const StringPiece& content) const {
-  return "0";
-}
-
 }  // namespace net_instaweb

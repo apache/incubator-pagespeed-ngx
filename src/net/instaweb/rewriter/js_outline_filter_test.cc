@@ -44,8 +44,8 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
 
     std::string hash = hasher->Hash(script_text);
     std::string outline_filename;
-    std::string outline_url = StrCat(
-        "http://test.com/", JsOutlineFilter::kFilterId, ".", hash, "._.js");
+    std::string outline_url = Encode(
+        "http://test.com/", JsOutlineFilter::kFilterId,  hash, "_", "js");
     filename_encoder_.Encode(file_prefix_, outline_url, &outline_filename);
 
     // Make sure the file we check later was written this time, rm any old one.
@@ -94,8 +94,9 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   rewrite_driver_.AddFilters(options);
 
   // We need to make sure we don't create this file, so rm any old one
-  DeleteFileIfExists(StrCat(file_prefix, JsOutlineFilter::kFilterId,
-                            ".0._.js"));
+  std::string filename = Encode(file_prefix, JsOutlineFilter::kFilterId, "0",
+                                 "_", "js");
+  DeleteFileIfExists(filename.c_str());
 
   static const char html_input[] =
       "<head>\n"
@@ -111,7 +112,7 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   // TODO(jmarantz): this is pretty brittle, and perhaps obsolete.
   // We just change the test to ensure that we are not outlining when
   // we don't want to.
-  EXPECT_FALSE(file_system_.Exists((file_prefix + "0._.js").c_str(),
+  EXPECT_FALSE(file_system_.Exists(filename.c_str(),
                                    &message_handler_).is_true());
 }
 

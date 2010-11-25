@@ -11,23 +11,22 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef HTML_REWRITER_APR_TIMER_H_
-#define HTML_REWRITER_APR_TIMER_H_
-
-#include "net/instaweb/util/public/timer.h"
-
-using net_instaweb::Timer;
+#include "net/instaweb/apache/apache_config.h"
 
 namespace net_instaweb {
 
-class AprTimer : public Timer {
- public:
-  virtual ~AprTimer();
-  virtual int64 NowUs() const;
-  virtual void SleepUs(int64 us);
-};
+ApacheConfig::ApacheConfig(apr_pool_t* pool, const StringPiece& dir)
+  : directory_(dir.data(), dir.size()) {
+  apr_pool_cleanup_register(pool, this, Cleanup, apr_pool_cleanup_null);
+}
+
+apr_status_t ApacheConfig::Cleanup(void* object) {
+  ApacheConfig* config = static_cast<ApacheConfig*>(object);
+  delete config;
+  return APR_SUCCESS;
+}
 
 }  // namespace net_instaweb
-
-#endif  // HTML_REWRITER_APR_TIMER_H_

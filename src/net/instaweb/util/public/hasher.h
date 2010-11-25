@@ -28,15 +28,15 @@ namespace net_instaweb {
 
 class Hasher {
  public:
-  // Returns the target size, in characters, of the hash string.
-  static const int kHashSizeInChars;
-
   Hasher() { }
   virtual ~Hasher();
 
   // Interface to compute a hash of a single string.  This
   // operation is thread-safe.
   virtual std::string Hash(const StringPiece& content) const = 0;
+
+  // Return string length of hashes produced by this hasher.
+  virtual int HashSizeInChars() const = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Hasher);

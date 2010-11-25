@@ -20,9 +20,6 @@
 
 namespace net_instaweb {
 
-// TODO(sligocki): Consider reducing this.
-const int Hasher::kHashSizeInChars = 32;
-
 Hasher::~Hasher() {
 }
 

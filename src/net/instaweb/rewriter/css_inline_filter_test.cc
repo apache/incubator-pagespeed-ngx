@@ -90,6 +90,13 @@ TEST_F(CssInlineFilterTest, InlineCssAbsolutifyUrls2) {
                 "", css1, true, css2);
 }
 
+TEST_F(CssInlineFilterTest, NoAbsolutifyUrlsSameDir) {
+  const std::string css = "BODY { background-image: url('bg.png'); }\n";
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/baz.css",
+                "", css, true, css);
+}
+
 TEST_F(CssInlineFilterTest, DoNotInlineCssWithMediaAttr) {
   const std::string css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",

@@ -24,13 +24,13 @@ namespace net_instaweb {
 namespace {
 
 const ContentType kTypes[] = {
-  {"text/javascript", ".js"},
-  {"text/css", ".css"},
-  {"text/plain", ".txt"},
+  {"text/javascript", ".js",  ContentType::kJavascript},
+  {"text/css",        ".css", ContentType::kCss},
+  {"text/plain",      ".txt", ContentType::kText},
 
-  {"image/png", ".png"},
-  {"image/gif", ".gif"},
-  {"image/jpeg", ".jpg"},
+  {"image/png",       ".png", ContentType::kPng},
+  {"image/gif",       ".gif", ContentType::kGif},
+  {"image/jpeg",      ".jpg", ContentType::kJpeg},
 };
 const int kNumTypes = arraysize(kTypes);
 

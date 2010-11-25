@@ -25,8 +25,8 @@ namespace {
 // We pass through a few special characters unchanged, and we
 // accept those characters, plus ',', as acceptable in the encoded
 // URLs.
-static const char kAcceptableSpecialChars[] = ",_+-=&?";
-static const char kPassThruChars[]          =  "_+-=&?";
+static const char kAcceptableSpecialChars[] = ",._+-=&?";
+static const char kPassThruChars[]          =  "._+-=&?";
 
 }  // namespace
 
@@ -57,6 +57,12 @@ class UrlEscaperTest : public testing::Test {
     EXPECT_EQ(url, decoded);
   }
 
+  std::string Decode(const StringPiece& encoding) {
+    std::string decoded;
+    EXPECT_TRUE(escaper_.DecodeFromUrlSegment(encoding, &decoded));
+    return decoded;
+  }
+
   UrlEscaper escaper_;
 };
 
@@ -77,6 +83,16 @@ TEST_F(UrlEscaperTest, TestUnchanged) {
   CheckUnchanged("0123456789");
   CheckUnchanged("?&=+-_");
   CheckUnchanged(kPassThruChars);
+}
+
+TEST_F(UrlEscaperTest, LegacyDecode) {
+  EXPECT_EQ("a.css", Decode("a,s"));
+  EXPECT_EQ("b.jpg", Decode("b,j"));
+  EXPECT_EQ("c.png", Decode("c,p"));
+  EXPECT_EQ("d.gif", Decode("d,g"));
+  EXPECT_EQ("e.jpeg", Decode("e,k"));
+  EXPECT_EQ("f.js", Decode("f,l"));
+  EXPECT_EQ("g.anything", Decode("g,oanything"));
 }
 
 }  // namespace net_instaweb

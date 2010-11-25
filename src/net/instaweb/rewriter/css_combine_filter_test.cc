@@ -28,6 +28,8 @@ namespace net_instaweb {
 
 namespace {
 
+const char kDomain[] = "http://combine_css.test/";
+
 class CssCombineFilterTest : public ResourceManagerTestBase {
  protected:
   // Test spriting CSS with options to write headers and use a hasher.
@@ -48,10 +50,10 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
     // URLs and content for HTML document and resources.
     CHECK_EQ(StringPiece::npos, id.find("/"));
-    std::string html_url = StrCat("http://combine_css.test/", id, ".html");
-    std::string a_css_url = StrCat("http://combine_css.test/", a_css_name);
-    std::string b_css_url = StrCat("http://combine_css.test/", b_css_name);
-    const char c_css_url[] = "http://combine_css.test/c.css";
+    std::string html_url = StrCat(kDomain, id, ".html");
+    std::string a_css_url = StrCat(kDomain, a_css_name);
+    std::string b_css_url = StrCat(kDomain, b_css_name);
+    std::string c_css_url = StrCat(kDomain, "c.css");
 
     static const char html_input_format[] =
         "<head>\n"
@@ -165,8 +167,8 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
   // Test what happens when CSS combine can't find a previously-rewritten
   // resource during a subsequent resource fetch.  This used to segfault.
   void CssCombineMissingResource() {
-    const char a_css_url[] = "http://combine_css.test/a.css";
-    const char c_css_url[] = "http://combine_css.test/c.css";
+    std::string a_css_url = StrCat(kDomain, "a.css");
+    std::string c_css_url = StrCat(kDomain, "c.css");
 
     const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
     const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
@@ -183,8 +185,9 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     // First make sure we can serve the combination of a & c.  This is to avoid
     // spurious test successes.
 
-    const char kACUrl[] = "http://combine_css.test/cc.0.a,s+c,s.css";
-    const char kABCUrl[] = "http://combine_css.test/cc.0.a,s+bbb,s+c,s.css";
+    std::string kACUrl = Encode(kDomain, "cc", "0", "a.css+c.css", "css");
+    std::string kABCUrl = Encode(kDomain, "cc", "0", "a.css+bbb.css+c.css",
+                                  "css");
     SimpleMetaData request_headers, response_headers;
     std::string fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
@@ -441,7 +444,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
       "</noscript>\n";
 
   // Put this in the Test class to remove repetition here and below.
-  const char d_css_url[] = "http://combine_css.test/d.css";
+  std::string d_css_url = StrCat(kDomain, "d.css");
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
   SimpleMetaData default_css_header;
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
@@ -462,7 +465,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
   const char media_barrier[] =
       "<link rel='stylesheet' type='text/css' href='d.css' media='print'>\n";
 
-  const char d_css_url[] = "http://combine_css.test/d.css";
+  std::string d_css_url = StrCat(kDomain, "d.css");
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
   SimpleMetaData default_css_header;
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
@@ -473,11 +476,11 @@ TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
 
 TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   // Put original CSS files into our fetcher.
-  const char html_url[] = "http://combine_css.test/no_media_barrier.html";
-  const char a_css_url[] = "http://combine_css.test/a.css";
-  const char b_css_url[] = "http://combine_css.test/b.css";
-  const char c_css_url[] = "http://combine_css.test/c.css";
-  const char d_css_url[] = "http://combine_css.test/d.css";
+  std::string html_url = StrCat(kDomain, "no_media_barrier.html");
+  std::string a_css_url = StrCat(kDomain, "a.css");
+  std::string b_css_url = StrCat(kDomain, "b.css");
+  std::string c_css_url = StrCat(kDomain, "c.css");
+  std::string d_css_url = StrCat(kDomain, "d.css");
 
   const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
   const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
@@ -526,8 +529,8 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
 
 TEST_F(CssCombineFilterTest, CombineCssBaseUrl) {
   // Put original CSS files into our fetcher.
-  const char html_url[] = "http://combine_css.test/base_url.html";
-  const char a_css_url[] = "http://combine_css.test/a.css";
+  std::string html_url = StrCat(kDomain, "base_url.html");
+  std::string a_css_url = StrCat(kDomain, "a.css");
   const char b_css_url[] = "http://other_domain.test/foo/b.css";
 
   const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
@@ -599,12 +602,13 @@ TEST_F(CssCombineFilterTest, CombineCssManyFiles) {
   // Prepare an HTML fragment with too many CSS files to combine,
   // exceeding the 250 char limit currently the default in rewrite_options.cc.
   //
-  // It looks like we can fit 20 encodings of "yellow%d,s" in the buffer.  It
-  // might be more general to base this on the constant declared in
-  // RewriteOptions but I think it's easier to understand leaving these
-  // exposed as constants; we can abstract them later.
+  // It looks like we can fit a limited number of encodings of
+  // "yellow%d.css" in the buffer.  It might be more general to base
+  // this on the constant declared in RewriteOptions but I think it's
+  // easier to understand leaving these exposed as constants; we can
+  // abstract them later.
   const int kNumCssLinks = 31;
-  const int kNumCssInCombination = 20;  // based on how we encode "yellow%d.css"
+  const int kNumCssInCombination = 18;  // based on how we encode "yellow%d.css"
   CssLink::Vector css_in, css_out;
   for (int i = 0; i < kNumCssLinks; ++i) {
     css_in.Add(StringPrintf("styles/yellow%d.css", i),
@@ -629,15 +633,17 @@ TEST_F(CssCombineFilterTest, CombineCssManyFiles) {
 }
 
 TEST_F(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
-  // This test differs from the previous test in that after the first
-  // 20 show up in a combination, we have one CSS file that stays on its own.
-  const int kNumCssLinks = 21;
-  const int kNumCssInCombination = 20;  // based on how we encode "yellow%d.css"
+  // This test differs from the previous test in we have exactly one CSS file
+  // that stays on its own.
+  const int kNumCssInCombination = 18;  // based on how we encode "yellow%d.css"
+  const int kNumCssLinks = kNumCssInCombination + 1;
   CssLink::Vector css_in, css_out;
-  for (int i = 0; i < kNumCssLinks; ++i) {
+  for (int i = 0; i < kNumCssLinks - 1; ++i) {
     css_in.Add(StringPrintf("styles/yellow%d.css", i),
                ".yellow {background-color: yellow;}", "", true);
   }
+  css_in.Add("styles/last_one.css",
+             ".yellow {background-color: yellow;}", "", true);
   BarrierTestHelper("combine_css_many_files", css_in, &css_out);
   ASSERT_EQ(2, css_out.size());
 
@@ -648,7 +654,7 @@ TEST_F(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
                                                &message_handler_));
   EXPECT_EQ("http://test.com/styles/", base);
   EXPECT_EQ(kNumCssInCombination, segments.size());
-  EXPECT_EQ("styles/yellow20.css", css_out[1]->url_);
+  EXPECT_EQ("styles/last_one.css", css_out[1]->url_);
 }
 
 // Note -- this test is redundant with CombineCssMissingResource -- this

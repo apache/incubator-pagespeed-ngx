@@ -77,4 +77,15 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   EXPECT_EQ(0, failed_filter_resource_fetches->Get());
 }
 
+std::string ResourceManagerTestBase::Encode(
+    const StringPiece& path, const StringPiece& id, const StringPiece& hash,
+    const StringPiece& name, const StringPiece& ext) {
+  ResourceNamer namer;
+  namer.set_id(id);
+  namer.set_hash(hash);
+  namer.set_name(name);
+  namer.set_ext(ext);
+  return StrCat(path, namer.Encode());
+}
+
 }

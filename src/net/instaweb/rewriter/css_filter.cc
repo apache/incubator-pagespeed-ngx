@@ -301,14 +301,15 @@ bool CssFilter::RewriteExternalCssToResource(Resource* input_resource,
   if (!output_resource->IsWritten()) {
     // Load input stylesheet.
     MessageHandler* handler = html_parse_->message_handler();
-    if (input_resource == NULL ||
-        !resource_manager_->ReadIfCached(input_resource, handler) ||
-        !input_resource->ContentsValid()) {
-      // TODO(sligocki): Should these really be HtmlParse errors?
-      html_parse_->ErrorHere("Failed to load resource %s",
-                             input_resource->url().c_str());
-    } else {
-      ret = RewriteLoadedResource(input_resource, output_resource);
+    if (input_resource != NULL &&
+        resource_manager_->ReadIfCached(input_resource, handler)) {
+      if (input_resource->ContentsValid()) {
+        ret = RewriteLoadedResource(input_resource, output_resource);
+      } else {
+        // TODO(sligocki): Should these really be HtmlParse warnings?
+        html_parse_->WarningHere("CSS resource fetch failed: %s",
+                                 input_resource->url().c_str());
+      }
     }
   }
 

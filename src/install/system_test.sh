@@ -32,7 +32,7 @@ if [ $PORT = $HOSTNAME ]; then
 fi;
 EXAMPLE_ROOT=http://$HOSTNAME/mod_pagespeed_example
 STATISTICS_URL=http://localhost:$PORT/mod_pagespeed_statistics
-BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/ic.a.bad.css
+BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/bad.pagespeed.cf.hash.css
 
 OUTDIR=/tmp/mod_pagespeed_test.$USER/fetched_directory
 rm -rf $OUTDIR
@@ -170,7 +170,7 @@ grep "type=" $FETCHED       # default, should not find
 check [ $? != 0 ]
 
 test_filter extend_cache rewrites an image tag.
-fetch_until $URL 'grep -c src.*40265e' 1
+fetch_until $URL 'grep -c src.*91_WewrLtP' 1
 check $WGET_PREREQ $URL
 
 test_filter move_css_to_head does what it says on the tin.
@@ -194,7 +194,7 @@ check egrep -q "'<script.*src=.*large'" $FETCHED       # outlined
 check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
 
 echo TEST: compression is enabled for rewritten JS.
-JS_URL=$(egrep -o http://.*.js $FETCHED)
+JS_URL=$(egrep -o http://.*.pagespeed.*.js $FETCHED)
 check "$WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1 | grep -qi 'Content-Encoding: gzip'"
 
@@ -222,7 +222,7 @@ check [ `stat -c %s $OUTDIR/*1023x766*Puzzle*` -lt 241260 ]  # compressed
 check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
 
 echo TEST: compression is not enabled for rewritten images.
-IMG_URL=$(egrep -o http://.*.jpg $FETCHED | head -n1)
+IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
 IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $IMG_URL 2>&1)
 # Make sure we have some valid headers.
@@ -233,7 +233,7 @@ echo "$IMG_HEADERS" | grep -qi 'Content-Encoding: gzip'
 check [ $? != 0 ]
 
 test_filter rewrite_javascript removes comments and saves a bunch of bytes.
-fetch_until $URL 'grep -c src.*9257c' 2   # external scripts rewritten
+fetch_until $URL 'grep -c src.*1o978_K0_L' 2   # external scripts rewritten
 check $WGET_PREREQ $URL
 grep -R "removed" $OUTDIR                 # comments, should not find any
 check [ $? != 0 ]

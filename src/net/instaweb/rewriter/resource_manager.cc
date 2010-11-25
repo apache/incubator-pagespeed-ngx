@@ -44,6 +44,14 @@ namespace net_instaweb {
 
 namespace {
 
+// resource_url_domain_rejections counts the number of urls on a page that we
+// could have rewritten, except that they lay in a domain that did not
+// permit resource rewriting relative to the current page.
+const char kResourceUrlDomainRejections[] = "resource_url_domain_rejections";
+
+const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
+const int64 kGeneratedMaxAgeSec = Timer::kYearMs / Timer::kSecondMs;
+
 // Our HTTP cache mostly stores full URLs, including the http: prefix,
 // mapping them into the URL contents and HTTP headers.  However, we
 // also put name->hash mappings into the HTTP cache, and we prefix
@@ -54,15 +62,13 @@ namespace {
 // on the minimum TTL of the input resources used to construct the
 // resource.  After that TTL has expired, we will need to re-fetch the
 // resources from their origin, and recompute the hash.
-const char kFilenameCacheKeyPrefix[] = "ResourceName:";
-
-// resource_url_domain_rejections counts the number of urls on a page that we
-// could have rewritten, except that they lay in a domain that did not
-// permit resource rewriting relative to the current page.
-const char kResourceUrlDomainRejections[] = "resource_url_domain_rejections";
-
-const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
-const int64 kGeneratedMaxAgeSec = Timer::kYearMs / Timer::kSecondMs;
+//
+// Whenever we change the hashing function we can bust caches by
+// changing this prefix.
+//
+// TODO(jmarantz): inject the SVN version number here to automatically bust
+// caches whenever pagespeed is upgraded.
+const char kCacheKeyPrefix[] = "rname/";
 
 }  // namespace
 
@@ -278,8 +284,8 @@ OutputResource* ResourceManager::CreateOutputResourceWithPath(
   SimpleMetaData meta_data;
   StringPiece hash_extension;
   HTTPValue value;
-
-  if ((http_cache_->Find(resource->name_key(), &value, &meta_data, handler)
+  std::string name_key = StrCat(kCacheKeyPrefix, resource->name_key());
+  if ((http_cache_->Find(name_key, &value, &meta_data, handler)
        == HTTPCache::kFound) &&
       value.ExtractContents(&hash_extension)) {
     ResourceNamer hash_ext;
@@ -516,8 +522,9 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
         origin_meta_data.Add(HttpAttributes::kCacheControl, cache_control);
         origin_meta_data.ComputeCaching();
 
-        http_cache_->Put(output->name_key(), origin_meta_data,
-                         output->hash_ext(), handler);
+        std::string name_key = StrCat(kCacheKeyPrefix, output->name_key());
+        http_cache_->Put(name_key, origin_meta_data, output->hash_ext(),
+                         handler);
       }
     }
   } else {

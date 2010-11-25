@@ -120,10 +120,24 @@ class RewriteDriver {
   // then true is returned and the caller must listen on the callback for the
   // completion of the request.
   //
-  // If the pattern does not match, then false is returned, and the request will
-  // have to be 404'd by the server passed to some other software to handle.
-  // In this case, the callback will be called with Done(false) immediately
-  // before the return.
+  // If the pattern does not match, then false is returned, and the request
+  // should be passed to another handler, and the callback will *not* be
+  // called.  In other words there are four outcomes for this routine:
+  //
+  //   1. the request was handled immediately and the callback called
+  //      before the method returns.  true is returned.
+  //   2. the request looks good but was queued because some other resource
+  //      fetch is needed to satisfy it.  true is returned.
+  //   3. the request looks like one it belongs to Instaweb, but the resource
+  //      could not be decoded.  The callback is called immediately with
+  //      'false', but true is returned.
+  //   4. the request does not look like it belongs to Instaweb.  The callback
+  //      will not be called, and false will be returned.
+  //
+  // In other words, if this routine returns 'false' then the callback
+  // will not be called.  If the callback is called, then this should be the
+  // 'final word' on this request, whether it was called with success=true or
+  // success=false.
   bool FetchResource(const StringPiece& resource,
                      const MetaData& request_headers,
                      MetaData* response_headers,

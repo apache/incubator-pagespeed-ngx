@@ -25,4 +25,8 @@ int64 AprTimer::NowUs() const {
   return apr_time_now();
 }
 
+void AprTimer::SleepUs(int64 us) {
+  apr_sleep(us);
+}
+
 }  // namespace net_instaweb
