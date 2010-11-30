@@ -63,18 +63,18 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
         // resource_manager_(new ResourceManager(
         //    file_prefix_, &file_system_,
         //    &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
-        //    &http_cache_, &domain_lawyer_)),
+        //    &http_cache_)),
         rewrite_driver_(&message_handler_, &file_system_,
-                        &mock_url_async_fetcher_),
+                        &mock_url_async_fetcher_, options_),
 
         other_lru_cache_(new LRUCache(kCacheSize)),
         other_http_cache_(other_lru_cache_, &mock_timer_),
         other_resource_manager_(
             file_prefix_, &other_file_system_,
             &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
-            &other_http_cache_, &other_domain_lawyer_),
+            &other_http_cache_),
         other_rewrite_driver_(&message_handler_, &other_file_system_,
-                              &mock_url_async_fetcher_) {
+                              &mock_url_async_fetcher_, other_options_) {
     // rewrite_driver_.SetResourceManager(resource_manager_);
     other_rewrite_driver_.SetResourceManager(&other_resource_manager_);
   }
@@ -86,7 +86,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     resource_manager_ = new ResourceManager(
         file_prefix_, &file_system_,
         &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
-        &http_cache_, &domain_lawyer_);
+        &http_cache_);
     rewrite_driver_.SetResourceManager(resource_manager_);
   }
 
@@ -102,6 +102,17 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     return false;
   }
 
+  // Add a single rewrite filter to rewrite_driver_.
+  void AddFilter(RewriteOptions::Filter filter) {
+    options_.EnableFilter(filter);
+    rewrite_driver_.AddFilters();
+  }
+
+  // Add a single rewrite filter to rewrite_driver_.
+  void AddOtherFilter(RewriteOptions::Filter filter) {
+    other_options_.EnableFilter(filter);
+    other_rewrite_driver_.AddFilters();
+  }
 
   // The async fetchers in these tests are really fake async fetchers, and
   // will call their callbacks directly.  Hence we don't really need
@@ -280,8 +291,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   MemFileSystem file_system_;
   LRUCache* lru_cache_;  // Owned by http_cache_
   HTTPCache http_cache_;
-  DomainLawyer domain_lawyer_;
   ResourceManager* resource_manager_;  // TODO(sligocki): Make not a pointer.
+  RewriteOptions options_;
   RewriteDriver rewrite_driver_;
 
   // Server B runs other_rewrite_driver_ and will get a request for
@@ -291,8 +302,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   MemFileSystem other_file_system_;
   LRUCache* other_lru_cache_;  // Owned by other_http_cache_
   HTTPCache other_http_cache_;
-  DomainLawyer other_domain_lawyer_;
   ResourceManager other_resource_manager_;
+  RewriteOptions other_options_;
   RewriteDriver other_rewrite_driver_;
 };
 

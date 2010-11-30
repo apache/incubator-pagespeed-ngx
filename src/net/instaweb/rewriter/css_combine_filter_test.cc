@@ -45,8 +45,8 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     resource_manager_->set_hasher(hasher);
     other_resource_manager_.set_hasher(hasher);
 
-    rewrite_driver_.AddFilter(RewriteOptions::kCombineCss);
-    other_rewrite_driver_.AddFilter(RewriteOptions::kCombineCss);
+    AddFilter(RewriteOptions::kCombineCss);
+    AddOtherFilter(RewriteOptions::kCombineCss);
 
     // URLs and content for HTML document and resources.
     CHECK_EQ(StringPiece::npos, id.find("/"));
@@ -174,7 +174,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
     std::string expected_combination = StrCat(a_css_body, c_css_body);
 
-    rewrite_driver_.AddFilter(RewriteOptions::kCombineCss);
+    AddFilter(RewriteOptions::kCombineCss);
 
     // Put original CSS files into our fetcher.
     SimpleMetaData default_css_header;
@@ -376,7 +376,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     html_input += "</head>\n<body>\n  <div class='yellow'>\n";
     html_input += "    Hello, mod_pagespeed!\n  </div>\n</body>\n";
 
-    rewrite_driver_.AddFilter(RewriteOptions::kCombineCss);
+    AddFilter(RewriteOptions::kCombineCss);
     ParseUrl(html_url, html_input);
     CollectCssLinks("combine_css_missing_files", output_buffer_,
                     output_css_links);
@@ -507,7 +507,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
       "</head>";
 
   // Rewrite
-  rewrite_driver_.AddFilter(RewriteOptions::kCombineCss);
+  AddFilter(RewriteOptions::kCombineCss);
   ParseUrl(html_url, html_input);
 
   // Check for CSS files in the rewritten page.
@@ -553,7 +553,7 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrl) {
       "</head>\n";
 
   // Rewrite
-  rewrite_driver_.AddFilter(RewriteOptions::kCombineCss);
+  AddFilter(RewriteOptions::kCombineCss);
   ParseUrl(html_url, html_input);
 
   // Check for CSS files in the rewritten page.

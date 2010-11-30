@@ -55,7 +55,7 @@ bool DocType::IsVersion5() const {
 }
 
 bool DocType::Parse(const StringPiece& directive,
-                    const StringPiece& content_type) {
+                    const ContentType& content_type) {
   // Check if this is a doctype directive; don't bother parsing if it isn't.
   if (!StringCaseStartsWith(directive, "doctype ")) {
     return false;
@@ -74,8 +74,7 @@ bool DocType::Parse(const StringPiece& directive,
   doctype_ = UNKNOWN;
   if (parts.size() >= 2 && StringCaseEqual(parts[1], "html")) {
     if (parts.size() == 2) {
-      if (StringCaseEndsWith(content_type, "+xml") ||
-          StringCaseEqual(content_type, "application/xml")) {
+      if (content_type.IsXmlLike()) {
         doctype_ = XHTML_5;
       } else {
         doctype_ = HTML_5;

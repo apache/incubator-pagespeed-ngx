@@ -28,27 +28,48 @@ namespace net_instaweb {
 struct ContentType {
  public:
   enum Type {
-    kCss,
+    kHtml,
+    kXhtml,
+    kCeHtml,  // See http://en.wikipedia.org/wiki/CE-HTML
     kJavascript,
+    kCss,
+    kText,
+    kXml,
     kPng,
     kGif,
     kJpeg,
-    kText,
   };
 
   const char* mime_type() const { return mime_type_; }
   const char* file_extension() const { return file_extension_; }
   Type type() const { return type_; }
 
+  // Return true iff this content type is HTML, or XHTML, or some other such
+  // thing (e.g. CE-HTML) that we can rewrite.
+  bool IsHtmlLike() const;
+
+  // Return true iff this content type is XML of some kind (either XHTML or
+  // some other XML).
+  bool IsXmlLike() const;
+
+  // These fields should be private; we leave them public only so we can use
+  // struct literals in content_type.cc.  Other code should use the above
+  // accessor methods instead of accessing these fields directly.
   const char* mime_type_;
   const char* file_extension_;  // includes ".", e.g. ".ext"
   Type type_;
 };
 
+// HTML-like (i.e. rewritable) text:
+extern const ContentType& kContentTypeHtml;
+extern const ContentType& kContentTypeXhtml;
+extern const ContentType& kContentTypeCeHtml;
+// Other text:
 extern const ContentType& kContentTypeJavascript;
 extern const ContentType& kContentTypeCss;
 extern const ContentType& kContentTypeText;
-
+extern const ContentType& kContentTypeXml;
+// Images:
 extern const ContentType& kContentTypePng;
 extern const ContentType& kContentTypeGif;
 extern const ContentType& kContentTypeJpeg;

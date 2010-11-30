@@ -150,9 +150,6 @@ class RewriteDriverFactory {
   // Increment the cournt of slurp returning 404.
   void IncrementSlurpCount();
 
-  DomainLawyer* domain_lawyer() { return &domain_lawyer_; }
-  const DomainLawyer* domain_lawyer() const { return &domain_lawyer_; }
-
  protected:
   virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
   bool FetchersComputed() const;

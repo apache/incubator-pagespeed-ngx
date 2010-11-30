@@ -79,8 +79,7 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
                                  FilenameEncoder* filename_encoder,
                                  UrlAsyncFetcher* url_async_fetcher,
                                  Hasher* hasher,
-                                 HTTPCache* http_cache,
-                                 DomainLawyer* domain_lawyer)
+                                 HTTPCache* http_cache)
     : resource_id_(0),
       file_system_(file_system),
       filename_encoder_(filename_encoder),
@@ -92,9 +91,6 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       url_escaper_(new UrlEscaper()),
       relative_path_(false),
       store_outputs_in_file_system_(true),
-      domain_lawyer_(domain_lawyer),
-      max_url_segment_size_(RewriteOptions::kMaxUrlSegmentSize),
-      max_url_size_(RewriteOptions::kMaxUrlSize),
       max_age_string_(StringPrintf("max-age=%d",
                                    static_cast<int>(kGeneratedMaxAgeSec))) {
   file_prefix.CopyToString(&file_prefix_);
@@ -248,9 +244,10 @@ OutputResource* ResourceManager::CreateOutputResourceForRewrittenUrl(
     const StringPiece& resource_url,
     const ContentType* content_type,
     UrlSegmentEncoder* encoder,
+    const RewriteOptions* rewrite_options,
     MessageHandler* handler) {
   OutputResource* output_resource = NULL;
-  UrlPartnership partnership(domain_lawyer_, document_gurl);
+  UrlPartnership partnership(rewrite_options->domain_lawyer(), document_gurl);
   if (partnership.AddUrl(resource_url, handler)) {
     std::string base = partnership.ResolvedBase();
     std::string relative_url = partnership.RelativePath(0);
@@ -334,14 +331,17 @@ void ResourceManager::IncrementResourceUrlDomainRejections() {
   resource_url_domain_rejections_->Add(1);
 }
 
-Resource* ResourceManager::CreateInputResource(const GURL& base_gurl,
-                                               const StringPiece& input_url,
-                                               MessageHandler* handler) {
-  UrlPartnership partnership(domain_lawyer_, base_gurl);
+Resource* ResourceManager::CreateInputResource(
+    const GURL& base_gurl,
+    const StringPiece& input_url,
+    const RewriteOptions* rewrite_options,
+    MessageHandler* handler) {
+  UrlPartnership partnership(rewrite_options->domain_lawyer(), base_gurl);
   Resource* resource = NULL;
   if (partnership.AddUrl(input_url, handler)) {
     const GURL* input_gurl = partnership.FullPath(0);
-    resource = CreateInputResourceUnchecked(*input_gurl, handler);
+    resource = CreateInputResourceUnchecked(*input_gurl, rewrite_options,
+                                            handler);
   } else {
     handler->Message(kInfo, "%s: Invalid url relative to '%s'",
                      input_url.as_string().c_str(), base_gurl.spec().c_str());
@@ -353,8 +353,10 @@ Resource* ResourceManager::CreateInputResource(const GURL& base_gurl,
 
 Resource* ResourceManager::CreateInputResourceAndReadIfCached(
     const GURL& base_gurl, const StringPiece& input_url,
+    const RewriteOptions* rewrite_options,
     MessageHandler* handler) {
-  Resource* input_resource = CreateInputResource(base_gurl, input_url, handler);
+  Resource* input_resource = CreateInputResource(
+      base_gurl, input_url, rewrite_options, handler);
   if (input_resource != NULL &&
       (!input_resource->IsCacheable() ||
        !ReadIfCached(input_resource, handler))) {
@@ -370,6 +372,7 @@ Resource* ResourceManager::CreateInputResourceAndReadIfCached(
 Resource* ResourceManager::CreateInputResourceFromOutputResource(
     UrlSegmentEncoder* encoder,
     OutputResource* output_resource,
+    const RewriteOptions* rewrite_options,
     MessageHandler* handler) {
   // Assumes output_resource has a url that's been checked by a lawyer.  We
   // should already have checked the signature on the encoded resource name and
@@ -379,20 +382,23 @@ Resource* ResourceManager::CreateInputResourceFromOutputResource(
   if (encoder->DecodeFromUrlSegment(output_resource->name(), &input_name)) {
     GURL base_gurl(output_resource->resolved_base());
     GURL input_gurl = base_gurl.Resolve(input_name);
-    input_resource = CreateInputResourceUnchecked(input_gurl, handler);
+    input_resource = CreateInputResourceUnchecked(input_gurl,
+                                                  rewrite_options, handler);
   }
   return input_resource;
 }
 
 Resource* ResourceManager::CreateInputResourceAbsolute(
-    const StringPiece& absolute_url, MessageHandler* handler) {
+    const StringPiece& absolute_url, const RewriteOptions* rewrite_options,
+    MessageHandler* handler) {
   std::string url_string(absolute_url.data(), absolute_url.size());
   GURL url(url_string);
-  return CreateInputResourceUnchecked(url, handler);
+  return CreateInputResourceUnchecked(url, rewrite_options, handler);
 }
 
 Resource* ResourceManager::CreateInputResourceUnchecked(
-    const GURL& url, MessageHandler* handler) {
+    const GURL& url, const RewriteOptions* rewrite_options,
+    MessageHandler* handler) {
   if (!url.is_valid()) {
     // Note: Bad user-content can leave us here.  But it's really hard
     // to concatenate a valid protocol and domain onto an arbitrary string
@@ -418,7 +424,7 @@ Resource* ResourceManager::CreateInputResourceUnchecked(
 
     // Note: type may be NULL if url has an unexpected or malformed extension.
     const ContentType* type = NameExtensionToContentType(url_string);
-    resource = new UrlInputResource(this, type, url_string);
+    resource = new UrlInputResource(this, rewrite_options, type, url_string);
   } else {
     // Note: Bad user-content can leave us here.
     handler->Message(kWarning, "Unsupported scheme '%s' for url '%s'",

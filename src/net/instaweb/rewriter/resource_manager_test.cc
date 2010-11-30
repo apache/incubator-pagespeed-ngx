@@ -184,6 +184,7 @@ TEST_F(ResourceManagerTest, TestOutputInputUrl) {
       resource_manager_->CreateInputResourceFromOutputResource(
           resource_manager_->url_escaper(),
           output_resource.get(),
+          &options_,
           &message_handler_));
   EXPECT_EQ("http://example.com/dir/123/orig", input_resource->url());
 }
@@ -197,10 +198,10 @@ TEST_F(ResourceManagerTest, TestLegacyUrl) {
       resource_manager_->CreateInputResourceFromOutputResource(
           resource_manager_->url_escaper(),
           output_resource.get(),
+          &options_,
           &message_handler_));
   EXPECT_EQ("http://example.com/dir/123/orig", input_resource->url());
 }
-
 
 // TODO(jmaessen): re-enable after sharding works again.
 // class ResourceManagerShardedTest : public ResourceManagerTest {

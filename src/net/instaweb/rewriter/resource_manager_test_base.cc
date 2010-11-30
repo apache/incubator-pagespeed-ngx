@@ -27,17 +27,17 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   ResourceManager other_resource_manager(
       file_prefix_, &other_file_system,
       &filename_encoder_, &wait_url_async_fetcher, hasher,
-      &other_http_cache, &other_domain_lawyer);
+      &other_http_cache);
 
   SimpleStats stats;
   RewriteDriver::Initialize(&stats);
   other_resource_manager.set_statistics(&stats);
 
   RewriteDriver other_rewrite_driver(&message_handler_, &other_file_system,
-                                     &wait_url_async_fetcher);
+                                     &wait_url_async_fetcher, other_options_);
   other_rewrite_driver.SetResourceManager(&other_resource_manager);
-
-  other_rewrite_driver.AddFilter(filter);
+  other_options_.EnableFilter(filter);
+  other_rewrite_driver.AddFilters();
 
   Variable* cached_resource_fetches =
       stats.GetVariable(RewriteDriver::kResourceFetchesCached);

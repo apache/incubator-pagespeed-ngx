@@ -72,7 +72,8 @@ namespace net_instaweb {
 // behavior.
 RewriteDriver::RewriteDriver(MessageHandler* message_handler,
                              FileSystem* file_system,
-                             UrlAsyncFetcher* url_async_fetcher)
+                             UrlAsyncFetcher* url_async_fetcher,
+                             const RewriteOptions& options)
     : html_parse_(message_handler),
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
@@ -80,11 +81,12 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       add_instrumentation_filter_(NULL),
       cached_resource_fetches_(NULL),
       succeeded_filter_resource_fetches_(NULL),
-      failed_filter_resource_fetches_(NULL) {
+      failed_filter_resource_fetches_(NULL),
+      options_(options) {
 }
 
 RewriteDriver::~RewriteDriver() {
-  STLDeleteContainerPointers(filters_.begin(), filters_.end());
+  STLDeleteElements(&filters_);
 }
 
 // names for Statistics variables.
@@ -153,31 +155,25 @@ bool RewriteDriver::ParseKeyInt64(const StringPiece& key, SetInt64Method m,
   }
 }
 
-void RewriteDriver::AddFilter(RewriteOptions::Filter filter) {
-  RewriteOptions options;
-  options.EnableFilter(filter);
-  AddFilters(options);
-}
-
-void RewriteDriver::AddFilters(const RewriteOptions& options) {
+void RewriteDriver::AddFilters() {
   CHECK(html_writer_filter_ == NULL);
 
   // Add the rewriting filters to the map unconditionally -- we may
   // need the to process resource requests due to a query-specific
   // 'rewriters' specification.  We still use the passed-in options
   // to determine whether they get added to the html parse filter chain.
-  AddRewriteFilter(new CssCombineFilter(this, kCssCombiner));
-  AddRewriteFilter(new CssFilter(this, kCssFilter));
-  AddRewriteFilter(new JavascriptFilter(this, kJavascriptMin));
-  AddRewriteFilter(
+  RegisterRewriteFilter(new CssCombineFilter(this, kCssCombiner));
+  RegisterRewriteFilter(new CssFilter(this, kCssFilter));
+  RegisterRewriteFilter(new JavascriptFilter(this, kJavascriptMin));
+  RegisterRewriteFilter(
       new ImgRewriteFilter(
           this,
-          options.Enabled(RewriteOptions::kDebugLogImgTags),
-          options.Enabled(RewriteOptions::kInsertImgDimensions),
+          options_.Enabled(RewriteOptions::kDebugLogImgTags),
+          options_.Enabled(RewriteOptions::kInsertImgDimensions),
           kImageCompression,
-          options.img_inline_max_bytes(),
-          options.img_max_rewrites_at_once()));
-  AddRewriteFilter(new CacheExtender(this, kCacheExtender));
+          options_.img_inline_max_bytes(),
+          options_.img_max_rewrites_at_once()));
+  RegisterRewriteFilter(new CacheExtender(this, kCacheExtender));
 
   // This function defines the order that filters are run.  We document
   // in pagespeed.conf.template that the order specified in the conf
@@ -188,17 +184,17 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
 
   // Now process boolean options, which may include propagating non-boolean
   // and boolean parameter settings to filters.
-  if (options.Enabled(RewriteOptions::kAddHead) ||
-      options.Enabled(RewriteOptions::kCombineHeads) ||
-      options.Enabled(RewriteOptions::kAddBaseTag) ||
-      options.Enabled(RewriteOptions::kMoveCssToHead) ||
-      options.Enabled(RewriteOptions::kAddInstrumentation)) {
+  if (options_.Enabled(RewriteOptions::kAddHead) ||
+      options_.Enabled(RewriteOptions::kCombineHeads) ||
+      options_.Enabled(RewriteOptions::kAddBaseTag) ||
+      options_.Enabled(RewriteOptions::kMoveCssToHead) ||
+      options_.Enabled(RewriteOptions::kAddInstrumentation)) {
     // Adds a filter that adds a 'head' section to html documents if
     // none found prior to the body.
     AddFilter(new AddHeadFilter(
-        &html_parse_, options.Enabled(RewriteOptions::kCombineHeads)));
+        &html_parse_, options_.Enabled(RewriteOptions::kCombineHeads)));
   }
-  if (options.Enabled(RewriteOptions::kAddBaseTag)) {
+  if (options_.Enabled(RewriteOptions::kAddBaseTag)) {
     // Adds a filter that establishes a base tag for the HTML document.
     // This is required when implementing a proxy server.  The base
     // tag used can be changed for every request with SetBaseUrl.
@@ -207,82 +203,76 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
     base_tag_filter_.reset(new BaseTagFilter(&html_parse_));
     html_parse_.AddFilter(base_tag_filter_.get());
   }
-  if (options.Enabled(RewriteOptions::kStripScripts)) {
+  if (options_.Enabled(RewriteOptions::kStripScripts)) {
     // Experimental filter that blindly scripts all strips from a page.
     AddFilter(new StripScriptsFilter(&html_parse_));
   }
-  if (options.Enabled(RewriteOptions::kOutlineCss)) {
+  if (options_.Enabled(RewriteOptions::kOutlineCss)) {
     // Cut out inlined styles and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
     CHECK(resource_manager_ != NULL);
-    CssOutlineFilter* css_outline_filter =
-        new CssOutlineFilter(&html_parse_, resource_manager_,
-                             options.css_outline_min_bytes());
+    CssOutlineFilter* css_outline_filter = new CssOutlineFilter(this);
     AddFilter(css_outline_filter);
   }
-  if (options.Enabled(RewriteOptions::kOutlineJavascript)) {
+  if (options_.Enabled(RewriteOptions::kOutlineJavascript)) {
     // Cut out inlined scripts and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
     CHECK(resource_manager_ != NULL);
-    JsOutlineFilter* js_outline_filter =
-        new JsOutlineFilter(&html_parse_, resource_manager_,
-                            options.js_outline_min_bytes());
+    JsOutlineFilter* js_outline_filter = new JsOutlineFilter(this);
     AddFilter(js_outline_filter);
   }
-  if (options.Enabled(RewriteOptions::kMoveCssToHead)) {
+  if (options_.Enabled(RewriteOptions::kMoveCssToHead)) {
     // It's good to move CSS links to the head prior to running CSS combine,
     // which only combines CSS links that are already in the head.
     AddFilter(new CssMoveToHeadFilter(&html_parse_, statistics()));
   }
-  if (options.Enabled(RewriteOptions::kCombineCss)) {
+  if (options_.Enabled(RewriteOptions::kCombineCss)) {
     // Combine external CSS resources after we've outlined them.
     // CSS files in html document.  This can only be called
     // once and requires a resource_manager to be set.
     EnableRewriteFilter(kCssCombiner);
   }
-  if (options.Enabled(RewriteOptions::kRewriteCss)) {
+  if (options_.Enabled(RewriteOptions::kRewriteCss)) {
     EnableRewriteFilter(kCssFilter);
   }
-  if (options.Enabled(RewriteOptions::kRewriteJavascript)) {
+  if (options_.Enabled(RewriteOptions::kRewriteJavascript)) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
     // interaction.
     EnableRewriteFilter(kJavascriptMin);
   }
-  if (options.Enabled(RewriteOptions::kInlineCss)) {
+  if (options_.Enabled(RewriteOptions::kInlineCss)) {
     // Inline small CSS files.  Give CssCombineFilter and CSS minification a
     // chance to run before we decide what counts as "small".
     CHECK(resource_manager_ != NULL);
-    AddFilter(new CssInlineFilter(&html_parse_, resource_manager_,
-                                  options.css_inline_max_bytes()));
+    AddFilter(new CssInlineFilter(this));
   }
-  if (options.Enabled(RewriteOptions::kInlineJavascript)) {
+  if (options_.Enabled(RewriteOptions::kInlineJavascript)) {
     // Inline small Javascript files.  Give JS minification a chance to run
     // before we decide what counts as "small".
     CHECK(resource_manager_ != NULL);
-    AddFilter(new JsInlineFilter(&html_parse_, resource_manager_,
-                                 options.js_inline_max_bytes()));
+    AddFilter(new JsInlineFilter(this));
   }
-  if (options.Enabled(RewriteOptions::kRewriteImages)) {
+  if (options_.Enabled(RewriteOptions::kRewriteImages)) {
     EnableRewriteFilter(kImageCompression);
   }
-  if (options.Enabled(RewriteOptions::kRemoveComments)) {
+  if (options_.Enabled(RewriteOptions::kRemoveComments)) {
     AddFilter(new RemoveCommentsFilter(&html_parse_));
   }
-  if (options.Enabled(RewriteOptions::kCollapseWhitespace)) {
+  if (options_.Enabled(RewriteOptions::kCollapseWhitespace)) {
     // Remove excess whitespace in HTML
     AddFilter(new CollapseWhitespaceFilter(&html_parse_));
   }
-  if (options.Enabled(RewriteOptions::kElideAttributes)) {
+  if (options_.Enabled(RewriteOptions::kElideAttributes)) {
     // Remove HTML element attribute values where
     // http://www.w3.org/TR/html4/loose.dtd says that the name is all
     // that's necessary
     AddFilter(new ElideAttributesFilter(&html_parse_));
   }
-  if (options.Enabled(RewriteOptions::kExtendCache)) {
+  if (options_.Enabled(RewriteOptions::kExtendCache)) {
     // Extend the cache lifetime of resources.
     EnableRewriteFilter(kCacheExtender);
   }
-  if (options.Enabled(RewriteOptions::kLeftTrimUrls)) {
+  if (options_.Enabled(RewriteOptions::kLeftTrimUrls)) {
     // Trim extraneous prefixes from urls in attribute values.
     // Happens before RemoveQuotes but after everything else.  Note:
     // we Must left trim urls BEFORE quote removal.
@@ -291,17 +281,17 @@ void RewriteDriver::AddFilters(const RewriteOptions& options) {
                               resource_manager_->statistics()));
     html_parse_.AddFilter(left_trim_filter_.get());
   }
-  if (options.Enabled(RewriteOptions::kRemoveQuotes)) {
+  if (options_.Enabled(RewriteOptions::kRemoveQuotes)) {
     // Remove extraneous quotes from html attributes.  Does this save
     // enough bytes to be worth it after compression?  If we do it
     // everywhere it seems to give a small savings.
     AddFilter(new HtmlAttributeQuoteRemoval(&html_parse_));
   }
-  if (options.Enabled(RewriteOptions::kAddInstrumentation)) {
+  if (options_.Enabled(RewriteOptions::kAddInstrumentation)) {
     // Inject javascript to instrument loading-time.
     add_instrumentation_filter_ =
         new AddInstrumentationFilter(&html_parse_,
-                                     options.beacon_url(),
+                                     options_.beacon_url(),
                                      resource_manager_->statistics());
     AddFilter(add_instrumentation_filter_);
   }
@@ -327,7 +317,7 @@ void RewriteDriver::EnableRewriteFilter(const char* id) {
   html_parse_.AddFilter(filter);
 }
 
-void RewriteDriver::AddRewriteFilter(RewriteFilter* filter) {
+void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
   // Track resource_fetches if we care about statistics.  Note that
   // the statistics are owned by the resource manager, which generally
   // should be set up prior to the rewrite_driver.

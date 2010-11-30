@@ -22,6 +22,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -39,8 +40,10 @@ UrlInputResource::~UrlInputResource() {
 // Shared fetch callback, used by both Load and LoadAndCallback
 class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
  public:
-  UrlResourceFetchCallback(ResourceManager* resource_manager) :
+  UrlResourceFetchCallback(ResourceManager* resource_manager,
+                           const RewriteOptions* rewrite_options) :
       resource_manager_(resource_manager),
+      rewrite_options_(rewrite_options),
       message_handler_(NULL) { }
   virtual ~UrlResourceFetchCallback() {}
 
@@ -91,7 +94,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
 
     std::string url_string = url(), origin_url;
     bool ret = false;
-    DomainLawyer* lawyer = resource_manager_->domain_lawyer();
+    const DomainLawyer* lawyer = rewrite_options_->domain_lawyer();
     if (lawyer->MapOrigin(url_string, &origin_url)) {
       if (origin_url != url_string) {
         // If mapping the URL changes its host, then add a 'Host' header
@@ -137,21 +140,24 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   virtual bool should_yield() = 0;
 
  protected:
-  ResourceManager* resource_manager_;
-  MessageHandler* message_handler_;
   virtual void DoneInternal(bool success) {
   }
 
+  ResourceManager* resource_manager_;
+  const RewriteOptions* rewrite_options_;
+  MessageHandler* message_handler_;
+
  private:
-  DISALLOW_COPY_AND_ASSIGN(UrlResourceFetchCallback);
   std::string lock_name_;
+  DISALLOW_COPY_AND_ASSIGN(UrlResourceFetchCallback);
 };
 
 class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
  public:
   UrlReadIfCachedCallback(const std::string& url, HTTPCache* http_cache,
-                          ResourceManager* resource_manager)
-      : UrlResourceFetchCallback(resource_manager),
+                          ResourceManager* resource_manager,
+                          const RewriteOptions* rewrite_options)
+      : UrlResourceFetchCallback(resource_manager, rewrite_options),
         url_(url),
         http_cache_(http_cache) {
   }
@@ -180,8 +186,8 @@ bool UrlInputResource::Load(MessageHandler* handler) {
   value_.Clear();
 
   HTTPCache* http_cache = resource_manager()->http_cache();
-  UrlReadIfCachedCallback* cb = new UrlReadIfCachedCallback(url_, http_cache,
-                                                            resource_manager());
+  UrlReadIfCachedCallback* cb = new UrlReadIfCachedCallback(
+      url_, http_cache, resource_manager(), rewrite_options_);
 
   // If the fetcher can satisfy the request instantly, then we
   // can try to populate the resource from the cache.
@@ -196,8 +202,9 @@ bool UrlInputResource::Load(MessageHandler* handler) {
 class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
  public:
   explicit UrlReadAsyncFetchCallback(Resource::AsyncCallback* callback,
-                                    UrlInputResource* resource)
-      : UrlResourceFetchCallback(resource->resource_manager()),
+                                     UrlInputResource* resource)
+      : UrlResourceFetchCallback(resource->resource_manager(),
+                                 resource->rewrite_options()),
         resource_(resource),
         callback_(callback) {
   }

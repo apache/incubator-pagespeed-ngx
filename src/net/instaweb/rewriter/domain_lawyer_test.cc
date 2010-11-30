@@ -272,4 +272,66 @@ TEST_F(DomainLawyerTest, MapOriginDomain) {
   EXPECT_EQ("http://localhost:8080/a/b/c?d=f", mapped);
 }
 
+TEST_F(DomainLawyerTest, Merge) {
+  // Add some mappings for domain_lawywer_.
+  ASSERT_TRUE(domain_lawyer_.AddDomain("http://d1.com/", &message_handler_));
+  ASSERT_TRUE(domain_lawyer_.AddRewriteDomainMapping(
+      "http://cdn1.com", "http://www.o1.com", &message_handler_));
+  ASSERT_TRUE(domain_lawyer_.AddOriginDomainMapping(
+      "http://localhost:8080", "http://o1.com:8080", &message_handler_));
+
+  // We'll also a mapping that will conflict, and one that won't
+  ASSERT_TRUE(domain_lawyer_.AddOriginDomainMapping(
+      "http://dest1/", "http://common_src1", &message_handler_));
+  ASSERT_TRUE(domain_lawyer_.AddOriginDomainMapping(
+      "http://dest2/", "http://common_src2", &message_handler_));
+
+  // Now add a similar set of mappings for another lawyer.
+  DomainLawyer merged;
+  ASSERT_TRUE(merged.AddDomain("http://d2.com/", &message_handler_));
+  ASSERT_TRUE(merged.AddRewriteDomainMapping(
+      "http://cdn2.com", "http://www.o2.com", &message_handler_));
+  ASSERT_TRUE(merged.AddOriginDomainMapping(
+      "http://localhost:8080", "http://o2.com:8080", &message_handler_));
+
+  // Here's a different mapping for the same source.
+  ASSERT_TRUE(merged.AddOriginDomainMapping(
+      "http://dest3/", "http://common_src1", &message_handler_));
+  ASSERT_TRUE(domain_lawyer_.AddOriginDomainMapping(
+      "http://dest4/", "http://common_src3", &message_handler_));
+
+  merged.Merge(domain_lawyer_);
+
+  // Now the tests for both domains should work post-merger.
+
+  std::string mapped;
+  GURL resolved_request;
+  ASSERT_TRUE(merged.MapRequestToDomain(
+      GoogleUrl::Create(StringPiece("http://www.o1.com/index.html")),
+      "styles/blue.css", &mapped, &resolved_request, &message_handler_));
+  EXPECT_EQ("http://cdn1.com/", mapped);
+  ASSERT_TRUE(merged.MapRequestToDomain(
+      GoogleUrl::Create(StringPiece("http://www.o2.com/index.html")),
+      "styles/blue.css", &mapped, &resolved_request, &message_handler_));
+  EXPECT_EQ("http://cdn2.com/", mapped);
+
+  ASSERT_TRUE(merged.MapOrigin("http://o1.com:8080/a/b/c?d=f", &mapped));
+  EXPECT_EQ("http://localhost:8080/a/b/c?d=f", mapped);
+  ASSERT_TRUE(merged.MapOrigin("http://o2.com:8080/a/b/c?d=f", &mapped));
+  EXPECT_EQ("http://localhost:8080/a/b/c?d=f", mapped);
+
+  // The conflict will be silently resolved to prefer the mapping from
+  // the domain that got merged, which is domain_laywer_1, overriding
+  // what was previously in the target.
+  ASSERT_TRUE(merged.MapOrigin("http://common_src1", &mapped));
+  EXPECT_EQ("http://dest1/", mapped);
+
+  // Now check the domains that were added.
+  ASSERT_TRUE(merged.MapOrigin("http://common_src2", &mapped));
+  EXPECT_EQ("http://dest2/", mapped);
+
+  ASSERT_TRUE(merged.MapOrigin("http://common_src3", &mapped));
+  EXPECT_EQ("http://dest4/", mapped);
+}
+
 }  // namespace net_instaweb

@@ -19,6 +19,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/dummy_url_fetcher.h"
 #include "net/instaweb/util/public/fake_url_async_fetcher.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
@@ -29,7 +30,7 @@ class RewriteDriverTest : public HtmlParseTestBaseNoAlloc {
  protected:
   RewriteDriverTest() : dummy_url_async_fetcher_(&dummy_url_fetcher_),
                         rewrite_driver_(&message_handler_, &file_system_,
-                                        &dummy_url_async_fetcher_) {
+                                        &dummy_url_async_fetcher_, options_) {
   }
 
   virtual bool AddBody() const { return false; }
@@ -39,6 +40,7 @@ class RewriteDriverTest : public HtmlParseTestBaseNoAlloc {
   DummyUrlFetcher dummy_url_fetcher_;
   FakeUrlAsyncFetcher dummy_url_async_fetcher_;
   StdioFileSystem file_system_;
+  RewriteOptions options_;
   RewriteDriver rewrite_driver_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverTest);

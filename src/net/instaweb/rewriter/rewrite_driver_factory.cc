@@ -194,7 +194,7 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
     resource_manager_.reset(new ResourceManager(
         filename_prefix_, file_system(), filename_encoder(),
         ComputeUrlAsyncFetcher(), hasher(),
-        http_cache(), &domain_lawyer_));
+        http_cache()));
     resource_manager_->set_store_outputs_in_file_system(
         ShouldWriteResourcesToFileSystem());
   }
@@ -213,10 +213,10 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
 RewriteDriver* RewriteDriverFactory::NewCustomRewriteDriver(
     const RewriteOptions& options) {
   RewriteDriver* rewrite_driver =  new RewriteDriver(
-      message_handler(), file_system(), ComputeUrlAsyncFetcher());
+      message_handler(), file_system(), ComputeUrlAsyncFetcher(), options);
   rewrite_driver->SetResourceManager(ComputeResourceManager());
   AddPlatformSpecificRewritePasses(rewrite_driver);
-  rewrite_driver->AddFilters(options);
+  rewrite_driver->AddFilters();
   return rewrite_driver;
 }
 

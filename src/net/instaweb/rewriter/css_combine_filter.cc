@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -60,9 +61,10 @@ const int kUrlOverhead = kIdOverhead + ResourceNamer::kOverhead + kExtOverhead;
 
 class CssCombineFilter::Partnership : public UrlPartnership {
  public:
-  Partnership(ResourceManager* resource_manager, const GURL& gurl)
-      : UrlPartnership(resource_manager->domain_lawyer(), gurl),
-        resource_manager_(resource_manager),
+  Partnership(RewriteDriver* driver, const GURL& gurl)
+      : UrlPartnership(driver->options()->domain_lawyer(), gurl),
+        rewrite_options_(driver->options()),
+        resource_manager_(driver->resource_manager()),
         prev_num_components_(0),
         accumulated_leaf_size_(0) {
   }
@@ -153,11 +155,11 @@ class CssCombineFilter::Partnership : public UrlPartnership {
   // Determines whether our accumulated leaf size is too big, taking into
   // account both per-segment and total-url limitations.
   bool UrlTooBig() {
-    if (accumulated_leaf_size_ > resource_manager_->max_url_segment_size()) {
+    if (accumulated_leaf_size_ > rewrite_options_->max_url_segment_size()) {
       return true;
     }
     if ((accumulated_leaf_size_ + static_cast<int>(resolved_base_.size())) >
-        resource_manager_->max_url_size()) {
+        rewrite_options_->max_url_size()) {
       return true;
     }
     return false;
@@ -185,6 +187,7 @@ class CssCombineFilter::Partnership : public UrlPartnership {
   const std::string& media() const { return media_; }
 
  private:
+  const RewriteOptions* rewrite_options_;
   ResourceManager* resource_manager_;
   std::vector<HtmlElement*> css_elements_;
   std::vector<Resource*> resources_;
@@ -237,7 +240,7 @@ void CssCombineFilter::Initialize(Statistics* statistics) {
 
 void CssCombineFilter::StartDocumentImpl() {
   // This should already be clear, but just in case.
-  partnership_.reset(new Partnership(resource_manager_, base_gurl()));
+  partnership_.reset(new Partnership(driver_, base_gurl()));
 }
 
 void CssCombineFilter::EndElementImpl(HtmlElement* element) {
@@ -251,8 +254,7 @@ void CssCombineFilter::EndElementImpl(HtmlElement* element) {
     } else {
       const char* url = href->value();
       MessageHandler* handler = html_parse_->message_handler();
-      scoped_ptr<Resource> resource (resource_manager_->CreateInputResource(
-          base_gurl(), url, handler));
+      scoped_ptr<Resource> resource(CreateInputResource(url));
       if (resource.get() == NULL) {
         TryCombineAccumulated();
       } else {
@@ -343,7 +345,7 @@ void CssCombineFilter::TryCombineAccumulated() {
       }
     }
   }
-  partnership_.reset(new Partnership(resource_manager_, base_gurl()));
+  partnership_.reset(new Partnership(driver_, base_gurl()));
 }
 
 bool CssCombineFilter::WriteCombination(const ResourceVector& combine_resources,
@@ -520,8 +522,7 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
     std::string root = GoogleUrl::AllExceptLeaf(gurl);
     for (int i = 0; ret && (i < multipart_encoder.num_urls()); ++i)  {
       std::string url = StrCat(root, multipart_encoder.url(i));
-      Resource* css_resource =
-          resource_manager_->CreateInputResourceAbsolute(url, message_handler);
+      Resource* css_resource = CreateInputResourceAbsolute(url);
       ret = combiner->AddResource(css_resource);
       if (ret) {
         resource_manager_->ReadAsync(css_resource, combiner, message_handler);

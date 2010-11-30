@@ -29,14 +29,14 @@ namespace {
 class RewriterTest : public ResourceManagerTestBase {};
 
 TEST_F(RewriterTest, AddHead) {
-  rewrite_driver_.AddHead();
+  AddFilter(RewriteOptions::kAddHead);
   ValidateExpected("add_head",
       "<body><p>text</p></body>",
       "<head/><body><p>text</p></body>");
 }
 
 TEST_F(RewriterTest, MergeHead) {
-  rewrite_driver_.AddFilter(RewriteOptions::kCombineHeads);
+  AddFilter(RewriteOptions::kCombineHeads);
   ValidateExpected("merge_2_heads",
       "<head a><p>1</p></head>4<head b>2<link x>3</head><link y>end",
       "<head a><p>1</p>2<link x>3</head>4<link y>end");
@@ -48,7 +48,7 @@ TEST_F(RewriterTest, MergeHead) {
 }
 
 TEST_F(RewriterTest, BaseTagNoHead) {
-  rewrite_driver_.AddFilter(RewriteOptions::kAddBaseTag);
+  AddFilter(RewriteOptions::kAddBaseTag);
   rewrite_driver_.SetBaseUrl("http://base");
   ValidateExpected("base_tag",
       "<body><p>text</p></body>",
@@ -56,7 +56,7 @@ TEST_F(RewriterTest, BaseTagNoHead) {
 }
 
 TEST_F(RewriterTest, BaseTagExistingHead) {
-  rewrite_driver_.AddFilter(RewriteOptions::kAddBaseTag);
+  AddFilter(RewriteOptions::kAddBaseTag);
   rewrite_driver_.SetBaseUrl("http://base");
   ValidateExpected("base_tag",
       "<head><meta></head><body><p>text</p></body>",
@@ -64,7 +64,7 @@ TEST_F(RewriterTest, BaseTagExistingHead) {
 }
 
 TEST_F(RewriterTest, BaseTagExistingHeadAndNonHrefBase) {
-  rewrite_driver_.AddFilter(RewriteOptions::kAddBaseTag);
+  AddFilter(RewriteOptions::kAddBaseTag);
   rewrite_driver_.SetBaseUrl("http://base");
   ValidateExpected("base_tag",
       "<head><base x><meta></head><body></body>",
@@ -72,7 +72,7 @@ TEST_F(RewriterTest, BaseTagExistingHeadAndNonHrefBase) {
 }
 
 TEST_F(RewriterTest, BaseTagExistingHeadAndHrefBase) {
-  rewrite_driver_.AddFilter(RewriteOptions::kAddBaseTag);
+  AddFilter(RewriteOptions::kAddBaseTag);
   rewrite_driver_.SetBaseUrl("http://base");
   ValidateExpected("base_tag",
       "<head><meta><base href=\"http://old\"></head><body></body>",
@@ -82,7 +82,7 @@ TEST_F(RewriterTest, BaseTagExistingHeadAndHrefBase) {
 TEST_F(RewriterTest, FailGracefullyOnInvalidUrls) {
   Hasher* hasher = &md5_hasher_;
   resource_manager_->set_hasher(hasher);
-  rewrite_driver_.AddFilter(RewriteOptions::kExtendCache);
+  AddFilter(RewriteOptions::kExtendCache);
 
   const char kCssData[] = "a { color: red }";
   InitMetaData("a.css", kContentTypeCss, kCssData, 100);

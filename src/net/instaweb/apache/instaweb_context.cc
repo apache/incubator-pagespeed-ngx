@@ -17,6 +17,7 @@
 
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/header_util.h"
+#include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/stack_buffer.h"
 #include "http_config.h"
@@ -28,20 +29,27 @@ extern module AP_MODULE_DECLARE_DATA pagespeed_module;
 namespace net_instaweb {
 
 InstawebContext::InstawebContext(request_rec* request,
+                                 const ContentType& content_type,
                                  ApacheRewriteDriverFactory* factory,
                                  const std::string& absolute_url,
                                  bool use_custom_options,
                                  const RewriteOptions& custom_options)
     : content_encoding_(kNone),
-      content_type_(request->content_type != NULL ?
-                    request->content_type : ""),
+      content_type_(content_type),
       factory_(factory),
       string_writer_(&output_),
       inflater_(NULL),
       content_detection_state_(kStart),
       absolute_url_(absolute_url) {
   if (use_custom_options) {
-    custom_rewriter_.reset(factory->NewCustomRewriteDriver(custom_options));
+    // TODO(jmarantz): this is a temporary hack until we sort out better
+    // memory management of RewriteOptions.  This will drag on performance.
+    // We need to do this because we are changing RewriteDriver to keep
+    // a reference to its options throughout its lifetime to refer to the
+    // domain lawyer and other options.
+    RewriteOptions empty_options;
+    rewrite_options_.Merge(custom_options, empty_options);  // we lack a Copy...
+    custom_rewriter_.reset(factory->NewCustomRewriteDriver(rewrite_options_));
     rewrite_driver_ = custom_rewriter_.get();
   } else {
     rewrite_driver_ = factory->NewRewriteDriver();

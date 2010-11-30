@@ -32,9 +32,7 @@ class RewriteDriver;
 // Inline small Javascript files.
 class JsInlineFilter : public CommonFilter {
  public:
-  JsInlineFilter(HtmlParse* html_parse,
-                 ResourceManager* resource_manager,
-                 size_t size_threshold_bytes);
+  explicit JsInlineFilter(RewriteDriver* driver);
   virtual ~JsInlineFilter();
 
   virtual void StartDocumentImpl();
@@ -46,7 +44,6 @@ class JsInlineFilter : public CommonFilter {
 
  private:
   HtmlParse* const html_parse_;
-  ResourceManager* const resource_manager_;
   const Atom script_atom_;
   const Atom src_atom_;
   const size_t size_threshold_bytes_;

@@ -22,6 +22,7 @@
 #include <map>
 #include <set>
 #include "base/basictypes.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/wildcard_group.h"
@@ -213,6 +214,9 @@ class RewriteOptions {
     allow_resources_.Disallow(pattern);
   }
 
+  DomainLawyer* domain_lawyer() { return &domain_lawyer_; }
+  const DomainLawyer* domain_lawyer() const { return &domain_lawyer_; }
+
  private:
   // Helper class to represent an Option, whose value is held in some class T.
   // An option is explicitly initialized with its default value, although the
@@ -291,6 +295,7 @@ class RewriteOptions {
   Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")
   Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")
   Option<bool> enabled_;
+  DomainLawyer domain_lawyer_;
   // Be sure to update Merge() if a new field is added.
 
   WildcardGroup allow_resources_;

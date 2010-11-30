@@ -34,8 +34,7 @@ class ResourceManager;
 // Filter to take explicit <style> and <script> tags and outline them to files.
 class CssOutlineFilter : public CommonFilter {
  public:
-  CssOutlineFilter(HtmlParse* html_parse, ResourceManager* resource_manager,
-                   size_t size_threshold_bytes);
+  explicit CssOutlineFilter(RewriteDriver* driver);
   static const char kFilterId[];
 
   virtual void StartDocumentImpl();

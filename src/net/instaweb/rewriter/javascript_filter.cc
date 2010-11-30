@@ -148,10 +148,7 @@ void JavascriptFilter::RewriteInlineScript() {
 // Load script resource located at the given URL,
 // on error report & return NULL (caller need not report)
 Resource* JavascriptFilter::ScriptAtUrl(const StringPiece& script_url) {
-  MessageHandler* message_handler = html_parse_->message_handler();
-  Resource* script_input =
-      resource_manager_->CreateInputResourceAndReadIfCached(
-          base_gurl(), script_url, message_handler);
+  Resource* script_input = CreateInputResourceAndReadIfCached(script_url);
   return script_input;
 }
 
@@ -182,7 +179,7 @@ void JavascriptFilter::RewriteExternalScript() {
       resource_manager_->CreateOutputResourceForRewrittenUrl(
           base_gurl(), filter_prefix_, script_url,
           &kContentTypeJavascript, resource_manager_->url_escaper(),
-          message_handler));
+          driver_->options(), message_handler));
   if (script_dest != NULL) {
     bool ok;
     if (resource_manager_->FetchOutputResource(script_dest.get(), NULL, NULL,

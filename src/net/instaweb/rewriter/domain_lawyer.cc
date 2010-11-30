@@ -78,7 +78,12 @@ DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
     const StringPiece& domain_name, bool warn_on_duplicate,
     MessageHandler* handler) {
   if (domain_name.empty()) {
-    handler->Message(kWarning, "Empty domain passed to AddDomain");
+    // handler will be NULL only when called from Merge, which should
+    // only have pre-validated (non-empty) domains.  So it should not
+    // be possible to get here from Merge.
+    if (handler != NULL) {
+      handler->Message(kWarning, "Empty domain passed to AddDomain");
+    }
     return NULL;
   }
 
@@ -256,6 +261,26 @@ bool DomainLawyer::MapDomainHelper(
     }
   }
   return ret;
+}
+
+void DomainLawyer::Merge(const DomainLawyer& src) {
+  for (DomainMap::const_iterator
+           p = src.domain_map_.begin(),
+           e = src.domain_map_.end();
+       p != e; ++p) {
+    Domain* src_domain = p->second;
+    Domain* dst_domain = AddDomainHelper(src_domain->name(), false, NULL);
+    Domain* src_rewrite_domain = src_domain->rewrite_domain();
+    if (src_rewrite_domain != NULL) {
+      dst_domain->set_rewrite_domain(
+          AddDomainHelper(src_rewrite_domain->name(), false, NULL));
+    }
+    Domain* src_origin_domain = src_domain->origin_domain();
+    if (src_origin_domain != NULL) {
+      dst_domain->set_origin_domain(
+          AddDomainHelper(src_origin_domain->name(), false, NULL));
+    }
+  }
 }
 
 }  // namespace net_instaweb

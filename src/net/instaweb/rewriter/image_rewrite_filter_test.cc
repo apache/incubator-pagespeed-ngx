@@ -31,13 +31,12 @@ class ImageRewriteTest : public ResourceManagerTestBase {
  protected:
   // Simple image rewrite test to check resource fetching functionality.
   void RewriteImage() {
-    RewriteOptions options;
-    options.EnableFilter(RewriteOptions::kRewriteImages);
-    options.EnableFilter(RewriteOptions::kInsertImgDimensions);
-    options.set_img_inline_max_bytes(2000);
-    rewrite_driver_.AddFilters(options);
+    options_.EnableFilter(RewriteOptions::kRewriteImages);
+    options_.EnableFilter(RewriteOptions::kInsertImgDimensions);
+    options_.set_img_inline_max_bytes(2000);
+    rewrite_driver_.AddFilters();
 
-    other_rewrite_driver_.AddFilter(RewriteOptions::kRewriteImages);
+    AddOtherFilter(RewriteOptions::kRewriteImages);
 
     // URLs and content for HTML document and resources.
     const char domain[] = "http://rewrite_image.test/";
@@ -241,6 +240,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     std::string cuppa_string(kCuppaData);
     scoped_ptr<Resource> cuppa_resource(
         resource_manager_->CreateInputResourceAbsolute(cuppa_string,
+                                                       &options_,
                                                        &message_handler_));
     ASSERT_TRUE(cuppa_resource != NULL);
     EXPECT_TRUE(resource_manager_->ReadIfCached(cuppa_resource.get(),
@@ -251,6 +251,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     // internals of the cuppa_resource.
     scoped_ptr<Resource> other_resource(
         resource_manager_->CreateInputResourceAbsolute(cuppa_string,
+                                                       &options_,
                                                        &message_handler_));
     ASSERT_TRUE(other_resource != NULL);
     cuppa_string.clear();
@@ -294,7 +295,7 @@ TEST_F(ImageRewriteTest, RespectsBaseUrl) {
       "</body>";
 
   // Rewrite
-  rewrite_driver_.AddFilter(RewriteOptions::kRewriteImages);
+  AddFilter(RewriteOptions::kRewriteImages);
   ParseUrl(html_url, html_input);
 
   // Check for CSS files in the rewritten page.

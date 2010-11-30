@@ -51,7 +51,7 @@ class CacheExtenderTest : public ResourceManagerTestBase {
   }
 
   void InitTest(int64 ttl) {
-    rewrite_driver_.AddFilter(RewriteOptions::kExtendCache);
+    AddFilter(RewriteOptions::kExtendCache);
     InitMetaData("a.css", kContentTypeCss, kCssData, ttl);
     InitMetaData("b.jpg", kContentTypeJpeg, kImageData, ttl);
     InitMetaData("c.js", kContentTypeJavascript, kJsData, ttl);
@@ -123,11 +123,10 @@ TEST_F(CacheExtenderTest, ServeFilesFromDelayedFetch) {
 }
 
 TEST_F(CacheExtenderTest, MinimizeCacheHits) {
-  RewriteOptions options;
-  options.EnableFilter(RewriteOptions::kOutlineCss);
-  options.EnableFilter(RewriteOptions::kExtendCache);
-  options.set_css_outline_min_bytes(1);
-  rewrite_driver_.AddFilters(options);
+  options_.EnableFilter(RewriteOptions::kOutlineCss);
+  options_.EnableFilter(RewriteOptions::kExtendCache);
+  options_.set_css_outline_min_bytes(1);
+  rewrite_driver_.AddFilters();
   std::string html_input = StrCat("<style>", kCssData, "</style>");
   std::string html_output = StringPrintf(
       "<link rel='stylesheet' href='%s'>",

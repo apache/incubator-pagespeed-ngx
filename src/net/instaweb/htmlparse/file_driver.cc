@@ -17,10 +17,12 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/htmlparse/public/file_driver.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/file_writer.h"
+
 #include "net/instaweb/htmlparse/public/file_statistics_log.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/file_writer.h"
 #include "net/instaweb/util/public/message_handler.h"
 
 namespace {
@@ -88,7 +90,7 @@ bool FileDriver::ParseFile(const char* infilename,
       // HtmlParser needs a valid HTTP URL to evaluate relative paths,
       // so we create a dummy URL.
       std::string dummy_url = StrCat("http://file.name/", infilename);
-      html_parse_->StartParseId(dummy_url, infilename, "text/html");
+      html_parse_->StartParseId(dummy_url, infilename, kContentTypeHtml);
       char buf[1000];
       int nread;
       while ((nread = f->Read(buf, sizeof(buf), message_handler)) > 0) {

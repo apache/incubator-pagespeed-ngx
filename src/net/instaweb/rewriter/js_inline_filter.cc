@@ -22,21 +22,17 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_url.h"
 
 namespace net_instaweb {
 
-JsInlineFilter::JsInlineFilter(HtmlParse* html_parse,
-                               ResourceManager* resource_manager,
-                               size_t size_threshold_bytes)
-    : CommonFilter(html_parse),
-      html_parse_(html_parse),
-      resource_manager_(resource_manager),
+JsInlineFilter::JsInlineFilter(RewriteDriver* driver)
+    : CommonFilter(driver),
+      html_parse_(driver->html_parse()),
       script_atom_(html_parse_->Intern("script")),
       src_atom_(html_parse_->Intern("src")),
-      size_threshold_bytes_(size_threshold_bytes),
+      size_threshold_bytes_(driver->options()->js_inline_max_bytes()),
       should_inline_(false) {}
 
 JsInlineFilter::~JsInlineFilter() {}
@@ -66,10 +62,7 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
     DCHECK(src != NULL);
     should_inline_ = false;
 
-    MessageHandler* message_handler = html_parse_->message_handler();
-    scoped_ptr<Resource> resource(
-        resource_manager_->CreateInputResourceAndReadIfCached(
-            base_gurl(), src, message_handler));
+    scoped_ptr<Resource> resource(CreateInputResourceAndReadIfCached(src));
     // TODO(jmaessen): Is the domain lawyer policy the appropriate one here?
     // Or do we still have to check for strict domain equivalence?
     // If so, add an inline-in-page policy to domainlawyer in some form,

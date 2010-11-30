@@ -18,7 +18,6 @@
 #include "apr_version.h"
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "base/string_util.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/log_message_handler.h"
@@ -32,10 +31,12 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/util/public/string_util.h"
 
 // Note: a very useful reference is this file, which demos many Apache module
 // options:
@@ -109,18 +110,9 @@ const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
 enum ConfigSwitch {CONFIG_ON, CONFIG_OFF, CONFIG_ERROR};
 
-// Determine the resource type from a Content-Type string
-bool is_html_content(const char* content_type) {
-  if (content_type != NULL &&
-      (StartsWithASCII(content_type, "text/html", false) ||
-       StartsWithASCII(content_type, "application/xhtml", false))) {
-    return true;
-  }
-  return false;
-}
-
 // Check if pagespeed optimization rules applicable.
 bool check_pagespeed_applicable(request_rec* request,
+                                const ContentType& content_type,
                                 const QueryParams& query_params) {
   // We can't operate on Content-Ranges.
   if (apr_table_get(request->headers_out, "Content-Range") != NULL) {
@@ -129,8 +121,8 @@ bool check_pagespeed_applicable(request_rec* request,
     return false;
   }
 
-  // Only rewrite text/html.
-  if (!is_html_content(request->content_type)) {
+  // Only rewrite HTML-like content.
+  if (!content_type.IsHtmlLike()) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Content-Type=%s Host=%s Uri=%s",
                   request->content_type, request->hostname,
@@ -280,8 +272,14 @@ InstawebContext* build_context_for_request(request_rec* request) {
     query_params.Parse(request->parsed_uri.query);
   }
 
-  // Check if pagespeed optimization applicable.
-  if (!check_pagespeed_applicable(request, query_params)) {
+  const ContentType* content_type =
+      MimeTypeToContentType(request->content_type);
+  if (content_type == NULL) {
+    return NULL;
+  }
+
+  // Check if pagespeed optimization is applicable.
+  if (!check_pagespeed_applicable(request, *content_type, query_params)) {
     return NULL;
   }
 
@@ -321,7 +319,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
     options = merged_options;
   }
   InstawebContext* context = new InstawebContext(
-      request, factory, absolute_url, use_custom_options, *options);
+      request, *content_type, factory, absolute_url,
+      use_custom_options, *options);
 
   InstawebContext::ContentEncoding encoding =
       context->content_encoding();
@@ -709,7 +708,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (strcasecmp(directive, kModPagespeedBeaconUrl) == 0) {
     options->set_beacon_url(arg);
   } else if (strcasecmp(directive, kModPagespeedDomain) == 0) {
-    factory->domain_lawyer()->AddDomain(arg, factory->message_handler());
+    options->domain_lawyer()->AddDomain(arg, factory->message_handler());
   } else {
     return "Unknown directive.";
   }
@@ -724,13 +723,14 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
   // TODO(jmarantz): support domain lawyer for directory-specific config
   // options.
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
+  RewriteOptions* options = factory->options();
   const char* directive = cmd->directive->directive;
   const char* ret = NULL;
   if (strcasecmp(directive, kModPagespeedMapRewriteDomain) == 0) {
-    factory->domain_lawyer()->AddRewriteDomainMapping(
+    options->domain_lawyer()->AddRewriteDomainMapping(
         arg1, arg2, factory->message_handler());
   } else if (strcasecmp(directive, kModPagespeedMapOriginDomain) == 0) {
-    factory->domain_lawyer()->AddOriginDomainMapping(
+    options->domain_lawyer()->AddOriginDomainMapping(
         arg1, arg2, factory->message_handler());
   } else {
     return "Unknown directive.";
@@ -771,9 +771,9 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
                 NULL, OR_ALL, help)
 
 // Like APACHE_CONFIG_OPTION, but gets 2 arguments.
-#define APACHE_CONFIG_OPTION2(name, help) \
+#define APACHE_CONFIG_DIR_OPTION2(name, help) \
   AP_INIT_TAKE2(name, reinterpret_cast<const char*(*)()>(ParseDirective2), \
-                NULL, RSRC_CONF, help)
+                NULL, OR_ALL, help)
 
 static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeed, "Enable instaweb"),
@@ -826,12 +826,12 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Number of bytes below which stylesheets will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedBeaconUrl, "URL for beacon callback"
                        " injected by add_instrumentation."),
-  APACHE_CONFIG_OPTION(kModPagespeedDomain,
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedDomain,
         "Authorize mod_pagespeed to rewrite resources in a domain."),
-  APACHE_CONFIG_OPTION2(kModPagespeedMapRewriteDomain,
-                        "to_domain from_domain[,from_domain]*"),
-  APACHE_CONFIG_OPTION2(kModPagespeedMapOriginDomain,
-                        "to_domain from_domain[,from_domain]*"),
+  APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapRewriteDomain,
+         "to_domain from_domain[,from_domain]*"),
+  APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,
+         "to_domain from_domain[,from_domain]*"),
   {NULL}
 };
 

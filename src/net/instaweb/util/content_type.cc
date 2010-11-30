@@ -17,6 +17,7 @@
 // Author: sligocki@google.com (Shawn Ligocki)
 
 #include "net/instaweb/util/public/content_type.h"
+
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -25,9 +26,14 @@ namespace {
 
 const ContentType kTypes[] = {
   // Canonical types:
+  {"text/html",               ".html",  ContentType::kHtml},  // RFC 2854
+  {"application/xhtml+xml",   ".xhtml", ContentType::kXhtml},  // RFC 3236
+  {"application/ce-html+xml", ".xhtml", ContentType::kCeHtml},
+
   {"text/javascript", ".js",  ContentType::kJavascript},
   {"text/css",        ".css", ContentType::kCss},
   {"text/plain",      ".txt", ContentType::kText},
+  {"text/xml",        ".xml", ContentType::kXml},  // RFC 3023
 
   {"image/png",       ".png", ContentType::kPng},
   {"image/gif",       ".gif", ContentType::kGif},
@@ -40,18 +46,46 @@ const ContentType kTypes[] = {
   {"text/ecmascript",          ".js",   ContentType::kJavascript},
   {"application/ecmascript",   ".js",   ContentType::kJavascript},
   {"image/jpeg",               ".jpeg", ContentType::kJpeg},
+  {"text/html",                ".htm",  ContentType::kHtml},
+  {"application/xml",          ".xml",  ContentType::kXml},  // RFC 3023
 };
 const int kNumTypes = arraysize(kTypes);
 
 }  // namespace
 
-const ContentType& kContentTypeJavascript = kTypes[0];
-const ContentType& kContentTypeCss = kTypes[1];
-const ContentType& kContentTypeText = kTypes[2];
+const ContentType& kContentTypeHtml = kTypes[0];
+const ContentType& kContentTypeXhtml = kTypes[1];
+const ContentType& kContentTypeCeHtml = kTypes[2];
 
-const ContentType& kContentTypePng = kTypes[3];
-const ContentType& kContentTypeGif = kTypes[4];
-const ContentType& kContentTypeJpeg = kTypes[5];
+const ContentType& kContentTypeJavascript = kTypes[3];
+const ContentType& kContentTypeCss = kTypes[4];
+const ContentType& kContentTypeText = kTypes[5];
+const ContentType& kContentTypeXml = kTypes[6];
+
+const ContentType& kContentTypePng = kTypes[7];
+const ContentType& kContentTypeGif = kTypes[8];
+const ContentType& kContentTypeJpeg = kTypes[9];
+
+bool ContentType::IsHtmlLike() const {
+  switch (type_) {
+    case kHtml:
+    case kXhtml:
+    case kCeHtml:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool ContentType::IsXmlLike() const {
+  switch (type_) {
+    case kXhtml:
+    case kXml:
+      return true;
+    default:
+      return false;
+  }
+}
 
 const ContentType* NameExtensionToContentType(const StringPiece& name) {
   // Get the name from the extension.
@@ -59,12 +93,9 @@ const ContentType* NameExtensionToContentType(const StringPiece& name) {
   const ContentType* res = NULL;
   if (ext_pos != StringPiece::npos) {
     StringPiece ext = name.substr(ext_pos);
-    std::string lower_cased_ext(ext.data(), ext.size());
-    LowerString(&lower_cased_ext);
-
     // TODO(jmarantz): convert to a map if the list gets large.
     for (int i = 0; i < kNumTypes; ++i) {
-      if (lower_cased_ext == kTypes[i].file_extension()) {
+      if (StringCaseEqual(ext, kTypes[i].file_extension())) {
         res = &kTypes[i];
         break;
       }
@@ -75,11 +106,9 @@ const ContentType* NameExtensionToContentType(const StringPiece& name) {
 
 const ContentType* MimeTypeToContentType(const StringPiece& mime_type) {
   // TODO(jmarantz): convert to a map if the list gets large.
-  std::string lower_cased_mime_type(mime_type.data(), mime_type.size());
-  LowerString(&lower_cased_mime_type);
   const ContentType* res = NULL;
   for (int i = 0; i < kNumTypes; ++i) {
-    if (lower_cased_mime_type == kTypes[i].mime_type()) {
+    if (StringCaseEqual(mime_type, kTypes[i].mime_type())) {
       res = &kTypes[i];
       break;
     }

@@ -28,19 +28,23 @@ namespace net_instaweb {
 
 class MessageHandler;
 class MetaData;
+class RewriteOptions;
 class UrlFetcher;
 
 class UrlInputResource : public Resource {
  public:
   UrlInputResource(ResourceManager* manager,
+                   const RewriteOptions* options,
                    const ContentType* type,
                    const StringPiece& url)
       : Resource(manager, type),
-        url_(url.data(), url.size()) {
+        url_(url.data(), url.size()),
+        rewrite_options_(options) {
   }
   virtual ~UrlInputResource();
 
   virtual std::string url() const { return url_; }
+  const RewriteOptions* rewrite_options() const { return rewrite_options_; }
 
  protected:
   virtual bool Load(MessageHandler* message_handler);
@@ -49,6 +53,7 @@ class UrlInputResource : public Resource {
 
  private:
   std::string url_;
+  const RewriteOptions* rewrite_options_;
 
   DISALLOW_COPY_AND_ASSIGN(UrlInputResource);
 };

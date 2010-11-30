@@ -21,6 +21,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/public/content_type.h"
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
 
@@ -44,6 +45,7 @@ class InstawebContext {
   enum ContentDetectionState {kStart, kHtml, kNotHtml};
 
   InstawebContext(request_rec* request,
+                  const ContentType& content_type,
                   net_instaweb::ApacheRewriteDriverFactory* factory,
                   const std::string& base_url,
                   bool use_custom_options,
@@ -80,7 +82,7 @@ class InstawebContext {
   std::string output_;  // content after instaweb rewritten.
   apr_bucket_brigade* bucket_brigade_;
   ContentEncoding content_encoding_;
-  const std::string content_type_;
+  const ContentType content_type_;
 
   net_instaweb::ApacheRewriteDriverFactory* factory_;
   net_instaweb::RewriteDriver* rewrite_driver_;
@@ -91,6 +93,7 @@ class InstawebContext {
   SimpleMetaData response_headers_;
   ContentDetectionState content_detection_state_;
   std::string absolute_url_;
+  RewriteOptions rewrite_options_;
 
   DISALLOW_COPY_AND_ASSIGN(InstawebContext);
 };

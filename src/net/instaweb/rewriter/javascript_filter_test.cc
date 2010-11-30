@@ -47,7 +47,7 @@ class JavascriptFilterTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    rewrite_driver_.AddFilter(RewriteOptions::kRewriteJavascript);
+    AddFilter(RewriteOptions::kRewriteJavascript);
     ResourceNamer namer;
     namer.set_id(kFilterId);
     namer.set_name(kRewrittenJsName);

@@ -32,9 +32,7 @@ class RewriteDriver;
 // Inline small CSS files.
 class CssInlineFilter : public CommonFilter {
  public:
-  CssInlineFilter(HtmlParse* html_parse,
-                  ResourceManager* resource_manager,
-                  size_t size_threshold_bytes);
+  explicit CssInlineFilter(RewriteDriver* driver);
 
   virtual void StartDocumentImpl();
   virtual void EndDocument();
@@ -44,7 +42,6 @@ class CssInlineFilter : public CommonFilter {
 
  private:
   HtmlParse* const html_parse_;
-  ResourceManager* const resource_manager_;
   const Atom href_atom_;
   const Atom link_atom_;
   const Atom media_atom_;

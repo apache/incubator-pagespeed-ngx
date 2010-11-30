@@ -170,7 +170,7 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
 }
 
 void HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
-                             const StringPiece& content_type) {
+                             const ContentType& content_type) {
   url.CopyToString(&url_);
   GURL gurl(url_);
   // TODO(jmaessen): warn and propagate upwards.  This will require

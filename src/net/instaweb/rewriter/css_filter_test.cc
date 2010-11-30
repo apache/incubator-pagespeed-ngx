@@ -45,7 +45,7 @@ class CssFilterTest : public ResourceManagerTestBase {
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     resource_manager_->set_statistics(&statistics_);
-    rewrite_driver_.AddFilter(RewriteOptions::kRewriteCss);
+    AddFilter(RewriteOptions::kRewriteCss);
   }
 
   // Check that inline CSS get's rewritten correctly.

@@ -277,9 +277,7 @@ bool CssFilter::LoadAllSubStylesheets(
 bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
                                    std::string* out_url) {
   bool ret = false;
-  scoped_ptr<Resource> input_resource(
-      resource_manager_->CreateInputResource(
-          base_gurl(), in_url, html_parse_->message_handler()));
+  scoped_ptr<Resource> input_resource(CreateInputResource(in_url));
   scoped_ptr<OutputResource> output_resource(
       resource_manager_->CreateOutputResourceFromResource(
           filter_prefix_, &kContentTypeCss, resource_manager_->url_escaper(),

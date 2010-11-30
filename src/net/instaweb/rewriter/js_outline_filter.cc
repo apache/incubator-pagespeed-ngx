@@ -32,16 +32,14 @@ namespace net_instaweb {
 
 const char JsOutlineFilter::kFilterId[] = "jo";
 
-JsOutlineFilter::JsOutlineFilter(HtmlParse* html_parse,
-                                 ResourceManager* resource_manager,
-                                 size_t size_threshold_bytes)
+JsOutlineFilter::JsOutlineFilter(RewriteDriver* driver)
     : inline_element_(NULL),
-      html_parse_(html_parse),
-      resource_manager_(resource_manager),
-      size_threshold_bytes_(size_threshold_bytes),
-      s_script_(html_parse->Intern("script")),
-      s_src_(html_parse->Intern("src")),
-      s_type_(html_parse->Intern("type")) { }
+      html_parse_(driver->html_parse()),
+      resource_manager_(driver->resource_manager()),
+      size_threshold_bytes_(driver->options()->js_outline_min_bytes()),
+      s_script_(html_parse_->Intern("script")),
+      s_src_(html_parse_->Intern("src")),
+      s_type_(html_parse_->Intern("type")) { }
 
 void JsOutlineFilter::StartDocument() {
   inline_element_ = NULL;

@@ -30,7 +30,7 @@ class CssInlineFilterTest : public ResourceManagerTestBase {
                      const std::string& css_original_body,
                      bool expect_inline,
                      const std::string& css_rewritten_body) {
-    rewrite_driver_.AddFilter(RewriteOptions::kInlineCss);
+    AddFilter(RewriteOptions::kInlineCss);
 
     const std::string html_input =
         "<head>\n"

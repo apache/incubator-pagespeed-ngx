@@ -27,6 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
+#include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
 #include <string>
@@ -51,16 +52,16 @@ class HtmlParse {
   // url is only used to resolve relative URLs; the contents are not
   // directly fetched.  The caller must supply the text and call ParseText.
   void StartParse(const StringPiece& url) {
-    StartParseWithType(url, "text/html");
+    StartParseWithType(url, kContentTypeHtml);
   }
   void StartParseWithType(const StringPiece& url,
-                          const StringPiece& content_type) {
+                          const ContentType& content_type) {
     StartParseId(url, url, content_type);
   }
   // Use an error message id that is distinct from the url.
   // Mostly useful for testing.
   void StartParseId(const StringPiece& url, const StringPiece& id,
-                    const StringPiece& content_type);
+                    const ContentType& content_type);
 
   // Parses an arbitrary block of an html file, queuing up the events.  Call
   // Flush to send the events through the Filter.

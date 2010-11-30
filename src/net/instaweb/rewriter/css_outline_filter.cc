@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/content_type.h"
@@ -35,19 +36,17 @@ const char kStylesheet[] = "stylesheet";
 
 const char CssOutlineFilter::kFilterId[] = "co";
 
-CssOutlineFilter::CssOutlineFilter(HtmlParse* html_parse,
-                                   ResourceManager* resource_manager,
-                                   size_t size_threshold_bytes)
-    : CommonFilter(html_parse),
+CssOutlineFilter::CssOutlineFilter(RewriteDriver* driver)
+    : CommonFilter(driver),
       inline_element_(NULL),
-      html_parse_(html_parse),
-      resource_manager_(resource_manager),
-      size_threshold_bytes_(size_threshold_bytes),
-      s_link_(html_parse->Intern("link")),
-      s_style_(html_parse->Intern("style")),
-      s_rel_(html_parse->Intern("rel")),
-      s_href_(html_parse->Intern("href")),
-      s_type_(html_parse->Intern("type")) { }
+      html_parse_(driver->html_parse()),
+      resource_manager_(driver->resource_manager()),
+      size_threshold_bytes_(driver->options()->css_outline_min_bytes()),
+      s_link_(html_parse_->Intern("link")),
+      s_style_(html_parse_->Intern("style")),
+      s_rel_(html_parse_->Intern("rel")),
+      s_href_(html_parse_->Intern("href")),
+      s_type_(html_parse_->Intern("type")) { }
 
 void CssOutlineFilter::StartDocumentImpl() {
   inline_element_ = NULL;

@@ -21,6 +21,7 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 
@@ -34,8 +35,7 @@ class ResourceManager;
 // Filter to take explicit <style> and <script> tags and outline them to files.
 class JsOutlineFilter : public HtmlFilter {
  public:
-  JsOutlineFilter(HtmlParse* html_parse, ResourceManager* resource_manager,
-                  size_t size_threshold_bytes);
+  explicit JsOutlineFilter(RewriteDriver* driver);
   static const char kFilterId[];
 
   virtual void StartDocument();

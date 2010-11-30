@@ -47,6 +47,7 @@ class MessageHandler;
 class MetaData;
 class OutputResource;
 class ResourceNamer;
+class RewriteOptions;
 class Statistics;
 class UrlAsyncFetcher;
 class UrlEscaper;
@@ -62,8 +63,7 @@ class ResourceManager {
                   FilenameEncoder* filename_encoder,
                   UrlAsyncFetcher* url_async_fetcher,
                   Hasher* hasher,
-                  HTTPCache* http_cache,
-                  DomainLawyer* domain_lawyer);
+                  HTTPCache* http_cache);
   ~ResourceManager();
 
   // Initialize statistics gathering.
@@ -101,6 +101,7 @@ class ResourceManager {
       const StringPiece& resource_url,
       const ContentType* content_type,
       UrlSegmentEncoder* encoder,
+      const RewriteOptions* rewrite_options,
       MessageHandler* handler);
 
   // Creates an output resource where the name is provided by the rewriter.
@@ -136,15 +137,16 @@ class ResourceManager {
   // context of this page.
   Resource* CreateInputResource(const GURL& base_url,
                                 const StringPiece& input_url,
+                                const RewriteOptions* rewrite_options,
                                 MessageHandler* handler);
 
   // Create input resource from input_url, if it is legal in the context of
   // base_gurl, and if the resource can be read from cache.  If it's not in
   // cache, initiate an asynchronous fetch so it will be on next access.  This
   // is a common case for filters.
-  Resource* CreateInputResourceAndReadIfCached(const GURL& base_gurl,
-                                               const StringPiece& input_url,
-                                               MessageHandler* handler);
+  Resource* CreateInputResourceAndReadIfCached(
+      const GURL& base_gurl, const StringPiece& input_url,
+      const RewriteOptions* rewrite_options, MessageHandler* handler);
 
   // Create an input resource by decoding output_resource using the given
   // encoder.  Assures legality by checking hash signatures, rather than
@@ -152,6 +154,7 @@ class ResourceManager {
   Resource* CreateInputResourceFromOutputResource(
     UrlSegmentEncoder* encoder,
     OutputResource* output_resource,
+    const RewriteOptions* rewrite_options,
     MessageHandler* handler);
 
   // Creates an input resource from the given absolute url.  Requires that the
@@ -159,6 +162,7 @@ class ResourceManager {
   // page context.  If you have a GURL, prefer CreateInputResourceUnchecked,
   // otherwise use this.
   Resource* CreateInputResourceAbsolute(const StringPiece& absolute_url,
+                                        const RewriteOptions* rewrite_options,
                                         MessageHandler* handler);
 
   // Creates an input resource with the given gurl, already absolute and valid.
@@ -166,6 +170,7 @@ class ResourceManager {
   // permission checking has been done explicitly on the caller side (for
   // example css_combine_filter, which constructs its own url_partnership).
   Resource* CreateInputResourceUnchecked(const GURL& gurl,
+                                         const RewriteOptions* rewrite_options,
                                          MessageHandler* handler);
 
   // Set up a basic header for a given content_type.
@@ -237,12 +242,6 @@ class ResourceManager {
     store_outputs_in_file_system_ = store;
   }
 
-  DomainLawyer* domain_lawyer() { return domain_lawyer_; }
-  const DomainLawyer* domain_lawyer() const { return domain_lawyer_; }
-
-  int max_url_segment_size() const { return max_url_segment_size_; }
-  int max_url_size() const { return max_url_size_; }
-
  private:
   inline void IncrementResourceUrlDomainRejections();
 
@@ -258,9 +257,6 @@ class ResourceManager {
   scoped_ptr<UrlEscaper> url_escaper_;
   bool relative_path_;
   bool store_outputs_in_file_system_;
-  DomainLawyer* domain_lawyer_;
-  int max_url_segment_size_;  // for http://a/b/c.d, this is == strlen("c.d")
-  int max_url_size_;          // but this is strlen("http://a/b/c.d")
   std::string max_age_string_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);

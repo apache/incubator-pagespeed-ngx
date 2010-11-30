@@ -265,9 +265,8 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
   // How do we deal with that given only URL?
   // Separate input and output content type?
   MessageHandler* message_handler = html_parse_->message_handler();
-  scoped_ptr<Resource> input_resource(
-      resource_manager_->CreateInputResourceAndReadIfCached(
-          base_gurl(), src->value(), message_handler));
+  scoped_ptr<Resource> input_resource(CreateInputResourceAndReadIfCached(
+      src->value()));
   if (input_resource != NULL && input_resource->ContentsValid()) {
     ImageDim page_dim;
     // Always rewrite to absolute url used to obtain resource.
@@ -403,8 +402,7 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
     ImageDim page_dim;  // Dimensions given in source page (invalid if absent).
     ImageUrlEncoder encoder(resource_manager_->url_escaper(), &page_dim);
     scoped_ptr<Resource> input_image(
-        resource_manager_->CreateInputResourceFromOutputResource(
-            &encoder, resource, message_handler));
+        CreateInputResourceFromOutputResource(&encoder, resource));
     if (input_image.get() != NULL) {
       std::string origin_url = input_image->url();
       // TODO(jmarantz): this needs to be refactored slightly to allow for

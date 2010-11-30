@@ -37,7 +37,7 @@ class Writer;
 class RewriteFilter : public CommonFilter {
  public:
   explicit RewriteFilter(RewriteDriver* driver, StringPiece filter_prefix)
-      : CommonFilter(driver->html_parse()),
+      : CommonFilter(driver),
         filter_prefix_(filter_prefix.data(), filter_prefix.size()),
         driver_(driver) {
   }

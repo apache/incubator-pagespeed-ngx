@@ -690,11 +690,11 @@ void HtmlLexer::MakeElement() {
 }
 
 void HtmlLexer::StartParse(const StringPiece& id,
-                           const StringPiece& content_type) {
+                           const ContentType& content_type) {
   line_ = 1;
   tag_start_line_ = -1;
   id.CopyToString(&id_);
-  content_type.CopyToString(&content_type_);
+  content_type_ = content_type;
   has_attr_value_ = false;
   attr_quote_ = "";
   state_ = START;

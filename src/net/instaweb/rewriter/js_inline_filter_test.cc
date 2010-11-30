@@ -29,7 +29,7 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
                             const std::string& js_inline_body,
                             const std::string& js_outline_body,
                             bool expect_inline) {
-    rewrite_driver_.AddFilter(RewriteOptions::kInlineJavascript);
+    AddFilter(RewriteOptions::kInlineJavascript);
 
     const std::string html_input =
         "<head>\n"

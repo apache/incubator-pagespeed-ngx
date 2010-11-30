@@ -255,6 +255,11 @@ void RewriteOptions::Merge(const RewriteOptions& first,
                               second.max_url_segment_size_);
   max_url_size_.Merge(first.max_url_size_,
                       second.max_url_size_);
+
+  // Note that the domain-lawyer merge works one-at-a-time, which is easier
+  // to unit test.  So we have to call it twice.
+  domain_lawyer_.Merge(first.domain_lawyer_);
+  domain_lawyer_.Merge(second.domain_lawyer_);
 }
 
 }  // namespace net_instaweb

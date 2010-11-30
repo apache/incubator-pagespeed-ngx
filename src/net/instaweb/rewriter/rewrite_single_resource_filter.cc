@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -88,7 +89,8 @@ bool RewriteSingleResourceFilter::Fetch(
   bool ret = false;
   Resource* input_resource =
       resource_manager_->CreateInputResourceFromOutputResource(
-          resource_manager_->url_escaper(), output_resource, message_handler);
+          resource_manager_->url_escaper(), output_resource,
+          driver_->options(), message_handler);
   if (input_resource != NULL) {
     // Callback takes ownership of input_resoruce.
     FetchCallback* fetch_callback = new FetchCallback(

@@ -33,10 +33,8 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
                       bool expect_outline,
                       const std::string& css_rewritten_body) {
     // TODO(sligocki): Test with outline threshold > 0.
-    RewriteOptions options;
-    options.EnableFilter(RewriteOptions::kOutlineCss);
-    options.set_css_outline_min_bytes(0);
-    rewrite_driver_.AddFilters(options);
+    options_.set_css_outline_min_bytes(0);
+    AddFilter(RewriteOptions::kOutlineCss);
 
     // Figure out outline_url.
     std::string hash = resource_manager_->hasher()->Hash(css_rewritten_body);

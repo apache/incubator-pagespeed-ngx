@@ -31,10 +31,8 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
   void OutlineScript(const StringPiece& id, Hasher* hasher) {
     resource_manager_->set_hasher(hasher);
 
-    RewriteOptions options;
-    options.EnableFilter(RewriteOptions::kOutlineJavascript);
-    options.set_js_outline_min_bytes(0);
-    rewrite_driver_.AddFilters(options);
+    options_.set_js_outline_min_bytes(0);
+    AddFilter(RewriteOptions::kOutlineJavascript);
 
     std::string script_text = "FOOBAR";
     std::string outline_text;
@@ -88,10 +86,9 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   // TODO(sligocki): Maybe test with other hashers.
   //resource_manager_->set_hasher(hasher);
 
-  RewriteOptions options;
-  options.EnableFilter(RewriteOptions::kOutlineCss);
-  options.EnableFilter(RewriteOptions::kOutlineJavascript);
-  rewrite_driver_.AddFilters(options);
+  options_.EnableFilter(RewriteOptions::kOutlineCss);
+  options_.EnableFilter(RewriteOptions::kOutlineJavascript);
+  rewrite_driver_.AddFilters();
 
   // We need to make sure we don't create this file, so rm any old one
   std::string filename = Encode(file_prefix, JsOutlineFilter::kFilterId, "0",

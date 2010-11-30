@@ -28,6 +28,10 @@ namespace net_instaweb {
 
 class HtmlElement;
 class HtmlParse;
+class Resource;
+class RewriteDriver;
+class OutputResource;
+class UrlSegmentEncoder;
 
 // CommonFilter encapsulates useful functionality that many filters will want.
 // All filters who want this functionality should inherit from CommonFilter and
@@ -39,7 +43,7 @@ class HtmlParse;
 // careful about moving things out of this element).
 class CommonFilter : public EmptyHtmlFilter {
  public:
-  CommonFilter(HtmlParse* html_parse);
+  CommonFilter(RewriteDriver* driver);
   virtual ~CommonFilter();
 
   // Getters
@@ -52,6 +56,12 @@ class CommonFilter : public EmptyHtmlFilter {
   virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
 
+  Resource* CreateInputResource(const StringPiece& url);
+  Resource* CreateInputResourceAbsolute(const StringPiece& url);
+  Resource* CreateInputResourceAndReadIfCached(const StringPiece& url);
+  Resource* CreateInputResourceFromOutputResource(
+      UrlSegmentEncoder* encoder, OutputResource* output_resource);
+
  protected:
   // Overload these implementer methods:
   // Intentionally left abstract so that implementers don't forget to change
@@ -61,6 +71,7 @@ class CommonFilter : public EmptyHtmlFilter {
   virtual void EndElementImpl(HtmlElement* element) = 0;
 
  private:
+  RewriteDriver* driver_;
   HtmlParse* html_parse_;
   // TODO(sligocki): Maybe: don't store a separate GURL in each filter.
   GURL base_gurl_;

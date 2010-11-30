@@ -30,18 +30,15 @@
 
 namespace net_instaweb {
 
-CssInlineFilter::CssInlineFilter(HtmlParse* html_parse,
-                                 ResourceManager* resource_manager,
-                                 size_t size_threshold_bytes)
-    : CommonFilter(html_parse),
-      html_parse_(html_parse),
-      resource_manager_(resource_manager),
+CssInlineFilter::CssInlineFilter(RewriteDriver* driver)
+    : CommonFilter(driver),
+      html_parse_(driver->html_parse()),
       href_atom_(html_parse_->Intern("href")),
       link_atom_(html_parse_->Intern("link")),
       media_atom_(html_parse_->Intern("media")),
       rel_atom_(html_parse_->Intern("rel")),
       style_atom_(html_parse_->Intern("style")),
-      size_threshold_bytes_(size_threshold_bytes) {}
+      size_threshold_bytes_(driver->options()->css_inline_max_bytes()) {}
 
 void CssInlineFilter::StartDocumentImpl() {
   // TODO(sligocki): Domain lawyerify.
@@ -80,9 +77,7 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
     // If so, add an inline-in-page policy to domainlawyer in some form,
     // as we make a similar policy decision in js_inline_filter.
     MessageHandler* message_handler = html_parse_->message_handler();
-    scoped_ptr<Resource> resource(
-        resource_manager_->CreateInputResourceAndReadIfCached(
-            base_gurl(), href, message_handler));
+    scoped_ptr<Resource> resource(CreateInputResourceAndReadIfCached(href));
     if (resource == NULL  || !resource->ContentsValid()) {
       return;
     }

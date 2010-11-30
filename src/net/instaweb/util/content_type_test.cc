@@ -39,16 +39,21 @@ TEST_F(ContentTypeTest, TestUnknown) {
 }
 
 TEST_F(ContentTypeTest, TestExtensions) {
+  EXPECT_EQ(ContentType::kHtml,       ExtToType(".html"));
   EXPECT_EQ(ContentType::kJavascript, ExtToType(".js"));
   EXPECT_EQ(ContentType::kJpeg,       ExtToType(".jpg"));
   EXPECT_EQ(ContentType::kJpeg,       ExtToType(".jpeg"));
   EXPECT_EQ(ContentType::kCss,        ExtToType(".css"));
   EXPECT_EQ(ContentType::kText,       ExtToType(".txt"));
+  EXPECT_EQ(ContentType::kXml,        ExtToType(".xml"));
   EXPECT_EQ(ContentType::kPng,        ExtToType(".png"));
   EXPECT_EQ(ContentType::kGif,        ExtToType(".gif"));
 }
 
-TEST_F(ContentTypeTest, TestContentType) {
+TEST_F(ContentTypeTest, TestMimeType) {
+  EXPECT_EQ(ContentType::kHtml,       MimeToType("text/html"));
+  EXPECT_EQ(ContentType::kXhtml,      MimeToType("application/xhtml+xml"));
+  EXPECT_EQ(ContentType::kCeHtml,     MimeToType("application/ce-html+xml"));
   EXPECT_EQ(ContentType::kJavascript, MimeToType("text/javascript"));
   EXPECT_EQ(ContentType::kJavascript, MimeToType("application/x-javascript"));
   EXPECT_EQ(ContentType::kJavascript, MimeToType("application/javascript"));
@@ -57,6 +62,8 @@ TEST_F(ContentTypeTest, TestContentType) {
   EXPECT_EQ(ContentType::kJpeg,       MimeToType("image/jpeg"));
   EXPECT_EQ(ContentType::kCss,        MimeToType("text/css"));
   EXPECT_EQ(ContentType::kText,       MimeToType("text/plain"));
+  EXPECT_EQ(ContentType::kXml,        MimeToType("application/xml"));
+  EXPECT_EQ(ContentType::kXml,        MimeToType("text/xml"));
   EXPECT_EQ(ContentType::kPng,        MimeToType("image/png"));
   EXPECT_EQ(ContentType::kGif,        MimeToType("image/gif"));
 }

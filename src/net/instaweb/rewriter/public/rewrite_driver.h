@@ -67,7 +67,8 @@ class RewriteDriver {
 
   RewriteDriver(MessageHandler* message_handler,
                 FileSystem* file_system,
-                UrlAsyncFetcher* url_async_fetcher);
+                UrlAsyncFetcher* url_async_fetcher,
+                const RewriteOptions& options);
 
   // Need explicit destructors to allow destruction of scoped_ptr-controlled
   // instances without propagating the include files.
@@ -89,11 +90,11 @@ class RewriteDriver {
     return user_agent_;
   }
 
-  // Adds the filters, specified by name in enabled_filters.
-  void AddFilters(const RewriteOptions& options);
-  void AddFilter(RewriteOptions::Filter filter);
-
-  void AddHead() { AddFilter(RewriteOptions::kAddHead); }
+  // Adds the filters from the options, specified by name in enabled_filters.
+  // This must be called explicitly after object construction to provide an
+  // opportunity to programatically add custom filters beyond those defined
+  // in RewriteOptions, via AddFilter(HtmlFilter* filter) (below).
+  void AddFilters();
 
   // Add any HtmlFilter to the HtmlParse chain and take ownership of the filter.
   void AddFilter(HtmlFilter* filter);
@@ -161,6 +162,8 @@ class RewriteDriver {
     return add_instrumentation_filter_;
   }
 
+  const RewriteOptions* options() { return &options_; }
+
  private:
   friend class ResourceManagerTestBase;
   typedef std::map<std::string, RewriteFilter*> StringFilterMap;
@@ -172,9 +175,10 @@ class RewriteDriver {
   bool ParseKeyInt64(const StringPiece& key, SetInt64Method m,
                      const std::string& flag);
 
-  // Adds RewriteFilter to the map, but does not put it in the html parse filter
-  // filter chain.  This allows it to serve resource requests.
-  void AddRewriteFilter(RewriteFilter* filter);
+  // Registers RewriteFilter in the map, but does not put it in the
+  // html parse filter filter chain.  This allows it to serve resource
+  // requests.
+  void RegisterRewriteFilter(RewriteFilter* filter);
 
   // Adds a pre-added rewrite filter to the html parse chain.
   void EnableRewriteFilter(const char* id);
@@ -203,6 +207,8 @@ class RewriteDriver {
   Variable* cached_resource_fetches_;
   Variable* succeeded_filter_resource_fetches_;
   Variable* failed_filter_resource_fetches_;
+
+  const RewriteOptions& options_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

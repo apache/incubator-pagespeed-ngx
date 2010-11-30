@@ -128,6 +128,12 @@ class DomainLawyer {
                    const StringPiece& shard_pattern,
                    int num_shards, MessageHandler* handler);
 
+  // Merge the domains declared in src into this.  There are no exclusions, so
+  // this is really just aggregating the mappings and authorizations declared in
+  // both domains.  When the same domain is mapped in 'this' and 'src', 'src'
+  // wins.
+  void Merge(const DomainLawyer& src);
+
  private:
   class Domain;
   typedef void (Domain::*SetDomainFn)(Domain* domain);
@@ -148,6 +154,7 @@ class DomainLawyer {
   DomainMap domain_map_;
   typedef std::vector<Domain*> DomainVector;
   DomainVector wildcarded_domains_;
+  // If you add more fields here, please be sure to update Merge().
 
   DISALLOW_COPY_AND_ASSIGN(DomainLawyer);
 };

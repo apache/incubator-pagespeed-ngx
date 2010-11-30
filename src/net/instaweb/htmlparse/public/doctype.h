@@ -19,6 +19,8 @@
 
 #include "net/instaweb/util/public/string_util.h"  // for StringPiece
 
+#include "net/instaweb/util/public/content_type.h"
+
 namespace net_instaweb {
 
 class DocType {
@@ -62,7 +64,7 @@ class DocType {
   // directive and return true.  If the directive is not a doctype directive,
   // return false and don't alter the DocType.
   bool Parse(const StringPiece& directive,
-             const StringPiece& content_type);
+             const ContentType& content_type);
 
  private:
   enum DocTypeEnum {
