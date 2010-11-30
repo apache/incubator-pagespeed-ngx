@@ -70,6 +70,9 @@ bool HtmlAttributeQuoteRemoval::NeedsQuotes(const char *val) {
 }
 
 void HtmlAttributeQuoteRemoval::StartElement(HtmlElement* element) {
+  if (html_parse_->doctype().IsXhtml()) {
+    return;  // XHTML doctypes require quotes, so don't remove any.
+  }
   int rewritten = 0;
   for (int i = 0; i < element->attribute_size(); ++i) {
     HtmlElement::Attribute& attr = element->attribute(i);

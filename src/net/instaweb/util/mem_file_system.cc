@@ -26,7 +26,9 @@
 #include "base/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include <string>
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -103,6 +105,13 @@ class MemOutputFile : public FileSystem::OutputFile {
 MemFileSystem::~MemFileSystem() {
 }
 
+int64 MemFileSystem::CurrentTimeAndAdvance() {
+  int64 now_us = timer_.NowUs();
+  int64 now_s = now_us / Timer::kSecondUs;
+  timer_.advance_us(Timer::kSecondUs);
+  return now_s;
+}
+
 void MemFileSystem::Clear() {
   string_map_.clear();
 }
@@ -122,7 +131,7 @@ bool MemFileSystem::MakeDir(const char* path, MessageHandler* handler) {
   std::string path_string = path;
   EnsureEndsInSlash(&path_string);
   string_map_[path_string] = "";
-  current_time_++;
+  atime_map_[path_string] = CurrentTimeAndAdvance();
   return true;
 }
 
@@ -138,21 +147,21 @@ FileSystem::InputFile* MemFileSystem::OpenInputFile(
                            "file not found");
     return NULL;
   } else {
-    atime_map_[filename] = current_time_++;
+    atime_map_[filename] = CurrentTimeAndAdvance();
     return new MemInputFile(filename, iter->second);
   }
 }
 
 FileSystem::OutputFile* MemFileSystem::OpenOutputFileHelper(
     const char* filename, MessageHandler* message_handler) {
-  current_time_++;
+  atime_map_[filename] = CurrentTimeAndAdvance();
   return new MemOutputFile(filename, &(string_map_[filename]));
 }
 
 FileSystem::OutputFile* MemFileSystem::OpenTempFileHelper(
     const StringPiece& prefix, MessageHandler* message_handler) {
-  current_time_++;
   std::string filename = StringPrintf("tmpfile%d", temp_file_index_++);
+  atime_map_[filename] = CurrentTimeAndAdvance();
   return new MemOutputFile(filename, &string_map_[filename]);
 }
 
@@ -166,13 +175,14 @@ bool MemFileSystem::RecursivelyMakeDir(const StringPiece& full_path_const,
 
 bool MemFileSystem::RemoveFile(const char* filename,
                                MessageHandler* handler) {
+  atime_map_.erase(filename);
   return (string_map_.erase(filename) == 1);
 }
 
 bool MemFileSystem::RenameFileHelper(const char* old_file,
                                      const char* new_file,
                                      MessageHandler* handler) {
-  current_time_++;
+  atime_map_[new_file] = CurrentTimeAndAdvance();
   if (strcmp(old_file, new_file) == 0) {
     handler->Error(old_file, 0, "Cannot move a file to itself");
     return false;
@@ -236,18 +246,33 @@ bool MemFileSystem::Size(const StringPiece& path, int64* size,
 BoolOrError MemFileSystem::TryLock(const StringPiece& lock_name,
                                    MessageHandler* handler) {
   // Not actually threadsafe!  This is just for tests.
-  if (lock_map_[lock_name.as_string()]) {
+  if (lock_map_.count(lock_name.as_string()) != 0) {
     return BoolOrError(false);
   } else {
-    lock_map_[lock_name.as_string()] = true;
+    lock_map_[lock_name.as_string()] = timer_.NowMs();
+    return BoolOrError(true);
+  }
+}
+
+BoolOrError MemFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
+                                              int64 timeout_ms,
+                                              MessageHandler* handler) {
+  // As above, not actually threadsafe (and quick-and-dirty rather than
+  // efficient; efficiency requires map::find).
+  std::string name = lock_name.as_string();
+  int64 now = timer_.NowMs();
+  if (lock_map_.count(name) != 0 &&
+      now <= lock_map_[name] + timeout_ms) {
+    return BoolOrError(false);
+  } else {
+    lock_map_[name] = timer_.NowMs();
     return BoolOrError(true);
   }
 }
 
 bool MemFileSystem::Unlock(const StringPiece& lock_name,
                            MessageHandler* handler) {
-  lock_map_[lock_name.as_string()] = false;
-  return true;
+  return (lock_map_.erase(lock_name.as_string()) == 1);
 }
 
 }  // namespace net_instaweb

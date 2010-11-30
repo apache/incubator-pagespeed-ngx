@@ -28,7 +28,6 @@
 #include "base/string_number_conversions.h"
 #include "base/string_piece.h"
 #include "base/string_util.h"
-#include "third_party/protobuf2/src/src/google/protobuf/stubs/strutil.h"
 
 namespace net_instaweb {
 
@@ -66,15 +65,20 @@ inline bool StringToInt64(const std::string& in, int64* out) {
   return base::StringToInt64(in, out);
 }
 
-const StringPiece kEmptyString;
-std::string StrCat(const StringPiece& a,
-                    const StringPiece& b,
-                    const StringPiece& c = kEmptyString,
-                    const StringPiece& d = kEmptyString,
-                    const StringPiece& e = kEmptyString,
-                    const StringPiece& f = kEmptyString,
-                    const StringPiece& g = kEmptyString,
-                    const StringPiece& h = kEmptyString);
+class EmptyString {
+ public:
+  static const StringPiece kEmptyString;
+};
+
+// TODO(jmarantz): use overloading instead of default args and get
+// rid of this statically constructed global object.
+std::string StrCat(const StringPiece& a, const StringPiece& b,
+                    const StringPiece& c = EmptyString::kEmptyString,
+                    const StringPiece& d = EmptyString::kEmptyString,
+                    const StringPiece& e = EmptyString::kEmptyString,
+                    const StringPiece& f = EmptyString::kEmptyString,
+                    const StringPiece& g = EmptyString::kEmptyString,
+                    const StringPiece& h = EmptyString::kEmptyString);
 
 void SplitStringPieceToVector(const StringPiece& sp, const char* separator,
                               std::vector<StringPiece>* components,
@@ -84,14 +88,9 @@ void BackslashEscape(const StringPiece& src,
                      const StringPiece& to_escape,
                      std::string* dest);
 
-inline bool HasPrefixString(const std::string& str,
-                            const std::string& prefix) {
-  return google::protobuf::HasPrefixString(str, prefix);
-}
+bool HasPrefixString(const StringPiece& str, const StringPiece& prefix);
 
-inline void LowerString(std::string* str) {
-  google::protobuf::LowerString(str);
-}
+void LowerString(std::string* str);
 
 inline bool OnlyWhitespace(const std::string& str) {
   return ContainsOnlyWhitespaceASCII(str);
@@ -103,6 +102,10 @@ inline char* strdup(const char* str) {
 
 inline int strcasecmp(const char* s1, const char* s2) {
   return base::strcasecmp(s1, s2);
+}
+
+inline int strncasecmp(const char* s1, const char* s2, size_t count) {
+  return base::strncasecmp(s1, s2, count);
 }
 
 inline void TrimWhitespace(const StringPiece& in, std::string* output) {
@@ -117,6 +120,13 @@ bool AccumulateDecimalValue(char c, int* value);
 // Accumulates a hex value from 'c' into *value
 // Returns false and leaves *value unchanged if c is not a hex digit.
 bool AccumulateHexValue(char c, int* value);
+
+// Return true iff the two strings are equal, ignoring case.
+bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2);
+// Return true iff str starts with prefix, ignoring case.
+bool StringCaseStartsWith(const StringPiece& str, const StringPiece& prefix);
+// Return true iff str ends with suffix, ignoring case.
+bool StringCaseEndsWith(const StringPiece& str, const StringPiece& suffix);
 
 struct CharStarCompareInsensitive {
   bool operator()(const char* s1, const char* s2) const {
@@ -142,7 +152,7 @@ typedef std::set<std::string> StringSet;
 
 // Does a path end in slash?
 inline bool EndsInSlash(const StringPiece& path) {
-  return path.size() >= 1 && path[path.size() - 1] == '/';
+  return path.ends_with("/");
 }
 
 // Make sure directory's path ends in '/'.
@@ -151,6 +161,11 @@ inline void EnsureEndsInSlash(std::string* dir) {
     dir->append("/");
   }
 }
+
+// Given a string such as:  a b "c d" e 'f g'
+// Parse it into a vector:  ["a", "b", "c d", "e", "f g"]
+void ParseShellLikeString(const StringPiece& input,
+                          std::vector<std::string>* output);
 
 }  // namespace net_instaweb
 

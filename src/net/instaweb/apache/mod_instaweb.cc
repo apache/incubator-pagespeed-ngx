@@ -29,6 +29,7 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/public/version.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -104,7 +105,6 @@ const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
     LASTCHANGE_STRING;
-const char kModPagespeedHeader[] = "X-Mod-Pagespeed";
 
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
 enum ConfigSwitch {CONFIG_ON, CONFIG_OFF, CONFIG_ERROR};
@@ -112,7 +112,8 @@ enum ConfigSwitch {CONFIG_ON, CONFIG_OFF, CONFIG_ERROR};
 // Determine the resource type from a Content-Type string
 bool is_html_content(const char* content_type) {
   if (content_type != NULL &&
-      StartsWithASCII(content_type, "text/html", false)) {
+      (StartsWithASCII(content_type, "text/html", false) ||
+       StartsWithASCII(content_type, "application/xhtml", false))) {
     return true;
   }
   return false;
@@ -253,7 +254,10 @@ InstawebContext* build_context_for_request(request_rec* request) {
       request->server);
   RewriteOptions* options = factory->options();
   bool use_custom_options = false;
-  if (!config->directory().empty()) {
+
+  // TODO(jmarantz): this is broken; we must Merge the root Options with
+  // the options acquired via per_dir_config, if any.
+  if (!config->description().empty()) {
     options = config->options();
     use_custom_options = true;
   }
@@ -560,13 +564,6 @@ void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
   return factory;
 }
 
-// These typedefs for SetBoolFn and SetInt64Fn are not needed anymore as
-// the we need them to be templatized.  They are left here for future
-// reference and instruction on pointer-to-member-function syntax.
-//     typedef void (RewriteOptions::*SetBoolFn)(bool val);
-//     typedef void (RewriteOptions::*SetInt64Fn)(int64 val);
-//     typedef void (RewriteOptions::*SetIntFn)(int val);
-
 template<class Options>
 const char* ParseBoolOption(Options* options, cmd_parms* cmd,
                             void (Options::*fn)(bool val),
@@ -627,7 +624,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   const char* ret = NULL;
   ApacheConfig* config = static_cast<ApacheConfig*>(data);
   RewriteOptions* options = factory->options();
-  if (!config->directory().empty()) {
+  if (!config->description().empty()) {
     options = config->options();
   }
 
@@ -837,30 +834,30 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   {NULL}
 };
 
-/** Function to allow all modules to create per directory configuration
- *  structures.
- *  @param p The pool to use for all allocations.
- *  @param dir The directory currently being processed.
- *  @return The per-directory structure created
- */
+// Function to allow all modules to create per directory configuration
+// structures.
+// dir is the directory currently being processed.
+// Returns the per-directory structure created.
 void* create_dir_config(apr_pool_t* pool, char* dir) {
   ApacheConfig* config = new ApacheConfig(pool, dir);
   config->options()->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   return config;
 }
 
-/** Function to allow all modules to merge the per directory configuration
- *  structures for two directories.
- *  @param p The pool to use for all allocations.
- *  @param base_conf The directory structure created for the parent directory.
- *  @param new_conf The directory structure currently being processed.
- *  @return The new per-directory structure created
- */
+// Function to allow all modules to merge the per directory configuration
+// structures for two directories.
+// base_conf is the directory structure created for the parent directory.
+// new_conf is the directory structure currently being processed.
+// This function returns the new per-directory structure created
 void* merge_dir_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
   ApacheConfig* dir1 = static_cast<ApacheConfig*>(base_conf);
   ApacheConfig* dir2 = static_cast<ApacheConfig*>(new_conf);
+
+  // To make it easier to debug the merged configurations, we store
+  // the name of both input configurations as the description for
+  // the merged configuration.
   ApacheConfig* dir3 = new ApacheConfig(pool, StrCat(
-      "Combine(", dir1->directory(), ", ", dir2->directory(), ")"));
+      "Combine(", dir1->description(), ", ", dir2->description(), ")"));
   dir3->options()->Merge(*(dir1->options()), *(dir2->options()));
   return dir3;
 }

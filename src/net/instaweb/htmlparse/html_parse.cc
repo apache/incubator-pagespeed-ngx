@@ -169,7 +169,8 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
   element->set_begin_line_number(line_number);
 }
 
-void HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id) {
+void HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
+                             const StringPiece& content_type) {
   url.CopyToString(&url_);
   GURL gurl(url_);
   // TODO(jmaessen): warn and propagate upwards.  This will require
@@ -183,7 +184,7 @@ void HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id) {
     InfoHere("HtmlParse::StartParse");
   }
   AddEvent(new HtmlStartDocumentEvent(line_number_));
-  lexer_->StartParse(id);
+  lexer_->StartParse(id, content_type);
 }
 
 void HtmlParse::ShowProgress(const char* message) {
@@ -658,6 +659,9 @@ bool HtmlParse::TagAllowsBriefTermination(Atom tag) const {
   return lexer_->TagAllowsBriefTermination(tag);
 }
 
+const DocType& HtmlParse::doctype() const {
+  return lexer_->doctype();
+}
 
 void HtmlParse::InfoV(
     const char* file, int line, const char *msg, va_list args) {

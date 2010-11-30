@@ -32,8 +32,6 @@ class ElideAttributesFilter : public EmptyHtmlFilter {
  public:
   explicit ElideAttributesFilter(HtmlParse* html_parse);
 
-  virtual void StartDocument();
-  virtual void Directive(HtmlDirectiveNode* directive);
   virtual void StartElement(HtmlElement* element);
   virtual const char* Name() const { return "ElideAttributes"; }
 
@@ -42,8 +40,7 @@ class ElideAttributesFilter : public EmptyHtmlFilter {
   typedef std::map<Atom, AtomSet, AtomCompare> AtomSetMap;
   typedef std::map<Atom, AtomMap, AtomCompare> AtomMapMap;
 
-  bool xhtml_mode_;  // is this an XHTML document?
-
+  HtmlParse* html_parse_;
   AtomSetMap one_value_attrs_map_;  // tag/attrs with only one possible value
   AtomMapMap default_value_map_;  // tag/attrs with default values
 

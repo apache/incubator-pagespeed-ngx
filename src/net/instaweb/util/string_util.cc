@@ -74,4 +74,79 @@ void BackslashEscape(const StringPiece& src,
   }
 }
 
+bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2) {
+  return (s1.size() == s2.size() &&
+          0 == strncasecmp(s1.data(), s2.data(), s1.size()));
+}
+
+bool StringCaseStartsWith(const StringPiece& str, const StringPiece& prefix) {
+  return (str.size() >= prefix.size() &&
+          0 == strncasecmp(str.data(), prefix.data(), prefix.size()));
+}
+
+bool StringCaseEndsWith(const StringPiece& str, const StringPiece& suffix) {
+  return (str.size() >= suffix.size() &&
+          0 == strncasecmp(str.data() + str.size() - suffix.size(),
+                           suffix.data(), suffix.size()));
+}
+
+void ParseShellLikeString(const StringPiece& input,
+                          std::vector<std::string>* output) {
+  output->clear();
+  for (size_t index = 0; index < input.size();) {
+    const char ch = input[index];
+    // If we see a quoted section, treat it as a single item even if there are
+    // spaces in it.
+    if (ch == '"' or ch == '\'') {
+      const char quote = ch;
+      ++index;  // skip open quote
+      output->push_back("");
+      std::string& part = output->back();
+      for (; index < input.size() && input[index] != quote; ++index) {
+        if (input[index] == '\\') {
+          ++index;  // skip backslash
+          if (index >= input.size()) {
+            break;
+          }
+        }
+        part.push_back(input[index]);
+      }
+      ++index;  // skip close quote
+    }
+    // Without quotes, items are whitespace-separated.
+    else if (!isspace(ch)) {
+      output->push_back("");
+      std::string& part = output->back();
+      for (;index < input.size() && !isspace(input[index]); ++index) {
+        part.push_back(input[index]);
+      }
+    }
+    // Ignore whitespace (outside of quotes).
+    else {
+      ++index;
+    }
+  }
+}
+
+// From src/third_party/protobuf2/src/src/google/protobuf/stubs/strutil.h
+// but we don't need any other aspect of protobufs so we don't want to
+// incur the link cost.
+void LowerString(std::string* s) {
+  std::string::iterator end = s->end();
+  for (std::string::iterator i = s->begin(); i != end; ++i) {
+    // tolower() changes based on locale.  We don't want this!
+    if ('A' <= *i && *i <= 'Z') *i += 'a' - 'A';
+  }
+}
+
+// From src/third_party/protobuf2/src/src/google/protobuf/stubs/strutil.h
+// but we don't need any other aspect of protobufs so we don't want to
+// incur the link cost.
+bool HasPrefixString(const StringPiece& str, const StringPiece& prefix) {
+  return ((str.size() >= prefix.size()) &&
+          (str.substr(0, prefix.size()) == prefix));
+}
+
+const StringPiece EmptyString::kEmptyString;
+
 }  // namespace net_instaweb

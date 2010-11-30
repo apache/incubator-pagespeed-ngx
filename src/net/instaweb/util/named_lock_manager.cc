@@ -14,22 +14,14 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
+// Author: jmaessen@google.com (Jan Maessen)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_PROTO_UTIL_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_PROTO_UTIL_H_
-
-#include "google/protobuf/io/gzip_stream.h"
-#include "google/protobuf/io/zero_copy_stream_impl_lite.h"
+#include "net/instaweb/util/public/named_lock_manager.h"
 
 namespace net_instaweb {
 
-typedef google::protobuf::io::StringOutputStream StringOutputStream;
-typedef google::protobuf::io::GzipOutputStream GzipOutputStream;
-typedef google::protobuf::io::ArrayInputStream ArrayInputStream;
-typedef google::protobuf::io::GzipInputStream GzipInputStream;
+AbstractLock::~AbstractLock() { }
+
+NamedLockManager::~NamedLockManager() { }
 
 }  // namespace net_instaweb
-
-
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_PROTO_UTIL_H_

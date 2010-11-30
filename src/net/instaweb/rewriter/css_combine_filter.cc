@@ -23,7 +23,6 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
-#include "net/instaweb/rewriter/rewrite.pb.h"  // for CssCombineUrl
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/content_type.h"

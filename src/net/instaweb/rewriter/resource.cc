@@ -59,9 +59,9 @@ void Resource::DetermineContentType() {
     std::string trimmed_url;
     TrimWhitespace(url(), &trimmed_url);
     content_type = NameExtensionToContentType(trimmed_url);
-    if (content_type != NULL) {
-      SetType(content_type);
-    }
+  }
+  if (content_type != NULL) {
+    SetType(content_type);
   }
 }
 

@@ -35,13 +35,17 @@ class ApacheConfig {
   ApacheConfig(apr_pool_t* pool, const StringPiece& dir);
   ~ApacheConfig() {}
 
-  StringPiece directory() const { return directory_; }
+  // Human-readable description of what this configuration is for.  This
+  // may be a directory, or a string indicating a combination of directives
+  // for multiple directories.
+  StringPiece description() const { return description_; }
+
   RewriteOptions* options() { return &options_; }
 
  private:
   static apr_status_t Cleanup(void* object);
 
-  std::string directory_;
+  std::string description_;
   RewriteOptions options_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheConfig);

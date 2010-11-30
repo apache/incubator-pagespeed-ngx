@@ -60,6 +60,7 @@ const char SerfStats::kSerfFetchTimeDurationMs[] =
 const char SerfStats::kSerfFetchCancelCount[] = "serf_fetch_cancel_count";
 const char SerfStats::kSerfFetchOutstandingCount[] =
     "serf_fetch_outstanding_count";
+const char SerfStats::kSerfFetchTimeoutCount[] = "serf_fetch_timeout_count";
 
 std::string GetAprErrorString(apr_status_t status) {
   char error_str[1024];
@@ -119,6 +120,7 @@ class SerfFetch {
       return 0;
     }
   }
+  int64 fetch_start_ms() const { return fetch_start_ms_; }
 
   size_t byte_received() const { return byte_received_; }
   MessageHandler* message_handler() { return message_handler_; }
@@ -393,8 +395,9 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     return NULL;
   }
 
-  // Thread-called function to transfer fetches from initiate_fetches_ vector
-  // to the active_fetches_ set.  Does no work if initiate_fetches_ is empty.
+  // Thread-called function to transfer fetches from initiate_fetches_ vector to
+  // the active_fetches_ queue.  Doesn't do any work if initiate_fetches_ is
+  // empty.
   void TransferFetches() {
     // Use a temp that to minimize the amount of time we hold the
     // initiate_mutex_ lock, so that the parent thread doesn't get
@@ -418,7 +421,8 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
           SERF_DEBUG(LOG(INFO) << "Adding threaded fetch to url "
                      << fetch->str_url()
                      << " (" << active_fetches_.size() << ")");
-          active_fetches_.insert(fetch);
+          active_fetches_.push_back(fetch);
+          active_fetch_map_[fetch] = --active_fetches_.end();
           ++num_started;
         } else {
           delete fetch;
@@ -548,6 +552,8 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
     cancel_count_ = statistics->GetVariable(SerfStats::kSerfFetchCancelCount);
     outstanding_count_ = statistics->GetVariable(
         SerfStats::kSerfFetchOutstandingCount);
+    timeout_count_ = statistics->GetVariable(
+        SerfStats::kSerfFetchTimeoutCount);
   }
   mutex_ = new AprMutex(pool_);
   serf_context_ = serf_context_create(pool_);
@@ -593,10 +599,21 @@ SerfUrlAsyncFetcher::~SerfUrlAsyncFetcher() {
   }
 
   STLDeleteElements(&active_fetches_);
+  active_fetch_map_.clear();
   if (threaded_fetcher_ != NULL) {
     delete threaded_fetcher_;
   }
   delete mutex_;
+}
+
+SerfUrlAsyncFetcher::FetchQueueEntry SerfUrlAsyncFetcher::EraseFetch(
+    SerfFetch* fetch) {
+  FetchMapEntry map_entry = active_fetch_map_.find(fetch);
+  CHECK(map_entry != active_fetch_map_.end())
+      << "Active fetch not in map: " << fetch->str_url();
+  FetchQueueEntry entry = active_fetches_.erase(map_entry->second);
+  active_fetch_map_.erase(map_entry);
+  return entry;
 }
 
 void SerfUrlAsyncFetcher::CancelOutstandingFetches() {
@@ -605,10 +622,10 @@ void SerfUrlAsyncFetcher::CancelOutstandingFetches() {
   {
     ScopedMutex lock(mutex_);
     while (!active_fetches_.empty()) {
-      FetchSet::iterator p = active_fetches_.begin();
+      FetchQueueEntry p = active_fetches_.begin();
       SerfFetch* fetch = *p;
       LOG(WARNING) << "Aborting fetch of " << fetch->str_url();
-      active_fetches_.erase(p);
+      EraseFetch(fetch);
       ++num_canceled;
       fetch->Cancel();
     }
@@ -647,7 +664,8 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
       ScopedMutex mutex(mutex_);
       started = fetch->Start(this);
       if (started) {
-        active_fetches_.insert(fetch);
+        active_fetches_.push_back(fetch);
+        active_fetch_map_[fetch] = --active_fetches_.end();
         if (outstanding_count_ != NULL) {
           outstanding_count_->Add(1);
         }
@@ -662,7 +680,7 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
 void SerfUrlAsyncFetcher::PrintOutstandingFetches(
     MessageHandler* handler) const {
   ScopedMutex mutex(mutex_);
-  for (FetchSet::const_iterator p = active_fetches_.begin(),
+  for (FetchQueue::const_iterator p = active_fetches_.begin(),
            e = active_fetches_.end(); p != e; ++p) {
     SerfFetch* fetch = *p;
     handler->Message(kInfo, "Outstanding fetch: %s",
@@ -677,6 +695,22 @@ int SerfUrlAsyncFetcher::Poll(int64 microseconds) {
   if (!active_fetches_.empty()) {
     apr_status_t status = serf_context_run(serf_context_, microseconds, pool_);
     STLDeleteElements(&completed_fetches_);
+    if (APR_STATUS_IS_TIMEUP(status)) {
+      // Remove expired fetches from the front of the queue.
+      int64 stale_cutoff = timer_->NowMs() - timeout_ms_;
+      FetchQueueEntry p = active_fetches_.begin(), e = active_fetches_.end();
+      int timeouts = 0;
+      while ((p != e) && ((*p)->fetch_start_ms() < stale_cutoff)) {
+        SerfFetch* fetch = *p;
+        LOG(WARNING) << "Fetch timed out: " << fetch->str_url();
+        timeouts++;
+        fetch->Cancel();
+        p = EraseFetch(fetch);
+      }
+      if (timeouts > 0) {
+        timeout_count_->Add(timeouts);
+      }
+    }
     bool success = ((status == APR_SUCCESS) || APR_STATUS_IS_TIMEUP(status));
     // TODO(jmarantz): provide the success status to the caller if there is a
     // need.
@@ -690,9 +724,6 @@ int SerfUrlAsyncFetcher::Poll(int64 microseconds) {
       // we'd have to store lists of Callback*, ResponseHeader*, Writer* so
       // all interested parties were updated if and when the fetch finally
       // completed.
-      //
-      // We should also have a maximum timeout for a fetch where we just
-      // give up and issue a 404.
       //
       // In the meantime by putting more detail into the log here, we'll
       // know whether we are accumulating outstanding fetches to make the
@@ -712,10 +743,9 @@ int SerfUrlAsyncFetcher::Poll(int64 microseconds) {
 void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch) {
   // We do not have a ScopedMutex in FetchComplete, because it is only
   // called from Poll, which has a ScopedMutex.
-  int erased = active_fetches_.erase(fetch);
+  EraseFetch(fetch);
   fetch->message_handler()->Message(kInfo, "Fetch complete: %s",
                                     fetch->str_url());
-  CHECK_EQ(1, erased);
   completed_fetches_.push_back(fetch);
   if (time_duration_ms_) {
     time_duration_ms_->Add(fetch->TimeDuration());
@@ -778,6 +808,7 @@ void SerfUrlAsyncFetcher::Initialize(Statistics* statistics) {
     statistics->AddVariable(SerfStats::kSerfFetchTimeDurationMs);
     statistics->AddVariable(SerfStats::kSerfFetchCancelCount);
     statistics->AddVariable(SerfStats::kSerfFetchOutstandingCount);
+    statistics->AddVariable(SerfStats::kSerfFetchTimeoutCount);
   }
 }
 

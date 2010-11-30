@@ -349,6 +349,9 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
       const StringPiece& id,
       const CssLink::Vector& input_css_links,
       CssLink::Vector* output_css_links) {
+    // TODO(sligocki): Allow other domains (this is constrained right now b/c
+    // of InitMetaData.
+    std::string html_url = StrCat("http://test.com/", id, ".html");
     std::string html_input("<head>\n");
     for (int i = 0, n = input_css_links.size(); i < n; ++i) {
       const CssLink* link = input_css_links[i];
@@ -374,7 +377,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     html_input += "    Hello, mod_pagespeed!\n  </div>\n</body>\n";
 
     rewrite_driver_.AddFilter(RewriteOptions::kCombineCss);
-    ParseUrl("http://test.com/", html_input);
+    ParseUrl(html_url, html_input);
     CollectCssLinks("combine_css_missing_files", output_buffer_,
                     output_css_links);
 
@@ -699,6 +702,44 @@ TEST_F(CssCombineFilterTest, CombineStyleTag) {
   EXPECT_EQ("1.css", segments[0]);
   EXPECT_EQ("2.css", segments[1]);
   EXPECT_EQ("4.css", css_out[1]->url_);
+}
+
+TEST_F(CssCombineFilterTest, NoAbsolutifySameDir) {
+  CssLink::Vector css_in, css_out;
+  css_in.Add("1.css", ".yellow {background-image: url('1.png');}\n", "", true);
+  css_in.Add("2.css", ".yellow {background-image: url('2.png');}\n", "", true);
+  BarrierTestHelper("combine_css_with_style", css_in, &css_out);
+  EXPECT_EQ(1, css_out.size());
+
+  // Note: the urls are not absolutified.
+  std::string expected_combination =
+      ".yellow {background-image: url('1.png');}\n"
+      ".yellow {background-image: url('2.png');}\n";
+
+  // Check fetched resource.
+  std::string actual_combination;
+  EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
+  // TODO(sligocki): Check headers?
+  EXPECT_EQ(expected_combination, actual_combination);
+}
+
+TEST_F(CssCombineFilterTest, DoAbsolutifyDifferentDir) {
+  CssLink::Vector css_in, css_out;
+  css_in.Add("1.css", ".yellow {background-image: url('1.png');}\n", "", true);
+  css_in.Add("foo/2.css", ".yellow {background-image: url('2.png');}\n",
+             "", true);
+  BarrierTestHelper("combine_css_with_style", css_in, &css_out);
+  EXPECT_EQ(1, css_out.size());
+
+  std::string expected_combination =
+      ".yellow {background-image: url('1.png');}\n"
+      ".yellow {background-image: url('http://test.com/foo/2.png');}\n";
+
+  // Check fetched resource.
+  std::string actual_combination;
+  EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
+  // TODO(sligocki): Check headers?
+  EXPECT_EQ(expected_combination, actual_combination);
 }
 
 /*

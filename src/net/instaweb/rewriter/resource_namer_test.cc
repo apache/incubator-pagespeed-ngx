@@ -72,6 +72,14 @@ TEST_F(ResourceNamerTest, TestDecodeHashExt) {
   EXPECT_EQ("ext", full_name_.ext());
 }
 
+TEST_F(ResourceNamerTest, TestLegacyDecode) {
+  EXPECT_TRUE(full_name_.Decode("id.hash.name.ext"));
+  EXPECT_EQ("id", full_name_.id());
+  EXPECT_EQ("name", full_name_.name());
+  EXPECT_EQ("hash", full_name_.hash());
+  EXPECT_EQ("ext", full_name_.ext());
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

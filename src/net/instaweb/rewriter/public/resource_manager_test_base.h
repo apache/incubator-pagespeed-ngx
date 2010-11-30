@@ -228,20 +228,18 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Helper function to test resource fetching, returning true if the fetch
   // succeeded, and modifying content.  It is up to the caller to EXPECT_TRUE
   // on the status and EXPECT_EQ on the content.
-  // TODO(sligocki): Allow this to take a namer instead of all the pieces.
   bool ServeResource(const StringPiece& path, const StringPiece& filter_id,
                      const StringPiece& name, const StringPiece& ext,
                      std::string* content) {
-    SimpleMetaData request_headers, response_headers;
+    std::string url = Encode(path, filter_id, "0", name, ext);
+    return ServeResourceUrl(url, content);
+  }
+
+  bool ServeResourceUrl(const StringPiece& url, std::string* content) {
     content->clear();
+    SimpleMetaData request_headers, response_headers;
     StringWriter writer(content);
     FetchCallback callback;
-    ResourceNamer namer;
-    namer.set_id(filter_id);
-    namer.set_name(name);
-    namer.set_hash("0");
-    namer.set_ext(ext);
-    std::string url = StrCat(path, namer.Encode());
     bool fetched = rewrite_driver_.FetchResource(
         url, request_headers, &response_headers, &writer, &message_handler_,
         &callback);
@@ -251,19 +249,13 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   // Just check if we can fetch a resource successfully, ignore response.
   bool TryFetchResource(const StringPiece& url) {
-    SimpleMetaData request_headers, response_headers;
-    NullWriter response_writer;
-    FetchCallback callback;
-    bool fetched = rewrite_driver_.FetchResource(
-        url, request_headers, &response_headers, &response_writer,
-        &message_handler_, &callback);
-    EXPECT_TRUE(callback.done());
-    return fetched && callback.success();
+    std::string contents;
+    return ServeResourceUrl(url, &contents);
   }
 
   // Helper function to encode a resource name from its pieces.
   std::string Encode(const StringPiece& path,
-                      const StringPiece& id, const StringPiece& hash,
+                      const StringPiece& filter_id, const StringPiece& hash,
                       const StringPiece& name, const StringPiece& ext);
 
   // Testdata directory.

@@ -115,6 +115,9 @@ const TagAttr kBooleanAttrs[] = {
 //     </div>
 //   </div>
 
+// TODO(mdsteele): This list should depend on the doctype.  For example, there
+// are some attributes that have default values in HTML 5 but not in HTML 4.
+
 struct TagAttrValue {
   const char* tag_name;
   const char* attr_name;
@@ -176,7 +179,7 @@ const TagAttrValue kDefaultList[] = {
 namespace net_instaweb {
 
 ElideAttributesFilter::ElideAttributesFilter(HtmlParse* html_parse)
-    : xhtml_mode_(false) {
+    : html_parse_(html_parse) {
   // Populate one_value_attrs_map_
   for (size_t i = 0; i < arraysize(kBooleanAttrs); ++i) {
     const TagAttr& entry = kBooleanAttrs[i];
@@ -191,24 +194,8 @@ ElideAttributesFilter::ElideAttributesFilter(HtmlParse* html_parse)
   }
 }
 
-void ElideAttributesFilter::StartDocument() {
-  xhtml_mode_ = false;
-}
-
-void ElideAttributesFilter::Directive(HtmlDirectiveNode* directive) {
-  // If this is an XHTML doctype directive, then put us into XHTML mode.
-  std::string lowercase = directive->contents();
-  LowerString(&lowercase);
-  // TODO(mdsteele): This is probably not very robust; we should find a more
-  // reliable way to test for XHTML doctypes.
-  if (HasPrefixString(lowercase, "doctype") &&
-      lowercase.find("xhtml") != std::string::npos) {
-    xhtml_mode_ = true;
-  }
-}
-
 void ElideAttributesFilter::StartElement(HtmlElement* element) {
-  if (!xhtml_mode_) {
+  if (!html_parse_->doctype().IsXhtml()) {
     // Check for boolean attributes.
     AtomSetMap::const_iterator iter =
         one_value_attrs_map_.find(element->tag());

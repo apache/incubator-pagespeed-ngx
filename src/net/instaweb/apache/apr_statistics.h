@@ -59,8 +59,9 @@ class AprVariable : public Variable {
  private:
   friend class AprStatistics;
   // Logs an error message and returns false if the result is not SUCCESS.
-  bool CheckResult(const apr_status_t result, const StringPiece& verb,
-                   const StringPiece& filename = kEmptyString) const;
+  bool CheckResult(
+      const apr_status_t result, const StringPiece& verb,
+      const StringPiece& filename = EmptyString::kEmptyString) const;
   // Initialize this variable's mutex
   bool InitMutex(apr_pool_t* pool, bool parent);
   // Initialize this variable's shared memory segment.

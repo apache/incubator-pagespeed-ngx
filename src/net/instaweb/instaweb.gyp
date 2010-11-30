@@ -15,7 +15,6 @@
 {
   'variables': {
     'instaweb_root': '../..',
-    'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
     'chromium_code': 1,
   },
   'targets': [
@@ -25,8 +24,6 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_core.gyp:instaweb_util_core',
-        'instaweb_protobuf_gzip.gyp:instaweb_protobuf_gzip',
-        'instaweb_util_pb',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
         '<(DEPTH)/base/base.gyp:base',
@@ -45,6 +42,7 @@
         'util/fake_url_async_fetcher.cc',
         'util/file_cache.cc',
         'util/file_system.cc',
+        'util/file_system_lock_manager.cc',
         'util/file_writer.cc',
         'util/filename_encoder.cc',
         'util/gzip_inflater.cc',
@@ -60,6 +58,7 @@
         'util/md5_hasher.cc',
         'util/mock_hasher.cc',
         'util/mock_timer.cc',
+        'util/named_lock_manager.cc',
         'util/null_message_handler.cc',
         'util/null_writer.cc',
         'util/pthread_mutex.cc',
@@ -71,10 +70,9 @@
         'util/statistics.cc',
         'util/statistics_work_bound.cc',
         'util/stdio_file_system.cc',
-        'util/string_buffer.cc',
-        'util/string_buffer_writer.cc',
         'util/threadsafe_cache.cc',
         'util/time_util.cc',
+        'util/timer_based_abstract_lock.cc',
         'util/url_async_fetcher.cc',
         'util/url_escaper.cc',
         'util/url_fetcher.cc',
@@ -97,9 +95,6 @@
           '<(DEPTH)',
         ],
       },
-      'export_dependent_settings': [
-        'instaweb_protobuf_gzip.gyp:instaweb_protobuf_gzip',
-      ],
     },
     {
       'target_name': 'instaweb_htmlparse',
@@ -131,7 +126,6 @@
       'target_name': 'instaweb_rewriter_base',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_protobuf_gzip.gyp:instaweb_protobuf_gzip',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
       ],
@@ -169,7 +163,6 @@
       'target_name': 'instaweb_rewriter_image',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_rewrite_pb',
         'instaweb_rewriter_base',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
@@ -198,7 +191,6 @@
       'target_name': 'instaweb_rewriter_javascript',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_rewrite_pb',
         'instaweb_rewriter_base',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
@@ -225,7 +217,6 @@
       'target_name': 'instaweb_rewriter_css',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_rewrite_pb',
         'instaweb_rewriter_base',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
@@ -251,7 +242,6 @@
       'target_name': 'instaweb_rewriter',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_rewrite_pb',
         'instaweb_rewriter_base',
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_rewriter_css',
@@ -301,116 +291,6 @@
           '<(DEPTH)',
         ],
       },
-    },
-    {
-      'target_name': 'instaweb_rewriter_genproto',
-      'type': 'none',
-      'sources': [
-        'rewriter/rewrite.proto',
-      ],
-      'rules': [
-        {
-          'rule_name': 'genproto',
-          'extension': 'proto',
-          'inputs': [
-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
-          ],
-          'outputs': [
-            '<(protoc_out_dir)/net/instaweb/rewriter/<(RULE_INPUT_ROOT).pb.h',
-            '<(protoc_out_dir)/net/instaweb/rewriter/<(RULE_INPUT_ROOT).pb.cc',
-          ],
-          'action': [
-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
-            '--proto_path=rewriter',
-            './rewriter/<(RULE_INPUT_ROOT)<(RULE_INPUT_EXT)',
-            '--cpp_out=<(protoc_out_dir)/net/instaweb/rewriter',
-          ],
-          'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
-        },
-      ],
-      'dependencies': [
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protoc#host',
-      ],
-      'direct_dependent_settings': {
-        'include_dirs': [
-          '<(protoc_out_dir)',
-        ]
-      },
-      'export_dependent_settings': [
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
-      ],
-    },
-    {
-      'target_name': 'instaweb_util_genproto',
-      'type': 'none',
-      'sources': [
-        'util/util.proto',
-      ],
-      'rules': [
-        {
-          'rule_name': 'genproto',
-          'extension': 'proto',
-          'inputs': [
-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
-          ],
-          'outputs': [
-            '<(protoc_out_dir)/net/instaweb/util/<(RULE_INPUT_ROOT).pb.h',
-            '<(protoc_out_dir)/net/instaweb/util/<(RULE_INPUT_ROOT).pb.cc',
-          ],
-          'action': [
-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
-            '--proto_path=util',
-            './util/<(RULE_INPUT_ROOT)<(RULE_INPUT_EXT)',
-            '--cpp_out=<(protoc_out_dir)/net/instaweb/util',
-          ],
-          'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
-        },
-      ],
-      'dependencies': [
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protoc#host',
-      ],
-      'direct_dependent_settings': {
-        'include_dirs': [
-          '<(protoc_out_dir)',
-        ]
-      },
-      'export_dependent_settings': [
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
-      ],
-    },
-    {
-      'target_name': 'instaweb_rewrite_pb',
-      'type': '<(library)',
-      'hard_dependency': 1,
-      'dependencies': [
-        'instaweb_rewriter_genproto',
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
-       ],
-      'sources': [
-        '<(protoc_out_dir)/net/instaweb/rewriter/rewrite.pb.cc',
-      ],
-      'export_dependent_settings': [
-        'instaweb_rewriter_genproto',
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
-      ]
-    },
-    {
-      'target_name': 'instaweb_util_pb',
-      'type': '<(library)',
-      'hard_dependency': 1,
-      'dependencies': [
-        'instaweb_util_genproto',
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
-       ],
-      'sources': [
-        '<(protoc_out_dir)/net/instaweb/util/util.pb.cc',
-      ],
-      'export_dependent_settings': [
-        'instaweb_util_genproto',
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
-      ]
     },
   ],
 }

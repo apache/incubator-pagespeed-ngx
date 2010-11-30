@@ -259,13 +259,6 @@ TEST_F(RewriteOptionsTest, MergeThresholdDefault) {
             options.css_inline_max_bytes());
 }
 
-TEST_F(RewriteOptionsTest, MergeThresholdNone) {
-  RewriteOptions one, two;
-  options.Merge(one, two);
-  EXPECT_EQ(RewriteOptions::kDefaultCssInlineMaxBytes,
-            options.css_inline_max_bytes());
-}
-
 TEST_F(RewriteOptionsTest, MergeThresholdOne) {
   RewriteOptions one, two;
   one.set_css_inline_max_bytes(5);

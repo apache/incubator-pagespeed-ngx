@@ -21,7 +21,7 @@
 
 namespace {
 
-const char kApr5[] = "Mon Apr 05 18:49:46 2010 GMT";
+const char kApr5[] = "Mon, 05 Apr 2010 18:49:46 GMT";
 
 // The time-conversion functions are only accurate to the second,
 // and we will not be able to test for identity transforms if we
@@ -50,7 +50,7 @@ class TimeUtilTest : public testing::Test {
 };
 
 TEST_F(TimeUtilTest, Test1970) {
-  EXPECT_EQ("Thu Jan 01 00:00:00 1970 GMT", GetTimeString(0));
+  EXPECT_EQ("Thu, 01 Jan 1970 00:00:00 GMT", GetTimeString(0));
   EXPECT_EQ(1270493386000LL, GetTimeValue(kApr5));
 }
 

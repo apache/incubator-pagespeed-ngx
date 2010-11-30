@@ -80,6 +80,7 @@ class InstawebContext {
   std::string output_;  // content after instaweb rewritten.
   apr_bucket_brigade* bucket_brigade_;
   ContentEncoding content_encoding_;
+  const std::string content_type_;
 
   net_instaweb::ApacheRewriteDriverFactory* factory_;
   net_instaweb::RewriteDriver* rewrite_driver_;

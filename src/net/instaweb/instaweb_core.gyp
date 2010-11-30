@@ -23,7 +23,6 @@
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
       ],
       'sources': [
         'util/file_message_handler.cc',
@@ -46,9 +45,6 @@
           '<(DEPTH)',
         ],
       },
-      'export_dependent_settings': [
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
-      ],
     },
     {
       'target_name': 'instaweb_htmlparse_core',
@@ -56,9 +52,9 @@
       'dependencies': [
         'instaweb_util_core',
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
       ],
       'sources': [
+        'htmlparse/doctype.cc',
         'htmlparse/empty_html_filter.cc',
         'htmlparse/html_element.cc',
         'htmlparse/html_escape.cc',

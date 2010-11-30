@@ -36,7 +36,7 @@ namespace {
 // currently excludes both '.' and '/' due to rules enforced primarily
 // in net/instaweb/rewriter/resource_manager.cc, but are distributed a bit
 // more widely.
-const char kPassThroughChars[] = "._=+-&?";
+const char kPassThroughChars[] = "._=+-";
 
 // Checks for 'search' at start of 'src'.  If found, appends
 // 'replacement' into 'out', and advances the start-point in 'src'
@@ -62,8 +62,7 @@ void UrlEscaper::EncodeToUrlSegment(const StringPiece& in,
   for (StringPiece src = in; src.size() != 0; ) {
     // We need to check for common prefixes that begin with pass-through
     // characters before doing the isalnum check.
-    if (!ReplaceSubstring("http://", ",h", &src, url_segment) &&
-        !ReplaceSubstring("www.", ",w", &src, url_segment)) {
+    if (!ReplaceSubstring("http://", ",h", &src, url_segment)) {
       char c = src[0];
       if (isalnum(c) || (strchr(kPassThroughChars, c) != NULL)) {
         url_segment->append(1, c);
@@ -73,15 +72,13 @@ void UrlEscaper::EncodeToUrlSegment(const StringPiece& in,
           // an FSM so we don't have so much lookahed scanning, and we
           // don't have to work hard to keep the encoder and decoder
           // in sync.
-          !ReplaceSubstring(".com", ",c", &src, url_segment) &&
-          !ReplaceSubstring(".edu", ",e", &src, url_segment) &&
-          !ReplaceSubstring(".html", ",t", &src, url_segment) &&
-          !ReplaceSubstring(".net", ",n", &src, url_segment) &&
           !ReplaceSubstring("^", ",u", &src, url_segment) &&
           !ReplaceSubstring("%", ",P", &src, url_segment) &&
           !ReplaceSubstring("/", ",_", &src, url_segment) &&
           !ReplaceSubstring("\\", ",-", &src, url_segment) &&
-          !ReplaceSubstring(",", ",,", &src, url_segment)) {
+          !ReplaceSubstring(",", ",,", &src, url_segment) &&
+          !ReplaceSubstring("?", ",q", &src, url_segment) &&
+          !ReplaceSubstring("&", ",a", &src, url_segment)) {
         url_segment->append(StringPrintf(",%02X",
                                          static_cast<unsigned char>(c)));
         src = src.substr(1);
@@ -106,25 +103,27 @@ bool UrlEscaper::DecodeFromUrlSegment(const StringPiece& url_segment,
         case '_': *out += "/"; break;
         case '-': *out += "\\"; break;
         case ',': *out += ","; break;
-        case 'c': *out += ".com"; break;
-        case 'e': *out += ".edu"; break;
-        case 'h': *out += "http://"; break;
-        case 'n': *out += ".net"; break;
+        case 'a': *out += "&"; break;
         case 'P': *out += "%"; break;
-        case 't': *out += ".html"; break;
+        case 'q': *out += "?"; break;
         case 'u': *out += "^"; break;
-        case 'w': *out += "www."; break;
 
         // The following legacy encodings are no longer made.  However
         // we should continue to decode what we previously encoded in
         // November 2010 to avoid (for example) breaking image search.
-        case 's': *out += ".css"; break;
+        case 'c': *out += ".com"; break;
+        case 'e': *out += ".edu"; break;
         case 'g': *out += ".gif"; break;
-        case 'k': *out += ".jpeg"; break;
+        case 'h': *out += "http://"; break;
         case 'j': *out += ".jpg"; break;
+        case 'k': *out += ".jpeg"; break;
         case 'l': *out += ".js"; break;
+        case 'n': *out += ".net"; break;
         case 'o': *out += "."; break;
         case 'p': *out += ".png"; break;
+        case 's': *out += ".css"; break;
+        case 't': *out += ".html"; break;
+        case 'w': *out += "www."; break;
 
         default:
           if (remaining < 2) {

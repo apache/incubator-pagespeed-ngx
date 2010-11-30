@@ -42,7 +42,8 @@ bool GenerateFilename(
   }
   return ret;
 }
-}
+
+}  // namespace
 
 namespace net_instaweb {
 
@@ -87,7 +88,7 @@ bool FileDriver::ParseFile(const char* infilename,
       // HtmlParser needs a valid HTTP URL to evaluate relative paths,
       // so we create a dummy URL.
       std::string dummy_url = StrCat("http://file.name/", infilename);
-      html_parse_->StartParseId(dummy_url, infilename);
+      html_parse_->StartParseId(dummy_url, infilename, "text/html");
       char buf[1000];
       int nread;
       while ((nread = f->Read(buf, sizeof(buf), message_handler)) > 0) {

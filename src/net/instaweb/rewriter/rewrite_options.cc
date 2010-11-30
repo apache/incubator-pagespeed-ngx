@@ -203,11 +203,18 @@ void RewriteOptions::Merge(const RewriteOptions& first,
   for (FilterSet::const_iterator p = second.enabled_filters_.begin(),
            e = second.enabled_filters_.end(); p != e; ++p) {
     Filter filter = *p;
+    // Enabling in 'second' trumps Disabling in first.
     disabled_filters_.erase(filter);
     enabled_filters_.insert(filter);
   }
-  disabled_filters_.insert(second.disabled_filters_.begin(),
-                           second.disabled_filters_.end());
+
+  for (FilterSet::const_iterator p = second.disabled_filters_.begin(),
+           e = second.disabled_filters_.end(); p != e; ++p) {
+    Filter filter = *p;
+    // Disabling in 'second' trumps enabling in anything.
+    disabled_filters_.insert(filter);
+    enabled_filters_.erase(filter);
+  }
 
   // TODO(jmarantz): Use a virtual base class for Option so we can put
   // this in a loop.  Or something.

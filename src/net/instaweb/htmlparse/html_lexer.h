@@ -23,6 +23,7 @@
 #include <set>
 #include <vector>
 #include "base/basictypes.h"
+#include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/printf_format.h"
 #include <string>
@@ -43,7 +44,7 @@ class HtmlLexer {
   ~HtmlLexer();
 
   // Initialize a new parse session, id is only used for error messages.
-  void StartParse(const StringPiece& id);
+  void StartParse(const StringPiece& id, const StringPiece& content_type);
 
   // Parse a chunk of text, adding events to the parser by calling
   // html_parse_->AddEvent(...).
@@ -66,6 +67,10 @@ class HtmlLexer {
 
   // Returns the current lowest-level parent element in the element stack
   HtmlElement* Parent() const;
+
+  // Return the current assumed doctype of the document (based on the content
+  // type and any HTML directives encountered so far).
+  const DocType& doctype() const { return doctype_; }
 
  private:
   // Most of these routines expect c to be the last character of literal_
@@ -199,6 +204,9 @@ class HtmlLexer {
   int tag_start_line_;      // line at which we last transitioned to TAG state
   std::string id_;
   std::string literal_close_;  // specific tag go close, e.g </script>
+
+  std::string content_type_;
+  DocType doctype_;
 
   AtomSet implicitly_closed_;
   AtomSet non_brief_terminated_tags_;

@@ -23,6 +23,7 @@
 #include <map>
 #include "base/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/mock_timer.h"
 
 namespace net_instaweb {
 
@@ -33,12 +34,11 @@ namespace net_instaweb {
 // enable testing resilience to concurrency problems with real filesystems.
 class MemFileSystem : public FileSystem {
  public:
-  MemFileSystem() : enabled_(true), temp_file_index_(0), current_time_(0) {}
+  MemFileSystem() : enabled_(true), timer_(0), temp_file_index_(0) {}
   virtual ~MemFileSystem();
 
   // We offer a "simulated atime" in which the clock ticks forward one
   // second every time you read or write a file.
-  // TODO(abliss): replace this with a MockTimer.
   virtual bool Atime(const StringPiece& path, int64* timestamp_sec,
                      MessageHandler* handler);
   virtual BoolOrError Exists(const char* path, MessageHandler* handler);
@@ -61,6 +61,9 @@ class MemFileSystem : public FileSystem {
                     MessageHandler* handler);
   virtual BoolOrError TryLock(const StringPiece& lock_name,
                               MessageHandler* handler);
+  virtual BoolOrError TryLockWithTimeout(const StringPiece& lock_name,
+                                         int64 timeout_ms,
+                                         MessageHandler* handler);
   virtual bool Unlock(const StringPiece& lock_name,
                       MessageHandler* handler);
 
@@ -68,18 +71,27 @@ class MemFileSystem : public FileSystem {
   // are open.
   void Clear();
 
-  // Test-specific functionality to disable and re-enabele the file-system.
+  // Test-specific functionality to disable and re-enable the filesystem.
   void Disable() { enabled_ = false; }
   void Enable() { enabled_ = true; }
 
+  // Accessor for timer.  Timer is owned by mem_file_system.
+  MockTimer* timer() { return &timer_; }
+
  private:
+  inline int64 CurrentTimeAndAdvance();
   bool enabled_;  // When disabled, OpenInputFile returns NULL.
   typedef std::map<std::string, std::string> StringMap;
   StringMap string_map_;
+  MockTimer timer_;
+  // atime_map_ holds times (in s) that files were last opened/modified.  Each
+  // time we do such an operation, timer() advances by 1s (so all ATimes are
+  // distinct).
   std::map<std::string, int64> atime_map_;
   int temp_file_index_;
-  int current_time_;
-  std::map<std::string, bool> lock_map_;
+  // lock_map_ holds times that locks were established (in ms).
+  // locking and unlocking don't advance time.
+  std::map<std::string, int64> lock_map_;
 
   DISALLOW_COPY_AND_ASSIGN(MemFileSystem);
 };

@@ -44,15 +44,17 @@ bool ConvertTimeToString(int64 time_ms, std::string* time_string) {
   // RFC 822 says to format like this:
   //                Thu Nov 18 02:15:22 2010 GMT
   // See http://www.faqs.org/rfcs/rfc822.html
-  *time_string = StrCat(kWeekDay[time_buf.tm_wday], " ",
-                        kMonth[time_buf.tm_mon], " ",
-                        StringPrintf("%02d %02d:%02d:%02d %4d",
-                                     time_buf.tm_mday,
-                                     time_buf.tm_hour,
-                                     time_buf.tm_min,
-                                     time_buf.tm_sec,
-                                     1900 + time_buf.tm_year),
-                        " GMT");
+  //
+  // But redbot.org likes this:
+  //    Wed, 24 Nov 2010 21:14:12 GMT
+  *time_string = StringPrintf("%s, %02d %s %4d %02d:%02d:%02d GMT",
+                              kWeekDay[time_buf.tm_wday],
+                              time_buf.tm_mday,
+                              kMonth[time_buf.tm_mon],
+                              1900 + time_buf.tm_year,
+                              time_buf.tm_hour,
+                              time_buf.tm_min,
+                              time_buf.tm_sec);
   return true;
 }
 

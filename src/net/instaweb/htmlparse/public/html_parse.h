@@ -23,6 +23,7 @@
 #include <set>
 #include <vector>
 #include "base/basictypes.h"
+#include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
@@ -49,10 +50,17 @@ class HtmlParse {
   // Initiate a chunked parsing session.  Finish with FinishParse.  The
   // url is only used to resolve relative URLs; the contents are not
   // directly fetched.  The caller must supply the text and call ParseText.
-  void StartParse(const StringPiece& url) { StartParseId(url, url); }
+  void StartParse(const StringPiece& url) {
+    StartParseWithType(url, "text/html");
+  }
+  void StartParseWithType(const StringPiece& url,
+                          const StringPiece& content_type) {
+    StartParseId(url, url, content_type);
+  }
   // Use an error message id that is distinct from the url.
   // Mostly useful for testing.
-  void StartParseId(const StringPiece& url, const StringPiece& id);
+  void StartParseId(const StringPiece& url, const StringPiece& id,
+                    const StringPiece& content_type);
 
   // Parses an arbitrary block of an html file, queuing up the events.  Call
   // Flush to send the events through the Filter.
@@ -184,6 +192,9 @@ class HtmlParse {
   const GURL& gurl() const { return gurl_; }
   const char* id() const { return id_.c_str(); }
   int line_number() const { return line_number_; }
+  // Return the current assumed doctype of the document (based on the content
+  // type and any HTML directives encountered so far).
+  const DocType& doctype() const;
 
   // Interface for any caller to report an error message via the message handler
   void Info(const char* filename, int line, const char* msg, ...)

@@ -96,6 +96,7 @@ class ResourceNamer {
 
  private:
   std::string InternalEncode() const;
+  bool LegacyDecode(const StringPiece& encoded_string);
 
   std::string id_;
   std::string name_;

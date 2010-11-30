@@ -25,8 +25,8 @@ namespace {
 // We pass through a few special characters unchanged, and we
 // accept those characters, plus ',', as acceptable in the encoded
 // URLs.
-static const char kAcceptableSpecialChars[] = ",._+-=&?";
-static const char kPassThruChars[]          =  "._+-=&?";
+static const char kAcceptableSpecialChars[] = ",._+-=";
+static const char kPassThruChars[]          =  "._+-=";
 
 }  // namespace
 
@@ -63,6 +63,12 @@ class UrlEscaperTest : public testing::Test {
     return decoded;
   }
 
+  std::string Encode(const StringPiece& url) {
+    std::string encoded;
+    escaper_.EncodeToUrlSegment(url, &encoded);
+    return encoded;
+  }
+
   UrlEscaper escaper_;
 };
 
@@ -81,7 +87,7 @@ TEST_F(UrlEscaperTest, TestUnchanged) {
   CheckUnchanged("abcdefghijklmnopqrstuvwxyz");
   CheckUnchanged("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
   CheckUnchanged("0123456789");
-  CheckUnchanged("?&=+-_");
+  CheckUnchanged("=+-_");
   CheckUnchanged(kPassThruChars);
 }
 
@@ -93,6 +99,29 @@ TEST_F(UrlEscaperTest, LegacyDecode) {
   EXPECT_EQ("e.jpeg", Decode("e,k"));
   EXPECT_EQ("f.js", Decode("f,l"));
   EXPECT_EQ("g.anything", Decode("g,oanything"));
+  EXPECT_EQ("http://www.myhost.com", Decode(",h,wmyhost,c"));
+}
+
+TEST_F(UrlEscaperTest, TestEncoding) {
+  // Special case encoding a common sequence that would be long and
+  // ugly to escape char-by-char.  We used to encode more than this
+  // (e.g. .com -> ,c) but now that we can allow '.' in encoded names,
+  // we favor legibility over compactness and have dropped the encoding
+  // of ".com" and others.  However http:// requires three characters
+  // to be decoded so we'll encode it in one piece.
+  EXPECT_EQ(",h", Encode("http://"));
+
+  // These common characters get special-case encodings.
+  EXPECT_EQ(",u", Encode("^"));
+  EXPECT_EQ(",P", Encode("%"));
+  EXPECT_EQ(",_", Encode("/"));
+  EXPECT_EQ(",-", Encode("\\"));
+  EXPECT_EQ(",,", Encode(","));
+  EXPECT_EQ(",q", Encode("?"));
+  EXPECT_EQ(",a", Encode("&"));
+
+  // Other characters are simply hexified.
+  EXPECT_EQ(",3A", Encode(":"));
 }
 
 }  // namespace net_instaweb

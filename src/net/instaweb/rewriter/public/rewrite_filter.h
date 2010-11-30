@@ -22,8 +22,6 @@
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/util/public/base64_util.h"
-#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
@@ -54,56 +52,18 @@ class RewriteFilter : public CommonFilter {
   // a path prefix, e.g. a two letter abbreviation of the
   // filter, like "ce" for CacheExtender.  When it rewrites a
   // resource, it replaces the href with a url constructed as
-  //   HOST://PREFIX/ce/WEB64_ENCODED_PROTOBUF
-  // The WEB64_ENCODED_PROTOBUF can then be decoded.  for
-  // CacheExtender, the protobuf contains the content hash plus
-  // the original URL.  For "ic" (ImgRewriterFilter) the protobuf
-  // might include the original image URL, plus the pixel-dimensions
-  // to which the image was resized.
+  //   HOST://PATH/ENCODED_NAME.pagespeed.FILTER_ID.HASH.EXT
+  // Most ENCODED_NAMEs are just the original URL with a few
+  // characters, notably '?' and '&' esacped.  For "ic" (ImgRewriterFilter)
+  // the encoding includes the original image URL, plus the pixel-dimensions
+  // to which the image was resized.  For combine_css it includes
+  // all the original URLs separated by '+'.
   virtual bool Fetch(OutputResource* output_resource,
                      Writer* response_writer,
                      const MetaData& request_header,
                      MetaData* response_headers,
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback) = 0;
-
-  // Encodes an arbitrary protobuf to a web-safe string, gzipping it first.
-  // The protobuf type used is specific to the filter.  E.g. CssCombineFilter
-  // needs a protobuf that can store an variable size array of css files.
-  template<class Protobuf>
-  static void Encode(const Protobuf& protobuf, std::string* url_safe_id) {
-    std::string serialized_url;
-
-    // Add extra scope to ensure that StringOutputStream is destructed
-    // prior to using the string it has encoded.  See comment in declaration
-    // of StringOutputStream in protobuf/io/zero_copy_stream_impl_lite.h,
-    // which says:
-    //    The string remains property of the caller, but it MUST NOT be
-    //    accessed in any way until the stream is destroyed.
-    {
-      StringOutputStream sstream(&serialized_url);
-      GzipOutputStream::Options options;
-      options.format = GzipOutputStream::ZLIB;
-      GzipOutputStream zostream(&sstream, options);
-      options.compression_level = 9;
-      protobuf.SerializeToZeroCopyStream(&zostream);
-      zostream.Flush();
-    }
-    Web64Encode(serialized_url, url_safe_id);
-  }
-
-  // Decodes an arbitrary web64-encoded & compressed protobuf.
-  template<class Protobuf>
-  static bool Decode(StringPiece url_safe_id, Protobuf* protobuf) {
-    bool ret = false;
-    std::string decoded_resource;
-    if (Web64Decode(url_safe_id, &decoded_resource)) {
-      ArrayInputStream input(decoded_resource.data(), decoded_resource.size());
-      GzipInputStream zistream(&input, GzipInputStream::ZLIB);
-      ret = protobuf->ParseFromZeroCopyStream(&zistream);
-    }
-    return ret;
-  }
 
   const std::string& id() const { return filter_prefix_; }
   HtmlParse* html_parse() { return driver_->html_parse(); }

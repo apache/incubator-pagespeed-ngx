@@ -18,6 +18,8 @@
 
 // Unit-test the string-splitter.
 
+#include <vector>
+
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"
 
@@ -192,6 +194,67 @@ TEST_F(SplitStringTest, TestSplitOmitOneDot) {
   std::vector<StringPiece> components;
   SplitStringPieceToVector(".", ".", &components, true);
   ASSERT_EQ(static_cast<size_t>(0), components.size());
+}
+
+TEST(StringCaseTest, TestStringCaseEqual) {
+  EXPECT_FALSE(StringCaseEqual("foobar", "fobar"));
+  EXPECT_TRUE(StringCaseEqual("foobar", "foobar"));
+  EXPECT_TRUE(StringCaseEqual("foobar", "FOOBAR"));
+  EXPECT_TRUE(StringCaseEqual("FOOBAR", "foobar"));
+  EXPECT_TRUE(StringCaseEqual("fOoBaR", "FoObAr"));
+}
+
+TEST(StringCaseTest, TestStringCaseStartsWith) {
+  EXPECT_FALSE(StringCaseStartsWith("foobar", "fob"));
+  EXPECT_TRUE(StringCaseStartsWith("foobar", "foobar"));
+  EXPECT_TRUE(StringCaseStartsWith("foobar", "foo"));
+  EXPECT_TRUE(StringCaseStartsWith("foobar", "FOO"));
+  EXPECT_TRUE(StringCaseStartsWith("FOOBAR", "foo"));
+  EXPECT_TRUE(StringCaseStartsWith("fOoBaR", "FoO"));
+  EXPECT_FALSE(StringCaseStartsWith("zzz", "zzzz"));
+}
+
+TEST(StringCaseTest, TestStringCaseEndsWith) {
+  EXPECT_FALSE(StringCaseEndsWith("foobar", "baar"));
+  EXPECT_TRUE(StringCaseEndsWith("foobar", "foobar"));
+  EXPECT_TRUE(StringCaseEndsWith("foobar", "bar"));
+  EXPECT_TRUE(StringCaseEndsWith("foobar", "BAR"));
+  EXPECT_TRUE(StringCaseEndsWith("FOOBAR", "bar"));
+  EXPECT_TRUE(StringCaseEndsWith("fOoBaR", "bAr"));
+  EXPECT_FALSE(StringCaseEndsWith("zzz", "zzzz"));
+}
+
+TEST(ParseShellLikeStringTest, TestParse) {
+  std::vector<std::string> parts;
+  ParseShellLikeString("a b \"c d\" e 'f g'", &parts);
+  ASSERT_EQ(5, parts.size());
+  EXPECT_EQ("a",   parts[0]);
+  EXPECT_EQ("b",   parts[1]);
+  EXPECT_EQ("c d", parts[2]);
+  EXPECT_EQ("e",   parts[3]);
+  EXPECT_EQ("f g", parts[4]);
+}
+
+TEST(ParseShellLikeStringTest, Backslash) {
+  std::vector<std::string> parts;
+  ParseShellLikeString(" \"a\\\"b\" 'c\\'d' ", &parts);
+  ASSERT_EQ(2, parts.size());
+  EXPECT_EQ("a\"b", parts[0]);
+  EXPECT_EQ("c'd",  parts[1]);
+}
+
+TEST(ParseShellLikeStringTest, UnclosedQuote) {
+  std::vector<std::string> parts;
+  ParseShellLikeString("'a b", &parts);
+  ASSERT_EQ(1, parts.size());
+  EXPECT_EQ("a b", parts[0]);
+}
+
+TEST(ParseShellLikeStringTest, UnclosedQuoteAndBackslash) {
+  std::vector<std::string> parts;
+  ParseShellLikeString("'a b\\", &parts);
+  ASSERT_EQ(1, parts.size());
+  EXPECT_EQ("a b", parts[0]);
 }
 
 }  // namespace net_instaweb

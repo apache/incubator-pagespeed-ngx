@@ -80,7 +80,23 @@ bool ResourceNamer::Decode(const StringPiece& encoded_string) {
     src.CopyToString(&name_);
     return true;
   }
-  return false;
+  return LegacyDecode(encoded_string);
+}
+
+// TODO(jmarantz): validate that the 'id' is one of the filters that
+// were implemented as of Nov 2010.  Also validate that the hash
+// code is a 32-char hex number.
+bool ResourceNamer::LegacyDecode(const StringPiece& encoded_string) {
+  std::vector<StringPiece> names;
+  SplitStringPieceToVector(encoded_string, kSeparatorString, &names, true);
+  bool ret = (names.size() == 4);
+  if (ret) {
+    names[0].CopyToString(&id_);
+    names[1].CopyToString(&hash_);
+    names[2].CopyToString(&name_);
+    names[3].CopyToString(&ext_);
+  }
+  return ret;
 }
 
 // This is used for legacy compatibility as we transition to the grand new

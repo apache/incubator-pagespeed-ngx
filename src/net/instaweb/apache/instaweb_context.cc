@@ -33,6 +33,8 @@ InstawebContext::InstawebContext(request_rec* request,
                                  bool use_custom_options,
                                  const RewriteOptions& custom_options)
     : content_encoding_(kNone),
+      content_type_(request->content_type != NULL ?
+                    request->content_type : ""),
       factory_(factory),
       string_writer_(&output_),
       inflater_(NULL),
@@ -98,7 +100,8 @@ void InstawebContext::ProcessBytes(const char* input, int size) {
     char c = input[i];
     if (c == '<') {
       content_detection_state_ = kHtml;
-      rewrite_driver_->html_parse()->StartParse(absolute_url_);
+      rewrite_driver_->html_parse()->StartParseWithType(absolute_url_,
+                                                        content_type_);
     } else if (!isspace(c)) {
       // TODO(jmarantz): figure out whether it's possible to remove our
       // filter from the chain entirely.

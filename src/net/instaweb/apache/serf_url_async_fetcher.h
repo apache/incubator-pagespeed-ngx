@@ -18,6 +18,8 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <list>
+#include <map>
 #include "base/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
@@ -42,11 +44,11 @@ struct SerfStats {
   static const char kSerfFetchTimeDurationMs[];
   static const char kSerfFetchCancelCount[];
   static const char kSerfFetchOutstandingCount[];
+  static const char kSerfFetchTimeoutCount[];
 };
 
 class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
-  // TODO(abliss): we currently ignore timeout_ms.
   SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
                       Statistics* statistics, Timer* timer, int64 timeout_ms);
   SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent, const char* proxy);
@@ -83,20 +85,25 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   virtual int64 timeout_ms() { return timeout_ms_; }
 
  protected:
+  typedef std::list<SerfFetch*> FetchQueue;
+  typedef std::list<SerfFetch*>::iterator FetchQueueEntry;
+  typedef std::map<SerfFetch*, FetchQueueEntry> FetchMap;
+  typedef std::map<SerfFetch*, FetchQueueEntry>::iterator FetchMapEntry;
   bool SetupProxy(const char* proxy);
   size_t NumActiveFetches();
   void CancelOutstandingFetches();
   bool WaitForInProgressFetchesHelper(int64 max_ms,
                                       MessageHandler* message_handler);
+  FetchQueueEntry EraseFetch(SerfFetch* fetch);
 
   apr_pool_t* pool_;
   Timer* timer_;
 
-  // protects serf_context_ and active_fetches_
+  // mutex_ protects serf_context_, active_fetches_, and active_fetch_map_.
   AprMutex* mutex_;
   serf_context_t* serf_context_;
-  typedef std::set<SerfFetch*> FetchSet;
-  FetchSet active_fetches_;
+  FetchQueue active_fetches_;
+  FetchMap active_fetch_map_;
 
   typedef std::vector<SerfFetch*> FetchVector;
   FetchVector completed_fetches_;
@@ -107,10 +114,15 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   Variable* outstanding_count_;
 
  private:
+  // Removes the given fetch from both active_fetch_queue_ and
+  // active_fetch_map_.  You are expected to already be holding the appropriate
+  // locks.  Does not actually delete anything.  Returns a queue iterator
+  // pointing to the next fetch after this one in the queue.
   Variable* request_count_;
   Variable* byte_count_;
   Variable* time_duration_ms_;
   Variable* cancel_count_;
+  Variable* timeout_count_;
   const int64 timeout_ms_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcher);

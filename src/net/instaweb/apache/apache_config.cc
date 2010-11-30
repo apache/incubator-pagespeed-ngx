@@ -18,8 +18,8 @@
 
 namespace net_instaweb {
 
-ApacheConfig::ApacheConfig(apr_pool_t* pool, const StringPiece& dir)
-  : directory_(dir.data(), dir.size()) {
+ApacheConfig::ApacheConfig(apr_pool_t* pool, const StringPiece& description)
+  : description_(description.data(), description.size()) {
   apr_pool_cleanup_register(pool, this, Cleanup, apr_pool_cleanup_null);
 }
 

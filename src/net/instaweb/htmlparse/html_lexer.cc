@@ -689,10 +689,12 @@ void HtmlLexer::MakeElement() {
   }
 }
 
-void HtmlLexer::StartParse(const StringPiece& id) {
+void HtmlLexer::StartParse(const StringPiece& id,
+                           const StringPiece& content_type) {
   line_ = 1;
   tag_start_line_ = -1;
   id.CopyToString(&id_);
+  content_type.CopyToString(&content_type_);
   has_attr_value_ = false;
   attr_quote_ = "";
   state_ = START;
@@ -915,6 +917,9 @@ void HtmlLexer::EmitDirective() {
   literal_.clear();
   html_parse_->AddEvent(new HtmlDirectiveEvent(
       html_parse_->NewDirectiveNode(Parent(), token_), line_));
+  // Update the doctype; note that if this is not a doctype directive, Parse()
+  // will return false and not alter doctype_.
+  doctype_.Parse(token_, content_type_);
   token_.clear();
   state_ = START;
 }
@@ -969,7 +974,8 @@ void HtmlLexer::Parse(const char* text, int size) {
 }
 
 bool HtmlLexer::IsImplicitlyClosedTag(Atom tag) const {
-  return (implicitly_closed_.find(tag) != implicitly_closed_.end());
+  return (!doctype_.IsXhtml() &&
+          implicitly_closed_.find(tag) != implicitly_closed_.end());
 }
 
 bool HtmlLexer::TagAllowsBriefTermination(Atom tag) const {
@@ -978,7 +984,8 @@ bool HtmlLexer::TagAllowsBriefTermination(Atom tag) const {
 }
 
 bool HtmlLexer::IsOptionallyClosedTag(Atom tag) const {
-  return (optionally_closed_tags_.find(tag) != optionally_closed_tags_.end());
+  return (!doctype_.IsXhtml() &&
+          optionally_closed_tags_.find(tag) != optionally_closed_tags_.end());
 }
 
 void HtmlLexer::DebugPrintStack() {

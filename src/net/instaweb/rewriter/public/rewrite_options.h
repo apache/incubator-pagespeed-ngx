@@ -166,13 +166,13 @@ class RewriteOptions {
  private:
   // Helper class to represent an Option, whose value is held in some class T.
   // An option is explicitly initialized with its default value, although the
-  // default value can be altered later.  It keeps track of whether the a
+  // default value can be altered later.  It keeps track of whether a
   // value has been explicitly set (independent of whether that happens to
   // coincide with the default value).
   //
   // It can use this knowledge to intelligently merge a 'base' option value
   // into a 'new' option value, allowing explicitly set values from 'base'
-  // override default values from 'new'.
+  // to override default values from 'new'.
   template<class T> class Option {
    public:
     explicit Option(const T& default_value)
@@ -224,9 +224,9 @@ class RewriteOptions {
   FilterSet disabled_filters_;
 
   // Note: using the template class Option here saves a lot of repeated
-  // and error-prone merging code.  However, if is not space efficient as
+  // and error-prone merging code.  However, it is not space efficient as
   // we are alternating int64s and bools in the structure.  If we cared
-  // about that, then we would keep aa bools in a bitmask.  But since
+  // about that, then we would keep the bools in a bitmask.  But since
   // we don't really care we'll try to keep the code structured better.
   Option<RewriteLevel> level_;
   Option<int64> css_inline_max_bytes_;

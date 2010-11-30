@@ -41,9 +41,10 @@ namespace net_instaweb {
 namespace {
 const char kProxy[] = "";
 const int kMaxMs = 10000;
-const int kThreadedPollMs = 1000;
+const int kThreadedPollMs = 200;
 const int kWaitTimeoutMs = 5 * 1000;
 const int kTimerAdvanceMs = 10;
+const int kFetcherTimeoutMs = 5 * 1000;
 
 class SerfTestCallback : public UrlAsyncFetcher::Callback {
  public:
@@ -51,12 +52,14 @@ class SerfTestCallback : public UrlAsyncFetcher::Callback {
       : done_(false),
         mutex_(mutex),
         url_(url),
-        enable_threaded_(false) {
+        enable_threaded_(false),
+        success_(false) {
   }
   virtual ~SerfTestCallback() {}
   virtual void Done(bool success)  {
     ScopedMutex lock(mutex_);
     done_ = true;
+    success_ = success;
   }
   bool IsDone() const {
     ScopedMutex lock(mutex_);
@@ -66,11 +69,13 @@ class SerfTestCallback : public UrlAsyncFetcher::Callback {
     return enable_threaded_;
   }
   void set_enable_threaded(bool b) { enable_threaded_ = b; }
+  bool success() const { return success_; }
  private:
   bool done_;
   AprMutex* mutex_;
   std::string url_;
   bool enable_threaded_;
+  bool success_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfTestCallback);
 };
@@ -93,12 +98,14 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     SerfUrlAsyncFetcher::Initialize(&statistics_);
     serf_url_async_fetcher_.reset(
         new SerfUrlAsyncFetcher(kProxy, pool_, &statistics_,
-                                timer_.get(), 5 * Timer::kSecondMs));
+                                timer_.get(), kFetcherTimeoutMs));
     mutex_ = new AprMutex(pool_);
     AddTestUrl("http://www.google.com/", "<!doctype html>");
     AddTestUrl("http://www.google.com/favicon.ico",
                std::string("\000\000\001\000", 4));
     AddTestUrl("http://www.google.com/intl/en_ALL/images/logo.gif", "GIF");
+    AddTestUrl("http://stevesouders.com/bin/resource.cgi?type=js&sleep=10",
+               "var");
     prev_done_count = 0;
   }
 
@@ -380,7 +387,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestOneThreadedTwoSync) {
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestTwoThreadedOneSync) {
-  StartFetches(0, 1, false),
+  StartFetches(0, 1, false);
   StartFetches(1, 3, true);
   bool done = false;
   for (int i = 0; !done && (i < 100); ++i) {
@@ -388,6 +395,19 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTwoThreadedOneSync) {
   }
   EXPECT_TRUE(done);
   ValidateFetches(0, 3);
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, TestTimeout) {
+  StartFetches(3, 4, false);
+  int timeouts =
+      statistics_.GetVariable(SerfStats::kSerfFetchTimeoutCount)->Get();
+  ASSERT_FALSE(WaitTillDone(3, 4, kThreadedPollMs));
+  timer_->advance_ms(2 * kFetcherTimeoutMs);
+  ASSERT_TRUE(WaitTillDone(3, 4, kThreadedPollMs));
+  ASSERT_TRUE(callbacks_[3]->IsDone());
+  EXPECT_FALSE(callbacks_[3]->success());
+  EXPECT_EQ(timeouts + 1,
+            statistics_.GetVariable(SerfStats::kSerfFetchTimeoutCount)->Get());
 }
 
 }  // namespace net_instaweb
