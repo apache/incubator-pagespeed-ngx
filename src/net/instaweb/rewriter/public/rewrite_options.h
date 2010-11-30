@@ -24,6 +24,7 @@
 #include "base/basictypes.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/wildcard_group.h"
 
 namespace net_instaweb {
 
@@ -98,8 +99,16 @@ class RewriteOptions {
 
   RewriteOptions();
 
-  void SetDefaultRewriteLevel(RewriteLevel level) { level_.set_default(level); }
-  void SetRewriteLevel(RewriteLevel level) { level_.set(level); }
+  bool modified() const { return modified_; }
+
+  void SetDefaultRewriteLevel(RewriteLevel level) {
+    modified_ = true;
+    level_.set_default(level);
+  }
+  void SetRewriteLevel(RewriteLevel level) {
+    modified_ = true;
+    level_.set(level);
+  }
   RewriteLevel level() const { return level_.value();}
 
   // Adds a set of filters to the enabled set.  Returns false if any
@@ -113,8 +122,8 @@ class RewriteOptions {
   // added anyway.
   bool DisableFiltersByCommaSeparatedList(const StringPiece& filters,
                                           MessageHandler* handler);
-  void EnableFilter(Filter filter) { enabled_filters_.insert(filter); }
-  void DisableFilter(Filter filter) { disabled_filters_.insert(filter); }
+  void EnableFilter(Filter filter);
+  void DisableFilter(Filter filter);
 
   bool Enabled(Filter filter) const;
 
@@ -122,37 +131,68 @@ class RewriteOptions {
   // first's explicit settings can override default values from second.
 
   int64 css_outline_min_bytes() const { return css_outline_min_bytes_.value(); }
-  void set_css_outline_min_bytes(int64 x) { css_outline_min_bytes_.set(x); }
+  void set_css_outline_min_bytes(int64 x) {
+    modified_ = true;
+    css_outline_min_bytes_.set(x);
+  }
   int64 js_outline_min_bytes() const { return js_outline_min_bytes_.value(); }
-  void set_js_outline_min_bytes(int64 x) { js_outline_min_bytes_.set(x); }
+  void set_js_outline_min_bytes(int64 x) {
+    modified_ = true;
+    js_outline_min_bytes_.set(x);
+  }
   int64 img_inline_max_bytes() const { return img_inline_max_bytes_.value(); }
-  void set_img_inline_max_bytes(int64 x) { img_inline_max_bytes_.set(x); }
+  void set_img_inline_max_bytes(int64 x) {
+    modified_ = true;
+    img_inline_max_bytes_.set(x);
+  }
   int64 css_inline_max_bytes() const { return css_inline_max_bytes_.value(); }
-  void set_css_inline_max_bytes(int64 x) { css_inline_max_bytes_.set(x); }
+  void set_css_inline_max_bytes(int64 x) {
+    modified_ = true;
+    css_inline_max_bytes_.set(x);
+  }
   int64 js_inline_max_bytes() const { return js_inline_max_bytes_.value(); }
-  void set_js_inline_max_bytes(int64 x) { js_inline_max_bytes_.set(x); }
+  void set_js_inline_max_bytes(int64 x) {
+    modified_ = true;
+    js_inline_max_bytes_.set(x);
+  }
   int num_shards() const { return num_shards_.value(); }
-  void set_num_shards(int x) { num_shards_.set(x); }
+  void set_num_shards(int x) {
+    modified_ = true;
+    num_shards_.set(x);
+  }
   const std::string& beacon_url() const { return beacon_url_.value(); }
   void set_beacon_url(const StringPiece& p) {
+    modified_ = true;
     beacon_url_.set(std::string(p.data(), p.size()));
-  }
 
+  }
   // The maximum length of a URL segment.
   // for http://a/b/c.d, this is == strlen("c.d")
   int max_url_segment_size() const { return max_url_segment_size_.value(); }
-  void set_max_url_segment_size(int x) { max_url_segment_size_.set(x); }
+  void set_max_url_segment_size(int x) {
+    modified_ = true;
+    max_url_segment_size_.set(x);
+  }
 
   int img_max_rewrites_at_once() const {
     return img_max_rewrites_at_once_.value();
   }
-  void set_img_max_rewrites_at_once(int x) { img_max_rewrites_at_once_.set(x); }
+  void set_img_max_rewrites_at_once(int x) {
+    modified_ = true;
+    img_max_rewrites_at_once_.set(x);
+  }
 
   // The maximum size of the entire URL.  If '0', this is left unlimited.
   int max_url_size() const { return max_url_size_.value(); }
-  void set_max_url_size(int x) { max_url_size_.set(x); }
+  void set_max_url_size(int x) {
+    modified_ = true;
+    max_url_size_.set(x);
+  }
 
-  void set_enabled(bool x) { enabled_.set(x); }
+  void set_enabled(bool x) {
+    modified_ = true;
+    enabled_.set(x);
+  }
   bool enabled() const { return enabled_.value(); }
 
   // Merge together two source RewriteOptions to populate this.  The order
@@ -162,6 +202,16 @@ class RewriteOptions {
   // the 'disable' from the first should override the core-set membership
   // in the second, but not an 'enable' in the second.
   void Merge(const RewriteOptions& first, const RewriteOptions& second);
+
+  void Allow(const StringPiece& pattern) {
+    modified_ = true;
+    allow_resources_.Allow(pattern);
+  }
+
+  void Disallow(const StringPiece& pattern) {
+    modified_ = true;
+    allow_resources_.Disallow(pattern);
+  }
 
  private:
   // Helper class to represent an Option, whose value is held in some class T.
@@ -218,6 +268,7 @@ class RewriteOptions {
   bool AddCommaSeparatedListToFilterSet(
       const StringPiece& filters, MessageHandler* handler, FilterSet* set);
 
+  bool modified_;
   NameToFilterMap name_filter_map_;
   RewriteLevelToFilterSetMap level_filter_set_map_;
   FilterSet enabled_filters_;
@@ -241,6 +292,8 @@ class RewriteOptions {
   Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")
   Option<bool> enabled_;
   // Be sure to update Merge() if a new field is added.
+
+  WildcardGroup allow_resources_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteOptions);
 };

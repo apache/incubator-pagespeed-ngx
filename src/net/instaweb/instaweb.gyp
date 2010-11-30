@@ -82,6 +82,7 @@
         'util/wait_url_async_fetcher.cc',
         'util/wget_url_fetcher.cc',
         'util/wildcard.cc',
+        'util/wildcard_group.cc',
         'util/work_bound.cc',
         'util/write_through_cache.cc',
       ],

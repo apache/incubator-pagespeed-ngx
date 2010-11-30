@@ -252,13 +252,15 @@ InstawebContext* build_context_for_request(request_rec* request) {
       ap_get_module_config(request->per_dir_config, &pagespeed_module);
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(
       request->server);
+  scoped_ptr<RewriteOptions> custom_options;
   RewriteOptions* options = factory->options();
+  RewriteOptions* config_options = config->options();
   bool use_custom_options = false;
 
-  // TODO(jmarantz): this is broken; we must Merge the root Options with
-  // the options acquired via per_dir_config, if any.
-  if (!config->description().empty()) {
-    options = config->options();
+  if (config_options->modified()) {
+    custom_options.reset(new RewriteOptions);
+    custom_options->Merge(*options, *config_options);
+    options = custom_options.get();
     use_custom_options = true;
   }
 
@@ -309,15 +311,14 @@ InstawebContext* build_context_for_request(request_rec* request) {
     absolute_url.assign(request->filename + 6, strlen(request->filename) - 6);
   }
 
-  RewriteOptions custom_options;
+  RewriteOptions query_options;
   if (ScanQueryParamsForRewriterOptions(
-          factory, query_params, &custom_options)) {
-    // Overrides htaccess completely
-    // TODO(jmarantz): should query-params completely ignore the commands
-    // in the options parsed from the .conf file?  Currently they do.
-    // Alternatively we could use RewriteOptions::Merge to merge then.
-    options = &custom_options;
+          factory, query_params, &query_options)) {
     use_custom_options = true;
+    RewriteOptions* merged_options = new RewriteOptions;
+    merged_options->Merge(*options, query_options);
+    custom_options.reset(merged_options);
+    options = merged_options;
   }
   InstawebContext* context = new InstawebContext(
       request, factory, absolute_url, use_custom_options, *options);
@@ -767,7 +768,7 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
                 NULL, RSRC_CONF, help)
 #define APACHE_CONFIG_DIR_OPTION(name, help) \
   AP_INIT_TAKE1(name, reinterpret_cast<const char*(*)()>(ParseDirective), \
-                NULL, RSRC_CONF | ACCESS_CONF, help)
+                NULL, OR_ALL, help)
 
 // Like APACHE_CONFIG_OPTION, but gets 2 arguments.
 #define APACHE_CONFIG_OPTION2(name, help) \

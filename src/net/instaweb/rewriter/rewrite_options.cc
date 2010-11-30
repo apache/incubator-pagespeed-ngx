@@ -88,7 +88,8 @@ bool RewriteOptions::ParseRewriteLevel(
 }
 
 RewriteOptions::RewriteOptions()
-    : level_(kPassThrough),
+    : modified_(false),
+      level_(kPassThrough),
       css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
       img_inline_max_bytes_(kDefaultImgInlineMaxBytes),
       img_max_rewrites_at_once_(kDefaultImgMaxRewritesAtOnce),
@@ -161,6 +162,18 @@ bool RewriteOptions::DisableFiltersByCommaSeparatedList(
       filters, handler, &disabled_filters_);
 }
 
+void RewriteOptions::EnableFilter(Filter filter) {
+  std::pair<FilterSet::iterator, bool> inserted =
+      enabled_filters_.insert(filter);
+  modified_ |= inserted.second;
+}
+
+void RewriteOptions::DisableFilter(Filter filter) {
+  std::pair<FilterSet::iterator, bool> inserted =
+      disabled_filters_.insert(filter);
+  modified_ |= inserted.second;
+}
+
 bool RewriteOptions::AddCommaSeparatedListToFilterSet(
     const StringPiece& filters, MessageHandler* handler, FilterSet* set) {
   std::vector<StringPiece> names;
@@ -173,7 +186,8 @@ bool RewriteOptions::AddCommaSeparatedListToFilterSet(
       handler->Message(kWarning, "Invalid filter name: %s", option.c_str());
       ret = false;
     } else {
-      set->insert(p->second);
+      std::pair<FilterSet::iterator, bool> inserted = set->insert(p->second);
+      modified_ |= inserted.second;
     }
   }
   return ret;
@@ -198,6 +212,7 @@ bool RewriteOptions::Enabled(Filter filter) const {
 
 void RewriteOptions::Merge(const RewriteOptions& first,
                            const RewriteOptions& second) {
+  modified_ = first.modified_ || second.modified_;
   enabled_filters_ = first.enabled_filters_;
   disabled_filters_ = first.disabled_filters_;
   for (FilterSet::const_iterator p = second.enabled_filters_.begin(),
@@ -218,8 +233,8 @@ void RewriteOptions::Merge(const RewriteOptions& first,
 
   // TODO(jmarantz): Use a virtual base class for Option so we can put
   // this in a loop.  Or something.
-  level_.Merge(first.level_,
-               second.level_);
+  enabled_.Merge(first.enabled_, second.enabled_);
+  level_.Merge(first.level_, second.level_);
   css_inline_max_bytes_.Merge(first.css_inline_max_bytes_,
                               second.css_inline_max_bytes_);
   img_inline_max_bytes_.Merge(first.img_inline_max_bytes_,

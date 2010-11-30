@@ -26,7 +26,10 @@ const char Wildcard::kMatchOne = '?';
 
 Wildcard::Wildcard(const StringPiece& wildcard_spec)
     : storage_(wildcard_spec.data(), wildcard_spec.size()) {
+  InitFromStorage();
+}
 
+void Wildcard::InitFromStorage() {
   // Pre-scan the wildcard spec into an array of StringPieces.  We will
   // copy the original string spec into storage_ but that will only be
   // backing-store for the StringPieces.
@@ -140,5 +143,8 @@ bool Wildcard::IsSimple() const {
   return ((ch != kMatchAny) && (ch != kMatchOne));
 }
 
+Wildcard* Wildcard::Duplicate() const {
+  return new Wildcard(storage_);
+}
 
 }  // namespace net_instaweb

@@ -115,6 +115,7 @@
         'util/user_agent_test.cc',
         'util/wait_url_async_fetcher_test.cc',
         'util/wildcard_test.cc',
+        'util/wildcard_group_test.cc',
         'util/write_through_cache_test.cc',
         'rewriter/cache_extender_test.cc',
         'rewriter/collapse_whitespace_filter_test.cc',

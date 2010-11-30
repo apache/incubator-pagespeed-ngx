@@ -40,8 +40,15 @@ class Wildcard {
   // any wildcard characters.
   bool IsSimple() const;
 
+  // Returns the original wildcard specification.
+  const StringPiece spec() const { return storage_; }
+
+  // Makes a duplicate copy of the wildcard object.
+  Wildcard* Duplicate() const;
+
  private:
   bool MatchHelper(int piece_index, const StringPiece& str);
+  void InitFromStorage();
 
   std::string storage_;
   std::vector<StringPiece> pieces_;
