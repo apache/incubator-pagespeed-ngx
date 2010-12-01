@@ -25,7 +25,7 @@ namespace net_instaweb {
 
 namespace {
 
-const int kMD5NumBytes = sizeof(MD5Digest::a);
+const int kMD5NumBytes = sizeof(MD5Digest);
 
 }  // namespace
 

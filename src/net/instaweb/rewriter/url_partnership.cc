@@ -21,14 +21,15 @@
 #include <algorithm>  // for std::min
 #include <string>
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
 
 namespace net_instaweb {
 
-UrlPartnership::UrlPartnership(const DomainLawyer* domain_lawyer,
+UrlPartnership::UrlPartnership(const RewriteOptions* rewrite_options,
                                const GURL& original_request)
-    : domain_lawyer_(domain_lawyer) {
+    : rewrite_options_(rewrite_options) {
   if (original_request.is_valid()) {
     original_origin_and_path_ = GoogleUrl::Create(
         GoogleUrl::AllExceptLeaf(original_request));
@@ -47,7 +48,6 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
   std::string resource_url, mapped_domain_name;
   bool ret = false;
   TrimWhitespace(untrimmed_resource_url, &resource_url);
-  GURL resolved_request;
 
   if (resource_url.empty()) {
     handler->Message(kInfo, "Cannot rewrite empty URL relative to %s",
@@ -57,22 +57,41 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
     handler->Message(kInfo, "Cannot rewrite %s relative to invalid url %s",
                      resource_url.c_str(),
                      original_origin_and_path_.possibly_invalid_spec().c_str());
-  } else if (domain_lawyer_->MapRequestToDomain(
-      original_origin_and_path_, resource_url, &mapped_domain_name,
-      &resolved_request, handler)) {
-    if (gurl_vector_.empty()) {
-      domain_.swap(mapped_domain_name);
-      domain_gurl_ = GoogleUrl::Create(domain_).Resolve(
-          GoogleUrl::Path(original_origin_and_path_));
-      ret = true;
-    } else {
-      ret = (domain_ == mapped_domain_name);
-    }
+  } else {
+    // First resolve the original request to ensure that it is allowed by the
+    // options.
+    GURL resolved_request = GoogleUrl::Resolve(original_origin_and_path_,
+                                               resource_url);
+    if (!resolved_request.is_valid()) {
+      handler->Message(
+          kInfo, "URL %s cannot be resolved relative to base URL %s",
+          resource_url.c_str(), original_origin_and_path_.spec().c_str());
+    } else if (
+        // Allow this URL to be rewritten if EITHER the original
+        // resource_url matches the wildcard sequence *OR* the
+        // resolved sequence matches.
+        !rewrite_options_->IsAllowed(resource_url) &&
+        !rewrite_options_->IsAllowed(GoogleUrl::Spec(resolved_request))) {
+      handler->Message(kInfo,
+                       "Rewriting URL %s is disallowed via configuration",
+                       GoogleUrl::Spec(resolved_request).c_str());
+    } else if (rewrite_options_->domain_lawyer()->MapRequestToDomain(
+        original_origin_and_path_, resource_url, &mapped_domain_name,
+        &resolved_request, handler)) {
+      if (gurl_vector_.empty()) {
+        domain_.swap(mapped_domain_name);
+        domain_gurl_ = GoogleUrl::Create(domain_).Resolve(
+            GoogleUrl::Path(original_origin_and_path_));
+        ret = true;
+      } else {
+        ret = (domain_ == mapped_domain_name);
+      }
 
-    if (ret) {
-      gurl_vector_.push_back(new GURL(resolved_request));
-      int index = gurl_vector_.size() - 1;
-      IncrementalResolve(index);
+      if (ret) {
+        gurl_vector_.push_back(new GURL(resolved_request));
+        int index = gurl_vector_.size() - 1;
+        IncrementalResolve(index);
+      }
     }
   }
   return ret;

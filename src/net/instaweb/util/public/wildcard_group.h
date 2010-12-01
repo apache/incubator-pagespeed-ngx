@@ -59,6 +59,7 @@ class WildcardGroup {
   void Disallow(const StringPiece& wildcard);
 
   void CopyFrom(const WildcardGroup& src);
+  void AppendFrom(const WildcardGroup& src);
 
  private:
   bool MatchHelper(int piece_index, const StringPiece& str);

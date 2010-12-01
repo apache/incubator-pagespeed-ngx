@@ -42,6 +42,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
 
   virtual void TearDown() {
     output_buffer_.clear();
+    doctype_string_.clear();
   }
 
   // To make the tests more concise, we generally omit the <html>...</html>
@@ -57,6 +58,13 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   // automatically.  So classes that derive from HtmlParseTestBase must
   // override this variable to indicate which they prefer.
   virtual bool AddBody() const = 0;
+
+  // Set a doctype string (e.g. "<!doctype html>") to be inserted before the
+  // rest of the document (for the current test only).  If none is set, it
+  // defaults to the empty string.
+  void SetDoctype(const StringPiece& directive) {
+    directive.CopyToString(&doctype_string_);
+  }
 
   std::string AddHtmlBody(const std::string& html) {
     std::string ret = AddBody() ? "<html><body>\n" : "<html>\n";
@@ -100,8 +108,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
     // last filter added.
     SetupWriter();
     html_parse()->StartParse(url);
-    std::string html_body = AddHtmlBody(html_input);
-    html_parse()->ParseText(html_body);
+    html_parse()->ParseText(doctype_string_ + AddHtmlBody(html_input));
     html_parse()->FinishParse();
   }
 
@@ -111,7 +118,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
                         const std::string& html_input,
                         const std::string& expected) {
     Parse(case_id, html_input);
-    std::string xbody = AddHtmlBody(expected);
+    std::string xbody = doctype_string_ + AddHtmlBody(expected);
     EXPECT_EQ(xbody, output_buffer_);
     output_buffer_.clear();
   }
@@ -133,6 +140,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   std::string output_buffer_;
   bool added_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
+  std::string doctype_string_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HtmlParseTestBaseNoAlloc);

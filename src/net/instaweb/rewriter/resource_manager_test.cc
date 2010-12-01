@@ -189,20 +189,6 @@ TEST_F(ResourceManagerTest, TestOutputInputUrl) {
   EXPECT_EQ("http://example.com/dir/123/orig", input_resource->url());
 }
 
-TEST_F(ResourceManagerTest, TestLegacyUrl) {
-  std::string url = "http://example.com/dir/123/jm.0.orig.js";
-  scoped_ptr<OutputResource> output_resource(
-      resource_manager_->CreateOutputResourceForFetch(url));
-  ASSERT_TRUE(output_resource.get());
-  scoped_ptr<Resource> input_resource(
-      resource_manager_->CreateInputResourceFromOutputResource(
-          resource_manager_->url_escaper(),
-          output_resource.get(),
-          &options_,
-          &message_handler_));
-  EXPECT_EQ("http://example.com/dir/123/orig", input_resource->url());
-}
-
 // TODO(jmaessen): re-enable after sharding works again.
 // class ResourceManagerShardedTest : public ResourceManagerTest {
 //  protected:

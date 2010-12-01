@@ -247,7 +247,7 @@ OutputResource* ResourceManager::CreateOutputResourceForRewrittenUrl(
     const RewriteOptions* rewrite_options,
     MessageHandler* handler) {
   OutputResource* output_resource = NULL;
-  UrlPartnership partnership(rewrite_options->domain_lawyer(), document_gurl);
+  UrlPartnership partnership(rewrite_options, document_gurl);
   if (partnership.AddUrl(resource_url, handler)) {
     std::string base = partnership.ResolvedBase();
     std::string relative_url = partnership.RelativePath(0);
@@ -336,7 +336,7 @@ Resource* ResourceManager::CreateInputResource(
     const StringPiece& input_url,
     const RewriteOptions* rewrite_options,
     MessageHandler* handler) {
-  UrlPartnership partnership(rewrite_options->domain_lawyer(), base_gurl);
+  UrlPartnership partnership(rewrite_options, base_gurl);
   Resource* resource = NULL;
   if (partnership.AddUrl(input_url, handler)) {
     const GURL* input_gurl = partnership.FullPath(0);

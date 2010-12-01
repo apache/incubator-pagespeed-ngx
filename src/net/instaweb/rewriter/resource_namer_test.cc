@@ -73,11 +73,11 @@ TEST_F(ResourceNamerTest, TestDecodeHashExt) {
 }
 
 TEST_F(ResourceNamerTest, TestLegacyDecode) {
-  EXPECT_TRUE(full_name_.Decode("id.hash.name.ext"));
+  EXPECT_TRUE(full_name_.Decode("id.0123456789abcdef0123456789ABCDEF.name.js"));
   EXPECT_EQ("id", full_name_.id());
   EXPECT_EQ("name", full_name_.name());
-  EXPECT_EQ("hash", full_name_.hash());
-  EXPECT_EQ("ext", full_name_.ext());
+  EXPECT_EQ("0123456789abcdef0123456789ABCDEF", full_name_.hash());
+  EXPECT_EQ("js", full_name_.ext());
 }
 
 }  // namespace

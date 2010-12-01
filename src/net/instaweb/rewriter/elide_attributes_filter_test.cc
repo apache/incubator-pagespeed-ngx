@@ -51,10 +51,9 @@ TEST_F(ElideAttributesFilterTest, RemoveAttrWithDefaultValue) {
                    "<head></head><body><form></form></body>");
 }
 
-// TODO(mdsteele): Add a test that ensures that this _doesn't_ happen for an
-// XHTML document (but HtmlParseTestBase automatically adds <html> around the
-// string, so we need to make sure the doctype is in the right place).
 TEST_F(ElideAttributesFilterTest, RemoveValueFromAttr) {
+  SetDoctype("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" "
+             "\"http://www.w3.org/TR/html4/strict.dtd\">");
   ValidateExpected("remove_value_from_attr",
                    "<head></head><body><form>"
                    "<input type=checkbox checked=checked></form></body>",
@@ -62,7 +61,16 @@ TEST_F(ElideAttributesFilterTest, RemoveValueFromAttr) {
                    "<input type=checkbox checked></form></body>");
 }
 
+TEST_F(ElideAttributesFilterTest, DoNotRemoveValueFromAttrInXhtml) {
+  SetDoctype("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" "
+             "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">");
+  ValidateNoChanges("do_not_remove_value_from_attr_in_xhtml",
+                    "<head></head><body><form>"
+                    "<input type=checkbox checked=checked></form></body>");
+}
+
 TEST_F(ElideAttributesFilterTest, DoNotBreakVBScript) {
+  SetDoctype("<!doctype html>");
   ValidateExpected("do_not_break_vbscript",
                    "<head><script language=\"JavaScript\">var x=1;</script>"
                    "<script language=\"VBScript\">"
@@ -73,6 +81,24 @@ TEST_F(ElideAttributesFilterTest, DoNotBreakVBScript) {
                    "<script language=\"VBScript\">"
                    "Sub foo(ByVal bar)\n  call baz(bar)\nend sub"
                    "</script></head><body></body>");
+}
+
+TEST_F(ElideAttributesFilterTest, RemoveScriptTypeInHtml5) {
+  SetDoctype("<!doctype html>");
+  ValidateExpected("remove_script_type_in_html_5",
+                   "<head><script src=\"foo.js\" type=\"text/javascript\">"
+                   "</script></head><body></body>",
+                   "<head><script src=\"foo.js\">"
+                   "</script></head><body></body>");
+}
+
+// See http://code.google.com/p/modpagespeed/issues/detail?id=59
+TEST_F(ElideAttributesFilterTest, DoNotRemoveScriptTypeInHtml4) {
+  SetDoctype("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" "
+             "\"http://www.w3.org/TR/html4/strict.dtd\">");
+  ValidateNoChanges("do_not_remove_script_type_in_html_4",
+                    "<head><script src=\"foo.js\" type=\"text/javascript\">"
+                    "</script></head><body></body>");
 }
 
 }  // namespace net_instaweb

@@ -56,6 +56,10 @@ bool WildcardGroup::Match(const StringPiece& str) const {
 void WildcardGroup::CopyFrom(const WildcardGroup& src) {
   wildcards_.clear();
   allow_.clear();
+  AppendFrom(src);
+}
+
+void WildcardGroup::AppendFrom(const WildcardGroup& src) {
   CHECK_EQ(src.wildcards_.size(), src.allow_.size());
   for (int i = 0, n = src.wildcards_.size(); i < n; ++i) {
     wildcards_.push_back(src.wildcards_[i]->Duplicate());

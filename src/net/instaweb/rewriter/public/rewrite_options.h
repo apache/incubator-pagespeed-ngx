@@ -204,18 +204,28 @@ class RewriteOptions {
   // in the second, but not an 'enable' in the second.
   void Merge(const RewriteOptions& first, const RewriteOptions& second);
 
-  void Allow(const StringPiece& pattern) {
+  // Registers a wildcard pattern for to be allowed, potentially overriding
+  // previous Disallow wildcards.
+  void Allow(const StringPiece& wildcard_pattern) {
     modified_ = true;
-    allow_resources_.Allow(pattern);
+    allow_resources_.Allow(wildcard_pattern);
   }
 
-  void Disallow(const StringPiece& pattern) {
+  // Registers a wildcard pattern for to be disallowed, potentially overriding
+  // previous Allow wildcards.
+  void Disallow(const StringPiece& wildcard_pattern) {
     modified_ = true;
-    allow_resources_.Disallow(pattern);
+    allow_resources_.Disallow(wildcard_pattern);
   }
 
   DomainLawyer* domain_lawyer() { return &domain_lawyer_; }
   const DomainLawyer* domain_lawyer() const { return &domain_lawyer_; }
+
+  // Determines, based on the sequence of Allow/Disallow calls above, whether
+  // a url is allowed.
+  bool IsAllowed(const StringPiece& url) const {
+    return allow_resources_.Match(url);
+  }
 
  private:
   // Helper class to represent an Option, whose value is held in some class T.

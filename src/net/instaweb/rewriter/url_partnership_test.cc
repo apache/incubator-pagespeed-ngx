@@ -20,6 +20,7 @@
 
 #include <string>
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -47,7 +48,8 @@ namespace net_instaweb {
 class UrlPartnershipTest : public testing::Test {
  protected:
   UrlPartnershipTest()
-      : partnership_(&domain_lawyer_, GURL(kOriginalRequest)),
+      : domain_lawyer_(options_.domain_lawyer()),
+        partnership_(&options_, GURL(kOriginalRequest)),
         styles_path_("http://www.nytimes.com/r/styles/"),
         r_path_("http://www.nytimes.com/r/"),
         style_url_("style.css?appearance=reader/writer?"),
@@ -73,7 +75,8 @@ class UrlPartnershipTest : public testing::Test {
     return std::string(spec.data(), spec.size());
   }
 
-  DomainLawyer domain_lawyer_;
+  RewriteOptions options_;
+  DomainLawyer* domain_lawyer_;
   UrlPartnership partnership_;
   std::string styles_path_;
   std::string r_path_;
@@ -152,14 +155,14 @@ TEST_F(UrlPartnershipTest, ExternalDomainNotDeclared) {
 }
 
 TEST_F(UrlPartnershipTest, ExternalDomainDeclared) {
-  domain_lawyer_.AddDomain("http://graphics8.nytimes.com", &message_handler_);
+  domain_lawyer_->AddDomain("http://graphics8.nytimes.com", &message_handler_);
   EXPECT_TRUE(partnership_.AddUrl(kCdnResourceUrl, &message_handler_));
 }
 
 TEST_F(UrlPartnershipTest, ExternalDomainDeclaredButNotMapped) {
   // This test shows that while we can start partnerships from nytimes.com
   // or graphics8.nytimes.com, we cannot combine those without a mapping.
-  domain_lawyer_.AddDomain("http://graphics8.nytimes.com", &message_handler_);
+  domain_lawyer_->AddDomain("http://graphics8.nytimes.com", &message_handler_);
   EXPECT_TRUE(partnership_.AddUrl(kCdnResourceUrl, &message_handler_));
   EXPECT_FALSE(partnership_.AddUrl(kResourceUrl1, &message_handler_));
 }
@@ -167,7 +170,7 @@ TEST_F(UrlPartnershipTest, ExternalDomainDeclaredButNotMapped) {
 TEST_F(UrlPartnershipTest, AbsExternalDomainDeclaredButNotMapped) {
   // This test shows that while we can start partnerships from nytimes.com
   // or graphics8.nytimes.com, we cannot combine those without a mapping.
-  domain_lawyer_.AddDomain("http://graphics8.nytimes.com", &message_handler_);
+  domain_lawyer_->AddDomain("http://graphics8.nytimes.com", &message_handler_);
   EXPECT_TRUE(partnership_.AddUrl(kCdnResourceUrl, &message_handler_));
   EXPECT_FALSE(partnership_.AddUrl(kAbsoluteResourceUrl1, &message_handler_));
 }
@@ -181,7 +184,7 @@ TEST_F(UrlPartnershipTest, EmptyTail) {
 }
 
 TEST_F(UrlPartnershipTest, EmptyWithPartner) {
-  UrlPartnership p(&domain_lawyer_, GURL("http://www.google.com/styles/x.html"));
+  UrlPartnership p(&options_, GURL("http://www.google.com/styles/x.html"));
   EXPECT_TRUE(p.AddUrl("/styles", &message_handler_));
   EXPECT_FALSE(p.AddUrl("", &message_handler_));
   EXPECT_TRUE(p.AddUrl("/", &message_handler_));
@@ -201,10 +204,10 @@ TEST_F(UrlPartnershipTest, RemoveLast) {
 }
 
 TEST_F(UrlPartnershipTest, ResourcesFromMappedDomains) {
-  domain_lawyer_.AddRewriteDomainMapping(
+  domain_lawyer_->AddRewriteDomainMapping(
       "http://graphics8.nytimes.com", "http://www.nytimes.com",
       &message_handler_);
-  domain_lawyer_.AddRewriteDomainMapping(
+  domain_lawyer_->AddRewriteDomainMapping(
       "http://graphics8.nytimes.com", "http://styles.com", &message_handler_);
 
   // We can legally combine resources across multiple domains if they are
@@ -213,5 +216,17 @@ TEST_F(UrlPartnershipTest, ResourcesFromMappedDomains) {
                       "http://styles.com/external.css"));
   EXPECT_EQ("http://graphics8.nytimes.com/", partnership_.ResolvedBase());
 }
+
+TEST_F(UrlPartnershipTest, AllowDisallow) {
+  // This test shows that while we can start partnerships from nytimes.com
+  // or graphics8.nytimes.com, we cannot combine those without a mapping.
+  domain_lawyer_->AddDomain("http://graphics8.nytimes.com", &message_handler_);
+  options_.Disallow("*.css");
+  options_.Allow("a*.css");
+  EXPECT_FALSE(partnership_.AddUrl("foo.css", &message_handler_));
+  EXPECT_TRUE(partnership_.AddUrl("afoo.css", &message_handler_));
+  EXPECT_TRUE(partnership_.AddUrl("foo.jpg", &message_handler_));
+}
+
 
 }  // namespace net_instaweb

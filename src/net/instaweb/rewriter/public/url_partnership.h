@@ -26,8 +26,8 @@ class GURL;
 
 namespace net_instaweb {
 
-class DomainLawyer;
 class MessageHandler;
+class RewriteOptions;
 
 // A URL partnership should be estalished in order to combine resources,
 // such as in CSS combination, JS combination, or image spriting.  This
@@ -38,8 +38,7 @@ class MessageHandler;
 //   3. What are the unique suffices for the elements.
 class UrlPartnership {
  public:
-  UrlPartnership(const DomainLawyer* domain_lawyer,
-                 const GURL& original_request);
+  UrlPartnership(const RewriteOptions* options, const GURL& original_request);
   ~UrlPartnership();
 
   // Adds a URL to a combination.  If it can be legally added, consulting
@@ -73,7 +72,7 @@ class UrlPartnership {
   GurlVector gurl_vector_;
   std::string domain_;
   GURL domain_gurl_;
-  const DomainLawyer* domain_lawyer_;
+  const RewriteOptions* rewrite_options_;
   GURL original_origin_and_path_;
 
   // common_components_ is updated while adding Urls to support incremental

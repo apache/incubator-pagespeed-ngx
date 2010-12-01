@@ -102,6 +102,8 @@ const char* kModPagespeedMapOriginDomain = "ModPagespeedMapOriginDomain";
 const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
 const char* kRepairHeadersFilterName = "MOD_PAGESPEED_REPAIR_HEADERS";
 const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
+const char* kModPagespeedAllow = "ModPagespeedAllow";
+const char* kModPagespeedDisallow = "ModPagespeedDisallow";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -709,6 +711,10 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     options->set_beacon_url(arg);
   } else if (strcasecmp(directive, kModPagespeedDomain) == 0) {
     options->domain_lawyer()->AddDomain(arg, factory->message_handler());
+  } else if (strcasecmp(directive, kModPagespeedAllow) == 0) {
+    options->Allow(arg);
+  } else if (strcasecmp(directive, kModPagespeedDisallow) == 0) {
+    options->Disallow(arg);
   } else {
     return "Unknown directive.";
   }
@@ -832,6 +838,10 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
          "to_domain from_domain[,from_domain]*"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,
          "to_domain from_domain[,from_domain]*"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedAllow,
+        "wildcard_spec for urls"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedDisallow,
+        "wildcard_spec for urls"),
   {NULL}
 };
 

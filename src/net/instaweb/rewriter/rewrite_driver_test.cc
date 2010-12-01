@@ -16,32 +16,25 @@
 
 // Author: jmarantz@google.com (Joshua D. Marantz)
 
-#include "base/basictypes.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/dummy_url_fetcher.h"
-#include "net/instaweb/util/public/fake_url_async_fetcher.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
+
+#include "base/basictypes.h"
+#include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 
 namespace net_instaweb {
 
-class RewriteDriverTest : public HtmlParseTestBaseNoAlloc {
+class RewriteDriverTest : public ResourceManagerTestBase {
  protected:
-  RewriteDriverTest() : dummy_url_async_fetcher_(&dummy_url_fetcher_),
-                        rewrite_driver_(&message_handler_, &file_system_,
-                                        &dummy_url_async_fetcher_, options_) {
+  RewriteDriverTest() {}
+
+  bool CanDecodeUrl(const StringPiece& url) {
+    RewriteFilter* filter;
+    scoped_ptr<OutputResource> resource(
+        rewrite_driver_.DecodeOutputResource(url, &filter));
+    return (resource.get() != NULL);
   }
-
-  virtual bool AddBody() const { return false; }
-  virtual HtmlParse* html_parse() { return rewrite_driver_.html_parse(); }
-
- private:
-  DummyUrlFetcher dummy_url_fetcher_;
-  FakeUrlAsyncFetcher dummy_url_async_fetcher_;
-  StdioFileSystem file_system_;
-  RewriteOptions options_;
-  RewriteDriver rewrite_driver_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverTest);
 };
@@ -52,6 +45,23 @@ TEST_F(RewriteDriverTest, NoChanges) {
                     "<body><form method=\"post\">"
                     "<input type=\"checkbox\" checked>"
                     "</form></body>");
+}
+
+TEST_F(RewriteDriverTest, TestLegacyUrl) {
+  rewrite_driver_.AddFilters();
+  EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig"))
+      << "not enough dots";
+  EXPECT_TRUE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig.js"));
+  EXPECT_TRUE(CanDecodeUrl(
+      "http://x.com/dir/123/jm.0123456789abcdef0123456789ABCDEF.orig.js"));
+  EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/xx.0.orig.js"))
+      << "invalid filter xx";
+  ASSERT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.z.orig.js"))
+      << "invalid hash code -- not hex";
+  ASSERT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.ab.orig.js"))
+      << "invalid hash code -- not 1 or 32 chars";
+  ASSERT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig.x"))
+      << "invalid extension";
 }
 
 }  // namespace net_instaweb

@@ -87,14 +87,34 @@ bool ResourceNamer::Decode(const StringPiece& encoded_string) {
 // were implemented as of Nov 2010.  Also validate that the hash
 // code is a 32-char hex number.
 bool ResourceNamer::LegacyDecode(const StringPiece& encoded_string) {
-  std::vector<StringPiece> names;
-  SplitStringPieceToVector(encoded_string, kSeparatorString, &names, true);
-  bool ret = (names.size() == 4);
-  if (ret) {
-    names[0].CopyToString(&id_);
-    names[1].CopyToString(&hash_);
-    names[2].CopyToString(&name_);
-    names[3].CopyToString(&ext_);
+  bool ret = false;
+  // First check that this URL has a known extension type
+  if (NameExtensionToContentType(encoded_string) != NULL) {
+    std::vector<StringPiece> names;
+    SplitStringPieceToVector(encoded_string, kSeparatorString, &names, true);
+    if (names.size() == 4) {
+      names[1].CopyToString(&hash_);
+
+      // The legacy hash codes were all either 1-character (for tests) or
+      // 32 characters, all in hex.
+      if ((hash_.size() != 1) && (hash_.size() != 32)) {
+        return false;
+      }
+      for (int i = 0, n = hash_.size(); i < n; ++i) {
+        char ch = hash_[i];
+        if (!isdigit(ch)) {
+          ch = toupper(ch);
+          if ((ch < 'A') || (ch > 'F')) {
+            return false;
+          }
+        }
+      }
+
+      names[0].CopyToString(&id_);
+      names[2].CopyToString(&name_);
+      names[3].CopyToString(&ext_);
+      ret = true;
+    }
   }
   return ret;
 }

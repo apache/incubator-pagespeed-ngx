@@ -38,14 +38,14 @@ class RewriteOptionsTest : public ::testing::Test {
          f <= RewriteOptions::kLastFilter;
          f = static_cast<RewriteOptions::Filter>(f + 1)) {
       if (filters.find(f) != filters.end()) {
-        ASSERT_TRUE(options.Enabled(f));
+        ASSERT_TRUE(options_.Enabled(f));
       } else {
-        ASSERT_FALSE(options.Enabled(f));
+        ASSERT_FALSE(options_.Enabled(f));
       }
     }
   }
 
-  RewriteOptions options;
+  RewriteOptions options_;
 };
 
 TEST_F(RewriteOptionsTest, NoneEnabledByDefault) {
@@ -54,14 +54,14 @@ TEST_F(RewriteOptionsTest, NoneEnabledByDefault) {
 
 TEST_F(RewriteOptionsTest, InstrumentationDisabled) {
   // Make sure the kCoreFilters enables some filters.
-  options.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  ASSERT_TRUE(options.Enabled(RewriteOptions::kExtendCache));
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  ASSERT_TRUE(options_.Enabled(RewriteOptions::kExtendCache));
 
   // Now disable all filters and make sure none are enabled.
   for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
        f <= RewriteOptions::kLastFilter;
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
-    options.DisableFilter(f);
+    options_.DisableFilter(f);
   }
   AssertNoneEnabled();
 }
@@ -70,19 +70,19 @@ TEST_F(RewriteOptionsTest, DisableTrumpsEnable) {
   for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
        f <= RewriteOptions::kLastFilter;
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
-    options.DisableFilter(f);
-    options.EnableFilter(f);
+    options_.DisableFilter(f);
+    options_.EnableFilter(f);
     AssertNoneEnabled();
   }
 }
 
 TEST_F(RewriteOptionsTest, CoreFilters) {
-  options.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
   FilterSet s;
   for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
        f <= RewriteOptions::kLastFilter;
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
-    if (options.Enabled(f)) {
+    if (options_.Enabled(f)) {
       s.insert(f);
     }
   }
@@ -98,7 +98,7 @@ TEST_F(RewriteOptionsTest, Enable) {
        f <= RewriteOptions::kLastFilter;
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
     s.insert(f);
-    options.EnableFilter(f);
+    options_.EnableFilter(f);
     AssertEnabled(s);
   }
 }
@@ -110,10 +110,10 @@ TEST_F(RewriteOptionsTest, CommaSeparatedList) {
   const char* kList = "add_base_tag,left_trim_urls";
   NullMessageHandler handler;
   ASSERT_TRUE(
-      options.EnableFiltersByCommaSeparatedList(kList, &handler));
+      options_.EnableFiltersByCommaSeparatedList(kList, &handler));
   AssertEnabled(s);
   ASSERT_TRUE(
-      options.DisableFiltersByCommaSeparatedList(kList, &handler));
+      options_.DisableFiltersByCommaSeparatedList(kList, &handler));
   AssertNoneEnabled();
 }
 
@@ -132,98 +132,98 @@ TEST_F(RewriteOptionsTest, ParseRewriteLevel) {
 
 TEST_F(RewriteOptionsTest, MergeLevelsDefault) {
   RewriteOptions one, two;
-  options.Merge(one, two);
-  EXPECT_EQ(RewriteOptions::kPassThrough, options.level());
+  options_.Merge(one, two);
+  EXPECT_EQ(RewriteOptions::kPassThrough, options_.level());
 }
 
 TEST_F(RewriteOptionsTest, MergeLevelsOneCore) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  options.Merge(one, two);
-  EXPECT_EQ(RewriteOptions::kCoreFilters, options.level());
+  options_.Merge(one, two);
+  EXPECT_EQ(RewriteOptions::kCoreFilters, options_.level());
 }
 
 TEST_F(RewriteOptionsTest, MergeLevelsOneCoreTwoPass) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
   two.SetRewriteLevel(RewriteOptions::kPassThrough);  // overrides default
-  options.Merge(one, two);
-  EXPECT_EQ(RewriteOptions::kPassThrough, options.level());
+  options_.Merge(one, two);
+  EXPECT_EQ(RewriteOptions::kPassThrough, options_.level());
 }
 
 TEST_F(RewriteOptionsTest, MergeLevelsOnePassTwoCore) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kPassThrough);  // overrides default
   two.SetRewriteLevel(RewriteOptions::kCoreFilters);  // overrides one
-  options.Merge(one, two);
-  EXPECT_EQ(RewriteOptions::kCoreFilters, options.level());
+  options_.Merge(one, two);
+  EXPECT_EQ(RewriteOptions::kCoreFilters, options_.level());
 }
 
 TEST_F(RewriteOptionsTest, MergeLevelsBothCore) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
   two.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  options.Merge(one, two);
-  EXPECT_EQ(RewriteOptions::kCoreFilters, options.level());
+  options_.Merge(one, two);
+  EXPECT_EQ(RewriteOptions::kCoreFilters, options_.level());
 }
 
 TEST_F(RewriteOptionsTest, MergeFilterPassThrough) {
   RewriteOptions one, two;
-  options.Merge(one, two);
-  EXPECT_FALSE(options.Enabled(RewriteOptions::kAddHead));
+  options_.Merge(one, two);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kAddHead));
 }
 
 TEST_F(RewriteOptionsTest, MergeFilterEnaOne) {
   RewriteOptions one, two;
   one.EnableFilter(RewriteOptions::kAddHead);
-  options.Merge(one, two);
-  EXPECT_TRUE(options.Enabled(RewriteOptions::kAddHead));
+  options_.Merge(one, two);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kAddHead));
 }
 
 TEST_F(RewriteOptionsTest, MergeFilterEnaTwo) {
   RewriteOptions one, two;
   two.EnableFilter(RewriteOptions::kAddHead);
-  options.Merge(one, two);
-  EXPECT_TRUE(options.Enabled(RewriteOptions::kAddHead));
+  options_.Merge(one, two);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kAddHead));
 }
 
 TEST_F(RewriteOptionsTest, MergeFilterEnaOneDisTwo) {
   RewriteOptions one, two;
   one.EnableFilter(RewriteOptions::kAddHead);
   two.DisableFilter(RewriteOptions::kAddHead);
-  options.Merge(one, two);
-  EXPECT_FALSE(options.Enabled(RewriteOptions::kAddHead));
+  options_.Merge(one, two);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kAddHead));
 }
 
 TEST_F(RewriteOptionsTest, MergeFilterDisOneEnaTwo) {
   RewriteOptions one, two;
   one.DisableFilter(RewriteOptions::kAddHead);
   two.EnableFilter(RewriteOptions::kAddHead);
-  options.Merge(one, two);
-  EXPECT_TRUE(options.Enabled(RewriteOptions::kAddHead));
+  options_.Merge(one, two);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kAddHead));
 }
 
 TEST_F(RewriteOptionsTest, MergeCoreFilter) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  options.Merge(one, two);
-  EXPECT_TRUE(options.Enabled(RewriteOptions::kExtendCache));
+  options_.Merge(one, two);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCache));
 }
 
 TEST_F(RewriteOptionsTest, MergeCoreFilterEnaOne) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
   one.EnableFilter(RewriteOptions::kExtendCache);
-  options.Merge(one, two);
-  EXPECT_TRUE(options.Enabled(RewriteOptions::kExtendCache));
+  options_.Merge(one, two);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCache));
 }
 
 TEST_F(RewriteOptionsTest, MergeCoreFilterEnaTwo) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
   two.EnableFilter(RewriteOptions::kExtendCache);
-  options.Merge(one, two);
-  EXPECT_TRUE(options.Enabled(RewriteOptions::kExtendCache));
+  options_.Merge(one, two);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCache));
 }
 
 TEST_F(RewriteOptionsTest, MergeCoreFilterEnaOneDisTwo) {
@@ -231,16 +231,16 @@ TEST_F(RewriteOptionsTest, MergeCoreFilterEnaOneDisTwo) {
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
   one.EnableFilter(RewriteOptions::kExtendCache);
   two.DisableFilter(RewriteOptions::kExtendCache);
-  options.Merge(one, two);
-  EXPECT_FALSE(options.Enabled(RewriteOptions::kExtendCache));
+  options_.Merge(one, two);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCache));
 }
 
 TEST_F(RewriteOptionsTest, MergeCoreFilterDisOne) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
   one.DisableFilter(RewriteOptions::kExtendCache);
-  options.Merge(one, two);
-  EXPECT_FALSE(options.Enabled(RewriteOptions::kExtendCache));
+  options_.Merge(one, two);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCache));
 }
 
 TEST_F(RewriteOptionsTest, MergeCoreFilterDisOneEnaTwo) {
@@ -248,37 +248,67 @@ TEST_F(RewriteOptionsTest, MergeCoreFilterDisOneEnaTwo) {
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
   one.DisableFilter(RewriteOptions::kExtendCache);
   two.EnableFilter(RewriteOptions::kExtendCache);
-  options.Merge(one, two);
-  EXPECT_TRUE(options.Enabled(RewriteOptions::kExtendCache));
+  options_.Merge(one, two);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCache));
 }
 
 TEST_F(RewriteOptionsTest, MergeThresholdDefault) {
   RewriteOptions one, two;
-  options.Merge(one, two);
+  options_.Merge(one, two);
   EXPECT_EQ(RewriteOptions::kDefaultCssInlineMaxBytes,
-            options.css_inline_max_bytes());
+            options_.css_inline_max_bytes());
 }
 
 TEST_F(RewriteOptionsTest, MergeThresholdOne) {
   RewriteOptions one, two;
   one.set_css_inline_max_bytes(5);
-  options.Merge(one, two);
-  EXPECT_EQ(5, options.css_inline_max_bytes());
+  options_.Merge(one, two);
+  EXPECT_EQ(5, options_.css_inline_max_bytes());
 }
 
 TEST_F(RewriteOptionsTest, MergeThresholdTwo) {
   RewriteOptions one, two;
   two.set_css_inline_max_bytes(6);
-  options.Merge(one, two);
-  EXPECT_EQ(6, options.css_inline_max_bytes());
+  options_.Merge(one, two);
+  EXPECT_EQ(6, options_.css_inline_max_bytes());
 }
 
 TEST_F(RewriteOptionsTest, MergeThresholdOverride) {
   RewriteOptions one, two;
   one.set_css_inline_max_bytes(5);
   two.set_css_inline_max_bytes(6);
-  options.Merge(one, two);
-  EXPECT_EQ(6, options.css_inline_max_bytes());
+  options_.Merge(one, two);
+  EXPECT_EQ(6, options_.css_inline_max_bytes());
+}
+
+TEST_F(RewriteOptionsTest, Allow) {
+  options_.Allow("*.css");
+  EXPECT_TRUE(options_.IsAllowed("abcd.css"));
+  options_.Disallow("a*.css");
+  EXPECT_FALSE(options_.IsAllowed("abcd.css"));
+  options_.Allow("ab*.css");
+  EXPECT_TRUE(options_.IsAllowed("abcd.css"));
+  options_.Disallow("abc*.css");
+  EXPECT_FALSE(options_.IsAllowed("abcd.css"));
+}
+
+TEST_F(RewriteOptionsTest, MergeAllow) {
+  RewriteOptions one, two;
+  one.Allow("*.css");
+  EXPECT_TRUE(one.IsAllowed("abcd.css"));
+  one.Disallow("a*.css");
+  EXPECT_FALSE(one.IsAllowed("abcd.css"));
+
+  two.Allow("ab*.css");
+  EXPECT_TRUE(two.IsAllowed("abcd.css"));
+  two.Disallow("abc*.css");
+  EXPECT_FALSE(two.IsAllowed("abcd.css"));
+
+  options_.Merge(one, two);
+  EXPECT_FALSE(options_.IsAllowed("abcd.css"));
+  EXPECT_FALSE(options_.IsAllowed("abc.css"));
+  EXPECT_TRUE(options_.IsAllowed("ab.css"));
+  EXPECT_FALSE(options_.IsAllowed("a.css"));
 }
 
 }  // namespace

@@ -64,12 +64,9 @@ TEST_F(HtmlAttributeQuoteRemovalTest, NoValueNoChange) {
 }
 
 TEST_F(HtmlAttributeQuoteRemovalTest, DoNotRemoveQuotesInXhtml) {
-  // TODO(mdsteele): This test is kinda sketchy; the DOCTYPE directive should
-  //    really come at the very start of the document, but HtmlParseTestBase
-  //    will insert <html> and <body> tags around this.
+  SetDoctype("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" "
+             "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">");
   ValidateNoChanges("do_not_remove_quotes_in_xhtml",
-                    "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" "
-                    "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n"
                     "<div class=\"foo\" id='bar'>foobar</div>");
 }
 

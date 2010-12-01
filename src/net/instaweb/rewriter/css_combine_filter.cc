@@ -62,7 +62,7 @@ const int kUrlOverhead = kIdOverhead + ResourceNamer::kOverhead + kExtOverhead;
 class CssCombineFilter::Partnership : public UrlPartnership {
  public:
   Partnership(RewriteDriver* driver, const GURL& gurl)
-      : UrlPartnership(driver->options()->domain_lawyer(), gurl),
+      : UrlPartnership(driver->options(), gurl),
         rewrite_options_(driver->options()),
         resource_manager_(driver->resource_manager()),
         prev_num_components_(0),

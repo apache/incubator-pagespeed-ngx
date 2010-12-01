@@ -260,6 +260,9 @@ void RewriteOptions::Merge(const RewriteOptions& first,
   // to unit test.  So we have to call it twice.
   domain_lawyer_.Merge(first.domain_lawyer_);
   domain_lawyer_.Merge(second.domain_lawyer_);
+
+  allow_resources_.CopyFrom(first.allow_resources_);
+  allow_resources_.AppendFrom(second.allow_resources_);
 }
 
 }  // namespace net_instaweb

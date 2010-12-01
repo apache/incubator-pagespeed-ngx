@@ -52,19 +52,14 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
-namespace {
+namespace net_instaweb {
 
 // RewriteFilter prefixes
-const char kCssCombiner[] = "cc";
-const char kCssFilter[] = "cf";
-const char kCacheExtender[] = "ce";
-const char kFileSystem[] = "fs";
-const char kImageCompression[] = "ic";
-const char kJavascriptMin[] = "jm";
-
-}  // namespace
-
-namespace net_instaweb {
+const char RewriteDriver::kCssCombinerId[] = "cc";
+const char RewriteDriver::kCssFilterId[] = "cf";
+const char RewriteDriver::kCacheExtenderId[] = "ce";
+const char RewriteDriver::kImageCompressionId[] = "ic";
+const char RewriteDriver::kJavascriptMinId[] = "jm";
 
 // TODO(jmarantz): Simplify the interface so we can just use
 // asynchronous fetchers, employing FakeUrlAsyncFetcher as needed
@@ -162,18 +157,18 @@ void RewriteDriver::AddFilters() {
   // need the to process resource requests due to a query-specific
   // 'rewriters' specification.  We still use the passed-in options
   // to determine whether they get added to the html parse filter chain.
-  RegisterRewriteFilter(new CssCombineFilter(this, kCssCombiner));
-  RegisterRewriteFilter(new CssFilter(this, kCssFilter));
-  RegisterRewriteFilter(new JavascriptFilter(this, kJavascriptMin));
+  RegisterRewriteFilter(new CssCombineFilter(this, kCssCombinerId));
+  RegisterRewriteFilter(new CssFilter(this, kCssFilterId));
+  RegisterRewriteFilter(new JavascriptFilter(this, kJavascriptMinId));
   RegisterRewriteFilter(
       new ImgRewriteFilter(
           this,
           options_.Enabled(RewriteOptions::kDebugLogImgTags),
           options_.Enabled(RewriteOptions::kInsertImgDimensions),
-          kImageCompression,
+          kImageCompressionId,
           options_.img_inline_max_bytes(),
           options_.img_max_rewrites_at_once()));
-  RegisterRewriteFilter(new CacheExtender(this, kCacheExtender));
+  RegisterRewriteFilter(new CacheExtender(this, kCacheExtenderId));
 
   // This function defines the order that filters are run.  We document
   // in pagespeed.conf.template that the order specified in the conf
@@ -230,15 +225,15 @@ void RewriteDriver::AddFilters() {
     // Combine external CSS resources after we've outlined them.
     // CSS files in html document.  This can only be called
     // once and requires a resource_manager to be set.
-    EnableRewriteFilter(kCssCombiner);
+    EnableRewriteFilter(kCssCombinerId);
   }
   if (options_.Enabled(RewriteOptions::kRewriteCss)) {
-    EnableRewriteFilter(kCssFilter);
+    EnableRewriteFilter(kCssFilterId);
   }
   if (options_.Enabled(RewriteOptions::kRewriteJavascript)) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
     // interaction.
-    EnableRewriteFilter(kJavascriptMin);
+    EnableRewriteFilter(kJavascriptMinId);
   }
   if (options_.Enabled(RewriteOptions::kInlineCss)) {
     // Inline small CSS files.  Give CssCombineFilter and CSS minification a
@@ -253,7 +248,7 @@ void RewriteDriver::AddFilters() {
     AddFilter(new JsInlineFilter(this));
   }
   if (options_.Enabled(RewriteOptions::kRewriteImages)) {
-    EnableRewriteFilter(kImageCompression);
+    EnableRewriteFilter(kImageCompressionId);
   }
   if (options_.Enabled(RewriteOptions::kRemoveComments)) {
     AddFilter(new RemoveCommentsFilter(&html_parse_));
@@ -270,7 +265,7 @@ void RewriteDriver::AddFilters() {
   }
   if (options_.Enabled(RewriteOptions::kExtendCache)) {
     // Extend the cache lifetime of resources.
-    EnableRewriteFilter(kCacheExtender);
+    EnableRewriteFilter(kCacheExtenderId);
   }
   if (options_.Enabled(RewriteOptions::kLeftTrimUrls)) {
     // Trim extraneous prefixes from urls in attribute values.

@@ -36,13 +36,18 @@ class ElideAttributesFilter : public EmptyHtmlFilter {
   virtual const char* Name() const { return "ElideAttributes"; }
 
  private:
-  typedef std::map<Atom, const char*, AtomCompare> AtomMap;
+  struct AttrValue {
+    const char* attr_value;
+    bool requires_version_5;  // Default value only exists in (X)HTML 5.
+  };
+
   typedef std::map<Atom, AtomSet, AtomCompare> AtomSetMap;
-  typedef std::map<Atom, AtomMap, AtomCompare> AtomMapMap;
+  typedef std::map<Atom, AttrValue, AtomCompare> ValueMap;
+  typedef std::map<Atom, ValueMap, AtomCompare> ValueMapMap;
 
   HtmlParse* html_parse_;
   AtomSetMap one_value_attrs_map_;  // tag/attrs with only one possible value
-  AtomMapMap default_value_map_;  // tag/attrs with default values
+  ValueMapMap default_value_map_;  // tag/attrs with default values
 
   DISALLOW_COPY_AND_ASSIGN(ElideAttributesFilter);
 };

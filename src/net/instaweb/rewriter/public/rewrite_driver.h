@@ -52,18 +52,11 @@ class Writer;
 
 class RewriteDriver {
  public:
-  // TODO(jmarantz): provide string-constants so that callers, in particular,
-  // tests, that want to enable a specific pass, can reference these rather
-  // than replicating the string literals.  Also provide programmatic mechanism
-  // to generate simple and detailed help strings for the user enumerating the
-  // names of the filters.
-  /*
-  static const char kAddHead[];
-  static const char kAddBaseTag[];
-  static const char kMoveCssToHead[];
-  static const char kOutlineCss[];
-  static const char kOutlineJavascript[];
-  */
+  static const char kCssCombinerId[];
+  static const char kCssFilterId[];
+  static const char kCacheExtenderId[];
+  static const char kImageCompressionId[];
+  static const char kJavascriptMinId[];
 
   RewriteDriver(MessageHandler* message_handler,
                 FileSystem* file_system,
