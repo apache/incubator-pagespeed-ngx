@@ -1002,7 +1002,10 @@ Values* Parser::ParseFont() {
   scoped_ptr<Value> font_style(new Value(Identifier(Identifier::NORMAL)));
   scoped_ptr<Value> font_variant(new Value(Identifier(Identifier::NORMAL)));
   scoped_ptr<Value> font_weight(new Value(Identifier(Identifier::NORMAL)));
-  // The system font size used by actual browers
+  // font_size is a required value unless font is set to one of the special
+  // values (caption, icon, menu, message_box, small_caption, status_bar)
+  // In this case, the actual font size will depend on browser, this is a
+  // common value found:
   scoped_ptr<Value> font_size(new Value(32.0/3, Value::PX));
   scoped_ptr<Value> line_height(new Value(Identifier(Identifier::NORMAL)));
   scoped_ptr<Value> font_family;
@@ -1155,15 +1158,18 @@ Values* Parser::ParseFont() {
   return values.release();
 }
 
-static void ExpandShorthandProperties(
-    Declarations* declarations, Property prop, Values* vals, bool important) {
-  // TODO(yian): We currently store both expanded properties and the original
-  // property because only limited expansion is supported. In future, we should
-  // discard the original property after expansion.
-  declarations->push_back(new Declaration(prop, vals, important));
+static void ExpandShorthandProperties(Declarations* declarations,
+                                      const Declaration& declaration) {
+  Property prop = declaration.property();
+  const Values* vals = declaration.values();
+  bool important = declaration.IsImportant();
   switch (prop.prop()) {
     case Property::FONT: {
-      CHECK_GE(vals->size(), 5);
+      // Only expand valid font: declarations (ones created by ParseFont, which
+      // requires at least 5 values in a specific order).
+      if (vals->size() < 5) {
+        break;
+      }
       declarations->push_back(
           new Declaration(Property::FONT_STYLE, *vals->get(0), important));
       declarations->push_back(
@@ -1258,7 +1264,7 @@ Declarations* Parser::ParseRawDeclarations() {
               !memcasecmp(ident.utf8_data(), "important", 9))
             important = true;
         }
-        ExpandShorthandProperties(declarations, prop, vals, important);
+        declarations->push_back(new Declaration(prop, vals, important));
       }
     }
     SkipSpace();
@@ -1284,20 +1290,17 @@ Declarations* Parser::ExpandDeclarations(Declarations* orig_declarations) {
     // new_declarations takes ownership of declaration.
     Declaration* declaration = orig_declarations->at(j);
     orig_declarations->at(j) = NULL;
+    // TODO(yian): We currently store both expanded properties and the original
+    // property because only limited expansion is supported. In future, we
+    // should discard the original property after expansion.
     new_declarations->push_back(declaration);
+    ExpandShorthandProperties(new_declarations.get(), *declaration);
+    // TODO(sligocki): Get ExpandBackground back into ExpandShorthandProperties.
     switch (declaration->property().prop()) {
       case Css::Property::BACKGROUND: {
         ExpandBackground(*declaration, new_declarations.get());
         break;
       }
-        /*
-          case Css::Property::FONT:
-          //TODO
-          break;
-          case Css::Property::FONT_FAMILY:
-          //TODO
-          break;
-        */
       default:
         break;
     }

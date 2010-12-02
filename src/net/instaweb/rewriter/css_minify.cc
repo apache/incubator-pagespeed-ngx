@@ -188,15 +188,23 @@ std::string FontToString(const Css::Values& font_values) {
   CHECK_LE(5U, font_values.size());
   std::string tmp, result;
 
+  // TODO(sligocki): We need to special case for things like "font: menu"
+
+  // font-style: defaults to normal
   tmp = font_values.get(0)->ToString();
   if (tmp != "normal") result += tmp + " ";
+  // font-variant: defaults to normal
   tmp = font_values.get(1)->ToString();
   if (tmp != "normal") result += tmp + " ";
+  // font-weight: defaults to normal
   tmp = font_values.get(2)->ToString();
   if (tmp != "normal") result += tmp + " ";
+  // font-size is required
   result += font_values.get(3)->ToString();
+  // line-height: defaults to normal
   tmp = font_values.get(4)->ToString();
   if (tmp != "normal") result += "/" + tmp;
+  // font-family:
   for (int i = 5, n = font_values.size(); i < n; ++i)
     result += (i == 5 ? " " : ",") + font_values.get(i)->ToString();
 

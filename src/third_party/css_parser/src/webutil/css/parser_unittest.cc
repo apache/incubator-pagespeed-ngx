@@ -1320,32 +1320,67 @@ TEST_F(ParserTest, stylesheets) {
 }
 
 TEST_F(ParserTest, ParseRawStylesheetDoesNotExpand) {
-  Parser p("a { background: none; }");
-  scoped_ptr<Stylesheet> stylesheet(p.ParseRawStylesheet());
-  ASSERT_EQ(1, stylesheet->rulesets().size());
-  ASSERT_EQ(1, stylesheet->ruleset(0).declarations().size());
-  ASSERT_EQ(1, stylesheet->ruleset(0).declaration(0).values()->size());
-  EXPECT_TRUE(p.Done());
-
-  // TODO(sligocki): add font, font-family.
+  {
+    Parser p("a { background: none; }");
+    scoped_ptr<Stylesheet> stylesheet(p.ParseRawStylesheet());
+    ASSERT_EQ(1, stylesheet->rulesets().size());
+    ASSERT_EQ(1, stylesheet->ruleset(0).declarations().size());
+    ASSERT_EQ(1, stylesheet->ruleset(0).declaration(0).values()->size());
+    EXPECT_TRUE(p.Done());
+  }
+  {
+    Parser p("a { font: 12px verdana; }");
+    scoped_ptr<Stylesheet> stylesheet(p.ParseRawStylesheet());
+    ASSERT_EQ(1, stylesheet->rulesets().size());
+    ASSERT_EQ(1, stylesheet->ruleset(0).declarations().size());
+    const Values& values = *stylesheet->ruleset(0).declaration(0).values();
+    ASSERT_EQ(6, values.size());
+    // ParseRaw will expand the values out to:
+    // font: normal normal normal 12px/normal verdana
+    // But it will not expand out the six other declarations.
+    // TODO(sligocki): There has got to be a nicer way to test this.
+    EXPECT_EQ(Identifier::NORMAL, values[0]->GetIdentifier().ident());
+    EXPECT_EQ(Identifier::NORMAL, values[1]->GetIdentifier().ident());
+    EXPECT_EQ(Identifier::NORMAL, values[2]->GetIdentifier().ident());
+    EXPECT_EQ(12.0, values[3]->GetFloatValue());
+    EXPECT_EQ(Value::PX, values[3]->GetDimension());
+    EXPECT_EQ(Identifier::NORMAL, values[4]->GetIdentifier().ident());
+    EXPECT_EQ("verdana", UnicodeTextToUTF8(values[5]->GetIdentifierText()));
+    EXPECT_TRUE(p.Done());
+  }
 }
 
 TEST_F(ParserTest, ParseStylesheetDoesExpand) {
-  Parser p("a { background: none; }");
-  scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
-  ASSERT_EQ(1, stylesheet->rulesets().size());
-  const Declarations& declarations = stylesheet->ruleset(0).declarations();
-  ASSERT_EQ(7, declarations.size());
-  EXPECT_EQ(Property::BACKGROUND, declarations[0]->prop());
-  EXPECT_EQ(Property::BACKGROUND_COLOR, declarations[1]->prop());
-  EXPECT_EQ(Property::BACKGROUND_IMAGE, declarations[2]->prop());
-  EXPECT_EQ(Property::BACKGROUND_REPEAT, declarations[3]->prop());
-  EXPECT_EQ(Property::BACKGROUND_ATTACHMENT, declarations[4]->prop());
-  EXPECT_EQ(Property::BACKGROUND_POSITION_X, declarations[5]->prop());
-  EXPECT_EQ(Property::BACKGROUND_POSITION_Y, declarations[6]->prop());
-  EXPECT_TRUE(p.Done());
-
-  // TODO(sligocki): add font, font-family.
+  {
+    Parser p("a { background: none; }");
+    scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
+    ASSERT_EQ(1, stylesheet->rulesets().size());
+    const Declarations& declarations = stylesheet->ruleset(0).declarations();
+    ASSERT_EQ(7, declarations.size());
+    EXPECT_EQ(Property::BACKGROUND, declarations[0]->prop());
+    EXPECT_EQ(Property::BACKGROUND_COLOR, declarations[1]->prop());
+    EXPECT_EQ(Property::BACKGROUND_IMAGE, declarations[2]->prop());
+    EXPECT_EQ(Property::BACKGROUND_REPEAT, declarations[3]->prop());
+    EXPECT_EQ(Property::BACKGROUND_ATTACHMENT, declarations[4]->prop());
+    EXPECT_EQ(Property::BACKGROUND_POSITION_X, declarations[5]->prop());
+    EXPECT_EQ(Property::BACKGROUND_POSITION_Y, declarations[6]->prop());
+    EXPECT_TRUE(p.Done());
+  }
+  {
+    Parser p("a { font: 12px verdana; }");
+    scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
+    ASSERT_EQ(1, stylesheet->rulesets().size());
+    const Declarations& declarations = stylesheet->ruleset(0).declarations();
+    ASSERT_EQ(7, declarations.size());
+    EXPECT_EQ(Property::FONT, declarations[0]->prop());
+    EXPECT_EQ(6, declarations[0]->values()->size());
+    EXPECT_EQ(Property::FONT_STYLE, declarations[1]->prop());
+    EXPECT_EQ(Property::FONT_VARIANT, declarations[2]->prop());
+    EXPECT_EQ(Property::FONT_WEIGHT, declarations[3]->prop());
+    EXPECT_EQ(Property::FONT_SIZE, declarations[4]->prop());
+    EXPECT_EQ(Property::LINE_HEIGHT, declarations[5]->prop());
+    EXPECT_EQ(Property::FONT_FAMILY, declarations[6]->prop());
+  }
 }
 
 TEST_F(ParserTest, percentage_colors) {

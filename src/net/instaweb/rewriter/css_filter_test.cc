@@ -244,6 +244,10 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{padding:0.01em 0.25em}",  // fractions and em
     "a{-moz-border-radius-topleft:0}",  // Browser-specific (-moz)
     "a{background:none}",  // CSS Parser used to expand this.
+    // http://code.google.com/p/modpagespeed/issues/detail?id=5
+    "a{font-family:trebuchet ms}",  // Keep space between trebuchet and ms.
+    // http://code.google.com/p/modpagespeed/issues/detail?id=121
+    "a{color:inherit}",
     };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
@@ -257,9 +261,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=51
     "a{box-shadow:-1px -2px 2px rgba(0, 0, 0, .15)}",  // CSS3 rgba
     // http://code.google.com/p/modpagespeed/issues/detail?id=66
-    "a{-moz-transform:rotate(7deg)}"
-    // http://code.google.com/p/modpagespeed/issues/detail?id=5
-    "a{font-family:trebuchet ms}"  // Keep space between trebuchet and ms.
+    "a{-moz-transform:rotate(7deg)}",
     };
 
   for (int i = 0; i < arraysize(fail_examples); ++i) {
@@ -336,6 +338,10 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       ".ui-tabs .ui-tabs-nav li.ui-tabs-selected a,.ui-tabs .ui-tabs-nav "
       "li.ui-state-disabled a,.ui-tabs .ui-tabs-nav li.ui-state-processing a{"
       "cursor:pointer}"},
+
+    // http://code.google.com/p/modpagespeed/issues/detail?id=121
+    { "body { font: 2em sans-serif; }", "body{font:2em sans-serif}" },
+    { "body { font: 0.75em sans-serif; }", "body{font:0.75em sans-serif}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

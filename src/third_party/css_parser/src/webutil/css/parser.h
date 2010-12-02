@@ -106,7 +106,7 @@ class Parser {
 
   // ParseRawStylesheet simply parses the document into an abstract syntax tree.
   Stylesheet* ParseRawStylesheet();
-  // ParseStylesheet also runs a second pass to convert syntactic sugar
+  // ParseStylesheet also runs a second pass to convert shorthand
   // declarations such as background, font and font-family into sets of
   // declarations that they represent.
   Stylesheet* ParseStylesheet();
@@ -126,10 +126,9 @@ class Parser {
   // For details, see parser.cc.
   Declarations* ParseDeclarations();
 
-  // Expand the values of shorthand declarations. Currently expands background.
-  // Clears (but does not delete) input orig_declarartions in the process.
-  // orig_declarations should be a std::vector of NULLs on exit.
-  // TODO(sligocki): Expand font and font-family as well.
+  // Expand the values of shorthand declarations. Currently expands background
+  // and font. Clears (but does not delete) input orig_declarartions in the
+  // process. orig_declarations should be a std::vector of NULLs on exit.
   Declarations* ExpandDeclarations(Declarations* orig_declarations);
 
   // Starting at the first simple selector or whitespace, ParseSelectors parses
