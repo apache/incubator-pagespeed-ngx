@@ -108,23 +108,23 @@ class HtmlParse {
   // filters will not.
   // Note: In Javascript the first is called insertBefore and takes the arg
   // in the oposite order.
-  bool InsertElementBeforeElement(const HtmlNode* existing_node,
+  void InsertElementBeforeElement(const HtmlNode* existing_node,
                                   HtmlNode* new_node);
-  bool InsertElementAfterElement(const HtmlNode* existing_node,
+  void InsertElementAfterElement(const HtmlNode* existing_node,
                                  HtmlNode* new_node);
 
   // Add child element at the begining or end of existing_parent's children.
   // Named after Javascript's appendChild method.
-  bool PrependChild(const HtmlElement* existing_parent, HtmlNode* new_child);
-  bool AppendChild(const HtmlElement* existing_parent, HtmlNode* new_child);
+  void PrependChild(const HtmlElement* existing_parent, HtmlNode* new_child);
+  void AppendChild(const HtmlElement* existing_parent, HtmlNode* new_child);
 
   // Insert element before the current one.  current_ remains unchanged.
-  bool InsertElementBeforeCurrent(HtmlNode* node);
+  void InsertElementBeforeCurrent(HtmlNode* node);
 
   // Insert element after the current one, moving current_ to the new
   // element.  In a Filter, the flush-loop will advance past this on
   // the next iteration.
-  bool InsertElementAfterCurrent(HtmlNode* node);
+  void InsertElementAfterCurrent(HtmlNode* node);
 
   // Enclose element around two elements in a sequence.  The first
   // element must be the same as, or precede the last element in the
@@ -246,9 +246,9 @@ class HtmlParse {
  private:
   HtmlEventListIterator Last();  // Last element in queue
   bool IsInEventWindow(const HtmlEventListIterator& iter) const;
-  bool InsertElementBeforeEvent(const HtmlEventListIterator& event,
+  void InsertElementBeforeEvent(const HtmlEventListIterator& event,
                                 HtmlNode* new_node);
-  bool InsertElementAfterEvent(const HtmlEventListIterator& event,
+  void InsertElementAfterEvent(const HtmlEventListIterator& event,
                                HtmlNode* new_node);
   void SanityCheck();
   void CheckEventParent(HtmlEvent* event, HtmlElement* expect,

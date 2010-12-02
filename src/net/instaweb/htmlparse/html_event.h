@@ -38,13 +38,11 @@ class HtmlEvent {
 
   // If this is a StartElement event, returns the HtmlElement that is being
   // started.  Otherwise returns NULL.
-  // TODO(jmarantz): Rename this to GetElementIfStartEvent()
-  virtual HtmlElement* GetStartElement() { return NULL; }
+  virtual HtmlElement* GetElementIfStartEvent() { return NULL; }
 
   // If this is an EndElement event, returns the HtmlElement that is being
   // ended.  Otherwise returns NULL.
-  // TODO(jmarantz): Rename this to GetElementIfEndEvent()
-  virtual HtmlElement* GetEndElement() { return NULL; }
+  virtual HtmlElement* GetElementIfEndEvent() { return NULL; }
 
   virtual HtmlLeafNode* GetLeafNode() { return NULL; }
   virtual HtmlNode* GetNode() { return NULL; }
@@ -89,7 +87,7 @@ class HtmlStartElementEvent: public HtmlEvent {
     *str += "StartElement ";
     *str += element_->tag().c_str();
   }
-  virtual HtmlElement* GetStartElement() { return element_; }
+  virtual HtmlElement* GetElementIfStartEvent() { return element_; }
   virtual HtmlElement* GetNode() { return element_; }
  private:
   HtmlElement* element_;
@@ -108,7 +106,7 @@ class HtmlEndElementEvent: public HtmlEvent {
     *str += "EndElement ";
     *str += element_->tag().c_str();
   }
-  virtual HtmlElement* GetEndElement() { return element_; }
+  virtual HtmlElement* GetElementIfEndEvent() { return element_; }
   virtual HtmlElement* GetNode() { return element_; }
  private:
   HtmlElement* element_;

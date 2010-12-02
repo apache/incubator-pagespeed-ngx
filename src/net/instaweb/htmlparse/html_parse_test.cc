@@ -411,9 +411,9 @@ TEST_F(EventListManipulationTest, TestReplace) {
 
 TEST_F(EventListManipulationTest, TestInsertElementBeforeElement) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
-  EXPECT_TRUE(html_parse_.InsertElementBeforeElement(node1_, node2_));
+  html_parse_.InsertElementBeforeElement(node1_, node2_);
   CheckExpected("21");
-  EXPECT_TRUE(html_parse_.InsertElementBeforeElement(node1_, node3_));
+  html_parse_.InsertElementBeforeElement(node1_, node3_);
   CheckExpected("231");
 }
 
@@ -421,7 +421,7 @@ TEST_F(EventListManipulationTest, TestInsertElementAfterElement) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
   html_parse_.InsertElementAfterElement(node1_, node2_);
   CheckExpected("12");
-  EXPECT_TRUE(html_parse_.InsertElementAfterElement(node1_, node3_));
+  html_parse_.InsertElementAfterElement(node1_, node3_);
   CheckExpected("132");
 }
 
@@ -509,12 +509,12 @@ TEST_F(EventListManipulationTest, TestAddParentToSequence) {
 TEST_F(EventListManipulationTest, TestPrependChild) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
   HtmlElement* div = html_parse_.NewElement(NULL, html_parse_.Intern("div"));
-  EXPECT_TRUE(html_parse_.InsertElementBeforeCurrent(div));
+  html_parse_.InsertElementBeforeCurrent(div);
   CheckExpected("1<div></div>");
 
-  EXPECT_TRUE(html_parse_.PrependChild(div, node2_));
+  html_parse_.PrependChild(div, node2_);
   CheckExpected("1<div>2</div>");
-  EXPECT_TRUE(html_parse_.PrependChild(div, node3_));
+  html_parse_.PrependChild(div, node3_);
   CheckExpected("1<div>32</div>");
 
   // TODO(sligocki): Test with elements that don't explicitly end like image.
@@ -523,12 +523,12 @@ TEST_F(EventListManipulationTest, TestPrependChild) {
 TEST_F(EventListManipulationTest, TestAppendChild) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
   HtmlElement* div = html_parse_.NewElement(NULL, html_parse_.Intern("div"));
-  EXPECT_TRUE(html_parse_.InsertElementBeforeCurrent(div));
+  html_parse_.InsertElementBeforeCurrent(div);
   CheckExpected("1<div></div>");
 
-  EXPECT_TRUE(html_parse_.AppendChild(div, node2_));
+  html_parse_.AppendChild(div, node2_);
   CheckExpected("1<div>2</div>");
-  EXPECT_TRUE(html_parse_.AppendChild(div, node3_));
+  html_parse_.AppendChild(div, node3_);
   CheckExpected("1<div>23</div>");
 
   // TODO(sligocki): Test with elements that don't explicitly end like image.

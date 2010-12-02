@@ -84,6 +84,12 @@ RewriteDriver::~RewriteDriver() {
   STLDeleteElements(&filters_);
 }
 
+const char* RewriteDriver::kPassThroughRequestAttributes[3] = {
+  HttpAttributes::kIfModifiedSince,
+  HttpAttributes::kReferer,
+  HttpAttributes::kUserAgent
+};
+
 // names for Statistics variables.
 const char RewriteDriver::kResourceFetchesCached[] = "resource_fetches_cached";
 const char RewriteDriver::kResourceFetchConstructSuccesses[] =
@@ -443,7 +449,19 @@ bool RewriteDriver::FetchResource(
     callback = new ResourceDeleterCallback(output_resource, callback,
                                            resource_manager_->http_cache(),
                                            message_handler);
-    if (resource_manager_->FetchOutputResource(
+    // None of our resources ever change -- the hash of the content is embedded
+    // in the filename.  This is why we serve them with very long cache
+    // lifetimes.  However, when the user presses Reload, the browser may
+    // attempt to validate that the cached copy is still fresh by sending a GET
+    // with an If-Modified-Since header.  If this header is present, we should
+    // return a 304 Not Modified, since any representation of the resource
+    // that's in the browser's cache must be correct.
+    CharStarVector values;
+    if (request_headers.Lookup(HttpAttributes::kIfModifiedSince, &values)) {
+      response_headers->SetStatusAndReason(HttpStatus::kNotModified);
+      callback->Done(true);
+      queued = true;
+    } else if (resource_manager_->FetchOutputResource(
             output_resource, writer, response_headers, message_handler)) {
       callback->Done(true);
       queued = true;

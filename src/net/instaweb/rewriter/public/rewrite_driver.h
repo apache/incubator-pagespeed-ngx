@@ -58,6 +58,12 @@ class RewriteDriver {
   static const char kImageCompressionId[];
   static const char kJavascriptMinId[];
 
+  // A list of HTTP request headers.  These are the headers which should be
+  // passed through from the client request into the MetaData request_headers
+  // sent to the rewrite driver.  Headers not in this list will be ignored so
+  // there is no need to copy them over.
+  static const char* kPassThroughRequestAttributes[3];
+
   RewriteDriver(MessageHandler* message_handler,
                 FileSystem* file_system,
                 UrlAsyncFetcher* url_async_fetcher,

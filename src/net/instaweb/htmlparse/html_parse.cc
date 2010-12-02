@@ -285,7 +285,7 @@ void HtmlParse::SanityCheck() {
     // we see StartElement and EndElement, and we always test to make
     // sure the elements have the expected parent based on context, when
     // we can figure out what the expected parent is.
-    HtmlElement* start_element = event->GetStartElement();
+    HtmlElement* start_element = event->GetElementIfStartEvent();
     HtmlElement* actual_parent = NULL;
     if (start_element != NULL) {
       CheckEventParent(event, expect_parent, start_element->parent());
@@ -295,7 +295,7 @@ void HtmlParse::SanityCheck() {
       element_stack.push_back(start_element);
       expect_parent = start_element;
     } else {
-      HtmlElement* end_element = event->GetEndElement();
+      HtmlElement* end_element = event->GetElementIfEndEvent();
       if (end_element != NULL) {
         message_handler_->Check(end_element->end() == current_,
                                 "end_element->end() != current_");
@@ -342,11 +342,11 @@ void HtmlParse::Flush() {
   for (current_ = queue_.begin(); current_ != queue_.end(); ++current_) {
     HtmlEvent* event = *current_;
     line_number_ = event->line_number();
-    HtmlElement* element = event->GetStartElement();
+    HtmlElement* element = event->GetElementIfStartEvent();
     if (element != NULL) {
       element->set_begin(queue_.end());
     } else {
-      element = event->GetEndElement();
+      element = event->GetElementIfEndEvent();
       if (element != NULL) {
         element->set_end(queue_.end());
       } else {
@@ -363,7 +363,7 @@ void HtmlParse::Flush() {
   need_coalesce_characters_ = false;
 }
 
-bool HtmlParse::InsertElementBeforeElement(const HtmlNode* existing_node,
+void HtmlParse::InsertElementBeforeElement(const HtmlNode* existing_node,
                                            HtmlNode* new_node) {
   // begin() == queue_.end() -> this is an invalid element.
   // TODO(sligocki): Rather than checks, we should probably return this as
@@ -371,34 +371,34 @@ bool HtmlParse::InsertElementBeforeElement(const HtmlNode* existing_node,
   message_handler_->Check(existing_node->begin() != queue_.end(),
                           "InsertElementBeforeElement: existing_node invalid");
   new_node->set_parent(existing_node->parent());
-  return InsertElementBeforeEvent(existing_node->begin(), new_node);
+  InsertElementBeforeEvent(existing_node->begin(), new_node);
 }
 
-bool HtmlParse::InsertElementAfterElement(const HtmlNode* existing_node,
+void HtmlParse::InsertElementAfterElement(const HtmlNode* existing_node,
                                           HtmlNode* new_node) {
   message_handler_->Check(existing_node->end() != queue_.end(),
                           "InsertElementAfterElement: existing_node invalid");
   new_node->set_parent(existing_node->parent());
-  return InsertElementAfterEvent(existing_node->end(), new_node);
+  InsertElementAfterEvent(existing_node->end(), new_node);
 }
 
-bool HtmlParse::PrependChild(const HtmlElement* existing_parent,
+void HtmlParse::PrependChild(const HtmlElement* existing_parent,
                              HtmlNode* new_child) {
   message_handler_->Check(existing_parent->begin() != queue_.end(),
                           "PrependChild: existing_parent invalid");
   new_child->set_parent(const_cast<HtmlElement*>(existing_parent));
-  return InsertElementAfterEvent(existing_parent->begin(), new_child);
+  InsertElementAfterEvent(existing_parent->begin(), new_child);
 }
 
-bool HtmlParse::AppendChild(const HtmlElement* existing_parent,
+void HtmlParse::AppendChild(const HtmlElement* existing_parent,
                             HtmlNode* new_child) {
   message_handler_->Check(existing_parent->end() != queue_.end(),
                           "AppendChild: existing_parent invalid");
   new_child->set_parent(const_cast<HtmlElement*>(existing_parent));
-  return InsertElementBeforeEvent(existing_parent->end(), new_child);
+  InsertElementBeforeEvent(existing_parent->end(), new_child);
 }
 
-bool HtmlParse::InsertElementBeforeCurrent(HtmlNode* new_node) {
+void HtmlParse::InsertElementBeforeCurrent(HtmlNode* new_node) {
   if (deleted_current_) {
     FatalErrorHere("InsertElementBeforeCurrent after current has been "
                    "deleted.");
@@ -409,7 +409,7 @@ bool HtmlParse::InsertElementBeforeCurrent(HtmlNode* new_node) {
     // EndElement event, then that means that we are adding a new child
     // of that element.  In all other cases, we are adding a sibling.
     HtmlEvent* current_event = *current_;
-    HtmlElement* end_element = current_event->GetEndElement();
+    HtmlElement* end_element = current_event->GetElementIfEndEvent();
     if (end_element != NULL) {
       // The node pointed to by Current will be our new parent.
       new_node->set_parent(end_element);
@@ -421,28 +421,26 @@ bool HtmlParse::InsertElementBeforeCurrent(HtmlNode* new_node) {
       new_node->set_parent(node->parent());
     }
   }
-  return InsertElementBeforeEvent(current_, new_node);
+  InsertElementBeforeEvent(current_, new_node);
 }
 
-bool HtmlParse::InsertElementBeforeEvent(const HtmlEventListIterator& event,
+void HtmlParse::InsertElementBeforeEvent(const HtmlEventListIterator& event,
                                          HtmlNode* new_node) {
   need_sanity_check_ = true;
   need_coalesce_characters_ = true;
   new_node->SynthesizeEvents(event, &queue_);
-  // TODO(jmarantz): make this routine return void.
-  return true;
 }
 
-bool HtmlParse::InsertElementAfterEvent(const HtmlEventListIterator& event,
+void HtmlParse::InsertElementAfterEvent(const HtmlEventListIterator& event,
                                         HtmlNode* new_node) {
   message_handler_->Check(event != queue_.end(), "event == queue_.end()");
   HtmlEventListIterator next_event = event;
   ++next_event;
-  return InsertElementBeforeEvent(next_event, new_node);
+  InsertElementBeforeEvent(next_event, new_node);
 }
 
 
-bool HtmlParse::InsertElementAfterCurrent(HtmlNode* new_node) {
+void HtmlParse::InsertElementAfterCurrent(HtmlNode* new_node) {
   if (deleted_current_) {
     FatalErrorHere("InsertElementAfterCurrent after current has been "
                    "deleted.");
@@ -451,13 +449,12 @@ bool HtmlParse::InsertElementAfterCurrent(HtmlNode* new_node) {
     FatalErrorHere("InsertElementAfterCurrent called with queue at end.");
   }
   ++current_;
-  bool ret = InsertElementBeforeEvent(current_, new_node);
+  InsertElementBeforeEvent(current_, new_node);
 
   // We want to leave current_ pointing to the newly created element.
   --current_;
   message_handler_->Check((*current_)->GetNode() == new_node,
                           "(*current_)->GetNode() != new_node");
-  return ret;
 }
 
 bool HtmlParse::AddParentToSequence(HtmlNode* first, HtmlNode* last,
@@ -467,8 +464,8 @@ bool HtmlParse::AddParentToSequence(HtmlNode* first, HtmlNode* last,
   if (IsRewritable(first) && IsRewritable(last) &&
       (last->parent() == original_parent) &&
       (new_parent->begin() == queue_.end()) &&
-      (new_parent->end() == queue_.end()) &&
-      InsertElementBeforeEvent(first->begin(), new_parent)) {
+      (new_parent->end() == queue_.end())) {
+    InsertElementBeforeEvent(first->begin(), new_parent);
     // This sequence of checks culminated in inserting the parent's begin
     // and end before 'first'.  Now we must mutate new_parent's end pointer
     // to insert it after the last->end().  list::insert(iter) inserts
@@ -556,7 +553,7 @@ bool HtmlParse::DeleteElement(HtmlNode* node) {
 
       // Clean up any nested elements/leaves as we get to their 'end' event.
       HtmlEvent* event = *p;
-      HtmlNode* nested_node = event->GetEndElement();
+      HtmlNode* nested_node = event->GetElementIfEndEvent();
       if (nested_node == NULL) {
         nested_node = event->GetLeafNode();
       }
@@ -610,8 +607,7 @@ bool HtmlParse::DeleteSavingChildren(HtmlElement* element) {
 bool HtmlParse::ReplaceNode(HtmlNode* existing_node, HtmlNode* new_node) {
   bool replaced = false;
   if (IsRewritable(existing_node)) {
-    replaced = InsertElementBeforeElement(existing_node, new_node);
-    message_handler_->Check(replaced, "!replaced");
+    InsertElementBeforeElement(existing_node, new_node);
     replaced = DeleteElement(existing_node);
     message_handler_->Check(replaced, "!replaced");
   }

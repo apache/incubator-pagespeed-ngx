@@ -105,6 +105,16 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
   RewriteDriver* rewrite_driver = factory->NewRewriteDriver();
 
   SimpleMetaData request_headers, response_headers;
+  int n = arraysize(RewriteDriver::kPassThroughRequestAttributes);
+  for (int i = 0; i < n; ++i) {
+    const char* value = apr_table_get(
+        request->headers_in,
+        RewriteDriver::kPassThroughRequestAttributes[i]);
+    if (value != NULL) {
+      request_headers.Add(RewriteDriver::kPassThroughRequestAttributes[i],
+                          value);
+    }
+  }
   std::string output;  // TODO(jmarantz): quit buffering resource output
   StringWriter writer(&output);
   MessageHandler* message_handler = factory->message_handler();
@@ -153,6 +163,9 @@ void send_out_headers_and_body(
     request_rec* request,
     const SimpleMetaData& response_headers,
     const std::string& output) {
+  if (response_headers.status_code() != 0) {
+    request->status = response_headers.status_code();
+  }
   for (int idx = 0; idx < response_headers.NumAttributes(); ++idx) {
     const char* name = response_headers.Name(idx);
     const char* value = response_headers.Value(idx);

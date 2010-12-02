@@ -542,6 +542,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       byte_count_(NULL),
       time_duration_ms_(NULL),
       cancel_count_(NULL),
+      timeout_count_(NULL),
       timeout_ms_(timeout_ms) {
   if (statistics != NULL) {
     request_count_  =
@@ -575,6 +576,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       byte_count_(parent->byte_count_),
       time_duration_ms_(parent->time_duration_ms_),
       cancel_count_(parent->cancel_count_),
+      timeout_count_(parent->timeout_count_),
       timeout_ms_(parent->timeout_ms()) {
   mutex_ = new AprMutex(pool_);
   serf_context_ = serf_context_create(pool_);
@@ -707,7 +709,7 @@ int SerfUrlAsyncFetcher::Poll(int64 microseconds) {
         fetch->Cancel();
         p = EraseFetch(fetch);
       }
-      if (timeouts > 0) {
+      if ((timeouts > 0) && (timeout_count_ != NULL)) {
         timeout_count_->Add(timeouts);
       }
     }

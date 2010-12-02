@@ -48,6 +48,7 @@ struct HttpAttributes {
   static const char kExpires[];
   static const char kGzip[];
   static const char kHost[];
+  static const char kIfModifiedSince[];
   static const char kLastModified[];
   static const char kLocation[];
   static const char kReferer[]; // sic

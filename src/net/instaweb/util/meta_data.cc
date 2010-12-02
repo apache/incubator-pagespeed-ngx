@@ -35,6 +35,7 @@ const char HttpAttributes::kEtag[] = "Etag";
 const char HttpAttributes::kExpires[] = "Expires";
 const char HttpAttributes::kGzip[] = "gzip";
 const char HttpAttributes::kHost[] = "Host";
+const char HttpAttributes::kIfModifiedSince[] = "If-Modified-Since";
 const char HttpAttributes::kLastModified[] = "Last-Modified";
 const char HttpAttributes::kLocation[] = "Location";
 const char HttpAttributes::kReferer[] = "Referer"; // sic
@@ -77,7 +78,8 @@ const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
     case HttpStatus::kMultipleChoices         : return "Multiple Choices";
     case HttpStatus::kMovedPermanently        : return "Moved Permanently";
     case HttpStatus::kFound                   : return "Found";
-    case HttpStatus::kSeeOther                : return "Not Modified";
+    case HttpStatus::kSeeOther                : return "See Other";
+    case HttpStatus::kNotModified             : return "Not Modified";
     case HttpStatus::kUseProxy                : return "Use Proxy";
     case HttpStatus::kTemporaryRedirect       : return "OK";
 

@@ -185,7 +185,8 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
     ret = (out_text_size < in_text_size);
 
     // Don't rewrite if we blanked the CSS file! (This is a parse error)
-    if (out_text_size == 0) {
+    // TODO(sligocki): Don't error if in_text is all whitespace.
+    if (out_text_size == 0 && in_text_size != 0) {
       ret = false;
       html_parse_->InfoHere("CSS parsing error in %s", id.c_str());
       if (num_parse_failures_ != NULL) {

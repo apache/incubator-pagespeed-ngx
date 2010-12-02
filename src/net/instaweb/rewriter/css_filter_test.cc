@@ -52,7 +52,8 @@ class CssFilterTest : public ResourceManagerTestBase {
   void ValidateRewriteInlineCss(const StringPiece& id,
                                 const StringPiece& css_input,
                                 const StringPiece& expected_css_output,
-                                bool expect_change) {
+                                bool expect_change,
+                                bool expect_failure) {
     static const char prefix[] =
         "<head>\n"
         "  <title>Example style outline</title>\n"
@@ -82,21 +83,16 @@ class CssFilterTest : public ResourceManagerTestBase {
     } else {
       EXPECT_EQ(0, num_files_minified_->Get());
       EXPECT_EQ(0, minified_bytes_saved_->Get());
-      // TODO(sligocki): Take the options to test this.
-      //EXPECT_EQ(1, num_parse_failures_->Get());
+      EXPECT_EQ((expect_failure ? 1 : 0), num_parse_failures_->Get()) << id;
     }
-  }
-
-  void ValidateNoChangeInlineCss(const StringPiece& id,
-                                 const StringPiece& css_input) {
-    ValidateRewriteInlineCss(id, css_input, css_input, false);
   }
 
   // Check that external CSS gets rewritten correctly.
   void ValidateRewriteExternalCss(const StringPiece& id,
                                   const std::string& css_input,
                                   const std::string& expected_css_output,
-                                  bool expect_change) {
+                                  bool expect_change,
+                                  bool expect_failure) {
     // TODO(sligocki): Allow arbitrary URLs.
     std::string css_url = StrCat("http://test.com/", id, ".css");
 
@@ -153,7 +149,7 @@ class CssFilterTest : public ResourceManagerTestBase {
     } else {
       EXPECT_EQ(0, num_files_minified_->Get());
       EXPECT_EQ(0, minified_bytes_saved_->Get());
-      //EXPECT_EQ(1, num_parse_failures_->Get());
+      EXPECT_EQ((expect_failure ? 1 : 0), num_parse_failures_->Get()) << id;
     }
 
     // Check CSS output.
@@ -176,16 +172,23 @@ class CssFilterTest : public ResourceManagerTestBase {
                        const std::string& css_input,
                        const std::string& gold_output) {
     ValidateRewriteInlineCss(StrCat(id, "-inline"),
-                             css_input, gold_output, true);
+                             css_input, gold_output, true, false);
     ValidateRewriteExternalCss(StrCat(id, "-external"),
-                               css_input, gold_output, true);
+                               css_input, gold_output, true, false);
   }
 
   void ValidateNoChange(const StringPiece& id, const std::string& css_input) {
     ValidateRewriteInlineCss(StrCat(id, "-inline"),
-                             css_input, css_input, false);
+                             css_input, css_input, false, false);
     ValidateRewriteExternalCss(StrCat(id, "-external"),
-                               css_input, "", false);
+                               css_input, "", false, false);
+  }
+
+  void ValidateFailParse(const StringPiece& id, const std::string& css_input) {
+    ValidateRewriteInlineCss(StrCat(id, "-inline"),
+                             css_input, css_input, false, true);
+    ValidateRewriteExternalCss(StrCat(id, "-external"),
+                               css_input, "", false, true);
   }
 
 
@@ -214,24 +217,24 @@ TEST_F(CssFilterTest, RewriteEmptyCssTest) {
 
 // Make sure we don't change CSS with errors. Note: We can move these tests
 // to expected rewrites if we find safe ways to edit them.
-TEST_F(CssFilterTest, NoRewriteError) {
-  ValidateNoChange("non_unicode_charset",
-                   "a { font-family: \"\xCB\xCE\xCC\xE5\"; }");
+TEST_F(CssFilterTest, NoRewriteParseError) {
+  ValidateFailParse("non_unicode_charset",
+                    "a { font-family: \"\xCB\xCE\xCC\xE5\"; }");
   // From http://www.baidu.com/
-  ValidateNoChange("non_unicode_baidu",
-                   "#lk span {font:14px \"\xCB\xCE\xCC\xE5\"}");
+  ValidateFailParse("non_unicode_baidu",
+                    "#lk span {font:14px \"\xCB\xCE\xCC\xE5\"}");
   // From http://www.yahoo.com/
   const char confusing_value[] =
       "a { background-image:-webkit-gradient(linear, 50% 0%, 50% 100%,"
       " from(rgb(232, 237, 240)), to(rgb(252, 252, 253)));}";
-  ValidateNoChange("non_standard_value", confusing_value);
+  ValidateFailParse("non_standard_value", confusing_value);
 
-  ValidateNoChange("bad_char_in_selector", ".bold: { font-weight: bold }");
+  ValidateFailParse("bad_char_in_selector", ".bold: { font-weight: bold }");
 }
 
 TEST_F(CssFilterTest, RewriteVariousCss) {
   // Distilled examples.
-  const char* examples[] = {
+  const char* good_examples[] = {
     "a.b #c.d e#d,f:g>h+i>j{color:red}",  // .#,>+: in selectors
     "a{border:solid 1px #ccc}",  // Multiple values declaration
     "a{border:none!important}",  // !important
@@ -241,6 +244,14 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{padding:0.01em 0.25em}",  // fractions and em
     "a{-moz-border-radius-topleft:0}",  // Browser-specific (-moz)
     "a{background:none}",  // CSS Parser used to expand this.
+    };
+
+  for (int i = 0; i < arraysize(good_examples); ++i) {
+    std::string id = StringPrintf("distilled_css_good%d", i);
+    ValidateNoChange(id, good_examples[i]);
+  }
+
+  const char* fail_examples[] = {
     // http://code.google.com/p/modpagespeed/issues/detail?id=50
     "@media screen and (max-width:290px){a{color:red}}",  // CSS3 "and (...)"
     // http://code.google.com/p/modpagespeed/issues/detail?id=51
@@ -248,11 +259,12 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=66
     "a{-moz-transform:rotate(7deg)}"
     // http://code.google.com/p/modpagespeed/issues/detail?id=5
-    "a {font-family:trebuchet ms}"  // Keep space between trebuchet and ms.
+    "a{font-family:trebuchet ms}"  // Keep space between trebuchet and ms.
     };
-  for (int i = 0; i < arraysize(examples); ++i) {
-    std::string id = StringPrintf("distilled_css%d", i);
-    ValidateNoChange(id, examples[i]);
+
+  for (int i = 0; i < arraysize(fail_examples); ++i) {
+    std::string id = StringPrintf("distilled_css_fail%d", i);
+    ValidateFailParse(id, fail_examples[i]);
   }
 }
 
@@ -331,7 +343,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     ValidateRewrite(id, examples[i][0], examples[i][1]);
   }
 
-  const char* no_change_examples[] = {
+  const char* parse_fail_examples[] = {
     ".ui-datepicker-cover {\n"
     "  display: none; /*sorry for IE5*/\n"
     "  display/**/: block; /*sorry for IE5*/\n"
@@ -368,9 +380,9 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // TODO(sligocki): When this is parsed correctly, move it up to examples[][]
   };
 
-  for (int i = 0; i < arraysize(no_change_examples); ++i) {
-    std::string id = StringPrintf("complex_css_no_change%d", i);
-    ValidateNoChange(id, no_change_examples[i]);
+  for (int i = 0; i < arraysize(parse_fail_examples); ++i) {
+    std::string id = StringPrintf("complex_css_parse_fail%d", i);
+    ValidateFailParse(id, parse_fail_examples[i]);
   }
 
 }

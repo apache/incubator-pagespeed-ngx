@@ -33,8 +33,6 @@ namespace {
 // TODO(jmarantz): Check out
 // http://www.whatwg.org/specs/web-apps/current-work/multipage/
 // syntax.html#optional-tags
-//
-// TODO(jmarantz): examine doctype for xhtml for implicitly closed tags
 const char* kImplicitlyClosedHtmlTags[] = {
   "meta", "input", "link", "br", "img", "area", "hr", "wbr", "param", "?xml",
   NULL

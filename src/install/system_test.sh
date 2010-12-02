@@ -173,6 +173,12 @@ test_filter extend_cache rewrites an image tag.
 fetch_until $URL 'grep -c src.*91_WewrLtP' 1
 check $WGET_PREREQ $URL
 
+echo TEST: Cache-extended image should respond 304 to an If-Modified-Since.
+URL=$EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
+DATE=`date -R`
+$WGET_PREREQ --header "If-Modified-Since: $DATE" $URL
+check grep '"304 Not Modified"' $WGET_OUTPUT
+
 test_filter move_css_to_head does what it says on the tin.
 check $WGET_PREREQ $URL
 check grep -q "'<head><link'" $FETCHED  # link moved to head
@@ -231,6 +237,11 @@ check [ $? = 0 ]
 # Make sure the response was not gzipped.
 echo "$IMG_HEADERS" | grep -qi 'Content-Encoding: gzip'
 check [ $? != 0 ]
+IMG_URL=${IMG_URL/Puzzle/BadName}
+echo TEST: rewrite_images redirects unknown image $IMG_URL
+$WGET_PREREQ $IMG_URL;  # fails
+check grep '"307 Temporary Redirect"' $WGET_OUTPUT
+
 
 test_filter rewrite_javascript removes comments and saves a bunch of bytes.
 fetch_until $URL 'grep -c src.*1o978_K0_L' 2   # external scripts rewritten

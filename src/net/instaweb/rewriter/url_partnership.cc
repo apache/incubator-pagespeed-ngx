@@ -66,12 +66,8 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
       handler->Message(
           kInfo, "URL %s cannot be resolved relative to base URL %s",
           resource_url.c_str(), original_origin_and_path_.spec().c_str());
-    } else if (
-        // Allow this URL to be rewritten if EITHER the original
-        // resource_url matches the wildcard sequence *OR* the
-        // resolved sequence matches.
-        !rewrite_options_->IsAllowed(resource_url) &&
-        !rewrite_options_->IsAllowed(GoogleUrl::Spec(resolved_request))) {
+    } else if (!rewrite_options_->IsAllowed(
+        GoogleUrl::Spec(resolved_request))) {
       handler->Message(kInfo,
                        "Rewriting URL %s is disallowed via configuration",
                        GoogleUrl::Spec(resolved_request).c_str());
