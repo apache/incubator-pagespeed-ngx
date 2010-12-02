@@ -196,7 +196,6 @@
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/jsminify/js_minify.gyp:pagespeed_jsminify',
-        '<(DEPTH)/third_party/libpagespeed/src/third_party/jsmin/jsmin.gyp:jsmin',
       ],
       'sources': [
         'rewriter/javascript_code_block.cc',

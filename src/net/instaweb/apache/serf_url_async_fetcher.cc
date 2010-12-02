@@ -290,6 +290,11 @@ class SerfFetch {
         add = true;
       } else if (strcasecmp(name, HttpAttributes::kReferer) == 0) {
         add = true;
+      } else if (strcasecmp(name, HttpAttributes::kHost) == 0) {
+        // Note: this will append the specified Host to the one from
+        // the URL.  Serf provides no obvious mechanism to replace
+        // an attribute value that it added automatically as a default.
+        add = true;
       }
       if (add) {
         serf_bucket_headers_setn(hdrs_bkt, name, value);
