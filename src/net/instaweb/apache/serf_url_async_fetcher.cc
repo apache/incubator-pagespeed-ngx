@@ -51,6 +51,17 @@ const int kBufferSize = 2048;
 const char kFetchMethod[] = "GET";
 }  // namespace
 
+extern "C" {
+  // Declares a new function added to
+  // src/third_party/serf/instaweb_context.c
+serf_bucket_t* serf_request_bucket_request_create_for_host(
+    serf_request_t *request,
+    const char *method,
+    const char *uri,
+    serf_bucket_t *body,
+    serf_bucket_alloc_t *allocator, const char* host);
+}
+
 namespace net_instaweb {
 
 const char SerfStats::kSerfFetchRequestCount[] = "serf_fetch_request_count";
@@ -268,10 +279,27 @@ class SerfFetch {
     SerfFetch* fetch = static_cast<SerfFetch*>(setup_baton);
     const char* url_path = apr_uri_unparse(pool, &fetch->url_,
                                            APR_URI_UNP_OMITSITEPART);
-    *req_bkt = serf_request_bucket_request_create(
+
+    // If there is an explicit Host header, then override the
+    // host field in the Serf structure, as we will not be able
+    // to override it after it is created; only append to it.
+    //
+    // Serf automatically populates the Host field based on the
+    // URL, and provides no mechanism way to override it, except
+    // by hacking source.  We hacked source.
+    //
+    // See src/third_party/serf/src/instaweb_context.c
+    CharStarVector v;
+    const char* host = NULL;
+    if (fetch->request_headers_.Lookup(HttpAttributes::kHost, &v) &&
+        (v.size() == 1)) {
+      host = v[0];
+    }
+
+    *req_bkt = serf_request_bucket_request_create_for_host(
         request, kFetchMethod,
         url_path, NULL,
-        serf_request_get_alloc(request));
+        serf_request_get_alloc(request), host);
     serf_bucket_t* hdrs_bkt = serf_bucket_request_get_headers(*req_bkt);
 
     bool found_user_agent = false;
@@ -289,11 +317,6 @@ class SerfFetch {
       } else if (strcasecmp(name, HttpAttributes::kAcceptEncoding) == 0) {
         add = true;
       } else if (strcasecmp(name, HttpAttributes::kReferer) == 0) {
-        add = true;
-      } else if (strcasecmp(name, HttpAttributes::kHost) == 0) {
-        // Note: this will append the specified Host to the one from
-        // the URL.  Serf provides no obvious mechanism to replace
-        // an attribute value that it added automatically as a default.
         add = true;
       }
       if (add) {

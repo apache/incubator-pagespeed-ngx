@@ -27,6 +27,7 @@
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [
+        '<(serf_root)/instaweb_context.c',
         '<(serf_src)/context.c',
         '<(serf_src)/buckets/aggregate_buckets.c',
         '<(serf_src)/buckets/allocator.c',
