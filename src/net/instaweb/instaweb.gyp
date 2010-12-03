@@ -36,7 +36,6 @@
         'util/cache_interface.cc',
         'util/cache_url_async_fetcher.cc',
         'util/cache_url_fetcher.cc',
-        'util/content_type.cc',
         'util/data_url.cc',
         'util/dummy_url_fetcher.cc',
         'util/fake_url_async_fetcher.cc',

@@ -25,6 +25,7 @@
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
+        'util/content_type.cc',
         'util/file_message_handler.cc',
         'util/google_message_handler.cc',
         'util/google_url.cc',
@@ -52,6 +53,7 @@
       'dependencies': [
         'instaweb_util_core',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/build/temp_gyp/googleurl.gyp:googleurl',
       ],
       'sources': [
         'htmlparse/doctype.cc',
@@ -102,6 +104,22 @@
           '<(DEPTH)',
         ],
       },
+    },
+    # We build this target to make sure that we don't accidentially
+    # introduce dependencies from the core libraries to non-core
+    # libraries.
+    {
+      'target_name': 'html_minifier_main',
+      'type': 'executable',
+      'dependencies': [
+        '<(DEPTH)/base/base.gyp:base',
+        'instaweb_util_core',
+	'instaweb_htmlparse_core',
+	'instaweb_rewriter_html',
+      ],
+      'sources': [
+        'rewriter/html_minifier_main.cc',
+      ],
     },
   ],
 }
