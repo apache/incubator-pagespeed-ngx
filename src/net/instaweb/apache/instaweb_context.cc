@@ -47,8 +47,7 @@ InstawebContext::InstawebContext(request_rec* request,
     // We need to do this because we are changing RewriteDriver to keep
     // a reference to its options throughout its lifetime to refer to the
     // domain lawyer and other options.
-    RewriteOptions empty_options;
-    rewrite_options_.Merge(empty_options, custom_options);  // we lack a Copy...
+    rewrite_options_.CopyFrom(custom_options);
     custom_rewriter_.reset(factory->NewCustomRewriteDriver(rewrite_options_));
     rewrite_driver_ = custom_rewriter_.get();
   } else {

@@ -76,6 +76,7 @@ TEST_F(UrlEscaperTest, TestUrls) {
   CheckEncoding("http://www.google.com");
   // Test encoding of % and lack of leading http:// (beware of double encoding):
   CheckEncoding("//web.mit.edu/foo.cgi?bar%baz");
+  CheckEncoding("http://x.com/images/hacks.js.pagespeed.jm.GSLMcHP-fl.js");
   CheckEncoding("http://www.foo.bar/z1234/b_c.d?e=f&g=h");
   CheckEncoding("http://china.com/\u591a\u5e74\u7ecf\u5178\u5361\u7247\u673a");
   CheckEncoding("http://中国 汪 世 孟");
@@ -119,6 +120,9 @@ TEST_F(UrlEscaperTest, TestEncoding) {
   EXPECT_EQ(",,", Encode(","));
   EXPECT_EQ(",q", Encode("?"));
   EXPECT_EQ(",a", Encode("&"));
+  EXPECT_EQ(",M", Encode(".pagespeed."));
+  EXPECT_EQ(",hx.com,_images,_hacks.js,Mjm.GSLMcHP-fl.js",
+            Encode("http://x.com/images/hacks.js.pagespeed.jm.GSLMcHP-fl.js"));
 
   // Other characters are simply hexified.
   EXPECT_EQ(",3A", Encode(":"));

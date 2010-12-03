@@ -227,6 +227,10 @@ class RewriteOptions {
     return allow_resources_.Match(url);
   }
 
+  void CopyFrom(const RewriteOptions& src) {
+    Merge(src, src);  // We lack a better implementation of Copy.
+  }
+
  private:
   // Helper class to represent an Option, whose value is held in some class T.
   // An option is explicitly initialized with its default value, although the

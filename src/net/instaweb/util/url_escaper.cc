@@ -62,7 +62,8 @@ void UrlEscaper::EncodeToUrlSegment(const StringPiece& in,
   for (StringPiece src = in; src.size() != 0; ) {
     // We need to check for common prefixes that begin with pass-through
     // characters before doing the isalnum check.
-    if (!ReplaceSubstring("http://", ",h", &src, url_segment)) {
+    if (!ReplaceSubstring("http://", ",h", &src, url_segment) &&
+        !ReplaceSubstring(".pagespeed.", ",M", &src, url_segment)) {
       char c = src[0];
       if (isalnum(c) || (strchr(kPassThroughChars, c) != NULL)) {
         url_segment->append(1, c);
@@ -104,6 +105,7 @@ bool UrlEscaper::DecodeFromUrlSegment(const StringPiece& url_segment,
         case '-': *out += "\\"; break;
         case ',': *out += ","; break;
         case 'a': *out += "&"; break;
+        case 'M': *out += ".pagespeed."; break;
         case 'P': *out += "%"; break;
         case 'q': *out += "?"; break;
         case 'u': *out += "^"; break;
