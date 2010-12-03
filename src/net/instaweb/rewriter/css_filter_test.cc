@@ -342,6 +342,10 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=121
     { "body { font: 2em sans-serif; }", "body{font:2em sans-serif}" },
     { "body { font: 0.75em sans-serif; }", "body{font:0.75em sans-serif}" },
+
+    // http://code.google.com/p/modpagespeed/issues/detail?id=128
+    { "#breadcrumbs ul { list-style-type: none; }",
+      "#breadcrumbs ul{list-style-type:none}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

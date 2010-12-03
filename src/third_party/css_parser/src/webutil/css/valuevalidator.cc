@@ -205,7 +205,8 @@ static struct valid_prop_info_t {
 
   { { Property::CONTENT, kEndProp },
     { Value::STRING, Value::URI, Value::COUNTER, Value::FUNCTION, kEndType },
-    { Identifier::NORMAL, Identifier::NONE, Identifier::OPEN_QUOTE,
+    { Identifier::NORMAL, Identifier::NONE,
+      Identifier::OPEN_QUOTE, Identifier::CLOSE_QUOTE,
       Identifier::NO_OPEN_QUOTE, Identifier::NO_CLOSE_QUOTE, kEndIdent },
   },
 
@@ -230,7 +231,8 @@ static struct valid_prop_info_t {
       Identifier::LOWER_ROMAN, Identifier::UPPER_ROMAN,
       Identifier::LOWER_GREEK, Identifier::LOWER_LATIN,
       Identifier::UPPER_LATIN, Identifier::ARMENIAN, Identifier::GEORGIAN,
-      Identifier::LOWER_ALPHA, Identifier::UPPER_ALPHA, kEndIdent },
+      Identifier::LOWER_ALPHA, Identifier::UPPER_ALPHA,
+      Identifier::NONE, kEndIdent },
   },
   { { Property::LIST_STYLE, kEndProp },
     { Value::URI, kEndType },

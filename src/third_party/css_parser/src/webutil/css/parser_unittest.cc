@@ -1436,4 +1436,13 @@ TEST_F(ParserTest, MediaError) {
   EXPECT_EQ(Parser::kMediaError, p.errors_seen_mask());
 }
 
+TEST_F(ParserTest, AcceptCorrectValues) {
+  // http://code.google.com/p/modpagespeed/issues/detail?id=128
+  Parser p("list-style-type: none");
+  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
+  EXPECT_EQ(1, declarations->size());
+  EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
+  EXPECT_EQ("list-style-type: none", declarations->ToString());
+}
+
 }  // namespace
