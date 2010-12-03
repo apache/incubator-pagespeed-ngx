@@ -42,19 +42,17 @@ inline std::string Integer64ToString(int64 i) {
 }
 
 inline bool StringToInt(const char* in, int* out) {
-  // Chromium lacks StringToInt(const char*...).
-  char* endptr = NULL;
-  long long_val = strtol(const_cast<char*>(in), &endptr, 10);
-  *out = long_val;
-  return ((endptr != NULL) && (*endptr == '\0') &&
-          (long_val <= INT_MAX) && (long_val >= INT_MIN));
+  // TODO(bmcquade): Use char*-based StringToInt once we sync the
+  // Chromium repository.
+  std::string str(in);
+  return base::StringToInt(str, out);
 }
 
 inline bool StringToInt64(const char* in, int64* out) {
-  // Chromium lacks StringToInt(const char*...).
-  char* endptr = NULL;
-  *out = strtoll(const_cast<char*>(in), &endptr, 10);
-  return ((endptr != NULL) && (*endptr == '\0'));
+  // TODO(bmcquade): Use char*-based StringToInt64 once we sync the
+  // Chromium repository.
+  std::string str(in);
+  return base::StringToInt64(str, out);
 }
 
 inline bool StringToInt(const std::string& in, int* out) {
