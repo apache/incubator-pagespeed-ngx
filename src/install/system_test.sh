@@ -179,6 +179,10 @@ DATE=`date -R`
 $WGET_PREREQ --header "If-Modified-Since: $DATE" $URL
 check grep '"304 Not Modified"' $WGET_OUTPUT
 
+echo TEST: Legacy format URLs should still work.
+URL=$EXAMPLE_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
+check "$WGET_DUMP $URL" | grep -q "HTTP/1.1 200 OK"
+
 test_filter move_css_to_head does what it says on the tin.
 check $WGET_PREREQ $URL
 check grep -q "'<head><link'" $FETCHED  # link moved to head
@@ -253,5 +257,7 @@ check grep -q preserved $FETCHED          # preserves certain comments
 # rewritten JS is cache-extended
 check grep -qi "'Cache-control: max-age=31536000'" $WGET_OUTPUT
 check grep -qi "'Expires:'" $WGET_OUTPUT
+
+# Cleanup
 rm -rf $OUTDIR
 echo "PASS."

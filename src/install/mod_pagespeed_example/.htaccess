@@ -5,3 +5,12 @@
 ModPagespeed on
 ModPagespeedEnableFilters combine_css
 ModPagespeedJsOutlineMinBytes        3000
+ModPagespeedDisallow *
+ModPagespeedAllow http://*/images/*.png
+ModPagespeedAllow http://*/images/*.jpg
+ModPagespeedAllow http://*/styles/*.css
+ModPagespeedAllow http://*/*.js
+ModPagespeedDisallow */images/captcha/*
+ModPagespeedMapRewriteDomain rewrite_to_domain rewrite_from_domain
+ModPagespeedMapOriginDomain origin_to_domain origin_from_domain
+ModPagespeedDomain my_domain

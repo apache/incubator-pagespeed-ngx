@@ -52,6 +52,7 @@ TEST_F(ContentTypeTest, TestExtensions) {
 
 TEST_F(ContentTypeTest, TestMimeType) {
   EXPECT_EQ(ContentType::kHtml,       MimeToType("text/html"));
+  EXPECT_EQ(ContentType::kHtml,       MimeToType("text/html; charset=UTF-8"));
   EXPECT_EQ(ContentType::kXhtml,      MimeToType("application/xhtml+xml"));
   EXPECT_EQ(ContentType::kCeHtml,     MimeToType("application/ce-html+xml"));
   EXPECT_EQ(ContentType::kJavascript, MimeToType("text/javascript"));

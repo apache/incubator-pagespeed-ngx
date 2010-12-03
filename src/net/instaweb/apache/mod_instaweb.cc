@@ -247,8 +247,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(
       request->server);
   scoped_ptr<RewriteOptions> custom_options;
-  RewriteOptions* options = factory->options();
-  RewriteOptions* config_options = config->options();
+  const RewriteOptions* options = factory->options();
+  const RewriteOptions* config_options = config->options();
   bool use_custom_options = false;
 
   if (config_options->modified()) {
@@ -312,6 +312,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   }
 
   RewriteOptions query_options;
+  query_options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   if (ScanQueryParamsForRewriterOptions(
           factory, query_params, &query_options)) {
     use_custom_options = true;

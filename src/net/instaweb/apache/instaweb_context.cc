@@ -48,7 +48,7 @@ InstawebContext::InstawebContext(request_rec* request,
     // a reference to its options throughout its lifetime to refer to the
     // domain lawyer and other options.
     RewriteOptions empty_options;
-    rewrite_options_.Merge(custom_options, empty_options);  // we lack a Copy...
+    rewrite_options_.Merge(empty_options, custom_options);  // we lack a Copy...
     custom_rewriter_.reset(factory->NewCustomRewriteDriver(rewrite_options_));
     rewrite_driver_ = custom_rewriter_.get();
   } else {
@@ -101,6 +101,21 @@ void InstawebContext::Rewrite(const char* input, int size) {
   }
 }
 
+namespace {
+
+// http://en.wikipedia.org/wiki/Byte_order_mark
+//
+// The byte-order marker sequence will typically appear at the beginning of
+// an HTML or XML file.  We probably should be order-sensitive but for now
+// we will just treat all such characters as allowable characters preceding
+// the HTML.  Note the use of unsigned char here to avoid sign-extending when
+// comparing to the int constants.
+inline bool IsByteOrderMarkerCharacter(unsigned char c) {
+  return ((c == 0xef) || (c == 0xbb) || (c == 0xbf));
+}
+
+}  // namespace
+
 void InstawebContext::ProcessBytes(const char* input, int size) {
   // Try to figure out whether this looks like HTML or not, if we haven't
   // figured it out already.  We just scan past whitespace for '<'.
@@ -110,7 +125,7 @@ void InstawebContext::ProcessBytes(const char* input, int size) {
       content_detection_state_ = kHtml;
       rewrite_driver_->html_parse()->StartParseWithType(absolute_url_,
                                                         content_type_);
-    } else if (!isspace(c)) {
+    } else if (!isspace(c) && !IsByteOrderMarkerCharacter(c)) {
       // TODO(jmarantz): figure out whether it's possible to remove our
       // filter from the chain entirely.
       //

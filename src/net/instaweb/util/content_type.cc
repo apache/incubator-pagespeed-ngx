@@ -107,8 +107,23 @@ const ContentType* NameExtensionToContentType(const StringPiece& name) {
 const ContentType* MimeTypeToContentType(const StringPiece& mime_type) {
   // TODO(jmarantz): convert to a map if the list gets large.
   const ContentType* res = NULL;
+
+  // The content-type can have a "; charset=...".  We are not interested
+  // in that, for the purpose of our ContentType object.
+  //
+  // TODO(jmarantz): we should be grabbing the encoding, however, and
+  // saving it so that when we emit content-type headers for resources,
+  // they include the proper encoding.
+  StringPiece stripped_mime_type;
+  StringPiece::size_type semi_colon = mime_type.find(';');
+  if (semi_colon == StringPiece::npos) {
+    stripped_mime_type = mime_type;
+  } else {
+    stripped_mime_type = mime_type.substr(0, semi_colon);
+  }
+
   for (int i = 0; i < kNumTypes; ++i) {
-    if (StringCaseEqual(mime_type, kTypes[i].mime_type())) {
+    if (StringCaseEqual(stripped_mime_type, kTypes[i].mime_type())) {
       res = &kTypes[i];
       break;
     }
