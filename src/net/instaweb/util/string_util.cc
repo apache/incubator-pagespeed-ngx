@@ -97,7 +97,7 @@ void ParseShellLikeString(const StringPiece& input,
     const char ch = input[index];
     // If we see a quoted section, treat it as a single item even if there are
     // spaces in it.
-    if (ch == '"' or ch == '\'') {
+    if (ch == '"' || ch == '\'') {
       const char quote = ch;
       ++index;  // skip open quote
       output->push_back("");
