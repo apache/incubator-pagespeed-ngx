@@ -827,6 +827,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Javascript resources will be outlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImgInlineMaxBytes,
         "Number of bytes below which images will be inlined."),
+  APACHE_CONFIG_OPTION(kModPagespeedImgMaxRewritesAtOnce,
+        "Set bound on number of images being rewritten at one time (0 = unbounded)."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJsInlineMaxBytes,
         "Number of bytes below which javascript will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCssInlineMaxBytes,
