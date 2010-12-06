@@ -346,6 +346,11 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=128
     { "#breadcrumbs ul { list-style-type: none; }",
       "#breadcrumbs ul{list-style-type:none}" },
+
+    // http://code.google.com/p/modpagespeed/issues/detail?id=126
+    // Extra spaces assure that we actually rewrite the first arg even if
+    // font: is expanded by parser.
+    { ".menu { font: menu; }               ", ".menu{font:menu}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

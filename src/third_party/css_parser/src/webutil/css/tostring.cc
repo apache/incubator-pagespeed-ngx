@@ -212,7 +212,10 @@ string Declaration::ToString() const {
       result += JoinElementStrings(*values(), ",");
       break;
     case Property::FONT:
-      if (values()->size() < 5) {
+      if (values()->size() == 1) {
+        // Special one-value font: notations like "font: menu".
+        result += values()->ToString();
+      } else if (values()->size() < 5) {
         result += "bad";
       } else {
         string tmp;

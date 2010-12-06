@@ -999,16 +999,6 @@ Values* Parser::ParseFont() {
   DCHECK_LT(in_, end_);
 
   scoped_ptr<Values> values(new Values);
-  scoped_ptr<Value> font_style(new Value(Identifier(Identifier::NORMAL)));
-  scoped_ptr<Value> font_variant(new Value(Identifier(Identifier::NORMAL)));
-  scoped_ptr<Value> font_weight(new Value(Identifier(Identifier::NORMAL)));
-  // font_size is a required value unless font is set to one of the special
-  // values (caption, icon, menu, message_box, small_caption, status_bar)
-  // In this case, the actual font size will depend on browser, this is a
-  // common value found:
-  scoped_ptr<Value> font_size(new Value(32.0/3, Value::PX));
-  scoped_ptr<Value> line_height(new Value(Identifier(Identifier::NORMAL)));
-  scoped_ptr<Value> font_family;
 
   if (!SkipToNextToken())
     return NULL;
@@ -1016,6 +1006,8 @@ Values* Parser::ParseFont() {
   scoped_ptr<Value> v(ParseAny());
   if (!v.get()) return NULL;
 
+  // For special one-valued font: notations, just return with that one value.
+  // Note: these can be expanded by ExpandShorthandProperties
   if (v->GetLexicalUnitType() == Value::IDENT) {
     switch (v->GetIdentifier().ident()) {
       case Identifier::CAPTION:
@@ -1024,32 +1016,25 @@ Values* Parser::ParseFont() {
       case Identifier::MESSAGE_BOX:
       case Identifier::SMALL_CAPTION:
       case Identifier::STATUS_BAR:
-        font_family.reset(v.release());
-        break;
       case Identifier::INHERIT:
-        font_style.reset(new Value(*v));
-        font_variant.reset(new Value(*v));
-        font_weight.reset(new Value(*v));
-        font_size.reset(new Value(*v));
-        line_height.reset(new Value(*v));
-        font_family.reset(v.release());
-        break;
+        // These special identifiers must be the only one in a declaration.
+        // Fail if there are others.
+        // TODO(sligocki): We should probably raise an error here.
+        if (SkipToNextToken()) return NULL;
+        // If everything is good, push these out.
+        values->push_back(v.release());
+        return values.release();
       default:
         break;
     }
   }
 
-  if (font_family.get()) {
-    // shouldn't seen more tokens if system font name or inherit has been seen
-    if (SkipToNextToken()) return NULL;
-    values->push_back(font_style.release());
-    values->push_back(font_variant.release());
-    values->push_back(font_weight.release());
-    values->push_back(font_size.release());
-    values->push_back(line_height.release());
-    values->push_back(font_family.release());
-    return values.release();
-  }
+  scoped_ptr<Value> font_style(new Value(Identifier::NORMAL));
+  scoped_ptr<Value> font_variant(new Value(Identifier::NORMAL));
+  scoped_ptr<Value> font_weight(new Value(Identifier::NORMAL));
+  scoped_ptr<Value> font_size(new Value(Identifier::MEDIUM));
+  scoped_ptr<Value> line_height(new Value(Identifier::NORMAL));
+  scoped_ptr<Value> font_family;
 
   // parse style, variant and weight
   while (true) {
@@ -1163,11 +1148,53 @@ static void ExpandShorthandProperties(Declarations* declarations,
   Property prop = declaration.property();
   const Values* vals = declaration.values();
   bool important = declaration.IsImportant();
+
+  // Buffer to build up values used instead of vals above.
+  scoped_ptr<Values> edit_vals;
   switch (prop.prop()) {
     case Property::FONT: {
+      // Expand the value vector for special font: values.
+      if (vals->size() == 1) {
+        const Value* val = vals->at(0);
+        switch (val->GetIdentifier().ident()) {
+          case Identifier::CAPTION:
+          case Identifier::ICON:
+          case Identifier::MENU:
+          case Identifier::MESSAGE_BOX:
+          case Identifier::SMALL_CAPTION:
+          case Identifier::STATUS_BAR:
+            edit_vals.reset(new Values());
+            // Reasonable defaults to use for special font: declarations.
+            edit_vals->push_back(new Value(Identifier::NORMAL)); // font-style
+            edit_vals->push_back(new Value(Identifier::NORMAL)); // font-variant
+            edit_vals->push_back(new Value(Identifier::NORMAL)); // font-weight
+            // In this case, the actual font size will depend on browser,
+            // this is a common value found in IE and Firefox:
+            edit_vals->push_back(new Value(32.0/3, Value::PX));  // font-size
+            edit_vals->push_back(new Value(Identifier::NORMAL)); // line-height
+            // We store the special font type as font-family:
+            edit_vals->push_back(new Value(*val));  // font-family
+            vals = edit_vals.get();  // Move pointer to new, built-up values.
+            break;
+          case Identifier::INHERIT:
+            edit_vals.reset(new Values());
+            // font: inherit means all properties inherit.
+            edit_vals->push_back(new Value(*val));  // font-style
+            edit_vals->push_back(new Value(*val));  // font-variant
+            edit_vals->push_back(new Value(*val));  // font-weight
+            edit_vals->push_back(new Value(*val));  // font-size
+            edit_vals->push_back(new Value(*val));  // line-height
+            edit_vals->push_back(new Value(*val));  // font-family
+            vals = edit_vals.get();  // Move pointer to new, built-up values.
+            break;
+          default:
+            break;
+        }
+      }
       // Only expand valid font: declarations (ones created by ParseFont, which
       // requires at least 5 values in a specific order).
       if (vals->size() < 5) {
+        LOG(ERROR) << "font: values are not in the correct format.\n" << vals;
         break;
       }
       declarations->push_back(

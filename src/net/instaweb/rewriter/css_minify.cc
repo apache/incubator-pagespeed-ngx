@@ -188,8 +188,6 @@ std::string FontToString(const Css::Values& font_values) {
   CHECK_LE(5U, font_values.size());
   std::string tmp, result;
 
-  // TODO(sligocki): We need to special case for things like "font: menu"
-
   // font-style: defaults to normal
   tmp = font_values.get(0)->ToString();
   if (tmp != "normal") result += tmp + " ";
@@ -221,7 +219,18 @@ void CssMinify::Minify(const Css::Declaration& declaration) {
       JoinMinify(*declaration.values(), ",");
       break;
     case Css::Property::FONT:
-      Write(FontToString(*declaration.values()));
+      // font: menu special case.
+      if (declaration.values()->size() == 1) {
+        JoinMinify(*declaration.values(), " ");
+      // Normal font notation.
+      } else if (declaration.values()->size() >= 5) {
+        Write(FontToString(*declaration.values()));
+      } else {
+        handler_->Message(kError, "Unexpected number of values in "
+                          "font declaration: %d",
+                          static_cast<int>(declaration.values()->size()));
+        ok_ = false;
+      }
       break;
     default:
       JoinMinify(*declaration.values(), " ");

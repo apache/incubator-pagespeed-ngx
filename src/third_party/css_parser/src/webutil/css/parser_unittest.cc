@@ -540,25 +540,32 @@ TEST_F(ParserTest, font_family) {
 }
 
 TEST_F(ParserTest, font) {
-  scoped_ptr<Parser> a(new Parser("caption"));
-  scoped_ptr<Values> t(a->ParseFont());
-  ASSERT_EQ(6, t->size());
-  EXPECT_EQ(Identifier::NORMAL, t->get(0)->GetIdentifier().ident());
-  EXPECT_EQ(Identifier::NORMAL, t->get(1)->GetIdentifier().ident());
-  EXPECT_EQ(Identifier::NORMAL, t->get(2)->GetIdentifier().ident());
-  EXPECT_FLOAT_EQ(32.0/3, t->get(3)->GetFloatValue());
-  EXPECT_EQ(Value::PX, t->get(3)->GetDimension());
-  EXPECT_EQ(Identifier::NORMAL, t->get(4)->GetIdentifier().ident());
-  EXPECT_EQ(Identifier::CAPTION, t->get(5)->GetIdentifier().ident());
+  scoped_ptr<Parser> a(new Parser("font: caption"));
+  scoped_ptr<Declarations> declarations(a->ParseDeclarations());
+  const char expected_caption_expansion[] =
+      "font: caption; "
+      "font-style: normal; "
+      "font-variant: normal; "
+      "font-weight: normal; "
+      "font-size: 10.6667px; "
+      "line-height: normal; "
+      "font-family: caption";
+  EXPECT_EQ(expected_caption_expansion, declarations->ToString());
 
-  a.reset(new Parser("inherit"));
-  t.reset(a->ParseFont());
-  ASSERT_EQ(6, t->size());
-  for (int i = 0; i < 6; ++i)
-    EXPECT_EQ(Identifier::INHERIT, t->get(i)->GetIdentifier().ident());
+  a.reset(new Parser("font: inherit"));
+  declarations.reset(a->ParseDeclarations());
+  const char expected_inherit_expansion[] =
+      "font: inherit; "
+      "font-style: inherit; "
+      "font-variant: inherit; "
+      "font-weight: inherit; "
+      "font-size: inherit; "
+      "line-height: inherit; "
+      "font-family: inherit";
+  EXPECT_EQ(expected_inherit_expansion, declarations->ToString());
 
   a.reset(new Parser("normal 10px /120% Arial 'Sans'"));
-  t.reset(a->ParseFont());
+  scoped_ptr<Values> t(a->ParseFont());
   ASSERT_EQ(7, t->size());
   EXPECT_FLOAT_EQ(10, t->get(3)->GetFloatValue());
   EXPECT_EQ(Value::PERCENT, t->get(4)->GetDimension());
