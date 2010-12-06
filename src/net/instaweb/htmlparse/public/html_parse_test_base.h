@@ -26,8 +26,8 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
-#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/writer.h"
 
@@ -135,7 +135,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
 
   virtual HtmlParse* html_parse() = 0;
 
-  GoogleMessageHandler message_handler_;
+  MockMessageHandler message_handler_;
   StringWriter write_to_string_;
   std::string output_buffer_;
   bool added_filter_;

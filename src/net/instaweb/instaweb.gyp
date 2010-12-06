@@ -56,6 +56,7 @@
         'util/meta_data.cc',
         'util/md5_hasher.cc',
         'util/mock_hasher.cc',
+        'util/mock_message_handler.cc',
         'util/mock_timer.cc',
         'util/named_lock_manager.cc',
         'util/null_message_handler.cc',

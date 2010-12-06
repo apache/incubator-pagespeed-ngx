@@ -99,6 +99,7 @@
         'util/mem_file_system_test.cc',
         'util/message_handler_test.cc',
         'util/md5_hasher_test.cc',
+        'util/mock_message_handler_test.cc',
         'util/mock_url_fetcher.cc',
         'util/mock_url_fetcher_test.cc',
 #        'util/simple_meta_data_test.cc',

@@ -77,7 +77,7 @@ void AddHeadFilter::EndDocument() {
     // must first find the body.  If we get through the whole doc without
     // finding a <head> or a <body> then this filter will have failed to
     // add a head.
-    html_parse_->ErrorHere("Reached end of document without finding <body>");
+    html_parse_->InfoHere("Reached end of document without finding <body>");
   }
 }
 

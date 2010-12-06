@@ -35,6 +35,15 @@ TEST_F(RewriterTest, AddHead) {
       "<head/><body><p>text</p></body>");
 }
 
+TEST_F(RewriterTest, AddHeadNoBody) {
+  // Test for proper diagnostic (regression test for Issue 134)
+  AddFilter(RewriteOptions::kAddHead);
+  ValidateExpected("add_head_no_body",
+      "<p>text</p>",
+      "<p>text</p>");
+  EXPECT_EQ(0, message_handler_.SeriousMessages());
+}
+
 TEST_F(RewriterTest, MergeHead) {
   AddFilter(RewriteOptions::kCombineHeads);
   ValidateExpected("merge_2_heads",
