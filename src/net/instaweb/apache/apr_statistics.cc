@@ -13,16 +13,20 @@
 // limitations under the License.
 
 #include "net/instaweb/apache/apr_statistics.h"
+
 #include "apr_global_mutex.h"
 #include "apr_shm.h"
+#include "apr_strings.h"
 #include "apr.h"
 #include "apr_errno.h"
 #include "apr_pools.h"
+#include "apr_time.h"
+#include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/stack_buffer.h"
-#include "base/logging.h"
+
 extern "C" {
 #include "httpd.h"
 #include "http_config.h"
@@ -34,29 +38,79 @@ extern "C" {
 
 namespace {
 
-const char kStatisticsDir[] = "mod_pagespeed";
-const char kStatisticsMutexPrefix[] = "mod_pagespeed/stats_mutex.";
-const char kStatisticsValuePrefix[] = "mod_pagespeed/stats_value.";
+const char kStatisticsDir[] = "statistics";
+const char kStatisticsMutexPrefix[] = "statistics/stats_mutex.";
+const char kStatisticsValuePrefix[] = "statistics/stats_value.";
 
 }  // namespace
 
 namespace net_instaweb {
+
+#define COUNT_LOCK_WAIT_TIME 0
+#if COUNT_LOCK_WAIT_TIME
+// Unlocked counter, which is reasonably safe on x86 if it's 32-bit, which
+// is good for over hour of of locked time, which is good enough for
+// experiments, particularly on a prefork system where the only extra
+// thread is the one from serf.
+static uint32 accumulated_time_in_global_locks_us = 0;
+static uint32 prev_message_us = 0;
+#endif
+
+// Helper class for lexically scoped mutexing.
+// TODO(jmarantz): consier merging this with ScopedLock.
+class AprScopedGlobalLock {
+ public:
+  explicit AprScopedGlobalLock(const AprVariable* var) : variable_(var) {
+    if (variable_->mutex_ == NULL) {
+      acquired_ = false;
+    } else {
+#if COUNT_LOCK_WAIT_TIME
+      int64 time_us = apr_time_now();
+#endif
+      acquired_ = variable_->CheckResult(
+          apr_global_mutex_lock(variable_->mutex_), "lock mutex");
+#if COUNT_LOCK_WAIT_TIME
+      int64 delta_us = apr_time_now() - time_us;
+      if (delta_us > 0) {
+        accumulated_time_in_global_locks_us += delta_us;
+        if ((accumulated_time_in_global_locks_us - prev_message_us) > 1000000) {
+          // race condition is possible here
+          prev_message_us = accumulated_time_in_global_locks_us;
+          double time_wasted_seconds = accumulated_time_in_global_locks_us
+              / 1000000.0;
+          LOG(ERROR) << "Cumulative locked time spent: " << time_wasted_seconds
+                     << "seconds";
+        }
+      }
+#endif
+    }
+  }
+
+  ~AprScopedGlobalLock() {
+    if (acquired_) {
+      variable_->CheckResult(
+          apr_global_mutex_unlock(variable_->mutex_), "unlock mutex");
+    }
+  }
+
+  bool acquired() const { return acquired_; }
+
+ private:
+  const AprVariable* variable_;
+  bool acquired_;
+
+  DISALLOW_COPY_AND_ASSIGN(AprScopedGlobalLock);
+};
+
+
 
 AprVariable::AprVariable(const StringPiece& name)
     : mutex_(NULL), name_(name.as_string()), shm_(NULL), value_ptr_(NULL) {
 }
 
 int64 AprVariable::Get64() const {
-  int64 value = -1;
-  if (mutex_ == NULL) {
-    // This variable was not properly initialized.
-    return value;
-  }
-  if (!CheckResult(apr_global_mutex_lock(mutex_), "lock mutex")) {
-    return value;
-  }
-  value = *value_ptr_;
-  CheckResult(apr_global_mutex_unlock(mutex_), "unlock mutex");
+  AprScopedGlobalLock lock(this);
+  int64 value = lock.acquired() ? *value_ptr_ : -1;
   return value;
 }
 
@@ -65,27 +119,17 @@ int AprVariable::Get() const {
 }
 
 void AprVariable::Set(int newValue) {
-  if (mutex_ == NULL) {
-    // This variable was not properly initialized.
-    return;
+  AprScopedGlobalLock lock(this);
+  if (lock.acquired()) {
+    *value_ptr_ = newValue;
   }
-  if (!CheckResult(apr_global_mutex_lock(mutex_), "lock mutex")) {
-    return;
-  }
-  *value_ptr_ = newValue;
-  CheckResult(apr_global_mutex_unlock(mutex_), "unlock mutex");
 }
 
 void AprVariable::Add(int delta) {
-  if (mutex_ == NULL) {
-    // This variable was not properly initialized.
-    return;
+  AprScopedGlobalLock lock(this);
+  if (lock.acquired()) {
+    *value_ptr_ += delta;
   }
-  if (!CheckResult(apr_global_mutex_lock(mutex_), "lock mutex")) {
-    return;
-  }
-  *value_ptr_ += delta;
-  CheckResult(apr_global_mutex_unlock(mutex_), "unlock mutex");
 }
 
 bool AprVariable::CheckResult(
@@ -101,15 +145,17 @@ bool AprVariable::CheckResult(
   return true;
 }
 
-bool AprVariable::InitMutex(apr_pool_t* pool, bool parent) {
+bool AprVariable::InitMutex(const StringPiece& filename_prefix,
+                            apr_pool_t* pool, bool parent) {
   // Create or attach to the mutex if we don't have one already.
-  const char* filename = ap_server_root_relative(
-      pool, StrCat(kStatisticsMutexPrefix, name_).c_str());
+  const char* filename = apr_pstrcat(
+      pool, filename_prefix.as_string().c_str(), kStatisticsMutexPrefix,
+      name_.c_str(), NULL);
   if (parent) {
     // We're being called from post_config.  Must create mutex.
     // Ensure the directory exists
-    apr_dir_make(ap_server_root_relative(
-        pool, kStatisticsDir), APR_FPROT_OS_DEFAULT, pool);
+    apr_dir_make(StrCat(filename_prefix, kStatisticsDir).c_str(),
+                 APR_FPROT_OS_DEFAULT, pool);
     // TODO(abliss): do we need to destroy this mutex later?
     if (CheckResult(apr_global_mutex_create(
             &mutex_, filename, APR_LOCK_DEFAULT, pool),
@@ -141,12 +187,14 @@ bool AprVariable::InitMutex(apr_pool_t* pool, bool parent) {
   return false;
 }
 
-bool AprVariable::InitShm(apr_pool_t* pool, bool parent) {
+bool AprVariable::InitShm(const StringPiece& filename_prefix,
+                          apr_pool_t* pool, bool parent) {
   // On some platforms we inherit the existing segment...
   if (!shm_) {
     // ... but on others we must reattach to it.
-    const char* filename = ap_server_root_relative(
-        pool, StrCat(kStatisticsValuePrefix, name_).c_str());
+    const char* filename = apr_pstrcat(
+        pool, filename_prefix.as_string().c_str(), kStatisticsValuePrefix,
+        name_.c_str(), NULL);
     if (parent) {
       // Sometimes the shm/file are leftover from a previous unclean exit.
       apr_shm_remove(filename, pool);
@@ -172,7 +220,13 @@ bool AprVariable::InitShm(apr_pool_t* pool, bool parent) {
   }
 }
 
-AprStatistics::AprStatistics() : frozen_(false) {
+AprStatistics::AprStatistics(const StringPiece& filename_prefix)
+    : frozen_(false), filename_prefix_(filename_prefix) {
+  apr_pool_create(&pool_, NULL);
+}
+
+AprStatistics::~AprStatistics() {
+  apr_pool_destroy(pool_);
 }
 
 AprVariable* AprStatistics::NewVariable(const StringPiece& name, int index) {
@@ -185,21 +239,20 @@ AprVariable* AprStatistics::NewVariable(const StringPiece& name, int index) {
   }
 }
 
-// TODO(abliss): What is the lifetime of this pool? Are we leaking memory?
-void AprStatistics::InitVariables(apr_pool_t* pool, bool parent) {
+void AprStatistics::InitVariables(bool parent) {
   if (frozen_) {
     return;
   }
+  frozen_ = true;
   // Set up a global mutex and a shared-memory segment for each variable.
   for (int i = 0, n = variables_.size(); i < n; ++i) {
     AprVariable* var = variables_[i];
-    if (!var->InitMutex(pool, parent) ||
-        !var->InitShm(pool, parent)) {
-      LOG(ERROR) << "Variable " << var->name() << " will not increment in PID "
-                 << getpid();
+    if (!var->InitMutex(filename_prefix_, pool_, parent) ||
+        !var->InitShm(filename_prefix_, pool_, parent)) {
+      LOG(ERROR) << "Statistics initialization failed in pid " << getpid();
+      return;
     }
   }
-  frozen_ = true;
 }
 
 void AprStatistics::Dump(Writer* writer, MessageHandler* message_handler) {

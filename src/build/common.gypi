@@ -65,5 +65,20 @@
         },
       }],
     ],
+
+    # Permit building us with coverage information
+    'configurations': {
+      'Debug_Coverage': {
+        'inherit_from': ['Debug'],
+        'cflags': [
+          '-ftest-coverage',
+          '-fprofile-arcs',
+        ],
+        'ldflags': [
+          # takes care of -lgcov for us, but can be in a build configuration
+          '-ftest-coverage -fprofile-arcs',
+        ],
+      },
+    },
   },
 }

@@ -123,6 +123,16 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
     output_buffer_.clear();
   }
 
+  // Same as ValidateExpected, but with an explicit URL rather than an id.
+  void ValidateExpectedUrl(const StringPiece& url,
+                           const std::string& html_input,
+                           const std::string& expected) {
+    ParseUrl(url, html_input);
+    std::string xbody = doctype_string_ + AddHtmlBody(expected);
+    EXPECT_EQ(xbody, output_buffer_);
+    output_buffer_.clear();
+  }
+
   // Fail to ValidateExpected.
   void ValidateExpectedFail(const StringPiece& case_id,
                             const std::string& html_input,

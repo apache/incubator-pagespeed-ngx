@@ -35,7 +35,7 @@ class SerfUrlFetcher;
 // Creates an Apache RewriteDriver.
 class ApacheRewriteDriverFactory : public RewriteDriverFactory {
  public:
-  explicit ApacheRewriteDriverFactory(apr_pool_t* pool, server_rec* server,
+  explicit ApacheRewriteDriverFactory(server_rec* server,
                                       const StringPiece& version);
   virtual ~ApacheRewriteDriverFactory();
 
@@ -67,6 +67,11 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   int64 fetcher_time_out_ms() { return fetcher_time_out_ms_; }
   AprStatistics* statistics() { return statistics_; }
   void set_statistics(AprStatistics* x) { statistics_ = x; }
+  void set_statistics_enabled(bool x) { statistics_enabled_ = x; }
+  bool statistics_enabled() const { return statistics_enabled_; }
+
+  // Relinquish all static data
+  static void Terminate();
 
  protected:
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -117,6 +122,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   std::string file_cache_path_;
   std::string fetcher_proxy_;
   std::string version_;
+  bool statistics_enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };

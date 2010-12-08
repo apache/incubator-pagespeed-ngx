@@ -99,6 +99,9 @@
     #       SetHandler mod_pagespeed_beacon
     # </Location>
 
+    # Uncomment the following line if you want to disable statistics entirely.
+    # ModPagespeedStatistics off
+
     # This page lets you view statistics about the mod_pagespeed module.
     <Location /mod_pagespeed_statistics>
         Order allow,deny

@@ -58,14 +58,18 @@ class AprVariable : public Variable {
   virtual void Add(int delta);
  private:
   friend class AprStatistics;
+  friend class AprScopedGlobalLock;
+
   // Logs an error message and returns false if the result is not SUCCESS.
   bool CheckResult(
       const apr_status_t result, const StringPiece& verb,
       const StringPiece& filename = EmptyString::kEmptyString) const;
   // Initialize this variable's mutex
-  bool InitMutex(apr_pool_t* pool, bool parent);
+  bool InitMutex(const StringPiece& filename_prefix, apr_pool_t* pool,
+                 bool parent);
   // Initialize this variable's shared memory segment.
-  bool InitShm(apr_pool_t* pool, bool parent);
+  bool InitShm(const StringPiece& filename_prefix, apr_pool_t* pool,
+               bool parent);
   const std::string& name() const { return name_; }
   // The global (cross-thread, cross-process) mutex protecting value_.
   // This is NULL if the variable has not yet been properly initialized.
@@ -80,14 +84,16 @@ class AprVariable : public Variable {
 
 class AprStatistics : public StatisticsTemplate<AprVariable> {
  public:
-  AprStatistics();
+  AprStatistics(const StringPiece& filename_prefix);
+  virtual ~AprStatistics();
+
   virtual AprVariable* NewVariable(const StringPiece& name, int index);
 
   // Allocate shared memory segments and mutices for all variables.  This must
   // be called with parent=true from the post_config hook, and with parent=false
   // from the child_init hook. After this is called, you must no longer call
   // AddVariable.
-  void InitVariables(apr_pool_t *pool, bool parent);
+  void InitVariables(bool parent);
 
   // Dump the statistics to the given writer.
   void Dump(Writer* writer, MessageHandler* message_handler);
@@ -98,6 +104,8 @@ class AprStatistics : public StatisticsTemplate<AprVariable> {
   bool frozen() const { return frozen_; }
  private:
   bool frozen_;
+  const StringPiece& filename_prefix_;
+  apr_pool_t* pool_;
 };
 
 }  // namespace net_instaweb

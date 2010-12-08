@@ -56,6 +56,7 @@ class CssFilter : public RewriteSingleResourceFilter {
   CssFilter(RewriteDriver* driver, const StringPiece& filter_prefix);
 
   static void Initialize(Statistics* statistics);
+  static void Terminate();
 
   // Note: AtExitManager needs to be initialized or you get a nasty error:
   // Check failed: false. Tried to RegisterCallback without an AtExitManager.

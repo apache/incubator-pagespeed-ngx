@@ -100,9 +100,16 @@ namespace net_instaweb {
 
 namespace log_message_handler {
 
-void InstallLogMessageHandler(apr_pool_t* pool) {
+void Install(apr_pool_t* pool) {
   log_pool = pool;
   logging::SetLogMessageHandler(&LogMessageHandler);
+}
+
+void ShutDown() {
+  if (mod_pagespeed_version != NULL) {
+    delete mod_pagespeed_version;
+    mod_pagespeed_version = NULL;
+  }
 }
 
 // TODO(sligocki): This is not thread-safe, do we care? Error case is when
@@ -112,8 +119,11 @@ void AddServerConfig(const server_rec* server, const StringPiece& version) {
   // TODO(sligocki): Maybe use ap_log_error(server) if there is exactly one
   // server added?
   log_level_cutoff = std::min(server->loglevel, log_level_cutoff);
-  // This leaks.
-  mod_pagespeed_version = new std::string(version.as_string());
+  if (mod_pagespeed_version == NULL) {
+    mod_pagespeed_version = new std::string(version.as_string());
+  } else {
+    *mod_pagespeed_version = version.as_string();
+  }
 }
 
 

@@ -86,7 +86,7 @@ bool DocType::Parse(const StringPiece& directive,
         doctype_ = HTML_4_TRANSITIONAL;
       } else if (parts[3] == "-//W3C//DTD XHTML 1.1//EN") {
         doctype_ = XHTML_1_1;
-      } else if (parts[3] == "-//W3C//DTD XHTML 1.0//EN") {
+      } else if (parts[3] == "-//W3C//DTD XHTML 1.0 Strict//EN") {
         doctype_ = XHTML_1_0_STRICT;
       } else if (parts[3] == "-//W3C//DTD XHTML 1.0 Transitional//EN") {
         doctype_ = XHTML_1_0_TRANSITIONAL;

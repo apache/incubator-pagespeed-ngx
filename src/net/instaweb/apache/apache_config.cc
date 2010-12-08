@@ -18,15 +18,8 @@
 
 namespace net_instaweb {
 
-ApacheConfig::ApacheConfig(apr_pool_t* pool, const StringPiece& description)
+ApacheConfig::ApacheConfig(const StringPiece& description)
   : description_(description.data(), description.size()) {
-  apr_pool_cleanup_register(pool, this, Cleanup, apr_pool_cleanup_null);
-}
-
-apr_status_t ApacheConfig::Cleanup(void* object) {
-  ApacheConfig* config = static_cast<ApacheConfig*>(object);
-  delete config;
-  return APR_SUCCESS;
 }
 
 }  // namespace net_instaweb

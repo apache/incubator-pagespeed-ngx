@@ -56,7 +56,7 @@ void JsInlineFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void JsInlineFilter::EndElementImpl(HtmlElement* element) {
-  if (should_inline_) {
+  if (should_inline_ && html_parse_->IsRewritable(element)) {
     DCHECK(element->tag() == script_atom_);
     const char* src = element->AttributeValue(src_atom_);
     DCHECK(src != NULL);
@@ -74,12 +74,38 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
       // "</script>", the <script> tag will be ended early.
       // See http://code.google.com/p/modpagespeed/issues/detail?id=106
       // TODO(mdsteele): We should consider rewriting "</script>" to
-      //                 "<\/script>" instead of just bailing.
+      //   "<\/script>" instead of just bailing.  But we can't blindly search
+      //   and replace because that would break legal (if contrived) code such
+      //   as "if(x</script>/){...}", which is comparing x to a regex literal.
       if (contents.size() <= size_threshold_bytes_ &&
-          contents.find("</script>") == StringPiece::npos &&
-          element->DeleteAttribute(src_atom_)) {
-        html_parse_->InsertElementBeforeCurrent(
-            html_parse_->NewCharactersNode(element, contents));
+          contents.find("</script>") == StringPiece::npos) {
+        // If we're in XHTML, we should wrap the script in a <!CDATA[...]]>
+        // block to ensure that we don't break well-formedness.  Since XHTML is
+        // sometimes interpreted as HTML (which will ignore CDATA delimiters),
+        // we have to hide the CDATA delimiters behind Javascript comments.
+        // See http://lachy.id.au/log/2006/11/xhtml-script
+        // and http://code.google.com/p/modpagespeed/issues/detail?id=125
+        if (html_parse_->doctype().IsXhtml()) {
+          // CDATA sections cannot be nested because they end with the first
+          // occurance of "]]>", so if the script contains that string
+          // anywhere (and we're in XHTML) we can't inline.
+          // TODO(mdsteele): Again, we should consider escaping somehow.
+          if (contents.find("]]>") == StringPiece::npos) {
+            HtmlCharactersNode* node =
+                html_parse_->NewCharactersNode(element, "//<![CDATA[\n");
+            node->Append(contents);
+            node->Append("\n//]]>");
+            html_parse_->InsertElementBeforeCurrent(node);
+            element->DeleteAttribute(src_atom_);
+          }
+        }
+        // If we're not in XHTML, we can simply paste in the external script
+        // verbatim.
+        else {
+          html_parse_->InsertElementBeforeCurrent(
+              html_parse_->NewCharactersNode(element, contents));
+          element->DeleteAttribute(src_atom_);
+        }
       }
     }
   }

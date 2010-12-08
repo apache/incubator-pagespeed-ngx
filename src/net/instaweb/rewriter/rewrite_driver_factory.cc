@@ -48,6 +48,7 @@ RewriteDriverFactory::RewriteDriverFactory()
       filename_prefix_(""),
       force_caching_(false),
       slurp_read_only_(false),
+      slurp_print_urls_(false),
       resource_404_count_(NULL),
       slurp_404_count_(NULL) {
 }
@@ -82,6 +83,13 @@ void RewriteDriverFactory::set_slurp_read_only(bool read_only) {
       << "Cannot call set_slurp_read_only "
       << " after ComputeUrl*Fetcher has been called";
   slurp_read_only_ = read_only;
+}
+
+void RewriteDriverFactory::set_slurp_print_urls(bool print_urls) {
+  CHECK(!FetchersComputed())
+      << "Cannot call set_slurp_print_urls "
+      << " after ComputeUrl*Fetcher has been called";
+  slurp_print_urls_ = print_urls;
 }
 
 void RewriteDriverFactory::set_file_system(FileSystem* file_system) {
@@ -287,8 +295,10 @@ void RewriteDriverFactory::SetupSlurpDirectories() {
   CHECK(!FetchersComputed());
   if (slurp_read_only_) {
     CHECK(!FetchersComputed());
-    url_fetcher_ = new HttpDumpUrlFetcher(
+    HttpDumpUrlFetcher* dump_fetcher = new HttpDumpUrlFetcher(
         slurp_directory_, file_system(), timer());
+    dump_fetcher->set_print_urls(slurp_print_urls_);
+    url_fetcher_ = dump_fetcher;
   } else {
     // Check to see if the factory already had set_base_url_fetcher
     // called on it.  If so, then we'll want to use that fetcher
@@ -299,8 +309,10 @@ void RewriteDriverFactory::SetupSlurpDirectories() {
     if (url_fetcher_ == NULL) {
       url_fetcher_ = DefaultUrlFetcher();
     }
-    url_fetcher_ = new HttpDumpUrlWriter(slurp_directory_, url_fetcher_,
-                                         file_system(), timer());
+    HttpDumpUrlWriter* dump_writer = new HttpDumpUrlWriter(
+        slurp_directory_, url_fetcher_, file_system(), timer());
+    dump_writer->set_print_urls(slurp_print_urls_);
+    url_fetcher_ = dump_writer;
   }
 
   // We do not use real async fetches when slurping.

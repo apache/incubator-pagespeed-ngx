@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_HTTP_DUMP_URL_FETCHER_H_
 
 #include "base/basictypes.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/file_system.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -91,6 +92,9 @@ class HttpDumpUrlFetcher : public UrlFetcher {
   void RespondError(MetaData* response_headers, Writer* response_writer,
                     MessageHandler* handler);
 
+  // Print URLs each time they are fetched.
+  void set_print_urls(bool on);
+
  private:
   std::string root_dir_;  // Root directory of the HTTP dumps.
   FileSystem* file_system_;
@@ -98,6 +102,8 @@ class HttpDumpUrlFetcher : public UrlFetcher {
 
   // Response to use if something goes wrong.
   std::string error_body_;
+
+  scoped_ptr<StringSet> urls_;
 
   DISALLOW_COPY_AND_ASSIGN(HttpDumpUrlFetcher);
 };

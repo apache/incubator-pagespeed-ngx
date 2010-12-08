@@ -26,16 +26,60 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
  protected:
   void TestInlineJavascript(const std::string& html_url,
                             const std::string& js_url,
-                            const std::string& js_inline_body,
+                            const std::string& js_original_inline_body,
                             const std::string& js_outline_body,
                             bool expect_inline) {
+    TestInlineJavascriptGeneral(
+        html_url,
+        "", // don't use a doctype for these tests
+        js_url,
+        js_original_inline_body,
+        js_outline_body,
+        js_outline_body, // expect ouline body to be inlined verbatim
+        expect_inline);
+  }
+
+  void TestInlineJavascriptXhtml(const std::string& html_url,
+                                 const std::string& js_url,
+                                 const std::string& js_outline_body,
+                                 bool expect_inline) {
+    TestInlineJavascriptGeneral(
+        html_url,
+        "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" "
+        "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">",
+        js_url,
+        "", // use an empty original inline body for these tests
+        js_outline_body,
+        // Expect outline body to get surrounded by a CDATA block:
+        "//<![CDATA[\n" + js_outline_body + "\n//]]>",
+        expect_inline);
+  }
+
+  void TestInlineJavascriptGeneral(const std::string& html_url,
+                                   const std::string& doctype,
+                                   const std::string& js_url,
+                                   const std::string& js_original_inline_body,
+                                   const std::string& js_outline_body,
+                                   const std::string& js_expected_inline_body,
+                                   bool expect_inline) {
     AddFilter(RewriteOptions::kInlineJavascript);
 
+    // Specify the input and expected output.
+    if (!doctype.empty()) {
+      SetDoctype(doctype);
+    }
     const std::string html_input =
         "<head>\n"
-        "  <script src=\"" + js_url + "\">" + js_inline_body + "</script>\n"
+        "  <script src=\"" + js_url + "\">" +
+          js_original_inline_body + "</script>\n"
         "</head>\n"
         "<body>Hello, world!</body>\n";
+    const std::string expected_output =
+        (!expect_inline ? html_input :
+         "<head>\n"
+         "  <script>" + js_expected_inline_body + "</script>\n"
+         "</head>\n"
+         "<body>Hello, world!</body>\n");
 
     // Put original Javascript file into our fetcher.
     SimpleMetaData default_js_header;
@@ -44,15 +88,7 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
     mock_url_fetcher_.SetResponse(js_url, default_js_header, js_outline_body);
 
     // Rewrite the HTML page.
-    ParseUrl(html_url, html_input);
-
-    const std::string expected_output =
-        (!expect_inline ? html_input :
-         "<head>\n"
-         "  <script>" + js_outline_body + "</script>\n"
-         "</head>\n"
-         "<body>Hello, world!</body>\n");
-    EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
+    ValidateExpectedUrl(html_url, html_input, expected_output);
   }
 };
 
@@ -110,6 +146,22 @@ TEST_F(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag) {
                        "",
                        "function close() { return '</script>'; }\n",
                        false);
+}
+
+TEST_F(JsInlineFilterTest, DoInlineJavascriptXhtml) {
+  // Simple case:
+  TestInlineJavascriptXhtml("http://www.example.com/index.html",
+                            "http://www.example.com/script.js",
+                            "function id(x) { return x; }\n",
+                            true);
+}
+
+TEST_F(JsInlineFilterTest, DoNotInlineJavascriptXhtmlWithCdataEnd) {
+  // External script contains "]]>":
+  TestInlineJavascriptXhtml("http://www.example.com/index.html",
+                            "http://www.example.com/script.js",
+                            "function end(x) { return ']]>'; }\n",
+                            false);
 }
 
 }  // namespace

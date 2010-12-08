@@ -30,7 +30,7 @@ namespace {
 class ImageRewriteTest : public ResourceManagerTestBase {
  protected:
   // Simple image rewrite test to check resource fetching functionality.
-  void RewriteImage() {
+  void RewriteImage(const std::string& tag_string) {
     options_.EnableFilter(RewriteOptions::kRewriteImages);
     options_.EnableFilter(RewriteOptions::kInsertImgDimensions);
     options_.set_img_inline_max_bytes(2000);
@@ -43,10 +43,11 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     const char html_url[] = "http://rewrite_image.test/RewriteImage.html";
     const char image_url[] = "http://rewrite_image.test/Puzzle.jpg";
 
-    const char image_html[] = "<head/><body><img src=\"Puzzle.jpg\"/></body>";
+    const std::string image_html =
+        StrCat("<head/><body><", tag_string, " src=\"Puzzle.jpg\"/></body>");
 
     // Store image contents into fetcher.
-    std::string image_filename =
+    const std::string image_filename =
         StrCat(GTestSrcDir(), kTestData, "Puzzle.jpg");
     AddFileToMockFetcher(image_url, image_filename, kContentTypeJpeg);
 
@@ -62,9 +63,9 @@ class ImageRewriteTest : public ResourceManagerTestBase {
 
     std::string rewritten_data;
 
-    std::string expected_output =
-        StrCat("<head/><body><img src=\"", src_string,
-               "\" width=1023 height=766 /></body>");
+    const std::string expected_output =
+        StrCat("<head/><body><", tag_string, " src=\"", src_string,
+               "\" width=\"1023\" height=\"766\"/></body>");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
     std::string rewritten_filename;
@@ -263,8 +264,12 @@ class ImageRewriteTest : public ResourceManagerTestBase {
   }
 };
 
-TEST_F(ImageRewriteTest, ImageRewriteTest) {
-  RewriteImage();
+TEST_F(ImageRewriteTest, ImgTag) {
+  RewriteImage("img");
+}
+
+TEST_F(ImageRewriteTest, InputTag) {
+  RewriteImage("input type=\"image\"");
 }
 
 TEST_F(ImageRewriteTest, DataUrlTest) {

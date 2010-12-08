@@ -147,7 +147,9 @@ void HtmlElement::AddAttribute(Atom name, const StringPiece& value,
 
 void HtmlElement::AddAttribute(Atom name, int value) {
   std::string buf = IntegerToString(value);
-  Attribute* attr = new Attribute(name, buf, buf, "");
+  // We include quotes here because XHTML requires them.  If it later turns out
+  // we're in HTML, the remove_quotes filter can take them back out.
+  Attribute* attr = new Attribute(name, buf, buf, "\"");
   attributes_.push_back(attr);
 }
 

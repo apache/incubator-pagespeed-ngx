@@ -80,6 +80,7 @@ class RewriteDriverFactory {
   // or ComputeUrlAsyncFetcher.
   void set_slurp_directory(const StringPiece& directory);
   void set_slurp_read_only(bool read_only);
+  void set_slurp_print_urls(bool read_only);
 
   // Determines whether Slurping is enabled.
   bool slurping_enabled() const { return !slurp_directory_.empty(); }
@@ -205,6 +206,7 @@ class RewriteDriverFactory {
   RewriteOptions options_;
   bool force_caching_;
   bool slurp_read_only_;
+  bool slurp_print_urls_;
 
   scoped_ptr<ResourceManager> resource_manager_;
 

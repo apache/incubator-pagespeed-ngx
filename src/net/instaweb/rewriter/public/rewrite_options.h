@@ -99,6 +99,7 @@ class RewriteOptions {
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
 
   RewriteOptions();
+  ~RewriteOptions();
 
   bool modified() const { return modified_; }
 

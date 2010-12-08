@@ -82,6 +82,14 @@ void CssFilter::Initialize(Statistics* statistics) {
   InitializeAtExitManager();
 }
 
+void CssFilter::Terminate() {
+  // Note: This is not thread-safe, but I don't believe we need it to be.
+  if (at_exit_manager != NULL) {
+    delete at_exit_manager;
+    at_exit_manager = NULL;
+  }
+}
+
 void CssFilter::InitializeAtExitManager() {
   // Note: This is not thread-safe, but I don't believe we need it to be.
   if (at_exit_manager == NULL) {

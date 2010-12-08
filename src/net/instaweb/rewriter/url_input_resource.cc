@@ -83,6 +83,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
       // TODO(abliss): a per-unit-time statistic would be useful here.
       if (should_yield()) {
         DoneInternal(false);
+        delete this;
         return false;
       }
     } else {
@@ -107,6 +108,8 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
       ret = fetcher->StreamingFetch(
           origin_url, request_headers, response_headers(), http_value(),
           handler, this);
+    } else {
+      delete this;
     }
     return ret;
   }

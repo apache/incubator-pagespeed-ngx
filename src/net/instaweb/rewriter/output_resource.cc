@@ -132,7 +132,6 @@ bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
     // Put interface.
 
     output_file_ = NULL;
-    delete writer;
     return ret;
   }
 }

@@ -119,7 +119,7 @@ class ImgRewriteFilter : public RewriteFilter {
 
   FileSystem* file_system_;
   HtmlParse* html_parse_;
-  scoped_ptr<ImgTagScanner> img_filter_;
+  scoped_ptr<const ImgTagScanner> img_filter_;
   ResourceManager* resource_manager_;
   scoped_ptr<WorkBound> work_bound_;
   // Threshold size (in bytes) below which we should just inline images

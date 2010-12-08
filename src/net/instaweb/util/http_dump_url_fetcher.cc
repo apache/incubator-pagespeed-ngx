@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/http_dump_url_fetcher.h"
 
+#include <stdio.h>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -278,7 +279,19 @@ bool HttpDumpUrlFetcher::StreamingFetchUrl(const std::string& url,
                      url.c_str());
   }
 
+  if ((urls_.get() != NULL) && urls_->insert(url).second) {
+    fprintf(stdout, "url: %s\n", url.c_str());
+  }
+
   return ret;
+}
+
+void HttpDumpUrlFetcher::set_print_urls(bool on) {
+  if (on) {
+    urls_.reset(new StringSet);
+  } else {
+    urls_.reset(NULL);
+  }
 }
 
 }  // namespace net_instaweb

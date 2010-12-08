@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <set>
 #include <string>
 
 #include "apr_strings.h"
@@ -36,12 +37,12 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string_util.h"
 
 // Note: a very useful reference is this file, which demos many Apache module
 // options:
-//    http://svn.apache.org/repos/asf/httpd/httpd/trunk/modules/
-//    examples/mod_example_hooks.c
+//    http://svn.apache.org/repos/asf/httpd/httpd/trunk/modules/examples/mod_example_hooks.c
 
 // The httpd header must be after the pagepseed_server_context.h. Otherwise,
 // the compiler will complain
@@ -66,7 +67,8 @@ namespace net_instaweb {
 
 namespace {
 
-// Instaweb directive names -- these must match install/common/pagespeed.conf.template.
+// Instaweb directive names -- these must match
+// install/common/pagespeed.conf.template.
 const char* kModPagespeed = "ModPagespeed";
 const char* kModPagespeedUrlPrefix = "ModPagespeedUrlPrefix";
 const char* kModPagespeedFetchProxy = "ModPagespeedFetchProxy";
@@ -104,6 +106,7 @@ const char* kRepairHeadersFilterName = "MOD_PAGESPEED_REPAIR_HEADERS";
 const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
 const char* kModPagespeedAllow = "ModPagespeedAllow";
 const char* kModPagespeedDisallow = "ModPagespeedDisallow";
+const char* kModPagespeedStatistics = "ModPagespeedStatistics";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -441,13 +444,6 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   return return_code;
 }
 
-apr_status_t pagespeed_child_exit(void* data) {
-  ApacheRewriteDriverFactory* factory =
-      static_cast<ApacheRewriteDriverFactory*>(data);
-  delete factory;
-  return APR_SUCCESS;
-}
-
 void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   // Create PageSpeed context used by instaweb rewrite-driver.  This is
   // per-process, so we initialize all the server's context by iterating the
@@ -456,36 +452,99 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   while (next_server) {
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(next_server);
     if (factory->statistics()) {
-      factory->statistics()->InitVariables(pool, false);
+      factory->statistics()->InitVariables(false);
     }
     next_server = next_server->next;
   }
 }
 
+// Apache's pool-based cleanup is not effective on process shutdown.  To allow
+// valgrind to repot clean results, we must take matters into our own hands.
+// We employ a statically allocated class object and rely on its destructor to
+// get a reliable cleanup hook.  I am, in general, strongly opposed to this
+// sort of technique, and it violates the C++ Style Guide:
+//   http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml
+// However, it is not possible to use valgrind to track memory leaks
+// in our Apache module without this approach.
+class ApacheCleanupHandler {
+ public:
+  ApacheCleanupHandler() {
+  }
+
+  ~ApacheCleanupHandler() {
+    STLDeleteElements(&factories_);
+    STLDeleteElements(&configs_);
+    statistics_.reset(NULL);
+    ApacheRewriteDriverFactory::Terminate();
+    log_message_handler::ShutDown();
+  }
+
+  // Delete the specified factory on process exit.
+  void add_factory(ApacheRewriteDriverFactory* factory) {
+    factories_.insert(factory);
+  }
+
+  // Do not delete the specified factory on process exit -- it
+  // is being deleted on a pool hook.
+  void remove_factory(ApacheRewriteDriverFactory* factory) {
+    factories_.erase(factory);
+  }
+
+  // Delete the specified config on process exit.
+  void add_config(ApacheConfig* config) {
+    configs_.insert(config);
+  }
+
+  // Do not delete the specified config on process exit -- it
+  // is being deleted on a pool hook.
+  void remove_config(ApacheConfig* config) {
+    configs_.erase(config);
+  }
+
+  AprStatistics* statistics(const StringPiece& filename_prefix) {
+    if (statistics_.get() == NULL) {
+      statistics_.reset(new AprStatistics(filename_prefix));
+      RewriteDriverFactory::Initialize(statistics_.get());
+      SerfUrlAsyncFetcher::Initialize(statistics_.get());
+      statistics_->InitVariables(true);
+    }
+    return statistics_.get();
+  }
+
+  std::set<ApacheRewriteDriverFactory*> factories_;
+  std::set<ApacheConfig*> configs_;
+  scoped_ptr<AprStatistics> statistics_;
+};
+ApacheCleanupHandler cleanup_handler;
+
 int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                           server_rec *server) {
-  AprStatistics* statistics = new AprStatistics();
-  RewriteDriverFactory::Initialize(statistics);
-  SerfUrlAsyncFetcher::Initialize(statistics);
-  statistics->InitVariables(pool, true);
-
+  AprStatistics* statistics = NULL;
   server_rec* next_server = server;
   while (next_server) {
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(next_server);
     if (factory->options()->enabled()) {
-      factory->set_statistics(statistics);
       if (factory->filename_prefix().empty() ||
           factory->file_cache_path().empty()) {
-        std::string buf("mod_pagespeed is enabled.  ");
-        buf += "The following directives must not be NULL\n";
-        buf += StrCat(kModPagespeedFileCachePath, "=");
-        buf += StrCat(factory->file_cache_path(), "\n");
-        buf += StrCat(kModPagespeedGeneratedFilePrefix, "=");
-        buf += StrCat(factory->filename_prefix(), "\n");
+        std::string buf = StrCat(
+            "mod_pagespeed is enabled.  "
+            "The following directives must not be NULL\n",
+            kModPagespeedFileCachePath, "=",
+            StrCat(
+                factory->file_cache_path(), "\n",
+                kModPagespeedGeneratedFilePrefix, "=",
+                factory->filename_prefix(), "\n"));
         factory->message_handler()->Message(kError, "%s", buf.c_str());
         return HTTP_INTERNAL_SERVER_ERROR;
       }
-      // TODO(jmarantz): spew the rewriters
+      if ((statistics == NULL) && factory->statistics_enabled()) {
+        statistics = cleanup_handler.statistics(factory->filename_prefix());
+        RewriteDriverFactory::Initialize(statistics);
+        SerfUrlAsyncFetcher::Initialize(statistics);
+        statistics->InitVariables(true);
+      }
+      factory->set_statistics(
+          factory->statistics_enabled() ? statistics : NULL);
     }
     next_server = next_server->next;
   }
@@ -510,7 +569,7 @@ apr_status_t pagespeed_log_transaction(request_rec *request) {
 // other events.
 void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   // Enable logging using pagespeed style
-  log_message_handler::InstallLogMessageHandler(pool);
+  log_message_handler::Install(pool);
 
   // Use instaweb to handle generated resources.
   ap_hook_handler(instaweb_handler, NULL, NULL, -1);
@@ -528,41 +587,31 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   ap_hook_log_transaction(pagespeed_log_transaction, NULL, NULL, APR_HOOK_LAST);
 }
 
+apr_status_t pagespeed_child_exit(void* data) {
+  ApacheRewriteDriverFactory* factory =
+      static_cast<ApacheRewriteDriverFactory*>(data);
+  // avoid double-destructing from the cleanup handler on process exit
+  cleanup_handler.remove_factory(factory);
+  delete factory;
+  return APR_SUCCESS;
+}
+
 void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
   if (factory == NULL) {
-    factory = new ApacheRewriteDriverFactory(pool, server,
-                                             kModPagespeedVersion);
+    factory = new ApacheRewriteDriverFactory(server, kModPagespeedVersion);
 
-    // To clean up the factory on process shutdown, we need to run
-    // pagespeed_child_exit *before* the pool is destroyed.  If we run
-    // that hook with apr_pool_cleanup_register then the pool will
-    // already be destroyed, and the factory destruction will crash.
-    // The proper way to fix this is with:
+    apr_pool_cleanup_register(pool, factory, pagespeed_child_exit,
+                              apr_pool_cleanup_null);
+
+    // The pool-based cleanup hooks do not appear to be effective when exiting
+    // the process.  The pagespeed_child_exit will *not* be called when the
+    // apache process is shut down.  However, the static cleanup_handler's
+    // destructor will be.
     //
-    //   apr_pool_pre_cleanup_register(pool, factory, pagespeed_child_exit);
-    //
-    // However, this method was added in apr 1.3.  We can do a compile-time
-    // check such as
-    //
-    //   #if ((APR_MAJOR_VERSION > 1) ||
-    //     ((APR_MAJOR_VERSION == 1) && APR_MINOR_VERSION > 2))
-    //
-    // However, the Apache include files that we depend on during the
-    // build process may not correspond to the Apache version into
-    // which that mod_pagespeed.so will be dynamically loaded.  At
-    // some point in the future, we may be able to make apr 1.3 a
-    // minimum requirement for mod_pagespeed.  In the meantime, we
-    // will not call the factory destructor and will instead rely on
-    // the process memory clean up to do what's necessary.
-    //
-    // TODO(jmarantz): Start employing apr_pool_pre_cleanup_register when
-    // it is generaly available
-    //
-    // TODO(jmarantz): Figure out how to segregate the pool-dependent
-    // cleanups (e.g. apr_mutex) from the pool-independent cleanups
-    // (e.g. memory allocated with new) so we can clean those up using
-    // apr_pool_cleanup_register.
+    // This approach is needed to clean up our memory so that valgrind can
+    // report real memory leaks.
+    cleanup_handler.add_factory(factory);
   }
   return factory;
 }
@@ -716,6 +765,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     options->Allow(arg);
   } else if (strcasecmp(directive, kModPagespeedDisallow) == 0) {
     options->Disallow(arg);
+  } else if (strcasecmp(directive, kModPagespeedStatistics) == 0) {
+    ret = ParseBoolOption(factory, cmd,
+        &ApacheRewriteDriverFactory::set_statistics_enabled, arg);
   } else {
     return "Unknown directive.";
   }
@@ -828,7 +880,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImgInlineMaxBytes,
         "Number of bytes below which images will be inlined."),
   APACHE_CONFIG_OPTION(kModPagespeedImgMaxRewritesAtOnce,
-        "Set bound on number of images being rewritten at one time (0 = unbounded)."),
+        "Set bound on number of images being rewritten at one time "
+        "(0 = unbounded)."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJsInlineMaxBytes,
         "Number of bytes below which javascript will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCssInlineMaxBytes,
@@ -845,16 +898,35 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "wildcard_spec for urls"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDisallow,
         "wildcard_spec for urls"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedStatistics,
+        "Whether to collect cross-process statistics."),
   {NULL}
 };
+
+// We use pool-based cleanup for ApacheConfigs.  This is 99% effective.
+// There is at least one base config which is created with create_dir_config,
+// but whose pool is never freed.  To allow clean valgrind reports, we
+// must delete that config too.  So we keep a backup cleanup-set for
+// configs at end-of-process, and keep that set up-to-date when the
+// pool deletion does work.
+apr_status_t delete_config(void* data) {
+  ApacheConfig* config = static_cast<ApacheConfig*>(data);
+  // avoid double-destructing from the cleanup handler on process exit
+  cleanup_handler.remove_config(config);
+  delete config;
+  return APR_SUCCESS;
+}
 
 // Function to allow all modules to create per directory configuration
 // structures.
 // dir is the directory currently being processed.
 // Returns the per-directory structure created.
 void* create_dir_config(apr_pool_t* pool, char* dir) {
-  ApacheConfig* config = new ApacheConfig(pool, dir);
+  ApacheConfig* config = new ApacheConfig(dir);
   config->options()->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  cleanup_handler.add_config(config);
+  apr_pool_cleanup_register(pool, config, delete_config, apr_pool_cleanup_null);
+  cleanup_handler.add_config(config);
   return config;
 }
 
@@ -870,9 +942,11 @@ void* merge_dir_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
   // To make it easier to debug the merged configurations, we store
   // the name of both input configurations as the description for
   // the merged configuration.
-  ApacheConfig* dir3 = new ApacheConfig(pool, StrCat(
+  ApacheConfig* dir3 = new ApacheConfig(StrCat(
       "Combine(", dir1->description(), ", ", dir2->description(), ")"));
   dir3->options()->Merge(*(dir1->options()), *(dir2->options()));
+  apr_pool_cleanup_register(pool, dir3, delete_config, apr_pool_cleanup_null);
+  cleanup_handler.add_config(dir3);
   return dir3;
 }
 

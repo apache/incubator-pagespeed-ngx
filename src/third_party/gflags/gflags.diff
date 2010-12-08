@@ -1,0 +1,64 @@
+Index: gflags.cc
+===================================================================
+--- gflags.cc	(revision 42)
++++ gflags.cc	(working copy)
+@@ -275,6 +275,7 @@
+ }
+ 
+ FlagValue::~FlagValue() {
++  /*
+   switch (type_) {
+     case FV_BOOL: delete reinterpret_cast<bool*>(value_buffer_); break;
+     case FV_INT32: delete reinterpret_cast<int32*>(value_buffer_); break;
+@@ -283,6 +284,7 @@
+     case FV_DOUBLE: delete reinterpret_cast<double*>(value_buffer_); break;
+     case FV_STRING: delete reinterpret_cast<string*>(value_buffer_); break;
+   }
++  */
+ }
+ 
+ bool FlagValue::ParseFrom(const char* value) {
+@@ -611,6 +613,12 @@
+ class FlagRegistry {
+  public:
+   FlagRegistry() { }
++  ~FlagRegistry() {
++    for (FlagMap::iterator p = flags_.begin(), e = flags_.end(); p != e; ++p) {
++      CommandLineFlag* flag = p->second;
++      delete flag;
++    }
++  }
+ 
+   void Lock() { lock_.Lock(); }
+   void Unlock() { lock_.Unlock(); }
+@@ -642,6 +650,7 @@
+                      FlagSettingMode set_mode, string* msg);
+ 
+   static FlagRegistry* GlobalRegistry();   // returns a singleton registry
++  static void Cleanup();
+ 
+  private:
+   friend class GOOGLE_NAMESPACE::FlagSaverImpl;  // reads all the flags in order to copy them
+@@ -679,6 +688,13 @@
+   return global_registry_;
+ }
+ 
++void FlagRegistry::Cleanup() {
++  if (global_registry_ != NULL) {
++    delete global_registry_;
++    global_registry_ = NULL;
++  }
++}
++
+ void FlagRegistry::RegisterFlag(CommandLineFlag* flag) {
+   Lock();
+   pair<FlagIterator, bool> ins =
+@@ -1904,4 +1920,8 @@
+   return retval;
+ }
+ 
++void CleanupGlobalRegistry() {
++  FlagRegistry::Cleanup();
++}
++
+ _END_GOOGLE_NAMESPACE_

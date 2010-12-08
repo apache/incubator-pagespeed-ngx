@@ -15,6 +15,7 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 
 #include "apr_pools.h"
+#include "googleurl/src/url_util.h"
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mutex.h"
@@ -22,7 +23,9 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/serf_url_fetcher.h"
+#include "net/instaweb/htmlparse/public/html_escape.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/file_cache.h"
@@ -30,11 +33,12 @@
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
+#include "third_party/protobuf2/src/src/google/protobuf/stubs/common.h"
 
 namespace net_instaweb {
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
-    apr_pool_t* pool, server_rec* server, const StringPiece& version)
+    server_rec* server, const StringPiece& version)
     : server_rec_(server),
       serf_url_fetcher_(NULL),
       serf_url_async_fetcher_(NULL),
@@ -45,8 +49,9 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       file_cache_clean_size_kb_(100 * 1024),  // 100 megabytes
       fetcher_time_out_ms_(5 * Timer::kSecondMs),
       slurp_flush_limit_(0),
-      version_(version.data(), version.size()) {
-  apr_pool_create(&pool_, pool);
+      version_(version.data(), version.size()),
+      statistics_enabled_(true) {
+  apr_pool_create(&pool_, NULL);
   cache_mutex_.reset(NewMutex());
   rewrite_drivers_mutex_.reset(NewMutex());
 
@@ -55,9 +60,11 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
 }
 
 ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
-  // We free all the resources before destroy the pool, because some of the
-  // resource uses the sub-pool and will destroy them on destruction.
+  // We free all the resources before destroying the pool, because some of the
+  // resource uses the sub-pool and will need that pool to be around to
+  // clean up properly.
   ShutDown();
+
   apr_pool_destroy(pool_);
 }
 
@@ -142,9 +149,21 @@ ResourceManager* ApacheRewriteDriverFactory::ComputeResourceManager() {
 }
 
 void ApacheRewriteDriverFactory::ShutDown() {
+  if (serf_url_async_fetcher_ != NULL) {
+    serf_url_async_fetcher_->WaitForInProgressFetches(
+        fetcher_time_out_ms_, message_handler(),
+        SerfUrlAsyncFetcher::kThreadedAndMainline);
+  }
   cache_mutex_.reset(NULL);
   rewrite_drivers_mutex_.reset(NULL);
   RewriteDriverFactory::ShutDown();
+}
+
+void ApacheRewriteDriverFactory::Terminate() {
+  CssFilter::Terminate();
+  HtmlEscape::ShutDown();
+  google::protobuf::ShutdownProtobufLibrary();
+  url_util::Shutdown();
 }
 
 }  // namespace net_instaweb

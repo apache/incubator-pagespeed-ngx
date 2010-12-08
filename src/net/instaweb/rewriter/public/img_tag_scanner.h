@@ -32,16 +32,13 @@ class ImgTagScanner {
 
   // Examine HTML element and determine if it is an img with a src.  If so
   // extract the src attribute and return it, otherwise return NULL.
-  HtmlElement::Attribute* ParseImgElement(HtmlElement* element) {
-    if (element->tag() == s_img_) {
-      return element->FindAttribute(s_src_);
-    }
-    return NULL;
-  }
+  HtmlElement::Attribute* ParseImgElement(HtmlElement* element) const;
 
  private:
   const Atom s_img_;
+  const Atom s_input_;
   const Atom s_src_;
+  const Atom s_type_;
 
   DISALLOW_COPY_AND_ASSIGN(ImgTagScanner);
 };

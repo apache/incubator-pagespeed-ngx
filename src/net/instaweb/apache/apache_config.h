@@ -32,7 +32,7 @@ namespace net_instaweb {
 // <Directory>...</Directory>.
 class ApacheConfig {
  public:
-  ApacheConfig(apr_pool_t* pool, const StringPiece& dir);
+  explicit ApacheConfig(const StringPiece& dir);
   ~ApacheConfig() {}
 
   // Human-readable description of what this configuration is for.  This
@@ -43,8 +43,6 @@ class ApacheConfig {
   RewriteOptions* options() { return &options_; }
 
  private:
-  static apr_status_t Cleanup(void* object);
-
   std::string description_;
   RewriteOptions options_;
 

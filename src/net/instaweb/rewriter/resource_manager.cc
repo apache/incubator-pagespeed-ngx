@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/resource_manager.h"
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -491,11 +492,11 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
   SetDefaultHeaders(output->type(), meta_data);
   meta_data->SetStatusAndReason(status_code);
 
-  OutputResource::OutputWriter* writer = output->BeginWrite(handler);
+  scoped_ptr<OutputResource::OutputWriter> writer(output->BeginWrite(handler));
   bool ret = (writer != NULL);
   if (ret) {
     ret = writer->Write(contents, handler);
-    ret &= output->EndWrite(writer, handler);
+    ret &= output->EndWrite(writer.get(), handler);
     http_cache_->Put(output->url(), &output->value_, handler);
 
     if (!output->generated()) {

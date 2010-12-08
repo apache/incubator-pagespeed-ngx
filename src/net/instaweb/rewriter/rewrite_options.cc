@@ -106,6 +106,9 @@ RewriteOptions::RewriteOptions()
   SetUp();
 }
 
+RewriteOptions::~RewriteOptions() {
+}
+
 void RewriteOptions::SetUp() {
   name_filter_map_["add_base_tag"] = kAddBaseTag;
   name_filter_map_["add_head"] = kAddHead;
