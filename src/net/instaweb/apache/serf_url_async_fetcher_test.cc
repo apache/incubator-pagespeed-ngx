@@ -40,7 +40,7 @@ namespace net_instaweb {
 
 namespace {
 const char kProxy[] = "";
-const int kMaxMs = 10000;
+const int kMaxMs = 20000;
 const int kThreadedPollMs = 200;
 const int kWaitTimeoutMs = 5 * 1000;
 const int kTimerAdvanceMs = 10;
@@ -168,15 +168,16 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     }
   }
 
-  bool WaitTillDone(size_t begin, size_t end, int64 delay_ms) {
+  int WaitTillDone(size_t begin, size_t end, int64 delay_ms) {
     AprTimer timer;
     bool done = false;
     int64 now_ms = timer.NowMs();
     int64 end_ms = now_ms + delay_ms;
+    size_t done_count = 0;
     while (!done && (now_ms < end_ms)) {
       int64 remaining_ms = end_ms - now_ms;
       serf_url_async_fetcher_->Poll(1000 * remaining_ms);
-      size_t done_count = 0;
+      done_count = 0;
       for (size_t idx = begin; idx < end; ++idx) {
         if (callbacks_[idx]->IsDone()) {
           ++done_count;
@@ -188,15 +189,20 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
       }
       now_ms = timer.NowMs();
     }
-    return done;
+    return done_count;
   }
 
-  bool TestFetch(size_t begin, size_t end) {
+  int TestFetch(size_t begin, size_t end) {
     StartFetches(begin, end, false);
     timer_->advance_ms(kTimerAdvanceMs);
-    bool done = WaitTillDone(begin, end, kMaxMs);
+    int done = WaitTillDone(begin, end, kMaxMs);
     ValidateFetches(begin, end);
-    return done;
+    return (done == (end - begin));
+  }
+
+  // Valgrind will not allow the async-fetcher thread to run without a sleep.
+  void YieldToThread() {
+    usleep(1);
   }
 
   apr_pool_t* pool_;
@@ -248,7 +254,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
                            kDefaultUserAgent);
   StartFetches(0, 1, false);
   EXPECT_EQ(1, OutstandingFetches());
-  ASSERT_TRUE(WaitTillDone(0, 1, kMaxMs));
+  ASSERT_EQ(1, WaitTillDone(0, 1, kMaxMs));
   ASSERT_TRUE(callbacks_[0]->IsDone());
   EXPECT_LT(static_cast<size_t>(0), contents_[0]->size());
   EXPECT_EQ(200, response_headers_[0]->status_code());
@@ -367,33 +373,36 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitTwoThreadedOneSync) {
 
 TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreaded) {
   StartFetches(0, 3, true);
-  bool done = false;
-  for (int i = 0; !done && (i < 100); ++i) {
+  int done = 0;
+  for (int i = 0; (done < 3) && (i < 100); ++i) {
+    YieldToThread();
     done = WaitTillDone(0, 3, kThreadedPollMs);
   }
-  EXPECT_TRUE(done);
+  EXPECT_EQ(3, done);
   ValidateFetches(0, 3);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestOneThreadedTwoSync) {
   StartFetches(0, 1, true);
   StartFetches(1, 3, false);
-  bool done = false;
-  for (int i = 0; !done && (i < 100); ++i) {
+  int done = 0;
+  for (int i = 0; (done < 3) && (i < 100); ++i) {
+    YieldToThread();
     done = WaitTillDone(0, 3, kThreadedPollMs);
   }
-  EXPECT_TRUE(done);
+  EXPECT_EQ(3, done);
   ValidateFetches(0, 3);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestTwoThreadedOneSync) {
   StartFetches(0, 1, false);
   StartFetches(1, 3, true);
-  bool done = false;
-  for (int i = 0; !done && (i < 100); ++i) {
+  int done = 0;
+  for (int i = 0; (done < 3) && (i < 100); ++i) {
+    YieldToThread();
     done = WaitTillDone(0, 3, kThreadedPollMs);
   }
-  EXPECT_TRUE(done);
+  EXPECT_EQ(3, done);
   ValidateFetches(0, 3);
 }
 
@@ -401,9 +410,9 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTimeout) {
   StartFetches(3, 4, false);
   int timeouts =
       statistics_.GetVariable(SerfStats::kSerfFetchTimeoutCount)->Get();
-  ASSERT_FALSE(WaitTillDone(3, 4, kThreadedPollMs));
+  ASSERT_EQ(0, WaitTillDone(3, 4, kThreadedPollMs));
   timer_->advance_ms(2 * kFetcherTimeoutMs);
-  ASSERT_TRUE(WaitTillDone(3, 4, kThreadedPollMs));
+  ASSERT_EQ(1, WaitTillDone(3, 4, kThreadedPollMs));
   ASSERT_TRUE(callbacks_[3]->IsDone());
   EXPECT_FALSE(callbacks_[3]->success());
   EXPECT_EQ(timeouts + 1,

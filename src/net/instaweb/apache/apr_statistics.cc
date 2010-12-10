@@ -226,7 +226,35 @@ AprStatistics::AprStatistics(const StringPiece& filename_prefix)
 }
 
 AprStatistics::~AprStatistics() {
-  apr_pool_destroy(pool_);
+  // Destroying the pool that is used to create the shared-memory
+  // blocks and global mutexes causes the mutexes to fail.  They need
+  // to have a lifetime longer than the AprStatistics block.
+  //
+  // TODO(jmarantz): determine whether we should use a separate pool
+  // for the mutexes and the shared memory.  Perhaps one of them can
+  // have its lifetime tied to the AprStatistics object.
+  //
+  // Note that this failure to call apr_pool_destroy here causes
+  // a lot of 'potentially leaked' warnings in valgrind, e.g.
+  //
+  //  992 bytes in 31 blocks are possibly lost in loss record 951 of 1,073
+  //     ...malloc (vg_replace_malloc.c:236)
+  //     ...pool_alloc (apr_pools.c:1420)
+  //     ...apr_pool_cleanup_register (apr_pools.c:2174)
+  //     ...apr_global_mutex_create (global_mutex.c:75)
+  //     ...net_instaweb::AprVariable::InitMutex(...) (apr_statistics.cc:160)
+  //     ...net_instaweb::AprStatistics::InitVariables() (apr_statistics.cc:250)
+  //     ......ApacheCleanupHandler::statistics(...) (mod_instaweb.cc:509)
+  //     ......pagespeed_post_config(...) (mod_instaweb.cc:541)
+  //     ...ap_run_post_config (config.c:94)
+  //     ...main (main.c:680)
+  //
+  // apr_pool_destroy(pool_);
+  //
+  // TODO(abliss): investigate whether we can capture the 'parent' bit passed
+  // into InitVariables to decide whether it's safe to free the mutexes.
+  // The complexity is in different flavors of unix/windows forking, and
+  // apache pre-fork, threaded, and worker MPMs.
 }
 
 AprVariable* AprStatistics::NewVariable(const StringPiece& name, int index) {

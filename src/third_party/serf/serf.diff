@@ -1,0 +1,58 @@
+Index: buckets/allocator.c
+===================================================================
+--- buckets/allocator.c	(revision 1421)
++++ buckets/allocator.c	(working copy)
+@@ -83,6 +83,7 @@
+ struct serf_bucket_alloc_t {
+     apr_pool_t *pool;
+     apr_allocator_t *allocator;
++    int own_allocator;
+ 
+     serf_unfreed_func_t unfreed;
+     void *unfreed_baton;
+@@ -106,7 +107,9 @@
+     if (allocator->blocks) {
+         apr_allocator_free(allocator->allocator, allocator->blocks);
+     }
+-
++    if (allocator->own_allocator == 1) {
++        apr_allocator_destroy(allocator->allocator);
++    }
+     return APR_SUCCESS;
+ }
+ 
+@@ -119,10 +122,12 @@
+ 
+     allocator->pool = pool;
+     allocator->allocator = apr_pool_allocator_get(pool);
++    allocator->own_allocator = 0;
+     if (allocator->allocator == NULL) {
+         /* This most likely means pools are running in debug mode, create our
+          * own allocator to deal with memory ourselves */
+         apr_allocator_create(&allocator->allocator);
++        allocator->own_allocator = 1;
+     }
+     allocator->unfreed = unfreed;
+     allocator->unfreed_baton = unfreed_baton;
+@@ -408,4 +413,3 @@
+     }
+ #endif
+ }
+-
+Index: buckets/headers_buckets.c
+===================================================================
+--- buckets/headers_buckets.c	(revision 1421)
++++ buckets/headers_buckets.c	(working copy)
+@@ -97,6 +97,12 @@
+         new_val[found->value_size] = ',';
+         memcpy(new_val + found->value_size + 1, value, value_size);
+         new_val[new_size] = '\0';
++
++        // If the previous value was added, we must free it before overwriting
++        if (found->alloc_flags & ALLOC_VALUE) {
++            serf_bucket_mem_free(bkt->allocator, (void *)found->value);
++        }
++
+         found->value = new_val;
+         found->value_size = new_size;
+         found->alloc_flags |= ALLOC_VALUE;

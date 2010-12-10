@@ -15,7 +15,6 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 
 #include "apr_pools.h"
-#include "googleurl/src/url_util.h"
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mutex.h"
@@ -23,9 +22,7 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/serf_url_fetcher.h"
-#include "net/instaweb/htmlparse/public/html_escape.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/file_cache.h"
@@ -33,7 +30,6 @@
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
-#include "third_party/protobuf2/src/src/google/protobuf/stubs/common.h"
 
 namespace net_instaweb {
 
@@ -160,10 +156,6 @@ void ApacheRewriteDriverFactory::ShutDown() {
 }
 
 void ApacheRewriteDriverFactory::Terminate() {
-  CssFilter::Terminate();
-  HtmlEscape::ShutDown();
-  google::protobuf::ShutdownProtobufLibrary();
-  url_util::Shutdown();
 }
 
 }  // namespace net_instaweb

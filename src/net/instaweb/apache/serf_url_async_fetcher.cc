@@ -122,8 +122,8 @@ class SerfFetch {
 
   void Cancel() {
     callback_->Done(false);
-    delete this;
   }
+
   int64 TimeDuration() const {
     if ((fetch_start_ms_ != 0) && (fetch_end_ms_ != 0)) {
       return fetch_end_ms_ - fetch_start_ms_;
@@ -268,6 +268,30 @@ class SerfFetch {
     return status;
   }
 
+  // Ensures that a user-agent string is included, and that the mod_pagespeed
+  // version is appended.
+  void FixUserAgent() {
+    // Supply a default user-agent if none is present, and in any case
+    // append on a 'serf' suffix.
+    std::string user_agent;
+    CharStarVector v;
+    if (request_headers_.Lookup(HttpAttributes::kUserAgent, &v)) {
+      for (int i = 0, n = v.size(); i < n; ++i) {
+        if (i != 0) {
+          user_agent += " ";
+        }
+        user_agent += v[i];
+      }
+      request_headers_.RemoveAll(HttpAttributes::kUserAgent);
+    }
+    if (user_agent.empty()) {
+      user_agent += "Serf/" SERF_VERSION_STRING;
+    }
+    user_agent += " mod_pagespeed/" MOD_PAGESPEED_VERSION_STRING "-"
+        LASTCHANGE_STRING;
+    request_headers_.Add(HttpAttributes::kUserAgent, user_agent);
+  }
+
   static apr_status_t SetupRequest(serf_request_t* request,
                                    void* setup_baton,
                                    serf_bucket_t** req_bkt,
@@ -285,7 +309,7 @@ class SerfFetch {
     // to override it after it is created; only append to it.
     //
     // Serf automatically populates the Host field based on the
-    // URL, and provides no mechanism way to override it, except
+    // URL, and provides no mechanism to override it, except
     // by hacking source.  We hacked source.
     //
     // See src/third_party/serf/src/instaweb_context.c
@@ -296,38 +320,22 @@ class SerfFetch {
       host = v[0];
     }
 
+    fetch->FixUserAgent();
+
     *req_bkt = serf_request_bucket_request_create_for_host(
         request, kFetchMethod,
         url_path, NULL,
         serf_request_get_alloc(request), host);
     serf_bucket_t* hdrs_bkt = serf_bucket_request_get_headers(*req_bkt);
 
-    bool found_user_agent = false;
-    // TODO(abliss): get this from the SerfFetch
-    const char* user_agent_suffix =
-        " mod_pagespeed/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING;
     for (int i = 0; i < fetch->request_headers_.NumAttributes(); ++i) {
       const char* name = fetch->request_headers_.Name(i);
       const char* value = fetch->request_headers_.Value(i);
-      bool add = false;
-      if (strcasecmp(name, HttpAttributes::kUserAgent) == 0) {
-        found_user_agent = true;
-        value = apr_pstrcat(pool, value, user_agent_suffix, NULL);
-        add = true;
-      } else if (strcasecmp(name, HttpAttributes::kAcceptEncoding) == 0) {
-        add = true;
-      } else if (strcasecmp(name, HttpAttributes::kReferer) == 0) {
-        add = true;
-      }
-      if (add) {
+      if ((strcasecmp(name, HttpAttributes::kUserAgent) == 0) ||
+          (strcasecmp(name, HttpAttributes::kAcceptEncoding) == 0) ||
+          (strcasecmp(name, HttpAttributes::kReferer) == 0)) {
         serf_bucket_headers_setn(hdrs_bkt, name, value);
       }
-    }
-    if (!found_user_agent) {
-      const char* default_user_agent = apr_pstrcat(
-          pool, "Serf/" SERF_VERSION_STRING, user_agent_suffix, NULL);
-      serf_bucket_headers_setn(hdrs_bkt, HttpAttributes::kUserAgent,
-                               default_user_agent);
     }
 
     // TODO(jmarantz): add accept-encoding:gzip even if not requested by
@@ -399,6 +407,8 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     // want to call it here as well, as it will make it easier for the
     // thread to terminate.
     CancelOutstandingFetches();
+    STLDeleteElements(&completed_fetches_);
+    STLDeleteElements(&initiate_fetches_);
 
     // Let the thread terminate naturally by unlocking its mutexes.
     thread_done_ = true;
@@ -616,6 +626,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
 
 SerfUrlAsyncFetcher::~SerfUrlAsyncFetcher() {
   CancelOutstandingFetches();
+  STLDeleteElements(&completed_fetches_);
   int orphaned_fetches = active_fetches_.size();
   if (orphaned_fetches != 0) {
     LOG(ERROR) << "SerfFecher destructed with " << orphaned_fetches
@@ -643,6 +654,7 @@ SerfUrlAsyncFetcher::FetchQueueEntry SerfUrlAsyncFetcher::EraseFetch(
       << "Active fetch not in map: " << fetch->str_url();
   FetchQueueEntry entry = active_fetches_.erase(map_entry->second);
   active_fetch_map_.erase(map_entry);
+  completed_fetches_.push_back(fetch);
   return entry;
 }
 
@@ -776,7 +788,6 @@ void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch) {
   EraseFetch(fetch);
   fetch->message_handler()->Message(kInfo, "Fetch complete: %s",
                                     fetch->str_url());
-  completed_fetches_.push_back(fetch);
   if (time_duration_ms_) {
     time_duration_ms_->Add(fetch->TimeDuration());
   }

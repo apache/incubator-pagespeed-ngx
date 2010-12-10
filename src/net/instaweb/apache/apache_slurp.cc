@@ -256,8 +256,8 @@ void SlurpUrl(const std::string& uri, ApacheRewriteDriverFactory* factory,
     writer.OutputHeaders();
   } else {
     MessageHandler* handler = factory->message_handler();
-    handler->Message(kError, "mod_slurp: fetch of url %s"
-                     " failed.\nRequest Headers: %s\n\nResponse Headers: %s",
+    handler->Message(kInfo, "mod_slurp: fetch of url %s failed.\n"
+                     "Request Headers: %s\n\nResponse Headers: %s",
                      stripped_url.c_str(),
                      request_headers.ToString().c_str(),
                      response_headers.ToString().c_str());

@@ -78,13 +78,18 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(const std::string& url,
       if (compressed_response.IsGzipped()) {
         GzipInflater inflater(GzipInflater::kGzip);
         inflater.Init();
-        CHECK(inflater.SetInput(contents.data(), contents.size()));
-        while (inflater.HasUnconsumedInput()) {
-          char buf[kStackBufferSize];
-          if ((inflater.InflateBytes(buf, sizeof(buf)) == 0) ||
-              inflater.error()) {
-            compressed_response.RemoveAll(HttpAttributes::kContentEncoding);
-            break;
+        if (contents.data() == NULL || contents.size() == 0) {
+          // CHECK below would fail on these.
+          compressed_response.RemoveAll(HttpAttributes::kContentEncoding);
+        } else {
+          CHECK(inflater.SetInput(contents.data(), contents.size()));
+          while (inflater.HasUnconsumedInput()) {
+            char buf[kStackBufferSize];
+            if ((inflater.InflateBytes(buf, sizeof(buf)) == 0) ||
+                inflater.error()) {
+              compressed_response.RemoveAll(HttpAttributes::kContentEncoding);
+              break;
+            }
           }
         }
       }

@@ -28,6 +28,7 @@
 #include "net/instaweb/util/public/http_response_parser.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/meta_data.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 #include <string>
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
@@ -230,8 +231,10 @@ bool HttpDumpUrlFetcher::StreamingFetchUrl(const std::string& url,
   GURL gurl(url);
   if (gurl.is_valid() && gurl.IsStandard() &&
       GetFilenameFromUrl(root_dir_, gurl, &filename, handler)) {
+    NullMessageHandler null_handler;
+    // Pass in NullMessageHandler so that we don't get errors for file not found
     FileSystem::InputFile* file =
-        file_system_->OpenInputFile(filename.c_str(), handler);
+        file_system_->OpenInputFile(filename.c_str(), &null_handler);
     if (file != NULL) {
       CharStarVector v;
       // TODO(jmarantz): handle 'deflate'.
@@ -269,7 +272,7 @@ bool HttpDumpUrlFetcher::StreamingFetchUrl(const std::string& url,
       }
       file_system_->Close(file, handler);
     } else {
-      handler->Message(kWarning,
+      handler->Message(kInfo,
                        "HttpDumpUrlFetcher: Failed to find file %s for %s",
                        filename.c_str(), url.c_str());
     }
