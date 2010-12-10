@@ -117,8 +117,7 @@ enum ConfigSwitch {CONFIG_ON, CONFIG_OFF, CONFIG_ERROR};
 
 // Check if pagespeed optimization rules applicable.
 bool check_pagespeed_applicable(request_rec* request,
-                                const ContentType& content_type,
-                                const QueryParams& query_params) {
+                                const ContentType& content_type) {
   // We can't operate on Content-Ranges.
   if (apr_table_get(request->headers_out, "Content-Range") != NULL) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
@@ -132,14 +131,6 @@ bool check_pagespeed_applicable(request_rec* request,
                   "Content-Type=%s Host=%s Uri=%s",
                   request->content_type, request->hostname,
                   request->unparsed_uri);
-    return false;
-  }
-
-  // Pass-through mode.
-  // TODO(jmarantz): strip the param from the URL.
-  CharStarVector v;
-  if (query_params.Lookup(kModPagespeed, &v) &&
-      (v.size() == 1) && (strcasecmp(v[0], "off") == 0)) {
     return false;
   }
 
@@ -218,14 +209,16 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
       continue;
     }
     int64 int_val;
-      // TODO(jmarantz): add js inlinine threshold, outline threshold.
-    if (strcmp(name, kModPagespeedCssInlineMaxBytes) == 0) {
-      if (StringToInt64(value, &int_val)) {
-        options->set_css_inline_max_bytes(int_val);
+    if (strcmp(name, kModPagespeed) == 0) {
+      bool is_on = (strcmp(value, "on") == 0);
+      if (is_on || (strcmp(value, "off") == 0)) {
+        options->set_enabled(is_on);
         ++option_count;
       } else {
-        handler->Message(kWarning, "Invalid integer value for %s: %s",
-                         name, value);
+        // TODO(sligocki): Return 404s instead of logging server errors here
+        // and below.
+        handler->Message(kWarning, "Invalid value for %s: %s "
+                         "(should be on or off)", name, value);
         ret = false;
       }
     } else if (strcmp(name, kModPagespeedFilters) == 0) {
@@ -235,6 +228,18 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
       if (options->EnableFiltersByCommaSeparatedList(value, handler)) {
         ++option_count;
       } else {
+        handler->Message(kWarning,
+                         "Invalid filter name in %s: %s", name, value);
+        ret = false;
+      }
+    // TODO(jmarantz): add js inlinine threshold, outline threshold.
+    } else if (strcmp(name, kModPagespeedCssInlineMaxBytes) == 0) {
+      if (StringToInt64(value, &int_val)) {
+        options->set_css_inline_max_bytes(int_val);
+        ++option_count;
+      } else {
+        handler->Message(kWarning, "Invalid integer value for %s: %s",
+                         name, value);
         ret = false;
       }
     }
@@ -261,7 +266,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
     use_custom_options = true;
   }
 
-  if (!options->enabled() || (request->unparsed_uri == NULL)) {
+  if (request->unparsed_uri == NULL) {
     // TODO(jmarantz): consider adding Debug message if unparsed_uri is NULL,
     // possibly of request->the_request which was non-null in the case where
     // I found this in the debugger.
@@ -284,7 +289,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   }
 
   // Check if pagespeed optimization is applicable.
-  if (!check_pagespeed_applicable(request, *content_type, query_params)) {
+  if (!check_pagespeed_applicable(request, *content_type)) {
     return NULL;
   }
 
@@ -323,6 +328,12 @@ InstawebContext* build_context_for_request(request_rec* request) {
     merged_options->Merge(*options, query_options);
     custom_options.reset(merged_options);
     options = merged_options;
+  }
+
+  // Is ModPagespeed turned off? We check after parsing query params so that
+  // they can override .conf settings.
+  if (!options->enabled()) {
+    return NULL;
   }
 
   // Do ModPagespeedDisallow restrict us from rewriting this URL?
