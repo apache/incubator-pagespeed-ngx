@@ -324,6 +324,12 @@ InstawebContext* build_context_for_request(request_rec* request) {
     custom_options.reset(merged_options);
     options = merged_options;
   }
+
+  // Do ModPagespeedDisallow restrict us from rewriting this URL?
+  if (!options->IsAllowed(absolute_url)) {
+    return NULL;
+  }
+
   InstawebContext* context = new InstawebContext(
       request, *content_type, factory, absolute_url,
       use_custom_options, *options);
