@@ -34,7 +34,7 @@ class MessageHandler;
 class RewriteOptions {
  public:
   enum Filter {
-    kAddBaseTag,
+    kAddBaseTag, // Update kFirstEnumFilter if you add something before this.
     kAddHead,
     kAddInstrumentation,
     kCollapseWhitespace,
@@ -55,11 +55,17 @@ class RewriteOptions {
     kRewriteCss,
     kRewriteImages,
     kRewriteJavascript,
-    kStripScripts,
+    kStripScripts,  // Update kLastEnumFilter if you add something after this.
   };
 
+ private:
+  // Needed by kAllFilters.
+  static const Filter kFirstEnumFilter = kAddBaseTag;
+  static const Filter kLastEnumFilter = kStripScripts;
+
+ public:
   enum RewriteLevel {
-    // Run in pass-through mode. Parse HTML but do not perform any
+    // Enable no filters. Parse HTML but do not perform any
     // transformations. This is the default value. Most users should
     // explcitly enable the kCoreFilters level by calling
     // SetRewriteLevel(kCoreFilters).
@@ -71,6 +77,14 @@ class RewriteOptions {
     // then optionally add or remove specific filters based on
     // specific needs.
     kCoreFilters,
+
+    // Enable all filters intended for core, but some of which might
+    // need more testing. Good for if users are willing to test out
+    // the results of the rewrite more closely.
+    kTestingCoreFilters,
+
+    // Enable all filters.
+    kAllFilters,
   };
 
   // Used for enumerating over all entries in the Filter enum.

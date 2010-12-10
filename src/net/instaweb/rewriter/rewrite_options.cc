@@ -82,6 +82,12 @@ bool RewriteOptions::ParseRewriteLevel(
     } else if (strcasecmp(in.data(), "PassThrough") == 0) {
       *out = kPassThrough;
       ret = true;
+    } else if (strcasecmp(in.data(), "TestingCoreFilters") == 0) {
+      *out = kTestingCoreFilters;
+      ret = true;
+    } else if (strcasecmp(in.data(), "AllFilters") == 0) {
+      *out = kAllFilters;
+      ret = true;
     }
   }
   return ret;
@@ -139,18 +145,28 @@ void RewriteOptions::SetUp() {
   // Core filter level includes the "core" filter set.
   level_filter_set_map_[kCoreFilters].insert(kAddHead);
   level_filter_set_map_[kCoreFilters].insert(kCombineCss);
-
   // TODO(jmarantz): re-enable javascript and CSS minification in
   // the core set after the reported bugs have been fixed.  They
   // can still be enabled individually.
   // level_filter_set_map_[kCoreFilters].insert(kRewriteJavascript);
   // level_filter_set_map_[kCoreFilters].insert(kRewriteCss);
-
   level_filter_set_map_[kCoreFilters].insert(kInlineCss);
   level_filter_set_map_[kCoreFilters].insert(kInlineJavascript);
   level_filter_set_map_[kCoreFilters].insert(kRewriteImages);
   level_filter_set_map_[kCoreFilters].insert(kInsertImgDimensions);
   level_filter_set_map_[kCoreFilters].insert(kExtendCache);
+
+  // Copy CoreFilters set into TestingCoreFilters set ...
+  level_filter_set_map_[kTestingCoreFilters] =
+      level_filter_set_map_[kCoreFilters];
+  // ... and add possibly unsafe filters.
+  level_filter_set_map_[kTestingCoreFilters].insert(kRewriteJavascript);
+  level_filter_set_map_[kTestingCoreFilters].insert(kRewriteCss);
+
+  // Set complete set for all filters set.
+  for (int f = kFirstEnumFilter; f != kLastEnumFilter; ++f) {
+    level_filter_set_map_[kAllFilters].insert(static_cast<Filter>(f));
+  }
 }
 
 bool RewriteOptions::EnableFiltersByCommaSeparatedList(

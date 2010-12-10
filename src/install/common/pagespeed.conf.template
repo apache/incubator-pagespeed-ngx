@@ -20,9 +20,9 @@
     # this value and can instead fine-tune the configuration using the
     # ModPagespeedDisableFilters and ModPagespeedEnableFilters
     # directives, below. Valid values for ModPagespeedRewriteLevel are
-    # PassThrough and CoreFilters.
+    # PassThrough, CoreFilters, TestingCoreFilters and AllFilters.
     #
-    # ModPagespeedRewriteLevel CoreFilters
+    # ModPagespeedRewriteLevel PassThrough
 
     # Explicitly disables specific filters. This is useful in
     # conjuction with ModPagespeedRewriteLevel. For instance, if one
@@ -31,7 +31,7 @@
     # ModPagespeedDisableFilters. This directive contains a
     # comma-separated list of filter names, and can be repeated.
     #
-    # ModPagespeedDisableFilters rewrite_javascript
+    # ModPagespeedDisableFilters rewrite_images
 
     # Explicitly enables specific filters. This is useful in
     # conjuction with ModPagespeedRewriteLevel. For instance, filters
@@ -39,6 +39,7 @@
     # directive. This directive contains a comma-separated list of
     # filter names, and can be repeated.
     #
+    # ModPagespeedEnableFilters rewrite_javascript,rewrite_css
     # ModPagespeedEnableFilters collapse_whitespace,elide_attributes
 
     # ModPagespeedDomain
