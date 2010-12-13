@@ -104,6 +104,7 @@ class AprStatistics : public StatisticsTemplate<AprVariable> {
   bool frozen() const { return frozen_; }
  private:
   bool frozen_;
+  bool is_child_;
   const StringPiece& filename_prefix_;
   apr_pool_t* pool_;
 };

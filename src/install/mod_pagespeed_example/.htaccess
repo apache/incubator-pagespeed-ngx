@@ -6,6 +6,10 @@ ModPagespeed on
 ModPagespeedEnableFilters combine_css
 ModPagespeedJsOutlineMinBytes        3000
 ModPagespeedDisallow *
+ModPagespeedAllow *.htm*
+ModPagespeedAllow *.shtm*
+ModPagespeedAllow *.xhtm*
+ModPagespeedAllow */
 ModPagespeedAllow http://*/images/*.png
 ModPagespeedAllow http://*/images/*.jpg
 ModPagespeedAllow http://*/styles/*.css
