@@ -51,6 +51,7 @@ struct HttpAttributes {
   static const char kIfModifiedSince[];
   static const char kLastModified[];
   static const char kLocation[];
+  static const char kNoCache[];
   static const char kReferer[]; // sic
   static const char kServer[];
   static const char kSetCookie[];

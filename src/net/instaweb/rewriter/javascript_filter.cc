@@ -182,8 +182,9 @@ void JavascriptFilter::RewriteExternalScript() {
           driver_->options(), message_handler));
   if (script_dest != NULL) {
     bool ok;
-    if (resource_manager_->FetchOutputResource(script_dest.get(), NULL, NULL,
-                                               message_handler)) {
+    if (resource_manager_->FetchOutputResource(
+            script_dest.get(), NULL, NULL, message_handler,
+            ResourceManager::kNeverBlock)) {
       // Only rewrite URL if we have usable rewritten data.
       ok = script_dest->metadata()->status_code() == HttpStatus::kOK;
     } else {

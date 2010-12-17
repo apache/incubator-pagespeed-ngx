@@ -94,7 +94,6 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   void CancelOutstandingFetches();
   bool WaitForInProgressFetchesHelper(int64 max_ms,
                                       MessageHandler* message_handler);
-  FetchQueueEntry EraseFetch(SerfFetch* fetch);
 
   apr_pool_t* pool_;
   Timer* timer_;

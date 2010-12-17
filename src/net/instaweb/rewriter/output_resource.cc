@@ -27,11 +27,19 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"
 
 namespace net_instaweb {
+
+namespace {
+
+const char kLockSuffix[] = ".outputlock";
+
+}  // namespace
 
 OutputResource::OutputResource(ResourceManager* manager,
                                const StringPiece& resolved_base,
@@ -111,13 +119,12 @@ bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
   Hasher* hasher = resource_manager_->hasher();
   full_name_.set_hash(hasher->Hash(contents()));
   writing_complete_ = true;
-  if (output_file_ == NULL) {
-    return true;
-  } else {
+  bool ret = true;
+  if (output_file_ != NULL) {
     FileSystem* file_system = resource_manager_->file_system();
     CHECK(file_system != NULL);
     std::string temp_filename = output_file_->filename();
-    bool ret = file_system->Close(output_file_, handler);
+    ret = file_system->Close(output_file_, handler);
 
     // Now that we are done writing, we can rename to the filename we
     // really want.
@@ -132,8 +139,13 @@ bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
     // Put interface.
 
     output_file_ = NULL;
-    return ret;
   }
+  if (creation_lock_.get() != NULL) {
+    // We've created the data, never need to lock again.
+    creation_lock_->Unlock();
+    creation_lock_.reset(NULL);
+  }
+  return ret;
 }
 
 // Called by FilenameOutputResource::BeginWrite to determine how
@@ -231,6 +243,33 @@ void OutputResource::SetType(const ContentType* content_type) {
   // TODO(jmaessen): The addition of 1 below avoids the leading ".";
   // make this convention consistent and fix all code.
   full_name_.set_ext(content_type->file_extension() + 1);
+}
+
+bool OutputResource::LockForCreation(const ResourceManager* resource_manager,
+                                     ResourceManager::BlockingBehavior block) {
+  const int64 break_lock_ms = 30 * Timer::kSecondMs;
+  const int64 block_lock_ms = 5 * Timer::kSecondMs;
+  bool result = true;
+  if (creation_lock_.get() == NULL) {
+    std::string lock_name =
+        StrCat(resource_manager->filename_prefix(),
+               resource_manager->hasher()->Hash(name_key()),
+               kLockSuffix);
+    creation_lock_.reset(resource_manager->lock_manager()->
+                         CreateNamedLock(lock_name));
+  }
+  switch (block) {
+    case ResourceManager::kNeverBlock:
+      // TODO(jmaessen): When caller retries properly in all cases, use
+      // LockTimedWaitStealOld with a sub-second timeout to try to catch
+      // rewritten data.
+      result = creation_lock_->TryLockStealOld(break_lock_ms);
+      break;
+    case ResourceManager::kMayBlock:
+      creation_lock_->LockStealOld(block_lock_ms);
+      break;
+  }
+  return result;
 }
 
 }  // namespace net_instaweb

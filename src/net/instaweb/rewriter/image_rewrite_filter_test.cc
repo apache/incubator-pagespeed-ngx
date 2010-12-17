@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/mock_timer.h"
 
 namespace net_instaweb {
 
@@ -86,17 +87,18 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     AppendDefaultHeaders(kContentTypeJpeg, resource_manager_, &headers);
 
     writer.Write(headers, &message_handler_);
-    rewrite_driver_.FetchResource(src_string, request_headers,
-                                  &response_headers, &writer,
-                                  &message_handler_, &dummy_callback);
+    EXPECT_TRUE(
+        rewrite_driver_.FetchResource(src_string, request_headers,
+                                      &response_headers, &writer,
+                                      &message_handler_, &dummy_callback));
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) <<
         "Looking for " << src_string;
     // For readability, only do EXPECT_EQ on initial portions of data
     // as most of it isn't human-readable.  This will show us the headers
     // and the start of the image data.  So far every failure fails this
     // first, and we caught doubled headers this way.
-    EXPECT_EQ(rewritten_image_data.substr(0, 100),
-              fetched_resource_content.substr(0, 100)) <<
+    EXPECT_EQ(rewritten_image_data.substr(0, 250),
+              fetched_resource_content.substr(0, 250)) <<
         "In " << src_string;
     EXPECT_TRUE(rewritten_image_data == fetched_resource_content) <<
         "In " << src_string;
@@ -138,7 +140,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     message_handler_.Message(
         kInfo, "Now with serving, but with a recent fetch failure.");
     SimpleMetaData other_headers;
-    //size_t header_size = fetched_resource_content.size();
+    // size_t header_size = fetched_resource_content.size();
     dummy_callback.Reset();
 
     // Trying this twice.  The first time, we will again fail to rewrite
@@ -155,7 +157,8 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     // Now let some time go by and try again.
     message_handler_.Message(
         kInfo, "Now with serving, but 5 minutes expired since fetch failure.");
-    mock_timer_.advance_ms(5 * Timer::kMinuteMs + 1 * Timer::kSecondMs);
+    other_file_system_.timer()->advance_ms(
+        5 * Timer::kMinuteMs + 1 * Timer::kSecondMs);
     fetched_resource_content.clear();
     writer.Write(headers, &message_handler_);
     EXPECT_EQ(headers, fetched_resource_content);

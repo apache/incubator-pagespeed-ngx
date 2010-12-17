@@ -41,19 +41,29 @@ bool SerfUrlFetcher::StreamingFetchUrl(const std::string& url,
       url, request_headers, callback->response_headers(),
       callback->writer(), message_handler, callback);
 
+  // We are counting on the serf async fetcher implementing its own timeouts,
+  // using the same timeout that we have in this class.  To avoid a race
+  // we double the timeout in the limit set here and CHECK that the
+  // callback got called by the time our timeout loop exits.
   AprTimer timer;
-  for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
-       !callback->done() && now_ms - start_ms < fetcher_timeout_ms_;
+  int64 start_ms = timer.NowMs();
+  int64 now_ms = start_ms;
+  for (int64 end_ms = now_ms + 2 * fetcher_timeout_ms_;
+       !callback->done() && (now_ms < end_ms);
        now_ms = timer.NowMs()) {
     int64 remaining_us = std::max(static_cast<int64>(0),
-                                  1000 * (fetcher_timeout_ms_ - now_ms));
+                                  1000 * (end_ms - now_ms));
     async_fetcher_->Poll(remaining_us);
   }
+  bool ret = false;
   if (!callback->done()) {
-    message_handler->Error(url.c_str(), 0, "Timeout waiting response for %d ms",
-                           static_cast<int>(fetcher_timeout_ms_));
+    message_handler->Message(
+        kWarning,
+        "Async fetcher allowed %dms to expire without calling its callback",
+        static_cast<int>(now_ms - start_ms));
+  } else {
+    ret = callback->success();
   }
-  bool ret = callback->success();
   callback->Release();
   return ret;
 }

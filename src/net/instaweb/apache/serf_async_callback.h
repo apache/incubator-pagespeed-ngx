@@ -42,7 +42,14 @@ class SerfAsyncCallback : public UrlAsyncFetcher::Callback {
   MetaData* response_headers() { return &response_headers_buffer_; }
   Writer* writer() { return writer_.get(); }
 
-  // Called
+  // When the 'owner' of this callback -- the code that calls 'new' --
+  // is done with it, it can call release.  This will only delete the
+  // callback if Done() has been called.  Otherwise it will stay around
+  // waiting for Done() to be called, and only then will it be deleted.
+  //
+  // When Release is called prior to Done(), the writer and response_headers
+  // will beo NULLed out in this structure so they will not be updated when
+  // Done() is finally called.
   void Release();
 
   bool done() const { return done_; }

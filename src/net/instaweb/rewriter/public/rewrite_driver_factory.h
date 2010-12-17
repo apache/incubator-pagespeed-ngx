@@ -43,6 +43,7 @@ class HtmlParse;
 class HTTPCache;
 class LRUCache;
 class MessageHandler;
+class NamedLockManager;
 class ResourceManager;
 class RewriteDriver;
 class Statistics;
@@ -115,6 +116,7 @@ class RewriteDriverFactory {
   FilenameEncoder* filename_encoder();
   Timer* timer();
   HTTPCache* http_cache();
+  NamedLockManager* lock_manager();
 
   StringPiece filename_prefix();
 
@@ -230,6 +232,9 @@ class RewriteDriverFactory {
 
   // Keep track of authorized domains, sharding, and mappings.
   DomainLawyer domain_lawyer_;
+
+  // Manage locks for output resources.
+  scoped_ptr<NamedLockManager> lock_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };

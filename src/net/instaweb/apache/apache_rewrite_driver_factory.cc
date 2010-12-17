@@ -141,6 +141,7 @@ ResourceManager* ApacheRewriteDriverFactory::ComputeResourceManager() {
   ResourceManager* resource_manager =
       RewriteDriverFactory::ComputeResourceManager();
   resource_manager->set_statistics(statistics_);
+  http_cache()->SetStatistics(statistics_);
   return resource_manager;
 }
 

@@ -60,15 +60,15 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // times, and finally returns the contents.
   std::string FetchOutputResource(OutputResource* resource) {
     EXPECT_TRUE(resource_manager_->FetchOutputResource(
-        resource, NULL, NULL, &message_handler_));
+        resource, NULL, NULL, &message_handler_, ResourceManager::kMayBlock));
     SimpleMetaData empty;
     EXPECT_TRUE(resource_manager_->FetchOutputResource(
-        resource, NULL, &empty, &message_handler_));
+        resource, NULL, &empty, &message_handler_, ResourceManager::kMayBlock));
     std::string contents;
     StringWriter writer(&contents);
     EXPECT_TRUE(resource_manager_->FetchOutputResource(
         resource, &writer, resource->metadata(),
-        &message_handler_));
+        &message_handler_, ResourceManager::kMayBlock));
     return contents;
   }
 
@@ -85,7 +85,10 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     const char* filter_prefix = "fp";
     const char* name = "name";
     const char* contents = "contents";
-    const int64 origin_expire_time_ms = 1000;
+    // origin_expire_time_ms should be considerably longer than the various
+    // timeouts for resource locking, since we hit those timeouts in various
+    // places.
+    const int64 origin_expire_time_ms = 100000;
     const ContentType* content_type = &kContentTypeText;
     scoped_ptr<OutputResource> nor(
         resource_manager_->CreateOutputResourceWithPath(
@@ -95,8 +98,47 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     std::string name_key = nor->name_key();
     RemoveUrlPrefix(&name_key);
     EXPECT_EQ(nor->full_name().EncodeIdName(), name_key);
-    // Write some data
+    // Make sure the resource hasn't already been created (and lock it for
+    // creation).
+    EXPECT_FALSE(resource_manager_->FetchOutputResource(
+        nor.get(), NULL, NULL, &message_handler_,
+        ResourceManager::kNeverBlock));
     EXPECT_FALSE(nor->IsWritten());
+    {
+      // Now show that another attempt to create the resource will fail.
+      // Here we attempt to create without the hash.
+      scoped_ptr<OutputResource> nor1(
+          resource_manager_->CreateOutputResourceWithPath(
+              url_prefix_, filter_prefix, name, content_type,
+              &message_handler_));
+      ASSERT_TRUE(nor1.get() != NULL);
+      // We'll succeed in fetching (meaning don't create the resource), but the
+      // resource won't be written.
+      EXPECT_TRUE(resource_manager_->FetchOutputResource(
+          nor1.get(), NULL, NULL, &message_handler_,
+          ResourceManager::kNeverBlock));
+      EXPECT_FALSE(nor1->IsWritten());
+    }
+    {
+      // Here we attempt to create the object with the hash and fail.
+      ResourceNamer namer;
+      namer.CopyFrom(nor->full_name());
+      namer.set_hash("0");
+      namer.set_ext("txt");
+      std::string name = StrCat(url_prefix_, namer.Encode());
+      scoped_ptr<OutputResource> nor1(
+          resource_manager_->CreateOutputResourceForFetch(name));
+      ASSERT_TRUE(nor1.get() != NULL);
+      // Again we'll succeed in fetching (meaning don't create), but the
+      // resource won't be written.  Note that we do a non-blocking fetch here.
+      // An actual resource fetch does a blocking fetch that would end by
+      // stealing the creation lock; we don't want to steal the lock here.
+      EXPECT_TRUE(resource_manager_->FetchOutputResource(
+          nor1.get(), NULL, NULL, &message_handler_,
+          ResourceManager::kNeverBlock));
+      EXPECT_FALSE(nor1->IsWritten());
+    }
+    // Write some data
     EXPECT_FALSE(ResourceManagerTestingPeer::HasHash(nor.get()));
     EXPECT_FALSE(ResourceManagerTestingPeer::Generated(nor.get()));
     EXPECT_TRUE(resource_manager_->Write(HttpStatus::kOK, contents, nor.get(),
@@ -114,12 +156,11 @@ class ResourceManagerTest : public ResourceManagerTestBase {
             url_prefix_, filter_prefix, name, &kContentTypeText,
             &message_handler_));
     ASSERT_TRUE(nor2.get() != NULL);
-    EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor.get()));
-    EXPECT_FALSE(ResourceManagerTestingPeer::Generated(nor.get()));
-    EXPECT_TRUE(nor->IsWritten());
+    EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor2.get()));
+    EXPECT_FALSE(ResourceManagerTestingPeer::Generated(nor2.get()));
+    EXPECT_FALSE(nor2->IsWritten());
 
     // Fetch its contents and make sure they match
-    std::string newContents;
     EXPECT_EQ(contents, FetchOutputResource(nor2.get()));
 
     // Try asynchronously too
@@ -134,13 +175,19 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     // Now expire it from the HTTP cache.  Since we don't know its hash, we
     // cannot fetch it (even though the contents are still in the filesystem).
-    mock_timer_.advance_ms(2 * origin_expire_time_ms);
-    scoped_ptr<OutputResource> nor3(
-        resource_manager_->CreateOutputResourceWithPath(
-            url_prefix_, filter_prefix, name, &kContentTypeText,
-            &message_handler_));
-    EXPECT_FALSE(resource_manager_->FetchOutputResource(
-        nor3.get(), NULL, NULL, &message_handler_));
+    mock_timer()->advance_ms(2 * origin_expire_time_ms);
+    {
+      scoped_ptr<OutputResource> nor3(
+          resource_manager_->CreateOutputResourceWithPath(
+              url_prefix_, filter_prefix, name, &kContentTypeText,
+              &message_handler_));
+      EXPECT_FALSE(resource_manager_->FetchOutputResource(
+          nor3.get(), NULL, NULL, &message_handler_,
+          ResourceManager::kNeverBlock));
+      // Now nor3 has locked the resource for creation.
+      // We must destruct nor3 in order to unlock it again, since we
+      // have no intention of creating it.
+    }
 
     RemoveUrlPrefix(&url);
     ASSERT_TRUE(full_name.Decode(url));

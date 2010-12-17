@@ -58,6 +58,7 @@ class SerfTestCallback : public UrlAsyncFetcher::Callback {
   virtual ~SerfTestCallback() {}
   virtual void Done(bool success)  {
     ScopedMutex lock(mutex_);
+    CHECK(!done_);
     done_ = true;
     success_ = success;
   }
@@ -345,12 +346,8 @@ TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreadedAsync) {
   // to do.  Maybe a little more than 5 seconds is now needed to complete 3
   // async fetches.
   ASSERT_EQ(3, completed) << "Async fetches times out before completing";
-  EXPECT_TRUE(TestFetch(0, 3));
-
-  // TODO(jmarantz): some race -- perhaps a reasonable one as we are not
-  // really 'waiting' for threads in this test; just sleeping -- is preventing
-  // us from seeing the correct value when we test this.
-  // EXPECT_EQ(0, OutstandingFetches());
+  ValidateFetches(0, 3);
+  EXPECT_EQ(0, OutstandingFetches());
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestWaitOneThreadedTwoSync) {

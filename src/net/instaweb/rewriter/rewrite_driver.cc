@@ -462,7 +462,8 @@ bool RewriteDriver::FetchResource(
       callback->Done(true);
       queued = true;
     } else if (resource_manager_->FetchOutputResource(
-            output_resource, writer, response_headers, message_handler)) {
+            output_resource, writer, response_headers, message_handler,
+            ResourceManager::kMayBlock)) {
       callback->Done(true);
       queued = true;
       if (cached_resource_fetches_ != NULL) {

@@ -35,7 +35,6 @@
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/time_util.h"
 #include "http_config.h"
 #include "http_core.h"
 #include "http_log.h"
@@ -44,8 +43,6 @@
 namespace net_instaweb {
 
 namespace {
-
-const char kRepairCachingHeader[] = "X-Mod-Pagespeed-Repair";
 
 bool IsCompressibleContentType(const char* content_type) {
   if (content_type == NULL) {
@@ -176,16 +173,7 @@ void send_out_headers_and_body(
       ap_set_content_type(request, ptr);
     } else {
       if (strcasecmp(name, HttpAttributes::kCacheControl) == 0) {
-        // In case Apache configuration directives set up caching headers,
-        // we will need override our cache-extended resources in a late-running
-        // output filter.
-        // TODO(jmarantz): Do not use headers_out as out message passing
-        // mechanism. Switch to configuration vectors or something like that
-        // instead.
-        apr_table_add(request->headers_out, kRepairCachingHeader, value);
-        // Add the repair headers filter to fix the cacheing header.
-        ap_add_output_filter("MOD_PAGESPEED_REPAIR_HEADERS", NULL, request,
-                             request->connection);
+        SetupCacheRepair(value, request);
       }
       // apr_table_add makes copies of both head key and value, so we do not
       // have to duplicate them.
@@ -209,39 +197,7 @@ void send_out_headers_and_body(
 apr_status_t repair_caching_header(ap_filter_t *filter,
                                    apr_bucket_brigade *bb) {
   request_rec* request = filter->r;
-  SimpleMetaData response_headers;
-  ApacheHeaderToMetaData(request->headers_out, request->status,
-                         request->proto_num, &response_headers);
-
-  // TODO(jmarantz): Define a better policy, or at least document this
-  // one, for what we do when we do a meta-data lookup and find more
-  // than one response for our query.  In this case the query is our
-  // special "repair" header and something would be very wrong if
-  // there was more than one.
-  CharStarVector v;
-  if (response_headers.Lookup(kRepairCachingHeader, &v) && (v.size() == 1)) {
-    apr_table_unset(request->headers_out, kRepairCachingHeader);
-    std::string desired_cache_control(v[0]);
-    apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
-                  desired_cache_control.c_str());
-
-    // Convert our own cache-control data into an Expires header.
-    apr_table_unset(request->headers_out, HttpAttributes::kExpires);
-    response_headers.RemoveAll(HttpAttributes::kCacheControl);
-    response_headers.Add(HttpAttributes::kCacheControl,
-                         desired_cache_control);
-    response_headers.ComputeCaching();
-    if (response_headers.IsCacheable()) {
-      int64 expire_time_ms = response_headers.CacheExpirationTimeMs();
-      if (expire_time_ms > 0) {
-        std::string time_string;
-        if (ConvertTimeToString(expire_time_ms, &time_string)) {
-          apr_table_set(request->headers_out, HttpAttributes::kExpires,
-                        time_string.c_str());
-        }
-      }
-    }
-  }
+  RepairCachingHeaders(request);
   ap_remove_output_filter(filter);
   return ap_pass_brigade(filter->next, bb);
 }

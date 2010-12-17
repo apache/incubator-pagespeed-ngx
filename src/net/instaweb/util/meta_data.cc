@@ -38,6 +38,7 @@ const char HttpAttributes::kHost[] = "Host";
 const char HttpAttributes::kIfModifiedSince[] = "If-Modified-Since";
 const char HttpAttributes::kLastModified[] = "Last-Modified";
 const char HttpAttributes::kLocation[] = "Location";
+const char HttpAttributes::kNoCache[] = "max-age=0, no-cache, no-store";
 const char HttpAttributes::kReferer[] = "Referer"; // sic
 const char HttpAttributes::kServer[] = "Server";
 const char HttpAttributes::kSetCookie[] = "Set-Cookie";

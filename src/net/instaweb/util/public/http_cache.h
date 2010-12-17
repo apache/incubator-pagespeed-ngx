@@ -31,7 +31,9 @@ class CacheInterface;
 class HTTPValue;
 class MessageHandler;
 class MetaData;
+class Statistics;
 class Timer;
+class Variable;
 
 // Implements HTTP caching semantics, including cache expiration and
 // retention of the originally served cache headers.
@@ -41,7 +43,12 @@ class HTTPCache {
   HTTPCache(CacheInterface* cache, Timer* timer)
       : cache_(cache),
         timer_(timer),
-        force_caching_(false) {
+        force_caching_(false),
+        cache_time_us_(NULL),
+        cache_hits_(NULL),
+        cache_misses_(NULL),
+        cache_expirations_(NULL),
+        cache_inserts_(NULL) {
   }
 
   ~HTTPCache();
@@ -76,6 +83,9 @@ class HTTPCache {
   bool force_caching() const { return force_caching_; }
   Timer* timer() const { return timer_; }
 
+  // Initializes statistics for the cache (time, hits, misses, expirations)
+  void SetStatistics(Statistics* stats);
+
   // Tell the HTTP Cache to remember that a particular key is not cacheable.
   // This may be due to the associated URL failing Fetch, or it may be because
   // the URL was fetched but was marked with Cache-Control 'nocache' or
@@ -91,12 +101,20 @@ class HTTPCache {
   // it still will be in 5 minutes.
   void RememberNotCacheable(const std::string& key, MessageHandler * handler);
 
+  // Initialize statistics variables for the cache
+  static void Initialize(Statistics* statistics);
+
  private:
-  bool IsCurrentlyValid(const MetaData& headers);
+  bool IsCurrentlyValid(const MetaData& headers, int64 now_ms);
 
   scoped_ptr<CacheInterface> cache_;
   Timer* timer_;
   bool force_caching_;
+  Variable* cache_time_us_;
+  Variable* cache_hits_;
+  Variable* cache_misses_;
+  Variable* cache_expirations_;
+  Variable* cache_inserts_;
 
   DISALLOW_COPY_AND_ASSIGN(HTTPCache);
 };

@@ -45,6 +45,7 @@ class HTTPValue;
 class Hasher;
 class MessageHandler;
 class MetaData;
+class NamedLockManager;
 class OutputResource;
 class ResourceNamer;
 class RewriteOptions;
@@ -56,14 +57,22 @@ class Writer;
 
 class ResourceManager {
  public:
+  enum BlockingBehavior { kNeverBlock, kMayBlock };
+
   static const int kNotSharded;
+
+  // This value is a shared constant so that it can also be used in
+  // the Apache-specific code that repairs our caching headers downstream
+  // of mod_headers.
+  static const char kResourceEtagValue[];
 
   ResourceManager(const StringPiece& file_prefix,
                   FileSystem* file_system,
                   FilenameEncoder* filename_encoder,
                   UrlAsyncFetcher* url_async_fetcher,
                   Hasher* hasher,
-                  HTTPCache* http_cache);
+                  HTTPCache* http_cache,
+                  NamedLockManager* lock_manager);
   ~ResourceManager();
 
   // Initialize statistics gathering.
@@ -183,7 +192,6 @@ class ResourceManager {
   void SetContentType(const ContentType* content_type, MetaData* header);
 
   StringPiece filename_prefix() const { return file_prefix_; }
-
   void set_filename_prefix(const StringPiece& file_prefix);
   Statistics* statistics() const { return statistics_; }
   void set_statistics(Statistics* s) {
@@ -191,11 +199,22 @@ class ResourceManager {
     resource_url_domain_rejections_ = NULL;  // Lazily initialized.
   }
   void set_relative_path(bool x) { relative_path_ = x; }
+  NamedLockManager* lock_manager() const { return lock_manager_; }
 
+  // Attempt to fetch extant version of an OutputResource.  Returns false if the
+  // resource must be created by the caller.  If true is returned, the resulting
+  // data could still be empty (eg because the resource is being rewritten in
+  // another thread, or rewriting results in errors), so
+  // output_resource->IsWritten() must be checked if this call succeeds.  When
+  // blocking=kNeverBlock (the normal case for rewriting html), the call returns
+  // quickly if another thread is rewriting.  When blocking=kMayBlock (the
+  // normal case for serving resources), the call blocks until the ongoing
+  // rewrite completes, or until the lock times out and can be seized by the
+  // serving thread.
   bool FetchOutputResource(
     OutputResource* output_resource,
     Writer* writer, MetaData* response_headers,
-    MessageHandler* handler) const;
+    MessageHandler* handler, BlockingBehavior blocking) const;
 
   // Writes the specified contents into the output resource, retaining
   // both a name->filename map and the filename->contents map.
@@ -225,7 +244,7 @@ class ResourceManager {
                  MessageHandler* message_handler);
 
   // TODO(jmarantz): check thread safety in Apache.
-  Hasher* hasher() { return hasher_; }
+  Hasher* hasher() const { return hasher_; }
   // This setter should probably only be used in testing.
   void set_hasher(Hasher* hasher) { hasher_ = hasher; }
 
@@ -257,6 +276,7 @@ class ResourceManager {
   scoped_ptr<UrlEscaper> url_escaper_;
   bool relative_path_;
   bool store_outputs_in_file_system_;
+  NamedLockManager* lock_manager_;
   std::string max_age_string_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);

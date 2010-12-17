@@ -1,6 +1,6 @@
 # Proxy configuration file to enable Instaweb to rewrite external
 # content.  In this configuration we use assume a browser proxy,
-# pointing to HOSTNAME:80.
+# pointing to localhost:80.
 
 LoadModule proxy_module APACHE_MODULES/mod_proxy.so
 # Depends: proxy

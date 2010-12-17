@@ -20,14 +20,16 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   MemFileSystem other_file_system;
   // other_lru_cache is owned by other_http_cache_.
   LRUCache* other_lru_cache(new LRUCache(kCacheSize));
-  MockTimer other_mock_timer(0);
-  HTTPCache other_http_cache(other_lru_cache, &other_mock_timer);
+  MockTimer* other_mock_timer = other_file_system.timer();
+  HTTPCache other_http_cache(other_lru_cache, other_mock_timer);
   DomainLawyer other_domain_lawyer;
+  FileSystemLockManager other_lock_manager(
+      &other_file_system, other_mock_timer, &message_handler_);
   WaitUrlAsyncFetcher wait_url_async_fetcher(&mock_url_fetcher_);
   ResourceManager other_resource_manager(
       file_prefix_, &other_file_system,
       &filename_encoder_, &wait_url_async_fetcher, hasher,
-      &other_http_cache);
+      &other_http_cache, &other_lock_manager);
 
   SimpleStats stats;
   RewriteDriver::Initialize(&stats);
@@ -88,4 +90,4 @@ std::string ResourceManagerTestBase::Encode(
   return StrCat(path, namer.Encode());
 }
 
-}
+}  // namespace net_instaweb

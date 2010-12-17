@@ -30,13 +30,13 @@
 #include "base/basictypes.h"
 #include "base/stl_util-inl.h"
 #include "net/instaweb/apache/apr_mutex.h"
-#include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/meta_data.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "third_party/serf/src/serf.h"
 #include "third_party/serf/src/serf_bucket_util.h"
@@ -120,8 +120,28 @@ class SerfFetch {
 
   const char* str_url() { return str_url_.c_str(); }
 
+  // This must be called while holding SerfUrlAsyncFetcher's mutex_.
   void Cancel() {
-    callback_->Done(false);
+    CallCallback(false);
+  }
+
+  // Calls the callback supplied by the user.  This needs to happen
+  // exactly once.  In some error cases it appears that Serf calls
+  // HandleResponse multiple times on the same object.
+  //
+  // This must be called while holding SerfUrlAsyncFetcher's mutex_.
+  void CallCallback(bool success) {
+    if (callback_ == NULL) {
+      LOG(INFO) << "Serf callback more than once on same fetch " << str_url()
+                << " (" << this << ")";
+    } else {
+      UrlAsyncFetcher::Callback* callback = callback_;
+      callback_ = NULL;
+      response_headers_ = NULL;
+      callback->Done(success);
+      fetch_end_ms_ = timer_->NowMs();
+      fetcher_->FetchComplete(this);
+    }
   }
 
   int64 TimeDuration() const {
@@ -192,6 +212,12 @@ class SerfFetch {
   apr_status_t HandleResponse(serf_request_t* request,
                               serf_bucket_t* response) {
     apr_status_t status = APR_EGENERAL;
+    if (response_headers_ == NULL) {
+      LOG(INFO) << "HandleResponse called on URL " << str_url()
+                << "(" << this << "), which is already erased";
+      return status;
+    }
+
     serf_status_line status_line;
     if ((response != NULL) &&
         ((status = serf_bucket_response_status(response, &status_line))
@@ -225,9 +251,7 @@ class SerfFetch {
     }
     if (!APR_STATUS_IS_EAGAIN(status)) {
       bool success = APR_STATUS_IS_EOF(status);
-      fetch_end_ms_ = timer_->NowMs();
-      callback_->Done(success);
-      fetcher_->FetchComplete(this);
+      CallCallback(success);
     }
     return status;
   }
@@ -287,8 +311,11 @@ class SerfFetch {
     if (user_agent.empty()) {
       user_agent += "Serf/" SERF_VERSION_STRING;
     }
-    user_agent += " mod_pagespeed/" MOD_PAGESPEED_VERSION_STRING "-"
-        LASTCHANGE_STRING;
+    StringPiece version(" mod_pagespeed/" MOD_PAGESPEED_VERSION_STRING "-"
+                        LASTCHANGE_STRING);
+    if (!StringPiece(user_agent).ends_with(version)) {
+      user_agent.append(version.data(), version.size());
+    }
     request_headers_.Add(HttpAttributes::kUserAgent, user_agent);
   }
 
@@ -647,17 +674,6 @@ SerfUrlAsyncFetcher::~SerfUrlAsyncFetcher() {
   delete mutex_;
 }
 
-SerfUrlAsyncFetcher::FetchQueueEntry SerfUrlAsyncFetcher::EraseFetch(
-    SerfFetch* fetch) {
-  FetchMapEntry map_entry = active_fetch_map_.find(fetch);
-  CHECK(map_entry != active_fetch_map_.end())
-      << "Active fetch not in map: " << fetch->str_url();
-  FetchQueueEntry entry = active_fetches_.erase(map_entry->second);
-  active_fetch_map_.erase(map_entry);
-  completed_fetches_.push_back(fetch);
-  return entry;
-}
-
 void SerfUrlAsyncFetcher::CancelOutstandingFetches() {
   // If there are still active requests, cancel them.
   int num_canceled = 0;
@@ -667,9 +683,8 @@ void SerfUrlAsyncFetcher::CancelOutstandingFetches() {
       FetchQueueEntry p = active_fetches_.begin();
       SerfFetch* fetch = *p;
       LOG(WARNING) << "Aborting fetch of " << fetch->str_url();
-      EraseFetch(fetch);
-      ++num_canceled;
       fetch->Cancel();
+      ++num_canceled;
     }
   }
   if (num_canceled != 0) {
@@ -744,10 +759,10 @@ int SerfUrlAsyncFetcher::Poll(int64 microseconds) {
       int timeouts = 0;
       while ((p != e) && ((*p)->fetch_start_ms() < stale_cutoff)) {
         SerfFetch* fetch = *p;
+        ++p;
         LOG(WARNING) << "Fetch timed out: " << fetch->str_url();
         timeouts++;
         fetch->Cancel();
-        p = EraseFetch(fetch);
       }
       if ((timeouts > 0) && (timeout_count_ != NULL)) {
         timeout_count_->Add(timeouts);
@@ -784,8 +799,15 @@ int SerfUrlAsyncFetcher::Poll(int64 microseconds) {
 
 void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch) {
   // We do not have a ScopedMutex in FetchComplete, because it is only
-  // called from Poll, which has a ScopedMutex.
-  EraseFetch(fetch);
+  // called from Poll and CancelOutstandingFetches, which have ScopedMutexes.
+  // Note that SerfFetch::Cancel is currently not exposed from outside this
+  // class.
+  LOG(WARNING) << "FetchComplete(" << fetch->str_url() << ", " << fetch << ")";
+  FetchMapEntry map_entry = active_fetch_map_.find(fetch);
+  CHECK(map_entry != active_fetch_map_.end());
+  active_fetches_.erase(map_entry->second);
+  active_fetch_map_.erase(map_entry);
+  completed_fetches_.push_back(fetch);
   fetch->message_handler()->Message(kInfo, "Fetch complete: %s",
                                     fetch->str_url());
   if (time_duration_ms_) {

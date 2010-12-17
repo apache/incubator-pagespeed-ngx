@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/http_cache.h"
 #include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/statistics.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -75,13 +76,25 @@ const char kCacheKeyPrefix[] = "rname/";
 
 const int ResourceManager::kNotSharded = -1;
 
+// We set etags for our output resources to "W/0".  The "W" means
+// that this etag indicates a functional consistency, but is not
+// guaranteeing byte-consistency.  This distinction is important because
+// we serve different bytes for clients that do not accept gzip.
+//
+// This value is a shared constant so that it can also be used in
+// the Apache-specific code that repairs headers after mod_headers
+// alters them.
+const char ResourceManager::kResourceEtagValue[] = "W/0";
+
 ResourceManager::ResourceManager(const StringPiece& file_prefix,
                                  FileSystem* file_system,
                                  FilenameEncoder* filename_encoder,
                                  UrlAsyncFetcher* url_async_fetcher,
                                  Hasher* hasher,
-                                 HTTPCache* http_cache)
-    : resource_id_(0),
+                                 HTTPCache* http_cache,
+                                 NamedLockManager* lock_manager)
+    : file_prefix_(file_prefix.data(), file_prefix.size()),
+      resource_id_(0),
       file_system_(file_system),
       filename_encoder_(filename_encoder),
       url_async_fetcher_(url_async_fetcher),
@@ -92,9 +105,9 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       url_escaper_(new UrlEscaper()),
       relative_path_(false),
       store_outputs_in_file_system_(true),
+      lock_manager_(lock_manager),
       max_age_string_(StringPrintf("max-age=%d",
                                    static_cast<int>(kGeneratedMaxAgeSec))) {
-  file_prefix.CopyToString(&file_prefix_);
 }
 
 ResourceManager::~ResourceManager() {
@@ -116,7 +129,10 @@ std::string ResourceManager::UrlPrefixFor(const ResourceNamer& namer) const {
     size_t hash = namer.Hash();
     int shard = hash % num_shards_;
     CHECK_NE(std::string::npos, url_prefix_pattern_.find("%d"));
-    url_prefix = StringPrintf(url_prefix_pattern_.c_str(), shard);
+    // The following uses a user-provided printf format string; this would be
+    // really dangerous if we did not validate url_prefix_pattern_ by calling
+    // ValidateShardsAgainstUrlPrefixPattern() below.
+    url_prefix = StringPrintf(url_prefix_pattern_.c_str(), shard);  // NOLINT
   }
   return url_prefix;
 }
@@ -186,9 +202,18 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
     header->Add(HttpAttributes::kExpires, expires_string);
   }
 
-  // PageSpeed claims the "Vary" header is needed to avoid proxy cache
-  // issues for clients where some accept gzipped content and some don't.
-  header->Add("Vary", HttpAttributes::kAcceptEncoding);
+  // While PageSpeed claims the "Vary" header is needed to avoid proxy cache
+  // issues for clients where some accept gzipped content and some don't, it
+  // should not be done here.  It should instead be done by whatever code is
+  // conditionally gzipping the content based on user-agent, e.g. mod_deflate.
+  // header->Add(HttpAttributes::kVary, HttpAttributes::kAcceptEncoding);
+
+  // ETag is superfluous for mod_pagespeed as we sign the URL with the
+  // content hash.  However, we have seen evidence that IE8 will not
+  // serve images from its cache when the image lacks an ETag.  Since
+  // we sign URLs, there is no reason to have a unique signature in
+  // the ETag.
+  header->Add(HttpAttributes::kEtag, kResourceEtagValue);
 
   // TODO(jmarantz): add date/last-modified headers by default.
   CharStarVector v;
@@ -442,7 +467,7 @@ Resource* ResourceManager::CreateInputResourceUnchecked(
 bool ResourceManager::FetchOutputResource(
     OutputResource* output_resource,
     Writer* writer, MetaData* response_headers,
-    MessageHandler* handler) const {
+    MessageHandler* handler, BlockingBehavior blocking) const {
   if (output_resource == NULL) {
     return false;
   }
@@ -464,18 +489,38 @@ bool ResourceManager::FetchOutputResource(
             writer->Write(content, handler)));
   } else if (output_resource->has_hash()) {
     std::string url = output_resource->url();
-    if ((http_cache_->Find(url, &output_resource->value_, meta_data, handler)
-         == HTTPCache::kFound) &&
-        ((writer == NULL) ||
-         output_resource->value_.ExtractContents(&content)) &&
-        ((writer == NULL) || writer->Write(content, handler))) {
-      output_resource->set_written(true);
-      ret = true;
-    } else if (ReadIfCached(output_resource, handler)) {
-      content = output_resource->contents();
-      http_cache_->Put(url, *meta_data, content, handler);
-      ret = ((writer == NULL) || writer->Write(content, handler));
+    // Check cache once without lock, then if that fails try again with lock.
+    // Note that it would be *correct* to lock up front and only check once.
+    // However, the common case here is that the resource is present (because
+    // this path mostly happens during resource fetch).  We want to avoid
+    // unnecessarily serializing resource fetch on a lock.
+    for (int i = 0; !ret && i < 2; ++i) {
+      if ((http_cache_->Find(url, &output_resource->value_, meta_data, handler)
+           == HTTPCache::kFound) &&
+          ((writer == NULL) ||
+           output_resource->value_.ExtractContents(&content)) &&
+          ((writer == NULL) || writer->Write(content, handler))) {
+        output_resource->set_written(true);
+        ret = true;
+      } else if (ReadIfCached(output_resource, handler)) {
+        content = output_resource->contents();
+        http_cache_->Put(url, *meta_data, content, handler);
+        ret = ((writer == NULL) || writer->Write(content, handler));
+      }
+      // On the first iteration, obtain the lock if we don't have data.
+      if (!ret && i == 0 && !output_resource->LockForCreation(this, blocking)) {
+        // We didn't get the lock; we need to abandon ship.  The caller should
+        // see this as a successful fetch for which IsWritten() remains false.
+        CHECK(!output_resource->IsWritten());
+        ret = true;
+      }
     }
+  } else {
+    // TODO(jmaessen): This path should also re-try fetching the resource after
+    // obtaining the lock.  However, in this case we need to look for the hash
+    // in the cache first, which duplicates logic from creation time and makes
+    // life generally complicated.
+    ret = !output_resource->LockForCreation(this, blocking);
   }
   if (ret && (response_headers != NULL) && (response_headers != meta_data)) {
     response_headers->CopyFrom(*meta_data);

@@ -125,7 +125,31 @@ function test_filter() {
 # General system tests
 
 echo TEST: mod_pagespeed is running in Apache and writes the expected header.
-check "$WGET_DUMP $EXAMPLE_ROOT/combine_css.html | grep -q X-Mod-Pagespeed"
+HTML_HEADERS=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
+
+echo Checking for X-Mod-Pagespeed header
+echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
+check [ $? = 0 ]
+
+echo Checking for lack of E-tag
+echo $HTML_HEADERS | grep -qi Etag
+check [ $? != 0 ]
+
+echo Checking for presence of Vary.
+echo $HTML_HEADERS | grep -qi 'Vary: Accept-Encoding'
+check [ $? = 0 ]
+
+echo Checking for absence of Last-Modified
+echo $HTML_HEADERS | grep -qi 'Last-Modified'
+check [ $? != 0 ]
+
+echo Checking for presence of Cache-control: no-cache
+echo $HTML_HEADERS | grep -qi 'Cache-Control: max-age=0, no-cache, no-store'
+check [ $? = 0 ]
+
+echo Checking for absense of Expires
+echo $HTML_HEADERS | grep -qi 'Expires'
+check [ $? != 0 ]
 
 echo TEST: 404s are served and properly recorded.
 NUM_404=$($WGET_DUMP $STATISTICS_URL | grep resource_404_count | cut -d: -f2)
@@ -181,7 +205,7 @@ check grep '"304 Not Modified"' $WGET_OUTPUT
 
 echo TEST: Legacy format URLs should still work.
 URL=$EXAMPLE_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
-check "$WGET_DUMP $URL" | grep -q "HTTP/1.1 200 OK"
+check "$WGET_DUMP $URL | grep -q 'HTTP/1.1 200 OK'"
 
 test_filter move_css_to_head does what it says on the tin.
 check $WGET_PREREQ $URL
@@ -205,8 +229,16 @@ check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
 
 echo TEST: compression is enabled for rewritten JS.
 JS_URL=$(egrep -o http://.*.pagespeed.*.js $FETCHED)
-check "$WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
-  $JS_URL 2>&1 | grep -qi 'Content-Encoding: gzip'"
+JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+  $JS_URL 2>&1)
+echo $JS_HEADERS | grep -qi 'Content-Encoding: gzip'
+check [ $? = 0 ]
+echo $JS_HEADERS | grep -qi 'Vary: Accept-Encoding'
+check [ $? = 0 ]
+echo $JS_HEADERS | grep -qi 'Etag: W/0'
+check [ $? = 0 ]
+echo $JS_HEADERS | grep -qi 'Last-Modified:'
+check [ $? = 0 ]
 
 test_filter remove_comments removes comments but not IE directives.
 check $WGET_PREREQ $URL
@@ -231,16 +263,34 @@ check $WGET_PREREQ $URL
 check [ `stat -c %s $OUTDIR/*1023x766*Puzzle*` -lt 241260 ]  # compressed
 check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
 
-echo TEST: compression is not enabled for rewritten images.
 IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
+echo TEST: headers for rewrritten image "$IMG_URL"
 IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $IMG_URL 2>&1)
 # Make sure we have some valid headers.
 echo \"$IMG_HEADERS\" | grep -qi 'Content-Type: image/jpeg'
 check [ $? = 0 ]
+
 # Make sure the response was not gzipped.
+echo TEST: Images are not gzipped
 echo "$IMG_HEADERS" | grep -qi 'Content-Encoding: gzip'
 check [ $? != 0 ]
+
+# Make sure there is no vary-encoding
+echo TEST: Vary is not set for images
+echo "$IMG_HEADERS" | grep -qi 'Vary: Accept-Encoding'
+check [ $? != 0 ]
+
+# Make sure there is an etag
+echo TEST: Etags is present
+echo "$IMG_HEADERS" | grep -qi 'Etag: W/0'
+check [ $? = 0 ]
+
+# Make sure there is a last-modified tag
+echo TEST: Last-modified is present
+echo "$IMG_HEADERS" | grep -qi 'Last-Modified'
+check [ $? = 0 ]
+
 IMG_URL=${IMG_URL/Puzzle/BadName}
 echo TEST: rewrite_images redirects unknown image $IMG_URL
 $WGET_PREREQ $IMG_URL;  # fails

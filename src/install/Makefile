@@ -32,14 +32,6 @@
 # They have defaults, which will often need to be changed.
 
 
-# The hostname used in URLs to find this Apache server.  This may be
-# include a port, e.g.   www.yoursite.com or www.test.com:8080.  Specify
-# this as HOSTNAME= when running Make.  This defaults to the result
-# of running the Unix command 'hostname.  If you are going to enable
-# domain sharding, then you must include a "%d" in the hostname so
-# that we can construct sharded hostnames.
-HOSTNAME = $(shell /bin/hostname)
-
 # The location of the Apache root installation directory.  This helps form
 # defaults for other variables, but each of those can be overridden.
 APACHE_ROOT = /etc/httpd
@@ -87,9 +79,8 @@ echo_vars:
 	@echo Run "restart" to add default instaweb config to apache
 	@echo Or run "stop", "staging", "install", and "start".
 	@echo These configuration variables can be reset on the make command line,
-	@echo e.g. \"make config_file HOSTNAME=www.yoursite.com\"
+	@echo e.g. \"make config_file\"
 	@echo ""
-	@echo "   HOSTNAME=$(HOSTNAME)"
 	@echo "   APACHE_CONF=$(APACHE_CONF)"
 	@echo "   APACHE_MODULES=$(APACHE_MODULES)"
 	@echo "   APACHE_ROOT=$(APACHE_ROOT)"
@@ -178,8 +169,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 		$^ > $@
 
 $(STAGING_DIR)/proxy.conf : proxy.conf.template
-	sed -e s@HOSTNAME@$(HOSTNAME)@g \
-            -e s@APACHE_MODULES@$(APACHE_MODULES)@g \
+	sed -e s@APACHE_MODULES@$(APACHE_MODULES)@g \
 		$< > $@
 
 CONF_TEMPLATES = $(STAGING_DIR)/pagespeed.conf \
@@ -243,4 +233,4 @@ restart : staging
 
 # Tests that the installed mod_pagespeed server is working.
 test :
-	./system_test.sh $(HOSTNAME)
+	./system_test.sh localhost

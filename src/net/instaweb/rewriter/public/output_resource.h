@@ -29,11 +29,14 @@
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 
 namespace net_instaweb {
 
+class AbstractLock;
 class MessageHandler;
+class NamedLockManager;
 
 class OutputResource : public Resource {
  public:
@@ -141,10 +144,13 @@ class OutputResource : public Resource {
   void set_written(bool written) { writing_complete_ = true; }
   void set_generated(bool x) { generated_ = x; }
   bool generated() const { return generated_; }
+  std::string TempPrefix() const;
+
   OutputWriter* BeginWrite(MessageHandler* message_handler);
   bool EndWrite(OutputWriter* writer, MessageHandler* message_handler);
-
-  std::string TempPrefix() const;
+  // Attempt to obtain a named lock for the resource.  Return true if we do so.
+  bool LockForCreation(const ResourceManager* resource_manager,
+                       ResourceManager::BlockingBehavior block);
 
   FileSystem::OutputFile* output_file_;
   bool writing_complete_;
@@ -160,6 +166,10 @@ class OutputResource : public Resource {
   // prefix.
   std::string resolved_base_;
   ResourceNamer full_name_;
+
+  // Lock guarding resource creation.  Lazily initialized by LockForCreation,
+  // unlocked on destruction or EndWrite.
+  scoped_ptr<AbstractLock> creation_lock_;
 
   DISALLOW_COPY_AND_ASSIGN(OutputResource);
 };

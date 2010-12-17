@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/fake_url_async_fetcher.h"
 #include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/http_cache.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -52,13 +53,14 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
  protected:
   ResourceManagerTestBase()
       : mock_url_async_fetcher_(&mock_url_fetcher_),
-        mock_timer_(0),
-        // TODO(sligocki): Someone removed setting the file_prefix, but we
-        // still appear to be using it. We should see what's going on with that.
+        file_prefix_(StrCat(GTestTempDir(), "/")),
         url_prefix_(URL_PREFIX),
 
         lru_cache_(new LRUCache(kCacheSize)),
-        http_cache_(lru_cache_, &mock_timer_),
+        http_cache_(lru_cache_, file_system_.timer()),
+        // TODO(jmaessen): Pull timer out of file_system_ and make it
+        // standalone.
+        lock_manager_(&file_system_, file_system_.timer(), &message_handler_),
         // TODO(sligocki): Why can't I init it here ...
         // resource_manager_(new ResourceManager(
         //    file_prefix_, &file_system_,
@@ -68,11 +70,13 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                         &mock_url_async_fetcher_, options_),
 
         other_lru_cache_(new LRUCache(kCacheSize)),
-        other_http_cache_(other_lru_cache_, &mock_timer_),
+        other_http_cache_(other_lru_cache_, other_file_system_.timer()),
+        other_lock_manager_(
+            &other_file_system_, other_file_system_.timer(), &message_handler_),
         other_resource_manager_(
             file_prefix_, &other_file_system_,
             &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
-            &other_http_cache_),
+            &other_http_cache_, &other_lock_manager_),
         other_rewrite_driver_(&message_handler_, &other_file_system_,
                               &mock_url_async_fetcher_, other_options_) {
     // rewrite_driver_.SetResourceManager(resource_manager_);
@@ -81,12 +85,11 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   virtual void SetUp() {
     HtmlParseTestBaseNoAlloc::SetUp();
-    file_prefix_ = GTestTempDir() + "/";
     // TODO(sligocki): Init this in constructor.
     resource_manager_ = new ResourceManager(
         file_prefix_, &file_system_,
         &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
-        &http_cache_);
+        &http_cache_, &lock_manager_);
     rewrite_driver_.SetResourceManager(resource_manager_);
   }
 
@@ -141,6 +144,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     DISALLOW_COPY_AND_ASSIGN(DummyCallback);
   };
 
+  MockTimer* mock_timer() { return file_system_.timer(); }
+
   void DeleteFileIfExists(const std::string& filename) {
     if (file_system_.Exists(filename.c_str(), &message_handler_).is_true()) {
       ASSERT_TRUE(file_system_.RemoveFile(filename.c_str(), &message_handler_));
@@ -151,7 +156,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                             ResourceManager* resource_manager,
                             std::string* text) {
     SimpleMetaData header;
+    int64 time = mock_timer()->NowUs();
+    // Reset mock timer so synthetic headers match original.
+    mock_timer()->set_time_us(0);
     resource_manager->SetDefaultHeaders(&content_type, &header);
+    // Then set it back
+    mock_timer()->set_time_us(time);
     StringWriter writer(text);
     header.Write(&writer, &message_handler_);
   }
@@ -279,7 +289,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   MockHasher mock_hasher_;
   MD5Hasher md5_hasher_;
 
-  MockTimer mock_timer_;
   std::string file_prefix_;
   std::string url_prefix_;
 
@@ -291,6 +300,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   MemFileSystem file_system_;
   LRUCache* lru_cache_;  // Owned by http_cache_
   HTTPCache http_cache_;
+  FileSystemLockManager lock_manager_;
   ResourceManager* resource_manager_;  // TODO(sligocki): Make not a pointer.
   RewriteOptions options_;
   RewriteDriver rewrite_driver_;
@@ -302,6 +312,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   MemFileSystem other_file_system_;
   LRUCache* other_lru_cache_;  // Owned by other_http_cache_
   HTTPCache other_http_cache_;
+  FileSystemLockManager other_lock_manager_;
   ResourceManager other_resource_manager_;
   RewriteOptions other_options_;
   RewriteDriver other_rewrite_driver_;

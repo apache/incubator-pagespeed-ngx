@@ -28,6 +28,9 @@ extern module AP_MODULE_DECLARE_DATA pagespeed_module;
 
 namespace net_instaweb {
 
+const char InstawebContext::kRepairHeadersFilterName[] =
+    "MOD_PAGESPEED_REPAIR_HEADERS";
+
 InstawebContext::InstawebContext(request_rec* request,
                                  const ContentType& content_type,
                                  ApacheRewriteDriverFactory* factory,

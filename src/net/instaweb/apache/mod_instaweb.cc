@@ -16,6 +16,7 @@
 #include <string>
 
 #include "apr_strings.h"
+#include "apr_timer.h"
 #include "apr_version.h"
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
@@ -102,7 +103,6 @@ const char* kModPagespeedDomain = "ModPagespeedDomain";
 const char* kModPagespeedMapRewriteDomain = "ModPagespeedMapRewriteDomain";
 const char* kModPagespeedMapOriginDomain = "ModPagespeedMapOriginDomain";
 const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
-const char* kRepairHeadersFilterName = "MOD_PAGESPEED_REPAIR_HEADERS";
 const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
 const char* kModPagespeedAllow = "ModPagespeedAllow";
 const char* kModPagespeedDisallow = "ModPagespeedDisallow";
@@ -247,6 +247,137 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
   return ret && (option_count > 0);
 }
 
+// Apache's pool-based cleanup is not effective on process shutdown.  To allow
+// valgrind to report clean results, we must take matters into our own hands.
+// We employ a statically allocated class object and rely on its destructor to
+// get a reliable cleanup hook.  I am, in general, strongly opposed to this
+// sort of technique, and it violates the C++ Style Guide:
+//   http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml
+// However, it is not possible to use valgrind to track memory leaks
+// in our Apache module without this approach.
+//
+// We also need this context hold any data needed for statistics
+// collected in advance of the creation of the Statistics object, such
+// as directives-parsing time.
+class ApacheProcessContext {
+ public:
+  ApacheProcessContext()
+      : merge_time_us_(NULL),
+        parse_time_us_(NULL),
+        html_rewrite_time_us_(NULL),
+        stored_parse_time_us_(0) {
+  }
+
+  ~ApacheProcessContext() {
+    STLDeleteElements(&factories_);
+    STLDeleteElements(&configs_);
+    statistics_.reset(NULL);
+    ApacheRewriteDriverFactory::Terminate();
+    log_message_handler::ShutDown();
+  }
+
+  // Delete the specified factory on process exit.
+  void add_factory(ApacheRewriteDriverFactory* factory) {
+    factories_.insert(factory);
+  }
+
+  // Do not delete the specified factory on process exit -- it
+  // is being deleted on a pool hook.
+  void remove_factory(ApacheRewriteDriverFactory* factory) {
+    factories_.erase(factory);
+  }
+
+  // Delete the specified config on process exit.
+  void add_config(ApacheConfig* config) {
+    configs_.insert(config);
+  }
+
+  // Do not delete the specified config on process exit -- it
+  // is being deleted on a pool hook.
+  void remove_config(ApacheConfig* config) {
+    configs_.erase(config);
+  }
+
+  AprStatistics* statistics(const StringPiece& filename_prefix) {
+    if (statistics_.get() == NULL) {
+      statistics_.reset(new AprStatistics(filename_prefix));
+      RewriteDriverFactory::Initialize(statistics_.get());
+      SerfUrlAsyncFetcher::Initialize(statistics_.get());
+      statistics_->AddVariable("merge_time_us");
+      statistics_->AddVariable("parse_time_us");
+      statistics_->AddVariable("html_rewrite_time_us");
+      statistics_->InitVariables(true);
+      merge_time_us_ = statistics_->GetVariable("merge_time_us");
+      parse_time_us_ = statistics_->GetVariable("parse_time_us");
+      html_rewrite_time_us_ = statistics_->GetVariable("html_rewrite_time_us");
+      parse_time_us_->Add(stored_parse_time_us_);
+      stored_parse_time_us_ = 0;
+    }
+    return statistics_.get();
+  }
+
+  void AddMergeTimeUs(int64 merge_time_us) {
+    CHECK(statistics_.get() != NULL);
+    merge_time_us_->Add(merge_time_us);
+  }
+
+  void AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
+    CHECK(statistics_.get() != NULL);
+    html_rewrite_time_us_->Add(rewrite_time_us);
+  }
+
+  // Accumulating the time spent parsing directives requires special handling,
+  // because the parsing of directives precedes the initialization of the
+  // statistics object, which cannot be created until the file_prefix setting
+  // is parsed.
+  //
+  // Thus we need a place to store the accumulated parsing time, so we
+  // store it hera in the ApacheProcessContext, which gets statically
+  // initialized.
+  void AddParseTimeUs(int64 parse_time_us) {
+    if (parse_time_us_ != NULL) {
+      parse_time_us_->Add(parse_time_us);
+    } else {
+      stored_parse_time_us_ += parse_time_us;
+    }
+  }
+
+  std::set<ApacheRewriteDriverFactory*> factories_;
+  std::set<ApacheConfig*> configs_;
+  scoped_ptr<AprStatistics> statistics_;
+  Variable* merge_time_us_;
+  Variable* parse_time_us_;
+  Variable* html_rewrite_time_us_;
+  int64 stored_parse_time_us_;
+};
+ApacheProcessContext apache_process_context;
+
+typedef void (ApacheProcessContext::*AddTimeFn)(int64 delta);
+
+class ScopedTimer {
+ public:
+  explicit ScopedTimer(AddTimeFn add_time_fn)
+      : add_time_fn_(add_time_fn),
+        start_time_us_(timer_.NowUs()) {
+  }
+
+  ~ScopedTimer() {
+    int64 delta_us = timer_.NowUs() - start_time_us_;
+    (apache_process_context.*add_time_fn_)(delta_us);
+  }
+
+ private:
+  AddTimeFn add_time_fn_;
+  AprTimer timer_;
+  int64 start_time_us_;
+};
+
+void MergeOptions(const RewriteOptions& a, const RewriteOptions& b,
+                  RewriteOptions* out) {
+  ScopedTimer timer(&ApacheProcessContext::AddMergeTimeUs);
+  out->Merge(a, b);
+}
+
 // Builds a new context for an HTTP request, returning NULL if we decide
 // that we should not handle the request.
 InstawebContext* build_context_for_request(request_rec* request) {
@@ -261,7 +392,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   if (config_options->modified()) {
     custom_options.reset(new RewriteOptions);
-    custom_options->Merge(*options, *config_options);
+    MergeOptions(*options, *config_options, custom_options.get());
     options = custom_options.get();
     use_custom_options = true;
   }
@@ -325,7 +456,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
           factory, query_params, &query_options)) {
     use_custom_options = true;
     RewriteOptions* merged_options = new RewriteOptions;
-    merged_options->Merge(*options, query_options);
+    MergeOptions(*options, query_options, merged_options);
     custom_options.reset(merged_options);
     options = merged_options;
   }
@@ -360,6 +491,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   apr_table_setn(request->headers_out, kModPagespeedHeader,
                  kModPagespeedVersion);
+  SetCacheControl(HttpAttributes::kNoCache, request);
+  SetupCacheRepair(HttpAttributes::kNoCache, request);
 
   apr_table_unset(request->headers_out, HttpAttributes::kContentLength);
   apr_table_unset(request->headers_out, "Content-MD5");
@@ -429,6 +562,8 @@ bool process_bucket(ap_filter_t *filter, request_rec* request,
 }
 
 apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
+  ScopedTimer timer(&ApacheProcessContext::AddHtmlRewriteTimeUs);
+
   // Do nothing if there is nothing, and stop passing to other filters.
   if (APR_BRIGADE_EMPTY(bb)) {
     return APR_SUCCESS;
@@ -475,65 +610,6 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   }
 }
 
-// Apache's pool-based cleanup is not effective on process shutdown.  To allow
-// valgrind to repot clean results, we must take matters into our own hands.
-// We employ a statically allocated class object and rely on its destructor to
-// get a reliable cleanup hook.  I am, in general, strongly opposed to this
-// sort of technique, and it violates the C++ Style Guide:
-//   http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml
-// However, it is not possible to use valgrind to track memory leaks
-// in our Apache module without this approach.
-class ApacheCleanupHandler {
- public:
-  ApacheCleanupHandler() {
-  }
-
-  ~ApacheCleanupHandler() {
-    STLDeleteElements(&factories_);
-    STLDeleteElements(&configs_);
-    statistics_.reset(NULL);
-    ApacheRewriteDriverFactory::Terminate();
-    log_message_handler::ShutDown();
-  }
-
-  // Delete the specified factory on process exit.
-  void add_factory(ApacheRewriteDriverFactory* factory) {
-    factories_.insert(factory);
-  }
-
-  // Do not delete the specified factory on process exit -- it
-  // is being deleted on a pool hook.
-  void remove_factory(ApacheRewriteDriverFactory* factory) {
-    factories_.erase(factory);
-  }
-
-  // Delete the specified config on process exit.
-  void add_config(ApacheConfig* config) {
-    configs_.insert(config);
-  }
-
-  // Do not delete the specified config on process exit -- it
-  // is being deleted on a pool hook.
-  void remove_config(ApacheConfig* config) {
-    configs_.erase(config);
-  }
-
-  AprStatistics* statistics(const StringPiece& filename_prefix) {
-    if (statistics_.get() == NULL) {
-      statistics_.reset(new AprStatistics(filename_prefix));
-      RewriteDriverFactory::Initialize(statistics_.get());
-      SerfUrlAsyncFetcher::Initialize(statistics_.get());
-      statistics_->InitVariables(true);
-    }
-    return statistics_.get();
-  }
-
-  std::set<ApacheRewriteDriverFactory*> factories_;
-  std::set<ApacheConfig*> configs_;
-  scoped_ptr<AprStatistics> statistics_;
-};
-ApacheCleanupHandler cleanup_handler;
-
 int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                           server_rec *server) {
   AprStatistics* statistics = NULL;
@@ -555,7 +631,8 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
         return HTTP_INTERNAL_SERVER_ERROR;
       }
       if ((statistics == NULL) && factory->statistics_enabled()) {
-        statistics = cleanup_handler.statistics(factory->filename_prefix());
+        statistics = apache_process_context.statistics(
+            factory->filename_prefix());
         RewriteDriverFactory::Initialize(statistics);
         SerfUrlAsyncFetcher::Initialize(statistics);
         statistics->InitVariables(true);
@@ -597,7 +674,7 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   // AP_FTYPE_CONTENT_SET. Using (AP_FTYPE_CONTENT_SET + 2) to make sure that we
   // run after mod_headers.
   ap_register_output_filter(
-      kRepairHeadersFilterName, repair_caching_header, NULL,
+      InstawebContext::kRepairHeadersFilterName, repair_caching_header, NULL,
       static_cast<ap_filter_type>(AP_FTYPE_CONTENT_SET + 2));
   ap_hook_post_config(pagespeed_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(pagespeed_child_init, NULL, NULL, APR_HOOK_LAST);
@@ -608,7 +685,7 @@ apr_status_t pagespeed_child_exit(void* data) {
   ApacheRewriteDriverFactory* factory =
       static_cast<ApacheRewriteDriverFactory*>(data);
   // avoid double-destructing from the cleanup handler on process exit
-  cleanup_handler.remove_factory(factory);
+  apache_process_context.remove_factory(factory);
   delete factory;
   return APR_SUCCESS;
 }
@@ -623,12 +700,12 @@ void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
 
     // The pool-based cleanup hooks do not appear to be effective when exiting
     // the process.  The pagespeed_child_exit will *not* be called when the
-    // apache process is shut down.  However, the static cleanup_handler's
-    // destructor will be.
+    // apache process is shut down.  However, the static
+    // apache_process_context's destructor will be.
     //
     // This approach is needed to clean up our memory so that valgrind can
     // report real memory leaks.
-    cleanup_handler.add_factory(factory);
+    apache_process_context.add_factory(factory);
   }
   return factory;
 }
@@ -687,6 +764,7 @@ void warn_deprecated(cmd_parms* cmd, const char* remedy) {
 // Callback function that parses a single-argument directive.  This is called
 // by the Apache config parser.
 static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
+  ScopedTimer timer(&ApacheProcessContext::AddParseTimeUs);
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
   MessageHandler* handler = factory->message_handler();
   const char* directive = cmd->directive->directive;
@@ -796,8 +874,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
 // by the Apache config parser.
 static const char* ParseDirective2(cmd_parms* cmd, void* data,
                                    const char* arg1, const char* arg2) {
-  // TODO(jmarantz): support domain lawyer for directory-specific config
-  // options.
+  ScopedTimer timer(&ApacheProcessContext::AddParseTimeUs);
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
   RewriteOptions* options = factory->options();
   const char* directive = cmd->directive->directive;
@@ -929,7 +1006,7 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
 apr_status_t delete_config(void* data) {
   ApacheConfig* config = static_cast<ApacheConfig*>(data);
   // avoid double-destructing from the cleanup handler on process exit
-  cleanup_handler.remove_config(config);
+  apache_process_context.remove_config(config);
   delete config;
   return APR_SUCCESS;
 }
@@ -941,9 +1018,9 @@ apr_status_t delete_config(void* data) {
 void* create_dir_config(apr_pool_t* pool, char* dir) {
   ApacheConfig* config = new ApacheConfig(dir);
   config->options()->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
-  cleanup_handler.add_config(config);
+  apache_process_context.add_config(config);
   apr_pool_cleanup_register(pool, config, delete_config, apr_pool_cleanup_null);
-  cleanup_handler.add_config(config);
+  apache_process_context.add_config(config);
   return config;
 }
 
@@ -961,9 +1038,9 @@ void* merge_dir_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
   // the merged configuration.
   ApacheConfig* dir3 = new ApacheConfig(StrCat(
       "Combine(", dir1->description(), ", ", dir2->description(), ")"));
-  dir3->options()->Merge(*(dir1->options()), *(dir2->options()));
+  MergeOptions(*(dir1->options()), *(dir2->options()),  dir3->options());
   apr_pool_cleanup_register(pool, dir3, delete_config, apr_pool_cleanup_null);
-  cleanup_handler.add_config(dir3);
+  apache_process_context.add_config(dir3);
   return dir3;
 }
 

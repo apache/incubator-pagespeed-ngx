@@ -27,11 +27,13 @@
 #include "net/instaweb/util/public/fake_url_async_fetcher.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/http_cache.h"
 #include "net/instaweb/util/public/http_dump_url_fetcher.h"
 #include "net/instaweb/util/public/http_dump_url_writer.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -170,6 +172,14 @@ FilenameEncoder* RewriteDriverFactory::filename_encoder() {
   return filename_encoder_.get();
 }
 
+NamedLockManager* RewriteDriverFactory::lock_manager() {
+  if (lock_manager_ == NULL) {
+    lock_manager_.reset(
+        new FileSystemLockManager(file_system(), timer(), message_handler()));
+  }
+  return lock_manager_.get();
+}
+
 bool RewriteDriverFactory::set_filename_prefix(StringPiece p) {
   p.CopyToString(&filename_prefix_);
   if (!file_system()->RecursivelyMakeDir(filename_prefix_, message_handler())) {
@@ -202,7 +212,7 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
     resource_manager_.reset(new ResourceManager(
         filename_prefix_, file_system(), filename_encoder(),
         ComputeUrlAsyncFetcher(), hasher(),
-        http_cache()));
+        http_cache(), lock_manager()));
     resource_manager_->set_store_outputs_in_file_system(
         ShouldWriteResourcesToFileSystem());
   }
@@ -353,6 +363,7 @@ void RewriteDriverFactory::Initialize(Statistics* statistics) {
     RewriteDriver::Initialize(statistics);
     statistics->AddVariable(kInstawebResource404Count);
     statistics->AddVariable(kInstawebSlurp404Count);
+    HTTPCache::Initialize(statistics);
   }
 }
 

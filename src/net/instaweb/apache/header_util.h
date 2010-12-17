@@ -39,6 +39,31 @@ void MetaDataToApacheHeader(const MetaData& meta_data,
                             int* status_code,
                             int* proto_num);
 
+// Examines a cache-control string and updates the output headers in
+// request to match it.  If the response is cacheable, then
+// we assume it's cacheable forever (via cache extension, and
+// so we set an etag and a matching Expires header.
+//
+// If the content is not cacheable, then we instead clear the etag,
+// last-modified, and expires, in addition to setting the cache-control
+// as specified.
+void SetCacheControl(const char* cache_control, request_rec* request);
+
+// Like SetCacheControl but only updates the other headers, does not
+// set the cache-control header itself.  Call this if cache-control is
+// already set and you wish to make the other headers consistent.
+void UpdateCacheHeaders(const char* cache_control, request_rec* request);
+
+// mod_headers typically runs after mod_pagespeed and borks its headers.
+// So we must insert a late filter to unbork the headers.
+void SetupCacheRepair(const char* cache_control, request_rec* request);
+
+// This is called from the late-running filter to unbork the headers.
+void RepairCachingHeaders(request_rec* request);
+
+// Debug utility for printing Apache headers to stdout
+void PrintHeaders(request_rec* request);
+
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_APACHE_HEADER_UTIL_H_

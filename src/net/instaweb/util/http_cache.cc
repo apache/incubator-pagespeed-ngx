@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/meta_data.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -35,13 +36,18 @@ namespace {
 // TODO(jmarantz): We could handle cc-private a little differently:
 // in this case we could arguably remember it using the original cc-private ttl.
 const char kRememberNotFoundCacheControl[] = "max-age=300";
+const char kCacheTimeUs[] = "cache_time_us";
+const char kCacheHits[] = "cache_hits";
+const char kCacheMisses[] = "cache_misses";
+const char kCacheExpirations[] = "cache_expirations";
+const char kCacheInserts[] = "cache_inserts";
 
 }  // namespace
 
 
 HTTPCache::~HTTPCache() {}
 
-bool HTTPCache::IsCurrentlyValid(const MetaData& headers) {
+bool HTTPCache::IsCurrentlyValid(const MetaData& headers, int64 now_ms) {
   if (force_caching_) {
     return true;
   }
@@ -50,7 +56,13 @@ bool HTTPCache::IsCurrentlyValid(const MetaData& headers) {
     // expired resources to be valid, but does ignore cache-control:private?
     return false;
   }
-  return headers.CacheExpirationTimeMs() > timer_->NowMs();
+  if (headers.CacheExpirationTimeMs() > now_ms) {
+    return true;
+  }
+  if (cache_expirations_ != NULL) {
+    cache_expirations_->Add(1);
+  }
+  return false;
 }
 
 HTTPCache::FindResult HTTPCache::Find(
@@ -58,22 +70,19 @@ HTTPCache::FindResult HTTPCache::Find(
     MessageHandler* handler) {
   SharedString cache_buffer;
 
-#define CACHE_SPEW 0
-#if CACHE_SPEW
   int64 start_us = timer_->NowUs();
-#endif
-
+  int64 now_ms = start_us / 1000;
   FindResult ret = kNotFound;
 
   if ((cache_->Get(key, &cache_buffer) &&
        value->Link(&cache_buffer, headers, handler))) {
-    if (IsCurrentlyValid(*headers)) {
+    if (IsCurrentlyValid(*headers, now_ms)) {
       if (headers->status_code() == HttpStatus::kRememberNotFoundStatusCode) {
         long remember_not_found_time_ms = headers->CacheExpirationTimeMs()
-            - timer_->NowMs();
+            - now_ms;
         handler->Info(key.c_str(), 0,
                       "HTTPCache: remembering not-found status for %ld seconds",
-                      (remember_not_found_time_ms) / 1000);
+                      remember_not_found_time_ms / 1000);
         ret = kRecentFetchFailedDoNotRefetch;
       } else {
         ret = kFound;
@@ -81,12 +90,15 @@ HTTPCache::FindResult HTTPCache::Find(
     }
   }
 
-#if CACHE_SPEW
-  long delta_us = timer_->NowUs() - start_us;
-  handler->Info(key.c_str(), 0, "%ldus: HTTPCache::Get: %s (%d bytes)",
-                delta_us, ret ? "HIT" : "MISS",
-                static_cast<int>(key.size() + value->size()));
-#endif
+  if (cache_time_us_ != NULL) {
+    long delta_us = timer_->NowUs() - start_us;
+    cache_time_us_->Add(delta_us);
+    if (ret == kFound) {
+      cache_hits_->Add(1);
+    } else {
+      cache_misses_->Add(1);
+    }
+  }
 
   if (ret != kFound) {
     headers->Clear();
@@ -116,7 +128,9 @@ void HTTPCache::Put(const std::string& key, HTTPValue* value,
 void HTTPCache::Put(const std::string& key, const MetaData& headers,
                     const StringPiece& content,
                     MessageHandler* handler) {
-  if (!IsCurrentlyValid(headers)) {
+  int64 start_us = timer_->NowUs();
+  int64 now_ms = start_us / 1000;
+  if (!IsCurrentlyValid(headers, now_ms)) {
     return;
   }
 
@@ -124,6 +138,11 @@ void HTTPCache::Put(const std::string& key, const MetaData& headers,
   value.SetHeaders(headers);
   value.Write(content, handler);
   Put(key, &value, handler);
+  if (cache_time_us_ != NULL) {
+    int64 delta_us = timer_->NowUs() - start_us;
+    cache_time_us_->Add(delta_us);
+    cache_inserts_->Add(1);
+  }
 }
 
 CacheInterface::KeyState HTTPCache::Query(const std::string& key) {
@@ -132,6 +151,22 @@ CacheInterface::KeyState HTTPCache::Query(const std::string& key) {
 
 void HTTPCache::Delete(const std::string& key) {
   return cache_->Delete(key);
+}
+
+void HTTPCache::Initialize(Statistics* statistics) {
+  statistics->AddVariable(kCacheTimeUs);
+  statistics->AddVariable(kCacheHits);
+  statistics->AddVariable(kCacheMisses);
+  statistics->AddVariable(kCacheExpirations);
+  statistics->AddVariable(kCacheInserts);
+}
+
+void HTTPCache::SetStatistics(Statistics* statistics) {
+  cache_time_us_ = statistics->GetVariable(kCacheTimeUs);
+  cache_hits_ = statistics->GetVariable(kCacheHits);
+  cache_misses_ = statistics->GetVariable(kCacheMisses);
+  cache_expirations_ = statistics->GetVariable(kCacheExpirations);
+  cache_inserts_ = statistics->GetVariable(kCacheInserts);
 }
 
 }  // namespace net_instaweb

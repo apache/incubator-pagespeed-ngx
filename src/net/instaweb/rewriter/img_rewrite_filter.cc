@@ -295,7 +295,8 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
               message_handler));
       if (output_resource.get() != NULL) {
         if (!resource_manager_->FetchOutputResource(
-                output_resource.get(), NULL, NULL, message_handler)) {
+                output_resource.get(), NULL, NULL, message_handler,
+                ResourceManager::kNeverBlock)) {
           OptimizeImage(*input_resource, page_dim, image.get(),
                         output_resource.get());
         }
@@ -413,7 +414,8 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
         ok = false;
         failure_reason = "Server could not find source image.";
       } else if (!resource_manager_->FetchOutputResource(
-                     resource, writer, response_headers, message_handler)) {
+          resource, writer, response_headers, message_handler,
+          ResourceManager::kNeverBlock)) {
         ok = false;
         failure_reason = "Server could not read image resource.";
       } else {
