@@ -72,6 +72,10 @@ inline std::string Path(const GURL& gurl) {
   return gurl.path();
 }
 
+// For "http://a.com/b/c/d?e=f/g returns "/b/c/d/" including leading and
+// trailing slashes.
+std::string PathSansLeaf(const GURL& gurl);
+
 }  // namespace GoogleUrl
 
 }  // namespace net_instaweb

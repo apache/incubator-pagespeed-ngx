@@ -117,6 +117,11 @@ class CssCombineFilter::Partnership : public UrlPartnership {
         added = false;
         RemoveLast();
         multipart_encoder_.pop_back();
+
+        // The base might have changed again
+        if (num_components() != prev_num_components_) {
+          UpdateResolvedBase();
+        }
       } else {
         css_elements_.push_back(element);
         resources_.push_back(resource->release());
@@ -400,6 +405,7 @@ class CssCombiner : public Resource::AsyncCallback {
               Writer* writer,
               MetaData* response_headers) :
       enable_completion_(false),
+      emit_done_(true),
       done_count_(0),
       fail_count_(0),
       filter_(filter),
@@ -473,18 +479,23 @@ class CssCombiner : public Resource::AsyncCallback {
     }
     if (ok) {
       response_headers_->CopyFrom(*combination_->metadata());
-      callback_->Done(ok);
     } else {
       response_headers_->SetStatusAndReason(HttpStatus::kNotFound);
-      // We assume that on failure the callback will be invoked by
-      // RewriteDriver::FetchResource.  Since callbacks are self-deleting,
-      // calling callback_->Done(false) here first would cause seg faults.
+    }
+
+    if (emit_done_) {
+      callback_->Done(ok);
     }
     delete this;
   }
 
+  void set_emit_done(bool new_emit_done) {
+    emit_done_ = new_emit_done;
+  }
+
  private:
   bool enable_completion_;
+  bool emit_done_;
   size_t done_count_;
   size_t fail_count_;
   CssCombineFilter* filter_;
@@ -528,6 +539,10 @@ bool CssCombineFilter::Fetch(OutputResource* combination,
         resource_manager_->ReadAsync(css_resource, combiner, message_handler);
       }
     }
+
+    // If we're about to return false, we do not want the combiner to emit
+    // Done as RewriteDriver::FetchResource will do it as well.
+    combiner->set_emit_done(ret);
 
     // In the case where the first input CSS files is already cached,
     // ReadAsync will directly call the CssCombineCallback, which, if

@@ -742,6 +742,40 @@ TEST_F(CssCombineFilterTest, DoAbsolutifyDifferentDir) {
   EXPECT_EQ(expected_combination, actual_combination);
 }
 
+// Verifies that when we combine across paths in a certain pattern we get
+// the correct results.
+TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
+  CssLink::Vector css_in, css_out;
+  css_in.Add("modules/acquia/fivestar/css/fivestar.css?3", "a", "", true);
+  css_in.Add("modules/node/node.css?3", "b", "", true);
+  css_in.Add("modules/poll/poll.css?3", "c", "", true);
+  css_in.Add("modules/system/defaults.css?3", "d", "", true);
+  css_in.Add("modules/system/system.css?3", "e", "", true);
+  css_in.Add("modules/system/system-menus.css?3", "f", "", true);
+  css_in.Add("modules/user/user.css?3", "g", "", true);
+
+  // This last 'Add' causes the resolved path to change from "/modules/" to "/".
+  css_in.Add("sites/all/modules/ckeditor/ckeditor.css?3", "h", "", true);
+  BarrierTestHelper("cross_paths", css_in, &css_out);
+  EXPECT_EQ(2, css_out.size());
+  std::string actual_combination;
+  EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
+  GURL gurl = GoogleUrl::Create(css_out[0]->url_);
+  EXPECT_EQ("/modules/", GoogleUrl::PathSansLeaf(gurl));
+  ResourceNamer namer;
+  ASSERT_TRUE(namer.Decode(GoogleUrl::Leaf(gurl)));
+  EXPECT_EQ("acquia,_fivestar,_css,_fivestar.css,q3+"
+            "node,_node.css,q3+"
+            "poll,_poll.css,q3+"
+            "system,_defaults.css,q3+"
+            "system,_system.css,q3+"
+            "system,_system-menus.css,q3+"
+            "user,_user.css,q3",
+            namer.name());
+  EXPECT_EQ("abcdefg", actual_combination);
+}
+
+
 /*
   TODO(jmarantz): cover intervening FLUSH
   TODO(jmarantz): consider converting some of the existing tests to this

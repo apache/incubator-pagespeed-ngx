@@ -112,4 +112,13 @@ std::string GoogleUrl::PathAndLeaf(const GURL& gurl) {
   return std::string(spec.data() + origin_size, spec.size() - origin_size);
 }
 
+// For "http://a.com/b/c/d?e=f/g returns "/b/c/d/" including leading and
+// trailing slashes.
+std::string GoogleUrl::PathSansLeaf(const GURL& gurl) {
+  std::string path_and_leaf = GoogleUrl::PathAndLeaf(gurl);
+  std::string leaf = GoogleUrl::Leaf(gurl);
+  CHECK_GE(path_and_leaf.size(), leaf.size());
+  return std::string(path_and_leaf.data(), path_and_leaf.size() - leaf.size());
+}
+
 }  // namespace net_instaweb

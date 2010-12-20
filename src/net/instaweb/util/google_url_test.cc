@@ -56,6 +56,7 @@ TEST_F(GoogleUrlTest, TestSpecWithPort) {
   EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"),
             GoogleUrl::PathAndLeaf(gurl_with_port_));
   EXPECT_EQ(std::string("/b/c/d.ext"), GoogleUrl::Path(gurl_));
+  EXPECT_EQ(std::string("/b/c/"), GoogleUrl::PathSansLeaf(gurl_));
 }
 
 TEST_F(GoogleUrlTest, ResolveRelative) {
