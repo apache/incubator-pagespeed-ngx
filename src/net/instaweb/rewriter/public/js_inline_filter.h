@@ -21,6 +21,7 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 
@@ -47,6 +48,7 @@ class JsInlineFilter : public CommonFilter {
   const Atom script_atom_;
   const Atom src_atom_;
   const size_t size_threshold_bytes_;
+  ScriptTagScanner script_tag_scanner_;
 
   std::string domain_;  // The domain of the HTML file we're parsing
 

@@ -29,6 +29,8 @@ namespace net_instaweb {
 namespace {
 
 const char kDomain[] = "http://combine_css.test/";
+const char kYellow[] = ".yellow {background-color: yellow;}";
+const char kBlue[] = ".blue {color: blue;}\n";
 
 class CssCombineFilterTest : public ResourceManagerTestBase {
  protected:
@@ -424,17 +426,17 @@ TEST_F(CssCombineFilterTest, CombineCssWithBogusLink) {
 TEST_F(CssCombineFilterTest, CombineCssWithImportInFirst) {
   CssLink::Vector css_in, css_out;
   css_in.Add("1.css", "@Import \"1a.css\"", "", true);
-  css_in.Add("2.css", ".yellow {background-color: yellow;}", "", true);
-  css_in.Add("3.css", ".yellow {background-color: yellow;}", "", true);
+  css_in.Add("2.css", kYellow, "", true);
+  css_in.Add("3.css", kYellow, "", true);
   BarrierTestHelper("combine_css_with_import1", css_in, &css_out);
   EXPECT_EQ(1, css_out.size());
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithImportInSecond) {
   CssLink::Vector css_in, css_out;
-  css_in.Add("1.css", ".yellow {background-color: yellow;}", "", true);
+  css_in.Add("1.css", kYellow, "", true);
   css_in.Add("2.css", "@Import \"2a.css\"", "", true);
-  css_in.Add("3.css", ".yellow {background-color: yellow;}", "", true);
+  css_in.Add("3.css", kYellow, "", true);
   BarrierTestHelper("combine_css_with_import1", css_in, &css_out);
   EXPECT_EQ("1.css", css_out[0]->url_);
   EXPECT_EQ(2, css_out.size());
@@ -615,7 +617,7 @@ TEST_F(CssCombineFilterTest, CombineCssManyFiles) {
   CssLink::Vector css_in, css_out;
   for (int i = 0; i < kNumCssLinks; ++i) {
     css_in.Add(StringPrintf("styles/yellow%d.css", i),
-               ".yellow {background-color: yellow;}", "", true);
+               kYellow, "", true);
   }
   BarrierTestHelper("combine_css_many_files", css_in, &css_out);
   ASSERT_EQ(2, css_out.size());
@@ -643,10 +645,10 @@ TEST_F(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
   CssLink::Vector css_in, css_out;
   for (int i = 0; i < kNumCssLinks - 1; ++i) {
     css_in.Add(StringPrintf("styles/yellow%d.css", i),
-               ".yellow {background-color: yellow;}", "", true);
+               kYellow, "", true);
   }
   css_in.Add("styles/last_one.css",
-             ".yellow {background-color: yellow;}", "", true);
+             kYellow, "", true);
   BarrierTestHelper("combine_css_many_files", css_in, &css_out);
   ASSERT_EQ(2, css_out.size());
 
@@ -666,10 +668,10 @@ TEST_F(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
 // top level of the test which might make it easier to debug.
 TEST_F(CssCombineFilterTest, CombineCssNotCached) {
   CssLink::Vector css_in, css_out;
-  css_in.Add("1.css", ".yellow {background-color: yellow;}", "", true);
-  css_in.Add("2.css", ".yellow {background-color: yellow;}", "", true);
-  css_in.Add("3.css", ".yellow {background-color: yellow;}", "", false);
-  css_in.Add("4.css", ".yellow {background-color: yellow;}", "", true);
+  css_in.Add("1.css", kYellow, "", true);
+  css_in.Add("2.css", kYellow, "", true);
+  css_in.Add("3.css", kYellow, "", false);
+  css_in.Add("4.css", kYellow, "", true);
   mock_url_fetcher_.set_fail_on_unexpected(false);
   BarrierTestHelper("combine_css_not_cached", css_in, &css_out);
   EXPECT_EQ(3, css_out.size());
@@ -688,10 +690,10 @@ TEST_F(CssCombineFilterTest, CombineCssNotCached) {
 // is a taste test.
 TEST_F(CssCombineFilterTest, CombineStyleTag) {
   CssLink::Vector css_in, css_out;
-  css_in.Add("1.css", ".yellow {background-color: yellow;}", "", true);
-  css_in.Add("2.css", ".yellow {background-color: yellow;}", "", true);
+  css_in.Add("1.css", kYellow, "", true);
+  css_in.Add("2.css", kYellow, "", true);
   css_in.Add("", "<style>a { color: red }</style>\n", "", false);
-  css_in.Add("4.css", ".yellow {background-color: yellow;}", "", true);
+  css_in.Add("4.css", kYellow, "", true);
   BarrierTestHelper("combine_css_with_style", css_in, &css_out);
   EXPECT_EQ(2, css_out.size());
   std::string base;
@@ -775,6 +777,48 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   EXPECT_EQ("abcdefg", actual_combination);
 }
 
+TEST_F(CssCombineFilterTest, CrossMappedDomain) {
+  CssLink::Vector css_in, css_out;
+  DomainLawyer* laywer = options_.domain_lawyer();
+  laywer->AddRewriteDomainMapping("a.com", "b.com", &message_handler_);
+  bool supply_mock = false;
+  css_in.Add("http://a.com/1.css", kYellow, "", supply_mock);
+  css_in.Add("http://b.com/2.css", kBlue, "", supply_mock);
+  SimpleMetaData default_css_header;
+  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  mock_url_fetcher_.SetResponse("http://a.com/1.css", default_css_header,
+                                kYellow);
+  mock_url_fetcher_.SetResponse("http://a.com/2.css", default_css_header,
+                                kBlue);
+  BarrierTestHelper("combine_css_with_style", css_in, &css_out);
+  EXPECT_EQ(1, css_out.size());
+  std::string actual_combination;
+  EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
+  EXPECT_EQ(StrCat(kYellow, kBlue), actual_combination);
+}
+
+// Verifies that we cannot do the same cross-domain combo when we lack
+// the domain mapping.
+TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
+  CssLink::Vector css_in, css_out;
+  DomainLawyer* laywer = options_.domain_lawyer();
+  laywer->AddDomain("a.com", &message_handler_);
+  laywer->AddDomain("b.com", &message_handler_);
+  bool supply_mock = false;
+  const char kUrl1[] = "http://a.com/1.css";
+  const char kUrl2[] = "http://b.com/2.css";
+  css_in.Add(kUrl1, kYellow, "", supply_mock);
+  css_in.Add(kUrl2, kBlue, "", supply_mock);
+  SimpleMetaData default_css_header;
+  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  mock_url_fetcher_.SetResponse(kUrl1, default_css_header, kYellow);
+  mock_url_fetcher_.SetResponse(kUrl2, default_css_header, kBlue);
+  BarrierTestHelper("combine_css_with_style", css_in, &css_out);
+  EXPECT_EQ(2, css_out.size());
+  std::string actual_combination;
+  EXPECT_EQ(kUrl1, css_out[0]->url_);
+  EXPECT_EQ(kUrl2, css_out[1]->url_);
+}
 
 /*
   TODO(jmarantz): cover intervening FLUSH

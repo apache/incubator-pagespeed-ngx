@@ -57,7 +57,8 @@ JavascriptFilter::JavascriptFilter(RewriteDriver* driver,
       config_(driver->resource_manager()->statistics()),
       s_script_(html_parse_->Intern("script")),
       s_src_(html_parse_->Intern("src")),
-      s_type_(html_parse_->Intern("type")) { }
+      s_type_(html_parse_->Intern("type")),
+      script_tag_scanner_(html_parse_) { }
 
 JavascriptFilter::~JavascriptFilter() { }
 
@@ -65,30 +66,25 @@ void JavascriptFilter::Initialize(Statistics* statistics) {
   JavascriptRewriteConfig::Initialize(statistics);
 }
 
-void JavascriptFilter::StartScriptElement(HtmlElement* element) {
-  static const char kTextJavascript[] = "text/javascript";
-  static const char kTextEcmascript[] = "text/ecmascript";
-  static const char kAppJavascript[] = "application/javascript";
-  static const char kAppEcmascript[] = "application/ecmascript";
-  const char* script_type = element->AttributeValue(s_type_);
-  if (script_type == NULL ||
-      strncmp(kTextJavascript, script_type, sizeof(kTextJavascript)) == 0 ||
-      strncmp(kTextEcmascript, script_type, sizeof(kTextEcmascript)) == 0 ||
-      strncmp(kAppJavascript, script_type, sizeof(kAppJavascript)) == 0 ||
-      strncmp(kAppEcmascript, script_type, sizeof(kAppEcmascript)) == 0) {
-    script_in_progress_ = element;
-    if ((script_src_ = element->FindAttribute(s_src_)) != NULL) {
-      html_parse_->InfoHere("Found script with src %s", script_src_->value());
-    }
-  } else {
-    html_parse_->InfoHere("Unrecognized script type='%s'", script_type);
-  }
-}
-
 void JavascriptFilter::StartElementImpl(HtmlElement* element) {
   CHECK(script_in_progress_ == NULL);
-  if (element->tag() == s_script_) {
-    StartScriptElement(element);
+
+  switch (script_tag_scanner_.ParseScriptElement(element, &script_src_)) {
+    case ScriptTagScanner::kJavaScript: {
+      script_in_progress_ = element;
+      if (script_src_ != NULL) {
+        html_parse_->InfoHere("Found script with src %s", script_src_->value());
+      }
+      break;
+    }
+    case ScriptTagScanner::kUnknownScript: {
+      std::string script_dump;
+      element->ToString(&script_dump);
+      html_parse_->InfoHere("Unrecognized script:'%s'", script_dump.c_str());
+      break;
+    }
+    case ScriptTagScanner::kNonScript:
+      break;
   }
 }
 

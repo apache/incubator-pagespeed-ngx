@@ -33,7 +33,7 @@ HtmlElement::Attribute* ResourceTagScanner::ScanElement(HtmlElement* element) {
   if (!css_tag_scanner_.ParseCssElement(element, &attr, &media)) {
     attr = img_tag_scanner_.ParseImgElement(element);
     if (attr == NULL) {
-      attr = script_tag_scanner_.ParseScriptElement(element);
+      script_tag_scanner_.ParseScriptElement(element, &attr);
     }
   }
   return attr;

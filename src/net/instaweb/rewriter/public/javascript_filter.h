@@ -26,6 +26,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
+#include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -92,7 +93,6 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
   inline void CompleteScriptInProgress();
   inline void RewriteInlineScript();
   inline void RewriteExternalScript();
-  inline void StartScriptElement(HtmlElement* element);
   inline Resource* ScriptAtUrl(const StringPiece& script_url);
   const StringPiece FlattenBuffer(std::string* script_buffer);
   bool WriteExternalScriptTo(const Resource* script_resource,
@@ -111,6 +111,7 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
   const Atom s_script_;
   const Atom s_src_;
   const Atom s_type_;
+  ScriptTagScanner script_tag_scanner_;
 
   DISALLOW_COPY_AND_ASSIGN(JavascriptFilter);
 };

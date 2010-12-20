@@ -162,11 +162,13 @@ void HTTPCache::Initialize(Statistics* statistics) {
 }
 
 void HTTPCache::SetStatistics(Statistics* statistics) {
-  cache_time_us_ = statistics->GetVariable(kCacheTimeUs);
-  cache_hits_ = statistics->GetVariable(kCacheHits);
-  cache_misses_ = statistics->GetVariable(kCacheMisses);
-  cache_expirations_ = statistics->GetVariable(kCacheExpirations);
-  cache_inserts_ = statistics->GetVariable(kCacheInserts);
+  if (statistics != NULL) {
+    cache_time_us_ = statistics->GetVariable(kCacheTimeUs);
+    cache_hits_ = statistics->GetVariable(kCacheHits);
+    cache_misses_ = statistics->GetVariable(kCacheMisses);
+    cache_expirations_ = statistics->GetVariable(kCacheExpirations);
+    cache_inserts_ = statistics->GetVariable(kCacheInserts);
+  }
 }
 
 }  // namespace net_instaweb

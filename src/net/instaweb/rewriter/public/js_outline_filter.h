@@ -22,6 +22,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 
@@ -76,6 +77,7 @@ class JsOutlineFilter : public HtmlFilter {
   Atom s_script_;
   Atom s_src_;
   Atom s_type_;
+  ScriptTagScanner script_tag_scanner_;
 
   DISALLOW_COPY_AND_ASSIGN(JsOutlineFilter);
 };

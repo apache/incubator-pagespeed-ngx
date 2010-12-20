@@ -75,9 +75,11 @@ CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix)
 }
 
 void CssFilter::Initialize(Statistics* statistics) {
-  statistics->AddVariable(CssFilter::kFilesMinified);
-  statistics->AddVariable(CssFilter::kMinifiedBytesSaved);
-  statistics->AddVariable(CssFilter::kParseFailures);
+  if (statistics != NULL) {
+    statistics->AddVariable(CssFilter::kFilesMinified);
+    statistics->AddVariable(CssFilter::kMinifiedBytesSaved);
+    statistics->AddVariable(CssFilter::kParseFailures);
+  }
 
   InitializeAtExitManager();
 }

@@ -21,12 +21,132 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/util/public/atom.h"
 
 namespace net_instaweb {
 
+// The list is from HTML5, "4.3.1.1 Scripting languages"
+static const char* const javascript_mimetypes[] = {
+  "application/ecmascript",
+  "application/javascript",
+  "application/x-ecmascript",
+  "application/x-javascript",
+  "text/ecmascript",
+  "text/javascript",
+  "text/javascript1.0",
+  "text/javascript1.1",
+  "text/javascript1.2",
+  "text/javascript1.3",
+  "text/javascript1.4",
+  "text/javascript1.5",
+  "text/jscript",
+  "text/livescript",
+  "text/x-ecmascript",
+  "text/x-javascript"
+};
+
 ScriptTagScanner::ScriptTagScanner(HtmlParse* html_parse)
-    : s_script_(html_parse->Intern("script")),
-      s_src_(html_parse->Intern("src")) {
+    : s_async_(html_parse->Intern("async")),
+      s_defer_(html_parse->Intern("defer")),
+      s_event_(html_parse->Intern("event")),
+      s_for_(html_parse->Intern("for")),
+      s_language_(html_parse->Intern("language")),
+      s_script_(html_parse->Intern("script")),
+      s_src_(html_parse->Intern("src")),
+      s_type_(html_parse->Intern("type")) {
+  for (int i = 0; i < int(arraysize(javascript_mimetypes)); ++i) {
+    javascript_mimetypes_.insert(std::string(javascript_mimetypes[i]));
+  }
+}
+
+ScriptTagScanner::ScriptClassification ScriptTagScanner::ParseScriptElement(
+    HtmlElement* element, HtmlElement::Attribute** src) {
+  if (element->tag() != s_script_) {
+    return kNonScript;
+  }
+
+  *src = element->FindAttribute(s_src_);
+
+  // Figure out if we have JS or not.
+  // This is based on the 'type' and 'language' attributes, with
+  // type having precedence. For this determination, however,
+  // <script type> acts as if the type attribute is not there,
+  // which is different from <script type="">
+  ScriptClassification lang;
+  HtmlElement::Attribute* type_attr = element->FindAttribute(s_type_);
+  HtmlElement::Attribute* lang_attr = element->FindAttribute(s_language_);
+  if (type_attr != NULL && type_attr->value() != NULL) {
+    StringPiece type_str = type_attr->value();
+    if (type_str.empty() || IsJsMime(Normalized(type_str))) {
+      // An empty type string (but not whitespace-only!) is JS,
+      // So is one that's a known mimetype once lowercased and
+      // having its leading and trailing whitespace removed
+      lang = kJavaScript;
+    } else {
+      lang = kUnknownScript;
+    }
+  } else if (lang_attr != NULL && lang_attr->value() != NULL) {
+    // Without type= the ultra-deprecated language attribute determines things.
+    // empty or null one is ignored. The test is done case-insensitively,
+    // but leading/trailing whitespace matters.
+    // (Note: null check on ->value() above as it's passed to std::string)
+    std::string lang_str = lang_attr->value();
+    LowerString(&lang_str);
+    if (lang_str.empty() || IsJsMime(StrCat("text/", lang_str))) {
+      lang = kJavaScript;
+    } else {
+      lang = kUnknownScript;
+    }
+  } else {
+    // JS is the default if nothing is specified at all.
+    lang = kJavaScript;
+  }
+
+  return lang;
+}
+
+
+int ScriptTagScanner::ExecutionMode(const HtmlElement* element) const {
+  int flags = 0;
+
+  if (element->FindAttribute(s_async_) != NULL) {
+    flags |= kExecuteAsync;
+  }
+
+  if (element->FindAttribute(s_defer_) != NULL) {
+    flags |= kExecuteDefer;
+  }
+
+  // HTML5 notes that certain values of IE-proprietary 'for' and 'event'
+  // attributes are magic and are to be handled as if they're not there,
+  // while others will cause the script to not be run at all.
+  // Note: there is a disagreement between Chrome and Firefox on how
+  // empty ones are handled. We set kExecuteForEvent as it is the conservative
+  // value, requiring careful treatment by filters
+  const HtmlElement::Attribute* for_attr = element->FindAttribute(s_for_);
+  const HtmlElement::Attribute* event_attr = element->FindAttribute(s_event_);
+  if (for_attr != NULL && event_attr != NULL) {
+    if (Normalized(for_attr->value()) != "window") {
+      flags |= kExecuteForEvent;
+    }
+    std::string event_str = Normalized(event_attr->value());
+    if (event_str != "onload" && event_str != "onload()") {
+      flags |= kExecuteForEvent;
+    }
+  }
+
+  return flags;
+}
+
+std::string ScriptTagScanner::Normalized(const StringPiece& str) {
+  std::string normal_form;
+  TrimWhitespace(str, &normal_form);
+  LowerString(&normal_form);
+  return normal_form;
+}
+
+bool ScriptTagScanner::IsJsMime(const std::string& type_str) {
+  return javascript_mimetypes_.find(type_str) != javascript_mimetypes_.end();
 }
 
 }  // namespace net_instaweb

@@ -102,16 +102,20 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     statistics->AddVariable(kResourceFetchesCached);
     statistics->AddVariable(kResourceFetchConstructSuccesses);
     statistics->AddVariable(kResourceFetchConstructFailures);
+
+    // TODO(jmarantz): Make all of these work with null statistics so that
+    // they could mdo other required static initializations if desired
+    // without having to edit code to this method.
     AddInstrumentationFilter::Initialize(statistics);
     CacheExtender::Initialize(statistics);
     CssCombineFilter::Initialize(statistics);
-    CssFilter::Initialize(statistics);
     CssMoveToHeadFilter::Initialize(statistics);
     ImgRewriteFilter::Initialize(statistics);
     JavascriptFilter::Initialize(statistics);
     ResourceManager::Initialize(statistics);
     UrlLeftTrimFilter::Initialize(statistics);
   }
+  CssFilter::Initialize(statistics);
 }
 
 void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {

@@ -298,7 +298,7 @@ class ApacheProcessContext {
     configs_.erase(config);
   }
 
-  AprStatistics* statistics(const StringPiece& filename_prefix) {
+  AprStatistics* InitStatistics(const StringPiece& filename_prefix) {
     if (statistics_.get() == NULL) {
       statistics_.reset(new AprStatistics(filename_prefix));
       RewriteDriverFactory::Initialize(statistics_.get());
@@ -312,18 +312,21 @@ class ApacheProcessContext {
       html_rewrite_time_us_ = statistics_->GetVariable("html_rewrite_time_us");
       parse_time_us_->Add(stored_parse_time_us_);
       stored_parse_time_us_ = 0;
+      statistics_->InitVariables(true);
     }
     return statistics_.get();
   }
 
   void AddMergeTimeUs(int64 merge_time_us) {
-    CHECK(statistics_.get() != NULL);
-    merge_time_us_->Add(merge_time_us);
+    if (statistics_.get() != NULL) {
+      merge_time_us_->Add(merge_time_us);
+    }
   }
 
   void AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
-    CHECK(statistics_.get() != NULL);
-    html_rewrite_time_us_->Add(rewrite_time_us);
+    if (statistics_.get() != NULL) {
+      html_rewrite_time_us_->Add(rewrite_time_us);
+    }
   }
 
   // Accumulating the time spent parsing directives requires special handling,
@@ -611,11 +614,24 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
 }
 
 int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
-                          server_rec *server) {
+                          server_rec *server_list) {
   AprStatistics* statistics = NULL;
-  server_rec* next_server = server;
-  while (next_server) {
-    ApacheRewriteDriverFactory* factory = InstawebContext::Factory(next_server);
+
+  // This routine is complicated by the fact that statistics use inter-process
+  // mutexes and have static data, which co-mingles poorly with this otherwise
+  // re-entrant module.  The situation that gets interesting is when there are
+  // multiple VirtualHosts, some of which have statistics enabled and some of
+  // which don't.  We don't want the behavior to be order-dependent so we
+  // do multiple passes.
+  //
+  // TODO(jmarantz): test VirtualHost
+
+  // In the first pass, we see whether any of the servers have
+  // statistics enabled, if found, do the static initialization of
+  // statistics to establish global memory segments.
+  for (server_rec* server = server_list; server != NULL;
+       server = server->next) {
+    ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
     if (factory->options()->enabled()) {
       if (factory->filename_prefix().empty() ||
           factory->file_cache_path().empty()) {
@@ -630,17 +646,23 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
         factory->message_handler()->Message(kError, "%s", buf.c_str());
         return HTTP_INTERNAL_SERVER_ERROR;
       }
-      if ((statistics == NULL) && factory->statistics_enabled()) {
-        statistics = apache_process_context.statistics(
+      if ((factory->statistics_enabled() && (statistics == NULL))) {
+        statistics = apache_process_context.InitStatistics(
             factory->filename_prefix());
-        RewriteDriverFactory::Initialize(statistics);
-        SerfUrlAsyncFetcher::Initialize(statistics);
-        statistics->InitVariables(true);
       }
-      factory->set_statistics(
-          factory->statistics_enabled() ? statistics : NULL);
     }
-    next_server = next_server->next;
+  }
+
+  // Next we do the instance-independent static initialization, once we have
+  // established whether *any* of the servers of stats enabled.
+  RewriteDriverFactory::Initialize(statistics);
+  SerfUrlAsyncFetcher::Initialize(statistics);
+
+  // Do a final pass over the servers and init the server-specific statistics.
+  for (server_rec* server = server_list; server != NULL;
+       server = server->next) {
+    ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
+    factory->set_statistics(factory->statistics_enabled() ? statistics : NULL);
   }
   return OK;
 }

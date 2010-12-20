@@ -359,8 +359,8 @@ void RewriteDriverFactory::ShutDown() {
 }
 
 void RewriteDriverFactory::Initialize(Statistics* statistics) {
-  if (statistics) {
-    RewriteDriver::Initialize(statistics);
+  RewriteDriver::Initialize(statistics);
+  if (statistics != NULL) {
     statistics->AddVariable(kInstawebResource404Count);
     statistics->AddVariable(kInstawebSlurp404Count);
     HTTPCache::Initialize(statistics);

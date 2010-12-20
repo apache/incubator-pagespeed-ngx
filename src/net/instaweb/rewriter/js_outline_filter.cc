@@ -39,7 +39,8 @@ JsOutlineFilter::JsOutlineFilter(RewriteDriver* driver)
       size_threshold_bytes_(driver->options()->js_outline_min_bytes()),
       s_script_(html_parse_->Intern("script")),
       s_src_(html_parse_->Intern("src")),
-      s_type_(html_parse_->Intern("type")) { }
+      s_type_(html_parse_->Intern("type")),
+      script_tag_scanner_(html_parse_) { }
 
 void JsOutlineFilter::StartDocument() {
   inline_element_ = NULL;
@@ -55,11 +56,15 @@ void JsOutlineFilter::StartElement(HtmlElement* element) {
     inline_element_ = NULL;  // Don't outline what we don't understand.
     buffer_.clear();
   }
-  if (element->tag() == s_script_) {
+
+  HtmlElement::Attribute* src;
+  // We only deal with Javascript
+  if (script_tag_scanner_.ParseScriptElement(element, &src) ==
+      ScriptTagScanner::kJavaScript) {
     inline_element_ = element;
     buffer_.clear();
     // script elements which already have a src should not be outlined.
-    if (element->FindAttribute(s_src_) != NULL) {
+    if (src != NULL) {
       inline_element_ = NULL;
     }
   }
@@ -138,41 +143,30 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
                                     const std::string& content) {
   if (html_parse_->IsRewritable(inline_element)) {
     // Create script file from content.
-    const char* type = inline_element->AttributeValue(s_type_);
-    // We only deal with Javascript.  If no type specified, JS is assumed.
-    // See http://www.w3.org/TR/html5/scripting-1.html#script
-    if (type == NULL ||
-        strcmp(type, kContentTypeJavascript.mime_type()) == 0) {
-      MessageHandler* handler = html_parse_->message_handler();
-      // Create outline resource at the document location, not base URL location
-      scoped_ptr<OutputResource> resource(
-          resource_manager_->CreateOutputResourceWithPath(
-              GoogleUrl::AllExceptLeaf(html_parse_->gurl()), kFilterId, "_",
-              &kContentTypeJavascript, handler));
-      if (WriteResource(content, resource.get(), handler)) {
-        HtmlElement* outline_element = html_parse_->NewElement(
-            inline_element->parent(), s_script_);
-        outline_element->AddAttribute(s_src_, resource->url(), "'");
-        // Add all atrributes from old script element to new script src element.
-        for (int i = 0; i < inline_element->attribute_size(); ++i) {
-          const HtmlElement::Attribute& attr = inline_element->attribute(i);
-          outline_element->AddAttribute(attr);
-        }
-        // Add <script src=...> element to DOM.
-        html_parse_->InsertElementBeforeElement(inline_element,
-                                                outline_element);
-        // Remove original script element from DOM.
-        if (!html_parse_->DeleteElement(inline_element)) {
-          html_parse_->FatalErrorHere("Failed to delete inline script element");
-        }
-      } else {
-        html_parse_->ErrorHere("Failed to write outlined script resource.");
+    MessageHandler* handler = html_parse_->message_handler();
+    // Create outline resource at the document location, not base URL location
+    scoped_ptr<OutputResource> resource(
+        resource_manager_->CreateOutputResourceWithPath(
+            GoogleUrl::AllExceptLeaf(html_parse_->gurl()), kFilterId, "_",
+            &kContentTypeJavascript, handler));
+    if (WriteResource(content, resource.get(), handler)) {
+      HtmlElement* outline_element = html_parse_->NewElement(
+          inline_element->parent(), s_script_);
+      outline_element->AddAttribute(s_src_, resource->url(), "'");
+      // Add all atrributes from old script element to new script src element.
+      for (int i = 0; i < inline_element->attribute_size(); ++i) {
+        const HtmlElement::Attribute& attr = inline_element->attribute(i);
+        outline_element->AddAttribute(attr);
+      }
+      // Add <script src=...> element to DOM.
+      html_parse_->InsertElementBeforeElement(inline_element,
+                                              outline_element);
+      // Remove original script element from DOM.
+      if (!html_parse_->DeleteElement(inline_element)) {
+        html_parse_->FatalErrorHere("Failed to delete inline script element");
       }
     } else {
-      std::string element_string;
-      inline_element->ToString(&element_string);
-      html_parse_->InfoHere("Cannot outline non-javascript script %s",
-                            element_string.c_str());
+      html_parse_->ErrorHere("Failed to write outlined script resource.");
     }
   }
 }

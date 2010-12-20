@@ -33,6 +33,7 @@ JsInlineFilter::JsInlineFilter(RewriteDriver* driver)
       script_atom_(html_parse_->Intern("script")),
       src_atom_(html_parse_->Intern("src")),
       size_threshold_bytes_(driver->options()->js_inline_max_bytes()),
+      script_tag_scanner_(html_parse_),
       should_inline_(false) {}
 
 JsInlineFilter::~JsInlineFilter() {}
@@ -49,9 +50,11 @@ void JsInlineFilter::EndDocument() {
 
 void JsInlineFilter::StartElementImpl(HtmlElement* element) {
   DCHECK(!should_inline_);
-  if (element->tag() == script_atom_) {
-    const char* src = element->AttributeValue(src_atom_);
-    should_inline_ = (src != NULL);
+
+  HtmlElement::Attribute* src;
+  if (script_tag_scanner_.ParseScriptElement(element, &src) ==
+      ScriptTagScanner::kJavaScript) {
+    should_inline_ = (src != NULL) && (src->value() != NULL);
   }
 }
 
@@ -61,6 +64,9 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
     const char* src = element->AttributeValue(src_atom_);
     DCHECK(src != NULL);
     should_inline_ = false;
+
+    // TODO(morlovich): Consider async/defer here; it may not be a good
+    // idea to inline async scripts in particular
 
     scoped_ptr<Resource> resource(CreateInputResourceAndReadIfCached(src));
     // TODO(jmaessen): Is the domain lawyer policy the appropriate one here?

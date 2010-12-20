@@ -151,11 +151,19 @@ echo Checking for absense of Expires
 echo $HTML_HEADERS | grep -qi 'Expires'
 check [ $? != 0 ]
 
-echo TEST: 404s are served and properly recorded.
-NUM_404=$($WGET_DUMP $STATISTICS_URL | grep resource_404_count | cut -d: -f2)
-NUM_404=$(($NUM_404+1))
-check "$WGET -O /dev/null $BAD_RESOURCE_URL 2>&1| grep -q '404 Not Found'"
-check "$WGET_DUMP $STATISTICS_URL | grep -q 'resource_404_count: $NUM_404'"
+# Determine whether statistics are enabled or not.  If not, don't test them.
+grep "# ModPagespeedStatistics off" /usr/local/apache2/conf/pagespeed.conf \
+   >/dev/null
+if [ $? = 0 ]; then
+  echo TEST: 404s are served and properly recorded.
+  NUM_404=$($WGET_DUMP $STATISTICS_URL | grep resource_404_count | cut -d: -f2)
+  NUM_404=$(($NUM_404+1))
+  check "$WGET -O /dev/null $BAD_RESOURCE_URL 2>&1| grep -q '404 Not Found'"
+  check "$WGET_DUMP $STATISTICS_URL | grep -q 'resource_404_count: $NUM_404'"
+else
+  echo TEST: 404s are served.  Statistics are disabled so not checking them.
+  check "$WGET -O /dev/null $BAD_RESOURCE_URL 2>&1| grep -q '404 Not Found'"
+fi
 
 echo TEST: directory is mapped to index.html.
 rm -rf $OUTDIR
