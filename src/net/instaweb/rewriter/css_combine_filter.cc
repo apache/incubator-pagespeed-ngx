@@ -66,7 +66,12 @@ class CssCombineFilter::Partnership : public UrlPartnership {
         rewrite_options_(driver->options()),
         resource_manager_(driver->resource_manager()),
         prev_num_components_(0),
-        accumulated_leaf_size_(0) {
+        accumulated_leaf_size_(0),
+        // Note: We compare to max_size - kUrlSlack so that other filters,
+        // which might add to URL length, can run after CSS combination.
+        max_url_segment_size_(
+            rewrite_options_->max_url_segment_size() - kUrlSlack),
+        max_url_size_(rewrite_options_->max_url_size() - kUrlSlack) {
   }
 
   virtual ~Partnership() {
@@ -160,11 +165,11 @@ class CssCombineFilter::Partnership : public UrlPartnership {
   // Determines whether our accumulated leaf size is too big, taking into
   // account both per-segment and total-url limitations.
   bool UrlTooBig() {
-    if (accumulated_leaf_size_ > rewrite_options_->max_url_segment_size()) {
+    if (accumulated_leaf_size_ > max_url_segment_size_) {
       return true;
     }
     if ((accumulated_leaf_size_ + static_cast<int>(resolved_base_.size())) >
-        rewrite_options_->max_url_size()) {
+        max_url_size_) {
       return true;
     }
     return false;
@@ -191,6 +196,16 @@ class CssCombineFilter::Partnership : public UrlPartnership {
   const ResourceVector& resources() const { return resources_; }
   const std::string& media() const { return media_; }
 
+  // Slack to leave in URL size, so that other filters running afterwards
+  // can expand the URLs without going over maximum allowed sizes.
+  //
+  // Why 100? First example I saw, CssFilter expanded a CssCombined URL
+  // by 36 chars. So 100 seemed like a nice round number to allow two
+  // filters to run after this and then for there still be a little slack.
+  //
+  // TODO(sligocki): Set this more intelligently.
+  static const int kUrlSlack = 100;
+
  private:
   const RewriteOptions* rewrite_options_;
   ResourceManager* resource_manager_;
@@ -201,6 +216,8 @@ class CssCombineFilter::Partnership : public UrlPartnership {
   int accumulated_leaf_size_;
   std::string resolved_base_;
   std::string media_;
+  int max_url_segment_size_;
+  int max_url_size_;
 };
 
 // TODO(jmarantz) We exhibit zero intelligence about which css files to

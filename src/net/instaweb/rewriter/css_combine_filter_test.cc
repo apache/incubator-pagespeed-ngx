@@ -605,15 +605,17 @@ TEST_F(CssCombineFilterTest, CombineCssMissingResource) {
 
 TEST_F(CssCombineFilterTest, CombineCssManyFiles) {
   // Prepare an HTML fragment with too many CSS files to combine,
-  // exceeding the 250 char limit currently the default in rewrite_options.cc.
+  // exceeding the char limit.
   //
   // It looks like we can fit a limited number of encodings of
   // "yellow%d.css" in the buffer.  It might be more general to base
   // this on the constant declared in RewriteOptions but I think it's
   // easier to understand leaving these exposed as constants; we can
   // abstract them later.
-  const int kNumCssLinks = 31;
-  const int kNumCssInCombination = 18;  // based on how we encode "yellow%d.css"
+  const int kNumCssLinks = 20;
+  // Note: Without CssCombine::Partnership::kUrlSlack this was:
+  //const int kNumCssInCombination = 18
+  const int kNumCssInCombination = 10;  // based on how we encode "yellow%d.css"
   CssLink::Vector css_in, css_out;
   for (int i = 0; i < kNumCssLinks; ++i) {
     css_in.Add(StringPrintf("styles/yellow%d.css", i),
@@ -640,7 +642,9 @@ TEST_F(CssCombineFilterTest, CombineCssManyFiles) {
 TEST_F(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
   // This test differs from the previous test in we have exactly one CSS file
   // that stays on its own.
-  const int kNumCssInCombination = 18;  // based on how we encode "yellow%d.css"
+  // Note: Without CssCombine::Partnership::kUrlSlack this was:
+  //const int kNumCssInCombination = 18
+  const int kNumCssInCombination = 10;  // based on how we encode "yellow%d.css"
   const int kNumCssLinks = kNumCssInCombination + 1;
   CssLink::Vector css_in, css_out;
   for (int i = 0; i < kNumCssLinks - 1; ++i) {
@@ -744,37 +748,27 @@ TEST_F(CssCombineFilterTest, DoAbsolutifyDifferentDir) {
   EXPECT_EQ(expected_combination, actual_combination);
 }
 
-// Verifies that when we combine across paths in a certain pattern we get
-// the correct results.
+// Verifies that we don't produce URLs that are too long in a corner case.
 TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   CssLink::Vector css_in, css_out;
-  css_in.Add("modules/acquia/fivestar/css/fivestar.css?3", "a", "", true);
-  css_in.Add("modules/node/node.css?3", "b", "", true);
-  css_in.Add("modules/poll/poll.css?3", "c", "", true);
-  css_in.Add("modules/system/defaults.css?3", "d", "", true);
-  css_in.Add("modules/system/system.css?3", "e", "", true);
-  css_in.Add("modules/system/system-menus.css?3", "f", "", true);
-  css_in.Add("modules/user/user.css?3", "g", "", true);
+  std::string long_name(200, 'z');
+  css_in.Add(long_name + "/a.css", "a", "", true);
+  css_in.Add(long_name + "/b.css", "b", "", true);
 
-  // This last 'Add' causes the resolved path to change from "/modules/" to "/".
-  css_in.Add("sites/all/modules/ckeditor/ckeditor.css?3", "h", "", true);
+  // This last 'Add' causes the resolved path to change from long_path to "/".
+  // Which makes the encoding way too long. So we expect this URL not to be
+  // added to the combination and for the combination base to remain long_path.
+  css_in.Add("sites/all/modules/ckeditor/ckeditor.css?3", "z", "", true);
   BarrierTestHelper("cross_paths", css_in, &css_out);
   EXPECT_EQ(2, css_out.size());
   std::string actual_combination;
   EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
   GURL gurl = GoogleUrl::Create(css_out[0]->url_);
-  EXPECT_EQ("/modules/", GoogleUrl::PathSansLeaf(gurl));
+  EXPECT_EQ("/" + long_name + "/", GoogleUrl::PathSansLeaf(gurl));
   ResourceNamer namer;
   ASSERT_TRUE(namer.Decode(GoogleUrl::Leaf(gurl)));
-  EXPECT_EQ("acquia,_fivestar,_css,_fivestar.css,q3+"
-            "node,_node.css,q3+"
-            "poll,_poll.css,q3+"
-            "system,_defaults.css,q3+"
-            "system,_system.css,q3+"
-            "system,_system-menus.css,q3+"
-            "user,_user.css,q3",
-            namer.name());
-  EXPECT_EQ("abcdefg", actual_combination);
+  EXPECT_EQ("a.css+b.css", namer.name());
+  EXPECT_EQ("ab", actual_combination);
 }
 
 TEST_F(CssCombineFilterTest, CrossMappedDomain) {
