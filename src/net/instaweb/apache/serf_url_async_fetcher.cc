@@ -802,7 +802,6 @@ void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch) {
   // called from Poll and CancelOutstandingFetches, which have ScopedMutexes.
   // Note that SerfFetch::Cancel is currently not exposed from outside this
   // class.
-  LOG(WARNING) << "FetchComplete(" << fetch->str_url() << ", " << fetch << ")";
   FetchMapEntry map_entry = active_fetch_map_.find(fetch);
   CHECK(map_entry != active_fetch_map_.end());
   active_fetches_.erase(map_entry->second);
