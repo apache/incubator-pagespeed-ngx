@@ -28,6 +28,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 
@@ -61,19 +62,40 @@ class HTTPCacheTest : public testing::Test {
     headers->ComputeCaching();
   }
 
+  int GetStat(const char* stat_name) {
+    return simple_stats_->FindVariable(stat_name)->Get();
+  }
+
+  static void SetUpTestCase() {
+    testing::Test::SetUpTestCase();
+    simple_stats_ = new SimpleStats;
+    HTTPCache::Initialize(simple_stats_);
+  }
+
+  static void TearDownTestCase() {
+    delete simple_stats_;
+    testing::Test::TearDownTestCase();
+  }
+
   MockTimer mock_timer_;
   HTTPCache http_cache_;
   GoogleMessageHandler message_handler_;
+  static SimpleStats* simple_stats_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HTTPCacheTest);
 };
 
+SimpleStats* HTTPCacheTest::simple_stats_ = NULL;
+
 // Simple flow of putting in an item, getting it.
 TEST_F(HTTPCacheTest, PutGet) {
+  http_cache_.SetStatistics(simple_stats_);
   SimpleMetaData meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "max-age=300");
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query("mykey"));
   HTTPValue value;
   HTTPCache::FindResult found = http_cache_.Find(
@@ -87,6 +109,7 @@ TEST_F(HTTPCacheTest, PutGet) {
   ASSERT_EQ(static_cast<size_t>(1), values.size());
   EXPECT_EQ(std::string("value"), std::string(values[0]));
   EXPECT_EQ("content", contents);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));
 
   // Now advance time 301 seconds and the we should no longer
   // be able to fetch this resource out of the cache.
@@ -94,6 +117,8 @@ TEST_F(HTTPCacheTest, PutGet) {
   found = http_cache_.Find("mykey", &value, &meta_data_out, &message_handler_);
   ASSERT_EQ(HTTPCache::kNotFound, found);
   ASSERT_FALSE(meta_data_out.headers_complete());
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheExpirations));
 }
 
 // Verifies that the cache will 'remember' that a fetch should not be

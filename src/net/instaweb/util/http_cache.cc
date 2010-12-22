@@ -36,13 +36,14 @@ namespace {
 // TODO(jmarantz): We could handle cc-private a little differently:
 // in this case we could arguably remember it using the original cc-private ttl.
 const char kRememberNotFoundCacheControl[] = "max-age=300";
-const char kCacheTimeUs[] = "cache_time_us";
-const char kCacheHits[] = "cache_hits";
-const char kCacheMisses[] = "cache_misses";
-const char kCacheExpirations[] = "cache_expirations";
-const char kCacheInserts[] = "cache_inserts";
 
 }  // namespace
+
+const char HTTPCache::kCacheTimeUs[] = "cache_time_us";
+const char HTTPCache::kCacheHits[] = "cache_hits";
+const char HTTPCache::kCacheMisses[] = "cache_misses";
+const char HTTPCache::kCacheExpirations[] = "cache_expirations";
+const char HTTPCache::kCacheInserts[] = "cache_inserts";
 
 
 HTTPCache::~HTTPCache() {}
@@ -119,10 +120,20 @@ void HTTPCache::RememberNotCacheable(const std::string& key,
   Put(key, headers, "", handler);
 }
 
-void HTTPCache::Put(const std::string& key, HTTPValue* value,
-                    MessageHandler* handler) {
+void HTTPCache::PutHelper(const std::string& key, int64 now_us,
+                          HTTPValue* value, MessageHandler* handler) {
   SharedString* shared_string = value->share();
   cache_->Put(key, shared_string);
+  if (cache_time_us_ != NULL) {
+    int64 delta_us = timer_->NowUs() - now_us;
+    cache_time_us_->Add(delta_us);
+    cache_inserts_->Add(1);
+  }
+}
+
+void HTTPCache::Put(const std::string& key, HTTPValue* value,
+                    MessageHandler* handler) {
+  PutHelper(key, timer_->NowUs(), value, handler);
 }
 
 void HTTPCache::Put(const std::string& key, const MetaData& headers,
@@ -137,12 +148,7 @@ void HTTPCache::Put(const std::string& key, const MetaData& headers,
   HTTPValue value;
   value.SetHeaders(headers);
   value.Write(content, handler);
-  Put(key, &value, handler);
-  if (cache_time_us_ != NULL) {
-    int64 delta_us = timer_->NowUs() - start_us;
-    cache_time_us_->Add(delta_us);
-    cache_inserts_->Add(1);
-  }
+  PutHelper(key, start_us, &value, handler);
 }
 
 CacheInterface::KeyState HTTPCache::Query(const std::string& key) {

@@ -39,6 +39,14 @@ class Variable;
 // retention of the originally served cache headers.
 class HTTPCache {
  public:
+
+  // Names of statistics variables: exported for tests.
+  static const char kCacheTimeUs[];
+  static const char kCacheHits[];
+  static const char kCacheMisses[];
+  static const char kCacheExpirations[];
+  static const char kCacheInserts[];
+
   // Takes over ownership of the cache.
   HTTPCache(CacheInterface* cache, Timer* timer)
       : cache_(cache),
@@ -106,6 +114,8 @@ class HTTPCache {
 
  private:
   bool IsCurrentlyValid(const MetaData& headers, int64 now_ms);
+  void PutHelper(const std::string& key, int64 now_us,
+                 HTTPValue* value, MessageHandler* handler);
 
   scoped_ptr<CacheInterface> cache_;
   Timer* timer_;
