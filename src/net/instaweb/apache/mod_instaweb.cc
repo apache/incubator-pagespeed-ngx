@@ -18,6 +18,7 @@
 #include "apr_strings.h"
 #include "apr_timer.h"
 #include "apr_version.h"
+#include "http_request.h"
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_config.h"
@@ -688,7 +689,7 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   log_message_handler::Install(pool);
 
   // Use instaweb to handle generated resources.
-  ap_hook_handler(instaweb_handler, NULL, NULL, -1);
+  ap_hook_handler(instaweb_handler, NULL, NULL, APR_HOOK_FIRST - 1);
   ap_register_output_filter(
       kModPagespeedFilterName, instaweb_out_filter, NULL, AP_FTYPE_RESOURCE);
   // We need our repair headers filter to run after mod_headers. The
@@ -701,6 +702,17 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   ap_hook_post_config(pagespeed_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(pagespeed_child_init, NULL, NULL, APR_HOOK_LAST);
   ap_hook_log_transaction(pagespeed_log_transaction, NULL, NULL, APR_HOOK_LAST);
+
+  // mod_rewrite damages the URLs written by mod_pagespeed.
+  // See Issues 63 & 72.  To defend against this, we must either add
+  // additional mod_rewrite rules to exclude pagespeed resources or
+  // pre-scan for pagespeed resources before mod_rewrite runs and
+  // remove mod_rewrite from the filter chain for the request.  The
+  // latter is easier to deploy as it does not require users editing
+  // their rewrite rules for mod_pagespeed.  mod_rewrite registers at
+  // APR_HOOK_FIRST so we go to APR_HOOK_FIRST - 1.
+  ap_hook_translate_name(bypass_translators_for_pagespeed_resources, NULL, NULL,
+                         APR_HOOK_FIRST - 1);
 }
 
 apr_status_t pagespeed_child_exit(void* data) {

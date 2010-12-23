@@ -34,3 +34,12 @@
 #STRESS   Options +ExecCGI
 #STRESS </Directory>
 #STRESS AddHandler cgi-script .cgi
+
+#REWRITE # These lines are only needed for the mod_rewrite test, where
+#REWRITE # we are just trying to prove that we remove mod_rewrite from
+#REWRITE # the request if the URL is going to be handled by mod_pagespeed.
+#REWRITE Options +Indexes
+#REWRITE RewriteEngine on
+#REWRITE RewriteRule (.*).jpg.pagespeed.(.*).jpg broken.jpg
+#REWRITE RewriteRule mod_pagespeed_statistics broken
+#REWRITE RewriteRule shortcut.html /mod_pagespeed_example/index.html

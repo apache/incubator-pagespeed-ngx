@@ -1,5 +1,6 @@
-# Whether this file will be read by httpd depends on settings in httpd.conf.  For
-# now, the presence of it verifies that these options are allowed.
+# Whether this file will be read by httpd depends on settings in
+# httpd.conf.  For now, the presence of it verifies that these options
+# are allowed.
 #
 # TODO(jmarantz): Add system test that proves these options are functional.
 ModPagespeed on

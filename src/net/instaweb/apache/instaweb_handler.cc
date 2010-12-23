@@ -19,7 +19,7 @@
 
 #include "apr_strings.h"
 #include "base/basictypes.h"
-#include "base/string_util.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_slurp.h"
 #include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/apache/apr_timer.h"
@@ -29,6 +29,7 @@
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -43,6 +44,9 @@
 namespace net_instaweb {
 
 namespace {
+
+const char kStatisticsHandler[] = "mod_pagespeed_statistics";
+const char kBeaconHandler[] = "mod_pagespeed_beacon";
 
 bool IsCompressibleContentType(const char* content_type) {
   if (content_type == NULL) {
@@ -202,6 +206,24 @@ apr_status_t repair_caching_header(ap_filter_t *filter,
   return ap_pass_brigade(filter->next, bb);
 }
 
+std::string get_request_url(request_rec* request) {
+  /*
+   * In some contexts we are seeing relative URLs passed
+   * into request->unparsed_uri.  But when using mod_slurp, the rewritten
+   * HTML contains complete URLs, so this construction yields the host:port
+   * prefix twice.
+   *
+   * TODO(jmarantz): Figure out how to do this correctly at all times.
+   */
+  std::string url;
+  if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
+    url = request->unparsed_uri;
+  } else {
+    url = ap_construct_url(request->pool, request->unparsed_uri, request);
+  }
+  return url;
+}
+
 int instaweb_handler(request_rec* request) {
   ApacheRewriteDriverFactory* factory =
       InstawebContext::Factory(request->server);
@@ -212,7 +234,7 @@ int instaweb_handler(request_rec* request) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Not GET request: %d.", request->method_number);
     ret = DECLINED;
-  } else if (strcmp(request->handler, "mod_pagespeed_statistics") == 0) {
+  } else if (strcmp(request->handler, kStatisticsHandler) == 0) {
     std::string output;
     SimpleMetaData response_headers;
     StringWriter writer(&output);
@@ -221,7 +243,7 @@ int instaweb_handler(request_rec* request) {
       statistics->Dump(&writer, factory->message_handler());
     }
     send_out_headers_and_body(request, response_headers, output);
-  } else if (strcmp(request->handler, "mod_pagespeed_beacon") == 0) {
+  } else if (strcmp(request->handler, kBeaconHandler) == 0) {
     RewriteDriver* driver = factory->NewRewriteDriver();
     AddInstrumentationFilter* aif = driver->add_instrumentation_filter();
     if (aif && aif->HandleBeacon(request->unparsed_uri)) {
@@ -231,21 +253,7 @@ int instaweb_handler(request_rec* request) {
     }
     factory->ReleaseRewriteDriver(driver);
   } else {
-    /*
-     * In some contexts we are seeing relative URLs passed
-     * into request->unparsed_uri.  But when using mod_slurp, the rewritten
-     * HTML contains complete URLs, so this construction yields the host:port
-     * prefix twice.
-     *
-     * TODO(jmarantz): Figure out how to do this correctly at all times.
-     */
-    std::string url;
-    if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
-      url = request->unparsed_uri;
-    } else {
-      url = ap_construct_url(request->pool, request->unparsed_uri, request);
-    }
-
+    std::string url = get_request_url(request);
     if (!handle_as_resource(factory, request, url)) {
       if (factory->slurping_enabled()) {
         SlurpUrl(url, factory, request);
@@ -258,6 +266,34 @@ int instaweb_handler(request_rec* request) {
     }
   }
   return ret;
+}
+
+// This translator must be inserted into the translate_name chain
+// prior to mod_rewrite.  By responding "OK" we prevent mod_rewrite
+// from running on this request and borking URL names that need to be
+// handled by mod_pagespeed.
+apr_status_t bypass_translators_for_pagespeed_resources(request_rec *request) {
+  std::string url = get_request_url(request);
+  StringPiece url_piece(url);
+  apr_status_t handled = DECLINED;
+  if (url_piece.ends_with(kStatisticsHandler) ||
+      url_piece.ends_with(kBeaconHandler)) {
+    handled = OK;
+  } else {
+    ApacheRewriteDriverFactory* factory =
+        InstawebContext::Factory(request->server);
+    RewriteDriver* rewrite_driver = factory->NewRewriteDriver();
+    RewriteFilter* filter;
+    scoped_ptr<OutputResource> output_resource(
+        rewrite_driver->DecodeOutputResource(url, &filter));
+    if (output_resource.get() != NULL) {
+      handled = OK;
+      request->filename = apr_pstrcat(
+          request->pool, "mod_pagespeed:", request->unparsed_uri, NULL);
+    }
+    factory->ReleaseRewriteDriver(rewrite_driver);
+  }
+  return handled;
 }
 
 }  // namespace net_instaweb

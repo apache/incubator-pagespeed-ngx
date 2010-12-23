@@ -26,10 +26,15 @@ namespace {
 
 // Number of times we busy spin before we start to sleep.
 int kBusySpinIterations = 100;
+int64 kMaxSpinSleepMs = Timer::kMinuteMs;  // Never sleep for more than 60s
 
 // We back off exponentially, with a constant of 1.5.
 int64 Backoff(int64 interval_ms) {
-  return (1 + interval_ms + (interval_ms >> 1));
+  int64 new_interval_ms = 1 + interval_ms + (interval_ms >> 1);
+  if (new_interval_ms > kMaxSpinSleepMs) {
+    new_interval_ms = kMaxSpinSleepMs;
+  }
+  return new_interval_ms;
 }
 
 int64 IntervalWithEnd(Timer* timer, int64 interval_ms, int64 end_time_ms) {

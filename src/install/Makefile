@@ -157,6 +157,14 @@ else
   STRESS_TEST_SED_PATTERN=^\#STRESS.*
 endif
 
+ifeq ($(REWRITE_TEST),1)
+  # remove prefix
+  REWRITE_TEST_SED_PATTERN=^\#REWRITE
+else
+  # remove whole line
+  REWRITE_TEST_SED_PATTERN=^\#REWRITE.*
+endif
+
 # Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because
 # that might have embedded spaces, and 'sed' is interpreted first by bash.
 
@@ -166,6 +174,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
 	    -e "s@# ModPagespeedSlurpReadOnly on@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
 	    -e "s@$(STRESS_TEST_SED_PATTERN)@@" \
+	    -e "s@$(REWRITE_TEST_SED_PATTERN)@@" \
 		$^ > $@
 
 $(STAGING_DIR)/proxy.conf : proxy.conf.template
