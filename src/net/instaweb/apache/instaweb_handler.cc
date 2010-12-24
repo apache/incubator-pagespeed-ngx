@@ -288,8 +288,20 @@ apr_status_t bypass_translators_for_pagespeed_resources(request_rec *request) {
         rewrite_driver->DecodeOutputResource(url, &filter));
     if (output_resource.get() != NULL) {
       handled = OK;
-      request->filename = apr_pstrcat(
-          request->pool, "mod_pagespeed:", request->unparsed_uri, NULL);
+      // TODO(jmarantz): What should these lines really be?  Deleting
+      // "mod_pagespeed:", doesn't help matters any: we always obtain a 403 for
+      // any resource request.  By contrast, the present form yields results
+      // reliably, at the cost of 4 error_log entries for each bogus URL lookup
+      // we encounter.  Those *are* requests for bogus URLs, but the intent is
+      // clearly to avoid DoS when our logs are exhausted by a shower of junk
+      // requests.  That said:
+      //   1) no setting of request->filename based on request->unparsed_uri
+      //      appears to work.
+      //   2) We get an error_log entry when we fetch an ordinary bogus url,
+      //      too, we just don't get 4 of them.
+      // request->filename = NULL;  // Also serves data, but fills logs.
+      // request->filename = apr_pstrcat(
+      //     request->pool, "mod_pagespeed:", request->unparsed_uri, NULL);
     }
     factory->ReleaseRewriteDriver(rewrite_driver);
   }
