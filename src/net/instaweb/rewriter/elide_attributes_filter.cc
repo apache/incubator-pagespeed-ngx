@@ -136,7 +136,8 @@ const TagAttrValue kDefaultList[] = {
   {"area", "shape", "rect", false},
   // 4: http://www.w3.org/TR/html4/interact/forms.html#h-17.5
   // 5: http://www.w3.org/TR/html5/the-button-element.html#the-button-element
-  {"button", "type", "submit", false},
+  // IE does not support this default.
+  //{"button", "type", "submit", false},
   // 4: The <command> tag does not exist in HTML 4.
   // 5: http://www.w3.org/TR/html5/interactive-elements.html#the-command
   {"command", "type", "command", true},
