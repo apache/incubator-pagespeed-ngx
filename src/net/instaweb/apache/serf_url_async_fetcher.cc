@@ -430,6 +430,12 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   }
 
   ~SerfThreadedFetcher() {
+    // Before we can clean up, we must make sure we haven't initiated any
+    // fetches that haven't moved to the pending queue yet.  We do this by just
+    // moving them across.  From this point, calls to InitiateFetch(...) are
+    // illegal, but we should be invoking this destructor from the only thread
+    // that could have called InitiateFetch anyhow.
+    TransferFetches();
     // Although Cancel will be called in the base class destructor, we
     // want to call it here as well, as it will make it easier for the
     // thread to terminate.
@@ -460,11 +466,11 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     return NULL;
   }
 
-  // Thread-called function to transfer fetches from initiate_fetches_ vector to
-  // the active_fetches_ queue.  Doesn't do any work if initiate_fetches_ is
-  // empty.
+  // Transfer fetches from initiate_fetches_ vector to the active_fetches_
+  // queue.  Doesn't do any work if initiate_fetches_ is empty.  Called by
+  // worker thread and during thread cleanup.
   void TransferFetches() {
-    // Use a temp that to minimize the amount of time we hold the
+    // Use a temp to minimize the amount of time we hold the
     // initiate_mutex_ lock, so that the parent thread doesn't get
     // blocked trying to initiate fetches.
     FetchVector xfer_fetches;
@@ -524,7 +530,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
 
   // protects initiate_fetches_
   AprMutex initiate_mutex_;
-  // pushed in the main thread; popped in the serf thread.
+  // pushed in the main thread; popped by TransferFetches().
   std::vector<SerfFetch*> initiate_fetches_;
 
   // Allows parent to block till thread exits

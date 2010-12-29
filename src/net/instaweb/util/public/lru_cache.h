@@ -70,6 +70,7 @@ class LRUCache : public CacheInterface {
   size_t num_hits() const { return num_hits_; }
   size_t num_misses() const { return num_misses_; }
   size_t num_inserts() const { return num_inserts_; }
+  size_t num_identical_reinserts() const { return num_identical_reinserts_; }
   size_t num_deletes() const { return num_deletes_; }
 
   // Sanity check the cache data structures.
@@ -98,6 +99,7 @@ class LRUCache : public CacheInterface {
   size_t num_hits_;
   size_t num_misses_;
   size_t num_inserts_;
+  size_t num_identical_reinserts_;
   size_t num_deletes_;
   EntryList lru_ordered_list_;
   Map map_;

@@ -127,15 +127,15 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
   if (handled) {
     message_handler->Message(kInfo, "Fetching resource %s...", url.c_str());
     if (!callback->done()) {
-      SerfUrlAsyncFetcher* serf_async_fetcher =
-          factory->serf_url_async_fetcher();
+      UrlPollableAsyncFetcher* sub_resource_fetcher =
+          factory->SubResourceFetcher();
       AprTimer timer;
       int64 max_ms = factory->fetcher_time_out_ms();
       for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
            !callback->done() && now_ms - start_ms < max_ms;
            now_ms = timer.NowMs()) {
         int64 remaining_us = max_ms - (now_ms - start_ms);
-        serf_async_fetcher->Poll(remaining_us);
+        sub_resource_fetcher->Poll(remaining_us);
       }
 
       if (!callback->done()) {

@@ -92,7 +92,8 @@ class CssFilterTest : public ResourceManagerTestBase {
                                   const std::string& css_input,
                                   const std::string& expected_css_output,
                                   bool expect_change,
-                                  bool expect_failure) {
+                                  bool expect_failure,
+                                  bool check_stats) {
     // TODO(sligocki): Allow arbitrary URLs.
     std::string css_url = StrCat("http://test.com/", id, ".css");
 
@@ -140,16 +141,18 @@ class CssFilterTest : public ResourceManagerTestBase {
     // Rewrite
     ValidateExpected(id, html_input, html_output);
 
-    // Check stats
-    if (expect_change) {
-      EXPECT_EQ(1, num_files_minified_->Get());
-      EXPECT_EQ(css_input.size() - expected_css_output.size(),
-                minified_bytes_saved_->Get());
-      EXPECT_EQ(0, num_parse_failures_->Get());
-    } else {
-      EXPECT_EQ(0, num_files_minified_->Get());
-      EXPECT_EQ(0, minified_bytes_saved_->Get());
-      EXPECT_EQ((expect_failure ? 1 : 0), num_parse_failures_->Get()) << id;
+    // Check stats, if requested
+    if (check_stats) {
+      if (expect_change) {
+        EXPECT_EQ(1, num_files_minified_->Get());
+        EXPECT_EQ(css_input.size() - expected_css_output.size(),
+                  minified_bytes_saved_->Get());
+        EXPECT_EQ(0, num_parse_failures_->Get());
+      } else {
+        EXPECT_EQ(0, num_files_minified_->Get());
+        EXPECT_EQ(0, minified_bytes_saved_->Get());
+        EXPECT_EQ((expect_failure ? 1 : 0), num_parse_failures_->Get()) << id;
+      }
     }
 
     // Check CSS output.
@@ -174,21 +177,21 @@ class CssFilterTest : public ResourceManagerTestBase {
     ValidateRewriteInlineCss(StrCat(id, "-inline"),
                              css_input, gold_output, true, false);
     ValidateRewriteExternalCss(StrCat(id, "-external"),
-                               css_input, gold_output, true, false);
+                               css_input, gold_output, true, false, true);
   }
 
   void ValidateNoChange(const StringPiece& id, const std::string& css_input) {
     ValidateRewriteInlineCss(StrCat(id, "-inline"),
                              css_input, css_input, false, false);
     ValidateRewriteExternalCss(StrCat(id, "-external"),
-                               css_input, "", false, false);
+                               css_input, "", false, false, true);
   }
 
   void ValidateFailParse(const StringPiece& id, const std::string& css_input) {
     ValidateRewriteInlineCss(StrCat(id, "-inline"),
                              css_input, css_input, false, true);
     ValidateRewriteExternalCss(StrCat(id, "-external"),
-                               css_input, "", false, true);
+                               css_input, "", false, true, true);
   }
 
 
@@ -213,6 +216,20 @@ TEST_F(CssFilterTest, SimpleRewriteCssTest) {
 // Make sure we can deal with 0 character nodes between open and close of style.
 TEST_F(CssFilterTest, RewriteEmptyCssTest) {
   ValidateNoChange("rewrite_empty_css", "");
+}
+
+// Make sure we do not recompute external CSS when re-processing an already
+// handled page
+TEST_F(CssFilterTest, RewriteRepeated) {
+  ValidateRewriteExternalCss("rep", " div { } ", "div{}", true, false, true);
+  int inserts_before = lru_cache_->num_inserts();
+  ValidateRewriteExternalCss("rep", " div { } ", "div{}", true, false, false);
+  int inserts_after = lru_cache_->num_inserts();
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+  EXPECT_EQ(inserts_before, inserts_after);
+  // We expect num_files_minified_ to be reset to 0 by
+  // ValidateRewriteExternalCss and left there since we should not re-minimize.
+  EXPECT_EQ(0, num_files_minified_->Get());
 }
 
 // Make sure we don't change CSS with errors. Note: We can move these tests

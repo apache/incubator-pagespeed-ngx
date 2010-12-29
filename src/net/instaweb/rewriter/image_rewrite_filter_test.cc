@@ -343,6 +343,16 @@ TEST_F(ImageRewriteTest, RespectsBaseUrl) {
   EXPECT_EQ("other_domain.test", new_jpeg_gurl.host());
 }
 
+TEST_F(ImageRewriteTest, FetchInvalid) {
+  // Make sure that fetching invalid URLs cleanly reports a problem by
+  // calling Done(false).
+  AddFilter(RewriteOptions::kRewriteImages);
+  std::string out;
+  EXPECT_FALSE(
+      ServeResourceUrl(
+          "http://www.example.com/70x53x,.pagespeed.ic.ABCDEFGHIJ.jpg", &out));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

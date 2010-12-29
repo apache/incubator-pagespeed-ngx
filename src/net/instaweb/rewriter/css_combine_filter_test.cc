@@ -395,6 +395,18 @@ TEST_F(CssCombineFilterTest, CombineCssMD5) {
   CombineCss("combine_css_md5", &md5_hasher_, "", false);
 }
 
+// Make sure that if we re-parse the same html twice we do not
+// end up recomputing the CSS (and writing to cache) again
+TEST_F(CssCombineFilterTest, CombineCssRecombine) {
+  CombineCss("combine_css_recombine", &md5_hasher_, "", false);
+  int inserts_before = lru_cache_->num_inserts();
+
+  CombineCss("combine_css_recombine", &md5_hasher_, "", false);
+  int inserts_after = lru_cache_->num_inserts();
+  EXPECT_EQ(inserts_before, inserts_after);
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+}
+
 
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=39
 TEST_F(CssCombineFilterTest, DealWithParams) {

@@ -370,16 +370,6 @@ class ResourceDeleterCallback : public UrlAsyncFetcher::Callback {
 
   virtual void Done(bool status) {
     callback_->Done(status);
-    // Filters should generally write their output to the OutputResource,
-    // in which case when they are done we can insert it into the cache.
-    // However, not all filters do this yet notably img_rewrite_filter,
-    // so check for ContentsValid().
-    if (status && output_resource_->ContentsValid()) {
-      http_cache_->Put(output_resource_->url(),
-                       *output_resource_->metadata(),
-                       output_resource_->contents(),
-                       message_handler_);
-    }
     delete this;
   }
 

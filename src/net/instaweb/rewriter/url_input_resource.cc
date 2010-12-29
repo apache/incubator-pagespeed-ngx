@@ -85,6 +85,9 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
         DoneInternal(false);
         delete this;
         return false;
+      } else {
+        message_handler_->Info(lock_name.c_str(), 0,
+                               "But fetching anyway.");
       }
     } else {
       message_handler_->Info(lock_name.c_str(), 0,

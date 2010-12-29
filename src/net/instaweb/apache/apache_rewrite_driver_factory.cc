@@ -110,6 +110,11 @@ CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
   return cache;
 }
 
+UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::SubResourceFetcher() {
+  assert(FetchersComputed());
+  return serf_url_async_fetcher_; // may be null in a readonly slurping mode
+}
+
 UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
   if (serf_url_fetcher_ == NULL) {
     DefaultAsyncUrlFetcher();  // Create async fetcher if necessary.

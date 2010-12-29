@@ -76,7 +76,7 @@ void LRUCache::Put(const std::string& key, SharedString* new_value) {
     if (**new_value == *(key_value->second)) {
       map_iter->second = Freshen(key_value);
       need_to_insert = false;
-      // TODO(jmarantz): count number of re-inserts of existing value?
+      ++num_identical_reinserts_;
     } else {
       ++num_deletes_;
       current_bytes_in_cache_ -= entry_size(key_value);
@@ -202,6 +202,7 @@ void LRUCache::ClearStats() {
   num_hits_ = 0;
   num_misses_ = 0;
   num_inserts_ = 0;
+  num_identical_reinserts_ = 0;
   num_deletes_ = 0;
 }
 

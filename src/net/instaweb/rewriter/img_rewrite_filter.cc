@@ -456,6 +456,9 @@ bool ImgRewriteFilter::Fetch(OutputResource* resource,
           callback->Done(true);
         }
       }
+    } else {
+      ok = false;
+      failure_reason = "Problem creating input resource.";
     }
   } else {
     ok = false;

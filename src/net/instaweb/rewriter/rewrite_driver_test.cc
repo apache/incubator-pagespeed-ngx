@@ -22,6 +22,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 namespace net_instaweb {
 
@@ -62,6 +63,33 @@ TEST_F(RewriteDriverTest, TestLegacyUrl) {
       << "invalid hash code -- not 1 or 32 chars";
   ASSERT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig.x"))
       << "invalid extension";
+}
+
+// Test to make sure we do not put in extra things into the cache
+TEST_F(RewriteDriverTest, TestCacheUse) {
+  AddFilter(RewriteOptions::kExtendCache);
+
+  const char kCss[] = "* { display: none; }";
+  InitMetaData("a.css", kContentTypeCss, kCss, 100);
+
+  std::string cacheExtendedUrl =
+      Encode("http://test.com/", RewriteDriver::kCacheExtenderId,
+             mock_hasher_.Hash(kCss), "a.css", "css");
+
+  // Cold load.
+  EXPECT_TRUE(TryFetchResource(cacheExtendedUrl));
+
+  // We should have 3 things inserted:
+  // 1) the source data
+  // 2) the result
+  // 3) the rname entry for the result
+  int cold_num_inserts = lru_cache_->num_inserts();
+  EXPECT_EQ(3, cold_num_inserts);
+
+  // Warm load. This one should not change the number of inserts at all
+  EXPECT_TRUE(TryFetchResource(cacheExtendedUrl));
+  EXPECT_EQ(cold_num_inserts, lru_cache_->num_inserts());
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
 }
 
 }  // namespace net_instaweb

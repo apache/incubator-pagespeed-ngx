@@ -31,6 +31,7 @@ namespace net_instaweb {
 class AprStatistics;
 class SerfUrlAsyncFetcher;
 class SerfUrlFetcher;
+class UrlPollableAsyncFetcher;
 
 // Creates an Apache RewriteDriver.
 class ApacheRewriteDriverFactory : public RewriteDriverFactory {
@@ -42,9 +43,12 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   virtual Hasher* NewHasher();
   virtual AbstractMutex* NewMutex();
 
-  SerfUrlAsyncFetcher* serf_url_async_fetcher() {
-    return serf_url_async_fetcher_;
-  }
+  // Returns the fetcher that will be used by the filters to load any
+  // resources they need. This either matches the resource manager's
+  // async fetcher or is NULL in case we are configured in a way that
+  // all fetches will succeed immediately. Must be called after the fetchers
+  // have been computed
+  UrlPollableAsyncFetcher* SubResourceFetcher();
 
   void set_lru_cache_kb_per_process(int64 x) { lru_cache_kb_per_process_ = x; }
   void set_lru_cache_byte_limit(int64 x) { lru_cache_byte_limit_ = x; }

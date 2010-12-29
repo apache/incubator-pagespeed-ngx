@@ -21,9 +21,9 @@
 #include <list>
 #include <map>
 #include "base/basictypes.h"
+#include "net/instaweb/apache/url_pollable_async_fetcher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/simple_meta_data.h"
-#include "net/instaweb/util/public/url_async_fetcher.h"
 
 struct apr_pool_t;
 struct serf_context_t;
@@ -47,7 +47,7 @@ struct SerfStats {
   static const char kSerfFetchTimeoutCount[];
 };
 
-class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
+class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
  public:
   SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
                       Statistics* statistics, Timer* timer, int64 timeout_ms);
@@ -61,9 +61,7 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
                               MessageHandler* message_handler,
                               UrlAsyncFetcher::Callback* callback);
 
-  // Poll the active fetches, returning the number of fetches
-  // still outstanding.
-  int Poll(int64 microseconds);
+  virtual int Poll(int64 microseconds);
 
   enum WaitChoice {
     kThreadedOnly,

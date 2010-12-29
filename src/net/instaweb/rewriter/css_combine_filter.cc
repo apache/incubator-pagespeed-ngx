@@ -342,14 +342,23 @@ void CssCombineFilter::TryCombineAccumulated() {
         resource_manager_->CreateOutputResourceWithPath(
             partnership_->ResolvedBase(),
             filter_prefix_, url_safe_id, &kContentTypeCss, handler));
-    bool written = combination->IsWritten() ||
-        WriteCombination(partnership_->resources(), combination.get(), handler);
 
-    // We've collected at least two CSS files to combine, and whose
-    // HTML elements are in the current flush window.  Last step
-    // is to write the combination.
-    if (written && combination->IsWritten()) {
-      // Commit by adding combine element ...
+    bool do_rewrite_html = false;
+    // If the combination has a Url set on it we have cached information
+    // on what the output would be, so we'll just use that.
+    if (combination->HasValidUrl()) {
+      do_rewrite_html = true;
+      html_parse_->InfoHere("Reusing existing CSS combination: %s",
+                            combination->url().c_str());
+    } else {
+      // Otherwise, we have to compute it.
+      do_rewrite_html = WriteCombination(partnership_->resources(),
+                                         combination.get(), handler);
+      do_rewrite_html = do_rewrite_html && combination->IsWritten();
+    }
+
+    // Update the DOM for new elements.
+    if (do_rewrite_html) {
       combine_element->AddAttribute(s_href_, combination->url(), "\"");
       // TODO(sligocki): Put at top of head/flush-window.
       // Right now we're putting it where the first original element used to be.

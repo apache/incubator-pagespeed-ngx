@@ -307,7 +307,7 @@ bool CssFilter::RewriteExternalCssToResource(Resource* input_resource,
                                              OutputResource* output_resource) {
   bool ret = false;
   // If this OutputResource has not already been created, create it.
-  if (!output_resource->IsWritten()) {
+  if (!output_resource->HasValidUrl()) {
     // Load input stylesheet.
     MessageHandler* handler = html_parse_->message_handler();
     if (input_resource != NULL &&
@@ -320,6 +320,8 @@ bool CssFilter::RewriteExternalCssToResource(Resource* input_resource,
                                  input_resource->url().c_str());
       }
     }
+  } else {
+    ret = true;
   }
 
   return ret;
@@ -338,9 +340,10 @@ bool CssFilter::RewriteLoadedResource(const Resource* input_resource,
     }
 
     // Write new stylesheet.
-    // TODO(sligocki): Set expire time.
-    if (!resource_manager_->Write(HttpStatus::kOK, out_contents,
-                                  output_resource, -1,
+    if (!resource_manager_->Write(HttpStatus::kOK,
+                                  out_contents,
+                                  output_resource,
+                                  input_resource->CacheExpirationTimeMs(),
                                   html_parse_->message_handler())) {
       return false;
     }
