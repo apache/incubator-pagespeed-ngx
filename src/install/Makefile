@@ -165,6 +165,13 @@ else
   REWRITE_TEST_SED_PATTERN=^\#REWRITE.*
 endif
 
+ifeq ($(COVERAGE_TRACE_TEST),1)
+  # remove coverage prefix
+  COVERAGE_TEST_SED_PATTERN=^\#COVERAGE
+else
+  # remove coverage lines
+  COVERAGE_TEST_SED_PATTERN=^\#COVERAGE.*
+endif
 # Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because
 # that might have embedded spaces, and 'sed' is interpreted first by bash.
 
@@ -175,6 +182,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@# ModPagespeedSlurpReadOnly on@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
 	    -e "s@$(STRESS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(REWRITE_TEST_SED_PATTERN)@@" \
+	    -e "s@$(COVERAGE_TEST_SED_PATTERN)@@" \
 		$^ > $@
 
 $(STAGING_DIR)/proxy.conf : proxy.conf.template
@@ -196,7 +204,7 @@ staging: setup_staging_dir $(CONF_TEMPLATES)
 	echo "LoadModule deflate_module $(APACHE_MODULES)/mod_deflate.so" \
 	 	>> $(STAGING_DIR)/pagespeed.load
 	$(MODS_ENABLED_STAGING_COMMANDS)
-	cp -rp mod_pagespeed_example $(STAGING_DIR)
+	cp -rp mod_pagespeed_example mod_pagespeed_test $(STAGING_DIR)
 	cp $(PAGESPEED_MODULE) $(STAGING_DIR)/mod_pagespeed.so
 
 # To install the mod_pagespeed configuration into the system, you must
@@ -204,9 +212,12 @@ staging: setup_staging_dir $(CONF_TEMPLATES)
 install : mod_pagespeed_file_root
 	$(MODS_ENABLED_INSTALL_COMMANDS)
 	cat $(CONF_SOURCES) > $(APACHE_CONF)/pagespeed.conf
-	rm -rf $(APACHE_DOC_ROOT)/mod_pagespeed_example
-	cp -r $(STAGING_DIR)/mod_pagespeed_example $(APACHE_DOC_ROOT)
-	chown -R $(APACHE_USER) $(APACHE_DOC_ROOT)/mod_pagespeed_example
+	rm -rf $(APACHE_DOC_ROOT)/mod_pagespeed_example \
+	       $(APACHE_DOC_ROOT)/mod_pagespeed_test
+	cp -r $(STAGING_DIR)/mod_pagespeed_example \
+	      $(STAGING_DIR)/mod_pagespeed_test $(APACHE_DOC_ROOT)
+	chown -R $(APACHE_USER) $(APACHE_DOC_ROOT)/mod_pagespeed_example \
+	 			$(APACHE_DOC_ROOT)/mod_pagespeed_test
 	cp $(STAGING_DIR)/mod_pagespeed.so $(APACHE_MODULES)
 
 mod_pagespeed_file_root :

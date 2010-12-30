@@ -1,4 +1,4 @@
-# These caching headers are set up for the mod_pagespeed example, and
+# These caching headers are set up for the document root, and
 # also serve as a demonstration of good values to set for the entire
 # site, if it is to be optimized by mod_pagespeed.
 <Directory APACHE_DOC_ROOT/mod_pagespeed_example>
@@ -43,3 +43,26 @@
 #REWRITE RewriteRule (.*).jpg.pagespeed.(.*).jpg broken.jpg
 #REWRITE RewriteRule mod_pagespeed_statistics broken
 #REWRITE RewriteRule shortcut.html /mod_pagespeed_example/index.html
+
+#COVERAGE # These lines are used for large-scale code coverage testing.
+#COVERAGE ModPagespeedRewriteLevel AllFilters
+#COVERAGE ModPagespeedEnableFilters elide_attributes
+#COVERAGE ModPagespeedDomain *
+#COVERAGE ModPagespeedFileCacheSizeKb          102400
+#COVERAGE ModPagespeedFileCacheCleanIntervalMs 3600000
+#COVERAGE ModPagespeedLRUCacheKbPerProcess     1024
+#COVERAGE ModPagespeedLRUCacheByteLimit        16384
+#COVERAGE ModPagespeedCssInlineMaxBytes        2048
+#COVERAGE ModPagespeedImgInlineMaxBytes        2048
+#COVERAGE ModPagespeedJsInlineMaxBytes         2048
+#COVERAGE ModPagespeedCssOutlineMinBytes       3000
+#COVERAGE ModPagespeedJsOutlineMinBytes        3000
+#COVERAGE ModPagespeedImgMaxRewritesAtOnce        8
+#COVERAGE <Location /mod_pagespeed_beacon>
+#COVERAGE       SetHandler mod_pagespeed_beacon
+#COVERAGE </Location>
+#COVERAGE <Location /mod_pagespeed_statistics>
+#COVERAGE     Order allow,deny
+#COVERAGE     Allow from localhost
+#COVERAGE     SetHandler mod_pagespeed_statistics
+#COVERAGE </Location>
