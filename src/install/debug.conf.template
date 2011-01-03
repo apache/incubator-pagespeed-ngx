@@ -40,8 +40,8 @@
 #REWRITE # the request if the URL is going to be handled by mod_pagespeed.
 #REWRITE Options +Indexes
 #REWRITE RewriteEngine on
-#REWRITE RewriteRule (.*).jpg.pagespeed.(.*).jpg broken.jpg
-#REWRITE RewriteRule mod_pagespeed_statistics broken
+#REWRITE RewriteRule (.*).jpg.pagespeed.(.*).jpg /broken.jpg
+#REWRITE RewriteRule mod_pagespeed_statistics /broken
 #REWRITE RewriteRule shortcut.html /mod_pagespeed_example/index.html
 
 #COVERAGE # These lines are used for large-scale code coverage testing.

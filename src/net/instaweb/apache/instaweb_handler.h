@@ -26,7 +26,7 @@ namespace net_instaweb {
 // The content generator for instaweb generated content, for example, the
 // combined CSS file.  Requests for not-instab generated content will be
 // declined so that other Apache handlers may operate on them.
-int instaweb_handler(request_rec* request);
+apr_status_t instaweb_handler(request_rec* request);
 
 // output-filter function to repair caching headers, which might have
 // been altered by a directive like:
@@ -36,10 +36,11 @@ int instaweb_handler(request_rec* request);
 //     </FilesMatch>
 apr_status_t repair_caching_header(ap_filter_t *filter, apr_bucket_brigade *bb);
 
-// We need to avoid having mod_rewrite alter mod_pagespeed's generated
-// URLs, which would prevent instaweb_handler from being able to decode
-// the resource.
-apr_status_t bypass_translators_for_pagespeed_resources(request_rec *request);
+// We need to save the original URL as a request "note" before
+// mod_rewrite has a chance to corrupt mod_pagespeed's generated URLs,
+// which would prevent instaweb_handler from being able to decode the
+// resource.
+apr_status_t save_url_for_instaweb_handler(request_rec *request);
 
 }  // namespace net_instaweb
 

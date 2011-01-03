@@ -703,15 +703,16 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   ap_hook_child_init(pagespeed_child_init, NULL, NULL, APR_HOOK_LAST);
   ap_hook_log_transaction(pagespeed_log_transaction, NULL, NULL, APR_HOOK_LAST);
 
-  // mod_rewrite damages the URLs written by mod_pagespeed.
-  // See Issues 63 & 72.  To defend against this, we must either add
+  // mod_rewrite damages the URLs written by mod_pagespeed.  See
+  // Issues 63 & 72.  To defend against this, we must either add
   // additional mod_rewrite rules to exclude pagespeed resources or
-  // pre-scan for pagespeed resources before mod_rewrite runs and
-  // remove mod_rewrite from the filter chain for the request.  The
-  // latter is easier to deploy as it does not require users editing
-  // their rewrite rules for mod_pagespeed.  mod_rewrite registers at
-  // APR_HOOK_FIRST so we go to APR_HOOK_FIRST - 1.
-  ap_hook_translate_name(bypass_translators_for_pagespeed_resources, NULL, NULL,
+  // pre-scan for pagespeed resources before mod_rewrite runs and copy
+  // the URL somewhere safe (a request->note) before mod_rewrite
+  // corrupts it.  The latter is easier to deploy as it does not
+  // require users editing their rewrite rules for mod_pagespeed.
+  // mod_rewrite registers at APR_HOOK_FIRST so we go to
+  // APR_HOOK_FIRST - 1.
+  ap_hook_translate_name(save_url_for_instaweb_handler, NULL, NULL,
                          APR_HOOK_FIRST - 1);
 }
 

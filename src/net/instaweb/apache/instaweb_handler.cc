@@ -47,6 +47,7 @@ namespace {
 
 const char kStatisticsHandler[] = "mod_pagespeed_statistics";
 const char kBeaconHandler[] = "mod_pagespeed_beacon";
+const char kResourceUrlNote[] = "mod_pagespeed_resource";
 
 bool IsCompressibleContentType(const char* content_type) {
   if (content_type == NULL) {
@@ -206,62 +207,47 @@ apr_status_t repair_caching_header(ap_filter_t *filter,
   return ap_pass_brigade(filter->next, bb);
 }
 
-std::string get_request_url(request_rec* request) {
-  /*
-   * In some contexts we are seeing relative URLs passed
-   * into request->unparsed_uri.  But when using mod_slurp, the rewritten
-   * HTML contains complete URLs, so this construction yields the host:port
-   * prefix twice.
-   *
-   * TODO(jmarantz): Figure out how to do this correctly at all times.
-   */
-  std::string url;
-  if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
-    url = request->unparsed_uri;
-  } else {
-    url = ap_construct_url(request->pool, request->unparsed_uri, request);
-  }
-  return url;
-}
+apr_status_t instaweb_handler(request_rec* request) {
+  apr_status_t ret = DECLINED;
+  const char* url = apr_table_get(request->notes, kResourceUrlNote);
+  if (url != NULL) {
+    ApacheRewriteDriverFactory* factory =
+        InstawebContext::Factory(request->server);
+    ret = OK;
 
-int instaweb_handler(request_rec* request) {
-  ApacheRewriteDriverFactory* factory =
-      InstawebContext::Factory(request->server);
-  int ret = OK;
-
-  // Only handle GET request
-  if (request->method_number != M_GET) {
-    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                  "Not GET request: %d.", request->method_number);
-    ret = DECLINED;
-  } else if (strcmp(request->handler, kStatisticsHandler) == 0) {
-    std::string output;
-    SimpleMetaData response_headers;
-    StringWriter writer(&output);
-    AprStatistics* statistics = factory->statistics();
-    if (statistics) {
-      statistics->Dump(&writer, factory->message_handler());
-    }
-    send_out_headers_and_body(request, response_headers, output);
-  } else if (strcmp(request->handler, kBeaconHandler) == 0) {
-    RewriteDriver* driver = factory->NewRewriteDriver();
-    AddInstrumentationFilter* aif = driver->add_instrumentation_filter();
-    if (aif && aif->HandleBeacon(request->unparsed_uri)) {
-      ret = HTTP_NO_CONTENT;
-    } else {
+    // Only handle GET request
+    if (request->method_number != M_GET) {
+      ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                    "Not GET request: %d.", request->method_number);
       ret = DECLINED;
-    }
-    factory->ReleaseRewriteDriver(driver);
-  } else {
-    std::string url = get_request_url(request);
-    if (!handle_as_resource(factory, request, url)) {
-      if (factory->slurping_enabled()) {
-        SlurpUrl(url, factory, request);
-        if (request->status == HTTP_NOT_FOUND) {
-          factory->IncrementSlurpCount();
-        }
+    } else if (strcmp(request->handler, kStatisticsHandler) == 0) {
+      std::string output;
+      SimpleMetaData response_headers;
+      StringWriter writer(&output);
+      AprStatistics* statistics = factory->statistics();
+      if (statistics) {
+        statistics->Dump(&writer, factory->message_handler());
+      }
+      send_out_headers_and_body(request, response_headers, output);
+    } else if (strcmp(request->handler, kBeaconHandler) == 0) {
+      RewriteDriver* driver = factory->NewRewriteDriver();
+      AddInstrumentationFilter* aif = driver->add_instrumentation_filter();
+      if (aif && aif->HandleBeacon(request->unparsed_uri)) {
+        ret = HTTP_NO_CONTENT;
       } else {
         ret = DECLINED;
+      }
+      factory->ReleaseRewriteDriver(driver);
+    } else {
+      if (!handle_as_resource(factory, request, url)) {
+        if (factory->slurping_enabled()) {
+          SlurpUrl(url, factory, request);
+          if (request->status == HTTP_NOT_FOUND) {
+            factory->IncrementSlurpCount();
+          }
+        } else {
+          ret = DECLINED;
+        }
       }
     }
   }
@@ -272,8 +258,62 @@ int instaweb_handler(request_rec* request) {
 // prior to mod_rewrite.  By responding "OK" we prevent mod_rewrite
 // from running on this request and borking URL names that need to be
 // handled by mod_pagespeed.
-apr_status_t bypass_translators_for_pagespeed_resources(request_rec *request) {
-  std::string url = get_request_url(request);
+//
+// This hack seems to be the most robust way to immunize mod_pagespeed
+// from when mod_rewrite rewrites the URL.  We still need mod_rewrite
+// to do required complex processing of the filename (e.g. prepending
+// the DocumentRoot) so mod_authz_host is happy.
+//
+// One alternative strategy is to return OK to bypass mod_rewrite
+// entirely, but then we'd have to duplicate the functionality in
+// mod_rewrite that prepends the DocumentRoot, which is itself
+// complex.  See mod_rewrite.c:hook_fixup(), and look for calls to
+// ap_document_root().
+//
+// Or we could return DECLINED but set a note "mod_rewrite_rewritten"
+// to try to convince mod_rewrite to leave our URLs alone.
+//
+// Another strategy is to return OK but leave request->filename NULL.
+// In that case, the server kernel generates an ominious 'info'
+// message:
+//
+//     [info] [client ::1] Module bug?  Request filename is missing for URI
+//     /mod_pagespeed_statistics
+//
+// This is generated by httpd/src/server/request.c line 486, and right
+// above that is this comment:
+//
+//     "OK" as a response to a real problem is not _OK_, but to
+//     allow broken modules to proceed, we will permit the
+//     not-a-path filename to pass the following two tests.  This
+//     behavior may be revoked in future versions of Apache.  We
+//     still must catch it later if it's heading for the core
+//     handler.  Leave INFO notes here for module debugging.
+//
+// It seems like the simplest, most robust approach is to squirrel
+// away the original URL *before* mod_rewrite sees it in
+// kResourceUrlNote "mod_pagespeed_url" and use *that* rather than
+// request->unparsed_uri (which mod_rewrite might have mangled) when
+// procesing the request.
+apr_status_t save_url_for_instaweb_handler(request_rec *request) {
+  char* url = NULL;
+  bool need_copy = true;
+
+  /*
+   * In some contexts we are seeing relative URLs passed
+   * into request->unparsed_uri.  But when using mod_slurp, the rewritten
+   * HTML contains complete URLs, so this construction yields the host:port
+   * prefix twice.
+   *
+   * TODO(jmarantz): Figure out how to do this correctly at all times.
+   */
+  if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
+    url = request->unparsed_uri;
+  } else {
+    url = ap_construct_url(request->pool, request->unparsed_uri, request);
+    need_copy = false;
+  }
+
   StringPiece url_piece(url);
   bool bypass_mod_rewrite = false;
   if (url_piece.ends_with(kStatisticsHandler) ||
@@ -293,42 +333,11 @@ apr_status_t bypass_translators_for_pagespeed_resources(request_rec *request) {
   }
 
   if (bypass_mod_rewrite) {
-    // This fragile hack seems to be the easiest way to prevent
-    // mod_rewrite from rewriting the URL, but allowing it to do other
-    // required complex processing of the filename (e.g. prepending
-    // the DocumentRoot).  This is really fragile because
-    // "mod_rewrite_rewritten" is a string literal in mod_rewrite.c as
-    // of Apache 2.2.16, and could, in theory, change in any new
-    // update to that module.
-    //
-    // One alternative strategy is to return OK to bypass
-    // mod_rewrite entirely, but then we'd have to duplicate the
-    // functionality in mod_rewrite that prepends the DocumentRoot,
-    // which is itself complex.  See mod_rewrite.c:hook_fixup(), and
-    // look for calls to ap_document_root().
-    //
-    // Another strategy is to return OK but leave request->filename
-    // NULL.  In that case, the server kernel generates an ominious
-    // 'info' message:
-    //
-    //     [info] [client ::1] Module bug?  Request filename is missing for URI
-    //     /mod_pagespeed_statistics
-    //
-    // This is generated by httpd/src/server/request.c line 486, and right
-    // above that is this comment:
-    //
-    //     "OK" as a response to a real problem is not _OK_, but to
-    //     allow broken modules to proceed, we will permit the
-    //     not-a-path filename to pass the following two tests.  This
-    //     behavior may be revoked in future versions of Apache.  We
-    //     still must catch it later if it's heading for the core
-    //     handler.  Leave INFO notes here for module debugging.
-    //
-    // The value "0" comes from "#define ACTION_NORMAL 1<<0" in mod_rewrite.c.
-    //
-    // If this brittle hack fails, then the test "apache_debug_rewrite_test"
-    // will fail.
-    apr_table_set(request->notes, "mod_rewrite_rewritten", "0");
+    if (need_copy) {
+      apr_table_set(request->notes, kResourceUrlNote, url);
+    } else {
+      apr_table_setn(request->notes, kResourceUrlNote, url);
+    }
   }
   return DECLINED;
 }
