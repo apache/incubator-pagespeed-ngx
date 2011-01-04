@@ -20,11 +20,9 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SIMPLE_META_DATA_H_
 
 #include <stdlib.h>
-#include <map>
-#include <vector>
-#include "base/basictypes.h"
 #include "net/instaweb/util/public/meta_data.h"
 #include <string>
+#include "net/instaweb/util/public/string_map.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -40,9 +38,10 @@ class SimpleMetaData : public MetaData {
   virtual void Clear();
 
   // Raw access for random access to attribute name/value pairs.
-  virtual int NumAttributes() const;
-  virtual const char* Name(int index) const;
-  virtual const char* Value(int index) const;
+  virtual int NumAttributes() const { return map_.num_values(); }
+  virtual int NumAttributeNames() const { return map_.num_names(); }
+  virtual const char* Name(int index) const { return map_.name(index); }
+  virtual const char* Value(int index) const { return map_.value(index); }
   virtual bool Lookup(const char* name, CharStarVector* values) const;
 
   // Add a new header.
@@ -100,21 +99,7 @@ class SimpleMetaData : public MetaData {
 
   friend class SimpleMetaDataTest;
 
-  // We are keeping two structures, conseptually map<String,vector<String>> and
-  // vector<pair<String,String>>, so we can do associative lookups and
-  // also order-preserving iteration and random access.
-  //
-  // To avoid duplicating the strings, we will have the map own the
-  // Names (keys) in a std::string, and the string-pair-vector own the
-  // value as an explicitly newed char*.  The risk of using a std::string
-  // to hold the value is that the pointers will not survive a resize.
-  typedef std::pair<const char*, char*> StringPair;  // owns the value
-  typedef std::map<std::string, CharStarVector,
-                   StringCompareInsensitive> AttributeMap;
-  typedef std::vector<StringPair> AttributeVector;
-
-  AttributeMap attribute_map_;
-  AttributeVector attribute_vector_;
+  StringMapInsensitive map_;
 
   bool parsing_http_;
   bool parsing_value_;

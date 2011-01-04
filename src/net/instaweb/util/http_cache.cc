@@ -66,6 +66,10 @@ bool HTTPCache::IsCurrentlyValid(const MetaData& headers, int64 now_ms) {
   return false;
 }
 
+bool HTTPCache::IsAlreadyExpired(const MetaData& headers) {
+  return !IsCurrentlyValid(headers, timer_->NowMs());
+}
+
 HTTPCache::FindResult HTTPCache::Find(
     const std::string& key, HTTPValue* value, MetaData* headers,
     MessageHandler* handler) {

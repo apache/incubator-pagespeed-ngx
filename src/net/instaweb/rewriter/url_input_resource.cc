@@ -48,10 +48,13 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   virtual ~UrlResourceFetchCallback() {}
 
   void AddToCache(bool success) {
-    if (success) {
-      HTTPValue* value = http_value();
-      value->SetHeaders(*response_headers());
-      http_cache()->Put(url(), value, message_handler_);
+    MetaData* meta_data = response_headers();
+    if (success && !meta_data->IsErrorStatus()) {
+      if (!http_cache()->IsAlreadyExpired(*meta_data)) {
+        HTTPValue* value = http_value();
+        value->SetHeaders(*meta_data);
+        http_cache()->Put(url(), value, message_handler_);
+      }
     } else {
       http_cache()->RememberNotCacheable(url(), message_handler_);
     }

@@ -45,11 +45,7 @@ SimpleMetaData::~SimpleMetaData() {
 }
 
 void SimpleMetaData::Clear() {
-  for (int i = 0, n = attribute_vector_.size(); i < n; ++i) {
-    delete [] attribute_vector_[i].second;
-  }
-  attribute_map_.clear();
-  attribute_vector_.clear();
+  map_.Clear();
 
   parsing_http_ = false;
   parsing_value_ = false;
@@ -68,68 +64,18 @@ void SimpleMetaData::Clear() {
   reason_phrase_.clear();
 }
 
-int SimpleMetaData::NumAttributes() const {
-  return attribute_vector_.size();
-}
-
-const char* SimpleMetaData::Name(int index) const {
-  return attribute_vector_[index].first;
-}
-
-const char* SimpleMetaData::Value(int index) const {
-  return attribute_vector_[index].second;
-}
-
 bool SimpleMetaData::Lookup(const char* name, CharStarVector* values) const {
-  AttributeMap::const_iterator p = attribute_map_.find(name);
-  bool ret = false;
-  if (p != attribute_map_.end()) {
-    ret = true;
-    *values = p->second;
-  }
-  return ret;
+  return map_.Lookup(name, values);
 }
 
 void SimpleMetaData::Add(const StringPiece& name, const StringPiece& value) {
-  // TODO(jmarantz): Parse comma-separated values.  bmcquade sez:
-  // you probably want to normalize these by splitting on commas and
-  // adding a separate k,v pair for each comma-separated value. then
-  // it becomes very easy to do things like search for individual
-  // Content-Type tokens. Otherwise the client has to assume that
-  // every single value could be comma-separated and they have to
-  // parse it as such.  the list of header names that are not safe to
-  // comma-split is at
-  // http://src.chromium.org/viewvc/chrome/trunk/src/net/http/http_util.cc
-  // (search for IsNonCoalescingHeader)
-
-  CharStarVector dummy_values;
-  std::pair<AttributeMap::iterator, bool> iter_inserted =
-      attribute_map_.insert(AttributeMap::value_type(name.as_string(),
-                                                     dummy_values));
-  AttributeMap::iterator iter = iter_inserted.first;
-  CharStarVector& values = iter->second;
-  int value_buf_size = value.size() + 1;
-  char* value_copy = new char[value_buf_size];
-  memcpy(value_copy, value.data(), value_buf_size);
-  values.push_back(value_copy);
-  attribute_vector_.push_back(StringPair(iter->first.c_str(), value_copy));
+  map_.Add(name, value);
   cache_fields_dirty_ = true;
 }
 
 void SimpleMetaData::RemoveAll(const char* name) {
-  AttributeVector temp_vector;  // Temp variable for new vector.
-  temp_vector.reserve(attribute_vector_.size());
-  for (int i = 0; i < NumAttributes(); ++i) {
-    if (strcasecmp(Name(i),  name) != 0) {
-      temp_vector.push_back(attribute_vector_[i]);
-    } else {
-      delete [] attribute_vector_[i].second;
-    }
-  }
-  attribute_vector_.swap(temp_vector);
-
-  // Note: we have to erase from the map second, because map owns the name.
-  attribute_map_.erase(name);
+  map_.RemoveAll(name);
+  cache_fields_dirty_ = true;
 }
 
 // Serialize meta-data to a stream.
@@ -148,11 +94,10 @@ bool SimpleMetaData::Write(Writer* writer, MessageHandler* handler) const {
 bool SimpleMetaData::WriteHeaders(Writer* writer,
                                   MessageHandler* handler) const {
   bool ret = true;
-  for (int i = 0, n = attribute_vector_.size(); ret && (i < n); ++i) {
-    const StringPair& attribute = attribute_vector_[i];
-    ret &= writer->Write(attribute.first, handler);
+  for (int i = 0, n = map_.num_values(); ret && (i < n); ++i) {
+    ret &= writer->Write(map_.name(i), handler);
     ret &= writer->Write(": ", handler);
-    ret &= writer->Write(attribute.second, handler);
+    ret &= writer->Write(map_.value(i), handler);
     ret &= writer->Write("\r\n", handler);
   }
   ret &= writer->Write("\r\n", handler);

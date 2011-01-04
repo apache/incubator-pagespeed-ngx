@@ -236,6 +236,54 @@ TEST_F(ResourceManagerTest, TestOutputInputUrl) {
   EXPECT_EQ("http://example.com/dir/123/orig", input_resource->url());
 }
 
+TEST_F(ResourceManagerTest, TestRemember404) {
+  // Make sure our resources remember that a page 404'd
+  SimpleMetaData not_found;
+  resource_manager_->SetDefaultHeaders(&kContentTypeHtml, &not_found);
+  not_found.SetStatusAndReason(HttpStatus::kNotFound);
+  mock_url_fetcher_.SetResponse("http://example.com/404", not_found, "");
+
+  GURL base = GoogleUrl::Create(StringPiece("http://example.com/"));
+  scoped_ptr<Resource> resource(
+      resource_manager_->CreateInputResourceAndReadIfCached(
+          base, "404", rewrite_driver_.options(), &message_handler_));
+  EXPECT_EQ(NULL, resource.get());
+
+  HTTPValue valueOut;
+  SimpleMetaData headersOut;
+  EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
+            http_cache_.Find("http://example.com/404", &valueOut, &headersOut,
+                             &message_handler_));
+}
+
+TEST_F(ResourceManagerTest, TestNonCacheable) {
+  const std::string kContents = "ok";
+
+  // Make sure we don't try to insert non-cacheable resources
+  // into the cache wastefully, but still fetch them well.
+  SimpleMetaData no_cache;
+  resource_manager_->SetDefaultHeaders(&kContentTypeHtml, &no_cache);
+  no_cache.RemoveAll(HttpAttributes::kCacheControl);
+  no_cache.Add(HttpAttributes::kCacheControl, "no-cache");
+  mock_url_fetcher_.SetResponse("http://example.com/", no_cache, kContents);
+
+  int inserts_before = lru_cache_->num_inserts();
+  GURL base = GoogleUrl::Create(StringPiece("http://example.com"));
+  scoped_ptr<Resource> resource(
+      resource_manager_->CreateInputResource(
+          base, "/", rewrite_driver_.options(), &message_handler_));
+  ASSERT_TRUE(resource.get() != NULL);
+
+  VerifyContentsCallback callback(kContents);
+  resource_manager_->ReadAsync(resource.get(), &callback, &message_handler_);
+  callback.AssertCalled();
+
+  int inserts_after = lru_cache_->num_inserts();
+  EXPECT_EQ(inserts_before, inserts_after);
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+}
+
+
 // TODO(jmaessen): re-enable after sharding works again.
 // class ResourceManagerShardedTest : public ResourceManagerTest {
 //  protected:

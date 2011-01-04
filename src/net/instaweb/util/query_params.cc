@@ -19,66 +19,11 @@
 #include "net/instaweb/util/public/query_params.h"
 
 #include <stdio.h>
+#include <vector>
 #include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
 
 namespace net_instaweb {
-
-// TODO(jmarantz): Refactor much of this code with simple_meta_data.cc.  We'd
-// have to templatize to indicate whether we wanted case sensitivity in our
-// variables.
-
-void QueryParams::Clear() {
-  for (int i = 0, n = variable_vector_.size(); i < n; ++i) {
-    delete [] variable_vector_[i].second;
-  }
-  variable_map_.clear();
-  variable_vector_.clear();
-}
-
-bool QueryParams::Lookup(const char* name, CharStarVector* values) const {
-  VariableMap::const_iterator p = variable_map_.find(name);
-  bool ret = false;
-  if (p != variable_map_.end()) {
-    ret = true;
-    *values = p->second;
-  }
-  return ret;
-}
-
-void QueryParams::Add(const StringPiece& name, const StringPiece& value) {
-  CharStarVector dummy_values;
-  std::string name_buf(name.data(), name.size());
-  std::pair<VariableMap::iterator, bool> iter_inserted = variable_map_.insert(
-      VariableMap::value_type(name_buf.c_str(), dummy_values));
-  VariableMap::iterator iter = iter_inserted.first;
-  CharStarVector& values = iter->second;
-  char* value_copy = NULL;
-  if (value.data() != NULL) {
-    int value_size = value.size();
-    value_copy = new char[value_size + 1];
-    memcpy(value_copy, value.data(), value_size);
-    value_copy[value_size] = '\0';
-  }
-  values.push_back(value_copy);
-  variable_vector_.push_back(StringPair(iter->first.c_str(), value_copy));
-}
-
-void QueryParams::RemoveAll(const char* var_name) {
-  VariableVector temp_vector;  // Temp variable for new vector.
-  temp_vector.reserve(variable_vector_.size());
-  for (int i = 0; i < size(); ++i) {
-    if (strcasecmp(name(i),  var_name) != 0) {
-      temp_vector.push_back(variable_vector_[i]);
-    } else {
-      delete [] variable_vector_[i].second;
-    }
-  }
-  variable_vector_.swap(temp_vector);
-
-  // Note: we have to erase from the map second, because map owns the name.
-  variable_map_.erase(var_name);
-}
 
 void QueryParams::Parse(const StringPiece& text) {
   CHECK_EQ(0, size());

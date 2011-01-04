@@ -112,6 +112,11 @@ class HTTPCache {
   // Initialize statistics variables for the cache
   static void Initialize(Statistics* statistics);
 
+  // Returns true if the resource is already at the point of expiration,
+  // and would never be used if inserted into the cache. Otherwise, returns
+  // false and increments the cache expirations statistic
+  bool IsAlreadyExpired(const MetaData& headers);
+
  private:
   bool IsCurrentlyValid(const MetaData& headers, int64 now_ms);
   void PutHelper(const std::string& key, int64 now_us,
