@@ -1,0 +1,14 @@
+HTTP/1.1 200 OK
+Content-Type: text/css
+Cache-Control: max-age=31536000
+Expires: Tue, 05 Apr 2011 18:51:26 GMT
+Etag: W/0
+Date: Mon, 05 Apr 2010 18:51:26 GMT
+Last-Modified: Mon, 05 Apr 2010 18:51:26 GMT
+
+.c1 {
+  background-color: blue;
+}
+.c2 {
+  color: yellow;
+}

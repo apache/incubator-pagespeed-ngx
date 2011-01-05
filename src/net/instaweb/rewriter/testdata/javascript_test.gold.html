@@ -1,0 +1,46 @@
+<!doctype html PUBLIC "HTML 4.0.1 Strict" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html>
+<head>
+  <!-- Look for various corner cases in script tag handling
+    -->
+  <title>Javascript test</title>
+</head>
+<body>
+<p>Local script; should be minified on output.</p>
+<script>document.write("Howdy");state=1</script>
+<p>Empty script</p>
+<script></script>
+<p>Non-js script</p>
+<script type="text/html">
+This should not appear on the page, but
+should not be changed in any way either.
+</script>
+<p>Missing script</p>
+<script src="missing.js"></script>
+<p>External script (1, with closing tag)</p>
+<script src="http://file.name/extScript.js.pagespeed.jm.0.js" type="text/javascript"></script>
+<p>External script (2, self-closed)</p>
+<script src="http://file.name/extScript.js.pagespeed.jm.0.js" type="application/ecmascript"/>
+<p>The following closing tag ought to be spurious, but Firefox and Chrome
+   don't seem to accept self-closed script tags, even with a src.
+   In Safari, by contrast, this paragraph will appear.</p>
+</script>
+<p>Mix of internal and external scripts.  Note that given a src= attribute,
+   the body of the script appears to be ignored in Safari, Chrome, and
+   Firefox.</p>
+<script src="http://file.name/extScript.js.pagespeed.jm.0.js">
+document.write("Internal script; state = " + state);
+state = 42
+</script>
+<p>Attempt at nesting scripts.</p>
+<script src="http://file.name/extScript.js.pagespeed.jm.0.js">
+<em>In the body!</em>
+<script>
+document.write("Now we're in very deep indeed.");
+</script>
+</script>
+<p>This script ought to be recognized and redirected.</p>
+<script src="http://file.name/third_party.js.pagespeed.jm.0.js"></script>
+<p>Not JavaScript. Should not be altered.</p>
+<script language="tcl">Contents</script>
+</body>
+</html>

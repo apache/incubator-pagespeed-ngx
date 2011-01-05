@@ -1,0 +1,18 @@
+Info: img_tag_identification.html:23: Shrinking image `http://file.name/BikeCrashIcn.png' (26548 bytes) to `http://file.name/xBikeCrashIcn.png.pagespeed.ic.0.png' (23357 bytes)
+Info: http://file.name/img_tag_identification.html: Couldn't fetch resource missing.gif to rewrite.
+Info: img_tag_identification.html:32: Not worth resizing image `http://file.name/extensionless_gif' from 1x1 to 1x1
+Info: http://file.name/img_tag_identification.html: Couldn't fetch resource o.gif?Nonsensical~but~very~long/and~slashy~CGI~URL~ to rewrite.
+Info: img_tag_identification.html:35: Not worth resizing image `http://file.name/o.gif' from 1x1 to 14x1
+Info: img_tag_identification.html:36: Not worth resizing image `http://file.name/Puzzle.jpg' from 1023x766 to 1023x766
+Info: img_tag_identification.html:36: Shrinking image `http://file.name/Puzzle.jpg' (241260 bytes) to `http://file.name/1023x766xPuzzle.jpg.pagespeed.ic.0.jpg' (235391 bytes)
+Info: img_tag_identification.html:37: Resized image `http://file.name/Puzzle.jpg' from 1023x766 to 256x192
+Info: img_tag_identification.html:37: Shrinking image `http://file.name/Puzzle.jpg' (241260 bytes) to `http://file.name/256x192xPuzzle.jpg.pagespeed.ic.0.jpg' (21648 bytes)
+Info: img_tag_identification.html:38: Not worth resizing image `http://file.name/o.gif' from 1x1 to 1x5
+Info: img_tag_identification.html:39: Not worth resizing image `http://file.name/o.gif' from 1x1 to 5x49
+Info: img_tag_identification.html:42: Not worth resizing image `http://file.name/another-blank.gif' from 1x1 to 1x1
+Info: http://file.name/img_tag_identification.html: Couldn't fetch resource b2?lots=terrible&obnoxious=1&nasty=17&ick=54/j/&cgi=arguments to rewrite.
+Info: img_tag_identification.html:51: Resized image `http://file.name/ExplosiveEgress.png' from 169x137 to 84x68
+Info: img_tag_identification.html:51: Shrinking image `http://file.name/ExplosiveEgress.png' (38057 bytes) to `http://file.name/84x68xExplosiveEgress.png.pagespeed.ic.0.png' (11693 bytes)
+Info: img_tag_identification.html:52: Couldn't resize image `http://file.name/IronChef2.gif' from 192x256 to 96x128
+Info: img_tag_identification.html:54: Shrinking image `http://file.name/Cuppa.png' (1763 bytes) to `http://file.name/xCuppa.png.pagespeed.ic.0.png' (780 bytes)
+Info: img_tag_identification.html:55: Couldn't resize image `http://file.name/CuppaT.png' from 65x70 to 26x28

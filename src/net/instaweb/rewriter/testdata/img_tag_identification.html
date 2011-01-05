@@ -1,0 +1,70 @@
+<!doctype html PUBLIC "HTML 4.0.1 Strict" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html>
+<head>
+  <!-- Bits cribbed from old bbc.co.uk front page, which shows various forms
+       of img tag in various contexts.  Note different tag terminations,
+       orders for stuff like alt, mixtures of included and excluded
+       geometries, etc.  Note also varying shapes of o.gif in different links,
+       and the fact that this image sometimes has a CGI suffix!
+
+       Also note the occurrences of images in <noscript> regions, which
+       presumably won't be fetched and shouldn't be optimized (in these cases
+       they're marker gifs, but in general they could be anything; do other
+       cases happen much?).  Note also the inconsistent handling of marker
+       images: width="0" height="0" style="display:none" versus width="1"
+       height="1".
+
+       By the way, do we get bw/latency savings if we drop the quotes ""
+       around image geometries?  For pages like bbc.co.uk with tons of
+       whitespace images that could put us under a packet threshold.  But if
+       it doesn't make the gzip smaller it's not worth the bother.
+    -->
+  <title>Image test example</title>
+</head>
+<body><img src="BikeCrashIcn.png" alt="Crumbs" id="bbq-pits"/><a href="/long/path/to/something.stm">
+				
+				
+<!-- deliberately absent img -->
+					<img src="missing.gif" align="left" alt="Crash" border="0" vspace="0" hspace="0" width="70" height="30" >
+					Goofy Image Test Page
+				
+			</a>
+<td>
+<img height="1" width="1" src="extensionless_gif" alt=""/>
+<!-- img with long script url (gets truncated?) -->
+<img alt="" id="livestats" src="o.gif?Nonsensical~but~very~long/and~slashy~CGI~URL~"/>
+</td><td valign="top" class="gffffff" width="14"><img src="o.gif" width="14" height="1" alt="" border="0" vspace="0" hspace="0"></td>
+<td class="image"><img src="Puzzle.jpg" align="left" width="1023" height="766" alt="A lovely puzzle purchased at a wool-and-puzzle shop in New Zealand" border="0" vspace="0" hspace="0"></td>
+<td class="image"><img src="Puzzle.jpg" align="left" width="256" height="192" alt="The same, but smaller." border="0" vspace="0" hspace="0"></td>
+	<img src="o.gif" width="1" height="5" alt="" border="0" vspace="0" class="" hspace="0"><br/>
+<img src="o.gif" align="left" width="5" height="49" alt="" border="0" vspace="0" hspace="0">
+<noscript>
+	<div>
+		<img src="another-blank.gif" style="display: none;" height="1" width="1" alt="Emptiness"/>
+	</div>
+</noscript>
+<noscript>
+	<div>
+<!-- img with filesize 0 -->
+		<img src="b2?lots=terrible&amp;obnoxious=1&amp;nasty=17&amp;ick=54/j/&amp;cgi=arguments" style="display:none" width="0" height="0" alt=""/>
+	</div>
+</noscript>
+<img src="ExplosiveEgress.png" width="84" height="68"/>
+<img src="IronChef2.gif" width="96" height="128"/>
+<img src="BikeCrashIcn.png" alt="Cheese" id="bbq-pitss"/>
+<img src="Cuppa.png" alt="Cuppa" id="cuppa"/>
+<img src="CuppaT.png" alt="Downsized transparent Cuppa" id="downsized" width="26" height="28"/>
+
+<!-- This last reference to o.gif is exactly the same as an earlier
+     one, and is intended to capture in
+     img_tag_identification.log.gold the fact that we only will
+     compute the resizability once, but will find two places where we
+     decide not to rewrite it.
+  -->
+<img src="o.gif" width="14" height="1" alt="" border="0" vspace="0" hspace="0"/>
+
+<!-- And this tests the presence of unit-annotated width and height, which ought
+     to be preserved untouched.
+  -->
+<img src="BikeCrashIcn.png" alt="Crackers" width="100px" height="100px"/>
+</body>
+</html>
