@@ -17,12 +17,12 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_QUERY_PARAMS_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_QUERY_PARAMS_H_
 
-#include "net/instaweb/util/public/string_map.h"
+#include "net/instaweb/util/public/string_multi_map.h"
 
 namespace net_instaweb {
 
 // Parses and rewrites URL query parameters.
-class QueryParams : public StringMapSensitive {
+class QueryParams : public StringMultiMapSensitive {
  public:
   QueryParams() { }
 

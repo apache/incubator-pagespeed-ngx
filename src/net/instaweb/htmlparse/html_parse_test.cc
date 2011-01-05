@@ -360,9 +360,40 @@ TEST_F(HandlerCalledTest, CommentCalled) {
   EXPECT_TRUE(handler_called_filter_.called_comment_.Test());
 }
 
-TEST_F(HandlerCalledTest, IEDirectiveCalled) {
+TEST_F(HandlerCalledTest, IEDirectiveCalled1) {
   Parse("ie_directive_called", "<!--[if IE]>...<![endif]-->");
   // Looks like a comment, but isn't.
+  EXPECT_FALSE(handler_called_filter_.called_comment_.Test());
+  EXPECT_TRUE(handler_called_filter_.called_ie_directive_.Test());
+}
+
+TEST_F(HandlerCalledTest, IEDirectiveCalled2) {
+  // See http://code.google.com/p/modpagespeed/issues/detail?id=136 and
+  // http://msdn.microsoft.com/en-us/library/ms537512(VS.85).aspx#dlrevealed
+  Parse("ie_directive_called", "<!--[if lte IE 8]>...<![endif]-->");
+  EXPECT_FALSE(handler_called_filter_.called_comment_.Test());
+  EXPECT_TRUE(handler_called_filter_.called_ie_directive_.Test());
+}
+
+TEST_F(HandlerCalledTest, IEDirectiveCalled3) {
+  Parse("ie_directive_called", "<!--[if false]>...<![endif]-->");
+  EXPECT_FALSE(handler_called_filter_.called_comment_.Test());
+  EXPECT_TRUE(handler_called_filter_.called_ie_directive_.Test());
+}
+
+// Downlevel-revealed commments normally look like <![if foo]>...<![endif]>.
+// However, although most (non-IE) browsers will ignore those, they're
+// technically not valid, so some sites use the below trick (which is valid
+// HTML, and still works for IE).  For an explanation, see
+// http://en.wikipedia.org/wiki/Conditional_comment#
+// Downlevel-revealed_conditional_comment
+TEST_F(HandlerCalledTest, IEDirectiveCalledRevealedOpen) {
+  Parse("ie_directive_called", "<!--[if !IE]><!-->");
+  EXPECT_FALSE(handler_called_filter_.called_comment_.Test());
+  EXPECT_TRUE(handler_called_filter_.called_ie_directive_.Test());
+}
+TEST_F(HandlerCalledTest, IEDirectiveCalledRevealedClose) {
+  Parse("ie_directive_called", "<!--<![endif]-->");
   EXPECT_FALSE(handler_called_filter_.called_comment_.Test());
   EXPECT_TRUE(handler_called_filter_.called_ie_directive_.Test());
 }

@@ -14,8 +14,8 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_STRING_MAP_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_STRING_MAP_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_STRING_MULTI_MAP_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_STRING_MULTI_MAP_H_
 
 #include <stdlib.h>
 #include <map>
@@ -30,10 +30,10 @@ namespace net_instaweb {
 // Implements an ordered string map, providing case-sensitive and case
 // insensitive versions.  The order of insertion is retained and
 // names/value pairs can be accessed by index or looked up by name.
-template<class StringCompare> class StringMap {
+template<class StringCompare> class StringMultiMap {
  public:
-  StringMap() { }
-  ~StringMap() {
+  StringMultiMap() { }
+  ~StringMultiMap() {
     Clear();
   }
 
@@ -110,7 +110,7 @@ template<class StringCompare> class StringMap {
  private:
   // We are keeping two structures, conceptually map<String,vector<String>> and
   // vector<pair<String,String>>, so we can do associative lookups and
-  // also order-preserving iteration and random access.
+  // also order-preserving iteration and easy indexed access.
   //
   // To avoid duplicating the strings, we will have the map own the
   // Names (keys) in a std::string, and the string-pair-vector own the
@@ -123,23 +123,24 @@ template<class StringCompare> class StringMap {
   Map map_;
   StringPairVector vector_;
 
-  DISALLOW_COPY_AND_ASSIGN(StringMap);
+  DISALLOW_COPY_AND_ASSIGN(StringMultiMap);
 };
 
-class StringMapInsensitive : public StringMap<StringCompareInsensitive> {
+class StringMultiMapInsensitive
+    : public StringMultiMap<StringCompareInsensitive> {
  public:
-  StringMapInsensitive() { }
+  StringMultiMapInsensitive() { }
  private:
-  DISALLOW_COPY_AND_ASSIGN(StringMapInsensitive);
+  DISALLOW_COPY_AND_ASSIGN(StringMultiMapInsensitive);
 };
 
-class StringMapSensitive : public StringMap<StringCompareSensitive> {
+class StringMultiMapSensitive : public StringMultiMap<StringCompareSensitive> {
  public:
-  StringMapSensitive() { }
+  StringMultiMapSensitive() { }
  private:
-  DISALLOW_COPY_AND_ASSIGN(StringMapSensitive);
+  DISALLOW_COPY_AND_ASSIGN(StringMultiMapSensitive);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_STRING_MAP_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_STRING_MULTI_MAP_H_

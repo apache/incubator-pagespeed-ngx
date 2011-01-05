@@ -1,4 +1,4 @@
-# Copyright 2010 Google Inc.
+# Copyright 2010-2011 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -106,7 +106,7 @@
         'util/mock_url_fetcher_test.cc',
         'util/query_params_test.cc',
         'util/simple_meta_data_test.cc',
-        'util/string_map_test.cc',
+        'util/string_multi_map_test.cc',
 #        'util/simple_stats_test.cc',
         'util/statistics_work_bound_test.cc',
 #        'util/split_writer_test.cc',

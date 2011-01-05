@@ -369,7 +369,7 @@ Resource* ResourceManager::CreateInputResource(
     resource = CreateInputResourceUnchecked(*input_gurl, rewrite_options,
                                             handler);
   } else {
-    handler->Message(kInfo, "%s: Invalid url relative to '%s'",
+    handler->Message(kInfo, "Invalid resource url '%s' relative to '%s'",
                      input_url.as_string().c_str(), base_gurl.spec().c_str());
     IncrementResourceUrlDomainRejections();
     resource = NULL;
@@ -429,7 +429,7 @@ Resource* ResourceManager::CreateInputResourceUnchecked(
     // Note: Bad user-content can leave us here.  But it's really hard
     // to concatenate a valid protocol and domain onto an arbitrary string
     // and end up with an invalid GURL.
-    handler->Message(kWarning, "%s: Invalid url",
+    handler->Message(kWarning, "Invalid resource url '%s'",
                      url.possibly_invalid_spec().c_str());
     return NULL;
   }

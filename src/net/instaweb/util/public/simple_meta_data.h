@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include "net/instaweb/util/public/meta_data.h"
 #include <string>
-#include "net/instaweb/util/public/string_map.h"
+#include "net/instaweb/util/public/string_multi_map.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -99,7 +99,7 @@ class SimpleMetaData : public MetaData {
 
   friend class SimpleMetaDataTest;
 
-  StringMapInsensitive map_;
+  StringMultiMapInsensitive map_;
 
   bool parsing_http_;
   bool parsing_value_;

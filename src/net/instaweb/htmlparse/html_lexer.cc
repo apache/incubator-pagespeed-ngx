@@ -471,6 +471,11 @@ void HtmlLexer::EvalCommentEnd2(char c) {
 
 // Handle the case where "<![" was recently parsed.
 void HtmlLexer::EvalCdataStart1(char c) {
+  // TODO(mdsteele): What about IE downlevel-revealed conditional comments?
+  //   Those look like e.g. <![if foo]> and <![endif]>.  This will treat those
+  //   as syntax errors and emit them verbatim (which is usually harmless), but
+  //   ideally we'd identify them as HtmlIEDirectiveEvents.
+  //   See http://msdn.microsoft.com/en-us/library/ms537512(VS.85).aspx
   if (c == 'C') {
     state_ = CDATA_START2;
   } else {
@@ -609,8 +614,12 @@ void HtmlLexer::EmitLiteral() {
 
 void HtmlLexer::EmitComment() {
   literal_.clear();
-  if ((token_.find("[if IE") != std::string::npos) &&
-      (token_.find("<![endif]") != std::string::npos)) {
+  // The precise syntax of IE conditional comments (for example, exactly where
+  // is whitespace tolerated?) doesn't seem to be specified anywhere, but my
+  // brief experiments suggest that this heuristic is okay.  (mdsteele)
+  // See http://en.wikipedia.org/wiki/Conditional_comment
+  if ((token_.find("[if") != std::string::npos) ||
+      (token_.find("[endif]") != std::string::npos)) {
     HtmlIEDirectiveNode* node =
         html_parse_->NewIEDirectiveNode(Parent(), token_);
     html_parse_->AddEvent(new HtmlIEDirectiveEvent(node, tag_start_line_));

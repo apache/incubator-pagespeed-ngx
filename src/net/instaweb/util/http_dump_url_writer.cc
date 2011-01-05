@@ -40,7 +40,7 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(const std::string& url,
   std::string filename;
 
   if (!dump_fetcher_.GetFilename(GURL(url), &filename, handler)) {
-    handler->Message(kError, "Invalid url: %s", url.c_str());
+    handler->Message(kError, "HttpDumpUrlWriter: Invalid url: %s", url.c_str());
     ret = false;
   } else if (!file_system_->Exists(filename.c_str(), handler).is_true()) {
     // Do the Fetch first, before opening the output file, so that if the

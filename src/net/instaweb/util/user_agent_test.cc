@@ -72,8 +72,6 @@ TEST_F(UserAgentTest, IsIeTest) {
   EXPECT_FALSE(user_agent_.IsIe6());
   EXPECT_FALSE(user_agent_.IsIe7());
   EXPECT_FALSE(user_agent_.IsIe6or7());
-
-
 }
 
 TEST_F(UserAgentTest, IsNotIeTest) {
@@ -81,6 +79,9 @@ TEST_F(UserAgentTest, IsNotIeTest) {
   EXPECT_FALSE(user_agent_.IsIe());
   EXPECT_FALSE(user_agent_.IsIe6());
   EXPECT_FALSE(user_agent_.IsIe6or7());
+
+  SetUserAgent(kChromeUserAgent);
+  EXPECT_FALSE(user_agent_.IsIe());
 }
 
 }  // namespace net_instaweb

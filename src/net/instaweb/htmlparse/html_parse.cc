@@ -175,7 +175,8 @@ void HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
   GURL gurl(url_);
   // TODO(jmaessen): warn and propagate upwards.  This will require
   // major changes to the callers.
-  message_handler_->Check(gurl.is_valid(), "Invalid url %s", url_.c_str());
+  message_handler_->Check(gurl.is_valid(), "HtmlParse: Invalid document url %s",
+                          url_.c_str());
   gurl_.Swap(&gurl);
   line_number_ = 1;
   id.CopyToString(&id_);
