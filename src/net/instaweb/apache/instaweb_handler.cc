@@ -184,16 +184,14 @@ void send_out_headers_and_body(
 apr_status_t instaweb_handler(request_rec* request) {
   apr_status_t ret = DECLINED;
   const char* url = apr_table_get(request->notes, kResourceUrlNote);
-  if (url != NULL) {
-    ApacheRewriteDriverFactory* factory =
-        InstawebContext::Factory(request->server);
-    ret = OK;
+  ApacheRewriteDriverFactory* factory =
+      InstawebContext::Factory(request->server);
 
+  if (url != NULL) {
     // Only handle GET request
     if (request->method_number != M_GET) {
       ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                     "Not GET request: %d.", request->method_number);
-      ret = DECLINED;
     } else if (strcmp(request->handler, kStatisticsHandler) == 0) {
       std::string output;
       SimpleMetaData response_headers;
@@ -213,27 +211,23 @@ apr_status_t instaweb_handler(request_rec* request) {
       response_headers.Add(HttpAttributes::kCacheControl,
                            HttpAttributes::kNoCache);
       send_out_headers_and_body(request, response_headers, output);
+      ret = OK;
     } else if (strcmp(request->handler, kBeaconHandler) == 0) {
       RewriteDriver* driver = factory->NewRewriteDriver();
       AddInstrumentationFilter* aif = driver->add_instrumentation_filter();
       if (aif && aif->HandleBeacon(request->unparsed_uri)) {
         ret = HTTP_NO_CONTENT;
-      } else {
-        ret = DECLINED;
       }
       factory->ReleaseRewriteDriver(driver);
-    } else {
-      if (!handle_as_resource(factory, request, url)) {
-        if (factory->slurping_enabled()) {
-          SlurpUrl(url, factory, request);
-          if (request->status == HTTP_NOT_FOUND) {
-            factory->IncrementSlurpCount();
-          }
-        } else {
-          ret = DECLINED;
-        }
-      }
+    } else if (handle_as_resource(factory, request, url)) {
+      ret = OK;
     }
+  } else if (factory->slurping_enabled()) {
+    SlurpUrl(request->unparsed_uri, factory, request);
+    if (request->status == HTTP_NOT_FOUND) {
+      factory->IncrementSlurpCount();
+    }
+    ret = OK;
   }
   return ret;
 }
