@@ -17,7 +17,8 @@
 #include "net/instaweb/http/public/response_headers.h"
 
 #include "base/logging.h"
-#include "net/instaweb/http/http.pb.h"
+#include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
+
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/string_multi_map.h"
@@ -45,42 +46,16 @@ ResponseHeaders::~ResponseHeaders() {
 }
 
 void ResponseHeaders::Clear() {
-  map_.reset(NULL);
+  Headers<HttpResponseHeaders>::Clear();
 
   proto_->set_cacheable(false);
   proto_->set_proxy_cacheable(false);   // accurate only if !cache_fields_dirty_
   proto_->clear_expiration_time_ms();
   proto_->clear_timestamp_ms();
-  proto_->clear_major_version();
-  proto_->clear_minor_version();
   proto_->clear_status_code();
   proto_->clear_reason_phrase();
   proto_->clear_header();
   cache_fields_dirty_ = false;
-}
-
-int ResponseHeaders::NumAttributes() const {
-  return proto_->header_size();
-}
-
-const char* ResponseHeaders::Name(int i) const {
-  return proto_->header(i).name().c_str();
-}
-
-const char* ResponseHeaders::Value(int i) const {
-  return proto_->header(i).value().c_str();
-}
-
-int ResponseHeaders::major_version() const {
-  return proto_->major_version();
-}
-
-bool ResponseHeaders::has_major_version() const {
-  return proto_->has_major_version();
-}
-
-int ResponseHeaders::minor_version() const {
-  return proto_->minor_version();
 }
 
 int ResponseHeaders::status_code() const {
@@ -99,14 +74,6 @@ bool ResponseHeaders::has_timestamp_ms() const {
   return proto_->has_timestamp_ms();
 }
 
-void ResponseHeaders::set_major_version(int major_version) {
-  proto_->set_major_version(major_version);
-}
-
-void ResponseHeaders::set_minor_version(int minor_version) {
-  proto_->set_minor_version(minor_version);
-}
-
 void ResponseHeaders::set_status_code(int code) {
   proto_->set_status_code(code);
 }
@@ -115,60 +82,13 @@ void ResponseHeaders::set_reason_phrase(const StringPiece& reason_phrase) {
   proto_->set_reason_phrase(reason_phrase.data(), reason_phrase.size());
 }
 
-void ResponseHeaders::PopulateMap() const {
-  if (map_.get() == NULL) {
-    map_.reset(new StringMultiMapInsensitive);
-    for (int i = 0, n = NumAttributes(); i < n; ++i) {
-      map_->Add(Name(i), Value(i));
-    }
-  }
-}
-
-int ResponseHeaders::NumAttributeNames() const {
-  PopulateMap();
-  return map_->num_names();
-}
-
-bool ResponseHeaders::Lookup(const char* name, CharStarVector* values) const {
-  PopulateMap();
-  return map_->Lookup(name, values);
-}
-
 void ResponseHeaders::Add(const StringPiece& name, const StringPiece& value) {
-  // TODO(jmarantz): Parse comma-separated values.  bmcquade sez:
-  // you probably want to normalize these by splitting on commas and
-  // adding a separate k,v pair for each comma-separated value. then
-  // it becomes very easy to do things like search for individual
-  // Content-Type tokens. Otherwise the client has to assume that
-  // every single value could be comma-separated and they have to
-  // parse it as such.  the list of header names that are not safe to
-  // comma-split is at
-  // http://src.chromium.org/viewvc/chrome/trunk/src/net/http/http_util.cc
-  // (search for IsNonCoalescingHeader)
-
-  NameValue* name_value = proto_->add_header();
-  name_value->set_name(name.data(), name.size());
-  name_value->set_value(value.data(), value.size());
-  if (map_.get() != NULL) {
-    map_->Add(name, value);
-  }
+  Headers<HttpResponseHeaders>::Add(name, value);
   cache_fields_dirty_ = true;
 }
 
 void ResponseHeaders::RemoveAll(const char* name) {
-  // Protobufs lack a convenient remove method for array elements, so
-  // we copy the data into the map and do the remove there, then
-  // reconstruct the protobuf.
-  PopulateMap();
-  CharStarVector values;
-  if (map_->Lookup(name, &values)) {
-    proto_->clear_header();
-    map_->RemoveAll(name);
-    for (int i = 0, n = map_->num_values(); i < n; ++i) {
-      NameValue* name_value = proto_->add_header();
-      name_value->set_name(map_->name(i));
-      name_value->set_value(map_->value(i));
-    }
+  if (Headers<HttpResponseHeaders>::RemoveAll(name)) {
     cache_fields_dirty_ = true;
   }
 }
@@ -177,20 +97,13 @@ bool ResponseHeaders::WriteAsBinary(Writer* writer, MessageHandler* handler) {
   if (cache_fields_dirty_) {
     ComputeCaching();
   }
-  std::string buf;
-  {
-    StringOutputStream sstream(&buf);
-    proto_->SerializeToZeroCopyStream(&sstream);
-  }
-  return writer->Write(buf, handler);
+  return Headers<HttpResponseHeaders>::WriteAsBinary(writer, handler);
 }
 
 bool ResponseHeaders::ReadFromBinary(const StringPiece& buf,
                                      MessageHandler* message_handler) {
-  Clear();
-  ArrayInputStream input(buf.data(), buf.size());
   cache_fields_dirty_ = false;
-  return proto_->ParseFromZeroCopyStream(&input);
+  return Headers<HttpResponseHeaders>::ReadFromBinary(buf, message_handler);
 }
 
 // Serialize meta-data to a binary stream.
@@ -203,13 +116,7 @@ bool ResponseHeaders::WriteAsHttp(Writer* writer, MessageHandler* handler)
   ret &= writer->Write(buf, handler);
   ret &= writer->Write(reason_phrase(), handler);
   ret &= writer->Write("\r\n", handler);
-  for (int i = 0, n = NumAttributes(); ret && (i < n); ++i) {
-    ret &= writer->Write(Name(i), handler);
-    ret &= writer->Write(": ", handler);
-    ret &= writer->Write(Value(i), handler);
-    ret &= writer->Write("\r\n", handler);
-  }
-  ret &= writer->Write("\r\n", handler);
+  ret &= Headers<HttpResponseHeaders>::WriteAsHttp(writer, handler);
   return ret;
 }
 

@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/util/public/meta_data.h"  // HttpAttributes, HttpStatus
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -32,30 +33,12 @@ class StringMultiMapInsensitive;
 class Writer;
 
 // Read/write API for HTTP response headers.
-class ResponseHeaders {
+class ResponseHeaders : public Headers<HttpResponseHeaders> {
  public:
   ResponseHeaders();
   ~ResponseHeaders();
 
   void Clear();
-
-  // Raw access for random access to attribute name/value pairs.
-  int NumAttributes() const;
-  const char* Name(int i) const;
-  const char* Value(int i) const;
-
-  // Note that Lookup, though declared const, is NOT thread-safe.  This
-  // is because it lazily generates a map.
-  //
-  // TODO(jmarantz): this is a problem waiting to happen, but I believe it
-  // will not be a problem in the immediate future.  We can refactor our way
-  // around this problem by moving the Map to an explicit separate class that
-  // can be instantiated to assist with Lookups and Remove.  But that should
-  // be done in a separate CL from the one I'm typing into now.
-  bool Lookup(const char* name, CharStarVector* values) const;
-
-  // Likewise, NumAttributeNames is const but not thread-safe.
-  int NumAttributeNames() const;
 
   // Add a new header.
   void Add(const StringPiece& name, const StringPiece& value);
@@ -85,14 +68,9 @@ class ResponseHeaders {
   void SetDate(int64 date_ms);
   void SetLastModified(int64 last_modified_ms);
 
-  int major_version() const;
-  bool has_major_version() const;
-  int minor_version() const;
   int status_code() const;
   int64 timestamp_ms() const;
   bool has_timestamp_ms() const;
-  void set_major_version(int major_version);
-  void set_minor_version(int major_version);
   void set_status_code(const int code);
   const char* reason_phrase() const;
   void set_reason_phrase(const StringPiece& reason_phrase);
@@ -105,16 +83,7 @@ class ResponseHeaders {
  private:
   friend class ResponseHeadersTest;
 
-  void PopulateMap() const;  // the 'const' is a lie -- it mutates map_.
-
-  // We have two represenations for the name/value pairs.  The
-  // HttpResponseHeader protobuf contains a simple string-pair vector, but
-  // lacks a fast associative lookup.  So we will build structures for
-  // associative lookup lazily, and keep them up-to-date if they are
-  // present.
-  mutable scoped_ptr<StringMultiMapInsensitive> map_;
   bool cache_fields_dirty_;
-  scoped_ptr<HttpResponseHeaders> proto_;
 
   DISALLOW_COPY_AND_ASSIGN(ResponseHeaders);
 };

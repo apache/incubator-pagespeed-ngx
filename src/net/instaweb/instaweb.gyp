@@ -134,6 +134,8 @@
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
       ],
       'sources': [
+        'http/headers.cc',
+        'http/request_headers.cc',
         'http/response_headers.cc',
         'http/response_headers_parser.cc',
       ],

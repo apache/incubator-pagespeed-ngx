@@ -66,21 +66,28 @@ template<class StringCompare> class StringMultiMap {
     return ret;
   }
 
-  // Remove all variables by name.
-  void RemoveAll(const char* var_name) {
-    StringPairVector temp_vector;  // Temp variable for new vector.
-    temp_vector.reserve(vector_.size());
-    for (int i = 0; i < num_values(); ++i) {
-      if (strcasecmp(name(i),  var_name) != 0) {
-        temp_vector.push_back(vector_[i]);
-      } else {
-        delete [] vector_[i].second;
+  // Remove all variables by name.  Returns true if anything was removed.
+  bool RemoveAll(const char* var_name) {
+    typename Map::iterator p = map_.find(var_name);
+    bool removed = (p != map_.end());
+    if (removed) {
+      StringPairVector temp_vector;  // Temp variable for new vector.
+      temp_vector.reserve(vector_.size());
+      for (int i = 0; i < num_values(); ++i) {
+        if (strcasecmp(name(i),  var_name) != 0) {
+          temp_vector.push_back(vector_[i]);
+        } else {
+          removed = true;
+          delete [] vector_[i].second;
+        }
       }
-    }
-    vector_.swap(temp_vector);
 
-    // Note: we have to erase from the map second, because map owns the name.
-    map_.erase(var_name);
+      vector_.swap(temp_vector);
+
+      // Note: we have to erase from the map second, because map owns the name.
+      map_.erase(p);
+    }
+    return removed;
   }
 
   const char* name(int index) const { return vector_[index].first; }

@@ -71,15 +71,16 @@ TEST_F(StringMultiMapTest, TestLookup) {
 
 TEST_F(StringMultiMapTest, TestRemove) {
   CharStarVector v;
-  string_map_.RemoveAll("a");
+  EXPECT_TRUE(string_map_.RemoveAll("a"));
   EXPECT_EQ(3, string_map_.num_names());
   EXPECT_EQ(3, string_map_.num_values());
-  string_map_.RemoveAll("b");
+  EXPECT_TRUE(string_map_.RemoveAll("b"));
   EXPECT_EQ(2, string_map_.num_names());
-  string_map_.RemoveAll("c");
+  EXPECT_TRUE(string_map_.RemoveAll("c"));
   EXPECT_EQ(1, string_map_.num_names());
-  string_map_.RemoveAll("D");
+  EXPECT_TRUE(string_map_.RemoveAll("D"));
   EXPECT_EQ(0, string_map_.num_names());
+  EXPECT_FALSE(string_map_.RemoveAll("not present"));
 }
 
 TEST_F(StringMultiMapTest, TestClear) {

@@ -156,6 +156,7 @@
         'rewriter/url_partnership_test.cc',
 #        'htmlparse/html_escape_test.cc',
         'htmlparse/html_parse_test.cc',
+        'http/request_headers_test.cc',
         'http/response_headers_test.cc',
       ],
     },

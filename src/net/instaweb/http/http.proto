@@ -30,10 +30,32 @@ message HttpResponseHeaders {
   optional int32 status_code = 1;
   optional string reason_phrase = 2;
   optional int32 minor_version = 3;
-  optional int32 major_version = 4;
+  optional int32 major_version = 4 [ default = 1 ];
   optional int64 expiration_time_ms = 5;
   optional int64 timestamp_ms = 6;
   optional bool cacheable = 7;
   optional bool proxy_cacheable = 8;
   repeated NameValue header = 9;
+};
+
+message HttpRequestHeaders {
+  enum Method {
+    OPTIONS = 1;
+    GET = 2;
+    HEAD = 3;
+    POST = 4;
+    PUT = 5;
+    DELETE = 6;
+    TRACE = 7;
+    CONNECT = 8;
+  };
+
+  // Note: the URL is not part of this protobuf, as it's typically kept
+  // outside the context of the header structure (e.g. a formal arg to
+  // a Fetch function or the key to a cache).
+
+  optional int32 minor_version = 1;
+  optional int32 major_version = 2 [ default = 1 ];
+  optional Method method = 3 [ default = GET ];
+  repeated NameValue header = 4;
 };
