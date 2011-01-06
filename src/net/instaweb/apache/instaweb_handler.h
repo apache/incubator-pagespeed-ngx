@@ -28,14 +28,6 @@ namespace net_instaweb {
 // declined so that other Apache handlers may operate on them.
 apr_status_t instaweb_handler(request_rec* request);
 
-// output-filter function to repair caching headers, which might have
-// been altered by a directive like:
-//
-//     <FilesMatch "\.(jpg|jpeg|gif|png|js|css)$">
-//       Header set Cache-control "public, max-age=600"
-//     </FilesMatch>
-apr_status_t repair_caching_header(ap_filter_t *filter, apr_bucket_brigade *bb);
-
 // We need to save the original URL as a request "note" before
 // mod_rewrite has a chance to corrupt mod_pagespeed's generated URLs,
 // which would prevent instaweb_handler from being able to decode the

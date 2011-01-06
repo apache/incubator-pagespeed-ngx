@@ -495,8 +495,15 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   apr_table_setn(request->headers_out, kModPagespeedHeader,
                  kModPagespeedVersion);
-  SetCacheControl(HttpAttributes::kNoCache, request);
-  SetupCacheRepair(HttpAttributes::kNoCache, request);
+
+  // Turn off caching for the HTTP requests, and remove any filters
+  // that might run downstream of us and mess up our caching headers.
+  apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
+                HttpAttributes::kNoCache);
+  apr_table_unset(request->headers_out, HttpAttributes::kExpires);
+  apr_table_unset(request->headers_out, HttpAttributes::kEtag);
+  apr_table_unset(request->headers_out, HttpAttributes::kLastModified);
+  DisableDownstreamHeaderFilters(request);
 
   apr_table_unset(request->headers_out, HttpAttributes::kContentLength);
   apr_table_unset(request->headers_out, "Content-MD5");
@@ -692,13 +699,6 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   ap_hook_handler(instaweb_handler, NULL, NULL, APR_HOOK_FIRST - 1);
   ap_register_output_filter(
       kModPagespeedFilterName, instaweb_out_filter, NULL, AP_FTYPE_RESOURCE);
-  // We need our repair headers filter to run after mod_headers. The
-  // mod_headers, which is the filter that is used to add the cache settings, is
-  // AP_FTYPE_CONTENT_SET. Using (AP_FTYPE_CONTENT_SET + 2) to make sure that we
-  // run after mod_headers.
-  ap_register_output_filter(
-      InstawebContext::kRepairHeadersFilterName, repair_caching_header, NULL,
-      static_cast<ap_filter_type>(AP_FTYPE_CONTENT_SET + 2));
   ap_hook_post_config(pagespeed_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(pagespeed_child_init, NULL, NULL, APR_HOOK_LAST);
   ap_hook_log_transaction(pagespeed_log_transaction, NULL, NULL, APR_HOOK_LAST);

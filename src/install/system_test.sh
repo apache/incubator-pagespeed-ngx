@@ -236,6 +236,7 @@ check egrep -q "'<script.*src=.*large'" $FETCHED       # outlined
 check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
 
 echo TEST: compression is enabled for rewritten JS.
+echo JS_URL=\$\(egrep -o http://.*.pagespeed.*.js $FETCHED\)
 JS_URL=$(egrep -o http://.*.pagespeed.*.js $FETCHED)
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)

@@ -134,8 +134,7 @@ class ApacheWriter : public Writer {
     }
     response_headers_->RemoveAll(HttpAttributes::kTransferEncoding);
     response_headers_->RemoveAll(HttpAttributes::kContentLength);
-    MetaDataToApacheHeader(*response_headers_, request_->headers_out,
-                           &request_->status, &request_->proto_num);
+    MetaDataToApacheHeader(*response_headers_, request_);
     if (content_type != NULL) {
       ap_set_content_type(request_, content_type);
     }

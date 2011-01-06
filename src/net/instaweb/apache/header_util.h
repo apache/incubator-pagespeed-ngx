@@ -32,34 +32,10 @@ void ApacheHeaderToMetaData(const apr_table_t* apache_headers,
                             MetaData* meta_data);
 
 // Converts MetaData structure into an Apache header.
-//
-// proto_num is the version number of protocol; 1.1 = 1001
-void MetaDataToApacheHeader(const MetaData& meta_data,
-                            apr_table_t* apache_headers,
-                            int* status_code,
-                            int* proto_num);
+void MetaDataToApacheHeader(const MetaData& meta_data, request_rec* request);
 
-// Examines a cache-control string and updates the output headers in
-// request to match it.  If the response is cacheable, then
-// we assume it's cacheable forever (via cache extension, and
-// so we set an etag and a matching Expires header.
-//
-// If the content is not cacheable, then we instead clear the etag,
-// last-modified, and expires, in addition to setting the cache-control
-// as specified.
-void SetCacheControl(const char* cache_control, request_rec* request);
-
-// Like SetCacheControl but only updates the other headers, does not
-// set the cache-control header itself.  Call this if cache-control is
-// already set and you wish to make the other headers consistent.
-void UpdateCacheHeaders(const char* cache_control, request_rec* request);
-
-// mod_headers typically runs after mod_pagespeed and borks its headers.
-// So we must insert a late filter to unbork the headers.
-void SetupCacheRepair(const char* cache_control, request_rec* request);
-
-// This is called from the late-running filter to unbork the headers.
-void RepairCachingHeaders(request_rec* request);
+// Remove downstream filters that might corrupt our caching headers.
+void DisableDownstreamHeaderFilters(request_rec* request);
 
 // Debug utility for printing Apache headers to stdout
 void PrintHeaders(request_rec* request);

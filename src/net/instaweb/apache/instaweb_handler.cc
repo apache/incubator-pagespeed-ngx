@@ -126,11 +126,11 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
       url, request_headers, callback->response_headers(), callback->writer(),
       message_handler, callback);
   if (handled) {
+    AprTimer timer;
     message_handler->Message(kInfo, "Fetching resource %s...", url.c_str());
     if (!callback->done()) {
       UrlPollableAsyncFetcher* sub_resource_fetcher =
           factory->SubResourceFetcher();
-      AprTimer timer;
       int64 max_ms = factory->fetcher_time_out_ms();
       for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
            !callback->done() && now_ms - start_ms < max_ms;
@@ -143,6 +143,7 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
         message_handler->Message(kError, "Timeout on url %s", url.c_str());
       }
     }
+    response_headers.SetDate(timer.NowMs());
     if (callback->success()) {
       message_handler->Message(kInfo, "Fetch succeeded for %s, status=%d",
                               url.c_str(), response_headers.status_code());
@@ -165,26 +166,7 @@ void send_out_headers_and_body(
     request_rec* request,
     const SimpleMetaData& response_headers,
     const std::string& output) {
-  if (response_headers.status_code() != 0) {
-    request->status = response_headers.status_code();
-  }
-  for (int idx = 0; idx < response_headers.NumAttributes(); ++idx) {
-    const char* name = response_headers.Name(idx);
-    const char* value = response_headers.Value(idx);
-    if (strcasecmp(name, HttpAttributes::kContentType) == 0) {
-      // ap_set_content_type does not make a copy of the string, we need
-      // to duplicate it.
-      char* ptr = apr_pstrdup(request->pool, value);
-      ap_set_content_type(request, ptr);
-    } else {
-      if (strcasecmp(name, HttpAttributes::kCacheControl) == 0) {
-        SetupCacheRepair(value, request);
-      }
-      // apr_table_add makes copies of both head key and value, so we do not
-      // have to duplicate them.
-      apr_table_add(request->headers_out, name, value);
-    }
-  }
+  MetaDataToApacheHeader(response_headers, request);
   if (response_headers.status_code() == HttpStatus::kOK &&
       IsCompressibleContentType(request->content_type)) {
     // Make sure compression is enabled for this response.
@@ -198,14 +180,6 @@ void send_out_headers_and_body(
 }
 
 }  // namespace
-
-apr_status_t repair_caching_header(ap_filter_t *filter,
-                                   apr_bucket_brigade *bb) {
-  request_rec* request = filter->r;
-  RepairCachingHeaders(request);
-  ap_remove_output_filter(filter);
-  return ap_pass_brigade(filter->next, bb);
-}
 
 apr_status_t instaweb_handler(request_rec* request) {
   apr_status_t ret = DECLINED;
@@ -228,6 +202,16 @@ apr_status_t instaweb_handler(request_rec* request) {
       if (statistics) {
         statistics->Dump(&writer, factory->message_handler());
       }
+      response_headers.SetStatusAndReason(HttpStatus::kOK);
+      response_headers.set_major_version(1);
+      response_headers.set_minor_version(1);
+      response_headers.Add(HttpAttributes::kContentType, "text/plain");
+      AprTimer timer;
+      int64 now_ms = timer.NowMs();
+      response_headers.SetDate(now_ms);
+      response_headers.SetLastModified(now_ms);
+      response_headers.Add(HttpAttributes::kCacheControl,
+                           HttpAttributes::kNoCache);
       send_out_headers_and_body(request, response_headers, output);
     } else if (strcmp(request->handler, kBeaconHandler) == 0) {
       RewriteDriver* driver = factory->NewRewriteDriver();
