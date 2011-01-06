@@ -255,14 +255,16 @@ apr_status_t instaweb_handler(request_rec* request) {
 }
 
 // This translator must be inserted into the translate_name chain
-// prior to mod_rewrite.  By responding "OK" we prevent mod_rewrite
-// from running on this request and borking URL names that need to be
-// handled by mod_pagespeed.
+// prior to mod_rewrite.  By saving the original URL in a
+// request->notes and using that in our handler, we prevent
+// mod_rewrite from borking URL names that need to be handled by
+// mod_pagespeed.
 //
 // This hack seems to be the most robust way to immunize mod_pagespeed
 // from when mod_rewrite rewrites the URL.  We still need mod_rewrite
 // to do required complex processing of the filename (e.g. prepending
-// the DocumentRoot) so mod_authz_host is happy.
+// the DocumentRoot) so mod_authz_host is happy, so we return DECLINED
+// even for mod_pagespeed resources.
 //
 // One alternative strategy is to return OK to bypass mod_rewrite
 // entirely, but then we'd have to duplicate the functionality in
@@ -271,7 +273,9 @@ apr_status_t instaweb_handler(request_rec* request) {
 // ap_document_root().
 //
 // Or we could return DECLINED but set a note "mod_rewrite_rewritten"
-// to try to convince mod_rewrite to leave our URLs alone.
+// to try to convince mod_rewrite to leave our URLs alone, which seems
+// fragile as that's an internal string literal in mod_rewrite.c and
+// is not documented anywhwere.
 //
 // Another strategy is to return OK but leave request->filename NULL.
 // In that case, the server kernel generates an ominious 'info'

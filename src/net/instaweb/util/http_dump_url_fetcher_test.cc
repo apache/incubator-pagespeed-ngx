@@ -70,12 +70,12 @@ TEST_F(HttpDumpUrlFetcherTest, TestReadWithGzip) {
   CharStarVector v;
   ASSERT_TRUE(response.Lookup(HttpAttributes::kContentEncoding, &v));
   ASSERT_EQ(1, v.size());
-  EXPECT_EQ(std::string(HttpAttributes::kGzip), v[0]);
-  EXPECT_EQ(5513, content_.size());
+  CHECK_EQ(std::string(HttpAttributes::kGzip), v[0]);
+  CHECK_EQ(5513, content_.size());
   v.clear();
   ASSERT_TRUE(response.Lookup(HttpAttributes::kContentLength, &v));
   ASSERT_EQ(1, v.size());
-  EXPECT_EQ(std::string("5513"), v[0]);
+  CHECK_EQ(std::string("5513"), v[0]);
 }
 
 TEST_F(HttpDumpUrlFetcherTest, TestReadUncompressedFromGzippedDump) {
@@ -86,13 +86,13 @@ TEST_F(HttpDumpUrlFetcherTest, TestReadUncompressedFromGzippedDump) {
   CharStarVector v;
   if (response.Lookup(HttpAttributes::kContentEncoding, &v)) {
     ASSERT_EQ(1, v.size());
-    EXPECT_NE(std::string(HttpAttributes::kGzip), v[0]);
+    CHECK_NE(std::string(HttpAttributes::kGzip), v[0]);
   }
-  EXPECT_EQ(14450, content_.size());
+  CHECK_EQ(14450, content_.size());
   v.clear();
   ASSERT_TRUE(response.Lookup(HttpAttributes::kContentLength, &v));
   ASSERT_EQ(1, v.size());
-  EXPECT_EQ(std::string("14450"), v[0]);
+  CHECK_EQ(std::string("14450"), v[0]);
 }
 
 }  // namespace net_instaweb

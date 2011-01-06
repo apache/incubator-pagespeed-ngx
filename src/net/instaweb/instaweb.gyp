@@ -15,6 +15,7 @@
 {
   'variables': {
     'instaweb_root': '../..',
+    'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
     'chromium_code': 1,
   },
   'targets': [
@@ -111,6 +112,30 @@
         'htmlparse/logging_html_filter.cc',
         'htmlparse/null_filter.cc',
         'htmlparse/statistics_log.cc',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(instaweb_root)',
+          '<(DEPTH)',
+        ],
+      },
+    },
+    {
+      'target_name': 'instaweb_http',
+      'type': '<(library)',
+      'dependencies': [
+        'instaweb_util',
+        'instaweb_http_pb',
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
+      ],
+      'sources': [
+        'http/response_headers.cc',
+        'http/response_headers_parser.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',
@@ -287,6 +312,61 @@
           '<(DEPTH)',
         ],
       },
+    },
+    {
+      'target_name': 'instaweb_http_genproto',
+      'type': 'none',
+      'sources': [
+        'http/http.proto',
+      ],
+      'rules': [
+        {
+          'rule_name': 'genproto',
+          'extension': 'proto',
+          'inputs': [
+            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
+          ],
+          'outputs': [
+            '<(protoc_out_dir)/net/instaweb/http/<(RULE_INPUT_ROOT).pb.h',
+            '<(protoc_out_dir)/net/instaweb/http/<(RULE_INPUT_ROOT).pb.cc',
+          ],
+          'action': [
+            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
+            '--proto_path=http',
+            './http/<(RULE_INPUT_ROOT)<(RULE_INPUT_EXT)',
+            '--cpp_out=<(protoc_out_dir)/net/instaweb/http',
+          ],
+          'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
+        },
+      ],
+      'dependencies': [
+        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
+        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protoc#host',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(protoc_out_dir)',
+        ]
+      },
+      'export_dependent_settings': [
+        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
+      ],
+    },
+    {
+      'target_name': 'instaweb_http_pb',
+      'type': '<(library)',
+      'hard_dependency': 1,
+      'dependencies': [
+        'instaweb_http_genproto',
+        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
+       ],
+      'sources': [
+        '<(protoc_out_dir)/net/instaweb/http/http.pb.cc',
+      ],
+      'export_dependent_settings': [
+        'instaweb_http_genproto',
+        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
+      ]
     },
   ],
 }

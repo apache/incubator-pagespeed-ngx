@@ -61,6 +61,7 @@
       'type': 'executable',
       'dependencies': [
         'instaweb_html_rewriter.gyp:html_rewriter',
+        'instaweb.gyp:instaweb_http',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
         '<(DEPTH)/testing/gtest.gyp:gtest',
@@ -155,6 +156,7 @@
         'rewriter/url_partnership_test.cc',
 #        'htmlparse/html_escape_test.cc',
         'htmlparse/html_parse_test.cc',
+        'http/response_headers_test.cc',
       ],
     },
 
