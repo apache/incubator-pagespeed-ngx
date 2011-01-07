@@ -17,7 +17,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/url_async_fetcher.h"
-#include "net/instaweb/util/public/meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {

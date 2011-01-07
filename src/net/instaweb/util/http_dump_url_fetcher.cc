@@ -21,13 +21,14 @@
 #include <stdio.h>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/http_response_parser.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/meta_data.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include <string>
 #include "net/instaweb/util/public/timer.h"
@@ -42,7 +43,8 @@ static const char kErrorHtml[] =
     "<html><head><title>HttpDumpUrlFetcher Error</title></head>"
     "<body><h1>HttpDumpUrlFetcher Error</h1></body></html>";
 
-void ApplyTimeDelta(const char* attr, int64 delta_ms, MetaData* headers) {
+void ApplyTimeDelta(const char* attr, int64 delta_ms,
+                    ResponseHeaders* headers) {
   int64 time_ms;
   if (headers->ParseDateHeader(attr, &time_ms) && (time_ms > delta_ms)) {
     headers->UpdateDateHeader(attr, time_ms + delta_ms);
@@ -54,7 +56,7 @@ void ApplyTimeDelta(const char* attr, int64 delta_ms, MetaData* headers) {
 // As part of the dump-fetching process, we will want to correct the Date
 // header based on the current time, and also update the Expires header by
 // the same delta.
-void CorrectDateHeaders(int64 now_ms, MetaData* headers) {
+void CorrectDateHeaders(int64 now_ms, ResponseHeaders* headers) {
   int64 date_ms;
   if (headers->ParseDateHeader(HttpAttributes::kDate, &date_ms) &&
       (date_ms < now_ms)) {
@@ -131,13 +133,12 @@ bool HttpDumpUrlFetcher::GetFilenamePrefixFromUrl(const StringPiece& root_dir,
   return ret;
 }
 
-void HttpDumpUrlFetcher::RespondError(MetaData* response_headers,
+void HttpDumpUrlFetcher::RespondError(ResponseHeaders* response_headers,
                                       Writer* response_writer,
                                       MessageHandler* handler) {
   response_headers->SetStatusAndReason(HttpStatus::kNotFound);
   response_headers->Add(HttpAttributes::kContentType, "text/html");
   response_headers->ComputeCaching();
-  response_headers->set_headers_complete(true);
   response_writer->Write(error_body_, handler);
 }
 
@@ -146,7 +147,7 @@ void HttpDumpUrlFetcher::RespondError(MetaData* response_headers,
 class HttpResponseWriter : public Writer {
  public:
   HttpResponseWriter(const StringPiece& url, bool want_gzip, Writer* writer,
-                     MetaData* response)
+                     ResponseHeaders* response)
       : url_(url.data(), url.size()),
         content_length_(0),
         gzip_content_length_(0),
@@ -215,17 +216,16 @@ class HttpResponseWriter : public Writer {
   bool want_gzip_;
   bool first_write_;
   Writer* writer_;
-  MetaData* response_;
+  ResponseHeaders* response_;
   scoped_ptr<GzipInflater> inflater_;
 
   DISALLOW_COPY_AND_ASSIGN(HttpResponseWriter);
 };
 
-bool HttpDumpUrlFetcher::StreamingFetchUrl(const std::string& url,
-                                           const MetaData& request_headers,
-                                           MetaData* response_headers,
-                                           Writer* response_writer,
-                                           MessageHandler* handler) {
+bool HttpDumpUrlFetcher::StreamingFetchUrl(
+    const std::string& url, const RequestHeaders& request_headers,
+    ResponseHeaders* response_headers, Writer* response_writer,
+    MessageHandler* handler) {
   bool ret = false;
   std::string filename;
   GURL gurl(url);
@@ -245,7 +245,7 @@ bool HttpDumpUrlFetcher::StreamingFetchUrl(const std::string& url,
       if (response.ParseFile(file)) {
         handler->Message(kInfo, "HttpDumpUrlFetcher: Fetched %s as %s",
                          url.c_str(), filename.c_str());
-        if (!response_headers->headers_complete()) {
+        if (!response.headers_complete()) {
           // Fill in some default headers and body.  Note that if we have
           // a file, then we will return true, even if the file is corrupt.
           RespondError(response_headers, response_writer, handler);

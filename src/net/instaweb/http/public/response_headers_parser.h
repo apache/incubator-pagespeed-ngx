@@ -27,9 +27,7 @@
 
 namespace net_instaweb {
 
-// Very basic implementation of HTTP headers.
-//
-// TODO(jmarantz): implement caching rules properly.
+// Parses a stream of HTTP header text into a ResponseHeaders instance.
 class ResponseHeadersParser {
  public:
   explicit ResponseHeadersParser(ResponseHeaders* rh) : response_headers_(rh) {

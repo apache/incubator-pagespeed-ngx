@@ -20,6 +20,8 @@
 #include "apr_strings.h"
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/apache/apache_slurp.h"
 #include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/apache/apr_timer.h"
@@ -33,7 +35,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "http_config.h"
@@ -93,7 +94,7 @@ void instaweb_default_handler(const std::string& url, request_rec* request) {
 // predeclare to minimize diffs for now.  TODO(jmarantz): reorder
 void send_out_headers_and_body(
     request_rec* request,
-    const SimpleMetaData& response_headers,
+    const ResponseHeaders& response_headers,
     const std::string& output);
 
 // Determines whether the url can be handled as a mod_pagespeed resource,
@@ -106,7 +107,8 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
                         const std::string& url) {
   RewriteDriver* rewrite_driver = factory->NewRewriteDriver();
 
-  SimpleMetaData request_headers, response_headers;
+  RequestHeaders request_headers;
+  ResponseHeaders response_headers;
   int n = arraysize(RewriteDriver::kPassThroughRequestAttributes);
   for (int i = 0; i < n; ++i) {
     const char* value = apr_table_get(
@@ -164,9 +166,9 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
 
 void send_out_headers_and_body(
     request_rec* request,
-    const SimpleMetaData& response_headers,
+    const ResponseHeaders& response_headers,
     const std::string& output) {
-  MetaDataToApacheHeader(response_headers, request);
+  ResponseHeadersToApacheRequest(response_headers, request);
   if (response_headers.status_code() == HttpStatus::kOK &&
       IsCompressibleContentType(request->content_type)) {
     // Make sure compression is enabled for this response.
@@ -194,7 +196,7 @@ apr_status_t instaweb_handler(request_rec* request) {
                     "Not GET request: %d.", request->method_number);
     } else if (strcmp(request->handler, kStatisticsHandler) == 0) {
       std::string output;
-      SimpleMetaData response_headers;
+      ResponseHeaders response_headers;
       StringWriter writer(&output);
       AprStatistics* statistics = factory->statistics();
       if (statistics) {

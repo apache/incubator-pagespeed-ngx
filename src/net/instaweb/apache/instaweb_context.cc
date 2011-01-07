@@ -195,11 +195,6 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
       content_encoding_ = kOther;
     }
   }
-
-  // Copy the output headers coming into our own filter into response_headers_.
-  // This is purely for debugging context.
-  ApacheHeaderToMetaData(request->headers_out, request->status,
-                         request->proto_num, &response_headers_);
 }
 
 ApacheRewriteDriverFactory* InstawebContext::Factory(server_rec* server) {

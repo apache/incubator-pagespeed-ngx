@@ -29,7 +29,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/http_value.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
@@ -62,8 +62,8 @@ class Resource {
     CHECK(got_contents) << "Resource contents read before loading";
     return val;
   }
-  MetaData* metadata() { return &meta_data_; }
-  const MetaData* metadata() const { return &meta_data_; }
+  ResponseHeaders* metadata() { return &meta_data_; }
+  const ResponseHeaders* metadata() const { return &meta_data_; }
   const ContentType* type() const { return type_; }
   virtual void SetType(const ContentType* type);
   virtual bool IsCacheable() const;
@@ -93,8 +93,9 @@ class Resource {
   friend class ResourceManager;
   friend class UrlReadAsyncFetchCallback;
 
-  // Load the resource asynchronously, storing MetaData and contents in cache.
-  // Returns true, if the resource is already loaded or loaded synchronously.
+  // Load the resource asynchronously, storing ResponseHeaders and
+  // contents in cache.  Returns true, if the resource is already
+  // loaded or loaded synchronously.
   virtual bool Load(MessageHandler* message_handler) = 0;
   // Same as Load, but calls a callback when finished.
   virtual void LoadAndCallback(AsyncCallback* callback,
@@ -104,7 +105,7 @@ class Resource {
 
   const ContentType* type_;
   HTTPValue value_;  // contains contents and meta-data
-  SimpleMetaData meta_data_;
+  ResponseHeaders meta_data_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Resource);

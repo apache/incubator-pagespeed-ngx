@@ -26,7 +26,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/statistics.h"
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
@@ -77,7 +77,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
         !IsRewrittenResource(input_resource->url()) &&
         resource_manager_->ReadIfCached(input_resource.get(),
                                         message_handler)) {
-      const MetaData* headers = input_resource->metadata();
+      const ResponseHeaders* headers = input_resource->metadata();
       int64 now_ms = resource_manager_->timer()->NowMs();
 
       // We cannot cache-extend a resource that's completely uncacheable,

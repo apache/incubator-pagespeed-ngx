@@ -33,7 +33,7 @@
 #include "net/instaweb/util/public/file_system.h"
 #include <string>
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_work_bound.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -392,8 +392,8 @@ void ImgRewriteFilter::Flush() {
 
 bool ImgRewriteFilter::Fetch(OutputResource* resource,
                              Writer* writer,
-                             const MetaData& request_header,
-                             MetaData* response_headers,
+                             const RequestHeaders& request_header,
+                             ResponseHeaders* response_headers,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
   bool ok = true;

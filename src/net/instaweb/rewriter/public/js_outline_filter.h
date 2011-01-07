@@ -29,7 +29,7 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class MetaData;
+class ResponseHeaders;
 class OutputResource;
 class ResourceManager;
 

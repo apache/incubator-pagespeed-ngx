@@ -94,7 +94,7 @@ TEST_F(RewriterTest, FailGracefullyOnInvalidUrls) {
   AddFilter(RewriteOptions::kExtendCache);
 
   const char kCssData[] = "a { color: red }";
-  InitMetaData("a.css", kContentTypeCss, kCssData, 100);
+  InitResponseHeaders("a.css", kContentTypeCss, kCssData, 100);
 
   // Fetching the real rewritten resource name should work.
   // TODO(sligocki): This will need to be regolded if naming format changes.
@@ -117,7 +117,7 @@ TEST_F(RewriterTest, FailGracefullyOnInvalidUrls) {
 
   // Note that although we pass in a real value for 'request headers', we
   // null out the response and writer as those should never be called.
-  SimpleMetaData request_headers;
+  RequestHeaders request_headers;
   FetchCallback callback;
   bool fetched = rewrite_driver_.FetchResource(
       bad_url, request_headers, NULL, NULL, &message_handler_, &callback);

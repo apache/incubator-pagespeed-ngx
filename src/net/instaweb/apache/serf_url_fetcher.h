@@ -28,8 +28,8 @@ class SerfUrlFetcher : public UrlFetcher {
                  SerfUrlAsyncFetcher* async_fetcher);
   virtual ~SerfUrlFetcher();
   virtual bool StreamingFetchUrl(const std::string& url,
-                                 const MetaData& request_headers,
-                                 MetaData* response_headers,
+                                 const RequestHeaders& request_headers,
+                                 ResponseHeaders* response_headers,
                                  Writer* fetched_content_writer,
                                  MessageHandler* message_handler);
 

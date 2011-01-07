@@ -16,7 +16,8 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/time_util.h"
 
 #include "apr_strings.h"
@@ -28,33 +29,33 @@ namespace net_instaweb {
 namespace {
 
 int AddAttributeCallback(void *rec, const char *key, const char *value) {
-  MetaData* meta_data = static_cast<MetaData*>(rec);
-  meta_data->Add(key, value);
+  RequestHeaders* request_headers = static_cast<RequestHeaders*>(rec);
+  request_headers->Add(key, value);
   return 1;
 }
 
 }  // namespace
 
-// proto_num is the version number of protocol; 1.1 = 1001
-void ApacheHeaderToMetaData(const apr_table_t* apache_headers,
-                            int status_code,
-                            int proto_num,
-                            MetaData* meta_data) {
-  meta_data->SetStatusAndReason(static_cast<HttpStatus::Code>(status_code));
-  if (proto_num >= 1000) {
-    meta_data->set_major_version(proto_num / 1000);
-    meta_data->set_minor_version(proto_num % 1000);
+void ApacheRequestToRequestHeaders(const request_rec& request,
+                                   RequestHeaders* request_headers) {
+  if (request.proto_num >= 1000) {
+    // proto_num is the version number of protocol; 1.1 = 1001
+    request_headers->set_major_version(request.proto_num / 1000);
+    request_headers->set_minor_version(request.proto_num % 1000);
   }
-  apr_table_do(AddAttributeCallback, meta_data, apache_headers, NULL);
+  apr_table_do(AddAttributeCallback, request_headers, request.headers_in, NULL);
 }
 
-void MetaDataToApacheHeader(const MetaData& meta_data, request_rec* request) {
-  request->status = meta_data.status_code();
+void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
+                                    request_rec* request) {
+  request->status = response_headers.status_code();
+  // proto_num is the version number of protocol; 1.1 = 1001
   request->proto_num =
-      (meta_data.major_version() * 1000) + meta_data.minor_version();
-  for (int i = 0, n = meta_data.NumAttributes(); i < n; ++i) {
-    const char* name = meta_data.Name(i);
-    const char* value = meta_data.Value(i);
+      (response_headers.major_version() * 1000) +
+      response_headers.minor_version();
+  for (int i = 0, n = response_headers.NumAttributes(); i < n; ++i) {
+    const char* name = response_headers.Name(i);
+    const char* value = response_headers.Value(i);
     if (strcasecmp(name, HttpAttributes::kContentType) == 0) {
       // ap_set_content_type does not make a copy of the string, we need
       // to duplicate it.

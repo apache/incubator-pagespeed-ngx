@@ -19,7 +19,8 @@
 #include "net/instaweb/util/public/wait_url_async_fetcher.h"
 
 #include "base/basictypes.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/url_fetcher.h"
 
@@ -28,8 +29,8 @@ namespace net_instaweb {
 class WaitUrlAsyncFetcher::DelayedFetch {
  public:
   DelayedFetch(UrlFetcher* base_fetcher,
-               const std::string& url, const MetaData& request_headers,
-               MetaData* response_headers, Writer* response_writer,
+               const std::string& url, const RequestHeaders& request_headers,
+               ResponseHeaders* response_headers, Writer* response_writer,
                MessageHandler* handler, Callback* callback)
       : base_fetcher_(base_fetcher), url_(url),
         response_headers_(response_headers), response_writer_(response_writer),
@@ -46,8 +47,8 @@ class WaitUrlAsyncFetcher::DelayedFetch {
  private:
   UrlFetcher* base_fetcher_;
   std::string url_;
-  SimpleMetaData request_headers_;
-  MetaData* response_headers_;
+  RequestHeaders request_headers_;
+  ResponseHeaders* response_headers_;
   Writer* response_writer_;
   MessageHandler* handler_;
   Callback* callback_;
@@ -58,8 +59,8 @@ class WaitUrlAsyncFetcher::DelayedFetch {
 WaitUrlAsyncFetcher::~WaitUrlAsyncFetcher() {}
 
 bool WaitUrlAsyncFetcher::StreamingFetch(const std::string& url,
-                                         const MetaData& request_headers,
-                                         MetaData* response_headers,
+                                         const RequestHeaders& request_headers,
+                                         ResponseHeaders* response_headers,
                                          Writer* response_writer,
                                          MessageHandler* handler,
                                          Callback* callback) {

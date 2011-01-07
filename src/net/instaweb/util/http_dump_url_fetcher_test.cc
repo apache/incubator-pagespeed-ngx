@@ -28,10 +28,11 @@
 #include "net/instaweb/util/public/http_dump_url_fetcher.h"
 
 #include "base/basictypes.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
@@ -62,7 +63,8 @@ class HttpDumpUrlFetcherTest : public testing::Test {
 };
 
 TEST_F(HttpDumpUrlFetcherTest, TestReadWithGzip) {
-  SimpleMetaData request, response;
+  RequestHeaders request;
+  ResponseHeaders response;
   request.Add(HttpAttributes::kAcceptEncoding, HttpAttributes::kGzip);
   ASSERT_TRUE(http_dump_fetcher_.StreamingFetchUrl(
       "http://www.google.com", request, &response, &content_writer_,
@@ -79,7 +81,8 @@ TEST_F(HttpDumpUrlFetcherTest, TestReadWithGzip) {
 }
 
 TEST_F(HttpDumpUrlFetcherTest, TestReadUncompressedFromGzippedDump) {
-  SimpleMetaData request, response;
+  RequestHeaders request;
+  ResponseHeaders response;
   ASSERT_TRUE(http_dump_fetcher_.StreamingFetchUrl(
       "http://www.google.com", request, &response, &content_writer_,
       &message_handler_));

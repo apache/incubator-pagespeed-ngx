@@ -25,6 +25,7 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_core.gyp:instaweb_util_core',
+        'instaweb_http',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
         '<(DEPTH)/base/base.gyp:base',
@@ -66,7 +67,6 @@
         'util/ref_counted.cc',
         'util/rolling_hash.cc',
         'util/query_params.cc',
-        'util/simple_meta_data.cc',
         'util/simple_stats.cc',
         'util/statistics.cc',
         'util/statistics_work_bound.cc',
@@ -128,7 +128,7 @@
       'target_name': 'instaweb_http',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_util',
+        'instaweb_core.gyp:instaweb_util_core',
         'instaweb_http_pb',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
@@ -271,6 +271,7 @@
       'dependencies': [
         'instaweb_rewriter_base',
         'instaweb_core.gyp:instaweb_rewriter_html',
+        'instaweb_http',
         'instaweb_rewriter_css',
         'instaweb_rewriter_image',
         'instaweb_rewriter_javascript',

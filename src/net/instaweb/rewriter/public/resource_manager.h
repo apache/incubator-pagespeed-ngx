@@ -25,7 +25,7 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/http_cache.h"
-#include "net/instaweb/util/public/meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -44,7 +44,7 @@ class HTTPCache;
 class HTTPValue;
 class Hasher;
 class MessageHandler;
-class MetaData;
+class ResponseHeaders;
 class NamedLockManager;
 class OutputResource;
 class ResourceNamer;
@@ -186,10 +186,10 @@ class ResourceManager {
   // If content_type is null, the Content-Type is omitted.
   // This method may only be called once on a header.
   void SetDefaultHeaders(const ContentType* content_type,
-                         MetaData* header) const;
+                         ResponseHeaders* header) const;
 
   // Changes the content type of a pre-initialized header.
-  void SetContentType(const ContentType* content_type, MetaData* header);
+  void SetContentType(const ContentType* content_type, ResponseHeaders* header);
 
   StringPiece filename_prefix() const { return file_prefix_; }
   void set_filename_prefix(const StringPiece& file_prefix);
@@ -213,7 +213,7 @@ class ResourceManager {
   // serving thread.
   bool FetchOutputResource(
     OutputResource* output_resource,
-    Writer* writer, MetaData* response_headers,
+    Writer* writer, ResponseHeaders* response_headers,
     MessageHandler* handler, BlockingBehavior blocking) const;
 
   // Writes the specified contents into the output resource, retaining

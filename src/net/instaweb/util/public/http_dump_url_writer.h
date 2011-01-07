@@ -46,8 +46,8 @@ class HttpDumpUrlWriter : public UrlFetcher {
 
   // This is a synchronous/blocking implementation.
   virtual bool StreamingFetchUrl(const std::string& url,
-                                 const MetaData& request_headers,
-                                 MetaData* response_headers,
+                                 const RequestHeaders& request_headers,
+                                 ResponseHeaders* response_headers,
                                  Writer* response_writer,
                                  MessageHandler* message_handler);
 

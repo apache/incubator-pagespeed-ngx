@@ -27,11 +27,12 @@
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/apache/apr_timer.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/serf/src/serf.h"
@@ -127,8 +128,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
                   const std::string& content_start) {
     urls_.push_back(url);
     content_starts_.push_back(content_start);
-    request_headers_.push_back(new SimpleMetaData);
-    response_headers_.push_back(new SimpleMetaData);
+    request_headers_.push_back(new RequestHeaders);
+    response_headers_.push_back(new ResponseHeaders);
     contents_.push_back(new std::string);
     writers_.push_back(new StringWriter(contents_.back()));
     callbacks_.push_back(new SerfTestCallback(mutex_, url));
@@ -209,8 +210,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   apr_pool_t* pool_;
   std::vector<std::string> urls_;
   std::vector<std::string> content_starts_;
-  std::vector<SimpleMetaData*> request_headers_;
-  std::vector<SimpleMetaData*> response_headers_;
+  std::vector<RequestHeaders*> request_headers_;
+  std::vector<ResponseHeaders*> response_headers_;
   std::vector<std::string*> contents_;
   std::vector<StringWriter*> writers_;
   std::vector<SerfTestCallback*> callbacks_;

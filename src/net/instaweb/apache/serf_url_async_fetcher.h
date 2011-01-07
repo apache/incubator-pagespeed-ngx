@@ -23,7 +23,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/apache/url_pollable_async_fetcher.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 
 struct apr_pool_t;
 struct serf_context_t;
@@ -55,8 +55,8 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   virtual ~SerfUrlAsyncFetcher();
   static void Initialize(Statistics* statistics);
   virtual bool StreamingFetch(const std::string& url,
-                              const MetaData& request_headers,
-                              MetaData* response_headers,
+                              const RequestHeaders& request_headers,
+                              ResponseHeaders* response_headers,
                               Writer* fetched_content_writer,
                               MessageHandler* message_handler,
                               UrlAsyncFetcher::Callback* callback);

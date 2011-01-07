@@ -20,6 +20,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -94,7 +95,7 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
     if (success) {
       std::string header;
       StringWriter string_writer(&header);
-      meta_data_.Write(&string_writer, handler);  // Serialize header.
+      meta_data_.WriteAsHttp(&string_writer, handler);  // Serialize header.
       // It does not make sense to have the headers in the hash.
       // call output_file_->Write directly, rather than going through
       // OutputWriter.
@@ -215,10 +216,12 @@ bool OutputResource::Load(MessageHandler* handler) {
       // consider a refactor to merge it.
       meta_data_.Clear();
       value_.Clear();
-      while (!meta_data_.headers_complete() &&
+
+      // TODO(jmarantz): convert to binary headers
+      ResponseHeadersParser parser(&meta_data_);
+      while (!parser.headers_complete() &&
              ((nread = file->Read(buf, sizeof(buf), handler)) != 0)) {
-        num_consumed = meta_data_.ParseChunk(
-            StringPiece(buf, nread), handler);
+        num_consumed = parser.ParseChunk(StringPiece(buf, nread), handler);
       }
       value_.SetHeaders(meta_data_);
       writing_complete_ = value_.Write(

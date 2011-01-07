@@ -31,8 +31,8 @@ SerfUrlFetcher::~SerfUrlFetcher() {
 }
 
 bool SerfUrlFetcher::StreamingFetchUrl(const std::string& url,
-                                       const MetaData& request_headers,
-                                       MetaData* response_headers,
+                                       const RequestHeaders& request_headers,
+                                       ResponseHeaders* response_headers,
                                        Writer* fetched_content_writer,
                                        MessageHandler* message_handler) {
   SerfAsyncCallback* callback = new SerfAsyncCallback(

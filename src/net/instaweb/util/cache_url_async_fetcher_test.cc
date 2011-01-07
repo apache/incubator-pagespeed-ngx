@@ -23,7 +23,7 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/util/cache_fetcher_test.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 
 namespace net_instaweb {
 

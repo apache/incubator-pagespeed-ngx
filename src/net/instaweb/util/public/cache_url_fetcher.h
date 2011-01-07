@@ -71,8 +71,8 @@ class CacheUrlFetcher : public UrlFetcher {
 
   virtual bool StreamingFetchUrl(
       const std::string& url,
-      const MetaData& request_headers,
-      MetaData* response_headers,
+      const RequestHeaders& request_headers,
+      ResponseHeaders* response_headers,
       Writer* fetched_content_writer,
       MessageHandler* message_handler);
 
@@ -88,11 +88,12 @@ class CacheUrlFetcher : public UrlFetcher {
     virtual ~AsyncFetch();
 
     virtual void Done(bool success);
-    void Start(UrlAsyncFetcher* fetcher, const MetaData& request_headers);
+    void Start(UrlAsyncFetcher* fetcher,
+               const RequestHeaders& request_headers);
 
     // This hook allows the CacheUrlAsyncFetcher to capture the headers for
     // its client, while still enabling this class to cache them.
-    virtual MetaData* ResponseHeaders() = 0;
+    virtual ResponseHeaders* response_headers() = 0;
 
     void UpdateCache();
 
@@ -117,7 +118,7 @@ class CacheUrlFetcher : public UrlFetcher {
   // we have cached to indicate that the response is not cacheable.  This
   // is in this header file so the functionality can be shared between
   // CacheUrlAsyncFetcher and CacheUrlFetcher.
-  static bool RememberNotCached(const MetaData& headers);
+  static bool RememberNotCached(const ResponseHeaders& headers);
 
  private:
   HTTPCache* http_cache_;

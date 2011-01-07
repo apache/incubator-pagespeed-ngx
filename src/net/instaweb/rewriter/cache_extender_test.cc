@@ -52,9 +52,9 @@ class CacheExtenderTest : public ResourceManagerTestBase {
 
   void InitTest(int64 ttl) {
     AddFilter(RewriteOptions::kExtendCache);
-    InitMetaData("a.css", kContentTypeCss, kCssData, ttl);
-    InitMetaData("b.jpg", kContentTypeJpeg, kImageData, ttl);
-    InitMetaData("c.js", kContentTypeJavascript, kJsData, ttl);
+    InitResponseHeaders("a.css", kContentTypeCss, kCssData, ttl);
+    InitResponseHeaders("b.jpg", kContentTypeJpeg, kImageData, ttl);
+    InitResponseHeaders("c.js", kContentTypeJavascript, kJsData, ttl);
   }
 
   // Generate HTML loading 3 resources with the specified URLs

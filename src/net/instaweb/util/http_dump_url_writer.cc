@@ -17,12 +17,13 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/http_dump_url_writer.h"
+
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/file_writer.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/meta_data.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/stack_buffer.h"
 
@@ -31,11 +32,10 @@ namespace net_instaweb {
 HttpDumpUrlWriter::~HttpDumpUrlWriter() {
 }
 
-bool HttpDumpUrlWriter::StreamingFetchUrl(const std::string& url,
-                                          const MetaData& request_headers,
-                                          MetaData* response_headers,
-                                          Writer* response_writer,
-                                          MessageHandler* handler) {
+bool HttpDumpUrlWriter::StreamingFetchUrl(
+    const std::string& url, const RequestHeaders& request_headers,
+    ResponseHeaders* response_headers, Writer* response_writer,
+    MessageHandler* handler) {
   bool ret = true;
   std::string filename;
 
@@ -56,7 +56,8 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(const std::string& url,
     // In general we will want to always ask the origin for gzipped output,
     // but we are leaving in variable so this could be overridden by the
     // instantiator of the DumpUrlWriter.
-    SimpleMetaData compress_headers, compressed_response;
+    RequestHeaders compress_headers;
+    ResponseHeaders compressed_response;
     compress_headers.CopyFrom(request_headers);
     if (accept_gzip_) {
       compress_headers.RemoveAll(HttpAttributes::kAcceptEncoding);
@@ -101,7 +102,7 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(const std::string& url,
                      filename.c_str());
         std::string temp_filename = file->filename();
         FileWriter file_writer(file);
-        ret = compressed_response.Write(&file_writer, handler) &&
+        ret = compressed_response.WriteAsHttp(&file_writer, handler) &&
             file->Write(contents, handler);
         ret &= file_system_->Close(file, handler);
         ret &= file_system_->RenameFile(temp_filename.c_str(), filename.c_str(),
@@ -118,7 +119,8 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(const std::string& url,
       if (!response_headers->headers_complete()) {
         response_headers->SetStatusAndReason(HttpStatus::kNotFound);
         response_headers->ComputeCaching();
-        response_headers->set_headers_complete(true);
+        // TODO(jmarantz): set_headers_complete
+        // response_headers->set_headers_complete(true);
       }
       response_writer->Write(contents, handler);
     }

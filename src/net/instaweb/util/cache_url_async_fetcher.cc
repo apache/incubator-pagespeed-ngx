@@ -22,7 +22,7 @@
 #include "net/instaweb/util/public/cache_url_fetcher.h"
 #include "net/instaweb/util/public/http_cache.h"
 #include "net/instaweb/util/public/http_value.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
@@ -36,7 +36,7 @@ class ForwardingAsyncFetch : public CacheUrlFetcher::AsyncFetch {
  public:
   ForwardingAsyncFetch(const StringPiece& url, HTTPCache* cache,
                        MessageHandler* handler, Callback* callback,
-                       Writer* writer, MetaData* response_headers,
+                       Writer* writer, ResponseHeaders* response_headers,
                        bool force_caching)
       : CacheUrlFetcher::AsyncFetch(url, cache, handler, force_caching),
         callback_(callback),
@@ -70,12 +70,12 @@ class ForwardingAsyncFetch : public CacheUrlFetcher::AsyncFetch {
     delete this;
   }
 
-  virtual MetaData* ResponseHeaders() { return response_headers_; }
+  virtual ResponseHeaders* response_headers() { return response_headers_; }
 
  private:
   Callback* callback_;
   Writer* client_writer_;
-  MetaData* response_headers_;
+  ResponseHeaders* response_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(ForwardingAsyncFetch);
 };
@@ -86,8 +86,8 @@ CacheUrlAsyncFetcher::~CacheUrlAsyncFetcher() {
 }
 
 bool CacheUrlAsyncFetcher::StreamingFetch(
-    const std::string& url, const MetaData& request_headers,
-    MetaData* response_headers, Writer* writer, MessageHandler* handler,
+    const std::string& url, const RequestHeaders& request_headers,
+    ResponseHeaders* response_headers, Writer* writer, MessageHandler* handler,
     Callback* callback) {
   HTTPValue value;
   StringPiece contents;

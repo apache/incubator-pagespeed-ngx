@@ -90,7 +90,6 @@ class InstawebContext {
   scoped_ptr<GzipInflater> inflater_;
   scoped_ptr<RewriteDriver> custom_rewriter_;
   std::string buffer_;
-  SimpleMetaData response_headers_;
   ContentDetectionState content_detection_state_;
   std::string absolute_url_;
   RewriteOptions rewrite_options_;

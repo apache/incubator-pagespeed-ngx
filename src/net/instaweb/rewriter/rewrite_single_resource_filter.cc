@@ -35,7 +35,7 @@ class RewriteSingleResourceFilter::FetchCallback
  public:
   FetchCallback(RewriteSingleResourceFilter* filter,
                 Resource* input_resource, OutputResource* output_resource,
-                MetaData* response_headers, Writer* response_writer,
+                ResponseHeaders* response_headers, Writer* response_writer,
                 MessageHandler* handler,
                 UrlAsyncFetcher::Callback* base_callback)
       : filter_(filter),
@@ -71,7 +71,7 @@ class RewriteSingleResourceFilter::FetchCallback
   RewriteSingleResourceFilter* filter_;
   scoped_ptr<Resource> input_resource_;
   OutputResource* output_resource_;
-  MetaData* response_headers_;
+  ResponseHeaders* response_headers_;
   Writer* response_writer_;
   MessageHandler* handler_;
   UrlAsyncFetcher::Callback* base_callback_;
@@ -82,8 +82,8 @@ class RewriteSingleResourceFilter::FetchCallback
 bool RewriteSingleResourceFilter::Fetch(
     OutputResource* output_resource,
     Writer* response_writer,
-    const MetaData& request_headers,
-    MetaData* response_headers,
+    const RequestHeaders& request_headers,
+    ResponseHeaders* response_headers,
     MessageHandler* message_handler,
     UrlAsyncFetcher::Callback* base_callback) {
   bool ret = false;

@@ -20,7 +20,7 @@
 
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/data_url.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
 namespace net_instaweb {

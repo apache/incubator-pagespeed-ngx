@@ -32,7 +32,8 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class MetaData;
+class RequestHeaders;
+class ResponseHeaders;
 class Writer;
 
 class UrlFetcher {
@@ -42,8 +43,8 @@ class UrlFetcher {
   // Fetch a URL, streaming the output to fetched_content_writer, and
   // returning the headers.  Returns true if the fetch was successful.
   virtual bool StreamingFetchUrl(const std::string& url,
-                                 const MetaData& request_headers,
-                                 MetaData* response_headers,
+                                 const RequestHeaders& request_headers,
+                                 ResponseHeaders* response_headers,
                                  Writer* response_writer,
                                  MessageHandler* message_handler) = 0;
 

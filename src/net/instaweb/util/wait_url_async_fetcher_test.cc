@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/wait_url_async_fetcher.h"
 
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -52,14 +53,14 @@ TEST_F(WaitUrlAsyncFetcherTest, FetcherWaits) {
   WaitUrlAsyncFetcher wait_fetcher(&base_fetcher);
 
   const char url[] = "http://www.example.com/";
-  SimpleMetaData header;
+  ResponseHeaders header;
   header.set_first_line(1, 1, 200, "OK");
   const char body[] = "Contents.";
 
   base_fetcher.SetResponse(url, header, body);
 
-  const SimpleMetaData request_headers;
-  SimpleMetaData response_headers;
+  const RequestHeaders request_headers;
+  ResponseHeaders response_headers;
   std::string response_body;
   StringWriter response_writer(&response_body);
   GoogleMessageHandler handler;

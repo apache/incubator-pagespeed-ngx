@@ -60,8 +60,8 @@ class RewriteFilter : public CommonFilter {
   // all the original URLs separated by '+'.
   virtual bool Fetch(OutputResource* output_resource,
                      Writer* response_writer,
-                     const MetaData& request_header,
-                     MetaData* response_headers,
+                     const RequestHeaders& request_header,
+                     ResponseHeaders* response_headers,
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback) = 0;
 

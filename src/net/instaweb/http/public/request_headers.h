@@ -31,11 +31,17 @@ class RequestHeaders : public Headers<HttpRequestHeaders> {
   RequestHeaders();
 
   void Clear();
+  void CopyFrom(const RequestHeaders& other);
+
   std::string ToString() const;
   Method method() const;
   const char* method_string() const;
   void set_method(Method method);
-  bool WriteAsHttp(Writer* writer, MessageHandler* handler) const;
+  bool WriteAsHttp(const StringPiece& url, Writer* writer,
+                   MessageHandler* handler) const;
+
+  // Determines whether a request header accepts gzipped content.
+  bool AcceptsGzip() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RequestHeaders);

@@ -40,7 +40,7 @@ class CacheFetcherTest : public FetcherTest {
       : mock_timer_(0),
         http_cache_(new LRUCache(kMaxSize), &mock_timer_) {
     int64 start_time_ms;
-    bool parsed = MetaData::ParseTime(kStartDate, &start_time_ms);
+    bool parsed = ResponseHeaders::ParseTime(kStartDate, &start_time_ms);
     CHECK(parsed);
     mock_timer_.set_time_ms(start_time_ms);
   }

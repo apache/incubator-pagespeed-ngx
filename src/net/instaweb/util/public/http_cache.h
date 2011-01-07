@@ -30,7 +30,7 @@ namespace net_instaweb {
 class CacheInterface;
 class HTTPValue;
 class MessageHandler;
-class MetaData;
+class ResponseHeaders;
 class Statistics;
 class Timer;
 class Variable;
@@ -75,13 +75,14 @@ class HTTPCache {
     kNotFound
   };
 
-  FindResult Find(const std::string& key, HTTPValue* value, MetaData* headers,
+  FindResult Find(const std::string& key, HTTPValue* value,
+                  ResponseHeaders* headers,
                   MessageHandler* handler);
 
   // Note that Put takes a non-const pointer for HTTPValue so it can
   // bump the reference count.
   void Put(const std::string& key, HTTPValue* value, MessageHandler* handler);
-  void Put(const std::string& key, const MetaData& headers,
+  void Put(const std::string& key, const ResponseHeaders& headers,
            const StringPiece& content, MessageHandler* handler);
 
   CacheInterface::KeyState Query(const std::string& key);
@@ -115,10 +116,10 @@ class HTTPCache {
   // Returns true if the resource is already at the point of expiration,
   // and would never be used if inserted into the cache. Otherwise, returns
   // false and increments the cache expirations statistic
-  bool IsAlreadyExpired(const MetaData& headers);
+  bool IsAlreadyExpired(const ResponseHeaders& headers);
 
  private:
-  bool IsCurrentlyValid(const MetaData& headers, int64 now_ms);
+  bool IsCurrentlyValid(const ResponseHeaders& headers, int64 now_ms);
   void PutHelper(const std::string& key, int64 now_us,
                  HTTPValue* value, MessageHandler* handler);
 

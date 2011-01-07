@@ -27,7 +27,7 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class MetaData;
+class ResponseHeaders;
 class RewriteOptions;
 class UrlFetcher;
 

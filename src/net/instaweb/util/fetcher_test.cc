@@ -32,7 +32,7 @@ const char FetcherTest::kHeaderValue[] = "header value";
 void FetcherTest::ValidateMockFetcherResponse(
     bool success, bool check_error_message,
     const std::string& content,
-    const MetaData& response_headers) {
+    const ResponseHeaders& response_headers) {
   if (success) {
     EXPECT_EQ(std::string(kHtmlContent), content);
     CharStarVector values;
@@ -57,7 +57,8 @@ int FetcherTest::CountFetchesSync(
   int starting_fetches = mock_fetcher_.num_fetches();
   std::string content;
   StringWriter content_writer(&content);
-  SimpleMetaData request_headers, response_headers;
+  RequestHeaders request_headers;
+  ResponseHeaders response_headers;
   bool success = fetcher->StreamingFetchUrl(
       url.as_string(), request_headers, &response_headers, &content_writer,
       &message_handler_);
@@ -72,7 +73,7 @@ int FetcherTest::CountFetchesAsync(const StringPiece& url, bool expect_success,
   CHECK(async_fetcher() != NULL);
   *callback_called = false;
   int starting_fetches = mock_fetcher_.num_fetches();
-  SimpleMetaData request_headers;
+  RequestHeaders request_headers;
   CheckCallback* fetch = new CheckCallback(expect_success, callback_called);
   async_fetcher()->StreamingFetch(
       url.as_string(), request_headers, &fetch->response_headers_,
@@ -82,7 +83,7 @@ int FetcherTest::CountFetchesAsync(const StringPiece& url, bool expect_success,
 
 
 void FetcherTest::ValidateOutput(const std::string& content,
-                                 const MetaData& response_headers) {
+                                 const ResponseHeaders& response_headers) {
   // The detailed header parsing code is tested in
   // simple_meta_data_test.cc.  But let's check the rseponse code
   // and the last header here, and make sure we got the content.
@@ -104,8 +105,8 @@ void FetcherTest::ValidateOutput(const std::string& content,
 // MockFetcher
 bool FetcherTest::MockFetcher::StreamingFetchUrl(
     const std::string& url,
-    const MetaData& request_headers,
-    MetaData* response_headers,
+    const RequestHeaders& request_headers,
+    ResponseHeaders* response_headers,
     Writer* writer,
     MessageHandler* message_handler) {
   bool ret = false;
@@ -123,15 +124,16 @@ bool FetcherTest::MockFetcher::StreamingFetchUrl(
 }
 
 bool FetcherTest::MockFetcher::Populate(const char* cache_control,
-                                        MetaData* response_headers,
+                                        ResponseHeaders* response_headers,
                                         Writer* writer,
                                         MessageHandler* message_handler) {
   response_headers->SetStatusAndReason(HttpStatus::kOK);
+  response_headers->set_major_version(1);
+  response_headers->set_minor_version(1);
   response_headers->Add(HttpAttributes::kCacheControl, cache_control);
-  response_headers->Add("Date", kStartDate);
+  response_headers->Add(HttpAttributes::kDate, kStartDate);
   response_headers->Add(kHeaderName, kHeaderValue);
   response_headers->ComputeCaching();
-  response_headers->set_headers_complete(true);
   writer->Write(kHtmlContent, message_handler);
   return true;
 }
@@ -140,8 +142,8 @@ bool FetcherTest::MockFetcher::Populate(const char* cache_control,
 // MockAsyncFetcher
 bool FetcherTest::MockAsyncFetcher::StreamingFetch(
     const std::string& url,
-    const MetaData& request_headers,
-    MetaData* response_headers,
+    const RequestHeaders& request_headers,
+    ResponseHeaders* response_headers,
     Writer* writer,
     MessageHandler* handler,
     Callback* callback) {

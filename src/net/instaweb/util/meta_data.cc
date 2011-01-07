@@ -16,10 +16,10 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/meta_data.h"
-
 #include <stdio.h>
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/time_util.h"
+
 #include "pagespeed/core/resource_util.h"
 
 namespace net_instaweb {
@@ -45,21 +45,6 @@ const char HttpAttributes::kSetCookie[] = "Set-Cookie";
 const char HttpAttributes::kTransferEncoding[] = "Transfer-Encoding";
 const char HttpAttributes::kUserAgent[] = "User-Agent";
 const char HttpAttributes::kVary[] = "Vary";
-
-MetaData::~MetaData() {
-}
-
-void MetaData::CopyFrom(const MetaData& other) {
-  set_major_version(other.major_version());
-  set_minor_version(other.minor_version());
-  set_status_code(other.status_code());
-  set_reason_phrase(other.reason_phrase());
-  set_headers_complete(other.headers_complete());
-  for (int i = 0; i < other.NumAttributes(); ++i) {
-    Add(other.Name(i), other.Value(i));
-  }
-  ComputeCaching();
-}
 
 const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
   switch (rc) {
@@ -120,58 +105,6 @@ const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
       return "Internal Server Error";
   }
   return "";
-}
-
-void MetaData::SetStatusAndReason(HttpStatus::Code code) {
-  set_status_code(code);
-  set_reason_phrase(HttpStatus::GetReasonPhrase(code));
-}
-
-bool MetaData::ParseTime(const char* time_str, int64* time_ms) {
-  return pagespeed::resource_util::ParseTimeValuedHeader(time_str, time_ms);
-}
-
-bool MetaData::IsGzipped() const {
-  CHECK(headers_complete());
-  CharStarVector v;
-  return (Lookup(HttpAttributes::kContentEncoding, &v) && (v.size() == 1) &&
-          (strcmp(v[0], HttpAttributes::kGzip) == 0));
-}
-
-bool MetaData::AcceptsGzip() const {
-  CharStarVector v;
-  if (Lookup(HttpAttributes::kAcceptEncoding, &v)) {
-    for (int i = 0, nv = v.size(); i < nv; ++i) {
-      std::vector<StringPiece> encodings;
-      SplitStringPieceToVector(v[i], ",", &encodings, true);
-      for (int j = 0, nencodings = encodings.size(); j < nencodings; ++j) {
-        if (strcasecmp(encodings[j].as_string().c_str(),
-                       HttpAttributes::kGzip) == 0) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-bool MetaData::ParseDateHeader(const char* attr, int64* date_ms) const {
-  CharStarVector values;
-  return (Lookup(attr, &values) &&
-          (values.size() == 1) &&
-          ConvertStringToTime(values[0], date_ms));
-}
-
-void MetaData::UpdateDateHeader(const char* attr, int64 date_ms) {
-  RemoveAll(attr);
-  std::string buf;
-  if (ConvertTimeToString(date_ms, &buf)) {
-    Add(attr, buf.c_str());
-  }
-}
-
-void MetaData::DebugPrint() const {
-  fprintf(stderr, "%s\n", ToString().c_str());
 }
 
 }  // namespace net_instaweb

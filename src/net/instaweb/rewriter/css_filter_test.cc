@@ -103,7 +103,7 @@ class CssFilterTest : public ResourceManagerTestBase {
 
     // Set input file.
     mock_url_fetcher_.Clear();
-    InitMetaData(StrCat(id, ".css"), kContentTypeCss, css_input, 300);
+    InitResponseHeaders(StrCat(id, ".css"), kContentTypeCss, css_input, 300);
 
     static const char html_template[] =
         "<head>\n"

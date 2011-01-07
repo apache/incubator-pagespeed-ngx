@@ -24,8 +24,8 @@
 namespace net_instaweb {
 
 bool DummyUrlFetcher::StreamingFetchUrl(const std::string& url,
-                                        const MetaData& request_headers,
-                                        MetaData* response_headers,
+                                        const RequestHeaders& request_headers,
+                                        ResponseHeaders* response_headers,
                                         Writer* fetched_content_writer,
                                         MessageHandler* message_handler) {
   message_handler->Message(kFatal, "DummyUrlFetcher used");

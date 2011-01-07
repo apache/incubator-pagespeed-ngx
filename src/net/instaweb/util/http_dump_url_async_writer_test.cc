@@ -22,7 +22,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/util/fetcher_test.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 
 namespace net_instaweb {

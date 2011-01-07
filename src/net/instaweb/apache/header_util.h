@@ -15,7 +15,8 @@
 #ifndef NET_INSTAWEB_APACHE_HEADER_UTIL_H_
 #define NET_INSTAWEB_APACHE_HEADER_UTIL_H_
 
-#include "net/instaweb/util/public/meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 // The httpd header must be after the meta_data.h.  Otherwise, the
 // compiler will complain
 //   "strtoul_is_not_a_portable_function_use_strtol_instead".
@@ -23,16 +24,13 @@
 
 namespace net_instaweb {
 
-// Converts Apache header structure into an Instaweb MetaData.
-//
-// proto_num is the version number of protocol; 1.1 = 1001
-void ApacheHeaderToMetaData(const apr_table_t* apache_headers,
-                            int status_code,
-                            int proto_num,
-                            MetaData* meta_data);
+// Converts Apache header structure into RequestHeaders.
+void ApacheRequestToRequestHeaders(const request_rec& request,
+                                   RequestHeaders* meta_data);
 
-// Converts MetaData structure into an Apache header.
-void MetaDataToApacheHeader(const MetaData& meta_data, request_rec* request);
+// Converts ResponseHeaders into an Apache request.
+void ResponseHeadersToApacheRequest(const ResponseHeaders& meta_data,
+                                    request_rec* request);
 
 // Remove downstream filters that might corrupt our caching headers.
 void DisableDownstreamHeaderFilters(request_rec* request);

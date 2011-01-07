@@ -44,7 +44,7 @@ void Resource::DetermineContentType() {
   // Try to determine the content type from the URL extension, or
   // the response headers.
   CharStarVector content_types;
-  MetaData* headers = metadata();
+  ResponseHeaders* headers = metadata();
   const ContentType* content_type = NULL;
   if (headers->Lookup("Content-type", &content_types)) {
     for (int i = 0, n = content_types.size(); (i < n) && content_type == NULL;

@@ -79,7 +79,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
 
     // Put original CSS files into our fetcher.
-    SimpleMetaData default_css_header;
+    ResponseHeaders default_css_header;
     resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
     mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
     mock_url_fetcher_.SetResponse(b_css_url, default_css_header, b_css_body);
@@ -136,7 +136,8 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     EXPECT_EQ(headers + expected_combination, actual_combination);
 
     // Fetch the combination to make sure we can serve the result from above.
-    SimpleMetaData request_headers, response_headers;
+    RequestHeaders request_headers;
+    ResponseHeaders response_headers;
     std::string fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
     DummyCallback dummy_callback(true);
@@ -150,7 +151,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     // does not already have the combination cached.
     // TODO(sligocki): This has too much shared state with the first server.
     // See RewriteImage for details.
-    SimpleMetaData other_response_headers;
+    ResponseHeaders other_response_headers;
     fetched_resource_content.clear();
     message_handler_.Message(kInfo, "Now with serving.");
     file_system_.Enable();
@@ -179,7 +180,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     AddFilter(RewriteOptions::kCombineCss);
 
     // Put original CSS files into our fetcher.
-    SimpleMetaData default_css_header;
+    ResponseHeaders default_css_header;
     resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
     mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
     mock_url_fetcher_.SetResponse(c_css_url, default_css_header, c_css_body);
@@ -190,7 +191,8 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     std::string kACUrl = Encode(kDomain, "cc", "0", "a.css+c.css", "css");
     std::string kABCUrl = Encode(kDomain, "cc", "0", "a.css+bbb.css+c.css",
                                   "css");
-    SimpleMetaData request_headers, response_headers;
+    RequestHeaders request_headers;
+    ResponseHeaders response_headers;
     std::string fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
     DummyCallback dummy_callback(true);
@@ -352,7 +354,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
       const CssLink::Vector& input_css_links,
       CssLink::Vector* output_css_links) {
     // TODO(sligocki): Allow other domains (this is constrained right now b/c
-    // of InitMetaData.
+    // of InitResponseHeaders.
     std::string html_url = StrCat("http://test.com/", id, ".html");
     std::string html_input("<head>\n");
     for (int i = 0, n = input_css_links.size(); i < n; ++i) {
@@ -361,7 +363,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         if (link->supply_mock_) {
           // If the css-vector contains a 'true' for this, then we supply the
           // mock fetcher with headers and content for the CSS file.
-          InitMetaData(link->url_, kContentTypeCss, link->content_, 600);
+          InitResponseHeaders(link->url_, kContentTypeCss, link->content_, 600);
         }
         std::string style("  <");
         style += StringPrintf("link rel='stylesheet' type='text/css' href='%s'",
@@ -463,7 +465,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
   // Put this in the Test class to remove repetition here and below.
   std::string d_css_url = StrCat(kDomain, "d.css");
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
-  SimpleMetaData default_css_header;
+  ResponseHeaders default_css_header;
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   mock_url_fetcher_.SetResponse(d_css_url, default_css_header, d_css_body);
 
@@ -484,7 +486,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
 
   std::string d_css_url = StrCat(kDomain, "d.css");
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
-  SimpleMetaData default_css_header;
+  ResponseHeaders default_css_header;
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   mock_url_fetcher_.SetResponse(d_css_url, default_css_header, d_css_body);
 
@@ -504,7 +506,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
 
-  SimpleMetaData default_css_header;
+  ResponseHeaders default_css_header;
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
   mock_url_fetcher_.SetResponse(b_css_url, default_css_header, b_css_body);
@@ -553,7 +555,7 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrl) {
   const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
   const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
 
-  SimpleMetaData default_css_header;
+  ResponseHeaders default_css_header;
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
   mock_url_fetcher_.SetResponse(b_css_url, default_css_header, b_css_body);
@@ -790,7 +792,7 @@ TEST_F(CssCombineFilterTest, CrossMappedDomain) {
   bool supply_mock = false;
   css_in.Add("http://a.com/1.css", kYellow, "", supply_mock);
   css_in.Add("http://b.com/2.css", kBlue, "", supply_mock);
-  SimpleMetaData default_css_header;
+  ResponseHeaders default_css_header;
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   mock_url_fetcher_.SetResponse("http://a.com/1.css", default_css_header,
                                 kYellow);
@@ -815,7 +817,7 @@ TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
   const char kUrl2[] = "http://b.com/2.css";
   css_in.Add(kUrl1, kYellow, "", supply_mock);
   css_in.Add(kUrl2, kBlue, "", supply_mock);
-  SimpleMetaData default_css_header;
+  ResponseHeaders default_css_header;
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   mock_url_fetcher_.SetResponse(kUrl1, default_css_header, kYellow);
   mock_url_fetcher_.SetResponse(kUrl2, default_css_header, kBlue);

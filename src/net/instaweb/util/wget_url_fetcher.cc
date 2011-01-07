@@ -21,7 +21,8 @@
 #include <errno.h>
 #include "net/instaweb/util/public/http_response_parser.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace {
@@ -58,8 +59,8 @@ WgetUrlFetcher::~WgetUrlFetcher() {
 }
 
 bool WgetUrlFetcher::StreamingFetchUrl(const std::string& url,
-                                       const MetaData& request_headers,
-                                       MetaData* response_headers,
+                                       const RequestHeaders& request_headers,
+                                       ResponseHeaders* response_headers,
                                        Writer* writer,
                                        MessageHandler* handler) {
   std::string cmd("/usr/bin/wget --save-headers -q -O -"), escaped_url;
@@ -99,7 +100,8 @@ bool WgetUrlFetcher::StreamingFetchUrl(const std::string& url,
         response_headers->set_first_line(1, 1, HttpStatus::kBadRequest,
                                          "Wget Failed");
         response_headers->ComputeCaching();
-        response_headers->set_headers_complete(true);
+        // TODO(jmarantz): set_headers_complete
+        // response_headers->set_headers_complete(true);
         writer->Write("wget failed: ", handler);
         writer->Write(url, handler);
         writer->Write("<br>\nExit Status: ", handler);

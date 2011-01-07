@@ -18,19 +18,19 @@
 
 #include "net/instaweb/util/public/http_dump_url_async_writer.h"
 
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/file_writer.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/meta_data.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
 
 class HttpDumpUrlAsyncWriter::Fetch : UrlAsyncFetcher::Callback {
  public:
-  Fetch(const std::string& url, const MetaData& request_headers,
-        MetaData* response_headers, Writer* response_writer,
+  Fetch(const std::string& url, const RequestHeaders& request_headers,
+        ResponseHeaders* response_headers, Writer* response_writer,
         MessageHandler* handler, Callback* callback,
         const std::string& filename, UrlFetcher* dump_fetcher,
         FileSystem* file_system)
@@ -75,7 +75,7 @@ class HttpDumpUrlAsyncWriter::Fetch : UrlAsyncFetcher::Callback {
                           filename_.c_str());
         std::string temp_filename = file->filename();
         FileWriter file_writer(file);
-        success = compressed_response_.Write(&file_writer, handler_) &&
+        success = compressed_response_.WriteAsHttp(&file_writer, handler_) &&
             file->Write(contents_, handler_);
         success &= file_system_->Close(file, handler_);
         success &= file_system_->RenameFile(temp_filename.c_str(),
@@ -104,8 +104,8 @@ class HttpDumpUrlAsyncWriter::Fetch : UrlAsyncFetcher::Callback {
 
  private:
   const std::string url_;
-  SimpleMetaData request_headers_;
-  MetaData* response_headers_;
+  RequestHeaders request_headers_;
+  ResponseHeaders* response_headers_;
   Writer* response_writer_;
   MessageHandler* handler_;
   Callback* callback_;
@@ -116,8 +116,8 @@ class HttpDumpUrlAsyncWriter::Fetch : UrlAsyncFetcher::Callback {
 
   std::string contents_;
   StringWriter string_writer_;
-  SimpleMetaData compress_headers_;
-  SimpleMetaData compressed_response_;
+  RequestHeaders compress_headers_;
+  ResponseHeaders compressed_response_;
 
   DISALLOW_COPY_AND_ASSIGN(Fetch);
 };
@@ -125,12 +125,10 @@ class HttpDumpUrlAsyncWriter::Fetch : UrlAsyncFetcher::Callback {
 HttpDumpUrlAsyncWriter::~HttpDumpUrlAsyncWriter() {
 }
 
-bool HttpDumpUrlAsyncWriter::StreamingFetch(const std::string& url,
-                                            const MetaData& request_headers,
-                                            MetaData* response_headers,
-                                            Writer* response_writer,
-                                            MessageHandler* handler,
-                                            Callback* callback) {
+bool HttpDumpUrlAsyncWriter::StreamingFetch(
+    const std::string& url, const RequestHeaders& request_headers,
+    ResponseHeaders* response_headers, Writer* response_writer,
+    MessageHandler* handler, Callback* callback) {
   std::string filename;
   dump_fetcher_.GetFilename(GURL(url), &filename, handler);
 

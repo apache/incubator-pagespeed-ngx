@@ -76,20 +76,20 @@ class HttpDumpUrlFetcher : public UrlFetcher {
 
   // This is a synchronous/blocking implementation.
   virtual bool StreamingFetchUrl(const std::string& url,
-                                 const MetaData& request_headers,
-                                 MetaData* response_headers,
+                                 const RequestHeaders& request_headers,
+                                 ResponseHeaders* response_headers,
                                  Writer* fetched_content_writer,
                                  MessageHandler* message_handler);
 
   // Parse file into response_headers and response_writer as if it were bytes
   // off the wire.
   bool ParseFile(FileSystem::InputFile* file,
-                 MetaData* response_headers,
+                 ResponseHeaders* response_headers,
                  Writer* response_writer,
                  MessageHandler* handler);
 
   // Helper function to return a generic error response.
-  void RespondError(MetaData* response_headers, Writer* response_writer,
+  void RespondError(ResponseHeaders* response_headers, Writer* response_writer,
                     MessageHandler* handler);
 
   // Print URLs each time they are fetched.

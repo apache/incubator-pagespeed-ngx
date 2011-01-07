@@ -28,7 +28,8 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class MetaData;
+class RequestHeaders;
+class ResponseHeaders;
 class Writer;
 
 class UrlAsyncFetcher {
@@ -54,8 +55,8 @@ class UrlAsyncFetcher {
   // In either case, the callback will be called with the completion status,
   // so it's safe to ignore the return value.
   virtual bool StreamingFetch(const std::string& url,
-                              const MetaData& request_headers,
-                              MetaData* response_headers,
+                              const RequestHeaders& request_headers,
+                              ResponseHeaders* response_headers,
                               Writer* response_writer,
                               MessageHandler* message_handler,
                               Callback* callback) = 0;

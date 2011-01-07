@@ -21,26 +21,28 @@
 
 #include "base/basictypes.h"
 // TODO(sligocki): Find a way to forward declare FileSystem::InputFile.
+#include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
-class MetaData;
+class ResponseHeaders;
 class Writer;
 
 // Helper class to fascilitate parsing a raw streaming HTTP response including
 // headers and body.
 class HttpResponseParser {
  public:
-  HttpResponseParser(MetaData* response_headers, Writer* writer,
+  HttpResponseParser(ResponseHeaders* response_headers, Writer* writer,
                      MessageHandler* handler)
       : reading_headers_(true),
         ok_(true),
         response_headers_(response_headers),
         writer_(writer),
-        handler_(handler) {
+        handler_(handler),
+        parser_(response_headers) {
   }
 
   // Parse complete HTTP response from a file.
@@ -55,13 +57,15 @@ class HttpResponseParser {
   bool ParseChunk(const StringPiece& data);
 
   bool ok() const { return ok_; }
+  bool headers_complete() const { return parser_.headers_complete(); }
 
  private:
   bool reading_headers_;
   bool ok_;
-  MetaData* response_headers_;
+  ResponseHeaders* response_headers_;
   Writer* writer_;
   MessageHandler* handler_;
+  ResponseHeadersParser parser_;
 
   DISALLOW_COPY_AND_ASSIGN(HttpResponseParser);
 };

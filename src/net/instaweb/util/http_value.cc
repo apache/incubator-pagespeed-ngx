@@ -17,7 +17,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/http_value.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/response_headers_parser.h"
 
 namespace {
 
@@ -51,7 +52,7 @@ void HTTPValue::Clear() {
   storage_->clear();
 }
 
-void HTTPValue::SetHeaders(const MetaData& headers) {
+void HTTPValue::SetHeaders(const ResponseHeaders& headers) {
   CopyOnWrite();
   std::string headers_string = headers.ToString();
   if (storage_->empty()) {
@@ -127,7 +128,8 @@ unsigned int HTTPValue::SizeOfFirstChunk() const {
 // Note that we avoid CHECK, and instead return false on error.  So if
 // our cache gets corrupted (say) on disk, we just consider it an
 // invalid entry rather than aborting the server.
-bool HTTPValue::ExtractHeaders(MetaData* headers, MessageHandler* handler)
+bool HTTPValue::ExtractHeaders(ResponseHeaders* headers,
+                               MessageHandler* handler)
     const {
   bool ret = false;
   headers->Clear();
@@ -142,10 +144,13 @@ bool HTTPValue::ExtractHeaders(MetaData* headers, MessageHandler* handler)
       } else {
         ret = (type_id == kHeadersFirst);
       }
+      ResponseHeadersParser parser(headers);
+
+      // TODO(jmarantz): use binary representation instead
       unsigned int num_consumed =
-          headers->ParseChunk(StringPiece(start, size), handler);
+          parser.ParseChunk(StringPiece(start, size), handler);
       ret = (num_consumed == size);
-      ret &= (headers->headers_complete());
+      ret &= (parser.headers_complete());
     }
   }
   return ret;
@@ -174,7 +179,7 @@ bool HTTPValue::ExtractContents(StringPiece* val) const {
   return ret;
 }
 
-bool HTTPValue::Link(SharedString* src, MetaData* headers,
+bool HTTPValue::Link(SharedString* src, ResponseHeaders* headers,
                      MessageHandler* handler) {
   bool ok = false;
   if ((*src)->size() >= kStorageOverhead) {

@@ -18,17 +18,17 @@
 
 // Unit-test the resource manager
 
-#include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
-#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+
+#include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/resource_manager_testing_peer.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/meta_data.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/url_escaper.h"
@@ -61,7 +61,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   std::string FetchOutputResource(OutputResource* resource) {
     EXPECT_TRUE(resource_manager_->FetchOutputResource(
         resource, NULL, NULL, &message_handler_, ResourceManager::kMayBlock));
-    SimpleMetaData empty;
+    ResponseHeaders empty;
     EXPECT_TRUE(resource_manager_->FetchOutputResource(
         resource, NULL, &empty, &message_handler_, ResourceManager::kMayBlock));
     std::string contents;
@@ -238,7 +238,7 @@ TEST_F(ResourceManagerTest, TestOutputInputUrl) {
 
 TEST_F(ResourceManagerTest, TestRemember404) {
   // Make sure our resources remember that a page 404'd
-  SimpleMetaData not_found;
+  ResponseHeaders not_found;
   resource_manager_->SetDefaultHeaders(&kContentTypeHtml, &not_found);
   not_found.SetStatusAndReason(HttpStatus::kNotFound);
   mock_url_fetcher_.SetResponse("http://example.com/404", not_found, "");
@@ -250,7 +250,7 @@ TEST_F(ResourceManagerTest, TestRemember404) {
   EXPECT_EQ(NULL, resource.get());
 
   HTTPValue valueOut;
-  SimpleMetaData headersOut;
+  ResponseHeaders headersOut;
   EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
             http_cache_.Find("http://example.com/404", &valueOut, &headersOut,
                              &message_handler_));
@@ -261,10 +261,11 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
 
   // Make sure we don't try to insert non-cacheable resources
   // into the cache wastefully, but still fetch them well.
-  SimpleMetaData no_cache;
+  ResponseHeaders no_cache;
   resource_manager_->SetDefaultHeaders(&kContentTypeHtml, &no_cache);
   no_cache.RemoveAll(HttpAttributes::kCacheControl);
   no_cache.Add(HttpAttributes::kCacheControl, "no-cache");
+  no_cache.ComputeCaching();
   mock_url_fetcher_.SetResponse("http://example.com/", no_cache, kContents);
 
   int inserts_before = lru_cache_->num_inserts();

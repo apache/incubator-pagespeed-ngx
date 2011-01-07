@@ -28,7 +28,8 @@
 #include "base/logging.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
@@ -59,15 +60,15 @@ class FetcherTest : public testing::Test {
 
 
     virtual bool StreamingFetchUrl(const std::string& url,
-                                   const MetaData& request_headers,
-                                   MetaData* response_headers,
+                                   const RequestHeaders& request_headers,
+                                   ResponseHeaders* response_headers,
                                    Writer* response_writer,
                                    MessageHandler* message_handler);
 
     int num_fetches() const { return num_fetches_; }
 
    private:
-    bool Populate(const char* cache_control, MetaData* response_headers,
+    bool Populate(const char* cache_control, ResponseHeaders* response_headers,
                   Writer* writer, MessageHandler* message_handler);
 
     int num_fetches_;
@@ -84,8 +85,8 @@ class FetcherTest : public testing::Test {
         : url_fetcher_(url_fetcher) {}
 
     virtual bool StreamingFetch(const std::string& url,
-                                const MetaData& request_headers,
-                                MetaData* response_headers,
+                                const RequestHeaders& request_headers,
+                                ResponseHeaders* response_headers,
                                 Writer* response_writer,
                                 MessageHandler* handler,
                                 Callback* callback);
@@ -117,7 +118,7 @@ class FetcherTest : public testing::Test {
     }
 
     bool expect_success_;
-    SimpleMetaData response_headers_;
+    ResponseHeaders response_headers_;
     std::string content_;
     StringWriter content_writer_;
     bool* callback_called_;
@@ -126,10 +127,9 @@ class FetcherTest : public testing::Test {
     DISALLOW_COPY_AND_ASSIGN(CheckCallback);
   };
 
-  static void ValidateMockFetcherResponse(bool success,
-                                          bool check_error_message,
-                                          const std::string& content,
-                                          const MetaData& response_headers);
+  static void ValidateMockFetcherResponse(
+      bool success, bool check_error_message, const std::string& content,
+      const ResponseHeaders& response_headers);
 
   // Do a URL fetch, and return the number of times the mock fetcher
   // had to be run to perform the fetch.
@@ -168,7 +168,7 @@ class FetcherTest : public testing::Test {
   // This validation code is hard-coded to the http request capture in
   // testdata/google.http.
   void ValidateOutput(const std::string& content,
-                      const MetaData& response_headers);
+                      const ResponseHeaders& response_headers);
 
   GoogleMessageHandler message_handler_;
   MockFetcher mock_fetcher_;

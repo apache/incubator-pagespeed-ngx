@@ -27,7 +27,7 @@
 #include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -44,7 +44,7 @@ class HTTPCacheTest : public testing::Test {
  protected:
   static int64 ParseDate(const char* start_date) {
     int64 time_ms;
-    MetaData::ParseTime(start_date, &time_ms);
+    ResponseHeaders::ParseTime(start_date, &time_ms);
     return time_ms;
   }
 
@@ -52,7 +52,7 @@ class HTTPCacheTest : public testing::Test {
                     http_cache_(new LRUCache(kMaxSize), &mock_timer_) {
   }
 
-  void InitHeaders(MetaData* headers, const char* cache_control) {
+  void InitHeaders(ResponseHeaders* headers, const char* cache_control) {
     headers->Add("name", "value");
     headers->Add("Date", kStartDate);
     if (cache_control != NULL) {
@@ -91,7 +91,7 @@ SimpleStats* HTTPCacheTest::simple_stats_ = NULL;
 // Simple flow of putting in an item, getting it.
 TEST_F(HTTPCacheTest, PutGet) {
   http_cache_.SetStatistics(simple_stats_);
-  SimpleMetaData meta_data_in, meta_data_out;
+  ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "max-age=300");
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
@@ -124,7 +124,7 @@ TEST_F(HTTPCacheTest, PutGet) {
 // Verifies that the cache will 'remember' that a fetch should not be
 // cached for 5 minutes.
 TEST_F(HTTPCacheTest, RememberNotCacheable) {
-  SimpleMetaData meta_data_out;
+  ResponseHeaders meta_data_out;
   http_cache_.RememberNotCacheable("mykey", &message_handler_);
   HTTPValue value;
   EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
@@ -140,7 +140,7 @@ TEST_F(HTTPCacheTest, RememberNotCacheable) {
 }
 
 TEST_F(HTTPCacheTest, Uncacheable) {
-  SimpleMetaData meta_data_in, meta_data_out;
+  ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, NULL);
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query("mykey"));
@@ -152,7 +152,7 @@ TEST_F(HTTPCacheTest, Uncacheable) {
 }
 
 TEST_F(HTTPCacheTest, UncacheablePrivate) {
-  SimpleMetaData meta_data_in, meta_data_out;
+  ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "private, max-age=300");
   http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query("mykey"));

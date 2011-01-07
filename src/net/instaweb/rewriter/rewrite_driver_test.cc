@@ -22,7 +22,6 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 namespace net_instaweb {
 
@@ -70,7 +69,7 @@ TEST_F(RewriteDriverTest, TestCacheUse) {
   AddFilter(RewriteOptions::kExtendCache);
 
   const char kCss[] = "* { display: none; }";
-  InitMetaData("a.css", kContentTypeCss, kCss, 100);
+  InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
 
   std::string cacheExtendedUrl =
       Encode("http://test.com/", RewriteDriver::kCacheExtenderId,

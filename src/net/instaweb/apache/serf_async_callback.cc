@@ -60,7 +60,8 @@ class ProtectedWriter : public Writer {
 
 }  // namespace
 
-SerfAsyncCallback::SerfAsyncCallback(MetaData* response_headers, Writer* writer)
+SerfAsyncCallback::SerfAsyncCallback(ResponseHeaders* response_headers,
+                                     Writer* writer)
     : done_(false),
       success_(false),
       released_(false),

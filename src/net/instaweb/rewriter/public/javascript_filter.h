@@ -35,7 +35,7 @@
 namespace net_instaweb {
 class HtmlParse;
 class MessageHandler;
-class MetaData;
+class ResponseHeaders;
 class OutputResource;
 class Resource;
 class ResourceManager;

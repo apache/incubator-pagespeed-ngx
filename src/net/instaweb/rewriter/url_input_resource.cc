@@ -20,6 +20,7 @@
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 
 #include "base/basictypes.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -48,7 +49,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   virtual ~UrlResourceFetchCallback() {}
 
   void AddToCache(bool success) {
-    MetaData* meta_data = response_headers();
+    ResponseHeaders* meta_data = response_headers();
     if (success && !meta_data->IsErrorStatus()) {
       if (!http_cache()->IsAlreadyExpired(*meta_data)) {
         HTTPValue* value = http_value();
@@ -63,7 +64,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   bool Fetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
     // TODO(jmarantz): consider request_headers.  E.g. will we ever
     // get different resources depending on user-agent?
-    SimpleMetaData request_headers;
+    RequestHeaders request_headers;
     message_handler_ = handler;
     std::string lock_name = StrCat(
         resource_manager_->filename_prefix(),
@@ -138,7 +139,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   // which must be live at the time it is called.  The ReadIfCached
   // cannot rely on the resource still being alive when the callback
   // is called, so it must keep them locally in the class.
-  virtual MetaData* response_headers() = 0;
+  virtual ResponseHeaders* response_headers() = 0;
   virtual HTTPValue* http_value() = 0;
   virtual std::string url() const = 0;
   virtual HTTPCache* http_cache() = 0;
@@ -175,7 +176,7 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
   // thread, as it only populates the cache, which is thread-safe.
   virtual bool EnableThreaded() const { return true; }
 
-  virtual MetaData* response_headers() { return &response_headers_; }
+  virtual ResponseHeaders* response_headers() { return &response_headers_; }
   virtual HTTPValue* http_value() { return &http_value_; }
   virtual std::string url() const { return url_; }
   virtual HTTPCache* http_cache() { return http_cache_; }
@@ -185,7 +186,7 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
   std::string url_;
   HTTPCache* http_cache_;
   HTTPValue http_value_;
-  SimpleMetaData response_headers_;
+  ResponseHeaders response_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(UrlReadIfCachedCallback);
 };
@@ -222,7 +223,7 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
     callback_->Done(success, resource_);
   }
 
-  virtual MetaData* response_headers() { return &resource_->meta_data_; }
+  virtual ResponseHeaders* response_headers() { return &resource_->meta_data_; }
   virtual HTTPValue* http_value() { return &resource_->value_; }
   virtual std::string url() const { return resource_->url(); }
   virtual HTTPCache* http_cache() {

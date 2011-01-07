@@ -184,10 +184,10 @@ void ResourceManager::ValidateShardsAgainstUrlPrefixPattern() {
 }
 #endif
 
-// TODO(jmarantz): consider moving this method to MetaData
+// TODO(jmarantz): consider moving this method to ResponseHeaders
 void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
-                                        MetaData* header) const {
-  CHECK_EQ(0, header->major_version());
+                                        ResponseHeaders* header) const {
+  CHECK(!header->has_major_version());
   CHECK_EQ(0, header->NumAttributes());
   header->set_major_version(1);
   header->set_minor_version(1);
@@ -233,9 +233,9 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
   header->ComputeCaching();
 }
 
-// TODO(jmarantz): consider moving this method to MetaData
+// TODO(jmarantz): consider moving this method to ResponseHeaders
 void ResourceManager::SetContentType(const ContentType* content_type,
-                                     MetaData* header) {
+                                     ResponseHeaders* header) {
   CHECK(content_type != NULL);
   header->RemoveAll(HttpAttributes::kContentType);
   header->Add(HttpAttributes::kContentType, content_type->mime_type());
@@ -304,7 +304,7 @@ OutputResource* ResourceManager::CreateOutputResourceWithPath(
   // Determine whether this output resource is still valid by looking
   // up by hash in the http cache.  Note that this cache entry will
   // expire when any of the origin resources expire.
-  SimpleMetaData meta_data;
+  ResponseHeaders meta_data;
   StringPiece hash_extension;
   HTTPValue value;
   std::string name_key = StrCat(kCacheKeyPrefix, resource->name_key());
@@ -466,7 +466,7 @@ Resource* ResourceManager::CreateInputResourceUnchecked(
 // It will also simplify this routine quite a bit.
 bool ResourceManager::FetchOutputResource(
     OutputResource* output_resource,
-    Writer* writer, MetaData* response_headers,
+    Writer* writer, ResponseHeaders* response_headers,
     MessageHandler* handler, BlockingBehavior blocking) const {
   if (output_resource == NULL) {
     return false;
@@ -482,7 +482,7 @@ bool ResourceManager::FetchOutputResource(
   // doing the StrCat inside.
   bool ret = false;
   StringPiece content;
-  MetaData* meta_data = output_resource->metadata();
+  ResponseHeaders* meta_data = output_resource->metadata();
   if (output_resource->IsWritten()) {
     ret = ((writer == NULL) ||
            ((output_resource->value_.ExtractContents(&content)) &&
@@ -533,7 +533,7 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
                             OutputResource* output,
                             int64 origin_expire_time_ms,
                             MessageHandler* handler) {
-  MetaData* meta_data = output->metadata();
+  ResponseHeaders* meta_data = output->metadata();
   SetDefaultHeaders(output->type(), meta_data);
   meta_data->SetStatusAndReason(status_code);
 
@@ -565,7 +565,7 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
       int64 delta_ms = origin_expire_time_ms - http_cache_->timer()->NowMs();
       int64 delta_sec = delta_ms / 1000;
       if ((delta_sec > 0) || http_cache_->force_caching()) {
-        SimpleMetaData origin_meta_data;
+        ResponseHeaders origin_meta_data;
         SetDefaultHeaders(output->type(), &origin_meta_data);
         std::string cache_control = StringPrintf(
             "max-age=%ld",

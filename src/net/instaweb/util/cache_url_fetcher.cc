@@ -22,7 +22,7 @@
 #include "net/instaweb/util/public/http_cache.h"
 #include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
@@ -43,11 +43,11 @@ class AsyncFetchWithHeaders : public CacheUrlFetcher::AsyncFetch {
       : CacheUrlFetcher::AsyncFetch(url, cache, handler, force_caching) {
   }
 
-  virtual MetaData* ResponseHeaders() {
+  virtual ResponseHeaders* response_headers() {
     return &response_headers_;
   }
  private:
-  SimpleMetaData response_headers_;
+  ResponseHeaders response_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncFetchWithHeaders);
 };
@@ -75,10 +75,10 @@ CacheUrlFetcher::AsyncFetch::~AsyncFetch() {
 void CacheUrlFetcher::AsyncFetch::UpdateCache() {
   // TODO(jmarantz): allow configuration of whether we ignore
   // IsProxyCacheable, e.g. for content served from the same host
-  MetaData* response_headers = ResponseHeaders();
+  ResponseHeaders* response = response_headers();
   if ((http_cache_->Query(url_.c_str()) == CacheInterface::kNotFound)) {
-    if (force_caching_ || response_headers->IsProxyCacheable()) {
-      value_.SetHeaders(*response_headers);
+    if (force_caching_ || response->IsProxyCacheable()) {
+      value_.SetHeaders(*response);
       http_cache_->Put(url_.c_str(), &value_, message_handler_);
     } else {
       // Leave value_ alone as we prep a cache entry to indicate that
@@ -87,7 +87,7 @@ void CacheUrlFetcher::AsyncFetch::UpdateCache() {
       // actually pass through the real value and headers, even while
       // remembering the non-cachability of the URL.
       HTTPValue dummy_value;
-      SimpleMetaData remember_not_cached;
+      ResponseHeaders remember_not_cached;
 
       // We need to set the header status code to 'OK' to satisfy
       // HTTPCache::IsCurrentlyValid.  We rely on the detection of the
@@ -121,26 +121,26 @@ bool CacheUrlFetcher::AsyncFetch::EnableThreaded() const {
 }
 
 void CacheUrlFetcher::AsyncFetch::Start(
-    UrlAsyncFetcher* fetcher, const MetaData& request_headers) {
-  fetcher->StreamingFetch(url_, request_headers, ResponseHeaders(),
+    UrlAsyncFetcher* fetcher, const RequestHeaders& request_headers) {
+  fetcher->StreamingFetch(url_, request_headers, response_headers(),
                           &value_, message_handler_, this);
 }
 
 CacheUrlFetcher::~CacheUrlFetcher() {
 }
 
-bool CacheUrlFetcher::RememberNotCached(const MetaData& headers) {
+bool CacheUrlFetcher::RememberNotCached(const ResponseHeaders& headers) {
   CharStarVector not_cached_values;
   return headers.Lookup(kRememberNotCached, &not_cached_values);
 }
 
 bool CacheUrlFetcher::StreamingFetchUrl(
-    const std::string& url, const MetaData& request_headers,
-    MetaData* response_headers, Writer* writer, MessageHandler* handler) {
+    const std::string& url, const RequestHeaders& request_headers,
+    ResponseHeaders* response, Writer* writer, MessageHandler* handler) {
   bool ret = false;
   HTTPValue value;
   StringPiece contents;
-  ret = ((http_cache_->Find(url.c_str(), &value, response_headers, handler)
+  ret = ((http_cache_->Find(url.c_str(), &value, response, handler)
           == HTTPCache::kFound) &&
          value.ExtractContents(&contents));
   if (ret) {
@@ -149,8 +149,8 @@ bool CacheUrlFetcher::StreamingFetchUrl(
     // in the headers, rather than the status code, so that HTTPCache will
     // not reject the item on retrieval, spoiling our ability to remember
     // fact that the item is uncacheable.
-    if (RememberNotCached(*response_headers)) {
-      response_headers->SetStatusAndReason(HttpStatus::kUnavailable);
+    if (RememberNotCached(*response)) {
+      response->SetStatusAndReason(HttpStatus::kUnavailable);
       ret = false;
     } else {
       ret = writer->Write(contents, handler);
@@ -161,12 +161,12 @@ bool CacheUrlFetcher::StreamingFetchUrl(
     std::string content;
     StringWriter string_writer(&content);
     ret = sync_fetcher_->StreamingFetchUrl(
-        url, request_headers, response_headers, &string_writer, handler);
+        url, request_headers, response, &string_writer, handler);
     ret &= writer->Write(content, handler);
     if (ret) {
-      if (force_caching_ || response_headers->IsProxyCacheable()) {
+      if (force_caching_ || response->IsProxyCacheable()) {
         value.Clear();
-        value.SetHeaders(*response_headers);
+        value.SetHeaders(*response);
         value.Write(content, handler);
         http_cache_->Put(url.c_str(), &value, handler);
       }

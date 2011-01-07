@@ -18,11 +18,12 @@
 
 #include "net/instaweb/util/public/mock_url_fetcher.h"
 
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
 
 namespace net_instaweb {
 
@@ -36,10 +37,11 @@ class MockUrlFetcherTest : public ::testing::Test {
     fetcher_.set_fail_on_unexpected(false);
   }
 
-  void TestResponse(const std::string& url, const MetaData& expected_header,
+  void TestResponse(const std::string& url,
+                    const ResponseHeaders& expected_header,
                     const std::string& expected_body) {
-    const SimpleMetaData dummy_header;
-    SimpleMetaData response_header;
+    const RequestHeaders dummy_header;
+    ResponseHeaders response_header;
     std::string response_body;
     StringWriter response_writer(&response_body);
     GoogleMessageHandler handler;
@@ -51,8 +53,8 @@ class MockUrlFetcherTest : public ::testing::Test {
   }
 
   void TestFetchFail(const std::string& url) {
-    const SimpleMetaData dummy_header;
-    SimpleMetaData response_header;
+    const RequestHeaders dummy_header;
+    ResponseHeaders response_header;
     std::string response_body;
     StringWriter response_writer(&response_body);
     GoogleMessageHandler handler;
@@ -66,12 +68,12 @@ class MockUrlFetcherTest : public ::testing::Test {
 
 TEST_F(MockUrlFetcherTest, GetsCorrectMappedResponse) {
   const char url1[] = "http://www.example.com/successs.html";
-  SimpleMetaData header1;
+  ResponseHeaders header1;
   header1.set_first_line(1, 1, 200, "OK");
   const char body1[] = "This website loaded :)";
 
   const char url2[] = "http://www.example.com/failure.html";
-  SimpleMetaData header2;
+  ResponseHeaders header2;
   header2.set_first_line(1, 1, 404, "Not Found");
   const char body2[] = "File Not Found :(";
 

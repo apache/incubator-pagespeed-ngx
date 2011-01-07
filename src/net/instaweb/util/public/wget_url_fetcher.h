@@ -35,8 +35,8 @@ class WgetUrlFetcher : public UrlFetcher {
   // TODO(sligocki): Allow protocol version number (e.g. HTTP/1.1)
   // and request type (e.g. GET, POST, etc.) to be specified.
   virtual bool StreamingFetchUrl(const std::string& url,
-                                 const MetaData& request_headers,
-                                 MetaData* response_headers,
+                                 const RequestHeaders& request_headers,
+                                 ResponseHeaders* response_headers,
                                  Writer* writer,
                                  MessageHandler* message_handler);
 

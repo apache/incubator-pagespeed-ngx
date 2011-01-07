@@ -82,7 +82,7 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
          "<body>Hello, world!</body>\n");
 
     // Put original Javascript file into our fetcher.
-    SimpleMetaData default_js_header;
+    ResponseHeaders default_js_header;
     resource_manager_->SetDefaultHeaders(&kContentTypeJavascript,
                                          &default_js_header);
     mock_url_fetcher_.SetResponse(js_url, default_js_header, js_outline_body);

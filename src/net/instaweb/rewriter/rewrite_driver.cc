@@ -22,6 +22,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
@@ -425,8 +426,8 @@ OutputResource* RewriteDriver::DecodeOutputResource(
 
 bool RewriteDriver::FetchResource(
     const StringPiece& url,
-    const MetaData& request_headers,
-    MetaData* response_headers,
+    const RequestHeaders& request_headers,
+    ResponseHeaders* response_headers,
     Writer* writer,
     MessageHandler* message_handler,
     UrlAsyncFetcher::Callback* callback) {

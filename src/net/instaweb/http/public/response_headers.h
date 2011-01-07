@@ -40,6 +40,8 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   void Clear();
 
+  void CopyFrom(const ResponseHeaders& other);
+
   // Add a new header.
   void Add(const StringPiece& name, const StringPiece& value);
 
@@ -68,6 +70,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   void SetDate(int64 date_ms);
   void SetLastModified(int64 last_modified_ms);
 
+  // TODO(jmarantz): consider an alternative representation
+  bool headers_complete() const { return has_major_version(); }
+
   int status_code() const;
   int64 timestamp_ms() const;
   bool has_timestamp_ms() const;
@@ -79,6 +84,40 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   // Sets the status code and reason_phrase based on an internal table.
   void SetStatusAndReason(HttpStatus::Code code);
+
+  void DebugPrint() const;
+
+  // Parses an arbitrary string into milliseconds since 1970
+  static bool ParseTime(const char* time_str, int64* time_ms);
+
+  // Returns true if our status denotes the request failing
+  inline bool IsErrorStatus() {
+    int status = status_code();
+    return status >= 400 && status <= 599;
+  }
+
+  // Determines whether a response header is marked as gzipped.
+  bool IsGzipped() const;
+
+  // Parses a date header such as HttpAttributes::kDate or
+  // HttpAttributes::kExpires, returning the timestamp as
+  // number of milliseconds since 1970.
+  bool ParseDateHeader(const char* attr, int64* date_ms) const;
+
+  // Updates a date header using time specified as a number of milliseconds
+  // since 1970.
+  void UpdateDateHeader(const char* attr, int64 date_ms);
+
+  // Set whole first line.
+  void set_first_line(int major_version,
+                      int minor_version,
+                      int status_code,
+                      const StringPiece& reason_phrase) {
+    set_major_version(major_version);
+    set_minor_version(minor_version);
+    set_status_code(status_code);
+    set_reason_phrase(reason_phrase);
+  }
 
  private:
   friend class ResponseHeadersTest;

@@ -30,7 +30,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include <string>
@@ -429,7 +429,7 @@ class CssCombiner : public Resource::AsyncCallback {
               UrlAsyncFetcher::Callback* callback,
               OutputResource* combination,
               Writer* writer,
-              MetaData* response_headers) :
+              ResponseHeaders* response_headers) :
       enable_completion_(false),
       emit_done_(true),
       done_count_(0),
@@ -530,15 +530,15 @@ class CssCombiner : public Resource::AsyncCallback {
   OutputResource* combination_;
   CssCombineFilter::ResourceVector combine_resources_;
   Writer* writer_;
-  MetaData* response_headers_;
+  ResponseHeaders* response_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(CssCombiner);
 };
 
 bool CssCombineFilter::Fetch(OutputResource* combination,
                              Writer* writer,
-                             const MetaData& request_header,
-                             MetaData* response_headers,
+                             const RequestHeaders& request_header,
+                             ResponseHeaders* response_headers,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
   CHECK(response_headers != NULL);

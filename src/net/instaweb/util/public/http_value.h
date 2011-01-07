@@ -25,7 +25,7 @@
 
 namespace net_instaweb {
 
-class MetaData;
+class ResponseHeaders;
 
 // Provides shared, ref-counted, copy-on-write storage for HTTP
 // contents, to aid sharing between active fetches and filters, and
@@ -45,7 +45,7 @@ class HTTPValue : public Writer {
   // contents are set (using the streaming interface Write).
   //
   // If Clear() is called, then SetHeaders() can be called once again.
-  void SetHeaders(const MetaData& headers);
+  void SetHeaders(const ResponseHeaders& headers);
 
   // Writes contents into the HTTPValue object.  Write can be called
   // multiple times to append more data, and can be called before
@@ -55,7 +55,7 @@ class HTTPValue : public Writer {
   virtual bool Flush(MessageHandler* handler);
 
   // Retrieves the headers, returning false if empty.
-  bool ExtractHeaders(MetaData* headers, MessageHandler* handler) const;
+  bool ExtractHeaders(ResponseHeaders* headers, MessageHandler* handler) const;
 
   // Retrieves the contents, returning false if empty.  Note that the
   // contents are only guaranteed valid as long as the HTTPValue
@@ -78,8 +78,9 @@ class HTTPValue : public Writer {
   // can be used for a cache Get.  Returns false if the string is not
   // well-formed.
   //
-  // Extracts the headers into the provided MetaData buffer.
-  bool Link(SharedString* src, MetaData* headers, MessageHandler* handler);
+  // Extracts the headers into the provided ResponseHeaders buffer.
+  bool Link(SharedString* src, ResponseHeaders* headers,
+            MessageHandler* handler);
 
   // Access the shared string, for insertion into a cache via Put.
   SharedString* share() { return &storage_; }

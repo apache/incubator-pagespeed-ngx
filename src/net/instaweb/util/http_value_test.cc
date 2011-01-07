@@ -26,7 +26,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 
 namespace {
 const int kMaxSize = 100;
@@ -38,7 +38,7 @@ class HTTPValueTest : public testing::Test {
  protected:
   HTTPValueTest() { }
 
-  void FillMetaData(MetaData* meta_data) {
+  void FillResponseHeaders(ResponseHeaders* meta_data) {
     meta_data->SetStatusAndReason(HttpStatus::kOK);
     meta_data->set_major_version(1);
     meta_data->set_minor_version(0);
@@ -46,9 +46,9 @@ class HTTPValueTest : public testing::Test {
     meta_data->Add("Cache-control", "max-age=300");
   }
 
-  void CheckMetaData(const MetaData& meta_data) {
-    SimpleMetaData expected;
-    FillMetaData(&expected);
+  void CheckResponseHeaders(const ResponseHeaders& meta_data) {
+    ResponseHeaders expected;
+    FillResponseHeaders(&expected);
     EXPECT_EQ(expected.ToString(), meta_data.ToString());
   }
 
@@ -65,41 +65,41 @@ TEST_F(HTTPValueTest, Empty) {
 
 TEST_F(HTTPValueTest, HeadersFirst) {
   HTTPValue value;
-  SimpleMetaData headers, check_headers;
-  FillMetaData(&headers);
+  ResponseHeaders headers, check_headers;
+  FillResponseHeaders(&headers);
   value.SetHeaders(headers);
   value.Write("body", &message_handler_);
   StringPiece body;
   ASSERT_TRUE(value.ExtractContents(&body));
   EXPECT_EQ("body", body.as_string());
   ASSERT_TRUE(value.ExtractHeaders(&check_headers, &message_handler_));
-  CheckMetaData(check_headers);
+  CheckResponseHeaders(check_headers);
 }
 
 TEST_F(HTTPValueTest, ContentsFirst) {
   HTTPValue value;
-  SimpleMetaData headers, check_headers;
-  FillMetaData(&headers);
+  ResponseHeaders headers, check_headers;
+  FillResponseHeaders(&headers);
   value.Write("body", &message_handler_);
   value.SetHeaders(headers);
   StringPiece body;
   ASSERT_TRUE(value.ExtractContents(&body));
   EXPECT_EQ("body", body.as_string());
   ASSERT_TRUE(value.ExtractHeaders(&check_headers, &message_handler_));
-  CheckMetaData(check_headers);
+  CheckResponseHeaders(check_headers);
 }
 
 TEST_F(HTTPValueTest, EmptyContentsFirst) {
   HTTPValue value;
-  SimpleMetaData headers, check_headers;
-  FillMetaData(&headers);
+  ResponseHeaders headers, check_headers;
+  FillResponseHeaders(&headers);
   value.Write("", &message_handler_);
   value.SetHeaders(headers);
   StringPiece body;
   ASSERT_TRUE(value.ExtractContents(&body));
   EXPECT_EQ("", body.as_string());
   ASSERT_TRUE(value.ExtractHeaders(&check_headers, &message_handler_));
-  CheckMetaData(check_headers);
+  CheckResponseHeaders(check_headers);
 }
 
 TEST_F(HTTPValueTest, TestCopyOnWrite) {
@@ -146,8 +146,8 @@ TEST_F(HTTPValueTest, TestShare) {
 
   {
     HTTPValue value;
-    SimpleMetaData headers, check_headers;
-    FillMetaData(&headers);
+    ResponseHeaders headers, check_headers;
+    FillResponseHeaders(&headers);
     value.SetHeaders(headers);
     value.Write("body", &message_handler_);
     storage = *value.share();
@@ -155,26 +155,26 @@ TEST_F(HTTPValueTest, TestShare) {
 
   {
     HTTPValue value;
-    SimpleMetaData check_headers;
+    ResponseHeaders check_headers;
     ASSERT_TRUE(value.Link(&storage, &check_headers, &message_handler_));
     StringPiece body;
     ASSERT_TRUE(value.ExtractContents(&body));
     EXPECT_EQ("body", body.as_string());
-    CheckMetaData(check_headers);
+    CheckResponseHeaders(check_headers);
   }
 }
 
 TEST_F(HTTPValueTest, LinkEmpty) {
   SharedString storage;
   HTTPValue value;
-  SimpleMetaData headers;
+  ResponseHeaders headers;
   ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
 }
 
 TEST_F(HTTPValueTest, LinkCorrupt) {
   SharedString storage("h");
   HTTPValue value;
-  SimpleMetaData headers;
+  ResponseHeaders headers;
   ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
   storage->append("9999");
   ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));

@@ -20,7 +20,7 @@
 
 #include <stdio.h>
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/stack_buffer.h"
 
@@ -46,8 +46,8 @@ bool HttpResponseParser::Parse(FILE* stream) {
 
 bool HttpResponseParser::ParseChunk(const StringPiece& data) {
   if (reading_headers_) {
-    int consumed = response_headers_->ParseChunk(data, handler_);
-    if (response_headers_->headers_complete()) {
+    int consumed = parser_.ParseChunk(data, handler_);
+    if (parser_.headers_complete()) {
       // In this chunk we may have picked up some of the body.
       // Before we move to the next buffer, send it to the output
       // stream.

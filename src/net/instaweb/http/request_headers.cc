@@ -16,6 +16,7 @@
 
 #include "net/instaweb/http/public/request_headers.h"
 
+#include <vector>
 #include "base/logging.h"
 #include "net/instaweb/http/http.pb.h"  // for HttpRequestHeaders
 #include "net/instaweb/util/public/message_handler.h"
@@ -37,10 +38,23 @@ void RequestHeaders::Clear() {
   proto_->clear_method();
 }
 
+void RequestHeaders::CopyFrom(const RequestHeaders& other) {
+  map_.reset(NULL);
+  proto_->clear_header();
+
+  proto_->set_method(other.proto_->method());
+  proto_->set_major_version(other.proto_->major_version());
+  proto_->set_minor_version(other.proto_->minor_version());
+
+  for (int i = 0; i < other.NumAttributes(); ++i) {
+    Add(other.Name(i), other.Value(i));
+  }
+}
+
 std::string RequestHeaders::ToString() const {
   std::string str;
   StringWriter writer(&str);
-  WriteAsHttp(&writer, NULL);
+  WriteAsHttp("", &writer, NULL);
   return str;
 }
 
@@ -93,17 +107,32 @@ const char* RequestHeaders::method_string() const {
 }
 
 // Serialize meta-data to a binary stream.
-bool RequestHeaders::WriteAsHttp(Writer* writer, MessageHandler* handler)
-    const {
+bool RequestHeaders::WriteAsHttp(
+    const StringPiece& url, Writer* writer, MessageHandler* handler) const {
   bool ret = true;
-  char buf[100];
-  snprintf(buf, sizeof(buf), "HTTP/%d.%d %s ",
-           major_version(), minor_version(), method_string());
+  std::string buf = StringPrintf("%s %s HTTP/%d.%d\r\n",
+                                  method_string(), url.as_string().c_str(),
+                                  major_version(), minor_version());
   ret &= writer->Write(buf, handler);
-  ret &= writer->Write("\r\n", handler);
   ret &= Headers<HttpRequestHeaders>::WriteAsHttp(writer, handler);
   return ret;
 }
 
+bool RequestHeaders::AcceptsGzip() const {
+  CharStarVector v;
+  if (Lookup(HttpAttributes::kAcceptEncoding, &v)) {
+    for (int i = 0, nv = v.size(); i < nv; ++i) {
+      std::vector<StringPiece> encodings;
+      SplitStringPieceToVector(v[i], ",", &encodings, true);
+      for (int j = 0, nencodings = encodings.size(); j < nencodings; ++j) {
+        if (strcasecmp(encodings[j].as_string().c_str(),
+                       HttpAttributes::kGzip) == 0) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
 
 }  // namespace net_instaweb

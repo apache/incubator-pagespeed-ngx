@@ -40,7 +40,7 @@ class CssInlineFilterTest : public ResourceManagerTestBase {
         "<body>Hello, world!</body>\n";
 
     // Put original CSS file into our fetcher.
-    SimpleMetaData default_css_header;
+    ResponseHeaders default_css_header;
     resource_manager_->SetDefaultHeaders(&kContentTypeCss,
                                          &default_css_header);
     mock_url_fetcher_.SetResponse(css_url, default_css_header,

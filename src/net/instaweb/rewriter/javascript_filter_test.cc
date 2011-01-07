@@ -57,7 +57,7 @@ class JavascriptFilterTest : public ResourceManagerTestBase {
   }
 
   void InitTest(int64 ttl) {
-    InitMetaData(kOrigJsName, kContentTypeJavascript, kJsData, ttl);
+    InitResponseHeaders(kOrigJsName, kContentTypeJavascript, kJsData, ttl);
   }
 
   // Generate HTML loading 3 resources with the specified URLs
@@ -99,7 +99,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   // When we start, there are no mock fetchers, so we'll need to get it
   // from the cache or the disk.  Start with the cache.
   file_system_.Disable();
-  SimpleMetaData headers;
+  ResponseHeaders headers;
   resource_manager_->SetDefaultHeaders(&kContentTypeJavascript, &headers);
   http_cache_.Put(expected_rewritten_path_, headers, kJsMinData,
                   &message_handler_);

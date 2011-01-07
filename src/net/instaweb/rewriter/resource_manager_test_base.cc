@@ -48,9 +48,9 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   Variable* failed_filter_resource_fetches =
       stats.GetVariable(RewriteDriver::kResourceFetchConstructFailures);
 
-  SimpleMetaData request_headers;
+  RequestHeaders request_headers;
   // TODO(sligocki): We should set default request headers.
-  SimpleMetaData response_headers;
+  ResponseHeaders response_headers;
   std::string response_contents;
   StringWriter response_writer(&response_contents);
   DummyCallback callback(true);

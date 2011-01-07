@@ -19,7 +19,7 @@
 #define NET_INSTAWEB_APACHE_SERF_ASYNC_CALLBACK_H_
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/url_async_fetcher.h"
 
 namespace net_instaweb {
@@ -27,7 +27,7 @@ namespace net_instaweb {
 // Class to help run an asynchronous fetch synchronously with a timeout.
 class SerfAsyncCallback : public UrlAsyncFetcher::Callback {
  public:
-  SerfAsyncCallback(MetaData* response_headers, Writer* writer);
+  SerfAsyncCallback(ResponseHeaders* response_headers, Writer* writer);
   virtual ~SerfAsyncCallback();
   virtual void Done(bool success);
 
@@ -39,7 +39,7 @@ class SerfAsyncCallback : public UrlAsyncFetcher::Callback {
   // by this Callback class, which will forward the output and headers
   // to the caller *if* it has not been released by the time the callback
   // is called.
-  MetaData* response_headers() { return &response_headers_buffer_; }
+  ResponseHeaders* response_headers() { return &response_headers_buffer_; }
   Writer* writer() { return writer_.get(); }
 
   // When the 'owner' of this callback -- the code that calls 'new' --
@@ -60,8 +60,8 @@ class SerfAsyncCallback : public UrlAsyncFetcher::Callback {
   bool done_;
   bool success_;
   bool released_;
-  SimpleMetaData response_headers_buffer_;
-  MetaData* response_headers_;
+  ResponseHeaders response_headers_buffer_;
+  ResponseHeaders* response_headers_;
   scoped_ptr<Writer> writer_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfAsyncCallback);

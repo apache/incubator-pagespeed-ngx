@@ -29,7 +29,7 @@ MockUrlFetcher::~MockUrlFetcher() {
 }
 
 void MockUrlFetcher::SetResponse(const StringPiece& url,
-                                 const MetaData& response_header,
+                                 const ResponseHeaders& response_header,
                                  const StringPiece& response_body) {
   std::string url_string = url.as_string();
   // Delete any old response.
@@ -51,8 +51,8 @@ void MockUrlFetcher::Clear() {
 }
 
 bool MockUrlFetcher::StreamingFetchUrl(const std::string& url,
-                                       const MetaData& request_headers,
-                                       MetaData* response_headers,
+                                       const RequestHeaders& request_headers,
+                                       ResponseHeaders* response_headers,
                                        Writer* response_writer,
                                        MessageHandler* message_handler) {
   bool ret = false;

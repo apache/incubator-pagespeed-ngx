@@ -17,12 +17,13 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/http_cache.h"
+
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/meta_data.h"
 #include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/simple_meta_data.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -48,7 +49,7 @@ const char HTTPCache::kCacheInserts[] = "cache_inserts";
 
 HTTPCache::~HTTPCache() {}
 
-bool HTTPCache::IsCurrentlyValid(const MetaData& headers, int64 now_ms) {
+bool HTTPCache::IsCurrentlyValid(const ResponseHeaders& headers, int64 now_ms) {
   if (force_caching_) {
     return true;
   }
@@ -66,12 +67,12 @@ bool HTTPCache::IsCurrentlyValid(const MetaData& headers, int64 now_ms) {
   return false;
 }
 
-bool HTTPCache::IsAlreadyExpired(const MetaData& headers) {
+bool HTTPCache::IsAlreadyExpired(const ResponseHeaders& headers) {
   return !IsCurrentlyValid(headers, timer_->NowMs());
 }
 
 HTTPCache::FindResult HTTPCache::Find(
-    const std::string& key, HTTPValue* value, MetaData* headers,
+    const std::string& key, HTTPValue* value, ResponseHeaders* headers,
     MessageHandler* handler) {
   SharedString cache_buffer;
 
@@ -114,13 +115,12 @@ HTTPCache::FindResult HTTPCache::Find(
 
 void HTTPCache::RememberNotCacheable(const std::string& key,
                                      MessageHandler* handler) {
-  SimpleMetaData headers;
+  ResponseHeaders headers;
   headers.set_status_code(HttpStatus::kRememberNotFoundStatusCode);
   headers.Add(HttpAttributes::kCacheControl, kRememberNotFoundCacheControl);
   int64 now_ms = timer_->NowMs();
   headers.UpdateDateHeader(HttpAttributes::kDate, now_ms);
   headers.ComputeCaching();
-  headers.set_headers_complete(true);
   Put(key, headers, "", handler);
 }
 
@@ -140,7 +140,7 @@ void HTTPCache::Put(const std::string& key, HTTPValue* value,
   PutHelper(key, timer_->NowUs(), value, handler);
 }
 
-void HTTPCache::Put(const std::string& key, const MetaData& headers,
+void HTTPCache::Put(const std::string& key, const ResponseHeaders& headers,
                     const StringPiece& content,
                     MessageHandler* handler) {
   int64 start_us = timer_->NowUs();
