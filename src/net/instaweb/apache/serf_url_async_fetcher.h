@@ -21,9 +21,9 @@
 #include <list>
 #include <map>
 #include "base/basictypes.h"
-#include "net/instaweb/apache/url_pollable_async_fetcher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/url_pollable_async_fetcher.h"
 
 struct apr_pool_t;
 struct serf_context_t;

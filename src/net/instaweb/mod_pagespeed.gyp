@@ -112,6 +112,7 @@
 #        'util/stdio_file_system_test.cc',
         'util/string_util_test.cc',
         'util/symbol_table_test.cc',
+        'util/sync_fetcher_adapter_test.cc',
 #        'util/threadsafe_cache_test.cc',
         'util/time_util_test.cc',
         'util/url_escaper_test.cc',

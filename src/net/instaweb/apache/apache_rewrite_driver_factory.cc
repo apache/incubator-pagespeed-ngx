@@ -21,13 +21,13 @@
 #include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
-#include "net/instaweb/apache/serf_url_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/sync_fetcher_adapter.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 
@@ -118,8 +118,8 @@ UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::SubResourceFetcher() {
 UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
   if (serf_url_fetcher_ == NULL) {
     DefaultAsyncUrlFetcher();  // Create async fetcher if necessary.
-    serf_url_fetcher_ = new SerfUrlFetcher(
-        fetcher_time_out_ms_, serf_url_async_fetcher_);
+    serf_url_fetcher_ = new SyncFetcherAdapter(
+        timer(), fetcher_time_out_ms_, serf_url_async_fetcher_);
   }
   return serf_url_fetcher_;
 }

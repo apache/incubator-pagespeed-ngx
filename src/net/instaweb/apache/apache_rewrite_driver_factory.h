@@ -30,7 +30,7 @@ namespace net_instaweb {
 
 class AprStatistics;
 class SerfUrlAsyncFetcher;
-class SerfUrlFetcher;
+class SyncFetcherAdapter;
 class UrlPollableAsyncFetcher;
 
 // Creates an Apache RewriteDriver.
@@ -109,7 +109,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   server_rec* server_rec_;
   scoped_ptr<AbstractMutex> cache_mutex_;
   scoped_ptr<AbstractMutex> rewrite_drivers_mutex_;
-  SerfUrlFetcher* serf_url_fetcher_;
+  SyncFetcherAdapter* serf_url_fetcher_;
   SerfUrlAsyncFetcher* serf_url_async_fetcher_;
   AprStatistics* statistics_;
 

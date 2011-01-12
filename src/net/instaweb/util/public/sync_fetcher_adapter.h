@@ -12,21 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NET_INSTAWEB_APACHE_SERF_URL_FETCHER_H_
-#define NET_INSTAWEB_APACHE_SERF_URL_FETCHER_H_
+// This permits the use of any UrlPollableAsyncFetcher as a synchronous fetcher
+
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_SYNC_FETCHER_ADAPTER_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_SYNC_FETCHER_ADAPTER_H_
 
 #include <string>
 #include "base/basictypes.h"
-#include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/util/public/url_fetcher.h"
+#include "net/instaweb/util/public/url_pollable_async_fetcher.h"
 
 namespace net_instaweb {
 
-class SerfUrlFetcher : public UrlFetcher {
+class Timer;
+
+class SyncFetcherAdapter : public UrlFetcher {
  public:
-  SerfUrlFetcher(int64 fetcher_timeout_ms,
-                 SerfUrlAsyncFetcher* async_fetcher);
-  virtual ~SerfUrlFetcher();
+  // Note: the passed in async fetcher should use a timeout similar to
+  // fetcher_timeout_ms (or none at all)
+  SyncFetcherAdapter(Timer* timer,
+                     int64 fetcher_timeout_ms,
+                     UrlPollableAsyncFetcher* async_fetcher);
+  virtual ~SyncFetcherAdapter();
   virtual bool StreamingFetchUrl(const std::string& url,
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
@@ -34,12 +41,14 @@ class SerfUrlFetcher : public UrlFetcher {
                                  MessageHandler* message_handler);
 
  private:
+  Timer* timer_;
   int64 fetcher_timeout_ms_;
-  SerfUrlAsyncFetcher* async_fetcher_;
+  UrlPollableAsyncFetcher* async_fetcher_;
 
-  DISALLOW_COPY_AND_ASSIGN(SerfUrlFetcher);
+  DISALLOW_COPY_AND_ASSIGN(SyncFetcherAdapter);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_SERF_URL_FETCHER_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_SYNC_FETCHER_ADAPTER_H_
+

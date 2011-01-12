@@ -1,20 +1,19 @@
-/**
- * Copyright 2010 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
+// Copyright 2010 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 // Author: jmarantz@google.com (Joshua Marantz)
+//         jmaessen@google.com (Jan-Willem Maessen)
 
 #include "net/instaweb/util/public/wildcard.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -24,127 +23,200 @@ namespace net_instaweb {
 const char Wildcard::kMatchAny = '*';
 const char Wildcard::kMatchOne = '?';
 
-Wildcard::Wildcard(const StringPiece& wildcard_spec)
-    : storage_(wildcard_spec.data(), wildcard_spec.size()) {
-  InitFromStorage();
+Wildcard::Wildcard(const StringPiece& wildcard_spec) {
+  InitFromSpec(wildcard_spec);
 }
 
-void Wildcard::InitFromStorage() {
-  // Pre-scan the wildcard spec into an array of StringPieces.  We will
-  // copy the original string spec into storage_ but that will only be
-  // backing-store for the StringPieces.
-  //
-  // E.g. we will transform "a?c*def**?xyz?" into
-  //   {"a", "?", "c", "*", "def", "*", "?", "xyz", "?"}
-  // Note that multiple consecutive '*' will be collapsed into one.
-  //
-  // TODO(jmarantz): jmaessen suggests moving ? ahead of * as it will
-  // reduce code complexity and the cost of backtracking.
-  int num_pieces = 0;
-  char prev_c = '\0';
-  for (int i = 0, n = storage_.size(); i < n; ++i) {
-    char c = storage_[i];
-    bool add_to_previous = (num_pieces != 0);
-    bool skip = false;
-    if (add_to_previous) {
-      if (c == kMatchAny) {
-        add_to_previous = false;
-        skip = (prev_c == kMatchAny);  // multiple * in a row means nothing
-      } else if (c == kMatchOne) {
-        add_to_previous = false;
-      } else {
-        add_to_previous = ((prev_c != kMatchAny) && (prev_c != kMatchOne));
-      }
-    }
-    if (add_to_previous) {
-      pieces_[num_pieces - 1] = StringPiece(pieces_[num_pieces - 1].data(),
-                                            pieces_[num_pieces - 1].size() + 1);
-    } else if (!skip) {
-      pieces_.push_back(StringPiece(storage_.data() + i, 1));
-      ++num_pieces;
-    }
-    prev_c = c;
-  }
+Wildcard::Wildcard(const std::string& storage, int num_blocks,
+                   int last_block_offset, bool is_simple)
+    : storage_(storage),
+      num_blocks_(num_blocks),
+      last_block_offset_(last_block_offset),
+      is_simple_(is_simple) {
 }
 
-bool Wildcard::MatchHelper(int piece_index, const StringPiece& str) {
-  bool prev_was_any = false;
-  size_t num_skips_after_any = 0;
-  size_t str_index = 0;
-
-  // Walk through the pieces parsed out in the constructor, matching them
-  // against str.  Our algorithm will walk linealy through str, although we
-  // may need to backtrack if there are multiple matches for the segment
-  // following a *.
-  for (int num_pieces = pieces_.size(); piece_index < num_pieces; ++piece_index) {
-    StringPiece piece = pieces_[piece_index];
-    if (piece[0] == kMatchAny) {
-      prev_was_any = true;
-    } else if (piece[0] == kMatchOne) {
-      if (prev_was_any) {
-        ++num_skips_after_any;
-      } else {
-        ++str_index;
-        if (str_index > str.size()) {
-          return false;
-        }
-      }
-    } else if (prev_was_any) {
-      str_index += num_skips_after_any;
-      if (str_index > str.size()) {
-        return false;
-      }
-
-      // Now we have the unenviable task of figuring out how many
-      // characters of 'str' to swallow.  Consider this complexity.
-      //    CHECK(Wildcard("*abcd?").Match("abcabcdabcdabcdabcde"));
-      // If we greedily match the "a" in the wildcard against any of
-      // the first 4 'a's in the string then we are screwed -- we
-      // won't find the d.  Even if we match against the first or
-      // second "abcd" we will get a failure because we will have
-      // string left, but no more pattern.
-      //
-      // There are probably more efficient ways to do this, such as in
-      // http://code.google.com/p/re2/, but we will, for short-term
-      // expediency, use recursion to search all the possible matches
-      // for the current piece in str.
-      while ((str_index = str.find(piece, str_index)) != StringPiece::npos) {
-        if (MatchHelper(piece_index + 1,
-                        str.substr(str_index + piece.size()))) {
-          return true;
-        }
-        ++str_index;
-      }
-      return false;
-    } else if ((str.size() - str_index) < piece.size()) {
-      return false;
-    } else if (str.substr(str_index, piece.size()) == piece) {
-      str_index += piece.size();
+// Pre-scan the wildcard spec into storage_, canonicalizing its representation
+// as we go.  We view the input wildcard_spec as a series of possibly-empty
+// blocks each of which contains a mix of literal characters and kMatchOne (?),
+// separated by kMatchAny (*).  Each block matches a fixed number of characters
+// in a candidate string.
+//
+// We transform this into an internal representation (in storage_) that contains
+// a series of blocks each *terminated* by a *.  This means that we end up
+// adding a sentinel * at the end of the string, and that our interpretation of
+// * changes: it now represents a block terminator, rather than a sequence of
+// arbitrary characters.  This transformation simplifies termination testing in
+// the inner match loop (MatchBlock).
+//
+// Another way to think about this is that we could use a special 257th
+// separator character, and rewrite the input into blocks terminated by the
+// separator character.  Rather than using this nonexistent character, we decide
+// to reuse * instead---at the price of a bit of potential confusion.
+//
+// We also observe that the sub-pattern *? matches exactly the same set of
+// strings as ?*, and that ** matches the same set of strings as *.  We use this
+// to eliminate empty blocks (except at the start and end of string), and to
+// make sure that every block except the first begins with a literal character
+// and not a ? (by shifting the ? to the end of the previous block).  This
+// permits a fast search for start of block during matching using memchr.
+//
+// We also remember the start of the last block in storage_, as the first and
+// last blocks must match at an exact position in a string; the middle blocks
+// are treated differently, as their position in a matched string can vary.
+// After preprocessing, only the first or last block may be empty (corresponding
+// to a leading or trailing * respectively).
+void Wildcard::InitFromSpec(const StringPiece& wildcard_spec) {
+  storage_.reserve(wildcard_spec.size() + 1);
+  num_blocks_ = 1;
+  last_block_offset_ = 0;
+  is_simple_ = true;
+  bool last_was_any = false;
+  for (size_t i = 0; i < wildcard_spec.size(); ++i) {
+    char c = wildcard_spec[i];
+    if (c == kMatchAny) {
+      // Note that this in effect deletes redundant *s
+      // (by simply setting last_was_any more than once).
+      last_was_any = true;
+      is_simple_ = false;
+    } else if (c == kMatchOne) {
+      // Move ? to end of previous block by dint of adding it to pattern
+      // without inserting * first if last_was_any is set.
+      // So a? => a? but a*? => a?*.  This means that * is always followed by
+      // a literal char or end of string after preprocessing.
+      storage_.push_back(c);
+      is_simple_ = false;
     } else {
-      return false;
+      if (last_was_any) {
+        ++num_blocks_;
+        storage_.push_back(kMatchAny);
+        last_block_offset_ = storage_.size();
+        last_was_any = false;
+      }
+      storage_.push_back(c);
     }
   }
-  if (prev_was_any) {
-    return (str.size() >= num_skips_after_any);
+  // Clean up after trailing * (leading to empty last block)
+  if (last_was_any) {
+    ++num_blocks_;
+    storage_.push_back(kMatchAny);
+    last_block_offset_ = storage_.size();
   }
-  return (str_index == str.size());
+  // Insert sentinel * at end of storage_ to make inner match loop simpler.
+  storage_.push_back(kMatchAny);
 }
 
-bool Wildcard::IsSimple() const {
-  if (pieces_.size() == 0) {
-    return true;
-  }
-  if (pieces_.size() != 1) {
+namespace {
+
+// Match pat block (terminated by a *) against str, return offset of first
+// mismatch or of the * in pat.  Requires that str be long enough to
+// contain chars in block (not counting final *).
+int MatchBlock(const char* pat, const char* str) {
+  int pos;
+  for (pos = 0 ;
+       pat[pos] != Wildcard::kMatchAny &&
+       (pat[pos] == str[pos] || pat[pos] == Wildcard::kMatchOne); ++pos) { }
+  return pos;
+}
+
+}  // namespace
+
+bool Wildcard::Match(const StringPiece& actual) {
+  // We match a block at a time, checking incrementally that there are always
+  // enough characters remaining in actual to match the remaining blocks in
+  // storage_.  We do this by maintaining "chars_to_skip", which counts the
+  // remaining number of characters that must be skipped over between blocks.
+  // We start by matching the first and last blocks, as those must be located at
+  // the beginning and end of the string respectively.  We then match the middle
+  // blocks left to right, using memchr() to identify candidate positions for
+  // matching.  We only need to match a given block once, but that might require
+  // multiple match attempts.  The leftmost match is sufficient because our only
+  // wildcards are ? and *, which match arbitrary characters.
+
+  // Overall length check.  Guarantees that the first and last pattern blocks
+  // will match without length checking, since they're matched at fixed
+  // positions in actual and we don't skip any chars.
+  int chars_in_pat = storage_.size() - num_blocks_;
+  int chars_to_skip = actual.size() - chars_in_pat;
+  if (chars_to_skip < 0) {
     return false;
   }
-  StringPiece piece = pieces_[0];
-  CHECK(!piece.empty());
-  char ch = piece[0];
-  return ((ch != kMatchAny) && (ch != kMatchOne));
+  const char* pat = storage_.data();
+  const char* str = actual.data();
+  int blocks_left = num_blocks_;
+  // Match last block.  This block can't be shifted wrt actual.
+  int last_block_size = storage_.size() - last_block_offset_ - 1;
+  const char* pat_last_block = pat + last_block_offset_;
+  const char* str_last_block = str + actual.size() - last_block_size;
+  int ofs = MatchBlock(pat_last_block, str_last_block);
+  if (pat_last_block[ofs] != kMatchAny) {
+    return false;
+  }
+  if (--blocks_left == 0) {
+    // There was only one block (the last), and it matched.
+    // Succeed if entire string was consumed.
+    return (chars_to_skip == 0);
+  }
+  // Match first block.  This block can't be shifted wrt actual.
+  ofs = MatchBlock(pat, str);
+  if (pat[ofs] != kMatchAny) {
+    return false;
+  }
+  str += ofs;
+  pat += ofs + 1;  // Skip leading *
+  --blocks_left;
+  // Match all remaining blocks, left to right.  We try candidate
+  // positions that match the first char in each block.
+  while (blocks_left > 0) {
+    // Here are our invariants (the latter two guaranteed by
+    // initialization).
+    DCHECK_EQ(kMatchAny, pat[-1]);
+    DCHECK_NE(kMatchAny, pat[ 0]);
+    DCHECK_NE(kMatchOne, pat[ 0]);
+    // The number of characters left to match in the pattern plus the remaining
+    // chars_to_skip must be equal to the number of characters remaining in the
+    // string.  This invariant is guaranteed by reducing chars_to_skip when we
+    // skip chars in str.
+    DCHECK_EQ(chars_to_skip + (pat_last_block - pat) - blocks_left,
+              str_last_block - str);
+    // Advance str to first occurrence of pat[0]; that's next
+    // candidate match position.
+    const char* new_str =
+        static_cast<const char*>(memchr(str, pat[0], str_last_block - str));
+    if (new_str == NULL) {
+      // First char in block wasn't found, so we can't match.
+      return false;
+    }
+    // memchr skipped over chars in str.  Adjust chars_to_skip to match.
+    chars_to_skip -= (new_str - str);
+    if (chars_to_skip < 0) {
+      // More chars left in remaining blocks than in str.
+      return false;
+    }
+    str = new_str;
+    // Now check for a match here.  We already know pat[0] == str[0].
+    ofs = 1 + MatchBlock(pat + 1, str + 1);
+    if (pat[ofs] != kMatchAny) {
+      // We failed to match leftmost occurence of *pat in str.
+      // Move further right in str and try to match current block again.
+      ++str;
+      --chars_to_skip;
+      if (chars_to_skip < 0) {
+        // With new shift, once again more chars left in remaining blocks than
+        // in str.
+        return false;
+      }
+    } else {
+      // Matched.  Advance to next block of pattern.
+      str += ofs;
+      pat += ofs + 1;                 // Skip the *
+      --blocks_left;
+    }
+  }
+  return true;
 }
 
 Wildcard* Wildcard::Duplicate() const {
-  return new Wildcard(storage_);
+  return new Wildcard(storage_, num_blocks_, last_block_offset_, is_simple_);
 }
 
 }  // namespace net_instaweb

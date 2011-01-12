@@ -15,8 +15,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#ifndef NET_INSTAWEB_APACHE_SERF_ASYNC_CALLBACK_H_
-#define NET_INSTAWEB_APACHE_SERF_ASYNC_CALLBACK_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_SYNC_FETCHER_ADAPTER_CALLBACK_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_SYNC_FETCHER_ADAPTER_CALLBACK_H_
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -25,10 +25,10 @@
 namespace net_instaweb {
 
 // Class to help run an asynchronous fetch synchronously with a timeout.
-class SerfAsyncCallback : public UrlAsyncFetcher::Callback {
+class SyncFetcherAdapterCallback : public UrlAsyncFetcher::Callback {
  public:
-  SerfAsyncCallback(ResponseHeaders* response_headers, Writer* writer);
-  virtual ~SerfAsyncCallback();
+  SyncFetcherAdapterCallback(ResponseHeaders* response_headers, Writer* writer);
+  virtual ~SyncFetcherAdapterCallback();
   virtual void Done(bool success);
 
   // When implementing a synchronous fetch with a timeout based on an
@@ -64,9 +64,9 @@ class SerfAsyncCallback : public UrlAsyncFetcher::Callback {
   ResponseHeaders* response_headers_;
   scoped_ptr<Writer> writer_;
 
-  DISALLOW_COPY_AND_ASSIGN(SerfAsyncCallback);
+  DISALLOW_COPY_AND_ASSIGN(SyncFetcherAdapterCallback);
 };
 
 }  // namespace
 
-#endif  // NET_INSTAWEB_APACHE_SERF_ASYNC_CALLBACK_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_SYNC_FETCHER_ADAPTER_CALLBACK_H_

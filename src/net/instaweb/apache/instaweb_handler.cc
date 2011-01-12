@@ -27,7 +27,6 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/instaweb_context.h"
-#include "net/instaweb/apache/serf_async_callback.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
@@ -37,6 +36,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/sync_fetcher_adapter_callback.h"
 #include "http_config.h"
 #include "http_core.h"
 #include "http_log.h"
@@ -122,7 +122,7 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
   std::string output;  // TODO(jmarantz): quit buffering resource output
   StringWriter writer(&output);
   MessageHandler* message_handler = factory->message_handler();
-  SerfAsyncCallback* callback = new SerfAsyncCallback(
+  SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
       &response_headers, &writer);
   bool handled = rewrite_driver->FetchResource(
       url, request_headers, callback->response_headers(), callback->writer(),

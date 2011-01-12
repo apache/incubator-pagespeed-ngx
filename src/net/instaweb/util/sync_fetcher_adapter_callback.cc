@@ -15,7 +15,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#include "net/instaweb/apache/serf_async_callback.h"
+#include "net/instaweb/util/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
@@ -24,7 +24,7 @@ namespace {
 
 class ProtectedWriter : public Writer {
  public:
-  ProtectedWriter(SerfAsyncCallback* callback, Writer* orig_writer)
+  ProtectedWriter(SyncFetcherAdapterCallback* callback, Writer* orig_writer)
       : callback_(callback),
         orig_writer_(orig_writer) {
   }
@@ -52,7 +52,7 @@ class ProtectedWriter : public Writer {
   }
 
  private:
-  SerfAsyncCallback* callback_;
+  SyncFetcherAdapterCallback* callback_;
   Writer* orig_writer_;
 
   DISALLOW_COPY_AND_ASSIGN(ProtectedWriter);
@@ -60,8 +60,8 @@ class ProtectedWriter : public Writer {
 
 }  // namespace
 
-SerfAsyncCallback::SerfAsyncCallback(ResponseHeaders* response_headers,
-                                     Writer* writer)
+SyncFetcherAdapterCallback::SyncFetcherAdapterCallback(
+    ResponseHeaders* response_headers, Writer* writer)
     : done_(false),
       success_(false),
       released_(false),
@@ -69,10 +69,10 @@ SerfAsyncCallback::SerfAsyncCallback(ResponseHeaders* response_headers,
       writer_(new ProtectedWriter(this, writer)) {
 }
 
-SerfAsyncCallback::~SerfAsyncCallback() {
+SyncFetcherAdapterCallback::~SyncFetcherAdapterCallback() {
 }
 
-void SerfAsyncCallback::Done(bool success) {
+void SyncFetcherAdapterCallback::Done(bool success) {
   done_ = true;
   success_ = success;
   if (released_) {
@@ -82,7 +82,7 @@ void SerfAsyncCallback::Done(bool success) {
   }
 }
 
-void SerfAsyncCallback::Release() {
+void SyncFetcherAdapterCallback::Release() {
   released_ = true;
   if (done_) {
     delete this;

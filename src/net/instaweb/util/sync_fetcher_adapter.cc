@@ -12,45 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "net/instaweb/apache/serf_url_fetcher.h"
+#include "net/instaweb/util/public/sync_fetcher_adapter.h"
 
 #include <algorithm>
 #include "base/basictypes.h"
-#include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/serf_async_callback.h"
+#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/sync_fetcher_adapter_callback.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
-SerfUrlFetcher::SerfUrlFetcher(int64 fetcher_timeout_ms,
-                               SerfUrlAsyncFetcher* async_fetcher)
-    : fetcher_timeout_ms_(fetcher_timeout_ms),
+SyncFetcherAdapter::SyncFetcherAdapter(Timer* timer,
+                                       int64 fetcher_timeout_ms,
+                                       UrlPollableAsyncFetcher* async_fetcher)
+    : timer_(timer),
+      fetcher_timeout_ms_(fetcher_timeout_ms),
       async_fetcher_(async_fetcher) {
 }
 
-SerfUrlFetcher::~SerfUrlFetcher() {
+SyncFetcherAdapter::~SyncFetcherAdapter() {
 }
 
-bool SerfUrlFetcher::StreamingFetchUrl(const std::string& url,
-                                       const RequestHeaders& request_headers,
-                                       ResponseHeaders* response_headers,
-                                       Writer* fetched_content_writer,
-                                       MessageHandler* message_handler) {
-  SerfAsyncCallback* callback = new SerfAsyncCallback(
+bool SyncFetcherAdapter::StreamingFetchUrl(
+    const std::string& url, const RequestHeaders& request_headers,
+    ResponseHeaders* response_headers, Writer* fetched_content_writer,
+    MessageHandler* message_handler) {
+  SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
       response_headers, fetched_content_writer);
   async_fetcher_->StreamingFetch(
       url, request_headers, callback->response_headers(),
       callback->writer(), message_handler, callback);
 
-  // We are counting on the serf async fetcher implementing its own timeouts,
-  // using the same timeout that we have in this class.  To avoid a race
-  // we double the timeout in the limit set here and CHECK that the
-  // callback got called by the time our timeout loop exits.
-  AprTimer timer;
-  int64 start_ms = timer.NowMs();
+  // We are counting on the async fetcher having a timeout (if any)
+  // that's similar to the timeout that we have in this class.
+  // To avoid a race we double the timeout in the limit set here and
+  // CHECK that the callback got called by the time our timeout loop exits.
+  int64 start_ms = timer_->NowMs();
   int64 now_ms = start_ms;
   for (int64 end_ms = now_ms + 2 * fetcher_timeout_ms_;
        !callback->done() && (now_ms < end_ms);
-       now_ms = timer.NowMs()) {
+       now_ms = timer_->NowMs()) {
     int64 remaining_us = std::max(static_cast<int64>(0),
                                   1000 * (end_ms - now_ms));
     async_fetcher_->Poll(remaining_us);
