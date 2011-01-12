@@ -50,6 +50,7 @@ OutputResource::OutputResource(ResourceManager* manager,
       output_file_(NULL),
       writing_complete_(false),
       generated_(false),
+      optimizable_(true),
       resolved_base_(resolved_base.data(), resolved_base.size()),
       full_name_() {
   full_name_.CopyFrom(full_name);
@@ -116,7 +117,7 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
 
 bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
   CHECK(!writing_complete_);
-  value_.SetHeaders(meta_data_);
+  value_.SetHeaders(&meta_data_);
   Hasher* hasher = resource_manager_->hasher();
   full_name_.set_hash(hasher->Hash(contents()));
   writing_complete_ = true;
@@ -223,7 +224,7 @@ bool OutputResource::Load(MessageHandler* handler) {
              ((nread = file->Read(buf, sizeof(buf), handler)) != 0)) {
         num_consumed = parser.ParseChunk(StringPiece(buf, nread), handler);
       }
-      value_.SetHeaders(meta_data_);
+      value_.SetHeaders(&meta_data_);
       writing_complete_ = value_.Write(
           StringPiece(buf + num_consumed, nread - num_consumed),
           handler);

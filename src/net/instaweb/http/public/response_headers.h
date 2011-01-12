@@ -71,9 +71,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   void SetLastModified(int64 last_modified_ms);
 
   // TODO(jmarantz): consider an alternative representation
-  bool headers_complete() const { return has_major_version(); }
+  bool headers_complete() const { return has_status_code(); }
 
   int status_code() const;
+  bool has_status_code() const;
   int64 timestamp_ms() const;
   bool has_timestamp_ms() const;
   void set_status_code(const int code);

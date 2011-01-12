@@ -97,6 +97,10 @@ void ResponseHeaders::set_status_code(int code) {
   proto_->set_status_code(code);
 }
 
+bool ResponseHeaders::has_status_code() const {
+  return proto_->has_status_code();
+}
+
 void ResponseHeaders::set_reason_phrase(const StringPiece& reason_phrase) {
   proto_->set_reason_phrase(reason_phrase.data(), reason_phrase.size());
 }

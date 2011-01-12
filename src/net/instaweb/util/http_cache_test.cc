@@ -93,7 +93,7 @@ TEST_F(HTTPCacheTest, PutGet) {
   http_cache_.SetStatistics(simple_stats_);
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "max-age=300");
-  http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
+  http_cache_.Put("mykey", &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query("mykey"));
@@ -142,7 +142,7 @@ TEST_F(HTTPCacheTest, RememberNotCacheable) {
 TEST_F(HTTPCacheTest, Uncacheable) {
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, NULL);
-  http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
+  http_cache_.Put("mykey", &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query("mykey"));
   HTTPValue value;
   HTTPCache::FindResult found = http_cache_.Find(
@@ -154,7 +154,7 @@ TEST_F(HTTPCacheTest, Uncacheable) {
 TEST_F(HTTPCacheTest, UncacheablePrivate) {
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "private, max-age=300");
-  http_cache_.Put("mykey", meta_data_in, "content", &message_handler_);
+  http_cache_.Put("mykey", &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query("mykey"));
   HTTPValue value;
   HTTPCache::FindResult found = http_cache_.Find(

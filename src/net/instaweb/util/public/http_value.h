@@ -45,7 +45,10 @@ class HTTPValue : public Writer {
   // contents are set (using the streaming interface Write).
   //
   // If Clear() is called, then SetHeaders() can be called once again.
-  void SetHeaders(const ResponseHeaders& headers);
+  //
+  // A non-const pointer is required for the response headers so that
+  // the cache fields can be updated if necessary.
+  void SetHeaders(ResponseHeaders* headers);
 
   // Writes contents into the HTTPValue object.  Write can be called
   // multiple times to append more data, and can be called before

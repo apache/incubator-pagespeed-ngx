@@ -30,7 +30,7 @@ bool DataUrlInputResource::Load(MessageHandler* message_handler) {
                            &decoded_contents_) &&
       value_.Write(decoded_contents_, message_handler)) {
     resource_manager_->SetDefaultHeaders(type_, &meta_data_);
-    value_.SetHeaders(meta_data_);
+    value_.SetHeaders(&meta_data_);
   }
   return loaded();
 }

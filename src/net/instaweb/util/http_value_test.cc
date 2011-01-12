@@ -67,7 +67,7 @@ TEST_F(HTTPValueTest, HeadersFirst) {
   HTTPValue value;
   ResponseHeaders headers, check_headers;
   FillResponseHeaders(&headers);
-  value.SetHeaders(headers);
+  value.SetHeaders(&headers);
   value.Write("body", &message_handler_);
   StringPiece body;
   ASSERT_TRUE(value.ExtractContents(&body));
@@ -81,7 +81,7 @@ TEST_F(HTTPValueTest, ContentsFirst) {
   ResponseHeaders headers, check_headers;
   FillResponseHeaders(&headers);
   value.Write("body", &message_handler_);
-  value.SetHeaders(headers);
+  value.SetHeaders(&headers);
   StringPiece body;
   ASSERT_TRUE(value.ExtractContents(&body));
   EXPECT_EQ("body", body.as_string());
@@ -94,7 +94,7 @@ TEST_F(HTTPValueTest, EmptyContentsFirst) {
   ResponseHeaders headers, check_headers;
   FillResponseHeaders(&headers);
   value.Write("", &message_handler_);
-  value.SetHeaders(headers);
+  value.SetHeaders(&headers);
   StringPiece body;
   ASSERT_TRUE(value.ExtractContents(&body));
   EXPECT_EQ("", body.as_string());
@@ -148,7 +148,7 @@ TEST_F(HTTPValueTest, TestShare) {
     HTTPValue value;
     ResponseHeaders headers, check_headers;
     FillResponseHeaders(&headers);
-    value.SetHeaders(headers);
+    value.SetHeaders(&headers);
     value.Write("body", &message_handler_);
     storage = *value.share();
   }

@@ -72,6 +72,11 @@ const int64 kGeneratedMaxAgeSec = Timer::kYearMs / Timer::kSecondMs;
 // caches whenever pagespeed is upgraded.
 const char kCacheKeyPrefix[] = "rname/";
 
+// In the case when we want to remember that it was not beneficial to produce
+// a certain resource we include this header in the metadata of the entry
+// in the above cache.
+const char kCacheUnoptimizableHeader[] = "X-ModPagespeed-Unoptimizable";
+
 }  // namespace
 
 const int ResourceManager::kNotSharded = -1;
@@ -311,12 +316,17 @@ OutputResource* ResourceManager::CreateOutputResourceWithPath(
   if ((http_cache_->Find(name_key, &value, &meta_data, handler)
        == HTTPCache::kFound) &&
       value.ExtractContents(&hash_extension)) {
-    ResourceNamer hash_ext;
-    if (hash_ext.DecodeHashExt(hash_extension)) {
-      resource->SetHash(hash_ext.hash());
-      // Note that the '.' must be included in the suffix
-      // TODO(jmarantz): remove this from the suffix.
-      resource->set_suffix(StrCat(".", hash_ext.ext()));
+    CharStarVector dummy;
+    if (meta_data.Lookup(kCacheUnoptimizableHeader, &dummy)) {
+      resource->set_optimizable(false);
+    } else {
+      ResourceNamer hash_ext;
+      if (hash_ext.DecodeHashExt(hash_extension)) {
+        resource->SetHash(hash_ext.hash());
+        // Note that the '.' must be included in the suffix
+        // TODO(jmarantz): remove this from the suffix.
+        resource->set_suffix(StrCat(".", hash_ext.ext()));
+      }
     }
   }
   return resource;
@@ -504,7 +514,7 @@ bool ResourceManager::FetchOutputResource(
         ret = true;
       } else if (ReadIfCached(output_resource, handler)) {
         content = output_resource->contents();
-        http_cache_->Put(url, *meta_data, content, handler);
+        http_cache_->Put(url, meta_data, content, handler);
         ret = ((writer == NULL) || writer->Write(content, handler));
       }
       // On the first iteration, obtain the lock if we don't have data.
@@ -537,6 +547,10 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
   SetDefaultHeaders(output->type(), meta_data);
   meta_data->SetStatusAndReason(status_code);
 
+  // The URL for any resource we will write includes the hash of contents,
+  // so it can can live, essentially, forever. So compute this hash,
+  // and cache the output using meta_data's default headers which are to cache
+  // forever.
   scoped_ptr<OutputResource::OutputWriter> writer(output->BeginWrite(handler));
   bool ret = (writer != NULL);
   if (ret) {
@@ -544,40 +558,11 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
     ret &= output->EndWrite(writer.get(), handler);
     http_cache_->Put(output->url(), &output->value_, handler);
 
+    // If our URL is derived from some pre-existing URL (and not invented by
+    // us due to something like outlining), cache the mapping from original URL
+    // to the constructed one.
     if (!output->generated()) {
-      // Map the name of this resource to the fully expanded filename.  The
-      // name of the output resource is usually a function of how it is
-      // constructed from input resources.  For example, with combine_css,
-      // output->name() encodes all the component CSS filenames.  The filename
-      // this maps to includes the hash of the content.  Thus the two mappings
-      // have different lifetimes.
-      //
-      // The name->filename map expires when any of the origin files expire.
-      // When that occurs, fresh content must be read, and the output must
-      // be recomputed and re-hashed.
-      //
-      // However, the hashed output filename can live, essentially, forever.
-      // This is what we'll hash first as meta_data's default headers are
-      // to cache forever.
-
-      // Now we'll mutate meta_data to expire when the origin expires, and
-      // map the name to the hash.
-      int64 delta_ms = origin_expire_time_ms - http_cache_->timer()->NowMs();
-      int64 delta_sec = delta_ms / 1000;
-      if ((delta_sec > 0) || http_cache_->force_caching()) {
-        ResponseHeaders origin_meta_data;
-        SetDefaultHeaders(output->type(), &origin_meta_data);
-        std::string cache_control = StringPrintf(
-            "max-age=%ld",
-            static_cast<long>(delta_sec));  // NOLINT
-        origin_meta_data.RemoveAll(HttpAttributes::kCacheControl);
-        origin_meta_data.Add(HttpAttributes::kCacheControl, cache_control);
-        origin_meta_data.ComputeCaching();
-
-        std::string name_key = StrCat(kCacheKeyPrefix, output->name_key());
-        http_cache_->Put(name_key, origin_meta_data, output->hash_ext(),
-                         handler);
-      }
+      CacheComputedResourceMapping(output, origin_expire_time_ms, handler);
     }
   } else {
     // Note that we've already gotten a "could not open file" message;
@@ -587,6 +572,56 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
                      file_prefix_.c_str());
   }
   return ret;
+}
+
+void ResourceManager::WriteUnoptimizable(OutputResource* output,
+                                         int64 origin_expire_time_ms,
+                                         MessageHandler* handler) {
+  output->set_optimizable(false);
+  CacheComputedResourceMapping(output, origin_expire_time_ms, handler);
+}
+
+// Map the name of this resource to information on its contents:
+// either the fully expanded filename, or the fact that we don't want
+// to make this resource (!optimizable()).
+//
+// The name of the output resource is usually a function of how it is
+// constructed from input resources.  For example, with combine_css,
+// output->name() encodes all the component CSS filenames.  The filename
+// this maps to includes the hash of the content.
+//
+// The name->filename map expires when any of the origin files expire.
+// When that occurs, fresh content must be read, and the output must
+// be recomputed and re-hashed. We'll hence mutate meta_data to expire when the
+// origin expires
+//
+// TODO(morlovich) We should consider caching based on the input hash, too,
+// so we don't end redoing work when input resources don't change but have
+// short expiration.
+void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
+    int64 origin_expire_time_ms, MessageHandler* handler) {
+  int64 delta_ms = origin_expire_time_ms - http_cache_->timer()->NowMs();
+  int64 delta_sec = delta_ms / 1000;
+  if ((delta_sec > 0) || http_cache_->force_caching()) {
+    ResponseHeaders origin_meta_data;
+    SetDefaultHeaders(output->type(), &origin_meta_data);
+    std::string cache_control = StringPrintf(
+        "max-age=%ld",
+        static_cast<long>(delta_sec));  // NOLINT
+    origin_meta_data.RemoveAll(HttpAttributes::kCacheControl);
+    origin_meta_data.Add(HttpAttributes::kCacheControl, cache_control);
+    if (!output->optimizable()) {
+      origin_meta_data.Add(kCacheUnoptimizableHeader, "true");
+    }
+    origin_meta_data.ComputeCaching();
+
+    std::string name_key = StrCat(kCacheKeyPrefix, output->name_key());
+    std::string file_mapping;
+    if (output->optimizable()) {
+      file_mapping = output->hash_ext();
+    }
+    http_cache_->Put(name_key, &origin_meta_data, file_mapping, handler);
+  }
 }
 
 void ResourceManager::ReadAsync(Resource* resource,

@@ -78,7 +78,7 @@ void CacheUrlFetcher::AsyncFetch::UpdateCache() {
   ResponseHeaders* response = response_headers();
   if ((http_cache_->Query(url_.c_str()) == CacheInterface::kNotFound)) {
     if (force_caching_ || response->IsProxyCacheable()) {
-      value_.SetHeaders(*response);
+      value_.SetHeaders(response);
       http_cache_->Put(url_.c_str(), &value_, message_handler_);
     } else {
       // Leave value_ alone as we prep a cache entry to indicate that
@@ -98,7 +98,7 @@ void CacheUrlFetcher::AsyncFetch::UpdateCache() {
       remember_not_cached.Add("Cache-control", "max-age=300");
       remember_not_cached.Add(kRememberNotCached, "1");  // value doesn't matter
       dummy_value.Write("", message_handler_);
-      dummy_value.SetHeaders(remember_not_cached);
+      dummy_value.SetHeaders(&remember_not_cached);
       http_cache_->Put(url_.c_str(), &dummy_value, message_handler_);
     }
   }
@@ -166,7 +166,7 @@ bool CacheUrlFetcher::StreamingFetchUrl(
     if (ret) {
       if (force_caching_ || response->IsProxyCacheable()) {
         value.Clear();
-        value.SetHeaders(*response);
+        value.SetHeaders(response);
         value.Write(content, handler);
         http_cache_->Put(url.c_str(), &value, handler);
       }

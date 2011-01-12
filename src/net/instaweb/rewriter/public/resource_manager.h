@@ -224,6 +224,13 @@ class ResourceManager {
              const StringPiece& contents, OutputResource* output,
              int64 origin_expire_time_ms, MessageHandler* handler);
 
+  // Writes out a note that constructing given output resource is
+  // not beneficial, and hence should not be attempted until origin's expiration
+  // If your filter uses this, it should look at the ->optimizable() property
+  // of resources when transforming
+  void WriteUnoptimizable(OutputResource* output,
+                          int64 origin_expire_time_ms, MessageHandler* handler);
+
   // Load the resource if it is cached (or if it can be fetched quickly).
   // If not send off an asynchronous fetch and store the result in the cache.
   //
@@ -263,6 +270,16 @@ class ResourceManager {
 
  private:
   inline void IncrementResourceUrlDomainRejections();
+
+  // Writes out a cache entry telling us how to get to the processed version
+  // (output) of some resource given the original source URL and summary of the
+  // processing done, such as the filter code and any custom information
+  // stored by the filter which are all packed inside the ResourceNamer.
+  // This entry expires as soon as the origin does. If no optimization
+  // was possible, it records that fact.
+  void CacheComputedResourceMapping(OutputResource* output,
+                                    int64 origin_expire_time_ms,
+                                    MessageHandler* handler);
 
   std::string file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.

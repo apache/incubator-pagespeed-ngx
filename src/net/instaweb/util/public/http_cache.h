@@ -82,7 +82,10 @@ class HTTPCache {
   // Note that Put takes a non-const pointer for HTTPValue so it can
   // bump the reference count.
   void Put(const std::string& key, HTTPValue* value, MessageHandler* handler);
-  void Put(const std::string& key, const ResponseHeaders& headers,
+
+  // Note that Put takes a non-const pointer for ResponseHeaders* so it
+  // can update the caching fields prior to storing.
+  void Put(const std::string& key, ResponseHeaders* headers,
            const StringPiece& content, MessageHandler* handler);
 
   CacheInterface::KeyState Query(const std::string& key);

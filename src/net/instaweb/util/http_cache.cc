@@ -121,7 +121,7 @@ void HTTPCache::RememberNotCacheable(const std::string& key,
   int64 now_ms = timer_->NowMs();
   headers.UpdateDateHeader(HttpAttributes::kDate, now_ms);
   headers.ComputeCaching();
-  Put(key, headers, "", handler);
+  Put(key, &headers, "", handler);
 }
 
 void HTTPCache::PutHelper(const std::string& key, int64 now_us,
@@ -140,12 +140,12 @@ void HTTPCache::Put(const std::string& key, HTTPValue* value,
   PutHelper(key, timer_->NowUs(), value, handler);
 }
 
-void HTTPCache::Put(const std::string& key, const ResponseHeaders& headers,
+void HTTPCache::Put(const std::string& key, ResponseHeaders* headers,
                     const StringPiece& content,
                     MessageHandler* handler) {
   int64 start_us = timer_->NowUs();
   int64 now_ms = start_us / 1000;
-  if (!IsCurrentlyValid(headers, now_ms)) {
+  if (!IsCurrentlyValid(*headers, now_ms)) {
     return;
   }
 

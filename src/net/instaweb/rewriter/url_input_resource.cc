@@ -53,7 +53,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
     if (success && !meta_data->IsErrorStatus()) {
       if (!http_cache()->IsAlreadyExpired(*meta_data)) {
         HTTPValue* value = http_value();
-        value->SetHeaders(*meta_data);
+        value->SetHeaders(meta_data);
         http_cache()->Put(url(), value, message_handler_);
       }
     } else {

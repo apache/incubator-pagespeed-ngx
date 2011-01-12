@@ -107,6 +107,12 @@ class OutputResource : public Resource {
   // when rewriting it we can, in some cases, exploit a URL swap.
   bool HasValidUrl() const { return has_hash(); }
 
+  // When this is false we have previously processed the URL and
+  // have marked down that we cannot do anything with it
+  // (by calling ResourceManager::WriteUnoptimizable);
+  // this being true carries no information.
+  bool optimizable() const { return optimizable_; }
+
   // Resources rewritten via a UrlPartnership will have a resolved
   // base to use in lieu of the legacy UrlPrefix held by the resource
   // manager.
@@ -144,6 +150,7 @@ class OutputResource : public Resource {
   void set_written(bool written) { writing_complete_ = true; }
   void set_generated(bool x) { generated_ = x; }
   bool generated() const { return generated_; }
+  void set_optimizable(bool new_val) { optimizable_ = new_val; }
   std::string TempPrefix() const;
 
   OutputWriter* BeginWrite(MessageHandler* message_handler);
@@ -160,6 +167,10 @@ class OutputResource : public Resource {
   // input URL.  We must regenerate it every time, but the output name
   // will be distinct because it's based on the hash of the content.
   bool generated_;
+
+  // This is set to false when the filter has explicitly reported to
+  // ResourceManager that it can't do anything useful
+  bool optimizable_;
 
   // If this output url was created via a partnership then this field
   // will be non-empty, and we will not need to use the resource manager's

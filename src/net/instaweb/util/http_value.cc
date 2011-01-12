@@ -18,7 +18,7 @@
 
 #include "net/instaweb/util/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/response_headers_parser.h"
+#include "net/instaweb/util/public/string_writer.h"
 
 namespace {
 
@@ -52,9 +52,11 @@ void HTTPValue::Clear() {
   storage_->clear();
 }
 
-void HTTPValue::SetHeaders(const ResponseHeaders& headers) {
+void HTTPValue::SetHeaders(ResponseHeaders* headers) {
   CopyOnWrite();
-  std::string headers_string = headers.ToString();
+  std::string headers_string;
+  StringWriter writer(&headers_string);
+  headers->WriteAsBinary(&writer, NULL);
   if (storage_->empty()) {
     storage_->append(&kHeadersFirst, 1);
     SetSizeOfFirstChunk(headers_string.size());
@@ -141,16 +143,13 @@ bool HTTPValue::ExtractHeaders(ResponseHeaders* headers,
       if (type_id == kBodyFirst) {
         start += size;
         size = storage_->size() - size - kStorageOverhead;
+        ret = true;
       } else {
         ret = (type_id == kHeadersFirst);
       }
-      ResponseHeadersParser parser(headers);
-
-      // TODO(jmarantz): use binary representation instead
-      unsigned int num_consumed =
-          parser.ParseChunk(StringPiece(start, size), handler);
-      ret = (num_consumed == size);
-      ret &= (parser.headers_complete());
+      if (ret) {
+        ret = headers->ReadFromBinary(StringPiece(start, size), handler);
+      }
     }
   }
   return ret;

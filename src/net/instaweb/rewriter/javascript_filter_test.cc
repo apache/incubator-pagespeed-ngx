@@ -101,7 +101,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   file_system_.Disable();
   ResponseHeaders headers;
   resource_manager_->SetDefaultHeaders(&kContentTypeJavascript, &headers);
-  http_cache_.Put(expected_rewritten_path_, headers, kJsMinData,
+  http_cache_.Put(expected_rewritten_path_, &headers, kJsMinData,
                   &message_handler_);
   EXPECT_EQ(0, lru_cache_->num_hits());
   ASSERT_TRUE(ServeResource(kSourcePrefix, kFilterId,
