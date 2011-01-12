@@ -193,6 +193,10 @@ StringPiece HtmlEscape::UnescapeHelper(const StringPiece& escaped,
   if (escaped.data() == NULL) {
     return escaped;
   }
+  if (memchr(escaped.data(), '&', escaped.size()) == NULL) {
+    return escaped;
+  }
+
   buf->clear();
 
   // Attribute values may have HTML escapes in them, e.g.
