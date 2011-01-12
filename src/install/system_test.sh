@@ -176,11 +176,20 @@ echo TEST: compression is enabled for HTML.
 check "$WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $EXAMPLE_ROOT/ 2>&1 | grep -qi 'Content-Encoding: gzip'"
 
+
 # Individual filter tests, in alphabetical order
 
 test_filter add_instrumentation adds 2 script tags
 check $WGET_PREREQ $URL
 check [ `cat $FETCHED | sed 's/>/>\n/g' | grep -c '<script'` = 2 ]
+
+echo "TEST: Make sure 404s aren't rewritten"
+# Note: We run this in the add_instrumentation section because that is the
+# easiest to detect which changes every page
+THIS_BAD_URL=$BAD_RESOURCE_URL?ModPagespeedFilters=add_instrumentation
+# We use curl, because wget does not save 404 contents
+curl --silent $THIS_BAD_URL | grep /mod_pagespeed_beacon
+check [ $? != 0 ]
 
 test_filter collapse_whitespace removes whitespace, but not from pre tags.
 check $WGET_PREREQ $URL

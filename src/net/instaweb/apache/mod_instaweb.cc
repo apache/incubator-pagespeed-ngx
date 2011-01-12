@@ -412,6 +412,15 @@ InstawebContext* build_context_for_request(request_rec* request) {
                 "ModPagespeed OutputFilter called for request %s",
                 request->unparsed_uri);
 
+  // TODO(sligocki): Should we rewrite any other statuses?
+  // Maybe 206 Partial Content?
+  if (request->status != 200) {
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                  "ModPagespeed not rewriting HTML because status is %d",
+                  request->status);
+    return NULL;
+  }
+
   QueryParams query_params;
   if (request->parsed_uri.query != NULL) {
     query_params.Parse(request->parsed_uri.query);
