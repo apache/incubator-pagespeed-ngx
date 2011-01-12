@@ -61,6 +61,7 @@
       'type': 'executable',
       'dependencies': [
         'instaweb_html_rewriter.gyp:html_rewriter',
+        'instaweb.gyp:instaweb_util_pthread',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
         '<(DEPTH)/testing/gtest.gyp:gtest',
@@ -104,6 +105,7 @@
         'util/mock_message_handler_test.cc',
         'util/mock_url_fetcher.cc',
         'util/mock_url_fetcher_test.cc',
+        'util/pthread_condvar_test.cc',
         'util/query_params_test.cc',
         'util/string_multi_map_test.cc',
 #        'util/simple_stats_test.cc',

@@ -33,6 +33,8 @@ class PthreadMutex : public AbstractMutex {
   virtual void Lock();
   virtual void Unlock();
  private:
+  friend class PthreadCondvar;
+
   pthread_mutex_t mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(PthreadMutex);

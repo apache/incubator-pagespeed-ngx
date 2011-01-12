@@ -34,6 +34,7 @@
         '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
       ],
       'sources': [
+        'util/abstract_condvar.cc',
         'util/abstract_mutex.cc',
         'util/cache_interface.cc',
         'util/cache_url_async_fetcher.cc',
@@ -63,7 +64,6 @@
         'util/named_lock_manager.cc',
         'util/null_message_handler.cc',
         'util/null_writer.cc',
-        'util/pthread_mutex.cc',
         'util/ref_counted.cc',
         'util/rolling_hash.cc',
         'util/query_params.cc',
@@ -100,6 +100,24 @@
           '<(DEPTH)',
         ],
       },
+    },
+    {
+      'target_name': 'instaweb_util_pthread',
+      'type': '<(library)',
+      'dependencies': [
+        'instaweb_util',
+      ],
+      'sources': [
+        'util/pthread_condvar.cc',
+        'util/pthread_mutex.cc',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+      ],
+      'ldflags': [
+        '-lrt',
+      ]
     },
     {
       'target_name': 'instaweb_htmlparse',
