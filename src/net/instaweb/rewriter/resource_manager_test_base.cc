@@ -3,10 +3,22 @@
 
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
+
 namespace net_instaweb {
 
 const char ResourceManagerTestBase::kTestData[] =
     "/net/instaweb/rewriter/testdata/";
+
+void ResourceManagerTestBase::AddRewriteFilter(RewriteFilter* filter) {
+  rewrite_driver_.RegisterRewriteFilter(filter);
+  rewrite_driver_.EnableRewriteFilter(filter->id().c_str());
+}
+
+void ResourceManagerTestBase::AddOtherRewriteFilter(RewriteFilter* filter) {
+  other_rewrite_driver_.RegisterRewriteFilter(filter);
+  other_rewrite_driver_.EnableRewriteFilter(filter->id().c_str());
+}
 
 // Test that a resource can be served from an new server that has not already
 // constructed it.

@@ -50,6 +50,9 @@
 namespace net_instaweb {
 
 const int kCacheSize = 100 * 1000 * 1000;
+const char kTestDomain[] = "http://test.com/";
+
+class RewriteFilter;
 
 class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
  protected:
@@ -113,11 +116,19 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     rewrite_driver_.AddFilters();
   }
 
-  // Add a single rewrite filter to rewrite_driver_.
+  // Add a single rewrite filter to other_rewrite_driver_.
   void AddOtherFilter(RewriteOptions::Filter filter) {
     other_options_.EnableFilter(filter);
     other_rewrite_driver_.AddFilters();
   }
+
+  // Add a custom rewrite filter (one without a corresponding option)
+  // to rewrite_driver and enable it.
+  void AddRewriteFilter(RewriteFilter* filter);
+
+  // Add a custom rewrite filter (one without a corresponding option)
+  // to other_rewrite_driver and enable it.
+  void AddOtherRewriteFilter(RewriteFilter* filter);
 
   // The async fetchers in these tests are really fake async fetchers, and
   // will call their callbacks directly.  Hence we don't really need
@@ -197,7 +208,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                     const ContentType& content_type,
                     const StringPiece& content,
                     int64 ttl) {
-    std::string name = StrCat("http://test.com/", resource_name);
+    std::string name = StrCat(kTestDomain, resource_name);
     ResponseHeaders response_headers;
     resource_manager_->SetDefaultHeaders(&content_type, &response_headers);
     response_headers.RemoveAll(HttpAttributes::kCacheControl);

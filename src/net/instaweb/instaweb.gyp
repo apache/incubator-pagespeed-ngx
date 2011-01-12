@@ -304,6 +304,7 @@
         'rewriter/add_instrumentation_filter.cc',
         'rewriter/base_tag_filter.cc',
         'rewriter/cache_extender.cc',
+        'rewriter/combine_filter_base.cc',
         'rewriter/common_filter.cc',
         'rewriter/css_combine_filter.cc',
         'rewriter/css_inline_filter.cc',

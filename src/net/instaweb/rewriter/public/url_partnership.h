@@ -29,7 +29,7 @@ namespace net_instaweb {
 class MessageHandler;
 class RewriteOptions;
 
-// A URL partnership should be estalished in order to combine resources,
+// A URL partnership should be established in order to combine resources,
 // such as in CSS combination, JS combination, or image spriting.  This
 // class centralizes the handling of such combinations, answering two
 // questions:
@@ -64,6 +64,7 @@ class UrlPartnership {
 
  protected:
   int num_components() const { return common_components_.size(); }
+  const RewriteOptions* rewrite_options() const { return rewrite_options_; }
 
  private:
   void IncrementalResolve(int index);

@@ -279,7 +279,7 @@ class HtmlParse {
   std::vector<HtmlFilter*> filters_;
   HtmlLexer* lexer_;
   int sequence_;
-  std::set<HtmlNode*> nodes_;
+  std::vector<HtmlNode*> nodes_;
   HtmlEventList queue_;
   HtmlEventListIterator current_;
   // Have we deleted current? Then we shouldn't do certain manipulations to it.

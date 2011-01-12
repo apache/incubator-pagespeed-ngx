@@ -24,7 +24,7 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
-#include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/combine_filter_base.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -36,7 +36,7 @@ class Resource;
 class ResourceManager;
 class Variable;
 
-class CssCombineFilter : public RewriteFilter {
+class CssCombineFilter : public CombineFilterBase {
  public:
   CssCombineFilter(RewriteDriver* rewrite_driver, const char* path_prefix);
   virtual ~CssCombineFilter();
@@ -47,29 +47,15 @@ class CssCombineFilter : public RewriteFilter {
   virtual void EndElementImpl(HtmlElement* element);
   virtual void Flush();
   virtual void IEDirective(HtmlIEDirectiveNode* directive);
-  virtual bool Fetch(OutputResource* resource,
-                     Writer* writer,
-                     const RequestHeaders& request_header,
-                     ResponseHeaders* response_headers,
-                     MessageHandler* message_handler,
-                     UrlAsyncFetcher::Callback* callback);
   virtual const char* Name() const { return "CssCombine"; }
 
  private:
-  friend class CssCombiner;
-  typedef std::vector<Resource*> ResourceVector;
-
   // Try to combine all the CSS files we have seen so far.
   // Insert the combined resource where the first original CSS link was.
   void TryCombineAccumulated();
 
-  bool WriteWithAbsoluteUrls(const StringPiece& contents,
-                             OutputResource* combination,
-                             const std::string& base_url,
-                             MessageHandler* handler);
-  bool WriteCombination(const ResourceVector& combine_resources,
-                        OutputResource* combination,
-                        MessageHandler* handler);
+  virtual bool WritePiece(Resource* input, OutputResource* combination,
+                          Writer* writer, MessageHandler* handler);
 
   Atom s_type_;
   Atom s_link_;
@@ -82,7 +68,6 @@ class CssCombineFilter : public RewriteFilter {
 
   scoped_ptr<Partnership> partnership_;
   HtmlParse* html_parse_;
-  ResourceManager* resource_manager_;
   CssTagScanner css_tag_scanner_;
   Variable* css_file_count_reduction_;
 

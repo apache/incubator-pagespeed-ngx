@@ -126,6 +126,7 @@
         'util/write_through_cache_test.cc',
         'rewriter/cache_extender_test.cc',
         'rewriter/collapse_whitespace_filter_test.cc',
+        'rewriter/combine_filter_base_test.cc',
         'rewriter/common_filter_test.cc',
         'rewriter/css_combine_filter_test.cc',
         'rewriter/css_inline_filter_test.cc',

@@ -118,7 +118,7 @@ void HtmlParse::SetCurrent(HtmlNode* node) {
 HtmlCdataNode* HtmlParse::NewCdataNode(HtmlElement* parent,
                                        const StringPiece& contents) {
   HtmlCdataNode* cdata = new HtmlCdataNode(parent, contents, queue_.end());
-  nodes_.insert(cdata);
+  nodes_.push_back(cdata);
   return cdata;
 }
 
@@ -126,7 +126,7 @@ HtmlCharactersNode* HtmlParse::NewCharactersNode(HtmlElement* parent,
                                                  const StringPiece& literal) {
   HtmlCharactersNode* characters =
       new HtmlCharactersNode(parent, literal, queue_.end());
-  nodes_.insert(characters);
+  nodes_.push_back(characters);
   return characters;
 }
 
@@ -134,7 +134,7 @@ HtmlCommentNode* HtmlParse::NewCommentNode(HtmlElement* parent,
                                            const StringPiece& contents) {
   HtmlCommentNode* comment = new HtmlCommentNode(parent, contents,
                                                  queue_.end());
-  nodes_.insert(comment);
+  nodes_.push_back(comment);
   return comment;
 }
 
@@ -142,7 +142,7 @@ HtmlIEDirectiveNode* HtmlParse::NewIEDirectiveNode(
     HtmlElement* parent, const StringPiece& contents) {
   HtmlIEDirectiveNode* directive =
       new HtmlIEDirectiveNode(parent, contents, queue_.end());
-  nodes_.insert(directive);
+  nodes_.push_back(directive);
   return directive;
 }
 
@@ -150,14 +150,14 @@ HtmlDirectiveNode* HtmlParse::NewDirectiveNode(HtmlElement* parent,
                                                const StringPiece& contents) {
   HtmlDirectiveNode* directive = new HtmlDirectiveNode(parent, contents,
                                                        queue_.end());
-  nodes_.insert(directive);
+  nodes_.push_back(directive);
   return directive;
 }
 
 HtmlElement* HtmlParse::NewElement(HtmlElement* parent, Atom tag) {
   HtmlElement* element = new HtmlElement(parent, tag, queue_.end(),
                                          queue_.end());
-  nodes_.insert(element);
+  nodes_.push_back(element);
   element->set_sequence(sequence_++);
   return element;
 }
@@ -567,8 +567,6 @@ bool HtmlParse::DeleteElement(HtmlNode* node) {
         nested_node = event->GetLeafNode();
       }
       if (nested_node != NULL) {
-        std::set<HtmlNode*>::iterator iter = nodes_.find(nested_node);
-        message_handler_->Check(iter != nodes_.end(), "iter == nodes_.end()");
         message_handler_->Check(nested_node->live(), "!nested_node->live()");
         nested_node->MarkAsDead(queue_.end());
       }
@@ -632,10 +630,8 @@ bool HtmlParse::IsInEventWindow(const HtmlEventListIterator& iter) const {
 }
 
 void HtmlParse::ClearElements() {
-  for (std::set<HtmlNode*>::iterator p = nodes_.begin(),
-           e = nodes_.end(); p != e; ++p) {
-    HtmlNode* node = *p;
-    delete node;
+  for (int i = 0; i < static_cast<int>(nodes_.size()); ++i) {
+    delete nodes_[i];
   }
   nodes_.clear();
 }

@@ -22,21 +22,16 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/url_escaper.h"
-#include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace net_instaweb {
 
@@ -45,48 +40,23 @@ namespace {
 // names for Statistics variables.
 const char kCssFileCountReduction[] = "css_file_count_reduction";
 
-// TODO(jmarantz): This is arguably fragile.
-//
-// Another approach is to put a CHECK that the final URL with the
-// resource naming does not exceed the limit.
-//
-// Another option too is to just instantiate a ResourceNamer and a
-// hasher put in the correct ID and EXT and leave the name blank and
-// take size of that.
-const int kIdOverhead = 2;   // strlen("cc")
-const int kExtOverhead = 3;  // strlen("css")
-const int kUrlOverhead = kIdOverhead + ResourceNamer::kOverhead + kExtOverhead;
-
 }  // namespace
 
-class CssCombineFilter::Partnership : public UrlPartnership {
+class CssCombineFilter::Partnership : public CombineFilterBase::Partnership {
  public:
-  Partnership(RewriteDriver* driver, const GURL& gurl)
-      : UrlPartnership(driver->options(), gurl),
-        rewrite_options_(driver->options()),
-        resource_manager_(driver->resource_manager()),
-        prev_num_components_(0),
-        accumulated_leaf_size_(0),
-        // Note: We compare to max_size - kUrlSlack so that other filters,
-        // which might add to URL length, can run after CSS combination.
-        max_url_segment_size_(
-            rewrite_options_->max_url_segment_size() - kUrlSlack),
-        max_url_size_(rewrite_options_->max_url_size() - kUrlSlack) {
+  Partnership(CssCombineFilter* filter, RewriteDriver* driver, int url_overhead)
+      : CombineFilterBase::Partnership(filter, driver, url_overhead) {
   }
 
-  virtual ~Partnership() {
-    STLDeleteElements(&resources_);
+  virtual bool ResourceCombinable(Resource* resource, MessageHandler* handler) {
+    // styles containing @import cannot be appended to others, as any
+    // @import in the middle will be ignored.
+    return ((num_urls() == 0)
+            || !CssTagScanner::HasImport(resource->contents(), handler));
   }
 
   bool AddElement(HtmlElement* element, const StringPiece& href,
-                  const StringPiece& media, scoped_ptr<Resource>* resource,
-                  MessageHandler* handler) {
-    // Assert the sanity of three parallel vectors.
-    CHECK_EQ(num_urls(), static_cast<int>(resources_.size()));
-    CHECK_EQ(num_urls(), static_cast<int>(css_elements_.size()));
-    CHECK_EQ(num_urls(), static_cast<int>(multipart_encoder_.num_urls()));
-
-    bool added = true;
+                  const StringPiece& media, MessageHandler* handler) {
     if (num_urls() == 0) {
       // TODO(jmarantz): do media='' and media='display mean the same
       // thing?  sligocki thinks mdsteele looked into this and it
@@ -94,130 +64,17 @@ class CssCombineFilter::Partnership : public UrlPartnership {
       // other screen was IIRC.
       media.CopyToString(&media_);
     } else {
-      // After the first CSS file, subsequent CSS files must have matching
-      // media and no @import tags.
-      added = ((media_ == media) &&
-               !CssTagScanner::HasImport((*resource)->contents(), handler));
+      // After the first CSS file, subsequent CSS files must have matching media
+      if (media_ != media)
+        return false;
     }
-    if (added) {
-      added = AddUrl(href, handler);
-    }
-    if (added) {
-      int index = num_urls() - 1;
-      CHECK_EQ(index, static_cast<int>(css_elements_.size()));
-
-      if (num_components() != prev_num_components_) {
-        UpdateResolvedBase();
-      }
-      const std::string relative_path = RelativePath(index);
-      multipart_encoder_.AddUrl(relative_path);
-
-      if (accumulated_leaf_size_ == 0) {
-        ComputeLeafSize();
-      } else {
-        AccumulateLeafSize(relative_path);
-      }
-
-      if (UrlTooBig()) {
-        added = false;
-        RemoveLast();
-        multipart_encoder_.pop_back();
-
-        // The base might have changed again
-        if (num_components() != prev_num_components_) {
-          UpdateResolvedBase();
-        }
-      } else {
-        css_elements_.push_back(element);
-        resources_.push_back(resource->release());
-      }
-    }
-    return added;
+    return CombineFilterBase::Partnership::AddElement(element, href, handler);
   }
 
-  // Computes a name for the URL that meets all known character-set and
-  // size restrictions.
-  std::string UrlSafeId() const {
-    UrlEscaper* escaper = resource_manager_->url_escaper();
-    std::string segment;
-    escaper->EncodeToUrlSegment(multipart_encoder_.Encode(), &segment);
-    return segment;
-  }
-
-  // Computes the total size
-  void ComputeLeafSize() {
-    std::string segment = UrlSafeId();
-    // TODO(sligocki): Use hasher for custom overhead.
-    accumulated_leaf_size_ = segment.size() + kUrlOverhead
-        + resource_manager_->hasher()->HashSizeInChars();
-  }
-
-  // Incrementally updates the accumulated leaf size without re-examining
-  // every element in the combined css file.
-  void AccumulateLeafSize(const StringPiece& url) {
-    std::string segment;
-    UrlEscaper* escaper = resource_manager_->url_escaper();
-    escaper->EncodeToUrlSegment(url, &segment);
-    const int kMultipartOverhead = 1;  // for the '+'
-    accumulated_leaf_size_ += segment.size() + kMultipartOverhead;
-  }
-
-  // Determines whether our accumulated leaf size is too big, taking into
-  // account both per-segment and total-url limitations.
-  bool UrlTooBig() {
-    if (accumulated_leaf_size_ > max_url_segment_size_) {
-      return true;
-    }
-    if ((accumulated_leaf_size_ + static_cast<int>(resolved_base_.size())) >
-        max_url_size_) {
-      return true;
-    }
-    return false;
-  }
-
-  void UpdateResolvedBase() {
-    // If the addition of this URL changes the base path,
-    // then we will have to recompute the multi-part encoding.
-    // This is n^2 in the pathalogical case and if this code
-    // is copied from CSS combining to image spriting then this
-    // algorithm should be revisited.  For CSS we expect N to
-    // be relatively small.
-    prev_num_components_ = num_components();
-    resolved_base_ = ResolvedBase();
-    multipart_encoder_.clear();
-    for (size_t i = 0; i < css_elements_.size(); ++i) {
-      multipart_encoder_.AddUrl(RelativePath(i));
-    }
-
-    accumulated_leaf_size_ = 0;
-  }
-
-  HtmlElement* element(int i) { return css_elements_[i]; }
-  const ResourceVector& resources() const { return resources_; }
   const std::string& media() const { return media_; }
 
-  // Slack to leave in URL size, so that other filters running afterwards
-  // can expand the URLs without going over maximum allowed sizes.
-  //
-  // Why 100? First example I saw, CssFilter expanded a CssCombined URL
-  // by 36 chars. So 100 seemed like a nice round number to allow two
-  // filters to run after this and then for there still be a little slack.
-  //
-  // TODO(sligocki): Set this more intelligently.
-  static const int kUrlSlack = 100;
-
  private:
-  const RewriteOptions* rewrite_options_;
-  ResourceManager* resource_manager_;
-  std::vector<HtmlElement*> css_elements_;
-  std::vector<Resource*> resources_;
-  UrlMultipartEncoder multipart_encoder_;
-  int prev_num_components_;
-  int accumulated_leaf_size_;
-  std::string resolved_base_;
   std::string media_;
-  int max_url_segment_size_;
-  int max_url_size_;
 };
 
 // TODO(jmarantz) We exhibit zero intelligence about which css files to
@@ -229,25 +86,23 @@ class CssCombineFilter::Partnership : public UrlPartnership {
 //
 // TODO(jmarantz): allow combining of CSS elements found in the body, whether
 // or not the head has already been flushed.
-
+//
+// TODO(jmaessen): The addition of 1 below avoids the leading ".";
+// make this convention consistent and fix all code.
 CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
                                    const char* filter_prefix)
-    : RewriteFilter(driver, filter_prefix),
+    : CombineFilterBase(driver, filter_prefix,
+                        kContentTypeCss.file_extension() + 1),
       html_parse_(driver->html_parse()),
-      resource_manager_(driver->resource_manager()),
       css_tag_scanner_(html_parse_),
       css_file_count_reduction_(NULL) {
-  // This CHECK is here because RewriteDriver is constructed with it's
-  // resource_manager_ == NULL.
-  // TODO(sligocki): Construct RewriteDriver with a ResourceManager.
-  CHECK(resource_manager_ != NULL);
   s_link_ = html_parse_->Intern("link");
   s_href_ = html_parse_->Intern("href");
   s_type_ = html_parse_->Intern("type");
   s_rel_  = html_parse_->Intern("rel");
   s_media_ = html_parse_->Intern("media");
   s_style_ = html_parse_->Intern("style");
-  Statistics* stats = resource_manager_->statistics();
+  Statistics* stats = resource_manager()->statistics();
   if (stats != NULL) {
     css_file_count_reduction_ = stats->GetVariable(kCssFileCountReduction);
   }
@@ -262,7 +117,7 @@ void CssCombineFilter::Initialize(Statistics* statistics) {
 
 void CssCombineFilter::StartDocumentImpl() {
   // This should already be clear, but just in case.
-  partnership_.reset(new Partnership(driver_, base_gurl()));
+  partnership_.reset(new Partnership(this, driver_, url_overhead_));
 }
 
 void CssCombineFilter::EndElementImpl(HtmlElement* element) {
@@ -276,23 +131,20 @@ void CssCombineFilter::EndElementImpl(HtmlElement* element) {
     } else {
       const char* url = href->value();
       MessageHandler* handler = html_parse_->message_handler();
-      scoped_ptr<Resource> resource(CreateInputResource(url));
-      if (resource.get() == NULL) {
-        TryCombineAccumulated();
-      } else {
-        if (!resource_manager_->ReadIfCached(resource.get(), handler) ||
-            !resource->ContentsValid()) {
-          TryCombineAccumulated();
-        } else if (!partnership_->AddElement(element, url, media, &resource,
-                                             handler)) {
-          TryCombineAccumulated();
 
-          // Now we'll try to start a new partnership with this CSS file --
-          // perhaps we ran out out of space in the previous combination
-          // or this file is simply in a different authorized domain, or
-          // contained @Import.
-          partnership_->AddElement(element, url, media, &resource, handler);
-        }
+      if (!partnership_->AddElement(element, url, media, handler)) {
+        // This element can't be included in the previous combination,
+        // so try to flush out what we have.
+        TryCombineAccumulated();
+
+        // Now we'll try to start a new partnership with this CSS file --
+        // perhaps we ran out out of space in the previous combination
+        // or this file is simply in a different authorized domain, or
+        // contained @Import.
+        //
+        // Note that it's OK if this fails; we will simply not rewrite
+        // the element in that case
+        partnership_->AddElement(element, url, media, handler);
       }
     }
   } else if (element->tag() == s_style_) {
@@ -339,7 +191,7 @@ void CssCombineFilter::TryCombineAccumulated() {
     // not committed to the combination, because the 'write' can fail.
     // TODO(jmaessen, jmarantz): encode based on partnership
     scoped_ptr<OutputResource> combination(
-        resource_manager_->CreateOutputResourceWithPath(
+        resource_manager()->CreateOutputResourceWithPath(
             partnership_->ResolvedBase(),
             filter_prefix_, url_safe_id, &kContentTypeCss, handler));
 
@@ -376,211 +228,23 @@ void CssCombineFilter::TryCombineAccumulated() {
       }
     }
   }
-  partnership_.reset(new Partnership(driver_, base_gurl()));
+  partnership_.reset(new Partnership(this, driver_, url_overhead_));
 }
 
-bool CssCombineFilter::WriteCombination(const ResourceVector& combine_resources,
-                                        OutputResource* combination,
-                                        MessageHandler* handler) {
-  bool written = true;
-  // TODO(sligocki): Write directly to a temp file rather than doing the extra
-  // string copy.
-  std::string combined_contents;
-  StringWriter writer(&combined_contents);
-  int64 min_origin_expiration_time_ms = 0;
-
-  for (int i = 0, n = combine_resources.size(); written && (i < n); ++i) {
-    Resource* input = combine_resources[i];
-    StringPiece contents = input->contents();
-    int64 input_expire_time_ms = input->CacheExpirationTimeMs();
-    if ((min_origin_expiration_time_ms == 0) ||
-        (input_expire_time_ms < min_origin_expiration_time_ms)) {
-      min_origin_expiration_time_ms = input_expire_time_ms;
-    }
-
-    std::string input_dir =
-        GoogleUrl::AllExceptLeaf(GoogleUrl::Create(input->url()));
-    if (input_dir == combination->resolved_base()) {
+bool CssCombineFilter::WritePiece(Resource* input, OutputResource* combination,
+                                  Writer* writer, MessageHandler* handler) {
+  StringPiece contents = input->contents();
+  std::string input_dir =
+      GoogleUrl::AllExceptLeaf(GoogleUrl::Create(input->url()));
+  if (input_dir == combination->resolved_base()) {
       // We don't need to absolutify URLs if input directory is same as output.
-      written = writer.Write(contents, handler);
-    } else {
-      // If they are different directories, we need to absolutify.
-      // TODO(sligocki): Perhaps we should use the real CSS parser.
-      written = css_tag_scanner_.AbsolutifyUrls(contents, input->url(),
-                                                &writer, handler);
-    }
-  }
-  if (written) {
-    written =
-        resource_manager_->Write(
-            HttpStatus::kOK, combined_contents, combination,
-            min_origin_expiration_time_ms, handler);
-  }
-  return written;
-}
-
-// Callback to run whenever a CSS resource is collected.  This keeps a
-// count of the resources collected so far.  When the last one is collected,
-// it aggregates the results and calls the final callback with the result.
-class CssCombiner : public Resource::AsyncCallback {
- public:
-  CssCombiner(CssCombineFilter* filter,
-              MessageHandler* handler,
-              UrlAsyncFetcher::Callback* callback,
-              OutputResource* combination,
-              Writer* writer,
-              ResponseHeaders* response_headers) :
-      enable_completion_(false),
-      emit_done_(true),
-      done_count_(0),
-      fail_count_(0),
-      filter_(filter),
-      message_handler_(handler),
-      callback_(callback),
-      combination_(combination),
-      writer_(writer),
-      response_headers_(response_headers) {
-  }
-
-  virtual ~CssCombiner() {
-    STLDeleteContainerPointers(combine_resources_.begin(),
-                               combine_resources_.end());
-  }
-
-  // Note that the passed-in resource might be NULL; this gives us a chance
-  // to note failure.
-  bool AddResource(Resource* resource) {
-    bool ret = false;
-    if (resource == NULL) {
-      // Whoops, we've failed to even obtain a resource.
-      ++fail_count_;
-    } else if (fail_count_ > 0) {
-      // Another of the resource fetches failed.  Drop this resource
-      // and don't fetch it.
-      delete resource;
-    } else {
-      combine_resources_.push_back(resource);
-      ret = true;
-    }
-    return ret;
-  }
-
-  virtual void Done(bool success, Resource* resource) {
-    if (!success) {
-      ++fail_count_;
-    }
-    ++done_count_;
-
-    if (Ready()) {
-      DoCombination();
-    }
-  }
-
-  bool Ready() {
-    return (enable_completion_ &&
-            (done_count_ == combine_resources_.size()));
-  }
-
-  void EnableCompletion() {
-    enable_completion_ = true;
-    if (Ready()) {
-      DoCombination();
-    }
-  }
-
-  void DoCombination() {
-    bool ok = fail_count_ == 0;
-    for (size_t i = 0; ok && (i < combine_resources_.size()); ++i) {
-      Resource* css_resource = combine_resources_[i];
-      ok = css_resource->ContentsValid();
-    }
-    if (ok) {
-      ok = (filter_->WriteCombination(combine_resources_, combination_,
-                                      message_handler_) &&
-            combination_->IsWritten() &&
-            ((writer_ == NULL) ||
-             writer_->Write(combination_->contents(), message_handler_)));
-      // Above code fills in combination_->metadata(); now propagate to
-      // repsonse_headers_.
-    }
-    if (ok) {
-      response_headers_->CopyFrom(*combination_->metadata());
-    } else {
-      response_headers_->SetStatusAndReason(HttpStatus::kNotFound);
-    }
-
-    if (emit_done_) {
-      callback_->Done(ok);
-    }
-    delete this;
-  }
-
-  void set_emit_done(bool new_emit_done) {
-    emit_done_ = new_emit_done;
-  }
-
- private:
-  bool enable_completion_;
-  bool emit_done_;
-  size_t done_count_;
-  size_t fail_count_;
-  CssCombineFilter* filter_;
-  MessageHandler* message_handler_;
-  UrlAsyncFetcher::Callback* callback_;
-  OutputResource* combination_;
-  CssCombineFilter::ResourceVector combine_resources_;
-  Writer* writer_;
-  ResponseHeaders* response_headers_;
-
-  DISALLOW_COPY_AND_ASSIGN(CssCombiner);
-};
-
-bool CssCombineFilter::Fetch(OutputResource* combination,
-                             Writer* writer,
-                             const RequestHeaders& request_header,
-                             ResponseHeaders* response_headers,
-                             MessageHandler* message_handler,
-                             UrlAsyncFetcher::Callback* callback) {
-  CHECK(response_headers != NULL);
-  bool ret = false;
-  StringPiece url_safe_id = combination->name();
-  UrlMultipartEncoder multipart_encoder;
-  UrlEscaper* escaper = resource_manager_->url_escaper();
-  std::string multipart_encoding;
-  GURL gurl(combination->url());
-  if (gurl.is_valid() &&
-      escaper->DecodeFromUrlSegment(url_safe_id, &multipart_encoding) &&
-      multipart_encoder.Decode(multipart_encoding, message_handler)) {
-    std::string url, decoded_resource;
-    ret = true;
-    CssCombiner* combiner = new CssCombiner(
-        this, message_handler, callback, combination, writer, response_headers);
-
-    std::string root = GoogleUrl::AllExceptLeaf(gurl);
-    for (int i = 0; ret && (i < multipart_encoder.num_urls()); ++i)  {
-      std::string url = StrCat(root, multipart_encoder.url(i));
-      Resource* css_resource = CreateInputResourceAbsolute(url);
-      ret = combiner->AddResource(css_resource);
-      if (ret) {
-        resource_manager_->ReadAsync(css_resource, combiner, message_handler);
-      }
-    }
-
-    // If we're about to return false, we do not want the combiner to emit
-    // Done as RewriteDriver::FetchResource will do it as well.
-    combiner->set_emit_done(ret);
-
-    // In the case where the first input CSS files is already cached,
-    // ReadAsync will directly call the CssCombineCallback, which, if
-    // already enabled, would think it was complete and run DoCombination
-    // prematurely.  So we wait until the resources are all added before
-    // enabling the callback to complete.
-    combiner->EnableCompletion();
+      return writer->Write(contents, handler);
   } else {
-    message_handler->Error(url_safe_id.as_string().c_str(), 0,
-                           "Unable to decode resource string");
+    // If they are different directories, we need to absolutify.
+    // TODO(sligocki): Perhaps we should use the real CSS parser.
+    return css_tag_scanner_.AbsolutifyUrls(contents, input->url(), writer,
+                                           handler);
   }
-  return ret;
 }
 
 }  // namespace net_instaweb

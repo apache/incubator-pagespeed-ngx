@@ -258,6 +258,9 @@ class ResourceManager {
   FileSystem* file_system() { return file_system_; }
   FilenameEncoder* filename_encoder() const { return filename_encoder_; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
+  void set_url_async_fetcher(UrlAsyncFetcher* fetcher) {
+    url_async_fetcher_ = fetcher;
+  }
   Timer* timer() { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
   UrlEscaper* url_escaper() { return url_escaper_.get(); }
