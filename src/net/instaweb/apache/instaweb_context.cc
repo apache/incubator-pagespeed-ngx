@@ -121,9 +121,17 @@ void InstawebContext::ProcessBytes(const char* input, int size) {
   for (int i = 0; (content_detection_state_ == kStart) && (i < size); ++i) {
     char c = input[i];
     if (c == '<') {
-      content_detection_state_ = kHtml;
-      rewrite_driver_->html_parse()->StartParseWithType(absolute_url_,
-                                                        content_type_);
+      bool started = rewrite_driver_->html_parse()->StartParseWithType(
+          absolute_url_, content_type_);
+      if (started) {
+        content_detection_state_ = kHtml;
+      } else {
+        // This is a convenient lie.  The text might be HTML but the
+        // URL is invalid, so we will fail to resolve any relative URLs.
+        // What we really want is to take mod_pagespeed out of the filter
+        // chain, and this construct allows that.
+        content_detection_state_ = kNotHtml;
+      }
     } else if (!isspace(c) && !IsByteOrderMarkerCharacter(c)) {
       // TODO(jmarantz): figure out whether it's possible to remove our
       // filter from the chain entirely.

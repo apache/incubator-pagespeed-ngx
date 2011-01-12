@@ -408,7 +408,7 @@ class EventListManipulationTest : public HtmlParseTest {
   virtual void SetUp() {
     HtmlParseTest::SetUp();
     static const char kUrl[] = "http://html.parse.test/event_list_test.html";
-    html_parse_.StartParse(kUrl);
+    ASSERT_TRUE(html_parse_.StartParse(kUrl));
     node1_ = html_parse_.NewCharactersNode(NULL, "1");
     HtmlTestingPeer::AddEvent(&html_parse_,
                               new HtmlCharactersEvent(node1_, -1));
@@ -664,7 +664,7 @@ class AttributeManipulationTest : public HtmlParseTest {
     HtmlParseTest::SetUp();
     static const char kUrl[] =
         "http://html.parse.test/attribute_manipulation_test.html";
-    html_parse_.StartParse(kUrl);
+    ASSERT_TRUE(html_parse_.StartParse(kUrl));
     node_ = html_parse_.NewElement(NULL, MakeAtom("a"));
     html_parse_.AddElement(node_, 0);
     node_->AddAttribute(MakeAtom("href"), "http://www.google.com/", "\"");
@@ -750,6 +750,13 @@ TEST_F(AttributeManipulationTest, ModifyKeepAttribute) {
   href->set_quote(href->quote());
   href->set_name(href->name());
   CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'/>");
+}
+
+TEST_F(AttributeManipulationTest, BadUrl) {
+  EXPECT_FALSE(html_parse_.StartParse(")(*&)(*&(*"));
+
+  // To avoid having the TearDown crash, restart the parse.
+  html_parse_.StartParse("http://www.example.com");
 }
 
 }  // namespace net_instaweb

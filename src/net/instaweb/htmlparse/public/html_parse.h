@@ -51,16 +51,16 @@ class HtmlParse {
   // Initiate a chunked parsing session.  Finish with FinishParse.  The
   // url is only used to resolve relative URLs; the contents are not
   // directly fetched.  The caller must supply the text and call ParseText.
-  void StartParse(const StringPiece& url) {
-    StartParseWithType(url, kContentTypeHtml);
+  bool StartParse(const StringPiece& url) {
+    return StartParseWithType(url, kContentTypeHtml);
   }
-  void StartParseWithType(const StringPiece& url,
+  bool StartParseWithType(const StringPiece& url,
                           const ContentType& content_type) {
-    StartParseId(url, url, content_type);
+    return StartParseId(url, url, content_type);
   }
   // Use an error message id that is distinct from the url.
   // Mostly useful for testing.
-  void StartParseId(const StringPiece& url, const StringPiece& id,
+  bool StartParseId(const StringPiece& url, const StringPiece& id,
                     const ContentType& content_type);
 
   // Parses an arbitrary block of an html file, queuing up the events.  Call
@@ -69,6 +69,9 @@ class HtmlParse {
   // To parse an entire file, first call StartParse(), then call
   // ParseText on the file contents (in whatever size chunks are convenient),
   // then call FinishParse().
+  //
+  // It is invalid to call ParseText when the StartParse* routines returned
+  // false.
   void ParseText(const char* content, int size);
   void ParseText(const StringPiece& sp) { ParseText(sp.data(), sp.size()); }
 
@@ -80,9 +83,15 @@ class HtmlParse {
   // when the controlling network process wants to induce a new chunk of
   // output.  The less you call this function the better the rewriting will
   // be.
+  //
+  // It is invalid to call Flush when the StartParse* routines returned
+  // false.
   void Flush();
 
   // Finish a chunked parsing session.  This also induces a Flush.
+  //
+  // It is invalid to call FinishParse when the StartParse* routines returned
+  // false.
   void FinishParse();
 
 
@@ -274,15 +283,16 @@ class HtmlParse {
   HtmlEventList queue_;
   HtmlEventListIterator current_;
   // Have we deleted current? Then we shouldn't do certain manipulations to it.
-  bool deleted_current_;
   MessageHandler* message_handler_;
   std::string url_;
   GURL gurl_;
   std::string id_;  // Per-request identifier string used in error messages.
   int line_number_;
+  bool deleted_current_;
   bool need_sanity_check_;
   bool coalesce_characters_;
   bool need_coalesce_characters_;
+  bool valid_;
   int64 parse_start_time_us_;
   Timer* timer_;
 

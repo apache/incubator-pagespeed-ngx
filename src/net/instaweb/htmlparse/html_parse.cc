@@ -42,12 +42,13 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
                      // Visual Studio builds).
       sequence_(0),
       current_(queue_.end()),
-      deleted_current_(false),
       message_handler_(message_handler),
       line_number_(1),
+      deleted_current_(false),
       need_sanity_check_(false),
       coalesce_characters_(true),
       need_coalesce_characters_(false),
+      valid_(false),
       parse_start_time_us_(0),
       timer_(NULL) {
   lexer_ = new HtmlLexer(this);
@@ -169,23 +170,26 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
   element->set_begin_line_number(line_number);
 }
 
-void HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
+bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
                              const ContentType& content_type) {
   url.CopyToString(&url_);
   GURL gurl(url_);
-  // TODO(jmaessen): warn and propagate upwards.  This will require
-  // major changes to the callers.
-  message_handler_->Check(gurl.is_valid(), "HtmlParse: Invalid document url %s",
-                          url_.c_str());
-  gurl_.Swap(&gurl);
-  line_number_ = 1;
-  id.CopyToString(&id_);
-  if (timer_ != NULL) {
-    parse_start_time_us_ = timer_->NowUs();
-    InfoHere("HtmlParse::StartParse");
+  valid_ = gurl.is_valid();
+  if (!valid_) {
+    message_handler_->Message(kWarning, "HtmlParse: Invalid document url %s",
+                              url_.c_str());
+  } else {
+    gurl_.Swap(&gurl);
+    line_number_ = 1;
+    id.CopyToString(&id_);
+    if (timer_ != NULL) {
+      parse_start_time_us_ = timer_->NowUs();
+      InfoHere("HtmlParse::StartParse");
+    }
+    AddEvent(new HtmlStartDocumentEvent(line_number_));
+    lexer_->StartParse(id, content_type);
   }
-  AddEvent(new HtmlStartDocumentEvent(line_number_));
-  lexer_->StartParse(id, content_type);
+  return valid_;
 }
 
 void HtmlParse::ShowProgress(const char* message) {
@@ -196,6 +200,7 @@ void HtmlParse::ShowProgress(const char* message) {
 }
 
 void HtmlParse::FinishParse() {
+  DCHECK(valid_) << "Invalid to call FinishParse on invalid input";
   lexer_->FinishParse();
   AddEvent(new HtmlEndDocumentEvent(line_number_));
   Flush();
@@ -204,6 +209,7 @@ void HtmlParse::FinishParse() {
 }
 
 void HtmlParse::ParseText(const char* text, int size) {
+  DCHECK(valid_) << "Invalid to call ParseText with invalid url";
   lexer_->Parse(text, size);
 }
 
@@ -331,6 +337,7 @@ void HtmlParse::SanityCheck() {
 }
 
 void HtmlParse::Flush() {
+  DCHECK(valid_) << "Invalid to call FinishParse with invalid url";
   ShowProgress("Flush");
 
   for (size_t i = 0; i < filters_.size(); ++i) {
