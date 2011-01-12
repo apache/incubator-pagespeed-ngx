@@ -120,6 +120,7 @@ class HtmlCharactersNode : public HtmlLeafNode {
  public:
   virtual ~HtmlCharactersNode();
   const std::string& contents() { return contents_; }
+  std::string* mutable_contents() { return &contents_; }
   void Append(const StringPiece& str) {
     contents_.append(str.data(), str.size());
   }

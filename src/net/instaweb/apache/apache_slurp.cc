@@ -39,6 +39,7 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
 #include <string>
@@ -211,7 +212,7 @@ class ModPagespeedStrippingFetcher : public UrlFetcher {
         url, request_headers, response_headers, &writer, message_handler);
     if (fetched) {
       CharStarVector v;
-      if (response_headers->Lookup("X-Mod-Pagespeed", &v)) {
+      if (response_headers->Lookup(kModPagespeedHeader, &v)) {
         response_headers->Clear();
         std::string::size_type question = url.find('?');
         std::string url_pagespeed_off(url);

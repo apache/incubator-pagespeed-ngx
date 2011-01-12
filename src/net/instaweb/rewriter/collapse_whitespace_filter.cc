@@ -30,44 +30,6 @@ namespace {
 // is not _quite_ the same thing as kLiteralTags in html_lexer.cc):
 const char* const kSensitiveTags[] = {"pre", "script", "style", "textarea"};
 
-bool IsHtmlWhiteSpace(char ch) {
-  // See http://www.w3.org/TR/html401/struct/text.html#h-9.1
-  return ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t' || ch == '\f';
-}
-
-// Sentinel value for use in the CollapseWhitespace function:
-const char kNotInWhitespace = '\0';
-
-// Append the input to the output with whitespace collapsed.  Specifically,
-// each contiguous sequence of whitespace is replaced with the first
-// (whitespace) character in the sequence, except that any sequence containing
-// a newline is collapsed to a newline.
-void CollapseWhitespace(const std::string& input, std::string* output) {
-  // This variable stores the first whitespace character in each whitespace
-  // sequence, or kNotInWhitespace.
-  char whitespace = kNotInWhitespace;
-  for (std::string::const_iterator iter = input.begin(), end = input.end();
-       iter != end; ++iter) {
-    const char ch = *iter;
-    if (IsHtmlWhiteSpace(ch)) {
-      // We let newlines take precedence over other kinds of whitespace, for
-      // aesthetic reasons.
-      if (whitespace == kNotInWhitespace || ch == '\n') {
-        whitespace = ch;
-      }
-    } else {
-      if (whitespace != kNotInWhitespace) {
-        *output += whitespace;
-        whitespace = kNotInWhitespace;
-      }
-      *output += ch;
-    }
-  }
-  if (whitespace != kNotInWhitespace) {
-    *output += whitespace;
-  }
-}
-
 }  // namespace
 
 namespace net_instaweb {
@@ -101,11 +63,46 @@ void CollapseWhitespaceFilter::EndElement(HtmlElement* element) {
 
 void CollapseWhitespaceFilter::Characters(HtmlCharactersNode* characters) {
   if (atom_stack_.empty()) {
-    std::string minified;
-    CollapseWhitespace(characters->contents(), &minified);
-    html_parse_->ReplaceNode(
-        characters,
-        html_parse_->NewCharactersNode(characters->parent(), minified));
+    // Mutate the contents-string in-place for speed.
+    std::string* contents = characters->mutable_contents();
+    // It is safe to directly mutate the bytes in the string because
+    // we are only going to shrink it, never grow it.
+    char* read_ptr = &(*contents)[0];
+    char* write_ptr = read_ptr;
+    char* end = read_ptr + contents->size();
+    int in_whitespace = 0;  // Used for pointer-subtraction so newlines dominate
+    for (; read_ptr != end; ++read_ptr) {
+      char ch = *read_ptr;
+      switch (ch) {
+        // See http://www.w3.org/TR/html401/struct/text.html#h-9.1
+        case ' ':
+        case '\t':
+        case '\r':
+        case '\f':
+          // Add whitespace if the previous character was not already
+          // whitespace.  Note that the whitespace may be overwritten
+          // by a newline.  This extra branch could be avoided if we folded
+          // the current whitespace-state into the switch via an OR.
+          if (in_whitespace == 0) {
+            *write_ptr++ = ch;
+            in_whitespace = 1;
+          }
+          break;
+        case '\n':
+          // If the previous character was a whitespace, then back up
+          // so that the 'write' in the default case will overwrite the
+          // previous whitespace with a newline.  Avoid branches.
+          write_ptr -= in_whitespace;
+          in_whitespace = 1;
+          *write_ptr++ = ch;
+          break;
+        default:
+          in_whitespace = 0;
+          *write_ptr++ = ch;
+          break;
+      }
+    }
+    contents->resize(write_ptr - contents->data());
   }
 }
 
