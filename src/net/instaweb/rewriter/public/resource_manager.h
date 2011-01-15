@@ -261,7 +261,7 @@ class ResourceManager {
   void set_url_async_fetcher(UrlAsyncFetcher* fetcher) {
     url_async_fetcher_ = fetcher;
   }
-  Timer* timer() { return http_cache_->timer(); }
+  Timer* timer() const { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
   UrlEscaper* url_escaper() { return url_escaper_.get(); }
 
@@ -272,6 +272,8 @@ class ResourceManager {
   }
 
  private:
+  void RefreshImminentlyExpiringResource(
+      Resource* resource, MessageHandler* handler) const;
   inline void IncrementResourceUrlDomainRejections();
 
   // Writes out a cache entry telling us how to get to the processed version

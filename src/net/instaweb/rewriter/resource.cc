@@ -84,4 +84,8 @@ bool Resource::IsCacheable() const {
   return true;
 }
 
+void Resource::Freshen(MessageHandler* handler) {
+  // We don't need Freshining for data urls or output resources.
+}
+
 }  // namespace net_instaweb

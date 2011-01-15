@@ -50,12 +50,11 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
 
   void AddToCache(bool success) {
     ResponseHeaders* meta_data = response_headers();
-    if (success && !meta_data->IsErrorStatus()) {
-      if (!http_cache()->IsAlreadyExpired(*meta_data)) {
-        HTTPValue* value = http_value();
-        value->SetHeaders(meta_data);
-        http_cache()->Put(url(), value, message_handler_);
-      }
+    if (success && !meta_data->IsErrorStatus()
+        && !http_cache()->IsAlreadyExpired(*meta_data)) {
+      HTTPValue* value = http_value();
+      value->SetHeaders(meta_data);
+      http_cache()->Put(url(), value, message_handler_);
     } else {
       http_cache()->RememberNotCacheable(url(), message_handler_);
     }
@@ -201,6 +200,9 @@ bool UrlInputResource::Load(MessageHandler* handler) {
 
   // If the fetcher can satisfy the request instantly, then we
   // can try to populate the resource from the cache.
+  //
+  // TODO(jmarantz): populate directly from Fetch callback rather
+  // than having to deserialize from cache.
   bool data_available =
       (cb->Fetch(resource_manager_->url_async_fetcher(), handler) &&
        (http_cache->Find(url_, &value_, &meta_data_, handler) ==
@@ -249,6 +251,11 @@ void UrlInputResource::LoadAndCallback(AsyncCallback* callback,
         new UrlReadAsyncFetchCallback(callback, this);
     cb->Fetch(resource_manager_->url_async_fetcher(), message_handler);
   }
+}
+
+void UrlInputResource::Freshen(MessageHandler* handler) {
+  // TODO(jmarantz): use if-modified-since
+  Load(handler);
 }
 
 }  // namespace net_instaweb

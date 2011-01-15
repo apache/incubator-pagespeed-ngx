@@ -28,13 +28,10 @@
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/core/resource_util.h"
 
-namespace {
-
-const int64 kImplicitCacheTtlMs = 5 * net_instaweb::Timer::kMinuteMs;
-
-}  // namespace
-
 namespace net_instaweb {
+
+const int64 ResponseHeaders::kImplicitCacheTtlMs =
+    5 * net_instaweb::Timer::kMinuteMs;
 
 ResponseHeaders::ResponseHeaders() {
   proto_.reset(new HttpResponseHeaders);
@@ -86,6 +83,7 @@ const char* ResponseHeaders::reason_phrase() const {
 }
 
 int64 ResponseHeaders::timestamp_ms() const {
+  DCHECK(!cache_fields_dirty_) << "Call ComputeCaching() before timestamp_ms()";
   return proto_->timestamp_ms();
 }
 
@@ -149,32 +147,36 @@ bool ResponseHeaders::IsCacheable() const {
   // We do not compute caching from accessors so that the
   // accessors can be easier to call from multiple threads
   // without mutexing.
-  CHECK(!cache_fields_dirty_);
+  DCHECK(!cache_fields_dirty_) << "Call ComputeCaching() before IsCacheable()";
   return proto_->cacheable();
 }
 
 bool ResponseHeaders::IsProxyCacheable() const {
-  CHECK(!cache_fields_dirty_);
+  DCHECK(!cache_fields_dirty_)
+      << "Call ComputeCaching() before IsProxyCacheable()";
   return proto_->proxy_cacheable();
 }
 
 // Returns the ms-since-1970 absolute time when this resource
 // should be expired out of caches.
 int64 ResponseHeaders::CacheExpirationTimeMs() const {
-  CHECK(!cache_fields_dirty_);
+  DCHECK(!cache_fields_dirty_)
+      << "Call ComputeCaching() before CacheExpirationTimeMs()";
   return proto_->expiration_time_ms();
 }
 
 void ResponseHeaders::SetDate(int64 date_ms) {
   std::string time_string;
   if (ConvertTimeToString(date_ms, &time_string)) {
-    Add("Date", time_string.c_str());
+    RemoveAll(HttpAttributes::kDate);
+    Add(HttpAttributes::kDate, time_string.c_str());
   }
 }
 
 void ResponseHeaders::SetLastModified(int64 last_modified_ms) {
   std::string time_string;
   if (ConvertTimeToString(last_modified_ms, &time_string)) {
+    RemoveAll(HttpAttributes::kLastModified);
     Add(HttpAttributes::kLastModified, time_string.c_str());
   }
 }
@@ -281,7 +283,6 @@ bool ResponseHeaders::ParseTime(const char* time_str, int64* time_ms) {
 }
 
 bool ResponseHeaders::IsGzipped() const {
-  CHECK(headers_complete());
   CharStarVector v;
   return (Lookup(HttpAttributes::kContentEncoding, &v) && (v.size() == 1) &&
           (strcmp(v[0], HttpAttributes::kGzip) == 0));
@@ -302,8 +303,27 @@ void ResponseHeaders::UpdateDateHeader(const char* attr, int64 date_ms) {
   }
 }
 
+namespace {
+
+const char* BoolToString(bool b) {
+  return ((b) ? "true" : "false");
+}
+
+}  // namespace
+
 void ResponseHeaders::DebugPrint() const {
   fprintf(stderr, "%s\n", ToString().c_str());
+  fprintf(stderr, "cache_fields_dirty_ = %s\n",
+          BoolToString(cache_fields_dirty_));
+  if (!cache_fields_dirty_) {
+    fprintf(stderr, "expiration_time_ms_ = %ld\n",
+            static_cast<long>(proto_->expiration_time_ms()));  // NOLINT
+    fprintf(stderr, "timestamp_ms_ = %ld\n",
+            static_cast<long>(proto_->timestamp_ms()));        // NOLINT
+    fprintf(stderr, "cacheable_ = %s\n", BoolToString(proto_->cacheable()));
+    fprintf(stderr, "proxy_cacheable_ = %s\n",
+            BoolToString(proto_->proxy_cacheable()));
+  }
 }
 
 }  // namespace net_instaweb

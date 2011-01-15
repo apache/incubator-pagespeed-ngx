@@ -4,6 +4,7 @@
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/util/public/simple_stats.h"
 
 namespace net_instaweb {
 

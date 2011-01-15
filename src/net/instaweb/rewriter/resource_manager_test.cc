@@ -29,9 +29,19 @@
 #include "net/instaweb/rewriter/resource_manager_testing_peer.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/url_escaper.h"
+#include "net/instaweb/util/public/wait_url_async_fetcher.h"
+
+namespace {
+
+const char kResourceUrl[] = "http://example.com/image.png";
+const char kResourceUrlBase[] = "http://example.com";
+const char kResourceUrlPath[] = "/image.png";
+
+}  // namespace
 
 namespace net_instaweb {
 
@@ -215,6 +225,21 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     resource_manager_->ReadAsync(nor4.get(), &callback2, &message_handler_);
     callback2.AssertCalled();
   }
+
+  void AdvanceTime(int delta_sec, ResponseHeaders* headers) {
+    mock_timer()->advance_ms(delta_sec * Timer::kSecondMs);
+    headers->SetDate(mock_timer()->NowMs());
+    headers->ComputeCaching();
+    mock_url_fetcher_.SetResponse(kResourceUrl, *headers, "");
+  }
+
+  bool ResourceIsCached() {
+    scoped_ptr<Resource> resource(
+        resource_manager_->CreateInputResource(
+            GURL(kResourceUrlBase), kResourceUrlPath,
+            rewrite_driver_.options(), &message_handler_));
+    return resource_manager_->ReadIfCached(resource.get(), &message_handler_);
+  }
 };
 
 TEST_F(ResourceManagerTest, TestNamed) {
@@ -259,8 +284,8 @@ TEST_F(ResourceManagerTest, TestRemember404) {
 TEST_F(ResourceManagerTest, TestNonCacheable) {
   const std::string kContents = "ok";
 
-  // Make sure we don't try to insert non-cacheable resources
-  // into the cache wastefully, but still fetch them well.
+  // Make sure that when we get non-cacheable resources
+  // we mark the fetch as failed in the cache.
   ResponseHeaders no_cache;
   resource_manager_->SetDefaultHeaders(&kContentTypeHtml, &no_cache);
   no_cache.RemoveAll(HttpAttributes::kCacheControl);
@@ -268,7 +293,6 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
   no_cache.ComputeCaching();
   mock_url_fetcher_.SetResponse("http://example.com/", no_cache, kContents);
 
-  int inserts_before = lru_cache_->num_inserts();
   GURL base = GoogleUrl::Create(StringPiece("http://example.com"));
   scoped_ptr<Resource> resource(
       resource_manager_->CreateInputResource(
@@ -279,11 +303,63 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
   resource_manager_->ReadAsync(resource.get(), &callback, &message_handler_);
   callback.AssertCalled();
 
-  int inserts_after = lru_cache_->num_inserts();
-  EXPECT_EQ(inserts_before, inserts_after);
-  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+  HTTPValue valueOut;
+  ResponseHeaders headersOut;
+  EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
+            http_cache_.Find("http://example.com/", &valueOut, &headersOut,
+                             &message_handler_));
 }
 
+TEST_F(ResourceManagerTest, TestFreshenImminentlyExpiringResources) {
+  const std::string kContents = "ok";
+
+  SimpleStats stats;
+  HTTPCache::Initialize(&stats);
+  http_cache_.SetStatistics(&stats);
+  Variable* expirations = stats.GetVariable(HTTPCache::kCacheExpirations);
+  ASSERT_TRUE(expirations != NULL);
+
+  WaitUrlAsyncFetcher simulate_async(&mock_url_fetcher_);
+  rewrite_driver_.set_async_fetcher(&simulate_async);
+  resource_manager_->set_url_async_fetcher(&simulate_async);
+
+  // Make sure we don't try to insert non-cacheable resources
+  // into the cache wastefully, but still fetch them well.
+  ResponseHeaders response_headers;
+  resource_manager_->SetDefaultHeaders(&kContentTypePng, &response_headers);
+  response_headers.RemoveAll(HttpAttributes::kCacheControl);
+  int max_age_sec = ResponseHeaders::kImplicitCacheTtlMs / Timer::kSecondMs;
+  response_headers.Add(HttpAttributes::kCacheControl,
+                       StringPrintf("max-age=%d", max_age_sec));
+  AdvanceTime(0, &response_headers);
+
+  // The test here is not that the ReadIfCached will succeed, because
+  // it's a fake url fetcher.
+  EXPECT_FALSE(ResourceIsCached());
+  simulate_async.CallCallbacks();
+  EXPECT_TRUE(ResourceIsCached());
+
+  // Now let the time expire with no intervening fetches to freshen the cache.
+  // This is because we do not proactively initiate refreshes for all resources;
+  // only the ones that are actually asked for on a regular basis.  So a
+  // completely inactive site will not see its resources freshened.
+  AdvanceTime(max_age_sec + 1, &response_headers);
+  expirations->Clear();
+  EXPECT_FALSE(ResourceIsCached());
+  EXPECT_EQ(1, expirations->Get());
+  expirations->Clear();
+  simulate_async.CallCallbacks();
+  EXPECT_TRUE(ResourceIsCached());
+
+  // But if we have just a little bit of traffic then when we get a request
+  // for a soon-to-expire resource it will auto-freshen.
+  AdvanceTime(1 + (max_age_sec * 4) / 5, &response_headers);
+  EXPECT_TRUE(ResourceIsCached());
+  simulate_async.CallCallbacks();  // freshens cache.
+  AdvanceTime(max_age_sec / 5, &response_headers);
+  EXPECT_TRUE(ResourceIsCached());  // Yay, no cache misses after 301 seconds
+  EXPECT_EQ(0, expirations->Get());
+}
 
 // TODO(jmaessen): re-enable after sharding works again.
 // class ResourceManagerShardedTest : public ResourceManagerTest {

@@ -46,6 +46,8 @@ class UrlInputResource : public Resource {
   virtual std::string url() const { return url_; }
   const RewriteOptions* rewrite_options() const { return rewrite_options_; }
 
+  void Freshen(MessageHandler* handler);
+
  protected:
   virtual bool Load(MessageHandler* message_handler);
   virtual void LoadAndCallback(AsyncCallback* callback,

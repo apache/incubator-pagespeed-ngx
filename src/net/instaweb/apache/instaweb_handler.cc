@@ -49,6 +49,7 @@ namespace {
 const char kStatisticsHandler[] = "mod_pagespeed_statistics";
 const char kBeaconHandler[] = "mod_pagespeed_beacon";
 const char kResourceUrlNote[] = "mod_pagespeed_resource";
+const char kResourceUrlPass[] = "<PASS>";
 
 bool IsCompressibleContentType(const char* content_type) {
   if (content_type == NULL) {
@@ -189,7 +190,18 @@ apr_status_t instaweb_handler(request_rec* request) {
   ApacheRewriteDriverFactory* factory =
       InstawebContext::Factory(request->server);
 
-  if (url != NULL) {
+  // If our translate_name hook, save_url_for_instaweb_handler, failed
+  // to run because some other module's translate_hook returned OK first,
+  // then run it now.  The main reason we try to do this early is to
+  // save our URL before mod_rewrite mutates it.
+  if (url == NULL) {
+    save_url_for_instaweb_handler(request);
+    url = apr_table_get(request->notes, kResourceUrlNote);
+  }
+
+  // If we have handled the URL, and did not note it as a 'pass', then
+  // handle it.
+  if ((url != NULL) && (strcmp(url, kResourceUrlPass) != 0)) {
     // Only handle GET request
     if (request->method_number != M_GET) {
       ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
@@ -322,6 +334,15 @@ apr_status_t save_url_for_instaweb_handler(request_rec *request) {
     } else {
       apr_table_setn(request->notes, kResourceUrlNote, url);
     }
+  } else {
+    // Leave behind a note for non-instaweb requests that says that
+    // our handler got called and we decided to pass.  This gives us
+    // one final chance at serving resources in the presence of a
+    // module that intercepted 'translate_name' before mod_pagespeed.
+    // The absense of this marker indicates that translate_name did
+    // not get a chance to run, and thus we should try to look at
+    // the URI directly.
+    apr_table_set(request->notes, kResourceUrlNote, kResourceUrlPass);
   }
   return DECLINED;
 }

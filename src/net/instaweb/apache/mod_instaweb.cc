@@ -719,10 +719,11 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   // the URL somewhere safe (a request->note) before mod_rewrite
   // corrupts it.  The latter is easier to deploy as it does not
   // require users editing their rewrite rules for mod_pagespeed.
-  // mod_rewrite registers at APR_HOOK_FIRST so we go to
-  // APR_HOOK_FIRST - 1.
+  // mod_rewrite registers at APR_HOOK_FIRST.  We'd like to leave
+  // space for user modules at APR_HOOK_FIRST-1, so we go to
+  // APR_HOOK_FIRST - 2.
   ap_hook_translate_name(save_url_for_instaweb_handler, NULL, NULL,
-                         APR_HOOK_FIRST - 1);
+                         APR_HOOK_FIRST - 2);
 }
 
 apr_status_t pagespeed_child_exit(void* data) {

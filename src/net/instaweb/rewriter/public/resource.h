@@ -89,6 +89,10 @@ class Resource {
   // successful.
   bool Link(HTTPValue* source, MessageHandler* handler);
 
+  // Freshen a soon-to-expire resource so that we minimize the number
+  // of cache misses when serving live traffic.
+  virtual void Freshen(MessageHandler* handler);
+
  protected:
   friend class ResourceManager;
   friend class UrlReadAsyncFetchCallback;

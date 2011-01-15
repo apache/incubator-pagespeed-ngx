@@ -53,6 +53,7 @@ const char kResourceUrlDomainRejections[] = "resource_url_domain_rejections";
 
 const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
 const int64 kGeneratedMaxAgeSec = Timer::kYearMs / Timer::kSecondMs;
+const int64 kRefreshExpirePercent = 75;
 
 // Our HTTP cache mostly stores full URLs, including the http: prefix,
 // mapping them into the URL contents and HTTP headers.  However, we
@@ -624,6 +625,28 @@ void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
   }
 }
 
+void ResourceManager::RefreshImminentlyExpiringResource(
+    Resource* resource, MessageHandler* handler) const {
+  // Consider a resource with 5 minute expiration time (the default
+  // assumed by mod_pagespeed when a potentialy cacheable resource
+  // lacks a cache control header, which happens a lot).  If the
+  // origin TTL was 5 minutes and 4 minutes have expired, then re-fetch
+  // it so that we can avoid expiring the data.
+  //
+  // If we don't do this, then every 5 minutes, someone will see
+  // this page unoptimized.  In a site with very low QPS, including
+  // test instances of a site, this can happen quite often.
+  int64 now_ms = timer()->NowMs();
+  const ResponseHeaders* headers = resource->metadata();
+  int64 start_date_ms = headers->timestamp_ms();
+  int64 expire_ms = headers->CacheExpirationTimeMs();
+  int64 ttl_ms = expire_ms - start_date_ms;
+  int64 elapsed_ms = now_ms - start_date_ms;
+  if ((elapsed_ms * 100) >= (kRefreshExpirePercent * ttl_ms)) {
+    resource->Freshen(handler);
+  }
+}
+
 void ResourceManager::ReadAsync(Resource* resource,
                                 Resource::AsyncCallback* callback,
                                 MessageHandler* handler) {
@@ -640,6 +663,9 @@ void ResourceManager::ReadAsync(Resource* resource,
 
   switch (result) {
     case HTTPCache::kFound:
+      if (resource->IsCacheable()) {
+        RefreshImminentlyExpiringResource(resource, handler);
+      }
       callback->Done(true, resource);
       break;
     case HTTPCache::kRecentFetchFailedDoNotRefetch:
@@ -680,6 +706,9 @@ bool ResourceManager::ReadIfCached(Resource* resource,
   }
   if (result == HTTPCache::kFound) {
     resource->DetermineContentType();
+    if (resource->IsCacheable()) {
+      RefreshImminentlyExpiringResource(resource, handler);
+    }
     return true;
   }
   return false;

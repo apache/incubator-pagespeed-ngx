@@ -35,6 +35,11 @@ class Writer;
 // Read/write API for HTTP response headers.
 class ResponseHeaders : public Headers<HttpResponseHeaders> {
  public:
+  // The number of milliseconds of cache TTL we assign to resources that
+  // are "likely cacheable" (e.g. images, js, css, not html) and have no
+  // explicit cache ttl or expiration date.
+  static const int64 kImplicitCacheTtlMs;
+
   ResponseHeaders();
   ~ResponseHeaders();
 

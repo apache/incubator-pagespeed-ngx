@@ -40,7 +40,6 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/mock_url_fetcher.h"
 #include "net/instaweb/util/public/null_writer.h"
-#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include <string>
 #include "net/instaweb/util/public/wait_url_async_fetcher.h"
