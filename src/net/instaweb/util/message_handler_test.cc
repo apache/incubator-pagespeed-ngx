@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +16,10 @@
 
 // Author: bmcquade@google.com (Bryan McQuade)
 
-#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/message_handler.h"
+
+#include <vector>
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

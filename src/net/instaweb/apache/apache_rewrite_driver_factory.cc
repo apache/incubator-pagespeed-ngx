@@ -27,7 +27,7 @@
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/util/public/sync_fetcher_adapter.h"
+#include "net/instaweb/http/public/sync_fetcher_adapter.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 

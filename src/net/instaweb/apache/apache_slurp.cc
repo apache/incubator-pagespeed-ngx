@@ -44,7 +44,7 @@
 #include "net/instaweb/util/public/query_params.h"
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/url_fetcher.h"
+#include "net/instaweb/http/public/url_fetcher.h"
 
 // The Apache headers must be after instaweb headers.  Otherwise, the
 // compiler will complain

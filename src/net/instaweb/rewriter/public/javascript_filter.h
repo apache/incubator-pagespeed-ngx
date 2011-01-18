@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 class HtmlParse;
@@ -42,7 +42,7 @@ class ResourceManager;
 class Statistics;
 class Writer;
 
-/**
+/*
  * Find Javascript elements (either inline scripts or imported js files) and
  * rewrite them.  This can involve any combination of minifaction,
  * concatenation, renaming, reordering, and incrementalization that accomplishes

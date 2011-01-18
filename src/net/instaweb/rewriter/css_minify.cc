@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/css_minify.h"
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/writer.h"
 #include "webutil/css/parser.h"

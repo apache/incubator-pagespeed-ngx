@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,7 @@
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 

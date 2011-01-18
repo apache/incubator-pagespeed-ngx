@@ -23,7 +23,7 @@
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/meta_data.h"  // for HttpAttributes
+#include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes
 #include "net/instaweb/util/public/mock_timer.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,12 +24,12 @@
 #include <vector>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/http_cache.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 class GURL;

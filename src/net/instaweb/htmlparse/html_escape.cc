@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -286,7 +286,7 @@ StringPiece HtmlEscape::EscapeHelper(const StringPiece& unescaped,
 
   std::string char_to_escape;
   for (size_t i = 0; i < unescaped.size(); ++i) {
-    int ch = unescaped[i];
+    int ch = static_cast<unsigned char>(unescaped[i]);
     // See http://www.htmlescape.net/htmlescape_tool.html.  Single-quote and
     // semi-colon do not need to be escaped.
     if ((ch > 127) || (ch < 32) || (ch == '"') || (ch == '&') || (ch == '<') ||

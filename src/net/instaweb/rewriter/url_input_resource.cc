@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,10 +28,10 @@
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/http_value.h"
+#include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 

@@ -36,7 +36,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/sync_fetcher_adapter_callback.h"
+#include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "http_config.h"
 #include "http_core.h"
 #include "http_log.h"

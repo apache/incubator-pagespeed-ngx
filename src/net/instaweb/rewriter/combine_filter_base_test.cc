@@ -19,7 +19,7 @@
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 
 #include "net/instaweb/rewriter/public/combine_filter_base.h"
-#include "net/instaweb/util/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 

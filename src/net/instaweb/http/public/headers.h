@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/meta_data.h"  // HttpAttributes, HttpStatus
+#include "net/instaweb/http/public/meta_data.h"  // HttpAttributes, HttpStatus
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 

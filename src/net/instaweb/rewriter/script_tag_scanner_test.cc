@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,10 +16,12 @@
 
 // Author: mdsteele@google.com (Matthew D. Steele)
 
+#include "net/instaweb/rewriter/public/script_tag_scanner.h"
+
+#include <vector>
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {

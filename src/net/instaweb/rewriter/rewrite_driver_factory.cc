@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,16 +22,16 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/cache_url_async_fetcher.h"
-#include "net/instaweb/util/public/cache_url_fetcher.h"
-#include "net/instaweb/util/public/fake_url_async_fetcher.h"
+#include "net/instaweb/http/public/cache_url_async_fetcher.h"
+#include "net/instaweb/http/public/cache_url_fetcher.h"
+#include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/http_cache.h"
-#include "net/instaweb/util/public/http_dump_url_fetcher.h"
-#include "net/instaweb/util/public/http_dump_url_writer.h"
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/http_dump_url_fetcher.h"
+#include "net/instaweb/http/public/http_dump_url_writer.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/statistics.h"
