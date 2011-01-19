@@ -53,6 +53,7 @@
       ],
       'export_dependent_settings': [
         '<(instaweb_root)/instaweb.gyp:instaweb_util',
+        '<(instaweb_root)/instaweb.gyp:instaweb_htmlparse',
       ],
     },
   ],

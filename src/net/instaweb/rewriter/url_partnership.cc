@@ -81,6 +81,9 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
         ret = true;
       } else {
         ret = (domain_ == mapped_domain_name);
+        if (ret && !rewrite_options_->combine_across_paths()) {
+          ret = (ResolvedBase() == GoogleUrl::AllExceptLeaf(resolved_request));
+        }
       }
 
       if (ret) {

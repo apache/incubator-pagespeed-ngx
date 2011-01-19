@@ -145,6 +145,9 @@
           '<(DEPTH)',
         ],
       },
+      'export_dependent_settings': [
+        'instaweb_core.gyp:instaweb_htmlparse_core',
+      ],
     },
     {
       'target_name': 'instaweb_http',
@@ -177,6 +180,7 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_util',
+        'instaweb_core.gyp:instaweb_htmlparse_core',
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
@@ -196,6 +200,9 @@
           '<(DEPTH)',
         ],
       },
+      'export_dependent_settings': [
+        'instaweb_core.gyp:instaweb_htmlparse_core',
+      ],
     },
     {
       'variables': {

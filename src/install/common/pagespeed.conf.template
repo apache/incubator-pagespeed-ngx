@@ -80,6 +80,15 @@
     # ModPagespeedSlurpDirectory ...
     # ModPagespeedSlurpReadOnly on
 
+    # The maximum URL size is generally limited to about 2k characters
+    # due to IE: See http://support.microsoft.com/kb/208427/EN-US.
+    # Apache servers by default impose a further limitation of about
+    # 250 characters per URL segment (text between slashes).
+    # mod_pagespeed circumvents this limitation, but if you employ
+    # proxy servers in your path you may need to re-impose it by
+    # overriding the setting here.  The default setting is 1024
+    # characters.
+    # ModPagespeedMaxSegmentLength 250
 
     # Enables server-side instrumentation and statistics.  If this rewriter is
     # enabled, then each rewritten HTML page will have instrumentation javacript
@@ -102,6 +111,10 @@
 
     # Uncomment the following line if you want to disable statistics entirely.
     # ModPagespeedStatistics off
+
+    # Uncomment this if you want to prevent mod_pagespeed from combining files
+    # (e.g. CSS files) across paths
+    # ModPagespeedCombineAcrossPaths off
 
     # This page lets you view statistics about the mod_pagespeed module.
     <Location /mod_pagespeed_statistics>

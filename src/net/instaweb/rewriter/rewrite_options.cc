@@ -60,14 +60,13 @@ const int RewriteOptions::kDefaultImgMaxRewritesAtOnce = 8;
 // http://support.microsoft.com/kb/208427/EN-US
 const int RewriteOptions::kMaxUrlSize = 2083;
 
-// See http://code.google.com/p/modpagespeed/issues/detail?id=9
-// Apache evidently limits each URL path segment (between /) to
-// about 256 characters.  This is not a fundamental URL limitation
-// but is Apache specific.  For the moment we will impose the
-// Apache limitation in general -- there is concern that even an
-// nginx server might fail if resources are then served through
-// an Apache proxy.  Until then let's just set a reasonable limit.
-const int64 RewriteOptions::kMaxUrlSegmentSize = 250;
+// See http://code.google.com/p/modpagespeed/issues/detail?id=9.  By
+// default, Apache evidently limits each URL path segment (between /)
+// to about 256 characters.  This is not a fundamental URL limitation
+// but is Apache specific.  Ben Noordhuis has provided a workaround
+// of hooking map_to_storage to skip the directory-mapping phase in
+// Apache.  See http://code.google.com/p/modpagespeed/issues/detail?id=176
+const int RewriteOptions::kDefaultMaxUrlSegmentSize = 1024;
 
 const std::string RewriteOptions::kDefaultBeaconUrl =
     "/mod_pagespeed_beacon?ets=";
@@ -104,9 +103,10 @@ RewriteOptions::RewriteOptions()
       js_outline_min_bytes_(kDefaultJsInlineMaxBytes),
       num_shards_(0),
       beacon_url_(kDefaultBeaconUrl),
-      max_url_segment_size_(kMaxUrlSegmentSize),
+      max_url_segment_size_(kDefaultMaxUrlSegmentSize),
       max_url_size_(kMaxUrlSize),
-      enabled_(true) {
+      enabled_(true),
+      combine_across_paths_(true) {
   // TODO: If we instantiate many RewriteOptions, this should become a
   // public static method called once at startup.
   SetUp();
@@ -253,6 +253,8 @@ void RewriteOptions::Merge(const RewriteOptions& first,
   // TODO(jmarantz): Use a virtual base class for Option so we can put
   // this in a loop.  Or something.
   enabled_.Merge(first.enabled_, second.enabled_);
+  combine_across_paths_.Merge(first.combine_across_paths_,
+                              second.combine_across_paths_);
   level_.Merge(first.level_, second.level_);
   css_inline_max_bytes_.Merge(first.css_inline_max_bytes_,
                               second.css_inline_max_bytes_);

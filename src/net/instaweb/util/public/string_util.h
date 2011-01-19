@@ -94,6 +94,10 @@ inline bool OnlyWhitespace(const std::string& str) {
   return ContainsOnlyWhitespaceASCII(str);
 }
 
+int GlobalReplaceSubstring(const StringPiece& substring,
+                           const StringPiece& replacement,
+                           std::string* s);
+
 inline char* strdup(const char* str) {
   return base::strdup(str);
 }

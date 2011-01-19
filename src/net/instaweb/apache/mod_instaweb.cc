@@ -100,6 +100,7 @@ const char* kModPagespeedImgInlineMaxBytes = "ModPagespeedImgInlineMaxBytes";
 const char* kModPagespeedImgMaxRewritesAtOnce =
     "ModPagespeedImgMaxRewritesAtOnce";
 const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
+const char* kModPagespeedMaxSegmentLength = "ModPagespeedMaxSegmentLength";
 const char* kModPagespeedDomain = "ModPagespeedDomain";
 const char* kModPagespeedMapRewriteDomain = "ModPagespeedMapRewriteDomain";
 const char* kModPagespeedMapOriginDomain = "ModPagespeedMapOriginDomain";
@@ -108,6 +109,7 @@ const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
 const char* kModPagespeedAllow = "ModPagespeedAllow";
 const char* kModPagespeedDisallow = "ModPagespeedDisallow";
 const char* kModPagespeedStatistics = "ModPagespeedStatistics";
+const char* kModPagespeedCombineAcrossPaths = "ModPagespeedCombineAcrossPaths";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -724,6 +726,12 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   // APR_HOOK_FIRST - 2.
   ap_hook_translate_name(save_url_for_instaweb_handler, NULL, NULL,
                          APR_HOOK_FIRST - 2);
+
+  // By default, apache imposes limitations on URL segments of around
+  // 256 characters that appear to correspond to filename limitations.
+  // To prevent that, we hook map_to_storage for our own purposes.
+  ap_hook_map_to_storage(instaweb_map_to_storage, NULL, NULL,
+                         APR_HOOK_FIRST - 2);
 }
 
 apr_status_t pagespeed_child_exit(void* data) {
@@ -823,6 +831,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   if (strcasecmp(directive, kModPagespeed) == 0) {
     ret = ParseBoolOption(options, cmd,
                           &RewriteOptions::set_enabled, arg);
+  } else if (strcasecmp(directive, kModPagespeedCombineAcrossPaths) == 0) {
+    ret = ParseBoolOption(options, cmd,
+                          &RewriteOptions::set_combine_across_paths, arg);
   } else if (strcasecmp(directive, kModPagespeedUrlPrefix) == 0) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (strcasecmp(directive, kModPagespeedFetchProxy) == 0) {
@@ -862,6 +873,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (strcasecmp(directive, kModPagespeedCssInlineMaxBytes) == 0) {
     ret = ParseInt64Option(options,
         cmd, &RewriteOptions::set_css_inline_max_bytes, arg);
+  } else if (strcasecmp(directive, kModPagespeedMaxSegmentLength) == 0) {
+    ret = ParseIntOption(options,
+        cmd, &RewriteOptions::set_max_url_segment_size, arg);
   } else if (strcasecmp(directive, kModPagespeedLRUCacheKbPerProcess) == 0) {
     ret = ParseInt64Option(factory,
         cmd, &ApacheRewriteDriverFactory::set_lru_cache_kb_per_process, arg);
@@ -975,6 +989,8 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
 
 static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeed, "Enable instaweb"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedCombineAcrossPaths,
+                           "Allow combining resources from different paths"),
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "Set the url prefix"),
   APACHE_CONFIG_OPTION(kModPagespeedFetchProxy, "Set the fetch proxy"),
   APACHE_CONFIG_OPTION(kModPagespeedGeneratedFilePrefix,
@@ -1025,6 +1041,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Number of bytes below which javascript will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCssInlineMaxBytes,
         "Number of bytes below which stylesheets will be inlined."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedMaxSegmentLength,
+        "Maximum size of a URL segment"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedBeaconUrl, "URL for beacon callback"
                        " injected by add_instrumentation."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDomain,

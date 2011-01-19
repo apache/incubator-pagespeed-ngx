@@ -182,13 +182,8 @@ void send_out_headers_and_body(
   ap_rwrite(output.c_str(), output.size(), request);
 }
 
-}  // namespace
-
-apr_status_t instaweb_handler(request_rec* request) {
-  apr_status_t ret = DECLINED;
+const char* get_instaweb_url(request_rec* request) {
   const char* url = apr_table_get(request->notes, kResourceUrlNote);
-  ApacheRewriteDriverFactory* factory =
-      InstawebContext::Factory(request->server);
 
   // If our translate_name hook, save_url_for_instaweb_handler, failed
   // to run because some other module's translate_hook returned OK first,
@@ -201,7 +196,21 @@ apr_status_t instaweb_handler(request_rec* request) {
 
   // If we have handled the URL, and did not note it as a 'pass', then
   // handle it.
-  if ((url != NULL) && (strcmp(url, kResourceUrlPass) != 0)) {
+  if ((url != NULL) && (strcmp(url, kResourceUrlPass) == 0)) {
+    url = NULL;
+  }
+  return url;
+}
+
+}  // namespace
+
+apr_status_t instaweb_handler(request_rec* request) {
+  apr_status_t ret = DECLINED;
+  const char* url = get_instaweb_url(request);
+  ApacheRewriteDriverFactory* factory =
+      InstawebContext::Factory(request->server);
+
+  if (url != NULL) {
     // Only handle GET request
     if (request->method_number != M_GET) {
       ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
@@ -345,6 +354,12 @@ apr_status_t save_url_for_instaweb_handler(request_rec *request) {
     apr_table_set(request->notes, kResourceUrlNote, kResourceUrlPass);
   }
   return DECLINED;
+}
+
+// overrides core_map_to_storage to avoid imposing filename limits.
+apr_status_t instaweb_map_to_storage(request_rec* request) {
+  apr_status_t ret = (get_instaweb_url(request) != NULL) ? OK : DECLINED;
+  return ret;
 }
 
 }  // namespace net_instaweb

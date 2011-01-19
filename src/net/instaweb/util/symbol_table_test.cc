@@ -50,6 +50,9 @@ TEST_F(SymbolTableTest, TestInternSensitive) {
   EXPECT_EQ(s2, a2.c_str());
   EXPECT_EQ(s3, a3.c_str());
   EXPECT_EQ(s4, a4.c_str());
+
+  Atom empty = symbol_table.Intern("");
+  EXPECT_TRUE(Atom() == empty);
 }
 
 TEST_F(SymbolTableTest, TestInternInsensitive) {
@@ -68,6 +71,9 @@ TEST_F(SymbolTableTest, TestInternInsensitive) {
   EXPECT_EQ(0, strcasecmp(s1.c_str(), a1.c_str()));
   EXPECT_EQ(0, strcasecmp(s2.c_str(), a2.c_str()));
   EXPECT_EQ(0, strcasecmp(s3.c_str(), a3.c_str()));
+
+  Atom empty = symbol_table.Intern("");
+  EXPECT_TRUE(Atom() == empty);
 }
 
 }  // namespace net_instaweb

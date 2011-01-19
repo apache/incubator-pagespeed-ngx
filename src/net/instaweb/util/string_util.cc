@@ -147,6 +147,43 @@ bool HasPrefixString(const StringPiece& str, const StringPiece& prefix) {
           (str.substr(0, prefix.size()) == prefix));
 }
 
+// ----------------------------------------------------------------------
+// GlobalReplaceSubstring()
+//    Replaces all instances of a substring in a string.  Returns the
+//    number of replacements.
+//
+//    NOTE: The string pieces must not overlap s.
+// ----------------------------------------------------------------------
+int GlobalReplaceSubstring(const StringPiece& substring,
+                           const StringPiece& replacement,
+                           std::string* s) {
+  CHECK(s != NULL);
+  if (s->empty())
+    return 0;
+  std::string tmp;
+  int num_replacements = 0;
+  size_t pos = 0;
+  for (size_t match_pos = s->find(substring.data(), pos, substring.length());
+       match_pos != std::string::npos;
+       pos = match_pos + substring.length(),
+           match_pos = s->find(substring.data(), pos, substring.length())) {
+    ++num_replacements;
+    // Append the original content before the match.
+    tmp.append(*s, pos, match_pos - pos);
+    // Append the replacement for the match.
+    tmp.append(replacement.begin(), replacement.end());
+  }
+  // Append the content after the last match. If no replacements were made, the
+  // original string is left untouched.
+  if (num_replacements > 0) {
+    tmp.append(*s, pos, s->length() - pos);
+    s->swap(tmp);
+  }
+  return num_replacements;
+}
+
+
+
 const StringPiece EmptyString::kEmptyString;
 
 }  // namespace net_instaweb

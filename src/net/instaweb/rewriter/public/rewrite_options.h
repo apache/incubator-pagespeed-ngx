@@ -108,7 +108,7 @@ class RewriteOptions {
   // Apache evidently limits each URL path segment (between /) to
   // about 256 characters.  This is not fundamental URL limitation
   // but is Apache specific.
-  static const int64 kMaxUrlSegmentSize;
+  static const int kDefaultMaxUrlSegmentSize;
 
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
 
@@ -210,6 +210,12 @@ class RewriteOptions {
     enabled_.set(x);
   }
   bool enabled() const { return enabled_.value(); }
+
+  void set_combine_across_paths(bool x) {
+    modified_ = true;
+    combine_across_paths_.set(x);
+  }
+  bool combine_across_paths() const { return combine_across_paths_.value(); }
 
   // Merge together two source RewriteOptions to populate this.  The order
   // is significant: the second will override the first.  One semantic
@@ -324,6 +330,7 @@ class RewriteOptions {
   Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")
   Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")
   Option<bool> enabled_;
+  Option<bool> combine_across_paths_;
   DomainLawyer domain_lawyer_;
   // Be sure to update Merge() if a new field is added.
 

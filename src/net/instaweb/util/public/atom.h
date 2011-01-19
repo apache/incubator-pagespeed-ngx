@@ -26,9 +26,9 @@
 
 namespace net_instaweb {
 
-struct StringCompareInsensitive;
-struct StringCompareSensitive;
-template<class SymbolCompare> class SymbolTable;
+struct CaseFold;
+struct CasePreserve;
+template<class CharTransform> class SymbolTable;
 
 // Atoms are idempotent representations of strings, created
 // via a symbol table.
@@ -64,8 +64,8 @@ class Atom {
   // SymbolTable is a friend of Symbol because SymbolTable is the
   // only class that has the right to construct a new Atom from
   // a char*.
-  friend class SymbolTable<CharStarCompareInsensitive>;
-  friend class SymbolTable<CharStarCompareSensitive>;
+  friend class SymbolTable<CaseFold>;
+  friend class SymbolTable<CasePreserve>;
 
  private:
   explicit Atom(const char* str) : str_(str) {}

@@ -218,14 +218,25 @@ TEST_F(UrlPartnershipTest, ResourcesFromMappedDomains) {
 }
 
 TEST_F(UrlPartnershipTest, AllowDisallow) {
-  // This test shows that while we can start partnerships from nytimes.com
-  // or graphics8.nytimes.com, we cannot combine those without a mapping.
-  domain_lawyer_->AddDomain("http://graphics8.nytimes.com", &message_handler_);
   options_.Disallow("*/*.css");
   options_.Allow("*/a*.css");
   EXPECT_FALSE(partnership_.AddUrl("foo.css", &message_handler_));
   EXPECT_TRUE(partnership_.AddUrl("afoo.css", &message_handler_));
   EXPECT_TRUE(partnership_.AddUrl("foo.jpg", &message_handler_));
+}
+
+TEST_F(UrlPartnershipTest, CombineAcrossPaths) {
+  options_.set_combine_across_paths(true);
+  EXPECT_TRUE(partnership_.AddUrl("a/foo.css", &message_handler_));
+  EXPECT_TRUE(partnership_.AddUrl("b/bar.css", &message_handler_));
+  EXPECT_TRUE(partnership_.AddUrl("a/baz.css", &message_handler_));
+}
+
+TEST_F(UrlPartnershipTest, NoCombineAcrossPaths) {
+  options_.set_combine_across_paths(false);
+  EXPECT_TRUE(partnership_.AddUrl("a/foo.css", &message_handler_));
+  EXPECT_FALSE(partnership_.AddUrl("b/bar.css", &message_handler_));
+  EXPECT_TRUE(partnership_.AddUrl("a/baz.css", &message_handler_));
 }
 
 }  // namespace net_instaweb

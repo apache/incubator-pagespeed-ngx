@@ -627,10 +627,10 @@ TEST_F(CssCombineFilterTest, CombineCssManyFiles) {
   // this on the constant declared in RewriteOptions but I think it's
   // easier to understand leaving these exposed as constants; we can
   // abstract them later.
-  const int kNumCssLinks = 20;
+  const int kNumCssLinks = 100;
   // Note: Without CssCombine::Partnership::kUrlSlack this was:
   //const int kNumCssInCombination = 18
-  const int kNumCssInCombination = 10;  // based on how we encode "yellow%d.css"
+  const int kNumCssInCombination = 70;  // based on how we encode "yellow%d.css"
   CssLink::Vector css_in, css_out;
   for (int i = 0; i < kNumCssLinks; ++i) {
     css_in.Add(StringPrintf("styles/yellow%d.css", i),
@@ -659,7 +659,7 @@ TEST_F(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
   // that stays on its own.
   // Note: Without CssCombine::Partnership::kUrlSlack this was:
   //const int kNumCssInCombination = 18
-  const int kNumCssInCombination = 10;  // based on how we encode "yellow%d.css"
+  const int kNumCssInCombination = 70;  // based on how we encode "yellow%d.css"
   const int kNumCssLinks = kNumCssInCombination + 1;
   CssLink::Vector css_in, css_out;
   for (int i = 0; i < kNumCssLinks - 1; ++i) {
@@ -766,7 +766,7 @@ TEST_F(CssCombineFilterTest, DoAbsolutifyDifferentDir) {
 // Verifies that we don't produce URLs that are too long in a corner case.
 TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   CssLink::Vector css_in, css_out;
-  std::string long_name(200, 'z');
+  std::string long_name(600, 'z');
   css_in.Add(long_name + "/a.css", "a", "", true);
   css_in.Add(long_name + "/b.css", "b", "", true);
 
@@ -784,6 +784,18 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   ASSERT_TRUE(namer.Decode(GoogleUrl::Leaf(gurl)));
   EXPECT_EQ("a.css+b.css", namer.name());
   EXPECT_EQ("ab", actual_combination);
+}
+
+// Verifies that we don't allow path-crossing URLs if that option is turned off.
+TEST_F(CssCombineFilterTest, CrossAcrossPathsDisallowed) {
+  options_.set_combine_across_paths(false);
+  CssLink::Vector css_in, css_out;
+  css_in.Add("a/a.css", "a", "", true);
+  css_in.Add("b/b.css", "b", "", true);
+  BarrierTestHelper("cross_paths", css_in, &css_out);
+  ASSERT_EQ(2, css_out.size());
+  EXPECT_EQ("a/a.css", css_out[0]->url_);
+  EXPECT_EQ("b/b.css", css_out[1]->url_);
 }
 
 TEST_F(CssCombineFilterTest, CrossMappedDomain) {

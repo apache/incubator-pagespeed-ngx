@@ -34,6 +34,11 @@ apr_status_t instaweb_handler(request_rec* request);
 // resource.
 apr_status_t save_url_for_instaweb_handler(request_rec *request);
 
+// By default, apache imposes limitations on URL segments of around
+// 256 characters that appear to correspond to filename limitations.
+// To prevent that, we hook map_to_storage for our own purposes.
+apr_status_t instaweb_map_to_storage(request_rec* request);
+
 }  // namespace net_instaweb
 
 #endif  // MOD_INSTAWEB_INSTAWEB_HANDLER_H_
