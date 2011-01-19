@@ -176,6 +176,29 @@
       },
     },
     {
+      'target_name': 'instaweb_http_test',
+      'type': '<(library)',
+      'dependencies': [
+        'instaweb_http',
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
+      ],
+      'sources': [
+        'http/counting_url_async_fetcher.cc',
+        'util/counting_writer.cc',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(instaweb_root)',
+          '<(DEPTH)',
+        ],
+      },
+    },
+    {
       'target_name': 'instaweb_rewriter_base',
       'type': '<(library)',
       'dependencies': [

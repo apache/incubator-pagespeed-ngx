@@ -39,6 +39,7 @@
       'dependencies': [
         'apache.gyp:apache',
         'instaweb.gyp:instaweb_util_pthread',
+        'instaweb.gyp:instaweb_http_test',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
         '<(DEPTH)/testing/gtest.gyp:gtest',

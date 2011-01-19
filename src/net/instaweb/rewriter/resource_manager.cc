@@ -636,14 +636,24 @@ void ResourceManager::RefreshImminentlyExpiringResource(
   // If we don't do this, then every 5 minutes, someone will see
   // this page unoptimized.  In a site with very low QPS, including
   // test instances of a site, this can happen quite often.
-  int64 now_ms = timer()->NowMs();
-  const ResponseHeaders* headers = resource->metadata();
-  int64 start_date_ms = headers->timestamp_ms();
-  int64 expire_ms = headers->CacheExpirationTimeMs();
-  int64 ttl_ms = expire_ms - start_date_ms;
-  int64 elapsed_ms = now_ms - start_date_ms;
-  if ((elapsed_ms * 100) >= (kRefreshExpirePercent * ttl_ms)) {
-    resource->Freshen(handler);
+  if (!http_cache_->force_caching() && resource->IsCacheable()) {
+    int64 now_ms = timer()->NowMs();
+    const ResponseHeaders* headers = resource->metadata();
+    int64 start_date_ms = headers->timestamp_ms();
+    int64 expire_ms = headers->CacheExpirationTimeMs();
+    int64 ttl_ms = expire_ms - start_date_ms;
+
+    // Only proactively refresh resources that have at least our
+    // default expiration of 5 minutes.
+    //
+    // TODO(jmaessen): Lower threshold when If-Modified-Since checking is in
+    // place; consider making this settable.
+    if (ttl_ms >= ResponseHeaders::kImplicitCacheTtlMs) {
+      int64 elapsed_ms = now_ms - start_date_ms;
+      if ((elapsed_ms * 100) >= (kRefreshExpirePercent * ttl_ms)) {
+        resource->Freshen(handler);
+      }
+    }
   }
 }
 
@@ -663,9 +673,7 @@ void ResourceManager::ReadAsync(Resource* resource,
 
   switch (result) {
     case HTTPCache::kFound:
-      if (resource->IsCacheable()) {
-        RefreshImminentlyExpiringResource(resource, handler);
-      }
+      RefreshImminentlyExpiringResource(resource, handler);
       callback->Done(true, resource);
       break;
     case HTTPCache::kRecentFetchFailedDoNotRefetch:
@@ -706,9 +714,7 @@ bool ResourceManager::ReadIfCached(Resource* resource,
   }
   if (result == HTTPCache::kFound) {
     resource->DetermineContentType();
-    if (resource->IsCacheable()) {
-      RefreshImminentlyExpiringResource(resource, handler);
-    }
+    RefreshImminentlyExpiringResource(resource, handler);
     return true;
   }
   return false;

@@ -79,7 +79,9 @@ int ResponseHeaders::status_code() const {
 }
 
 const char* ResponseHeaders::reason_phrase() const {
-  return proto_->reason_phrase().c_str();
+  return proto_->has_reason_phrase()
+      ? proto_->reason_phrase().c_str()
+      : "(null)";
 }
 
 int64 ResponseHeaders::timestamp_ms() const {
