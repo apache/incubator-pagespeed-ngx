@@ -141,7 +141,7 @@ TEST_F(ResponseHeadersTest, TestParseAndWrite) {
   //     wget --save-headers http://www.google.com
   const int bufsize = 100;
   int num_consumed = 0;
-  for (int i = 0, n = sizeof(http_data) - 1; i < n; i += bufsize) {
+  for (int i = 0, n = STATIC_STRLEN(http_data); i < n; i += bufsize) {
     int size = std::min(bufsize, n - i);
     num_consumed += parser_.ParseChunk(StringPiece(http_data + i, size),
                                        &message_handler_);
@@ -156,7 +156,7 @@ TEST_F(ResponseHeadersTest, TestParseAndWrite) {
   // net/instaweb/latencylabs/http_response_serializer.h.
   static const char start_of_doc[] = "<!doctype html>";
   EXPECT_EQ(0, strncmp(start_of_doc, http_data + num_consumed,
-                       sizeof(start_of_doc) - 1));
+                       STATIC_STRLEN(start_of_doc)));
   CheckGoogleHeaders(response_headers_);
 
   // Now write the headers into a string.

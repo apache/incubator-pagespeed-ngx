@@ -172,7 +172,7 @@ std::string RemoveModPageSpeedQueryParams(
   for (int i = 0; i < query_params.size(); ++i) {
     const char* name = query_params.name(i);
     static const char kModPagespeed[] = "ModPagespeed";
-    if (strncmp(name, kModPagespeed, sizeof(kModPagespeed) - 1) == 0) {
+    if (strncmp(name, kModPagespeed, STATIC_STRLEN(kModPagespeed)) == 0) {
       rewrite_query_params = true;
     } else {
       stripped_query_params.Add(name, query_params.value(i));

@@ -67,7 +67,7 @@ bool TokenizeSegmentFromRight(StringPiece* src, std::string* dest) {
 
 }  // namespace
 
-const int ResourceNamer::kOverhead = 4 + sizeof(kSystemId) - 1;
+const int ResourceNamer::kOverhead = 4 + STATIC_STRLEN(kSystemId);
 
 bool ResourceNamer::Decode(const StringPiece& encoded_string) {
   StringPiece src(encoded_string);

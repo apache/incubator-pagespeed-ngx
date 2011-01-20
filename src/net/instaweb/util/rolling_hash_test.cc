@@ -29,7 +29,7 @@ const char kTestString[] =
     "The quick brown fox jumps over the lazy dog.\n"
     "Now is the time for ALL good men to come to the aid of their party.\r\n"
     "@$%^@#$%#^%^987293 458798\x8f\xfa\xce\t";
-const size_t kTestStringSize = sizeof(kTestString) - 1;
+const size_t kTestStringSize = STATIC_STRLEN(kTestString);
 
 TEST(RollingHashTest, EmptyString) {
   EXPECT_EQ(0, RollingHash("", 0, 0));

@@ -67,9 +67,9 @@ bool ParseDataUrl(const StringPiece& url,
                   Encoding* encoding,
                   StringPiece* encoded_content) {
   const char kData[] = "data:";
-  const size_t kDataSize = sizeof(kData) - 1;
+  const size_t kDataSize = STATIC_STRLEN(kData);
   const char kBase64[] = ";base64";
-  const size_t kBase64Size = sizeof(kBase64) - 1;
+  const size_t kBase64Size = STATIC_STRLEN(kBase64);
   // First invalidate all outputs.
   *content_type = NULL;
   *encoding = UNKNOWN;

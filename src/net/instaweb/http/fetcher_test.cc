@@ -98,7 +98,7 @@ void FetcherTest::ValidateOutput(const std::string& content,
   // currently assumes 'wget' style output.  Wget takes care of any unzipping.
   static const char start_of_doc[] = "<!doctype html>";
   EXPECT_EQ(0, strncmp(start_of_doc, content.c_str(),
-                       sizeof(start_of_doc) - 1));
+                       STATIC_STRLEN(start_of_doc)));
 }
 
 

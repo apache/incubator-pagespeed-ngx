@@ -45,7 +45,7 @@ namespace net_instaweb {
 namespace ImageHeaders {
 
 const char kPngHeader[] = "\x89PNG\r\n\x1a\n";
-const size_t kPngHeaderLength = sizeof(kPngHeader) - 1;
+const size_t kPngHeaderLength = STATIC_STRLEN(kPngHeader);
 const char kPngIHDR[] = "\0\0\0\x0dIHDR";
 const size_t kPngIntSize = 4;
 const size_t kPngSectionHeaderLength = 2 * kPngIntSize;
@@ -57,7 +57,7 @@ const char kPngIDAT[] = "IDAT";
 const char kPngtRNS[] = "tRNS";
 
 const char kGifHeader[] = "GIF8";
-const size_t kGifHeaderLength = sizeof(kGifHeader) - 1;
+const size_t kGifHeaderLength = STATIC_STRLEN(kGifHeader);
 const size_t kGifDimStart = kGifHeaderLength + 2;
 const size_t kGifIntSize = 2;
 

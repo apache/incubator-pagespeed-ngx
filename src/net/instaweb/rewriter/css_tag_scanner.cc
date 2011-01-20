@@ -186,7 +186,7 @@ bool CssTagScanner::HasImport(const StringPiece& contents,
   // Search for case insensitive @import.
   size_t pos = -1;  // So that pos + 1 == 0 below.
   static const char kImport[] = "import";
-  static const size_t kImportSize = sizeof(kImport) - 1;
+  static const size_t kImportSize = STATIC_STRLEN(kImport);
   while ((pos = contents.find("@", pos + 1)) != StringPiece::npos) {
     // Rest is everything past the @ (non-inclusive).
     StringPiece rest = contents.substr(pos + 1);

@@ -25,6 +25,53 @@
 
 namespace net_instaweb {
 
+namespace {
+
+TEST(STATIC_STRLEN_Test, CorrectStaticStringLengths) {
+  EXPECT_EQ(0, STATIC_STRLEN(""));
+  EXPECT_EQ(1, STATIC_STRLEN("a"));
+  EXPECT_EQ(1, STATIC_STRLEN("\n"));
+  EXPECT_EQ(1, STATIC_STRLEN("\xff"));
+  EXPECT_EQ(1, STATIC_STRLEN("\0"));
+  EXPECT_EQ(2, STATIC_STRLEN("ab"));
+  EXPECT_EQ(2, STATIC_STRLEN("\r\n"));
+  EXPECT_EQ(2, STATIC_STRLEN("\xfe\xff"));
+  EXPECT_EQ(2, STATIC_STRLEN("\0a"));
+  EXPECT_EQ(14, STATIC_STRLEN("Testing string"));
+  static const char ascii_lowercase[] = "abcdefghijklmnopqrstuvwxyz";
+  EXPECT_EQ(26, STATIC_STRLEN(ascii_lowercase));
+  const char digits[] = "0123456789";
+  EXPECT_EQ(10, STATIC_STRLEN(digits));
+
+  // This will fail at compile time:
+  //   net/instaweb/util/string_util_test.cc:51:3: error: no matching function
+  //     for call to 'ArraySizeHelper'
+  //     STATIC_STRLEN(hello_world_ptr);
+  //     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  //   In file included from net/instaweb/util/string_util_test.cc:25:
+  //   ./net/instaweb/util/public/string_util.h:46:39: note: instantiated from:
+  //   #define STATIC_STRLEN(static_string) (arraysize(static_string) - 1)
+  //                                         ^
+  //   In file included from net/instaweb/util/string_util_test.cc:25:
+  //   In file included from ./net/instaweb/util/public/string_util.h:34:
+  //   In file included from ./strings/join.h:16:
+  //   ./base/macros.h:143:34: note: instantiated from:
+  //   #define arraysize(array) (sizeof(ArraySizeHelper(array)))
+  //                                    ^~~~~~~~~~~~~~~
+  //   ./base/macros.h:133:8: note: candidate template ignored: failed template
+  //     argument deduction
+  //   char (&ArraySizeHelper(T (&array)[N]))[N];
+  //          ^
+  //   ./base/macros.h:140:8: note: candidate template ignored: failed template
+  //     argument deduction
+  //   char (&ArraySizeHelper(const T (&array)[N]))[N];
+  //          ^
+  // TODO(sligocki): Find a way to actively test this:
+  //std::string hello_world("Hello, world!");
+  //const char* hello_world_ptr = hello_world.data();
+  //STATIC_STRLEN(hello_world_ptr);
+}
+
 class IntegerToStringToIntTest : public testing::Test {
  protected:
   void ValidateIntegerToString(int i, std::string s) {
@@ -256,5 +303,7 @@ TEST(ParseShellLikeStringTest, UnclosedQuoteAndBackslash) {
   ASSERT_EQ(1, parts.size());
   EXPECT_EQ("a b", parts[0]);
 }
+
+}  // namespace
 
 }  // namespace net_instaweb

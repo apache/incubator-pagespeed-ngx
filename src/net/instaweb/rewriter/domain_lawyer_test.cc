@@ -78,7 +78,7 @@ TEST_F(DomainLawyerTest, ExternalDomainNotDeclared) {
 }
 
 TEST_F(DomainLawyerTest, ExternalDomainDeclared) {
-  StringPiece cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 1);
+  StringPiece cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix));
   ASSERT_TRUE(domain_lawyer_.AddDomain(cdn_domain, &message_handler_));
   std::string mapped_domain_name;
   ASSERT_TRUE(MapRequest(
@@ -97,7 +97,7 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclared) {
 }
 
 TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutScheme) {
-  StringPiece cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 1);
+  StringPiece cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix));
   ASSERT_TRUE(domain_lawyer_.AddDomain(kCdnPrefix + strlen("http://"),
                                        &message_handler_));
   std::string mapped_domain_name;
@@ -107,7 +107,7 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutScheme) {
 }
 
 TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutTrailingSlash) {
-  StringPiece cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 1);
+  StringPiece cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix));
   StringPiece cdn_domain_no_slash(kCdnPrefix, sizeof(kCdnPrefix) - 2);
   ASSERT_TRUE(domain_lawyer_.AddDomain(cdn_domain_no_slash, &message_handler_));
   std::string mapped_domain_name;
@@ -117,7 +117,7 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutTrailingSlash) {
 }
 
 TEST_F(DomainLawyerTest, WildcardDomainDeclared) {
-  StringPiece cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 1);
+  StringPiece cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix));
   ASSERT_TRUE(domain_lawyer_.AddDomain("*.nytimes.com", &message_handler_));
   std::string mapped_domain_name;
   ASSERT_TRUE(MapRequest(

@@ -49,7 +49,7 @@ const char kGifBase64Prefix[] = "data:image/gif;base64,";
 class DataUrlTest : public testing::Test {
  public:
   DataUrlTest()
-      : mixed_data_(kMixedDataChars, sizeof(kMixedDataChars) - 1) { }
+      : mixed_data_(kMixedDataChars, STATIC_STRLEN(kMixedDataChars)) { }
 
  protected:
   // Make a ContentType yield readable failure output.  Needed this to fix bugs

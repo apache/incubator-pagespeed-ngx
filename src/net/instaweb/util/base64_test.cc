@@ -31,11 +31,11 @@ namespace {
 
 const char chinese_data[] = "中华网,中华,中国,中文网,中国新闻,香港新闻,"
     "国际新闻,中文新闻,新闻,港台新闻,两会,嫦娥一号";
-const int chinese_size = sizeof(chinese_data) - 1;
+const int chinese_size = STATIC_STRLEN(chinese_data);
 
 // Also test some binary data, including embedded nulls, 2^7-1, 2^8-1
 const char binary_data[] = "\0\1\2\3\4\5\6\7\10\0\177\176\175\377\376";
-const int binary_size = sizeof(binary_data) - 1;
+const int binary_size = STATIC_STRLEN(binary_data);
 
 class Codec {
  public:
