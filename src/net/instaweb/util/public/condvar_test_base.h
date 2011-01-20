@@ -153,7 +153,10 @@ class CondvarTestBase : public testing::Test {
   void TimeoutTest() {
     iters_ = 0;
     StartHelper();
-    condvar_->TimedWait(10);  // This will deadlock if we don't time out.
+    {
+      ScopedMutex lock(mutex_);
+      condvar_->TimedWait(10);  // This will deadlock if we don't time out.
+    }
     FinishHelper();
   }
 
@@ -168,10 +171,12 @@ class CondvarTestBase : public testing::Test {
     while (true) {
       ScopedMutex lock(mutex_);
       if ((current_iter_ % 2) == 0) {
-        condvar_->TimedWait(10);
+        condvar_->TimedWait(1);
       }
-      // We must hold the mutex to access the iteration count and check the loop
-      // condition.
+      // We must hold the mutex to access the iteration count and check the
+      // loop condition.  Note that in case of timeout we might get here with
+      // current_iter_ % 2 == 0, so we might perform more local increments
+      // than we expect.
       if (current_iter_ > iters_) {
         break;
       }
@@ -180,8 +185,9 @@ class CondvarTestBase : public testing::Test {
       condvar_->Signal();
     }
     FinishHelper();
-    EXPECT_EQ(local_increments, 6);
-    EXPECT_EQ(helper_increments_, 5);
+    EXPECT_LE(6, local_increments);
+    EXPECT_GE(5, helper_increments_);
+    EXPECT_EQ(11, local_increments + helper_increments_);
   }
 
   AbstractMutex* mutex_;

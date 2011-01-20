@@ -31,6 +31,8 @@ class AprMutex : public net_instaweb::AbstractMutex {
   virtual void Lock();
   virtual void Unlock();
  private:
+  friend class AprCondvar;
+
   apr_thread_mutex_t* thread_mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(AprMutex);
