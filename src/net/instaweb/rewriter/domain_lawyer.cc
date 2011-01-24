@@ -30,7 +30,6 @@ class DomainLawyer::Domain {
   explicit Domain(const StringPiece& name)
       : wildcard_(name),
         name_(name.data(), name.size()),
-        num_shards_(0),
         rewrite_domain_(NULL),
         origin_domain_(NULL) {
   }
@@ -44,11 +43,14 @@ class DomainLawyer::Domain {
   // TODO(jmarantz): check for cycles
   void set_rewrite_domain(Domain* x) { rewrite_domain_ = x; }
   void set_origin_domain(Domain* x) { origin_domain_ = x; }
+  void set_shard_from(Domain* x) { x->shards_.push_back(this); }
+
+  int num_shards() const { return shards_.size(); }
+  Domain* shard(int shard_index) const { return shards_[shard_index]; }
 
  private:
   Wildcard wildcard_;
   std::string name_;
-  int num_shards_;
 
   // The rewrite_domain, if non-null, gives the location of where this
   // Domain should be rewritten.  This can be used to move resources onto
@@ -63,6 +65,8 @@ class DomainLawyer::Domain {
   // go to directly, skipping DNS resolution and reducing outbound
   // traffic.
   Domain* origin_domain_;
+
+  DomainVector shards_;
 };
 
 DomainLawyer::~DomainLawyer() {
@@ -227,7 +231,7 @@ bool DomainLawyer::AddRewriteDomainMapping(
     const StringPiece& comma_separated_from_domains,
     MessageHandler* handler) {
   return MapDomainHelper(to_domain_name, comma_separated_from_domains,
-                         &Domain::set_rewrite_domain, handler);
+                         &Domain::set_rewrite_domain, true, handler);
 }
 
 bool DomainLawyer::AddOriginDomainMapping(
@@ -235,13 +239,22 @@ bool DomainLawyer::AddOriginDomainMapping(
     const StringPiece& comma_separated_from_domains,
     MessageHandler* handler) {
   return MapDomainHelper(to_domain_name, comma_separated_from_domains,
-                         &Domain::set_origin_domain, handler);
+                         &Domain::set_origin_domain, true, handler);
+}
+
+bool DomainLawyer::AddShard(
+    const StringPiece& shard_domain_name,
+    const StringPiece& comma_separated_shards,
+    MessageHandler* handler) {
+  return MapDomainHelper(shard_domain_name, comma_separated_shards,
+                         &Domain::set_shard_from, false, handler);
 }
 
 bool DomainLawyer::MapDomainHelper(
     const StringPiece& to_domain_name,
     const StringPiece& comma_separated_from_domains,
     SetDomainFn set_domain_fn,
+    bool allow_wildcards,
     MessageHandler* handler) {
   Domain* to_domain = AddDomainHelper(to_domain_name, false, handler);
   bool ret = false;
@@ -255,8 +268,13 @@ bool DomainLawyer::MapDomainHelper(
       const StringPiece& domain_name = domains[i];
       Domain* from_domain = AddDomainHelper(domain_name, false, handler);
       if (from_domain != NULL) {
-        (from_domain->*set_domain_fn)(to_domain);
-        ret = true;
+        if (!allow_wildcards && from_domain->IsWildcarded()) {
+          handler->Message(kError, "Cannot map from a wildcarded domain: %s",
+                           to_domain_name.as_string().c_str());
+        } else {
+          (from_domain->*set_domain_fn)(to_domain);
+          ret = true;
+        }
       }
     }
   }
@@ -280,7 +298,29 @@ void DomainLawyer::Merge(const DomainLawyer& src) {
       dst_domain->set_origin_domain(
           AddDomainHelper(src_origin_domain->name(), false, NULL));
     }
+    for (int i = 0; i < src_domain->num_shards(); ++i) {
+      Domain* src_shard = src_domain->shard(i);
+      Domain* dst_shard = AddDomainHelper(src_shard->name(), false, NULL);
+      dst_shard->set_shard_from(dst_domain);
+    }
   }
+}
+
+bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
+                               uint32 hash,
+                               std::string* shard) const {
+  Domain* domain = FindDomain(
+      std::string(domain_name.data(), domain_name.size()));
+  bool sharded = false;
+  if (domain != NULL) {
+    if (domain->num_shards() != 0) {
+      int shard_index = hash % domain->num_shards();
+      domain = domain->shard(shard_index);
+      domain->name().CopyToString(shard);
+      sharded = true;
+    }
+  }
+  return sharded;
 }
 
 }  // namespace net_instaweb

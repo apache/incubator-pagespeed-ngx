@@ -27,16 +27,15 @@ namespace net_instaweb {
 
 CommonFilter::CommonFilter(RewriteDriver* driver)
     : driver_(driver),
-      html_parse_(driver->html_parse()),
-      s_base_(html_parse_->Intern("base")),
-      s_href_(html_parse_->Intern("href")),
-      s_noscript_(html_parse_->Intern("noscript")) {}
+      s_base_(html_parse()->Intern("base")),
+      s_href_(html_parse()->Intern("href")),
+      s_noscript_(html_parse()->Intern("noscript")) {}
 
 CommonFilter::~CommonFilter() {}
 
 void CommonFilter::StartDocument() {
   // Base URL starts as document URL.
-  base_gurl_ = html_parse_->gurl();
+  base_gurl_ = html_parse()->gurl();
   noscript_element_ = NULL;
   // Run the actual filter's StartDocumentImpl.
   StartDocumentImpl();
@@ -98,7 +97,7 @@ Resource* CommonFilter::CreateInputResourceAndReadIfCached(
     const StringPiece& url) {
   ResourceManager* resource_manager = driver_->resource_manager();
   return resource_manager->CreateInputResourceAndReadIfCached(
-      base_gurl(), url, driver_->options(), html_parse_->message_handler());
+      base_gurl(), url, driver_->options(), html_parse()->message_handler());
 }
 
 Resource* CommonFilter::CreateInputResourceFromOutputResource(
@@ -106,7 +105,7 @@ Resource* CommonFilter::CreateInputResourceFromOutputResource(
   ResourceManager* resource_manager = driver_->resource_manager();
   return resource_manager->CreateInputResourceFromOutputResource(
       encoder, output_resource, driver_->options(),
-      html_parse_->message_handler());
+      html_parse()->message_handler());
 }
 
 }  // namespace net_instaweb

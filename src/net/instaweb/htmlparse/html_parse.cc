@@ -117,47 +117,42 @@ void HtmlParse::SetCurrent(HtmlNode* node) {
 
 HtmlCdataNode* HtmlParse::NewCdataNode(HtmlElement* parent,
                                        const StringPiece& contents) {
-  HtmlCdataNode* cdata = new HtmlCdataNode(parent, contents, queue_.end());
-  nodes_.push_back(cdata);
+  HtmlCdataNode* cdata =
+      new (&nodes_) HtmlCdataNode(parent, contents, queue_.end());
   return cdata;
 }
 
 HtmlCharactersNode* HtmlParse::NewCharactersNode(HtmlElement* parent,
                                                  const StringPiece& literal) {
   HtmlCharactersNode* characters =
-      new HtmlCharactersNode(parent, literal, queue_.end());
-  nodes_.push_back(characters);
+      new (&nodes_) HtmlCharactersNode(parent, literal, queue_.end());
   return characters;
 }
 
 HtmlCommentNode* HtmlParse::NewCommentNode(HtmlElement* parent,
                                            const StringPiece& contents) {
-  HtmlCommentNode* comment = new HtmlCommentNode(parent, contents,
-                                                 queue_.end());
-  nodes_.push_back(comment);
+  HtmlCommentNode* comment =
+      new (&nodes_) HtmlCommentNode(parent, contents, queue_.end());
   return comment;
 }
 
 HtmlIEDirectiveNode* HtmlParse::NewIEDirectiveNode(
     HtmlElement* parent, const StringPiece& contents) {
   HtmlIEDirectiveNode* directive =
-      new HtmlIEDirectiveNode(parent, contents, queue_.end());
-  nodes_.push_back(directive);
+      new (&nodes_) HtmlIEDirectiveNode(parent, contents, queue_.end());
   return directive;
 }
 
 HtmlDirectiveNode* HtmlParse::NewDirectiveNode(HtmlElement* parent,
                                                const StringPiece& contents) {
-  HtmlDirectiveNode* directive = new HtmlDirectiveNode(parent, contents,
-                                                       queue_.end());
-  nodes_.push_back(directive);
+  HtmlDirectiveNode* directive =
+      new (&nodes_) HtmlDirectiveNode(parent, contents, queue_.end());
   return directive;
 }
 
 HtmlElement* HtmlParse::NewElement(HtmlElement* parent, Atom tag) {
-  HtmlElement* element = new HtmlElement(parent, tag, queue_.end(),
-                                         queue_.end());
-  nodes_.push_back(element);
+  HtmlElement* element =
+      new (&nodes_) HtmlElement(parent, tag, queue_.end(), queue_.end());
   element->set_sequence(sequence_++);
   return element;
 }
@@ -636,10 +631,7 @@ bool HtmlParse::IsInEventWindow(const HtmlEventListIterator& iter) const {
 }
 
 void HtmlParse::ClearElements() {
-  for (int i = 0; i < static_cast<int>(nodes_.size()); ++i) {
-    delete nodes_[i];
-  }
-  nodes_.clear();
+  nodes_.DestroyObjects();
 }
 
 void HtmlParse::DebugPrintQueue() {

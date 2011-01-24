@@ -31,7 +31,6 @@
         '<(DEPTH)/third_party/apache/httpd/httpd.gyp:include',
         '<(DEPTH)/third_party/serf/serf.gyp:serf',
         '<(instaweb_root)/instaweb.gyp:instaweb_htmlparse',
-        '<(instaweb_root)/instaweb.gyp:instaweb_http',
         '<(instaweb_root)/instaweb.gyp:instaweb_rewriter',
         '<(instaweb_root)/instaweb.gyp:instaweb_util',
       ],
@@ -50,6 +49,8 @@
         'apache/instaweb_context.cc',
         'apache/log_message_handler.cc',
         'apache/serf_url_async_fetcher.cc',
+        'apache/serf_url_fetcher.cc',
+        'apache/serf_async_callback.cc',
       ],
       'export_dependent_settings': [
         '<(instaweb_root)/instaweb.gyp:instaweb_util',

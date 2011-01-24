@@ -21,6 +21,7 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
+#include "net/instaweb/util/public/arena.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 
@@ -39,6 +40,10 @@ class HtmlNode {
   // to remove references to stale iterators, and to force IsRewritable to
   // return false.
   void MarkAsDead(const HtmlEventListIterator& end);
+
+  void* operator new(size_t size, Arena<HtmlNode>* arena) {
+    return arena->Allocate(size);
+  }
 
  protected:
   // TODO(jmarantz): jmaessen suggests instantiating the html nodes

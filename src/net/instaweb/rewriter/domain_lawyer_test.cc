@@ -286,6 +286,9 @@ TEST_F(DomainLawyerTest, Merge) {
   ASSERT_TRUE(domain_lawyer_.AddOriginDomainMapping(
       "http://dest2/", "http://common_src2", &message_handler_));
 
+  ASSERT_TRUE(domain_lawyer_.AddShard("foo.com", "bar1.com,bar2.com",
+                                      &message_handler_));
+
   // Now add a similar set of mappings for another lawyer.
   DomainLawyer merged;
   ASSERT_TRUE(merged.AddDomain("http://d2.com/", &message_handler_));
@@ -332,6 +335,43 @@ TEST_F(DomainLawyerTest, Merge) {
 
   ASSERT_TRUE(merged.MapOrigin("http://common_src3", &mapped));
   EXPECT_EQ("http://dest4/", mapped);
+
+  std::string shard;
+  ASSERT_TRUE(merged.ShardDomain("http://foo.com/", 0, &shard));
+  EXPECT_EQ(std::string("http://bar1.com/"), shard);
+}
+
+TEST_F(DomainLawyerTest, AddMappingFailures) {
+  // You can never wildcard the target domains.
+  EXPECT_FALSE(domain_lawyer_.AddRewriteDomainMapping("foo*.com", "bar.com",
+                                                      &message_handler_));
+  EXPECT_FALSE(domain_lawyer_.AddOriginDomainMapping("foo*.com", "bar.com",
+                                                     &message_handler_));
+  EXPECT_FALSE(domain_lawyer_.AddShard("foo*.com", "bar.com",
+                                       &message_handler_));
+
+  // You can use wildcard in source domains for Rewrite and Origin, but not
+  // Sharding.
+  EXPECT_TRUE(domain_lawyer_.AddRewriteDomainMapping("foo.com", "bar*.com",
+                                                     &message_handler_));
+  EXPECT_TRUE(domain_lawyer_.AddOriginDomainMapping("foo.com", "bar*.com",
+                                                    &message_handler_));
+  EXPECT_FALSE(domain_lawyer_.AddShard("foo.com", "bar*.com",
+                                       &message_handler_));
+
+  EXPECT_TRUE(domain_lawyer_.AddShard("foo.com", "bar1.com,bar2.com",
+                                      &message_handler_));
+}
+
+TEST_F(DomainLawyerTest, Shard) {
+  ASSERT_TRUE(domain_lawyer_.AddShard("foo.com", "bar1.com,bar2.com",
+                                      &message_handler_));
+  std::string shard;
+  ASSERT_TRUE(domain_lawyer_.ShardDomain("http://foo.com/", 0, &shard));
+  EXPECT_EQ(std::string("http://bar1.com/"), shard);
+  ASSERT_TRUE(domain_lawyer_.ShardDomain("http://foo.com/", 1, &shard));
+  EXPECT_EQ(std::string("http://bar2.com/"), shard);
+  EXPECT_FALSE(domain_lawyer_.ShardDomain("http://other.com/", 0, &shard));
 }
 
 }  // namespace net_instaweb

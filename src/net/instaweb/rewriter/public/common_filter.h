@@ -21,6 +21,7 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/google_url.h"
 
@@ -29,7 +30,8 @@ namespace net_instaweb {
 class HtmlElement;
 class HtmlParse;
 class Resource;
-class RewriteDriver;
+class ResourceManager;
+class RewriteOptions;
 class OutputResource;
 class UrlSegmentEncoder;
 
@@ -47,9 +49,14 @@ class CommonFilter : public EmptyHtmlFilter {
   virtual ~CommonFilter();
 
   // Getters
-  HtmlParse* html_parse() { return html_parse_; }
-  const GURL& base_gurl() { return base_gurl_; }
-  HtmlElement* noscript_element() { return noscript_element_; }
+  RewriteDriver* rewrite_driver() const { return driver_; }
+  const GURL& base_gurl() const { return base_gurl_; }
+  HtmlElement* noscript_element() const { return noscript_element_; }
+  // Convenience getters
+  HtmlParse* html_parse() const { return driver_->html_parse(); }
+  ResourceManager* resource_manager() const {
+    return driver_->resource_manager(); }
+  const RewriteOptions* rewrite_options() const { return driver_->options(); }
 
   // Note: Don't overload these methods, overload the implementers instead!
   virtual void StartDocument();
@@ -72,7 +79,6 @@ class CommonFilter : public EmptyHtmlFilter {
 
  private:
   RewriteDriver* driver_;
-  HtmlParse* html_parse_;
   // TODO(sligocki): Maybe: don't store a separate GURL in each filter.
   GURL base_gurl_;
   HtmlElement* noscript_element_;

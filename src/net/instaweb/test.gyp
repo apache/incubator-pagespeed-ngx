@@ -107,6 +107,7 @@
         'rewriter/strip_scripts_filter_test.cc',
         'rewriter/url_left_trim_filter_test.cc',
         'rewriter/url_partnership_test.cc',
+        'util/arena_test.cc',
         'util/base64_test.cc',
         'util/content_type_test.cc',
         'util/data_url_test.cc',

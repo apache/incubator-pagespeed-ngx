@@ -27,6 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
+#include "net/instaweb/util/public/arena.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
@@ -279,7 +280,7 @@ class HtmlParse {
   std::vector<HtmlFilter*> filters_;
   HtmlLexer* lexer_;
   int sequence_;
-  std::vector<HtmlNode*> nodes_;
+  Arena<HtmlNode> nodes_;
   HtmlEventList queue_;
   HtmlEventListIterator current_;
   // Have we deleted current? Then we shouldn't do certain manipulations to it.
