@@ -229,6 +229,7 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
       // specified filters should be enabled.
       options->SetRewriteLevel(RewriteOptions::kPassThrough);
       if (options->EnableFiltersByCommaSeparatedList(value, handler)) {
+        options->DisableAllFiltersNotExplicitlyEnabled();
         ++option_count;
       } else {
         handler->Message(kWarning,

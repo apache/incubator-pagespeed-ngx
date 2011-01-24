@@ -181,6 +181,15 @@ bool RewriteOptions::DisableFiltersByCommaSeparatedList(
       filters, handler, &disabled_filters_);
 }
 
+void RewriteOptions::DisableAllFiltersNotExplicitlyEnabled() {
+  for (int f = kFirstEnumFilter; f != kLastEnumFilter; ++f) {
+    Filter filter = static_cast<Filter>(f);
+    if (enabled_filters_.find(filter) == enabled_filters_.end()) {
+      DisableFilter(filter);
+    }
+  }
+}
+
 void RewriteOptions::EnableFilter(Filter filter) {
   std::pair<FilterSet::iterator, bool> inserted =
       enabled_filters_.insert(filter);

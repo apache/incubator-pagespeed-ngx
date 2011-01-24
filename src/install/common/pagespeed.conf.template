@@ -104,10 +104,9 @@
     # by the add_instrumentation filter.
     # You can use a different location by adding the ModPagespeedBeaconUrl
     # directive; see the documentation on add_instrumentation.
-    #
-    # <Location /mod_pagespeed_beacon>
-    #       SetHandler mod_pagespeed_beacon
-    # </Location>
+    <Location /mod_pagespeed_beacon>
+          SetHandler mod_pagespeed_beacon
+    </Location>
 
     # Uncomment the following line if you want to disable statistics entirely.
     # ModPagespeedStatistics off

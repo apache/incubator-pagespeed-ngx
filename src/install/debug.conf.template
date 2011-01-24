@@ -29,6 +29,10 @@
   </IfModule>
 </Directory>
 
+# add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
+ModPagespeedEnableFilters add_instrumentation
+
+
 #STRESS # These lines are only needed for the stress test.
 #STRESS <Directory /usr/local/apache2/htdocs/mod_pagespeed_example/cgi>
 #STRESS   Options +ExecCGI

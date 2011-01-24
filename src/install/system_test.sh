@@ -183,6 +183,13 @@ test_filter add_instrumentation adds 2 script tags
 check $WGET_PREREQ $URL
 check [ `cat $FETCHED | sed 's/>/>\n/g' | grep -c '<script'` = 2 ]
 
+echo "TEST: We don't add_instrumentation if URL params tell us not to"
+FILE=add_instrumentation.html?ModPagespeedFilters=
+URL=$EXAMPLE_ROOT/$FILE
+FETCHED=$OUTDIR/$FILE
+check $WGET_PREREQ $URL
+check [ `cat $FETCHED | sed 's/>/>\n/g' | grep -c '<script'` = 0 ]
+
 echo "TEST: Make sure 404s aren't rewritten"
 # Note: We run this in the add_instrumentation section because that is the
 # easiest to detect which changes every page

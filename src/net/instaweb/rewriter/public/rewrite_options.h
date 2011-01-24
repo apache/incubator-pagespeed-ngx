@@ -138,6 +138,16 @@ class RewriteOptions {
   // added anyway.
   bool DisableFiltersByCommaSeparatedList(const StringPiece& filters,
                                           MessageHandler* handler);
+
+  // Explicitly disable all filters which are not *currently* explicitly enabled
+  //
+  // Note: Do not call EnableFilter(...) for this options object after calling
+  // DisableAllFilters..., because the Disable list will not be auto-updated.
+  //
+  // Used to deal with query param ?ModPagespeedFilter=foo
+  // Which implies that all filters not listed should be disabled.
+  void DisableAllFiltersNotExplicitlyEnabled();
+
   void EnableFilter(Filter filter);
   void DisableFilter(Filter filter);
 

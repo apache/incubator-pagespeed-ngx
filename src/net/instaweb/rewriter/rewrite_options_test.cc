@@ -28,28 +28,40 @@ using net_instaweb::RewriteOptions;
 class RewriteOptionsTest : public ::testing::Test {
  protected:
   typedef std::set<RewriteOptions::Filter> FilterSet;
-  void AssertNoneEnabled() {
+  bool NoneEnabled() {
     FilterSet s;
-    AssertEnabled(s);
+    return OnlyEnabled(s);
   }
 
-  void AssertEnabled(const FilterSet& filters) {
+  bool OnlyEnabled(const FilterSet& filters) {
+    bool ret = true;
     for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
-         f <= RewriteOptions::kLastFilter;
+         ret && (f <= RewriteOptions::kLastFilter);
          f = static_cast<RewriteOptions::Filter>(f + 1)) {
       if (filters.find(f) != filters.end()) {
-        ASSERT_TRUE(options_.Enabled(f));
+        if (!options_.Enabled(f)) {
+          ret = false;
+        }
       } else {
-        ASSERT_FALSE(options_.Enabled(f));
+        if (options_.Enabled(f)) {
+          ret = false;
+        }
       }
     }
+    return ret;
+  }
+
+  bool OnlyEnabled(RewriteOptions::Filter filter) {
+    FilterSet s;
+    s.insert(filter);
+    return OnlyEnabled(s);
   }
 
   RewriteOptions options_;
 };
 
 TEST_F(RewriteOptionsTest, NoneEnabledByDefault) {
-  AssertNoneEnabled();
+  ASSERT_TRUE(NoneEnabled());
 }
 
 TEST_F(RewriteOptionsTest, InstrumentationDisabled) {
@@ -63,7 +75,7 @@ TEST_F(RewriteOptionsTest, InstrumentationDisabled) {
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
     options_.DisableFilter(f);
   }
-  AssertNoneEnabled();
+  ASSERT_TRUE(NoneEnabled());
 }
 
 TEST_F(RewriteOptionsTest, DisableTrumpsEnable) {
@@ -72,7 +84,7 @@ TEST_F(RewriteOptionsTest, DisableTrumpsEnable) {
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
     options_.DisableFilter(f);
     options_.EnableFilter(f);
-    AssertNoneEnabled();
+    ASSERT_TRUE(NoneEnabled());
   }
 }
 
@@ -99,7 +111,7 @@ TEST_F(RewriteOptionsTest, Enable) {
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
     s.insert(f);
     options_.EnableFilter(f);
-    AssertEnabled(s);
+    ASSERT_TRUE(OnlyEnabled(s));
   }
 }
 
@@ -111,10 +123,10 @@ TEST_F(RewriteOptionsTest, CommaSeparatedList) {
   NullMessageHandler handler;
   ASSERT_TRUE(
       options_.EnableFiltersByCommaSeparatedList(kList, &handler));
-  AssertEnabled(s);
+  ASSERT_TRUE(OnlyEnabled(s));
   ASSERT_TRUE(
       options_.DisableFiltersByCommaSeparatedList(kList, &handler));
-  AssertNoneEnabled();
+  ASSERT_TRUE(NoneEnabled());
 }
 
 TEST_F(RewriteOptionsTest, ParseRewriteLevel) {
@@ -309,6 +321,28 @@ TEST_F(RewriteOptionsTest, MergeAllow) {
   EXPECT_FALSE(options_.IsAllowed("abc.css"));
   EXPECT_TRUE(options_.IsAllowed("ab.css"));
   EXPECT_FALSE(options_.IsAllowed("a.css"));
+}
+
+TEST_F(RewriteOptionsTest, DisableAllFiltersNotExplicitlyEnabled) {
+  RewriteOptions one, two;
+  one.EnableFilter(RewriteOptions::kAddHead);
+  two.EnableFilter(RewriteOptions::kExtendCache);
+  two.DisableAllFiltersNotExplicitlyEnabled();  // Should disable AddHead.
+  options_.Merge(one, two);
+
+  // Make sure AddHead enabling didn't leak through.
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kAddHead));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCache));
+}
+
+TEST_F(RewriteOptionsTest, DisableAllFiltersOverrideFilterLevel) {
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options_.EnableFilter(RewriteOptions::kAddHead);
+  options_.DisableAllFiltersNotExplicitlyEnabled();
+
+  // Check that *only* AddHead is enabled, even though we have CoreFilters
+  // level set.
+  EXPECT_TRUE(OnlyEnabled(RewriteOptions::kAddHead));
 }
 
 }  // namespace
