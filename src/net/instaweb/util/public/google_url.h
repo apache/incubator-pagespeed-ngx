@@ -59,7 +59,10 @@ inline GURL Resolve(const GURL& gurl, const char* str) {
 std::string AllExceptLeaf(const GURL& gurl);
 
 // For "http://a.com/b/c/d?e=f/g returns "d?e=f/g", omitting leading slash.
-std::string Leaf(const GURL& gurl);
+std::string LeafWithQuery(const GURL& gurl);
+
+// For "http://a.com/b/c/d?e=f/g returns "d", omitting leading slash.
+std::string LeafSansQuery(const GURL& gurl);
 
 // For "http://a.com/b/c/d?e=f/g returns "http://a.com" without trailing slash
 std::string Origin(const GURL& gurl);

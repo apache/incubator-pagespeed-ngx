@@ -69,6 +69,11 @@ class RewriteFilter : public CommonFilter {
   HtmlParse* html_parse() { return driver_->html_parse(); }
   ResourceManager* resource_manager() { return driver_->resource_manager(); }
 
+  OutputResource* CreateOutputResourceFromResource(
+      const ContentType* content_type,
+      UrlSegmentEncoder* encoder,
+      Resource* input_resource);
+
  protected:
   std::string filter_prefix_;  // Prefix that should be used in front of all
                                 // rewritten URLs

@@ -44,10 +44,15 @@ class OutputResource : public Resource {
   // even though full_name embeds an extension.  This reflects current code
   // structure rather than a principled stand on anything.
   // TODO(jmaessen): remove redundancy.
+  //
+  // The 'options' argument can be NULL.  This is done in the Fetch path because
+  // that field is only used for domain sharding, and during the fetch, further
+  // domain makes no sense.
   OutputResource(ResourceManager* manager,
                  const StringPiece& resolved_base,
                  const ResourceNamer& resource_id,
-                 const ContentType* type);
+                 const ContentType* type,
+                 const RewriteOptions* options);
   ~OutputResource();
 
   virtual bool Load(MessageHandler* message_handler);
@@ -172,15 +177,24 @@ class OutputResource : public Resource {
   // ResourceManager that it can't do anything useful
   bool optimizable_;
 
-  // If this output url was created via a partnership then this field
-  // will be non-empty, and we will not need to use the resource manager's
-  // prefix.
+  // The resolved_base_ is the domain as reported by UrlPartnership.
+  // It takes into account domain-mapping via
+  // ModPagespeedMapRewriteDomain.  However, the resolved base is
+  // not affected by sharding.  Shard-selection is done when url() is called,
+  // relying on the content hash.
   std::string resolved_base_;
   ResourceNamer full_name_;
 
   // Lock guarding resource creation.  Lazily initialized by LockForCreation,
   // unlocked on destruction or EndWrite.
   scoped_ptr<AbstractLock> creation_lock_;
+
+  // rewrite_options_ is NULL when we are creating an output resource on
+  // behalf of a fetch.  This is because there's no point or need to implement
+  // sharding on the fetch -- we are not rewriting a URL, we are just decoding
+  // it.  However, when rewriting a resources, we need rewrite_options_ to
+  // be non-null.
+  const RewriteOptions* rewrite_options_;
 
   DISALLOW_COPY_AND_ASSIGN(OutputResource);
 };

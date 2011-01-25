@@ -88,9 +88,6 @@ class ResourceNamer {
   // Name suitable for debugging and logging
   std::string PrettyName() const {return  InternalEncode(); }
 
-  // Compute a hash of non-path portions of the represented url.
-  size_t Hash() const;
-
   // Compute a content-type based on ext().  NULL if unrecognized.
   const ContentType* ContentTypeFromExt() const;
 

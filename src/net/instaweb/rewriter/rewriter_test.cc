@@ -88,7 +88,7 @@ TEST_F(RewriterTest, BaseTagExistingHeadAndHrefBase) {
       "<head><base href=\"http://base\"><meta></head><body></body>");
 }
 
-TEST_F(RewriterTest, FailGracefullyOnInvalidUrls) {
+TEST_F(RewriterTest, HandlingOfInvalidUrls) {
   Hasher* hasher = &md5_hasher_;
   resource_manager_->set_hasher(hasher);
   AddFilter(RewriteOptions::kExtendCache);
@@ -99,8 +99,19 @@ TEST_F(RewriterTest, FailGracefullyOnInvalidUrls) {
   // Fetching the real rewritten resource name should work.
   // TODO(sligocki): This will need to be regolded if naming format changes.
   std::string hash = hasher->Hash(kCssData);
-  EXPECT_TRUE(
-      TryFetchResource(Encode("http://test.com/", "ce", hash, "a.css", "css")));
+  std::string good_url =
+      Encode("http://test.com/", "ce", hash, "a.css", "css");
+  EXPECT_TRUE(TryFetchResource(good_url));
+
+  // Querying with an appended query should work fine, too, and cause a cache
+  // hit from the above, not recomputation
+  int inserts_before = lru_cache_->num_inserts();
+  int hits_before = lru_cache_->num_hits();
+  EXPECT_TRUE(TryFetchResource(StrCat(good_url, "?foo")));
+  int inserts_after = lru_cache_->num_inserts();
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+  EXPECT_EQ(inserts_before, inserts_after);
+  EXPECT_EQ(hits_before + 1, lru_cache_->num_hits());
 
   // Fetching variants should not cause system problems.
   // Changing hash still works.
@@ -108,21 +119,16 @@ TEST_F(RewriterTest, FailGracefullyOnInvalidUrls) {
   // We'd just like to keep track of what causes errors and what doesn't.
   EXPECT_TRUE(TryFetchResource(Encode("http://test.com/", "ce", "foobar",
                                       "a.css", "css")));
-  EXPECT_TRUE(
+
+  // ... however fetches with invalid extensions should fail
+  EXPECT_FALSE(
       TryFetchResource(Encode("http://test.com/", "ce", hash, "a.css",
                               "ext")));
 
   // Changing other fields can lead to error.
   std::string bad_url = Encode("http://test.com/", "xz", hash, "a.css", "css");
 
-  // Note that although we pass in a real value for 'request headers', we
-  // null out the response and writer as those should never be called.
-  RequestHeaders request_headers;
-  FetchCallback callback;
-  bool fetched = rewrite_driver_.FetchResource(
-      bad_url, request_headers, NULL, NULL, &message_handler_, &callback);
-  EXPECT_FALSE(fetched);
-  EXPECT_FALSE(callback.done());
+  EXPECT_FALSE(TryFetchResource(bad_url));
 }
 
 }  // namespace

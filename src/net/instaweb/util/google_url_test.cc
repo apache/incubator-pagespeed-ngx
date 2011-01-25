@@ -41,7 +41,8 @@ class GoogleUrlTest : public testing::Test {
 TEST_F(GoogleUrlTest, TestSpec) {
   EXPECT_EQ(std::string(kUrl), GoogleUrl::Spec(gurl_));
   EXPECT_EQ(std::string("http://a.com/b/c/"), GoogleUrl::AllExceptLeaf(gurl_));
-  EXPECT_EQ(std::string("d.ext?f=g/h"), GoogleUrl::Leaf(gurl_));
+  EXPECT_EQ(std::string("d.ext?f=g/h"), GoogleUrl::LeafWithQuery(gurl_));
+  EXPECT_EQ(std::string("d.ext"), GoogleUrl::LeafSansQuery(gurl_));
   EXPECT_EQ(std::string("http://a.com"), GoogleUrl::Origin(gurl_));
   EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"), GoogleUrl::PathAndLeaf(gurl_));
   EXPECT_EQ(std::string("/b/c/d.ext"), GoogleUrl::Path(gurl_));
@@ -51,12 +52,20 @@ TEST_F(GoogleUrlTest, TestSpecWithPort) {
   EXPECT_EQ(std::string(kUrlWithPort), GoogleUrl::Spec(gurl_with_port_));
   EXPECT_EQ(std::string("http://a.com:8080/b/c/"),
             GoogleUrl::AllExceptLeaf(gurl_with_port_));
-  EXPECT_EQ(std::string("d.ext?f=g/h"), GoogleUrl::Leaf(gurl_with_port_));
-  EXPECT_EQ(std::string("http://a.com:8080"), GoogleUrl::Origin(gurl_with_port_));
+  EXPECT_EQ(std::string("d.ext?f=g/h"),
+            GoogleUrl::LeafWithQuery(gurl_with_port_));
+  EXPECT_EQ(std::string("d.ext"), GoogleUrl::LeafSansQuery(gurl_with_port_));
+  EXPECT_EQ(std::string("http://a.com:8080"),
+            GoogleUrl::Origin(gurl_with_port_));
   EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"),
             GoogleUrl::PathAndLeaf(gurl_with_port_));
   EXPECT_EQ(std::string("/b/c/d.ext"), GoogleUrl::Path(gurl_));
   EXPECT_EQ(std::string("/b/c/"), GoogleUrl::PathSansLeaf(gurl_));
+}
+
+TEST_F(GoogleUrlTest, TestTrivialLeafSansQuery) {
+  GURL queryless("http://a.com/b/c/d.ext");
+  EXPECT_EQ(std::string("d.ext"), GoogleUrl::LeafSansQuery(queryless));
 }
 
 TEST_F(GoogleUrlTest, ResolveRelative) {

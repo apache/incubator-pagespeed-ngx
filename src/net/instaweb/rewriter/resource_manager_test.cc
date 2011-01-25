@@ -103,7 +103,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     const ContentType* content_type = &kContentTypeText;
     scoped_ptr<OutputResource> nor(
         resource_manager_->CreateOutputResourceWithPath(
-            url_prefix_, filter_prefix, name, content_type, &message_handler_));
+            url_prefix_, filter_prefix, name, content_type,
+            &options_, &message_handler_));
     ASSERT_TRUE(nor.get() != NULL);
     // Check name_key against url_prefix/fp.name
     std::string name_key = nor->name_key();
@@ -121,7 +122,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       scoped_ptr<OutputResource> nor1(
           resource_manager_->CreateOutputResourceWithPath(
               url_prefix_, filter_prefix, name, content_type,
-              &message_handler_));
+              &options_, &message_handler_));
       ASSERT_TRUE(nor1.get() != NULL);
       // We'll succeed in fetching (meaning don't create the resource), but the
       // resource won't be written.
@@ -165,7 +166,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     scoped_ptr<OutputResource> nor2(
         resource_manager_->CreateOutputResourceWithPath(
             url_prefix_, filter_prefix, name, &kContentTypeText,
-            &message_handler_));
+            &options_, &message_handler_));
     ASSERT_TRUE(nor2.get() != NULL);
     EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor2.get()));
     EXPECT_FALSE(ResourceManagerTestingPeer::Generated(nor2.get()));
@@ -191,7 +192,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       scoped_ptr<OutputResource> nor3(
           resource_manager_->CreateOutputResourceWithPath(
               url_prefix_, filter_prefix, name, &kContentTypeText,
-              &message_handler_));
+              &options_, &message_handler_));
       EXPECT_FALSE(resource_manager_->FetchOutputResource(
           nor3.get(), NULL, NULL, &message_handler_,
           ResourceManager::kNeverBlock));
@@ -231,7 +232,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     scoped_ptr<Resource> resource(
         resource_manager_->CreateInputResource(
             GURL(kResourceUrlBase), kResourceUrlPath,
-            rewrite_driver_.options(), &message_handler_));
+            &options_, &message_handler_));
     return resource_manager_->ReadIfCached(resource.get(), &message_handler_);
   }
 };
@@ -255,6 +256,56 @@ TEST_F(ResourceManagerTest, TestOutputInputUrl) {
   EXPECT_EQ("http://example.com/dir/123/orig", input_resource->url());
 }
 
+TEST_F(ResourceManagerTest, TestOutputInputUrlEvil) {
+  std::string escaped_abs;
+  resource_manager_->url_escaper()->EncodeToUrlSegment("http://www.evil.com",
+                                                       &escaped_abs);
+  std::string url = Encode("http://example.com/dir/123/",
+                            "jm", "0", escaped_abs, "js");
+  scoped_ptr<OutputResource> output_resource(
+      resource_manager_->CreateOutputResourceForFetch(url));
+  ASSERT_TRUE(output_resource.get());
+  scoped_ptr<Resource> input_resource(
+      resource_manager_->CreateInputResourceFromOutputResource(
+          resource_manager_->url_escaper(),
+          output_resource.get(),
+          &options_,
+          &message_handler_));
+  EXPECT_EQ(NULL, input_resource.get());
+}
+
+// CreateOutputResourceForFetch should drop query
+TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
+  std::string url = Encode("http://example.com/dir/123/",
+                            "jm", "0", "orig", "js");
+  scoped_ptr<OutputResource> output_resource(
+      resource_manager_->CreateOutputResourceForFetch(StrCat(url, "?query")));
+  ASSERT_TRUE(output_resource.get() != NULL);
+  EXPECT_EQ(url, output_resource->url());
+}
+
+// Input resources and corresponding output resources should keep queries
+TEST_F(ResourceManagerTest, TestInputResourceQuery) {
+  const char kUrl[] = "test?param";
+  scoped_ptr<Resource> resource(
+      resource_manager_->CreateInputResource(
+            GURL(kResourceUrlBase), kUrl,
+            &options_, &message_handler_));
+  ASSERT_TRUE(resource.get() != NULL);
+  EXPECT_EQ(StrCat(std::string(kResourceUrlBase), "/", kUrl), resource->url());
+  scoped_ptr<OutputResource> output(
+    resource_manager_->CreateOutputResourceFromResource(
+      "sf", &kContentTypeCss, resource_manager_->url_escaper(), resource.get(),
+      &options_, &message_handler_));
+  ASSERT_TRUE(output.get() != NULL);
+
+  std::string included_name;
+  EXPECT_TRUE(
+      resource_manager_->url_escaper()->DecodeFromUrlSegment(output->name(),
+                                                             &included_name));
+  EXPECT_EQ(std::string(kUrl), included_name);
+}
+
 TEST_F(ResourceManagerTest, TestRemember404) {
   // Make sure our resources remember that a page 404'd
   ResponseHeaders not_found;
@@ -265,7 +316,7 @@ TEST_F(ResourceManagerTest, TestRemember404) {
   GURL base = GoogleUrl::Create(StringPiece("http://example.com/"));
   scoped_ptr<Resource> resource(
       resource_manager_->CreateInputResourceAndReadIfCached(
-          base, "404", rewrite_driver_.options(), &message_handler_));
+          base, "404", &options_, &message_handler_));
   EXPECT_EQ(NULL, resource.get());
 
   HTTPValue valueOut;
@@ -289,8 +340,8 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
 
   GURL base = GoogleUrl::Create(StringPiece("http://example.com"));
   scoped_ptr<Resource> resource(
-      resource_manager_->CreateInputResource(
-          base, "/", rewrite_driver_.options(), &message_handler_));
+      resource_manager_->CreateInputResource(base, "/", &options_,
+                                             &message_handler_));
   ASSERT_TRUE(resource.get() != NULL);
 
   VerifyContentsCallback callback(kContents);
@@ -446,26 +497,37 @@ TEST_F(ResourceFreshenTest, NoFreshenOfShortLivedResources) {
   EXPECT_EQ(1, expirations_->Get());
 }
 
-// TODO(jmaessen): re-enable after sharding works again.
-// class ResourceManagerShardedTest : public ResourceManagerTest {
-//  protected:
-//   ResourceManagerShardedTest() {
-//     url_prefix_ ="http://mysite.%d/";
-//     num_shards_ = 2;
-//   }
-//   virtual void RemoveUrlPrefix(std::string* url) {
-//     // One of these two should match.
-//     StringPiece prefix(url->data(), 16);
-//     EXPECT_TRUE((prefix == "http://mysite.0/") ||
-//                 (prefix == "http://mysite.1/")) << *url;
-//     // "%d" -> "0" (or "1") loses 1 char.
-//     url->erase(0, url_prefix_.length() - 1);
-//   }
-// };
+class ResourceManagerShardedTest : public ResourceManagerTest {
+ protected:
+  virtual void SetUp() {
+    ResourceManagerTest::SetUp();
+    EXPECT_TRUE(options_.domain_lawyer()->AddShard(
+        "example.com", "shard0.com,shard1.com", &message_handler_));
+  }
+};
 
-// TODO(jmaessen): re-enable after sharding works again.
-// TEST_F(ResourceManagerShardedTest, TestNamed) {
-//   TestNamed();
-// }
+TEST_F(ResourceManagerShardedTest, TestNamed) {
+  std::string url = Encode("http://example.com/dir/123/",
+                            "jm", "0", "orig", "js");
+  scoped_ptr<OutputResource> output_resource(
+      resource_manager_->CreateOutputResourceWithPath(
+          "http://example.com/dir/",
+          "jm",
+          "orig.js",
+          &kContentTypeJavascript,
+          &options_,
+          &message_handler_));
+  ASSERT_TRUE(output_resource.get());
+  ASSERT_TRUE(resource_manager_->Write(HttpStatus::kOK, "alert('hello');",
+                                       output_resource.get(), 0,
+                                       &message_handler_));
+
+  // This always gets mapped to shard0 because we are using the mock
+  // hasher for the content hash.  Note that the sharding sensitivity
+  // to the hash value is tested in DomainLawyerTest.Shard, and will
+  // also be covered in a system test.
+  EXPECT_EQ("http://shard0.com/dir/orig.js.pagespeed.jm.0.js",
+            output_resource->url());
+}
 
 }  // namespace net_instaweb

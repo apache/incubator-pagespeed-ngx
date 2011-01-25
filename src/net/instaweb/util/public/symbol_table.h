@@ -80,8 +80,8 @@ template<class CharTransform> class SymbolTable {
   };
 
   struct Hash {
-    std::size_t operator()(const StringPiece& key) const {
-      return HashString<CharTransform>(key.data(), key.length());
+    size_t operator()(const StringPiece& key) const {
+      return HashString<CharTransform, size_t>(key.data(), key.length());
     }
   };
 

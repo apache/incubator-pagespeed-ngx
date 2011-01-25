@@ -121,6 +121,24 @@ function test_filter() {
   FETCHED=$OUTDIR/$FILE
 }
 
+# Helper to test if we mess up extensions on requests to broken url
+function test_resource_ext_corruption() {
+  URL=$1
+  RESOURCE=$EXAMPLE_ROOT/$2
+
+  # Make sure the resource is actually there, that the test isn't broken
+  $WGET_DUMP $URL | grep -qi $RESOURCE
+  check [ $? = 0 ]
+
+  # Now fetch the broken version
+  BROKEN="$RESOURCE"broken
+  $WGET_PREREQ $BROKEN
+  check [ $? != 0 ]
+
+  # Fetch normal again; ensure rewritten url for RESOURCE doesn't contain broken
+  $WGET_DUMP $URL | grep broken
+  check [ $? != 0 ]
+}
 
 # General system tests
 
@@ -182,6 +200,8 @@ check "$WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
 test_filter add_instrumentation adds 2 script tags
 check $WGET_PREREQ $URL
 check [ `cat $FETCHED | sed 's/>/>\n/g' | grep -c '<script'` = 2 ]
+check $WGET_PREREQ http://$HOSTNAME/mod_pagespeed_beacon?ets=load:13
+check grep -q '"204 No Content"' $WGET_OUTPUT
 
 echo "TEST: We don't add_instrumentation if URL params tell us not to"
 FILE=add_instrumentation.html?ModPagespeedFilters=
@@ -205,6 +225,8 @@ check [ `egrep -c '^ +<' $FETCHED` = 1 ]
 test_filter combine_css combines 4 CSS files into 1.
 fetch_until $URL 'grep -c text/css' 1
 check $WGET_PREREQ $URL
+test_resource_ext_corruption $URL\
+  styles/yellow.css+blue.css+big.css+bold.css.pagespeed.cc.xo4He3_gYf.css
 
 test_filter combine_heads combines 2 heads into 1
 check $WGET_PREREQ $URL
@@ -220,6 +242,7 @@ check [ $? != 0 ]
 test_filter extend_cache rewrites an image tag.
 fetch_until $URL 'grep -c src.*91_WewrLtP' 1
 check $WGET_PREREQ $URL
+test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
 echo TEST: Cache-extended image should respond 304 to an If-Modified-Since.
 URL=$EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg

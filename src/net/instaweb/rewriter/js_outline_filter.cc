@@ -33,7 +33,8 @@ namespace net_instaweb {
 const char JsOutlineFilter::kFilterId[] = "jo";
 
 JsOutlineFilter::JsOutlineFilter(RewriteDriver* driver)
-    : inline_element_(NULL),
+    : CommonFilter(driver),
+      inline_element_(NULL),
       html_parse_(driver->html_parse()),
       resource_manager_(driver->resource_manager()),
       size_threshold_bytes_(driver->options()->js_outline_min_bytes()),
@@ -42,12 +43,12 @@ JsOutlineFilter::JsOutlineFilter(RewriteDriver* driver)
       s_type_(html_parse_->Intern("type")),
       script_tag_scanner_(html_parse_) { }
 
-void JsOutlineFilter::StartDocument() {
+void JsOutlineFilter::StartDocumentImpl() {
   inline_element_ = NULL;
   buffer_.clear();
 }
 
-void JsOutlineFilter::StartElement(HtmlElement* element) {
+void JsOutlineFilter::StartElementImpl(HtmlElement* element) {
   // No tags allowed inside script element.
   if (inline_element_ != NULL) {
     // TODO(sligocki): Add negative unit tests to hit these errors.
@@ -70,7 +71,7 @@ void JsOutlineFilter::StartElement(HtmlElement* element) {
   }
 }
 
-void JsOutlineFilter::EndElement(HtmlElement* element) {
+void JsOutlineFilter::EndElementImpl(HtmlElement* element) {
   if (inline_element_ != NULL) {
     if (element != inline_element_) {
       // No other tags allowed inside script element.
@@ -148,7 +149,8 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
     scoped_ptr<OutputResource> resource(
         resource_manager_->CreateOutputResourceWithPath(
             GoogleUrl::AllExceptLeaf(html_parse_->gurl()), kFilterId, "_",
-            &kContentTypeJavascript, handler));
+            &kContentTypeJavascript, rewrite_driver()->options(),
+            handler));
     if (WriteResource(content, resource.get(), handler)) {
       HtmlElement* outline_element = html_parse_->NewElement(
           inline_element->parent(), s_script_);

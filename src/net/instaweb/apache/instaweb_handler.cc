@@ -210,41 +210,45 @@ apr_status_t instaweb_handler(request_rec* request) {
   ApacheRewriteDriverFactory* factory =
       InstawebContext::Factory(request->server);
 
-  if (url != NULL) {
+  if (strcmp(request->handler, kStatisticsHandler) == 0) {
+    std::string output;
+    ResponseHeaders response_headers;
+    StringWriter writer(&output);
+    AprStatistics* statistics = factory->statistics();
+    if (statistics) {
+      statistics->Dump(&writer, factory->message_handler());
+    }
+    response_headers.SetStatusAndReason(HttpStatus::kOK);
+    response_headers.set_major_version(1);
+    response_headers.set_minor_version(1);
+    response_headers.Add(HttpAttributes::kContentType, "text/plain");
+    AprTimer timer;
+    int64 now_ms = timer.NowMs();
+    response_headers.SetDate(now_ms);
+    response_headers.SetLastModified(now_ms);
+    response_headers.Add(HttpAttributes::kCacheControl,
+                         HttpAttributes::kNoCache);
+    send_out_headers_and_body(request, response_headers, output);
+    ret = OK;
+
+  } else if (strcmp(request->handler, kBeaconHandler) == 0) {
+    RewriteDriver* driver = factory->NewRewriteDriver();
+    AddInstrumentationFilter* aif = driver->add_instrumentation_filter();
+    if (aif != NULL) {
+      aif->HandleBeacon(request->unparsed_uri);
+    }
+    factory->ReleaseRewriteDriver(driver);
+    ret = HTTP_NO_CONTENT;
+
+  } else if (url != NULL) {
     // Only handle GET request
     if (request->method_number != M_GET) {
       ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                     "Not GET request: %d.", request->method_number);
-    } else if (strcmp(request->handler, kStatisticsHandler) == 0) {
-      std::string output;
-      ResponseHeaders response_headers;
-      StringWriter writer(&output);
-      AprStatistics* statistics = factory->statistics();
-      if (statistics) {
-        statistics->Dump(&writer, factory->message_handler());
-      }
-      response_headers.SetStatusAndReason(HttpStatus::kOK);
-      response_headers.set_major_version(1);
-      response_headers.set_minor_version(1);
-      response_headers.Add(HttpAttributes::kContentType, "text/plain");
-      AprTimer timer;
-      int64 now_ms = timer.NowMs();
-      response_headers.SetDate(now_ms);
-      response_headers.SetLastModified(now_ms);
-      response_headers.Add(HttpAttributes::kCacheControl,
-                           HttpAttributes::kNoCache);
-      send_out_headers_and_body(request, response_headers, output);
-      ret = OK;
-    } else if (strcmp(request->handler, kBeaconHandler) == 0) {
-      RewriteDriver* driver = factory->NewRewriteDriver();
-      AddInstrumentationFilter* aif = driver->add_instrumentation_filter();
-      if (aif && aif->HandleBeacon(request->unparsed_uri)) {
-        ret = HTTP_NO_CONTENT;
-      }
-      factory->ReleaseRewriteDriver(driver);
     } else if (handle_as_resource(factory, request, url)) {
       ret = OK;
     }
+
   } else if (factory->slurping_enabled()) {
     SlurpUrl(request->unparsed_uri, factory, request);
     if (request->status == HTTP_NOT_FOUND) {
@@ -319,10 +323,14 @@ apr_status_t save_url_for_instaweb_handler(request_rec *request) {
     need_copy = false;
   }
 
-  StringPiece url_piece(url);
+  StringPiece parsed_url(request->uri);
   bool bypass_mod_rewrite = false;
-  if (url_piece.ends_with(kStatisticsHandler) ||
-      url_piece.ends_with(kBeaconHandler)) {
+  // Note: We cannot use request->handler because it may not be set yet :(
+  // TODO(sligocki): Make this robust to custom statistics and beacon URLs.
+  // Note: we must compare against the parsed URL because unparsed_url has
+  // ?ets=load:xx at the end for kBeaconHandler.
+  if (parsed_url.ends_with(kStatisticsHandler) ||
+      parsed_url.ends_with(kBeaconHandler)) {
     bypass_mod_rewrite = true;
   } else {
     ApacheRewriteDriverFactory* factory =

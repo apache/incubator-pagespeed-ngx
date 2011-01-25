@@ -193,7 +193,8 @@ void CssCombineFilter::TryCombineAccumulated() {
     scoped_ptr<OutputResource> combination(
         resource_manager()->CreateOutputResourceWithPath(
             partnership_->ResolvedBase(),
-            filter_prefix_, url_safe_id, &kContentTypeCss, handler));
+            filter_prefix_, url_safe_id, &kContentTypeCss,
+            driver_->options(), handler));
 
     bool do_rewrite_html = false;
     // If the combination has a Url set on it we have cached information

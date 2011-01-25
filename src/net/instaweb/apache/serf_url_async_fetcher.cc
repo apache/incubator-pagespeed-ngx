@@ -158,6 +158,14 @@ class SerfFetch {
   size_t byte_received() const { return byte_received_; }
   MessageHandler* message_handler() { return message_handler_; }
 
+  SerfUrlAsyncFetcher::FetchQueueEntry fetch_queue_entry() const {
+    return fetch_queue_entry_;
+  }
+  void set_fetch_queue_entry(
+      SerfUrlAsyncFetcher::FetchQueueEntry fetch_queue_entry) {
+    fetch_queue_entry_ = fetch_queue_entry;
+  }
+
  private:
 
   // Static functions used in callbacks.
@@ -414,6 +422,9 @@ class SerfFetch {
   int64 fetch_start_ms_;
   int64 fetch_end_ms_;
 
+  // This back-pointer is used by SerfUrlAsyncFetcher to manage the pool
+  // membership of this fetch object.
+  SerfUrlAsyncFetcher::FetchQueueEntry fetch_queue_entry_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfFetch);
 };
@@ -494,7 +505,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
                      << fetch->str_url()
                      << " (" << active_fetches_.size() << ")");
           active_fetches_.push_back(fetch);
-          active_fetch_map_[fetch] = --active_fetches_.end();
+          fetch->set_fetch_queue_entry(--active_fetches_.end());
           ++num_started;
         } else {
           delete fetch;
@@ -674,7 +685,6 @@ SerfUrlAsyncFetcher::~SerfUrlAsyncFetcher() {
   }
 
   STLDeleteElements(&active_fetches_);
-  active_fetch_map_.clear();
   if (threaded_fetcher_ != NULL) {
     delete threaded_fetcher_;
   }
@@ -729,7 +739,7 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
       started = fetch->Start(this);
       if (started) {
         active_fetches_.push_back(fetch);
-        active_fetch_map_[fetch] = --active_fetches_.end();
+        fetch->set_fetch_queue_entry(--active_fetches_.end());
         if (outstanding_count_ != NULL) {
           outstanding_count_->Add(1);
         }
@@ -809,10 +819,10 @@ void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch) {
   // called from Poll and CancelOutstandingFetches, which have ScopedMutexes.
   // Note that SerfFetch::Cancel is currently not exposed from outside this
   // class.
-  FetchMapEntry map_entry = active_fetch_map_.find(fetch);
-  CHECK(map_entry != active_fetch_map_.end());
-  active_fetches_.erase(map_entry->second);
-  active_fetch_map_.erase(map_entry);
+  FetchQueueEntry queue_entry = fetch->fetch_queue_entry();
+  CHECK(queue_entry != active_fetches_.end());
+  CHECK(*queue_entry == fetch);
+  active_fetches_.erase(queue_entry);
   completed_fetches_.push_back(fetch);
   fetch->message_handler()->Message(kInfo, "Fetch complete: %s",
                                     fetch->str_url());

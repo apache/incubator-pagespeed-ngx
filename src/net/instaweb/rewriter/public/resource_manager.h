@@ -98,6 +98,7 @@ class ResourceManager {
       const ContentType* content_type,
       UrlSegmentEncoder* encoder,
       Resource* input_resource,
+      const RewriteOptions* rewrite_options,
       MessageHandler* handler);
 
   // Constructs and permissions-checks an output resource for the specified url,
@@ -130,7 +131,7 @@ class ResourceManager {
   OutputResource* CreateOutputResourceWithPath(
       const StringPiece& path, const StringPiece& filter_prefix,
       const StringPiece& name,  const ContentType* type,
-      MessageHandler* handler);
+      const RewriteOptions* rewrite_options, MessageHandler* handler);
 
   // Creates a resource based on a URL.  This is used for serving rewritten
   // resources.  No permission checks are performed on the url, though it
@@ -158,8 +159,7 @@ class ResourceManager {
       const RewriteOptions* rewrite_options, MessageHandler* handler);
 
   // Create an input resource by decoding output_resource using the given
-  // encoder.  Assures legality by checking hash signatures, rather than
-  // explicitly permission-checking the result.
+  // encoder.  Assures legality by explicitly permission-checking the result.
   Resource* CreateInputResourceFromOutputResource(
     UrlSegmentEncoder* encoder,
     OutputResource* output_resource,

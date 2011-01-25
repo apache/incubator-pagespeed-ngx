@@ -123,73 +123,6 @@ void ResourceManager::Initialize(Statistics* statistics) {
   statistics->AddVariable(kResourceUrlDomainRejections);
 }
 
-#if 0
-// Preserved for the sake of making it easier to revive sharding.
-
-std::string ResourceManager::UrlPrefixFor(const ResourceNamer& namer) const {
-  CHECK(!namer.hash().empty());
-  std::string url_prefix;
-  if (num_shards_ == 0) {
-    url_prefix = url_prefix_pattern_;
-  } else {
-    size_t hash = namer.Hash();
-    int shard = hash % num_shards_;
-    CHECK_NE(std::string::npos, url_prefix_pattern_.find("%d"));
-    // The following uses a user-provided printf format string; this would be
-    // really dangerous if we did not validate url_prefix_pattern_ by calling
-    // ValidateShardsAgainstUrlPrefixPattern() below.
-    url_prefix = StringPrintf(url_prefix_pattern_.c_str(), shard);  // NOLINT
-  }
-  return url_prefix;
-}
-
-// Decode a base path into a shard number and canonical base url.
-// Right now the canonical base url is empty for the old resource
-// naming scheme, and non-empty otherwise.
-// TODO(jmaessen): Either axe or adapt to sharding post-url_prefix.
-std::string ResourceManager::CanonicalizeBase(
-    const StringPiece& base, int* shard) const {
-  std::string base_str = base.as_string();
-  base_str += "/";
-  std::string result;
-  if (num_shards_ == 0) {
-    CHECK_EQ(std::string::npos, url_prefix_pattern_.find("%d"));
-    if (url_prefix_pattern_.compare(base_str) != 0) {
-      base.CopyToString(&result);
-    }
-  } else {
-    CHECK_NE(std::string::npos, url_prefix_pattern_.find("%d"));
-    // TODO(jmaessen): Ugh.  Lint hates this sscanf call and so do I.  Can parse
-    // based on the results of the above find.
-    if (!sscanf(base_str.c_str(), url_prefix_pattern_.c_str(), shard) == 1) {
-      base.CopyToString(&result);
-    }
-  }
-  return result;
-}
-
-void ResourceManager::ValidateShardsAgainstUrlPrefixPattern() {
-  std::string::size_type pos = url_prefix_pattern_.find('%');
-  if (num_shards_ == 0) {
-    CHECK(pos == StringPiece::npos) << "URL prefix should not have a percent "
-                                    << "when num_shards==0";
-  } else {
-    // Ensure that the % is followed by a 'd'.  But be careful because
-    // the percent may have appeared at the end of the string, which
-    // is not necessarily null-terminated.
-    if ((pos == std::string::npos) ||
-        ((pos + 1) == url_prefix_pattern_.size()) ||
-        (url_prefix_pattern_.substr(pos + 1, 1) != "d")) {
-      CHECK(false) << "url_prefix must contain exactly one %d";
-    } else {
-      // make sure there is not another percent
-      pos = url_prefix_pattern_.find('%', pos + 2);
-      CHECK(pos == std::string::npos) << "Extra % found in url_prefix_pattern";
-    }
-  }
-}
-#endif
-
 // TODO(jmarantz): consider moving this method to ResponseHeaders
 void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
                                         ResponseHeaders* header) const {
@@ -255,6 +188,7 @@ OutputResource* ResourceManager::CreateOutputResourceFromResource(
     const ContentType* content_type,
     UrlSegmentEncoder* encoder,
     Resource* input_resource,
+    const RewriteOptions* rewrite_options,
     MessageHandler* handler) {
   OutputResource* result = NULL;
   if (input_resource != NULL) {
@@ -262,10 +196,10 @@ OutputResource* ResourceManager::CreateOutputResourceFromResource(
     GURL input_gurl(url);
     CHECK(input_gurl.is_valid());  // or input_resource should have been NULL.
     std::string name;
-    encoder->EncodeToUrlSegment(GoogleUrl::Leaf(input_gurl), &name);
+    encoder->EncodeToUrlSegment(GoogleUrl::LeafWithQuery(input_gurl), &name);
     result = CreateOutputResourceWithPath(
         GoogleUrl::AllExceptLeaf(input_gurl),
-        filter_prefix, name, content_type, handler);
+        filter_prefix, name, content_type, rewrite_options, handler);
   }
   return result;
 }
@@ -286,7 +220,7 @@ OutputResource* ResourceManager::CreateOutputResourceForRewrittenUrl(
     std::string name;
     encoder->EncodeToUrlSegment(relative_url, &name);
     output_resource = CreateOutputResourceWithPath(
-        base, filter_prefix, name, content_type, handler);
+        base, filter_prefix, name, content_type, rewrite_options, handler);
   }
   return output_resource;
 }
@@ -296,6 +230,7 @@ OutputResource* ResourceManager::CreateOutputResourceWithPath(
     const StringPiece& filter_prefix,
     const StringPiece& name,
     const ContentType* content_type,
+    const RewriteOptions* rewrite_options,
     MessageHandler* handler) {
   CHECK(content_type != NULL);
   ResourceNamer full_name;
@@ -305,7 +240,7 @@ OutputResource* ResourceManager::CreateOutputResourceWithPath(
   // make this convention consistent and fix all code.
   full_name.set_ext(content_type->file_extension() + 1);
   OutputResource* resource =
-      new OutputResource(this, path, full_name, content_type);
+      new OutputResource(this, path, full_name, content_type, rewrite_options);
 
   // Determine whether this output resource is still valid by looking
   // up by hash in the http cache.  Note that this cache entry will
@@ -339,11 +274,15 @@ OutputResource* ResourceManager::CreateOutputResourceForFetch(
   std::string url_string(url.data(), url.size());
   GURL gurl(url_string);
   if (gurl.is_valid()) {
-    std::string name = GoogleUrl::Leaf(gurl);
+    std::string name = GoogleUrl::LeafSansQuery(gurl);
     ResourceNamer namer;
     if (namer.Decode(name)) {
       std::string base = GoogleUrl::AllExceptLeaf(gurl);
-      resource = new OutputResource(this, base, namer, NULL);
+      // The RewriteOptions* is not supplied when creating an output-resource
+      // on behalf of a fetch.  This is because that field is only used for
+      // domain sharding, which is a rewriting activity, not a fetching
+      // activity.
+      resource = new OutputResource(this, base, namer, NULL, NULL);
     }
   }
   return resource;
@@ -411,16 +350,12 @@ Resource* ResourceManager::CreateInputResourceFromOutputResource(
     OutputResource* output_resource,
     const RewriteOptions* rewrite_options,
     MessageHandler* handler) {
-  // Assumes output_resource has a url that's been checked by a lawyer.  We
-  // should already have checked the signature on the encoded resource name and
-  // failed to create output_resource if it didn't match.
   Resource* input_resource = NULL;
   std::string input_name;
   if (encoder->DecodeFromUrlSegment(output_resource->name(), &input_name)) {
     GURL base_gurl(output_resource->resolved_base());
-    GURL input_gurl = base_gurl.Resolve(input_name);
-    input_resource = CreateInputResourceUnchecked(input_gurl,
-                                                  rewrite_options, handler);
+    input_resource = CreateInputResource(base_gurl, input_name,
+                                         rewrite_options, handler);
   }
   return input_resource;
 }

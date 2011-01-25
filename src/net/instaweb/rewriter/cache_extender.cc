@@ -90,11 +90,9 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
       } else if (((headers->CacheExpirationTimeMs() - now_ms) <
                   kMinThresholdMs) &&
                  (input_resource->type() != NULL)) {
-        scoped_ptr<OutputResource> output(
-            resource_manager_->CreateOutputResourceFromResource(
-                filter_prefix_, input_resource->type(),
-                resource_manager_->url_escaper(), input_resource.get(),
-                message_handler));
+        scoped_ptr<OutputResource> output(CreateOutputResourceFromResource(
+            input_resource->type(), resource_manager_->url_escaper(),
+            input_resource.get()));
         if (output.get() != NULL) {
           CHECK(!output->IsWritten());
 

@@ -388,8 +388,8 @@ class ResourceDeleterCallback : public UrlAsyncFetcher::Callback {
 OutputResource* RewriteDriver::DecodeOutputResource(
     const StringPiece& url,
     RewriteFilter** filter) {
-  // Note that this does permission checking and parsing of the url, but doesn't
-  // actually fetch any data until we specifically ask it to.
+  // Note that this does parsing of the url, but doesn't actually fetch any data
+  // until we specifically ask it to.
   OutputResource* output_resource =
       resource_manager_->CreateOutputResourceForFetch(url);
 
@@ -398,6 +398,10 @@ OutputResource* RewriteDriver::DecodeOutputResource(
   if (output_resource != NULL) {
     // For now let's reject as mal-formed if the id string is not
     // in the rewrite drivers.
+    //
+    // We also reject any unknown extensions, which includes
+    // rejecting requests with trailing junk
+    //
     // TODO(jmarantz): it might be better to 'handle' requests with known
     // IDs even if that filter is not enabled, rather rejecting the request.
     // TODO(jmarantz): consider query-specific rewrites.  We may need to
@@ -412,13 +416,21 @@ OutputResource* RewriteDriver::DecodeOutputResource(
     //
     // TODO(jmarantz): figure out a better way to refactor this.
     // TODO(jmarantz): add a unit-test to show serving outline-filter resources.
-    if (p != resource_filter_map_.end()) {
-      *filter = p->second;
-    } else if (((id != CssOutlineFilter::kFilterId) &&
-                (id != JsOutlineFilter::kFilterId)) ||
-               (output_resource->type() == NULL)) {
+    bool ok = false;
+    if (output_resource->type() != NULL) {
+      if (p != resource_filter_map_.end()) {
+        *filter = p->second;
+        ok = true;
+      } else if ((id == CssOutlineFilter::kFilterId) ||
+                 (id == JsOutlineFilter::kFilterId)) {
+        ok = true;
+      }
+    }
+
+    if (!ok) {
       delete output_resource;
       output_resource = NULL;
+      *filter = NULL;
     }
   }
   return output_resource;
@@ -481,7 +493,7 @@ bool RewriteDriver::FetchResource(
   }
   if (!queued && handled) {
     // If we got here, we were asked to decode a resource for which we have
-    // no filter.
+    // no filter or an invalid URL.
     callback->Done(false);
   }
   return handled;

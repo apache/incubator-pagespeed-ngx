@@ -25,11 +25,11 @@ namespace net_instaweb {
 
 // A hash function for strings that can be used both in a case-sensitive
 // and case-insensitive way
-template<class CharTransform>
-inline size_t HashString(const char* s, size_t len) {
+template<class CharTransform, typename IntType>
+inline IntType HashString(const char* s, size_t len) {
   // This implemention is based on code in
   // third_party/chromium/src/base/hash_tables.h.
-  size_t result = 0;
+  IntType result = 0;
   for (size_t i = 0; i < len; ++i, ++s) {
     result = (result * 131) + CharTransform::Normalize(*s);
   }
@@ -44,14 +44,21 @@ inline size_t JoinHash(size_t a, size_t b) {
 
 // A helper for case-sensitive hashing
 struct CasePreserve {
-  static char Normalize(char c) {
+  // We want to use unsigned characters for the return value of Normalize
+  // here and in CaseFold::Normalize.  This is so that we get the same
+  // hash-value arithmetic regardless of whether the c++ compiler treats
+  // chars as signed or unsigned by default.  We want to get the same
+  // hash-values independent of machine so that we get consistent domain
+  // sharding and therefore better caching behavior in a multi-server setup
+  // that contains heterogeneous machines.
+  static unsigned char Normalize(char c) {
     return c;
   }
 };
 
 // A helper for case-insensitive hashing, which folds to lowercase
 struct CaseFold {
-  static char Normalize(char c) {
+  static unsigned char Normalize(char c) {
     if (c >= 'A' && c <= 'Z') {
       return c + ('a' - 'A');
     } else {

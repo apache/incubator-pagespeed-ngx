@@ -28,6 +28,10 @@ namespace net_instaweb {
 
 namespace {
 
+// Filenames of resource files.
+const char kBikePngFile[] = "BikeCrashIcn.png";
+const char kPuzzleJpgFile[] = "Puzzle.jpg";
+
 class ImageRewriteTest : public ResourceManagerTestBase {
  protected:
   // Simple image rewrite test to check resource fetching functionality.
@@ -266,6 +270,44 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     cuppa_resource->contents().CopyToString(&other_contents);
     ASSERT_EQ(cuppa_contents, other_contents);
   }
+
+  // Helper to test for how we handle trailing junk in URLs
+  void TestCorruptUrl(const char* junk, bool should_fetch_ok) {
+    const char kHtml[] = "<img src=\"a.jpg\"><img src=\"b.png\">";
+    AddFileToMockFetcher(StrCat(kTestDomain, "a.jpg"),
+                        StrCat(GTestSrcDir(), kTestData, kPuzzleJpgFile),
+                        kContentTypeJpeg);
+
+    AddFileToMockFetcher(StrCat(kTestDomain, "b.png"),
+                        StrCat(GTestSrcDir(), kTestData, kBikePngFile),
+                        kContentTypeJpeg);
+
+    AddFilter(RewriteOptions::kRewriteImages);
+
+    StringVector img_srcs;
+    ImgCollector img_collect(html_parse(), &img_srcs);
+    html_parse()->AddFilter(&img_collect);
+
+    ParseUrl(kTestDomain, kHtml);
+    ASSERT_EQ(2, img_srcs.size());
+    std::string normal_output = output_buffer_;
+    std::string url1 = img_srcs[0];
+    std::string url2 = img_srcs[1];
+
+    // Fetch messed up versions. Currently image rewriter doesn't actually
+    // fetch them.
+    std::string out;
+    EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(url1, junk), &out));
+    EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(url2, junk), &out));
+
+    // Now run through again to make sure we didn't cache the messed up URL
+    img_srcs.clear();
+    ParseUrl(kTestDomain, kHtml);
+    EXPECT_EQ(normal_output, output_buffer_);
+    ASSERT_EQ(2, img_srcs.size());
+    EXPECT_EQ(url1, img_srcs[0]);
+    EXPECT_EQ(url2, img_srcs[1]);
+  }
 };
 
 TEST_F(ImageRewriteTest, ImgTag) {
@@ -287,10 +329,10 @@ TEST_F(ImageRewriteTest, RespectsBaseUrl) {
   const char jpeg_url[] = "http://other_domain.test/baz/b.jpeg";
 
   AddFileToMockFetcher(png_url,
-                       StrCat(GTestSrcDir(), kTestData, "BikeCrashIcn.png"),
+                       StrCat(GTestSrcDir(), kTestData, kBikePngFile),
                        kContentTypePng);
   AddFileToMockFetcher(jpeg_url,
-                       StrCat(GTestSrcDir(), kTestData, "Puzzle.jpg"),
+                       StrCat(GTestSrcDir(), kTestData, kPuzzleJpgFile),
                        kContentTypeJpeg);
 
   // Second stylesheet is on other domain.
@@ -352,6 +394,14 @@ TEST_F(ImageRewriteTest, FetchInvalid) {
   EXPECT_FALSE(
       ServeResourceUrl(
           "http://www.example.com/70x53x,.pagespeed.ic.ABCDEFGHIJ.jpg", &out));
+}
+
+TEST_F(ImageRewriteTest, NoExtensionCorruption) {
+  TestCorruptUrl("%22", false);
+}
+
+TEST_F(ImageRewriteTest, NoQueryCorruption) {
+  TestCorruptUrl("?query", true);
 }
 
 }  // namespace

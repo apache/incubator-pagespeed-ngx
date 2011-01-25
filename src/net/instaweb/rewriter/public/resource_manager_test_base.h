@@ -278,7 +278,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     bool fetched = rewrite_driver_.FetchResource(
         url, request_headers, &response_headers, &writer, &message_handler_,
         &callback);
-    EXPECT_TRUE(callback.done());
+    // The callback should be called if and only if FetchResource
+    // returns true.
+    EXPECT_EQ(fetched, callback.done());
     return fetched && callback.success();
   }
 

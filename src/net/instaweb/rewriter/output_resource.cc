@@ -45,14 +45,15 @@ const char kLockSuffix[] = ".outputlock";
 OutputResource::OutputResource(ResourceManager* manager,
                                const StringPiece& resolved_base,
                                const ResourceNamer& full_name,
-                               const ContentType* type)
+                               const ContentType* type,
+                               const RewriteOptions* options)
     : Resource(manager, type),
       output_file_(NULL),
       writing_complete_(false),
       generated_(false),
       optimizable_(true),
       resolved_base_(resolved_base.data(), resolved_base.size()),
-      full_name_() {
+      rewrite_options_(options) {
   full_name_.CopyFrom(full_name);
   if (type == NULL) {
     std::string ext_with_dot = StrCat(".", full_name.ext());
@@ -194,8 +195,29 @@ std::string OutputResource::hash_ext() const {
 // TODO(jmarantz): change the name to reflect the fact that it is not
 // just an accessor now.
 std::string OutputResource::url() const {
-  std::string encoded = full_name_.Encode();
-  encoded = StrCat(resolved_base_, encoded);
+  std::string shard, shard_path;
+  std::string encoded(full_name_.Encode());
+  if (rewrite_options_ != NULL) {
+    StringPiece hash = full_name_.hash();
+    uint32 int_hash = HashString<CasePreserve, uint32>(
+        hash.data(), hash.size());
+    const DomainLawyer* lawyer = rewrite_options_->domain_lawyer();
+    GURL gurl = GoogleUrl::Create(resolved_base_);
+    std::string domain = StrCat(GoogleUrl::Origin(gurl), "/");
+    if (lawyer->ShardDomain(domain, int_hash, &shard)) {
+      // The Path has a leading "/", and shard has a trailing "/".  So
+      // we need to perform some StringPiece substring arithmetic to
+      // make them all fit together.  Note that we could have used
+      // string's substr method but that would have made another temp
+      // copy, which seems like a waste.
+      shard_path = StrCat(shard, StringPiece(GoogleUrl::Path(gurl)).substr(1));
+    }
+  }
+  if (shard_path.empty()) {
+    encoded = StrCat(resolved_base_, encoded);
+  } else {
+    encoded = StrCat(shard_path, encoded);
+  }
   return encoded;
 }
 

@@ -268,7 +268,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
       if (gurl.is_valid()) {
         *base = GoogleUrl::AllExceptLeaf(gurl);
         ResourceNamer namer;
-        if (namer.Decode(GoogleUrl::Leaf(gurl)) &&
+        if (namer.Decode(GoogleUrl::LeafWithQuery(gurl)) &&
             (namer.id() == "cc")) {  // TODO(jmarantz): Share this literal
           UrlEscaper escaper;
           UrlMultipartEncoder multipart_encoder;
@@ -387,6 +387,27 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
                     output_css_links);
 
     // TODO(jmarantz): fetch all content and provide output as text.
+  }
+
+  // Helper for testing handling of URLs with trailing junk
+  void TestCorruptUrl(const char* junk, bool should_fetch_ok) {
+    CssLink::Vector css_in, css_out;
+    css_in.Add("1.css", kYellow, "", true);
+    css_in.Add("2.css", kYellow, "", true);
+    BarrierTestHelper("no_ext_corrupt", css_in, &css_out);
+    ASSERT_EQ(1, css_out.size());
+    std::string normal_url = css_out[0]->url_;
+
+    std::string out;
+    EXPECT_EQ(should_fetch_ok,
+              ServeResourceUrl(StrCat(normal_url, junk),  &out));
+
+    // Now re-do it and make sure %22 didn't get stuck in the URL
+    STLDeleteElements(&css_out);
+    css_out.clear();
+    BarrierTestHelper("no_ext_corrupt", css_in, &css_out);
+    ASSERT_EQ(1, css_out.size());
+    EXPECT_EQ(css_out[0]->url_, normal_url);
   }
 };
 
@@ -781,7 +802,7 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   GURL gurl = GoogleUrl::Create(css_out[0]->url_);
   EXPECT_EQ("/" + long_name + "/", GoogleUrl::PathSansLeaf(gurl));
   ResourceNamer namer;
-  ASSERT_TRUE(namer.Decode(GoogleUrl::Leaf(gurl)));
+  ASSERT_TRUE(namer.Decode(GoogleUrl::LeafWithQuery(gurl)));
   EXPECT_EQ("a.css+b.css", namer.name());
   EXPECT_EQ("ab", actual_combination);
 }
@@ -839,6 +860,15 @@ TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
   std::string actual_combination;
   EXPECT_EQ(kUrl1, css_out[0]->url_);
   EXPECT_EQ(kUrl2, css_out[1]->url_);
+}
+
+// Make sure bad requests do not corrupt our extension.
+TEST_F(CssCombineFilterTest, NoExtensionCorruption) {
+  TestCorruptUrl("%22", false);
+}
+
+TEST_F(CssCombineFilterTest, NoQueryCorruption) {
+  TestCorruptUrl("?query", true);
 }
 
 /*

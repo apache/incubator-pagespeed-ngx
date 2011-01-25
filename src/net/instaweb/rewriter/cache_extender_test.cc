@@ -63,6 +63,23 @@ class CacheExtenderTest : public ResourceManagerTestBase {
                             const std::string& c) {
     return StringPrintf(kHtmlFormat, a.c_str(), b.c_str(), c.c_str());
   }
+
+  // Helper to test for how we handle trailing junk in URLs
+  void TestCorruptUrl(const char* junk, bool should_fetch_ok) {
+    InitTest(100);
+    std::string a_ext = Encode(kDomain, "ce", "0", "a.css", "css");
+    std::string b_ext = Encode(kDomain, "ce", "0", "b.jpg", "jpg");
+    std::string c_ext = Encode(kDomain, "ce", "0", "c.js", "js");
+
+    ValidateExpected("no_ext_corrupt", GenerateHtml("a.css", "b.jpg", "c.js"),
+                    GenerateHtml(a_ext, b_ext, c_ext));
+    std::string output;
+    EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(a_ext, junk), &output));
+    EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(b_ext, junk), &output));
+    EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(c_ext, junk), &output));
+    ValidateExpected("no_ext_corrupt", GenerateHtml("a.css", "b.jpg", "c.js"),
+                    GenerateHtml(a_ext, b_ext, c_ext));
+  }
 };
 
 TEST_F(CacheExtenderTest, DoExtend) {
@@ -141,6 +158,14 @@ TEST_F(CacheExtenderTest, MinimizeCacheHits) {
   // the name of the resource, that it should not be cache extended.
   EXPECT_EQ(0, lru_cache_->num_hits());
   EXPECT_EQ(1, lru_cache_->num_misses());
+}
+
+TEST_F(CacheExtenderTest, NoExtensionCorruption) {
+  TestCorruptUrl("%22", false);
+}
+
+TEST_F(CacheExtenderTest, NoQueryCorruption) {
+  TestCorruptUrl("?query", true);
 }
 
 }  // namespace

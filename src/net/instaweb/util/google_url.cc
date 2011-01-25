@@ -80,13 +80,23 @@ std::string GoogleUrl::AllExceptLeaf(const GURL& gurl) {
   //  around for an extension and splits off the query params.
 }
 
-std::string GoogleUrl::Leaf(const GURL& gurl) {
+std::string GoogleUrl::LeafWithQuery(const GURL& gurl) {
   std::string spec_str = gurl.spec();
   std::string::size_type question = spec_str.find('?');
   std::string::size_type last_slash = spec_str.find_last_of('/', question);
   CHECK(last_slash != std::string::npos);
   return std::string(spec_str.data() + last_slash + 1,
                       spec_str.size() - (last_slash + 1));
+}
+
+std::string GoogleUrl::LeafSansQuery(const GURL& gurl) {
+  std::string leaf = LeafWithQuery(gurl);
+  size_t question_pos = leaf.find('?');
+  if (question_pos == std::string::npos) {
+    return leaf;
+  }
+
+  return std::string(leaf.data(), question_pos);
 }
 
 // For "http://a.com/b/c/d?e=f/g returns "http://a.com" without trailing slash
@@ -116,7 +126,7 @@ std::string GoogleUrl::PathAndLeaf(const GURL& gurl) {
 // trailing slashes.
 std::string GoogleUrl::PathSansLeaf(const GURL& gurl) {
   std::string path_and_leaf = GoogleUrl::PathAndLeaf(gurl);
-  std::string leaf = GoogleUrl::Leaf(gurl);
+  std::string leaf = GoogleUrl::LeafWithQuery(gurl);
   CHECK_GE(path_and_leaf.size(), leaf.size());
   return std::string(path_and_leaf.data(), path_and_leaf.size() - leaf.size());
 }

@@ -289,10 +289,9 @@ bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
                                    std::string* out_url) {
   bool ret = false;
   scoped_ptr<Resource> input_resource(CreateInputResource(in_url));
-  scoped_ptr<OutputResource> output_resource(
-      resource_manager_->CreateOutputResourceFromResource(
-          filter_prefix_, &kContentTypeCss, resource_manager_->url_escaper(),
-          input_resource.get(), html_parse_->message_handler()));
+  scoped_ptr<OutputResource> output_resource(CreateOutputResourceFromResource(
+      &kContentTypeCss, resource_manager_->url_escaper(),
+      input_resource.get()));
   if (output_resource.get() != NULL &&
       RewriteExternalCssToResource(input_resource.get(),
                                    output_resource.get())) {

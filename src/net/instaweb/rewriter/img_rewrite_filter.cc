@@ -282,9 +282,8 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
       std::string rewritten_name;
       ImageUrlEncoder encoder(resource_manager_->url_escaper(), &page_dim);
       scoped_ptr<OutputResource> output_resource(
-          resource_manager_->CreateOutputResourceFromResource(
-              filter_prefix_, content_type, &encoder, input_resource.get(),
-              message_handler));
+          CreateOutputResourceFromResource(content_type, &encoder,
+                                           input_resource.get()));
       if (output_resource.get() != NULL) {
         if (output_resource->optimizable() &&
             !resource_manager_->FetchOutputResource(

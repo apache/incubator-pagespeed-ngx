@@ -163,15 +163,6 @@ bool ResourceNamer::DecodeHashExt(const StringPiece& encoded_hash_ext) {
   return ret;
 }
 
-size_t ResourceNamer::Hash() const {
-  size_t id_hash   = HashString<CasePreserve>(  id_.data(),   id_.size());
-  size_t name_hash = HashString<CasePreserve>(name_.data(), name_.size());
-  size_t hash_hash = HashString<CasePreserve>(hash_.data(), hash_.size());
-  size_t ext_hash  = HashString<CasePreserve>( ext_.data(),  ext_.size());
-  return
-      JoinHash(JoinHash(JoinHash(id_hash, name_hash), hash_hash), ext_hash);
-}
-
 const ContentType* ResourceNamer::ContentTypeFromExt() const {
   return NameExtensionToContentType(StrCat(".", ext_));
 }
