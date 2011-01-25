@@ -270,6 +270,22 @@ TEST_F(DomainLawyerTest, MapOriginDomain) {
   ASSERT_TRUE(domain_lawyer_.MapOrigin("http://origin.com:8080/a/b/c?d=f",
                                        &mapped));
   EXPECT_EQ("http://localhost:8080/a/b/c?d=f", mapped);
+
+  // The origin domain, which might be, say, 'localhost', is not necessarily
+  // authorized as a domain for input resources.
+  GURL gurl = GoogleUrl::Create(
+      StringPiece("http://origin.com:8080/index.html"));
+  EXPECT_FALSE(MapRequest(gurl, "http://localhost:8080/blue.css", &mapped));
+
+  // Of course, if we were to explicitly authorize then it would be ok.
+  // First use a wildcard, which will not cover the ":8080", so the
+  // Map will still fail.
+  ASSERT_TRUE(domain_lawyer_.AddDomain("localhost*", &message_handler_));
+  EXPECT_FALSE(MapRequest(gurl, "http://localhost:8080/blue.css", &mapped));
+
+  // Now, include the port explicitly, and the mapping will be allowed.
+  ASSERT_TRUE(domain_lawyer_.AddDomain("localhost:8080", &message_handler_));
+  EXPECT_TRUE(MapRequest(gurl, "http://localhost:8080/blue.css", &mapped));
 }
 
 TEST_F(DomainLawyerTest, Merge) {

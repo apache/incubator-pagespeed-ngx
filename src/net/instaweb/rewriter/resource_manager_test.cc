@@ -274,6 +274,30 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlEvil) {
   EXPECT_EQ(NULL, input_resource.get());
 }
 
+TEST_F(ResourceManagerTest, TestOutputInputUrlBusy) {
+  EXPECT_TRUE(options_.domain_lawyer()->AddOriginDomainMapping(
+      "www.busy.com", "example.com", &message_handler_));
+
+  std::string escaped_abs;
+  resource_manager_->url_escaper()->EncodeToUrlSegment("http://www.busy.com",
+                                                       &escaped_abs);
+  std::string url = Encode("http://example.com/dir/123/",
+                            "jm", "0", escaped_abs, "js");
+  scoped_ptr<OutputResource> output_resource(
+      resource_manager_->CreateOutputResourceForFetch(url));
+  ASSERT_TRUE(output_resource.get());
+  scoped_ptr<Resource> input_resource(
+      resource_manager_->CreateInputResourceFromOutputResource(
+          resource_manager_->url_escaper(),
+          output_resource.get(),
+          &options_,
+          &message_handler_));
+  EXPECT_EQ(NULL, input_resource.get());
+  if (input_resource.get() != NULL) {
+    LOG(ERROR) << input_resource->url();
+  }
+}
+
 // CreateOutputResourceForFetch should drop query
 TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
   std::string url = Encode("http://example.com/dir/123/",

@@ -28,7 +28,8 @@ namespace net_instaweb {
 class DomainLawyer::Domain {
  public:
   explicit Domain(const StringPiece& name)
-      : wildcard_(name),
+      : authorized_(false),
+        wildcard_(name),
         name_(name.data(), name.size()),
         rewrite_domain_(NULL),
         origin_domain_(NULL) {
@@ -44,11 +45,23 @@ class DomainLawyer::Domain {
   void set_rewrite_domain(Domain* x) { rewrite_domain_ = x; }
   void set_origin_domain(Domain* x) { origin_domain_ = x; }
   void set_shard_from(Domain* x) { x->shards_.push_back(this); }
+  void set_authorized(bool authorized) { authorized_ = authorized; }
 
   int num_shards() const { return shards_.size(); }
+
+  // Indicates whether this domain is authorized when found in URLs
+  // HTML files are as direct requests to the web server.  Domains
+  // get authorized by mentioning them in ModPagespeedDomain,
+  // ModPagespeedMapRewriteDomain, ModPagespeedShardDomain, and as
+  // the from-list in ModPagespeedMapOriginDomain.  However, the target
+  // of ModPagespeedMapOriginDomain is not implicitly authoried --
+  // that may be 'localhost'.
+  bool authorized() const { return authorized_; }
+
   Domain* shard(int shard_index) const { return shards_[shard_index]; }
 
  private:
+  bool authorized_;
   Wildcard wildcard_;
   std::string name_;
 
@@ -75,12 +88,12 @@ DomainLawyer::~DomainLawyer() {
 
 bool DomainLawyer::AddDomain(const StringPiece& domain_name,
                              MessageHandler* handler) {
-  return (AddDomainHelper(domain_name, true, handler) != NULL);
+  return (AddDomainHelper(domain_name, true, true, handler) != NULL);
 }
 
 DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
     const StringPiece& domain_name, bool warn_on_duplicate,
-    MessageHandler* handler) {
+    bool authorize, MessageHandler* handler) {
   if (domain_name.empty()) {
     // handler will be NULL only when called from Merge, which should
     // only have pre-validated (non-empty) domains.  So it should not
@@ -115,11 +128,16 @@ DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
       wildcarded_domains_.push_back(domain);
     }
     iter->second = domain;
-  } else if (warn_on_duplicate) {
-    handler->Message(kWarning, "AddDomain of domain already in map: %s",
-                     domain_name_str.c_str());
   } else {
     domain = iter->second;
+    if (warn_on_duplicate && (authorize == domain->authorized())) {
+      handler->Message(kWarning, "AddDomain of domain already in map: %s",
+                       domain_name_str.c_str());
+      domain = NULL;
+    }
+  }
+  if (authorize && (domain != NULL)) {
+    domain->set_authorized(true);
   }
   return domain;
 }
@@ -173,7 +191,8 @@ bool DomainLawyer::MapRequestToDomain(
     Domain* resolved_domain = FindDomain(resolved_domain_name);
 
     // The origin domain is authorized by default.
-    if ((resolved_origin == original_origin) || (resolved_domain != NULL)) {
+    if ((resolved_origin == original_origin) ||
+        ((resolved_domain != NULL) && resolved_domain->authorized())) {
       *mapped_domain_name = resolved_domain_name;
       ret = true;
 
@@ -231,7 +250,7 @@ bool DomainLawyer::AddRewriteDomainMapping(
     const StringPiece& comma_separated_from_domains,
     MessageHandler* handler) {
   return MapDomainHelper(to_domain_name, comma_separated_from_domains,
-                         &Domain::set_rewrite_domain, true, handler);
+                         &Domain::set_rewrite_domain, true, true, handler);
 }
 
 bool DomainLawyer::AddOriginDomainMapping(
@@ -239,7 +258,7 @@ bool DomainLawyer::AddOriginDomainMapping(
     const StringPiece& comma_separated_from_domains,
     MessageHandler* handler) {
   return MapDomainHelper(to_domain_name, comma_separated_from_domains,
-                         &Domain::set_origin_domain, true, handler);
+                         &Domain::set_origin_domain, true, false, handler);
 }
 
 bool DomainLawyer::AddShard(
@@ -247,7 +266,7 @@ bool DomainLawyer::AddShard(
     const StringPiece& comma_separated_shards,
     MessageHandler* handler) {
   return MapDomainHelper(shard_domain_name, comma_separated_shards,
-                         &Domain::set_shard_from, false, handler);
+                         &Domain::set_shard_from, false, true, handler);
 }
 
 bool DomainLawyer::MapDomainHelper(
@@ -255,8 +274,10 @@ bool DomainLawyer::MapDomainHelper(
     const StringPiece& comma_separated_from_domains,
     SetDomainFn set_domain_fn,
     bool allow_wildcards,
+    bool authorize_to_domain,
     MessageHandler* handler) {
-  Domain* to_domain = AddDomainHelper(to_domain_name, false, handler);
+  Domain* to_domain = AddDomainHelper(to_domain_name, false,
+                                      authorize_to_domain, handler);
   bool ret = false;
   if (to_domain->IsWildcarded()) {
     handler->Message(kError, "Cannot map to a wildcarded domain: %s",
@@ -266,7 +287,7 @@ bool DomainLawyer::MapDomainHelper(
     SplitStringPieceToVector(comma_separated_from_domains, ",", &domains, true);
     for (int i = 0, n = domains.size(); i < n; ++i) {
       const StringPiece& domain_name = domains[i];
-      Domain* from_domain = AddDomainHelper(domain_name, false, handler);
+      Domain* from_domain = AddDomainHelper(domain_name, false, true, handler);
       if (from_domain != NULL) {
         if (!allow_wildcards && from_domain->IsWildcarded()) {
           handler->Message(kError, "Cannot map from a wildcarded domain: %s",
@@ -281,26 +302,28 @@ bool DomainLawyer::MapDomainHelper(
   return ret;
 }
 
+DomainLawyer::Domain* DomainLawyer::CloneAndAdd(const Domain* src) {
+  return AddDomainHelper(src->name(), false, src->authorized(), NULL);
+}
+
 void DomainLawyer::Merge(const DomainLawyer& src) {
   for (DomainMap::const_iterator
            p = src.domain_map_.begin(),
            e = src.domain_map_.end();
        p != e; ++p) {
     Domain* src_domain = p->second;
-    Domain* dst_domain = AddDomainHelper(src_domain->name(), false, NULL);
+    Domain* dst_domain = CloneAndAdd(src_domain);
     Domain* src_rewrite_domain = src_domain->rewrite_domain();
     if (src_rewrite_domain != NULL) {
-      dst_domain->set_rewrite_domain(
-          AddDomainHelper(src_rewrite_domain->name(), false, NULL));
+      dst_domain->set_rewrite_domain(CloneAndAdd(src_rewrite_domain));
     }
     Domain* src_origin_domain = src_domain->origin_domain();
     if (src_origin_domain != NULL) {
-      dst_domain->set_origin_domain(
-          AddDomainHelper(src_origin_domain->name(), false, NULL));
+      dst_domain->set_origin_domain(CloneAndAdd(src_origin_domain));
     }
     for (int i = 0; i < src_domain->num_shards(); ++i) {
       Domain* src_shard = src_domain->shard(i);
-      Domain* dst_shard = AddDomainHelper(src_shard->name(), false, NULL);
+      Domain* dst_shard = CloneAndAdd(src_shard);
       dst_shard->set_shard_from(dst_domain);
     }
   }

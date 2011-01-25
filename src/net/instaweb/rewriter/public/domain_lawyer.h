@@ -152,11 +152,14 @@ class DomainLawyer {
       const StringPiece& comma_separated_from_domains,
       SetDomainFn set_domain_fn,
       bool allow_wildcards,
+      bool authorize,
       MessageHandler* handler);
 
   Domain* AddDomainHelper(const StringPiece& domain_name,
                           bool warn_on_duplicate,
+                          bool authorize,
                           MessageHandler* handler);
+  Domain* CloneAndAdd(const Domain* src);
 
   Domain* FindDomain(const std::string& domain_name) const;
 
