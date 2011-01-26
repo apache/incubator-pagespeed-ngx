@@ -192,14 +192,18 @@ OutputResource* ResourceManager::CreateOutputResourceFromResource(
     MessageHandler* handler) {
   OutputResource* result = NULL;
   if (input_resource != NULL) {
-    std::string url = input_resource->url();
-    GURL input_gurl(url);
-    CHECK(input_gurl.is_valid());  // or input_resource should have been NULL.
-    std::string name;
-    encoder->EncodeToUrlSegment(GoogleUrl::LeafWithQuery(input_gurl), &name);
-    result = CreateOutputResourceWithPath(
-        GoogleUrl::AllExceptLeaf(input_gurl),
-        filter_prefix, name, content_type, rewrite_options, handler);
+    // TODO(jmarantz): It would be more efficient to pass in the base
+    // document GURL or save that in the input resource.
+    GURL gurl = GoogleUrl::Create(input_resource->url());
+    UrlPartnership partnership(rewrite_options, gurl);
+    if (partnership.AddUrl(input_resource->url(), handler)) {
+      const GURL& mapped_gurl = *partnership.FullPath(0);
+      std::string name;
+      encoder->EncodeToUrlSegment(GoogleUrl::LeafWithQuery(mapped_gurl), &name);
+      result = CreateOutputResourceWithPath(
+          GoogleUrl::AllExceptLeaf(mapped_gurl),
+          filter_prefix, name, content_type, rewrite_options, handler);
+    }
   }
   return result;
 }
@@ -315,8 +319,13 @@ Resource* ResourceManager::CreateInputResource(
   UrlPartnership partnership(rewrite_options, base_gurl);
   Resource* resource = NULL;
   if (partnership.AddUrl(input_url, handler)) {
-    const GURL* input_gurl = partnership.FullPath(0);
-    resource = CreateInputResourceUnchecked(*input_gurl, rewrite_options,
+    // TODO(jmarantz): We are currently tossing the partership object
+    // and using it only for validating the URL.  Perhaps we should
+    // instead just consult the domain lawyer, rather than creating
+    // the throwaway partnership.  Thus there is a lot of extra
+    // validation going on.
+    const GURL input_gurl = GoogleUrl::Resolve(base_gurl, input_url);
+    resource = CreateInputResourceUnchecked(input_gurl, rewrite_options,
                                             handler);
   } else {
     handler->Message(kInfo, "Invalid resource url '%s' relative to '%s'",

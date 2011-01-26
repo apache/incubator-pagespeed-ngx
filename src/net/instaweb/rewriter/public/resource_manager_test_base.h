@@ -207,7 +207,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                     const ContentType& content_type,
                     const StringPiece& content,
                     int64 ttl) {
-    std::string name = StrCat(kTestDomain, resource_name);
+    std::string name;
+    if (resource_name.starts_with("http://")) {
+      resource_name.CopyToString(&name);
+    } else {
+      name = StrCat(kTestDomain, resource_name);
+    }
     ResponseHeaders response_headers;
     resource_manager_->SetDefaultHeaders(&content_type, &response_headers);
     response_headers.RemoveAll(HttpAttributes::kCacheControl);

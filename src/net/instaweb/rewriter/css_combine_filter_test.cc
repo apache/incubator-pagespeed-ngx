@@ -830,7 +830,7 @@ TEST_F(CssCombineFilterTest, CrossMappedDomain) {
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   mock_url_fetcher_.SetResponse("http://a.com/1.css", default_css_header,
                                 kYellow);
-  mock_url_fetcher_.SetResponse("http://a.com/2.css", default_css_header,
+  mock_url_fetcher_.SetResponse("http://b.com/2.css", default_css_header,
                                 kBlue);
   BarrierTestHelper("combine_css_with_style", css_in, &css_out);
   EXPECT_EQ(1, css_out.size());

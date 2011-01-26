@@ -298,6 +298,49 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlBusy) {
   }
 }
 
+// Check that we can origin-map a domain referenced from an HTML file
+// to 'localhost', but rewrite-map it to 'cdn.com'.  This was not working
+// earlier because ResourceManager::CreateInputResource was mapping to the
+// rewrite domain, preventing us from finding the origin-mapping when
+// fetching the URL.
+TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
+  ASSERT_TRUE(options_.domain_lawyer()->AddOriginDomainMapping(
+      "localhost", kTestDomain, &message_handler_));
+  EXPECT_TRUE(options_.domain_lawyer()->AddRewriteDomainMapping(
+      "cdn.com", kTestDomain, &message_handler_));
+
+  scoped_ptr<Resource> input(resource_manager_->CreateInputResource(
+      GoogleUrl::Create(StringPiece("http://test.com/index.html")),
+      "style.css", &options_, &message_handler_));
+  ASSERT_TRUE(input.get() != NULL);
+  EXPECT_EQ(std::string("http://test.com/style.css"), input->url());
+
+  // The absolute input URL is in test.com, but we will only be
+  // able to serve it from localhost, per the origin mapping above.
+  static const char kStyleContent[] = "style content";
+  const int kOriginTtlSec = 300;
+  InitResponseHeaders("http://localhost/style.css", kContentTypeCss,
+                      kStyleContent, kOriginTtlSec);
+  EXPECT_TRUE(resource_manager_->ReadIfCached(input.get(), &message_handler_));
+
+  // When we rewrite the resource as an ouptut, it will show up in the
+  // CDN per the rewrite mapping.
+  scoped_ptr<OutputResource> output(
+      resource_manager_->CreateOutputResourceFromResource(
+          RewriteDriver::kCacheExtenderId, input->type(),
+          resource_manager_->url_escaper(), input.get(),
+          &options_, &message_handler_));
+  ASSERT_TRUE(output.get() != NULL);
+
+  // We need to 'Write' an output resource before we can determine its
+  // URL.
+  resource_manager_->Write(HttpStatus::kOK, StringPiece(kStyleContent),
+                           output.get(), kOriginTtlSec * Timer::kSecondMs,
+                           &message_handler_);
+  EXPECT_EQ(std::string("http://cdn.com/style.css.pagespeed.ce.0.css"),
+            output->url());
+}
+
 // CreateOutputResourceForFetch should drop query
 TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
   std::string url = Encode("http://example.com/dir/123/",
