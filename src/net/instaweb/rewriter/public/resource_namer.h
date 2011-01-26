@@ -44,7 +44,7 @@ class ResourceNamer {
   bool Decode(const StringPiece& encoded_string);
 
   // Encodes the fields in this encoder into an absolute url, with the
-  // trailing portion "ID.HASH.NAME.EXT".
+  // trailing portion "NAME.pagespeed.ID.HASH.EXT".
   std::string Encode() const;
 
   // Encode a key that can used to do a lookup based on an id

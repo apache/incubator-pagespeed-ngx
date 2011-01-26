@@ -97,16 +97,14 @@ TEST_F(CacheExtenderTest, DoExtend) {
 
 TEST_F(CacheExtenderTest, NoExtendAlreadyCachedProperly) {
   InitTest(100000000);  // cached for a long time to begin with
-  ValidateExpected("no_extend_cached_properly",
-                   GenerateHtml("a.css", "b.jpg", "c.js"),
-                   GenerateHtml("a.css", "b.jpg", "c.js"));
+  ValidateNoChanges("no_extend_cached_properly",
+                    GenerateHtml("a.css", "b.jpg", "c.js"));
 }
 
 TEST_F(CacheExtenderTest, NoExtendOriginUncacheable) {
   InitTest(0);  // origin not cacheable
-  ValidateExpected("no_extend_origin_not_cacheable",
-                   GenerateHtml("a.css", "b.jpg", "c.js"),
-                   GenerateHtml("a.css", "b.jpg", "c.js"));
+  ValidateNoChanges("no_extend_origin_not_cacheable",
+                    GenerateHtml("a.css", "b.jpg", "c.js"));
 }
 
 TEST_F(CacheExtenderTest, ServeFiles) {

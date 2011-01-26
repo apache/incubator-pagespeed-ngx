@@ -124,7 +124,7 @@ class ResourceManager {
   // This name is prepended with path for writing hrefs, and the resulting url
   // is encoded and stored at file_prefix when working with the file system.  So
   // hrefs are:
-  //    $(PATH)/$(FILTER_PREFIX).$(HASH).$(NAME).$(CONTENT_TYPE_EXT)
+  //    $(PATH)/$(NAME).pagespeed.$(FILTER_PREFIX).$(HASH).$(CONTENT_TYPE_EXT)
   //
   // 'type' arg can be null if it's not known, or is not in our ContentType
   // library.
@@ -138,8 +138,7 @@ class ResourceManager {
   // is parsed to see if it looks like the url of a generated resource (which
   // should mean checking the hash to ensure we generated it ourselves).
   // TODO(jmaessen): add url hash & check thereof.
-  OutputResource* CreateOutputResourceForFetch(
-      const StringPiece& url);
+  OutputResource* CreateOutputResourceForFetch(const StringPiece& url);
 
   // Creates an input resource with the url evaluated based on input_url
   // which may need to be absolutified relative to base_url.  Returns NULL if
