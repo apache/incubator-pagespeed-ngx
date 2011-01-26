@@ -156,6 +156,7 @@ class Parser {
   static const uint64 kSelectorError    = 1ULL << 2;
   static const uint64 kFunctionError    = 1ULL << 3;
   static const uint64 kMediaError       = 1ULL << 4;
+  static const uint64 kCounterError     = 1ULL << 5;
   uint64 errors_seen_mask() const { return errors_seen_mask_; }
 
   friend class ParserTest;  // we need to unit test private Parse functions.

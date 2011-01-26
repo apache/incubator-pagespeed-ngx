@@ -359,6 +359,11 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{font-family:trebuchet ms}",  // Keep space between trebuchet and ms.
     // http://code.google.com/p/modpagespeed/issues/detail?id=121
     "a{color:inherit}",
+    // Added for code coverage.
+    "@import url(http://www.example.com)",
+    "@media a,b{a{color:red}}",
+    "a{content:\"Odd chars: \\(\\)\\,\\\"\\\'\"}",
+    "img{clip:rect(0px,60px,200px,0px)}",
     };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
@@ -504,7 +509,30 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     //"-moz-transform:scale(0.5);-webkit-transform:scale(0.5);"
     //"-moz-transform:translate(3em,0);-webkit-transform:translate(3em,0);}"
     // TODO(sligocki): When this is parsed correctly, move it up to examples[][]
-  };
+
+    // http://www.w3schools.com/CSS/tryit.asp?filename=trycss_gen_counter-reset
+    "body {counter-reset:section;}\n"
+    "h1 {counter-reset:subsection;}\n"
+    "h1:before\n"
+    "{\n"
+    "counter-increment:section;\n"
+    "content:\"Section \" counter(section) \". \";\n"
+    "}\n"
+    "h2:before \n"
+    "{\n"
+    "counter-increment:subsection;\n"
+    "content:counter(section) \".\" counter(subsection) \" \";\n"
+    "}\n",
+
+    // Right now we bail on parsing the above. Could probably be minified to:
+    //"body{counter-reset:section}"
+    //"h1{counter-reset:subsection}"
+    //"h1:before{counter-increment:section;"
+    //"content:\"Section \" counter(section) \". \"}"
+    //"h2:before{counter-increment:subsection;"
+    //"content:counter(section) \".\" counter(subsection) \" \"}" },
+    // TODO(sligocki): When this is parsed correctly, move it up to examples[][]
+    };
 
   for (int i = 0; i < arraysize(parse_fail_examples); ++i) {
     std::string id = StringPrintf("complex_css_parse_fail%d", i);
