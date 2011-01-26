@@ -128,6 +128,13 @@ TEST_F(CssInlineFilterTest, DoNotInlineCssDifferentDomain) {
                 "", "BODY { color: red; }\n", false, "");
 }
 
+TEST_F(CssInlineFilterTest, DoNotInlineCssWithImports) {
+  // TODO(mdsteele): Is switching domains in fact an issue for CSS?
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/styles.css",
+                "", "@import \"foo.css\", BODY { color: red; }\n", false, "");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

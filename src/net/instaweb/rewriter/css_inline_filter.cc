@@ -88,6 +88,14 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
       return;
     }
 
+    // Check that the file does not have imports, which we cannot yet
+    // correct paths yet.
+    //
+    // Remove this once CssTagScanner::AbsolutifyUrls handles imports.
+    if (CssTagScanner::HasImport(contents, message_handler)) {
+      return;
+    }
+
     // Absolutify the URLs in the CSS -- relative URLs will break otherwise.
     std::string rewritten_contents;
     StringWriter writer(&rewritten_contents);

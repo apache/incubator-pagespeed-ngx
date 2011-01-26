@@ -116,6 +116,8 @@ bool ExtractQuote(std::string* url, char* quote) {
 // TODO(jmarantz): replace this scan-and-replace-in-one-shot methdology with
 // a proper scanner/parser/filtering mechanism akin to HtmlParse/HtmlLexer.
 // See http://www.w3.org/Style/CSS/SAC/ for the C Parser.
+//
+// TODO(jmarantz): Add parsing & absolutification of @import.
 bool CssTagScanner::AbsolutifyUrls(
     const StringPiece& contents, const std::string& base_url,
     Writer* writer, MessageHandler* handler) {
