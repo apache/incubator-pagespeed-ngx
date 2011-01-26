@@ -37,7 +37,6 @@ const char kJsMinData[] = "alert('hello, world!')";
 const char kFilterId[] = "jm";
 const char kOrigJsName[] = "hello.js";
 const char kRewrittenJsName[] = "hello.js";
-const char kSourcePrefix[] = "http://test.com/";
 
 }  // namespace
 
@@ -53,7 +52,7 @@ class JavascriptFilterTest : public ResourceManagerTestBase {
     namer.set_name(kRewrittenJsName);
     namer.set_ext("js");
     namer.set_hash("0");
-    expected_rewritten_path_ = StrCat(kSourcePrefix, namer.Encode());
+    expected_rewritten_path_ = StrCat(kTestDomain, namer.Encode());
   }
 
   void InitTest(int64 ttl) {
@@ -122,7 +121,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   http_cache_.Put(expected_rewritten_path_, &headers, kJsMinData,
                   &message_handler_);
   EXPECT_EQ(0, lru_cache_->num_hits());
-  ASSERT_TRUE(ServeResource(kSourcePrefix, kFilterId,
+  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId,
                             kRewrittenJsName, "js", &content));
   EXPECT_EQ(1, lru_cache_->num_hits());
   EXPECT_EQ(std::string(kJsMinData), content);
@@ -143,7 +142,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   ASSERT_TRUE(file_system_.WriteFile(filename.c_str(), data,
                                      &message_handler_));
 
-  ASSERT_TRUE(ServeResource(kSourcePrefix, kFilterId,
+  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId,
                             kRewrittenJsName, "js", &content));
   EXPECT_EQ(std::string(kJsMinData), content);
 
@@ -156,7 +155,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   ASSERT_TRUE(file_system_.RemoveFile(filename.c_str(), &message_handler_));
   lru_cache_->Clear();
   InitTest(100);
-  ASSERT_TRUE(ServeResource(kSourcePrefix, kFilterId,
+  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId,
                             kRewrittenJsName, "js", &content));
   EXPECT_EQ(std::string(kJsMinData), content);
 

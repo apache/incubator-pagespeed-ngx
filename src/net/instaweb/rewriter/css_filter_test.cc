@@ -142,8 +142,7 @@ class CssFilterTest : public ResourceManagerTestBase {
     CheckFlags(flags);
 
     // TODO(sligocki): Allow arbitrary URLs.
-    std::string url_prefix = kTestDomain;
-    std::string css_url = StrCat(url_prefix, id, ".css");
+    std::string css_url = StrCat(kTestDomain, id, ".css");
 
     // Set input file.
     if ((flags & kNoClearFetcher) == 0) {
@@ -203,7 +202,7 @@ class CssFilterTest : public ResourceManagerTestBase {
     if (flags & kExpectChange) {
       std::string actual_output;
       // TODO(sligocki): This will only work with mock_hasher.
-      EXPECT_TRUE(ServeResource(url_prefix,
+      EXPECT_TRUE(ServeResource(kTestDomain,
                                 namer.id(), namer.name(), namer.ext(),
                                 &actual_output));
       EXPECT_EQ(expected_css_output, actual_output);

@@ -143,6 +143,11 @@ class DomainLawyer {
   // wins.
   void Merge(const DomainLawyer& src);
 
+  // Determines whether a resource of the given domain name is going
+  // to change due to RewriteDomain mapping or domain sharding.  Note
+  // that this does not account for the actual domain shard selected.
+  bool WillDomainChange(const StringPiece& domain_name) const;
+
  private:
   class Domain;
   typedef void (Domain::*SetDomainFn)(Domain* domain);

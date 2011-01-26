@@ -346,4 +346,20 @@ bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
   return sharded;
 }
 
+bool DomainLawyer::WillDomainChange(const StringPiece& domain_name) const {
+  Domain* domain = FindDomain(
+      std::string(domain_name.data(), domain_name.size()));
+  if (domain != NULL) {
+    if (domain->num_shards() != 0) {
+      return true;
+    }
+    if (domain->rewrite_domain() != NULL) {
+      if (domain->rewrite_domain() != domain) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 }  // namespace net_instaweb

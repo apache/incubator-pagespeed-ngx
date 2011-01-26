@@ -43,7 +43,7 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
     std::string hash = hasher->Hash(script_text);
     std::string outline_filename;
     std::string outline_url = Encode(
-        "http://test.com/", JsOutlineFilter::kFilterId,  hash, "_", "js");
+        kTestDomain, JsOutlineFilter::kFilterId,  hash, "_", "js");
     filename_encoder_.Encode(file_prefix_, outline_url, &outline_filename);
 
     // Make sure the file we check later was written this time, rm any old one.

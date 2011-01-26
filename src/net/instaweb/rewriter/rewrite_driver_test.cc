@@ -72,7 +72,7 @@ TEST_F(RewriteDriverTest, TestCacheUse) {
   InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
 
   std::string cacheExtendedUrl =
-      Encode("http://test.com/", RewriteDriver::kCacheExtenderId,
+      Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
              mock_hasher_.Hash(kCss), "a.css", "css");
 
   // Cold load.

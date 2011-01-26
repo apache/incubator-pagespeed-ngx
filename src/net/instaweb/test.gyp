@@ -60,6 +60,7 @@
         'apache/serf_url_async_fetcher_test.cc',
         'htmlparse/html_escape_test.cc',
         'htmlparse/html_parse_test.cc',
+        'htmlparse/html_parse_test_base.cc',
         'http/cache_fetcher_test.cc',
         'http/cache_url_async_fetcher_test.cc',
         'http/cache_url_fetcher_test.cc',

@@ -390,4 +390,17 @@ TEST_F(DomainLawyerTest, Shard) {
   EXPECT_FALSE(domain_lawyer_.ShardDomain("http://other.com/", 0, &shard));
 }
 
+TEST_F(DomainLawyerTest, WillDomainChange) {
+  ASSERT_TRUE(domain_lawyer_.AddShard("foo.com", "bar1.com,bar2.com",
+                                      &message_handler_));
+  ASSERT_TRUE(domain_lawyer_.AddRewriteDomainMapping(
+      "http://cdn.com", "http://origin.com", &message_handler_));
+  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://foo.com/"));
+  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://origin.com/"));
+  EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://bar1.com/"));
+  EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://bar2.com/"));
+  EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://cdn.com/"));
+  EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://other_domain.com/"));
+}
+
 }  // namespace net_instaweb
