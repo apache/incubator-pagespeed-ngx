@@ -183,7 +183,6 @@ class ResourceManager {
 
   // Set up a basic header for a given content_type.
   // If content_type is null, the Content-Type is omitted.
-  // This method may only be called once on a header.
   void SetDefaultHeaders(const ContentType* content_type,
                          ResponseHeaders* header) const;
 

@@ -73,11 +73,6 @@ const int64 kRefreshExpirePercent = 75;
 // caches whenever pagespeed is upgraded.
 const char kCacheKeyPrefix[] = "rname/";
 
-// In the case when we want to remember that it was not beneficial to produce
-// a certain resource we include this header in the metadata of the entry
-// in the above cache.
-const char kCacheUnoptimizableHeader[] = "X-ModPagespeed-Unoptimizable";
-
 }  // namespace
 
 const int ResourceManager::kNotSharded = -1;
@@ -126,17 +121,18 @@ void ResourceManager::Initialize(Statistics* statistics) {
 // TODO(jmarantz): consider moving this method to ResponseHeaders
 void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
                                         ResponseHeaders* header) const {
-  CHECK(!header->has_major_version());
-  CHECK_EQ(0, header->NumAttributes());
   header->set_major_version(1);
   header->set_minor_version(1);
   header->SetStatusAndReason(HttpStatus::kOK);
+  header->RemoveAll(HttpAttributes::kContentType);
   if (content_type != NULL) {
     header->Add(HttpAttributes::kContentType, content_type->mime_type());
   }
   int64 now_ms = http_cache_->timer()->NowMs();
+  header->RemoveAll(HttpAttributes::kCacheControl);
   header->Add(HttpAttributes::kCacheControl, max_age_string_);
   std::string expires_string;
+  header->RemoveAll(HttpAttributes::kExpires);
   if (ConvertTimeToString(now_ms + kGeneratedMaxAgeMs, &expires_string)) {
     header->Add(HttpAttributes::kExpires, expires_string);
   }
@@ -152,6 +148,7 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
   // serve images from its cache when the image lacks an ETag.  Since
   // we sign URLs, there is no reason to have a unique signature in
   // the ETag.
+  header->RemoveAll(HttpAttributes::kEtag);
   header->Add(HttpAttributes::kEtag, kResourceEtagValue);
 
   // TODO(jmarantz): add date/last-modified headers by default.
@@ -236,39 +233,22 @@ OutputResource* ResourceManager::CreateOutputResourceWithPath(
     const ContentType* content_type,
     const RewriteOptions* rewrite_options,
     MessageHandler* handler) {
-  CHECK(content_type != NULL);
   ResourceNamer full_name;
   full_name.set_id(filter_prefix);
   full_name.set_name(name);
-  // TODO(jmaessen): The addition of 1 below avoids the leading ".";
-  // make this convention consistent and fix all code.
-  full_name.set_ext(content_type->file_extension() + 1);
+  if (content_type != NULL) {
+    // TODO(jmaessen): The addition of 1 below avoids the leading ".";
+    // make this convention consistent and fix all code.
+    full_name.set_ext(content_type->file_extension() + 1);
+  }
   OutputResource* resource =
       new OutputResource(this, path, full_name, content_type, rewrite_options);
 
   // Determine whether this output resource is still valid by looking
   // up by hash in the http cache.  Note that this cache entry will
   // expire when any of the origin resources expire.
-  ResponseHeaders meta_data;
-  StringPiece hash_extension;
-  HTTPValue value;
   std::string name_key = StrCat(kCacheKeyPrefix, resource->name_key());
-  if ((http_cache_->Find(name_key, &value, &meta_data, handler)
-       == HTTPCache::kFound) &&
-      value.ExtractContents(&hash_extension)) {
-    CharStarVector dummy;
-    if (meta_data.Lookup(kCacheUnoptimizableHeader, &dummy)) {
-      resource->set_optimizable(false);
-    } else {
-      ResourceNamer hash_ext;
-      if (hash_ext.DecodeHashExt(hash_extension)) {
-        resource->SetHash(hash_ext.hash());
-        // Note that the '.' must be included in the suffix
-        // TODO(jmarantz): remove this from the suffix.
-        resource->set_suffix(StrCat(".", hash_ext.ext()));
-      }
-    }
-  }
+  resource->FetchCachedResult(name_key, handler);
   return resource;
 }
 
@@ -507,6 +487,7 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
     // us due to something like outlining), cache the mapping from original URL
     // to the constructed one.
     if (!output->generated()) {
+      output->EnsureCachedResultCreated()->set_optimizable(true);
       CacheComputedResourceMapping(output, origin_expire_time_ms, handler);
     }
   } else {
@@ -522,7 +503,7 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
 void ResourceManager::WriteUnoptimizable(OutputResource* output,
                                          int64 origin_expire_time_ms,
                                          MessageHandler* handler) {
-  output->set_optimizable(false);
+  output->EnsureCachedResultCreated()->set_optimizable(false);
   CacheComputedResourceMapping(output, origin_expire_time_ms, handler);
 }
 
@@ -545,28 +526,13 @@ void ResourceManager::WriteUnoptimizable(OutputResource* output,
 // short expiration.
 void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
     int64 origin_expire_time_ms, MessageHandler* handler) {
-  int64 delta_ms = origin_expire_time_ms - http_cache_->timer()->NowMs();
-  int64 delta_sec = delta_ms / 1000;
-  if ((delta_sec > 0) || http_cache_->force_caching()) {
-    ResponseHeaders origin_meta_data;
-    SetDefaultHeaders(output->type(), &origin_meta_data);
-    std::string cache_control = StringPrintf(
-        "max-age=%ld",
-        static_cast<long>(delta_sec));  // NOLINT
-    origin_meta_data.RemoveAll(HttpAttributes::kCacheControl);
-    origin_meta_data.Add(HttpAttributes::kCacheControl, cache_control);
-    if (!output->optimizable()) {
-      origin_meta_data.Add(kCacheUnoptimizableHeader, "true");
-    }
-    origin_meta_data.ComputeCaching();
-
-    std::string name_key = StrCat(kCacheKeyPrefix, output->name_key());
-    std::string file_mapping;
-    if (output->optimizable()) {
-      file_mapping = output->hash_ext();
-    }
-    http_cache_->Put(name_key, &origin_meta_data, file_mapping, handler);
+  std::string name_key = StrCat(kCacheKeyPrefix, output->name_key());
+  OutputResource::CachedResult* cached = output->EnsureCachedResultCreated();
+  if (output->HasValidUrl()) {
+    cached->set_url(output->url());
   }
+  cached->set_origin_expiration_time_ms(origin_expire_time_ms);
+  output->SaveCachedResult(name_key, handler);
 }
 
 void ResourceManager::RefreshImminentlyExpiringResource(

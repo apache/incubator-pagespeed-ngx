@@ -24,6 +24,7 @@
 
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
 #include <string>
@@ -40,6 +41,46 @@ class NamedLockManager;
 
 class OutputResource : public Resource {
  public:
+  class CachedResult {
+   public:
+    // Filters can store any additional metadata they need here.
+    ResponseHeaders* headers() { return &headers_; }
+
+    // The cached URL of this result. If this CachedResult was actually
+    // fetched from the cache and is not a new one produced by
+    // EnsureCachedResultCreated this will be valid if and only if
+    // optimizable is true.
+    std::string url() { return url_; }
+
+    // Returns when the input used to produce this expires.
+    int64 origin_expiration_time_ms() const {
+      return origin_expiration_time_ms_;
+    }
+
+    // When this is false we have previously processed the URL and
+    // have marked down that we cannot do anything with it
+    // (by calling ResourceManager::WriteUnoptimizable).
+    bool optimizable() const { return optimizable_; }
+
+   private:
+    friend class ResourceManager;
+    friend class OutputResource;
+
+    CachedResult();
+
+    void set_optimizable(bool opt) { optimizable_ = opt; }
+    void set_url(const std::string& url) { url_ = url; }
+    void set_origin_expiration_time_ms(int64 time) {
+      origin_expiration_time_ms_ = time;
+    }
+
+    bool optimizable_;
+    std::string url_;
+    int64 origin_expiration_time_ms_;
+    ResponseHeaders headers_;  // Extended metadata
+    DISALLOW_COPY_AND_ASSIGN(CachedResult);
+  };
+
   // Construct an OutputResource.  For the moment, we pass in type redundantly
   // even though full_name embeds an extension.  This reflects current code
   // structure rather than a principled stand on anything.
@@ -110,13 +151,40 @@ class OutputResource : public Resource {
   //
   // Note that when serving content, we must actually load it, but
   // when rewriting it we can, in some cases, exploit a URL swap.
+  //
+  // TODO(morlovich): Consider removing and making everything use
+  //                  cached_result().
   bool HasValidUrl() const { return has_hash(); }
 
-  // When this is false we have previously processed the URL and
-  // have marked down that we cannot do anything with it
-  // (by calling ResourceManager::WriteUnoptimizable);
-  // this being true carries no information.
-  bool optimizable() const { return optimizable_; }
+  // Whenever output resources are created via ResourceManager
+  // (except CreateOutputResourceForFetch) it looks up cached
+  // information on any previous creation of that resource, including
+  // the full filename and any filter-specific metadata. If such
+  // information is available, this method will return non-NULL.
+  //
+  // Note: cached_result() will also be non-NULL if you explicitly
+  // create the result from a filter by calling EnsureCachedResultCreated()
+  CachedResult* cached_result() const { return cached_result_.get(); }
+
+  // If there is no cached output information, creates an empty one,
+  // without any information filled in (so no url(), or timestamps).
+  //
+  // The primary use of this method is to let filters store any metadata they
+  // want before calling ResourceManager::Write.
+  CachedResult* EnsureCachedResultCreated() {
+    if (cached_result() == NULL) {
+      cached_result_.reset(new CachedResult());
+    }
+    return cached_result();
+  }
+
+  // Transfers up ownership of any cached result and clears pointer to it.
+  CachedResult* ReleaseCachedResult() { return cached_result_.release(); }
+
+  // TODO(morlovich): Compatibility API. Remove in followups.
+  bool optimizable() const {
+    return cached_result() == NULL || cached_result()->optimizable();
+  }
 
   // Resources rewritten via a UrlPartnership will have a resolved
   // base to use in lieu of the legacy UrlPrefix held by the resource
@@ -155,7 +223,6 @@ class OutputResource : public Resource {
   void set_written(bool written) { writing_complete_ = true; }
   void set_generated(bool x) { generated_ = x; }
   bool generated() const { return generated_; }
-  void set_optimizable(bool new_val) { optimizable_ = new_val; }
   std::string TempPrefix() const;
 
   OutputWriter* BeginWrite(MessageHandler* message_handler);
@@ -163,6 +230,16 @@ class OutputResource : public Resource {
   // Attempt to obtain a named lock for the resource.  Return true if we do so.
   bool LockForCreation(const ResourceManager* resource_manager,
                        ResourceManager::BlockingBehavior block);
+
+  // Stores the current state of cached_result in the HTTP cache
+  // under the given key.
+  // Pre-condition: cached_result() != NULL
+  void SaveCachedResult(const std::string& key, MessageHandler* handler) const;
+
+  // Loads the state of cached_result from the given cached key if possible,
+  // and syncs our URL and content type with it. If fails, cached_result
+  // will be set to NULL.
+  void FetchCachedResult(const std::string& key, MessageHandler* handler);
 
   FileSystem::OutputFile* output_file_;
   bool writing_complete_;
@@ -173,9 +250,7 @@ class OutputResource : public Resource {
   // will be distinct because it's based on the hash of the content.
   bool generated_;
 
-  // This is set to false when the filter has explicitly reported to
-  // ResourceManager that it can't do anything useful
-  bool optimizable_;
+  scoped_ptr<CachedResult> cached_result_;
 
   // The resolved_base_ is the domain as reported by UrlPartnership.
   // It takes into account domain-mapping via

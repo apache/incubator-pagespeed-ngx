@@ -40,7 +40,14 @@ namespace {
 
 const char kLockSuffix[] = ".outputlock";
 
+// OutputResource::{Fetch,Save}Cached encodes the state
+// of the optimizable bit via presence of this header
+const char kCacheUnoptimizableHeader[] = "X-ModPagespeed-Unoptimizable";
+
 }  // namespace
+
+OutputResource::CachedResult::CachedResult() : optimizable_(true),
+                                               origin_expiration_time_ms_(0) {}
 
 OutputResource::OutputResource(ResourceManager* manager,
                                const StringPiece& resolved_base,
@@ -51,7 +58,6 @@ OutputResource::OutputResource(ResourceManager* manager,
       output_file_(NULL),
       writing_complete_(false),
       generated_(false),
-      optimizable_(true),
       resolved_base_(resolved_base.data(), resolved_base.size()),
       rewrite_options_(options) {
   full_name_.CopyFrom(full_name);
@@ -296,6 +302,74 @@ bool OutputResource::LockForCreation(const ResourceManager* resource_manager,
       break;
   }
   return result;
+}
+
+void OutputResource::SaveCachedResult(const std::string& name_key,
+                                      MessageHandler* handler) const {
+  HTTPCache* http_cache = resource_manager()->http_cache();
+  CachedResult* cached = cached_result_.get();
+  CHECK(cached != NULL);
+
+  int64 delta_ms = cached->origin_expiration_time_ms() -
+                       http_cache->timer()->NowMs();
+  int64 delta_sec = delta_ms / Timer::kSecondMs;
+  if ((delta_sec > 0) || http_cache->force_caching()) {
+    ResponseHeaders* meta_data = cached->headers();
+    resource_manager()->SetDefaultHeaders(type(), meta_data);
+    std::string cache_control = StringPrintf(
+        "max-age=%ld",
+        static_cast<long>(delta_sec));  // NOLINT
+    meta_data->RemoveAll(HttpAttributes::kCacheControl);
+    meta_data->Add(HttpAttributes::kCacheControl, cache_control);
+    meta_data->RemoveAll(kCacheUnoptimizableHeader);
+    if (!cached->optimizable()) {
+      meta_data->Add(kCacheUnoptimizableHeader, "true");
+    }
+    meta_data->ComputeCaching();
+
+    std::string file_mapping;
+    if (cached->optimizable()) {
+      file_mapping = hash_ext();
+    }
+    http_cache->Put(name_key, meta_data, file_mapping, handler);
+  }
+}
+
+void OutputResource::FetchCachedResult(const std::string& name_key,
+                                       MessageHandler* handler) {
+  HTTPCache* cache = resource_manager()->http_cache();
+  cached_result_.reset();
+  CachedResult* cached = EnsureCachedResultCreated();
+
+  StringPiece hash_extension;
+  HTTPValue value;
+  bool ok = false;
+  bool found = cache->Find(name_key, &value, cached->headers(), handler) ==
+                   HTTPCache::kFound;
+  if (found && value.ExtractContents(&hash_extension)) {
+    cached->set_origin_expiration_time_ms(
+        cached->headers()->CacheExpirationTimeMs());
+    CharStarVector dummy;
+    if (cached->headers()->Lookup(kCacheUnoptimizableHeader, &dummy)) {
+      cached->set_optimizable(false);
+      ok = true;
+    } else {
+      ResourceNamer hash_ext;
+      if (hash_ext.DecodeHashExt(hash_extension)) {
+        SetHash(hash_ext.hash());
+        // Note that the '.' must be included in the suffix
+        // TODO(jmarantz): remove this from the suffix.
+        set_suffix(StrCat(".", hash_ext.ext()));
+        cached->set_optimizable(true);
+        cached->set_url(url());
+        ok = true;
+      }
+    }
+  }
+
+  if (!ok) {
+    cached_result_.reset();
+  }
 }
 
 }  // namespace net_instaweb
