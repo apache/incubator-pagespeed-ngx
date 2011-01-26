@@ -105,11 +105,13 @@ class MemOutputFile : public FileSystem::OutputFile {
 MemFileSystem::~MemFileSystem() {
 }
 
-int64 MemFileSystem::CurrentTimeAndAdvance() {
-  int64 now_us = timer_.NowUs();
-  int64 now_s = now_us / Timer::kSecondUs;
-  timer_.advance_us(Timer::kSecondUs);
-  return now_s;
+void MemFileSystem::UpdateAtime(const StringPiece& path) {
+  if (atime_enabled_) {
+    int64 now_us = timer_.NowUs();
+    int64 now_s = now_us / Timer::kSecondUs;
+    timer_.advance_us(Timer::kSecondUs);
+    atime_map_[path.as_string()] = now_s;
+  }
 }
 
 void MemFileSystem::Clear() {
@@ -131,7 +133,7 @@ bool MemFileSystem::MakeDir(const char* path, MessageHandler* handler) {
   std::string path_string = path;
   EnsureEndsInSlash(&path_string);
   string_map_[path_string] = "";
-  atime_map_[path_string] = CurrentTimeAndAdvance();
+  UpdateAtime(path_string);
   return true;
 }
 
@@ -147,21 +149,21 @@ FileSystem::InputFile* MemFileSystem::OpenInputFile(
                            "file not found");
     return NULL;
   } else {
-    atime_map_[filename] = CurrentTimeAndAdvance();
+    UpdateAtime(filename);
     return new MemInputFile(filename, iter->second);
   }
 }
 
 FileSystem::OutputFile* MemFileSystem::OpenOutputFileHelper(
     const char* filename, MessageHandler* message_handler) {
-  atime_map_[filename] = CurrentTimeAndAdvance();
+  UpdateAtime(filename);
   return new MemOutputFile(filename, &(string_map_[filename]));
 }
 
 FileSystem::OutputFile* MemFileSystem::OpenTempFileHelper(
     const StringPiece& prefix, MessageHandler* message_handler) {
   std::string filename = StringPrintf("tmpfile%d", temp_file_index_++);
-  atime_map_[filename] = CurrentTimeAndAdvance();
+  UpdateAtime(filename);
   return new MemOutputFile(filename, &string_map_[filename]);
 }
 
@@ -182,7 +184,7 @@ bool MemFileSystem::RemoveFile(const char* filename,
 bool MemFileSystem::RenameFileHelper(const char* old_file,
                                      const char* new_file,
                                      MessageHandler* handler) {
-  atime_map_[new_file] = CurrentTimeAndAdvance();
+  UpdateAtime(new_file);
   if (strcmp(old_file, new_file) == 0) {
     handler->Error(old_file, 0, "Cannot move a file to itself");
     return false;

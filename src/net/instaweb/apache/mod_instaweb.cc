@@ -101,6 +101,7 @@ const char* kModPagespeedImgMaxRewritesAtOnce =
     "ModPagespeedImgMaxRewritesAtOnce";
 const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
 const char* kModPagespeedMaxSegmentLength = "ModPagespeedMaxSegmentLength";
+const char* kModPagespeedLogRewriteTiming = "ModPagespeedLogRewriteTiming";
 const char* kModPagespeedDomain = "ModPagespeedDomain";
 const char* kModPagespeedMapRewriteDomain = "ModPagespeedMapRewriteDomain";
 const char* kModPagespeedMapOriginDomain = "ModPagespeedMapOriginDomain";
@@ -875,6 +876,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseInt64Option(options,
         cmd, &RewriteOptions::set_css_inline_max_bytes, arg);
   } else if (strcasecmp(directive, kModPagespeedMaxSegmentLength) == 0) {
+    // TODO(sligocki): Convert to ParseInt64Option for consistency?
     ret = ParseIntOption(options,
         cmd, &RewriteOptions::set_max_url_segment_size, arg);
   } else if (strcasecmp(directive, kModPagespeedLRUCacheKbPerProcess) == 0) {
@@ -884,8 +886,12 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseInt64Option(factory,
         cmd, &ApacheRewriteDriverFactory::set_lru_cache_byte_limit, arg);
   } else if (strcasecmp(directive, kModPagespeedImgMaxRewritesAtOnce) == 0) {
+    // TODO(sligocki): Convert to ParseInt64Option for consistency?
     ret = ParseIntOption(options,
         cmd, &RewriteOptions::set_img_max_rewrites_at_once, arg);
+  } else if (strcasecmp(directive, kModPagespeedLogRewriteTiming) == 0) {
+    ret = ParseBoolOption(
+        options, cmd, &RewriteOptions::set_log_rewrite_timing, arg);
   } else if (strcasecmp(directive, kModPagespeedEnableFilters) == 0) {
     if (!options->EnableFiltersByCommaSeparatedList(arg, handler)) {
       ret = "Failed to enable some filters.";
@@ -1043,9 +1049,11 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCssInlineMaxBytes,
         "Number of bytes below which stylesheets will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedMaxSegmentLength,
-        "Maximum size of a URL segment"),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedBeaconUrl, "URL for beacon callback"
-                       " injected by add_instrumentation."),
+        "Maximum size of a URL segment."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedLogRewriteTiming,
+        "Whether or not to report timing information about HtmlParse."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedBeaconUrl,
+        "URL for beacon callback injected by add_instrumentation."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDomain,
         "Authorize mod_pagespeed to rewrite resources in a domain."),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapRewriteDomain,

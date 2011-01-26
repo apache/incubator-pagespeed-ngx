@@ -49,6 +49,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       coalesce_characters_(true),
       need_coalesce_characters_(false),
       valid_(false),
+      log_rewrite_timing_(false),
       parse_start_time_us_(0),
       timer_(NULL) {
   lexer_ = new HtmlLexer(this);
@@ -177,7 +178,7 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
     gurl_.Swap(&gurl);
     line_number_ = 1;
     id.CopyToString(&id_);
-    if (timer_ != NULL) {
+    if (log_rewrite_timing_) {
       parse_start_time_us_ = timer_->NowUs();
       InfoHere("HtmlParse::StartParse");
     }
@@ -188,7 +189,7 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
 }
 
 void HtmlParse::ShowProgress(const char* message) {
-  if (timer_ != NULL) {
+  if (log_rewrite_timing_) {
     long delta = static_cast<long>(timer_->NowUs() - parse_start_time_us_);
     InfoHere("%ldus: HtmlParse::%s", delta, message);
   }

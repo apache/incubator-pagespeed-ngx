@@ -227,6 +227,12 @@ class RewriteOptions {
   }
   bool combine_across_paths() const { return combine_across_paths_.value(); }
 
+  void set_log_rewrite_timing(bool x) {
+    modified_ = true;
+    log_rewrite_timing_.set(x);
+  }
+  bool log_rewrite_timing() const { return log_rewrite_timing_.value(); }
+
   // Merge together two source RewriteOptions to populate this.  The order
   // is significant: the second will override the first.  One semantic
   // subject to interpretation is when a core-filter is disabled in the
@@ -341,6 +347,7 @@ class RewriteOptions {
   Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")
   Option<bool> enabled_;
   Option<bool> combine_across_paths_;
+  Option<bool> log_rewrite_timing_;  // Should we time HtmlParser?
   DomainLawyer domain_lawyer_;
   // Be sure to update Merge() if a new field is added.
 

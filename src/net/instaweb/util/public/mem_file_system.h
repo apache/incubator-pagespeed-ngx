@@ -34,7 +34,8 @@ namespace net_instaweb {
 // enable testing resilience to concurrency problems with real filesystems.
 class MemFileSystem : public FileSystem {
  public:
-  MemFileSystem() : enabled_(true), timer_(0), temp_file_index_(0) {}
+  MemFileSystem() : enabled_(true), timer_(0), temp_file_index_(0),
+                    atime_enabled_(true)  {}
   virtual ~MemFileSystem();
 
   // We offer a "simulated atime" in which the clock ticks forward one
@@ -67,6 +68,9 @@ class MemFileSystem : public FileSystem {
   virtual bool Unlock(const StringPiece& lock_name,
                       MessageHandler* handler);
 
+  // When atime is disabled, reading a file will not update its atime.
+  void set_atime_enabled(bool enabled) { atime_enabled_ = enabled; }
+
   // Empties out the entire filesystem.  Should not be called while files
   // are open.
   void Clear();
@@ -79,7 +83,7 @@ class MemFileSystem : public FileSystem {
   MockTimer* timer() { return &timer_; }
 
  private:
-  inline int64 CurrentTimeAndAdvance();
+  inline void UpdateAtime(const StringPiece& path);
   bool enabled_;  // When disabled, OpenInputFile returns NULL.
   typedef std::map<std::string, std::string> StringMap;
   StringMap string_map_;
@@ -92,7 +96,7 @@ class MemFileSystem : public FileSystem {
   // lock_map_ holds times that locks were established (in ms).
   // locking and unlocking don't advance time.
   std::map<std::string, int64> lock_map_;
-
+  bool atime_enabled_;
   DISALLOW_COPY_AND_ASSIGN(MemFileSystem);
 };
 

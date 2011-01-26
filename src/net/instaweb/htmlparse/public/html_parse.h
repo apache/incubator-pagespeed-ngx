@@ -249,9 +249,10 @@ class HtmlParse {
   // for testing.
   void ApplyFilter(HtmlFilter* filter);
 
-  // Provide timer to helping to report timing of each filter.  In the absense
-  // of a timer, reporting will be suppressed.
+  // Provide timer to helping to report timing of each filter.  You must also
+  // set_log_rewrite_timing(true) to turn on this reporting.
   void set_timer(Timer* timer) { timer_ = timer; }
+  void set_log_rewrite_timing(bool x) { log_rewrite_timing_ = x; }
 
  private:
   HtmlEventListIterator Last();  // Last element in queue
@@ -294,6 +295,7 @@ class HtmlParse {
   bool coalesce_characters_;
   bool need_coalesce_characters_;
   bool valid_;
+  bool log_rewrite_timing_;  // Should we use time the speed of parsing?
   int64 parse_start_time_us_;
   Timer* timer_;
 

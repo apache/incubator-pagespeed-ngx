@@ -65,16 +65,22 @@ class FileCache : public CacheInterface {
   // Check to see if it's time to clean the cache, and if so start
   // cleaning.  Return true if we cleaned, false if we didn't.
   bool CheckClean();
+
  private:
+  friend class FileCacheTest;
+
   bool EncodeFilename(const std::string& key, std::string* filename);
 
-  std::string path_;
+  const std::string path_;
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
   MessageHandler* message_handler_;
   const scoped_ptr<CachePolicy> cache_policy_;
   int64 next_clean_ms_;
-  // The file where we keep the next scheduled cleanup time in seconds.
+  // The full path to our cleanup timestamp file.
+  std::string clean_time_path_;
+
+  // The filename where we keep the next scheduled cleanup time in seconds.
   static const char kCleanTimeName[];
   // The name of the global mutex protecting reads and writes to that file.
   static const char kCleanLockName[];

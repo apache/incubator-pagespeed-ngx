@@ -45,8 +45,6 @@ class ResponseHeadersParser {
  private:
   bool GrabLastToken(const std::string& input, std::string* output);
 
-  friend class ResponseHeadersParserTest;
-
   ResponseHeaders* response_headers_;
 
   bool parsing_http_;

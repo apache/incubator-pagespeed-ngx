@@ -28,6 +28,7 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include <string>
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -36,29 +37,43 @@ class FileCacheTest : public testing::Test {
   FileCacheTest()
       : mock_timer_(0),
         kCleanIntervalMs(Timer::kMinuteMs),
-        kTargetSize(409600),
+        kTargetSize(12), // Small enough to overflow with a few strings.
         cache_(GTestTempDir(), &file_system_, &filename_encoder_,
                new FileCache::CachePolicy(
                    &mock_timer_, kCleanIntervalMs, kTargetSize),
                &message_handler_) {
   }
 
-  void CheckGet(const char* key, const std::string& expected_value) {
+  void CheckGet(const StringPiece& key, const StringPiece& expected_value) {
     SharedString value_buffer;
-    EXPECT_TRUE(cache_.Get(key, &value_buffer));
+    EXPECT_TRUE(cache_.Get(key.as_string(), &value_buffer));
     EXPECT_EQ(expected_value, *value_buffer);
-    EXPECT_EQ(CacheInterface::kAvailable, cache_.Query(key));
+    EXPECT_EQ(CacheInterface::kAvailable, cache_.Query(key.as_string()));
   }
 
-  void Put(const char* key, const char* value) {
+  void Put(const StringPiece& key, const StringPiece& value) {
     SharedString put_buffer(value);
-    cache_.Put(key, &put_buffer);
+    cache_.Put(key.as_string(), &put_buffer);
   }
 
-  void CheckNotFound(const char* key) {
+  void CheckNotFound(const StringPiece& key) {
     SharedString value_buffer;
-    EXPECT_FALSE(cache_.Get(key, &value_buffer));
-    EXPECT_EQ(CacheInterface::kNotFound, cache_.Query(key));
+    EXPECT_FALSE(cache_.Get(key.as_string(), &value_buffer));
+    EXPECT_EQ(CacheInterface::kNotFound, cache_.Query(key.as_string()));
+  }
+
+  void CheckCleanTimestamp(int64 min_time_ms) {
+    std::string buffer;
+    file_system_.ReadFile(cache_.clean_time_path_.c_str(), &buffer,
+                           &message_handler_);
+    int64 clean_time_ms;
+    StringToInt64(buffer,&clean_time_ms);
+    EXPECT_LT(min_time_ms, clean_time_ms);
+  }
+
+  virtual void SetUp() {
+    file_system_.Clear();
+    file_system_.set_atime_enabled(true);
   }
 
  protected:
@@ -91,7 +106,6 @@ TEST_F(FileCacheTest, PutGetDelete) {
 // Throw a bunch of files into the cache and verify that they are
 // evicted sensibly.
 TEST_F(FileCacheTest, Clean) {
-  file_system_.Clear();
   // Make some "directory" entries so that the mem_file_system recurses
   // correctly.
   std::string dir1 = GTestTempDir() + "/a/";
@@ -140,5 +154,34 @@ TEST_F(FileCacheTest, Clean) {
     CheckNotFound(names2[i]);
   }
 }
-// TODO(abliss): add test for CheckClean
+
+// Test the auto-cleaning behavior
+TEST_F(FileCacheTest, CheckClean) {
+  Put("Name1", "Value1");
+  // Cache should not clean at first.
+  EXPECT_FALSE(cache_.CheckClean());
+  mock_timer_.SleepMs(kCleanIntervalMs + 1);
+  // Because there's no timestamp, the cache should be cleaned.
+  int64 time_ms = mock_timer_.NowUs() / 1000;
+  EXPECT_TRUE(cache_.CheckClean());
+  // .. but since we're under the desired size, nothing should be removed.
+  CheckGet("Name1", "Value1");
+  // Check that the timestamp was written correctly.
+  CheckCleanTimestamp(time_ms);
+
+  // Make the cache oversize
+  Put("Name2", "Value2");
+  Put("Name3", "Value3");
+  // Not enough time has elapsed.
+  EXPECT_FALSE(cache_.CheckClean());
+  mock_timer_.SleepMs(kCleanIntervalMs + 1);
+  // Now we should clean.  This should work even if atime doesn't work as we
+  // expect.
+  file_system_.set_atime_enabled(false);
+  time_ms = mock_timer_.NowUs() / 1000;
+  EXPECT_TRUE(cache_.CheckClean());
+  // And the timestamp should be updated.
+  CheckCleanTimestamp(time_ms);
+}
+
 }  // namespace net_instaweb

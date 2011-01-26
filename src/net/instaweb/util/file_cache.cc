@@ -68,10 +68,13 @@ FileCache::FileCache(const std::string& path, FileSystem* file_system,
       filename_encoder_(filename_encoder),
       message_handler_(handler),
       cache_policy_(policy),
-      // NOTE(abliss): We don't want all the caches racing for the
-      // lock at startup, so each one gets a random offset.
-      next_clean_ms_(policy->timer->NowMs()
-          + (random() % policy->clean_interval_ms)) {
+      clean_time_path_(path) {
+  // NOTE(abliss): We don't want all the caches racing for the
+  // lock at startup, so each one gets a random offset.
+  next_clean_ms_ = policy->timer->NowMs()
+      + (random() % policy->clean_interval_ms);
+  EnsureEndsInSlash(&clean_time_path_);
+  clean_time_path_ += kCleanTimeName;
 }
 
 FileCache::~FileCache() {
@@ -180,6 +183,12 @@ bool FileCache::Clean(int64 target_size) {
                                             message_handler_);
     if (isDir.is_error()) {
       return false;
+    } else if (clean_time_path_.compare(file_name) == 0) {
+      // Don't clean the clean_time file!  It ought to be the newest file (and
+      // very small) so the following algorithm would normally not delete it
+      // anyway.  But on some systems (e.g. mounted noatime?) it was getting
+      // deleted.
+      continue;
     } else if (isDir.is_true()) {
       // add files in this directory to the end of the vector, to be
       // examined later.
@@ -231,15 +240,17 @@ bool FileCache::CheckClean() {
   lock_name += kCleanLockName;
   bool to_return = false;
   if (file_system_->TryLock(lock_name, message_handler_).is_true()) {
-    std::string clean_time_name(path_);
-    EnsureEndsInSlash(&clean_time_name);
-    clean_time_name += kCleanTimeName;
     std::string clean_time_str;
     int64 clean_time_ms = 0;
     int64 new_clean_time_ms = now_ms + cache_policy_->clean_interval_ms;
-    if (file_system_->ReadFile(clean_time_name.c_str(), &clean_time_str,
-                               message_handler_)) {
+    NullMessageHandler null_handler;
+    if (file_system_->ReadFile(clean_time_path_.c_str(), &clean_time_str,
+                               &null_handler)) {
       StringToInt64(clean_time_str, &clean_time_ms);
+    } else {
+      message_handler_->Message(
+          kWarning, "Failed to read cache clean timestamp %s. "
+          " Doing an extra cache clean to be safe.", clean_time_path_.c_str());
     }
     // If the "clean time" written in the file is older than now, we
     // clean.
@@ -261,7 +272,7 @@ bool FileCache::CheckClean() {
     }
     if (to_return) {
       clean_time_str = Integer64ToString(new_clean_time_ms);
-      file_system_->WriteFile(clean_time_name.c_str(), clean_time_str,
+      file_system_->WriteFile(clean_time_path_.c_str(), clean_time_str,
                               message_handler_);
     }
     file_system_->Unlock(lock_name, message_handler_);

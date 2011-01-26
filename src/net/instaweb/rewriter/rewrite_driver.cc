@@ -79,6 +79,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       succeeded_filter_resource_fetches_(NULL),
       failed_filter_resource_fetches_(NULL),
       options_(options) {
+  html_parse_.set_log_rewrite_timing(options.log_rewrite_timing());
 }
 
 RewriteDriver::~RewriteDriver() {
