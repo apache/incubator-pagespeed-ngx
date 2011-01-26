@@ -149,8 +149,9 @@ class SyncFetcherAdapterTest : public testing::Test {
  protected:
   bool DoFetch(UrlFetcher* fetcher, ResponseHeaders* response_headers,
                Writer* response_writer) {
+    RequestHeaders request_headers;
     return fetcher->StreamingFetchUrl("http://www.example.com/",
-                                      RequestHeaders(),
+                                      request_headers,
                                       response_headers,
                                       response_writer,
                                       &handler_);
