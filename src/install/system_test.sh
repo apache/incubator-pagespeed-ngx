@@ -308,7 +308,7 @@ check [ `stat -c %s $FETCHED` -lt 315 ]   # down from 472
 test_filter rewrite_images inlines, compresses, and resizes.
 fetch_until $URL 'grep -c image/png' 1    # inlined
 check $WGET_PREREQ $URL
-check [ `stat -c %s $OUTDIR/*1023x766*Puzzle*` -lt 241260 ]  # compressed
+check [ `stat -c %s $OUTDIR/xBikeCrashIcn*` -lt 25000 ]      # re-encoded
 check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
 
 IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
