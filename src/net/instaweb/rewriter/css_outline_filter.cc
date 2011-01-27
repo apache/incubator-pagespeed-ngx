@@ -39,8 +39,6 @@ const char CssOutlineFilter::kFilterId[] = "co";
 CssOutlineFilter::CssOutlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
       inline_element_(NULL),
-      html_parse_(driver->html_parse()),
-      resource_manager_(driver->resource_manager()),
       size_threshold_bytes_(driver->options()->css_outline_min_bytes()),
       s_link_(html_parse_->Intern("link")),
       s_style_(html_parse_->Intern("style")),
@@ -150,7 +148,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       scoped_ptr<OutputResource> output_resource(
           resource_manager_->CreateOutputResourceWithPath(
               GoogleUrl::AllExceptLeaf(html_parse_->gurl()),
-              kFilterId, "_", &kContentTypeCss, rewrite_driver()->options(),
+              kFilterId, "_", &kContentTypeCss, rewrite_options_,
               handler));
 
       // Absolutify URLs in content.

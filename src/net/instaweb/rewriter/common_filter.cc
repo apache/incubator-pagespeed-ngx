@@ -27,15 +27,18 @@ namespace net_instaweb {
 
 CommonFilter::CommonFilter(RewriteDriver* driver)
     : driver_(driver),
-      s_base_(html_parse()->Intern("base")),
-      s_href_(html_parse()->Intern("href")),
-      s_noscript_(html_parse()->Intern("noscript")) {}
+      html_parse_(driver->html_parse()),
+      resource_manager_(driver->resource_manager()),
+      rewrite_options_(driver->options()),
+      s_base_(html_parse_->Intern("base")),
+      s_href_(html_parse_->Intern("href")),
+      s_noscript_(html_parse_->Intern("noscript")) {}
 
 CommonFilter::~CommonFilter() {}
 
 void CommonFilter::StartDocument() {
   // Base URL starts as document URL.
-  base_gurl_ = html_parse()->gurl();
+  base_gurl_ = html_parse_->gurl();
   noscript_element_ = NULL;
   // Run the actual filter's StartDocumentImpl.
   StartDocumentImpl();
@@ -84,28 +87,28 @@ void CommonFilter::EndElement(HtmlElement* element) {
 Resource* CommonFilter::CreateInputResource(const StringPiece& url) {
   ResourceManager* resource_manager = driver_->resource_manager();
   return resource_manager->CreateInputResource(
-      base_gurl(), url, driver_->options(), html_parse()->message_handler());
+      base_gurl(), url, rewrite_options_, html_parse_->message_handler());
 }
 
 Resource* CommonFilter::CreateInputResourceAbsolute(const StringPiece& url) {
   ResourceManager* resource_manager = driver_->resource_manager();
   return resource_manager->CreateInputResourceAbsolute(
-      url, driver_->options(), html_parse()->message_handler());
+      url, rewrite_options_, html_parse_->message_handler());
 }
 
 Resource* CommonFilter::CreateInputResourceAndReadIfCached(
     const StringPiece& url) {
   ResourceManager* resource_manager = driver_->resource_manager();
   return resource_manager->CreateInputResourceAndReadIfCached(
-      base_gurl(), url, driver_->options(), html_parse()->message_handler());
+      base_gurl(), url, rewrite_options_, html_parse_->message_handler());
 }
 
 Resource* CommonFilter::CreateInputResourceFromOutputResource(
     UrlSegmentEncoder* encoder, OutputResource* output_resource) {
   ResourceManager* resource_manager = driver_->resource_manager();
   return resource_manager->CreateInputResourceFromOutputResource(
-      encoder, output_resource, driver_->options(),
-      html_parse()->message_handler());
+      encoder, output_resource, rewrite_options_,
+      html_parse_->message_handler());
 }
 
 }  // namespace net_instaweb

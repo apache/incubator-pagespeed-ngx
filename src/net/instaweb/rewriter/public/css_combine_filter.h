@@ -67,7 +67,6 @@ class CssCombineFilter : public CombineFilterBase {
   class Partnership;
 
   scoped_ptr<Partnership> partnership_;
-  HtmlParse* html_parse_;
   CssTagScanner css_tag_scanner_;
   Variable* css_file_count_reduction_;
 

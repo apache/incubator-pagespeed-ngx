@@ -41,7 +41,6 @@ class CssInlineFilter : public CommonFilter {
   virtual const char* Name() const { return "InlineCss"; }
 
  private:
-  HtmlParse* const html_parse_;
   const Atom href_atom_;
   const Atom link_atom_;
   const Atom media_atom_;

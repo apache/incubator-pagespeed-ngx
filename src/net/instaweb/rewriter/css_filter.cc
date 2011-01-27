@@ -56,8 +56,6 @@ const char CssFilter::kParseFailures[] = "css_filter_parse_failures";
 
 CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix)
     : RewriteSingleResourceFilter(driver, path_prefix),
-      html_parse_(driver->html_parse()),
-      resource_manager_(driver->resource_manager()),
       in_style_element_(false),
       s_style_(html_parse_->Intern("style")),
       s_link_(html_parse_->Intern("link")),

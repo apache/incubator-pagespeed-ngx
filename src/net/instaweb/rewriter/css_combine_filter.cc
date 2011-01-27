@@ -93,7 +93,6 @@ CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
                                    const char* filter_prefix)
     : CombineFilterBase(driver, filter_prefix,
                         kContentTypeCss.file_extension() + 1),
-      html_parse_(driver->html_parse()),
       css_tag_scanner_(html_parse_),
       css_file_count_reduction_(NULL) {
   s_link_ = html_parse_->Intern("link");
@@ -102,7 +101,7 @@ CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
   s_rel_  = html_parse_->Intern("rel");
   s_media_ = html_parse_->Intern("media");
   s_style_ = html_parse_->Intern("style");
-  Statistics* stats = resource_manager()->statistics();
+  Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
     css_file_count_reduction_ = stats->GetVariable(kCssFileCountReduction);
   }
@@ -191,7 +190,7 @@ void CssCombineFilter::TryCombineAccumulated() {
     // not committed to the combination, because the 'write' can fail.
     // TODO(jmaessen, jmarantz): encode based on partnership
     scoped_ptr<OutputResource> combination(
-        resource_manager()->CreateOutputResourceWithPath(
+        resource_manager_->CreateOutputResourceWithPath(
             partnership_->ResolvedBase(),
             filter_prefix_, url_safe_id, &kContentTypeCss,
             driver_->options(), handler));

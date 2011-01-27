@@ -100,10 +100,8 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
                              OutputResource* script_dest);
 
   std::vector<HtmlCharactersNode*> buffer_;
-  HtmlParse* html_parse_;
   HtmlElement* script_in_progress_;
   HtmlElement::Attribute* script_src_;
-  ResourceManager* resource_manager_;
   // some_missing_scripts indicates that we stopped processing a script and
   // therefore can't assume we know all of the Javascript on a page.
   bool some_missing_scripts_;

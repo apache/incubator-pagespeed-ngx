@@ -44,7 +44,6 @@ class JsInlineFilter : public CommonFilter {
   virtual const char* Name() const { return "InlineJs"; }
 
  private:
-  HtmlParse* const html_parse_;
   const Atom script_atom_;
   const Atom src_atom_;
   const size_t size_threshold_bytes_;

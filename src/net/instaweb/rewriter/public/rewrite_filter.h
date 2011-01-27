@@ -38,8 +38,7 @@ class RewriteFilter : public CommonFilter {
  public:
   explicit RewriteFilter(RewriteDriver* driver, StringPiece filter_prefix)
       : CommonFilter(driver),
-        filter_prefix_(filter_prefix.data(), filter_prefix.size()),
-        driver_(driver) {
+        filter_prefix_(filter_prefix.data(), filter_prefix.size()) {
   }
   virtual ~RewriteFilter();
 
@@ -66,8 +65,6 @@ class RewriteFilter : public CommonFilter {
                      UrlAsyncFetcher::Callback* callback) = 0;
 
   const std::string& id() const { return filter_prefix_; }
-  HtmlParse* html_parse() { return driver_->html_parse(); }
-  ResourceManager* resource_manager() { return driver_->resource_manager(); }
 
   OutputResource* CreateOutputResourceFromResource(
       const ContentType* content_type,
@@ -77,8 +74,6 @@ class RewriteFilter : public CommonFilter {
  protected:
   std::string filter_prefix_;  // Prefix that should be used in front of all
                                 // rewritten URLs
-  RewriteDriver* driver_;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(RewriteFilter);
 };

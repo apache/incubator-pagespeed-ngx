@@ -29,7 +29,6 @@ namespace net_instaweb {
 
 JsInlineFilter::JsInlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
-      html_parse_(driver->html_parse()),
       script_atom_(html_parse_->Intern("script")),
       src_atom_(html_parse_->Intern("src")),
       size_threshold_bytes_(driver->options()->js_inline_max_bytes()),

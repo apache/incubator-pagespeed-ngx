@@ -32,7 +32,6 @@ namespace net_instaweb {
 
 CssInlineFilter::CssInlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
-      html_parse_(driver->html_parse()),
       href_atom_(html_parse_->Intern("href")),
       link_atom_(html_parse_->Intern("link")),
       media_atom_(html_parse_->Intern("media")),

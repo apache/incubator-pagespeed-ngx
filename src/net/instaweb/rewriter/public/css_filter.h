@@ -91,9 +91,6 @@ class CssFilter : public RewriteSingleResourceFilter {
 
   Css::Stylesheet* LoadStylesheet(const StringPiece& url) { return NULL; }
 
-  HtmlParse* html_parse_;
-  ResourceManager* resource_manager_;
-
   bool in_style_element_;  // Are we in a style element?
   // These are meaningless if in_style_element_ is false:
   HtmlElement* style_element_;  // The element we are in.

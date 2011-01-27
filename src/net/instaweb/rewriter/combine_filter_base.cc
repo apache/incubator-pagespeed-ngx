@@ -193,7 +193,7 @@ CombineFilterBase::CombineFilterBase(RewriteDriver* driver,
   // This CHECK is here because RewriteDriver is constructed with its
   // resource_manager_ == NULL.
   // TODO(sligocki): Construct RewriteDriver with a ResourceManager.
-  CHECK(resource_manager() != NULL);
+  CHECK(resource_manager_ != NULL);
 }
 
 CombineFilterBase::~CombineFilterBase() {
@@ -223,7 +223,7 @@ bool CombineFilterBase::WriteCombination(
   }
   if (written) {
     written =
-        resource_manager()->Write(
+        resource_manager_->Write(
             HttpStatus::kOK, combined_contents, combination,
             min_origin_expiration_time_ms, handler);
   }
@@ -364,7 +364,7 @@ bool CombineFilterBase::Fetch(OutputResource* combination,
   bool ret = false;
   StringPiece url_safe_id = combination->name();
   UrlMultipartEncoder multipart_encoder;
-  UrlEscaper* escaper = resource_manager()->url_escaper();
+  UrlEscaper* escaper = resource_manager_->url_escaper();
   std::string multipart_encoding;
   GURL gurl(combination->url());
   if (gurl.is_valid() &&
@@ -381,7 +381,7 @@ bool CombineFilterBase::Fetch(OutputResource* combination,
       Resource* resource = CreateInputResourceAbsolute(url);
       ret = combiner->AddResource(resource);
       if (ret) {
-        resource_manager()->ReadAsync(resource, combiner, message_handler);
+        resource_manager_->ReadAsync(resource, combiner, message_handler);
       }
     }
 

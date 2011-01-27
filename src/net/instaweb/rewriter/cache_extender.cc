@@ -51,8 +51,6 @@ const int64 kMinThresholdMs = Timer::kMonthMs;
 
 CacheExtender::CacheExtender(RewriteDriver* driver, const char* filter_prefix)
     : RewriteSingleResourceFilter(driver, filter_prefix),
-      html_parse_(driver->html_parse()),
-      resource_manager_(driver->resource_manager()),
       tag_scanner_(html_parse_),
       extension_count_(NULL),
       not_cacheable_count_(NULL) {

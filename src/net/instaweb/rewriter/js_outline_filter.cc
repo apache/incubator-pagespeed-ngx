@@ -149,7 +149,7 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
     scoped_ptr<OutputResource> resource(
         resource_manager_->CreateOutputResourceWithPath(
             GoogleUrl::AllExceptLeaf(html_parse_->gurl()), kFilterId, "_",
-            &kContentTypeJavascript, rewrite_driver()->options(),
+            &kContentTypeJavascript, rewrite_options_,
             handler));
     if (WriteResource(content, resource.get(), handler)) {
       HtmlElement* outline_element = html_parse_->NewElement(

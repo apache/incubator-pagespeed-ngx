@@ -32,8 +32,7 @@ class RewriteSingleResourceFilter : public RewriteFilter {
  public:
   explicit RewriteSingleResourceFilter(
       RewriteDriver* driver, StringPiece filter_prefix)
-      : RewriteFilter(driver, filter_prefix),
-        resource_manager_(driver->resource_manager()) {
+      : RewriteFilter(driver, filter_prefix) {
   }
   virtual ~RewriteSingleResourceFilter();
 
@@ -51,8 +50,6 @@ class RewriteSingleResourceFilter : public RewriteFilter {
 
  private:
   class FetchCallback;
-
-  ResourceManager* resource_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteSingleResourceFilter);
 };

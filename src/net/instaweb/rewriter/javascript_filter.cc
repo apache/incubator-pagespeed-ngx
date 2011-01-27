@@ -49,10 +49,8 @@ const HttpStatus::Code kNotOptimizable = HttpStatus::kNotModified;
 JavascriptFilter::JavascriptFilter(RewriteDriver* driver,
                                    const StringPiece& path_prefix)
     : RewriteSingleResourceFilter(driver, path_prefix),
-      html_parse_(driver->html_parse()),
       script_in_progress_(NULL),
       script_src_(NULL),
-      resource_manager_(driver->resource_manager()),
       some_missing_scripts_(false),
       config_(driver->resource_manager()->statistics()),
       s_script_(html_parse_->Intern("script")),
