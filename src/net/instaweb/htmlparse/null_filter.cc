@@ -17,12 +17,14 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include <stdio.h>
+
+
 #include "net/instaweb/htmlparse/public/file_driver.h"
 #include "net/instaweb/util/public/file_message_handler.h"
 #include "net/instaweb/htmlparse/public/file_statistics_log.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 
-int null_filter(int argc, char** argv) {
+int main(int argc, char** argv) {
   int ret = 1;
 
   if ((argc < 2) || (argc > 4)) {
