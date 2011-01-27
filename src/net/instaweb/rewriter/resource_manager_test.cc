@@ -462,10 +462,10 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
       "cdn.com", kTestDomain, &message_handler_));
 
   scoped_ptr<Resource> input(resource_manager_->CreateInputResource(
-      GoogleUrl::Create(StringPiece("http://test.com/index.html")),
+      GoogleUrl::Create(StrCat(kTestDomain, "index.html")),
       "style.css", &options_, &message_handler_));
   ASSERT_TRUE(input.get() != NULL);
-  EXPECT_EQ(std::string("http://test.com/style.css"), input->url());
+  EXPECT_EQ(StrCat(kTestDomain, "style.css"), input->url());
 
   // The absolute input URL is in test.com, but we will only be
   // able to serve it from localhost, per the origin mapping above.

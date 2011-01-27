@@ -31,8 +31,6 @@ namespace net_instaweb {
 
 namespace {
 
-static const char kDomain[] = "http://test.com/";
-
 const char kHtmlFormat[] =
     "<link rel='stylesheet' href='%s' type='text/css'>\n"
     "<img src='%s'/>\n"
@@ -67,9 +65,9 @@ class CacheExtenderTest : public ResourceManagerTestBase {
   // Helper to test for how we handle trailing junk in URLs
   void TestCorruptUrl(const char* junk, bool should_fetch_ok) {
     InitTest(100);
-    std::string a_ext = Encode(kDomain, "ce", "0", "a.css", "css");
-    std::string b_ext = Encode(kDomain, "ce", "0", "b.jpg", "jpg");
-    std::string c_ext = Encode(kDomain, "ce", "0", "c.js", "js");
+    std::string a_ext = Encode(kTestDomain, "ce", "0", "a.css", "css");
+    std::string b_ext = Encode(kTestDomain, "ce", "0", "b.jpg", "jpg");
+    std::string c_ext = Encode(kTestDomain, "ce", "0", "c.js", "js");
 
     ValidateExpected("no_ext_corrupt", GenerateHtml("a.css", "b.jpg", "c.js"),
                     GenerateHtml(a_ext, b_ext, c_ext));
@@ -89,9 +87,9 @@ TEST_F(CacheExtenderTest, DoExtend) {
         "do_extend",
         GenerateHtml("a.css", "b.jpg", "c.js"),
         GenerateHtml(
-            Encode(kDomain, "ce", "0", "a.css", "css"),
-            Encode(kDomain, "ce", "0", "b.jpg", "jpg"),
-            Encode(kDomain, "ce", "0", "c.js", "js")));
+            Encode(kTestDomain, "ce", "0", "a.css", "css"),
+            Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
+            Encode(kTestDomain, "ce", "0", "c.js", "js")));
   }
 }
 
@@ -111,23 +109,23 @@ TEST_F(CacheExtenderTest, ServeFiles) {
   std::string content;
 
   InitTest(100);
-  ASSERT_TRUE(ServeResource(kDomain, kFilterId, "a.css", "css", &content));
+  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId, "a.css", "css", &content));
   EXPECT_EQ(std::string(kCssData), content);
-  ASSERT_TRUE(ServeResource(kDomain, kFilterId, "b.jpg", "jpg", &content));
+  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId, "b.jpg", "jpg", &content));
   EXPECT_EQ(std::string(kImageData), content);
-  ASSERT_TRUE(ServeResource(kDomain, kFilterId, "c.js", "js", &content));
+  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId, "c.js", "js", &content));
   EXPECT_EQ(std::string(kJsData), content);
 }
 
 TEST_F(CacheExtenderTest, ServeFilesFromDelayedFetch) {
   InitTest(100);
-  ServeResourceFromManyContexts(Encode(kDomain, "ce", "0", "a.css", "css"),
+  ServeResourceFromManyContexts(Encode(kTestDomain, "ce", "0", "a.css", "css"),
                                 RewriteOptions::kExtendCache,
                                 &mock_hasher_, kCssData);
-  ServeResourceFromManyContexts(Encode(kDomain, "ce", "0", "b.jpg", "jpg"),
+  ServeResourceFromManyContexts(Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
                                 RewriteOptions::kExtendCache,
                                 &mock_hasher_, kImageData);
-  ServeResourceFromManyContexts(Encode(kDomain, "ce", "0", "c.js", "js"),
+  ServeResourceFromManyContexts(Encode(kTestDomain, "ce", "0", "c.js", "js"),
                                 RewriteOptions::kExtendCache,
                                 &mock_hasher_, kJsData);
 
@@ -145,7 +143,7 @@ TEST_F(CacheExtenderTest, MinimizeCacheHits) {
   std::string html_input = StrCat("<style>", kCssData, "</style>");
   std::string html_output = StringPrintf(
       "<link rel='stylesheet' href='%s'>",
-      Encode(kDomain, "co", "0", "_", "css").c_str());
+      Encode(kTestDomain, "co", "0", "_", "css").c_str());
   ValidateExpected("no_extend_origin_not_cacheable", html_input, html_output);
 
   // The key thing about this test is that the CacheExtendFilter should

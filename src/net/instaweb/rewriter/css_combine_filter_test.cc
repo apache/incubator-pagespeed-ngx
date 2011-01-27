@@ -356,7 +356,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
       CssLink::Vector* output_css_links) {
     // TODO(sligocki): Allow other domains (this is constrained right now b/c
     // of InitResponseHeaders.
-    std::string html_url = StrCat("http://test.com/", id, ".html");
+    std::string html_url = StrCat(kTestDomain, id, ".html");
     std::string html_input("<head>\n");
     for (int i = 0, n = input_css_links.size(); i < n; ++i) {
       const CssLink* link = input_css_links[i];
@@ -665,13 +665,13 @@ TEST_F(CssCombineFilterTest, CombineCssManyFiles) {
   StringVector segments;
   ASSERT_TRUE(css_out[0]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
-  EXPECT_EQ("http://test.com/styles/", base);
+  EXPECT_EQ(StrCat(kTestDomain, "styles/"), base);
   EXPECT_EQ(kNumCssInCombination, segments.size());
 
   segments.clear();
   ASSERT_TRUE(css_out[1]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
-  EXPECT_EQ("http://test.com/styles/", base);
+  EXPECT_EQ(StrCat(kTestDomain, "styles/"), base);
   EXPECT_EQ(kNumCssLinks - kNumCssInCombination, segments.size());
 }
 
@@ -697,7 +697,7 @@ TEST_F(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
   StringVector segments;
   ASSERT_TRUE(css_out[0]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
-  EXPECT_EQ("http://test.com/styles/", base);
+  EXPECT_EQ(StrCat(kTestDomain, "styles/"), base);
   EXPECT_EQ(kNumCssInCombination, segments.size());
   EXPECT_EQ("styles/last_one.css", css_out[1]->url_);
 }
@@ -773,9 +773,9 @@ TEST_F(CssCombineFilterTest, DoAbsolutifyDifferentDir) {
   BarrierTestHelper("combine_css_with_style", css_in, &css_out);
   EXPECT_EQ(1, css_out.size());
 
-  std::string expected_combination =
+  std::string expected_combination = StrCat(
       ".yellow {background-image: url('1.png');}\n"
-      ".yellow {background-image: url('http://test.com/foo/2.png');}\n";
+      ".yellow {background-image: url('", kTestDomain, "foo/2.png');}\n");
 
   // Check fetched resource.
   std::string actual_combination;
@@ -836,6 +836,8 @@ TEST_F(CssCombineFilterTest, CrossMappedDomain) {
   EXPECT_EQ(1, css_out.size());
   std::string actual_combination;
   EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
+  EXPECT_EQ(StringPiece("http://a.com/1.css+2.css.pagespeed.cc.0.css"),
+            css_out[0]->url_);
   EXPECT_EQ(StrCat(kYellow, kBlue), actual_combination);
 }
 

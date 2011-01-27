@@ -49,7 +49,6 @@
 namespace net_instaweb {
 
 const int kCacheSize = 100 * 1000 * 1000;
-const char kTestDomain[] = "http://test.com/";
 
 class RewriteFilter;
 
