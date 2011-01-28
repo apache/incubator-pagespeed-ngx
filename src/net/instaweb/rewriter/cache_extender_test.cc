@@ -99,6 +99,52 @@ TEST_F(CacheExtenderTest, NoExtendAlreadyCachedProperly) {
                     GenerateHtml("a.css", "b.jpg", "c.js"));
 }
 
+TEST_F(CacheExtenderTest, ExtendIfSharded) {
+  InitTest(100000000);  // cached for a long time to begin with
+  EXPECT_TRUE(options_.domain_lawyer()->AddShard(
+      "test.com", "shard0.com,shard1.com", &message_handler_));
+  // shard0 is always selected in the test because of our mock hasher
+  // that always returns 0.
+  ValidateExpected("extend_if_sharded",
+                   GenerateHtml("a.css", "b.jpg", "c.js"),
+                   GenerateHtml("http://shard0.com/a.css.pagespeed.ce.0.css",
+                                "http://shard0.com/b.jpg.pagespeed.ce.0.jpg",
+                                "http://shard0.com/c.js.pagespeed.ce.0.js"));
+}
+
+TEST_F(CacheExtenderTest, ExtendIfRewritten) {
+  InitTest(100000000);  // cached for a long time to begin with
+
+  EXPECT_TRUE(options_.domain_lawyer()->AddRewriteDomainMapping(
+      "cdn.com", "test.com", &message_handler_));
+  ValidateExpected("extend_if_rewritten",
+                   GenerateHtml("a.css", "b.jpg", "c.js"),
+                   GenerateHtml("http://cdn.com/a.css.pagespeed.ce.0.css",
+                                "http://cdn.com/b.jpg.pagespeed.ce.0.jpg",
+                                "http://cdn.com/c.js.pagespeed.ce.0.js"));
+}
+
+TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritten) {
+  InitTest(100000000);  // cached for a long time to begin with
+
+  EXPECT_TRUE(options_.domain_lawyer()->AddRewriteDomainMapping(
+      "cdn.com", "test.com", &message_handler_));
+
+  // Domain-rewriting is performed first.  Then we shard.
+  EXPECT_TRUE(options_.domain_lawyer()->AddShard(
+      "cdn.com", "shard0.com,shard1.com", &message_handler_));
+  // shard0 is always selected in the test because of our mock hasher
+  // that always returns 0.
+  ValidateExpected("extend_if_sharded_and_rewritten",
+                   GenerateHtml("a.css", "b.jpg", "c.js"),
+                   GenerateHtml("http://shard0.com/a.css.pagespeed.ce.0.css",
+                                "http://shard0.com/b.jpg.pagespeed.ce.0.jpg",
+                                "http://shard0.com/c.js.pagespeed.ce.0.js"));
+}
+
+// TODO(jmarantz): consider implementing and testing the sharding and
+// domain-rewriting of uncacheable resources -- just don't sign the URLs.
+
 TEST_F(CacheExtenderTest, NoExtendOriginUncacheable) {
   InitTest(0);  // origin not cacheable
   ValidateNoChanges("no_extend_origin_not_cacheable",

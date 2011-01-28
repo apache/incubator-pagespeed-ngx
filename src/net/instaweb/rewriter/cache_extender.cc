@@ -66,28 +66,50 @@ void CacheExtender::Initialize(Statistics* statistics) {
   statistics->AddVariable(kNotCacheable);
 }
 
+bool CacheExtender::ShouldRewriteResource(
+    const ResponseHeaders* headers, int64 now_ms,
+    const Resource* input_resource, const StringPiece& url) const {
+  if (input_resource->type() == NULL) {
+    return false;
+  }
+  if ((headers->CacheExpirationTimeMs() - now_ms) < kMinThresholdMs) {
+    return true;
+  }
+  std::string origin = GoogleUrl::Origin(GoogleUrl::Create(url));
+  const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
+  return lawyer->WillDomainChange(origin);
+}
+
 void CacheExtender::StartElementImpl(HtmlElement* element) {
   MessageHandler* message_handler = html_parse_->message_handler();
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
+
+  // TODO(jmarantz): figure out how to get better coverage of referenced
+  // resources for cache extension.  E.g. we need to find images in CSS
+  // files.  Plus we currently ignore .css links with id or other
+  // non-essential tags.
+  //
+  // TODO(jmarantz): We ought to be able to domain-shard even if the
+  // resources are non-cacheable or privately cacheable.
   if ((href != NULL) && html_parse_->IsRewritable(element)) {
     scoped_ptr<Resource> input_resource(CreateInputResource(href->value()));
+    std::string url = input_resource->url();
     if ((input_resource.get() != NULL) &&
-        !IsRewrittenResource(input_resource->url()) &&
+        !IsRewrittenResource(url) &&
         resource_manager_->ReadIfCached(input_resource.get(),
                                         message_handler)) {
       const ResponseHeaders* headers = input_resource->metadata();
       int64 now_ms = resource_manager_->timer()->NowMs();
 
       // We cannot cache-extend a resource that's completely uncacheable,
-      // as our serving-side image would b
+      // as our serving-side image would be.
       if (!resource_manager_->http_cache()->force_caching() &&
           !headers->IsCacheable()) {
         if (not_cacheable_count_ != NULL) {
           not_cacheable_count_->Add(1);
         }
-      } else if (((headers->CacheExpirationTimeMs() - now_ms) <
-                  kMinThresholdMs) &&
-                 (input_resource->type() != NULL)) {
+      } else if (ShouldRewriteResource(headers, now_ms,
+                                       input_resource.get(), url)) {
         scoped_ptr<OutputResource> output(CreateOutputResourceFromResource(
             input_resource->type(), resource_manager_->url_escaper(),
             input_resource.get()));

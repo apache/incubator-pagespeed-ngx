@@ -152,6 +152,8 @@ class DomainLawyer {
   class Domain;
   typedef void (Domain::*SetDomainFn)(Domain* domain);
 
+  static std::string NormalizeDomainName(const StringPiece& domain_name);
+
   bool MapDomainHelper(
       const StringPiece& to_domain_name,
       const StringPiece& comma_separated_from_domains,

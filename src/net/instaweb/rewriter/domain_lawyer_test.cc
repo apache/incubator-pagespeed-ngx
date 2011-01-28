@@ -396,6 +396,9 @@ TEST_F(DomainLawyerTest, WillDomainChange) {
   ASSERT_TRUE(domain_lawyer_.AddRewriteDomainMapping(
       "http://cdn.com", "http://origin.com", &message_handler_));
   EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://foo.com/"));
+  EXPECT_TRUE(domain_lawyer_.WillDomainChange("foo.com/"));
+  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://foo.com"));
+  EXPECT_TRUE(domain_lawyer_.WillDomainChange("foo.com"));
   EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://origin.com/"));
   EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://bar1.com/"));
   EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://bar2.com/"));

@@ -91,19 +91,7 @@ bool DomainLawyer::AddDomain(const StringPiece& domain_name,
   return (AddDomainHelper(domain_name, true, true, handler) != NULL);
 }
 
-DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
-    const StringPiece& domain_name, bool warn_on_duplicate,
-    bool authorize, MessageHandler* handler) {
-  if (domain_name.empty()) {
-    // handler will be NULL only when called from Merge, which should
-    // only have pre-validated (non-empty) domains.  So it should not
-    // be possible to get here from Merge.
-    if (handler != NULL) {
-      handler->Message(kWarning, "Empty domain passed to AddDomain");
-    }
-    return NULL;
-  }
-
+std::string DomainLawyer::NormalizeDomainName(const StringPiece& domain_name) {
   // Ensure that the following specifications are treated identically:
   //     www.google.com
   //     http://www.google.com
@@ -117,6 +105,23 @@ DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
     domain_name.CopyToString(&domain_name_str);
   }
   EnsureEndsInSlash(&domain_name_str);
+  return domain_name_str;
+}
+
+DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
+    const StringPiece& domain_name, bool warn_on_duplicate,
+    bool authorize, MessageHandler* handler) {
+  if (domain_name.empty()) {
+    // handler will be NULL only when called from Merge, which should
+    // only have pre-validated (non-empty) domains.  So it should not
+    // be possible to get here from Merge.
+    if (handler != NULL) {
+      handler->Message(kWarning, "Empty domain passed to AddDomain");
+    }
+    return NULL;
+  }
+
+  std::string domain_name_str = NormalizeDomainName(domain_name);
   Domain* domain = NULL;
   std::pair<DomainMap::iterator, bool> p = domain_map_.insert(
       DomainMap::value_type(domain_name_str, domain));
@@ -347,8 +352,8 @@ bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
 }
 
 bool DomainLawyer::WillDomainChange(const StringPiece& domain_name) const {
-  Domain* domain = FindDomain(
-      std::string(domain_name.data(), domain_name.size()));
+  std::string domain_name_str = NormalizeDomainName(domain_name);
+  Domain* domain = FindDomain(domain_name_str);
   if (domain != NULL) {
     if (domain->num_shards() != 0) {
       return true;
