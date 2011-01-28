@@ -42,6 +42,7 @@
         'instaweb.gyp:instaweb_http_test',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
+        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
         '<(DEPTH)/testing/gtest.gyp:gtest',
         '<(DEPTH)/testing/gtest.gyp:gtestmain',
         '<(DEPTH)/third_party/apache/apr/apr.gyp:apr',

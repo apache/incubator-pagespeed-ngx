@@ -37,8 +37,15 @@
 // flags).  Executive summary, in the form of an example foo.cc file:
 //
 //    #include "foo.h"         // foo.h has a line "DECLARE_int32(start);"
+//    #include "validators.h"  // hypothetical file defining ValidateIsFile()
 //
 //    DEFINE_int32(end, 1000, "The last record to read");
+//
+//    DEFINE_string(filename, "my_file.txt", "The file to read");
+//    // Crash if the specified file does not exist.
+//    static bool dummy = RegisterFlagValidator(&FLAGS_filename,
+//                                              &ValidateIsFile);
+//
 //    DECLARE_bool(verbose); // some other file has a DEFINE_bool(verbose, ...)
 //
 //    void MyFunc() {
@@ -117,12 +124,13 @@ typedef unsigned __int64 uint64;
 // DEFINE_string, etc. at the bottom of this file.  You may also find
 // it useful to register a validator with the flag.  This ensures that
 // when the flag is parsed from the commandline, or is later set via
-// SetCommandLineOption, we call the validation function.
+// SetCommandLineOption, we call the validation function. It is _not_
+// called when you assign the value to the flag directly using the = operator.
 //
 // The validation function should return true if the flag value is valid, and
 // false otherwise. If the function returns false for the new setting of the
 // flag, the flag will retain its current value. If it returns false for the
-// default value, InitGoogle will die.
+// default value, ParseCommandLineFlags() will die.
 //
 // This function is safe to call at global construct time (as in the
 // example below).
@@ -173,7 +181,9 @@ struct CommandLineFlagInfo {
   std::string default_value;  // the default value, as a string
   std::string filename;       // 'cleaned' version of filename holding the flag
   bool has_validator_fn;      // true if RegisterFlagValidator called on flag
-  bool is_default;            // true if the flag has default value
+  bool is_default;            // true if the flag has the default value and
+                              // has not been set explicitly from the cmdline
+                              // or via SetCommandLineOption
 };
 
 // Using this inside of a validator is a recipe for a deadlock.
@@ -337,7 +347,8 @@ extern void SetUsageMessage(const std::string& usage);
 // Looks for flags in argv and parses them.  Rearranges argv to put
 // flags first, or removes them entirely if remove_flags is true.
 // If a flag is defined more than once in the command line or flag
-// file, the last definition is used.
+// file, the last definition is used.  Returns the index (into argv)
+// of the first non-flag argument.
 // See top-of-file for more details on this function.
 #ifndef SWIG   // In swig, use ParseCommandLineFlagsScript() instead.
 extern uint32 ParseCommandLineFlags(int *argc, char*** argv,
@@ -351,9 +362,10 @@ extern uint32 ParseCommandLineFlags(int *argc, char*** argv,
 // changing default values for some FLAGS (via
 // e.g. SetCommandLineOptionWithMode calls) between the time of
 // command line parsing and the time of dumping help information for
-// the flags as a result of command line parsing.
-// If a flag is defined more than once in the command line or flag
-// file, the last definition is used.
+// the flags as a result of command line parsing.  If a flag is
+// defined more than once in the command line or flag file, the last
+// definition is used.  Returns the index (into argv) of the first
+// non-flag argument.  (If remove_flags is true, will always return 1.)
 extern uint32 ParseCommandLineNonHelpFlags(int *argc, char*** argv,
                                            bool remove_flags);
 // This is actually defined in commandlineflags_reporting.cc.
@@ -367,13 +379,25 @@ extern void HandleCommandLineHelpFlags();   // in commandlineflags_reporting.cc
 // are spawned.
 extern void AllowCommandLineReparsing();
 
-// Reparse the flags that have not yet been recognized.
-// Only flags registered since the last parse will be recognized.
-// Any flag value must be provided as part of the argument using "=",
-// not as a separate command line argument that follows the flag argument.
+// Reparse the flags that have not yet been recognized.  Only flags
+// registered since the last parse will be recognized.  Any flag value
+// must be provided as part of the argument using "=", not as a
+// separate command line argument that follows the flag argument.
 // Intended for handling flags from dynamically loaded libraries,
 // since their flags are not registered until they are loaded.
+// Returns the index (into the original argv) of the first non-flag
+// argument.  (If remove_flags is true, will always return 1.)
 extern uint32 ReparseCommandLineNonHelpFlags();
+
+// Clean up memory allocated by flags.  This is only needed to reduce
+// the quantity of "potentially leaked" reports emitted by memory
+// debugging tools such as valgrind.  It is not required for normal
+// operation, or for the perftools heap-checker.  It must only be called
+// when the process is about to exit, and all threads that might
+// access flags are quiescent.  Referencing flags after this is called
+// will have unexpected consequences.  This is not safe to run when
+// multiple threads might be running: the function is thread-hostile.
+extern void ShutDownCommandLineFlags();
 
 
 // --------------------------------------------------------------------
@@ -435,7 +459,7 @@ extern const char kStrippedFlagHelp[];
 
 #if defined(STRIP_FLAG_HELP) && STRIP_FLAG_HELP > 0
 // Need this construct to avoid the 'defined but not used' warning.
-#define MAYBE_STRIPPED_HELP(txt) (false ? (txt) : kStrippedFlagHelp)
+#define MAYBE_STRIPPED_HELP(txt) (false ? (txt) : ::google::kStrippedFlagHelp)
 #else
 #define MAYBE_STRIPPED_HELP(txt) txt
 #endif
@@ -487,7 +511,7 @@ bool IsBoolFlag(bool from);
 #define DECLARE_bool(name)          DECLARE_VARIABLE(bool, B, name)
 #define DEFINE_bool(name, val, txt)                                       \
   namespace fLB {                                                         \
-    typedef CompileAssert FLAG_##name##_value_is_not_a_bool[              \
+    typedef ::fLB::CompileAssert FLAG_##name##_value_is_not_a_bool[       \
             (sizeof(::fLB::IsBoolFlag(val)) != sizeof(double)) ? 1 : -1]; \
   }                                                                       \
   DEFINE_VARIABLE(bool, B, name, val, txt)
@@ -510,7 +534,27 @@ bool IsBoolFlag(bool from);
 // try to avoid crashes in that case, we use a char buffer to store
 // the string, which we can static-initialize, and then placement-new
 // into it later.  It's not perfect, but the best we can do.
-#define DECLARE_string(name)  namespace fLS { extern std::string& FLAGS_##name; } \
+
+namespace fLS {
+// The meaning of "string" might be different between now and when the
+// macros below get invoked (e.g., if someone is experimenting with
+// other string implementations that get defined after this file is
+// included).  Save the current meaning now and use it in the macros.
+typedef std::string clstring;
+
+inline clstring* dont_pass0toDEFINE_string(char *stringspot,
+                                           const char *value) {
+  return new(stringspot) clstring(value);
+}
+inline clstring* dont_pass0toDEFINE_string(char *stringspot,
+                                           const clstring &value) {
+  return new(stringspot) clstring(value);
+}
+inline clstring* dont_pass0toDEFINE_string(char *stringspot,
+                                           int value);
+}  // namespace fLS
+
+#define DECLARE_string(name)  namespace fLS { extern ::fLS::clstring& FLAGS_##name; } \
                               using fLS::FLAGS_##name
 
 // We need to define a var named FLAGS_no##name so people don't define
@@ -520,17 +564,20 @@ bool IsBoolFlag(bool from);
 // The weird 'using' + 'extern' inside the fLS namespace is to work around
 // an unknown compiler bug/issue with the gcc 4.2.1 on SUSE 10.  See
 //    http://code.google.com/p/google-gflags/issues/detail?id=20
-#define DEFINE_string(name, val, txt)                                     \
-  namespace fLS {                                                         \
-    static union { void* align; char s[sizeof(std::string)]; } s_##name[2]; \
-    const std::string* const FLAGS_no##name = new (s_##name[0].s) std::string(val); \
-    static ::google::FlagRegisterer o_##name(                \
-      #name, "string", MAYBE_STRIPPED_HELP(txt), __FILE__,                \
-      s_##name[0].s, new (s_##name[1].s) std::string(*FLAGS_no##name));   \
-    extern std::string& FLAGS_##name;                                     \
-    using fLS::FLAGS_##name;                                              \
-    std::string& FLAGS_##name = *(reinterpret_cast<std::string*>(s_##name[0].s));   \
-  }                                                                       \
+#define DEFINE_string(name, val, txt)                                       \
+  namespace fLS {                                                           \
+    using ::fLS::clstring;                                                  \
+    static union { void* align; char s[sizeof(clstring)]; } s_##name[2];    \
+    clstring* const FLAGS_no##name = ::fLS::                                \
+                                   dont_pass0toDEFINE_string(s_##name[0].s, \
+                                                             val);          \
+    static ::google::FlagRegisterer o_##name(                  \
+        #name, "string", MAYBE_STRIPPED_HELP(txt), __FILE__,                \
+        s_##name[0].s, new (s_##name[1].s) clstring(*FLAGS_no##name));      \
+    extern clstring& FLAGS_##name;                                          \
+    using fLS::FLAGS_##name;                                                \
+    clstring& FLAGS_##name = *FLAGS_no##name;                               \
+  }                                                                         \
   using fLS::FLAGS_##name
 
 #endif  // SWIG

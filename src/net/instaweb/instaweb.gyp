@@ -132,7 +132,6 @@
         'htmlparse/file_driver.cc',
         'htmlparse/file_statistics_log.cc',
         'htmlparse/logging_html_filter.cc',
-        'htmlparse/null_filter.cc',
         'htmlparse/statistics_log.cc',
       ],
       'include_dirs': [

@@ -15,6 +15,7 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 
 #include "apr_pools.h"
+
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mutex.h"
@@ -22,12 +23,13 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/http/public/sync_fetcher_adapter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/file_cache.h"
+#include "net/instaweb/util/public/gflags.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/http/public/sync_fetcher_adapter.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 
@@ -162,6 +164,7 @@ void ApacheRewriteDriverFactory::ShutDown() {
 }
 
 void ApacheRewriteDriverFactory::Terminate() {
+  google::ShutDownCommandLineFlags();
 }
 
 }  // namespace net_instaweb

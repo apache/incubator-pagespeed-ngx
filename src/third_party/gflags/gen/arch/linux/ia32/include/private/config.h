@@ -65,6 +65,10 @@
 /* define if your compiler has __attribute__ */
 #define HAVE___ATTRIBUTE__ 1
 
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#define LT_OBJDIR ".libs/"
+
 /* Name of package */
 #define PACKAGE "gflags"
 
@@ -75,7 +79,7 @@
 #define PACKAGE_NAME "gflags"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "gflags 1.3"
+#define PACKAGE_STRING "gflags 1.5"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "gflags"
@@ -84,7 +88,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.3"
+#define PACKAGE_VERSION "1.5"
 
 /* Define to necessary symbol if this constant uses a non-standard name on
    your system. */
@@ -97,7 +101,7 @@
 #define STL_NAMESPACE std
 
 /* Version number of package */
-#define VERSION "1.3"
+#define VERSION "1.5"
 
 /* Stops putting the code inside the Google namespace */
 #define _END_GOOGLE_NAMESPACE_ }

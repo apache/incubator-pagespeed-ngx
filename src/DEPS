@@ -43,7 +43,7 @@ vars = {
   "opencv_src": "https://code.ros.org/svn/opencv/tags/2.1",
   "opencv_revision": "@head",
 
-  "gflags_root": "http://google-gflags.googlecode.com/svn/tags/gflags-1.3/src",
+  "gflags_root": "http://google-gflags.googlecode.com/svn/tags/gflags-1.5/src",
   "gflags_revision": "@head",
 
   "google_sparsehash_root": "http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.8.1/src",

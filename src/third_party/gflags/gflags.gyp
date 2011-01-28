@@ -32,6 +32,12 @@
         '<(gflags_gen_arch_root)/include',  # For configured files.
         '<(gflags_root)/src',  # For everything else.
       ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(gflags_gen_arch_root)/include',  # For configured files.
+          '<(gflags_root)/src',  # For everything else.
+        ],
+      },
       'sources': [
         'src/gflags.cc',
         'src/gflags_completions.cc',
