@@ -20,6 +20,8 @@
  * 2. Removing the block of code responsible for gunzipping zipped content.
  *    If the caller as specified Accept-Encoding:gzip then serf should not
  *    unzip it.
+ * 3. Follow HTTP spec by checking "Transfer-Encoding: chunked", before
+ *    "Content-Length".
  */
 
 #include <apr_lib.h>
@@ -243,24 +245,24 @@ static apr_status_t run_machine(serf_bucket_t *bkt, response_context_t *ctx)
                 serf_bucket_barrier_create(ctx->stream, bkt->allocator);
 
             /* Are we C-L, chunked, or conn close? */
-            v = serf_bucket_headers_get(ctx->headers, "Content-Length");
-            if (v) {
-                apr_uint64_t length;
-                length = apr_strtoi64(v, NULL, 10);
-                if (errno == ERANGE) {
-                    return APR_FROM_OS_ERROR(ERANGE);
-                }
-                ctx->body = serf_bucket_limit_create(ctx->body, length,
-                                                     bkt->allocator);
+            v = serf_bucket_headers_get(ctx->headers, "Transfer-Encoding");
+
+            /* Need to handle multiple transfer-encoding. */
+            if (v && strcasecmp("chunked", v) == 0) {
+                ctx->chunked = 1;
+                ctx->body = serf_bucket_dechunk_create(ctx->body,
+                                                       bkt->allocator);
             }
             else {
-                v = serf_bucket_headers_get(ctx->headers, "Transfer-Encoding");
-
-                /* Need to handle multiple transfer-encoding. */
-                if (v && strcasecmp("chunked", v) == 0) {
-                    ctx->chunked = 1;
-                    ctx->body = serf_bucket_dechunk_create(ctx->body,
-                                                           bkt->allocator);
+                v = serf_bucket_headers_get(ctx->headers, "Content-Length");
+                if (v) {
+                    apr_uint64_t length;
+                    length = apr_strtoi64(v, NULL, 10);
+                    if (errno == ERANGE) {
+                        return APR_FROM_OS_ERROR(ERANGE);
+                    }
+                    ctx->body = serf_bucket_limit_create(ctx->body, length,
+                                                         bkt->allocator);
                 }
 
                 if (!v && (ctx->sl.code == 204 || ctx->sl.code == 304)) {
