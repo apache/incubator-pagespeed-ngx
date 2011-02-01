@@ -130,6 +130,7 @@ void RewriteOptions::SetUp() {
   name_filter_map_["inline_javascript"] = kInlineJavascript;
   name_filter_map_["insert_img_dimensions"] = kInsertImgDimensions;
   name_filter_map_["left_trim_urls"] = kLeftTrimUrls;
+  name_filter_map_["make_google_analytics_async"] = kMakeGoogleAnalyticsAsync;
   name_filter_map_["move_css_to_head"] = kMoveCssToHead;
   name_filter_map_["outline_css"] = kOutlineCss;
   name_filter_map_["outline_javascript"] = kOutlineJavascript;

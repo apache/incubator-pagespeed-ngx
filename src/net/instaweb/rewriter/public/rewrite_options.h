@@ -47,6 +47,7 @@ class RewriteOptions {
     kInlineJavascript,
     kInsertImgDimensions,
     kLeftTrimUrls,
+    kMakeGoogleAnalyticsAsync,
     kMoveCssToHead,
     kOutlineCss,
     kOutlineJavascript,

@@ -34,6 +34,7 @@
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
+#include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/img_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
@@ -112,6 +113,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     CacheExtender::Initialize(statistics);
     CssCombineFilter::Initialize(statistics);
     CssMoveToHeadFilter::Initialize(statistics);
+    GoogleAnalyticsFilter::Initialize(statistics);
     ImgRewriteFilter::Initialize(statistics);
     JavascriptFilter::Initialize(statistics);
     ResourceManager::Initialize(statistics);
@@ -195,6 +197,7 @@ void RewriteDriver::AddFilters() {
       options_.Enabled(RewriteOptions::kCombineHeads) ||
       options_.Enabled(RewriteOptions::kAddBaseTag) ||
       options_.Enabled(RewriteOptions::kMoveCssToHead) ||
+      options_.Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync) ||
       options_.Enabled(RewriteOptions::kAddInstrumentation)) {
     // Adds a filter that adds a 'head' section to html documents if
     // none found prior to the body.
@@ -211,7 +214,7 @@ void RewriteDriver::AddFilters() {
     html_parse_.AddFilter(base_tag_filter_.get());
   }
   if (options_.Enabled(RewriteOptions::kStripScripts)) {
-    // Experimental filter that blindly scripts all strips from a page.
+    // Experimental filter that blindly strips all scripts from a page.
     AddFilter(new StripScriptsFilter(&html_parse_));
   }
   if (options_.Enabled(RewriteOptions::kOutlineCss)) {
@@ -241,6 +244,13 @@ void RewriteDriver::AddFilters() {
   }
   if (options_.Enabled(RewriteOptions::kRewriteCss)) {
     EnableRewriteFilter(kCssFilterId);
+  }
+  if (options_.Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync)) {
+    // Converts sync loads of Google Analytics javascript to async loads.
+    // This needs to be listed before rewrite_javascript because it injects
+    // javascript that has comments and extra whitespace.
+    AddFilter(new GoogleAnalyticsFilter(&html_parse_,
+                                        resource_manager_->statistics()));
   }
   if (options_.Enabled(RewriteOptions::kRewriteJavascript)) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first

@@ -343,6 +343,7 @@
         'rewriter/css_tag_scanner.cc',
         'rewriter/data_url_input_resource.cc',
         'rewriter/file_input_resource.cc',
+        'rewriter/google_analytics_filter.cc',
         'rewriter/js_inline_filter.cc',
         'rewriter/js_outline_filter.cc',
         'rewriter/resource_tag_scanner.cc',
