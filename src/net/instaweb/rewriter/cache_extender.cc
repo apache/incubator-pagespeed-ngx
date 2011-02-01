@@ -93,9 +93,12 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
   // resources are non-cacheable or privately cacheable.
   if ((href != NULL) && html_parse_->IsRewritable(element)) {
     scoped_ptr<Resource> input_resource(CreateInputResource(href->value()));
+    if (input_resource.get() == NULL) {
+      return;
+    }
+
     std::string url = input_resource->url();
-    if ((input_resource.get() != NULL) &&
-        !IsRewrittenResource(url) &&
+    if (!IsRewrittenResource(url) &&
         resource_manager_->ReadIfCached(input_resource.get(),
                                         message_handler)) {
       const ResponseHeaders* headers = input_resource->metadata();

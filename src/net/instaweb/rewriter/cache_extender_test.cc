@@ -93,6 +93,15 @@ TEST_F(CacheExtenderTest, DoExtend) {
   }
 }
 
+TEST_F(CacheExtenderTest, NoInputResource) {
+  InitTest(100);
+  // Test for not crashing on bad/disallowed URL.
+  ValidateNoChanges("bad url",
+                    GenerateHtml("swly://example.com/a.css",
+                                 "http://evil.com/b.jpg",
+                                 "http://moreevil.com/c.js"));
+}
+
 TEST_F(CacheExtenderTest, NoExtendAlreadyCachedProperly) {
   InitTest(100000000);  // cached for a long time to begin with
   ValidateNoChanges("no_extend_cached_properly",
