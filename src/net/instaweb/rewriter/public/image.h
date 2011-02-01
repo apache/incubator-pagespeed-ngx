@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_H_
 
+#include <vector>
+
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/image_dim.h"
 #include <string>
@@ -27,6 +29,10 @@
 #include "cv.h"
 #else
 #include "third_party/opencv/src/opencv/include/opencv/cv.h"
+#endif
+
+#if (CV_MAJOR_VERSION == 2 && CV_MINOR_VERSION >= 1) || (CV_MAJOR_VERSION > 2)
+#define USE_OPENCV_IN_MEM
 #endif
 
 namespace net_instaweb {
@@ -117,7 +123,6 @@ class Image {
   Image(const StringPiece& original_contents,
         const std::string& url,
         const StringPiece& file_prefix,
-        FileSystem* file_system,
         MessageHandler* handler);
 
   ~Image();
@@ -178,24 +183,46 @@ class Image {
   StringPiece Contents();
 
  private:
+  // byte buffer type most convenient for working with given OpenCV version
+#ifdef USE_OPENCV_IN_MEM
+  typedef std::vector<unsigned char> OpenCvBuffer;
+#else
+  typedef std::string OpenCvBuffer;
+#endif
+
   // Internal methods used only in image.cc (see there for more).
   void ComputeImageType();
   void FindJpegSize();
   inline void FindPngSize();
   bool ComputePngTransparency();
   inline void FindGifSize();
-  bool LoadOpenCV();
-  void CleanOpenCV();
+  bool LoadOpenCv();
+  void CleanOpenCv();
   bool ComputeOutputContents();
 
+  // Assumes all filetype + transparency checks have been done.
+  // Reads data, writes to opencv_image_
+  bool LoadOpenCvFromBuffer(const StringPiece& data);
+
+  // Reads from opencv_image_, writes to buf
+  bool SaveOpenCvToBuffer(OpenCvBuffer* buf);
+
+  // Encodes 'buf' in a StringPiece
+  StringPiece OpenCvBufferToStringPiece(const OpenCvBuffer& buf);
+
+#ifndef USE_OPENCV_IN_MEM
+  // Helper that creates & writes a temporary file for us in proper prefix with
+  // proper extension.
+  bool TempFileForImage(FileSystem* fs, const StringPiece& contents,
+                        std::string* filename);
+#endif
+
   const std::string file_prefix_;
-  FileSystem* file_system_;
   MessageHandler* handler_;
   Type image_type_;  // Lazily initialized, initially IMAGE_UNKNOWN.
   const StringPiece original_contents_;
   std::string output_contents_;  // Lazily filled.
   bool output_valid_;             // Indicates output_contents_ now correct.
-  std::string opencv_filename_;  // Lazily holds generated name of temp file.
   IplImage* opencv_image_;        // Lazily filled on OpenCV load.
   bool opencv_load_possible_;     // Attempt opencv_load in future?
   bool resized_;

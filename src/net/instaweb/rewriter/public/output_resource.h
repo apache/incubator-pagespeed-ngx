@@ -43,9 +43,6 @@ class OutputResource : public Resource {
  public:
   class CachedResult {
    public:
-    // Filters can store any additional metadata they need here.
-    ResponseHeaders* headers() { return &headers_; }
-
     // The cached URL of this result. If this CachedResult was actually
     // fetched from the cache and is not a new one produced by
     // EnsureCachedResultCreated this will be valid if and only if
@@ -61,6 +58,16 @@ class OutputResource : public Resource {
     // have marked down that we cannot do anything with it
     // (by calling ResourceManager::WriteUnoptimizable).
     bool optimizable() const { return optimizable_; }
+
+    // The methods below permit filters to store whatever information
+    // they want. They should take care to avoid key conflicts
+    // with other classes. The suggested convention is to start
+    // their key with ClassName_
+    //
+    // Also, this currently requires the keys to be valid HTTP header names;
+    // so most punctuation can't be used (but - and _ are OK)
+    void SetRemembered(const char* key, const std::string& val);
+    bool Remembered(const char* key, std::string* out) const;
 
    private:
     friend class ResourceManager;

@@ -40,6 +40,9 @@ namespace {
 
 const char kLockSuffix[] = ".outputlock";
 
+// Prefix we use to distinguish keys used by filters
+const char kCustomKeyPrefix[] = "X-ModPagespeedCustom-";
+
 // OutputResource::{Fetch,Save}Cached encodes the state
 // of the optimizable bit via presence of this header
 const char kCacheUnoptimizableHeader[] = "X-ModPagespeed-Unoptimizable";
@@ -48,6 +51,24 @@ const char kCacheUnoptimizableHeader[] = "X-ModPagespeed-Unoptimizable";
 
 OutputResource::CachedResult::CachedResult() : optimizable_(true),
                                                origin_expiration_time_ms_(0) {}
+
+void OutputResource::CachedResult::SetRemembered(const char* key,
+                                                 const std::string& val) {
+  std::string full_key = StrCat(StringPiece(kCustomKeyPrefix), key);
+  headers_.RemoveAll(full_key.c_str());
+  headers_.Add(full_key, val);
+}
+
+bool OutputResource::CachedResult::Remembered(const char* key,
+                                              std::string* out) const {
+  std::string full_key = StrCat(StringPiece(kCustomKeyPrefix), key);
+  CharStarVector vals;
+  if (headers_.Lookup(full_key.c_str(), &vals) && vals.size() == 1) {
+    *out = vals[0];
+    return true;
+  }
+  return false;
+}
 
 OutputResource::OutputResource(ResourceManager* manager,
                                const StringPiece& resolved_base,
@@ -314,7 +335,7 @@ void OutputResource::SaveCachedResult(const std::string& name_key,
                        http_cache->timer()->NowMs();
   int64 delta_sec = delta_ms / Timer::kSecondMs;
   if ((delta_sec > 0) || http_cache->force_caching()) {
-    ResponseHeaders* meta_data = cached->headers();
+    ResponseHeaders* meta_data = &cached->headers_;
     resource_manager()->SetDefaultHeaders(type(), meta_data);
     std::string cache_control = StringPrintf(
         "max-age=%ld",
@@ -344,13 +365,13 @@ void OutputResource::FetchCachedResult(const std::string& name_key,
   StringPiece hash_extension;
   HTTPValue value;
   bool ok = false;
-  bool found = cache->Find(name_key, &value, cached->headers(), handler) ==
+  bool found = cache->Find(name_key, &value, &cached->headers_, handler) ==
                    HTTPCache::kFound;
   if (found && value.ExtractContents(&hash_extension)) {
     cached->set_origin_expiration_time_ms(
-        cached->headers()->CacheExpirationTimeMs());
+        cached->headers_.CacheExpirationTimeMs());
     CharStarVector dummy;
-    if (cached->headers()->Lookup(kCacheUnoptimizableHeader, &dummy)) {
+    if (cached->headers_.Lookup(kCacheUnoptimizableHeader, &dummy)) {
       cached->set_optimizable(false);
       ok = true;
     } else {

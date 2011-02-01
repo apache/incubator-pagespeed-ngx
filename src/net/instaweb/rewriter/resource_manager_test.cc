@@ -249,10 +249,10 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   }
 
   void VerifyCustomMetadata(OutputResource* output) {
-    CharStarVector vals;
-    EXPECT_TRUE(output->cached_result()->headers()->Lookup(kFilterKey, &vals));
-    ASSERT_EQ(1, vals.size());
-    EXPECT_EQ(vals[0], std::string(kFilterVal));
+    std::string val;
+    EXPECT_TRUE(output->cached_result()->Remembered(kFilterKey, &val));
+    EXPECT_EQ(std::string(kFilterVal), val);
+    EXPECT_FALSE(output->cached_result()->Remembered("nosuchkey", &val));
   }
 
   void StoreCustomMetadata(OutputResource* output) {
@@ -260,7 +260,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
         output->EnsureCachedResultCreated();
     ASSERT_TRUE(cached != NULL);
     EXPECT_EQ(cached, output->cached_result());
-    cached->headers()->Add(kFilterKey, kFilterVal);
+    cached->SetRemembered(kFilterKey, kFilterVal);
   }
 
   // Expiration times are not entirely precise as some cache headers

@@ -35,8 +35,7 @@ class ImageTest : public testing::Test {
   ImageTest() { }
   Image* ImageFromString(const std::string& name,
                          const std::string& contents) {
-    return new Image(contents, name, GTestTempDir(),
-                      &file_system_, &handler_);
+    return new Image(contents, name, GTestTempDir(), &handler_);
   }
 
   void ExpectDimensions(Image::Type image_type, int size,

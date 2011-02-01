@@ -126,6 +126,7 @@
         'util/message_handler_test.cc',
         'util/mock_message_handler_test.cc',
         'util/pthread_condvar_test.cc',
+        'util/pool_test.cc',
         'util/query_params_test.cc',
         'util/simple_stats_test.cc',
         'util/statistics_work_bound_test.cc',

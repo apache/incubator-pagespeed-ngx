@@ -404,6 +404,23 @@ TEST_F(ImageRewriteTest, NoQueryCorruption) {
   TestCorruptUrl("?query", true);
 }
 
+TEST_F(ImageRewriteTest, NoCrashOnInvalidDim) {
+  options_.EnableFilter(RewriteOptions::kRewriteImages);
+  options_.EnableFilter(RewriteOptions::kInsertImgDimensions);
+  rewrite_driver_.AddFilters();
+  AddFileToMockFetcher(StrCat(kTestDomain, "a.png"),
+                       StrCat(GTestSrcDir(), kTestData, kBikePngFile),
+                       kContentTypePng);
+
+  ParseUrl(kTestDomain, "<img width=0 height=0 src=\"a.png\">");
+  ParseUrl(kTestDomain, "<img width=0 height=42 src=\"a.png\">");
+  ParseUrl(kTestDomain, "<img width=42 height=0 src=\"a.png\">");
+  ParseUrl(kTestDomain, "<img width=\"-5\" height=\"5\" src=\"a.png\">");
+  ParseUrl(kTestDomain, "<img width=\"-5\" height=\"0\" src=\"a.png\">");
+  ParseUrl(kTestDomain, "<img width=\"-5\" height=\"-5\" src=\"a.png\">");
+  ParseUrl(kTestDomain, "<img width=\"5\" height=\"-5\" src=\"a.png\">");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

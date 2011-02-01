@@ -22,8 +22,8 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
-#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/stdio_file_system.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
@@ -39,6 +39,8 @@
 #include "pagespeed/image_compression/gif_reader.h"
 #include "pagespeed/image_compression/jpeg_optimizer.h"
 #include "pagespeed/image_compression/png_optimizer.h"
+
+using pagespeed::image_compression::PngOptimizer;
 
 namespace net_instaweb {
 
@@ -65,45 +67,23 @@ const size_t kJpegIntSize = 2;
 
 }  // namespace ImageHeaders
 
-namespace {
-
-bool WriteTempFileWithContentType(
-    const StringPiece& prefix_name, const ContentType& content_type,
-    const StringPiece& buffer, std::string* filename,
-    FileSystem* file_system, MessageHandler* handler) {
-  std::string tmp_filename;
-  bool ok = file_system->WriteTempFile(
-      prefix_name.as_string().c_str(), buffer, &tmp_filename, handler);
-  if (ok) {
-    *filename = StrCat(tmp_filename, content_type.file_extension());
-    ok = file_system->RenameFile(
-        tmp_filename.c_str(), filename->c_str(), handler);
-  }
-  return ok;
-}
-
-}  // namespace
-
 Image::Image(const StringPiece& original_contents,
              const std::string& url,
              const StringPiece& file_prefix,
-             FileSystem* file_system,
              MessageHandler* handler)
     : file_prefix_(file_prefix.data(), file_prefix.size()),
-      file_system_(file_system),
       handler_(handler),
       image_type_(IMAGE_UNKNOWN),
       original_contents_(original_contents),
       output_contents_(),
       output_valid_(false),
-      opencv_filename_(),
       opencv_image_(NULL),
       opencv_load_possible_(true),
       resized_(false),
       url_(url) { }
 
 Image::~Image() {
-  CleanOpenCV();
+  CleanOpenCv();
 }
 
 // Looks through blocks of jpeg stream to find SOFn block
@@ -322,8 +302,8 @@ bool Image::HasTransparency() {
 // Makes sure OpenCV version of image is loaded if that is possible.
 // Returns value of opencv_load_possible_ after load attempted.
 // Note that if the load fails, opencv_load_possible_ will be false
-// and future calls to LoadOpenCV will fail fast.
-bool Image::LoadOpenCV() {
+// and future calls to LoadOpenCv will fail fast.
+bool Image::LoadOpenCv() {
   if (opencv_image_ == NULL && opencv_load_possible_) {
     Image::Type image_type = this->image_type();
     const ContentType* content_type = this->content_type();
@@ -331,16 +311,7 @@ bool Image::LoadOpenCV() {
                              image_type != IMAGE_GIF &&
                              !HasTransparency());
     if (opencv_load_possible_) {
-      opencv_load_possible_ =
-          WriteTempFileWithContentType(
-              file_prefix_, *content_type,
-              original_contents_, &opencv_filename_,
-              file_system_, handler_);
-    }
-    if (opencv_load_possible_) {
-      opencv_image_ = cvLoadImage(opencv_filename_.c_str());
-      file_system_->RemoveFile(opencv_filename_.c_str(), handler_);
-      opencv_load_possible_ = (opencv_image_ != NULL);
+      opencv_load_possible_ = LoadOpenCvFromBuffer(original_contents_);
     }
   }
   if (opencv_load_possible_) {
@@ -362,11 +333,76 @@ bool Image::LoadOpenCV() {
 }
 
 // Get rid of OpenCV image data gracefully (requires a call to OpenCV).
-void Image::CleanOpenCV() {
+void Image::CleanOpenCv() {
   if (opencv_image_ != NULL) {
     cvReleaseImage(&opencv_image_);
   }
 }
+
+#ifdef USE_OPENCV_IN_MEM
+
+bool Image::LoadOpenCvFromBuffer(const StringPiece& data) {
+  CvMat cv_original_contents =
+      cvMat(1, data.size(), CV_8UC1, const_cast<char*>(data.data()));
+
+  // Note: this is more convenient than imdecode as it lets us
+  // get an image pointer directly, and not just a Mat
+  opencv_image_ = cvDecodeImage(&cv_original_contents);
+  return opencv_image_ != NULL;
+}
+
+bool Image::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
+  // This is preferable to cvEncodeImage as it makes it easy to avoid a copy.
+  // Note: period included with the extension on purpose.
+  return cv::imencode(content_type()->file_extension(), opencv_image_, *buf);
+}
+
+StringPiece Image::OpenCvBufferToStringPiece(const OpenCvBuffer& buf) {
+  return StringPiece(reinterpret_cast<const char*>(buf.data()), buf.size());
+}
+
+#else
+
+bool Image::TempFileForImage(FileSystem* fs,
+                             const StringPiece& contents,
+                             std::string* filename) {
+  std::string tmp_filename;
+  bool ok = fs->WriteTempFile(file_prefix_, contents, &tmp_filename, handler_);
+  if (ok) {
+    *filename = StrCat(tmp_filename, content_type()->file_extension());
+    ok = fs->RenameFile(tmp_filename.c_str(), filename->c_str(), handler_);
+  }
+  return ok;
+}
+
+bool Image::LoadOpenCvFromBuffer(const StringPiece& data) {
+  StdioFileSystem fs;
+  std::string filename;
+  bool ok = TempFileForImage(&fs, original_contents_, &filename);
+  if (ok) {
+    opencv_image_ = cvLoadImage(filename.c_str());
+    fs.RemoveFile(filename.c_str(), handler_);
+  }
+  return opencv_image_ != NULL;
+}
+
+bool Image::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
+  StdioFileSystem fs;
+  std::string filename;
+  bool ok = TempFileForImage(&fs, StringPiece(), &filename);
+  if (ok) {
+    cvSaveImage(filename.c_str(), opencv_image_);
+    ok = fs.ReadFile(filename.c_str(), buf, handler_);
+    fs.RemoveFile(filename.c_str(), handler_);
+  }
+  return ok;
+}
+
+StringPiece Image::OpenCvBufferToStringPiece(const OpenCvBuffer& buf) {
+  return StringPiece(buf);
+}
+
+#endif
 
 void Image::Dimensions(ImageDim* natural_dim) {
   if (dims_.valid()) {
@@ -378,11 +414,15 @@ void Image::Dimensions(ImageDim* natural_dim) {
 
 bool Image::ResizeTo(const ImageDim& new_dim) {
   CHECK(new_dim.valid());
+  if (new_dim.width() <= 0 || new_dim.height() <= 0) {
+    return false;
+  }
+
   if (resized_) {
     // If we already resized, drop data and work with original image.
     UndoResize();
   }
-  bool ok = opencv_image_ != NULL || LoadOpenCV();
+  bool ok = opencv_image_ != NULL || LoadOpenCv();
   if (ok) {
     IplImage* rescaled_image =
         cvCreateImage(cvSize(new_dim.width(), new_dim.height()),
@@ -401,7 +441,7 @@ bool Image::ResizeTo(const ImageDim& new_dim) {
 
 void Image::UndoResize() {
   if (resized_) {
-    CleanOpenCV();
+    CleanOpenCv();
     output_valid_ = false;
     image_type_ = IMAGE_UNKNOWN;
     resized_ = false;
@@ -412,17 +452,14 @@ void Image::UndoResize() {
 bool Image::ComputeOutputContents() {
   if (!output_valid_) {
     bool ok = true;
-    std::string opencv_contents;
+    OpenCvBuffer opencv_contents;
     StringPiece contents = original_contents_;
     // Choose appropriate source for image contents.
     // Favor original contents if image unchanged.
     if (resized_ && opencv_image_ != NULL) {
-      cvSaveImage(opencv_filename_.c_str(), opencv_image_);
-      ok = file_system_->ReadFile(opencv_filename_.c_str(),
-                                  &opencv_contents, handler_);
-      file_system_->RemoveFile(opencv_filename_.c_str(), handler_);
+      ok = SaveOpenCvToBuffer(&opencv_contents);
       if (ok) {
-        contents = opencv_contents;
+        contents = OpenCvBufferToStringPiece(opencv_contents);
       }
     }
     // Take image contents and re-compress them.
@@ -442,7 +479,7 @@ bool Image::ComputeOutputContents() {
           break;
         case IMAGE_PNG: {
           pagespeed::image_compression::PngReader png_reader;
-          ok = pagespeed::image_compression::PngOptimizer::OptimizePng(
+          ok = PngOptimizer::OptimizePng(
               png_reader,
               std::string(contents.data(), contents.size()),
               &output_contents_);
@@ -451,7 +488,7 @@ bool Image::ComputeOutputContents() {
         case IMAGE_GIF: {
 #if PAGESPEED_PNG_OPTIMIZER_GIF_READER
           pagespeed::image_compression::GifReader gif_reader;
-          ok = pagespeed::image_compression::PngOptimizer::OptimizePng(
+          ok = PngOptimizer::OptimizePng(
               gif_reader, contents, &output_contents_);
           if (ok) {
             image_type_ = IMAGE_PNG;

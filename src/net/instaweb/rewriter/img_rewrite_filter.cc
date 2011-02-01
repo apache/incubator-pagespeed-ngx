@@ -204,8 +204,7 @@ Image* ImgRewriteFilter::GetImage(const StringPiece& origin_url,
                              img_resource->url().c_str());
   } else {
     image = new Image(img_resource->contents(), img_resource->url(),
-                      resource_manager_->filename_prefix(), file_system_,
-                      message_handler);
+                      resource_manager_->filename_prefix(), message_handler);
   }
   return image;
 }
