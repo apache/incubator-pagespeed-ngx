@@ -21,6 +21,7 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 
 namespace net_instaweb {
 
@@ -44,7 +45,36 @@ class RewriteSingleResourceFilter : public RewriteFilter {
                      UrlAsyncFetcher::Callback* callback);
 
  protected:
+  // Rewrite the given resource using this filter's RewriteLoadedResource,
+  // taking  advantage of various caching techniques to avoid recomputation
+  // whenever possible.
+  //
+  // If your filter code and the original URL are enough to produce your output
+  // pass in resource_manager_->url_escaper() into encoder. If not, pass in
+  // an encoder that incorporates any other settings into the output URL.
+  //
+  // If nothing can be done (as the input data hasn't been fetched in time
+  // and we do not have cached output) returns NULL. Otherwise returns
+  // a CachedResult stating whether the resource is optimizable, and if so at
+  // what URL the output is, along with any metadata that was stored when
+  // examining it.
+  //
+  // Note: the metadata may be useful even when optimizable() is false.
+  // For example a filter could store dimensions of an image in them, even
+  // if it chose to not change it, so any <img> tags can be given appropriate
+  // width and height.
+  //
+  // Precondition: in != NULL, in is security-checked
+  OutputResource::CachedResult* RewriteResourceWithCaching(
+      Resource* in, UrlSegmentEncoder* encoder);
+
+  // Variant of the above that makes and cleans up input resource for in_url.
+  OutputResource::CachedResult* RewriteWithCaching(const StringPiece& in_url,
+                                                   UrlSegmentEncoder* encoder);
+
   // Derived classes must implement this function instead of Fetch.
+  // If you return true, you must set the content-type on the output resource
+  // in your implementation.
   virtual bool RewriteLoadedResource(const Resource* input_resource,
                                      OutputResource* output_resource) = 0;
 

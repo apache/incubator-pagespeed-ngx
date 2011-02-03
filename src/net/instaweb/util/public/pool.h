@@ -99,8 +99,12 @@ class Pool {
   }
 
   // Return oldest object in pool, or NULL.
-  T* Oldest() const {
-    return contents_.front();
+  T* oldest() const {
+    T* result = NULL;
+    if (!contents_.empty()) {
+      result = contents_.front();
+    }
+    return result;
   }
 
   // Remove the least-recently-inserted object from the pool.  Potentially

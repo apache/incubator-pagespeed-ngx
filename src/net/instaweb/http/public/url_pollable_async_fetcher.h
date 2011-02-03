@@ -31,7 +31,7 @@ class UrlPollableAsyncFetcher : public UrlAsyncFetcher {
 
   // Poll the active fetches, returning the number of fetches
   // still outstanding.
-  virtual int Poll(int64 microseconds) = 0;
+  virtual int Poll(int64 max_wait_ms) = 0;
 };
 
 }  // namespace net_instaweb

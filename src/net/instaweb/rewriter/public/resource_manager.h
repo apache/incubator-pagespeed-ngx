@@ -101,19 +101,6 @@ class ResourceManager {
       const RewriteOptions* rewrite_options,
       MessageHandler* handler);
 
-  // Constructs and permissions-checks an output resource for the specified url,
-  // which occurs in the context of document_gurl.  Returns NULL on failure.
-  // The content_type argument cannot be NULL.  The resource name will be
-  // encoded using the provided encoder.
-  OutputResource* CreateOutputResourceForRewrittenUrl(
-      const GURL& document_gurl,
-      const StringPiece& filter_prefix,
-      const StringPiece& resource_url,
-      const ContentType* content_type,
-      UrlSegmentEncoder* encoder,
-      const RewriteOptions* rewrite_options,
-      MessageHandler* handler);
-
   // Creates an output resource where the name is provided by the rewriter.
   // The intent is to be able to derive the content from the name, for example,
   // by encoding URLs and metadata.
@@ -237,6 +224,10 @@ class ResourceManager {
   // The resource remains owned by the caller.
   bool ReadIfCached(Resource* resource, MessageHandler* message_handler) const;
 
+  // As above, but distinguishes between unavailable in cache and not found
+  HTTPCache::FindResult ReadIfCachedWithStatus(
+      Resource* resource, MessageHandler* message_handler) const;
+
   // Loads contents of resource asynchronously, calling callback when
   // done.  If the resource contents is cached, the callback will
   // be called directly, rather than asynchronously.  The resource
@@ -247,6 +238,10 @@ class ResourceManager {
   // The resource can be deleted only after the callback is called.
   void ReadAsync(Resource* resource, Resource::AsyncCallback* callback,
                  MessageHandler* message_handler);
+
+  // Returns true if the resource with given date and TTL is going to expire
+  // shortly and should hence be proactively re-fetched.
+  bool IsImminentlyExpiring(int64 start_date_ms, int64 expire_ms) const;
 
   // TODO(jmarantz): check thread safety in Apache.
   Hasher* hasher() const { return hasher_; }
@@ -270,8 +265,8 @@ class ResourceManager {
   }
 
  private:
-  void RefreshImminentlyExpiringResource(
-      Resource* resource, MessageHandler* handler) const;
+  void RefreshIfImminentlyExpiring(Resource* resource,
+                                   MessageHandler* handler) const;
   inline void IncrementResourceUrlDomainRejections();
 
   // Writes out a cache entry telling us how to get to the processed version

@@ -92,7 +92,9 @@ class PoolTest : public testing::Test {
   void ExpectRemoveOldest(int i) {
     int sz = pool_.size();
     EXPECT_FALSE(pool_.empty());
-    EXPECT_EQ(i, pool_.RemoveOldest()->num());
+    IntElement* e = pool_.oldest();
+    EXPECT_EQ(i, e->num());
+    EXPECT_EQ(e, pool_.RemoveOldest());
     EXPECT_EQ(sz - 1, pool_.size());
   }
 
@@ -186,6 +188,10 @@ TEST_F(PoolTest, TestClear) {
   ExpectContains(0, 3);
   pool_.Clear();
   EXPECT_TRUE(pool_.empty());
+}
+
+TEST_F(PoolTest, OldestEmpty) {
+  EXPECT_TRUE(NULL == pool_.oldest());
 }
 
 }  // namespace

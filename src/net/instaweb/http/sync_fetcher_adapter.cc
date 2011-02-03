@@ -52,9 +52,9 @@ bool SyncFetcherAdapter::StreamingFetchUrl(
   for (int64 end_ms = now_ms + 2 * fetcher_timeout_ms_;
        !callback->done() && (now_ms < end_ms);
        now_ms = timer_->NowMs()) {
-    int64 remaining_us = std::max(static_cast<int64>(0),
-                                  1000 * (end_ms - now_ms));
-    async_fetcher_->Poll(remaining_us);
+    int64 remaining_ms =
+        std::max(static_cast<int64>(0), end_ms - now_ms);
+    async_fetcher_->Poll(remaining_ms);
   }
   bool ret = false;
   if (!callback->done()) {

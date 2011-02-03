@@ -138,8 +138,8 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
       for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
            !callback->done() && now_ms - start_ms < max_ms;
            now_ms = timer.NowMs()) {
-        int64 remaining_us = max_ms - (now_ms - start_ms);
-        sub_resource_fetcher->Poll(remaining_us);
+        int64 remaining_ms = max_ms - (now_ms - start_ms);
+        sub_resource_fetcher->Poll(remaining_ms);
       }
 
       if (!callback->done()) {

@@ -63,7 +63,7 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
   // Note: if sim_delay <= 0, will report immediately at StreamingFetch
   DelayedFetcher(Timer* timer, MessageHandler* handler,
                  int64 sim_delay_ms, bool sim_success)
-      : timer_(timer), handler_(handler), sim_delay_(sim_delay_ms*1000),
+      : timer_(timer), handler_(handler), sim_delay_ms_(sim_delay_ms),
         sim_success_(sim_success) {
     CleanFetchSettings();
   }
@@ -78,10 +78,10 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
     response_headers_ = response_headers;
     response_writer_ = response_writer;
     callback_ = callback;
-    remaining_us_ = sim_delay_;
+    remaining_ms_ = sim_delay_ms_;
     fetch_pending_ = true;
 
-    if (remaining_us_ <= 0) {
+    if (remaining_ms_ <= 0) {
       ReportResult();
       return true;
     } else {
@@ -89,13 +89,13 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
     }
   }
 
-  virtual int Poll(int64 microseconds) {
+  virtual int Poll(int64 max_wait_ms) {
     if (fetch_pending_) {
-      int64 delay = std::min(microseconds, remaining_us_);
-      timer_->SleepUs(delay);
-      remaining_us_ -= delay;
+      int64 delay_ms = std::min(max_wait_ms, remaining_ms_);
+      timer_->SleepMs(delay_ms);
+      remaining_ms_ -= delay_ms;
 
-      if (remaining_us_ <= 0) {
+      if (remaining_ms_ <= 0) {
         ReportResult();
       }
     }
@@ -111,7 +111,7 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
     response_headers_ = NULL;
     response_writer_ = NULL;
     callback_ = NULL;
-    remaining_us_ = 0;
+    remaining_ms_ = 0;
   }
 
   void ReportResult() {
@@ -129,7 +129,7 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
   // Simulation settings:
   Timer* timer_;
   MessageHandler* handler_;
-  int64 sim_delay_;  // how long till we report the result
+  int64 sim_delay_ms_;  // how long till we report the result
   bool sim_success_;  // whether to report success or failure
 
   // Fetch session:
@@ -137,7 +137,7 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
   ResponseHeaders* response_headers_;
   Writer* response_writer_;
   Callback* callback_;  // callback for current fetch
-  int64 remaining_us_;  // how much time left to report result of current fetch
+  int64 remaining_ms_;  // how much time left to report result of current fetch
 };
 
 }  // namespace

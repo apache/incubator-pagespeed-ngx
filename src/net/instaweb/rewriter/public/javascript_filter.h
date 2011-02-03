@@ -93,7 +93,6 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
   inline void CompleteScriptInProgress();
   inline void RewriteInlineScript();
   inline void RewriteExternalScript();
-  inline Resource* ScriptAtUrl(const StringPiece& script_url);
   const StringPiece FlattenBuffer(std::string* script_buffer);
   bool WriteExternalScriptTo(const Resource* script_resource,
                              const StringPiece& script_out,

@@ -178,7 +178,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     size_t done_count = 0;
     while (!done && (now_ms < end_ms)) {
       int64 remaining_ms = end_ms - now_ms;
-      serf_url_async_fetcher_->Poll(1000 * remaining_ms);
+      serf_url_async_fetcher_->Poll(remaining_ms);
       done_count = 0;
       for (size_t idx = begin; idx < end; ++idx) {
         if (callbacks_[idx]->IsDone()) {

@@ -22,6 +22,8 @@
 #include <map>
 #include "base/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/pool.h"
+#include "net/instaweb/util/public/pool_element.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_pollable_async_fetcher.h"
 
@@ -49,8 +51,6 @@ struct SerfStats {
 
 class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
  public:
-  typedef std::list<SerfFetch*>::iterator FetchQueueEntry;
-
   SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
                       Statistics* statistics, Timer* timer, int64 timeout_ms);
   SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent, const char* proxy);
@@ -63,7 +63,7 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
                               MessageHandler* message_handler,
                               UrlAsyncFetcher::Callback* callback);
 
-  virtual int Poll(int64 microseconds);
+  virtual int Poll(int64 max_wait_ms);
 
   enum WaitChoice {
     kThreadedOnly,
@@ -85,9 +85,13 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   virtual int64 timeout_ms() { return timeout_ms_; }
 
  protected:
-  typedef std::list<SerfFetch*> FetchQueue;
+  typedef Pool<SerfFetch> SerfFetchPool;
+
   bool SetupProxy(const char* proxy);
-  size_t NumActiveFetches();
+  virtual bool AnyActiveFetches();
+  // This is approximate because it can under- or over-count
+  // for SerfThreadedFetcher (a subclass).
+  int ApproximateNumActiveFetches();
   void CancelOutstandingFetches();
   bool WaitForInProgressFetchesHelper(int64 max_ms,
                                       MessageHandler* message_handler);
@@ -95,13 +99,13 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   apr_pool_t* pool_;
   Timer* timer_;
 
-  // mutex_ protects serf_context_, active_fetches_, and active_fetch_map_.
+  // mutex_ protects serf_context_ and active_fetches_.
   AprMutex* mutex_;
   serf_context_t* serf_context_;
-  FetchQueue active_fetches_;
+  SerfFetchPool active_fetches_;
 
   typedef std::vector<SerfFetch*> FetchVector;
-  FetchVector completed_fetches_;
+  SerfFetchPool completed_fetches_;
   SerfThreadedFetcher* threaded_fetcher_;
 
   // This is protected because it's updated along with active_fetches_,

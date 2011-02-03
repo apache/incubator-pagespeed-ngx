@@ -18,12 +18,22 @@
 
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 
+#include <algorithm>
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
+
+namespace {
+
+// We encode the input timestamp under this header
+const char kInputTimestampKey[] = "RewriteSingleResourceFilter_InputTimestamp";
+
+}  // namespace
 
 namespace net_instaweb {
 
@@ -57,17 +67,35 @@ class RewriteSingleResourceFilter::FetchCallback
       success = filter_->RewriteLoadedResource(input_resource_.get(),
                                                output_resource_);
     }
+
     if (success) {
-      // Copy headers and content to HTTP response.
-      // TODO(sligocki): It might be worth streaming this.
-      response_headers_->CopyFrom(*output_resource_->metadata());
-      response_writer_->Write(output_resource_->contents(), handler_);
+      WriteFromResource(output_resource_);
+    } else {
+      // Rewrite failed. If we have the original, write it out instead.
+      if (input_resource_->ContentsValid()) {
+        WriteFromResource(input_resource_.get());
+        success = true;
+      } else {
+        // If not, log the failure.
+        std::string url = input_resource_.get()->url();
+        handler_->Error(
+            output_resource_->name().as_string().c_str(), 0,
+            "Resource based on %s but cannot find the original", url.c_str());
+      }
     }
+
     base_callback_->Done(success);
     delete this;
   }
 
  private:
+  void WriteFromResource(Resource* resource) {
+    // Copy headers and content to HTTP response.
+    // TODO(sligocki): It might be worth streaming this.
+    response_headers_->CopyFrom(*resource->metadata());
+    response_writer_->Write(resource->contents(), handler_);
+  }
+
   RewriteSingleResourceFilter* filter_;
   scoped_ptr<Resource> input_resource_;
   OutputResource* output_resource_;
@@ -92,7 +120,7 @@ bool RewriteSingleResourceFilter::Fetch(
           resource_manager_->url_escaper(), output_resource,
           driver_->options(), message_handler);
   if (input_resource != NULL) {
-    // Callback takes ownership of input_resoruce.
+    // Callback takes ownership of input_resource.
     FetchCallback* fetch_callback = new FetchCallback(
         this, input_resource, output_resource,
         response_headers, response_writer, message_handler, base_callback);
@@ -105,6 +133,96 @@ bool RewriteSingleResourceFilter::Fetch(
     message_handler->Error(url.c_str(), 0, "Unable to decode resource string");
   }
   return ret;
+}
+
+OutputResource::CachedResult* RewriteSingleResourceFilter::RewriteWithCaching(
+    const StringPiece& in_url, UrlSegmentEncoder* encoder) {
+
+  scoped_ptr<Resource> input_resource(CreateInputResource(in_url));
+  if (input_resource.get() == NULL) {
+    return NULL;
+  }
+
+  return RewriteResourceWithCaching(input_resource.get(), encoder);
+}
+
+OutputResource::CachedResult*
+RewriteSingleResourceFilter::RewriteResourceWithCaching(
+    Resource* input_resource, UrlSegmentEncoder* encoder) {
+  MessageHandler* handler = html_parse_->message_handler();
+
+  scoped_ptr<OutputResource> output_resource(
+      resource_manager_->CreateOutputResourceFromResource(
+          filter_prefix_, NULL, encoder, input_resource,
+          driver_->options(), handler));
+  if (output_resource.get() == NULL) {
+    return NULL;
+  }
+
+  // See if we already have the result.
+  if (output_resource->cached_result() != NULL) {
+    OutputResource::CachedResult* cached =
+        output_resource->ReleaseCachedResult();
+
+    // We may need to freshen here.. Note that we check the metadata we have in
+    // cached result and not the actual input resource since we've not read
+    // the latter and so don't have any metadata for it.
+    int64 input_timestamp_ms = 0;
+    std::string input_timestamp_value;
+    if (cached->Remembered(kInputTimestampKey, &input_timestamp_value) &&
+        StringToInt64(input_timestamp_value, &input_timestamp_ms)) {
+      if (resource_manager_->IsImminentlyExpiring(
+              input_timestamp_ms, cached->origin_expiration_time_ms())) {
+        input_resource->Freshen(handler);
+      }
+    }
+
+    return cached;
+  }
+
+  HTTPCache::FindResult input_state =
+      resource_manager_->ReadIfCachedWithStatus(input_resource, handler);
+  if (input_state == HTTPCache::kNotFound) {
+    // The resource has not finished fetching yet; so the caller can't
+    // rewrite but there is nothing for us to cache.
+    // TODO(morlovich): This is inaccurate with synchronous fetchers
+    // the first time we get a 404.
+    return NULL;
+  }
+
+  bool ok;
+  if (input_state == HTTPCache::kFound) {
+    // Remember input timestamp in the cached result to know when to freshen.
+    OutputResource::CachedResult* result =
+        output_resource->EnsureCachedResultCreated();
+    int64 time_ms = input_resource->metadata()->timestamp_ms();
+    result->SetRemembered(kInputTimestampKey, Integer64ToString(time_ms));
+
+    ok = RewriteLoadedResource(input_resource, output_resource.get());
+    if (ok) {
+      CHECK(output_resource->type() != NULL);
+    }
+  } else {
+    DCHECK_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch, input_state);
+    ok = false;
+    handler->Message(kInfo, "%s: Couldn't fetch resource %s to rewrite.",
+                     base_gurl().spec().c_str(), input_resource->url().c_str());
+  }
+
+  if (!ok) {
+    // Either we couldn't rewrite this successfully or the input file plain
+    // isn't there. If so, do not try again until the input file expires
+    // or a minimal TTL has passed.
+    int64 now_ms = resource_manager_->timer()->NowMs();
+    int64 expire_at = std::max(now_ms + ResponseHeaders::kImplicitCacheTtlMs,
+                               input_resource->CacheExpirationTimeMs());
+    resource_manager_->WriteUnoptimizable(output_resource.get(), expire_at,
+                                          handler);
+  }
+
+  // Note: we want to return this even if optimization failed in case the filter
+  // has stashed some useful information about the input.
+  return output_resource->ReleaseCachedResult();
 }
 
 }  // namespace net_instaweb

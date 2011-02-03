@@ -205,27 +205,6 @@ OutputResource* ResourceManager::CreateOutputResourceFromResource(
   return result;
 }
 
-OutputResource* ResourceManager::CreateOutputResourceForRewrittenUrl(
-    const GURL& document_gurl,
-    const StringPiece& filter_prefix,
-    const StringPiece& resource_url,
-    const ContentType* content_type,
-    UrlSegmentEncoder* encoder,
-    const RewriteOptions* rewrite_options,
-    MessageHandler* handler) {
-  OutputResource* output_resource = NULL;
-  UrlPartnership partnership(rewrite_options, document_gurl);
-  if (partnership.AddUrl(resource_url, handler)) {
-    std::string base = partnership.ResolvedBase();
-    std::string relative_url = partnership.RelativePath(0);
-    std::string name;
-    encoder->EncodeToUrlSegment(relative_url, &name);
-    output_resource = CreateOutputResourceWithPath(
-        base, filter_prefix, name, content_type, rewrite_options, handler);
-  }
-  return output_resource;
-}
-
 OutputResource* ResourceManager::CreateOutputResourceWithPath(
     const StringPiece& path,
     const StringPiece& filter_prefix,
@@ -535,34 +514,41 @@ void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
   output->SaveCachedResult(name_key, handler);
 }
 
-void ResourceManager::RefreshImminentlyExpiringResource(
-    Resource* resource, MessageHandler* handler) const {
+bool ResourceManager::IsImminentlyExpiring(int64 start_date_ms,
+                                           int64 expire_ms) const {
   // Consider a resource with 5 minute expiration time (the default
   // assumed by mod_pagespeed when a potentialy cacheable resource
   // lacks a cache control header, which happens a lot).  If the
-  // origin TTL was 5 minutes and 4 minutes have expired, then re-fetch
-  // it so that we can avoid expiring the data.
+  // origin TTL was 5 minutes and 4 minutes have expired, then we want
+  // to re-fetch it so that we can avoid expiring the data.
   //
   // If we don't do this, then every 5 minutes, someone will see
   // this page unoptimized.  In a site with very low QPS, including
   // test instances of a site, this can happen quite often.
+  int64 now_ms = timer()->NowMs();
+  int64 ttl_ms = expire_ms - start_date_ms;
+  // Only proactively refresh resources that have at least our
+  // default expiration of 5 minutes.
+  //
+  // TODO(jmaessen): Lower threshold when If-Modified-Since checking is in
+  // place; consider making this settable.
+  if (ttl_ms >= ResponseHeaders::kImplicitCacheTtlMs) {
+    int64 elapsed_ms = now_ms - start_date_ms;
+    if ((elapsed_ms * 100) >= (kRefreshExpirePercent * ttl_ms)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void ResourceManager::RefreshIfImminentlyExpiring(
+    Resource* resource, MessageHandler* handler) const {
   if (!http_cache_->force_caching() && resource->IsCacheable()) {
-    int64 now_ms = timer()->NowMs();
     const ResponseHeaders* headers = resource->metadata();
     int64 start_date_ms = headers->timestamp_ms();
     int64 expire_ms = headers->CacheExpirationTimeMs();
-    int64 ttl_ms = expire_ms - start_date_ms;
-
-    // Only proactively refresh resources that have at least our
-    // default expiration of 5 minutes.
-    //
-    // TODO(jmaessen): Lower threshold when If-Modified-Since checking is in
-    // place; consider making this settable.
-    if (ttl_ms >= ResponseHeaders::kImplicitCacheTtlMs) {
-      int64 elapsed_ms = now_ms - start_date_ms;
-      if ((elapsed_ms * 100) >= (kRefreshExpirePercent * ttl_ms)) {
-        resource->Freshen(handler);
-      }
+    if (IsImminentlyExpiring(start_date_ms, expire_ms)) {
+      resource->Freshen(handler);
     }
   }
 }
@@ -583,7 +569,7 @@ void ResourceManager::ReadAsync(Resource* resource,
 
   switch (result) {
     case HTTPCache::kFound:
-      RefreshImminentlyExpiringResource(resource, handler);
+      RefreshIfImminentlyExpiring(resource, handler);
       callback->Done(true, resource);
       break;
     case HTTPCache::kRecentFetchFailedDoNotRefetch:
@@ -609,6 +595,11 @@ void ResourceManager::ReadAsync(Resource* resource,
 
 bool ResourceManager::ReadIfCached(Resource* resource,
                                    MessageHandler* handler) const {
+  return ReadIfCachedWithStatus(resource, handler) == HTTPCache::kFound;
+}
+
+HTTPCache::FindResult ResourceManager::ReadIfCachedWithStatus(
+    Resource* resource, MessageHandler* handler) const {
   HTTPCache::FindResult result = HTTPCache::kNotFound;
 
   // If the resource is not already loaded, and this type of resource (e.g.
@@ -624,10 +615,9 @@ bool ResourceManager::ReadIfCached(Resource* resource,
   }
   if (result == HTTPCache::kFound) {
     resource->DetermineContentType();
-    RefreshImminentlyExpiringResource(resource, handler);
-    return true;
+    RefreshIfImminentlyExpiring(resource, handler);
   }
-  return false;
+  return result;
 }
 
 }  // namespace net_instaweb
