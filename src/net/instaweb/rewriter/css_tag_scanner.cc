@@ -26,11 +26,12 @@
 #include "net/instaweb/util/public/writer.h"
 
 namespace {
-const char kStylesheet[] = "stylesheet";
 const char kTextCss[] = "text/css";
 }
 
 namespace net_instaweb {
+
+const char CssTagScanner::kStylesheet[] = "stylesheet";
 
 // Finds CSS files and calls another filter.
 CssTagScanner::CssTagScanner(HtmlParse* html_parse) {
@@ -41,7 +42,6 @@ CssTagScanner::CssTagScanner(HtmlParse* html_parse) {
   s_media_ = html_parse->Intern("media");
 }
 
-// TODO(jmarantz): add test for this method to css_tag_scanner_test.cc
 bool CssTagScanner::ParseCssElement(
     HtmlElement* element, HtmlElement::Attribute** href, const char** media) {
   int num_required_attributes_found = 0;

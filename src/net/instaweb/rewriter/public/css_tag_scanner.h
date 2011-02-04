@@ -31,6 +31,8 @@ namespace net_instaweb {
 
 class CssTagScanner {
  public:
+  static const char kStylesheet[];
+
   explicit CssTagScanner(HtmlParse* html_parse);
 
   // Examines an HTML element to determine if it's a CSS link,
