@@ -255,7 +255,12 @@ void UrlInputResource::LoadAndCallback(AsyncCallback* callback,
 
 void UrlInputResource::Freshen(MessageHandler* handler) {
   // TODO(jmarantz): use if-modified-since
-  Load(handler);
+  // For now this is much like Load(), except we do not
+  // touch our value, but just the cache
+  HTTPCache* http_cache = resource_manager()->http_cache();
+  UrlReadIfCachedCallback* cb = new UrlReadIfCachedCallback(
+      url_, http_cache, resource_manager(), rewrite_options_);
+  cb->Fetch(resource_manager_->url_async_fetcher(), handler);
 }
 
 }  // namespace net_instaweb

@@ -236,7 +236,11 @@ class ResourceManagerTest : public ResourceManagerTestBase {
         resource_manager_->CreateInputResource(
             GURL(kResourceUrlBase), kResourceUrlPath,
             &options_, &message_handler_));
-    return resource_manager_->ReadIfCached(resource.get(), &message_handler_);
+    bool ok = resource_manager_->ReadIfCached(resource.get(),
+                                              &message_handler_);
+    // Should not damage resources when freshening
+    EXPECT_FALSE(ok && !resource->loaded());
+    return ok;
   }
 
   // Makes an output resource corresponding to given input resource of
