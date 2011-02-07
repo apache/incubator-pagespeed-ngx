@@ -78,6 +78,17 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   OutputResource::CachedResult* RewriteWithCaching(const StringPiece& in_url,
                                                    UrlSegmentEncoder* encoder);
 
+  // RewriteSingleResourceFilter will make sure to disregard any written
+  // cache data with a version number different from what this method returns.
+  //
+  // Filters should increase this version when they add some new
+  // metadata they rely on to do proper optimization or when
+  // the quality of their optimization has increased significantly from
+  // previous version.
+  //
+  // The default implementation returns 0.
+  virtual int FilterCacheFormatVersion() const;
+
   // Derived classes must implement this function instead of Fetch.
   //
   // If rewrite succeeds, make sure to call ResourceManager::Write and
@@ -90,6 +101,11 @@ class RewriteSingleResourceFilter : public RewriteFilter {
  private:
   class FetchCallback;
   friend class RewriteSingleResourceFilterTest;
+
+  // Check and record whether metadata version matches
+  // FilterCacheFormatVersion() respectively.
+  bool IsValidCacheFormat(OutputResource::CachedResult* cached);
+  void UpdateCacheFormat(OutputResource* output_resource);
 
   // Metadata key we use to store the input timestamp.
   static const char kInputTimestampKey[];

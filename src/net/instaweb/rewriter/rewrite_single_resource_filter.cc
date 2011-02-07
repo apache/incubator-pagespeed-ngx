@@ -30,6 +30,14 @@
 
 namespace net_instaweb {
 
+namespace {
+
+//  We encode filter's cache format key version under this key.
+const char kVersionKey[] = "RewriteSingleResourceFilter_CacheVer";
+
+}  // namespace
+
+// ... and the input timestamp under this key.
 const char RewriteSingleResourceFilter::kInputTimestampKey[] =
     "RewriteSingleResourceFilter_InputTimestamp";
 
@@ -144,12 +152,17 @@ OutputResource::CachedResult* RewriteSingleResourceFilter::RewriteWithCaching(
   return RewriteResourceWithCaching(input_resource.get(), encoder);
 }
 
+int RewriteSingleResourceFilter::FilterCacheFormatVersion() const {
+  return 0;
+}
+
 bool RewriteSingleResourceFilter::RewriteLoadedResourceAndCacheIfOk(
     const Resource* input_resource, OutputResource* output_resource) {
   OutputResource::CachedResult* result =
       output_resource->EnsureCachedResultCreated();
   int64 time_ms = input_resource->metadata()->timestamp_ms();
   result->SetRemembered(kInputTimestampKey, Integer64ToString(time_ms));
+  UpdateCacheFormat(output_resource);
   bool ok = RewriteLoadedResource(input_resource, output_resource);
   if (ok) {
     CHECK(output_resource->type() != NULL);
@@ -166,6 +179,7 @@ void RewriteSingleResourceFilter::CacheRewriteFailure(
   int64 now_ms = resource_manager_->timer()->NowMs();
   int64 expire_at_ms = std::max(now_ms + ResponseHeaders::kImplicitCacheTtlMs,
                                 input_resource->CacheExpirationTimeMs());
+  UpdateCacheFormat(output_resource);
   resource_manager_->WriteUnoptimizable(output_resource, expire_at_ms, handler);
 }
 
@@ -183,7 +197,8 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
   }
 
   // See if we already have the result.
-  if (output_resource->cached_result() != NULL) {
+  if (output_resource->cached_result() != NULL &&
+      IsValidCacheFormat(output_resource->cached_result())) {
     OutputResource::CachedResult* cached =
         output_resource->ReleaseCachedResult();
 
@@ -231,6 +246,26 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
   // Note: we want to return this even if optimization failed in case the filter
   // has stashed some useful information about the input.
   return output_resource->ReleaseCachedResult();
+}
+
+bool RewriteSingleResourceFilter::IsValidCacheFormat(
+    OutputResource::CachedResult* cached) {
+  int target_version = FilterCacheFormatVersion();
+
+  std::string actual_version_str;
+  int actual_version;
+  return cached->Remembered(kVersionKey, &actual_version_str) &&
+         StringToInt(actual_version_str, &actual_version) &&
+         actual_version == target_version;
+}
+
+void RewriteSingleResourceFilter::UpdateCacheFormat(
+    OutputResource* output_resource) {
+  int version = FilterCacheFormatVersion();
+
+  OutputResource::CachedResult* result =
+      output_resource->EnsureCachedResultCreated();
+  result->SetRemembered(kVersionKey, IntegerToString(version));
 }
 
 }  // namespace net_instaweb

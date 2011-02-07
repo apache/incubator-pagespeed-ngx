@@ -44,6 +44,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
  public:
   TestRewriter(RewriteDriver* driver)
       : RewriteSingleResourceFilter(driver, kTestFilterPrefix),
+        format_version_(0),
         num_cached_results_(0),
         num_optimizable_(0),
         num_rewrites_called_(0) {
@@ -76,6 +77,9 @@ class TestRewriter : public RewriteSingleResourceFilter {
   // How many times resource was known optimizable when rewriting
   int num_optimizable() const { return num_optimizable_; }
 
+  // Changes which file format we advertize
+  void set_format_version(int ver) { format_version_ = ver; }
+
  protected:
   virtual bool RewriteLoadedResource(const Resource* input_resource,
                                      OutputResource* output_resource) {
@@ -96,6 +100,10 @@ class TestRewriter : public RewriteSingleResourceFilter {
         html_parse_->message_handler());
   }
 
+  int FilterCacheFormatVersion() const {
+    return format_version_;
+  }
+
  private:
   void TryRewrite(HtmlElement::Attribute* src) {
     scoped_ptr<OutputResource::CachedResult> result(
@@ -110,6 +118,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
     }
   }
 
+  int format_version_;
   int num_cached_results_;
   int num_optimizable_;
   int num_rewrites_called_;
@@ -212,6 +221,68 @@ TEST_F(RewriteSingleResourceFilterTest, BasicOperation) {
   EXPECT_EQ(1, filter_->num_rewrites_called());
   EXPECT_EQ(3, filter_->num_cached_results());
   EXPECT_EQ(3, filter_->num_optimizable());
+}
+
+TEST_F(RewriteSingleResourceFilterTest, VersionChange) {
+  std::string in = StrCat(in_tag_, in_tag_, in_tag_);
+  std::string out = StrCat(out_tag_, out_tag_, out_tag_);
+  ValidateExpected("vc1", in, out);
+
+  // Should only have to rewrite once here
+  EXPECT_EQ(1, filter_->num_rewrites_called());
+  EXPECT_EQ(3, filter_->num_cached_results());
+  EXPECT_EQ(3, filter_->num_optimizable());
+
+  // The next attempt should still use cache
+  ValidateExpected("vc2", in, out);
+  EXPECT_EQ(1, filter_->num_rewrites_called());
+
+  // Now pretend to have upgraded --- this should dump the cache
+  filter_->set_format_version(42);
+  ValidateExpected("vc3", in, out);
+  EXPECT_EQ(2, filter_->num_rewrites_called());
+
+  // And now we're caching again
+  ValidateExpected("vc4", in, out);
+  EXPECT_EQ(2, filter_->num_rewrites_called());
+
+  // Downgrade. Should dump the cache, too
+  filter_->set_format_version(21);
+  ValidateExpected("vc5", in, out);
+  EXPECT_EQ(3, filter_->num_rewrites_called());
+
+  // And now we're caching again
+  ValidateExpected("vc6", in, out);
+  EXPECT_EQ(3, filter_->num_rewrites_called());
+}
+
+// We should re-check bad resources when version number changes.
+TEST_F(RewriteSingleResourceFilterTest, VersionChangeBad) {
+  std::string in_tag = "<tag src=\"bad.tst\"></tag>";
+  ValidateNoChanges("vc.bad", in_tag);
+  EXPECT_EQ(1, filter_->num_rewrites_called());
+
+  // cached with old version
+  ValidateNoChanges("vc.bad2", in_tag);
+  EXPECT_EQ(1, filter_->num_rewrites_called());
+
+  // upgraded -- retried
+  filter_->set_format_version(42);
+  ValidateNoChanges("vc.bad3", in_tag);
+  EXPECT_EQ(2, filter_->num_rewrites_called());
+
+  // And now cached again
+  ValidateNoChanges("vc.bad4", in_tag);
+  EXPECT_EQ(2, filter_->num_rewrites_called());
+
+  // downgrade -- retried.
+  filter_->set_format_version(21);
+  ValidateNoChanges("vc.bad5", in_tag);
+  EXPECT_EQ(3, filter_->num_rewrites_called());
+
+  // And now cached again
+  ValidateNoChanges("vc.bad6", in_tag);
+  EXPECT_EQ(3, filter_->num_rewrites_called());
 }
 
 TEST_F(RewriteSingleResourceFilterTest, BasicAsync) {
@@ -369,6 +440,22 @@ TEST_F(RewriteSingleResourceFilterTest, FetchGoodCache2) {
       CachedResultForInput("a.tst"));
   ASSERT_TRUE(cached.get() != NULL);
   EXPECT_TRUE(HasTimestamp(cached.get()));
+}
+
+// Regression test: Fetch() should update cache version, too.
+// TODO(morlovich): We want to run the entire test with different
+// version, but the Google Test version we depend on is too old to have
+// ::testing::WithParamInterface<int>
+TEST_F(RewriteSingleResourceFilterTest, FetchFirstVersioned) {
+  filter_->set_format_version(1);
+  std::string out;
+  ASSERT_TRUE(ServeRelativeUrl(OutputName("a.tst"), &out));
+  EXPECT_EQ("goodgood", out);
+  EXPECT_EQ(1, filter_->num_rewrites_called());
+
+  ValidateExpected("reused_cached", StrCat(in_tag_, in_tag_, in_tag_),
+                   StrCat(out_tag_, out_tag_, out_tag_));
+  EXPECT_EQ(1, filter_->num_rewrites_called());
 }
 
 // Failure path #1: fetch of a URL we refuse to rewrite. Should return

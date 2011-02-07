@@ -71,6 +71,7 @@
         'htmlparse/html_filter.cc',
         'htmlparse/html_keywords.cc',
         'htmlparse/html_lexer.cc',
+        'htmlparse/html_name.cc',
         'htmlparse/html_node.cc',
         'htmlparse/html_parse.cc',
         'htmlparse/html_writer_filter.cc',

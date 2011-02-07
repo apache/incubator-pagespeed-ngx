@@ -90,7 +90,13 @@ void BackslashEscape(const StringPiece& src,
                      const StringPiece& to_escape,
                      std::string* dest);
 
+// TODO(jmarantz): Eliminate these definitions of HasPrefixString,
+// UpperString, and LowerString, and re-add dependency on protobufs
+// which also provide definitions for these.
+
 bool HasPrefixString(const StringPiece& str, const StringPiece& prefix);
+
+void UpperString(std::string* str);
 
 void LowerString(std::string* str);
 
@@ -101,6 +107,29 @@ inline bool OnlyWhitespace(const std::string& str) {
 int GlobalReplaceSubstring(const StringPiece& substring,
                            const StringPiece& replacement,
                            std::string* s);
+
+
+// See also: ./src/third_party/css_parser/src/strings/ascii_ctype.h
+// We probably don't want our core string header file to have a
+// dependecy on the Google CSS parser, so for now we'll write this here:
+
+// upper-case a single character and return it.
+// toupper() changes based on locale.  We don't want this!
+inline char UpperChar(char c) {
+  if ((c >= 'a') && (c <= 'z')) {
+    c += 'A' - 'a';
+  }
+  return c;
+}
+
+// lower-case a single character and return it.
+// tolower() changes based on locale.  We don't want this!
+inline char LowerChar(char c) {
+  if ((c >= 'A') && (c <= 'Z')) {
+    c += 'a' - 'A';
+  }
+  return c;
+}
 
 inline char* strdup(const char* str) {
   return base::strdup(str);

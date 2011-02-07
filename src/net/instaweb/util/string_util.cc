@@ -74,6 +74,23 @@ void BackslashEscape(const StringPiece& src,
   }
 }
 
+// From src/third_party/protobuf2/src/src/google/protobuf/stubs/strutil.h
+// but we don't need any other aspect of protobufs so we don't want to
+// incur the link cost.
+void LowerString(std::string* s) {
+  std::string::iterator end = s->end();
+  for (std::string::iterator i = s->begin(); i != end; ++i) {
+    *i = LowerChar(*i);
+  }
+}
+
+void UpperString(std::string* s) {
+  std::string::iterator end = s->end();
+  for (std::string::iterator i = s->begin(); i != end; ++i) {
+    *i = UpperChar(*i);
+  }
+}
+
 bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2) {
   return (s1.size() == s2.size() &&
           0 == strncasecmp(s1.data(), s2.data(), s1.size()));
@@ -125,17 +142,6 @@ void ParseShellLikeString(const StringPiece& input,
     else {
       ++index;
     }
-  }
-}
-
-// From src/third_party/protobuf2/src/src/google/protobuf/stubs/strutil.h
-// but we don't need any other aspect of protobufs so we don't want to
-// incur the link cost.
-void LowerString(std::string* s) {
-  std::string::iterator end = s->end();
-  for (std::string::iterator i = s->begin(); i != end; ++i) {
-    // tolower() changes based on locale.  We don't want this!
-    if ('A' <= *i && *i <= 'Z') *i += 'a' - 'A';
   }
 }
 

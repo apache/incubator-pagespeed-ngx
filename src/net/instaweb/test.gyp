@@ -60,6 +60,7 @@
         'apache/mem_debug.cc',
         'apache/serf_url_async_fetcher_test.cc',
         'htmlparse/html_keywords_test.cc',
+        'htmlparse/html_name_test.cc',
         'htmlparse/html_parse_test.cc',
         'htmlparse/html_parse_test_base.cc',
         'http/cache_fetcher_test.cc',
