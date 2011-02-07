@@ -80,7 +80,13 @@ class OutputResource : public Resource {
     void set_origin_expiration_time_ms(int64 time) {
       origin_expiration_time_ms_ = time;
     }
+    void set_frozen(bool f) { frozen_ = f; }
 
+    // Changes to custom metadata by clients done after we are written to
+    // cache are lost, and it's extremely easy to get it wrong. To catch
+    // mistakes like that, we mark a CachedResult as 'frozen' upon save,
+    // and DCHECK any SetRemembered calls.
+    bool frozen_;
     bool optimizable_;
     std::string url_;
     int64 origin_expiration_time_ms_;

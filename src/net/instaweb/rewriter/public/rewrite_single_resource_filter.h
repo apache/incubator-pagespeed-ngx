@@ -80,6 +80,22 @@ class RewriteSingleResourceFilter : public RewriteFilter {
 
  private:
   class FetchCallback;
+  friend class RewriteSingleResourceFilterTest;
+
+  // Metadata key we use to store the input timestamp.
+  static const char kInputTimestampKey[];
+
+  // Tries to rewrite input_resource to output_resource, and if successful
+  // updates the cache as appropriate. Does not call WriteUnoptimizable on
+  // failure.
+  bool RewriteLoadedResourceAndCacheIfOk(const Resource* input_resource,
+                                         OutputResource* output_resource);
+
+  // Records that rewrite of input -> output failed (either due to
+  // unavailability of input or failed conversion).
+  void CacheRewriteFailure(const Resource* input_resource,
+                           OutputResource* output_resource,
+                           MessageHandler* message_handler);
 
   DISALLOW_COPY_AND_ASSIGN(RewriteSingleResourceFilter);
 };

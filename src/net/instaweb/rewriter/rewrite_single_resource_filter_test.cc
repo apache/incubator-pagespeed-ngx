@@ -16,6 +16,7 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -116,7 +117,9 @@ class TestRewriter : public RewriteSingleResourceFilter {
   Atom s_src_;
 };
 
-class SingleResourceRewriteFilterTest : public ResourceManagerTestBase {
+}  // namespace
+
+class RewriteSingleResourceFilterTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
@@ -160,6 +163,26 @@ class SingleResourceRewriteFilterTest : public ResourceManagerTestBase {
     return ServeResourceUrl(StrCat(kTestDomain, rel_path), content);
   }
 
+  // Transfers ownership and may return NULL.
+  OutputResource::CachedResult* CachedResultForInput(const char* url) {
+    scoped_ptr<Resource> input_resource(
+      resource_manager_->CreateInputResource(
+        GURL(kTestDomain), url, &options_, &message_handler_));
+    EXPECT_TRUE(input_resource.get() != NULL);
+    scoped_ptr<OutputResource> output_resource(
+        filter_->CreateOutputResourceFromResource(
+            &kContentTypeText, resource_manager_->url_escaper(),
+            input_resource.get()));
+    EXPECT_TRUE(output_resource.get() != NULL);
+    return output_resource->ReleaseCachedResult();
+  }
+
+  bool HasTimestamp(const OutputResource::CachedResult* cached) {
+    std::string timestamp_val;
+    return cached->Remembered(RewriteSingleResourceFilter::kInputTimestampKey,
+                              &timestamp_val);
+  }
+
   CountingUrlAsyncFetcher* SetupCountingFetcher() {
     CountingUrlAsyncFetcher* counter =
         new CountingUrlAsyncFetcher(&mock_url_async_fetcher_);
@@ -181,7 +204,7 @@ class SingleResourceRewriteFilterTest : public ResourceManagerTestBase {
   TestRewriter* filter_;  // owned by the rewrite_driver_.
 };
 
-TEST_F(SingleResourceRewriteFilterTest, BasicOperation) {
+TEST_F(RewriteSingleResourceFilterTest, BasicOperation) {
   ValidateExpected("basic1", StrCat(in_tag_, in_tag_, in_tag_),
                    StrCat(out_tag_, out_tag_, out_tag_));
 
@@ -191,7 +214,7 @@ TEST_F(SingleResourceRewriteFilterTest, BasicOperation) {
   EXPECT_EQ(3, filter_->num_optimizable());
 }
 
-TEST_F(SingleResourceRewriteFilterTest, BasicAsync) {
+TEST_F(RewriteSingleResourceFilterTest, BasicAsync) {
   scoped_ptr<WaitUrlAsyncFetcher> delayer(SetupWaitFetcher());
 
   // First fetch should not rewrite since resources haven't loaded yet
@@ -206,7 +229,7 @@ TEST_F(SingleResourceRewriteFilterTest, BasicAsync) {
   EXPECT_EQ(1, filter_->num_rewrites_called());
 }
 
-TEST_F(SingleResourceRewriteFilterTest, CacheBad) {
+TEST_F(RewriteSingleResourceFilterTest, CacheBad) {
   std::string in_tag = "<tag src=\"bad.tst\"></tag>";
   std::string out_tag = in_tag;
   ValidateExpected("cache.bad", StrCat(in_tag, in_tag, in_tag),
@@ -218,7 +241,7 @@ TEST_F(SingleResourceRewriteFilterTest, CacheBad) {
   EXPECT_EQ(0, filter_->num_optimizable());
 }
 
-TEST_F(SingleResourceRewriteFilterTest, Cache404) {
+TEST_F(RewriteSingleResourceFilterTest, Cache404) {
   // 404s should come up as unoptimizable as well.
   std::string in_tag = "<tag src=\"404.tst\"></tag>";
   std::string out_tag = in_tag;
@@ -233,12 +256,12 @@ TEST_F(SingleResourceRewriteFilterTest, Cache404) {
   EXPECT_EQ(0, filter_->num_optimizable());
 }
 
-TEST_F(SingleResourceRewriteFilterTest, InvalidUrl) {
+TEST_F(RewriteSingleResourceFilterTest, InvalidUrl) {
   // Make sure we don't have problems with bad URLs.
   ValidateNoChanges("bad_url", "<tag src=\"http://evil.com\"></tag>");
 }
 
-TEST_F(SingleResourceRewriteFilterTest, CacheExpire) {
+TEST_F(RewriteSingleResourceFilterTest, CacheExpire) {
   // Make sure we don't cache past the TTL.
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
@@ -261,7 +284,7 @@ TEST_F(SingleResourceRewriteFilterTest, CacheExpire) {
   EXPECT_EQ(2, filter_->num_optimizable());
 }
 
-TEST_F(SingleResourceRewriteFilterTest, CacheNoFreshen) {
+TEST_F(RewriteSingleResourceFilterTest, CacheNoFreshen) {
   scoped_ptr<CountingUrlAsyncFetcher> counter(SetupCountingFetcher());
 
   // Start with non-zero time
@@ -280,7 +303,7 @@ TEST_F(SingleResourceRewriteFilterTest, CacheNoFreshen) {
   EXPECT_EQ(2, counter->fetch_count());
 }
 
-TEST_F(SingleResourceRewriteFilterTest, CacheFreshen) {
+TEST_F(RewriteSingleResourceFilterTest, CacheFreshen) {
   scoped_ptr<CountingUrlAsyncFetcher> counter(SetupCountingFetcher());
 
   // Start with non-zero time
@@ -312,7 +335,7 @@ TEST_F(SingleResourceRewriteFilterTest, CacheFreshen) {
 }
 
 // Make sure that fetching normal content works
-TEST_F(SingleResourceRewriteFilterTest, FetchGood) {
+TEST_F(RewriteSingleResourceFilterTest, FetchGood) {
   std::string out;
   ASSERT_TRUE(ServeRelativeUrl(OutputName("a.tst"), &out));
   EXPECT_EQ("goodgood", out);
@@ -320,7 +343,7 @@ TEST_F(SingleResourceRewriteFilterTest, FetchGood) {
 }
 
 // Variants of above that also test caching between fetch & rewrite paths
-TEST_F(SingleResourceRewriteFilterTest, FetchGoodCache1) {
+TEST_F(RewriteSingleResourceFilterTest, FetchGoodCache1) {
   ValidateExpected("compute_cached", StrCat(in_tag_, in_tag_, in_tag_),
                    StrCat(out_tag_, out_tag_, out_tag_));
   EXPECT_EQ(1, filter_->num_rewrites_called());
@@ -331,7 +354,7 @@ TEST_F(SingleResourceRewriteFilterTest, FetchGoodCache1) {
   EXPECT_EQ(1, filter_->num_rewrites_called());
 }
 
-TEST_F(SingleResourceRewriteFilterTest, FetchGoodCache2) {
+TEST_F(RewriteSingleResourceFilterTest, FetchGoodCache2) {
   std::string out;
   ASSERT_TRUE(ServeRelativeUrl(OutputName("a.tst"), &out));
   EXPECT_EQ("goodgood", out);
@@ -340,27 +363,46 @@ TEST_F(SingleResourceRewriteFilterTest, FetchGoodCache2) {
   ValidateExpected("reused_cached", StrCat(in_tag_, in_tag_, in_tag_),
                    StrCat(out_tag_, out_tag_, out_tag_));
   EXPECT_EQ(1, filter_->num_rewrites_called());
+
+  // Make sure the above also cached the timestamp
+  scoped_ptr<OutputResource::CachedResult> cached(
+      CachedResultForInput("a.tst"));
+  ASSERT_TRUE(cached.get() != NULL);
+  EXPECT_TRUE(HasTimestamp(cached.get()));
 }
 
 // Failure path #1: fetch of a URL we refuse to rewrite. Should return
 // unchanged
-TEST_F(SingleResourceRewriteFilterTest, FetchRewriteFailed) {
+TEST_F(RewriteSingleResourceFilterTest, FetchRewriteFailed) {
+  scoped_ptr<CountingUrlAsyncFetcher> counter(SetupCountingFetcher());
+
   std::string out;
   ASSERT_TRUE(ServeRelativeUrl(OutputName("bad.tst"), &out));
   EXPECT_EQ("bad", out);
+  EXPECT_EQ(1, filter_->num_rewrites_called());
+  EXPECT_EQ(1, counter->fetch_count());
+
+  // Make sure the above also cached the failure.
+  ValidateNoChanges("postfetch.bad", "<tag src=\"bad.tst\"></tag>");
+  EXPECT_EQ(1, filter_->num_rewrites_called());
+  EXPECT_EQ(1, counter->fetch_count());
 }
 
 // Rewriting a 404 however propagates error
-TEST_F(SingleResourceRewriteFilterTest, Fetch404) {
+TEST_F(RewriteSingleResourceFilterTest, Fetch404) {
   std::string out;
   ASSERT_FALSE(ServeRelativeUrl(OutputName("404.tst"), &out));
+
+  // Make sure the above also cached the failure.
+  scoped_ptr<OutputResource::CachedResult> cached(
+      CachedResultForInput("404.tst"));
+  ASSERT_TRUE(cached.get() != NULL);
+  EXPECT_FALSE(cached->optimizable());
 }
 
-TEST_F(SingleResourceRewriteFilterTest, FetchInvalidResourceName) {
+TEST_F(RewriteSingleResourceFilterTest, FetchInvalidResourceName) {
   std::string out;
   ASSERT_FALSE(ServeRelativeUrl("404,.tst.pagespeed.tf.0.txt", &out));
 }
-
-}  // namespace
 
 }  // namespace net_instaweb

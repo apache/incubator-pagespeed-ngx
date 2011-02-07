@@ -49,11 +49,14 @@ const char kCacheUnoptimizableHeader[] = "X-ModPagespeed-Unoptimizable";
 
 }  // namespace
 
-OutputResource::CachedResult::CachedResult() : optimizable_(true),
+OutputResource::CachedResult::CachedResult() : frozen_(false),
+                                               optimizable_(true),
                                                origin_expiration_time_ms_(0) {}
 
 void OutputResource::CachedResult::SetRemembered(const char* key,
                                                  const std::string& val) {
+  DCHECK(!frozen_) << "Any custom metadata must be set before "
+                      "ResourceManager::Write* is called";
   std::string full_key = StrCat(StringPiece(kCustomKeyPrefix), key);
   headers_.RemoveAll(full_key.c_str());
   headers_.Add(full_key, val);
@@ -330,6 +333,7 @@ void OutputResource::SaveCachedResult(const std::string& name_key,
   HTTPCache* http_cache = resource_manager()->http_cache();
   CachedResult* cached = cached_result_.get();
   CHECK(cached != NULL);
+  cached->set_frozen(true);
 
   int64 delta_ms = cached->origin_expiration_time_ms() -
                        http_cache->timer()->NowMs();

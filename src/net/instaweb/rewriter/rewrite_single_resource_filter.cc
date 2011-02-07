@@ -28,14 +28,10 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
 
-namespace {
-
-// We encode the input timestamp under this header
-const char kInputTimestampKey[] = "RewriteSingleResourceFilter_InputTimestamp";
-
-}  // namespace
-
 namespace net_instaweb {
+
+const char RewriteSingleResourceFilter::kInputTimestampKey[] =
+    "RewriteSingleResourceFilter_InputTimestamp";
 
 RewriteSingleResourceFilter::~RewriteSingleResourceFilter() {}
 
@@ -64,13 +60,15 @@ class RewriteSingleResourceFilter::FetchCallback
     }
     if (success) {
       // Call the rewrite hook.
-      success = filter_->RewriteLoadedResource(input_resource_.get(),
-                                               output_resource_);
+      success = filter_->RewriteLoadedResourceAndCacheIfOk(
+                    input_resource_.get(), output_resource_);
     }
 
     if (success) {
       WriteFromResource(output_resource_);
     } else {
+      filter_->CacheRewriteFailure(input_resource_.get(), output_resource_,
+                                   handler_);
       // Rewrite failed. If we have the original, write it out instead.
       if (input_resource_->ContentsValid()) {
         WriteFromResource(input_resource_.get());
@@ -146,6 +144,31 @@ OutputResource::CachedResult* RewriteSingleResourceFilter::RewriteWithCaching(
   return RewriteResourceWithCaching(input_resource.get(), encoder);
 }
 
+bool RewriteSingleResourceFilter::RewriteLoadedResourceAndCacheIfOk(
+    const Resource* input_resource, OutputResource* output_resource) {
+  OutputResource::CachedResult* result =
+      output_resource->EnsureCachedResultCreated();
+  int64 time_ms = input_resource->metadata()->timestamp_ms();
+  result->SetRemembered(kInputTimestampKey, Integer64ToString(time_ms));
+  bool ok = RewriteLoadedResource(input_resource, output_resource);
+  if (ok) {
+    CHECK(output_resource->type() != NULL);
+  }
+  return ok;
+}
+
+void RewriteSingleResourceFilter::CacheRewriteFailure(
+    const Resource* input_resource, OutputResource* output_resource,
+    MessageHandler* handler) {
+  // Either we couldn't rewrite this successfully or the input resource plain
+  // isn't there. If so, do not try again until the input resource expires
+  // or a minimal TTL has passed.
+  int64 now_ms = resource_manager_->timer()->NowMs();
+  int64 expire_at_ms = std::max(now_ms + ResponseHeaders::kImplicitCacheTtlMs,
+                                input_resource->CacheExpirationTimeMs());
+  resource_manager_->WriteUnoptimizable(output_resource, expire_at_ms, handler);
+}
+
 OutputResource::CachedResult*
 RewriteSingleResourceFilter::RewriteResourceWithCaching(
     Resource* input_resource, UrlSegmentEncoder* encoder) {
@@ -192,16 +215,8 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
 
   bool ok;
   if (input_state == HTTPCache::kFound) {
-    // Remember input timestamp in the cached result to know when to freshen.
-    OutputResource::CachedResult* result =
-        output_resource->EnsureCachedResultCreated();
-    int64 time_ms = input_resource->metadata()->timestamp_ms();
-    result->SetRemembered(kInputTimestampKey, Integer64ToString(time_ms));
-
-    ok = RewriteLoadedResource(input_resource, output_resource.get());
-    if (ok) {
-      CHECK(output_resource->type() != NULL);
-    }
+    ok = RewriteLoadedResourceAndCacheIfOk(input_resource,
+                                           output_resource.get());
   } else {
     DCHECK_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch, input_state);
     ok = false;
@@ -210,14 +225,7 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
   }
 
   if (!ok) {
-    // Either we couldn't rewrite this successfully or the input file plain
-    // isn't there. If so, do not try again until the input file expires
-    // or a minimal TTL has passed.
-    int64 now_ms = resource_manager_->timer()->NowMs();
-    int64 expire_at = std::max(now_ms + ResponseHeaders::kImplicitCacheTtlMs,
-                               input_resource->CacheExpirationTimeMs());
-    resource_manager_->WriteUnoptimizable(output_resource.get(), expire_at,
-                                          handler);
+    CacheRewriteFailure(input_resource, output_resource.get(), handler);
   }
 
   // Note: we want to return this even if optimization failed in case the filter
