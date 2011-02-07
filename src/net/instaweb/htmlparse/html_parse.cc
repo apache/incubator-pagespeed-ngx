@@ -27,7 +27,7 @@
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/html_lexer.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_escape.h"
+#include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -53,7 +53,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       parse_start_time_us_(0),
       timer_(NULL) {
   lexer_ = new HtmlLexer(this);
-  HtmlEscape::Init();
+  HtmlKeywords::Init();
 }
 
 HtmlParse::~HtmlParse() {

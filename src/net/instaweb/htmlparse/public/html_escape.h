@@ -19,67 +19,17 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_ESCAPE_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_ESCAPE_H_
 
-#include <map>
-#include "base/basictypes.h"
-#include <string>
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/htmlparse/public/html_keywords.h"
 
 namespace net_instaweb {
 
+// TODO(jmarantz): Remove compatibility class for Page Speed, which
+// cannot easily be updated to rename its references HtmlEscape to
+// HtmlKeywords in one CL.
 class HtmlEscape {
  public:
-  // Initialize a singleton instance of this class.  This call is
-  // inherently thread unsafe, but only the first time it is called.
-  // If multi-threaded programs call this function before spawning
-  // threads then there will be no races.
-  static void Init();
-
-  // Tear down the singleton instance of this class, freeing any
-  // allocated memory. This call is inherently thread unsafe.
-  static void ShutDown();
-
-  // Take a raw text and escape it so it's safe for an HTML attribute,
-  // e.g.    a&b --> a&amp;b
-  static StringPiece Escape(const StringPiece& unescaped, std::string* buf) {
-    return singleton_->EscapeHelper(unescaped, buf);
-  }
-
-  // Take escaped text and unescape it so its value can be interpreted,
-  // e.g.    "http://myhost.com/p?v&amp;w"  --> "http://myhost.com/p?v&w"
-  static StringPiece Unescape(const StringPiece& escaped, std::string* buf) {
-    return singleton_->UnescapeHelper(escaped, buf);
-  }
-
-  // Note that Escape and Unescape are not guaranteed to be inverses of
-  // one another.  For example, Unescape("&#26;")=="&", but Escape("&")="&amp;".
-  // However, note that Unescape(Escape(s)) == s.
-  //
-  // Another case to be wary of is when the argument to Unescape is not
-  // properly escaped.  The result will be that the string is returned
-  // unmodified.  For example, Unescape("a&b")=="a&b", butthen re-escaping
-  // that will give "a&amp;b".  Hence, the careful maintainer of an HTML
-  // parsing and rewriting system will need to maintain the original escaped
-  // text parsed from HTML files, and pass that to browsers.
-
- private:
-  HtmlEscape();
-  const char* UnescapeAttributeValue();
-
-  static HtmlEscape* singleton_;
-
-  StringPiece EscapeHelper(const StringPiece& unescaped,
-                           std::string* buf) const;
-  StringPiece UnescapeHelper(const StringPiece& escaped,
-                             std::string* buf) const;
-
-  typedef std::map<std::string, std::string,
-                   StringCompareInsensitive> StringStringMapInsensitive;
-  typedef std::map<std::string, std::string> StringStringMapSensitive;
-  StringStringMapInsensitive unescape_insensitive_map_;
-  StringStringMapSensitive unescape_sensitive_map_;
-  StringStringMapSensitive escape_map_;
-
-  DISALLOW_COPY_AND_ASSIGN(HtmlEscape);
+  static void Init() { HtmlKeywords::Init(); }
+  static void ShutDown() { HtmlKeywords::ShutDown(); }
 };
 
 }  // namespace net_instaweb

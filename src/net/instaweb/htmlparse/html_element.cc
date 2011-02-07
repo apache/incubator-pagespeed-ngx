@@ -20,8 +20,8 @@
 
 #include <stdio.h>
 
-#include "net/instaweb/htmlparse/public/html_escape.h"
 #include "net/instaweb/htmlparse/html_event.h"
+#include "net/instaweb/htmlparse/public/html_keywords.h"
 #include <string>
 
 namespace net_instaweb {
@@ -140,8 +140,8 @@ void HtmlElement::AddAttribute(const Attribute& src_attr) {
 void HtmlElement::AddAttribute(Atom name, const StringPiece& value,
                                const char* quote) {
   std::string buf;
-  Attribute* attr = new Attribute(name, value, HtmlEscape::Escape(value, &buf),
-                                  quote);
+  Attribute* attr = new Attribute(name, value,
+                                  HtmlKeywords::Escape(value, &buf), quote);
   attributes_.push_back(attr);
 }
 
@@ -158,7 +158,7 @@ void HtmlElement::AddEscapedAttribute(Atom name,
                                       const char* quote) {
   std::string buf;
   Attribute* attr = new Attribute(name,
-                                  HtmlEscape::Unescape(escaped_value, &buf),
+                                  HtmlKeywords::Unescape(escaped_value, &buf),
                                   escaped_value, quote);
   attributes_.push_back(attr);
 }
@@ -197,7 +197,7 @@ void HtmlElement::Attribute::SetValue(const StringPiece& value) {
   DCHECK(value.data() + value.size() < escaped_chars ||
          escaped_chars + strlen(escaped_chars) < value.data())
       << "Setting unescaped value from substring of escaped value.";
-  CopyValue(HtmlEscape::Escape(value, &buf), &escaped_value_);
+  CopyValue(HtmlKeywords::Escape(value, &buf), &escaped_value_);
   CopyValue(value, &value_);
 }
 
@@ -210,7 +210,7 @@ void HtmlElement::Attribute::SetEscapedValue(const StringPiece& escaped_value) {
   DCHECK(value_chars + strlen(value_chars) < escaped_value.data() ||
          escaped_value.data() + escaped_value.size() < value_chars)
       << "Setting escaped value from substring of unescaped value.";
-  CopyValue(HtmlEscape::Unescape(escaped_value, &buf), &value_);
+  CopyValue(HtmlKeywords::Unescape(escaped_value, &buf), &value_);
   CopyValue(escaped_value, &escaped_value_);
 }
 

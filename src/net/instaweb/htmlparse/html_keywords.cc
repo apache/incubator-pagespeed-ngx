@@ -16,18 +16,18 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/htmlparse/public/html_escape.h"
+#include "net/instaweb/htmlparse/public/html_keywords.h"
 #include <set>
 
 namespace {
 
-struct HtmlEscapeSequence {
+struct HtmlKeywordsSequence {
   const char* sequence;
   const unsigned char value[3];
 };
 
 // TODO(jmarantz): the multi-byte sequences are not working yet.
-static HtmlEscapeSequence kHtmlEscapeSequences[] = {
+static HtmlKeywordsSequence kHtmlKeywordsSequences[] = {
   { "AElig", {0xC6, 0x0} },
   { "Aacute", {0xC1, 0x0} },
   { "Acirc", {0xC2, 0x0} },
@@ -134,14 +134,14 @@ static HtmlEscapeSequence kHtmlEscapeSequences[] = {
 
 namespace net_instaweb {
 
-HtmlEscape* HtmlEscape::singleton_ = NULL;
+HtmlKeywords* HtmlKeywords::singleton_ = NULL;
 
-HtmlEscape::HtmlEscape() {
+HtmlKeywords::HtmlKeywords() {
   typedef std::set<std::string, StringCompareInsensitive> CaseInsensitiveSet;
   CaseInsensitiveSet case_sensitive_symbols;
-  for (size_t i = 0; i < arraysize(kHtmlEscapeSequences); ++i) {
+  for (size_t i = 0; i < arraysize(kHtmlKeywordsSequences); ++i) {
     // Put all symbols in the case-sensitive map
-    const HtmlEscapeSequence& seq = kHtmlEscapeSequences[i];
+    const HtmlKeywordsSequence& seq = kHtmlKeywordsSequences[i];
     unescape_sensitive_map_[seq.sequence] =
         reinterpret_cast<const char*>(seq.value);
 
@@ -175,20 +175,20 @@ HtmlEscape::HtmlEscape() {
   }
 }
 
-void HtmlEscape::Init() {
+void HtmlKeywords::Init() {
   if (singleton_ == NULL) {
-    singleton_ = new HtmlEscape();
+    singleton_ = new HtmlKeywords();
   }
 }
 
-void HtmlEscape::ShutDown() {
+void HtmlKeywords::ShutDown() {
   if (singleton_ != NULL) {
     delete singleton_;
     singleton_ = NULL;
   }
 }
 
-StringPiece HtmlEscape::UnescapeHelper(const StringPiece& escaped,
+StringPiece HtmlKeywords::UnescapeHelper(const StringPiece& escaped,
                                        std::string* buf) const {
   if (escaped.data() == NULL) {
     return escaped;
@@ -277,7 +277,7 @@ StringPiece HtmlEscape::UnescapeHelper(const StringPiece& escaped,
   return StringPiece(*buf);
 }
 
-StringPiece HtmlEscape::EscapeHelper(const StringPiece& unescaped,
+StringPiece HtmlKeywords::EscapeHelper(const StringPiece& unescaped,
                                      std::string* buf) const {
   if (unescaped.data() == NULL) {
     return unescaped;
