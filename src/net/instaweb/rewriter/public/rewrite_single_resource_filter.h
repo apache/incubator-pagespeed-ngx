@@ -25,10 +25,14 @@
 
 namespace net_instaweb {
 
-// Simpler interface for RewriteFilters which only convert one input resource
-// to one output resource.
+// A helper base class for RewriteFilters which only convert one input resource
+// to one output resource. This class helps implement both HTML rewriting
+// and Fetch in terms of a single RewriteLoadedResource method, and takes
+// care of resource management and caching.
 //
-// To derive from this class, implement RewriteLoadedResource.
+// Subclasses should implement RewriteLoadedResource and call
+// Rewrite*WithCaching when rewriting HTML using the returned
+// CachedResult (which may be NULL) to get rewrite results.
 class RewriteSingleResourceFilter : public RewriteFilter {
  public:
   explicit RewriteSingleResourceFilter(
@@ -69,12 +73,17 @@ class RewriteSingleResourceFilter : public RewriteFilter {
       Resource* in, UrlSegmentEncoder* encoder);
 
   // Variant of the above that makes and cleans up input resource for in_url.
+  // Note that the URL will be expanded and security checked with respect to the
+  // current base URL for the HTML parser.
   OutputResource::CachedResult* RewriteWithCaching(const StringPiece& in_url,
                                                    UrlSegmentEncoder* encoder);
 
   // Derived classes must implement this function instead of Fetch.
-  // If you return true, you must set the content-type on the output resource
-  // in your implementation.
+  //
+  // If rewrite succeeds, make sure to call ResourceManager::Write and
+  // set the content-type on the output resource.
+  //
+  // If rewrite fails, simply return false.
   virtual bool RewriteLoadedResource(const Resource* input_resource,
                                      OutputResource* output_resource) = 0;
 

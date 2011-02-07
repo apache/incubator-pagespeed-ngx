@@ -466,6 +466,13 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // Extra spaces assure that we actually rewrite the first arg even if
     // font: is expanded by parser.
     { ".menu { font: menu; }               ", ".menu{font:menu}" },
+
+    // http://code.google.com/p/modpagespeed/issues/detail?id=211
+    { "#some_id {\n"
+      "background: #cccccc url(images/picture.png) 50% 50% repeat-x;\n"
+      "}\n",
+
+      "#some_id{background:#ccc url(images/picture.png) 50% 50% repeat-x}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
