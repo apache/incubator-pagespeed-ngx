@@ -169,8 +169,7 @@ class HtmlName {
   // Return the atom string, which may not be case folded.
   const char* c_str() const { return atom_.c_str(); }
 
-  // Limited iterator exposed for testing (not an STL iterator).  Example
-  // usage:
+  // Limited iterator (not an STL iterator).  Example usage:
   //    for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
   //      use(iter.keyword(), iter.name());
   //    }
@@ -184,14 +183,15 @@ class HtmlName {
 
    private:
     int index_;
+
+    // Implicit copy and assign ok.  The members can be safely copied by bits.
   };
 
   static int num_keywords();
+  static Keyword Lookup(const StringPiece& name);
 
  private:
   friend class HtmlNameTest;
-
-  static Keyword Lookup(const StringPiece& name);
 
   Keyword keyword_;
   Atom atom_;

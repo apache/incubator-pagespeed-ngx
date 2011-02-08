@@ -20,7 +20,9 @@
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_KEYWORDS_H_
 
 #include <map>
+#include <vector>
 #include "base/basictypes.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 
@@ -37,6 +39,11 @@ class HtmlKeywords {
   // Tear down the singleton instance of this class, freeing any
   // allocated memory. This call is inherently thread unsafe.
   static void ShutDown();
+
+  // Returns an HTML keyword as a string, or NULL if not a keyword.
+  static const char* KeywordToString(HtmlName::Keyword keyword) {
+    return singleton_->keyword_vector_[keyword];
+  }
 
   // Take a raw text and escape it so it's safe for an HTML attribute,
   // e.g.    a&b --> a&amp;b
@@ -78,6 +85,7 @@ class HtmlKeywords {
   StringStringMapInsensitive unescape_insensitive_map_;
   StringStringMapSensitive unescape_sensitive_map_;
   StringStringMapSensitive escape_map_;
+  CharStarVector keyword_vector_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlKeywords);
 };
