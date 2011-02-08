@@ -120,8 +120,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     STLDeleteElements(&contents_);
     STLDeleteElements(&writers_);
     STLDeleteElements(&callbacks_);
-    apr_pool_destroy(pool_);
     delete mutex_;
+    apr_pool_destroy(pool_);
   }
 
   void AddTestUrl(const std::string& url,
@@ -170,6 +170,11 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     }
   }
 
+  // Valgrind will not allow the async-fetcher thread to run without a sleep.
+  void YieldToThread() {
+    usleep(1);
+  }
+
   int WaitTillDone(size_t begin, size_t end, int64 delay_ms) {
     AprTimer timer;
     bool done = false;
@@ -177,8 +182,12 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     int64 end_ms = now_ms + delay_ms;
     size_t done_count = 0;
     while (!done && (now_ms < end_ms)) {
-      int64 remaining_ms = end_ms - now_ms;
-      serf_url_async_fetcher_->Poll(remaining_ms);
+      int64 to_wait_ms = end_ms - now_ms;
+      if (to_wait_ms > kThreadedPollMs) {
+        to_wait_ms = kThreadedPollMs;
+      }
+      YieldToThread();
+      serf_url_async_fetcher_->Poll(to_wait_ms);
       done_count = 0;
       for (size_t idx = begin; idx < end; ++idx) {
         if (callbacks_[idx]->IsDone()) {
@@ -200,11 +209,6 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     int done = WaitTillDone(begin, end, kMaxMs);
     ValidateFetches(begin, end);
     return (done == (end - begin));
-  }
-
-  // Valgrind will not allow the async-fetcher thread to run without a sleep.
-  void YieldToThread() {
-    usleep(1);
   }
 
   apr_pool_t* pool_;
@@ -372,10 +376,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitTwoThreadedOneSync) {
 TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreaded) {
   StartFetches(0, 3, true);
   int done = 0;
-  for (int i = 0; (done < 3) && (i < 100); ++i) {
-    YieldToThread();
-    done = WaitTillDone(0, 3, kThreadedPollMs);
-  }
+  done = WaitTillDone(0, 3, kMaxMs);
   EXPECT_EQ(3, done);
   ValidateFetches(0, 3);
 }
@@ -384,10 +385,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestOneThreadedTwoSync) {
   StartFetches(0, 1, true);
   StartFetches(1, 3, false);
   int done = 0;
-  for (int i = 0; (done < 3) && (i < 100); ++i) {
-    YieldToThread();
-    done = WaitTillDone(0, 3, kThreadedPollMs);
-  }
+  done = WaitTillDone(0, 3, kMaxMs);
   EXPECT_EQ(3, done);
   ValidateFetches(0, 3);
 }
@@ -396,10 +394,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTwoThreadedOneSync) {
   StartFetches(0, 1, false);
   StartFetches(1, 3, true);
   int done = 0;
-  for (int i = 0; (done < 3) && (i < 100); ++i) {
-    YieldToThread();
-    done = WaitTillDone(0, 3, kThreadedPollMs);
-  }
+  done = WaitTillDone(0, 3, kMaxMs);
   EXPECT_EQ(3, done);
   ValidateFetches(0, 3);
 }
