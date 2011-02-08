@@ -185,6 +185,13 @@ void RewriteSingleResourceFilter::CacheRewriteFailure(
 
 OutputResource::CachedResult*
 RewriteSingleResourceFilter::RewriteResourceWithCaching(
+    Resource* input_resource) {
+  return RewriteResourceWithCaching(input_resource,
+                                    resource_manager_->url_escaper());
+}
+
+OutputResource::CachedResult*
+RewriteSingleResourceFilter::RewriteResourceWithCaching(
     Resource* input_resource, UrlSegmentEncoder* encoder) {
   MessageHandler* handler = html_parse_->message_handler();
 

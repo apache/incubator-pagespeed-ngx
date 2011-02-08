@@ -302,6 +302,7 @@
       ],
       'sources': [
         'rewriter/css_filter.cc',
+        'rewriter/css_image_rewriter.cc',
         'rewriter/css_minify.cc',
       ],
       'include_dirs': [

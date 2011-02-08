@@ -171,18 +171,26 @@ void RewriteDriver::AddFilters() {
   // need the to process resource requests due to a query-specific
   // 'rewriters' specification.  We still use the passed-in options
   // to determine whether they get added to the html parse filter chain.
-  RegisterRewriteFilter(new CssCombineFilter(this, kCssCombinerId));
-  RegisterRewriteFilter(new CssFilter(this, kCssFilterId));
-  RegisterRewriteFilter(new JavascriptFilter(this, kJavascriptMinId));
-  RegisterRewriteFilter(
+  // Note: RegisterRewriteFilter takes ownership of these filters.
+  CacheExtender* cache_extender = new CacheExtender(this, kCacheExtenderId);
+  ImgRewriteFilter* image_rewriter =
       new ImgRewriteFilter(
           this,
           options_.Enabled(RewriteOptions::kDebugLogImgTags),
           options_.Enabled(RewriteOptions::kInsertImgDimensions),
           kImageCompressionId,
           options_.img_inline_max_bytes(),
-          options_.img_max_rewrites_at_once()));
-  RegisterRewriteFilter(new CacheExtender(this, kCacheExtenderId));
+          options_.img_max_rewrites_at_once());
+
+  RegisterRewriteFilter(new CssCombineFilter(this, kCssCombinerId));
+  RegisterRewriteFilter(
+      new CssFilter(this, kCssFilterId,
+                    // TODO(sligocki): Perhaps add use a kRewriteImagesFromCss?
+                    options_.Enabled(RewriteOptions::kExtendCache),
+                    cache_extender, image_rewriter));
+  RegisterRewriteFilter(new JavascriptFilter(this, kJavascriptMinId));
+  RegisterRewriteFilter(image_rewriter);
+  RegisterRewriteFilter(cache_extender);
 
   // This function defines the order that filters are run.  We document
   // in pagespeed.conf.template that the order specified in the conf

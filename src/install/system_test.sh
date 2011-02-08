@@ -228,6 +228,28 @@ check $WGET_PREREQ $URL
 test_resource_ext_corruption $URL\
   styles/yellow.css+blue.css+big.css+bold.css.pagespeed.cc.xo4He3_gYf.css
 
+# Note: this large URL can only be processed by Apache if
+# ap_hook_map_to_storage is called to bypass the default
+# handler that maps URLs to filenames.
+echo TEST: Fetch large css_combine URL
+LARGE_URL="$EXAMPLE_ROOT/styles/yellow.css+blue.css+big.css+\
+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
+big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
+big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
+big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
+big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
+big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
+big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
+big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
+big.css+bold.css+yellow.css+blue.css+big.css+\
+bold.css.pagespeed.cc.46IlzLf_NK.css"
+$WGET --save-headers -q -O - $LARGE_URL | head -1 | grep "HTTP/1.1 200 OK"
+check [ $? = 0 ];
+LARGE_URL_LINE_COUNT=$($WGET -q -O - $LARGE_URL | wc -l)
+check [ $? = 0 ]
+echo Checking that response body is at least 900 lines -- it should be 954
+check [ $LARGE_URL_LINE_COUNT -gt 900 ]
+
 test_filter combine_heads combines 2 heads into 1
 check $WGET_PREREQ $URL
 check [ `grep -ce '<head>' $FETCHED` = 1 ]
@@ -344,27 +366,14 @@ echo TEST: rewrite_images redirects unknown image $IMG_URL
 $WGET_PREREQ $IMG_URL;  # fails
 check grep '"307 Temporary Redirect"' $WGET_OUTPUT
 
-# Note: this large URL can only be processed by Apache if
-# ap_hook_map_to_storage is called to bypass the default
-# handler that maps URLs to filenames.
-echo TEST: Fetch large css_combine URL
-LARGE_URL="$EXAMPLE_ROOT/styles/yellow.css+blue.css+big.css+\
-bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+\
-bold.css.pagespeed.cc.46IlzLf_NK.css"
-$WGET --save-headers -q -O - $LARGE_URL | head -1 | grep "HTTP/1.1 200 OK"
-check [ $? = 0 ];
-LARGE_URL_LINE_COUNT=$($WGET -q -O - $LARGE_URL | wc -l)
-check [ $? = 0 ]
-echo Checking that response body is at least 900 lines -- it should be 954
-check [ $LARGE_URL_LINE_COUNT -gt 900 ]
+# This has to run after image_rewrite tests. Otherwise it causes some images
+# to be loaded into memory before they should be.
+test_filter rewrite_css,extend_cache extends cache of images in CSS
+FILE=rewrite_css_images.html?ModPagespeedFilters=$FILTER_NAME
+URL=$EXAMPLE_ROOT/$FILE
+FETCHED=$OUTDIR/$FILE
+fetch_until $URL 'grep -c .pagespeed.' 1  # image rewritten
+check $WGET_PREREQ $URL
 
 test_filter rewrite_javascript removes comments and saves a bunch of bytes.
 fetch_until $URL 'grep -c src.*1o978_K0_L' 2   # external scripts rewritten

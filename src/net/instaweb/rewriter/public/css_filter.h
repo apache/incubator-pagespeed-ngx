@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "base/basictypes.h"
+#include "net/instaweb/rewriter/public/css_image_rewriter.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
@@ -35,7 +36,9 @@ class Stylesheet;
 
 namespace net_instaweb {
 
+class CacheExtender;
 class HtmlParse;
+class ImgRewriteFilter;
 class MessageHandler;
 class OutputResource;
 class Resource;
@@ -53,7 +56,12 @@ class ResourceManager;
 // It does not consider style= attributes on arbitrary elements.
 class CssFilter : public RewriteSingleResourceFilter {
  public:
-  CssFilter(RewriteDriver* driver, const StringPiece& filter_prefix);
+  CssFilter(RewriteDriver* driver, const StringPiece& filter_prefix,
+            bool rewrite_images_from_css,
+            // TODO(sligocki): Temporary pattern until we figure out a better
+            // way to do this without passing all filters around everywhere.
+            CacheExtender* cache_extender,
+            ImgRewriteFilter* image_rewriter);
 
   static void Initialize(Statistics* statistics);
   static void Terminate();
@@ -76,7 +84,7 @@ class CssFilter : public RewriteSingleResourceFilter {
 
  private:
   bool RewriteCssText(const StringPiece& in_text, std::string* out_text,
-                      const std::string& id, MessageHandler* handler);
+                      const GURL& css_gurl, MessageHandler* handler);
   bool RewriteExternalCss(const StringPiece& in_url, std::string* out_url);
 
   virtual bool RewriteLoadedResource(const Resource* input_resource,
@@ -93,6 +101,9 @@ class CssFilter : public RewriteSingleResourceFilter {
   // These are meaningless if in_style_element_ is false:
   HtmlElement* style_element_;  // The element we are in.
   HtmlCharactersNode* style_char_node_;  // The single character node in style.
+
+  bool rewrite_images_;
+  CssImageRewriter image_rewriter_;
 
   Atom s_style_;
   Atom s_link_;

@@ -48,7 +48,6 @@ class RewriteSingleResourceFilter : public RewriteFilter {
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
 
- protected:
   // Rewrite the given resource using this filter's RewriteLoadedResource,
   // taking  advantage of various caching techniques to avoid recomputation
   // whenever possible.
@@ -63,7 +62,7 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   // what URL the output is, along with any metadata that was stored when
   // examining it.
   //
-  // Note: the metadata may be useful even when optimizable() is false.
+  // Note: The metadata may be useful even when optimizable() is false.
   // For example a filter could store dimensions of an image in them, even
   // if it chose to not change it, so any <img> tags can be given appropriate
   // width and height.
@@ -72,6 +71,10 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   OutputResource::CachedResult* RewriteResourceWithCaching(
       Resource* in, UrlSegmentEncoder* encoder);
 
+  // Variant of above, using default encoder.
+  OutputResource::CachedResult* RewriteResourceWithCaching(Resource* in);
+
+ protected:
   // Variant of the above that makes and cleans up input resource for in_url.
   // Note that the URL will be expanded and security checked with respect to the
   // current base URL for the HTML parser.
