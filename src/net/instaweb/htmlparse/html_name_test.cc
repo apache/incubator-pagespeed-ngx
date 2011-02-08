@@ -34,11 +34,6 @@ class HtmlNameTest : public testing::Test {
     return name.keyword();
   }
 
-  int num_sorted_pairs() const { return HtmlName::num_sorted_pairs(); }
-  const HtmlName::NameKeywordPair* sorted_pairs() const {
-    return HtmlName::sorted_pairs();
-  }
-
   SymbolTableSensitive symbol_table_;
 };
 
@@ -47,25 +42,22 @@ TEST_F(HtmlNameTest, OneKeyword) {
 }
 
 TEST_F(HtmlNameTest, AllKeywordsDefaultCase) {
-  for (int i = 0; i < num_sorted_pairs(); ++i) {
-    const HtmlName::NameKeywordPair& nkp = sorted_pairs()[i];
-    EXPECT_EQ(nkp.keyword, Parse(nkp.name));
+  for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
+    EXPECT_EQ(iter.keyword(), Parse(iter.name()));
   }
 }
 
 TEST_F(HtmlNameTest, AllKeywordsUpperCase) {
-  for (int i = 0; i < num_sorted_pairs(); ++i) {
-    const HtmlName::NameKeywordPair& nkp = sorted_pairs()[i];
-    std::string upper(nkp.name);
+  for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
+    std::string upper(iter.name());
     UpperString(&upper);
-    EXPECT_EQ(nkp.keyword, Parse(upper.c_str()));
+    EXPECT_EQ(iter.keyword(), Parse(upper.c_str()));
   }
 }
 
 TEST_F(HtmlNameTest, AllKeywordsMixedCase) {
-  for (int i = 0; i < num_sorted_pairs(); ++i) {
-    const HtmlName::NameKeywordPair& nkp = sorted_pairs()[i];
-    std::string mixed(nkp.name);
+  for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
+    std::string mixed(iter.name());
     bool upper = false;
     for (int i = 0, n = mixed.size(); i < n; ++i) {
       char c = mixed[i];
@@ -77,13 +69,28 @@ TEST_F(HtmlNameTest, AllKeywordsMixedCase) {
       }
       mixed[i] = c;
     }
-    EXPECT_EQ(nkp.keyword, Parse(mixed.c_str()));
+    EXPECT_EQ(iter.keyword(), Parse(mixed.c_str()));
   }
 }
 
 TEST_F(HtmlNameTest, Bogus) {
   EXPECT_EQ(HtmlName::kNotAKeyword, Parse("hiybbprqag"));
   EXPECT_EQ(HtmlName::kNotAKeyword, Parse("stylex"));  // close to 'style'
+}
+
+TEST_F(HtmlNameTest, Iterator) {
+  int num_iters = 0;
+  StringSet names;
+  std::set<HtmlName::Keyword> keywords;
+  for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
+    EXPECT_GT(HtmlName::num_keywords(), static_cast<int>(iter.keyword()));
+    keywords.insert(iter.keyword());
+    names.insert(iter.name());
+    ++num_iters;
+  }
+  EXPECT_EQ(HtmlName::num_keywords(), num_iters);
+  EXPECT_EQ(HtmlName::num_keywords(), keywords.size());
+  EXPECT_EQ(HtmlName::num_keywords(), names.size());
 }
 
 }  // namespace net_instaweb

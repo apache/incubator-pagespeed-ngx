@@ -64,6 +64,7 @@
         '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
       ],
       'sources': [
+        'genfiles/htmlparse/html_name.cc',
         'htmlparse/doctype.cc',
         'htmlparse/empty_html_filter.cc',
         'htmlparse/html_element.cc',
@@ -71,7 +72,6 @@
         'htmlparse/html_filter.cc',
         'htmlparse/html_keywords.cc',
         'htmlparse/html_lexer.cc',
-        'htmlparse/html_name.cc',
         'htmlparse/html_node.cc',
         'htmlparse/html_parse.cc',
         'htmlparse/html_writer_filter.cc',

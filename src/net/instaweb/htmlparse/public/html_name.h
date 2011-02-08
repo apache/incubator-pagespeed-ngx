@@ -169,24 +169,29 @@ class HtmlName {
   // Return the atom string, which may not be case folded.
   const char* c_str() const { return atom_.c_str(); }
 
-  // Exposed for testing.
-  struct NameKeywordPair {
-    HtmlName::Keyword keyword;
-    const char* name;
+  // Limited iterator exposed for testing (not an STL iterator).  Example
+  // usage:
+  //    for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
+  //      use(iter.keyword(), iter.name());
+  //    }
+  class Iterator {
+   public:
+    Iterator() : index_(-1) { Next(); }
+    bool AtEnd() const;
+    void Next();
+    Keyword keyword() const;
+    const char* name() const;
+
+   private:
+    int index_;
   };
 
-  static const char* LookupString(Keyword keyword) {
-    return sorted_pairs()[keyword].name;
-  }
+  static int num_keywords();
 
  private:
   friend class HtmlNameTest;
 
-  // Exposed for testing.
-  static const NameKeywordPair* sorted_pairs();
-  static int num_sorted_pairs();
-
-  Keyword Lookup(const StringPiece& name);
+  static Keyword Lookup(const StringPiece& name);
 
   Keyword keyword_;
   Atom atom_;
