@@ -588,8 +588,8 @@ void HtmlLexer::EvalLiteralTag(char c) {
         literal_close_.size() > 3, "literal_close_.size() <= 3");  // NOLINT
     int literal_minus_close_size = literal_.size() - literal_close_.size();
     if ((literal_minus_close_size >= 0) &&
-        (strcasecmp(literal_.c_str() + literal_minus_close_size,
-                    literal_close_.c_str()) == 0)) {
+        StringCaseEqual(literal_.c_str() + literal_minus_close_size,
+                        literal_close_)) {
       // The literal actually starts after the "<script>", and we will
       // also let it finish before, so chop it off.
       literal_.resize(literal_minus_close_size);

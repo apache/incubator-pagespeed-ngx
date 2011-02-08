@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_UTIL_H_
 
 
+#include <algorithm>
 #include <set>
 #include <vector>
 #include <string>
@@ -135,12 +136,15 @@ inline char* strdup(const char* str) {
   return base::strdup(str);
 }
 
-inline int strcasecmp(const char* s1, const char* s2) {
-  return base::strcasecmp(s1, s2);
-}
+// Case-insensitive string comparison that is locale-independent.
+int StringCaseCompare(const StringPiece& s1, const StringPiece& s2);
 
-inline int strncasecmp(const char* s1, const char* s2, size_t count) {
-  return base::strncasecmp(s1, s2, count);
+// Locale-independent version of strncasecmp.
+inline int StringNCaseCompare(const StringPiece& s1, const StringPiece& s2,
+                              size_t n) {
+  return StringCaseCompare(
+      s1.substr(0, std::min(s1.size(), n)),
+      s2.substr(0, std::min(s2.size(), n)));
 }
 
 inline void TrimWhitespace(const StringPiece& in, std::string* output) {
@@ -165,25 +169,25 @@ bool StringCaseEndsWith(const StringPiece& str, const StringPiece& suffix);
 
 struct CharStarCompareInsensitive {
   bool operator()(const char* s1, const char* s2) const {
-    return strcasecmp(s1, s2) < 0;
+    return (StringCaseCompare(s1, s2) < 0);
   };
 };
 
 struct CharStarCompareSensitive {
   bool operator()(const char* s1, const char* s2) const {
-    return strcmp(s1, s2) < 0;
+    return (strcmp(s1, s2) < 0);
   }
 };
 
 struct StringCompareSensitive {
   bool operator()(const std::string& s1, const std::string& s2) const {
-    return strcmp(s1.c_str(), s2.c_str()) < 0;
+    return (strcmp(s1.c_str(), s2.c_str()) < 0);
   };
 };
 
 struct StringCompareInsensitive {
   bool operator()(const std::string& s1, const std::string& s2) const {
-    return strcasecmp(s1.c_str(), s2.c_str()) < 0;
+    return (StringCaseCompare(s1, s2) < 0);
   };
 };
 

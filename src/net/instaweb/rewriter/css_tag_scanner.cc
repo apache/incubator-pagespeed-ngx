@@ -68,7 +68,7 @@ bool CssTagScanner::ParseCssElement(
           *href = &attr;
           ++num_required_attributes_found;
         } else if (attr.name() == s_rel_) {
-          if (strcasecmp(attr.value(), kStylesheet) == 0) {
+          if (StringCaseEqual(attr.value(), kStylesheet)) {
             ++num_required_attributes_found;
           } else {
             // rel=something_else.  abort.
@@ -82,7 +82,7 @@ bool CssTagScanner::ParseCssElement(
           // attribute is not required, but if the attribute we are
           // finding here is anything else then abort.
           if ((attr.name() != s_type_) ||
-              (strcasecmp(attr.value(), kTextCss) != 0)) {
+              !StringCaseEqual(attr.value(), kTextCss)) {
             num_required_attributes_found = 0;
             break;
           }

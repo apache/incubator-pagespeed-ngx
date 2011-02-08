@@ -74,7 +74,7 @@ template<class StringCompare> class StringMultiMap {
       StringPairVector temp_vector;  // Temp variable for new vector.
       temp_vector.reserve(vector_.size());
       for (int i = 0; i < num_values(); ++i) {
-        if (strcasecmp(name(i),  var_name) != 0) {
+        if (!StringCaseEqual(name(i),  var_name)) {
           temp_vector.push_back(vector_[i]);
         } else {
           removed = true;

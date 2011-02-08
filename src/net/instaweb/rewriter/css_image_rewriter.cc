@@ -121,10 +121,11 @@ bool CssImageRewriter::RewriteCssImages(const GURL& base_url,
          decl_iter != decls.end(); ++decl_iter) {
       Css::Declaration* decl = *decl_iter;
       // Only edit image declarations.
-      // TODO(sligocki): Find out where else images can be.
       switch (decl->prop()) {
         case Css::Property::BACKGROUND:
-        case Css::Property::BACKGROUND_IMAGE: {
+        case Css::Property::BACKGROUND_IMAGE:
+        case Css::Property::LIST_STYLE:
+        case Css::Property::LIST_STYLE_IMAGE: {
           // Rewrite all URLs. Technically, background-image should only
           // have a single value which is a URL, but background could have
           // more values.

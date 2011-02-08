@@ -68,9 +68,9 @@ TEST_F(SymbolTableTest, TestInternInsensitive) {
   EXPECT_FALSE(a1 == a3);
   EXPECT_NE(a1.c_str(), a3.c_str());
 
-  EXPECT_EQ(0, strcasecmp(s1.c_str(), a1.c_str()));
-  EXPECT_EQ(0, strcasecmp(s2.c_str(), a2.c_str()));
-  EXPECT_EQ(0, strcasecmp(s3.c_str(), a3.c_str()));
+  EXPECT_EQ(0, StringCaseCompare(s1.c_str(), a1.c_str()));
+  EXPECT_EQ(0, StringCaseCompare(s2.c_str(), a2.c_str()));
+  EXPECT_EQ(0, StringCaseCompare(s3.c_str(), a3.c_str()));
 
   Atom empty = symbol_table.Intern("");
   EXPECT_TRUE(Atom() == empty);

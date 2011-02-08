@@ -125,8 +125,7 @@ bool RequestHeaders::AcceptsGzip() const {
       std::vector<StringPiece> encodings;
       SplitStringPieceToVector(v[i], ",", &encodings, true);
       for (int j = 0, nencodings = encodings.size(); j < nencodings; ++j) {
-        if (strcasecmp(encodings[j].as_string().c_str(),
-                       HttpAttributes::kGzip) == 0) {
+        if (StringCaseEqual(encodings[j], HttpAttributes::kGzip)) {
           return true;
         }
       }

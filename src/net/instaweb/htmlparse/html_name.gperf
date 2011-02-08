@@ -1,5 +1,5 @@
 %{
-// keywords.cc is automatically generated from keywords.gperf.
+// html_name.cc is automatically generated from html_name.gperf.
 // Author: jmarantz@google.com
 
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -7,14 +7,15 @@
 namespace net_instaweb {
 %}
 %compare-strncmp
+%define class-name KeywordMapper
+%define lookup-function-name Lookup
+%define word-array-name kHtmlNameTable
 %global-table
 %ignore-case
 %includes
+%language=C++
 %readonly-tables
 %struct-type
-%define class-name KeywordMapper
-%define lookup-function-name Lookup
-%language=C++
 
 struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 %%
@@ -148,19 +149,19 @@ bool HtmlName::Iterator::AtEnd() const {
 void HtmlName::Iterator::Next() {
   DCHECK(!AtEnd());
   ++index_;
-  while (!AtEnd() && (*(wordlist[index_].name) == '\0')) {
+  while (!AtEnd() && (*(kHtmlNameTable[index_].name) == '\0')) {
     ++index_;
   }
 }
 
 const char* HtmlName::Iterator::name() const {
   DCHECK(!AtEnd());
-  return wordlist[index_].name;
+  return kHtmlNameTable[index_].name;
 }
 
 HtmlName::Keyword HtmlName::Iterator::keyword() const {
   DCHECK(!AtEnd());
-  return wordlist[index_].keyword;
+  return kHtmlNameTable[index_].keyword;
 }
 
 int HtmlName::num_keywords() {

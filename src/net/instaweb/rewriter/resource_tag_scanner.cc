@@ -42,7 +42,7 @@ HtmlElement::Attribute* ResourceTagScanner::ScanElement(HtmlElement* element) {
     // links.html#linkTypes
     HtmlElement::Attribute* rel_attr = element->FindAttribute(s_rel_);
     if ((rel_attr != NULL) &&
-        (strcasecmp(rel_attr->value(), CssTagScanner::kStylesheet) == 0)) {
+        StringCaseEqual(rel_attr->value(), CssTagScanner::kStylesheet)) {
       attr = element->FindAttribute(s_href_);
     }
   } else if ((tag == s_script_) || (tag == s_img_)) {

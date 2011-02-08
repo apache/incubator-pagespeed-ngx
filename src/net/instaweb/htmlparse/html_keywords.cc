@@ -233,7 +233,7 @@ StringPiece HtmlKeywords::UnescapeHelper(const StringPiece& escaped,
     } else if (escape.empty() && (ch == '#')) {
       escape += ch;
       accumulate_numeric_code = true;
-      if (((i + 1) < escaped.size()) && (toupper(escaped[i + 1]) == 'X')) {
+      if (((i + 1) < escaped.size()) && (UpperChar(escaped[i + 1]) == 'X')) {
         hex_mode = true;
         ++i;
       }

@@ -92,19 +92,18 @@ void UpperString(std::string* s) {
 }
 
 bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2) {
-  return (s1.size() == s2.size() &&
-          0 == strncasecmp(s1.data(), s2.data(), s1.size()));
+  return ((s1.size() == s2.size()) && (0 == StringCaseCompare(s1, s2)));
 }
 
 bool StringCaseStartsWith(const StringPiece& str, const StringPiece& prefix) {
   return (str.size() >= prefix.size() &&
-          0 == strncasecmp(str.data(), prefix.data(), prefix.size()));
+          0 == StringNCaseCompare(str.data(), prefix.data(), prefix.size()));
 }
 
 bool StringCaseEndsWith(const StringPiece& str, const StringPiece& suffix) {
-  return (str.size() >= suffix.size() &&
-          0 == strncasecmp(str.data() + str.size() - suffix.size(),
-                           suffix.data(), suffix.size()));
+  return ((str.size() >= suffix.size()) &&
+          (0 == StringNCaseCompare(str.data() + str.size() - suffix.size(),
+                                   suffix.data(), suffix.size())));
 }
 
 void ParseShellLikeString(const StringPiece& input,
@@ -188,7 +187,23 @@ int GlobalReplaceSubstring(const StringPiece& substring,
   return num_replacements;
 }
 
-
+int StringCaseCompare(const StringPiece& s1, const StringPiece& s2) {
+  for (int i = 0, n = std::min(s1.size(), s2.size()); i < n; ++i) {
+    unsigned char c1 = UpperChar(s1[i]);
+    unsigned char c2 = UpperChar(s2[i]);
+    if (c1 < c2) {
+      return -1;
+    } else if (c1 > c2) {
+      return 1;
+    }
+  }
+  if (s1.size() < s2.size()) {
+    return -1;
+  } else if (s1.size() > s2.size()) {
+    return 1;
+  }
+  return 0;
+}
 
 const StringPiece EmptyString::kEmptyString;
 

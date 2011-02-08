@@ -251,6 +251,29 @@ TEST(StringCaseTest, TestStringCaseEqual) {
   EXPECT_TRUE(StringCaseEqual("fOoBaR", "FoObAr"));
 }
 
+TEST(StringCaseTest, TestStringCaseCompare) {
+  EXPECT_GT(0, StringCaseCompare("a", "aa"));
+  EXPECT_LT(0, StringCaseCompare("aa", "a"));
+  EXPECT_EQ(0, StringCaseCompare("a", "a"));
+  EXPECT_EQ(0, StringCaseCompare("a", "A"));
+  EXPECT_EQ(0, StringCaseCompare("A", "a"));
+  EXPECT_GT(0, StringCaseCompare("A", "b"));
+  EXPECT_GT(0, StringCaseCompare("a", "B"));
+  EXPECT_LT(0, StringCaseCompare("b", "A"));
+  EXPECT_LT(0, StringCaseCompare("B", "a"));
+}
+
+TEST(StringCaseTest, TestStringNCaseCompare) {
+  EXPECT_EQ(0, StringNCaseCompare("a", "aa", 1));
+  EXPECT_EQ(0, StringNCaseCompare("aa", "a", 1));
+  EXPECT_EQ(0, StringNCaseCompare("Aa", "a", 1));
+  EXPECT_EQ(0, StringNCaseCompare("aA", "A", 1));
+  EXPECT_EQ(0, StringNCaseCompare("a", "a", 1));
+  EXPECT_EQ(0, StringNCaseCompare("A", "a", 1));
+  EXPECT_LT(0, StringNCaseCompare("b", "aa", 1));
+  EXPECT_GT(0, StringNCaseCompare("aa", "b", 1));
+}
+
 TEST(StringCaseTest, TestStringCaseStartsWith) {
   EXPECT_FALSE(StringCaseStartsWith("foobar", "fob"));
   EXPECT_TRUE(StringCaseStartsWith("foobar", "foobar"));

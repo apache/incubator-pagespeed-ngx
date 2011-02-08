@@ -75,16 +75,16 @@ bool RewriteOptions::ParseRewriteLevel(
     const StringPiece& in, RewriteLevel* out) {
   bool ret = false;
   if (in != NULL) {
-    if (strcasecmp(in.data(), "CoreFilters") == 0) {
+    if (StringCaseEqual(in, "CoreFilters")) {
       *out = kCoreFilters;
       ret = true;
-    } else if (strcasecmp(in.data(), "PassThrough") == 0) {
+    } else if (StringCaseEqual(in, "PassThrough")) {
       *out = kPassThrough;
       ret = true;
-    } else if (strcasecmp(in.data(), "TestingCoreFilters") == 0) {
+    } else if (StringCaseEqual(in, "TestingCoreFilters")) {
       *out = kTestingCoreFilters;
       ret = true;
-    } else if (strcasecmp(in.data(), "AllFilters") == 0) {
+    } else if (StringCaseEqual(in, "AllFilters")) {
       *out = kAllFilters;
       ret = true;
     }
