@@ -47,11 +47,17 @@ class HtmlWriterFilter : public HtmlFilter {
   virtual void Flush();
 
   void set_max_column(int max_column) { max_column_ = max_column; }
+  void set_case_fold(bool case_fold) { case_fold_ = case_fold; }
 
   virtual const char* Name() const { return "HtmlWriter"; }
 
  private:
   void EmitBytes(const StringPiece& str);
+
+  // Emits an HTML name, possibly case-folded depending on the
+  // caller-specified option.
+  void EmitName(const HtmlName& name);
+
   HtmlElement::CloseStyle GetCloseStyle(HtmlElement* element);
   void Clear();
 
@@ -69,16 +75,11 @@ class HtmlWriterFilter : public HtmlFilter {
   // first emit the delayed ">" before continuing.
   HtmlElement* lazy_close_element_;
 
-  Atom symbol_a_;
-  Atom symbol_link_;
-  Atom symbol_href_;
-  Atom symbol_img_;
-  Atom symbol_script_;
-  Atom symbol_src_;
-  Atom symbol_alt_;
   int column_;
   int max_column_;
   int write_errors_;
+  bool case_fold_;
+  std::string case_fold_buffer_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlWriterFilter);
 };

@@ -20,42 +20,71 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <algorithm>
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 
+namespace net_instaweb {
+
 namespace {
+
+// TODO(jmarantz): consider making these sorted-lists be an enum field
+// in the table in html_name.gperf.  I'm not sure if that would make things
+// noticably faster or not.
+
 // These tags can be specified in documents without a brief "/>",
 // or an explicit </tag>, according to the Chrome Developer Tools console.
 //
 // TODO(jmarantz): Check out
 // http://www.whatwg.org/specs/web-apps/current-work/multipage/
 // syntax.html#optional-tags
-const char* kImplicitlyClosedHtmlTags[] = {
-  "meta", "input", "link", "br", "img", "area", "hr", "wbr", "param", "?xml",
-  NULL
+//
+// TODO(jmarantz): morlovich suggests "base & col too, going by HTML4.01 DTD.
+// ... but base tag is weird."
+const HtmlName::Keyword kImplicitlyClosedHtmlTags[] = {
+  HtmlName::kXml,
+  HtmlName::kArea,
+  HtmlName::kBr,
+  HtmlName::kHr,
+  HtmlName::kImg,
+  HtmlName::kInput,
+  HtmlName::kLink,
+  HtmlName::kMeta,
+  HtmlName::kParam,
+  HtmlName::kWbr,
 };
 
 // These tags cannot be closed using the brief syntax; they must
 // be closed by using an explicit </TAG>.
-const char* kNonBriefTerminatedTags[] = {
-  "script", "a", "div", "span", "iframe", "style", "textarea",
-  NULL
+const HtmlName::Keyword kNonBriefTerminatedTags[] = {
+  HtmlName::kA,
+  HtmlName::kDiv,
+  HtmlName::kIframe,
+  HtmlName::kScript,
+  HtmlName::kSpan,
+  HtmlName::kStyle,
+  HtmlName::kTextarea,
 };
 
 // These tags cause the text inside them to retained literally
 // and not interpreted.
-const char* kLiteralTags[] = {
-  "script", "iframe", "textarea", "style",
-  NULL
+const HtmlName::Keyword kLiteralTags[] = {
+  HtmlName::kIframe,
+  HtmlName::kScript,
+  HtmlName::kStyle,
+  HtmlName::kTextarea,
 };
 
 // These tags do not need to be explicitly closed, but can be.  See
 // http://www.w3.org/TR/html5/syntax.html#optional-tags .  Note that this
 // is *not* consistent with http://www.w3schools.com/tags/tag_p.asp which
-// claims this tag works the same in XHTML as HTML.
+// claims this tag works the same in XHTML as HTML.  This is clearly
+// wrong since real XHTML has XML syntax which requires explicit
+// closing tags.
 //
 // TODO(jmarantz): http://www.w3.org/TR/html5/syntax.html#optional-tags
 // specifies complex rules, in some cases, dictating whether the closing
@@ -63,96 +92,111 @@ const char* kLiteralTags[] = {
 // messages for any of these tags in any case.  These rules are echoed below
 // in case we want to add code to emit the 'unclosed tag' messages when they
 // are appropriate.  For now we err on the side of silence.
-const char* kOptionallyClosedTags[] = {
-  // An html element's end tag may be omitted if the html element is not
-  // immediately followed by a comment.
-  "html",
-
+const HtmlName::Keyword kOptionallyClosedTags[] = {
   // A body element's end tag may be omitted if the body element is not
   // immediately followed by a comment.
-  "body",
+  HtmlName::kBody,
 
-  // A li element's end tag may be omitted if the li element is immediately
-  // followed by another li element or if there is no more content in the
-  // parent element.
-  "li",
-
-  // A dt element's end tag may be omitted if the dt element is immediately
-  // followed by another dt element or a dd element.
-  "dt",
+  // A colgroup element's end tag may be omitted if the colgroup element is not
+  // immediately followed by a space character or a comment.
+  HtmlName::kColgroup,
 
   // A dd element's end tag may be omitted if the dd element is immediately
   // followed by another dd element or a dt element, or if there is no more
   // content in the parent element.
-  "dd",
+  HtmlName::kDd,
+
+  // A dt element's end tag may be omitted if the dt element is immediately
+  // followed by another dt element or a dd element.
+  HtmlName::kDt,
+
+  // An html element's end tag may be omitted if the html element is not
+  // immediately followed by a comment.
+  HtmlName::kHtml,
+
+  // A li element's end tag may be omitted if the li element is immediately
+  // followed by another li element or if there is no more content in the
+  // parent element.
+  HtmlName::kLi,
+
+  // An optgroup element's end tag may be omitted if the optgroup element is
+  // immediately followed by another optgroup element, or if there is no more
+  // content in the parent element.
+  HtmlName::kOptgroup,
+
+  // An option element's end tag may be omitted if the option element is
+  // immediately followed by another option element, or if it is immediately
+  // followed by an optgroup element, or if there is no more content in the
+  // parent element.
+  HtmlName::kOption,
 
   // A p element's end tag may be omitted if the p element is immediately
   // followed by an address, article, aside, blockquote, dir, div, dl, fieldset,
   // footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, menu, nav, ol, p,
   // pre, section, table, or ul, element, or if there is no more content in the
   // parent element and the parent element is not an a element.
-  "p",
-
-  // An rt element's end tag may be omitted if the rt element is immediately
-  // followed by an rt or rp element, or if there is no more content in the
-  // parent element.
-  "rt",
+  HtmlName::kP,
 
   // An rp element's end tag may be omitted if the rp element is immediately
   // followed by an rt or rp element, or if there is no more content in the
   // parent element.
-  "rp",
+  HtmlName::kRp,
 
-  // An optgroup element's end tag may be omitted if the optgroup element is
-  // immediately followed by another optgroup element, or if there is no more
-  // content in the parent element.
-  "optgroup",
-
-  // An option element's end tag may be omitted if the option element is
-  // immediately followed by another option element, or if it is immediately
-  // followed by an optgroup element, or if there is no more content in the
+  // An rt element's end tag may be omitted if the rt element is immediately
+  // followed by an rt or rp element, or if there is no more content in the
   // parent element.
-  "option",
-
-  // A colgroup element's end tag may be omitted if the colgroup element is not
-  // immediately followed by a space character or a comment.
-  "colgroup",
-
-  // A thead element's end tag may be omitted if the thead element is
-  // immediately followed by a tbody or tfoot element.
-  "thead",
+  HtmlName::kRt,
 
   // A tbody element's end tag may be omitted if the tbody element is
   // immediately followed by a tbody or tfoot element, or if there is no more
   // content in the parent element.
-  "tbody",
-
-  // A tfoot element's end tag may be omitted if the tfoot element is
-  // immediately followed by a tbody element, or if there is no more content in
-  // the parent element.
-  "tfoot",
-
-  // A tr element's end tag may be omitted if the tr element is immediately
-  // followed by another tr element, or if there is no more content in the
-  // parent element.
-  "tr",
+  HtmlName::kTbody,
 
   // A td element's end tag may be omitted if the td element is immediately
   // followed by a td or th element, or if there is no more content in the
   // parent element.
-  "td",
+  HtmlName::kTd,
+
+  // A tfoot element's end tag may be omitted if the tfoot element is
+  // immediately followed by a tbody element, or if there is no more content in
+  // the parent element.
+  HtmlName::kTfoot,
 
   // A th element's end tag may be omitted if the th element is immediately
   // followed by a td or th element, or if there is no more content in the
   // parent element.
-  "th",
+  HtmlName::kTh,
 
-  NULL
+  // A thead element's end tag may be omitted if the thead element is
+  // immediately followed by a tbody or tfoot element.
+  HtmlName::kThead,
+
+  // A tr element's end tag may be omitted if the tr element is immediately
+  // followed by another tr element, or if there is no more content in the
+  // parent element.
+  HtmlName::kTr,
 };
 
 // We start our stack-iterations from 1, because we put a NULL into
 // position 0 to reduce special-cases.
 const int kStartStack = 1;
+
+#define CHECK_KEYWORD_SET_ORDERING(keywords) \
+    CheckKeywordSetOrdering(keywords, arraysize(keywords))
+void CheckKeywordSetOrdering(const HtmlName::Keyword* keywords, int num) {
+  for (int i = 1; i < num; ++i) {
+    DCHECK_GT(keywords[i], keywords[i - 1]);
+  }
+}
+
+bool IsInSet(const HtmlName::Keyword* keywords, int num,
+             HtmlName::Keyword keyword) {
+  const HtmlName::Keyword* end = keywords + num;
+  return std::binary_search(keywords, end, keyword);
+}
+
+#define IS_IN_SET(keywords, keyword) \
+    IsInSet(keywords, arraysize(keywords), keyword)
 
 }  // namespace
 
@@ -162,8 +206,6 @@ const int kStartStack = 1;
 //   See http://www.whatwg.org/specs/web-apps/current-work/multipage/
 //   syntax.html#optional-tags
 
-namespace net_instaweb {
-
 HtmlLexer::HtmlLexer(HtmlParse* html_parse)
     : html_parse_(html_parse),
       state_(START),
@@ -172,18 +214,10 @@ HtmlLexer::HtmlLexer(HtmlParse* html_parse)
       element_(NULL),
       line_(1),
       tag_start_line_(-1) {
-  for (const char** p = kImplicitlyClosedHtmlTags; *p != NULL; ++p) {
-    implicitly_closed_.insert(html_parse->Intern(*p));
-  }
-  for (const char** p = kNonBriefTerminatedTags; *p != NULL; ++p) {
-    non_brief_terminated_tags_.insert(html_parse->Intern(*p));
-  }
-  for (const char** p = kLiteralTags; *p != NULL; ++p) {
-    literal_tags_.insert(html_parse->Intern(*p));
-  }
-  for (const char** p = kOptionallyClosedTags; *p != NULL; ++p) {
-    optionally_closed_tags_.insert(html_parse->Intern(*p));
-  }
+  CHECK_KEYWORD_SET_ORDERING(kImplicitlyClosedHtmlTags);
+  CHECK_KEYWORD_SET_ORDERING(kNonBriefTerminatedTags);
+  CHECK_KEYWORD_SET_ORDERING(kLiteralTags);
+  CHECK_KEYWORD_SET_ORDERING(kOptionallyClosedTags);
 }
 
 HtmlLexer::~HtmlLexer() {
@@ -647,18 +681,17 @@ void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
   MakeElement();
   html_parse_->AddElement(element_, tag_start_line_);
   element_stack_.push_back(element_);
-  if (literal_tags_.find(element_->tag()) != literal_tags_.end()) {
+  if (IS_IN_SET(kLiteralTags, element_->keyword())) {
     state_ = LITERAL_TAG;
     literal_close_ = "</";
-    literal_close_ += element_->tag().c_str();
+    literal_close_ += element_->name_str();
     literal_close_ += ">";
   } else {
     state_ = START;
   }
 
-  Atom tag = element_->tag();
-  if (allow_implicit_close && IsImplicitlyClosedTag(tag)) {
-    token_ = tag.c_str();
+  if (allow_implicit_close && IsImplicitlyClosedTag(element_->keyword())) {
+    token_ = element_->name_str();
     EmitTagClose(HtmlElement::IMPLICIT_CLOSE);
   }
 
@@ -669,13 +702,6 @@ void HtmlLexer::EmitTagBriefClose() {
   HtmlElement* element = PopElement();
   html_parse_->CloseElement(element, HtmlElement::BRIEF_CLOSE, line_);
   state_ = START;
-}
-
-static void toLower(std::string* str) {
-  for (int i = 0, n = str->size(); i < n; ++i) {
-    char& c = (*str)[i];
-    c = tolower(c);
-  }
 }
 
 HtmlElement* HtmlLexer::Parent() const {
@@ -689,7 +715,9 @@ void HtmlLexer::MakeElement() {
     if (token_.empty()) {
       SyntaxError("Making element with empty tag name");
     }
-    toLower(&token_);
+#if LOWER_CASE_DURING_LEXER
+    LowerString(&token_);
+#endif
     element_ = html_parse_->NewElement(Parent(), html_parse_->Intern(token_));
     element_->set_begin_line_number(tag_start_line_);
     token_.clear();
@@ -740,11 +768,9 @@ void HtmlLexer::FinishParse() {
                                         "element_stack_[0] != NULL");
   for (size_t i = kStartStack; i < element_stack_.size(); ++i) {
     HtmlElement* element = element_stack_[i];
-    Atom tag = element->tag();
-    if (!IsOptionallyClosedTag(tag)) {
+    if (!IsOptionallyClosedTag(element->keyword())) {
       html_parse_->Info(id_.c_str(), element->begin_line_number(),
-                        "End-of-file with open tag: %s",
-                        tag.c_str());
+                        "End-of-file with open tag: %s", element->name_str());
     }
   }
   element_stack_.clear();
@@ -754,7 +780,9 @@ void HtmlLexer::FinishParse() {
 
 void HtmlLexer::MakeAttribute(bool has_value) {
   html_parse_->message_handler()->Check(element_ != NULL, "element_ == NULL");
-  toLower(&attr_name_);
+#if LOWER_CASE_DURING_LEXER
+    LowerString(&attr_name_);
+#endif
   Atom name = html_parse_->Intern(attr_name_);
   attr_name_.clear();
   const char* value = NULL;
@@ -904,7 +932,9 @@ void HtmlLexer::EvalAttrValSq(char c) {
 }
 
 void HtmlLexer::EmitTagClose(HtmlElement::CloseStyle close_style) {
-  toLower(&token_);
+#if LOWER_CASE_DURING_LEXER
+    LowerString(&token_);
+#endif
   Atom tag = html_parse_->Intern(token_);
   HtmlElement* element = PopElementMatchingTag(tag);
   if (element != NULL) {
@@ -980,19 +1010,18 @@ void HtmlLexer::Parse(const char* text, int size) {
   }
 }
 
-bool HtmlLexer::IsImplicitlyClosedTag(Atom tag) const {
+bool HtmlLexer::IsImplicitlyClosedTag(HtmlName::Keyword keyword) const {
   return (!doctype_.IsXhtml() &&
-          implicitly_closed_.find(tag) != implicitly_closed_.end());
+          IS_IN_SET(kImplicitlyClosedHtmlTags, keyword));
 }
 
-bool HtmlLexer::TagAllowsBriefTermination(Atom tag) const {
-  return (non_brief_terminated_tags_.find(tag) ==
-          non_brief_terminated_tags_.end());
+bool HtmlLexer::TagAllowsBriefTermination(HtmlName::Keyword keyword) const {
+  return !IS_IN_SET(kNonBriefTerminatedTags, keyword);
 }
 
-bool HtmlLexer::IsOptionallyClosedTag(Atom tag) const {
+bool HtmlLexer::IsOptionallyClosedTag(HtmlName::Keyword keyword) const {
   return (!doctype_.IsXhtml() &&
-          optionally_closed_tags_.find(tag) != optionally_closed_tags_.end());
+          IS_IN_SET(kOptionallyClosedTags, keyword));
 }
 
 void HtmlLexer::DebugPrintStack() {
@@ -1019,17 +1048,20 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(Atom tag) {
   // Search the stack from top to bottom.
   for (int i = element_stack_.size() - 1; i >= kStartStack; --i) {
     element = element_stack_[i];
-    if (element->tag() == tag) {
+
+    // In tag-matching we will do case-insensitive comparisons, despite
+    // the fact that we have a keywords enum.  Note that the symbol
+    // table is case sensitive.
+    if (StringCaseEqual(element->name_str(), tag.c_str())) {
       // Emit warnings for the tags we are skipping.  We have to do
       // this in reverse order so that we maintain stack discipline.
       for (int j = element_stack_.size() - 1; j > i; --j) {
         HtmlElement* skipped = element_stack_[j];
         // In fact, should we actually perform this optimization ourselves
         // in a filter to omit closing tags that can be inferred?
-        Atom tag = skipped->tag();
-        if (!IsOptionallyClosedTag(tag)) {
+        if (!IsOptionallyClosedTag(skipped->keyword())) {
           html_parse_->Info(id_.c_str(), skipped->begin_line_number(),
-                            "Unclosed element `%s'", skipped->tag().c_str());
+                            "Unclosed element `%s'", skipped->name_str());
         }
         // Before closing the skipped element, pop it off the stack.  Otherwise,
         // the parent redundancy check in HtmlParse::AddEvent will fail.

@@ -651,12 +651,12 @@ void HtmlParse::DebugPrintQueue() {
   fflush(stdout);
 }
 
-bool HtmlParse::IsImplicitlyClosedTag(Atom tag) const {
-  return lexer_->IsImplicitlyClosedTag(tag);
+bool HtmlParse::IsImplicitlyClosedTag(HtmlName::Keyword keyword) const {
+  return lexer_->IsImplicitlyClosedTag(keyword);
 }
 
-bool HtmlParse::TagAllowsBriefTermination(Atom tag) const {
-  return lexer_->TagAllowsBriefTermination(tag);
+bool HtmlParse::TagAllowsBriefTermination(HtmlName::Keyword keyword) const {
+  return lexer_->TagAllowsBriefTermination(keyword);
 }
 
 const DocType& HtmlParse::doctype() const {
@@ -748,6 +748,10 @@ void HtmlParse::CloseElement(
   AddEvent(end_event);
   element->set_end(Last());
   element->set_end_line_number(line_number);
+}
+
+Atom HtmlParse::InternKeyword(HtmlName::Keyword keyword) {
+  return Intern(HtmlKeywords::KeywordToString(keyword));
 }
 
 }  // namespace net_instaweb

@@ -45,7 +45,7 @@ struct SerfStats {
   static const char kSerfFetchByteCount[];
   static const char kSerfFetchTimeDurationMs[];
   static const char kSerfFetchCancelCount[];
-  static const char kSerfFetchOutstandingCount[];
+  static const char kSerfFetchActiveCount[];
   static const char kSerfFetchTimeoutCount[];
 };
 
@@ -71,9 +71,9 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
     kThreadedAndMainline
   };
 
-  bool WaitForInProgressFetches(int64 max_milliseconds,
-                                MessageHandler* message_handler,
-                                WaitChoice wait_choice);
+  bool WaitForActiveFetches(int64 max_milliseconds,
+                            MessageHandler* message_handler,
+                            WaitChoice wait_choice);
 
   // Remove the completed fetch from the active fetch set, and put it into a
   // completed fetch list to be cleaned up.
@@ -81,20 +81,24 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   apr_pool_t* pool() const { return pool_; }
   serf_context_t* serf_context() const { return serf_context_; }
 
-  void PrintOutstandingFetches(MessageHandler* handler) const;
+  void PrintActiveFetches(MessageHandler* handler) const;
   virtual int64 timeout_ms() { return timeout_ms_; }
 
  protected:
   typedef Pool<SerfFetch> SerfFetchPool;
 
   bool SetupProxy(const char* proxy);
-  virtual bool AnyActiveFetches();
-  // This is approximate because it can under- or over-count
-  // for SerfThreadedFetcher (a subclass).
+  // AnyPendingFetches is accurate only at the time of call; this is
+  // used conservatively during shutdown.  It counts fetches that have been
+  // requested by some thread, and can include fetches for which no action
+  // has yet been taken (ie fetches that are not active).
+  virtual bool AnyPendingFetches();
+  // ApproximateNumActiveFetches can under- or over-count and is used only for
+  // error reporting.
   int ApproximateNumActiveFetches();
-  void CancelOutstandingFetches();
-  bool WaitForInProgressFetchesHelper(int64 max_ms,
-                                      MessageHandler* message_handler);
+  void CancelActiveFetches();
+  bool WaitForActiveFetchesHelper(int64 max_ms,
+                                  MessageHandler* message_handler);
 
   apr_pool_t* pool_;
   Timer* timer_;
@@ -110,7 +114,7 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
 
   // This is protected because it's updated along with active_fetches_,
   // which happens in subclass SerfThreadedFetcher as well as this class.
-  Variable* outstanding_count_;
+  Variable* active_count_;
 
  private:
   Variable* request_count_;

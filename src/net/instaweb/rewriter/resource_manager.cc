@@ -328,7 +328,7 @@ Resource* ResourceManager::CreateInputResourceFromOutputResource(
   return input_resource;
 }
 
-Resource* ResourceManager::CreateInputResourceAbsolute(
+Resource* ResourceManager::CreateInputResourceAbsoluteUnchecked(
     const StringPiece& absolute_url, const RewriteOptions* rewrite_options,
     MessageHandler* handler) {
   std::string url_string(absolute_url.data(), absolute_url.size());

@@ -85,7 +85,7 @@ class HtmlStartElementEvent: public HtmlEvent {
   virtual void Run(HtmlFilter* filter) { filter->StartElement(element_); }
   virtual void ToString(std::string* str) {
     *str += "StartElement ";
-    *str += element_->tag().c_str();
+    *str += element_->name_str();
   }
   virtual HtmlElement* GetElementIfStartEvent() { return element_; }
   virtual HtmlElement* GetNode() { return element_; }
@@ -104,7 +104,7 @@ class HtmlEndElementEvent: public HtmlEvent {
   virtual void Run(HtmlFilter* filter) { filter->EndElement(element_); }
   virtual void ToString(std::string* str) {
     *str += "EndElement ";
-    *str += element_->tag().c_str();
+    *str += element_->name_str();
   }
   virtual HtmlElement* GetElementIfEndEvent() { return element_; }
   virtual HtmlElement* GetNode() { return element_; }

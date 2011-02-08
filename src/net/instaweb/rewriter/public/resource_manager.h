@@ -154,19 +154,10 @@ class ResourceManager {
 
   // Creates an input resource from the given absolute url.  Requires that the
   // provided url has been checked, and can legally be rewritten in the current
-  // page context.  If you have a GURL, prefer CreateInputResourceUnchecked,
-  // otherwise use this.
-  Resource* CreateInputResourceAbsolute(const StringPiece& absolute_url,
-                                        const RewriteOptions* rewrite_options,
-                                        MessageHandler* handler);
-
-  // Creates an input resource with the given gurl, already absolute and valid.
-  // Use only for resource fetches that lack a page context, or in places where
-  // permission checking has been done explicitly on the caller side (for
-  // example css_combine_filter, which constructs its own url_partnership).
-  Resource* CreateInputResourceUnchecked(const GURL& gurl,
-                                         const RewriteOptions* rewrite_options,
-                                         MessageHandler* handler);
+  // page context.
+  Resource* CreateInputResourceAbsoluteUnchecked(
+      const StringPiece& absolute_url, const RewriteOptions* rewrite_options,
+      MessageHandler* handler);
 
   // Set up a basic header for a given content_type.
   // If content_type is null, the Content-Type is omitted.
@@ -278,6 +269,13 @@ class ResourceManager {
   void CacheComputedResourceMapping(OutputResource* output,
                                     int64 origin_expire_time_ms,
                                     MessageHandler* handler);
+
+  // Internal low-level helper for resource creation.
+  // Use only when permission checking has been done explicitly on the
+  // caller side.
+  Resource* CreateInputResourceUnchecked(const GURL& gurl,
+                                         const RewriteOptions* rewrite_options,
+                                         MessageHandler* handler);
 
   std::string file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.

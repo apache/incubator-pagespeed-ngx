@@ -58,7 +58,6 @@ class CommonFilter : public EmptyHtmlFilter {
   virtual void EndElement(HtmlElement* element);
 
   Resource* CreateInputResource(const StringPiece& url);
-  Resource* CreateInputResourceAbsolute(const StringPiece& url);
   Resource* CreateInputResourceAndReadIfCached(const StringPiece& url);
   Resource* CreateInputResourceFromOutputResource(
       UrlSegmentEncoder* encoder, OutputResource* output_resource);

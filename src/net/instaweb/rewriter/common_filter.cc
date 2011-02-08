@@ -90,12 +90,6 @@ Resource* CommonFilter::CreateInputResource(const StringPiece& url) {
       base_gurl(), url, rewrite_options_, html_parse_->message_handler());
 }
 
-Resource* CommonFilter::CreateInputResourceAbsolute(const StringPiece& url) {
-  ResourceManager* resource_manager = driver_->resource_manager();
-  return resource_manager->CreateInputResourceAbsolute(
-      url, rewrite_options_, html_parse_->message_handler());
-}
-
 Resource* CommonFilter::CreateInputResourceAndReadIfCached(
     const StringPiece& url) {
   ResourceManager* resource_manager = driver_->resource_manager();

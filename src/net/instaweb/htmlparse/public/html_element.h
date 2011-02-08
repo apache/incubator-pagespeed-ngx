@@ -23,12 +23,15 @@
 
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/symbol_table.h"
+
+#define LOWER_CASE_DURING_LEXER 1
 
 namespace net_instaweb {
 
@@ -58,8 +61,26 @@ class HtmlElement : public HtmlNode {
     // will be invalidated by a subsequent call to SetValue() or
     // SetUnescapedValue
 
-    Atom name() const { return name_; }
-    void set_name(Atom name) { name_ = name; }
+    // Returns the attribute name, which is not guaranteed to be case-folded.
+    // Compare keyword() to the Keyword constant found in html_name.h for
+    // fast attribute comparisons.
+    const char* name_str() const { return name_.atom().c_str(); }
+
+    // Returns the HTML keyword enum.  If this attribute name is not
+    // recognized, returns HtmlName::kNotAKeyword, and you can examine
+    // name_str().
+    HtmlName::Keyword keyword() const { return name_.keyword(); }
+
+#if LOWER_CASE_DURING_LEXER
+    // Currently for incremental CL checkins we must have this....
+    Atom name() const { return name_.atom(); }
+    HtmlName html_name() const { return name_; }
+    void set_name(Atom atom) { name_ = HtmlName(atom); }
+#else
+    // ...but we would like to migrate to this
+    HtmlName name() const { return name_; }
+#endif
+    void set_name(const HtmlName& name) { name_ = name; }
 
     // Returns the value in its original directly from the HTML source.
     // This may have HTML escapes in it, such as "&amp;".
@@ -120,13 +141,18 @@ class HtmlElement : public HtmlNode {
     // the quote, and decide how to handle NULL.
     //
     // This should only be called from AddAttribute
+    //
+    // TODO(jmarantz): remove any of these that are not needed once the
+    // atoms are hidden.
     Attribute(Atom name, const StringPiece& value,
+              const StringPiece& escaped_value, const char* quote);
+    Attribute(const HtmlName& name, const StringPiece& value,
               const StringPiece& escaped_value, const char* quote);
 
     static inline void CopyValue(const StringPiece& src,
                                  scoped_array<char>* dst);
 
-    Atom name_;
+    HtmlName name_;
     scoped_array<char> escaped_value_;
     scoped_array<char> value_;
     const char* quote_;
@@ -147,8 +173,6 @@ class HtmlElement : public HtmlNode {
   // The value, if non-null, is assumed to be unescaped.  See also
   // AddEscapedAttribute.
   void AddAttribute(Atom name, const StringPiece& value, const char* quote);
-  // Unconditionally add attribute with int value.
-  void AddAttribute(Atom name, int value);
   // As AddAttribute, but assumes value has been escaped for html output.
   void AddEscapedAttribute(Atom name, const StringPiece& escaped_value,
                            const char* quote);
@@ -160,15 +184,15 @@ class HtmlElement : public HtmlNode {
 
   // Remove the attribute with the given name.  Return true if the attribute
   // was deleted, false if it wasn't there to begin with.
-  bool DeleteAttribute(Atom name);
+  bool DeleteAttribute(HtmlName::Keyword keyword);
 
   // Look up attribute by name.  NULL if no attribute exists.
   // Use this for attributes whose value you might want to change
   // after lookup.
-  const Attribute* FindAttribute(Atom name) const;
-  Attribute* FindAttribute(Atom name) {
+  const Attribute* FindAttribute(HtmlName::Keyword keyword) const;
+  Attribute* FindAttribute(HtmlName::Keyword keyword) {
     const HtmlElement* const_this = this;
-    const Attribute* result = const_this->FindAttribute(name);
+    const Attribute* result = const_this->FindAttribute(keyword);
     return const_cast<Attribute*>(result);
   }
 
@@ -176,7 +200,7 @@ class HtmlElement : public HtmlNode {
   // Use this only if you don't intend to change the attribute value;
   // if you might change the attribute value, use FindAttribute instead
   // (this avoids a double lookup).
-  const char* AttributeValue(Atom name) const {
+  const char* AttributeValue(HtmlName::Keyword name) const {
     const Attribute* attribute = FindAttribute(name);
     if (attribute != NULL) {
       return attribute->value();
@@ -187,7 +211,7 @@ class HtmlElement : public HtmlNode {
   // Look up attribute value by name.  false if no attribute exists,
   // or attribute value cannot be converted to int.  Otherwise
   // sets *value.
-  bool IntAttributeValue(Atom name, int* value) const {
+  bool IntAttributeValue(HtmlName::Keyword name, int* value) const {
     const Attribute* attribute = FindAttribute(name);
     if (attribute != NULL) {
       return StringToInt(attribute->value(), value);
@@ -199,13 +223,55 @@ class HtmlElement : public HtmlNode {
   // for debugging.
   void set_sequence(int sequence) { sequence_ = sequence; }
 
+  // Compatibility methods that will be eliminated once CLs 19351656,
+  // 19351667, and 19355391 are submitted.
+#if LOWER_CASE_DURING_LEXER
+  Atom tag() const { return name_.atom(); }
+  void set_tag(Atom atom) { name_ = HtmlName(atom); }
+  HtmlName::Keyword Keyword(Atom atom) const {
+    HtmlName name(atom);
+    return name.keyword();
+  }
 
-  Atom tag() const {return tag_;}
+  const char* AttributeValue(Atom atom) const {
+    return AttributeValue(Keyword(atom));
+  }
+
+  bool IntAttributeValue(Atom atom, int* value) const {
+    return IntAttributeValue(Keyword(atom), value);
+  }
+
+  Attribute* FindAttribute(Atom atom) {
+    return FindAttribute(Keyword(atom));
+  }
+
+  const Attribute* FindAttribute(Atom atom) const {
+    return FindAttribute(Keyword(atom));
+  }
+
+  bool DeleteAttribute(Atom atom) {
+    return DeleteAttribute(Keyword(atom));
+  }
+
+  void AddAttribute(Atom name, int value);
+#endif
+
+  // Returns the element tag name, which is not guaranteed to be
+  // case-folded.  Compare keyword() to the Keyword constant found in
+  // html_name.h for fast tag name comparisons.
+  const char* name_str() const { return name_.atom().c_str(); }
+
+  // Returns the HTML keyword enum.  If this tag name is not
+  // recognized, returns HtmlName::kNotAKeyword, and you can
+  // examine name_str().
+  HtmlName::Keyword keyword() const { return name_.keyword(); }
+
+  const HtmlName& name() const { return name_; }
 
   // Changing that tag of an element should only occur if the caller knows
   // that the old attributes make sense for the new tag.  E.g. a div could
   // be changed to a span.
-  void set_tag(Atom new_tag) { tag_ = new_tag; }
+  void set_name(const HtmlName& new_tag) { name_ = new_tag; }
 
   int attribute_size() const {return attributes_.size(); }
   const Attribute& attribute(int i) const { return *attributes_[i]; }
@@ -248,7 +314,7 @@ class HtmlElement : public HtmlNode {
       const HtmlEventListIterator& end);
 
   int sequence_;
-  Atom tag_;
+  HtmlName name_;
   std::vector<Attribute*> attributes_;
   HtmlEventListIterator begin_;
   HtmlEventListIterator end_;

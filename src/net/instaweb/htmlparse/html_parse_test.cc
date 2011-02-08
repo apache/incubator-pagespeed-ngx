@@ -28,6 +28,11 @@
 namespace net_instaweb {
 
 class HtmlParseTest : public HtmlParseTestBase {
+ protected:
+  Atom MakeAtom(const char *name) {
+    return html_parse_.Intern(name);
+  }
+
   virtual bool AddBody() const { return true; }
 };
 
@@ -521,25 +526,25 @@ TEST_F(EventListManipulationTest, TestAddParentToSequence) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node3_, -1));
-  HtmlElement* div = html_parse_.NewElement(NULL, html_parse_.Intern("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node3_, div));
   CheckExpected("<div>123</div>");
 
   // Now interpose a span between the div and the Characeters nodes.
-  HtmlElement* span = html_parse_.NewElement(div, html_parse_.Intern("span"));
+  HtmlElement* span = html_parse_.NewElement(div, MakeAtom("span"));
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node2_, span));
   CheckExpected("<div><span>12</span>3</div>");
 
   // Next, add an HTML block above the div.  Note that we pass 'div' in as
   // both 'first' and 'last'.
-  HtmlElement* html = html_parse_.NewElement(NULL, html_parse_.Intern("html"));
+  HtmlElement* html = html_parse_.NewElement(NULL, MakeAtom("html"));
   EXPECT_TRUE(html_parse_.AddParentToSequence(div, div, html));
   CheckExpected("<html><div><span>12</span>3</div></html>");
 }
 
 TEST_F(EventListManipulationTest, TestPrependChild) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
-  HtmlElement* div = html_parse_.NewElement(NULL, html_parse_.Intern("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
   html_parse_.InsertElementBeforeCurrent(div);
   CheckExpected("1<div></div>");
 
@@ -553,7 +558,7 @@ TEST_F(EventListManipulationTest, TestPrependChild) {
 
 TEST_F(EventListManipulationTest, TestAppendChild) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
-  HtmlElement* div = html_parse_.NewElement(NULL, html_parse_.Intern("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
   html_parse_.InsertElementBeforeCurrent(div);
   CheckExpected("1<div></div>");
 
@@ -568,7 +573,7 @@ TEST_F(EventListManipulationTest, TestAppendChild) {
 TEST_F(EventListManipulationTest, TestAddParentToSequenceDifferentParents) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
-  HtmlElement* div = html_parse_.NewElement(NULL, html_parse_.Intern("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node2_, div));
   CheckExpected("<div>12</div>");
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node3_, -1));
@@ -578,7 +583,7 @@ TEST_F(EventListManipulationTest, TestAddParentToSequenceDifferentParents) {
 
 TEST_F(EventListManipulationTest, TestDeleteGroup) {
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
-  HtmlElement* div = html_parse_.NewElement(NULL, html_parse_.Intern("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node2_, div));
   CheckExpected("<div>12</div>");
   html_parse_.DeleteElement(div);
@@ -586,11 +591,11 @@ TEST_F(EventListManipulationTest, TestDeleteGroup) {
 }
 
 TEST_F(EventListManipulationTest, TestMoveElementIntoParent1) {
-  HtmlElement* head = html_parse_.NewElement(NULL, html_parse_.Intern("head"));
+  HtmlElement* head = html_parse_.NewElement(NULL, MakeAtom("head"));
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node1_, head));
   CheckExpected("<head>1</head>");
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
-  HtmlElement* div = html_parse_.NewElement(NULL, html_parse_.Intern("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
   EXPECT_TRUE(html_parse_.AddParentToSequence(node2_, node2_, div));
   CheckExpected("<head>1</head><div>2</div>");
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node3_, -1));
@@ -602,13 +607,13 @@ TEST_F(EventListManipulationTest, TestMoveElementIntoParent1) {
 
 TEST_F(EventListManipulationTest, TestMoveElementIntoParent2) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
-  HtmlElement* head = html_parse_.NewElement(NULL, html_parse_.Intern("head"));
+  HtmlElement* head = html_parse_.NewElement(NULL, MakeAtom("head"));
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node1_, head));
   CheckExpected("<head>1</head>");
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node3_, -1));
   CheckExpected("<head>1</head>23");
-  HtmlElement* div = html_parse_.NewElement(NULL, html_parse_.Intern("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
   EXPECT_TRUE(html_parse_.AddParentToSequence(node3_, node3_, div));
   CheckExpected("<head>1</head>2<div>3</div>");
   HtmlTestingPeer::SetCurrent(&html_parse_, div);
@@ -634,7 +639,7 @@ TEST_F(EventListManipulationTest, TestCoalesceOnAdd) {
 
 TEST_F(EventListManipulationTest, TestCoalesceOnDelete) {
   CheckExpected("1");
-  HtmlElement* div = html_parse_.NewElement(NULL, html_parse_.Intern("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
   html_parse_.AddElement(div, -1);
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
   HtmlTestingPeer testing_peer;
@@ -678,10 +683,6 @@ class AttributeManipulationTest : public HtmlParseTest {
     HtmlParseTest::TearDown();
   }
 
-  Atom MakeAtom(const char *name) {
-    return html_parse_.Intern(name);
-  }
-
   void CheckExpected(const std::string& expected) {
     SetupWriter();
     html_parse_.ApplyFilter(html_writer_filter_.get());
@@ -699,24 +700,24 @@ TEST_F(AttributeManipulationTest, PropertiesAndDeserialize) {
   StringPiece number37("37");
   StringPiece search("search!");
   EXPECT_EQ(3, node_->attribute_size());
-  EXPECT_EQ(google, node_->AttributeValue(MakeAtom("href")));
-  EXPECT_EQ(number37, node_->AttributeValue(MakeAtom("id")));
-  EXPECT_EQ(search, node_->AttributeValue(MakeAtom("class")));
-  EXPECT_TRUE(NULL == node_->AttributeValue(MakeAtom("absent")));
+  EXPECT_EQ(google, node_->AttributeValue(HtmlName::kHref));
+  EXPECT_EQ(number37, node_->AttributeValue(HtmlName::kId));
+  EXPECT_EQ(search, node_->AttributeValue(HtmlName::kClass));
+  EXPECT_TRUE(NULL == node_->AttributeValue(HtmlName::kNotAKeyword));
   int val = -35;
-  EXPECT_FALSE(node_->IntAttributeValue(MakeAtom("absent"), &val));
+  EXPECT_FALSE(node_->IntAttributeValue(HtmlName::kNotAKeyword, &val));
   EXPECT_EQ(-35, val);
-  EXPECT_FALSE(node_->IntAttributeValue(MakeAtom("href"), &val));
+  EXPECT_FALSE(node_->IntAttributeValue(HtmlName::kHref, &val));
   EXPECT_EQ(0, val);
-  EXPECT_TRUE(node_->IntAttributeValue(MakeAtom("id"), &val));
+  EXPECT_TRUE(node_->IntAttributeValue(HtmlName::kId, &val));
   EXPECT_EQ(37, val);
-  EXPECT_TRUE(NULL == node_->FindAttribute(MakeAtom("absent")));
-  EXPECT_EQ(google, node_->FindAttribute(MakeAtom("href"))->value());
-  EXPECT_EQ(number37, node_->FindAttribute(MakeAtom("id"))->value());
-  EXPECT_EQ(search, node_->FindAttribute(MakeAtom("class"))->value());
-  EXPECT_EQ(google, node_->FindAttribute(MakeAtom("href"))->escaped_value());
-  EXPECT_EQ(number37, node_->FindAttribute(MakeAtom("id"))->escaped_value());
-  EXPECT_EQ(search, node_->FindAttribute(MakeAtom("class"))->escaped_value());
+  EXPECT_TRUE(NULL == node_->FindAttribute(HtmlName::kNotAKeyword));
+  EXPECT_EQ(google, node_->FindAttribute(HtmlName::kHref)->value());
+  EXPECT_EQ(number37, node_->FindAttribute(HtmlName::kId)->value());
+  EXPECT_EQ(search, node_->FindAttribute(HtmlName::kClass)->value());
+  EXPECT_EQ(google, node_->FindAttribute(HtmlName::kHref)->escaped_value());
+  EXPECT_EQ(number37, node_->FindAttribute(HtmlName::kId)->escaped_value());
+  EXPECT_EQ(search, node_->FindAttribute(HtmlName::kClass)->escaped_value());
   CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'/>");
 }
 
@@ -733,22 +734,26 @@ TEST_F(AttributeManipulationTest, DeleteAttribute) {
 
 TEST_F(AttributeManipulationTest, ModifyAttribute) {
   HtmlElement::Attribute* href =
-      node_->FindAttribute(MakeAtom("href"));
+      node_->FindAttribute(HtmlName::kHref);
   EXPECT_TRUE(href != NULL);
   href->SetValue("google");
   href->set_quote("'");
-  href->set_name(MakeAtom("src"));
+  href->set_name(HtmlName(HtmlName::kSrc, MakeAtom("src")));
   CheckExpected("<a src='google' id=37 class='search!'/>");
 }
 
 TEST_F(AttributeManipulationTest, ModifyKeepAttribute) {
   HtmlElement::Attribute* href =
-      node_->FindAttribute(MakeAtom("href"));
+      node_->FindAttribute(HtmlName::kHref);
   EXPECT_TRUE(href != NULL);
   // This apparently do-nothing call to SetValue exposed an allocation bug.
   href->SetValue(href->value());
   href->set_quote(href->quote());
+#if LOWER_CASE_DURING_LEXER
+  href->set_name(href->html_name());
+#else
   href->set_name(href->name());
+#endif
   CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'/>");
 }
 

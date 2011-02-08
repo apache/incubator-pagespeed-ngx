@@ -378,7 +378,11 @@ bool CombineFilterBase::Fetch(OutputResource* combination,
     std::string root = GoogleUrl::AllExceptLeaf(gurl);
     for (int i = 0; ret && (i < multipart_encoder.num_urls()); ++i)  {
       std::string url = StrCat(root, multipart_encoder.url(i));
-      Resource* resource = CreateInputResourceAbsolute(url);
+      // Safe since we use StrCat to absolutize the URL rather than
+      // full resolve, so it will always be a subpath of root.
+      Resource* resource =
+          resource_manager_->CreateInputResourceAbsoluteUnchecked(
+              url, rewrite_options_, message_handler);
       ret = combiner->AddResource(resource);
       if (ret) {
         resource_manager_->ReadAsync(resource, combiner, message_handler);

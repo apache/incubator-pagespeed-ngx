@@ -114,7 +114,7 @@ CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
 
 UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::SubResourceFetcher() {
   assert(FetchersComputed());
-  return serf_url_async_fetcher_; // may be null in a readonly slurping mode
+  return serf_url_async_fetcher_;  // may be null in a readonly slurping mode
 }
 
 UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
@@ -154,7 +154,7 @@ ResourceManager* ApacheRewriteDriverFactory::ComputeResourceManager() {
 
 void ApacheRewriteDriverFactory::ShutDown() {
   if (serf_url_async_fetcher_ != NULL) {
-    serf_url_async_fetcher_->WaitForInProgressFetches(
+    serf_url_async_fetcher_->WaitForActiveFetches(
         fetcher_time_out_ms_, message_handler(),
         SerfUrlAsyncFetcher::kThreadedAndMainline);
   }

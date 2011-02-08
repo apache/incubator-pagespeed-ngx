@@ -30,20 +30,10 @@ namespace net_instaweb {
 static const int kDefaultMaxColumn = -1;
 
 HtmlWriterFilter::HtmlWriterFilter(HtmlParse* html_parse)
-    : writer_(NULL) {
-  html_parse_ = html_parse;
-
-  // Pre-intern a set of common symbols that can be used for
-  // fast comparisons when matching tags, and for pointer-based
-  // hash-tables.
-  symbol_a_ = html_parse->Intern("a");
-  symbol_link_ = html_parse->Intern("link");
-  symbol_href_ = html_parse->Intern("href");
-  symbol_img_ = html_parse->Intern("img");
-  symbol_script_ = html_parse->Intern("script");
-  symbol_src_ = html_parse->Intern("src");
-  symbol_alt_ = html_parse->Intern("alt");
-  max_column_ = kDefaultMaxColumn;
+    : html_parse_(html_parse),
+      writer_(NULL),
+      max_column_(kDefaultMaxColumn),
+      case_fold_(false) {
   Clear();
 }
 
@@ -78,15 +68,25 @@ void HtmlWriterFilter::EmitBytes(const StringPiece& str) {
   }
 }
 
+void HtmlWriterFilter::EmitName(const HtmlName& name) {
+  if (case_fold_) {
+    case_fold_buffer_ = name.c_str();
+    LowerString(&case_fold_buffer_);
+    EmitBytes(case_fold_buffer_);
+  } else {
+    EmitBytes(name.c_str());
+  }
+}
+
 void HtmlWriterFilter::StartElement(HtmlElement* element) {
   EmitBytes("<");
-  EmitBytes(element->tag().c_str());
+  EmitName(element->name());
 
   for (int i = 0; i < element->attribute_size(); ++i) {
     const HtmlElement::Attribute& attribute = element->attribute(i);
     // If the column has grown too large, insert a newline.  It's always safe
     // to insert whitespace in the middle of tag parameters.
-    int attr_length = 1 + attribute.name().size();
+    int attr_length = 1 + strlen(attribute.name_str());
     if (max_column_ > 0) {
       if (attribute.escaped_value() != NULL) {
         attr_length += 1 + strlen(attribute.escaped_value());
@@ -96,7 +96,7 @@ void HtmlWriterFilter::StartElement(HtmlElement* element) {
       }
     }
     EmitBytes(" ");
-    EmitBytes(attribute.name().c_str());
+    EmitBytes(attribute.name_str());
     if (attribute.escaped_value() != NULL) {
       EmitBytes("=");
       EmitBytes(attribute.quote());
@@ -129,10 +129,10 @@ void HtmlWriterFilter::StartElement(HtmlElement* element) {
 HtmlElement::CloseStyle HtmlWriterFilter::GetCloseStyle(HtmlElement* element) {
   HtmlElement::CloseStyle style = element->close_style();
   if (style == HtmlElement::AUTO_CLOSE) {
-    Atom tag = element->tag();
-    if (html_parse_->IsImplicitlyClosedTag(tag)) {
+    HtmlName::Keyword keyword = element->keyword();
+    if (html_parse_->IsImplicitlyClosedTag(keyword)) {
       style = HtmlElement::IMPLICIT_CLOSE;
-    } else if (html_parse_->TagAllowsBriefTermination(tag)) {
+    } else if (html_parse_->TagAllowsBriefTermination(keyword)) {
       style = HtmlElement::BRIEF_CLOSE;
     } else {
       style = HtmlElement::EXPLICIT_CLOSE;
@@ -177,7 +177,7 @@ void HtmlWriterFilter::EndElement(HtmlElement* element) {
       // fall through
     case HtmlElement::EXPLICIT_CLOSE:
       EmitBytes("</");
-      EmitBytes(element->tag().c_str());
+      EmitName(element->name());
       EmitBytes(">");
       break;
     case HtmlElement::UNCLOSED:

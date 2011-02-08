@@ -172,6 +172,22 @@ class HtmlParse {
 
 
   HtmlElement* NewElement(HtmlElement* parent, Atom tag);
+  HtmlElement* NewElement(HtmlElement* parent, HtmlName::Keyword keyword) {
+    return NewElement(parent, InternKeyword(keyword));
+  }
+
+  // Adding an attribute by keyword requires Intering an Atom into the
+  // symbol table, which is owned by HtmlParse.
+  void AddAttribute(HtmlElement* element, HtmlName::Keyword keyword,
+                    const StringPiece& value) {
+    return element->AddAttribute(InternKeyword(keyword), value, "\"");
+  }
+  void AddAttribute(HtmlElement* element, HtmlName::Keyword keyword,
+                    int value) {
+    return AddAttribute(element, keyword, IntegerToString(value));
+  }
+
+  Atom InternKeyword(HtmlName::Keyword keyword);
 
   bool IsRewritable(const HtmlNode* node) const;
 
@@ -190,10 +206,10 @@ class HtmlParse {
   friend class HtmlLexer;
 
   // Determines whether a tag should be terminated in HTML.
-  bool IsImplicitlyClosedTag(Atom tag) const;
+  bool IsImplicitlyClosedTag(HtmlName::Keyword keyword) const;
 
   // Determines whether a tag allows brief termination in HTML, e.g. <tag/>
-  bool TagAllowsBriefTermination(Atom tag) const;
+  bool TagAllowsBriefTermination(HtmlName::Keyword keyword) const;
 
   MessageHandler* message_handler() const { return message_handler_; }
   // Gets the current location information; typically to help with error
@@ -277,7 +293,7 @@ class HtmlParse {
   void SetCurrent(HtmlNode* node);
   void set_coalesce_characters(bool x) { coalesce_characters_ = x; }
 
-  SymbolTableInsensitive string_table_;
+  SymbolTableSensitive string_table_;
   std::vector<HtmlFilter*> filters_;
   HtmlLexer* lexer_;
   int sequence_;

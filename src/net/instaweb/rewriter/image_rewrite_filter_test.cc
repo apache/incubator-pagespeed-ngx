@@ -248,9 +248,8 @@ class ImageRewriteTest : public ResourceManagerTestBase {
         "kEenp/8oyIBf2ZEWaEfyv8BsICdAZ/XeTCAAAAAElFTkSuQmCC";
     std::string cuppa_string(kCuppaData);
     scoped_ptr<Resource> cuppa_resource(
-        resource_manager_->CreateInputResourceAbsolute(cuppa_string,
-                                                       &options_,
-                                                       &message_handler_));
+        resource_manager_->CreateInputResourceAbsoluteUnchecked(
+            cuppa_string, &options_, &message_handler_));
     ASSERT_TRUE(cuppa_resource != NULL);
     EXPECT_TRUE(resource_manager_->ReadIfCached(cuppa_resource.get(),
                                                 &message_handler_));
@@ -259,9 +258,8 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     // Now make sure axing the original cuppa_string doesn't affect the
     // internals of the cuppa_resource.
     scoped_ptr<Resource> other_resource(
-        resource_manager_->CreateInputResourceAbsolute(cuppa_string,
-                                                       &options_,
-                                                       &message_handler_));
+        resource_manager_->CreateInputResourceAbsoluteUnchecked(
+            cuppa_string, &options_, &message_handler_));
     ASSERT_TRUE(other_resource != NULL);
     cuppa_string.clear();
     EXPECT_TRUE(resource_manager_->ReadIfCached(other_resource.get(),

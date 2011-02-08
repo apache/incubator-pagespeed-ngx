@@ -30,7 +30,7 @@ HtmlElement::HtmlElement(HtmlElement* parent, Atom tag,
     const HtmlEventListIterator& begin, const HtmlEventListIterator& end)
     : HtmlNode(parent),
       sequence_(-1),
-      tag_(tag),
+      name_(HtmlName(tag)),
       begin_(begin),
       end_(end),
       close_style_(AUTO_CLOSE),
@@ -64,10 +64,10 @@ void HtmlElement::DeleteAttribute(int i) {
   attributes_.erase(iter);
 }
 
-bool HtmlElement::DeleteAttribute(Atom name) {
+bool HtmlElement::DeleteAttribute(HtmlName::Keyword keyword) {
   for (int i = 0; i < attribute_size(); ++i) {
     const Attribute* attribute = attributes_[i];
-    if (attribute->name() == name) {
+    if (attribute->keyword() == keyword) {
       DeleteAttribute(i);
       return true;
     }
@@ -76,11 +76,11 @@ bool HtmlElement::DeleteAttribute(Atom name) {
 }
 
 const HtmlElement::Attribute* HtmlElement::FindAttribute(
-    const Atom name) const {
+    HtmlName::Keyword keyword) const {
   const Attribute* ret = NULL;
   for (int i = 0; i < attribute_size(); ++i) {
     const Attribute* attribute = attributes_[i];
-    if (attribute->name() == name) {
+    if (attribute->keyword() == keyword) {
       ret = attribute;
       break;
     }
@@ -90,11 +90,11 @@ const HtmlElement::Attribute* HtmlElement::FindAttribute(
 
 void HtmlElement::ToString(std::string* buf) const {
   *buf += "<";
-  *buf += tag_.c_str();
+  *buf += name_.c_str();
   for (int i = 0; i < attribute_size(); ++i) {
     const Attribute& attribute = *attributes_[i];
     *buf += ' ';
-    *buf += attribute.name().c_str();
+    *buf += attribute.name_str();
     if (attribute.value() != NULL) {
       *buf += "=";
       const char* quote = (attribute.quote() != NULL) ? attribute.quote() : "?";
@@ -107,7 +107,7 @@ void HtmlElement::ToString(std::string* buf) const {
     case AUTO_CLOSE:       *buf += "> (not yet closed)"; break;
     case IMPLICIT_CLOSE:   *buf += ">";  break;
     case EXPLICIT_CLOSE:   *buf += "></";
-                           *buf += tag_.c_str();
+                           *buf += name_.c_str();
                            *buf += ">";
                            break;
     case BRIEF_CLOSE:      *buf += "/>"; break;
@@ -145,6 +145,7 @@ void HtmlElement::AddAttribute(Atom name, const StringPiece& value,
   attributes_.push_back(attr);
 }
 
+#if LOWER_CASE_DURING_LEXER
 void HtmlElement::AddAttribute(Atom name, int value) {
   std::string buf = IntegerToString(value);
   // We include quotes here because XHTML requires them.  If it later turns out
@@ -152,6 +153,7 @@ void HtmlElement::AddAttribute(Atom name, int value) {
   Attribute* attr = new Attribute(name, buf, buf, "\"");
   attributes_.push_back(attr);
 }
+#endif
 
 void HtmlElement::AddEscapedAttribute(Atom name,
                                       const StringPiece& escaped_value,
@@ -178,6 +180,15 @@ void HtmlElement::Attribute::CopyValue(const StringPiece& src,
 }
 
 HtmlElement::Attribute::Attribute(Atom name, const StringPiece& value,
+                                  const StringPiece& escaped_value,
+                                  const char* quote)
+    : name_(name), quote_(quote) {
+  CopyValue(value, &value_);
+  CopyValue(escaped_value, &escaped_value_);
+}
+
+HtmlElement::Attribute::Attribute(const HtmlName& name,
+                                  const StringPiece& value,
                                   const StringPiece& escaped_value,
                                   const char* quote)
     : name_(name), quote_(quote) {
