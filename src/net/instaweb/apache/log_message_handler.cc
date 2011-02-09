@@ -16,7 +16,8 @@
 
 #include <limits>
 #include <string>
-#include "base/debug_util.h"
+#include "base/debug/debugger.h"
+#include "base/debug/stack_trace.h"
 #include "base/logging.h"
 #include "httpd.h"
 
@@ -55,15 +56,16 @@ int GetApacheLogLevel(int severity) {
   }
 }
 
-bool LogMessageHandler(int severity, const std::string& str) {
+bool LogMessageHandler(int severity, const char* file, int line,
+                       size_t message_start, const std::string& str) {
   const int this_log_level = GetApacheLogLevel(severity);
 
   std::string message = str;
   if (severity == logging::LOG_FATAL) {
-    if (DebugUtil::BeingDebugged()) {
-      DebugUtil::BreakDebugger();
+    if (base::debug::BeingDebugged()) {
+      base::debug::BreakDebugger();
     } else {
-      StackTrace trace;
+      base::debug::StackTrace trace;
       std::ostringstream stream;
       trace.OutputToStream(&stream);
       message.append(stream.str());
@@ -87,7 +89,7 @@ bool LogMessageHandler(int severity, const std::string& str) {
 
   if (severity == logging::LOG_FATAL) {
     // Crash the process to generate a dump.
-    DebugUtil::BreakDebugger();
+    base::debug::BreakDebugger();
   }
 
   return true;

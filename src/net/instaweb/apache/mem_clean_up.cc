@@ -17,7 +17,7 @@
 #include "googleurl/src/url_util.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
-#include "third_party/protobuf2/src/src/google/protobuf/stubs/common.h"
+#include "third_party/protobuf/src/google/protobuf/stubs/common.h"
 
 // Clean up valgrind-based memory-leak checks by deleting statically allocated
 // data from various libraries.  This must be called both from unit-tests

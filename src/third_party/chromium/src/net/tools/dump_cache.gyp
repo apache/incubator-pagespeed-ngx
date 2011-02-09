@@ -37,6 +37,7 @@
       },
       'sources': [
         'dump_cache/url_to_filename_encoder.cc',
+        'dump_cache/url_utilities.cc',
       ],
     },
   ],

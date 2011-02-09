@@ -14,14 +14,11 @@
 
 vars = {
   "chromium_trunk": "http://src.chromium.org/svn/trunk",
-  "chromium_revision": "@55218",
+  "chromium_revision": "@68180",
   "chromium_deps_root": "src/third_party/chromium_deps",
 
-  # We should change this back to a tag once Pagespeed cuts a new branch.
-  #"libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.9.3.0",
-  #"libpagespeed_revision": "@head",
-  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/trunk",
-  "libpagespeed_revision": "@1300",
+  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.10.0.0",
+  "libpagespeed_revision": "@head",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
 
   "mod_spdy_trunk": "http://mod-spdy.googlecode.com/svn/trunk",
@@ -115,10 +112,6 @@ deps = {
     Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
   "src/third_party/libjpeg": From(Var("libpagespeed_deps_root")),
 
-  "src/third_party/icu":
-    (Var("libpagespeed_trunk") + "/src/third_party/icu" +
-     Var("libpagespeed_revision")),
-
   "src/third_party/libpagespeed/src/build":
     (Var("libpagespeed_trunk") + "/src/build" +
      Var("libpagespeed_revision")),
@@ -150,8 +143,7 @@ deps = {
     (Var("libpagespeed_trunk") + "/src/third_party" +
      Var("libpagespeed_revision")),
 
-  "src/third_party/protobuf2": From(Var("libpagespeed_deps_root")),
-  "src/third_party/protobuf2/src": From(Var("chromium_deps_root")),
+  "src/third_party/protobuf": From(Var("libpagespeed_deps_root")),
 
   "src/third_party/opencv/src/opencv/src":
     Var("opencv_src") + "/opencv/src" + Var("opencv_revision"),

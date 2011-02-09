@@ -397,8 +397,8 @@
         },
       ],
       'dependencies': [
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protoc#host',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protoc#host',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
@@ -406,7 +406,7 @@
         ]
       },
       'export_dependent_settings': [
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
       ],
     },
     {
@@ -415,14 +415,14 @@
       'hard_dependency': 1,
       'dependencies': [
         'instaweb_http_genproto',
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
        ],
       'sources': [
         '<(protoc_out_dir)/net/instaweb/http/http.pb.cc',
       ],
       'export_dependent_settings': [
         'instaweb_http_genproto',
-        '<(DEPTH)/third_party/protobuf2/protobuf.gyp:protobuf_lite',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
       ]
     },
   ],

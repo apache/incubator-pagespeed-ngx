@@ -74,7 +74,7 @@ void BackslashEscape(const StringPiece& src,
   }
 }
 
-// From src/third_party/protobuf2/src/src/google/protobuf/stubs/strutil.h
+// From src/third_party/protobuf/src/google/protobuf/stubs/strutil.h
 // but we don't need any other aspect of protobufs so we don't want to
 // incur the link cost.
 void LowerString(std::string* s) {
@@ -144,7 +144,7 @@ void ParseShellLikeString(const StringPiece& input,
   }
 }
 
-// From src/third_party/protobuf2/src/src/google/protobuf/stubs/strutil.h
+// From src/third_party/protobuf/src/google/protobuf/stubs/strutil.h
 // but we don't need any other aspect of protobufs so we don't want to
 // incur the link cost.
 bool HasPrefixString(const StringPiece& str, const StringPiece& prefix) {

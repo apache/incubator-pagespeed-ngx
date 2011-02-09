@@ -44,7 +44,7 @@
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
         '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
         '<(DEPTH)/testing/gtest.gyp:gtest',
-        '<(DEPTH)/testing/gtest.gyp:gtestmain',
+        '<(DEPTH)/testing/gtest.gyp:gtest_main',
         '<(DEPTH)/third_party/apache/apr/apr.gyp:apr',
         '<(DEPTH)/third_party/apache/aprutil/aprutil.gyp:aprutil',
         '<(DEPTH)/third_party/apache/httpd/httpd.gyp:include',
