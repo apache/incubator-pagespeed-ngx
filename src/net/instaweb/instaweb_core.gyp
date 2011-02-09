@@ -24,7 +24,6 @@
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
       ],
       'sources': [
         'util/content_type.cc',
@@ -51,7 +50,6 @@
       },
       'export_dependent_settings': [
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
       ],
     },
     {

@@ -56,12 +56,20 @@ struct CasePreserve {
   static unsigned char Normalize(char c) {
     return c;
   }
+
+  static bool Compare(const StringPiece& a, const StringPiece& b) {
+    return a < b;
+  }
 };
 
 // A helper for case-insensitive hashing, which folds to lowercase
 struct CaseFold {
   static unsigned char Normalize(char c) {
     return LowerChar(c);
+  }
+
+  static bool Compare(const StringPiece& a, const StringPiece& b) {
+    return StringCaseCompare(a, b) < 0;
   }
 };
 

@@ -23,17 +23,39 @@ namespace net_instaweb {
 
 template<class CharTransform>
 SymbolTable<CharTransform>::SymbolTable() {
-  string_set_.set_empty_key(StringPiece());
 }
 
 template<class CharTransform>
 SymbolTable<CharTransform>::~SymbolTable() {
-  // Note: this is safe because we don't need the actual contents to test
-  // the data vs. empty keys, which is all we need in ~dense_hash_set
+#if SYMBOL_TABLE_USE_HASH_TABLE
+  // If we  were using dense_hash_map we could just iterate through
+  // the table and delete the elements.  But this is no good for
+  // g++ hash tables.
+
+  //  // Note: this is safe because we don't need the actual contents to test
+  //  // the data vs. empty keys, which is all we need in ~dense_hash_set
+  //  for (typename SymbolSet::iterator p = string_set_.begin();
+  //        p != string_set_.end(); ++p) {
+  //    std::free(const_cast<char*>(p->data()));
+  //  }
+
+  CharStarVector v(string_set_.size());
   for (typename SymbolSet::iterator p = string_set_.begin();
-        p != string_set_.end(); ++p) {
-    std::free(const_cast<char*>(p->data()));
+       p != string_set_.end(); ++p) {
+    v.push_back(p->data());
   }
+  string_set_.clear();
+  for (int i = 0, n = v.size(); i < n; ++i) {
+    std::free(const_cast<char*>(v[i]));
+  }
+#else
+  while (!string_set_.empty()) {
+    typename SymbolSet::iterator p = string_set_.begin();
+    char* str = const_cast<char*>(p->data());
+    string_set_.erase(p);
+    std::free(str);
+  }
+#endif
 }
 
 template<class CharTransform>
