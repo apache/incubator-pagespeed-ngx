@@ -18,6 +18,7 @@
 
 // Unit-test the string-splitter.
 
+#include <locale.h>
 #include <vector>
 
 #include "net/instaweb/util/public/string_util.h"
@@ -292,6 +293,25 @@ TEST(StringCaseTest, TestStringCaseEndsWith) {
   EXPECT_TRUE(StringCaseEndsWith("FOOBAR", "bar"));
   EXPECT_TRUE(StringCaseEndsWith("fOoBaR", "bAr"));
   EXPECT_FALSE(StringCaseEndsWith("zzz", "zzzz"));
+}
+
+TEST(StringCaseTest, Locale) {
+  // This will fail if the locale is available and StringCaseEqual is
+  // built using strcasecmp.  Note that the locale will generally be
+  // available from mod_pagespeed development environments, or it
+  // can be installed via:
+  //    sudo apt-get install language-pack-tr-base
+  if (setlocale(LC_ALL, "tr_TR.utf8") != NULL) {
+    EXPECT_TRUE(StringCaseEqual("div", "DIV"));
+
+    // TODO(jmarantz): Leaving the locale set as above is certainly
+    // an exciting way to see what other tests fail.  Two such tests
+    // are:
+    //   [  FAILED  ] CssFilterTest.RewriteVariousCss
+    //   [  FAILED  ] CssFilterTest.ComplexCssTest
+    // In the meantime we'll set the locale back.
+    setlocale(LC_ALL, "");
+  }
 }
 
 TEST(ParseShellLikeStringTest, TestParse) {

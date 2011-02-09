@@ -193,7 +193,7 @@ bool CssTagScanner::HasImport(const StringPiece& contents,
     // Rest is everything past the @ (non-inclusive).
     StringPiece rest = contents.substr(pos + 1);
     if (rest.size() >= kImportSize &&
-        (strncasecmp(kImport, rest.data(), kImportSize) == 0)) {
+        (StringNCaseCompare(kImport, rest.data(), kImportSize) == 0)) {
       return true;
     }
   }

@@ -187,6 +187,9 @@ int GlobalReplaceSubstring(const StringPiece& substring,
   return num_replacements;
 }
 
+// TODO(jmarantz): This is a very slow implementation.  But strncasecmp
+// will fail test StringCaseTest.Locale.  If this shows up as a performance
+// bottleneck then an SSE implementation would be better.
 int StringCaseCompare(const StringPiece& s1, const StringPiece& s2) {
   for (int i = 0, n = std::min(s1.size(), s2.size()); i < n; ++i) {
     unsigned char c1 = UpperChar(s1[i]);
