@@ -318,8 +318,10 @@ bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
   return false;
 }
 
-bool CssFilter::RewriteLoadedResource(const Resource* input_resource,
-                                      OutputResource* output_resource) {
+RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
+    const Resource* input_resource,
+    OutputResource* output_resource,
+    UrlSegmentEncoder* encoder) {
   CHECK(input_resource->loaded());
   bool ret = false;
   if (input_resource->ContentsValid()) {
@@ -342,7 +344,7 @@ bool CssFilter::RewriteLoadedResource(const Resource* input_resource,
       }
     }
   }
-  return ret;
+  return ret ? kRewriteOk : kRewriteFailed;
 }
 
 }  // namespace net_instaweb

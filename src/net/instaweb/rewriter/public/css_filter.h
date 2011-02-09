@@ -87,8 +87,9 @@ class CssFilter : public RewriteSingleResourceFilter {
                       const GURL& css_gurl, MessageHandler* handler);
   bool RewriteExternalCss(const StringPiece& in_url, std::string* out_url);
 
-  virtual bool RewriteLoadedResource(const Resource* input_resource,
-                                     OutputResource* output_resource);
+  virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
+                                              OutputResource* output_resource,
+                                              UrlSegmentEncoder* encoder);
 
   Css::Stylesheet* CombineStylesheets(
       std::vector<Css::Stylesheet*>* stylesheets);

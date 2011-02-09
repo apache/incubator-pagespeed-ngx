@@ -67,6 +67,7 @@ Parser::Parser(const char* utf8text, const char* textend)
     : in_(utf8text),
       end_(textend),
       quirks_mode_(true),
+      allow_all_values_(false),
       errors_seen_mask_(kNoError) {
 }
 
@@ -74,6 +75,7 @@ Parser::Parser(const char* utf8text)
     : in_(utf8text),
       end_(utf8text + strlen(utf8text)),
       quirks_mode_(true),
+      allow_all_values_(false),
       errors_seen_mask_(kNoError) {
 }
 
@@ -81,6 +83,7 @@ Parser::Parser(StringPiece s)
     : in_(s.begin()),
       end_(s.end()),
       quirks_mode_(true),
+      allow_all_values_(false),
       errors_seen_mask_(kNoError) {
 }
 
@@ -754,7 +757,10 @@ Values* Parser::ParseValues(Property::Prop prop) {
     scoped_ptr<Value> v(expecting_color ?
                         ParseAnyExpectingColor() :
                         ParseAny());
-    if (v.get() && ValueValidator::Get()->IsValidValue(prop, *v, quirks_mode_))
+
+    if (v.get() &&
+        (allow_all_values_ ||
+         ValueValidator::Get()->IsValidValue(prop, *v, quirks_mode_)))
       values->push_back(v.release());
     else
       return NULL;

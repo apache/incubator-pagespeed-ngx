@@ -234,8 +234,10 @@ void JavascriptFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   some_missing_scripts_ = true;
 }
 
-bool JavascriptFilter::RewriteLoadedResource(const Resource* script_input,
-                                             OutputResource* output_resource) {
+RewriteSingleResourceFilter::RewriteResult
+JavascriptFilter::RewriteLoadedResource(const Resource* script_input,
+                                        OutputResource* output_resource,
+                                        UrlSegmentEncoder* encoder) {
   MessageHandler* message_handler = html_parse_->message_handler();
 
   StringPiece script = script_input->contents();
@@ -259,7 +261,7 @@ bool JavascriptFilter::RewriteLoadedResource(const Resource* script_input,
                           script_input->url().c_str());
   }
 
-  return ok;
+  return ok ? kRewriteOk : kRewriteFailed;
 }
 
 }  // namespace net_instaweb

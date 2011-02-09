@@ -48,11 +48,13 @@ class RewriteSingleResourceFilter::FetchCallback
     : public Resource::AsyncCallback {
  public:
   FetchCallback(RewriteSingleResourceFilter* filter,
+                UrlSegmentEncoder* custom_url_encoder,
                 Resource* input_resource, OutputResource* output_resource,
                 ResponseHeaders* response_headers, Writer* response_writer,
                 MessageHandler* handler,
                 UrlAsyncFetcher::Callback* base_callback)
       : filter_(filter),
+        custom_url_encoder_(custom_url_encoder),
         input_resource_(input_resource),
         output_resource_(output_resource),
         response_headers_(response_headers),
@@ -68,8 +70,14 @@ class RewriteSingleResourceFilter::FetchCallback
     }
     if (success) {
       // Call the rewrite hook.
-      success = filter_->RewriteLoadedResourceAndCacheIfOk(
-                    input_resource_.get(), output_resource_);
+      UrlSegmentEncoder* active_url_encoder = custom_url_encoder_.get();
+      if (active_url_encoder == NULL) {
+        active_url_encoder = resource->resource_manager()->url_escaper();
+      }
+
+      RewriteResult rewrite_result = filter_->RewriteLoadedResourceAndCacheIfOk(
+          input_resource_.get(), output_resource_, active_url_encoder);
+      success = (rewrite_result == kRewriteOk);
     }
 
     if (success) {
@@ -103,6 +111,7 @@ class RewriteSingleResourceFilter::FetchCallback
   }
 
   RewriteSingleResourceFilter* filter_;
+  scoped_ptr<UrlSegmentEncoder> custom_url_encoder_;
   scoped_ptr<Resource> input_resource_;
   OutputResource* output_resource_;
   ResponseHeaders* response_headers_;
@@ -121,14 +130,20 @@ bool RewriteSingleResourceFilter::Fetch(
     MessageHandler* message_handler,
     UrlAsyncFetcher::Callback* base_callback) {
   bool ret = false;
+  scoped_ptr<UrlSegmentEncoder> custom_url_escaper(CreateUrlEncoderForFetch());
+  UrlSegmentEncoder* active_url_escaper = custom_url_escaper.get();
+  if (active_url_escaper == NULL) {
+    active_url_escaper = resource_manager_->url_escaper();
+  }
+
   Resource* input_resource =
       resource_manager_->CreateInputResourceFromOutputResource(
-          resource_manager_->url_escaper(), output_resource,
+          active_url_escaper, output_resource,
           driver_->options(), message_handler);
   if (input_resource != NULL) {
-    // Callback takes ownership of input_resource.
+    // Callback takes ownership of input_resource, and any custom escaper.
     FetchCallback* fetch_callback = new FetchCallback(
-        this, input_resource, output_resource,
+        this, custom_url_escaper.release(), input_resource, output_resource,
         response_headers, response_writer, message_handler, base_callback);
     resource_manager_->ReadAsync(input_resource, fetch_callback,
                                  message_handler);
@@ -156,18 +171,21 @@ int RewriteSingleResourceFilter::FilterCacheFormatVersion() const {
   return 0;
 }
 
-bool RewriteSingleResourceFilter::RewriteLoadedResourceAndCacheIfOk(
-    const Resource* input_resource, OutputResource* output_resource) {
+RewriteSingleResourceFilter::RewriteResult
+RewriteSingleResourceFilter::RewriteLoadedResourceAndCacheIfOk(
+    const Resource* input_resource, OutputResource* output_resource,
+    UrlSegmentEncoder* encoder) {
   OutputResource::CachedResult* result =
       output_resource->EnsureCachedResultCreated();
   int64 time_ms = input_resource->metadata()->timestamp_ms();
   result->SetRemembered(kInputTimestampKey, Integer64ToString(time_ms));
   UpdateCacheFormat(output_resource);
-  bool ok = RewriteLoadedResource(input_resource, output_resource);
-  if (ok) {
+  RewriteResult res = RewriteLoadedResource(input_resource, output_resource,
+                                            encoder);
+  if (res == kRewriteOk) {
     CHECK(output_resource->type() != NULL);
   }
-  return ok;
+  return res;
 }
 
 void RewriteSingleResourceFilter::CacheRewriteFailure(
@@ -237,8 +255,18 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
 
   bool ok;
   if (input_state == HTTPCache::kFound) {
-    ok = RewriteLoadedResourceAndCacheIfOk(input_resource,
-                                           output_resource.get());
+    // Do the actual rewrite.
+    RewriteResult res = RewriteLoadedResourceAndCacheIfOk(input_resource,
+                                                          output_resource.get(),
+                                                          encoder);
+    if (res == kTooBusy) {
+      // The system is too loaded to currently do a rewrite; in this case
+      // we simply return NULL and don't write anything to the cache since
+      // we plain don't know.
+      return NULL;
+    }
+
+    ok = (res == kRewriteOk);
   } else {
     DCHECK_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch, input_state);
     ok = false;
@@ -273,6 +301,11 @@ void RewriteSingleResourceFilter::UpdateCacheFormat(
   OutputResource::CachedResult* result =
       output_resource->EnsureCachedResultCreated();
   result->SetRemembered(kVersionKey, IntegerToString(version));
+}
+
+UrlSegmentEncoder*
+RewriteSingleResourceFilter::CreateUrlEncoderForFetch() const {
+  return NULL;
 }
 
 }  // namespace net_instaweb

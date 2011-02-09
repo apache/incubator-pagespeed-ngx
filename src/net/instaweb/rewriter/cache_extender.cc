@@ -125,8 +125,10 @@ bool CacheExtender::IsRewrittenResource(const StringPiece& url) const {
   return (output_resource.get() != NULL);
 }
 
-bool CacheExtender::RewriteLoadedResource(const Resource* input_resource,
-                                          OutputResource* output_resource) {
+RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
+    const Resource* input_resource,
+    OutputResource* output_resource,
+    UrlSegmentEncoder* encoder) {
   CHECK(input_resource->loaded());
 
   MessageHandler* message_handler = html_parse_->message_handler();
@@ -148,7 +150,7 @@ bool CacheExtender::RewriteLoadedResource(const Resource* input_resource,
   }
 
   if (!ok) {
-    return false;
+    return kRewriteFailed;
   }
 
   StringPiece contents(input_resource->contents());
@@ -168,9 +170,10 @@ bool CacheExtender::RewriteLoadedResource(const Resource* input_resource,
   // original resource?
   // TODO(sligocki): Maybe we shouldn't cache the rewritten resource,
   // just the input_resource.
-  return resource_manager_->Write(
+  ok = resource_manager_->Write(
       HttpStatus::kOK, contents, output_resource,
       headers->CacheExpirationTimeMs(), message_handler);
+  return ok ? kRewriteOk : kRewriteFailed;
 }
 
 }  // namespace net_instaweb

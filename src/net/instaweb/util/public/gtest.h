@@ -32,4 +32,41 @@ std::string GTestTempDir();
 
 }  // namespace net_instaweb
 
+
+namespace testing {
+
+// Extracted from newer GoogleTest version, until we can upgrade
+template <typename T>
+class WithParamInterface {
+ public:
+  typedef T ParamType;
+  virtual ~WithParamInterface() {}
+
+  // The current parameter value. Is also available in the test fixture's
+  // constructor. This member function is non-static, even though it only
+  // references static data, to reduce the opportunity for incorrect uses
+  // like writing 'WithParamInterface<bool>::GetParam()' for a test that
+  // uses a fixture whose parameter type is int.
+  const ParamType& GetParam() const { return *parameter_; }
+
+ private:
+  // Sets parameter value. The caller is responsible for making sure the value
+  // remains alive and unchanged throughout the current test.
+  static void SetParam(const ParamType* parameter) {
+    parameter_ = parameter;
+  }
+
+  // Static value used for accessing parameter during a test lifetime.
+  static const ParamType* parameter_;
+
+  // TestClass must be a subclass of WithParamInterface<T> and Test.
+  template <class TestClass> friend class internal::ParameterizedTestFactory;
+};
+
+template <typename T>
+const T* WithParamInterface<T>::parameter_ = NULL;
+
+}  // namespace testing
+
+
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_

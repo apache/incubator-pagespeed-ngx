@@ -482,6 +482,6 @@ string UnicodeText::const_iterator::DebugString() const {
 string CodepointString(const UnicodeText& t) {
   string s;
   UnicodeText::const_iterator it = t.begin(), end = t.end();
-  while (it != end) base::StringAppendF(&s, "%X ", *it++);
+  while (it != end) StringAppendF(&s, "%X ", *it++);
   return s;
 }

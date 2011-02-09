@@ -148,6 +148,14 @@ class Parser {
   bool quirks_mode() const { return quirks_mode_; }
   void set_quirks_mode(bool quirks_mode) { quirks_mode_ = quirks_mode; }
 
+  // Whether we allow all values to be stored in declarations.
+  //
+  // If false (the default), we will strip all values that we don't recognize
+  // or don't think belong in a declaration.
+  // If true, we will remember all values referenced in declarations.
+  bool allow_all_values() const { return allow_all_values_; }
+  void set_allow_all_values(bool x) { allow_all_values_ = x; }
+
   // This is a bitmask of errors seen during the parse.  This is decidedly
   // incomplete --- there are definitely many errors that are not reported here.
   static const uint64 kNoError          = 0;
@@ -466,6 +474,7 @@ class Parser {
   const char *end_;  // The end of the document to parse.
 
   bool quirks_mode_;  // Whether we are in quirks mode.
+  bool allow_all_values_;  // If false, strip all values we don't recognize.
   uint64 errors_seen_mask_;
 
   FRIEND_TEST(ParserTest, color);

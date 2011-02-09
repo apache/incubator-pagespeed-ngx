@@ -48,6 +48,14 @@ class RewriteSingleResourceFilter : public RewriteFilter {
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
 
+  enum RewriteResult {
+    kRewriteFailed,  // rewrite is impossible or undesirable
+    kRewriteOk,  // rewrite went fine
+    kTooBusy   // the system is temporarily too busy to handle this
+               // rewrite request; no conclusion can be drawn on whether
+               // it's worth trying again or not.
+  };
+
   // Rewrite the given resource using this filter's RewriteLoadedResource,
   // taking  advantage of various caching techniques to avoid recomputation
   // whenever possible.
@@ -94,12 +102,29 @@ class RewriteSingleResourceFilter : public RewriteFilter {
 
   // Derived classes must implement this function instead of Fetch.
   //
-  // If rewrite succeeds, make sure to call ResourceManager::Write and
-  // set the content-type on the output resource.
+  // The last parameter gets the UrlSegmentEncoder used to encode or decode
+  // the output URL.
   //
-  // If rewrite fails, simply return false.
-  virtual bool RewriteLoadedResource(const Resource* input_resource,
-                                     OutputResource* output_resource) = 0;
+  // If rewrite succeeds, make sure to set the content-type on the output
+  // resource, call ResourceManager::Write, and return kRewriteOk.
+  //
+  // If rewrite fails, simply return kRewriteFailed.
+  //
+  // In case it would be inadvisable to run the rewrite due to external
+  // factors such as system load (rather than contents of the input)
+  // return kTooBusy.
+  virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
+                                              OutputResource* output_resource,
+                                              UrlSegmentEncoder* encoder) = 0;
+
+  // If the filter does any custom encoding of result URLs it should
+  // override this method to return a fresh, non-NULL UrlSegmentEncoder object
+  // to use to help decode the URL for a Fetch. The RewriteSingleResourceFilter
+  // class will take and hold ownership of this object.
+  //
+  // The default implementation returns NULL which makes
+  // resource_manager_->url_escaper() be used.
+  virtual UrlSegmentEncoder* CreateUrlEncoderForFetch() const;
 
  private:
   class FetchCallback;
@@ -116,8 +141,9 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   // Tries to rewrite input_resource to output_resource, and if successful
   // updates the cache as appropriate. Does not call WriteUnoptimizable on
   // failure.
-  bool RewriteLoadedResourceAndCacheIfOk(const Resource* input_resource,
-                                         OutputResource* output_resource);
+  RewriteResult RewriteLoadedResourceAndCacheIfOk(
+      const Resource* input_resource, OutputResource* output_resource,
+      UrlSegmentEncoder* encoder);
 
   // Records that rewrite of input -> output failed (either due to
   // unavailability of input or failed conversion).
