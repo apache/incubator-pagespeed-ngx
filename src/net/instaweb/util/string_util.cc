@@ -96,14 +96,14 @@ bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2) {
 }
 
 bool StringCaseStartsWith(const StringPiece& str, const StringPiece& prefix) {
-  return (str.size() >= prefix.size() &&
-          0 == StringNCaseCompare(str.data(), prefix.data(), prefix.size()));
+  return ((str.size() >= prefix.size()) &&
+          (0 == StringCaseCompare(prefix, str.substr(0, prefix.size()))));
 }
 
 bool StringCaseEndsWith(const StringPiece& str, const StringPiece& suffix) {
   return ((str.size() >= suffix.size()) &&
-          (0 == StringNCaseCompare(str.data() + str.size() - suffix.size(),
-                                   suffix.data(), suffix.size())));
+          (0 == StringCaseCompare(suffix,
+                                  str.substr(str.size() - suffix.size()))));
 }
 
 void ParseShellLikeString(const StringPiece& input,

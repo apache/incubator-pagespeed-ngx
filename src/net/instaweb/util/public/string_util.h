@@ -143,14 +143,6 @@ inline char* strdup(const char* str) {
 // Case-insensitive string comparison that is locale-independent.
 int StringCaseCompare(const StringPiece& s1, const StringPiece& s2);
 
-// Locale-independent version of strncasecmp.
-inline int StringNCaseCompare(const StringPiece& s1, const StringPiece& s2,
-                              size_t n) {
-  return StringCaseCompare(
-      s1.substr(0, std::min(s1.size(), n)),
-      s2.substr(0, std::min(s2.size(), n)));
-}
-
 inline void TrimWhitespace(const StringPiece& in, std::string* output) {
   static const char whitespace[] = " \r\n\t";
   TrimString(std::string(in.data(), in.size()), whitespace, output);
