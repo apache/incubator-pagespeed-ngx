@@ -362,9 +362,9 @@ class SerfFetch : public PoolElement<SerfFetch> {
     for (int i = 0; i < fetch->request_headers_.NumAttributes(); ++i) {
       const char* name = fetch->request_headers_.Name(i);
       const char* value = fetch->request_headers_.Value(i);
-      if ((strcasecmp(name, HttpAttributes::kUserAgent) == 0) ||
-          (strcasecmp(name, HttpAttributes::kAcceptEncoding) == 0) ||
-          (strcasecmp(name, HttpAttributes::kReferer) == 0)) {
+      if ((StringCaseEqual(name, HttpAttributes::kUserAgent)) ||
+          (StringCaseEqual(name, HttpAttributes::kAcceptEncoding)) ||
+          (StringCaseEqual(name, HttpAttributes::kReferer))) {
         serf_bucket_headers_setn(hdrs_bkt, name, value);
       }
     }
@@ -388,7 +388,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
 
     // TODO(lsong): We do not handle HTTPS for now. HTTPS needs authentication
     // verifying certificates, etc.
-    if (strcasecmp(url_.scheme, "https") == 0) {
+    if (StringCaseEqual(url_.scheme, "https")) {
       return false;
     }
     if (!url_.port) {

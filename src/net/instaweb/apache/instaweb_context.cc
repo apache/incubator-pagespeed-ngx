@@ -195,9 +195,9 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
   }
 
   if (encoding) {
-    if (strcasecmp(encoding, HttpAttributes::kGzip) == 0) {
+    if (StringCaseEqual(encoding, HttpAttributes::kGzip)) {
       content_encoding_ = kGzip;
-    } else if (strcasecmp(encoding, HttpAttributes::kDeflate) == 0) {
+    } else if (StringCaseEqual(encoding, HttpAttributes::kDeflate)) {
       content_encoding_ = kDeflate;
     } else {
       content_encoding_ = kOther;

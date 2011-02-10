@@ -317,7 +317,8 @@ bool GoogleAnalyticsFilter::MatchSyncLoad(StringPiece contents,
     const std::string::size_type max_distance = 80;
     std::string::size_type write_start_pos =
         url_pos < max_distance ? 0 : url_pos - max_distance;
-    StringPiece write_start(contents.data() + write_start_pos, url_pos);
+    StringPiece write_start(contents.data() + write_start_pos,
+                            url_pos - write_start_pos);
     std::string::size_type write_pos = write_start.find(
         kGaJsDocumentWriteStart);
     if (write_pos == std::string::npos) {

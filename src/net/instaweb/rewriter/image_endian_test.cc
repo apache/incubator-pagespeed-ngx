@@ -33,7 +33,7 @@ TEST(ImageEndianTest, CharToIntTest) {
   EXPECT_EQ(0x83, CharToInt(static_cast<char>(0xffffff83)));
   EXPECT_EQ(0x33, CharToInt(0x33));
   // Now test deserialization from buffer full of negative values
-  const char buf[] = { 0xf1, 0xf2, 0xf3, 0xf4 };
+  const char buf[] = { 0xf1, 0xf2, 0xf3, 0xf4, 0 };
   EXPECT_EQ(0xf1f2, JpegIntAtPosition(buf, 0));
   EXPECT_EQ(0xf2f3, JpegIntAtPosition(buf, 1));
   EXPECT_EQ(0xf2f1, GifIntAtPosition(buf, 0));
