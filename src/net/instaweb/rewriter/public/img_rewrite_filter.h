@@ -136,8 +136,6 @@ class ImgRewriteFilter : public RewriteFilter {
   bool log_image_elements_;
   // Should we insert image dimensions into html if they are absent?
   bool insert_image_dimensions_;
-  const Atom s_width_;
-  const Atom s_height_;
   Variable* rewrite_count_;
   Variable* inline_count_;
   Variable* rewrite_saved_bytes_;

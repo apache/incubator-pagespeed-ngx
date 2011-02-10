@@ -48,8 +48,6 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
  private:
   HtmlParse* html_parse_;
   bool found_head_;
-  Atom s_head_;
-  Atom s_body_;
   Variable* total_page_load_ms_;
   Variable* page_load_count_;
   std::string beacon_url_;

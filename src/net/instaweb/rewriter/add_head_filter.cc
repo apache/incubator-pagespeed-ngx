@@ -27,8 +27,6 @@ AddHeadFilter::AddHeadFilter(HtmlParse* html_parse, bool combine_multiple_heads)
     : html_parse_(html_parse),
       combine_multiple_heads_(combine_multiple_heads),
       found_head_(false),
-      s_head_(html_parse->Intern("head")),
-      s_body_(html_parse->Intern("body")),
       head_element_(NULL) {
 }
 
@@ -39,12 +37,12 @@ void AddHeadFilter::StartDocument() {
 
 void AddHeadFilter::StartElement(HtmlElement* element) {
   if (!found_head_) {
-    if (element->tag() == s_body_) {
+    if (element->keyword() == HtmlName::kBody) {
       head_element_ = html_parse_->NewElement(
-          element->parent(), s_head_);
+          element->parent(), HtmlName::kHead);
       html_parse_->InsertElementBeforeElement(element, head_element_);
       found_head_ = true;
-    } else if (element->tag() == s_head_) {
+    } else if (element->keyword() == HtmlName::kHead) {
       found_head_ = true;
       head_element_ = element;
     }
@@ -56,7 +54,7 @@ void AddHeadFilter::EndElement(HtmlElement* element) {
   // into the first head if possible.
   if (combine_multiple_heads_ && found_head_ && (head_element_ != NULL) &&
       html_parse_->IsRewritable(head_element_)) {
-    if ((element->tag() == s_head_) && (element != head_element_)) {
+    if ((element->keyword() == HtmlName::kHead) && (element != head_element_)) {
       // There should be no elements left in the subsequent head, so
       // remove it.
       bool moved = html_parse_->MoveCurrentInto(head_element_);

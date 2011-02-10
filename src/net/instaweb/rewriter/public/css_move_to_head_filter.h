@@ -40,10 +40,6 @@ class CssMoveToHeadFilter : public EmptyHtmlFilter {
   virtual const char* Name() const { return "CssMoveToHead"; }
 
  private:
-  Atom s_head_;
-  Atom s_noscript_;
-  Atom s_style_;
-
   HtmlParse* html_parse_;
   HtmlElement* head_element_;
   HtmlElement* noscript_element_;

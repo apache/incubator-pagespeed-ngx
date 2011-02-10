@@ -24,45 +24,52 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include <string>
 
+namespace net_instaweb {
+
 namespace {
 
 // Tags within which we should never try to collapse whitespace (note that this
 // is not _quite_ the same thing as kLiteralTags in html_lexer.cc):
-const char* const kSensitiveTags[] = {"pre", "script", "style", "textarea"};
+const HtmlName::Keyword kSensitiveTags[] = {
+  HtmlName::kPre, HtmlName::kScript, HtmlName::kStyle, HtmlName::kTextarea
+};
+
+bool IsSensitiveKeyword(HtmlName::Keyword keyword) {
+  const HtmlName::Keyword* end = kSensitiveTags + arraysize(kSensitiveTags);
+  return std::binary_search(kSensitiveTags, end, keyword);
+}
 
 }  // namespace
 
-namespace net_instaweb {
-
 CollapseWhitespaceFilter::CollapseWhitespaceFilter(HtmlParse* html_parse)
     : html_parse_(html_parse) {
-  for (size_t i = 0; i < arraysize(kSensitiveTags); ++i) {
-    sensitive_tags_.insert(html_parse->Intern(kSensitiveTags[i]));
+  for (size_t i = 1; i < arraysize(kSensitiveTags); ++i) {
+    DCHECK(kSensitiveTags[i - 1] < kSensitiveTags[i]);
   }
 }
 
 void CollapseWhitespaceFilter::StartDocument() {
-  atom_stack_.clear();
+  keyword_stack_.clear();
 }
 
 void CollapseWhitespaceFilter::StartElement(HtmlElement* element) {
-  const Atom tag = element->tag();
-  if (sensitive_tags_.count(tag) > 0) {
-    atom_stack_.push_back(tag);
+  HtmlName::Keyword keyword = element->keyword();
+  if (IsSensitiveKeyword(keyword)) {
+    keyword_stack_.push_back(keyword);
   }
 }
 
 void CollapseWhitespaceFilter::EndElement(HtmlElement* element) {
-  const Atom tag = element->tag();
-  if (!atom_stack_.empty() && tag == atom_stack_.back()) {
-    atom_stack_.pop_back();
+  HtmlName::Keyword keyword = element->keyword();
+  if (!keyword_stack_.empty() && (keyword == keyword_stack_.back())) {
+    keyword_stack_.pop_back();
   } else {
-    DCHECK(sensitive_tags_.count(tag) == 0);
+    DCHECK(!IsSensitiveKeyword(keyword));
   }
 }
 
 void CollapseWhitespaceFilter::Characters(HtmlCharactersNode* characters) {
-  if (atom_stack_.empty()) {
+  if (keyword_stack_.empty()) {
     // Mutate the contents-string in-place for speed.
     std::string* contents = characters->mutable_contents();
     // It is safe to directly mutate the bytes in the string because

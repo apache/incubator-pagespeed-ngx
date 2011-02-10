@@ -197,7 +197,7 @@ TEST_F(CacheExtenderTest, MinimizeCacheHits) {
   rewrite_driver_.AddFilters();
   std::string html_input = StrCat("<style>", kCssData, "</style>");
   std::string html_output = StringPrintf(
-      "<link rel='stylesheet' href='%s'>",
+      "<link rel=\"stylesheet\" href=\"%s\">",
       Encode(kTestDomain, "co", "0", "_", "css").c_str());
   ValidateExpected("no_extend_origin_not_cacheable", html_input, html_output);
 

@@ -57,13 +57,6 @@ class CssCombineFilter : public CombineFilterBase {
   virtual bool WritePiece(Resource* input, OutputResource* combination,
                           Writer* writer, MessageHandler* handler);
 
-  Atom s_type_;
-  Atom s_link_;
-  Atom s_href_;
-  Atom s_rel_;
-  Atom s_media_;
-  Atom s_style_;
-
   class Partnership;
 
   scoped_ptr<Partnership> partnership_;

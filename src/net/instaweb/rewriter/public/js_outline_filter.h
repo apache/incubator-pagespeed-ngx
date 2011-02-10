@@ -73,10 +73,6 @@ class JsOutlineFilter : public CommonFilter {
   HtmlParse* html_parse_;
   ResourceManager* resource_manager_;
   size_t size_threshold_bytes_;
-  // HTML strings interned into a symbol table.
-  Atom s_script_;
-  Atom s_src_;
-  Atom s_type_;
   ScriptTagScanner script_tag_scanner_;
 
   DISALLOW_COPY_AND_ASSIGN(JsOutlineFilter);

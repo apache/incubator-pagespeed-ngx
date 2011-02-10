@@ -43,8 +43,6 @@ class AddHeadFilter : public EmptyHtmlFilter {
   HtmlParse* html_parse_;
   bool combine_multiple_heads_;
   bool found_head_;
-  Atom s_head_;
-  Atom s_body_;
   HtmlElement* head_element_;
 
   DISALLOW_COPY_AND_ASSIGN(AddHeadFilter);

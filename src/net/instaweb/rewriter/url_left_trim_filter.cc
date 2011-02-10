@@ -37,9 +37,6 @@ namespace net_instaweb {
 UrlLeftTrimFilter::UrlLeftTrimFilter(HtmlParse* html_parse,
                                      Statistics* stats)
     : html_parse_(html_parse),
-      s_base_(html_parse->Intern("base")),
-      s_href_(html_parse->Intern("href")),
-      s_src_(html_parse->Intern("src")),
       trim_count_((stats == NULL) ? NULL : stats->GetVariable(kUrlTrims)),
       trim_saved_bytes_(
           (stats == NULL) ? NULL : stats->GetVariable(kUrlTrimSavedBytes)) {
@@ -53,9 +50,9 @@ void UrlLeftTrimFilter::Initialize(Statistics* statistics) {
 void UrlLeftTrimFilter::StartElement(HtmlElement* element) {
   // TODO(jmaessen): handle other places urls might lurk in html.
   // But never rewrite the base tag; always include its full url.
-  if (element->tag() != s_base_) {
-    TrimAttribute(element->FindAttribute(s_href_));
-    TrimAttribute(element->FindAttribute(s_src_));
+  if (element->keyword() != HtmlName::kBase) {
+    TrimAttribute(element->FindAttribute(HtmlName::kHref));
+    TrimAttribute(element->FindAttribute(HtmlName::kSrc));
   }
 }
 
@@ -123,7 +120,7 @@ void UrlLeftTrimFilter::TrimAttribute(HtmlElement::Attribute* attr) {
       const char* q = attr->quote();
       html_parse_->InfoHere(
           "trimmed %u %s=%s%s%s to %s%s%s.", static_cast<unsigned>(saved),
-          attr->name().c_str(), q, attr->value(), q,
+          attr->name_str(), q, attr->value(), q,
           q, val.as_string().c_str(), q);
       attr->SetValue(val);
       if (trim_count_ != NULL) {

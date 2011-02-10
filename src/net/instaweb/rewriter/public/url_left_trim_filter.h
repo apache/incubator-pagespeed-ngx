@@ -66,9 +66,6 @@ class UrlLeftTrimFilter : public EmptyHtmlFilter {
  private:
   HtmlParse* html_parse_;
   StringVector left_trim_strings_;
-  const Atom s_base_;
-  const Atom s_href_;
-  const Atom s_src_;
   Variable* trim_count_;
   Variable* trim_saved_bytes_;
 

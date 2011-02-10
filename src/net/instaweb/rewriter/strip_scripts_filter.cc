@@ -22,12 +22,11 @@
 namespace net_instaweb {
 
 StripScriptsFilter::StripScriptsFilter(HtmlParse* html_parse)
-    : html_parse_(html_parse),
-      s_script_(html_parse->Intern("script")) {
+    : html_parse_(html_parse) {
 }
 
 void StripScriptsFilter::EndElement(HtmlElement* element) {
-  if (element->tag() == s_script_) {
+  if (element->keyword() == HtmlName::kScript) {
     html_parse_->DeleteElement(element);
   }
 }

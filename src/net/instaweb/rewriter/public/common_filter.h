@@ -81,10 +81,6 @@ class CommonFilter : public EmptyHtmlFilter {
   GURL base_gurl_;
   HtmlElement* noscript_element_;
 
-  const Atom s_base_;
-  const Atom s_href_;
-  const Atom s_noscript_;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(CommonFilter);
 };

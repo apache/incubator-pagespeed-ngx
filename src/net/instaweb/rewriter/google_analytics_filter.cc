@@ -92,9 +92,6 @@ GoogleAnalyticsFilter::GoogleAnalyticsFilter(
       html_parse_(html_parse),
       script_element_(NULL),
       script_characters_node_(NULL),
-      s_script_(html_parse->Intern("script")),
-      s_src_(html_parse->Intern("src")),
-      s_type_(html_parse->Intern("type")),
       page_load_count_((stats == NULL) ? NULL :
                        stats->GetVariable(kPageLoadCount)),
       rewritten_count_((stats == NULL) ? NULL :
@@ -194,9 +191,6 @@ GoogleAnalyticsFilter::GoogleAnalyticsFilter(
       html_parse_(html_parse),
       script_element_(NULL),
       script_characters_node_(NULL),
-      s_script_(html_parse->Intern("script")),
-      s_src_(html_parse->Intern("src")),
-      s_type_(html_parse->Intern("type")),
       page_load_count_((stats == NULL) ? NULL :
                        stats->GetVariable(kPageLoadCount)),
       rewritten_count_((stats == NULL) ? NULL :
@@ -241,10 +235,10 @@ void GoogleAnalyticsFilter::StartElement(HtmlElement* element) {
   // No tags allowed inside script element.
   if (script_element_ != NULL) {
     html_parse_->ErrorHere("Reset: Tag '%s' found inside script.",
-                           element->tag().c_str());
+                           element->name_str());
     ResetFilter();
   }
-  if (element->tag() == s_script_) {
+  if (element->keyword() == HtmlName::kScript) {
     script_element_ = element;
   }
 }
@@ -253,7 +247,7 @@ void GoogleAnalyticsFilter::EndElement(HtmlElement* element) {
   if (script_element_ != NULL) {
     if (element != script_element_) {
       html_parse_->ErrorHere("Reset: Unexpected tag '%s' inside a script.",
-                             element->tag().c_str());
+                             element->name_str());
       ResetFilter();
     } else {
       FindRewritableScripts();
@@ -394,7 +388,7 @@ bool GoogleAnalyticsFilter::MatchUnhandledCalls(
 
 void GoogleAnalyticsFilter::FindRewritableScripts() {
   if (html_parse_->IsRewritable(script_element_)) {
-    StringPiece src = script_element_->AttributeValue(s_src_);
+    StringPiece src = script_element_->AttributeValue(HtmlName::kSrc);
     if (src != NULL && !src.empty()) {
       if (src.ends_with(kGaJsUrlSuffix)) {
         html_parse_->InfoHere("Found ga.js load: script src");
@@ -491,7 +485,7 @@ bool GoogleAnalyticsFilter::RewriteAsAsync() {
     html_parse_->PrependChild(
         first_script,
         html_parse_->NewCharactersNode(first_script, glue_script));
-    first_script->DeleteAttribute(s_src_);
+    first_script->DeleteAttribute(HtmlName::kSrc);
     html_parse_->InfoHere("Replaced script src load");
   } else {
     first_editor->NewContents(glue_script, &replacement_script);

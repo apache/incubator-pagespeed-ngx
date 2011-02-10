@@ -52,8 +52,6 @@ class TestRewriter : public RewriteSingleResourceFilter {
         num_rewrites_called_(0),
         create_custom_encoder_(create_custom_encoder),
         active_custom_encoder_(0) {
-    s_tag_ = html_parse_->Intern("tag");
-    s_src_ = html_parse_->Intern("src");
   }
 
   virtual ~TestRewriter() {
@@ -64,8 +62,8 @@ class TestRewriter : public RewriteSingleResourceFilter {
   virtual void StartElementImpl(HtmlElement* element) {}
 
   virtual void EndElementImpl(HtmlElement* element) {
-    if (element->tag() == s_tag_) {
-      HtmlElement::Attribute* src = element->FindAttribute(s_src_);
+    if (element->keyword() == HtmlName::kTag) {
+      HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
       if (src != NULL) {
         TryRewrite(src);
       }

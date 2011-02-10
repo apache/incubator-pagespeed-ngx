@@ -23,6 +23,7 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/util/public/atom.h"
 
 namespace net_instaweb {
@@ -48,8 +49,7 @@ class CollapseWhitespaceFilter : public EmptyHtmlFilter {
 
  private:
   HtmlParse* html_parse_;
-  std::vector<Atom> atom_stack_;
-  AtomSet sensitive_tags_;
+  std::vector<HtmlName::Keyword> keyword_stack_;
 
   DISALLOW_COPY_AND_ASSIGN(CollapseWhitespaceFilter);
 };

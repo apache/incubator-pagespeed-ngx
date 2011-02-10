@@ -20,9 +20,11 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_ELIDE_ATTRIBUTES_FILTER_H_
 
 #include <map>
+#include <set>
 
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/util/public/atom.h"
 
 namespace net_instaweb {
@@ -41,13 +43,14 @@ class ElideAttributesFilter : public EmptyHtmlFilter {
     bool requires_version_5;  // Default value only exists in (X)HTML 5.
   };
 
-  typedef std::map<Atom, AtomSet, AtomCompare> AtomSetMap;
-  typedef std::map<Atom, AttrValue, AtomCompare> ValueMap;
-  typedef std::map<Atom, ValueMap, AtomCompare> ValueMapMap;
+  typedef std::set<HtmlName::Keyword> KeywordSet;
+  typedef std::map<HtmlName::Keyword, KeywordSet> KeywordSetMap;
+  typedef std::map<HtmlName::Keyword, AttrValue> ValueMap;
+  typedef std::map<HtmlName::Keyword, ValueMap> ValueMapMap;
 
   HtmlParse* html_parse_;
-  AtomSetMap one_value_attrs_map_;  // tag/attrs with only one possible value
-  ValueMapMap default_value_map_;  // tag/attrs with default values
+  KeywordSetMap one_value_attrs_map_;  // tag/attrs with only one possible value
+  ValueMapMap default_value_map_;      // tag/attrs with default values
 
   DISALLOW_COPY_AND_ASSIGN(ElideAttributesFilter);
 };

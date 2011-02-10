@@ -65,14 +65,6 @@ class ScriptTagScanner {
 
   bool IsJsMime(const std::string& type_str);
 
-  const Atom s_async_;
-  const Atom s_defer_;
-  const Atom s_event_;
-  const Atom s_for_;
-  const Atom s_language_;
-  const Atom s_script_;
-  const Atom s_src_;
-  const Atom s_type_;
   std::set<std::string> javascript_mimetypes_;
 
   DISALLOW_COPY_AND_ASSIGN(ScriptTagScanner);

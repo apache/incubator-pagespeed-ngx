@@ -97,8 +97,6 @@ ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
       img_inline_max_bytes_(img_inline_max_bytes),
       log_image_elements_(log_image_elements),
       insert_image_dimensions_(insert_image_dimensions),
-      s_width_(html_parse_->Intern("width")),
-      s_height_(html_parse_->Intern("height")),
       rewrite_count_(NULL),
       inline_count_(NULL),
       rewrite_saved_bytes_(NULL) {
@@ -261,8 +259,8 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
     // Always rewrite to absolute url used to obtain resource.
     // This lets us do context-free fetches of content.
     int width, height;
-    if (element->IntAttributeValue(s_width_, &width) &&
-        element->IntAttributeValue(s_height_, &height)) {
+    if (element->IntAttributeValue(HtmlName::kWidth, &width) &&
+        element->IntAttributeValue(HtmlName::kHeight, &height)) {
       // Specific image size is called for.  Rewrite to that size.
       page_dim.set_dims(width, height);
     }
@@ -342,8 +340,8 @@ void ImgRewriteFilter::UpdateTargetElement(
         }
       }
       if (insert_image_dimensions_ && actual_dim.valid() && !page_dim.valid() &&
-          !element->FindAttribute(s_width_) &&
-          !element->FindAttribute(s_height_)) {
+          !element->FindAttribute(HtmlName::kWidth) &&
+          !element->FindAttribute(HtmlName::kHeight)) {
         // Add image dimensions.  We don't bother if even a single image
         // dimension is already specified---even though we don't resize in that
         // case, either, because we might be off by a pixel in the other
@@ -353,8 +351,10 @@ void ImgRewriteFilter::UpdateTargetElement(
         // include image dimensions even if we otherwise choose not to optimize
         // an image.  This may require examining the image contents if we didn't
         // just perform the image processing.
-        element->AddAttribute(s_width_, actual_dim.width());
-        element->AddAttribute(s_height_, actual_dim.height());
+        html_parse_->AddAttribute(element, HtmlName::kWidth,
+                                  actual_dim.width());
+        html_parse_->AddAttribute(element, HtmlName::kHeight,
+                                  actual_dim.height());
       }
     }
   }

@@ -39,12 +39,8 @@ const char CssOutlineFilter::kFilterId[] = "co";
 CssOutlineFilter::CssOutlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
       inline_element_(NULL),
-      size_threshold_bytes_(driver->options()->css_outline_min_bytes()),
-      s_link_(html_parse_->Intern("link")),
-      s_style_(html_parse_->Intern("style")),
-      s_rel_(html_parse_->Intern("rel")),
-      s_href_(html_parse_->Intern("href")),
-      s_type_(html_parse_->Intern("type")) { }
+      size_threshold_bytes_(driver->options()->css_outline_min_bytes()) {
+}
 
 void CssOutlineFilter::StartDocumentImpl() {
   inline_element_ = NULL;
@@ -56,11 +52,11 @@ void CssOutlineFilter::StartElementImpl(HtmlElement* element) {
   if (inline_element_ != NULL) {
     // TODO(sligocki): Add negative unit tests to hit these errors.
     html_parse_->ErrorHere("Tag '%s' found inside style.",
-                           element->tag().c_str());
+                           element->name_str());
     inline_element_ = NULL;  // Don't outline what we don't understand.
     buffer_.clear();
   }
-  if (element->tag() == s_style_) {
+  if (element->keyword() == HtmlName::kStyle) {
     inline_element_ = element;
     buffer_.clear();
   }
@@ -71,7 +67,7 @@ void CssOutlineFilter::EndElementImpl(HtmlElement* element) {
     if (element != inline_element_) {
       // No other tags allowed inside style element.
       html_parse_->ErrorHere("Tag '%s' found inside style.",
-                             element->tag().c_str());
+                             element->name_str());
 
     } else if (buffer_.size() >= size_threshold_bytes_) {
       OutlineStyle(inline_element_, buffer_);
@@ -139,7 +135,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
   StringPiece content(content_str);
   if (html_parse_->IsRewritable(style_element)) {
     // Create style file from content.
-    const char* type = style_element->AttributeValue(s_type_);
+    const char* type = style_element->AttributeValue(HtmlName::kType);
     // We only deal with CSS styles.  If no type specified, CSS is assumed.
     // See http://www.w3.org/TR/html5/semantics.html#the-style-element
     if (type == NULL || strcmp(type, kContentTypeCss.mime_type()) == 0) {
@@ -166,9 +162,10 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       if (content_valid &&
           WriteResource(content, output_resource.get(), handler)) {
         HtmlElement* link_element = html_parse_->NewElement(
-            style_element->parent(), s_link_);
-        link_element->AddAttribute(s_rel_, kStylesheet, "'");
-        link_element->AddAttribute(s_href_, output_resource->url(), "'");
+            style_element->parent(), HtmlName::kLink);
+        html_parse_->AddAttribute(link_element, HtmlName::kRel, kStylesheet);
+        html_parse_->AddAttribute(link_element, HtmlName::kHref,
+                                  output_resource->url());
         // Add all style atrributes to link.
         for (int i = 0; i < style_element->attribute_size(); ++i) {
           const HtmlElement::Attribute& attr = style_element->attribute(i);

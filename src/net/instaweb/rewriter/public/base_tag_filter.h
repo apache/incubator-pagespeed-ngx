@@ -49,9 +49,6 @@ class BaseTagFilter : public EmptyHtmlFilter {
   void set_base_url(const StringPiece& url) { url.CopyToString(&base_url_); }
 
  private:
-  Atom s_head_;
-  Atom s_base_;
-  Atom s_href_;
   bool found_head_;
   std::string base_url_;
   HtmlParse* html_parse_;

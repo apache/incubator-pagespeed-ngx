@@ -29,7 +29,7 @@ namespace net_instaweb {
 
 class ResourceTagScanner {
  public:
-  explicit ResourceTagScanner(HtmlParse* html_parse);
+  explicit ResourceTagScanner(HtmlParse* html_parse) {}
 
   // Examines an HTML element to determine if it's a link to any sort
   // of resource, extracting out the HREF or SRC.  In this scanner,
@@ -40,13 +40,6 @@ class ResourceTagScanner {
   HtmlElement::Attribute* ScanElement(HtmlElement* element);
 
  private:
-  Atom s_href_;
-  Atom s_img_;
-  Atom s_link_;
-  Atom s_rel_;
-  Atom s_script_;
-  Atom s_src_;
-
   DISALLOW_COPY_AND_ASSIGN(ResourceTagScanner);
 };
 

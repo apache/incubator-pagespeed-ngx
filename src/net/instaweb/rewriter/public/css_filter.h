@@ -106,11 +106,6 @@ class CssFilter : public RewriteSingleResourceFilter {
   bool rewrite_images_;
   CssImageRewriter image_rewriter_;
 
-  Atom s_style_;
-  Atom s_link_;
-  Atom s_rel_;
-  Atom s_href_;
-
   // Statistics
   Variable* num_files_minified_;
   Variable* minified_bytes_saved_;

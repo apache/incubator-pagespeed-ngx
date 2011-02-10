@@ -35,11 +35,6 @@ const char CssTagScanner::kStylesheet[] = "stylesheet";
 
 // Finds CSS files and calls another filter.
 CssTagScanner::CssTagScanner(HtmlParse* html_parse) {
-  s_link_  = html_parse->Intern("link");
-  s_href_  = html_parse->Intern("href");
-  s_type_  = html_parse->Intern("type");
-  s_rel_   = html_parse->Intern("rel");
-  s_media_ = html_parse->Intern("media");
 }
 
 bool CssTagScanner::ParseCssElement(
@@ -47,7 +42,7 @@ bool CssTagScanner::ParseCssElement(
   int num_required_attributes_found = 0;
   *media = "";
   *href = NULL;
-  if (element->tag() == s_link_) {
+  if (element->keyword() == HtmlName::kLink) {
     // We must have all attributes rel='stylesheet' href='name.css', and
     // type='text/css', although they can be in any order.  If there are,
     // other attributes, we better learn about them so we don't lose them
@@ -64,10 +59,10 @@ bool CssTagScanner::ParseCssElement(
     if ((num_attrs >= 2) || (num_attrs <= 4)) {
       for (int i = 0; i < num_attrs; ++i) {
         HtmlElement::Attribute& attr = element->attribute(i);
-        if (attr.name() == s_href_) {
+        if (attr.keyword() == HtmlName::kHref) {
           *href = &attr;
           ++num_required_attributes_found;
-        } else if (attr.name() == s_rel_) {
+        } else if (attr.keyword() == HtmlName::kRel) {
           if (StringCaseEqual(attr.value(), kStylesheet)) {
             ++num_required_attributes_found;
           } else {
@@ -75,13 +70,13 @@ bool CssTagScanner::ParseCssElement(
             num_required_attributes_found = 0;
             break;
           }
-        } else if (attr.name() == s_media_) {
+        } else if (attr.keyword() == HtmlName::kMedia) {
           *media = attr.value();
         } else {
           // The only other attribute we should see is type=text/css.  This
           // attribute is not required, but if the attribute we are
           // finding here is anything else then abort.
-          if ((attr.name() != s_type_) ||
+          if ((attr.keyword() != HtmlName::kType) ||
               !StringCaseEqual(attr.value(), kTextCss)) {
             num_required_attributes_found = 0;
             break;

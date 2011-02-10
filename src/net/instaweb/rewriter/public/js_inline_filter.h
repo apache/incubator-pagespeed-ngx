@@ -44,8 +44,6 @@ class JsInlineFilter : public CommonFilter {
   virtual const char* Name() const { return "InlineJs"; }
 
  private:
-  const Atom script_atom_;
-  const Atom src_atom_;
   const size_t size_threshold_bytes_;
   ScriptTagScanner script_tag_scanner_;
 

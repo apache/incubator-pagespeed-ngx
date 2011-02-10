@@ -48,9 +48,6 @@ JavascriptFilter::JavascriptFilter(RewriteDriver* driver,
       script_src_(NULL),
       some_missing_scripts_(false),
       config_(driver->resource_manager()->statistics()),
-      s_script_(html_parse_->Intern("script")),
-      s_src_(html_parse_->Intern("src")),
-      s_type_(html_parse_->Intern("type")),
       script_tag_scanner_(html_parse_) { }
 
 JavascriptFilter::~JavascriptFilter() { }
@@ -198,7 +195,7 @@ void JavascriptFilter::EndElementImpl(HtmlElement* element) {
   if (script_in_progress_ != NULL &&
       html_parse_->IsRewritable(script_in_progress_) &&
       html_parse_->IsRewritable(element)) {
-    if (element->tag() == s_script_) {
+    if (element->keyword() == HtmlName::kScript) {
       if (element->close_style() == HtmlElement::BRIEF_CLOSE) {
         html_parse_->ErrorHere("Brief close of script tag (non-portable)");
       }

@@ -29,8 +29,6 @@ namespace net_instaweb {
 
 JsInlineFilter::JsInlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
-      script_atom_(html_parse_->Intern("script")),
-      src_atom_(html_parse_->Intern("src")),
       size_threshold_bytes_(driver->options()->js_inline_max_bytes()),
       script_tag_scanner_(html_parse_),
       should_inline_(false) {}
@@ -59,8 +57,8 @@ void JsInlineFilter::StartElementImpl(HtmlElement* element) {
 
 void JsInlineFilter::EndElementImpl(HtmlElement* element) {
   if (should_inline_ && html_parse_->IsRewritable(element)) {
-    DCHECK(element->tag() == script_atom_);
-    const char* src = element->AttributeValue(src_atom_);
+    DCHECK(element->keyword() == HtmlName::kScript);
+    const char* src = element->AttributeValue(HtmlName::kSrc);
     DCHECK(src != NULL);
     should_inline_ = false;
 
@@ -101,7 +99,7 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
             node->Append(contents);
             node->Append("\n//]]>");
             html_parse_->InsertElementBeforeCurrent(node);
-            element->DeleteAttribute(src_atom_);
+            element->DeleteAttribute(HtmlName::kSrc);
           }
         }
         // If we're not in XHTML, we can simply paste in the external script
@@ -109,7 +107,7 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
         else {
           html_parse_->InsertElementBeforeCurrent(
               html_parse_->NewCharactersNode(element, contents));
-          element->DeleteAttribute(src_atom_);
+          element->DeleteAttribute(HtmlName::kSrc);
         }
       }
     }
@@ -119,7 +117,7 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
 void JsInlineFilter::Characters(HtmlCharactersNode* characters) {
   if (should_inline_) {
     DCHECK(characters->parent() != NULL);
-    DCHECK(characters->parent()->tag() == script_atom_);
+    DCHECK(characters->parent()->keyword() == HtmlName::kScript);
     if (OnlyWhitespace(characters->contents())) {
       // If it's just whitespace inside the script tag, it's (probably) safe to
       // just remove it.

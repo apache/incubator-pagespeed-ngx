@@ -95,12 +95,6 @@ CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
                         kContentTypeCss.file_extension() + 1),
       css_tag_scanner_(html_parse_),
       css_file_count_reduction_(NULL) {
-  s_link_ = html_parse_->Intern("link");
-  s_href_ = html_parse_->Intern("href");
-  s_type_ = html_parse_->Intern("type");
-  s_rel_  = html_parse_->Intern("rel");
-  s_media_ = html_parse_->Intern("media");
-  s_style_ = html_parse_->Intern("style");
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
     css_file_count_reduction_ = stats->GetVariable(kCssFileCountReduction);
@@ -146,7 +140,7 @@ void CssCombineFilter::EndElementImpl(HtmlElement* element) {
         partnership_->AddElement(element, url, media, handler);
       }
     }
-  } else if (element->tag() == s_style_) {
+  } else if (element->keyword() == HtmlName::kStyle) {
     // We can't reorder styles on a page, so if we are only combining <link>
     // tags, we can't combine them across a <style> tag.
     // TODO(sligocki): Maybe we should just combine <style>s too?
@@ -178,12 +172,13 @@ void CssCombineFilter::TryCombineAccumulated() {
     // First, compute the name of the new resource based on the names of
     // the CSS files.
     std::string url_safe_id = partnership_->UrlSafeId();
-    HtmlElement* combine_element = html_parse_->NewElement(NULL, s_link_);
-    combine_element->AddAttribute(s_rel_, "stylesheet", "\"");
-    combine_element->AddAttribute(s_type_, "text/css", "\"");
+    HtmlElement* combine_element = html_parse_->NewElement(NULL,
+                                                           HtmlName::kLink);
+    html_parse_->AddAttribute(combine_element, HtmlName::kRel, "stylesheet");
+    html_parse_->AddAttribute(combine_element, HtmlName::kType, "text/css");
     StringPiece media = partnership_->media();
     if (!media.empty()) {
-      combine_element->AddAttribute(s_media_, media, "\"");
+      html_parse_->AddAttribute(combine_element, HtmlName::kMedia, media);
     }
 
     // Start building up the combination.  At this point we are still
@@ -211,7 +206,8 @@ void CssCombineFilter::TryCombineAccumulated() {
 
     // Update the DOM for new elements.
     if (do_rewrite_html) {
-      combine_element->AddAttribute(s_href_, combination->url(), "\"");
+      html_parse_->AddAttribute(combine_element, HtmlName::kHref,
+                                combination->url());
       // TODO(sligocki): Put at top of head/flush-window.
       // Right now we're putting it where the first original element used to be.
       html_parse_->InsertElementBeforeElement(partnership_->element(0),

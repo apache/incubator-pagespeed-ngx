@@ -165,11 +165,6 @@ class GoogleAnalyticsFilter : public EmptyHtmlFilter {
   HtmlElement* script_element_;  // NULL if not in script element
   HtmlCharactersNode* script_characters_node_;  // NULL if not found in script
 
-  // HTML strings interned into a symbol table.
-  Atom s_script_;
-  Atom s_src_;
-  Atom s_type_;
-
   Variable* page_load_count_;
   Variable* rewritten_count_;
 

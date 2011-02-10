@@ -25,9 +25,6 @@
 
 namespace net_instaweb {
 BaseTagFilter::BaseTagFilter(HtmlParse* html_parse) {
-  s_head_ = html_parse->Intern("head");
-  s_base_ = html_parse->Intern("base");
-  s_href_ = html_parse->Intern("href");
   found_head_ = false;
   html_parse_ = html_parse;
 }
@@ -43,18 +40,19 @@ void BaseTagFilter::StartDocument() {
 // have no specific URL to set the base tag to, then we should avoid
 // adding an empty base tag.
 void BaseTagFilter::StartElement(HtmlElement* element) {
-  if ((element->tag() == s_head_) && !found_head_) {
+  if ((element->keyword() == HtmlName::kHead) && !found_head_) {
     found_head_ = true;
-    HtmlElement* new_element = html_parse_->NewElement(element, s_base_);
+    HtmlElement* new_element =
+        html_parse_->NewElement(element, HtmlName::kBase);
     new_element->set_close_style(HtmlElement::IMPLICIT_CLOSE);
-    new_element->AddAttribute(s_href_, base_url_.c_str(), "\"");
+    html_parse_->AddAttribute(new_element, HtmlName::kHref, base_url_);
     html_parse_->InsertElementAfterCurrent(new_element);
-  } else if (element->tag() == s_base_) {
+  } else if (element->keyword() == HtmlName::kBase) {
     // There is was a pre-existing base tag.  See if it specifies an href.
     // If so, delete it, as it's now superseded by the one we added above.
     for (int i = 0; i < element->attribute_size(); ++i) {
       HtmlElement::Attribute& attribute = element->attribute(i);
-      if (attribute.name() == s_href_) {
+      if (attribute.keyword() == HtmlName::kHref) {
         html_parse_->DeleteElement(element);
         break;
       }

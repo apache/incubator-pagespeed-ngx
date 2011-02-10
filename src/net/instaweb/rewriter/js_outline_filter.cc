@@ -38,9 +38,6 @@ JsOutlineFilter::JsOutlineFilter(RewriteDriver* driver)
       html_parse_(driver->html_parse()),
       resource_manager_(driver->resource_manager()),
       size_threshold_bytes_(driver->options()->js_outline_min_bytes()),
-      s_script_(html_parse_->Intern("script")),
-      s_src_(html_parse_->Intern("src")),
-      s_type_(html_parse_->Intern("type")),
       script_tag_scanner_(html_parse_) { }
 
 void JsOutlineFilter::StartDocumentImpl() {
@@ -53,7 +50,7 @@ void JsOutlineFilter::StartElementImpl(HtmlElement* element) {
   if (inline_element_ != NULL) {
     // TODO(sligocki): Add negative unit tests to hit these errors.
     html_parse_->ErrorHere("Tag '%s' found inside script.",
-                           element->tag().c_str());
+                           element->name_str());
     inline_element_ = NULL;  // Don't outline what we don't understand.
     buffer_.clear();
   }
@@ -76,7 +73,7 @@ void JsOutlineFilter::EndElementImpl(HtmlElement* element) {
     if (element != inline_element_) {
       // No other tags allowed inside script element.
       html_parse_->ErrorHere("Tag '%s' found inside script.",
-                             element->tag().c_str());
+                             element->name_str());
 
     } else if (buffer_.size() >= size_threshold_bytes_) {
       OutlineScript(inline_element_, buffer_);
@@ -153,8 +150,9 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
             handler));
     if (WriteResource(content, resource.get(), handler)) {
       HtmlElement* outline_element = html_parse_->NewElement(
-          inline_element->parent(), s_script_);
-      outline_element->AddAttribute(s_src_, resource->url(), "'");
+          inline_element->parent(), HtmlName::kScript);
+      html_parse_->AddAttribute(outline_element, HtmlName::kSrc,
+                                resource->url());
       // Add all atrributes from old script element to new script src element.
       for (int i = 0; i < inline_element->attribute_size(); ++i) {
         const HtmlElement::Attribute& attr = inline_element->attribute(i);

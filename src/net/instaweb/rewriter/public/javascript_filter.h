@@ -106,9 +106,6 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
   // therefore can't assume we know all of the Javascript on a page.
   bool some_missing_scripts_;
   JavascriptRewriteConfig config_;
-  const Atom s_script_;
-  const Atom s_src_;
-  const Atom s_type_;
   ScriptTagScanner script_tag_scanner_;
 
   DISALLOW_COPY_AND_ASSIGN(JavascriptFilter);

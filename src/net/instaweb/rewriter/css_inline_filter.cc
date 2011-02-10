@@ -32,11 +32,6 @@ namespace net_instaweb {
 
 CssInlineFilter::CssInlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
-      href_atom_(html_parse_->Intern("href")),
-      link_atom_(html_parse_->Intern("link")),
-      media_atom_(html_parse_->Intern("media")),
-      rel_atom_(html_parse_->Intern("rel")),
-      style_atom_(html_parse_->Intern("style")),
       size_threshold_bytes_(driver->options()->css_inline_max_bytes()) {}
 
 void CssInlineFilter::StartDocumentImpl() {
@@ -49,8 +44,8 @@ void CssInlineFilter::EndDocument() {
 }
 
 void CssInlineFilter::EndElementImpl(HtmlElement* element) {
-  if (element->tag() == link_atom_) {
-    const char* rel = element->AttributeValue(rel_atom_);
+  if (element->keyword() == HtmlName::kLink) {
+    const char* rel = element->AttributeValue(HtmlName::kRel);
     if (rel == NULL || strcmp(rel, "stylesheet")) {
       return;
     }
@@ -58,13 +53,13 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
     // If the link tag has a media attribute whose value isn't "all", don't
     // inline.  (Note that "all" is equivalent to having no media attribute;
     // see http://www.w3.org/TR/html5/semantics.html#the-style-element)
-    const char* media = element->AttributeValue(media_atom_);
+    const char* media = element->AttributeValue(HtmlName::kMedia);
     if (media != NULL && strcmp(media, "all") != 0) {
       return;
     }
 
     // Get the URL where the external script is stored
-    const char* href = element->AttributeValue(href_atom_);
+    const char* href = element->AttributeValue(HtmlName::kHref);
     if (href == NULL) {
       return;  // We obviously can't inline if the URL isn't there.
     }
@@ -117,7 +112,7 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
 
     // Inline the CSS.
     HtmlElement* style_element =
-        html_parse_->NewElement(element->parent(), style_atom_);
+        html_parse_->NewElement(element->parent(), HtmlName::kStyle);
     if (html_parse_->ReplaceNode(element, style_element)) {
       html_parse_->AppendChild(
           style_element, html_parse_->NewCharactersNode(element,

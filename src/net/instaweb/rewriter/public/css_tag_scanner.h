@@ -53,12 +53,6 @@ class CssTagScanner {
   static bool HasImport(const StringPiece& contents, MessageHandler* handler);
 
  private:
-  Atom s_link_;
-  Atom s_href_;
-  Atom s_type_;
-  Atom s_rel_;
-  Atom s_media_;
-
   DISALLOW_COPY_AND_ASSIGN(CssTagScanner);
 };
 

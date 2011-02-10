@@ -44,15 +44,7 @@ static const char* const javascript_mimetypes[] = {
   "text/x-javascript"
 };
 
-ScriptTagScanner::ScriptTagScanner(HtmlParse* html_parse)
-    : s_async_(html_parse->Intern("async")),
-      s_defer_(html_parse->Intern("defer")),
-      s_event_(html_parse->Intern("event")),
-      s_for_(html_parse->Intern("for")),
-      s_language_(html_parse->Intern("language")),
-      s_script_(html_parse->Intern("script")),
-      s_src_(html_parse->Intern("src")),
-      s_type_(html_parse->Intern("type")) {
+ScriptTagScanner::ScriptTagScanner(HtmlParse* html_parse) {
   for (int i = 0; i < int(arraysize(javascript_mimetypes)); ++i) {
     javascript_mimetypes_.insert(std::string(javascript_mimetypes[i]));
   }
@@ -60,11 +52,11 @@ ScriptTagScanner::ScriptTagScanner(HtmlParse* html_parse)
 
 ScriptTagScanner::ScriptClassification ScriptTagScanner::ParseScriptElement(
     HtmlElement* element, HtmlElement::Attribute** src) {
-  if (element->tag() != s_script_) {
+  if (element->keyword() != HtmlName::kScript) {
     return kNonScript;
   }
 
-  *src = element->FindAttribute(s_src_);
+  *src = element->FindAttribute(HtmlName::kSrc);
 
   // Figure out if we have JS or not.
   // This is based on the 'type' and 'language' attributes, with
@@ -72,8 +64,9 @@ ScriptTagScanner::ScriptClassification ScriptTagScanner::ParseScriptElement(
   // <script type> acts as if the type attribute is not there,
   // which is different from <script type="">
   ScriptClassification lang;
-  HtmlElement::Attribute* type_attr = element->FindAttribute(s_type_);
-  HtmlElement::Attribute* lang_attr = element->FindAttribute(s_language_);
+  HtmlElement::Attribute* type_attr = element->FindAttribute(HtmlName::kType);
+  HtmlElement::Attribute* lang_attr = element->FindAttribute(
+      HtmlName::kLanguage);
   if (type_attr != NULL && type_attr->value() != NULL) {
     StringPiece type_str = type_attr->value();
     if (type_str.empty() || IsJsMime(Normalized(type_str))) {
@@ -108,11 +101,11 @@ ScriptTagScanner::ScriptClassification ScriptTagScanner::ParseScriptElement(
 int ScriptTagScanner::ExecutionMode(const HtmlElement* element) const {
   int flags = 0;
 
-  if (element->FindAttribute(s_async_) != NULL) {
+  if (element->FindAttribute(HtmlName::kAsync) != NULL) {
     flags |= kExecuteAsync;
   }
 
-  if (element->FindAttribute(s_defer_) != NULL) {
+  if (element->FindAttribute(HtmlName::kDefer) != NULL) {
     flags |= kExecuteDefer;
   }
 
@@ -122,8 +115,10 @@ int ScriptTagScanner::ExecutionMode(const HtmlElement* element) const {
   // Note: there is a disagreement between Chrome and Firefox on how
   // empty ones are handled. We set kExecuteForEvent as it is the conservative
   // value, requiring careful treatment by filters
-  const HtmlElement::Attribute* for_attr = element->FindAttribute(s_for_);
-  const HtmlElement::Attribute* event_attr = element->FindAttribute(s_event_);
+  const HtmlElement::Attribute* for_attr = element->FindAttribute(
+      HtmlName::kFor);
+  const HtmlElement::Attribute* event_attr = element->FindAttribute(
+      HtmlName::kEvent);
   if (for_attr != NULL && event_attr != NULL) {
     if (Normalized(for_attr->value()) != "window") {
       flags |= kExecuteForEvent;

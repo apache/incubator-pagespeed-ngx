@@ -29,10 +29,8 @@ CommonFilter::CommonFilter(RewriteDriver* driver)
     : driver_(driver),
       html_parse_(driver->html_parse()),
       resource_manager_(driver->resource_manager()),
-      rewrite_options_(driver->options()),
-      s_base_(html_parse_->Intern("base")),
-      s_href_(html_parse_->Intern("href")),
-      s_noscript_(html_parse_->Intern("noscript")) {}
+      rewrite_options_(driver->options()) {
+}
 
 CommonFilter::~CommonFilter() {}
 
@@ -46,8 +44,8 @@ void CommonFilter::StartDocument() {
 
 void CommonFilter::StartElement(HtmlElement* element) {
   // <base>
-  if (element->tag() == s_base_) {
-    HtmlElement::Attribute* href = element->FindAttribute(s_href_);
+  if (element->keyword() == HtmlName::kBase) {
+    HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
     if (href != NULL) {
       GURL temp_url(href->value());
       if (temp_url.is_valid()) {
@@ -56,7 +54,7 @@ void CommonFilter::StartElement(HtmlElement* element) {
     }
 
   // <noscript>
-  } else if (element->tag() == s_noscript_) {
+  } else if (element->keyword() == HtmlName::kNoscript) {
     if (noscript_element_ == NULL) {
       noscript_element_ = element;  // Record top-level <noscript>
     }

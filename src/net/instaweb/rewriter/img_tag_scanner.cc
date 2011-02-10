@@ -24,25 +24,21 @@
 
 namespace net_instaweb {
 
-ImgTagScanner::ImgTagScanner(HtmlParse* html_parse)
-    : s_img_(html_parse->Intern("img")),
-      s_input_(html_parse->Intern("input")),
-      s_src_(html_parse->Intern("src")),
-      s_type_(html_parse->Intern("type")) {
+ImgTagScanner::ImgTagScanner(HtmlParse* html_parse) {
 }
 
 HtmlElement::Attribute*
 ImgTagScanner::ParseImgElement(HtmlElement* element) const {
   // Return the src attribute of an <img> tag.
-  if (element->tag() == s_img_) {
-    return element->FindAttribute(s_src_);
+  if (element->keyword() == HtmlName::kImg) {
+    return element->FindAttribute(HtmlName::kSrc);
   }
   // Return the src attribute of an <input type="image"> tag.
   // See http://code.google.com/p/modpagespeed/issues/detail?id=86
-  if (element->tag() == s_input_) {
-    const char* type = element->AttributeValue(s_type_);
+  if (element->keyword() == HtmlName::kInput) {
+    const char* type = element->AttributeValue(HtmlName::kType);
     if (type != NULL && strcmp(type, "image") == 0) {
-      return element->FindAttribute(s_src_);
+      return element->FindAttribute(HtmlName::kSrc);
     }
   }
   return NULL;

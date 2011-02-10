@@ -62,8 +62,6 @@ AddInstrumentationFilter::AddInstrumentationFilter(
     HtmlParse* html_parse, const StringPiece& beacon_url, Statistics* stats)
     : html_parse_(html_parse),
       found_head_(false),
-      s_head_(html_parse->Intern("head")),
-      s_body_(html_parse->Intern("body")),
       total_page_load_ms_((stats == NULL) ? NULL :
                           stats->GetVariable(kTotalPageLoadMs)),
       page_load_count_((stats == NULL) ? NULL :
@@ -82,7 +80,7 @@ void AddInstrumentationFilter::StartDocument() {
 
 void AddInstrumentationFilter::StartElement(HtmlElement* element) {
   if (!found_head_) {
-    if (element->tag() == s_head_) {
+    if (element->keyword() == HtmlName::kHead) {
       found_head_ = true;
       // TODO(abliss): add an actual element instead, so other filters can
       // rewrite this JS
@@ -94,7 +92,7 @@ void AddInstrumentationFilter::StartElement(HtmlElement* element) {
 }
 
 void AddInstrumentationFilter::EndElement(HtmlElement* element) {
-  if (element->tag() == s_body_) {
+  if (element->keyword() == HtmlName::kBody) {
     // We relied on the existence of a <head> element.  This should have been
     // assured by add_head_filter.
     CHECK(found_head_) << "Reached end of document without finding <head>."

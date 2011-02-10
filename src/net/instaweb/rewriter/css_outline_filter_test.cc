@@ -63,7 +63,7 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
         (!expect_outline ? html_input :
          "<head>\n" +
          other_content +
-         "  <link rel='stylesheet' href='" + outline_url + "'>\n"
+         "  <link rel=\"stylesheet\" href=\"" + outline_url + "\">\n"
          "</head>\n"
          "<body>Hello, world!</body>\n");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
@@ -119,7 +119,7 @@ TEST_F(CssOutlineFilterTest, AbsolutifyDifferentDir) {
   const std::string css2 =
       "body { background-image: url('http://other_site.test/foo/bg.png'); }";
   TestOutlineCss("http://outline_style.test/index.html",
-                 "  <base href='http://other_site.test/foo/'>\n",
+                 "  <base href=\"http://other_site.test/foo/\">\n",
                  css1, true, css2);
 }
 

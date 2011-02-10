@@ -62,10 +62,6 @@ CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix,
       in_style_element_(false),
       rewrite_images_(rewrite_images_from_css),
       image_rewriter_(driver, cache_extender, image_rewriter),
-      s_style_(html_parse_->Intern("style")),
-      s_link_(html_parse_->Intern("link")),
-      s_rel_(html_parse_->Intern("rel")),
-      s_href_(html_parse_->Intern("href")),
       num_files_minified_(NULL),
       minified_bytes_saved_(NULL),
       num_parse_failures_(NULL) {
@@ -110,7 +106,7 @@ void CssFilter::StartDocumentImpl() {
 void CssFilter::StartElementImpl(HtmlElement* element) {
   // HtmlParse should not pass us elements inside a style element.
   CHECK(!in_style_element_);
-  if (element->tag() == s_style_) {
+  if (element->keyword() == HtmlName::kStyle) {
     in_style_element_ = true;
     style_element_ = element;
     style_char_node_ = NULL;
@@ -148,10 +144,12 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
     in_style_element_ = false;
 
   // Rewrite an external style.
-  } else if (element->tag() == s_link_ && html_parse_->IsRewritable(element)) {
-    StringPiece relation(element->AttributeValue(s_rel_));
+  } else if (element->keyword() == HtmlName::kLink &&
+             html_parse_->IsRewritable(element)) {
+    StringPiece relation(element->AttributeValue(HtmlName::kRel));
     if (relation == kStylesheet) {
-      HtmlElement::Attribute* element_href = element->FindAttribute(s_href_);
+      HtmlElement::Attribute* element_href = element->FindAttribute(
+          HtmlName::kHref);
       if (element_href != NULL) {
         // If it has a href= attribute
         std::string new_url;

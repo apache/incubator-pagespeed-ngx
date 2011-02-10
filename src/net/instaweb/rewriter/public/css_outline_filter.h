@@ -70,11 +70,6 @@ class CssOutlineFilter : public CommonFilter {
   std::string buffer_;
   size_t size_threshold_bytes_;
   // HTML strings interned into a symbol table.
-  Atom s_link_;
-  Atom s_style_;
-  Atom s_rel_;
-  Atom s_href_;
-  Atom s_type_;
 
   DISALLOW_COPY_AND_ASSIGN(CssOutlineFilter);
 };

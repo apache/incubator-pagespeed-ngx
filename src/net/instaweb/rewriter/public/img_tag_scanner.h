@@ -35,11 +35,6 @@ class ImgTagScanner {
   HtmlElement::Attribute* ParseImgElement(HtmlElement* element) const;
 
  private:
-  const Atom s_img_;
-  const Atom s_input_;
-  const Atom s_src_;
-  const Atom s_type_;
-
   DISALLOW_COPY_AND_ASSIGN(ImgTagScanner);
 };
 

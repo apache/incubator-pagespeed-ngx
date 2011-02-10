@@ -35,7 +35,6 @@ class StripScriptsFilter : public EmptyHtmlFilter {
 
  private:
   HtmlParse* html_parse_;
-  Atom s_script_;
 
   DISALLOW_COPY_AND_ASSIGN(StripScriptsFilter);
 };
