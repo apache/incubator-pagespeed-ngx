@@ -353,6 +353,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{margin:0}",  // 0 w/ no units
     "a{padding:0.01em 0.25em}",  // fractions and em
     "a{-moz-border-radius-topleft:0}",  // Browser-specific (-moz)
+    ".ds{display:-moz-inline-box}",
     "a{background:none}",  // CSS Parser used to expand this.
     // http://code.google.com/p/modpagespeed/issues/detail?id=5
     "a{font-family:trebuchet ms}",  // Keep space between trebuchet and ms.
@@ -377,6 +378,10 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{box-shadow:-1px -2px 2px rgba(0, 0, 0, .15)}",  // CSS3 rgba
     // http://code.google.com/p/modpagespeed/issues/detail?id=66
     "a{-moz-transform:rotate(7deg)}",
+
+    // Found in the wild:
+    ".lsb:active, .gac_sb:active{ background: -webkit-gradient(linear, "
+    "left top, left bottom, from(#ccc), to(#ddd))}",
     };
 
   for (int i = 0; i < arraysize(fail_examples); ++i) {
@@ -385,6 +390,27 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
   }
 }
 
+// Things we could be optimizing.
+// This test will fail when we start optimizing these thing.
+TEST_F(CssFilterTest, ToOptimize) {
+  const char* examples[][2] = {
+    // Noticed from YUI minification.
+    { "td { line-height: 0.8em; }",
+      // Could be: "td{line-height:.8em}"
+      "td{line-height:0.8em}", },
+    { ".gb1, .gb3 {}",
+      // Could be: ""
+      ".gb1,.gb3{}", },
+    { ".lst:focus { outline:none; }",
+      // Could be: ".lst:focus{outline:0}"
+      ".lst:focus{outline:none}", },
+  };
+
+  for (int i = 0; i < arraysize(examples); ++i) {
+    std::string id = StringPrintf("to_optimize_%d", i);
+    ValidateRewrite(id, examples[i][0], examples[i][1]);
+  }
+}
 
 // Test more complicated CSS.
 TEST_F(CssFilterTest, ComplexCssTest) {
@@ -473,6 +499,17 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "}\n",
 
       "#some_id{background:#ccc url(images/picture.png) 50% 50% repeat-x}" },
+
+    { ".gac_od { border-color: -moz-use-text-color #E7E7E7 #E7E7E7 "
+      "-moz-use-text-color; }",
+
+      ".gac_od{border-color:-moz-use-text-color #e7e7e7 #e7e7e7 "
+      "-moz-use-text-color}" },
+
+    // TODO(sligocki): Don't lowercase font names:
+    { "a { font-family: Arial; }",
+      // Should be: "a{font-family:Arial}"
+      "a{font-family:arial}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

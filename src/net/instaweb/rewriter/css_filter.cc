@@ -171,8 +171,10 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
                                std::string* out_text,
                                const GURL& css_gurl,
                                MessageHandler* handler) {
-  // Load stylesheet w/o expanding background attributes.
+  // Load stylesheet w/o expanding background attributes and preserving all
+  // values from original document.
   Css::Parser parser(in_text);
+  parser.set_allow_all_values(true);
   scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
 
   bool ret = true;
