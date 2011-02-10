@@ -73,6 +73,26 @@ bool OutputResource::CachedResult::Remembered(const char* key,
   return false;
 }
 
+void OutputResource::CachedResult::SetRememberedInt64(const char* key,
+                                                      int64 val) {
+  SetRemembered(key, Integer64ToString(val));
+}
+
+bool OutputResource::CachedResult::RememberedInt64(const char* key,
+                                                   int64* out) {
+  std::string out_str;
+  return Remembered(key, &out_str) && StringToInt64(out_str, out);
+}
+
+void OutputResource::CachedResult::SetRememberedInt(const char* key, int val) {
+  SetRemembered(key, IntegerToString(val));
+}
+
+bool OutputResource::CachedResult::RememberedInt(const char* key, int* out) {
+  std::string out_str;
+  return Remembered(key, &out_str) && StringToInt(out_str, out);
+}
+
 OutputResource::OutputResource(ResourceManager* manager,
                                const StringPiece& resolved_base,
                                const ResourceNamer& full_name,

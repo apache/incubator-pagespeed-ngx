@@ -178,7 +178,7 @@ RewriteSingleResourceFilter::RewriteLoadedResourceAndCacheIfOk(
   OutputResource::CachedResult* result =
       output_resource->EnsureCachedResultCreated();
   int64 time_ms = input_resource->metadata()->timestamp_ms();
-  result->SetRemembered(kInputTimestampKey, Integer64ToString(time_ms));
+  result->SetRememberedInt64(kInputTimestampKey, time_ms);
   UpdateCacheFormat(output_resource);
   RewriteResult res = RewriteLoadedResource(input_resource, output_resource,
                                             encoder);
@@ -231,9 +231,7 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
     // cached result and not the actual input resource since we've not read
     // the latter and so don't have any metadata for it.
     int64 input_timestamp_ms = 0;
-    std::string input_timestamp_value;
-    if (cached->Remembered(kInputTimestampKey, &input_timestamp_value) &&
-        StringToInt64(input_timestamp_value, &input_timestamp_ms)) {
+    if (cached->RememberedInt64(kInputTimestampKey, &input_timestamp_ms)) {
       if (resource_manager_->IsImminentlyExpiring(
               input_timestamp_ms, cached->origin_expiration_time_ms())) {
         input_resource->Freshen(handler);
@@ -287,10 +285,8 @@ bool RewriteSingleResourceFilter::IsValidCacheFormat(
     OutputResource::CachedResult* cached) {
   int target_version = FilterCacheFormatVersion();
 
-  std::string actual_version_str;
   int actual_version;
-  return cached->Remembered(kVersionKey, &actual_version_str) &&
-         StringToInt(actual_version_str, &actual_version) &&
+  return cached->RememberedInt(kVersionKey, &actual_version) &&
          actual_version == target_version;
 }
 
@@ -300,7 +296,7 @@ void RewriteSingleResourceFilter::UpdateCacheFormat(
 
   OutputResource::CachedResult* result =
       output_resource->EnsureCachedResultCreated();
-  result->SetRemembered(kVersionKey, IntegerToString(version));
+  result->SetRememberedInt(kVersionKey, version);
 }
 
 UrlSegmentEncoder*

@@ -43,7 +43,11 @@ const char kResourceUrlBase[] = "http://example.com";
 const char kResourceUrlPath[] = "/image.png";
 
 const char kFilterKey[] = "X-ModPagespeed-FilterData";
+const char kFilterKeyInt[] = "X-ModPagespeed-FilterDataInt";
+const char kFilterKeyInt64[] = "X-ModPagespeed-FilterData64";
 const char kFilterVal[] = "X-ModPagespeed-FilterVal";
+const int64 kFilterValInt64 = static_cast<int64>(0xFFFFFF) * 0xFFFFFF;
+const int64 kFilterValInt = 31415926;
 
 }  // namespace
 
@@ -254,9 +258,32 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
   void VerifyCustomMetadata(OutputResource* output) {
     std::string val;
+    int64 int64_val = 0;
+    int int_val = 0;
+
     EXPECT_TRUE(output->cached_result()->Remembered(kFilterKey, &val));
     EXPECT_EQ(std::string(kFilterVal), val);
+    EXPECT_FALSE(
+        output->cached_result()->RememberedInt64(kFilterKey, &int64_val));
+    EXPECT_FALSE(output->cached_result()->RememberedInt(kFilterKey, &int_val));
+
     EXPECT_FALSE(output->cached_result()->Remembered("nosuchkey", &val));
+    EXPECT_FALSE(
+        output->cached_result()->RememberedInt64("nosuchkey", &int64_val));
+    EXPECT_FALSE(output->cached_result()->RememberedInt("nosuchkey", &int_val));
+
+    EXPECT_TRUE(
+        output->cached_result()->RememberedInt64(kFilterKeyInt64, &int64_val));
+    EXPECT_EQ(kFilterValInt64, int64_val);
+    EXPECT_FALSE(
+        output->cached_result()->RememberedInt(kFilterKeyInt64, &int_val));
+
+    EXPECT_TRUE(
+        output->cached_result()->RememberedInt(kFilterKeyInt, &int_val));
+    EXPECT_TRUE(
+        output->cached_result()->RememberedInt64(kFilterKeyInt, &int64_val));
+    EXPECT_EQ(kFilterValInt, int_val);
+    EXPECT_EQ(kFilterValInt, int64_val);
   }
 
   void StoreCustomMetadata(OutputResource* output) {
@@ -265,6 +292,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     ASSERT_TRUE(cached != NULL);
     EXPECT_EQ(cached, output->cached_result());
     cached->SetRemembered(kFilterKey, kFilterVal);
+    cached->SetRememberedInt(kFilterKeyInt, kFilterValInt);
+    cached->SetRememberedInt64(kFilterKeyInt64, kFilterValInt64);
   }
 
   // Expiration times are not entirely precise as some cache headers

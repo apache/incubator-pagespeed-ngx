@@ -69,6 +69,12 @@ class OutputResource : public Resource {
     void SetRemembered(const char* key, const std::string& val);
     bool Remembered(const char* key, std::string* out) const;
 
+    void SetRememberedInt64(const char* key, int64 val);
+    bool RememberedInt64(const char* key, int64* out);
+
+    void SetRememberedInt(const char* key, int val);
+    bool RememberedInt(const char* key, int* out);
+
    private:
     friend class ResourceManager;
     friend class OutputResource;
