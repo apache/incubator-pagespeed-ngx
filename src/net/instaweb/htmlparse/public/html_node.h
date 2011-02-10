@@ -45,7 +45,7 @@ class HtmlNode {
     return arena->Allocate(size);
   }
 
-  void operator delete(void* ptr, size_t size, Arena<HtmlNode>* arena) {
+  void operator delete(void* ptr, Arena<HtmlNode>* arena) {
     CHECK(false) << "HtmlNode must not be deleted directly.";
   }
 
