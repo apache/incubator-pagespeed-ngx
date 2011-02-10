@@ -115,6 +115,7 @@
         'util/arena_test.cc',
         'util/base64_test.cc',
         'util/content_type_test.cc',
+        'util/chunking_writer_test.cc',
         'util/data_url_test.cc',
         'util/file_cache_test.cc',
         'util/file_system_test.cc',

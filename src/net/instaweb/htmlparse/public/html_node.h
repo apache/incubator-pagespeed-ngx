@@ -45,6 +45,10 @@ class HtmlNode {
     return arena->Allocate(size);
   }
 
+  void operator delete(void* ptr, size_t size, Arena<HtmlNode>* arena) {
+    CHECK(false) << "HtmlNode must not be deleted directly.";
+  }
+
  protected:
   // TODO(jmarantz): jmaessen suggests instantiating the html nodes
   // without parents and computing them from context at the time they
@@ -65,6 +69,11 @@ class HtmlNode {
   virtual HtmlEventListIterator begin() const = 0;
   // Return an iterator pointing to the last event associated with this node.
   virtual HtmlEventListIterator end() const = 0;
+
+  // Version that affects visibility of the destructor.
+  void operator delete(void* ptr) {
+    CHECK(false) << "HtmlNode must not be deleted directly.";
+  }
 
  private:
   friend class HtmlTestingPeer;

@@ -40,6 +40,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/util/public/chunking_writer.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
 #include <string>
@@ -79,12 +80,9 @@ void SlurpDefaultHandler(request_rec* r) {
 
 class ApacheWriter : public Writer {
  public:
-  ApacheWriter(request_rec* r, ResponseHeaders* response_headers,
-               int64 flush_limit)
+  ApacheWriter(request_rec* r, ResponseHeaders* response_headers)
       : request_(r),
         response_headers_(response_headers),
-        size_(0),
-        flush_limit_(flush_limit),
         headers_out_(false) {
   }
 
@@ -93,20 +91,13 @@ class ApacheWriter : public Writer {
       OutputHeaders();
     }
     ap_rwrite(str.data(), str.size(), request_);
-    size_ += str.size();
-    if ((flush_limit_ != 0) && (size_ > flush_limit_)) {
-      Flush(handler);
-    }
     return true;
   }
 
   virtual bool Flush(MessageHandler* handler) {
     ap_rflush(request_);
-    size_ = 0;
     return true;
   }
-
-  int64 size() const { return size_; }
 
   void OutputHeaders() {
     if (headers_out_) {
@@ -149,8 +140,6 @@ class ApacheWriter : public Writer {
  private:
   request_rec* request_;
   ResponseHeaders* response_headers_;
-  int size_;
-  int flush_limit_;
   bool headers_out_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheWriter);
@@ -242,7 +231,8 @@ void SlurpUrl(const std::string& uri, ApacheRewriteDriverFactory* factory,
   ResponseHeaders response_headers;
   ApacheRequestToRequestHeaders(*r, &request_headers);
   std::string contents;
-  ApacheWriter writer(r, &response_headers, factory->slurp_flush_limit());
+  ApacheWriter apache_writer(r, &response_headers);
+  ChunkingWriter writer(&apache_writer, factory->slurp_flush_limit());
 
   std::string stripped_url = RemoveModPageSpeedQueryParams(
       uri, r->parsed_uri.query);
@@ -255,7 +245,7 @@ void SlurpUrl(const std::string& uri, ApacheRewriteDriverFactory* factory,
                                           factory->message_handler())) {
     // In the event of empty content, the writer's Write method may not be
     // called, but we should still emit headers.
-    writer.OutputHeaders();
+    apache_writer.OutputHeaders();
   } else {
     MessageHandler* handler = factory->message_handler();
     handler->Message(kInfo, "mod_pagespeed: slurp of url %s failed.\n"

@@ -62,6 +62,7 @@ ModPagespeedEnableFilters add_instrumentation
 #COVERAGE ModPagespeedCssOutlineMinBytes       3000
 #COVERAGE ModPagespeedJsOutlineMinBytes        3000
 #COVERAGE ModPagespeedImgMaxRewritesAtOnce        8
+#COVERAGE ModPagespeedSlurpFlushLimit          8192
 #COVERAGE <Location /mod_pagespeed_beacon>
 #COVERAGE       SetHandler mod_pagespeed_beacon
 #COVERAGE </Location>

@@ -55,6 +55,7 @@
         'util/abstract_condvar.cc',
         'util/abstract_mutex.cc',
         'util/cache_interface.cc',
+        'util/chunking_writer.cc',
         'util/data_url.cc',
         'util/file_cache.cc',
         'util/file_system.cc',
