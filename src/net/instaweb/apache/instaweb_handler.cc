@@ -249,7 +249,7 @@ apr_status_t instaweb_handler(request_rec* request) {
       ret = OK;
     }
 
-  } else if (factory->slurping_enabled()) {
+  } else if (factory->slurping_enabled() || factory->test_proxy()) {
     SlurpUrl(request->unparsed_uri, factory, request);
     if (request->status == HTTP_NOT_FOUND) {
       factory->IncrementSlurpCount();

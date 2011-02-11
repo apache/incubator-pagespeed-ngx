@@ -94,6 +94,7 @@ const char* kModPagespeedDisableFilters = "ModPagespeedDisableFilters";
 const char* kModPagespeedSlurpDirectory = "ModPagespeedSlurpDirectory";
 const char* kModPagespeedSlurpReadOnly = "ModPagespeedSlurpReadOnly";
 const char* kModPagespeedSlurpFlushLimit = "ModPagespeedSlurpFlushLimit";
+const char* kModPagespeedTestProxy = "ModPagespeedTestProxy";
 const char* kModPagespeedForceCaching = "ModPagespeedForceCaching";
 const char* kModPagespeedCssInlineMaxBytes = "ModPagespeedCssInlineMaxBytes";
 const char* kModPagespeedImgInlineMaxBytes = "ModPagespeedImgInlineMaxBytes";
@@ -111,6 +112,7 @@ const char* kModPagespeedAllow = "ModPagespeedAllow";
 const char* kModPagespeedDisallow = "ModPagespeedDisallow";
 const char* kModPagespeedStatistics = "ModPagespeedStatistics";
 const char* kModPagespeedCombineAcrossPaths = "ModPagespeedCombineAcrossPaths";
+const char* kModPagespeedLowercaseHtmlNames = "ModPagespeedLowercaseHtmlNames";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -836,6 +838,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedCombineAcrossPaths)) {
     ret = ParseBoolOption(options, cmd,
                           &RewriteOptions::set_combine_across_paths, arg);
+  } else if (StringCaseEqual(directive, kModPagespeedLowercaseHtmlNames)) {
+    ret = ParseBoolOption(options, cmd,
+                          &RewriteOptions::set_lowercase_html_names, arg);
   } else if (StringCaseEqual(directive, kModPagespeedUrlPrefix)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (StringCaseEqual(directive, kModPagespeedFetchProxy)) {
@@ -915,6 +920,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedSlurpFlushLimit)) {
     ret = ParseInt64Option(factory,
         cmd, &ApacheRewriteDriverFactory::set_slurp_flush_limit, arg);
+  } else if (StringCaseEqual(directive, kModPagespeedTestProxy)) {
+    ret = ParseBoolOption(factory,
+        cmd, &ApacheRewriteDriverFactory::set_test_proxy, arg);
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
         cmd, &ApacheRewriteDriverFactory::set_force_caching, arg);
@@ -1031,6 +1039,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedSlurpFlushLimit,
         "Set the maximum byte size for the slurped content to hold before "
         "a flush"),
+  APACHE_CONFIG_OPTION(kModPagespeedTestProxy,
+        "Act as a proxy without maintaining a slurp dump."),
   APACHE_CONFIG_OPTION(kModPagespeedForceCaching,
         "Ignore HTTP cache headers and TTLs"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCssOutlineMinBytes,

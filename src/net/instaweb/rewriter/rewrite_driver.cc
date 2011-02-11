@@ -362,8 +362,10 @@ void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
 
 void RewriteDriver::SetWriter(Writer* writer) {
   if (html_writer_filter_ == NULL) {
-    html_writer_filter_.reset(new HtmlWriterFilter(&html_parse_));
-    html_parse_.AddFilter(html_writer_filter_.get());
+    HtmlWriterFilter* writer_filter = new HtmlWriterFilter(&html_parse_);
+    html_writer_filter_.reset(writer_filter);
+    html_parse_.AddFilter(writer_filter);
+    writer_filter->set_case_fold(options_.lowercase_html_names());
   }
   html_writer_filter_->set_writer(writer);
 }

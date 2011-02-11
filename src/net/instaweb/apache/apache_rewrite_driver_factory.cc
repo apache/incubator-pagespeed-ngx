@@ -48,7 +48,8 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       fetcher_time_out_ms_(5 * Timer::kSecondMs),
       slurp_flush_limit_(0),
       version_(version.data(), version.size()),
-      statistics_enabled_(true) {
+      statistics_enabled_(true),
+      test_proxy_(false) {
   apr_pool_create(&pool_, NULL);
   cache_mutex_.reset(NewMutex());
   rewrite_drivers_mutex_.reset(NewMutex());

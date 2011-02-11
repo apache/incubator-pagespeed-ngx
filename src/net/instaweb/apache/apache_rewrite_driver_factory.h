@@ -66,6 +66,11 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
     x.CopyToString(&fetcher_proxy_);
   }
 
+  // Controls whether we act as a rewriting proxy, fetching
+  // URLs from origin without managing a slurp dump.
+  void set_test_proxy(bool p) { test_proxy_ = p; }
+  bool test_proxy() const { return test_proxy_; }
+
   StringPiece file_cache_path() { return file_cache_path_; }
   int64 file_cache_clean_size_kb() { return file_cache_clean_size_kb_; }
   int64 fetcher_time_out_ms() { return fetcher_time_out_ms_; }
@@ -127,6 +132,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   std::string fetcher_proxy_;
   std::string version_;
   bool statistics_enabled_;
+  bool test_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };

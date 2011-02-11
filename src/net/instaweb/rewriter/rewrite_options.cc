@@ -107,7 +107,8 @@ RewriteOptions::RewriteOptions()
       max_url_size_(kMaxUrlSize),
       enabled_(true),
       combine_across_paths_(true),
-      log_rewrite_timing_(false) {
+      log_rewrite_timing_(false),
+      lowercase_html_names_(false) {
   // TODO: If we instantiate many RewriteOptions, this should become a
   // public static method called once at startup.
   SetUp();
@@ -289,6 +290,8 @@ void RewriteOptions::Merge(const RewriteOptions& first,
                       second.max_url_size_);
   log_rewrite_timing_.Merge(first.log_rewrite_timing_,
                             second.log_rewrite_timing_);
+  lowercase_html_names_.Merge(first.lowercase_html_names_,
+                              second.lowercase_html_names_);
 
   // Note that the domain-lawyer merge works one-at-a-time, which is easier
   // to unit test.  So we have to call it twice.
