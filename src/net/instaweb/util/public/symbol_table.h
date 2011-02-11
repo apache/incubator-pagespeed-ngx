@@ -22,6 +22,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 #ifdef __GNUC__
 #define SYMBOL_TABLE_USE_HASH_TABLE 1
@@ -91,9 +92,16 @@ template<class CharTransform> class SymbolTable {
   SymbolTable();
   ~SymbolTable() { Clear(); }
 
+  // Remove all symbols in the table, invalidating any Atoms that
+  // were previously Interned.
   void Clear();
 
+  // Remember a string in the table, returning it as an Atom.
   Atom Intern(const StringPiece& src);
+
+  // Returns the number of bytes allocated on behalf of the data,
+  // excluding any overhead added by the symbol table.
+  size_t string_bytes_allocated() const { return string_bytes_allocated_; }
 
  private:
 #if SYMBOL_TABLE_USE_HASH_TABLE
@@ -135,6 +143,9 @@ template<class CharTransform> class SymbolTable {
   typedef std::set<StringPiece, Compare> SymbolSet;
 #endif
   SymbolSet string_set_;
+  std::vector<char*> storage_;
+  char* next_ptr_;  // Used for bump-pointer pooled allocation of strings.
+  size_t string_bytes_allocated_;
 
   DISALLOW_COPY_AND_ASSIGN(SymbolTable);
 };

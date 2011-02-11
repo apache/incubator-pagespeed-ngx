@@ -90,6 +90,7 @@ class HtmlName {
     kIsmap,
     kKeygen,
     kKeytype,
+    kLang,
     kLanguage,
     kLi,
     kLink,
@@ -150,24 +151,21 @@ class HtmlName {
     kNotAKeyword
   };
 
-  HtmlName(Keyword keyword, Atom atom)
-      : keyword_(keyword), atom_(atom) {
-  }
-  explicit HtmlName(Atom atom)
-      : keyword_(Lookup(atom.c_str())), atom_(atom) {
+  // Constructs an HTML name given a keyword, which can be
+  // HtmlName::kNotAKeyword, and 'const char* str'.  'str'
+  // is used to retain the case-sensitive spelling of the
+  // keyword.  The storage for 'str' must be managed, and
+  // must be guaranteed valid throughout the life of the HtmlName.
+  HtmlName(Keyword keyword, const char* str)
+      : keyword_(keyword), c_str_(str) {
   }
 
   // Returns the keyword enumeration for this HTML Name.  Note that
   // keyword lookup is case-insensitive.
   Keyword keyword() const { return keyword_; }
 
-  // Returns the atom used to construct the HtmlName.  Note that
-  // the Atom may not be case-folded, depending on how the SymbolTable
-  // was constructed.
-  Atom atom() const { return atom_; }
-
   // Return the atom string, which may not be case folded.
-  const char* c_str() const { return atom_.c_str(); }
+  const char* c_str() const { return c_str_; }
 
   // Limited iterator (not an STL iterator).  Example usage:
   //    for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
@@ -194,7 +192,7 @@ class HtmlName {
   friend class HtmlNameTest;
 
   Keyword keyword_;
-  Atom atom_;
+  const char* c_str_;
 
   // Implicit copy and assign ok.  The members can be safely copied by bits.
 };

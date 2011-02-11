@@ -362,9 +362,9 @@ echo "$IMG_HEADERS" | grep -qi 'Last-Modified'
 check [ $? = 0 ]
 
 IMG_URL=${IMG_URL/Puzzle/BadName}
-echo TEST: rewrite_images redirects unknown image $IMG_URL
+echo TEST: rewrite_images fails broken image $IMG_URL
 $WGET_PREREQ $IMG_URL;  # fails
-check grep '"307 Temporary Redirect"' $WGET_OUTPUT
+check grep '"404 Not Found"' $WGET_OUTPUT
 
 # This has to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.

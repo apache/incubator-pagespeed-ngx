@@ -170,17 +170,17 @@ class HtmlParse {
   // otherwise, do nothing and return false.
   bool ReplaceNode(HtmlNode* existing_node, HtmlNode* new_node);
 
-
-  HtmlElement* NewElement(HtmlElement* parent, Atom tag);
-  HtmlElement* NewElement(HtmlElement* parent, HtmlName::Keyword keyword) {
-    return NewElement(parent, InternKeyword(keyword));
+  HtmlElement* NewElement(HtmlElement* parent, const StringPiece& str) {
+    return NewElement(parent, MakeName(str));
   }
+  HtmlElement* NewElement(HtmlElement* parent, HtmlName::Keyword keyword) {
+    return NewElement(parent, MakeName(keyword));
+  }
+  HtmlElement* NewElement(HtmlElement* parent, const HtmlName& name);
 
-  // Adding an attribute by keyword requires Intering an Atom into the
-  // symbol table, which is owned by HtmlParse.
   void AddAttribute(HtmlElement* element, HtmlName::Keyword keyword,
                     const StringPiece& value) {
-    return element->AddAttribute(InternKeyword(keyword), value, "\"");
+    return element->AddAttribute(MakeName(keyword), value, "\"");
   }
   void AddAttribute(HtmlElement* element, HtmlName::Keyword keyword,
                     int value) {
@@ -188,10 +188,11 @@ class HtmlParse {
   }
   void SetAttributeName(HtmlElement::Attribute* attribute,
                         HtmlName::Keyword keyword) {
-    attribute->set_name(HtmlName(InternKeyword(keyword)));
+    attribute->set_name(MakeName(keyword));
   }
 
-  Atom InternKeyword(HtmlName::Keyword keyword);
+  HtmlName MakeName(const StringPiece& str);
+  HtmlName MakeName(HtmlName::Keyword keyword);
 
   bool IsRewritable(const HtmlNode* node) const;
 
@@ -267,6 +268,9 @@ class HtmlParse {
   void set_timer(Timer* timer) { timer_ = timer; }
   void set_log_rewrite_timing(bool x) { log_rewrite_timing_ = x; }
 
+  // This method is deprecated.  Instead please use MakeName(HtmlName::Keyword).
+  Atom InternKeyword(HtmlName::Keyword keyword);
+
  private:
   HtmlEventListIterator Last();  // Last element in queue
   bool IsInEventWindow(const HtmlEventListIterator& iter) const;
@@ -289,10 +293,8 @@ class HtmlParse {
   void AddEvent(HtmlEvent* event);
   void SetCurrent(HtmlNode* node);
   void set_coalesce_characters(bool x) { coalesce_characters_ = x; }
-
-  // Testing only methods.
-  Atom Intern(const StringPiece& name) {
-    return string_table_.Intern(name);
+  size_t symbol_table_size() const {
+    return string_table_.string_bytes_allocated();
   }
 
   SymbolTableSensitive string_table_;

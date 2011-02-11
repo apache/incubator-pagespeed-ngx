@@ -76,4 +76,33 @@ TEST_F(SymbolTableTest, TestInternInsensitive) {
   EXPECT_TRUE(Atom() == empty);
 }
 
+TEST_F(SymbolTableTest, TestClear) {
+  SymbolTableSensitive symbol_table;
+  Atom a = symbol_table.Intern("a");
+  symbol_table.Clear();
+  a = symbol_table.Intern("a");
+}
+
+// Symbol table's string storage special cases large items (> 32k) so
+// test interleaved allocating of small and large strings.
+TEST_F(SymbolTableTest, TestBigInsert) {
+  SymbolTableSensitive symbol_table;
+  Atom a = symbol_table.Intern(std::string(100000, 'a'));
+  Atom b = symbol_table.Intern("b");
+  Atom c = symbol_table.Intern(std::string(100000, 'c'));
+  Atom d = symbol_table.Intern("d");
+  EXPECT_TRUE(a == symbol_table.Intern(std::string(100000, 'a')));
+  EXPECT_TRUE(b == symbol_table.Intern("b"));
+  EXPECT_TRUE(c == symbol_table.Intern(std::string(100000, 'c')));
+  EXPECT_TRUE(d == symbol_table.Intern("d"));
+}
+
+TEST_F(SymbolTableTest, TestOverflowFirstChunk) {
+  SymbolTableSensitive symbol_table;
+  for (int i = 0; i < 10000; ++i) {
+    symbol_table.Intern(IntegerToString(i));
+  }
+  EXPECT_LT(32768, symbol_table.string_bytes_allocated());
+}
+
 }  // namespace net_instaweb

@@ -715,7 +715,7 @@ void HtmlLexer::MakeElement() {
     if (token_.empty()) {
       SyntaxError("Making element with empty tag name");
     }
-    element_ = html_parse_->NewElement(Parent(), html_parse_->Intern(token_));
+    element_ = html_parse_->NewElement(Parent(), token_);
     element_->set_begin_line_number(tag_start_line_);
     token_.clear();
   }
@@ -777,7 +777,7 @@ void HtmlLexer::FinishParse() {
 
 void HtmlLexer::MakeAttribute(bool has_value) {
   html_parse_->message_handler()->Check(element_ != NULL, "element_ == NULL");
-  Atom name = html_parse_->Intern(attr_name_);
+  HtmlName name = html_parse_->MakeName(attr_name_);
   attr_name_.clear();
   const char* value = NULL;
   html_parse_->message_handler()->Check(has_value == has_attr_value_,
@@ -926,8 +926,7 @@ void HtmlLexer::EvalAttrValSq(char c) {
 }
 
 void HtmlLexer::EmitTagClose(HtmlElement::CloseStyle close_style) {
-  Atom tag = html_parse_->Intern(token_);
-  HtmlElement* element = PopElementMatchingTag(tag);
+  HtmlElement* element = PopElementMatchingTag(token_);
   if (element != NULL) {
     element->set_end_line_number(line_);
     html_parse_->CloseElement(element, close_style, line_);
@@ -1033,7 +1032,7 @@ HtmlElement* HtmlLexer::PopElement() {
   return element;
 }
 
-HtmlElement* HtmlLexer::PopElementMatchingTag(Atom tag) {
+HtmlElement* HtmlLexer::PopElementMatchingTag(const StringPiece& tag) {
   HtmlElement* element = NULL;
 
   // Search the stack from top to bottom.
@@ -1043,7 +1042,7 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(Atom tag) {
     // In tag-matching we will do case-insensitive comparisons, despite
     // the fact that we have a keywords enum.  Note that the symbol
     // table is case sensitive.
-    if (StringCaseEqual(element->name_str(), tag.c_str())) {
+    if (StringCaseEqual(element->name_str(), tag)) {
       // Emit warnings for the tags we are skipping.  We have to do
       // this in reverse order so that we maintain stack discipline.
       for (int j = element_stack_.size() - 1; j > i; --j) {

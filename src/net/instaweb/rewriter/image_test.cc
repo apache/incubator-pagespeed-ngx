@@ -185,12 +185,11 @@ const char kActualUrl[] = "http://encoded.url/with/various.stuff";
 
 TEST(ImageUrlTest, NoDims) {
   const char kNoDimsUrl[] = "x,hencoded.url,_with,_various.stuff";
-  ImageDim page_dim;
   std::string origin_url;
   UrlEscaper escaper;
-  ImageUrlEncoder encoder(&escaper, &page_dim);
+  ImageUrlEncoder encoder(&escaper);
   EXPECT_TRUE(encoder.DecodeFromUrlSegment(kNoDimsUrl, &origin_url));
-  EXPECT_FALSE(page_dim.valid());
+  EXPECT_FALSE(encoder.stored_dim().valid());
   EXPECT_EQ(kActualUrl, origin_url);
   std::string final_url;
   encoder.EncodeToUrlSegment(origin_url, &final_url);
@@ -199,11 +198,11 @@ TEST(ImageUrlTest, NoDims) {
 
 TEST(ImageUrlTest, HasDims) {
   const char kDimsUrl[] = "17x33x,hencoded.url,_with,_various.stuff";
-  ImageDim page_dim;
   std::string origin_url;
   UrlEscaper escaper;
-  ImageUrlEncoder encoder(&escaper, &page_dim);
+  ImageUrlEncoder encoder(&escaper);
   EXPECT_TRUE(encoder.DecodeFromUrlSegment(kDimsUrl, &origin_url));
+  ImageDim page_dim = encoder.stored_dim();
   EXPECT_TRUE(page_dim.valid());
   EXPECT_EQ(17, page_dim.width());
   EXPECT_EQ(33, page_dim.height());
@@ -215,42 +214,38 @@ TEST(ImageUrlTest, HasDims) {
 
 TEST(ImageUrlTest, BadFirst) {
   const char kBadFirst[] = "badx33x,hencoded.url,_with,_various.stuff";
-  ImageDim page_dim;
   std::string origin_url;
   UrlEscaper escaper;
-  ImageUrlEncoder encoder(&escaper, &page_dim);
+  ImageUrlEncoder encoder(&escaper);
   EXPECT_FALSE(encoder.DecodeFromUrlSegment(kBadFirst, &origin_url));
-  EXPECT_FALSE(page_dim.valid());
+  EXPECT_FALSE(encoder.stored_dim().valid());
 }
 
 TEST(ImageUrlTest, BadSecond) {
   const char kBadSecond[] = "17xbadx,hencoded.url,_with,_various.stuff";
-  ImageDim page_dim;
   std::string origin_url;
   UrlEscaper escaper;
-  ImageUrlEncoder encoder(&escaper, &page_dim);
+  ImageUrlEncoder encoder(&escaper);
   EXPECT_FALSE(encoder.DecodeFromUrlSegment(kBadSecond, &origin_url));
-  EXPECT_FALSE(page_dim.valid());
+  EXPECT_FALSE(encoder.stored_dim().valid());
 }
 
 TEST(ImageUrlTest, NoXs) {
   const char kNoXs[] = ",hencoded.url,_with,_various.stuff";
-  ImageDim page_dim;
   std::string origin_url;
   UrlEscaper escaper;
-  ImageUrlEncoder encoder(&escaper, &page_dim);
+  ImageUrlEncoder encoder(&escaper);
   EXPECT_FALSE(encoder.DecodeFromUrlSegment(kNoXs, &origin_url));
-  EXPECT_FALSE(page_dim.valid());
+  EXPECT_FALSE(encoder.stored_dim().valid());
 }
 
 TEST(ImageUrlTest, BlankSecond) {
   const char kBlankSecond[] = "17xx,hencoded.url,_with,_various.stuff";
-  ImageDim page_dim;
   std::string origin_url;
   UrlEscaper escaper;
-  ImageUrlEncoder encoder(&escaper, &page_dim);
+  ImageUrlEncoder encoder(&escaper);
   EXPECT_FALSE(encoder.DecodeFromUrlSegment(kBlankSecond, &origin_url));
-  EXPECT_FALSE(page_dim.valid());
+  EXPECT_FALSE(encoder.stored_dim().valid());
 }
 
 }  // namespace net_instaweb

@@ -120,17 +120,17 @@ class HtmlLexer {
   // Emits a syntax error message.
   void SyntaxError(const char* format, ...) INSTAWEB_PRINTF_FORMAT(2, 3);
 
-  // Takes an interned tag, and tries to find a matching HTML element on
-  // the stack.  If it finds it, it pops all the intervening elements off
-  // the stack, issuing warnings for each discarded tag, the matching element
-  // is also popped off the stack, and returned.
+  // Tries to find a HTML element on the stack matching a tag.  If it
+  // finds it, it pops all the intervening elements off the stack,
+  // issuing warnings for each discarded tag, the matching element is
+  // also popped off the stack, and returned.
   //
   // If the tag is not matched, then no mutations are done to the stack,
   // and NULL is returned.
   //
   // The tag name should be interned.
   // TODO(jmarantz): use type system
-  HtmlElement* PopElementMatchingTag(Atom tag);
+  HtmlElement* PopElementMatchingTag(const StringPiece& tag);
 
   HtmlElement* PopElement();
   void CloseElement(HtmlElement* element, HtmlElement::CloseStyle close_style,

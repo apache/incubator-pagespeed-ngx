@@ -49,25 +49,49 @@ ModPagespeedEnableFilters add_instrumentation
 #REWRITE RewriteRule shortcut.html /mod_pagespeed_example/index.html
 
 #COVERAGE # These lines are used for large-scale code coverage testing.
-#COVERAGE ModPagespeedRewriteLevel AllFilters
-#COVERAGE ModPagespeedEnableFilters elide_attributes
-#COVERAGE ModPagespeedDomain *
-#COVERAGE ModPagespeedFileCacheSizeKb          102400
-#COVERAGE ModPagespeedFileCacheCleanIntervalMs 3600000
-#COVERAGE ModPagespeedLRUCacheKbPerProcess     1024
-#COVERAGE ModPagespeedLRUCacheByteLimit        16384
-#COVERAGE ModPagespeedCssInlineMaxBytes        2048
-#COVERAGE ModPagespeedImgInlineMaxBytes        2048
-#COVERAGE ModPagespeedJsInlineMaxBytes         2048
-#COVERAGE ModPagespeedCssOutlineMinBytes       3000
-#COVERAGE ModPagespeedJsOutlineMinBytes        3000
-#COVERAGE ModPagespeedImgMaxRewritesAtOnce        8
-#COVERAGE ModPagespeedSlurpFlushLimit          8192
-#COVERAGE <Location /mod_pagespeed_beacon>
+#COVERAGE # We use 2 servers for it, one doing rewriting and fetching
+#COVERAGE # from the other one, which plays back slurps
+#COVERAGE Listen 8081
+#COVERAGE <VirtualHost *:8080>
+#COVERAGE   ModPagespeed on
+#COVERAGE   ModPagespeedTestProxy on
+#COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
+#COVERAGE
+#COVERAGE   ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@/cache/"
+#COVERAGE   ModPagespeedGeneratedFilePrefix      "@@MODPAGESPEED_CACHE_ROOT@@/files/"
+#COVERAGE   ModPagespeedRewriteLevel AllFilters
+#COVERAGE   ModPagespeedEnableFilters elide_attributes
+#COVERAGE   ModPagespeedDomain *
+#COVERAGE   ModPagespeedFileCacheSizeKb          102400
+#COVERAGE   ModPagespeedFileCacheCleanIntervalMs 3600000
+#COVERAGE   ModPagespeedLRUCacheKbPerProcess     1024
+#COVERAGE   ModPagespeedLRUCacheByteLimit        16384
+#COVERAGE   ModPagespeedCssInlineMaxBytes        2048
+#COVERAGE   ModPagespeedImgInlineMaxBytes        2048
+#COVERAGE   ModPagespeedJsInlineMaxBytes         2048
+#COVERAGE   ModPagespeedCssOutlineMinBytes       3000
+#COVERAGE   ModPagespeedJsOutlineMinBytes        3000
+#COVERAGE   ModPagespeedImgMaxRewritesAtOnce        8
+#COVERAGE   ModPagespeedSlurpFlushLimit          8192
+#COVERAGE   <Location /mod_pagespeed_beacon>
 #COVERAGE       SetHandler mod_pagespeed_beacon
-#COVERAGE </Location>
-#COVERAGE <Location /mod_pagespeed_statistics>
-#COVERAGE     Order allow,deny
-#COVERAGE     Allow from localhost
-#COVERAGE     SetHandler mod_pagespeed_statistics
-#COVERAGE </Location>
+#COVERAGE   </Location>
+#COVERAGE   <Location /mod_pagespeed_statistics>
+#COVERAGE       Order allow,deny
+#COVERAGE       Allow from localhost
+#COVERAGE       SetHandler mod_pagespeed_statistics
+#COVERAGE   </Location>
+#COVERAGE </VirtualHost>
+
+#COVERAGE <VirtualHost *:8081>
+#COVERAGE   ModPagespeed on
+#COVERAGE
+#COVERAGE   ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@-alt/cache/"
+#COVERAGE   ModPagespeedGeneratedFilePrefix      "@@MODPAGESPEED_CACHE_ROOT@@-alt/files/"
+#COVERAGE   ModPagespeedRewriteLevel PassThrough
+#COVERAGE
+#COVERAGE   # ModPagespeedSlurpDirectory ...
+#COVERAGE   # ModPagespeedSlurpReadOnly on
+#COVERAGE
+#COVERAGE </VirtualHost>
+

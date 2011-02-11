@@ -149,10 +149,6 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
 
   virtual HtmlParse* html_parse() = 0;
 
-  Atom MakeAtom(const StringPiece& str) {
-    return HtmlTestingPeer::MakeAtom(html_parse(), str);
-  }
-
   MockMessageHandler message_handler_;
   StringWriter write_to_string_;
   std::string output_buffer_;

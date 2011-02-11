@@ -70,8 +70,9 @@ void ApacheMessageHandler::MessageVImpl(MessageType type, const char* msg,
   int log_level = GetApacheLogLevel(type);
   std::string formatted_message = Format(msg, args);
   ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
-               "[%s %s] %s",
-               kModuleName, version_.c_str(), formatted_message.c_str());
+               "[%s %s @%ld] %s",
+               kModuleName, version_.c_str(), static_cast<long>(getpid()),
+               formatted_message.c_str());
 }
 
 void ApacheMessageHandler::FileMessageVImpl(MessageType type, const char* file,
@@ -80,9 +81,9 @@ void ApacheMessageHandler::FileMessageVImpl(MessageType type, const char* file,
   int log_level = GetApacheLogLevel(type);
   std::string formatted_message = Format(msg, args);
   ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
-               "[%s %s] %s:%d: %s",
-               kModuleName, version_.c_str(), file, line,
-               formatted_message.c_str());
+               "[%s %s @%ld] %s:%d: %s",
+               kModuleName, version_.c_str(), static_cast<long>(getpid()),
+               file, line, formatted_message.c_str());
 }
 
 // TODO(sligocki): It'd be nice not to do so much string copying.

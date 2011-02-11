@@ -22,7 +22,6 @@
 
 #include <string>
 #include "base/basictypes.h"
-#include "net/instaweb/htmlparse/html_testing_peer.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -132,7 +131,6 @@ TEST_F(CssTagScannerTest, TestGurl) {
 // seen.
 TEST_F(CssTagScannerTest, TestFull) {
   HtmlParse html_parse(&message_handler_);
-  Atom s_other = HtmlTestingPeer::MakeAtom(&html_parse, "other");
   HtmlElement* link = html_parse.NewElement(NULL, HtmlName::kLink);
   const char kUrl[] = "http://www.myhost.com/static/mycss.css";
   const char kPrint[] = "print";
@@ -148,13 +146,13 @@ TEST_F(CssTagScannerTest, TestFull) {
   EXPECT_EQ(kUrl, std::string(href->value()));
 
   // Add an unexpected attribute.  Now we don't know what to do with it.
-  link->AddAttribute(s_other, "value", "\"");
+  link->AddAttribute(html_parse.MakeName("other"), "value", "\"");
   EXPECT_FALSE(scanner.ParseCssElement(link, &href, &media));
 
   // Mutate it to the correct attribute.
   HtmlElement::Attribute* attr = link->FindAttribute(HtmlName::kOther);
   ASSERT_TRUE(attr != NULL);
-  attr->set_name(HtmlName(html_parse.InternKeyword(HtmlName::kType)));
+  html_parse.SetAttributeName(attr, HtmlName::kType);
   attr->SetValue("text/css");
   EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
   EXPECT_EQ("", std::string(media));

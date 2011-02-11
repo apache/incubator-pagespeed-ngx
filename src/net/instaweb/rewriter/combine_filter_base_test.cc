@@ -195,7 +195,7 @@ class CombineFilterBaseTest : public ResourceManagerTestBase {
   }
 
   HtmlElement* TestElement() {
-    return html_parse()->NewElement(NULL, MakeAtom("test"));
+    return html_parse()->NewElement(NULL, "test");
   }
 
   std::string StringOfLength(int n, char fill) {

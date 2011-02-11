@@ -23,7 +23,6 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/image.h"
-#include "net/instaweb/rewriter/public/image_dim.h"
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -63,17 +62,21 @@ const char kImageInline[] = "image_inline";
 // name for statistic used to bound rewriting work.
 const char kImageOngoingRewrites[] = "image_ongoing_rewrites";
 
+const char kWidthKey[]  = "ImgRewriteFilter_W";
+const char kHeightKey[] = "ImgRewriteFilter_H";
+const char kDataUrlKey[] = "ImgRewriteFilter_DataUrl";
+
 }  // namespace
 
 
-ImageUrlEncoder::ImageUrlEncoder(UrlEscaper* url_escaper, ImageDim* stored_dim)
-    : url_escaper_(url_escaper), stored_dim_(stored_dim) { }
+ImageUrlEncoder::ImageUrlEncoder(UrlEscaper* url_escaper)
+    : url_escaper_(url_escaper) { }
 
 ImageUrlEncoder::~ImageUrlEncoder() { }
 
 void ImageUrlEncoder::EncodeToUrlSegment(
     const StringPiece& origin_url, std::string* rewritten_url) {
-  stored_dim_->EncodeTo(rewritten_url);
+  stored_dim_.EncodeTo(rewritten_url);
   url_escaper_->EncodeToUrlSegment(origin_url, rewritten_url);
 }
 
@@ -81,7 +84,7 @@ bool ImageUrlEncoder::DecodeFromUrlSegment(
     const StringPiece& rewritten_url, std::string* origin_url) {
   // Note that "remaining" is shortened from the left as we parse.
   StringPiece remaining(rewritten_url.data(), rewritten_url.size());
-  return (stored_dim_->DecodeFrom(&remaining) &&
+  return (stored_dim_.DecodeFrom(&remaining) &&
           url_escaper_->DecodeFromUrlSegment(remaining, origin_url));
 }
 
@@ -91,8 +94,7 @@ ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
                                    StringPiece path_prefix,
                                    size_t img_inline_max_bytes,
                                    size_t img_max_rewrites_at_once)
-    : RewriteFilter(driver, path_prefix),
-      file_system_(driver->file_system()),
+    : RewriteSingleResourceFilter(driver, path_prefix),
       img_filter_(new ImgTagScanner(html_parse_)),
       img_inline_max_bytes_(img_inline_max_bytes),
       log_image_elements_(log_image_elements),
@@ -121,13 +123,41 @@ void ImgRewriteFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kImageOngoingRewrites);
 }
 
-void ImgRewriteFilter::OptimizeImage(
-    const Resource& input_resource, const ImageDim& page_dim,
-    Image* image, OutputResource* result) {
-  if (result != NULL && !result->IsWritten() && image != NULL &&
-      work_bound_->TryToWork()) {
-    ImageDim img_dim;
-    image->Dimensions(&img_dim);
+UrlSegmentEncoder* ImgRewriteFilter::CreateUrlEncoderForFetch() const {
+  return new ImageUrlEncoder(resource_manager_->url_escaper());
+}
+
+RewriteSingleResourceFilter::RewriteResult
+ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
+                                        OutputResource* result,
+                                        UrlSegmentEncoder* raw_encoder) {
+  ImageUrlEncoder* encoder = static_cast<ImageUrlEncoder*>(raw_encoder);
+  MessageHandler* message_handler = html_parse_->message_handler();
+
+  ImageDim page_dim = encoder->stored_dim();
+  scoped_ptr<Image> image(
+      new Image(input_resource->contents(), input_resource->url(),
+                resource_manager_->filename_prefix(), message_handler));
+
+  if (image->image_type() == Image::IMAGE_UNKNOWN) {
+    message_handler->Error(result->name().as_string().c_str(), 0,
+                           "Unrecognized image content type.");
+    return kRewriteFailed;
+  }
+
+  ImageDim img_dim, post_resize_dim;
+  image->Dimensions(&img_dim);
+  post_resize_dim = img_dim;
+
+  // Don't rewrite beacons
+  if (img_dim.width() <= 1 && img_dim.height() <= 1) {
+    return kRewriteFailed;
+  }
+
+  RewriteResult rewrite_result = kTooBusy;
+  if (work_bound_->TryToWork()) {
+    rewrite_result = kRewriteFailed;
+
     const char* message;  // Informational message for logging only.
     if (page_dim.valid() && img_dim.valid()) {
       int64 page_area =
@@ -135,6 +165,7 @@ void ImgRewriteFilter::OptimizeImage(
       int64 img_area = static_cast<int64>(img_dim.width()) * img_dim.height();
       if (page_area < img_area * kMaxAreaRatio) {
         if (image->ResizeTo(page_dim)) {
+          post_resize_dim = page_dim;
           message = "Resized image";
         } else {
           message = "Couldn't resize image";
@@ -143,22 +174,38 @@ void ImgRewriteFilter::OptimizeImage(
         message = "Not worth resizing image";
       }
       html_parse_->InfoHere("%s `%s' from %dx%d to %dx%d", message,
-                            input_resource.url().c_str(),
+                            input_resource->url().c_str(),
                             img_dim.width(), img_dim.height(),
                             page_dim.width(), page_dim.height());
     }
-    // Unconditionally write resource back so we don't re-attempt optimization.
-    MessageHandler* message_handler = html_parse_->message_handler();
 
-    int64 origin_expire_time_ms = input_resource.CacheExpirationTimeMs();
+    // Cache image dimensions, including any resizing we did
+    OutputResource::CachedResult* cached = result->EnsureCachedResultCreated();
+    if (post_resize_dim.valid()) {
+      cached->SetRememberedInt(kWidthKey, post_resize_dim.width());
+      cached->SetRememberedInt(kHeightKey, post_resize_dim.height());
+    }
+
+    std::string inlined_url;
     if (image->output_size() <
         image->input_size() * kMaxRewrittenRatio) {
+      // here output image type could potentially be different from input type.
+      result->SetType(ImageToContentType(input_resource->url(), image.get()));
+
+      // Consider inlining output image (no need to check input, it's bigger)
+      // This needs to happen before Write to persist.
+      if (CanInline(img_inline_max_bytes_, image->Contents(),
+                    result->type(), &inlined_url)) {
+        cached->SetRemembered(kDataUrlKey, inlined_url);
+      }
+
+      int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
       if (resource_manager_->Write(
               HttpStatus::kOK, image->Contents(), result,
               origin_expire_time_ms, message_handler)) {
         html_parse_->InfoHere(
             "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",
-            input_resource.url().c_str(),
+            input_resource->url().c_str(),
             static_cast<unsigned>(image->input_size()),
             result->url().c_str(),
             static_cast<unsigned>(image->output_size()));
@@ -177,45 +224,19 @@ void ImgRewriteFilter::OptimizeImage(
           rewrite_saved_bytes_->Add(
               image->input_size() - image->output_size());
         }
+        rewrite_result = kRewriteOk;
       }
-    } else {
-      // Indicate not to rewrite in future.
-      resource_manager_->WriteUnoptimizable(result, origin_expire_time_ms,
-                                            message_handler);
+    }
+
+    // Try inlining input image if output hasn't been inlined already.
+    if (inlined_url.empty() &&
+        CanInline(img_inline_max_bytes_, input_resource->contents(),
+                  input_resource->type(), &inlined_url)) {
+      cached->SetRemembered(kDataUrlKey, inlined_url);
     }
     work_bound_->WorkComplete();
   }
-}
-
-Image* ImgRewriteFilter::GetImage(const StringPiece& origin_url,
-                                  Resource* img_resource) {
-  Image* image = NULL;
-  MessageHandler* message_handler = html_parse_->message_handler();
-  if (img_resource == NULL) {
-    html_parse_->WarningHere("no input resource for %s",
-                             origin_url.as_string().c_str());
-  } else if (!resource_manager_->ReadIfCached(img_resource, message_handler)) {
-    html_parse_->WarningHere("%s wasn't loaded",
-                             img_resource->url().c_str());
-  } else if (!img_resource->ContentsValid()) {
-    html_parse_->WarningHere("Img contents from %s are invalid.",
-                             img_resource->url().c_str());
-  } else {
-    image = new Image(img_resource->contents(), img_resource->url(),
-                      resource_manager_->filename_prefix(), message_handler);
-  }
-  return image;
-}
-
-bool ImgRewriteFilter::OptimizedImageFor(
-    const StringPiece& origin_url, const ImageDim& page_dim,
-    Resource* img_resource, OutputResource* output) {
-  scoped_ptr<Image> image(GetImage(origin_url, img_resource));
-  bool ok = image.get() != NULL && image->image_type() != Image::IMAGE_UNKNOWN;
-  if (ok) {
-    OptimizeImage(*img_resource, page_dim, image.get(), output);
-  }
-  return ok;
+  return rewrite_result;
 }
 
 // Convert (possibly NULL) Image* to corresponding (possibly NULL) ContentType*
@@ -248,51 +269,55 @@ const ContentType* ImgRewriteFilter::ImageToContentType(
 
 void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
                                        HtmlElement::Attribute* src) {
-  // TODO(jmaessen): content type can change after re-compression.
-  // How do we deal with that given only URL?
-  // Separate input and output content type?
-  MessageHandler* message_handler = html_parse_->message_handler();
-  scoped_ptr<Resource> input_resource(CreateInputResourceAndReadIfCached(
-      src->value()));
-  if (input_resource != NULL && input_resource->ContentsValid()) {
-    ImageDim page_dim;
-    // Always rewrite to absolute url used to obtain resource.
-    // This lets us do context-free fetches of content.
-    int width, height;
-    if (element->IntAttributeValue(HtmlName::kWidth, &width) &&
-        element->IntAttributeValue(HtmlName::kHeight, &height)) {
-      // Specific image size is called for.  Rewrite to that size.
-      page_dim.set_dims(width, height);
+  ImageDim page_dim;
+  int width, height;
+  if (element->IntAttributeValue(HtmlName::kWidth, &width) &&
+      element->IntAttributeValue(HtmlName::kHeight, &height)) {
+    // Specific image size is called for.  Rewrite to that size.
+    page_dim.set_dims(width, height);
+  }
+
+  ImageUrlEncoder encoder(resource_manager_->url_escaper());
+  encoder.set_stored_dim(page_dim);
+  scoped_ptr<OutputResource::CachedResult> cached(RewriteWithCaching(
+                                                      src->value(), &encoder));
+  if (cached.get() == NULL) {
+    return;
+  }
+
+  // See if we have a data URL, and if so use it if the browser can handle it
+  std::string inlined_url;
+  bool ie6or7 = driver_->user_agent().IsIe6or7();
+  if (!ie6or7 && cached->Remembered(kDataUrlKey, &inlined_url)) {
+    src->SetValue(inlined_url);
+    if (inline_count_ != NULL) {
+      inline_count_->Add(1);
     }
-    scoped_ptr<Image> image(GetImage(src->value(), input_resource.get()));
-    const ContentType* content_type =
-        ImageToContentType(src->value(), image.get());
-
-    if (content_type != NULL) {
-      ImageDim actual_dim;
-      image->Dimensions(&actual_dim);
-      // Create an output resource and fetch it, as that will tell
-      // us if we have already optimized it, or determined that it was not
-      // worth optimizing.
-      std::string rewritten_name;
-      ImageUrlEncoder encoder(resource_manager_->url_escaper(), &page_dim);
-      scoped_ptr<OutputResource> output_resource(
-          CreateOutputResourceFromResource(content_type, &encoder,
-                                           input_resource.get()));
-      if (output_resource.get() != NULL) {
-        if (output_resource->optimizable() &&
-            !resource_manager_->FetchOutputResource(
-                output_resource.get(), NULL, NULL, message_handler,
-                ResourceManager::kNeverBlock)) {
-          OptimizeImage(*input_resource, page_dim, image.get(),
-                        output_resource.get());
-        }
-
-        // Potentially inline the best version we have, or
-        // perhaps update the src to point to the newest version
-        UpdateTargetElement(*input_resource, *output_resource,
-                            page_dim, actual_dim, element, src);
+  } else {
+    if (cached->optimizable()) {
+      // Rewritten HTTP url
+      src->SetValue(cached->url());
+      if (rewrite_count_ != NULL) {
+        rewrite_count_->Add(1);
       }
+    }
+
+    int actual_width, actual_height;
+    if (insert_image_dimensions_ &&
+        !element->FindAttribute(HtmlName::kWidth) &&
+        !element->FindAttribute(HtmlName::kHeight) &&
+        cached->RememberedInt(kWidthKey, &actual_width) &&
+        cached->RememberedInt(kHeightKey, &actual_height)) {
+      // Add image dimensions.  We don't bother if even a single image
+      // dimension is already specified---even though we don't resize in that
+      // case, either, because we might be off by a pixel in the other
+      // dimension from the size chosen by the browser.  We also don't bother
+      // to resize if either dimension is specified with units (px, em, %)
+      // rather than as absolute pixels.  But note that we DO attempt to
+      // include image dimensions even if we otherwise choose not to optimize
+      // an image.
+      html_parse_->AddAttribute(element, HtmlName::kWidth, actual_width);
+      html_parse_->AddAttribute(element, HtmlName::kHeight, actual_height);
     }
   }
 }
@@ -306,58 +331,6 @@ bool ImgRewriteFilter::CanInline(
     ok = true;
   }
   return ok;
-}
-
-// Given any image processing reflected in an output_resource
-// actually update the element (particularly the src attribute), and log
-// statistics on what happened.
-void ImgRewriteFilter::UpdateTargetElement(
-    const Resource& input_resource, const OutputResource& output_resource,
-    const ImageDim& page_dim, const ImageDim& actual_dim,
-    HtmlElement* element, HtmlElement::Attribute* src) {
-
-  if (actual_dim.valid() &&
-      (actual_dim.width() > 1 || actual_dim.height() > 1)) {
-    std::string inlined_url;
-    bool output_ok = output_resource.IsWritten() &&
-        output_resource.metadata()->status_code() == HttpStatus::kOK;
-    bool ie6or7 = driver_->user_agent().IsIe6or7();
-    if (!ie6or7 &&
-        ((output_ok &&
-          CanInline(img_inline_max_bytes_, output_resource.contents(),
-                    output_resource.type(), &inlined_url)) ||
-         CanInline(img_inline_max_bytes_, input_resource.contents(),
-                   input_resource.type(), &inlined_url))) {
-      src->SetValue(inlined_url);
-      if (inline_count_ != NULL) {
-        inline_count_->Add(1);
-      }
-    } else {
-      if (output_ok) {
-        src->SetValue(output_resource.url());
-        if (rewrite_count_ != NULL) {
-          rewrite_count_->Add(1);
-        }
-      }
-      if (insert_image_dimensions_ && actual_dim.valid() && !page_dim.valid() &&
-          !element->FindAttribute(HtmlName::kWidth) &&
-          !element->FindAttribute(HtmlName::kHeight)) {
-        // Add image dimensions.  We don't bother if even a single image
-        // dimension is already specified---even though we don't resize in that
-        // case, either, because we might be off by a pixel in the other
-        // dimension from the size chosen by the browser.  We also don't bother
-        // to resize if either dimension is specified with units (px, em, %)
-        // rather than as absolute pixes.  But note that we DO attempt to
-        // include image dimensions even if we otherwise choose not to optimize
-        // an image.  This may require examining the image contents if we didn't
-        // just perform the image processing.
-        html_parse_->AddAttribute(element, HtmlName::kWidth,
-                                  actual_dim.width());
-        html_parse_->AddAttribute(element, HtmlName::kHeight,
-                                  actual_dim.height());
-      }
-    }
-  }
 }
 
 void ImgRewriteFilter::EndElementImpl(HtmlElement* element) {
@@ -374,94 +347,6 @@ void ImgRewriteFilter::EndElementImpl(HtmlElement* element) {
     }
     RewriteImageUrl(element, src);
   }
-}
-
-void ImgRewriteFilter::Flush() {
-  // TODO(jmaessen): wait here for resources to have been rewritten??
-}
-
-bool ImgRewriteFilter::Fetch(OutputResource* resource,
-                             Writer* writer,
-                             const RequestHeaders& request_header,
-                             ResponseHeaders* response_headers,
-                             MessageHandler* message_handler,
-                             UrlAsyncFetcher::Callback* callback) {
-  bool ok = true;
-  const char* failure_reason = "";
-  const ContentType *content_type = resource->type();
-  if (content_type != NULL) {
-    ImageDim page_dim;  // Dimensions given in source page (invalid if absent).
-    ImageUrlEncoder encoder(resource_manager_->url_escaper(), &page_dim);
-    scoped_ptr<Resource> input_image(
-        CreateInputResourceFromOutputResource(&encoder, resource));
-    if (input_image.get() != NULL) {
-      std::string origin_url = input_image->url();
-      // TODO(jmarantz): this needs to be refactored slightly to allow for
-      // asynchronous fetches of the input image, if it's not obtained via cache
-      // or local filesystem read.
-      if (!OptimizedImageFor(
-              origin_url, page_dim, input_image.get(), resource)) {
-        ok = false;
-        failure_reason = "Server could not find source image.";
-      } else if (!resource_manager_->FetchOutputResource(
-          resource, writer, response_headers, message_handler,
-          ResourceManager::kNeverBlock)) {
-        ok = false;
-        failure_reason = "Server could not read image resource.";
-      } else {
-        if (resource->metadata()->status_code() != HttpStatus::kOK) {
-          // Note that this should not happen, because the url should not have
-          // escaped into the wild.  We're content serving an empty response if
-          // it does.  We *could* serve / redirect to the origin_url as a fail
-          // safe, but it's probably not worth it.  Instead we log and hope that
-          // this causes us to find and fix the problem.
-          message_handler->Error(resource->url().c_str(), 0,
-                                 "Rewriting %s rejected, "
-                                 "but URL requested (mistaken rewriting?).",
-                                 origin_url.c_str());
-        }
-        callback->Done(true);
-      }
-      // Image processing has failed, forward the original image data.
-      if (!ok && input_image != NULL) {
-        if (input_image->ContentsValid()) {
-          ok = writer->Write(input_image->contents(), message_handler);
-        }
-        if (ok) {
-          resource_manager_->SetDefaultHeaders(content_type, response_headers);
-        } else {
-          message_handler->Error(resource->name().as_string().c_str(), 0,
-                                 "%s", failure_reason);
-          ok = writer->Write("<img src=\"", message_handler);
-          ok &= writer->Write(origin_url, message_handler);
-          ok &= writer->Write("\" alt=\"Temporarily Moved\"/>",
-                              message_handler);
-          response_headers->set_major_version(1);
-          response_headers->set_minor_version(1);
-          response_headers->SetStatusAndReason(HttpStatus::kTemporaryRedirect);
-          response_headers->Add(HttpAttributes::kLocation, origin_url.c_str());
-          response_headers->Add(HttpAttributes::kContentType, "text/html");
-        }
-        if (ok) {
-          callback->Done(true);
-        }
-      }
-    } else {
-      ok = false;
-      failure_reason = "Problem creating input resource.";
-    }
-  } else {
-    ok = false;
-    failure_reason = "Unrecognized image content type.";
-  }
-  if (!ok) {
-    writer->Write(failure_reason, message_handler);
-    response_headers->set_status_code(HttpStatus::kNotFound);
-    response_headers->set_reason_phrase(failure_reason);
-    message_handler->Error(resource->name().as_string().c_str(), 0,
-                           "%s", failure_reason);
-  }
-  return ok;
 }
 
 }  // namespace net_instaweb

@@ -21,6 +21,7 @@
 
 #include "net/instaweb/htmlparse/public/html_name.h"
 
+#include <set>
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/symbol_table.h"
 
@@ -28,22 +29,15 @@ namespace net_instaweb {
 
 class HtmlNameTest : public testing::Test {
  protected:
-  HtmlName::Keyword Parse(const char* str) {
-    Atom atom = symbol_table_.Intern(str);
-    HtmlName name(atom);
-    return name.keyword();
-  }
-
-  SymbolTableSensitive symbol_table_;
 };
 
 TEST_F(HtmlNameTest, OneKeyword) {
-  EXPECT_EQ(HtmlName::kStyle, Parse("style"));
+  EXPECT_EQ(HtmlName::kStyle, HtmlName::Lookup("style"));
 }
 
 TEST_F(HtmlNameTest, AllKeywordsDefaultCase) {
   for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
-    EXPECT_EQ(iter.keyword(), Parse(iter.name()));
+    EXPECT_EQ(iter.keyword(), HtmlName::Lookup(iter.name()));
   }
 }
 
@@ -51,7 +45,7 @@ TEST_F(HtmlNameTest, AllKeywordsUpperCase) {
   for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
     std::string upper(iter.name());
     UpperString(&upper);
-    EXPECT_EQ(iter.keyword(), Parse(upper.c_str()));
+    EXPECT_EQ(iter.keyword(), HtmlName::Lookup(upper.c_str()));
   }
 }
 
@@ -69,13 +63,13 @@ TEST_F(HtmlNameTest, AllKeywordsMixedCase) {
       }
       mixed[i] = c;
     }
-    EXPECT_EQ(iter.keyword(), Parse(mixed.c_str()));
+    EXPECT_EQ(iter.keyword(), HtmlName::Lookup(mixed.c_str()));
   }
 }
 
 TEST_F(HtmlNameTest, Bogus) {
-  EXPECT_EQ(HtmlName::kNotAKeyword, Parse("hiybbprqag"));
-  EXPECT_EQ(HtmlName::kNotAKeyword, Parse("stylex"));  // close to 'style'
+  EXPECT_EQ(HtmlName::kNotAKeyword, HtmlName::Lookup("hiybbprqag"));
+  EXPECT_EQ(HtmlName::kNotAKeyword, HtmlName::Lookup("stylex"));
 }
 
 TEST_F(HtmlNameTest, Iterator) {

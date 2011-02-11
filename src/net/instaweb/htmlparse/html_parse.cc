@@ -151,9 +151,9 @@ HtmlDirectiveNode* HtmlParse::NewDirectiveNode(HtmlElement* parent,
   return directive;
 }
 
-HtmlElement* HtmlParse::NewElement(HtmlElement* parent, Atom tag) {
+HtmlElement* HtmlParse::NewElement(HtmlElement* parent, const HtmlName& name) {
   HtmlElement* element =
-      new (&nodes_) HtmlElement(parent, tag, queue_.end(), queue_.end());
+      new (&nodes_) HtmlElement(parent, name, queue_.end(), queue_.end());
   element->set_sequence(sequence_++);
   return element;
 }
@@ -751,8 +751,29 @@ void HtmlParse::CloseElement(
   element->set_end_line_number(line_number);
 }
 
+HtmlName HtmlParse::MakeName(HtmlName::Keyword keyword) {
+  const char* str = HtmlKeywords::KeywordToString(keyword);
+  return HtmlName(keyword, str);
+}
+
+// This method is deprecated in favor of MakeName.
 Atom HtmlParse::InternKeyword(HtmlName::Keyword keyword) {
-  return Intern(HtmlKeywords::KeywordToString(keyword));
+  return string_table_.Intern(HtmlKeywords::KeywordToString(keyword));
+}
+
+HtmlName HtmlParse::MakeName(const StringPiece& str_piece) {
+  HtmlName::Keyword keyword = HtmlName::Lookup(str_piece);
+  const char* str = HtmlKeywords::KeywordToString(keyword);
+
+  // If the passed-in string is not in its canonical form, or is not a
+  // recognized keyword, then we must make a permanent copy in our
+  // string table.  Note that we are comparing the bytes of the
+  // keyword from the table, not the pointer.
+  if ((str == NULL) || (str_piece != str)) {
+    Atom atom = string_table_.Intern(str_piece);
+    str = atom.c_str();
+  }
+  return HtmlName(keyword, str);
 }
 
 }  // namespace net_instaweb

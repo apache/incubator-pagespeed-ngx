@@ -62,7 +62,7 @@ class HtmlElement : public HtmlNode {
     // Returns the attribute name, which is not guaranteed to be case-folded.
     // Compare keyword() to the Keyword constant found in html_name.h for
     // fast attribute comparisons.
-    const char* name_str() const { return name_.atom().c_str(); }
+    const char* name_str() const { return name_.c_str(); }
 
     // Returns the HTML keyword enum.  If this attribute name is not
     // recognized, returns HtmlName::kNotAKeyword, and you can examine
@@ -127,15 +127,10 @@ class HtmlElement : public HtmlNode {
    private:
     // TODO(jmarantz): arg 'quote' must be a static string, or NULL,
     // if quoting is not yet known (e.g. this is a synthesized attribute.
-    // This is hard-to-describe and we should probably use an Atom for
-    // the quote, and decide how to handle NULL.
+    // This is hard-to-describe and we should probably use an enum for
+    // the quote.
     //
     // This should only be called from AddAttribute
-    //
-    // TODO(jmarantz): remove any of these that are not needed once the
-    // atoms are hidden.
-    Attribute(Atom name, const StringPiece& value,
-              const StringPiece& escaped_value, const char* quote);
     Attribute(const HtmlName& name, const StringPiece& value,
               const StringPiece& escaped_value, const char* quote);
 
@@ -162,10 +157,21 @@ class HtmlElement : public HtmlNode {
   //
   // The value, if non-null, is assumed to be unescaped.  See also
   // AddEscapedAttribute.
-  void AddAttribute(Atom name, const StringPiece& value, const char* quote);
+  void AddAttribute(const HtmlName& name,
+                    const StringPiece& value,
+                    const char* quote);
   // As AddAttribute, but assumes value has been escaped for html output.
-  void AddEscapedAttribute(Atom name, const StringPiece& escaped_value,
+  void AddEscapedAttribute(const HtmlName& name,
+                           const StringPiece& escaped_value,
                            const char* quote);
+
+  // deprecated method
+  void AddEscapedAttribute(Atom atom,
+                           const StringPiece& escaped_value,
+                           const char* quote) {
+    HtmlName name(HtmlName::Lookup(atom.c_str()), atom.c_str());
+    return AddEscapedAttribute(name, escaped_value, quote);
+  }
 
   // Removes the attribute at the given index, shifting higher-indexed
   // attributes down.  Note that this operation is linear in the number of
@@ -216,7 +222,7 @@ class HtmlElement : public HtmlNode {
   // Returns the element tag name, which is not guaranteed to be
   // case-folded.  Compare keyword() to the Keyword constant found in
   // html_name.h for fast tag name comparisons.
-  const char* name_str() const { return name_.atom().c_str(); }
+  const char* name_str() const { return name_.c_str(); }
 
   // Returns the HTML keyword enum.  If this tag name is not
   // recognized, returns HtmlName::kNotAKeyword, and you can
@@ -267,8 +273,9 @@ class HtmlElement : public HtmlNode {
   void set_end_line_number(int line) { end_line_number_ = line; }
 
   // construct via HtmlParse::NewElement
-  HtmlElement(HtmlElement* parent, Atom tag, const HtmlEventListIterator& begin,
-      const HtmlEventListIterator& end);
+  HtmlElement(HtmlElement* parent, const HtmlName& name,
+              const HtmlEventListIterator& begin,
+              const HtmlEventListIterator& end);
 
   int sequence_;
   HtmlName name_;

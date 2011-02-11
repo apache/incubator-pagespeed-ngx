@@ -74,6 +74,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "ismap",                HtmlName::kIsmap
 "keygen",               HtmlName::kKeygen
 "keytype",              HtmlName::kKeytype
+"lang",                 HtmlName::kLang
 "language",             HtmlName::kLanguage
 "li",                   HtmlName::kLi
 "link",                 HtmlName::kLink

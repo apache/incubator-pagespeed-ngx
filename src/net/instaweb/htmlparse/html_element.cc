@@ -26,11 +26,11 @@
 
 namespace net_instaweb {
 
-HtmlElement::HtmlElement(HtmlElement* parent, Atom tag,
+HtmlElement::HtmlElement(HtmlElement* parent, const HtmlName& name,
     const HtmlEventListIterator& begin, const HtmlEventListIterator& end)
     : HtmlNode(parent),
       sequence_(-1),
-      name_(HtmlName(tag)),
+      name_(name),
       begin_(begin),
       end_(end),
       close_style_(AUTO_CLOSE),
@@ -137,7 +137,7 @@ void HtmlElement::AddAttribute(const Attribute& src_attr) {
   attributes_.push_back(attr);
 }
 
-void HtmlElement::AddAttribute(Atom name, const StringPiece& value,
+void HtmlElement::AddAttribute(const HtmlName& name, const StringPiece& value,
                                const char* quote) {
   std::string buf;
   Attribute* attr = new Attribute(name, value,
@@ -145,7 +145,7 @@ void HtmlElement::AddAttribute(Atom name, const StringPiece& value,
   attributes_.push_back(attr);
 }
 
-void HtmlElement::AddEscapedAttribute(Atom name,
+void HtmlElement::AddEscapedAttribute(const HtmlName& name,
                                       const StringPiece& escaped_value,
                                       const char* quote) {
   std::string buf;
@@ -167,14 +167,6 @@ void HtmlElement::Attribute::CopyValue(const StringPiece& src,
     buf[src.size()] = '\0';
     dst->reset(buf);
   }
-}
-
-HtmlElement::Attribute::Attribute(Atom name, const StringPiece& value,
-                                  const StringPiece& escaped_value,
-                                  const char* quote)
-    : name_(name), quote_(quote) {
-  CopyValue(value, &value_);
-  CopyValue(escaped_value, &escaped_value_);
 }
 
 HtmlElement::Attribute::Attribute(const HtmlName& name,

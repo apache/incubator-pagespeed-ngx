@@ -260,6 +260,43 @@ TEST_F(HtmlParseTest, OpenBracketAfterSpace) {
   ValidateExpected("open_brack_after_name", input, expected);
 }
 
+TEST_F(HtmlParseTest, MakeName) {
+  EXPECT_EQ(0, HtmlTestingPeer::symbol_table_size(&html_parse_));
+
+  // When we make a name using its enum, there should be no symbol table growth.
+  HtmlName body_symbol = html_parse_.MakeName(HtmlName::kBody);
+  EXPECT_EQ(0, HtmlTestingPeer::symbol_table_size(&html_parse_));
+  EXPECT_EQ(HtmlName::kBody, body_symbol.keyword());
+
+  // When we make a name using the canonical form (all-lower-case) there
+  // should still be no symbol table growth.
+  HtmlName body_canonical = html_parse_.MakeName("body");
+  EXPECT_EQ(0, HtmlTestingPeer::symbol_table_size(&html_parse_));
+  EXPECT_EQ(HtmlName::kBody, body_canonical.keyword());
+
+  // But when we introduce a new capitalization, we want to retain the
+  // case, even though we do html keyword matching.  We will have to
+  // store the new form in the symbol table so we'll be allocating
+  // some bytes, including the nul terminator.
+  HtmlName body_new_capitalization = html_parse_.MakeName("Body");
+  EXPECT_EQ(5, HtmlTestingPeer::symbol_table_size(&html_parse_));
+  EXPECT_EQ(HtmlName::kBody, body_new_capitalization.keyword());
+
+  // Make a name out of something that is not a keyword.
+  // This should also increase the symbol-table size.
+  HtmlName non_keyword = html_parse_.MakeName("hiybbprqag");
+  EXPECT_EQ(16, HtmlTestingPeer::symbol_table_size(&html_parse_));
+  EXPECT_EQ(HtmlName::kNotAKeyword, non_keyword.keyword());
+
+  // Empty names are a corner case that we hope does not crash.  Note
+  // that empty-string atoms are special-cased in the symbol table
+  // and require no new allocated bytes.
+  HtmlName empty = html_parse_.MakeName("");
+  EXPECT_EQ(16, HtmlTestingPeer::symbol_table_size(&html_parse_));
+  EXPECT_EQ(HtmlName::kNotAKeyword, empty.keyword());
+  EXPECT_EQ('\0', *empty.c_str());
+}
+
 // bug 2508140 : <noscript> in <head>
 TEST_F(HtmlParseTestNoBody, NoscriptInHead) {
   // Some real websites (ex: google.com) have <noscript> in the <head> even
@@ -542,25 +579,25 @@ TEST_F(EventListManipulationTest, TestAddParentToSequence) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node3_, -1));
-  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node3_, div));
   CheckExpected("<div>123</div>");
 
   // Now interpose a span between the div and the Characeters nodes.
-  HtmlElement* span = html_parse_.NewElement(div, MakeAtom("span"));
+  HtmlElement* span = html_parse_.NewElement(div, HtmlName::kSpan);
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node2_, span));
   CheckExpected("<div><span>12</span>3</div>");
 
   // Next, add an HTML block above the div.  Note that we pass 'div' in as
   // both 'first' and 'last'.
-  HtmlElement* html = html_parse_.NewElement(NULL, MakeAtom("html"));
+  HtmlElement* html = html_parse_.NewElement(NULL, HtmlName::kHtml);
   EXPECT_TRUE(html_parse_.AddParentToSequence(div, div, html));
   CheckExpected("<html><div><span>12</span>3</div></html>");
 }
 
 TEST_F(EventListManipulationTest, TestPrependChild) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
-  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
   html_parse_.InsertElementBeforeCurrent(div);
   CheckExpected("1<div></div>");
 
@@ -574,7 +611,7 @@ TEST_F(EventListManipulationTest, TestPrependChild) {
 
 TEST_F(EventListManipulationTest, TestAppendChild) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
-  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
   html_parse_.InsertElementBeforeCurrent(div);
   CheckExpected("1<div></div>");
 
@@ -589,7 +626,7 @@ TEST_F(EventListManipulationTest, TestAppendChild) {
 TEST_F(EventListManipulationTest, TestAddParentToSequenceDifferentParents) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
-  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node2_, div));
   CheckExpected("<div>12</div>");
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node3_, -1));
@@ -599,7 +636,7 @@ TEST_F(EventListManipulationTest, TestAddParentToSequenceDifferentParents) {
 
 TEST_F(EventListManipulationTest, TestDeleteGroup) {
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
-  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node2_, div));
   CheckExpected("<div>12</div>");
   html_parse_.DeleteElement(div);
@@ -607,11 +644,11 @@ TEST_F(EventListManipulationTest, TestDeleteGroup) {
 }
 
 TEST_F(EventListManipulationTest, TestMoveElementIntoParent1) {
-  HtmlElement* head = html_parse_.NewElement(NULL, MakeAtom("head"));
+  HtmlElement* head = html_parse_.NewElement(NULL, HtmlName::kHead);
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node1_, head));
   CheckExpected("<head>1</head>");
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
-  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
   EXPECT_TRUE(html_parse_.AddParentToSequence(node2_, node2_, div));
   CheckExpected("<head>1</head><div>2</div>");
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node3_, -1));
@@ -623,13 +660,13 @@ TEST_F(EventListManipulationTest, TestMoveElementIntoParent1) {
 
 TEST_F(EventListManipulationTest, TestMoveElementIntoParent2) {
   HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
-  HtmlElement* head = html_parse_.NewElement(NULL, MakeAtom("head"));
+  HtmlElement* head = html_parse_.NewElement(NULL, HtmlName::kHead);
   EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node1_, head));
   CheckExpected("<head>1</head>");
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node3_, -1));
   CheckExpected("<head>1</head>23");
-  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
   EXPECT_TRUE(html_parse_.AddParentToSequence(node3_, node3_, div));
   CheckExpected("<head>1</head>2<div>3</div>");
   HtmlTestingPeer::SetCurrent(&html_parse_, div);
@@ -655,7 +692,7 @@ TEST_F(EventListManipulationTest, TestCoalesceOnAdd) {
 
 TEST_F(EventListManipulationTest, TestCoalesceOnDelete) {
   CheckExpected("1");
-  HtmlElement* div = html_parse_.NewElement(NULL, MakeAtom("div"));
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
   html_parse_.AddElement(div, -1);
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
   HtmlTestingPeer testing_peer;
@@ -686,11 +723,11 @@ class AttributeManipulationTest : public HtmlParseTest {
     static const char kUrl[] =
         "http://html.parse.test/attribute_manipulation_test.html";
     ASSERT_TRUE(html_parse_.StartParse(kUrl));
-    node_ = html_parse_.NewElement(NULL, MakeAtom("a"));
+    node_ = html_parse_.NewElement(NULL, HtmlName::kA);
     html_parse_.AddElement(node_, 0);
-    node_->AddAttribute(MakeAtom("href"), "http://www.google.com/", "\"");
-    node_->AddAttribute(MakeAtom("id"), "37", "");
-    node_->AddAttribute(MakeAtom("class"), "search!", "'");
+    html_parse_.AddAttribute(node_, HtmlName::kHref, "http://www.google.com/");
+    node_->AddAttribute(html_parse_.MakeName(HtmlName::kId), "37", "");
+    node_->AddAttribute(html_parse_.MakeName(HtmlName::kClass), "search!", "'");
     html_parse_.CloseElement(node_, HtmlElement::BRIEF_CLOSE, 0);
   }
 
@@ -738,7 +775,7 @@ TEST_F(AttributeManipulationTest, PropertiesAndDeserialize) {
 }
 
 TEST_F(AttributeManipulationTest, AddAttribute) {
-  node_->AddAttribute(MakeAtom("lang"), "ENG-US", "\"");
+  html_parse_.AddAttribute(node_, HtmlName::kLang, "ENG-US");
   CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'"
                 " lang=\"ENG-US\"/>");
 }
@@ -754,7 +791,7 @@ TEST_F(AttributeManipulationTest, ModifyAttribute) {
   EXPECT_TRUE(href != NULL);
   href->SetValue("google");
   href->set_quote("'");
-  href->set_name(HtmlName(HtmlName::kSrc, MakeAtom("src")));
+  html_parse_.SetAttributeName(href, HtmlName::kSrc);
   CheckExpected("<a src='google' id=37 class='search!'/>");
 }
 

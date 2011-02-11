@@ -19,11 +19,12 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMG_REWRITE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMG_REWRITE_FILTER_H_
 
-#include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/rewriter/public/image_dim.h"
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/atom.h"
@@ -37,19 +38,18 @@ class ContentType;
 class FileSystem;
 class HtmlParse;
 class Image;
-class ImageDim;
 class OutputResource;
 class ResourceManager;
 class UrlEscaper;
 class Variable;
 
 // This class supports the encoding of image urls with optional
-// additional dimension metadata.  The passed-in stored_dim is used as
+// additional dimension metadata.  stored_dim() is used as
 // the source and/or destination of this metadata during encode/decode
 // respectively.
 class ImageUrlEncoder : public UrlSegmentEncoder {
  public:
-  ImageUrlEncoder(UrlEscaper* url_escaper, ImageDim* stored_dim);
+  explicit ImageUrlEncoder(UrlEscaper* url_escaper);
   virtual ~ImageUrlEncoder();
 
   // Encode an origin_url and stored_dim from origin page to a rewritten_url.
@@ -61,18 +61,18 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
   virtual bool DecodeFromUrlSegment(const StringPiece& rewritten_url,
                                     std::string* origin_url);
 
+  const ImageDim& stored_dim() const { return stored_dim_; }
+  void set_stored_dim(const ImageDim& dim) { stored_dim_ = dim; }
+
  private:
   UrlEscaper* url_escaper_;
-  ImageDim* stored_dim_;
+  ImageDim stored_dim_;
 };
 
 // Identify img tags in html and optimize them.
-// TODO(jmaessen): See which ones have immediately-obvious size info.
-// TODO(jmaessen): Provide alternate resources at rewritten urls
-//     asynchronously somehow.
 // TODO(jmaessen): Big open question: how best to link pulled-in resources to
 //     rewritten urls, when in general those urls will be in a different domain.
-class ImgRewriteFilter : public RewriteFilter {
+class ImgRewriteFilter : public RewriteSingleResourceFilter {
  public:
   ImgRewriteFilter(RewriteDriver* driver,
                    bool log_image_elements,
@@ -84,13 +84,6 @@ class ImgRewriteFilter : public RewriteFilter {
   virtual void StartDocumentImpl() {}
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element);
-  virtual void Flush();
-  virtual bool Fetch(OutputResource* resource,
-                     Writer* writer,
-                     const RequestHeaders& request_header,
-                     ResponseHeaders* response_headers,
-                     MessageHandler* message_handler,
-                     UrlAsyncFetcher::Callback* callback);
   virtual const char* Name() const { return "ImgRewrite"; }
 
   // Can we inline resource?  If so, encode its contents into the data_url,
@@ -99,25 +92,20 @@ class ImgRewriteFilter : public RewriteFilter {
       int img_inline_max_bytes, const StringPiece& contents,
       const ContentType* content_type, std::string* data_url);
 
+ protected:
+  // Interface to RewriteSingleResourceFilter
+  virtual UrlSegmentEncoder* CreateUrlEncoderForFetch() const;
+  virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
+                                              OutputResource* result,
+                                              UrlSegmentEncoder* raw_encoder);
+  virtual int FilterCacheFormatVersion() const { return 1; }
+
  private:
   // Helper methods.
-  Image* GetImage(const StringPiece& origin_url, Resource* img_resource);
-  OutputResource* ImageOutputResource(const std::string& url_string,
-                                      Image* image);
   const ContentType* ImageToContentType(const std::string& origin_url,
                                         Image* image);
-  void OptimizeImage(const Resource& input_resource, const ImageDim& page_dim,
-                     Image* image, OutputResource* result);
-  bool OptimizedImageFor(
-      const StringPiece& origin_url, const ImageDim& page_dim,
-      Resource* img_resource, OutputResource* output);
   void RewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
-  void UpdateTargetElement(const Resource& input_resource,
-                           const OutputResource& output_resource,
-                           const ImageDim& page_dim, const ImageDim& actual_dim,
-                           HtmlElement* element, HtmlElement::Attribute* src);
 
-  FileSystem* file_system_;
   scoped_ptr<const ImgTagScanner> img_filter_;
   scoped_ptr<WorkBound> work_bound_;
   // Threshold size (in bytes) below which we should just inline images
