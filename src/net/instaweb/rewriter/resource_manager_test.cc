@@ -188,7 +188,6 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     callback.AssertCalled();
 
     // Grab the URL for later
-    EXPECT_TRUE(nor2->HasValidUrl());
     std::string url = nor2->url();
     EXPECT_LT(0, url.length());
 
@@ -275,11 +274,16 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     EXPECT_TRUE(
         output->cached_result()->RememberedInt64(kFilterKeyInt64, &int64_val));
     EXPECT_EQ(kFilterValInt64, int64_val);
+
+    // Fails since it can't be represented as a 32-bit int.
     EXPECT_FALSE(
         output->cached_result()->RememberedInt(kFilterKeyInt64, &int_val));
 
     EXPECT_TRUE(
         output->cached_result()->RememberedInt(kFilterKeyInt, &int_val));
+
+    // For now we accept this; future revisions may reject type-inconsistent
+    // uses, however.
     EXPECT_TRUE(
         output->cached_result()->RememberedInt64(kFilterKeyInt, &int64_val));
     EXPECT_EQ(kFilterValInt, int_val);
@@ -323,8 +327,6 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     ASSERT_TRUE(output.get() != NULL);
     EXPECT_EQ(NULL, output->cached_result());
-    EXPECT_TRUE(output->optimizable());
-    EXPECT_FALSE(output->HasValidUrl());
 
     const int kTtlMs = 100000;
     mock_timer()->set_time_us(0);
@@ -343,7 +345,6 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     VerifyWithinSecond(kTtlMs,
                        output->cached_result()->origin_expiration_time_ms());
     EXPECT_TRUE(output->cached_result()->optimizable());
-    EXPECT_TRUE(output->optimizable());
     if (test_meta_data) {
       VerifyCustomMetadata(output.get());
     }
@@ -359,13 +360,11 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     ASSERT_TRUE(output.get() != NULL);
     ASSERT_TRUE(output->cached_result() != NULL);
 
-    ASSERT_TRUE(output->HasValidUrl());
     EXPECT_EQ(producedUrl, output->url());
     EXPECT_EQ(producedUrl, output->cached_result()->url());
     VerifyWithinSecond(kTtlMs,
                        output->cached_result()->origin_expiration_time_ms());
     EXPECT_TRUE(output->cached_result()->optimizable());
-    EXPECT_TRUE(output->optimizable());
     EXPECT_EQ(&kContentTypePng, output->type());
     if (test_meta_data) {
       VerifyCustomMetadata(output.get());
@@ -374,8 +373,6 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // Fast-forward the time, to make sure the entry expires.
     mock_timer()->advance_ms(kTtlMs + 1);
     output.reset(CreateTestOutputResource(input.get(), &kContentTypePng));
-    EXPECT_FALSE(output->HasValidUrl());
-    EXPECT_TRUE(output->optimizable());  // can't guarantee it's unoptimizable
 
     // Note: this is temporary. Eventually we want to keep CachedResults past
     // expiration and have explicit expiration bit on them.
@@ -391,11 +388,9 @@ class ResourceManagerTest : public ResourceManagerTestBase {
                                           &message_handler_);
 
     ASSERT_TRUE(output->cached_result() != NULL);
-    EXPECT_FALSE(output->HasValidUrl());
     VerifyWithinSecond(next_expire,
                        output->cached_result()->origin_expiration_time_ms());
     EXPECT_FALSE(output->cached_result()->optimizable());
-    EXPECT_FALSE(output->optimizable());
     if (test_meta_data) {
       VerifyCustomMetadata(output.get());
     }
@@ -404,11 +399,9 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     output.reset(CreateTestOutputResource(input.get(), NULL));
     ASSERT_TRUE(output.get() != NULL);
     ASSERT_TRUE(output->cached_result() != NULL);
-    EXPECT_FALSE(output->HasValidUrl());
     VerifyWithinSecond(next_expire,
                        output->cached_result()->origin_expiration_time_ms());
     EXPECT_FALSE(output->cached_result()->optimizable());
-    EXPECT_FALSE(output->optimizable());
     if (test_meta_data) {
       VerifyCustomMetadata(output.get());
     }
@@ -416,8 +409,6 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // Now test expiration
     mock_timer()->advance_ms(kTtlMs);
     output.reset(CreateTestOutputResource(input.get(), &kContentTypePng));
-    EXPECT_FALSE(output->HasValidUrl());
-    EXPECT_TRUE(output->optimizable());
     EXPECT_EQ(NULL, output->cached_result());
   }
 };

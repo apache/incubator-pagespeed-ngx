@@ -193,7 +193,8 @@ void CssCombineFilter::TryCombineAccumulated() {
     bool do_rewrite_html = false;
     // If the combination has a Url set on it we have cached information
     // on what the output would be, so we'll just use that.
-    if (combination->HasValidUrl()) {
+    if (combination->cached_result() != NULL &&
+        combination->cached_result()->optimizable()) {
       do_rewrite_html = true;
       html_parse_->InfoHere("Reusing existing CSS combination: %s",
                             combination->url().c_str());

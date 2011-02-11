@@ -507,7 +507,7 @@ void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
     int64 origin_expire_time_ms, MessageHandler* handler) {
   std::string name_key = StrCat(kCacheKeyPrefix, output->name_key());
   OutputResource::CachedResult* cached = output->EnsureCachedResultCreated();
-  if (output->HasValidUrl()) {
+  if (cached->optimizable()) {
     cached->set_url(output->url());
   }
   cached->set_origin_expiration_time_ms(origin_expire_time_ms);
