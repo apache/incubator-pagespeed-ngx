@@ -26,11 +26,11 @@ SymbolTable<CharTransform>::SymbolTable() {
 }
 
 template<class CharTransform>
-SymbolTable<CharTransform>::~SymbolTable() {
+void SymbolTable<CharTransform>::Clear() {
 #if SYMBOL_TABLE_USE_HASH_TABLE
   // If we  were using dense_hash_map we could just iterate through
   // the table and delete the elements.  But this is no good for
-  // g++ hash tables.
+  // SGI hash tables.
 
   //  // Note: this is safe because we don't need the actual contents to test
   //  // the data vs. empty keys, which is all we need in ~dense_hash_set
@@ -39,7 +39,8 @@ SymbolTable<CharTransform>::~SymbolTable() {
   //    std::free(const_cast<char*>(p->data()));
   //  }
 
-  CharStarVector v(string_set_.size());
+  CharStarVector v;
+  v.reserve(string_set_.size());
   for (typename SymbolSet::iterator p = string_set_.begin();
        p != string_set_.end(); ++p) {
     v.push_back(p->data());

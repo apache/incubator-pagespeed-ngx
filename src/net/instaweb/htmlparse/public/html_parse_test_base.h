@@ -24,6 +24,7 @@
 #include <string>
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/html_testing_peer.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -147,6 +148,10 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   }
 
   virtual HtmlParse* html_parse() = 0;
+
+  Atom MakeAtom(const StringPiece& str) {
+    return HtmlTestingPeer::MakeAtom(html_parse(), str);
+  }
 
   MockMessageHandler message_handler_;
   StringWriter write_to_string_;

@@ -197,8 +197,6 @@ class TestRewriter : public RewriteSingleResourceFilter {
   int num_rewrites_called_;
   bool create_custom_encoder_;
   mutable TestUrlEncoder* active_custom_encoder_;
-  Atom s_tag_;
-  Atom s_src_;
 };
 
 }  // namespace

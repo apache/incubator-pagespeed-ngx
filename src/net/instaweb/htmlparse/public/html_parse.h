@@ -186,6 +186,10 @@ class HtmlParse {
                     int value) {
     return AddAttribute(element, keyword, IntegerToString(value));
   }
+  void SetAttributeName(HtmlElement::Attribute* attribute,
+                        HtmlName::Keyword keyword) {
+    attribute->set_name(HtmlName(InternKeyword(keyword)));
+  }
 
   Atom InternKeyword(HtmlName::Keyword keyword);
 
@@ -194,13 +198,6 @@ class HtmlParse {
   void ClearElements();
 
   void DebugPrintQueue();  // Print queue (for debugging)
-
-  Atom Intern(const std::string& name) {
-    return string_table_.Intern(name);
-  }
-  Atom Intern(const char* name) {
-    return string_table_.Intern(name);
-  }
 
   // Implementation helper with detailed knowledge of html parsing libraries
   friend class HtmlLexer;
@@ -292,6 +289,11 @@ class HtmlParse {
   void AddEvent(HtmlEvent* event);
   void SetCurrent(HtmlNode* node);
   void set_coalesce_characters(bool x) { coalesce_characters_ = x; }
+
+  // Testing only methods.
+  Atom Intern(const StringPiece& name) {
+    return string_table_.Intern(name);
+  }
 
   SymbolTableSensitive string_table_;
   std::vector<HtmlFilter*> filters_;

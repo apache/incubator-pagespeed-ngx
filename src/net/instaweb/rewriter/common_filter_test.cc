@@ -86,8 +86,7 @@ TEST_F(CommonFilterTest, DoesCallImpls) {
   filter_.StartDocument();
   EXPECT_EQ(1, filter_.start_doc_calls_);
 
-  HtmlElement* element =
-      html_parse_->NewElement(NULL, html_parse_->Intern("foo"));
+  HtmlElement* element = html_parse_->NewElement(NULL, MakeAtom("foo"));
   EXPECT_EQ(0, filter_.start_element_calls_);
   filter_.StartElement(element);
   EXPECT_EQ(1, filter_.start_element_calls_);

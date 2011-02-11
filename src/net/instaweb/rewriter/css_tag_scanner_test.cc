@@ -22,6 +22,7 @@
 
 #include <string>
 #include "base/basictypes.h"
+#include "net/instaweb/htmlparse/html_testing_peer.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -131,7 +132,7 @@ TEST_F(CssTagScannerTest, TestGurl) {
 // seen.
 TEST_F(CssTagScannerTest, TestFull) {
   HtmlParse html_parse(&message_handler_);
-  Atom s_other = html_parse.Intern("other");
+  Atom s_other = HtmlTestingPeer::MakeAtom(&html_parse, "other");
   HtmlElement* link = html_parse.NewElement(NULL, HtmlName::kLink);
   const char kUrl[] = "http://www.myhost.com/static/mycss.css";
   const char kPrint[] = "print";

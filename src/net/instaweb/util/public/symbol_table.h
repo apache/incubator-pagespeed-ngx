@@ -89,7 +89,9 @@ namespace net_instaweb {
 template<class CharTransform> class SymbolTable {
  public:
   SymbolTable();
-  ~SymbolTable();
+  ~SymbolTable() { Clear(); }
+
+  void Clear();
 
   Atom Intern(const StringPiece& src);
 

@@ -145,16 +145,6 @@ void HtmlElement::AddAttribute(Atom name, const StringPiece& value,
   attributes_.push_back(attr);
 }
 
-#if LOWER_CASE_DURING_LEXER
-void HtmlElement::AddAttribute(Atom name, int value) {
-  std::string buf = IntegerToString(value);
-  // We include quotes here because XHTML requires them.  If it later turns out
-  // we're in HTML, the remove_quotes filter can take them back out.
-  Attribute* attr = new Attribute(name, buf, buf, "\"");
-  attributes_.push_back(attr);
-}
-#endif
-
 void HtmlElement::AddEscapedAttribute(Atom name,
                                       const StringPiece& escaped_value,
                                       const char* quote) {

@@ -31,8 +31,6 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/symbol_table.h"
 
-#define LOWER_CASE_DURING_LEXER 1
-
 namespace net_instaweb {
 
 class HtmlElement : public HtmlNode {
@@ -71,15 +69,7 @@ class HtmlElement : public HtmlNode {
     // name_str().
     HtmlName::Keyword keyword() const { return name_.keyword(); }
 
-#if LOWER_CASE_DURING_LEXER
-    // Currently for incremental CL checkins we must have this....
-    Atom name() const { return name_.atom(); }
-    HtmlName html_name() const { return name_; }
-    void set_name(Atom atom) { name_ = HtmlName(atom); }
-#else
-    // ...but we would like to migrate to this
     HtmlName name() const { return name_; }
-#endif
     void set_name(const HtmlName& name) { name_ = name; }
 
     // Returns the value in its original directly from the HTML source.
@@ -222,39 +212,6 @@ class HtmlElement : public HtmlNode {
   // Small integer uniquely identifying the HTML element, primarily
   // for debugging.
   void set_sequence(int sequence) { sequence_ = sequence; }
-
-  // Compatibility methods that will be eliminated once CLs 19351656,
-  // 19351667, and 19355391 are submitted.
-#if LOWER_CASE_DURING_LEXER
-  Atom tag() const { return name_.atom(); }
-  void set_tag(Atom atom) { name_ = HtmlName(atom); }
-  HtmlName::Keyword Keyword(Atom atom) const {
-    HtmlName name(atom);
-    return name.keyword();
-  }
-
-  const char* AttributeValue(Atom atom) const {
-    return AttributeValue(Keyword(atom));
-  }
-
-  bool IntAttributeValue(Atom atom, int* value) const {
-    return IntAttributeValue(Keyword(atom), value);
-  }
-
-  Attribute* FindAttribute(Atom atom) {
-    return FindAttribute(Keyword(atom));
-  }
-
-  const Attribute* FindAttribute(Atom atom) const {
-    return FindAttribute(Keyword(atom));
-  }
-
-  bool DeleteAttribute(Atom atom) {
-    return DeleteAttribute(Keyword(atom));
-  }
-
-  void AddAttribute(Atom name, int value);
-#endif
 
   // Returns the element tag name, which is not guaranteed to be
   // case-folded.  Compare keyword() to the Keyword constant found in

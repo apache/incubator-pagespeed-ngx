@@ -715,9 +715,6 @@ void HtmlLexer::MakeElement() {
     if (token_.empty()) {
       SyntaxError("Making element with empty tag name");
     }
-#if LOWER_CASE_DURING_LEXER
-    LowerString(&token_);
-#endif
     element_ = html_parse_->NewElement(Parent(), html_parse_->Intern(token_));
     element_->set_begin_line_number(tag_start_line_);
     token_.clear();
@@ -780,9 +777,6 @@ void HtmlLexer::FinishParse() {
 
 void HtmlLexer::MakeAttribute(bool has_value) {
   html_parse_->message_handler()->Check(element_ != NULL, "element_ == NULL");
-#if LOWER_CASE_DURING_LEXER
-    LowerString(&attr_name_);
-#endif
   Atom name = html_parse_->Intern(attr_name_);
   attr_name_.clear();
   const char* value = NULL;
@@ -932,9 +926,6 @@ void HtmlLexer::EvalAttrValSq(char c) {
 }
 
 void HtmlLexer::EmitTagClose(HtmlElement::CloseStyle close_style) {
-#if LOWER_CASE_DURING_LEXER
-    LowerString(&token_);
-#endif
   Atom tag = html_parse_->Intern(token_);
   HtmlElement* element = PopElementMatchingTag(tag);
   if (element != NULL) {

@@ -96,7 +96,7 @@ void HtmlWriterFilter::StartElement(HtmlElement* element) {
       }
     }
     EmitBytes(" ");
-    EmitBytes(attribute.name_str());
+    EmitName(attribute.name());
     if (attribute.escaped_value() != NULL) {
       EmitBytes("=");
       EmitBytes(attribute.quote());

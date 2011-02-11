@@ -21,6 +21,8 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/util/public/atom.h"
 
 namespace net_instaweb {
 
@@ -39,6 +41,9 @@ class HtmlTestingPeer {
   }
   static void set_coalesce_characters(HtmlParse* parser, bool x) {
     parser->set_coalesce_characters(x);
+  }
+  static Atom MakeAtom(HtmlParse* parser, const StringPiece& str) {
+    return parser->Intern(str);
   }
 
  private:

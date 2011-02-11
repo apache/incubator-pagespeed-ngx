@@ -108,7 +108,6 @@ class CombineFilterBaseTest : public ResourceManagerTestBase {
     MockResource(kVetoPiece, kVetoText, 30000);
     MockMissingResource(kNoSuchPiece);
 
-    s_test_ = html_parse()->Intern("test");
     partnership_ = filter_->partnership();
   }
 
@@ -196,7 +195,7 @@ class CombineFilterBaseTest : public ResourceManagerTestBase {
   }
 
   HtmlElement* TestElement() {
-    return html_parse()->NewElement(NULL, s_test_);
+    return html_parse()->NewElement(NULL, MakeAtom("test"));
   }
 
   std::string StringOfLength(int n, char fill) {
@@ -219,7 +218,6 @@ class CombineFilterBaseTest : public ResourceManagerTestBase {
 
   TestCombineFilter* filter_;  // owned by the rewrite_driver_.
   TestCombineFilter::Partnership* partnership_;
-  Atom s_test_;
 };
 
 TEST_F(CombineFilterBaseTest, TestPartnershipBasic) {

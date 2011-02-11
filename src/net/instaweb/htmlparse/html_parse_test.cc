@@ -29,10 +29,6 @@ namespace net_instaweb {
 
 class HtmlParseTest : public HtmlParseTestBase {
  protected:
-  Atom MakeAtom(const char *name) {
-    return html_parse_.Intern(name);
-  }
-
   virtual bool AddBody() const { return true; }
 };
 
@@ -274,6 +270,26 @@ TEST_F(HtmlParseTestNoBody, NoscriptInHead) {
       "</noscript></head>");
 }
 
+TEST_F(HtmlParseTestNoBody, NoCaseFold) {
+  // Case folding is off by default.  However, we don't keep the
+  // closing-tag separate in the IR so we will always make that
+  // match.
+  ValidateExpected("no_case_fold",
+                   "<DiV><Other xY='AbC' Href='dEf'>Hello</OTHER></diV>",
+                   "<DiV><Other xY='AbC' Href='dEf'>Hello</Other></DiV>");
+  // Despite the fact that we retain case, in our IR, and the cases did not
+  // match between opening and closing tags, there should be no messages
+  // warning about unmatched tags.
+  EXPECT_EQ(0, message_handler_.TotalMessages());
+}
+
+TEST_F(HtmlParseTestNoBody, CaseFold) {
+  SetupWriter();
+  html_writer_filter_->set_case_fold(true);
+  ValidateExpected("case_fold",
+                   "<DiV><Other xY='AbC' Href='dEf'>Hello</OTHER></diV>",
+                   "<div><other xy='AbC' href='dEf'>Hello</other></div>");
+}
 
 // Bool that is auto-initialized to false
 class Bool {
@@ -749,11 +765,7 @@ TEST_F(AttributeManipulationTest, ModifyKeepAttribute) {
   // This apparently do-nothing call to SetValue exposed an allocation bug.
   href->SetValue(href->value());
   href->set_quote(href->quote());
-#if LOWER_CASE_DURING_LEXER
-  href->set_name(href->html_name());
-#else
   href->set_name(href->name());
-#endif
   CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'/>");
 }
 

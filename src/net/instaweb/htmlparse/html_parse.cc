@@ -175,6 +175,7 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
     message_handler_->Message(kWarning, "HtmlParse: Invalid document url %s",
                               url_.c_str());
   } else {
+    string_table_.Clear();
     gurl_.Swap(&gurl);
     line_number_ = 1;
     id.CopyToString(&id_);
