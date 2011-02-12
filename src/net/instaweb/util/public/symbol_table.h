@@ -143,6 +143,24 @@ template<class CharTransform> class SymbolTable {
   typedef std::set<StringPiece, Compare> SymbolSet;
 #endif
   SymbolSet string_set_;
+
+  // Allocates a new chunk of storage.
+  inline void NewStorage();
+
+  // Keep a vector of char* as simple pooled allocator.  Since we have no
+  // mechanism to free an individual string -- only the entire symbol table
+  // can be cleared -- we can allocate by bumping a pointer pretty cheaply.
+  //
+  // Each element of 'storage_' contains a large character buffer, and
+  // next_ptr is a pointer into that buffer.  We implicitly know how
+  // much is used by subtracting next_ptr-storage_.back(), and we know
+  // how much is left because we know how big each storage_ element is.
+  //
+  // To intern large strings above some threshold, 25% of the string-buffer
+  // size, we just allocate them directly with malloc and put them into
+  // the storage_ array in the second-to-last position.  The only reason
+  // to put them in the storage_ array is to ensure the large strings
+  // are reclaimed along with the aggregated small-string storage buffers.
   std::vector<char*> storage_;
   char* next_ptr_;  // Used for bump-pointer pooled allocation of strings.
   size_t string_bytes_allocated_;

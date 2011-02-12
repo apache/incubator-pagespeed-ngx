@@ -79,8 +79,13 @@ TEST_F(SymbolTableTest, TestInternInsensitive) {
 TEST_F(SymbolTableTest, TestClear) {
   SymbolTableSensitive symbol_table;
   Atom a = symbol_table.Intern("a");
-  symbol_table.Clear();
+  EXPECT_EQ(2, symbol_table.string_bytes_allocated());
   a = symbol_table.Intern("a");
+  EXPECT_EQ(2, symbol_table.string_bytes_allocated());
+  symbol_table.Clear();
+  EXPECT_EQ(0, symbol_table.string_bytes_allocated());
+  a = symbol_table.Intern("a");
+  EXPECT_EQ(2, symbol_table.string_bytes_allocated());
 }
 
 // Symbol table's string storage special cases large items (> 32k) so

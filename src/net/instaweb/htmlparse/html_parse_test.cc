@@ -263,6 +263,16 @@ TEST_F(HtmlParseTest, OpenBracketAfterSpace) {
 TEST_F(HtmlParseTest, MakeName) {
   EXPECT_EQ(0, HtmlTestingPeer::symbol_table_size(&html_parse_));
 
+  // Empty names are a corner case that we hope does not crash.  Note
+  // that empty-string atoms are special-cased in the symbol table
+  // and require no new allocated bytes.
+  {
+    HtmlName empty = html_parse_.MakeName("");
+    EXPECT_EQ(0, HtmlTestingPeer::symbol_table_size(&html_parse_));
+    EXPECT_EQ(HtmlName::kNotAKeyword, empty.keyword());
+    EXPECT_EQ('\0', *empty.c_str());
+  }
+
   // When we make a name using its enum, there should be no symbol table growth.
   HtmlName body_symbol = html_parse_.MakeName(HtmlName::kBody);
   EXPECT_EQ(0, HtmlTestingPeer::symbol_table_size(&html_parse_));
@@ -291,10 +301,12 @@ TEST_F(HtmlParseTest, MakeName) {
   // Empty names are a corner case that we hope does not crash.  Note
   // that empty-string atoms are special-cased in the symbol table
   // and require no new allocated bytes.
-  HtmlName empty = html_parse_.MakeName("");
-  EXPECT_EQ(16, HtmlTestingPeer::symbol_table_size(&html_parse_));
-  EXPECT_EQ(HtmlName::kNotAKeyword, empty.keyword());
-  EXPECT_EQ('\0', *empty.c_str());
+  {
+    HtmlName empty = html_parse_.MakeName("");
+    EXPECT_EQ(16, HtmlTestingPeer::symbol_table_size(&html_parse_));
+    EXPECT_EQ(HtmlName::kNotAKeyword, empty.keyword());
+    EXPECT_EQ('\0', *empty.c_str());
+  }
 }
 
 // bug 2508140 : <noscript> in <head>

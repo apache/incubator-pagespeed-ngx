@@ -49,6 +49,12 @@ void SymbolTable<CharTransform>::Clear() {
 }
 
 template<class CharTransform>
+void SymbolTable<CharTransform>::NewStorage() {
+  next_ptr_ = static_cast<char*>(std::malloc(kChunkSize));
+  storage_.push_back(next_ptr_);
+}
+
+template<class CharTransform>
 Atom SymbolTable<CharTransform>::Intern(const StringPiece& src) {
   if (src.empty()) {
     return Atom();
@@ -56,6 +62,11 @@ Atom SymbolTable<CharTransform>::Intern(const StringPiece& src) {
 
   typename SymbolSet::const_iterator iter = string_set_.find(src);
   if (iter == string_set_.end()) {
+    // Lazy-initialize to ensure at least one available block.
+    if (storage_.empty()) {
+      NewStorage();
+    }
+
     size_t bytes_required = src.size() + 1;  // leave space for null byte
     char* new_symbol_storage = NULL;
     if (bytes_required > kChunkSize / 4) {
@@ -64,28 +75,17 @@ Atom SymbolTable<CharTransform>::Intern(const StringPiece& src) {
       // allocate it directly.
       new_symbol_storage = static_cast<char*>(std::malloc(bytes_required));
 
-      // We're going to want to be able to free this memory on Clear() above,
-      // but we don't want to try to put anything else into it, so be careful.
-      if (storage_.empty()) {
-        storage_.push_back(new_symbol_storage);
-        next_ptr_ = NULL;
-      } else {
-        // Insert this large chunk into the second-to-last position in the
-        // storage array so that we can keep using the last normal chunk.
-        int last_pos = storage_.size() - 1;
-        storage_.push_back(storage_[last_pos]);
-        storage_[last_pos] = new_symbol_storage;
-      }
+      // Insert this large chunk into the second-to-last position in the
+      // storage array so that we can keep using the last normal chunk.
+      int last_pos = storage_.size() - 1;
+      storage_.push_back(storage_[last_pos]);
+      storage_[last_pos] = new_symbol_storage;
     } else {
-      size_t remaining = 0;
-      if (next_ptr_ != NULL) {
-        // Compute the amount remaining.
-        DCHECK_GT(next_ptr_, storage_.back());
-        remaining = kChunkSize - (next_ptr_ - storage_.back());
-      }
-      if (remaining < bytes_required) {
-        next_ptr_ = static_cast<char*>(std::malloc(kChunkSize));
-        storage_.push_back(next_ptr_);
+      DCHECK_GE(next_ptr_, storage_.back());
+      size_t bytes_used = next_ptr_ - storage_.back();
+      size_t bytes_remaining = kChunkSize - bytes_used;
+      if (bytes_remaining < bytes_required) {
+        NewStorage();
       }
       new_symbol_storage = next_ptr_;
       next_ptr_ += bytes_required;
