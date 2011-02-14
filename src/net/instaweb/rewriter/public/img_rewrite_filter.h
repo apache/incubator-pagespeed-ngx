@@ -94,7 +94,7 @@ class ImgRewriteFilter : public RewriteSingleResourceFilter {
 
  protected:
   // Interface to RewriteSingleResourceFilter
-  virtual UrlSegmentEncoder* CreateUrlEncoderForFetch() const;
+  virtual UrlSegmentEncoder* CreateCustomUrlEncoder() const;
   virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
                                               OutputResource* result,
                                               UrlSegmentEncoder* raw_encoder);

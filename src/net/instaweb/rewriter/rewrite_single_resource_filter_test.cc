@@ -124,11 +124,11 @@ class TestRewriter : public RewriteSingleResourceFilter {
     return format_version_;
   }
 
-  virtual UrlSegmentEncoder* CreateUrlEncoderForFetch() const {
+  virtual UrlSegmentEncoder* CreateCustomUrlEncoder() const {
     if (create_custom_encoder_) {
       return new TestUrlEncoder(this, resource_manager_->url_escaper());
     } else {
-      return RewriteSingleResourceFilter::CreateUrlEncoderForFetch();
+      return RewriteSingleResourceFilter::CreateCustomUrlEncoder();
     }
   }
 
@@ -173,7 +173,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
   void TryRewrite(HtmlElement::Attribute* src) {
     UrlSegmentEncoder* encoder = resource_manager_->url_escaper();
     if (create_custom_encoder_) {
-      encoder = CreateUrlEncoderForFetch();
+      encoder = CreateCustomUrlEncoder();
     }
 
     scoped_ptr<OutputResource::CachedResult> result(
@@ -258,7 +258,7 @@ class RewriteSingleResourceFilterTest
   OutputResource::CachedResult* CachedResultForInput(const char* url) {
     UrlSegmentEncoder* encoder = resource_manager_->url_escaper();
     if (filter_->create_custom_encoder()) {
-      encoder = filter_->CreateUrlEncoderForFetch();
+      encoder = filter_->CreateCustomUrlEncoder();
     }
 
     scoped_ptr<Resource> input_resource(

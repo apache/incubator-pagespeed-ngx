@@ -123,7 +123,7 @@ void ImgRewriteFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kImageOngoingRewrites);
 }
 
-UrlSegmentEncoder* ImgRewriteFilter::CreateUrlEncoderForFetch() const {
+UrlSegmentEncoder* ImgRewriteFilter::CreateCustomUrlEncoder() const {
   return new ImageUrlEncoder(resource_manager_->url_escaper());
 }
 

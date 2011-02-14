@@ -56,6 +56,11 @@ class RewriteSingleResourceFilter : public RewriteFilter {
                // it's worth trying again or not.
   };
 
+  // Rewrites a non-HTML resource using as much caching as possible and
+  // the filter-supplied URL encoding scheme.
+  OutputResource::CachedResult* RewriteExternalResource(Resource* in);
+
+ protected:
   // Rewrite the given resource using this filter's RewriteLoadedResource,
   // taking  advantage of various caching techniques to avoid recomputation
   // whenever possible.
@@ -79,10 +84,6 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   OutputResource::CachedResult* RewriteResourceWithCaching(
       Resource* in, UrlSegmentEncoder* encoder);
 
-  // Variant of above, using default encoder.
-  OutputResource::CachedResult* RewriteResourceWithCaching(Resource* in);
-
- protected:
   // Variant of the above that makes and cleans up input resource for in_url.
   // Note that the URL will be expanded and security checked with respect to the
   // current base URL for the HTML parser.
@@ -118,16 +119,19 @@ class RewriteSingleResourceFilter : public RewriteFilter {
                                               UrlSegmentEncoder* encoder) = 0;
 
   // If the filter does any custom encoding of result URLs it should
-  // override this method to return a fresh, non-NULL UrlSegmentEncoder object
-  // to use to help decode the URL for a Fetch. The RewriteSingleResourceFilter
-  // class will take and hold ownership of this object.
+  // override this method to return a fresh, non-NULL UrlSegmentEncoder object.
+  // This object will be used to help decode the URL for a Fetch, as well as to
+  // provide the encoding for RewriteResourceWithCaching.
+  // The RewriteSingleResourceFilter  class will take and hold ownership of
+  // the returned object.
   //
   // The default implementation returns NULL which makes
   // resource_manager_->url_escaper() be used.
-  virtual UrlSegmentEncoder* CreateUrlEncoderForFetch() const;
+  virtual UrlSegmentEncoder* CreateCustomUrlEncoder() const;
 
  private:
   class FetchCallback;
+  friend class FetchCallback;
   friend class RewriteSingleResourceFilterTest;
 
   // Check and record whether metadata version matches
@@ -150,6 +154,10 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   void CacheRewriteFailure(const Resource* input_resource,
                            OutputResource* output_resource,
                            MessageHandler* message_handler);
+
+  // If given custom encoder is non-NULL, return it. Otherwise returns
+  // the resource manager's url_escaper.
+  UrlSegmentEncoder* EncoderToUse(UrlSegmentEncoder* custom_encoder);
 
   DISALLOW_COPY_AND_ASSIGN(RewriteSingleResourceFilter);
 };

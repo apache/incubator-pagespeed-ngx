@@ -70,13 +70,9 @@ class RewriteSingleResourceFilter::FetchCallback
     }
     if (success) {
       // Call the rewrite hook.
-      UrlSegmentEncoder* active_url_encoder = custom_url_encoder_.get();
-      if (active_url_encoder == NULL) {
-        active_url_encoder = resource->resource_manager()->url_escaper();
-      }
-
       RewriteResult rewrite_result = filter_->RewriteLoadedResourceAndCacheIfOk(
-          input_resource_.get(), output_resource_, active_url_encoder);
+          input_resource_.get(), output_resource_,
+          filter_->EncoderToUse(custom_url_encoder_.get()));
       success = (rewrite_result == kRewriteOk);
     }
 
@@ -130,20 +126,16 @@ bool RewriteSingleResourceFilter::Fetch(
     MessageHandler* message_handler,
     UrlAsyncFetcher::Callback* base_callback) {
   bool ret = false;
-  scoped_ptr<UrlSegmentEncoder> custom_url_escaper(CreateUrlEncoderForFetch());
-  UrlSegmentEncoder* active_url_escaper = custom_url_escaper.get();
-  if (active_url_escaper == NULL) {
-    active_url_escaper = resource_manager_->url_escaper();
-  }
+  scoped_ptr<UrlSegmentEncoder> custom_url_encoder(CreateCustomUrlEncoder());
 
   Resource* input_resource =
       resource_manager_->CreateInputResourceFromOutputResource(
-          active_url_escaper, output_resource,
+          EncoderToUse(custom_url_encoder.get()), output_resource,
           driver_->options(), message_handler);
   if (input_resource != NULL) {
     // Callback takes ownership of input_resource, and any custom escaper.
     FetchCallback* fetch_callback = new FetchCallback(
-        this, custom_url_escaper.release(), input_resource, output_resource,
+        this, custom_url_encoder.release(), input_resource, output_resource,
         response_headers, response_writer, message_handler, base_callback);
     resource_manager_->ReadAsync(input_resource, fetch_callback,
                                  message_handler);
@@ -202,10 +194,11 @@ void RewriteSingleResourceFilter::CacheRewriteFailure(
 }
 
 OutputResource::CachedResult*
-RewriteSingleResourceFilter::RewriteResourceWithCaching(
+RewriteSingleResourceFilter::RewriteExternalResource(
     Resource* input_resource) {
+  scoped_ptr<UrlSegmentEncoder> custom_encoder(CreateCustomUrlEncoder());
   return RewriteResourceWithCaching(input_resource,
-                                    resource_manager_->url_escaper());
+                                    EncoderToUse(custom_encoder.get()));
 }
 
 OutputResource::CachedResult*
@@ -300,8 +293,17 @@ void RewriteSingleResourceFilter::UpdateCacheFormat(
 }
 
 UrlSegmentEncoder*
-RewriteSingleResourceFilter::CreateUrlEncoderForFetch() const {
+RewriteSingleResourceFilter::CreateCustomUrlEncoder() const {
   return NULL;
+}
+
+UrlSegmentEncoder* RewriteSingleResourceFilter::EncoderToUse(
+    UrlSegmentEncoder* custom_encoder) {
+  if (custom_encoder != NULL) {
+    return custom_encoder;
+  } else {
+    return resource_manager_->url_escaper();
+  }
 }
 
 }  // namespace net_instaweb

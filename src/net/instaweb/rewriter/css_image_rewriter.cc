@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/img_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -93,7 +94,7 @@ bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
       handler->Message(kInfo, "Attempting to cache extend image %s",
                        old_rel_url_cstr);
       rewrite_info.reset(
-          cache_extender_->RewriteResourceWithCaching(input_resource.get()));
+          cache_extender_->RewriteExternalResource(input_resource.get()));
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
         if (cache_extends_ != NULL) {
           cache_extends_->Add(1);

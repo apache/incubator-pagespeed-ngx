@@ -59,6 +59,20 @@ class OutputResource : public Resource {
     // (by calling ResourceManager::WriteUnoptimizable).
     bool optimizable() const { return optimizable_; }
 
+    // The auto_expire bit is used when writing out this entry to cache
+    // to determine the TTL. If auto_expire is true (the default) this entry
+    // will be marked to get automatically expunged when
+    // origin_expiration_time_ms() is reached; this means it can be safely
+    // used without any checking. If set_auto_expire(false) is called before
+    // write, the cache entry will be given TTL of at least a year
+    // or until origin_expiration_time_ms, whichever is longer
+    // (origin_expiration_time_ms() will still be stored properly).
+    // In that case, the user is responsible for ensuring that the cached
+    // result is still valid, for example by combination of checking against
+    // origin_expiration_time_ms() and verifying that the input contents
+    // have not changed.
+    void set_auto_expire(bool ae) { CHECK(!frozen_); auto_expire_ = ae; }
+
     // The methods below permit filters to store whatever information
     // they want. They should take care to avoid key conflicts
     // with other classes. The suggested convention is to start
@@ -86,6 +100,7 @@ class OutputResource : public Resource {
     void set_origin_expiration_time_ms(int64 time) {
       origin_expiration_time_ms_ = time;
     }
+    bool auto_expire() const { return auto_expire_; }
     void set_frozen(bool f) { frozen_ = f; }
 
     // Changes to custom metadata by clients done after we are written to
@@ -94,6 +109,7 @@ class OutputResource : public Resource {
     // and DCHECK any SetRemembered calls.
     bool frozen_;
     bool optimizable_;
+    bool auto_expire_;
     std::string url_;
     int64 origin_expiration_time_ms_;
     ResponseHeaders headers_;  // Extended metadata

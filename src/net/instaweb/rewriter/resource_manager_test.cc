@@ -20,6 +20,8 @@
 
 #include "net/instaweb/rewriter/public/resource_manager.h"
 
+#include <cmath>
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -303,18 +305,45 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // Expiration times are not entirely precise as some cache headers
   // have a 1 second resolution, so this permits such a difference.
   void VerifyWithinSecond(int64 time_a_ms, int64 time_b_ms) {
-    int64 diff = time_a_ms - time_b_ms;
-    if (diff < 0) {
-      diff = -diff;
+    EXPECT_LE(std::abs(time_a_ms - time_b_ms), Timer::kSecondMs);
+  }
+
+  void VerifyValidCachedResult(const char* subtest_name, bool test_meta_data,
+                               OutputResource* output, const std::string& url,
+                               int64 expire_ms) {
+    LOG(INFO) << "Subtest:" << subtest_name;
+    ASSERT_TRUE(output != NULL);
+    ASSERT_TRUE(output->cached_result() != NULL);
+
+    EXPECT_EQ(url, output->url());
+    EXPECT_EQ(url, output->cached_result()->url());
+    VerifyWithinSecond(expire_ms,
+                       output->cached_result()->origin_expiration_time_ms());
+    EXPECT_TRUE(output->cached_result()->optimizable());
+    if (test_meta_data) {
+      VerifyCustomMetadata(output);
     }
-    EXPECT_LE(diff, Timer::kSecondMs);
+  }
+
+  void VerifyUnoptimizableCachedResult(
+      const char* subtest_name, bool test_meta_data, OutputResource* output,
+      int64 expire_ms) {
+    LOG(INFO) << "Subtest:" << subtest_name;
+    ASSERT_TRUE(output != NULL);
+    ASSERT_TRUE(output->cached_result() != NULL);
+    VerifyWithinSecond(expire_ms,
+                       output->cached_result()->origin_expiration_time_ms());
+    EXPECT_FALSE(output->cached_result()->optimizable());
+    if (test_meta_data) {
+      VerifyCustomMetadata(output);
+    }
   }
 
   // Test to make sure we associate a CachedResult properly when doing
   // operations on output resources. This is parametrized on storing
   // custom metadata or not for better coverage (as the path with it on
   // creates a CachedResult outside ResourceManager)
-  void TestCachedResult(bool test_meta_data) {
+  void TestCachedResult(bool test_meta_data, bool auto_expire) {
     // Note: we do not fetch the input here, just use it to name the output.
     scoped_ptr<Resource> input(
         resource_manager_->CreateInputResource(
@@ -331,6 +360,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     const int kTtlMs = 100000;
     mock_timer()->set_time_us(0);
 
+    output->EnsureCachedResultCreated()->set_auto_expire(auto_expire);
     if (test_meta_data) {
       StoreCustomMetadata(output.get());
     }
@@ -340,14 +370,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     std::string producedUrl = output->url();
 
     // Make sure the cached_result object is in OK state after write.
-    ASSERT_TRUE(output->cached_result() != NULL);
-    EXPECT_EQ(producedUrl, output->cached_result()->url());
-    VerifyWithinSecond(kTtlMs,
-                       output->cached_result()->origin_expiration_time_ms());
-    EXPECT_TRUE(output->cached_result()->optimizable());
-    if (test_meta_data) {
-      VerifyCustomMetadata(output.get());
-    }
+    VerifyValidCachedResult("initial", test_meta_data, output.get(),
+                            producedUrl, kTtlMs);
 
     // Transfer ownership of it here and delete it --- should not blow up.
     delete output->ReleaseCachedResult();
@@ -357,28 +381,23 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // including everything in cached_result and the URL and content-type
     // for the resource (notice this is passing NULL for content-type)
     output.reset(CreateTestOutputResource(input.get(), NULL));
-    ASSERT_TRUE(output.get() != NULL);
-    ASSERT_TRUE(output->cached_result() != NULL);
+    VerifyValidCachedResult("initial cached", test_meta_data, output.get(),
+                            producedUrl, kTtlMs);
 
-    EXPECT_EQ(producedUrl, output->url());
-    EXPECT_EQ(producedUrl, output->cached_result()->url());
-    VerifyWithinSecond(kTtlMs,
-                       output->cached_result()->origin_expiration_time_ms());
-    EXPECT_TRUE(output->cached_result()->optimizable());
-    EXPECT_EQ(&kContentTypePng, output->type());
-    if (test_meta_data) {
-      VerifyCustomMetadata(output.get());
-    }
-
-    // Fast-forward the time, to make sure the entry expires.
+    // Fast-forward the time, to make sure the entry's TTL passes.
     mock_timer()->advance_ms(kTtlMs + 1);
     output.reset(CreateTestOutputResource(input.get(), &kContentTypePng));
 
-    // Note: this is temporary. Eventually we want to keep CachedResults past
-    // expiration and have explicit expiration bit on them.
-    EXPECT_EQ(NULL, output->cached_result());
+    if (auto_expire) {
+      EXPECT_EQ(NULL, output->cached_result());
+    } else {
+      VerifyValidCachedResult("non-autoexpire still cached", test_meta_data,
+                              output.get(), producedUrl, kTtlMs);
+    }
 
     // Write that it's unoptimizable this time.
+    output->EnsureCachedResultCreated()->set_auto_expire(auto_expire);
+
     if (test_meta_data) {
       StoreCustomMetadata(output.get());
     }
@@ -386,30 +405,24 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     int next_expire = mock_timer()->NowMs() + kTtlMs;
     resource_manager_->WriteUnoptimizable(output.get(), next_expire,
                                           &message_handler_);
-
-    ASSERT_TRUE(output->cached_result() != NULL);
-    VerifyWithinSecond(next_expire,
-                       output->cached_result()->origin_expiration_time_ms());
-    EXPECT_FALSE(output->cached_result()->optimizable());
-    if (test_meta_data) {
-      VerifyCustomMetadata(output.get());
-    }
+    VerifyUnoptimizableCachedResult(
+        "initial unopt", test_meta_data, output.get(), next_expire);
 
     // Make a new resource, test for cached data getting fetched
     output.reset(CreateTestOutputResource(input.get(), NULL));
-    ASSERT_TRUE(output.get() != NULL);
-    ASSERT_TRUE(output->cached_result() != NULL);
-    VerifyWithinSecond(next_expire,
-                       output->cached_result()->origin_expiration_time_ms());
-    EXPECT_FALSE(output->cached_result()->optimizable());
-    if (test_meta_data) {
-      VerifyCustomMetadata(output.get());
-    }
+    VerifyUnoptimizableCachedResult(
+        "unopt cached", test_meta_data, output.get(), next_expire);
 
     // Now test expiration
     mock_timer()->advance_ms(kTtlMs);
     output.reset(CreateTestOutputResource(input.get(), &kContentTypePng));
-    EXPECT_EQ(NULL, output->cached_result());
+    if (auto_expire) {
+      EXPECT_EQ(NULL, output->cached_result());
+    } else {
+      VerifyUnoptimizableCachedResult("non-autoexpire unopt cached",
+                                      test_meta_data, output.get(),
+                                      next_expire);
+    }
   }
 };
 
@@ -599,11 +612,19 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
 }
 
 TEST_F(ResourceManagerTest, TestCachedResults) {
-  TestCachedResult(false);
+  TestCachedResult(false, true);
 }
 
 TEST_F(ResourceManagerTest, TestCachedResultsMetaData) {
-  TestCachedResult(true);
+  TestCachedResult(true, true);
+}
+
+TEST_F(ResourceManagerTest, TestCachedResultsNoAutoExpire) {
+  TestCachedResult(false, false);
+}
+
+TEST_F(ResourceManagerTest, TestCachedResultsMetaDataNoAutoExpire) {
+  TestCachedResult(true, false);
 }
 
 class ResourceFreshenTest : public ResourceManagerTest {

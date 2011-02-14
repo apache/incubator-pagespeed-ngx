@@ -19,6 +19,8 @@
 
 #include "net/instaweb/rewriter/public/output_resource.h"
 
+#include <algorithm>
+
 #include "base/logging.h"
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -45,12 +47,16 @@ const char kCustomKeyPrefix[] = "X-ModPagespeedCustom-";
 
 // OutputResource::{Fetch,Save}Cached encodes the state
 // of the optimizable bit via presence of this header
+// TODO(morlovich): Should this just use SetRemembered?
 const char kCacheUnoptimizableHeader[] = "X-ModPagespeed-Unoptimizable";
+
+const char kOriginExpirationKey[] = "OutputResource_OriginExpiration";
 
 }  // namespace
 
 OutputResource::CachedResult::CachedResult() : frozen_(false),
                                                optimizable_(true),
+                                               auto_expire_(true),
                                                origin_expiration_time_ms_(0) {}
 
 void OutputResource::CachedResult::SetRemembered(const char* key,
@@ -353,11 +359,16 @@ void OutputResource::SaveCachedResult(const std::string& name_key,
   HTTPCache* http_cache = resource_manager()->http_cache();
   CachedResult* cached = cached_result_.get();
   CHECK(cached != NULL);
+  cached->SetRememberedInt64(kOriginExpirationKey,
+                             cached->origin_expiration_time_ms());
   cached->set_frozen(true);
 
   int64 delta_ms = cached->origin_expiration_time_ms() -
                        http_cache->timer()->NowMs();
   int64 delta_sec = delta_ms / Timer::kSecondMs;
+  if (!cached->auto_expire()) {
+    delta_sec = std::max(delta_sec, Timer::kYearMs / Timer::kSecondMs);
+  }
   if ((delta_sec > 0) || http_cache->force_caching()) {
     ResponseHeaders* meta_data = &cached->headers_;
     resource_manager()->SetDefaultHeaders(type(), meta_data);
@@ -392,8 +403,13 @@ void OutputResource::FetchCachedResult(const std::string& name_key,
   bool found = cache->Find(name_key, &value, &cached->headers_, handler) ==
                    HTTPCache::kFound;
   if (found && value.ExtractContents(&hash_extension)) {
-    cached->set_origin_expiration_time_ms(
-        cached->headers_.CacheExpirationTimeMs());
+    int64 origin_expiration_time_ms;
+    if (!cached->RememberedInt64(kOriginExpirationKey,
+                                 &origin_expiration_time_ms)) {
+      origin_expiration_time_ms = cached->headers_.CacheExpirationTimeMs();
+    }
+    cached->set_origin_expiration_time_ms(origin_expiration_time_ms);
+
     CharStarVector dummy;
     if (cached->headers_.Lookup(kCacheUnoptimizableHeader, &dummy)) {
       cached->set_optimizable(false);
