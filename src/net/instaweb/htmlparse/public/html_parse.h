@@ -268,9 +268,6 @@ class HtmlParse {
   void set_timer(Timer* timer) { timer_ = timer; }
   void set_log_rewrite_timing(bool x) { log_rewrite_timing_ = x; }
 
-  // This method is deprecated.  Instead please use MakeName(HtmlName::Keyword).
-  Atom InternKeyword(HtmlName::Keyword keyword);
-
  private:
   HtmlEventListIterator Last();  // Last element in queue
   bool IsInEventWindow(const HtmlEventListIterator& iter) const;

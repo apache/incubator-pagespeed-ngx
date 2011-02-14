@@ -165,14 +165,6 @@ class HtmlElement : public HtmlNode {
                            const StringPiece& escaped_value,
                            const char* quote);
 
-  // deprecated method
-  void AddEscapedAttribute(Atom atom,
-                           const StringPiece& escaped_value,
-                           const char* quote) {
-    HtmlName name(HtmlName::Lookup(atom.c_str()), atom.c_str());
-    return AddEscapedAttribute(name, escaped_value, quote);
-  }
-
   // Removes the attribute at the given index, shifting higher-indexed
   // attributes down.  Note that this operation is linear in the number of
   // attributes.

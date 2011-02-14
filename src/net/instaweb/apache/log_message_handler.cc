@@ -42,6 +42,9 @@ std::string* mod_pagespeed_version = NULL;
 int GetApacheLogLevel(int severity) {
   switch (severity) {
     case logging::LOG_INFO:
+      // Note: ap_log_perror only prints NOTICE and higher messages.
+      // TODO(sligocki): Find some way to print these as INFO if we can.
+      //return APLOG_INFO;
       return APLOG_NOTICE;
     case logging::LOG_WARNING:
       return APLOG_WARNING;
@@ -51,7 +54,8 @@ int GetApacheLogLevel(int severity) {
       return APLOG_CRIT;
     case logging::LOG_FATAL:
       return APLOG_ALERT;
-    default:
+    default:  // For VLOG()s
+      // TODO(sligocki): return APLOG_DEBUG;
       return APLOG_NOTICE;
   }
 }
@@ -115,6 +119,10 @@ void ShutDown() {
   }
 }
 
+// What Google level of logs to display when Apache LogLevel is Debug.
+// -2 means all VLOG(2) and higher will be displayed as INFOs
+const int kDebugLogLevel = -2;
+
 // TODO(sligocki): This is not thread-safe, do we care? Error case is when
 // you have multiple server_rec's with different LogLevels which start-up
 // simultaniously. In which case we might get a non-min global LogLevel
@@ -122,6 +130,10 @@ void AddServerConfig(const server_rec* server, const StringPiece& version) {
   // TODO(sligocki): Maybe use ap_log_error(server) if there is exactly one
   // server added?
   log_level_cutoff = std::min(server->loglevel, log_level_cutoff);
+  // Get VLOG(x) and above if LogLevel is set to Debug.
+  if (log_level_cutoff >= APLOG_DEBUG) {
+    logging::SetMinLogLevel(kDebugLogLevel);
+  }
   if (mod_pagespeed_version == NULL) {
     mod_pagespeed_version = new std::string(version.as_string());
   } else {

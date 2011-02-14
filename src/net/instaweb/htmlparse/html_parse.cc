@@ -756,11 +756,6 @@ HtmlName HtmlParse::MakeName(HtmlName::Keyword keyword) {
   return HtmlName(keyword, str);
 }
 
-// This method is deprecated in favor of MakeName.
-Atom HtmlParse::InternKeyword(HtmlName::Keyword keyword) {
-  return string_table_.Intern(HtmlKeywords::KeywordToString(keyword));
-}
-
 HtmlName HtmlParse::MakeName(const StringPiece& str_piece) {
   HtmlName::Keyword keyword = HtmlName::Lookup(str_piece);
   const char* str = HtmlKeywords::KeywordToString(keyword);
