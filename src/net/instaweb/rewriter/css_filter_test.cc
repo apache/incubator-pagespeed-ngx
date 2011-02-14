@@ -389,10 +389,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "p.normal::selection { background: #c00; color: #fff; }",
     "::-moz-focus-inner { border: 0; }",
 
-    // Star/Underscore hack
-    // See: http://developer.yahoo.com/yui/compressor/css.html
-    "a { *padding-bottom: 0px; }",
-
     // Should fail (bad syntax):
     "a { font:bold verdana 10px; }",
     "a { width:overflow:hidden; }",
@@ -519,6 +515,11 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 
       ".gac_od{border-color:-moz-use-text-color #e7e7e7 #e7e7e7 "
       "-moz-use-text-color}" },
+
+    // Star/Underscore hack
+    // See: http://developer.yahoo.com/yui/compressor/css.html
+    { "a { *padding-bottom: 0px; }",
+      "a{*padding-bottom:0px}" },
 
     { "#element { width: 1px; _width: 3px; }",
       "#element{width:1px;_width:3px}" },

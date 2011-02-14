@@ -1255,10 +1255,26 @@ Declarations* Parser::ParseRawDeclarations() {
       case '}':
         return declarations;
       default: {
-        UnicodeText id = ParseIdent();
-        if (id.empty()) {
-          ignore_this_decl = true;
-          break;
+        UnicodeText id;
+        // While not allowed by the CSS spec, there is a common hack
+        // placing * before idents selectively allowing them to be parsed
+        // on some IE versions.
+        // See: http://en.wikipedia.org/wiki/CSS_filter#Star_hack
+        if (*in_ == '*') {
+          id.CopyUTF8("*", 1);
+          in_++;
+          UnicodeText rest = ParseIdent();
+          if (rest.empty()) {
+            ignore_this_decl = true;
+            break;
+          }
+          id.append(rest);
+        } else {
+          id = ParseIdent();
+          if (id.empty()) {
+            ignore_this_decl = true;
+            break;
+          }
         }
         Property prop(id);
         SkipSpace();

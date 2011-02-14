@@ -1443,6 +1443,13 @@ TEST_F(ParserTest, MediaError) {
   EXPECT_EQ(Parser::kMediaError, p.errors_seen_mask());
 }
 
+TEST_F(ParserTest, CounterError) {
+  Parser p("content: \"Section \" counter(section)");
+  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
+  EXPECT_EQ(1, declarations->size());
+  EXPECT_EQ(Parser::kCounterError, p.errors_seen_mask());
+}
+
 TEST_F(ParserTest, AcceptCorrectValues) {
   // http://code.google.com/p/modpagespeed/issues/detail?id=128
   Parser p("list-style-type: none");
@@ -1450,6 +1457,47 @@ TEST_F(ParserTest, AcceptCorrectValues) {
   EXPECT_EQ(1, declarations->size());
   EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
   EXPECT_EQ("list-style-type: none", declarations->ToString());
+}
+
+TEST_F(ParserTest, AcceptAllValues) {
+  Parser p("display: -moz-inline-box");
+  p.set_allow_all_values(true);
+  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
+  EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
+  ASSERT_EQ(1, declarations->size());
+  ASSERT_EQ(1, declarations->at(0)->values()->size());
+  const Value* value = declarations->at(0)->values()->at(0);
+  EXPECT_EQ(Value::IDENT, value->GetLexicalUnitType());
+  EXPECT_EQ(Identifier::OTHER, value->GetIdentifier().ident());
+  EXPECT_EQ("-moz-inline-box",
+            UnicodeTextToUTF8(value->GetIdentifier().ident_text()));
+  EXPECT_EQ("display: -moz-inline-box", declarations->ToString());
+
+  Parser p2("display: -moz-inline-box");
+  p2.set_allow_all_values(false);
+  declarations.reset(p2.ParseDeclarations());
+  EXPECT_EQ(Parser::kDeclarationError, p2.errors_seen_mask());
+  EXPECT_EQ(0, declarations->size());
+  EXPECT_EQ("", declarations->ToString());
+}
+
+TEST_F(ParserTest, CssHacks) {
+  Parser p("*border: 0px");
+  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
+  EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
+  ASSERT_EQ(1, declarations->size());
+  EXPECT_EQ(Property::OTHER, declarations->at(0)->prop());
+  EXPECT_EQ("*border", declarations->at(0)->prop_text());
+  EXPECT_EQ("*border: 0px", declarations->ToString());
+
+  Parser p2("width: 1px; _width: 3px;");
+  declarations.reset(p2.ParseDeclarations());
+  EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
+  ASSERT_EQ(2, declarations->size());
+  EXPECT_EQ(Property::WIDTH, declarations->at(0)->prop());
+  EXPECT_EQ(Property::OTHER, declarations->at(1)->prop());
+  EXPECT_EQ("_width", declarations->at(1)->prop_text());
+  EXPECT_EQ("width: 1px; _width: 3px", declarations->ToString());
 }
 
 }  // namespace
