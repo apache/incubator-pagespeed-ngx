@@ -382,6 +382,20 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // Found in the wild:
     ".lsb:active, .gac_sb:active{ background: -webkit-gradient(linear, "
     "left top, left bottom, from(#ccc), to(#ddd))}",
+
+    "a { filter:progid:DXImageTransform.Microsoft.Alpha(Opacity=80); }",
+
+    "::selection { background: #4deadb; }",
+    "p.normal::selection { background: #c00; color: #fff; }",
+    "::-moz-focus-inner { border: 0; }",
+
+    // Star/Underscore hack
+    // See: http://developer.yahoo.com/yui/compressor/css.html
+    "a { *padding-bottom: 0px; }",
+
+    // Should fail (bad syntax):
+    "a { font:bold verdana 10px; }",
+    "a { width:overflow:hidden; }",
     };
 
   for (int i = 0; i < arraysize(fail_examples); ++i) {
@@ -505,6 +519,9 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 
       ".gac_od{border-color:-moz-use-text-color #e7e7e7 #e7e7e7 "
       "-moz-use-text-color}" },
+
+    { "#element { width: 1px; _width: 3px; }",
+      "#element{width:1px;_width:3px}" },
 
     // TODO(sligocki): Don't lowercase font names:
     { "a { font-family: Arial; }",
