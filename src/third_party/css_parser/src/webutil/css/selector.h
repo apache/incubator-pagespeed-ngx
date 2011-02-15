@@ -132,8 +132,7 @@ class SimpleSelector {
                                             const UnicodeText& value);
   static SimpleSelector* NewClass(const UnicodeText& classname);
   static SimpleSelector* NewId(const UnicodeText& id);
-  static SimpleSelector* NewPseudoclass(const UnicodeText& pseudoclass,
-                                        const UnicodeText& sep);
+  static SimpleSelector* NewPseudoclass(const UnicodeText& pseudoclass);
   static SimpleSelector* NewLang(const UnicodeText& lang);
 
   // oper is '=' for EXACT_ATTRIBUTE, or the first character of the attribute
@@ -186,14 +185,10 @@ class SimpleSelector {
             || SUBSTRING_ATTRIBUTE == type_ || CLASS == type_ || ID == type_);
   }
 
-  // PSEUDOCLASS accessors:
+  // PSEUDOCLASS accessor:
   const UnicodeText& pseudoclass() const {
     DCHECK_EQ(PSEUDOCLASS, type_);
     return value_;
-  }
-  const UnicodeText& pseudoclass_separator() const {
-    DCHECK_EQ(PSEUDOCLASS, type_);
-    return attribute_;
   }
 
   // lang accessor
@@ -214,8 +209,8 @@ class SimpleSelector {
   UnicodeText value_;    // Valid for *_ATTRIBUTE, CLASS, ID, PSEUDOCLASS, LANG
 
   // Private constructors, for use by factory methods
-  SimpleSelector(Type type, const UnicodeText& attribute,
-                 const UnicodeText& value)
+  SimpleSelector(Type type,
+                    const UnicodeText& attribute, const UnicodeText& value)
       : type_(type), attribute_(attribute), value_(value) { }
   SimpleSelector(HtmlTagEnum element_type, const UnicodeText& element_text)
       : type_(ELEMENT_TYPE),

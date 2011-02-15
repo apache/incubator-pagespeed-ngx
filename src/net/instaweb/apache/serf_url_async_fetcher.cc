@@ -219,9 +219,15 @@ class SerfFetch : public PoolElement<SerfFetch> {
                               serf_bucket_t* response) {
     apr_status_t status = APR_EGENERAL;
     if (response_headers_ == NULL) {
-      LOG(INFO) << "HandleResponse called on URL " << str_url()
-                << "(" << this << "), which is already erased";
-      return status;
+      // The serf fetcher is in an inconsistent state.  We shouldn't have gotten
+      // here, and now we're here our best option is to kill this serf process
+      // as we're otherwise going to wedge the CPU at 100% and cause all
+      // subsequent requests to time out and fail, essentially taking down the
+      // entire server.
+      LOG(FATAL) << "HandleResponse called on URL " << str_url()
+                 << "(" << this << "), which is already erased.  "
+                    "DYING.  Please report this as a bug at "
+                    "http://code.google.com/p/modpagespeed/issues/list.";
     }
 
     serf_status_line status_line;

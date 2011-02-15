@@ -52,24 +52,38 @@ class UrlLeftTrimFilter : public EmptyHtmlFilter {
  public:
   UrlLeftTrimFilter(HtmlParse* html_parse, Statistics* statistics);
   static void Initialize(Statistics* statistics);
+  virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
-  // TODO(sligocki): This is broken and only adds base_urls. We need to be able
-  // to ResetBaseUrl to a new value. There is only one base_url at a time.
-  virtual void AddBaseUrl(const StringPiece& base_url);
   virtual const char* Name() const { return "UrlLeftTrim"; }
 
  protected:
   friend class UrlLeftTrimFilterTest;
-  bool Trim(StringPiece* url);
-  void AddTrimming(const StringPiece& trimming);
+  // url: original url to shorten
+  bool Trim(const StringPiece& url, std::string* trimmed_url);
 
  private:
+  void TrimAttribute(HtmlElement::Attribute* attr);
+  void ClearBaseUrl();
+  // There is only one base_url at a time, so calling the function clears out
+  // the previous base_url.
+  // SetBaseUrl() should be called at the beginning of the document with the
+  // document's url, and whenever we encounter a base tag.
+  void SetBaseUrl(const StringPiece& base_url);
+
   HtmlParse* html_parse_;
-  StringVector left_trim_strings_;
+  GURL base_url_;              // url we make paths relative to
+
+  // Keep local copies of the folowing so we don't have to re-parse the base_url
+  // for every url we're trimming.
+  // TODO: look into GURL methods that get these for us
+  // without reparsing the url
+  std::string scheme_;      // scheme of the base_url_, e.g. http
+  std::string origin_;      // origin of the base_url_, e.g. http://www.cnn.com
+  std::string path_;        // path of the base_url_, e.g. /b/c/d/
+
+  // Stats on how much trimming we've done.
   Variable* trim_count_;
   Variable* trim_saved_bytes_;
-
-  void TrimAttribute(HtmlElement::Attribute* attr);
 
   DISALLOW_COPY_AND_ASSIGN(UrlLeftTrimFilter);
 };

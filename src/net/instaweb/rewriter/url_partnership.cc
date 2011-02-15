@@ -30,10 +30,7 @@ namespace net_instaweb {
 UrlPartnership::UrlPartnership(const RewriteOptions* rewrite_options,
                                const GURL& original_request)
     : rewrite_options_(rewrite_options) {
-  if (original_request.is_valid()) {
-    original_origin_and_path_ = GoogleUrl::Create(
-        GoogleUrl::AllExceptLeaf(original_request));
-  }
+  Reset(original_request);
 }
 
 UrlPartnership::~UrlPartnership() {
@@ -107,6 +104,16 @@ void UrlPartnership::RemoveLast() {
   common_components_.clear();
   for (int i = 0, n = gurl_vector_.size(); i < n; ++i) {
     IncrementalResolve(i);
+  }
+}
+
+void UrlPartnership::Reset(const GURL& original_request) {
+  STLDeleteElements(&gurl_vector_);
+  gurl_vector_.clear();
+  common_components_.clear();
+  if (original_request.is_valid()) {
+    original_origin_and_path_ = GoogleUrl::Create(
+        GoogleUrl::AllExceptLeaf(original_request));
   }
 }
 

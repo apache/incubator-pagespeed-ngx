@@ -98,7 +98,6 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     const std::string& combine_url = css_urls[0];
 
     GURL gurl(combine_url);
-    std::string path = GoogleUrl::PathAndLeaf(gurl);
 
     std::string combine_filename;
     filename_encoder_.Encode(file_prefix_, combine_url, &combine_filename);

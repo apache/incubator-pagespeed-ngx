@@ -520,4 +520,10 @@ bool RewriteDriver::FetchResource(
   return handled;
 }
 
+Resource* RewriteDriver::CreateInputResource(const StringPiece& url,
+                                             const GURL& base_gurl) {
+  return resource_manager()->CreateInputResource(
+      base_gurl, url, &options_, html_parse_.message_handler());
+}
+
 }  // namespace net_instaweb

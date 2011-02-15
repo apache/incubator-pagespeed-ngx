@@ -24,19 +24,21 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
-#include "net/instaweb/rewriter/public/combine_filter_base.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
+class MessageHandler;
 class OutputResource;
 class Resource;
 class ResourceManager;
 class Variable;
+class Writer;
 
-class CssCombineFilter : public CombineFilterBase {
+class CssCombineFilter : public RewriteFilter {
  public:
   CssCombineFilter(RewriteDriver* rewrite_driver, const char* path_prefix);
   virtual ~CssCombineFilter();
@@ -48,21 +50,16 @@ class CssCombineFilter : public CombineFilterBase {
   virtual void Flush();
   virtual void IEDirective(HtmlIEDirectiveNode* directive);
   virtual const char* Name() const { return "CssCombine"; }
-
+  virtual bool Fetch(OutputResource* resource,
+                     Writer* writer,
+                     const RequestHeaders& request_header,
+                     ResponseHeaders* response_headers,
+                     MessageHandler* message_handler,
+                     UrlAsyncFetcher::Callback* callback);
  private:
-  // Try to combine all the CSS files we have seen so far.
-  // Insert the combined resource where the first original CSS link was.
-  void TryCombineAccumulated();
-
-  virtual bool WritePiece(Resource* input, OutputResource* combination,
-                          Writer* writer, MessageHandler* handler);
-
-  class Partnership;
-
-  scoped_ptr<Partnership> partnership_;
+  class CssCombiner;
   CssTagScanner css_tag_scanner_;
-  Variable* css_file_count_reduction_;
-
+  scoped_ptr<CssCombiner> combiner_;
   DISALLOW_COPY_AND_ASSIGN(CssCombineFilter);
 };
 

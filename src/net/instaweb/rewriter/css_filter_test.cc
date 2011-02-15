@@ -364,9 +364,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@media a,b{a{color:red}}",
     "a{content:\"Odd chars: \\(\\)\\,\\\"\\\'\"}",
     "img{clip:rect(0px,60px,200px,0px)}",
-    "p.normal::selection{background:#c00;color:#fff}",
-    "::-moz-focus-inner{border:0}",
-
     };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
@@ -387,6 +384,10 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "left top, left bottom, from(#ccc), to(#ddd))}",
 
     "a { filter:progid:DXImageTransform.Microsoft.Alpha(Opacity=80); }",
+
+    "::selection { background: #4deadb; }",
+    "p.normal::selection { background: #c00; color: #fff; }",
+    "::-moz-focus-inner { border: 0; }",
 
     // Should fail (bad syntax):
     "a { font:bold verdana 10px; }",

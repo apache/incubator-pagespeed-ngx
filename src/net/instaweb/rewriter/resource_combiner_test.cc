@@ -18,7 +18,8 @@
 
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 
-#include "net/instaweb/rewriter/public/combine_filter_base.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
@@ -26,6 +27,7 @@ namespace net_instaweb {
 namespace {
 
 const char kTestCombinerId[] = "tc";
+const char kTestCombinerExt[] = "tcc";
 const char kTestPiece1[] = "piece1.tcc";
 const char kTestPiece2[] = "piece2.tcc";
 const char kTestPiece3[] = "piece3.tcc";
@@ -40,15 +42,22 @@ const char kPathCombined[] = "path,_piece.tcc+piece1.tcc";
 // two subclass hooks:
 // 1) Preventing combinations based on content
 // 2) Altering content of documents when combining
-class TestCombineFilter : public CombineFilterBase {
+class TestCombineFilter : public RewriteFilter {
  public:
-  // The partnership subclass vetoes resources with content equal to
-  // kVetoText
-  class Partnership : public CombineFilterBase::Partnership {
+  class TestCombiner : public ResourceCombiner {
+    // The partnership subclass vetoes resources with content equal to
+    // kVetoText
    public:
-    Partnership(TestCombineFilter* filter, RewriteDriver* driver,
-                int url_overhead)
-        : CombineFilterBase::Partnership(filter, driver, url_overhead) {
+    explicit TestCombiner(RewriteDriver* driver)
+        : ResourceCombiner(driver, kTestCombinerId, kTestCombinerExt) {
+    };
+
+   protected:
+    bool WritePiece(Resource* input, OutputResource* combination,
+                    Writer* writer, MessageHandler* handler) {
+      ResourceCombiner::WritePiece(input, combination, writer, handler);
+      writer->Write("|", handler);
+      return true;
     }
 
    private:
@@ -59,36 +68,32 @@ class TestCombineFilter : public CombineFilterBase {
   };
 
   explicit TestCombineFilter(RewriteDriver* driver)
-      : CombineFilterBase(driver, kTestCombinerId, "tcc") {
-    InitPartnership();
+      : RewriteFilter(driver, kTestCombinerId),
+        combiner_(driver) {
   }
 
   virtual void StartDocumentImpl() {
-    InitPartnership();
+    combiner_.Reset(base_gurl());
   }
 
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element) {}
   virtual const char* Name() const { return "TestCombine"; }
-
-  Partnership* partnership() { return partnership_.get(); }
-  void InitPartnership() {
-    partnership_.reset(new Partnership(this, driver_, url_overhead_));
+  virtual bool Fetch(OutputResource* resource,
+                     Writer* writer,
+                     const RequestHeaders& request_header,
+                     ResponseHeaders* response_headers,
+                     MessageHandler* message_handler,
+                     UrlAsyncFetcher::Callback* callback) {
+    return combiner_.Fetch(resource, writer, request_header, response_headers,
+                           message_handler, callback);
   }
-
- protected:
-  bool WritePiece(Resource* input, OutputResource* combination,
-                  Writer* writer, MessageHandler* handler) {
-    CombineFilterBase::WritePiece(input, combination, writer, handler);
-    writer->Write("|", handler);
-    return true;
-  }
-
+  TestCombineFilter::TestCombiner* combiner() { return &combiner_; }
  private:
-  scoped_ptr<Partnership> partnership_;
+  TestCombineFilter::TestCombiner combiner_;
 };
 
-class CombineFilterBaseTest : public ResourceManagerTestBase {
+class ResourceCombinerTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
@@ -108,7 +113,7 @@ class CombineFilterBaseTest : public ResourceManagerTestBase {
     MockResource(kVetoPiece, kVetoText, 30000);
     MockMissingResource(kNoSuchPiece);
 
-    partnership_ = filter_->partnership();
+    partnership_ = filter_->combiner();
   }
 
   std::string AbsoluteUrl(const char* relative) {
@@ -191,7 +196,7 @@ class CombineFilterBaseTest : public ResourceManagerTestBase {
   }
 
   int UrlSlack() const {
-    return CombineFilterBase::kUrlSlack;
+    return ResourceCombiner::kUrlSlack;
   }
 
   HtmlElement* TestElement() {
@@ -217,10 +222,10 @@ class CombineFilterBaseTest : public ResourceManagerTestBase {
   }
 
   TestCombineFilter* filter_;  // owned by the rewrite_driver_.
-  TestCombineFilter::Partnership* partnership_;
+  TestCombineFilter::TestCombiner* partnership_;  // owned by the filter_
 };
 
-TEST_F(CombineFilterBaseTest, TestPartnershipBasic) {
+TEST_F(ResourceCombinerTest, TestPartnershipBasic) {
   // Make sure we're actually combining names and filling in the
   // data arrays if everything is available.
 
@@ -242,14 +247,14 @@ TEST_F(CombineFilterBaseTest, TestPartnershipBasic) {
   VerifyResource(2, kTestPiece3, e3);
 }
 
-TEST_F(CombineFilterBaseTest, TestIncomplete1) {
+TEST_F(ResourceCombinerTest, TestIncomplete1) {
   // Test with the first URL incomplete - nothing should get added
   HtmlElement* e1 = TestElement();
   EXPECT_FALSE(partnership_->AddElement(e1, kNoSuchPiece, &message_handler_));
   VerifyUrlCount(0);
 }
 
-TEST_F(CombineFilterBaseTest, TestIncomplete2) {
+TEST_F(ResourceCombinerTest, TestIncomplete2) {
   // Test with the second URL incomplete. Should include the first one.
   HtmlElement* e1 = TestElement();
   EXPECT_TRUE(partnership_->AddElement(e1, kTestPiece1, &message_handler_));
@@ -261,7 +266,7 @@ TEST_F(CombineFilterBaseTest, TestIncomplete2) {
   VerifyResource(0, kTestPiece1, e1);
 }
 
-TEST_F(CombineFilterBaseTest, TestIncomplete3) {
+TEST_F(ResourceCombinerTest, TestIncomplete3) {
   // Now with the third one incomplete. Two should be in the partnership
   HtmlElement* e1 = TestElement();
   EXPECT_TRUE(partnership_->AddElement(e1, kTestPiece1, &message_handler_));
@@ -276,7 +281,7 @@ TEST_F(CombineFilterBaseTest, TestIncomplete3) {
   VerifyResource(1, kTestPiece2, e2);
 }
 
-TEST_F(CombineFilterBaseTest, TestAddBroken) {
+TEST_F(ResourceCombinerTest, TestAddBroken) {
   // Test with the second URL broken enough for CreateInputResource to fail
   // (due to unknown protocol). In that case, we should just include the first
   // URL in the combination.
@@ -291,7 +296,7 @@ TEST_F(CombineFilterBaseTest, TestAddBroken) {
   VerifyResource(0, kTestPiece1, e1);
 }
 
-TEST_F(CombineFilterBaseTest, TestVeto) {
+TEST_F(ResourceCombinerTest, TestVeto) {
   // Make sure a vetoed element stops the combination
   HtmlElement* e1 = TestElement();
   EXPECT_TRUE(partnership_->AddElement(e1, kTestPiece1, &message_handler_));
@@ -306,7 +311,7 @@ TEST_F(CombineFilterBaseTest, TestVeto) {
   VerifyResource(1, kTestPiece2, e2);
 }
 
-TEST_F(CombineFilterBaseTest, TestRebase) {
+TEST_F(ResourceCombinerTest, TestRebase) {
   // A very basic test for re-resolving fragment when base changes
   HtmlElement* e1 = TestElement();
   EXPECT_TRUE(partnership_->AddElement(e1, kPathPiece, &message_handler_));
@@ -322,7 +327,7 @@ TEST_F(CombineFilterBaseTest, TestRebase) {
   VerifyResource(1, kTestPiece1, e2);
 }
 
-TEST_F(CombineFilterBaseTest, TestRebaseOverflow) {
+TEST_F(ResourceCombinerTest, TestRebaseOverflow) {
   // Test to make sure that we notice when we go over the limit when
   // we rebase - we lower the segment size limit just for that.
   options_.set_max_url_segment_size(LeafLength(strlen(kPathCombined) - 1) +
@@ -345,7 +350,7 @@ TEST_F(CombineFilterBaseTest, TestRebaseOverflow) {
   EXPECT_EQ("piece.tcc", partnership_->UrlSafeId());
 }
 
-TEST_F(CombineFilterBaseTest, TestRebaseOverflow2) {
+TEST_F(ResourceCombinerTest, TestRebaseOverflow2) {
   // Test to make sure we are exact in our size limit
   options_.set_max_url_segment_size(LeafLength(strlen(kPathCombined)) +
                                     UrlSlack());
@@ -364,7 +369,7 @@ TEST_F(CombineFilterBaseTest, TestRebaseOverflow2) {
   VerifyLengthLimits();
 }
 
-TEST_F(CombineFilterBaseTest, TestRebaseOverflow3) {
+TEST_F(ResourceCombinerTest, TestRebaseOverflow3) {
   // Make sure that if we add url, rebase, and then rollback we
   // don't end up overlimit due to the first piece expanding
   options_.set_max_url_segment_size(LeafLength(strlen("piece.tcc")) +
@@ -382,7 +387,7 @@ TEST_F(CombineFilterBaseTest, TestRebaseOverflow3) {
   VerifyLengthLimits();
 }
 
-TEST_F(CombineFilterBaseTest, TestMaxUrlOverflow) {
+TEST_F(ResourceCombinerTest, TestMaxUrlOverflow) {
   // Make sure we don't produce URLs bigger than the max_url_size().
   options_.set_max_url_size(
       strlen(kTestDomain) + LeafLength(strlen(kPathCombined)) + UrlSlack() - 1);
@@ -399,7 +404,7 @@ TEST_F(CombineFilterBaseTest, TestMaxUrlOverflow) {
   VerifyLengthLimits();
 }
 
-TEST_F(CombineFilterBaseTest, TestMaxUrlOverflow2) {
+TEST_F(ResourceCombinerTest, TestMaxUrlOverflow2) {
   // This one is just right
   options_.set_max_url_size(
       strlen(kTestDomain) + LeafLength(strlen(kPathCombined)) + UrlSlack());
@@ -417,7 +422,7 @@ TEST_F(CombineFilterBaseTest, TestMaxUrlOverflow2) {
   VerifyLengthLimits();
 }
 
-TEST_F(CombineFilterBaseTest, TestFetch) {
+TEST_F(ResourceCombinerTest, TestFetch) {
   // Test if we can reconstruct from pieces.
   std::string url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+piece2.tcc+piece3.tcc", "txt");
@@ -427,7 +432,7 @@ TEST_F(CombineFilterBaseTest, TestFetch) {
   EXPECT_EQ("piece1|piec2|pie3|", out);
 }
 
-TEST_F(CombineFilterBaseTest, TestFetchAsync) {
+TEST_F(ResourceCombinerTest, TestFetchAsync) {
   // Test if we can reconstruct from pieces, with callback happening async
   std::string url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+piece2.tcc+piece3.tcc", "txt");
@@ -436,7 +441,7 @@ TEST_F(CombineFilterBaseTest, TestFetchAsync) {
   EXPECT_EQ("piece1|piec2|pie3|", out);
 }
 
-TEST_F(CombineFilterBaseTest, TestFetchFail) {
+TEST_F(ResourceCombinerTest, TestFetchFail) {
   // Test if we can handle failure properly
   std::string url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
@@ -445,7 +450,7 @@ TEST_F(CombineFilterBaseTest, TestFetchFail) {
   EXPECT_FALSE(FetchResource(url, &out, kFetchNormal));
 }
 
-TEST_F(CombineFilterBaseTest, TestFetchFail2) {
+TEST_F(ResourceCombinerTest, TestFetchFail2) {
   mock_url_fetcher_.set_fail_on_unexpected(false);
   // This is slightly different from above, as we get a complete
   // fetch failure rather than a 404.
@@ -456,7 +461,7 @@ TEST_F(CombineFilterBaseTest, TestFetchFail2) {
   EXPECT_FALSE(FetchResource(url, &out, kFetchNormal));
 }
 
-TEST_F(CombineFilterBaseTest, TestFetchFailAsync) {
+TEST_F(ResourceCombinerTest, TestFetchFailAsync) {
   std::string url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
 
@@ -464,7 +469,7 @@ TEST_F(CombineFilterBaseTest, TestFetchFailAsync) {
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
 }
 
-TEST_F(CombineFilterBaseTest, TestFetchFailAsync2) {
+TEST_F(ResourceCombinerTest, TestFetchFailAsync2) {
   mock_url_fetcher_.set_fail_on_unexpected(false);
   std::string url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+weird.tcc+piece2.tcc", "txt");
@@ -473,7 +478,7 @@ TEST_F(CombineFilterBaseTest, TestFetchFailAsync2) {
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
 }
 
-TEST_F(CombineFilterBaseTest, TestFetchFailSevere) {
+TEST_F(ResourceCombinerTest, TestFetchFailSevere) {
   // Test the case where we can't even create resources (wrong protocol)
   std::string url = Encode("slwy://example.com/", kTestCombinerId, "0",
                             "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
@@ -481,14 +486,14 @@ TEST_F(CombineFilterBaseTest, TestFetchFailSevere) {
   EXPECT_FALSE(FetchResource(url, &out, kFetchNormal));
 }
 
-TEST_F(CombineFilterBaseTest, TestFetchFailSevereAsync) {
+TEST_F(ResourceCombinerTest, TestFetchFailSevereAsync) {
   std::string url = Encode("slwy://example.com/", kTestCombinerId, "0",
                             "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
   std::string out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
 }
 
-TEST_F(CombineFilterBaseTest, TestFetchNonsense) {
+TEST_F(ResourceCombinerTest, TestFetchNonsense) {
   // Make sure we handle URL decoding failing OK
   std::string url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+nopiece.tcc,", "txt");

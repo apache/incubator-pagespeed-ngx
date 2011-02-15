@@ -39,7 +39,7 @@ class RewriteOptions;
 class UrlPartnership {
  public:
   UrlPartnership(const RewriteOptions* options, const GURL& original_request);
-  ~UrlPartnership();
+  virtual ~UrlPartnership();
 
   // Adds a URL to a combination.  If it can be legally added, consulting
   // the DomainLaywer, then true is returned.
@@ -61,6 +61,8 @@ class UrlPartnership {
 
   // Removes the last URL that was added to the partnership.
   void RemoveLast();
+
+  virtual void Reset(const GURL& original_request);
 
  protected:
   int num_components() const { return common_components_.size(); }

@@ -40,6 +40,7 @@ class Hasher;
 class HtmlFilter;
 class HtmlParse;
 class HtmlWriterFilter;
+class Resource;
 class ResourceNamer;
 class RewriteFilter;
 class Statistics;
@@ -163,6 +164,8 @@ class RewriteDriver {
   }
 
   const RewriteOptions* options() { return &options_; }
+
+  Resource* CreateInputResource(const StringPiece& url, const GURL& base_gurl);
 
  private:
   friend class ResourceManagerTestBase;
