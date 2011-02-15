@@ -473,7 +473,7 @@ class Parser {
   // Current position in document (bytes from beginning).
   int CurrentOffset() const { return in_ - begin_; }
 
-  static const int kErrorContext = 20;
+  static const int kErrorContext;
   // Error type should be one of the static const k*Error's above.
   void ReportParsingError(uint64 error_type, const StringPiece& message);
 

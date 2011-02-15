@@ -21,6 +21,7 @@
 
 #include <ctype.h>  // isascii
 
+#include <algorithm>  // std::min
 #include <string>
 #include <vector>
 
@@ -90,11 +91,17 @@ Parser::Parser(StringPiece s)
       errors_seen_mask_(kNoError) {
 }
 
+const int Parser::kErrorContext = 20;
 void Parser::ReportParsingError(uint64 error_type,
                                 const StringPiece& message) {
   errors_seen_mask_ |= error_type;
+  // Make sure we don't print outside of the range in_ begin_ to end_.
+  const char* context_begin = in_ - std::min(static_cast<int64>(kErrorContext),
+                                             static_cast<int64>(in_ - begin_));
+  const char* context_end = in_ + std::min(static_cast<int64>(kErrorContext),
+                                           static_cast<int64>(end_ - in_));
   VLOG(1) << message << " at " << CurrentOffset() << " \"..."
-          << StringPiece(in_ - kErrorContext, 2 * kErrorContext) << "...\"";
+          << StringPiece(context_begin, context_end - context_begin) << "...\"";
 }
 
 // ****************

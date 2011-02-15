@@ -725,7 +725,7 @@ TEST_F(ParserTest, declarations) {
   EXPECT_EQ(Value::COLOR, t->get(0)->values()->get(0)->GetLexicalUnitType());
   EXPECT_EQ("#333333", t->get(0)->values()->get(0)->GetColorValue().ToString());
 
-  ASSERT_EQ(6, (*t->get(3)->values()).size());
+  ASSERT_EQ(6, t->get(3)->values()->size());
   EXPECT_EQ(Value::STRING,
             t->get(3)->values()->get(0)->GetLexicalUnitType());
   EXPECT_EQ("Gill Sans MT",
@@ -1225,25 +1225,25 @@ TEST_F(ParserTest, rulesets) {
       "h1 p + #id { font-size: 7px; width:10pt !important;}"));
   t.reset(a->ParseRuleset());
 
-  ASSERT_EQ(1, (*t).selectors().size());
-  ASSERT_EQ(3, (*t).selector(0).size());
+  ASSERT_EQ(1, t->selectors().size());
+  ASSERT_EQ(3, t->selector(0).size());
   EXPECT_EQ(SimpleSelectors::SIBLING,
-            (*(*t).selectors()[0])[2]->combinator());
-  ASSERT_EQ(2, (*t).declarations().size());
-  EXPECT_EQ(false, (*t).declarations()[0]->IsImportant());
-  EXPECT_EQ(Property::WIDTH, (*t).declarations()[1]->prop());
-  EXPECT_EQ(true, (*t).declarations()[1]->IsImportant());
+            t->selectors()[0]->at(2)->combinator());
+  ASSERT_EQ(2, t->declarations().size());
+  EXPECT_EQ(false, t->declarations()[0]->IsImportant());
+  EXPECT_EQ(Property::WIDTH, t->declarations()[1]->prop());
+  EXPECT_EQ(true, t->declarations()[1]->IsImportant());
 
   a.reset(new Parser("h1 p + #id , h1:first_child { font-size: 10px; }"));
   t.reset(a->ParseRuleset());
 
-  ASSERT_EQ(2, (*t).selectors().size());
-  ASSERT_EQ(3, (*t).selector(0).size());
-  ASSERT_EQ(1, (*t).selector(1).size());
+  ASSERT_EQ(2, t->selectors().size());
+  ASSERT_EQ(3, t->selector(0).size());
+  ASSERT_EQ(1, t->selector(1).size());
   EXPECT_EQ(SimpleSelectors::SIBLING,
-            (*(*t).selectors()[0])[2]->combinator());
-  ASSERT_EQ(1, (*t).declarations().size());
-  EXPECT_EQ(false, (*t).declarations()[0]->IsImportant());
+            t->selectors()[0]->at(2)->combinator());
+  ASSERT_EQ(1, t->declarations().size());
+  EXPECT_EQ(false, t->declarations()[0]->IsImportant());
 }
 
 TEST_F(ParserTest, atrules) {
@@ -1252,8 +1252,8 @@ TEST_F(ParserTest, atrules) {
   scoped_ptr<Stylesheet> t(new Stylesheet());
   a->ParseAtrule(t.get());
 
-  ASSERT_EQ(1, (*t).imports().size());
-  EXPECT_EQ("assets/style.css", UnicodeTextToUTF8((*t).import(0).link));
+  ASSERT_EQ(1, t->imports().size());
+  EXPECT_EQ("assets/style.css", UnicodeTextToUTF8(t->import(0).link));
   EXPECT_EQ(true, a->Done());
 
   a.reset(new Parser("@charset \"ISO-8859-1\" ;"));
@@ -1267,16 +1267,16 @@ TEST_F(ParserTest, atrules) {
   t.reset(new Stylesheet());
   a->ParseAtrule(t.get());
 
-  ASSERT_EQ(1, (*t).rulesets().size());
-  ASSERT_EQ(1, (*t).ruleset(0).selectors().size());
-  ASSERT_EQ(2, (*t).ruleset(0).media().size());
-  EXPECT_EQ("print", UnicodeTextToUTF8((*t).ruleset(0).medium(0)));
-  EXPECT_EQ("screen", UnicodeTextToUTF8((*t).ruleset(0).medium(1)));
-  ASSERT_EQ(1, (*(*t).ruleset(0).selectors()[0]).size());
+  ASSERT_EQ(1, t->rulesets().size());
+  ASSERT_EQ(1, t->ruleset(0).selectors().size());
+  ASSERT_EQ(2, t->ruleset(0).media().size());
+  EXPECT_EQ("print", UnicodeTextToUTF8(t->ruleset(0).medium(0)));
+  EXPECT_EQ("screen", UnicodeTextToUTF8(t->ruleset(0).medium(1)));
+  ASSERT_EQ(1, t->ruleset(0).selectors()[0]->size());
   EXPECT_EQ(kHtmlTagBody,
-            (*t).ruleset(0).selector(0)[0]->get(0)->element_type());
+            t->ruleset(0).selector(0)[0]->get(0)->element_type());
   EXPECT_EQ(Property::FONT_SIZE,
-            (*t).ruleset(0).declarations()[0]->prop());
+            t->ruleset(0).declarations()[0]->prop());
   EXPECT_EQ(true, a->Done());
 
   a.reset(new Parser(
@@ -1284,7 +1284,7 @@ TEST_F(ParserTest, atrules) {
   t.reset(new Stylesheet());
   a->ParseAtrule(t.get());
 
-  EXPECT_EQ(0, (*t).rulesets().size());
+  EXPECT_EQ(0, t->rulesets().size());
   EXPECT_EQ(true, a->Done());
 
   // Make sure media strings can be shared between multiple rulesets.
