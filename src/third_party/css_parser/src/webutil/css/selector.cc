@@ -70,10 +70,13 @@ SimpleSelector* SimpleSelector::NewId(const UnicodeText& id) {
                             kId, id);
 }
 
+// sep is the separator. Either ":" or "::".
+// See: http://www.w3.org/TR/CSS2/selector.html#pseudo-elements
+//  and http://www.w3.org/TR/css3-selectors/#pseudo-elements
 SimpleSelector* SimpleSelector::NewPseudoclass(
-    const UnicodeText& pseudoclass) {
+    const UnicodeText& pseudoclass, const UnicodeText& sep) {
   return new SimpleSelector(SimpleSelector::PSEUDOCLASS,
-                            UnicodeText(), pseudoclass);
+                            sep, pseudoclass);
 }
 
 SimpleSelector* SimpleSelector::NewLang(const UnicodeText& lang) {

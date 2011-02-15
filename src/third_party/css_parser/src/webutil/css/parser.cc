@@ -1460,7 +1460,19 @@ SimpleSelector* Parser::ParseSimpleSelector() {
       break;
     }
     case ':': {
+      UnicodeText sep;
       in_++;
+      // CSS3 requires all pseudo-elements to use :: to distinguish them from
+      // pseudo-classes. We save which separator was used in the Pseudoclass
+      // object, so that the original value can be reconstructed.
+      //
+      // http://www.w3.org/TR/css3-selectors/#pseudo-elements
+      if (*in_ == ':') {
+        in_++;
+        sep.CopyUTF8("::", 2);
+      } else {
+        sep.CopyUTF8(":", 1);
+      }
       UnicodeText pseudoclass = ParseIdent();
       // FIXME(yian): skip constructs "(en)" in lang(en) for now.
       if (in_ < end_ && *in_ == '(') {
@@ -1471,7 +1483,7 @@ SimpleSelector* Parser::ParseSimpleSelector() {
           break;
       }
       if (!pseudoclass.empty())
-        return SimpleSelector::NewPseudoclass(pseudoclass);
+        return SimpleSelector::NewPseudoclass(pseudoclass, sep);
       break;
     }
     case '[': {
