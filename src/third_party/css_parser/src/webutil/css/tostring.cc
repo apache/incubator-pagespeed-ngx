@@ -172,7 +172,9 @@ string SimpleSelector::ToString() const {
       return StringPrintf("#%s",
                           CSSEscapeString(value()).c_str());
     case PSEUDOCLASS:
-      return StringPrintf(":%s",
+      return StringPrintf("%s%s",
+                          // pseudoclass_separator() is either ":" or "::".
+                          UnicodeTextToUTF8(pseudoclass_separator()).c_str(),
                           CSSEscapeString(pseudoclass()).c_str());
     case LANG:
       return StringPrintf(":lang(%s)",
