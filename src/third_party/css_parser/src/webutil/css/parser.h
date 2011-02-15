@@ -159,12 +159,12 @@ class Parser {
   // This is a bitmask of errors seen during the parse.  This is decidedly
   // incomplete --- there are definitely many errors that are not reported here.
   static const uint64 kNoError          = 0;
-  static const uint64 kUtf8Error        = 1ULL << 0;
-  static const uint64 kDeclarationError = 1ULL << 1;
-  static const uint64 kSelectorError    = 1ULL << 2;
-  static const uint64 kFunctionError    = 1ULL << 3;
-  static const uint64 kMediaError       = 1ULL << 4;
-  static const uint64 kCounterError     = 1ULL << 5;
+  static const uint64 kUtf8Error        = 1ULL << 0; // 1
+  static const uint64 kDeclarationError = 1ULL << 1; // 2
+  static const uint64 kSelectorError    = 1ULL << 2; // 4
+  static const uint64 kFunctionError    = 1ULL << 3; // 8
+  static const uint64 kMediaError       = 1ULL << 4; // 16
+  static const uint64 kCounterError     = 1ULL << 5; // 32
   uint64 errors_seen_mask() const { return errors_seen_mask_; }
 
   friend class ParserTest;  // we need to unit test private Parse functions.
@@ -470,8 +470,16 @@ class Parser {
   // nested blocks.  We discard the result.
   void ParseBlock();
 
-  const char *in_;   // The current point in the parse.
-  const char *end_;  // The end of the document to parse.
+  // Current position in document (bytes from beginning).
+  int CurrentOffset() const { return in_ - begin_; }
+
+  static const int kErrorContext = 20;
+  // Error type should be one of the static const k*Error's above.
+  void ReportParsingError(uint64 error_type, const StringPiece& message);
+
+  const char *begin_;  // The beginning of the doc (used to report offset).
+  const char *in_;     // The current point in the parse.
+  const char *end_;    // The end of the document to parse.
 
   bool quirks_mode_;  // Whether we are in quirks mode.
   bool allow_all_values_;  // If false, strip all values we don't recognize.

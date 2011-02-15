@@ -64,7 +64,8 @@ class Tracer {  // in opt mode, do nothing.
 // ****************
 
 Parser::Parser(const char* utf8text, const char* textend)
-    : in_(utf8text),
+    : begin_(utf8text),
+      in_(begin_),
       end_(textend),
       quirks_mode_(true),
       allow_all_values_(false),
@@ -72,7 +73,8 @@ Parser::Parser(const char* utf8text, const char* textend)
 }
 
 Parser::Parser(const char* utf8text)
-    : in_(utf8text),
+    : begin_(utf8text),
+      in_(begin_),
       end_(utf8text + strlen(utf8text)),
       quirks_mode_(true),
       allow_all_values_(false),
@@ -80,11 +82,19 @@ Parser::Parser(const char* utf8text)
 }
 
 Parser::Parser(StringPiece s)
-    : in_(s.begin()),
+    : begin_(s.begin()),
+      in_(begin_),
       end_(s.end()),
       quirks_mode_(true),
       allow_all_values_(false),
       errors_seen_mask_(kNoError) {
+}
+
+void Parser::ReportParsingError(uint64 error_type,
+                                const StringPiece& message) {
+  errors_seen_mask_ |= error_type;
+  VLOG(1) << message << " at " << CurrentOffset() << " \"..."
+          << StringPiece(in_ - kErrorContext, 2 * kErrorContext) << "...\"";
 }
 
 // ****************
@@ -239,7 +249,7 @@ UnicodeText Parser::ParseIdent() {
           return s;
         }
       } else {  // Encoding error.  Be a little forgiving.
-        errors_seen_mask_ |= kUtf8Error;
+        ReportParsingError(kUtf8Error, "UTF8 parsing error");
         in_++;
       }
     } else if (*in_ == '\\') {
@@ -268,7 +278,7 @@ char32 Parser::ParseEscape() {
     if (len && rune != Runeerror) {
       in_ += len;
     } else {
-      errors_seen_mask_ |= kUtf8Error;
+      ReportParsingError(kUtf8Error, "UTF8 parsing error");
       in_++;
     }
     return rune;
@@ -323,7 +333,7 @@ UnicodeText Parser::ParseString() {
             s.push_back(rune);
             in_ += len;
           } else {
-            errors_seen_mask_ |= kUtf8Error;
+            ReportParsingError(kUtf8Error, "UTF8 parsing error");
             in_++;
           }
         } else {
@@ -553,7 +563,7 @@ Value* Parser::ParseUrl() {
           s.push_back(rune);
           in_ += len;
         } else {
-          errors_seen_mask_ |= kUtf8Error;
+          ReportParsingError(kUtf8Error, "UTF8 parsing error");
           in_++;
         }
       } else {
@@ -685,12 +695,12 @@ Value* Parser::ParseAny() {
           toret = ParseUrl();
         } else if (id.utf8_length() == 7
                    && memcasecmp("counter", id.utf8_data(), 7) == 0) {
-          errors_seen_mask_ |= kCounterError;
+          ReportParsingError(kCounterError, "Cannot parse counter() yet.");
           // TODO(yian): parse COUNTER parameters
           toret = new Value(Value::COUNTER, new Values());
         } else if (id.utf8_length() == 8
                    && memcasecmp("counters", id.utf8_data(), 8) == 0) {
-          errors_seen_mask_ |= kCounterError;
+          ReportParsingError(kCounterError, "Cannot parse counters() yet.");
           // TODO(yian): parse COUNTERS parameters
           toret = new Value(Value::COUNTER, new Values());
         } else if (id.utf8_length() == 3
@@ -700,7 +710,7 @@ Value* Parser::ParseAny() {
                    && memcasecmp("rect", id.utf8_data(), 4) == 0) {
           toret = ParseRect();
         } else {
-          errors_seen_mask_ |= kFunctionError;
+          ReportParsingError(kFunctionError, "Cannot parse functions yet.");
           // TODO(yian): parse FUNCTION parameters
           toret = new Value(id, new Values());
         }
@@ -1265,6 +1275,7 @@ Declarations* Parser::ParseRawDeclarations() {
           in_++;
           UnicodeText rest = ParseIdent();
           if (rest.empty()) {
+            ReportParsingError(kDeclarationError, "Ignoring * property");
             ignore_this_decl = true;
             break;
           }
@@ -1272,6 +1283,7 @@ Declarations* Parser::ParseRawDeclarations() {
         } else {
           id = ParseIdent();
           if (id.empty()) {
+            ReportParsingError(kDeclarationError, "Ignoring empty property");
             ignore_this_decl = true;
             break;
           }
@@ -1279,6 +1291,9 @@ Declarations* Parser::ParseRawDeclarations() {
         Property prop(id);
         SkipSpace();
         if (Done() || *in_ != ':') {
+          ReportParsingError(kDeclarationError,
+                             StringPrintf("Ignoring property with no values %s",
+                                          prop.prop_text().c_str()));
           ignore_this_decl = true;
           break;
         }
@@ -1303,6 +1318,10 @@ Declarations* Parser::ParseRawDeclarations() {
         }
 
         if (vals == NULL) {
+          ReportParsingError(kDeclarationError,
+                             StringPrintf(
+                                 "Failed to parse values for property %s",
+                                 prop.prop_text().c_str()));
           ignore_this_decl = true;
           break;
         }
@@ -1613,7 +1632,7 @@ Ruleset* Parser::ParseRuleset() {
     // valid CSS 2.1), it must ignore the declaration block as
     // well.
     success = false;
-    errors_seen_mask_ |= kSelectorError;
+    ReportParsingError(kSelectorError, "Failed to parse selector");
   } else {
     ruleset->set_selectors(selectors.release());
   }
@@ -1645,10 +1664,11 @@ void Parser::ParseMediumList(std::vector<UnicodeText>* media) {
         break;
       default:
         scoped_ptr<Value> v(ParseAny());
-        if (v.get() && v->GetLexicalUnitType() == Value::IDENT)
+        if (v.get() && v->GetLexicalUnitType() == Value::IDENT) {
           media->push_back(v->GetIdentifierText());
-        else
-          errors_seen_mask_ |= kMediaError;
+        } else {
+          ReportParsingError(kMediaError, "Failed to parse media");
+        }
         break;
     }
     SkipSpace();
