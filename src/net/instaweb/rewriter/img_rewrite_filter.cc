@@ -239,6 +239,14 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
   return rewrite_result;
 }
 
+int ImgRewriteFilter::FilterCacheFormatVersion() const {
+  return 1;
+}
+
+bool ImgRewriteFilter::ReuseByContentHash() const {
+  return true;
+}
+
 // Convert (possibly NULL) Image* to corresponding (possibly NULL) ContentType*
 const ContentType* ImgRewriteFilter::ImageToContentType(
     const std::string& origin_url, Image* image) {

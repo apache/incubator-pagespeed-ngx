@@ -86,6 +86,7 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
   virtual const char* Name() const { return "Javascript"; }
 
  protected:
+  virtual bool ReuseByContentHash() const;
   virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
                                               OutputResource* output_resource,
                                               UrlSegmentEncoder* encoder);

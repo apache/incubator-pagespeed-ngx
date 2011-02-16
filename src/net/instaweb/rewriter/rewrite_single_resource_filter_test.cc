@@ -51,6 +51,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
         num_optimizable_(0),
         num_rewrites_called_(0),
         create_custom_encoder_(create_custom_encoder),
+        reuse_by_content_hash_(false),
         active_custom_encoder_(0) {
   }
 
@@ -89,6 +90,8 @@ class TestRewriter : public RewriteSingleResourceFilter {
   // Do we use a custom encoder (which prepends kTestEncoderUrlExtra?)
   bool create_custom_encoder() const { return create_custom_encoder_; }
 
+  void set_reuse_by_content_hash(bool r) { reuse_by_content_hash_ = r; }
+
   virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
                                               OutputResource* output_resource,
                                               UrlSegmentEncoder* encoder) {
@@ -122,6 +125,10 @@ class TestRewriter : public RewriteSingleResourceFilter {
 
   virtual int FilterCacheFormatVersion() const {
     return format_version_;
+  }
+
+  virtual bool ReuseByContentHash() const {
+    return reuse_by_content_hash_;
   }
 
   virtual UrlSegmentEncoder* CreateCustomUrlEncoder() const {
@@ -196,6 +203,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
   int num_optimizable_;
   int num_rewrites_called_;
   bool create_custom_encoder_;
+  bool reuse_by_content_hash_;
   mutable TestUrlEncoder* active_custom_encoder_;
 };
 
@@ -219,8 +227,11 @@ class RewriteSingleResourceFilterTest
     MockMissingResource("404.tst");
 
     in_tag_ = "<tag src=\"a.tst\"></tag>";
-    out_tag_ = StrCat("<tag src=\"", kTestDomain, OutputName("a.tst"),
-                      "\"></tag>");
+    out_tag_ = ComputeOutTag();
+  }
+
+  std::string ComputeOutTag() {
+    return StrCat("<tag src=\"", kTestDomain, OutputName("a.tst"), "\"></tag>");
   }
 
   // Create a resource with given data and TTL
@@ -242,10 +253,11 @@ class RewriteSingleResourceFilterTest
   // input filename
   std::string OutputName(const StringPiece& in_name) {
     if (filter_->create_custom_encoder()) {
-      return Encode("", kTestFilterPrefix, "0",
+      return Encode("", kTestFilterPrefix, mock_hasher_.Hash(""),
                     StrCat(kTestEncoderUrlExtra, in_name), "txt");
     } else {
-      return Encode("", kTestFilterPrefix, "0", in_name, "txt");
+      return Encode("", kTestFilterPrefix, mock_hasher_.Hash(""), in_name,
+                    "txt");
     }
   }
 
@@ -479,6 +491,57 @@ TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshen) {
   EXPECT_EQ(2, filter_->num_rewrites_called());
   EXPECT_EQ(2, counter->fetch_count());
 }
+
+TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshenHashCheck) {
+  // Like above, but we rely on the input hash check to recover the result
+  // for us.
+  filter_->set_reuse_by_content_hash(true);
+  scoped_ptr<CountingUrlAsyncFetcher> counter(SetupCountingFetcher());
+
+  // Start with non-zero time.
+  mock_timer()->advance_ms(kTtlMs / 2);
+  MockResource("a.tst", "whatever", kTtlSec);
+
+  ValidateExpected("initial", in_tag_, out_tag_);
+  EXPECT_EQ(1, filter_->num_rewrites_called());
+  EXPECT_EQ(1, counter->fetch_count());
+
+  // Advance time past TTL, but re-mock the resource so it can be refetched.
+  mock_timer()->advance_ms(kTtlMs + 10);
+  MockResource("a.tst", "whatever", kTtlSec);
+  ValidateExpected("refetch", in_tag_, out_tag_);
+
+  // Here, we did re-fetch it, but did not recompute.
+  EXPECT_EQ(1, filter_->num_rewrites_called());
+  EXPECT_EQ(2, counter->fetch_count());
+}
+
+TEST_P(RewriteSingleResourceFilterTest, CacheHashCheckChange) {
+  // Now the hash check should fail because the hash changed
+  filter_->set_reuse_by_content_hash(true);
+  scoped_ptr<CountingUrlAsyncFetcher> counter(SetupCountingFetcher());
+
+  // Start with non-zero time
+  mock_timer()->advance_ms(kTtlMs / 2);
+  MockResource("a.tst", "whatever", kTtlSec);
+
+  ValidateExpected("initial", in_tag_, out_tag_);
+  EXPECT_EQ(1, filter_->num_rewrites_called());
+  EXPECT_EQ(1, counter->fetch_count());
+
+  // Advance time past TTL, but re-mock the resource so it can be refetched.
+  mock_timer()->advance_ms(kTtlMs + 10);
+  mock_hasher_.set_hash_value("1");
+  MockResource("a.tst", "whatever", kTtlSec);
+  // Here ComputeOutTag() != out_tag_ due to the new hasher.
+  ValidateExpected("refetch", in_tag_, ComputeOutTag());
+
+  // Since we changed the hash, this needs to recompute.
+  EXPECT_EQ(2, filter_->num_rewrites_called());
+  EXPECT_EQ(2, counter->fetch_count());
+}
+
+
 
 TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
   scoped_ptr<CountingUrlAsyncFetcher> counter(SetupCountingFetcher());

@@ -26,13 +26,21 @@ namespace net_instaweb {
 
 class MockHasher : public Hasher {
  public:
-  MockHasher() {}
+  MockHasher(): hash_value_("0") {}
   virtual ~MockHasher();
 
-  virtual std::string Hash(const StringPiece& content) const { return "0"; }
-  virtual int HashSizeInChars() const { return 1; }
+  virtual std::string Hash(const StringPiece& content) const {
+    return hash_value_;
+  }
+
+  void set_hash_value(const std::string& new_hash_value) {
+    hash_value_ = new_hash_value;
+  }
+
+  virtual int HashSizeInChars() const { return hash_value_.length(); }
 
  private:
+  std::string hash_value_;
   DISALLOW_COPY_AND_ASSIGN(MockHasher);
 };
 

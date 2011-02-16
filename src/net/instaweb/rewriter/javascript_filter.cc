@@ -231,6 +231,10 @@ void JavascriptFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   some_missing_scripts_ = true;
 }
 
+bool JavascriptFilter::ReuseByContentHash() const {
+  return true;
+}
+
 RewriteSingleResourceFilter::RewriteResult
 JavascriptFilter::RewriteLoadedResource(const Resource* script_input,
                                         OutputResource* output_resource,

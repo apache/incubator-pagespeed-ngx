@@ -101,6 +101,18 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   // The default implementation returns 0.
   virtual int FilterCacheFormatVersion() const;
 
+  // If this method returns true, RewriteSingleResourceFilter will keep
+  // track of the content hash of the input resource, and use it to
+  // reuse cached outputs even when the input TTL has expired.
+  //
+  // Warning: this is the wrong thing to do if the filter also touches
+  // other files recursively (e.g. a CSS filter rewriting images included
+  // from it), since RewriteSingleResourceFilter would not know to check
+  // whether these dependencies have changed.
+  //
+  // The default implementation returns false.
+  virtual bool ReuseByContentHash() const;
+
   // Derived classes must implement this function instead of Fetch.
   //
   // The last parameter gets the UrlSegmentEncoder used to encode or decode
@@ -134,13 +146,26 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   friend class FetchCallback;
   friend class RewriteSingleResourceFilterTest;
 
+  // Metadata key we use to store the input timestamp.
+  static const char kInputTimestampKey[];
+
   // Check and record whether metadata version matches
   // FilterCacheFormatVersion() respectively.
   bool IsValidCacheFormat(OutputResource::CachedResult* cached);
   void UpdateCacheFormat(OutputResource* output_resource);
 
-  // Metadata key we use to store the input timestamp.
-  static const char kInputTimestampKey[];
+  // If the filter requests reuse of results based on input hash,
+  // stores it in cached.
+  void UpdateInputHash(const Resource* input_resource,
+                       OutputResource::CachedResult* cached);
+
+  // Returns true if origin expiration time passed.
+  bool IsOriginExpired(OutputResource::CachedResult* cached) const;
+
+  // Releases a valid cached result inside output_resource,
+  // taking care to freshen the input if needed.
+  OutputResource::CachedResult* ReleaseCachedAfterAnyFreshening(
+      Resource* input_resource, OutputResource* output_resource);
 
   // Tries to rewrite input_resource to output_resource, and if successful
   // updates the cache as appropriate. Does not call WriteUnoptimizable on

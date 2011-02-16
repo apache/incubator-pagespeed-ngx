@@ -125,6 +125,10 @@ bool CacheExtender::IsRewrittenResource(const StringPiece& url) const {
   return (output_resource.get() != NULL);
 }
 
+bool CacheExtender::ReuseByContentHash() const {
+  return true;
+}
+
 RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
     const Resource* input_resource,
     OutputResource* output_resource,

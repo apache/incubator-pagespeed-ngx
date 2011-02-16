@@ -207,6 +207,16 @@ class ResourceManager {
   void WriteUnoptimizable(OutputResource* output,
                           int64 origin_expire_time_ms, MessageHandler* handler);
 
+  // Writes out a cache entry telling us how to get to the processed version
+  // (output) of some resource given the original source URL and summary of the
+  // processing done, such as the filter code and any custom information
+  // stored by the filter which are all packed inside the ResourceNamer.
+  // This entry expires as soon as the origin does. If no optimization
+  // was possible, it records that fact.
+  void CacheComputedResourceMapping(OutputResource* output,
+                                    int64 origin_expire_time_ms,
+                                    MessageHandler* handler);
+
   // Load the resource if it is cached (or if it can be fetched quickly).
   // If not send off an asynchronous fetch and store the result in the cache.
   //
@@ -259,16 +269,6 @@ class ResourceManager {
   void RefreshIfImminentlyExpiring(Resource* resource,
                                    MessageHandler* handler) const;
   inline void IncrementResourceUrlDomainRejections();
-
-  // Writes out a cache entry telling us how to get to the processed version
-  // (output) of some resource given the original source URL and summary of the
-  // processing done, such as the filter code and any custom information
-  // stored by the filter which are all packed inside the ResourceNamer.
-  // This entry expires as soon as the origin does. If no optimization
-  // was possible, it records that fact.
-  void CacheComputedResourceMapping(OutputResource* output,
-                                    int64 origin_expire_time_ms,
-                                    MessageHandler* handler);
 
   // Internal low-level helper for resource creation.
   // Use only when permission checking has been done explicitly on the
