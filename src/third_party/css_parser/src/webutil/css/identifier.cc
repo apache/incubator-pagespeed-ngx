@@ -939,7 +939,7 @@ IdentifierMapper::in_word_set (register const char *str, register unsigned int l
 
 Identifier::Identifier(const UnicodeText& s) : ident_(IdentFromText(s)) {
   if (ident_ == OTHER)
-    other_ = LowercaseAscii(s);
+    other_ = s;
 }
 
 //

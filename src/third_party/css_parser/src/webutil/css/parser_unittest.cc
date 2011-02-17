@@ -518,7 +518,7 @@ TEST_F(ParserTest, font_family) {
   EXPECT_TRUE(a->ParseFontFamily(t.get()));
   ASSERT_EQ(4, t->size());
   EXPECT_EQ(Value::IDENT, t->get(0)->GetLexicalUnitType());
-  EXPECT_EQ("arial font", UnicodeTextToUTF8(t->get(0)->GetIdentifierText()));
+  EXPECT_EQ("Arial font", UnicodeTextToUTF8(t->get(0)->GetIdentifierText()));
   EXPECT_EQ(Value::STRING, t->get(1)->GetLexicalUnitType());
   EXPECT_EQ("system", UnicodeTextToUTF8(t->get(2)->GetIdentifierText()));
   EXPECT_EQ("menu new", UnicodeTextToUTF8(t->get(3)->GetIdentifierText()));
@@ -536,7 +536,7 @@ TEST_F(ParserTest, font_family) {
   EXPECT_TRUE(a->ParseFontFamily(t.get()));
   ASSERT_EQ(1, t->size());
   EXPECT_EQ(Value::IDENT, t->get(0)->GetLexicalUnitType());
-  EXPECT_EQ("verdana", UnicodeTextToUTF8(t->get(0)->GetIdentifierText()));
+  EXPECT_EQ("Verdana", UnicodeTextToUTF8(t->get(0)->GetIdentifierText()));
 }
 
 TEST_F(ParserTest, font) {

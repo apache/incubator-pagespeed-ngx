@@ -62,9 +62,9 @@ TEST_F(ToStringTest, declarations) {
   // FONT is special
   Css::Parser parser("font: 3px/1.1 Arial");
   scoped_ptr<Css::Declarations> decls(parser.ParseDeclarations());
-  EXPECT_EQ("font: 3px/1.1 arial; "
+  EXPECT_EQ("font: 3px/1.1 Arial; "
             "font-style: normal; font-variant: normal; font-weight: normal; "
-            "font-size: 3px; line-height: 1.1; font-family: arial",
+            "font-size: 3px; line-height: 1.1; font-family: Arial",
             decls->ToString());
 }
 

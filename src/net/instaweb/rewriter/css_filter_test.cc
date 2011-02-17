@@ -523,10 +523,9 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     { "#element { width: 1px; _width: 3px; }",
       "#element{width:1px;_width:3px}" },
 
-    // TODO(sligocki): Don't lowercase font names:
+    // Don't lowercase font names.
     { "a { font-family: Arial; }",
-      // Should be: "a{font-family:Arial}"
-      "a{font-family:arial}" },
+      "a{font-family:Arial}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

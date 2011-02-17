@@ -181,7 +181,7 @@ pre-line, Identifier::PRE_LINE
 
 Identifier::Identifier(const UnicodeText& s) : ident_(IdentFromText(s)) {
   if (ident_ == OTHER)
-    other_ = LowercaseAscii(s);
+    other_ = s;
 }
 
 //
