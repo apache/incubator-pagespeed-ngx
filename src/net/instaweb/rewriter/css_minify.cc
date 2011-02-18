@@ -259,18 +259,18 @@ void CssMinify::Minify(const Css::Value& value) {
       break;
     case Css::Value::COUNTER:
       Write("counter(");
-      Write(value.GetParameters()->ToString());
+      Minify(*value.GetParametersWithSeparators());
       Write(")");
       break;
     case Css::Value::FUNCTION:
       Write(CSSEscapeString(value.GetFunctionName()));
       Write("(");
-      Write(value.GetParameters()->ToString());
+      Minify(*value.GetParametersWithSeparators());
       Write(")");
       break;
     case Css::Value::RECT:
       Write("rect(");
-      Write(value.GetParameters()->ToString());
+      Minify(*value.GetParametersWithSeparators());
       Write(")");
       break;
     case Css::Value::COLOR:
@@ -293,6 +293,23 @@ void CssMinify::Minify(const Css::Value& value) {
       break;
     case Css::Value::DEFAULT:
       break;
+  }
+}
+
+void CssMinify::Minify(const Css::FunctionParameters& parameters) {
+  if (parameters.size() >= 1) {
+    Minify(*parameters.value(0));
+  }
+  for (int i = 1, n = parameters.size(); i < n; ++i) {
+    switch (parameters.separator(i)) {
+      case Css::FunctionParameters::COMMA_SEPARATED:
+        Write(",");
+        break;
+      case Css::FunctionParameters::SPACE_SEPARATED:
+        Write(" ");
+        break;
+    }
+    Minify(*parameters.value(i));
   }
 }
 

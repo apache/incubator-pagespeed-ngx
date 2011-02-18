@@ -324,11 +324,6 @@ TEST_F(CssFilterTest, NoRewriteParseError) {
   // From http://www.baidu.com/
   ValidateFailParse("non_unicode_baidu",
                     "#lk span {font:14px \"\xCB\xCE\xCC\xE5\"}");
-  // From http://www.yahoo.com/
-  const char confusing_value[] =
-      "a { background-image:-webkit-gradient(linear, 50% 0%, 50% 100%,"
-      " from(rgb(232, 237, 240)), to(rgb(252, 252, 253)));}";
-  ValidateFailParse("non_standard_value", confusing_value);
 
   ValidateFailParse("bad_char_in_selector", ".bold: { font-weight: bold }");
 }
@@ -364,9 +359,13 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@media a,b{a{color:red}}",
     "a{content:\"Odd chars: \\(\\)\\,\\\"\\\'\"}",
     "img{clip:rect(0px,60px,200px,0px)}",
+    // CSS3-style pseudo-elements.
     "p.normal::selection{background:#c00;color:#fff}",
     "::-moz-focus-inner{border:0}",
-
+    // http://code.google.com/p/modpagespeed/issues/detail?id=51
+    "a{box-shadow:-1px -2px 2px rgba(0,0,0,0.15)}",  // CSS3 rgba
+    // http://code.google.com/p/modpagespeed/issues/detail?id=66
+    "a{-moz-transform:rotate(7deg)}",
     };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
@@ -377,14 +376,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
   const char* fail_examples[] = {
     // http://code.google.com/p/modpagespeed/issues/detail?id=50
     "@media screen and (max-width:290px){a{color:red}}",  // CSS3 "and (...)"
-    // http://code.google.com/p/modpagespeed/issues/detail?id=51
-    "a{box-shadow:-1px -2px 2px rgba(0, 0, 0, .15)}",  // CSS3 rgba
-    // http://code.google.com/p/modpagespeed/issues/detail?id=66
-    "a{-moz-transform:rotate(7deg)}",
-
-    // Found in the wild:
-    ".lsb:active, .gac_sb:active{ background: -webkit-gradient(linear, "
-    "left top, left bottom, from(#ccc), to(#ddd))}",
 
     "a { filter:progid:DXImageTransform.Microsoft.Alpha(Opacity=80); }",
 
@@ -489,6 +480,41 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "li.ui-state-disabled a,.ui-tabs .ui-tabs-nav li.ui-state-processing a{"
       "cursor:pointer}"},
 
+    { ".ui-datepicker-cover {\n"
+      "  display: none; /*sorry for IE5*/\n"
+      "  display/**/: block; /*sorry for IE5*/\n"
+      "  position: absolute; /*must have*/\n"
+      "  z-index: -1; /*must have*/\n"
+      "  filter: mask(); /*must have*/\n"
+      "  top: -4px; /*must have*/\n"
+      "  left: -4px; /*must have*/\n"
+      "  width: 200px; /*must have*/\n"
+      "  height: 200px; /*must have*/\n"
+      "}\n",
+
+      // TODO(sligocki): Should we preserve the dispaly/**/:?
+      //".ui-datepicker-cover{display:none;display/**/:block;position:absolute;"
+      //"z-index:-1;filter:mask();top:-4px;left:-4px;width:200px;height:200px}"
+
+      ".ui-datepicker-cover{display:none;display:block;position:absolute;"
+      "z-index:-1;filter:mask();top:-4px;left:-4px;width:200px;height:200px}" },
+
+    { ".shift {\n"
+      "  -moz-transform: rotate(7deg);\n"
+      "  -webkit-transform: rotate(7deg);\n"
+      "  -moz-transform: skew(-25deg);\n"
+      "  -webkit-transform: skew(-25deg);\n"
+      "  -moz-transform: scale(0.5);\n"
+      "  -webkit-transform: scale(0.5);\n"
+      "  -moz-transform: translate(3em, 0);\n"
+      "  -webkit-transform: translate(3em, 0);\n"
+      "}\n",
+
+      ".shift{-moz-transform:rotate(7deg);-webkit-transform:rotate(7deg);"
+      "-moz-transform:skew(-25deg);-webkit-transform:skew(-25deg);"
+      "-moz-transform:scale(0.5);-webkit-transform:scale(0.5);"
+      "-moz-transform:translate(3em,0);-webkit-transform:translate(3em,0)}" },
+
     // http://code.google.com/p/modpagespeed/issues/detail?id=121
     { "body { font: 2em sans-serif; }", "body{font:2em sans-serif}" },
     { "body { font: 0.75em sans-serif; }", "body{font:0.75em sans-serif}" },
@@ -523,6 +549,17 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     { "#element { width: 1px; _width: 3px; }",
       "#element{width:1px;_width:3px}" },
 
+    // Complex nested functions
+    { "body {\n"
+      "  background-image:-webkit-gradient(linear, 50% 0%, 50% 100%,"
+      " from(rgb(232, 237, 240)), to(rgb(252, 252, 253)));\n"
+      "  color: red;\n"
+      "}\n"
+      ".foo { color: rgba(1, 2, 3, 0.4); }\n",
+
+      "body{background-image:-webkit-gradient(linear,50% 0%,50% 100%,"
+      "from(#e8edf0),to(#fcfcfd));color:red}.foo{color:rgba(1,2,3,0.4)}" },
+
     // Don't lowercase font names.
     { "a { font-family: Arial; }",
       "a{font-family:Arial}" },
@@ -534,41 +571,6 @@ TEST_F(CssFilterTest, ComplexCssTest) {
   }
 
   const char* parse_fail_examples[] = {
-    ".ui-datepicker-cover {\n"
-    "  display: none; /*sorry for IE5*/\n"
-    "  display/**/: block; /*sorry for IE5*/\n"
-    "  position: absolute; /*must have*/\n"
-    "  z-index: -1; /*must have*/\n"
-    "  filter: mask(); /*must have*/\n"
-    "  top: -4px; /*must have*/\n"
-    "  left: -4px; /*must have*/\n"
-    "  width: 200px; /*must have*/\n"
-    "  height: 200px; /*must have*/\n"
-    "}\n",
-
-    // Right now we bail on parsing the above. Could probably be minified to:
-    //".ui-datepicker-cover{display:none;display/**/:block;position:absolute;"
-    //"z-index:-1;filter:mask();top:-4px;left:-4px;width:200px;height:200px}"
-    // TODO(sligocki): When this is parsed correctly, move it up to examples[][]
-
-    ".shift {\n"
-    "  -moz-transform: rotate(7deg);\n"
-    "  -webkit-transform: rotate(7deg);\n"
-    "  -moz-transform: skew(-25deg);\n"
-    "  -webkit-transform: skew(-25deg);\n"
-    "  -moz-transform: scale(0.5);\n"
-    "  -webkit-transform: scale(0.5);\n"
-    "  -moz-transform: translate(3em, 0);\n"
-    "  -webkit-transform: translate(3em, 0);\n"
-    "}\n",
-
-    // Right now we bail on parsing the above. Could probably be minified to:
-    //".shift{-moz-transform:rotate(7deg);-webkit-transform:rotate(7deg);"
-    //"-moz-transform:skew(-25deg);-webkit-transform:skew(-25deg);"
-    //"-moz-transform:scale(0.5);-webkit-transform:scale(0.5);"
-    //"-moz-transform:translate(3em,0);-webkit-transform:translate(3em,0);}"
-    // TODO(sligocki): When this is parsed correctly, move it up to examples[][]
-
     // http://www.w3schools.com/CSS/tryit.asp?filename=trycss_gen_counter-reset
     "body {counter-reset:section;}\n"
     "h1 {counter-reset:subsection;}\n"

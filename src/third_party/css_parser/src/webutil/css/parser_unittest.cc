@@ -31,6 +31,11 @@ namespace Css {
 
 class ParserTest : public testing::Test {
  protected:
+  // Accessor for private method.
+  Value* ParseAny(Parser* p) {
+    return p->ParseAny();
+  }
+
   // The various Test* functions below check that parselen characters
   // are parsed.  Pass -1 to indicate that the entire string should be
   // parsed.
@@ -1429,13 +1434,6 @@ TEST_F(ParserTest, SelectorError) {
   EXPECT_EQ(Parser::kSelectorError, p.errors_seen_mask());
 }
 
-TEST_F(ParserTest, FunctionError) {
-  Parser p("box-shadow: -1px -2px 2px rgba(0, 0, 0, .15)");
-  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
-  EXPECT_EQ(1, declarations->size());
-  EXPECT_EQ(Parser::kFunctionError, p.errors_seen_mask());
-}
-
 TEST_F(ParserTest, MediaError) {
   Parser p("@media screen and (max-width: 290px) {}");
   scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
@@ -1498,6 +1496,39 @@ TEST_F(ParserTest, CssHacks) {
   EXPECT_EQ(Property::OTHER, declarations->at(1)->prop());
   EXPECT_EQ("_width", declarations->at(1)->prop_text());
   EXPECT_EQ("width: 1px; _width: 3px", declarations->ToString());
+}
+
+TEST_F(ParserTest, Function) {
+  Parser p("box-shadow: -1px -2px 2px rgba(0, 13, 255, .15)");
+  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
+  EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
+  ASSERT_EQ(1, declarations->size());
+  EXPECT_EQ(4, declarations->at(0)->values()->size());
+  const Value* val = declarations->at(0)->values()->at(3);
+  EXPECT_EQ(Value::FUNCTION, val->GetLexicalUnitType());
+  EXPECT_EQ(UTF8ToUnicodeText("rgba"), val->GetFunctionName());
+  const Values& params = *val->GetParameters();
+  ASSERT_EQ(4, params.size());
+  EXPECT_EQ(Value::NUMBER, params[0]->GetLexicalUnitType());
+  EXPECT_EQ(0, params[0]->GetIntegerValue());
+  EXPECT_EQ(Value::NUMBER, params[1]->GetLexicalUnitType());
+  EXPECT_EQ(13, params[1]->GetIntegerValue());
+  EXPECT_EQ(Value::NUMBER, params[2]->GetLexicalUnitType());
+  EXPECT_EQ(255, params[2]->GetIntegerValue());
+  EXPECT_EQ(Value::NUMBER, params[3]->GetLexicalUnitType());
+  EXPECT_FLOAT_EQ(0.15, params[3]->GetFloatValue());
+
+  EXPECT_EQ("box-shadow: -1px -2px 2px rgba(0, 13, 255, 0.15)",
+            declarations->ToString());
+}
+
+// Functions inside functions and mixed use of commas and spaces, oh my.
+TEST_F(ParserTest, ComplexFunction) {
+  Parser p(
+      "-webkit-gradient(linear, left top, left bottom, from(#ccc), to(#ddd))");
+  scoped_ptr<Value> val(ParseAny(&p));
+  EXPECT_EQ("-webkit-gradient(linear, left top, left bottom, "
+            "from(#cccccc), to(#dddddd))", val->ToString());
 }
 
 }  // namespace

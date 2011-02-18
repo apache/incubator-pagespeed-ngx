@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 
+#include "base/logging.h"
 #include "base/macros.h"
 #include "base/scoped_ptr.h"
 #include "util/utf8/public/unicodetext.h"
@@ -39,6 +40,7 @@ const int HZ = HZ_temporary;
 
 namespace Css {
 
+class FunctionParameters;
 class Values;
 
 // A Value represents a value in CSS (maybe more generally, a
@@ -80,12 +82,12 @@ class Value {
   // Any of the special function types (COUNTER, RECT)
   // NOTE: The ownership of params will be taken.
   // params cannot be NULL, if no parameters are needed, pass an empty Values.
-  explicit Value(ValueType ty, Values* params);
+  explicit Value(ValueType ty, FunctionParameters* params);
 
   // FUNCTION with name func
   // NOTE: The ownership of params will be taken.
   // params cannot be NULL, if no parameters are needed, pass an empty Values.
-  explicit Value(const UnicodeText& func, Values* params);
+  explicit Value(const UnicodeText& func, FunctionParameters* params);
 
   // COLOR.
   explicit Value(HtmlColor color);
@@ -122,11 +124,14 @@ class Value {
   Unit      GetDimension() const;          // NUMBER: the unit.
   int       GetIntegerValue() const;       // NUMBER: the integer value.
   float     GetFloatValue() const;         // NUMBER: the float value.
-  const Values* GetParameters() const;     // FUNCTION: the function params
+  // FUNCTION: the function parameter values (ignoring separators).
+  const Values* GetParameters() const;
+  // FUNCITON: the function parameters with separator information.
+  const FunctionParameters* GetParametersWithSeparators() const;
   const UnicodeText& GetFunctionName() const;  // FUNCTION: the function name.
   const UnicodeText& GetStringValue() const;   // URI, STRING: the string value
-  UnicodeText GetIdentifierText() const;   // IDENT: the ident as a string.
-  const Identifier& GetIdentifier() const;        // IDENT: identifier.
+  UnicodeText GetIdentifierText() const;       // IDENT: the ident as a string.
+  const Identifier& GetIdentifier() const;     // IDENT: identifier.
   const HtmlColor&   GetColorValue() const;    // COLOR: the color value
 
  private:
@@ -135,7 +140,7 @@ class Value {
   Unit unit_;             // for NUMBER
   Identifier identifier_;   // for IDENT
   UnicodeText str_;    // for NUMBER (OTHER unit_), URI, STRING, FUNCTION
-  scoped_ptr<Values> params_;  // FUNCTION, COUNTER and RECT params
+  scoped_ptr<FunctionParameters> params_;  // FUNCTION, COUNTER and RECT params
   HtmlColor color_;           // COLOR
 
   // kDimensionUnitText stores the name of each unit (see TextFromUnit)
@@ -159,6 +164,52 @@ class Values : public std::vector<Value*> {
   string ToString() const;
  private:
   DISALLOW_COPY_AND_ASSIGN(Values);
+};
+
+// FunctionParameters stores all values and separators between them from
+// a parsed function. Functions may have comma and space separation
+// interspersed throughout and it matters which was used.
+//
+// Ex: -webkit-gradient(radial, 430 50, 0, 430 50, 252, from(red), to(#000))
+// Neither
+//   -webkit-gradient(radial, 430, 50, 0, 430, 50, 252, from(red), to(#000))
+// nor
+//   -webkit-gradient(radial 430 50 0 430 50 252 from(red) to(#000))
+// are interpretted correctly. Only the original mix of spaces and commas.
+//
+// FunctionParameters will delete all of its stored Value*'s on destruction.
+class FunctionParameters {
+ public:
+  enum Separator {
+    COMMA_SEPARATED,
+    SPACE_SEPARATED,
+  };
+
+  FunctionParameters() : values_(new Values) {}
+  ~FunctionParameters();
+
+  // Add a value and the separator that preceeded it.
+  // If this is the first value, separator is ignored.
+  void AddSepValue(Separator separator, Value* value);
+
+  Separator separator(int i) const { return separators_[i]; }
+  const Values* values() const { return values_.get(); }
+  const Value* value(int i) const { return values_->at(i); }
+  int size() const {
+    DCHECK_EQ(separators_.size(), values_->size());
+    return values_->size();
+  }
+
+  bool Equals(const FunctionParameters& other) const;
+  void Copy(const FunctionParameters& other);
+
+  string ToString() const;
+
+ private:
+  std::vector<Separator> separators_;
+  scoped_ptr<Values> values_;
+
+  DISALLOW_COPY_AND_ASSIGN(FunctionParameters);
 };
 
 }  // namespace

@@ -31,6 +31,7 @@ class SimpleSelector;
 class SimpleSelectors;
 class Declaration;
 class Value;
+class FunctionParameters;
 }
 
 namespace net_instaweb {
@@ -69,6 +70,7 @@ class CssMinify {
   void Minify(const Css::SimpleSelector& sselector);
   void Minify(const Css::Declaration& declaration);
   void Minify(const Css::Value& value);
+  void Minify(const Css::FunctionParameters& parameters);
 
   Writer* writer_;
   MessageHandler* handler_;

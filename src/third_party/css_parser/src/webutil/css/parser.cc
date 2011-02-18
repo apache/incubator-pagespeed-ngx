@@ -31,6 +31,7 @@
 #include "strings/strutil.h"
 #include "third_party/utf/utf.h"
 #include "util/gtl/stl_util-inl.h"
+#include "util/utf8/public/unicodetext.h"
 #include "webutil/css/string.h"
 #include "webutil/css/string_util.h"
 #include "webutil/css/util.h"
@@ -487,6 +488,48 @@ HtmlColor Parser::ParseColor() {
   }
 }
 
+// Parse body of generic function foo(a, "b" 3, d(e, #fff)) without
+// consuming final right-paren.
+//
+// Both commas and spaces are allowed as separators and are remembered.
+FunctionParameters* Parser::ParseFunction() {
+  Tracer trace(__func__, &in_);
+  scoped_ptr<FunctionParameters> params(new FunctionParameters);
+
+  SkipSpace();
+  // Separator before next value. Initial value doesn't matter.
+  FunctionParameters::Separator separator = FunctionParameters::SPACE_SEPARATED;
+  while (!Done()) {
+    DCHECK_LT(in_, end_);
+    switch (*in_) {
+      case ')':
+        // End of function.
+        return params.release();
+        break;
+      case ',':
+        // Note that next value is comma-separated.
+        separator = FunctionParameters::COMMA_SEPARATED;
+        in_++;
+        break;
+      default: {
+        scoped_ptr<Value> val(ParseAny());
+        if (!val.get()) {
+          ReportParsingError(kFunctionError,
+                             "Cannot parse parameter in function");
+          return NULL;
+        }
+        params->AddSepValue(separator, val.release());
+        // Unless otherwise indicated, next item is space-separated.
+        separator = FunctionParameters::SPACE_SEPARATED;
+        break;
+      }
+    }
+    SkipSpace();
+  }
+
+  return NULL;
+}
+
 // Returns the 0-255 RGB value corresponding to Value v.  Only
 // unusual thing is percentages are interpreted as percentages of
 // 255.0.
@@ -586,37 +629,6 @@ Value* Parser::ParseUrl() {
   return NULL;
 }
 
-// parse rect(top, right, bottom, left) without consuming final right-paren.
-// Spaces are allowed as delimiters here for historical reasons.
-Value* Parser::ParseRect() {
-  scoped_ptr<Values> params(new Values);
-
-  SkipSpace();
-  if (Done()) return NULL;
-  DCHECK_LT(in_, end_);
-
-  // Never parse after the final right-paren!
-  if (*in_ == ')') return NULL;
-
-  for (int i = 0; i < 4; i++) {
-    scoped_ptr<Value> val(ParseAny());
-    if (!val.get())
-      break;
-    params->push_back(val.release());
-    SkipSpace();
-    // Make sure the correct syntax is followed.
-    if (Done() || (*in_ == ')' && i != 3))
-      break;
-
-    if (*in_ == ')')
-      return new Value(Value::RECT, params.release());
-    else if (*in_ == ',')
-      in_++;
-  }
-
-  return NULL;
-}
-
 Value* Parser::ParseAnyExpectingColor() {
   Tracer trace(__func__, &in_);
   Value* toret = NULL;
@@ -704,22 +716,33 @@ Value* Parser::ParseAny() {
                    && memcasecmp("counter", id.utf8_data(), 7) == 0) {
           ReportParsingError(kCounterError, "Cannot parse counter() yet.");
           // TODO(yian): parse COUNTER parameters
-          toret = new Value(Value::COUNTER, new Values());
+          toret = new Value(Value::COUNTER, new FunctionParameters());
         } else if (id.utf8_length() == 8
                    && memcasecmp("counters", id.utf8_data(), 8) == 0) {
           ReportParsingError(kCounterError, "Cannot parse counters() yet.");
           // TODO(yian): parse COUNTERS parameters
-          toret = new Value(Value::COUNTER, new Values());
+          toret = new Value(Value::COUNTER, new FunctionParameters());
         } else if (id.utf8_length() == 3
                    && memcasecmp("rgb", id.utf8_data(), 3) == 0) {
           toret = ParseRgbColor();
         } else if (id.utf8_length() == 4
                    && memcasecmp("rect", id.utf8_data(), 4) == 0) {
-          toret = ParseRect();
+          scoped_ptr<FunctionParameters> params(ParseFunction());
+          if (params.get() != NULL && params->size() == 4) {
+            toret = new Value(Value::RECT, params.release());
+          } else {
+            ReportParsingError(kFunctionError, "Could not parse parameters "
+                               "for function rect");
+          }
         } else {
-          ReportParsingError(kFunctionError, "Cannot parse functions yet.");
-          // TODO(yian): parse FUNCTION parameters
-          toret = new Value(id, new Values());
+          scoped_ptr<FunctionParameters> params(ParseFunction());
+          if (params.get() != NULL) {
+            toret = new Value(id, params.release());
+          } else {
+            ReportParsingError(kFunctionError, StringPrintf(
+                "Could not parse function parameters for function %s",
+                UnicodeTextToUTF8(id).c_str()));
+          }
         }
         SkipPastDelimiter(')');
       } else {

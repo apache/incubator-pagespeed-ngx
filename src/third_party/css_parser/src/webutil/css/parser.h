@@ -22,7 +22,6 @@
 
 #include <string>
 #include <vector>
-
 #include "base/scoped_ptr.h"
 #include "strings/stringpiece.h"
 #include "testing/production_stub/public/gunit_prod.h"
@@ -311,8 +310,17 @@ class Parser {
                                                    // or black
 
   //
-  // FUNCTION-like objects: rgb(), url(), rect()
+  // FUNCTIONS and FUNCTION-like objects: rgb(), url(), rect()
   //
+
+  // Parse a generic list of function parameters.
+  //
+  // Specifically, starting after the opening '(', repeatedly ParseAny() as
+  // values either comma or space separated until we reach the closing ')'.
+  //
+  // ParseFunction() does not consume closing ')' and returns a vector of
+  // values if successful, and NULL if the contents were mal-formed.
+  FunctionParameters* ParseFunction();
 
   // Converts a Value number or percentage to an RGB value.
   static unsigned char ValueToRGB(Value* v);
@@ -328,7 +336,7 @@ class Parser {
   //  rgb(100%,100%,100%) = #FFF. Whitespace characters are allowed
   //  around the numerical values.
   //
-  // Starting just past 'rgb(', ParseColor() consumes up to (but not
+  // Starting just past 'rgb(', ParseRgbColor() consumes up to (but not
   // including) the closing ) and returns the color it finds.
   // Returns NULL if mal-formed.
   Value* ParseRgbColor();   // parse an rgbcolor like 125, 25, 12
@@ -349,15 +357,6 @@ class Parser {
   // character must be ')'.
   // Returns NULL for mal-formed URLs.
   Value* ParseUrl();      // parse a url like yellow.png or 'blah.png'
-
-  // Parses between the parentheses of rect(top, right, bottom, left).
-  //
-  // The contents should be a comma or space separated list of four numerical
-  // values or the keyword "auto". Note that spaces are allowed to separate
-  // values for historical reasons.
-  //
-  // Returns NULL if the contents is not well-formed.
-  Value* ParseRect();  // parse rect(top, right, bottom, left)
 
   //
   // Value and Values
