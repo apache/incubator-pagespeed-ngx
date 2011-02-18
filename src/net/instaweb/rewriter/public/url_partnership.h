@@ -50,7 +50,7 @@ class UrlPartnership {
   std::string ResolvedBase() const;
 
   // Returns the number of URLs that have been successfully added.
-  int num_urls() { return gurl_vector_.size(); }
+  int num_urls() const { return gurl_vector_.size(); }
 
   // Returns the relative path of a particular URL that was added into
   // the partnership.  This requires that Resolve() be called first.

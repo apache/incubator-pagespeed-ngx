@@ -20,6 +20,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
+#include "net/instaweb/rewriter/public/resource_combiner_template.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
@@ -44,18 +45,20 @@ const char kPathCombined[] = "path,_piece.tcc+piece1.tcc";
 // 2) Altering content of documents when combining
 class TestCombineFilter : public RewriteFilter {
  public:
-  class TestCombiner : public ResourceCombiner {
+  class TestCombiner : public ResourceCombinerTemplate<HtmlElement*> {
     // The partnership subclass vetoes resources with content equal to
     // kVetoText
    public:
     explicit TestCombiner(RewriteDriver* driver)
-        : ResourceCombiner(driver, kTestCombinerId, kTestCombinerExt) {
+        : ResourceCombinerTemplate<HtmlElement*>(driver, kTestCombinerId,
+                                                 kTestCombinerExt) {
     };
 
    protected:
     bool WritePiece(Resource* input, OutputResource* combination,
                     Writer* writer, MessageHandler* handler) {
-      ResourceCombiner::WritePiece(input, combination, writer, handler);
+      ResourceCombinerTemplate<HtmlElement*>::WritePiece(input, combination,
+                                                         writer, handler);
       writer->Write("|", handler);
       return true;
     }

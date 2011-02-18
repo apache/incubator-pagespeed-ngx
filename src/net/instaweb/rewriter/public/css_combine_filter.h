@@ -45,8 +45,8 @@ class CssCombineFilter : public RewriteFilter {
 
   static void Initialize(Statistics* statistics);
   virtual void StartDocumentImpl();
-  virtual void StartElementImpl(HtmlElement* element) {}
-  virtual void EndElementImpl(HtmlElement* element);
+  virtual void StartElementImpl(HtmlElement* element);
+  virtual void EndElementImpl(HtmlElement* element) {};
   virtual void Flush();
   virtual void IEDirective(HtmlIEDirectiveNode* directive);
   virtual const char* Name() const { return "CssCombine"; }

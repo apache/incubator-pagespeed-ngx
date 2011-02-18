@@ -32,22 +32,23 @@
 
 namespace net_instaweb {
 
+class ContentType;
+class HtmlElement;
 class MessageHandler;
 class OutputResource;
 class RequestHeaders;
 class Resource;
-class RewriteDriver;
 class ResourceManager;
 class ResponseHeaders;
 class RewriteDriver;
+class RewriteDriver;
 class Variable;
 class Writer;
-class HtmlElement;
 
 // This class is a utility for filters that combine multiple resource
 // files into one. It provides two major pieces of functionality to help out:
 // 1) It keeps a ResourceVector and provides methods to keep track
-//    of elements and URLs that can be safely combined together while
+//    of resources and URLs that can be safely combined together while
 //    encoding the information on the pieces in the combined URL.
 // 2) It implements Fetch, reconstructing combinations as needed.
 class ResourceCombiner : public UrlPartnership {
@@ -63,8 +64,8 @@ class ResourceCombiner : public UrlPartnership {
   static const int kUrlSlack = 100;
 
   // Note: extension should not include the leading dot here.  Before calling
-  // AddElement, and on each new document, you must call Reset to provide a base
-  // url.
+  // AddResource, and on each new document, you must call Reset to provide a
+  // base url.
   ResourceCombiner(RewriteDriver* rewrite_driver,
                    const StringPiece& path_prefix,
                    const StringPiece& extension);
@@ -83,22 +84,27 @@ class ResourceCombiner : public UrlPartnership {
   // without calling Reset again.
   virtual void Reset(const GURL& base_gurl);
 
-  // Tries to add an element with given source URL to the current partnership.
+  // Tries to add a resource with given source URL to the current partnership.
   // Returns whether successful or not (in which case the partnership will be
   // unchanged). This will succeed only if we both have the data ready and can
   // fit in the names into the combined URL.
-  virtual bool AddElement(HtmlElement* element, const StringPiece& url,
-                          MessageHandler* handler);
+  virtual bool AddResource(const StringPiece& url, MessageHandler* handler);
 
   // Computes a name for the URL that meets all known character-set and
   // size restrictions.
   std::string UrlSafeId() const;
 
-  HtmlElement* element(int i) { return elements_[i]; }
   typedef std::vector<Resource*> ResourceVector;
   const ResourceVector& resources() const { return resources_; }
 
  protected:
+
+  // Returns one resource containing the combination of all added resources,
+  // creating it if necessary.  Caller takes ownership.  Returns NULL if the
+  // combination does not exist and cannot be created. Will not combine fewer
+  // than 2 resources.
+  OutputResource* Combine(const ContentType& content_type,
+                          MessageHandler* handler);
 
   // Override this if your combination is not a matter of combining
   // text pieces (perhaps adjusted by WritePiece)
@@ -112,6 +118,9 @@ class ResourceCombiner : public UrlPartnership {
   virtual bool WritePiece(Resource* input, OutputResource* combination,
                           Writer* writer, MessageHandler* handler);
   const GURL* base_gurl() const { return base_gurl_; }
+
+  virtual void Clear();
+
   ResourceManager* const resource_manager_;
   RewriteDriver* const rewrite_driver_;
 
@@ -138,9 +147,7 @@ class ResourceCombiner : public UrlPartnership {
   virtual bool ResourceCombinable(Resource* resource,
                                   MessageHandler* handler);
 
-  void Clear();
 
-  std::vector<HtmlElement*> elements_;
   std::vector<Resource*> resources_;
   UrlMultipartEncoder multipart_encoder_;
   int prev_num_components_;
@@ -148,6 +155,7 @@ class ResourceCombiner : public UrlPartnership {
   std::string resolved_base_;
   const int url_overhead_;
   const GURL* base_gurl_;
+  std::string filter_prefix_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceCombiner);
 };

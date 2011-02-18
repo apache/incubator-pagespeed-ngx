@@ -60,17 +60,17 @@ ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
   // resource_manager_ == NULL.
   // TODO(sligocki): Construct RewriteDriver with a ResourceManager.
   CHECK(resource_manager_ != NULL);
+  filter_prefix.CopyToString(&filter_prefix_);
 }
 
 ResourceCombiner::~ResourceCombiner() {
   Clear();
 }
 
-bool ResourceCombiner::AddElement(
-    HtmlElement* element, const StringPiece& url, MessageHandler* handler) {
+bool ResourceCombiner::AddResource(const StringPiece& url,
+                                   MessageHandler* handler) {
   // Assert the sanity of three parallel vectors.
   CHECK_EQ(num_urls(), static_cast<int>(resources_.size()));
-  CHECK_EQ(num_urls(), static_cast<int>(elements_.size()));
   CHECK_EQ(num_urls(), static_cast<int>(multipart_encoder_.num_urls()));
   CHECK(base_gurl_ != NULL);
 
@@ -79,8 +79,10 @@ bool ResourceCombiner::AddElement(
   //    we want to do this if we can't combine due to URL limits,
   //    as we will eventually need the data, but not when it's
   //    disabled due to policy.
-  scoped_ptr<Resource> resource(rewrite_driver_->CreateInputResource(
-      url, *base_gurl_));
+
+  scoped_ptr<Resource> resource(
+      rewrite_driver_->resource_manager()->CreateInputResource(
+          *base_gurl_, url, rewrite_driver_->options(), handler));
   if (resource.get() == NULL) {
     return false;
   }
@@ -101,7 +103,6 @@ bool ResourceCombiner::AddElement(
 
   if (added) {
     int index = num_urls() - 1;
-    CHECK_EQ(index, static_cast<int>(elements_.size()));
 
     if (num_components() != prev_num_components_) {
       UpdateResolvedBase();
@@ -125,7 +126,6 @@ bool ResourceCombiner::AddElement(
         UpdateResolvedBase();
       }
     } else {
-      elements_.push_back(element);
       resources_.push_back(resource.release());
     }
   }
@@ -184,11 +184,43 @@ void ResourceCombiner::UpdateResolvedBase() {
   prev_num_components_ = num_components();
   resolved_base_ = ResolvedBase();
   multipart_encoder_.clear();
-  for (size_t i = 0; i < elements_.size(); ++i) {
+  for (size_t i = 0; i < resources_.size(); ++i) {
     multipart_encoder_.AddUrl(RelativePath(i));
   }
 
   accumulated_leaf_size_ = 0;
+}
+
+OutputResource* ResourceCombiner::Combine(const ContentType& content_type,
+                                          MessageHandler* handler) {
+  if (resources_.size() <= 1) {
+    // No point in combining.
+    return NULL;
+  }
+  // First, compute the name of the new resource based on the names of
+  // the old resources.
+  std::string url_safe_id = UrlSafeId();
+  // Start building up the combination.  At this point we are still
+  // not committed to the combination, because the 'write' can fail.
+  // TODO(jmaessen, jmarantz): encode based on partnership
+  scoped_ptr<OutputResource> combination(
+      rewrite_driver_->resource_manager()->CreateOutputResourceWithPath(
+          ResolvedBase(),
+          filter_prefix_, url_safe_id, &content_type,
+          rewrite_driver_->options(), handler));
+  if (combination->cached_result() != NULL &&
+      combination->cached_result()->optimizable()) {
+    // If the combination has a Url set on it we have cached information
+    // on what the output would be, so we'll just use that.
+    return combination.release();
+  }
+  if (WriteCombination(resources_, combination.get(), handler)
+      && combination->IsWritten()) {
+    // Otherwise, we have to compute it.
+    return combination.release();
+  }
+  // No dice.
+  return NULL;
 }
 
 bool ResourceCombiner::WriteCombination(
@@ -306,7 +338,7 @@ class CombinerCallback : public Resource::AsyncCallback {
     }
     if (ok) {
       ok = (combiner_->WriteCombination(combine_resources_, combination_,
-                                      message_handler_) &&
+                                        message_handler_) &&
             combination_->IsWritten() &&
             ((writer_ == NULL) ||
              writer_->Write(combination_->contents(), message_handler_)));
@@ -399,7 +431,6 @@ bool ResourceCombiner::Fetch(OutputResource* combination,
 }
 
 void ResourceCombiner::Clear() {
-  elements_.clear();
   STLDeleteElements(&resources_);
   resources_.clear();
   multipart_encoder_.clear();

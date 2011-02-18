@@ -408,6 +408,57 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     ASSERT_EQ(1, css_out.size());
     EXPECT_EQ(css_out[0]->url_, normal_url);
   }
+
+  // Test to make sure we don't miscombine things when handling the input
+  // as XHTML producing non-flat <link>'s from the parser
+  void TestXhtml(bool flush) {
+    const char kXhtmlDtd[] =
+        "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
+        "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">";
+
+    AddFilter(RewriteOptions::kCombineCss);
+    std::string a_css_url = StrCat(kTestDomain, "a.css");
+    std::string b_css_url = StrCat(kTestDomain, "b.css");
+
+    ResponseHeaders default_css_header;
+    resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+    mock_url_fetcher_.SetResponse(a_css_url, default_css_header, "A");
+    mock_url_fetcher_.SetResponse(b_css_url, default_css_header, "B");
+
+    std::string combined_url =
+        StrCat(kTestDomain, "a.css+b.css.pagespeed.cc.0.css");
+
+    SetupWriter();
+    html_parse()->StartParse(kTestDomain);
+    std::string input_beginning =
+        StrCat(kXhtmlDtd, "<div><link rel=stylesheet href=a.css>",
+               "<link rel=stylesheet href=b.css>");
+    html_parse()->ParseText(input_beginning);
+
+    if (flush) {
+      // This is a regression test: previously getting a flush here would
+      // cause attempts to modify data structures, as we would only
+      // start seeing the links at the </div>
+      html_parse()->Flush();
+    }
+    html_parse()->ParseText("</div>");
+    html_parse()->FinishParse();
+
+    if (!flush) {
+      // Note: if this test begins failing because the <link> in the output is
+      // no  longer  a <link/> it will need to be revised to make sure it's
+      // still parsed as XHTML.
+      EXPECT_EQ(
+          StrCat(kXhtmlDtd, "<div>",
+                "<link rel=\"stylesheet\" type=\"text/css\" href=\"",
+                combined_url, "\"/></div>"),
+          output_buffer_);
+    } else {
+      // In the case of the flush we cannot actually rewrite this, as the
+      // <links> are still open and hence cannot be combined.
+      EXPECT_EQ(StrCat(input_beginning, "</div>"), output_buffer_);
+    }
+  }
 };
 
 TEST_F(CssCombineFilterTest, CombineCss) {
@@ -632,6 +683,14 @@ TEST_F(CssCombineFilterTest, CombineCssNoInput) {
       "<body><div class=\"c1\"><div class=\"c2\"><p>\n"
       "  Yellow on Blue</p></div></div></body>";
   ValidateNoChanges("combine_css_missing_input", html_input);
+}
+
+TEST_F(CssCombineFilterTest, CombineCssXhtml) {
+  TestXhtml(false);
+}
+
+TEST_F(CssCombineFilterTest, CombineCssXhtmlWithFlush) {
+  TestXhtml(true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssMissingResource) {

@@ -42,6 +42,12 @@ CssImageRewriter::CssImageRewriter(RewriteDriver* driver,
                                    CacheExtender* cache_extender,
                                    ImgRewriteFilter* image_rewriter)
     : driver_(driver),
+      // For now we use the same options as for rewriting and cache-extending
+      // images found in HTML.
+      cache_extend_(
+          driver->options()->Enabled(RewriteOptions::kExtendCache)),
+      rewrite_images_(
+          driver->options()->Enabled(RewriteOptions::kRewriteImages)),
       cache_extender_(cache_extender),
       image_rewriter_(image_rewriter),
       image_rewrites_(NULL),
@@ -72,26 +78,30 @@ bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
                                        std::string* new_url,
                                        MessageHandler* handler) {
   bool ret = false;
+  std::string old_rel_url_str = old_rel_url.as_string();
   scoped_ptr<Resource> input_resource(
       driver_->resource_manager()->CreateInputResource(
           base_url, old_rel_url, driver_->options(), handler));
   if (input_resource.get() != NULL) {
     scoped_ptr<OutputResource::CachedResult> rewrite_info;
-    // TODO(sligocki): Try image rewriting.
-    //handler->Message(kInfo, "Attempting to rewrite image %s",
-    //                 old_rel_url_cstr);
-    //rewrite_info.reset(img_rewriter_->RewriteWithCaching(original_url_string));
-    //if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
-    //  if (image_rewrites_ != NULL) {
-    //    image_rewrites_->Add(1);
-    //  }
-    //  *new_url = rewrite_info->url();
-    //  ret = true;
-    //} else
-    {
-      // Try cache extending.
+    // Try image rewriting.
+    if (rewrite_images_) {
+      handler->Message(kInfo, "Attempting to rewrite image %s",
+                       old_rel_url_str.c_str());
+      rewrite_info.reset(
+          image_rewriter_->RewriteExternalResource(input_resource.get()));
+      if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
+        if (image_rewrites_ != NULL) {
+          image_rewrites_->Add(1);
+        }
+        *new_url = rewrite_info->url();
+        ret = true;
+      }
+    }
+    // Try cache extending.
+    if (!ret && cache_extend_) {
       handler->Message(kInfo, "Attempting to cache extend image %s",
-                       old_rel_url.as_string().c_str());
+                       old_rel_url_str.c_str());
       rewrite_info.reset(
           cache_extender_->RewriteExternalResource(input_resource.get()));
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
@@ -110,58 +120,64 @@ bool CssImageRewriter::RewriteCssImages(const GURL& base_url,
                                         Css::Stylesheet* stylesheet,
                                         MessageHandler* handler) {
   bool editted = false;
-  handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
-                   base_url.spec().c_str());
-  Css::Rulesets& rulesets = stylesheet->mutable_rulesets();
-  for (Css::Rulesets::iterator ruleset_iter = rulesets.begin();
-       ruleset_iter != rulesets.end(); ++ruleset_iter) {
-    Css::Ruleset* ruleset = *ruleset_iter;
-    Css::Declarations& decls = ruleset->mutable_declarations();
-    for (Css::Declarations::iterator decl_iter = decls.begin();
-         decl_iter != decls.end(); ++decl_iter) {
-      Css::Declaration* decl = *decl_iter;
-      // Only edit image declarations.
-      switch (decl->prop()) {
-        case Css::Property::BACKGROUND:
-        case Css::Property::BACKGROUND_IMAGE:
-        case Css::Property::LIST_STYLE:
-        case Css::Property::LIST_STYLE_IMAGE: {
-          // Rewrite all URLs. Technically, background-image should only
-          // have a single value which is a URL, but background could have
-          // more values.
-          Css::Values* values = decl->mutable_values();
-          for (Css::Values::iterator value_iter = values->begin();
-               value_iter != values->end(); ++value_iter) {
-            Css::Value* value = *value_iter;
-            if (value->GetLexicalUnitType() == Css::Value::URI) {
-              std::string rel_url =
-                  UnicodeTextToUTF8(value->GetStringValue());
-              handler->Message(kInfo, "Found image URL %s", rel_url.c_str());
-              std::string new_url;
-              if (RewriteImageUrl(base_url, rel_url, &new_url, handler)) {
-                // Replace the URL.
-                *value_iter = new Css::Value(Css::Value::URI,
-                                             UTF8ToUnicodeText(new_url));
-                delete value;
-                editted = true;
-                handler->Message(kInfo, "Successfully rewrote %s to %s",
-                                 rel_url.c_str(), new_url.c_str());
-              } else {
-                if (no_rewrite_ != NULL) {
-                  no_rewrite_->Add(1);
+  if (RewritesEnabled()) {
+    handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
+                     base_url.spec().c_str());
+    Css::Rulesets& rulesets = stylesheet->mutable_rulesets();
+    for (Css::Rulesets::iterator ruleset_iter = rulesets.begin();
+         ruleset_iter != rulesets.end(); ++ruleset_iter) {
+      Css::Ruleset* ruleset = *ruleset_iter;
+      Css::Declarations& decls = ruleset->mutable_declarations();
+      for (Css::Declarations::iterator decl_iter = decls.begin();
+           decl_iter != decls.end(); ++decl_iter) {
+        Css::Declaration* decl = *decl_iter;
+        // Only edit image declarations.
+        switch (decl->prop()) {
+          case Css::Property::BACKGROUND:
+          case Css::Property::BACKGROUND_IMAGE:
+          case Css::Property::LIST_STYLE:
+          case Css::Property::LIST_STYLE_IMAGE: {
+            // Rewrite all URLs. Technically, background-image should only
+            // have a single value which is a URL, but background could have
+            // more values.
+            Css::Values* values = decl->mutable_values();
+            for (Css::Values::iterator value_iter = values->begin();
+                 value_iter != values->end(); ++value_iter) {
+              Css::Value* value = *value_iter;
+              if (value->GetLexicalUnitType() == Css::Value::URI) {
+                std::string rel_url =
+                    UnicodeTextToUTF8(value->GetStringValue());
+                handler->Message(kInfo, "Found image URL %s", rel_url.c_str());
+                std::string new_url;
+                if (RewriteImageUrl(base_url, rel_url, &new_url, handler)) {
+                  // Replace the URL.
+                  *value_iter = new Css::Value(Css::Value::URI,
+                                               UTF8ToUnicodeText(new_url));
+                  delete value;
+                  editted = true;
+                  handler->Message(kInfo, "Successfully rewrote %s to %s",
+                                   rel_url.c_str(), new_url.c_str());
+                } else {
+                  if (no_rewrite_ != NULL) {
+                    no_rewrite_->Add(1);
+                  }
+                  handler->Message(kInfo, "Could not rewrite %s "
+                                   "(Perhaps it is being fetched).",
+                                   rel_url.c_str());
                 }
-                handler->Message(kInfo, "Could not rewrite %s "
-                                 "(Perhaps it is being fetched).",
-                                 rel_url.c_str());
               }
             }
+            break;
           }
-          break;
+          default:
+            break;
         }
-        default:
-          break;
       }
     }
+  } else {
+    handler->Message(kInfo, "Image rewriting and cache extension not enabled, "
+                     "so not rewriting images in CSS in %s",
+                     base_url.spec().c_str());
   }
   return editted;
 }
