@@ -1441,13 +1441,6 @@ TEST_F(ParserTest, MediaError) {
   EXPECT_EQ(Parser::kMediaError, p.errors_seen_mask());
 }
 
-TEST_F(ParserTest, CounterError) {
-  Parser p("content: \"Section \" counter(section)");
-  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
-  EXPECT_EQ(1, declarations->size());
-  EXPECT_EQ(Parser::kCounterError, p.errors_seen_mask());
-}
-
 TEST_F(ParserTest, AcceptCorrectValues) {
   // http://code.google.com/p/modpagespeed/issues/detail?id=128
   Parser p("list-style-type: none");
@@ -1529,6 +1522,24 @@ TEST_F(ParserTest, ComplexFunction) {
   scoped_ptr<Value> val(ParseAny(&p));
   EXPECT_EQ("-webkit-gradient(linear, left top, left bottom, "
             "from(#cccccc), to(#dddddd))", val->ToString());
+}
+
+TEST_F(ParserTest, Counter) {
+  Parser p("content: \"Section \" counter(section)");
+  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
+  EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
+  ASSERT_EQ(1, declarations->size());
+  ASSERT_EQ(2, declarations->at(0)->values()->size());
+  const Value* val = declarations->at(0)->values()->at(1);
+  EXPECT_EQ(Value::FUNCTION, val->GetLexicalUnitType());
+  EXPECT_EQ(UTF8ToUnicodeText("counter"), val->GetFunctionName());
+  const Values& params = *val->GetParameters();
+  ASSERT_EQ(1, params.size());
+  EXPECT_EQ(Value::IDENT, params[0]->GetLexicalUnitType());
+  EXPECT_EQ(UTF8ToUnicodeText("section"), params[0]->GetIdentifierText());
+
+  EXPECT_EQ("content: \"Section \" counter(section)",
+            declarations->ToString());
 }
 
 }  // namespace

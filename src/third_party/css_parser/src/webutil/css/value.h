@@ -51,7 +51,7 @@ class Values;
 // various accessors.
 class Value {
  public:
-  enum ValueType { NUMBER, URI, COUNTER, FUNCTION, RECT,
+  enum ValueType { NUMBER, URI, FUNCTION, RECT,
                    COLOR, STRING, IDENT, UNKNOWN, DEFAULT };
   enum Unit { EM, EX, PX, CM, MM, IN, PT, PC,
               DEG, RAD, GRAD, MS, S, HZ, KHZ, PERCENT, OTHER, NO_UNIT,
@@ -79,7 +79,7 @@ class Value {
   explicit Value(const Identifier& identifier);
   explicit Value(const Identifier::Ident ident);
 
-  // Any of the special function types (COUNTER, RECT)
+  // Any of the special function types (RECT)
   // NOTE: The ownership of params will be taken.
   // params cannot be NULL, if no parameters are needed, pass an empty Values.
   explicit Value(ValueType ty, FunctionParameters* params);
@@ -140,7 +140,7 @@ class Value {
   Unit unit_;             // for NUMBER
   Identifier identifier_;   // for IDENT
   UnicodeText str_;    // for NUMBER (OTHER unit_), URI, STRING, FUNCTION
-  scoped_ptr<FunctionParameters> params_;  // FUNCTION, COUNTER and RECT params
+  scoped_ptr<FunctionParameters> params_;  // FUNCTION and RECT params
   HtmlColor color_;           // COLOR
 
   // kDimensionUnitText stores the name of each unit (see TextFromUnit)

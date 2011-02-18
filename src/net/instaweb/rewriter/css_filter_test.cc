@@ -560,6 +560,28 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "body{background-image:-webkit-gradient(linear,50% 0%,50% 100%,"
       "from(#e8edf0),to(#fcfcfd));color:red}.foo{color:rgba(1,2,3,0.4)}" },
 
+    // Counters
+    // http://www.w3schools.com/CSS/tryit.asp?filename=trycss_gen_counter-reset
+    { "body {counter-reset:section;}\n"
+      "h1 {counter-reset:subsection;}\n"
+      "h1:before\n"
+      "{\n"
+      "counter-increment:section;\n"
+      "content:\"Section \" counter(section) \". \";\n"
+      "}\n"
+      "h2:before \n"
+      "{\n"
+      "counter-increment:subsection;\n"
+      "content:counter(section) \".\" counter(subsection) \" \";\n"
+      "}\n",
+
+      "body{counter-reset:section}"
+      "h1{counter-reset:subsection}"
+      "h1:before{counter-increment:section;"
+      "content:\"Section \" counter(section) \". \"}"
+      "h2:before{counter-increment:subsection;"
+      "content:counter(section) \".\" counter(subsection) \" \"}" },
+
     // Don't lowercase font names.
     { "a { font-family: Arial; }",
       "a{font-family:Arial}" },
@@ -570,36 +592,15 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     ValidateRewrite(id, examples[i][0], examples[i][1]);
   }
 
+  /* Uncomment when we have failing examples.
   const char* parse_fail_examples[] = {
-    // http://www.w3schools.com/CSS/tryit.asp?filename=trycss_gen_counter-reset
-    "body {counter-reset:section;}\n"
-    "h1 {counter-reset:subsection;}\n"
-    "h1:before\n"
-    "{\n"
-    "counter-increment:section;\n"
-    "content:\"Section \" counter(section) \". \";\n"
-    "}\n"
-    "h2:before \n"
-    "{\n"
-    "counter-increment:subsection;\n"
-    "content:counter(section) \".\" counter(subsection) \" \";\n"
-    "}\n",
-
-    // Right now we bail on parsing the above. Could probably be minified to:
-    //"body{counter-reset:section}"
-    //"h1{counter-reset:subsection}"
-    //"h1:before{counter-increment:section;"
-    //"content:\"Section \" counter(section) \". \"}"
-    //"h2:before{counter-increment:subsection;"
-    //"content:counter(section) \".\" counter(subsection) \" \"}" },
-    // TODO(sligocki): When this is parsed correctly, move it up to examples[][]
     };
 
   for (int i = 0; i < arraysize(parse_fail_examples); ++i) {
     std::string id = StringPrintf("complex_css_parse_fail%d", i);
     ValidateFailParse(id, parse_fail_examples[i]);
   }
-
+  */
 }
 
 }  // namespace net_instaweb

@@ -712,16 +712,6 @@ Value* Parser::ParseAny() {
         if (id.utf8_length() == 3
             && memcasecmp("url", id.utf8_data(), 3) == 0) {
           toret = ParseUrl();
-        } else if (id.utf8_length() == 7
-                   && memcasecmp("counter", id.utf8_data(), 7) == 0) {
-          ReportParsingError(kCounterError, "Cannot parse counter() yet.");
-          // TODO(yian): parse COUNTER parameters
-          toret = new Value(Value::COUNTER, new FunctionParameters());
-        } else if (id.utf8_length() == 8
-                   && memcasecmp("counters", id.utf8_data(), 8) == 0) {
-          ReportParsingError(kCounterError, "Cannot parse counters() yet.");
-          // TODO(yian): parse COUNTERS parameters
-          toret = new Value(Value::COUNTER, new FunctionParameters());
         } else if (id.utf8_length() == 3
                    && memcasecmp("rgb", id.utf8_data(), 3) == 0) {
           toret = ParseRgbColor();

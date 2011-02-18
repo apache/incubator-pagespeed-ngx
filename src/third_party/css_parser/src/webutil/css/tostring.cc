@@ -99,9 +99,6 @@ string Value::ToString() const {
     case URI:
       return StringPrintf("url(%s)",
                           CSSEscapeString(GetStringValue()).c_str());
-    case COUNTER:
-      return StringPrintf("counter(%s)",
-                          GetParametersWithSeparators()->ToString().c_str());
     case FUNCTION:
       return StringPrintf("%s(%s)",
                           CSSEscapeString(GetFunctionName()).c_str(),

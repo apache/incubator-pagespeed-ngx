@@ -204,7 +204,7 @@ static struct valid_prop_info_t {
   // Chapter 12: Generated content, automatic numbering, and lists
 
   { { Property::CONTENT, kEndProp },
-    { Value::STRING, Value::URI, Value::COUNTER, Value::FUNCTION, kEndType },
+    { Value::STRING, Value::URI, Value::FUNCTION, kEndType },
     { Identifier::NORMAL, Identifier::NONE,
       Identifier::OPEN_QUOTE, Identifier::CLOSE_QUOTE,
       Identifier::NO_OPEN_QUOTE, Identifier::NO_CLOSE_QUOTE, kEndIdent },

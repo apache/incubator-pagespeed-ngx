@@ -257,11 +257,6 @@ void CssMinify::Minify(const Css::Value& value) {
       Write(CSSEscapeString(value.GetStringValue()));
       Write(")");
       break;
-    case Css::Value::COUNTER:
-      Write("counter(");
-      Minify(*value.GetParametersWithSeparators());
-      Write(")");
-      break;
     case Css::Value::FUNCTION:
       Write(CSSEscapeString(value.GetFunctionName()));
       Write("(");

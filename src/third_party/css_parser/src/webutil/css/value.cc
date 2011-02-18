@@ -86,7 +86,7 @@ Value::Value(ValueType ty, FunctionParameters* params)
       params_(params),
       color_(0, 0, 0) {
   DCHECK(params != NULL);
-  DCHECK(ty == RECT || ty == COUNTER);
+  DCHECK(ty == RECT);
 }
 
 Value::Value(const UnicodeText& func, FunctionParameters* params)
@@ -158,7 +158,6 @@ bool Value::Equals(const Value& other) const {
       if (str_ != other.str_)
         return false;
       // pass through
-    case COUNTER:
     case RECT:
       if (params_.get() == NULL)
         return other.params_.get() == NULL;
@@ -273,12 +272,12 @@ float Value::GetFloatValue() const {
 }
 
 const Values* Value::GetParameters() const {
-  DCHECK(type_ == FUNCTION || type_ == RECT || type_ == COUNTER);
+  DCHECK(type_ == FUNCTION || type_ == RECT);
   return params_->values();
 }
 
 const FunctionParameters* Value::GetParametersWithSeparators() const {
-  DCHECK(type_ == FUNCTION || type_ == RECT || type_ == COUNTER);
+  DCHECK(type_ == FUNCTION || type_ == RECT);
   return params_.get();
 }
 
