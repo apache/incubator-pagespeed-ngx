@@ -72,7 +72,6 @@ bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
                                        std::string* new_url,
                                        MessageHandler* handler) {
   bool ret = false;
-  const char* old_rel_url_cstr = old_rel_url.as_string().c_str();
   scoped_ptr<Resource> input_resource(
       driver_->resource_manager()->CreateInputResource(
           base_url, old_rel_url, driver_->options(), handler));
@@ -92,7 +91,7 @@ bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
     {
       // Try cache extending.
       handler->Message(kInfo, "Attempting to cache extend image %s",
-                       old_rel_url_cstr);
+                       old_rel_url.as_string().c_str());
       rewrite_info.reset(
           cache_extender_->RewriteExternalResource(input_resource.get()));
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
