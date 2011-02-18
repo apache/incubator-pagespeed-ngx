@@ -57,7 +57,6 @@ class ResourceManager;
 class CssFilter : public RewriteSingleResourceFilter {
  public:
   CssFilter(RewriteDriver* driver, const StringPiece& filter_prefix,
-            bool rewrite_images_from_css,
             // TODO(sligocki): Temporary pattern until we figure out a better
             // way to do this without passing all filters around everywhere.
             CacheExtender* cache_extender,
@@ -77,6 +76,7 @@ class CssFilter : public RewriteSingleResourceFilter {
   virtual void EndElementImpl(HtmlElement* element);
 
   virtual const char* Name() const { return "CssFilter"; }
+  virtual int FilterCacheFormatVersion() const;
 
   static const char kFilesMinified[];
   static const char kMinifiedBytesSaved[];
@@ -103,7 +103,6 @@ class CssFilter : public RewriteSingleResourceFilter {
   HtmlElement* style_element_;  // The element we are in.
   HtmlCharactersNode* style_char_node_;  // The single character node in style.
 
-  bool rewrite_images_;
   CssImageRewriter image_rewriter_;
 
   // Statistics

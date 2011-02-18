@@ -366,13 +366,20 @@ echo TEST: rewrite_images fails broken image $IMG_URL
 $WGET_PREREQ $IMG_URL;  # fails
 check grep '"404 Not Found"' $WGET_OUTPUT
 
-# This has to run after image_rewrite tests. Otherwise it causes some images
+# These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.
 test_filter rewrite_css,extend_cache extends cache of images in CSS
 FILE=rewrite_css_images.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
-fetch_until $URL 'grep -c .pagespeed.' 1  # image rewritten
+fetch_until $URL 'grep -c .pagespeed.ce.' 1  # image cache extended
+check $WGET_PREREQ $URL
+
+test_filter rewrite_css,rewrite_images rewrites images in CSS
+FILE=rewrite_css_images.html?ModPagespeedFilters=$FILTER_NAME
+URL=$EXAMPLE_ROOT/$FILE
+FETCHED=$OUTDIR/$FILE
+fetch_until $URL 'grep -c .pagespeed.ic.' 1  # image rewritten
 check $WGET_PREREQ $URL
 
 test_filter rewrite_javascript removes comments and saves a bunch of bytes.

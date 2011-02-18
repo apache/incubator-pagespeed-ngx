@@ -184,10 +184,7 @@ void RewriteDriver::AddFilters() {
 
   RegisterRewriteFilter(new CssCombineFilter(this, kCssCombinerId));
   RegisterRewriteFilter(
-      new CssFilter(this, kCssFilterId,
-                    // TODO(sligocki): Perhaps add use a kRewriteImagesFromCss?
-                    options_.Enabled(RewriteOptions::kExtendCache),
-                    cache_extender, image_rewriter));
+      new CssFilter(this, kCssFilterId, cache_extender, image_rewriter));
   RegisterRewriteFilter(new JavascriptFilter(this, kJavascriptMinId));
   RegisterRewriteFilter(image_rewriter);
   RegisterRewriteFilter(cache_extender);
@@ -518,12 +515,6 @@ bool RewriteDriver::FetchResource(
     callback->Done(false);
   }
   return handled;
-}
-
-Resource* RewriteDriver::CreateInputResource(const StringPiece& url,
-                                             const GURL& base_gurl) {
-  return resource_manager()->CreateInputResource(
-      base_gurl, url, &options_, html_parse_.message_handler());
 }
 
 }  // namespace net_instaweb

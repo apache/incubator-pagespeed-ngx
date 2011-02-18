@@ -55,12 +55,10 @@ const char CssFilter::kMinifiedBytesSaved[] = "css_filter_minified_bytes_saved";
 const char CssFilter::kParseFailures[] = "css_filter_parse_failures";
 
 CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix,
-                     bool rewrite_images_from_css,
                      CacheExtender* cache_extender,
                      ImgRewriteFilter* image_rewriter)
     : RewriteSingleResourceFilter(driver, path_prefix),
       in_style_element_(false),
-      rewrite_images_(rewrite_images_from_css),
       image_rewriter_(driver, cache_extender, image_rewriter),
       num_files_minified_(NULL),
       minified_bytes_saved_(NULL),
@@ -71,6 +69,10 @@ CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix,
     minified_bytes_saved_ = stats->GetVariable(CssFilter::kMinifiedBytesSaved);
     num_parse_failures_ = stats->GetVariable(CssFilter::kParseFailures);
   }
+}
+
+int CssFilter::FilterCacheFormatVersion() const {
+  return 1;
 }
 
 void CssFilter::Initialize(Statistics* statistics) {
@@ -178,7 +180,8 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
   scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
 
   bool ret = true;
-  if (parser.errors_seen_mask() != Css::Parser::kNoError) {
+  if (stylesheet.get() == NULL ||
+      parser.errors_seen_mask() != Css::Parser::kNoError) {
     ret = false;
     html_parse_->InfoHere("CSS parsing error in %s", css_gurl.spec().c_str());
     if (num_parse_failures_ != NULL) {
@@ -186,13 +189,8 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
     }
   } else {
     // Edit stylesheet.
-    bool editted_css = false;
-    // TODO(sligocki): Use separate flags for whether to rewrite images or
-    // cache extend.
-    if (rewrite_images_) {
-      editted_css =
-          image_rewriter_.RewriteCssImages(css_gurl, stylesheet.get(), handler);
-    }
+    bool editted_css =
+        image_rewriter_.RewriteCssImages(css_gurl, stylesheet.get(), handler);
 
     // Re-serialize stylesheet.
     StringWriter writer(out_text);

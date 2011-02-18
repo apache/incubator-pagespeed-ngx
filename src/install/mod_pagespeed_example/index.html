@@ -336,6 +336,25 @@ rewrite_css + cache_extend
 
 <tr>
   <td class="code">
+rewrite_css + rewrite_images
+  </td>
+  <td class="desc">
+    Re-compress images in CSS.
+  </td>
+  <td class="before">
+    <a href="rewrite_css_images.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="rewrite_css_images.html?ModPagespeed=on&ModPagespeedFilters=rewrite_css,rewrite_images">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
     <a href="http://code.google.com/speed/page-speed/docs/filter-image-optimize.html">
 rewrite_images
     </a>
