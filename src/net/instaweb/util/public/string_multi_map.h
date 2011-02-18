@@ -56,8 +56,8 @@ template<class StringCompare> class StringMultiMap {
   // specify a variable multiple times by calling Add multiple times
   // with the same variable, and each of these values will be returned
   // in the vector.
-  bool Lookup(const char* name, CharStarVector* values) const {
-    typename Map::const_iterator p = map_.find(name);
+  bool Lookup(const StringPiece& name, CharStarVector* values) const {
+    typename Map::const_iterator p = map_.find(name.as_string());
     bool ret = false;
     if (p != map_.end()) {
       ret = true;
@@ -67,14 +67,15 @@ template<class StringCompare> class StringMultiMap {
   }
 
   // Remove all variables by name.  Returns true if anything was removed.
-  bool RemoveAll(const char* var_name) {
-    typename Map::iterator p = map_.find(var_name);
+  bool RemoveAll(const StringPiece& var_name) {
+    std::string var_string(var_name.data(), var_name.size());
+    typename Map::iterator p = map_.find(var_string);
     bool removed = (p != map_.end());
     if (removed) {
       StringPairVector temp_vector;  // Temp variable for new vector.
       temp_vector.reserve(vector_.size());
       for (int i = 0; i < num_values(); ++i) {
-        if (!StringCaseEqual(name(i),  var_name)) {
+        if (!StringCaseEqual(name(i),  var_string)) {
           temp_vector.push_back(vector_[i]);
         } else {
           removed = true;

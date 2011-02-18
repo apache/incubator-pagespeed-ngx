@@ -49,9 +49,8 @@ class HttpDumpUrlAsyncWriter::Fetch : UrlAsyncFetcher::Callback {
     // instantiator of the DumpUrlWriter.
     compress_headers_.CopyFrom(request_headers_);
     if (accept_gzip) {
-      compress_headers_.RemoveAll(HttpAttributes::kAcceptEncoding);
-      compress_headers_.Add(HttpAttributes::kAcceptEncoding,
-                            HttpAttributes::kGzip);
+      compress_headers_.Replace(HttpAttributes::kAcceptEncoding,
+                                HttpAttributes::kGzip);
     }
 
     return base_fetcher->StreamingFetch(url_, compress_headers_,
@@ -61,9 +60,8 @@ class HttpDumpUrlAsyncWriter::Fetch : UrlAsyncFetcher::Callback {
 
   // Finishes the Fetch when called back.
   void Done(bool success) {
-    compressed_response_.RemoveAll(HttpAttributes::kContentLength);
-    compressed_response_.Add(HttpAttributes::kContentLength,
-                          IntegerToString(contents_.size()).c_str());
+    compressed_response_.Replace(HttpAttributes::kContentLength,
+                                 IntegerToString(contents_.size()));
     compressed_response_.ComputeCaching();
 
     // Do not write an empty file if the fetch failed.

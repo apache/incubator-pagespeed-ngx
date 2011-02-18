@@ -90,7 +90,7 @@ template<class Proto> int Headers<Proto>::NumAttributeNames() const {
 }
 
 template<class Proto> bool Headers<Proto>::Lookup(
-    const char* name, CharStarVector* values) const {
+    const StringPiece& name, CharStarVector* values) const {
   PopulateMap();
   return map_->Lookup(name, values);
 }
@@ -116,7 +116,7 @@ template<class Proto> void Headers<Proto>::Add(
   }
 }
 
-template<class Proto> bool Headers<Proto>::RemoveAll(const char* name) {
+template<class Proto> bool Headers<Proto>::RemoveAll(const StringPiece& name) {
   // Protobufs lack a convenient remove method for array elements, so
   // we copy the data into the map and do the remove there, then
   // reconstruct the protobuf.
@@ -133,6 +133,13 @@ template<class Proto> bool Headers<Proto>::RemoveAll(const char* name) {
     }
   }
   return removed;
+}
+
+template<class Proto> void Headers<Proto>::Replace(
+    const StringPiece& name, const StringPiece& value) {
+  // TODO(jmarantz): This could be arguably be implemented more efficiently.
+  RemoveAll(name);
+  Add(name, value);
 }
 
 template<class Proto> bool Headers<Proto>::WriteAsBinary(

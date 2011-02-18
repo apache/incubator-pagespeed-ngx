@@ -60,17 +60,15 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(
     ResponseHeaders compressed_response;
     compress_headers.CopyFrom(request_headers);
     if (accept_gzip_) {
-      compress_headers.RemoveAll(HttpAttributes::kAcceptEncoding);
-      compress_headers.Add(HttpAttributes::kAcceptEncoding,
-                           HttpAttributes::kGzip);
+      compress_headers.Replace(HttpAttributes::kAcceptEncoding,
+                               HttpAttributes::kGzip);
     }
 
     ret = base_fetcher_->StreamingFetchUrl(url, compress_headers,
                                            &compressed_response, &string_writer,
                                            handler);
-    compressed_response.RemoveAll(HttpAttributes::kContentLength);
-    compressed_response.Add(HttpAttributes::kContentLength,
-                          IntegerToString(contents.size()).c_str());
+    compressed_response.Replace(HttpAttributes::kContentLength,
+                                IntegerToString(contents.size()));
     compressed_response.ComputeCaching();
 
     // Do not write an empty file if the fetch failed.

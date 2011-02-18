@@ -589,8 +589,7 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
   // we mark the fetch as failed in the cache.
   ResponseHeaders no_cache;
   resource_manager_->SetDefaultHeaders(&kContentTypeHtml, &no_cache);
-  no_cache.RemoveAll(HttpAttributes::kCacheControl);
-  no_cache.Add(HttpAttributes::kCacheControl, "no-cache");
+  no_cache.Replace(HttpAttributes::kCacheControl, "no-cache");
   no_cache.ComputeCaching();
   mock_url_fetcher_.SetResponse("http://example.com/", no_cache, kContents);
 

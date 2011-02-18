@@ -255,9 +255,8 @@ bool HttpDumpUrlFetcher::StreamingFetchUrl(
           // TODO(jmarantz): make this conditional based on a flag.
           int64 now_ms = timer_->NowMs();
           CorrectDateHeaders(now_ms, response_headers);
-          response_headers->RemoveAll(HttpAttributes::kContentLength);
-          response_headers->Add(HttpAttributes::kContentLength, IntegerToString(
-              writer.content_length()).c_str());
+          response_headers->Replace(HttpAttributes::kContentLength,
+                                    IntegerToString(writer.content_length()));
         }
         if (writer.gzip_content_length() != 0) {
           response_headers->Add(kGzipContentLengthAttribute, IntegerToString(

@@ -80,14 +80,14 @@ class OutputResource : public Resource {
     //
     // Also, this currently requires the keys to be valid HTTP header names;
     // so most punctuation can't be used (but - and _ are OK)
-    void SetRemembered(const char* key, const std::string& val);
-    bool Remembered(const char* key, std::string* out) const;
+    void SetRemembered(const StringPiece& key, const std::string& val);
+    bool Remembered(const StringPiece& key, std::string* out) const;
 
-    void SetRememberedInt64(const char* key, int64 val);
-    bool RememberedInt64(const char* key, int64* out);
+    void SetRememberedInt64(const StringPiece& key, int64 val);
+    bool RememberedInt64(const StringPiece& key, int64* out);
 
-    void SetRememberedInt(const char* key, int val);
-    bool RememberedInt(const char* key, int* out);
+    void SetRememberedInt(const StringPiece& key, int val);
+    bool RememberedInt(const StringPiece& key, int* out);
 
    private:
     friend class ResourceManager;

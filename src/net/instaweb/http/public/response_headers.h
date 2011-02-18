@@ -51,7 +51,11 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   void Add(const StringPiece& name, const StringPiece& value);
 
   // Remove all headers by name.
-  void RemoveAll(const char* name);
+  void RemoveAll(const StringPiece& name);
+
+  // Similar to RemoveAll followed by Replace.  Note that the attribute
+  // order may be changed as a side effect of this operation.
+  void Replace(const StringPiece& name, const StringPiece& value);
 
   // Serialize HTTP response header to a binary stream.
   bool WriteAsBinary(Writer* writer, MessageHandler* message_handler);
@@ -108,11 +112,11 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Parses a date header such as HttpAttributes::kDate or
   // HttpAttributes::kExpires, returning the timestamp as
   // number of milliseconds since 1970.
-  bool ParseDateHeader(const char* attr, int64* date_ms) const;
+  bool ParseDateHeader(const StringPiece& attr, int64* date_ms) const;
 
   // Updates a date header using time specified as a number of milliseconds
   // since 1970.
-  void UpdateDateHeader(const char* attr, int64 date_ms);
+  void UpdateDateHeader(const StringPiece& attr, int64 date_ms);
 
   // Set whole first line.
   void set_first_line(int major_version,

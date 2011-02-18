@@ -59,42 +59,43 @@ OutputResource::CachedResult::CachedResult() : frozen_(false),
                                                auto_expire_(true),
                                                origin_expiration_time_ms_(0) {}
 
-void OutputResource::CachedResult::SetRemembered(const char* key,
+void OutputResource::CachedResult::SetRemembered(const StringPiece& key,
                                                  const std::string& val) {
   DCHECK(!frozen_) << "Any custom metadata must be set before "
                       "ResourceManager::Write* is called";
-  std::string full_key = StrCat(StringPiece(kCustomKeyPrefix), key);
-  headers_.RemoveAll(full_key.c_str());
-  headers_.Add(full_key, val);
+  std::string full_key = StrCat(kCustomKeyPrefix, key);
+  headers_.Replace(full_key, val);
 }
 
-bool OutputResource::CachedResult::Remembered(const char* key,
+bool OutputResource::CachedResult::Remembered(const StringPiece& key,
                                               std::string* out) const {
-  std::string full_key = StrCat(StringPiece(kCustomKeyPrefix), key);
+  std::string full_key = StrCat(kCustomKeyPrefix, key);
   CharStarVector vals;
-  if (headers_.Lookup(full_key.c_str(), &vals) && vals.size() == 1) {
+  if (headers_.Lookup(full_key, &vals) && vals.size() == 1) {
     *out = vals[0];
     return true;
   }
   return false;
 }
 
-void OutputResource::CachedResult::SetRememberedInt64(const char* key,
+void OutputResource::CachedResult::SetRememberedInt64(const StringPiece& key,
                                                       int64 val) {
   SetRemembered(key, Integer64ToString(val));
 }
 
-bool OutputResource::CachedResult::RememberedInt64(const char* key,
+bool OutputResource::CachedResult::RememberedInt64(const StringPiece& key,
                                                    int64* out) {
   std::string out_str;
   return Remembered(key, &out_str) && StringToInt64(out_str, out);
 }
 
-void OutputResource::CachedResult::SetRememberedInt(const char* key, int val) {
+void OutputResource::CachedResult::SetRememberedInt(
+    const StringPiece& key, int val) {
   SetRemembered(key, IntegerToString(val));
 }
 
-bool OutputResource::CachedResult::RememberedInt(const char* key, int* out) {
+bool OutputResource::CachedResult::RememberedInt(
+    const StringPiece& key, int* out) {
   std::string out_str;
   return Remembered(key, &out_str) && StringToInt(out_str, out);
 }
@@ -375,8 +376,7 @@ void OutputResource::SaveCachedResult(const std::string& name_key,
     std::string cache_control = StringPrintf(
         "max-age=%ld",
         static_cast<long>(delta_sec));  // NOLINT
-    meta_data->RemoveAll(HttpAttributes::kCacheControl);
-    meta_data->Add(HttpAttributes::kCacheControl, cache_control);
+    meta_data->Replace(HttpAttributes::kCacheControl, cache_control);
     meta_data->RemoveAll(kCacheUnoptimizableHeader);
     if (!cached->optimizable()) {
       meta_data->Add(kCacheUnoptimizableHeader, "true");

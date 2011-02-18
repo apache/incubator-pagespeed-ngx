@@ -129,8 +129,7 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
     header->Add(HttpAttributes::kContentType, content_type->mime_type());
   }
   int64 now_ms = http_cache_->timer()->NowMs();
-  header->RemoveAll(HttpAttributes::kCacheControl);
-  header->Add(HttpAttributes::kCacheControl, max_age_string_);
+  header->Replace(HttpAttributes::kCacheControl, max_age_string_);
   std::string expires_string;
   header->RemoveAll(HttpAttributes::kExpires);
   if (ConvertTimeToString(now_ms + kGeneratedMaxAgeMs, &expires_string)) {
@@ -148,8 +147,7 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
   // serve images from its cache when the image lacks an ETag.  Since
   // we sign URLs, there is no reason to have a unique signature in
   // the ETag.
-  header->RemoveAll(HttpAttributes::kEtag);
-  header->Add(HttpAttributes::kEtag, kResourceEtagValue);
+  header->Replace(HttpAttributes::kEtag, kResourceEtagValue);
 
   // TODO(jmarantz): add date/last-modified headers by default.
   CharStarVector v;
@@ -173,8 +171,7 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
 void ResourceManager::SetContentType(const ContentType* content_type,
                                      ResponseHeaders* header) {
   CHECK(content_type != NULL);
-  header->RemoveAll(HttpAttributes::kContentType);
-  header->Add(HttpAttributes::kContentType, content_type->mime_type());
+  header->Replace(HttpAttributes::kContentType, content_type->mime_type());
   header->ComputeCaching();
 }
 

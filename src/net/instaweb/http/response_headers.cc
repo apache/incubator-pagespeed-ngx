@@ -110,10 +110,16 @@ void ResponseHeaders::Add(const StringPiece& name, const StringPiece& value) {
   cache_fields_dirty_ = true;
 }
 
-void ResponseHeaders::RemoveAll(const char* name) {
+void ResponseHeaders::RemoveAll(const StringPiece& name) {
   if (Headers<HttpResponseHeaders>::RemoveAll(name)) {
     cache_fields_dirty_ = true;
   }
+}
+
+void ResponseHeaders::Replace(
+    const StringPiece& name, const StringPiece& value) {
+  cache_fields_dirty_ = true;
+  Headers<HttpResponseHeaders>::Replace(name, value);
 }
 
 bool ResponseHeaders::WriteAsBinary(Writer* writer, MessageHandler* handler) {
@@ -170,16 +176,14 @@ int64 ResponseHeaders::CacheExpirationTimeMs() const {
 void ResponseHeaders::SetDate(int64 date_ms) {
   std::string time_string;
   if (ConvertTimeToString(date_ms, &time_string)) {
-    RemoveAll(HttpAttributes::kDate);
-    Add(HttpAttributes::kDate, time_string.c_str());
+    Replace(HttpAttributes::kDate, time_string);
   }
 }
 
 void ResponseHeaders::SetLastModified(int64 last_modified_ms) {
   std::string time_string;
   if (ConvertTimeToString(last_modified_ms, &time_string)) {
-    RemoveAll(HttpAttributes::kLastModified);
-    Add(HttpAttributes::kLastModified, time_string.c_str());
+    Replace(HttpAttributes::kLastModified, time_string);
   }
 }
 
@@ -290,14 +294,15 @@ bool ResponseHeaders::IsGzipped() const {
           (strcmp(v[0], HttpAttributes::kGzip) == 0));
 }
 
-bool ResponseHeaders::ParseDateHeader(const char* attr, int64* date_ms) const {
+bool ResponseHeaders::ParseDateHeader(
+    const StringPiece& attr, int64* date_ms) const {
   CharStarVector values;
   return (Lookup(attr, &values) &&
           (values.size() == 1) &&
           ConvertStringToTime(values[0], date_ms));
 }
 
-void ResponseHeaders::UpdateDateHeader(const char* attr, int64 date_ms) {
+void ResponseHeaders::UpdateDateHeader(const StringPiece& attr, int64 date_ms) {
   RemoveAll(attr);
   std::string buf;
   if (ConvertTimeToString(date_ms, &buf)) {

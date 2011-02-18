@@ -58,16 +58,20 @@ template<class Proto> class Headers {
   // around this problem by moving the Map to an explicit separate class that
   // can be instantiated to assist with Lookups and Remove.  But that should
   // be done in a separate CL from the one I'm typing into now.
-  bool Lookup(const char* name, CharStarVector* values) const;
+  bool Lookup(const StringPiece& name, CharStarVector* values) const;
 
   // Likewise, NumAttributeNames is const but not thread-safe.
   int NumAttributeNames() const;
 
-  // Add a new header.
+  // Adds a new header, even if a header with the 'name' exists already.
   void Add(const StringPiece& name, const StringPiece& value);
 
   // Remove all headers by name.  Return true if anything was removed.
-  bool RemoveAll(const char* name);
+  bool RemoveAll(const StringPiece& name);
+
+  // Similar to RemoveAll followed by Replace.  Note that the attribute
+  // order may be changed as a side effect of this operation.
+  void Replace(const StringPiece& name, const StringPiece& value);
 
   // Serialize HTTP header to a binary stream.
   bool WriteAsBinary(Writer* writer, MessageHandler* message_handler);
