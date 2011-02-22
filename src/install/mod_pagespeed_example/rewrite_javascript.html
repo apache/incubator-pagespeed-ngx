@@ -1,5 +1,6 @@
 <html>
   <head>
+    <title>rewrite_javascript example</title>
   </head>
   <body>
     <p>
@@ -20,20 +21,20 @@
         document.write("Internal script; state = " + state); state = 42
       </script>
     </p><p>
-      External script url: 
+      External script url:
       <script type="text/javascript">
         /* This comment will also be removed */
         document.write(document.getElementById("ext1").src);
       </script>
     </p><p>
-      Comment in internal script: 
+      Comment in internal script:
       <script type="text/javascript">
         // This comment will be removed too.
         var source = document.getElementById("int1").innerHTML;
         document.write(source.match("comment") ? "yes" : "no");
       </script>
     </p><p>
-      Comment in external script: 
+      Comment in external script:
       <script type="text/javascript">
         /* Of course, this comment will be removed as well. */
         var source = document.getElementById("ext2").innerHTML;
