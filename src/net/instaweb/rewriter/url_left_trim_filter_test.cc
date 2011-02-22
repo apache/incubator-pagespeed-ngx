@@ -36,7 +36,9 @@ class UrlLeftTrimFilterTest : public HtmlParseTestBase {
                const StringPiece init, const StringPiece expected) {
     StringPiece url(init);
     std::string trimmed;
-    EXPECT_EQ(changed, left_trim_filter_.Trim(url, &trimmed));
+    EXPECT_EQ(changed, left_trim_filter_.Trim(left_trim_filter_.base_url_,
+                                              url, &trimmed,
+                                              html_parse_.message_handler()));
     if (changed) {
       EXPECT_EQ(expected, trimmed);
     }

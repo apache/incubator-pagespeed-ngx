@@ -76,6 +76,7 @@ class CssImageRewriter {
   // Whether to do each type of optimization.
   bool cache_extend_;
   bool rewrite_images_;
+  bool trim_urls_;
 
   // Pointers to other HTML filters used to rewrite images.
   // TODO(sligocki): morlovich suggests separating this out as some

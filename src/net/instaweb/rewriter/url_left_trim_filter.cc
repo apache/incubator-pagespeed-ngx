@@ -21,6 +21,7 @@
 #include <vector>
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -65,94 +66,79 @@ void UrlLeftTrimFilter::StartElement(HtmlElement* element) {
   }
 }
 
-void UrlLeftTrimFilter::ClearBaseUrl() {
-  base_url_ = GURL();
-  scheme_.clear();
-  origin_.clear();
-  path_.clear();
-}
-
 void UrlLeftTrimFilter::SetBaseUrl(const StringPiece& base) {
-  ClearBaseUrl();
-  base_url_ = GURL(base.data());
-
-  //  Don't try to set a base url for an invalid path.
-  if (!base_url_.is_valid() || !base_url_.IsStandard()) {
-    return;
-  }
-  scheme_ = std::string(base_url_.scheme());
-
-  origin_ = std::string(GoogleUrl::Origin(base_url_));
-
-  path_ = GoogleUrl::PathSansLeaf(base_url_);
+  base_url_ = GoogleUrl::Create(base);
 }
 
 // Resolve the url we want to trim, and then remove the scheme, origin
 // and/or path as appropriate.
-// StringPiece supports left and right trimming in place (the only
-// mutation it permits).
-// Check lengths so that we never completely
-// remove a url, leaving it empty.
-bool UrlLeftTrimFilter::Trim(const StringPiece& url,
-                             std::string *trimmed_url) {
-  if (url.empty()) {
+bool UrlLeftTrimFilter::Trim(const GURL& base_url,
+                             const StringPiece& url_to_trim,
+                             std::string* trimmed_url,
+                             MessageHandler* handler) {
+  if (!base_url.is_valid() || !base_url.IsStandard() || url_to_trim.empty()) {
     return false;
   }
 
-  GURL long_url = GoogleUrl::Resolve(base_url_, url);
+  GURL long_url = GoogleUrl::Resolve(base_url, url_to_trim);
   //  Don't try to rework an invalid url
   if (!long_url.is_valid() || !long_url.IsStandard()) {
     return false;
   }
 
   std::string long_url_buffer(GoogleUrl::Spec(long_url));
-  StringPiece long_url_str(long_url_buffer);
   size_t to_trim = 0;
 
   // If we can strip the whole origin (http://www.google.com/) do it,
   // then see if we can strip the prefix of the path.
-  if (origin_.length() < long_url_str.length() &&
-      GoogleUrl::Origin(long_url) == origin_) {
-    to_trim = origin_.length();
-    if (to_trim + path_.length() < long_url_str.length() &&
-        GoogleUrl::PathSansLeaf(long_url).find(path_) == 0) {
-      to_trim += path_.length();
+  std::string origin = GoogleUrl::Origin(base_url);
+  if (origin.length() < long_url_buffer.length() &&
+      GoogleUrl::Origin(long_url) == origin) {
+    to_trim = origin.length();
+    std::string path = GoogleUrl::PathSansLeaf(base_url);
+    if (to_trim + path.length() < long_url_buffer.length() &&
+        GoogleUrl::PathSansLeaf(long_url).find(path) == 0) {
+      to_trim += path.length();
     }
   }
 
   // If we can't strip the whole origin, see if we can strip off the scheme.
-  if (to_trim == 0 && scheme_.length() + 1 < long_url_str.length() &&
-      long_url.SchemeIs(scheme_.c_str())) {
+  std::string scheme = base_url.scheme();
+  if (to_trim == 0 && scheme.length() + 1 < long_url_buffer.length() &&
+      long_url.SchemeIs(scheme.c_str())) {
     // +1 for : (not included in scheme)
-    to_trim = scheme_.length() + 1;
+    to_trim = scheme.length() + 1;
   }
 
-  long_url_str.remove_prefix(to_trim);
+  // Candidate trimmed URL.
+  StringPiece trimmed_url_piece(long_url_buffer);
+  trimmed_url_piece.remove_prefix(to_trim);
 
-  if (long_url_str.length() < url.length()) {
+  if (trimmed_url_piece.length() < url_to_trim.length()) {
     // If we have a colon before the first slash there are two options:
     // option 1 - we still have our scheme, in which case we're not shortening
     // anything, and can just abort.
     // option 2 - the original url had some nasty scheme-looking stuff in the
     // middle of the url, and now it's at the front.  This causes Badness,
     // revert to the original.
-    size_t colon_pos = long_url_str.find(':');
-    if (colon_pos != long_url_str.npos) {
-      if (long_url_str.rfind('/', colon_pos) == long_url_str.npos) {
+    size_t colon_pos = trimmed_url_piece.find(':');
+    if (colon_pos != trimmed_url_piece.npos) {
+      if (trimmed_url_piece.rfind('/', colon_pos) == trimmed_url_piece.npos) {
         return false;
       }
     }
-    GURL resolved_newurl(GoogleUrl::Resolve(base_url_, long_url_str));
+    GURL resolved_newurl(GoogleUrl::Resolve(base_url, trimmed_url_piece));
     DCHECK(resolved_newurl == long_url);
     if (resolved_newurl != long_url) {
-      html_parse_->ErrorHere("Left trimming of %s referring to %s was %s, "
-                             "which instead refers to %s.",
-                             url.as_string().c_str(), long_url_buffer.c_str(),
-                             long_url_str.as_string().c_str(),
-                             GoogleUrl::Spec(resolved_newurl).c_str());
+      handler->Message(kError, "Left trimming of %s referring to %s was %s, "
+                       "which instead refers to %s.",
+                       url_to_trim.as_string().c_str(),
+                       long_url_buffer.c_str(),
+                       trimmed_url_piece.as_string().c_str(),
+                       GoogleUrl::Spec(resolved_newurl).c_str());
       return false;
     }
-    *trimmed_url = long_url_str.as_string();
+    *trimmed_url = trimmed_url_piece.as_string();
     return true;
   }
   return false;
@@ -164,7 +150,7 @@ void UrlLeftTrimFilter::TrimAttribute(HtmlElement::Attribute* attr) {
     StringPiece val(attr->value());
     std::string trimmed_val;
     size_t orig_size = val.size();
-    if (Trim(val, &trimmed_val)) {
+    if (Trim(base_url_, val, &trimmed_val, html_parse_->message_handler())) {
       size_t saved = orig_size - trimmed_val.size();
       const char* q = attr->quote();
       html_parse_->InfoHere(

@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -44,10 +45,10 @@ CssImageRewriter::CssImageRewriter(RewriteDriver* driver,
     : driver_(driver),
       // For now we use the same options as for rewriting and cache-extending
       // images found in HTML.
-      cache_extend_(
-          driver->options()->Enabled(RewriteOptions::kExtendCache)),
+      cache_extend_(driver->options()->Enabled(RewriteOptions::kExtendCache)),
       rewrite_images_(
           driver->options()->Enabled(RewriteOptions::kRewriteImages)),
+      trim_urls_(driver->options()->Enabled(RewriteOptions::kLeftTrimUrls)),
       cache_extender_(cache_extender),
       image_rewriter_(image_rewriter),
       image_rewrites_(NULL),
@@ -109,6 +110,22 @@ bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
           cache_extends_->Add(1);
         }
         *new_url = rewrite_info->url();
+        ret = true;
+      }
+    }
+
+    // Try trimming the URL.
+    if (trim_urls_) {
+      StringPiece url_to_trim;
+      if (ret) {
+        url_to_trim = *new_url;
+      } else {
+        url_to_trim = old_rel_url;
+      }
+      std::string trimmed_url;
+      if (UrlLeftTrimFilter::Trim(base_url, url_to_trim, &trimmed_url,
+                                  handler)) {
+        *new_url = trimmed_url;
         ret = true;
       }
     }
