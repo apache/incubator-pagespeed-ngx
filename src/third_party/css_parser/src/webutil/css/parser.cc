@@ -236,14 +236,15 @@ static bool StartsIdent(char c) {
           || !IsAscii(c));
 }
 
-UnicodeText Parser::ParseIdent() {
+UnicodeText Parser::ParseIdent(const StringPiece& allowed_chars) {
   Tracer trace(__func__, &in_);
   UnicodeText s;
   while (in_ < end_) {
     if ((*in_ >= 'A' && *in_ <= 'Z')
         || (*in_ >= 'a' && *in_ <= 'z')
         || (*in_ >= '0' && *in_ <= '9')
-        || *in_ == '-' || *in_ == '_') {
+        || *in_ == '-' || *in_ == '_'
+        || allowed_chars.find(*in_) != allowed_chars.npos) {
       s.push_back(*in_);
       in_++;
     } else if (!IsAscii(*in_)) {
@@ -512,7 +513,9 @@ FunctionParameters* Parser::ParseFunction() {
         in_++;
         break;
       default: {
-        scoped_ptr<Value> val(ParseAny());
+        // TODO(sligocki): Should we parse Opacity=80 as a single value?
+        const StringPiece allowed_chars("=");
+        scoped_ptr<Value> val(ParseAny(allowed_chars));
         if (!val.get()) {
           ReportParsingError(kFunctionError,
                              "Cannot parse parameter in function");
@@ -629,7 +632,7 @@ Value* Parser::ParseUrl() {
   return NULL;
 }
 
-Value* Parser::ParseAnyExpectingColor() {
+Value* Parser::ParseAnyExpectingColor(const StringPiece& allowed_chars) {
   Tracer trace(__func__, &in_);
   Value* toret = NULL;
 
@@ -643,13 +646,13 @@ Value* Parser::ParseAnyExpectingColor() {
     toret = new Value(c);
   } else {
     in_ = oldin;  // no valid color.  rollback.
-    toret = ParseAny();
+    toret = ParseAny(allowed_chars);
   }
   return toret;
 }
 
 // Parses a CSS value.  Could be just about anything.
-Value* Parser::ParseAny() {
+Value* Parser::ParseAny(const StringPiece& allowed_chars) {
   Tracer trace(__func__, &in_);
   Value* toret = NULL;
 
@@ -704,7 +707,7 @@ Value* Parser::ParseAny() {
       }
       // fail through
     default: {
-      UnicodeText id = ParseIdent();
+      UnicodeText id = ParseIdent(allowed_chars);
       if (id.empty()) {
         toret = NULL;
       } else if (*in_ == '(') {
@@ -784,9 +787,10 @@ Values* Parser::ParseValues(Property::Prop prop) {
 
   scoped_ptr<Values> values(new Values);
   while (SkipToNextToken()) {
+    const StringPiece allowed_chars(":.");
     scoped_ptr<Value> v(expecting_color ?
-                        ParseAnyExpectingColor() :
-                        ParseAny());
+                        ParseAnyExpectingColor(allowed_chars) :
+                        ParseAny(allowed_chars));
 
     if (v.get() &&
         (allow_all_values_ ||

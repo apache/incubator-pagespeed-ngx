@@ -366,6 +366,10 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{box-shadow:-1px -2px 2px rgba(0,0,0,0.15)}",  // CSS3 rgba
     // http://code.google.com/p/modpagespeed/issues/detail?id=66
     "a{-moz-transform:rotate(7deg)}",
+    // Microsoft syntax values.
+    "a{filter:progid:DXImageTransform.Microsoft.Alpha(Opacity=80)}",
+    // Found in the wild:
+    "a{width:overflow:hidden}",
     };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
@@ -377,11 +381,8 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=50
     "@media screen and (max-width:290px){a{color:red}}",  // CSS3 "and (...)"
 
-    "a { filter:progid:DXImageTransform.Microsoft.Alpha(Opacity=80); }",
-
     // Should fail (bad syntax):
     "a { font:bold verdana 10px; }",
-    "a { width:overflow:hidden; }",
     };
 
   for (int i = 0; i < arraysize(fail_examples); ++i) {

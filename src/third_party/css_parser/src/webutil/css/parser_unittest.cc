@@ -1280,6 +1280,7 @@ TEST_F(ParserTest, atrules) {
   ASSERT_EQ(1, t->ruleset(0).selectors()[0]->size());
   EXPECT_EQ(kHtmlTagBody,
             t->ruleset(0).selector(0)[0]->get(0)->element_type());
+  ASSERT_EQ(1, t->ruleset(0).declarations().size());
   EXPECT_EQ(Property::FONT_SIZE,
             t->ruleset(0).declarations()[0]->prop());
   EXPECT_EQ(true, a->Done());
