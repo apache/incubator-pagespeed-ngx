@@ -39,21 +39,22 @@ class ResourceCombinerTemplate : public ResourceCombiner {
   }
   virtual ~ResourceCombinerTemplate() {}
 
-  virtual bool AddElement(T element, const StringPiece& url,
-                          MessageHandler* handler) {
+  bool AddElement(T element, const StringPiece& url, MessageHandler* handler) {
     if (AddResource(url, handler)) {
       elements_.push_back(element);
       return true;
     }
     return false;
   }
+
   T element(int i) const { return elements_[i]; }
 
+ protected:
   virtual void Clear() {
     elements_.clear();
     ResourceCombiner::Clear();
   }
- protected:
+
   std::vector<T> elements_;
 };
 

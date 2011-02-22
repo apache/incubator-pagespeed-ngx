@@ -57,6 +57,7 @@
         'util/cache_interface.cc',
         'util/chunking_writer.cc',
         'util/data_url.cc',
+        'util/debug.cc',
         'util/file_cache.cc',
         'util/file_system.cc',
         'util/file_system_lock_manager.cc',

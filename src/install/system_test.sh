@@ -278,7 +278,7 @@ check "$WGET_DUMP $URL | grep -q 'HTTP/1.1 200 OK'"
 
 test_filter move_css_to_head does what it says on the tin.
 check $WGET_PREREQ $URL
-check grep -q "'<head><link'" $FETCHED  # link moved to head
+check grep -q "'styles/all_styles.css\"></head>'" $FETCHED  # link moved to head
 
 test_filter inline_css converts a link tag to a style tag
 fetch_until $URL 'grep -c style' 2
@@ -325,7 +325,7 @@ test_filter rewrite_css removes comments and saves a bunch of bytes.
 check $WGET_PREREQ $URL
 grep "comment" $FETCHED                   # comment, should not find
 check [ $? != 0 ]
-check [ `stat -c %s $FETCHED` -lt 315 ]   # down from 472
+check [ `stat -c %s $FETCHED` -lt 380 ]   # down from 538
 
 test_filter rewrite_images inlines, compresses, and resizes.
 fetch_until $URL 'grep -c image/png' 1    # inlined

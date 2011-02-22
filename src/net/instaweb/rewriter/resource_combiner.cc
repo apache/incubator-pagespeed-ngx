@@ -47,9 +47,9 @@ namespace net_instaweb {
 ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
                                    const StringPiece& filter_prefix,
                                    const StringPiece& extension)
-    : UrlPartnership(driver->options(), GURL()),
-      resource_manager_(driver->resource_manager()),
+    : resource_manager_(driver->resource_manager()),
       rewrite_driver_(driver),
+      partnership_(driver->options(), GURL()),
       prev_num_components_(0),
       accumulated_leaf_size_(0),
       // TODO(jmarantz): The URL overhead computation is arguably fragile.
@@ -99,15 +99,15 @@ bool ResourceCombiner::AddResource(const StringPiece& url,
   }
 
   // Now manage the URL and policy.
-  bool added = AddUrl(url, handler);
+  bool added = partnership_.AddUrl(url, handler);
 
   if (added) {
     int index = num_urls() - 1;
 
-    if (num_components() != prev_num_components_) {
+    if (partnership_.NumCommonComponents() != prev_num_components_) {
       UpdateResolvedBase();
     }
-    const std::string relative_path = RelativePath(index);
+    const std::string relative_path = partnership_.RelativePath(index);
     multipart_encoder_.AddUrl(relative_path);
 
     if (accumulated_leaf_size_ == 0) {
@@ -118,11 +118,11 @@ bool ResourceCombiner::AddResource(const StringPiece& url,
 
     if (UrlTooBig()) {
       added = false;
-      RemoveLast();
+      partnership_.RemoveLast();
       multipart_encoder_.pop_back();
 
       // The base might have changed again
-      if (num_components() != prev_num_components_) {
+      if (partnership_.NumCommonComponents() != prev_num_components_) {
         UpdateResolvedBase();
       }
     } else {
@@ -158,12 +158,12 @@ bool ResourceCombiner::UrlTooBig() {
   // which might add to URL length, can run after ours
   int expanded_size = accumulated_leaf_size_ + ResourceCombiner::kUrlSlack;
 
-  if (expanded_size > rewrite_options()->max_url_segment_size()) {
+  if (expanded_size > rewrite_driver_->options()->max_url_segment_size()) {
     return true;
   }
 
   if ((expanded_size + static_cast<int>(resolved_base_.size())) >
-      rewrite_options()->max_url_size()) {
+      rewrite_driver_->options()->max_url_size()) {
     return true;
   }
   return false;
@@ -181,11 +181,11 @@ void ResourceCombiner::UpdateResolvedBase() {
   // gets used for image spriting then this
   // algorithm should be revisited.  For CSS and JS we expect N to
   // be relatively small.
-  prev_num_components_ = num_components();
+  prev_num_components_ = partnership_.NumCommonComponents();
   resolved_base_ = ResolvedBase();
   multipart_encoder_.clear();
   for (size_t i = 0; i < resources_.size(); ++i) {
-    multipart_encoder_.AddUrl(RelativePath(i));
+    multipart_encoder_.AddUrl(partnership_.RelativePath(i));
   }
 
   accumulated_leaf_size_ = 0;
@@ -438,7 +438,7 @@ void ResourceCombiner::Clear() {
 
 void ResourceCombiner::Reset(const GURL& base_gurl) {
   Clear();
-  UrlPartnership::Reset(base_gurl);
+  partnership_.Reset(base_gurl);
   prev_num_components_ = 0;
   accumulated_leaf_size_ = 0;
   base_gurl_ = &base_gurl;

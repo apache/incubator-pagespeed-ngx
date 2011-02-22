@@ -64,8 +64,11 @@ class UrlPartnership {
 
   virtual void Reset(const GURL& original_request);
 
+  // Returns the number of common path components for all resources
+  // in this partnership.
+  int NumCommonComponents() const { return common_components_.size(); }
+
  protected:
-  int num_components() const { return common_components_.size(); }
   const RewriteOptions* rewrite_options() const { return rewrite_options_; }
 
  private:

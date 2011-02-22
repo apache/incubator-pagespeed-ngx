@@ -51,7 +51,7 @@ class Writer;
 //    of resources and URLs that can be safely combined together while
 //    encoding the information on the pieces in the combined URL.
 // 2) It implements Fetch, reconstructing combinations as needed.
-class ResourceCombiner : public UrlPartnership {
+class ResourceCombiner {
  public:
   // Slack to leave in URL size, so that other filters running afterwards
   // can expand the URLs without going over maximum allowed sizes.
@@ -72,32 +72,38 @@ class ResourceCombiner : public UrlPartnership {
 
   virtual ~ResourceCombiner();
 
-  virtual bool Fetch(OutputResource* resource,
-                     Writer* writer,
-                     const RequestHeaders& request_header,
-                     ResponseHeaders* response_headers,
-                     MessageHandler* message_handler,
-                     UrlAsyncFetcher::Callback* callback);
+  bool Fetch(OutputResource* resource,
+             Writer* writer,
+             const RequestHeaders& request_header,
+             ResponseHeaders* response_headers,
+             MessageHandler* message_handler,
+             UrlAsyncFetcher::Callback* callback);
 
-  // Resets the current partnership to an empty state.  We will keep a pointer
+  // Resets the current combiner to an empty state.  We will keep a pointer
   // to this GURL, so it should live as long as you're using this combiner
   // without calling Reset again.
-  virtual void Reset(const GURL& base_gurl);
-
-  // Tries to add a resource with given source URL to the current partnership.
-  // Returns whether successful or not (in which case the partnership will be
-  // unchanged). This will succeed only if we both have the data ready and can
-  // fit in the names into the combined URL.
-  virtual bool AddResource(const StringPiece& url, MessageHandler* handler);
+  // If a subclass needs to do some of its own reseting, see Clear().
+  void Reset(const GURL& base_gurl);
 
   // Computes a name for the URL that meets all known character-set and
   // size restrictions.
   std::string UrlSafeId() const;
 
+  // Returns the number of URLs that have been successfully added.
+  int num_urls() const { return partnership_.num_urls(); }
+
   typedef std::vector<Resource*> ResourceVector;
   const ResourceVector& resources() const { return resources_; }
 
+  // Base common to all URLs. Always has a trailing slash.
+  std::string ResolvedBase() const { return partnership_.ResolvedBase(); }
+
  protected:
+  // Tries to add a resource with given source URL to the current partnership.
+  // Returns whether successful or not (in which case the partnership will be
+  // unchanged). This will succeed only if we both have the data ready and can
+  // fit in the names into the combined URL.
+  bool AddResource(const StringPiece& url, MessageHandler* handler);
 
   // Returns one resource containing the combination of all added resources,
   // creating it if necessary.  Caller takes ownership.  Returns NULL if the
@@ -117,15 +123,19 @@ class ResourceCombiner : public UrlPartnership {
   // writes input->contents() to the writer without any alteration.
   virtual bool WritePiece(Resource* input, OutputResource* combination,
                           Writer* writer, MessageHandler* handler);
-  const GURL* base_gurl() const { return base_gurl_; }
 
+  // Override this if you need to remove some state whenever Reset() is called.
+  // Your implementation must call the superclass.
   virtual void Clear();
+
+  const GURL* base_gurl() const { return base_gurl_; }
 
   ResourceManager* const resource_manager_;
   RewriteDriver* const rewrite_driver_;
 
  private:
   friend class CombinerCallback;
+
   // Recomputes the leaf size if our base has changed
   void UpdateResolvedBase();
 
@@ -147,7 +157,7 @@ class ResourceCombiner : public UrlPartnership {
   virtual bool ResourceCombinable(Resource* resource,
                                   MessageHandler* handler);
 
-
+  UrlPartnership partnership_;
   std::vector<Resource*> resources_;
   UrlMultipartEncoder multipart_encoder_;
   int prev_num_components_;
