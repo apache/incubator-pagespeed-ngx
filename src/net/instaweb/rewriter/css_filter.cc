@@ -189,7 +189,7 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
     }
   } else {
     // Edit stylesheet.
-    bool editted_css =
+    bool edited_css =
         image_rewriter_.RewriteCssImages(css_gurl, stylesheet.get(), handler);
 
     // Re-serialize stylesheet.
@@ -202,7 +202,7 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
     int64 bytes_saved = in_text_size - out_text_size;
 
     // Don't rewrite if we didn't edit it or make it any smaller.
-    if (!editted_css && bytes_saved <= 0) {
+    if (!edited_css && bytes_saved <= 0) {
       ret = false;
       html_parse_->InfoHere("CSS parser increased size of CSS file %s by %lld "
                             "bytes.", css_gurl.spec().c_str(),

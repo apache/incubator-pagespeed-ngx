@@ -119,7 +119,7 @@ bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
 bool CssImageRewriter::RewriteCssImages(const GURL& base_url,
                                         Css::Stylesheet* stylesheet,
                                         MessageHandler* handler) {
-  bool editted = false;
+  bool edited = false;
   if (RewritesEnabled()) {
     handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
                      base_url.spec().c_str());
@@ -154,7 +154,7 @@ bool CssImageRewriter::RewriteCssImages(const GURL& base_url,
                   *value_iter = new Css::Value(Css::Value::URI,
                                                UTF8ToUnicodeText(new_url));
                   delete value;
-                  editted = true;
+                  edited = true;
                   handler->Message(kInfo, "Successfully rewrote %s to %s",
                                    rel_url.c_str(), new_url.c_str());
                 } else {
@@ -179,7 +179,7 @@ bool CssImageRewriter::RewriteCssImages(const GURL& base_url,
                      "so not rewriting images in CSS in %s",
                      base_url.spec().c_str());
   }
-  return editted;
+  return edited;
 }
 
 }  // namespace net_instaweb

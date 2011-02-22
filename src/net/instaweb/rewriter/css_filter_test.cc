@@ -362,6 +362,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // CSS3-style pseudo-elements.
     "p.normal::selection{background:#c00;color:#fff}",
     "::-moz-focus-inner{border:0}",
+    "input::-webkit-input-placeholder{color:#ababab}"
     // http://code.google.com/p/modpagespeed/issues/detail?id=51
     "a{box-shadow:-1px -2px 2px rgba(0,0,0,0.15)}",  // CSS3 rgba
     // http://code.google.com/p/modpagespeed/issues/detail?id=66
@@ -378,8 +379,12 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
   }
 
   const char* fail_examples[] = {
+    // CSS3 media "and (max-width: 290px).
     // http://code.google.com/p/modpagespeed/issues/detail?id=50
-    "@media screen and (max-width:290px){a{color:red}}",  // CSS3 "and (...)"
+    "@media screen and (max-width: 290px) { a { color:red } }",
+
+    // Slashes in value list.
+    ".border8 { border-radius: 36px / 12px; }"
 
     // Should fail (bad syntax):
     "a { font:bold verdana 10px; }",
