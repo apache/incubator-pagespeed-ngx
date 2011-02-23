@@ -105,6 +105,9 @@ class ResourceCombiner {
   // fit in the names into the combined URL.
   bool AddResource(const StringPiece& url, MessageHandler* handler);
 
+  // Removes the last resource that was added here.
+  void RemoveLastResource();
+
   // Returns one resource containing the combination of all added resources,
   // creating it if necessary.  Caller takes ownership.  Returns NULL if the
   // combination does not exist and cannot be created. Will not combine fewer

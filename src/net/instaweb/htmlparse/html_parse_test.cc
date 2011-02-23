@@ -825,4 +825,33 @@ TEST_F(AttributeManipulationTest, BadUrl) {
   html_parse_.StartParse("http://www.example.com");
 }
 
+TEST_F(AttributeManipulationTest, CloneElement) {
+  HtmlElement* clone = html_parse_.CloneElement(node_);
+
+  // The clone is identical (but not the same object).
+  EXPECT_NE(clone, node_);
+  EXPECT_EQ(HtmlName::kA, clone->keyword());
+  EXPECT_EQ(node_->close_style(), clone->close_style());
+  EXPECT_EQ(3, clone->attribute_size());
+  EXPECT_EQ(HtmlName::kHref, clone->attribute(0).keyword());
+  EXPECT_EQ(std::string("http://www.google.com/"),
+            clone->attribute(0).value());
+  EXPECT_EQ(HtmlName::kId, clone->attribute(1).keyword());
+  EXPECT_EQ(std::string("37"), clone->attribute(1).value());
+  EXPECT_EQ(HtmlName::kClass, clone->attribute(2).keyword());
+  EXPECT_EQ(std::string("search!"), clone->attribute(2).value());
+
+  HtmlElement::Attribute* id = clone->FindAttribute(HtmlName::kId);
+  ASSERT_TRUE(id != NULL);
+  id->SetValue("38");
+
+  // Clone is not added initially, and the original is not touched.
+  CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'/>");
+
+  // Looks sane when added.
+  html_parse_.InsertElementBeforeElement(node_, clone);
+  CheckExpected("<a href=\"http://www.google.com/\" id=38 class='search!'/>"
+                "<a href=\"http://www.google.com/\" id=37 class='search!'/>");
+}
+
 }  // namespace net_instaweb

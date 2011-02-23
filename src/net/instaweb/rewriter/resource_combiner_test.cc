@@ -192,7 +192,6 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
     EXPECT_LE(LeafLength(partnership_->UrlSafeId().length()),
               options_.max_url_segment_size() - UrlSlack());
 
-    LOG(ERROR) << partnership_->ResolvedBase();
     EXPECT_LE(partnership_->ResolvedBase().length() +
                   LeafLength(partnership_->UrlSafeId().length()),
               options_.max_url_size() - UrlSlack());
@@ -284,6 +283,48 @@ TEST_F(ResourceCombinerTest, TestIncomplete3) {
   VerifyResource(1, kTestPiece2, e2);
 }
 
+TEST_F(ResourceCombinerTest, TestRemove) {
+  // Add one element, remove it, and then re-add a few.
+  HtmlElement* e1 = TestElement();
+  EXPECT_TRUE(partnership_->AddElement(e1, kTestPiece1, &message_handler_));
+  VerifyUrlCount(1);
+  VerifyResource(0, kTestPiece1, e1);
+
+  partnership_->RemoveLastElement();
+  VerifyUrlCount(0);
+
+  HtmlElement* e2 = TestElement();
+  EXPECT_TRUE(partnership_->AddElement(e2, kTestPiece2, &message_handler_));
+  HtmlElement* e3 = TestElement();
+  EXPECT_TRUE(partnership_->AddElement(e3, kTestPiece3, &message_handler_));
+  VerifyUrlCount(2);
+  VerifyResource(0, kTestPiece2, e2);
+  VerifyResource(1, kTestPiece3, e3);
+  EXPECT_EQ("piece2.tcc+piece3.tcc", partnership_->UrlSafeId());
+}
+
+TEST_F(ResourceCombinerTest, TestRemoveFrom3) {
+  // Add three elements, remove 1
+  HtmlElement* e1 = TestElement();
+  EXPECT_TRUE(partnership_->AddElement(e1, kTestPiece1, &message_handler_));
+  HtmlElement* e2 = TestElement();
+  EXPECT_TRUE(partnership_->AddElement(e2, kTestPiece2, &message_handler_));
+  HtmlElement* e3 = TestElement();
+  EXPECT_TRUE(partnership_->AddElement(e3, kTestPiece3, &message_handler_));
+
+  VerifyUrlCount(3);
+  VerifyResource(0, kTestPiece1, e1);
+  VerifyResource(1, kTestPiece2, e2);
+  VerifyResource(2, kTestPiece3, e3);
+  EXPECT_EQ("piece1.tcc+piece2.tcc+piece3.tcc", partnership_->UrlSafeId());
+
+  partnership_->RemoveLastElement();
+  VerifyUrlCount(2);
+  VerifyResource(0, kTestPiece1, e1);
+  VerifyResource(1, kTestPiece2, e2);
+  EXPECT_EQ("piece1.tcc+piece2.tcc", partnership_->UrlSafeId());
+}
+
 TEST_F(ResourceCombinerTest, TestAddBroken) {
   // Test with the second URL broken enough for CreateInputResource to fail
   // (due to unknown protocol). In that case, we should just include the first
@@ -320,6 +361,7 @@ TEST_F(ResourceCombinerTest, TestRebase) {
   EXPECT_TRUE(partnership_->AddElement(e1, kPathPiece, &message_handler_));
   EXPECT_EQ("piece.tcc", partnership_->UrlSafeId());
   VerifyUrlCount(1);
+  EXPECT_EQ(StrCat(kTestDomain, "path/"), partnership_->ResolvedBase());
   VerifyResource(0, kPathPiece, e1);
 
   HtmlElement* e2 = TestElement();
@@ -328,6 +370,51 @@ TEST_F(ResourceCombinerTest, TestRebase) {
   VerifyUrlCount(2);
   VerifyResource(0, kPathPiece, e1);
   VerifyResource(1, kTestPiece1, e2);
+  EXPECT_EQ(kTestDomain, partnership_->ResolvedBase());
+}
+
+TEST_F(ResourceCombinerTest, TestRebaseRemove) {
+  // Here the first item we add is: path/piece.tcc, while the second one
+  // is piece1.tcc. This means after the two items our state should be
+  // roughly 'path/piece.tcc and piece1.tcc in /', while after backing out
+  // the last one it should be 'piece.tcc in path/'. This tests makes
+  // sure we do this.
+  HtmlElement* e1 = TestElement();
+  EXPECT_TRUE(partnership_->AddElement(e1, kPathPiece, &message_handler_));
+
+  HtmlElement* e2 = TestElement();
+  EXPECT_TRUE(partnership_->AddElement(e2, kTestPiece1, &message_handler_));
+  EXPECT_EQ(kTestDomain, partnership_->ResolvedBase());
+
+  partnership_->RemoveLastElement();
+  VerifyUrlCount(1);
+  EXPECT_EQ(StrCat(kTestDomain, "path/"), partnership_->ResolvedBase());
+  EXPECT_EQ("piece.tcc", partnership_->UrlSafeId());
+  VerifyResource(0, kPathPiece, e1);
+}
+
+TEST_F(ResourceCombinerTest, TestRebaseRemoveAdd) {
+  // As above, but also add in an additional entry to see that handling of
+  // different paths still works.
+  HtmlElement* e1 = TestElement();
+  EXPECT_TRUE(partnership_->AddElement(e1, kPathPiece, &message_handler_));
+
+  HtmlElement* e2 = TestElement();
+  EXPECT_TRUE(partnership_->AddElement(e2, kTestPiece1, &message_handler_));
+
+  partnership_->RemoveLastElement();
+  VerifyUrlCount(1);
+  EXPECT_EQ(StrCat(kTestDomain, "path/"), partnership_->ResolvedBase());
+  EXPECT_EQ("piece.tcc", partnership_->UrlSafeId());
+  VerifyResource(0, kPathPiece, e1);
+
+  HtmlElement* e3 = TestElement();
+  EXPECT_TRUE(partnership_->AddElement(e3, kTestPiece2, &message_handler_));
+  VerifyUrlCount(2);
+  EXPECT_EQ("path,_piece.tcc+piece2.tcc", partnership_->UrlSafeId());
+  EXPECT_EQ(kTestDomain, partnership_->ResolvedBase());
+  VerifyResource(0, kPathPiece, e1);
+  VerifyResource(1, kTestPiece2, e3);
 }
 
 TEST_F(ResourceCombinerTest, TestRebaseOverflow) {

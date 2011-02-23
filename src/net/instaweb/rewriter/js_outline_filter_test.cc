@@ -60,8 +60,8 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
         "<head>\n"
         "  <title>Example style outline</title>\n"
         "  <!-- Script starts here -->\n"
-        "  <script src=\"" + outline_url + "\" "
-        "type='text/javascript'></script>\n"
+        "  <script type='text/javascript'"
+        " src=\"" + outline_url + "\"></script>\n"
         "  <!-- Script ends here -->\n"
         "</head>";
     ValidateExpected(id, html_input, expected_output);

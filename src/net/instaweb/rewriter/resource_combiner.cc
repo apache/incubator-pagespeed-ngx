@@ -116,20 +116,23 @@ bool ResourceCombiner::AddResource(const StringPiece& url,
       AccumulateLeafSize(relative_path);
     }
 
+    resources_.push_back(resource.release());
     if (UrlTooBig()) {
+      RemoveLastResource();
       added = false;
-      partnership_.RemoveLast();
-      multipart_encoder_.pop_back();
-
-      // The base might have changed again
-      if (partnership_.NumCommonComponents() != prev_num_components_) {
-        UpdateResolvedBase();
-      }
-    } else {
-      resources_.push_back(resource.release());
     }
   }
   return added;
+}
+
+void ResourceCombiner::RemoveLastResource() {
+  partnership_.RemoveLast();
+  delete resources_.back();
+  resources_.pop_back();
+  multipart_encoder_.pop_back();
+  if (partnership_.NumCommonComponents() != prev_num_components_) {
+    UpdateResolvedBase();
+  }
 }
 
 std::string ResourceCombiner::UrlSafeId() const {

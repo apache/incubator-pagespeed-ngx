@@ -293,7 +293,7 @@ check egrep -q "'<style.*small'" $FETCHED           # not outlined
 
 test_filter outline_javascript outlines large scripts, but not small ones.
 check $WGET_PREREQ $URL
-check egrep -q "'<script.*src=.*large'" $FETCHED       # outlined
+check egrep -q "'<script.*large.*src='" $FETCHED       # outlined
 check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
 
 echo TEST: compression is enabled for rewritten JS.

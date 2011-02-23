@@ -149,15 +149,9 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
             &kContentTypeJavascript, rewrite_options_,
             handler));
     if (WriteResource(content, resource.get(), handler)) {
-      HtmlElement* outline_element = html_parse_->NewElement(
-          inline_element->parent(), HtmlName::kScript);
+      HtmlElement* outline_element = html_parse_->CloneElement(inline_element);
       html_parse_->AddAttribute(outline_element, HtmlName::kSrc,
                                 resource->url());
-      // Add all atrributes from old script element to new script src element.
-      for (int i = 0; i < inline_element->attribute_size(); ++i) {
-        const HtmlElement::Attribute& attr = inline_element->attribute(i);
-        outline_element->AddAttribute(attr);
-      }
       // Add <script src=...> element to DOM.
       html_parse_->InsertElementBeforeElement(inline_element,
                                               outline_element);

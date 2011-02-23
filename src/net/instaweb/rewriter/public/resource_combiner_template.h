@@ -47,6 +47,12 @@ class ResourceCombinerTemplate : public ResourceCombiner {
     return false;
   }
 
+  // Removes the last element that was added to this combiner.
+  void RemoveLastElement() {
+    ResourceCombiner::RemoveLastResource();
+    elements_.pop_back();
+  }
+
   T element(int i) const { return elements_[i]; }
 
  protected:

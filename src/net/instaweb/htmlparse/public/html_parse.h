@@ -170,6 +170,10 @@ class HtmlParse {
   // otherwise, do nothing and return false.
   bool ReplaceNode(HtmlNode* existing_node, HtmlNode* new_node);
 
+  // Creates an another element with the same name and attributes as in_element.
+  // Does not duplicate the children or insert it anywhere.
+  HtmlElement* CloneElement(HtmlElement* in_element);
+
   HtmlElement* NewElement(HtmlElement* parent, const StringPiece& str) {
     return NewElement(parent, MakeName(str));
   }

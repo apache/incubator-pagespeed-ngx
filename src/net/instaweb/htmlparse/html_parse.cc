@@ -624,6 +624,15 @@ bool HtmlParse::ReplaceNode(HtmlNode* existing_node, HtmlNode* new_node) {
   return replaced;
 }
 
+HtmlElement* HtmlParse::CloneElement(HtmlElement* in_element) {
+  HtmlElement* out_element = NewElement(NULL, in_element->name());
+  out_element->set_close_style(in_element->close_style());
+  for (int i = 0; i < in_element->attribute_size(); ++i) {
+    out_element->AddAttribute(in_element->attribute(i));
+  }
+  return out_element;
+}
+
 bool HtmlParse::IsRewritable(const HtmlNode* node) const {
   return IsInEventWindow(node->begin()) && IsInEventWindow(node->end());
 }
