@@ -18,6 +18,8 @@
 
 #include "net/instaweb/util/public/timer_based_abstract_lock.h"
 
+#include "base/basictypes.h"
+#include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -31,8 +33,12 @@ int64 kMaxSpinSleepMs = Timer::kMinuteMs;  // Never sleep for more than 60s
 // We back off exponentially, with a constant of 1.5.
 int64 Backoff(int64 interval_ms) {
   int64 new_interval_ms = 1 + interval_ms + (interval_ms >> 1);
-  if (new_interval_ms > kMaxSpinSleepMs) {
+  if (new_interval_ms >= kMaxSpinSleepMs) {
     new_interval_ms = kMaxSpinSleepMs;
+    if (interval_ms != kMaxSpinSleepMs) {
+      // Log the first time we cross the threshold.
+      LOG(ERROR) << "Reached maximum sleep time " << StackTraceString().c_str();
+    }
   }
   return new_interval_ms;
 }
