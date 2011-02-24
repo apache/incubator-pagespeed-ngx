@@ -34,7 +34,6 @@
 namespace net_instaweb {
 
 class AddInstrumentationFilter;
-class BaseTagFilter;
 class FileSystem;
 class Hasher;
 class HtmlFilter;
@@ -106,16 +105,6 @@ class RewriteDriver {
   // TODO(jmarantz): fix this in the implementation so that the caller can
   // install filters in any order and the writer will always be last.
   void SetWriter(Writer* writer);
-
-  // Sets the url that BaseTagFilter will set as the base for the document.
-  // This is an no-op if you haven't added BaseTagFilter.
-  // Call this for each new document you are processing or the old values will
-  // leak through.
-  // Note: Use this only to *change* the base URL, not to note the original
-  // base URL.
-  // TODO(sligocki): Do we need this? We should have some way of noting the
-  // base URL of a site if it is explicitly set.
-  void SetBaseUrl(const StringPiece& base);
 
   // Initiates an async fetch for a rewritten resource with the specified name.
   // If resource matches the pattern of what the driver is authorized to serve,
@@ -195,7 +184,6 @@ class RewriteDriver {
 
   AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
-  scoped_ptr<BaseTagFilter> base_tag_filter_;
   scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
   UserAgent user_agent_;
   std::vector<HtmlFilter*> filters_;

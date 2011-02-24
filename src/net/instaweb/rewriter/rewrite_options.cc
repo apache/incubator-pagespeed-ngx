@@ -118,7 +118,6 @@ RewriteOptions::~RewriteOptions() {
 }
 
 void RewriteOptions::SetUp() {
-  name_filter_map_["add_base_tag"] = kAddBaseTag;
   name_filter_map_["add_head"] = kAddHead;
   name_filter_map_["add_instrumentation"] = kAddInstrumentation;
   name_filter_map_["collapse_whitespace"] = kCollapseWhitespace;
@@ -148,26 +147,28 @@ void RewriteOptions::SetUp() {
   // Core filter level includes the "core" filter set.
   level_filter_set_map_[kCoreFilters].insert(kAddHead);
   level_filter_set_map_[kCoreFilters].insert(kCombineCss);
+  level_filter_set_map_[kCoreFilters].insert(kExtendCache);
+  level_filter_set_map_[kCoreFilters].insert(kInlineCss);
+  level_filter_set_map_[kCoreFilters].insert(kInlineJavascript);
+  level_filter_set_map_[kCoreFilters].insert(kInsertImgDimensions);
+  level_filter_set_map_[kCoreFilters].insert(kLeftTrimUrls);
+  level_filter_set_map_[kCoreFilters].insert(kRewriteImages);
   // TODO(jmarantz): re-enable javascript and CSS minification in
   // the core set after the reported bugs have been fixed.  They
   // can still be enabled individually.
-  // level_filter_set_map_[kCoreFilters].insert(kRewriteJavascript);
   // level_filter_set_map_[kCoreFilters].insert(kRewriteCss);
-  level_filter_set_map_[kCoreFilters].insert(kInlineCss);
-  level_filter_set_map_[kCoreFilters].insert(kInlineJavascript);
-  level_filter_set_map_[kCoreFilters].insert(kRewriteImages);
-  level_filter_set_map_[kCoreFilters].insert(kInsertImgDimensions);
-  level_filter_set_map_[kCoreFilters].insert(kExtendCache);
+  // level_filter_set_map_[kCoreFilters].insert(kRewriteJavascript);
 
   // Copy CoreFilters set into TestingCoreFilters set ...
   level_filter_set_map_[kTestingCoreFilters] =
       level_filter_set_map_[kCoreFilters];
   // ... and add possibly unsafe filters.
-  level_filter_set_map_[kTestingCoreFilters].insert(kRewriteJavascript);
+  level_filter_set_map_[kTestingCoreFilters].insert(kMakeGoogleAnalyticsAsync);
   level_filter_set_map_[kTestingCoreFilters].insert(kRewriteCss);
+  level_filter_set_map_[kTestingCoreFilters].insert(kRewriteJavascript);
 
   // Set complete set for all filters set.
-  for (int f = kFirstEnumFilter; f != kLastEnumFilter; ++f) {
+  for (int f = kFirstFilter; f != kLastFilter; ++f) {
     level_filter_set_map_[kAllFilters].insert(static_cast<Filter>(f));
   }
 }
@@ -185,7 +186,7 @@ bool RewriteOptions::DisableFiltersByCommaSeparatedList(
 }
 
 void RewriteOptions::DisableAllFiltersNotExplicitlyEnabled() {
-  for (int f = kFirstEnumFilter; f != kLastEnumFilter; ++f) {
+  for (int f = kFirstFilter; f != kLastFilter; ++f) {
     Filter filter = static_cast<Filter>(f);
     if (enabled_filters_.find(filter) == enabled_filters_.end()) {
       DisableFilter(filter);

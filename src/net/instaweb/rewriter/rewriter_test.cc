@@ -56,38 +56,6 @@ TEST_F(RewriterTest, MergeHead) {
       "<body>bye</body>");
 }
 
-TEST_F(RewriterTest, BaseTagNoHead) {
-  AddFilter(RewriteOptions::kAddBaseTag);
-  rewrite_driver_.SetBaseUrl("http://base");
-  ValidateExpected("base_tag",
-      "<body><p>text</p></body>",
-      "<head><base href=\"http://base\"></head><body><p>text</p></body>");
-}
-
-TEST_F(RewriterTest, BaseTagExistingHead) {
-  AddFilter(RewriteOptions::kAddBaseTag);
-  rewrite_driver_.SetBaseUrl("http://base");
-  ValidateExpected("base_tag",
-      "<head><meta></head><body><p>text</p></body>",
-      "<head><base href=\"http://base\"><meta></head><body><p>text</p></body>");
-}
-
-TEST_F(RewriterTest, BaseTagExistingHeadAndNonHrefBase) {
-  AddFilter(RewriteOptions::kAddBaseTag);
-  rewrite_driver_.SetBaseUrl("http://base");
-  ValidateExpected("base_tag",
-      "<head><base x><meta></head><body></body>",
-      "<head><base href=\"http://base\"><base x><meta></head><body></body>");
-}
-
-TEST_F(RewriterTest, BaseTagExistingHeadAndHrefBase) {
-  AddFilter(RewriteOptions::kAddBaseTag);
-  rewrite_driver_.SetBaseUrl("http://base");
-  ValidateExpected("base_tag",
-      "<head><meta><base href=\"http://old\"></head><body></body>",
-      "<head><base href=\"http://base\"><meta></head><body></body>");
-}
-
 TEST_F(RewriterTest, HandlingOfInvalidUrls) {
   Hasher* hasher = &md5_hasher_;
   resource_manager_->set_hasher(hasher);

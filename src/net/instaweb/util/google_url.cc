@@ -102,11 +102,13 @@ std::string GoogleUrl::LeafSansQuery(const GURL& gurl) {
 // For "http://a.com/b/c/d?e=f/g returns "http://a.com" without trailing slash
 std::string GoogleUrl::Origin(const GURL& gurl) {
   std::string spec = gurl.spec();
-  size_t origin_size = gurl.GetWithEmptyPath().spec().size();
+  url_parse::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
+  size_t origin_size = parsed.path.begin;
+  if (!parsed.path.is_valid()) {
+    origin_size = spec.size();
+  }
   CHECK_LT(0, static_cast<int>(origin_size));
-  --origin_size;  // skip trailing slash
   CHECK_LE(origin_size, spec.size());
-  CHECK_EQ('/', spec[origin_size]);
   return std::string(spec.data(), origin_size);
 }
 

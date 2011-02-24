@@ -117,9 +117,9 @@ TEST_F(RewriteOptionsTest, Enable) {
 
 TEST_F(RewriteOptionsTest, CommaSeparatedList) {
   FilterSet s;
-  s.insert(RewriteOptions::kAddBaseTag);
+  s.insert(RewriteOptions::kAddInstrumentation);
   s.insert(RewriteOptions::kLeftTrimUrls);
-  const char* kList = "add_base_tag,left_trim_urls";
+  const char* kList = "add_instrumentation,left_trim_urls";
   NullMessageHandler handler;
   ASSERT_TRUE(
       options_.EnableFiltersByCommaSeparatedList(kList, &handler));

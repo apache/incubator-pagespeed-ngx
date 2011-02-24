@@ -335,7 +335,6 @@
       'sources': [
         'rewriter/add_head_filter.cc',
         'rewriter/add_instrumentation_filter.cc',
-        'rewriter/base_tag_filter.cc',
         'rewriter/cache_extender.cc',
         'rewriter/common_filter.cc',
         'rewriter/css_combine_filter.cc',

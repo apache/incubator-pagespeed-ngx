@@ -34,8 +34,7 @@ class MessageHandler;
 class RewriteOptions {
  public:
   enum Filter {
-    kAddBaseTag, // Update kFirstEnumFilter if you add something before this.
-    kAddHead,
+    kAddHead,  // Update kFirstFilter if you add something before this.
     kAddInstrumentation,
     kCollapseWhitespace,
     kCombineCss,
@@ -56,15 +55,13 @@ class RewriteOptions {
     kRewriteCss,
     kRewriteImages,
     kRewriteJavascript,
-    kStripScripts,  // Update kLastEnumFilter if you add something after this.
+    kStripScripts,  // Update kLastFilter if you add something after this.
   };
 
- private:
-  // Needed by kAllFilters.
-  static const Filter kFirstEnumFilter = kAddBaseTag;
-  static const Filter kLastEnumFilter = kStripScripts;
+  // Used for enumerating over all entries in the Filter enum.
+  static const Filter kFirstFilter = kAddHead;
+  static const Filter kLastFilter = kStripScripts;
 
- public:
   enum RewriteLevel {
     // Enable no filters. Parse HTML but do not perform any
     // transformations. This is the default value. Most users should
@@ -84,13 +81,10 @@ class RewriteOptions {
     // the results of the rewrite more closely.
     kTestingCoreFilters,
 
-    // Enable all filters.
+    // Enable all filters. This includes filters you should never turn
+    // on for a real page, like StripScripts!
     kAllFilters,
   };
-
-  // Used for enumerating over all entries in the Filter enum.
-  static const Filter kFirstFilter = kAddBaseTag;
-  static const Filter kLastFilter = kStripScripts;
 
   static const int64 kDefaultCssInlineMaxBytes;
   static const int64 kDefaultImgInlineMaxBytes;

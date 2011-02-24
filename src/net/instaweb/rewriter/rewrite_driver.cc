@@ -25,7 +25,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
-#include "net/instaweb/rewriter/public/base_tag_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
@@ -200,7 +199,6 @@ void RewriteDriver::AddFilters() {
   // and boolean parameter settings to filters.
   if (options_.Enabled(RewriteOptions::kAddHead) ||
       options_.Enabled(RewriteOptions::kCombineHeads) ||
-      options_.Enabled(RewriteOptions::kAddBaseTag) ||
       options_.Enabled(RewriteOptions::kMoveCssToHead) ||
       options_.Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync) ||
       options_.Enabled(RewriteOptions::kAddInstrumentation)) {
@@ -208,15 +206,6 @@ void RewriteDriver::AddFilters() {
     // none found prior to the body.
     AddFilter(new AddHeadFilter(
         &html_parse_, options_.Enabled(RewriteOptions::kCombineHeads)));
-  }
-  if (options_.Enabled(RewriteOptions::kAddBaseTag)) {
-    // Adds a filter that establishes a base tag for the HTML document.
-    // This is required when implementing a proxy server.  The base
-    // tag used can be changed for every request with SetBaseUrl.
-    // Adding the base-tag filter will establish the AddHeadFilter
-    // if needed.
-    base_tag_filter_.reset(new BaseTagFilter(&html_parse_));
-    html_parse_.AddFilter(base_tag_filter_.get());
   }
   if (options_.Enabled(RewriteOptions::kStripScripts)) {
     // Experimental filter that blindly strips all scripts from a page.
@@ -320,12 +309,6 @@ void RewriteDriver::AddFilters() {
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
   // doesn't, it probably should.  If it does, be sure to add it to the
   // Initialize() function above or it will break under Apache!
-}
-
-void RewriteDriver::SetBaseUrl(const StringPiece& base) {
-  if (base_tag_filter_ != NULL) {
-    base_tag_filter_->set_base_url(base);
-  }
 }
 
 void RewriteDriver::AddFilter(HtmlFilter* filter) {

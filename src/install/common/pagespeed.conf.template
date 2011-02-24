@@ -20,7 +20,7 @@
     # this value and can instead fine-tune the configuration using the
     # ModPagespeedDisableFilters and ModPagespeedEnableFilters
     # directives, below. Valid values for ModPagespeedRewriteLevel are
-    # PassThrough, CoreFilters, TestingCoreFilters and AllFilters.
+    # PassThrough, CoreFilters and TestingCoreFilters.
     #
     # ModPagespeedRewriteLevel PassThrough
 

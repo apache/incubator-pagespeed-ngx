@@ -1214,11 +1214,16 @@ SERF_DECLARE(apr_status_t) serf_connection_create2(
     apr_sockaddr_t *host_address;
 
     /* Parse the url, store the address of the server. */
-    status = apr_sockaddr_info_get(&host_address,
-                                   host_info.hostname,
-                                   APR_UNSPEC, host_info.port, 0, pool);
-    if (status)
-        return status;
+    if (ctx->proxy_address) {
+        host_address = ctx->proxy_address;
+        status = APR_SUCCESS;
+    } else {
+        status = apr_sockaddr_info_get(&host_address,
+                                       host_info.hostname,
+                                       APR_UNSPEC, host_info.port, 0, pool);
+        if (status)
+            return status;
+    }
 
     c = serf_connection_create(ctx, host_address, setup, setup_baton,
                                closed, closed_baton, pool);
