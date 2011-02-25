@@ -224,10 +224,11 @@ class SerfFetch : public PoolElement<SerfFetch> {
       // as we're otherwise going to wedge the CPU at 100% and cause all
       // subsequent requests to time out and fail, essentially taking down the
       // entire server.
-      LOG(FATAL) << "HandleResponse called on URL " << str_url()
-                 << "(" << this << "), which is already erased.  "
-                    "DYING.  Please report this as a bug at "
-                    "http://code.google.com/p/modpagespeed/issues/list.";
+      LOG(FATAL)
+          << "HandleResponse called on URL " << str_url()
+          << "(" << this << "), which is already erased.  "
+             "DYING.  Please report this stack trace at "
+             "http://code.google.com/p/modpagespeed/issues/detail?id=219";
     }
 
     serf_status_line status_line;

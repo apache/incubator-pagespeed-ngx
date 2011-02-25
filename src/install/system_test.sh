@@ -19,6 +19,8 @@ else
   echo WGET = $WGET
 fi
 
+WGET="$WGET --no-proxy"
+
 $WGET --version | head -1 | grep 1.12 >/dev/null
 if [ $? != 0 ]; then
   echo You have the wrong version of wget.  1.12 is required.
