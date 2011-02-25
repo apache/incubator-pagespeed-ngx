@@ -22,6 +22,7 @@
 #include "base/basictypes.h"
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"
@@ -393,19 +394,37 @@ BoolOrError AprFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
   }
 
   if (apr_time_now() - c_time_us < timeout_ms * 1000) {
-    // The lock is insufficiently stale.
+    // The lock is held and timeout hasn't elapsed.
     return BoolOrError(false);
   }
+  // Lock has timed out.  We have two options here:
+  // 1) Leave the lock in its present state and assume we've taken ownership.
+  //    This is kind to the file system, but causes lots of repeated work at
+  //    timeout, as subsequent threads also see a timed-out lock.
+  // 2) Force-unlock the lock and re-lock it.  This resets the timeout period,
+  //    but is hard on the file system metadata log.
   if (!Unlock(lock_name, handler)) {
     // We couldn't break the lock.  Maybe someone else beat us to it.
-    return BoolOrError();
+    // We optimistically forge ahead anyhow (1), since we know we've timed out.
+    handler->Info(lock_str, 0,
+                  "Breaking lock without reset! now-ctime=%d-%d > %d (sec)\n%s",
+                  static_cast<int>(apr_time_now() / Timer::kSecondUs),
+                  static_cast<int>(c_time_us / Timer::kSecondUs),
+                  static_cast<int>(timeout_ms / Timer::kSecondMs),
+                  StackTraceString().c_str());
+    return BoolOrError(true);
   }
-  handler->Info(lock_str, 0, "Breaking lock! now-ctime=%d-%d > %d (sec)",
+  handler->Info(lock_str, 0, "Broke lock! now-ctime=%d-%d > %d (sec)\n%s",
                 static_cast<int>(apr_time_now() / Timer::kSecondUs),
                 static_cast<int>(c_time_us / Timer::kSecondUs),
-                static_cast<int>(timeout_ms / Timer::kSecondMs));
-
-  return TryLock(lock_name, handler);
+                static_cast<int>(timeout_ms / Timer::kSecondMs),
+                StackTraceString().c_str());
+  result = TryLock(lock_name, handler);
+  if (!result.is_true()) {
+    // Someone else grabbed the lock after we broke it.
+    handler->Info(lock_str, 0, "Failed to take lock after breaking it!");
+  }
+  return result;
 }
 
 bool AprFileSystem::Unlock(const StringPiece& lock_name,

@@ -21,8 +21,9 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/file_system_test.h"
 #include "net/instaweb/util/public/google_message_handler.h"
-#include <string>
 #include "net/instaweb/util/public/gtest.h"
+#include <string>
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -252,7 +253,6 @@ void FileSystemTest::TestAtime() {
   ASSERT_TRUE(file_system()->Atime(full_path1, &atime1, &handler_));
   ASSERT_TRUE(file_system()->Atime(full_path2, &atime2, &handler_));
   EXPECT_LT(atime2, atime1);
-
 }
 
 void FileSystemTest::TestSize() {
@@ -300,6 +300,33 @@ void FileSystemTest::TestLock() {
   EXPECT_TRUE(file_system()->TryLock(lock_name, &handler_).is_true());
   EXPECT_TRUE(file_system()->TryLock(lock_name, &handler_).is_false());
   EXPECT_TRUE(file_system()->Unlock(lock_name, &handler_));
+}
+
+// Test lock timeout; assumes the file system has at least 1-second creation
+// granularity.
+void FileSystemTest::TestLockTimeout(Timer* timer) {
+  std::string dir_name = test_tmpdir() + "/make_dir";
+  DeleteRecursively(dir_name);
+  ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
+  std::string lock_name = dir_name + "/lock";
+  // Acquire the lock
+  EXPECT_TRUE(file_system()->TryLockWithTimeout(lock_name, Timer::kSecondMs,
+                                                &handler_).is_true());
+  // Immediate re-acquire should fail
+  EXPECT_TRUE(file_system()->TryLockWithTimeout(lock_name, Timer::kSecondMs,
+                                                &handler_).is_false());
+  // Wait 1 second so that we're definitely different from ctime.
+  // Now we should seize lock.
+  timer->SleepMs(Timer::kSecondMs);
+  EXPECT_TRUE(file_system()->TryLockWithTimeout(lock_name, Timer::kSecondMs,
+                                                &handler_).is_true());
+  // Lock should still be held.
+  EXPECT_TRUE(file_system()->TryLock(lock_name, &handler_).is_false());
+  EXPECT_TRUE(file_system()->Unlock(lock_name, &handler_));
+  // The result of this second unlock is unknown, but it ought not to crash.
+  file_system()->Unlock(lock_name, &handler_);
+  // Lock should now be unambiguously unlocked.
+  EXPECT_TRUE(file_system()->TryLock(lock_name, &handler_).is_true());
 }
 
 }  // namespace net_instaweb

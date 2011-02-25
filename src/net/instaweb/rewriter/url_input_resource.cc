@@ -80,22 +80,21 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
     }
     if (resource_manager_->file_system()->TryLockWithTimeout(
             lock_name, lock_timeout, message_handler_).is_false()) {
-      message_handler_->Info(lock_name.c_str(), 0,
-                             "Someone is already fetching %s ",
-                             url().c_str());
       // TODO(abliss): a per-unit-time statistic would be useful here.
       if (should_yield()) {
+        message_handler_->Message(
+            kInfo, "%s is already being fetched (lock %s)",
+            url().c_str(), lock_name.c_str());
         DoneInternal(false);
         delete this;
         return false;
-      } else {
-        message_handler_->Info(lock_name.c_str(), 0,
-                               "But fetching anyway.");
       }
+      message_handler_->Message(
+          kInfo, "%s is being re-fetched asynchronously (lock %s held elsewhere)",
+          url().c_str(), lock_name.c_str());
     } else {
-      message_handler_->Info(lock_name.c_str(), 0,
-                             "Locking %s for PID %ld",
-                             url().c_str(), static_cast<long>(getpid()));
+      message_handler_->Message(kInfo, "%s: Locking (lock %s)",
+                                url().c_str(), lock_name.c_str());
       lock_name_ = lock_name;
     }
 
@@ -123,10 +122,9 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   virtual void Done(bool success) {
     AddToCache(success);
     if (!lock_name_.empty()) {
-      message_handler_->Info(lock_name_.c_str(), 0,
-                             "Unlocking %s for PID %ld with success=%s",
-                             url().c_str(), static_cast<long>(getpid()),
-                             success ? "true" : "false");
+      message_handler_->Message(
+          kInfo, "%s: Unlocking lock %s with success=%s",
+          url().c_str(), lock_name_.c_str(), success ? "true" : "false");
       resource_manager_->file_system()->Unlock(lock_name_, message_handler_);
     }
     DoneInternal(success);

@@ -49,7 +49,7 @@ void UrlLeftTrimFilter::Initialize(Statistics* statistics) {
 }
 
 void UrlLeftTrimFilter::StartDocument() {
-  SetBaseUrl(html_parse_->url());
+  base_url_ = html_parse_->gurl();
 }
 
 // If the element is a base tag, set the base url to be the href value.
@@ -67,7 +67,11 @@ void UrlLeftTrimFilter::StartElement(HtmlElement* element) {
 }
 
 void UrlLeftTrimFilter::SetBaseUrl(const StringPiece& base) {
-  base_url_ = GoogleUrl::Create(base);
+  if(base_url_.is_empty()) {
+    base_url_ = GoogleUrl::Create(base);
+  } else {
+    base_url_ = GoogleUrl::Resolve(html_parse_->gurl(), base);
+  }
 }
 
 // Resolve the url we want to trim, and then remove the scheme, origin

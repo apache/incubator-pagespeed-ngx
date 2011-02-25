@@ -28,6 +28,8 @@
 
 namespace net_instaweb {
 
+class Timer;
+
 // Base class for testing a FileSystem implementation.  Subclasses
 // must implement DeleteRecursively and GetFileSystem, then should
 // create their own tests calling each of our Test* methods.
@@ -70,6 +72,7 @@ class FileSystemTest : public testing::Test {
   void TestAtime();
   void TestSize();
   void TestLock();
+  void TestLockTimeout(Timer* timer);
 
   GoogleMessageHandler handler_;
 

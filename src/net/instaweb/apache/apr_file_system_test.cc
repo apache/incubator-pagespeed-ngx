@@ -19,6 +19,7 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apr_file_system.h"
+#include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/util/public/file_system_test.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -172,6 +173,11 @@ TEST_F(AprFileSystemTest, TestSize) {
 
 TEST_F(AprFileSystemTest, TestLock) {
   TestLock();
+}
+
+TEST_F(AprFileSystemTest, TestLockTimeout) {
+  AprTimer timer;
+  TestLockTimeout(&timer);
 }
 
 }  // namespace net_instaweb

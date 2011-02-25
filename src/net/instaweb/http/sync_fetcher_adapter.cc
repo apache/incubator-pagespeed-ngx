@@ -60,8 +60,8 @@ bool SyncFetcherAdapter::StreamingFetchUrl(
   if (!callback->done()) {
     message_handler->Message(
         kWarning,
-        "Async fetcher allowed %dms to expire without calling its callback",
-        static_cast<int>(now_ms - start_ms));
+        "Async fetch of %s allowed %dms to expire without calling its callback",
+        url.c_str(), static_cast<int>(now_ms - start_ms));
   } else {
     ret = callback->success();
   }

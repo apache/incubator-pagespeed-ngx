@@ -235,4 +235,33 @@ TEST_F(UrlLeftTrimFilterTest, OneDot) {
   SetFilterBaseUrl("http://foo.bar/baz/index.html");
   OneTrim(true, "./cows/index.html", "cows/index.html");
 }
+
+static const char kBlankBase[] =
+    "<head><base href=''>"
+    "</head><body>"
+    "<a href='http://www.google.com/'>foo</a></body>";
+
+static const char kBlankBaseRewritten[] =
+    "<head><base href=''>"
+    "</head><body>"
+    "<a href='//www.google.com/'>foo</a></body>";
+
+TEST_F(UrlLeftTrimFilterTest, BlankBase) {
+  ValidateExpected("wiki", kBlankBase, kBlankBaseRewritten);
+}
+
+static const char kRelativeBase[] =
+    "<head><base href='/directory/'>"
+    "</head><body>"
+    "<img src='/directory/img.jpg'></body>";
+
+static const char kRelativeBaseRewritten[] =
+    "<head><base href='/directory/'>"
+    "</head><body>"
+    "<img src='img.jpg'></body>";
+
+TEST_F(UrlLeftTrimFilterTest, RelativeBase) {
+  ValidateExpected("wiki", kRelativeBase, kRelativeBaseRewritten);
+}
+
 }  // namespace net_instaweb

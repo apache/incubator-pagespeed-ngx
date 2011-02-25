@@ -21,18 +21,45 @@
 
 namespace net_instaweb {
 
+namespace {
+// Returns the offset at which the leaf starts in the fully
+// qualified spec.
+size_t LeafStartPosition(const GURL& gurl) {
+  url_parse::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
+  // query doesn't include '?'
+  size_t question = parsed.query.begin - 1;
+  if (question < 0) {
+    question = std::string::npos;
+  }
+  size_t last_slash = gurl.spec().rfind('/', question);
+  return last_slash;
+}
 
+// Find the start of the path, includes '/'
+size_t PathStartPosition(const GURL& gurl) {
+  std::string spec = gurl.spec();
+  url_parse::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
+  size_t origin_size = parsed.path.begin;
+  if (!parsed.path.is_valid()) {
+    origin_size = spec.size();
+  }
+  CHECK_LT(0, static_cast<int>(origin_size));
+  CHECK_LE(origin_size, spec.size());
+  return origin_size;
+}
+
+}  // namespace
+
+
+// Find the last slash before the question-mark, if any.  See
+// http://en.wikipedia.org/wiki/URI_scheme -- the query-string
+// syntax is not well-defined.  But the query-separator is well-defined:
+// it's a ? so I believe this implies that the first ? has to delimit
+// the query string.
 std::string GoogleUrl::AllExceptLeaf(const GURL& gurl) {
   CHECK(gurl.is_valid());
   std::string spec_str = gurl.spec();
-
-  // Find the last slash before the question-mark, if any.  See
-  // http://en.wikipedia.org/wiki/URI_scheme -- the query-string
-  // syntax is not well-defined.  But the query-separator is well-defined:
-  // it's a ? so I believe this implies that the first ? has to delimit
-  // the query string.
-  std::string::size_type question = spec_str.find('?');
-  std::string::size_type last_slash = spec_str.find_last_of('/', question);
+  size_t last_slash = LeafStartPosition(gurl);
   CHECK(last_slash != std::string::npos);
   return std::string(spec_str.data(), last_slash + 1);
 
@@ -82,55 +109,49 @@ std::string GoogleUrl::AllExceptLeaf(const GURL& gurl) {
 
 std::string GoogleUrl::LeafWithQuery(const GURL& gurl) {
   std::string spec_str = gurl.spec();
-  std::string::size_type question = spec_str.find('?');
-  std::string::size_type last_slash = spec_str.find_last_of('/', question);
-  CHECK(last_slash != std::string::npos);
+  size_t last_slash = LeafStartPosition(gurl);
+  CHECK(last_slash != spec_str.npos);
   return std::string(spec_str.data() + last_slash + 1,
                       spec_str.size() - (last_slash + 1));
 }
 
 std::string GoogleUrl::LeafSansQuery(const GURL& gurl) {
-  std::string leaf = LeafWithQuery(gurl);
-  size_t question_pos = leaf.find('?');
-  if (question_pos == std::string::npos) {
-    return leaf;
+  std::string spec_str = gurl.spec();
+  size_t after_last_slash = LeafStartPosition(gurl) + 1;
+  size_t leaf_length = spec_str.size() - after_last_slash;
+  if (!gurl.has_query()) {
+    return std::string(spec_str.data() + after_last_slash,
+                        leaf_length);
   }
-
-  return std::string(leaf.data(), question_pos);
+  url_parse::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
+  // parsed.query.len doesn't include the '?'
+  return std::string(spec_str.data() + after_last_slash,
+                      leaf_length - (parsed.query.len + 1));
 }
 
 // For "http://a.com/b/c/d?e=f/g returns "http://a.com" without trailing slash
 std::string GoogleUrl::Origin(const GURL& gurl) {
   std::string spec = gurl.spec();
-  url_parse::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
-  size_t origin_size = parsed.path.begin;
-  if (!parsed.path.is_valid()) {
-    origin_size = spec.size();
-  }
-  CHECK_LT(0, static_cast<int>(origin_size));
-  CHECK_LE(origin_size, spec.size());
+  size_t origin_size = PathStartPosition(gurl);
   return std::string(spec.data(), origin_size);
 }
 
 // For "http://a.com/b/c/d?e=f/g returns "/b/c/d?e=f/g" including leading slash
 std::string GoogleUrl::PathAndLeaf(const GURL& gurl) {
   std::string spec = gurl.spec();
-  size_t origin_size = gurl.GetWithEmptyPath().spec().size();
-  CHECK_LT(0, static_cast<int>(origin_size));
-  --origin_size;  // include trailing slash
-  CHECK_LE(origin_size, spec.size());
-  CHECK_EQ('/', spec[origin_size]);
-  CHECK_LE(origin_size, spec.size());
+  size_t origin_size = PathStartPosition(gurl);
   return std::string(spec.data() + origin_size, spec.size() - origin_size);
 }
 
-// For "http://a.com/b/c/d?e=f/g returns "/b/c/d/" including leading and
+// For "http://a.com/b/c/d/g.html returns "/b/c/d/" including leading and
 // trailing slashes.
+// For queries, "http://a.com/b/c/d?E=f/g" returns "/b/c/".
 std::string GoogleUrl::PathSansLeaf(const GURL& gurl) {
-  std::string path_and_leaf = GoogleUrl::PathAndLeaf(gurl);
-  std::string leaf = GoogleUrl::LeafWithQuery(gurl);
-  CHECK_GE(path_and_leaf.size(), leaf.size());
-  return std::string(path_and_leaf.data(), path_and_leaf.size() - leaf.size());
+  std::string spec = gurl.spec();
+  size_t path_start = PathStartPosition(gurl);
+  size_t leaf_start = LeafStartPosition(gurl);
+  return std::string(spec.data() + path_start,
+                      leaf_start - path_start + 1);
 }
 
 }  // namespace net_instaweb

@@ -75,8 +75,9 @@ inline std::string Path(const GURL& gurl) {
   return gurl.path();
 }
 
-// For "http://a.com/b/c/d?e=f/g returns "/b/c/d/" including leading and
+// For "http://a.com/b/c/d/g.html returns "/b/c/d/" including leading and
 // trailing slashes.
+// For queries, "http://a.com/b/c/d?E=f/g" returns "/b/c/".
 std::string PathSansLeaf(const GURL& gurl);
 
 }  // namespace GoogleUrl
