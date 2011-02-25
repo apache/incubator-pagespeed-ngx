@@ -83,6 +83,7 @@
         'rewriter/common_filter_test.cc',
         'rewriter/css_combine_filter_test.cc',
         'rewriter/css_filter_test.cc',
+        'rewriter/css_image_rewriter_test.cc',
         'rewriter/css_inline_filter_test.cc',
         'rewriter/css_move_to_head_filter_test.cc',
         'rewriter/css_outline_filter_test.cc',

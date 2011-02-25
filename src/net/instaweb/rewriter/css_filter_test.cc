@@ -17,9 +17,9 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //     and sligocki@google.com (Shawn Ligocki)
 
-// Unit-test the html rewriter
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
+
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
@@ -30,6 +30,8 @@
 #include <string>
 
 namespace net_instaweb {
+
+namespace {
 
 class CssFilterTest : public ResourceManagerTestBase {
  protected:
@@ -608,5 +610,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
   }
   */
 }
+
+}  // namespace
 
 }  // namespace net_instaweb
