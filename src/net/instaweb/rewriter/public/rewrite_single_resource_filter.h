@@ -1,4 +1,4 @@
-/*
+  /*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,11 +69,14 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   // pass in resource_manager_->url_escaper() into encoder. If not, pass in
   // an encoder that incorporates any other settings into the output URL.
   //
-  // If nothing can be done (as the input data hasn't been fetched in time
-  // and we do not have cached output) returns NULL. Otherwise returns
-  // a CachedResult stating whether the resource is optimizable, and if so at
-  // what URL the output is, along with any metadata that was stored when
-  // examining it.
+  // A return value of NULL indicates that some resources needed for
+  // processing are not available yet --- either the inputs are in the process
+  // of being fetched, or perhaps the system is too busy (and there is no
+  // cached result, either).
+  //
+  // In other cases this method returns a CachedResult stating whether the
+  // resource is optimizable, and if so the URL of the output, along with
+  // any metadata that was stored when examining it.
   //
   // Note: The metadata may be useful even when optimizable() is false.
   // For example a filter could store dimensions of an image in them, even

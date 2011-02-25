@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/css_filter.h"
 
+#include <algorithm>
+
 #include "base/at_exit.h"
 
 #include "base/scoped_ptr.h"
@@ -135,8 +137,10 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
     if (html_parse_->IsRewritable(element) && style_char_node_ != NULL) {
       CHECK(element == style_char_node_->parent());  // Sanity check.
       std::string new_content;
+      int64 input_expire_ms;  // not used here.
       if (RewriteCssText(style_char_node_->contents(), &new_content,
-                         base_gurl(), html_parse_->message_handler())) {
+                         base_gurl(), &input_expire_ms,
+                         html_parse_->message_handler())) {
         // Note: Copy of new_content here.
         HtmlCharactersNode* new_style_char_node =
             html_parse_->NewCharactersNode(element, new_content);
@@ -172,6 +176,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
 bool CssFilter::RewriteCssText(const StringPiece& in_text,
                                std::string* out_text,
                                const GURL& css_gurl,
+                               int64* subresource_expiration_time_ms,
                                MessageHandler* handler) {
   // Load stylesheet w/o expanding background attributes and preserving all
   // values from original document.
@@ -190,7 +195,9 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
   } else {
     // Edit stylesheet.
     bool edited_css =
-        image_rewriter_.RewriteCssImages(css_gurl, stylesheet.get(), handler);
+        image_rewriter_.RewriteCssImages(css_gurl, stylesheet.get(),
+                                         subresource_expiration_time_ms,
+                                         handler);
 
     // Re-serialize stylesheet.
     StringWriter writer(out_text);
@@ -328,15 +335,19 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
     std::string out_contents;
     // TODO(sligocki): Store the GURL in the input_resource.
     GURL css_gurl = GoogleUrl::Create(input_resource->url());
+    int64 subresource_expire_ms;
     if (css_gurl.is_valid() &&
         RewriteCssText(in_contents, &out_contents, css_gurl,
+                       &subresource_expire_ms,
                        html_parse_->message_handler())) {
       // Write new stylesheet.
+      int64 expire_ms = std::min(subresource_expire_ms,
+                                 input_resource->CacheExpirationTimeMs());
       output_resource->SetType(&kContentTypeCss);
       if (resource_manager_->Write(HttpStatus::kOK,
                                    out_contents,
                                    output_resource,
-                                   input_resource->CacheExpirationTimeMs(),
+                                   expire_ms,
                                    html_parse_->message_handler())) {
         ret = output_resource->IsWritten();
       }

@@ -303,14 +303,6 @@ class RewriteSingleResourceFilterTest
     return counter;
   }
 
-  WaitUrlAsyncFetcher* SetupWaitFetcher() {
-    WaitUrlAsyncFetcher* delayer =
-        new WaitUrlAsyncFetcher(&mock_url_fetcher_);
-    rewrite_driver_.set_async_fetcher(delayer);
-    resource_manager_->set_url_async_fetcher(delayer);
-    return delayer;
-  }
-
   std::string in_tag_;
   std::string out_tag_;
   TestRewriter* filter_;  // owned by the rewrite_driver_.

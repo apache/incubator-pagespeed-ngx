@@ -56,7 +56,8 @@ class CssFilterTest : public ResourceManagerTestBase {
     kExpectFailure = 4,
     kExpectSuccess = 8,
     kNoStatCheck = 16,
-    kNoClearFetcher = 32
+    kNoClearFetcher = 32,
+    kNoOtherContexts = 64
   };
 
   static bool ExactlyOneTrue(bool a, bool b) {
@@ -149,8 +150,8 @@ class CssFilterTest : public ResourceManagerTestBase {
     // Set input file.
     if ((flags & kNoClearFetcher) == 0) {
       mock_url_fetcher_.Clear();
-      InitResponseHeaders(StrCat(id, ".css"), kContentTypeCss, css_input, 300);
     }
+    InitResponseHeaders(StrCat(id, ".css"), kContentTypeCss, css_input, 300);
 
     static const char html_template[] =
         "<head>\n"
@@ -210,9 +211,11 @@ class CssFilterTest : public ResourceManagerTestBase {
       EXPECT_EQ(expected_css_output, actual_output);
 
       // Serve from new context.
-      ServeResourceFromManyContexts(expected_new_url,
-                                    RewriteOptions::kRewriteCss,
-                                    &mock_hasher_, expected_css_output);
+      if ((flags & kNoOtherContexts) == 0) {
+        ServeResourceFromManyContexts(expected_new_url,
+                                      RewriteOptions::kRewriteCss,
+                                      &mock_hasher_, expected_css_output);
+      }
     }
   }
 
@@ -609,6 +612,95 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     ValidateFailParse(id, parse_fail_examples[i]);
   }
   */
+}
+
+// These tests are to make sure our TTL considers that of subresources.
+class CssFilterSubresourceTest : public CssFilterTest {
+ public:
+  virtual void SetUp() {
+    // We setup the options before the upcall so that the
+    // CSS filter is created aware of these.
+    options_.EnableFilter(RewriteOptions::kExtendCache);
+    options_.EnableFilter(RewriteOptions::kRewriteImages);
+    CssFilterTest::SetUp();
+
+    // As we use invalid payloads, we expect image rewriting to
+    // fail but cache extension to succeed.
+    InitResponseHeaders("a.png", kContentTypePng, "notapng", 10);
+    InitResponseHeaders("b.png", kContentTypePng, "notbpng", 20);
+  }
+
+  void ValidateExpirationTime(const char* id, const char* output,
+                              int64 expected_expire_ms) {
+    ResourceNamer namer;
+    GetNamerForCss(id, output, &namer);
+    std::string css_url = ExpectedUrlForNamer(namer);
+
+    // See what cache information we have
+    scoped_ptr<OutputResource> output_resource(
+        resource_manager_->CreateOutputResourceWithPath(
+            kTestDomain, RewriteDriver::kCssFilterId, StrCat(id, ".css"),
+            &kContentTypeCss, &options_, &message_handler_));
+    ASSERT_TRUE(output_resource.get() != NULL);
+    EXPECT_EQ(css_url, output_resource->url());
+    ASSERT_TRUE(output_resource->cached_result() != NULL);
+
+    EXPECT_EQ(expected_expire_ms,
+              output_resource->cached_result()->origin_expiration_time_ms());
+  }
+};
+
+// Test to make sure expiration time for cached result is the
+// smallest of subresource and CSS times, not just CSS time.
+TEST_F(CssFilterSubresourceTest, SubResourceDepends) {
+  const char kInput[] = "div { background-image: url(a.png); }"
+                        "span { background-image: url(b.png); }";
+  const char kOutput[] =
+      "div{background-image:url(http://test.com/a.png.pagespeed.ce.0.png)}"
+      "span{background-image:url(http://test.com/b.png.pagespeed.ce.0.png)}";
+
+  // Here we don't use the other contexts since it has different
+  // synchronicity, and we presently do best-effort for loaded subresources
+  // even in Fetch.
+  ValidateRewriteExternalCss(
+      "ext", kInput, kOutput, kNoOtherContexts | kNoClearFetcher |
+                              kExpectChange | kExpectSuccess);
+
+  // 10 is the smaller of expiration times of a.png, b.png and ext.css
+  ValidateExpirationTime("ext", kOutput, 10 * Timer::kSecondMs);
+}
+
+// Test to make sure we don't cache for long if the rewrite was based
+// on not-yet-loaded resources.
+TEST_F(CssFilterSubresourceTest, SubResourceDependsNotYetLoaded) {
+  scoped_ptr<WaitUrlAsyncFetcher> wait_fetcher(SetupWaitFetcher());
+
+  // Disable atime simulation so that the clock doesn't move on us.
+  file_system_.set_atime_enabled(false);
+
+  const char kInput[] = "div { background-image: url(a.png); }"
+                        "span { background-image: url(b.png); }";
+  const char kOutput[] = "div{background-image:url(a.png)}"
+                        "span{background-image:url(b.png)}";
+
+  // At first try, not even the CSS gets loaded, so nothing gets
+  // changed at all.
+  ValidateRewriteExternalCss(
+      "wip", kInput, kInput, kNoOtherContexts | kNoClearFetcher |
+                             kExpectNoChange | kExpectSuccess);
+
+  // Get the CSS to load (resources are still unavailable).
+  wait_fetcher->CallCallbacks();
+  ValidateRewriteExternalCss(
+      "wip", kInput, kOutput, kNoOtherContexts | kNoClearFetcher |
+                              kExpectChange | kExpectSuccess);
+
+  // Since resources haven't loaded, the output cache should have a very small
+  // expiration time.
+  ValidateExpirationTime("wip", kOutput, Timer::kSecondMs);
+
+  // Make sure the subresource callbacks fire for leak cleanliness
+  wait_fetcher->CallCallbacks();
 }
 
 }  // namespace

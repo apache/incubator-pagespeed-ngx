@@ -299,6 +299,17 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                       const StringPiece& filter_id, const StringPiece& hash,
                       const StringPiece& name, const StringPiece& ext);
 
+  // Overrides the async fetcher on the primary context to be a
+  // wait fetcher which permits delaying callback invocation, and returns a
+  // pointer to the new fetcher.
+  WaitUrlAsyncFetcher* SetupWaitFetcher() {
+    WaitUrlAsyncFetcher* delayer =
+        new WaitUrlAsyncFetcher(&mock_url_fetcher_);
+    rewrite_driver_.set_async_fetcher(delayer);
+    resource_manager_->set_url_async_fetcher(delayer);
+    return delayer;
+  }
+
   // Testdata directory.
   static const char kTestData[];
 

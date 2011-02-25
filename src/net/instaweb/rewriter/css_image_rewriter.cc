@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
 
+#include <algorithm>
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/img_rewrite_filter.h"
@@ -30,6 +32,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "webutil/css/parser.h"
 
 namespace net_instaweb {
@@ -77,8 +80,10 @@ void CssImageRewriter::Initialize(Statistics* statistics) {
 bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
                                        const StringPiece& old_rel_url,
                                        std::string* new_url,
+                                       int64* expire_at_ms,
                                        MessageHandler* handler) {
   bool ret = false;
+  *expire_at_ms = kint64max;
   std::string old_rel_url_str = old_rel_url.as_string();
   scoped_ptr<Resource> input_resource(
       driver_->resource_manager()->CreateInputResource(
@@ -91,6 +96,7 @@ bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
                        old_rel_url_str.c_str());
       rewrite_info.reset(
           image_rewriter_->RewriteExternalResource(input_resource.get()));
+      *expire_at_ms = ExpirationTimeMs(rewrite_info.get());
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
         if (image_rewrites_ != NULL) {
           image_rewrites_->Add(1);
@@ -105,6 +111,9 @@ bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
                        old_rel_url_str.c_str());
       rewrite_info.reset(
           cache_extender_->RewriteExternalResource(input_resource.get()));
+      *expire_at_ms = std::min(*expire_at_ms,
+                               ExpirationTimeMs(rewrite_info.get()));
+
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
         if (cache_extends_ != NULL) {
           cache_extends_->Add(1);
@@ -133,10 +142,26 @@ bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
   return ret;
 }
 
+int64 CssImageRewriter::ExpirationTimeMs(
+    OutputResource::CachedResult* cached_result) {
+  if (cached_result == NULL) {
+    // A NULL cached_result means that the rewrite was unable to proceed,
+    // but will likely be able to do so shortly, so we want to expire
+    // "almost immediately". We use 1 second as it's the smallest TTL
+    // we can reliably represent, anyway.
+    int now_ms = driver_->resource_manager()->timer()->NowMs();
+    return now_ms + Timer::kSecondMs;
+  } else {
+    return cached_result->origin_expiration_time_ms();
+  }
+}
+
 bool CssImageRewriter::RewriteCssImages(const GURL& base_url,
                                         Css::Stylesheet* stylesheet,
+                                        int64* expiration_time_ms,
                                         MessageHandler* handler) {
   bool edited = false;
+  int64 expire_at_ms = kint64max;
   if (RewritesEnabled()) {
     handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
                      base_url.spec().c_str());
@@ -166,7 +191,9 @@ bool CssImageRewriter::RewriteCssImages(const GURL& base_url,
                     UnicodeTextToUTF8(value->GetStringValue());
                 handler->Message(kInfo, "Found image URL %s", rel_url.c_str());
                 std::string new_url;
-                if (RewriteImageUrl(base_url, rel_url, &new_url, handler)) {
+                int64 input_expire_at_ms;
+                if (RewriteImageUrl(base_url, rel_url, &new_url,
+                                    &input_expire_at_ms, handler)) {
                   // Replace the URL.
                   *value_iter = new Css::Value(Css::Value::URI,
                                                UTF8ToUnicodeText(new_url));
@@ -182,6 +209,7 @@ bool CssImageRewriter::RewriteCssImages(const GURL& base_url,
                                    "(Perhaps it is being fetched).",
                                    rel_url.c_str());
                 }
+                expire_at_ms = std::min(expire_at_ms, input_expire_at_ms);
               }
             }
             break;
@@ -196,6 +224,7 @@ bool CssImageRewriter::RewriteCssImages(const GURL& base_url,
                      "so not rewriting images in CSS in %s",
                      base_url.spec().c_str());
   }
+  *expiration_time_ms = expire_at_ms;
   return edited;
 }
 

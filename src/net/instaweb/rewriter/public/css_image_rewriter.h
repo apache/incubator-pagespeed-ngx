@@ -21,6 +21,7 @@
 
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 
 class GURL;
 
@@ -53,8 +54,10 @@ class CssImageRewriter {
   // stylesheet to point to new images.
   //
   // Returns whether or not it made any changes.
+  // Output 'expiration_time_ms' is the min TTL for all subresources in CSS.
+  // (or kint64max if there are none)
   bool RewriteCssImages(const GURL& base_url, Css::Stylesheet* stylesheet,
-                        MessageHandler* handler);
+                        int64* expiration_time_ms, MessageHandler* handler);
 
   // Are any rewrites enabled?
   bool RewritesEnabled() const { return cache_extend_ || rewrite_images_; }
@@ -68,7 +71,13 @@ class CssImageRewriter {
   bool RewriteImageUrl(const GURL& base_url,
                        const StringPiece& old_rel_url,
                        std::string* new_url,
+                       int64* expire_at_ms,
                        MessageHandler* handler);
+
+  // Tells when we should expire our output based on a cached_result
+  // produced from the rewriter. If NULL, it will produce a short delay
+  // to permit the input to finish loading.
+  int64 ExpirationTimeMs(OutputResource::CachedResult* cached_result);
 
   // Needed for resource_manager and options.
   RewriteDriver* driver_;
