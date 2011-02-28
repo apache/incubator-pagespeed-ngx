@@ -592,7 +592,7 @@ OutputResource* RewriteDriver::CreateOutputResourceFromResource(
       encoder->EncodeToUrlSegment(GoogleUrl::LeafWithQuery(mapped_gurl), &name);
       result = CreateOutputResourceWithPath(
           GoogleUrl::AllExceptLeaf(mapped_gurl),
-          filter_prefix, name, content_type);
+          filter_prefix, name, content_type, kRewrittenResource);
     }
   }
   return result;
@@ -602,7 +602,8 @@ OutputResource* RewriteDriver::CreateOutputResourceWithPath(
     const StringPiece& path,
     const StringPiece& filter_prefix,
     const StringPiece& name,
-    const ContentType* content_type) {
+    const ContentType* content_type,
+    OutputResourceKind kind) {
   ResourceNamer full_name;
   full_name.set_id(filter_prefix);
   full_name.set_name(name);
@@ -613,13 +614,16 @@ OutputResource* RewriteDriver::CreateOutputResourceWithPath(
   }
   OutputResource* resource = new OutputResource(
       resource_manager_, path, full_name, content_type, &options_);
+  resource->set_outlined(kind == kOutlinedResource);
 
   // Determine whether this output resource is still valid by looking
   // up by hash in the http cache.  Note that this cache entry will
   // expire when any of the origin resources expire.
-  std::string name_key = StrCat(
-      ResourceManager::kCacheKeyResourceNamePrefix, resource->name_key());
-  resource->FetchCachedResult(name_key, message_handler());
+  if (kind != kOutlinedResource) {
+    std::string name_key = StrCat(
+        ResourceManager::kCacheKeyResourceNamePrefix, resource->name_key());
+    resource->FetchCachedResult(name_key, message_handler());
+  }
   return resource;
 }
 

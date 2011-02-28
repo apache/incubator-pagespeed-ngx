@@ -30,8 +30,8 @@ class ResourceManagerTestingPeer {
   static bool HasHash(const OutputResource* resource) {
     return resource->has_hash();
   }
-  static bool Generated(const OutputResource* resource) {
-    return resource->generated();
+  static bool Outlined(const OutputResource* resource) {
+    return resource->outlined();
   }
 
  private:

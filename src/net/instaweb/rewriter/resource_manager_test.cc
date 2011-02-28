@@ -25,6 +25,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -112,7 +113,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     const ContentType* content_type = &kContentTypeText;
     scoped_ptr<OutputResource> nor(
         rewrite_driver_.CreateOutputResourceWithPath(
-            url_prefix_, filter_prefix, name, content_type));
+            url_prefix_, filter_prefix, name, content_type,
+            RewriteDriver::kRewrittenResource));
     ASSERT_TRUE(nor.get() != NULL);
     // Check name_key against url_prefix/fp.name
     std::string name_key = nor->name_key();
@@ -128,7 +130,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       // Here we attempt to create without the hash.
       scoped_ptr<OutputResource> nor1(
           rewrite_driver_.CreateOutputResourceWithPath(
-              url_prefix_, filter_prefix, name, content_type));
+              url_prefix_, filter_prefix, name, content_type,
+              RewriteDriver::kRewrittenResource));
       ASSERT_TRUE(nor1.get() != NULL);
       // We'll succeed in fetching (meaning don't create the resource), but the
       // resource won't be written.
@@ -156,7 +159,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     }
     // Write some data
     EXPECT_FALSE(ResourceManagerTestingPeer::HasHash(nor.get()));
-    EXPECT_FALSE(ResourceManagerTestingPeer::Generated(nor.get()));
+    EXPECT_FALSE(ResourceManagerTestingPeer::Outlined(nor.get()));
     EXPECT_TRUE(resource_manager_->Write(HttpStatus::kOK, contents, nor.get(),
                                          origin_expire_time_ms,
                                          &message_handler_));
@@ -169,10 +172,11 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // Retrieve the same NOR from the cache.
     scoped_ptr<OutputResource> nor2(
         rewrite_driver_.CreateOutputResourceWithPath(
-            url_prefix_, filter_prefix, name, &kContentTypeText));
+            url_prefix_, filter_prefix, name, &kContentTypeText,
+            RewriteDriver::kRewrittenResource));
     ASSERT_TRUE(nor2.get() != NULL);
     EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor2.get()));
-    EXPECT_FALSE(ResourceManagerTestingPeer::Generated(nor2.get()));
+    EXPECT_FALSE(ResourceManagerTestingPeer::Outlined(nor2.get()));
     EXPECT_FALSE(nor2->IsWritten());
 
     // Fetch its contents and make sure they match
@@ -193,7 +197,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     {
       scoped_ptr<OutputResource> nor3(
           rewrite_driver_.CreateOutputResourceWithPath(
-              url_prefix_, filter_prefix, name, &kContentTypeText));
+              url_prefix_, filter_prefix, name, &kContentTypeText,
+              RewriteDriver::kRewrittenResource));
       EXPECT_FALSE(rewrite_driver_.FetchOutputResource(
           nor3.get(), NULL, NULL, ResourceManager::kNeverBlock));
       // Now nor3 has locked the resource for creation.
@@ -587,6 +592,88 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
                              &message_handler_));
 }
 
+TEST_F(ResourceManagerTest, TestOutlined) {
+  const int kLongExpireMs = 50000;
+
+  // Outliner resources should not produce extra cache traffic
+  // due to rname/ entries we can't use anyway.
+  EXPECT_EQ(0, lru_cache_->num_hits());
+  EXPECT_EQ(0, lru_cache_->num_misses());
+  EXPECT_EQ(0, lru_cache_->num_inserts());
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+  scoped_ptr<OutputResource> output_resource(
+      rewrite_driver_.CreateOutputResourceWithPath(
+          url_prefix_, CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
+          RewriteDriver::kOutlinedResource));
+  ASSERT_TRUE(output_resource.get() != NULL);
+  EXPECT_EQ(NULL, output_resource->cached_result());
+  EXPECT_EQ(0, lru_cache_->num_hits());
+  EXPECT_EQ(0, lru_cache_->num_misses());
+  EXPECT_EQ(0, lru_cache_->num_inserts());
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+
+  resource_manager_->Write(HttpStatus::kOK, "", output_resource.get(),
+                           kLongExpireMs,&message_handler_);
+  EXPECT_EQ(NULL, output_resource->cached_result());
+  EXPECT_EQ(0, lru_cache_->num_hits());
+  EXPECT_EQ(0, lru_cache_->num_misses());
+  EXPECT_EQ(1, lru_cache_->num_inserts());
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+
+  // Now try fetching again. It should not get a cached_result either.
+  output_resource.reset(
+      rewrite_driver_.CreateOutputResourceWithPath(
+          url_prefix_, CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
+          RewriteDriver::kOutlinedResource));
+  ASSERT_TRUE(output_resource.get() != NULL);
+  EXPECT_EQ(NULL, output_resource->cached_result());
+  EXPECT_EQ(0, lru_cache_->num_hits());
+  EXPECT_EQ(0, lru_cache_->num_misses());
+  EXPECT_EQ(1, lru_cache_->num_inserts());
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+}
+
+TEST_F(ResourceManagerTest, TestNotGenerated) {
+  const int kLongExpireMs = 50000;
+
+  // For derived resources we can and should use the rewrite
+  // summary/metadata cache
+  EXPECT_EQ(0, lru_cache_->num_hits());
+  EXPECT_EQ(0, lru_cache_->num_misses());
+  EXPECT_EQ(0, lru_cache_->num_inserts());
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+  scoped_ptr<OutputResource> output_resource(
+      rewrite_driver_.CreateOutputResourceWithPath(
+            url_prefix_, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
+            RewriteDriver::kRewrittenResource));
+  ASSERT_TRUE(output_resource.get() != NULL);
+  EXPECT_EQ(NULL, output_resource->cached_result());
+  EXPECT_EQ(0, lru_cache_->num_hits());
+  EXPECT_EQ(1, lru_cache_->num_misses()) << "miss trying to get a CachedResult";
+  EXPECT_EQ(0, lru_cache_->num_inserts());
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+
+  resource_manager_->Write(HttpStatus::kOK, "", output_resource.get(),
+                           kLongExpireMs,&message_handler_);
+  EXPECT_TRUE(output_resource->cached_result() != NULL);
+  EXPECT_EQ(0, lru_cache_->num_hits());
+  EXPECT_EQ(1, lru_cache_->num_misses());
+  EXPECT_EQ(2, lru_cache_->num_inserts()) << "insert CachedResult and output";
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+
+  // Now try fetching again. Should hit in cache
+  output_resource.reset(
+      rewrite_driver_.CreateOutputResourceWithPath(
+            url_prefix_, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
+            RewriteDriver::kRewrittenResource));
+  ASSERT_TRUE(output_resource.get() != NULL);
+  EXPECT_TRUE(output_resource->cached_result() != NULL);
+  EXPECT_EQ(1, lru_cache_->num_hits());
+  EXPECT_EQ(1, lru_cache_->num_misses());
+  EXPECT_EQ(2, lru_cache_->num_inserts());
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+}
+
 TEST_F(ResourceManagerTest, TestCachedResults) {
   TestCachedResult(false, true);
 }
@@ -762,7 +849,8 @@ TEST_F(ResourceManagerShardedTest, TestNamed) {
           "http://example.com/dir/",
           "jm",
           "orig.js",
-          &kContentTypeJavascript));
+          &kContentTypeJavascript,
+          RewriteDriver::kRewrittenResource));
   ASSERT_TRUE(output_resource.get());
   ASSERT_TRUE(resource_manager_->Write(HttpStatus::kOK, "alert('hello');",
                                        output_resource.get(), 0,

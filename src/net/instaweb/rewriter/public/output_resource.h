@@ -243,8 +243,8 @@ class OutputResource : public Resource {
   StringPiece hash() const { return full_name_.hash(); }
   bool has_hash() const { return !hash().empty(); }
   void set_written(bool written) { writing_complete_ = true; }
-  void set_generated(bool x) { generated_ = x; }
-  bool generated() const { return generated_; }
+  void set_outlined(bool x) { outlined_ = x; }
+  bool outlined() const { return outlined_; }
   std::string TempPrefix() const;
 
   OutputWriter* BeginWrite(MessageHandler* message_handler);
@@ -266,11 +266,11 @@ class OutputResource : public Resource {
   FileSystem::OutputFile* output_file_;
   bool writing_complete_;
 
-  // Generated via ResourceManager::CreateGeneratedOutputResource,
-  // meaning that it does not have a name that is derived from an
-  // input URL.  We must regenerate it every time, but the output name
-  // will be distinct because it's based on the hash of the content.
-  bool generated_;
+  // The resource was created by outlining from within HTML and was not
+  // derived from an input URL (and is hence not named after one). We must
+  // regenerate it every time, but the output name will be distinct because
+  // it's based on the hash of the content.
+  bool outlined_;
 
   scoped_ptr<CachedResult> cached_result_;
 

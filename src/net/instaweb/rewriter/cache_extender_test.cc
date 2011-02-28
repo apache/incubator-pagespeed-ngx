@@ -21,6 +21,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
+#include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -198,7 +199,8 @@ TEST_F(CacheExtenderTest, MinimizeCacheHits) {
   std::string html_input = StrCat("<style>", kCssData, "</style>");
   std::string html_output = StringPrintf(
       "<link rel=\"stylesheet\" href=\"%s\">",
-      Encode(kTestDomain, "co", "0", "_", "css").c_str());
+      Encode(kTestDomain, CssOutlineFilter::kFilterId, "0", "_",
+             "css").c_str());
   ValidateExpected("no_extend_origin_not_cacheable", html_input, html_output);
 
   // The key thing about this test is that the CacheExtendFilter should
@@ -207,8 +209,10 @@ TEST_F(CacheExtenderTest, MinimizeCacheHits) {
   // resource from the cache, then we'll get a cache-hit and decide that
   // it's already got a long cache lifetime.  But we should know, just from
   // the name of the resource, that it should not be cache extended.
+  // The CSS outliner also should not produce any cache misses, as it currently
+  // does not cache.
   EXPECT_EQ(0, lru_cache_->num_hits());
-  EXPECT_EQ(1, lru_cache_->num_misses());
+  EXPECT_EQ(0, lru_cache_->num_misses());
 }
 
 TEST_F(CacheExtenderTest, NoExtensionCorruption) {

@@ -391,6 +391,11 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // Slashes in value list.
     ".border8 { border-radius: 36px / 12px; }"
 
+    // http://code.google.com/p/modpagespeed/issues/detail?id=220
+    // See https://developer.mozilla.org/en/CSS/-moz-transition-property
+    // and http://www.webkit.org/blog/138/css-animation/
+    "a { -webkit-transition-property:opacity,-webkit-transform; }",
+
     // Should fail (bad syntax):
     "a { font:bold verdana 10px; }",
     };
@@ -603,15 +608,18 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     ValidateRewrite(id, examples[i][0], examples[i][1]);
   }
 
-  /* Uncomment when we have failing examples.
   const char* parse_fail_examples[] = {
+    // http://code.google.com/p/modpagespeed/issues/detail?id=220
+    ".mui-navbar-wrap, .mui-navbar-clone {"
+    "opacity:1;-webkit-transform:translateX(0);"
+    "-webkit-transition-property:opacity,-webkit-transform;"
+    "-webkit-transition-duration:400ms;}",
     };
 
   for (int i = 0; i < arraysize(parse_fail_examples); ++i) {
     std::string id = StringPrintf("complex_css_parse_fail%d", i);
     ValidateFailParse(id, parse_fail_examples[i]);
   }
-  */
 }
 
 // These tests are to make sure our TTL considers that of subresources.
@@ -640,7 +648,7 @@ class CssFilterSubresourceTest : public CssFilterTest {
     scoped_ptr<OutputResource> output_resource(
         rewrite_driver_.CreateOutputResourceWithPath(
             kTestDomain, RewriteDriver::kCssFilterId, StrCat(id, ".css"),
-            &kContentTypeCss));
+            &kContentTypeCss, RewriteDriver::kRewrittenResource));
     ASSERT_TRUE(output_resource.get() != NULL);
     EXPECT_EQ(css_url, output_resource->url());
     ASSERT_TRUE(output_resource->cached_result() != NULL);

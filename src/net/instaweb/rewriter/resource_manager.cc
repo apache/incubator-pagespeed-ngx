@@ -216,7 +216,7 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
     // If our URL is derived from some pre-existing URL (and not invented by
     // us due to something like outlining), cache the mapping from original URL
     // to the constructed one.
-    if (!output->generated()) {
+    if (!output->outlined()) {
       output->EnsureCachedResultCreated()->set_optimizable(true);
       CacheComputedResourceMapping(output, origin_expire_time_ms, handler);
     }

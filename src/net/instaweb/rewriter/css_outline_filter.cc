@@ -143,8 +143,8 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       // Create outline resource at the document location, not base URL location
       scoped_ptr<OutputResource> output_resource(
           driver_->CreateOutputResourceWithPath(
-              GoogleUrl::AllExceptLeaf(driver_->gurl()),
-              kFilterId, "_", &kContentTypeCss));
+              GoogleUrl::AllExceptLeaf(driver_->gurl()), kFilterId, "_",
+              &kContentTypeCss, RewriteDriver::kOutlinedResource));
 
       // Absolutify URLs in content.
       std::string absolute_content;

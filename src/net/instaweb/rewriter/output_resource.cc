@@ -108,7 +108,7 @@ OutputResource::OutputResource(ResourceManager* manager,
     : Resource(manager, type),
       output_file_(NULL),
       writing_complete_(false),
-      generated_(false),
+      outlined_(false),
       resolved_base_(resolved_base.data(), resolved_base.size()),
       rewrite_options_(options) {
   full_name_.CopyFrom(full_name);

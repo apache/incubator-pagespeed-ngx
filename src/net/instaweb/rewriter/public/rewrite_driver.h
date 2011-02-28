@@ -188,6 +188,11 @@ class RewriteDriver : public HtmlParse {
       UrlSegmentEncoder* encoder,
       Resource* input_resource);
 
+  enum OutputResourceKind {
+    kRewrittenResource,  // derived from some input resource URL or URLs.
+    kOutlinedResource   // derived from page HTML.
+  };
+
   // Creates an output resource where the name is provided by the rewriter.
   // The intent is to be able to derive the content from the name, for example,
   // by encoding URLs and metadata.
@@ -204,7 +209,8 @@ class RewriteDriver : public HtmlParse {
   // library.
   OutputResource* CreateOutputResourceWithPath(
       const StringPiece& path, const StringPiece& filter_prefix,
-      const StringPiece& name,  const ContentType* type);
+      const StringPiece& name,  const ContentType* type,
+      OutputResourceKind kind);
 
   // Creates an input resource with the url evaluated based on input_url
   // which may need to be absolutified relative to base_url.  Returns NULL if
