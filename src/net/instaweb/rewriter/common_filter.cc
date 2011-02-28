@@ -27,7 +27,6 @@ namespace net_instaweb {
 
 CommonFilter::CommonFilter(RewriteDriver* driver)
     : driver_(driver),
-      html_parse_(driver->html_parse()),
       resource_manager_(driver->resource_manager()),
       rewrite_options_(driver->options()) {
 }
@@ -36,7 +35,7 @@ CommonFilter::~CommonFilter() {}
 
 void CommonFilter::StartDocument() {
   // Base URL starts as document URL.
-  base_gurl_ = html_parse_->gurl();
+  base_gurl_ = driver_->gurl();
   noscript_element_ = NULL;
   // Run the actual filter's StartDocumentImpl.
   StartDocumentImpl();
@@ -73,34 +72,22 @@ void CommonFilter::EndElement(HtmlElement* element) {
   EndElementImpl(element);
 }
 
-// TODO(jmarantz): While it is expedient to route the input-resource creation
-// through this base class, it's not clear this is the right place.  I think
-// it would be easier to argue that it should be RewriteDriver.  But this
-// fitler had access to the base_gurl which is very convenient, and was already
-// the base class of all filters that needed this.  We should revisit and
-// decide where this should go.
-//
-// jmaessen also points out that we have not been symmetric: we have ignored
-// OutputResources here.  In any case, we should strive for consistency.
+// TODO(jmarantz): Remove these methods -- they used to serve an
+// important contextual purpose but now that the resource creation
+// methods were moved to RewriteDriver they won't add much value.
 Resource* CommonFilter::CreateInputResource(const StringPiece& url) {
-  ResourceManager* resource_manager = driver_->resource_manager();
-  return resource_manager->CreateInputResource(
-      base_gurl(), url, rewrite_options_, html_parse_->message_handler());
+  return driver_->CreateInputResource(base_gurl(), url);
 }
 
 Resource* CommonFilter::CreateInputResourceAndReadIfCached(
     const StringPiece& url) {
-  ResourceManager* resource_manager = driver_->resource_manager();
-  return resource_manager->CreateInputResourceAndReadIfCached(
-      base_gurl(), url, rewrite_options_, html_parse_->message_handler());
+  return driver_->CreateInputResourceAndReadIfCached(base_gurl(), url);
 }
 
 Resource* CommonFilter::CreateInputResourceFromOutputResource(
     UrlSegmentEncoder* encoder, OutputResource* output_resource) {
-  ResourceManager* resource_manager = driver_->resource_manager();
-  return resource_manager->CreateInputResourceFromOutputResource(
-      encoder, output_resource, rewrite_options_,
-      html_parse_->message_handler());
+  return driver_->CreateInputResourceFromOutputResource(
+      encoder, output_resource);
 }
 
 }  // namespace net_instaweb

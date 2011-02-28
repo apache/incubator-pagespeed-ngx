@@ -143,7 +143,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     DummyCallback dummy_callback(true);
     rewrite_driver_.FetchResource(combine_url, request_headers,
                                   &response_headers, &writer,
-                                  &message_handler_, &dummy_callback);
+                                  &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) << combine_url;
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
@@ -158,7 +158,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     dummy_callback.Reset();
     other_rewrite_driver_.FetchResource(combine_url, request_headers,
                                         &other_response_headers, &writer,
-                                        &message_handler_, &dummy_callback);
+                                        &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
@@ -203,7 +203,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     EXPECT_TRUE(
         rewrite_driver_.FetchResource(kACUrl, request_headers,
                                       &response_headers, &writer,
-                                      &message_handler_, &dummy_callback));
+                                      &dummy_callback));
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
@@ -214,7 +214,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     EXPECT_TRUE(
         rewrite_driver_.FetchResource(kACUrl, request_headers,
                                       &response_headers, &writer,
-                                      &message_handler_, &dummy_callback));
+                                      &dummy_callback));
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
@@ -229,7 +229,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     EXPECT_TRUE(
         rewrite_driver_.FetchResource(kABCUrl, request_headers,
                                       &response_headers, &writer,
-                                      &message_handler_, &fail_callback));
+                                      &fail_callback));
     EXPECT_EQ(HttpStatus::kNotFound, response_headers.status_code());
     EXPECT_EQ("", fetched_resource_content);
   }
@@ -429,20 +429,20 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         StrCat(kTestDomain, "a.css+b.css.pagespeed.cc.0.css");
 
     SetupWriter();
-    html_parse()->StartParse(kTestDomain);
+    rewrite_driver_.StartParse(kTestDomain);
     std::string input_beginning =
         StrCat(kXhtmlDtd, "<div><link rel=stylesheet href=a.css>",
                "<link rel=stylesheet href=b.css>");
-    html_parse()->ParseText(input_beginning);
+    rewrite_driver_.ParseText(input_beginning);
 
     if (flush) {
       // This is a regression test: previously getting a flush here would
       // cause attempts to modify data structures, as we would only
       // start seeing the links at the </div>
-      html_parse()->Flush();
+      rewrite_driver_.Flush();
     }
-    html_parse()->ParseText("</div>");
-    html_parse()->FinishParse();
+    rewrite_driver_.ParseText("</div>");
+    rewrite_driver_.FinishParse();
 
     if (!flush) {
       // Note: if this test begins failing because the <link> in the output is

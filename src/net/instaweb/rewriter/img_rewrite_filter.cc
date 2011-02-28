@@ -95,7 +95,7 @@ ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
                                    size_t img_inline_max_bytes,
                                    size_t img_max_rewrites_at_once)
     : RewriteSingleResourceFilter(driver, path_prefix),
-      img_filter_(new ImgTagScanner(html_parse_)),
+      img_filter_(new ImgTagScanner(driver)),
       img_inline_max_bytes_(img_inline_max_bytes),
       log_image_elements_(log_image_elements),
       insert_image_dimensions_(insert_image_dimensions),
@@ -132,7 +132,7 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
                                         OutputResource* result,
                                         UrlSegmentEncoder* raw_encoder) {
   ImageUrlEncoder* encoder = static_cast<ImageUrlEncoder*>(raw_encoder);
-  MessageHandler* message_handler = html_parse_->message_handler();
+  MessageHandler* message_handler = driver_->message_handler();
 
   ImageDim page_dim = encoder->stored_dim();
   scoped_ptr<Image> image(
@@ -173,10 +173,10 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
       } else {
         message = "Not worth resizing image";
       }
-      html_parse_->InfoHere("%s `%s' from %dx%d to %dx%d", message,
-                            input_resource->url().c_str(),
-                            img_dim.width(), img_dim.height(),
-                            page_dim.width(), page_dim.height());
+      driver_->InfoHere("%s `%s' from %dx%d to %dx%d", message,
+                        input_resource->url().c_str(),
+                        img_dim.width(), img_dim.height(),
+                        page_dim.width(), page_dim.height());
     }
 
     // Cache image dimensions, including any resizing we did
@@ -203,7 +203,7 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
       if (resource_manager_->Write(
               HttpStatus::kOK, image->Contents(), result,
               origin_expire_time_ms, message_handler)) {
-        html_parse_->InfoHere(
+        driver_->InfoHere(
             "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",
             input_resource->url().c_str(),
             static_cast<unsigned>(image->input_size()),
@@ -266,7 +266,7 @@ const ContentType* ImgRewriteFilter::ImageToContentType(
         content_type = &kContentTypeGif;
         break;
       default:
-        html_parse_->InfoHere(
+        driver_->InfoHere(
             "Cannot detect content type of image url `%s`",
             origin_url.c_str());
         break;
@@ -324,8 +324,8 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
       // rather than as absolute pixels.  But note that we DO attempt to
       // include image dimensions even if we otherwise choose not to optimize
       // an image.
-      html_parse_->AddAttribute(element, HtmlName::kWidth, actual_width);
-      html_parse_->AddAttribute(element, HtmlName::kHeight, actual_height);
+      driver_->AddAttribute(element, HtmlName::kWidth, actual_width);
+      driver_->AddAttribute(element, HtmlName::kHeight, actual_height);
     }
   }
 }
@@ -349,8 +349,8 @@ void ImgRewriteFilter::EndElementImpl(HtmlElement* element) {
       // Log the element in its original form.
       std::string tagstring;
       element->ToString(&tagstring);
-      html_parse_->Info(
-          html_parse_->id(), element->begin_line_number(),
+      driver_->Info(
+          driver_->id(), element->begin_line_number(),
           "Found image: %s", tagstring.c_str());
     }
     RewriteImageUrl(element, src);

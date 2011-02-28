@@ -35,7 +35,6 @@ class CssInlineFilter : public CommonFilter {
   explicit CssInlineFilter(RewriteDriver* driver);
 
   virtual void StartDocumentImpl();
-  virtual void EndDocument();
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "InlineCss"; }

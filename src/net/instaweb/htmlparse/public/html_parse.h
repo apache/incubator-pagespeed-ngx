@@ -46,7 +46,8 @@ class HtmlParse {
 
   // Application methods for parsing functions and adding filters
 
-  // Add a new html filter to the filter-chain
+  // Add a new html filter to the filter-chain, without taking ownership
+  // of it.
   void AddFilter(HtmlFilter* filter);
 
   // Initiate a chunked parsing session.  Finish with FinishParse.  The

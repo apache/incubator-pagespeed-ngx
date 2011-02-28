@@ -74,7 +74,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   // Initiate fetch.
   EXPECT_EQ(true, other_rewrite_driver.FetchResource(
       resource_url, request_headers, &response_headers, &response_writer,
-      &message_handler_, &callback));
+      &callback));
 
   // Content should not be set until we call the callback.
   EXPECT_EQ(false, callback.done_);

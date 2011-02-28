@@ -47,10 +47,9 @@ class CssCombineFilter::CssCombiner
     : public ResourceCombinerTemplate<HtmlElement*> {
  public:
   CssCombiner(RewriteDriver* driver, const StringPiece& filter_prefix,
-              HtmlParse* html_parse, CssTagScanner* css_tag_scanner)
+              CssTagScanner* css_tag_scanner)
       : ResourceCombinerTemplate<HtmlElement*>(
           driver, filter_prefix, kContentTypeCss.file_extension() + 1),
-        html_parse_(html_parse),
         css_tag_scanner_(css_tag_scanner),
         css_file_count_reduction_(NULL) {
     filter_prefix.CopyToString(&filter_prefix_);
@@ -95,7 +94,7 @@ class CssCombineFilter::CssCombiner
   // Returns true iff all elements in current combination can be rewritten.
   bool CanRewrite() const {
     for (int i = 0; i < num_urls(); ++i) {
-      if (!html_parse_->IsRewritable(element(i))) {
+      if (!rewrite_driver_->IsRewritable(element(i))) {
         return false;
       }
     }
@@ -104,7 +103,6 @@ class CssCombineFilter::CssCombiner
 
   std::string media_;
   std::string filter_prefix_;
-  HtmlParse* html_parse_;
   CssTagScanner* css_tag_scanner_;
   Variable* css_file_count_reduction_;
 };
@@ -124,9 +122,8 @@ class CssCombineFilter::CssCombiner
 CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
                                    const char* filter_prefix)
     : RewriteFilter(driver, filter_prefix),
-      css_tag_scanner_(html_parse_) {
-  combiner_.reset(new CssCombiner(driver, filter_prefix, html_parse_,
-                                  &css_tag_scanner_));
+      css_tag_scanner_(driver_) {
+  combiner_.reset(new CssCombiner(driver_, filter_prefix, &css_tag_scanner_));
 }
 
 CssCombineFilter::~CssCombineFilter() {
@@ -150,7 +147,7 @@ void CssCombineFilter::StartElementImpl(HtmlElement* element) {
       combiner_->TryCombineAccumulated();
     } else {
       const char* url = href->value();
-      MessageHandler* handler = html_parse_->message_handler();
+      MessageHandler* handler = driver_->message_handler();
 
       if (!combiner_->AddElementWithMedia(element, url, media, handler)) {
         // This element can't be included in the previous combination,
@@ -190,7 +187,7 @@ void CssCombineFilter::Flush() {
 
 void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
   if (CanRewrite()) {
-    MessageHandler* handler = html_parse_->message_handler();
+    MessageHandler* handler = rewrite_driver_->message_handler();
     scoped_ptr<OutputResource> combination(Combine(kContentTypeCss, handler));
     if (combination.get() != NULL) {
       // Ideally like to have a data-driven service tell us which elements
@@ -198,28 +195,29 @@ void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
       // elements are managed, so we don't delete them even if the spriting
       // fails.
 
-      HtmlElement* combine_element = html_parse_->NewElement(NULL,
-                                                             HtmlName::kLink);
-      html_parse_->AddAttribute(combine_element, HtmlName::kRel, "stylesheet");
-      html_parse_->AddAttribute(combine_element, HtmlName::kType,
+      HtmlElement* combine_element =
+          rewrite_driver_->NewElement(NULL, HtmlName::kLink);
+      rewrite_driver_->AddAttribute(
+          combine_element, HtmlName::kRel, "stylesheet");
+      rewrite_driver_->AddAttribute(combine_element, HtmlName::kType,
                                 kContentTypeCss.mime_type());
       if (!media_.empty()) {
-        html_parse_->AddAttribute(combine_element, HtmlName::kMedia, media_);
+        rewrite_driver_->AddAttribute(
+            combine_element, HtmlName::kMedia, media_);
       }
 
-      html_parse_->AddAttribute(combine_element, HtmlName::kHref,
-                                combination->url());
+      rewrite_driver_->AddAttribute(combine_element, HtmlName::kHref,
+                                    combination->url());
       // TODO(sligocki): Put at top of head/flush-window.
       // Right now we're putting it where the first original element used to be.
-      html_parse_->InsertElementBeforeElement(element(0),
+      rewrite_driver_->InsertElementBeforeElement(element(0),
                                               combine_element);
       // ... and removing originals from the DOM.
       for (int i = 0; i < num_urls(); ++i) {
-        html_parse_->DeleteElement(element(i));
+        rewrite_driver_->DeleteElement(element(i));
       }
-      html_parse_->InfoHere("Combined %d CSS files into one at %s",
-                            num_urls(),
-                            combination->url().c_str());
+      rewrite_driver_->InfoHere("Combined %d CSS files into one at %s",
+                                num_urls(), combination->url().c_str());
       if (css_file_count_reduction_ != NULL) {
         css_file_count_reduction_->Add(num_urls() - 1);
       }

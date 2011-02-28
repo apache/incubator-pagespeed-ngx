@@ -79,16 +79,16 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // response_headers, to test all branches.  Expects the fetch to succeed all
   // times, and finally returns the contents.
   std::string FetchOutputResource(OutputResource* resource) {
-    EXPECT_TRUE(resource_manager_->FetchOutputResource(
-        resource, NULL, NULL, &message_handler_, ResourceManager::kMayBlock));
+    EXPECT_TRUE(rewrite_driver_.FetchOutputResource(
+        resource, NULL, NULL, ResourceManager::kMayBlock));
     ResponseHeaders empty;
-    EXPECT_TRUE(resource_manager_->FetchOutputResource(
-        resource, NULL, &empty, &message_handler_, ResourceManager::kMayBlock));
+    EXPECT_TRUE(rewrite_driver_.FetchOutputResource(
+        resource, NULL, &empty, ResourceManager::kMayBlock));
     std::string contents;
     StringWriter writer(&contents);
-    EXPECT_TRUE(resource_manager_->FetchOutputResource(
+    EXPECT_TRUE(rewrite_driver_.FetchOutputResource(
         resource, &writer, resource->metadata(),
-        &message_handler_, ResourceManager::kMayBlock));
+        ResourceManager::kMayBlock));
     return contents;
   }
 
@@ -111,9 +111,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     const int64 origin_expire_time_ms = 100000;
     const ContentType* content_type = &kContentTypeText;
     scoped_ptr<OutputResource> nor(
-        resource_manager_->CreateOutputResourceWithPath(
-            url_prefix_, filter_prefix, name, content_type,
-            &options_, &message_handler_));
+        rewrite_driver_.CreateOutputResourceWithPath(
+            url_prefix_, filter_prefix, name, content_type));
     ASSERT_TRUE(nor.get() != NULL);
     // Check name_key against url_prefix/fp.name
     std::string name_key = nor->name_key();
@@ -121,23 +120,20 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     EXPECT_EQ(nor->full_name().EncodeIdName(), name_key);
     // Make sure the resource hasn't already been created (and lock it for
     // creation).
-    EXPECT_FALSE(resource_manager_->FetchOutputResource(
-        nor.get(), NULL, NULL, &message_handler_,
-        ResourceManager::kNeverBlock));
+    EXPECT_FALSE(rewrite_driver_.FetchOutputResource(
+        nor.get(), NULL, NULL, ResourceManager::kNeverBlock));
     EXPECT_FALSE(nor->IsWritten());
     {
       // Now show that another attempt to create the resource will fail.
       // Here we attempt to create without the hash.
       scoped_ptr<OutputResource> nor1(
-          resource_manager_->CreateOutputResourceWithPath(
-              url_prefix_, filter_prefix, name, content_type,
-              &options_, &message_handler_));
+          rewrite_driver_.CreateOutputResourceWithPath(
+              url_prefix_, filter_prefix, name, content_type));
       ASSERT_TRUE(nor1.get() != NULL);
       // We'll succeed in fetching (meaning don't create the resource), but the
       // resource won't be written.
-      EXPECT_TRUE(resource_manager_->FetchOutputResource(
-          nor1.get(), NULL, NULL, &message_handler_,
-          ResourceManager::kNeverBlock));
+      EXPECT_TRUE(rewrite_driver_.FetchOutputResource(
+          nor1.get(), NULL, NULL, ResourceManager::kNeverBlock));
       EXPECT_FALSE(nor1->IsWritten());
     }
     {
@@ -148,15 +144,14 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       namer.set_ext("txt");
       std::string name = StrCat(url_prefix_, namer.Encode());
       scoped_ptr<OutputResource> nor1(
-          resource_manager_->CreateOutputResourceForFetch(name));
+          rewrite_driver_.CreateOutputResourceForFetch(name));
       ASSERT_TRUE(nor1.get() != NULL);
       // Again we'll succeed in fetching (meaning don't create), but the
       // resource won't be written.  Note that we do a non-blocking fetch here.
       // An actual resource fetch does a blocking fetch that would end by
       // stealing the creation lock; we don't want to steal the lock here.
-      EXPECT_TRUE(resource_manager_->FetchOutputResource(
-          nor1.get(), NULL, NULL, &message_handler_,
-          ResourceManager::kNeverBlock));
+      EXPECT_TRUE(rewrite_driver_.FetchOutputResource(
+          nor1.get(), NULL, NULL, ResourceManager::kNeverBlock));
       EXPECT_FALSE(nor1->IsWritten());
     }
     // Write some data
@@ -173,9 +168,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     EXPECT_EQ("txt", full_name.ext());
     // Retrieve the same NOR from the cache.
     scoped_ptr<OutputResource> nor2(
-        resource_manager_->CreateOutputResourceWithPath(
-            url_prefix_, filter_prefix, name, &kContentTypeText,
-            &options_, &message_handler_));
+        rewrite_driver_.CreateOutputResourceWithPath(
+            url_prefix_, filter_prefix, name, &kContentTypeText));
     ASSERT_TRUE(nor2.get() != NULL);
     EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor2.get()));
     EXPECT_FALSE(ResourceManagerTestingPeer::Generated(nor2.get()));
@@ -186,7 +180,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     // Try asynchronously too
     VerifyContentsCallback callback(contents);
-    resource_manager_->ReadAsync(nor2.get(), &callback, &message_handler_);
+    rewrite_driver_.ReadAsync(nor2.get(), &callback, &message_handler_);
     callback.AssertCalled();
 
     // Grab the URL for later
@@ -198,12 +192,10 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     mock_timer()->advance_ms(2 * origin_expire_time_ms);
     {
       scoped_ptr<OutputResource> nor3(
-          resource_manager_->CreateOutputResourceWithPath(
-              url_prefix_, filter_prefix, name, &kContentTypeText,
-              &options_, &message_handler_));
-      EXPECT_FALSE(resource_manager_->FetchOutputResource(
-          nor3.get(), NULL, NULL, &message_handler_,
-          ResourceManager::kNeverBlock));
+          rewrite_driver_.CreateOutputResourceWithPath(
+              url_prefix_, filter_prefix, name, &kContentTypeText));
+      EXPECT_FALSE(rewrite_driver_.FetchOutputResource(
+          nor3.get(), NULL, NULL, ResourceManager::kNeverBlock));
       // Now nor3 has locked the resource for creation.
       // We must destruct nor3 in order to unlock it again, since we
       // have no intention of creating it.
@@ -219,30 +211,28 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // from the http_cache.
     // first cut off the "http://mysite{,.0,.1}/" from the front.
     scoped_ptr<OutputResource> nor4(
-        resource_manager_->CreateOutputResourceForFetch(nor->url()));
+        rewrite_driver_.CreateOutputResourceForFetch(nor->url()));
     EXPECT_EQ(nor->url(), nor4->url());
     EXPECT_EQ(contents, FetchOutputResource(nor4.get()));
 
     // If it's evicted from the http_cache, we can also retrieve it from the
     // filesystem.
     lru_cache_->Clear();
-    nor4.reset(resource_manager_->CreateOutputResourceForFetch(nor->url()));
+    nor4.reset(rewrite_driver_.CreateOutputResourceForFetch(nor->url()));
     EXPECT_EQ(nor->url(), nor4->url());
     EXPECT_EQ(contents, FetchOutputResource(nor4.get()));
     // This also works asynchronously.
     lru_cache_->Clear();
     VerifyContentsCallback callback2(contents);
-    resource_manager_->ReadAsync(nor4.get(), &callback2, &message_handler_);
+    rewrite_driver_.ReadAsync(nor4.get(), &callback2, &message_handler_);
     callback2.AssertCalled();
   }
 
   bool ResourceIsCached() {
     scoped_ptr<Resource> resource(
-        resource_manager_->CreateInputResource(
-            GURL(kResourceUrlBase), kResourceUrlPath,
-            &options_, &message_handler_));
-    bool ok = resource_manager_->ReadIfCached(resource.get(),
-                                              &message_handler_);
+        rewrite_driver_.CreateInputResource(
+            GURL(kResourceUrlBase), kResourceUrlPath));
+    bool ok = rewrite_driver_.ReadIfCached(resource.get());
     // Should not damage resources when freshening
     EXPECT_FALSE(ok && !resource->loaded());
     return ok;
@@ -252,9 +242,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // given content type
   OutputResource* CreateTestOutputResource(Resource* input_resource,
                                            const ContentType* content_type) {
-    return resource_manager_->CreateOutputResourceFromResource(
-        "tf", content_type, resource_manager_->url_escaper(),
-        input_resource, rewrite_driver_.options(), &message_handler_);
+    return rewrite_driver_.CreateOutputResourceFromResource(
+        "tf", content_type, resource_manager_->url_escaper(), input_resource);
   }
 
   void VerifyCustomMetadata(OutputResource* output) {
@@ -346,9 +335,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   void TestCachedResult(bool test_meta_data, bool auto_expire) {
     // Note: we do not fetch the input here, just use it to name the output.
     scoped_ptr<Resource> input(
-        resource_manager_->CreateInputResource(
-            GURL(kResourceUrlBase), kResourceUrlPath, rewrite_driver_.options(),
-            &message_handler_));
+        rewrite_driver_.CreateInputResource(
+            GURL(kResourceUrlBase), kResourceUrlPath));
     ASSERT_TRUE(input.get() != NULL);
 
     scoped_ptr<OutputResource> output(
@@ -434,14 +422,12 @@ TEST_F(ResourceManagerTest, TestOutputInputUrl) {
   std::string url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
   scoped_ptr<OutputResource> output_resource(
-      resource_manager_->CreateOutputResourceForFetch(url));
+      rewrite_driver_.CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   scoped_ptr<Resource> input_resource(
-      resource_manager_->CreateInputResourceFromOutputResource(
+      rewrite_driver_.CreateInputResourceFromOutputResource(
           resource_manager_->url_escaper(),
-          output_resource.get(),
-          &options_,
-          &message_handler_));
+          output_resource.get()));
   EXPECT_EQ("http://example.com/dir/123/orig", input_resource->url());
 }
 
@@ -452,14 +438,12 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlEvil) {
   std::string url = Encode("http://example.com/dir/123/",
                             "jm", "0", escaped_abs, "js");
   scoped_ptr<OutputResource> output_resource(
-      resource_manager_->CreateOutputResourceForFetch(url));
+      rewrite_driver_.CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   scoped_ptr<Resource> input_resource(
-      resource_manager_->CreateInputResourceFromOutputResource(
+      rewrite_driver_.CreateInputResourceFromOutputResource(
           resource_manager_->url_escaper(),
-          output_resource.get(),
-          &options_,
-          &message_handler_));
+          output_resource.get()));
   EXPECT_EQ(NULL, input_resource.get());
 }
 
@@ -473,14 +457,12 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlBusy) {
   std::string url = Encode("http://example.com/dir/123/",
                             "jm", "0", escaped_abs, "js");
   scoped_ptr<OutputResource> output_resource(
-      resource_manager_->CreateOutputResourceForFetch(url));
+      rewrite_driver_.CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   scoped_ptr<Resource> input_resource(
-      resource_manager_->CreateInputResourceFromOutputResource(
+      rewrite_driver_.CreateInputResourceFromOutputResource(
           resource_manager_->url_escaper(),
-          output_resource.get(),
-          &options_,
-          &message_handler_));
+          output_resource.get()));
   EXPECT_EQ(NULL, input_resource.get());
   if (input_resource.get() != NULL) {
     LOG(ERROR) << input_resource->url();
@@ -498,9 +480,9 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
   EXPECT_TRUE(options_.domain_lawyer()->AddRewriteDomainMapping(
       "cdn.com", kTestDomain, &message_handler_));
 
-  scoped_ptr<Resource> input(resource_manager_->CreateInputResource(
+  scoped_ptr<Resource> input(rewrite_driver_.CreateInputResource(
       GoogleUrl::Create(StrCat(kTestDomain, "index.html")),
-      "style.css", &options_, &message_handler_));
+      "style.css"));
   ASSERT_TRUE(input.get() != NULL);
   EXPECT_EQ(StrCat(kTestDomain, "style.css"), input->url());
 
@@ -510,15 +492,14 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
   const int kOriginTtlSec = 300;
   InitResponseHeaders("http://localhost/style.css", kContentTypeCss,
                       kStyleContent, kOriginTtlSec);
-  EXPECT_TRUE(resource_manager_->ReadIfCached(input.get(), &message_handler_));
+  EXPECT_TRUE(rewrite_driver_.ReadIfCached(input.get()));
 
   // When we rewrite the resource as an ouptut, it will show up in the
   // CDN per the rewrite mapping.
   scoped_ptr<OutputResource> output(
-      resource_manager_->CreateOutputResourceFromResource(
+      rewrite_driver_.CreateOutputResourceFromResource(
           RewriteDriver::kCacheExtenderId, input->type(),
-          resource_manager_->url_escaper(), input.get(),
-          &options_, &message_handler_));
+          resource_manager_->url_escaper(), input.get()));
   ASSERT_TRUE(output.get() != NULL);
 
   // We need to 'Write' an output resource before we can determine its
@@ -535,7 +516,7 @@ TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
   std::string url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
   scoped_ptr<OutputResource> output_resource(
-      resource_manager_->CreateOutputResourceForFetch(StrCat(url, "?query")));
+      rewrite_driver_.CreateOutputResourceForFetch(StrCat(url, "?query")));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(url, output_resource->url());
 }
@@ -544,15 +525,13 @@ TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
 TEST_F(ResourceManagerTest, TestInputResourceQuery) {
   const char kUrl[] = "test?param";
   scoped_ptr<Resource> resource(
-      resource_manager_->CreateInputResource(
-            GURL(kResourceUrlBase), kUrl,
-            &options_, &message_handler_));
+      rewrite_driver_.CreateInputResource(GURL(kResourceUrlBase), kUrl));
   ASSERT_TRUE(resource.get() != NULL);
   EXPECT_EQ(StrCat(std::string(kResourceUrlBase), "/", kUrl), resource->url());
   scoped_ptr<OutputResource> output(
-    resource_manager_->CreateOutputResourceFromResource(
-      "sf", &kContentTypeCss, resource_manager_->url_escaper(), resource.get(),
-      &options_, &message_handler_));
+    rewrite_driver_.CreateOutputResourceFromResource(
+      "sf", &kContentTypeCss, resource_manager_->url_escaper(),
+      resource.get()));
   ASSERT_TRUE(output.get() != NULL);
 
   std::string included_name;
@@ -571,8 +550,7 @@ TEST_F(ResourceManagerTest, TestRemember404) {
 
   GURL base = GoogleUrl::Create(StringPiece("http://example.com/"));
   scoped_ptr<Resource> resource(
-      resource_manager_->CreateInputResourceAndReadIfCached(
-          base, "404", &options_, &message_handler_));
+      rewrite_driver_.CreateInputResourceAndReadIfCached(base, "404"));
   EXPECT_EQ(NULL, resource.get());
 
   HTTPValue valueOut;
@@ -595,12 +573,11 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
 
   GURL base = GoogleUrl::Create(StringPiece("http://example.com"));
   scoped_ptr<Resource> resource(
-      resource_manager_->CreateInputResource(base, "/", &options_,
-                                             &message_handler_));
+      rewrite_driver_.CreateInputResource(base, "/"));
   ASSERT_TRUE(resource.get() != NULL);
 
   VerifyContentsCallback callback(kContents);
-  resource_manager_->ReadAsync(resource.get(), &callback, &message_handler_);
+  rewrite_driver_.ReadAsync(resource.get(), &callback, &message_handler_);
   callback.AssertCalled();
 
   HTTPValue valueOut;
@@ -781,13 +758,11 @@ TEST_F(ResourceManagerShardedTest, TestNamed) {
   std::string url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
   scoped_ptr<OutputResource> output_resource(
-      resource_manager_->CreateOutputResourceWithPath(
+      rewrite_driver_.CreateOutputResourceWithPath(
           "http://example.com/dir/",
           "jm",
           "orig.js",
-          &kContentTypeJavascript,
-          &options_,
-          &message_handler_));
+          &kContentTypeJavascript));
   ASSERT_TRUE(output_resource.get());
   ASSERT_TRUE(resource_manager_->Write(HttpStatus::kOK, "alert('hello');",
                                        output_resource.get(), 0,

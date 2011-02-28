@@ -51,7 +51,7 @@ const int64 kMinThresholdMs = Timer::kMonthMs;
 
 CacheExtender::CacheExtender(RewriteDriver* driver, const char* filter_prefix)
     : RewriteSingleResourceFilter(driver, filter_prefix),
-      tag_scanner_(html_parse_),
+      tag_scanner_(driver_),
       extension_count_(NULL),
       not_cacheable_count_(NULL) {
   Statistics* stats = resource_manager_->statistics();
@@ -90,7 +90,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
   //
   // TODO(jmarantz): We ought to be able to domain-shard even if the
   // resources are non-cacheable or privately cacheable.
-  if ((href != NULL) && html_parse_->IsRewritable(element)) {
+  if ((href != NULL) && driver_->IsRewritable(element)) {
     scoped_ptr<Resource> input_resource(CreateInputResource(href->value()));
     if ((input_resource.get() != NULL) &&
         !IsRewrittenResource(input_resource->url())) {
@@ -135,7 +135,7 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
     UrlSegmentEncoder* encoder) {
   CHECK(input_resource->loaded());
 
-  MessageHandler* message_handler = html_parse_->message_handler();
+  MessageHandler* message_handler = driver_->message_handler();
   const ResponseHeaders* headers = input_resource->metadata();
   std::string url = input_resource->url();
   int64 now_ms = resource_manager_->timer()->NowMs();

@@ -119,7 +119,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
     bool ok = resource_manager_->Write(
         HttpStatus::kOK, StrCat(contents, contents), output_resource,
         input_resource->metadata()->CacheExpirationTimeMs(),
-        html_parse_->message_handler());
+        driver_->message_handler());
     return ok ? kRewriteOk : kRewriteFailed;
   }
 
@@ -274,8 +274,7 @@ class RewriteSingleResourceFilterTest
     }
 
     scoped_ptr<Resource> input_resource(
-      resource_manager_->CreateInputResource(
-        GURL(kTestDomain), url, &options_, &message_handler_));
+      rewrite_driver_.CreateInputResource(GURL(kTestDomain), url));
     EXPECT_TRUE(input_resource.get() != NULL);
     scoped_ptr<OutputResource> output_resource(
         filter_->CreateOutputResourceFromResource(

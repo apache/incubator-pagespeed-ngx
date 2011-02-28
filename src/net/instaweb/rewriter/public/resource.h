@@ -95,6 +95,7 @@ class Resource {
 
  protected:
   friend class ResourceManager;
+  friend class RewriteDriver;
   friend class UrlReadAsyncFetchCallback;
 
   // Load the resource asynchronously, storing ResponseHeaders and

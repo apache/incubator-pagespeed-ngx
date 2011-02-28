@@ -86,8 +86,7 @@ bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
   *expire_at_ms = kint64max;
   std::string old_rel_url_str = old_rel_url.as_string();
   scoped_ptr<Resource> input_resource(
-      driver_->resource_manager()->CreateInputResource(
-          base_url, old_rel_url, driver_->options(), handler));
+      driver_->CreateInputResource(base_url, old_rel_url));
   if (input_resource.get() != NULL) {
     scoped_ptr<OutputResource::CachedResult> rewrite_info;
     // Try image rewriting.

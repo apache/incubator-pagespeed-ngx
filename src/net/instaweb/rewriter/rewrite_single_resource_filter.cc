@@ -132,17 +132,14 @@ bool RewriteSingleResourceFilter::Fetch(
   bool ret = false;
   scoped_ptr<UrlSegmentEncoder> custom_url_encoder(CreateCustomUrlEncoder());
 
-  Resource* input_resource =
-      resource_manager_->CreateInputResourceFromOutputResource(
-          EncoderToUse(custom_url_encoder.get()), output_resource,
-          driver_->options(), message_handler);
+  Resource* input_resource = driver_->CreateInputResourceFromOutputResource(
+      EncoderToUse(custom_url_encoder.get()), output_resource);
   if (input_resource != NULL) {
     // Callback takes ownership of input_resource, and any custom escaper.
     FetchCallback* fetch_callback = new FetchCallback(
         this, custom_url_encoder.release(), input_resource, output_resource,
         response_headers, response_writer, message_handler, base_callback);
-    resource_manager_->ReadAsync(input_resource, fetch_callback,
-                                 message_handler);
+    driver_->ReadAsync(input_resource, fetch_callback, message_handler);
     ret = true;
   } else {
     std::string url;
@@ -216,12 +213,11 @@ RewriteSingleResourceFilter::RewriteExternalResource(
 OutputResource::CachedResult*
 RewriteSingleResourceFilter::RewriteResourceWithCaching(
     Resource* input_resource, UrlSegmentEncoder* encoder) {
-  MessageHandler* handler = html_parse_->message_handler();
+  MessageHandler* handler = driver_->message_handler();
 
   scoped_ptr<OutputResource> output_resource(
-      resource_manager_->CreateOutputResourceFromResource(
-          filter_prefix_, NULL, encoder, input_resource,
-          driver_->options(), handler));
+      driver_->CreateOutputResourceFromResource(
+          filter_prefix_, NULL, encoder, input_resource));
   if (output_resource.get() == NULL) {
     return NULL;
   }
@@ -244,7 +240,7 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
   }
 
   HTTPCache::FindResult input_state =
-      resource_manager_->ReadIfCachedWithStatus(input_resource, handler);
+      driver_->ReadIfCachedWithStatus(input_resource);
   if (input_state == HTTPCache::kNotFound) {
     // The resource has not finished fetching yet; so the caller can't
     // rewrite but there is nothing for us to cache.
@@ -355,7 +351,7 @@ RewriteSingleResourceFilter::ReleaseCachedAfterAnyFreshening(
   if (cached->RememberedInt64(kInputTimestampKey, &input_timestamp_ms)) {
     if (resource_manager_->IsImminentlyExpiring(
             input_timestamp_ms, cached->origin_expiration_time_ms())) {
-      input_resource->Freshen(html_parse_->message_handler());
+      input_resource->Freshen(driver_->message_handler());
     }
   }
 

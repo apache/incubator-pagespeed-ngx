@@ -81,13 +81,12 @@ bool ResourceCombiner::AddResource(const StringPiece& url,
   //    disabled due to policy.
 
   scoped_ptr<Resource> resource(
-      rewrite_driver_->resource_manager()->CreateInputResource(
-          *base_gurl_, url, rewrite_driver_->options(), handler));
+      rewrite_driver_->CreateInputResource(*base_gurl_, url));
   if (resource.get() == NULL) {
     return false;
   }
 
-  if (!(resource_manager_->ReadIfCached(resource.get(), handler) &&
+  if (!(rewrite_driver_->ReadIfCached(resource.get()) &&
         resource->ContentsValid())) {
     return false;
   }
@@ -207,10 +206,8 @@ OutputResource* ResourceCombiner::Combine(const ContentType& content_type,
   // not committed to the combination, because the 'write' can fail.
   // TODO(jmaessen, jmarantz): encode based on partnership
   scoped_ptr<OutputResource> combination(
-      rewrite_driver_->resource_manager()->CreateOutputResourceWithPath(
-          ResolvedBase(),
-          filter_prefix_, url_safe_id, &content_type,
-          rewrite_driver_->options(), handler));
+      rewrite_driver_->CreateOutputResourceWithPath(
+          ResolvedBase(), filter_prefix_, url_safe_id, &content_type));
   if (combination->cached_result() != NULL &&
       combination->cached_result()->optimizable()) {
     // If the combination has a Url set on it we have cached information
@@ -408,11 +405,10 @@ bool ResourceCombiner::Fetch(OutputResource* combination,
       // Safe since we use StrCat to absolutize the URL rather than
       // full resolve, so it will always be a subpath of root.
       Resource* resource =
-          resource_manager_->CreateInputResourceAbsoluteUnchecked(
-              url, rewrite_driver_->options(), message_handler);
+          rewrite_driver_->CreateInputResourceAbsoluteUnchecked(url);
       ret = combiner->AddResource(resource);
       if (ret) {
-        resource_manager_->ReadAsync(resource, combiner, message_handler);
+        rewrite_driver_->ReadAsync(resource, combiner, message_handler);
       }
     }
 

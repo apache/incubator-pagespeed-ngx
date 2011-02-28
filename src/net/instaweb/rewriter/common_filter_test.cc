@@ -49,9 +49,8 @@ class CountingFilter : public CommonFilter {
 
 class CommonFilterTest : public ResourceManagerTestBase {
  protected:
-  CommonFilterTest() : html_parse_(rewrite_driver_.html_parse()),
-                       filter_(&rewrite_driver_) {
-    html_parse_->AddFilter(&filter_);
+  CommonFilterTest() : filter_(&rewrite_driver_) {
+    rewrite_driver_.AddFilter(&filter_);
   }
 
   void ExpectUrl(const std::string& expected_url, const GURL& actual_gurl) {
@@ -70,9 +69,9 @@ class CommonFilterTest : public ResourceManagerTestBase {
                            RewriteDriver* driver) {
     options->domain_lawyer()->AddDomain(domain, &message_handler_);
     CountingFilter* filter = new CountingFilter(driver);
-    driver->AddFilter(filter);
-    driver->html_parse()->StartParse(base_url);
-    driver->html_parse()->Flush();
+    driver->AddOwnedFilter(filter);
+    driver->StartParse(base_url);
+    driver->Flush();
     return filter;
   }
 
@@ -86,7 +85,7 @@ TEST_F(CommonFilterTest, DoesCallImpls) {
   filter_.StartDocument();
   EXPECT_EQ(1, filter_.start_doc_calls_);
 
-  HtmlElement* element = html_parse_->NewElement(NULL, "foo");
+  HtmlElement* element = rewrite_driver_.NewElement(NULL, "foo");
   EXPECT_EQ(0, filter_.start_element_calls_);
   filter_.StartElement(element);
   EXPECT_EQ(1, filter_.start_element_calls_);
@@ -98,79 +97,80 @@ TEST_F(CommonFilterTest, DoesCallImpls) {
 
 TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   std::string doc_url = "http://www.example.com/";
-  html_parse_->StartParse(doc_url);
-  html_parse_->Flush();
+  rewrite_driver_.StartParse(doc_url);
+  rewrite_driver_.Flush();
   // Base URL starts out as document URL.
-  ExpectUrl(doc_url, html_parse_->gurl());
+  ExpectUrl(doc_url, rewrite_driver_.gurl());
   ExpectUrl(doc_url, filter_.base_gurl());
 
-  html_parse_->ParseText("<html><head><link rel='stylesheet' href='foo.css'>");
-  html_parse_->Flush();
+  rewrite_driver_.ParseText(
+      "<html><head><link rel='stylesheet' href='foo.css'>");
+  rewrite_driver_.Flush();
   ExpectUrl(doc_url, filter_.base_gurl());
 
   std::string base_url = "http://www.baseurl.com/foo/";
-  html_parse_->ParseText("<base href='");
-  html_parse_->ParseText(base_url);
-  html_parse_->ParseText("' />");
-  html_parse_->Flush();
+  rewrite_driver_.ParseText("<base href='");
+  rewrite_driver_.ParseText(base_url);
+  rewrite_driver_.ParseText("' />");
+  rewrite_driver_.Flush();
   // Update to base URL.
   ExpectUrl(base_url, filter_.base_gurl());
   // Make sure we didn't change the document URL.
-  ExpectUrl(doc_url, html_parse_->gurl());
+  ExpectUrl(doc_url, rewrite_driver_.gurl());
 
-  html_parse_->ParseText("<link rel='stylesheet' href='foo.css'>");
-  html_parse_->Flush();
+  rewrite_driver_.ParseText("<link rel='stylesheet' href='foo.css'>");
+  rewrite_driver_.Flush();
   ExpectUrl(base_url, filter_.base_gurl());
 
   std::string new_base_url = "http://www.somewhere-else.com/";
-  html_parse_->ParseText("<base href='");
-  html_parse_->ParseText(new_base_url);
-  html_parse_->ParseText("' />");
-  html_parse_->Flush();
+  rewrite_driver_.ParseText("<base href='");
+  rewrite_driver_.ParseText(new_base_url);
+  rewrite_driver_.ParseText("' />");
+  rewrite_driver_.Flush();
   // Uses new base URL.
   ExpectUrl(new_base_url, filter_.base_gurl());
 
-  html_parse_->ParseText("</head></html>");
-  html_parse_->FinishParse();
+  rewrite_driver_.ParseText("</head></html>");
+  rewrite_driver_.FinishParse();
   ExpectUrl(new_base_url, filter_.base_gurl());
-  ExpectUrl(doc_url, html_parse_->gurl());
+  ExpectUrl(doc_url, rewrite_driver_.gurl());
 }
 
 TEST_F(CommonFilterTest, DetectsNoScriptCorrectly) {
   std::string doc_url = "http://www.example.com/";
-  html_parse_->StartParse(doc_url);
-  html_parse_->Flush();
+  rewrite_driver_.StartParse(doc_url);
+  rewrite_driver_.Flush();
   EXPECT_TRUE(filter_.noscript_element() == NULL);
 
-  html_parse_->ParseText("<html><head><title>Example Site");
-  html_parse_->Flush();
+  rewrite_driver_.ParseText("<html><head><title>Example Site");
+  rewrite_driver_.Flush();
   EXPECT_TRUE(filter_.noscript_element() == NULL);
 
-  html_parse_->ParseText("</title><noscript>");
-  html_parse_->Flush();
+  rewrite_driver_.ParseText("</title><noscript>");
+  rewrite_driver_.Flush();
   EXPECT_TRUE(filter_.noscript_element() != NULL);
 
   // Nested <noscript> elements
-  html_parse_->ParseText("Blah blah blah <noscript><noscript> do-de-do-do ");
-  html_parse_->Flush();
+  rewrite_driver_.ParseText("Blah blah blah <noscript><noscript> do-de-do-do ");
+  rewrite_driver_.Flush();
   EXPECT_TRUE(filter_.noscript_element() != NULL);
 
-  html_parse_->ParseText("<link href='style.css'>");
-  html_parse_->Flush();
+  rewrite_driver_.ParseText("<link href='style.css'>");
+  rewrite_driver_.Flush();
   EXPECT_TRUE(filter_.noscript_element() != NULL);
 
   // Close inner <noscript>s
-  html_parse_->ParseText("</noscript></noscript>");
-  html_parse_->Flush();
+  rewrite_driver_.ParseText("</noscript></noscript>");
+  rewrite_driver_.Flush();
   EXPECT_TRUE(filter_.noscript_element() != NULL);
 
   // Close outter <noscript>
-  html_parse_->ParseText("</noscript>");
-  html_parse_->Flush();
+  rewrite_driver_.ParseText("</noscript>");
+  rewrite_driver_.Flush();
   EXPECT_TRUE(filter_.noscript_element() == NULL);
 
-  html_parse_->ParseText("</head></html>");
-  html_parse_->FinishParse();
+  rewrite_driver_.ParseText("</head></html>");
+  rewrite_driver_.FinishParse();
   EXPECT_TRUE(filter_.noscript_element() == NULL);
 
 }

@@ -158,8 +158,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
     StringWriter writer(content);
     FetchCallback callback;
     bool fetched = rewrite_driver_.FetchResource(
-        url, request_headers, &response_headers, &writer, &message_handler_,
-        &callback);
+        url, request_headers, &response_headers, &writer, &callback);
 
     if (!fetched) {
       return false;
@@ -202,7 +201,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
   }
 
   HtmlElement* TestElement() {
-    return html_parse()->NewElement(NULL, "test");
+    return rewrite_driver_.NewElement(NULL, "test");
   }
 
   std::string StringOfLength(int n, char fill) {

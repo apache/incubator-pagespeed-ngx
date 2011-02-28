@@ -72,7 +72,6 @@ class CommonFilter : public EmptyHtmlFilter {
 
   // Protected pointers for inheriter's to use
   RewriteDriver* driver_;
-  HtmlParse* html_parse_;
   ResourceManager* resource_manager_;
   const RewriteOptions* rewrite_options_;
 

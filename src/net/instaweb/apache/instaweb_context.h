@@ -55,12 +55,12 @@ class InstawebContext {
   void Rewrite(const char* input, int size);
   void Flush() {
     if (content_detection_state_ == kHtml) {
-      rewrite_driver_->html_parse()->Flush();
+      rewrite_driver_->Flush();
     }
   }
   void Finish() {
     if (content_detection_state_ == kHtml) {
-      rewrite_driver_->html_parse()->FinishParse();
+      rewrite_driver_->FinishParse();
     }
   }
   bool empty() const { return output_.empty(); }

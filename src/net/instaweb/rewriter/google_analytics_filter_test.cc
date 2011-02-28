@@ -54,15 +54,10 @@ const char kAsyncGlueInit[] =
 
 class GoogleAnalyticsFilterTest : public ResourceManagerTestBase {
  protected:
-  GoogleAnalyticsFilterTest()
-      : google_analytics_filter_(NULL)
-  { }
-
   virtual void SetUp() {
     // Setup the statistics.
     ResourceManagerTestBase::SetUp();
 
-    HtmlParse* html_parse = rewrite_driver_.html_parse();
     Statistics* statistics = resource_manager_->statistics();
 
     GoogleAnalyticsFilter::Initialize(statistics);
@@ -75,14 +70,8 @@ class GoogleAnalyticsFilterTest : public ResourceManagerTestBase {
     unhandled_methods->push_back("_get");
     unhandled_methods->push_back("_getLinkerUrl");
 
-    google_analytics_filter_ = new GoogleAnalyticsFilter(
-        html_parse, statistics, glue_methods, unhandled_methods);
-    html_parse->AddFilter(google_analytics_filter_);
-  }
-
-  virtual void TearDown() {
-    delete google_analytics_filter_;
-    ResourceManagerTestBase::TearDown();
+    rewrite_driver_.AddOwnedFilter(new GoogleAnalyticsFilter(
+        &rewrite_driver_, statistics, glue_methods, unhandled_methods));
   }
 
   // Create the expected html.

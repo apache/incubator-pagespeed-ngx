@@ -35,12 +35,6 @@ CssInlineFilter::CssInlineFilter(RewriteDriver* driver)
       size_threshold_bytes_(driver->options()->css_inline_max_bytes()) {}
 
 void CssInlineFilter::StartDocumentImpl() {
-  // TODO(sligocki): Domain lawyerify.
-  domain_ = html_parse_->gurl().host();
-}
-
-void CssInlineFilter::EndDocument() {
-  domain_.clear();
 }
 
 void CssInlineFilter::EndElementImpl(HtmlElement* element) {
@@ -70,7 +64,7 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
     // Or do we still have to check for strict domain equivalence?
     // If so, add an inline-in-page policy to domainlawyer in some form,
     // as we make a similar policy decision in js_inline_filter.
-    MessageHandler* message_handler = html_parse_->message_handler();
+    MessageHandler* message_handler = driver_->message_handler();
     scoped_ptr<Resource> resource(CreateInputResourceAndReadIfCached(href));
     if (resource == NULL  || !resource->ContentsValid()) {
       return;
@@ -112,11 +106,11 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
 
     // Inline the CSS.
     HtmlElement* style_element =
-        html_parse_->NewElement(element->parent(), HtmlName::kStyle);
-    if (html_parse_->ReplaceNode(element, style_element)) {
-      html_parse_->AppendChild(
-          style_element, html_parse_->NewCharactersNode(element,
-                                                        rewritten_contents));
+        driver_->NewElement(element->parent(), HtmlName::kStyle);
+    if (driver_->ReplaceNode(element, style_element)) {
+      driver_->AppendChild(
+          style_element,
+          driver_->NewCharactersNode(element, rewritten_contents));
     }
   }
 }

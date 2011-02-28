@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 namespace net_instaweb {
 
@@ -91,6 +92,7 @@ class OutputResource : public Resource {
 
    private:
     friend class ResourceManager;
+    friend class RewriteDriver;
     friend class OutputResource;
 
     CachedResult();
@@ -215,6 +217,8 @@ class OutputResource : public Resource {
  private:
   friend class ResourceManager;
   friend class ResourceManagerTestingPeer;
+  friend class RewriteDriver;
+
   class OutputWriter {
    public:
     // file may be null if we shouldn't write to the filesystem.

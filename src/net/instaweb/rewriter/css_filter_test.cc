@@ -638,9 +638,9 @@ class CssFilterSubresourceTest : public CssFilterTest {
 
     // See what cache information we have
     scoped_ptr<OutputResource> output_resource(
-        resource_manager_->CreateOutputResourceWithPath(
+        rewrite_driver_.CreateOutputResourceWithPath(
             kTestDomain, RewriteDriver::kCssFilterId, StrCat(id, ".css"),
-            &kContentTypeCss, &options_, &message_handler_));
+            &kContentTypeCss));
     ASSERT_TRUE(output_resource.get() != NULL);
     EXPECT_EQ(css_url, output_resource->url());
     ASSERT_TRUE(output_resource->cached_result() != NULL);

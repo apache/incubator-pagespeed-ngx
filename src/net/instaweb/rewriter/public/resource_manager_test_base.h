@@ -199,7 +199,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
       Hasher* hasher,
       const StringPiece& expected_content);
 
-  virtual HtmlParse* html_parse() { return rewrite_driver_.html_parse(); }
+  // This definition is required by HtmlParseTestBase which defines this as
+  // pure abstract, so that the test subclass can define how it instantiates
+  // HtmlParse.
+  virtual RewriteDriver* html_parse() { return &rewrite_driver_; }
 
   // Initializes a resource for mock fetching.
   void InitResponseHeaders(const StringPiece& resource_name,
@@ -280,8 +283,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     StringWriter writer(content);
     FetchCallback callback;
     bool fetched = rewrite_driver_.FetchResource(
-        url, request_headers, &response_headers, &writer, &message_handler_,
-        &callback);
+        url, request_headers, &response_headers, &writer, &callback);
     // The callback should be called if and only if FetchResource
     // returns true.
     EXPECT_EQ(fetched, callback.done());

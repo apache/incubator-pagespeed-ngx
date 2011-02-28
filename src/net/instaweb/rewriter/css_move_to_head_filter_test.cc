@@ -13,8 +13,8 @@ namespace {
 class CssMoveToHeadFilterTest : public ResourceManagerTestBase {
  protected:
   CssMoveToHeadFilterTest()
-      : move_to_head_filter_(rewrite_driver_.html_parse(), NULL) {
-    rewrite_driver_.html_parse()->AddFilter(&move_to_head_filter_);
+      : move_to_head_filter_(&rewrite_driver_, NULL) {
+    rewrite_driver_.AddFilter(&move_to_head_filter_);
   }
 
   CssMoveToHeadFilter move_to_head_filter_;

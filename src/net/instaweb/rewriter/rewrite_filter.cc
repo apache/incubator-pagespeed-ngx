@@ -27,11 +27,9 @@ OutputResource* RewriteFilter::CreateOutputResourceFromResource(
     const ContentType* content_type,
     UrlSegmentEncoder* encoder,
     Resource* input_resource) {
-  ResourceManager* resource_manager = driver_->resource_manager();
-  return resource_manager->CreateOutputResourceFromResource(
+  return driver_->CreateOutputResourceFromResource(
       filter_prefix_, content_type,
-      encoder, input_resource, driver_->options(),
-      driver_->html_parse()->message_handler());
+      encoder, input_resource);
 }
 
 }  // namespace net_instaweb

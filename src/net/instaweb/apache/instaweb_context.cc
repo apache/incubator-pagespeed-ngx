@@ -121,7 +121,7 @@ void InstawebContext::ProcessBytes(const char* input, int size) {
   for (int i = 0; (content_detection_state_ == kStart) && (i < size); ++i) {
     char c = input[i];
     if (c == '<') {
-      bool started = rewrite_driver_->html_parse()->StartParseWithType(
+      bool started = rewrite_driver_->StartParseWithType(
           absolute_url_, content_type_);
       if (started) {
         content_detection_state_ = kHtml;
@@ -155,11 +155,10 @@ void InstawebContext::ProcessBytes(const char* input, int size) {
     case kHtml:
       // Looks like HTML: send it through the HTML rewriter.
       if (!buffer_.empty()) {
-        rewrite_driver_->html_parse()->ParseText(
-            buffer_.data(), buffer_.size());
+        rewrite_driver_->ParseText(buffer_);
         buffer_.clear();
       }
-      rewrite_driver_->html_parse()->ParseText(input, size);
+      rewrite_driver_->ParseText(input, size);
       break;
 
     case kNotHtml:

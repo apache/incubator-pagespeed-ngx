@@ -97,7 +97,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     EXPECT_TRUE(
         rewrite_driver_.FetchResource(src_string, request_headers,
                                       &response_headers, &writer,
-                                      &message_handler_, &dummy_callback));
+                                      &dummy_callback));
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) <<
         "Looking for " << src_string;
     // For readability, only do EXPECT_EQ on initial portions of data
@@ -172,22 +172,18 @@ class ImageRewriteTest : public ResourceManagerTestBase {
         "kEenp/8oyIBf2ZEWaEfyv8BsICdAZ/XeTCAAAAAElFTkSuQmCC";
     std::string cuppa_string(kCuppaData);
     scoped_ptr<Resource> cuppa_resource(
-        resource_manager_->CreateInputResourceAbsoluteUnchecked(
-            cuppa_string, &options_, &message_handler_));
+        rewrite_driver_.CreateInputResourceAbsoluteUnchecked(cuppa_string));
     ASSERT_TRUE(cuppa_resource != NULL);
-    EXPECT_TRUE(resource_manager_->ReadIfCached(cuppa_resource.get(),
-                                                &message_handler_));
+    EXPECT_TRUE(rewrite_driver_.ReadIfCached(cuppa_resource.get()));
     std::string cuppa_contents;
     cuppa_resource->contents().CopyToString(&cuppa_contents);
     // Now make sure axing the original cuppa_string doesn't affect the
     // internals of the cuppa_resource.
     scoped_ptr<Resource> other_resource(
-        resource_manager_->CreateInputResourceAbsoluteUnchecked(
-            cuppa_string, &options_, &message_handler_));
+        rewrite_driver_.CreateInputResourceAbsoluteUnchecked(cuppa_string));
     ASSERT_TRUE(other_resource != NULL);
     cuppa_string.clear();
-    EXPECT_TRUE(resource_manager_->ReadIfCached(other_resource.get(),
-                                                &message_handler_));
+    EXPECT_TRUE(rewrite_driver_.ReadIfCached(other_resource.get()));
     std::string other_contents;
     cuppa_resource->contents().CopyToString(&other_contents);
     ASSERT_EQ(cuppa_contents, other_contents);
@@ -207,8 +203,8 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     AddFilter(RewriteOptions::kRewriteImages);
 
     StringVector img_srcs;
-    ImgCollector img_collect(html_parse(), &img_srcs);
-    html_parse()->AddFilter(&img_collect);
+    ImgCollector img_collect(&rewrite_driver_, &img_srcs);
+    rewrite_driver_.AddFilter(&img_collect);
 
     ParseUrl(kTestDomain, kHtml);
     ASSERT_EQ(2, img_srcs.size());

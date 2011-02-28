@@ -51,7 +51,7 @@ void CssOutlineFilter::StartElementImpl(HtmlElement* element) {
   // No tags allowed inside style element.
   if (inline_element_ != NULL) {
     // TODO(sligocki): Add negative unit tests to hit these errors.
-    html_parse_->ErrorHere("Tag '%s' found inside style.",
+    driver_->ErrorHere("Tag '%s' found inside style.",
                            element->name_str());
     inline_element_ = NULL;  // Don't outline what we don't understand.
     buffer_.clear();
@@ -66,16 +66,16 @@ void CssOutlineFilter::EndElementImpl(HtmlElement* element) {
   if (inline_element_ != NULL) {
     if (element != inline_element_) {
       // No other tags allowed inside style element.
-      html_parse_->ErrorHere("Tag '%s' found inside style.",
-                             element->name_str());
+      driver_->ErrorHere("Tag '%s' found inside style.",
+                                 element->name_str());
 
     } else if (buffer_.size() >= size_threshold_bytes_) {
       OutlineStyle(inline_element_, buffer_);
     } else {
-      html_parse_->InfoHere("Inline element not outlined because its size %d, "
-                            "is below threshold %d",
-                            static_cast<int>(buffer_.size()),
-                            static_cast<int>(size_threshold_bytes_));
+      driver_->InfoHere("Inline element not outlined because its size %d, "
+                                "is below threshold %d",
+                                static_cast<int>(buffer_.size()),
+                                static_cast<int>(size_threshold_bytes_));
     }
     inline_element_ = NULL;
     buffer_.clear();
@@ -96,7 +96,7 @@ void CssOutlineFilter::Characters(HtmlCharactersNode* characters) {
 
 void CssOutlineFilter::Comment(HtmlCommentNode* comment) {
   if (inline_element_ != NULL) {
-    html_parse_->ErrorHere("Comment found inside style.");
+    driver_->ErrorHere("Comment found inside style.");
     inline_element_ = NULL;  // Don't outline what we don't understand.
     buffer_.clear();
   }
@@ -104,7 +104,7 @@ void CssOutlineFilter::Comment(HtmlCommentNode* comment) {
 
 void CssOutlineFilter::Cdata(HtmlCdataNode* cdata) {
   if (inline_element_ != NULL) {
-    html_parse_->ErrorHere("CDATA found inside style.");
+    driver_->ErrorHere("CDATA found inside style.");
     inline_element_ = NULL;  // Don't outline what we don't understand.
     buffer_.clear();
   }
@@ -112,7 +112,7 @@ void CssOutlineFilter::Cdata(HtmlCdataNode* cdata) {
 
 void CssOutlineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   if (inline_element_ != NULL) {
-    html_parse_->ErrorHere("IE Directive found inside style.");
+    driver_->ErrorHere("IE Directive found inside style.");
     inline_element_ = NULL;  // Don't outline what we don't understand.
     buffer_.clear();
   }
@@ -133,19 +133,18 @@ bool CssOutlineFilter::WriteResource(const StringPiece& content,
 void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
                                     const std::string& content_str) {
   StringPiece content(content_str);
-  if (html_parse_->IsRewritable(style_element)) {
+  if (driver_->IsRewritable(style_element)) {
     // Create style file from content.
     const char* type = style_element->AttributeValue(HtmlName::kType);
     // We only deal with CSS styles.  If no type specified, CSS is assumed.
     // See http://www.w3.org/TR/html5/semantics.html#the-style-element
     if (type == NULL || strcmp(type, kContentTypeCss.mime_type()) == 0) {
-      MessageHandler* handler = html_parse_->message_handler();
+      MessageHandler* handler = driver_->message_handler();
       // Create outline resource at the document location, not base URL location
       scoped_ptr<OutputResource> output_resource(
-          resource_manager_->CreateOutputResourceWithPath(
-              GoogleUrl::AllExceptLeaf(html_parse_->gurl()),
-              kFilterId, "_", &kContentTypeCss, rewrite_options_,
-              handler));
+          driver_->CreateOutputResourceWithPath(
+              GoogleUrl::AllExceptLeaf(driver_->gurl()),
+              kFilterId, "_", &kContentTypeCss));
 
       // Absolutify URLs in content.
       std::string absolute_content;
@@ -161,10 +160,10 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       }
       if (content_valid &&
           WriteResource(content, output_resource.get(), handler)) {
-        HtmlElement* link_element = html_parse_->NewElement(
+        HtmlElement* link_element = driver_->NewElement(
             style_element->parent(), HtmlName::kLink);
-        html_parse_->AddAttribute(link_element, HtmlName::kRel, kStylesheet);
-        html_parse_->AddAttribute(link_element, HtmlName::kHref,
+        driver_->AddAttribute(link_element, HtmlName::kRel, kStylesheet);
+        driver_->AddAttribute(link_element, HtmlName::kHref,
                                   output_resource->url());
         // Add all style atrributes to link.
         for (int i = 0; i < style_element->attribute_size(); ++i) {
@@ -172,17 +171,17 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
           link_element->AddAttribute(attr);
         }
         // Add link to DOM.
-        html_parse_->InsertElementAfterElement(style_element, link_element);
+        driver_->InsertElementAfterElement(style_element, link_element);
         // Remove style element from DOM.
-        if (!html_parse_->DeleteElement(style_element)) {
-          html_parse_->FatalErrorHere("Failed to delete inline sytle element");
+        if (!driver_->DeleteElement(style_element)) {
+          driver_->FatalErrorHere("Failed to delete inline sytle element");
         }
       }
     } else {
       std::string element_string;
       style_element->ToString(&element_string);
-      html_parse_->InfoHere("Cannot outline non-css stylesheet %s",
-                            element_string.c_str());
+      driver_->InfoHere("Cannot outline non-css stylesheet %s",
+                        element_string.c_str());
     }
   }
 }

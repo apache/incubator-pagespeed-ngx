@@ -50,7 +50,7 @@ class UrlLeftTrimFilter;
 class Variable;
 class Writer;
 
-class RewriteDriver {
+class RewriteDriver : public HtmlParse {
  public:
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
@@ -73,6 +73,10 @@ class RewriteDriver {
   // Need explicit destructors to allow destruction of scoped_ptr-controlled
   // instances without propagating the include files.
   ~RewriteDriver();
+
+  // Clears the current request cache of resources and base URL.  The
+  // filter-chain is left intact so that a new request can be issued.
+  void Clear();
 
   // Calls Initialize on all known rewrite_drivers.
   static void Initialize(Statistics* statistics);
@@ -97,7 +101,7 @@ class RewriteDriver {
   void AddFilters();
 
   // Add any HtmlFilter to the HtmlParse chain and take ownership of the filter.
-  void AddFilter(HtmlFilter* filter);
+  void AddOwnedFilter(HtmlFilter* filter);
 
   // Controls how HTML output is written.  Be sure to call this last, after
   // all other filters have been established.
@@ -133,7 +137,6 @@ class RewriteDriver {
                      const RequestHeaders& request_headers,
                      ResponseHeaders* response_headers,
                      Writer* writer,
-                     MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
 
   // Attempts to decodes an output resource based on the URL pattern
@@ -141,7 +144,6 @@ class RewriteDriver {
   OutputResource* DecodeOutputResource(const StringPiece& url,
                                        RewriteFilter** filter);
 
-  HtmlParse* html_parse() { return &html_parse_; }
   FileSystem* file_system() { return file_system_; }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
 
@@ -153,6 +155,126 @@ class RewriteDriver {
   }
 
   const RewriteOptions* options() { return &options_; }
+
+  // Override HTMLParse's FinishParse to ensure that the
+  // request-scoped cache is cleared immediately.  Beware calling
+  // FinishParse on an HtmlParse object, which, since this is not a
+  // virtual method, will fail to call Clear().
+  void FinishParse() {
+    HtmlParse::FinishParse();
+    Clear();
+  }
+
+  // Created resources are currently the responsibility of the caller.
+  // Ultimately we'd like to move to managing resources in a
+  // request-scoped map.  Every time a Create...Resource... method is
+  // called, a fresh Resource object is generated (or the creation
+  // fails and NULL is returned).  All content_type arguments can be
+  // NULL if the content type isn't known or isn't covered by the
+  // ContentType library.  Where necessary, the extension is used to
+  // infer a content type if one is needed and none is provided.  It
+  // is faster and more reliable to provide one explicitly when it is
+  // known.
+
+  // Constructs an output resource corresponding to the specified input resource
+  // and encoded using the provided encoder.  Assumes permissions checking
+  // occurred when the input resource was constructed, and does not do it again.
+  // To avoid if-chains, tolerates a NULL input_resource (by returning NULL).
+  // TODO(jmaessen, jmarantz): Do we want to permit NULL input_resources here?
+  // jmarantz has evinced a distaste.
+  OutputResource* CreateOutputResourceFromResource(
+      const StringPiece& filter_prefix,
+      const ContentType* content_type,
+      UrlSegmentEncoder* encoder,
+      Resource* input_resource);
+
+  // Creates an output resource where the name is provided by the rewriter.
+  // The intent is to be able to derive the content from the name, for example,
+  // by encoding URLs and metadata.
+  //
+  // This method is not dependent on shared persistent storage, and always
+  // succeeds.
+  //
+  // This name is prepended with path for writing hrefs, and the resulting url
+  // is encoded and stored at file_prefix when working with the file system.  So
+  // hrefs are:
+  //    $(PATH)/$(NAME).pagespeed.$(FILTER_PREFIX).$(HASH).$(CONTENT_TYPE_EXT)
+  //
+  // 'type' arg can be null if it's not known, or is not in our ContentType
+  // library.
+  OutputResource* CreateOutputResourceWithPath(
+      const StringPiece& path, const StringPiece& filter_prefix,
+      const StringPiece& name,  const ContentType* type);
+
+  // Creates an input resource with the url evaluated based on input_url
+  // which may need to be absolutified relative to base_url.  Returns NULL if
+  // the input resource url isn't valid, or can't legally be rewritten in the
+  // context of this page.
+  Resource* CreateInputResource(const GURL& base_url,
+                                const StringPiece& input_url);
+
+  // Create input resource from input_url, if it is legal in the context of
+  // base_gurl, and if the resource can be read from cache.  If it's not in
+  // cache, initiate an asynchronous fetch so it will be on next access.  This
+  // is a common case for filters.
+  Resource* CreateInputResourceAndReadIfCached(
+      const GURL& base_gurl, const StringPiece& input_url);
+
+  // Create an input resource by decoding output_resource using the given
+  // encoder.  Assures legality by explicitly permission-checking the result.
+  Resource* CreateInputResourceFromOutputResource(
+      UrlSegmentEncoder* encoder,
+      OutputResource* output_resource);
+
+  // Creates an input resource from the given absolute url.  Requires that the
+  // provided url has been checked, and can legally be rewritten in the current
+  // page context.
+  Resource* CreateInputResourceAbsoluteUnchecked(
+      const StringPiece& absolute_url);
+
+  // Loads contents of resource asynchronously, calling callback when
+  // done.  If the resource contents is cached, the callback will
+  // be called directly, rather than asynchronously.  The resource
+  // will be passed to the callback, which will be responsible for
+  // ultimately freeing the resource.  The resource will have its
+  // contents and headers filled in.
+  //
+  // The resource can be deleted only after the callback is called.
+  void ReadAsync(Resource* resource, Resource::AsyncCallback* callback,
+                 MessageHandler* message_handler);
+
+  // Load the resource if it is cached (or if it can be fetched quickly).
+  // If not send off an asynchronous fetch and store the result in the cache.
+  //
+  // Returns true if the resource is loaded.
+  //
+  // The resource remains owned by the caller.
+  bool ReadIfCached(Resource* resource);
+
+  // As above, but distinguishes between unavailable in cache and not found
+  HTTPCache::FindResult ReadIfCachedWithStatus(Resource* resource);
+
+  // Attempt to fetch extant version of an OutputResource.  Returns false if the
+  // resource must be created by the caller.  If true is returned, the resulting
+  // data could still be empty (eg because the resource is being rewritten in
+  // another thread, or rewriting results in errors), so
+  // output_resource->IsWritten() must be checked if this call succeeds.  When
+  // blocking=kNeverBlock (the normal case for rewriting html), the call returns
+  // quickly if another thread is rewriting.  When blocking=kMayBlock (the
+  // normal case for serving resources), the call blocks until the ongoing
+  // rewrite completes, or until the lock times out and can be seized by the
+  // serving thread.
+  bool FetchOutputResource(
+    OutputResource* output_resource,
+    Writer* writer, ResponseHeaders* response_headers,
+    ResourceManager::BlockingBehavior blocking);
+
+  // Creates a resource based on a URL.  This is used for serving rewritten
+  // resources.  No permission checks are performed on the url, though it
+  // is parsed to see if it looks like the url of a generated resource (which
+  // should mean checking the hash to ensure we generated it ourselves).
+  // TODO(jmaessen): add url hash & check thereof.
+  OutputResource* CreateOutputResourceForFetch(const StringPiece& url);
 
  private:
   friend class ResourceManagerTestBase;
@@ -173,11 +295,15 @@ class RewriteDriver {
   // Adds a pre-added rewrite filter to the html parse chain.
   void EnableRewriteFilter(const char* id);
 
+  // Internal low-level helper for resource creation.
+  // Use only when permission checking has been done explicitly on the
+  // caller side.
+  Resource* CreateInputResourceUnchecked(const GURL& gurl);
+
   StringFilterMap resource_filter_map_;
 
   // These objects are provided on construction or later, and are
   // owned by the caller.
-  HtmlParse html_parse_;
   FileSystem* file_system_;
   UrlAsyncFetcher* url_async_fetcher_;
   ResourceManager* resource_manager_;
@@ -187,6 +313,13 @@ class RewriteDriver {
   scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
   UserAgent user_agent_;
   std::vector<HtmlFilter*> filters_;
+
+  // Resource-scoped data: must be cleared by Clear().  Note
+  // that these are present in the structure but are not used yet.
+  //
+  // The keys here are fully qualified URLs.
+  typedef std::map<std::string, Resource*> ResourceMap;
+  ResourceMap resource_map_;
 
   // Statistics
   static const char kResourceFetchesCached[];

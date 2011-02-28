@@ -123,7 +123,7 @@ void CssFilter::Characters(HtmlCharactersNode* characters_node) {
     if (style_char_node_ == NULL) {
       style_char_node_ = characters_node;
     } else {
-      html_parse_->ErrorHere("Multiple character nodes in style.");
+      driver_->ErrorHere("Multiple character nodes in style.");
       in_style_element_ = false;
     }
   }
@@ -134,24 +134,24 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
   if (in_style_element_) {
     CHECK(style_element_ == element);  // HtmlParse should not pass unmatching.
 
-    if (html_parse_->IsRewritable(element) && style_char_node_ != NULL) {
+    if (driver_->IsRewritable(element) && style_char_node_ != NULL) {
       CHECK(element == style_char_node_->parent());  // Sanity check.
       std::string new_content;
       int64 input_expire_ms;  // not used here.
       if (RewriteCssText(style_char_node_->contents(), &new_content,
                          base_gurl(), &input_expire_ms,
-                         html_parse_->message_handler())) {
+                         driver_->message_handler())) {
         // Note: Copy of new_content here.
         HtmlCharactersNode* new_style_char_node =
-            html_parse_->NewCharactersNode(element, new_content);
-        html_parse_->ReplaceNode(style_char_node_, new_style_char_node);
+            driver_->NewCharactersNode(element, new_content);
+        driver_->ReplaceNode(style_char_node_, new_style_char_node);
       }
     }
     in_style_element_ = false;
 
   // Rewrite an external style.
   } else if (element->keyword() == HtmlName::kLink &&
-             html_parse_->IsRewritable(element)) {
+             driver_->IsRewritable(element)) {
     StringPiece relation(element->AttributeValue(HtmlName::kRel));
     if (relation == kStylesheet) {
       HtmlElement::Attribute* element_href = element->FindAttribute(
@@ -163,7 +163,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
           element_href->SetValue(new_url);  // Update the href= attribute.
         }
       } else {
-        html_parse_->ErrorHere("Link element with no href.");
+        driver_->ErrorHere("Link element with no href.");
       }
     }
   }
@@ -188,7 +188,7 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
   if (stylesheet.get() == NULL ||
       parser.errors_seen_mask() != Css::Parser::kNoError) {
     ret = false;
-    html_parse_->InfoHere("CSS parsing error in %s", css_gurl.spec().c_str());
+    driver_->InfoHere("CSS parsing error in %s", css_gurl.spec().c_str());
     if (num_parse_failures_ != NULL) {
       num_parse_failures_->Add(1);
     }
@@ -211,7 +211,7 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
     // Don't rewrite if we didn't edit it or make it any smaller.
     if (!edited_css && bytes_saved <= 0) {
       ret = false;
-      html_parse_->InfoHere("CSS parser increased size of CSS file %s by %lld "
+      driver_->InfoHere("CSS parser increased size of CSS file %s by %lld "
                             "bytes.", css_gurl.spec().c_str(),
                             static_cast<long long int>(-bytes_saved));
     }
@@ -220,7 +220,7 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
     // TODO(sligocki): Don't error if in_text is all whitespace.
     if (out_text_size == 0 && in_text_size != 0) {
       ret = false;
-      html_parse_->InfoHere("CSS parsing error in %s", css_gurl.spec().c_str());
+      driver_->InfoHere("CSS parsing error in %s", css_gurl.spec().c_str());
       if (num_parse_failures_ != NULL) {
         num_parse_failures_->Add(1);
       }
@@ -228,7 +228,7 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
 
     // Statistics
     if (ret) {
-      html_parse_->InfoHere("Successfully rewrote CSS file %s saving %lld "
+      driver_->InfoHere("Successfully rewrote CSS file %s saving %lld "
                             "bytes.", css_gurl.spec().c_str(),
                             static_cast<long long int>(bytes_saved));
       if (num_files_minified_ != NULL) {
@@ -294,7 +294,7 @@ bool CssFilter::LoadAllSubStylesheets(
     // Fetch external stylesheet from url ...
     Css::Stylesheet* sub_stylesheet = LoadStylesheet(url);
     if (sub_stylesheet == NULL) {
-      html_parse_->ErrorHere("Failed to load sub-resource %s",
+      driver_->ErrorHere("Failed to load sub-resource %s",
                              url.as_string().c_str());
       return false;
     }
@@ -339,7 +339,7 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
     if (css_gurl.is_valid() &&
         RewriteCssText(in_contents, &out_contents, css_gurl,
                        &subresource_expire_ms,
-                       html_parse_->message_handler())) {
+                       driver_->message_handler())) {
       // Write new stylesheet.
       int64 expire_ms = std::min(subresource_expire_ms,
                                  input_resource->CacheExpirationTimeMs());
@@ -348,7 +348,7 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
                                    out_contents,
                                    output_resource,
                                    expire_ms,
-                                   html_parse_->message_handler())) {
+                                   driver_->message_handler())) {
         ret = output_resource->IsWritten();
       }
     }

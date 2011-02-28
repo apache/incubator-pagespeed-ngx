@@ -127,7 +127,7 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
       &response_headers, &writer);
   bool handled = rewrite_driver->FetchResource(
       url, request_headers, callback->response_headers(), callback->writer(),
-      message_handler, callback);
+      callback);
   if (handled) {
     AprTimer timer;
     message_handler->Message(kInfo, "Fetching resource %s...", url.c_str());
