@@ -33,6 +33,7 @@ if [ $PORT = $HOSTNAME ]; then
   PORT=80
 fi;
 EXAMPLE_ROOT=http://$HOSTNAME/mod_pagespeed_example
+TEST_ROOT=http://$HOSTNAME/mod_pagespeed_test
 STATISTICS_URL=http://localhost:$PORT/mod_pagespeed_statistics
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/bad.pagespeed.cf.hash.css
 
@@ -129,6 +130,7 @@ function test_resource_ext_corruption() {
   RESOURCE=$EXAMPLE_ROOT/$2
 
   # Make sure the resource is actually there, that the test isn't broken
+  echo checking that wgetting $URL finds $RESOURCE ...
   $WGET_DUMP $URL | grep -qi $RESOURCE
   check [ $? = 0 ]
 
@@ -266,6 +268,7 @@ check [ $? != 0 ]
 test_filter extend_cache rewrites an image tag.
 fetch_until $URL 'grep -c src.*91_WewrLtP' 1
 check $WGET_PREREQ $URL
+echo about to test resource ext corruption...
 test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
 echo TEST: Cache-extended image should respond 304 to an If-Modified-Since.
@@ -400,6 +403,14 @@ check grep -q preserved $FETCHED          # preserves certain comments
 # rewritten JS is cache-extended
 check grep -qi "'Cache-control: max-age=31536000'" $WGET_OUTPUT
 check grep -qi "'Expires:'" $WGET_OUTPUT
+
+echo TEST: ModPagespeedShardDomain directive in .htaccess file
+rm -rf $OUTDIR
+mkdir $OUTDIR
+check $WGET_DUMP http://localhost:8080/mod_pagespeed_test/shard/shard.html \
+  > $OUTDIR/shard.out.html
+check [ `grep -ce href=\"http://shard1 $OUTDIR/shard.out.html` = 2 ];
+check [ `grep -ce href=\"http://shard2 $OUTDIR/shard.out.html` = 2 ];
 
 # Cleanup
 rm -rf $OUTDIR

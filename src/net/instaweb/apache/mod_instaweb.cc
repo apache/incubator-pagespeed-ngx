@@ -113,6 +113,7 @@ const char* kModPagespeedDisallow = "ModPagespeedDisallow";
 const char* kModPagespeedStatistics = "ModPagespeedStatistics";
 const char* kModPagespeedCombineAcrossPaths = "ModPagespeedCombineAcrossPaths";
 const char* kModPagespeedLowercaseHtmlNames = "ModPagespeedLowercaseHtmlNames";
+const char* kModPagespeedShardDomain = "ModPagespeedShardDomain";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -818,6 +819,22 @@ void warn_deprecated(cmd_parms* cmd, const char* remedy) {
                cmd->directive->directive, remedy);
 }
 
+// Determines the Option structure into which to write a parsed directive.
+// If the directive was parsed from the default pagespeed.conf file then
+// we will write the information into the factory's RewriteOptions.  However,
+// if this was parsed from a Directory scope or .htaccess file then we will
+// be using the RewriteOptions structure from a tree of ApacheConfig objects
+// that is built up per-request.
+static RewriteOptions* CmdOptions(cmd_parms* cmd, void* data) {
+  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
+  ApacheConfig* config = static_cast<ApacheConfig*>(data);
+  RewriteOptions* options = factory->options();
+  if (!config->description().empty()) {
+    options = config->options();
+  }
+  return options;
+}
+
 // Callback function that parses a single-argument directive.  This is called
 // by the Apache config parser.
 static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
@@ -826,11 +843,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   MessageHandler* handler = factory->message_handler();
   const char* directive = cmd->directive->directive;
   const char* ret = NULL;
-  ApacheConfig* config = static_cast<ApacheConfig*>(data);
-  RewriteOptions* options = factory->options();
-  if (!config->description().empty()) {
-    options = config->options();
-  }
+  RewriteOptions* options = CmdOptions(cmd, data);
 
   if (StringCaseEqual(directive, kModPagespeed)) {
     ret = ParseBoolOption(options, cmd,
@@ -950,7 +963,7 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
                                    const char* arg1, const char* arg2) {
   ScopedTimer timer(&ApacheProcessContext::AddParseTimeUs);
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
-  RewriteOptions* options = factory->options();
+  RewriteOptions* options = CmdOptions(cmd, data);
   const char* directive = cmd->directive->directive;
   const char* ret = NULL;
   if (StringCaseEqual(directive, kModPagespeedMapRewriteDomain)) {
@@ -959,6 +972,8 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
   } else if (StringCaseEqual(directive, kModPagespeedMapOriginDomain)) {
     options->domain_lawyer()->AddOriginDomainMapping(
         arg1, arg2, factory->message_handler());
+  } else if (StringCaseEqual(directive, kModPagespeedShardDomain)) {
+    options->domain_lawyer()->AddShard(arg1, arg2, factory->message_handler());
   } else {
     return "Unknown directive.";
   }
@@ -1070,6 +1085,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
          "to_domain from_domain[,from_domain]*"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,
          "to_domain from_domain[,from_domain]*"),
+  APACHE_CONFIG_DIR_OPTION2(kModPagespeedShardDomain,
+         "from_domain shard_domain1[,shard_domain2]*"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedAllow,
         "wildcard_spec for urls"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDisallow,
