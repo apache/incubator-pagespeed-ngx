@@ -46,7 +46,7 @@ std::string QueryParams::ToString() const {
     if (value(i) == NULL) {
       str += StrCat(prefix, name(i));
     } else {
-      str += StrCat(prefix, name(i), "=", value(i));
+      str += StrCat(prefix, name(i), "=", *(value(i)));
     }
     prefix = "&";
   }

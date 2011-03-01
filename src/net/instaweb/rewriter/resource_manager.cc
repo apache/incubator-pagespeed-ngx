@@ -149,7 +149,7 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
   header->Replace(HttpAttributes::kEtag, kResourceEtagValue);
 
   // TODO(jmarantz): add date/last-modified headers by default.
-  CharStarVector v;
+  StringStarVector v;
   if (!header->Lookup(HttpAttributes::kDate, &v)) {
     header->SetDate(now_ms);
   }

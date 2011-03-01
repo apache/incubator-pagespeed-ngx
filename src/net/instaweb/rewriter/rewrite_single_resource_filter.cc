@@ -277,7 +277,16 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
       }
     }
 
-    // Do the actual rewrite.
+    // Do the actual rewrite -- unless some other process is doing it at the
+    // same time. (The unlock will happen at Write or ~OutputResource)
+    if (!output_resource->LockForCreation(resource_manager_,
+                                          ResourceManager::kNeverBlock)) {
+      handler->Message(kInfo, "%s: Someone else is trying to rewrite %s.",
+                       base_gurl().spec().c_str(),
+                       input_resource->url().c_str());
+      return NULL;
+    }
+
     RewriteResult res = RewriteLoadedResourceAndCacheIfOk(input_resource,
                                                           output_resource.get(),
                                                           encoder);

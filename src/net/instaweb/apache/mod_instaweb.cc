@@ -208,7 +208,7 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
   int option_count = 0;
   for (int i = 0; i < query_params.size(); ++i) {
     const char* name = query_params.name(i);
-    const char* value = query_params.value(i);
+    const std::string* value = query_params.value(i);
     if (value == NULL) {
       // Empty; all our options require a value, so skip.  It might be a
       // perfectly legitimate query param for the underlying page.
@@ -216,37 +216,37 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
     }
     int64 int_val;
     if (strcmp(name, kModPagespeed) == 0) {
-      bool is_on = (strcmp(value, "on") == 0);
-      if (is_on || (strcmp(value, "off") == 0)) {
+      bool is_on = (value->compare("on") == 0);
+      if (is_on || (value->compare("off") == 0)) {
         options->set_enabled(is_on);
         ++option_count;
       } else {
         // TODO(sligocki): Return 404s instead of logging server errors here
         // and below.
         handler->Message(kWarning, "Invalid value for %s: %s "
-                         "(should be on or off)", name, value);
+                         "(should be on or off)", name, value->c_str());
         ret = false;
       }
     } else if (strcmp(name, kModPagespeedFilters) == 0) {
       // When using ModPagespeedFilters query param, only the
       // specified filters should be enabled.
       options->SetRewriteLevel(RewriteOptions::kPassThrough);
-      if (options->EnableFiltersByCommaSeparatedList(value, handler)) {
+      if (options->EnableFiltersByCommaSeparatedList(*value, handler)) {
         options->DisableAllFiltersNotExplicitlyEnabled();
         ++option_count;
       } else {
         handler->Message(kWarning,
-                         "Invalid filter name in %s: %s", name, value);
+                         "Invalid filter name in %s: %s", name, value->c_str());
         ret = false;
       }
     // TODO(jmarantz): add js inlinine threshold, outline threshold.
     } else if (strcmp(name, kModPagespeedCssInlineMaxBytes) == 0) {
-      if (StringToInt64(value, &int_val)) {
+      if (StringToInt64(*value, &int_val)) {
         options->set_css_inline_max_bytes(int_val);
         ++option_count;
       } else {
         handler->Message(kWarning, "Invalid integer value for %s: %s",
-                         name, value);
+                         name, value->c_str());
         ret = false;
       }
     }

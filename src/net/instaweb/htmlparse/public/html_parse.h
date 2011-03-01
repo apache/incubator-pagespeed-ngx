@@ -39,10 +39,13 @@ namespace net_instaweb {
 
 class Timer;
 
+// TODO(jmarantz): rename HtmlParse to HtmlContext.  The actual
+// parsing occurs in HtmlLexer, and this class is dominated by methods
+// to manipulate DOM as it streams through.
 class HtmlParse {
  public:
   explicit HtmlParse(MessageHandler* message_handler);
-  ~HtmlParse();
+  virtual ~HtmlParse();
 
   // Application methods for parsing functions and adding filters
 
@@ -94,7 +97,7 @@ class HtmlParse {
   //
   // It is invalid to call FinishParse when the StartParse* routines returned
   // false.
-  void FinishParse();
+  virtual void FinishParse();
 
 
   // Utility methods for implementing filters

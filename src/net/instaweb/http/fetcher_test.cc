@@ -35,10 +35,10 @@ void FetcherTest::ValidateMockFetcherResponse(
     const ResponseHeaders& response_headers) {
   if (success) {
     EXPECT_EQ(std::string(kHtmlContent), content);
-    CharStarVector values;
+    StringStarVector values;
     EXPECT_TRUE(response_headers.Lookup(kHeaderName, &values));
     EXPECT_EQ(1, values.size());
-    EXPECT_EQ(std::string(kHeaderValue), values[0]);
+    EXPECT_EQ(std::string(kHeaderValue), *(values[0]));
   } else if (check_error_message) {
     EXPECT_EQ(std::string(kErrorMessage), content);
   }

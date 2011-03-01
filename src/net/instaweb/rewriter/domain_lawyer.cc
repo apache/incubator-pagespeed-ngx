@@ -32,7 +32,8 @@ class DomainLawyer::Domain {
         wildcard_(name),
         name_(name.data(), name.size()),
         rewrite_domain_(NULL),
-        origin_domain_(NULL) {
+        origin_domain_(NULL),
+        cycle_breadcrumb_(false) {
   }
 
   bool IsWildcarded() const { return !wildcard_.IsSimple(); }
@@ -41,10 +42,81 @@ class DomainLawyer::Domain {
   Domain* origin_domain() const { return origin_domain_; }
   StringPiece name() const { return name_; }
 
-  // TODO(jmarantz): check for cycles
-  void set_rewrite_domain(Domain* x) { rewrite_domain_ = x; }
-  void set_origin_domain(Domain* x) { origin_domain_ = x; }
-  void set_shard_from(Domain* x) { x->shards_.push_back(this); }
+  // When multiple domains are mapped to the same rewrite-domain, they
+  // should have consistent origins.  If they don't, we print an error
+  // message but we keep rolling.  This is because we don't want to
+  // introduce an incremental change that would invalidate existing
+  // pagespeed.conf files.
+  //
+  void MergeOrigin(Domain* origin_domain, MessageHandler* handler) {
+    if (cycle_breadcrumb_) {
+      // See DomainLawyerTest.RewriteOriginCycle
+      return;
+    }
+    cycle_breadcrumb_ = true;
+    if ((origin_domain != origin_domain_) && (origin_domain != NULL)) {
+      if (origin_domain_ != NULL) {
+        if (handler != NULL) {
+          handler->Message(kError,
+                           "RewriteDomain %s has conflicting origins %s and "
+                           "%s, overriding to %s",
+                           name_.c_str(),
+                           origin_domain_->name_.c_str(),
+                           origin_domain->name_.c_str(),
+                           origin_domain->name_.c_str());
+        }
+      }
+      origin_domain_ = origin_domain;
+      for (int i = 0; i < num_shards(); ++i) {
+        shards_[i]->MergeOrigin(origin_domain, handler);
+      }
+      if (rewrite_domain_ != NULL) {
+        rewrite_domain_->MergeOrigin(origin_domain, handler);
+      }
+    }
+    cycle_breadcrumb_ = false;
+  }
+
+  // handler==NULL means this is happening from a 'merge' so we will
+  // silently let the new rewrite_domain win.
+  bool SetRewriteDomain(Domain* rewrite_domain, MessageHandler* handler) {
+    rewrite_domain_ = rewrite_domain;
+    rewrite_domain->MergeOrigin(origin_domain_, handler);
+    return true;  // don't break old configs on this new consistency check.
+  }
+
+  // handler==NULL means this is happening from a 'merge' so we will
+  // silently let the new origin_domain win.
+  bool SetOriginDomain(Domain* origin_domain, MessageHandler* handler) {
+    MergeOrigin(origin_domain, handler);
+    if (rewrite_domain_ != NULL) {
+      rewrite_domain_->MergeOrigin(origin_domain_, handler);
+    }
+    return true;  // don't break old configs on this new consistency check.
+  }
+
+  // handler==NULL means this is happening from a 'merge' so we will
+  // silently let the new rewrite_domain win.
+  bool SetShardFrom(Domain* rewrite_domain, MessageHandler* handler) {
+    if ((rewrite_domain_ != rewrite_domain) && (rewrite_domain_ != NULL)) {
+      if (handler != NULL) {
+        // We only treat this as an error when the handler is non-null.  We
+        // use a null handler during merges, and will do the best we can
+        // to get correct behavior.
+        handler->Message(kError,
+                         "Shard %s has conflicting rewrite_domain %s and %s",
+                         name_.c_str(),
+                         rewrite_domain_->name_.c_str(),
+                         rewrite_domain->name_.c_str());
+        return false;
+      }
+    }
+    MergeOrigin(rewrite_domain->origin_domain_, handler);
+    rewrite_domain->shards_.push_back(this);
+    rewrite_domain_ = rewrite_domain;
+    return true;
+  }
+
   void set_authorized(bool authorized) { authorized_ = authorized; }
 
   int num_shards() const { return shards_.size(); }
@@ -67,7 +139,8 @@ class DomainLawyer::Domain {
 
   // The rewrite_domain, if non-null, gives the location of where this
   // Domain should be rewritten.  This can be used to move resources onto
-  // a CDN or onto a cookieless domain.
+  // a CDN or onto a cookieless domain.  We also use this pointer to
+  // get from shards back to the domain they were sharded from.
   Domain* rewrite_domain_;
 
   // The origin_domain, if non-null, gives the location of where
@@ -79,7 +152,15 @@ class DomainLawyer::Domain {
   // traffic.
   Domain* origin_domain_;
 
+  // A rewrite_domain keeps track of all its shards.
   DomainVector shards_;
+
+  // This boolean helps us prevent spinning through a cycle in the
+  // graph that can be expressed between shards and rewrite domains, e.g.
+  //   ModPagespeedMapOriginDomain a b
+  //   ModPagespeedMapRewriteDomain b c
+  //   ModPagespeedAddShard b c
+  bool cycle_breadcrumb_;
 };
 
 DomainLawyer::~DomainLawyer() {
@@ -255,7 +336,7 @@ bool DomainLawyer::AddRewriteDomainMapping(
     const StringPiece& comma_separated_from_domains,
     MessageHandler* handler) {
   return MapDomainHelper(to_domain_name, comma_separated_from_domains,
-                         &Domain::set_rewrite_domain, true, true, handler);
+                         &Domain::SetRewriteDomain, true, true, handler);
 }
 
 bool DomainLawyer::AddOriginDomainMapping(
@@ -263,7 +344,7 @@ bool DomainLawyer::AddOriginDomainMapping(
     const StringPiece& comma_separated_from_domains,
     MessageHandler* handler) {
   return MapDomainHelper(to_domain_name, comma_separated_from_domains,
-                         &Domain::set_origin_domain, true, false, handler);
+                         &Domain::SetOriginDomain, true, false, handler);
 }
 
 bool DomainLawyer::AddShard(
@@ -271,7 +352,7 @@ bool DomainLawyer::AddShard(
     const StringPiece& comma_separated_shards,
     MessageHandler* handler) {
   return MapDomainHelper(shard_domain_name, comma_separated_shards,
-                         &Domain::set_shard_from, false, true, handler);
+                         &Domain::SetShardFrom, false, true, handler);
 }
 
 bool DomainLawyer::MapDomainHelper(
@@ -290,6 +371,7 @@ bool DomainLawyer::MapDomainHelper(
   } else if (to_domain != NULL) {
     std::vector<StringPiece> domains;
     SplitStringPieceToVector(comma_separated_from_domains, ",", &domains, true);
+    ret = true;
     for (int i = 0, n = domains.size(); i < n; ++i) {
       const StringPiece& domain_name = domains[i];
       Domain* from_domain = AddDomainHelper(domain_name, false, true, handler);
@@ -297,9 +379,9 @@ bool DomainLawyer::MapDomainHelper(
         if (!allow_wildcards && from_domain->IsWildcarded()) {
           handler->Message(kError, "Cannot map from a wildcarded domain: %s",
                            to_domain_name.as_string().c_str());
+          ret = false;
         } else {
-          (from_domain->*set_domain_fn)(to_domain);
-          ret = true;
+          ret &= (from_domain->*set_domain_fn)(to_domain, handler);
         }
       }
     }
@@ -320,16 +402,16 @@ void DomainLawyer::Merge(const DomainLawyer& src) {
     Domain* dst_domain = CloneAndAdd(src_domain);
     Domain* src_rewrite_domain = src_domain->rewrite_domain();
     if (src_rewrite_domain != NULL) {
-      dst_domain->set_rewrite_domain(CloneAndAdd(src_rewrite_domain));
+      dst_domain->SetRewriteDomain(CloneAndAdd(src_rewrite_domain), NULL);
     }
     Domain* src_origin_domain = src_domain->origin_domain();
     if (src_origin_domain != NULL) {
-      dst_domain->set_origin_domain(CloneAndAdd(src_origin_domain));
+      dst_domain->SetOriginDomain(CloneAndAdd(src_origin_domain), NULL);
     }
     for (int i = 0; i < src_domain->num_shards(); ++i) {
       Domain* src_shard = src_domain->shard(i);
       Domain* dst_shard = CloneAndAdd(src_shard);
-      dst_shard->set_shard_from(dst_domain);
+      dst_shard->SetShardFrom(dst_domain, NULL);
     }
   }
 }

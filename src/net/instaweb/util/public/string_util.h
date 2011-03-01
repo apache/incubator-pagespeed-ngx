@@ -188,6 +188,7 @@ struct StringCompareInsensitive {
 };
 
 typedef std::vector<const char*> CharStarVector;
+typedef std::vector<const std::string*> StringStarVector;
 typedef std::vector<std::string> StringVector;
 typedef std::set<std::string> StringSet;
 

@@ -50,6 +50,12 @@ class UrlLeftTrimFilter;
 class Variable;
 class Writer;
 
+// TODO(jmarantz): rename this class to RequestContext.  This extends
+// class HtmlParse (which should renamed HtmlContext) by providing
+// context for rewriting resources (css, js, images).
+//
+// Also note that ResourceManager should be renamed ServerContext, as
+// it no longer contains much logic about resources.
 class RewriteDriver : public HtmlParse {
  public:
   static const char kCssCombinerId[];
@@ -72,7 +78,7 @@ class RewriteDriver : public HtmlParse {
 
   // Need explicit destructors to allow destruction of scoped_ptr-controlled
   // instances without propagating the include files.
-  ~RewriteDriver();
+  virtual ~RewriteDriver();
 
   // Clears the current request cache of resources and base URL.  The
   // filter-chain is left intact so that a new request can be issued.
@@ -156,14 +162,9 @@ class RewriteDriver : public HtmlParse {
 
   const RewriteOptions* options() { return &options_; }
 
-  // Override HTMLParse's FinishParse to ensure that the
-  // request-scoped cache is cleared immediately.  Beware calling
-  // FinishParse on an HtmlParse object, which, since this is not a
-  // virtual method, will fail to call Clear().
-  void FinishParse() {
-    HtmlParse::FinishParse();
-    Clear();
-  }
+  // Override HtmlParse's FinishParse to ensure that the
+  // request-scoped cache is cleared immediately.
+  virtual void FinishParse();
 
   // Created resources are currently the responsibility of the caller.
   // Ultimately we'd like to move to managing resources in a

@@ -150,7 +150,7 @@ class DomainLawyer {
 
  private:
   class Domain;
-  typedef void (Domain::*SetDomainFn)(Domain* domain);
+  typedef bool (Domain::*SetDomainFn)(Domain* domain, MessageHandler* handler);
 
   static std::string NormalizeDomainName(const StringPiece& domain_name);
 

@@ -70,11 +70,13 @@ void OutputResource::CachedResult::SetRemembered(const StringPiece& key,
 bool OutputResource::CachedResult::Remembered(const StringPiece& key,
                                               std::string* out) const {
   std::string full_key = StrCat(kCustomKeyPrefix, key);
-  CharStarVector vals;
-  if (headers_.Lookup(full_key, &vals) && vals.size() == 1) {
-    *out = vals[0];
+  StringStarVector vals;
+  if (headers_.Lookup(full_key, &vals) && vals.size() == 1
+      && (vals[0] != NULL)) {
+    out->assign(*(vals[0]));
     return true;
   }
+
   return false;
 }
 
@@ -410,7 +412,7 @@ void OutputResource::FetchCachedResult(const std::string& name_key,
     }
     cached->set_origin_expiration_time_ms(origin_expiration_time_ms);
 
-    CharStarVector dummy;
+    StringStarVector dummy;
     if (cached->headers_.Lookup(kCacheUnoptimizableHeader, &dummy)) {
       cached->set_optimizable(false);
       ok = true;

@@ -136,6 +136,14 @@ class OutputResource : public Resource {
   virtual bool Load(MessageHandler* message_handler);
   virtual std::string url() const;
 
+  // Attempt to obtain a named lock for the resource.  Return true if we do so.
+  // If the resource is expensive to create, this lock should be held during
+  // its creation to avoid multiple rewrites happening at once.
+  // The lock will be unlocked on destruction or EndWrite (called from
+  // ResourceManager::Write)
+  bool LockForCreation(const ResourceManager* resource_manager,
+                       ResourceManager::BlockingBehavior block);
+
   // The NameKey describes the source url and rewriter used, without hash and
   // content type information.  This is used to find previously-computed filter
   // results whose output hash and content type is unknown.  The full name of a
@@ -249,9 +257,6 @@ class OutputResource : public Resource {
 
   OutputWriter* BeginWrite(MessageHandler* message_handler);
   bool EndWrite(OutputWriter* writer, MessageHandler* message_handler);
-  // Attempt to obtain a named lock for the resource.  Return true if we do so.
-  bool LockForCreation(const ResourceManager* resource_manager,
-                       ResourceManager::BlockingBehavior block);
 
   // Stores the current state of cached_result in the HTTP cache
   // under the given key.

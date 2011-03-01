@@ -130,7 +130,7 @@ CacheUrlFetcher::~CacheUrlFetcher() {
 }
 
 bool CacheUrlFetcher::RememberNotCached(const ResponseHeaders& headers) {
-  CharStarVector not_cached_values;
+  StringStarVector not_cached_values;
   return headers.Lookup(kRememberNotCached, &not_cached_values);
 }
 

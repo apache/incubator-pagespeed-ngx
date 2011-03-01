@@ -29,6 +29,7 @@ class StringMultiMapTest : public testing::Test {
     string_map_.Add("C", "2");
     string_map_.Add("d", "");
     string_map_.Add("A", "3");
+    string_map_.Add("e", std::string("3\000 4", 4));
   }
 
   StringMultiMapInsensitive string_map_;
@@ -38,39 +39,46 @@ class StringMultiMapTest : public testing::Test {
 };
 
 TEST_F(StringMultiMapTest, TestAdd) {
-  ASSERT_EQ(4, string_map_.num_names());
-  ASSERT_EQ(5, string_map_.num_values());
+  ASSERT_EQ(5, string_map_.num_names());
+  ASSERT_EQ(6, string_map_.num_values());
   EXPECT_EQ(std::string("a"), string_map_.name(0));
-  EXPECT_EQ(std::string("1"), string_map_.value(0));
+  EXPECT_EQ(std::string("1"), *(string_map_.value(0)));
   EXPECT_EQ(std::string("b"), string_map_.name(1));
   EXPECT_EQ(NULL, string_map_.value(1));
   EXPECT_EQ(std::string("C"), string_map_.name(2));
-  EXPECT_EQ(std::string("2"), string_map_.value(2));
+  EXPECT_EQ(std::string("2"), *(string_map_.value(2)));
   EXPECT_EQ(std::string("d"), string_map_.name(3));
-  EXPECT_EQ(std::string(""), string_map_.value(3));
+  EXPECT_EQ(std::string(""), *(string_map_.value(3)));
   EXPECT_EQ(std::string("a"), string_map_.name(4));
-  EXPECT_EQ(std::string("3"), string_map_.value(4));
+  EXPECT_EQ(std::string("3"), *(string_map_.value(4)));
+  EXPECT_EQ(4, string_map_.value(5)->size());
+  EXPECT_EQ(1, strlen(string_map_.value(5)->c_str()));
 }
 
 TEST_F(StringMultiMapTest, TestLookup) {
-  CharStarVector v;
+  StringStarVector v;
   ASSERT_TRUE(string_map_.Lookup("a", &v));
   ASSERT_EQ(2, v.size());
-  EXPECT_EQ(std::string("1"), v[0]);
-  EXPECT_EQ(std::string("3"), v[1]);
+  EXPECT_EQ(std::string("1"), *(v[0]));
+  EXPECT_EQ(std::string("3"), *(v[1]));
   ASSERT_TRUE(string_map_.Lookup("b", &v));
   ASSERT_EQ(1, v.size());
   EXPECT_EQ(NULL, v[0]);
   ASSERT_TRUE(string_map_.Lookup("C", &v));
   ASSERT_EQ(1, v.size());
-  EXPECT_EQ(std::string("2"), v[0]);
+  EXPECT_EQ(std::string("2"), *(v[0]));
   ASSERT_TRUE(string_map_.Lookup("d", &v));
   ASSERT_EQ(1, v.size());
-  EXPECT_EQ(std::string(""), v[0]);
+  EXPECT_EQ(std::string(""), *(v[0]));
+  ASSERT_TRUE(string_map_.Lookup("e", &v));
+  ASSERT_EQ(1, v.size());
+  EXPECT_EQ(4, v[0]->size());
 }
 
 TEST_F(StringMultiMapTest, TestRemove) {
-  CharStarVector v;
+  StringStarVector v;
+  EXPECT_TRUE(string_map_.RemoveAll("e"));
+  EXPECT_EQ(4, string_map_.num_names());
   EXPECT_TRUE(string_map_.RemoveAll("a"));
   EXPECT_EQ(3, string_map_.num_names());
   EXPECT_EQ(3, string_map_.num_values());

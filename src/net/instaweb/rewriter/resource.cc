@@ -43,13 +43,15 @@ void Resource::SetType(const ContentType* type) {
 void Resource::DetermineContentType() {
   // Try to determine the content type from the URL extension, or
   // the response headers.
-  CharStarVector content_types;
+  StringStarVector content_types;
   ResponseHeaders* headers = metadata();
   const ContentType* content_type = NULL;
   if (headers->Lookup("Content-type", &content_types)) {
-    for (int i = 0, n = content_types.size(); (i < n) && content_type == NULL;
+    for (int i = 0, n = content_types.size(); (i < n) && (content_type == NULL);
          ++i) {
-      content_type = MimeTypeToContentType(content_types[i]);
+      if (content_types[i] != NULL) {
+        content_type = MimeTypeToContentType(*(content_types[i]));
+      }
     }
   }
 

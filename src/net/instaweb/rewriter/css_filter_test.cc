@@ -126,15 +126,20 @@ class CssFilterTest : public ResourceManagerTestBase {
                       const std::string& expected_css_output,
                       ResourceNamer* namer) {
     namer->set_id(RewriteDriver::kCssFilterId);
-    namer->set_hash(mock_hasher_.Hash(expected_css_output));
+    namer->set_hash(resource_manager_->hasher()->Hash(expected_css_output));
     namer->set_ext("css");
-    // TODO(sligocki): Derive these from css_url the "right" way.
-    std::string url_prefix = kTestDomain;
     namer->set_name(StrCat(id, ".css"));
   }
 
   std::string ExpectedUrlForNamer(const ResourceNamer& namer) {
     return StrCat(kTestDomain, namer.Encode());
+  }
+
+  std::string ExpectedUrlForCss(const StringPiece& id,
+                                 const std::string& expected_css_output) {
+    ResourceNamer namer;
+    GetNamerForCss(id, expected_css_output, &namer);
+    return ExpectedUrlForNamer(namer);
   }
 
   // Check that external CSS gets rewritten correctly.
@@ -257,9 +262,7 @@ class CssFilterTest : public ResourceManagerTestBase {
                               kExpectChange | kExpectSuccess);
 
     // Fetch with messed up extension
-    ResourceNamer namer;
-    GetNamerForCss("rep", kOutput, &namer);
-    std::string css_url = ExpectedUrlForNamer(namer);
+    std::string css_url = ExpectedUrlForCss("rep", kOutput);
     std::string output;
     EXPECT_EQ(should_fetch_ok,
               ServeResourceUrl(StrCat(css_url, junk), &output));
@@ -632,6 +635,9 @@ class CssFilterSubresourceTest : public CssFilterTest {
     options_.EnableFilter(RewriteOptions::kRewriteImages);
     CssFilterTest::SetUp();
 
+    // We want a real hasher here so that subresources get separate locks.
+    resource_manager_->set_hasher(&md5_hasher_);
+
     // As we use invalid payloads, we expect image rewriting to
     // fail but cache extension to succeed.
     InitResponseHeaders("a.png", kContentTypePng, "notapng", 10);
@@ -640,9 +646,7 @@ class CssFilterSubresourceTest : public CssFilterTest {
 
   void ValidateExpirationTime(const char* id, const char* output,
                               int64 expected_expire_ms) {
-    ResourceNamer namer;
-    GetNamerForCss(id, output, &namer);
-    std::string css_url = ExpectedUrlForNamer(namer);
+    std::string css_url = ExpectedUrlForCss(id, output);
 
     // See what cache information we have
     scoped_ptr<OutputResource> output_resource(
@@ -656,6 +660,14 @@ class CssFilterSubresourceTest : public CssFilterTest {
     EXPECT_EQ(expected_expire_ms,
               output_resource->cached_result()->origin_expiration_time_ms());
   }
+
+  std::string ExpectedUrlForPng(const StringPiece& name,
+                                 const std::string& expected_output) {
+    return Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
+                  resource_manager_->hasher()->Hash(expected_output),
+                  name, "png");
+  }
+
 };
 
 // Test to make sure expiration time for cached result is the
@@ -663,19 +675,22 @@ class CssFilterSubresourceTest : public CssFilterTest {
 TEST_F(CssFilterSubresourceTest, SubResourceDepends) {
   const char kInput[] = "div { background-image: url(a.png); }"
                         "span { background-image: url(b.png); }";
-  const char kOutput[] =
-      "div{background-image:url(http://test.com/a.png.pagespeed.ce.0.png)}"
-      "span{background-image:url(http://test.com/b.png.pagespeed.ce.0.png)}";
+
+  // Figure out where cache-extended PNGs will go.
+  std::string img_url1 = ExpectedUrlForPng("a.png", "notapng");
+  std::string img_url2 = ExpectedUrlForPng("b.png", "notbpng");
+  std::string output = StrCat("div{background-image:url(", img_url1, ")}",
+                               "span{background-image:url(", img_url2, ")}");
 
   // Here we don't use the other contexts since it has different
   // synchronicity, and we presently do best-effort for loaded subresources
   // even in Fetch.
   ValidateRewriteExternalCss(
-      "ext", kInput, kOutput, kNoOtherContexts | kNoClearFetcher |
-                              kExpectChange | kExpectSuccess);
+      "ext", kInput, output, kNoOtherContexts | kNoClearFetcher |
+                             kExpectChange | kExpectSuccess);
 
   // 10 is the smaller of expiration times of a.png, b.png and ext.css
-  ValidateExpirationTime("ext", kOutput, 10 * Timer::kSecondMs);
+  ValidateExpirationTime("ext", output.c_str(), 10 * Timer::kSecondMs);
 }
 
 // Test to make sure we don't cache for long if the rewrite was based

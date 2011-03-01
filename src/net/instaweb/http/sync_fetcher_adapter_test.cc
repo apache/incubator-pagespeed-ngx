@@ -164,10 +164,10 @@ class SyncFetcherAdapterTest : public testing::Test {
     EXPECT_TRUE(DoFetch(fetcher, &out_headers, &out_writer));
     EXPECT_EQ(kText, out_str);
 
-    CharStarVector values;
+    StringStarVector values;
     EXPECT_TRUE(out_headers.Lookup(kHeader, &values));
     ASSERT_EQ(1, values.size());
-    EXPECT_EQ(std::string(kText), values[0]);
+    EXPECT_EQ(std::string(kText), *(values[0]));
   }
 
   void TestFailedFetch(UrlFetcher* fetcher) {

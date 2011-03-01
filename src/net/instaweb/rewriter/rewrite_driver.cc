@@ -202,7 +202,9 @@ void RewriteDriver::AddFilters() {
   // they are actually applied, for the benefit of the understanding
   // of the site owner.  So if you change that here, change it in
   // install/common/pagespeed.conf.template as well.
-
+  //
+  // Also be sure to update the doc in net/instaweb/doc/docs/config_filters.ezt.
+  //
   // Now process boolean options, which may include propagating non-boolean
   // and boolean parameter settings to filters.
   if (options_.Enabled(RewriteOptions::kAddHead) ||
@@ -465,7 +467,7 @@ bool RewriteDriver::FetchResource(
     // with an If-Modified-Since header.  If this header is present, we should
     // return a 304 Not Modified, since any representation of the resource
     // that's in the browser's cache must be correct.
-    CharStarVector values;
+    StringStarVector values;
     if (request_headers.Lookup(HttpAttributes::kIfModifiedSince, &values)) {
       response_headers->SetStatusAndReason(HttpStatus::kNotModified);
       callback->Done(true);
@@ -803,6 +805,11 @@ HTTPCache::FindResult RewriteDriver::ReadIfCachedWithStatus(
     resource_manager_->RefreshIfImminentlyExpiring(resource, handler);
   }
   return result;
+}
+
+void RewriteDriver::FinishParse() {
+  HtmlParse::FinishParse();
+  Clear();
 }
 
 }  // namespace net_instaweb

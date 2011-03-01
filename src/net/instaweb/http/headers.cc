@@ -90,7 +90,7 @@ template<class Proto> int Headers<Proto>::NumAttributeNames() const {
 }
 
 template<class Proto> bool Headers<Proto>::Lookup(
-    const StringPiece& name, CharStarVector* values) const {
+    const StringPiece& name, StringStarVector* values) const {
   PopulateMap();
   return map_->Lookup(name, values);
 }
@@ -121,7 +121,7 @@ template<class Proto> bool Headers<Proto>::RemoveAll(const StringPiece& name) {
   // we copy the data into the map and do the remove there, then
   // reconstruct the protobuf.
   PopulateMap();
-  CharStarVector values;
+  StringStarVector values;
   bool removed = map_->Lookup(name, &values);
   if (removed) {
     proto_->clear_header();
@@ -129,7 +129,7 @@ template<class Proto> bool Headers<Proto>::RemoveAll(const StringPiece& name) {
     for (int i = 0, n = map_->num_values(); i < n; ++i) {
       NameValue* name_value = proto_->add_header();
       name_value->set_name(map_->name(i));
-      name_value->set_value(map_->value(i));
+      name_value->set_value(map_->value(i)->c_str());
     }
   }
   return removed;

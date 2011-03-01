@@ -116,14 +116,16 @@ class ApacheWriter : public Writer {
     }
 
     char* content_type = NULL;
-    CharStarVector v;
+    StringStarVector v;
     CHECK(response_headers_->headers_complete());
     if (response_headers_->Lookup(HttpAttributes::kContentType, &v)) {
       CHECK(!v.empty());
       // ap_set_content_type does not make a copy of the string, we need
       // to duplicate it.  Note that we will update the content type below,
       // after transforming the headers.
-      content_type = apr_pstrdup(request_->pool, v[v.size() - 1]);
+      const std::string* last = v[v.size() - 1];
+      content_type = apr_pstrdup(request_->pool,
+                                 (last == NULL) ? NULL : last->c_str());
     }
     response_headers_->RemoveAll(HttpAttributes::kTransferEncoding);
     response_headers_->RemoveAll(HttpAttributes::kContentLength);
@@ -164,7 +166,8 @@ std::string RemoveModPageSpeedQueryParams(
     if (strncmp(name, kModPagespeed, STATIC_STRLEN(kModPagespeed)) == 0) {
       rewrite_query_params = true;
     } else {
-      stripped_query_params.Add(name, query_params.value(i));
+      const std::string* value = query_params.value(i);
+      stripped_query_params.Add(name, (value == NULL) ? NULL : *value);
     }
   }
 
@@ -200,7 +203,7 @@ class ModPagespeedStrippingFetcher : public UrlFetcher {
     bool fetched = fetcher_->StreamingFetchUrl(
         url, request_headers, response_headers, &writer, message_handler);
     if (fetched) {
-      CharStarVector v;
+      StringStarVector v;
       if (response_headers->Lookup(kModPagespeedHeader, &v)) {
         response_headers->Clear();
         std::string::size_type question = url.find('?');

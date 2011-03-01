@@ -37,6 +37,8 @@ class RequestHeaders : public Headers<HttpRequestHeaders> {
   Method method() const;
   const char* method_string() const;
   void set_method(Method method);
+
+  using Headers<HttpRequestHeaders>::WriteAsHttp;
   bool WriteAsHttp(const StringPiece& url, Writer* writer,
                    MessageHandler* handler) const;
 

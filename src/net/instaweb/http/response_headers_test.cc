@@ -41,22 +41,22 @@ class ResponseHeadersTest : public testing::Test {
     EXPECT_EQ(0, response_headers.minor_version());
     EXPECT_EQ(std::string("OK"),
               std::string(response_headers.reason_phrase()));
-    CharStarVector values;
+    StringStarVector values;
     EXPECT_TRUE(response_headers.Lookup("X-Google-Experiment", &values));
-    EXPECT_EQ(std::string("23729,24249,24253"), std::string(values[0]));
+    EXPECT_EQ(std::string("23729,24249,24253"), *(values[0]));
     EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
     EXPECT_EQ(2, values.size());
     EXPECT_EQ(std::string("PREF=ID=3935f510d83d2a7a:TM=1270493386:LM=127049338"
                            "6:S=u_18e6r8aJ83N6P1; "
                            "expires=Wed, 04-Apr-2012 18:49:46 GMT; path=/; "
                            "domain=.google.com"),
-              std::string(values[0]));
+              *(values[0]));
     EXPECT_EQ(std::string("NID=33=aGkk7cKzznoUuCd19qTgXlBjXC8fc_luIo2Yk9BmrevU"
                            "gXYPTazDF8Q6JvsO6LvTu4mfI8_44iIBLu4pF-Mvpe4wb7pYwej"
                            "4q9HvbMLRxt-OzimIxmd-bwyYVfZ2PY1B; "
                            "expires=Tue, 05-Oct-2010 18:49:46 GMT; path=/; "
                            "domain=.google.com; HttpOnly"),
-              std::string(values[1]));
+              *(values[1]));
     EXPECT_EQ(15, response_headers.NumAttributes());
     EXPECT_EQ(std::string("X-Google-GFE-Response-Body-Transformations"),
               std::string(response_headers.Name(14)));
@@ -291,7 +291,7 @@ TEST_F(ResponseHeadersTest, TestSetDate) {
   response_headers_.SetStatusAndReason(HttpStatus::kOK);
   response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
   response_headers_.Add(HttpAttributes::kCacheControl, "max-age=100");
-  CharStarVector date;
+  StringStarVector date;
   ASSERT_TRUE(response_headers_.Lookup("Date", &date));
   EXPECT_EQ(1, date.size());
   response_headers_.ComputeCaching();

@@ -104,10 +104,10 @@ TEST_F(HTTPCacheTest, PutGet) {
   ASSERT_TRUE(meta_data_out.headers_complete());
   StringPiece contents;
   ASSERT_TRUE(value.ExtractContents(&contents));
-  CharStarVector values;
+  StringStarVector values;
   ASSERT_TRUE(meta_data_out.Lookup("name", &values));
   ASSERT_EQ(static_cast<size_t>(1), values.size());
-  EXPECT_EQ(std::string("value"), std::string(values[0]));
+  EXPECT_EQ(std::string("value"), *(values[0]));
   EXPECT_EQ("content", contents);
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));
 

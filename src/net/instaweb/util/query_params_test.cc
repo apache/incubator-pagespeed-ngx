@@ -37,37 +37,36 @@ class QueryParamsTest : public testing::Test {
 TEST_F(QueryParamsTest, TestParse) {
   ASSERT_EQ(5, query_params_.size());
   EXPECT_EQ(std::string("a"), query_params_.name(0));
-  EXPECT_EQ(std::string("1"), query_params_.value(0));
+  EXPECT_EQ(std::string("1"), *(query_params_.value(0)));
   EXPECT_EQ(std::string("b"), query_params_.name(1));
   EXPECT_EQ(NULL, query_params_.value(1));
   EXPECT_EQ(std::string("c"), query_params_.name(2));
-  EXPECT_EQ(std::string("2"), query_params_.value(2));
+  EXPECT_EQ(std::string("2"), *(query_params_.value(2)));
   EXPECT_EQ(std::string("d"), query_params_.name(3));
-  EXPECT_EQ(std::string(""), query_params_.value(3));
+  EXPECT_EQ(std::string(""), *(query_params_.value(3)));
   EXPECT_EQ(std::string("a"), query_params_.name(4));
-  EXPECT_EQ(std::string("3"), query_params_.value(4));
+  EXPECT_EQ(std::string("3"), *(query_params_.value(4)));
   EXPECT_EQ(kQueryString, query_params_.ToString());
 }
 
 TEST_F(QueryParamsTest, TestLookup) {
-  CharStarVector v;
+  StringStarVector v;
   ASSERT_TRUE(query_params_.Lookup("a", &v));
   ASSERT_EQ(2, v.size());
-  EXPECT_EQ(std::string("1"), v[0]);
-  EXPECT_EQ(std::string("3"), v[1]);
+  EXPECT_EQ(std::string("1"), *(v[0]));
+  EXPECT_EQ(std::string("3"), *(v[1]));
   ASSERT_TRUE(query_params_.Lookup("b", &v));
   ASSERT_EQ(1, v.size());
   EXPECT_EQ(NULL, v[0]);
   ASSERT_TRUE(query_params_.Lookup("c", &v));
   ASSERT_EQ(1, v.size());
-  EXPECT_EQ(std::string("2"), v[0]);
+  EXPECT_EQ(std::string("2"), *(v[0]));
   ASSERT_TRUE(query_params_.Lookup("d", &v));
   ASSERT_EQ(1, v.size());
-  EXPECT_EQ(std::string(""), v[0]);
+  EXPECT_EQ(std::string(""), *(v[0]));
 }
 
 TEST_F(QueryParamsTest, TestRemove) {
-  CharStarVector v;
   query_params_.RemoveAll("a");
   EXPECT_EQ("b&c=2&d=", query_params_.ToString());
   EXPECT_EQ(3, query_params_.size());
@@ -93,7 +92,7 @@ TEST_F(QueryParamsTest, TestAEqualsBEquals1) {
   query_params_.Parse("a=b=1");
   ASSERT_EQ(1, query_params_.size());
   ASSERT_EQ(std::string("a"), query_params_.name(0));
-  ASSERT_EQ(std::string("b=1"), query_params_.value(0));
+  ASSERT_EQ(std::string("b=1"), *(query_params_.value(0)));
 }
 
 }  // namespace net_instaweb

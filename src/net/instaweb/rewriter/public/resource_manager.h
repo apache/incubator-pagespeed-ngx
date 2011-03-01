@@ -55,6 +55,9 @@ class UrlEscaper;
 class Variable;
 class Writer;
 
+// TODO(jmarantz): Rename this class to ServerContext, as it no longer
+// contains much logic about resources -- that's been moved to RewriteDriver,
+// which should be renamed RequestContext.
 class ResourceManager {
  public:
   enum BlockingBehavior { kNeverBlock, kMayBlock };

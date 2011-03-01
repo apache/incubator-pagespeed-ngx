@@ -309,13 +309,15 @@ class SerfFetch : public PoolElement<SerfFetch> {
     // Supply a default user-agent if none is present, and in any case
     // append on a 'serf' suffix.
     std::string user_agent;
-    CharStarVector v;
+    StringStarVector v;
     if (request_headers_.Lookup(HttpAttributes::kUserAgent, &v)) {
       for (int i = 0, n = v.size(); i < n; ++i) {
         if (i != 0) {
           user_agent += " ";
         }
-        user_agent += v[i];
+        if (v[i] != NULL) {
+          user_agent += *(v[i]);
+        }
       }
       request_headers_.RemoveAll(HttpAttributes::kUserAgent);
     }
@@ -351,11 +353,11 @@ class SerfFetch : public PoolElement<SerfFetch> {
     // by hacking source.  We hacked source.
     //
     // See src/third_party/serf/src/instaweb_context.c
-    CharStarVector v;
+    StringStarVector v;
     const char* host = NULL;
     if (fetch->request_headers_.Lookup(HttpAttributes::kHost, &v) &&
-        (v.size() == 1)) {
-      host = v[0];
+        (v.size() == 1) && (v[0] != NULL)) {
+      host = v[0]->c_str();
     }
 
     fetch->FixUserAgent();
