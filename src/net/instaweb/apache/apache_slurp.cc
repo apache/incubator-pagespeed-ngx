@@ -167,7 +167,11 @@ std::string RemoveModPageSpeedQueryParams(
       rewrite_query_params = true;
     } else {
       const std::string* value = query_params.value(i);
-      stripped_query_params.Add(name, (value == NULL) ? NULL : *value);
+      StringPiece value_piece;  // NULL data by default.
+      if (value != NULL) {
+        value_piece = *value;
+      }
+      stripped_query_params.Add(name, value_piece);
     }
   }
 
