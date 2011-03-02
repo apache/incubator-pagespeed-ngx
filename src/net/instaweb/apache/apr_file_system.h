@@ -23,6 +23,8 @@ struct apr_pool_t;
 
 namespace net_instaweb {
 
+class AprMutex;
+
 void AprReportError(MessageHandler* message_handler, const char* filename,
                     int line, const char* message, int error_code);
 
@@ -70,6 +72,11 @@ class AprFileSystem : public FileSystem {
 
  private:
   apr_pool_t* pool_;
+
+  // We use a mutex to protect the pool above when calling into apr's file
+  // system ops, which might otherwise access it concurrently in an unsafe
+  // way. The mutex is owned here (but deleted manually before pool_).
+  AprMutex* mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(AprFileSystem);
 };
