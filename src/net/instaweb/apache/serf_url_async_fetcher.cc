@@ -138,12 +138,14 @@ class SerfFetch : public PoolElement<SerfFetch> {
   // This must be called while holding SerfUrlAsyncFetcher's mutex_.
   void CallCallback(bool success) {
     if (callback_ == NULL) {
-      LOG(INFO) << "Serf callback more than once on same fetch " << str_url()
-                << " (" << this << ")";
+      LOG(FATAL) << "BUG: Serf callback more than once on same fetch "
+                 << str_url() << " (" << this << ").  Please report this "
+                 << "at http://code.google.com/p/modpagespeed/issues/";
     } else {
       UrlAsyncFetcher::Callback* callback = callback_;
       callback_ = NULL;
       response_headers_ = NULL;
+      fetched_content_writer_ = NULL;
       callback->Done(success);
       fetch_end_ms_ = timer_->NowMs();
       fetcher_->FetchComplete(this);
@@ -218,34 +220,30 @@ class SerfFetch : public PoolElement<SerfFetch> {
   apr_status_t HandleResponse(serf_request_t* request,
                               serf_bucket_t* response) {
     apr_status_t status = APR_EGENERAL;
-    if (response_headers_ == NULL) {
-      // The serf fetcher is in an inconsistent state.  We shouldn't have gotten
-      // here, and now we're here our best option is to kill this serf process
-      // as we're otherwise going to wedge the CPU at 100% and cause all
-      // subsequent requests to time out and fail, essentially taking down the
-      // entire server.
-      LOG(FATAL)
-          << "HandleResponse called on URL " << str_url()
-          << "(" << this << "), which is already erased.  "
-             "DYING.  Please report this stack trace at "
-             "http://code.google.com/p/modpagespeed/issues/detail?id=219";
-    }
 
     serf_status_line status_line;
     if ((response != NULL) &&
         ((status = serf_bucket_response_status(response, &status_line))
          == APR_SUCCESS)) {
-      response_headers_->SetStatusAndReason(
-          static_cast<HttpStatus::Code>(status_line.code));
-      response_headers_->set_major_version(status_line.version / 1000);
-      response_headers_->set_minor_version(status_line.version % 1000);
+      if (response_headers_ != NULL) {
+        response_headers_->SetStatusAndReason(
+            static_cast<HttpStatus::Code>(status_line.code));
+        response_headers_->set_major_version(status_line.version / 1000);
+        response_headers_->set_minor_version(status_line.version % 1000);
+      } else {
+        // TODO(jmaessen): Do we ever see duplicate header drops for a single
+        // url?  Are we re-parsing headers on re-entry?  If the latter is
+        // happening we ought to protect against it.
+        LOG(INFO) << "Dropping headers and content for " <<
+            str_url() << "(" << this << ") due to request timeout";
+      }
       const char* data = NULL;
       apr_size_t len = 0;
       while ((status = serf_bucket_read(response, kBufferSize, &data, &len))
              == APR_SUCCESS || APR_STATUS_IS_EOF(status) ||
              APR_STATUS_IS_EAGAIN(status)) {
         bytes_received_ += len;
-        if (len > 0 &&
+        if (len > 0 && fetched_content_writer_ != NULL &&
             !fetched_content_writer_->Write(
                 StringPiece(data, len), message_handler_)) {
           status = APR_EGENERAL;
@@ -262,7 +260,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
         status = ReadHeaders(response);
       }
     }
-    if (!APR_STATUS_IS_EAGAIN(status)) {
+    if (!APR_STATUS_IS_EAGAIN(status) && response_headers_ != NULL) {
       bool success = APR_STATUS_IS_EOF(status);
       CallCallback(success);
     }
@@ -277,7 +275,10 @@ class SerfFetch : public PoolElement<SerfFetch> {
     while ((status = serf_bucket_read(headers, kBufferSize, &data, &num_bytes))
            == APR_SUCCESS || APR_STATUS_IS_EOF(status) ||
            APR_STATUS_IS_EAGAIN(status)) {
-      if (parser_.headers_complete()) {
+      if (response_headers_ == NULL) {
+        // Don't attempt to parse the headers, as the parser will push data into
+        // a deallocated data structure.
+      } else if (parser_.headers_complete()) {
         status = APR_EGENERAL;
         message_handler_->Info(str_url_.c_str(), 0,
                                "headers complete but more data coming");
@@ -294,7 +295,8 @@ class SerfFetch : public PoolElement<SerfFetch> {
         break;
       }
     }
-    if (APR_STATUS_IS_EOF(status) && !parser_.headers_complete()) {
+    if (response_headers_ != NULL &&
+        APR_STATUS_IS_EOF(status) && !parser_.headers_complete()) {
       message_handler_->Error(str_url_.c_str(), 0,
                               "eof on incomplete headers code=%d %s",
                               status, GetAprErrorString(status).c_str());
@@ -369,12 +371,12 @@ class SerfFetch : public PoolElement<SerfFetch> {
     serf_bucket_t* hdrs_bkt = serf_bucket_request_get_headers(*req_bkt);
 
     for (int i = 0; i < fetch->request_headers_.NumAttributes(); ++i) {
-      const char* name = fetch->request_headers_.Name(i);
-      const char* value = fetch->request_headers_.Value(i);
+      const std::string& name = fetch->request_headers_.Name(i);
+      const std::string& value = fetch->request_headers_.Value(i);
       if ((StringCaseEqual(name, HttpAttributes::kUserAgent)) ||
           (StringCaseEqual(name, HttpAttributes::kAcceptEncoding)) ||
           (StringCaseEqual(name, HttpAttributes::kReferer))) {
-        serf_bucket_headers_setn(hdrs_bkt, name, value);
+        serf_bucket_headers_setn(hdrs_bkt, name.c_str(), value.c_str());
       }
     }
 
@@ -821,6 +823,7 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
           active_count_->Add(1);
         }
       } else {
+        callback->Done(false);
         delete fetch;
       }
     }

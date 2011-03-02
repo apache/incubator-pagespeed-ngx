@@ -222,7 +222,8 @@ class HtmlParse {
   // messages.
   const char* url() const { return url_.c_str(); }
   // Gets a parsed GURL& corresponding to url().
-  const GURL& gurl() const { return gurl_; }
+  const GURL& gurl() const { return google_url_.gurl(); }
+  const GoogleUrl& google_url() const { return google_url_; }
   const char* id() const { return id_.c_str(); }
   int line_number() const { return line_number_; }
   // Return the current assumed doctype of the document (based on the content
@@ -312,7 +313,7 @@ class HtmlParse {
   // Have we deleted current? Then we shouldn't do certain manipulations to it.
   MessageHandler* message_handler_;
   std::string url_;
-  GURL gurl_;
+  GoogleUrl google_url_;
   std::string id_;  // Per-request identifier string used in error messages.
   int line_number_;
   bool deleted_current_;

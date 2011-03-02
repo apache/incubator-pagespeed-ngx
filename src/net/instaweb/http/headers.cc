@@ -67,12 +67,12 @@ template<class Proto> int Headers<Proto>::NumAttributes() const {
   return proto_->header_size();
 }
 
-template<class Proto> const char* Headers<Proto>::Name(int i) const {
-  return proto_->header(i).name().c_str();
+template<class Proto> const std::string& Headers<Proto>::Name(int i) const {
+  return proto_->header(i).name();
 }
 
-template<class Proto> const char* Headers<Proto>::Value(int i) const {
-  return proto_->header(i).value().c_str();
+template<class Proto> const std::string& Headers<Proto>::Value(int i) const {
+  return proto_->header(i).value();
 }
 
 template<class Proto> void Headers<Proto>::PopulateMap() const {
@@ -129,7 +129,8 @@ template<class Proto> bool Headers<Proto>::RemoveAll(const StringPiece& name) {
     for (int i = 0, n = map_->num_values(); i < n; ++i) {
       NameValue* name_value = proto_->add_header();
       name_value->set_name(map_->name(i));
-      name_value->set_value(map_->value(i)->c_str());
+      DCHECK(map_->value(i) != NULL) << "Null-valued header";
+      name_value->set_value(*(map_->value(i)));
     }
   }
   return removed;

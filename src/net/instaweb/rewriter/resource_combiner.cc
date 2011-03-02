@@ -348,7 +348,9 @@ class CombinerCallback : public Resource::AsyncCallback {
     }
     if (ok) {
       response_headers_->CopyFrom(*combination_->metadata());
-    } else {
+    } else if (emit_done_) {
+      // we can only safely touch response_headers_ if we can emit
+      // Done() safely.
       response_headers_->SetStatusAndReason(HttpStatus::kNotFound);
     }
 
@@ -391,8 +393,8 @@ bool ResourceCombiner::Fetch(OutputResource* combination,
   UrlMultipartEncoder multipart_encoder;
   UrlEscaper* escaper = resource_manager_->url_escaper();
   std::string multipart_encoding;
-  GURL gurl(combination->url());
-  if (gurl.is_valid() &&
+  GoogleUrl gurl(combination->url());
+  if (gurl.IsValid() &&
       escaper->DecodeFromUrlSegment(url_safe_id, &multipart_encoding) &&
       multipart_encoder.Decode(multipart_encoding, message_handler)) {
     std::string url, decoded_resource;
@@ -400,7 +402,7 @@ bool ResourceCombiner::Fetch(OutputResource* combination,
     CombinerCallback* combiner = new CombinerCallback(
         this, message_handler, callback, combination, writer, response_headers);
 
-    std::string root = GoogleUrl::AllExceptLeaf(gurl);
+    StringPiece root = gurl.AllExceptLeaf();
     for (int i = 0; ret && (i < multipart_encoder.num_urls()); ++i)  {
       std::string url = StrCat(root, multipart_encoder.url(i));
       // Safe since we use StrCat to absolutize the URL rather than

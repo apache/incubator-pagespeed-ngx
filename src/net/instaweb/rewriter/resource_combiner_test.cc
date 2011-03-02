@@ -590,6 +590,49 @@ TEST_F(ResourceCombinerTest, TestFetchNonsense) {
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
 }
 
+TEST_F(ResourceCombinerTest, TestContinuingFetchWhenFastFailed) {
+  // We may quickly detect that a piece isn't fetchable (with fetch failure
+  // cached) after we have already initiated a fetch for an another resource.
+  // In that case, we need to be careful to make sure we don't try to write
+  // the headers anyway, as their lifetime can't be guaranteed if ::Fetch
+  // returned false.
+  WaitUrlAsyncFetcher simulate_async(&mock_url_fetcher_);
+  rewrite_driver_.set_async_fetcher(&simulate_async);
+  resource_manager_->set_url_async_fetcher(&simulate_async);
+
+  // Seed our cache with the fact that nopiece.tcc isn't there.
+  scoped_ptr<Resource> missing(
+      rewrite_driver_.CreateInputResourceAbsoluteUnchecked(
+          StrCat(kTestDomain, "nopiece.tcc")));
+  ASSERT_TRUE(missing.get() != NULL);
+  EXPECT_FALSE(rewrite_driver_.ReadIfCached(missing.get()));
+  simulate_async.CallCallbacks();
+
+  // Now try to fetch a combination with 3 pieces.
+  // The first one will start loading, on the second, nopiece.tcc,
+  // we will quickly notice failure, and on third one we will
+  // notice we've failed already.
+  std::string url = Encode(kTestDomain, kTestCombinerId, "0",
+                            "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
+  std::string content;
+  RequestHeaders request_headers;
+  ResponseHeaders response_headers;
+  StringWriter writer(&content);
+  FetchCallback callback;
+  bool called = rewrite_driver_.FetchResource(url, request_headers,
+                                              &response_headers, &writer,
+                                              &callback);
+  EXPECT_TRUE(called);  // RewriteDriver took care of it after filter failure.
+  EXPECT_TRUE(callback.done());
+  EXPECT_FALSE(callback.success());
+  EXPECT_FALSE(response_headers.headers_complete());
+
+  // Now finish loading of the initialized piece1.tcc fetch...
+  simulate_async.CallCallbacks();
+  EXPECT_FALSE(response_headers.headers_complete())
+      << "Writing to headers which might be dead. Can cause crashes!";
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

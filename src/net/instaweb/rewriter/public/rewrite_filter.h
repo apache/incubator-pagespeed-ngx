@@ -57,6 +57,17 @@ class RewriteFilter : public CommonFilter {
   // the encoding includes the original image URL, plus the pixel-dimensions
   // to which the image was resized.  For combine_css it includes
   // all the original URLs separated by '+'.
+  //
+  // This method should return whether it will invoke the callback,
+  // with false indicating that it detected a failure immediately,
+  // and will not invoke the callback to report it. See also
+  // RewriteDriver::FetchResource documentation, which has the same
+  // return value protocol.
+  //
+  // If the method does return false it should also be careful to not access
+  // response_writer or response_headers from callbacks for any
+  // requests it has initiated itself.
+  //
   virtual bool Fetch(OutputResource* output_resource,
                      Writer* response_writer,
                      const RequestHeaders& request_header,

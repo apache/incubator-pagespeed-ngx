@@ -54,12 +54,12 @@ void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
       (response_headers.major_version() * 1000) +
       response_headers.minor_version();
   for (int i = 0, n = response_headers.NumAttributes(); i < n; ++i) {
-    const char* name = response_headers.Name(i);
-    const char* value = response_headers.Value(i);
+    const std::string& name = response_headers.Name(i);
+    const std::string& value = response_headers.Value(i);
     if (StringCaseEqual(name, HttpAttributes::kContentType)) {
       // ap_set_content_type does not make a copy of the string, we need
       // to duplicate it.
-      char* ptr = apr_pstrdup(request->pool, value);
+      char* ptr = apr_pstrdup(request->pool, value.c_str());
       ap_set_content_type(request, ptr);
     } else {
       if (StringCaseEqual(name, HttpAttributes::kCacheControl)) {
@@ -67,7 +67,7 @@ void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
       }
       // apr_table_add makes copies of both head key and value, so we do not
       // have to duplicate them.
-      apr_table_add(request->headers_out, name, value);
+      apr_table_add(request->headers_out, name.c_str(), value.c_str());
     }
   }
 }

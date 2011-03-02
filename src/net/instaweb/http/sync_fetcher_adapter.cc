@@ -54,7 +54,8 @@ bool SyncFetcherAdapter::StreamingFetchUrl(
        now_ms = timer_->NowMs()) {
     int64 remaining_ms =
         std::max(static_cast<int64>(0), end_ms - now_ms);
-    async_fetcher_->Poll(remaining_ms);
+    int active = async_fetcher_->Poll(remaining_ms);
+    CHECK(active > 0 || callback->done());
   }
   bool ret = false;
   if (!callback->done()) {

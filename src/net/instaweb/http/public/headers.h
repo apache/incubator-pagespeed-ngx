@@ -47,8 +47,8 @@ template<class Proto> class Headers {
 
   // Raw access for random access to attribute name/value pairs.
   int NumAttributes() const;
-  const char* Name(int i) const;
-  const char* Value(int i) const;
+  const std::string& Name(int i) const;
+  const std::string& Value(int i) const;
 
   // Note that Lookup, though declared const, is NOT thread-safe.  This
   // is because it lazily generates a map.

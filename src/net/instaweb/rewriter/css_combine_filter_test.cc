@@ -230,7 +230,11 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         rewrite_driver_.FetchResource(kABCUrl, request_headers,
                                       &response_headers, &writer,
                                       &fail_callback));
-    EXPECT_EQ(HttpStatus::kNotFound, response_headers.status_code());
+    // What status we get here depends a lot on details of when exactly
+    // we detect the failure. If done early enough, nothing will be set.
+    // This test may change, but see also
+    // ResourceCombinerTest.TestContinuingFetchWhenFastFailed
+    EXPECT_FALSE(response_headers.headers_complete());
     EXPECT_EQ("", fetched_resource_content);
   }
 

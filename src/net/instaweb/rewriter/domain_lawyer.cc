@@ -260,16 +260,23 @@ bool DomainLawyer::MapRequestToDomain(
     GURL* resolved_request,
     MessageHandler* handler) const {
   CHECK(original_request.is_valid());
-  GURL original_origin = original_request.GetOrigin();
-  *resolved_request = GoogleUrl::Resolve(original_request, resource_url);
+  GoogleUrl c_original_request(original_request);
+  GoogleUrl original_origin(c_original_request.Origin());
+  GoogleUrl c_resolved_request(c_original_request, resource_url);
+  if (!c_resolved_request.IsValid()) {
+    return false;
+  }
+
+  *resolved_request = c_resolved_request.gurl();
   bool ret = false;
   // At present we're not sure about appropriate resource
   // policies for https: etc., so we only permit http resources
   // to be rewritten.
   // TODO(jmaessen): Figure out if this is appropriate.
-  if (resolved_request->is_valid() && resolved_request->SchemeIs("http")) {
-    GURL resolved_origin = resolved_request->GetOrigin();
-    std::string resolved_domain_name = GoogleUrl::Spec(resolved_origin);
+  if (c_resolved_request.IsValid() && c_resolved_request.SchemeIs("http")) {
+    GoogleUrl resolved_origin(c_resolved_request.Origin());
+    std::string resolved_domain_name;
+    resolved_origin.Spec().CopyToString(&resolved_domain_name);
 
     // Looks at the resovled domain name from the original request and
     // the resource_url (which might override the original request).
@@ -295,8 +302,9 @@ bool DomainLawyer::MapRequestToDomain(
         if (mapped_domain != NULL) {
           CHECK(!mapped_domain->IsWildcarded());
           mapped_domain->name().CopyToString(mapped_domain_name);
-          *resolved_request = GoogleUrl::Create(*mapped_domain_name).Resolve(
-              GoogleUrl::PathAndLeaf(*resolved_request));
+          GoogleUrl resolved_request_tmp(GoogleUrl(*mapped_domain_name),
+                                       c_resolved_request.PathAndLeaf());
+          *resolved_request = resolved_request_tmp.gurl();
         }
       }
     }
@@ -306,24 +314,24 @@ bool DomainLawyer::MapRequestToDomain(
 
 bool DomainLawyer::MapOrigin(const StringPiece& in, std::string* out) const {
   bool ret = false;
-  GURL gurl = GoogleUrl::Create(in);
+  GoogleUrl gurl(in);
   // At present we're not sure about appropriate resource
   // policies for https: etc., so we only permit http resources
   // to be rewritten.
-  if (gurl.is_valid() && gurl.SchemeIs("http")) {
+  if (gurl.IsValid() && gurl.SchemeIs("http")) {
     ret = true;
     in.CopyToString(out);
-    GURL origin = gurl.GetOrigin();
-    std::string origin_name = GoogleUrl::Spec(origin);
+    GoogleUrl origin(gurl.Origin());
+    std::string origin_name = origin.Spec().as_string();
     Domain* domain = FindDomain(origin_name);
     if (domain != NULL) {
       Domain* origin_domain = domain->origin_domain();
       if (origin_domain != NULL) {
         CHECK(!origin_domain->IsWildcarded());
-        GURL mapped_gurl = GoogleUrl::Create(origin_domain->name()).Resolve(
-            GoogleUrl::PathAndLeaf(gurl));
-        if (mapped_gurl.is_valid()) {
-          *out = GoogleUrl::Spec(mapped_gurl);
+        GoogleUrl mapped_gurl(GoogleUrl(origin_domain->name()),
+                              gurl.PathAndLeaf());
+        if (mapped_gurl.IsValid()) {
+          mapped_gurl.Spec().CopyToString(out);
         }
       }
     }

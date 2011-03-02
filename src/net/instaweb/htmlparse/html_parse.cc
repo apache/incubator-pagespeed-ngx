@@ -176,7 +176,7 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
                               url_.c_str());
   } else {
     string_table_.Clear();
-    gurl_.Swap(&gurl);
+    google_url_.Swap(&gurl);
     line_number_ = 1;
     id.CopyToString(&id_);
     if (log_rewrite_timing_) {
