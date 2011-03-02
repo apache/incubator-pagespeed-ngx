@@ -455,19 +455,13 @@ InstawebContext* build_context_for_request(request_rec* request) {
     return NULL;
   }
 
-  // Determine the absolute URL for this request, which might take on different
-  // forms in the request structure depending on whether this request comes
-  // from a browser proxy, or whether mod_proxy is enabled.
+  // Determine the absolute URL for this request.
   std::string absolute_url;
   if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
     absolute_url = request->unparsed_uri;
   } else {
     absolute_url = ap_construct_url(request->pool, request->unparsed_uri,
                                     request);
-  }
-  if ((request->filename != NULL) &&
-      (strncmp(request->filename, "proxy:", 6) == 0)) {
-    absolute_url.assign(request->filename + 6, strlen(request->filename) - 6);
   }
 
   RewriteOptions query_options;
