@@ -99,11 +99,6 @@
     #
     # ModPagespeedCombineAcrossPaths off
 
-    # Whether or not to log timing information for rewriting filters.
-    # Off by default to keep logs uncluttered.
-    #
-    # ModPagespeedLogRewriteTiming on
-
 
     # Enables server-side instrumentation and statistics.  If this rewriter is
     # enabled, then each rewritten HTML page will have instrumentation javacript
