@@ -18,6 +18,7 @@
 // the use of 'OK" as an Instaweb enum and as an Apache #define.
 #include "base/string_util.h"
 #include "net/instaweb/apache/header_util.h"
+#include "net/instaweb/apache/instaweb_context.h"
 
 // TODO(jmarantz): serf_url_async_fetcher evidently sets
 // 'gzip' unconditionally, and the response includes the 'gzip'
@@ -232,12 +233,11 @@ class ModPagespeedStrippingFetcher : public UrlFetcher {
   UrlFetcher* fetcher_;
 };
 
-void SlurpUrl(const std::string& uri, ApacheRewriteDriverFactory* factory,
-              request_rec* r) {
+void SlurpUrl(ApacheRewriteDriverFactory* factory, request_rec* r) {
+  char* uri = InstawebContext::MakeRequestUrl(r);
   RequestHeaders request_headers;
   ResponseHeaders response_headers;
   ApacheRequestToRequestHeaders(*r, &request_headers);
-  std::string contents;
   ApacheWriter apache_writer(r, &response_headers);
   ChunkingWriter writer(&apache_writer, factory->slurp_flush_limit());
 

@@ -27,8 +27,7 @@ class ApacheRewriteDriverFactory;
 
 // Loads the URL based on the fetchers and other infrastructure in the
 // factory.
-void SlurpUrl(const std::string& uri, ApacheRewriteDriverFactory* factory,
-              request_rec* r);
+void SlurpUrl(ApacheRewriteDriverFactory* factory, request_rec* r);
 
 }  // namespace net_instaweb
 

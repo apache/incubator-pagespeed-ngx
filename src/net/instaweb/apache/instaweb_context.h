@@ -74,6 +74,10 @@ class InstawebContext {
   // be used by both mod_instaweb.cc and instaweb_handler.cc.
   static ApacheRewriteDriverFactory* Factory(server_rec* server);
 
+  // Constructs a copy of a fetchable URI from a request, using the
+  // request pool.
+  static char* MakeRequestUrl(request_rec* request);
+
  private:
   void ComputeContentEncoding(request_rec* request);
   void ProcessBytes(const char* input, int size);

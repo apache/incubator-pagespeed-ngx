@@ -20,7 +20,9 @@
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/stack_buffer.h"
+#include "apr_strings.h"
 #include "http_config.h"
+#include "http_core.h"
 
 extern "C" {
 extern module AP_MODULE_DECLARE_DATA pagespeed_module;
@@ -207,6 +209,24 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
 ApacheRewriteDriverFactory* InstawebContext::Factory(server_rec* server) {
   return static_cast<ApacheRewriteDriverFactory*>
       ap_get_module_config(server->module_config, &pagespeed_module);
+}
+
+char* InstawebContext::MakeRequestUrl(request_rec* request) {
+  /*
+   * In some contexts we are seeing relative URLs passed
+   * into request->unparsed_uri.  But when using mod_slurp, the rewritten
+   * HTML contains complete URLs, so this construction yields the host:port
+   * prefix twice.
+   *
+   * TODO(jmarantz): Figure out how to do this correctly at all times.
+   */
+  char* url = NULL;
+  if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
+    url = apr_pstrdup(request->pool, request->unparsed_uri);
+  } else {
+    url = ap_construct_url(request->pool, request->unparsed_uri, request);
+  }
+  return url;
 }
 
 }  // namespace net_instaweb

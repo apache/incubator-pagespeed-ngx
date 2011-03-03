@@ -456,14 +456,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   }
 
   // Determine the absolute URL for this request.
-  std::string absolute_url;
-  if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
-    absolute_url = request->unparsed_uri;
-  } else {
-    absolute_url = ap_construct_url(request->pool, request->unparsed_uri,
-                                    request);
-  }
-
+  char* absolute_url = InstawebContext::MakeRequestUrl(request);
   RewriteOptions query_options;
   query_options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   if (ScanQueryParamsForRewriterOptions(
