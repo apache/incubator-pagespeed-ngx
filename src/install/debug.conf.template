@@ -58,7 +58,7 @@ ModPagespeedEnableFilters add_instrumentation
 #COVERAGE Listen 8081
 #COVERAGE <VirtualHost *:8080>
 #COVERAGE   ModPagespeed on
-#COVERAGE   ModPagespeedTestProxy on
+#COVERAGE   ModPagespeedTestProxy on   # Proxy using SERF
 #COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
 #COVERAGE
 #COVERAGE   ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@/cache/"
@@ -86,7 +86,7 @@ ModPagespeedEnableFilters add_instrumentation
 #COVERAGE       SetHandler mod_pagespeed_statistics
 #COVERAGE   </Location>
 #COVERAGE </VirtualHost>
-
+#COVERAGE
 #COVERAGE <VirtualHost *:8081>
 #COVERAGE   ModPagespeed on
 #COVERAGE
@@ -99,3 +99,43 @@ ModPagespeedEnableFilters add_instrumentation
 #COVERAGE
 #COVERAGE </VirtualHost>
 
+
+#PROXY # This is used for ProxyPass testing.
+#PROXY #   See: http://code.google.com/p/modpagespeed/issues/detail?id=74
+#PROXY # We use 2 servers for it, one doing rewriting and fetching
+#PROXY # from the other one which does not have mod_pagespeed enabled.
+#PROXY Listen 8081
+#PROXY <VirtualHost *:8080>
+#PROXY   # Host at 8080 should have no relevant content.
+#PROXY   DocumentRoot  /tmp/
+#PROXY
+#PROXY   # Turn these declarations back on during testing if you are
+#PROXY   # having trouble distinguishing which server is saying what.
+#PROXY   #ErrorLog   /usr/local/apache2/logs/error_log_8080
+#PROXY   #CustomLog  /usr/local/apache2/logs/access_log_8080 common
+#PROXY
+#PROXY   ModPagespeed on
+#PROXY
+#PROXY   ModPagespeedFileCachePath         "@@MODPAGESPEED_CACHE_ROOT@@/cache/"
+#PROXY   ModPagespeedGeneratedFilePrefix   "@@MODPAGESPEED_CACHE_ROOT@@/files/"
+#PROXY
+#PROXY   ModPagespeedRewriteLevel PassThrough
+#PROXY   ModPagespeedEnableFilters extend_cache
+#PROXY   ModPagespeedDomain *
+#PROXY
+#PROXY   # Proxy through to 8081.
+#PROXY   ProxyPass / http://localhost:8081/
+#PROXY </VirtualHost>
+#PROXY
+#PROXY <VirtualHost *:8081>
+#PROXY   # Host at 8081 sees into mod_pagespeed_examples directory.
+#PROXY   DocumentRoot  /usr/local/apache2/htdocs/mod_pagespeed_test/
+#PROXY
+#PROXY   #ErrorLog   /usr/local/apache2/logs/error_log_8081
+#PROXY   #CustomLog  /usr/local/apache2/logs/access_log_8081 common
+#PROXY
+#PROXY   ModPagespeed off
+#PROXY   ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@-alt/cache/"
+#PROXY   ModPagespeedGeneratedFilePrefix      "@@MODPAGESPEED_CACHE_ROOT@@-alt/files/"
+#PROXY   ModPagespeedRewriteLevel PassThrough
+#PROXY </VirtualHost>

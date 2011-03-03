@@ -172,6 +172,14 @@ else
   # remove coverage lines
   COVERAGE_TEST_SED_PATTERN=^\#COVERAGE.*
 endif
+
+ifeq ($(PROXY_TEST),1)
+  # remove prefix
+  PROXY_TEST_SED_PATTERN=^\#PROXY
+else
+  # remove whole line
+  PROXY_TEST_SED_PATTERN=^\#PROXY.*
+endif
 # Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because
 # that might have embedded spaces, and 'sed' is interpreted first by bash.
 
@@ -183,6 +191,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(STRESS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(REWRITE_TEST_SED_PATTERN)@@" \
 	    -e "s@$(COVERAGE_TEST_SED_PATTERN)@@" \
+	    -e "s@$(PROXY_TEST_SED_PATTERN)@@" \
 		$^ > $@
 
 $(STAGING_DIR)/proxy.conf : proxy.conf.template
