@@ -131,8 +131,8 @@ bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
         url_to_trim = old_rel_url;
       }
       std::string trimmed_url;
-      if (UrlLeftTrimFilter::Trim(base_url, url_to_trim, &trimmed_url,
-                                  handler)) {
+      GoogleUrl base(base_url);
+      if (UrlLeftTrimFilter::Trim(base, url_to_trim, &trimmed_url, handler)) {
         *new_url = trimmed_url;
         ret = true;
       }

@@ -141,20 +141,22 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
     if (type == NULL || strcmp(type, kContentTypeCss.mime_type()) == 0) {
       MessageHandler* handler = driver_->message_handler();
       // Create outline resource at the document location, not base URL location
+      // TODO Add a test case that puts a relative URL ref into an inlined
+      // CSS file, preceded by a base-tag.  This will break.  Fix it.
       scoped_ptr<OutputResource> output_resource(
           driver_->CreateOutputResourceWithPath(
-              GoogleUrl::AllExceptLeaf(driver_->gurl()), kFilterId, "_",
+              driver_->google_url().AllExceptLeaf(), kFilterId, "_",
               &kContentTypeCss, RewriteDriver::kOutlinedResource));
 
       // Absolutify URLs in content.
       std::string absolute_content;
       StringWriter absolute_writer(&absolute_content);
-      std::string base_dir = GoogleUrl::AllExceptLeaf(base_gurl());
+      StringPiece base_dir = base_url().Spec();      // base url has no leaf.
       bool content_valid = true;
       if (base_dir != output_resource->resolved_base()) {
         // TODO(sligocki): Use CssParser instead of CssTagScanner hack.
         content_valid = CssTagScanner::AbsolutifyUrls(
-            content, GoogleUrl::Spec(base_gurl()), &absolute_writer, handler);
+            content, base_url().Spec(), &absolute_writer, handler);
         content = absolute_content;  // StringPiece point to the new string.
 
       }

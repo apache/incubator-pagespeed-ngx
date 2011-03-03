@@ -35,25 +35,14 @@ CommonFilter::~CommonFilter() {}
 
 void CommonFilter::StartDocument() {
   // Base URL starts as document URL.
-  base_gurl_ = driver_->gurl();
   noscript_element_ = NULL;
   // Run the actual filter's StartDocumentImpl.
   StartDocumentImpl();
 }
 
 void CommonFilter::StartElement(HtmlElement* element) {
-  // <base>
-  if (element->keyword() == HtmlName::kBase) {
-    HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
-    if (href != NULL) {
-      GURL temp_url(href->value());
-      if (temp_url.is_valid()) {
-        base_gurl_.Swap(&temp_url);
-      }
-    }
-
   // <noscript>
-  } else if (element->keyword() == HtmlName::kNoscript) {
+  if (element->keyword() == HtmlName::kNoscript) {
     if (noscript_element_ == NULL) {
       noscript_element_ = element;  // Record top-level <noscript>
     }

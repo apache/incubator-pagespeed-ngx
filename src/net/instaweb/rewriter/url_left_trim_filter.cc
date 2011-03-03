@@ -49,7 +49,8 @@ void UrlLeftTrimFilter::Initialize(Statistics* statistics) {
 }
 
 void UrlLeftTrimFilter::StartDocument() {
-  base_url_ = html_parse_->gurl();
+  GoogleUrl tmp(html_parse_->url());
+  base_url_.Swap(&tmp);
 }
 
 // If the element is a base tag, set the base url to be the href value.
@@ -68,26 +69,27 @@ void UrlLeftTrimFilter::StartElement(HtmlElement* element) {
 
 void UrlLeftTrimFilter::SetBaseUrl(const StringPiece& base) {
   if(base_url_.is_empty()) {
-    base_url_ = GoogleUrl::Create(base);
+    GoogleUrl tmp(base);
+    base_url_.Swap(&tmp);
   } else {
-    base_url_ = GoogleUrl::Resolve(html_parse_->gurl(), base);
+    GoogleUrl tmp(html_parse_->google_url(), base);
+    base_url_.Swap(&tmp);
   }
 }
 
 // Resolve the url we want to trim, and then remove the scheme, origin
 // and/or path as appropriate.
-bool UrlLeftTrimFilter::Trim(const GURL& base_url,
+bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
                              const StringPiece& url_to_trim,
                              std::string* trimmed_url,
                              MessageHandler* handler) {
-  if (!base_url.is_valid() || !base_url.IsStandard() || url_to_trim.empty()) {
+  if (!base_url.is_valid() || !base_url.is_standard() || url_to_trim.empty()) {
     return false;
   }
 
-  GoogleUrl c_base_url(base_url);
-  GoogleUrl long_url(c_base_url, url_to_trim);
+  GoogleUrl long_url(base_url, url_to_trim);
   //  Don't try to rework an invalid url
-  if (!long_url.IsValid() || !long_url.IsStandard()) {
+  if (!long_url.is_valid() || !long_url.is_standard()) {
     return false;
   }
 
@@ -96,11 +98,11 @@ bool UrlLeftTrimFilter::Trim(const GURL& base_url,
 
   // If we can strip the whole origin (http://www.google.com/) do it,
   // then see if we can strip the prefix of the path.
-  StringPiece origin = c_base_url.Origin();
+  StringPiece origin = base_url.Origin();
   if (origin.length() < long_url_buffer.length() &&
       long_url.Origin() == origin) {
     to_trim = origin.length();
-    StringPiece path = c_base_url.PathSansLeaf();
+    StringPiece path = base_url.PathSansLeaf();
     if (to_trim + path.length() < long_url_buffer.length() &&
         long_url.PathSansLeaf().find(path) == 0) {
       to_trim += path.length();
@@ -108,7 +110,7 @@ bool UrlLeftTrimFilter::Trim(const GURL& base_url,
   }
 
   // If we can't strip the whole origin, see if we can strip off the scheme.
-  StringPiece scheme = c_base_url.Scheme();
+  StringPiece scheme = base_url.Scheme();
   if (to_trim == 0 && scheme.length() + 1 < long_url_buffer.length() &&
       long_url.SchemeIs(scheme)) {
     // +1 for : (not included in scheme)
@@ -132,9 +134,9 @@ bool UrlLeftTrimFilter::Trim(const GURL& base_url,
         return false;
       }
     }
-    GoogleUrl resolved_newurl(c_base_url, trimmed_url_piece);
+    GoogleUrl resolved_newurl(base_url, trimmed_url_piece);
     DCHECK(resolved_newurl == long_url);
-    if (!resolved_newurl.IsValid() || resolved_newurl != long_url) {
+    if (!resolved_newurl.is_valid() || resolved_newurl != long_url) {
       handler->Message(kError, "Left trimming of %s referring to %s was %s, "
                        "which instead refers to %s.",
                        url_to_trim.as_string().c_str(),
@@ -155,7 +157,8 @@ void UrlLeftTrimFilter::TrimAttribute(HtmlElement::Attribute* attr) {
     StringPiece val(attr->value());
     std::string trimmed_val;
     size_t orig_size = val.size();
-    if (Trim(base_url_, val, &trimmed_val, html_parse_->message_handler())) {
+    if (Trim(base_url_, val, &trimmed_val,
+             html_parse_->message_handler())) {
       attr->SetValue(trimmed_val);
       if (trim_count_ != NULL) {
         trim_count_->Add(1);

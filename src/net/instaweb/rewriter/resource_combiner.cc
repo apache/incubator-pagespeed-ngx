@@ -54,8 +54,7 @@ ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
       accumulated_leaf_size_(0),
       // TODO(jmarantz): The URL overhead computation is arguably fragile.
       url_overhead_(filter_prefix.size() + ResourceNamer::kOverhead +
-                    extension.size()),
-      base_gurl_(NULL) {
+                    extension.size()) {
   // This CHECK is here because RewriteDriver is constructed with its
   // resource_manager_ == NULL.
   // TODO(sligocki): Construct RewriteDriver with a ResourceManager.
@@ -72,7 +71,10 @@ bool ResourceCombiner::AddResource(const StringPiece& url,
   // Assert the sanity of three parallel vectors.
   CHECK_EQ(num_urls(), static_cast<int>(resources_.size()));
   CHECK_EQ(num_urls(), static_cast<int>(multipart_encoder_.num_urls()));
-  CHECK(base_gurl_ != NULL);
+  if (num_urls() == 0) {
+    // Make sure to initialize the base URL.
+    Reset();
+  }
 
   // See if we have the source loaded, or start loading it
   // TODO(morlovich) this may not always be desirable.
@@ -81,7 +83,8 @@ bool ResourceCombiner::AddResource(const StringPiece& url,
   //    disabled due to policy.
 
   scoped_ptr<Resource> resource(
-      rewrite_driver_->CreateInputResource(*base_gurl_, url));
+      rewrite_driver_->CreateInputResource(rewrite_driver_->base_url().gurl(),
+                                           url));
   if (resource.get() == NULL) {
     return false;
   }
@@ -394,7 +397,7 @@ bool ResourceCombiner::Fetch(OutputResource* combination,
   UrlEscaper* escaper = resource_manager_->url_escaper();
   std::string multipart_encoding;
   GoogleUrl gurl(combination->url());
-  if (gurl.IsValid() &&
+  if (gurl.is_valid() &&
       escaper->DecodeFromUrlSegment(url_safe_id, &multipart_encoding) &&
       multipart_encoder.Decode(multipart_encoding, message_handler)) {
     std::string url, decoded_resource;
@@ -438,12 +441,11 @@ void ResourceCombiner::Clear() {
   multipart_encoder_.clear();
 }
 
-void ResourceCombiner::Reset(const GURL& base_gurl) {
+void ResourceCombiner::Reset() {
   Clear();
-  partnership_.Reset(base_gurl);
+  partnership_.Reset(rewrite_driver_->base_url().gurl());
   prev_num_components_ = 0;
   accumulated_leaf_size_ = 0;
-  base_gurl_ = &base_gurl;
   resolved_base_.clear();
 }
 

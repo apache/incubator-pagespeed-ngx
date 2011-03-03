@@ -47,44 +47,48 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
   TrimWhitespace(untrimmed_resource_url, &resource_url);
 
   if (resource_url.empty()) {
-    handler->Message(kInfo, "Cannot rewrite empty URL relative to %s",
-                     original_origin_and_path_.possibly_invalid_spec().c_str());
+    handler->Message(
+        kInfo, "Cannot rewrite empty URL relative to %s",
+        original_origin_and_path_.UncheckedSpec().as_string().c_str());
   }
   else if (!original_origin_and_path_.is_valid()) {
-    handler->Message(kInfo, "Cannot rewrite %s relative to invalid url %s",
-                     resource_url.c_str(),
-                     original_origin_and_path_.possibly_invalid_spec().c_str());
+    handler->Message(
+        kInfo, "Cannot rewrite %s relative to invalid url %s",
+        resource_url.c_str(),
+        original_origin_and_path_.UncheckedSpec().as_string().c_str());
   } else {
     // First resolve the original request to ensure that it is allowed by the
     // options.
-    GURL resolved_request = GoogleUrl::Resolve(original_origin_and_path_,
-                                               resource_url);
+    GoogleUrl resolved_request(original_origin_and_path_, resource_url);
     if (!resolved_request.is_valid()) {
       handler->Message(
           kInfo, "URL %s cannot be resolved relative to base URL %s",
-          resource_url.c_str(), original_origin_and_path_.spec().c_str());
-    } else if (!rewrite_options_->IsAllowed(
-        GoogleUrl::Spec(resolved_request))) {
+          resource_url.c_str(),
+          original_origin_and_path_.Spec().as_string().c_str());
+    } else if (!rewrite_options_->IsAllowed(resolved_request.Spec())) {
       handler->Message(kInfo,
                        "Rewriting URL %s is disallowed via configuration",
-                       GoogleUrl::Spec(resolved_request).c_str());
+                       resolved_request.Spec().as_string().c_str());
     } else if (rewrite_options_->domain_lawyer()->MapRequestToDomain(
-        original_origin_and_path_, resource_url, &mapped_domain_name,
+        original_origin_and_path_.gurl(), resource_url, &mapped_domain_name,
         &resolved_request, handler)) {
       if (gurl_vector_.empty()) {
         domain_.swap(mapped_domain_name);
-        domain_gurl_ = GoogleUrl::Create(domain_).Resolve(
-            GoogleUrl::Path(original_origin_and_path_));
+        GoogleUrl domain_origin_gurl(domain_);
+        GoogleUrl tmp(domain_origin_gurl,
+                      original_origin_and_path_.Path());
+        domain_gurl_.Swap(&tmp);
+
         ret = true;
       } else {
         ret = (domain_ == mapped_domain_name);
         if (ret && !rewrite_options_->combine_across_paths()) {
-          ret = (ResolvedBase() == GoogleUrl::AllExceptLeaf(resolved_request));
+          ret = (ResolvedBase() == resolved_request.AllExceptLeaf());
         }
       }
 
       if (ret) {
-        gurl_vector_.push_back(new GURL(resolved_request));
+        gurl_vector_.push_back(new GURL(resolved_request.gurl()));
         int index = gurl_vector_.size() - 1;
         IncrementalResolve(index);
       }
@@ -112,8 +116,8 @@ void UrlPartnership::Reset(const GURL& original_request) {
   gurl_vector_.clear();
   common_components_.clear();
   if (original_request.is_valid()) {
-    original_origin_and_path_ = GoogleUrl::Create(
-        GoogleUrl::AllExceptLeaf(original_request));
+    GoogleUrl tmp(GoogleUrl(original_request).AllExceptLeaf());
+    original_origin_and_path_.Swap(&tmp);
   }
 }
 

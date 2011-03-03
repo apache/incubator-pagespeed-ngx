@@ -41,7 +41,11 @@ class GoogleUrl {
   GoogleUrl(const GoogleUrl& base, const char *str);
   GoogleUrl();
 
-  StringPiece Spec();
+  // It is illegal to call this for invalid urls (i.e. check is_valid() first).
+  StringPiece Spec() const;
+
+  // Returns gurl_.spec_ without checking to see if it's valid or empty.
+  StringPiece UncheckedSpec() const;
 
   // For "http://a.com/b/c/d?e=f/g returns "http://a/b/c/",
   // including trailing slash.
@@ -79,17 +83,23 @@ class GoogleUrl {
   StringPiece Scheme() const;
 
   // Returns validity of stored url.
-  bool IsValid() const {
+  bool is_valid() const {
     return gurl_.is_valid();
   }
 
   const GURL& gurl() const { return gurl_; }
 
-  bool IsStandard() const {
+  bool is_standard() const {
     return gurl_.IsStandard();
   }
 
+  bool is_empty() const {
+    return gurl_.is_empty();
+  }
+
   void Swap(GURL* gurl) { gurl_.Swap(gurl); }
+  void Swap(GoogleUrl* google_url) { gurl_.Swap(&google_url->gurl_); }
+  bool Reset(const StringPiece& new_url);
 
   std::string GetUncheckedSpec() const {
     return gurl_.possibly_invalid_spec();
@@ -170,6 +180,7 @@ class GoogleUrl {
   size_t LeafStartPosition() const;
   size_t PathStartPosition() const;
 
+  DISALLOW_COPY_AND_ASSIGN(GoogleUrl);
 };  // class GoogleUrl
 
 }  // namespace net_instaweb

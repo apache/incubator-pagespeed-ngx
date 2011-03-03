@@ -114,7 +114,7 @@ bool ExtractQuote(std::string* url, char* quote) {
 //
 // TODO(jmarantz): Add parsing & absolutification of @import.
 bool CssTagScanner::AbsolutifyUrls(
-    const StringPiece& contents, const std::string& base_url,
+    const StringPiece& contents, const StringPiece& base_url,
     Writer* writer, MessageHandler* handler) {
   size_t pos = 0;
   size_t prev_pos = 0;
@@ -129,7 +129,7 @@ bool CssTagScanner::AbsolutifyUrls(
   //
   // TODO(jmarantz): Consider calling image optimization, if enabled, on any
   // images found.
-  GURL base_gurl(base_url);
+  GoogleUrl base_gurl(base_url);
   if (base_gurl.is_valid()) {
     while (ok && ((pos = contents.find("url(", pos)) != StringPiece::npos)) {
       ok = writer->Write(contents.substr(prev_pos, pos - prev_pos), handler);
@@ -141,19 +141,18 @@ bool CssTagScanner::AbsolutifyUrls(
         TrimWhitespace(contents.substr(pos, end_of_url - pos), &url);
         char quote;
         bool is_quoted = ExtractQuote(&url, &quote);
-        std::string url_string(url.data(), url.size());
-        GURL gurl(url_string);
+        GoogleUrl gurl(url);
 
         // Relative paths are considered invalid by GURL, and those are the
         // ones we need to resolve.
         if (!gurl.is_valid()) {
-          GURL resolved = base_gurl.Resolve(url_string.c_str());
+          GoogleUrl resolved(base_gurl, url);
           if (resolved.is_valid()) {
             ok = writer->Write("url(", handler);
             if (is_quoted) {
               writer->Write(StringPiece(&quote, 1), handler);
             }
-            ok = writer->Write(resolved.spec().c_str(), handler);
+            ok = writer->Write(resolved.Spec().as_string().c_str(), handler);
             if (is_quoted) {
               writer->Write(StringPiece(&quote, 1), handler);
             }
@@ -165,8 +164,9 @@ bool CssTagScanner::AbsolutifyUrls(
               line += (contents[i] == '\n');
             }
             handler->Error(
-                base_url.c_str(), line,
-                "CSS URL resolution failed: %s", url_string.c_str());
+                base_url.as_string().c_str(), line,
+                "CSS URL resolution failed: %s",
+                url.c_str());
           }
         }
       }

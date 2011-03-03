@@ -76,7 +76,7 @@ class TestCombineFilter : public RewriteFilter {
   }
 
   virtual void StartDocumentImpl() {
-    combiner_.Reset(base_gurl());
+    combiner_.Reset();
   }
 
   virtual void StartElementImpl(HtmlElement* element) {}

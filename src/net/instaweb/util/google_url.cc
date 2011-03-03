@@ -44,7 +44,7 @@ GoogleUrl::GoogleUrl(const GoogleUrl& base, const std::string& str) {
 }
 
 GoogleUrl::GoogleUrl(const GoogleUrl& base, const StringPiece& sp) {
-  gurl_ =  base.gurl_.Resolve(sp.as_string());
+  gurl_ = base.gurl_.Resolve(sp.as_string());
 }
 
 GoogleUrl::GoogleUrl(const GoogleUrl& base, const char *str) {
@@ -92,9 +92,19 @@ StringPiece GoogleUrl::Path() const {
   return StringPiece(spec.data() + path_start, path_length);
 }
 
-StringPiece GoogleUrl::Spec() {
+bool GoogleUrl::Reset(const StringPiece& new_value) {
+  gurl_ = GURL(new_value.as_string());
+  return gurl_.is_valid();
+}
+
+StringPiece GoogleUrl::Spec() const {
   const std::string& spec = gurl_.spec();
   return StringPiece(spec.data(), spec.size());
+}
+
+StringPiece GoogleUrl::UncheckedSpec() const {
+  const std::string& spec = gurl_.possibly_invalid_spec();
+  return StringPiece(spec);
 }
 
 // Find the last slash before the question-mark, if any.  See
@@ -163,6 +173,7 @@ StringPiece GoogleUrl::Scheme() const {
   return StringPiece(gurl_.spec().data() + parsed.scheme.begin,
                      parsed.scheme.len);
 }
+
 ////////////////////////////////////////////////////
 //                                                //
 //  All methods below will be deprecated.         //

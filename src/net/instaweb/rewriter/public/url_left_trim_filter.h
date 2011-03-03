@@ -56,7 +56,7 @@ class UrlLeftTrimFilter : public EmptyHtmlFilter {
   //
   // This is static and requires the base_url explicitly, so that it can be
   // called from other places (like the CSS filter).
-  static bool Trim(const GURL& base_url, const StringPiece& url_to_trim,
+  static bool Trim(const GoogleUrl& base_url, const StringPiece& url_to_trim,
                    std::string* trimmed_url, MessageHandler* handler);
 
  private:
@@ -71,7 +71,7 @@ class UrlLeftTrimFilter : public EmptyHtmlFilter {
   friend class UrlLeftTrimFilterTest;
 
   HtmlParse* html_parse_;
-  GURL base_url_;              // url we make paths relative to
+  GoogleUrl  base_url_;              // url we make paths relative to
 
   // Stats on how much trimming we've done.
   Variable* trim_count_;

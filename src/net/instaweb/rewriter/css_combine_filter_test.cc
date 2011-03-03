@@ -463,6 +463,31 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
       EXPECT_EQ(StrCat(input_beginning, "</div>"), output_buffer_);
     }
   }
+
+  std::string CombineWithBaseTag(const char* html_input) {
+    // Put original CSS files into our fetcher.
+    std::string html_url = StrCat(kDomain, "base_url.html");
+    const char a_css_url[] = "http://other_domain.test/foo/a.css";
+    const char b_css_url[] = "http://other_domain.test/foo/b.css";
+
+    const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
+    const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
+
+    ResponseHeaders default_css_header;
+    resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+    mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
+    mock_url_fetcher_.SetResponse(b_css_url, default_css_header, b_css_body);
+
+    // Rewrite
+    AddFilter(RewriteOptions::kCombineCss);
+    ParseUrl(html_url, html_input);
+
+    // Check for CSS files in the rewritten page.
+    StringVector css_urls;
+    CollectCssLinks("combine_css_no_media-links", output_buffer_, &css_urls);
+    EXPECT_EQ(1UL, css_urls.size());
+    return css_urls[0];
+  }
 };
 
 TEST_F(CssCombineFilterTest, CombineCss) {
@@ -622,38 +647,25 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssBaseUrl) {
-  // Put original CSS files into our fetcher.
-  std::string html_url = StrCat(kDomain, "base_url.html");
-  std::string a_css_url = StrCat(kDomain, "a.css");
-  const char b_css_url[] = "http://other_domain.test/foo/b.css";
-
-  const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
-  const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
-
-  ResponseHeaders default_css_header;
-  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-  mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
-  mock_url_fetcher_.SetResponse(b_css_url, default_css_header, b_css_body);
-
-  // Second stylesheet is on other domain.
-  const char html_input[] =
+// This test, as rewritten as of Feb 2011, is testing an invalid HTML construct,
+// where no hrefs should precede a base tag.  This test has been altered to
+// reflect our actual behavior, which is that we effectively look ahead
+// at the base-tag and let it apply to URLs that show up earlier in the doc.
+//
+// This is not obviously the most intuitive response to invalid HTML but it's
+// what naturally occurs in our implementation, so we are noting that with this
+// test.
+TEST_F(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
+  // Here, the base-tag between two links is basically treated as if it were
+  // before the first link.  In fact this construct is semantically invalid
+  // HTML.  See http://www.whatwg.org/specs/web-apps/current-work/multipage
+  // /semantics.html#the-base-element
+  std::string combine_url = CombineWithBaseTag(
       "<head>\n"
       "  <link rel='stylesheet' type='text/css' href='a.css'>\n"
       "  <base href='http://other_domain.test/foo/'>\n"
       "  <link rel='stylesheet' type='text/css' href='b.css'>\n"
-      "</head>\n";
-
-  // Rewrite
-  AddFilter(RewriteOptions::kCombineCss);
-  ParseUrl(html_url, html_input);
-
-  // Check for CSS files in the rewritten page.
-  StringVector css_urls;
-  CollectCssLinks("combine_css_no_media-links", output_buffer_, &css_urls);
-  EXPECT_EQ(1UL, css_urls.size());
-  const std::string& combine_url = css_urls[0];
-
+      "</head>\n");
   const char expected_output_format[] =
       "<head>\n"
       "  <link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">\n"
@@ -662,9 +674,35 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrl) {
       "</head>\n";
   std::string expected_output = StringPrintf(expected_output_format,
                                               combine_url.c_str());
-
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
+  EXPECT_EQ("http://other_domain.test/foo/a.css+b.css.pagespeed.cc.0.css",
+            combine_url);
+  EXPECT_TRUE(GURL(combine_url.c_str()).is_valid());
+}
 
+// Here's the same test, legalized to have the base url before the first
+// link.  It doesn't change the result.  The only difference between this
+// test and the above
+TEST_F(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
+  // <base> tag correctly precedes any urls.
+  std::string combine_url = CombineWithBaseTag(
+      "<head>\n"
+      "  <base href='http://other_domain.test/foo/'>\n"
+      "  <link rel='stylesheet' type='text/css' href='a.css'>\n"
+      "  <link rel='stylesheet' type='text/css' href='b.css'>\n"
+      "</head>\n");
+
+  const char expected_output_format[] =
+      "<head>\n"
+      "  <base href='http://other_domain.test/foo/'>\n"
+      "  <link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">\n"
+      "  \n"
+      "</head>\n";
+  std::string expected_output = StringPrintf(expected_output_format,
+                                              combine_url.c_str());
+  EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
+  EXPECT_EQ("http://other_domain.test/foo/a.css+b.css.pagespeed.cc.0.css",
+            combine_url);
   EXPECT_TRUE(GURL(combine_url.c_str()).is_valid());
 }
 

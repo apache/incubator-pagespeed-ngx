@@ -63,9 +63,7 @@ class ResourceCombiner {
   // TODO(sligocki): Set this more intelligently.
   static const int kUrlSlack = 100;
 
-  // Note: extension should not include the leading dot here.  Before calling
-  // AddResource, and on each new document, you must call Reset to provide a
-  // base url.
+  // Note: extension should not include the leading dot here.
   ResourceCombiner(RewriteDriver* rewrite_driver,
                    const StringPiece& path_prefix,
                    const StringPiece& extension);
@@ -79,11 +77,10 @@ class ResourceCombiner {
              MessageHandler* message_handler,
              UrlAsyncFetcher::Callback* callback);
 
-  // Resets the current combiner to an empty state.  We will keep a pointer
-  // to this GURL, so it should live as long as you're using this combiner
-  // without calling Reset again.
+  // Resets the current combiner to an empty state, incorporating the base URL.
+  // Make sure this gets called before documents --- on a ::Flush() is enough.
   // If a subclass needs to do some of its own reseting, see Clear().
-  void Reset(const GURL& base_gurl);
+  void Reset();
 
   // Computes a name for the URL that meets all known character-set and
   // size restrictions.
@@ -131,8 +128,6 @@ class ResourceCombiner {
   // Your implementation must call the superclass.
   virtual void Clear();
 
-  const GURL* base_gurl() const { return base_gurl_; }
-
   ResourceManager* const resource_manager_;
   RewriteDriver* const rewrite_driver_;
 
@@ -167,7 +162,6 @@ class ResourceCombiner {
   int accumulated_leaf_size_;
   std::string resolved_base_;
   const int url_overhead_;
-  const GURL* base_gurl_;
   std::string filter_prefix_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceCombiner);

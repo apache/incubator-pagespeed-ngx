@@ -93,12 +93,11 @@ class CssCombineFilter::CssCombiner
 
   // Returns true iff all elements in current combination can be rewritten.
   bool CanRewrite() const {
-    for (int i = 0; i < num_urls(); ++i) {
-      if (!rewrite_driver_->IsRewritable(element(i))) {
-        return false;
-      }
+    bool ret = (num_urls() > 0);
+    for (int i = 0; ret && (i < num_urls()); ++i) {
+      ret = rewrite_driver_->IsRewritable(element(i));
     }
-    return true;
+    return ret;
   }
 
   std::string media_;
@@ -134,7 +133,6 @@ void CssCombineFilter::Initialize(Statistics* statistics) {
 }
 
 void CssCombineFilter::StartDocumentImpl() {
-  combiner_->Reset(base_gurl());
 }
 
 void CssCombineFilter::StartElementImpl(HtmlElement* element) {
@@ -200,7 +198,7 @@ void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
       rewrite_driver_->AddAttribute(
           combine_element, HtmlName::kRel, "stylesheet");
       rewrite_driver_->AddAttribute(combine_element, HtmlName::kType,
-                                kContentTypeCss.mime_type());
+                                    kContentTypeCss.mime_type());
       if (!media_.empty()) {
         rewrite_driver_->AddAttribute(
             combine_element, HtmlName::kMedia, media_);
@@ -211,7 +209,7 @@ void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
       // TODO(sligocki): Put at top of head/flush-window.
       // Right now we're putting it where the first original element used to be.
       rewrite_driver_->InsertElementBeforeElement(element(0),
-                                              combine_element);
+                                                  combine_element);
       // ... and removing originals from the DOM.
       for (int i = 0; i < num_urls(); ++i) {
         rewrite_driver_->DeleteElement(element(i));
@@ -223,7 +221,7 @@ void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
       }
     }
   }
-  Reset(*base_gurl());
+  Reset();
 }
 
 bool CssCombineFilter::CssCombiner::WritePiece(

@@ -42,13 +42,12 @@ namespace {
 // TODO(jmarantz): Check out
 // http://www.whatwg.org/specs/web-apps/current-work/multipage/
 // syntax.html#optional-tags
-//
-// TODO(jmarantz): morlovich suggests "base & col too, going by HTML4.01 DTD.
-// ... but base tag is weird."
 const HtmlName::Keyword kImplicitlyClosedHtmlTags[] = {
   HtmlName::kXml,
   HtmlName::kArea,
+  HtmlName::kBase,
   HtmlName::kBr,
+  HtmlName::kCol,
   HtmlName::kHr,
   HtmlName::kImg,
   HtmlName::kInput,

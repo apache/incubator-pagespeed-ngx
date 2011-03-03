@@ -16,8 +16,8 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_BASE_FILTER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_BASE_FILTER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_COMMON_FILTER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_COMMON_FILTER_H_
 
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
@@ -49,7 +49,8 @@ class CommonFilter : public EmptyHtmlFilter {
   virtual ~CommonFilter();
 
   // Getters
-  const GURL& base_gurl() const { return base_gurl_; }
+  const GURL& base_gurl() const { return driver_->base_url().gurl(); }
+  const GoogleUrl& base_url() const { return driver_->base_url(); }
   HtmlElement* noscript_element() const { return noscript_element_; }
 
   // Note: Don't overload these methods, overload the implementers instead!
@@ -76,8 +77,6 @@ class CommonFilter : public EmptyHtmlFilter {
   const RewriteOptions* rewrite_options_;
 
  private:
-  // TODO(sligocki): Maybe: don't store a separate GURL in each filter.
-  GURL base_gurl_;
   HtmlElement* noscript_element_;
 
  private:
@@ -86,4 +85,4 @@ class CommonFilter : public EmptyHtmlFilter {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_BASE_FILTER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_COMMON_FILTER_H_

@@ -354,6 +354,7 @@
         'rewriter/rewrite_filter.cc',
         'rewriter/rewrite_single_resource_filter.cc',
         'rewriter/rewrite_options.cc',
+        'rewriter/scan_filter.cc',
         'rewriter/script_tag_scanner.cc',
         'rewriter/strip_scripts_filter.cc',
         'rewriter/url_input_resource.cc',

@@ -75,7 +75,8 @@ bool CacheExtender::ShouldRewriteResource(
   if ((headers->CacheExpirationTimeMs() - now_ms) < kMinThresholdMs) {
     return true;
   }
-  std::string origin = GoogleUrl::Origin(GoogleUrl::Create(url));
+  GoogleUrl origin_gurl(url);
+  StringPiece origin = origin_gurl.Origin();
   const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
   return lawyer->WillDomainChange(origin);
 }
@@ -159,8 +160,8 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
 
   StringPiece contents(input_resource->contents());
   std::string absolutified;
-  std::string input_dir =
-      GoogleUrl::AllExceptLeaf(GoogleUrl::Create(input_resource->url()));
+  GoogleUrl input_resource_gurl(input_resource->url());
+  StringPiece input_dir = input_resource_gurl.AllExceptLeaf();
   if ((input_resource->type() == &kContentTypeCss) &&
       (input_dir != output_resource->resolved_base())) {
     // TODO(jmarantz): find a mechanism to write this directly into

@@ -139,7 +139,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
       std::string new_content;
       int64 input_expire_ms;  // not used here.
       if (RewriteCssText(style_char_node_->contents(), &new_content,
-                         base_gurl(), &input_expire_ms,
+                         driver_->base_url(), &input_expire_ms,
                          driver_->message_handler())) {
         // Note: Copy of new_content here.
         HtmlCharactersNode* new_style_char_node =
@@ -175,7 +175,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
 // Specifically, it should be the address of the CSS document itself.
 bool CssFilter::RewriteCssText(const StringPiece& in_text,
                                std::string* out_text,
-                               const GURL& css_gurl,
+                               const GoogleUrl& css_gurl,
                                int64* subresource_expiration_time_ms,
                                MessageHandler* handler) {
   // Load stylesheet w/o expanding background attributes and preserving all
@@ -188,14 +188,15 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
   if (stylesheet.get() == NULL ||
       parser.errors_seen_mask() != Css::Parser::kNoError) {
     ret = false;
-    driver_->InfoHere("CSS parsing error in %s", css_gurl.spec().c_str());
+    driver_->InfoHere("CSS parsing error in %s",
+                      css_gurl.Spec().as_string().c_str());
     if (num_parse_failures_ != NULL) {
       num_parse_failures_->Add(1);
     }
   } else {
     // Edit stylesheet.
     bool edited_css =
-        image_rewriter_.RewriteCssImages(css_gurl, stylesheet.get(),
+        image_rewriter_.RewriteCssImages(css_gurl.gurl(), stylesheet.get(),
                                          subresource_expiration_time_ms,
                                          handler);
 
@@ -212,15 +213,16 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
     if (!edited_css && bytes_saved <= 0) {
       ret = false;
       driver_->InfoHere("CSS parser increased size of CSS file %s by %lld "
-                            "bytes.", css_gurl.spec().c_str(),
-                            static_cast<long long int>(-bytes_saved));
+                        "bytes.", css_gurl.Spec().as_string().c_str(),
+                        static_cast<long long int>(-bytes_saved));
     }
 
     // Don't rewrite if we blanked the CSS file! (This is a parse error)
     // TODO(sligocki): Don't error if in_text is all whitespace.
     if (out_text_size == 0 && in_text_size != 0) {
       ret = false;
-      driver_->InfoHere("CSS parsing error in %s", css_gurl.spec().c_str());
+      driver_->InfoHere("CSS parsing error in %s",
+                        css_gurl.Spec().as_string().c_str());
       if (num_parse_failures_ != NULL) {
         num_parse_failures_->Add(1);
       }
@@ -229,8 +231,8 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
     // Statistics
     if (ret) {
       driver_->InfoHere("Successfully rewrote CSS file %s saving %lld "
-                            "bytes.", css_gurl.spec().c_str(),
-                            static_cast<long long int>(bytes_saved));
+                        "bytes.", css_gurl.Spec().as_string().c_str(),
+                        static_cast<long long int>(bytes_saved));
       if (num_files_minified_ != NULL) {
         num_files_minified_->Add(1);
         minified_bytes_saved_->Add(bytes_saved);
@@ -334,7 +336,7 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
     StringPiece in_contents = input_resource->contents();
     std::string out_contents;
     // TODO(sligocki): Store the GURL in the input_resource.
-    GURL css_gurl = GoogleUrl::Create(input_resource->url());
+    GoogleUrl css_gurl(input_resource->url());
     int64 subresource_expire_ms;
     if (css_gurl.is_valid() &&
         RewriteCssText(in_contents, &out_contents, css_gurl,

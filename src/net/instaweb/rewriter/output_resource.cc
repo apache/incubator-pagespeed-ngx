@@ -261,15 +261,15 @@ std::string OutputResource::url() const {
     uint32 int_hash = HashString<CasePreserve, uint32>(
         hash.data(), hash.size());
     const DomainLawyer* lawyer = rewrite_options_->domain_lawyer();
-    GURL gurl = GoogleUrl::Create(resolved_base_);
-    std::string domain = StrCat(GoogleUrl::Origin(gurl), "/");
+    GoogleUrl gurl(resolved_base_);
+    std::string domain = StrCat(gurl.Origin(), "/");
     if (lawyer->ShardDomain(domain, int_hash, &shard)) {
       // The Path has a leading "/", and shard has a trailing "/".  So
       // we need to perform some StringPiece substring arithmetic to
       // make them all fit together.  Note that we could have used
       // string's substr method but that would have made another temp
       // copy, which seems like a waste.
-      shard_path = StrCat(shard, StringPiece(GoogleUrl::Path(gurl)).substr(1));
+      shard_path = StrCat(shard, gurl.Path().substr(1));
     }
   }
   if (shard_path.empty()) {

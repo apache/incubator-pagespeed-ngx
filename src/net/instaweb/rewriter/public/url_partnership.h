@@ -77,9 +77,9 @@ class UrlPartnership {
   typedef std::vector<GURL*> GurlVector;
   GurlVector gurl_vector_;
   std::string domain_;
-  GURL domain_gurl_;
+  GoogleUrl domain_gurl_;
   const RewriteOptions* rewrite_options_;
-  GURL original_origin_and_path_;
+  GoogleUrl original_origin_and_path_;
 
   // common_components_ is updated while adding Urls to support incremental
   // resolution.

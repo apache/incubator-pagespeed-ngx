@@ -127,12 +127,14 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   rewrite_driver_.ParseText(new_base_url);
   rewrite_driver_.ParseText("' />");
   rewrite_driver_.Flush();
-  // Uses new base URL.
-  ExpectUrl(new_base_url, filter_.base_gurl());
+  EXPECT_EQ(1, message_handler_.TotalMessages());
+
+  // Uses old base URL.
+  ExpectUrl(base_url, filter_.base_gurl());
 
   rewrite_driver_.ParseText("</head></html>");
   rewrite_driver_.FinishParse();
-  ExpectUrl(new_base_url, filter_.base_gurl());
+  ExpectUrl(base_url, filter_.base_gurl());
   ExpectUrl(doc_url, rewrite_driver_.gurl());
 }
 

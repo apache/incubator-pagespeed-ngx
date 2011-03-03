@@ -44,7 +44,7 @@ class DomainLawyerTest : public testing::Test {
   bool MapRequest(const GURL& original_request,
                   const StringPiece& resource_url,
                   std::string* mapped_domain_name) {
-    GURL resolved_request;
+    GoogleUrl resolved_request;
     return domain_lawyer_.MapRequestToDomain(
         original_request, resource_url, mapped_domain_name, &resolved_request,
         &message_handler_);
@@ -322,7 +322,7 @@ TEST_F(DomainLawyerTest, Merge) {
   // Now the tests for both domains should work post-merger.
 
   std::string mapped;
-  GURL resolved_request;
+  GoogleUrl resolved_request;
   ASSERT_TRUE(merged.MapRequestToDomain(
       GoogleUrl::Create(StringPiece("http://www.o1.com/index.html")),
       "styles/blue.css", &mapped, &resolved_request, &message_handler_));

@@ -73,7 +73,7 @@ class DomainLawyer {
   bool MapRequestToDomain(const GURL& original_request,
                           const StringPiece& resource_url,
                           std::string* mapped_domain_name,
-                          GURL* resolved_request,
+                          GoogleUrl* resolved_request,
                           MessageHandler* handler) const;
 
   // Maps an origin resource; just prior to fetching it.  This fails

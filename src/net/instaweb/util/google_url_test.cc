@@ -119,9 +119,9 @@ TEST_F(GoogleUrlTest, ResolveRelative) {
 
 TEST_F(GoogleUrlTest, ResolveRelativeClass) {
   GoogleUrl base(StringPiece("http://www.google.com"));
-  ASSERT_TRUE(base.IsValid());
+  ASSERT_TRUE(base.is_valid());
   GoogleUrl resolved(base, "test.html");
-  ASSERT_TRUE(resolved.IsValid());
+  ASSERT_TRUE(resolved.is_valid());
   EXPECT_EQ(std::string("http://www.google.com/test.html"),
             resolved.Spec());
   EXPECT_EQ(std::string("/test.html"), resolved.Path());
@@ -139,9 +139,9 @@ TEST_F(GoogleUrlTest, ResolveAbsolute) {
 
 TEST_F(GoogleUrlTest, ResolveAbsoluteClass) {
   GoogleUrl base(StringPiece("http://www.google.com"));
-  ASSERT_TRUE(base.IsValid());
+  ASSERT_TRUE(base.is_valid());
   GoogleUrl resolved(base, "http://www.google.com");
-  ASSERT_TRUE(resolved.IsValid());
+  ASSERT_TRUE(resolved.is_valid());
   EXPECT_EQ(std::string("http://www.google.com/"),
             resolved.Spec());
   EXPECT_EQ(std::string("/"), resolved.Path());

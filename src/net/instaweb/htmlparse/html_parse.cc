@@ -48,7 +48,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       need_sanity_check_(false),
       coalesce_characters_(true),
       need_coalesce_characters_(false),
-      valid_(false),
+      url_valid_(false),
       log_rewrite_timing_(false),
       parse_start_time_us_(0),
       timer_(NULL) {
@@ -170,8 +170,8 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
                              const ContentType& content_type) {
   url.CopyToString(&url_);
   GURL gurl(url_);
-  valid_ = gurl.is_valid();
-  if (!valid_) {
+  url_valid_ = gurl.is_valid();
+  if (!url_valid_) {
     message_handler_->Message(kWarning, "HtmlParse: Invalid document url %s",
                               url_.c_str());
   } else {
@@ -186,7 +186,7 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
     AddEvent(new HtmlStartDocumentEvent(line_number_));
     lexer_->StartParse(id, content_type);
   }
-  return valid_;
+  return url_valid_;
 }
 
 void HtmlParse::ShowProgress(const char* message) {
@@ -197,8 +197,8 @@ void HtmlParse::ShowProgress(const char* message) {
 }
 
 void HtmlParse::FinishParse() {
-  DCHECK(valid_) << "Invalid to call FinishParse on invalid input";
-  if (valid_) {
+  DCHECK(url_valid_) << "Invalid to call FinishParse on invalid input";
+  if (url_valid_) {
     lexer_->FinishParse();
     AddEvent(new HtmlEndDocumentEvent(line_number_));
     Flush();
@@ -208,8 +208,8 @@ void HtmlParse::FinishParse() {
 }
 
 void HtmlParse::ParseText(const char* text, int size) {
-  DCHECK(valid_) << "Invalid to call ParseText with invalid url";
-  if (valid_) {
+  DCHECK(url_valid_) << "Invalid to call ParseText with invalid url";
+  if (url_valid_) {
     lexer_->Parse(text, size);
   }
 }
@@ -338,8 +338,8 @@ void HtmlParse::SanityCheck() {
 }
 
 void HtmlParse::Flush() {
-  DCHECK(valid_) << "Invalid to call FinishParse with invalid url";
-  if (valid_) {
+  DCHECK(url_valid_) << "Invalid to call FinishParse with invalid url";
+  if (url_valid_) {
     ShowProgress("Flush");
 
     for (size_t i = 0; i < filters_.size(); ++i) {

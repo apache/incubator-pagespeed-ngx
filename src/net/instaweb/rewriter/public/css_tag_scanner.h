@@ -45,7 +45,7 @@ class CssTagScanner {
   // path.  If xxx is quoted with single-quotes or double-quotes, those are
   // retained and the URL inside is absolutified.
   static bool AbsolutifyUrls(const StringPiece& contents,
-                             const std::string& base_url,
+                             const StringPiece& base_url,
                              Writer* writer, MessageHandler* handler);
 
   // Does this CSS file contain @import? If so, it cannot be combined with

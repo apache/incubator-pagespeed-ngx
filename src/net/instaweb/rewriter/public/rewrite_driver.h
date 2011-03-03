@@ -26,6 +26,7 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/scan_filter.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -90,7 +91,6 @@ class RewriteDriver : public HtmlParse {
   // Adds a resource manager and/or resource_server, enabling the rewriting of
   // resources. This will replace any previous resource managers.
   void SetResourceManager(ResourceManager* resource_manager);
-
 
   void SetUserAgent(const char* user_agent_string) {
     user_agent_.set_user_agent(user_agent_string);
@@ -283,11 +283,26 @@ class RewriteDriver : public HtmlParse {
   // TODO(jmaessen): add url hash & check thereof.
   OutputResource* CreateOutputResourceForFetch(const StringPiece& url);
 
+  // Returns the appropriate base gurl to be used for resolving hrefs
+  // in the document.  Note that HtmlParse::gurl() is the URL for the HTML
+  // file and is used for printing html syntax errors.
+  const GoogleUrl& base_url() const { return base_url_; }
+
  private:
   friend class ResourceManagerTestBase;
   typedef std::map<std::string, RewriteFilter*> StringFilterMap;
   typedef void (RewriteDriver::*SetStringMethod)(const StringPiece& value);
   typedef void (RewriteDriver::*SetInt64Method)(int64 value);
+
+  // Sets the base GURL in response to a base-tag being parsed.  This
+  // should only be called by ScanFilter.
+  void SetBaseUrlIfUnset(const StringPiece& new_base);
+
+  // Initializes the base URL at the start of the document.  This is for
+  // ScanFilter only.
+  void InitBaseUrl();
+
+  friend class ScanFilter;
 
   bool ParseKeyString(const StringPiece& key, SetStringMethod m,
                       const std::string& flag);
@@ -305,7 +320,21 @@ class RewriteDriver : public HtmlParse {
   // Internal low-level helper for resource creation.
   // Use only when permission checking has been done explicitly on the
   // caller side.
-  Resource* CreateInputResourceUnchecked(const GURL& gurl);
+  Resource* CreateInputResourceUnchecked(const GoogleUrl& gurl);
+
+  // Only the first base-tag is significant for a document -- any subsequent
+  // ones are ignored.  There should be no URLs referenced prior to the base
+  // tag, if one exists.  See
+  //
+  // http://www.whatwg.org/specs/web-apps/current-work/multipage/
+  //    semantics.html#the-base-element
+  // http://www.whatwg.org/specs/web-apps/current-work/multipage/
+  //    urls.html#document-base-url
+  //
+  // Thus we keep the base-tag in the RewriteDriver, and also keep track of
+  // whether it's been reset already within the document.
+  bool base_was_set_;
+  GoogleUrl base_url_;
 
   StringFilterMap resource_filter_map_;
 
@@ -320,6 +349,7 @@ class RewriteDriver : public HtmlParse {
   scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
   UserAgent user_agent_;
   std::vector<HtmlFilter*> filters_;
+  ScanFilter scan_filter_;
 
   // Resource-scoped data: must be cleared by Clear().  Note
   // that these are present in the structure but are not used yet.

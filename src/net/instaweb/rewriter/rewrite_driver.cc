@@ -74,15 +74,20 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
                              UrlAsyncFetcher* url_async_fetcher,
                              const RewriteOptions& options)
     : HtmlParse(message_handler),
+      base_was_set_(false),
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),
       add_instrumentation_filter_(NULL),
+      scan_filter_(this),
       cached_resource_fetches_(NULL),
       succeeded_filter_resource_fetches_(NULL),
       failed_filter_resource_fetches_(NULL),
       options_(options) {
   set_log_rewrite_timing(options.log_rewrite_timing());
+
+  // The Scan filter always goes first so it can find base-tags.
+  HtmlParse::AddFilter(&scan_filter_);
 }
 
 RewriteDriver::~RewriteDriver() {
@@ -586,14 +591,14 @@ OutputResource* RewriteDriver::CreateOutputResourceFromResource(
   if (input_resource != NULL) {
     // TODO(jmarantz): It would be more efficient to pass in the base
     // document GURL or save that in the input resource.
-    GURL gurl = GoogleUrl::Create(input_resource->url());
-    UrlPartnership partnership(&options_, gurl);
+    GoogleUrl gurl(input_resource->url());
+    UrlPartnership partnership(&options_, gurl.gurl());
     if (partnership.AddUrl(input_resource->url(), message_handler())) {
-      const GURL& mapped_gurl = *partnership.FullPath(0);
+      const GoogleUrl mapped_gurl(*partnership.FullPath(0));
       std::string name;
-      encoder->EncodeToUrlSegment(GoogleUrl::LeafWithQuery(mapped_gurl), &name);
+      encoder->EncodeToUrlSegment(mapped_gurl.LeafWithQuery(), &name);
       result = CreateOutputResourceWithPath(
-          GoogleUrl::AllExceptLeaf(mapped_gurl),
+          mapped_gurl.AllExceptLeaf(),
           filter_prefix, name, content_type, kRewrittenResource);
     }
   }
@@ -640,7 +645,7 @@ Resource* RewriteDriver::CreateInputResource(const GURL& base_gurl,
     // instead just consult the domain lawyer, rather than creating
     // the throwaway partnership.  Thus there is a lot of extra
     // validation going on.
-    const GURL input_gurl = GoogleUrl::Resolve(base_gurl, input_url);
+    const GoogleUrl input_gurl(base_gurl, input_url);
     resource = CreateInputResourceUnchecked(input_gurl);
   } else {
     handler->Message(kInfo, "Invalid resource url '%s' relative to '%s'",
@@ -684,17 +689,17 @@ Resource* RewriteDriver::CreateInputResourceAbsoluteUnchecked(
   return CreateInputResourceUnchecked(url);
 }
 
-Resource* RewriteDriver::CreateInputResourceUnchecked(const GURL& url) {
+Resource* RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
   if (!url.is_valid()) {
     // Note: Bad user-content can leave us here.  But it's really hard
     // to concatenate a valid protocol and domain onto an arbitrary string
     // and end up with an invalid GURL.
     message_handler()->Message(kWarning, "Invalid resource url '%s'",
-                               url.possibly_invalid_spec().c_str());
+                               url.Spec().as_string().c_str());
     return NULL;
   }
-  std::string url_string = GoogleUrl::Spec(url);
 
+  StringPiece url_string = url.Spec();
   Resource* resource = NULL;
 
   if (url.SchemeIs("data")) {
@@ -702,7 +707,7 @@ Resource* RewriteDriver::CreateInputResourceUnchecked(const GURL& url) {
     if (resource == NULL) {
       // Note: Bad user-content can leave us here.
       message_handler()->Message(kWarning, "Badly formatted data url '%s'",
-                                 url_string.c_str());
+                                 url_string.as_string().c_str());
     }
   } else if (url.SchemeIs("http")) {
     // TODO(sligocki): Figure out if these are actually local, in
@@ -715,7 +720,8 @@ Resource* RewriteDriver::CreateInputResourceUnchecked(const GURL& url) {
   } else {
     // Note: Bad user-content can leave us here.
     message_handler()->Message(kWarning, "Unsupported scheme '%s' for url '%s'",
-                               url.scheme().c_str(), url_string.c_str());
+                               url.Scheme().as_string().c_str(),
+                               url_string.as_string().c_str());
   }
   return resource;
 }
@@ -723,13 +729,12 @@ Resource* RewriteDriver::CreateInputResourceUnchecked(const GURL& url) {
 OutputResource* RewriteDriver::CreateOutputResourceForFetch(
     const StringPiece& url) {
   OutputResource* resource = NULL;
-  std::string url_string(url.data(), url.size());
-  GURL gurl(url_string);
+  GoogleUrl gurl(url);
   if (gurl.is_valid()) {
-    std::string name = GoogleUrl::LeafSansQuery(gurl);
+    StringPiece name = gurl.LeafSansQuery();
     ResourceNamer namer;
     if (namer.Decode(name)) {
-      std::string base = GoogleUrl::AllExceptLeaf(gurl);
+      StringPiece base = gurl.AllExceptLeaf();
       // The RewriteOptions* is not supplied when creating an output-resource
       // on behalf of a fetch.  This is because that field is only used for
       // domain sharding, which is a rewriting activity, not a fetching
@@ -810,6 +815,36 @@ HTTPCache::FindResult RewriteDriver::ReadIfCachedWithStatus(
 void RewriteDriver::FinishParse() {
   HtmlParse::FinishParse();
   Clear();
+}
+
+void RewriteDriver::SetBaseUrlIfUnset(const StringPiece& new_base) {
+  // Base url is relative to the document URL in HTML5, but not in
+  // HTML4.01.  FF3.x does it HTML4.01 way, Chrome, Opera 11 and FF4
+  // betas do it according to HTML5, as is our implementation here.
+  GoogleUrl new_base_url(base_url_, new_base);
+  if (new_base_url.is_valid()) {
+    if (base_was_set_) {
+      if (new_base_url.Spec() != base_url_.Spec()) {
+        InfoHere("Conflicting base tags: %s and %s",
+                 new_base_url.Spec().as_string().c_str(),
+                 base_url_.Spec().as_string().c_str());
+      }
+    } else {
+      base_was_set_ = true;
+      base_url_.Swap(&new_base_url);
+    }
+  } else {
+    InfoHere("Invalid base tag %s relative to %s",
+             new_base.as_string().c_str(),
+             base_url_.Spec().as_string().c_str());
+  }
+}
+
+void RewriteDriver::InitBaseUrl() {
+  base_was_set_ = false;
+  if (is_url_valid()) {
+    base_url_.Reset(google_url().AllExceptLeaf());
+  }
 }
 
 }  // namespace net_instaweb

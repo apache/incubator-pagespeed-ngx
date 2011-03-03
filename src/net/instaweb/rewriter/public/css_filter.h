@@ -84,7 +84,7 @@ class CssFilter : public RewriteSingleResourceFilter {
 
  private:
   bool RewriteCssText(const StringPiece& in_text, std::string* out_text,
-                      const GURL& css_gurl,
+                      const GoogleUrl& css_gurl,
                       int64* subresource_expiration_time_ms,
                       MessageHandler* handler);
   bool RewriteExternalCss(const StringPiece& in_url, std::string* out_url);

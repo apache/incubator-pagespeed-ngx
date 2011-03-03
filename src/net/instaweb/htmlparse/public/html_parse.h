@@ -63,10 +63,15 @@ class HtmlParse {
                           const ContentType& content_type) {
     return StartParseId(url, url, content_type);
   }
+
+  // Returns whether the gurl() URL is valid.
+  bool is_url_valid() const { return url_valid_; }
+
   // Use an error message id that is distinct from the url.
-  // Mostly useful for testing.
-  bool StartParseId(const StringPiece& url, const StringPiece& id,
-                    const ContentType& content_type);
+  // Mostly useful for file-based rewriters so that messages can reference
+  // the HTML file and produce navigable errors.
+  virtual bool StartParseId(const StringPiece& url, const StringPiece& id,
+                            const ContentType& content_type);
 
   // Parses an arbitrary block of an html file, queuing up the events.  Call
   // Flush to send the events through the Filter.
@@ -320,8 +325,8 @@ class HtmlParse {
   bool need_sanity_check_;
   bool coalesce_characters_;
   bool need_coalesce_characters_;
-  bool valid_;
-  bool log_rewrite_timing_;  // Should we use time the speed of parsing?
+  bool url_valid_;
+  bool log_rewrite_timing_;  // Should we time the speed of parsing?
   int64 parse_start_time_us_;
   Timer* timer_;
 

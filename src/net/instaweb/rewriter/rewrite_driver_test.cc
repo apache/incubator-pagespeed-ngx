@@ -36,6 +36,10 @@ class RewriteDriverTest : public ResourceManagerTestBase {
     return (resource.get() != NULL);
   }
 
+  std::string BaseUrlSpec() {
+    return rewrite_driver_.base_url().Spec().as_string();
+  }
+
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverTest);
 };
 
@@ -89,6 +93,62 @@ TEST_F(RewriteDriverTest, TestCacheUse) {
   EXPECT_TRUE(TryFetchResource(cacheExtendedUrl));
   EXPECT_EQ(cold_num_inserts, lru_cache_->num_inserts());
   EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+}
+
+TEST_F(RewriteDriverTest, BaseTags) {
+  // Starting the parse, the base-tag will be derived from the html url.
+  ASSERT_TRUE(rewrite_driver_.StartParse("http://example.com/index.html"));
+  rewrite_driver_.Flush();
+  EXPECT_EQ("http://example.com/", BaseUrlSpec());
+
+  // If we then encounter a base tag, that will become the new base.
+  rewrite_driver_.ParseText("<base href='http://new.example.com/subdir/'>");
+  rewrite_driver_.Flush();
+  EXPECT_EQ(0, message_handler_.TotalMessages());
+  EXPECT_EQ("http://new.example.com/subdir/", BaseUrlSpec());
+
+  // A second base tag will be ignored, and an info message will be printed.
+  rewrite_driver_.ParseText("<base href='http://second.example.com/subdir2'>");
+  rewrite_driver_.Flush();
+  EXPECT_EQ(1, message_handler_.TotalMessages());
+  EXPECT_EQ("http://new.example.com/subdir/", BaseUrlSpec());
+
+  // Restart the parse with a new URL and we start fresh.
+  rewrite_driver_.FinishParse();
+  ASSERT_TRUE(rewrite_driver_.StartParse(
+      "http://restart.example.com/index.html"));
+  rewrite_driver_.Flush();
+  EXPECT_EQ("http://restart.example.com/", BaseUrlSpec());
+
+  // We should be able to reset again.
+  rewrite_driver_.ParseText("<base href='http://new.example.com/subdir/'>");
+  rewrite_driver_.Flush();
+  EXPECT_EQ(1, message_handler_.TotalMessages());
+  EXPECT_EQ("http://new.example.com/subdir/", BaseUrlSpec());
+}
+
+TEST_F(RewriteDriverTest, RelativeBaseTag) {
+  // Starting the parse, the base-tag will be derived from the html url.
+  ASSERT_TRUE(rewrite_driver_.StartParse("http://example.com/index.html"));
+  rewrite_driver_.ParseText("<base href='subdir/'>");
+  rewrite_driver_.Flush();
+  EXPECT_EQ(0, message_handler_.TotalMessages());
+  EXPECT_EQ("http://example.com/subdir/", BaseUrlSpec());
+}
+
+TEST_F(RewriteDriverTest, InvalidBaseTag) {
+  // Encountering an invalid base tag should be ignored (except info message).
+  ASSERT_TRUE(rewrite_driver_.StartParse("slwly://example.com/index.html"));
+  rewrite_driver_.ParseText("<base href='subdir_not_allowed_on_slwly/'>");
+  rewrite_driver_.Flush();
+
+  EXPECT_EQ(1, message_handler_.TotalMessages());
+  EXPECT_EQ("slwly://example.com/", BaseUrlSpec());
+
+  // And we will accept a subsequent base-tag with legal aboslute syntax.
+  rewrite_driver_.ParseText("<base href='http://example.com/absolute/'>");
+  rewrite_driver_.Flush();
+  EXPECT_EQ("http://example.com/absolute/", BaseUrlSpec());
 }
 
 }  // namespace net_instaweb
