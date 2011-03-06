@@ -141,7 +141,7 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
     // Create outline resource at the document location, not base URL location
     scoped_ptr<OutputResource> resource(
         driver_->CreateOutputResourceWithPath(
-            GoogleUrl::AllExceptLeaf(driver_->gurl()), kFilterId, "_",
+            driver_->base_url().Spec(), kFilterId, "_",
             &kContentTypeJavascript, RewriteDriver::kOutlinedResource));
     if (WriteResource(content, resource.get(), handler)) {
       HtmlElement* outline_element = driver_->CloneElement(inline_element);

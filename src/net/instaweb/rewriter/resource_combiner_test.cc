@@ -234,6 +234,8 @@ TEST_F(ResourceCombinerTest, TestPartnershipBasic) {
   HtmlElement* e2 = TestElement();
   HtmlElement* e3 = TestElement();
 
+  printf("driver base url is %s\n", rewrite_driver_.base_url().spec_c_str());
+
   EXPECT_EQ(0, partnership_->num_urls());
   EXPECT_TRUE(partnership_->AddElement(e1, kTestPiece1, &message_handler_));
   EXPECT_EQ(1, partnership_->num_urls());

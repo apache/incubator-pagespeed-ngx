@@ -47,8 +47,6 @@ class JsInlineFilter : public CommonFilter {
   const size_t size_threshold_bytes_;
   ScriptTagScanner script_tag_scanner_;
 
-  std::string domain_;  // The domain of the HTML file we're parsing
-
   // This is set to true during StartElement() for a <script> tag that we
   // should maybe inline, but may be set back to false by Characters().  If it
   // is still true when we hit the corresponding EndElement(), then we'll

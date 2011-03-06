@@ -34,90 +34,45 @@ class GoogleUrlTest : public testing::Test {
  protected:
   GoogleUrlTest()
   : gurl_(kUrl),
-    gurl_with_port_(kUrlWithPort),
-    cgurl_(kUrl),
-    cgurl_with_port_(kUrlWithPort)
+    gurl_with_port_(kUrlWithPort)
   {}
 
-  GURL gurl_;
-  GURL gurl_with_port_;
-
-  GoogleUrl cgurl_;
-  GoogleUrl cgurl_with_port_;
+  GoogleUrl gurl_;
+  GoogleUrl gurl_with_port_;
 };
 
 TEST_F(GoogleUrlTest, TestSpec) {
-  EXPECT_EQ(std::string(kUrl), GoogleUrl::Spec(gurl_));
-  EXPECT_EQ(std::string("http://a.com/b/c/"), GoogleUrl::AllExceptLeaf(gurl_));
-  EXPECT_EQ(std::string("d.ext?f=g/h"), GoogleUrl::LeafWithQuery(gurl_));
-  EXPECT_EQ(std::string("d.ext"), GoogleUrl::LeafSansQuery(gurl_));
-  EXPECT_EQ(std::string("http://a.com"), GoogleUrl::Origin(gurl_));
-  EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"), GoogleUrl::PathAndLeaf(gurl_));
-  EXPECT_EQ(std::string("/b/c/d.ext"), GoogleUrl::Path(gurl_));
-}
-
-TEST_F(GoogleUrlTest, TestSpecClass) {
-  EXPECT_EQ(std::string(kUrl), cgurl_.Spec());
-  EXPECT_EQ(std::string("http://a.com/b/c/"), cgurl_.AllExceptLeaf());
-  EXPECT_EQ(std::string("d.ext?f=g/h"), cgurl_.LeafWithQuery());
-  EXPECT_EQ(std::string("d.ext"), cgurl_.LeafSansQuery());
-  EXPECT_EQ(std::string("http://a.com"), cgurl_.Origin());
-  EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"), cgurl_.PathAndLeaf());
-  EXPECT_EQ(std::string("/b/c/d.ext"), cgurl_.Path());
+  EXPECT_EQ(std::string(kUrl), gurl_.Spec());
+  EXPECT_EQ(std::string("http://a.com/b/c/"), gurl_.AllExceptLeaf());
+  EXPECT_EQ(std::string("d.ext?f=g/h"), gurl_.LeafWithQuery());
+  EXPECT_EQ(std::string("d.ext"), gurl_.LeafSansQuery());
+  EXPECT_EQ(std::string("http://a.com"), gurl_.Origin());
+  EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"), gurl_.PathAndLeaf());
+  EXPECT_EQ(std::string("/b/c/d.ext"), gurl_.Path());
 }
 
 
 TEST_F(GoogleUrlTest, TestSpecWithPort) {
-  EXPECT_EQ(std::string(kUrlWithPort), GoogleUrl::Spec(gurl_with_port_));
+  EXPECT_EQ(std::string(kUrlWithPort), gurl_with_port_.Spec());
   EXPECT_EQ(std::string("http://a.com:8080/b/c/"),
-            GoogleUrl::AllExceptLeaf(gurl_with_port_));
+            gurl_with_port_.AllExceptLeaf());
   EXPECT_EQ(std::string("d.ext?f=g/h"),
-            GoogleUrl::LeafWithQuery(gurl_with_port_));
-  EXPECT_EQ(std::string("d.ext"), GoogleUrl::LeafSansQuery(gurl_with_port_));
+            gurl_with_port_.LeafWithQuery());
+  EXPECT_EQ(std::string("d.ext"), gurl_with_port_.LeafSansQuery());
   EXPECT_EQ(std::string("http://a.com:8080"),
-            GoogleUrl::Origin(gurl_with_port_));
+            gurl_with_port_.Origin());
   EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"),
-            GoogleUrl::PathAndLeaf(gurl_with_port_));
-  EXPECT_EQ(std::string("/b/c/d.ext"), GoogleUrl::Path(gurl_));
-  EXPECT_EQ(std::string("/b/c/"), GoogleUrl::PathSansLeaf(gurl_));
-}
-
-TEST_F(GoogleUrlTest, TestSpecWithPortClass) {
-  EXPECT_EQ(std::string(kUrlWithPort), cgurl_with_port_.Spec());
-  EXPECT_EQ(std::string("http://a.com:8080/b/c/"),
-            cgurl_with_port_.AllExceptLeaf());
-  EXPECT_EQ(std::string("d.ext?f=g/h"),
-            cgurl_with_port_.LeafWithQuery());
-  EXPECT_EQ(std::string("d.ext"), cgurl_with_port_.LeafSansQuery());
-  EXPECT_EQ(std::string("http://a.com:8080"),
-            cgurl_with_port_.Origin());
-  EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"),
-            cgurl_with_port_.PathAndLeaf());
-  EXPECT_EQ(std::string("/b/c/d.ext"), cgurl_.Path());
-  EXPECT_EQ(std::string("/b/c/"), cgurl_.PathSansLeaf());
+            gurl_with_port_.PathAndLeaf());
+  EXPECT_EQ(std::string("/b/c/d.ext"), gurl_.Path());
+  EXPECT_EQ(std::string("/b/c/"), gurl_.PathSansLeaf());
 }
 
 TEST_F(GoogleUrlTest, TestTrivialLeafSansQuery) {
-  GURL queryless("http://a.com/b/c/d.ext");
-  EXPECT_EQ(std::string("d.ext"), GoogleUrl::LeafSansQuery(queryless));
-}
-
-TEST_F(GoogleUrlTest, TestTrivialLeafSansQueryClass) {
   GoogleUrl queryless("http://a.com/b/c/d.ext");
   EXPECT_EQ(std::string("d.ext"), queryless.LeafSansQuery());
 }
 
 TEST_F(GoogleUrlTest, ResolveRelative) {
-  GURL base = GoogleUrl::Create(StringPiece("http://www.google.com"));
-  ASSERT_TRUE(base.is_valid());
-  GURL resolved = GoogleUrl::Resolve(base, "test.html");
-  ASSERT_TRUE(resolved.is_valid());
-  EXPECT_EQ(std::string("http://www.google.com/test.html"),
-            GoogleUrl::Spec(resolved));
-  EXPECT_EQ(std::string("/test.html"), GoogleUrl::Path(resolved));
-}
-
-TEST_F(GoogleUrlTest, ResolveRelativeClass) {
   GoogleUrl base(StringPiece("http://www.google.com"));
   ASSERT_TRUE(base.is_valid());
   GoogleUrl resolved(base, "test.html");
@@ -128,16 +83,6 @@ TEST_F(GoogleUrlTest, ResolveRelativeClass) {
 }
 
 TEST_F(GoogleUrlTest, ResolveAbsolute) {
-  GURL base = GoogleUrl::Create(StringPiece("http://www.google.com"));
-  ASSERT_TRUE(base.is_valid());
-  GURL resolved = GoogleUrl::Resolve(base, "http://www.google.com");
-  ASSERT_TRUE(resolved.is_valid());
-  EXPECT_EQ(std::string("http://www.google.com/"),
-            GoogleUrl::Spec(resolved));
-  EXPECT_EQ(std::string("/"), GoogleUrl::Path(resolved));
-}
-
-TEST_F(GoogleUrlTest, ResolveAbsoluteClass) {
   GoogleUrl base(StringPiece("http://www.google.com"));
   ASSERT_TRUE(base.is_valid());
   GoogleUrl resolved(base, "http://www.google.com");

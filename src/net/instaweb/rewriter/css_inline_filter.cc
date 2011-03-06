@@ -87,9 +87,9 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
     // Absolutify the URLs in the CSS -- relative URLs will break otherwise.
     std::string rewritten_contents;
     StringWriter writer(&rewritten_contents);
-    std::string input_dir =
-        GoogleUrl::AllExceptLeaf(GoogleUrl::Create(resource->url()));
-    std::string base_dir = GoogleUrl::AllExceptLeaf(base_gurl());
+    GoogleUrl resource_url(resource->url());
+    StringPiece input_dir = resource_url.AllExceptLeaf();
+    StringPiece base_dir = base_url().AllExceptLeaf();
     bool written;
     if (input_dir == base_dir) {
       // We don't need to absolutify URLs if input directory is same as base.

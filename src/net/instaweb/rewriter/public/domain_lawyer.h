@@ -70,7 +70,7 @@ class DomainLawyer {
   // the original URL.
   //
   // Returns false on failure.
-  bool MapRequestToDomain(const GURL& original_request,
+  bool MapRequestToDomain(const GoogleUrl& original_request,
                           const StringPiece& resource_url,
                           std::string* mapped_domain_name,
                           GoogleUrl* resolved_request,

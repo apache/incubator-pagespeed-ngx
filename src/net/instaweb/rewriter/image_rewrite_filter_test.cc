@@ -295,13 +295,13 @@ TEST_F(ImageRewriteTest, RespectsBaseUrl) {
 
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
-  GURL new_png_gurl = GoogleUrl::Create(new_png_url);
+  GoogleUrl new_png_gurl(new_png_url);
   EXPECT_TRUE(new_png_gurl.is_valid());
-  EXPECT_EQ("other_domain.test", new_png_gurl.host());
+  EXPECT_EQ("other_domain.test", new_png_gurl.Host());
 
-  GURL new_jpeg_gurl = GoogleUrl::Create(new_jpeg_url);
+  GoogleUrl new_jpeg_gurl(new_jpeg_url);
   EXPECT_TRUE(new_jpeg_gurl.is_valid());
-  EXPECT_EQ("other_domain.test", new_jpeg_gurl.host());
+  EXPECT_EQ("other_domain.test", new_jpeg_gurl.Host());
 }
 
 TEST_F(ImageRewriteTest, FetchInvalid) {

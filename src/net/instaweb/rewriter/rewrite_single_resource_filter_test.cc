@@ -274,7 +274,7 @@ class RewriteSingleResourceFilterTest
     }
 
     scoped_ptr<Resource> input_resource(
-      rewrite_driver_.CreateInputResource(GURL(kTestDomain), url));
+      rewrite_driver_.CreateInputResource(GoogleUrl(kTestDomain), url));
     EXPECT_TRUE(input_resource.get() != NULL);
     scoped_ptr<OutputResource> output_resource(
         filter_->CreateOutputResourceFromResource(

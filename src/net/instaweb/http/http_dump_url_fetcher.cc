@@ -86,7 +86,7 @@ HttpDumpUrlFetcher::~HttpDumpUrlFetcher() {
 }
 
 bool HttpDumpUrlFetcher::GetFilenameFromUrl(const StringPiece& root_dir,
-                                            const GURL& gurl,
+                                            const GoogleUrl& gurl,
                                             std::string* filename,
                                             MessageHandler* handler) {
   bool ret = false;
@@ -102,13 +102,13 @@ bool HttpDumpUrlFetcher::GetFilenameFromUrl(const StringPiece& root_dir,
     // Seperate the url into domain and path.  Note: we ignore scheme, username,
     // password, port and ref (stuff after '#').
     // TODO(sligocki): Perhaps we should include these (except ref).
-    std::string domain = gurl.host();
-    std::string path = gurl.path();
+    StringPiece domain = gurl.Host();
+    std::string path(gurl.Path().data(), gurl.Path().length());
 
     // Add other bits of url used by latency lab.
-    if (!gurl.query().empty()) {  // Part after '?' in url.
+    if (!gurl.Query().empty()) {  // Part after '?' in url.
       path.append(1, '?');
-      path.append(gurl.query());
+      path.append(gurl.Query().data(), gurl.Query().length());
     }
 
     FilenameEncoder encoder;
@@ -119,11 +119,11 @@ bool HttpDumpUrlFetcher::GetFilenameFromUrl(const StringPiece& root_dir,
 }
 
 bool HttpDumpUrlFetcher::GetFilenamePrefixFromUrl(const StringPiece& root_dir,
-                                                  const GURL& url,
+                                                  const GoogleUrl& url,
                                                   std::string* filename,
                                                   MessageHandler* handler) {
-  handler->Check(EndsInSlash(StringPiece(url.spec())),
-                 "Prefix url must end in '/', was %s", url.spec().c_str());
+  handler->Check(EndsInSlash(url.Spec()),
+                 "Prefix url must end in '/', was %s", url.spec_c_str());
   bool ret = GetFilenameFromUrl(root_dir, url, filename, handler);
   if (ret) {
     size_t last_slash = filename->find_last_of('/');
@@ -228,8 +228,8 @@ bool HttpDumpUrlFetcher::StreamingFetchUrl(
     MessageHandler* handler) {
   bool ret = false;
   std::string filename;
-  GURL gurl(url);
-  if (gurl.is_valid() && gurl.IsStandard() &&
+  GoogleUrl gurl(url);
+  if (gurl.is_valid() && gurl.is_standard() &&
       GetFilenameFromUrl(root_dir_, gurl, &filename, handler)) {
     NullMessageHandler null_handler;
     // Pass in NullMessageHandler so that we don't get errors for file not found

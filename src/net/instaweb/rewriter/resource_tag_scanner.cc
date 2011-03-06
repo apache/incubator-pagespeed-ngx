@@ -24,7 +24,8 @@
 
 namespace net_instaweb {
 
-HtmlElement::Attribute* ResourceTagScanner::ScanElement(HtmlElement* element) {
+HtmlElement::Attribute* ResourceTagScanner::ScanElement(HtmlElement* element)
+    const {
   HtmlName::Keyword keyword = element->keyword();
   HtmlElement::Attribute* attr = NULL;
   if (keyword == HtmlName::kLink) {

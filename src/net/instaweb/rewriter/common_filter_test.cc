@@ -53,9 +53,9 @@ class CommonFilterTest : public ResourceManagerTestBase {
     rewrite_driver_.AddFilter(&filter_);
   }
 
-  void ExpectUrl(const std::string& expected_url, const GURL& actual_gurl) {
-    LOG(INFO) << actual_gurl;
-    EXPECT_EQ(expected_url, GoogleUrl::Spec(actual_gurl));
+  void ExpectUrl(const std::string& expected_url, const GoogleUrl& actual_gurl) {
+    LOG(INFO) << actual_gurl.spec_c_str();
+    EXPECT_EQ(expected_url, actual_gurl.Spec());
   }
 
   bool CanRewriteResource(CommonFilter* filter, const StringPiece& url) {
@@ -100,13 +100,13 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   rewrite_driver_.StartParse(doc_url);
   rewrite_driver_.Flush();
   // Base URL starts out as document URL.
-  ExpectUrl(doc_url, rewrite_driver_.gurl());
-  ExpectUrl(doc_url, filter_.base_gurl());
+  ExpectUrl(doc_url, rewrite_driver_.google_url());
+  ExpectUrl(doc_url, filter_.base_url());
 
   rewrite_driver_.ParseText(
       "<html><head><link rel='stylesheet' href='foo.css'>");
   rewrite_driver_.Flush();
-  ExpectUrl(doc_url, filter_.base_gurl());
+  ExpectUrl(doc_url, filter_.base_url());
 
   std::string base_url = "http://www.baseurl.com/foo/";
   rewrite_driver_.ParseText("<base href='");
@@ -114,13 +114,13 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   rewrite_driver_.ParseText("' />");
   rewrite_driver_.Flush();
   // Update to base URL.
-  ExpectUrl(base_url, filter_.base_gurl());
+  ExpectUrl(base_url, filter_.base_url());
   // Make sure we didn't change the document URL.
-  ExpectUrl(doc_url, rewrite_driver_.gurl());
+  ExpectUrl(doc_url, rewrite_driver_.google_url());
 
   rewrite_driver_.ParseText("<link rel='stylesheet' href='foo.css'>");
   rewrite_driver_.Flush();
-  ExpectUrl(base_url, filter_.base_gurl());
+  ExpectUrl(base_url, filter_.base_url());
 
   std::string new_base_url = "http://www.somewhere-else.com/";
   rewrite_driver_.ParseText("<base href='");
@@ -130,12 +130,12 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   EXPECT_EQ(1, message_handler_.TotalMessages());
 
   // Uses old base URL.
-  ExpectUrl(base_url, filter_.base_gurl());
+  ExpectUrl(base_url, filter_.base_url());
 
   rewrite_driver_.ParseText("</head></html>");
   rewrite_driver_.FinishParse();
-  ExpectUrl(base_url, filter_.base_gurl());
-  ExpectUrl(doc_url, rewrite_driver_.gurl());
+  ExpectUrl(base_url, filter_.base_url());
+  ExpectUrl(doc_url, rewrite_driver_.google_url());
 }
 
 TEST_F(CommonFilterTest, DetectsNoScriptCorrectly) {

@@ -140,9 +140,10 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
     // See http://www.w3.org/TR/html5/semantics.html#the-style-element
     if (type == NULL || strcmp(type, kContentTypeCss.mime_type()) == 0) {
       MessageHandler* handler = driver_->message_handler();
-      // Create outline resource at the document location, not base URL location
-      // TODO Add a test case that puts a relative URL ref into an inlined
-      // CSS file, preceded by a base-tag.  This will break.  Fix it.
+      // Create outline resource at the document location,
+      // not base URL location.
+      // TODO(nforman): Add a test case that puts a relative URL ref into
+      // an inlined CSS file, preceded by a base-tag.  This will break.  Fix it.
       scoped_ptr<OutputResource> output_resource(
           driver_->CreateOutputResourceWithPath(
               driver_->google_url().AllExceptLeaf(), kFilterId, "_",

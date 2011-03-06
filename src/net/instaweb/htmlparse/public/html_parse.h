@@ -64,10 +64,9 @@ class HtmlParse {
     return StartParseId(url, url, content_type);
   }
 
-  // Returns whether the gurl() URL is valid.
+  // Returns whether the google_url() URL is valid.
   bool is_url_valid() const { return url_valid_; }
 
-  // Use an error message id that is distinct from the url.
   // Mostly useful for file-based rewriters so that messages can reference
   // the HTML file and produce navigable errors.
   virtual bool StartParseId(const StringPiece& url, const StringPiece& id,
@@ -226,8 +225,7 @@ class HtmlParse {
   // Gets the current location information; typically to help with error
   // messages.
   const char* url() const { return url_.c_str(); }
-  // Gets a parsed GURL& corresponding to url().
-  const GURL& gurl() const { return google_url_.gurl(); }
+  // Gets a parsed GoogleUrl& corresponding to url().
   const GoogleUrl& google_url() const { return google_url_; }
   const char* id() const { return id_.c_str(); }
   int line_number() const { return line_number_; }
@@ -282,6 +280,20 @@ class HtmlParse {
   void set_timer(Timer* timer) { timer_ = timer; }
   void set_log_rewrite_timing(bool x) { log_rewrite_timing_ = x; }
 
+ protected:
+  // Subclasses that want more explicit control of when initial filters
+  // are activated can do so by adjusting the first filter index, which
+  // will be respected by Flush() when it loops through the filters.
+  // Note that this must be called before every Flush, as it is reset
+  // to 0 on flush.
+  //
+  // The intended use case is a scan-filter inserted at the beginning
+  // of the vector.  We want to run the scan first, then allow some
+  // delay for async cache requests to be answered, then run the
+  // rest of the filters.  This could also have been done with
+  // a flag kept in the filter.
+  void set_first_filter(int index) { first_filter_ = index; }
+
  private:
   HtmlEventListIterator Last();  // Last element in queue
   bool IsInEventWindow(const HtmlEventListIterator& iter) const;
@@ -329,6 +341,7 @@ class HtmlParse {
   bool log_rewrite_timing_;  // Should we time the speed of parsing?
   int64 parse_start_time_us_;
   Timer* timer_;
+  int first_filter_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlParse);
 };

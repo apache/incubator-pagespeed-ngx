@@ -54,71 +54,21 @@ class RewriteFilter;
 
 class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
  protected:
-  ResourceManagerTestBase()
-      : mock_url_async_fetcher_(&mock_url_fetcher_),
-        file_prefix_(StrCat(GTestTempDir(), "/")),
-        url_prefix_(URL_PREFIX),
+  ResourceManagerTestBase();
 
-        lru_cache_(new LRUCache(kCacheSize)),
-        http_cache_(lru_cache_, file_system_.timer()),
-        // TODO(jmaessen): Pull timer out of file_system_ and make it
-        // standalone.
-        lock_manager_(&file_system_, file_system_.timer(), &message_handler_),
-        // TODO(sligocki): Why can't I init it here ...
-        // resource_manager_(new ResourceManager(
-        //    file_prefix_, &file_system_,
-        //    &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
-        //    &http_cache_)),
-        rewrite_driver_(&message_handler_, &file_system_,
-                        &mock_url_async_fetcher_, options_),
-
-        other_lru_cache_(new LRUCache(kCacheSize)),
-        other_http_cache_(other_lru_cache_, other_file_system_.timer()),
-        other_lock_manager_(
-            &other_file_system_, other_file_system_.timer(), &message_handler_),
-        other_resource_manager_(
-            file_prefix_, &other_file_system_,
-            &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
-            &other_http_cache_, &other_lock_manager_),
-        other_rewrite_driver_(&message_handler_, &other_file_system_,
-                              &mock_url_async_fetcher_, other_options_) {
-    // rewrite_driver_.SetResourceManager(resource_manager_);
-    other_rewrite_driver_.SetResourceManager(&other_resource_manager_);
-  }
-
-  virtual void SetUp() {
-    HtmlParseTestBaseNoAlloc::SetUp();
-    // TODO(sligocki): Init this in constructor.
-    resource_manager_ = new ResourceManager(
-        file_prefix_, &file_system_,
-        &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
-        &http_cache_, &lock_manager_);
-    rewrite_driver_.SetResourceManager(resource_manager_);
-  }
-
-  virtual void TearDown() {
-    delete resource_manager_;
-    HtmlParseTestBaseNoAlloc::TearDown();
-  }
+  virtual void SetUp();
+  virtual void TearDown();
 
   // In this set of tests, we will provide explicit body tags, so
   // the test harness should not add them in for our convenience.
   // It can go ahead and add the <html> and </html>, however.
-  virtual bool AddBody() const {
-    return false;
-  }
+  virtual bool AddBody() const { return false; }
 
   // Add a single rewrite filter to rewrite_driver_.
-  void AddFilter(RewriteOptions::Filter filter) {
-    options_.EnableFilter(filter);
-    rewrite_driver_.AddFilters();
-  }
+  void AddFilter(RewriteOptions::Filter filter);
 
   // Add a single rewrite filter to other_rewrite_driver_.
-  void AddOtherFilter(RewriteOptions::Filter filter) {
-    other_options_.EnableFilter(filter);
-    other_rewrite_driver_.AddFilters();
-  }
+  void AddOtherFilter(RewriteOptions::Filter filter);
 
   // Add a custom rewrite filter (one without a corresponding option)
   // to rewrite_driver and enable it.
@@ -157,39 +107,16 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   MockTimer* mock_timer() { return file_system_.timer(); }
 
-  void DeleteFileIfExists(const std::string& filename) {
-    if (file_system_.Exists(filename.c_str(), &message_handler_).is_true()) {
-      ASSERT_TRUE(file_system_.RemoveFile(filename.c_str(), &message_handler_));
-    }
-  }
+  void DeleteFileIfExists(const std::string& filename);
 
   void AppendDefaultHeaders(const ContentType& content_type,
                             ResourceManager* resource_manager,
-                            std::string* text) {
-    ResponseHeaders header;
-    int64 time = mock_timer()->NowUs();
-    // Reset mock timer so synthetic headers match original.
-    mock_timer()->set_time_us(0);
-    resource_manager->SetDefaultHeaders(&content_type, &header);
-    // Then set it back
-    mock_timer()->set_time_us(time);
-    StringWriter writer(text);
-    header.WriteAsHttp(&writer, &message_handler_);
-  }
+                            std::string* text);
 
   void ServeResourceFromManyContexts(const std::string& resource_url,
                                      RewriteOptions::Filter filter,
                                      Hasher* hasher,
-                                     const StringPiece& expected_content) {
-    // TODO(sligocki): Serve the resource under several contexts. For example:
-    //   1) With output-resource cached,
-    //   2) With output-resource not cached, but in a file,
-    //   3) With output-resource unavailable, but input-resource cached,
-    //   4) With output-resource unavailable and input-resource not cached,
-    //      but still fetchable,
-    ServeResourceFromNewContext(resource_url, filter, hasher, expected_content);
-    //   5) With nothing available (failure).
-  }
+                                     const StringPiece& expected_content);
 
   // Test that a resource can be served from an new server that has not already
   // constructed it.
@@ -206,44 +133,14 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   // Initializes a resource for mock fetching.
   void InitResponseHeaders(const StringPiece& resource_name,
-                    const ContentType& content_type,
-                    const StringPiece& content,
-                    int64 ttl) {
-    std::string name;
-    if (resource_name.starts_with("http://")) {
-      resource_name.CopyToString(&name);
-    } else {
-      name = StrCat(kTestDomain, resource_name);
-    }
-    ResponseHeaders response_headers;
-    resource_manager_->SetDefaultHeaders(&content_type, &response_headers);
-    response_headers.RemoveAll(HttpAttributes::kCacheControl);
-    response_headers.Add(
-        HttpAttributes::kCacheControl,
-        StringPrintf("public, max-age=%ld", static_cast<long>(ttl)).c_str());
-    response_headers.ComputeCaching();
-    mock_url_fetcher_.SetResponse(name, response_headers, content);
-  }
+                           const ContentType& content_type,
+                           const StringPiece& content,
+                           int64 ttl);
 
   // TODO(sligocki): Take a ttl and share code with InitResponseHeaders.
   void AddFileToMockFetcher(const StringPiece& url,
                             const std::string& filename,
-                            const ContentType& content_type) {
-    // TODO(sligocki): There's probably a lot of wasteful copying here.
-
-    // We need to load a file from the testdata directory. Don't use this
-    // physical filesystem for anything else, use file_system_ which can be
-    // abstracted as a MemFileSystem instead.
-    std::string contents;
-    StdioFileSystem stdio_file_system;
-    ASSERT_TRUE(stdio_file_system.ReadFile(filename.c_str(), &contents,
-                                           &message_handler_));
-
-    // Put file into our fetcher.
-    ResponseHeaders default_header;
-    resource_manager_->SetDefaultHeaders(&content_type, &default_header);
-    mock_url_fetcher_.SetResponse(url, default_header, contents);
-  }
+                            const ContentType& content_type);
 
   // Callback that can be used for testing resource fetches.  As all the
   // async fetchers in unit-tests call their callbacks immediately, it
@@ -271,30 +168,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // on the status and EXPECT_EQ on the content.
   bool ServeResource(const StringPiece& path, const StringPiece& filter_id,
                      const StringPiece& name, const StringPiece& ext,
-                     std::string* content) {
-    std::string url = Encode(path, filter_id, "0", name, ext);
-    return ServeResourceUrl(url, content);
-  }
+                     std::string* content);
 
-  bool ServeResourceUrl(const StringPiece& url, std::string* content) {
-    content->clear();
-    RequestHeaders request_headers;
-    ResponseHeaders response_headers;
-    StringWriter writer(content);
-    FetchCallback callback;
-    bool fetched = rewrite_driver_.FetchResource(
-        url, request_headers, &response_headers, &writer, &callback);
-    // The callback should be called if and only if FetchResource
-    // returns true.
-    EXPECT_EQ(fetched, callback.done());
-    return fetched && callback.success();
-  }
+  bool ServeResourceUrl(const StringPiece& url, std::string* content);
 
   // Just check if we can fetch a resource successfully, ignore response.
-  bool TryFetchResource(const StringPiece& url) {
-    std::string contents;
-    return ServeResourceUrl(url, &contents);
-  }
+  bool TryFetchResource(const StringPiece& url);
 
   // Helper function to encode a resource name from its pieces.
   std::string Encode(const StringPiece& path,
@@ -304,12 +183,15 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Overrides the async fetcher on the primary context to be a
   // wait fetcher which permits delaying callback invocation, and returns a
   // pointer to the new fetcher.
-  WaitUrlAsyncFetcher* SetupWaitFetcher() {
-    WaitUrlAsyncFetcher* delayer =
-        new WaitUrlAsyncFetcher(&mock_url_fetcher_);
-    rewrite_driver_.set_async_fetcher(delayer);
-    resource_manager_->set_url_async_fetcher(delayer);
-    return delayer;
+  WaitUrlAsyncFetcher* SetupWaitFetcher();
+
+  virtual void PostParseHook() {
+    // This mocks the behavior of a system-integration with an event-loop.
+    rewrite_driver_.Scan();
+
+    // TODO(jmarantz): When the cache is made asynchronous, this is
+    // where we'd mock a delay to allow the caches to return, and
+    // to run its callbacks.
   }
 
   // Testdata directory.

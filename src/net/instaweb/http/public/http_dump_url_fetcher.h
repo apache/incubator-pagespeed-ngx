@@ -23,10 +23,9 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/google_url.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
-
-class GURL;
 
 namespace net_instaweb {
 
@@ -56,12 +55,12 @@ class HttpDumpUrlFetcher : public UrlFetcher {
   // Converts URL into filename the way that Latency Lab does.
   // Note: root_dir_ must be standardized to have a / at end already.
   static bool GetFilenameFromUrl(const StringPiece& root_dir,
-                                 const GURL& url,
+                                 const GoogleUrl& url,
                                  std::string* filename,
                                  MessageHandler* message_handler);
 
   // Non-static version that uses the fetcher's root dir.
-  bool GetFilename(const GURL& url,
+  bool GetFilename(const GoogleUrl& url,
                    std::string* filename,
                    MessageHandler* message_handler) {
     return GetFilenameFromUrl(root_dir_, url, filename, message_handler);
@@ -70,7 +69,7 @@ class HttpDumpUrlFetcher : public UrlFetcher {
   // Converts URL into filename prefix the way that Latency Lab does.
   // Note: root_dir_ must be standardized to have a / at end already.
   static bool GetFilenamePrefixFromUrl(const StringPiece& root_dir,
-                                       const GURL& url,
+                                       const GoogleUrl& url,
                                        std::string* filename,
                                        MessageHandler* message_handler);
 

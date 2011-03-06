@@ -23,7 +23,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 
-class GURL;
+class GoogleUrl;
 
 namespace Css {
 
@@ -56,7 +56,7 @@ class CssImageRewriter {
   // Returns whether or not it made any changes.
   // Output 'expiration_time_ms' is the min TTL for all subresources in CSS.
   // (or kint64max if there are none)
-  bool RewriteCssImages(const GURL& base_url, Css::Stylesheet* stylesheet,
+  bool RewriteCssImages(const GoogleUrl& base_url, Css::Stylesheet* stylesheet,
                         int64* expiration_time_ms, MessageHandler* handler);
 
   // Are any rewrites enabled?
@@ -68,7 +68,7 @@ class CssImageRewriter {
   static const char kNoRewrite[];
 
  private:
-  bool RewriteImageUrl(const GURL& base_url,
+  bool RewriteImageUrl(const GoogleUrl& base_url,
                        const StringPiece& old_rel_url,
                        std::string* new_url,
                        int64* expire_at_ms,

@@ -282,7 +282,7 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
     if (!output_resource->LockForCreation(resource_manager_,
                                           ResourceManager::kNeverBlock)) {
       handler->Message(kInfo, "%s: Someone else is trying to rewrite %s.",
-                       base_gurl().spec().c_str(),
+                       base_url().spec_c_str(),
                        input_resource->url().c_str());
       return NULL;
     }
@@ -302,7 +302,7 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
     DCHECK_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch, input_state);
     ok = false;
     handler->Message(kInfo, "%s: Couldn't fetch resource %s to rewrite.",
-                     base_gurl().spec().c_str(), input_resource->url().c_str());
+                     base_url().spec_c_str(), input_resource->url().c_str());
   }
 
   if (!ok) {

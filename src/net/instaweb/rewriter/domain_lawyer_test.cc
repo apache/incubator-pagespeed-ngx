@@ -41,7 +41,7 @@ class DomainLawyerTest : public testing::Test {
   }
 
   // Syntactic sugar to map a request.
-  bool MapRequest(const GURL& original_request,
+  bool MapRequest(const GoogleUrl& original_request,
                   const StringPiece& resource_url,
                   std::string* mapped_domain_name) {
     GoogleUrl resolved_request;
@@ -63,9 +63,9 @@ class DomainLawyerTest : public testing::Test {
     return domain_lawyer_.AddShard(domain, shards, &message_handler_);
   }
 
-  GURL orig_request_;
-  GURL port_request_;
-  GURL https_request_;
+  GoogleUrl orig_request_;
+  GoogleUrl port_request_;
+  GoogleUrl https_request_;
   DomainLawyer domain_lawyer_;
   MockMessageHandler message_handler_;
 };
@@ -207,7 +207,7 @@ TEST_F(DomainLawyerTest, VerifyPortIsDistinct1) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com", &message_handler_));
   std::string mapped_domain_name;
   EXPECT_FALSE(MapRequest(
-      GURL("http://www.other.com/index.html"),
+      GoogleUrl("http://www.other.com/index.html"),
       "http://www.example.com:81/styles.css",
       &mapped_domain_name));
 }
@@ -216,7 +216,7 @@ TEST_F(DomainLawyerTest, VerifyPortIsDistinct2) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com:81", &message_handler_));
   std::string mapped_domain_name;
   EXPECT_FALSE(MapRequest(
-      GURL("http://www.other.com/index.html"),
+      GoogleUrl("http://www.other.com/index.html"),
       "http://www.example.com/styles.css",
       &mapped_domain_name));
 }
@@ -225,11 +225,11 @@ TEST_F(DomainLawyerTest, VerifyWildcardedPortSpec) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com*", &message_handler_));
   std::string mapped_domain_name;
   EXPECT_TRUE(MapRequest(
-      GURL("http://www.other.com/index.html"),
+      GoogleUrl("http://www.other.com/index.html"),
       "http://www.example.com/styles.css",
       &mapped_domain_name));
   EXPECT_TRUE(MapRequest(
-      GURL("http://www.other.com/index.html"),
+      GoogleUrl("http://www.other.com/index.html"),
       "http://www.example.com:81/styles.css",
       &mapped_domain_name));
 }
@@ -242,7 +242,7 @@ TEST_F(DomainLawyerTest, MapRewriteDomain) {
   // First try the mapping from origin.com to cdn.com
   std::string mapped_domain_name;
   ASSERT_TRUE(MapRequest(
-      GoogleUrl::Create(StringPiece("http://www.origin.com/index.html")),
+      GoogleUrl("http://www.origin.com/index.html"),
       "http://origin.com/styles/blue.css",
       &mapped_domain_name));
   EXPECT_EQ("http://cdn.com/", mapped_domain_name);
@@ -250,7 +250,7 @@ TEST_F(DomainLawyerTest, MapRewriteDomain) {
   // But a relative reference will not map because we mapped origin.com,
   // not www.origin.com
   ASSERT_TRUE(MapRequest(
-      GoogleUrl::Create(StringPiece("http://www.origin.com/index.html")),
+      GoogleUrl("http://www.origin.com/index.html"),
       "styles/blue.css",
       &mapped_domain_name));
   EXPECT_EQ("http://www.origin.com/", mapped_domain_name);
@@ -259,7 +259,7 @@ TEST_F(DomainLawyerTest, MapRewriteDomain) {
   ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com",
                                       "http://www.origin.com"));
   ASSERT_TRUE(MapRequest(
-      GoogleUrl::Create(StringPiece("http://www.origin.com/index.html")),
+      GoogleUrl("http://www.origin.com/index.html"),
       "styles/blue.css",
       &mapped_domain_name));
   EXPECT_EQ("http://cdn.com/", mapped_domain_name);
@@ -275,8 +275,7 @@ TEST_F(DomainLawyerTest, MapOriginDomain) {
 
   // The origin domain, which might be, say, 'localhost', is not necessarily
   // authorized as a domain for input resources.
-  GURL gurl = GoogleUrl::Create(
-      StringPiece("http://origin.com:8080/index.html"));
+  GoogleUrl gurl("http://origin.com:8080/index.html");
   EXPECT_FALSE(MapRequest(gurl, "http://localhost:8080/blue.css", &mapped));
 
   // Of course, if we were to explicitly authorize then it would be ok.
@@ -324,11 +323,11 @@ TEST_F(DomainLawyerTest, Merge) {
   std::string mapped;
   GoogleUrl resolved_request;
   ASSERT_TRUE(merged.MapRequestToDomain(
-      GoogleUrl::Create(StringPiece("http://www.o1.com/index.html")),
+      GoogleUrl("http://www.o1.com/index.html"),
       "styles/blue.css", &mapped, &resolved_request, &message_handler_));
   EXPECT_EQ("http://cdn1.com/", mapped);
   ASSERT_TRUE(merged.MapRequestToDomain(
-      GoogleUrl::Create(StringPiece("http://www.o2.com/index.html")),
+      GoogleUrl("http://www.o2.com/index.html"),
       "styles/blue.css", &mapped, &resolved_request, &message_handler_));
   EXPECT_EQ("http://cdn2.com/", mapped);
 

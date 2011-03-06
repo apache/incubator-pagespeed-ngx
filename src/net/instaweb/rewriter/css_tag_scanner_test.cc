@@ -46,11 +46,11 @@ class CssTagScannerTest : public testing::Test {
     Check(value, value);
   }
 
-  void CheckGurlResolve(const GURL& base, const char* relative_path,
+  void CheckGurlResolve(const GoogleUrl& base, const char* relative_path,
                         const char* abs_path) {
-    GURL resolved = base.Resolve(relative_path);
+    GoogleUrl resolved(base, relative_path);
     EXPECT_TRUE(resolved.is_valid());
-    EXPECT_EQ(std::string(abs_path), resolved.spec());
+    EXPECT_EQ(resolved.Spec(), abs_path);
   }
 
   std::string output_buffer_;
@@ -110,16 +110,16 @@ TEST_F(CssTagScannerTest, TestAbsolutifyUrls2Relative1Abs) {
         "url(http://a/3.png) d");
 }
 
-// This test verifies that we understand how GURL::Resolve works.
+// This test verifies that we understand how Resolve works.
 TEST_F(CssTagScannerTest, TestGurl) {
-  GURL base_slash("http://base/");
+  GoogleUrl base_slash("http://base/");
   EXPECT_TRUE(base_slash.is_valid());
   CheckGurlResolve(base_slash, "r/path.ext", "http://base/r/path.ext");
   CheckGurlResolve(base_slash, "/r/path.ext", "http://base/r/path.ext");
   CheckGurlResolve(base_slash, "../r/path.ext", "http://base/r/path.ext");
   CheckGurlResolve(base_slash, "./r/path.ext", "http://base/r/path.ext");
 
-  GURL base_no_slash("http://base");
+  GoogleUrl base_no_slash("http://base");
   EXPECT_TRUE(base_no_slash.is_valid());
   CheckGurlResolve(base_no_slash, "r/path.ext", "http://base/r/path.ext");
   CheckGurlResolve(base_no_slash, "/r/path.ext", "http://base/r/path.ext");

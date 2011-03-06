@@ -98,16 +98,17 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
       lock_name_ = lock_name;
     }
 
-    std::string url_string = url(), origin_url;
+    std::string origin_url;
     bool ret = false;
     const DomainLawyer* lawyer = rewrite_options_->domain_lawyer();
-    if (lawyer->MapOrigin(url_string, &origin_url)) {
-      if (origin_url != url_string) {
+    if (lawyer->MapOrigin(url(), &origin_url)) {
+      if (origin_url != url()) {
         // If mapping the URL changes its host, then add a 'Host' header
         // pointing to the origin URL's hostname.
-        GURL gurl = GoogleUrl::Create(url_string);
+        GoogleUrl gurl(url());
         if (gurl.is_valid()) {
-          request_headers.Add(HttpAttributes::kHost, gurl.host().c_str());
+          request_headers.Add(HttpAttributes::kHost,
+                              gurl.Host().as_string().c_str());
         }
       }
       ret = fetcher->StreamingFetch(

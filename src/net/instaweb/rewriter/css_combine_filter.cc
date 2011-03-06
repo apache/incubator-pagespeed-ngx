@@ -228,8 +228,8 @@ bool CssCombineFilter::CssCombiner::WritePiece(
     Resource* input, OutputResource* combination, Writer* writer,
     MessageHandler* handler) {
   StringPiece contents = input->contents();
-  std::string input_dir =
-      GoogleUrl::AllExceptLeaf(GoogleUrl::Create(input->url()));
+  GoogleUrl input_url(input->url());
+  StringPiece input_dir = input_url.AllExceptLeaf();
   if (input_dir == combination->resolved_base()) {
       // We don't need to absolutify URLs if input directory is same as output.
       return writer->Write(contents, handler);

@@ -232,6 +232,10 @@ check $WGET_PREREQ $URL
 test_resource_ext_corruption $URL\
   styles/yellow.css+blue.css+big.css+bold.css.pagespeed.cc.xo4He3_gYf.css
 
+echo TEST: combine_css without hash field should 404
+$WGET_PREREQ $EXAMPLE_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
+check grep '"404 Not Found"' $WGET_OUTPUT
+
 # Note: this large URL can only be processed by Apache if
 # ap_hook_map_to_storage is called to bypass the default
 # handler that maps URLs to filenames.
@@ -270,6 +274,10 @@ fetch_until $URL 'grep -c src.*91_WewrLtP' 1
 check $WGET_PREREQ $URL
 echo about to test resource ext corruption...
 test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
+
+echo TEST: Attempt to fetch cache-extended image without hash should 404
+$WGET_PREREQ $EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce..jpg
+check grep '"404 Not Found"' $WGET_OUTPUT
 
 echo TEST: Cache-extended image should respond 304 to an If-Modified-Since.
 URL=$EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg

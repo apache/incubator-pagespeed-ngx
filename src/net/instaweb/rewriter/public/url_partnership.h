@@ -22,7 +22,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include <string>
 
-class GURL;
+class GoogleUrl;
 
 namespace net_instaweb {
 
@@ -38,7 +38,8 @@ class RewriteOptions;
 //   3. What are the unique suffices for the elements.
 class UrlPartnership {
  public:
-  UrlPartnership(const RewriteOptions* options, const GURL& original_request);
+  UrlPartnership(const RewriteOptions* options,
+                 const GoogleUrl& original_request);
   virtual ~UrlPartnership();
 
   // Adds a URL to a combination.  If it can be legally added, consulting
@@ -50,19 +51,19 @@ class UrlPartnership {
   std::string ResolvedBase() const;
 
   // Returns the number of URLs that have been successfully added.
-  int num_urls() const { return gurl_vector_.size(); }
+  int num_urls() const { return url_vector_.size(); }
 
   // Returns the relative path of a particular URL that was added into
   // the partnership.  This requires that Resolve() be called first.
   std::string RelativePath(int index) const;
 
   // Returns the full resolved path
-  const GURL* FullPath(int index) const { return gurl_vector_[index]; }
+  const GoogleUrl* FullPath(int index) const { return url_vector_[index]; }
 
   // Removes the last URL that was added to the partnership.
   void RemoveLast();
 
-  virtual void Reset(const GURL& original_request);
+  virtual void Reset(const GoogleUrl& original_request);
 
   // Returns the number of common path components for all resources
   // in this partnership.
@@ -74,8 +75,8 @@ class UrlPartnership {
  private:
   void IncrementalResolve(int index);
 
-  typedef std::vector<GURL*> GurlVector;
-  GurlVector gurl_vector_;
+  typedef std::vector<GoogleUrl*> GurlVector;
+  GurlVector url_vector_;
   std::string domain_;
   GoogleUrl domain_gurl_;
   const RewriteOptions* rewrite_options_;

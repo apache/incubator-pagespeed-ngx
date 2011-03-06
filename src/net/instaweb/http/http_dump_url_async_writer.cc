@@ -128,7 +128,8 @@ bool HttpDumpUrlAsyncWriter::StreamingFetch(
     ResponseHeaders* response_headers, Writer* response_writer,
     MessageHandler* handler, Callback* callback) {
   std::string filename;
-  dump_fetcher_.GetFilename(GURL(url), &filename, handler);
+  GoogleUrl gurl(url);
+  dump_fetcher_.GetFilename(gurl, &filename, handler);
 
   if (file_system_->Exists(filename.c_str(), handler).is_true()) {
     bool success = dump_fetcher_.StreamingFetchUrl(

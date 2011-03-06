@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/resource_manager_testing_peer.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -76,21 +77,23 @@ class ResourceManagerTest : public ResourceManagerTestBase {
  protected:
   ResourceManagerTest() { }
 
-  // Calls FetchOutputResource with different values of writer and
-  // response_headers, to test all branches.  Expects the fetch to succeed all
-  // times, and finally returns the contents.
-  std::string FetchOutputResource(OutputResource* resource) {
-    EXPECT_TRUE(rewrite_driver_.FetchOutputResource(
-        resource, NULL, NULL, ResourceManager::kMayBlock));
-    ResponseHeaders empty;
-    EXPECT_TRUE(rewrite_driver_.FetchOutputResource(
-        resource, NULL, &empty, ResourceManager::kMayBlock));
+  // Fetches data (which is expected to exist) for given resource,
+  // but making sure to go through the path that checks for its
+  // non-existence and potentially doing locking, too.
+  std::string FetchExtantOutputResource(OutputResource* resource) {
     std::string contents;
     StringWriter writer(&contents);
-    EXPECT_TRUE(rewrite_driver_.FetchOutputResource(
-        resource, &writer, resource->metadata(),
-        ResourceManager::kMayBlock));
+    EXPECT_TRUE(rewrite_driver_.FetchExtantOutputResourceOrLock(
+        resource, &writer, resource->metadata()));
     return contents;
+  }
+
+  // Returns whether there was an existing copy of data for the resource.
+  // If not, makes sure the resource is wrapped.
+  bool TryFetchExtantOutputResourceOrLock(OutputResource* resource) {
+    NullWriter writer;
+    return rewrite_driver_.FetchExtantOutputResourceOrLock(
+        resource, &writer, resource->metadata());
   }
 
   // Asserts that the given url starts with an appropriate prefix;
@@ -121,26 +124,28 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     RemoveUrlPrefix(&name_key);
     EXPECT_EQ(nor->full_name().EncodeIdName(), name_key);
     // Make sure the resource hasn't already been created (and lock it for
-    // creation).
-    EXPECT_FALSE(rewrite_driver_.FetchOutputResource(
-        nor.get(), NULL, NULL, ResourceManager::kNeverBlock));
+    // creation). We do need to give it a hash for fetching to do anything.
+    ResourceManagerTestingPeer::SetHash(nor.get(), "42");
+    EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(nor.get()));
     EXPECT_FALSE(nor->IsWritten());
+
     {
-      // Now show that another attempt to create the resource will fail.
-      // Here we attempt to create without the hash.
+      // Check that a non-blocking attempt to lock another resource
+      // with the same name returns quickly. We don't need a hash in this
+      // case since we're just trying to create the resource, not fetch it.
       scoped_ptr<OutputResource> nor1(
           rewrite_driver_.CreateOutputResourceWithPath(
               url_prefix_, filter_prefix, name, content_type,
               RewriteDriver::kRewrittenResource));
       ASSERT_TRUE(nor1.get() != NULL);
-      // We'll succeed in fetching (meaning don't create the resource), but the
-      // resource won't be written.
-      EXPECT_TRUE(rewrite_driver_.FetchOutputResource(
-          nor1.get(), NULL, NULL, ResourceManager::kNeverBlock));
+      EXPECT_FALSE(nor1->LockForCreation(resource_manager_,
+                                         ResourceManager::kNeverBlock));
       EXPECT_FALSE(nor1->IsWritten());
     }
+
     {
-      // Here we attempt to create the object with the hash and fail.
+      // Here we attempt to create the object with the hash and fetch it.
+      // The fetch fails (but returns after stealing the lock, however).
       ResourceNamer namer;
       namer.CopyFrom(nor->full_name());
       namer.set_hash("0");
@@ -149,16 +154,16 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       scoped_ptr<OutputResource> nor1(
           rewrite_driver_.CreateOutputResourceForFetch(name));
       ASSERT_TRUE(nor1.get() != NULL);
-      // Again we'll succeed in fetching (meaning don't create), but the
-      // resource won't be written.  Note that we do a non-blocking fetch here.
-      // An actual resource fetch does a blocking fetch that would end by
-      // stealing the creation lock; we don't want to steal the lock here.
-      EXPECT_TRUE(rewrite_driver_.FetchOutputResource(
-          nor1.get(), NULL, NULL, ResourceManager::kNeverBlock));
-      EXPECT_FALSE(nor1->IsWritten());
+
+      // non-blocking
+      EXPECT_FALSE(nor1->LockForCreation(resource_manager_,
+                                         ResourceManager::kNeverBlock));
+      // blocking but stealing
+      EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(nor1.get()));
     }
+
     // Write some data
-    EXPECT_FALSE(ResourceManagerTestingPeer::HasHash(nor.get()));
+    EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor.get()));
     EXPECT_FALSE(ResourceManagerTestingPeer::Outlined(nor.get()));
     EXPECT_TRUE(resource_manager_->Write(HttpStatus::kOK, contents, nor.get(),
                                          origin_expire_time_ms,
@@ -169,6 +174,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     EXPECT_TRUE(full_name.DecodeHashExt(nor->hash_ext()));
     EXPECT_EQ("0", full_name.hash());
     EXPECT_EQ("txt", full_name.ext());
+
     // Retrieve the same NOR from the cache.
     scoped_ptr<OutputResource> nor2(
         rewrite_driver_.CreateOutputResourceWithPath(
@@ -180,52 +186,39 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     EXPECT_FALSE(nor2->IsWritten());
 
     // Fetch its contents and make sure they match
-    EXPECT_EQ(contents, FetchOutputResource(nor2.get()));
+    EXPECT_EQ(contents, FetchExtantOutputResource(nor2.get()));
 
     // Try asynchronously too
     VerifyContentsCallback callback(contents);
     rewrite_driver_.ReadAsync(nor2.get(), &callback, &message_handler_);
     callback.AssertCalled();
 
-    // Grab the URL for later
+    // Grab the URL and make sure we correctly decode its components
     std::string url = nor2->url();
     EXPECT_LT(0, url.length());
-
-    // Now expire it from the HTTP cache.  Since we don't know its hash, we
-    // cannot fetch it (even though the contents are still in the filesystem).
-    mock_timer()->advance_ms(2 * origin_expire_time_ms);
-    {
-      scoped_ptr<OutputResource> nor3(
-          rewrite_driver_.CreateOutputResourceWithPath(
-              url_prefix_, filter_prefix, name, &kContentTypeText,
-              RewriteDriver::kRewrittenResource));
-      EXPECT_FALSE(rewrite_driver_.FetchOutputResource(
-          nor3.get(), NULL, NULL, ResourceManager::kNeverBlock));
-      // Now nor3 has locked the resource for creation.
-      // We must destruct nor3 in order to unlock it again, since we
-      // have no intention of creating it.
-    }
-
     RemoveUrlPrefix(&url);
     ASSERT_TRUE(full_name.Decode(url));
     EXPECT_EQ(content_type, full_name.ContentTypeFromExt());
     EXPECT_EQ(filter_prefix, full_name.id());
     EXPECT_EQ(name, full_name.name());
 
+    // Now expire it from the HTTP cache.  Since we don't know its hash, we
+    // cannot fetch it (even though the contents are still in the filesystem).
+    mock_timer()->advance_ms(2 * origin_expire_time_ms);
+
     // But with the URL (which contains the hash), we can retrieve it
     // from the http_cache.
-    // first cut off the "http://mysite{,.0,.1}/" from the front.
     scoped_ptr<OutputResource> nor4(
         rewrite_driver_.CreateOutputResourceForFetch(nor->url()));
     EXPECT_EQ(nor->url(), nor4->url());
-    EXPECT_EQ(contents, FetchOutputResource(nor4.get()));
+    EXPECT_EQ(contents, FetchExtantOutputResource(nor4.get()));
 
     // If it's evicted from the http_cache, we can also retrieve it from the
     // filesystem.
     lru_cache_->Clear();
     nor4.reset(rewrite_driver_.CreateOutputResourceForFetch(nor->url()));
     EXPECT_EQ(nor->url(), nor4->url());
-    EXPECT_EQ(contents, FetchOutputResource(nor4.get()));
+    EXPECT_EQ(contents, FetchExtantOutputResource(nor4.get()));
     // This also works asynchronously.
     lru_cache_->Clear();
     VerifyContentsCallback callback2(contents);
@@ -236,7 +229,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   bool ResourceIsCached() {
     scoped_ptr<Resource> resource(
         rewrite_driver_.CreateInputResource(
-            GURL(kResourceUrlBase), kResourceUrlPath));
+            GoogleUrl(kResourceUrlBase), kResourceUrlPath));
     bool ok = rewrite_driver_.ReadIfCached(resource.get());
     // Should not damage resources when freshening
     EXPECT_FALSE(ok && !resource->loaded());
@@ -341,7 +334,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // Note: we do not fetch the input here, just use it to name the output.
     scoped_ptr<Resource> input(
         rewrite_driver_.CreateInputResource(
-            GURL(kResourceUrlBase), kResourceUrlPath));
+            GoogleUrl(kResourceUrlBase), kResourceUrlPath));
     ASSERT_TRUE(input.get() != NULL);
 
     scoped_ptr<OutputResource> output(
@@ -486,7 +479,7 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
       "cdn.com", kTestDomain, &message_handler_));
 
   scoped_ptr<Resource> input(rewrite_driver_.CreateInputResource(
-      GoogleUrl::Create(StrCat(kTestDomain, "index.html")),
+      GoogleUrl(StrCat(kTestDomain, "index.html")),
       "style.css"));
   ASSERT_TRUE(input.get() != NULL);
   EXPECT_EQ(StrCat(kTestDomain, "style.css"), input->url());
@@ -530,7 +523,7 @@ TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
 TEST_F(ResourceManagerTest, TestInputResourceQuery) {
   const char kUrl[] = "test?param";
   scoped_ptr<Resource> resource(
-      rewrite_driver_.CreateInputResource(GURL(kResourceUrlBase), kUrl));
+      rewrite_driver_.CreateInputResource(GoogleUrl(kResourceUrlBase), kUrl));
   ASSERT_TRUE(resource.get() != NULL);
   EXPECT_EQ(StrCat(std::string(kResourceUrlBase), "/", kUrl), resource->url());
   scoped_ptr<OutputResource> output(
@@ -553,7 +546,7 @@ TEST_F(ResourceManagerTest, TestRemember404) {
   not_found.SetStatusAndReason(HttpStatus::kNotFound);
   mock_url_fetcher_.SetResponse("http://example.com/404", not_found, "");
 
-  GURL base = GoogleUrl::Create(StringPiece("http://example.com/"));
+  GoogleUrl base("http://example.com/");
   scoped_ptr<Resource> resource(
       rewrite_driver_.CreateInputResourceAndReadIfCached(base, "404"));
   EXPECT_EQ(NULL, resource.get());
@@ -576,7 +569,7 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
   no_cache.ComputeCaching();
   mock_url_fetcher_.SetResponse("http://example.com/", no_cache, kContents);
 
-  GURL base = GoogleUrl::Create(StringPiece("http://example.com"));
+  GoogleUrl base("http://example.com");
   scoped_ptr<Resource> resource(
       rewrite_driver_.CreateInputResource(base, "/"));
   ASSERT_TRUE(resource.get() != NULL);

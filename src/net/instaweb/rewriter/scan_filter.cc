@@ -28,6 +28,16 @@ void ScanFilter::StartDocument() {
   // TODO(jmarantz): consider having rewrite_driver access the url in this
   // class, rather than poking it into rewrite_driver.
   driver_->InitBaseUrl();
+
+  for (int i = 0, n = filters_.size(); i < n; ++i) {
+    filters_[i]->ScanStartDocument();
+  }
+}
+
+void ScanFilter::EndDocument() {
+  for (int i = 0, n = filters_.size(); i < n; ++i) {
+    filters_[i]->ScanEndDocument();
+  }
 }
 
 void ScanFilter::StartElement(HtmlElement* element) {
@@ -43,6 +53,49 @@ void ScanFilter::StartElement(HtmlElement* element) {
     }
     // TODO(jmarantz): handle base targets in addition to hrefs.
   }
+
+  for (int i = 0, n = filters_.size(); i < n; ++i) {
+    filters_[i]->ScanStartElement(element);
+  }
+}
+
+void ScanFilter::EndElement(HtmlElement* element) {
+  for (int i = 0, n = filters_.size(); i < n; ++i) {
+    filters_[i]->ScanEndElement(element);
+  }
+}
+
+void ScanFilter::Cdata(HtmlCdataNode* cdata) {
+  for (int i = 0, n = filters_.size(); i < n; ++i) {
+    filters_[i]->ScanCdata(cdata);
+  }
+}
+
+void ScanFilter::Comment(HtmlCommentNode* comment) {
+  for (int i = 0, n = filters_.size(); i < n; ++i) {
+    filters_[i]->ScanComment(comment);
+  }
+}
+
+void ScanFilter::IEDirective(HtmlIEDirectiveNode* directive) {
+  for (int i = 0, n = filters_.size(); i < n; ++i) {
+    filters_[i]->ScanIEDirective(directive);
+  }
+}
+
+void ScanFilter::Characters(HtmlCharactersNode* characters) {
+  for (int i = 0, n = filters_.size(); i < n; ++i) {
+    filters_[i]->ScanCharacters(characters);
+  }
+}
+
+void ScanFilter::Directive(HtmlDirectiveNode* directive) {
+  for (int i = 0, n = filters_.size(); i < n; ++i) {
+    filters_[i]->ScanDirective(directive);
+  }
+}
+
+void ScanFilter::Flush() {
 }
 
 }  // namespace net_instaweb

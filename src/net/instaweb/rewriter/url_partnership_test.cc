@@ -49,7 +49,7 @@ class UrlPartnershipTest : public testing::Test {
  protected:
   UrlPartnershipTest()
       : domain_lawyer_(options_.domain_lawyer()),
-        partnership_(&options_, GURL(kOriginalRequest)),
+        partnership_(&options_, GoogleUrl(kOriginalRequest)),
         styles_path_("http://www.nytimes.com/r/styles/"),
         r_path_("http://www.nytimes.com/r/"),
         style_url_("style.css?appearance=reader/writer?"),
@@ -70,8 +70,8 @@ class UrlPartnershipTest : public testing::Test {
 
   // Gets the full path of an index as a std::string.
   std::string FullPath(int index) {
-    const GURL* gurl = partnership_.FullPath(index);
-    std::string spec = gurl->spec();
+    const GoogleUrl* gurl = partnership_.FullPath(index);
+    StringPiece spec = gurl->Spec();
     return std::string(spec.data(), spec.size());
   }
 
@@ -184,7 +184,7 @@ TEST_F(UrlPartnershipTest, EmptyTail) {
 }
 
 TEST_F(UrlPartnershipTest, EmptyWithPartner) {
-  UrlPartnership p(&options_, GURL("http://www.google.com/styles/x.html"));
+  UrlPartnership p(&options_, GoogleUrl("http://www.google.com/styles/x.html"));
   EXPECT_TRUE(p.AddUrl("/styles", &message_handler_));
   EXPECT_FALSE(p.AddUrl("", &message_handler_));
   EXPECT_TRUE(p.AddUrl("/", &message_handler_));

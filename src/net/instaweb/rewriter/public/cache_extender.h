@@ -52,6 +52,8 @@ class CacheExtender : public RewriteSingleResourceFilter {
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element) {}
 
+  virtual void ScanStartElement(HtmlElement* element) const;
+
   virtual const char* Name() const { return "CacheExtender"; }
 
  protected:

@@ -254,15 +254,14 @@ DomainLawyer::Domain* DomainLawyer::FindDomain(
 }
 
 bool DomainLawyer::MapRequestToDomain(
-    const GURL& original_request,
+    const GoogleUrl& original_request,
     const StringPiece& resource_url,  // relative to original_request
     std::string* mapped_domain_name,
     GoogleUrl* resolved_request,
     MessageHandler* handler) const {
   CHECK(original_request.is_valid());
-  GoogleUrl c_original_request(original_request);
-  GoogleUrl original_origin(c_original_request.Origin());
-  GoogleUrl tmp_request(c_original_request, resource_url);
+  GoogleUrl original_origin(original_request.Origin());
+  GoogleUrl tmp_request(original_request, resource_url);
   resolved_request->Swap(&tmp_request);
   if (!resolved_request->is_valid()) {
     return false;

@@ -95,9 +95,9 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     StringVector css_urls;
     CollectCssLinks(id, output_buffer_, &css_urls);
     EXPECT_LE(1UL, css_urls.size());
-    const std::string& combine_url = css_urls[0];
 
-    GURL gurl(combine_url);
+    const std::string& combine_url = css_urls[0];
+    GoogleUrl gurl(combine_url);
 
     std::string combine_filename;
     filename_encoder_.Encode(file_prefix_, combine_url, &combine_filename);
@@ -127,7 +127,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     std::string expected_output = StringPrintf(
         expected_output_format, combine_url.c_str(), barrier_text,
         is_barrier ? "<link rel='stylesheet' href='c.css' type='text/css'>"
-                   : "");
+        : "");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
     std::string actual_combination;
@@ -266,12 +266,12 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     // it came.
     bool DecomposeCombinedUrl(std::string* base, StringVector* segments,
                               MessageHandler* handler) {
-      GURL gurl = GoogleUrl::Create(url_);
+      GoogleUrl gurl(url_);
       bool ret = false;
       if (gurl.is_valid()) {
-        *base = GoogleUrl::AllExceptLeaf(gurl);
+        gurl.AllExceptLeaf().CopyToString(base);
         ResourceNamer namer;
-        if (namer.Decode(GoogleUrl::LeafWithQuery(gurl)) &&
+        if (namer.Decode(gurl.LeafWithQuery()) &&
             (namer.id() == "cc")) {  // TODO(jmarantz): Share this literal
           UrlEscaper escaper;
           UrlMultipartEncoder multipart_encoder;
@@ -677,7 +677,7 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
   EXPECT_EQ("http://other_domain.test/foo/a.css+b.css.pagespeed.cc.0.css",
             combine_url);
-  EXPECT_TRUE(GURL(combine_url.c_str()).is_valid());
+  EXPECT_TRUE(GoogleUrl(combine_url.c_str()).is_valid());
 }
 
 // Here's the same test, legalized to have the base url before the first
@@ -703,7 +703,7 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
   EXPECT_EQ("http://other_domain.test/foo/a.css+b.css.pagespeed.cc.0.css",
             combine_url);
-  EXPECT_TRUE(GURL(combine_url.c_str()).is_valid());
+  EXPECT_TRUE(GoogleUrl(combine_url.c_str()).is_valid());
 }
 
 // TODO(jmaessen): Re-write for new sharding story when it exists.
@@ -899,10 +899,10 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   EXPECT_EQ(2, css_out.size());
   std::string actual_combination;
   EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
-  GURL gurl = GoogleUrl::Create(css_out[0]->url_);
-  EXPECT_EQ("/" + long_name + "/", GoogleUrl::PathSansLeaf(gurl));
+  GoogleUrl gurl(css_out[0]->url_);
+  EXPECT_EQ("/" + long_name + "/", gurl.PathSansLeaf());
   ResourceNamer namer;
-  ASSERT_TRUE(namer.Decode(GoogleUrl::LeafWithQuery(gurl)));
+  ASSERT_TRUE(namer.Decode(gurl.LeafWithQuery()));
   EXPECT_EQ("a.css+b.css", namer.name());
   EXPECT_EQ("ab", actual_combination);
 }

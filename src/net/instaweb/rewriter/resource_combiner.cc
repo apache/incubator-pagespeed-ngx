@@ -49,12 +49,12 @@ ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
                                    const StringPiece& extension)
     : resource_manager_(driver->resource_manager()),
       rewrite_driver_(driver),
-      partnership_(driver->options(), GURL()),
+      partnership_(driver->options(), GoogleUrl()),
       prev_num_components_(0),
       accumulated_leaf_size_(0),
       // TODO(jmarantz): The URL overhead computation is arguably fragile.
       url_overhead_(filter_prefix.size() + ResourceNamer::kOverhead +
-                    extension.size()) {
+                     extension.size()) {
   // This CHECK is here because RewriteDriver is constructed with its
   // resource_manager_ == NULL.
   // TODO(sligocki): Construct RewriteDriver with a ResourceManager.
@@ -83,7 +83,7 @@ bool ResourceCombiner::AddResource(const StringPiece& url,
   //    disabled due to policy.
 
   scoped_ptr<Resource> resource(
-      rewrite_driver_->CreateInputResource(rewrite_driver_->base_url().gurl(),
+      rewrite_driver_->CreateInputResource(rewrite_driver_->base_url(),
                                            url));
   if (resource.get() == NULL) {
     return false;
@@ -443,7 +443,7 @@ void ResourceCombiner::Clear() {
 
 void ResourceCombiner::Reset() {
   Clear();
-  partnership_.Reset(rewrite_driver_->base_url().gurl());
+  partnership_.Reset(rewrite_driver_->base_url());
   prev_num_components_ = 0;
   accumulated_leaf_size_ = 0;
   resolved_base_.clear();

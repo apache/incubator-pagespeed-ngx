@@ -38,10 +38,12 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
 
     // Figure out outline_url.
     std::string hash = resource_manager_->hasher()->Hash(css_rewritten_body);
-    GURL html_gurl(html_url);
-    GURL outline_gurl = html_gurl.Resolve(
+    GoogleUrl html_gurl(html_url);
+    GoogleUrl outline_gurl(
+        html_gurl,
         Encode("", CssOutlineFilter::kFilterId, hash, "_", "css"));
-    std::string outline_url = GoogleUrl::Spec(outline_gurl);
+    StringPiece spec = outline_gurl.Spec();
+    std::string outline_url(spec.data(), spec.length());
     // Figure out outline_filename.
     std::string outline_filename;
     filename_encoder_.Encode(file_prefix_, outline_url, &outline_filename);

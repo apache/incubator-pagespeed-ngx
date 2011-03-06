@@ -77,7 +77,7 @@ void CssImageRewriter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kNoRewrite);
 }
 
-bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
+bool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
                                        const StringPiece& old_rel_url,
                                        std::string* new_url,
                                        int64* expire_at_ms,
@@ -131,8 +131,8 @@ bool CssImageRewriter::RewriteImageUrl(const GURL& base_url,
         url_to_trim = old_rel_url;
       }
       std::string trimmed_url;
-      GoogleUrl base(base_url);
-      if (UrlLeftTrimFilter::Trim(base, url_to_trim, &trimmed_url, handler)) {
+      if (UrlLeftTrimFilter::Trim(base_url, url_to_trim,
+                                  &trimmed_url, handler)) {
         *new_url = trimmed_url;
         ret = true;
       }
@@ -155,7 +155,7 @@ int64 CssImageRewriter::ExpirationTimeMs(
   }
 }
 
-bool CssImageRewriter::RewriteCssImages(const GURL& base_url,
+bool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                                         Css::Stylesheet* stylesheet,
                                         int64* expiration_time_ms,
                                         MessageHandler* handler) {
@@ -163,7 +163,7 @@ bool CssImageRewriter::RewriteCssImages(const GURL& base_url,
   int64 expire_at_ms = kint64max;
   if (RewritesEnabled()) {
     handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
-                     base_url.spec().c_str());
+                     base_url.spec_c_str());
     Css::Rulesets& rulesets = stylesheet->mutable_rulesets();
     for (Css::Rulesets::iterator ruleset_iter = rulesets.begin();
          ruleset_iter != rulesets.end(); ++ruleset_iter) {
@@ -221,7 +221,7 @@ bool CssImageRewriter::RewriteCssImages(const GURL& base_url,
   } else {
     handler->Message(kInfo, "Image rewriting and cache extension not enabled, "
                      "so not rewriting images in CSS in %s",
-                     base_url.spec().c_str());
+                     base_url.spec_c_str());
   }
   *expiration_time_ms = expire_at_ms;
   return edited;

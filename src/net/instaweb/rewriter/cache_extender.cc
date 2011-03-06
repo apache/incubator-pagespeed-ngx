@@ -81,22 +81,24 @@ bool CacheExtender::ShouldRewriteResource(
   return lawyer->WillDomainChange(origin);
 }
 
+void CacheExtender::ScanStartElement(HtmlElement* element) const {
+  HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
+  if ((href != NULL) && driver_->IsRewritable(element)) {
+    driver_->ScanRequestUrl(href->value());
+  }
+}
+
 void CacheExtender::StartElementImpl(HtmlElement* element) {
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
 
-  // TODO(jmarantz): figure out how to get better coverage of referenced
-  // resources for cache extension.  E.g. we need to find images in CSS
-  // files.  Plus we currently ignore .css links with id or other
-  // non-essential tags.
-  //
   // TODO(jmarantz): We ought to be able to domain-shard even if the
   // resources are non-cacheable or privately cacheable.
   if ((href != NULL) && driver_->IsRewritable(element)) {
-    scoped_ptr<Resource> input_resource(CreateInputResource(href->value()));
-    if ((input_resource.get() != NULL) &&
+    Resource* input_resource = driver_->GetScannedInputResource(href->value());
+    if ((input_resource != NULL) &&
         !IsRewrittenResource(input_resource->url())) {
       scoped_ptr<OutputResource::CachedResult> rewrite_info(
-          RewriteResourceWithCaching(input_resource.get(),
+          RewriteResourceWithCaching(input_resource,
                                      resource_manager_->url_escaper()));
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
         // Rewrite URL to cache-extended version

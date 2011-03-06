@@ -28,13 +28,13 @@
 namespace net_instaweb {
 
 UrlPartnership::UrlPartnership(const RewriteOptions* rewrite_options,
-                               const GURL& original_request)
+                               const GoogleUrl& original_request)
     : rewrite_options_(rewrite_options) {
   Reset(original_request);
 }
 
 UrlPartnership::~UrlPartnership() {
-  STLDeleteElements(&gurl_vector_);
+  STLDeleteElements(&url_vector_);
 }
 
 // Adds a URL to a combination.  If it can be legally added, consulting
@@ -49,30 +49,31 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
   if (resource_url.empty()) {
     handler->Message(
         kInfo, "Cannot rewrite empty URL relative to %s",
-        original_origin_and_path_.UncheckedSpec().as_string().c_str());
+        original_origin_and_path_.spec_c_str());
   }
   else if (!original_origin_and_path_.is_valid()) {
     handler->Message(
         kInfo, "Cannot rewrite %s relative to invalid url %s",
         resource_url.c_str(),
-        original_origin_and_path_.UncheckedSpec().as_string().c_str());
+        original_origin_and_path_.spec_c_str());
   } else {
     // First resolve the original request to ensure that it is allowed by the
     // options.
-    GoogleUrl resolved_request(original_origin_and_path_, resource_url);
-    if (!resolved_request.is_valid()) {
+    scoped_ptr<GoogleUrl> resolved_request(
+        new GoogleUrl(original_origin_and_path_, resource_url));
+    if (!resolved_request->is_valid()) {
       handler->Message(
           kInfo, "URL %s cannot be resolved relative to base URL %s",
           resource_url.c_str(),
-          original_origin_and_path_.Spec().as_string().c_str());
-    } else if (!rewrite_options_->IsAllowed(resolved_request.Spec())) {
+          original_origin_and_path_.spec_c_str());
+    } else if (!rewrite_options_->IsAllowed(resolved_request->Spec())) {
       handler->Message(kInfo,
                        "Rewriting URL %s is disallowed via configuration",
-                       resolved_request.Spec().as_string().c_str());
+                       resolved_request->spec_c_str());
     } else if (rewrite_options_->domain_lawyer()->MapRequestToDomain(
-        original_origin_and_path_.gurl(), resource_url, &mapped_domain_name,
-        &resolved_request, handler)) {
-      if (gurl_vector_.empty()) {
+        original_origin_and_path_, resource_url, &mapped_domain_name,
+        resolved_request.get(), handler)) {
+      if (url_vector_.empty()) {
         domain_.swap(mapped_domain_name);
         GoogleUrl domain_origin_gurl(domain_);
         GoogleUrl tmp(domain_origin_gurl,
@@ -83,47 +84,48 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
       } else {
         ret = (domain_ == mapped_domain_name);
         if (ret && !rewrite_options_->combine_across_paths()) {
-          ret = (ResolvedBase() == resolved_request.AllExceptLeaf());
+          ret = (ResolvedBase() == resolved_request->AllExceptLeaf());
         }
       }
 
       if (ret) {
-        gurl_vector_.push_back(new GURL(resolved_request.gurl()));
-        int index = gurl_vector_.size() - 1;
+        url_vector_.push_back(resolved_request.release());
+        int index = url_vector_.size() - 1;
         IncrementalResolve(index);
       }
     }
+
   }
   return ret;
 }
 
 void UrlPartnership::RemoveLast() {
-  CHECK(!gurl_vector_.empty());
-  int last = gurl_vector_.size() - 1;
-  delete gurl_vector_[last];
-  gurl_vector_.resize(last);
+  CHECK(!url_vector_.empty());
+  int last = url_vector_.size() - 1;
+  delete url_vector_[last];
+  url_vector_.resize(last);
 
   // Re-resolve the entire partnership in the absense of the influence of the
   // ex-partner, by re-adding the GURLs one at a time.
   common_components_.clear();
-  for (int i = 0, n = gurl_vector_.size(); i < n; ++i) {
+  for (int i = 0, n = url_vector_.size(); i < n; ++i) {
     IncrementalResolve(i);
   }
 }
 
-void UrlPartnership::Reset(const GURL& original_request) {
-  STLDeleteElements(&gurl_vector_);
-  gurl_vector_.clear();
+void UrlPartnership::Reset(const GoogleUrl& original_request) {
+  STLDeleteElements(&url_vector_);
+  url_vector_.clear();
   common_components_.clear();
   if (original_request.is_valid()) {
-    GoogleUrl tmp(GoogleUrl(original_request).AllExceptLeaf());
+    GoogleUrl tmp(original_request.AllExceptLeaf());
     original_origin_and_path_.Swap(&tmp);
   }
 }
 
 void UrlPartnership::IncrementalResolve(int index) {
   CHECK_LE(0, index);
-  CHECK_LT(index, static_cast<int>(gurl_vector_.size()));
+  CHECK_LT(index, static_cast<int>(url_vector_.size()));
 
   // When tokenizing a URL, we don't want to omit empty segments
   // because we need to avoid aliasing "http://x" with "/http:/x".
@@ -131,7 +133,7 @@ void UrlPartnership::IncrementalResolve(int index) {
   std::vector<StringPiece> components;
 
   if (index == 0) {
-    std::string base = GoogleUrl::AllExceptLeaf(*gurl_vector_[0]);
+    StringPiece base = url_vector_[0]->AllExceptLeaf();
     SplitStringPieceToVector(base, "/", &components, omit_empty);
     components.pop_back(); // base ends with "/"
     CHECK_LE(3U, components.size());  // expect {"http:", "", "x"...}
@@ -142,7 +144,7 @@ void UrlPartnership::IncrementalResolve(int index) {
   } else {
     // Split each string on / boundaries, then compare these path elements
     // until one doesn't match, then shortening common_components.
-    std::string all_but_leaf = GoogleUrl::AllExceptLeaf(*gurl_vector_[index]);
+    StringPiece all_but_leaf = url_vector_[index]->AllExceptLeaf();
     SplitStringPieceToVector(all_but_leaf, "/", &components, omit_empty);
     components.pop_back(); // base ends with "/"
     CHECK_LE(3U, components.size());  // expect {"http:", "", "x"...}
@@ -175,7 +177,7 @@ std::string UrlPartnership::ResolvedBase() const {
 // the partnership.  This requires that Resolve() be called first.
 std::string UrlPartnership::RelativePath(int index) const {
   std::string resolved_base = ResolvedBase();
-  std::string spec = gurl_vector_[index]->spec();
+  StringPiece spec = url_vector_[index]->Spec();
   CHECK_GE(spec.size(), resolved_base.size());
   CHECK_EQ(StringPiece(spec.data(), resolved_base.size()),
            StringPiece(resolved_base));

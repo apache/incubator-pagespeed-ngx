@@ -113,7 +113,14 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
     SetupWriter();
     html_parse()->StartParse(url);
     html_parse()->ParseText(doctype_string_ + AddHtmlBody(html_input));
+    PostParseHook();
     html_parse()->FinishParse();
+  }
+
+  // Provide an optional hook for subclasses to inject activity
+  // between parsing the text and calling FinishParse, which results
+  // in a Flush.
+  virtual void PostParseHook() {
   }
 
   // Validate that the output HTML serializes as specified in

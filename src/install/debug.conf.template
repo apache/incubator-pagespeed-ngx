@@ -58,7 +58,8 @@ ModPagespeedEnableFilters add_instrumentation
 #COVERAGE Listen 8081
 #COVERAGE <VirtualHost *:8080>
 #COVERAGE   ModPagespeed on
-#COVERAGE   ModPagespeedTestProxy on   # Proxy using SERF
+#COVERAGE   # Proxy using SERF
+#COVERAGE   ModPagespeedTestProxy on
 #COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
 #COVERAGE
 #COVERAGE   ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@/cache/"

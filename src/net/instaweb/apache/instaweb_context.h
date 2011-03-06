@@ -55,6 +55,19 @@ class InstawebContext {
   void Rewrite(const char* input, int size);
   void Flush() {
     if (content_detection_state_ == kHtml) {
+      rewrite_driver_->Scan();
+
+      // If we have a real async cache, or wanted to give fetches a
+      // chance to respond, then we'd need to call some kind of Poll
+      // function here, e.g. SerfUrlAsyncFetcher::Poll or the equivalent
+      // for the asynchronous cache.
+      //
+      // However, the cache implementations currently used in Apache,
+      // FileCache and LRUCache, are blocking and so no delay is
+      // required for caching.  We could add a brief Serf Poll, however,
+      // which might enable us to rewrite resources on the first page
+      // view if they are served fairly quickly.
+
       rewrite_driver_->Flush();
     }
   }

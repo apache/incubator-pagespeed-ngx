@@ -37,7 +37,7 @@ class ResourceTagScanner {
   // anything that matches the pattern "<script src=...>", "<img src=...>",
   // or "<link rel="stylesheet" href=...>", without worrying about what
   // the other attributes are.
-  HtmlElement::Attribute* ScanElement(HtmlElement* element);
+  HtmlElement::Attribute* ScanElement(HtmlElement* element) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ResourceTagScanner);

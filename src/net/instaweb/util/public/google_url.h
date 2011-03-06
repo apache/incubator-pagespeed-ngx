@@ -30,10 +30,10 @@ namespace net_instaweb {
 
 class GoogleUrl {
  public:
-  GoogleUrl(const GURL& gurl);
-  GoogleUrl(const std::string& spec);
-  GoogleUrl(const StringPiece& sp);
-  GoogleUrl(const char *str);
+  explicit GoogleUrl(const GURL& gurl);
+  explicit GoogleUrl(const std::string& spec);
+  explicit GoogleUrl(const StringPiece& sp);
+  explicit GoogleUrl(const char *str);
   // The following three constructors create a new GoogleUrl by resolving the
   // String(Piece) against the base.
   GoogleUrl(const GoogleUrl& base, const std::string& str);
@@ -41,11 +41,9 @@ class GoogleUrl {
   GoogleUrl(const GoogleUrl& base, const char *str);
   GoogleUrl();
 
-  // It is illegal to call this for invalid urls (i.e. check is_valid() first).
-  StringPiece Spec() const;
-
-  // Returns gurl_.spec_ without checking to see if it's valid or empty.
-  StringPiece UncheckedSpec() const;
+  void Swap(GURL* gurl) { gurl_.Swap(gurl); }
+  void Swap(GoogleUrl* google_url) { gurl_.Swap(&google_url->gurl_); }
+  bool Reset(const StringPiece& new_url);
 
   // For "http://a.com/b/c/d?e=f/g returns "http://a/b/c/",
   // including trailing slash.
@@ -60,18 +58,10 @@ class GoogleUrl {
   // Returns a StringPiece, only valid for the lifetime of this object.
   StringPiece LeafSansQuery() const;
 
-  // For "http://a.com/b/c/d?e=f/g returns "http://a.com"
-  // without trailing slash
-  // Returns a StringPiece, only valid for the lifetime of this object.
-  StringPiece Origin() const;
-
   // For "http://a.com/b/c/d?E=f/g returns "/b/c/d?e=f/g"
   // including leading slash
   // Returns a StringPiece, only valid for the lifetime of this object.
   StringPiece PathAndLeaf() const;
-
-  // For "http://a.com/b/c/d?E=f/g returns "/b/c/d" including leading slash
-  StringPiece Path() const;
 
   // For "http://a.com/b/c/d/g.html returns "/b/c/d/" including leading and
   // trailing slashes.
@@ -79,15 +69,44 @@ class GoogleUrl {
   // Returns a StringPiece, only valid for the lifetime of this object.
   StringPiece PathSansLeaf() const;
 
+  // Extracts the filename portion of the path and returns it. The filename
+  // is everything after the last slash in the path. This may be empty.
+  std::string ExtractFileName() const;
+
+  StringPiece Host() const;
+
+  // For "http://a.com/b/c/d?e=f/g returns "http://a.com"
+  // without trailing slash
+  // Returns a StringPiece, only valid for the lifetime of this object.
+  StringPiece Origin() const;
+
+  // For "http://a.com/b/c/d?E=f/g returns "/b/c/d" including leading slash
+  StringPiece Path() const;
+
+  StringPiece Query() const;
+
   // Returns scheme of stored url.
   StringPiece Scheme() const;
+
+  // It is illegal to call this for invalid urls (i.e. check is_valid() first).
+  StringPiece Spec() const;
+
+  // Returns gurl_.spec_ without checking to see if it's valid or empty.
+  StringPiece UncheckedSpec() const;
+
+  // This method is primarily for printf purposes.
+  const char* spec_c_str() const {
+    return gurl_.possibly_invalid_spec().c_str();
+  }
+
+  int IntPort() const {
+    return gurl_.IntPort();
+  }
 
   // Returns validity of stored url.
   bool is_valid() const {
     return gurl_.is_valid();
   }
-
-  const GURL& gurl() const { return gurl_; }
 
   bool is_standard() const {
     return gurl_.IsStandard();
@@ -97,19 +116,19 @@ class GoogleUrl {
     return gurl_.is_empty();
   }
 
-  void Swap(GURL* gurl) { gurl_.Swap(gurl); }
-  void Swap(GoogleUrl* google_url) { gurl_.Swap(&google_url->gurl_); }
-  bool Reset(const StringPiece& new_url);
+  bool has_scheme() const {
+    return gurl_.has_scheme();
+  }
 
-  std::string GetUncheckedSpec() const {
-    return gurl_.possibly_invalid_spec();
+  bool has_path() const {
+    return gurl_.has_path();
   }
 
   bool SchemeIs(const char* lower_ascii_scheme) const {
     return gurl_.SchemeIs(lower_ascii_scheme);
   }
 
-  // TODO get GURL to take a StringPiece so we don't have to do
+  // TODO(nforman): get GURL to take a StringPiece so we don't have to do
   // any copying.
   bool SchemeIs(const StringPiece& lower_ascii_scheme) const {
     return gurl_.SchemeIs(lower_ascii_scheme.as_string().c_str());
@@ -122,57 +141,6 @@ class GoogleUrl {
   bool operator!=(const GoogleUrl& other) const {
     return gurl_ != other.gurl_;
   }
-  // Helper functions around GURL to make it a little easier to use
-  inline static std::string Spec(const GURL& gurl) { return gurl.spec(); }
-
-  // Makes a GURL object from a StringPiece.
-  inline static GURL Create(const StringPiece& sp) { return GURL(sp.as_string()); }
-
-  // Makes a GURL object from a string.
-  inline static GURL Create(const std::string& str) {
-    return GURL(str);
-  }
-
-  // Resolves a GURL object and a new path into a new GURL.
-  inline static GURL Resolve(const GURL& gurl, const StringPiece& sp) {
-    return gurl.Resolve(sp.as_string()); }
-
-  // Resolves a GURL object and a new path into a new GURL.
-  inline static GURL Resolve(const GURL& gurl, const std::string& str) {
-    return gurl.Resolve(str);
-  }
-
-  // Resolves a GURL object and a new path into a new GURL.
-  inline static GURL Resolve(const GURL& gurl, const char* str) {
-    return gurl.Resolve(str);
-  }
-
-  // For "http://a.com/b/c/d?e=f/g returns "http://a/b/c/",
-  // including trailing slash.
-  static std::string AllExceptLeaf(const GURL& gurl);
-
-  // For "http://a.com/b/c/d?e=f/g returns "d?e=f/g", omitting leading slash.
-  static std::string LeafWithQuery(const GURL& gurl);
-
-  // For "http://a.com/b/c/d?e=f/g returns "d", omitting leading slash.
-  static std::string LeafSansQuery(const GURL& gurl);
-
-  // For "http://a.com/b/c/d?e=f/g returns "http://a.com" without trailing slash
-  static std::string Origin(const GURL& gurl);
-
-  // For "http://a.com/b/c/d?E=f/g returns "/b/c/d?e=f/g" including leading slash
-  static std::string PathAndLeaf(const GURL& gurl);
-
-  // For "http://a.com/b/c/d?E=f/g returns "/b/c/d" including leading slash
-  inline static std::string Path(const GURL& gurl) {
-    return gurl.path();
-  }
-
-  // For "http://a.com/b/c/d/g.html returns "/b/c/d/" including leading and
-  // trailing slashes.
-  // For queries, "http://a.com/b/c/d?E=f/g" returns "/b/c/".
-  static std::string PathSansLeaf(const GURL& gurl);
-
  private:
   GURL gurl_;
   static size_t LeafStartPosition(const GURL &gurl);

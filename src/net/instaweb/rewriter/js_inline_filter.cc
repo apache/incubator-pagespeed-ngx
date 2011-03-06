@@ -36,13 +36,10 @@ JsInlineFilter::JsInlineFilter(RewriteDriver* driver)
 JsInlineFilter::~JsInlineFilter() {}
 
 void JsInlineFilter::StartDocumentImpl() {
-  // TODO(sligocki): This should go in the domain lawyer, right?
-  domain_ = driver_->gurl().host();
   should_inline_ = false;
 }
 
 void JsInlineFilter::EndDocument() {
-  domain_.clear();
 }
 
 void JsInlineFilter::StartElementImpl(HtmlElement* element) {

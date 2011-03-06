@@ -68,6 +68,30 @@ TEST_F(RewriteDriverTest, TestLegacyUrl) {
       << "invalid extension";
 }
 
+TEST_F(RewriteDriverTest, TestModernUrl) {
+  rewrite_driver_.AddFilters();
+
+  // Sanity-check on a valid one
+  EXPECT_TRUE(
+      CanDecodeUrl("http://example.com/Puzzle.jpg.pagespeed.ce.HASH.jpg"));
+
+  // Query is OK, too.
+  EXPECT_TRUE(
+      CanDecodeUrl("http://example.com/Puzzle.jpg.pagespeed.ce.HASH.jpg?s=ok"));
+
+  // Invalid filter code
+  EXPECT_FALSE(
+      CanDecodeUrl("http://example.com/Puzzle.jpg.pagespeed.nf.HASH.jpg"));
+
+  // Nonsense extension
+  EXPECT_FALSE(
+      CanDecodeUrl("http://example.com/Puzzle.jpg.pagespeed.ce.HASH.jpgif"));
+
+  // No hash
+  EXPECT_FALSE(
+      CanDecodeUrl("http://example.com/Puzzle.jpg.pagespeed.ce..jpg"));
+}
+
 // Test to make sure we do not put in extra things into the cache
 TEST_F(RewriteDriverTest, TestCacheUse) {
   AddFilter(RewriteOptions::kExtendCache);

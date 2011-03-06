@@ -49,7 +49,7 @@ class HttpDumpUrlWriterTest : public FetcherTest {
   }
 
   void RemoveFileIfPresent(const char* url) {
-    GURL gurl(url);
+    GoogleUrl gurl(url);
     std::string path;
     HttpDumpUrlFetcher::GetFilenameFromUrl(GTestTempDir() + "/http_dump/",
                                            gurl, &path, &message_handler_);
