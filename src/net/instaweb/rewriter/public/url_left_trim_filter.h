@@ -28,6 +28,7 @@
 
 namespace net_instaweb {
 
+class RewriteDriver;
 class Statistics;
 class Variable;
 
@@ -45,7 +46,7 @@ class Variable;
 // rather than -> /foo/other.html.
 class UrlLeftTrimFilter : public EmptyHtmlFilter {
  public:
-  UrlLeftTrimFilter(HtmlParse* html_parse, Statistics* statistics);
+  UrlLeftTrimFilter(RewriteDriver* rewrite_driver, Statistics* statistics);
   static void Initialize(Statistics* statistics);
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
@@ -62,17 +63,10 @@ class UrlLeftTrimFilter : public EmptyHtmlFilter {
  private:
   void TrimAttribute(HtmlElement::Attribute* attr);
   void ClearBaseUrl();
-  // There is only one base_url at a time, so calling the function clears out
-  // the previous base_url.
-  // SetBaseUrl() should be called at the beginning of the document with the
-  // document's url, and whenever we encounter a base tag.
-  void SetBaseUrl(const StringPiece& base_url);
 
   friend class UrlLeftTrimFilterTest;
 
-  HtmlParse* html_parse_;
-  GoogleUrl  base_url_;              // url we make paths relative to
-
+  RewriteDriver* driver_;
   // Stats on how much trimming we've done.
   Variable* trim_count_;
   Variable* trim_saved_bytes_;

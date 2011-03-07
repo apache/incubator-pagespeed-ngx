@@ -24,12 +24,13 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/user_agent.h"
 
 namespace net_instaweb {
@@ -41,7 +42,9 @@ class Hasher;
 class HtmlFilter;
 class HtmlParse;
 class HtmlWriterFilter;
+class OutputResource;
 class Resource;
+class ResourceManager;
 class ResourceNamer;
 class RewriteFilter;
 class Statistics;
@@ -49,6 +52,7 @@ class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
 class UrlLeftTrimFilter;
+class UrlSegmentEncoder;
 class Variable;
 class Writer;
 

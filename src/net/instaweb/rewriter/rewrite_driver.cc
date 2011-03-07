@@ -619,7 +619,7 @@ OutputResource* RewriteDriver::CreateOutputResourceWithPath(
     full_name.set_ext(content_type->file_extension() + 1);
   }
   OutputResource* resource = new OutputResource(
-      resource_manager_, path, full_name, content_type, &options_);
+      this, path, full_name, content_type, &options_);
   resource->set_outlined(kind == kOutlinedResource);
 
   // Determine whether this output resource is still valid by looking
@@ -701,7 +701,7 @@ Resource* RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
   Resource* resource = NULL;
 
   if (url.SchemeIs("data")) {
-    resource = DataUrlInputResource::Make(url_string, resource_manager_);
+    resource = DataUrlInputResource::Make(url_string, this);
     if (resource == NULL) {
       // Note: Bad user-content can leave us here.
       message_handler()->Message(kWarning, "Badly formatted data url '%s'",
@@ -713,8 +713,7 @@ Resource* RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
 
     // Note: type may be NULL if url has an unexpected or malformed extension.
     const ContentType* type = NameExtensionToContentType(url_string);
-    resource = new UrlInputResource(
-        resource_manager_, &options_, type, url_string);
+    resource = new UrlInputResource(this, &options_, type, url_string);
   } else {
     // Note: Bad user-content can leave us here.
     message_handler()->Message(kWarning, "Unsupported scheme '%s' for url '%s'",
@@ -737,7 +736,7 @@ OutputResource* RewriteDriver::CreateOutputResourceForFetch(
       // on behalf of a fetch.  This is because that field is only used for
       // domain sharding, which is a rewriting activity, not a fetching
       // activity.
-      resource = new OutputResource(resource_manager_, base, namer, NULL, NULL);
+      resource = new OutputResource(this, base, namer, NULL, NULL);
     }
   }
   return resource;

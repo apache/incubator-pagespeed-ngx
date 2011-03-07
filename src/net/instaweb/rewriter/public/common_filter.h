@@ -79,13 +79,14 @@ class CommonFilter : public EmptyHtmlFilter {
   // All that should happen in this pass is new URLs can be requested.
   //
   // Note: this adds overhead to the filter-dispatch mechanism, but
-  // the absolute numbers are small.  In pending CL 19863734 there is
-  // a test that calls Parse/Flush 1M times, and this takes ~4.3s with
-  // this extra scan infrastructure, or less than 5us per requset.
-  // Without this scan-infrastructure it takes ~4.0s, so this extra
-  // scan overhead is cheap, but not free.  In the future if we need
-  // to shave another 300ns from our parse time we can change this
-  // dispatch mechanism to require an explicit registration step.
+  // the absolute numbers are small.
+  // There is a test that calls Parse/Flush 1000 times on HTML with
+  // 1000 divs, and this takes ~4.0s with this extra scan
+  // infrastructure, or 4ms/request.  Without this scan-infrastructure
+  // it takes ~3.8s, so this extra scan overhead is cheap, but not
+  // free.  In the future if we need to shave another 200us from our
+  // parse time we can change this dispatch mechanism to require an
+  // explicit registration step.
   virtual void ScanStartDocument() const;
   virtual void ScanEndDocument() const;
   virtual void ScanStartElement(HtmlElement* element) const;

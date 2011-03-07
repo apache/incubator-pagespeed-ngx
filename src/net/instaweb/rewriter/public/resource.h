@@ -27,29 +27,28 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_H_
 
 #include "base/basictypes.h"
-#include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/util/public/content_type.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 
 class ResourceManager;
+class RewriteDriver;
 
 class Resource {
  public:
   static const int64 kDefaultExpireTimeMs;
 
-  Resource(ResourceManager* manager, const ContentType* type)
-      : resource_manager_(manager),
-        type_(type) {
-  }
+  Resource(RewriteDriver* driver, const ContentType* type);
   virtual ~Resource();
 
   // Common methods across all deriviations
   ResourceManager* resource_manager() const { return resource_manager_; }
+  RewriteDriver* driver() const { return driver_; }
   bool loaded() const { return meta_data_.status_code() != 0; }
   // TODO(sligocki): Change name to HttpStatusOk?
   bool ContentsValid() const {
@@ -106,6 +105,7 @@ class Resource {
   virtual void LoadAndCallback(AsyncCallback* callback,
                                MessageHandler* message_handler);
 
+  RewriteDriver* driver_;
   ResourceManager* resource_manager_;
 
   const ContentType* type_;

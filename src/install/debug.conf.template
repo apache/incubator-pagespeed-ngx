@@ -140,3 +140,8 @@ ModPagespeedEnableFilters add_instrumentation
 #PROXY   ModPagespeedGeneratedFilePrefix      "@@MODPAGESPEED_CACHE_ROOT@@-alt/files/"
 #PROXY   ModPagespeedRewriteLevel PassThrough
 #PROXY </VirtualHost>
+
+
+#SLURP # This is used for Slurp testing.
+#SLURP ModPagespeedSlurpDirectory /usr/local/apache2/htdocs/mod_pagespeed_test/slurp
+#SLURP ModPagespeedSlurpReadOnly on

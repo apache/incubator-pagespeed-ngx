@@ -33,6 +33,7 @@ class FileSystemLock : public TimerBasedAbstractLock {
       Unlock();
     }
   }
+
   virtual bool TryLock() {
     bool result = false;
     if (manager_->file_system()->
@@ -41,6 +42,7 @@ class FileSystemLock : public TimerBasedAbstractLock {
     }
     return result;
   }
+
   virtual bool TryLockStealOld(int64 timeout_ms) {
     bool result = false;
     if (manager_->file_system()->
@@ -49,13 +51,20 @@ class FileSystemLock : public TimerBasedAbstractLock {
     }
     return result;
   }
+
   virtual void Unlock() {
     held_ = !manager_->file_system()->Unlock(name_, manager_->handler());
   }
+
+  virtual std::string name() {
+    return name_;
+  }
+
  protected:
   virtual Timer* timer() const {
     return manager_->timer();
   }
+
  private:
   friend class FileSystemLockManager;
 

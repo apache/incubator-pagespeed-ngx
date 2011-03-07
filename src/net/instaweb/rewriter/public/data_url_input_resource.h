@@ -30,7 +30,7 @@
 
 namespace net_instaweb {
 
-class ResourceManager;
+class RewriteDriver;
 class ContentType;
 enum Encoding;
 
@@ -38,7 +38,7 @@ class DataUrlInputResource : public Resource {
  public:
   // We expose a factory; parse failure returns NULL.
   static DataUrlInputResource* Make(const StringPiece& url,
-                                    ResourceManager* manager) {
+                                    RewriteDriver* driver) {
     const ContentType* type;
     Encoding encoding;
     StringPiece encoded_contents;
@@ -51,7 +51,7 @@ class DataUrlInputResource : public Resource {
       return NULL;
     }
     return new DataUrlInputResource(url_copy, encoding, type, encoded_contents,
-                                    manager);
+                                    driver);
   }
 
   virtual ~DataUrlInputResource() { }
@@ -67,8 +67,8 @@ class DataUrlInputResource : public Resource {
                        Encoding encoding,
                        const ContentType* type,
                        const StringPiece& encoded_contents,
-                       ResourceManager* manager)
-      : Resource(manager, type),
+                       RewriteDriver* driver)
+      : Resource(driver, type),
         url_(url),
         encoding_(encoding),
         encoded_contents_(encoded_contents) {

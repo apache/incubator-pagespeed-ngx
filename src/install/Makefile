@@ -180,6 +180,15 @@ else
   # remove whole line
   PROXY_TEST_SED_PATTERN=^\#PROXY.*
 endif
+
+ifeq ($(SLURP_TEST),1)
+  # remove prefix
+  SLURP_TEST_SED_PATTERN=^\#SLURP
+else
+  # remove whole line
+  SLURP_TEST_SED_PATTERN=^\#SLURP.*
+endif
+
 # Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because
 # that might have embedded spaces, and 'sed' is interpreted first by bash.
 
@@ -192,6 +201,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(REWRITE_TEST_SED_PATTERN)@@" \
 	    -e "s@$(COVERAGE_TEST_SED_PATTERN)@@" \
 	    -e "s@$(PROXY_TEST_SED_PATTERN)@@" \
+	    -e "s@$(SLURP_TEST_SED_PATTERN)@@" \
 		$^ > $@
 
 $(STAGING_DIR)/proxy.conf : proxy.conf.template

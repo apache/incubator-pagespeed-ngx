@@ -18,11 +18,18 @@
 //         jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/content_type.h"
 
 namespace net_instaweb {
 
 const int64 Resource::kDefaultExpireTimeMs = 5 * 60 * 1000;
+
+Resource::Resource(RewriteDriver* driver, const ContentType* type)
+    : driver_(driver),
+      resource_manager_(driver->resource_manager()),
+      type_(type) {
+}
 
 Resource::~Resource() {
 }
@@ -70,7 +77,7 @@ void Resource::DetermineContentType() {
 // Default, blocking implementation which calls Load.
 // Resources which can fetch asynchronously should override this.
 void Resource::LoadAndCallback(AsyncCallback* callback,
-                                MessageHandler* message_handler) {
+                               MessageHandler* message_handler) {
   callback->Done(Load(message_handler), this);
 }
 

@@ -21,6 +21,7 @@
 #include <vector>
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -31,13 +32,13 @@ namespace {
 const char kUrlTrims[] = "url_trims";
 const char kUrlTrimSavedBytes[] = "url_trim_saved_bytes";
 
-} // namespace
+}  // namespace
 
 namespace net_instaweb {
 
-UrlLeftTrimFilter::UrlLeftTrimFilter(HtmlParse* html_parse,
+UrlLeftTrimFilter::UrlLeftTrimFilter(RewriteDriver* rewrite_driver,
                                      Statistics* stats)
-    : html_parse_(html_parse),
+    : driver_(rewrite_driver),
       trim_count_((stats == NULL) ? NULL : stats->GetVariable(kUrlTrims)),
       trim_saved_bytes_(
           (stats == NULL) ? NULL : stats->GetVariable(kUrlTrimSavedBytes)) {
@@ -49,31 +50,14 @@ void UrlLeftTrimFilter::Initialize(Statistics* statistics) {
 }
 
 void UrlLeftTrimFilter::StartDocument() {
-  GoogleUrl tmp(html_parse_->url());
-  base_url_.Swap(&tmp);
 }
 
 // If the element is a base tag, set the base url to be the href value.
 // Do not rewrite the base tag.
 void UrlLeftTrimFilter::StartElement(HtmlElement* element) {
-  if (element->keyword() == HtmlName::kBase) {
-    HtmlElement::Attribute *base_href = element->FindAttribute(HtmlName::kHref);
-    if (base_href != NULL) {
-      SetBaseUrl(base_href->value());
-    }
-  } else {
+  if (element->keyword() != HtmlName::kBase) {
     TrimAttribute(element->FindAttribute(HtmlName::kHref));
     TrimAttribute(element->FindAttribute(HtmlName::kSrc));
-  }
-}
-
-void UrlLeftTrimFilter::SetBaseUrl(const StringPiece& base) {
-  if(base_url_.is_empty()) {
-    GoogleUrl tmp(base);
-    base_url_.Swap(&tmp);
-  } else {
-    GoogleUrl tmp(html_parse_->google_url(), base);
-    base_url_.Swap(&tmp);
   }
 }
 
@@ -142,7 +126,7 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
                        url_to_trim.as_string().c_str(),
                        long_url_buffer.as_string().c_str(),
                        trimmed_url_piece.as_string().c_str(),
-                       resolved_newurl.Spec().as_string().c_str());
+                       resolved_newurl.spec_c_str());
       return false;
     }
     *trimmed_url = trimmed_url_piece.as_string();
@@ -157,8 +141,8 @@ void UrlLeftTrimFilter::TrimAttribute(HtmlElement::Attribute* attr) {
     StringPiece val(attr->value());
     std::string trimmed_val;
     size_t orig_size = val.size();
-    if (Trim(base_url_, val, &trimmed_val,
-             html_parse_->message_handler())) {
+    if (Trim(driver_->base_url(), val, &trimmed_val,
+             driver_->message_handler())) {
       attr->SetValue(trimmed_val);
       if (trim_count_ != NULL) {
         trim_count_->Add(1);

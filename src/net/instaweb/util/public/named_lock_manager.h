@@ -46,6 +46,9 @@ class AbstractLock : public AbstractMutex {
   // timeout_ms, or the caller has waited for wait_ms.  Thus wait_ms is
   // effectively bounded by timeout_ms.
   virtual bool LockTimedWaitStealOld(int64 wait_ms, int64 timeout_ms) = 0;
+
+  // The name the lock was created with, for debugging/logging purposes.
+  virtual std::string name() = 0;
 };
 
 // A named_lock_manager provides global locks named by strings (with the same

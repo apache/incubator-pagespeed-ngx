@@ -20,37 +20,48 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class UrlLeftTrimFilterTest : public HtmlParseTestBase {
+class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
  protected:
+  UrlLeftTrimFilter left_trim_filter_;
+  GoogleUrl *base_url_;
+
   UrlLeftTrimFilterTest()
-      : left_trim_filter_(&html_parse_, NULL) {
-    html_parse_.AddFilter(&left_trim_filter_);
+      : left_trim_filter_(&rewrite_driver_, NULL),
+        base_url_(NULL) {
+    rewrite_driver_.AddFilter(&left_trim_filter_);
+  }
+
+  ~UrlLeftTrimFilterTest() {
+    delete base_url_;
   }
 
   void OneTrim(bool changed,
                const StringPiece init, const StringPiece expected) {
     StringPiece url(init);
     std::string trimmed;
-    EXPECT_EQ(changed, left_trim_filter_.Trim(left_trim_filter_.base_url_,
-                                              url, &trimmed,
-                                              html_parse_.message_handler()));
+    CHECK(base_url_ != NULL);
+    EXPECT_EQ(changed, left_trim_filter_.Trim(
+        *base_url_, url, &trimmed,
+        rewrite_driver_.message_handler()));
     if (changed) {
       EXPECT_EQ(expected, trimmed);
     }
   }
 
   void SetFilterBaseUrl(const StringPiece& base_url) {
-    left_trim_filter_.SetBaseUrl(base_url);
+    if (base_url_ != NULL) {
+      delete base_url_;
+    }
+    base_url_ = new GoogleUrl(base_url);
   }
 
   virtual bool AddBody() const { return false; }
-
-  UrlLeftTrimFilter left_trim_filter_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UrlLeftTrimFilterTest);
@@ -165,9 +176,9 @@ TEST_F(UrlLeftTrimFilterTest, PartialUrl) {
   ValidateExpected("partial_url", kPartialUrl, kPartialUrlRewritten);
 }
 
-// TODO: in correct html, the base tag (with href) must come before any other
-// urls, thereby making them all relative to the same thing (i.e. the doc's
-// url if there is no base tag, and the base tag url if there is one).
+// TODO(nforman): in correct html, the base tag (with href) must come before
+// any other urls, thereby making them all relative to the same thing (i.e.
+// the doc's url if there is no base tag, and the base tag url if there is one).
 // However, different browsers deal with malformed html in different ways.
 // Some browsers change the base at the point of the base tag (Firefox),
 // and therefore will resolve the following (located at http://abc.com/foo.html)
@@ -194,7 +205,7 @@ static const char kMidBase[] =
     "<body><img src='//foo.bar/img.jpg'</body>";
 
 static const char kMidBaseRewritten[] =
-    "<head><link src='//foo.bar/baz'>"
+    "<head><link src='baz'>"
     "<base href='http://foo.bar'></head>"
     "<body><img src='img.jpg'></body>";
 

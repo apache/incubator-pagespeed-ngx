@@ -102,12 +102,12 @@ bool OutputResource::CachedResult::RememberedInt(
   return Remembered(key, &out_str) && StringToInt(out_str, out);
 }
 
-OutputResource::OutputResource(ResourceManager* manager,
+OutputResource::OutputResource(RewriteDriver* driver,
                                const StringPiece& resolved_base,
                                const ResourceNamer& full_name,
                                const ContentType* type,
                                const RewriteOptions* options)
-    : Resource(manager, type),
+    : Resource(driver, type),
       output_file_(NULL),
       writing_complete_(false),
       outlined_(false),
@@ -359,7 +359,7 @@ bool OutputResource::LockForCreation(const ResourceManager* resource_manager,
 
 void OutputResource::SaveCachedResult(const std::string& name_key,
                                       MessageHandler* handler) const {
-  HTTPCache* http_cache = resource_manager()->http_cache();
+  HTTPCache* http_cache = resource_manager_->http_cache();
   CachedResult* cached = cached_result_.get();
   CHECK(cached != NULL);
   cached->SetRememberedInt64(kOriginExpirationKey,
@@ -374,7 +374,7 @@ void OutputResource::SaveCachedResult(const std::string& name_key,
   }
   if ((delta_sec > 0) || http_cache->force_caching()) {
     ResponseHeaders* meta_data = &cached->headers_;
-    resource_manager()->SetDefaultHeaders(type(), meta_data);
+    resource_manager_->SetDefaultHeaders(type(), meta_data);
     std::string cache_control = StringPrintf(
         "max-age=%ld",
         static_cast<long>(delta_sec));  // NOLINT
@@ -395,7 +395,7 @@ void OutputResource::SaveCachedResult(const std::string& name_key,
 
 void OutputResource::FetchCachedResult(const std::string& name_key,
                                        MessageHandler* handler) {
-  HTTPCache* cache = resource_manager()->http_cache();
+  HTTPCache* cache = resource_manager_->http_cache();
   cached_result_.reset();
   CachedResult* cached = EnsureCachedResultCreated();
 

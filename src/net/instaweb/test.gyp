@@ -58,6 +58,7 @@
         'apache/apr_condvar_test.cc',
         'apache/apr_file_system_test.cc',
         'apache/mem_debug.cc',
+        'apache/speed_test.cc',
         'apache/serf_url_async_fetcher_test.cc',
         'htmlparse/html_keywords_test.cc',
         'htmlparse/html_name_test.cc',
