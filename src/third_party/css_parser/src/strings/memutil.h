@@ -16,15 +16,19 @@
 #ifndef MEMUTIL_H_
 #define MEMUTIL_H_
 
+#include "strings/ascii_ctype.h"
+
 // The ""'s catch people who don't pass in a literal for "str"
 #define strliterallen(str) (sizeof("" str "")-1)
 
-static int memcasecmp(const char *s1, const char *s2, size_t len) {
+inline int memcasecmp(const char *s1, const char *s2, size_t len) {
   const unsigned char *us1 = reinterpret_cast<const unsigned char *>(s1);
   const unsigned char *us2 = reinterpret_cast<const unsigned char *>(s2);
 
-  for ( size_t i = 0; i < len; i++ ) {
-    const int diff = tolower(us1[i]) - tolower(us2[i]);
+  for ( int i = 0; i < len; i++ ) {
+    const int diff =
+      static_cast<int>(static_cast<unsigned char>(ascii_tolower(us1[i]))) -
+      static_cast<int>(static_cast<unsigned char>(ascii_tolower(us2[i])));
     if (diff != 0) return diff;
   }
   return 0;

@@ -346,6 +346,8 @@ TEST_F(CssFilterTest, NoQueryCorruption) {
 }
 
 TEST_F(CssFilterTest, RewriteVariousCss) {
+  // TODO(sligocki): Get these tests to pass with setlocale.
+  //EXPECT_TRUE(setlocale(LC_ALL, "tr_TR.utf8"));
   // Distilled examples.
   const char* good_examples[] = {
     "a.b #c.d e#d,f:g>h+i>j{color:red}",  // .#,>+: in selectors
