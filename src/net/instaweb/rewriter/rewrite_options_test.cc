@@ -119,7 +119,7 @@ TEST_F(RewriteOptionsTest, CommaSeparatedList) {
   FilterSet s;
   s.insert(RewriteOptions::kAddInstrumentation);
   s.insert(RewriteOptions::kLeftTrimUrls);
-  const char* kList = "add_instrumentation,left_trim_urls";
+  const char* kList = "add_instrumentation,trim_urls";
   NullMessageHandler handler;
   ASSERT_TRUE(
       options_.EnableFiltersByCommaSeparatedList(kList, &handler));

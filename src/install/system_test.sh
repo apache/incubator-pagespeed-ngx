@@ -334,7 +334,7 @@ check $WGET_PREREQ $URL
 check [ `sed 's/ /\n/g' $FETCHED | grep -c '"' ` = 2 ]  # 2 quoted attrs
 check [ `grep -c "'" $FETCHED` = 0 ]                    # no apostrophes
 
-test_filter left_trim_urls makes urls relative
+test_filter trim_urls makes urls relative
 check $WGET_PREREQ $URL
 grep "http:" $FETCHED                     # scheme, should not find
 check [ $? != 0 ]
