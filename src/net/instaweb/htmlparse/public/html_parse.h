@@ -229,6 +229,11 @@ class HtmlParse {
   const GoogleUrl& google_url() const { return google_url_; }
   const char* id() const { return id_.c_str(); }
   int line_number() const { return line_number_; }
+  // Returns URL (or id) and line number as a string, to be used in messages.
+  std::string UrlLine() const {
+    return StringPrintf("%s:%d", id(), line_number());
+  }
+
   // Return the current assumed doctype of the document (based on the content
   // type and any HTML directives encountered so far).
   const DocType& doctype() const;

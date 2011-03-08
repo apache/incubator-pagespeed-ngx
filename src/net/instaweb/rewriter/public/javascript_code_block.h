@@ -91,6 +91,7 @@ class JavascriptCodeBlock {
  public:
   JavascriptCodeBlock(const StringPiece& original_code,
                       JavascriptRewriteConfig* config,
+                      const StringPiece& message_id,
                       MessageHandler* handler);
 
   virtual ~JavascriptCodeBlock();
@@ -127,6 +128,7 @@ class JavascriptCodeBlock {
   void Rewrite();
 
   JavascriptRewriteConfig* config_;
+  const std::string message_id_;  // ID to stick at begining of message.
   MessageHandler* handler_;
   const std::string original_code_;
   // Note that output_code_ points to either original_code_ or

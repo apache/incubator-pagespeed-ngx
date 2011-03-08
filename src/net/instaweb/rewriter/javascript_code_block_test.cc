@@ -142,7 +142,7 @@ TEST(JsCodeBlockTest, Rewrite) {
   JavascriptRewriteConfig::Initialize(&stats);
   JavascriptRewriteConfig config(&stats);
   GoogleMessageHandler handler;
-  JavascriptCodeBlock block(kBeforeCompilation, &config, &handler);
+  JavascriptCodeBlock block(kBeforeCompilation, &config, "Test", &handler);
   EXPECT_TRUE(block.ProfitableToRewrite());
   EXPECT_EQ(kAfterCompilation, block.Rewritten());
   ExpectStats(stats, 1, 1, 0,
@@ -154,7 +154,7 @@ TEST(JsCodeBlockTest, NoRewrite) {
   JavascriptRewriteConfig::Initialize(&stats);
   JavascriptRewriteConfig config(&stats);
   GoogleMessageHandler handler;
-  JavascriptCodeBlock block(kAfterCompilation, &config, &handler);
+  JavascriptCodeBlock block(kAfterCompilation, &config, "Test", &handler);
   EXPECT_FALSE(block.ProfitableToRewrite());
   EXPECT_EQ(kAfterCompilation, block.Rewritten());
   ExpectStats(stats, 1, 0, 0, 0);
@@ -165,7 +165,7 @@ TEST(JsCodeBlockTest, TruncatedComment) {
   JavascriptRewriteConfig::Initialize(&stats);
   JavascriptRewriteConfig config(&stats);
   GoogleMessageHandler handler;
-  JavascriptCodeBlock block(kTruncatedComment, &config, &handler);
+  JavascriptCodeBlock block(kTruncatedComment, &config, "Test", &handler);
   EXPECT_TRUE(block.ProfitableToRewrite());
   EXPECT_EQ(kTruncatedRewritten, block.Rewritten());
   ExpectStats(stats, 1, 1, 1,
@@ -177,7 +177,7 @@ TEST(JsCodeBlockTest, TruncatedString) {
   JavascriptRewriteConfig::Initialize(&stats);
   JavascriptRewriteConfig config(&stats);
   GoogleMessageHandler handler;
-  JavascriptCodeBlock block(kTruncatedString, &config, &handler);
+  JavascriptCodeBlock block(kTruncatedString, &config, "Test", &handler);
   EXPECT_FALSE(block.ProfitableToRewrite());
   EXPECT_EQ(kTruncatedString, block.Rewritten());
   ExpectStats(stats, 1, 0, 1, 0);
@@ -189,7 +189,7 @@ TEST(JsCodeBlockTest, NoMinification) {
   JavascriptRewriteConfig config(&stats);
   config.set_minify(false);
   GoogleMessageHandler handler;
-  JavascriptCodeBlock block(kBeforeCompilation, &config, &handler);
+  JavascriptCodeBlock block(kBeforeCompilation, &config, "Test", &handler);
   EXPECT_FALSE(block.ProfitableToRewrite());
   EXPECT_EQ(kBeforeCompilation, block.Rewritten());
   ExpectStats(stats, 1, 0, 0, 0);
@@ -202,7 +202,7 @@ TEST(JsCodeBlockTest, DealWithSgmlComment) {
   GoogleMessageHandler handler;
   const std::string original = "  <!--  \nvar x = 1;\n  //-->  ";
   const std::string expected = "var x=1;";
-  JavascriptCodeBlock block(original, &config, &handler);
+  JavascriptCodeBlock block(original, &config, "Test", &handler);
   EXPECT_TRUE(block.ProfitableToRewrite());
   EXPECT_EQ(expected, block.Rewritten());
   ExpectStats(stats, 1, 1, 0, original.size() - expected.size());
