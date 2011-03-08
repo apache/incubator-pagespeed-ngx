@@ -126,7 +126,7 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
                        url_to_trim.as_string().c_str(),
                        long_url_buffer.as_string().c_str(),
                        trimmed_url_piece.as_string().c_str(),
-                       resolved_newurl.Spec().as_string().c_str());
+                       resolved_newurl.spec_c_str());
       return false;
     }
     *trimmed_url = trimmed_url_piece.as_string();
