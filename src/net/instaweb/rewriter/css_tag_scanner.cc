@@ -152,7 +152,7 @@ bool CssTagScanner::AbsolutifyUrls(
             if (is_quoted) {
               writer->Write(StringPiece(&quote, 1), handler);
             }
-            ok = writer->Write(resolved.Spec(), handler);
+            ok = writer->Write(resolved.Spec().as_string().c_str(), handler);
             if (is_quoted) {
               writer->Write(StringPiece(&quote, 1), handler);
             }

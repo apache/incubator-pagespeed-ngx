@@ -345,7 +345,21 @@ apr_status_t save_url_for_instaweb_handler(request_rec *request) {
 
 // overrides core_map_to_storage to avoid imposing filename limits.
 apr_status_t instaweb_map_to_storage(request_rec* request) {
-  apr_status_t ret = (get_instaweb_url(request) != NULL) ? OK : DECLINED;
+  apr_status_t ret = DECLINED;
+  if (get_instaweb_url(request) != NULL) {
+    // mod_speling, if enabled, looks for the filename on the file system,
+    // and tries to "correct" the spelling.  This is not desired for
+    // mod_pagesped resources, but mod_speling will not do this damage
+    // when request->filename == NULL.  See line 219 of
+    // http://svn.apache.org/viewvc/httpd/httpd/trunk/modules/mappers/
+    // mod_speling.c?revision=983065&view=markup
+    //
+    // Note that mod_speling runs 'hook_fixups' at APR_HOOK_LAST, and
+    // we are currently running instaweb_map_to_storage in map_to_storage
+    // HOOK_FIRST-2, which is a couple of phases before hook_fixups.
+    request->filename = NULL;
+    ret = OK;
+  }
   return ret;
 }
 
