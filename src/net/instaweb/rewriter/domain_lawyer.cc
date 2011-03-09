@@ -300,8 +300,8 @@ bool DomainLawyer::MapRequestToDomain(
         if (mapped_domain != NULL) {
           CHECK(!mapped_domain->IsWildcarded());
           mapped_domain->name().CopyToString(mapped_domain_name);
-          GoogleUrl tmp(GoogleUrl(*mapped_domain_name),
-                        resolved_request->PathAndLeaf());
+          GoogleUrl mapped_domain_url(*mapped_domain_name);
+          GoogleUrl tmp(mapped_domain_url, resolved_request->PathAndLeaf());
           resolved_request->Swap(&tmp);
         }
       }
@@ -326,8 +326,8 @@ bool DomainLawyer::MapOrigin(const StringPiece& in, std::string* out) const {
       Domain* origin_domain = domain->origin_domain();
       if (origin_domain != NULL) {
         CHECK(!origin_domain->IsWildcarded());
-        GoogleUrl mapped_gurl(GoogleUrl(origin_domain->name()),
-                              gurl.PathAndLeaf());
+        GoogleUrl original_domain_url(origin_domain->name());
+        GoogleUrl mapped_gurl(original_domain_url, gurl.PathAndLeaf());
         if (mapped_gurl.is_valid()) {
           mapped_gurl.Spec().CopyToString(out);
         }

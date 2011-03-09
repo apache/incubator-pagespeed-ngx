@@ -27,6 +27,10 @@
 
 namespace net_instaweb {
 
+UrlPartnership::UrlPartnership(const RewriteOptions* rewrite_options)
+    : rewrite_options_(rewrite_options) {
+}
+
 UrlPartnership::UrlPartnership(const RewriteOptions* rewrite_options,
                                const GoogleUrl& original_request)
     : rewrite_options_(rewrite_options) {

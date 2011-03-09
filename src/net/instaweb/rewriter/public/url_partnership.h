@@ -38,6 +38,7 @@ class RewriteOptions;
 //   3. What are the unique suffices for the elements.
 class UrlPartnership {
  public:
+  explicit UrlPartnership(const RewriteOptions* options);
   UrlPartnership(const RewriteOptions* options,
                  const GoogleUrl& original_request);
   virtual ~UrlPartnership();
