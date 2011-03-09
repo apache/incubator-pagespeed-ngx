@@ -26,23 +26,16 @@ namespace net_instaweb {
 
 class MD5Hasher : public Hasher {
  public:
-  static const int kMaxHashSize;
   static const int kDefaultHashSize = 10;
 
-  MD5Hasher() : hash_size_(kDefaultHashSize) {}
-  MD5Hasher(int hash_size) {
-    CHECK(hash_size >= 0);
-    hash_size_ = std::min(hash_size, kMaxHashSize);
-  }
+  MD5Hasher() : Hasher(kDefaultHashSize) {}
+  explicit MD5Hasher(int hash_size) : Hasher(hash_size) { }
   virtual ~MD5Hasher();
 
-  virtual std::string Hash(const StringPiece& content) const;
-
-  virtual int HashSizeInChars() const { return hash_size_; }
+  virtual std::string RawHash(const StringPiece& content) const;
+  virtual int RawHashSizeInBytes() const;
 
  private:
-  int hash_size_;
-
   DISALLOW_COPY_AND_ASSIGN(MD5Hasher);
 };
 

@@ -25,6 +25,7 @@ const char kTestData[] = "/net/instaweb/rewriter/testdata/";
 const char kCuppa[] = "Cuppa.png";
 const char kBikeCrash[] = "BikeCrashIcn.png";
 const char kIronChef[] = "IronChef2.gif";
+const char kCradle[] = "CradleAnimation.gif";
 const char kPuzzle[] = "Puzzle.jpg";
 
 }  // namespace
@@ -96,7 +97,7 @@ class ImageTest : public testing::Test {
     ImagePtr image(ReadImageFromFile(filename, &contents));
     ExpectDimensions(image_type, size, width, height, image.get());
     if (optimizable) {
-      EXPECT_LT(image->output_size(), size);
+      EXPECT_GT(size, image->output_size());
     } else {
       EXPECT_EQ(size, image->output_size());
     }
@@ -152,7 +153,16 @@ class ImageTest : public testing::Test {
         8,  // Min bytes to bother checking file type at all.
         ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
         192, 256,
-        24941, false);
+        24941, true);
+  }
+
+  void DoAnimationTest() {
+    CheckImageFromFile(
+        kCradle, Image::IMAGE_GIF,
+        8,  // Min bytes to bother checking file type at all.
+        ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
+        200, 150,
+        583374, false);
   }
 
   void DoJpegTest() {
@@ -180,6 +190,10 @@ TEST_F(ImageTest, PngTest) {
 
 TEST_F(ImageTest, GifTest) {
   DoGifTest();
+}
+
+TEST_F(ImageTest, AnimationTest) {
+  DoAnimationTest();
 }
 
 TEST_F(ImageTest, JpegTest) {

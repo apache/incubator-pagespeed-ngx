@@ -87,9 +87,30 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
       long_url.Origin() == origin) {
     to_trim = origin.length();
     StringPiece path = base_url.PathSansLeaf();
-    if (to_trim + path.length() < long_url_buffer.length() &&
-        long_url.PathSansLeaf().find(path) == 0) {
-      to_trim += path.length();
+
+    // If the path still starts with a "//", we can't trim the origin.
+    // Annoyingly, "//" is not actually the same as a single /, though most
+    // servers will do the same thing with it.  If we trim the origin,
+    // but leave the //, then it will think the beginning of the path is the
+    // origin.
+    if (long_url_buffer.data()[to_trim + 1] == '/' &&
+        long_url_buffer.data()[to_trim] == '/') {
+      to_trim = 0;
+    } else if (to_trim + path.length() < long_url_buffer.length() &&
+               long_url.PathSansLeaf().find(path) == 0) {
+      // Don't trim the path off queries in the form http://foo.com/?a=b
+      // Instead resolve to /?a=b (not ?a=b, which resolves to
+      // index.html?a=b on http://foo.com/index.html).
+      if (!long_url.has_query() || long_url.LeafSansQuery().length() > 0) {
+        to_trim += path.length();
+
+        // Again, if we now ended up with a /, then we used to have a //.
+        // '/' at the beginning of a path does not mean the same thing as
+        // '//' in the middle of one.
+        if (long_url_buffer.data()[to_trim] == '/') {
+          to_trim -= path.length();
+        }
+      }
     }
   }
 

@@ -163,14 +163,6 @@ class Image {
     return image_type_;
   }
 
-  // Returns true if the image has transparency (an alpha channel, or a
-  // transparent color).  Note that certain ambiguously-formatted images might
-  // yield false positive results here; we don't check whether alpha channels
-  // contain non-opaque data, nor do we check if a distinguished transparent
-  // color is actually used in an image.  We assume that if the image file
-  // contains flags for transparency, it does so for a reason.
-  bool HasTransparency();
-
   // Changes the size of the image to the given width and height.  This will run
   // image processing on the image, and return false if the image processing
   // fails.  Otherwise the image contents and type can change.
@@ -196,13 +188,16 @@ class Image {
   typedef std::string OpenCvBuffer;
 #endif
 
+  // Internal helper used only in image.cc.
+  static bool ComputePngTransparency(const StringPiece& buf);
+
   // Internal methods used only in image.cc (see there for more).
   void UndoChange();
   void ComputeImageType();
   void FindJpegSize();
   inline void FindPngSize();
-  bool ComputePngTransparency();
   inline void FindGifSize();
+  bool HasTransparency(const StringPiece& buf);
   bool LoadOpenCv();
   void CleanOpenCv();
   bool ComputeOutputContents();

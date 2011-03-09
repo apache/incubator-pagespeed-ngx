@@ -124,7 +124,8 @@ OutputResource::OutputResource(RewriteDriver* driver,
     // make this convention consistent and fix all code.
     CHECK_EQ((type->file_extension() + 1), full_name.ext());
   }
-  CHECK(EndsInSlash(resolved_base)) << "resolved_base must end in a slash.";
+  CHECK(EndsInSlash(resolved_base)) <<
+      "resolved_base must end in a slash, was: " << resolved_base;
 }
 
 OutputResource::~OutputResource() {

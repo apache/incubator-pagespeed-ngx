@@ -247,6 +247,31 @@ TEST_F(UrlLeftTrimFilterTest, OneDot) {
   OneTrim(true, "./cows/index.html", "cows/index.html");
 }
 
+TEST_F(UrlLeftTrimFilterTest, Query) {
+  SetFilterBaseUrl("http://foo.bar/index.html");
+  OneTrim(true, "http://foo.bar/?a=b", "/?a=b");
+}
+
+TEST_F(UrlLeftTrimFilterTest, TrimQuery) {
+  SetFilterBaseUrl("http://foo.bar/baz/index.html");
+  OneTrim(true, "http://foo.bar/baz/other.html?a=b", "other.html?a=b");
+}
+
+TEST_F(UrlLeftTrimFilterTest, DoubleSlashPath) {
+  SetFilterBaseUrl("http://foo.bar/baz/index.html");
+  OneTrim(true, "http://foo.bar/baz//other.html", "/baz//other.html");
+}
+
+TEST_F(UrlLeftTrimFilterTest, DoubleSlashBeginningPath) {
+  SetFilterBaseUrl("http://foo.bar/index.html");
+  OneTrim(true, "http://foo.bar//other.html", "//foo.bar//other.html");
+}
+
+TEST_F(UrlLeftTrimFilterTest, TripleSlashPath) {
+  SetFilterBaseUrl("http://foo.bar/example/index.html");
+  OneTrim(true, "http://foo.bar/example///other.html", "/example///other.html");
+}
+
 static const char kBlankBase[] =
     "<head><base href=''>"
     "</head><body>"

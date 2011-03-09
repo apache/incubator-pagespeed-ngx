@@ -27,7 +27,9 @@ namespace {
 class MD5HasherTest : public ::testing::Test {};
 
 TEST_F(MD5HasherTest, CorrectHashSize) {
-  for (int i = MD5Hasher::kMaxHashSize; i >= 0; --i) {
+  // MD5 is 128-bit, which is 21.333 6-bit chars.
+  const int kMaxHashSize = 21;
+  for (int i = kMaxHashSize; i >= 0; --i) {
     MD5Hasher hasher(i);
     EXPECT_EQ(i, hasher.HashSizeInChars());
     EXPECT_EQ(i, hasher.Hash("foobar").size());

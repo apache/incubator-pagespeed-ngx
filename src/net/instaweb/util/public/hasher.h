@@ -28,17 +28,36 @@ namespace net_instaweb {
 
 class Hasher {
  public:
-  Hasher() { }
+  // The passed in max_chars will be used to limit the length of
+  // Hash() and HashSizeInChars()
+  explicit Hasher(int max_chars);
   virtual ~Hasher();
 
-  // Interface to compute a hash of a single string.  This
+  // Computes a web64-encoded hash of a single string.  This
   // operation is thread-safe.
-  virtual std::string Hash(const StringPiece& content) const = 0;
+  //
+  // This is implemented in terms of RawHash, and honors the length limit
+  // passed in to the constructor.
+  std::string Hash(const StringPiece& content) const;
 
-  // Return string length of hashes produced by this hasher.
-  virtual int HashSizeInChars() const = 0;
+  // Return string length of hashes produced by this hasher's Hash
+  // method.
+  //
+  // This is implemented in terms of RawHashSizeInBytes() and the length limit
+  // passed in to the constructor.
+  int HashSizeInChars() const;
+
+  // Computes a binary hash of the given content. The returned value
+  // is not printable as it is the direct binary encoding of the hash.
+  // This operation is thread-safe.
+  virtual std::string RawHash(const StringPiece& content) const = 0;
+
+  // The number of bytes RawHash will produce.
+  virtual int RawHashSizeInBytes() const = 0;
 
  private:
+  int max_chars_;  // limit on length of Hash/HashSizeInChars set by subclass.
+
   DISALLOW_COPY_AND_ASSIGN(Hasher);
 };
 

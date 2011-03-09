@@ -124,6 +124,10 @@ class GoogleUrl {
     return gurl_.has_path();
   }
 
+  bool has_query() const {
+    return gurl_.has_query();
+  }
+
   bool SchemeIs(const char* lower_ascii_scheme) const {
     return gurl_.SchemeIs(lower_ascii_scheme);
   }

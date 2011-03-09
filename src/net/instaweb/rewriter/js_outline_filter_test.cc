@@ -79,6 +79,22 @@ TEST_F(JsOutlineFilterTest, OutlineScript) {
   OutlineScript("outline_scripts_no_hash_with_headers", &mock_hasher_);
 }
 
+// Make sure we don't misplace things into domain of the base tag,
+// as we may not be able to fetch from it.
+// (The leaf in base href= also covers a previous check failure)
+TEST_F(JsOutlineFilterTest, OutlineScriptWithBase) {
+  options_.EnableFilter(RewriteOptions::kOutlineJavascript);
+  options_.set_js_outline_min_bytes(0);
+  rewrite_driver_.AddFilters();
+
+  const char kInput[] =
+      "<base href='http://cdn.example.com/file.html'><script>42;</script>";
+  std::string expected_output =
+      StrCat("<base href='http://cdn.example.com/file.html'>",
+             "<script src=\"", kTestDomain, "_.pagespeed.jo.0.js\"></script>");
+  ValidateExpected("test.html", kInput, expected_output);
+}
+
 // Negative test.
 TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   std::string file_prefix = GTestTempDir() + "/no_outline";
