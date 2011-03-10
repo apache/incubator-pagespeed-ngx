@@ -81,7 +81,7 @@ int ResponseHeadersParser::ParseChunk(const StringPiece& text,
         }
         parsing_http_ = false;
       } else {
-        response_headers_->Add(parse_name_.c_str(), parse_value_.c_str());
+        response_headers_->Add(parse_name_, parse_value_);
       }
       parsing_value_ = false;
       parse_name_.clear();

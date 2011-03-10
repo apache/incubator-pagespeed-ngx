@@ -78,7 +78,7 @@ void FileSystemTest::TestWriteRead() {
 void FileSystemTest::TestTemp() {
   std::string prefix = test_tmpdir() + "/temp_prefix";
   FileSystem::OutputFile* ofile = file_system()->OpenTempFile(
-      prefix.c_str(), &handler_);
+      prefix, &handler_);
   ASSERT_TRUE(ofile != NULL);
   std::string filename(ofile->filename());
   std::string msg("Hello, world!");

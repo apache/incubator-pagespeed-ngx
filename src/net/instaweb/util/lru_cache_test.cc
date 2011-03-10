@@ -109,7 +109,7 @@ TEST_F(LRUCacheTest, LeastRecentlyUsed) {
 
   // Ensure we can see those.
   for (int i = 0; i < 10; ++i) {
-    CheckGet(keys[i].c_str(), values[i].c_str());
+    CheckGet(keys[i].c_str(), values[i]);
   }
 
   // Now if we insert a new entry totaling 10 bytes, that should work,
@@ -138,7 +138,7 @@ TEST_F(LRUCacheTest, LeastRecentlyUsed) {
   CheckGet("nameC", "valueC");
   CheckGet("name1", "valu1");
   for (int i = 5; i < 10; ++i) {
-    CheckGet(keys[i].c_str(), values[i].c_str());
+    CheckGet(keys[i].c_str(), values[i]);
   }
 
   // Now the oldest item is "nameA".  Freshen it by re-inserting it, tickling
@@ -152,7 +152,7 @@ TEST_F(LRUCacheTest, LeastRecentlyUsed) {
   CheckGet("nameC", "valueC");
   CheckGet("name1", "valu1");
   for (int i = 5; i < 10; ++i) {
-    CheckGet(keys[i].c_str(), values[i].c_str());
+    CheckGet(keys[i].c_str(), values[i]);
   }
 }
 

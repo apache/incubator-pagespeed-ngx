@@ -92,7 +92,7 @@ bool CacheUrlAsyncFetcher::StreamingFetch(
   HTTPValue value;
   StringPiece contents;
   bool ret = false;
-  if ((http_cache_->Find(url.c_str(), &value, response_headers, handler) ==
+  if ((http_cache_->Find(url, &value, response_headers, handler) ==
        HTTPCache::kFound) &&
       !CacheUrlFetcher::RememberNotCached(*response_headers) &&
       value.ExtractContents(&contents)) {

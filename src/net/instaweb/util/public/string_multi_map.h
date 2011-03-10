@@ -101,7 +101,7 @@ template<class StringCompare> class StringMultiMap {
     StringStarVector dummy_values;
     std::string name_buf(var_name.data(), var_name.size());
     std::pair<typename Map::iterator, bool> iter_inserted = map_.insert(
-        typename Map::value_type(name_buf.c_str(), dummy_values));
+        typename Map::value_type(name_buf, dummy_values));
     typename Map::iterator iter = iter_inserted.first;
     StringStarVector& values = iter->second;
     std::string* value_copy = NULL;

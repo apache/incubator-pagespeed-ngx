@@ -45,7 +45,7 @@ TEST_F(HtmlNameTest, AllKeywordsUpperCase) {
   for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
     std::string upper(iter.name());
     UpperString(&upper);
-    EXPECT_EQ(iter.keyword(), HtmlName::Lookup(upper.c_str()));
+    EXPECT_EQ(iter.keyword(), HtmlName::Lookup(upper));
   }
 }
 
@@ -63,7 +63,7 @@ TEST_F(HtmlNameTest, AllKeywordsMixedCase) {
       }
       mixed[i] = c;
     }
-    EXPECT_EQ(iter.keyword(), HtmlName::Lookup(mixed.c_str()));
+    EXPECT_EQ(iter.keyword(), HtmlName::Lookup(mixed));
   }
 }
 

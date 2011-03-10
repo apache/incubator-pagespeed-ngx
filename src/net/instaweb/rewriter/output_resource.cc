@@ -96,8 +96,7 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
     // Always write to a tempfile, so that if we get interrupted in the middle
     // we won't leave a half-baked file in the serving path.
     std::string temp_prefix = TempPrefix();
-    output_file_ = file_system->OpenTempFile(
-        temp_prefix.c_str(), handler);
+    output_file_ = file_system->OpenTempFile(temp_prefix, handler);
     bool success = (output_file_ != NULL);
     if (success) {
       std::string header;

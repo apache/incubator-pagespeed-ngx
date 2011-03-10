@@ -110,7 +110,7 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   // We need to make sure we don't create this file, so rm any old one
   std::string filename = Encode(file_prefix, JsOutlineFilter::kFilterId, "0",
                                  "_", "js");
-  DeleteFileIfExists(filename.c_str());
+  DeleteFileIfExists(filename);
 
   static const char html_input[] =
       "<head>\n"

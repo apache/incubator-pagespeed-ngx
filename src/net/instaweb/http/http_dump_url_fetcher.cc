@@ -260,7 +260,7 @@ bool HttpDumpUrlFetcher::StreamingFetchUrl(
         }
         if (writer.gzip_content_length() != 0) {
           response_headers->Add(kGzipContentLengthAttribute, IntegerToString(
-              writer.gzip_content_length()).c_str());
+              writer.gzip_content_length()));
         }
         response_headers->ComputeCaching();
         ret = true;

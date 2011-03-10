@@ -76,10 +76,10 @@ void CacheUrlFetcher::AsyncFetch::UpdateCache() {
   // TODO(jmarantz): allow configuration of whether we ignore
   // IsProxyCacheable, e.g. for content served from the same host
   ResponseHeaders* response = response_headers();
-  if ((http_cache_->Query(url_.c_str()) == CacheInterface::kNotFound)) {
+  if ((http_cache_->Query(url_) == CacheInterface::kNotFound)) {
     if (force_caching_ || response->IsProxyCacheable()) {
       value_.SetHeaders(response);
-      http_cache_->Put(url_.c_str(), &value_, message_handler_);
+      http_cache_->Put(url_, &value_, message_handler_);
     } else {
       // Leave value_ alone as we prep a cache entry to indicate that
       // this url is not cacheable.  This is because this code is
@@ -99,7 +99,7 @@ void CacheUrlFetcher::AsyncFetch::UpdateCache() {
       remember_not_cached.Add(kRememberNotCached, "1");  // value doesn't matter
       dummy_value.Write("", message_handler_);
       dummy_value.SetHeaders(&remember_not_cached);
-      http_cache_->Put(url_.c_str(), &dummy_value, message_handler_);
+      http_cache_->Put(url_, &dummy_value, message_handler_);
     }
   }
 }
@@ -140,7 +140,7 @@ bool CacheUrlFetcher::StreamingFetchUrl(
   bool ret = false;
   HTTPValue value;
   StringPiece contents;
-  ret = ((http_cache_->Find(url.c_str(), &value, response, handler)
+  ret = ((http_cache_->Find(url, &value, response, handler)
           == HTTPCache::kFound) &&
          value.ExtractContents(&contents));
   if (ret) {
@@ -168,7 +168,7 @@ bool CacheUrlFetcher::StreamingFetchUrl(
         value.Clear();
         value.SetHeaders(response);
         value.Write(content, handler);
-        http_cache_->Put(url.c_str(), &value, handler);
+        http_cache_->Put(url, &value, handler);
       }
     } else {
       // TODO(jmarantz): Consider caching that this request is not fetchable

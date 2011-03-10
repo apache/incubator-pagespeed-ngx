@@ -68,8 +68,8 @@ class JavascriptFilterTest : public ResourceManagerTestBase {
     // Do a normal rewrite test
     InitTest(100);
     ValidateExpected("no_ext_corruption",
-                    GenerateHtml(kOrigJsName).c_str(),
-                    GenerateHtml(expected_rewritten_path_.c_str()).c_str());
+                    GenerateHtml(kOrigJsName),
+                    GenerateHtml(expected_rewritten_path_.c_str()));
 
     // Fetch messed up URL.
     std::string out;
@@ -78,8 +78,8 @@ class JavascriptFilterTest : public ResourceManagerTestBase {
 
     // Rewrite again; should still get normal URL
     ValidateExpected("no_ext_corruption",
-                    GenerateHtml(kOrigJsName).c_str(),
-                    GenerateHtml(expected_rewritten_path_.c_str()).c_str());
+                    GenerateHtml(kOrigJsName),
+                    GenerateHtml(expected_rewritten_path_.c_str()));
   }
 
   std::string expected_rewritten_path_;
@@ -88,23 +88,23 @@ class JavascriptFilterTest : public ResourceManagerTestBase {
 TEST_F(JavascriptFilterTest, DoRewrite) {
   InitTest(100);
   ValidateExpected("do_rewrite",
-                   GenerateHtml(kOrigJsName).c_str(),
-                   GenerateHtml(expected_rewritten_path_.c_str()).c_str());
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(expected_rewritten_path_.c_str()));
 }
 
 TEST_F(JavascriptFilterTest, RewriteAlreadyCachedProperly) {
   InitTest(100000000);  // cached for a long time to begin with
   // But we will rewrite because we can make the data smaller.
   ValidateExpected("rewrite_despite_being_cached_properly",
-                   GenerateHtml(kOrigJsName).c_str(),
-                   GenerateHtml(expected_rewritten_path_.c_str()).c_str());
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(expected_rewritten_path_.c_str()));
 }
 
 TEST_F(JavascriptFilterTest, NoRewriteOriginUncacheable) {
   InitTest(0);  // origin not cacheable
   ValidateExpected("no_extend_origin_not_cacheable",
-                   GenerateHtml(kOrigJsName).c_str(),
-                   GenerateHtml(kOrigJsName).c_str());
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(kOrigJsName));
 }
 
 TEST_F(JavascriptFilterTest, ServeFiles) {

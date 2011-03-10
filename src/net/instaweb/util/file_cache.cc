@@ -101,7 +101,7 @@ void FileCache::Put(const std::string& key, SharedString* value) {
   if (EncodeFilename(key, &filename)) {
     const std::string& buffer = **value;
     std::string temp_filename;
-    if (file_system_->WriteTempFile(filename.c_str(), buffer,
+    if (file_system_->WriteTempFile(filename, buffer,
                                     &temp_filename, message_handler_)) {
       file_system_->RenameFile(temp_filename.c_str(), filename.c_str(),
                                message_handler_);
