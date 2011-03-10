@@ -153,7 +153,7 @@ bool JavascriptFilter::WriteExternalScriptTo(
 // External script; minify and replace with rewritten version (also external).
 void JavascriptFilter::RewriteExternalScript() {
   const StringPiece script_url(script_src_->value());
-  scoped_ptr<OutputResource::CachedResult> rewrite_info(
+  scoped_ptr<CachedResult> rewrite_info(
       RewriteWithCaching(script_url, resource_manager_->url_escaper()));
 
   if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {

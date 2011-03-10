@@ -57,11 +57,6 @@ class ResourceNamer {
 
   // Note: there is no need at this time to decode the name key.
 
-  // Encode/decode the hash and extension, which is used as the value
-  // in the origin-TTL-bounded cache.
-  std::string EncodeHashExt() const;
-  bool DecodeHashExt(const StringPiece& encoded_hash_ext);
-
   // Simple getters
   StringPiece id() const { return id_; }
   StringPiece name() const { return name_; }

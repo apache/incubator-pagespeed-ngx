@@ -29,6 +29,7 @@
 #include "net/instaweb/util/public/file_writer.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -42,81 +43,6 @@ class NamedLockManager;
 
 class OutputResource : public Resource {
  public:
-  class CachedResult {
-   public:
-    // The cached URL of this result. If this CachedResult was actually
-    // fetched from the cache and is not a new one produced by
-    // EnsureCachedResultCreated this will be valid if and only if
-    // optimizable is true.
-    std::string url() { return url_; }
-
-    // Returns when the input used to produce this expires.
-    int64 origin_expiration_time_ms() const {
-      return origin_expiration_time_ms_;
-    }
-
-    // When this is false we have previously processed the URL and
-    // have marked down that we cannot do anything with it
-    // (by calling ResourceManager::WriteUnoptimizable).
-    bool optimizable() const { return optimizable_; }
-
-    // The auto_expire bit is used when writing out this entry to cache
-    // to determine the TTL. If auto_expire is true (the default) this entry
-    // will be marked to get automatically expunged when
-    // origin_expiration_time_ms() is reached; this means it can be safely
-    // used without any checking. If set_auto_expire(false) is called before
-    // write, the cache entry will be given TTL of at least a year
-    // or until origin_expiration_time_ms, whichever is longer
-    // (origin_expiration_time_ms() will still be stored properly).
-    // In that case, the user is responsible for ensuring that the cached
-    // result is still valid, for example by combination of checking against
-    // origin_expiration_time_ms() and verifying that the input contents
-    // have not changed.
-    void set_auto_expire(bool ae) { CHECK(!frozen_); auto_expire_ = ae; }
-
-    // The methods below permit filters to store whatever information
-    // they want. They should take care to avoid key conflicts
-    // with other classes. The suggested convention is to start
-    // their key with ClassName_
-    //
-    // Also, this currently requires the keys to be valid HTTP header names;
-    // so most punctuation can't be used (but - and _ are OK)
-    void SetRemembered(const StringPiece& key, const std::string& val);
-    bool Remembered(const StringPiece& key, std::string* out) const;
-
-    void SetRememberedInt64(const StringPiece& key, int64 val);
-    bool RememberedInt64(const StringPiece& key, int64* out);
-
-    void SetRememberedInt(const StringPiece& key, int val);
-    bool RememberedInt(const StringPiece& key, int* out);
-
-   private:
-    friend class ResourceManager;
-    friend class RewriteDriver;
-    friend class OutputResource;
-
-    CachedResult();
-
-    void set_optimizable(bool opt) { optimizable_ = opt; }
-    void set_url(const std::string& url) { url_ = url; }
-    void set_origin_expiration_time_ms(int64 time) {
-      origin_expiration_time_ms_ = time;
-    }
-    bool auto_expire() const { return auto_expire_; }
-    void set_frozen(bool f) { frozen_ = f; }
-
-    // Changes to custom metadata by clients done after we are written to
-    // cache are lost, and it's extremely easy to get it wrong. To catch
-    // mistakes like that, we mark a CachedResult as 'frozen' upon save,
-    // and DCHECK any SetRemembered calls.
-    bool frozen_;
-    bool optimizable_;
-    bool auto_expire_;
-    std::string url_;
-    int64 origin_expiration_time_ms_;
-    ResponseHeaders headers_;  // Extended metadata
-    DISALLOW_COPY_AND_ASSIGN(CachedResult);
-  };
 
   // Construct an OutputResource.  For the moment, we pass in type redundantly
   // even though full_name embeds an extension.  This reflects current code
@@ -158,10 +84,6 @@ class OutputResource : public Resource {
   // hash-code then we may also be able to look up the contents in the same
   // cache.
   virtual std::string name_key() const;
-  // The hash_ext describes the hash and content type of the resource;
-  // to index already-computed resources we lookup name_key() and obtain
-  // the corresponding hash_ext().
-  virtual std::string hash_ext() const;
 
   // output-specific
   const std::string& resolved_base() const { return resolved_base_; }
@@ -197,18 +119,27 @@ class OutputResource : public Resource {
   //
   // Note: cached_result() will also be non-NULL if you explicitly
   // create the result from a filter by calling EnsureCachedResultCreated()
-  CachedResult* cached_result() const { return cached_result_.get(); }
+  //
+  // The output is const because we do not check that the CachedResult has not
+  // been written.  If you want to modify the CachedResult, use
+  // EnsureCachedResultCreated instead.
+  const CachedResult* cached_result() const { return cached_result_.get(); }
 
   // If there is no cached output information, creates an empty one,
   // without any information filled in (so no url(), or timestamps).
   //
   // The primary use of this method is to let filters store any metadata they
   // want before calling ResourceManager::Write.
+  // This never returns null.
+  // We will DCHECK that the cached result has not been written.
   CachedResult* EnsureCachedResultCreated() {
     if (cached_result() == NULL) {
       cached_result_.reset(new CachedResult());
+    } else {
+      DCHECK(!cached_result_.get()->frozen())
+          << "Cannot mutate frozen cached result.";
     }
-    return cached_result();
+    return cached_result_.get();
   }
 
   // Transfers up ownership of any cached result and clears pointer to it.
@@ -224,6 +155,7 @@ class OutputResource : public Resource {
 
  private:
   friend class ResourceManager;
+  friend class ResourceManagerTest;
   friend class ResourceManagerTestingPeer;
   friend class RewriteDriver;
 
@@ -248,6 +180,7 @@ class OutputResource : public Resource {
   };
 
   void SetHash(const StringPiece& hash);
+  StringPiece extension() const { return full_name_.ext(); }
   StringPiece hash() const { return full_name_.hash(); }
   bool has_hash() const { return !hash().empty(); }
   void set_written(bool written) { writing_complete_ = true; }
@@ -261,7 +194,7 @@ class OutputResource : public Resource {
   // Stores the current state of cached_result in the HTTP cache
   // under the given key.
   // Pre-condition: cached_result() != NULL
-  void SaveCachedResult(const std::string& key, MessageHandler* handler) const;
+  void SaveCachedResult(const std::string& key, MessageHandler* handler);
 
   // Loads the state of cached_result from the given cached key if possible,
   // and syncs our URL and content type with it. If fails, cached_result

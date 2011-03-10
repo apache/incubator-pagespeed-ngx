@@ -315,7 +315,7 @@ bool CssFilter::LoadAllSubStylesheets(
 // Read an external CSS file, rewrite it and write a new external CSS file.
 bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
                                    std::string* out_url) {
-  scoped_ptr<OutputResource::CachedResult> rewrite_info(
+  scoped_ptr<CachedResult> rewrite_info(
       RewriteWithCaching(in_url, resource_manager_->url_escaper()));
 
   if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {

@@ -21,6 +21,7 @@
 #include <algorithm>
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -30,16 +31,6 @@
 #include "net/instaweb/util/public/url_escaper.h"
 
 namespace net_instaweb {
-
-namespace {
-
-//  We encode filter's cache format key version under this key.
-const char kVersionKey[] = "RewriteSingleResourceFilter_CacheVer";
-
-// ... the hash of the input under this key
-const char kInputHashKey[] = "RewriteSingleResourceFilter_InputHash";
-
-}  // namespace
 
 // ... and the input timestamp under this key.
 const char RewriteSingleResourceFilter::kInputTimestampKey[] =
@@ -149,7 +140,7 @@ bool RewriteSingleResourceFilter::Fetch(
   return ret;
 }
 
-OutputResource::CachedResult* RewriteSingleResourceFilter::RewriteWithCaching(
+CachedResult* RewriteSingleResourceFilter::RewriteWithCaching(
     const StringPiece& in_url, UrlSegmentEncoder* encoder) {
 
   scoped_ptr<Resource> input_resource(CreateInputResource(in_url));
@@ -172,10 +163,8 @@ RewriteSingleResourceFilter::RewriteResult
 RewriteSingleResourceFilter::RewriteLoadedResourceAndCacheIfOk(
     const Resource* input_resource, OutputResource* output_resource,
     UrlSegmentEncoder* encoder) {
-  OutputResource::CachedResult* result =
-      output_resource->EnsureCachedResultCreated();
-  int64 time_ms = input_resource->metadata()->timestamp_ms();
-  result->SetRememberedInt64(kInputTimestampKey, time_ms);
+  CachedResult* result = output_resource->EnsureCachedResultCreated();
+  result->set_input_timestamp_ms(input_resource->metadata()->timestamp_ms());
   UpdateCacheFormat(output_resource);
   UpdateInputHash(input_resource, result);
   RewriteResult res = RewriteLoadedResource(input_resource, output_resource,
@@ -197,21 +186,20 @@ void RewriteSingleResourceFilter::CacheRewriteFailure(
                                 input_resource->CacheExpirationTimeMs());
   UpdateCacheFormat(output_resource);
   if (input_resource->ContentsValid()) {
-    UpdateInputHash(input_resource, output_resource->cached_result());
+    UpdateInputHash(input_resource,
+                    output_resource->EnsureCachedResultCreated());
   }
   resource_manager_->WriteUnoptimizable(output_resource, expire_at_ms, handler);
 }
 
-OutputResource::CachedResult*
-RewriteSingleResourceFilter::RewriteExternalResource(
+CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
     Resource* input_resource) {
   scoped_ptr<UrlSegmentEncoder> custom_encoder(CreateCustomUrlEncoder());
   return RewriteResourceWithCaching(input_resource,
                                     EncoderToUse(custom_encoder.get()));
 }
 
-OutputResource::CachedResult*
-RewriteSingleResourceFilter::RewriteResourceWithCaching(
+CachedResult* RewriteSingleResourceFilter::RewriteResourceWithCaching(
     Resource* input_resource, UrlSegmentEncoder* encoder) {
   MessageHandler* handler = driver_->message_handler();
 
@@ -223,8 +211,8 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
   }
 
   // See if we already have the result, and if it's valid.
-  OutputResource::CachedResult* result = output_resource->cached_result();
-  if ((result != NULL) && !IsValidCacheFormat(result)) {
+  CachedResult* result = output_resource->EnsureCachedResultCreated();
+  if (!IsValidCacheFormat(result)) {
     delete output_resource->ReleaseCachedResult();
     result = NULL;
   }
@@ -257,14 +245,13 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
       if (result != NULL) {
         std::string actual_hash =
             resource_manager_->hasher()->Hash(input_resource->contents());
-        std::string remembered_hash;
-        if (result->Remembered(kInputHashKey, &remembered_hash) &&
-            actual_hash == remembered_hash) {
+        if (result->has_input_hash()
+            && (actual_hash == result->input_hash())) {
           // The input has not changed, so we can return the same output.
           // We do need to update the cache entry for new input expiration
           // and load times.
-          int64 time_ms = input_resource->metadata()->timestamp_ms();
-          result->SetRememberedInt64(kInputTimestampKey, time_ms);
+          result->set_input_timestamp_ms(
+              input_resource->metadata()->timestamp_ms());
           resource_manager_->CacheComputedResourceMapping(
               output_resource.get(), input_resource->CacheExpirationTimeMs(),
               handler);
@@ -314,52 +301,43 @@ RewriteSingleResourceFilter::RewriteResourceWithCaching(
   return output_resource->ReleaseCachedResult();
 }
 
+// Fails for default-constructed, or cache-miss results.
 bool RewriteSingleResourceFilter::IsValidCacheFormat(
-    OutputResource::CachedResult* cached) {
-  int target_version = FilterCacheFormatVersion();
-
-  int actual_version;
-  return cached->RememberedInt(kVersionKey, &actual_version) &&
-         actual_version == target_version;
+    const CachedResult* cached) {
+  return (cached->has_cache_version()
+          && (cached->cache_version() == FilterCacheFormatVersion()));
 }
 
 void RewriteSingleResourceFilter::UpdateCacheFormat(
     OutputResource* output_resource) {
-  int version = FilterCacheFormatVersion();
-
-  OutputResource::CachedResult* result =
-      output_resource->EnsureCachedResultCreated();
-  result->SetRememberedInt(kVersionKey, version);
+  CachedResult* result = output_resource->EnsureCachedResultCreated();
+  result->set_cache_version(FilterCacheFormatVersion());
 }
 
 void RewriteSingleResourceFilter::UpdateInputHash(
-    const Resource* input_resource, OutputResource::CachedResult* cached) {
+    const Resource* input_resource, CachedResult* cached) {
   if (ReuseByContentHash()) {
-    std::string input_hash =
-        resource_manager_->hasher()->Hash(input_resource->contents());
-    cached->SetRemembered(kInputHashKey, input_hash);
+    cached->set_input_hash(
+        resource_manager_->hasher()->Hash(input_resource->contents()));
   }
 }
 
-bool RewriteSingleResourceFilter::IsOriginExpired(
-    OutputResource::CachedResult* cached) const {
+bool RewriteSingleResourceFilter::IsOriginExpired(CachedResult* cached) const {
   int64 now_ms = resource_manager_->timer()->NowMs();
   return (now_ms > cached->origin_expiration_time_ms());
 }
 
-OutputResource::CachedResult*
-RewriteSingleResourceFilter::ReleaseCachedAfterAnyFreshening(
+CachedResult* RewriteSingleResourceFilter::ReleaseCachedAfterAnyFreshening(
     Resource* input_resource, OutputResource* output_resource) {
-  OutputResource::CachedResult* cached =
-      output_resource->ReleaseCachedResult();
+  CachedResult* cached = output_resource->ReleaseCachedResult();
 
-  // We may need to freshen here.. Note that we check the metadata we have in
+  // We may need to freshen here. Note that we check the metadata we have in
   // cached result and not the actual input resource since we've not read
   // the latter and so don't have any metadata for it.
-  int64 input_timestamp_ms = 0;
-  if (cached->RememberedInt64(kInputTimestampKey, &input_timestamp_ms)) {
+  if (cached->has_input_timestamp_ms()) {
     if (resource_manager_->IsImminentlyExpiring(
-            input_timestamp_ms, cached->origin_expiration_time_ms())) {
+            cached->input_timestamp_ms(),
+            cached->origin_expiration_time_ms())) {
       input_resource->Freshen(driver_->message_handler());
     }
   }

@@ -46,13 +46,6 @@ const char kResourceUrl[] = "http://example.com/image.png";
 const char kResourceUrlBase[] = "http://example.com";
 const char kResourceUrlPath[] = "/image.png";
 
-const char kFilterKey[] = "X-ModPagespeed-FilterData";
-const char kFilterKeyInt[] = "X-ModPagespeed-FilterDataInt";
-const char kFilterKeyInt64[] = "X-ModPagespeed-FilterData64";
-const char kFilterVal[] = "X-ModPagespeed-FilterVal";
-const int64 kFilterValInt64 = static_cast<int64>(0xFFFFFF) * 0xFFFFFF;
-const int64 kFilterValInt = 31415926;
-
 }  // namespace
 
 namespace net_instaweb {
@@ -169,11 +162,9 @@ class ResourceManagerTest : public ResourceManagerTestBase {
                                          origin_expire_time_ms,
                                          &message_handler_));
     EXPECT_TRUE(nor->IsWritten());
-    // Check that hash_ext() is correct.
-    ResourceNamer full_name;
-    EXPECT_TRUE(full_name.DecodeHashExt(nor->hash_ext()));
-    EXPECT_EQ("0", full_name.hash());
-    EXPECT_EQ("txt", full_name.ext());
+    // Check that hash and ext are correct.
+    EXPECT_EQ("0", nor->hash());
+    EXPECT_EQ("txt", nor->extension());
 
     // Retrieve the same NOR from the cache.
     scoped_ptr<OutputResource> nor2(
@@ -197,6 +188,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     std::string url = nor2->url();
     EXPECT_LT(0, url.length());
     RemoveUrlPrefix(&url);
+    ResourceNamer full_name;
     ASSERT_TRUE(full_name.Decode(url));
     EXPECT_EQ(content_type, full_name.ContentTypeFromExt());
     EXPECT_EQ(filter_prefix, full_name.id());
@@ -245,48 +237,15 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   }
 
   void VerifyCustomMetadata(OutputResource* output) {
-    std::string val;
-    int64 int64_val = 0;
-    int int_val = 0;
-
-    EXPECT_TRUE(output->cached_result()->Remembered(kFilterKey, &val));
-    EXPECT_EQ(std::string(kFilterVal), val);
-    EXPECT_FALSE(
-        output->cached_result()->RememberedInt64(kFilterKey, &int64_val));
-    EXPECT_FALSE(output->cached_result()->RememberedInt(kFilterKey, &int_val));
-
-    EXPECT_FALSE(output->cached_result()->Remembered("nosuchkey", &val));
-    EXPECT_FALSE(
-        output->cached_result()->RememberedInt64("nosuchkey", &int64_val));
-    EXPECT_FALSE(output->cached_result()->RememberedInt("nosuchkey", &int_val));
-
-    EXPECT_TRUE(
-        output->cached_result()->RememberedInt64(kFilterKeyInt64, &int64_val));
-    EXPECT_EQ(kFilterValInt64, int64_val);
-
-    // Fails since it can't be represented as a 32-bit int.
-    EXPECT_FALSE(
-        output->cached_result()->RememberedInt(kFilterKeyInt64, &int_val));
-
-    EXPECT_TRUE(
-        output->cached_result()->RememberedInt(kFilterKeyInt, &int_val));
-
-    // For now we accept this; future revisions may reject type-inconsistent
-    // uses, however.
-    EXPECT_TRUE(
-        output->cached_result()->RememberedInt64(kFilterKeyInt, &int64_val));
-    EXPECT_EQ(kFilterValInt, int_val);
-    EXPECT_EQ(kFilterValInt, int64_val);
+    EXPECT_TRUE(output->cached_result()->has_image_inlined_uri());
+    EXPECT_EQ(kResourceUrl, output->cached_result()->image_inlined_uri());
   }
 
   void StoreCustomMetadata(OutputResource* output) {
-    OutputResource::CachedResult* cached =
-        output->EnsureCachedResultCreated();
+    CachedResult* cached = output->EnsureCachedResultCreated();
     ASSERT_TRUE(cached != NULL);
     EXPECT_EQ(cached, output->cached_result());
-    cached->SetRemembered(kFilterKey, kFilterVal);
-    cached->SetRememberedInt(kFilterKeyInt, kFilterValInt);
-    cached->SetRememberedInt64(kFilterKeyInt64, kFilterValInt64);
+    cached->set_image_inlined_uri(kResourceUrl);
   }
 
   // Expiration times are not entirely precise as some cache headers

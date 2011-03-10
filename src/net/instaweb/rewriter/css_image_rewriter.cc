@@ -88,7 +88,7 @@ bool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
   scoped_ptr<Resource> input_resource(
       driver_->CreateInputResource(base_url, old_rel_url));
   if (input_resource.get() != NULL) {
-    scoped_ptr<OutputResource::CachedResult> rewrite_info;
+    scoped_ptr<CachedResult> rewrite_info;
     // Try image rewriting.
     if (rewrite_images_) {
       handler->Message(kInfo, "Attempting to rewrite image %s",
@@ -141,8 +141,7 @@ bool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
   return ret;
 }
 
-int64 CssImageRewriter::ExpirationTimeMs(
-    OutputResource::CachedResult* cached_result) {
+int64 CssImageRewriter::ExpirationTimeMs(CachedResult* cached_result) {
   if (cached_result == NULL) {
     // A NULL cached_result means that the rewrite was unable to proceed,
     // but will likely be able to do so shortly, so we want to expire

@@ -51,6 +51,7 @@
         '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
       ],
       'include_dirs': [
+        '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
         '<(DEPTH)',
       ],
       'sources': [

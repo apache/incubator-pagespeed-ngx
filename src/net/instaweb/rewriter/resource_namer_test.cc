@@ -42,7 +42,6 @@ TEST_F(ResourceNamerTest, TestEncode) {
             full_name_.Encode());
   EXPECT_EQ(std::string("id.name.ext.as.many.as.I.like"),
             full_name_.EncodeIdName());
-  EXPECT_EQ(std::string("hash.ext"), full_name_.EncodeHashExt());
 }
 
 TEST_F(ResourceNamerTest, TestDecode) {
@@ -56,20 +55,10 @@ TEST_F(ResourceNamerTest, TestDecode) {
 
 TEST_F(ResourceNamerTest, TestDecodeTooMany) {
   EXPECT_TRUE(full_name_.Decode("name.extra_dot.pagespeed.id.hash.ext"));
-  EXPECT_FALSE(full_name_.DecodeHashExt("id.hash.ext"));
 }
 
 TEST_F(ResourceNamerTest, TestDecodeNotEnough) {
   EXPECT_FALSE(full_name_.Decode("id.name.hash"));
-  EXPECT_FALSE(full_name_.DecodeHashExt("ext"));
-}
-
-TEST_F(ResourceNamerTest, TestDecodeHashExt) {
-  EXPECT_TRUE(full_name_.DecodeHashExt("hash.ext"));
-  EXPECT_EQ("", full_name_.id());
-  EXPECT_EQ("", full_name_.name());
-  EXPECT_EQ("hash", full_name_.hash());
-  EXPECT_EQ("ext", full_name_.ext());
 }
 
 TEST_F(ResourceNamerTest, TestLegacyDecode) {

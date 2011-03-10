@@ -58,7 +58,7 @@ class RewriteSingleResourceFilter : public RewriteFilter {
 
   // Rewrites a non-HTML resource using as much caching as possible and
   // the filter-supplied URL encoding scheme.
-  OutputResource::CachedResult* RewriteExternalResource(Resource* in);
+  CachedResult* RewriteExternalResource(Resource* in);
 
  protected:
   // Rewrite the given resource using this filter's RewriteLoadedResource,
@@ -84,14 +84,14 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   // width and height.
   //
   // Precondition: in != NULL, in is security-checked
-  OutputResource::CachedResult* RewriteResourceWithCaching(
-      Resource* in, UrlSegmentEncoder* encoder);
+  CachedResult* RewriteResourceWithCaching(Resource* in,
+                                           UrlSegmentEncoder* encoder);
 
   // Variant of the above that makes and cleans up input resource for in_url.
   // Note that the URL will be expanded and security checked with respect to the
   // current base URL for the HTML parser.
-  OutputResource::CachedResult* RewriteWithCaching(const StringPiece& in_url,
-                                                   UrlSegmentEncoder* encoder);
+  CachedResult* RewriteWithCaching(const StringPiece& in_url,
+                                   UrlSegmentEncoder* encoder);
 
   // RewriteSingleResourceFilter will make sure to disregard any written
   // cache data with a version number different from what this method returns.
@@ -154,20 +154,19 @@ class RewriteSingleResourceFilter : public RewriteFilter {
 
   // Check and record whether metadata version matches
   // FilterCacheFormatVersion() respectively.
-  bool IsValidCacheFormat(OutputResource::CachedResult* cached);
+  bool IsValidCacheFormat(const CachedResult* cached);
   void UpdateCacheFormat(OutputResource* output_resource);
 
   // If the filter requests reuse of results based on input hash,
   // stores it in cached.
-  void UpdateInputHash(const Resource* input_resource,
-                       OutputResource::CachedResult* cached);
+  void UpdateInputHash(const Resource* input_resource, CachedResult* cached);
 
   // Returns true if origin expiration time passed.
-  bool IsOriginExpired(OutputResource::CachedResult* cached) const;
+  bool IsOriginExpired(CachedResult* cached) const;
 
   // Releases a valid cached result inside output_resource,
   // taking care to freshen the input if needed.
-  OutputResource::CachedResult* ReleaseCachedAfterAnyFreshening(
+  CachedResult* ReleaseCachedAfterAnyFreshening(
       Resource* input_resource, OutputResource* output_resource);
 
   // Tries to rewrite input_resource to output_resource, and if successful

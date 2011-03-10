@@ -144,25 +144,6 @@ std::string ResourceNamer::EncodeIdName() const {
   return StrCat(id_, kSeparatorString, name_);
 }
 
-// Note: there is no need at this time to decode the name key.
-
-std::string ResourceNamer::EncodeHashExt() const {
-  CHECK_EQ(StringPiece::npos, hash_.find(kSeparatorChar));
-  CHECK_EQ(StringPiece::npos, ext_.find(kSeparatorChar));
-  return StrCat(hash_, kSeparatorString, ext_);
-}
-
-bool ResourceNamer::DecodeHashExt(const StringPiece& encoded_hash_ext) {
-  std::vector<StringPiece> names;
-  SplitStringPieceToVector(encoded_hash_ext, kSeparatorString, &names, true);
-  bool ret = (names.size() == 2);
-  if (ret) {
-    names[0].CopyToString(&hash_);
-    names[1].CopyToString(&ext_);
-  }
-  return ret;
-}
-
 const ContentType* ResourceNamer::ContentTypeFromExt() const {
   return NameExtensionToContentType(StrCat(".", ext_));
 }

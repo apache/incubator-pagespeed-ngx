@@ -33,6 +33,7 @@
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
       ],
       'include_dirs': [
+        '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
         '<(DEPTH)',
       ],
       'sources': [

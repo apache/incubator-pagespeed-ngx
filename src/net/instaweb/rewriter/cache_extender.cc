@@ -97,7 +97,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
     Resource* input_resource = driver_->GetScannedInputResource(href->value());
     if ((input_resource != NULL) &&
         !IsRewrittenResource(input_resource->url())) {
-      scoped_ptr<OutputResource::CachedResult> rewrite_info(
+      scoped_ptr<CachedResult> rewrite_info(
           RewriteResourceWithCaching(input_resource,
                                      resource_manager_->url_escaper()));
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {

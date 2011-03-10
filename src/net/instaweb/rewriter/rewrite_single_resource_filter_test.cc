@@ -183,7 +183,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
       encoder = CreateCustomUrlEncoder();
     }
 
-    scoped_ptr<OutputResource::CachedResult> result(
+    scoped_ptr<CachedResult> result(
         RewriteWithCaching(StringPiece(src->value()), encoder));
     if (result.get() != NULL) {
       ++num_cached_results_;
@@ -267,7 +267,7 @@ class RewriteSingleResourceFilterTest
   }
 
   // Transfers ownership and may return NULL.
-  OutputResource::CachedResult* CachedResultForInput(const char* url) {
+  CachedResult* CachedResultForInput(const char* url) {
     UrlSegmentEncoder* encoder = resource_manager_->url_escaper();
     if (filter_->create_custom_encoder()) {
       encoder = filter_->CreateCustomUrlEncoder();
@@ -286,12 +286,6 @@ class RewriteSingleResourceFilterTest
     }
 
     return output_resource->ReleaseCachedResult();
-  }
-
-  bool HasTimestamp(const OutputResource::CachedResult* cached) {
-    std::string timestamp_val;
-    return cached->Remembered(RewriteSingleResourceFilter::kInputTimestampKey,
-                              &timestamp_val);
   }
 
   CountingUrlAsyncFetcher* SetupCountingFetcher() {
@@ -596,10 +590,9 @@ TEST_P(RewriteSingleResourceFilterTest, FetchGoodCache2) {
   EXPECT_EQ(1, filter_->num_rewrites_called());
 
   // Make sure the above also cached the timestamp
-  scoped_ptr<OutputResource::CachedResult> cached(
-      CachedResultForInput("a.tst"));
+  scoped_ptr<CachedResult> cached(CachedResultForInput("a.tst"));
   ASSERT_TRUE(cached.get() != NULL);
-  EXPECT_TRUE(HasTimestamp(cached.get()));
+  EXPECT_TRUE(cached->has_input_timestamp_ms());
 }
 
 // Regression test: Fetch() should update cache version, too.
@@ -641,8 +634,7 @@ TEST_P(RewriteSingleResourceFilterTest, Fetch404) {
   ASSERT_FALSE(ServeRelativeUrl(OutputName("404.tst"), &out));
 
   // Make sure the above also cached the failure.
-  scoped_ptr<OutputResource::CachedResult> cached(
-      CachedResultForInput("404.tst"));
+  scoped_ptr<CachedResult> cached(CachedResultForInput("404.tst"));
   ASSERT_TRUE(cached.get() != NULL);
   EXPECT_FALSE(cached->optimizable());
 }

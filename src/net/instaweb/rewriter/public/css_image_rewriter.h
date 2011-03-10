@@ -19,9 +19,9 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_IMAGE_REWRITER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_IMAGE_REWRITER_H_
 
+#include "net/instaweb/util/public/google_url.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
 
 class GoogleUrl;
 
@@ -34,6 +34,7 @@ class Stylesheet;
 namespace net_instaweb {
 
 class CacheExtender;
+class CachedResult;
 class ImgRewriteFilter;
 class MessageHandler;
 class RewriteDriver;
@@ -77,7 +78,7 @@ class CssImageRewriter {
   // Tells when we should expire our output based on a cached_result
   // produced from the rewriter. If NULL, it will produce a short delay
   // to permit the input to finish loading.
-  int64 ExpirationTimeMs(OutputResource::CachedResult* cached_result);
+  int64 ExpirationTimeMs(CachedResult* cached_result);
 
   // Needed for resource_manager and options.
   RewriteDriver* driver_;

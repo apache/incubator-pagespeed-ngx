@@ -180,10 +180,11 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
     }
 
     // Cache image dimensions, including any resizing we did
-    OutputResource::CachedResult* cached = result->EnsureCachedResultCreated();
+    CachedResult* cached = result->EnsureCachedResultCreated();
     if (post_resize_dim.valid()) {
-      cached->SetRememberedInt(kWidthKey, post_resize_dim.width());
-      cached->SetRememberedInt(kHeightKey, post_resize_dim.height());
+      CachedResult::ImageDims* dims = cached->mutable_image_dims();
+      dims->set_width(post_resize_dim.width());
+      dims->set_height(post_resize_dim.height());
     }
 
     std::string inlined_url;
@@ -196,7 +197,7 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
       // This needs to happen before Write to persist.
       if (CanInline(img_inline_max_bytes_, image->Contents(),
                     result->type(), &inlined_url)) {
-        cached->SetRemembered(kDataUrlKey, inlined_url);
+        cached->set_image_inlined_uri(inlined_url);
       }
 
       int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
@@ -232,7 +233,7 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
     if (inlined_url.empty() &&
         CanInline(img_inline_max_bytes_, input_resource->contents(),
                   input_resource->type(), &inlined_url)) {
-      cached->SetRemembered(kDataUrlKey, inlined_url);
+      cached->set_image_inlined_uri(inlined_url);
     }
     work_bound_->WorkComplete();
   }
@@ -287,17 +288,15 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
 
   ImageUrlEncoder encoder(resource_manager_->url_escaper());
   encoder.set_stored_dim(page_dim);
-  scoped_ptr<OutputResource::CachedResult> cached(RewriteWithCaching(
-                                                      src->value(), &encoder));
+  scoped_ptr<CachedResult> cached(RewriteWithCaching(src->value(), &encoder));
   if (cached.get() == NULL) {
     return;
   }
 
   // See if we have a data URL, and if so use it if the browser can handle it
-  std::string inlined_url;
   bool ie6or7 = driver_->user_agent().IsIe6or7();
-  if (!ie6or7 && cached->Remembered(kDataUrlKey, &inlined_url)) {
-    src->SetValue(inlined_url);
+  if (!ie6or7 && cached->has_image_inlined_uri()) {
+    src->SetValue(cached->image_inlined_uri());
     if (inline_count_ != NULL) {
       inline_count_->Add(1);
     }
@@ -310,12 +309,13 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
       }
     }
 
-    int actual_width, actual_height;
     if (insert_image_dimensions_ &&
         !element->FindAttribute(HtmlName::kWidth) &&
         !element->FindAttribute(HtmlName::kHeight) &&
-        cached->RememberedInt(kWidthKey, &actual_width) &&
-        cached->RememberedInt(kHeightKey, &actual_height)) {
+        cached->has_image_dims()) {
+      int actual_width = cached->image_dims().width();
+      int actual_height = cached->image_dims().height();
+
       // Add image dimensions.  We don't bother if even a single image
       // dimension is already specified---even though we don't resize in that
       // case, either, because we might be off by a pixel in the other
