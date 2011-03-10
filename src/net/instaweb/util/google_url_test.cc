@@ -41,6 +41,26 @@ class GoogleUrlTest : public testing::Test {
   GoogleUrl gurl_with_port_;
 };
 
+// Document which sorts of strings are and are not valid.
+TEST_F(GoogleUrlTest, TestNotValid) {
+  GoogleUrl invalid_url("Hello, world!");
+  EXPECT_FALSE(invalid_url.is_valid());
+
+  GoogleUrl relative_url1("/foo/bar.html");
+  EXPECT_FALSE(relative_url1.is_valid());
+
+  GoogleUrl relative_url2("foo/bar.html");
+  EXPECT_FALSE(relative_url2.is_valid());
+
+  GoogleUrl relative_url3("bar.html");
+  EXPECT_FALSE(relative_url3.is_valid());
+
+  // Aparently this is close enough to be considered valid, but not standard.
+  GoogleUrl proxy_filename("proxy:http://www.example.com/index.html");
+  EXPECT_TRUE(proxy_filename.is_valid());
+  EXPECT_FALSE(proxy_filename.is_standard());
+}
+
 TEST_F(GoogleUrlTest, TestSpec) {
   EXPECT_EQ(std::string(kUrl), gurl_.Spec());
   EXPECT_EQ(std::string("http://a.com/b/c/"), gurl_.AllExceptLeaf());
