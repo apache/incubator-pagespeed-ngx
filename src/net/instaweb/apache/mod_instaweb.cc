@@ -457,7 +457,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   }
 
   // Determine the absolute URL for this request.
-  char* absolute_url = InstawebContext::MakeRequestUrl(request);
+  const char* absolute_url = InstawebContext::MakeRequestUrl(request);
   RewriteOptions query_options;
   query_options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   if (ScanQueryParamsForRewriterOptions(

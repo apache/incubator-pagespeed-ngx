@@ -30,6 +30,8 @@ extern module AP_MODULE_DECLARE_DATA pagespeed_module;
 
 namespace net_instaweb {
 
+const char kPagespeedOrignalUrl[] = "mod_pagespeed_original_url";
+
 InstawebContext::InstawebContext(request_rec* request,
                                  const ContentType& content_type,
                                  ApacheRewriteDriverFactory* factory,
@@ -211,7 +213,11 @@ ApacheRewriteDriverFactory* InstawebContext::Factory(server_rec* server) {
       ap_get_module_config(server->module_config, &pagespeed_module);
 }
 
-char* InstawebContext::MakeRequestUrl(request_rec* request) {
+// This function stores the request uri on the first call, and then
+// uses that value for all future calls.  This should prevent the url
+// from changing due to changes to the reqeust from other modules.
+const char* InstawebContext::MakeRequestUrl(request_rec* request) {
+  const char* url = apr_table_get(request->notes, kPagespeedOrignalUrl);
   /*
    * In some contexts we are seeing relative URLs passed
    * into request->unparsed_uri.  But when using mod_slurp, the rewritten
@@ -219,12 +225,15 @@ char* InstawebContext::MakeRequestUrl(request_rec* request) {
    * prefix twice.
    *
    * TODO(jmarantz): Figure out how to do this correctly at all times.
+   * TODO(sligocki): Make this work when URL starts with "https://".
    */
-  char* url = NULL;
-  if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
-    url = apr_pstrdup(request->pool, request->unparsed_uri);
-  } else {
-    url = ap_construct_url(request->pool, request->unparsed_uri, request);
+  if (url == NULL) {
+    if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
+      url = apr_pstrdup(request->pool, request->unparsed_uri);
+    } else {
+      url = ap_construct_url(request->pool, request->unparsed_uri, request);
+    }
+    apr_table_setn(request->notes, kPagespeedOrignalUrl, url);
   }
   return url;
 }

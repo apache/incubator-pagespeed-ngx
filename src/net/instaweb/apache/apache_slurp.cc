@@ -234,7 +234,7 @@ class ModPagespeedStrippingFetcher : public UrlFetcher {
 };
 
 void SlurpUrl(ApacheRewriteDriverFactory* factory, request_rec* r) {
-  char* uri = InstawebContext::MakeRequestUrl(r);
+  const char* uri = InstawebContext::MakeRequestUrl(r);
   RequestHeaders request_headers;
   ResponseHeaders response_headers;
   ApacheRequestToRequestHeaders(*r, &request_headers);

@@ -305,7 +305,12 @@ apr_status_t instaweb_handler(request_rec* request) {
 // request->unparsed_uri (which mod_rewrite might have mangled) when
 // procesing the request.
 apr_status_t save_url_for_instaweb_handler(request_rec *request) {
-  char* url = InstawebContext::MakeRequestUrl(request);
+
+  // This call to MakeRequestUrl() not only returns the url but also
+  // saves it for future use so that if another module changes the
+  // url in the request, we still have the original one.
+  const char* url = InstawebContext::MakeRequestUrl(request);
+
   StringPiece parsed_url(request->uri);
   bool bypass_mod_rewrite = false;
   // Note: We cannot use request->handler because it may not be set yet :(
