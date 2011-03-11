@@ -119,7 +119,7 @@ void MemFileSystem::Clear() {
 }
 
 BoolOrError MemFileSystem::Exists(const char* path, MessageHandler* handler) {
-  StringMap::const_iterator iter = string_map_.find(path);
+  StringStringMap::const_iterator iter = string_map_.find(path);
   return BoolOrError(iter != string_map_.end());
 }
 
@@ -143,7 +143,7 @@ FileSystem::InputFile* MemFileSystem::OpenInputFile(
     return NULL;
   }
 
-  StringMap::const_iterator iter = string_map_.find(filename);
+  StringStringMap::const_iterator iter = string_map_.find(filename);
   if (iter == string_map_.end()) {
     message_handler->Error(filename, 0, "opening input file: %s",
                            "file not found");
@@ -190,7 +190,7 @@ bool MemFileSystem::RenameFileHelper(const char* old_file,
     return false;
   }
 
-  StringMap::iterator iter = string_map_.find(old_file);
+  StringStringMap::iterator iter = string_map_.find(old_file);
   if (iter == string_map_.end()) {
     handler->Error(old_file, 0, "File not found");
     return false;
@@ -209,9 +209,8 @@ bool MemFileSystem::ListContents(const StringPiece& dir, StringVector* files,
   // We don't have directories, so we just list everything in the
   // filesystem that matches the prefix and doesn't have another
   // internal slash.
-  for (StringMap::iterator it = string_map_.begin(), end = string_map_.end();
-       it != end;
-       it++) {
+  for (StringStringMap::iterator it = string_map_.begin(),
+           end = string_map_.end(); it != end; it++) {
     const std::string& path = (*it).first;
     if ((0 == path.compare(0, prefix_length, prefix)) &&
         path.length() > prefix_length) {

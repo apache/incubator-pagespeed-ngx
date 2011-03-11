@@ -22,7 +22,7 @@
 namespace net_instaweb {
 
 void SplitStringPieceToVector(const StringPiece& sp, const char* separator,
-                              std::vector<StringPiece>* components,
+                              StringPieceVector* components,
                               bool omit_empty_strings) {
   size_t prev_pos = 0;
   size_t pos = 0;

@@ -21,6 +21,7 @@
 
 
 #include <algorithm>
+#include <map>
 #include <set>
 #include <vector>
 #include <string>
@@ -41,6 +42,13 @@ using base::SStringPrintf;
 namespace net_instaweb {
 
 typedef base::StringPiece StringPiece;
+
+typedef std::map<std::string, std::string> StringStringMap;
+typedef std::set<std::string> StringSet;
+typedef std::vector<std::string> StringVector;
+typedef std::vector<StringPiece> StringPieceVector;
+typedef std::vector<const std::string*> StringStarVector;
+typedef std::vector<const char*> CharStarVector;
 
 inline std::string IntegerToString(int i) {
   return base::IntToString(i);
@@ -88,7 +96,7 @@ std::string StrCat(const StringPiece& a, const StringPiece& b,
                     const StringPiece& h = EmptyString::kEmptyString);
 
 void SplitStringPieceToVector(const StringPiece& sp, const char* separator,
-                              std::vector<StringPiece>* components,
+                              StringPieceVector* components,
                               bool omit_empty_strings);
 
 void BackslashEscape(const StringPiece& src,
@@ -186,11 +194,6 @@ struct StringCompareInsensitive {
     return (StringCaseCompare(s1, s2) < 0);
   };
 };
-
-typedef std::vector<const char*> CharStarVector;
-typedef std::vector<const std::string*> StringStarVector;
-typedef std::vector<std::string> StringVector;
-typedef std::set<std::string> StringSet;
 
 // Does a path end in slash?
 inline bool EndsInSlash(const StringPiece& path) {

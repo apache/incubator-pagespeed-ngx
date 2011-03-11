@@ -85,8 +85,7 @@ class MemFileSystem : public FileSystem {
  private:
   inline void UpdateAtime(const StringPiece& path);
   bool enabled_;  // When disabled, OpenInputFile returns NULL.
-  typedef std::map<std::string, std::string> StringMap;
-  StringMap string_map_;
+  StringStringMap string_map_;
   MockTimer timer_;
   // atime_map_ holds times (in s) that files were last opened/modified.  Each
   // time we do such an operation, timer() advances by 1s (so all ATimes are
