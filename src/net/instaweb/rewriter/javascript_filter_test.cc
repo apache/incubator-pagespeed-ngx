@@ -32,7 +32,10 @@ namespace {
 const char kHtmlFormat[] =
     "<script type='text/javascript' src='%s'></script>\n";
 
-const char kJsData[] = "alert     (    'hello, world!'    )  ";
+const char kJsData[] =
+    "alert     (    'hello, world!'    ) "
+    " /* removed */ <!-- removed --> "
+    " // single-line-comment";
 const char kJsMinData[] = "alert('hello, world!')";
 const char kFilterId[] = "jm";
 const char kOrigJsName[] = "hello.js";

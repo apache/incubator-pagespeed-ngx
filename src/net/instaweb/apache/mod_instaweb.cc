@@ -1068,6 +1068,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "URL for beacon callback injected by add_instrumentation."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDomain,
         "Authorize mod_pagespeed to rewrite resources in a domain."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedLowercaseHtmlNames,
+        "Lowercase tag and attribute names for HTML."),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapRewriteDomain,
          "to_domain from_domain[,from_domain]*"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,
