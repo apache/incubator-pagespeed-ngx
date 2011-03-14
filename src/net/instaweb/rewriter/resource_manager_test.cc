@@ -233,7 +233,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   OutputResource* CreateTestOutputResource(Resource* input_resource,
                                            const ContentType* content_type) {
     return rewrite_driver_.CreateOutputResourceFromResource(
-        "tf", content_type, resource_manager_->url_escaper(), input_resource);
+        "tf", content_type, rewrite_driver_.default_encoder(), NULL,
+        input_resource);
   }
 
   void VerifyCustomMetadata(OutputResource* output) {
@@ -377,30 +378,31 @@ TEST_F(ResourceManagerTest, TestNamed) {
 
 TEST_F(ResourceManagerTest, TestOutputInputUrl) {
   std::string url = Encode("http://example.com/dir/123/",
-                            "jm", "0", "orig", "js");
+                            RewriteDriver::kJavascriptMinId, "0", "orig", "js");
   scoped_ptr<OutputResource> output_resource(
       rewrite_driver_.CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
+  RewriteFilter* filter = rewrite_driver_.FindFilter(
+      RewriteDriver::kJavascriptMinId);
+  ASSERT_TRUE(filter != NULL);
   scoped_ptr<Resource> input_resource(
-      rewrite_driver_.CreateInputResourceFromOutputResource(
-          resource_manager_->url_escaper(),
-          output_resource.get()));
+      filter->CreateInputResourceFromOutputResource(output_resource.get()));
   EXPECT_EQ("http://example.com/dir/123/orig", input_resource->url());
 }
 
 TEST_F(ResourceManagerTest, TestOutputInputUrlEvil) {
   std::string escaped_abs;
-  resource_manager_->url_escaper()->EncodeToUrlSegment("http://www.evil.com",
-                                                       &escaped_abs);
+  UrlEscaper::EncodeToUrlSegment("http://www.evil.com", &escaped_abs);
   std::string url = Encode("http://example.com/dir/123/",
                             "jm", "0", escaped_abs, "js");
   scoped_ptr<OutputResource> output_resource(
       rewrite_driver_.CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
+  RewriteFilter* filter = rewrite_driver_.FindFilter(
+      RewriteDriver::kJavascriptMinId);
+  ASSERT_TRUE(filter != NULL);
   scoped_ptr<Resource> input_resource(
-      rewrite_driver_.CreateInputResourceFromOutputResource(
-          resource_manager_->url_escaper(),
-          output_resource.get()));
+      filter->CreateInputResourceFromOutputResource(output_resource.get()));
   EXPECT_EQ(NULL, input_resource.get());
 }
 
@@ -409,17 +411,17 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlBusy) {
       "www.busy.com", "example.com", &message_handler_));
 
   std::string escaped_abs;
-  resource_manager_->url_escaper()->EncodeToUrlSegment("http://www.busy.com",
-                                                       &escaped_abs);
+  UrlEscaper::EncodeToUrlSegment("http://www.busy.com", &escaped_abs);
   std::string url = Encode("http://example.com/dir/123/",
                             "jm", "0", escaped_abs, "js");
   scoped_ptr<OutputResource> output_resource(
       rewrite_driver_.CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
+  RewriteFilter* filter = rewrite_driver_.FindFilter(
+      RewriteDriver::kJavascriptMinId);
+  ASSERT_TRUE(filter != NULL);
   scoped_ptr<Resource> input_resource(
-      rewrite_driver_.CreateInputResourceFromOutputResource(
-          resource_manager_->url_escaper(),
-          output_resource.get()));
+      filter->CreateInputResourceFromOutputResource(output_resource.get()));
   EXPECT_EQ(NULL, input_resource.get());
   if (input_resource.get() != NULL) {
     LOG(ERROR) << input_resource->url();
@@ -456,7 +458,8 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
   scoped_ptr<OutputResource> output(
       rewrite_driver_.CreateOutputResourceFromResource(
           RewriteDriver::kCacheExtenderId, input->type(),
-          resource_manager_->url_escaper(), input.get()));
+          rewrite_driver_.default_encoder(), NULL,
+          input.get()));
   ASSERT_TRUE(output.get() != NULL);
 
   // We need to 'Write' an output resource before we can determine its
@@ -487,14 +490,13 @@ TEST_F(ResourceManagerTest, TestInputResourceQuery) {
   EXPECT_EQ(StrCat(std::string(kResourceUrlBase), "/", kUrl), resource->url());
   scoped_ptr<OutputResource> output(
     rewrite_driver_.CreateOutputResourceFromResource(
-      "sf", &kContentTypeCss, resource_manager_->url_escaper(),
+      "sf", &kContentTypeCss,
+      rewrite_driver_.default_encoder(), NULL,
       resource.get()));
   ASSERT_TRUE(output.get() != NULL);
 
   std::string included_name;
-  EXPECT_TRUE(
-      resource_manager_->url_escaper()->DecodeFromUrlSegment(output->name(),
-                                                             &included_name));
+  EXPECT_TRUE(UrlEscaper::DecodeFromUrlSegment(output->name(), &included_name));
   EXPECT_EQ(std::string(kUrl), included_name);
 }
 

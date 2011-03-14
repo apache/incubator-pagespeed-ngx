@@ -51,7 +51,6 @@ class ResourceNamer;
 class RewriteOptions;
 class Statistics;
 class UrlAsyncFetcher;
-class UrlEscaper;
 class Variable;
 class Writer;
 
@@ -142,7 +141,6 @@ class ResourceManager {
   }
   Timer* timer() const { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
-  UrlEscaper* url_escaper() { return url_escaper_.get(); }
 
   // Whether or not resources should hit the filesystem.
   bool store_outputs_in_file_system() { return store_outputs_in_file_system_; }
@@ -167,7 +165,6 @@ class ResourceManager {
   Statistics* statistics_;
   Variable* resource_url_domain_rejections_;
   HTTPCache* http_cache_;
-  scoped_ptr<UrlEscaper> url_escaper_;
   bool relative_path_;
   bool store_outputs_in_file_system_;
   NamedLockManager* lock_manager_;

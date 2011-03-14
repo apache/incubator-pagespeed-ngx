@@ -157,7 +157,7 @@ class ResourceCombiner {
 
   UrlPartnership partnership_;
   std::vector<Resource*> resources_;
-  UrlMultipartEncoder multipart_encoder_;
+  StringVector multipart_encoder_urls_;
   int prev_num_components_;
   int accumulated_leaf_size_;
   std::string resolved_base_;

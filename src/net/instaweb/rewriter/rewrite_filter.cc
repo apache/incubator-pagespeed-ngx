@@ -17,19 +17,30 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 
 namespace net_instaweb {
 
 RewriteFilter::~RewriteFilter() {
 }
 
-OutputResource* RewriteFilter::CreateOutputResourceFromResource(
-    const ContentType* content_type,
-    UrlSegmentEncoder* encoder,
-    Resource* input_resource) {
-  return driver_->CreateOutputResourceFromResource(
-      filter_prefix_, content_type,
-      encoder, input_resource);
+Resource* RewriteFilter::CreateInputResourceFromOutputResource(
+    OutputResource* output_resource) {
+  Resource* input_resource = NULL;
+  StringVector urls;
+  ResourceContext data;
+  if (encoder()->Decode(output_resource->name(), &urls, &data,
+                        driver_->message_handler()) &&
+      (urls.size() == 1)) {
+    GoogleUrl base_gurl(output_resource->resolved_base());
+    input_resource = driver_->CreateInputResource(base_gurl, urls[0]);
+  }
+  return input_resource;
+}
+
+const UrlSegmentEncoder* RewriteFilter::encoder() const {
+  return driver_->default_encoder();
 }
 
 }  // namespace net_instaweb

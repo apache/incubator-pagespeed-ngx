@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/url_segment_encoder.h"
 #include "net/instaweb/util/public/user_agent.h"
 
 namespace net_instaweb {
@@ -228,7 +229,8 @@ class RewriteDriver : public HtmlParse {
   OutputResource* CreateOutputResourceFromResource(
       const StringPiece& filter_prefix,
       const ContentType* content_type,
-      UrlSegmentEncoder* encoder,
+      const UrlSegmentEncoder* encoder,
+      const ResourceContext* data,
       Resource* input_resource);
 
   enum OutputResourceKind {
@@ -269,12 +271,6 @@ class RewriteDriver : public HtmlParse {
   Resource* CreateInputResourceAndReadIfCached(
       const GoogleUrl& base_gurl, const StringPiece& input_url);
 
-  // Create an input resource by decoding output_resource using the given
-  // encoder.  Assures legality by explicitly permission-checking the result.
-  Resource* CreateInputResourceFromOutputResource(
-      UrlSegmentEncoder* encoder,
-      OutputResource* output_resource);
-
   // Creates an input resource from the given absolute url.  Requires that the
   // provided url has been checked, and can legally be rewritten in the current
   // page context.
@@ -314,6 +310,11 @@ class RewriteDriver : public HtmlParse {
   // in the document.  Note that HtmlParse::google_url() is the URL
   // for the HTML file and is used for printing html syntax errors.
   const GoogleUrl& base_url() const { return base_url_; }
+
+  const UrlSegmentEncoder* default_encoder() const { return &default_encoder_; }
+
+  // Finds a filter with the given ID, or returns NULL if none found.
+  RewriteFilter* FindFilter(const StringPiece& id) const;
 
  private:
   friend class ResourceManagerTestBase;
@@ -420,6 +421,9 @@ class RewriteDriver : public HtmlParse {
   Variable* failed_filter_resource_fetches_;
 
   const RewriteOptions& options_;
+
+  // The default resource encoder
+  UrlSegmentEncoder default_encoder_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

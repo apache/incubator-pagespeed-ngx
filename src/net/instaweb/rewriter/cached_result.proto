@@ -82,8 +82,10 @@ message CachedResult {
   // Used by rewrite_single_resource_filter.
   optional string input_hash = 10;
 
-  // Dimensions of an image resource, in pixels.
-  // Used by img_rewrite_filter.
+  // Dimensions of an image file, in pixels.  Used by
+  // img_rewrite_filter.  Note that these dimensions are not
+  // necessarily the same as the properties of the img tag,
+  // represented by ResourceContext below.
   message ImageDims {
     required int32 width = 1;
     required int32 height = 2;
@@ -93,5 +95,10 @@ message CachedResult {
   // base64-encoded data: URI for inlining a small image.
   // Used by img_rewrite_filter.
   optional string image_inlined_uri = 12;
+}
 
+// Encapsulates all the data needed to rewrite a resource.
+message ResourceContext {
+  optional int32 width = 1;
+  optional int32 height = 2;
 }

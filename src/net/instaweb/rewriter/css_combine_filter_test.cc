@@ -23,7 +23,6 @@
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
-#include "net/instaweb/util/public/url_escaper.h"
 
 namespace net_instaweb {
 
@@ -272,17 +271,10 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         gurl.AllExceptLeaf().CopyToString(base);
         ResourceNamer namer;
         if (namer.Decode(gurl.LeafWithQuery()) &&
-            (namer.id() == "cc")) {  // TODO(jmarantz): Share this literal
-          UrlEscaper escaper;
+            (namer.id() == RewriteDriver::kCssCombinerId)) {
           UrlMultipartEncoder multipart_encoder;
           std::string segment;
-          if (escaper.DecodeFromUrlSegment(namer.name(), &segment) &&
-              multipart_encoder.Decode(segment, handler)) {
-            ret = true;
-            for (int i = 0; i < multipart_encoder.num_urls(); ++i) {
-              segments->push_back(multipart_encoder.url(i));
-            }
-          }
+          ret = multipart_encoder.Decode(namer.name(), segments, NULL, handler);
         }
       }
       return ret;

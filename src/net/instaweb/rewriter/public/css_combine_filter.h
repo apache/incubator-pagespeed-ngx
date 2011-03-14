@@ -28,6 +28,7 @@
 #include "net/instaweb/util/public/atom.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace net_instaweb {
 
@@ -56,10 +57,16 @@ class CssCombineFilter : public RewriteFilter {
                      ResponseHeaders* response_headers,
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
+  virtual const UrlSegmentEncoder* encoder() const {
+    return &multipart_encoder_;
+  }
+
  private:
   class CssCombiner;
   CssTagScanner css_tag_scanner_;
   scoped_ptr<CssCombiner> combiner_;
+  UrlMultipartEncoder multipart_encoder_;
+
   DISALLOW_COPY_AND_ASSIGN(CssCombineFilter);
 };
 

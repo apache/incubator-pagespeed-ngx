@@ -88,8 +88,7 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
  protected:
   virtual bool ReuseByContentHash() const;
   virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
-                                              OutputResource* output_resource,
-                                              UrlSegmentEncoder* encoder);
+                                              OutputResource* output_resource);
 
  private:
   inline void CompleteScriptInProgress();

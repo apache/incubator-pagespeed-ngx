@@ -40,6 +40,7 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/util/public/null_writer.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include <string>
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
@@ -231,6 +232,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   ResourceManager other_resource_manager_;
   RewriteOptions other_options_;
   RewriteDriver other_rewrite_driver_;
+
+  SimpleStats statistics_;
 };
 
 }  // namespace net_instaweb

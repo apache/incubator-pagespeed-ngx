@@ -72,12 +72,6 @@ Resource* CommonFilter::CreateInputResourceAndReadIfCached(
   return driver_->CreateInputResourceAndReadIfCached(base_url(), url);
 }
 
-Resource* CommonFilter::CreateInputResourceFromOutputResource(
-    UrlSegmentEncoder* encoder, OutputResource* output_resource) {
-  return driver_->CreateInputResourceFromOutputResource(
-      encoder, output_resource);
-}
-
 void CommonFilter::ScanStartDocument() const {
 }
 

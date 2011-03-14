@@ -28,38 +28,42 @@ class UrlMultipartEncoderTest : public testing::Test {
  protected:
   UrlMultipartEncoder encoder_;
   GoogleMessageHandler handler_;
+
+  StringVector url_vector_;
 };
 
 TEST_F(UrlMultipartEncoderTest, EscapeSeparatorsAndEscapes) {
-  encoder_.AddUrl("abc");
-  encoder_.AddUrl("def");
-  encoder_.AddUrl("a=b+c");  // escape and separate characters
-  std::string encoding = encoder_.Encode();
-  encoder_.clear();
-  ASSERT_TRUE(encoder_.Decode(encoding, &handler_));
-  ASSERT_EQ(3, encoder_.num_urls());
-  EXPECT_EQ(std::string("abc"), encoder_.url(0));
-  EXPECT_EQ(std::string("def"), encoder_.url(1));
-  EXPECT_EQ(std::string("a=b+c"), encoder_.url(2));
+  url_vector_.push_back("abc");
+  url_vector_.push_back("def");
+  url_vector_.push_back("a=b+c");  // escape and separate characters
+  std::string encoding;
+  encoder_.Encode(url_vector_, NULL, &encoding);
+  url_vector_.clear();
+  ASSERT_TRUE(encoder_.Decode(encoding, &url_vector_, NULL, &handler_));
+  ASSERT_EQ(3, url_vector_.size());
+  EXPECT_EQ(std::string("abc"), url_vector_[0]);
+  EXPECT_EQ(std::string("def"), url_vector_[1]);
+  EXPECT_EQ(std::string("a=b+c"), url_vector_[2]);
 }
 
 TEST_F(UrlMultipartEncoderTest, Empty) {
-  ASSERT_TRUE(encoder_.Decode("", &handler_));
-  EXPECT_EQ(0, encoder_.num_urls());
+  StringVector urls;
+  ASSERT_TRUE(encoder_.Decode("", &url_vector_, NULL, &handler_));
+  EXPECT_EQ(0, url_vector_.size());
 }
 
 TEST_F(UrlMultipartEncoderTest, LastIsEmpty) {
-  ASSERT_TRUE(encoder_.Decode("a+b+", &handler_));
-  ASSERT_EQ(3, encoder_.num_urls());
-  EXPECT_EQ(std::string("a"), encoder_.url(0));
-  EXPECT_EQ(std::string("b"), encoder_.url(1));
-  EXPECT_EQ(std::string(""), encoder_.url(2));
+  ASSERT_TRUE(encoder_.Decode("a+b+", &url_vector_, NULL, &handler_));
+  ASSERT_EQ(3, url_vector_.size());
+  EXPECT_EQ(std::string("a"), url_vector_[0]);
+  EXPECT_EQ(std::string("b"), url_vector_[1]);
+  EXPECT_EQ(std::string(""), url_vector_[2]);
 }
 
 TEST_F(UrlMultipartEncoderTest, One) {
-  ASSERT_TRUE(encoder_.Decode("a", &handler_));
-  ASSERT_EQ(1, encoder_.num_urls());
-  EXPECT_EQ(std::string("a"), encoder_.url(0));
+  ASSERT_TRUE(encoder_.Decode("a", &url_vector_, NULL, &handler_));
+  ASSERT_EQ(1, url_vector_.size());
+  EXPECT_EQ(std::string("a"), url_vector_[0]);
 }
 
 }  // namespace net_instaweb

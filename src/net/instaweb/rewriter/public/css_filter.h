@@ -90,8 +90,7 @@ class CssFilter : public RewriteSingleResourceFilter {
   bool RewriteExternalCss(const StringPiece& in_url, std::string* out_url);
 
   virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
-                                              OutputResource* output_resource,
-                                              UrlSegmentEncoder* encoder);
+                                              OutputResource* output_resource);
 
   Css::Stylesheet* CombineStylesheets(
       std::vector<Css::Stylesheet*>* stylesheets);

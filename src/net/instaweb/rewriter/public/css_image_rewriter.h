@@ -61,7 +61,7 @@ class CssImageRewriter {
                         int64* expiration_time_ms, MessageHandler* handler);
 
   // Are any rewrites enabled?
-  bool RewritesEnabled() const { return cache_extend_ || rewrite_images_; }
+  bool RewritesEnabled() const;
 
   // Statistics names.
   static const char kImageRewrites[];
@@ -82,11 +82,6 @@ class CssImageRewriter {
 
   // Needed for resource_manager and options.
   RewriteDriver* driver_;
-
-  // Whether to do each type of optimization.
-  bool cache_extend_;
-  bool rewrite_images_;
-  bool trim_urls_;
 
   // Pointers to other HTML filters used to rewrite images.
   // TODO(sligocki): morlovich suggests separating this out as some

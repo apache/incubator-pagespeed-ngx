@@ -65,6 +65,9 @@ void ResourceManagerTestBase::SetUp() {
       file_prefix_, &file_system_,
       &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
       &http_cache_, &lock_manager_);
+
+  resource_manager_->set_statistics(&statistics_);
+  RewriteDriver::Initialize(&statistics_);
   rewrite_driver_.SetResourceManager(resource_manager_);
 }
 

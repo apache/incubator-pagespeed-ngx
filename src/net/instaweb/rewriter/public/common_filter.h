@@ -65,8 +65,6 @@ class CommonFilter : public EmptyHtmlFilter {
 
   Resource* CreateInputResource(const StringPiece& url);
   Resource* CreateInputResourceAndReadIfCached(const StringPiece& url);
-  Resource* CreateInputResourceFromOutputResource(
-      UrlSegmentEncoder* encoder, OutputResource* output_resource);
 
   // Methods to help implement two-pass scanning of HTML documents, where:
   // 1.  In the first pass we make requests of an asynchronous cache

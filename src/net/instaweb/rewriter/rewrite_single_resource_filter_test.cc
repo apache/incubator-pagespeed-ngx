@@ -51,12 +51,10 @@ class TestRewriter : public RewriteSingleResourceFilter {
         num_optimizable_(0),
         num_rewrites_called_(0),
         create_custom_encoder_(create_custom_encoder),
-        reuse_by_content_hash_(false),
-        active_custom_encoder_(0) {
+        reuse_by_content_hash_(false) {
   }
 
   virtual ~TestRewriter() {
-    EXPECT_EQ(NULL, active_custom_encoder_);
   }
 
   virtual void StartDocumentImpl() {}
@@ -93,14 +91,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
   void set_reuse_by_content_hash(bool r) { reuse_by_content_hash_ = r; }
 
   virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
-                                              OutputResource* output_resource,
-                                              UrlSegmentEncoder* encoder) {
-    if (create_custom_encoder_) {
-      EXPECT_EQ(active_custom_encoder_, encoder);
-    } else {
-      EXPECT_EQ(resource_manager_->url_escaper(), encoder);
-    }
-
+                                              OutputResource* output_resource) {
     ++num_rewrites_called_;
     EXPECT_TRUE(input_resource != NULL);
     EXPECT_TRUE(output_resource != NULL);
@@ -131,11 +122,11 @@ class TestRewriter : public RewriteSingleResourceFilter {
     return reuse_by_content_hash_;
   }
 
-  virtual UrlSegmentEncoder* CreateCustomUrlEncoder() const {
+  virtual const UrlSegmentEncoder* encoder() const {
     if (create_custom_encoder_) {
-      return new TestUrlEncoder(this, resource_manager_->url_escaper());
+      return &test_url_encoder_;
     } else {
-      return RewriteSingleResourceFilter::CreateCustomUrlEncoder();
+      return driver_->default_encoder();
     }
   }
 
@@ -146,55 +137,43 @@ class TestRewriter : public RewriteSingleResourceFilter {
   // name encoding, which is enough to see if it got invoked right.
   class TestUrlEncoder: public UrlSegmentEncoder {
    public:
-    TestUrlEncoder(const TestRewriter* parent, UrlEscaper* url_escaper)
-        : url_escaper_(url_escaper),
-          parent_(parent) {
-      EXPECT_EQ(NULL, parent_->active_custom_encoder_);
-      parent_->active_custom_encoder_ = this;
-    }
-
     virtual ~TestUrlEncoder() {
-      EXPECT_EQ(this, parent_->active_custom_encoder_);
-      parent_->active_custom_encoder_ = NULL;
     }
 
-    virtual void EncodeToUrlSegment(
-        const StringPiece& origin_url, std::string* rewritten_url) {
+    virtual void Encode(const StringVector& urls, const ResourceContext* data,
+                        std::string* rewritten_url) const {
+      CHECK(data == NULL);
+      CHECK_EQ(1, urls.size());
       *rewritten_url = kTestEncoderUrlExtra;
-      url_escaper_->EncodeToUrlSegment(origin_url, rewritten_url);
+      UrlEscaper::EncodeToUrlSegment(urls[0], rewritten_url);
     }
 
-    virtual bool DecodeFromUrlSegment(const StringPiece& rewritten_url,
-                                      std::string* origin_url) {
+    virtual bool Decode(const StringPiece& rewritten_url,
+                        StringVector* urls,
+                        ResourceContext* data,
+                        MessageHandler* handler) const {
       const int magic_len = STATIC_STRLEN(kTestEncoderUrlExtra);
-      return rewritten_url.starts_with(kTestEncoderUrlExtra) &&
-             url_escaper_->DecodeFromUrlSegment(rewritten_url.substr(magic_len),
-                                                origin_url);
+      urls->clear();
+      urls->push_back(std::string());
+      std::string& url = urls->back();
+      return (rewritten_url.starts_with(kTestEncoderUrlExtra) &&
+              UrlEscaper::DecodeFromUrlSegment(rewritten_url.substr(magic_len),
+                                               &url));
     }
 
    private:
-    UrlEscaper* url_escaper_;
     const TestRewriter* parent_;
   };
 
   void TryRewrite(HtmlElement::Attribute* src) {
-    UrlSegmentEncoder* encoder = resource_manager_->url_escaper();
-    if (create_custom_encoder_) {
-      encoder = CreateCustomUrlEncoder();
-    }
-
     scoped_ptr<CachedResult> result(
-        RewriteWithCaching(StringPiece(src->value()), encoder));
+        RewriteWithCaching(StringPiece(src->value()), NULL));
     if (result.get() != NULL) {
       ++num_cached_results_;
       if (result->optimizable()) {
         ++num_optimizable_;
         src->SetValue(result->url());
       }
-    }
-
-    if (create_custom_encoder_) {
-      delete encoder;
     }
   }
 
@@ -204,7 +183,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
   int num_rewrites_called_;
   bool create_custom_encoder_;
   bool reuse_by_content_hash_;
-  mutable TestUrlEncoder* active_custom_encoder_;
+  TestUrlEncoder test_url_encoder_;
 };
 
 }  // namespace
@@ -268,22 +247,15 @@ class RewriteSingleResourceFilterTest
 
   // Transfers ownership and may return NULL.
   CachedResult* CachedResultForInput(const char* url) {
-    UrlSegmentEncoder* encoder = resource_manager_->url_escaper();
-    if (filter_->create_custom_encoder()) {
-      encoder = filter_->CreateCustomUrlEncoder();
-    }
-
+    const UrlSegmentEncoder* encoder = filter_->encoder();
     scoped_ptr<Resource> input_resource(
       rewrite_driver_.CreateInputResource(GoogleUrl(kTestDomain), url));
     EXPECT_TRUE(input_resource.get() != NULL);
     scoped_ptr<OutputResource> output_resource(
-        filter_->CreateOutputResourceFromResource(
-            &kContentTypeText, encoder, input_resource.get()));
+        rewrite_driver_.CreateOutputResourceFromResource(
+            kTestFilterPrefix, &kContentTypeText, encoder, NULL,
+            input_resource.get()));
     EXPECT_TRUE(output_resource.get() != NULL);
-
-    if (filter_->create_custom_encoder()) {
-      delete encoder;
-    }
 
     return output_resource->ReleaseCachedResult();
   }

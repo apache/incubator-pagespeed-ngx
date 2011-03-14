@@ -51,7 +51,6 @@
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/content_type.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -137,6 +136,28 @@ void RewriteDriver::Initialize(Statistics* statistics) {
 void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   resource_manager_ = resource_manager;
   set_timer(resource_manager->timer());
+
+  DCHECK(resource_filter_map_.empty());
+
+  // Add the rewriting filters to the map unconditionally -- we may
+  // need the to process resource requests due to a query-specific
+  // 'rewriters' specification.  We still use the passed-in options
+  // to determine whether they get added to the html parse filter chain.
+  // Note: RegisterRewriteFilter takes ownership of these filters.
+  CacheExtender* cache_extender = new CacheExtender(this, kCacheExtenderId);
+  ImgRewriteFilter* image_rewriter =
+      new ImgRewriteFilter(
+          this,
+          kImageCompressionId,
+          options_.img_inline_max_bytes(),
+          options_.img_max_rewrites_at_once());
+
+  RegisterRewriteFilter(new CssCombineFilter(this, kCssCombinerId));
+  RegisterRewriteFilter(
+      new CssFilter(this, kCssFilterId, cache_extender, image_rewriter));
+  RegisterRewriteFilter(new JavascriptFilter(this, kJavascriptMinId));
+  RegisterRewriteFilter(image_rewriter);
+  RegisterRewriteFilter(cache_extender);
 }
 
 // If flag starts with key (a string ending in "="), call m on the remainder of
@@ -178,28 +199,6 @@ bool RewriteDriver::ParseKeyInt64(const StringPiece& key, SetInt64Method m,
 
 void RewriteDriver::AddFilters() {
   CHECK(html_writer_filter_ == NULL);
-
-  // Add the rewriting filters to the map unconditionally -- we may
-  // need the to process resource requests due to a query-specific
-  // 'rewriters' specification.  We still use the passed-in options
-  // to determine whether they get added to the html parse filter chain.
-  // Note: RegisterRewriteFilter takes ownership of these filters.
-  CacheExtender* cache_extender = new CacheExtender(this, kCacheExtenderId);
-  ImgRewriteFilter* image_rewriter =
-      new ImgRewriteFilter(
-          this,
-          options_.Enabled(RewriteOptions::kDebugLogImgTags),
-          options_.Enabled(RewriteOptions::kInsertImgDimensions),
-          kImageCompressionId,
-          options_.img_inline_max_bytes(),
-          options_.img_max_rewrites_at_once());
-
-  RegisterRewriteFilter(new CssCombineFilter(this, kCssCombinerId));
-  RegisterRewriteFilter(
-      new CssFilter(this, kCssFilterId, cache_extender, image_rewriter));
-  RegisterRewriteFilter(new JavascriptFilter(this, kJavascriptMinId));
-  RegisterRewriteFilter(image_rewriter);
-  RegisterRewriteFilter(cache_extender);
 
   // This function defines the order that filters are run.  We document
   // in pagespeed.conf.template that the order specified in the conf
@@ -584,7 +583,8 @@ bool RewriteDriver::FetchExtantOutputResource(
 OutputResource* RewriteDriver::CreateOutputResourceFromResource(
     const StringPiece& filter_prefix,
     const ContentType* content_type,
-    UrlSegmentEncoder* encoder,
+    const UrlSegmentEncoder* encoder,
+    const ResourceContext* data,
     Resource* input_resource) {
   OutputResource* result = NULL;
   if (input_resource != NULL) {
@@ -595,7 +595,9 @@ OutputResource* RewriteDriver::CreateOutputResourceFromResource(
     if (partnership.AddUrl(input_resource->url(), message_handler())) {
       const GoogleUrl *mapped_gurl = partnership.FullPath(0);
       std::string name;
-      encoder->EncodeToUrlSegment(mapped_gurl->LeafWithQuery(), &name);
+      StringVector v;
+      v.push_back(mapped_gurl->LeafWithQuery().as_string());
+      encoder->Encode(v, data, &name);
       result = CreateOutputResourceWithPath(
           mapped_gurl->AllExceptLeaf(),
           filter_prefix, name, content_type, kRewrittenResource);
@@ -665,18 +667,6 @@ Resource* RewriteDriver::CreateInputResourceAndReadIfCached(
         base_gurl.spec_c_str(), input_url.as_string().c_str());
     delete input_resource;
     input_resource = NULL;
-  }
-  return input_resource;
-}
-
-Resource* RewriteDriver::CreateInputResourceFromOutputResource(
-    UrlSegmentEncoder* encoder,
-    OutputResource* output_resource) {
-  Resource* input_resource = NULL;
-  std::string input_name;
-  if (encoder->DecodeFromUrlSegment(output_resource->name(), &input_name)) {
-    GoogleUrl base_gurl(output_resource->resolved_base());
-    input_resource = CreateInputResource(base_gurl, input_name);
   }
   return input_resource;
 }
@@ -873,6 +863,15 @@ Resource* RewriteDriver::GetScannedInputResource(const StringPiece& url) const {
     resource = iter->second;
   }
   return resource;
+}
+
+RewriteFilter* RewriteDriver::FindFilter(const StringPiece& id) const {
+  RewriteFilter* filter = NULL;
+  StringFilterMap::const_iterator p = resource_filter_map_.find(id.as_string());
+  if (p != resource_filter_map_.end()) {
+    filter = p->second;
+  }
+  return filter;
 }
 
 }  // namespace net_instaweb

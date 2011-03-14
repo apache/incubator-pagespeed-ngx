@@ -23,12 +23,21 @@
 
 namespace net_instaweb {
 
+class ResourceContext;
+
 // Specification for image dimensions, either in an image file
 // or in the page source.  This is 1 method away from a struct.
+//
+// TODO(jmarantz): consider removing this class and changing
+// call-sites to use ResourceContext exclusively, and move
+// string encoder/decoder logic directly into ImageUrlEncoder.
 class ImageDim {
  public:
   // Constructor ensures repeatable field values.
   ImageDim() : valid_(false), width_(-1), height_(-1) { }
+  explicit ImageDim(const ResourceContext& data);
+
+  void ToResourceContext(ResourceContext* data) const;
 
   int width() const { return width_; }
   int height() const { return height_; }

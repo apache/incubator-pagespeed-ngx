@@ -174,6 +174,18 @@ class ImageTest : public testing::Test {
         241260, true);
   }
 
+  std::string EncodeUrlAndDimensions(const StringPiece& origin_url,
+                                      const ImageDim& dim) {
+    ResourceContext data;
+    dim.ToResourceContext(&data);
+    StringVector v;
+    v.push_back(origin_url.as_string());
+    std::string out;
+    ImageUrlEncoder encoder;
+    encoder.Encode(v, &data, &out);
+    return out;
+  }
+
   StdioFileSystem file_system_;
   GoogleMessageHandler handler_;
 
@@ -230,69 +242,64 @@ TEST_F(ImageTest, DrawImage) {
 
 const char kActualUrl[] = "http://encoded.url/with/various.stuff";
 
-TEST(ImageUrlTest, NoDims) {
+TEST_F(ImageTest, NoDims) {
   const char kNoDimsUrl[] = "x,hencoded.url,_with,_various.stuff";
   std::string origin_url;
-  UrlEscaper escaper;
-  ImageUrlEncoder encoder(&escaper);
-  EXPECT_TRUE(encoder.DecodeFromUrlSegment(kNoDimsUrl, &origin_url));
-  EXPECT_FALSE(encoder.stored_dim().valid());
+  ImageUrlEncoder encoder;
+  ImageDim dim;
+  EXPECT_TRUE(encoder.DecodeUrlAndDimensions(kNoDimsUrl, &dim, &origin_url));
+  EXPECT_FALSE(dim.valid());
   EXPECT_EQ(kActualUrl, origin_url);
-  std::string final_url;
-  encoder.EncodeToUrlSegment(origin_url, &final_url);
-  EXPECT_EQ(kNoDimsUrl, final_url);
+  EXPECT_EQ(kNoDimsUrl, EncodeUrlAndDimensions(origin_url, dim));
 }
 
-TEST(ImageUrlTest, HasDims) {
+TEST_F(ImageTest, HasDims) {
   const char kDimsUrl[] = "17x33x,hencoded.url,_with,_various.stuff";
   std::string origin_url;
-  UrlEscaper escaper;
-  ImageUrlEncoder encoder(&escaper);
-  EXPECT_TRUE(encoder.DecodeFromUrlSegment(kDimsUrl, &origin_url));
-  ImageDim page_dim = encoder.stored_dim();
-  EXPECT_TRUE(page_dim.valid());
-  EXPECT_EQ(17, page_dim.width());
-  EXPECT_EQ(33, page_dim.height());
+  ImageUrlEncoder encoder;
+  ImageDim dim;
+  EXPECT_TRUE(encoder.DecodeUrlAndDimensions(kDimsUrl, &dim, &origin_url));
+  EXPECT_TRUE(dim.valid());
+  EXPECT_EQ(17, dim.width());
+  EXPECT_EQ(33, dim.height());
   EXPECT_EQ(kActualUrl, origin_url);
-  std::string final_url;
-  encoder.EncodeToUrlSegment(origin_url, &final_url);
-  EXPECT_EQ(kDimsUrl, final_url);
+  EXPECT_EQ(kDimsUrl, EncodeUrlAndDimensions(origin_url, dim));
 }
 
 TEST(ImageUrlTest, BadFirst) {
   const char kBadFirst[] = "badx33x,hencoded.url,_with,_various.stuff";
   std::string origin_url;
-  UrlEscaper escaper;
-  ImageUrlEncoder encoder(&escaper);
-  EXPECT_FALSE(encoder.DecodeFromUrlSegment(kBadFirst, &origin_url));
-  EXPECT_FALSE(encoder.stored_dim().valid());
+  ImageUrlEncoder encoder;
+  ImageDim dim;
+  EXPECT_FALSE(encoder.DecodeUrlAndDimensions(kBadFirst, &dim, &origin_url));
+  EXPECT_FALSE(dim.valid());
 }
 
 TEST(ImageUrlTest, BadSecond) {
   const char kBadSecond[] = "17xbadx,hencoded.url,_with,_various.stuff";
   std::string origin_url;
-  UrlEscaper escaper;
-  ImageUrlEncoder encoder(&escaper);
-  EXPECT_FALSE(encoder.DecodeFromUrlSegment(kBadSecond, &origin_url));
-  EXPECT_FALSE(encoder.stored_dim().valid());
+  ImageUrlEncoder encoder;
+  ImageDim dim;
+  EXPECT_FALSE(encoder.DecodeUrlAndDimensions(kBadSecond, &dim, &origin_url));
+  EXPECT_FALSE(dim.valid());
 }
 
 TEST(ImageUrlTest, NoXs) {
   const char kNoXs[] = ",hencoded.url,_with,_various.stuff";
   std::string origin_url;
-  UrlEscaper escaper;
-  ImageUrlEncoder encoder(&escaper);
-  EXPECT_FALSE(encoder.DecodeFromUrlSegment(kNoXs, &origin_url));
-  EXPECT_FALSE(encoder.stored_dim().valid());
+  ImageUrlEncoder encoder;
+  ImageDim dim;
+  EXPECT_FALSE(encoder.DecodeUrlAndDimensions(kNoXs, &dim, &origin_url));
+  EXPECT_FALSE(dim.valid());
 }
 
 TEST(ImageUrlTest, BlankSecond) {
   const char kBlankSecond[] = "17xx,hencoded.url,_with,_various.stuff";
   std::string origin_url;
-  UrlEscaper escaper;
-  ImageUrlEncoder encoder(&escaper);
-  EXPECT_FALSE(encoder.DecodeFromUrlSegment(kBlankSecond, &origin_url));
-  EXPECT_FALSE(encoder.stored_dim().valid());
+  ImageUrlEncoder encoder;
+  ImageDim dim;
+  EXPECT_FALSE(encoder.DecodeUrlAndDimensions(kBlankSecond, &dim, &origin_url));
+  EXPECT_FALSE(dim.valid());
 }
 
 }  // namespace net_instaweb

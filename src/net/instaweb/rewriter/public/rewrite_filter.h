@@ -77,10 +77,16 @@ class RewriteFilter : public CommonFilter {
 
   const std::string& id() const { return filter_prefix_; }
 
-  OutputResource* CreateOutputResourceFromResource(
-      const ContentType* content_type,
-      UrlSegmentEncoder* encoder,
-      Resource* input_resource);
+  // Create an input resource by decoding output_resource using the
+  // filter's. Assures legality by explicitly permission-checking the result.
+  Resource* CreateInputResourceFromOutputResource(
+      OutputResource* output_resource);
+
+  // All RewriteFilters define how they encode URLs and other
+  // associated information needed for a rewrite into a URL.
+  // The default implementation handles a single URL with
+  // no extra data.  The filter owns the encoder.
+  virtual const UrlSegmentEncoder* encoder() const;
 
  protected:
   std::string filter_prefix_;  // Prefix that should be used in front of all

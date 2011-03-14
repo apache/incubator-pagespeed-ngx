@@ -40,7 +40,6 @@ class HtmlParse;
 class Image;
 class OutputResource;
 class ResourceManager;
-class UrlEscaper;
 class Variable;
 
 // This class supports the encoding of image urls with optional
@@ -49,24 +48,27 @@ class Variable;
 // respectively.
 class ImageUrlEncoder : public UrlSegmentEncoder {
  public:
-  explicit ImageUrlEncoder(UrlEscaper* url_escaper);
+  ImageUrlEncoder() {}
   virtual ~ImageUrlEncoder();
 
-  // Encode an origin_url and stored_dim from origin page to a rewritten_url.
-  virtual void EncodeToUrlSegment(
-      const StringPiece& origin_url, std::string* rewritten_url);
+  virtual void Encode(const StringVector& urls,
+                      const ResourceContext* dim,
+                      std::string* rewritten_url) const;
+
+  virtual bool Decode(const StringPiece& url_segment,
+                      StringVector* urls,
+                      ResourceContext* dim,
+                      MessageHandler* handler) const;
+
 
   // Decode an origin_url and stored_dim from a rewritten_url, returning false
   // on parse failure (invalidating output vars).
-  virtual bool DecodeFromUrlSegment(const StringPiece& rewritten_url,
-                                    std::string* origin_url);
-
-  const ImageDim& stored_dim() const { return stored_dim_; }
-  void set_stored_dim(const ImageDim& dim) { stored_dim_ = dim; }
+  bool DecodeUrlAndDimensions(const StringPiece& rewritten_url,
+                              ImageDim* image_dim,
+                              std::string* origin_url) const;
 
  private:
-  UrlEscaper* url_escaper_;
-  ImageDim stored_dim_;
+  DISALLOW_COPY_AND_ASSIGN(ImageUrlEncoder);
 };
 
 // Identify img tags in html and optimize them.
@@ -75,8 +77,6 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
 class ImgRewriteFilter : public RewriteSingleResourceFilter {
  public:
   ImgRewriteFilter(RewriteDriver* driver,
-                   bool log_image_elements,
-                   bool insert_image_dimensions,
                    StringPiece path_prefix,
                    size_t img_inline_max_bytes,
                    size_t img_max_rewrites_at_once);
@@ -94,12 +94,11 @@ class ImgRewriteFilter : public RewriteSingleResourceFilter {
 
  protected:
   // Interface to RewriteSingleResourceFilter
-  virtual UrlSegmentEncoder* CreateCustomUrlEncoder() const;
   virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
-                                              OutputResource* result,
-                                              UrlSegmentEncoder* raw_encoder);
+                                              OutputResource* result);
   virtual int FilterCacheFormatVersion() const;
   virtual bool ReuseByContentHash() const;
+  virtual const UrlSegmentEncoder* encoder() const;
 
  private:
   // Helper methods.
@@ -121,13 +120,10 @@ class ImgRewriteFilter : public RewriteSingleResourceFilter {
   // which might be a lose.  More work is needed here to figure out the exact
   // tradeoffs involved, especially as we also undermine image cacheability.
   size_t img_inline_max_bytes_;
-  // Should we log each image element as we encounter it?  Handy for debug.
-  bool log_image_elements_;
-  // Should we insert image dimensions into html if they are absent?
-  bool insert_image_dimensions_;
   Variable* rewrite_count_;
   Variable* inline_count_;
   Variable* rewrite_saved_bytes_;
+  ImageUrlEncoder encoder_;
 
   DISALLOW_COPY_AND_ASSIGN(ImgRewriteFilter);
 };

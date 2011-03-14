@@ -17,6 +17,7 @@
 
 #include "net/instaweb/rewriter/public/image_dim.h"
 
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 
@@ -48,6 +49,26 @@ bool DecodeIntX(StringPiece* in, int *result) {
 }
 
 }  // namespace
+
+ImageDim::ImageDim(const ResourceContext& data) {
+  if (data.has_width() && data.has_height()) {
+    valid_ = true;
+    width_ = data.width();
+    height_ = data.height();
+  } else {
+    valid_ = false;
+    width_ = -1;
+    height_ = -1;
+  }
+}
+
+void ImageDim::ToResourceContext(ResourceContext* data) const {
+  data->Clear();
+  if (valid_) {
+    data->set_width(width_);
+    data->set_height(height_);
+  }
+}
 
 void ImageDim::EncodeTo(std::string* out) const {
   if (valid_) {

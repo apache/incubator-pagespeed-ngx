@@ -55,8 +55,6 @@ bool ReplaceSubstring(const StringPiece& search, const char* replacement,
 
 }  // namespace
 
-UrlEscaper::~UrlEscaper() { }
-
 void UrlEscaper::EncodeToUrlSegment(const StringPiece& in,
                                     std::string* url_segment) {
   for (StringPiece src = in; src.size() != 0; ) {

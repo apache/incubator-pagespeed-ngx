@@ -153,8 +153,7 @@ bool JavascriptFilter::WriteExternalScriptTo(
 // External script; minify and replace with rewritten version (also external).
 void JavascriptFilter::RewriteExternalScript() {
   const StringPiece script_url(script_src_->value());
-  scoped_ptr<CachedResult> rewrite_info(
-      RewriteWithCaching(script_url, resource_manager_->url_escaper()));
+  scoped_ptr<CachedResult> rewrite_info(RewriteWithCaching(script_url, NULL));
 
   if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
     script_src_->SetValue(rewrite_info->url());
@@ -237,8 +236,7 @@ bool JavascriptFilter::ReuseByContentHash() const {
 
 RewriteSingleResourceFilter::RewriteResult
 JavascriptFilter::RewriteLoadedResource(const Resource* script_input,
-                                        OutputResource* output_resource,
-                                        UrlSegmentEncoder* encoder) {
+                                        OutputResource* output_resource) {
   MessageHandler* message_handler = driver_->message_handler();
 
   StringPiece script = script_input->contents();

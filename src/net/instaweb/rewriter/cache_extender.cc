@@ -98,8 +98,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
     if ((input_resource != NULL) &&
         !IsRewrittenResource(input_resource->url())) {
       scoped_ptr<CachedResult> rewrite_info(
-          RewriteResourceWithCaching(input_resource,
-                                     resource_manager_->url_escaper()));
+          RewriteExternalResource(input_resource, NULL));
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
         // Rewrite URL to cache-extended version
         href->SetValue(rewrite_info->url());
@@ -134,8 +133,7 @@ bool CacheExtender::ReuseByContentHash() const {
 
 RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
     const Resource* input_resource,
-    OutputResource* output_resource,
-    UrlSegmentEncoder* encoder) {
+    OutputResource* output_resource) {
   CHECK(input_resource->loaded());
 
   MessageHandler* message_handler = driver_->message_handler();

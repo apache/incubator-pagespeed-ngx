@@ -46,7 +46,6 @@ class CssFilterTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    resource_manager_->set_statistics(&statistics_);
     AddFilter(RewriteOptions::kRewriteCss);
   }
 
@@ -273,7 +272,6 @@ class CssFilterTest : public ResourceManagerTestBase {
         kExpectChange | kExpectSuccess | kNoClearFetcher | kNoStatCheck);
   }
 
-  SimpleStats statistics_;
   Variable* num_files_minified_;
   Variable* minified_bytes_saved_;
   Variable* num_parse_failures_;

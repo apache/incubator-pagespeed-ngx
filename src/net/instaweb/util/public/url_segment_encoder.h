@@ -24,21 +24,33 @@
 
 namespace net_instaweb {
 
-// Abstract class that describes encoding of url segments by rewriters.
-// Most instances of this will want to delegate to a UrlEscaper, which
-// is itself an instance.
+class MessageHandler;
+class ResourceContext;
+
+// Base class that describes encoding of url segments by rewriters.
+// Most instances of this will want to delegate to UrlEscaper.
 class UrlSegmentEncoder {
  public:
-  virtual ~UrlSegmentEncoder();
-  // *Append* encoding of url segment "in" to "url_segment".
-  virtual void EncodeToUrlSegment(const StringPiece& in,
-                                  std::string* url_segment) = 0;
-  // Decode url segment from "url_segment", *appending* to "out"; should consume
-  // entire StringPiece.  Return false on decode failure.
-  virtual bool DecodeFromUrlSegment(const StringPiece& url_segment,
-                                    std::string* out) = 0;
- protected:
   UrlSegmentEncoder() { }
+  virtual ~UrlSegmentEncoder();
+
+  // Encodes arbitrary text so it can be used in a url segment.  A
+  // url segment must contain only characters that are legal in URLs,
+  // and exclude "/" and "." which are used for a higher level encoding
+  // scheme into which this must fit.
+  //
+  // 'data' is optional -- it can be NULL and it is up to the encoder to
+  // decide what to do.
+  virtual void Encode(const StringVector& urls,  const ResourceContext* data,
+                      std::string* url_segment) const;
+
+  // Decode URLs from "url_segment".  Note that there may be other
+  // meta-data encoded in url_segment, which this function will write
+  // into out_data, if present.
+  virtual bool Decode(const StringPiece& url_segment,
+                      StringVector* urls, ResourceContext* out_data,
+                      MessageHandler* handler) const;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(UrlSegmentEncoder);
 };
