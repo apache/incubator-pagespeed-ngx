@@ -37,13 +37,9 @@ ModPagespeedEnableFilters add_instrumentation
     AllowOverride All
 </Directory>
 
-# This is needed for the server-side includes test at the end of
-# system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
-AddType text/html .shtml
-AddOutputFilter INCLUDES .shtml
-
-#SPELING # Enable mod_speling to ensure that we don't regress Issue 194
+# Enable mod_speling to ensure that we don't regress Issue 194
 #SPELING CheckSpelling on
+
 
 #STRESS # These lines are only needed for the stress test.
 #STRESS <Directory /usr/local/apache2/htdocs/mod_pagespeed_example/cgi>
