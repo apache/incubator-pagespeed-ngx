@@ -1,0 +1,5 @@
+<!--#include virtual="/mod_pagespeed_test/ssi/header.html" -->
+
+<body>
+<p>Output styled via ssi include.</p>
+</body>
