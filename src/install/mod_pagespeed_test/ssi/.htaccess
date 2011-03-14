@@ -1,0 +1,4 @@
+Options +Includes
+
+ModPagespeedEnableFilters collapse_whitespace,remove_comments
+ModPagespeedDisableFilters add_instrumentation

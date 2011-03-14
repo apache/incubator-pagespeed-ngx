@@ -701,8 +701,16 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
 
   // Use instaweb to handle generated resources.
   ap_hook_handler(instaweb_handler, NULL, NULL, APR_HOOK_FIRST - 1);
+
+  // We register our output filter at (AP_FTYPE_RESOURCE + 1) so that
+  // mod_pagespeed runs after mod_include.  See Issue
+  // http://code.google.com/p/modpagespeed/issues/detail?id=182
+  // and httpd/src/modules/filters/mod_include.c, which initializes
+  // server-side-includes with ap_register_output_filter(...AP_FTYPE_RESOURCE).
   ap_register_output_filter(
-      kModPagespeedFilterName, instaweb_out_filter, NULL, AP_FTYPE_RESOURCE);
+      kModPagespeedFilterName, instaweb_out_filter, NULL,
+      static_cast<ap_filter_type>(AP_FTYPE_RESOURCE + 1));
+
   ap_hook_post_config(pagespeed_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(pagespeed_child_init, NULL, NULL, APR_HOOK_LAST);
   ap_hook_log_transaction(pagespeed_log_transaction, NULL, NULL, APR_HOOK_LAST);
