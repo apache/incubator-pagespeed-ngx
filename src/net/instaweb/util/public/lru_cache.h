@@ -21,6 +21,7 @@
 
 #include <list>
 #include <map>
+#include <utility>  // for pair
 #include "base/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include <string>
@@ -89,7 +90,7 @@ class LRUCache : public CacheInterface {
   // STL guarantees lifetime of list itererators as long as the node is in list.
   typedef EntryList::iterator ListNode;
   typedef std::map<std::string, ListNode> Map;
-  inline int entry_size(KeyValuePair* kvp) const;
+  inline size_t entry_size(KeyValuePair* kvp) const;
   inline ListNode Freshen(KeyValuePair* key_value);
   bool EvictIfNecessary(size_t bytes_needed);
 

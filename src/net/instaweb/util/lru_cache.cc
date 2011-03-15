@@ -79,6 +79,7 @@ void LRUCache::Put(const std::string& key, SharedString* new_value) {
       ++num_identical_reinserts_;
     } else {
       ++num_deletes_;
+      CHECK_GE(current_bytes_in_cache_, entry_size(key_value));
       current_bytes_in_cache_ -= entry_size(key_value);
       delete key_value;
     }
@@ -114,9 +115,9 @@ bool LRUCache::EvictIfNecessary(size_t bytes_needed) {
     while (bytes_needed + current_bytes_in_cache_ > max_bytes_in_cache_) {
       KeyValuePair* key_value = lru_ordered_list_.back();
       lru_ordered_list_.pop_back();
+      CHECK_GE(current_bytes_in_cache_, entry_size(key_value));
       current_bytes_in_cache_ -= entry_size(key_value);
       map_.erase(*key_value->first);
-      CHECK(current_bytes_in_cache_ >= 0);
       delete key_value;
       ++num_evictions_;
     }
@@ -132,6 +133,7 @@ void LRUCache::Delete(const std::string& key) {
     ListNode cell = p->second;
     KeyValuePair* key_value = *cell;
     lru_ordered_list_.erase(cell);
+    CHECK_GE(current_bytes_in_cache_, entry_size(key_value));
     current_bytes_in_cache_ -= entry_size(key_value);
     map_.erase(p);
     delete key_value;
@@ -181,7 +183,7 @@ CacheInterface::KeyState LRUCache::Query(const std::string& key) {
 // TODO(jmarantz): consider accounting for overhead for list cells, map
 // cells, string objects, etc.  Currently we are only accounting for the
 // actual characters in the key and value.
-int LRUCache::entry_size(KeyValuePair* kvp) const {
+size_t LRUCache::entry_size(KeyValuePair* kvp) const {
   return kvp->first->size() + kvp->second->size();
 }
 

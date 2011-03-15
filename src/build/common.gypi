@@ -53,6 +53,7 @@
           # Now we are using exceptions. -fno-asynchronous-unwind-tables is
           # set in libpagespeed's common.gypi. Now enable it.
           '-fasynchronous-unwind-tables',
+          '-Wtype-limits',
         ],
         'cflags_cc': [
           '-frtti',  # Hardy's g++ 4.2 <trl/function> uses typeid

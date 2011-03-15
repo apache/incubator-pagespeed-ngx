@@ -59,13 +59,13 @@ GoogleUrl::GoogleUrl()
 // qualified spec.
 size_t GoogleUrl::LeafStartPosition() const {
   url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
-  // query doesn't include '?'
-  size_t question = parsed.query.begin - 1;
-  if (question < 0) {
-    question = std::string::npos;
+  size_t start_reverse_search_from = std::string::npos;
+  if (parsed.query.is_valid() && (parsed.query.begin > 0)) {
+    // query includes include '?', so start the search from the character
+    // before it.
+    start_reverse_search_from = parsed.query.begin - 1;
   }
-  size_t last_slash = gurl_.spec().rfind('/', question);
-  return last_slash;
+  return gurl_.possibly_invalid_spec().rfind('/', start_reverse_search_from);
 }
 
 // Find the start of the path, includes '/'
@@ -164,9 +164,6 @@ StringPiece GoogleUrl::Path() const {
   url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
   size_t path_start = PathStartPosition();
   size_t path_length = parsed.path.len;
-  if (path_length < 0) {
-    return NULL;
-  }
   return StringPiece(spec.data() + path_start, path_length);
 }
 
