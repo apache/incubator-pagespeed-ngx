@@ -217,6 +217,9 @@ apr_status_t instaweb_handler(request_rec* request) {
     AprStatistics* statistics = factory->statistics();
     if (statistics) {
       statistics->Dump(&writer, factory->message_handler());
+    } else {
+      writer.Write("mod_pagespeed statistics is not enabled\n",
+                   factory->message_handler());
     }
     response_headers.SetStatusAndReason(HttpStatus::kOK);
     response_headers.set_major_version(1);
