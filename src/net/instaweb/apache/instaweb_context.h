@@ -35,6 +35,8 @@ namespace net_instaweb {
 class GzipInflater;
 class RewriteOptions;
 
+const char kPagespeedOriginalUrl[] = "mod_pagespeed_original_url";
+
 // We use the following structure to keep the instaweb module context. The
 // rewriter will put the rewritten content into the output string when flushed
 // or finished. We call Flush when we see the FLUSH bucket, and call Finish when

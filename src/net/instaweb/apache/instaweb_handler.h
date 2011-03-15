@@ -32,7 +32,7 @@ apr_status_t instaweb_handler(request_rec* request);
 // mod_rewrite has a chance to corrupt mod_pagespeed's generated URLs,
 // which would prevent instaweb_handler from being able to decode the
 // resource.
-apr_status_t save_url_for_instaweb_handler(request_rec *request);
+apr_status_t save_url_hook(request_rec *request);
 
 // By default, apache imposes limitations on URL segments of around
 // 256 characters that appear to correspond to filename limitations.

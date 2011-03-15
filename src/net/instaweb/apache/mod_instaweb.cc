@@ -725,7 +725,7 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   // mod_rewrite registers at APR_HOOK_FIRST.  We'd like to leave
   // space for user modules at APR_HOOK_FIRST-1, so we go to
   // APR_HOOK_FIRST - 2.
-  ap_hook_translate_name(save_url_for_instaweb_handler, NULL, NULL,
+  ap_hook_translate_name(save_url_hook, NULL, NULL,
                          APR_HOOK_FIRST - 2);
 
   // By default, apache imposes limitations on URL segments of around

@@ -1,4 +1,5 @@
 Options +Includes
 
-ModPagespeedEnableFilters collapse_whitespace,remove_comments
+ModPagespeedEnableFilters collapse_whitespace,remove_comments,combine_css
 ModPagespeedDisableFilters add_instrumentation
+ModPagespeedDisableFilters inline_css

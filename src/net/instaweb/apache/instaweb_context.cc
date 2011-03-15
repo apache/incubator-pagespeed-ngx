@@ -30,7 +30,9 @@ extern module AP_MODULE_DECLARE_DATA pagespeed_module;
 
 namespace net_instaweb {
 
-const char kPagespeedOrignalUrl[] = "mod_pagespeed_original_url";
+// Number of times to go down the request->prev chain looking
+// for an absolute url.
+const int kChasePrevRequestLimit = 5;
 
 InstawebContext::InstawebContext(request_rec* request,
                                  const ContentType& content_type,
@@ -216,8 +218,27 @@ ApacheRewriteDriverFactory* InstawebContext::Factory(server_rec* server) {
 // This function stores the request uri on the first call, and then
 // uses that value for all future calls.  This should prevent the url
 // from changing due to changes to the reqeust from other modules.
+// In some code paths, a new request is made that throws away the old
+// url.  Therefore, if we have not yet stored the url, check to see if
+// there was a previous request in this chain, and use its url as the
+// original.
 const char* InstawebContext::MakeRequestUrl(request_rec* request) {
-  const char* url = apr_table_get(request->notes, kPagespeedOrignalUrl);
+  request_rec *current = request;
+  const char *url = NULL;
+  int i = 0;
+  // Go down the prev chain to see if there this request was a rewrite
+  // from another one.  We want to store the uri the user passed in, not
+  // what we re-wrote it to.
+  // We should not iterate down this chain more than once (MakeRequestUrl
+  // will already have been called for request->prev, before this request
+  // is created).  However, max out at 5 iterations, just in case.
+  do {
+    url = apr_table_get(current->notes, kPagespeedOriginalUrl);
+    ++i;
+    current = current->prev;
+  } while (url != NULL && current != NULL && i < kChasePrevRequestLimit);
+
+
   /*
    * In some contexts we are seeing relative URLs passed
    * into request->unparsed_uri.  But when using mod_slurp, the rewritten
@@ -230,11 +251,15 @@ const char* InstawebContext::MakeRequestUrl(request_rec* request) {
   if (url == NULL) {
     if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
       url = apr_pstrdup(request->pool, request->unparsed_uri);
+    } else if (url == NULL && request->main != NULL) {
+      // Now check to see if we have a main, if we do, use its host information.
+      url = ap_construct_url(request->main->pool, request->unparsed_uri,
+                             request->main);
     } else {
       url = ap_construct_url(request->pool, request->unparsed_uri, request);
     }
-    apr_table_setn(request->notes, kPagespeedOrignalUrl, url);
   }
+  apr_table_setn(request->notes, kPagespeedOriginalUrl, url);
   return url;
 }
 

@@ -1,0 +1,4 @@
+RewriteEngine On
+RewriteRule ^php/(.*)$ menu_php.html
+ModPagespeedRewriteLevel PassThrough
+ModPagespeedEnableFilters trim_urls

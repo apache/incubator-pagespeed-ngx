@@ -430,6 +430,11 @@ check $WGET_DUMP http://localhost:8080/mod_pagespeed_test/ssi/ssi.shtml \
   > $OUTDIR/ssi.out.html
 check [ `grep -ce $combine_css_filename $OUTDIR/ssi.out.html` = 1 ];
 
+echo TEST: mod_rewrite
+check $WGET_DUMP $TEST_ROOT/redirect/php/ > $OUTDIR/redirect_php.html
+check \
+  [ `grep -ce "href=\"/mod_pagespeed_test/" $OUTDIR/redirect_php.html` = 2 ];
+
 # Cleanup
 rm -rf $OUTDIR
 echo "PASS."

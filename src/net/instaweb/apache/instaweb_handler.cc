@@ -49,7 +49,8 @@ namespace {
 const char kStatisticsHandler[] = "mod_pagespeed_statistics";
 const char kBeaconHandler[] = "mod_pagespeed_beacon";
 const char kResourceUrlNote[] = "mod_pagespeed_resource";
-const char kResourceUrlPass[] = "<PASS>";
+const char kResourceUrlNo[] = "<NO>";
+const char kResourceUrlYes[] = "<YES>";
 
 bool IsCompressibleContentType(const char* content_type) {
   if (content_type == NULL) {
@@ -182,23 +183,23 @@ void send_out_headers_and_body(
   ap_rwrite(output.c_str(), output.size(), request);
 }
 
-const char* get_instaweb_url(request_rec* request) {
-  const char* url = apr_table_get(request->notes, kResourceUrlNote);
+const char* get_instaweb_resource_url(request_rec* request) {
+  const char* resource = apr_table_get(request->notes, kResourceUrlNote);
 
-  // If our translate_name hook, save_url_for_instaweb_handler, failed
+  // If our translate_name hook, save_url_hook, failed
   // to run because some other module's translate_hook returned OK first,
   // then run it now.  The main reason we try to do this early is to
   // save our URL before mod_rewrite mutates it.
-  if (url == NULL) {
-    save_url_for_instaweb_handler(request);
-    url = apr_table_get(request->notes, kResourceUrlNote);
+  if (resource == NULL) {
+    save_url_hook(request);
+    resource = apr_table_get(request->notes, kResourceUrlNote);
   }
 
-  // If we have handled the URL, and did not note it as a 'pass', then
-  // handle it.
-  if ((url != NULL) && (strcmp(url, kResourceUrlPass) == 0)) {
-    url = NULL;
+  if (resource != NULL && strcmp(resource, kResourceUrlNo) == 0) {
+    return NULL;
   }
+
+  const char* url = apr_table_get(request->notes, kPagespeedOriginalUrl);
   return url;
 }
 
@@ -206,7 +207,7 @@ const char* get_instaweb_url(request_rec* request) {
 
 apr_status_t instaweb_handler(request_rec* request) {
   apr_status_t ret = DECLINED;
-  const char* url = get_instaweb_url(request);
+  const char* url = get_instaweb_resource_url(request);
   ApacheRewriteDriverFactory* factory =
       InstawebContext::Factory(request->server);
 
@@ -304,10 +305,13 @@ apr_status_t instaweb_handler(request_rec* request) {
 //
 // It seems like the simplest, most robust approach is to squirrel
 // away the original URL *before* mod_rewrite sees it in
-// kResourceUrlNote "mod_pagespeed_url" and use *that* rather than
+// kPagespeedOriginalUrl "mod_pagespeed_url" and use *that* rather than
 // request->unparsed_uri (which mod_rewrite might have mangled) when
 // procesing the request.
-apr_status_t save_url_for_instaweb_handler(request_rec *request) {
+//
+// Additionally we store whether or not this request is a pagespeed
+// resource or not in kResourceUrlNote.
+apr_status_t save_url_hook(request_rec *request) {
 
   // This call to MakeRequestUrl() not only returns the url but also
   // saves it for future use so that if another module changes the
@@ -337,16 +341,16 @@ apr_status_t save_url_for_instaweb_handler(request_rec *request) {
   }
 
   if (bypass_mod_rewrite) {
-    apr_table_setn(request->notes, kResourceUrlNote, url);
+    apr_table_set(request->notes, kResourceUrlNote, kResourceUrlYes);
   } else {
     // Leave behind a note for non-instaweb requests that says that
     // our handler got called and we decided to pass.  This gives us
     // one final chance at serving resources in the presence of a
     // module that intercepted 'translate_name' before mod_pagespeed.
-    // The absense of this marker indicates that translate_name did
+    // The absence of this marker indicates that translate_name did
     // not get a chance to run, and thus we should try to look at
     // the URI directly.
-    apr_table_set(request->notes, kResourceUrlNote, kResourceUrlPass);
+    apr_table_set(request->notes, kResourceUrlNote, kResourceUrlNo);
   }
   return DECLINED;
 }
@@ -354,7 +358,7 @@ apr_status_t save_url_for_instaweb_handler(request_rec *request) {
 // overrides core_map_to_storage to avoid imposing filename limits.
 apr_status_t instaweb_map_to_storage(request_rec* request) {
   apr_status_t ret = DECLINED;
-  if (get_instaweb_url(request) != NULL) {
+  if (get_instaweb_resource_url(request) != NULL) {
     // mod_speling, if enabled, looks for the filename on the file system,
     // and tries to "correct" the spelling.  This is not desired for
     // mod_pagesped resources, but mod_speling will not do this damage

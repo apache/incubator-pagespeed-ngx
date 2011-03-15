@@ -59,10 +59,6 @@ AddOutputFilter INCLUDES .shtml
 #REWRITE RewriteRule (.*).jpg.pagespeed.(.*).jpg /broken.jpg
 #REWRITE RewriteRule mod_pagespeed_statistics /broken
 #REWRITE RewriteRule shortcut.html /mod_pagespeed_example/index.html
-#REWRITE ModPagespeedRewriteLevel PassThrough
-#REWRITE ModPagespeedEnableFilters trim_urls
-#REWRITE RewriteRule mod_pagespeed_test/php/ /mod_pagespeed_test/menu_php.html
-#REWRITE ModPagespeedDisableFilters trim_urls
 
 #COVERAGE # These lines are used for large-scale code coverage testing.
 #COVERAGE # We use 2 servers for it, one doing rewriting and fetching
