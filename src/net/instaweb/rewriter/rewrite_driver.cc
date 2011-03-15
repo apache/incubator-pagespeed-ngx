@@ -50,6 +50,7 @@
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -64,10 +65,6 @@ const char RewriteDriver::kCacheExtenderId[] = "ce";
 const char RewriteDriver::kImageCompressionId[] = "ic";
 const char RewriteDriver::kJavascriptMinId[] = "jm";
 
-// TODO(jmarantz): Simplify the interface so we can just use
-// asynchronous fetchers, employing FakeUrlAsyncFetcher as needed
-// for running functional regression-tests where we don't mind blocking
-// behavior.
 RewriteDriver::RewriteDriver(MessageHandler* message_handler,
                              FileSystem* file_system,
                              UrlAsyncFetcher* url_async_fetcher,

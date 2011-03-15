@@ -75,25 +75,15 @@ class CommonFilter : public EmptyHtmlFilter {
   // Each filter's Scan* methods will be called in the first pass.  During
   // this pass, the document and the filter state should not be mutated.
   // All that should happen in this pass is new URLs can be requested.
-  //
-  // Note: this adds overhead to the filter-dispatch mechanism, but
-  // the absolute numbers are small.
-  // There is a test that calls Parse/Flush 1000 times on HTML with
-  // 1000 divs, and this takes ~4.0s with this extra scan
-  // infrastructure, or 4ms/request.  Without this scan-infrastructure
-  // it takes ~3.8s, so this extra scan overhead is cheap, but not
-  // free.  In the future if we need to shave another 200us from our
-  // parse time we can change this dispatch mechanism to require an
-  // explicit registration step.
-  virtual void ScanStartDocument() const;
-  virtual void ScanEndDocument() const;
-  virtual void ScanStartElement(HtmlElement* element) const;
-  virtual void ScanEndElement(HtmlElement* element) const;
-  virtual void ScanComment(HtmlCommentNode* comment) const;
-  virtual void ScanIEDirective(HtmlIEDirectiveNode* directive) const;
-  virtual void ScanCharacters(HtmlCharactersNode* characters) const;
-  virtual void ScanDirective(HtmlDirectiveNode* directive) const;
-  virtual void ScanCdata(HtmlCdataNode* cdata) const;
+  virtual void ScanStartDocument();
+  virtual void ScanEndDocument();
+  virtual void ScanStartElement(HtmlElement* element);
+  virtual void ScanEndElement(HtmlElement* element);
+  virtual void ScanComment(HtmlCommentNode* comment);
+  virtual void ScanIEDirective(HtmlIEDirectiveNode* directive);
+  virtual void ScanCharacters(HtmlCharactersNode* characters);
+  virtual void ScanDirective(HtmlDirectiveNode* directive);
+  virtual void ScanCdata(HtmlCdataNode* cdata);
 
  protected:
   // Overload these implementer methods:

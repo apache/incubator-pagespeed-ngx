@@ -81,7 +81,7 @@ bool CacheExtender::ShouldRewriteResource(
   return lawyer->WillDomainChange(origin);
 }
 
-void CacheExtender::ScanStartElement(HtmlElement* element) const {
+void CacheExtender::ScanStartElement(HtmlElement* element) {
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
   if ((href != NULL) && driver_->IsRewritable(element)) {
     driver_->ScanRequestUrl(href->value());
@@ -117,7 +117,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
 // extension, there is no benefit because every rewriter generates
 // URLs that are served with long cache lifetimes.  This filter
 // just wants to pick up the scraps.  Note that we would discover
-// this anywahy in the cache expiration time below, but it's worth
+// this anyway in the cache expiration time below, but it's worth
 // going to the extra trouble to reduce the cache lookups since this
 // happens for basically every resource.
 bool CacheExtender::IsRewrittenResource(const StringPiece& url) const {

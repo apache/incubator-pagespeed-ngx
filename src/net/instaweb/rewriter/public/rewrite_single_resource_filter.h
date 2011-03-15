@@ -58,19 +58,12 @@ class RewriteSingleResourceFilter : public RewriteFilter {
                // it's worth trying again or not.
   };
 
-  // Rewrites a non-HTML resource using as much caching as possible and
+  // Rewrites the given resource using as much caching as possible and
   // the filter-supplied URL encoding scheme.
   //
   // The Resource* arg is the already-created input object.  'data' may be
   // NULL, or include other meta-data needed for the rewrite, such as image
   // dimensions.
-  CachedResult* RewriteExternalResource(Resource* in,
-                                        const ResourceContext* data);
-
- protected:
-  // Rewrite the given resource using this filter's RewriteLoadedResource,
-  // taking  advantage of various caching techniques to avoid recomputation
-  // whenever possible.
   //
   // A return value of NULL indicates that some resources needed for
   // processing are not available yet --- either the inputs are in the process
@@ -87,8 +80,10 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   // width and height.
   //
   // Precondition: in != NULL, in is security-checked
-  CachedResult* RewriteResourceWithCaching(Resource* in);
+  CachedResult* RewriteExternalResource(Resource* in,
+                                        const ResourceContext* data);
 
+ protected:
   // Variant of the above that makes and cleans up input resource for in_url.
   // Note that the URL will be expanded and security checked with respect to the
   // current base URL for the HTML parser.

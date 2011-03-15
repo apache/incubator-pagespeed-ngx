@@ -72,31 +72,31 @@ Resource* CommonFilter::CreateInputResourceAndReadIfCached(
   return driver_->CreateInputResourceAndReadIfCached(base_url(), url);
 }
 
-void CommonFilter::ScanStartDocument() const {
+void CommonFilter::ScanStartDocument() {
 }
 
-void CommonFilter::ScanEndDocument() const {
+void CommonFilter::ScanEndDocument() {
 }
 
-void CommonFilter::ScanStartElement(HtmlElement* element) const {
+void CommonFilter::ScanStartElement(HtmlElement* element) {
 }
 
-void CommonFilter::ScanEndElement(HtmlElement* element) const {
+void CommonFilter::ScanEndElement(HtmlElement* element) {
 }
 
-void CommonFilter::ScanComment(HtmlCommentNode* comment) const {
+void CommonFilter::ScanComment(HtmlCommentNode* comment) {
 }
 
-void CommonFilter::ScanIEDirective(HtmlIEDirectiveNode* directive) const {
+void CommonFilter::ScanIEDirective(HtmlIEDirectiveNode* directive) {
 }
 
-void CommonFilter::ScanCharacters(HtmlCharactersNode* characters) const {
+void CommonFilter::ScanCharacters(HtmlCharactersNode* characters) {
 }
 
-void CommonFilter::ScanDirective(HtmlDirectiveNode* directive) const {
+void CommonFilter::ScanDirective(HtmlDirectiveNode* directive) {
 }
 
-void CommonFilter::ScanCdata(HtmlCdataNode* cdata) const {
+void CommonFilter::ScanCdata(HtmlCdataNode* cdata) {
 }
 
 }  // namespace net_instaweb
