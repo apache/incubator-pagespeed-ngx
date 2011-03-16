@@ -24,7 +24,7 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/rewriter/public/image_dim.h"
+#include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/atom.h"
@@ -41,35 +41,6 @@ class Image;
 class OutputResource;
 class ResourceManager;
 class Variable;
-
-// This class supports the encoding of image urls with optional
-// additional dimension metadata.  stored_dim() is used as
-// the source and/or destination of this metadata during encode/decode
-// respectively.
-class ImageUrlEncoder : public UrlSegmentEncoder {
- public:
-  ImageUrlEncoder() {}
-  virtual ~ImageUrlEncoder();
-
-  virtual void Encode(const StringVector& urls,
-                      const ResourceContext* dim,
-                      std::string* rewritten_url) const;
-
-  virtual bool Decode(const StringPiece& url_segment,
-                      StringVector* urls,
-                      ResourceContext* dim,
-                      MessageHandler* handler) const;
-
-
-  // Decode an origin_url and stored_dim from a rewritten_url, returning false
-  // on parse failure (invalidating output vars).
-  bool DecodeUrlAndDimensions(const StringPiece& rewritten_url,
-                              ImageDim* image_dim,
-                              std::string* origin_url) const;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ImageUrlEncoder);
-};
 
 // Identify img tags in html and optimize them.
 // TODO(jmaessen): Big open question: how best to link pulled-in resources to

@@ -68,42 +68,6 @@ const char kDataUrlKey[] = "ImgRewriteFilter_DataUrl";
 
 }  // namespace
 
-
-ImageUrlEncoder::~ImageUrlEncoder() { }
-
-void ImageUrlEncoder::Encode(const StringVector& urls,
-                             const ResourceContext* data,
-                             std::string* rewritten_url) const {
-  DCHECK(data != NULL) << "null data passed to ImageUrlEncoder::Encode";
-  ImageDim dim(*data);
-  DCHECK_EQ(1U, urls.size());
-  dim.EncodeTo(rewritten_url);
-  UrlEscaper::EncodeToUrlSegment(urls[0], rewritten_url);
-}
-
-bool ImageUrlEncoder::Decode(const StringPiece& url_segment,
-                             StringVector* urls,
-                             ResourceContext* data,
-                             MessageHandler* handler) const {
-  ImageDim dimensions;
-  std::string url;
-  if (DecodeUrlAndDimensions(url_segment, &dimensions, &url)) {
-    urls->push_back(url);
-    dimensions.ToResourceContext(data);
-    return true;
-  }
-  return false;
-}
-
-bool ImageUrlEncoder::DecodeUrlAndDimensions(const StringPiece& rewritten_url,
-                                             ImageDim* image_dim,
-                                             std::string* origin_url) const {
-  // Note that "remaining" is shortened from the left as we parse.
-  StringPiece remaining(rewritten_url.data(), rewritten_url.size());
-  return (image_dim->DecodeFrom(&remaining) &&
-          UrlEscaper::DecodeFromUrlSegment(remaining, origin_url));
-}
-
 ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
                                    StringPiece path_prefix,
                                    size_t img_inline_max_bytes,
@@ -140,7 +104,8 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
   MessageHandler* message_handler = driver_->message_handler();
   std::string url;
   ImageDim page_dim;
-  if (!encoder_.DecodeUrlAndDimensions(result->name(), &page_dim, &url)) {
+  if (!encoder_.DecodeUrlAndDimensions(result->name(), &page_dim, &url,
+                                       message_handler)) {
     return kRewriteFailed;
   }
   scoped_ptr<Image> image(
@@ -158,7 +123,8 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
   post_resize_dim = img_dim;
 
   // Don't rewrite beacons
-  if (img_dim.width() <= 1 && img_dim.height() <= 1) {
+  if (!ImageUrlEncoder::HasValidDimensions(img_dim) ||
+      (img_dim.width() <= 1 && img_dim.height() <= 1)) {
     return kRewriteFailed;
   }
 
@@ -167,7 +133,8 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
     rewrite_result = kRewriteFailed;
 
     const char* message;  // Informational message for logging only.
-    if (page_dim.valid() && img_dim.valid()) {
+    if (ImageUrlEncoder::HasValidDimensions(page_dim) &&
+        ImageUrlEncoder::HasValidDimensions(img_dim)) {
       int64 page_area =
           static_cast<int64>(page_dim.width()) * page_dim.height();
       int64 img_area = static_cast<int64>(img_dim.width()) * img_dim.height();
@@ -189,8 +156,8 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
 
     // Cache image dimensions, including any resizing we did
     CachedResult* cached = result->EnsureCachedResultCreated();
-    if (post_resize_dim.valid()) {
-      CachedResult::ImageDims* dims = cached->mutable_image_dims();
+    if (ImageUrlEncoder::HasValidDimensions(post_resize_dim)) {
+      ImageDim* dims = cached->mutable_image_file_dims();
       dims->set_width(post_resize_dim.width());
       dims->set_height(post_resize_dim.height());
     }
@@ -286,16 +253,18 @@ const ContentType* ImgRewriteFilter::ImageToContentType(
 
 void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
                                        HtmlElement::Attribute* src) {
-  ResourceContext page_dim;
+  ResourceContext resource_context;
+  ImageDim* page_dim = resource_context.mutable_image_tag_dims();
   int width, height;
   if (element->IntAttributeValue(HtmlName::kWidth, &width) &&
       element->IntAttributeValue(HtmlName::kHeight, &height)) {
     // Specific image size is called for.  Rewrite to that size.
-    page_dim.set_width(width);
-    page_dim.set_height(height);
+    page_dim->set_width(width);
+    page_dim->set_height(height);
   }
 
-  scoped_ptr<CachedResult> cached(RewriteWithCaching(src->value(), &page_dim));
+  scoped_ptr<CachedResult> cached(RewriteWithCaching(src->value(),
+                                                     &resource_context));
   if (cached.get() == NULL) {
     return;
   }
@@ -319,10 +288,8 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
     if (driver_->options()->Enabled(RewriteOptions::kInsertImgDimensions) &&
         !element->FindAttribute(HtmlName::kWidth) &&
         !element->FindAttribute(HtmlName::kHeight) &&
-        cached->has_image_dims()) {
-      int actual_width = cached->image_dims().width();
-      int actual_height = cached->image_dims().height();
-
+        cached->has_image_file_dims() &&
+        ImageUrlEncoder::HasValidDimensions(cached->image_file_dims())) {
       // Add image dimensions.  We don't bother if even a single image
       // dimension is already specified---even though we don't resize in that
       // case, either, because we might be off by a pixel in the other
@@ -331,8 +298,9 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
       // rather than as absolute pixels.  But note that we DO attempt to
       // include image dimensions even if we otherwise choose not to optimize
       // an image.
-      driver_->AddAttribute(element, HtmlName::kWidth, actual_width);
-      driver_->AddAttribute(element, HtmlName::kHeight, actual_height);
+      const ImageDim& file_dims = cached->image_file_dims();
+      driver_->AddAttribute(element, HtmlName::kWidth, file_dims.width());
+      driver_->AddAttribute(element, HtmlName::kHeight, file_dims.height());
     }
   }
 }

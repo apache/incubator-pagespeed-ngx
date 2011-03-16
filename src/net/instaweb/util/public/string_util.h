@@ -95,6 +95,15 @@ std::string StrCat(const StringPiece& a, const StringPiece& b,
                     const StringPiece& g = EmptyString::kEmptyString,
                     const StringPiece& h = EmptyString::kEmptyString);
 
+void StrAppend(std::string* target,
+               const StringPiece& a, const StringPiece& b,
+               const StringPiece& c = EmptyString::kEmptyString,
+               const StringPiece& d = EmptyString::kEmptyString,
+               const StringPiece& e = EmptyString::kEmptyString,
+               const StringPiece& f = EmptyString::kEmptyString,
+               const StringPiece& g = EmptyString::kEmptyString,
+               const StringPiece& h = EmptyString::kEmptyString);
+
 void SplitStringPieceToVector(const StringPiece& sp, const char* separator,
                               StringPieceVector* components,
                               bool omit_empty_strings);

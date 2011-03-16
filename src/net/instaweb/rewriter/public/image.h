@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "base/basictypes.h"
-#include "net/instaweb/rewriter/public/image_dim.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #ifdef USE_SYSTEM_OPENCV
@@ -38,7 +38,6 @@
 namespace net_instaweb {
 
 struct ContentType;
-struct ImageDim;
 class FileSystem;
 class MessageHandler;
 class Writer;
@@ -133,11 +132,13 @@ class Image {
   ~Image();
 
   // Stores the image dimensions in natural_dim (on success, sets
-  // natural_dim->{width, height} and natural_dim->valid = true).  This method
-  // can fail (natural_dim->valid == false) for various reasons: we don't
-  // understand the image format (eg a gif), we can't find the headers, the
-  // library doesn't support a particular encoding, etc.  In that case the other
-  // fields are left alone.
+  // natural_dim->{width, height} and
+  // ImageUrlEncoder::HasValidDimensions(natural_dim) == true).  This
+  // method can fail (ImageUrlEncoder::HasValidDimensions(natural_dim)
+  // == false) for various reasons: we don't understand the image
+  // format, we can't find the headers, the library doesn't support a
+  // particular encoding, etc.  In that case the other fields are left
+  // alone.
   void Dimensions(ImageDim* natural_dim);
 
   // Returns the size of original input in bytes.

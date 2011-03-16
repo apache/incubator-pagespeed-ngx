@@ -61,6 +61,28 @@ std::string StrCat(const StringPiece& a,
   return res;
 }
 
+void StrAppend(std::string* target,
+               const StringPiece& a,
+               const StringPiece& b,
+               const StringPiece& c,
+               const StringPiece& d,
+               const StringPiece& e,
+               const StringPiece& f,
+               const StringPiece& g,
+               const StringPiece& h) {
+  target->reserve(target->size() +
+                  a.size() + b.size() + c.size() + d.size() + e.size() +
+                  f.size() + g.size() + h.size());
+  a.AppendToString(target);
+  b.AppendToString(target);
+  c.AppendToString(target);
+  d.AppendToString(target);
+  e.AppendToString(target);
+  f.AppendToString(target);
+  g.AppendToString(target);
+  h.AppendToString(target);
+}
+
 void BackslashEscape(const StringPiece& src,
                      const StringPiece& to_escape,
                      std::string* dest) {

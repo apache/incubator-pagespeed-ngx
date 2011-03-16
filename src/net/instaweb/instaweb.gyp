@@ -312,7 +312,7 @@
       ],
       'sources': [
         'rewriter/image.cc',
-        'rewriter/image_dim.cc',
+        'rewriter/image_url_encoder.cc',
         'rewriter/img_rewrite_filter.cc',
         'rewriter/img_tag_scanner.cc',
       ],
