@@ -22,6 +22,7 @@
 
 #include "base/basictypes.h"
 #include "base/logging.h"
+#include "net/instaweb/util/cache_test_base.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/shared_string.h"
@@ -29,7 +30,7 @@
 
 namespace net_instaweb {
 
-class WriteThroughCacheTest : public testing::Test {
+class WriteThroughCacheTest : public CacheTestBase {
  protected:
   WriteThroughCacheTest()
       : small_cache_(new LRUCache(15)),
@@ -37,28 +38,15 @@ class WriteThroughCacheTest : public testing::Test {
         write_through_cache_(small_cache_, big_cache_) {
   }
 
-  void CheckGet(CacheInterface* cache, const char* key,
-                const std::string& expected_value) {
-    SharedString value_buffer;
-    EXPECT_TRUE(cache->Get(key, &value_buffer));
-    EXPECT_EQ(expected_value, *value_buffer);
-    EXPECT_EQ(CacheInterface::kAvailable, cache->Query(key));
-  }
-
-  void Put(const char* key, const char* value) {
-    SharedString put_buffer(value);
-    write_through_cache_.Put(key, &put_buffer);
-  }
-
-  void CheckNotFound(CacheInterface* cache, const char* key) {
-    SharedString value_buffer;
-    EXPECT_FALSE(cache->Get(key, &value_buffer));
-    EXPECT_EQ(CacheInterface::kNotFound, cache->Query(key));
-  }
-
   LRUCache* small_cache_;
   LRUCache* big_cache_;
   WriteThroughCache write_through_cache_;
+
+  virtual CacheInterface* Cache() { return &write_through_cache_; }
+  virtual void SanityCheck() {
+    small_cache_->SanityCheck();
+    big_cache_->SanityCheck();
+  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(WriteThroughCacheTest);
@@ -68,7 +56,7 @@ class WriteThroughCacheTest : public testing::Test {
 TEST_F(WriteThroughCacheTest, PutGetDelete) {
   // First, put some small data into the write-through.  It should
   // be available in both caches.
-  Put("Name", "Value");
+  CheckPut("Name", "Value");
   CheckGet(&write_through_cache_, "Name", "Value");
   CheckGet(small_cache_, "Name", "Value");
   CheckGet(big_cache_, "Name", "Value");
@@ -77,7 +65,7 @@ TEST_F(WriteThroughCacheTest, PutGetDelete) {
 
   // next, put another value in.  This will evict the first item
   // out of the small cache,
-  Put("Name2", "NewValue");
+  CheckPut("Name2", "NewValue");
   CheckGet(&write_through_cache_, "Name2", "NewValue");
   CheckGet(small_cache_, "Name2", "NewValue");
   CheckGet(big_cache_, "Name2", "NewValue");
@@ -106,13 +94,13 @@ TEST_F(WriteThroughCacheTest, SizeLimit) {
   write_through_cache_.set_cache1_limit(10);
 
   // This one will fit.
-  Put("Name", "Value");
+  CheckPut("Name", "Value");
   CheckGet(&write_through_cache_, "Name", "Value");
   CheckGet(small_cache_, "Name", "Value");
   CheckGet(big_cache_, "Name", "Value");
 
   // This one will not.
-  Put("Name2", "TooBig");
+  CheckPut("Name2", "TooBig");
   CheckGet(&write_through_cache_, "Name2", "TooBig");
   CheckNotFound(small_cache_, "Name2");
   CheckGet(big_cache_, "Name2", "TooBig");

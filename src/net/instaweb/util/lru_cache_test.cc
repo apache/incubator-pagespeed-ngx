@@ -21,10 +21,10 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "base/basictypes.h"
 #include "base/logging.h"
+#include "net/instaweb/util/cache_test_base.h"
+#include "net/instaweb/util/public/shared_string.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/shared_string.h"
 
 namespace {
 const size_t kMaxSize = 100;
@@ -32,32 +32,14 @@ const size_t kMaxSize = 100;
 
 namespace net_instaweb {
 
-class LRUCacheTest : public testing::Test {
+class LRUCacheTest : public CacheTestBase {
  protected:
   LRUCacheTest()
       : cache_(kMaxSize) {
   }
 
-  void CheckGet(const char* key, const std::string& expected_value) {
-    SharedString value_buffer;
-    ASSERT_TRUE(cache_.Get(key, &value_buffer));
-    EXPECT_EQ(expected_value, *value_buffer);
-    EXPECT_EQ(CacheInterface::kAvailable, cache_.Query(key));
-    cache_.SanityCheck();
-  }
-
-  void CheckPut(const char* key, const char* value) {
-    SharedString put_buffer(value);
-    cache_.Put(key, &put_buffer);
-    cache_.SanityCheck();
-  }
-
-  void CheckNotFound(const char* key) {
-    SharedString value_buffer;
-    ASSERT_FALSE(cache_.Get(key, &value_buffer));
-    EXPECT_EQ(CacheInterface::kNotFound, cache_.Query(key));
-    cache_.SanityCheck();
-  }
+  virtual CacheInterface* Cache() { return &cache_; }
+  virtual void SanityCheck() { cache_.SanityCheck(); }
 
   LRUCache cache_;
 
@@ -84,7 +66,7 @@ TEST_F(LRUCacheTest, PutGetDelete) {
   cache_.Delete("Name");
   cache_.SanityCheck();
   SharedString value_buffer;
-  EXPECT_FALSE(cache_.Get("Name", &value_buffer));
+  CheckNotFound("Name");
   EXPECT_EQ(static_cast<size_t>(0), cache_.size_bytes());
   EXPECT_EQ(static_cast<size_t>(0), cache_.num_elements());
 }

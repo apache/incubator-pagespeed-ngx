@@ -21,6 +21,8 @@
 
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -65,20 +67,37 @@ class HTTPCache {
   // values.  2 of these are obvious, one is used to help avoid
   // frequently re-fetching the same content that failed to fetch, or
   // was fetched but was not cacheable.
-  //
-  // TODO(jmarantz): consider merging these 3 into the 3 status codes defined
-  // CacheInterface, making 4 distinct codes.  That would be a little clearer,
-  // but would require that all callers of Find handle kInTransit which no
-  // cache implementations currently generate.
   enum FindResult {
     kFound,
     kRecentFetchFailedDoNotRefetch,
     kNotFound
   };
 
-  FindResult Find(const std::string& key, HTTPValue* value,
-                  ResponseHeaders* headers,
-                  MessageHandler* handler);
+  class Callback {
+   public:
+    virtual ~Callback();
+    virtual void Done(FindResult find_result) = 0;
+
+    HTTPValue* http_value() { return &http_value_; }
+    ResponseHeaders* response_headers() { return &response_headers_; }
+
+   private:
+    HTTPValue http_value_;
+    ResponseHeaders response_headers_;
+  };
+
+  // Non-blocking Find.  Calls callback when done.  'handler' must all
+  // stay valid until callback->Done() is called.
+  void Find(const std::string& key, MessageHandler* handler,
+            Callback* callback);
+
+  // Blocking Find.  This method is deprecated for transition to strictly
+  // non-blocking cache usage.
+  //
+  // TODO(jmarantz): remove this when blocking callers of HTTPCache::Find
+  // are removed from the codebase.
+  HTTPCache::FindResult Find(const std::string& key, HTTPValue* value,
+                             ResponseHeaders* headers, MessageHandler* handler);
 
   // Note that Put takes a non-const pointer for HTTPValue so it can
   // bump the reference count.
@@ -89,7 +108,12 @@ class HTTPCache {
   void Put(const std::string& key, ResponseHeaders* headers,
            const StringPiece& content, MessageHandler* handler);
 
+  // Deprecated method to make a blocking query for the state of an
+  // element in the cache.
+  // TODO(jmarantz): remove this interface when blocking callers are removed.
   CacheInterface::KeyState Query(const std::string& key);
+
+  // Deletes an element in the cache.
   void Delete(const std::string& key);
 
   void set_force_caching(bool force) { force_caching_ = force; }
@@ -123,9 +147,12 @@ class HTTPCache {
   bool IsAlreadyExpired(const ResponseHeaders& headers);
 
  private:
+  friend class HTTPCacheCallback;
+
   bool IsCurrentlyValid(const ResponseHeaders& headers, int64 now_ms);
   void PutHelper(const std::string& key, int64 now_us,
                  HTTPValue* value, MessageHandler* handler);
+  void UpdateStats(FindResult result, int64 delta_us);
 
   scoped_ptr<CacheInterface> cache_;
   Timer* timer_;

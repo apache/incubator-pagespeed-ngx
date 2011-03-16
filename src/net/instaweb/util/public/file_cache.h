@@ -52,10 +52,10 @@ class FileCache : public CacheInterface {
             MessageHandler* handler);
   virtual ~FileCache();
 
-  virtual bool Get(const std::string& key, SharedString* value);
+  virtual void Get(const std::string& key, Callback* callback);
   virtual void Put(const std::string& key, SharedString* value);
   virtual void Delete(const std::string& key);
-  virtual KeyState Query(const std::string& key);
+  virtual void Query(const std::string& key, Callback* callback);
   // Attempts to clean the cache.  Returns false if we failed and the
   // cache still needs to be cleaned.  Returns true if everything's
   // fine.  This may take a while.  It's OK for others to write and

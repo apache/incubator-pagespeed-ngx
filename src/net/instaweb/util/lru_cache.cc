@@ -35,21 +35,21 @@ LRUCache::ListNode LRUCache::Freshen(KeyValuePair* key_value) {
   return lru_ordered_list_.begin();
 }
 
-bool LRUCache::Get(const std::string& key, SharedString* value) {
+void LRUCache::Get(const std::string& key, Callback* callback) {
+  KeyState key_state = kNotFound;
   Map::iterator p = map_.find(key);
-  bool ret = false;
   if (p != map_.end()) {
-    ret = true;
+    key_state = kAvailable;
     ListNode cell = p->second;
     KeyValuePair* key_value = *cell;
     lru_ordered_list_.erase(cell);
     p->second = Freshen(key_value);
-    *value = key_value->second;
+    *callback->value() = key_value->second;
     ++num_hits_;
   } else {
     ++num_misses_;
   }
-  return ret;
+  callback->Done(key_state);
 }
 
 void LRUCache::Put(const std::string& key, SharedString* new_value) {
@@ -171,13 +171,13 @@ void LRUCache::SanityCheck() {
   CHECK(count == map_.size());
 }
 
-CacheInterface::KeyState LRUCache::Query(const std::string& key) {
+void LRUCache::Query(const std::string& key, Callback* callback) {
   Map::iterator p = map_.find(key);
   KeyState state = kNotFound;
   if (p != map_.end()) {
     state = kAvailable;
   }
-  return state;
+  callback->Done(state);
 }
 
 // TODO(jmarantz): consider accounting for overhead for list cells, map

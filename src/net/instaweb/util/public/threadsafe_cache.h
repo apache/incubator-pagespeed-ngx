@@ -30,7 +30,10 @@ class MessageHandler;
 class Writer;
 class AbstractMutex;
 
-// Composes a cache with a Mutex to form a threadsafe cache.
+// Composes a cache with a Mutex to form a threadsafe cache.  Note
+// that cache callbacks will be run in a thread that is dependent
+// on the cache implementation.  This wrapper class just guarantees
+// the thread safety of the cache itself, not the callbacks.
 class ThreadsafeCache : public CacheInterface {
  public:
   // Takes ownership of the cache that's passed in.
@@ -40,10 +43,10 @@ class ThreadsafeCache : public CacheInterface {
   }
   virtual ~ThreadsafeCache();
 
-  virtual bool Get(const std::string& key, SharedString* value);
+  virtual void Get(const std::string& key, Callback* callback);
   virtual void Put(const std::string& key, SharedString* value);
   virtual void Delete(const std::string& key);
-  virtual KeyState Query(const std::string& key);
+  virtual void Query(const std::string& key, Callback* callback);
 
  private:
   scoped_ptr<CacheInterface> cache_;

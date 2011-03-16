@@ -49,7 +49,7 @@ class LRUCache : public CacheInterface {
   }
   virtual ~LRUCache();
 
-  virtual bool Get(const std::string& key, SharedString* value);
+  virtual void Get(const std::string& key, Callback* callback);
 
   // Puts an object into the cache, sharing the bytes.
   //
@@ -59,7 +59,7 @@ class LRUCache : public CacheInterface {
   // SharedString to Copy-On-Write semantics.
   virtual void Put(const std::string& key, SharedString* new_value);
   virtual void Delete(const std::string& key);
-  virtual KeyState Query(const std::string& key);
+  virtual void Query(const std::string& key, Callback* callback);
 
   // Total size in bytes of keys and values stored.
   size_t size_bytes() const { return current_bytes_in_cache_; }

@@ -44,20 +44,7 @@ ResponseHeaders::~ResponseHeaders() {
 
 void ResponseHeaders::CopyFrom(const ResponseHeaders& other) {
   map_.reset(NULL);
-  proto_->clear_header();
-
-  proto_->set_cacheable(other.proto_->cacheable());
-  proto_->set_proxy_cacheable(other.proto_->proxy_cacheable());
-  proto_->set_expiration_time_ms(other.proto_->expiration_time_ms());
-  proto_->set_timestamp_ms(other.proto_->timestamp_ms());
-  proto_->set_major_version(other.proto_->major_version());
-  proto_->set_minor_version(other.proto_->minor_version());
-  proto_->set_status_code(other.proto_->status_code());
-  proto_->set_reason_phrase(other.proto_->reason_phrase());
-
-  for (int i = 0; i < other.NumAttributes(); ++i) {
-    Add(other.Name(i), other.Value(i));
-  }
+  *(proto_.get()) = *(other.proto_.get());
   cache_fields_dirty_ = other.cache_fields_dirty_;
 }
 

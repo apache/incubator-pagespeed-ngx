@@ -24,9 +24,39 @@ namespace net_instaweb {
 ThreadsafeCache::~ThreadsafeCache() {
 }
 
-bool ThreadsafeCache::Get(const std::string& key, SharedString* value) {
-  ScopedMutex mutex(mutex_);
-  return cache_->Get(key, value);
+namespace {
+
+class ThreadsafeCallback : public CacheInterface::Callback {
+ public:
+  ThreadsafeCallback(AbstractMutex* mutex,
+                     const std::string& key,
+                     CacheInterface::Callback* callback)
+      : mutex_(mutex),
+        key_(key),
+        callback_(callback) {
+    mutex_->Lock();
+  }
+
+  virtual ~ThreadsafeCallback() {
+  }
+
+  virtual void Done(CacheInterface::KeyState state) {
+    mutex_->Unlock();
+    callback_->Done(state);
+    delete this;
+  }
+
+
+  AbstractMutex* mutex_;
+  const std::string& key_;
+  CacheInterface::Callback* callback_;
+};
+
+}  // namespace
+
+void ThreadsafeCache::Get(const std::string& key, Callback* callback) {
+  ThreadsafeCallback* cb = new ThreadsafeCallback(mutex_, key, callback);
+  cache_->Get(key, cb);
 }
 
 void ThreadsafeCache::Put(const std::string& key, SharedString* value) {
@@ -39,9 +69,8 @@ void ThreadsafeCache::Delete(const std::string& key) {
   cache_->Delete(key);
 }
 
-CacheInterface::KeyState ThreadsafeCache::Query(const std::string& key) {
-  ScopedMutex mutex(mutex_);
-  return cache_->Query(key);
+void ThreadsafeCache::Query(const std::string& key, Callback* callback) {
+  cache_->Query(key, new ThreadsafeCallback(mutex_, key, callback));
 }
 
 }  // namespace net_instaweb

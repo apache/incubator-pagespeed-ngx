@@ -80,11 +80,11 @@ FileCache::FileCache(const std::string& path, FileSystem* file_system,
 FileCache::~FileCache() {
 }
 
-bool FileCache::Get(const std::string& key, SharedString* value) {
+void FileCache::Get(const std::string& key, Callback* callback) {
   std::string filename;
   bool ret = EncodeFilename(key, &filename);
   if (ret) {
-    std::string* buffer = value->get();
+    std::string* buffer = callback->value()->get();
 
     // Suppress read errors.  Note that we want to show Write errors,
     // as they likely indicate a permissions or disk-space problem
@@ -93,7 +93,7 @@ bool FileCache::Get(const std::string& key, SharedString* value) {
     NullMessageHandler null_handler;
     ret = file_system_->ReadFile(filename.c_str(), buffer, &null_handler);
   }
-  return ret;
+  callback->Done(ret ? kAvailable : kNotFound);
 }
 
 void FileCache::Put(const std::string& key, SharedString* value) {
@@ -129,16 +129,16 @@ bool FileCache::EncodeFilename(const std::string& key,
   return true;
 }
 
-CacheInterface::KeyState FileCache::Query(const std::string& key) {
+void FileCache::Query(const std::string& key, Callback* callback) {
   std::string filename;
-  if (!EncodeFilename(key, &filename)) {
-    return CacheInterface::kNotFound;
+  KeyState state = CacheInterface::kNotFound;
+  if (EncodeFilename(key, &filename)) {
+    NullMessageHandler null_handler;
+    if (file_system_->Exists(filename.c_str(), &null_handler).is_true()) {
+      state = CacheInterface::kAvailable;
+    }
   }
-  NullMessageHandler null_handler;
-  if (file_system_->Exists(filename.c_str(), &null_handler).is_true()) {
-    return CacheInterface::kAvailable;
-  }
-  return CacheInterface::kNotFound;
+  callback->Done(state);
 }
 
 bool FileCache::Clean(int64 target_size) {

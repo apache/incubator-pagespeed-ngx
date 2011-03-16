@@ -23,4 +23,7 @@ namespace net_instaweb {
 CacheInterface::~CacheInterface() {
 }
 
+CacheInterface::Callback::~Callback() {
+}
+
 }  // namespace net_instaweb

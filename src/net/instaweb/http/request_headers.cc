@@ -40,15 +40,7 @@ void RequestHeaders::Clear() {
 
 void RequestHeaders::CopyFrom(const RequestHeaders& other) {
   map_.reset(NULL);
-  proto_->clear_header();
-
-  proto_->set_method(other.proto_->method());
-  proto_->set_major_version(other.proto_->major_version());
-  proto_->set_minor_version(other.proto_->minor_version());
-
-  for (int i = 0; i < other.NumAttributes(); ++i) {
-    Add(other.Name(i), other.Value(i));
-  }
+  *(proto_.get()) = *(other.proto_.get());
 }
 
 std::string RequestHeaders::ToString() const {
