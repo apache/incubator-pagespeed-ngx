@@ -69,6 +69,7 @@ class RewriteDriver : public HtmlParse {
   static const char kCssFilterId[];
   static const char kCacheExtenderId[];
   static const char kImageCompressionId[];
+  static const char kJavascriptCombinerId[];
   static const char kJavascriptMinId[];
 
   // A list of HTTP request headers.  These are the headers which

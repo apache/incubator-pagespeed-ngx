@@ -109,6 +109,7 @@
         'http/wget_url_fetcher.cc',
         'util/abstract_condvar.cc',
         'util/abstract_mutex.cc',
+        'util/abstract_shared_mem.cc',
         'util/cache_interface.cc',
         'util/chunking_writer.cc',
         'util/data_url.cc',
@@ -168,6 +169,7 @@
       'sources': [
         'util/pthread_condvar.cc',
         'util/pthread_mutex.cc',
+        'util/pthread_shared_mem.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',
@@ -405,6 +407,7 @@
         'rewriter/data_url_input_resource.cc',
         'rewriter/file_input_resource.cc',
         'rewriter/google_analytics_filter.cc',
+        'rewriter/js_combine_filter.cc',
         'rewriter/js_inline_filter.cc',
         'rewriter/js_outline_filter.cc',
         'rewriter/resource_combiner.cc',

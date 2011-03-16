@@ -122,6 +122,7 @@ void RewriteOptions::SetUp() {
   name_filter_map_["add_instrumentation"] = kAddInstrumentation;
   name_filter_map_["collapse_whitespace"] = kCollapseWhitespace;
   name_filter_map_["combine_css"] = kCombineCss;
+  name_filter_map_["combine_javascript"] = kCombineJavascript;
   name_filter_map_["combine_heads"] = kCombineHeads;
   name_filter_map_["debug_log_img_tags"] = kDebugLogImgTags;
   name_filter_map_["elide_attributes"] = kElideAttributes;

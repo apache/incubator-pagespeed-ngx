@@ -39,6 +39,7 @@ class RewriteOptions {
     kCollapseWhitespace,
     kCombineCss,
     kCombineHeads,
+    kCombineJavascript,
     kDebugLogImgTags,
     kElideAttributes,
     kExtendCache,

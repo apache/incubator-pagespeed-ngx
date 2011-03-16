@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/img_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
+#include "net/instaweb/rewriter/public/js_combine_filter.h"
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
 #include "net/instaweb/rewriter/public/js_outline_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -63,6 +64,7 @@ const char RewriteDriver::kCssCombinerId[] = "cc";
 const char RewriteDriver::kCssFilterId[] = "cf";
 const char RewriteDriver::kCacheExtenderId[] = "ce";
 const char RewriteDriver::kImageCompressionId[] = "ic";
+const char RewriteDriver::kJavascriptCombinerId[] = "jc";
 const char RewriteDriver::kJavascriptMinId[] = "jm";
 
 RewriteDriver::RewriteDriver(MessageHandler* message_handler,
@@ -124,6 +126,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     GoogleAnalyticsFilter::Initialize(statistics);
     ImgRewriteFilter::Initialize(statistics);
     JavascriptFilter::Initialize(statistics);
+    JsCombineFilter::Initialize(statistics);
     ResourceManager::Initialize(statistics);
     UrlLeftTrimFilter::Initialize(statistics);
   }
@@ -153,6 +156,7 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   RegisterRewriteFilter(
       new CssFilter(this, kCssFilterId, cache_extender, image_rewriter));
   RegisterRewriteFilter(new JavascriptFilter(this, kJavascriptMinId));
+  RegisterRewriteFilter(new JsCombineFilter(this, kJavascriptCombinerId));
   RegisterRewriteFilter(image_rewriter);
   RegisterRewriteFilter(cache_extender);
 }
@@ -260,6 +264,12 @@ void RewriteDriver::AddFilters() {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
     // interaction.
     EnableRewriteFilter(kJavascriptMinId);
+  }
+  if (options_.Enabled(RewriteOptions::kCombineJavascript)) {
+    // Combine external JS resources. Done after minification and analytics
+    // detection, as it converts script sources into string literals, making
+    // them opaque to analysis.
+    EnableRewriteFilter(kJavascriptCombinerId);
   }
   if (options_.Enabled(RewriteOptions::kInlineCss)) {
     // Inline small CSS files.  Give CssCombineFilter and CSS minification a

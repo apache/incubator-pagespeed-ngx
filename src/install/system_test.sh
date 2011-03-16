@@ -261,6 +261,10 @@ check [ $? = 0 ]
 echo Checking that response body is at least 900 lines -- it should be 954
 check [ $LARGE_URL_LINE_COUNT -gt 900 ]
 
+test_filter combine_javascript combines 2 JS files into 1.
+fetch_until $URL 'grep -c src=' 1
+check $WGET_PREREQ $URL
+
 test_filter combine_heads combines 2 heads into 1
 check $WGET_PREREQ $URL
 check [ `grep -ce '<head>' $FETCHED` = 1 ]
