@@ -28,7 +28,8 @@ namespace net_instaweb {
 CommonFilter::CommonFilter(RewriteDriver* driver)
     : driver_(driver),
       resource_manager_(driver->resource_manager()),
-      rewrite_options_(driver->options()) {
+      rewrite_options_(driver->options()),
+      seen_base_(false) {
 }
 
 CommonFilter::~CommonFilter() {}
@@ -36,6 +37,9 @@ CommonFilter::~CommonFilter() {}
 void CommonFilter::StartDocument() {
   // Base URL starts as document URL.
   noscript_element_ = NULL;
+  // Reset whether or not we've seen the base tag yet, because we're starting
+  // back at the top of the document.
+  seen_base_ = false;
   // Run the actual filter's StartDocumentImpl.
   StartDocumentImpl();
 }
@@ -45,6 +49,12 @@ void CommonFilter::StartElement(HtmlElement* element) {
     if (noscript_element_ == NULL) {
       noscript_element_ = element;  // Record top-level <noscript>
     }
+  }
+  // If this is a base tag with an href attribute, then we've seen the base, and
+  // any url references after this point are relative to that base.
+  if (element->keyword() == HtmlName::kBase &&
+      element->FindAttribute(HtmlName::kHref) != NULL) {
+    seen_base_ = true;
   }
 
   // Run actual filter's StartElementImpl
@@ -58,6 +68,21 @@ void CommonFilter::EndElement(HtmlElement* element) {
 
   // Run actual filter's EndElementImpl
   EndElementImpl(element);
+}
+
+// Returns whether or not we can resolve against the base tag.  References
+// that occur before the base tag can not be resolved against it.
+// Different browsers deal with such refs differently, but we shouldn't
+// change their behavior.
+bool CommonFilter::BaseUrlIsValid() const {
+  // If there are no href or src attributes before the base, it's
+  // always valid.
+  if (!driver_->refs_before_base()) {
+    return true;
+  }
+  // If the filter has already seen the base url, then it's now valid
+  // even if there were urls before it.
+  return seen_base_;
 }
 
 // TODO(jmarantz): Remove these methods -- they used to serve an

@@ -317,6 +317,15 @@ class RewriteDriver : public HtmlParse {
   // Finds a filter with the given ID, or returns NULL if none found.
   RewriteFilter* FindFilter(const StringPiece& id) const;
 
+  // Returns refs_before_base.
+  bool refs_before_base() { return refs_before_base_; }
+
+  // Sets whether or not there were references to urls before the
+  // base tag (if there is a base tag).  This variable has document-level
+  // scope.  It is reset at the beginning of every document by
+  // ScanFilter.
+  void set_refs_before_base() { refs_before_base_ = true; }
+ 
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -369,6 +378,13 @@ class RewriteDriver : public HtmlParse {
   // Thus we keep the base-tag in the RewriteDriver, and also keep track of
   // whether it's been reset already within the document.
   bool base_was_set_;
+
+  // Stores whether or not there were references to urls before the
+  // base tag (if there is a base tag) in this document.  If there is
+  // no base tag, this should be false.  If the base tag is before all
+  // other url references, this should also be false.
+  bool refs_before_base_;
+
   GoogleUrl base_url_;
 
   // Attempt to fetch extant version of an OutputResource.  If available,

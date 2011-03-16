@@ -49,9 +49,9 @@ class TestCombineFilter : public RewriteFilter {
     // The partnership subclass vetoes resources with content equal to
     // kVetoText
    public:
-    explicit TestCombiner(RewriteDriver* driver)
+    explicit TestCombiner(RewriteDriver* driver, CommonFilter* filter)
         : ResourceCombinerTemplate<HtmlElement*>(driver, kTestCombinerId,
-                                                 kTestCombinerExt) {
+                                                 kTestCombinerExt, filter) {
     };
 
    protected:
@@ -72,7 +72,7 @@ class TestCombineFilter : public RewriteFilter {
 
   explicit TestCombineFilter(RewriteDriver* driver)
       : RewriteFilter(driver, kTestCombinerId),
-        combiner_(driver) {
+        combiner_(driver, this) {
   }
 
   virtual void StartDocumentImpl() {

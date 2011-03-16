@@ -28,16 +28,28 @@ HtmlElement::Attribute* ResourceTagScanner::ScanElement(HtmlElement* element)
     const {
   HtmlName::Keyword keyword = element->keyword();
   HtmlElement::Attribute* attr = NULL;
-  if (keyword == HtmlName::kLink) {
-    // See http://www.whatwg.org/specs/web-apps/current-work/multipage/
-    // links.html#linkTypes
-    HtmlElement::Attribute* rel_attr = element->FindAttribute(HtmlName::kRel);
-    if ((rel_attr != NULL) &&
-        StringCaseEqual(rel_attr->value(), CssTagScanner::kStylesheet)) {
-      attr = element->FindAttribute(HtmlName::kHref);
+  switch (keyword) {
+    case HtmlName::kLink: {
+      // See http://www.whatwg.org/specs/web-apps/current-work/multipage/
+      // links.html#linkTypes
+      HtmlElement::Attribute* rel_attr = element->FindAttribute(HtmlName::kRel);
+      if ((rel_attr != NULL) &&
+          StringCaseEqual(rel_attr->value(), CssTagScanner::kStylesheet)) {
+        attr = element->FindAttribute(HtmlName::kHref);
+      }
+      break;
     }
-  } else if ((keyword == HtmlName::kScript) || (keyword == HtmlName::kImg)) {
-    attr = element->FindAttribute(HtmlName::kSrc);
+    case HtmlName::kScript:
+    case HtmlName::kImg:
+      attr = element->FindAttribute(HtmlName::kSrc);
+      break;
+    case HtmlName::kA:
+      if (find_a_tags_) {
+        attr = element->FindAttribute(HtmlName::kHref);
+      }
+      break;
+    default:
+      break;
   }
   return attr;
 }

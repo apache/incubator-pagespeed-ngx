@@ -99,7 +99,7 @@ TEST_F(UrlLeftTrimFilterTest, RootedTrims) {
 
 static const char kNone[] =
     "<head><base href='ftp://what.the/heck/'/>"
-    "<link src='http://what.the.cow/heck/'></head>"
+    "<link rel='stylesheet' href='http://what.the.cow/heck/'/></head>"
     "<body><a href='spdy://www.google.com/'>google</a>"
     "<img src='file:///where/the/heck.jpg'/></body>";
 
@@ -109,7 +109,7 @@ TEST_F(UrlLeftTrimFilterTest, NoChanges) {
 
 static const char kSome[] =
     "<head><base href='http://foo.bar/baz/'/>"
-    "<link src='http://foo.bar/baz/'></head>"
+    "<link rel='stylesheet' href='http://foo.bar/baz/'/></head>"
     "<body><a href='http://www.google.com/'>google</a>"
     "<img src='http://foo.bar/baz/nav.jpg'/>"
     "<img src='http://foo.bar/img/img1.jpg'/>"
@@ -119,7 +119,7 @@ static const char kSome[] =
 
 static const char kSomeRewritten[] =
     "<head><base href='http://foo.bar/baz/'/>"
-    "<link src='/baz/'></head>"
+    "<link rel='stylesheet' href='/baz/'/></head>"
     "<body><a href='//www.google.com/'>google</a>"
     "<img src='nav.jpg'/>"
     "<img src='/img/img1.jpg'/>"
@@ -196,16 +196,17 @@ TEST_F(UrlLeftTrimFilterTest, PartialUrl) {
 // giving http://www.google.com/imghp and http://www.google.com.
 // Furthermore, chrome and firefox handle the multiple base tags issue
 // differently.
-// Our current behavior is to use the last base url we've seen to resolve all
-// urls until we see another base tag.  If your page can't handle that, it
-// has bigger problems.
+// Our current behavior is to ignore any src or href attributes that come
+// before the base tag.
 static const char kMidBase[] =
-    "<head><link src='http://foo.bar/baz'>"
+    "<head><link rel='stylesheet' href='http://foo.bar/baz'/>"
+    "<a href='baz.html'>strange link in header</a>"
     "<base href='http://foo.bar'></head>"
-    "<body><img src='//foo.bar/img.jpg'</body>";
+    "<body><img src='//foo.bar/img.jpg'></body>";
 
 static const char kMidBaseRewritten[] =
-    "<head><link src='baz'>"
+    "<head><link rel='stylesheet' href='http://foo.bar/baz'/>"
+    "<a href='baz.html'>strange link in header</a>"
     "<base href='http://foo.bar'></head>"
     "<body><img src='img.jpg'></body>";
 

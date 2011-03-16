@@ -21,6 +21,12 @@
 
 namespace net_instaweb {
 
+ScanFilter::ScanFilter(RewriteDriver* driver)
+    : driver_(driver),
+      tag_scanner_(driver) {
+  tag_scanner_.set_find_a_tags(true);
+}
+
 ScanFilter::~ScanFilter() {
 }
 
@@ -28,6 +34,8 @@ void ScanFilter::StartDocument() {
   // TODO(jmarantz): consider having rewrite_driver access the url in this
   // class, rather than poking it into rewrite_driver.
   driver_->InitBaseUrl();
+  seen_refs_ = false;
+  seen_base_ = false;
 
   for (int i = 0, n = filters_.size(); i < n; ++i) {
     filters_[i]->ScanStartDocument();
@@ -50,8 +58,15 @@ void ScanFilter::StartElement(HtmlElement* element) {
       // TODO(jmarantz): consider having rewrite_driver access the url in this
       // class, rather than poking it into rewrite_driver.
       driver_->SetBaseUrlIfUnset(href->value());
+      seen_base_ = true;
+      if (seen_refs_) {
+        driver_->set_refs_before_base();
+      }
     }
     // TODO(jmarantz): handle base targets in addition to hrefs.
+  } else if (!seen_refs_ && !seen_base_ &&
+             tag_scanner_.ScanElement(element) != NULL) {
+    seen_refs_ = true;
   }
 
   for (int i = 0, n = filters_.size(); i < n; ++i) {

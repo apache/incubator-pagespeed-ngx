@@ -20,9 +20,9 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_URL_LEFT_TRIM_FILTER_H_
 
 #include "base/basictypes.h"
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -44,12 +44,14 @@ class Variable;
 // For example, if base URL is http://www.example.com/foo/bar/index.html
 // we could convert: http://www.example.com/foo/other.html -> ../other.html
 // rather than -> /foo/other.html.
-class UrlLeftTrimFilter : public EmptyHtmlFilter {
+class UrlLeftTrimFilter : public CommonFilter {
  public:
-  UrlLeftTrimFilter(RewriteDriver* rewrite_driver, Statistics* statistics);
+  UrlLeftTrimFilter(RewriteDriver* rewrite_driver, Statistics* stats);
   static void Initialize(Statistics* statistics);
-  virtual void StartDocument();
-  virtual void StartElement(HtmlElement* element);
+  virtual void StartDocumentImpl () {};
+  virtual void StartElementImpl(HtmlElement* element);
+  virtual void EndElementImpl(HtmlElement* element) {};
+
   virtual const char* Name() const { return "UrlLeftTrim"; }
 
   // Trim 'url_to_trim' relative to 'base_url' returning the result in
@@ -66,7 +68,7 @@ class UrlLeftTrimFilter : public EmptyHtmlFilter {
 
   friend class UrlLeftTrimFilterTest;
 
-  RewriteDriver* driver_;
+  ResourceTagScanner tag_scanner_;
   // Stats on how much trimming we've done.
   Variable* trim_count_;
   Variable* trim_saved_bytes_;

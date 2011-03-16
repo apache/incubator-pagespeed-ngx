@@ -85,6 +85,12 @@ class CommonFilter : public EmptyHtmlFilter {
   virtual void ScanDirective(HtmlDirectiveNode* directive);
   virtual void ScanCdata(HtmlCdataNode* cdata);
 
+  // Returns whether or not the base url is valid.  This value will change
+  // as a filter processes the document.  E.g. If there are url refs before
+  // the base tag is reached, it will return false until the filter sees the
+  // base tag.  After the filter sees the base tag, it will return true.
+  bool BaseUrlIsValid() const;
+
  protected:
   // Overload these implementer methods:
   // Intentionally left abstract so that implementers don't forget to change
@@ -100,7 +106,7 @@ class CommonFilter : public EmptyHtmlFilter {
 
  private:
   HtmlElement* noscript_element_;
-
+  bool seen_base_;
  private:
   DISALLOW_COPY_AND_ASSIGN(CommonFilter);
 };

@@ -34,8 +34,9 @@ class ResourceCombinerTemplate : public ResourceCombiner {
  public:
   ResourceCombinerTemplate(RewriteDriver* rewrite_driver,
                            const StringPiece& path_prefix,
-                           const StringPiece& extension)
-      : ResourceCombiner(rewrite_driver, path_prefix, extension) {
+                           const StringPiece& extension,
+                           CommonFilter* filter)
+      : ResourceCombiner(rewrite_driver, path_prefix, extension, filter) {
   }
   virtual ~ResourceCombinerTemplate() {}
 

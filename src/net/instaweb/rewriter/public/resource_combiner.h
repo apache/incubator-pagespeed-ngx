@@ -32,6 +32,7 @@
 
 namespace net_instaweb {
 
+class CommonFilter;
 class ContentType;
 class HtmlElement;
 class MessageHandler;
@@ -66,7 +67,8 @@ class ResourceCombiner {
   // Note: extension should not include the leading dot here.
   ResourceCombiner(RewriteDriver* rewrite_driver,
                    const StringPiece& path_prefix,
-                   const StringPiece& extension);
+                   const StringPiece& extension,
+                   CommonFilter* filter);
 
   virtual ~ResourceCombiner();
 
@@ -163,6 +165,7 @@ class ResourceCombiner {
   std::string resolved_base_;
   const int url_overhead_;
   std::string filter_prefix_;
+  CommonFilter *filter_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceCombiner);
 };

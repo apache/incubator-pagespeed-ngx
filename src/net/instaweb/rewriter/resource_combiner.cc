@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -46,7 +47,8 @@ namespace net_instaweb {
 
 ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
                                    const StringPiece& filter_prefix,
-                                   const StringPiece& extension)
+                                   const StringPiece& extension,
+                                   CommonFilter* filter)
     : resource_manager_(driver->resource_manager()),
       rewrite_driver_(driver),
       partnership_(driver->options()),
@@ -54,7 +56,8 @@ ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
       accumulated_leaf_size_(0),
       // TODO(jmarantz): The URL overhead computation is arguably fragile.
       url_overhead_(filter_prefix.size() + ResourceNamer::kOverhead +
-                     extension.size()) {
+                    extension.size()),
+      filter_(filter) {
   // This CHECK is here because RewriteDriver is constructed with its
   // resource_manager_ == NULL.
   // TODO(sligocki): Construct RewriteDriver with a ResourceManager.
@@ -82,9 +85,7 @@ bool ResourceCombiner::AddResource(const StringPiece& url,
   //    as we will eventually need the data, but not when it's
   //    disabled due to policy.
 
-  scoped_ptr<Resource> resource(
-      rewrite_driver_->CreateInputResource(rewrite_driver_->base_url(),
-                                           url));
+  scoped_ptr<Resource> resource(filter_->CreateInputResource(url));
   if (resource.get() == NULL) {
     return false;
   }

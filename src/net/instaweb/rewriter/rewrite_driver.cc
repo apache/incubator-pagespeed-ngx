@@ -53,6 +53,7 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -73,6 +74,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
                              const RewriteOptions& options)
     : HtmlParse(message_handler),
       base_was_set_(false),
+      refs_before_base_(false),
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),

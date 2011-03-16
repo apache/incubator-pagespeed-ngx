@@ -21,6 +21,7 @@
 #include <vector>
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -37,11 +38,13 @@ const char kUrlTrimSavedBytes[] = "url_trim_saved_bytes";
 namespace net_instaweb {
 
 UrlLeftTrimFilter::UrlLeftTrimFilter(RewriteDriver* rewrite_driver,
-                                     Statistics* stats)
-    : driver_(rewrite_driver),
+                                     Statistics *stats)
+    : CommonFilter(rewrite_driver),
+      tag_scanner_(rewrite_driver),
       trim_count_((stats == NULL) ? NULL : stats->GetVariable(kUrlTrims)),
       trim_saved_bytes_(
           (stats == NULL) ? NULL : stats->GetVariable(kUrlTrimSavedBytes)) {
+  tag_scanner_.set_find_a_tags(true);
 }
 
 void UrlLeftTrimFilter::Initialize(Statistics* statistics) {
@@ -49,15 +52,11 @@ void UrlLeftTrimFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kUrlTrimSavedBytes);
 }
 
-void UrlLeftTrimFilter::StartDocument() {
-}
-
-// If the element is a base tag, set the base url to be the href value.
 // Do not rewrite the base tag.
-void UrlLeftTrimFilter::StartElement(HtmlElement* element) {
-  if (element->keyword() != HtmlName::kBase) {
-    TrimAttribute(element->FindAttribute(HtmlName::kHref));
-    TrimAttribute(element->FindAttribute(HtmlName::kSrc));
+void UrlLeftTrimFilter::StartElementImpl(HtmlElement* element) {
+  if (element->keyword() != HtmlName::kBase &&
+      BaseUrlIsValid()) {
+    TrimAttribute(tag_scanner_.ScanElement(element));
   }
 }
 
@@ -89,10 +88,10 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
     StringPiece path = base_url.PathSansLeaf();
 
     // If the path still starts with a "//", we can't trim the origin.
-    // Annoyingly, "//" is not actually the same as a single /, though most
-    // servers will do the same thing with it.  If we trim the origin,
-    // but leave the //, then it will think the beginning of the path is the
-    // origin.
+    // "//" is not actually the same as a single /, though most
+    // servers will do the same thing with it.
+    // E.g. on http://example.com/foo.html, don't trim
+    // http://example.com//bar.html to //bar or /bar.
     if (long_url_buffer.data()[to_trim + 1] == '/' &&
         long_url_buffer.data()[to_trim] == '/') {
       to_trim = 0;
@@ -104,9 +103,10 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
       if (!long_url.has_query() || long_url.LeafSansQuery().length() > 0) {
         to_trim += path.length();
 
-        // Again, if we now ended up with a /, then we used to have a //.
-        // '/' at the beginning of a path does not mean the same thing as
-        // '//' in the middle of one.
+        // If the path now starts with "//", we need to undo the trim.
+        // E.g. on http://example.com/foo/bar/index.html, don't trim
+        // http://example.com/foo/bar//baz/other.html to //baz/other.html
+        // or to /baz/other.html.
         if (long_url_buffer.data()[to_trim] == '/') {
           to_trim -= path.length();
         }

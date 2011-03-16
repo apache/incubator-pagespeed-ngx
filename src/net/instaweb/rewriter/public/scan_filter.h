@@ -21,6 +21,7 @@
 
 #include <vector>
 #include "net/instaweb/htmlparse/public/html_filter.h"
+#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 
 namespace net_instaweb {
 
@@ -31,7 +32,7 @@ class RewriteDriver;
 // that need to be asynchronously fetched.
 class ScanFilter : public HtmlFilter {
  public:
-  explicit ScanFilter(RewriteDriver* driver) : driver_(driver) {}
+  explicit ScanFilter(RewriteDriver* driver);
   virtual ~ScanFilter();
 
   virtual void StartDocument();
@@ -54,6 +55,9 @@ class ScanFilter : public HtmlFilter {
  private:
   std::vector<CommonFilter*> filters_;
   RewriteDriver* driver_;
+  ResourceTagScanner tag_scanner_;
+  bool seen_refs_;
+  bool seen_base_;
 };
 
 }  // namespace net_instaweb

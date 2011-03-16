@@ -47,9 +47,10 @@ class CssCombineFilter::CssCombiner
     : public ResourceCombinerTemplate<HtmlElement*> {
  public:
   CssCombiner(RewriteDriver* driver, const StringPiece& filter_prefix,
-              CssTagScanner* css_tag_scanner)
+              CssTagScanner* css_tag_scanner, CssCombineFilter *filter)
       : ResourceCombinerTemplate<HtmlElement*>(
-          driver, filter_prefix, kContentTypeCss.file_extension() + 1),
+          driver, filter_prefix, kContentTypeCss.file_extension() + 1,
+          filter),
         css_tag_scanner_(css_tag_scanner),
         css_file_count_reduction_(NULL) {
     filter_prefix.CopyToString(&filter_prefix_);
@@ -122,7 +123,8 @@ CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
                                    const char* filter_prefix)
     : RewriteFilter(driver, filter_prefix),
       css_tag_scanner_(driver_) {
-  combiner_.reset(new CssCombiner(driver_, filter_prefix, &css_tag_scanner_));
+  combiner_.reset(new CssCombiner(driver_, filter_prefix, &css_tag_scanner_,
+                                  this));
 }
 
 CssCombineFilter::~CssCombineFilter() {

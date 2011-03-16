@@ -64,7 +64,8 @@ class JsCombineFilter::JsCombiner
   JsCombiner(JsCombineFilter* filter, RewriteDriver* driver,
              const StringPiece& filter_prefix)
       : ResourceCombinerTemplate<HtmlElement*>(
-            driver, filter_prefix, kContentTypeJavascript.file_extension() + 1),
+          driver, filter_prefix, kContentTypeJavascript.file_extension() + 1,
+          filter),
         filter_(filter),
         js_file_count_reduction_(NULL) {
     filter_prefix.CopyToString(&filter_prefix_);
