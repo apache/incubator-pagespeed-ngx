@@ -9,8 +9,6 @@ Set-Cookie: PREF=ID=3935f510d83d2a7a:TM=1270493386:LM=1270493386:S=u_18e6r8aJ83N
 Set-Cookie: NID=33=aGkk7cKzznoUuCd19qTgXlBjXC8fc_luIo2Yk9BmrevUgXYPTazDF8Q6JvsO6LvTu4mfI8_44iIBLu4pF-Mvpe4wb7pYwej4q9HvbMLRxt-OzimIxmd-bwyYVfZ2PY1B; expires=Tue, 05-Oct-2010 18:49:46 GMT; path=/; domain=.google.com; HttpOnly
 Server: gws
 X-XSS-Protection: 0
-X-Google-Backends: /bns/ib/borg/ib/bns/gws-prod/staticweb.staticfrontend.gws/50,qyva4:80
-X-Google-GFE-Request-Trace: qyva4:80,/bns/ib/borg/ib/bns/gws-prod/staticweb.staticfrontend.gws/50,qyva4:80
 X-Google-GFE-Service-Trace: home
 X-Google-Service: home
 X-Google-GFE-Response-Body-Transformations: gunzipped

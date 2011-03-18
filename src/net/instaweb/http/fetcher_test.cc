@@ -88,11 +88,11 @@ void FetcherTest::ValidateOutput(const std::string& content,
   // simple_meta_data_test.cc.  But let's check the rseponse code
   // and the last header here, and make sure we got the content.
   EXPECT_EQ(200, response_headers.status_code());
-  EXPECT_EQ(15, response_headers.NumAttributes());
+  EXPECT_EQ(13, response_headers.NumAttributes());
   EXPECT_EQ(std::string("X-Google-GFE-Response-Body-Transformations"),
-            std::string(response_headers.Name(14)));
+            std::string(response_headers.Name(12)));
   EXPECT_EQ(std::string("gunzipped"),
-            std::string(response_headers.Value(14)));
+            std::string(response_headers.Value(12)));
 
   // Verifies that after the headers, we see the content.  Note that this
   // currently assumes 'wget' style output.  Wget takes care of any unzipping.

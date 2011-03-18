@@ -73,6 +73,7 @@
         'http/http_dump_url_async_writer_test.cc',
         'http/http_dump_url_fetcher_test.cc',
         'http/http_dump_url_writer_test.cc',
+        'http/http_response_parser_test.cc',
         'http/http_value_test.cc',
         'http/mock_url_fetcher.cc',
         'http/mock_url_fetcher_test.cc',
