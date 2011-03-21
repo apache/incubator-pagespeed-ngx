@@ -92,8 +92,37 @@ TEST_F(RewriteDriverTest, TestModernUrl) {
       CanDecodeUrl("http://example.com/Puzzle.jpg.pagespeed.ce..jpg"));
 }
 
-// Test to make sure we do not put in extra things into the cache
+// Test to make sure we do not put in extra things into the cache.
+// This is using the CSS rewriter, which caches the output.
 TEST_F(RewriteDriverTest, TestCacheUse) {
+  AddFilter(RewriteOptions::kRewriteCss);
+
+  const char kCss[] = "* { display: none; }";
+  const char kMinCss[] = "*{display:none}";
+  InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
+
+  std::string cssMinifiedUrl =
+      Encode(kTestDomain, RewriteDriver::kCssFilterId,
+             mock_hasher_.Hash(kMinCss), "a.css", "css");
+
+  // Cold load.
+  EXPECT_TRUE(TryFetchResource(cssMinifiedUrl));
+
+  // We should have 3 things inserted:
+  // 1) the source data
+  // 2) the result
+  // 3) the rname entry for the result
+  int cold_num_inserts = lru_cache_->num_inserts();
+  EXPECT_EQ(3, cold_num_inserts);
+
+  // Warm load. This one should not change the number of inserts at all
+  EXPECT_TRUE(TryFetchResource(cssMinifiedUrl));
+  EXPECT_EQ(cold_num_inserts, lru_cache_->num_inserts());
+  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+}
+
+// Similar to the above, but with cache-extender which reconstructs on the fly.
+TEST_F(RewriteDriverTest, TestCacheUseOnTheFly) {
   AddFilter(RewriteOptions::kExtendCache);
 
   const char kCss[] = "* { display: none; }";
@@ -106,18 +135,18 @@ TEST_F(RewriteDriverTest, TestCacheUse) {
   // Cold load.
   EXPECT_TRUE(TryFetchResource(cacheExtendedUrl));
 
-  // We should have 3 things inserted:
+  // We should have 2 things inserted:
   // 1) the source data
-  // 2) the result
-  // 3) the rname entry for the result
+  // 2) the rname entry for the result
   int cold_num_inserts = lru_cache_->num_inserts();
-  EXPECT_EQ(3, cold_num_inserts);
+  EXPECT_EQ(2, cold_num_inserts);
 
-  // Warm load. This one should not change the number of inserts at all
+  // Warm load. This one re-inserts in the rname entry.
   EXPECT_TRUE(TryFetchResource(cacheExtendedUrl));
-  EXPECT_EQ(cold_num_inserts, lru_cache_->num_inserts());
+  EXPECT_EQ(cold_num_inserts + 1, lru_cache_->num_inserts());
   EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
 }
+
 
 TEST_F(RewriteDriverTest, BaseTags) {
   // Starting the parse, the base-tag will be derived from the html url.

@@ -88,6 +88,14 @@ class RewriteFilter : public CommonFilter {
   // no extra data.  The filter owns the encoder.
   virtual const UrlSegmentEncoder* encoder() const;
 
+  // If this method returns true, the data output of this filter will not be
+  // cached, and will instead be recomputed on the fly every time it is needed.
+  // (However, the transformed URL and similar metadata in CachedResult will be
+  //  kept in cache).
+  //
+  // The default implementation returns false.
+  virtual bool ComputeOnTheFly() const;
+
  protected:
   std::string filter_prefix_;  // Prefix that should be used in front of all
                                 // rewritten URLs

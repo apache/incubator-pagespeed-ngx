@@ -57,7 +57,7 @@ class CacheExtender : public RewriteSingleResourceFilter {
   virtual const char* Name() const { return "CacheExtender"; }
 
  protected:
-  virtual bool ReuseByContentHash() const;
+  virtual bool ComputeOnTheFly() const;
   virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
                                               OutputResource* output_resource);
 

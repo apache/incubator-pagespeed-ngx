@@ -104,6 +104,13 @@ void ResourceManagerTestBase::DeleteFileIfExists(const std::string& filename) {
   }
 }
 
+Resource* ResourceManagerTestBase::CreateResource(const StringPiece& base,
+                                                  const StringPiece& url) {
+  GoogleUrl base_url(base);
+  GoogleUrl resource_url(base_url, url);
+  return rewrite_driver_.CreateInputResource(resource_url);
+}
+
 void ResourceManagerTestBase::AppendDefaultHeaders(
     const ContentType& content_type,
     ResourceManager* resource_manager,
@@ -197,7 +204,6 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   wait_url_async_fetcher.CallCallbacks();
   EXPECT_EQ(true, callback.done_);
   EXPECT_EQ(expected_content, response_contents);
-  EXPECT_EQ(CacheInterface::kAvailable, other_http_cache.Query(resource_url));
 
   // Check that stats say we took the construct resource path.
   EXPECT_EQ(0, cached_resource_fetches->Get());

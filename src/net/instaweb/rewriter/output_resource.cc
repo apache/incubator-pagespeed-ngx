@@ -51,13 +51,14 @@ OutputResource::OutputResource(RewriteDriver* driver,
                                const StringPiece& resolved_base,
                                const ResourceNamer& full_name,
                                const ContentType* type,
-                               const RewriteOptions* options)
+                               const RewriteOptions* options,
+                               Kind kind)
     : Resource(driver, type),
       output_file_(NULL),
       writing_complete_(false),
-      outlined_(false),
       resolved_base_(resolved_base.data(), resolved_base.size()),
-      rewrite_options_(options) {
+      rewrite_options_(options),
+      kind_(kind) {
   full_name_.CopyFrom(full_name);
   if (type == NULL) {
     std::string ext_with_dot = StrCat(".", full_name.ext());
@@ -228,7 +229,8 @@ void OutputResource::SetHash(const StringPiece& hash) {
 }
 
 bool OutputResource::Load(MessageHandler* handler) {
-  if (!writing_complete_ && resource_manager_->store_outputs_in_file_system()) {
+  if (!writing_complete_ && resource_manager_->store_outputs_in_file_system() &&
+      (kind_ != kOnTheFlyResource)) {
     FileSystem* file_system = resource_manager_->file_system();
     FileSystem::InputFile* file = file_system->OpenInputFile(
         filename().c_str(), handler);

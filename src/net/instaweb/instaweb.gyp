@@ -49,7 +49,7 @@
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protoc#host',
       ],
-      'direct_dependent_settings': {
+      'all_dependent_settings': {
         'include_dirs': [
           '<(protoc_out_dir)',
         ]

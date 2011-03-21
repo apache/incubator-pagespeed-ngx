@@ -59,16 +59,17 @@ TEST_F(RewriterTest, MergeHead) {
 TEST_F(RewriterTest, HandlingOfInvalidUrls) {
   Hasher* hasher = &md5_hasher_;
   resource_manager_->set_hasher(hasher);
-  AddFilter(RewriteOptions::kExtendCache);
+  AddFilter(RewriteOptions::kRewriteCss);
 
   const char kCssData[] = "a { color: red }";
+  const char kMinimizedCssData[] = "a{color:red}";
   InitResponseHeaders("a.css", kContentTypeCss, kCssData, 100);
 
   // Fetching the real rewritten resource name should work.
   // TODO(sligocki): This will need to be regolded if naming format changes.
-  std::string hash = hasher->Hash(kCssData);
+  std::string hash = hasher->Hash(kMinimizedCssData);
   std::string good_url =
-      Encode(kTestDomain, "ce", hash, "a.css", "css");
+      Encode(kTestDomain, RewriteDriver::kCssFilterId, hash, "a.css", "css");
   EXPECT_TRUE(TryFetchResource(good_url));
 
   // Querying with an appended query should work fine, too, and cause a cache
@@ -85,13 +86,13 @@ TEST_F(RewriterTest, HandlingOfInvalidUrls) {
   // Changing hash still works.
   // Note: If any of these switch from true to false, that's probably fine.
   // We'd just like to keep track of what causes errors and what doesn't.
-  EXPECT_TRUE(TryFetchResource(Encode(kTestDomain, "ce", "foobar",
-                                      "a.css", "css")));
+  EXPECT_TRUE(TryFetchResource(Encode(kTestDomain, RewriteDriver::kCssFilterId,
+                                      "foobar", "a.css", "css")));
 
   // ... however fetches with invalid extensions should fail
   EXPECT_FALSE(
-      TryFetchResource(Encode(kTestDomain, "ce", hash, "a.css",
-                              "ext")));
+      TryFetchResource(Encode(kTestDomain, RewriteDriver::kCssFilterId, hash,
+                              "a.css", "ext")));
 
   // Changing other fields can lead to error.
   std::string bad_url = Encode(kTestDomain, "xz", hash, "a.css", "css");

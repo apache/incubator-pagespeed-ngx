@@ -411,56 +411,70 @@ class ResourceDeleterCallback : public UrlAsyncFetcher::Callback {
 
 }  // namespace
 
-OutputResource* RewriteDriver::DecodeOutputResource(
-    const StringPiece& url,
-    RewriteFilter** filter) {
-  // Note that this does parsing of the url, but doesn't actually fetch any data
-  // until we specifically ask it to.
-  OutputResource* output_resource = CreateOutputResourceForFetch(url);
+OutputResource* RewriteDriver::DecodeOutputResource(const StringPiece& url,
+                                                    RewriteFilter** filter) {
+  // First, we can't handle anything that's not a valid URL nor is named
+  // properly as our resource.
+  GoogleUrl gurl(url);
+  if (!gurl.is_valid()) {
+    return NULL;
+  }
 
-  // If the resource name was ill-formed or unrecognized, we reject the request
-  // so it can be passed along.
-  if (output_resource != NULL) {
-    // For now let's reject as mal-formed if the id string is not
-    // in the rewrite drivers.
-    //
-    // We also reject any unknown extensions, which includes
-    // rejecting requests with trailing junk. URLs without any hash
-    // are rejected as well, as they do not produce OutputResources with
-    // a computable URL. (We do accept 'wrong' hashes since they could come
-    // up legitimately under some asynchrony scenarios)
-    //
-    // TODO(jmarantz): it might be better to 'handle' requests with known
-    // IDs even if that filter is not enabled, rather rejecting the request.
-    // TODO(jmarantz): consider query-specific rewrites.  We may need to
-    // enable filters for this driver based on the referrer.
-    StringPiece id = output_resource->filter_prefix();
-    StringFilterMap::iterator p = resource_filter_map_.find(
-        std::string(id.data(), id.size()));
+  StringPiece name = gurl.LeafSansQuery();
+  ResourceNamer namer;
+  if (!namer.Decode(name)) {
+    return NULL;
+  }
 
+  // URLs without any hash are rejected as well, as they do not produce
+  // OutputResources with a computable URL. (We do accept 'wrong' hashes since
+  // they could come up legitimately under some asynchrony scenarios)
+  if (namer.hash().empty()) {
+    return NULL;
+  }
+
+  // Now let's reject as mal-formed if the id string is not
+  // in the rewrite drivers. Also figure out the filter's preferred
+  // resource kind.
+  StringPiece id = namer.id();
+  OutputResource::Kind kind = OutputResource::kRewrittenResource;
+  StringFilterMap::iterator p = resource_filter_map_.find(
+      std::string(id.data(), id.size()));
+  if (p != resource_filter_map_.end()) {
+    *filter = p->second;
+    if ((*filter)->ComputeOnTheFly()) {
+      kind = OutputResource::kOnTheFlyResource;
+    }
+  } else if ((id == CssOutlineFilter::kFilterId) ||
+              (id == JsOutlineFilter::kFilterId)) {
     // OutlineFilter is special because it's not a RewriteFilter -- it's
     // just an HtmlFilter, but it does encode rewritten resources that
     // must be served from the cache.
     //
     // TODO(jmarantz): figure out a better way to refactor this.
     // TODO(jmarantz): add a unit-test to show serving outline-filter resources.
-    bool ok = false;
-    if (output_resource->type() != NULL && output_resource->has_hash()) {
-      if (p != resource_filter_map_.end()) {
-        *filter = p->second;
-        ok = true;
-      } else if ((id == CssOutlineFilter::kFilterId) ||
-                 (id == JsOutlineFilter::kFilterId)) {
-        ok = true;
-      }
-    }
-
-    if (!ok) {
-      delete output_resource;
-      output_resource = NULL;
-      *filter = NULL;
-    }
+    kind = OutputResource::kOutlinedResource;
+  } else {
+    return NULL;
   }
+
+  // The RewriteOptions* is not supplied when creating an output-resource
+  // on behalf of a fetch.  This is because that field is only used for
+  // domain sharding, which is a rewriting activity, not a fetching
+  // activity.
+  StringPiece base = gurl.AllExceptLeaf();
+  OutputResource* output_resource =
+      new OutputResource(this, base, namer, NULL, NULL, kind);
+
+  // We also reject any unknown extensions, which includes rejecting requests
+  // with trailing junk. We do this now since OutputResource figures out
+  // the type for us.
+  if (output_resource->type() == NULL) {
+    delete output_resource;
+    output_resource = NULL;
+    *filter = NULL;
+  }
+
   return output_resource;
 }
 
@@ -594,7 +608,8 @@ OutputResource* RewriteDriver::CreateOutputResourceFromResource(
     const ContentType* content_type,
     const UrlSegmentEncoder* encoder,
     const ResourceContext* data,
-    Resource* input_resource) {
+    Resource* input_resource,
+    OutputResource::Kind kind) {
   OutputResource* result = NULL;
   if (input_resource != NULL) {
     // TODO(jmarantz): It would be more efficient to pass in the base
@@ -609,7 +624,7 @@ OutputResource* RewriteDriver::CreateOutputResourceFromResource(
       encoder->Encode(v, data, &name);
       result = CreateOutputResourceWithPath(
           mapped_gurl->AllExceptLeaf(),
-          filter_prefix, name, content_type, kRewrittenResource);
+          filter_prefix, name, content_type, kind);
     }
   }
   return result;
@@ -620,7 +635,7 @@ OutputResource* RewriteDriver::CreateOutputResourceWithPath(
     const StringPiece& filter_prefix,
     const StringPiece& name,
     const ContentType* content_type,
-    OutputResourceKind kind) {
+    OutputResource::Kind kind) {
   ResourceNamer full_name;
   full_name.set_id(filter_prefix);
   full_name.set_name(name);
@@ -630,13 +645,12 @@ OutputResource* RewriteDriver::CreateOutputResourceWithPath(
     full_name.set_ext(content_type->file_extension() + 1);
   }
   OutputResource* resource = new OutputResource(
-      this, path, full_name, content_type, &options_);
-  resource->set_outlined(kind == kOutlinedResource);
+      this, path, full_name, content_type, &options_, kind);
 
   // Determine whether this output resource is still valid by looking
   // up by hash in the http cache.  Note that this cache entry will
   // expire when any of the origin resources expire.
-  if (kind != kOutlinedResource) {
+  if (kind != OutputResource::kOutlinedResource) {
     std::string name_key = StrCat(
         ResourceManager::kCacheKeyResourceNamePrefix, resource->name_key());
     resource->FetchCachedResult(name_key, message_handler());
@@ -644,36 +658,55 @@ OutputResource* RewriteDriver::CreateOutputResourceWithPath(
   return resource;
 }
 
-Resource* RewriteDriver::CreateInputResource(const GoogleUrl& base_gurl,
-                                             const StringPiece& input_url) {
-  UrlPartnership partnership(&options_, base_gurl);
-  MessageHandler* handler = message_handler();
+bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
+                                  const GoogleUrl& input_url) const {
+  bool ret = false;
+  if (domain_url.is_valid()) {
+    if (options_.IsAllowed(input_url.Spec())) {
+      scoped_ptr<GoogleUrl> resolved_request(new GoogleUrl());
+      std::string mapped_domain_name;
+      // TODO(nforman): MapRequestToDomain() may be heavier-weight than we need.
+      // Replace it with something that does less copying.
+      if (options_.domain_lawyer()->MapRequestToDomain(
+              domain_url, input_url.Spec(), &mapped_domain_name,
+              resolved_request.get(), message_handler())) {
+        ret = true;
+      }
+    }
+  }
+  return ret;
+}
+
+Resource* RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   Resource* resource = NULL;
-  if (partnership.AddUrl(input_url, handler)) {
-    // TODO(jmarantz): We are currently tossing the partership object
-    // and using it only for validating the URL.  Perhaps we should
-    // instead just consult the domain lawyer, rather than creating
-    // the throwaway partnership.  Thus there is a lot of extra
-    // validation going on.
-    const GoogleUrl input_gurl(base_gurl, input_url);
-    resource = CreateInputResourceUnchecked(input_gurl);
-  } else {
-    handler->Message(kInfo, "Invalid resource url '%s' relative to '%s'",
-                     input_url.as_string().c_str(), base_gurl.spec_c_str());
+  GoogleUrl base_root(StrCat(input_url.Origin(), "/"));
+  MessageHandler* handler = message_handler();
+  if (MayRewriteUrl(base_root, input_url)) {
+    if (base_url_.is_valid()) {
+      if (MayRewriteUrl(base_url_, input_url)) {
+        resource = CreateInputResourceUnchecked(input_url);
+      }
+    } else {
+      resource = CreateInputResourceUnchecked(input_url);
+    }
+  }
+  if (resource == NULL) {
+    handler->Message(kInfo, "Invalid resource url '%s'",
+                     input_url.spec_c_str());
     resource_manager_->IncrementResourceUrlDomainRejections();
-    resource = NULL;
   }
   return resource;
 }
 
+// TODO(nforman): This method should go away.
 Resource* RewriteDriver::CreateInputResourceAndReadIfCached(
-    const GoogleUrl& base_gurl, const StringPiece& input_url) {
-  Resource* input_resource = CreateInputResource(base_gurl, input_url);
+    const GoogleUrl& input_url) {
+  Resource* input_resource = CreateInputResource(input_url);
   if ((input_resource != NULL) &&
       (!input_resource->IsCacheable() || !ReadIfCached(input_resource))) {
     message_handler()->Message(
-        kInfo, "%s: Couldn't fetch resource %s to rewrite.",
-        base_gurl.spec_c_str(), input_url.as_string().c_str());
+        kInfo, "Couldn't fetch resource %s to rewrite.",
+        input_url.spec_c_str());
     delete input_resource;
     input_resource = NULL;
   }
@@ -718,25 +751,6 @@ Resource* RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
     message_handler()->Message(kWarning, "Unsupported scheme '%s' for url '%s'",
                                url.Scheme().as_string().c_str(),
                                url_string.as_string().c_str());
-  }
-  return resource;
-}
-
-OutputResource* RewriteDriver::CreateOutputResourceForFetch(
-    const StringPiece& url) {
-  OutputResource* resource = NULL;
-  GoogleUrl gurl(url);
-  if (gurl.is_valid()) {
-    StringPiece name = gurl.LeafSansQuery();
-    ResourceNamer namer;
-    if (namer.Decode(name)) {
-      StringPiece base = gurl.AllExceptLeaf();
-      // The RewriteOptions* is not supplied when creating an output-resource
-      // on behalf of a fetch.  This is because that field is only used for
-      // domain sharding, which is a rewriting activity, not a fetching
-      // activity.
-      resource = new OutputResource(this, base, namer, NULL, NULL);
-    }
   }
   return resource;
 }
@@ -848,22 +862,6 @@ void RewriteDriver::Scan() {
   set_first_filter(1);
 }
 
-void RewriteDriver::ScanRequestUrl(const StringPiece& url) {
-  std::string url_str(url.data(), url.size());
-  Resource* resource = NULL;
-  ResourceMap::iterator iter = resource_map_.find(url_str);
-  if (iter != resource_map_.end()) {
-    resource = iter->second;
-  } else {
-    resource = CreateInputResource(base_url_, url);
-
-    // note that 'resource' can be NULL.  If we fail to create
-    // the resource, then we record that it the map so we don't
-    // attempt the lookup multiple times.
-    resource_map_[url_str] = resource;
-  }
-}
-
 Resource* RewriteDriver::GetScannedInputResource(const StringPiece& url) const {
   std::string url_str(url.data(), url.size());
   Resource* resource = NULL;
@@ -881,6 +879,23 @@ RewriteFilter* RewriteDriver::FindFilter(const StringPiece& id) const {
     filter = p->second;
   }
   return filter;
+}
+
+Resource* RewriteDriver::FindResource(std::string str) const {
+  Resource* resource = NULL;
+  const ResourceMap::const_iterator iter = resource_map_.find(str);
+  if (iter != resource_map_.end()) {
+    resource = iter->second;
+  }
+  return resource;
+}
+
+void RewriteDriver::RememberResource(std::string str, Resource* resource) {
+  Resource* old_resource = resource_map_[str];
+  if (old_resource != NULL) {
+    delete old_resource;
+  }
+  resource_map_[str] = resource;
 }
 
 }  // namespace net_instaweb

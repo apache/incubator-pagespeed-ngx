@@ -147,7 +147,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       scoped_ptr<OutputResource> output_resource(
           driver_->CreateOutputResourceWithPath(
               driver_->google_url().AllExceptLeaf(), kFilterId, "_",
-              &kContentTypeCss, RewriteDriver::kOutlinedResource));
+              &kContentTypeCss, OutputResource::kOutlinedResource));
 
       // Absolutify URLs in content.
       std::string absolute_content;

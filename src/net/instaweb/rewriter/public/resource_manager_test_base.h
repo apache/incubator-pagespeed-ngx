@@ -105,6 +105,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
    private:
     DISALLOW_COPY_AND_ASSIGN(DummyCallback);
   };
+  Resource* CreateResource(const StringPiece& base, const StringPiece& url);
 
   MockTimer* mock_timer() { return file_system_.timer(); }
 

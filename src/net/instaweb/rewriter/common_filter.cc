@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/util/public/message_handler.h"
 
 namespace net_instaweb {
 
@@ -85,16 +86,54 @@ bool CommonFilter::BaseUrlIsValid() const {
   return seen_base_;
 }
 
-// TODO(jmarantz): Remove these methods -- they used to serve an
-// important contextual purpose but now that the resource creation
-// methods were moved to RewriteDriver they won't add much value.
-Resource* CommonFilter::CreateInputResource(const StringPiece& url) {
-  return driver_->CreateInputResource(base_url(), url);
+Resource* CommonFilter::CreateInputResource(const StringPiece& input_url) {
+  Resource* resource = NULL;
+  if (input_url.size() <= 0) {
+    return resource;
+  }
+
+  if (!BaseUrlIsValid()) {
+    const GoogleUrl resource_url(input_url);
+    if (resource_url.is_valid() && resource_url.is_standard()) {
+      resource = driver_->CreateInputResource(resource_url);
+    }
+  } else if (base_url().is_valid()) {
+    const GoogleUrl resource_url(base_url(), input_url);
+    if (resource_url.is_valid() && resource_url.is_standard()) {
+      resource = driver_->CreateInputResource(resource_url);
+    }
+  }
+  return resource;
 }
 
 Resource* CommonFilter::CreateInputResourceAndReadIfCached(
-    const StringPiece& url) {
-  return driver_->CreateInputResourceAndReadIfCached(base_url(), url);
+    const StringPiece& input_url) {
+  Resource* input_resource = CreateInputResource(input_url);
+  MessageHandler* handler = driver_->message_handler();
+  if ((input_resource != NULL) &&
+      (!input_resource->IsCacheable() ||
+       !driver_->ReadIfCached(input_resource))) {
+    handler->Message(
+        kInfo, "%s: Couldn't fetch resource %s to rewrite.",
+        base_url().spec_c_str(), input_url.as_string().c_str());
+    delete input_resource;
+    input_resource = NULL;
+  }
+  return input_resource;
+}
+
+void CommonFilter::ScanRequestUrl(const StringPiece& url) {
+  Resource* resource = NULL;
+  std::string url_str(url.data(), url.size());
+  resource = driver_->FindResource(url_str);
+  if (resource == NULL) {
+    resource = CreateInputResource(url);
+
+    // note that 'resource' can be NULL.  If we fail to create
+    // the resource, then we record that it the map so we don't
+    // attempt the lookup multiple times.
+    driver_->RememberResource(url_str, resource);
+  }
 }
 
 void CommonFilter::ScanStartDocument() {

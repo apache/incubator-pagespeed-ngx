@@ -663,7 +663,7 @@ class CssFilterSubresourceTest : public CssFilterTest {
     scoped_ptr<OutputResource> output_resource(
         rewrite_driver_.CreateOutputResourceWithPath(
             kTestDomain, RewriteDriver::kCssFilterId, StrCat(id, ".css"),
-            &kContentTypeCss, RewriteDriver::kRewrittenResource));
+            &kContentTypeCss, OutputResource::kRewrittenResource));
     ASSERT_TRUE(output_resource.get() != NULL);
     EXPECT_EQ(css_url, output_resource->url());
     ASSERT_TRUE(output_resource->cached_result() != NULL);

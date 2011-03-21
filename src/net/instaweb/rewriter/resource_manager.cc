@@ -210,12 +210,15 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
   if (ret) {
     ret = writer->Write(contents, handler);
     ret &= output->EndWrite(writer.get(), handler);
-    http_cache_->Put(output->url(), &output->value_, handler);
+
+    if (output->kind() != OutputResource::kOnTheFlyResource) {
+      http_cache_->Put(output->url(), &output->value_, handler);
+    }
 
     // If our URL is derived from some pre-existing URL (and not invented by
     // us due to something like outlining), cache the mapping from original URL
     // to the constructed one.
-    if (!output->outlined()) {
+    if (output->kind() != OutputResource::kOutlinedResource) {
       output->EnsureCachedResultCreated()->set_optimizable(true);
       CacheComputedResourceMapping(output, origin_expire_time_ms, handler);
     }

@@ -30,9 +30,6 @@ class ResourceManagerTestingPeer {
   static bool HasHash(const OutputResource* resource) {
     return resource->has_hash();
   }
-  static bool Outlined(const OutputResource* resource) {
-    return resource->outlined();
-  }
 
   static void SetHash(OutputResource* resource, const StringPiece& hash) {
     resource->SetHash(hash);

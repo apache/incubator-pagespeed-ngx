@@ -84,7 +84,7 @@ bool CacheExtender::ShouldRewriteResource(
 void CacheExtender::ScanStartElement(HtmlElement* element) {
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
   if ((href != NULL) && driver_->IsRewritable(element)) {
-    driver_->ScanRequestUrl(href->value());
+    ScanRequestUrl(href->value());
   }
 }
 
@@ -127,7 +127,7 @@ bool CacheExtender::IsRewrittenResource(const StringPiece& url) const {
   return (output_resource.get() != NULL);
 }
 
-bool CacheExtender::ReuseByContentHash() const {
+bool CacheExtender::ComputeOnTheFly() const {
   return true;
 }
 

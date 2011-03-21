@@ -88,8 +88,9 @@ bool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
   bool ret = false;
   *expire_at_ms = kint64max;
   std::string old_rel_url_str = old_rel_url.as_string();
+  GoogleUrl resource_url(base_url, old_rel_url);
   scoped_ptr<Resource> input_resource(
-      driver_->CreateInputResource(base_url, old_rel_url));
+      driver_->CreateInputResource(resource_url));
   const RewriteOptions* options = driver_->options();
   if (input_resource.get() != NULL) {
     scoped_ptr<CachedResult> rewrite_info;

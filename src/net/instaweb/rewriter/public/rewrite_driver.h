@@ -26,6 +26,7 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
@@ -43,7 +44,6 @@ class Hasher;
 class HtmlFilter;
 class HtmlParse;
 class HtmlWriterFilter;
-class OutputResource;
 class Resource;
 class ResourceManager;
 class ResourceNamer;
@@ -71,6 +71,11 @@ class RewriteDriver : public HtmlParse {
   static const char kImageCompressionId[];
   static const char kJavascriptCombinerId[];
   static const char kJavascriptMinId[];
+
+  // Statistics
+  static const char kResourceFetchesCached[];
+  static const char kResourceFetchConstructSuccesses[];
+  static const char kResourceFetchConstructFailures[];
 
   // A list of HTTP request headers.  These are the headers which
   // should be passed through from the client request into the
@@ -111,16 +116,6 @@ class RewriteDriver : public HtmlParse {
   // proceed before a flush, or more than one flush to proceed before
   // a scan.
   void Scan();
-
-  // During the Scan phase, CommonFilters can request URLs from the cache &/or
-  // AsyncFetcher.  These requests can be processed before the filter's
-  // event-handling methods are executed.
-  //
-  // TODO(jmarantz): At some point we want to have this be higher
-  // level -- filters don't necessarily need to load entire resources
-  // in order to successfully rewrite URLs.  It's preferable, if the
-  // rewrite has already occurred, to just get back the updated URL.
-  void ScanRequestUrl(const StringPiece& url);
 
   // In the rewrite phase, CommonFilters can try to retrieve resources
   // they requested during scanning with ScanRequestUrl.  These resources
@@ -189,8 +184,12 @@ class RewriteDriver : public HtmlParse {
                      Writer* writer,
                      UrlAsyncFetcher::Callback* callback);
 
-  // Attempts to decodes an output resource based on the URL pattern
-  // without actually rewriting it.
+  // Attempts to decode an output resource based on the URL pattern
+  // without actually rewriting it. No permission checks are performed on the
+  // url, though it is parsed to see if it looks like the url of a generated
+  // resource (which should mean checking the hash to ensure we generated it
+  // ourselves).
+  // TODO(jmaessen): add url hash & check thereof.
   OutputResource* DecodeOutputResource(const StringPiece& url,
                                        RewriteFilter** filter);
 
@@ -232,12 +231,8 @@ class RewriteDriver : public HtmlParse {
       const ContentType* content_type,
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
-      Resource* input_resource);
-
-  enum OutputResourceKind {
-    kRewrittenResource,  // derived from some input resource URL or URLs.
-    kOutlinedResource   // derived from page HTML.
-  };
+      Resource* input_resource,
+      OutputResource::Kind kind);
 
   // Creates an output resource where the name is provided by the rewriter.
   // The intent is to be able to derive the content from the name, for example,
@@ -256,27 +251,30 @@ class RewriteDriver : public HtmlParse {
   OutputResource* CreateOutputResourceWithPath(
       const StringPiece& path, const StringPiece& filter_prefix,
       const StringPiece& name,  const ContentType* type,
-      OutputResourceKind kind);
+      OutputResource::Kind kind);
 
-  // Creates an input resource with the url evaluated based on input_url
-  // which may need to be absolutified relative to base_url.  Returns NULL if
+  // Creates an input resource based on input_url.  Returns NULL if
   // the input resource url isn't valid, or can't legally be rewritten in the
   // context of this page.
-  Resource* CreateInputResource(const GoogleUrl& base_url,
-                                const StringPiece& input_url);
+  Resource* CreateInputResource(const GoogleUrl& input_url);
 
   // Create input resource from input_url, if it is legal in the context of
-  // base_gurl, and if the resource can be read from cache.  If it's not in
+  // base_url_, and if the resource can be read from cache.  If it's not in
   // cache, initiate an asynchronous fetch so it will be on next access.  This
   // is a common case for filters.
-  Resource* CreateInputResourceAndReadIfCached(
-      const GoogleUrl& base_gurl, const StringPiece& input_url);
+  Resource* CreateInputResourceAndReadIfCached(const GoogleUrl& input_url);
 
   // Creates an input resource from the given absolute url.  Requires that the
   // provided url has been checked, and can legally be rewritten in the current
   // page context.
   Resource* CreateInputResourceAbsoluteUnchecked(
       const StringPiece& absolute_url);
+
+  // Checks to see if we can write the input_url resource in the
+  // domain_url taking into account domain authorization and
+  // wildcard allow/disallow from RewriteOptions.
+  bool MayRewriteUrl(const GoogleUrl& domain_url,
+                     const GoogleUrl& input_url) const;
 
   // Loads contents of resource asynchronously, calling callback when
   // done.  If the resource contents is cached, the callback will
@@ -300,13 +298,6 @@ class RewriteDriver : public HtmlParse {
   // As above, but distinguishes between unavailable in cache and not found
   HTTPCache::FindResult ReadIfCachedWithStatus(Resource* resource);
 
-  // Creates a resource based on a URL.  This is used for serving rewritten
-  // resources.  No permission checks are performed on the url, though it
-  // is parsed to see if it looks like the url of a generated resource (which
-  // should mean checking the hash to ensure we generated it ourselves).
-  // TODO(jmaessen): add url hash & check thereof.
-  OutputResource* CreateOutputResourceForFetch(const StringPiece& url);
-
   // Returns the appropriate base gurl to be used for resolving hrefs
   // in the document.  Note that HtmlParse::google_url() is the URL
   // for the HTML file and is used for printing html syntax errors.
@@ -325,7 +316,14 @@ class RewriteDriver : public HtmlParse {
   // scope.  It is reset at the beginning of every document by
   // ScanFilter.
   void set_refs_before_base() { refs_before_base_ = true; }
- 
+
+  // This method takes ownership of resource.  If it is called
+  // again with the same str, it will free the previous resource
+  // pointer.
+  void RememberResource(std::string str, Resource* resource);
+
+  Resource* FindResource(std::string str) const;
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -427,11 +425,6 @@ class RewriteDriver : public HtmlParse {
   // least for single-resource filters.
   typedef std::map<std::string, Resource*> ResourceMap;
   ResourceMap resource_map_;
-
-  // Statistics
-  static const char kResourceFetchesCached[];
-  static const char kResourceFetchConstructSuccesses[];
-  static const char kResourceFetchConstructFailures[];
 
   Variable* cached_resource_fetches_;
   Variable* succeeded_filter_resource_fetches_;

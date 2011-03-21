@@ -223,6 +223,27 @@ TEST_F(CacheExtenderTest, NoQueryCorruption) {
   TestCorruptUrl("?query", true);
 }
 
+TEST_F(CacheExtenderTest, MadeOnTheFly) {
+  // Make sure our fetches go through on-the-fly construction and not the cache.
+  InitTest(100000);
+
+  std::string b_ext = Encode(kTestDomain, "ce", "0", "b.jpg", "jpg");
+  ValidateExpected("and_img", "<img src=\"b.jpg\">",
+                   StrCat("<img src=\"", b_ext, "\">"));
+
+  Variable* cached_resource_fetches =
+      statistics_.GetVariable(RewriteDriver::kResourceFetchesCached);
+  Variable* succeeded_filter_resource_fetches =
+      statistics_.GetVariable(RewriteDriver::kResourceFetchConstructSuccesses);
+
+  EXPECT_EQ(0, cached_resource_fetches->Get());
+  EXPECT_EQ(0, succeeded_filter_resource_fetches->Get());
+  std::string out;
+  EXPECT_TRUE(ServeResourceUrl(b_ext, &out));
+  EXPECT_EQ(0, cached_resource_fetches->Get());
+  EXPECT_EQ(1, succeeded_filter_resource_fetches->Get());
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

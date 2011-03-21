@@ -33,16 +33,23 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 namespace net_instaweb {
 
 class AbstractLock;
 class MessageHandler;
 class NamedLockManager;
+class RewriteDriver;
 
 class OutputResource : public Resource {
  public:
+  enum Kind {
+    kRewrittenResource,  // derived from some input resource URL or URLs.
+    kOnTheFlyResource,   // derived from some input resource URL or URLs in a
+                         //   very inexpensive way --- it makes no sense to
+                         //   cache the output contents.
+    kOutlinedResource    // derived from page HTML.
+  };
 
   // Construct an OutputResource.  For the moment, we pass in type redundantly
   // even though full_name embeds an extension.  This reflects current code
@@ -56,7 +63,8 @@ class OutputResource : public Resource {
                  const StringPiece& resolved_base,
                  const ResourceNamer& resource_id,
                  const ContentType* type,
-                 const RewriteOptions* options);
+                 const RewriteOptions* options,
+                 Kind kind);
   ~OutputResource();
 
   virtual bool Load(MessageHandler* message_handler);
@@ -111,8 +119,8 @@ class OutputResource : public Resource {
   // Sets the type of the output resource, and thus also its suffix.
   virtual void SetType(const ContentType* type);
 
-  // Whenever output resources are created via ResourceManager
-  // (except CreateOutputResourceForFetch) it looks up cached
+  // Whenever output resources are created via RewriteDriver
+  // (except DecodeOutputResource) it looks up cached
   // information on any previous creation of that resource, including
   // the full filename and any filter-specific metadata. If such
   // information is available, this method will return non-NULL.
@@ -153,6 +161,8 @@ class OutputResource : public Resource {
     CHECK(EndsInSlash(base)) << "resolved_base must end in a slash.";
   }
 
+  Kind kind() const { return kind_; }
+
  private:
   friend class ResourceManager;
   friend class ResourceManagerTest;
@@ -184,8 +194,6 @@ class OutputResource : public Resource {
   StringPiece hash() const { return full_name_.hash(); }
   bool has_hash() const { return !hash().empty(); }
   void set_written(bool written) { writing_complete_ = true; }
-  void set_outlined(bool x) { outlined_ = x; }
-  bool outlined() const { return outlined_; }
   std::string TempPrefix() const;
 
   OutputWriter* BeginWrite(MessageHandler* message_handler);
@@ -203,12 +211,6 @@ class OutputResource : public Resource {
 
   FileSystem::OutputFile* output_file_;
   bool writing_complete_;
-
-  // The resource was created by outlining from within HTML and was not
-  // derived from an input URL (and is hence not named after one). We must
-  // regenerate it every time, but the output name will be distinct because
-  // it's based on the hash of the content.
-  bool outlined_;
 
   scoped_ptr<CachedResult> cached_result_;
 
@@ -230,6 +232,10 @@ class OutputResource : public Resource {
   // it.  However, when rewriting a resources, we need rewrite_options_ to
   // be non-null.
   const RewriteOptions* rewrite_options_;
+
+  // Output resource have a 'kind' associated with them that controls the kind
+  // of caching we would like to be performed on them when written out.
+  Kind kind_;
 
   DISALLOW_COPY_AND_ASSIGN(OutputResource);
 };

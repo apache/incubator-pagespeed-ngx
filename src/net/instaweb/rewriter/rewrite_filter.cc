@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/url_partnership.h"
 
 namespace net_instaweb {
 
@@ -34,13 +35,24 @@ Resource* RewriteFilter::CreateInputResourceFromOutputResource(
                         driver_->message_handler()) &&
       (urls.size() == 1)) {
     GoogleUrl base_gurl(output_resource->resolved_base());
-    input_resource = driver_->CreateInputResource(base_gurl, urls[0]);
+    GoogleUrl resource_url(base_gurl, urls[0]);
+    if (base_gurl != driver_->base_url()) {
+      if (driver_->MayRewriteUrl(base_gurl, resource_url)) {
+        input_resource = driver_->CreateInputResource(resource_url);
+      }
+    } else {
+      input_resource = driver_->CreateInputResource(resource_url);
+    }
   }
   return input_resource;
 }
 
 const UrlSegmentEncoder* RewriteFilter::encoder() const {
   return driver_->default_encoder();
+}
+
+bool RewriteFilter::ComputeOnTheFly() const {
+  return false;
 }
 
 }  // namespace net_instaweb

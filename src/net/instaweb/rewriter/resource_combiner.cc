@@ -211,7 +211,7 @@ OutputResource* ResourceCombiner::Combine(const ContentType& content_type,
   scoped_ptr<OutputResource> combination(
       rewrite_driver_->CreateOutputResourceWithPath(
           ResolvedBase(), filter_prefix_, url_safe_id, &content_type,
-          RewriteDriver::kRewrittenResource));
+          OutputResource::kRewrittenResource));
   if (combination->cached_result() != NULL &&
       combination->cached_result()->optimizable()) {
     // If the combination has a Url set on it we have cached information
