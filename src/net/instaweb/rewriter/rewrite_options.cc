@@ -17,6 +17,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
 #include <vector>
+#include <utility>
 #include "net/instaweb/util/public/message_handler.h"
 
 namespace net_instaweb {
@@ -140,6 +141,7 @@ void RewriteOptions::SetUp() {
   name_filter_map_["rewrite_css"] = kRewriteCss;
   name_filter_map_["rewrite_images"] = kRewriteImages;
   name_filter_map_["rewrite_javascript"] = kRewriteJavascript;
+  name_filter_map_["sprite_images"] = kSpriteImages;
   name_filter_map_["strip_scripts"] = kStripScripts;
   name_filter_map_["trim_urls"] = kLeftTrimUrls;
 

@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
+#include "net/instaweb/rewriter/public/img_combine_filter.h"
 #include "net/instaweb/rewriter/public/img_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
@@ -64,6 +65,7 @@ namespace net_instaweb {
 const char RewriteDriver::kCssCombinerId[] = "cc";
 const char RewriteDriver::kCssFilterId[] = "cf";
 const char RewriteDriver::kCacheExtenderId[] = "ce";
+const char RewriteDriver::kImageCombineId[] = "is";
 const char RewriteDriver::kImageCompressionId[] = "ic";
 const char RewriteDriver::kJavascriptCombinerId[] = "jc";
 const char RewriteDriver::kJavascriptMinId[] = "jm";
@@ -127,6 +129,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     CssMoveToHeadFilter::Initialize(statistics);
     GoogleAnalyticsFilter::Initialize(statistics);
     ImgRewriteFilter::Initialize(statistics);
+    ImgCombineFilter::Initialize(statistics);
     JavascriptFilter::Initialize(statistics);
     JsCombineFilter::Initialize(statistics);
     ResourceManager::Initialize(statistics);
@@ -147,6 +150,8 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   // to determine whether they get added to the html parse filter chain.
   // Note: RegisterRewriteFilter takes ownership of these filters.
   CacheExtender* cache_extender = new CacheExtender(this, kCacheExtenderId);
+  ImgCombineFilter* image_combiner = new ImgCombineFilter(this,
+                                                          kImageCombineId);
   ImgRewriteFilter* image_rewriter =
       new ImgRewriteFilter(
           this,
@@ -156,11 +161,13 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
 
   RegisterRewriteFilter(new CssCombineFilter(this, kCssCombinerId));
   RegisterRewriteFilter(
-      new CssFilter(this, kCssFilterId, cache_extender, image_rewriter));
+      new CssFilter(this, kCssFilterId, cache_extender, image_rewriter,
+                    image_combiner));
   RegisterRewriteFilter(new JavascriptFilter(this, kJavascriptMinId));
   RegisterRewriteFilter(new JsCombineFilter(this, kJavascriptCombinerId));
   RegisterRewriteFilter(image_rewriter);
   RegisterRewriteFilter(cache_extender);
+  RegisterRewriteFilter(image_combiner);
 }
 
 // If flag starts with key (a string ending in "="), call m on the remainder of
@@ -324,6 +331,10 @@ void RewriteDriver::AddFilters() {
         this, options_.beacon_url(), statistics());
     AddOwnedFilter(add_instrumentation_filter_);
   }
+  if (options_.Enabled(RewriteOptions::kSpriteImages)) {
+    EnableRewriteFilter(kImageCombineId);
+  }
+
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
   // doesn't, it probably should.  If it does, be sure to add it to the
   // Initialize() function above or it will break under Apache!

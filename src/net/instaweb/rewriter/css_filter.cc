@@ -58,10 +58,11 @@ const char CssFilter::kParseFailures[] = "css_filter_parse_failures";
 
 CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix,
                      CacheExtender* cache_extender,
-                     ImgRewriteFilter* image_rewriter)
+                     ImgRewriteFilter* image_rewriter,
+                     ImgCombineFilter* image_combiner)
     : RewriteSingleResourceFilter(driver, path_prefix),
       in_style_element_(false),
-      image_rewriter_(driver, cache_extender, image_rewriter),
+      image_rewriter_(driver, cache_extender, image_rewriter, image_combiner),
       num_files_minified_(NULL),
       minified_bytes_saved_(NULL),
       num_parse_failures_(NULL) {

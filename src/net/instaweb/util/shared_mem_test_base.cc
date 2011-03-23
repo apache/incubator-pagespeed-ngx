@@ -23,8 +23,20 @@ namespace {
   const char kOtherSegment[] = "segment2";
 }  // namespace
 
-SharedMemTestBase::SharedMemTestBase(AbstractSharedMem* shmem_runtime)
-    : shmem_runtime_(shmem_runtime) {
+SharedMemTestEnv::~SharedMemTestEnv() {
+}
+
+SharedMemTestEnv::Callback::~Callback() {
+}
+
+SharedMemTestBase::SharedMemTestBase(SharedMemTestEnv* test_env)
+    : test_env_(test_env),
+      shmem_runtime_(test_env->CreateSharedMemRuntime()) {
+}
+
+bool SharedMemTestBase::CreateChild(TestMethod method) {
+  MethodCallback* callback = new MethodCallback(this, method);
+  return test_env_->CreateChild(callback);
 }
 
 void SharedMemTestBase::TestReadWrite(bool reattach) {
@@ -38,14 +50,14 @@ void SharedMemTestBase::TestReadWrite(bool reattach) {
 
   // Wait for kid to write out stuff
   while (*seg->Base() != '1') {
-    ShortSleep();
+    test_env_->ShortSleep();
   }
 
   // Write out stuff.
   *seg->Base() = '2';
 
   // Wait for termination.
-  WaitForChildren();
+  test_env_->WaitForChildren();
   seg.reset(NULL);
   DestroyDefault();
   EXPECT_EQ(0, handler_.SeriousMessages());
@@ -59,7 +71,7 @@ void SharedMemTestBase::TestReadWriteChild() {
 
   // Wait for '2' from parent
   while (*seg->Base() != '2') {
-    ShortSleep();
+    test_env_->ShortSleep();
   }
 }
 
@@ -74,7 +86,7 @@ void SharedMemTestBase::TestLarge() {
   seg.reset(NULL);
 
   ASSERT_TRUE(CreateChild(&SharedMemTestBase::TestLargeChild));
-  WaitForChildren();
+  test_env_->WaitForChildren();
 
   seg.reset(shmem_runtime_->AttachToSegment(kTestSegment, kLarge, &handler_));
   for (int i = 0; i < kLarge; i+=4) {
@@ -98,7 +110,7 @@ void SharedMemTestBase::TestDistinct() {
 
   ASSERT_TRUE(CreateChild(&SharedMemTestBase::WriteSeg1Child));
   ASSERT_TRUE(CreateChild(&SharedMemTestBase::WriteSeg2Child));
-  WaitForChildren();
+  test_env_->WaitForChildren();
 
   EXPECT_EQ('1', *seg->Base());
   EXPECT_EQ('2', *seg2->Base());
@@ -115,7 +127,7 @@ void SharedMemTestBase::TestDestroy() {
   scoped_ptr<AbstractSharedMemSegment> seg(CreateDefault());
 
   ASSERT_TRUE(CreateChild(&SharedMemTestBase::WriteSeg1Child));
-  WaitForChildren();
+  test_env_->WaitForChildren();
   EXPECT_EQ('1', *seg->Base());
 
   seg.reset(NULL);
@@ -137,7 +149,7 @@ void SharedMemTestBase::TestDestroy() {
 void SharedMemTestBase::TestCreateTwice() {
   scoped_ptr<AbstractSharedMemSegment> seg(CreateDefault());
   ASSERT_TRUE(CreateChild(&SharedMemTestBase::WriteSeg1Child));
-  WaitForChildren();
+  test_env_->WaitForChildren();
   EXPECT_EQ('1', *seg->Base());
 
   seg.reset(CreateDefault());
@@ -151,7 +163,7 @@ void SharedMemTestBase::TestTwoKids() {
 
   ASSERT_TRUE(CreateChild(&SharedMemTestBase::TwoKidsChild1));
   ASSERT_TRUE(CreateChild(&SharedMemTestBase::TwoKidsChild2));
-  WaitForChildren();
+  test_env_->WaitForChildren();
   seg.reset(AttachDefault());
   EXPECT_EQ('2', *seg->Base());
 
@@ -169,7 +181,7 @@ void SharedMemTestBase::TwoKidsChild2() {
   scoped_ptr<AbstractSharedMemSegment> seg(AttachDefault());
   // Wait for '1'
   while (*seg->Base() != '1') {
-    ShortSleep();
+    test_env_->ShortSleep();
   }
 
   *seg->Base() = '2';
@@ -202,7 +214,7 @@ void SharedMemTestBase::TestMutex() {
   EXPECT_TRUE(IncrementStorm(seg.get(), mutex_size));
   mutex->Unlock();
 
-  WaitForChildren();
+  test_env_->WaitForChildren();
   DestroyDefault();
 }
 
@@ -215,7 +227,7 @@ void SharedMemTestBase::MutexChild() {
   mutex->Lock();
   if (!IncrementStorm(seg.get(), mutex_size)) {
     mutex->Unlock();
-    ChildFailed();
+    test_env_->ChildFailed();
     return;
   }
   mutex->Unlock();
@@ -272,4 +284,3 @@ void SharedMemTestBase::DestroyDefault() {
 }
 
 }  // namespace net_instaweb
-

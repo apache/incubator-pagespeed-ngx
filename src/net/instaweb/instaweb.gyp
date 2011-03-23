@@ -16,9 +16,100 @@
   'variables': {
     'instaweb_root': '../..',
     'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
+    'protoc_executable': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
     'chromium_code': 1,
   },
   'targets': [
+      # NOTE(abliss): These targets appear to get built in the order they
+      # appear, regardless of their claimed dependencies.  Moving
+      # instaweb_spriter below instaweb_rewriter breaks the build.
+    {
+      'target_name': 'instaweb_spriter_genproto',
+      'type': 'none',
+      'sources': [
+        'spriter/public/image_spriter.proto',
+      ],
+      'rules': [
+        {
+            'rule_name': 'genproto',
+            'extension': 'proto',
+            'inputs': [
+                '<(protoc_executable)',
+                ],
+            'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
+
+          'outputs': [
+            '<(protoc_out_dir)/net/instaweb/spriter/public/<(RULE_INPUT_ROOT).pb.h',
+            '<(protoc_out_dir)/net/instaweb/spriter/public/<(RULE_INPUT_ROOT).pb.cc',
+          ],
+          'action': [
+            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
+            '--proto_path=<(instaweb_root)',
+            '<(instaweb_root)/net/instaweb/spriter/public/<(RULE_INPUT_NAME)',
+            '--cpp_out=<(protoc_out_dir)',
+          ],
+        },
+      ],
+    },
+    {
+      'target_name': 'instaweb_spriter_pb',
+      'type': '<(library)',
+      'hard_dependency': 1,
+      'dependencies': [
+        'instaweb_spriter_genproto',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+       ],
+      'sources': [
+        '<(protoc_out_dir)/net/instaweb/spriter/public/image_spriter.pb.cc',
+      ],
+      'include_dirs': [
+        '<(protoc_out_dir)',
+      ],
+      'export_dependent_settings': [
+        'instaweb_spriter_genproto',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+      ]
+    },
+    {
+      'target_name': 'instaweb_spriter',
+      'type': '<(library)',
+      'dependencies': [
+        'instaweb_spriter_pb',
+      ],
+      'sources': [
+          'spriter/image_library_interface.cc',
+          'spriter/image_spriter.cc',
+          'spriter/public/image_spriter.proto',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+        '<(protoc_out_dir)',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(instaweb_root)',
+          '<(DEPTH)',
+          '<(protoc_out_dir)',
+        ],
+      },
+    },
+    {
+      'target_name': 'instaweb_spriter_test',
+      'type': '<(library)',
+      'dependencies': [
+        'instaweb_spriter',
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/testing/gmock.gyp:gmock',
+      ],
+      'sources': [
+        'spriter/image_spriter_test.cc',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+      ],
+    },
+
     {
       'target_name': 'instaweb_rewriter_genproto',
       'type': 'none',
@@ -27,25 +118,26 @@
       ],
       'rules': [
         {
-          'rule_name': 'genproto',
-          'extension': 'proto',
-          'inputs': [
-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
-          ],
+            'rule_name': 'genproto',
+            'extension': 'proto',
+            'inputs': [
+                '<(protoc_executable)',
+                ],
           'outputs': [
             '<(protoc_out_dir)/net/instaweb/rewriter/<(RULE_INPUT_ROOT).pb.h',
             '<(protoc_out_dir)/net/instaweb/rewriter/<(RULE_INPUT_ROOT).pb.cc',
           ],
           'action': [
-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
-            '--proto_path=rewriter',
-            './rewriter/<(RULE_INPUT_ROOT)<(RULE_INPUT_EXT)',
-            '--cpp_out=<(protoc_out_dir)/net/instaweb/rewriter',
+            '<(protoc_executable)',
+            '--proto_path=<(instaweb_root)',
+            '<(instaweb_root)/net/instaweb/rewriter/<(RULE_INPUT_NAME)',
+            '--cpp_out=<(protoc_out_dir)',
           ],
           'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
         },
       ],
       'dependencies': [
+        'instaweb_spriter_genproto',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protoc#host',
       ],
@@ -360,6 +452,7 @@
       'dependencies': [
         'instaweb_rewriter_base',
         'instaweb_util',
+        'instaweb_spriter',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
       ],
@@ -367,6 +460,7 @@
         'rewriter/css_filter.cc',
         'rewriter/css_image_rewriter.cc',
         'rewriter/css_minify.cc',
+        'rewriter/img_combine_filter.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',
@@ -391,6 +485,7 @@
         'instaweb_rewriter_css',
         'instaweb_rewriter_image',
         'instaweb_rewriter_javascript',
+        'instaweb_spriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
       ],
@@ -444,20 +539,20 @@
       ],
       'rules': [
         {
-          'rule_name': 'genproto',
-          'extension': 'proto',
-          'inputs': [
-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
-          ],
+            'rule_name': 'genproto',
+            'extension': 'proto',
+            'inputs': [
+                '<(protoc_executable)',
+                ],
           'outputs': [
             '<(protoc_out_dir)/net/instaweb/http/<(RULE_INPUT_ROOT).pb.h',
             '<(protoc_out_dir)/net/instaweb/http/<(RULE_INPUT_ROOT).pb.cc',
           ],
           'action': [
-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
-            '--proto_path=http',
-            './http/<(RULE_INPUT_ROOT)<(RULE_INPUT_EXT)',
-            '--cpp_out=<(protoc_out_dir)/net/instaweb/http',
+            '<(protoc_executable)',
+            '--proto_path=<(instaweb_root)',
+            '<(instaweb_root)/net/instaweb/http/<(RULE_INPUT_NAME)',
+            '--cpp_out=<(protoc_out_dir)',
           ],
           'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
         },

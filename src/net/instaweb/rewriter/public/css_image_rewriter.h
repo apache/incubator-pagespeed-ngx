@@ -36,6 +36,7 @@ namespace net_instaweb {
 class CacheExtender;
 class CachedResult;
 class ImgRewriteFilter;
+class ImgCombineFilter;
 class MessageHandler;
 class RewriteDriver;
 class RewriteOptions;
@@ -46,7 +47,8 @@ class CssImageRewriter {
  public:
   CssImageRewriter(RewriteDriver* driver,
                    CacheExtender* cache_extender,
-                   ImgRewriteFilter* image_rewriter);
+                   ImgRewriteFilter* image_rewriter,
+                   ImgCombineFilter* image_combiner);
   ~CssImageRewriter();
 
   static void Initialize(Statistics* statistics);
@@ -87,6 +89,7 @@ class CssImageRewriter {
   // TODO(sligocki): morlovich suggests separating this out as some
   // centralized API call like rewrite_driver_->RewriteImage().
   CacheExtender* cache_extender_;
+  ImgCombineFilter* image_combiner_;
   ImgRewriteFilter* image_rewriter_;
 
   // Statistics

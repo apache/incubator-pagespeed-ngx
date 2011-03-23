@@ -23,6 +23,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/img_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/img_combine_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -44,11 +45,13 @@ const char CssImageRewriter::kNoRewrite[] = "css_image_no_rewrite";
 
 CssImageRewriter::CssImageRewriter(RewriteDriver* driver,
                                    CacheExtender* cache_extender,
-                                   ImgRewriteFilter* image_rewriter)
+                                   ImgRewriteFilter* image_rewriter,
+                                   ImgCombineFilter* image_combiner)
     : driver_(driver),
       // For now we use the same options as for rewriting and cache-extending
       // images found in HTML.
       cache_extender_(cache_extender),
+      image_combiner_(image_combiner),
       image_rewriter_(image_rewriter),
       image_rewrites_(NULL),
       cache_extends_(NULL),
@@ -77,7 +80,8 @@ bool CssImageRewriter::RewritesEnabled() const {
   const RewriteOptions* options = driver_->options();
   return (options->Enabled(RewriteOptions::kRewriteImages) ||
           options->Enabled(RewriteOptions::kLeftTrimUrls) ||
-          options->Enabled(RewriteOptions::kExtendCache));
+          options->Enabled(RewriteOptions::kExtendCache) ||
+          options->Enabled(RewriteOptions::kSpriteImages));
 }
 
 bool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
@@ -164,6 +168,7 @@ bool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                                         Css::Stylesheet* stylesheet,
                                         int64* expiration_time_ms,
                                         MessageHandler* handler) {
+  image_combiner_->Reset();
   bool edited = false;
   int64 expire_at_ms = kint64max;
   if (RewritesEnabled()) {
@@ -187,20 +192,28 @@ bool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
             // have a single value which is a URL, but background could have
             // more values.
             Css::Values* values = decl->mutable_values();
-            for (Css::Values::iterator value_iter = values->begin();
-                 value_iter != values->end(); ++value_iter) {
-              Css::Value* value = *value_iter;
+            for (size_t value_index = 0; value_index < values->size();
+                 value_index++) {
+              Css::Value* value = values->at(value_index);
               if (value->GetLexicalUnitType() == Css::Value::URI) {
                 std::string rel_url =
                     UnicodeTextToUTF8(value->GetStringValue());
                 handler->Message(kInfo, "Found image URL %s", rel_url.c_str());
                 std::string new_url;
-                int64 input_expire_at_ms;
-                if (RewriteImageUrl(base_url, rel_url, &new_url,
-                                    &input_expire_at_ms, handler)) {
+                // TODO(abliss): only do this resolution once.
+                const GoogleUrl original_url(base_url, rel_url);
+                int64 input_expire_at_ms = kint64max;
+                if (driver_->options()->Enabled(RewriteOptions::kSpriteImages)
+                    && image_combiner_->AddCssBackground(
+                        original_url, &decls, values, value_index, handler)) {
+                  // TODO(abliss): sharing between spriting and other rewrites.
+                  // For now we assume that spriting subsumes all other
+                  // rewrites -- i.e. cache extending and recompressing.
+                } else if (RewriteImageUrl(base_url, rel_url, &new_url,
+                                           &input_expire_at_ms, handler)) {
                   // Replace the URL.
-                  *value_iter = new Css::Value(Css::Value::URI,
-                                               UTF8ToUnicodeText(new_url));
+                  (*values)[value_index] = new Css::Value(
+                      Css::Value::URI, UTF8ToUnicodeText(new_url));
                   delete value;
                   edited = true;
                   handler->Message(kInfo, "Successfully rewrote %s to %s",
@@ -229,6 +242,7 @@ bool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                      base_url.spec_c_str());
   }
   *expiration_time_ms = expire_at_ms;
+  edited |= image_combiner_->DoCombine(handler);
   return edited;
 }
 

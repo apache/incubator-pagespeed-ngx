@@ -68,6 +68,7 @@ class RewriteDriver : public HtmlParse {
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
   static const char kCacheExtenderId[];
+  static const char kImageCombineId[];
   static const char kImageCompressionId[];
   static const char kJavascriptCombinerId[];
   static const char kJavascriptMinId[];

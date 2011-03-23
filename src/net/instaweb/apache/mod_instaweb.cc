@@ -416,6 +416,17 @@ InstawebContext* build_context_for_request(request_rec* request) {
     return NULL;
   }
 
+  // Requests with a non-NULL main pointer are internal requests created by
+  // apache (or other modules in apache).  We don't need to process them.
+  // E.g. An included header file will be processed as a separate request.
+  // mod_pagespeed needs to process only the "completed" page with the header
+  // inlined, not the separate header request.
+  // See http://httpd.apache.org/dev/apidoc/apidoc_request_rec.html for
+  // request documentation.
+  if (request->main != NULL) {
+    return NULL;
+  }
+
   ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                 "ModPagespeed OutputFilter called for request %s",
                 request->unparsed_uri);

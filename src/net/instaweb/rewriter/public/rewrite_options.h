@@ -56,6 +56,7 @@ class RewriteOptions {
     kRewriteCss,
     kRewriteImages,
     kRewriteJavascript,
+    kSpriteImages,
     kStripScripts,  // Update kLastFilter if you add something after this.
   };
 

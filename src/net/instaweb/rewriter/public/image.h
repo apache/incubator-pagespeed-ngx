@@ -181,6 +181,10 @@ class Image {
   // if successful.
   bool DrawImage(Image* image, int x, int y);
 
+  // Attempts to decode this image and load its raster into memory.  If this
+  // returns false, future calls to DrawImage and ResizeTo will fail.
+  bool EnsureLoaded() { return LoadOpenCv(); }
+
  private:
   // byte buffer type most convenient for working with given OpenCV version
 #ifdef USE_OPENCV_2_1

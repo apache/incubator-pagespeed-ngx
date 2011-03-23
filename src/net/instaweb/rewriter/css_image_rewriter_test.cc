@@ -26,6 +26,11 @@ namespace net_instaweb {
 
 namespace {
 
+// Filenames of resource files.
+const char kBikePngFile[] = "BikeCrashIcn.png";
+const char kCuppaPngFile[] = "Cuppa.png";
+const char kPuzzleJpgFile[] = "Puzzle.jpg";
+
 const char kImageData[] = "Invalid PNG but it does not matter for this test";
 
 class CssImageRewriterTest : public ResourceManagerTestBase {
@@ -66,6 +71,42 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
       "</style></head>";
 
   ValidateExpected("cache_extends_images", before, after);
+}
+
+TEST_F(CssImageRewriterTest, SpritesImages) {
+  AddFilter(RewriteOptions::kSpriteImages);
+  AddFilter(RewriteOptions::kRewriteCss);
+  AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile),
+                       StrCat(GTestSrcDir(), kTestData, kPuzzleJpgFile),
+                       kContentTypeJpeg);
+  AddFileToMockFetcher(StrCat(kTestDomain, kCuppaPngFile),
+                       StrCat(GTestSrcDir(), kTestData, kCuppaPngFile),
+                       kContentTypePng);
+  AddFileToMockFetcher(StrCat(kTestDomain, kBikePngFile),
+                       StrCat(GTestSrcDir(), kTestData, kBikePngFile),
+                       kContentTypePng);
+
+  const std::string before = StrCat(
+      "<head><style>"
+      "#div1 { background-image:url('", kCuppaPngFile, "');"
+      "background-repeat:no-repeat;}"
+      "#div2 { background:transparent url('", kBikePngFile, "') no-repeat}"
+      "#div3 { background-image: url('", kPuzzleJpgFile, "');"
+      "background-repeat:no-repeat;}"
+      "</style></head>");
+  // The JPEG will not be included in the sprite because we only handle PNGs.
+  const std::string sprite = StrCat(kTestDomain, kCuppaPngFile, "+",
+                                     kBikePngFile, ".pagespeed.is.0.png");
+  const std::string after = StrCat(
+      "<head><style>#div1{background-image:url(", sprite, ");"
+      "background-repeat:no-repeat;"
+      "background-position-y:0px!important;background-position-x:0px!important}"
+      "#div2{background:transparent url(", sprite,
+      ") no-repeat;background-position-y:-70px!important;"
+      "background-position-x:0px!important}#div3{background-image:url(",
+      kPuzzleJpgFile, ");background-repeat:no-repeat}</style></head>");
+
+  ValidateExpected("sprites_images", before, after);
 }
 
 }  // namespace

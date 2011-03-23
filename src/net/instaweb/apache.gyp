@@ -33,6 +33,7 @@
         '<(DEPTH)/third_party/serf/serf.gyp:serf',
         '<(instaweb_root)/instaweb.gyp:instaweb_htmlparse',
         '<(instaweb_root)/instaweb.gyp:instaweb_http',
+        '<(instaweb_root)/instaweb.gyp:instaweb_spriter',
         '<(instaweb_root)/instaweb.gyp:instaweb_rewriter',
         '<(instaweb_root)/instaweb.gyp:instaweb_util',
       ],

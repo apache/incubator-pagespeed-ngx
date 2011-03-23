@@ -30,43 +30,77 @@ namespace net_instaweb {
 
 namespace {
 
-// This test is parametrized on whether to test with processes or threads,
-// since we want PthreadSharedMem to be usable with both.
-class PthreadSharedMemTest
-    : public SharedMemTestBase,
-      public ::testing::WithParamInterface<bool> {
+// We test operation of pthread shared memory with both thread & process
+// use, which is what PthreadSharedMemThreadEnv and PthreadSharedMemProcEnv
+// provide.
+
+class PthreadSharedMemEnvBase : public SharedMemTestEnv {
  public:
-  PthreadSharedMemTest()
-      : SharedMemTestBase(new PthreadSharedMem),
-        use_threads_(GetParam()) {
+  virtual AbstractSharedMem* CreateSharedMemRuntime() {
+    return new PthreadSharedMem();
   }
 
- protected:
-  virtual bool CreateChild(TestMethod method) {
-    if (use_threads_) {
-      Closure* closure = new Closure;
-      closure->base = this;
-      closure->method = method;
-      pthread_t thread;
-      if (pthread_create(&thread, NULL, Closure::Invoke, closure) != 0) {
-        return false;
-      }
-      child_threads_.push_back(thread);
-      return true;
+  virtual void ShortSleep() {
+    usleep(1000);
+  }
+};
+
+class PthreadSharedMemThreadEnv : public PthreadSharedMemEnvBase {
+ public:
+  virtual bool CreateChild(Callback* callback) {
+    pthread_t thread;
+    if (pthread_create(&thread, NULL, InvokeCallback, callback) != 0) {
+      return false;
+    }
+    child_threads_.push_back(thread);
+    return true;
+  }
+
+  virtual void WaitForChildren() {
+    for (size_t i = 0; i < child_threads_.size(); ++i) {
+      void* result = this;  // non-NULL -> failure.
+      EXPECT_EQ(0, pthread_join(child_threads_[i], &result));
+      EXPECT_EQ(NULL, result) << "Child reported failure";
+    }
+    child_threads_.clear();
+  }
+
+  virtual void ChildFailed() {
+    // In case of failure, we exit the thread with a non-NULL status.
+    // We leak the callback object in that case, but this only gets called
+    // for test failures anyway.
+    pthread_exit(this);
+  }
+
+ private:
+  static void* InvokeCallback(void* raw_callback_ptr) {
+    Callback* callback = static_cast<Callback*>(raw_callback_ptr);
+    callback->Run();
+    delete callback;
+    return NULL;  // Used to denote success
+  }
+
+  std::vector<pthread_t> child_threads_;
+};
+
+class PthreadSharedMemProcEnv : public PthreadSharedMemEnvBase {
+ public:
+  virtual bool CreateChild(Callback* callback) {
+    pid_t ret = fork();
+    if (ret == -1) {
+      // Failure
+      delete callback;
+      return false;
+    } else if (ret == 0) {
+      // Child.
+      callback->Run();
+      delete callback;
+      std::exit(0);
     } else {
-      pid_t ret = fork();
-      if (ret == -1) {
-        // Failure
-        return false;
-      } else if (ret == 0) {
-        // Child.
-        (this->*method)();
-        std::exit(0);
-      } else {
-        // Parent.
-        child_processes_.push_back(ret);
-        return true;
-      }
+      // Parent.
+      child_processes_.push_back(ret);
+      delete callback;
+      return true;
     }
   }
 
@@ -78,87 +112,20 @@ class PthreadSharedMemTest
       EXPECT_EQ(0, WEXITSTATUS(status)) << "Child reported failure";
     }
     child_processes_.clear();
-
-    for (size_t i = 0; i < child_threads_.size(); ++i) {
-      void* result = this;  // non-NULL -> failure.
-      EXPECT_EQ(0, pthread_join(child_threads_[i], &result));
-      EXPECT_EQ(NULL, result) << "Child reported failure";
-    }
-    child_threads_.clear();
-  }
-
-  virtual void ShortSleep() {
-    usleep(1000);
   }
 
   virtual void ChildFailed() {
-    if (use_threads_) {
-      pthread_exit(this);
-    } else {
-      exit(-1);
-    }
+    exit(-1);
   }
 
  private:
-  // Information we need to invoke the method passed to CreateChild
-  // inside a thread
-  struct Closure {
-    PthreadSharedMemTest* base;
-    TestMethod method;
-
-    static void* Invoke(void* instance) {
-      static_cast<Closure*>(instance)->DoInvoke();
-      return NULL;  // null -> success
-    }
-
-    void DoInvoke() {
-      (base->*method)();
-      delete this;
-    }
-  };
-
   std::vector<pid_t> child_processes_;
-  std::vector<pthread_t> child_threads_;
-  bool use_threads_;
-
-  DISALLOW_COPY_AND_ASSIGN(PthreadSharedMemTest);
 };
 
-TEST_P(PthreadSharedMemTest, TestRewrite) {
-  TestReadWrite(false);
-}
-
-TEST_P(PthreadSharedMemTest, TestRewriteReattach) {
-  TestReadWrite(true);
-}
-
-TEST_P(PthreadSharedMemTest, TestLarge) {
-  TestLarge();
-}
-
-TEST_P(PthreadSharedMemTest, TestDistinct) {
-  TestDistinct();
-}
-
-TEST_P(PthreadSharedMemTest, TestDestroy) {
-  TestDestroy();
-}
-
-TEST_P(PthreadSharedMemTest, TestCreateTwice) {
-  TestCreateTwice();
-}
-
-TEST_P(PthreadSharedMemTest, TestTwoKids) {
-  TestTwoKids();
-}
-
-TEST_P(PthreadSharedMemTest, TestMutex) {
-  TestMutex();
-}
-
-INSTANTIATE_TEST_CASE_P(PthreadSharedMemTestInstance,
-                        PthreadSharedMemTest,
-                        ::testing::Bool());
+INSTANTIATE_TYPED_TEST_CASE_P(PthreadProc, SharedMemTestTemplate,
+                              PthreadSharedMemProcEnv);
+INSTANTIATE_TYPED_TEST_CASE_P(PthreadThread, SharedMemTestTemplate,
+                              PthreadSharedMemThreadEnv);
 
 }  // namespace
 

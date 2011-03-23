@@ -1,0 +1,83 @@
+// Copyright 2011 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Author: skerner@google.com (Sam Kerner)
+
+syntax = "proto2";
+
+option optimize_for = LITE_RUNTIME;
+
+package net_instaweb.spriter;
+
+enum PlacementMethod {
+  VERTICAL_STRIP = 0;
+}
+
+enum ImageFormat {
+  PNG = 0;
+  JPEG = 1;
+}
+
+// Record for each image to sprite.
+message Image {
+  required string path = 1;
+}
+
+// Options that control how spriting is done.
+message SpriteOptions {
+  required PlacementMethod placement_method = 1;
+  required ImageFormat output_format = 2;
+
+  // Base path from which other relative paths to input files are resolved.
+  required string input_base_path = 3;
+
+  // Paths to output files are resolved relative to this path.  Setting
+  // input_base_path == output_base_path is supported.
+  required string output_base_path = 4;
+
+  // Path to write the combined image into.
+  required string output_image_path = 5;
+}
+
+message SpriterInput {
+  optional int32 id = 1 [default = 0];
+  required SpriteOptions options = 2;
+  repeated Image input_image_set = 3;
+}
+
+message Rect {
+  required int32 x_pos = 1;
+  required int32 y_pos = 2;
+  required int32 width = 3;
+  required int32 height = 4;
+}
+
+message ImagePosition {
+  required string path = 1;
+  required Rect clip_rect = 2;
+}
+
+message SpriterResult {
+  required int32 id = 1;
+
+  // Absolute path under which all output paths are resolved from.
+  required string output_base_path = 2;
+
+  // Path to the combined image.
+  required string output_image_path = 3;
+
+  // Each input image will have a record giving its position in the
+  // combined image.
+  repeated ImagePosition image_position = 4;
+}

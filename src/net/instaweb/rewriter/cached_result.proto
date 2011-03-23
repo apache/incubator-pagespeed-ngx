@@ -19,6 +19,8 @@
 
 syntax = "proto2";
 
+import "net/instaweb/spriter/public/image_spriter.proto";
+
 option optimize_for = LITE_RUNTIME;
 
 package net_instaweb;
@@ -64,7 +66,7 @@ message CachedResult {
   // mistakes like that, we mark a CachedResult as 'frozen' upon save,
   // and DCHECK any modifications.
   optional bool frozen = 5 [ default = false ];
-  
+
   // If the URL is optimizable, this will contain the hash of the encoded
   // resource.
   optional string hash = 6;
@@ -72,9 +74,9 @@ message CachedResult {
   // If the URL is optimizable, this will contain the extension for the
   // encoded resource, not including the leading "."
   optional string extension = 7;
-  
+
   // Tags 8+ are for use by individual filters.
-  
+
   // The timestamp of the input resource.
   // Used by rewrite_single_resource_filter.
   optional int64 input_timestamp_ms = 8;
@@ -96,6 +98,12 @@ message CachedResult {
   // base64-encoded data: URI for inlining a small image.
   // Used by img_rewrite_filter.
   optional string image_inlined_uri = 12;
+
+  // The result of a spriting operation, containing x/y coordinates for each
+  // subimage in the sprite.
+  // Used by img_combine_filter.
+  optional spriter.SpriterResult spriter_result = 13;
+
 }
 
 // Encapsulates all the data needed to rewrite a resource.

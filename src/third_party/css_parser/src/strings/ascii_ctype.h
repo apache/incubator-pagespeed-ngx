@@ -20,8 +20,6 @@
 #ifndef STRINGS_ASCII_CTYPE_H__
 #define STRINGS_ASCII_CTYPE_H__
 
-#include "base/basictypes.h"
-
 // ----------------------------------------------------------------------
 // ascii_isalpha()
 // ascii_isdigit()
@@ -86,7 +84,7 @@
 // ----------------------------------------------------------------------
 
 #define kApb kAsciiPropertyBits
-extern const uint8 kAsciiPropertyBits[256];
+extern const unsigned char kAsciiPropertyBits[256];
 static inline bool ascii_isalpha(unsigned char c) { return kApb[c] & 0x01; }
 static inline bool ascii_isalnum(unsigned char c) { return kApb[c] & 0x04; }
 static inline bool ascii_isspace(unsigned char c) { return kApb[c] & 0x08; }

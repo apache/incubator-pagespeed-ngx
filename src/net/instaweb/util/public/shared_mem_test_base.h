@@ -25,26 +25,68 @@
 
 namespace net_instaweb {
 
-class SharedMemTestBase : public testing::Test {
- protected:
-  typedef void (SharedMemTestBase::*TestMethod)();
+class SharedMemTestEnv {
+ public:
+  class Callback {
+   public:
+    // Note: unlike usual, these callbacks should not auto-cleanup themselves
+    // on invocation. The responsibility is given to the TestEnv as the #
+    // of copies floating around depends on how the memory sharing ends up.
+    virtual void Run() = 0;
+    virtual ~Callback();
+  };
 
-  // Pass in a fresh copy of the runtime you're trying to test
-  explicit SharedMemTestBase(AbstractSharedMem* shmem_runtime);
+  // A little helper for using member functions with CreateChild.
+  template<typename T>
+  class MethodCallback : public Callback {
+   public:
+    typedef void (T::*Method)();
 
-  // This method must be overridden to start a new process and run
-  // this->*(method)() in it. Returns whether OK or not.
-  virtual bool CreateChild(TestMethod method) = 0;
+    MethodCallback(T* base, Method method) : base_(base), method_(method) {
+    }
 
-  // This method must be overridden to block until all processes started by
-  // CreateChild exit.
+    virtual void Run() {
+      (base_->*method_)();
+    }
+
+   private:
+    T* base_;
+    Method method_;
+  };
+
+  virtual ~SharedMemTestEnv();
+  SharedMemTestEnv() {}
+
+  virtual AbstractSharedMem* CreateSharedMemRuntime() = 0;
+
+  // This method must be overridden to start a new process and invoke the
+  // callback object in it. The runtime is responsible for deleting the callback
+  // object properly.
+  //
+  // Returns whether started OK or not.
+  virtual bool CreateChild(Callback* callback) = 0;
+
+  // This method must be overridden to block until all processes/threads started
+  // by CreateChild exit.
   virtual void WaitForChildren() = 0;
 
   // Runtime-specific short sleep.
   virtual void ShortSleep() = 0;
 
-  // Child exiting with failure
+  // Called in a child to denote it exiting with failure
   virtual void ChildFailed() = 0;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SharedMemTestEnv);
+};
+
+class SharedMemTestBase : public testing::Test {
+ protected:
+  typedef void (SharedMemTestBase::*TestMethod)();
+
+  explicit SharedMemTestBase(SharedMemTestEnv* test_env);
+
+  bool CreateChild(TestMethod method);
 
   // Basic read/write operation test.
   void TestReadWrite(bool reattach);
@@ -69,6 +111,8 @@ class SharedMemTestBase : public testing::Test {
   void TestMutex();
 
  private:
+  typedef SharedMemTestEnv::MethodCallback<SharedMemTestBase> MethodCallback;
+
   static const int kLarge = 0x1000 - 4;  // not a multiple of any page size, but
                                          // a multiple of 4.
   static const int kNumIncrements = 0xFFFFF;
@@ -96,11 +140,60 @@ class SharedMemTestBase : public testing::Test {
 
   void MutexChild();
 
+  scoped_ptr<SharedMemTestEnv> test_env_;
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
   MockMessageHandler handler_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemTestBase);
 };
+
+// Passes in the SharedMemTestEnv to SharedMemTestBase via a template param
+// to help glue us to the test framework
+template<typename ConcreteTestEnv>
+class SharedMemTestTemplate : public SharedMemTestBase {
+ public:
+  SharedMemTestTemplate() : SharedMemTestBase(new ConcreteTestEnv) {
+  }
+};
+
+TYPED_TEST_CASE_P(SharedMemTestTemplate);
+
+TYPED_TEST_P(SharedMemTestTemplate, TestRewrite) {
+  SharedMemTestBase::TestReadWrite(false);
+}
+
+TYPED_TEST_P(SharedMemTestTemplate, TestRewriteReattach) {
+  SharedMemTestBase::TestReadWrite(true);
+}
+
+TYPED_TEST_P(SharedMemTestTemplate, TestLarge) {
+  SharedMemTestBase::TestLarge();
+}
+
+TYPED_TEST_P(SharedMemTestTemplate, TestDistinct) {
+  SharedMemTestBase::TestDistinct();
+}
+
+TYPED_TEST_P(SharedMemTestTemplate, TestDestroy) {
+  SharedMemTestBase::TestDestroy();
+}
+
+TYPED_TEST_P(SharedMemTestTemplate, TestCreateTwice) {
+  SharedMemTestBase::TestCreateTwice();
+}
+
+TYPED_TEST_P(SharedMemTestTemplate, TestTwoKids) {
+  SharedMemTestBase::TestTwoKids();
+}
+
+TYPED_TEST_P(SharedMemTestTemplate, TestMutex) {
+  SharedMemTestBase::TestMutex();
+}
+
+REGISTER_TYPED_TEST_CASE_P(SharedMemTestTemplate, TestRewrite,
+                           TestRewriteReattach, TestLarge, TestDistinct,
+                           TestDestroy, TestCreateTwice, TestTwoKids,
+                           TestMutex);
 
 }  // namespace net_instaweb
 

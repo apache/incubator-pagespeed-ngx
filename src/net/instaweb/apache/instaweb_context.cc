@@ -251,10 +251,6 @@ const char* InstawebContext::MakeRequestUrl(request_rec* request) {
   if (url == NULL) {
     if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
       url = apr_pstrdup(request->pool, request->unparsed_uri);
-    } else if (url == NULL && request->main != NULL) {
-      // Now check to see if we have a main, if we do, use its host information.
-      url = ap_construct_url(request->main->pool, request->unparsed_uri,
-                             request->main);
     } else {
       url = ap_construct_url(request->pool, request->unparsed_uri, request);
     }
