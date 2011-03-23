@@ -1,0 +1,13 @@
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=UTF-8
+Transfer-Encoding: chunked
+Pragma: public
+Expires: Fri, 25 Mar 2011 15:02:41 GMT
+Cache-Control: max-age=172800, public, must-revalidate, proxy-revalidate
+Vary: Accept-Encoding,Cookie,User-Agent
+Server: Apache
+Date: Wed, 23 Mar 2011 15:02:41 GMT
+
+<html><body>
+example.com expected body
+</body></html>

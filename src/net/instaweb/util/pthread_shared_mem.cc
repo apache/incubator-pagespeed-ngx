@@ -96,12 +96,14 @@ class PthreadSharedMemSegment : public AbstractSharedMemSegment {
     }
 
     if (pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED) != 0) {
+      pthread_mutexattr_destroy(&attr);
       handler->Message(
           kError, "pthread_mutexattr_setpshared failed with errno:%d", errno);
       return false;
     }
 
     if (pthread_mutex_init(MutexPtr(offset), &attr) != 0) {
+      pthread_mutexattr_destroy(&attr);
       handler->Message(kError, "pthread_mutex_init failed with errno:%d",
                        errno);
       return false;
@@ -147,10 +149,16 @@ std::string PthreadSharedMem::EncodeName(const std::string& name) {
   // a leading slash and no other slashes; however our clients give us
   // hierarchical path names. We hence must flatten them by hashing.
   //
-  // Note that O_EXCL below prevents files from created by other users from
-  // doing symlink attacks.
-  // ### They could prevent us from creating shmem segments, however?
-  // ### (Feedback from reviewers would be appreciated)
+  // Our names are predictable, and do not get hierarchical directory
+  // protection from other users, but there are some precautions we take:
+  // 1) We create with O_EXCL below, so we will never pick up files from
+  // other users.
+  //
+  // 2) The created segment only has user-permissions, so if we do
+  // create it, no-one else can touch it.
+  //
+  // This does not prevent a malicious user from denying us from using
+  // shared memory entirely, but that's hardly the only DOS available to them.
   MD5Hasher hasher;
   return StrCat("/mod_pagespeed", hasher.Hash(name));
 }

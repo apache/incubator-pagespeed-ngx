@@ -47,11 +47,12 @@ class AbstractSharedMemSegment {
   // To use a mutex in shared memory, you first need to dedicate some
   // [offset, offset + SharedMutexSize()) chunk of memory to it. Then,
   // exactly one process must call InitializeSharedMutex(offset), and
-  // all others must call AttachToSharedMutex(offset) afterwards.
+  // all users must call AttachToSharedMutex(offset) afterwards.
   //
   // InitializeSharedMutex returns whether it succeeded or not.
   // AttachToSharedMutex returns a fresh object, giving ownership
-  // to the caller.
+  // to the caller. The object returned is outside shared memory,
+  // and acts a helper for referring to the shared state.
   virtual bool InitializeSharedMutex(size_t offset,
                                      MessageHandler* handler) = 0;
   virtual AbstractMutex* AttachToSharedMutex(size_t offset) = 0;

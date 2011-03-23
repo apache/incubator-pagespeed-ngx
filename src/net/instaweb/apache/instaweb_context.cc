@@ -30,9 +30,9 @@ extern module AP_MODULE_DECLARE_DATA pagespeed_module;
 
 namespace net_instaweb {
 
-// Number of times to go down the request->prev chain looking
-// for an absolute url.
-const int kChasePrevRequestLimit = 5;
+// Number of times to go down the request->prev chain looking for an
+// absolute url.
+const int kRequestChainLimit = 5;
 
 InstawebContext::InstawebContext(request_rec* request,
                                  const ContentType& content_type,
@@ -223,21 +223,35 @@ ApacheRewriteDriverFactory* InstawebContext::Factory(server_rec* server) {
 // there was a previous request in this chain, and use its url as the
 // original.
 const char* InstawebContext::MakeRequestUrl(request_rec* request) {
-  request_rec *current = request;
-  const char *url = NULL;
-  int i = 0;
-  // Go down the prev chain to see if there this request was a rewrite
-  // from another one.  We want to store the uri the user passed in, not
-  // what we re-wrote it to.
-  // We should not iterate down this chain more than once (MakeRequestUrl
-  // will already have been called for request->prev, before this request
-  // is created).  However, max out at 5 iterations, just in case.
-  do {
-    url = apr_table_get(current->notes, kPagespeedOriginalUrl);
-    ++i;
-    current = current->prev;
-  } while (url != NULL && current != NULL && i < kChasePrevRequestLimit);
+  const char *url = apr_table_get(request->notes, kPagespeedOriginalUrl);
 
+  // Go down the prev chain to see if there this request was a rewrite
+  // from another one.  We want to store the uri the user passed in,
+  // not what we re-wrote it to.  We should not iterate down this
+  // chain more than once (MakeRequestUrl will already have been
+  // called for request->prev, before this request is created).
+  // However, max out at 5 iterations, just in case.
+  request_rec *prev = request->prev;
+  for (int i = 0; (url == NULL) && (prev != NULL) && (i < kRequestChainLimit);
+       ++i, prev = prev->prev) {
+    url = apr_table_get(prev->notes, kPagespeedOriginalUrl);
+  }
+
+  // Chase 'main' chain as well, clamping at kRequestChainLimit loops.
+  // This will eliminate spurious 'index.html' noise we've seen from
+  // slurps.  See 'make apache_debug_slurp_test' -- the attempt to
+  // slurp 'www.example.com'.  The reason this is necessary is that
+  // mod_dir.c's fixup_dir() calls ap_internal_fast_redirect in
+  // http_request.c, which mutates the original requests's uri fields,
+  // leaving little trace of the url we actually need to resolve.  Also
+  // note that http_request.c:ap_internal_fast_redirect 'overlays'
+  // the source r.notes onto the dest r.notes, which in this case would
+  // work against us if we don't first propagate the OriginalUrl.
+  request_rec *main = request->main;
+  for (int i = 0; (url == NULL) && (main != NULL) && (i < kRequestChainLimit);
+       ++i, main = main->main) {
+    url = apr_table_get(main->notes, kPagespeedOriginalUrl);
+  }
 
   /*
    * In some contexts we are seeing relative URLs passed
