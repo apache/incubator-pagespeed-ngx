@@ -95,22 +95,6 @@
       },
     },
     {
-      'target_name': 'instaweb_spriter_test',
-      'type': '<(library)',
-      'dependencies': [
-        'instaweb_spriter',
-        '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/testing/gmock.gyp:gmock',
-      ],
-      'sources': [
-        'spriter/image_spriter_test.cc',
-      ],
-      'include_dirs': [
-        '<(instaweb_root)',
-      ],
-    },
-
-    {
       'target_name': 'instaweb_rewriter_genproto',
       'type': 'none',
       'sources': [
@@ -148,6 +132,24 @@
       },
       'export_dependent_settings': [
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+      ],
+    },
+    {
+      'target_name': 'instaweb_spriter_test',
+      'type': '<(library)',
+      'dependencies': [
+        'instaweb_spriter',
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/testing/gmock.gyp:gmock',
+        'instaweb_spriter_genproto',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protoc#host',
+      ],
+      'sources': [
+        'spriter/image_spriter_test.cc',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
       ],
     },
     {
