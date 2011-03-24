@@ -30,7 +30,6 @@
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
-#include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/public/global_constants.h"
@@ -40,6 +39,7 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -307,21 +307,26 @@ class ApacheProcessContext {
     configs_.erase(config);
   }
 
-  AprStatistics* InitStatistics(const StringPiece& filename_prefix) {
+  SharedMemStatistics* InitStatistics(AbstractSharedMem* shmem_runtime,
+                                      const StringPiece& filename_prefix,
+                                      MessageHandler* message_handler) {
     if (statistics_.get() == NULL) {
-      statistics_.reset(new AprStatistics(filename_prefix));
+      // Note that we create the statistics object in the parent process, and
+      // it stays around in the kids but gets reinitialized for them
+      // with a call to InitVariables(false) inside pagespeed_child_init.
+      statistics_.reset(
+          new SharedMemStatistics(shmem_runtime, filename_prefix.as_string()));
       RewriteDriverFactory::Initialize(statistics_.get());
       SerfUrlAsyncFetcher::Initialize(statistics_.get());
       statistics_->AddVariable("merge_time_us");
       statistics_->AddVariable("parse_time_us");
       statistics_->AddVariable("html_rewrite_time_us");
-      statistics_->InitVariables(true);
+      statistics_->InitVariables(true, message_handler);
       merge_time_us_ = statistics_->GetVariable("merge_time_us");
       parse_time_us_ = statistics_->GetVariable("parse_time_us");
       html_rewrite_time_us_ = statistics_->GetVariable("html_rewrite_time_us");
       parse_time_us_->Add(stored_parse_time_us_);
       stored_parse_time_us_ = 0;
-      statistics_->InitVariables(true);
     }
     return statistics_.get();
   }
@@ -356,7 +361,7 @@ class ApacheProcessContext {
 
   std::set<ApacheRewriteDriverFactory*> factories_;
   std::set<ApacheConfig*> configs_;
-  scoped_ptr<AprStatistics> statistics_;
+  scoped_ptr<SharedMemStatistics> statistics_;
   Variable* merge_time_us_;
   Variable* parse_time_us_;
   Variable* html_rewrite_time_us_;
@@ -629,8 +634,9 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   server_rec* next_server = server;
   while (next_server) {
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(next_server);
+    factory->set_is_root_process(false);
     if (factory->statistics()) {
-      factory->statistics()->InitVariables(false);
+      factory->statistics()->InitVariables(false, factory->message_handler());
     }
     next_server = next_server->next;
   }
@@ -638,7 +644,7 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
 
 int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                           server_rec *server_list) {
-  AprStatistics* statistics = NULL;
+  SharedMemStatistics* statistics = NULL;
 
   // This routine is complicated by the fact that statistics use inter-process
   // mutexes and have static data, which co-mingles poorly with this otherwise
@@ -671,7 +677,8 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       }
       if ((factory->statistics_enabled() && (statistics == NULL))) {
         statistics = apache_process_context.InitStatistics(
-            factory->filename_prefix());
+            factory->shmem_runtime(), factory->filename_prefix(),
+            factory->message_handler());
       }
     }
   }

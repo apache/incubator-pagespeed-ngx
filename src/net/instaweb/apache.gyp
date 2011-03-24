@@ -36,6 +36,7 @@
         '<(instaweb_root)/instaweb.gyp:instaweb_spriter',
         '<(instaweb_root)/instaweb.gyp:instaweb_rewriter',
         '<(instaweb_root)/instaweb.gyp:instaweb_util',
+        '<(instaweb_root)/instaweb.gyp:instaweb_util_pthread',
       ],
       'include_dirs': [
         '<(DEPTH)',

@@ -227,6 +227,7 @@
         'util/ref_counted.cc',
         'util/rolling_hash.cc',
         'util/simple_stats.cc',
+        'util/shared_mem_statistics.cc',
 #        'util/split_writer.cc',                Not currently needed
         'util/statistics.cc',
         'util/statistics_work_bound.cc',

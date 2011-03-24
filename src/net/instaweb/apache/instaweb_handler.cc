@@ -22,8 +22,8 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/apache/apache_slurp.h"
-#include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/instaweb_context.h"
@@ -36,7 +36,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
+#include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "http_config.h"
 #include "http_core.h"
 #include "http_log.h"
@@ -215,7 +215,7 @@ apr_status_t instaweb_handler(request_rec* request) {
     std::string output;
     ResponseHeaders response_headers;
     StringWriter writer(&output);
-    AprStatistics* statistics = factory->statistics();
+    SharedMemStatistics* statistics = factory->statistics();
     if (statistics) {
       statistics->Dump(&writer, factory->message_handler());
     } else {

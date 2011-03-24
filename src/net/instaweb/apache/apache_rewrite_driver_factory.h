@@ -28,8 +28,9 @@ struct server_rec;
 
 namespace net_instaweb {
 
-class AprStatistics;
+class AbstractSharedMem;
 class SerfUrlAsyncFetcher;
+class SharedMemStatistics;
 class SyncFetcherAdapter;
 class UrlPollableAsyncFetcher;
 
@@ -74,10 +75,16 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   StringPiece file_cache_path() { return file_cache_path_; }
   int64 file_cache_clean_size_kb() { return file_cache_clean_size_kb_; }
   int64 fetcher_time_out_ms() { return fetcher_time_out_ms_; }
-  AprStatistics* statistics() { return statistics_; }
-  void set_statistics(AprStatistics* x) { statistics_ = x; }
+  SharedMemStatistics* statistics() { return statistics_; }
+  void set_statistics(SharedMemStatistics* x) { statistics_ = x; }
   void set_statistics_enabled(bool x) { statistics_enabled_ = x; }
   bool statistics_enabled() const { return statistics_enabled_; }
+
+  AbstractSharedMem* shmem_runtime() const { return shmem_runtime_.get(); }
+
+  // Returns whether we are the initial/root apache process.
+  bool is_root_process() const { return is_root_process_; }
+  void set_is_root_process(bool p) { is_root_process_ = p; }
 
   // Relinquish all static data
   static void Terminate();
@@ -116,7 +123,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   scoped_ptr<AbstractMutex> rewrite_drivers_mutex_;
   SyncFetcherAdapter* serf_url_fetcher_;
   SerfUrlAsyncFetcher* serf_url_async_fetcher_;
-  AprStatistics* statistics_;
+  SharedMemStatistics* statistics_;
+  scoped_ptr<AbstractSharedMem> shmem_runtime_;
 
   // TODO(jmarantz): These options could be consolidated in a protobuf or
   // some other struct, which would keep them distinct from the rest of the
@@ -133,6 +141,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   std::string version_;
   bool statistics_enabled_;
   bool test_proxy_;
+  bool is_root_process_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };

@@ -19,7 +19,6 @@
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mutex.h"
-#include "net/instaweb/apache/apr_statistics.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -31,6 +30,8 @@
 #include "net/instaweb/util/public/gflags.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/pthread_shared_mem.h"
+#include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 
@@ -42,6 +43,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       serf_url_fetcher_(NULL),
       serf_url_async_fetcher_(NULL),
       statistics_(NULL),
+      shmem_runtime_(new PthreadSharedMem()),
       lru_cache_kb_per_process_(0),
       lru_cache_byte_limit_(0),
       file_cache_clean_interval_ms_(Timer::kHourMs),
@@ -50,7 +52,8 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       slurp_flush_limit_(0),
       version_(version.data(), version.size()),
       statistics_enabled_(true),
-      test_proxy_(false) {
+      test_proxy_(false),
+      is_root_process_(true) {
   apr_pool_create(&pool_, NULL);
   cache_mutex_.reset(NewMutex());
   rewrite_drivers_mutex_.reset(NewMutex());
@@ -162,6 +165,9 @@ void ApacheRewriteDriverFactory::ShutDown() {
   }
   cache_mutex_.reset(NULL);
   rewrite_drivers_mutex_.reset(NULL);
+  if (is_root_process_ && (statistics_ != NULL)) {
+    statistics_->GlobalCleanup(message_handler());
+  }
   RewriteDriverFactory::ShutDown();
 }
 
