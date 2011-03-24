@@ -42,10 +42,10 @@ class ThreadsafeCallback : public CacheInterface::Callback {
 
   virtual void Done(CacheInterface::KeyState state) {
     mutex_->Unlock();
+    *callback_->value() = *value();
     callback_->Done(state);
     delete this;
   }
-
 
   AbstractMutex* mutex_;
   const std::string& key_;
