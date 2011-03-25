@@ -253,7 +253,7 @@ class ImgCombineFilter::Combiner
     // transient ones.
 
     // We only handle PNGs for now.
-    if (resource->type()->type() != ContentType::kPng) {
+    if (resource->type() && (resource->type()->type() != ContentType::kPng)) {
       return false;
     }
     // Need to make sure our image library can handle this image.
