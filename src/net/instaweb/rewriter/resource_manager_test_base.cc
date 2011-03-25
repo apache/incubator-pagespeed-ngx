@@ -25,6 +25,9 @@ namespace net_instaweb {
 
 const char ResourceManagerTestBase::kTestData[] =
     "/net/instaweb/rewriter/testdata/";
+const char ResourceManagerTestBase::kXhtmlDtd[] =
+    "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
+    "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">";
 
 ResourceManagerTestBase::ResourceManagerTestBase()
     : mock_url_async_fetcher_(&mock_url_fetcher_),
@@ -146,7 +149,7 @@ void ResourceManagerTestBase::ServeResourceFromManyContexts(
 // constructed it.
 void ResourceManagerTestBase::ServeResourceFromNewContext(
     const std::string& resource_url,
-    RewriteOptions::Filter /*filter*/, // TODO(sligocki): remove
+    RewriteOptions::Filter /*filter*/,  // TODO(sligocki): remove
     Hasher* hasher,
     const StringPiece& expected_content) {
 

@@ -38,7 +38,8 @@ void CssInlineFilter::StartDocumentImpl() {
 }
 
 void CssInlineFilter::EndElementImpl(HtmlElement* element) {
-  if (element->keyword() == HtmlName::kLink) {
+  if ((element->keyword() == HtmlName::kLink) &&
+      !driver_->HasChildrenInFlushWindow(element)) {
     const char* rel = element->AttributeValue(HtmlName::kRel);
     if (rel == NULL || strcmp(rel, "stylesheet")) {
       return;

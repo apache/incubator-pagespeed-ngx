@@ -408,10 +408,6 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
   // Test to make sure we don't miscombine things when handling the input
   // as XHTML producing non-flat <link>'s from the parser
   void TestXhtml(bool flush) {
-    const char kXhtmlDtd[] =
-        "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
-        "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">";
-
     AddFilter(RewriteOptions::kCombineCss);
     std::string a_css_url = StrCat(kTestDomain, "a.css");
     std::string b_css_url = StrCat(kTestDomain, "b.css");
@@ -440,20 +436,17 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     rewrite_driver_.ParseText("</div>");
     rewrite_driver_.FinishParse();
 
-    if (!flush) {
-      // Note: if this test begins failing because the <link> in the output is
-      // no  longer  a <link/> it will need to be revised to make sure it's
-      // still parsed as XHTML.
-      EXPECT_EQ(
-          StrCat(kXhtmlDtd, "<div>",
-                "<link rel=\"stylesheet\" type=\"text/css\" href=\"",
-                combined_url, "\"/></div>"),
-          output_buffer_);
-    } else {
-      // In the case of the flush we cannot actually rewrite this, as the
-      // <links> are still open and hence cannot be combined.
-      EXPECT_EQ(StrCat(input_beginning, "</div>"), output_buffer_);
-    }
+    // Note: As of 3/25/2011 our parser ignores XHTML directives from DOCTYPE
+    // or mime-type, since those are not reliable: see Issue 252.  So we
+    // do sloppy HTML-style parsing in all cases.  If we were to decided that
+    // we could reliably detect XHTML then we could consider tightening the
+    // parser constraints, in which case the expected results from this
+    // code might change depending on the 'flush' arg to this method.
+    EXPECT_EQ(
+        StrCat(kXhtmlDtd, "<div>",
+               "<link rel=\"stylesheet\" type=\"text/css\" href=\"",
+               combined_url, "\"></div>"),
+        output_buffer_);
   }
 
   void CombineWithBaseTag(const char* html_input, StringVector *css_urls) {
@@ -507,6 +500,40 @@ TEST_F(CssCombineFilterTest, CombineCssRecombine) {
 TEST_F(CssCombineFilterTest, DealWithParams) {
   CombineCssWithNames("deal_with_params", &mock_hasher_, "", false,
                       "a.css?U", "b.css?rev=138");
+}
+
+// http://code.google.com/p/modpagespeed/issues/detail?q=css&id=252
+TEST_F(CssCombineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
+  // XHTML text should not have unclosed links.  But if they do, like
+  // in Issue 252, then we should leave them alone.
+  static const char html_format[] =
+      "<head>\n"
+      "  %s\n"
+      "  %s\n"
+      "</head>\n"
+      "<body><div class=\"c1\"><div class=\"c2\"><p>\n"
+      "  Yellow on Blue</p></div></div></body>";
+
+  static const char unclosed_links[] =
+      "  <link rel='stylesheet' href='a.css' type='text/css'>\n"  // unclosed
+      "  <script type='text/javascript' src='c.js'></script>"     // 'in' <link>
+      "  <link rel='stylesheet' href='b.css' type='text/css'>";
+  static const char combination[] =
+      "  <link rel=\"stylesheet\" type=\"text/css\" "
+      "href=\"http://test.com/a.css+b.css.pagespeed.cc.0.css\">\n"
+      "  <script type='text/javascript' src='c.js'></script>  ";
+
+  // Put original CSS files into our fetcher.
+  ResponseHeaders default_css_header;
+  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "a.css"),
+                                default_css_header, ".a {}");
+  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "b.css"),
+                                default_css_header, ".b {}");
+  AddFilter(RewriteOptions::kCombineCss);
+  ValidateExpected("claims_xhtml_but_has_unclosed_links",
+                   StringPrintf(html_format, kXhtmlDtd, unclosed_links),
+                   StringPrintf(html_format, kXhtmlDtd, combination));
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithIEDirective) {

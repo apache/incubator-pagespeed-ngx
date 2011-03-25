@@ -140,7 +140,8 @@ void CssCombineFilter::StartDocumentImpl() {
 void CssCombineFilter::StartElementImpl(HtmlElement* element) {
   HtmlElement::Attribute* href;
   const char* media;
-  if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
+  if (!driver_->HasChildrenInFlushWindow(element) &&
+      css_tag_scanner_.ParseCssElement(element, &href, &media)) {
     // We cannot combine with a link in <noscript> tag and we cannot combine
     // over a link in a <noscript> tag, so this is a barrier.
     if (noscript_element() != NULL) {

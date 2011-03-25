@@ -999,9 +999,13 @@ void HtmlLexer::Parse(const char* text, int size) {
   }
 }
 
+// The HTML-input sloppiness in these three methods is applied independent
+// of whether we think the document is XHTML, either via doctype or
+// mime-type.  The internet is full of lies.  See Issue 252:
+//   http://code.google.com/p/modpagespeed/issues/detail?id=252
+
 bool HtmlLexer::IsImplicitlyClosedTag(HtmlName::Keyword keyword) const {
-  return (!doctype_.IsXhtml() &&
-          IS_IN_SET(kImplicitlyClosedHtmlTags, keyword));
+  return IS_IN_SET(kImplicitlyClosedHtmlTags, keyword);
 }
 
 bool HtmlLexer::TagAllowsBriefTermination(HtmlName::Keyword keyword) const {
@@ -1009,8 +1013,7 @@ bool HtmlLexer::TagAllowsBriefTermination(HtmlName::Keyword keyword) const {
 }
 
 bool HtmlLexer::IsOptionallyClosedTag(HtmlName::Keyword keyword) const {
-  return (!doctype_.IsXhtml() &&
-          IS_IN_SET(kOptionallyClosedTags, keyword));
+  return IS_IN_SET(kOptionallyClosedTags, keyword);
 }
 
 void HtmlLexer::DebugPrintStack() {

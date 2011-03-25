@@ -135,6 +135,34 @@ TEST_F(CssInlineFilterTest, DoNotInlineCssWithImports) {
                 "", "@import \"foo.css\", BODY { color: red; }\n", false, "");
 }
 
+// http://code.google.com/p/modpagespeed/issues/detail?q=css&id=252
+TEST_F(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
+  // XHTML text should not have unclosed links.  But if they do, like
+  // in Issue 252, then we should leave them alone.
+  static const char html_format[] =
+      "<head>\n"
+      "  %s\n"
+      "  %s\n"
+      "  <script type='text/javascript' src='c.js'></script>"     // 'in' <link>
+      "</head>\n"
+      "<body><div class=\"c1\"><div class=\"c2\"><p>\n"
+      "  Yellow on Blue</p></div></div></body>";
+
+  static const char unclosed_css[] =
+      "  <link rel='stylesheet' href='a.css' type='text/css'>\n";  // unclosed
+  static const char inlined_css[] = "  <style>.a {}</style>\n";
+
+  // Put original CSS files into our fetcher.
+  ResponseHeaders default_css_header;
+  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "a.css"),
+                                default_css_header, ".a {}");
+  AddFilter(RewriteOptions::kInlineCss);
+  ValidateExpected("claims_xhtml_but_has_unclosed_links",
+                   StringPrintf(html_format, kXhtmlDtd, unclosed_css),
+                   StringPrintf(html_format, kXhtmlDtd, inlined_css));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

@@ -174,6 +174,20 @@ class HtmlParse {
   // reside under the parent's parent.
   bool DeleteSavingChildren(HtmlElement* element);
 
+  // Determines whether the element, in the context of its flush
+  // window, has children.  If the element is not rewritable, or
+  // has not been closed yet, or inserted into the DOM event stream,
+  // then 'false' is returned.
+  //
+  // Note that the concept of the Flush Window is important because the
+  // knowledge of an element's children is not limited to the current
+  // event being presented to a Filter.  A Filter can call this method
+  // in the StartElement of an event to see if any children are going
+  // to be coming.  Of course, if the StartElement is at the end of a
+  // Flush window, then we won't know about the children, but IsRewritable
+  // will also be false.
+  bool HasChildrenInFlushWindow(HtmlElement* element);
+
   // If possible, replace the existing node with the new node and return true;
   // otherwise, do nothing and return false.
   bool ReplaceNode(HtmlNode* existing_node, HtmlNode* new_node);

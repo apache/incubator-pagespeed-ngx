@@ -616,6 +616,18 @@ bool HtmlParse::DeleteSavingChildren(HtmlElement* element) {
   return deleted;
 }
 
+bool HtmlParse::HasChildrenInFlushWindow(HtmlElement* element) {
+  bool has_children = false;
+  if (IsRewritable(element)) {
+    HtmlEventListIterator first = element->begin();
+    if (first != queue_.end()) {
+      ++first;
+      has_children = (first != element->end());
+    }
+  }
+  return has_children;
+}
+
 bool HtmlParse::ReplaceNode(HtmlNode* existing_node, HtmlNode* new_node) {
   bool replaced = false;
   if (IsRewritable(existing_node)) {

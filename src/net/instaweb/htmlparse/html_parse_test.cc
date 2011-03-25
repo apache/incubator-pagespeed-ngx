@@ -723,6 +723,25 @@ TEST_F(EventListManipulationTest, TestCoalesceOnDelete) {
   CheckExpected("");
 }
 
+TEST_F(EventListManipulationTest, TestHasChildren) {
+  CheckExpected("1");
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
+  html_parse_.AddElement(div, -1);
+  EXPECT_FALSE(html_parse_.HasChildrenInFlushWindow(div));
+  HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
+  HtmlTestingPeer testing_peer;
+  testing_peer.SetNodeParent(node2_, div);
+
+  // Despite having added a new element into the stream, the div is not
+  // closed yet, so it's not recognized as a child.
+  EXPECT_FALSE(html_parse_.HasChildrenInFlushWindow(div));
+
+  html_parse_.CloseElement(div, HtmlElement::EXPLICIT_CLOSE, -1);
+  EXPECT_TRUE(html_parse_.HasChildrenInFlushWindow(div));
+  EXPECT_TRUE(html_parse_.DeleteElement(node2_));
+  EXPECT_FALSE(html_parse_.HasChildrenInFlushWindow(div));
+}
+
 // Unit tests for attribute manipulation.
 // Goal is to make sure we don't (eg) read deallocated storage
 // while manipulating attribute values.

@@ -55,6 +55,9 @@ class RewriteFilter;
 
 class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
  protected:
+  static const char kTestData[];    // Testdata directory.
+  static const char kXhtmlDtd[];    // DOCTYPE string for claming XHTML
+
   ResourceManagerTestBase();
 
   virtual void SetUp();
@@ -195,9 +198,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     // where we'd mock a delay to allow the caches to return, and
     // to run its callbacks.
   }
-
-  // Testdata directory.
-  static const char kTestData[];
 
   MockUrlFetcher mock_url_fetcher_;
   FakeUrlAsyncFetcher mock_url_async_fetcher_;

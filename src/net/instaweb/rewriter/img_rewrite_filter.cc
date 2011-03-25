@@ -317,18 +317,20 @@ bool ImgRewriteFilter::CanInline(
 }
 
 void ImgRewriteFilter::EndElementImpl(HtmlElement* element) {
-  HtmlElement::Attribute *src = img_filter_->ParseImgElement(element);
-  if (src != NULL) {
-    if (driver_->options()->Enabled(RewriteOptions::kDebugLogImgTags)) {
-      // We now know that element is an img tag.
-      // Log the element in its original form.
-      std::string tagstring;
-      element->ToString(&tagstring);
-      driver_->Info(
-          driver_->id(), element->begin_line_number(),
-          "Found image: %s", tagstring.c_str());
+  if (!driver_->HasChildrenInFlushWindow(element)) {
+    HtmlElement::Attribute *src = img_filter_->ParseImgElement(element);
+    if (src != NULL) {
+      if (driver_->options()->Enabled(RewriteOptions::kDebugLogImgTags)) {
+        // We now know that element is an img tag.
+        // Log the element in its original form.
+        std::string tagstring;
+        element->ToString(&tagstring);
+        driver_->Info(
+            driver_->id(), element->begin_line_number(),
+            "Found image: %s", tagstring.c_str());
+      }
+      RewriteImageUrl(element, src);
     }
-    RewriteImageUrl(element, src);
   }
 }
 
