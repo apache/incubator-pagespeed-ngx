@@ -374,6 +374,16 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 
     // TODO(sligocki): This should raise an error and fail to rewrite.
     { "}}", "" },
+
+    // Don't drop precision on large integers (this is 2^31 + 1 which is
+    // just larger than larges z-index accepted by chrome, 2^31 - 1).
+    { "#foo { z-index: 2147483649; }",
+      // Not "#foo{z-index:2.14748e+09}"
+      "#foo{z-index:2147483649}" },
+
+    { "#foo { z-index: 123456789012345678901234567890; }",
+      // TODO(sligocki): "#foo{z-index:12345678901234567890}" },
+      "#foo{z-index:1.234567890123457e+29}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

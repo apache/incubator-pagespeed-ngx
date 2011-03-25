@@ -45,7 +45,7 @@ Value::Value(ValueType ty)
   DCHECK(ty == DEFAULT || ty == UNKNOWN);
 }
 
-Value::Value(float num, const UnicodeText& unit)
+Value::Value(double num, const UnicodeText& unit)
     : type_(NUMBER),
       num_(num),
       color_(0, 0, 0) {
@@ -54,7 +54,7 @@ Value::Value(float num, const UnicodeText& unit)
     str_ = unit;
 }
 
-Value::Value(float num, Unit unit)
+Value::Value(double num, Unit unit)
     : type_(NUMBER),
       num_(num),
       unit_(unit),
@@ -266,7 +266,7 @@ int Value::GetIntegerValue() const {
   return static_cast<int>(num_);
 }
 
-float Value::GetFloatValue() const {
+double Value::GetFloatValue() const {
   DCHECK_EQ(type_, NUMBER);
   return num_;
 }

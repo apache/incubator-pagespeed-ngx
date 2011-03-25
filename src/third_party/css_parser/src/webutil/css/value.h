@@ -65,11 +65,11 @@ class Value {
   Value(ValueType ty);  // NOLINT
 
   // NUMBER with unit.  OTHER is not a valid unit here.  Use the next form:
-  Value(float num, Unit unit);
+  Value(double num, Unit unit);
 
   // NUMBER with unit; we convert unit to an enum for you.  If it's
   // not a known unit, we use the OTHER enum and save the text.
-  Value(float num, const UnicodeText& unit);
+  Value(double num, const UnicodeText& unit);
 
   // Any of the string types (URI, STRING). For IDENT, use the next
   // constructor instead.
@@ -123,7 +123,7 @@ class Value {
   string    GetDimensionUnitText() const;  // NUMBER: the unit as a string.
   Unit      GetDimension() const;          // NUMBER: the unit.
   int       GetIntegerValue() const;       // NUMBER: the integer value.
-  float     GetFloatValue() const;         // NUMBER: the float value.
+  double    GetFloatValue() const;         // NUMBER: the float value.
   // FUNCTION: the function parameter values (ignoring separators).
   const Values* GetParameters() const;
   // FUNCITON: the function parameters with separator information.
@@ -136,7 +136,7 @@ class Value {
 
  private:
   ValueType type_;  // indicates the type of value.  Always valid.
-  float num_;             // for NUMBER (integer values are stored as floats)
+  double num_;            // for NUMBER (integer values are stored as doubles)
   Unit unit_;             // for NUMBER
   Identifier identifier_;   // for IDENT
   UnicodeText str_;    // for NUMBER (OTHER unit_), URI, STRING, FUNCTION

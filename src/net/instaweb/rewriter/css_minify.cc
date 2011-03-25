@@ -247,7 +247,9 @@ void CssMinify::Minify(const Css::Value& value) {
     case Css::Value::NUMBER:
       // TODO(sligocki): Minify number
       // TODO(sligocki): Check that exponential notation is appropriate.
-      Write(StringPrintf("%g%s",
+      // TODO(sligocki): Distinguish integers from float and print differently.
+      // We use .16 to get most precission without getting rounding artifacts.
+      Write(StringPrintf("%.16g%s",
                          value.GetFloatValue(),
                          value.GetDimensionUnitText().c_str()));
       break;
