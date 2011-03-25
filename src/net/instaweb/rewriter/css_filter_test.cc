@@ -40,11 +40,22 @@ TEST_F(CssFilterTest, SimpleRewriteCssTest) {
 
 // Make sure we can deal with 0 character nodes between open and close of style.
 TEST_F(CssFilterTest, RewriteEmptyCssTest) {
-  ValidateNoChange("rewrite_empty_css", "");
+  ValidateRewriteInlineCss("rewrite_empty_css-inline", "", "",
+                           kExpectChange | kExpectSuccess | kNoStatCheck);
+  // Note: We must check stats ourselves because, for technical reasons,
+  // empty inline styles are not treated as being rewritten at all.
+  //EXPECT_EQ(0, num_files_minified_->Get());
+  EXPECT_EQ(0, minified_bytes_saved_->Get());
+  EXPECT_EQ(0, num_parse_failures_->Get());
+
+  ValidateRewriteExternalCss("rewrite_empty_css-external", "", "",
+                             kExpectChange | kExpectSuccess | kNoStatCheck);
+  EXPECT_EQ(0, minified_bytes_saved_->Get());
+  EXPECT_EQ(0, num_parse_failures_->Get());
 }
 
 // Make sure we do not recompute external CSS when re-processing an already
-// handled page
+// handled page.
 TEST_F(CssFilterTest, RewriteRepeated) {
   ValidateRewriteExternalCss("rep", " div { } ", "div{}",
                              kExpectChange | kExpectSuccess);
@@ -60,15 +71,20 @@ TEST_F(CssFilterTest, RewriteRepeated) {
 }
 
 // Make sure we do not reparse external CSS when we know it already has
-// a parse error
+// a parse error.
 TEST_F(CssFilterTest, RewriteRepeatedParseError) {
-  const char kInvalidCss[] = "}}";
+  const char kInvalidCss[] = "@media }}";
+  // Note: It is important that these both have the same id so that the
+  // generated CSS file names are identical.
+  // TODO(sligocki): This is sort of annoying for error reporting which
+  // is suposed to use id to uniquely distinguish which test was running.
   ValidateRewriteExternalCss("rep_fail", kInvalidCss, "",
                              kExpectNoChange | kExpectFailure);
+  // First time, we fail to parse.
+  EXPECT_EQ(1, num_parse_failures_->Get());
   ValidateRewriteExternalCss("rep_fail", kInvalidCss, "",
                              kExpectNoChange | kExpectFailure | kNoStatCheck);
-  // We expect num_parse_failures_ to be reset to 0 at the beginning of the
-  // test, and to remain at it since we should remember the failure
+  // Second time, we remember failure and so don't try to reparse.
   EXPECT_EQ(0, num_parse_failures_->Get());
 }
 
@@ -113,7 +129,8 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=121
     "a{color:inherit}",
     // Added for code coverage.
-    "@import url(http://www.example.com)",
+    // TODO(sligocki): Get rid of the " ;"?
+    "@import url(http://www.example.com) ;",
     "@media a,b{a{color:red}}",
     "a{content:\"Odd chars: \\(\\)\\,\\\"\\\'\"}",
     "img{clip:rect(0px,60px,200px,0px)}",
@@ -133,7 +150,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
     std::string id = StringPrintf("distilled_css_good%d", i);
-    ValidateNoChange(id, good_examples[i]);
+    ValidateRewrite(id, good_examples[i], good_examples[i]);
   }
 
   const char* fail_examples[] = {
@@ -354,6 +371,9 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // Don't lowercase font names.
     { "a { font-family: Arial; }",
       "a{font-family:Arial}" },
+
+    // TODO(sligocki): This should raise an error and fail to rewrite.
+    { "}}", "" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
@@ -373,6 +393,36 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     std::string id = StringPrintf("complex_css_parse_fail%d", i);
     ValidateFailParse(id, parse_fail_examples[i]);
   }
+}
+
+// Most tests are run with set_always_rewrite_css(true),
+// but all production use has set_always_rewrite_css(false).
+// This test makes sure that setting to false still does what we intend.
+TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
+  // When we force always_rewrite_css, we can expand some statements.
+  // Note: when this example is fixed in the minifier, this test will break :/
+  options_.set_always_rewrite_css(true);
+  ValidateRewrite("expanding_example",
+                  "@import url(http://www.example.com)",
+                  "@import url(http://www.example.com) ;");
+  // With it set false, we do not expand CSS (as long as we didn't do anything
+  // else, like rewrite sub-resources.
+  options_.set_always_rewrite_css(false);
+  ValidateRewrite("non_expanding_example",
+                  "@import url(http://www.example.com)",
+                  "@import url(http://www.example.com)",
+                  kExpectNoChange | kExpectSuccess);
+  // Here: kExpectSuccess means there was no error. (Minification that
+  // actually expands the statement is not considered an error.)
+
+  // When we force always_rewrite_css, we allow rewriting something to nothing.
+  // Note: when this example is fixed in the parser, this test will break :/
+  options_.set_always_rewrite_css(true);
+  ValidateRewrite("contracting_example",     "}}", "");
+  // With it set false, we do not allow something to be minified to nothing.
+  options_.set_always_rewrite_css(false);
+  ValidateRewrite("non_contracting_example", "}}", "}}",
+                  kExpectNoChange | kExpectFailure);
 }
 
 }  // namespace

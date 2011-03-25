@@ -106,6 +106,7 @@ void ResourceManagerTestBase::DeleteFileIfExists(const std::string& filename) {
 
 Resource* ResourceManagerTestBase::CreateResource(const StringPiece& base,
                                                   const StringPiece& url) {
+  rewrite_driver_.SetBaseUrlForFetch(base);
   GoogleUrl base_url(base);
   GoogleUrl resource_url(base_url, url);
   return rewrite_driver_.CreateInputResource(resource_url);
@@ -145,7 +146,7 @@ void ResourceManagerTestBase::ServeResourceFromManyContexts(
 // constructed it.
 void ResourceManagerTestBase::ServeResourceFromNewContext(
     const std::string& resource_url,
-    RewriteOptions::Filter filter,
+    RewriteOptions::Filter /*filter*/, // TODO(sligocki): remove
     Hasher* hasher,
     const StringPiece& expected_content) {
 
@@ -169,9 +170,8 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   other_resource_manager.set_statistics(&stats);
 
   RewriteDriver other_rewrite_driver(&message_handler_, &other_file_system,
-                                     &wait_url_async_fetcher, other_options_);
+                                     &wait_url_async_fetcher, options_);
   other_rewrite_driver.SetResourceManager(&other_resource_manager);
-  other_options_.EnableFilter(filter);
   other_rewrite_driver.AddFilters();
 
   Variable* cached_resource_fetches =

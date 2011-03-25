@@ -109,7 +109,8 @@ RewriteOptions::RewriteOptions()
       enabled_(true),
       combine_across_paths_(true),
       log_rewrite_timing_(false),
-      lowercase_html_names_(false) {
+      lowercase_html_names_(false),
+      always_rewrite_css_(false) {
   // TODO: If we instantiate many RewriteOptions, this should become a
   // public static method called once at startup.
   SetUp();
@@ -297,6 +298,8 @@ void RewriteOptions::Merge(const RewriteOptions& first,
                             second.log_rewrite_timing_);
   lowercase_html_names_.Merge(first.lowercase_html_names_,
                               second.lowercase_html_names_);
+  always_rewrite_css_.Merge(first.always_rewrite_css_,
+                            second.always_rewrite_css_);
 
   // Note that the domain-lawyer merge works one-at-a-time, which is easier
   // to unit test.  So we have to call it twice.

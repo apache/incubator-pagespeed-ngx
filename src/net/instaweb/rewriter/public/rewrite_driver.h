@@ -259,12 +259,6 @@ class RewriteDriver : public HtmlParse {
   // context of this page.
   Resource* CreateInputResource(const GoogleUrl& input_url);
 
-  // Create input resource from input_url, if it is legal in the context of
-  // base_url_, and if the resource can be read from cache.  If it's not in
-  // cache, initiate an asynchronous fetch so it will be on next access.  This
-  // is a common case for filters.
-  Resource* CreateInputResourceAndReadIfCached(const GoogleUrl& input_url);
-
   // Creates an input resource from the given absolute url.  Requires that the
   // provided url has been checked, and can legally be rewritten in the current
   // page context.
@@ -339,6 +333,10 @@ class RewriteDriver : public HtmlParse {
   // Initializes the base URL at the start of the document.  This is for
   // ScanFilter only.
   void InitBaseUrl();
+
+  // Sets the base URL for a resource fetch.  This should only be called from
+  // test code and from FetchResource.
+  void SetBaseUrlForFetch(const StringPiece& url);
 
   friend class ScanFilter;
 

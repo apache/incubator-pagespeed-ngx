@@ -98,7 +98,22 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
   OutputResource* CreateOutputResourceForFetch(const StringPiece& url) {
     RewriteFilter* dummy;
+    rewrite_driver_.SetBaseUrlForFetch(url);
     return rewrite_driver_.DecodeOutputResource(url, &dummy);
+  }
+
+  Resource* CreateInputResourceAndReadIfCached(const StringPiece& url) {
+    rewrite_driver_.SetBaseUrlForFetch(url);
+    GoogleUrl resource_url(url);
+    Resource* resource =
+        rewrite_driver_.CreateInputResource(resource_url);
+    if ((resource != NULL) &&
+        (!resource->IsCacheable() ||
+         !rewrite_driver_.ReadIfCached(resource))) {
+      delete resource;
+      resource = NULL;
+    }
+    return resource;
   }
 
   // Tests for the lifecycle and various flows of a named output resource.
@@ -233,6 +248,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // given content type
   OutputResource* CreateTestOutputResource(Resource* input_resource,
                                            const ContentType* content_type) {
+    rewrite_driver_.SetBaseUrlForFetch(input_resource->url());
     return rewrite_driver_.CreateOutputResourceFromResource(
         "tf", content_type, rewrite_driver_.default_encoder(), NULL,
         input_resource, OutputResource::kRewrittenResource);
@@ -293,6 +309,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // creates a CachedResult outside ResourceManager)
   void TestCachedResult(bool test_meta_data, bool auto_expire) {
     // Note: we do not fetch the input here, just use it to name the output.
+    rewrite_driver_.SetBaseUrlForFetch(kResourceUrlBase);
     GoogleUrl base_url(kResourceUrlBase);
     GoogleUrl path_url(base_url, kResourceUrlPath);
     scoped_ptr<Resource> input(
@@ -505,11 +522,8 @@ TEST_F(ResourceManagerTest, TestRemember404) {
   not_found.SetStatusAndReason(HttpStatus::kNotFound);
   mock_url_fetcher_.SetResponse("http://example.com/404", not_found, "");
 
-  // TODO(nforman): Fix this call so we can get rid of
-  // RewriteDriver::CreateInputResourceAndReadIfCached()
-  GoogleUrl resource_url("http://example.com/404");
   scoped_ptr<Resource> resource(
-      rewrite_driver_.CreateInputResourceAndReadIfCached(resource_url));
+      CreateInputResourceAndReadIfCached("http://example.com/404"));
   EXPECT_EQ(NULL, resource.get());
 
   HTTPValue valueOut;

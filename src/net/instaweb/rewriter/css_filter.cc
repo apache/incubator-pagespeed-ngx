@@ -189,8 +189,7 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
   if (stylesheet.get() == NULL ||
       parser.errors_seen_mask() != Css::Parser::kNoError) {
     ret = false;
-    driver_->InfoHere("CSS parsing error in %s",
-                      css_gurl.spec_c_str());
+    driver_->InfoHere("CSS parsing error in %s", css_gurl.spec_c_str());
     if (num_parse_failures_ != NULL) {
       num_parse_failures_->Add(1);
     }
@@ -210,22 +209,23 @@ bool CssFilter::RewriteCssText(const StringPiece& in_text,
     int64 in_text_size = static_cast<int64>(in_text.size());
     int64 bytes_saved = in_text_size - out_text_size;
 
-    // Don't rewrite if we didn't edit it or make it any smaller.
-    if (!edited_css && bytes_saved <= 0) {
-      ret = false;
-      driver_->InfoHere("CSS parser increased size of CSS file %s by %lld "
-                        "bytes.", css_gurl.spec_c_str(),
-                        static_cast<long long int>(-bytes_saved));
-    }
+    if (!driver_->options()->always_rewrite_css()) {
+      // Don't rewrite if we didn't edit it or make it any smaller.
+      if (!edited_css && bytes_saved <= 0) {
+        ret = false;
+        driver_->InfoHere("CSS parser increased size of CSS file %s by %lld "
+                          "bytes.", css_gurl.spec_c_str(),
+                          static_cast<long long int>(-bytes_saved));
+      }
 
-    // Don't rewrite if we blanked the CSS file! (This is a parse error)
-    // TODO(sligocki): Don't error if in_text is all whitespace.
-    if (out_text_size == 0 && in_text_size != 0) {
-      ret = false;
-      driver_->InfoHere("CSS parsing error in %s",
-                        css_gurl.spec_c_str());
-      if (num_parse_failures_ != NULL) {
-        num_parse_failures_->Add(1);
+      // Don't rewrite if we blanked the CSS file! (This is a parse error)
+      // TODO(sligocki): Don't error if in_text is all whitespace.
+      if (out_text_size == 0 && in_text_size != 0) {
+        ret = false;
+        driver_->InfoHere("CSS parsing error in %s", css_gurl.spec_c_str());
+        if (num_parse_failures_ != NULL) {
+          num_parse_failures_->Add(1);
+        }
       }
     }
 

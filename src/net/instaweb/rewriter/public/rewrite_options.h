@@ -236,6 +236,12 @@ class RewriteOptions {
   }
   bool lowercase_html_names() const { return lowercase_html_names_.value(); }
 
+  void set_always_rewrite_css(bool x) {
+    modified_ = true;
+    always_rewrite_css_.set(x);
+  }
+  bool always_rewrite_css() const { return always_rewrite_css_.value(); }
+
   // Merge together two source RewriteOptions to populate this.  The order
   // is significant: the second will override the first.  One semantic
   // subject to interpretation is when a core-filter is disabled in the
@@ -352,8 +358,10 @@ class RewriteOptions {
   Option<bool> combine_across_paths_;
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?
   Option<bool> lowercase_html_names_;
-  DomainLawyer domain_lawyer_;
+  Option<bool> always_rewrite_css_;  // For tests/debugging.
   // Be sure to update Merge() if a new field is added.
+
+  DomainLawyer domain_lawyer_;
 
   WildcardGroup allow_resources_;
 

@@ -528,6 +528,7 @@ bool RewriteDriver::FetchResource(
         cached_resource_fetches_->Add(1);
       }
     } else if (filter != NULL) {
+      SetBaseUrlForFetch(url);
       // The resource is locked for creation by
       // the call to FetchExtantOutputResourceOrLock() above.
       queued = filter->Fetch(output_resource, writer,
@@ -690,56 +691,42 @@ bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
 
 Resource* RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   Resource* resource = NULL;
-  GoogleUrl base_root(StrCat(input_url.Origin(), "/"));
-  MessageHandler* handler = message_handler();
-  if (MayRewriteUrl(base_root, input_url)) {
-    if (base_url_.is_valid()) {
-      if (MayRewriteUrl(base_url_, input_url)) {
-        resource = CreateInputResourceUnchecked(input_url);
-      }
-    } else {
-      resource = CreateInputResourceUnchecked(input_url);
-    }
+  bool may_rewrite = false;
+  if (base_url_.is_valid()) {
+    may_rewrite = MayRewriteUrl(base_url_, input_url);
+  } else {
+    // Shouldn't happen?
+    message_handler()->Message(
+        kFatal, "invalid base_url_ for '%s'", input_url.spec_c_str());
+    DCHECK(false);
   }
-  if (resource == NULL) {
-    handler->Message(kInfo, "Invalid resource url '%s'",
-                     input_url.spec_c_str());
+  if (may_rewrite) {
+    resource = CreateInputResourceUnchecked(input_url);
+  } else if (input_url.SchemeIs("data")) {
+    // skip and silently ignore; don't log a failure.
+  } else {
+    message_handler()->Message(kInfo, "No permission to rewrite '%s'",
+                               input_url.spec_c_str());
     resource_manager_->IncrementResourceUrlDomainRejections();
   }
   return resource;
 }
 
-// TODO(nforman): This method should go away.
-Resource* RewriteDriver::CreateInputResourceAndReadIfCached(
-    const GoogleUrl& input_url) {
-  Resource* input_resource = CreateInputResource(input_url);
-  if ((input_resource != NULL) &&
-      (!input_resource->IsCacheable() || !ReadIfCached(input_resource))) {
-    message_handler()->Message(
-        kInfo, "Couldn't fetch resource %s to rewrite.",
-        input_url.spec_c_str());
-    delete input_resource;
-    input_resource = NULL;
-  }
-  return input_resource;
-}
-
 Resource* RewriteDriver::CreateInputResourceAbsoluteUnchecked(
     const StringPiece& absolute_url) {
   GoogleUrl url(absolute_url);
-  return CreateInputResourceUnchecked(url);
-}
-
-Resource* RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
   if (!url.is_valid()) {
     // Note: Bad user-content can leave us here.  But it's really hard
     // to concatenate a valid protocol and domain onto an arbitrary string
     // and end up with an invalid GURL.
-    message_handler()->Message(kWarning, "Invalid resource url '%s'",
+    message_handler()->Message(kInfo, "Invalid resource url '%s'",
                                url.spec_c_str());
     return NULL;
   }
+  return CreateInputResourceUnchecked(url);
+}
 
+Resource* RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
   StringPiece url_string = url.Spec();
   Resource* resource = NULL;
 
@@ -865,6 +852,21 @@ void RewriteDriver::InitBaseUrl() {
   base_was_set_ = false;
   if (is_url_valid()) {
     base_url_.Reset(google_url().AllExceptLeaf());
+  }
+}
+
+void RewriteDriver::SetBaseUrlForFetch(const StringPiece& url) {
+  // Set the base url for the resource fetch.  This corresponds to where the
+  // fetched resource resides (which might or might not be where the original
+  // resource lived).
+  if (!base_url_.is_valid()) {
+    // TODO(jmaessen): we're re-constructing a GoogleUrl after having already
+    // done so (repeatedly over several calls) in DecodeOutputResource!  Gah!
+    // We at least assume that base_url_ is valid since it was checked when
+    // output_resource was created.
+    base_url_.Reset(url);
+    DCHECK(base_url_.is_valid());
+    base_was_set_ = false;
   }
 }
 

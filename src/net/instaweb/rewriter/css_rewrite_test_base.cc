@@ -50,13 +50,13 @@ void CssRewriteTestBase::ValidateRewriteInlineCss(
   // Check stats
   if (!(flags & kNoStatCheck)) {
     if (flags & kExpectChange) {
-      EXPECT_EQ(1, num_files_minified_->Get());
+      EXPECT_EQ(1, num_files_minified_->Get()) << id;
       EXPECT_EQ(css_input.size() - expected_css_output.size(),
-                minified_bytes_saved_->Get());
-      EXPECT_EQ(0, num_parse_failures_->Get());
+                minified_bytes_saved_->Get()) << id;
+      EXPECT_EQ(0, num_parse_failures_->Get()) << id;
     } else {
-      EXPECT_EQ(0, num_files_minified_->Get());
-      EXPECT_EQ(0, minified_bytes_saved_->Get());
+      EXPECT_EQ(0, num_files_minified_->Get()) << id;
+      EXPECT_EQ(0, minified_bytes_saved_->Get()) << id;
       if (flags & kExpectFailure) {
         EXPECT_EQ(1, num_parse_failures_->Get()) << id;
       } else {
@@ -138,13 +138,13 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
   // Check stats, if requested
   if (!(flags & kNoStatCheck)) {
     if (flags & kExpectChange) {
-      EXPECT_EQ(1, num_files_minified_->Get());
+      EXPECT_EQ(1, num_files_minified_->Get()) << id;
       EXPECT_EQ(css_input.size() - expected_css_output.size(),
-                minified_bytes_saved_->Get());
-      EXPECT_EQ(0, num_parse_failures_->Get());
+                minified_bytes_saved_->Get()) << id;
+      EXPECT_EQ(0, num_parse_failures_->Get()) << id;
     } else {
-      EXPECT_EQ(0, num_files_minified_->Get());
-      EXPECT_EQ(0, minified_bytes_saved_->Get());
+      EXPECT_EQ(0, num_files_minified_->Get()) << id;
+      EXPECT_EQ(0, minified_bytes_saved_->Get()) << id;
       if (flags & kExpectFailure) {
         EXPECT_EQ(1, num_parse_failures_->Get()) << id;
       } else {
@@ -159,8 +159,8 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
     // TODO(sligocki): This will only work with mock_hasher.
     EXPECT_TRUE(ServeResource(kTestDomain,
                               namer.id(), namer.name(), namer.ext(),
-                              &actual_output));
-    EXPECT_EQ(expected_css_output, actual_output);
+                              &actual_output)) << id;
+    EXPECT_EQ(expected_css_output, actual_output) << id;
 
     // Serve from new context.
     if ((flags & kNoOtherContexts) == 0) {
@@ -169,37 +169,6 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
                                     &mock_hasher_, expected_css_output);
     }
   }
-}
-
-void CssRewriteTestBase::ValidateRewrite(const StringPiece& id,
-                                         const std::string& css_input,
-                                         const std::string& gold_output) {
-  ValidateRewriteInlineCss(StrCat(id, "-inline"),
-                           css_input, gold_output,
-                           kExpectChange | kExpectSuccess);
-  ValidateRewriteExternalCss(StrCat(id, "-external"),
-                             css_input, gold_output,
-                             kExpectChange | kExpectSuccess);
-}
-
-void CssRewriteTestBase::ValidateNoChange(const StringPiece& id,
-                                          const std::string& css_input) {
-  ValidateRewriteInlineCss(StrCat(id, "-inline"),
-                           css_input, css_input,
-                           kExpectNoChange | kExpectSuccess);
-  ValidateRewriteExternalCss(StrCat(id, "-external"),
-                             css_input, "",
-                             kExpectNoChange | kExpectSuccess);
-}
-
-void CssRewriteTestBase::ValidateFailParse(const StringPiece& id,
-                                           const std::string& css_input) {
-  ValidateRewriteInlineCss(StrCat(id, "-inline"),
-                           css_input, css_input,
-                           kExpectNoChange | kExpectFailure);
-  ValidateRewriteExternalCss(StrCat(id, "-external"),
-                             css_input, "",
-                             kExpectNoChange | kExpectFailure);
 }
 
 // Helper to test for how we handle trailing junk

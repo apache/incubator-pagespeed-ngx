@@ -50,6 +50,7 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     AddFilter(RewriteOptions::kRewriteCss);
+    options_.set_always_rewrite_css(true);
   }
 
   enum ValidationFlags {
@@ -102,11 +103,17 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
 
   void ValidateRewrite(const StringPiece& id,
                        const std::string& css_input,
-                       const std::string& gold_output);
+                       const std::string& gold_output,
+                       int flags = kExpectChange | kExpectSuccess) {
+    ValidateRewriteInlineCss(StrCat(id, "-inline"),
+                             css_input, gold_output, flags);
+    ValidateRewriteExternalCss(StrCat(id, "-external"),
+                               css_input, gold_output, flags);
+  }
 
-  void ValidateNoChange(const StringPiece& id, const std::string& css_input);
-
-  void ValidateFailParse(const StringPiece& id, const std::string& css_input);
+  void ValidateFailParse(const StringPiece& id, const std::string& css_input) {
+    ValidateRewrite(id, css_input, css_input, kExpectNoChange | kExpectFailure);
+  }
 
   // Helper to test for how we handle trailing junk
   void TestCorruptUrl(const char* junk, bool should_fetch_ok);
