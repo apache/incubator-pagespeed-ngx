@@ -45,8 +45,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
   InitResponseHeaders("bar.png", kContentTypePng, kImageData, 100);
   InitResponseHeaders("baz.png", kContentTypePng, kImageData, 100);
 
-  static const char before[] =
-      "<head><style>"
+  static const char css_before[] =
       "body {\n"
       "  background-image: url(foo.png);\n"
       "  list-style-image: url('bar.png');\n"
@@ -58,10 +57,8 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
       ".other {\n"
       "  background-image:url(data:image/;base64,T0sgYjAxZGJhYTZmM2Y1NTYyMQ==);"
       "  -proprietary-background-property: url(foo.png);\n"
-      "}\n"
-      "</style></head>";
-  static const char after[] =
-      "<head><style>"
+      "}";
+  static const char css_after[] =
       "body{background-image:url(http://test.com/foo.png.pagespeed.ce.0.png);"
       "list-style-image:url(http://test.com/bar.png.pagespeed.ce.0.png)}"
       ".titlebar p.cfoo,#end p{"
@@ -69,10 +66,58 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
       "list-style:url(http://test.com/foo.png.pagespeed.ce.0.png)}"
       ".other{"  // data: URLs and unknown properties are not rewritten.
       "background-image:url(data:image/;base64\\,T0sgYjAxZGJhYTZmM2Y1NTYyMQ==);"
-      "-proprietary-background-property:url(foo.png)}"
-      "</style></head>";
+      "-proprietary-background-property:url(foo.png)}";
 
-  ValidateExpected("cache_extends_images", before, after);
+  // Can't serve from new contexts yet, because we're using mock_fetcher_.
+  // TODO(sligocki): Resolve that and the just have:
+  //ValidateRewriteInlineCss("cache_extends_images", css_before, css_after);
+  ValidateRewriteInlineCss("cache_extends_images-inline",
+                           css_before, css_after,
+                           kExpectChange | kExpectSuccess);
+  ValidateRewriteExternalCss("cache_extends_images-external",
+                             css_before, css_after,
+                             kExpectChange | kExpectSuccess | kNoOtherContexts);
+}
+
+TEST_F(CssImageRewriterTest, UseCorrectBaseUrl) {
+  // We want a real hasher here so that subresources get separate locks.
+  resource_manager_->set_hasher(&md5_hasher_);
+
+  // Initialize resources.
+  static const char css_url[] = "http://www.example.com/bar/style.css";
+  static const char css_before[] = "body { background: url(image.png); }";
+  InitResponseHeaders(css_url, kContentTypeCss, css_before, 100);
+  static const char image_url[] = "http://www.example.com/bar/image.png";
+  InitResponseHeaders(image_url, kContentTypePng, kImageData, 100);
+
+  // Construct URL for rewritten image.
+  std::string expected_image_url = ExpectedRewrittenUrl(
+      image_url, kImageData, RewriteDriver::kCacheExtenderId,
+      kContentTypePng);
+
+  std::string css_after = StrCat(
+      "body{background:url(", expected_image_url, ")}");
+
+  // Construct URL for rewritten CSS.
+  std::string expected_css_url = ExpectedRewrittenUrl(
+      css_url, css_after, RewriteDriver::kCssFilterId, kContentTypeCss);
+
+  static const char html_before[] =
+      "<head>\n"
+      "  <link rel='stylesheet' href='bar/style.css'>\n"
+      "</head>";
+  std::string html_after = StrCat(
+      "<head>\n"
+      "  <link rel='stylesheet' href='", expected_css_url, "'>\n"
+      "</head>");
+
+  // Make sure that image.png uses http://www.example.com/bar/style.css as
+  // base URL instead of http://www.example.com/.
+  ValidateExpectedUrl("http://www.example.com/", html_before, html_after);
+
+  std::string actual_css_after;
+  ServeResourceUrl(expected_css_url, &actual_css_after);
+  EXPECT_EQ(css_after, actual_css_after);
 }
 
 

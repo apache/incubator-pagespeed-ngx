@@ -86,6 +86,12 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
                                 const StringPiece& expected_css_output,
                                 int flags);
 
+  // Return the expected new URL with hash and all based on necessary data.
+  std::string ExpectedRewrittenUrl(const StringPiece& original_url,
+                                    const StringPiece& expected_contents,
+                                    const StringPiece& filter_id,
+                                    const ContentType& content_type);
+
   void GetNamerForCss(const StringPiece& id,
                       const std::string& expected_css_output,
                       ResourceNamer* namer);

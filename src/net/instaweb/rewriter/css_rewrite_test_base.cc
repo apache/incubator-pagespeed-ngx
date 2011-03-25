@@ -66,6 +66,25 @@ void CssRewriteTestBase::ValidateRewriteInlineCss(
   }
 }
 
+std::string CssRewriteTestBase::ExpectedRewrittenUrl(
+    const StringPiece& original_url,
+    const StringPiece& expected_contents,
+    const StringPiece& filter_id,
+    const ContentType& content_type) {
+  GoogleUrl original_gurl(original_url);
+  StringPiece dir = original_gurl.AllExceptLeaf();
+  StringPiece leaf = original_gurl.LeafWithQuery();
+
+  ResourceNamer namer;
+  namer.set_id(filter_id);
+  namer.set_hash(resource_manager_->hasher()->Hash(expected_contents));
+  namer.set_ext(content_type.file_extension() + 1);  // +1 to skip '.'
+  namer.set_name(leaf);
+
+  return StrCat(dir, namer.Encode());
+}
+
+
 void CssRewriteTestBase::GetNamerForCss(const StringPiece& id,
                                         const std::string& expected_css_output,
                                         ResourceNamer* namer) {

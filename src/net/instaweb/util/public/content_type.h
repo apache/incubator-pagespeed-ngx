@@ -41,6 +41,7 @@ struct ContentType {
   };
 
   const char* mime_type() const { return mime_type_; }
+  // TODO(sligocki): Stop returning '.' in file_extension().
   const char* file_extension() const { return file_extension_; }
   Type type() const { return type_; }
 
