@@ -45,6 +45,22 @@ namespace {
 
 const char kLockSuffix[] = ".outputlock";
 
+// Helper to allow us to use synchronous caches synchronously even with
+// asynchronous interface, until we're changed to be fully asynchronous.
+class SyncCallback : public CacheInterface::Callback {
+ public:
+  SyncCallback() : called_(false), state_(CacheInterface::kNotFound) {
+  }
+
+  virtual void Done(CacheInterface::KeyState state) {
+    called_ = true;
+    state_ = state;
+  }
+
+  bool called_;
+  CacheInterface::KeyState state_;
+};
+
 }  // namespace
 
 OutputResource::OutputResource(RewriteDriver* driver,
@@ -302,53 +318,45 @@ bool OutputResource::LockForCreation(const ResourceManager* resource_manager,
 
 void OutputResource::SaveCachedResult(const std::string& name_key,
                                       MessageHandler* handler) {
-  HTTPCache* http_cache = resource_manager_->http_cache();
+  CacheInterface* cache = resource_manager_->metadata_cache();
   CachedResult* cached = EnsureCachedResultCreated();
   cached->set_frozen(true);
 
   int64 delta_ms = cached->origin_expiration_time_ms() -
-                       http_cache->timer()->NowMs();
+                       resource_manager_->timer()->NowMs();
   int64 delta_sec = delta_ms / Timer::kSecondMs;
   if (!cached->auto_expire()) {
     delta_sec = std::max(delta_sec, Timer::kYearMs / Timer::kSecondMs);
   }
-  if ((delta_sec > 0) || http_cache->force_caching()) {
-    ResponseHeaders meta_data;
-    resource_manager_->SetDefaultHeaders(type(), &meta_data);
-    std::string cache_control = StringPrintf(
-        "max-age=%ld",
-        static_cast<long>(delta_sec));  // NOLINT
-    meta_data.Replace(HttpAttributes::kCacheControl, cache_control);
-    meta_data.ComputeCaching();
-
+  if ((delta_sec > 0) || resource_manager_->http_cache()->force_caching()) {
     if (cached->optimizable()) {
       cached->set_hash(full_name_.hash().as_string());
       cached->set_extension(full_name_.ext().as_string());
     }
-    std::string buf;
+    SharedString buf;
     {
-      StringOutputStream sstream(&buf);
+      StringOutputStream sstream(buf.get());
       cached->SerializeToZeroCopyStream(&sstream);
-      // destructor of sstream prepares buf.
+      // destructor of sstream prepares *buf.get()
     }
-    http_cache->Put(name_key, &meta_data, buf, handler);
+    cache->Put(name_key, &buf);
   }
 }
 
 void OutputResource::FetchCachedResult(const std::string& name_key,
                                        MessageHandler* handler) {
-  HTTPCache* cache = resource_manager_->http_cache();
+  bool ok = false;
+  CacheInterface* cache = resource_manager_->metadata_cache();
   cached_result_.reset();
   CachedResult* cached = EnsureCachedResultCreated();
 
-  HTTPValue value;
-  bool ok = false;
-  ResponseHeaders headers;
-  StringPiece buf;
-  bool found = cache->Find(name_key, &value, &headers, handler) ==
-                   HTTPCache::kFound;
-  if (found && value.ExtractContents(&buf)) {
-    ArrayInputStream input(buf.data(), buf.size());
+  SyncCallback callback;
+  cache->Get(name_key, &callback);
+  CHECK(callback.called_) << "Async metadata caches not supported yet";
+
+  if (callback.state_ == CacheInterface::kAvailable) {
+    SharedString* val = callback.value();
+    ArrayInputStream input(val->get()->data(), val->size());
     if (cached->ParseFromZeroCopyStream(&input)) {
       cached->set_frozen(false);
       if (!cached->optimizable()) {
@@ -361,6 +369,14 @@ void OutputResource::FetchCachedResult(const std::string& name_key,
         cached->set_optimizable(true);
         cached->set_url(url());
         ok = true;
+      }
+    }
+
+    // Apply auto-expire if needed & enabled
+    if (ok && cached->auto_expire()) {
+      if (cached->origin_expiration_time_ms() <=
+          resource_manager_->timer()->NowMs()) {
+        ok = false;
       }
     }
   }

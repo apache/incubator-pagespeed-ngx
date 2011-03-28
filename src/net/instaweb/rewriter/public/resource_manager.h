@@ -36,6 +36,7 @@ class GURL;
 
 namespace net_instaweb {
 
+class CacheInterface;
 class ContentType;
 class DomainLawyer;
 class FileSystem;
@@ -75,6 +76,7 @@ class ResourceManager {
                   UrlAsyncFetcher* url_async_fetcher,
                   Hasher* hasher,
                   HTTPCache* http_cache,
+                  CacheInterface* metadata_cache,
                   NamedLockManager* lock_manager);
   ~ResourceManager();
 
@@ -142,6 +144,12 @@ class ResourceManager {
   Timer* timer() const { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
 
+  // Cache for small non-HTTP objects.
+  //
+  // Note that this might share namespace with the HTTP cache, so make sure
+  // your key names do not start with http://.
+  CacheInterface* metadata_cache() { return metadata_cache_; }
+
   // Whether or not resources should hit the filesystem.
   bool store_outputs_in_file_system() { return store_outputs_in_file_system_; }
   void set_store_outputs_in_file_system(bool store) {
@@ -165,6 +173,7 @@ class ResourceManager {
   Statistics* statistics_;
   Variable* resource_url_domain_rejections_;
   HTTPCache* http_cache_;
+  CacheInterface* metadata_cache_;
   bool relative_path_;
   bool store_outputs_in_file_system_;
   NamedLockManager* lock_manager_;

@@ -51,6 +51,7 @@ RewriteDriverFactory::RewriteDriverFactory()
       force_caching_(false),
       slurp_read_only_(false),
       slurp_print_urls_(false),
+      http_cache_backend_(NULL),
       resource_404_count_(NULL),
       slurp_404_count_(NULL) {
 }
@@ -197,8 +198,8 @@ StringPiece RewriteDriverFactory::filename_prefix() {
 
 HTTPCache* RewriteDriverFactory::http_cache() {
   if (http_cache_ == NULL) {
-    CacheInterface* cache = DefaultCacheInterface();
-    http_cache_.reset(new HTTPCache(cache, timer()));
+    http_cache_backend_ = DefaultCacheInterface();
+    http_cache_.reset(new HTTPCache(http_cache_backend_, timer()));
     http_cache_->set_force_caching(force_caching_);
   }
   return http_cache_.get();
@@ -209,10 +210,11 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
     CHECK(!filename_prefix_.empty())
         << "Must specify --filename_prefix or call "
         << "RewriteDriverFactory::set_filename_prefix.";
+    HTTPCache* cache = http_cache();  // Ensure compute http_cache_backend_
     resource_manager_.reset(new ResourceManager(
         filename_prefix_, file_system(), filename_encoder(),
         ComputeUrlAsyncFetcher(), hasher(),
-        http_cache(), lock_manager()));
+        cache, http_cache_backend_, lock_manager()));
     resource_manager_->set_store_outputs_in_file_system(
         ShouldWriteResourcesToFileSystem());
   }

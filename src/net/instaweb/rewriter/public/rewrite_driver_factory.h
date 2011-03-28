@@ -225,6 +225,7 @@ class RewriteDriverFactory {
 
   // Caching support
   scoped_ptr<HTTPCache> http_cache_;
+  CacheInterface* http_cache_backend_;  // Pointer owned by http_cache_
   scoped_ptr<CacheUrlFetcher> cache_fetcher_;
   scoped_ptr<CacheUrlAsyncFetcher> cache_async_fetcher_;
   Variable* resource_404_count_;

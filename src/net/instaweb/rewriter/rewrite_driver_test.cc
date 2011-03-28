@@ -141,10 +141,10 @@ TEST_F(RewriteDriverTest, TestCacheUseOnTheFly) {
   int cold_num_inserts = lru_cache_->num_inserts();
   EXPECT_EQ(2, cold_num_inserts);
 
-  // Warm load. This one re-inserts in the rname entry.
+  // Warm load. This one re-inserts in the rname entry, without changing it.
   EXPECT_TRUE(TryFetchResource(cacheExtendedUrl));
-  EXPECT_EQ(cold_num_inserts + 1, lru_cache_->num_inserts());
-  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+  EXPECT_EQ(cold_num_inserts, lru_cache_->num_inserts());
+  EXPECT_EQ(1, lru_cache_->num_identical_reinserts());
 }
 
 

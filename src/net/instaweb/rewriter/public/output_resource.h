@@ -199,7 +199,7 @@ class OutputResource : public Resource {
   OutputWriter* BeginWrite(MessageHandler* message_handler);
   bool EndWrite(OutputWriter* writer, MessageHandler* message_handler);
 
-  // Stores the current state of cached_result in the HTTP cache
+  // Stores the current state of cached_result in the metadata cache
   // under the given key.
   // Pre-condition: cached_result() != NULL
   void SaveCachedResult(const std::string& key, MessageHandler* handler);
