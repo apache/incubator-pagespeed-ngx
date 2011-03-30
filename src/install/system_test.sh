@@ -422,7 +422,8 @@ check grep -qi "'Expires:'" $WGET_OUTPUT
 echo TEST: ModPagespeedShardDomain directive in .htaccess file
 rm -rf $OUTDIR
 mkdir $OUTDIR
-check $WGET_DUMP http://localhost:8080/mod_pagespeed_test/shard/shard.html \
+echo $WGET_DUMP $TEST_ROOT/shard/shard.html
+check $WGET_DUMP $TEST_ROOT/shard/shard.html \
   > $OUTDIR/shard.out.html
 check [ `grep -ce href=\"http://shard1 $OUTDIR/shard.out.html` = 2 ];
 check [ `grep -ce href=\"http://shard2 $OUTDIR/shard.out.html` = 2 ];
@@ -430,11 +431,13 @@ check [ `grep -ce href=\"http://shard2 $OUTDIR/shard.out.html` = 2 ];
 echo TEST: server-side includes
 rm -rf $OUTDIR
 mkdir $OUTDIR
-check $WGET_DUMP http://localhost:8080/mod_pagespeed_test/ssi/ssi.shtml \
+echo $WGET_DUMP $TEST_ROOT/ssi/ssi.shtml
+check $WGET_DUMP $TEST_ROOT/ssi/ssi.shtml \
   > $OUTDIR/ssi.out.html
 check [ `grep -ce $combine_css_filename $OUTDIR/ssi.out.html` = 1 ];
 
 echo TEST: mod_rewrite
+echo $WGET_DUMP $TEST_ROOT/redirect/php/
 check $WGET_DUMP $TEST_ROOT/redirect/php/ > $OUTDIR/redirect_php.html
 check \
   [ `grep -ce "href=\"/mod_pagespeed_test/" $OUTDIR/redirect_php.html` = 2 ];

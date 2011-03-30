@@ -1,3 +1,0 @@
-ModPagespeedShardDomain localhost:8080 shard1,shard2
-ModPagespeedRewriteLevel PassThrough
-ModPagespeedEnableFilters extend_cache

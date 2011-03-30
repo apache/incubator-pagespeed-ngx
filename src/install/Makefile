@@ -41,6 +41,9 @@ APACHE_MODULES = $(APACHE_ROOT)/modules
 
 # The root directory Apache uses for serving files.
 APACHE_DOC_ROOT = /var/www
+# The domain Apache is serving from
+#APACHE_DOMAIN = localhost:8080  # For test-server.
+APACHE_DOMAIN = localhost
 
 APACHE_CONTROL_PROGRAM = /etc/init.d/apache2
 APACHE_START = $(APACHE_CONTROL_PROGRAM) start
@@ -201,8 +204,9 @@ endif
 # that might have embedded spaces, and 'sed' is interpreted first by bash.
 
 $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.template
-	sed -e s@APACHE_DOC_ROOT@$(APACHE_DOC_ROOT)@g \
-	    -e s!@@MODPAGESPEED_CACHE_ROOT@@!$(MOD_PAGESPEED_FILE_ROOT)!g \
+	sed -e "s!@@APACHE_DOC_ROOT@@!$(APACHE_DOC_ROOT)!g" \
+	    -e "s!@@APACHE_DOMAIN@@!$(APACHE_DOMAIN)!g" \
+	    -e "s!@@MODPAGESPEED_CACHE_ROOT@@!$(MOD_PAGESPEED_FILE_ROOT)!g" \
 	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
 	    -e "s@# ModPagespeedSlurpReadOnly on@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
 	    -e "s@$(STRESS_TEST_SED_PATTERN)@@" \

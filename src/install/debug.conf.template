@@ -1,7 +1,7 @@
 # These caching headers are set up for the document root, and
 # also serve as a demonstration of good values to set for the entire
 # site, if it is to be optimized by mod_pagespeed.
-<Directory APACHE_DOC_ROOT/mod_pagespeed_example>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example" >
   <IfModule headers_module>
     # To enable to show that mod_pagespeed to rewrites web pages, we must
     # turn off Etags for HTML files and eliminate caching altogether.
@@ -29,11 +29,17 @@
   </IfModule>
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/shard" >
+  ModPagespeedShardDomain "@@APACHE_DOMAIN@@" shard1,shard2
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters extend_cache
+</Directory>
+
 # add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
 ModPagespeedEnableFilters add_instrumentation
 
 # Enable htaccess
-<Directory "/usr/local/apache2/htdocs">
+<Directory "@@APACHE_DOC_ROOT@@" >
     AllowOverride All
 </Directory>
 
@@ -46,7 +52,7 @@ AddOutputFilter INCLUDES .shtml
 #SPELING CheckSpelling on
 
 #STRESS # These lines are only needed for the stress test.
-#STRESS <Directory /usr/local/apache2/htdocs/mod_pagespeed_example/cgi>
+#STRESS <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/cgi" >
 #STRESS   Options +ExecCGI
 #STRESS </Directory>
 #STRESS AddHandler cgi-script .cgi
@@ -120,8 +126,8 @@ AddOutputFilter INCLUDES .shtml
 #PROXY
 #PROXY   # Turn these declarations back on during testing if you are
 #PROXY   # having trouble distinguishing which server is saying what.
-#PROXY   #ErrorLog   /usr/local/apache2/logs/error_log_8080
-#PROXY   #CustomLog  /usr/local/apache2/logs/access_log_8080 common
+#PROXY   #ErrorLog   "@@MODPAGESPEED_CACHE_ROOT@@/logs/error_log"
+#PROXY   #CustomLog  "@@MODPAGESPEED_CACHE_ROOT@@/logs/access_log" common
 #PROXY
 #PROXY   ModPagespeed on
 #PROXY
@@ -138,18 +144,18 @@ AddOutputFilter INCLUDES .shtml
 #PROXY
 #PROXY <VirtualHost *:8081>
 #PROXY   # Host at 8081 sees into mod_pagespeed_examples directory.
-#PROXY   DocumentRoot  /usr/local/apache2/htdocs/mod_pagespeed_test/
+#PROXY   DocumentRoot  "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
 #PROXY
-#PROXY   #ErrorLog   /usr/local/apache2/logs/error_log_8081
-#PROXY   #CustomLog  /usr/local/apache2/logs/access_log_8081 common
+#PROXY   #ErrorLog   "@@MODPAGESPEED_CACHE_ROOT@@-alt/logs/error_log"
+#PROXY   #CustomLog  "@@MODPAGESPEED_CACHE_ROOT@@-alt/logs/access_log" common
 #PROXY
 #PROXY   ModPagespeed off
-#PROXY   ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@-alt/cache/"
-#PROXY   ModPagespeedGeneratedFilePrefix      "@@MODPAGESPEED_CACHE_ROOT@@-alt/files/"
+#PROXY   ModPagespeedFileCachePath        "@@MODPAGESPEED_CACHE_ROOT@@-alt/cache/"
+#PROXY   ModPagespeedGeneratedFilePrefix  "@@MODPAGESPEED_CACHE_ROOT@@-alt/files/"
 #PROXY   ModPagespeedRewriteLevel PassThrough
 #PROXY </VirtualHost>
 
 
 #SLURP # This is used for Slurp testing.
-#SLURP ModPagespeedSlurpDirectory /usr/local/apache2/htdocs/mod_pagespeed_test/slurp
+#SLURP ModPagespeedSlurpDirectory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/slurp"
 #SLURP ModPagespeedSlurpReadOnly on
