@@ -19,6 +19,8 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/mock_hasher.h"
 
 namespace net_instaweb {
 
@@ -67,6 +69,24 @@ TEST_F(ResourceNamerTest, TestLegacyDecode) {
   EXPECT_EQ("name", full_name_.name());
   EXPECT_EQ("0123456789abcdef0123456789ABCDEF", full_name_.hash());
   EXPECT_EQ("js", full_name_.ext());
+}
+
+TEST_F(ResourceNamerTest, TestEventualSize) {
+  MockHasher mock_hasher;
+  std::string file = "some_name.pagespeed.idn.0.extension";
+  EXPECT_TRUE(full_name_.Decode(file));
+  EXPECT_EQ(file.size(), full_name_.EventualSize(mock_hasher));
+}
+
+TEST_F(ResourceNamerTest, TestSizeWithoutHash_HashNotSet) {
+  MD5Hasher md5_hasher;
+  full_name_.set_name("file.css");
+  full_name_.set_id("id");
+  full_name_.set_ext("ext");
+  EXPECT_EQ(STATIC_STRLEN("file.css") + STATIC_STRLEN("id") +
+            STATIC_STRLEN("ext") + ResourceNamer::kOverhead +
+            md5_hasher.HashSizeInChars(),
+            full_name_.EventualSize(md5_hasher));
 }
 
 }  // namespace

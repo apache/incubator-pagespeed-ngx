@@ -94,6 +94,23 @@ TEST_F(CacheExtenderTest, DoExtend) {
   }
 }
 
+TEST_F(CacheExtenderTest, UrlTooLong) {
+  AddFilter(RewriteOptions::kExtendCache);
+
+  // Make the filename too long.
+  std::string long_string(options_.max_url_segment_size() + 1, 'z');
+
+  std::string css_name = StrCat("style.css?z=", long_string);
+  std::string jpg_name = StrCat("image.jpg?z=", long_string);
+  std::string js_name  = StrCat("script.js?z=", long_string);
+  InitResponseHeaders(css_name, kContentTypeCss, kCssData, 100);
+  InitResponseHeaders(jpg_name, kContentTypeJpeg, kImageData, 100);
+  InitResponseHeaders(js_name, kContentTypeJavascript, kJsData, 100);
+
+  // If filename wasn't too long, this would be rewritten (like in DoExtend).
+  ValidateNoChanges("url_too_long", GenerateHtml(css_name, jpg_name, js_name));
+}
+
 TEST_F(CacheExtenderTest, NoInputResource) {
   InitTest(100);
   // Test for not crashing on bad/disallowed URL.

@@ -239,8 +239,7 @@ class RewriteDriver : public HtmlParse {
   // The intent is to be able to derive the content from the name, for example,
   // by encoding URLs and metadata.
   //
-  // This method is not dependent on shared persistent storage, and always
-  // succeeds.
+  // This method succeeds unless the filename is too long.
   //
   // This name is prepended with path for writing hrefs, and the resulting url
   // is encoded and stored at file_prefix when working with the file system.  So

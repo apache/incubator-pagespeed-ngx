@@ -142,42 +142,42 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       MessageHandler* handler = driver_->message_handler();
       // Create outline resource at the document location,
       // not base URL location.
-      // TODO(nforman): Add a test case that puts a relative URL ref into
-      // an inlined CSS file, preceded by a base-tag.  This will break.  Fix it.
       scoped_ptr<OutputResource> output_resource(
           driver_->CreateOutputResourceWithPath(
               driver_->google_url().AllExceptLeaf(), kFilterId, "_",
               &kContentTypeCss, OutputResource::kOutlinedResource));
 
-      // Absolutify URLs in content.
-      std::string absolute_content;
-      StringWriter absolute_writer(&absolute_content);
-      StringPiece base_dir = base_url().Spec();      // base url has no leaf.
-      bool content_valid = true;
-      if (base_dir != output_resource->resolved_base()) {
-        // TODO(sligocki): Use CssParser instead of CssTagScanner hack.
-        content_valid = CssTagScanner::AbsolutifyUrls(
-            content, base_url().Spec(), &absolute_writer, handler);
-        content = absolute_content;  // StringPiece point to the new string.
+      if (output_resource.get() != NULL) {
+        // Absolutify URLs in content.
+        std::string absolute_content;
+        StringWriter absolute_writer(&absolute_content);
+        StringPiece base_dir = base_url().Spec();      // base url has no leaf.
+        bool content_valid = true;
+        if (base_dir != output_resource->resolved_base()) {
+          // TODO(sligocki): Use CssParser instead of CssTagScanner hack.
+          content_valid = CssTagScanner::AbsolutifyUrls(
+              content, base_url().Spec(), &absolute_writer, handler);
+          content = absolute_content;  // StringPiece point to the new string.
 
-      }
-      if (content_valid &&
-          WriteResource(content, output_resource.get(), handler)) {
-        HtmlElement* link_element = driver_->NewElement(
-            style_element->parent(), HtmlName::kLink);
-        driver_->AddAttribute(link_element, HtmlName::kRel, kStylesheet);
-        driver_->AddAttribute(link_element, HtmlName::kHref,
-                                  output_resource->url());
-        // Add all style atrributes to link.
-        for (int i = 0; i < style_element->attribute_size(); ++i) {
-          const HtmlElement::Attribute& attr = style_element->attribute(i);
-          link_element->AddAttribute(attr);
         }
-        // Add link to DOM.
-        driver_->InsertElementAfterElement(style_element, link_element);
-        // Remove style element from DOM.
-        if (!driver_->DeleteElement(style_element)) {
-          driver_->FatalErrorHere("Failed to delete inline sytle element");
+        if (content_valid &&
+            WriteResource(content, output_resource.get(), handler)) {
+          HtmlElement* link_element = driver_->NewElement(
+              style_element->parent(), HtmlName::kLink);
+          driver_->AddAttribute(link_element, HtmlName::kRel, kStylesheet);
+          driver_->AddAttribute(link_element, HtmlName::kHref,
+                                output_resource->url());
+          // Add all style atrributes to link.
+          for (int i = 0; i < style_element->attribute_size(); ++i) {
+            const HtmlElement::Attribute& attr = style_element->attribute(i);
+            link_element->AddAttribute(attr);
+          }
+          // Add link to DOM.
+          driver_->InsertElementAfterElement(style_element, link_element);
+          // Remove style element from DOM.
+          if (!driver_->DeleteElement(style_element)) {
+            driver_->FatalErrorHere("Failed to delete inline sytle element");
+          }
         }
       }
     } else {

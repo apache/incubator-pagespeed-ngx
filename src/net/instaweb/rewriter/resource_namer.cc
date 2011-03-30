@@ -21,6 +21,7 @@
 #include <vector>
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/string_hash.h"
 
 namespace net_instaweb {
@@ -153,6 +154,11 @@ void ResourceNamer::CopyFrom(const ResourceNamer& other) {
   other.name().CopyToString(&name_);
   other.hash().CopyToString(&hash_);
   other.ext().CopyToString(&ext_);
+}
+
+int ResourceNamer::EventualSize(const Hasher& hasher) const {
+  return name_.size() + id_.size() + ext_.size() + kOverhead +
+         hasher.HashSizeInChars();
 }
 
 }  // namespace net_instaweb

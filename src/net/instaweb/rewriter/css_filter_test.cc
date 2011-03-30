@@ -38,6 +38,19 @@ TEST_F(CssFilterTest, SimpleRewriteCssTest) {
   ValidateRewrite("rewrite_css", input_style, output_style);
 }
 
+TEST_F(CssFilterTest, UrlTooLong) {
+  // Make the filename maximum size, so we cannot rewrite it.
+  // -4 because .css will be appended.
+  std::string filename(options_.max_url_segment_size() - 4, 'z');
+  // If filename wasn't too long, this would be rewritten (like in
+  // SimpleRewriteCssTest).
+  std::string input_style =
+      ".background_blue { background-color: #f00; }\n"
+      ".foreground_yellow { color: yellow; }\n";
+  ValidateRewriteExternalCss(filename, input_style, input_style,
+                             kExpectNoChange | kExpectSuccess);
+}
+
 // Make sure we can deal with 0 character nodes between open and close of style.
 TEST_F(CssFilterTest, RewriteEmptyCssTest) {
   ValidateRewriteInlineCss("rewrite_empty_css-inline", "", "",

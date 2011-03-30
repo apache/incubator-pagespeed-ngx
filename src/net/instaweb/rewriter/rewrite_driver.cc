@@ -616,7 +616,7 @@ bool RewriteDriver::FetchExtantOutputResource(
 // Constructs an output resource corresponding to the specified input resource
 // and encoded using the provided encoder.
 OutputResource* RewriteDriver::CreateOutputResourceFromResource(
-    const StringPiece& filter_prefix,
+    const StringPiece& filter_id,
     const ContentType* content_type,
     const UrlSegmentEncoder* encoder,
     const ResourceContext* data,
@@ -636,7 +636,7 @@ OutputResource* RewriteDriver::CreateOutputResourceFromResource(
       encoder->Encode(v, data, &name);
       result = CreateOutputResourceWithPath(
           mapped_gurl->AllExceptLeaf(),
-          filter_prefix, name, content_type, kind);
+          filter_id, name, content_type, kind);
     }
   }
   return result;
@@ -644,28 +644,35 @@ OutputResource* RewriteDriver::CreateOutputResourceFromResource(
 
 OutputResource* RewriteDriver::CreateOutputResourceWithPath(
     const StringPiece& path,
-    const StringPiece& filter_prefix,
+    const StringPiece& filter_id,
     const StringPiece& name,
     const ContentType* content_type,
     OutputResource::Kind kind) {
   ResourceNamer full_name;
-  full_name.set_id(filter_prefix);
+  full_name.set_id(filter_id);
   full_name.set_name(name);
   if (content_type != NULL) {
     // TODO(jmaessen): The addition of 1 below avoids the leading ".";
     // make this convention consistent and fix all code.
     full_name.set_ext(content_type->file_extension() + 1);
   }
-  OutputResource* resource = new OutputResource(
-      this, path, full_name, content_type, &options_, kind);
+  OutputResource* resource = NULL;
 
-  // Determine whether this output resource is still valid by looking
-  // up by hash in the http cache.  Note that this cache entry will
-  // expire when any of the origin resources expire.
-  if (kind != OutputResource::kOutlinedResource) {
-    std::string name_key = StrCat(
-        ResourceManager::kCacheKeyResourceNamePrefix, resource->name_key());
-    resource->FetchCachedResult(name_key, message_handler());
+  int leaf_size = full_name.EventualSize(*resource_manager_->hasher());
+  int url_size = path.size() + leaf_size;
+  if ((leaf_size <= options_.max_url_segment_size()) &&
+      (url_size <= options_.max_url_size())) {
+    resource = new OutputResource(
+        this, path, full_name, content_type, &options_, kind);
+
+    // Determine whether this output resource is still valid by looking
+    // up by hash in the http cache.  Note that this cache entry will
+    // expire when any of the origin resources expire.
+    if (kind != OutputResource::kOutlinedResource) {
+      std::string name_key = StrCat(
+          ResourceManager::kCacheKeyResourceNamePrefix, resource->name_key());
+      resource->FetchCachedResult(name_key, message_handler());
+    }
   }
   return resource;
 }

@@ -28,7 +28,8 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
  protected:
   // TODO(sligocki): factor out common elements in OutlineStyle and Script.
   // Test outlining scripts with options to write headers and use a hasher.
-  void OutlineScript(const StringPiece& id, Hasher* hasher) {
+  void OutlineScript(const StringPiece& id, Hasher* hasher,
+                     bool expect_outline) {
     resource_manager_->set_hasher(hasher);
 
     options_.set_js_outline_min_bytes(0);
@@ -56,7 +57,7 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
         "  <script type='text/javascript'>" + script_text + "</script>\n"
         "  <!-- Script ends here -->\n"
         "</head>";
-    std::string expected_output =
+    std::string expected_output = !expect_outline ? html_input :
         "<head>\n"
         "  <title>Example style outline</title>\n"
         "  <!-- Script starts here -->\n"
@@ -66,17 +67,22 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
         "</head>";
     ValidateExpected(id, html_input, expected_output);
 
-    std::string actual_outline;
-    ASSERT_TRUE(file_system_.ReadFile(outline_filename.c_str(),
-                                      &actual_outline,
-                                      &message_handler_));
-    EXPECT_EQ(outline_text, actual_outline);
+    if (expect_outline) {
+      std::string actual_outline;
+      ASSERT_TRUE(file_system_.ReadFile(outline_filename.c_str(),
+                                        &actual_outline,
+                                        &message_handler_));
+      EXPECT_EQ(outline_text, actual_outline);
+    }
   }
 };
 
 // Tests for outlining scripts.
 TEST_F(JsOutlineFilterTest, OutlineScript) {
-  OutlineScript("outline_scripts_no_hash_with_headers", &mock_hasher_);
+  OutlineScript("outline_scripts_no_hash", &mock_hasher_, true);
+}
+TEST_F(JsOutlineFilterTest, OutlineScriptMd5) {
+  OutlineScript("outline_scripts_md5", &md5_hasher_, true);
 }
 
 // Make sure we don't misplace things into domain of the base tag,
@@ -128,6 +134,15 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   // we don't want to.
   EXPECT_FALSE(file_system_.Exists(filename.c_str(),
                                    &message_handler_).is_true());
+}
+
+TEST_F(JsOutlineFilterTest, UrlTooLong) {
+  // By default we succeed at outlining.
+  OutlineScript("url_not_too_long", &mock_hasher_, true);
+
+  // But if we set max_url_size too small, it will fail cleanly.
+  options_.set_max_url_size(0);
+  OutlineScript("url_too_long", &mock_hasher_, false);
 }
 
 }  // namespace

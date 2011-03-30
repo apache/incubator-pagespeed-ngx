@@ -23,6 +23,7 @@
 namespace net_instaweb {
 
 class ContentType;
+class Hasher;
 class ResourceManager;
 
 // Encapsulates the naming of resource URL leafs.  The class holds the context
@@ -39,7 +40,7 @@ class ResourceNamer {
 
   // Encoding and decoding in various formats.
 
-  // Decodes an entire resource name (ID.HASH.NAME.EXT), placing
+  // Decodes an entire resource name (NAME.pagespeed.ID.HASH.EXT), placing
   // the result in the fields in this encoder.
   bool Decode(const StringPiece& encoded_string);
 
@@ -56,6 +57,10 @@ class ResourceNamer {
   std::string EncodeIdName() const;
 
   // Note: there is no need at this time to decode the name key.
+
+  // Eventual length of name. Gets eventual hash length from passed in hasher.
+  // Needed by ResourceManager to check that filenames aren't too long.
+  int EventualSize(const Hasher& hasher) const;
 
   // Simple getters
   StringPiece id() const { return id_; }

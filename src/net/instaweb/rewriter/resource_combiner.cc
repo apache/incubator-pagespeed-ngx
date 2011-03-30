@@ -212,16 +212,18 @@ OutputResource* ResourceCombiner::Combine(const ContentType& content_type,
       rewrite_driver_->CreateOutputResourceWithPath(
           ResolvedBase(), filter_prefix_, url_safe_id, &content_type,
           OutputResource::kRewrittenResource));
-  if (combination->cached_result() != NULL &&
-      combination->cached_result()->optimizable()) {
-    // If the combination has a Url set on it we have cached information
-    // on what the output would be, so we'll just use that.
-    return combination.release();
-  }
-  if (WriteCombination(resources_, combination.get(), handler)
-      && combination->IsWritten()) {
-    // Otherwise, we have to compute it.
-    return combination.release();
+  if (combination.get() != NULL) {
+    if (combination->cached_result() != NULL &&
+        combination->cached_result()->optimizable()) {
+      // If the combination has a Url set on it we have cached information
+      // on what the output would be, so we'll just use that.
+      return combination.release();
+    }
+    if (WriteCombination(resources_, combination.get(), handler)
+        && combination->IsWritten()) {
+      // Otherwise, we have to compute it.
+      return combination.release();
+    }
   }
   // No dice.
   return NULL;

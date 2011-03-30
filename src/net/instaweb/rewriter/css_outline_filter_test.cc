@@ -70,23 +70,26 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
          "<body>Hello, world!</body>\n");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
-    // Expected headers.
-    std::string expected_headers;
-    AppendDefaultHeaders(kContentTypeCss, resource_manager_, &expected_headers);
+    if (expect_outline) {
+      // Expected headers.
+      std::string expected_headers;
+      AppendDefaultHeaders(kContentTypeCss, resource_manager_,
+                           &expected_headers);
 
-    // Check file was written.
-    // TODO(sligocki): Should we check this or only the fetch below?
-    std::string actual_outline;
-    ASSERT_TRUE(file_system_.ReadFile(outline_filename.c_str(),
-                                      &actual_outline,
-                                      &message_handler_));
-    EXPECT_EQ(expected_headers + css_rewritten_body, actual_outline);
+      // Check file was written.
+      // TODO(sligocki): Should we check this or only the fetch below?
+      std::string actual_outline;
+      ASSERT_TRUE(file_system_.ReadFile(outline_filename.c_str(),
+                                        &actual_outline,
+                                        &message_handler_));
+      EXPECT_EQ(expected_headers + css_rewritten_body, actual_outline);
 
-    // Check fetched resource.
-    actual_outline.clear();
-    EXPECT_TRUE(ServeResourceUrl(outline_url, &actual_outline));
-    // TODO(sligocki): Check headers?
-    EXPECT_EQ(css_rewritten_body, actual_outline);
+      // Check fetched resource.
+      actual_outline.clear();
+      EXPECT_TRUE(ServeResourceUrl(outline_url, &actual_outline));
+      // TODO(sligocki): Check headers?
+      EXPECT_EQ(css_rewritten_body, actual_outline);
+    }
   }
 
   // Test with different hashers for a specific situation.
@@ -123,6 +126,19 @@ TEST_F(CssOutlineFilterTest, AbsolutifyDifferentDir) {
   TestOutlineCss("http://outline_style.test/index.html",
                  "  <base href=\"http://other_site.test/foo/\">\n",
                  css1, true, css2);
+}
+
+TEST_F(CssOutlineFilterTest, UrlTooLong) {
+  std::string html_url = "http://outline_style.test/url_size_test.html";
+  std::string style_text = "background_blue { background-color: blue; }\n"
+                            "foreground_yellow { color: yellow; }\n";
+
+  // By default we succeed at outlining.
+  TestOutlineCss(html_url, "", style_text, true, style_text);
+
+  // But if we set max_url_size too small, it will fail cleanly.
+  options_.set_max_url_size(0);
+  TestOutlineCss(html_url, "", style_text, false, style_text);
 }
 
 }  // namespace

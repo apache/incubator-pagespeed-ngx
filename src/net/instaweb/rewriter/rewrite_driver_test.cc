@@ -204,4 +204,51 @@ TEST_F(RewriteDriverTest, InvalidBaseTag) {
   EXPECT_EQ("http://example.com/absolute/", BaseUrlSpec());
 }
 
+TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
+  const ContentType* content_types[] = { NULL, &kContentTypeJpeg};
+  const OutputResource::Kind resource_kinds[] = {
+    OutputResource::kRewrittenResource,
+    OutputResource::kOnTheFlyResource,
+    OutputResource::kOutlinedResource,
+  };
+
+  // short_path.size() < options_.max_url_size() < long_path.size()
+  std::string short_path = "http://www.example.com/dir/";
+  std::string long_path = short_path;
+  for (int i = 0; 2 * i < options_.max_url_size(); ++i) {
+    long_path += "z/";
+  }
+
+  // short_name.size() < options_.max_url_segment_size() < long_name.size()
+  std::string short_name = "foo.html";
+  std::string long_name =
+      StrCat("foo.html?",
+             std::string(options_.max_url_segment_size() + 1, 'z'));
+
+  std::string dummy_filter_id = "xy";
+
+  scoped_ptr<OutputResource> resource;
+  for (int t = 0; t < arraysize(content_types); ++t) {
+    for (int k = 0; k < arraysize(resource_kinds); ++k) {
+      // Short name should always succeed at creating new resource.
+      resource.reset(rewrite_driver_.CreateOutputResourceWithPath(
+          short_path, dummy_filter_id, short_name,
+          content_types[t], resource_kinds[k]));
+      EXPECT_TRUE(NULL != resource.get());
+
+      // Long leaf-name should always fail at creating new resource.
+      resource.reset(rewrite_driver_.CreateOutputResourceWithPath(
+          short_path, dummy_filter_id, long_name,
+          content_types[t], resource_kinds[k]));
+      EXPECT_TRUE(NULL == resource.get());
+
+      // Long total URL length should always fail at creating new resource.
+      resource.reset(rewrite_driver_.CreateOutputResourceWithPath(
+          long_path, dummy_filter_id, short_name,
+          content_types[t], resource_kinds[k]));
+      EXPECT_TRUE(NULL == resource.get());
+    }
+  }
+}
+
 }  // namespace net_instaweb

@@ -20,9 +20,6 @@
     'chromium_code': 1,
   },
   'targets': [
-      # NOTE(abliss): These targets appear to get built in the order they
-      # appear, regardless of their claimed dependencies.  Moving
-      # instaweb_spriter below instaweb_rewriter breaks the build.
     {
       'target_name': 'instaweb_spriter_genproto',
       'type': 'none',
@@ -68,7 +65,10 @@
       'export_dependent_settings': [
         'instaweb_spriter_genproto',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-      ]
+      ],
+      'all_dependent_settings': {
+        'hard_dependency': 1,
+      },
     },
     {
       'target_name': 'instaweb_spriter',
@@ -166,7 +166,10 @@
       'export_dependent_settings': [
         'instaweb_rewriter_genproto',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-      ]
+      ],
+      'all_dependent_settings': {
+        'hard_dependency': 1,
+      },
     },
     {
       # TODO: break this up into sub-libs (mocks, real, etc)
@@ -587,7 +590,10 @@
       'export_dependent_settings': [
         'instaweb_http_genproto',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-      ]
+      ],
+      'all_dependent_settings': {
+        'hard_dependency': 1,
+      }
     },
   ],
 }

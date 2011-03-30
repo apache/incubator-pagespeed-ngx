@@ -128,6 +128,7 @@
         'util/chunking_writer_test.cc',
         'util/data_url_test.cc',
         'util/file_cache_test.cc',
+        'util/file_system_lock_manager_test.cc',
         'util/file_system_test.cc',
         'util/filename_encoder_test.cc',
         'util/google_url_test.cc',
