@@ -1,0 +1,18 @@
+/* The ?f=ic nonces are to keep from stomping on other test cases' ideas of
+ * what should be cached when. */
+#bg_Cuppa {
+    background-image:url('../images/Cuppa.png?f=ic');
+    background-repeat:no-repeat;
+    width:65px;
+    height:70px;
+}
+#bg_BikeCrashIcn {
+    width:100px;
+    height:100px;
+    background:transparent url('../images/BikeCrashIcn.png?f=ic') no-repeat
+}
+#bg_Puzzle {
+    width:1023px;
+    height:766px;
+    background:transparent url('../images/Puzzle.jpg?f=ic') no-repeat
+}

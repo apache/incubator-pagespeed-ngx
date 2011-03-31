@@ -40,12 +40,13 @@ class ResourceCombinerTemplate : public ResourceCombiner {
   }
   virtual ~ResourceCombinerTemplate() {}
 
-  bool AddElement(T element, const StringPiece& url, MessageHandler* handler) {
-    if (AddResource(url, handler)) {
+  TimedBool AddElement(T element, const StringPiece& url,
+                       MessageHandler* handler) {
+    TimedBool result = AddResource(url, handler);
+    if (result.value) {
       elements_.push_back(element);
-      return true;
     }
-    return false;
+    return result;
   }
 
   // Removes the last element that was added to this combiner.

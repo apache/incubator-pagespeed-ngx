@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_COMBINER_H_
 
 #include <vector>
+#include <utility>
 
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
@@ -45,6 +46,14 @@ class RewriteDriver;
 class RewriteDriver;
 class Variable;
 class Writer;
+
+// A boolean with an expiration date.
+struct TimedBool {
+  // A date, in milliseconds since the epoch, after which value should
+  // no longer be considered valid.
+  int64 expiration_ms;
+  bool value;
+};
 
 // This class is a utility for filters that combine multiple resource
 // files into one. It provides two major pieces of functionality to help out:
@@ -102,7 +111,7 @@ class ResourceCombiner {
   // Returns whether successful or not (in which case the partnership will be
   // unchanged). This will succeed only if we both have the data ready and can
   // fit in the names into the combined URL.
-  bool AddResource(const StringPiece& url, MessageHandler* handler);
+  TimedBool AddResource(const StringPiece& url, MessageHandler* handler);
 
   // Removes the last resource that was added here.
   void RemoveLastResource();

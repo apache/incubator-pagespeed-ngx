@@ -327,7 +327,7 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
   // Now we see if policy permits us merging this element with previous ones.
   StringPiece url = src->value();
   MessageHandler* handler = driver_->message_handler();
-  if (!combiner_->AddElement(element, src->value(), handler)) {
+  if (!combiner_->AddElement(element, src->value(), handler).value) {
     // No -> try to flush what we have thus far.
     combiner_->TryCombineAccumulated();
 

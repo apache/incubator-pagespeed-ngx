@@ -36,20 +36,18 @@ class CssImageCombineTest : public CssRewriteTestBase {
     // CSS filter is created aware of these.
     options_.EnableFilter(RewriteOptions::kSpriteImages);
     CssRewriteTestBase::SetUp();
+    AddFileToMockFetcher(StrCat(kTestDomain, kBikePngFile), kBikePngFile,
+                         kContentTypePng, 100);
+    AddFileToMockFetcher(StrCat(kTestDomain, kCuppaPngFile), kCuppaPngFile,
+                         kContentTypePng, 100);
+    AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
+                         kContentTypeJpeg, 100);
+    // We want a real hasher here so that subresources get separate locks.
+    resource_manager_->set_hasher(&md5_hasher_);
   }
 };
 
 TEST_F(CssImageCombineTest, SpritesImages) {
-  AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile),
-                       StrCat(GTestSrcDir(), kTestData, kPuzzleJpgFile),
-                       kContentTypeJpeg);
-  AddFileToMockFetcher(StrCat(kTestDomain, kCuppaPngFile),
-                       StrCat(GTestSrcDir(), kTestData, kCuppaPngFile),
-                       kContentTypePng);
-  AddFileToMockFetcher(StrCat(kTestDomain, kBikePngFile),
-                       StrCat(GTestSrcDir(), kTestData, kBikePngFile),
-                       kContentTypePng);
-
   const std::string before = StrCat(
       "<head><style>"
       "#div1 { background-image:url('", kCuppaPngFile, "');"
@@ -60,7 +58,8 @@ TEST_F(CssImageCombineTest, SpritesImages) {
       "</style></head>");
   // The JPEG will not be included in the sprite because we only handle PNGs.
   const std::string sprite = StrCat(kTestDomain, kCuppaPngFile, "+",
-                                     kBikePngFile, ".pagespeed.is.0.png");
+                                     kBikePngFile,
+                                     ".pagespeed.is.Y-XqNDe-in.png");
   const std::string after = StrCat(
       "<head><style>#div1{background-image:url(", sprite, ");"
       "background-repeat:no-repeat;"
@@ -75,8 +74,6 @@ TEST_F(CssImageCombineTest, SpritesImages) {
 
 TEST_F(CssImageCombineTest, NoCrashUnknownType) {
   // Make sure we don't crash trying to sprite an image with an unknown mimetype
-  AddFilter(RewriteOptions::kSpriteImages);
-  AddFilter(RewriteOptions::kRewriteCss);
 
   ResponseHeaders response_headers;
   resource_manager_->SetDefaultHeaders(&kContentTypePng, &response_headers);
@@ -94,6 +91,55 @@ TEST_F(CssImageCombineTest, NoCrashUnknownType) {
       "</style></head>";
 
   ParseUrl(kTestDomain, before);
+}
+
+TEST_F(CssImageCombineTest, SpritesImagesExternal) {
+  scoped_ptr<WaitUrlAsyncFetcher> wait_fetcher(SetupWaitFetcher());
+
+  const std::string beforeCss = StrCat(" "  // extra whitespace allows rewrite
+      "#div1{background-image:url(", kCuppaPngFile, ");"
+      "background-repeat:no-repeat}"
+      "#div2{background:transparent url(", kBikePngFile, ") no-repeat}"
+      "background-repeat:no-repeat}");
+  std::string cssUrl(kTestDomain);
+  cssUrl += "style.css";
+  // At first try, not even the CSS gets loaded, so nothing gets
+  // changed at all.
+  ValidateRewriteExternalCss(
+      "wip", beforeCss, beforeCss, kNoOtherContexts | kNoClearFetcher |
+      kExpectNoChange | kExpectSuccess);
+
+  // Get the CSS to load (resources are still unavailable).
+  wait_fetcher->CallCallbacks();
+
+  // On the second run, we will rewrite the CSS but not sprite.
+  const std::string rewrittenCss = StrCat(
+      "#div1{background-image:url(", kCuppaPngFile, ");"
+      "background-repeat:no-repeat}"
+      "#div2{background:transparent url(", kBikePngFile, ") no-repeat}");
+  ValidateRewriteExternalCss(
+      "wip", beforeCss, rewrittenCss, kNoOtherContexts | kNoClearFetcher |
+      kExpectChange | kExpectSuccess);
+
+  // Allow the images to load
+  wait_fetcher->CallCallbacks();
+  // The inability to rewrite this image will be remembered for 1 second.
+  mock_timer()->advance_ms(3 * Timer::kSecondMs);
+
+  // On the third run, we get spriting.
+  const std::string sprite = StrCat(kTestDomain, kCuppaPngFile, "+",
+                                     kBikePngFile,
+                                     ".pagespeed.is.Y-XqNDe-in.png");
+  const std::string spriteCss = StrCat(
+      "#div1{background-image:url(", sprite, ");"
+      "background-repeat:no-repeat;"
+      "background-position-y:0px!important;background-position-x:0px!important}"
+      "#div2{background:transparent url(", sprite,
+      ") no-repeat;background-position-y:-70px!important;"
+      "background-position-x:0px!important}");
+  ValidateRewriteExternalCss(
+      "wip", beforeCss, spriteCss, kNoOtherContexts | kNoClearFetcher |
+      kExpectChange | kExpectSuccess);
 }
 
 }  // namespace

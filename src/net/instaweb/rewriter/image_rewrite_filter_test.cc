@@ -52,9 +52,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
         StrCat("<head/><body><", tag_string, " src=\"Puzzle.jpg\"/></body>");
 
     // Store image contents into fetcher.
-    const std::string image_filename =
-        StrCat(GTestSrcDir(), kTestData, "Puzzle.jpg");
-    AddFileToMockFetcher(image_url, image_filename, kContentTypeJpeg);
+    AddFileToMockFetcher(image_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
 
     // Rewrite the HTML page.
     ParseUrl(html_url, image_html);
@@ -194,13 +192,11 @@ class ImageRewriteTest : public ResourceManagerTestBase {
   // Helper to test for how we handle trailing junk in URLs
   void TestCorruptUrl(const char* junk, bool should_fetch_ok) {
     const char kHtml[] = "<img src=\"a.jpg\"><img src=\"b.png\">";
-    AddFileToMockFetcher(StrCat(kTestDomain, "a.jpg"),
-                        StrCat(GTestSrcDir(), kTestData, kPuzzleJpgFile),
-                        kContentTypeJpeg);
+    AddFileToMockFetcher(StrCat(kTestDomain, "a.jpg"), kPuzzleJpgFile,
+                        kContentTypeJpeg, 100);
 
-    AddFileToMockFetcher(StrCat(kTestDomain, "b.png"),
-                        StrCat(GTestSrcDir(), kTestData, kBikePngFile),
-                        kContentTypeJpeg);
+    AddFileToMockFetcher(StrCat(kTestDomain, "b.png"), kBikePngFile,
+                        kContentTypeJpeg, 100);
 
     AddFilter(RewriteOptions::kRewriteImages);
 
@@ -248,12 +244,8 @@ TEST_F(ImageRewriteTest, RespectsBaseUrl) {
   const char png_url[]  = "http://other_domain.test/foo/bar/a.png";
   const char jpeg_url[] = "http://other_domain.test/baz/b.jpeg";
 
-  AddFileToMockFetcher(png_url,
-                       StrCat(GTestSrcDir(), kTestData, kBikePngFile),
-                       kContentTypePng);
-  AddFileToMockFetcher(jpeg_url,
-                       StrCat(GTestSrcDir(), kTestData, kPuzzleJpgFile),
-                       kContentTypeJpeg);
+  AddFileToMockFetcher(png_url, kBikePngFile, kContentTypePng, 100);
+  AddFileToMockFetcher(jpeg_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
 
   // Second stylesheet is on other domain.
   const char html_input[] =
@@ -328,9 +320,8 @@ TEST_F(ImageRewriteTest, NoCrashOnInvalidDim) {
   options_.EnableFilter(RewriteOptions::kRewriteImages);
   options_.EnableFilter(RewriteOptions::kInsertImgDimensions);
   rewrite_driver_.AddFilters();
-  AddFileToMockFetcher(StrCat(kTestDomain, "a.png"),
-                       StrCat(GTestSrcDir(), kTestData, kBikePngFile),
-                       kContentTypePng);
+  AddFileToMockFetcher(StrCat(kTestDomain, "a.png"), kBikePngFile,
+                       kContentTypePng, 100);
 
   ParseUrl(kTestDomain, "<img width=0 height=0 src=\"a.png\">");
   ParseUrl(kTestDomain, "<img width=0 height=42 src=\"a.png\">");

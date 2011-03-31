@@ -81,7 +81,7 @@ class CssCombineFilter::CssCombiner
       if (media_ != media)
         return false;
     }
-    return AddElement(element, href, handler);
+    return AddElement(element, href, handler).value;
   }
 
   // Try to combine all the CSS files we have seen so far.

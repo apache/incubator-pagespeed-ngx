@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_IMAGE_REWRITER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_IMAGE_REWRITER_H_
 
+#include "net/instaweb/rewriter/public/img_combine_filter.h"
 #include "net/instaweb/util/public/google_url.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
@@ -36,7 +37,6 @@ namespace net_instaweb {
 class CacheExtender;
 class CachedResult;
 class ImgRewriteFilter;
-class ImgCombineFilter;
 class MessageHandler;
 class RewriteDriver;
 class RewriteOptions;
@@ -56,11 +56,12 @@ class CssImageRewriter {
   // Attempts to rewrite all images in stylesheet. If successful, it mutates
   // stylesheet to point to new images.
   //
-  // Returns whether or not it made any changes.
-  // Output 'expiration_time_ms' is the min TTL for all subresources in CSS.
-  // (or kint64max if there are none)
-  bool RewriteCssImages(const GoogleUrl& base_url, Css::Stylesheet* stylesheet,
-                        int64* expiration_time_ms, MessageHandler* handler);
+  // Returns whether or not it made any changes.  The expiry of the answer is
+  // the minimum of the expiries of all subresources in the stylesheet, or
+  // kint64max if there are none)
+  TimedBool RewriteCssImages(const GoogleUrl& base_url,
+                             Css::Stylesheet* stylesheet,
+                             MessageHandler* handler);
 
   // Are any rewrites enabled?
   bool RewritesEnabled() const;
@@ -71,11 +72,10 @@ class CssImageRewriter {
   static const char kNoRewrite[];
 
  private:
-  bool RewriteImageUrl(const GoogleUrl& base_url,
-                       const StringPiece& old_rel_url,
-                       std::string* new_url,
-                       int64* expire_at_ms,
-                       MessageHandler* handler);
+  TimedBool RewriteImageUrl(const GoogleUrl& base_url,
+                            const StringPiece& old_rel_url,
+                            std::string* new_url,
+                            MessageHandler* handler);
 
   // Tells when we should expire our output based on a cached_result
   // produced from the rewriter. If NULL, it will produce a short delay

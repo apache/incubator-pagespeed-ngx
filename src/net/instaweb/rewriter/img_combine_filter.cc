@@ -392,11 +392,11 @@ bool ImgCombineFilter::Fetch(OutputResource* resource,
                           message_handler, callback);
 }
 
-bool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
-                                        Css::Declarations* declarations,
-                                        Css::Values* values,
-                                        int value_index,
-                                        MessageHandler* handler) {
+TimedBool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
+                                             Css::Declarations* declarations,
+                                             Css::Values* values,
+                                             int value_index,
+                                             MessageHandler* handler) {
   // We must rule out repeating backgrounds.  Since repeating is the default
   // behavior, we must find a no-repeat somewhere
 
@@ -404,6 +404,7 @@ bool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
   // horizontal sprite, and horizontal ones in a vertical sprite.
   // TODO(abliss): skip this check if the element is the same size as the image.
   bool repeat = true;
+  TimedBool ret = {kint64max, false};
   for (Css::Declarations::iterator decl_iter = declarations->begin();
        decl_iter != declarations->end(); ++decl_iter) {
     Css::Declaration* decl = *decl_iter;
@@ -419,7 +420,7 @@ bool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
               case Css::Identifier::REPEAT:
               case Css::Identifier::REPEAT_X:
               case Css::Identifier::REPEAT_Y:
-                return false;
+                return ret;
               case Css::Identifier::NO_REPEAT:
                 repeat = false;
               default:
@@ -438,7 +439,7 @@ bool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
               case Css::Identifier::REPEAT:
               case Css::Identifier::REPEAT_X:
               case Css::Identifier::REPEAT_Y:
-                return false;
+                return ret;
               case Css::Identifier::NO_REPEAT:
                 repeat = false;
               default:
@@ -452,18 +453,18 @@ bool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
     }
   }
   if (repeat) {
-    return false;
+    return ret;
   }
   SpriteFuture* future = new SpriteFuture();
-  if (combiner_->AddElement(future, original_url.Spec(), handler)) {
+  ret = combiner_->AddElement(future, original_url.Spec(), handler);
+  if (ret.value) {
     future->declarations_ = declarations;
     future->values_ = values;
     future->value_index_ = value_index;
-    return true;
   } else {
     delete future;
-    return false;
   }
+  return ret;
 }
 
 bool ImgCombineFilter::DoCombine(MessageHandler* handler) {

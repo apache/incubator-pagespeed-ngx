@@ -1,32 +1,15 @@
 <html>
   <head>
-    <style type='text/css'>
-      #div1 {
-        background-image:url('images/Cuppa.png');
-        background-repeat:no-repeat;
-        width:65px;
-        height:70px;
-      }
-      #div2 {
-        width:100px;
-        height:100px;
-        background:transparent url('images/BikeCrashIcn.png') no-repeat
-      }
-      #div3 {
-        width:1023px;
-        height:766px;
-        background:transparent url('images/Puzzle.jpg') no-repeat
-      }
-    </style>
+    <link rel="stylesheet" type="text/css" href="styles/sprite_images.css"/>
   </head>
   <body>
     <p>This page includes two images as CSS backgrounds.  mod_pagespeed will
-    create a single sprite to minimize roundtrips.</p>  First image:
-    <div id="div1"></div>
-Second image:
-    <div id="div2"></div>
-
-This image won't be sprited because we only handle PNGs right now:
-    <div id="div3"></div>
+    create a single sprite to minimize roundtrips.</p>
+    First image:
+    <div id="bg_Cuppa"></div>
+    Second image:
+    <div id="bg_BikeCrashIcn"></div>
+    This image won't be sprited because we only handle PNGs right now:
+    <div id="bg_Puzzle"></div>
   </body>
 </html>

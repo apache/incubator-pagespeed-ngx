@@ -219,7 +219,7 @@ void ResourceManagerTestBase::InitResponseHeaders(
     const StringPiece& resource_name,
     const ContentType& content_type,
     const StringPiece& content,
-    int64 ttl) {
+    int64 ttl_sec) {
   std::string name;
   if (resource_name.starts_with("http://")) {
     resource_name.CopyToString(&name);
@@ -230,16 +230,16 @@ void ResourceManagerTestBase::InitResponseHeaders(
   resource_manager_->SetDefaultHeaders(&content_type, &response_headers);
   response_headers.RemoveAll(HttpAttributes::kCacheControl);
   response_headers.Add(HttpAttributes::kCacheControl,
-                       StrCat("public, max-age=", Integer64ToString(ttl)));
+                       StrCat("public, max-age=", Integer64ToString(ttl_sec)));
   response_headers.ComputeCaching();
   mock_url_fetcher_.SetResponse(name, response_headers, content);
 }
 
-// TODO(sligocki): Take a ttl and share code with InitResponseHeaders.
 void ResourceManagerTestBase::AddFileToMockFetcher(
     const StringPiece& url,
-    const std::string& filename,
-    const ContentType& content_type) {
+    const StringPiece& filename,
+    const ContentType& content_type,
+    int64 ttl_sec) {
   // TODO(sligocki): There's probably a lot of wasteful copying here.
 
   // We need to load a file from the testdata directory. Don't use this
@@ -247,13 +247,10 @@ void ResourceManagerTestBase::AddFileToMockFetcher(
   // abstracted as a MemFileSystem instead.
   std::string contents;
   StdioFileSystem stdio_file_system;
-  ASSERT_TRUE(stdio_file_system.ReadFile(filename.c_str(), &contents,
-                                         &message_handler_));
-
-  // Put file into our fetcher.
-  ResponseHeaders default_header;
-  resource_manager_->SetDefaultHeaders(&content_type, &default_header);
-  mock_url_fetcher_.SetResponse(url, default_header, contents);
+  std::string filename_str = StrCat(GTestSrcDir(), kTestData, filename);
+  ASSERT_TRUE(stdio_file_system.ReadFile(
+      filename_str.c_str(), &contents, &message_handler_));
+  InitResponseHeaders(url, content_type, contents, ttl_sec);
 }
 
 // Helper function to test resource fetching, returning true if the fetch

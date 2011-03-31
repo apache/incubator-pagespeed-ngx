@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
 
 namespace net_instaweb {
@@ -69,8 +70,8 @@ ResourceCombiner::~ResourceCombiner() {
   Clear();
 }
 
-bool ResourceCombiner::AddResource(const StringPiece& url,
-                                   MessageHandler* handler) {
+TimedBool ResourceCombiner::AddResource(const StringPiece& url,
+                                        MessageHandler* handler) {
   // Assert the sanity of three parallel vectors.
   CHECK_EQ(num_urls(), static_cast<int>(resources_.size()));
   CHECK_EQ(num_urls(), static_cast<int>(multipart_encoder_urls_.size()));
@@ -86,19 +87,33 @@ bool ResourceCombiner::AddResource(const StringPiece& url,
   //    disabled due to policy.
 
   scoped_ptr<Resource> resource(filter_->CreateInputResource(url));
+  TimedBool ret = {0, false};
+
   if (resource.get() == NULL) {
-    return false;
+    // Resource is not creatable, and never will be.
+    ret.expiration_ms = kint64max;
+    return ret;
   }
 
-  if (!(rewrite_driver_->ReadIfCached(resource.get()) &&
-        resource->ContentsValid())) {
-    return false;
+  if (!(rewrite_driver_->ReadIfCached(resource.get()))) {
+    // Resource is not cached, but may be soon.
+    return ret;
   }
+
+  if (!resource->ContentsValid()) {
+    // Resource is not valid, but may be someday.
+    ret.expiration_ms = 5 * Timer::kMinuteMs;
+    return ret;
+  }
+
+  // From here on out, the answer will not change until the resource itself
+  // does.
+  ret.expiration_ms = resource->CacheExpirationTimeMs();
 
   // Make sure the specific filter is OK with the data --- it may be
   // unable to combine it safely
   if (!ResourceCombinable(resource.get(), handler)) {
-    return false;
+    return ret;
   }
 
   // Now manage the URL and policy.
@@ -125,7 +140,8 @@ bool ResourceCombiner::AddResource(const StringPiece& url,
       added = false;
     }
   }
-  return added;
+  ret.value = added;
+  return ret;
 }
 
 void ResourceCombiner::RemoveLastResource() {

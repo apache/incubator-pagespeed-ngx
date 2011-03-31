@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMG_COMBINE_FILTER_H_
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 
@@ -64,11 +65,11 @@ class ImgCombineFilter : public RewriteFilter {
   // until you call Realize() or Reset().  declarations is where we will add the
   // new width and height values; values[value_index] must be the URL value.
   // Will not actually change anything until you call Realize().
-  bool AddCssBackground(const GoogleUrl& original_url,
-                        Css::Declarations* declarations,
-                        Css::Values* values,
-                        int value_index,
-                        MessageHandler* handler);
+  TimedBool AddCssBackground(const GoogleUrl& original_url,
+                             Css::Declarations* declarations,
+                             Css::Values* values,
+                             int value_index,
+                             MessageHandler* handler);
 
   // Visit all CSS background images that have been added, replacing their urls
   // with the url of the sprite, and adding CSS declarations to position them

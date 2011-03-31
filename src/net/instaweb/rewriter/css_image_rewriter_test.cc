@@ -55,7 +55,9 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
       "  list-style: url('foo.png');\n"
       "}\n"
       ".other {\n"
-      "  background-image:url(data:image/;base64,T0sgYjAxZGJhYTZmM2Y1NTYyMQ==);"
+      "  background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA"
+      "AUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4"
+      "OHwAAAABJRU5ErkJggg==);"
       "  -proprietary-background-property: url(foo.png);\n"
       "}";
   static const char css_after[] =
@@ -65,7 +67,9 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
       "background:url(http://test.com/baz.png.pagespeed.ce.0.png);"
       "list-style:url(http://test.com/foo.png.pagespeed.ce.0.png)}"
       ".other{"  // data: URLs and unknown properties are not rewritten.
-      "background-image:url(data:image/;base64\\,T0sgYjAxZGJhYTZmM2Y1NTYyMQ==);"
+      "background-image:url(data:image/png;base64\\,iVBORw0KGgoAAAANSUhEUgAAA"
+      "AUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4"
+      "OHwAAAABJRU5ErkJggg==);"
       "-proprietary-background-property:url(foo.png)}";
 
   // Can't serve from new contexts yet, because we're using mock_fetcher_.

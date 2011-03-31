@@ -85,10 +85,9 @@ class CssFilter : public RewriteSingleResourceFilter {
   static const char kParseFailures[];
 
  private:
-  bool RewriteCssText(const StringPiece& in_text, std::string* out_text,
-                      const GoogleUrl& css_gurl,
-                      int64* subresource_expiration_time_ms,
-                      MessageHandler* handler);
+  TimedBool RewriteCssText(const StringPiece& in_text, std::string* out_text,
+                           const GoogleUrl& css_gurl,
+                           MessageHandler* handler);
   bool RewriteExternalCss(const StringPiece& in_url, std::string* out_url);
 
   virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,

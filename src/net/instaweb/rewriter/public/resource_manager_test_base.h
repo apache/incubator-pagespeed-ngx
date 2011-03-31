@@ -140,12 +140,11 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   void InitResponseHeaders(const StringPiece& resource_name,
                            const ContentType& content_type,
                            const StringPiece& content,
-                           int64 ttl);
+                           int64 ttl_sec);
 
-  // TODO(sligocki): Take a ttl and share code with InitResponseHeaders.
   void AddFileToMockFetcher(const StringPiece& url,
-                            const std::string& filename,
-                            const ContentType& content_type);
+                            const StringPiece& filename,
+                            const ContentType& content_type, int64 ttl_sec);
 
   // Callback that can be used for testing resource fetches.  As all the
   // async fetchers in unit-tests call their callbacks immediately, it
