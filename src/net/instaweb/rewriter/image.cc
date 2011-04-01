@@ -18,6 +18,9 @@
 
 #include "net/instaweb/rewriter/public/image.h"
 
+#include <string>
+#include <vector>
+
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -409,7 +412,7 @@ bool Image::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
 }
 
 StringPiece Image::OpenCvBufferToStringPiece(const OpenCvBuffer& buf) {
-  return StringPiece(reinterpret_cast<const char*>(buf.data()), buf.size());
+  return StringPiece(reinterpret_cast<const char*>(&buf[0]), buf.size());
 }
 
 #else

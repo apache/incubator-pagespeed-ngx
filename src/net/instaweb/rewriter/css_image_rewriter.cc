@@ -33,6 +33,7 @@
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/time_util.h"
 #include "webutil/css/parser.h"
 
 namespace net_instaweb {
@@ -202,7 +203,7 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                 if (driver_->options()->Enabled(
                         RewriteOptions::kSpriteImages)) {
                   result = image_combiner_->AddCssBackground(
-                      original_url, &decls, values, value_index, handler);
+                      original_url, &decls, value, handler);
                 }
                 expire_at_ms = std::min(expire_at_ms, result.expiration_ms);
                 if (result.value) {
@@ -230,11 +231,14 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                   if (no_rewrite_ != NULL) {
                     no_rewrite_->Add(1);
                   }
+                  std::string time_str;
+                  if (!ConvertTimeToString(result.expiration_ms, &time_str)) {
+                    time_str = "?";
+                  }
                   handler->Message(
-                      kInfo, "Cannot not rewrite %s until %lld"
+                      kInfo, "Can't rewrite %s until %s "
                       "(Perhaps it is being fetched).",
-                      rel_url.c_str(),
-                      static_cast<long long int>(result.expiration_ms));
+                      rel_url.c_str(), time_str.c_str());
                 }
               }
             }

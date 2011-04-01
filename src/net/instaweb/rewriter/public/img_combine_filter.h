@@ -27,7 +27,7 @@
 namespace Css {
 
 class Declarations;
-class Values;
+class Value;
 
 }  // namespace Css
 
@@ -63,12 +63,11 @@ class ImgCombineFilter : public RewriteFilter {
   // Attempt to add the CSS background image with (resolved) url original_url to
   // this partnership.  We do not take ownership of declarations; it must live
   // until you call Realize() or Reset().  declarations is where we will add the
-  // new width and height values; values[value_index] must be the URL value.
-  // Will not actually change anything until you call Realize().
+  // new width and height values; url_value must point to the URL value to be
+  // replaced. Will not actually change anything until you call Realize().
   TimedBool AddCssBackground(const GoogleUrl& original_url,
                              Css::Declarations* declarations,
-                             Css::Values* values,
-                             int value_index,
+                             Css::Value* url_value,
                              MessageHandler* handler);
 
   // Visit all CSS background images that have been added, replacing their urls

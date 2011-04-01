@@ -285,10 +285,16 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
 
     ok = (res == kRewriteOk);
   } else {
-    DCHECK_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch, input_state);
     ok = false;
-    handler->Message(kInfo, "%s: Couldn't fetch resource %s to rewrite.",
-                     base_url().spec_c_str(), input_resource->url().c_str());
+    if (input_state == HTTPCache::kRecentFetchFailedDoNotRefetch) {
+      handler->Message(kInfo, "%s: Couldn't fetch resource %s to rewrite.",
+                       base_url().spec_c_str(), input_resource->url().c_str());
+    } else {
+      handler->Message(kWarning,
+                       "%s: Unexpected status code for resource %s: %d",
+                       base_url().spec_c_str(), input_resource->url().c_str(),
+                       input_resource->metadata()->status_code());
+    }
   }
 
   if (!ok) {

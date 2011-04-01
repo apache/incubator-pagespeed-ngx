@@ -102,7 +102,7 @@ class HTTPCacheTest : public testing::Test {
     http_cache_.Find(key, handler, &callback);
     EXPECT_TRUE(callback.called_);
     if (callback.result_ == HTTPCache::kFound) {
-      *value = *callback.http_value();
+      value->Link(callback.http_value());
     }
     headers->CopyFrom(*callback.response_headers());
     return callback.result_;

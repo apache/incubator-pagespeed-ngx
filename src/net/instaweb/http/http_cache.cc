@@ -175,7 +175,7 @@ HTTPCache::FindResult HTTPCache::Find(
   CHECK(callback.called()) << "Non-blocking caches not yet supported";
   if (callback.result() == kFound) {
     if (value != NULL) {
-      *value = *callback.http_value();
+      value->Link(callback.http_value());
     }
   }
   if (headers != NULL) {

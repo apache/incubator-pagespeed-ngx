@@ -107,9 +107,18 @@ void debug_free(void* ptr) {
 
 }  // namespace
 
-// C++ operator new/delete overrides.
+// C++ operator new/delete overrides, in all 8 combinations:
+//    (new vs delete) * (const std::nothrow_t& vs not) * ([] vs not)
+// On MacOS __THROW appears to be missing so hide those in an ifdef.
+#ifndef __THROW
+#define __THROW
+#endif
 
 void* operator new(size_t size) throw (std::bad_alloc) {
+  return debug_malloc(size);
+}
+
+void* operator new[](size_t size) throw (std::bad_alloc) {
   return debug_malloc(size);
 }
 
@@ -123,10 +132,6 @@ void operator delete(void* ptr) __THROW {
 
 void operator delete(void* ptr, const std::nothrow_t&) __THROW {
   debug_free(ptr);
-}
-
-void* operator new[](size_t size) throw (std::bad_alloc) {
-  return debug_malloc(size);
 }
 
 void* operator new[](size_t size, const std::nothrow_t&) __THROW {

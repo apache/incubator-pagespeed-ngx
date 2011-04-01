@@ -615,6 +615,25 @@ TEST_P(RewriteSingleResourceFilterTest, FetchInvalidResourceName) {
   ASSERT_FALSE(ServeRelativeUrl("404,.tst.pagespeed.tf.0.txt", &out));
 }
 
+TEST_P(RewriteSingleResourceFilterTest, FetchBadStatus) {
+  ResponseHeaders response_headers;
+  resource_manager_->SetDefaultHeaders(&kContentTypeText, &response_headers);
+  response_headers.SetStatusAndReason(HttpStatus::kFound);
+  mock_url_fetcher_.SetResponse(
+      StrCat(kTestDomain, "redirect"), response_headers, StringPiece());
+  mock_url_fetcher_.set_fail_on_unexpected(false);
+  ValidateNoChanges("redirected_resource", "<tag src=\"/redirect\"></tag>");
+
+  ResponseHeaders response_headers2;
+  resource_manager_->SetDefaultHeaders(&kContentTypeText, &response_headers2);
+  response_headers2.SetStatusAndReason(HttpStatus::kImATeapot);
+  mock_url_fetcher_.SetResponse(
+      StrCat(kTestDomain, "pot-1"), response_headers2, StringPiece());
+  ValidateNoChanges("teapot_resource", "<tag src=\"/pot-1\"></tag>");
+  // The second time, this resource will be cached with its bad status code.
+  ValidateNoChanges("teapot_resource", "<tag src=\"/pot-1\"></tag>");
+}
+
 INSTANTIATE_TEST_CASE_P(RewriteSingleResourceFilterTestInstance,
                         RewriteSingleResourceFilterTest,
                         ::testing::Bool());

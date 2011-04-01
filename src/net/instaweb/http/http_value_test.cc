@@ -109,16 +109,17 @@ TEST_F(HTTPValueTest, TestCopyOnWrite) {
   ASSERT_TRUE(v1.ExtractContents(&v1_contents));
   EXPECT_TRUE(v1.unique());
 
-  // Now check that copy-construction shares the buffer.
-  HTTPValue v2(v1);
+  // Test Link sharing
+  HTTPValue v2;
+  v2.Link(&v1);
   EXPECT_FALSE(v1.unique());
   EXPECT_FALSE(v2.unique());
   ASSERT_TRUE(v2.ExtractContents(&v2_contents));
   EXPECT_EQ(v1_contents, v2_contents);
   EXPECT_EQ(v1_contents.data(), v2_contents.data());  // buffer sharing
 
-  // Also the assignment operator should induce sharing.
-  HTTPValue v3 = v1;
+  HTTPValue v3;
+  v3.Link(&v1);
   EXPECT_FALSE(v3.unique());
   ASSERT_TRUE(v3.ExtractContents(&v3_contents));
   EXPECT_EQ(v1_contents, v3_contents);

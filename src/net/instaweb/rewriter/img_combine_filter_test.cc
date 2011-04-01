@@ -45,31 +45,34 @@ class CssImageCombineTest : public CssRewriteTestBase {
     // We want a real hasher here so that subresources get separate locks.
     resource_manager_->set_hasher(&md5_hasher_);
   }
+  void TestSpriting(const char* bikePosition,
+                    const char* expectedPosition) {
+    const std::string sprite_string = StrCat(kTestDomain, kCuppaPngFile, "+",
+                                              kBikePngFile,
+                                              ".pagespeed.is.Y-XqNDe-in.png");
+    const char* sprite = sprite_string.c_str();
+    // The JPEG will not be included in the sprite because we only handle PNGs.
+    const char* html = "<head><style>"
+        "#div1{background-image:url(%s);background-repeat:no-repeat;"
+        "background-position:0px 0px}"
+        "#div2{background:transparent url(%s) no-repeat;"
+        "background-position:%s}"
+        "#div3{background-image:url(%s)}"
+        "</style></head>";
+    const std::string before = StringPrintf(
+        html, kCuppaPngFile, kBikePngFile, bikePosition, kPuzzleJpgFile);
+    const std::string after = StringPrintf(
+        html, sprite, sprite, expectedPosition, kPuzzleJpgFile);
+
+    ValidateExpected("sprites_images", before, after);
+  }
 };
 
 TEST_F(CssImageCombineTest, SpritesImages) {
-  const std::string before = StrCat(
-      "<head><style>"
-      "#div1 { background-image:url('", kCuppaPngFile, "');"
-      "background-repeat:no-repeat;}"
-      "#div2 { background:transparent url('", kBikePngFile, "') no-repeat}"
-      "#div3 { background-image: url('", kPuzzleJpgFile, "');"
-      "background-repeat:no-repeat;}"
-      "</style></head>");
-  // The JPEG will not be included in the sprite because we only handle PNGs.
-  const std::string sprite = StrCat(kTestDomain, kCuppaPngFile, "+",
-                                     kBikePngFile,
-                                     ".pagespeed.is.Y-XqNDe-in.png");
-  const std::string after = StrCat(
-      "<head><style>#div1{background-image:url(", sprite, ");"
-      "background-repeat:no-repeat;"
-      "background-position-y:0px!important;background-position-x:0px!important}"
-      "#div2{background:transparent url(", sprite,
-      ") no-repeat;background-position-y:-70px!important;"
-      "background-position-x:0px!important}#div3{background-image:url(",
-      kPuzzleJpgFile, ");background-repeat:no-repeat}</style></head>");
-
-  ValidateExpected("sprites_images", before, after);
+  TestSpriting("0px 0px", "0px -70px");
+  TestSpriting("left top", "0px -70px");
+  TestSpriting("top 10px", "10px -70px");
+  TestSpriting("-5px 5px", "-5px -65px");
 }
 
 TEST_F(CssImageCombineTest, NoCrashUnknownType) {
@@ -133,10 +136,9 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
   const std::string spriteCss = StrCat(
       "#div1{background-image:url(", sprite, ");"
       "background-repeat:no-repeat;"
-      "background-position-y:0px!important;background-position-x:0px!important}"
+      "background-position:0px 0px}"
       "#div2{background:transparent url(", sprite,
-      ") no-repeat;background-position-y:-70px!important;"
-      "background-position-x:0px!important}");
+      ") no-repeat;background-position:0px -70px}");
   ValidateRewriteExternalCss(
       "wip", beforeCss, spriteCss, kNoOtherContexts | kNoClearFetcher |
       kExpectChange | kExpectSuccess);

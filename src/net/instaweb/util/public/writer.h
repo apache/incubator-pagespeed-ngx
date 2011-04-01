@@ -19,21 +19,25 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_WRITER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_WRITER_H_
 
+#include "base/basictypes.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
 class MessageHandler;
 
 // Interface for writing bytes to an output stream.
 class Writer {
  public:
+  Writer() {}
   virtual ~Writer();
 
   virtual bool Write(const StringPiece& str, MessageHandler* handler) = 0;
 
   virtual bool Flush(MessageHandler* message_handler) = 0;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Writer);
 };
 
 }  // namespace net_instaweb

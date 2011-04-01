@@ -50,44 +50,134 @@ const char kImgFileCountReduction[] = "img_file_count_reduction";
 // partnership.
 class SpriteFuture {
  public:
-  SpriteFuture() : declarations_(NULL), values_(NULL) {}
+  SpriteFuture() : declarations_(NULL), url_value_(NULL) {}
 
   // Bind this Future to a partictular image.  Owns nothing; the inputs must
   // outlive this future.
-  void Initialize(Css::Declarations* declarations, Css::Values* values,
-                  int value_index) {
+  void Initialize(Css::Declarations* declarations, Css::Value* url_value) {
     declarations_ = declarations;
-    values_ = values;
-    value_index_ = value_index;
+    url_value_ = url_value;
   }
 
-  // Actually perform the url substitution.  Initialize must have been called
-  // first.
-  void Realize(const char* url, int x, int y) {
+  // TODO(abliss): support other values like "10%" and "center"
+  static bool GetPixelValue(Css::Value* value, int* out_value_px) {
+    switch (value->GetLexicalUnitType()) {
+      case Css::Value::NUMBER:
+        switch (value->GetDimension()) {
+          case Css::Value::PX:
+            // The easy case: offset specified in pixels.
+            *out_value_px = value->GetIntegerValue();
+            return true;
+          default:
+            return false;
+        }
+      case  Css::Value::IDENT:
+        switch (value->GetIdentifier().ident()) {
+          case Css::Identifier::LEFT:
+          case Css::Identifier::TOP:
+            *out_value_px = 0;
+            return true;
+          default:
+            return false;
+        }
+      default:
+        return false;
+    }
+  }
+
+  // Attempt to actually perform the url substitution.  Initialize must have
+  // been called first.
+  bool Realize(const char* url, int x, int y) {
     DCHECK(declarations_ != NULL);
+    // Find the original background offsets (if any) so we can add to them.
+    bool position_found = false;
+    for (Css::Declarations::iterator decl_iter = declarations_->begin();
+         !position_found && (decl_iter != declarations_->end());
+         ++decl_iter) {
+      Css::Declaration* decl = *decl_iter;
+      switch (decl->prop()) {
+        case Css::Property::BACKGROUND_POSITION: {
+          Css::Values* decl_values = decl->mutable_values();
+          if (decl_values->size() != 2) {
+            // If only one of the coordinates is specified, the other is
+            // "center", which we don't currently support.
+            return false;
+          }
+          // Parsing these values is trickier than you might think.  If either
+          // of the two values is a non-center identifier, it determines which
+          // is x and which is y.  So for example, "5px left" means x=0, y=5 but
+          // "5px top" means x=5, y=0.
+          // TODO(abliss): actually this is too permissive; "5px left" is not
+          // allowed by the spec.
+          // TODO(abliss): move this to webutil/css?
+          Css::Value* x_value = NULL;
+          Css::Value* y_value = NULL;
+          for (int i = 0; (i < 2) && (x_value == NULL); i++) {
+            Css::Value* value = decl_values->at(i);
+            Css::Value* other_value = decl_values->at(1 - i);
+            if (value->GetLexicalUnitType() == Css::Value::IDENT) {
+              switch (value->GetIdentifier().ident()) {
+                case Css::Identifier::LEFT:
+                case Css::Identifier::RIGHT:
+                  x_value = value;
+                  y_value = other_value;
+                  break;
+                case Css::Identifier::TOP:
+                case Css::Identifier::BOTTOM:
+                  x_value = other_value;
+                  y_value = value;
+                  break;
+                default:
+                  // We do not currently support CENTER
+                  return false;
+              }
+            }
+          }
+          // If there are two values and neither is an identifier, x comes
+          // first: e.g. "5px 6px" means x=5, y=6.
+          if (x_value == NULL) {
+            x_value = decl_values->at(0);
+            y_value = decl_values->at(1);
+          }
+          // Now that we know which value is which dimension, we can extract the
+          // values in px.
+          int x_px, y_px;
+          if (!GetPixelValue(x_value, &x_px) ||
+              !GetPixelValue(y_value, &y_px)) {
+            return false;
+          }
+          *(decl_values->at(0)) = Css::Value(x_px - x, Css::Value::PX);
+          *(decl_values->at(1)) = Css::Value(y_px - y, Css::Value::PX);
+          position_found = true;
+          break;
+        }
+        case Css::Property::BACKGROUND_POSITION_X:
+        case Css::Property::BACKGROUND_POSITION_Y:
+          // These are non-standard, though supported in IE and Chrome.
+          // TODO(abliss): handle these.
+          return false;
+        default:
+          break;
+      }
+    }
+    if (!position_found) {
+      // If no position was specified, it defaults to "0% 0%", which is the same
+      // as "0px 0px".
+      Css::Values* values = new Css::Values();
+      values->push_back(new Css::Value(-x, Css::Value::PX));
+      values->push_back(new Css::Value(-y, Css::Value::PX));
+      declarations_->push_back(new Css::Declaration(
+          Css::Property::BACKGROUND_POSITION, values, false));
+    }
     // Replace the old URL with the new one.
-    delete (*values_)[value_index_];
-    (*values_)[value_index_] = new Css::Value(
-        Css::Value::URI, UTF8ToUnicodeText(url));
-    Css::Values* values = new Css::Values();
-    values->push_back(new Css::Value(-y, Css::Value::PX));
-    // Add a new declaration for the background position.
-    // TODO(abliss): This does not work correctly on firefox if the background
-    // declaration included position values.
-    declarations_->push_back(new Css::Declaration(
-        Css::Property::BACKGROUND_POSITION_Y, values, true));
-    values = new Css::Values();
-    values->push_back(new Css::Value(-x, Css::Value::PX));
-    declarations_->push_back(new Css::Declaration(
-        Css::Property::BACKGROUND_POSITION_X, values, true));
+    *(url_value_) = Css::Value(Css::Value::URI, UTF8ToUnicodeText(url));
+
     // TODO(abliss): consider specifying width and height.  Currently we are
     // assuming the node is already sized correctly.
+    return true;
   }
   Css::Declarations* declarations_;
-  Css::Values* values_;
-  // Index of the URL value in the Values array.
-  int value_index_;
-
+  Css::Value* url_value_;
  private:
   DISALLOW_COPY_AND_ASSIGN(SpriteFuture);
 };
@@ -254,10 +344,12 @@ class ImgCombineFilter::Combiner
 
     // We only handle PNGs for now.
     if (resource->type() && (resource->type()->type() != ContentType::kPng)) {
+      handler->Message(kInfo, "Cannot sprite: not PNG");
       return false;
     }
     // Need to make sure our image library can handle this image.
     if (!library_.Register(resource)) {
+      handler->Message(kInfo, "Cannot sprite: not decodable (transparent?)");
       return false;
     }
     return true;
@@ -350,6 +442,7 @@ class ImgCombineFilter::Combiner
       delete future;
     }
     if (img_file_count_reduction_ != NULL) {
+      handler->Message(kInfo, "Sprited %d images!", n);
       img_file_count_reduction_->Add(n - 1);
     }
     return true;
@@ -394,8 +487,7 @@ bool ImgCombineFilter::Fetch(OutputResource* resource,
 
 TimedBool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
                                              Css::Declarations* declarations,
-                                             Css::Values* values,
-                                             int value_index,
+                                             Css::Value* url_value,
                                              MessageHandler* handler) {
   // We must rule out repeating backgrounds.  Since repeating is the default
   // behavior, we must find a no-repeat somewhere
@@ -420,6 +512,7 @@ TimedBool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
               case Css::Identifier::REPEAT:
               case Css::Identifier::REPEAT_X:
               case Css::Identifier::REPEAT_Y:
+                handler->Message(kInfo, "Cannot sprite: explicit bgr repeat");
                 return ret;
               case Css::Identifier::NO_REPEAT:
                 repeat = false;
@@ -439,6 +532,7 @@ TimedBool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
               case Css::Identifier::REPEAT:
               case Css::Identifier::REPEAT_X:
               case Css::Identifier::REPEAT_Y:
+                handler->Message(kInfo, "Cannot sprite: explicit bg repeat");
                 return ret;
               case Css::Identifier::NO_REPEAT:
                 repeat = false;
@@ -453,14 +547,13 @@ TimedBool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
     }
   }
   if (repeat) {
+    handler->Message(kInfo, "Cannot sprite: implicit repeat");
     return ret;
   }
   SpriteFuture* future = new SpriteFuture();
   ret = combiner_->AddElement(future, original_url.Spec(), handler);
   if (ret.value) {
-    future->declarations_ = declarations;
-    future->values_ = values;
-    future->value_index_ = value_index;
+    future->Initialize(declarations, url_value);
   } else {
     delete future;
   }

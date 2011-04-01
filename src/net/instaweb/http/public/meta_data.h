@@ -102,6 +102,7 @@ enum Code {
   kUnsupportedMediaType = 415,
   kRangeNotSatisfiable = 416,
   kExpectationFailed = 417,
+  kImATeapot = 418,
 
   kInternalServerError = 500,
   kNotImplemented = 501,

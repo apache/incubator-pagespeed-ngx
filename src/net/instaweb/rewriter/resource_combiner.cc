@@ -92,16 +92,19 @@ TimedBool ResourceCombiner::AddResource(const StringPiece& url,
   if (resource.get() == NULL) {
     // Resource is not creatable, and never will be.
     ret.expiration_ms = kint64max;
+    handler->Message(kInfo, "Cannot combine: null resource");
     return ret;
   }
 
   if (!(rewrite_driver_->ReadIfCached(resource.get()))) {
     // Resource is not cached, but may be soon.
+    handler->Message(kInfo, "Cannot combine: not cached");
     return ret;
   }
 
   if (!resource->ContentsValid()) {
     // Resource is not valid, but may be someday.
+    handler->Message(kInfo, "Cannot combine: invalid contents");
     ret.expiration_ms = 5 * Timer::kMinuteMs;
     return ret;
   }
@@ -136,6 +139,7 @@ TimedBool ResourceCombiner::AddResource(const StringPiece& url,
 
     resources_.push_back(resource.release());
     if (UrlTooBig()) {
+      handler->Message(kInfo, "Cannot combine: url too big");
       RemoveLastResource();
       added = false;
     }
