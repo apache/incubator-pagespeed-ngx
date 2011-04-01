@@ -17,13 +17,20 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_SHARED_MEM_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_SHARED_MEM_H_
 
-#include "net/instaweb/util/public/abstract_shared_mem.h"
+#include <map>
 
+#include "net/instaweb/util/public/abstract_shared_mem.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-// POSIX shared memory support, using shm_open/mmap/pthread_mutexattr_setpshared
-// Supports both processes and threads.
+// POSIX shared memory support, using mmap/pthread_mutexattr_setpshared
+// Supports both processes and threads, but processes that want to access it
+// must be results of just fork (without exec), and all the CreateSegment
+// calls must occur before the fork.
+//
+// This implementation is also not capable of deallocating segments except
+// at exit, so it should not be used when the set of segments may be dynamic.
 class PthreadSharedMem : public AbstractSharedMem {
  public:
   PthreadSharedMem();
@@ -41,7 +48,14 @@ class PthreadSharedMem : public AbstractSharedMem {
                               MessageHandler* handler);
 
  private:
-  std::string EncodeName(const std::string& name);
+  typedef std::map<std::string, char*> SegmentBaseMap;
+
+  static SegmentBaseMap* segment_bases();
+
+  // The root process stores segment locations here. Child processes will
+  // inherit a readonly copy of this map after the fork. Note that this is
+  // initialized in a thread-unsafe manner, given the above assumptions.
+  static SegmentBaseMap* segment_bases_;
 
   DISALLOW_COPY_AND_ASSIGN(PthreadSharedMem);
 };

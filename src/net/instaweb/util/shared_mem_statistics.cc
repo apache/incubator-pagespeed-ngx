@@ -77,6 +77,10 @@ void SharedMemVariable::AttachTo(
       segment->Base() + offset + segment->SharedMutexSize());
 }
 
+void SharedMemVariable::Reset() {
+  mutex_.reset();
+}
+
 SharedMemStatistics::SharedMemStatistics(AbstractSharedMem* shm_runtime,
                                          const std::string& filename_prefix)
     : shm_runtime_(shm_runtime), filename_prefix_(filename_prefix),
@@ -146,9 +150,11 @@ void SharedMemStatistics::InitVariables(bool parent,
   }
 
   // Now make the variable objects actually point to the right things.
-  if (ok) {
-    for (size_t i = 0; i < variables_.size(); ++i) {
+  for (size_t i = 0; i < variables_.size(); ++i) {
+    if (ok) {
       variables_[i]->AttachTo(segment_.get(), i * per_var, message_handler);
+    } else {
+      variables_[i]->Reset();
     }
   }
 }

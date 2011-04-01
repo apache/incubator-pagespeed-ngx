@@ -60,6 +60,10 @@ class SharedMemVariable : public Variable {
   void AttachTo(AbstractSharedMemSegment* segment_, size_t offset,
                 MessageHandler* message_handler);
 
+  // Called on initialization failure, to make sure it's clear if we
+  // share some state with parent.
+  void Reset();
+
   // The name of this variable.
   const std::string name_;
 

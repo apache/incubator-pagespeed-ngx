@@ -32,6 +32,10 @@ namespace net_instaweb {
 
 namespace {
 
+// This implementation relies on readonly copies of old memory and shared R/W
+// mappings being kept across a fork. It simply stashes addresses of
+// shared mmap segments into a map where kid processes can pick them up.
+
 // close() a fd logging failure and dealing with EINTR.
 void CheckedClose(int fd, MessageHandler* message_handler) {
   while (close(fd) != 0) {
@@ -66,17 +70,13 @@ class PthreadSharedMemMutex : public AbstractMutex {
 
 class PthreadSharedMemSegment : public AbstractSharedMemSegment {
  public:
-  PthreadSharedMemSegment(int fd, size_t size, MessageHandler* handler)
-      : size_(size) {
-    base_ = reinterpret_cast<char*>(
-                mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
-    CheckedClose(fd, handler);
+  // We will be representing memory mapped in the [base, base + size) range.
+  PthreadSharedMemSegment(char* base, size_t size, MessageHandler* handler)
+      : base_(base),
+        size_(size) {
   }
 
   virtual ~PthreadSharedMemSegment() {
-    if (base_ != MAP_FAILED) {
-      munmap(base_, size_);
-    }
   }
 
   virtual volatile char* Base() {
@@ -117,22 +117,22 @@ class PthreadSharedMemSegment : public AbstractSharedMemSegment {
     return new PthreadSharedMemMutex(MutexPtr(offset));
   }
 
-  bool IsAttached() {
-    return base_ != MAP_FAILED;
-  }
-
  private:
   pthread_mutex_t* MutexPtr(size_t offset) {
     return reinterpret_cast<pthread_mutex_t*>(base_ + offset);
   }
 
-  char* base_;
-  size_t size_;
+  char* const base_;
+  const size_t size_;
 
   DISALLOW_COPY_AND_ASSIGN(PthreadSharedMemSegment);
 };
 
+pthread_mutex_t segment_bases_lock = PTHREAD_MUTEX_INITIALIZER;
+
 }  // namespace
+
+PthreadSharedMem::SegmentBaseMap* PthreadSharedMem::segment_bases_ = NULL;
 
 PthreadSharedMem::PthreadSharedMem() {
 }
@@ -144,84 +144,64 @@ size_t PthreadSharedMem::SharedMutexSize() const {
   return sizeof(pthread_mutex_t);
 }
 
-std::string PthreadSharedMem::EncodeName(const std::string& name) {
-  // shm_open/shm_unlink are only well-defined for paths that contain
-  // a leading slash and no other slashes; however our clients give us
-  // hierarchical path names. We hence must flatten them by hashing.
-  //
-  // Our names are predictable, and do not get hierarchical directory
-  // protection from other users, but there are some precautions we take:
-  // 1) We create with O_EXCL below, so we will never pick up files from
-  // other users.
-  //
-  // 2) The created segment only has user-permissions, so if we do
-  // create it, no-one else can touch it.
-  //
-  // This does not prevent a malicious user from denying us from using
-  // shared memory entirely, but that's hardly the only DOS available to them.
-  MD5Hasher hasher;
-  return StrCat("/mod_pagespeed", hasher.Hash(name));
-}
-
 AbstractSharedMemSegment* PthreadSharedMem::CreateSegment(
-    const std::string& sym_name, size_t size, MessageHandler* handler) {
-  std::string name = EncodeName(sym_name);
-  // cleanup any old segment.
-  shm_unlink(name.c_str());
-
-  // open the new one...
-  int fd = shm_open(name.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+    const std::string& name, size_t size, MessageHandler* handler) {
+  // Create the memory
+  int fd = open("/dev/zero", O_RDWR);
   if (fd == -1) {
-    handler->Message(kError, "Unable to create SHM segment %s, errno=%d",
+    handler->Message(kError, "Unable to create SHM segment %s, errno=%d.",
                      name.c_str(), errno);
-    return NULL;
-  }
-
-  // allocate the memory...
-  if (ftruncate(fd, size) == -1) {
-    handler->Message(
-        kError, "Unable to resize SHM segment %s to %ld bytes, errno=%d",
-        name.c_str(), static_cast<long>(size), errno);  // NOLINT
-    CheckedClose(fd, handler);
-    shm_unlink(name.c_str());
     return NULL;
   }
 
   // map it
-  scoped_ptr<PthreadSharedMemSegment> seg(
-      new PthreadSharedMemSegment(fd, size, handler));
-  if (!seg->IsAttached()) {
-    shm_unlink(name.c_str());
+  char* base = reinterpret_cast<char*>(
+                   mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+  CheckedClose(fd, handler);
+  if (base == MAP_FAILED) {
     return NULL;
   }
-  return seg.release();
+
+  (*segment_bases())[name] = base;
+  return new PthreadSharedMemSegment(base, size, handler);
 }
 
 AbstractSharedMemSegment* PthreadSharedMem::AttachToSegment(
-    const std::string& sym_name, size_t size, MessageHandler* handler) {
-  std::string name = EncodeName(sym_name);
-  int fd = shm_open(name.c_str(), O_RDWR, S_IRUSR | S_IWUSR);
-  if (fd == -1) {
-    handler->Message(kError, "Unable to attach to SHM segment %s, errno=%d",
-                     name.c_str(), errno);
+    const std::string& name, size_t size, MessageHandler* handler) {
+  SegmentBaseMap* bases = segment_bases();
+  SegmentBaseMap::const_iterator i = bases->find(name);
+  if (i == bases->end()) {
+    handler->Message(kError, "Unable to find SHM segment %s to attach to.",
+                     name.c_str());
     return NULL;
   }
 
-  scoped_ptr<PthreadSharedMemSegment> seg(
-      new PthreadSharedMemSegment(fd, size, handler));
-  if (seg->IsAttached()) {
-    return seg.release();
-  }
-  return NULL;
+  return new PthreadSharedMemSegment(i->second, size, handler);
 }
 
-void PthreadSharedMem::DestroySegment(const std::string& sym_name,
+void PthreadSharedMem::DestroySegment(const std::string& name,
                                       MessageHandler* handler) {
-  std::string name = EncodeName(sym_name);
-  if (shm_unlink(name.c_str()) == -1) {
-    handler->Message(kWarning, "Unable to unlink SHM segment %s, errno=%d",
-                     name.c_str(), errno);
+  // Note that in the process state children will not see any mutations
+  // we make here, so it acts mostly for checking in that case.
+  SegmentBaseMap* bases = segment_bases();
+  SegmentBaseMap::iterator i = bases->find(name);
+  if (i != bases->end()) {
+    bases->erase(i);
+  } else {
+    handler->Message(kError, "Attempt to destroy unknown SHM segment %s.",
+                     name.c_str());
   }
+}
+
+PthreadSharedMem::SegmentBaseMap* PthreadSharedMem::segment_bases() {
+  PthreadSharedMemMutex lock(&segment_bases_lock);
+  ScopedMutex hold_lock(&lock);
+
+  if (segment_bases_ == NULL) {
+    segment_bases_ = new SegmentBaseMap();
+  }
+
+  return segment_bases_;
 }
 
 }  // namespace net_instaweb
