@@ -49,11 +49,13 @@ class UrlPartnershipTest : public testing::Test {
  protected:
   UrlPartnershipTest()
       : domain_lawyer_(options_.domain_lawyer()),
-        partnership_(&options_, GoogleUrl(kOriginalRequest)),
+        partnership_(&options_),
         styles_path_("http://www.nytimes.com/r/styles/"),
         r_path_("http://www.nytimes.com/r/"),
         style_url_("style.css?appearance=reader/writer?"),
         style2_url_("style2.css?appearance=reader") {
+    GoogleUrl original_gurl(kOriginalRequest);
+    partnership_.Reset(original_gurl);
   }
 
   // Add up to 3 URLs -- url2 and url3 are ignored if null.
@@ -184,7 +186,8 @@ TEST_F(UrlPartnershipTest, EmptyTail) {
 }
 
 TEST_F(UrlPartnershipTest, EmptyWithPartner) {
-  UrlPartnership p(&options_, GoogleUrl("http://www.google.com/styles/x.html"));
+  GoogleUrl base_gurl("http://www.google.com/styles/x.html");
+  UrlPartnership p(&options_, base_gurl);
   EXPECT_TRUE(p.AddUrl("/styles", &message_handler_));
   EXPECT_FALSE(p.AddUrl("", &message_handler_));
   EXPECT_TRUE(p.AddUrl("/", &message_handler_));

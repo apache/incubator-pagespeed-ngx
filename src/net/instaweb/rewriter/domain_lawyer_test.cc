@@ -206,8 +206,9 @@ TEST_F(DomainLawyerTest, AddDomainRedundantly) {
 TEST_F(DomainLawyerTest, VerifyPortIsDistinct1) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com", &message_handler_));
   std::string mapped_domain_name;
+  GoogleUrl context_gurl("http://www.other.com/index.html");
   EXPECT_FALSE(MapRequest(
-      GoogleUrl("http://www.other.com/index.html"),
+      context_gurl,
       "http://www.example.com:81/styles.css",
       &mapped_domain_name));
 }
@@ -215,26 +216,29 @@ TEST_F(DomainLawyerTest, VerifyPortIsDistinct1) {
 TEST_F(DomainLawyerTest, VerifyPortIsDistinct2) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com:81", &message_handler_));
   std::string mapped_domain_name;
+  GoogleUrl context_gurl("http://www.other.com/index.html");
   EXPECT_FALSE(MapRequest(
-      GoogleUrl("http://www.other.com/index.html"),
+      context_gurl,
       "http://www.example.com/styles.css",
       &mapped_domain_name));
 }
 
 TEST_F(DomainLawyerTest, VerifyWildcardedPortSpec) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com*", &message_handler_));
+  GoogleUrl context_gurl("http://www.origin.com/index.html");
   std::string mapped_domain_name;
   EXPECT_TRUE(MapRequest(
-      GoogleUrl("http://www.other.com/index.html"),
+      context_gurl,
       "http://www.example.com/styles.css",
       &mapped_domain_name));
   EXPECT_TRUE(MapRequest(
-      GoogleUrl("http://www.other.com/index.html"),
+      context_gurl,
       "http://www.example.com:81/styles.css",
       &mapped_domain_name));
 }
 
 TEST_F(DomainLawyerTest, MapRewriteDomain) {
+  GoogleUrl context_gurl("http://www.origin.com/index.html");
   ASSERT_TRUE(domain_lawyer_.AddDomain("http://cdn.com/", &message_handler_));
   ASSERT_TRUE(domain_lawyer_.AddDomain("http://origin.com/",
                                        &message_handler_));
@@ -242,7 +246,7 @@ TEST_F(DomainLawyerTest, MapRewriteDomain) {
   // First try the mapping from origin.com to cdn.com
   std::string mapped_domain_name;
   ASSERT_TRUE(MapRequest(
-      GoogleUrl("http://www.origin.com/index.html"),
+      context_gurl,
       "http://origin.com/styles/blue.css",
       &mapped_domain_name));
   EXPECT_EQ("http://cdn.com/", mapped_domain_name);
@@ -250,7 +254,7 @@ TEST_F(DomainLawyerTest, MapRewriteDomain) {
   // But a relative reference will not map because we mapped origin.com,
   // not www.origin.com
   ASSERT_TRUE(MapRequest(
-      GoogleUrl("http://www.origin.com/index.html"),
+      context_gurl,
       "styles/blue.css",
       &mapped_domain_name));
   EXPECT_EQ("http://www.origin.com/", mapped_domain_name);
@@ -259,7 +263,7 @@ TEST_F(DomainLawyerTest, MapRewriteDomain) {
   ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com",
                                       "http://www.origin.com"));
   ASSERT_TRUE(MapRequest(
-      GoogleUrl("http://www.origin.com/index.html"),
+      context_gurl,
       "styles/blue.css",
       &mapped_domain_name));
   EXPECT_EQ("http://cdn.com/", mapped_domain_name);
@@ -322,12 +326,14 @@ TEST_F(DomainLawyerTest, Merge) {
 
   std::string mapped;
   GoogleUrl resolved_request;
+  GoogleUrl o1_index_gurl("http://www.o1.com/index.html");
   ASSERT_TRUE(merged.MapRequestToDomain(
-      GoogleUrl("http://www.o1.com/index.html"),
+      o1_index_gurl,
       "styles/blue.css", &mapped, &resolved_request, &message_handler_));
   EXPECT_EQ("http://cdn1.com/", mapped);
+  GoogleUrl o2_index_gurl("http://www.o2.com/index.html");
   ASSERT_TRUE(merged.MapRequestToDomain(
-      GoogleUrl("http://www.o2.com/index.html"),
+      o2_index_gurl,
       "styles/blue.css", &mapped, &resolved_request, &message_handler_));
   EXPECT_EQ("http://cdn2.com/", mapped);
 
