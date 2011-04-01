@@ -50,8 +50,7 @@ void PthreadCondvar::TimedWait(int64 timeout_ms) {
   // Carrying ns to s as appropriate.  As morlovich notes, we
   // get *really close* to overflowing a 32-bit tv_nsec here,
   // so this code should be modified with caution.
-  // clock_gettime(CLOCK_REALTIME, &timeout);
-  memset(&timeout, 0, sizeof(timeout));
+  clock_gettime(CLOCK_REALTIME, &timeout);
   timeout.tv_nsec += timeout_ms * kMsNs;
   timeout_sec_incr += timeout.tv_nsec / Timer::kSecondNs;
   timeout.tv_nsec %= Timer::kSecondNs;
