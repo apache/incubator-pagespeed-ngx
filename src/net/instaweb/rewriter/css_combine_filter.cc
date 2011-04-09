@@ -15,19 +15,23 @@
  */
 
 // Author: jmarantz@google.com (Joshua Marantz)
+//
+// Contains implementation of CssCombineFilter, which concatenates multiple
+// CSS files into one. Implemented in part via delegating to
+// CssCombineFilter::CssCombiner, a ResourceCombiner subclass.
 
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner_template.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/content_type.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -43,6 +47,8 @@ const char kCssFileCountReduction[] = "css_file_count_reduction";
 
 }  // namespace
 
+// Combining helper. Takes care of checking that media matches, that we do not
+// produce @import's in the middle and of URL absolutification.
 class CssCombineFilter::CssCombiner
     : public ResourceCombinerTemplate<HtmlElement*> {
  public:
@@ -89,7 +95,7 @@ class CssCombineFilter::CssCombiner
   void TryCombineAccumulated();
 
  private:
-  virtual bool WritePiece(Resource* input, OutputResource* combination,
+  virtual bool WritePiece(const Resource* input, OutputResource* combination,
                           Writer* writer, MessageHandler* handler);
 
   // Returns true iff all elements in current combination can be rewritten.
@@ -228,7 +234,7 @@ void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
 }
 
 bool CssCombineFilter::CssCombiner::WritePiece(
-    Resource* input, OutputResource* combination, Writer* writer,
+    const Resource* input, OutputResource* combination, Writer* writer,
     MessageHandler* handler) {
   StringPiece contents = input->contents();
   GoogleUrl input_url(input->url());

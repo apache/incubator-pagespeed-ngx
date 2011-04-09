@@ -15,6 +15,10 @@
  */
 
 // Author: jmarantz@google.com (Joshua Marantz)
+//
+// Provides the ResourceCombiner class which helps implement filters that
+// combine multiple resources, as well as the TimedBool, which is useful
+// when figuring out how long results are valid for.
 
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_COMBINER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_COMBINER_H_
@@ -24,12 +28,12 @@
 
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include <string>
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 
@@ -132,7 +136,7 @@ class ResourceCombiner {
   // Override this to alter how pieces are processed when included inside
   // a combination. Returns whether successful. The default implementation
   // writes input->contents() to the writer without any alteration.
-  virtual bool WritePiece(Resource* input, OutputResource* combination,
+  virtual bool WritePiece(const Resource* input, OutputResource* combination,
                           Writer* writer, MessageHandler* handler);
 
   // Override this if you need to remove some state whenever Reset() is called.

@@ -15,19 +15,26 @@
  */
 
 // Author: morlovich@google.com (Maksim Orlovich)
+//
+// Implementation of JsCombineFilter class which combines multiple external JS
+// scripts into a single one. JsCombineFilter contains logic to decide when to
+// combine based on the HTML event stream, while the actual combining and
+// content-based vetoing is delegated to the JsCombineFilter::JsCombiner helper.
+// That in turn largely relies on the common logic in its parent classes to
+// deal with resource management.
 
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner_template.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/content_type.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -35,44 +42,28 @@
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
-// This filter combines multiple external JS scripts into a single one, in order
-// to reduce the amount of fetches that need to be done. The transformation is
-// as follows:
-//
-// <script src="a.js">
-// <stuff>
-// <script src="b.js">
-//
-// gets turned into:
-//
-// <script src="a.js+b.js">
-// <script>eval(mod_pagespeed_${hash("a.js")})</script>
-// <stuff>
-// <script>eval(mod_pagespeed_${hash("b.js")})</script>
-//
-// where $hash stands for using the active Hasher and tweaking the result to
-// be a valid identifier continuation. Further, the combined source file
-// has the code:
-// var mod_pagespeed_${hash("a.js")} = "code of a.js as a string literal";
-// var mod_pagespeed_${hash("b.js")} = "code of b.js as a string literal";
 
 const char JsCombineFilter::kJsFileCountReduction[] = "js_file_count_reduction";
 
+// See file comment and ResourceCombiner docs for this class's role.
 class JsCombineFilter::JsCombiner
     : public ResourceCombinerTemplate<HtmlElement*> {
  public:
   JsCombiner(JsCombineFilter* filter, RewriteDriver* driver,
-             const StringPiece& filter_prefix)
+             const StringPiece& filter_id)
       : ResourceCombinerTemplate<HtmlElement*>(
-          driver, filter_prefix, kContentTypeJavascript.file_extension() + 1,
-          filter),
+            driver, filter_id, kContentTypeJavascript.file_extension() + 1,
+            filter),
         filter_(filter),
         js_file_count_reduction_(NULL) {
-    filter_prefix.CopyToString(&filter_prefix_);
+    filter_id.CopyToString(&filter_id_);
     Statistics* stats = resource_manager_->statistics();
     if (stats != NULL) {
       js_file_count_reduction_ = stats->GetVariable(kJsFileCountReduction);
     }
+  }
+
+  virtual ~JsCombiner() {
   }
 
   virtual bool ResourceCombinable(Resource* resource, MessageHandler* handler) {
@@ -85,7 +76,7 @@ class JsCombineFilter::JsCombiner
       return false;
     }
 
-    // TODO(morlovich): TODO(...): define a pragma that javascript authors can
+    // TODO(morlovich): define a pragma that javascript authors can
     // include in their source to prevent inclusion in a js combination
     return true;
   }
@@ -97,12 +88,14 @@ class JsCombineFilter::JsCombiner
   void TryCombineAccumulated();
 
  private:
-  virtual bool WritePiece(Resource* input, OutputResource* combination,
+  virtual bool WritePiece(const Resource* input, OutputResource* combination,
                           Writer* writer, MessageHandler* handler);
 
   JsCombineFilter* filter_;
-  std::string filter_prefix_;
+  std::string filter_id_;
   Variable* js_file_count_reduction_;
+
+  DISALLOW_COPY_AND_ASSIGN(JsCombiner);
 };
 
 void JsCombineFilter::JsCombiner::TryCombineAccumulated() {
@@ -133,7 +126,8 @@ void JsCombineFilter::JsCombiner::TryCombineAccumulated() {
     if (combination.get() != NULL) {
       // Now create an element for the combination, insert it before first one.
       HtmlElement* combine_element =
-          rewrite_driver_->NewElement(NULL, HtmlName::kScript);
+          rewrite_driver_->NewElement(NULL,  // no parent yet.
+                                      HtmlName::kScript);
       rewrite_driver_->InsertElementBeforeElement(element(0), combine_element);
 
       rewrite_driver_->AddAttribute(combine_element, HtmlName::kSrc,
@@ -155,8 +149,8 @@ void JsCombineFilter::JsCombiner::TryCombineAccumulated() {
     }
 
     rewrite_driver_->InfoHere("Combined %d JS files into one at %s",
-                          num_urls(),
-                          combination->url().c_str());
+                              num_urls(),
+                              combination->url().c_str());
     if (js_file_count_reduction_ != NULL) {
       js_file_count_reduction_->Add(num_urls() - 1);
     }
@@ -165,7 +159,7 @@ void JsCombineFilter::JsCombiner::TryCombineAccumulated() {
 }
 
 bool JsCombineFilter::JsCombiner::WritePiece(
-    Resource* input, OutputResource* combination, Writer* writer,
+    const Resource* input, OutputResource* combination, Writer* writer,
     MessageHandler* handler) {
   // We write out code of each script into a variable.
   writer->Write(StrCat("var ", filter_->VarName(input->url()), " = \""),
@@ -202,12 +196,12 @@ bool JsCombineFilter::JsCombiner::WritePiece(
 }
 
 JsCombineFilter::JsCombineFilter(RewriteDriver* driver,
-                                 const char* filter_prefix)
-    : RewriteFilter(driver, filter_prefix),
+                                 const StringPiece& filter_id)
+    : RewriteFilter(driver, filter_id),
       script_scanner_(driver),
       script_depth_(0),
       current_js_script_(NULL) {
-  combiner_.reset(new JsCombiner(this, driver, filter_prefix));
+  combiner_.reset(new JsCombiner(this, driver, filter_id));
 }
 
 JsCombineFilter::~JsCombineFilter() {
@@ -221,7 +215,7 @@ void JsCombineFilter::StartDocumentImpl() {
 }
 
 void JsCombineFilter::StartElementImpl(HtmlElement* element) {
-  HtmlElement::Attribute* src;
+  HtmlElement::Attribute* src = NULL;
   ScriptTagScanner::ScriptClassification classification =
       script_scanner_.ParseScriptElement(element, &src);
   switch (classification) {
@@ -347,7 +341,7 @@ std::string JsCombineFilter::VarName(const std::string& url) const {
   std::string url_hash = resource_manager_->hasher()->Hash(url);
   // Our hashes are web64, which are almost valid identifier continuations,
   // except for use of -. We simply replace it with $.
-  std::size_t pos = 0;
+  size_t pos = 0;
   while ((pos = url_hash.find_first_of('-', pos)) != std::string::npos) {
     url_hash[pos] = '$';
   }
@@ -356,11 +350,11 @@ std::string JsCombineFilter::VarName(const std::string& url) const {
 }
 
 bool JsCombineFilter::Fetch(OutputResource* resource,
-                             Writer* writer,
-                             const RequestHeaders& request_header,
-                             ResponseHeaders* response_headers,
-                             MessageHandler* message_handler,
-                             UrlAsyncFetcher::Callback* callback) {
+                            Writer* writer,
+                            const RequestHeaders& request_header,
+                            ResponseHeaders* response_headers,
+                            MessageHandler* message_handler,
+                            UrlAsyncFetcher::Callback* callback) {
   return combiner_->Fetch(resource, writer, request_header, response_headers,
                           message_handler, callback);
 }

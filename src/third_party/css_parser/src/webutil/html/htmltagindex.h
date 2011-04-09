@@ -24,8 +24,8 @@
 //
 // TODO(mec): merge this with webutil/html/htmltag
 
-#ifndef WEBUTIL_HTML_HTML_TAG_INDEX_H__
-#define WEBUTIL_HTML_HTML_TAG_INDEX_H__
+#ifndef WEBUTIL_HTML_HTMLTAGINDEX_H__
+#define WEBUTIL_HTML_HTMLTAGINDEX_H__
 
 #include <string>
 #include "string_using.h"
@@ -67,8 +67,6 @@ class HtmlTagIndex {
   }
 
  private:
-  DISALLOW_EVIL_CONSTRUCTORS(HtmlTagIndex);
-
   // Case sensitive stuff.
   bool case_sensitive_fixed_;
   bool case_sensitive_;
@@ -84,6 +82,8 @@ class HtmlTagIndex {
   int index_max_;
   typedef dense_hash_map<string, int> CustomTagMap;
   scoped_ptr<CustomTagMap> custom_tag_map_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlTagIndex);
 };
 
-#endif  // WEBUTIL_HTML_HTML_TAG_INDEX_H__
+#endif  // WEBUTIL_HTML_HTMLTAGINDEX_H__

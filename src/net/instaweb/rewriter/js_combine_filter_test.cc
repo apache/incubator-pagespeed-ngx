@@ -15,6 +15,8 @@
  */
 
 // Author: morlovich@google.com (Maksim Orlovich)
+//
+// Unit tests for JsCombineFilter.
 
 #include <vector>
 
@@ -45,13 +47,14 @@ const char kEscapedJs1[] =
     "\"// script1\\nvar a=\\\"hello\\\\nsecond line\\\"\"";
 const char kEscapedJs2[] = "\"// script2\\r\\nvar b=42;\\n\"";
 
-}  // namespace {
+}  // namespace
 
+// Test fixture for JsCombineFilter unit tests.
 class JsCombineFilterTest : public ResourceManagerTestBase {
  public:
   struct ScriptInfo {
     HtmlElement* element;
-    std::string url;  // if empty, we're inline
+    std::string url;  // if empty, the <script> didn't have a src
     std::string text_content;
   };
 
@@ -62,7 +65,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
   //
   // It also verifies that is will be no nesting of things inside scripts.
   class ScriptCollector : public EmptyHtmlFilter {
-  public:
+   public:
     explicit ScriptCollector(ScriptInfoVector* output)
         : output_(output), active_script_(NULL) {
     }
@@ -94,6 +97,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
     }
 
     virtual const char* Name() const { return "ScriptCollector"; }
+
    private:
     ScriptInfoVector* output_;
     std::string script_content_;  // contents of any script tag, if any.
@@ -103,60 +107,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
   };
 
   virtual void SetUp() {
-    SetUpWithStatistics(NULL);
-  }
-
-  void SimulateJsResource(const StringPiece& url, const StringPiece& text) {
-    SimulateJsResourceOnDomain(kTestDomain, url, text);
-  }
-
-  void SimulateJsResourceOnDomain(const StringPiece& domain,
-                                  const StringPiece& url,
-                                  const StringPiece& text) {
-    mock_url_fetcher_.SetResponse(StrCat(domain, url), default_js_header_,
-                                  text);
-  }
-
-  void PrepareToCollectScriptsInto(ScriptInfoVector* output) {
-    rewrite_driver_.AddOwnedFilter(new ScriptCollector(output));
-  }
-
-  // Makes sure that the script looks like a combination.
-  void VerifyCombinedOnDomain(const StringPiece& domain, const ScriptInfo& info,
-                              const char* name) {
-    EXPECT_FALSE(info.url.empty());
-    // The combination url should incorporate both names...
-    GoogleUrl combination_url(info.url);
-    EXPECT_EQ(domain, combination_url.AllExceptLeaf());
-    ResourceNamer namer;
-    EXPECT_TRUE(namer.Decode(combination_url.LeafWithQuery()));
-    EXPECT_EQ(RewriteDriver::kJavascriptCombinerId, namer.id());
-    EXPECT_EQ(name, namer.name());
-    EXPECT_EQ("js", namer.ext());
-  }
-
-  void VerifyCombined(const ScriptInfo& info, const char* name) {
-    VerifyCombinedOnDomain(kTestDomain, info, name);
-  }
-
-  // Make sure the script looks like it was rewritten for a use of given URL
-  void VerifyUseOnDomain(const StringPiece& domain, const ScriptInfo& info,
-                         const char* rel_url) {
-    std::string abs_url = StrCat(domain, rel_url);
-    EXPECT_TRUE(info.url.empty());
-    EXPECT_EQ(StrCat("eval(", filter_->VarName(abs_url), ");"),
-              info.text_content);
-  }
-
-  void VerifyUse(const ScriptInfo& info, const char* rel_url) {
-    VerifyUseOnDomain(kTestDomain, info, rel_url);
-  }
-
- protected:
-  void SetUpWithStatistics(Statistics* stats) {
-    RewriteDriver::Initialize(stats);
     ResourceManagerTestBase::SetUp();
-    resource_manager_->set_statistics(stats);
     resource_manager_->set_hasher(&md5_hasher_);
     other_resource_manager_.set_hasher(&md5_hasher_);
     resource_manager_->SetDefaultHeaders(&kContentTypeJavascript,
@@ -182,6 +133,53 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
     SimulateJsResourceOnDomain(other_domain_, kJsUrl2, "otherb");
   }
 
+  void SimulateJsResource(const StringPiece& url, const StringPiece& text) {
+    SimulateJsResourceOnDomain(kTestDomain, url, text);
+  }
+
+  void SimulateJsResourceOnDomain(const StringPiece& domain,
+                                  const StringPiece& url,
+                                  const StringPiece& text) {
+    mock_url_fetcher_.SetResponse(StrCat(domain, url), default_js_header_,
+                                  text);
+  }
+
+  void PrepareToCollectScriptsInto(ScriptInfoVector* output) {
+    rewrite_driver_.AddOwnedFilter(new ScriptCollector(output));
+  }
+
+  // Makes sure that the script looks like a combination.
+  void VerifyCombinedOnDomain(const StringPiece& domain, const ScriptInfo& info,
+                              const StringPiece& name) {
+    EXPECT_FALSE(info.url.empty());
+    // The combination url should incorporate both names...
+    GoogleUrl combination_url(info.url);
+    EXPECT_EQ(domain, combination_url.AllExceptLeaf());
+    ResourceNamer namer;
+    EXPECT_TRUE(namer.Decode(combination_url.LeafWithQuery()));
+    EXPECT_EQ(RewriteDriver::kJavascriptCombinerId, namer.id());
+    EXPECT_EQ(name, namer.name());
+    EXPECT_EQ("js", namer.ext());
+  }
+
+  void VerifyCombined(const ScriptInfo& info, const StringPiece& name) {
+    VerifyCombinedOnDomain(kTestDomain, info, name);
+  }
+
+  // Make sure the script looks like it was rewritten for a use of given URL
+  void VerifyUseOnDomain(const StringPiece& domain, const ScriptInfo& info,
+                         const StringPiece& rel_url) {
+    std::string abs_url = StrCat(domain, rel_url);
+    EXPECT_TRUE(info.url.empty());
+    EXPECT_EQ(StrCat("eval(", filter_->VarName(abs_url), ");"),
+              info.text_content);
+  }
+
+  void VerifyUse(const ScriptInfo& info, const StringPiece& rel_url) {
+    VerifyUseOnDomain(kTestDomain, info, rel_url);
+  }
+
+ protected:
   ResponseHeaders default_js_header_;
   std::string other_domain_;
   JsCombineFilter* filter_;  // Owned by rewrite_driver_
@@ -443,19 +441,7 @@ TEST_F(JsCombineFilterTest, TestCrossDomainRecover) {
   VerifyUseOnDomain(other_domain_, scripts[5], kJsUrl2);
 }
 
-// We keep a statistics test in a separate class so we make sure
-// to run tests with both NULL and non-NULL statistics vars
-class JsCombineFilterStatsTest : public JsCombineFilterTest {
- public:
-  virtual void SetUp() {
-    SetUpWithStatistics(&statistics_);
-  }
-
- protected:
-  SimpleStats statistics_;
-};
-
-TEST_F(JsCombineFilterStatsTest, TestCombineStats) {
+TEST_F(JsCombineFilterTest, TestCombineStats) {
   Variable* num_reduced =
       statistics_.GetVariable(JsCombineFilter::kJsFileCountReduction);
   EXPECT_EQ(0, num_reduced->Get());

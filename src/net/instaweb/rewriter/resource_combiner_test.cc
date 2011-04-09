@@ -15,13 +15,20 @@
  */
 
 // Author: morlovich@google.com (Maksim Orlovich)
+//
+// Unit tests for ResourceCombiner and ResourceCombinerTemplate.
+//
+// TestCombineFilter::TestCombiner inherits off ResourceCombinerTemplate and
+// provides overrides with easily testable behavior.
+// TestCombineFilter is used to hook TestCombiner up with the framework.
+// ResourceCombinerTest is the test fixture.
 
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 
-#include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_combiner_template.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 
 namespace net_instaweb {
 
@@ -39,15 +46,16 @@ const char kVetoText[] = "veto";
 
 const char kPathCombined[] = "path,_piece.tcc+piece1.tcc";
 
-// The test filter subclass exists to help us test the
-// two subclass hooks:
-// 1) Preventing combinations based on content
-// 2) Altering content of documents when combining
+// TestCombineFilter exists to connect up TestCombineFilter::TestCombiner with
+// the normal fetch framework.
 class TestCombineFilter : public RewriteFilter {
  public:
+  // TestCombiner helps us test two subclass hooks:
+  // 1) Preventing combinations based on content --- it vetoes resources with
+  //    content equal to kVetoText
+  // 2) Altering content of documents when combining --- it terminates each
+  //    input's contents with a  | character.
   class TestCombiner : public ResourceCombinerTemplate<HtmlElement*> {
-    // The partnership subclass vetoes resources with content equal to
-    // kVetoText
    public:
     explicit TestCombiner(RewriteDriver* driver, CommonFilter* filter)
         : ResourceCombinerTemplate<HtmlElement*>(driver, kTestCombinerId,
@@ -55,7 +63,7 @@ class TestCombineFilter : public RewriteFilter {
     };
 
    protected:
-    bool WritePiece(Resource* input, OutputResource* combination,
+    virtual bool WritePiece(const Resource* input, OutputResource* combination,
                     Writer* writer, MessageHandler* handler) {
       ResourceCombinerTemplate<HtmlElement*>::WritePiece(input, combination,
                                                          writer, handler);
@@ -64,7 +72,8 @@ class TestCombineFilter : public RewriteFilter {
     }
 
    private:
-    bool ResourceCombinable(Resource* resource, MessageHandler* /*handler*/) {
+    virtual bool ResourceCombinable(Resource* resource,
+                                    MessageHandler* /*handler*/) {
       EXPECT_TRUE(resource->ContentsValid());
       return resource->contents() != kVetoText;
     }
@@ -96,6 +105,7 @@ class TestCombineFilter : public RewriteFilter {
   TestCombineFilter::TestCombiner combiner_;
 };
 
+// Test fixture.
 class ResourceCombinerTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {

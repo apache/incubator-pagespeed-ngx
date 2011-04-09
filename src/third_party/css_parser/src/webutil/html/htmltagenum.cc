@@ -60,6 +60,11 @@ const char* HtmlTagEnumNames[] =
      "Noindex",
   // Old style comments,
      "!Comment",
+  // New tags in HTML5.
+     "Article", "Aside", "Audio", "Bdi", "Canvas", "Command", "Datalist",
+     "Details", "Figcaption", "Figure", "Footer", "Header", "Hgroup", "Mark",
+     "Meter", "Nav", "Output", "Progress", "Rp", "Rt", "Ruby", "Section",
+     "Source", "Summary", "Time", "Track", "Video",
 };
 
 COMPILE_ASSERT(arraysize(HtmlTagEnumNames) == kHtmlTagBuiltinMax,

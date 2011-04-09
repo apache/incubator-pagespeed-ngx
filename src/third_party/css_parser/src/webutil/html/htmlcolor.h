@@ -23,12 +23,12 @@
 // Before doing comparison, check 'IsDefined' first, it's because
 //   that not all given HTML color strings are valid.
 
-#ifndef _HTML_COLOR_H_
-#define _HTML_COLOR_H_
+#ifndef WEBUTIL_HTML_HTMLCOLOR_H_
+#define WEBUTIL_HTML_HTMLCOLOR_H_
 
+#include <stdlib.h>
 #include <string>
 #include "string_using.h"
-#include <stdlib.h>
 
 class HtmlColor {
   private:
@@ -41,46 +41,50 @@ class HtmlColor {
     //  0: the RGB value is good!
     //  1: bad (name) value, caused by bad color name
     //  2: bad (hex) value, caused by bad hex string value
-    //  -- with the browser (Netscape Communicator 4.75, linux-2.2.14, 
-    //     it shows that the color displayed is sometimes 'black' under case '2'.
-    unsigned char is_bad_value_; 
+    //  -- the browser (Netscape Communicator 4.75, linux-2.2.14,
+    //     shows that the color displayed is sometimes 'black' under case '2'.
+    unsigned char is_bad_value_;
     static const unsigned char kGoodColorValue = 0x00;
     static const unsigned char kBadColorName = 0x01;
     static const unsigned char kBadColorHex = 0x02;
 
-    void SetBadNameValue() { 
-      r_ = g_ = b_ = 0x00; 
-      is_bad_value_ = kBadColorName; 
+    void SetBadNameValue() {
+      r_ = g_ = b_ = 0x00;
+      is_bad_value_ = kBadColorName;
     }
-    void SetBadHexValue() { 
-      r_ = g_ = b_ = 0x00; 
-      is_bad_value_ = kBadColorHex; 
+    void SetBadHexValue() {
+      r_ = g_ = b_ = 0x00;
+      is_bad_value_ = kBadColorHex;
     }
-    void SetDefaultValue() { 
-      r_ = g_ = b_ = 0x00; 
-      is_bad_value_ = kGoodColorValue; 
+    void SetDefaultValue() {
+      r_ = g_ = b_ = 0x00;
+      is_bad_value_ = kGoodColorValue;
     }
 
   public:
-    enum TolerateLevel { EXACTLY_SAME=0, 
-                         HIGHLY_SIMILAR=5, 
-                         SIMILAR=10 };
+    enum TolerateLevel {
+      EXACTLY_SAME = 0,
+      HIGHLY_SIMILAR = 5,
+      SIMILAR = 10
+    };
 
     // These methods also accept a CSS shorthand string "#xyz" for convenience.
     // "#xyz" is expanded to "#xxyyzz" before processing.
     explicit HtmlColor(const string& colorstr);
     explicit HtmlColor(const char *colorstr, int colorstrlen);
     explicit HtmlColor(unsigned char r, unsigned char g, unsigned char b);
- 
-    bool IsDefined() const { return (is_bad_value_==0); }
+
+    bool IsDefined() const {
+      return is_bad_value_ == 0;
+    }
 
     bool IsSimilar(const HtmlColor &color, int level) const {
-      if (!IsDefined() || !color.IsDefined()) 
+      if (!IsDefined() || !color.IsDefined())
         return false;
 
-      if ( (abs(static_cast<int>(r_) - static_cast<int>(color.r_)) <= level) && 
-           (abs(static_cast<int>(g_) - static_cast<int>(color.g_)) <= level) && 
-           (abs(static_cast<int>(b_) - static_cast<int>(color.b_)) <= level) 
+      if ( (abs(static_cast<int>(r_) - static_cast<int>(color.r_)) <= level) &&
+           (abs(static_cast<int>(g_) - static_cast<int>(color.g_)) <= level) &&
+           (abs(static_cast<int>(b_) - static_cast<int>(color.b_)) <= level)
          )
         return true;
       return false;
@@ -117,7 +121,7 @@ class HtmlColor {
 
     // hexstr is in form of "xxxxxx"
     void SetValueFromHexStr(const char *hexstr);
-    
+
     // either a color name or a hex string "#xxxxxx"
     // This method also accepts a CSS shorthand string "#xyz" for convenience.
     // "#xyz" is expanded to "#xxyyzz" before processing.
@@ -132,7 +136,7 @@ class HtmlColor {
     // can be found at:
     //   http://www.w3.org/TR/css3-color/#svg-color
     void SetValueFromName(const char* str);
-    
+
     int r() const { return static_cast<int>(r_); }
     int g() const { return static_cast<int>(g_); }
     int b() const { return static_cast<int>(b_); }
@@ -152,4 +156,4 @@ class HtmlColorUtils {
   static string MaybeConvertToCssShorthand(const char* orig);
 };
 
-#endif // _HTML_COLOR_H_
+#endif  // WEBUTIL_HTML_HTMLCOLOR_H_

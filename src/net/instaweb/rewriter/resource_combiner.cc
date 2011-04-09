@@ -15,10 +15,16 @@
  */
 
 // Author: jmarantz@google.com (Joshua Marantz)
+//
+// Implementation of ResourceCombiner, a helper for filters that combine
+// multiple resources. Also contains CombinerCallback, which is used to collect
+// input resources when doing a ResourceCombiner::Fetch.
 
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -26,11 +32,9 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/content_type.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include <string>
 #include "net/instaweb/util/public/string_writer.h"
@@ -38,13 +42,6 @@
 #include "net/instaweb/util/public/url_escaper.h"
 
 namespace net_instaweb {
-
-// Another approach is to put a CHECK that the final URL with the
-// resource naming does not exceed the limit.
-//
-// Another option too is to just instantiate a ResourceNamer and a
-// hasher put in the correct ID and EXT and leave the name blank and
-// take size of that.
 
 ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
                                    const StringPiece& filter_prefix,
@@ -56,6 +53,12 @@ ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
       prev_num_components_(0),
       accumulated_leaf_size_(0),
       // TODO(jmarantz): The URL overhead computation is arguably fragile.
+      // Another approach is to put a CHECK that the final URL with the
+      // resource naming does not exceed the limit.
+      //
+      // Another option too is to just instantiate a ResourceNamer and a
+      // hasher put in the correct ID and EXT and leave the name blank and
+      // take size of that.
       url_overhead_(filter_prefix.size() + ResourceNamer::kOverhead +
                     extension.size()),
       filter_(filter) {
@@ -280,7 +283,7 @@ bool ResourceCombiner::WriteCombination(
   return written;
 }
 
-bool ResourceCombiner::WritePiece(Resource* input,
+bool ResourceCombiner::WritePiece(const Resource* input,
                                   OutputResource* /*combination*/,
                                   Writer* writer,
                                   MessageHandler* handler) {

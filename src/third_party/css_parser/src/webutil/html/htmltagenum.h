@@ -50,6 +50,8 @@
 // The noindex tag is a non-standard tag used mostly by Russian sites:
 //   http://ru.wikipedia.org/wiki/Noindex
 //   http://translate.google.com/translate?u=http://ru.wikipedia.org/wiki/Noindex&sl=ru&tl=en
+// Added HTML5 tags, per 2011-01-13 working draft:
+//   http://www.w3.org/TR/html5/
 
 enum HtmlTagEnum {
   // Unknown tag: must be 0
@@ -177,12 +179,40 @@ enum HtmlTagEnum {
      kHtmlTagNoindex = 113,
   // Anything starts with ! (except those marked above) or ?
      kHtmlTagBogusComment = 114,
+  // New tags in HTML5.
+     kHtmlTagArticle = 115,
+     kHtmlTagAside = 116,
+     kHtmlTagAudio = 117,
+     kHtmlTagBdi = 118,
+     kHtmlTagCanvas = 119,
+     kHtmlTagCommand = 120,
+     kHtmlTagDatalist = 121,
+     kHtmlTagDetails = 122,
+     kHtmlTagFigcaption = 123,
+     kHtmlTagFigure = 124,
+     kHtmlTagFooter = 125,
+     kHtmlTagHeader = 126,
+     kHtmlTagHgroup = 127,
+     kHtmlTagMark = 128,
+     kHtmlTagMeter = 129,
+     kHtmlTagNav = 130,
+     kHtmlTagOutput = 131,
+     kHtmlTagProgress = 132,
+     kHtmlTagRp = 133,
+     kHtmlTagRt = 134,
+     kHtmlTagRuby = 135,
+     kHtmlTagSection = 136,
+     kHtmlTagSource = 137,
+     kHtmlTagSummary = 138,
+     kHtmlTagTime = 139,
+     kHtmlTagTrack = 140,
+     kHtmlTagVideo = 141,
 
   // Add new tag values here.  Make sure you also add new tags to
   // HtmlTagEnumNames in htmltagenum.cc and update kHtmlTagBuiltinMax.
 
   // Sentinel.
-     kHtmlTagBuiltinMax = 115
+     kHtmlTagBuiltinMax = 142
 };
 
 // NULL if tag >= kHtmlTagBuiltinMax.
