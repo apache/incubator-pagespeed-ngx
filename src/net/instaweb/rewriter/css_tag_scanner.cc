@@ -22,7 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace {
@@ -93,7 +93,7 @@ bool CssTagScanner::ParseCssElement(
 
 namespace {
 
-bool ExtractQuote(std::string* url, char* quote) {
+bool ExtractQuote(GoogleString* url, char* quote) {
   bool ret = false;
   int size = url->size();
   if (size > 2) {
@@ -137,7 +137,7 @@ bool CssTagScanner::AbsolutifyUrls(
       pos += 4;
       size_t end_of_url = contents.find(')', pos);
       if ((end_of_url != StringPiece::npos) && (end_of_url != pos)) {
-        std::string url;
+        GoogleString url;
         TrimWhitespace(contents.substr(pos, end_of_url - pos), &url);
         char quote;
         bool is_quoted = ExtractQuote(&url, &quote);

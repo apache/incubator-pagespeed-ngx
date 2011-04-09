@@ -34,7 +34,7 @@ class SyncFetcherAdapter : public UrlFetcher {
                      int64 fetcher_timeout_ms,
                      UrlPollableAsyncFetcher* async_fetcher);
   virtual ~SyncFetcherAdapter();
-  virtual bool StreamingFetchUrl(const std::string& url,
+  virtual bool StreamingFetchUrl(const GoogleString& url,
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* fetched_content_writer,

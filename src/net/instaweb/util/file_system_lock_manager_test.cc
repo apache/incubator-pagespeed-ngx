@@ -44,7 +44,7 @@ class FileSystemLockManagerTest : public testing::Test {
   virtual ~FileSystemLockManagerTest() { }
 
   AbstractLock* MakeLock(const StringPiece& name) {
-    std::string fullname = StrCat(GTestTempDir(), "/", name);
+    GoogleString fullname = StrCat(GTestTempDir(), "/", name);
     AbstractLock* result = manager_.CreateNamedLock(fullname);
     CHECK(NULL != result) << "Creating lock " << fullname;
     EXPECT_EQ(fullname, result->name());

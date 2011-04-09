@@ -90,11 +90,11 @@ class MemFileSystem : public FileSystem {
   // atime_map_ holds times (in s) that files were last opened/modified.  Each
   // time we do such an operation, timer() advances by 1s (so all ATimes are
   // distinct).
-  std::map<std::string, int64> atime_map_;
+  std::map<GoogleString, int64> atime_map_;
   int temp_file_index_;
   // lock_map_ holds times that locks were established (in ms).
   // locking and unlocking don't advance time.
-  std::map<std::string, int64> lock_map_;
+  std::map<GoogleString, int64> lock_map_;
   bool atime_enabled_;
   DISALLOW_COPY_AND_ASSIGN(MemFileSystem);
 };

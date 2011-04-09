@@ -16,13 +16,13 @@
 // Author: skerner@google.com (Sam Kerner)
 
 #include "net/instaweb/spriter/image_library_interface.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 namespace spriter {
 
 ImageLibraryInterface* ImageLibraryInterface::ImageLibraryInterfaceFactory(
-    const std::string& library_name) {
+    const GoogleString& library_name) {
   // TODO(skerner):  Implement some interfaces.  Will do OpenCV first.
 
   return NULL;

@@ -28,7 +28,7 @@
 #include "base/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -69,7 +69,7 @@ class StdioFileHelper {
   }
 
   FILE* file_;
-  std::string filename_;
+  GoogleString filename_;
   int line_;
 
  private:
@@ -277,7 +277,7 @@ BoolOrError StdioFileSystem::IsDir(const char* path, MessageHandler* handler) {
 
 bool StdioFileSystem::ListContents(const StringPiece& dir, StringVector* files,
                                    MessageHandler* handler) {
-  std::string dir_string = dir.as_string();
+  GoogleString dir_string = dir.as_string();
   EnsureEndsInSlash(&dir_string);
   const char* dirname = dir_string.c_str();
   DIR* mydir = opendir(dirname);
@@ -306,7 +306,7 @@ bool StdioFileSystem::Atime(const StringPiece& path, int64* timestamp_sec,
   // TODO(abliss): there are some situations where this doesn't work
   // -- e.g. if the filesystem is mounted noatime.  We should try to
   // detect that and provide a workaround.
-  const std::string path_string = path.as_string();
+  const GoogleString path_string = path.as_string();
   const char* path_str = path_string.c_str();
   struct stat statbuf;
   if (stat(path_str, &statbuf) == 0) {
@@ -321,7 +321,7 @@ bool StdioFileSystem::Atime(const StringPiece& path, int64* timestamp_sec,
 
 bool StdioFileSystem::Size(const StringPiece& path, int64* size,
                            MessageHandler* handler) {
-  const std::string path_string = path.as_string();
+  const GoogleString path_string = path.as_string();
   const char* path_str = path_string.c_str();
   struct stat statbuf;
   if (stat(path_str, &statbuf) == 0) {
@@ -336,7 +336,7 @@ bool StdioFileSystem::Size(const StringPiece& path, int64* size,
 
 BoolOrError StdioFileSystem::TryLock(const StringPiece& lock_name,
                                      MessageHandler* handler) {
-  const std::string lock_string = lock_name.as_string();
+  const GoogleString lock_string = lock_name.as_string();
   const char* lock_str = lock_string.c_str();
   // POSIX mkdir is widely believed to be atomic, although I have
   // found no reliable documentation of this fact.
@@ -353,7 +353,7 @@ BoolOrError StdioFileSystem::TryLock(const StringPiece& lock_name,
 
 bool StdioFileSystem::Unlock(const StringPiece& lock_name,
                              MessageHandler* handler) {
-  const std::string lock_string = lock_name.as_string();
+  const GoogleString lock_string = lock_name.as_string();
   const char* lock_str = lock_string.c_str();
   if (rmdir(lock_str) == 0) {
     return true;

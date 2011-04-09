@@ -48,7 +48,7 @@ class AbstractLock : public AbstractMutex {
   virtual bool LockTimedWaitStealOld(int64 wait_ms, int64 timeout_ms) = 0;
 
   // The name the lock was created with, for debugging/logging purposes.
-  virtual std::string name() = 0;
+  virtual GoogleString name() = 0;
 };
 
 // A named_lock_manager provides global locks named by strings (with the same

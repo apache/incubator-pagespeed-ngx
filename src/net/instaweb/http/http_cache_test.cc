@@ -29,7 +29,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_stats.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace {
@@ -95,7 +95,7 @@ class HTTPCacheTest : public testing::Test {
     testing::Test::TearDownTestCase();
   }
 
-  HTTPCache::FindResult Find(const std::string& key, HTTPValue* value,
+  HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
                              ResponseHeaders* headers,
                              MessageHandler* handler) {
     Callback callback;
@@ -138,7 +138,7 @@ TEST_F(HTTPCacheTest, PutGet) {
   StringStarVector values;
   ASSERT_TRUE(meta_data_out.Lookup("name", &values));
   ASSERT_EQ(static_cast<size_t>(1), values.size());
-  EXPECT_EQ(std::string("value"), *(values[0]));
+  EXPECT_EQ(GoogleString("value"), *(values[0]));
   EXPECT_EQ("content", contents);
   EXPECT_EQ(2, GetStat(HTTPCache::kCacheHits));  // The "query" counts as a hit.
 

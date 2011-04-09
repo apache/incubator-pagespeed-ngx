@@ -20,7 +20,7 @@
 #include <vector>
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 class GoogleUrl;
 
@@ -49,14 +49,14 @@ class UrlPartnership {
 
   // Computes the resolved base common to all URLs.  This will always
   // have a trailing slash.
-  std::string ResolvedBase() const;
+  GoogleString ResolvedBase() const;
 
   // Returns the number of URLs that have been successfully added.
   int num_urls() const { return url_vector_.size(); }
 
   // Returns the relative path of a particular URL that was added into
   // the partnership.  This requires that Resolve() be called first.
-  std::string RelativePath(int index) const;
+  GoogleString RelativePath(int index) const;
 
   // Returns the full resolved path
   const GoogleUrl* FullPath(int index) const { return url_vector_[index]; }
@@ -78,7 +78,7 @@ class UrlPartnership {
 
   typedef std::vector<GoogleUrl*> GurlVector;
   GurlVector url_vector_;
-  std::string domain_;
+  GoogleString domain_;
   GoogleUrl domain_gurl_;
   const RewriteOptions* rewrite_options_;
   GoogleUrl original_origin_and_path_;

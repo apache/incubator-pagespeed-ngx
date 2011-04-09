@@ -39,16 +39,16 @@ class PthreadSharedMem : public AbstractSharedMem {
   virtual size_t SharedMutexSize() const;
 
   virtual AbstractSharedMemSegment* CreateSegment(
-      const std::string& name, size_t size, MessageHandler* handler);
+      const GoogleString& name, size_t size, MessageHandler* handler);
 
   virtual AbstractSharedMemSegment* AttachToSegment(
-      const std::string& name, size_t size, MessageHandler* handler);
+      const GoogleString& name, size_t size, MessageHandler* handler);
 
-  virtual void DestroySegment(const std::string& name,
+  virtual void DestroySegment(const GoogleString& name,
                               MessageHandler* handler);
 
  private:
-  typedef std::map<std::string, char*> SegmentBaseMap;
+  typedef std::map<GoogleString, char*> SegmentBaseMap;
 
   static SegmentBaseMap* segment_bases();
 

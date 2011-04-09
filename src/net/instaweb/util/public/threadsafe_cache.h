@@ -22,7 +22,7 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -43,10 +43,10 @@ class ThreadsafeCache : public CacheInterface {
   }
   virtual ~ThreadsafeCache();
 
-  virtual void Get(const std::string& key, Callback* callback);
-  virtual void Put(const std::string& key, SharedString* value);
-  virtual void Delete(const std::string& key);
-  virtual void Query(const std::string& key, Callback* callback);
+  virtual void Get(const GoogleString& key, Callback* callback);
+  virtual void Put(const GoogleString& key, SharedString* value);
+  virtual void Delete(const GoogleString& key);
+  virtual void Query(const GoogleString& key, Callback* callback);
 
  private:
   scoped_ptr<CacheInterface> cache_;

@@ -47,7 +47,7 @@ class CssImageCombineTest : public CssRewriteTestBase {
   }
   void TestSpriting(const char* bikePosition,
                     const char* expectedPosition) {
-    const std::string sprite_string = StrCat(kTestDomain, kCuppaPngFile, "+",
+    const GoogleString sprite_string = StrCat(kTestDomain, kCuppaPngFile, "+",
                                               kBikePngFile,
                                               ".pagespeed.is.Y-XqNDe-in.png");
     const char* sprite = sprite_string.c_str();
@@ -59,9 +59,9 @@ class CssImageCombineTest : public CssRewriteTestBase {
         "background-position:%s}"
         "#div3{background-image:url(%s)}"
         "</style></head>";
-    const std::string before = StringPrintf(
+    const GoogleString before = StringPrintf(
         html, kCuppaPngFile, kBikePngFile, bikePosition, kPuzzleJpgFile);
-    const std::string after = StringPrintf(
+    const GoogleString after = StringPrintf(
         html, sprite, sprite, expectedPosition, kPuzzleJpgFile);
 
     ValidateExpected("sprites_images", before, after);
@@ -86,7 +86,7 @@ TEST_F(CssImageCombineTest, NoCrashUnknownType) {
                                 response_headers, "unused payload");
   InitResponseHeaders("foo.png", kContentTypePng, "unused payload", 100);
 
-  const std::string before =
+  const GoogleString before =
       "<head><style>"
       "#div1 { background-image:url('bar.bewq');"
       "background-repeat:no-repeat;}"
@@ -99,12 +99,12 @@ TEST_F(CssImageCombineTest, NoCrashUnknownType) {
 TEST_F(CssImageCombineTest, SpritesImagesExternal) {
   scoped_ptr<WaitUrlAsyncFetcher> wait_fetcher(SetupWaitFetcher());
 
-  const std::string beforeCss = StrCat(" "  // extra whitespace allows rewrite
+  const GoogleString beforeCss = StrCat(" "  // extra whitespace allows rewrite
       "#div1{background-image:url(", kCuppaPngFile, ");"
       "background-repeat:no-repeat}"
       "#div2{background:transparent url(", kBikePngFile, ") no-repeat}"
       "background-repeat:no-repeat}");
-  std::string cssUrl(kTestDomain);
+  GoogleString cssUrl(kTestDomain);
   cssUrl += "style.css";
   // At first try, not even the CSS gets loaded, so nothing gets
   // changed at all.
@@ -116,7 +116,7 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
   wait_fetcher->CallCallbacks();
 
   // On the second run, we will rewrite the CSS but not sprite.
-  const std::string rewrittenCss = StrCat(
+  const GoogleString rewrittenCss = StrCat(
       "#div1{background-image:url(", kCuppaPngFile, ");"
       "background-repeat:no-repeat}"
       "#div2{background:transparent url(", kBikePngFile, ") no-repeat}");
@@ -130,10 +130,10 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
   mock_timer()->advance_ms(3 * Timer::kSecondMs);
 
   // On the third run, we get spriting.
-  const std::string sprite = StrCat(kTestDomain, kCuppaPngFile, "+",
+  const GoogleString sprite = StrCat(kTestDomain, kCuppaPngFile, "+",
                                      kBikePngFile,
                                      ".pagespeed.is.Y-XqNDe-in.png");
-  const std::string spriteCss = StrCat(
+  const GoogleString spriteCss = StrCat(
       "#div1{background-image:url(", sprite, ");"
       "background-repeat:no-repeat;"
       "background-position:0px 0px}"

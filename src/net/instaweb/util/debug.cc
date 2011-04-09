@@ -18,11 +18,11 @@
 
 #include <sstream>
 #include "net/instaweb/util/public/debug.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
-std::string StackTraceString() {
+GoogleString StackTraceString() {
   base::debug::StackTrace trace;
   std::ostringstream ostream;
   trace.OutputToStream(&ostream);

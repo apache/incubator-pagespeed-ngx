@@ -34,7 +34,7 @@ SyncFetcherAdapter::~SyncFetcherAdapter() {
 }
 
 bool SyncFetcherAdapter::StreamingFetchUrl(
-    const std::string& url, const RequestHeaders& request_headers,
+    const GoogleString& url, const RequestHeaders& request_headers,
     ResponseHeaders* response_headers, Writer* fetched_content_writer,
     MessageHandler* message_handler) {
   SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(

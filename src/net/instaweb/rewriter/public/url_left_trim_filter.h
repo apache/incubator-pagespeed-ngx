@@ -60,7 +60,7 @@ class UrlLeftTrimFilter : public CommonFilter {
   // This is static and requires the base_url explicitly, so that it can be
   // called from other places (like the CSS filter).
   static bool Trim(const GoogleUrl& base_url, const StringPiece& url_to_trim,
-                   std::string* trimmed_url, MessageHandler* handler);
+                   GoogleString* trimmed_url, MessageHandler* handler);
 
  private:
   void TrimAttribute(HtmlElement::Attribute* attr);

@@ -45,7 +45,7 @@ class HttpDumpUrlWriter : public UrlFetcher {
   virtual ~HttpDumpUrlWriter();
 
   // This is a synchronous/blocking implementation.
-  virtual bool StreamingFetchUrl(const std::string& url,
+  virtual bool StreamingFetchUrl(const GoogleString& url,
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* response_writer,
@@ -62,7 +62,7 @@ class HttpDumpUrlWriter : public UrlFetcher {
  private:
   HttpDumpUrlFetcher dump_fetcher_;
   UrlFetcher* base_fetcher_;  // Used to fetch urls that aren't in the dump yet.
-  std::string root_dir_;  // Root directory of the HTTP dumps.
+  GoogleString root_dir_;  // Root directory of the HTTP dumps.
   FileSystem* file_system_;
   bool accept_gzip_;
 

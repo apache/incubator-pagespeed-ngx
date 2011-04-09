@@ -19,11 +19,11 @@
 #include "net/instaweb/http/public/dummy_url_fetcher.h"
 
 #include "net/instaweb/util/public/message_handler.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
-bool DummyUrlFetcher::StreamingFetchUrl(const std::string& url,
+bool DummyUrlFetcher::StreamingFetchUrl(const GoogleString& url,
                                         const RequestHeaders& request_headers,
                                         ResponseHeaders* response_headers,
                                         Writer* fetched_content_writer,

@@ -53,7 +53,7 @@ class CssTagScannerTest : public testing::Test {
     EXPECT_EQ(resolved.Spec(), abs_path);
   }
 
-  std::string output_buffer_;
+  GoogleString output_buffer_;
   StringWriter writer_;
   GoogleMessageHandler message_handler_;
 
@@ -142,8 +142,8 @@ TEST_F(CssTagScannerTest, TestFull) {
 
   // We can parse css even lacking a 'type' attribute.  Default to text/css.
   EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
-  EXPECT_EQ("", std::string(media));
-  EXPECT_EQ(kUrl, std::string(href->value()));
+  EXPECT_EQ("", GoogleString(media));
+  EXPECT_EQ(kUrl, GoogleString(href->value()));
 
   // Add an unexpected attribute.  Now we don't know what to do with it.
   link->AddAttribute(html_parse.MakeName("other"), "value", "\"");
@@ -155,14 +155,14 @@ TEST_F(CssTagScannerTest, TestFull) {
   html_parse.SetAttributeName(attr, HtmlName::kType);
   attr->SetValue("text/css");
   EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
-  EXPECT_EQ("", std::string(media));
-  EXPECT_EQ(kUrl, std::string(href->value()));
+  EXPECT_EQ("", GoogleString(media));
+  EXPECT_EQ(kUrl, GoogleString(href->value()));
 
   // Add a media attribute.  It should still pass, yielding media.
   html_parse.AddAttribute(link, HtmlName::kMedia, kPrint);
   EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
-  EXPECT_EQ(kPrint, std::string(media));
-  EXPECT_EQ(kUrl, std::string(href->value()));
+  EXPECT_EQ(kPrint, GoogleString(media));
+  EXPECT_EQ(kUrl, GoogleString(href->value()));
 
   // TODO(jmarantz): test removal of 'rel' and 'href' attributes
 }
@@ -185,7 +185,7 @@ TEST_F(CssTagScannerTest, TestHasImport) {
       "@charset 'iso-8859-1';\n"
       "@impor", &message_handler_));
   // Make sure we aren't overflowing the buffer.
-  std::string import_string = "@import";
+  GoogleString import_string = "@import";
   StringPiece truncated_import(import_string.data(), import_string.size() - 1);
   EXPECT_FALSE(CssTagScanner::HasImport(truncated_import, &message_handler_));
 

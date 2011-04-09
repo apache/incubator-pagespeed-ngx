@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_URL_SEGMENT_ENCODER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_URL_SEGMENT_ENCODER_H_
 
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -42,7 +42,7 @@ class UrlSegmentEncoder {
   // 'data' is optional -- it can be NULL and it is up to the encoder to
   // decide what to do.
   virtual void Encode(const StringVector& urls,  const ResourceContext* data,
-                      std::string* url_segment) const;
+                      GoogleString* url_segment) const;
 
   // Decode URLs from "url_segment".  Note that there may be other
   // meta-data encoded in url_segment, which this function will write

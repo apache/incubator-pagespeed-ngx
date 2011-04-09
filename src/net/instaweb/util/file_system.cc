@@ -18,7 +18,7 @@
 
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/stack_buffer.h"
@@ -37,7 +37,7 @@ FileSystem::InputFile::~InputFile() {
 FileSystem::OutputFile::~OutputFile() {
 }
 
-bool FileSystem::ReadFile(const char* filename, std::string* buffer,
+bool FileSystem::ReadFile(const char* filename, GoogleString* buffer,
                           MessageHandler* message_handler) {
   StringWriter writer(buffer);
   return ReadFile(filename, &writer, message_handler);
@@ -75,7 +75,7 @@ bool FileSystem::WriteFile(const char* filename, const StringPiece& buffer,
 
 bool FileSystem::WriteTempFile(const StringPiece& prefix_name,
                                const StringPiece& buffer,
-                               std::string* filename,
+                               GoogleString* filename,
                                MessageHandler* message_handler) {
   OutputFile* output_file = OpenTempFile(prefix_name, message_handler);
   bool ok = (output_file != NULL);
@@ -103,14 +103,14 @@ bool FileSystem::Close(File* file, MessageHandler* message_handler) {
 bool FileSystem::RecursivelyMakeDir(const StringPiece& full_path_const,
                                     MessageHandler* handler) {
   bool ret = true;
-  std::string full_path = full_path_const.as_string();
+  GoogleString full_path = full_path_const.as_string();
   EnsureEndsInSlash(&full_path);
-  std::string subpath;
+  GoogleString subpath;
   subpath.reserve(full_path.size());
   size_t old_pos = 0, new_pos;
   // Note that we intentionally start searching at pos = 1 to avoid having
   // subpath be "" on absolute paths.
-  while ((new_pos = full_path.find('/', old_pos + 1)) != std::string::npos) {
+  while ((new_pos = full_path.find('/', old_pos + 1)) != GoogleString::npos) {
     // Build up path, one segment at a time.
     subpath.append(full_path.data() + old_pos, new_pos - old_pos);
     if (Exists(subpath.c_str(), handler).is_false()) {
@@ -134,16 +134,16 @@ bool FileSystem::RecursiveDirSize(const StringPiece& path, int64* size,
   // TODO(abliss): replace this recursive algorithm with an iterator
   // that keeps its own state.  It can keep a tree of directory names
   // to save memory, and simplify the implementation of file_cache.Clean.
-  const std::string path_string = path.as_string();
+  const GoogleString path_string = path.as_string();
   const char* path_str = path_string.c_str();
   int64 file_size = 0;
   StringVector files;
   if (!ListContents(path_str, &files, handler)) {
     return false;
   }
-  const std::string prefix = path_string + "/";
+  const GoogleString prefix = path_string + "/";
   for (int i = files.size() - 1; i >= 0; i--) {
-    const std::string file_name = files[i];
+    const GoogleString file_name = files[i];
     BoolOrError isDir = IsDir(file_name.c_str(), handler);
     if (isDir.is_error()) {
       return false;

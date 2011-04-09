@@ -28,7 +28,7 @@
 namespace net_instaweb {
 
 
-std::string GTestSrcDir() {
+GoogleString GTestSrcDir() {
   // Climb up the directory hierarchy till we find "src".
   // TODO(jmarantz): check to make sure we are not in a subdirectory of
   // our top-level 'src' named src.
@@ -48,7 +48,7 @@ std::string GTestSrcDir() {
   }
 
   CHECK(found) << "Cannot find 'src' directory from cwd=" << cwd;
-  std::string src_dir;
+  GoogleString src_dir;
   for (int i = 0; i < level; ++i) {
     src_dir += "/";
     components[i].AppendToString(&src_dir);
@@ -56,7 +56,7 @@ std::string GTestSrcDir() {
   return src_dir;
 }
 
-std::string GTestTempDir() {
+GoogleString GTestTempDir() {
   return StringPrintf("/tmp/gtest.%d", getpid());
 }
 

@@ -27,7 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
@@ -131,7 +131,7 @@ bool CssOutlineFilter::WriteResource(const StringPiece& content,
 
 // Create file with style content and remove that element from DOM.
 void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
-                                    const std::string& content_str) {
+                                    const GoogleString& content_str) {
   StringPiece content(content_str);
   if (driver_->IsRewritable(style_element)) {
     // Create style file from content.
@@ -149,7 +149,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
 
       if (output_resource.get() != NULL) {
         // Absolutify URLs in content.
-        std::string absolute_content;
+        GoogleString absolute_content;
         StringWriter absolute_writer(&absolute_content);
         StringPiece base_dir = base_url().Spec();      // base url has no leaf.
         bool content_valid = true;
@@ -181,7 +181,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
         }
       }
     } else {
-      std::string element_string;
+      GoogleString element_string;
       style_element->ToString(&element_string);
       driver_->InfoHere("Cannot outline non-css stylesheet %s",
                         element_string.c_str());

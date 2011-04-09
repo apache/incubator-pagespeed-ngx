@@ -54,8 +54,8 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
  public:
   struct ScriptInfo {
     HtmlElement* element;
-    std::string url;  // if empty, the <script> didn't have a src
-    std::string text_content;
+    GoogleString url;  // if empty, the <script> didn't have a src
+    GoogleString text_content;
   };
 
   typedef std::vector<ScriptInfo> ScriptInfoVector;
@@ -88,7 +88,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
         info.element = element;
         const char* url_cstr = element->AttributeValue(HtmlName::kSrc);
         if (url_cstr != NULL) {
-          info.url = std::string(url_cstr);
+          info.url = GoogleString(url_cstr);
         }
         info.text_content = script_content_;
         output_->push_back(info);
@@ -100,7 +100,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
 
    private:
     ScriptInfoVector* output_;
-    std::string script_content_;  // contents of any script tag, if any.
+    GoogleString script_content_;  // contents of any script tag, if any.
     HtmlElement* active_script_;  // any script we're in.
 
     DISALLOW_COPY_AND_ASSIGN(ScriptCollector);
@@ -124,7 +124,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
 
     // Some tests need an another domain, with (different)source files on it as
     // well.
-    std::string test_domain(kTestDomain);
+    GoogleString test_domain(kTestDomain);
     if (EndsInSlash(test_domain)) {
       test_domain.resize(test_domain.length() - 1);
     }
@@ -169,7 +169,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
   // Make sure the script looks like it was rewritten for a use of given URL
   void VerifyUseOnDomain(const StringPiece& domain, const ScriptInfo& info,
                          const StringPiece& rel_url) {
-    std::string abs_url = StrCat(domain, rel_url);
+    GoogleString abs_url = StrCat(domain, rel_url);
     EXPECT_TRUE(info.url.empty());
     EXPECT_EQ(StrCat("eval(", filter_->VarName(abs_url), ");"),
               info.text_content);
@@ -181,7 +181,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
 
  protected:
   ResponseHeaders default_js_header_;
-  std::string other_domain_;
+  GoogleString other_domain_;
   JsCombineFilter* filter_;  // Owned by rewrite_driver_
 };
 
@@ -210,7 +210,7 @@ TEST_F(JsCombineFilterTest, CombineJs) {
       output_buffer_);
 
   // Now fetch the combined URL.
-  std::string combination_src;
+  GoogleString combination_src;
   ASSERT_TRUE(ServeResourceUrl(scripts[0].url, &combination_src));
   EXPECT_EQ(StrCat("var mod_pagespeed_JPl3LTiJFD = ", kEscapedJs1, ";\n",
                    "var mod_pagespeed_cw38xVFr$1 = ", kEscapedJs2, ";\n"),
@@ -280,7 +280,7 @@ TEST_F(JsCombineFilterTest, TestBarriers) {
 
 // Things between scripts that should not prevent combination
 TEST_F(JsCombineFilterTest, TestNonBarriers) {
-  std::string combined_url = StrCat(kJsUrl1, "+", kJsUrl2);
+  GoogleString combined_url = StrCat(kJsUrl1, "+", kJsUrl2);
 
   // Intervening text
   ScriptInfoVector scripts;

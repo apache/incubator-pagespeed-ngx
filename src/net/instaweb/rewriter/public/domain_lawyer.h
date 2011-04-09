@@ -39,7 +39,7 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/google_url.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -72,7 +72,7 @@ class DomainLawyer {
   // Returns false on failure.
   bool MapRequestToDomain(const GoogleUrl& original_request,
                           const StringPiece& resource_url,
-                          std::string* mapped_domain_name,
+                          GoogleString* mapped_domain_name,
                           GoogleUrl* resolved_request,
                           MessageHandler* handler) const;
 
@@ -80,7 +80,7 @@ class DomainLawyer {
   // if the input URL is not valid.  It succeeds even if there is no
   // mapping done.  You must compare 'in' to 'out' to determine if
   // mapping was done.
-  bool MapOrigin(const StringPiece& in, std::string* out) const;
+  bool MapOrigin(const StringPiece& in, GoogleString* out) const;
 
   // The methods below this comment are intended only to be run only
   // at configuration time.
@@ -135,7 +135,7 @@ class DomainLawyer {
   // shards on 32-bit and 64-bit machines and that would reduce cacheability
   // of the sharded resources.
   bool ShardDomain(const StringPiece& domain_name, uint32 hash,
-                   std::string* shard) const;
+                   GoogleString* shard) const;
 
   // Merge the domains declared in src into this.  There are no exclusions, so
   // this is really just aggregating the mappings and authorizations declared in
@@ -152,7 +152,7 @@ class DomainLawyer {
   class Domain;
   typedef bool (Domain::*SetDomainFn)(Domain* domain, MessageHandler* handler);
 
-  static std::string NormalizeDomainName(const StringPiece& domain_name);
+  static GoogleString NormalizeDomainName(const StringPiece& domain_name);
 
   bool MapDomainHelper(
       const StringPiece& to_domain_name,
@@ -168,9 +168,9 @@ class DomainLawyer {
                           MessageHandler* handler);
   Domain* CloneAndAdd(const Domain* src);
 
-  Domain* FindDomain(const std::string& domain_name) const;
+  Domain* FindDomain(const GoogleString& domain_name) const;
 
-  typedef std::map<std::string, Domain*> DomainMap;
+  typedef std::map<GoogleString, Domain*> DomainMap;
   DomainMap domain_map_;
   typedef std::vector<Domain*> DomainVector;
   DomainVector wildcarded_domains_;

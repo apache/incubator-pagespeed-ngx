@@ -38,7 +38,7 @@ class CountingUrlAsyncFetcher : public UrlAsyncFetcher {
   }
   virtual ~CountingUrlAsyncFetcher();
 
-  virtual bool StreamingFetch(const std::string& url,
+  virtual bool StreamingFetch(const GoogleString& url,
                               const RequestHeaders& request_headers,
                               ResponseHeaders* response_headers,
                               Writer* fetched_content_writer,

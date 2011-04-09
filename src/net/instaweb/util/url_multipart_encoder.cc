@@ -41,10 +41,10 @@ UrlMultipartEncoder::~UrlMultipartEncoder() {
 
 void UrlMultipartEncoder::Encode(const StringVector& urls,
                                  const ResourceContext* data,
-                                 std::string* encoding) const {
+                                 GoogleString* encoding) const {
   DCHECK(data == NULL)
       << "Unexpected non-null data passed to UrlMultipartEncodeer";
-  std::string buf;
+  GoogleString buf;
 
   // Encoding is a two-part process.  First we take the array of
   // URLs and concatenate them together with + signs, escaping
@@ -54,7 +54,7 @@ void UrlMultipartEncoder::Encode(const StringVector& urls,
     if (i != 0) {
       buf += kSeparator;
     }
-    const std::string& url = urls[i];
+    const GoogleString& url = urls[i];
     for (int c = 0, nc = url.size(); c < nc; ++c) {
       char ch = url[c];
       if (ch == kEscape) {
@@ -75,7 +75,7 @@ bool UrlMultipartEncoder::Decode(const StringPiece& encoding,
                                  StringVector* urls,
                                  ResourceContext* data,
                                  MessageHandler* handler) const {
-  std::string buf;
+  GoogleString buf;
 
   // Reverse the two-step encoding process described above.
   if (!UrlEscaper::DecodeFromUrlSegment(encoding, &buf)) {
@@ -86,7 +86,7 @@ bool UrlMultipartEncoder::Decode(const StringPiece& encoding,
   }
 
   urls->clear();
-  std::string url;
+  GoogleString url;
   bool append_last = false;
   for (int c = 0, nc = buf.size(); c < nc; ++c) {
     char ch = buf[c];

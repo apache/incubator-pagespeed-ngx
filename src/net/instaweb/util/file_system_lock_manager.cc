@@ -56,7 +56,7 @@ class FileSystemLock : public TimerBasedAbstractLock {
     held_ = !manager_->file_system()->Unlock(name_, manager_->handler());
   }
 
-  virtual std::string name() {
+  virtual GoogleString name() {
     return name_;
   }
 
@@ -74,7 +74,7 @@ class FileSystemLock : public TimerBasedAbstractLock {
         manager_(manager),
         held_(false) { }
 
-  std::string name_;
+  GoogleString name_;
   FileSystemLockManager* manager_;
   // The held_ field contains an approximation to whether the lock is locked or
   // not.  If we believe the lock to be locked, we will unlock on destruction.

@@ -31,9 +31,9 @@ Hasher::Hasher(int max_chars): max_chars_(max_chars) {
 Hasher::~Hasher() {
 }
 
-std::string Hasher::Hash(const StringPiece& content) const {
-  std::string raw_hash = RawHash(content);
-  std::string out;
+GoogleString Hasher::Hash(const StringPiece& content) const {
+  GoogleString raw_hash = RawHash(content);
+  GoogleString out;
   Web64Encode(raw_hash, &out);
 
   // Truncate to how many characters are actually requested. We use

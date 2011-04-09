@@ -68,7 +68,7 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
     CleanFetchSettings();
   }
 
-  virtual bool StreamingFetch(const std::string& url,
+  virtual bool StreamingFetch(const GoogleString& url,
                               const RequestHeaders& request_headers,
                               ResponseHeaders* response_headers,
                               Writer* response_writer,
@@ -159,7 +159,7 @@ class SyncFetcherAdapterTest : public testing::Test {
 
   void TestSuccessfulFetch(UrlFetcher* fetcher) {
     ResponseHeaders out_headers;
-    std::string out_str;
+    GoogleString out_str;
     StringWriter out_writer(&out_str);
     EXPECT_TRUE(DoFetch(fetcher, &out_headers, &out_writer));
     EXPECT_EQ(kText, out_str);
@@ -167,7 +167,7 @@ class SyncFetcherAdapterTest : public testing::Test {
     StringStarVector values;
     EXPECT_TRUE(out_headers.Lookup(kHeader, &values));
     ASSERT_EQ(1, values.size());
-    EXPECT_EQ(std::string(kText), *(values[0]));
+    EXPECT_EQ(GoogleString(kText), *(values[0]));
   }
 
   void TestFailedFetch(UrlFetcher* fetcher) {

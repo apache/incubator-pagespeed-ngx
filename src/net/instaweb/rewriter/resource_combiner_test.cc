@@ -129,7 +129,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
     partnership_ = filter_->combiner();
   }
 
-  std::string AbsoluteUrl(const char* relative) {
+  GoogleString AbsoluteUrl(const char* relative) {
     return StrCat(kTestDomain, relative);
   }
 
@@ -154,7 +154,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
 
   // Fetches a resource, optionally permitting asynchronous loading (delayed
   // invocation and fetches that may fail. Returns whether succeeded
-  bool FetchResource(const StringPiece& url, std::string* content, int flags) {
+  bool FetchResource(const StringPiece& url, GoogleString* content, int flags) {
     WaitUrlAsyncFetcher simulate_async(&mock_url_fetcher_);
     if (flags & kFetchAsync) {
       rewrite_driver_.set_async_fetcher(&simulate_async);
@@ -214,8 +214,8 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
     return rewrite_driver_.NewElement(NULL, "test");
   }
 
-  std::string StringOfLength(int n, char fill) {
-    std::string out;
+  GoogleString StringOfLength(int n, char fill) {
+    GoogleString out;
     out.insert(0, n, fill);
     return out;
   }
@@ -530,29 +530,29 @@ TEST_F(ResourceCombinerTest, TestMaxUrlOverflow2) {
 
 TEST_F(ResourceCombinerTest, TestFetch) {
   // Test if we can reconstruct from pieces.
-  std::string url = Encode(kTestDomain, kTestCombinerId, "0",
+  GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+piece2.tcc+piece3.tcc", "txt");
 
-  std::string out;
+  GoogleString out;
   EXPECT_TRUE(FetchResource(url, &out, kFetchNormal));
   EXPECT_EQ("piece1|piec2|pie3|", out);
 }
 
 TEST_F(ResourceCombinerTest, TestFetchAsync) {
   // Test if we can reconstruct from pieces, with callback happening async
-  std::string url = Encode(kTestDomain, kTestCombinerId, "0",
+  GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+piece2.tcc+piece3.tcc", "txt");
-  std::string out;
+  GoogleString out;
   EXPECT_TRUE(FetchResource(url, &out, kFetchAsync));
   EXPECT_EQ("piece1|piec2|pie3|", out);
 }
 
 TEST_F(ResourceCombinerTest, TestFetchFail) {
   // Test if we can handle failure properly
-  std::string url = Encode(kTestDomain, kTestCombinerId, "0",
+  GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
 
-  std::string out;
+  GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchNormal));
 }
 
@@ -560,50 +560,50 @@ TEST_F(ResourceCombinerTest, TestFetchFail2) {
   mock_url_fetcher_.set_fail_on_unexpected(false);
   // This is slightly different from above, as we get a complete
   // fetch failure rather than a 404.
-  std::string url = Encode(kTestDomain, kTestCombinerId, "0",
+  GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+weird.tcc+piece2.tcc", "txt");
 
-  std::string out;
+  GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchNormal));
 }
 
 TEST_F(ResourceCombinerTest, TestFetchFailAsync) {
-  std::string url = Encode(kTestDomain, kTestCombinerId, "0",
+  GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
 
-  std::string out;
+  GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
 }
 
 TEST_F(ResourceCombinerTest, TestFetchFailAsync2) {
   mock_url_fetcher_.set_fail_on_unexpected(false);
-  std::string url = Encode(kTestDomain, kTestCombinerId, "0",
+  GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+weird.tcc+piece2.tcc", "txt");
 
-  std::string out;
+  GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
 }
 
 TEST_F(ResourceCombinerTest, TestFetchFailSevere) {
   // Test the case where we can't even create resources (wrong protocol)
-  std::string url = Encode("slwy://example.com/", kTestCombinerId, "0",
+  GoogleString url = Encode("slwy://example.com/", kTestCombinerId, "0",
                             "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
-  std::string out;
+  GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchNormal));
 }
 
 TEST_F(ResourceCombinerTest, TestFetchFailSevereAsync) {
-  std::string url = Encode("slwy://example.com/", kTestCombinerId, "0",
+  GoogleString url = Encode("slwy://example.com/", kTestCombinerId, "0",
                             "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
-  std::string out;
+  GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
 }
 
 TEST_F(ResourceCombinerTest, TestFetchNonsense) {
   // Make sure we handle URL decoding failing OK
-  std::string url = Encode(kTestDomain, kTestCombinerId, "0",
+  GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+nopiece.tcc,", "txt");
-  std::string out;
+  GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
 }
 
@@ -629,9 +629,9 @@ TEST_F(ResourceCombinerTest, TestContinuingFetchWhenFastFailed) {
   // The first one will start loading, on the second, nopiece.tcc,
   // we will quickly notice failure, and on third one we will
   // notice we've failed already.
-  std::string url = Encode(kTestDomain, kTestCombinerId, "0",
+  GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
-  std::string content;
+  GoogleString content;
   RequestHeaders request_headers;
   ResponseHeaders response_headers;
   StringWriter writer(&content);

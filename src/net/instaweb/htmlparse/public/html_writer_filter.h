@@ -23,7 +23,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -63,7 +63,7 @@ class HtmlWriterFilter : public HtmlFilter {
 
   // Escapes arbitrary text as HTML, e.g. turning & into &amp;.  If quoteChar
   // is non-zero, e.g. '"', then it would escape " as well.
-  void EncodeBytes(const std::string& val, int quoteChar);
+  void EncodeBytes(const GoogleString& val, int quoteChar);
 
   HtmlParse* html_parse_;
   Writer* writer_;
@@ -79,7 +79,7 @@ class HtmlWriterFilter : public HtmlFilter {
   int max_column_;
   int write_errors_;
   bool case_fold_;
-  std::string case_fold_buffer_;
+  GoogleString case_fold_buffer_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlWriterFilter);
 };

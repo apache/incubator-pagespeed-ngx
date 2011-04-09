@@ -65,7 +65,7 @@ class SharedMemVariable : public Variable {
   void Reset();
 
   // The name of this variable.
-  const std::string name_;
+  const GoogleString name_;
 
   // Lock protecting us. NULL if for some reason initialization failed.
   scoped_ptr<AbstractMutex> mutex_;
@@ -79,7 +79,7 @@ class SharedMemVariable : public Variable {
 class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable> {
  public:
   SharedMemStatistics(AbstractSharedMem* shm_runtime,
-                      const std::string& filename_prefix);
+                      const GoogleString& filename_prefix);
   virtual ~SharedMemStatistics();
 
   virtual SharedMemVariable* NewVariable(const StringPiece& name, int index);
@@ -102,14 +102,14 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable> {
   void Clear();
 
  private:
-  std::string SegmentName() const;
+  GoogleString SegmentName() const;
 
   // Create mutexes in the segment, with per_var bytes being used,
   // counting the mutex, for each variable.
   bool InitMutexes(size_t per_var, MessageHandler* message_handler);
 
   AbstractSharedMem* shm_runtime_;
-  std::string filename_prefix_;
+  GoogleString filename_prefix_;
   scoped_ptr<AbstractSharedMemSegment> segment_;
   bool frozen_;
 

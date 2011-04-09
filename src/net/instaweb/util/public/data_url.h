@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_DATA_URL_H_
 
 #include "net/instaweb/util/public/content_type.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -45,7 +45,7 @@ enum Encoding {
 // UserAgent-dependent.  It also pretty much requires outgoing content to be
 // compressed as we tend to base64-encode the content.
 void DataUrl(const ContentType& content_type, const Encoding encoding,
-             const StringPiece& content, std::string* result);
+             const StringPiece& content, GoogleString* result);
 
 // Dismantle a data: url into its component pieces, but do not decode the
 // content.  Note that encoded_content will be a substring of the input url and
@@ -57,7 +57,7 @@ bool ParseDataUrl(const StringPiece& url,
 
 bool DecodeDataUrlContent(Encoding encoding,
                           const StringPiece& encoded_content,
-                          std::string* decoded_content);
+                          GoogleString* decoded_content);
 
 }  // namespace net_instaweb
 

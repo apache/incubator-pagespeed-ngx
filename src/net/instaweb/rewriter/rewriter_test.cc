@@ -67,8 +67,8 @@ TEST_F(RewriterTest, HandlingOfInvalidUrls) {
 
   // Fetching the real rewritten resource name should work.
   // TODO(sligocki): This will need to be regolded if naming format changes.
-  std::string hash = hasher->Hash(kMinimizedCssData);
-  std::string good_url =
+  GoogleString hash = hasher->Hash(kMinimizedCssData);
+  GoogleString good_url =
       Encode(kTestDomain, RewriteDriver::kCssFilterId, hash, "a.css", "css");
   EXPECT_TRUE(TryFetchResource(good_url));
 
@@ -95,7 +95,7 @@ TEST_F(RewriterTest, HandlingOfInvalidUrls) {
                               "a.css", "ext")));
 
   // Changing other fields can lead to error.
-  std::string bad_url = Encode(kTestDomain, "xz", hash, "a.css", "css");
+  GoogleString bad_url = Encode(kTestDomain, "xz", hash, "a.css", "css");
 
   EXPECT_FALSE(TryFetchResource(bad_url));
 }

@@ -23,7 +23,7 @@
 
 namespace net_instaweb {
 
-bool ConvertTimeToString(int64 time_ms, std::string* time_string) {
+bool ConvertTimeToString(int64 time_ms, GoogleString* time_string) {
   time_t time_sec = time_ms / 1000;
   struct tm time_buf;
   struct tm* time_info = gmtime_r(&time_sec, &time_buf);
@@ -59,7 +59,7 @@ bool ConvertTimeToString(int64 time_ms, std::string* time_string) {
 }
 
 bool ConvertStringToTime(const StringPiece& time_string, int64 *time_ms) {
-  std::string buf(time_string.data(), time_string.size());
+  GoogleString buf(time_string.data(), time_string.size());
   return pagespeed::resource_util::ParseTimeValuedHeader(buf.c_str(), time_ms);
 }
 

@@ -33,7 +33,7 @@
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/proto_util.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
@@ -77,7 +77,7 @@ OutputResource::OutputResource(RewriteDriver* driver,
       kind_(kind) {
   full_name_.CopyFrom(full_name);
   if (type == NULL) {
-    std::string ext_with_dot = StrCat(".", full_name.ext());
+    GoogleString ext_with_dot = StrCat(".", full_name.ext());
     type_ = NameExtensionToContentType(ext_with_dot);
   } else {
     // This if + check used to be a 1-liner, but it was failing and this
@@ -112,11 +112,11 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
     FileSystem* file_system = resource_manager_->file_system();
     // Always write to a tempfile, so that if we get interrupted in the middle
     // we won't leave a half-baked file in the serving path.
-    std::string temp_prefix = TempPrefix();
+    GoogleString temp_prefix = TempPrefix();
     output_file_ = file_system->OpenTempFile(temp_prefix, handler);
     bool success = (output_file_ != NULL);
     if (success) {
-      std::string header;
+      GoogleString header;
       StringWriter string_writer(&header);
       meta_data_.WriteAsHttp(&string_writer, handler);  // Serialize header.
       // It does not make sense to have the headers in the hash.
@@ -147,7 +147,7 @@ bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
   if (output_file_ != NULL) {
     FileSystem* file_system = resource_manager_->file_system();
     CHECK(file_system != NULL);
-    std::string temp_filename = output_file_->filename();
+    GoogleString temp_filename = output_file_->filename();
     ret = file_system->Close(output_file_, handler);
 
     // Now that we are done writing, we can rename to the filename we
@@ -174,7 +174,7 @@ bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
 
 // Called by FilenameOutputResource::BeginWrite to determine how
 // to start writing the tmpfile.
-std::string OutputResource::TempPrefix() const {
+GoogleString OutputResource::TempPrefix() const {
   return StrCat(resource_manager_->filename_prefix(), "temp_");
 }
 
@@ -194,16 +194,16 @@ void OutputResource::set_suffix(const StringPiece& ext) {
   }
 }
 
-std::string OutputResource::filename() const {
-  std::string filename;
+GoogleString OutputResource::filename() const {
+  GoogleString filename;
   resource_manager_->filename_encoder()->Encode(
       resource_manager_->filename_prefix(), url(), &filename);
   return filename;
 }
 
-std::string OutputResource::name_key() const {
-  std::string id_name = full_name_.EncodeIdName();
-  std::string result;
+GoogleString OutputResource::name_key() const {
+  GoogleString id_name = full_name_.EncodeIdName();
+  GoogleString result;
   CHECK(!resolved_base_.empty());  // Corresponding path in url() is dead code
   result = StrCat(resolved_base_, id_name);
   return result;
@@ -211,16 +211,16 @@ std::string OutputResource::name_key() const {
 
 // TODO(jmarantz): change the name to reflect the fact that it is not
 // just an accessor now.
-std::string OutputResource::url() const {
-  std::string shard, shard_path;
-  std::string encoded(full_name_.Encode());
+GoogleString OutputResource::url() const {
+  GoogleString shard, shard_path;
+  GoogleString encoded(full_name_.Encode());
   if (rewrite_options_ != NULL) {
     StringPiece hash = full_name_.hash();
     uint32 int_hash = HashString<CasePreserve, uint32>(
         hash.data(), hash.size());
     const DomainLawyer* lawyer = rewrite_options_->domain_lawyer();
     GoogleUrl gurl(resolved_base_);
-    std::string domain = StrCat(gurl.Origin(), "/");
+    GoogleString domain = StrCat(gurl.Origin(), "/");
     if (lawyer->ShardDomain(domain, int_hash, &shard)) {
       // The Path has a leading "/", and shard has a trailing "/".  So
       // we need to perform some StringPiece substring arithmetic to
@@ -295,7 +295,7 @@ bool OutputResource::LockForCreation(const ResourceManager* resource_manager,
   const int64 block_lock_ms = 5 * Timer::kSecondMs;
   bool result = true;
   if (creation_lock_.get() == NULL) {
-    std::string lock_name =
+    GoogleString lock_name =
         StrCat(resource_manager->filename_prefix(),
                resource_manager->hasher()->Hash(name_key()),
                kLockSuffix);
@@ -316,7 +316,7 @@ bool OutputResource::LockForCreation(const ResourceManager* resource_manager,
   return result;
 }
 
-void OutputResource::SaveCachedResult(const std::string& name_key,
+void OutputResource::SaveCachedResult(const GoogleString& name_key,
                                       MessageHandler* handler) {
   CacheInterface* cache = resource_manager_->metadata_cache();
   CachedResult* cached = EnsureCachedResultCreated();
@@ -343,7 +343,7 @@ void OutputResource::SaveCachedResult(const std::string& name_key,
   }
 }
 
-void OutputResource::FetchCachedResult(const std::string& name_key,
+void OutputResource::FetchCachedResult(const GoogleString& name_key,
                                        MessageHandler* handler) {
   bool ok = false;
   CacheInterface* cache = resource_manager_->metadata_cache();

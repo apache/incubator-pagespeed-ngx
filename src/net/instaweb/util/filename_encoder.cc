@@ -27,14 +27,14 @@ FilenameEncoder::~FilenameEncoder() {
 
 void FilenameEncoder::Encode(const StringPiece& filename_prefix,
                              const StringPiece& filename_ending,
-                             std::string* encoded_filename) {
+                             GoogleString* encoded_filename) {
   UrlToFilenameEncoder::EncodeSegment(filename_prefix.as_string(),
                                       filename_ending.as_string(),
                                       '/', encoded_filename);
 }
 
 bool FilenameEncoder::Decode(const StringPiece& encoded_filename,
-                             std::string* decoded_url) {
+                             GoogleString* decoded_url) {
   return UrlToFilenameEncoder::Decode(encoded_filename.as_string(), '/',
                                       decoded_url);
 }

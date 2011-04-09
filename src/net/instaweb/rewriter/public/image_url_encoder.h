@@ -19,7 +19,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_URL_ENCODER_H_
 
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
@@ -36,7 +36,7 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
 
   virtual void Encode(const StringVector& urls,
                       const ResourceContext* dim,
-                      std::string* rewritten_url) const;
+                      GoogleString* rewritten_url) const;
 
   virtual bool Decode(const StringPiece& url_segment,
                       StringVector* urls,
@@ -55,7 +55,7 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
   // Helper method that's easier to call for img* code than the virtual Decode
   // interface, providing a single URL and ImageDim* as direct outputs.
   bool DecodeUrlAndDimensions(
-      const StringPiece& encoded, ImageDim* dim, std::string* url,
+      const StringPiece& encoded, ImageDim* dim, GoogleString* url,
       MessageHandler* handler) const;
 
  private:

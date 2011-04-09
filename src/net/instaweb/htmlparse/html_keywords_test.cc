@@ -16,17 +16,17 @@ class HtmlKeywordsTest : public testing::Test {
 
   // In general HtmlKeywords is not reversible, but it is in
   // specific cases.
-  void BiTest(const std::string& escaped, const std::string& unescaped) {
-    std::string buf;
+  void BiTest(const GoogleString& escaped, const GoogleString& unescaped) {
+    GoogleString buf;
     EXPECT_EQ(escaped, HtmlKeywords::Escape(unescaped, &buf));
     EXPECT_EQ(unescaped, HtmlKeywords::Unescape(escaped, &buf));
   }
 
-  void TestEscape(const std::string& symbolic_code, char value) {
-    std::string symbolic_escaped = StrCat("&", symbolic_code, ";");
-    std::string numeric_escaped = StringPrintf(
+  void TestEscape(const GoogleString& symbolic_code, char value) {
+    GoogleString symbolic_escaped = StrCat("&", symbolic_code, ";");
+    GoogleString numeric_escaped = StringPrintf(
         "&#%02d;", static_cast<unsigned char>(value));
-    std::string unescaped(&value, 1), buf;
+    GoogleString unescaped(&value, 1), buf;
     BiTest(symbolic_escaped, unescaped);
     EXPECT_EQ(unescaped, HtmlKeywords::Unescape(numeric_escaped, &buf));
   }
@@ -47,14 +47,14 @@ TEST_F(HtmlKeywordsTest, Bidirectional) {
   // octal 200 is decimal 128, and lacks symbolic representation
   BiTest("a&#128;&#07;b", "a\200\007b");
 
-  std::string buf;
+  GoogleString buf;
   EXPECT_EQ("'", HtmlKeywords::Unescape("&#39;", &buf));
   EXPECT_EQ("(", HtmlKeywords::Unescape("&#40;", &buf));
   EXPECT_EQ(")", HtmlKeywords::Unescape("&#41;", &buf));
 }
 
 TEST_F(HtmlKeywordsTest, Hex) {
-  std::string buf;
+  GoogleString buf;
   EXPECT_EQ("'", HtmlKeywords::Unescape("&#x27;", &buf));
   EXPECT_EQ("(", HtmlKeywords::Unescape("&#x28;", &buf));
   EXPECT_EQ(")", HtmlKeywords::Unescape("&#x29;", &buf));
@@ -166,15 +166,15 @@ TEST_F(HtmlKeywordsTest, AllCodes) {
 /*
  * TODO(jmarantz): fix this.
  * TEST_F(HtmlKeywordsTest, Unescape) {
- *   std::string buf;
+ *   GoogleString buf;
  *   EXPECT_EQ("a&b", HtmlKeywords::Unescape("a&#26;b", &buf));
- *   std::string expected;
+ *   GoogleString expected;
  *   expected += 'a';
  *   expected += 0x03;
  *   expected += 0xa7;
  *   expected += 'b';
  *   EXPECT_EQ(expected, HtmlKeywords::Unescape("a&chi;b", &buf));
- *   EXPECT_EQ(std::string("a&#03;&#a7;b"), HtmlKeywords::Escape(expected, &buf));
+ *   EXPECT_EQ(GoogleString("a&#03;&#a7;b"), HtmlKeywords::Escape(expected, &buf));
  * }
  */
 

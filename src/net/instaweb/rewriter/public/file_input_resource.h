@@ -39,14 +39,14 @@ class FileInputResource : public Resource {
 
   virtual ~FileInputResource();
 
-  virtual std::string url() const { return url_; }
+  virtual GoogleString url() const { return url_; }
 
  protected:
   virtual bool Load(MessageHandler* message_handler);
 
  private:
-  std::string url_;
-  std::string filename_;
+  GoogleString url_;
+  GoogleString filename_;
 
   DISALLOW_COPY_AND_ASSIGN(FileInputResource);
 };

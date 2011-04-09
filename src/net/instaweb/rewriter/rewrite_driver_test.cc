@@ -36,7 +36,7 @@ class RewriteDriverTest : public ResourceManagerTestBase {
     return (resource.get() != NULL);
   }
 
-  std::string BaseUrlSpec() {
+  GoogleString BaseUrlSpec() {
     return rewrite_driver_.base_url().Spec().as_string();
   }
 
@@ -101,7 +101,7 @@ TEST_F(RewriteDriverTest, TestCacheUse) {
   const char kMinCss[] = "*{display:none}";
   InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
 
-  std::string cssMinifiedUrl =
+  GoogleString cssMinifiedUrl =
       Encode(kTestDomain, RewriteDriver::kCssFilterId,
              mock_hasher_.Hash(kMinCss), "a.css", "css");
 
@@ -128,7 +128,7 @@ TEST_F(RewriteDriverTest, TestCacheUseOnTheFly) {
   const char kCss[] = "* { display: none; }";
   InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
 
-  std::string cacheExtendedUrl =
+  GoogleString cacheExtendedUrl =
       Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
              mock_hasher_.Hash(kCss), "a.css", "css");
 
@@ -213,19 +213,19 @@ TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
   };
 
   // short_path.size() < options_.max_url_size() < long_path.size()
-  std::string short_path = "http://www.example.com/dir/";
-  std::string long_path = short_path;
+  GoogleString short_path = "http://www.example.com/dir/";
+  GoogleString long_path = short_path;
   for (int i = 0; 2 * i < options_.max_url_size(); ++i) {
     long_path += "z/";
   }
 
   // short_name.size() < options_.max_url_segment_size() < long_name.size()
-  std::string short_name = "foo.html";
-  std::string long_name =
+  GoogleString short_name = "foo.html";
+  GoogleString long_name =
       StrCat("foo.html?",
-             std::string(options_.max_url_segment_size() + 1, 'z'));
+             GoogleString(options_.max_url_segment_size() + 1, 'z'));
 
-  std::string dummy_filter_id = "xy";
+  GoogleString dummy_filter_id = "xy";
 
   scoped_ptr<OutputResource> resource;
   for (int t = 0; t < arraysize(content_types); ++t) {

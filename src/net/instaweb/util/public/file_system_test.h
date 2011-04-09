@@ -24,7 +24,7 @@
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -38,10 +38,10 @@ class FileSystemTest : public testing::Test {
   FileSystemTest();
   virtual ~FileSystemTest();
 
-  void CheckDoesNotExist(const std::string& filename);
+  void CheckDoesNotExist(const GoogleString& filename);
 
-  void CheckRead(const std::string& filename,
-                 const std::string& expected_contents);
+  void CheckRead(const GoogleString& filename,
+                 const GoogleString& expected_contents);
 
   // Delete (at least) the named file or directory and everything
   // underneath it.  The test is permitted to delete more things (up
@@ -52,10 +52,10 @@ class FileSystemTest : public testing::Test {
   virtual FileSystem* file_system() = 0;
 
   // Provide a temporary directory for tests to put files in.
-  virtual std::string test_tmpdir() = 0;
+  virtual GoogleString test_tmpdir() = 0;
 
-  std::string WriteNewFile(const StringPiece& suffix,
-                            const std::string& content);
+  GoogleString WriteNewFile(const StringPiece& suffix,
+                            const GoogleString& content);
 
   void TestWriteRead();
   void TestTemp();

@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_FILE_SYSTEM_H_
 
 #include "base/basictypes.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -117,7 +117,7 @@ class FileSystem {
 
   // High level support to read/write entire files in one shot.
   virtual bool ReadFile(const char* filename,
-                        std::string* buffer,
+                        GoogleString* buffer,
                         MessageHandler* handler);
   virtual bool ReadFile(const char* filename,
                         Writer* writer,
@@ -129,7 +129,7 @@ class FileSystem {
   // in filename on success.  Returns false and clears filename on failure.
   virtual bool WriteTempFile(const StringPiece& prefix_name,
                              const StringPiece& buffer,
-                             std::string* filename,
+                             GoogleString* filename,
                              MessageHandler* handler);
 
   virtual InputFile* OpenInputFile(const char* filename,

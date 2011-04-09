@@ -31,7 +31,7 @@
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/symbol_table.h"
 
@@ -244,7 +244,7 @@ class HtmlParse {
   const char* id() const { return id_.c_str(); }
   int line_number() const { return line_number_; }
   // Returns URL (or id) and line number as a string, to be used in messages.
-  std::string UrlLine() const {
+  GoogleString UrlLine() const {
     return StringPrintf("%s:%d", id(), line_number());
   }
 
@@ -348,9 +348,9 @@ class HtmlParse {
   HtmlEventListIterator current_;
   // Have we deleted current? Then we shouldn't do certain manipulations to it.
   MessageHandler* message_handler_;
-  std::string url_;
+  GoogleString url_;
   GoogleUrl google_url_;
-  std::string id_;  // Per-request identifier string used in error messages.
+  GoogleString id_;  // Per-request identifier string used in error messages.
   int line_number_;
   bool deleted_current_;
   bool need_sanity_check_;

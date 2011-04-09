@@ -30,7 +30,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 #include "net/instaweb/util/public/user_agent.h"
@@ -314,14 +314,14 @@ class RewriteDriver : public HtmlParse {
   // This method takes ownership of resource.  If it is called
   // again with the same str, it will free the previous resource
   // pointer.
-  void RememberResource(std::string str, Resource* resource);
+  void RememberResource(GoogleString str, Resource* resource);
 
-  Resource* FindResource(std::string str) const;
+  Resource* FindResource(GoogleString str) const;
 
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
-  typedef std::map<std::string, RewriteFilter*> StringFilterMap;
+  typedef std::map<GoogleString, RewriteFilter*> StringFilterMap;
   typedef void (RewriteDriver::*SetStringMethod)(const StringPiece& value);
   typedef void (RewriteDriver::*SetInt64Method)(int64 value);
 
@@ -340,9 +340,9 @@ class RewriteDriver : public HtmlParse {
   friend class ScanFilter;
 
   bool ParseKeyString(const StringPiece& key, SetStringMethod m,
-                      const std::string& flag);
+                      const GoogleString& flag);
   bool ParseKeyInt64(const StringPiece& key, SetInt64Method m,
-                     const std::string& flag);
+                     const GoogleString& flag);
 
   // Adds a CommonFilter into the HtmlParse filter-list, and into the
   // Scan filter-list for initiating async resource fetches.   See
@@ -421,7 +421,7 @@ class RewriteDriver : public HtmlParse {
   // model.  We want to initiate all rewriting logic during the scan
   // phase so that in the rewrite phase we mainly just swap URLs, at
   // least for single-resource filters.
-  typedef std::map<std::string, Resource*> ResourceMap;
+  typedef std::map<GoogleString, Resource*> ResourceMap;
   ResourceMap resource_map_;
 
   Variable* cached_resource_fetches_;

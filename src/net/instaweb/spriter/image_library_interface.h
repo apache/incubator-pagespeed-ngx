@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_SPRITER_IMAGE_LIBRARY_INTERFACE_H_
 
 #include "base/basictypes.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/spriter/public/image_spriter.pb.h"
 
 // TODO(skerner): #include image_spriter.pb.h is needed to allow use of
@@ -42,13 +42,13 @@ class ImageLibraryInterface {
  public:
   // TODO(skerner): Chromium's base lib has a class FilePath that
   // handles paths in a cross-platform way.  Use it.
-  typedef std::string FilePath;
+  typedef GoogleString FilePath;
 
   // Users of the image library interface provide a delegate which
   // is informend of errors.
   class Delegate {
    public:
-    virtual void OnError(const std::string& error) = 0;
+    virtual void OnError(const GoogleString& error) = 0;
     virtual ~Delegate() {}
   };
 
@@ -98,7 +98,7 @@ class ImageLibraryInterface {
 
   // Use this factory method to get a usable image library object.
   static ImageLibraryInterface* ImageLibraryInterfaceFactory(
-      const std::string& library_name);
+      const GoogleString& library_name);
 
  protected:
   // Use ImageLibraryInterfaceFactory() to access an image library.

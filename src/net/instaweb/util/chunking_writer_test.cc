@@ -69,7 +69,7 @@ class TracingWriter : public Writer {
     return true;
   }
 
-  const std::string& recorded() const { return recorded_; }
+  const GoogleString& recorded() const { return recorded_; }
 
   // Tells this filter to report a failure on n'th invocation exactly.
   // (starting from 0)
@@ -77,7 +77,7 @@ class TracingWriter : public Writer {
 
  private:
   MessageHandler* expected_handler_;
-  std::string recorded_;
+  GoogleString recorded_;
   int ops_;
   int fail_on_op_;
 };

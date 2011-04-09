@@ -310,7 +310,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
   void FixUserAgent() {
     // Supply a default user-agent if none is present, and in any case
     // append on a 'serf' suffix.
-    std::string user_agent;
+    GoogleString user_agent;
     StringStarVector v;
     if (request_headers_.Lookup(HttpAttributes::kUserAgent, &v)) {
       for (int i = 0, n = v.size(); i < n; ++i) {
@@ -371,8 +371,8 @@ class SerfFetch : public PoolElement<SerfFetch> {
     serf_bucket_t* hdrs_bkt = serf_bucket_request_get_headers(*req_bkt);
 
     for (int i = 0; i < fetch->request_headers_.NumAttributes(); ++i) {
-      const std::string& name = fetch->request_headers_.Name(i);
-      const std::string& value = fetch->request_headers_.Value(i);
+      const GoogleString& name = fetch->request_headers_.Name(i);
+      const GoogleString& value = fetch->request_headers_.Value(i);
       if ((StringCaseEqual(name, HttpAttributes::kUserAgent)) ||
           (StringCaseEqual(name, HttpAttributes::kAcceptEncoding)) ||
           (StringCaseEqual(name, HttpAttributes::kReferer))) {

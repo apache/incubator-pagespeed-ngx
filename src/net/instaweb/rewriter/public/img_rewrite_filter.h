@@ -28,7 +28,7 @@
 #include "net/instaweb/rewriter/public/img_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/atom.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 #include "net/instaweb/util/public/work_bound.h"
 
@@ -61,7 +61,7 @@ class ImgRewriteFilter : public RewriteSingleResourceFilter {
   // otherwise leave data_url alone.
   static bool CanInline(
       int img_inline_max_bytes, const StringPiece& contents,
-      const ContentType* content_type, std::string* data_url);
+      const ContentType* content_type, GoogleString* data_url);
 
  protected:
   // Interface to RewriteSingleResourceFilter
@@ -73,7 +73,7 @@ class ImgRewriteFilter : public RewriteSingleResourceFilter {
 
  private:
   // Helper methods.
-  const ContentType* ImageToContentType(const std::string& origin_url,
+  const ContentType* ImageToContentType(const GoogleString& origin_url,
                                         Image* image);
   void RewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
 

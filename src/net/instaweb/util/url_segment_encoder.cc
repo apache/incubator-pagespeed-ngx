@@ -26,7 +26,7 @@ UrlSegmentEncoder::~UrlSegmentEncoder() {
 
 void UrlSegmentEncoder::Encode(const StringVector& urls,
                                const ResourceContext* data,
-                               std::string* url_segment) const {
+                               GoogleString* url_segment) const {
   DCHECK(data == NULL) << "non-null data passed to default SegmentEncoder";
   DCHECK_EQ(1U, urls.size());
   UrlEscaper::EncodeToUrlSegment(urls[0], url_segment);
@@ -37,8 +37,8 @@ bool UrlSegmentEncoder::Decode(const StringPiece& url_segment,
                                ResourceContext* out_data,
                                MessageHandler* handler) const {
   urls->clear();
-  urls->push_back(std::string());
-  std::string& url = urls->back();
+  urls->push_back(GoogleString());
+  GoogleString& url = urls->back();
   return UrlEscaper::DecodeFromUrlSegment(url_segment, &url);
 }
 

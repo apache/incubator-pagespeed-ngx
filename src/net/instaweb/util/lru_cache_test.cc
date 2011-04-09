@@ -23,7 +23,7 @@
 #include "base/logging.h"
 #include "net/instaweb/util/cache_test_base.h"
 #include "net/instaweb/util/public/shared_string.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace {
@@ -76,7 +76,7 @@ TEST_F(LRUCacheTest, PutGetDelete) {
 // understand when objects fall off the end.
 TEST_F(LRUCacheTest, LeastRecentlyUsed) {
   // Fill the cache.
-  std::string keys[10], values[10];
+  GoogleString keys[10], values[10];
   const char key_pattern[]      = "name%d";
   const char value_pattern[]    = "valu%d";
   const int key_plus_value_size = 10;  // strlen("name7") + strlen("valu7")

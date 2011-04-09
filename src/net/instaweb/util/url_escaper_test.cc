@@ -35,7 +35,7 @@ namespace net_instaweb {
 class UrlEscaperTest : public testing::Test {
  protected:
   void CheckEncoding(const StringPiece& url) {
-    std::string encoded, decoded;
+    GoogleString encoded, decoded;
     UrlEscaper::EncodeToUrlSegment(url, &encoded);
 
     // Make sure there are only alphanumerics and _+-=%
@@ -50,21 +50,21 @@ class UrlEscaperTest : public testing::Test {
 
   // Some basic text should be completely unchanged upon encode/decode.
   void CheckUnchanged(const StringPiece& url) {
-    std::string encoded, decoded;
+    GoogleString encoded, decoded;
     UrlEscaper::EncodeToUrlSegment(url, &encoded);
     EXPECT_EQ(url, encoded);
     EXPECT_TRUE(UrlEscaper::DecodeFromUrlSegment(encoded, &decoded));
     EXPECT_EQ(url, decoded);
   }
 
-  std::string Decode(const StringPiece& encoding) {
-    std::string decoded;
+  GoogleString Decode(const StringPiece& encoding) {
+    GoogleString decoded;
     EXPECT_TRUE(UrlEscaper::DecodeFromUrlSegment(encoding, &decoded));
     return decoded;
   }
 
-  std::string Encode(const StringPiece& url) {
-    std::string encoded;
+  GoogleString Encode(const StringPiece& url) {
+    GoogleString encoded;
     UrlEscaper::EncodeToUrlSegment(url, &encoded);
     return encoded;
   }

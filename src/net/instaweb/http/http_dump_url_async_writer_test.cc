@@ -40,7 +40,7 @@ class HttpDumpUrlAsyncWriterTest : public FetcherTest {
 
   UrlAsyncFetcher* async_fetcher() { return &dump_fetcher_; }
 
-  std::string root_dir_;
+  GoogleString root_dir_;
   StdioFileSystem file_system_;
   MockTimer mock_timer_;
   HttpDumpUrlAsyncWriter dump_fetcher_;

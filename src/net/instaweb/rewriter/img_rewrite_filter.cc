@@ -30,7 +30,7 @@
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/file_system.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -102,7 +102,7 @@ RewriteSingleResourceFilter::RewriteResult
 ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
                                         OutputResource* result) {
   MessageHandler* message_handler = driver_->message_handler();
-  std::string url;
+  GoogleString url;
   ImageDim page_dim;
   if (!encoder_.DecodeUrlAndDimensions(result->name(), &page_dim, &url,
                                        message_handler)) {
@@ -162,7 +162,7 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
       dims->set_height(post_resize_dim.height());
     }
 
-    std::string inlined_url;
+    GoogleString inlined_url;
     if (image->output_size() <
         image->input_size() * kMaxRewrittenRatio) {
       // here output image type could potentially be different from input type.
@@ -225,7 +225,7 @@ bool ImgRewriteFilter::ReuseByContentHash() const {
 
 // Convert (possibly NULL) Image* to corresponding (possibly NULL) ContentType*
 const ContentType* ImgRewriteFilter::ImageToContentType(
-    const std::string& origin_url, Image* image) {
+    const GoogleString& origin_url, Image* image) {
   const ContentType* content_type = NULL;
   if (image != NULL) {
     // Even if we know the content type from the extension coming
@@ -307,7 +307,7 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
 
 bool ImgRewriteFilter::CanInline(
     int img_inline_max_bytes, const StringPiece& contents,
-    const ContentType* content_type, std::string* data_url) {
+    const ContentType* content_type, GoogleString* data_url) {
   bool ok = false;
   if (content_type != NULL && contents.size() <= img_inline_max_bytes) {
     DataUrl(*content_type, BASE64, contents, data_url);
@@ -323,7 +323,7 @@ void ImgRewriteFilter::EndElementImpl(HtmlElement* element) {
       if (driver_->options()->Enabled(RewriteOptions::kDebugLogImgTags)) {
         // We now know that element is an img tag.
         // Log the element in its original form.
-        std::string tagstring;
+        GoogleString tagstring;
         element->ToString(&tagstring);
         driver_->Info(
             driver_->id(), element->begin_line_number(),

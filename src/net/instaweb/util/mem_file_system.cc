@@ -27,14 +27,14 @@
 #include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
 class MemInputFile : public FileSystem::InputFile {
  public:
-  MemInputFile(const StringPiece& filename, const std::string& contents)
+  MemInputFile(const StringPiece& filename, const GoogleString& contents)
       : contents_(contents),
         filename_(filename.data(), filename.size()),
         offset_(0) {
@@ -57,8 +57,8 @@ class MemInputFile : public FileSystem::InputFile {
   }
 
  private:
-  const std::string contents_;
-  const std::string filename_;
+  const GoogleString contents_;
+  const GoogleString filename_;
   int offset_;
 
   DISALLOW_COPY_AND_ASSIGN(MemInputFile);
@@ -67,7 +67,7 @@ class MemInputFile : public FileSystem::InputFile {
 
 class MemOutputFile : public FileSystem::OutputFile {
  public:
-  MemOutputFile(const StringPiece& filename, std::string* contents)
+  MemOutputFile(const StringPiece& filename, GoogleString* contents)
       : contents_(contents), filename_(filename.data(), filename.size()) {
     contents_->clear();
   }
@@ -95,9 +95,9 @@ class MemOutputFile : public FileSystem::OutputFile {
   }
 
  private:
-  std::string* contents_;
-  const std::string filename_;
-  std::string written_;
+  GoogleString* contents_;
+  const GoogleString filename_;
+  GoogleString written_;
 
   DISALLOW_COPY_AND_ASSIGN(MemOutputFile);
 };
@@ -130,7 +130,7 @@ BoolOrError MemFileSystem::IsDir(const char* path, MessageHandler* handler) {
 
 bool MemFileSystem::MakeDir(const char* path, MessageHandler* handler) {
   // We store directories as empty files with trailing slashes.
-  std::string path_string = path;
+  GoogleString path_string = path;
   EnsureEndsInSlash(&path_string);
   string_map_[path_string] = "";
   UpdateAtime(path_string);
@@ -162,7 +162,7 @@ FileSystem::OutputFile* MemFileSystem::OpenOutputFileHelper(
 
 FileSystem::OutputFile* MemFileSystem::OpenTempFileHelper(
     const StringPiece& prefix, MessageHandler* message_handler) {
-  std::string filename = StringPrintf("tmpfile%d", temp_file_index_++);
+  GoogleString filename = StringPrintf("tmpfile%d", temp_file_index_++);
   UpdateAtime(filename);
   return new MemOutputFile(filename, &string_map_[filename]);
 }
@@ -203,7 +203,7 @@ bool MemFileSystem::RenameFileHelper(const char* old_file,
 
 bool MemFileSystem::ListContents(const StringPiece& dir, StringVector* files,
                                  MessageHandler* handler) {
-  std::string prefix = dir.as_string();
+  GoogleString prefix = dir.as_string();
   EnsureEndsInSlash(&prefix);
   const size_t prefix_length = prefix.size();
   // We don't have directories, so we just list everything in the
@@ -211,13 +211,13 @@ bool MemFileSystem::ListContents(const StringPiece& dir, StringVector* files,
   // internal slash.
   for (StringStringMap::iterator it = string_map_.begin(),
            end = string_map_.end(); it != end; it++) {
-    const std::string& path = (*it).first;
+    const GoogleString& path = (*it).first;
     if ((0 == path.compare(0, prefix_length, prefix)) &&
         path.length() > prefix_length) {
       const size_t next_slash = path.find("/", prefix_length + 1);
       // Only want to list files without another slash, unless that
       // slash is the last char in the filename.
-      if ((next_slash == std::string::npos)
+      if ((next_slash == GoogleString::npos)
           || (next_slash == path.length() - 1)) {
         files->push_back(path);
       }
@@ -234,7 +234,7 @@ bool MemFileSystem::Atime(const StringPiece& path, int64* timestamp_sec,
 
 bool MemFileSystem::Size(const StringPiece& path, int64* size,
                          MessageHandler* handler) {
-  const std::string path_string = path.as_string();
+  const GoogleString path_string = path.as_string();
   const char* path_str = path_string.c_str();
   if (Exists(path_str, handler).is_true()) {
     *size = string_map_[path_string].size();
@@ -260,7 +260,7 @@ BoolOrError MemFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
                                               MessageHandler* handler) {
   // As above, not actually threadsafe (and quick-and-dirty rather than
   // efficient; efficiency requires map::find).
-  std::string name = lock_name.as_string();
+  GoogleString name = lock_name.as_string();
   int64 now = timer_.NowMs();
   if (lock_map_.count(name) != 0 &&
       now <= lock_map_[name] + timeout_ms) {

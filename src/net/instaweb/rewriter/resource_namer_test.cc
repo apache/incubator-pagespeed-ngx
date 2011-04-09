@@ -40,9 +40,9 @@ TEST_F(ResourceNamerTest, TestEncode) {
   full_name_.set_name("name.ext.as.many.as.I.like");
   full_name_.set_hash("hash");
   full_name_.set_ext("ext");
-  EXPECT_EQ(std::string("name.ext.as.many.as.I.like.pagespeed.id.hash.ext"),
+  EXPECT_EQ(GoogleString("name.ext.as.many.as.I.like.pagespeed.id.hash.ext"),
             full_name_.Encode());
-  EXPECT_EQ(std::string("id.name.ext.as.many.as.I.like"),
+  EXPECT_EQ(GoogleString("id.name.ext.as.many.as.I.like"),
             full_name_.EncodeIdName());
 }
 
@@ -73,7 +73,7 @@ TEST_F(ResourceNamerTest, TestLegacyDecode) {
 
 TEST_F(ResourceNamerTest, TestEventualSize) {
   MockHasher mock_hasher;
-  std::string file = "some_name.pagespeed.idn.0.extension";
+  GoogleString file = "some_name.pagespeed.idn.0.extension";
   EXPECT_TRUE(full_name_.Decode(file));
   EXPECT_EQ(file.size(), full_name_.EventualSize(mock_hasher));
 }

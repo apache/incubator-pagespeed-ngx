@@ -52,7 +52,7 @@ ImageUrlEncoder::~ImageUrlEncoder() { }
 
 void ImageUrlEncoder::Encode(const StringVector& urls,
                              const ResourceContext* data,
-                             std::string* rewritten_url) const {
+                             GoogleString* rewritten_url) const {
   DCHECK(data != NULL) << "null data passed to ImageUrlEncoder::Encode";
   DCHECK_EQ(1U, urls.size());
   if ((data != NULL) && HasDimensions(*data)) {
@@ -66,7 +66,7 @@ void ImageUrlEncoder::Encode(const StringVector& urls,
 
 bool ImageUrlEncoder::DecodeUrlAndDimensions(const StringPiece& encoded,
                                              ImageDim* image_dims,
-                                             std::string* url,
+                                             GoogleString* url,
                                              MessageHandler* handler) const {
   // Note that "remaining" is shortened from the left as we parse.
   StringPiece remaining(encoded);
@@ -100,7 +100,7 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
                              ResourceContext* data,
                              MessageHandler* handler) const {
   ImageDim dims;
-  std::string url;
+  GoogleString url;
   bool ret = DecodeUrlAndDimensions(encoded, &dims, &url, handler);
   if (ret) {
     if (HasValidDimensions(dims)) {

@@ -68,26 +68,26 @@ TEST(STATIC_STRLEN_Test, CorrectStaticStringLengths) {
   //   char (&ArraySizeHelper(const T (&array)[N]))[N];
   //          ^
   // TODO(sligocki): Find a way to actively test this:
-  //std::string hello_world("Hello, world!");
+  //GoogleString hello_world("Hello, world!");
   //const char* hello_world_ptr = hello_world.data();
   //STATIC_STRLEN(hello_world_ptr);
 }
 
 class IntegerToStringToIntTest : public testing::Test {
  protected:
-  void ValidateIntegerToString(int i, std::string s) {
+  void ValidateIntegerToString(int i, GoogleString s) {
     EXPECT_EQ(s, IntegerToString(i));
     ValidateInteger64ToString(static_cast<int64>(i), s);
   }
 
-  void ValidateStringToInt(std::string s, int i) {
+  void ValidateStringToInt(GoogleString s, int i) {
     int i2;
     EXPECT_TRUE(StringToInt(s, &i2));
     EXPECT_EQ(i, i2);
     ValidateStringToInt64(s, static_cast<int64>(i));
   }
 
-  void InvalidStringToInt(std::string s) {
+  void InvalidStringToInt(GoogleString s) {
     int i;
     EXPECT_FALSE(StringToInt(s, &i));
     InvalidStringToInt64(s);
@@ -98,17 +98,17 @@ class IntegerToStringToIntTest : public testing::Test {
   }
 
   // Second verse, same as the first, a little more bits...
-  void ValidateInteger64ToString(int64 i, std::string s) {
+  void ValidateInteger64ToString(int64 i, GoogleString s) {
     EXPECT_EQ(s, Integer64ToString(i));
   }
 
-  void ValidateStringToInt64(std::string s, int64 i) {
+  void ValidateStringToInt64(GoogleString s, int64 i) {
     int64 i2;
     EXPECT_TRUE(StringToInt64(s, &i2));
     EXPECT_EQ(i, i2);
   }
 
-  void InvalidStringToInt64(std::string s) {
+  void InvalidStringToInt64(GoogleString s) {
     int64 i;
     EXPECT_FALSE(StringToInt64(s, &i));
   }
@@ -304,7 +304,7 @@ TEST(StringCaseTest, Locale) {
 }
 
 TEST(ParseShellLikeStringTest, TestParse) {
-  std::vector<std::string> parts;
+  std::vector<GoogleString> parts;
   ParseShellLikeString("a b \"c d\" e 'f g'", &parts);
   ASSERT_EQ(5, parts.size());
   EXPECT_EQ("a",   parts[0]);
@@ -315,7 +315,7 @@ TEST(ParseShellLikeStringTest, TestParse) {
 }
 
 TEST(ParseShellLikeStringTest, Backslash) {
-  std::vector<std::string> parts;
+  std::vector<GoogleString> parts;
   ParseShellLikeString(" \"a\\\"b\" 'c\\'d' ", &parts);
   ASSERT_EQ(2, parts.size());
   EXPECT_EQ("a\"b", parts[0]);
@@ -323,14 +323,14 @@ TEST(ParseShellLikeStringTest, Backslash) {
 }
 
 TEST(ParseShellLikeStringTest, UnclosedQuote) {
-  std::vector<std::string> parts;
+  std::vector<GoogleString> parts;
   ParseShellLikeString("'a b", &parts);
   ASSERT_EQ(1, parts.size());
   EXPECT_EQ("a b", parts[0]);
 }
 
 TEST(ParseShellLikeStringTest, UnclosedQuoteAndBackslash) {
-  std::vector<std::string> parts;
+  std::vector<GoogleString> parts;
   ParseShellLikeString("'a b\\", &parts);
   ASSERT_EQ(1, parts.size());
   EXPECT_EQ("a b", parts[0]);

@@ -20,7 +20,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_URL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_URL_H_
 
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 
@@ -31,12 +31,12 @@ namespace net_instaweb {
 class GoogleUrl {
  public:
   explicit GoogleUrl(const GURL& gurl);
-  explicit GoogleUrl(const std::string& spec);
+  explicit GoogleUrl(const GoogleString& spec);
   explicit GoogleUrl(const StringPiece& sp);
   explicit GoogleUrl(const char *str);
   // The following three constructors create a new GoogleUrl by resolving the
   // String(Piece) against the base.
-  GoogleUrl(const GoogleUrl& base, const std::string& str);
+  GoogleUrl(const GoogleUrl& base, const GoogleString& str);
   GoogleUrl(const GoogleUrl& base, const StringPiece& sp);
   GoogleUrl(const GoogleUrl& base, const char *str);
   GoogleUrl();
@@ -71,7 +71,7 @@ class GoogleUrl {
 
   // Extracts the filename portion of the path and returns it. The filename
   // is everything after the last slash in the path. This may be empty.
-  std::string ExtractFileName() const;
+  GoogleString ExtractFileName() const;
 
   StringPiece Host() const;
 

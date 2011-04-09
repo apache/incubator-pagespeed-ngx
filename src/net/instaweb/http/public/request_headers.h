@@ -33,7 +33,7 @@ class RequestHeaders : public Headers<HttpRequestHeaders> {
   void Clear();
   void CopyFrom(const RequestHeaders& other);
 
-  std::string ToString() const;
+  GoogleString ToString() const;
   Method method() const;
   const char* method_string() const;
   void set_method(Method method);

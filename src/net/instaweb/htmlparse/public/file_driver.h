@@ -25,7 +25,7 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/logging_html_filter.h"
 #include "net/instaweb/htmlparse/public/statistics_log.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -42,13 +42,13 @@ class FileDriver {
   // an input filename.  Given "/a/b/c.html" returns "a/b/c.out.html".
   // Returns false if the input file does not contain a "."
   static bool GenerateOutputFilename(
-      const char* infilename, std::string* outfilename);
+      const char* infilename, GoogleString* outfilename);
 
   // Helper function to generate an output .stats filename from
   // an input filename.  Given "/a/b/c.html" returns "a/b/c.stats".
   // Returns false if the input file does not contain a "."
   static bool GenerateStatsFilename(
-      const char* infilename, std::string* statsfilename);
+      const char* infilename, GoogleString* statsfilename);
 
   // Error messages are sent to the message file, true is returned
   // if the file was parsed successfully.

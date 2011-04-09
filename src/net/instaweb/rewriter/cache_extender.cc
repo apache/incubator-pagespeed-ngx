@@ -28,7 +28,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/statistics.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
@@ -138,7 +138,7 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
 
   MessageHandler* message_handler = driver_->message_handler();
   const ResponseHeaders* headers = input_resource->metadata();
-  std::string url = input_resource->url();
+  GoogleString url = input_resource->url();
   int64 now_ms = resource_manager_->timer()->NowMs();
 
   // See if the resource is cacheable; and if so whether there is any need
@@ -159,7 +159,7 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   }
 
   StringPiece contents(input_resource->contents());
-  std::string absolutified;
+  GoogleString absolutified;
   GoogleUrl input_resource_gurl(input_resource->url());
   StringPiece input_dir = input_resource_gurl.AllExceptLeaf();
   if ((input_resource->type() == &kContentTypeCss) &&

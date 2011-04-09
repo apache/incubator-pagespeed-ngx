@@ -179,7 +179,7 @@ void SharedMemStatisticsTestBase::TestAdd() {
   EXPECT_EQ( 3 + 10 * 1, v1->Get());
   EXPECT_EQ(17 + 10 * 2, v2->Get());
 
-  std::string dump;
+  GoogleString dump;
   StringWriter writer(&dump);
   stats->Dump(&writer, &handler_);
   EXPECT_EQ("v1: 13\nv2: 37\n", dump);

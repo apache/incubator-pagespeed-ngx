@@ -32,7 +32,7 @@ class MD5Hasher : public Hasher {
   explicit MD5Hasher(int hash_size) : Hasher(hash_size) { }
   virtual ~MD5Hasher();
 
-  virtual std::string RawHash(const StringPiece& content) const;
+  virtual GoogleString RawHash(const StringPiece& content) const;
   virtual int RawHashSizeInBytes() const;
 
  private:

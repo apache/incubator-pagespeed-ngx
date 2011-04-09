@@ -22,7 +22,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/util/public/atom.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -42,7 +42,7 @@ class CssInlineFilter : public CommonFilter {
  private:
   const size_t size_threshold_bytes_;
 
-  std::string domain_;
+  GoogleString domain_;
 
   DISALLOW_COPY_AND_ASSIGN(CssInlineFilter);
 };

@@ -98,16 +98,16 @@ class AbstractSharedMem {
   //
   // May return NULL on failure.
   virtual AbstractSharedMemSegment* CreateSegment(
-      const std::string& name, size_t size, MessageHandler* handler) = 0;
+      const GoogleString& name, size_t size, MessageHandler* handler) = 0;
 
   // Attaches to an existing segment, which must have been created already.
   // May return NULL on failure
   virtual AbstractSharedMemSegment* AttachToSegment(
-      const std::string& name, size_t size, MessageHandler* handler) = 0;
+      const GoogleString& name, size_t size, MessageHandler* handler) = 0;
 
   // Cleans up the segment with given name. You should call this after there is
   // no longer any need for AttachToSegment to succeed.
-  virtual void DestroySegment(const std::string& name,
+  virtual void DestroySegment(const GoogleString& name,
                               MessageHandler* handler) = 0;
 
  private:

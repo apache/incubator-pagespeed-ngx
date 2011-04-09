@@ -36,7 +36,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/statistics.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -130,7 +130,7 @@ void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
   }
   int64 now_ms = http_cache_->timer()->NowMs();
   header->Replace(HttpAttributes::kCacheControl, max_age_string_);
-  std::string expires_string;
+  GoogleString expires_string;
   header->RemoveAll(HttpAttributes::kExpires);
   if (ConvertTimeToString(now_ms + kGeneratedMaxAgeMs, &expires_string)) {
     header->Add(HttpAttributes::kExpires, expires_string);
@@ -260,7 +260,7 @@ void ResourceManager::WriteUnoptimizable(OutputResource* output,
 // short expiration.
 void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
     int64 origin_expire_time_ms, MessageHandler* handler) {
-  std::string name_key = StrCat(kCacheKeyResourceNamePrefix,
+  GoogleString name_key = StrCat(kCacheKeyResourceNamePrefix,
                                  output->name_key());
   CachedResult* cached = output->EnsureCachedResultCreated();
   if (cached->optimizable()) {

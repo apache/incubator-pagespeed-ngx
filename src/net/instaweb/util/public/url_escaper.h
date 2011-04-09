@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_URL_ESCAPER_H_
 
 #include "net/instaweb/util/public/url_segment_encoder.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -64,8 +64,8 @@ used in one 'segment' of a new URL.  This means we will not output
 
 namespace UrlEscaper {
 
-void EncodeToUrlSegment(const StringPiece& in, std::string* url_segment);
-bool DecodeFromUrlSegment(const StringPiece& url_segment, std::string* out);
+void EncodeToUrlSegment(const StringPiece& in, GoogleString* url_segment);
+bool DecodeFromUrlSegment(const StringPiece& url_segment, GoogleString* out);
 
 }  // namespace UrlEscaper
 

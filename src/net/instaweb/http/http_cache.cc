@@ -73,7 +73,7 @@ bool HTTPCache::IsAlreadyExpired(const ResponseHeaders& headers) {
 
 class HTTPCacheCallback : public CacheInterface::Callback {
  public:
-  HTTPCacheCallback(const std::string& key, MessageHandler* handler,
+  HTTPCacheCallback(const GoogleString& key, MessageHandler* handler,
                     HTTPCache::Callback* callback, HTTPCache* http_cache)
       : key_(key),
         handler_(handler),
@@ -117,7 +117,7 @@ class HTTPCacheCallback : public CacheInterface::Callback {
   }
 
  private:
-  std::string key_;
+  GoogleString key_;
   MessageHandler* handler_;
   HTTPCache::Callback* callback_;
   HTTPCache* http_cache_;
@@ -127,7 +127,7 @@ class HTTPCacheCallback : public CacheInterface::Callback {
   DISALLOW_COPY_AND_ASSIGN(HTTPCacheCallback);
 };
 
-void HTTPCache::Find(const std::string& key, MessageHandler* handler,
+void HTTPCache::Find(const GoogleString& key, MessageHandler* handler,
                      Callback* callback) {
   HTTPCacheCallback* cb = new HTTPCacheCallback(key, handler, callback, this);
   cache_->Get(key, cb);
@@ -166,7 +166,7 @@ class SynchronizingCallback : public HTTPCache::Callback {
 // TODO(jmarantz): remove this when blocking callers of HTTPCache::Find
 // are removed from the codebase.
 HTTPCache::FindResult HTTPCache::Find(
-    const std::string& key, HTTPValue* value, ResponseHeaders* headers,
+    const GoogleString& key, HTTPValue* value, ResponseHeaders* headers,
     MessageHandler* handler) {
   SharedString cache_buffer;
 
@@ -184,7 +184,7 @@ HTTPCache::FindResult HTTPCache::Find(
   return callback.result();
 }
 
-CacheInterface::KeyState HTTPCache::Query(const std::string& key) {
+CacheInterface::KeyState HTTPCache::Query(const GoogleString& key) {
   HTTPCache::FindResult find_result = Find(key, NULL, NULL, NULL);
   CacheInterface::KeyState state = (find_result == kFound)
       ? CacheInterface::kAvailable : CacheInterface::kNotFound;
@@ -202,7 +202,7 @@ void HTTPCache::UpdateStats(FindResult result, int64 delta_us) {
   }
 }
 
-void HTTPCache::RememberNotCacheable(const std::string& key,
+void HTTPCache::RememberNotCacheable(const GoogleString& key,
                                      MessageHandler* handler) {
   ResponseHeaders headers;
   headers.set_status_code(HttpStatus::kRememberNotFoundStatusCode);
@@ -213,7 +213,7 @@ void HTTPCache::RememberNotCacheable(const std::string& key,
   Put(key, &headers, "", handler);
 }
 
-void HTTPCache::PutHelper(const std::string& key, int64 now_us,
+void HTTPCache::PutHelper(const GoogleString& key, int64 now_us,
                           HTTPValue* value, MessageHandler* handler) {
   SharedString* shared_string = value->share();
   cache_->Put(key, shared_string);
@@ -224,12 +224,12 @@ void HTTPCache::PutHelper(const std::string& key, int64 now_us,
   }
 }
 
-void HTTPCache::Put(const std::string& key, HTTPValue* value,
+void HTTPCache::Put(const GoogleString& key, HTTPValue* value,
                     MessageHandler* handler) {
   PutHelper(key, timer_->NowUs(), value, handler);
 }
 
-void HTTPCache::Put(const std::string& key, ResponseHeaders* headers,
+void HTTPCache::Put(const GoogleString& key, ResponseHeaders* headers,
                     const StringPiece& content,
                     MessageHandler* handler) {
   int64 start_us = timer_->NowUs();
@@ -244,7 +244,7 @@ void HTTPCache::Put(const std::string& key, ResponseHeaders* headers,
   PutHelper(key, start_us, &value, handler);
 }
 
-void HTTPCache::Delete(const std::string& key) {
+void HTTPCache::Delete(const GoogleString& key) {
   return cache_->Delete(key);
 }
 

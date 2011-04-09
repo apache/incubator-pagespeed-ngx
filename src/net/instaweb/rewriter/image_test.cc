@@ -15,7 +15,7 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_escaper.h"
 
@@ -37,8 +37,8 @@ class ImageTest : public testing::Test {
   typedef scoped_ptr<Image> ImagePtr;
 
   ImageTest() { }
-  Image* ImageFromString(const std::string& name,
-                         const std::string& contents) {
+  Image* ImageFromString(const GoogleString& name,
+                         const GoogleString& contents) {
     return new Image(contents, name, GTestTempDir(), &handler_);
   }
 
@@ -60,7 +60,7 @@ class ImageTest : public testing::Test {
               EncodeUrlAndDimensions("ZZ", image_dim));
   }
 
-  void CheckInvalid(const std::string& name, const std::string& contents,
+  void CheckInvalid(const GoogleString& name, const GoogleString& contents,
                     Image::Type image_type) {
     ImagePtr image(ImageFromString(name, contents));
     EXPECT_EQ(contents.size(), image->input_size());
@@ -78,7 +78,7 @@ class ImageTest : public testing::Test {
     EXPECT_EQ("xZZ", EncodeUrlAndDimensions("ZZ", image_dim));
   }
 
-  Image* ReadImageFromFile(const char* filename, std::string* buffer) {
+  Image* ReadImageFromFile(const char* filename, GoogleString* buffer) {
     EXPECT_TRUE(file_system_.ReadFile(
         StrCat(GTestSrcDir(), kTestData, filename).c_str(),
         buffer, &handler_));
@@ -91,7 +91,7 @@ class ImageTest : public testing::Test {
                           int min_bytes_to_dimensions,
                           int width, int height,
                           int size, bool optimizable) {
-    std::string contents;
+    GoogleString contents;
     ImagePtr image(ReadImageFromFile(filename, &contents));
     ExpectDimensions(image_type, size, width, height, image.get());
     if (optimizable) {
@@ -101,35 +101,35 @@ class ImageTest : public testing::Test {
     }
 
     // Construct data url, then decode it and check for match.
-    std::string data_url;
+    GoogleString data_url;
     EXPECT_FALSE(NULL == image->content_type());
     EXPECT_TRUE(ImgRewriteFilter::CanInline(
         image->output_size(), image->Contents(), image->content_type(),
         &data_url));
-    std::string data_header("data:");
+    GoogleString data_header("data:");
     data_header.append(image->content_type()->mime_type());
     data_header.append(";base64,");
     EXPECT_EQ(data_header, data_url.substr(0, data_header.size()));
     StringPiece encoded_contents(
         data_url.data() + data_header.size(),
         data_url.size() - data_header.size());
-    std::string decoded_contents;
+    GoogleString decoded_contents;
     EXPECT_TRUE(Mime64Decode(encoded_contents, &decoded_contents));
     EXPECT_EQ(image->Contents(), decoded_contents);
 
     // Now truncate the file in various ways and make sure we still
     // get partial data.
-    std::string dim_data(contents, 0, min_bytes_to_dimensions);
+    GoogleString dim_data(contents, 0, min_bytes_to_dimensions);
     ImagePtr dim_image(ImageFromString(filename, dim_data));
     ExpectDimensions(image_type, min_bytes_to_dimensions, width, height,
                      dim_image.get());
     EXPECT_EQ(min_bytes_to_dimensions, dim_image->output_size());
 
-    std::string no_dim_data(contents, 0, min_bytes_to_dimensions - 1);
+    GoogleString no_dim_data(contents, 0, min_bytes_to_dimensions - 1);
     CheckInvalid(filename, no_dim_data, image_type);
-    std::string type_data(contents, 0, min_bytes_to_type);
+    GoogleString type_data(contents, 0, min_bytes_to_type);
     CheckInvalid(filename, type_data, image_type);
-    std::string junk(contents, 0, min_bytes_to_type - 1);
+    GoogleString junk(contents, 0, min_bytes_to_type - 1);
     CheckInvalid(filename, junk, Image::IMAGE_UNKNOWN);
   }
 
@@ -172,11 +172,11 @@ class ImageTest : public testing::Test {
         241260, true);
   }
 
-  std::string EncodeUrlAndDimensions(const StringPiece& origin_url,
+  GoogleString EncodeUrlAndDimensions(const StringPiece& origin_url,
                                       const ImageDim& dim) {
     StringVector v;
     v.push_back(origin_url.as_string());
-    std::string out;
+    GoogleString out;
     ResourceContext data;
     *data.mutable_image_tag_dims() = dim;
     encoder_.Encode(v, &data, &out);
@@ -185,7 +185,7 @@ class ImageTest : public testing::Test {
 
   bool DecodeUrlAndDimensions(const StringPiece& encoded,
                               ImageDim* dim,
-                              std::string* url) {
+                              GoogleString* url) {
     return encoder_.DecodeUrlAndDimensions(encoded, dim, url, &handler_);
   }
 
@@ -217,12 +217,12 @@ TEST_F(ImageTest, JpegTest) {
 }
 
 TEST_F(ImageTest, DrawImage) {
-  std::string buf1;
+  GoogleString buf1;
   ImagePtr image1(ReadImageFromFile(kBikeCrash, &buf1));
   ImageDim image_dim1;
   image1->Dimensions(&image_dim1);
 
-  std::string buf2;
+  GoogleString buf2;
   ImagePtr image2(ReadImageFromFile(kCuppa, &buf2));
   ImageDim image_dim2;
   image2->Dimensions(&image_dim2);
@@ -248,7 +248,7 @@ const char kActualUrl[] = "http://encoded.url/with/various.stuff";
 
 TEST_F(ImageTest, NoDims) {
   const char kNoDimsUrl[] = "x,hencoded.url,_with,_various.stuff";
-  std::string origin_url;
+  GoogleString origin_url;
   ImageDim dim;
   EXPECT_TRUE(DecodeUrlAndDimensions(kNoDimsUrl, &dim, &origin_url));
   EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
@@ -258,7 +258,7 @@ TEST_F(ImageTest, NoDims) {
 
 TEST_F(ImageTest, HasDims) {
   const char kDimsUrl[] = "17x33x,hencoded.url,_with,_various.stuff";
-  std::string origin_url;
+  GoogleString origin_url;
   ImageDim dim;
   EXPECT_TRUE(DecodeUrlAndDimensions(kDimsUrl, &dim, &origin_url));
   EXPECT_TRUE(ImageUrlEncoder::HasValidDimensions(dim));
@@ -270,7 +270,7 @@ TEST_F(ImageTest, HasDims) {
 
 TEST_F(ImageTest, BadFirst) {
   const char kBadFirst[] = "badx33x,hencoded.url,_with,_various.stuff";
-  std::string origin_url;
+  GoogleString origin_url;
   ImageDim dim;
   EXPECT_FALSE(DecodeUrlAndDimensions(kBadFirst, &dim, &origin_url));
   EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
@@ -278,7 +278,7 @@ TEST_F(ImageTest, BadFirst) {
 
 TEST_F(ImageTest, BadSecond) {
   const char kBadSecond[] = "17xbadx,hencoded.url,_with,_various.stuff";
-  std::string origin_url;
+  GoogleString origin_url;
   ImageDim dim;
   EXPECT_FALSE(DecodeUrlAndDimensions(kBadSecond, &dim, &origin_url));
   EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
@@ -286,7 +286,7 @@ TEST_F(ImageTest, BadSecond) {
 
 TEST_F(ImageTest, NoXs) {
   const char kNoXs[] = ",hencoded.url,_with,_various.stuff";
-  std::string origin_url;
+  GoogleString origin_url;
   ImageDim dim;
   EXPECT_FALSE(DecodeUrlAndDimensions(kNoXs, &dim, &origin_url));
   EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
@@ -294,7 +294,7 @@ TEST_F(ImageTest, NoXs) {
 
 TEST_F(ImageTest, BlankSecond) {
   const char kBlankSecond[] = "17xx,hencoded.url,_with,_various.stuff";
-  std::string origin_url;
+  GoogleString origin_url;
   ImageDim dim;
   EXPECT_FALSE(DecodeUrlAndDimensions(kBlankSecond, &dim, &origin_url));
   EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));

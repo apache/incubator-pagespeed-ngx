@@ -21,7 +21,7 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/meta_data.h"  // HttpAttributes, HttpStatus
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -47,8 +47,8 @@ template<class Proto> class Headers {
 
   // Raw access for random access to attribute name/value pairs.
   int NumAttributes() const;
-  const std::string& Name(int i) const;
-  const std::string& Value(int i) const;
+  const GoogleString& Name(int i) const;
+  const GoogleString& Value(int i) const;
 
   // Note that Lookup, though declared const, is NOT thread-safe.  This
   // is because it lazily generates a map.

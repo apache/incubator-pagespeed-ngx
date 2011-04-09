@@ -163,14 +163,14 @@ int64 ResponseHeaders::CacheExpirationTimeMs() const {
 }
 
 void ResponseHeaders::SetDate(int64 date_ms) {
-  std::string time_string;
+  GoogleString time_string;
   if (ConvertTimeToString(date_ms, &time_string)) {
     Replace(HttpAttributes::kDate, time_string);
   }
 }
 
 void ResponseHeaders::SetLastModified(int64 last_modified_ms) {
-  std::string time_string;
+  GoogleString time_string;
   if (ConvertTimeToString(last_modified_ms, &time_string)) {
     Replace(HttpAttributes::kLastModified, time_string);
   }
@@ -241,7 +241,7 @@ void ResponseHeaders::ComputeCaching() {
     values.clear();
     if (Lookup(HttpAttributes::kCacheControl, &values)) {
       for (int i = 0, n = values.size(); i < n; ++i) {
-        const std::string* cache_control = values[i];
+        const GoogleString* cache_control = values[i];
         pagespeed::resource_util::DirectiveMap directive_map;
         if ((cache_control != NULL)
             && pagespeed::resource_util::GetHeaderDirectives(
@@ -262,8 +262,8 @@ void ResponseHeaders::ComputeCaching() {
   cache_fields_dirty_ = false;
 }
 
-std::string ResponseHeaders::ToString() const {
-  std::string str;
+GoogleString ResponseHeaders::ToString() const {
+  GoogleString str;
   StringWriter writer(&str);
   WriteAsHttp(&writer, NULL);
   return str;
@@ -293,7 +293,7 @@ bool ResponseHeaders::ParseDateHeader(
 
 void ResponseHeaders::UpdateDateHeader(const StringPiece& attr, int64 date_ms) {
   RemoveAll(attr);
-  std::string buf;
+  GoogleString buf;
   if (ConvertTimeToString(date_ms, &buf)) {
     Add(attr, buf.c_str());
   }

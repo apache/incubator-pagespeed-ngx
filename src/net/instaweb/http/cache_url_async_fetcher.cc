@@ -86,7 +86,7 @@ CacheUrlAsyncFetcher::~CacheUrlAsyncFetcher() {
 }
 
 bool CacheUrlAsyncFetcher::StreamingFetch(
-    const std::string& url, const RequestHeaders& request_headers,
+    const GoogleString& url, const RequestHeaders& request_headers,
     ResponseHeaders* response_headers, Writer* writer, MessageHandler* handler,
     Callback* callback) {
   HTTPValue value;

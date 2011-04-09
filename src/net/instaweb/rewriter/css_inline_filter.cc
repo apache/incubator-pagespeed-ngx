@@ -86,7 +86,7 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
     }
 
     // Absolutify the URLs in the CSS -- relative URLs will break otherwise.
-    std::string rewritten_contents;
+    GoogleString rewritten_contents;
     StringWriter writer(&rewritten_contents);
     GoogleUrl resource_url(resource->url());
     StringPiece input_dir = resource_url.AllExceptLeaf();

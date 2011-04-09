@@ -22,7 +22,7 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/content_type.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 // The httpd header must be after the
@@ -49,7 +49,7 @@ class InstawebContext {
   InstawebContext(request_rec* request,
                   const ContentType& content_type,
                   net_instaweb::ApacheRewriteDriverFactory* factory,
-                  const std::string& base_url,
+                  const GoogleString& base_url,
                   bool use_custom_options,
                   const RewriteOptions& custom_options);
   ~InstawebContext();
@@ -80,7 +80,7 @@ class InstawebContext {
   }
   bool empty() const { return output_.empty(); }
   apr_bucket_brigade* bucket_brigade() const { return bucket_brigade_; }
-  const std::string& output() { return output_; }
+  const GoogleString& output() { return output_; }
   void clear() { output_.clear(); }  // TODO(jmarantz): needed?
   ContentEncoding content_encoding() const { return  content_encoding_; }
 
@@ -97,7 +97,7 @@ class InstawebContext {
   void ProcessBytes(const char* input, int size);
   static apr_status_t Cleanup(void* object);
 
-  std::string output_;  // content after instaweb rewritten.
+  GoogleString output_;  // content after instaweb rewritten.
   apr_bucket_brigade* bucket_brigade_;
   ContentEncoding content_encoding_;
   const ContentType content_type_;
@@ -107,9 +107,9 @@ class InstawebContext {
   net_instaweb::StringWriter string_writer_;
   scoped_ptr<GzipInflater> inflater_;
   scoped_ptr<RewriteDriver> custom_rewriter_;
-  std::string buffer_;
+  GoogleString buffer_;
   ContentDetectionState content_detection_state_;
-  std::string absolute_url_;
+  GoogleString absolute_url_;
   RewriteOptions rewrite_options_;
 
   DISALLOW_COPY_AND_ASSIGN(InstawebContext);

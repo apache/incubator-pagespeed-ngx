@@ -22,7 +22,7 @@
 // TODO(sligocki): We shouldn't need to include this in the .h, but it was
 // breaking someone somewhere, look into later.
 #include "net/instaweb/util/public/shared_string.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -50,15 +50,15 @@ class CacheInterface {
   virtual ~CacheInterface();
 
   // Initiates a cache fetch, calling callback->Done(state) when done.
-  virtual void Get(const std::string& key, Callback* callback) = 0;
-  //   virtual bool Get(const std::string& key, SharedString* value) = 0;
+  virtual void Get(const GoogleString& key, Callback* callback) = 0;
+  //   virtual bool Get(const GoogleString& key, SharedString* value) = 0;
 
   // Puts a value into the cache.  The value that is passed in is not modified,
   // but the SharedString is passed by non-const pointer because its reference
   // count is bumped.
-  virtual void Put(const std::string& key, SharedString* value) = 0;
-  virtual void Delete(const std::string& key) = 0;
-  virtual void Query(const std::string& key, Callback* callback) = 0;
+  virtual void Put(const GoogleString& key, SharedString* value) = 0;
+  virtual void Delete(const GoogleString& key) = 0;
+  virtual void Query(const GoogleString& key, Callback* callback) = 0;
 };
 
 }  // namespace net_instaweb

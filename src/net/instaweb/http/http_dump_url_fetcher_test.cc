@@ -34,7 +34,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
@@ -52,7 +52,7 @@ class HttpDumpUrlFetcherTest : public testing::Test {
 
  protected:
   StdioFileSystem file_system_;
-  std::string content_;
+  GoogleString content_;
   StringWriter content_writer_;
   MockTimer mock_timer_;
   HttpDumpUrlFetcher http_dump_fetcher_;
@@ -72,12 +72,12 @@ TEST_F(HttpDumpUrlFetcherTest, TestReadWithGzip) {
   StringStarVector v;
   ASSERT_TRUE(response.Lookup(HttpAttributes::kContentEncoding, &v));
   ASSERT_EQ(1, v.size());
-  EXPECT_EQ(std::string(HttpAttributes::kGzip), *(v[0]));
+  EXPECT_EQ(GoogleString(HttpAttributes::kGzip), *(v[0]));
   EXPECT_EQ(5513, content_.size());
   v.clear();
   ASSERT_TRUE(response.Lookup(HttpAttributes::kContentLength, &v));
   ASSERT_EQ(1, v.size());
-  EXPECT_EQ(std::string("5513"), *(v[0]));
+  EXPECT_EQ(GoogleString("5513"), *(v[0]));
 }
 
 TEST_F(HttpDumpUrlFetcherTest, TestReadUncompressedFromGzippedDump) {
@@ -89,13 +89,13 @@ TEST_F(HttpDumpUrlFetcherTest, TestReadUncompressedFromGzippedDump) {
   StringStarVector v;
   if (response.Lookup(HttpAttributes::kContentEncoding, &v)) {
     ASSERT_EQ(1, v.size());
-    EXPECT_NE(std::string(HttpAttributes::kGzip), *(v[0]));
+    EXPECT_NE(GoogleString(HttpAttributes::kGzip), *(v[0]));
   }
   EXPECT_EQ(14450, content_.size());
   v.clear();
   ASSERT_TRUE(response.Lookup(HttpAttributes::kContentLength, &v));
   ASSERT_EQ(1, v.size());
-  EXPECT_EQ(std::string("14450"), *(v[0]));
+  EXPECT_EQ(GoogleString("14450"), *(v[0]));
 }
 
 }  // namespace net_instaweb

@@ -31,16 +31,16 @@ const char FetcherTest::kHeaderValue[] = "header value";
 
 void FetcherTest::ValidateMockFetcherResponse(
     bool success, bool check_error_message,
-    const std::string& content,
+    const GoogleString& content,
     const ResponseHeaders& response_headers) {
   if (success) {
-    EXPECT_EQ(std::string(kHtmlContent), content);
+    EXPECT_EQ(GoogleString(kHtmlContent), content);
     StringStarVector values;
     EXPECT_TRUE(response_headers.Lookup(kHeaderName, &values));
     EXPECT_EQ(1, values.size());
-    EXPECT_EQ(std::string(kHeaderValue), *(values[0]));
+    EXPECT_EQ(GoogleString(kHeaderValue), *(values[0]));
   } else if (check_error_message) {
-    EXPECT_EQ(std::string(kErrorMessage), content);
+    EXPECT_EQ(GoogleString(kErrorMessage), content);
   }
 }
 
@@ -55,7 +55,7 @@ int FetcherTest::CountFetchesSync(
     const StringPiece& url, UrlFetcher* fetcher,
     bool expect_success, bool check_error_message) {
   int starting_fetches = mock_fetcher_.num_fetches();
-  std::string content;
+  GoogleString content;
   StringWriter content_writer(&content);
   RequestHeaders request_headers;
   ResponseHeaders response_headers;
@@ -82,17 +82,17 @@ int FetcherTest::CountFetchesAsync(const StringPiece& url, bool expect_success,
 }
 
 
-void FetcherTest::ValidateOutput(const std::string& content,
+void FetcherTest::ValidateOutput(const GoogleString& content,
                                  const ResponseHeaders& response_headers) {
   // The detailed header parsing code is tested in
   // simple_meta_data_test.cc.  But let's check the rseponse code
   // and the last header here, and make sure we got the content.
   EXPECT_EQ(200, response_headers.status_code());
   EXPECT_EQ(13, response_headers.NumAttributes());
-  EXPECT_EQ(std::string("X-Google-GFE-Response-Body-Transformations"),
-            std::string(response_headers.Name(12)));
-  EXPECT_EQ(std::string("gunzipped"),
-            std::string(response_headers.Value(12)));
+  EXPECT_EQ(GoogleString("X-Google-GFE-Response-Body-Transformations"),
+            GoogleString(response_headers.Name(12)));
+  EXPECT_EQ(GoogleString("gunzipped"),
+            GoogleString(response_headers.Value(12)));
 
   // Verifies that after the headers, we see the content.  Note that this
   // currently assumes 'wget' style output.  Wget takes care of any unzipping.
@@ -104,7 +104,7 @@ void FetcherTest::ValidateOutput(const std::string& content,
 
 // MockFetcher
 bool FetcherTest::MockFetcher::StreamingFetchUrl(
-    const std::string& url,
+    const GoogleString& url,
     const RequestHeaders& request_headers,
     ResponseHeaders* response_headers,
     Writer* writer,
@@ -141,7 +141,7 @@ bool FetcherTest::MockFetcher::Populate(const char* cache_control,
 
 // MockAsyncFetcher
 bool FetcherTest::MockAsyncFetcher::StreamingFetch(
-    const std::string& url,
+    const GoogleString& url,
     const RequestHeaders& request_headers,
     ResponseHeaders* response_headers,
     Writer* writer,

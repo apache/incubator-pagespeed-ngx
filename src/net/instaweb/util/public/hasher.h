@@ -21,7 +21,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_HASHER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_HASHER_H_
 
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -38,7 +38,7 @@ class Hasher {
   //
   // This is implemented in terms of RawHash, and honors the length limit
   // passed in to the constructor.
-  std::string Hash(const StringPiece& content) const;
+  GoogleString Hash(const StringPiece& content) const;
 
   // Return string length of hashes produced by this hasher's Hash
   // method.
@@ -50,7 +50,7 @@ class Hasher {
   // Computes a binary hash of the given content. The returned value
   // is not printable as it is the direct binary encoding of the hash.
   // This operation is thread-safe.
-  virtual std::string RawHash(const StringPiece& content) const = 0;
+  virtual GoogleString RawHash(const StringPiece& content) const = 0;
 
   // The number of bytes RawHash will produce.
   virtual int RawHashSizeInBytes() const = 0;

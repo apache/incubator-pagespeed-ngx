@@ -70,20 +70,20 @@ class UrlPartnershipTest : public testing::Test {
     return ret;
   }
 
-  // Gets the full path of an index as a std::string.
-  std::string FullPath(int index) {
+  // Gets the full path of an index as a GoogleString.
+  GoogleString FullPath(int index) {
     const GoogleUrl* gurl = partnership_.FullPath(index);
     StringPiece spec = gurl->Spec();
-    return std::string(spec.data(), spec.size());
+    return GoogleString(spec.data(), spec.size());
   }
 
   RewriteOptions options_;
   DomainLawyer* domain_lawyer_;
   UrlPartnership partnership_;
-  std::string styles_path_;
-  std::string r_path_;
-  std::string style_url_;
-  std::string style2_url_;
+  GoogleString styles_path_;
+  GoogleString r_path_;
+  GoogleString style_url_;
+  GoogleString style2_url_;
   GoogleMessageHandler message_handler_;
 };
 
@@ -125,9 +125,9 @@ TEST_F(UrlPartnershipTest, ThreeUrlFlowDifferentPaths) {
   EXPECT_EQ(r_path_, partnership_.ResolvedBase());
   // We add 2 to the expected values of the 3 kResourceUrl* below to
   // skip over the "r/".
-  EXPECT_EQ(std::string(kResourceUrl1 + 2), partnership_.RelativePath(0));
-  EXPECT_EQ(std::string(kResourceUrl2 + 2), partnership_.RelativePath(1));
-  EXPECT_EQ(std::string(kResourceUrl3 + 2), partnership_.RelativePath(2));
+  EXPECT_EQ(GoogleString(kResourceUrl1 + 2), partnership_.RelativePath(0));
+  EXPECT_EQ(GoogleString(kResourceUrl2 + 2), partnership_.RelativePath(1));
+  EXPECT_EQ(GoogleString(kResourceUrl3 + 2), partnership_.RelativePath(2));
 }
 
 TEST_F(UrlPartnershipTest, ThreeUrlFlowDifferentPathsAbsolute) {
@@ -136,9 +136,9 @@ TEST_F(UrlPartnershipTest, ThreeUrlFlowDifferentPathsAbsolute) {
   EXPECT_EQ(r_path_, partnership_.ResolvedBase());
   // We add 2 to the expected values of the 3 kResourceUrl* below to
   // skip over the "r/".
-  EXPECT_EQ(std::string(kResourceUrl1 + 2), partnership_.RelativePath(0));
-  EXPECT_EQ(std::string(kResourceUrl2 + 2), partnership_.RelativePath(1));
-  EXPECT_EQ(std::string(kResourceUrl3 + 2), partnership_.RelativePath(2));
+  EXPECT_EQ(GoogleString(kResourceUrl1 + 2), partnership_.RelativePath(0));
+  EXPECT_EQ(GoogleString(kResourceUrl2 + 2), partnership_.RelativePath(1));
+  EXPECT_EQ(GoogleString(kResourceUrl3 + 2), partnership_.RelativePath(2));
 }
 
 TEST_F(UrlPartnershipTest, ThreeUrlFlowDifferentPathsMixed) {
@@ -147,9 +147,9 @@ TEST_F(UrlPartnershipTest, ThreeUrlFlowDifferentPathsMixed) {
   EXPECT_EQ(r_path_, partnership_.ResolvedBase());
   // We add 2 to the expected values of the 3 kResourceUrl* below to
   // skip over the "r/".
-  EXPECT_EQ(std::string(kResourceUrl1 + 2), partnership_.RelativePath(0));
-  EXPECT_EQ(std::string(kResourceUrl2 + 2), partnership_.RelativePath(1));
-  EXPECT_EQ(std::string(kResourceUrl3 + 2), partnership_.RelativePath(2));
+  EXPECT_EQ(GoogleString(kResourceUrl1 + 2), partnership_.RelativePath(0));
+  EXPECT_EQ(GoogleString(kResourceUrl2 + 2), partnership_.RelativePath(1));
+  EXPECT_EQ(GoogleString(kResourceUrl3 + 2), partnership_.RelativePath(2));
 }
 
 TEST_F(UrlPartnershipTest, ExternalDomainNotDeclared) {
@@ -196,7 +196,7 @@ TEST_F(UrlPartnershipTest, EmptyWithPartner) {
 
 TEST_F(UrlPartnershipTest, NeedsATrim) {
   AddUrls(" http://www.nytimes.com/needs_a_trim.jpg ", NULL, NULL);
-  EXPECT_EQ(std::string("needs_a_trim.jpg"), partnership_.RelativePath(0));
+  EXPECT_EQ(GoogleString("needs_a_trim.jpg"), partnership_.RelativePath(0));
 }
 
 TEST_F(UrlPartnershipTest, RemoveLast) {

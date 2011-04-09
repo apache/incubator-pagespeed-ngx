@@ -33,11 +33,11 @@ HttpDumpUrlWriter::~HttpDumpUrlWriter() {
 }
 
 bool HttpDumpUrlWriter::StreamingFetchUrl(
-    const std::string& url, const RequestHeaders& request_headers,
+    const GoogleString& url, const RequestHeaders& request_headers,
     ResponseHeaders* response_headers, Writer* response_writer,
     MessageHandler* handler) {
   bool ret = true;
-  std::string filename;
+  GoogleString filename;
 
   GoogleUrl gurl(url);
   if (!dump_fetcher_.GetFilename(gurl, &filename, handler)) {
@@ -50,7 +50,7 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(
     // TODO(jmarantz): Re-integrate the use of SplitWriter.  We'll have
     // to do a lazy-open of the OutputFile* in a custom writer, though, to
     // avoid opening up a zero-size file when the URL fetch fails.
-    std::string contents;
+    GoogleString contents;
     StringWriter string_writer(&contents);
     // TODO(sligocki): Have this actually stream to response_writer.
 
@@ -99,7 +99,7 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(
       if (file != NULL) {
         handler->Message(kInfo, "Storing %s as %s", url.c_str(),
                      filename.c_str());
-        std::string temp_filename = file->filename();
+        GoogleString temp_filename = file->filename();
         FileWriter file_writer(file);
         ret = compressed_response.WriteAsHttp(&file_writer, handler) &&
             file->Write(contents, handler);

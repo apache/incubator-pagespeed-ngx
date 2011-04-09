@@ -60,8 +60,8 @@ void GoogleMessageHandler::FileMessageVImpl(MessageType type, const char* file,
 }
 
 // TODO(sligocki): It'd be nice not to do so much string copying.
-std::string GoogleMessageHandler::Format(const char* msg, va_list args) {
-  std::string buffer;
+GoogleString GoogleMessageHandler::Format(const char* msg, va_list args) {
+  GoogleString buffer;
 
   // Ignore the name of this routine: it formats with vsnprintf.
   // See base/stringprintf.cc.

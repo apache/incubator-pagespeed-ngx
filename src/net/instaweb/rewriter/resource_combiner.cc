@@ -36,7 +36,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
@@ -131,7 +131,7 @@ TimedBool ResourceCombiner::AddResource(const StringPiece& url,
     if (partnership_.NumCommonComponents() != prev_num_components_) {
       UpdateResolvedBase();
     }
-    const std::string relative_path = partnership_.RelativePath(index);
+    const GoogleString relative_path = partnership_.RelativePath(index);
     multipart_encoder_urls_.push_back(relative_path);
 
     if (accumulated_leaf_size_ == 0) {
@@ -161,21 +161,21 @@ void ResourceCombiner::RemoveLastResource() {
   }
 }
 
-std::string ResourceCombiner::UrlSafeId() const {
-  std::string segment;
+GoogleString ResourceCombiner::UrlSafeId() const {
+  GoogleString segment;
   UrlMultipartEncoder encoder;
   encoder.Encode(multipart_encoder_urls_, NULL, &segment);
   return segment;
 }
 
 void ResourceCombiner::ComputeLeafSize() {
-  std::string segment = UrlSafeId();
+  GoogleString segment = UrlSafeId();
   accumulated_leaf_size_ = segment.size() + url_overhead_
       + resource_manager_->hasher()->HashSizeInChars();
 }
 
 void ResourceCombiner::AccumulateLeafSize(const StringPiece& url) {
-  std::string segment;
+  GoogleString segment;
   UrlEscaper::EncodeToUrlSegment(url, &segment);
   const int kMultipartOverhead = 1;  // for the '+'
   accumulated_leaf_size_ += segment.size() + kMultipartOverhead;
@@ -227,7 +227,7 @@ OutputResource* ResourceCombiner::Combine(const ContentType& content_type,
   }
   // First, compute the name of the new resource based on the names of
   // the old resources.
-  std::string url_safe_id = UrlSafeId();
+  GoogleString url_safe_id = UrlSafeId();
   // Start building up the combination.  At this point we are still
   // not committed to the combination, because the 'write' can fail.
   // TODO(jmaessen, jmarantz): encode based on partnership
@@ -259,7 +259,7 @@ bool ResourceCombiner::WriteCombination(
   bool written = true;
   // TODO(sligocki): Write directly to a temp file rather than doing the extra
   // string copy.
-  std::string combined_contents;
+  GoogleString combined_contents;
   StringWriter writer(&combined_contents);
   int64 min_origin_expiration_time_ms = 0;
 
@@ -420,18 +420,18 @@ bool ResourceCombiner::Fetch(OutputResource* combination,
   StringPiece url_safe_id = combination->name();
   UrlMultipartEncoder multipart_encoder;
   StringVector urls;
-  std::string multipart_encoding;
+  GoogleString multipart_encoding;
   GoogleUrl gurl(combination->url());
   if (gurl.is_valid() &&
       multipart_encoder.Decode(url_safe_id, &urls, NULL, message_handler)) {
-    std::string url, decoded_resource;
+    GoogleString url, decoded_resource;
     ret = true;
     CombinerCallback* combiner = new CombinerCallback(
         this, message_handler, callback, combination, writer, response_headers);
 
     StringPiece root = gurl.AllExceptLeaf();
     for (int i = 0, n = urls.size(); ret && (i < n); ++i)  {
-      std::string url = StrCat(root, urls[i]);
+      GoogleString url = StrCat(root, urls[i]);
       // Safe since we use StrCat to absolutize the URL rather than
       // full resolve, so it will always be a subpath of root.
       Resource* resource =

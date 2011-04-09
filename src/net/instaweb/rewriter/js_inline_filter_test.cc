@@ -24,10 +24,10 @@ namespace {
 
 class JsInlineFilterTest : public ResourceManagerTestBase {
  protected:
-  void TestInlineJavascript(const std::string& html_url,
-                            const std::string& js_url,
-                            const std::string& js_original_inline_body,
-                            const std::string& js_outline_body,
+  void TestInlineJavascript(const GoogleString& html_url,
+                            const GoogleString& js_url,
+                            const GoogleString& js_original_inline_body,
+                            const GoogleString& js_outline_body,
                             bool expect_inline) {
     TestInlineJavascriptGeneral(
         html_url,
@@ -39,9 +39,9 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
         expect_inline);
   }
 
-  void TestInlineJavascriptXhtml(const std::string& html_url,
-                                 const std::string& js_url,
-                                 const std::string& js_outline_body,
+  void TestInlineJavascriptXhtml(const GoogleString& html_url,
+                                 const GoogleString& js_url,
+                                 const GoogleString& js_outline_body,
                                  bool expect_inline) {
     TestInlineJavascriptGeneral(
         html_url,
@@ -55,12 +55,12 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
         expect_inline);
   }
 
-  void TestInlineJavascriptGeneral(const std::string& html_url,
-                                   const std::string& doctype,
-                                   const std::string& js_url,
-                                   const std::string& js_original_inline_body,
-                                   const std::string& js_outline_body,
-                                   const std::string& js_expected_inline_body,
+  void TestInlineJavascriptGeneral(const GoogleString& html_url,
+                                   const GoogleString& doctype,
+                                   const GoogleString& js_url,
+                                   const GoogleString& js_original_inline_body,
+                                   const GoogleString& js_outline_body,
+                                   const GoogleString& js_expected_inline_body,
                                    bool expect_inline) {
     AddFilter(RewriteOptions::kInlineJavascript);
 
@@ -68,13 +68,13 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
     if (!doctype.empty()) {
       SetDoctype(doctype);
     }
-    const std::string html_input =
+    const GoogleString html_input =
         "<head>\n"
         "  <script src=\"" + js_url + "\">" +
           js_original_inline_body + "</script>\n"
         "</head>\n"
         "<body>Hello, world!</body>\n";
-    const std::string expected_output =
+    const GoogleString expected_output =
         (!expect_inline ? html_input :
          "<head>\n"
          "  <script>" + js_expected_inline_body + "</script>\n"
@@ -135,7 +135,7 @@ TEST_F(JsInlineFilterTest, DoNotInlineJavascriptTooBig) {
                        "http://www.example.com/script.js",
                        "",
                        ("function longstr() { return '" +
-                        std::string(length, 'z') + "'; }\n"),
+                        GoogleString(length, 'z') + "'; }\n"),
                        false);
 }
 

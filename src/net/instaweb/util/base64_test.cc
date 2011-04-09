@@ -23,7 +23,7 @@
 #include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 
@@ -40,26 +40,26 @@ const int binary_size = STATIC_STRLEN(binary_data);
 class Codec {
  public:
   virtual ~Codec() {}
-  virtual void encode(const std::string& in, std::string* out) const = 0;
-  virtual bool decode(const std::string& in, std::string* out) const = 0;
+  virtual void encode(const GoogleString& in, GoogleString* out) const = 0;
+  virtual bool decode(const GoogleString& in, GoogleString* out) const = 0;
 };
 
 class WebSafeBase64Codec : public Codec {
  public:
-  virtual void encode(const std::string& in, std::string* out) const {
+  virtual void encode(const GoogleString& in, GoogleString* out) const {
     net_instaweb::Web64Encode(in, out);
   }
-  virtual bool decode(const std::string& in, std::string* out) const {
+  virtual bool decode(const GoogleString& in, GoogleString* out) const {
     return net_instaweb::Web64Decode(in, out);
   }
 };
 
 class MimeBase64Codec : public Codec {
  public:
-  virtual void encode(const std::string& in, std::string* out) const {
+  virtual void encode(const GoogleString& in, GoogleString* out) const {
     net_instaweb::Mime64Encode(in, out);
   }
-  virtual bool decode(const std::string& in, std::string* out) const {
+  virtual bool decode(const GoogleString& in, GoogleString* out) const {
     return net_instaweb::Mime64Decode(in, out);
   }
 };
@@ -77,8 +77,8 @@ class Base64Test : public testing::Test {
         mime64_codec_() {
   }
 
-  void TestWeb64(const Codec &codec, const std::string& input) {
-    std::string encoded, decoded;
+  void TestWeb64(const Codec &codec, const GoogleString& input) {
+    GoogleString encoded, decoded;
     codec.encode(input, &encoded);
     ASSERT_TRUE(codec.decode(encoded, &decoded));
     EXPECT_EQ(input, decoded);
@@ -92,8 +92,8 @@ class Base64Test : public testing::Test {
   // If the 'index' is specified as a negative number, it will be taken
   // as an offset from the end of the string.
   void TestCorrupt(const Codec &codec,
-                   const std::string& input, char corrupt_char, int index) {
-    std::string encoded, decoded;
+                   const GoogleString& input, char corrupt_char, int index) {
+    GoogleString encoded, decoded;
     codec.encode(input, &encoded);
     if (index < 0) {
       index = encoded.size() + index;
@@ -102,8 +102,8 @@ class Base64Test : public testing::Test {
     ASSERT_FALSE(codec.decode(encoded, &decoded));
   }
 
-  std::string chinese_;
-  std::string binary_;
+  GoogleString chinese_;
+  GoogleString binary_;
   WebSafeBase64Codec web64_codec_;
   MimeBase64Codec mime64_codec_;
 

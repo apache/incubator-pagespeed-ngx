@@ -23,7 +23,7 @@
 #include <vector>
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -47,13 +47,13 @@ class HtmlKeywords {
 
   // Take a raw text and escape it so it's safe for an HTML attribute,
   // e.g.    a&b --> a&amp;b
-  static StringPiece Escape(const StringPiece& unescaped, std::string* buf) {
+  static StringPiece Escape(const StringPiece& unescaped, GoogleString* buf) {
     return singleton_->EscapeHelper(unescaped, buf);
   }
 
   // Take escaped text and unescape it so its value can be interpreted,
   // e.g.    "http://myhost.com/p?v&amp;w"  --> "http://myhost.com/p?v&w"
-  static StringPiece Unescape(const StringPiece& escaped, std::string* buf) {
+  static StringPiece Unescape(const StringPiece& escaped, GoogleString* buf) {
     return singleton_->UnescapeHelper(escaped, buf);
   }
 
@@ -75,13 +75,13 @@ class HtmlKeywords {
   static HtmlKeywords* singleton_;
 
   StringPiece EscapeHelper(const StringPiece& unescaped,
-                           std::string* buf) const;
+                           GoogleString* buf) const;
   StringPiece UnescapeHelper(const StringPiece& escaped,
-                             std::string* buf) const;
+                             GoogleString* buf) const;
 
-  typedef std::map<std::string, std::string,
+  typedef std::map<GoogleString, GoogleString,
                    StringCompareInsensitive> StringStringMapInsensitive;
-  typedef std::map<std::string, std::string> StringStringMapSensitive;
+  typedef std::map<GoogleString, GoogleString> StringStringMapSensitive;
   StringStringMapInsensitive unescape_insensitive_map_;
   StringStringMapSensitive unescape_sensitive_map_;
   StringStringMapSensitive escape_map_;

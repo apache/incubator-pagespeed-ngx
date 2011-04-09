@@ -16,7 +16,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_USER_AGENT_H_
 
 #include "base/basictypes.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -34,7 +34,7 @@ class UserAgent {
   };
 
  private:
-  std::string user_agent_;
+  GoogleString user_agent_;
 
   DISALLOW_COPY_AND_ASSIGN(UserAgent);
 };

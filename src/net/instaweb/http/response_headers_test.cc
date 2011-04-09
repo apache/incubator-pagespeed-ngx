@@ -25,7 +25,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes
 #include "net/instaweb/util/public/mock_timer.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 
@@ -39,29 +39,29 @@ class ResponseHeadersTest : public testing::Test {
     EXPECT_EQ(200, response_headers.status_code());
     EXPECT_EQ(1, response_headers.major_version());
     EXPECT_EQ(0, response_headers.minor_version());
-    EXPECT_EQ(std::string("OK"),
-              std::string(response_headers.reason_phrase()));
+    EXPECT_EQ(GoogleString("OK"),
+              GoogleString(response_headers.reason_phrase()));
     StringStarVector values;
     EXPECT_TRUE(response_headers.Lookup("X-Google-Experiment", &values));
-    EXPECT_EQ(std::string("23729,24249,24253"), *(values[0]));
+    EXPECT_EQ(GoogleString("23729,24249,24253"), *(values[0]));
     EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
     EXPECT_EQ(2, values.size());
-    EXPECT_EQ(std::string("PREF=ID=3935f510d83d2a7a:TM=1270493386:LM=127049338"
+    EXPECT_EQ(GoogleString("PREF=ID=3935f510d83d2a7a:TM=1270493386:LM=127049338"
                            "6:S=u_18e6r8aJ83N6P1; "
                            "expires=Wed, 04-Apr-2012 18:49:46 GMT; path=/; "
                            "domain=.google.com"),
               *(values[0]));
-    EXPECT_EQ(std::string("NID=33=aGkk7cKzznoUuCd19qTgXlBjXC8fc_luIo2Yk9BmrevU"
+    EXPECT_EQ(GoogleString("NID=33=aGkk7cKzznoUuCd19qTgXlBjXC8fc_luIo2Yk9BmrevU"
                            "gXYPTazDF8Q6JvsO6LvTu4mfI8_44iIBLu4pF-Mvpe4wb7pYwej"
                            "4q9HvbMLRxt-OzimIxmd-bwyYVfZ2PY1B; "
                            "expires=Tue, 05-Oct-2010 18:49:46 GMT; path=/; "
                            "domain=.google.com; HttpOnly"),
               *(values[1]));
     EXPECT_EQ(15, response_headers.NumAttributes());
-    EXPECT_EQ(std::string("X-Google-GFE-Response-Body-Transformations"),
-              std::string(response_headers.Name(14)));
-    EXPECT_EQ(std::string("gunzipped"),
-              std::string(response_headers.Value(14)));
+    EXPECT_EQ(GoogleString("X-Google-GFE-Response-Body-Transformations"),
+              GoogleString(response_headers.Name(14)));
+    EXPECT_EQ(GoogleString("gunzipped"),
+              GoogleString(response_headers.Value(14)));
   }
 
   void ParseHeaders(const StringPiece& headers) {
@@ -76,7 +76,7 @@ class ResponseHeadersTest : public testing::Test {
   }
 
   bool ComputeImplicitCaching(int status_code, const char* content_type) {
-    std::string header_text =
+    GoogleString header_text =
         StringPrintf("HTTP/1.0 %d OK\r\n"
                      "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
                      "Content-type: %s\r\n\r\n",
@@ -160,7 +160,7 @@ TEST_F(ResponseHeadersTest, TestParseAndWrite) {
   CheckGoogleHeaders(response_headers_);
 
   // Now write the headers into a string.
-  std::string outbuf;
+  GoogleString outbuf;
   StringWriter writer(&outbuf);
   response_headers_.WriteAsHttp(&writer, &message_handler_);
 
@@ -283,8 +283,8 @@ TEST_F(ResponseHeadersTest, TestRemoveAll) {
 TEST_F(ResponseHeadersTest, TestReasonPhrase) {
   response_headers_.SetStatusAndReason(HttpStatus::kOK);
   EXPECT_EQ(HttpStatus::kOK, response_headers_.status_code());
-  EXPECT_EQ(std::string("OK"),
-            std::string(response_headers_.reason_phrase()));
+  EXPECT_EQ(GoogleString("OK"),
+            GoogleString(response_headers_.reason_phrase()));
 }
 
 TEST_F(ResponseHeadersTest, TestSetDate) {

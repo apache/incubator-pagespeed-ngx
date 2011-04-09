@@ -97,7 +97,7 @@ void AddInstrumentationFilter::EndElement(HtmlElement* element) {
     // assured by add_head_filter.
     CHECK(found_head_) << "Reached end of document without finding <head>."
         "  Please turn on the add_head filter.";
-    std::string tailScript = StringPrintf(kTailScript, beacon_url_.c_str());
+    GoogleString tailScript = StringPrintf(kTailScript, beacon_url_.c_str());
     HtmlCharactersNode* script =
         html_parse_->NewCharactersNode(element, tailScript);
     html_parse_->InsertElementBeforeCurrent(script);
@@ -108,10 +108,10 @@ bool AddInstrumentationFilter::HandleBeacon(const StringPiece& unparsed_url) {
   if ((total_page_load_ms_ == NULL) || (page_load_count_ == NULL)) {
     return false;
   }
-  std::string url = unparsed_url.as_string();
+  GoogleString url = unparsed_url.as_string();
   // TODO(abliss): proper query parsing
   size_t index = url.find(kLoadTag);
-  if (index == std::string::npos) {
+  if (index == GoogleString::npos) {
     return false;
   }
   url = url.substr(index + strlen(kLoadTag));

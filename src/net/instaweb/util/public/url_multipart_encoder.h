@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_URL_MULTIPART_ENCODER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_URL_MULTIPART_ENCODER_H_
 
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
@@ -46,7 +46,7 @@ class UrlMultipartEncoder : public UrlSegmentEncoder {
   virtual ~UrlMultipartEncoder();
 
   virtual void Encode(const StringVector& urls, const ResourceContext* data,
-                      std::string* encoding) const;
+                      GoogleString* encoding) const;
 
   virtual bool Decode(const StringPiece& url_segment,
                       StringVector* urls,

@@ -6,7 +6,7 @@
 #include "net/instaweb/http/public/fetcher_test.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
@@ -15,8 +15,8 @@ class HttpResponseParserTest : public FetcherTest {
 };
 
 TEST_F(HttpResponseParserTest, TestFetcher) {
-  std::string http_filename = TestFilename();
-  std::string http, content;
+  GoogleString http_filename = TestFilename();
+  GoogleString http, content;
   ResponseHeaders response_headers;
   StdioFileSystem file_system;
   ASSERT_TRUE(file_system.ReadFile(http_filename.c_str(), &http,

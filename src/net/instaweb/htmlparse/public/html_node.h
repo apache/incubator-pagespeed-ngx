@@ -22,7 +22,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/arena.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -112,7 +112,7 @@ class HtmlLeafNode : public HtmlNode {
 class HtmlCdataNode : public HtmlLeafNode {
  public:
   virtual ~HtmlCdataNode();
-  const std::string& contents() { return contents_; }
+  const GoogleString& contents() { return contents_; }
   friend class HtmlParse;
 
  protected:
@@ -125,7 +125,7 @@ class HtmlCdataNode : public HtmlLeafNode {
                 const HtmlEventListIterator& iter)
       : HtmlLeafNode(parent, iter),
         contents_(contents.data(), contents.size()) {}
-  const std::string contents_;
+  const GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCdataNode);
 };
 
@@ -133,8 +133,8 @@ class HtmlCdataNode : public HtmlLeafNode {
 class HtmlCharactersNode : public HtmlLeafNode {
  public:
   virtual ~HtmlCharactersNode();
-  const std::string& contents() { return contents_; }
-  std::string* mutable_contents() { return &contents_; }
+  const GoogleString& contents() { return contents_; }
+  GoogleString* mutable_contents() { return &contents_; }
   void Append(const StringPiece& str) {
     contents_.append(str.data(), str.size());
   }
@@ -150,7 +150,7 @@ class HtmlCharactersNode : public HtmlLeafNode {
                      const HtmlEventListIterator& iter)
       : HtmlLeafNode(parent, iter),
         contents_(contents.data(), contents.size()) {}
-  std::string contents_;
+  GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCharactersNode);
 };
 
@@ -158,7 +158,7 @@ class HtmlCharactersNode : public HtmlLeafNode {
 class HtmlCommentNode : public HtmlLeafNode {
  public:
   virtual ~HtmlCommentNode();
-  const std::string& contents() { return contents_; }
+  const GoogleString& contents() { return contents_; }
   friend class HtmlParse;
 
  protected:
@@ -171,7 +171,7 @@ class HtmlCommentNode : public HtmlLeafNode {
                   const HtmlEventListIterator& iter)
       : HtmlLeafNode(parent, iter),
         contents_(contents.data(), contents.size()) {}
-  const std::string contents_;
+  const GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCommentNode);
 };
 
@@ -179,7 +179,7 @@ class HtmlCommentNode : public HtmlLeafNode {
 class HtmlIEDirectiveNode : public HtmlLeafNode {
  public:
   virtual ~HtmlIEDirectiveNode();
-  const std::string& contents() { return contents_; }
+  const GoogleString& contents() { return contents_; }
   friend class HtmlParse;
 
  protected:
@@ -192,7 +192,7 @@ class HtmlIEDirectiveNode : public HtmlLeafNode {
                       const HtmlEventListIterator& iter)
       : HtmlLeafNode(parent, iter),
         contents_(contents.data(), contents.size()) {}
-  const std::string contents_;
+  const GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlIEDirectiveNode);
 };
 
@@ -200,7 +200,7 @@ class HtmlIEDirectiveNode : public HtmlLeafNode {
 class HtmlDirectiveNode : public HtmlLeafNode {
  public:
   virtual ~HtmlDirectiveNode();
-  const std::string& contents() { return contents_; }
+  const GoogleString& contents() { return contents_; }
   friend class HtmlParse;
 
  protected:
@@ -213,7 +213,7 @@ class HtmlDirectiveNode : public HtmlLeafNode {
                     const HtmlEventListIterator& iter)
       : HtmlLeafNode(parent, iter),
         contents_(contents.data(), contents.size()) {}
-  const std::string contents_;
+  const GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlDirectiveNode);
 };
 

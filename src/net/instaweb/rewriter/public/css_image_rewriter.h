@@ -21,7 +21,7 @@
 
 #include "net/instaweb/rewriter/public/img_combine_filter.h"
 #include "net/instaweb/util/public/google_url.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 class GoogleUrl;
@@ -74,7 +74,7 @@ class CssImageRewriter {
  private:
   TimedBool RewriteImageUrl(const GoogleUrl& base_url,
                             const StringPiece& old_rel_url,
-                            std::string* new_url,
+                            GoogleString* new_url,
                             MessageHandler* handler);
 
   // Tells when we should expire our output based on a cached_result

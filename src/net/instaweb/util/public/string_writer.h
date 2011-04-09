@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_WRITER_H_
 
 #include "base/basictypes.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
@@ -28,12 +28,12 @@ namespace net_instaweb {
 // Writer implementation for directing HTML output to a string.
 class StringWriter : public Writer {
  public:
-  explicit StringWriter(std::string* str) : string_(str) { }
+  explicit StringWriter(GoogleString* str) : string_(str) { }
   virtual ~StringWriter();
   virtual bool Write(const StringPiece& str, MessageHandler* message_handler);
   virtual bool Flush(MessageHandler* message_handler);
  private:
-  std::string* string_;
+  GoogleString* string_;
 
   DISALLOW_COPY_AND_ASSIGN(StringWriter);
 };

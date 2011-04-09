@@ -46,12 +46,12 @@ class Wildcard {
   Wildcard* Duplicate() const;
 
  private:
-  Wildcard(const std::string& storage, int num_blocks,
+  Wildcard(const GoogleString& storage, int num_blocks,
            int last_block_offset, bool is_simple);
 
   void InitFromSpec(const StringPiece& wildcard_spec);
 
-  std::string storage_;
+  GoogleString storage_;
   int num_blocks_;
   int last_block_offset_;
   bool is_simple_;

@@ -41,7 +41,7 @@ class FakeUrlAsyncFetcher : public UrlAsyncFetcher {
   }
   virtual ~FakeUrlAsyncFetcher();
 
-  virtual bool StreamingFetch(const std::string& url,
+  virtual bool StreamingFetch(const GoogleString& url,
                               const RequestHeaders& request_headers,
                               ResponseHeaders* response_headers,
                               Writer* writer,

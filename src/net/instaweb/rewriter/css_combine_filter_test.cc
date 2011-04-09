@@ -52,10 +52,10 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
     // URLs and content for HTML document and resources.
     CHECK_EQ(StringPiece::npos, id.find("/"));
-    std::string html_url = StrCat(kDomain, id, ".html");
-    std::string a_css_url = StrCat(kDomain, a_css_name);
-    std::string b_css_url = StrCat(kDomain, b_css_name);
-    std::string c_css_url = StrCat(kDomain, "c.css");
+    GoogleString html_url = StrCat(kDomain, id, ".html");
+    GoogleString a_css_url = StrCat(kDomain, a_css_name);
+    GoogleString b_css_url = StrCat(kDomain, b_css_name);
+    GoogleString c_css_url = StrCat(kDomain, "c.css");
 
     static const char html_input_format[] =
         "<head>\n"
@@ -72,7 +72,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         "  </div>\n"
         "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
         "</body>\n";
-    std::string html_input =
+    GoogleString html_input =
         StringPrintf(html_input_format, a_css_name, b_css_name, barrier_text);
     const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
     const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
@@ -87,7 +87,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
     ParseUrl(html_url, html_input);
 
-    std::string headers;
+    GoogleString headers;
     AppendDefaultHeaders(kContentTypeCss, resource_manager_, &headers);
 
     // Check for CSS files in the rewritten page.
@@ -95,15 +95,15 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     CollectCssLinks(id, output_buffer_, &css_urls);
     EXPECT_LE(1UL, css_urls.size());
 
-    const std::string& combine_url = css_urls[0];
+    const GoogleString& combine_url = css_urls[0];
     GoogleUrl gurl(combine_url);
 
-    std::string combine_filename;
+    GoogleString combine_filename;
     filename_encoder_.Encode(file_prefix_, combine_url, &combine_filename);
 
     // Expected CSS combination.
     // This syntax must match that in css_combine_filter
-    std::string expected_combination = StrCat(a_css_body, b_css_body);
+    GoogleString expected_combination = StrCat(a_css_body, b_css_body);
     if (!is_barrier) {
       expected_combination.append(c_css_body);
     }
@@ -123,13 +123,13 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         "  </div>\n"
         "  %s\n"
         "</body>\n";
-    std::string expected_output = StringPrintf(
+    GoogleString expected_output = StringPrintf(
         expected_output_format, combine_url.c_str(), barrier_text,
         is_barrier ? "<link rel='stylesheet' href='c.css' type='text/css'>"
         : "");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
-    std::string actual_combination;
+    GoogleString actual_combination;
     ASSERT_TRUE(file_system_.ReadFile(combine_filename.c_str(),
                                       &actual_combination, &message_handler_));
     EXPECT_EQ(headers + expected_combination, actual_combination);
@@ -137,7 +137,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     // Fetch the combination to make sure we can serve the result from above.
     RequestHeaders request_headers;
     ResponseHeaders response_headers;
-    std::string fetched_resource_content;
+    GoogleString fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
     DummyCallback dummy_callback(true);
     rewrite_driver_.FetchResource(combine_url, request_headers,
@@ -169,12 +169,12 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
   // Test what happens when CSS combine can't find a previously-rewritten
   // resource during a subsequent resource fetch.  This used to segfault.
   void CssCombineMissingResource() {
-    std::string a_css_url = StrCat(kDomain, "a.css");
-    std::string c_css_url = StrCat(kDomain, "c.css");
+    GoogleString a_css_url = StrCat(kDomain, "a.css");
+    GoogleString c_css_url = StrCat(kDomain, "c.css");
 
     const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
     const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
-    std::string expected_combination = StrCat(a_css_body, c_css_body);
+    GoogleString expected_combination = StrCat(a_css_body, c_css_body);
 
     AddFilter(RewriteOptions::kCombineCss);
 
@@ -187,12 +187,12 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     // First make sure we can serve the combination of a & c.  This is to avoid
     // spurious test successes.
 
-    std::string kACUrl = Encode(kDomain, "cc", "0", "a.css+c.css", "css");
-    std::string kABCUrl = Encode(kDomain, "cc", "0", "a.css+bbb.css+c.css",
+    GoogleString kACUrl = Encode(kDomain, "cc", "0", "a.css+c.css", "css");
+    GoogleString kABCUrl = Encode(kDomain, "cc", "0", "a.css+bbb.css+c.css",
                                   "css");
     RequestHeaders request_headers;
     ResponseHeaders response_headers;
-    std::string fetched_resource_content;
+    GoogleString fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
     DummyCallback dummy_callback(true);
 
@@ -263,7 +263,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
     // Parses a combined CSS elementand provides the segments from which
     // it came.
-    bool DecomposeCombinedUrl(std::string* base, StringVector* segments,
+    bool DecomposeCombinedUrl(GoogleString* base, StringVector* segments,
                               MessageHandler* handler) {
       GoogleUrl gurl(url_);
       bool ret = false;
@@ -273,16 +273,16 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         if (namer.Decode(gurl.LeafWithQuery()) &&
             (namer.id() == RewriteDriver::kCssCombinerId)) {
           UrlMultipartEncoder multipart_encoder;
-          std::string segment;
+          GoogleString segment;
           ret = multipart_encoder.Decode(namer.name(), segments, NULL, handler);
         }
       }
       return ret;
     }
 
-    std::string url_;
-    std::string content_;
-    std::string media_;
+    GoogleString url_;
+    GoogleString content_;
+    GoogleString media_;
     bool supply_mock_;
   };
 
@@ -330,7 +330,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     HtmlParse html_parse(&message_handler_);
     CssCollector collector(&html_parse, css_links);
     html_parse.AddFilter(&collector);
-    std::string dummy_url = StrCat("http://collect.css.links/", id, ".html");
+    GoogleString dummy_url = StrCat("http://collect.css.links/", id, ".html");
     html_parse.StartParse(dummy_url);
     html_parse.ParseText(html.data(), html.size());
     html_parse.FinishParse();
@@ -351,8 +351,8 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
       CssLink::Vector* output_css_links) {
     // TODO(sligocki): Allow other domains (this is constrained right now b/c
     // of InitResponseHeaders.
-    std::string html_url = StrCat(kTestDomain, id, ".html");
-    std::string html_input("<head>\n");
+    GoogleString html_url = StrCat(kTestDomain, id, ".html");
+    GoogleString html_input("<head>\n");
     for (int i = 0, n = input_css_links.size(); i < n; ++i) {
       const CssLink* link = input_css_links[i];
       if (!link->url_.empty()) {
@@ -361,7 +361,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
           // mock fetcher with headers and content for the CSS file.
           InitResponseHeaders(link->url_, kContentTypeCss, link->content_, 600);
         }
-        std::string style("  <");
+        GoogleString style("  <");
         style += StringPrintf("link rel='stylesheet' type='text/css' href='%s'",
                               link->url_.c_str());
         if (!link->media_.empty()) {
@@ -391,9 +391,9 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     css_in.Add("2.css", kYellow, "", true);
     BarrierTestHelper("no_ext_corrupt", css_in, &css_out);
     ASSERT_EQ(1, css_out.size());
-    std::string normal_url = css_out[0]->url_;
+    GoogleString normal_url = css_out[0]->url_;
 
-    std::string out;
+    GoogleString out;
     EXPECT_EQ(should_fetch_ok,
               ServeResourceUrl(StrCat(normal_url, junk),  &out));
 
@@ -409,20 +409,20 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
   // as XHTML producing non-flat <link>'s from the parser
   void TestXhtml(bool flush) {
     AddFilter(RewriteOptions::kCombineCss);
-    std::string a_css_url = StrCat(kTestDomain, "a.css");
-    std::string b_css_url = StrCat(kTestDomain, "b.css");
+    GoogleString a_css_url = StrCat(kTestDomain, "a.css");
+    GoogleString b_css_url = StrCat(kTestDomain, "b.css");
 
     ResponseHeaders default_css_header;
     resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
     mock_url_fetcher_.SetResponse(a_css_url, default_css_header, "A");
     mock_url_fetcher_.SetResponse(b_css_url, default_css_header, "B");
 
-    std::string combined_url =
+    GoogleString combined_url =
         StrCat(kTestDomain, "a.css+b.css.pagespeed.cc.0.css");
 
     SetupWriter();
     rewrite_driver_.StartParse(kTestDomain);
-    std::string input_beginning =
+    GoogleString input_beginning =
         StrCat(kXhtmlDtd, "<div><link rel=stylesheet href=a.css>",
                "<link rel=stylesheet href=b.css>");
     rewrite_driver_.ParseText(input_beginning);
@@ -451,7 +451,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
   void CombineWithBaseTag(const char* html_input, StringVector *css_urls) {
     // Put original CSS files into our fetcher.
-    std::string html_url = StrCat(kDomain, "base_url.html");
+    GoogleString html_url = StrCat(kDomain, "base_url.html");
     const char a_css_url[] = "http://other_domain.test/foo/a.css";
     const char b_css_url[] = "http://other_domain.test/foo/b.css";
     const char c_css_url[] = "http://other_domain.test/foo/c.css";
@@ -583,7 +583,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
       "</noscript>\n";
 
   // Put this in the Test class to remove repetition here and below.
-  std::string d_css_url = StrCat(kDomain, "d.css");
+  GoogleString d_css_url = StrCat(kDomain, "d.css");
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
   ResponseHeaders default_css_header;
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
@@ -604,7 +604,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
   const char media_barrier[] =
       "<link rel='stylesheet' type='text/css' href='d.css' media='print'>\n";
 
-  std::string d_css_url = StrCat(kDomain, "d.css");
+  GoogleString d_css_url = StrCat(kDomain, "d.css");
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
   ResponseHeaders default_css_header;
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
@@ -615,11 +615,11 @@ TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
 
 TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   // Put original CSS files into our fetcher.
-  std::string html_url = StrCat(kDomain, "no_media_barrier.html");
-  std::string a_css_url = StrCat(kDomain, "a.css");
-  std::string b_css_url = StrCat(kDomain, "b.css");
-  std::string c_css_url = StrCat(kDomain, "c.css");
-  std::string d_css_url = StrCat(kDomain, "d.css");
+  GoogleString html_url = StrCat(kDomain, "no_media_barrier.html");
+  GoogleString a_css_url = StrCat(kDomain, "a.css");
+  GoogleString b_css_url = StrCat(kDomain, "b.css");
+  GoogleString c_css_url = StrCat(kDomain, "c.css");
+  GoogleString d_css_url = StrCat(kDomain, "d.css");
 
   const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
   const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
@@ -650,7 +650,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   StringVector css_urls;
   CollectCssLinks("combine_css_no_media-links", output_buffer_, &css_urls);
   EXPECT_EQ(3UL, css_urls.size());
-  const std::string& combine_url = css_urls[0];
+  const GoogleString& combine_url = css_urls[0];
 
   const char expected_output_format[] =
       "<head>\n"
@@ -660,7 +660,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
       "  <link rel='stylesheet' type='text/css' href='c.css'>\n"
       "  <link rel='stylesheet' type='text/css' href='d.css' media='print'>\n"
       "</head>";
-  std::string expected_output = StringPrintf(expected_output_format,
+  GoogleString expected_output = StringPrintf(expected_output_format,
                                               combine_url.c_str());
 
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
@@ -706,7 +706,7 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
       "</head>\n";
   EXPECT_EQ(2UL, css_urls.size());
 
-  std::string expected_output = StringPrintf(expected_output_format,
+  GoogleString expected_output = StringPrintf(expected_output_format,
                                               css_urls[1].c_str());
   EXPECT_EQ("http://other_domain.test/foo/b.css+c.css.pagespeed.cc.0.css",
             css_urls[1]);
@@ -735,7 +735,7 @@ TEST_F(CssCombineFilterTest, CombineCssAbsoluteBaseUrlOutOfOrder) {
       "</head>\n";
   EXPECT_EQ(1UL, css_urls.size());
 
-  std::string expected_output = StringPrintf(expected_output_format,
+  GoogleString expected_output = StringPrintf(expected_output_format,
                                               css_urls[0].c_str());
   EXPECT_EQ("http://other_domain.test/foo/a.css+b.css.pagespeed.cc.0.css",
             css_urls[0]);
@@ -762,7 +762,7 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
       "  \n"
       "</head>\n";
   EXPECT_EQ(1UL, css_urls.size());
-  std::string expected_output = StringPrintf(expected_output_format,
+  GoogleString expected_output = StringPrintf(expected_output_format,
                                               css_urls[0].c_str());
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
   EXPECT_EQ("http://other_domain.test/foo/a.css+b.css.pagespeed.cc.0.css",
@@ -825,7 +825,7 @@ TEST_F(CssCombineFilterTest, CombineCssManyFiles) {
   ASSERT_EQ(2, css_out.size());
 
   // Check that the first element is really a combination.
-  std::string base;
+  GoogleString base;
   StringVector segments;
   ASSERT_TRUE(css_out[0]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
@@ -857,7 +857,7 @@ TEST_F(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
   ASSERT_EQ(2, css_out.size());
 
   // Check that the first element is really a combination.
-  std::string base;
+  GoogleString base;
   StringVector segments;
   ASSERT_TRUE(css_out[0]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
@@ -879,7 +879,7 @@ TEST_F(CssCombineFilterTest, CombineCssNotCached) {
   mock_url_fetcher_.set_fail_on_unexpected(false);
   BarrierTestHelper("combine_css_not_cached", css_in, &css_out);
   EXPECT_EQ(3, css_out.size());
-  std::string base;
+  GoogleString base;
   StringVector segments;
   ASSERT_TRUE(css_out[0]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
@@ -900,7 +900,7 @@ TEST_F(CssCombineFilterTest, CombineStyleTag) {
   css_in.Add("4.css", kYellow, "", true);
   BarrierTestHelper("combine_css_with_style", css_in, &css_out);
   EXPECT_EQ(2, css_out.size());
-  std::string base;
+  GoogleString base;
   StringVector segments;
   ASSERT_TRUE(css_out[0]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
@@ -918,12 +918,12 @@ TEST_F(CssCombineFilterTest, NoAbsolutifySameDir) {
   EXPECT_EQ(1, css_out.size());
 
   // Note: the urls are not absolutified.
-  std::string expected_combination =
+  GoogleString expected_combination =
       ".yellow {background-image: url('1.png');}\n"
       ".yellow {background-image: url('2.png');}\n";
 
   // Check fetched resource.
-  std::string actual_combination;
+  GoogleString actual_combination;
   EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
   // TODO(sligocki): Check headers?
   EXPECT_EQ(expected_combination, actual_combination);
@@ -937,12 +937,12 @@ TEST_F(CssCombineFilterTest, DoAbsolutifyDifferentDir) {
   BarrierTestHelper("combine_css_with_style", css_in, &css_out);
   EXPECT_EQ(1, css_out.size());
 
-  std::string expected_combination = StrCat(
+  GoogleString expected_combination = StrCat(
       ".yellow {background-image: url('1.png');}\n"
       ".yellow {background-image: url('", kTestDomain, "foo/2.png');}\n");
 
   // Check fetched resource.
-  std::string actual_combination;
+  GoogleString actual_combination;
   EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
   // TODO(sligocki): Check headers?
   EXPECT_EQ(expected_combination, actual_combination);
@@ -951,7 +951,7 @@ TEST_F(CssCombineFilterTest, DoAbsolutifyDifferentDir) {
 // Verifies that we don't produce URLs that are too long in a corner case.
 TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   CssLink::Vector css_in, css_out;
-  std::string long_name(600, 'z');
+  GoogleString long_name(600, 'z');
   css_in.Add(long_name + "/a.css", "a", "", true);
   css_in.Add(long_name + "/b.css", "b", "", true);
 
@@ -961,7 +961,7 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   css_in.Add("sites/all/modules/ckeditor/ckeditor.css?3", "z", "", true);
   BarrierTestHelper("cross_paths", css_in, &css_out);
   EXPECT_EQ(2, css_out.size());
-  std::string actual_combination;
+  GoogleString actual_combination;
   EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
   GoogleUrl gurl(css_out[0]->url_);
   EXPECT_EQ("/" + long_name + "/", gurl.PathSansLeaf());
@@ -998,7 +998,7 @@ TEST_F(CssCombineFilterTest, CrossMappedDomain) {
                                 kBlue);
   BarrierTestHelper("combine_css_with_style", css_in, &css_out);
   EXPECT_EQ(1, css_out.size());
-  std::string actual_combination;
+  GoogleString actual_combination;
   EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
   EXPECT_EQ(StringPiece("http://a.com/1.css+2.css.pagespeed.cc.0.css"),
             css_out[0]->url_);
@@ -1023,7 +1023,7 @@ TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
   mock_url_fetcher_.SetResponse(kUrl2, default_css_header, kBlue);
   BarrierTestHelper("combine_css_with_style", css_in, &css_out);
   EXPECT_EQ(2, css_out.size());
-  std::string actual_combination;
+  GoogleString actual_combination;
   EXPECT_EQ(kUrl1, css_out[0]->url_);
   EXPECT_EQ(kUrl2, css_out[1]->url_);
 }

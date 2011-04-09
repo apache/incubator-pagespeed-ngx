@@ -135,7 +135,7 @@ bool CacheUrlFetcher::RememberNotCached(const ResponseHeaders& headers) {
 }
 
 bool CacheUrlFetcher::StreamingFetchUrl(
-    const std::string& url, const RequestHeaders& request_headers,
+    const GoogleString& url, const RequestHeaders& request_headers,
     ResponseHeaders* response, Writer* writer, MessageHandler* handler) {
   bool ret = false;
   HTTPValue value;
@@ -158,7 +158,7 @@ bool CacheUrlFetcher::StreamingFetchUrl(
   } else if (sync_fetcher_ != NULL) {
     // We need to hang onto a copy of the data so we can shove it
     // into the cache, which lacks a streaming Put.
-    std::string content;
+    GoogleString content;
     StringWriter string_writer(&content);
     ret = sync_fetcher_->StreamingFetchUrl(
         url, request_headers, response, &string_writer, handler);

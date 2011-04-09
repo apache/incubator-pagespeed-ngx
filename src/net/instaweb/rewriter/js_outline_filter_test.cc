@@ -35,29 +35,29 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
     options_.set_js_outline_min_bytes(0);
     AddFilter(RewriteOptions::kOutlineJavascript);
 
-    std::string script_text = "FOOBAR";
-    std::string outline_text;
+    GoogleString script_text = "FOOBAR";
+    GoogleString outline_text;
     AppendDefaultHeaders(kContentTypeJavascript, resource_manager_,
                          &outline_text);
     outline_text += script_text;
 
-    std::string hash = hasher->Hash(script_text);
-    std::string outline_filename;
-    std::string outline_url = Encode(
+    GoogleString hash = hasher->Hash(script_text);
+    GoogleString outline_filename;
+    GoogleString outline_url = Encode(
         kTestDomain, JsOutlineFilter::kFilterId,  hash, "_", "js");
     filename_encoder_.Encode(file_prefix_, outline_url, &outline_filename);
 
     // Make sure the file we check later was written this time, rm any old one.
     DeleteFileIfExists(outline_filename);
 
-    std::string html_input =
+    GoogleString html_input =
         "<head>\n"
         "  <title>Example style outline</title>\n"
         "  <!-- Script starts here -->\n"
         "  <script type='text/javascript'>" + script_text + "</script>\n"
         "  <!-- Script ends here -->\n"
         "</head>";
-    std::string expected_output = !expect_outline ? html_input :
+    GoogleString expected_output = !expect_outline ? html_input :
         "<head>\n"
         "  <title>Example style outline</title>\n"
         "  <!-- Script starts here -->\n"
@@ -68,7 +68,7 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
     ValidateExpected(id, html_input, expected_output);
 
     if (expect_outline) {
-      std::string actual_outline;
+      GoogleString actual_outline;
       ASSERT_TRUE(file_system_.ReadFile(outline_filename.c_str(),
                                         &actual_outline,
                                         &message_handler_));
@@ -95,7 +95,7 @@ TEST_F(JsOutlineFilterTest, OutlineScriptWithBase) {
 
   const char kInput[] =
       "<base href='http://cdn.example.com/file.html'><script>42;</script>";
-  std::string expected_output =
+  GoogleString expected_output =
       StrCat("<base href='http://cdn.example.com/file.html'>",
              "<script src=\"", kTestDomain, "_.pagespeed.jo.0.js\"></script>");
   ValidateExpected("test.html", kInput, expected_output);
@@ -103,8 +103,8 @@ TEST_F(JsOutlineFilterTest, OutlineScriptWithBase) {
 
 // Negative test.
 TEST_F(JsOutlineFilterTest, NoOutlineScript) {
-  std::string file_prefix = GTestTempDir() + "/no_outline";
-  std::string url_prefix = "http://mysite/no_outline";
+  GoogleString file_prefix = GTestTempDir() + "/no_outline";
+  GoogleString url_prefix = "http://mysite/no_outline";
 
   // TODO(sligocki): Maybe test with other hashers.
   //resource_manager_->set_hasher(hasher);
@@ -114,7 +114,7 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   rewrite_driver_.AddFilters();
 
   // We need to make sure we don't create this file, so rm any old one
-  std::string filename = Encode(file_prefix, JsOutlineFilter::kFilterId, "0",
+  GoogleString filename = Encode(file_prefix, JsOutlineFilter::kFilterId, "0",
                                  "_", "js");
   DeleteFileIfExists(filename);
 

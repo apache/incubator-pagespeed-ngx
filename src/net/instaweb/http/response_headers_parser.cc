@@ -66,7 +66,7 @@ int ResponseHeadersParser::ParseChunk(const StringPiece& text,
         // Parsing "1.0 200 OK\r", using sscanf for the integers, and
         // private method GrabLastToken for the "OK".
         int major_version, minor_version, status_code;
-        std::string reason_phrase;
+        GoogleString reason_phrase;
         if ((sscanf(parse_value_.c_str(), "%d.%d %d ",  // NOLINT
                     &major_version, &minor_version, &status_code) != 3) ||
             !GrabLastToken(parse_value_, &reason_phrase)) {
@@ -99,8 +99,8 @@ int ResponseHeadersParser::ParseChunk(const StringPiece& text,
 }
 
 // Grabs the last non-whitespace token from 'input' and puts it in 'output'.
-bool ResponseHeadersParser::GrabLastToken(const std::string& input,
-                                          std::string* output) {
+bool ResponseHeadersParser::GrabLastToken(const GoogleString& input,
+                                          GoogleString* output) {
   bool ret = false;
   // Safely grab the response code string from the end of parse_value_.
   int last_token_char = -1;

@@ -24,7 +24,7 @@
 #include <utility>  // for pair
 #include "base/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -36,7 +36,7 @@ namespace net_instaweb {
 // or an local shadow for memcached.
 //
 // Also of note: the Get interface allows for streaming.  To get into
-// a std::string, use a StringWriter.
+// a GoogleString, use a StringWriter.
 //
 // TODO(jmarantz): The Put interface does not currently stream, but this
 // should be added.
@@ -49,7 +49,7 @@ class LRUCache : public CacheInterface {
   }
   virtual ~LRUCache();
 
-  virtual void Get(const std::string& key, Callback* callback);
+  virtual void Get(const GoogleString& key, Callback* callback);
 
   // Puts an object into the cache, sharing the bytes.
   //
@@ -57,9 +57,9 @@ class LRUCache : public CacheInterface {
   // SharedString after having called Put, it will actually
   // modify the value in the cache.  We should change
   // SharedString to Copy-On-Write semantics.
-  virtual void Put(const std::string& key, SharedString* new_value);
-  virtual void Delete(const std::string& key);
-  virtual void Query(const std::string& key, Callback* callback);
+  virtual void Put(const GoogleString& key, SharedString* new_value);
+  virtual void Delete(const GoogleString& key);
+  virtual void Query(const GoogleString& key, Callback* callback);
 
   // Total size in bytes of keys and values stored.
   size_t size_bytes() const { return current_bytes_in_cache_; }
@@ -85,11 +85,11 @@ class LRUCache : public CacheInterface {
   void ClearStats();
 
  private:
-  typedef std::pair<const std::string*, SharedString> KeyValuePair;
+  typedef std::pair<const GoogleString*, SharedString> KeyValuePair;
   typedef std::list<KeyValuePair*> EntryList;
   // STL guarantees lifetime of list itererators as long as the node is in list.
   typedef EntryList::iterator ListNode;
-  typedef std::map<std::string, ListNode> Map;
+  typedef std::map<GoogleString, ListNode> Map;
   inline size_t entry_size(KeyValuePair* kvp) const;
   inline ListNode Freshen(KeyValuePair* key_value);
   bool EvictIfNecessary(size_t bytes_needed);

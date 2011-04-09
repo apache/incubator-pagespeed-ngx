@@ -366,7 +366,7 @@ void HtmlLexer::EvalTagBriefClose(char c) {
     EmitTagOpen(false);
     EmitTagBriefClose();
   } else {
-    std::string expected(literal_.data(), literal_.size() - 1);
+    GoogleString expected(literal_.data(), literal_.size() - 1);
     SyntaxError("Invalid close tag syntax: expected %s>, got %s",
                 expected.c_str(), literal_.c_str());
     // Recover by returning to the mode from whence we came.
@@ -651,8 +651,8 @@ void HtmlLexer::EmitComment() {
   // is whitespace tolerated?) doesn't seem to be specified anywhere, but my
   // brief experiments suggest that this heuristic is okay.  (mdsteele)
   // See http://en.wikipedia.org/wiki/Conditional_comment
-  if ((token_.find("[if") != std::string::npos) ||
-      (token_.find("[endif]") != std::string::npos)) {
+  if ((token_.find("[if") != GoogleString::npos) ||
+      (token_.find("[endif]") != GoogleString::npos)) {
     HtmlIEDirectiveNode* node =
         html_parse_->NewIEDirectiveNode(Parent(), token_);
     html_parse_->AddEvent(new HtmlIEDirectiveEvent(node, tag_start_line_));
@@ -1018,7 +1018,7 @@ bool HtmlLexer::IsOptionallyClosedTag(HtmlName::Keyword keyword) const {
 
 void HtmlLexer::DebugPrintStack() {
   for (size_t i = kStartStack; i < element_stack_.size(); ++i) {
-    std::string buf;
+    GoogleString buf;
     element_stack_[i]->ToString(&buf);
     fprintf(stdout, "%s\n", buf.c_str());
   }

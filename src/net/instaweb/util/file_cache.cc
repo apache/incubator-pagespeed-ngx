@@ -32,11 +32,11 @@ namespace {  // For structs used only in Clean().
 
 class CacheFileInfo {
  public:
-  CacheFileInfo(int64 size, int64 atime, const std::string& name)
+  CacheFileInfo(int64 size, int64 atime, const GoogleString& name)
       : size_(size), atime_(atime), name_(name) {}
   int64 size_;
   int64 atime_;
-  std::string name_;
+  GoogleString name_;
  private:
   DISALLOW_COPY_AND_ASSIGN(CacheFileInfo);
 };
@@ -59,7 +59,7 @@ const char FileCache::kCleanLockName[] = "!clean!lock!";
 
 // TODO(abliss): remove policy from constructor; provide defaults here
 // and setters below.
-FileCache::FileCache(const std::string& path, FileSystem* file_system,
+FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
                      FilenameEncoder* filename_encoder,
                      CachePolicy* policy,
                      MessageHandler* handler)
@@ -80,11 +80,11 @@ FileCache::FileCache(const std::string& path, FileSystem* file_system,
 FileCache::~FileCache() {
 }
 
-void FileCache::Get(const std::string& key, Callback* callback) {
-  std::string filename;
+void FileCache::Get(const GoogleString& key, Callback* callback) {
+  GoogleString filename;
   bool ret = EncodeFilename(key, &filename);
   if (ret) {
-    std::string* buffer = callback->value()->get();
+    GoogleString* buffer = callback->value()->get();
 
     // Suppress read errors.  Note that we want to show Write errors,
     // as they likely indicate a permissions or disk-space problem
@@ -96,11 +96,11 @@ void FileCache::Get(const std::string& key, Callback* callback) {
   callback->Done(ret ? kAvailable : kNotFound);
 }
 
-void FileCache::Put(const std::string& key, SharedString* value) {
-  std::string filename;
+void FileCache::Put(const GoogleString& key, SharedString* value) {
+  GoogleString filename;
   if (EncodeFilename(key, &filename)) {
-    const std::string& buffer = **value;
-    std::string temp_filename;
+    const GoogleString& buffer = **value;
+    GoogleString temp_filename;
     if (file_system_->WriteTempFile(filename, buffer,
                                     &temp_filename, message_handler_)) {
       file_system_->RenameFile(temp_filename.c_str(), filename.c_str(),
@@ -110,8 +110,8 @@ void FileCache::Put(const std::string& key, SharedString* value) {
   CheckClean();
 }
 
-void FileCache::Delete(const std::string& key) {
-  std::string filename;
+void FileCache::Delete(const GoogleString& key) {
+  GoogleString filename;
   if (!EncodeFilename(key, &filename)) {
     return;
   }
@@ -119,9 +119,9 @@ void FileCache::Delete(const std::string& key) {
   return;
 }
 
-bool FileCache::EncodeFilename(const std::string& key,
-                               std::string* filename) {
-  std::string prefix = path_;
+bool FileCache::EncodeFilename(const GoogleString& key,
+                               GoogleString* filename) {
+  GoogleString prefix = path_;
   // TODO(abliss): unify and make explicit everyone's assumptions
   // about trailing slashes.
   EnsureEndsInSlash(&prefix);
@@ -129,8 +129,8 @@ bool FileCache::EncodeFilename(const std::string& key,
   return true;
 }
 
-void FileCache::Query(const std::string& key, Callback* callback) {
-  std::string filename;
+void FileCache::Query(const GoogleString& key, Callback* callback) {
+  GoogleString filename;
   KeyState state = CacheInterface::kNotFound;
   if (EncodeFilename(key, &filename)) {
     NullMessageHandler null_handler;
@@ -175,10 +175,10 @@ bool FileCache::Clean(int64 target_size) {
   // but this really should be factored into a settable member var.
   int64 target_heap_size = total_size - ((target_size * 3 / 4));
 
-  std::string prefix = path_;
+  GoogleString prefix = path_;
   EnsureEndsInSlash(&prefix);
   for (size_t i = 0; i < files.size(); i++) {
-    std::string file_name = files[i];
+    GoogleString file_name = files[i];
     BoolOrError isDir = file_system_->IsDir(file_name.c_str(),
                                             message_handler_);
     if (isDir.is_error()) {
@@ -235,12 +235,12 @@ bool FileCache::CheckClean() {
   if (now_ms < next_clean_ms_) {
     return false;
   }
-  std::string lock_name(path_);
+  GoogleString lock_name(path_);
   EnsureEndsInSlash(&lock_name);
   lock_name += kCleanLockName;
   bool to_return = false;
   if (file_system_->TryLock(lock_name, message_handler_).is_true()) {
-    std::string clean_time_str;
+    GoogleString clean_time_str;
     int64 clean_time_ms = 0;
     int64 new_clean_time_ms = now_ms + cache_policy_->clean_interval_ms;
     NullMessageHandler null_handler;

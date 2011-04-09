@@ -35,7 +35,7 @@ LRUCache::ListNode LRUCache::Freshen(KeyValuePair* key_value) {
   return lru_ordered_list_.begin();
 }
 
-void LRUCache::Get(const std::string& key, Callback* callback) {
+void LRUCache::Get(const GoogleString& key, Callback* callback) {
   KeyState key_state = kNotFound;
   Map::iterator p = map_.find(key);
   if (p != map_.end()) {
@@ -52,7 +52,7 @@ void LRUCache::Get(const std::string& key, Callback* callback) {
   callback->Done(key_state);
 }
 
-void LRUCache::Put(const std::string& key, SharedString* new_value) {
+void LRUCache::Put(const GoogleString& key, SharedString* new_value) {
   // Just do one map operation, calling the awkward 'insert' which returns
   // a pair.  The bool indicates whether a new value was inserted, and the
   // iterator provides access to the element, whether it's new or old.
@@ -127,7 +127,7 @@ bool LRUCache::EvictIfNecessary(size_t bytes_needed) {
   return ret;
 }
 
-void LRUCache::Delete(const std::string& key) {
+void LRUCache::Delete(const GoogleString& key) {
   Map::iterator p = map_.find(key);
   if (p != map_.end()) {
     ListNode cell = p->second;
@@ -171,7 +171,7 @@ void LRUCache::SanityCheck() {
   CHECK(count == map_.size());
 }
 
-void LRUCache::Query(const std::string& key, Callback* callback) {
+void LRUCache::Query(const GoogleString& key, Callback* callback) {
   Map::iterator p = map_.find(key);
   KeyState state = kNotFound;
   if (p != map_.end()) {

@@ -34,7 +34,7 @@ class QueryParams : public StringMultiMapSensitive {
   // be {"0", NULL, ""}.
   void Parse(const StringPiece& query_string);
 
-  std::string ToString() const;
+  GoogleString ToString() const;
 
   int size() const { return num_values(); }
 

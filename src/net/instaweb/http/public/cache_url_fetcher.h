@@ -23,7 +23,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -70,7 +70,7 @@ class CacheUrlFetcher : public UrlFetcher {
   virtual ~CacheUrlFetcher();
 
   virtual bool StreamingFetchUrl(
-      const std::string& url,
+      const GoogleString& url,
       const RequestHeaders& request_headers,
       ResponseHeaders* response_headers,
       Writer* fetched_content_writer,
@@ -104,7 +104,7 @@ class CacheUrlFetcher : public UrlFetcher {
     MessageHandler* message_handler_;
 
    private:
-    std::string url_;
+    GoogleString url_;
     HTTPCache* http_cache_;
     bool force_caching_;
   };

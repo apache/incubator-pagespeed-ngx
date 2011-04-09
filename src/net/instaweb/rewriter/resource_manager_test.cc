@@ -52,7 +52,7 @@ namespace net_instaweb {
 
 class VerifyContentsCallback : public Resource::AsyncCallback {
  public:
-  explicit VerifyContentsCallback(const std::string& contents) :
+  explicit VerifyContentsCallback(const GoogleString& contents) :
       contents_(contents), called_(false) {
   }
   virtual void Done(bool success, Resource* resource) {
@@ -62,7 +62,7 @@ class VerifyContentsCallback : public Resource::AsyncCallback {
   void AssertCalled() {
     EXPECT_TRUE(called_);
   }
-  std::string contents_;
+  GoogleString contents_;
   bool called_;
 };
 
@@ -73,8 +73,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // Fetches data (which is expected to exist) for given resource,
   // but making sure to go through the path that checks for its
   // non-existence and potentially doing locking, too.
-  std::string FetchExtantOutputResource(OutputResource* resource) {
-    std::string contents;
+  GoogleString FetchExtantOutputResource(OutputResource* resource) {
+    GoogleString contents;
     StringWriter writer(&contents);
     EXPECT_TRUE(rewrite_driver_.FetchExtantOutputResourceOrLock(
         resource, &writer, resource->metadata()));
@@ -91,7 +91,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
   // Asserts that the given url starts with an appropriate prefix;
   // then cuts off that prefix.
-  virtual void RemoveUrlPrefix(std::string* url) {
+  virtual void RemoveUrlPrefix(GoogleString* url) {
     EXPECT_EQ(0, url->compare(0, url_prefix_.length(), url_prefix_));
     url->erase(0, url_prefix_.length());
   }
@@ -132,7 +132,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
             OutputResource::kRewrittenResource));
     ASSERT_TRUE(nor.get() != NULL);
     // Check name_key against url_prefix/fp.name
-    std::string name_key = nor->name_key();
+    GoogleString name_key = nor->name_key();
     RemoveUrlPrefix(&name_key);
     EXPECT_EQ(nor->full_name().EncodeIdName(), name_key);
     // Make sure the resource hasn't already been created (and lock it for
@@ -162,7 +162,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       namer.CopyFrom(nor->full_name());
       namer.set_hash("0");
       namer.set_ext("txt");
-      std::string name = StrCat(url_prefix_, namer.Encode());
+      GoogleString name = StrCat(url_prefix_, namer.Encode());
       scoped_ptr<OutputResource> nor1(CreateOutputResourceForFetch(name));
       ASSERT_TRUE(nor1.get() != NULL);
 
@@ -203,7 +203,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     callback.AssertCalled();
 
     // Grab the URL and make sure we correctly decode its components
-    std::string url = nor2->url();
+    GoogleString url = nor2->url();
     EXPECT_LT(0, url.length());
     RemoveUrlPrefix(&url);
     ResourceNamer full_name;
@@ -273,7 +273,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   }
 
   void VerifyValidCachedResult(const char* subtest_name, bool test_meta_data,
-                               OutputResource* output, const std::string& url,
+                               OutputResource* output, const GoogleString& url,
                                int64 expire_ms) {
     LOG(INFO) << "Subtest:" << subtest_name;
     ASSERT_TRUE(output != NULL);
@@ -332,7 +332,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     resource_manager_->Write(HttpStatus::kOK, "PNGnotreally",
                              output.get(), kTtlMs, &message_handler_);
-    std::string producedUrl = output->url();
+    GoogleString producedUrl = output->url();
 
     // Make sure the cached_result object is in OK state after write.
     VerifyValidCachedResult("initial", test_meta_data, output.get(),
@@ -396,7 +396,7 @@ TEST_F(ResourceManagerTest, TestNamed) {
 }
 
 TEST_F(ResourceManagerTest, TestOutputInputUrl) {
-  std::string url = Encode("http://example.com/dir/123/",
+  GoogleString url = Encode("http://example.com/dir/123/",
                             RewriteDriver::kJavascriptMinId, "0", "orig", "js");
   scoped_ptr<OutputResource> output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
@@ -409,9 +409,9 @@ TEST_F(ResourceManagerTest, TestOutputInputUrl) {
 }
 
 TEST_F(ResourceManagerTest, TestOutputInputUrlEvil) {
-  std::string escaped_abs;
+  GoogleString escaped_abs;
   UrlEscaper::EncodeToUrlSegment("http://www.evil.com", &escaped_abs);
-  std::string url = Encode("http://example.com/dir/123/",
+  GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", escaped_abs, "js");
   scoped_ptr<OutputResource> output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
@@ -427,9 +427,9 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlBusy) {
   EXPECT_TRUE(options_.domain_lawyer()->AddOriginDomainMapping(
       "www.busy.com", "example.com", &message_handler_));
 
-  std::string escaped_abs;
+  GoogleString escaped_abs;
   UrlEscaper::EncodeToUrlSegment("http://www.busy.com", &escaped_abs);
-  std::string url = Encode("http://example.com/dir/123/",
+  GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", escaped_abs, "js");
   scoped_ptr<OutputResource> output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
@@ -482,13 +482,13 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
   resource_manager_->Write(HttpStatus::kOK, StringPiece(kStyleContent),
                            output.get(), kOriginTtlSec * Timer::kSecondMs,
                            &message_handler_);
-  EXPECT_EQ(std::string("http://cdn.com/style.css.pagespeed.ce.0.css"),
+  EXPECT_EQ(GoogleString("http://cdn.com/style.css.pagespeed.ce.0.css"),
             output->url());
 }
 
 // DecodeOutputResource should drop query
 TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
-  std::string url = Encode("http://example.com/dir/123/",
+  GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
   RewriteFilter* dummy;
   scoped_ptr<OutputResource> output_resource(
@@ -502,7 +502,7 @@ TEST_F(ResourceManagerTest, TestInputResourceQuery) {
   const char kUrl[] = "test?param";
   scoped_ptr<Resource> resource(CreateResource(kResourceUrlBase, kUrl));
   ASSERT_TRUE(resource.get() != NULL);
-  EXPECT_EQ(StrCat(std::string(kResourceUrlBase), "/", kUrl), resource->url());
+  EXPECT_EQ(StrCat(GoogleString(kResourceUrlBase), "/", kUrl), resource->url());
   scoped_ptr<OutputResource> output(
     rewrite_driver_.CreateOutputResourceFromResource(
       "sf", &kContentTypeCss,
@@ -510,9 +510,9 @@ TEST_F(ResourceManagerTest, TestInputResourceQuery) {
       resource.get(), OutputResource::kRewrittenResource));
   ASSERT_TRUE(output.get() != NULL);
 
-  std::string included_name;
+  GoogleString included_name;
   EXPECT_TRUE(UrlEscaper::DecodeFromUrlSegment(output->name(), &included_name));
-  EXPECT_EQ(std::string(kUrl), included_name);
+  EXPECT_EQ(GoogleString(kUrl), included_name);
 }
 
 TEST_F(ResourceManagerTest, TestRemember404) {
@@ -534,7 +534,7 @@ TEST_F(ResourceManagerTest, TestRemember404) {
 }
 
 TEST_F(ResourceManagerTest, TestNonCacheable) {
-  const std::string kContents = "ok";
+  const GoogleString kContents = "ok";
 
   // Make sure that when we get non-cacheable resources
   // we mark the fetch as failed in the cache.
@@ -782,7 +782,7 @@ TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
 // forced.  Nothing will ever be evicted due to time, so there is no
 // need to freshen.
 TEST_F(ResourceFreshenTest, NoFreshenOfForcedCachedResources) {
-  const std::string kContents = "ok";
+  const GoogleString kContents = "ok";
   http_cache_.set_force_caching(true);
 
   CountingUrlAsyncFetcher counter(&mock_url_async_fetcher_);
@@ -813,7 +813,7 @@ TEST_F(ResourceFreshenTest, NoFreshenOfForcedCachedResources) {
 // Tests that freshining will not occur for short-lived resources,
 // which could impact the performance of the server.
 TEST_F(ResourceFreshenTest, NoFreshenOfShortLivedResources) {
-  const std::string kContents = "ok";
+  const GoogleString kContents = "ok";
 
   CountingUrlAsyncFetcher counter(&mock_url_async_fetcher_);
   rewrite_driver_.set_async_fetcher(&counter);
@@ -853,7 +853,7 @@ class ResourceManagerShardedTest : public ResourceManagerTest {
 };
 
 TEST_F(ResourceManagerShardedTest, TestNamed) {
-  std::string url = Encode("http://example.com/dir/123/",
+  GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
   scoped_ptr<OutputResource> output_resource(
       rewrite_driver_.CreateOutputResourceWithPath(

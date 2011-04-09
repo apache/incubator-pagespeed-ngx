@@ -27,7 +27,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_URL_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_URL_FETCHER_H_
 
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -42,7 +42,7 @@ class UrlFetcher {
 
   // Fetch a URL, streaming the output to fetched_content_writer, and
   // returning the headers.  Returns true if the fetch was successful.
-  virtual bool StreamingFetchUrl(const std::string& url,
+  virtual bool StreamingFetchUrl(const GoogleString& url,
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* response_writer,
@@ -52,8 +52,8 @@ class UrlFetcher {
   // our out.  This is primarily for upward compatibility.
   //
   // TODO(jmarantz): change callers to use StreamingFetchUrl and remove this.
-  bool FetchUrl(const std::string& url,
-                std::string* content,
+  bool FetchUrl(const GoogleString& url,
+                GoogleString* content,
                 MessageHandler* message_handler);
 };
 

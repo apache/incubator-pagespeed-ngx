@@ -46,7 +46,7 @@ UrlPartnership::~UrlPartnership() {
 // after Resolve (CHECK failure).
 bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
                             MessageHandler* handler) {
-  std::string resource_url, mapped_domain_name;
+  GoogleString resource_url, mapped_domain_name;
   bool ret = false;
   TrimWhitespace(untrimmed_resource_url, &resource_url);
 
@@ -143,7 +143,7 @@ void UrlPartnership::IncrementalResolve(int index) {
     CHECK_LE(3U, components.size());  // expect {"http:", "", "x"...}
     for (size_t i = 0; i < components.size(); ++i) {
       const StringPiece& sp = components[i];
-      common_components_.push_back(std::string(sp.data(), sp.size()));
+      common_components_.push_back(GoogleString(sp.data(), sp.size()));
     }
   } else {
     // Split each string on / boundaries, then compare these path elements
@@ -165,11 +165,11 @@ void UrlPartnership::IncrementalResolve(int index) {
   }
 }
 
-std::string UrlPartnership::ResolvedBase() const {
-  std::string ret;
+GoogleString UrlPartnership::ResolvedBase() const {
+  GoogleString ret;
   if (!common_components_.empty()) {
     for (size_t c = 0; c < common_components_.size(); ++c) {
-      const std::string& component = common_components_[c];
+      const GoogleString& component = common_components_[c];
       ret += component;
       ret += "/";  // initial segment is "http" with no leading /
     }
@@ -179,13 +179,13 @@ std::string UrlPartnership::ResolvedBase() const {
 
 // Returns the relative path of a particular URL that was added into
 // the partnership.  This requires that Resolve() be called first.
-std::string UrlPartnership::RelativePath(int index) const {
-  std::string resolved_base = ResolvedBase();
+GoogleString UrlPartnership::RelativePath(int index) const {
+  GoogleString resolved_base = ResolvedBase();
   StringPiece spec = url_vector_[index]->Spec();
   CHECK_GE(spec.size(), resolved_base.size());
   CHECK_EQ(StringPiece(spec.data(), resolved_base.size()),
            StringPiece(resolved_base));
-  return std::string(spec.data() + resolved_base.size(),
+  return GoogleString(spec.data() + resolved_base.size(),
                       spec.size() - resolved_base.size());
 }
 

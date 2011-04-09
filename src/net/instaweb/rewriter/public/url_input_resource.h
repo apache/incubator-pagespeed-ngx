@@ -43,7 +43,7 @@ class UrlInputResource : public Resource {
   }
   virtual ~UrlInputResource();
 
-  virtual std::string url() const { return url_; }
+  virtual GoogleString url() const { return url_; }
   const RewriteOptions* rewrite_options() const { return rewrite_options_; }
 
   void Freshen(MessageHandler* handler);
@@ -54,7 +54,7 @@ class UrlInputResource : public Resource {
                                MessageHandler* message_handler);
 
  private:
-  std::string url_;
+  GoogleString url_;
   const RewriteOptions* rewrite_options_;
 
   DISALLOW_COPY_AND_ASSIGN(UrlInputResource);

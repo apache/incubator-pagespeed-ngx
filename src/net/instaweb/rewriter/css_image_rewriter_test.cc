@@ -95,22 +95,22 @@ TEST_F(CssImageRewriterTest, UseCorrectBaseUrl) {
   InitResponseHeaders(image_url, kContentTypePng, kImageData, 100);
 
   // Construct URL for rewritten image.
-  std::string expected_image_url = ExpectedRewrittenUrl(
+  GoogleString expected_image_url = ExpectedRewrittenUrl(
       image_url, kImageData, RewriteDriver::kCacheExtenderId,
       kContentTypePng);
 
-  std::string css_after = StrCat(
+  GoogleString css_after = StrCat(
       "body{background:url(", expected_image_url, ")}");
 
   // Construct URL for rewritten CSS.
-  std::string expected_css_url = ExpectedRewrittenUrl(
+  GoogleString expected_css_url = ExpectedRewrittenUrl(
       css_url, css_after, RewriteDriver::kCssFilterId, kContentTypeCss);
 
   static const char html_before[] =
       "<head>\n"
       "  <link rel='stylesheet' href='bar/style.css'>\n"
       "</head>";
-  std::string html_after = StrCat(
+  GoogleString html_after = StrCat(
       "<head>\n"
       "  <link rel='stylesheet' href='", expected_css_url, "'>\n"
       "</head>");
@@ -119,7 +119,7 @@ TEST_F(CssImageRewriterTest, UseCorrectBaseUrl) {
   // base URL instead of http://www.example.com/.
   ValidateExpectedUrl("http://www.example.com/", html_before, html_after);
 
-  std::string actual_css_after;
+  GoogleString actual_css_after;
   ServeResourceUrl(expected_css_url, &actual_css_after);
   EXPECT_EQ(css_after, actual_css_after);
 }
@@ -158,7 +158,7 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
 
   void ValidateExpirationTime(const char* id, const char* output,
                               int64 expected_expire_ms) {
-    std::string css_url = ExpectedUrlForCss(id, output);
+    GoogleString css_url = ExpectedUrlForCss(id, output);
 
     // See what cache information we have
     scoped_ptr<OutputResource> output_resource(
@@ -173,8 +173,8 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
               output_resource->cached_result()->origin_expiration_time_ms());
   }
 
-  std::string ExpectedUrlForPng(const StringPiece& name,
-                                 const std::string& expected_output) {
+  GoogleString ExpectedUrlForPng(const StringPiece& name,
+                                 const GoogleString& expected_output) {
     return Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
                   resource_manager_->hasher()->Hash(expected_output),
                   name, "png");
@@ -189,9 +189,9 @@ TEST_F(CssFilterSubresourceTest, SubResourceDepends) {
                         "span { background-image: url(b.png); }";
 
   // Figure out where cache-extended PNGs will go.
-  std::string img_url1 = ExpectedUrlForPng("a.png", "notapng");
-  std::string img_url2 = ExpectedUrlForPng("b.png", "notbpng");
-  std::string output = StrCat("div{background-image:url(", img_url1, ")}",
+  GoogleString img_url1 = ExpectedUrlForPng("a.png", "notapng");
+  GoogleString img_url2 = ExpectedUrlForPng("b.png", "notbpng");
+  GoogleString output = StrCat("div{background-image:url(", img_url1, ")}",
                                "span{background-image:url(", img_url2, ")}");
 
   // Here we don't use the other contexts since it has different

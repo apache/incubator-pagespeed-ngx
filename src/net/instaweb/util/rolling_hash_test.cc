@@ -19,7 +19,7 @@
 
 #include "net/instaweb/util/public/dense_hash_set.h"
 #include "net/instaweb/util/public/gtest.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

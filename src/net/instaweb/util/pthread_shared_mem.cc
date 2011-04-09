@@ -145,7 +145,7 @@ size_t PthreadSharedMem::SharedMutexSize() const {
 }
 
 AbstractSharedMemSegment* PthreadSharedMem::CreateSegment(
-    const std::string& name, size_t size, MessageHandler* handler) {
+    const GoogleString& name, size_t size, MessageHandler* handler) {
   // Create the memory
   int fd = open("/dev/zero", O_RDWR);
   if (fd == -1) {
@@ -167,7 +167,7 @@ AbstractSharedMemSegment* PthreadSharedMem::CreateSegment(
 }
 
 AbstractSharedMemSegment* PthreadSharedMem::AttachToSegment(
-    const std::string& name, size_t size, MessageHandler* handler) {
+    const GoogleString& name, size_t size, MessageHandler* handler) {
   SegmentBaseMap* bases = segment_bases();
   SegmentBaseMap::const_iterator i = bases->find(name);
   if (i == bases->end()) {
@@ -179,7 +179,7 @@ AbstractSharedMemSegment* PthreadSharedMem::AttachToSegment(
   return new PthreadSharedMemSegment(i->second, size, handler);
 }
 
-void PthreadSharedMem::DestroySegment(const std::string& name,
+void PthreadSharedMem::DestroySegment(const GoogleString& name,
                                       MessageHandler* handler) {
   // Note that in the process state children will not see any mutations
   // we make here, so it acts mostly for checking in that case.

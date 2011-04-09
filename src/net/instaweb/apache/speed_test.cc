@@ -30,7 +30,7 @@ TEST_F(SpeedTest, FilterSpeedTest) {
   options_.SetRewriteLevel(RewriteOptions::kAllFilters);
   rewrite_driver_.AddFilters();
 
-  std::string html;
+  GoogleString html;
   for (int i = 0; i < 1000; ++i) {
     html += "<div id='x' class='y'> x y z </div>";
   }

@@ -24,7 +24,7 @@
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/google_url.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -56,12 +56,12 @@ class HttpDumpUrlFetcher : public UrlFetcher {
   // Note: root_dir_ must be standardized to have a / at end already.
   static bool GetFilenameFromUrl(const StringPiece& root_dir,
                                  const GoogleUrl& url,
-                                 std::string* filename,
+                                 GoogleString* filename,
                                  MessageHandler* message_handler);
 
   // Non-static version that uses the fetcher's root dir.
   bool GetFilename(const GoogleUrl& url,
-                   std::string* filename,
+                   GoogleString* filename,
                    MessageHandler* message_handler) {
     return GetFilenameFromUrl(root_dir_, url, filename, message_handler);
   }
@@ -70,11 +70,11 @@ class HttpDumpUrlFetcher : public UrlFetcher {
   // Note: root_dir_ must be standardized to have a / at end already.
   static bool GetFilenamePrefixFromUrl(const StringPiece& root_dir,
                                        const GoogleUrl& url,
-                                       std::string* filename,
+                                       GoogleString* filename,
                                        MessageHandler* message_handler);
 
   // This is a synchronous/blocking implementation.
-  virtual bool StreamingFetchUrl(const std::string& url,
+  virtual bool StreamingFetchUrl(const GoogleString& url,
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* fetched_content_writer,
@@ -95,12 +95,12 @@ class HttpDumpUrlFetcher : public UrlFetcher {
   void set_print_urls(bool on);
 
  private:
-  std::string root_dir_;  // Root directory of the HTTP dumps.
+  GoogleString root_dir_;  // Root directory of the HTTP dumps.
   FileSystem* file_system_;
   Timer* timer_;
 
   // Response to use if something goes wrong.
-  std::string error_body_;
+  GoogleString error_body_;
 
   scoped_ptr<StringSet> urls_;
 

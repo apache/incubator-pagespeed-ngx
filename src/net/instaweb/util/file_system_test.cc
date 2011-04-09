@@ -22,7 +22,7 @@
 #include "net/instaweb/util/public/file_system_test.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -30,9 +30,9 @@ namespace net_instaweb {
 FileSystemTest::FileSystemTest() { }
 FileSystemTest::~FileSystemTest() { }
 
-std::string FileSystemTest::WriteNewFile(const StringPiece& suffix,
-                                          const std::string& content) {
-  std::string filename = StrCat(test_tmpdir(), suffix);
+GoogleString FileSystemTest::WriteNewFile(const StringPiece& suffix,
+                                          const GoogleString& content) {
+  GoogleString filename = StrCat(test_tmpdir(), suffix);
 
   // Make sure we don't read an old file.
   DeleteRecursively(filename);
@@ -42,9 +42,9 @@ std::string FileSystemTest::WriteNewFile(const StringPiece& suffix,
 }
 
 // Check that a file has been read.
-void FileSystemTest::CheckRead(const std::string& filename,
-                               const std::string& expected_contents) {
-  std::string buffer;
+void FileSystemTest::CheckRead(const GoogleString& filename,
+                               const GoogleString& expected_contents) {
+  GoogleString buffer;
   ASSERT_TRUE(file_system()->ReadFile(filename.c_str(), &buffer, &handler_));
   EXPECT_EQ(buffer, expected_contents);
 }
@@ -53,8 +53,8 @@ void FileSystemTest::CheckRead(const std::string& filename,
 // that this will spew some error messages into the log file, and
 // we can add a null_message_handler implementation to
 // swallow them, if they become annoying.
-void FileSystemTest::CheckDoesNotExist(const std::string& filename) {
-  std::string read_buffer;
+void FileSystemTest::CheckDoesNotExist(const GoogleString& filename) {
+  GoogleString read_buffer;
   EXPECT_FALSE(file_system()->ReadFile(filename.c_str(), &read_buffer,
                                        &handler_));
   EXPECT_TRUE(file_system()->Exists(filename.c_str(), &handler_).is_false());
@@ -62,8 +62,8 @@ void FileSystemTest::CheckDoesNotExist(const std::string& filename) {
 
 // Write a named file, then read it.
 void FileSystemTest::TestWriteRead() {
-  std::string filename = test_tmpdir() + "/write.txt";
-  std::string msg("Hello, world!");
+  GoogleString filename = test_tmpdir() + "/write.txt";
+  GoogleString msg("Hello, world!");
 
   DeleteRecursively(filename);
   FileSystem::OutputFile* ofile = file_system()->OpenOutputFile(
@@ -76,12 +76,12 @@ void FileSystemTest::TestWriteRead() {
 
 // Write a temp file, then read it.
 void FileSystemTest::TestTemp() {
-  std::string prefix = test_tmpdir() + "/temp_prefix";
+  GoogleString prefix = test_tmpdir() + "/temp_prefix";
   FileSystem::OutputFile* ofile = file_system()->OpenTempFile(
       prefix, &handler_);
   ASSERT_TRUE(ofile != NULL);
-  std::string filename(ofile->filename());
-  std::string msg("Hello, world!");
+  GoogleString filename(ofile->filename());
+  GoogleString msg("Hello, world!");
   EXPECT_TRUE(ofile->Write(msg, &handler_));
   EXPECT_TRUE(file_system()->Close(ofile, &handler_));
 
@@ -90,11 +90,11 @@ void FileSystemTest::TestTemp() {
 
 // Write a temp file, rename it, then read it.
 void FileSystemTest::TestRename() {
-  std::string from_text = "Now is time time";
-  std::string to_file = test_tmpdir() + "/to.txt";
+  GoogleString from_text = "Now is time time";
+  GoogleString to_file = test_tmpdir() + "/to.txt";
   DeleteRecursively(to_file);
 
-  std::string from_file = WriteNewFile("/from.txt", from_text);
+  GoogleString from_file = WriteNewFile("/from.txt", from_text);
   ASSERT_TRUE(file_system()->RenameFile(from_file.c_str(), to_file.c_str(),
                                         &handler_));
 
@@ -104,22 +104,22 @@ void FileSystemTest::TestRename() {
 
 // Write a file and successfully delete it.
 void FileSystemTest::TestRemove() {
-  std::string filename = WriteNewFile("/remove.txt", "Goodbye, world!");
+  GoogleString filename = WriteNewFile("/remove.txt", "Goodbye, world!");
   ASSERT_TRUE(file_system()->RemoveFile(filename.c_str(), &handler_));
   CheckDoesNotExist(filename);
 }
 
 // Write a file and check that it exists.
 void FileSystemTest::TestExists() {
-  std::string filename = WriteNewFile("/exists.txt", "I'm here.");
+  GoogleString filename = WriteNewFile("/exists.txt", "I'm here.");
   ASSERT_TRUE(file_system()->Exists(filename.c_str(), &handler_).is_true());
 }
 
 // Create a file along with its directory which does not exist.
 void FileSystemTest::TestCreateFileInDir() {
-  std::string dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = test_tmpdir() + "/make_dir";
   DeleteRecursively(dir_name);
-  std::string filename = dir_name + "/file-in-dir.txt";
+  GoogleString filename = dir_name + "/file-in-dir.txt";
 
   FileSystem::OutputFile* file =
       file_system()->OpenOutputFile(filename.c_str(), &handler_);
@@ -130,9 +130,9 @@ void FileSystemTest::TestCreateFileInDir() {
 
 // Make a directory and check that files may be placed in it.
 void FileSystemTest::TestMakeDir() {
-  std::string dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = test_tmpdir() + "/make_dir";
   DeleteRecursively(dir_name);
-  std::string filename = dir_name + "/file-in-dir.txt";
+  GoogleString filename = dir_name + "/file-in-dir.txt";
 
   ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
   // ... but we can open a file after we've created the directory.
@@ -144,7 +144,7 @@ void FileSystemTest::TestMakeDir() {
 
 // Make a directory and check that it is a directory.
 void FileSystemTest::TestIsDir() {
-  std::string dir_name = test_tmpdir() + "/this_is_a_dir";
+  GoogleString dir_name = test_tmpdir() + "/this_is_a_dir";
   DeleteRecursively(dir_name);
 
   // Make sure we don't think the directory is there when it isn't ...
@@ -154,16 +154,16 @@ void FileSystemTest::TestIsDir() {
   ASSERT_TRUE(file_system()->IsDir(dir_name.c_str(), &handler_).is_true());
 
   // Make sure that we don't think a regular file is a directory.
-  std::string filename = dir_name + "/this_is_a_file.txt";
-  std::string content = "I'm not a directory.";
+  GoogleString filename = dir_name + "/this_is_a_file.txt";
+  GoogleString content = "I'm not a directory.";
   ASSERT_TRUE(file_system()->WriteFile(filename.c_str(), content, &handler_));
   ASSERT_TRUE(file_system()->IsDir(filename.c_str(), &handler_).is_false());
 }
 
 // Recursively make directories and check that it worked.
 void FileSystemTest::TestRecursivelyMakeDir() {
-  std::string base = test_tmpdir() + "/base";
-  std::string long_path = base + "/dir/of/a/really/deep/hierarchy";
+  GoogleString base = test_tmpdir() + "/base";
+  GoogleString long_path = base + "/dir/of/a/really/deep/hierarchy";
   DeleteRecursively(base);
 
   // Make sure we don't think the directory is there when it isn't ...
@@ -176,8 +176,8 @@ void FileSystemTest::TestRecursivelyMakeDir() {
 // Check that we cannot create a directory we do not have permissions for.
 // Note: depends upon root dir not being writable.
 void FileSystemTest::TestRecursivelyMakeDir_NoPermission() {
-  std::string base = "/bogus-dir";
-  std::string path = base + "/no/permission/to/make/this/dir";
+  GoogleString base = "/bogus-dir";
+  GoogleString path = base + "/no/permission/to/make/this/dir";
 
   // Make sure the bogus bottom level directory is not there.
   ASSERT_TRUE(file_system()->Exists(base.c_str(), &handler_).is_false());
@@ -187,11 +187,11 @@ void FileSystemTest::TestRecursivelyMakeDir_NoPermission() {
 
 // Check that we cannot create a directory below a file.
 void FileSystemTest::TestRecursivelyMakeDir_FileInPath() {
-  std::string base = test_tmpdir() + "/file-in-path";
-  std::string filename = base + "/this-is-a-file";
-  std::string bad_path = filename + "/some/more/path";
+  GoogleString base = test_tmpdir() + "/file-in-path";
+  GoogleString filename = base + "/this-is-a-file";
+  GoogleString bad_path = filename + "/some/more/path";
   DeleteRecursively(base);
-  std::string content = "Your path must end here. You shall not pass!";
+  GoogleString content = "Your path must end here. You shall not pass!";
 
   ASSERT_TRUE(file_system()->MakeDir(base.c_str(), &handler_));
   ASSERT_TRUE(file_system()->WriteFile(filename.c_str(), content, &handler_));
@@ -199,11 +199,11 @@ void FileSystemTest::TestRecursivelyMakeDir_FileInPath() {
 }
 
 void FileSystemTest::TestListContents() {
-  std::string dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = test_tmpdir() + "/make_dir";
   DeleteRecursively(dir_name);
-  std::string filename1 = dir_name + "/file-in-dir.txt";
-  std::string filename2 = dir_name + "/another-file-in-dir.txt";
-  std::string content = "Lorem ipsum dolor sit amet";
+  GoogleString filename1 = dir_name + "/file-in-dir.txt";
+  GoogleString filename2 = dir_name + "/another-file-in-dir.txt";
+  GoogleString content = "Lorem ipsum dolor sit amet";
 
   StringVector mylist;
 
@@ -222,13 +222,13 @@ void FileSystemTest::TestListContents() {
 }
 
 void FileSystemTest::TestAtime() {
-  std::string dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = test_tmpdir() + "/make_dir";
   DeleteRecursively(dir_name);
-  std::string filename1 = "file-in-dir.txt";
-  std::string filename2 = "another-file-in-dir.txt";
-  std::string full_path1 = dir_name + "/" + filename1;
-  std::string full_path2 = dir_name + "/" + filename2;
-  std::string content = "Lorem ipsum dolor sit amet";
+  GoogleString filename1 = "file-in-dir.txt";
+  GoogleString filename2 = "another-file-in-dir.txt";
+  GoogleString full_path1 = dir_name + "/" + filename1;
+  GoogleString full_path2 = dir_name + "/" + filename2;
+  GoogleString content = "Lorem ipsum dolor sit amet";
   // We need to sleep a bit between accessing files so that the
   // difference shows up in in atimes which are measured in seconds.
   unsigned int sleep_micros = 1500000;
@@ -256,15 +256,15 @@ void FileSystemTest::TestAtime() {
 }
 
 void FileSystemTest::TestSize() {
-  std::string dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = test_tmpdir() + "/make_dir";
   DeleteRecursively(dir_name);
-  std::string dir_name2 = dir_name + "/make_dir2";
-  std::string filename1 = "file-in-dir.txt";
-  std::string filename2 = "another-file-in-dir.txt";
-  std::string full_path1 = dir_name2 + "/" + filename1;
-  std::string full_path2 = dir_name2 + "/" + filename2;
-  std::string content1 = "12345";
-  std::string content2 = "1234567890";
+  GoogleString dir_name2 = dir_name + "/make_dir2";
+  GoogleString filename1 = "file-in-dir.txt";
+  GoogleString filename2 = "another-file-in-dir.txt";
+  GoogleString full_path1 = dir_name2 + "/" + filename1;
+  GoogleString full_path2 = dir_name2 + "/" + filename2;
+  GoogleString content1 = "12345";
+  GoogleString content2 = "1234567890";
   ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
   ASSERT_TRUE(file_system()->MakeDir(dir_name2.c_str(), &handler_));
   ASSERT_TRUE(file_system()->WriteFile(full_path1.c_str(),
@@ -286,10 +286,10 @@ void FileSystemTest::TestSize() {
 }
 
 void FileSystemTest::TestLock() {
-  std::string dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = test_tmpdir() + "/make_dir";
   DeleteRecursively(dir_name);
   ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
-  std::string lock_name = dir_name + "/lock";
+  GoogleString lock_name = dir_name + "/lock";
   // Acquire the lock
   EXPECT_TRUE(file_system()->TryLock(lock_name, &handler_).is_true());
   // Can't re-acquire the lock
@@ -305,10 +305,10 @@ void FileSystemTest::TestLock() {
 // Test lock timeout; assumes the file system has at least 1-second creation
 // granularity.
 void FileSystemTest::TestLockTimeout(Timer* timer) {
-  std::string dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = test_tmpdir() + "/make_dir";
   DeleteRecursively(dir_name);
   ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
-  std::string lock_name = dir_name + "/lock";
+  GoogleString lock_name = dir_name + "/lock";
   // Acquire the lock
   EXPECT_TRUE(file_system()->TryLockWithTimeout(lock_name, Timer::kSecondMs,
                                                 &handler_).is_true());

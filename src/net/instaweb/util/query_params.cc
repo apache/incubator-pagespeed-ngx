@@ -39,8 +39,8 @@ void QueryParams::Parse(const StringPiece& text) {
   }
 }
 
-std::string QueryParams::ToString() const {
-  std::string str;
+GoogleString QueryParams::ToString() const {
+  GoogleString str;
   const char* prefix="";
   for (int i = 0; i < size(); ++i) {
     if (value(i) == NULL) {

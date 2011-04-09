@@ -38,7 +38,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
@@ -92,7 +92,7 @@ class JsCombineFilter::JsCombiner
                           Writer* writer, MessageHandler* handler);
 
   JsCombineFilter* filter_;
-  std::string filter_id_;
+  GoogleString filter_id_;
   Variable* js_file_count_reduction_;
 
   DISALLOW_COPY_AND_ASSIGN(JsCombiner);
@@ -141,7 +141,7 @@ void JsCombineFilter::JsCombiner::TryCombineAccumulated() {
         modified->DeleteAttribute(HtmlName::kSrc);
         rewrite_driver_->InsertElementBeforeElement(original, modified);
         rewrite_driver_->DeleteElement(original);
-        std::string var_name = filter_->VarName(resources()[i]->url());
+        GoogleString var_name = filter_->VarName(resources()[i]->url());
         HtmlNode* script_code = rewrite_driver_->NewCharactersNode(
             modified, StrCat("eval(", var_name, ");"));
         rewrite_driver_->AppendChild(modified, script_code);
@@ -170,7 +170,7 @@ bool JsCombineFilter::JsCombiner::WritePiece(
   // line terminators as well (ECMA 262-5 --- 7.3, 7.8.4), so should really be
   // escaped, too, but we don't have the encoding here.
   StringPiece original = input->contents();
-  std::string escaped;
+  GoogleString escaped;
   for (size_t c = 0; c < original.length(); ++c) {
     switch (original[c]) {
       case '\\':
@@ -337,12 +337,12 @@ bool JsCombineFilter::IsCurrentScriptInCombination() const {
          (combiner_->element(included_urls - 1) == current_js_script_);
 }
 
-std::string JsCombineFilter::VarName(const std::string& url) const {
-  std::string url_hash = resource_manager_->hasher()->Hash(url);
+GoogleString JsCombineFilter::VarName(const GoogleString& url) const {
+  GoogleString url_hash = resource_manager_->hasher()->Hash(url);
   // Our hashes are web64, which are almost valid identifier continuations,
   // except for use of -. We simply replace it with $.
   size_t pos = 0;
-  while ((pos = url_hash.find_first_of('-', pos)) != std::string::npos) {
+  while ((pos = url_hash.find_first_of('-', pos)) != GoogleString::npos) {
     url_hash[pos] = '$';
   }
 

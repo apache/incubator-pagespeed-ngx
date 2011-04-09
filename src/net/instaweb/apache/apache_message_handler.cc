@@ -68,7 +68,7 @@ int ApacheMessageHandler::GetApacheLogLevel(MessageType type) {
 void ApacheMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                         va_list args) {
   int log_level = GetApacheLogLevel(type);
-  std::string formatted_message = Format(msg, args);
+  GoogleString formatted_message = Format(msg, args);
   ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
                "[%s %s @%ld] %s",
                kModuleName, version_.c_str(), static_cast<long>(getpid()),
@@ -79,7 +79,7 @@ void ApacheMessageHandler::FileMessageVImpl(MessageType type, const char* file,
                                             int line, const char* msg,
                                             va_list args) {
   int log_level = GetApacheLogLevel(type);
-  std::string formatted_message = Format(msg, args);
+  GoogleString formatted_message = Format(msg, args);
   ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
                "[%s %s @%ld] %s:%d: %s",
                kModuleName, version_.c_str(), static_cast<long>(getpid()),
@@ -87,8 +87,8 @@ void ApacheMessageHandler::FileMessageVImpl(MessageType type, const char* file,
 }
 
 // TODO(sligocki): It'd be nice not to do so much string copying.
-std::string ApacheMessageHandler::Format(const char* msg, va_list args) {
-  std::string buffer;
+GoogleString ApacheMessageHandler::Format(const char* msg, va_list args) {
+  GoogleString buffer;
 
   // Ignore the name of this routine: it formats with vsnprintf.
   // See base/stringprintf.cc.

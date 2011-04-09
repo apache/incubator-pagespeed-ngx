@@ -28,7 +28,7 @@
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 #ifdef USE_SYSTEM_OPENCV
@@ -70,7 +70,7 @@ const size_t kJpegIntSize = 2;
 }  // namespace ImageHeaders
 
 Image::Image(const StringPiece& original_contents,
-             const std::string& url,
+             const GoogleString& url,
              const StringPiece& file_prefix,
              MessageHandler* handler)
     : file_prefix_(file_prefix.data(), file_prefix.size()),
@@ -419,8 +419,8 @@ StringPiece Image::OpenCvBufferToStringPiece(const OpenCvBuffer& buf) {
 
 bool Image::TempFileForImage(FileSystem* fs,
                              const StringPiece& contents,
-                             std::string* filename) {
-  std::string tmp_filename;
+                             GoogleString* filename) {
+  GoogleString tmp_filename;
   bool ok = fs->WriteTempFile(file_prefix_, contents, &tmp_filename, handler_);
   if (ok) {
     *filename = StrCat(tmp_filename, content_type()->file_extension());
@@ -431,7 +431,7 @@ bool Image::TempFileForImage(FileSystem* fs,
 
 bool Image::LoadOpenCvFromBuffer(const StringPiece& data) {
   StdioFileSystem fs;
-  std::string filename;
+  GoogleString filename;
   bool ok = TempFileForImage(&fs, data, &filename);
   if (ok) {
     opencv_image_ = cvLoadImage(filename.c_str());
@@ -442,7 +442,7 @@ bool Image::LoadOpenCvFromBuffer(const StringPiece& data) {
 
 bool Image::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
   StdioFileSystem fs;
-  std::string filename;
+  GoogleString filename;
   bool ok = TempFileForImage(&fs, StringPiece(), &filename);
   if (ok) {
     cvSaveImage(filename.c_str(), opencv_image_);
@@ -528,14 +528,14 @@ bool Image::ComputeOutputContents() {
           // StringPiece args rather than const string&.  We would save
           // lots of string-copying if we made that change.
           ok = pagespeed::image_compression::OptimizeJpeg(
-              std::string(contents.data(), contents.size()),
+              GoogleString(contents.data(), contents.size()),
               &output_contents_);
           break;
         case IMAGE_PNG: {
           pagespeed::image_compression::PngReader png_reader;
           ok = PngOptimizer::OptimizePng
               (png_reader,
-              std::string(contents.data(), contents.size()),
+              GoogleString(contents.data(), contents.size()),
               &output_contents_);
           break;
         }
@@ -543,7 +543,7 @@ bool Image::ComputeOutputContents() {
           pagespeed::image_compression::GifReader gif_reader;
           ok = PngOptimizer::OptimizePng
               (gif_reader,
-              std::string(contents.data(), contents.size()),
+              GoogleString(contents.data(), contents.size()),
               &output_contents_);
           if (ok) {
             image_type_ = IMAGE_PNG;

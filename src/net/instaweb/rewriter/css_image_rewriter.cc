@@ -30,7 +30,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
@@ -86,10 +86,10 @@ bool CssImageRewriter::RewritesEnabled() const {
 
 TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
                                             const StringPiece& old_rel_url,
-                                            std::string* new_url,
+                                            GoogleString* new_url,
                                             MessageHandler* handler) {
   TimedBool ret = {kint64max, false};
-  std::string old_rel_url_str = old_rel_url.as_string();
+  GoogleString old_rel_url_str = old_rel_url.as_string();
   GoogleUrl resource_url(base_url, old_rel_url);
   scoped_ptr<Resource> input_resource(
       driver_->CreateInputResource(resource_url));
@@ -138,7 +138,7 @@ TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
       } else {
         url_to_trim = old_rel_url;
       }
-      std::string trimmed_url;
+      GoogleString trimmed_url;
       if (UrlLeftTrimFilter::Trim(base_url, url_to_trim,
                                   &trimmed_url, handler)) {
         *new_url = trimmed_url;
@@ -193,10 +193,10 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                  value_index++) {
               Css::Value* value = values->at(value_index);
               if (value->GetLexicalUnitType() == Css::Value::URI) {
-                std::string rel_url =
+                GoogleString rel_url =
                     UnicodeTextToUTF8(value->GetStringValue());
                 handler->Message(kInfo, "Found image URL %s", rel_url.c_str());
-                std::string new_url;
+                GoogleString new_url;
                 // TODO(abliss): only do this resolution once.
                 const GoogleUrl original_url(base_url, rel_url);
                 TimedBool result = {kint64max, false};
@@ -231,7 +231,7 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                   if (no_rewrite_ != NULL) {
                     no_rewrite_->Add(1);
                   }
-                  std::string time_str;
+                  GoogleString time_str;
                   if (!ConvertTimeToString(result.expiration_ms, &time_str)) {
                     time_str = "?";
                   }

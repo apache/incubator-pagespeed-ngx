@@ -61,11 +61,11 @@ class ScriptTagScanner {
   int ExecutionMode(const HtmlElement* element) const;
  private:
   // Normalizes the input str by trimming whitespace and lowercasing.
-  static std::string Normalized(const StringPiece& str);
+  static GoogleString Normalized(const StringPiece& str);
 
-  bool IsJsMime(const std::string& type_str);
+  bool IsJsMime(const GoogleString& type_str);
 
-  std::set<std::string> javascript_mimetypes_;
+  std::set<GoogleString> javascript_mimetypes_;
 
   DISALLOW_COPY_AND_ASSIGN(ScriptTagScanner);
 };

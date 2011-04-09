@@ -25,7 +25,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -203,8 +203,8 @@ class RewriteDriverFactory {
   scoped_ptr<Timer> timer_;
   HtmlParse* html_parse_;
 
-  std::string filename_prefix_;
-  std::string slurp_directory_;
+  GoogleString filename_prefix_;
+  GoogleString slurp_directory_;
   RewriteOptions options_;
   bool force_caching_;
   bool slurp_read_only_;

@@ -43,7 +43,7 @@ TEST_F(HtmlNameTest, AllKeywordsDefaultCase) {
 
 TEST_F(HtmlNameTest, AllKeywordsUpperCase) {
   for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
-    std::string upper(iter.name());
+    GoogleString upper(iter.name());
     UpperString(&upper);
     EXPECT_EQ(iter.keyword(), HtmlName::Lookup(upper));
   }
@@ -51,7 +51,7 @@ TEST_F(HtmlNameTest, AllKeywordsUpperCase) {
 
 TEST_F(HtmlNameTest, AllKeywordsMixedCase) {
   for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
-    std::string mixed(iter.name());
+    GoogleString mixed(iter.name());
     bool upper = false;
     for (int i = 0, n = mixed.size(); i < n; ++i) {
       char c = mixed[i];

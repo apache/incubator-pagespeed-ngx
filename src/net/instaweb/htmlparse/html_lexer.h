@@ -26,7 +26,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/printf_format.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -193,17 +193,17 @@ class HtmlLexer {
 
   HtmlParse* html_parse_;
   State state_;
-  std::string token_;       // accmulates tag names and comments
-  std::string literal_;     // accumulates raw text to pass through
-  std::string attr_name_;   // accumulates attribute name
-  std::string attr_value_;  // accumulates attribute value
+  GoogleString token_;       // accmulates tag names and comments
+  GoogleString literal_;     // accumulates raw text to pass through
+  GoogleString attr_name_;   // accumulates attribute name
+  GoogleString attr_value_;  // accumulates attribute value
   const char* attr_quote_;  // accumulates quote used to delimit attribute
   bool has_attr_value_;     // distinguishes <a n=> from <a n>
   HtmlElement* element_;    // current element; used to collect attributes
   int line_;
   int tag_start_line_;      // line at which we last transitioned to TAG state
-  std::string id_;
-  std::string literal_close_;  // specific tag go close, e.g </script>
+  GoogleString id_;
+  GoogleString literal_close_;  // specific tag go close, e.g </script>
 
   ContentType content_type_;
   DocType doctype_;

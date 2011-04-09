@@ -75,7 +75,7 @@ class RewriteFilter : public CommonFilter {
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback) = 0;
 
-  const std::string& id() const { return filter_prefix_; }
+  const GoogleString& id() const { return filter_prefix_; }
 
   // Create an input resource by decoding output_resource using the
   // filter's. Assures legality by explicitly permission-checking the result.
@@ -97,7 +97,7 @@ class RewriteFilter : public CommonFilter {
   virtual bool ComputeOnTheFly() const;
 
  protected:
-  std::string filter_prefix_;  // Prefix that should be used in front of all
+  GoogleString filter_prefix_;  // Prefix that should be used in front of all
                                 // rewritten URLs
  private:
   DISALLOW_COPY_AND_ASSIGN(RewriteFilter);

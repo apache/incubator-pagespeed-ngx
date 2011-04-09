@@ -34,19 +34,19 @@ namespace net_instaweb {
 
 class TimeUtilTest : public testing::Test {
  protected:
-  std::string GetTimeString(int64 time_ms) {
-    std::string out;
+  GoogleString GetTimeString(int64 time_ms) {
+    GoogleString out;
     EXPECT_TRUE(ConvertTimeToString(time_ms, &out));
     return out;
   }
 
-  int64 GetTimeValue(const std::string& time_str) {
+  int64 GetTimeValue(const GoogleString& time_str) {
     int64 val;
     CHECK(ConvertStringToTime(time_str, &val)) << "Time conversion failed";
     return val;
   }
 
-  std::string out_;
+  GoogleString out_;
 };
 
 TEST_F(TimeUtilTest, Test1970) {

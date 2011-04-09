@@ -16,7 +16,7 @@
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/util/public/file_message_handler.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 
@@ -25,7 +25,7 @@ namespace {
 using net_instaweb::StrCat;
 
 void ReadFileToStringOrDie(const char* filename,
-                           std::string* dest) {
+                           GoogleString* dest) {
   std::ifstream file_stream;
   file_stream.open(filename, std::ifstream::in | std::ifstream::binary);
   CHECK(!file_stream.fail());
@@ -35,7 +35,7 @@ void ReadFileToStringOrDie(const char* filename,
   CHECK(!file_stream.fail());
 }
 
-void WriteStringToFileOrDie(const std::string& src,
+void WriteStringToFileOrDie(const GoogleString& src,
                             const char* filename) {
   std::ofstream file_stream;
   file_stream.open(filename, std::ifstream::out | std::ifstream::binary);
@@ -51,9 +51,9 @@ class HtmlMinifier {
   ~HtmlMinifier();
 
   // Return true if successful, false on error.
-  bool MinifyHtml(const std::string& input_name,
-                  const std::string& input,
-                  std::string* output);
+  bool MinifyHtml(const GoogleString& input_name,
+                  const GoogleString& input,
+                  GoogleString* output);
 
  private:
   net_instaweb::FileMessageHandler message_handler_;
@@ -84,13 +84,13 @@ HtmlMinifier::HtmlMinifier()
 
 HtmlMinifier::~HtmlMinifier() {}
 
-bool HtmlMinifier::MinifyHtml(const std::string& input_name,
-                              const std::string& input,
-                              std::string* output) {
+bool HtmlMinifier::MinifyHtml(const GoogleString& input_name,
+                              const GoogleString& input,
+                              GoogleString* output) {
   net_instaweb::StringWriter string_writer(output);
   html_writer_filter_.set_writer(&string_writer);
 
-  std::string url = StrCat("http://html_minifier.com/", input_name, ".html");
+  GoogleString url = StrCat("http://html_minifier.com/", input_name, ".html");
   html_parse_.StartParse(url);
   html_parse_.ParseText(input.data(), input.size());
   html_parse_.FinishParse();
@@ -108,10 +108,10 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  std::string original;
+  GoogleString original;
   ReadFileToStringOrDie(argv[1], &original);
 
-  std::string minified;
+  GoogleString minified;
   HtmlMinifier html_minifier;
   html_minifier.MinifyHtml(argv[1], original, &minified);
 

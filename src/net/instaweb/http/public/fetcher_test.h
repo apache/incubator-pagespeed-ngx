@@ -32,7 +32,7 @@
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
@@ -59,7 +59,7 @@ class FetcherTest : public testing::Test {
     MockFetcher() : num_fetches_(0) {}
 
 
-    virtual bool StreamingFetchUrl(const std::string& url,
+    virtual bool StreamingFetchUrl(const GoogleString& url,
                                    const RequestHeaders& request_headers,
                                    ResponseHeaders* response_headers,
                                    Writer* response_writer,
@@ -84,7 +84,7 @@ class FetcherTest : public testing::Test {
     explicit MockAsyncFetcher(UrlFetcher* url_fetcher)
         : url_fetcher_(url_fetcher) {}
 
-    virtual bool StreamingFetch(const std::string& url,
+    virtual bool StreamingFetch(const GoogleString& url,
                                 const RequestHeaders& request_headers,
                                 ResponseHeaders* response_headers,
                                 Writer* response_writer,
@@ -119,7 +119,7 @@ class FetcherTest : public testing::Test {
 
     bool expect_success_;
     ResponseHeaders response_headers_;
-    std::string content_;
+    GoogleString content_;
     StringWriter content_writer_;
     bool* callback_called_;
 
@@ -128,7 +128,7 @@ class FetcherTest : public testing::Test {
   };
 
   static void ValidateMockFetcherResponse(
-      bool success, bool check_error_message, const std::string& content,
+      bool success, bool check_error_message, const GoogleString& content,
       const ResponseHeaders& response_headers);
 
   // Do a URL fetch, and return the number of times the mock fetcher
@@ -160,14 +160,14 @@ class FetcherTest : public testing::Test {
   };
 
 
-  std::string TestFilename() {
+  GoogleString TestFilename() {
     return (GTestSrcDir() +
             "/net/instaweb/http/testdata/google.http");
   }
 
   // This validation code is hard-coded to the http request capture in
   // testdata/google.http.
-  void ValidateOutput(const std::string& content,
+  void ValidateOutput(const GoogleString& content,
                       const ResponseHeaders& response_headers);
 
   GoogleMessageHandler message_handler_;

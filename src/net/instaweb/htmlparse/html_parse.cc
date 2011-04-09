@@ -31,7 +31,7 @@
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -260,7 +260,7 @@ void HtmlParse::CoalesceAdjacentCharactersNodes() {
 void HtmlParse::CheckEventParent(HtmlEvent* event, HtmlElement* expect,
                                  HtmlElement* actual) {
   if ((expect != NULL) && (actual != expect)) {
-    std::string actual_buf, expect_buf, event_buf;
+    GoogleString actual_buf, expect_buf, event_buf;
     if (actual != NULL) {
       actual->ToString(&actual_buf);
     } else {
@@ -662,7 +662,7 @@ void HtmlParse::ClearElements() {
 void HtmlParse::DebugPrintQueue() {
   for (HtmlEventList::iterator p = queue_.begin(), e = queue_.end();
        p != e; ++p) {
-    std::string buf;
+    GoogleString buf;
     HtmlEvent* event = *p;
     event->ToString(&buf);
     long node_ptr = reinterpret_cast<long>(event->GetNode());

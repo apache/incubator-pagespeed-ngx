@@ -29,7 +29,7 @@ namespace net_instaweb {
 class WaitUrlAsyncFetcher::DelayedFetch {
  public:
   DelayedFetch(UrlFetcher* base_fetcher,
-               const std::string& url, const RequestHeaders& request_headers,
+               const GoogleString& url, const RequestHeaders& request_headers,
                ResponseHeaders* response_headers, Writer* response_writer,
                MessageHandler* handler, Callback* callback)
       : base_fetcher_(base_fetcher), url_(url),
@@ -46,7 +46,7 @@ class WaitUrlAsyncFetcher::DelayedFetch {
 
  private:
   UrlFetcher* base_fetcher_;
-  std::string url_;
+  GoogleString url_;
   RequestHeaders request_headers_;
   ResponseHeaders* response_headers_;
   Writer* response_writer_;
@@ -58,7 +58,7 @@ class WaitUrlAsyncFetcher::DelayedFetch {
 
 WaitUrlAsyncFetcher::~WaitUrlAsyncFetcher() {}
 
-bool WaitUrlAsyncFetcher::StreamingFetch(const std::string& url,
+bool WaitUrlAsyncFetcher::StreamingFetch(const GoogleString& url,
                                          const RequestHeaders& request_headers,
                                          ResponseHeaders* response_headers,
                                          Writer* response_writer,

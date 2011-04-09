@@ -22,7 +22,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/util/public/atom.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -61,13 +61,13 @@ class CssOutlineFilter : public CommonFilter {
  private:
   bool WriteResource(const StringPiece& content, OutputResource* resource,
                      MessageHandler* handler);
-  void OutlineStyle(HtmlElement* element, const std::string& content);
+  void OutlineStyle(HtmlElement* element, const GoogleString& content);
 
   // The style or script element we are in (if it hasn't been flushed).
   // If we are not in a script or style element, inline_element_ == NULL.
   HtmlElement* inline_element_;
   // Temporarily buffers the content between open and close of inline_element_.
-  std::string buffer_;
+  GoogleString buffer_;
   size_t size_threshold_bytes_;
   // HTML strings interned into a symbol table.
 

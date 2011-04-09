@@ -22,7 +22,7 @@
 #include <vector>
 #include "base/basictypes.h"
 #include "net/instaweb/util/public/atom.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -68,7 +68,7 @@ template<class StringCompare> class StringMultiMap {
 
   // Remove all variables by name.  Returns true if anything was removed.
   bool RemoveAll(const StringPiece& var_name) {
-    std::string var_string(var_name.data(), var_name.size());
+    GoogleString var_string(var_name.data(), var_name.size());
     typename Map::iterator p = map_.find(var_string);
     bool removed = (p != map_.end());
     if (removed) {
@@ -94,19 +94,19 @@ template<class StringCompare> class StringMultiMap {
   const char* name(int index) const { return vector_[index].first; }
 
   // Note that the value can be NULL.
-  const std::string* value(int index) const { return vector_[index].second; }
+  const GoogleString* value(int index) const { return vector_[index].second; }
 
   // Add a new variable.  The value can be null.
   void Add(const StringPiece& var_name, const StringPiece& value) {
     StringStarVector dummy_values;
-    std::string name_buf(var_name.data(), var_name.size());
+    GoogleString name_buf(var_name.data(), var_name.size());
     std::pair<typename Map::iterator, bool> iter_inserted = map_.insert(
         typename Map::value_type(name_buf, dummy_values));
     typename Map::iterator iter = iter_inserted.first;
     StringStarVector& values = iter->second;
-    std::string* value_copy = NULL;
+    GoogleString* value_copy = NULL;
     if (value.data() != NULL) {
-      value_copy = new std::string(value.as_string());
+      value_copy = new GoogleString(value.as_string());
     }
     values.push_back(value_copy);
     vector_.push_back(StringPair(iter->first.c_str(), value_copy));
@@ -118,11 +118,11 @@ template<class StringCompare> class StringMultiMap {
   // also order-preserving iteration and easy indexed access.
   //
   // To avoid duplicating the strings, we will have the map own the
-  // Names (keys) in a std::string, and the string-pair-vector own the
-  // value as an explicitly newed char*.  The risk of using a std::string
+  // Names (keys) in a GoogleString, and the string-pair-vector own the
+  // value as an explicitly newed char*.  The risk of using a GoogleString
   // to hold the value is that the pointers will not survive a resize.
-  typedef std::pair<const char*, std::string*> StringPair;  // owns the value
-  typedef std::map<std::string, StringStarVector, StringCompare> Map;
+  typedef std::pair<const char*, GoogleString*> StringPair;  // owns the value
+  typedef std::map<GoogleString, StringStarVector, StringCompare> Map;
   typedef std::vector<StringPair> StringPairVector;
 
   Map map_;

@@ -23,7 +23,7 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_URL_ASYNC_FETCHER_H_
 
 #include "base/basictypes.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -54,7 +54,7 @@ class UrlAsyncFetcher {
   // This function returns true if the request was immediately satisfied.
   // In either case, the callback will be called with the completion status,
   // so it's safe to ignore the return value.
-  virtual bool StreamingFetch(const std::string& url,
+  virtual bool StreamingFetch(const GoogleString& url,
                               const RequestHeaders& request_headers,
                               ResponseHeaders* response_headers,
                               Writer* response_writer,

@@ -26,7 +26,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SHARED_STRING_H_
 
 #include "base/basictypes.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 #include "base/ref_counted.h"
@@ -40,8 +40,8 @@ class RefCountedString : public base::RefCountedThreadSafe<RefCountedString> {
   explicit RefCountedString(const StringPiece& str)
       : string_(str.data(), str.size()) {
   }
-  const std::string& value() const { return string_; }
-  std::string& value() { return string_; }
+  const GoogleString& value() const { return string_; }
+  GoogleString& value() { return string_; }
   size_t size() const { return string_.size(); }
   const char* data() const { return string_.data(); }
 
@@ -49,7 +49,7 @@ class RefCountedString : public base::RefCountedThreadSafe<RefCountedString> {
   friend class base::RefCountedThreadSafe<RefCountedString>;
   ~RefCountedString() { }
 
-  std::string string_;
+  GoogleString string_;
 
   DISALLOW_COPY_AND_ASSIGN(RefCountedString);
 };
@@ -62,13 +62,13 @@ class SharedString : public scoped_refptr<RefCountedString> {
   explicit SharedString(const StringPiece& str)
       : scoped_refptr<RefCountedString>(new RefCountedString(str)) {
   }
-  std::string& operator*() { return ptr_->value(); }
-  std::string* get() { return &(ptr_->value()); }
-  const std::string* get() const { return &(ptr_->value()); }
-  std::string* operator->() { return &(ptr_->value()); }
-  const std::string* operator->() const { return &(ptr_->value()); }
+  GoogleString& operator*() { return ptr_->value(); }
+  GoogleString* get() { return &(ptr_->value()); }
+  const GoogleString* get() const { return &(ptr_->value()); }
+  GoogleString* operator->() { return &(ptr_->value()); }
+  const GoogleString* operator->() const { return &(ptr_->value()); }
   bool unique() const { return ptr_->HasOneRef(); }
-  std::string::size_type size() const { return ptr_->value().size(); }
+  GoogleString::size_type size() const { return ptr_->value().size(); }
 };
 
 

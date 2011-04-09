@@ -36,8 +36,8 @@ void CssRewriteTestBase::ValidateRewriteInlineCss(
       "</head>";
 
   CheckFlags(flags);
-  std::string html_input  = StrCat(prefix, css_input, suffix);
-  std::string html_output = StrCat(prefix, expected_css_output, suffix);
+  GoogleString html_input  = StrCat(prefix, css_input, suffix);
+  GoogleString html_output = StrCat(prefix, expected_css_output, suffix);
 
   // Reset stats
   num_files_minified_->Set(0);
@@ -66,7 +66,7 @@ void CssRewriteTestBase::ValidateRewriteInlineCss(
   }
 }
 
-std::string CssRewriteTestBase::ExpectedRewrittenUrl(
+GoogleString CssRewriteTestBase::ExpectedRewrittenUrl(
     const StringPiece& original_url,
     const StringPiece& expected_contents,
     const StringPiece& filter_id,
@@ -86,7 +86,7 @@ std::string CssRewriteTestBase::ExpectedRewrittenUrl(
 
 
 void CssRewriteTestBase::GetNamerForCss(const StringPiece& id,
-                                        const std::string& expected_css_output,
+                                        const GoogleString& expected_css_output,
                                         ResourceNamer* namer) {
   namer->set_id(RewriteDriver::kCssFilterId);
   namer->set_hash(resource_manager_->hasher()->Hash(expected_css_output));
@@ -94,14 +94,14 @@ void CssRewriteTestBase::GetNamerForCss(const StringPiece& id,
   namer->set_name(StrCat(id, ".css"));
 }
 
-std::string CssRewriteTestBase::ExpectedUrlForNamer(
+GoogleString CssRewriteTestBase::ExpectedUrlForNamer(
     const ResourceNamer& namer) {
   return StrCat(kTestDomain, namer.Encode());
 }
 
-std::string CssRewriteTestBase::ExpectedUrlForCss(
+GoogleString CssRewriteTestBase::ExpectedUrlForCss(
     const StringPiece& id,
-    const std::string& expected_css_output) {
+    const GoogleString& expected_css_output) {
   ResourceNamer namer;
   GetNamerForCss(id, expected_css_output, &namer);
   return ExpectedUrlForNamer(namer);
@@ -110,13 +110,13 @@ std::string CssRewriteTestBase::ExpectedUrlForCss(
 // Check that external CSS gets rewritten correctly.
 void CssRewriteTestBase::ValidateRewriteExternalCss(
     const StringPiece& id,
-    const std::string& css_input,
-    const std::string& expected_css_output,
+    const GoogleString& css_input,
+    const GoogleString& expected_css_output,
     int flags) {
   CheckFlags(flags);
 
   // TODO(sligocki): Allow arbitrary URLs.
-  std::string css_url = StrCat(kTestDomain, id, ".css");
+  GoogleString css_url = StrCat(kTestDomain, id, ".css");
 
   // Set input file.
   if ((flags & kNoClearFetcher) == 0) {
@@ -132,13 +132,13 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
       "  <!-- Style ends here -->\n"
       "</head>";
 
-  std::string html_input  = StringPrintf(html_template, css_url.c_str());
+  GoogleString html_input  = StringPrintf(html_template, css_url.c_str());
 
-  std::string html_output;
+  GoogleString html_output;
 
   ResourceNamer namer;
   GetNamerForCss(id, expected_css_output, &namer);
-  std::string expected_new_url = ExpectedUrlForNamer(namer);
+  GoogleString expected_new_url = ExpectedUrlForNamer(namer);
 
   if (flags & kExpectChange) {
     html_output = StringPrintf(html_template, expected_new_url.c_str());
@@ -174,7 +174,7 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
 
   // If we produced a new output resource, check it.
   if (flags & kExpectChange) {
-    std::string actual_output;
+    GoogleString actual_output;
     // TODO(sligocki): This will only work with mock_hasher.
     EXPECT_TRUE(ServeResource(kTestDomain,
                               namer.id(), namer.name(), namer.ext(),
@@ -200,8 +200,8 @@ void CssRewriteTestBase::TestCorruptUrl(const char* junk,
                              kExpectChange | kExpectSuccess);
 
   // Fetch with messed up extension
-  std::string css_url = ExpectedUrlForCss("rep", kOutput);
-  std::string output;
+  GoogleString css_url = ExpectedUrlForCss("rep", kOutput);
+  GoogleString output;
   EXPECT_EQ(should_fetch_ok,
             ServeResourceUrl(StrCat(css_url, junk), &output));
 

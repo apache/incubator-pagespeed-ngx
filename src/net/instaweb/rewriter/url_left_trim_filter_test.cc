@@ -44,7 +44,7 @@ class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
   void OneTrim(bool changed,
                const StringPiece init, const StringPiece expected) {
     StringPiece url(init);
-    std::string trimmed;
+    GoogleString trimmed;
     CHECK(base_url_ != NULL);
     EXPECT_EQ(changed, left_trim_filter_.Trim(
         *base_url_, url, &trimmed,

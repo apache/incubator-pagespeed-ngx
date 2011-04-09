@@ -26,7 +26,7 @@ namespace net_instaweb {
 UrlFetcher::~UrlFetcher() {
 }
 
-bool UrlFetcher::FetchUrl(const std::string& url, std::string* content,
+bool UrlFetcher::FetchUrl(const GoogleString& url, GoogleString* content,
                           MessageHandler* message_handler) {
   StringWriter writer(content);
   RequestHeaders request_headers;

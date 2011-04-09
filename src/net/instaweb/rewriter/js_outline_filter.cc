@@ -25,7 +25,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
@@ -121,7 +121,7 @@ void JsOutlineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
 }
 
 // Try to write content and possibly header to resource.
-bool JsOutlineFilter::WriteResource(const std::string& content,
+bool JsOutlineFilter::WriteResource(const GoogleString& content,
                                     OutputResource* resource,
                                     MessageHandler* handler) {
   // We set the TTL of the origin->hashed_name map to 0 because this is
@@ -134,7 +134,7 @@ bool JsOutlineFilter::WriteResource(const std::string& content,
 // Create file with script content and remove that element from DOM.
 // TODO(sligocki): We probably will break any relative URL references here.
 void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
-                                    const std::string& content) {
+                                    const GoogleString& content) {
   if (driver_->IsRewritable(inline_element)) {
     // Create script file from content.
     MessageHandler* handler = driver_->message_handler();

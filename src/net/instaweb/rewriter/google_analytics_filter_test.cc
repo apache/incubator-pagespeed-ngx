@@ -21,7 +21,7 @@
 
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -75,7 +75,7 @@ class GoogleAnalyticsFilterTest : public ResourceManagerTestBase {
   }
 
   // Create the expected html.
-  std::string GetAsyncLoadAndInit(
+  GoogleString GetAsyncLoadAndInit(
       const StringPiece& load_prefix, const StringPiece& load_suffix) const {
     return StrCat(
         load_prefix,
@@ -90,12 +90,12 @@ class GoogleAnalyticsFilterTest : public ResourceManagerTestBase {
 };
 
 TEST_F(GoogleAnalyticsFilterTest, SyncScriptSrcMadeAsync) {
-  std::string html_input = StrCat(
+  GoogleString html_input = StrCat(
       "<script src=\"http://www.google-analytics.com/ga.js\""
           " type=\"text/javascript\">\n"
       "</script>\n",
       kSyncInit);
-  std::string expected_html = GetAsyncLoadAndInit(
+  GoogleString expected_html = GetAsyncLoadAndInit(
       "<script type=\"text/javascript\">",
       "\n</script>\n");  // starting newline leftover from empty script
   ValidateExpected("sync_script_src_made_async",
@@ -104,11 +104,11 @@ TEST_F(GoogleAnalyticsFilterTest, SyncScriptSrcMadeAsync) {
 
 // Test the boundary case of load script without a characters node
 TEST_F(GoogleAnalyticsFilterTest, SyncScriptSrcNoCharactersNodeMadeAsync) {
-  std::string html_input = StrCat(
+  GoogleString html_input = StrCat(
       "<script src=\"http://www.google-analytics.com/ga.js\""
           " type=\"text/javascript\"></script>\n",
       kSyncInit);
-  std::string expected_html = GetAsyncLoadAndInit(
+  GoogleString expected_html = GetAsyncLoadAndInit(
       "<script type=\"text/javascript\">",
       "</script>\n");  // no newline between script tags
   ValidateExpected("sync_script_src_no_characters_node_made_async",
@@ -116,7 +116,7 @@ TEST_F(GoogleAnalyticsFilterTest, SyncScriptSrcNoCharactersNodeMadeAsync) {
 }
 
 TEST_F(GoogleAnalyticsFilterTest, SyncDocumentWriteMadeAsync) {
-  std::string html_input = StrCat(
+  GoogleString html_input = StrCat(
       "<script type='text/javascript'>\n"
       "var gaJsHost = ((\"https:\" == document.location.protocol) ? "
           "\"https://ssl.\" : \"http://www.\");\n"
@@ -124,7 +124,7 @@ TEST_F(GoogleAnalyticsFilterTest, SyncDocumentWriteMadeAsync) {
       "analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E\"));\n"
       "</script>\n",
       kSyncInit);
-  std::string expected_html = GetAsyncLoadAndInit(
+  GoogleString expected_html = GetAsyncLoadAndInit(
       "<script type='text/javascript'>\n"
       "var gaJsHost = ((\"https:\" == document.location.protocol) ? "
           "\"https://ssl.\" : \"http://www.\");\n",
@@ -136,13 +136,13 @@ TEST_F(GoogleAnalyticsFilterTest, SyncDocumentWriteMadeAsync) {
 // Test the boundary case of "document.write" at the first position
 // of the characters node.
 TEST_F(GoogleAnalyticsFilterTest, SyncDocumentWriteAtPositionZero) {
-  std::string html_input = StrCat(
+  GoogleString html_input = StrCat(
       "<script type='text/javascript'>document.write("
           "unescape(\"%3Cscript src=\"http://www.google-analytics.com/ga.js' "
           "type='text/javascript'%3E%3C/script%3E\"));\n"
       "</script>\n",
       kSyncInit);
-  std::string expected_html = GetAsyncLoadAndInit(
+  GoogleString expected_html = GetAsyncLoadAndInit(
       "<script type='text/javascript'>",
       "\n</script>\n");
   ValidateExpected("sync_document_write_made_async",
@@ -150,7 +150,7 @@ TEST_F(GoogleAnalyticsFilterTest, SyncDocumentWriteAtPositionZero) {
 }
 
 TEST_F(GoogleAnalyticsFilterTest, MultipleLoadReducedToSingle) {
-  std::string html_input = StrCat(
+  GoogleString html_input = StrCat(
       "<script type='text/javascript'>document.write("
           "unescape(\"%3Cscript src=\"http://www.google-analytics.com/ga.js' "
           "type='text/javascript'%3E%3C/script%3E\"));\n"
@@ -166,7 +166,7 @@ TEST_F(GoogleAnalyticsFilterTest, MultipleLoadReducedToSingle) {
       "<script src=\"http://www.google-analytics.com/ga.js\""
           " type=\"text/javascript\"></script>",
       kSyncInit);
-  std::string expected_html = StrCat(
+  GoogleString expected_html = StrCat(
       GetAsyncLoadAndInit(
           "<script type='text/javascript'>",
           "\n</script>\n"),
@@ -184,7 +184,7 @@ TEST_F(GoogleAnalyticsFilterTest, MultipleLoadReducedToSingle) {
 }
 
 TEST_F(GoogleAnalyticsFilterTest, AsyncGiveNoChanges) {
-  std::string html_input =
+  GoogleString html_input =
       "<script type=\"text/javascript\">\n"
       "var _gaq = _gaq || [];\n"
       "_gaq.push(['_setAccount', 'UA-XXXXX-X']);\n"
@@ -203,7 +203,7 @@ TEST_F(GoogleAnalyticsFilterTest, AsyncGiveNoChanges) {
 }
 
 TEST_F(GoogleAnalyticsFilterTest, NonstandardInitGiveNoChanges) {
-  std::string html_input =
+  GoogleString html_input =
       "<script type=\"text/javascript\">\n"
       "googleAnalytics = new TFHtmlUtilsGoogleAnalytics({\n"
       "  'trackingcode': \"UA-XXXXX-X\"\n"
@@ -215,7 +215,7 @@ TEST_F(GoogleAnalyticsFilterTest, NonstandardInitGiveNoChanges) {
 }
 
 TEST_F(GoogleAnalyticsFilterTest, UnhandledCallCausesSkippedRewrite) {
-  std::string html_input = StrCat(
+  GoogleString html_input = StrCat(
       "<script src=\"http://www.google-analytics.com/ga.js\""
           " type=\"text/javascript\"></script>\n",
       kSyncInit,
@@ -226,13 +226,13 @@ TEST_F(GoogleAnalyticsFilterTest, UnhandledCallCausesSkippedRewrite) {
 }
 
 TEST_F(GoogleAnalyticsFilterTest, UnknownCallStillAllowsRewrite) {
-  std::string html_input = StrCat(
+  GoogleString html_input = StrCat(
       "<script src=\"http://www.google-analytics.com/ga.js\""
           " type=\"text/javascript\"></script>\n",
       kSyncInit,
       // _getFoo is not explicitly listed as an unhandled call.
       "<script type=\"text/javascript\">pageTracker._getFoo();</script>\n");
-  std::string expected_html = StrCat(
+  GoogleString expected_html = StrCat(
       GetAsyncLoadAndInit(
           "<script type=\"text/javascript\">",
           "</script>\n"),

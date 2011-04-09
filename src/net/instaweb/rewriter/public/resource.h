@@ -31,7 +31,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/content_type.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -68,7 +68,7 @@ class Resource {
   virtual bool IsCacheable() const;
 
   // Gets the absolute URL of the resource
-  virtual std::string url() const = 0;
+  virtual GoogleString url() const = 0;
 
   virtual void DetermineContentType();
 

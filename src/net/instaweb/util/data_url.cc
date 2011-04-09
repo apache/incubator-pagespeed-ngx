@@ -20,7 +20,7 @@
 
 #include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/content_type.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -28,13 +28,13 @@ namespace net_instaweb {
 void DataUrl(const ContentType& content_type,
              const Encoding encoding,
              const StringPiece& content,
-             std::string* result) {
+             GoogleString* result) {
   result->assign("data:");
   result->append(content_type.mime_type());
   switch (encoding) {
     case BASE64: {
       result->append(";base64,");
-      std::string encoded;
+      GoogleString encoded;
       Mime64Encode(content, &encoded);
       result->append(encoded);
       break;
@@ -100,7 +100,7 @@ bool ParseDataUrl(const StringPiece& url,
 
 bool DecodeDataUrlContent(Encoding encoding,
                           const StringPiece& encoded_content,
-                          std::string* decoded_content) {
+                          GoogleString* decoded_content) {
   switch (encoding) {
     case PLAIN:
       // No change, just copy data.

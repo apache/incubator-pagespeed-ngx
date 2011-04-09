@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_MOCK_HASHER_H_
 
 #include "net/instaweb/util/public/hasher.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -33,18 +33,18 @@ class MockHasher : public Hasher {
 
   virtual ~MockHasher();
 
-  virtual std::string RawHash(const StringPiece& content) const {
+  virtual GoogleString RawHash(const StringPiece& content) const {
     return hash_value_;
   }
 
-  void set_hash_value(const std::string& new_hash_value) {
+  void set_hash_value(const GoogleString& new_hash_value) {
     hash_value_ = new_hash_value;
   }
 
   virtual int RawHashSizeInBytes() const { return hash_value_.length(); }
 
  private:
-  std::string hash_value_;
+  GoogleString hash_value_;
   DISALLOW_COPY_AND_ASSIGN(MockHasher);
 };
 

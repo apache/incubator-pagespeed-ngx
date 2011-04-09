@@ -26,7 +26,7 @@ GoogleUrl::GoogleUrl(const GURL& gurl)
     : gurl_(gurl) {
 }
 
-GoogleUrl::GoogleUrl(const std::string& spec)
+GoogleUrl::GoogleUrl(const GoogleString& spec)
     : gurl_(spec) {
 }
 GoogleUrl::GoogleUrl(const StringPiece& sp)
@@ -39,7 +39,7 @@ GoogleUrl::GoogleUrl(const char *str)
 
 // The following three constructors create a new GoogleUrl by resolving the
 // String(Piece) against the base.
-GoogleUrl::GoogleUrl(const GoogleUrl& base, const std::string& str) {
+GoogleUrl::GoogleUrl(const GoogleUrl& base, const GoogleString& str) {
   gurl_ = base.gurl_.Resolve(str);
 }
 
@@ -146,7 +146,7 @@ StringPiece GoogleUrl::PathSansLeaf() const {
 
 // Extracts the filename portion of the path and returns it. The filename
 // is everything after the last slash in the path. This may be empty.
-std::string GoogleUrl::ExtractFileName() const {
+GoogleString GoogleUrl::ExtractFileName() const {
   return gurl_.ExtractFileName();
 }
 

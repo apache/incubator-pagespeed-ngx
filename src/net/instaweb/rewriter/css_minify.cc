@@ -28,7 +28,7 @@ namespace net_instaweb {
 namespace {
 
 // Escape [(), \t\r\n\\'"]
-std::string CSSEscapeString(const StringPiece& src) {
+GoogleString CSSEscapeString(const StringPiece& src) {
   const int dest_length = src.size() * 2 + 1;  // Maximum possible expansion
   scoped_array<char> dest(new char[dest_length]);
 
@@ -48,10 +48,10 @@ std::string CSSEscapeString(const StringPiece& src) {
     }
   }
 
-  return std::string(dest.get(), used);
+  return GoogleString(dest.get(), used);
 }
 
-std::string CSSEscapeString(const UnicodeText& src) {
+GoogleString CSSEscapeString(const UnicodeText& src) {
   return CSSEscapeString(StringPiece(src.utf8_data(), src.utf8_length()));
 }
 
@@ -185,9 +185,9 @@ namespace {
 //
 // Note that currently the style is terrible and it will crash the program if
 // we have >= 5 args.
-std::string FontToString(const Css::Values& font_values) {
+GoogleString FontToString(const Css::Values& font_values) {
   CHECK_LE(5U, font_values.size());
-  std::string tmp, result;
+  GoogleString tmp, result;
 
   // font-style: defaults to normal
   tmp = font_values.get(0)->ToString();

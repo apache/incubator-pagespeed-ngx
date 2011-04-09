@@ -37,7 +37,7 @@ class WaitUrlAsyncFetcher : public UrlAsyncFetcher {
   virtual ~WaitUrlAsyncFetcher();
 
   // Initiate fetches that will finish when CallCallbacks is called.
-  virtual bool StreamingFetch(const std::string& url,
+  virtual bool StreamingFetch(const GoogleString& url,
                               const RequestHeaders& request_headers,
                               ResponseHeaders* response_headers,
                               Writer* response_writer,

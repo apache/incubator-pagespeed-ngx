@@ -24,15 +24,15 @@ namespace {
 
 class CssInlineFilterTest : public ResourceManagerTestBase {
  protected:
-  void TestInlineCss(const std::string& html_url,
-                     const std::string& css_url,
-                     const std::string& other_attrs,
-                     const std::string& css_original_body,
+  void TestInlineCss(const GoogleString& html_url,
+                     const GoogleString& css_url,
+                     const GoogleString& other_attrs,
+                     const GoogleString& css_original_body,
                      bool expect_inline,
-                     const std::string& css_rewritten_body) {
+                     const GoogleString& css_rewritten_body) {
     AddFilter(RewriteOptions::kInlineCss);
 
-    const std::string html_input =
+    const GoogleString html_input =
         "<head>\n"
         "  <link rel=\"stylesheet\" href=\"" + css_url + "\"" +
         (other_attrs.empty() ? "" : " " + other_attrs) + ">\n"
@@ -49,7 +49,7 @@ class CssInlineFilterTest : public ResourceManagerTestBase {
     // Rewrite the HTML page.
     ParseUrl(html_url, html_input);
 
-    const std::string expected_output =
+    const GoogleString expected_output =
         (!expect_inline ? html_input :
          "<head>\n"
          "  <style>" + css_rewritten_body + "</style>\n"
@@ -60,7 +60,7 @@ class CssInlineFilterTest : public ResourceManagerTestBase {
 };
 
 TEST_F(CssInlineFilterTest, InlineCssSimple) {
-  const std::string css = "BODY { color: red; }\n";
+  const GoogleString css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "", css, true, css);
@@ -68,9 +68,9 @@ TEST_F(CssInlineFilterTest, InlineCssSimple) {
 
 TEST_F(CssInlineFilterTest, InlineCssAbsolutifyUrls1) {
   // CSS with a relative URL that needs to be changed:
-  const std::string css1 =
+  const GoogleString css1 =
       "BODY { background-image: url('bg.png'); }\n";
-  const std::string css2 =
+  const GoogleString css2 =
       "BODY { background-image: "
       "url('http://www.example.com/foo/bar/bg.png'); }\n";
   TestInlineCss("http://www.example.com/index.html",
@@ -80,9 +80,9 @@ TEST_F(CssInlineFilterTest, InlineCssAbsolutifyUrls1) {
 
 TEST_F(CssInlineFilterTest, InlineCssAbsolutifyUrls2) {
   // CSS with a relative URL, this time with ".." in it:
-  const std::string css1 =
+  const GoogleString css1 =
       "BODY { background-image: url('../quux/bg.png'); }\n";
-  const std::string css2 =
+  const GoogleString css2 =
       "BODY { background-image: "
       "url('http://www.example.com/foo/quux/bg.png'); }\n";
   TestInlineCss("http://www.example.com/index.html",
@@ -91,21 +91,21 @@ TEST_F(CssInlineFilterTest, InlineCssAbsolutifyUrls2) {
 }
 
 TEST_F(CssInlineFilterTest, NoAbsolutifyUrlsSameDir) {
-  const std::string css = "BODY { background-image: url('bg.png'); }\n";
+  const GoogleString css = "BODY { background-image: url('bg.png'); }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/baz.css",
                 "", css, true, css);
 }
 
 TEST_F(CssInlineFilterTest, DoNotInlineCssWithMediaAttr) {
-  const std::string css = "BODY { color: red; }\n";
+  const GoogleString css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "media=\"print\"", css, false, "");
 }
 
 TEST_F(CssInlineFilterTest, DoInlineCssWithMediaAll) {
-  const std::string css = "BODY { color: red; }\n";
+  const GoogleString css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "media=\"all\"", css, true, css);
@@ -117,7 +117,7 @@ TEST_F(CssInlineFilterTest, DoNotInlineCssTooBig) {
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css", "",
                 ("BODY { background-image: url('" +
-                 std::string(length, 'z') + ".png'); }\n"),
+                 GoogleString(length, 'z') + ".png'); }\n"),
                 false, "");
 }
 

@@ -23,7 +23,7 @@
 #include <vector>
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -58,7 +58,7 @@ template<class Var> class StatisticsTemplate : public Statistics {
     if (var == NULL) {
       var = NewVariable(name, variables_.size());
       variables_.push_back(var);
-      variable_map_[std::string(name.data(), name.size())] = var;
+      variable_map_[GoogleString(name.data(), name.size())] = var;
     }
     return var;
   }
@@ -78,7 +78,7 @@ template<class Var> class StatisticsTemplate : public Statistics {
 
  protected:
   typedef std::vector<Var*> VarVector;
-  typedef std::map<std::string, Var*> VarMap;
+  typedef std::map<GoogleString, Var*> VarMap;
   VarVector variables_;
   VarMap variable_map_;
 

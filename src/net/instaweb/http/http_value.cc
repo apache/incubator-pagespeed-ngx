@@ -54,7 +54,7 @@ void HTTPValue::Clear() {
 
 void HTTPValue::SetHeaders(ResponseHeaders* headers) {
   CopyOnWrite();
-  std::string headers_string;
+  GoogleString headers_string;
   StringWriter writer(&headers_string);
   headers->WriteAsBinary(&writer, NULL);
   if (storage_->empty()) {

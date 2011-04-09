@@ -25,7 +25,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/null_message_handler.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -38,7 +38,7 @@ class MemFileSystemTest : public FileSystemTest {
   virtual FileSystem* file_system() {
     return &mem_file_system_;
   }
-  virtual std::string test_tmpdir() {
+  virtual GoogleString test_tmpdir() {
     return GTestTempDir();
   }
  private:
@@ -86,10 +86,10 @@ TEST_F(MemFileSystemTest, TestMakeDir) {
 TEST_F(MemFileSystemTest, TestSize) {
   // Since we don't have directories, we need to do a slightly
   // different size test.
-  std::string filename1 = "file-in-dir.txt";
-  std::string filename2 = "another-file-in-dir.txt";
-  std::string content1 = "12345";
-  std::string content2 = "1234567890";
+  GoogleString filename1 = "file-in-dir.txt";
+  GoogleString filename2 = "another-file-in-dir.txt";
+  GoogleString content1 = "12345";
+  GoogleString content2 = "1234567890";
   ASSERT_TRUE(file_system()->WriteFile(filename1.c_str(),
                                        content1, &handler_));
   ASSERT_TRUE(file_system()->WriteFile(filename2.c_str(),
@@ -108,13 +108,13 @@ TEST_F(MemFileSystemTest, TestListContents) {
 
 TEST_F(MemFileSystemTest, TestAtime) {
   // Slightly modified version of TestAtime, without the sleeps
-  std::string dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = test_tmpdir() + "/make_dir";
   DeleteRecursively(dir_name);
-  std::string filename1 = "file-in-dir.txt";
-  std::string filename2 = "another-file-in-dir.txt";
-  std::string full_path1 = dir_name + "/" + filename1;
-  std::string full_path2 = dir_name + "/" + filename2;
-  std::string content = "Lorem ipsum dolor sit amet";
+  GoogleString filename1 = "file-in-dir.txt";
+  GoogleString filename2 = "another-file-in-dir.txt";
+  GoogleString full_path1 = dir_name + "/" + filename1;
+  GoogleString full_path2 = dir_name + "/" + filename2;
+  GoogleString content = "Lorem ipsum dolor sit amet";
 
   ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
   ASSERT_TRUE(file_system()->WriteFile(full_path1.c_str(),

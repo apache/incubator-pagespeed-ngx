@@ -22,7 +22,7 @@
 #include "base/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/util/public/google_message_handler.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/shared_string.h"

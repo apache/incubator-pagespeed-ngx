@@ -50,7 +50,7 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   bool found_head_;
   Variable* total_page_load_ms_;
   Variable* page_load_count_;
-  std::string beacon_url_;
+  GoogleString beacon_url_;
 
   DISALLOW_COPY_AND_ASSIGN(AddInstrumentationFilter);
 };

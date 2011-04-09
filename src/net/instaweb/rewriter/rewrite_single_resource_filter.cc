@@ -79,7 +79,7 @@ class RewriteSingleResourceFilter::FetchCallback
         success = true;
       } else {
         // If not, log the failure.
-        std::string url = input_resource_.get()->url();
+        GoogleString url = input_resource_.get()->url();
         handler_->Error(
             output_resource_->name().as_string().c_str(), 0,
             "Resource based on %s but cannot find the original", url.c_str());
@@ -132,7 +132,7 @@ bool RewriteSingleResourceFilter::Fetch(
     driver_->ReadAsync(input_resource, fetch_callback, message_handler);
     ret = true;
   } else {
-    std::string url;
+    GoogleString url;
     output_resource->name().CopyToString(&url);
     message_handler->Error(url.c_str(), 0, "Unable to decode resource string");
   }
@@ -239,7 +239,7 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
       output_resource->EnsureCachedResultCreated()->set_auto_expire(false);
 
       if (result != NULL) {
-        std::string actual_hash =
+        GoogleString actual_hash =
             resource_manager_->hasher()->Hash(input_resource->contents());
         if (result->has_input_hash()
             && (actual_hash == result->input_hash())) {

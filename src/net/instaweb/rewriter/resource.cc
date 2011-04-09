@@ -65,7 +65,7 @@ void Resource::DetermineContentType() {
   if (content_type == NULL) {
     // If there is no content type in input headers, then try to
     // determine it from the name.
-    std::string trimmed_url;
+    GoogleString trimmed_url;
     TrimWhitespace(url(), &trimmed_url);
     content_type = NameExtensionToContentType(trimmed_url);
   }

@@ -18,7 +18,7 @@
 
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/pool_element.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -109,8 +109,8 @@ class PoolTest : public testing::Test {
   // Dump the pool value.  Yields, dirty, and compact string (but isn't robust
   // if we were to use enormous pool sizes during testing; since we're backed by
   // collections this should not be necessary).
-  std::string Dump() {
-    std::string buf;
+  GoogleString Dump() {
+    GoogleString buf;
     for (IntPool::iterator iter = pool_.begin(); iter != pool_.end(); ++iter) {
       buf.push_back((*iter)->num() + '0');
     }

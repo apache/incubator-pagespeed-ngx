@@ -37,7 +37,7 @@ const int kRequestChainLimit = 5;
 InstawebContext::InstawebContext(request_rec* request,
                                  const ContentType& content_type,
                                  ApacheRewriteDriverFactory* factory,
-                                 const std::string& absolute_url,
+                                 const GoogleString& absolute_url,
                                  bool use_custom_options,
                                  const RewriteOptions& custom_options)
     : content_encoding_(kNone),

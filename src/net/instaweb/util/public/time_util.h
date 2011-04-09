@@ -20,13 +20,13 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_TIME_UTIL_H_
 
 #include "base/basictypes.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 // Converts time, in milliseconds, to a string.  Returns false on failure.
-bool ConvertTimeToString(int64 time_ms, std::string* time_string);
+bool ConvertTimeToString(int64 time_ms, GoogleString* time_string);
 
 // Converts time in string format, to the number of milliseconds since 1970.
 // Returns false on failure.

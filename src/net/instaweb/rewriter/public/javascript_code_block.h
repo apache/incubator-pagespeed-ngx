@@ -128,15 +128,15 @@ class JavascriptCodeBlock {
   void Rewrite();
 
   JavascriptRewriteConfig* config_;
-  const std::string message_id_;  // ID to stick at begining of message.
+  const GoogleString message_id_;  // ID to stick at begining of message.
   MessageHandler* handler_;
-  const std::string original_code_;
+  const GoogleString original_code_;
   // Note that output_code_ points to either original_code_ or
   // to rewritten_code_ depending upon the results of processing
   // (ie it's an indirection to locally-owned data).
   StringPiece output_code_;
   bool rewritten_;
-  std::string rewritten_code_;
+  GoogleString rewritten_code_;
 
   DISALLOW_COPY_AND_ASSIGN(JavascriptCodeBlock);
 };

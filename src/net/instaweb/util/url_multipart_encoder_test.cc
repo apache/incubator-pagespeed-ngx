@@ -36,14 +36,14 @@ TEST_F(UrlMultipartEncoderTest, EscapeSeparatorsAndEscapes) {
   url_vector_.push_back("abc");
   url_vector_.push_back("def");
   url_vector_.push_back("a=b+c");  // escape and separate characters
-  std::string encoding;
+  GoogleString encoding;
   encoder_.Encode(url_vector_, NULL, &encoding);
   url_vector_.clear();
   ASSERT_TRUE(encoder_.Decode(encoding, &url_vector_, NULL, &handler_));
   ASSERT_EQ(3, url_vector_.size());
-  EXPECT_EQ(std::string("abc"), url_vector_[0]);
-  EXPECT_EQ(std::string("def"), url_vector_[1]);
-  EXPECT_EQ(std::string("a=b+c"), url_vector_[2]);
+  EXPECT_EQ(GoogleString("abc"), url_vector_[0]);
+  EXPECT_EQ(GoogleString("def"), url_vector_[1]);
+  EXPECT_EQ(GoogleString("a=b+c"), url_vector_[2]);
 }
 
 TEST_F(UrlMultipartEncoderTest, Empty) {
@@ -55,15 +55,15 @@ TEST_F(UrlMultipartEncoderTest, Empty) {
 TEST_F(UrlMultipartEncoderTest, LastIsEmpty) {
   ASSERT_TRUE(encoder_.Decode("a+b+", &url_vector_, NULL, &handler_));
   ASSERT_EQ(3, url_vector_.size());
-  EXPECT_EQ(std::string("a"), url_vector_[0]);
-  EXPECT_EQ(std::string("b"), url_vector_[1]);
-  EXPECT_EQ(std::string(""), url_vector_[2]);
+  EXPECT_EQ(GoogleString("a"), url_vector_[0]);
+  EXPECT_EQ(GoogleString("b"), url_vector_[1]);
+  EXPECT_EQ(GoogleString(""), url_vector_[2]);
 }
 
 TEST_F(UrlMultipartEncoderTest, One) {
   ASSERT_TRUE(encoder_.Decode("a", &url_vector_, NULL, &handler_));
   ASSERT_EQ(1, url_vector_.size());
-  EXPECT_EQ(std::string("a"), url_vector_[0]);
+  EXPECT_EQ(GoogleString("a"), url_vector_[0]);
 }
 
 }  // namespace net_instaweb

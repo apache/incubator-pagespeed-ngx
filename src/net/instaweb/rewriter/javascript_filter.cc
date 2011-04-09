@@ -33,7 +33,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/url_escaper.h"
@@ -68,7 +68,7 @@ void JavascriptFilter::StartElementImpl(HtmlElement* element) {
       break;
     }
     case ScriptTagScanner::kUnknownScript: {
-      std::string script_dump;
+      GoogleString script_dump;
       element->ToString(&script_dump);
       driver_->InfoHere("Unrecognized script:'%s'", script_dump.c_str());
       break;
@@ -90,7 +90,7 @@ void JavascriptFilter::Characters(HtmlCharactersNode* characters) {
 
 // Flatten script fragments in buffer_, using script_buffer to hold
 // the data if necessary.  Return a StringPiece referring to the data.
-const StringPiece JavascriptFilter::FlattenBuffer(std::string* script_buffer) {
+const StringPiece JavascriptFilter::FlattenBuffer(GoogleString* script_buffer) {
   const int buffer_size = buffer_.size();
   if (buffer_.size() == 1) {
     StringPiece result(buffer_[0]->contents());
@@ -108,7 +108,7 @@ void JavascriptFilter::RewriteInlineScript() {
   const int buffer_size = buffer_.size();
   if (buffer_size > 0) {
     // First buffer up script data and minify it.
-    std::string script_buffer;
+    GoogleString script_buffer;
     const StringPiece script = FlattenBuffer(&script_buffer);
     MessageHandler* message_handler = driver_->message_handler();
     JavascriptCodeBlock code_block(script, &config_, driver_->UrlLine(),
@@ -168,7 +168,7 @@ void JavascriptFilter::RewriteExternalScript() {
   // comments, we support it for now.
   bool allSpaces = true;
   for (size_t i = 0; allSpaces && i < buffer_.size(); ++i) {
-    const std::string& contents = buffer_[i]->contents();
+    const GoogleString& contents = buffer_[i]->contents();
     for (size_t j = 0; allSpaces && j < contents.size(); ++j) {
       char c = contents[j];
       if (!isspace(c) && c != 0) {

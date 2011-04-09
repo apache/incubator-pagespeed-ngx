@@ -54,8 +54,8 @@ void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
       (response_headers.major_version() * 1000) +
       response_headers.minor_version();
   for (int i = 0, n = response_headers.NumAttributes(); i < n; ++i) {
-    const std::string& name = response_headers.Name(i);
-    const std::string& value = response_headers.Value(i);
+    const GoogleString& name = response_headers.Name(i);
+    const GoogleString& value = response_headers.Value(i);
     if (StringCaseEqual(name, HttpAttributes::kContentType)) {
       // ap_set_content_type does not make a copy of the string, we need
       // to duplicate it.

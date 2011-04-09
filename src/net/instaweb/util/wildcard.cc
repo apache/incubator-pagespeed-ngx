@@ -27,7 +27,7 @@ Wildcard::Wildcard(const StringPiece& wildcard_spec) {
   InitFromSpec(wildcard_spec);
 }
 
-Wildcard::Wildcard(const std::string& storage, int num_blocks,
+Wildcard::Wildcard(const GoogleString& storage, int num_blocks,
                    int last_block_offset, bool is_simple)
     : storage_(storage),
       num_blocks_(num_blocks),

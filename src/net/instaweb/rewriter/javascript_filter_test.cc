@@ -63,7 +63,7 @@ class JavascriptFilterTest : public ResourceManagerTestBase {
   }
 
   // Generate HTML loading 3 resources with the specified URLs
-  std::string GenerateHtml(const char* a) {
+  GoogleString GenerateHtml(const char* a) {
     return StringPrintf(kHtmlFormat, a);
   }
 
@@ -75,7 +75,7 @@ class JavascriptFilterTest : public ResourceManagerTestBase {
                     GenerateHtml(expected_rewritten_path_.c_str()));
 
     // Fetch messed up URL.
-    std::string out;
+    GoogleString out;
     EXPECT_EQ(should_fetch_ok,
               ServeResourceUrl(StrCat(expected_rewritten_path_, junk), &out));
 
@@ -85,7 +85,7 @@ class JavascriptFilterTest : public ResourceManagerTestBase {
                     GenerateHtml(expected_rewritten_path_.c_str()));
   }
 
-  std::string expected_rewritten_path_;
+  GoogleString expected_rewritten_path_;
 };
 
 TEST_F(JavascriptFilterTest, DoRewrite) {
@@ -111,7 +111,7 @@ TEST_F(JavascriptFilterTest, NoRewriteOriginUncacheable) {
 }
 
 TEST_F(JavascriptFilterTest, ServeFiles) {
-  std::string content;
+  GoogleString content;
 
   // TODO(jmarantz): Factor some of this logic-flow out so that
   // cache_extender_test.cc can share it.
@@ -127,7 +127,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   ASSERT_TRUE(ServeResource(kTestDomain, kFilterId,
                             kRewrittenJsName, "js", &content));
   EXPECT_EQ(1, lru_cache_->num_hits());
-  EXPECT_EQ(std::string(kJsMinData), content);
+  EXPECT_EQ(GoogleString(kJsMinData), content);
 
   // Now remove it from the cache, but put it in the file system.  Make sure
   // that works.  Still there is no mock fetcher.
@@ -137,17 +137,17 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   // Getting the filename is kind of a drag, isn't it.  But someone's
   // gotta do it.
   // TODO(jmarantz): refactor this and share it with other filter_tests.
-  std::string filename;
+  GoogleString filename;
   FilenameEncoder* encoder = resource_manager_->filename_encoder();
   encoder->Encode(resource_manager_->filename_prefix(),
                   expected_rewritten_path_, &filename);
-  std::string data = StrCat(headers.ToString(), kJsMinData);
+  GoogleString data = StrCat(headers.ToString(), kJsMinData);
   ASSERT_TRUE(file_system_.WriteFile(filename.c_str(), data,
                                      &message_handler_));
 
   ASSERT_TRUE(ServeResource(kTestDomain, kFilterId,
                             kRewrittenJsName, "js", &content));
-  EXPECT_EQ(std::string(kJsMinData), content);
+  EXPECT_EQ(GoogleString(kJsMinData), content);
 
   // After serving from the disk, we should have seeded our cache.  Check it.
   EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(
@@ -160,7 +160,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   InitTest(100);
   ASSERT_TRUE(ServeResource(kTestDomain, kFilterId,
                             kRewrittenJsName, "js", &content));
-  EXPECT_EQ(std::string(kJsMinData), content);
+  EXPECT_EQ(GoogleString(kJsMinData), content);
 
   // Now we expect both the file and the cache entry to be there.
   EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(

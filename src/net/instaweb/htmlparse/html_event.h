@@ -24,7 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -34,7 +34,7 @@ class HtmlEvent {
   }
   virtual ~HtmlEvent();
   virtual void Run(HtmlFilter* filter) = 0;
-  virtual void ToString(std::string* buffer) = 0;
+  virtual void ToString(GoogleString* buffer) = 0;
 
   // If this is a StartElement event, returns the HtmlElement that is being
   // started.  Otherwise returns NULL.
@@ -60,7 +60,7 @@ class HtmlStartDocumentEvent: public HtmlEvent {
  public:
   explicit HtmlStartDocumentEvent(int line_number) : HtmlEvent(line_number) {}
   virtual void Run(HtmlFilter* filter) { filter->StartDocument(); }
-  virtual void ToString(std::string* str) { *str += "StartDocument"; }
+  virtual void ToString(GoogleString* str) { *str += "StartDocument"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HtmlStartDocumentEvent);
@@ -70,7 +70,7 @@ class HtmlEndDocumentEvent: public HtmlEvent {
  public:
   explicit HtmlEndDocumentEvent(int line_number) : HtmlEvent(line_number) {}
   virtual void Run(HtmlFilter* filter) { filter->EndDocument(); }
-  virtual void ToString(std::string* str) { *str += "EndDocument"; }
+  virtual void ToString(GoogleString* str) { *str += "EndDocument"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HtmlEndDocumentEvent);
@@ -83,7 +83,7 @@ class HtmlStartElementEvent: public HtmlEvent {
         element_(element) {
   }
   virtual void Run(HtmlFilter* filter) { filter->StartElement(element_); }
-  virtual void ToString(std::string* str) {
+  virtual void ToString(GoogleString* str) {
     *str += "StartElement ";
     *str += element_->name_str();
   }
@@ -102,7 +102,7 @@ class HtmlEndElementEvent: public HtmlEvent {
         element_(element) {
   }
   virtual void Run(HtmlFilter* filter) { filter->EndElement(element_); }
-  virtual void ToString(std::string* str) {
+  virtual void ToString(GoogleString* str) {
     *str += "EndElement ";
     *str += element_->name_str();
   }
@@ -130,7 +130,7 @@ class HtmlIEDirectiveEvent: public HtmlLeafNodeEvent {
         directive_(directive) {
   }
   virtual void Run(HtmlFilter* filter) { filter->IEDirective(directive_); }
-  virtual void ToString(std::string* str) {
+  virtual void ToString(GoogleString* str) {
     *str += "IEDirective ";
     *str += directive_->contents();
   }
@@ -148,7 +148,7 @@ class HtmlCdataEvent: public HtmlLeafNodeEvent {
         cdata_(cdata) {
   }
   virtual void Run(HtmlFilter* filter) { filter->Cdata(cdata_); }
-  virtual void ToString(std::string* str) {
+  virtual void ToString(GoogleString* str) {
     *str += "Cdata ";
     *str += cdata_->contents();
   }
@@ -166,7 +166,7 @@ class HtmlCommentEvent: public HtmlLeafNodeEvent {
         comment_(comment) {
   }
   virtual void Run(HtmlFilter* filter) { filter->Comment(comment_); }
-  virtual void ToString(std::string* str) {
+  virtual void ToString(GoogleString* str) {
     *str += "Comment ";
     *str += comment_->contents();
   }
@@ -185,7 +185,7 @@ class HtmlCharactersEvent: public HtmlLeafNodeEvent {
         characters_(characters) {
   }
   virtual void Run(HtmlFilter* filter) { filter->Characters(characters_); }
-  virtual void ToString(std::string* str) {
+  virtual void ToString(GoogleString* str) {
     *str += "Characters ";
     *str += characters_->contents();
   }
@@ -204,7 +204,7 @@ class HtmlDirectiveEvent: public HtmlLeafNodeEvent {
         directive_(directive) {
   }
   virtual void Run(HtmlFilter* filter) { filter->Directive(directive_); }
-  virtual void ToString(std::string* str) {
+  virtual void ToString(GoogleString* str) {
     *str += "Directive: ";
     *str += directive_->contents();
   }

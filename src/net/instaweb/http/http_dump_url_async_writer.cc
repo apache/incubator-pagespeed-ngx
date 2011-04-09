@@ -29,10 +29,10 @@ namespace net_instaweb {
 
 class HttpDumpUrlAsyncWriter::Fetch : UrlAsyncFetcher::Callback {
  public:
-  Fetch(const std::string& url, const RequestHeaders& request_headers,
+  Fetch(const GoogleString& url, const RequestHeaders& request_headers,
         ResponseHeaders* response_headers, Writer* response_writer,
         MessageHandler* handler, Callback* callback,
-        const std::string& filename, UrlFetcher* dump_fetcher,
+        const GoogleString& filename, UrlFetcher* dump_fetcher,
         FileSystem* file_system)
       : url_(url), response_headers_(response_headers),
         response_writer_(response_writer), handler_(handler),
@@ -71,7 +71,7 @@ class HttpDumpUrlAsyncWriter::Fetch : UrlAsyncFetcher::Callback {
       if (file != NULL) {
         handler_->Message(kInfo, "Storing %s as %s", url_.c_str(),
                           filename_.c_str());
-        std::string temp_filename = file->filename();
+        GoogleString temp_filename = file->filename();
         FileWriter file_writer(file);
         success = compressed_response_.WriteAsHttp(&file_writer, handler_) &&
             file->Write(contents_, handler_);
@@ -101,18 +101,18 @@ class HttpDumpUrlAsyncWriter::Fetch : UrlAsyncFetcher::Callback {
   }
 
  private:
-  const std::string url_;
+  const GoogleString url_;
   RequestHeaders request_headers_;
   ResponseHeaders* response_headers_;
   Writer* response_writer_;
   MessageHandler* handler_;
   Callback* callback_;
 
-  const std::string filename_;
+  const GoogleString filename_;
   UrlFetcher* dump_fetcher_;
   FileSystem* file_system_;
 
-  std::string contents_;
+  GoogleString contents_;
   StringWriter string_writer_;
   RequestHeaders compress_headers_;
   ResponseHeaders compressed_response_;
@@ -124,10 +124,10 @@ HttpDumpUrlAsyncWriter::~HttpDumpUrlAsyncWriter() {
 }
 
 bool HttpDumpUrlAsyncWriter::StreamingFetch(
-    const std::string& url, const RequestHeaders& request_headers,
+    const GoogleString& url, const RequestHeaders& request_headers,
     ResponseHeaders* response_headers, Writer* response_writer,
     MessageHandler* handler, Callback* callback) {
-  std::string filename;
+  GoogleString filename;
   GoogleUrl gurl(url);
   dump_fetcher_.GetFilename(gurl, &filename, handler);
 

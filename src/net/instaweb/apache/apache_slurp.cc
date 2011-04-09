@@ -44,7 +44,7 @@
 #include "net/instaweb/util/public/chunking_writer.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 
@@ -61,7 +61,7 @@ namespace {
 // Default handler when the file is not found
 void SlurpDefaultHandler(request_rec* r) {
   ap_set_content_type(r, "text/html; charset=utf-8");
-  std::string buf = StringPrintf(
+  GoogleString buf = StringPrintf(
       "<html><head><title>Slurp Error</title></head>"
       "<body><h1>Slurp failed</h1>\n"
       "<p>host=%s\n"
@@ -124,7 +124,7 @@ class ApacheWriter : public Writer {
       // ap_set_content_type does not make a copy of the string, we need
       // to duplicate it.  Note that we will update the content type below,
       // after transforming the headers.
-      const std::string* last = v[v.size() - 1];
+      const GoogleString* last = v[v.size() - 1];
       content_type = apr_pstrdup(request_->pool,
                                  (last == NULL) ? NULL : last->c_str());
     }
@@ -155,8 +155,8 @@ class ApacheWriter : public Writer {
 //
 // TODO(jmarantz): share the string constants from mod_instaweb.cc and
 // formalize the prefix-matching assumed here.
-std::string RemoveModPageSpeedQueryParams(
-    const std::string& uri, const char* query_param_string) {
+GoogleString RemoveModPageSpeedQueryParams(
+    const GoogleString& uri, const char* query_param_string) {
   QueryParams query_params, stripped_query_params;
   query_params.Parse(query_param_string);
   bool rewrite_query_params = false;
@@ -167,7 +167,7 @@ std::string RemoveModPageSpeedQueryParams(
     if (strncmp(name, kModPagespeed, STATIC_STRLEN(kModPagespeed)) == 0) {
       rewrite_query_params = true;
     } else {
-      const std::string* value = query_params.value(i);
+      const GoogleString* value = query_params.value(i);
       StringPiece value_piece;  // NULL data by default.
       if (value != NULL) {
         value_piece = *value;
@@ -176,12 +176,12 @@ std::string RemoveModPageSpeedQueryParams(
     }
   }
 
-  std::string stripped_url;
+  GoogleString stripped_url;
   if (rewrite_query_params) {
     // TODO(jmarantz): It would be nice to use GoogleUrl to do this but
     // it's not clear how it would help.  Instead just hack the string.
-    std::string::size_type question_mark = uri.find('?');
-    CHECK(question_mark != std::string::npos);
+    GoogleString::size_type question_mark = uri.find('?');
+    CHECK(question_mark != GoogleString::npos);
     stripped_url.append(uri.data(), question_mark);  // does not include "?" yet
     if (stripped_query_params.size() != 0) {
       stripped_url += StrCat("?", stripped_query_params.ToString());
@@ -198,12 +198,12 @@ std::string RemoveModPageSpeedQueryParams(
 class ModPagespeedStrippingFetcher : public UrlFetcher {
  public:
   ModPagespeedStrippingFetcher(UrlFetcher* fetcher) : fetcher_(fetcher) {}
-  virtual bool StreamingFetchUrl(const std::string& url,
+  virtual bool StreamingFetchUrl(const GoogleString& url,
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* fetched_content_writer,
                                  MessageHandler* message_handler) {
-    std::string contents;
+    GoogleString contents;
     StringWriter writer(&contents);
     bool fetched = fetcher_->StreamingFetchUrl(
         url, request_headers, response_headers, &writer, message_handler);
@@ -211,9 +211,9 @@ class ModPagespeedStrippingFetcher : public UrlFetcher {
       StringStarVector v;
       if (response_headers->Lookup(kModPagespeedHeader, &v)) {
         response_headers->Clear();
-        std::string::size_type question = url.find('?');
-        std::string url_pagespeed_off(url);
-        if (question == std::string::npos) {
+        GoogleString::size_type question = url.find('?');
+        GoogleString url_pagespeed_off(url);
+        if (question == GoogleString::npos) {
           url_pagespeed_off += "?ModPagespeed=off";
         } else {
           url_pagespeed_off += "&ModPagespeed=off";
@@ -241,7 +241,7 @@ void SlurpUrl(ApacheRewriteDriverFactory* factory, request_rec* r) {
   ApacheWriter apache_writer(r, &response_headers);
   ChunkingWriter writer(&apache_writer, factory->slurp_flush_limit());
 
-  std::string stripped_url = RemoveModPageSpeedQueryParams(
+  GoogleString stripped_url = RemoveModPageSpeedQueryParams(
       uri, r->parsed_uri.query);
 
   UrlFetcher* fetcher = factory->ComputeUrlFetcher();

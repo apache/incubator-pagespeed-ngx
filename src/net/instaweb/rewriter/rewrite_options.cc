@@ -69,7 +69,7 @@ const int RewriteOptions::kMaxUrlSize = 2083;
 // Apache.  See http://code.google.com/p/modpagespeed/issues/detail?id=176
 const int RewriteOptions::kDefaultMaxUrlSegmentSize = 1024;
 
-const std::string RewriteOptions::kDefaultBeaconUrl =
+const GoogleString RewriteOptions::kDefaultBeaconUrl =
     "/mod_pagespeed_beacon?ets=";
 
 bool RewriteOptions::ParseRewriteLevel(
@@ -217,7 +217,7 @@ bool RewriteOptions::AddCommaSeparatedListToFilterSet(
   SplitStringPieceToVector(filters, ",", &names, true);
   bool ret = true;
   for (int i = 0, n = names.size(); i < n; ++i) {
-    std::string option(names[i].data(), names[i].size());
+    GoogleString option(names[i].data(), names[i].size());
     NameToFilterMap::iterator p = name_filter_map_.find(option);
     if (p == name_filter_map_.end()) {
       handler->Message(kWarning, "Invalid filter name: %s", option.c_str());

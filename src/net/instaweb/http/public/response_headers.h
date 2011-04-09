@@ -22,7 +22,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/http/public/meta_data.h"  // HttpAttributes, HttpStatus
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -90,7 +90,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   const char* reason_phrase() const;
   void set_reason_phrase(const StringPiece& reason_phrase);
 
-  std::string ToString() const;
+  GoogleString ToString() const;
 
   // Sets the status code and reason_phrase based on an internal table.
   void SetStatusAndReason(HttpStatus::Code code);

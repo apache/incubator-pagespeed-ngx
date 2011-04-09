@@ -42,7 +42,7 @@
 #include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 
 #define URL_PREFIX "http://www.example.com/"
@@ -112,13 +112,13 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   MockTimer* mock_timer() { return file_system_.timer(); }
 
-  void DeleteFileIfExists(const std::string& filename);
+  void DeleteFileIfExists(const GoogleString& filename);
 
   void AppendDefaultHeaders(const ContentType& content_type,
                             ResourceManager* resource_manager,
-                            std::string* text);
+                            GoogleString* text);
 
-  void ServeResourceFromManyContexts(const std::string& resource_url,
+  void ServeResourceFromManyContexts(const GoogleString& resource_url,
                                      RewriteOptions::Filter filter,
                                      Hasher* hasher,
                                      const StringPiece& expected_content);
@@ -126,7 +126,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Test that a resource can be served from an new server that has not already
   // constructed it.
   void ServeResourceFromNewContext(
-      const std::string& resource_url,
+      const GoogleString& resource_url,
       RewriteOptions::Filter filter,
       Hasher* hasher,
       const StringPiece& expected_content);
@@ -172,15 +172,15 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // on the status and EXPECT_EQ on the content.
   bool ServeResource(const StringPiece& path, const StringPiece& filter_id,
                      const StringPiece& name, const StringPiece& ext,
-                     std::string* content);
+                     GoogleString* content);
 
-  bool ServeResourceUrl(const StringPiece& url, std::string* content);
+  bool ServeResourceUrl(const StringPiece& url, GoogleString* content);
 
   // Just check if we can fetch a resource successfully, ignore response.
   bool TryFetchResource(const StringPiece& url);
 
   // Helper function to encode a resource name from its pieces.
-  std::string Encode(const StringPiece& path,
+  GoogleString Encode(const StringPiece& path,
                       const StringPiece& filter_id, const StringPiece& hash,
                       const StringPiece& name, const StringPiece& ext);
 
@@ -205,8 +205,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   MockHasher mock_hasher_;
   MD5Hasher md5_hasher_;
 
-  std::string file_prefix_;
-  std::string url_prefix_;
+  GoogleString file_prefix_;
+  GoogleString url_prefix_;
 
   // We have two independent RewriteDrivers representing two completely
   // separate servers for the same domain (say behind a load-balancer).

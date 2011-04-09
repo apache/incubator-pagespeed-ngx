@@ -28,7 +28,7 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/shared_string.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -46,7 +46,7 @@ class FileCacheTest : public CacheTestBase {
   }
 
   void CheckCleanTimestamp(int64 min_time_ms) {
-    std::string buffer;
+    GoogleString buffer;
     file_system_.ReadFile(cache_.clean_time_path_.c_str(), &buffer,
                            &message_handler_);
     int64 clean_time_ms;
@@ -93,8 +93,8 @@ TEST_F(FileCacheTest, PutGetDelete) {
 TEST_F(FileCacheTest, Clean) {
   // Make some "directory" entries so that the mem_file_system recurses
   // correctly.
-  std::string dir1 = GTestTempDir() + "/a/";
-  std::string dir2 = GTestTempDir() + "/b/";
+  GoogleString dir1 = GTestTempDir() + "/a/";
+  GoogleString dir2 = GTestTempDir() + "/b/";
   EXPECT_TRUE(file_system_.MakeDir(dir1.c_str(), &message_handler_));
   EXPECT_TRUE(file_system_.MakeDir(dir2.c_str(), &message_handler_));
   // Commonly-used keys

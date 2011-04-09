@@ -20,7 +20,7 @@
 #include <string>
 #include "base/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 struct server_rec;
@@ -41,7 +41,7 @@ class ApacheMessageHandler : public MessageHandler {
 
  private:
   int GetApacheLogLevel(MessageType type);
-  std::string Format(const char* msg, va_list args);
+  GoogleString Format(const char* msg, va_list args);
 
   const server_rec* server_rec_;
   const std::string version_;

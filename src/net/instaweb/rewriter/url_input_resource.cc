@@ -66,7 +66,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
     // get different resources depending on user-agent?
     RequestHeaders request_headers;
     message_handler_ = handler;
-    std::string lock_name = StrCat(
+    GoogleString lock_name = StrCat(
         resource_manager_->filename_prefix(),
         resource_manager_->hasher()->Hash(url()),
         ".lock");
@@ -99,7 +99,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
                                 url().c_str(), lock_name.c_str());
     }
 
-    std::string origin_url;
+    GoogleString origin_url;
     bool ret = false;
     const DomainLawyer* lawyer = rewrite_options_->domain_lawyer();
     if (lawyer->MapOrigin(url(), &origin_url)) {
@@ -141,7 +141,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   // is called, so it must keep them locally in the class.
   virtual ResponseHeaders* response_headers() = 0;
   virtual HTTPValue* http_value() = 0;
-  virtual std::string url() const = 0;
+  virtual GoogleString url() const = 0;
   virtual HTTPCache* http_cache() = 0;
   // If someone is already fetching this resource, should we yield to them and
   // try again later?  If so, return true.  Otherwise, if we must fetch the
@@ -164,7 +164,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
 
 class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
  public:
-  UrlReadIfCachedCallback(const std::string& url, HTTPCache* http_cache,
+  UrlReadIfCachedCallback(const GoogleString& url, HTTPCache* http_cache,
                           ResourceManager* resource_manager,
                           const RewriteOptions* rewrite_options)
       : UrlResourceFetchCallback(resource_manager, rewrite_options),
@@ -178,12 +178,12 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
 
   virtual ResponseHeaders* response_headers() { return &response_headers_; }
   virtual HTTPValue* http_value() { return &http_value_; }
-  virtual std::string url() const { return url_; }
+  virtual GoogleString url() const { return url_; }
   virtual HTTPCache* http_cache() { return http_cache_; }
   virtual bool should_yield() { return true; }
 
  private:
-  std::string url_;
+  GoogleString url_;
   HTTPCache* http_cache_;
   HTTPValue http_value_;
   ResponseHeaders response_headers_;
@@ -228,7 +228,7 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
 
   virtual ResponseHeaders* response_headers() { return &resource_->meta_data_; }
   virtual HTTPValue* http_value() { return &resource_->value_; }
-  virtual std::string url() const { return resource_->url(); }
+  virtual GoogleString url() const { return resource_->url(); }
   virtual HTTPCache* http_cache() {
     return resource_->resource_manager()->http_cache();
   }

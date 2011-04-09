@@ -273,7 +273,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
   int size = content_starts_[0].size();
   scoped_array<char> buf(new char[size]);
   ASSERT_EQ(size, inflater.InflateBytes(buf.get(), size));
-  EXPECT_EQ(content_starts_[0], std::string(buf.get(), size));
+  EXPECT_EQ(content_starts_[0], GoogleString(buf.get(), size));
   EXPECT_EQ(0, ActiveFetches());
 }
 

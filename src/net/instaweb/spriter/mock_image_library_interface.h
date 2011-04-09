@@ -22,7 +22,7 @@
 #include "base/basictypes.h"
 #include "net/instaweb/util/public/gmock.h"
 #include "net/instaweb/util/public/gtest.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/spriter/image_library_interface.h"
 
 

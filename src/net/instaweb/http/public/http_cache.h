@@ -24,7 +24,7 @@
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -88,7 +88,7 @@ class HTTPCache {
 
   // Non-blocking Find.  Calls callback when done.  'handler' must all
   // stay valid until callback->Done() is called.
-  void Find(const std::string& key, MessageHandler* handler,
+  void Find(const GoogleString& key, MessageHandler* handler,
             Callback* callback);
 
   // Blocking Find.  This method is deprecated for transition to strictly
@@ -96,25 +96,25 @@ class HTTPCache {
   //
   // TODO(jmarantz): remove this when blocking callers of HTTPCache::Find
   // are removed from the codebase.
-  HTTPCache::FindResult Find(const std::string& key, HTTPValue* value,
+  HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
                              ResponseHeaders* headers, MessageHandler* handler);
 
   // Note that Put takes a non-const pointer for HTTPValue so it can
   // bump the reference count.
-  void Put(const std::string& key, HTTPValue* value, MessageHandler* handler);
+  void Put(const GoogleString& key, HTTPValue* value, MessageHandler* handler);
 
   // Note that Put takes a non-const pointer for ResponseHeaders* so it
   // can update the caching fields prior to storing.
-  void Put(const std::string& key, ResponseHeaders* headers,
+  void Put(const GoogleString& key, ResponseHeaders* headers,
            const StringPiece& content, MessageHandler* handler);
 
   // Deprecated method to make a blocking query for the state of an
   // element in the cache.
   // TODO(jmarantz): remove this interface when blocking callers are removed.
-  CacheInterface::KeyState Query(const std::string& key);
+  CacheInterface::KeyState Query(const GoogleString& key);
 
   // Deletes an element in the cache.
-  void Delete(const std::string& key);
+  void Delete(const GoogleString& key);
 
   void set_force_caching(bool force) { force_caching_ = force; }
   bool force_caching() const { return force_caching_; }
@@ -136,7 +136,7 @@ class HTTPCache {
   // TODO(jmarantz): if fetch failed, maybe we should try back soon,
   // but if it is Cache-Control: private, we can probably assume that
   // it still will be in 5 minutes.
-  void RememberNotCacheable(const std::string& key, MessageHandler * handler);
+  void RememberNotCacheable(const GoogleString& key, MessageHandler * handler);
 
   // Initialize statistics variables for the cache
   static void Initialize(Statistics* statistics);
@@ -150,7 +150,7 @@ class HTTPCache {
   friend class HTTPCacheCallback;
 
   bool IsCurrentlyValid(const ResponseHeaders& headers, int64 now_ms);
-  void PutHelper(const std::string& key, int64 now_us,
+  void PutHelper(const GoogleString& key, int64 now_us,
                  HTTPValue* value, MessageHandler* handler);
   void UpdateStats(FindResult result, int64 delta_us);
 

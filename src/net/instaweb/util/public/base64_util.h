@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_BASE64_UTIL_H_
 
 
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 #include "base/string_piece.h"
 #include "third_party/base64/base64.h"
@@ -29,22 +29,22 @@ namespace net_instaweb {
 
 typedef base::StringPiece StringPiece;
 
-inline void Web64Encode(const StringPiece& in, std::string* out) {
+inline void Web64Encode(const StringPiece& in, GoogleString* out) {
   *out = web64_encode(reinterpret_cast<const unsigned char*>(in.data()),
                       in.size());
 }
 
-inline bool Web64Decode(const StringPiece& in, std::string* out) {
+inline bool Web64Decode(const StringPiece& in, GoogleString* out) {
   bool ret = web64_decode(in.as_string(), out);
   return ret;
 }
 
-inline void Mime64Encode(const StringPiece& in, std::string* out) {
+inline void Mime64Encode(const StringPiece& in, GoogleString* out) {
   *out = base64_encode(reinterpret_cast<const unsigned char*>(in.data()),
                       in.size());
 }
 
-inline bool Mime64Decode(const StringPiece& in, std::string* out) {
+inline bool Mime64Decode(const StringPiece& in, GoogleString* out) {
   bool ret = base64_decode(in.as_string(), out);
   return ret;
 }

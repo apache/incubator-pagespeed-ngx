@@ -29,7 +29,7 @@ namespace {
 class ThreadsafeCallback : public CacheInterface::Callback {
  public:
   ThreadsafeCallback(AbstractMutex* mutex,
-                     const std::string& key,
+                     const GoogleString& key,
                      CacheInterface::Callback* callback)
       : mutex_(mutex),
         key_(key),
@@ -48,28 +48,28 @@ class ThreadsafeCallback : public CacheInterface::Callback {
   }
 
   AbstractMutex* mutex_;
-  const std::string& key_;
+  const GoogleString& key_;
   CacheInterface::Callback* callback_;
 };
 
 }  // namespace
 
-void ThreadsafeCache::Get(const std::string& key, Callback* callback) {
+void ThreadsafeCache::Get(const GoogleString& key, Callback* callback) {
   ThreadsafeCallback* cb = new ThreadsafeCallback(mutex_, key, callback);
   cache_->Get(key, cb);
 }
 
-void ThreadsafeCache::Put(const std::string& key, SharedString* value) {
+void ThreadsafeCache::Put(const GoogleString& key, SharedString* value) {
   ScopedMutex mutex(mutex_);
   cache_->Put(key, value);
 }
 
-void ThreadsafeCache::Delete(const std::string& key) {
+void ThreadsafeCache::Delete(const GoogleString& key) {
   ScopedMutex mutex(mutex_);
   cache_->Delete(key);
 }
 
-void ThreadsafeCache::Query(const std::string& key, Callback* callback) {
+void ThreadsafeCache::Query(const GoogleString& key, Callback* callback) {
   cache_->Query(key, new ThreadsafeCallback(mutex_, key, callback));
 }
 

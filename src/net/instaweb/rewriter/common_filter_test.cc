@@ -53,7 +53,7 @@ class CommonFilterTest : public ResourceManagerTestBase {
     rewrite_driver_.AddFilter(&filter_);
   }
 
-  void ExpectUrl(const std::string& expected_url, const GoogleUrl& actual_gurl) {
+  void ExpectUrl(const GoogleString& expected_url, const GoogleUrl& actual_gurl) {
     LOG(INFO) << actual_gurl.spec_c_str();
     EXPECT_EQ(expected_url, actual_gurl.Spec());
   }
@@ -96,7 +96,7 @@ TEST_F(CommonFilterTest, DoesCallImpls) {
 }
 
 TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
-  std::string doc_url = "http://www.example.com/";
+  GoogleString doc_url = "http://www.example.com/";
   rewrite_driver_.StartParse(doc_url);
   rewrite_driver_.Flush();
   // Base URL starts out as document URL.
@@ -108,7 +108,7 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   rewrite_driver_.Flush();
   ExpectUrl(doc_url, filter_.base_url());
 
-  std::string base_url = "http://www.baseurl.com/foo/";
+  GoogleString base_url = "http://www.baseurl.com/foo/";
   rewrite_driver_.ParseText("<base href='");
   rewrite_driver_.ParseText(base_url);
   rewrite_driver_.ParseText("' />");
@@ -122,7 +122,7 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   rewrite_driver_.Flush();
   ExpectUrl(base_url, filter_.base_url());
 
-  std::string new_base_url = "http://www.somewhere-else.com/";
+  GoogleString new_base_url = "http://www.somewhere-else.com/";
   rewrite_driver_.ParseText("<base href='");
   rewrite_driver_.ParseText(new_base_url);
   rewrite_driver_.ParseText("' />");
@@ -139,7 +139,7 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
 }
 
 TEST_F(CommonFilterTest, DetectsNoScriptCorrectly) {
-  std::string doc_url = "http://www.example.com/";
+  GoogleString doc_url = "http://www.example.com/";
   rewrite_driver_.StartParse(doc_url);
   rewrite_driver_.Flush();
   EXPECT_TRUE(filter_.noscript_element() == NULL);

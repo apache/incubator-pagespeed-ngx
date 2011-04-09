@@ -67,11 +67,11 @@ template<class Proto> int Headers<Proto>::NumAttributes() const {
   return proto_->header_size();
 }
 
-template<class Proto> const std::string& Headers<Proto>::Name(int i) const {
+template<class Proto> const GoogleString& Headers<Proto>::Name(int i) const {
   return proto_->header(i).name();
 }
 
-template<class Proto> const std::string& Headers<Proto>::Value(int i) const {
+template<class Proto> const GoogleString& Headers<Proto>::Value(int i) const {
   return proto_->header(i).value();
 }
 
@@ -145,7 +145,7 @@ template<class Proto> void Headers<Proto>::Replace(
 
 template<class Proto> bool Headers<Proto>::WriteAsBinary(
     Writer* writer, MessageHandler* handler) {
-  std::string buf;
+  GoogleString buf;
   {
     StringOutputStream sstream(&buf);
     proto_->SerializeToZeroCopyStream(&sstream);

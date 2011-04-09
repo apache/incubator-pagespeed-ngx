@@ -48,12 +48,12 @@ class CacheTestBase : public testing::Test {
     CacheInterface::KeyState state_;
   };
 
-  void CheckGet(const char* key, const std::string& expected_value) {
+  void CheckGet(const char* key, const GoogleString& expected_value) {
     CheckGet(Cache(), key, expected_value);
   }
 
   void CheckGet(CacheInterface* cache, const char* key,
-                const std::string& expected_value) {
+                const GoogleString& expected_value) {
     cache->Get(key, callback_.Reset());
     ASSERT_TRUE(callback_.called_);
     ASSERT_EQ(CacheInterface::kAvailable, callback_.state_);

@@ -26,7 +26,7 @@ const size_t WriteThroughCache::kUnlimited = static_cast<size_t>(-1);
 WriteThroughCache::~WriteThroughCache() {
 }
 
-void WriteThroughCache::PutInCache1(const std::string& key,
+void WriteThroughCache::PutInCache1(const GoogleString& key,
                                     SharedString* value) {
   if ((cache1_size_limit_ == kUnlimited) ||
       (key.size() + value->size() < cache1_size_limit_)) {
@@ -37,7 +37,7 @@ void WriteThroughCache::PutInCache1(const std::string& key,
 class WriteThroughCallback : public CacheInterface::Callback {
  public:
   WriteThroughCallback(WriteThroughCache* wtc,
-                       const std::string& key,
+                       const GoogleString& key,
                        bool is_query,
                        CacheInterface::Callback* callback)
       : write_through_cache_(wtc),
@@ -70,27 +70,27 @@ class WriteThroughCallback : public CacheInterface::Callback {
 
 
   WriteThroughCache* write_through_cache_;
-  const std::string& key_;
+  const GoogleString& key_;
   bool is_query_;
   CacheInterface::Callback* callback_;
   bool trying_cache2_;
 };
 
-void WriteThroughCache::Get(const std::string& key, Callback* callback) {
+void WriteThroughCache::Get(const GoogleString& key, Callback* callback) {
   cache1_->Get(key, new WriteThroughCallback(this, key, false, callback));
 }
 
-void WriteThroughCache::Put(const std::string& key, SharedString* value) {
+void WriteThroughCache::Put(const GoogleString& key, SharedString* value) {
   PutInCache1(key, value);
   cache2_->Put(key, value);
 }
 
-void WriteThroughCache::Delete(const std::string& key) {
+void WriteThroughCache::Delete(const GoogleString& key) {
   cache1_->Delete(key);
   cache2_->Delete(key);
 }
 
-void WriteThroughCache::Query(const std::string& key, Callback* callback) {
+void WriteThroughCache::Query(const GoogleString& key, Callback* callback) {
   cache1_->Query(key, new WriteThroughCallback(this, key, true, callback));
 }
 

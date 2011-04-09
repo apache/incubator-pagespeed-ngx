@@ -22,7 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -71,7 +71,7 @@ void CollapseWhitespaceFilter::EndElement(HtmlElement* element) {
 void CollapseWhitespaceFilter::Characters(HtmlCharactersNode* characters) {
   if (keyword_stack_.empty()) {
     // Mutate the contents-string in-place for speed.
-    std::string* contents = characters->mutable_contents();
+    GoogleString* contents = characters->mutable_contents();
     // It is safe to directly mutate the bytes in the string because
     // we are only going to shrink it, never grow it.
     char* read_ptr = &(*contents)[0];

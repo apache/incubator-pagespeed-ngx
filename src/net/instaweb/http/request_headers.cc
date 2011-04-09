@@ -43,8 +43,8 @@ void RequestHeaders::CopyFrom(const RequestHeaders& other) {
   *(proto_.get()) = *(other.proto_.get());
 }
 
-std::string RequestHeaders::ToString() const {
-  std::string str;
+GoogleString RequestHeaders::ToString() const {
+  GoogleString str;
   StringWriter writer(&str);
   WriteAsHttp("", &writer, NULL);
   return str;
@@ -102,7 +102,7 @@ const char* RequestHeaders::method_string() const {
 bool RequestHeaders::WriteAsHttp(
     const StringPiece& url, Writer* writer, MessageHandler* handler) const {
   bool ret = true;
-  std::string buf = StringPrintf("%s %s HTTP/%d.%d\r\n",
+  GoogleString buf = StringPrintf("%s %s HTTP/%d.%d\r\n",
                                   method_string(), url.as_string().c_str(),
                                   major_version(), minor_version());
   ret &= writer->Write(buf, handler);

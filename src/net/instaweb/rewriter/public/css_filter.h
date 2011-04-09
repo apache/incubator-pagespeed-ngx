@@ -25,7 +25,7 @@
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/atom.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace Css {
@@ -85,10 +85,10 @@ class CssFilter : public RewriteSingleResourceFilter {
   static const char kParseFailures[];
 
  private:
-  TimedBool RewriteCssText(const StringPiece& in_text, std::string* out_text,
+  TimedBool RewriteCssText(const StringPiece& in_text, GoogleString* out_text,
                            const GoogleUrl& css_gurl,
                            MessageHandler* handler);
-  bool RewriteExternalCss(const StringPiece& in_url, std::string* out_url);
+  bool RewriteExternalCss(const StringPiece& in_url, GoogleString* out_url);
 
   virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
                                               OutputResource* output_resource);

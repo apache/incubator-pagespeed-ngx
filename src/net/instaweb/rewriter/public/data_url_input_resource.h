@@ -45,7 +45,7 @@ class DataUrlInputResource : public Resource {
     // We create the local copy of the url early, because
     // encoded_contents will in general be a substring of this
     // local copy and must have the same lifetime.
-    std::string* url_copy = new std::string();
+    GoogleString* url_copy = new GoogleString();
     url.CopyToString(url_copy);
     if (!ParseDataUrl(*url_copy, &type, &encoding, &encoded_contents)) {
       return NULL;
@@ -56,14 +56,14 @@ class DataUrlInputResource : public Resource {
 
   virtual ~DataUrlInputResource() { }
 
-  virtual std::string url() const { return *url_.get(); }
+  virtual GoogleString url() const { return *url_.get(); }
 
  protected:
   virtual bool Load(MessageHandler* message_handler);
   virtual bool IsCacheable() const;
 
  private:
-  DataUrlInputResource(const std::string* url,
+  DataUrlInputResource(const GoogleString* url,
                        Encoding encoding,
                        const ContentType* type,
                        const StringPiece& encoded_contents,
@@ -74,10 +74,10 @@ class DataUrlInputResource : public Resource {
         encoded_contents_(encoded_contents) {
   }
 
-  scoped_ptr<const std::string> url_;
+  scoped_ptr<const GoogleString> url_;
   const Encoding encoding_;
   const StringPiece encoded_contents_;  // substring of url.
-  std::string decoded_contents_;
+  GoogleString decoded_contents_;
 
   DISALLOW_COPY_AND_ASSIGN(DataUrlInputResource);
 };

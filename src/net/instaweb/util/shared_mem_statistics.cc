@@ -82,7 +82,7 @@ void SharedMemVariable::Reset() {
 }
 
 SharedMemStatistics::SharedMemStatistics(AbstractSharedMem* shm_runtime,
-                                         const std::string& filename_prefix)
+                                         const GoogleString& filename_prefix)
     : shm_runtime_(shm_runtime), filename_prefix_(filename_prefix),
       frozen_(false) {
 }
@@ -183,7 +183,7 @@ void SharedMemStatistics::Clear() {
   }
 }
 
-std::string SharedMemStatistics::SegmentName() const {
+GoogleString SharedMemStatistics::SegmentName() const {
   return StrCat(filename_prefix_, kStatisticsObjName);
 }
 

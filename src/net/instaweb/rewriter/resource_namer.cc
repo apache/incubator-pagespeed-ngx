@@ -56,7 +56,7 @@ static const int kNumSegments = 5;
 static const char kSeparatorString[] = ".";
 static const char kSeparatorChar = kSeparatorString[0];
 
-bool TokenizeSegmentFromRight(StringPiece* src, std::string* dest) {
+bool TokenizeSegmentFromRight(StringPiece* src, GoogleString* dest) {
   StringPiece::size_type pos = src->rfind(kSeparatorChar);
   if (pos == StringPiece::npos) {
     return false;
@@ -72,7 +72,7 @@ const int ResourceNamer::kOverhead = 4 + STATIC_STRLEN(kSystemId);
 
 bool ResourceNamer::Decode(const StringPiece& encoded_string) {
   StringPiece src(encoded_string);
-  std::string system_id;
+  GoogleString system_id;
   if (TokenizeSegmentFromRight(&src, &ext_) &&
       TokenizeSegmentFromRight(&src, &hash_) &&
       TokenizeSegmentFromRight(&src, &id_) &&
@@ -122,7 +122,7 @@ bool ResourceNamer::LegacyDecode(const StringPiece& encoded_string) {
 
 // This is used for legacy compatibility as we transition to the grand new
 // world.
-std::string ResourceNamer::InternalEncode() const {
+GoogleString ResourceNamer::InternalEncode() const {
   return StrCat(name_, kSeparatorString,
                 kSystemId, kSeparatorString,
                 id_, kSeparatorString,
@@ -132,7 +132,7 @@ std::string ResourceNamer::InternalEncode() const {
 // The current encoding assumes there are no dots in any of the components.
 // This restriction may be relaxed in the future, but check it aggressively
 // for now.
-std::string ResourceNamer::Encode() const {
+GoogleString ResourceNamer::Encode() const {
   CHECK_EQ(StringPiece::npos, id_.find(kSeparatorChar));
   CHECK(!hash_.empty());
   CHECK_EQ(StringPiece::npos, hash_.find(kSeparatorChar));
@@ -140,7 +140,7 @@ std::string ResourceNamer::Encode() const {
  return InternalEncode();
 }
 
-std::string ResourceNamer::EncodeIdName() const {
+GoogleString ResourceNamer::EncodeIdName() const {
   CHECK(id_.find(kSeparatorChar) == StringPiece::npos);
   return StrCat(id_, kSeparatorString, name_);
 }

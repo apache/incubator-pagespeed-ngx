@@ -31,7 +31,7 @@ MockUrlFetcher::~MockUrlFetcher() {
 void MockUrlFetcher::SetResponse(const StringPiece& url,
                                  const ResponseHeaders& response_header,
                                  const StringPiece& response_body) {
-  std::string url_string = url.as_string();
+  GoogleString url_string = url.as_string();
   // Delete any old response.
   ResponseMap::iterator iter = response_map_.find(url_string);
   if (iter != response_map_.end()) {
@@ -50,7 +50,7 @@ void MockUrlFetcher::Clear() {
   response_map_.clear();
 }
 
-bool MockUrlFetcher::StreamingFetchUrl(const std::string& url,
+bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
                                        const RequestHeaders& request_headers,
                                        ResponseHeaders* response_headers,
                                        Writer* response_writer,

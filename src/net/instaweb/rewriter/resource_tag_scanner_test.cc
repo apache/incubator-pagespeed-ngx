@@ -75,13 +75,13 @@ TEST_F(ResourceTagScannerTest, FindTags) {
       "<link rel=stylesheet href=no_type.style>\n"
       "<link rel=stylesheet type=text/css href=media.css media=print>");
   ASSERT_EQ(static_cast<size_t>(7), resources.size());
-  EXPECT_EQ(std::string("myscript.js"), resources[0]);
-  EXPECT_EQ(std::string("action.as"), resources[1]);
-  EXPECT_EQ(std::string("image.jpg"), resources[2]);
-  EXPECT_EQ(std::string("nomedia.css"), resources[3]);
-  EXPECT_EQ(std::string("id.css"), resources[4]);
-  EXPECT_EQ(std::string("no_type.style"), resources[5]);
-  EXPECT_EQ(std::string("media.css"), resources[6]);
+  EXPECT_EQ(GoogleString("myscript.js"), resources[0]);
+  EXPECT_EQ(GoogleString("action.as"), resources[1]);
+  EXPECT_EQ(GoogleString("image.jpg"), resources[2]);
+  EXPECT_EQ(GoogleString("nomedia.css"), resources[3]);
+  EXPECT_EQ(GoogleString("id.css"), resources[4]);
+  EXPECT_EQ(GoogleString("no_type.style"), resources[5]);
+  EXPECT_EQ(GoogleString("media.css"), resources[6]);
 }
 
 }  // namespace net_instaweb

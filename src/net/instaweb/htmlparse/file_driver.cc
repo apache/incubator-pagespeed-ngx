@@ -29,7 +29,7 @@ namespace {
 
 bool GenerateFilename(
     const char* extension, const bool keep_old_extension,
-    const char* infilename, std::string* outfilename) {
+    const char* infilename, GoogleString* outfilename) {
   bool ret = false;
   const char* dot = strrchr(infilename, '.');
   if (dot != NULL) {
@@ -58,12 +58,12 @@ FileDriver::FileDriver(HtmlParse* html_parse, FileSystem* file_system)
 }
 
 bool FileDriver::GenerateOutputFilename(
-    const char* infilename, std::string* outfilename) {
+    const char* infilename, GoogleString* outfilename) {
   return GenerateFilename(".out", true, infilename, outfilename);
 }
 
 bool FileDriver::GenerateStatsFilename(
-    const char* infilename, std::string* outfilename) {
+    const char* infilename, GoogleString* outfilename) {
   return GenerateFilename(".stats", false, infilename, outfilename);
 }
 
@@ -89,7 +89,7 @@ bool FileDriver::ParseFile(const char* infilename,
     if (f != NULL) {
       // HtmlParser needs a valid HTTP URL to evaluate relative paths,
       // so we create a dummy URL.
-      std::string dummy_url = StrCat("http://file.name/", infilename);
+      GoogleString dummy_url = StrCat("http://file.name/", infilename);
       html_parse_->StartParseId(dummy_url, infilename, kContentTypeHtml);
       char buf[1000];
       int nread;

@@ -42,7 +42,7 @@ const char kPassThroughChars[] = "._=+-";
 // 'replacement' into 'out', and advances the start-point in 'src'
 // past the search string, returning true.
 bool ReplaceSubstring(const StringPiece& search, const char* replacement,
-                      StringPiece* src, std::string* out) {
+                      StringPiece* src, GoogleString* out) {
   bool ret = false;
   if ((src->size() >= search.size()) &&
       (memcmp(src->data(), search.data(), search.size()) == 0)) {
@@ -56,7 +56,7 @@ bool ReplaceSubstring(const StringPiece& search, const char* replacement,
 }  // namespace
 
 void UrlEscaper::EncodeToUrlSegment(const StringPiece& in,
-                                    std::string* url_segment) {
+                                    GoogleString* url_segment) {
   for (StringPiece src = in; src.size() != 0; ) {
     // We need to check for common prefixes that begin with pass-through
     // characters before doing the isalnum check.
@@ -87,7 +87,7 @@ void UrlEscaper::EncodeToUrlSegment(const StringPiece& in,
 }
 
 bool UrlEscaper::DecodeFromUrlSegment(const StringPiece& url_segment,
-                                      std::string* out) {
+                                      GoogleString* out) {
   int remaining = url_segment.size();
   for (const char* p = url_segment.data(); remaining != 0; ++p, --remaining) {
     char c = *p;

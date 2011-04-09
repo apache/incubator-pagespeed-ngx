@@ -27,7 +27,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
@@ -164,7 +164,7 @@ class ResourceManager {
   void IncrementResourceUrlDomainRejections();
 
  private:
-  std::string file_prefix_;
+  GoogleString file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
@@ -177,7 +177,7 @@ class ResourceManager {
   bool relative_path_;
   bool store_outputs_in_file_system_;
   NamedLockManager* lock_manager_;
-  std::string max_age_string_;
+  GoogleString max_age_string_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

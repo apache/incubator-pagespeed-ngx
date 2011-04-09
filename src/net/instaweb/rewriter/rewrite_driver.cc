@@ -174,7 +174,7 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
 // flag (the piece after the "=").  Always returns true if the key matched; m is
 // free to complain about invalid input using message_handler().
 bool RewriteDriver::ParseKeyString(const StringPiece& key, SetStringMethod m,
-                                   const std::string& flag) {
+                                   const GoogleString& flag) {
   if (flag.rfind(key.data(), 0, key.size()) == 0) {
     StringPiece sp(flag);
     (this->*m)(flag.substr(key.size()));
@@ -190,9 +190,9 @@ bool RewriteDriver::ParseKeyString(const StringPiece& key, SetStringMethod m,
 // message_handler() (failure to parse a number does so and never
 // calls m).
 bool RewriteDriver::ParseKeyInt64(const StringPiece& key, SetInt64Method m,
-                                  const std::string& flag) {
+                                  const GoogleString& flag) {
   if (flag.rfind(key.data(), 0, key.size()) == 0) {
-    std::string str_value = flag.substr(key.size());
+    GoogleString str_value = flag.substr(key.size());
     int64 value;
     if (StringToInt64(str_value, &value)) {
       (this->*m)(value);
@@ -450,7 +450,7 @@ OutputResource* RewriteDriver::DecodeOutputResource(const StringPiece& url,
   StringPiece id = namer.id();
   OutputResource::Kind kind = OutputResource::kRewrittenResource;
   StringFilterMap::iterator p = resource_filter_map_.find(
-      std::string(id.data(), id.size()));
+      GoogleString(id.data(), id.size()));
   if (p != resource_filter_map_.end()) {
     *filter = p->second;
     if ((*filter)->ComputeOnTheFly()) {
@@ -591,7 +591,7 @@ bool RewriteDriver::FetchExtantOutputResource(
   StringPiece content;
   MessageHandler* handler = message_handler();
   ResponseHeaders* meta_data = output_resource->metadata();
-  std::string url = output_resource->url();
+  GoogleString url = output_resource->url();
   HTTPCache* http_cache = resource_manager_->http_cache();
   if ((http_cache->Find(url, &output_resource->value_, meta_data, handler)
           == HTTPCache::kFound) &&
@@ -630,7 +630,7 @@ OutputResource* RewriteDriver::CreateOutputResourceFromResource(
     UrlPartnership partnership(&options_, gurl);
     if (partnership.AddUrl(input_resource->url(), message_handler())) {
       const GoogleUrl *mapped_gurl = partnership.FullPath(0);
-      std::string name;
+      GoogleString name;
       StringVector v;
       v.push_back(mapped_gurl->LeafWithQuery().as_string());
       encoder->Encode(v, data, &name);
@@ -669,7 +669,7 @@ OutputResource* RewriteDriver::CreateOutputResourceWithPath(
     // up by hash in the http cache.  Note that this cache entry will
     // expire when any of the origin resources expire.
     if (kind != OutputResource::kOutlinedResource) {
-      std::string name_key = StrCat(
+      GoogleString name_key = StrCat(
           ResourceManager::kCacheKeyResourceNamePrefix, resource->name_key());
       resource->FetchCachedResult(name_key, message_handler());
     }
@@ -683,7 +683,7 @@ bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
   if (domain_url.is_valid()) {
     if (options_.IsAllowed(input_url.Spec())) {
       scoped_ptr<GoogleUrl> resolved_request(new GoogleUrl());
-      std::string mapped_domain_name;
+      GoogleString mapped_domain_name;
       // TODO(nforman): MapRequestToDomain() may be heavier-weight than we need.
       // Replace it with something that does less copying.
       if (options_.domain_lawyer()->MapRequestToDomain(
@@ -883,7 +883,7 @@ void RewriteDriver::Scan() {
 }
 
 Resource* RewriteDriver::GetScannedInputResource(const StringPiece& url) const {
-  std::string url_str(url.data(), url.size());
+  GoogleString url_str(url.data(), url.size());
   Resource* resource = NULL;
   ResourceMap::const_iterator iter = resource_map_.find(url_str);
   if (iter != resource_map_.end()) {
@@ -901,7 +901,7 @@ RewriteFilter* RewriteDriver::FindFilter(const StringPiece& id) const {
   return filter;
 }
 
-Resource* RewriteDriver::FindResource(std::string str) const {
+Resource* RewriteDriver::FindResource(GoogleString str) const {
   Resource* resource = NULL;
   const ResourceMap::const_iterator iter = resource_map_.find(str);
   if (iter != resource_map_.end()) {
@@ -910,7 +910,7 @@ Resource* RewriteDriver::FindResource(std::string str) const {
   return resource;
 }
 
-void RewriteDriver::RememberResource(std::string str, Resource* resource) {
+void RewriteDriver::RememberResource(GoogleString str, Resource* resource) {
   Resource* old_resource = resource_map_[str];
   if (old_resource != NULL) {
     delete old_resource;

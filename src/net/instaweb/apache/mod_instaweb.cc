@@ -181,7 +181,7 @@ apr_bucket* rewrite_html(InstawebContext* context, request_rec* request,
     context->Finish();
   }
 
-  const std::string& output = context->output();
+  const GoogleString& output = context->output();
   if (output.empty()) {
     return NULL;
   }
@@ -210,7 +210,7 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
   int option_count = 0;
   for (int i = 0; i < query_params.size(); ++i) {
     const char* name = query_params.name(i);
-    const std::string* value = query_params.value(i);
+    const GoogleString* value = query_params.value(i);
     if (value == NULL) {
       // Empty; all our options require a value, so skip.  It might be a
       // perfectly legitimate query param for the underlying page.
@@ -664,7 +664,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
     if (factory->options()->enabled()) {
       if (factory->filename_prefix().empty() ||
           factory->file_cache_path().empty()) {
-        std::string buf = StrCat(
+        GoogleString buf = StrCat(
             "mod_pagespeed is enabled.  "
             "The following directives must not be NULL\n",
             kModPagespeedFileCachePath, "=",

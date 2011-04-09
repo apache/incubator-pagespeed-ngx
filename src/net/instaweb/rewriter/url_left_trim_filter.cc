@@ -64,7 +64,7 @@ void UrlLeftTrimFilter::StartElementImpl(HtmlElement* element) {
 // and/or path as appropriate.
 bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
                              const StringPiece& url_to_trim,
-                             std::string* trimmed_url,
+                             GoogleString* trimmed_url,
                              MessageHandler* handler) {
   if (!base_url.is_valid() || !base_url.is_standard() || url_to_trim.empty()) {
     return false;
@@ -160,7 +160,7 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
 void UrlLeftTrimFilter::TrimAttribute(HtmlElement::Attribute* attr) {
   if (attr != NULL) {
     StringPiece val(attr->value());
-    std::string trimmed_val;
+    GoogleString trimmed_val;
     size_t orig_size = val.size();
     if (Trim(driver_->base_url(), val, &trimmed_val,
              driver_->message_handler())) {

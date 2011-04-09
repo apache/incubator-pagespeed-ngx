@@ -35,7 +35,7 @@ const char kPuzzleJpgFile[] = "Puzzle.jpg";
 class ImageRewriteTest : public ResourceManagerTestBase {
  protected:
   // Simple image rewrite test to check resource fetching functionality.
-  void RewriteImage(const std::string& tag_string) {
+  void RewriteImage(const GoogleString& tag_string) {
     options_.EnableFilter(RewriteOptions::kRewriteImages);
     options_.EnableFilter(RewriteOptions::kInsertImgDimensions);
     options_.set_img_inline_max_bytes(2000);
@@ -48,7 +48,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     const char html_url[] = "http://rewrite_image.test/RewriteImage.html";
     const char image_url[] = "http://rewrite_image.test/Puzzle.jpg";
 
-    const std::string image_html =
+    const GoogleString image_html =
         StrCat("<head/><body><", tag_string, " src=\"Puzzle.jpg\"/></body>");
 
     // Store image contents into fetcher.
@@ -60,23 +60,23 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     CollectImgSrcs("RewriteImage/collect_sources", output_buffer_, &img_srcs);
     // output_buffer_ should have exactly one image file (Puzzle.jpg).
     EXPECT_EQ(1UL, img_srcs.size());
-    const std::string& src_string = img_srcs[0];
+    const GoogleString& src_string = img_srcs[0];
     // Make sure the next two checks won't abort().
     ASSERT_LT(strlen(domain) + 4, src_string.size());
     EXPECT_EQ(domain, src_string.substr(0, strlen(domain)));
     EXPECT_EQ(".jpg", src_string.substr(src_string.size() - 4, 4));
 
-    std::string rewritten_data;
+    GoogleString rewritten_data;
 
-    const std::string expected_output =
+    const GoogleString expected_output =
         StrCat("<head/><body><", tag_string, " src=\"", src_string,
                "\" width=\"1023\" height=\"766\"/></body>");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
-    std::string rewritten_filename;
+    GoogleString rewritten_filename;
     filename_encoder_.Encode(file_prefix_, src_string, &rewritten_filename);
 
-    std::string rewritten_image_data;
+    GoogleString rewritten_image_data;
     ASSERT_TRUE(file_system_.ReadFile(rewritten_filename.c_str(),
                                       &rewritten_image_data,
                                       &message_handler_));
@@ -84,11 +84,11 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     // Also fetch the resource to ensure it can be created dynamically
     RequestHeaders request_headers;
     ResponseHeaders response_headers;
-    std::string fetched_resource_content;
+    GoogleString fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
     DummyCallback dummy_callback(true);
 
-    std::string headers;
+    GoogleString headers;
     AppendDefaultHeaders(kContentTypeJpeg, resource_manager_, &headers);
 
     writer.Write(headers, &message_handler_);
@@ -146,7 +146,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     HtmlParse html_parse(&message_handler_);
     ImgCollector collector(&html_parse, img_srcs);
     html_parse.AddFilter(&collector);
-    std::string dummy_url = StrCat("http://collect.css.links/", id, ".html");
+    GoogleString dummy_url = StrCat("http://collect.css.links/", id, ".html");
     html_parse.StartParse(dummy_url);
     html_parse.ParseText(html.data(), html.size());
     html_parse.FinishParse();
@@ -170,12 +170,12 @@ class ImageRewriteTest : public ResourceManagerTestBase {
         "GQR9ZCRVDhbl1RtIoNngBC/yzozLJqLwUQqCjotTPR1fTnxVTBs3ra89T6/ikHfgK9"
         "dQa+t1eS//gJVB8WUCgnLYHaYwIAeaQp0GC25S8cG9cWiOrm+AHrnhMJBLplmwLkE8"
         "kEenp/8oyIBf2ZEWaEfyv8BsICdAZ/XeTCAAAAAElFTkSuQmCC";
-    std::string cuppa_string(kCuppaData);
+    GoogleString cuppa_string(kCuppaData);
     scoped_ptr<Resource> cuppa_resource(
         rewrite_driver_.CreateInputResourceAbsoluteUnchecked(cuppa_string));
     ASSERT_TRUE(cuppa_resource != NULL);
     EXPECT_TRUE(rewrite_driver_.ReadIfCached(cuppa_resource.get()));
-    std::string cuppa_contents;
+    GoogleString cuppa_contents;
     cuppa_resource->contents().CopyToString(&cuppa_contents);
     // Now make sure axing the original cuppa_string doesn't affect the
     // internals of the cuppa_resource.
@@ -184,7 +184,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     ASSERT_TRUE(other_resource != NULL);
     cuppa_string.clear();
     EXPECT_TRUE(rewrite_driver_.ReadIfCached(other_resource.get()));
-    std::string other_contents;
+    GoogleString other_contents;
     cuppa_resource->contents().CopyToString(&other_contents);
     ASSERT_EQ(cuppa_contents, other_contents);
   }
@@ -206,13 +206,13 @@ class ImageRewriteTest : public ResourceManagerTestBase {
 
     ParseUrl(kTestDomain, kHtml);
     ASSERT_EQ(2, img_srcs.size());
-    std::string normal_output = output_buffer_;
-    std::string url1 = img_srcs[0];
-    std::string url2 = img_srcs[1];
+    GoogleString normal_output = output_buffer_;
+    GoogleString url1 = img_srcs[0];
+    GoogleString url2 = img_srcs[1];
 
     // Fetch messed up versions. Currently image rewriter doesn't actually
     // fetch them.
-    std::string out;
+    GoogleString out;
     EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(url1, junk), &out));
     EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(url2, junk), &out));
 
@@ -265,8 +265,8 @@ TEST_F(ImageRewriteTest, RespectsBaseUrl) {
   StringVector image_urls;
   CollectImgSrcs("base_url-links", output_buffer_, &image_urls);
   EXPECT_EQ(2UL, image_urls.size());
-  const std::string& new_png_url = image_urls[0];
-  const std::string& new_jpeg_url = image_urls[1];
+  const GoogleString& new_png_url = image_urls[0];
+  const GoogleString& new_jpeg_url = image_urls[1];
 
   // Sanity check that we changed the URL.
   EXPECT_NE("a.png", new_png_url);
@@ -283,7 +283,7 @@ TEST_F(ImageRewriteTest, RespectsBaseUrl) {
       "  <img src='%s'>\n"
       "  <img src='%s'>\n"
       "</body>";
-  std::string expected_output = StringPrintf(expected_output_format,
+  GoogleString expected_output = StringPrintf(expected_output_format,
                                               new_png_url.c_str(),
                                               new_jpeg_url.c_str());
 
@@ -302,7 +302,7 @@ TEST_F(ImageRewriteTest, FetchInvalid) {
   // Make sure that fetching invalid URLs cleanly reports a problem by
   // calling Done(false).
   AddFilter(RewriteOptions::kRewriteImages);
-  std::string out;
+  GoogleString out;
   EXPECT_FALSE(
       ServeResourceUrl(
           "http://www.example.com/70x53x,.pagespeed.ic.ABCDEFGHIJ.jpg", &out));

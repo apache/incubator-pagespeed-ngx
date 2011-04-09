@@ -23,7 +23,7 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #ifdef USE_SYSTEM_OPENCV
 #include "cv.h"
@@ -120,7 +120,7 @@ class Image {
   // intent is that an Image is created in a scoped fashion from an existing
   // known resource.
   Image(const StringPiece& original_contents,
-        const std::string& url,
+        const GoogleString& url,
         const StringPiece& file_prefix,
         MessageHandler* handler);
 
@@ -190,7 +190,7 @@ class Image {
 #ifdef USE_OPENCV_2_1
   typedef std::vector<unsigned char> OpenCvBuffer;
 #else
-  typedef std::string OpenCvBuffer;
+  typedef GoogleString OpenCvBuffer;
 #endif
 
   // Internal helper used only in image.cc.
@@ -224,19 +224,19 @@ class Image {
   // Helper that creates & writes a temporary file for us in proper prefix with
   // proper extension.
   bool TempFileForImage(FileSystem* fs, const StringPiece& contents,
-                        std::string* filename);
+                        GoogleString* filename);
 #endif
 
-  const std::string file_prefix_;
+  const GoogleString file_prefix_;
   MessageHandler* handler_;
   Type image_type_;  // Lazily initialized, initially IMAGE_UNKNOWN.
   const StringPiece original_contents_;
-  std::string output_contents_;  // Lazily filled.
+  GoogleString output_contents_;  // Lazily filled.
   bool output_valid_;             // Indicates output_contents_ now correct.
   IplImage* opencv_image_;        // Lazily filled on OpenCV load.
   bool opencv_load_possible_;     // Attempt opencv_load in future?
   bool changed_;
-  const std::string url_;
+  const GoogleString url_;
   ImageDim dims_;
 
   DISALLOW_COPY_AND_ASSIGN(Image);

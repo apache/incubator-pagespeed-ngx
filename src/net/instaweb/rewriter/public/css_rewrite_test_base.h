@@ -32,7 +32,7 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/simple_stats.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -87,29 +87,29 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
                                 int flags);
 
   // Return the expected new URL with hash and all based on necessary data.
-  std::string ExpectedRewrittenUrl(const StringPiece& original_url,
+  GoogleString ExpectedRewrittenUrl(const StringPiece& original_url,
                                     const StringPiece& expected_contents,
                                     const StringPiece& filter_id,
                                     const ContentType& content_type);
 
   void GetNamerForCss(const StringPiece& id,
-                      const std::string& expected_css_output,
+                      const GoogleString& expected_css_output,
                       ResourceNamer* namer);
 
-  std::string ExpectedUrlForNamer(const ResourceNamer& namer);
+  GoogleString ExpectedUrlForNamer(const ResourceNamer& namer);
 
-  std::string ExpectedUrlForCss(const StringPiece& id,
-                                 const std::string& expected_css_output);
+  GoogleString ExpectedUrlForCss(const StringPiece& id,
+                                 const GoogleString& expected_css_output);
 
   // Check that external CSS gets rewritten correctly.
   void ValidateRewriteExternalCss(const StringPiece& id,
-                                  const std::string& css_input,
-                                  const std::string& expected_css_output,
+                                  const GoogleString& css_input,
+                                  const GoogleString& expected_css_output,
                                   int flags);
 
   void ValidateRewrite(const StringPiece& id,
-                       const std::string& css_input,
-                       const std::string& gold_output,
+                       const GoogleString& css_input,
+                       const GoogleString& gold_output,
                        int flags = kExpectChange | kExpectSuccess) {
     ValidateRewriteInlineCss(StrCat(id, "-inline"),
                              css_input, gold_output, flags);
@@ -117,7 +117,7 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
                                css_input, gold_output, flags);
   }
 
-  void ValidateFailParse(const StringPiece& id, const std::string& css_input) {
+  void ValidateFailParse(const StringPiece& id, const GoogleString& css_input) {
     ValidateRewrite(id, css_input, css_input, kExpectNoChange | kExpectFailure);
   }
 

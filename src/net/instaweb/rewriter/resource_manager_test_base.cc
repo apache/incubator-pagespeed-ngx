@@ -101,7 +101,7 @@ void ResourceManagerTestBase::AddOtherRewriteFilter(RewriteFilter* filter) {
   other_rewrite_driver_.EnableRewriteFilter(filter->id().c_str());
 }
 
-void ResourceManagerTestBase::DeleteFileIfExists(const std::string& filename) {
+void ResourceManagerTestBase::DeleteFileIfExists(const GoogleString& filename) {
   if (file_system_.Exists(filename.c_str(), &message_handler_).is_true()) {
     ASSERT_TRUE(file_system_.RemoveFile(filename.c_str(), &message_handler_));
   }
@@ -118,7 +118,7 @@ Resource* ResourceManagerTestBase::CreateResource(const StringPiece& base,
 void ResourceManagerTestBase::AppendDefaultHeaders(
     const ContentType& content_type,
     ResourceManager* resource_manager,
-    std::string* text) {
+    GoogleString* text) {
   ResponseHeaders header;
   int64 time = mock_timer()->NowUs();
   // Reset mock timer so synthetic headers match original.
@@ -131,7 +131,7 @@ void ResourceManagerTestBase::AppendDefaultHeaders(
 }
 
 void ResourceManagerTestBase::ServeResourceFromManyContexts(
-    const std::string& resource_url,
+    const GoogleString& resource_url,
     RewriteOptions::Filter filter,
     Hasher* hasher,
     const StringPiece& expected_content) {
@@ -148,7 +148,7 @@ void ResourceManagerTestBase::ServeResourceFromManyContexts(
 // Test that a resource can be served from an new server that has not already
 // constructed it.
 void ResourceManagerTestBase::ServeResourceFromNewContext(
-    const std::string& resource_url,
+    const GoogleString& resource_url,
     RewriteOptions::Filter /*filter*/,  // TODO(sligocki): remove
     Hasher* hasher,
     const StringPiece& expected_content) {
@@ -187,7 +187,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   RequestHeaders request_headers;
   // TODO(sligocki): We should set default request headers.
   ResponseHeaders response_headers;
-  std::string response_contents;
+  GoogleString response_contents;
   StringWriter response_writer(&response_contents);
   DummyCallback callback(true);
 
@@ -220,7 +220,7 @@ void ResourceManagerTestBase::InitResponseHeaders(
     const ContentType& content_type,
     const StringPiece& content,
     int64 ttl_sec) {
-  std::string name;
+  GoogleString name;
   if (resource_name.starts_with("http://")) {
     resource_name.CopyToString(&name);
   } else {
@@ -245,9 +245,9 @@ void ResourceManagerTestBase::AddFileToMockFetcher(
   // We need to load a file from the testdata directory. Don't use this
   // physical filesystem for anything else, use file_system_ which can be
   // abstracted as a MemFileSystem instead.
-  std::string contents;
+  GoogleString contents;
   StdioFileSystem stdio_file_system;
-  std::string filename_str = StrCat(GTestSrcDir(), kTestData, filename);
+  GoogleString filename_str = StrCat(GTestSrcDir(), kTestData, filename);
   ASSERT_TRUE(stdio_file_system.ReadFile(
       filename_str.c_str(), &contents, &message_handler_));
   InitResponseHeaders(url, content_type, contents, ttl_sec);
@@ -259,13 +259,13 @@ void ResourceManagerTestBase::AddFileToMockFetcher(
 bool ResourceManagerTestBase::ServeResource(
     const StringPiece& path, const StringPiece& filter_id,
     const StringPiece& name, const StringPiece& ext,
-    std::string* content) {
-  std::string url = Encode(path, filter_id, "0", name, ext);
+    GoogleString* content) {
+  GoogleString url = Encode(path, filter_id, "0", name, ext);
   return ServeResourceUrl(url, content);
 }
 
 bool ResourceManagerTestBase::ServeResourceUrl(
-    const StringPiece& url, std::string* content) {
+    const StringPiece& url, GoogleString* content) {
   content->clear();
   RequestHeaders request_headers;
   ResponseHeaders response_headers;
@@ -281,11 +281,11 @@ bool ResourceManagerTestBase::ServeResourceUrl(
 
 // Just check if we can fetch a resource successfully, ignore response.
 bool ResourceManagerTestBase::TryFetchResource(const StringPiece& url) {
-  std::string contents;
+  GoogleString contents;
   return ServeResourceUrl(url, &contents);
 }
 
-std::string ResourceManagerTestBase::Encode(
+GoogleString ResourceManagerTestBase::Encode(
     const StringPiece& path, const StringPiece& id, const StringPiece& hash,
     const StringPiece& name, const StringPiece& ext) {
   ResourceNamer namer;

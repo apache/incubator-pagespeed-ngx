@@ -37,7 +37,7 @@ apr_pool_t* log_pool = NULL;
 
 const int kMaxInt = std::numeric_limits<int>::max();
 int log_level_cutoff = kMaxInt;
-std::string* mod_pagespeed_version = NULL;
+GoogleString* mod_pagespeed_version = NULL;
 
 int GetApacheLogLevel(int severity) {
   switch (severity) {
@@ -135,7 +135,7 @@ void AddServerConfig(const server_rec* server, const StringPiece& version) {
     logging::SetMinLogLevel(kDebugLogLevel);
   }
   if (mod_pagespeed_version == NULL) {
-    mod_pagespeed_version = new std::string(version.as_string());
+    mod_pagespeed_version = new GoogleString(version.as_string());
   } else {
     *mod_pagespeed_version = version.as_string();
   }

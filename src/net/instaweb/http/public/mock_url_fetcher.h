@@ -21,7 +21,7 @@
 
 #include <map>
 #include "net/instaweb/http/public/response_headers.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 
@@ -38,7 +38,7 @@ class MockUrlFetcher : public UrlFetcher {
                    const StringPiece& response_body);
 
   // Fetching unset URLs will cause EXPECT failures as well as return false.
-  virtual bool StreamingFetchUrl(const std::string& url,
+  virtual bool StreamingFetchUrl(const GoogleString& url,
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* response_writer,
@@ -65,15 +65,15 @@ class MockUrlFetcher : public UrlFetcher {
     }
 
     const ResponseHeaders& header() const { return header_; }
-    const std::string& body() const { return body_; }
+    const GoogleString& body() const { return body_; }
 
    private:
     ResponseHeaders header_;
-    std::string body_;
+    GoogleString body_;
 
     DISALLOW_COPY_AND_ASSIGN(HttpResponse);
   };
-  typedef std::map<const std::string, const HttpResponse*> ResponseMap;
+  typedef std::map<const GoogleString, const HttpResponse*> ResponseMap;
 
   ResponseMap response_map_;
   bool enabled_;

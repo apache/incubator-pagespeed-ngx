@@ -35,7 +35,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
@@ -107,8 +107,8 @@ class CssCombineFilter::CssCombiner
     return ret;
   }
 
-  std::string media_;
-  std::string filter_prefix_;
+  GoogleString media_;
+  GoogleString filter_prefix_;
   CssTagScanner* css_tag_scanner_;
   Variable* css_file_count_reduction_;
 };

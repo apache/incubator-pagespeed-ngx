@@ -34,7 +34,7 @@
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "webutil/css/parser.h"
 
@@ -310,8 +310,8 @@ class Library : public spriter::ImageLibraryInterface {
   // don't want to hit the disk excessively.  We keep here an in-memory map from
   // a "pathname" to its Image (which contains both the encoded input and the
   // decoded raster) for quick access.
-  std::map<const std::string, net_instaweb::Image*> fake_fs_;
-  std::string tmp_dir_;
+  std::map<const GoogleString, net_instaweb::Image*> fake_fs_;
+  GoogleString tmp_dir_;
   MessageHandler* handler_;
 };
 
@@ -413,7 +413,7 @@ class ImgCombineFilter::Combiner
     if (combination.get() == NULL) {
       return false;
     }
-    std::string result_buf;
+    GoogleString result_buf;
     if (!combination->cached_result()->has_spriter_result()) {
       handler->Error(UrlSafeId().c_str(), 0,
                      "No remembered sprite result.");
@@ -431,7 +431,7 @@ class ImgCombineFilter::Combiner
 
     // TODO(abliss): If the same image is included multiple times, it may
     // show up multiple times in the sprite.
-    std::string new_url = combination->url();
+    GoogleString new_url = combination->url();
     const char* new_url_str = new_url.c_str();
     for (int i = n - 1; i >= 0; i--) {
       SpriteFuture* future = element(i);

@@ -141,7 +141,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
     }
 
     virtual void Encode(const StringVector& urls, const ResourceContext* data,
-                        std::string* rewritten_url) const {
+                        GoogleString* rewritten_url) const {
       CHECK(data == NULL);
       CHECK_EQ(1, urls.size());
       *rewritten_url = kTestEncoderUrlExtra;
@@ -154,8 +154,8 @@ class TestRewriter : public RewriteSingleResourceFilter {
                         MessageHandler* handler) const {
       const int magic_len = STATIC_STRLEN(kTestEncoderUrlExtra);
       urls->clear();
-      urls->push_back(std::string());
-      std::string& url = urls->back();
+      urls->push_back(GoogleString());
+      GoogleString& url = urls->back();
       return (rewritten_url.starts_with(kTestEncoderUrlExtra) &&
               UrlEscaper::DecodeFromUrlSegment(rewritten_url.substr(magic_len),
                                                &url));
@@ -209,7 +209,7 @@ class RewriteSingleResourceFilterTest
     out_tag_ = ComputeOutTag();
   }
 
-  std::string ComputeOutTag() {
+  GoogleString ComputeOutTag() {
     return StrCat("<tag src=\"", kTestDomain, OutputName("a.tst"), "\"></tag>");
   }
 
@@ -230,7 +230,7 @@ class RewriteSingleResourceFilterTest
 
   // Returns the filename our test filter will produces for the given
   // input filename
-  std::string OutputName(const StringPiece& in_name) {
+  GoogleString OutputName(const StringPiece& in_name) {
     if (filter_->create_custom_encoder()) {
       return Encode("", kTestFilterPrefix, mock_hasher_.Hash(""),
                     StrCat(kTestEncoderUrlExtra, in_name), "txt");
@@ -241,7 +241,7 @@ class RewriteSingleResourceFilterTest
   }
 
   // Serves from relative URL
-  bool ServeRelativeUrl(const StringPiece& rel_path, std::string* content) {
+  bool ServeRelativeUrl(const StringPiece& rel_path, GoogleString* content) {
     return ServeResourceUrl(StrCat(kTestDomain, rel_path), content);
   }
 
@@ -267,8 +267,8 @@ class RewriteSingleResourceFilterTest
     return counter;
   }
 
-  std::string in_tag_;
-  std::string out_tag_;
+  GoogleString in_tag_;
+  GoogleString out_tag_;
   TestRewriter* filter_;  // owned by the rewrite_driver_.
 };
 
@@ -283,8 +283,8 @@ TEST_P(RewriteSingleResourceFilterTest, BasicOperation) {
 }
 
 TEST_P(RewriteSingleResourceFilterTest, VersionChange) {
-  std::string in = StrCat(in_tag_, in_tag_, in_tag_);
-  std::string out = StrCat(out_tag_, out_tag_, out_tag_);
+  GoogleString in = StrCat(in_tag_, in_tag_, in_tag_);
+  GoogleString out = StrCat(out_tag_, out_tag_, out_tag_);
   ValidateExpected("vc1", in, out);
 
   // Should only have to rewrite once here
@@ -317,7 +317,7 @@ TEST_P(RewriteSingleResourceFilterTest, VersionChange) {
 
 // We should re-check bad resources when version number changes.
 TEST_P(RewriteSingleResourceFilterTest, VersionChangeBad) {
-  std::string in_tag = "<tag src=\"bad.tst\"></tag>";
+  GoogleString in_tag = "<tag src=\"bad.tst\"></tag>";
   ValidateNoChanges("vc.bad", in_tag);
   EXPECT_EQ(1, filter_->num_rewrites_called());
 
@@ -360,8 +360,8 @@ TEST_P(RewriteSingleResourceFilterTest, BasicAsync) {
 }
 
 TEST_P(RewriteSingleResourceFilterTest, CacheBad) {
-  std::string in_tag = "<tag src=\"bad.tst\"></tag>";
-  std::string out_tag = in_tag;
+  GoogleString in_tag = "<tag src=\"bad.tst\"></tag>";
+  GoogleString out_tag = in_tag;
   ValidateExpected("cache.bad", StrCat(in_tag, in_tag, in_tag),
                    StrCat(out_tag, out_tag, out_tag));
 
@@ -375,8 +375,8 @@ TEST_P(RewriteSingleResourceFilterTest, CacheBusy) {
   // In case of busy, it should keep trying every time,
   // as it's meant to represent intermitent system load and
   // not a conclusion about the resource.
-  std::string in_tag = "<tag src=\"busy.tst\"></tag>";
-  std::string out_tag = in_tag;
+  GoogleString in_tag = "<tag src=\"busy.tst\"></tag>";
+  GoogleString out_tag = in_tag;
   ValidateExpected("cache.busy", StrCat(in_tag, in_tag, in_tag),
                    StrCat(out_tag, out_tag, out_tag));
 
@@ -388,8 +388,8 @@ TEST_P(RewriteSingleResourceFilterTest, CacheBusy) {
 
 TEST_P(RewriteSingleResourceFilterTest, Cache404) {
   // 404s should come up as unoptimizable as well.
-  std::string in_tag = "<tag src=\"404.tst\"></tag>";
-  std::string out_tag = in_tag;
+  GoogleString in_tag = "<tag src=\"404.tst\"></tag>";
+  GoogleString out_tag = in_tag;
   ValidateExpected("cache.404", StrCat(in_tag, in_tag, in_tag),
                    StrCat(out_tag, out_tag, out_tag));
 
@@ -532,7 +532,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
 
 // Make sure that fetching normal content works
 TEST_P(RewriteSingleResourceFilterTest, FetchGood) {
-  std::string out;
+  GoogleString out;
   ASSERT_TRUE(ServeRelativeUrl(OutputName("a.tst"), &out));
   EXPECT_EQ("goodgood", out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
@@ -544,14 +544,14 @@ TEST_P(RewriteSingleResourceFilterTest, FetchGoodCache1) {
                    StrCat(out_tag_, out_tag_, out_tag_));
   EXPECT_EQ(1, filter_->num_rewrites_called());
 
-  std::string out;
+  GoogleString out;
   ASSERT_TRUE(ServeRelativeUrl(OutputName("a.tst"), &out));
   EXPECT_EQ("goodgood", out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
 }
 
 TEST_P(RewriteSingleResourceFilterTest, FetchGoodCache2) {
-  std::string out;
+  GoogleString out;
   ASSERT_TRUE(ServeRelativeUrl(OutputName("a.tst"), &out));
   EXPECT_EQ("goodgood", out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
@@ -572,7 +572,7 @@ TEST_P(RewriteSingleResourceFilterTest, FetchGoodCache2) {
 // ::testing::WithParamInterface<int>
 TEST_P(RewriteSingleResourceFilterTest, FetchFirstVersioned) {
   filter_->set_format_version(1);
-  std::string out;
+  GoogleString out;
   ASSERT_TRUE(ServeRelativeUrl(OutputName("a.tst"), &out));
   EXPECT_EQ("goodgood", out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
@@ -587,7 +587,7 @@ TEST_P(RewriteSingleResourceFilterTest, FetchFirstVersioned) {
 TEST_P(RewriteSingleResourceFilterTest, FetchRewriteFailed) {
   scoped_ptr<CountingUrlAsyncFetcher> counter(SetupCountingFetcher());
 
-  std::string out;
+  GoogleString out;
   ASSERT_TRUE(ServeRelativeUrl(OutputName("bad.tst"), &out));
   EXPECT_EQ("bad", out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
@@ -601,7 +601,7 @@ TEST_P(RewriteSingleResourceFilterTest, FetchRewriteFailed) {
 
 // Rewriting a 404 however propagates error
 TEST_P(RewriteSingleResourceFilterTest, Fetch404) {
-  std::string out;
+  GoogleString out;
   ASSERT_FALSE(ServeRelativeUrl(OutputName("404.tst"), &out));
 
   // Make sure the above also cached the failure.
@@ -611,7 +611,7 @@ TEST_P(RewriteSingleResourceFilterTest, Fetch404) {
 }
 
 TEST_P(RewriteSingleResourceFilterTest, FetchInvalidResourceName) {
-  std::string out;
+  GoogleString out;
   ASSERT_FALSE(ServeRelativeUrl("404,.tst.pagespeed.tf.0.txt", &out));
 }
 

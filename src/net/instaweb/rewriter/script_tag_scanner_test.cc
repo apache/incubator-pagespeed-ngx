@@ -58,7 +58,7 @@ class ScriptTagScannerTest : public HtmlParseTestBase {
 
     int Size() const { return static_cast<int>(scripts_.size()); }
 
-    const std::string& UrlAt(int pos) const {
+    const GoogleString& UrlAt(int pos) const {
       return scripts_[pos].url;
     }
 
@@ -74,7 +74,7 @@ class ScriptTagScannerTest : public HtmlParseTestBase {
 
    private:
     struct ScriptInfo {
-      std::string url;
+      GoogleString url;
       ScriptTagScanner::ScriptClassification classification;
       int flags;
     };
@@ -93,10 +93,10 @@ class ScriptTagScannerTest : public HtmlParseTestBase {
   // Checks to make sure each of attributes inside <script> produces
   // the appropriate flags. The array is expected to be 0-terminated
   void TestFlags(const TestSpec* test_spec) {
-    std::string html;
+    GoogleString html;
     int test;
     for (test = 0; test_spec[test].attributes; ++test) {
-      html += "<script " + std::string(test_spec[test].attributes) +
+      html += "<script " + GoogleString(test_spec[test].attributes) +
               "></script>";
     }
 
@@ -109,11 +109,11 @@ class ScriptTagScannerTest : public HtmlParseTestBase {
     }
   }
 
-  std::string ScriptWithType(const std::string& type) {
+  GoogleString ScriptWithType(const GoogleString& type) {
     return "<script type=\"" + type + "\"></script>";
   }
 
-  std::string ScriptWithLang(const std::string& type) {
+  GoogleString ScriptWithLang(const GoogleString& type) {
     return "<script language=\"" + type + "\"></script>";
   }
 
@@ -134,7 +134,7 @@ TEST_F(ScriptTagScannerTest, NotFoundScriptTag) {
 TEST_F(ScriptTagScannerTest, FindNoScriptTag) {
   ValidateNoChanges("simple_script", "<script src=\"myscript.js\"></script>");
   ASSERT_EQ(1, collector_.Size());
-  EXPECT_EQ(std::string("myscript.js"), collector_.UrlAt(0));
+  EXPECT_EQ(GoogleString("myscript.js"), collector_.UrlAt(0));
   EXPECT_EQ(ScriptTagScanner::kJavaScript, collector_.ClassificationAt(0));
 }
 
@@ -142,7 +142,7 @@ TEST_F(ScriptTagScannerTest, TypeNoVal) {
   // type with no value - handle as JS
   ValidateNoChanges("simple_script", "<script type></script>");
   ASSERT_EQ(1, collector_.Size());
-  EXPECT_EQ(std::string(), collector_.UrlAt(0));
+  EXPECT_EQ(GoogleString(), collector_.UrlAt(0));
   EXPECT_EQ(ScriptTagScanner::kJavaScript, collector_.ClassificationAt(0));
 }
 
@@ -150,7 +150,7 @@ TEST_F(ScriptTagScannerTest, TypeEmpty) {
   // type is empty - handle as JS
   ValidateNoChanges("simple_script", "<script type=""></script>");
   ASSERT_EQ(1, collector_.Size());
-  EXPECT_EQ(std::string(), collector_.UrlAt(0));
+  EXPECT_EQ(GoogleString(), collector_.UrlAt(0));
   EXPECT_EQ(ScriptTagScanner::kJavaScript, collector_.ClassificationAt(0));
 }
 
@@ -158,7 +158,7 @@ TEST_F(ScriptTagScannerTest, TypeNoValHaveLang) {
   // type is no-value, but language is there --- it matters
   ValidateNoChanges("simple_script", "<script type language=tcl></script>");
   ASSERT_EQ(1, collector_.Size());
-  EXPECT_EQ(std::string(), collector_.UrlAt(0));
+  EXPECT_EQ(GoogleString(), collector_.UrlAt(0));
   EXPECT_EQ(ScriptTagScanner::kUnknownScript, collector_.ClassificationAt(0));
 }
 
@@ -167,7 +167,7 @@ TEST_F(ScriptTagScannerTest, TypeLangSubordinate) {
   ValidateNoChanges("simple_script",
                     "<script type=\"text/ecmascript\" language=tcl></script>");
   ASSERT_EQ(1, collector_.Size());
-  EXPECT_EQ(std::string(), collector_.UrlAt(0));
+  EXPECT_EQ(GoogleString(), collector_.UrlAt(0));
   EXPECT_EQ(ScriptTagScanner::kJavaScript, collector_.ClassificationAt(0));
 }
 
@@ -175,7 +175,7 @@ TEST_F(ScriptTagScannerTest, LangNoVal) {
   // lang no value - handle as JS
   ValidateNoChanges("simple_script", "<script language></script>");
   ASSERT_EQ(1, collector_.Size());
-  EXPECT_EQ(std::string(), collector_.UrlAt(0));
+  EXPECT_EQ(GoogleString(), collector_.UrlAt(0));
   EXPECT_EQ(ScriptTagScanner::kJavaScript, collector_.ClassificationAt(0));
 }
 
@@ -183,7 +183,7 @@ TEST_F(ScriptTagScannerTest, LangEmpty) {
   // lang is empty - handle as JS
   ValidateNoChanges("simple_script", "<script language=""></script>");
   ASSERT_EQ(1, collector_.Size());
-  EXPECT_EQ(std::string(), collector_.UrlAt(0));
+  EXPECT_EQ(GoogleString(), collector_.UrlAt(0));
   EXPECT_EQ(ScriptTagScanner::kJavaScript, collector_.ClassificationAt(0));
 }
 
@@ -214,12 +214,12 @@ TEST_F(ScriptTagScannerTest, TypeScripts) {
 
   ASSERT_EQ(20, collector_.Size());
   for (int i = 0; i <= 15; ++i) {
-    EXPECT_EQ(std::string(), collector_.UrlAt(i));
+    EXPECT_EQ(GoogleString(), collector_.UrlAt(i));
     EXPECT_EQ(ScriptTagScanner::kJavaScript, collector_.ClassificationAt(i));
   }
 
   for (int i = 16; i <= 19; ++i) {
-    EXPECT_EQ(std::string(), collector_.UrlAt(i));
+    EXPECT_EQ(GoogleString(), collector_.UrlAt(i));
     EXPECT_EQ(ScriptTagScanner::kUnknownScript, collector_.ClassificationAt(i));
   }
 }
@@ -251,12 +251,12 @@ TEST_F(ScriptTagScannerTest, TypeScriptsNormalize) {
 
   ASSERT_EQ(20, collector_.Size());
   for (int i = 0; i <= 15; ++i) {
-    EXPECT_EQ(std::string(), collector_.UrlAt(i));
+    EXPECT_EQ(GoogleString(), collector_.UrlAt(i));
     EXPECT_EQ(ScriptTagScanner::kJavaScript, collector_.ClassificationAt(i));
   }
 
   for (int i = 16; i <= 19; ++i) {
-    EXPECT_EQ(std::string(), collector_.UrlAt(i));
+    EXPECT_EQ(GoogleString(), collector_.UrlAt(i));
     EXPECT_EQ(ScriptTagScanner::kUnknownScript, collector_.ClassificationAt(i));
   }
 }
@@ -283,12 +283,12 @@ TEST_F(ScriptTagScannerTest, LangScripts) {
 
   ASSERT_EQ(15, collector_.Size());
   for (int i = 0; i <= 11; ++i) {
-    EXPECT_EQ(std::string(), collector_.UrlAt(i));
+    EXPECT_EQ(GoogleString(), collector_.UrlAt(i));
     EXPECT_EQ(ScriptTagScanner::kJavaScript, collector_.ClassificationAt(i));
   }
 
   for (int i = 12; i <= 14; ++i) {
-    EXPECT_EQ(std::string(), collector_.UrlAt(i));
+    EXPECT_EQ(GoogleString(), collector_.UrlAt(i));
     EXPECT_EQ(ScriptTagScanner::kUnknownScript, collector_.ClassificationAt(i));
   }
 }
@@ -314,12 +314,12 @@ TEST_F(ScriptTagScannerTest, LangScriptsNormalizeCase) {
 
   ASSERT_EQ(15, collector_.Size());
   for (int i = 0; i <= 11; ++i) {
-    EXPECT_EQ(std::string(), collector_.UrlAt(i));
+    EXPECT_EQ(GoogleString(), collector_.UrlAt(i));
     EXPECT_EQ(ScriptTagScanner::kJavaScript, collector_.ClassificationAt(i));
   }
 
   for (int i = 12; i <= 14; ++i) {
-    EXPECT_EQ(std::string(), collector_.UrlAt(i));
+    EXPECT_EQ(GoogleString(), collector_.UrlAt(i));
     EXPECT_EQ(ScriptTagScanner::kUnknownScript, collector_.ClassificationAt(i));
   }
 }
@@ -346,7 +346,7 @@ TEST_F(ScriptTagScannerTest, LangScriptsNormalizeWhitespace) {
 
   ASSERT_EQ(15, collector_.Size());
   for (int i = 0; i <= 14; ++i) {
-    EXPECT_EQ(std::string(), collector_.UrlAt(i));
+    EXPECT_EQ(GoogleString(), collector_.UrlAt(i));
     EXPECT_EQ(ScriptTagScanner::kUnknownScript, collector_.ClassificationAt(i));
   }
 }

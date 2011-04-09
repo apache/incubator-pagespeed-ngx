@@ -29,7 +29,7 @@ class MessageHandler;
 
 class DummyUrlFetcher : public UrlFetcher {
  public:
-  virtual bool StreamingFetchUrl(const std::string& url,
+  virtual bool StreamingFetchUrl(const GoogleString& url,
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* fetched_content_writer,

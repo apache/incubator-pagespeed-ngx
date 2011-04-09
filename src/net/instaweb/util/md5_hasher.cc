@@ -32,7 +32,7 @@ const int kMD5NumBytes = sizeof(MD5Digest);
 MD5Hasher::~MD5Hasher() {
 }
 
-std::string MD5Hasher::RawHash(const StringPiece& content) const {
+GoogleString MD5Hasher::RawHash(const StringPiece& content) const {
   // Note:  It may seem more efficient to initialize the MD5Context
   // in a constructor so it can be re-used.  But a quick inspection
   // of src/third_party/chromium/src/base/md5.cc indicates that
@@ -41,7 +41,7 @@ std::string MD5Hasher::RawHash(const StringPiece& content) const {
   MD5Digest digest;
   MD5Sum(content.data(), content.size(), &digest);
   // Note: digest.a is an unsigned char[16] so it's not null-terminated.
-  std::string raw_hash(reinterpret_cast<char*>(digest.a), sizeof(digest.a));
+  GoogleString raw_hash(reinterpret_cast<char*>(digest.a), sizeof(digest.a));
   return raw_hash;
 }
 

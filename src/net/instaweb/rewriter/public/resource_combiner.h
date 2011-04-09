@@ -31,7 +31,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/stl_util.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 
@@ -99,7 +99,7 @@ class ResourceCombiner {
 
   // Computes a name for the URL that meets all known character-set and
   // size restrictions.
-  std::string UrlSafeId() const;
+  GoogleString UrlSafeId() const;
 
   // Returns the number of URLs that have been successfully added.
   int num_urls() const { return partnership_.num_urls(); }
@@ -108,7 +108,7 @@ class ResourceCombiner {
   const ResourceVector& resources() const { return resources_; }
 
   // Base common to all URLs. Always has a trailing slash.
-  std::string ResolvedBase() const { return partnership_.ResolvedBase(); }
+  GoogleString ResolvedBase() const { return partnership_.ResolvedBase(); }
 
  protected:
   // Tries to add a resource with given source URL to the current partnership.
@@ -175,9 +175,9 @@ class ResourceCombiner {
   StringVector multipart_encoder_urls_;
   int prev_num_components_;
   int accumulated_leaf_size_;
-  std::string resolved_base_;
+  GoogleString resolved_base_;
   const int url_overhead_;
-  std::string filter_prefix_;
+  GoogleString filter_prefix_;
   CommonFilter *filter_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceCombiner);

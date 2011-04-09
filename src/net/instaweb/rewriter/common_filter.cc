@@ -124,7 +124,7 @@ Resource* CommonFilter::CreateInputResourceAndReadIfCached(
 
 void CommonFilter::ScanRequestUrl(const StringPiece& url) {
   Resource* resource = NULL;
-  std::string url_str(url.data(), url.size());
+  GoogleString url_str(url.data(), url.size());
   resource = driver_->FindResource(url_str);
   if (resource == NULL) {
     resource = CreateInputResource(url);

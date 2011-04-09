@@ -30,10 +30,10 @@ class FilenameEncoder {
 
   void Encode(const StringPiece& filename_prefix,
                       const StringPiece& filename_ending,
-                      std::string* encoded_filename);
+                      GoogleString* encoded_filename);
 
   bool Decode(const StringPiece& encoded_filename,
-                             std::string* decoded_url);
+                             GoogleString* decoded_url);
 };
 
 }  // namespace net_instaweb

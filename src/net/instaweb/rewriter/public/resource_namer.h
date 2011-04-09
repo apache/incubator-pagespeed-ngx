@@ -17,7 +17,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_NAMER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_NAMER_H_
 
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -46,7 +46,7 @@ class ResourceNamer {
 
   // Encodes the fields in this encoder into an absolute url, with the
   // trailing portion "NAME.pagespeed.ID.HASH.EXT".
-  std::string Encode() const;
+  GoogleString Encode() const;
 
   // Encode a key that can used to do a lookup based on an id
   // and the name.  This key can be used to find the hash-code for a
@@ -54,7 +54,7 @@ class ResourceNamer {
   //
   // The 'id' is a short code indicating which Instaweb rewriter was
   // used to generate the resource.
-  std::string EncodeIdName() const;
+  GoogleString EncodeIdName() const;
 
   // Note: there is no need at this time to decode the name key.
 
@@ -86,19 +86,19 @@ class ResourceNamer {
   // Utility functions
 
   // Name suitable for debugging and logging
-  std::string PrettyName() const {return  InternalEncode(); }
+  GoogleString PrettyName() const {return  InternalEncode(); }
 
   // Compute a content-type based on ext().  NULL if unrecognized.
   const ContentType* ContentTypeFromExt() const;
 
  private:
-  std::string InternalEncode() const;
+  GoogleString InternalEncode() const;
   bool LegacyDecode(const StringPiece& encoded_string);
 
-  std::string id_;
-  std::string name_;
-  std::string hash_;
-  std::string ext_;
+  GoogleString id_;
+  GoogleString name_;
+  GoogleString hash_;
+  GoogleString ext_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceNamer);
 };

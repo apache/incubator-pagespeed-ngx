@@ -135,7 +135,7 @@ class DomainLawyer::Domain {
  private:
   bool authorized_;
   Wildcard wildcard_;
-  std::string name_;
+  GoogleString name_;
 
   // The rewrite_domain, if non-null, gives the location of where this
   // Domain should be rewritten.  This can be used to move resources onto
@@ -172,15 +172,15 @@ bool DomainLawyer::AddDomain(const StringPiece& domain_name,
   return (AddDomainHelper(domain_name, true, true, handler) != NULL);
 }
 
-std::string DomainLawyer::NormalizeDomainName(const StringPiece& domain_name) {
+GoogleString DomainLawyer::NormalizeDomainName(const StringPiece& domain_name) {
   // Ensure that the following specifications are treated identically:
   //     www.google.com
   //     http://www.google.com
   //     www.google.com/
   //     http://www.google.com/
   // all come out the same.
-  std::string domain_name_str;
-  if (domain_name.find("://") == std::string::npos) {
+  GoogleString domain_name_str;
+  if (domain_name.find("://") == GoogleString::npos) {
     domain_name_str = StrCat("http://", domain_name);
   } else {
     domain_name.CopyToString(&domain_name_str);
@@ -202,7 +202,7 @@ DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
     return NULL;
   }
 
-  std::string domain_name_str = NormalizeDomainName(domain_name);
+  GoogleString domain_name_str = NormalizeDomainName(domain_name);
   Domain* domain = NULL;
   std::pair<DomainMap::iterator, bool> p = domain_map_.insert(
       DomainMap::value_type(domain_name_str, domain));
@@ -234,7 +234,7 @@ DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
 // be mapped to a different domain, either for rewriting or for
 // fetching.
 DomainLawyer::Domain* DomainLawyer::FindDomain(
-    const std::string& domain_name) const {
+    const GoogleString& domain_name) const {
   DomainMap::const_iterator p = domain_map_.find(domain_name);
   Domain* domain = NULL;
   if (p != domain_map_.end()) {
@@ -256,7 +256,7 @@ DomainLawyer::Domain* DomainLawyer::FindDomain(
 bool DomainLawyer::MapRequestToDomain(
     const GoogleUrl& original_request,
     const StringPiece& resource_url,  // relative to original_request
-    std::string* mapped_domain_name,
+    GoogleString* mapped_domain_name,
     GoogleUrl* resolved_request,
     MessageHandler* handler) const {
   CHECK(original_request.is_valid());
@@ -273,7 +273,7 @@ bool DomainLawyer::MapRequestToDomain(
   // TODO(jmaessen): Figure out if this is appropriate.
   if (resolved_request->is_valid() && resolved_request->SchemeIs("http")) {
     GoogleUrl resolved_origin(resolved_request->Origin());
-    std::string resolved_domain_name;
+    GoogleString resolved_domain_name;
     resolved_origin.Spec().CopyToString(&resolved_domain_name);
 
     // Looks at the resovled domain name from the original request and
@@ -310,7 +310,7 @@ bool DomainLawyer::MapRequestToDomain(
   return ret;
 }
 
-bool DomainLawyer::MapOrigin(const StringPiece& in, std::string* out) const {
+bool DomainLawyer::MapOrigin(const StringPiece& in, GoogleString* out) const {
   bool ret = false;
   GoogleUrl gurl(in);
   // At present we're not sure about appropriate resource
@@ -320,7 +320,7 @@ bool DomainLawyer::MapOrigin(const StringPiece& in, std::string* out) const {
     ret = true;
     in.CopyToString(out);
     GoogleUrl origin(gurl.Origin());
-    std::string origin_name = origin.Spec().as_string();
+    GoogleString origin_name = origin.Spec().as_string();
     Domain* domain = FindDomain(origin_name);
     if (domain != NULL) {
       Domain* origin_domain = domain->origin_domain();
@@ -424,9 +424,9 @@ void DomainLawyer::Merge(const DomainLawyer& src) {
 
 bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
                                uint32 hash,
-                               std::string* shard) const {
+                               GoogleString* shard) const {
   Domain* domain = FindDomain(
-      std::string(domain_name.data(), domain_name.size()));
+      GoogleString(domain_name.data(), domain_name.size()));
   bool sharded = false;
   if (domain != NULL) {
     if (domain->num_shards() != 0) {
@@ -440,7 +440,7 @@ bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
 }
 
 bool DomainLawyer::WillDomainChange(const StringPiece& domain_name) const {
-  std::string domain_name_str = NormalizeDomainName(domain_name);
+  GoogleString domain_name_str = NormalizeDomainName(domain_name);
   Domain* domain = FindDomain(domain_name_str);
   if (domain != NULL) {
     if (domain->num_shards() != 0) {

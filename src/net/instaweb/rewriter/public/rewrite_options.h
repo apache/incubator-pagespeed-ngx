@@ -23,7 +23,7 @@
 #include <set>
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/wildcard_group.h"
 
@@ -93,7 +93,7 @@ class RewriteOptions {
   static const int64 kDefaultJsInlineMaxBytes;
   static const int64 kDefaultCssOutlineMinBytes;
   static const int64 kDefaultJsOutlineMinBytes;
-  static const std::string kDefaultBeaconUrl;
+  static const GoogleString kDefaultBeaconUrl;
 
   // IE limits URL size overall to about 2k characters.  See
   // http://support.microsoft.com/kb/208427/EN-US
@@ -183,10 +183,10 @@ class RewriteOptions {
     modified_ = true;
     num_shards_.set(x);
   }
-  const std::string& beacon_url() const { return beacon_url_.value(); }
+  const GoogleString& beacon_url() const { return beacon_url_.value(); }
   void set_beacon_url(const StringPiece& p) {
     modified_ = true;
-    beacon_url_.set(std::string(p.data(), p.size()));
+    beacon_url_.set(GoogleString(p.data(), p.size()));
 
   }
   // The maximum length of a URL segment.
@@ -325,7 +325,7 @@ class RewriteOptions {
   };
 
   typedef std::set<Filter> FilterSet;
-  typedef std::map<std::string, Filter> NameToFilterMap;
+  typedef std::map<GoogleString, Filter> NameToFilterMap;
   typedef std::map<RewriteLevel, FilterSet> RewriteLevelToFilterSetMap;
 
   void SetUp();
@@ -351,7 +351,7 @@ class RewriteOptions {
   Option<int64> css_outline_min_bytes_;
   Option<int64> js_outline_min_bytes_;
   Option<int> num_shards_;
-  Option<std::string> beacon_url_;
+  Option<GoogleString> beacon_url_;
   Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")
   Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")
   Option<bool> enabled_;

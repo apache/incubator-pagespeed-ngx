@@ -18,7 +18,7 @@
 
 #include "net/instaweb/htmlparse/html_event.h"
 #include <stdio.h>
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -26,7 +26,7 @@ HtmlEvent::~HtmlEvent() {
 }
 
 void HtmlEvent::DebugPrint() {
-  std::string buf;
+  GoogleString buf;
   ToString(&buf);
   fprintf(stdout, "%s\n", buf.c_str());
 }

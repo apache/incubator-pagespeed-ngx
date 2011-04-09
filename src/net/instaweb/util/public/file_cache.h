@@ -25,7 +25,7 @@
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -47,15 +47,15 @@ class FileCache : public CacheInterface {
     DISALLOW_COPY_AND_ASSIGN(CachePolicy);
   };
 
-  FileCache(const std::string& path, FileSystem* file_system,
+  FileCache(const GoogleString& path, FileSystem* file_system,
             FilenameEncoder* filename_encoder, CachePolicy* policy,
             MessageHandler* handler);
   virtual ~FileCache();
 
-  virtual void Get(const std::string& key, Callback* callback);
-  virtual void Put(const std::string& key, SharedString* value);
-  virtual void Delete(const std::string& key);
-  virtual void Query(const std::string& key, Callback* callback);
+  virtual void Get(const GoogleString& key, Callback* callback);
+  virtual void Put(const GoogleString& key, SharedString* value);
+  virtual void Delete(const GoogleString& key);
+  virtual void Query(const GoogleString& key, Callback* callback);
   // Attempts to clean the cache.  Returns false if we failed and the
   // cache still needs to be cleaned.  Returns true if everything's
   // fine.  This may take a while.  It's OK for others to write and
@@ -69,16 +69,16 @@ class FileCache : public CacheInterface {
  private:
   friend class FileCacheTest;
 
-  bool EncodeFilename(const std::string& key, std::string* filename);
+  bool EncodeFilename(const GoogleString& key, GoogleString* filename);
 
-  const std::string path_;
+  const GoogleString path_;
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
   MessageHandler* message_handler_;
   const scoped_ptr<CachePolicy> cache_policy_;
   int64 next_clean_ms_;
   // The full path to our cleanup timestamp file.
-  std::string clean_time_path_;
+  GoogleString clean_time_path_;
 
   // The filename where we keep the next scheduled cleanup time in seconds.
   static const char kCleanTimeName[];

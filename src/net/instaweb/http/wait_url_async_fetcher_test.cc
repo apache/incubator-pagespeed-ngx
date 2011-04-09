@@ -61,7 +61,7 @@ TEST_F(WaitUrlAsyncFetcherTest, FetcherWaits) {
 
   const RequestHeaders request_headers;
   ResponseHeaders response_headers;
-  std::string response_body;
+  GoogleString response_body;
   StringWriter response_writer(&response_body);
   GoogleMessageHandler handler;
   DummyCallback callback;

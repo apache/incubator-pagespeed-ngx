@@ -29,7 +29,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -102,7 +102,7 @@ class JsCombineFilter : public RewriteFilter {
   bool IsCurrentScriptInCombination() const;
 
   // Returns JS variable name where code for given URL should be stored.
-  std::string VarName(const std::string& url) const;
+  GoogleString VarName(const GoogleString& url) const;
 
   ScriptTagScanner script_scanner_;
   scoped_ptr<JsCombiner> combiner_;

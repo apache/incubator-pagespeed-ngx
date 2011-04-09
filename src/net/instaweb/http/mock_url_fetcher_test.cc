@@ -22,7 +22,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
@@ -37,12 +37,12 @@ class MockUrlFetcherTest : public ::testing::Test {
     fetcher_.set_fail_on_unexpected(false);
   }
 
-  void TestResponse(const std::string& url,
+  void TestResponse(const GoogleString& url,
                     const ResponseHeaders& expected_header,
-                    const std::string& expected_body) {
+                    const GoogleString& expected_body) {
     const RequestHeaders dummy_header;
     ResponseHeaders response_header;
-    std::string response_body;
+    GoogleString response_body;
     StringWriter response_writer(&response_body);
     GoogleMessageHandler handler;
 
@@ -52,10 +52,10 @@ class MockUrlFetcherTest : public ::testing::Test {
     EXPECT_EQ(expected_body, response_body);
   }
 
-  void TestFetchFail(const std::string& url) {
+  void TestFetchFail(const GoogleString& url) {
     const RequestHeaders dummy_header;
     ResponseHeaders response_header;
-    std::string response_body;
+    GoogleString response_body;
     StringWriter response_writer(&response_body);
     GoogleMessageHandler handler;
 

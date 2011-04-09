@@ -62,34 +62,34 @@ TEST_F(GoogleUrlTest, TestNotValid) {
 }
 
 TEST_F(GoogleUrlTest, TestSpec) {
-  EXPECT_EQ(std::string(kUrl), gurl_.Spec());
-  EXPECT_EQ(std::string("http://a.com/b/c/"), gurl_.AllExceptLeaf());
-  EXPECT_EQ(std::string("d.ext?f=g/h"), gurl_.LeafWithQuery());
-  EXPECT_EQ(std::string("d.ext"), gurl_.LeafSansQuery());
-  EXPECT_EQ(std::string("http://a.com"), gurl_.Origin());
-  EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"), gurl_.PathAndLeaf());
-  EXPECT_EQ(std::string("/b/c/d.ext"), gurl_.Path());
+  EXPECT_EQ(GoogleString(kUrl), gurl_.Spec());
+  EXPECT_EQ(GoogleString("http://a.com/b/c/"), gurl_.AllExceptLeaf());
+  EXPECT_EQ(GoogleString("d.ext?f=g/h"), gurl_.LeafWithQuery());
+  EXPECT_EQ(GoogleString("d.ext"), gurl_.LeafSansQuery());
+  EXPECT_EQ(GoogleString("http://a.com"), gurl_.Origin());
+  EXPECT_EQ(GoogleString("/b/c/d.ext?f=g/h"), gurl_.PathAndLeaf());
+  EXPECT_EQ(GoogleString("/b/c/d.ext"), gurl_.Path());
 }
 
 
 TEST_F(GoogleUrlTest, TestSpecWithPort) {
-  EXPECT_EQ(std::string(kUrlWithPort), gurl_with_port_.Spec());
-  EXPECT_EQ(std::string("http://a.com:8080/b/c/"),
+  EXPECT_EQ(GoogleString(kUrlWithPort), gurl_with_port_.Spec());
+  EXPECT_EQ(GoogleString("http://a.com:8080/b/c/"),
             gurl_with_port_.AllExceptLeaf());
-  EXPECT_EQ(std::string("d.ext?f=g/h"),
+  EXPECT_EQ(GoogleString("d.ext?f=g/h"),
             gurl_with_port_.LeafWithQuery());
-  EXPECT_EQ(std::string("d.ext"), gurl_with_port_.LeafSansQuery());
-  EXPECT_EQ(std::string("http://a.com:8080"),
+  EXPECT_EQ(GoogleString("d.ext"), gurl_with_port_.LeafSansQuery());
+  EXPECT_EQ(GoogleString("http://a.com:8080"),
             gurl_with_port_.Origin());
-  EXPECT_EQ(std::string("/b/c/d.ext?f=g/h"),
+  EXPECT_EQ(GoogleString("/b/c/d.ext?f=g/h"),
             gurl_with_port_.PathAndLeaf());
-  EXPECT_EQ(std::string("/b/c/d.ext"), gurl_.Path());
-  EXPECT_EQ(std::string("/b/c/"), gurl_.PathSansLeaf());
+  EXPECT_EQ(GoogleString("/b/c/d.ext"), gurl_.Path());
+  EXPECT_EQ(GoogleString("/b/c/"), gurl_.PathSansLeaf());
 }
 
 TEST_F(GoogleUrlTest, TestTrivialLeafSansQuery) {
   GoogleUrl queryless("http://a.com/b/c/d.ext");
-  EXPECT_EQ(std::string("d.ext"), queryless.LeafSansQuery());
+  EXPECT_EQ(GoogleString("d.ext"), queryless.LeafSansQuery());
 }
 
 TEST_F(GoogleUrlTest, ResolveRelative) {
@@ -97,9 +97,9 @@ TEST_F(GoogleUrlTest, ResolveRelative) {
   ASSERT_TRUE(base.is_valid());
   GoogleUrl resolved(base, "test.html");
   ASSERT_TRUE(resolved.is_valid());
-  EXPECT_EQ(std::string("http://www.google.com/test.html"),
+  EXPECT_EQ(GoogleString("http://www.google.com/test.html"),
             resolved.Spec());
-  EXPECT_EQ(std::string("/test.html"), resolved.Path());
+  EXPECT_EQ(GoogleString("/test.html"), resolved.Path());
 }
 
 TEST_F(GoogleUrlTest, ResolveAbsolute) {
@@ -107,9 +107,9 @@ TEST_F(GoogleUrlTest, ResolveAbsolute) {
   ASSERT_TRUE(base.is_valid());
   GoogleUrl resolved(base, "http://www.google.com");
   ASSERT_TRUE(resolved.is_valid());
-  EXPECT_EQ(std::string("http://www.google.com/"),
+  EXPECT_EQ(GoogleString("http://www.google.com/"),
             resolved.Spec());
-  EXPECT_EQ(std::string("/"), resolved.Path());
+  EXPECT_EQ(GoogleString("/"), resolved.Path());
 }
 
 }  // namespace net_instaweb

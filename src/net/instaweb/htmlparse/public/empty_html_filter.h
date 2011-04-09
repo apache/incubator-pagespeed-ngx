@@ -25,7 +25,7 @@
 // Page Speed.  See
 // third_party/pagespeed/src/pagespeed/html/external_resource_filter.h
 // Remove this once that one is fixed.
-#include <string>
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 

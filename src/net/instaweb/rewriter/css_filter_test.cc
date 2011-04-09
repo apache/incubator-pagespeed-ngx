@@ -28,10 +28,10 @@ class CssFilterTest : public CssRewriteTestBase {
 };
 
 TEST_F(CssFilterTest, SimpleRewriteCssTest) {
-  std::string input_style =
+  GoogleString input_style =
       ".background_blue { background-color: #f00; }\n"
       ".foreground_yellow { color: yellow; }\n";
-  std::string output_style =
+  GoogleString output_style =
       ".background_blue{background-color:red}"
       ".foreground_yellow{color:#ff0}";
 
@@ -41,10 +41,10 @@ TEST_F(CssFilterTest, SimpleRewriteCssTest) {
 TEST_F(CssFilterTest, UrlTooLong) {
   // Make the filename maximum size, so we cannot rewrite it.
   // -4 because .css will be appended.
-  std::string filename(options_.max_url_segment_size() - 4, 'z');
+  GoogleString filename(options_.max_url_segment_size() - 4, 'z');
   // If filename wasn't too long, this would be rewritten (like in
   // SimpleRewriteCssTest).
-  std::string input_style =
+  GoogleString input_style =
       ".background_blue { background-color: #f00; }\n"
       ".foreground_yellow { color: yellow; }\n";
   ValidateRewriteExternalCss(filename, input_style, input_style,
@@ -162,7 +162,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
-    std::string id = StringPrintf("distilled_css_good%d", i);
+    GoogleString id = StringPrintf("distilled_css_good%d", i);
     ValidateRewrite(id, good_examples[i], good_examples[i]);
   }
 
@@ -184,7 +184,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     };
 
   for (int i = 0; i < arraysize(fail_examples); ++i) {
-    std::string id = StringPrintf("distilled_css_fail%d", i);
+    GoogleString id = StringPrintf("distilled_css_fail%d", i);
     ValidateFailParse(id, fail_examples[i]);
   }
 }
@@ -206,7 +206,7 @@ TEST_F(CssFilterTest, ToOptimize) {
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
-    std::string id = StringPrintf("to_optimize_%d", i);
+    GoogleString id = StringPrintf("to_optimize_%d", i);
     ValidateRewrite(id, examples[i][0], examples[i][1]);
   }
 }
@@ -400,7 +400,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
-    std::string id = StringPrintf("complex_css%d", i);
+    GoogleString id = StringPrintf("complex_css%d", i);
     ValidateRewrite(id, examples[i][0], examples[i][1]);
   }
 
@@ -413,7 +413,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     };
 
   for (int i = 0; i < arraysize(parse_fail_examples); ++i) {
-    std::string id = StringPrintf("complex_css_parse_fail%d", i);
+    GoogleString id = StringPrintf("complex_css_parse_fail%d", i);
     ValidateFailParse(id, parse_fail_examples[i]);
   }
 }

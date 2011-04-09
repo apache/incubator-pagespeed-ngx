@@ -27,7 +27,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -68,7 +68,7 @@ class OutputResource : public Resource {
   ~OutputResource();
 
   virtual bool Load(MessageHandler* message_handler);
-  virtual std::string url() const;
+  virtual GoogleString url() const;
 
   // Attempt to obtain a named lock for the resource.  Return true if we do so.
   // If the resource is expensive to create, this lock should be held during
@@ -91,13 +91,13 @@ class OutputResource : public Resource {
   // and use that to map to the hash-code and extension.  If we know the
   // hash-code then we may also be able to look up the contents in the same
   // cache.
-  virtual std::string name_key() const;
+  virtual GoogleString name_key() const;
 
   // output-specific
-  const std::string& resolved_base() const { return resolved_base_; }
+  const GoogleString& resolved_base() const { return resolved_base_; }
   const ResourceNamer& full_name() const { return full_name_; }
   StringPiece name() const { return full_name_.name(); }
-  std::string filename() const;
+  GoogleString filename() const;
   StringPiece suffix() const;
   StringPiece filter_prefix() const { return full_name_.id(); }
 
@@ -194,7 +194,7 @@ class OutputResource : public Resource {
   StringPiece hash() const { return full_name_.hash(); }
   bool has_hash() const { return !hash().empty(); }
   void set_written(bool written) { writing_complete_ = true; }
-  std::string TempPrefix() const;
+  GoogleString TempPrefix() const;
 
   OutputWriter* BeginWrite(MessageHandler* message_handler);
   bool EndWrite(OutputWriter* writer, MessageHandler* message_handler);
@@ -202,12 +202,12 @@ class OutputResource : public Resource {
   // Stores the current state of cached_result in the metadata cache
   // under the given key.
   // Pre-condition: cached_result() != NULL
-  void SaveCachedResult(const std::string& key, MessageHandler* handler);
+  void SaveCachedResult(const GoogleString& key, MessageHandler* handler);
 
   // Loads the state of cached_result from the given cached key if possible,
   // and syncs our URL and content type with it. If fails, cached_result
   // will be set to NULL.
-  void FetchCachedResult(const std::string& key, MessageHandler* handler);
+  void FetchCachedResult(const GoogleString& key, MessageHandler* handler);
 
   FileSystem::OutputFile* output_file_;
   bool writing_complete_;
@@ -219,7 +219,7 @@ class OutputResource : public Resource {
   // ModPagespeedMapRewriteDomain.  However, the resolved base is
   // not affected by sharding.  Shard-selection is done when url() is called,
   // relying on the content hash.
-  std::string resolved_base_;
+  GoogleString resolved_base_;
   ResourceNamer full_name_;
 
   // Lock guarding resource creation.  Lazily initialized by LockForCreation,

@@ -22,7 +22,7 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
@@ -50,7 +50,7 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
   virtual ~CacheUrlAsyncFetcher();
 
   virtual bool StreamingFetch(
-      const std::string& url,
+      const GoogleString& url,
       const RequestHeaders& request_headers,
       ResponseHeaders* response_headers,
       Writer* fetched_content_writer,

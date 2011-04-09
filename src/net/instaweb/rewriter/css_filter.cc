@@ -137,7 +137,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
 
     if (driver_->IsRewritable(element) && style_char_node_ != NULL) {
       CHECK(element == style_char_node_->parent());  // Sanity check.
-      std::string new_content;
+      GoogleString new_content;
       if (RewriteCssText(style_char_node_->contents(), &new_content,
                          driver_->base_url(),
                          driver_->message_handler()).value) {
@@ -158,7 +158,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
           HtmlName::kHref);
       if (element_href != NULL) {
         // If it has a href= attribute
-        std::string new_url;
+        GoogleString new_url;
         if (RewriteExternalCss(element_href->value(), &new_url)) {
           element_href->SetValue(new_url);  // Update the href= attribute.
         }
@@ -176,7 +176,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
 // The expiry of the answer is the minimum of the expiries of all subresources
 // in the stylesheet, or kint64max if there are none or the sheet is invalid.
 TimedBool CssFilter::RewriteCssText(const StringPiece& in_text,
-                               std::string* out_text,
+                               GoogleString* out_text,
                                const GoogleUrl& css_gurl,
                                MessageHandler* handler) {
   // Load stylesheet w/o expanding background attributes and preserving all
@@ -313,7 +313,7 @@ bool CssFilter::LoadAllSubStylesheets(
 
 // Read an external CSS file, rewrite it and write a new external CSS file.
 bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
-                                   std::string* out_url) {
+                                   GoogleString* out_url) {
   scoped_ptr<CachedResult> rewrite_info(RewriteWithCaching(in_url, NULL));
   if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
     *out_url = rewrite_info->url();
@@ -330,7 +330,7 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
   if (input_resource->ContentsValid()) {
     // Rewrite stylesheet.
     StringPiece in_contents = input_resource->contents();
-    std::string out_contents;
+    GoogleString out_contents;
     // TODO(sligocki): Store the GURL in the input_resource.
     GoogleUrl css_gurl(input_resource->url());
     if (css_gurl.is_valid()) {

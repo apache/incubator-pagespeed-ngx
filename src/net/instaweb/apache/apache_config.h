@@ -18,7 +18,7 @@
 #define NET_INSTAWEB_APACHE_APACHE_CONFIG_H_
 
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include <string>
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 // The httpd header must be after the
@@ -43,7 +43,7 @@ class ApacheConfig {
   RewriteOptions* options() { return &options_; }
 
  private:
-  std::string description_;
+  GoogleString description_;
   RewriteOptions options_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheConfig);
