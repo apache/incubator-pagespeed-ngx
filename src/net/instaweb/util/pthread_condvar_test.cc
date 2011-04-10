@@ -20,8 +20,8 @@
 #include <unistd.h>
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/condvar_test_base.h"
+#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/pthread_condvar.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
 
 namespace net_instaweb {
@@ -44,10 +44,13 @@ class PthreadCondvarTest : public CondvarTestBase {
     pthread_join(helper_thread_, NULL);
   }
 
+  virtual Timer* timer() { return &timer_; }
+
   PthreadMutex pthread_mutex_;
   PthreadCondvar pthread_startup_condvar_;
   PthreadCondvar pthread_condvar_;
   pthread_t helper_thread_;
+  GoogleTimer timer_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PthreadCondvarTest);
@@ -77,6 +80,13 @@ TEST_F(PthreadCondvarTest, BroadcastTestPingPong) {
 
 TEST_F(PthreadCondvarTest, TestTimeout) {
   TimeoutTest();
+}
+
+TEST_F(PthreadCondvarTest, TestLongTimeout1200) {
+  // We pick a value over a second because the implementation special-cases
+  // that situation.
+  LongTimeoutTest(1100);
+  LongTimeoutTest(100);
 }
 
 TEST_F(PthreadCondvarTest, TimeoutPingPong) {

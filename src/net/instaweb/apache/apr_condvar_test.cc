@@ -18,6 +18,7 @@
 
 #include "apr_pools.h"
 #include "apr_thread_proc.h"
+#include "apr_timer.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -64,11 +65,14 @@ class AprCondvarTest : public CondvarTestBase {
     apr_thread_join(&ignored_retval, helper_thread_);
   }
 
+  virtual Timer* timer() { return &timer_; }
+
   apr_pool_t* pool_;
   scoped_ptr<AprMutex> apr_mutex_;
   scoped_ptr<AprCondvar> apr_startup_condvar_;
   scoped_ptr<AprCondvar> apr_condvar_;
   apr_thread_t* helper_thread_;
+  AprTimer timer_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AprCondvarTest);
@@ -98,6 +102,12 @@ TEST_F(AprCondvarTest, BroadcastTestPingPong) {
 
 TEST_F(AprCondvarTest, TestTimeout) {
   TimeoutTest();
+}
+
+TEST_F(AprCondvarTest, TestLongTimeout300) {
+  // We pick a reasonable value because our API into APR does
+  // not have a special-case at 1 second.
+  LongTimeoutTest(300);
 }
 
 TEST_F(AprCondvarTest, TimeoutPingPong) {

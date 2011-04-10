@@ -18,7 +18,10 @@
 
 #include <errno.h>
 #include <pthread.h>
+#include <sys/time.h>
 #include <time.h>
+
+#include "base/logging.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -43,6 +46,7 @@ void PthreadCondvar::Wait() {
 void PthreadCondvar::TimedWait(int64 timeout_ms) {
   const int64 kMsNs = Timer::kSecondNs / Timer::kSecondMs;
   struct timespec timeout;
+  struct timeval current_time;
   // convert timeout_ms to seconds and ms
   int64 timeout_sec_incr = timeout_ms / Timer::kSecondMs;
   timeout_ms %= Timer::kSecondMs;
@@ -50,11 +54,13 @@ void PthreadCondvar::TimedWait(int64 timeout_ms) {
   // Carrying ns to s as appropriate.  As morlovich notes, we
   // get *really close* to overflowing a 32-bit tv_nsec here,
   // so this code should be modified with caution.
-  clock_gettime(CLOCK_REALTIME, &timeout);
-  timeout.tv_nsec += timeout_ms * kMsNs;
+  if (gettimeofday(&current_time, NULL) != 0) {
+    CHECK(false) << "Could not determine time of day";
+  }
+  timeout.tv_nsec = current_time.tv_usec * 1000 + timeout_ms * kMsNs;
   timeout_sec_incr += timeout.tv_nsec / Timer::kSecondNs;
   timeout.tv_nsec %= Timer::kSecondNs;
-  timeout.tv_sec += static_cast<time_t>(timeout_sec_incr);
+  timeout.tv_sec = current_time.tv_sec + static_cast<time_t>(timeout_sec_incr);
   // Finally we actually get to wait.
   pthread_cond_timedwait(&condvar_, &mutex_->mutex_, &timeout);
 }

@@ -22,6 +22,7 @@
 #include "base/logging.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/timer.h"
 
 
 namespace net_instaweb {
@@ -160,6 +161,23 @@ class CondvarTestBase : public testing::Test {
     FinishHelper();
   }
 
+  // Make sure that a long timeout doesn't exit too early.
+  void LongTimeoutTest(int wait_ms) {
+    iters_ = 0;
+    StartHelper();
+    int64 start_ms = timer()->NowMs();
+    {
+      ScopedMutex lock(mutex_);
+      condvar_->TimedWait(wait_ms);
+    }
+    int64 end_ms = timer()->NowMs();
+
+    // This test should not be flaky even if it runs slowly, as we are
+    // not placing an *upper* bound on the lock duration.
+    EXPECT_LE(wait_ms, end_ms - start_ms);
+    FinishHelper();
+  }
+
   // Use condvars to pass control back and forth between worker and main thread.
   // Final interaction will be one-sided and will time out.
   // Also run with signal_method_ = &AbstractCondvar::Broadcast
@@ -189,6 +207,8 @@ class CondvarTestBase : public testing::Test {
     EXPECT_GE(5, helper_increments_);
     EXPECT_EQ(11, local_increments + helper_increments_);
   }
+
+  virtual Timer* timer() = 0;
 
   AbstractMutex* mutex_;
   AbstractCondvar* startup_condvar_;

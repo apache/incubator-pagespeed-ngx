@@ -131,6 +131,7 @@
         'util/file_system_lock_manager_test.cc',
         'util/file_system_test.cc',
         'util/filename_encoder_test.cc',
+        'util/google_timer.cc',
         'util/google_url_test.cc',
         'util/gtest.cc',
         'util/gzip_inflater_test.cc',
