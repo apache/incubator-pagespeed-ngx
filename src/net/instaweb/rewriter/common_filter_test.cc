@@ -29,10 +29,10 @@ namespace {
 
 class CountingFilter : public CommonFilter {
  public:
-  CountingFilter(RewriteDriver* driver) : CommonFilter(driver),
-                                          start_doc_calls_(0),
-                                          start_element_calls_(0),
-                                          end_element_calls_(0) {}
+  explicit CountingFilter(RewriteDriver* driver) : CommonFilter(driver),
+                                                   start_doc_calls_(0),
+                                                   start_element_calls_(0),
+                                                   end_element_calls_(0) {}
 
   virtual void StartDocumentImpl() { ++start_doc_calls_; }
   virtual void StartElementImpl(HtmlElement* element) {
@@ -53,7 +53,8 @@ class CommonFilterTest : public ResourceManagerTestBase {
     rewrite_driver_.AddFilter(&filter_);
   }
 
-  void ExpectUrl(const GoogleString& expected_url, const GoogleUrl& actual_gurl) {
+  void ExpectUrl(const GoogleString& expected_url,
+                 const GoogleUrl& actual_gurl) {
     LOG(INFO) << actual_gurl.spec_c_str();
     EXPECT_EQ(expected_url, actual_gurl.Spec());
   }
@@ -133,8 +134,9 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   ExpectUrl(base_url, filter_.base_url());
 
   rewrite_driver_.ParseText("</head></html>");
-  rewrite_driver_.FinishParse();
+  rewrite_driver_.Flush();
   ExpectUrl(base_url, filter_.base_url());
+  rewrite_driver_.FinishParse();
   ExpectUrl(doc_url, rewrite_driver_.google_url());
 }
 
@@ -174,7 +176,6 @@ TEST_F(CommonFilterTest, DetectsNoScriptCorrectly) {
   rewrite_driver_.ParseText("</head></html>");
   rewrite_driver_.FinishParse();
   EXPECT_TRUE(filter_.noscript_element() == NULL);
-
 }
 
 TEST_F(CommonFilterTest, TestTwoDomainLawyers) {

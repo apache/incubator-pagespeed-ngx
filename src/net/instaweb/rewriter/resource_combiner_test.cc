@@ -115,9 +115,8 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
     AddRewriteFilter(filter_);
     AddOtherRewriteFilter(new TestCombineFilter(&other_rewrite_driver_));
 
-    // For all of these, we do not actually use the parser output,
-    // so we just feed an empty page
-    ParseUrl(kTestDomain, "");
+    // Make sure to set the domain so we authorize fetches.
+    SetBaseUrlForFetch(kTestDomain);
 
     MockResource(kTestPiece1, "piece1", 10000);
     MockResource(kTestPiece2, "piec2", 20000);

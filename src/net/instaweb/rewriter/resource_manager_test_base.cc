@@ -101,6 +101,10 @@ void ResourceManagerTestBase::AddOtherRewriteFilter(RewriteFilter* filter) {
   other_rewrite_driver_.EnableRewriteFilter(filter->id().c_str());
 }
 
+void ResourceManagerTestBase::SetBaseUrlForFetch(const StringPiece& url) {
+  rewrite_driver_.SetBaseUrlForFetch(url);
+}
+
 void ResourceManagerTestBase::DeleteFileIfExists(const GoogleString& filename) {
   if (file_system_.Exists(filename.c_str(), &message_handler_).is_true()) {
     ASSERT_TRUE(file_system_.RemoveFile(filename.c_str(), &message_handler_));

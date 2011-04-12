@@ -262,6 +262,7 @@ void RewriteDriverFactory::ReleaseRewriteDriver(
     LOG(ERROR) << "ReleaseRewriteDriver called with driver not in active set.";
   } else {
     available_rewrite_drivers_.push_back(rewrite_driver);
+    rewrite_driver->Clear();
   }
 }
 

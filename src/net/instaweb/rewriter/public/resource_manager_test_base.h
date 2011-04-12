@@ -82,6 +82,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // to other_rewrite_driver and enable it.
   void AddOtherRewriteFilter(RewriteFilter* filter);
 
+  // Sets the active context URL for purposes of XS checks of fetches
+  // on the main rewrite driver.
+  void SetBaseUrlForFetch(const StringPiece& url);
+
   // The async fetchers in these tests are really fake async fetchers, and
   // will call their callbacks directly.  Hence we don't really need
   // any functionality in the async callback.

@@ -251,4 +251,25 @@ TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
   }
 }
 
+TEST_F(RewriteDriverTest, MultipleDomains) {
+  // Make sure we authorize domains for resources properly. This is a regression
+  // test for where loading things from a domain would prevent loads from an
+  // another domain from the same RewriteDriver.
+
+  const char kCss[] = "* { display: none; }";
+  const char kAltDomain[] = "http://www.example.co.uk/";
+  InitResponseHeaders(StrCat(kTestDomain, "a.css"), kContentTypeCss, kCss, 100);
+  InitResponseHeaders(StrCat(kAltDomain, "b.css"), kContentTypeCss, kCss, 100);
+
+  GoogleString rewritten1 = Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
+                                   mock_hasher_.Hash(kCss), "a.css", "css");
+
+  GoogleString rewritten2 = Encode(kAltDomain, RewriteDriver::kCacheExtenderId,
+                                   mock_hasher_.Hash(kCss), "b.css", "css");
+
+  EXPECT_TRUE(TryFetchResource(rewritten1));
+  rewrite_driver_.Clear();
+  EXPECT_TRUE(TryFetchResource(rewritten2));
+}
+
 }  // namespace net_instaweb
