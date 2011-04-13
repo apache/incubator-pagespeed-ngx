@@ -179,6 +179,10 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // and http://www.webkit.org/blog/138/css-animation/
     "a { -webkit-transition-property:opacity,-webkit-transform; }",
 
+    // IE8 Hack \0/
+    // See http://dimox.net/personal-css-hacks-for-ie6-ie7-ie8/
+    "a { color: red\\0/; }",
+
     // Should fail (bad syntax):
     "a { font:bold verdana 10px; }",
     };
@@ -410,6 +414,15 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     "opacity:1;-webkit-transform:translateX(0);"
     "-webkit-transition-property:opacity,-webkit-transform;"
     "-webkit-transition-duration:400ms;}",
+
+    // IE 8 hack \0/.
+    ".gbxms{background-color:#ccc;display:block;position:absolute;"
+    "z-index:1;top:-1px;left:-2px;right:-2px;bottom:-2px;opacity:.4;"
+    "-moz-border-radius:3px;"
+    "filter:progid:DXImageTransform.Microsoft.Blur(pixelradius=5);"
+    "*opacity:1;*top:-2px;*left:-5px;*right:5px;*bottom:4px;"
+    "-ms-filter:\"progid:DXImageTransform.Microsoft.Blur(pixelradius=5)\";"
+    "opacity:1\\0/;top:-4px\\0/;left:-6px\\0/;right:5px\\0/;bottom:4px\\0/}",
     };
 
   for (int i = 0; i < arraysize(parse_fail_examples); ++i) {
