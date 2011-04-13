@@ -112,4 +112,13 @@ TEST_F(GoogleUrlTest, ResolveAbsolute) {
   EXPECT_EQ(GoogleString("/"), resolved.Path());
 }
 
+TEST_F(GoogleUrlTest, TestReset) {
+  GoogleUrl url("http://www.google.com");
+  EXPECT_TRUE(url.is_valid());
+  url.Clear();
+  EXPECT_FALSE(url.is_valid());
+  EXPECT_TRUE(url.is_empty());
+  EXPECT_TRUE(url.UncheckedSpec().empty());
+}
+
 }  // namespace net_instaweb

@@ -86,6 +86,10 @@ bool GoogleUrl::Reset(const StringPiece& new_value) {
   return gurl_.is_valid();
 }
 
+void GoogleUrl::Clear() {
+  gurl_ = GURL();
+}
+
 // Find the last slash before the question-mark, if any.  See
 // http://en.wikipedia.org/wiki/URI_scheme -- the query-string
 // syntax is not well-defined.  But the query-separator is well-defined:

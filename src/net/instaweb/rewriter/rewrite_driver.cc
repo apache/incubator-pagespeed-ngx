@@ -98,7 +98,7 @@ RewriteDriver::~RewriteDriver() {
 }
 
 void RewriteDriver::Clear() {
-  base_url_.Reset(StringPiece());
+  base_url_.Clear();
   CHECK(!base_url_.is_valid());
   STLDeleteValues(&resource_map_);
 }

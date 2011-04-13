@@ -45,6 +45,9 @@ class GoogleUrl {
   void Swap(GoogleUrl* google_url) { gurl_.Swap(&google_url->gurl_); }
   bool Reset(const StringPiece& new_url);
 
+  // Resets this URL to be invalid.
+  void Clear();
+
   // For "http://a.com/b/c/d?e=f/g returns "http://a/b/c/",
   // including trailing slash.
   // Returns a StringPiece, only valid for the lifetime of this object.
