@@ -93,7 +93,8 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
                                  Hasher* hasher,
                                  HTTPCache* http_cache,
                                  CacheInterface* metadata_cache,
-                                 NamedLockManager* lock_manager)
+                                 NamedLockManager* lock_manager,
+                                 MessageHandler* handler)
     : file_prefix_(file_prefix.data(), file_prefix.size()),
       resource_id_(0),
       file_system_(file_system),
@@ -108,7 +109,8 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       store_outputs_in_file_system_(true),
       lock_manager_(lock_manager),
       max_age_string_(StringPrintf("max-age=%d",
-                                   static_cast<int>(kGeneratedMaxAgeSec))) {
+                                   static_cast<int>(kGeneratedMaxAgeSec))),
+      message_handler_(handler) {
 }
 
 ResourceManager::~ResourceManager() {

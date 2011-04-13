@@ -62,15 +62,16 @@ class SpriteFuture {
   // TODO(abliss): support other values like "10%" and "center"
   static bool GetPixelValue(Css::Value* value, int* out_value_px) {
     switch (value->GetLexicalUnitType()) {
-      case Css::Value::NUMBER:
-        switch (value->GetDimension()) {
-          case Css::Value::PX:
-            // The easy case: offset specified in pixels.
-            *out_value_px = value->GetIntegerValue();
-            return true;
-          default:
-            return false;
+      case Css::Value::NUMBER: {
+        int int_value = value->GetIntegerValue();
+        // If the offset is specified in pixels, or is 0, we can just use it.
+        if ((value->GetDimension() == Css::Value::PX) || (int_value == 0)) {
+          *out_value_px = int_value;
+          return true;
         }
+        // TODO(abliss): handle more fancy values
+        return false;
+      }
       case  Css::Value::IDENT:
         switch (value->GetIdentifier().ident()) {
           case Css::Identifier::LEFT:
@@ -84,7 +85,77 @@ class SpriteFuture {
         return false;
     }
   }
-
+  // Attempts to adjust the x and y values of the background position.  *values
+  // is a value array which includes the background-position at values_offset.
+  // new_x and new_y are the coordinates of the image in the sprite.  Returns
+  // true if successful
+  static bool SetBackgroundPosition(Css::Values* values, int values_offset,
+                                    int new_x, int new_y) {
+    // Parsing these values is trickier than you might think.  If either
+    // of the two values is a non-center identifier, it determines which
+    // is x and which is y.  So for example, "5px left" means x=0, y=5 but
+    // "5px top" means x=5, y=0.
+    // See: http://www.w3.org/TR/CSS21/colors.html#propdef-background-position
+    // TODO(abliss): actually this is too permissive; "5px left" is not
+    // allowed by the spec.
+    // TODO(abliss): move this to webutil/css?
+    Css::Value* x_value = NULL;
+    Css::Value* y_value = NULL;
+    for (int i = 0; (i < 2) && (x_value == NULL); i++) {
+      Css::Value* value = values->at(values_offset + i);
+      Css::Value* other_value = values->at(values_offset + 1 - i);
+      if (value->GetLexicalUnitType() == Css::Value::IDENT) {
+        switch (value->GetIdentifier().ident()) {
+          case Css::Identifier::LEFT:
+          case Css::Identifier::RIGHT:
+            x_value = value;
+            y_value = other_value;
+            break;
+          case Css::Identifier::TOP:
+          case Css::Identifier::BOTTOM:
+            x_value = other_value;
+            y_value = value;
+            break;
+          default:
+            // We do not currently support CENTER
+            return false;
+        }
+      }
+    }
+    // If there are two values and neither is an identifier, x comes
+    // first: e.g. "5px 6px" means x=5, y=6.
+    if (x_value == NULL) {
+      x_value = values->at(values_offset);
+      y_value = values->at(values_offset + 1);
+    }
+    // Now that we know which value is which dimension, we can extract the
+    // values in px.
+    int x_px, y_px;
+    if (!GetPixelValue(x_value, &x_px) ||
+        !GetPixelValue(y_value, &y_px)) {
+      return false;
+    }
+    *(values->at(values_offset))     = Css::Value(x_px - new_x, Css::Value::PX);
+    *(values->at(values_offset + 1)) = Css::Value(y_px - new_y, Css::Value::PX);
+    return true;
+  }
+  // Tries to guess whether this value is an x- or y- position value in the
+  // background shorthand value list.
+  static bool IsPositionValue(const Css::Value& value) {
+    if (value.GetLexicalUnitType() == Css::Value::NUMBER) {
+      return true;
+    } else if (value.GetLexicalUnitType() == Css::Value::IDENT) {
+        switch (value.GetIdentifier().ident()) {
+          case Css::Identifier::LEFT:
+          case Css::Identifier::TOP:
+            return true;
+            // We don't support BOTTOM, RIGHT, or CENTER
+          default:
+            return false;
+        }
+    }
+    return false;
+  }
   // Attempt to actually perform the url substitution.  Initialize must have
   // been called first.
   bool Realize(const char* url, int x, int y) {
@@ -103,52 +174,12 @@ class SpriteFuture {
             // "center", which we don't currently support.
             return false;
           }
-          // Parsing these values is trickier than you might think.  If either
-          // of the two values is a non-center identifier, it determines which
-          // is x and which is y.  So for example, "5px left" means x=0, y=5 but
-          // "5px top" means x=5, y=0.
-          // TODO(abliss): actually this is too permissive; "5px left" is not
-          // allowed by the spec.
-          // TODO(abliss): move this to webutil/css?
-          Css::Value* x_value = NULL;
-          Css::Value* y_value = NULL;
-          for (int i = 0; (i < 2) && (x_value == NULL); i++) {
-            Css::Value* value = decl_values->at(i);
-            Css::Value* other_value = decl_values->at(1 - i);
-            if (value->GetLexicalUnitType() == Css::Value::IDENT) {
-              switch (value->GetIdentifier().ident()) {
-                case Css::Identifier::LEFT:
-                case Css::Identifier::RIGHT:
-                  x_value = value;
-                  y_value = other_value;
-                  break;
-                case Css::Identifier::TOP:
-                case Css::Identifier::BOTTOM:
-                  x_value = other_value;
-                  y_value = value;
-                  break;
-                default:
-                  // We do not currently support CENTER
-                  return false;
-              }
-            }
-          }
-          // If there are two values and neither is an identifier, x comes
-          // first: e.g. "5px 6px" means x=5, y=6.
-          if (x_value == NULL) {
-            x_value = decl_values->at(0);
-            y_value = decl_values->at(1);
-          }
-          // Now that we know which value is which dimension, we can extract the
-          // values in px.
-          int x_px, y_px;
-          if (!GetPixelValue(x_value, &x_px) ||
-              !GetPixelValue(y_value, &y_px)) {
+          if (SetBackgroundPosition(decl_values, 0, x, y)) {
+            position_found = true;
+          } else {
+            // Upon failure here, we abort the sprite.
             return false;
           }
-          *(decl_values->at(0)) = Css::Value(x_px - x, Css::Value::PX);
-          *(decl_values->at(1)) = Css::Value(y_px - y, Css::Value::PX);
-          position_found = true;
           break;
         }
         case Css::Property::BACKGROUND_POSITION_X:
@@ -156,6 +187,26 @@ class SpriteFuture {
           // These are non-standard, though supported in IE and Chrome.
           // TODO(abliss): handle these.
           return false;
+        case Css::Property::BACKGROUND: {
+          Css::Values* decl_values = decl->mutable_values();
+          // The background shorthand can include many values in any order.
+          // We'll look for two consecutive position values.  (If only one
+          // position value is present, the other is considered to be CENTER
+          // which we don't support.)
+          for (int i = 0, n = decl_values->size() - 1; i < n; ++i) {
+            if (IsPositionValue(*(decl_values->at(i))) &&
+                IsPositionValue(*(decl_values->at(i + 1)))) {
+              if (SetBackgroundPosition(decl_values, i, x, y)) {
+                position_found = true;
+                break;
+              } else {
+                // Upon failure here, we abort the sprite.
+                return false;
+              }
+            }
+          }
+          break;
+        }
         default:
           break;
       }
@@ -453,6 +504,19 @@ class ImgCombineFilter::Combiner
     library_.Clear();
   }
 
+  // Returns true if the image at url has already been added to the collection
+  // and is at least as large as the given dimensions.
+  bool CheckMinImageDimensions(const GoogleString& url, int width, int height) {
+    scoped_ptr<Library::SpriterImage> image(library_.ReadFromFile(url));
+    if (image.get() == NULL) {
+      return false;
+    }
+    int image_width, image_height;
+    if (!image->GetDimensions(&image_width, &image_height)) {
+      return false;
+    }
+    return (image_width >= width) && (image_height >= height);
+  }
  private:
   Library library_;
   Variable* img_file_count_reduction_;
@@ -489,72 +553,67 @@ TimedBool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
                                              Css::Declarations* declarations,
                                              Css::Value* url_value,
                                              MessageHandler* handler) {
-  // We must rule out repeating backgrounds.  Since repeating is the default
-  // behavior, we must find a no-repeat somewhere
-
+  handler->Message(kInfo, "Attempting to sprite css background.");
+  // If the element is larger than the image, spriting will not work correctly.
   // TODO(abliss): support same-sized vertically-repeating backgrounds in a
   // horizontal sprite, and horizontal ones in a vertical sprite.
-  // TODO(abliss): skip this check if the element is the same size as the image.
-  bool repeat = true;
   TimedBool ret = {kint64max, false};
+  int width = -1;
+  int height = -1;
   for (Css::Declarations::iterator decl_iter = declarations->begin();
        decl_iter != declarations->end(); ++decl_iter) {
     Css::Declaration* decl = *decl_iter;
-    // Only edit image declarations.
     switch (decl->prop()) {
-      case Css::Property::BACKGROUND_REPEAT: {
+      case Css::Property::WIDTH: {
         const Css::Values* decl_values = decl->values();
         for (Css::Values::const_iterator value_iter = decl_values->begin();
              value_iter != decl_values->end(); ++value_iter) {
           Css::Value* value = *value_iter;
-          if (value->GetLexicalUnitType() == Css::Value::IDENT) {
-            switch (value->GetIdentifier().ident()) {
-              case Css::Identifier::REPEAT:
-              case Css::Identifier::REPEAT_X:
-              case Css::Identifier::REPEAT_Y:
-                handler->Message(kInfo, "Cannot sprite: explicit bgr repeat");
-                return ret;
-              case Css::Identifier::NO_REPEAT:
-                repeat = false;
-              default:
-                break;
-            }
+          if ((value->GetLexicalUnitType() == Css::Value::NUMBER)
+              && (value->GetDimension() == Css::Value::PX)) {
+            width = value->GetIntegerValue();
+          } else {
+            return ret;
           }
         }
+        break;
       }
-      case Css::Property::BACKGROUND: {
+      case Css::Property::HEIGHT: {
         const Css::Values* decl_values = decl->values();
         for (Css::Values::const_iterator value_iter = decl_values->begin();
              value_iter != decl_values->end(); ++value_iter) {
           Css::Value* value = *value_iter;
-          if (value->GetLexicalUnitType() == Css::Value::IDENT) {
-            switch (value->GetIdentifier().ident()) {
-              case Css::Identifier::REPEAT:
-              case Css::Identifier::REPEAT_X:
-              case Css::Identifier::REPEAT_Y:
-                handler->Message(kInfo, "Cannot sprite: explicit bg repeat");
-                return ret;
-              case Css::Identifier::NO_REPEAT:
-                repeat = false;
-              default:
-                break;
-            }
+          if ((value->GetLexicalUnitType() == Css::Value::NUMBER)
+              && (value->GetDimension() == Css::Value::PX)) {
+            height = value->GetIntegerValue();
+          } else {
+            return ret;
           }
         }
+        break;
       }
       default:
         break;
     }
   }
-  if (repeat) {
-    handler->Message(kInfo, "Cannot sprite: implicit repeat");
+  if ((width == -1) || (height == -1)) {
+    handler->Message(kInfo, "Cannot sprite: no explicit dimensions");
     return ret;
   }
   SpriteFuture* future = new SpriteFuture();
   ret = combiner_->AddElement(future, original_url.Spec(), handler);
   if (ret.value) {
-    future->Initialize(declarations, url_value);
+    if (combiner_->CheckMinImageDimensions(
+            original_url.Spec().as_string(), width, height)) {
+      future->Initialize(declarations, url_value);
+    } else {
+      combiner_->RemoveLastElement();
+      handler->Message(kInfo, "Cannot sprite: image smaller than element.");
+      ret.value = false;
+      delete future;
+    }
   } else {
+    handler->Message(kInfo, "Cannot sprite: combiner forbids.");
     delete future;
   }
   return ret;

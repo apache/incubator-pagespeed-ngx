@@ -53,16 +53,32 @@ class CssImageCombineTest : public CssRewriteTestBase {
     const char* sprite = sprite_string.c_str();
     // The JPEG will not be included in the sprite because we only handle PNGs.
     const char* html = "<head><style>"
-        "#div1{background-image:url(%s);background-repeat:no-repeat;"
-        "background-position:0px 0px}"
-        "#div2{background:transparent url(%s) no-repeat;"
-        "background-position:%s}"
-        "#div3{background-image:url(%s)}"
+        "#div1{background-image:url(%s);"
+        "background-position:0px 0px;width:10px;height:10px}"
+        "#div2{background:transparent url(%s);"
+        "background-position:%s;width:10px;height:10px}"
+        "#div3{background-image:url(%s);width:10px;height:10px}"
         "</style></head>";
-    const GoogleString before = StringPrintf(
+    GoogleString before = StringPrintf(
         html, kCuppaPngFile, kBikePngFile, bikePosition, kPuzzleJpgFile);
-    const GoogleString after = StringPrintf(
+    GoogleString after = StringPrintf(
         html, sprite, sprite, expectedPosition, kPuzzleJpgFile);
+
+    ValidateExpected("sprites_images", before, after);
+
+    // Try it again, this time using the background shorthand with a couple
+    // different orderings
+    const char* html2 = "<head><style>"
+        "#div1{background:0px 0px url(%s) no-repeat transparent scroll;"
+        "width:10px;height:10px}"
+        "#div2{background:url(%s) %s repeat fixed;width:10px;height:10px}"
+        "#div3{background-image:url(%s);width:10px;height:10px}"
+        "</style></head>";
+
+    before = StringPrintf(
+        html2, kCuppaPngFile, kBikePngFile, bikePosition, kPuzzleJpgFile);
+    after = StringPrintf(
+        html2, sprite, sprite, expectedPosition, kPuzzleJpgFile);
 
     ValidateExpected("sprites_images", before, after);
   }
@@ -89,8 +105,8 @@ TEST_F(CssImageCombineTest, NoCrashUnknownType) {
   const GoogleString before =
       "<head><style>"
       "#div1 { background-image:url('bar.bewq');"
-      "background-repeat:no-repeat;}"
-      "#div2 { background:transparent url('foo.png') no-repeat}"
+      "width:10px;height:10px}"
+      "#div2 { background:transparent url('foo.png');width:10px;height:10px}"
       "</style></head>";
 
   ParseUrl(kTestDomain, before);
@@ -101,9 +117,9 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
 
   const GoogleString beforeCss = StrCat(" "  // extra whitespace allows rewrite
       "#div1{background-image:url(", kCuppaPngFile, ");"
-      "background-repeat:no-repeat}"
-      "#div2{background:transparent url(", kBikePngFile, ") no-repeat}"
-      "background-repeat:no-repeat}");
+      "width:10px;height:10px}"
+      "#div2{background:transparent url(", kBikePngFile,
+                                        ");width:10px;height:10px}");
   GoogleString cssUrl(kTestDomain);
   cssUrl += "style.css";
   // At first try, not even the CSS gets loaded, so nothing gets
@@ -118,8 +134,9 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
   // On the second run, we will rewrite the CSS but not sprite.
   const GoogleString rewrittenCss = StrCat(
       "#div1{background-image:url(", kCuppaPngFile, ");"
-      "background-repeat:no-repeat}"
-      "#div2{background:transparent url(", kBikePngFile, ") no-repeat}");
+      "width:10px;height:10px}"
+      "#div2{background:transparent url(", kBikePngFile,
+      ");width:10px;height:10px}");
   ValidateRewriteExternalCss(
       "wip", beforeCss, rewrittenCss, kNoOtherContexts | kNoClearFetcher |
       kExpectChange | kExpectSuccess);
@@ -135,10 +152,10 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
                                      ".pagespeed.is.Y-XqNDe-in.png");
   const GoogleString spriteCss = StrCat(
       "#div1{background-image:url(", sprite, ");"
-      "background-repeat:no-repeat;"
+      "width:10px;height:10px;"
       "background-position:0px 0px}"
       "#div2{background:transparent url(", sprite,
-      ") no-repeat;background-position:0px -70px}");
+      ");width:10px;height:10px;background-position:0px -70px}");
   ValidateRewriteExternalCss(
       "wip", beforeCss, spriteCss, kNoOtherContexts | kNoClearFetcher |
       kExpectChange | kExpectSuccess);

@@ -77,7 +77,8 @@ class ResourceManager {
                   Hasher* hasher,
                   HTTPCache* http_cache,
                   CacheInterface* metadata_cache,
-                  NamedLockManager* lock_manager);
+                  NamedLockManager* lock_manager,
+                  MessageHandler* handler);
   ~ResourceManager();
 
   // Initialize statistics gathering.
@@ -163,6 +164,8 @@ class ResourceManager {
   // can be shared between multiple requests.
   void IncrementResourceUrlDomainRejections();
 
+  MessageHandler* message_handler() const { return message_handler_; }
+
  private:
   GoogleString file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.
@@ -178,6 +181,7 @@ class ResourceManager {
   bool store_outputs_in_file_system_;
   NamedLockManager* lock_manager_;
   GoogleString max_age_string_;
+  MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };
