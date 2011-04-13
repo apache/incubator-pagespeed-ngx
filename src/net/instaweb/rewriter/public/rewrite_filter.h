@@ -53,7 +53,7 @@ class RewriteFilter : public CommonFilter {
   // resource, it replaces the href with a url constructed as
   //   HOST://PATH/ENCODED_NAME.pagespeed.FILTER_ID.HASH.EXT
   // Most ENCODED_NAMEs are just the original URL with a few
-  // characters, notably '?' and '&' esacped.  For "ic" (ImgRewriterFilter)
+  // characters, notably '?' and '&' esacped.  For "ic" (ImageRewriterFilter)
   // the encoding includes the original image URL, plus the pixel-dimensions
   // to which the image was resized.  For combine_css it includes
   // all the original URLs separated by '+'.

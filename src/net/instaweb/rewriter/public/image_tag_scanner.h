@@ -16,8 +16,8 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMG_TAG_SCANNER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_IMG_TAG_SCANNER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_TAG_SCANNER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_TAG_SCANNER_H_
 
 #include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -26,18 +26,18 @@
 namespace net_instaweb {
 class HtmlParse;
 
-class ImgTagScanner {
+class ImageTagScanner {
  public:
-  explicit ImgTagScanner(HtmlParse* html_parse);
+  explicit ImageTagScanner(HtmlParse* html_parse);
 
   // Examine HTML element and determine if it is an img with a src.  If so
   // extract the src attribute and return it, otherwise return NULL.
-  HtmlElement::Attribute* ParseImgElement(HtmlElement* element) const;
+  HtmlElement::Attribute* ParseImageElement(HtmlElement* element) const;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ImgTagScanner);
+  DISALLOW_COPY_AND_ASSIGN(ImageTagScanner);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_IMG_TAG_SCANNER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_TAG_SCANNER_H_

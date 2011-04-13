@@ -86,11 +86,11 @@ AddOutputFilter INCLUDES .shtml
 #COVERAGE   ModPagespeedLRUCacheKbPerProcess     1024
 #COVERAGE   ModPagespeedLRUCacheByteLimit        16384
 #COVERAGE   ModPagespeedCssInlineMaxBytes        2048
-#COVERAGE   ModPagespeedImgInlineMaxBytes        2048
+#COVERAGE   ModPagespeedImageInlineMaxBytes      2048
 #COVERAGE   ModPagespeedJsInlineMaxBytes         2048
 #COVERAGE   ModPagespeedCssOutlineMinBytes       3000
 #COVERAGE   ModPagespeedJsOutlineMinBytes        3000
-#COVERAGE   ModPagespeedImgMaxRewritesAtOnce        8
+#COVERAGE   ModPagespeedImageMaxRewritesAtOnce      8
 #COVERAGE   ModPagespeedSlurpFlushLimit          8192
 #COVERAGE   <Location /mod_pagespeed_beacon>
 #COVERAGE       SetHandler mod_pagespeed_beacon

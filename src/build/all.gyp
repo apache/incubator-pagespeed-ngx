@@ -15,9 +15,16 @@
 {
   'targets': [
     {
-      'target_name': 'All',
+      'target_name': 'all',
       'type': 'none',
       'xcode_create_dependents_test_runner': 1,
+      'dependencies': [
+        'mod_pagespeed',
+        'test',
+      ],},
+    {
+      'target_name': 'mod_pagespeed',
+      'type': 'none',
       'dependencies': [
         '../net/instaweb/instaweb.gyp:*',
         '../net/instaweb/instaweb_core.gyp:*',
@@ -25,5 +32,18 @@
         '../net/instaweb/mod_pagespeed.gyp:*',
         '../net/instaweb/test.gyp:*',
         'install.gyp:*',
-      ],} ]
+      ],},
+    {
+      'target_name': 'test',
+      'type': 'none',
+      'xcode_create_dependents_test_runner': 1,
+      'dependencies': [
+        '../net/instaweb/instaweb.gyp:*',
+        '../net/instaweb/instaweb_core.gyp:*',
+        '../net/instaweb/apache.gyp:*',
+        '../net/instaweb/test.gyp:*',
+        'install.gyp:*',
+      ]
+    },
+  ],
 }

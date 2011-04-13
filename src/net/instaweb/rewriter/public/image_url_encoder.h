@@ -52,7 +52,7 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
     return (dims.has_width() && dims.has_height());
   }
 
-  // Helper method that's easier to call for img* code than the virtual Decode
+  // Helper method that's easier to call for image code than the virtual Decode
   // interface, providing a single URL and ImageDim* as direct outputs.
   bool DecodeUrlAndDimensions(
       const StringPiece& encoded, ImageDim* dim, GoogleString* url,

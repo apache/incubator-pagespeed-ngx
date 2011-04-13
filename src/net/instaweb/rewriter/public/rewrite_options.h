@@ -40,12 +40,12 @@ class RewriteOptions {
     kCombineCss,
     kCombineHeads,
     kCombineJavascript,
-    kDebugLogImgTags,
+    kDebugLogImageTags,
     kElideAttributes,
     kExtendCache,
     kInlineCss,
     kInlineJavascript,
-    kInsertImgDimensions,
+    kInsertImageDimensions,
     kLeftTrimUrls,
     kMakeGoogleAnalyticsAsync,
     kMoveCssToHead,
@@ -89,7 +89,7 @@ class RewriteOptions {
   };
 
   static const int64 kDefaultCssInlineMaxBytes;
-  static const int64 kDefaultImgInlineMaxBytes;
+  static const int64 kDefaultImageInlineMaxBytes;
   static const int64 kDefaultJsInlineMaxBytes;
   static const int64 kDefaultCssOutlineMinBytes;
   static const int64 kDefaultJsOutlineMinBytes;
@@ -99,7 +99,7 @@ class RewriteOptions {
   // http://support.microsoft.com/kb/208427/EN-US
   static const int kMaxUrlSize;
 
-  static const int kDefaultImgMaxRewritesAtOnce;
+  static const int kDefaultImageMaxRewritesAtOnce;
 
   // See http://code.google.com/p/modpagespeed/issues/detail?id=9
   // Apache evidently limits each URL path segment (between /) to
@@ -163,10 +163,12 @@ class RewriteOptions {
     modified_ = true;
     js_outline_min_bytes_.set(x);
   }
-  int64 img_inline_max_bytes() const { return img_inline_max_bytes_.value(); }
-  void set_img_inline_max_bytes(int64 x) {
+  int64 image_inline_max_bytes() const {
+    return image_inline_max_bytes_.value();
+  }
+  void set_image_inline_max_bytes(int64 x) {
     modified_ = true;
-    img_inline_max_bytes_.set(x);
+    image_inline_max_bytes_.set(x);
   }
   int64 css_inline_max_bytes() const { return css_inline_max_bytes_.value(); }
   void set_css_inline_max_bytes(int64 x) {
@@ -187,7 +189,6 @@ class RewriteOptions {
   void set_beacon_url(const StringPiece& p) {
     modified_ = true;
     beacon_url_.set(GoogleString(p.data(), p.size()));
-
   }
   // The maximum length of a URL segment.
   // for http://a/b/c.d, this is == strlen("c.d")
@@ -197,12 +198,12 @@ class RewriteOptions {
     max_url_segment_size_.set(x);
   }
 
-  int img_max_rewrites_at_once() const {
-    return img_max_rewrites_at_once_.value();
+  int image_max_rewrites_at_once() const {
+    return image_max_rewrites_at_once_.value();
   }
-  void set_img_max_rewrites_at_once(int x) {
+  void set_image_max_rewrites_at_once(int x) {
     modified_ = true;
-    img_max_rewrites_at_once_.set(x);
+    image_max_rewrites_at_once_.set(x);
   }
 
   // The maximum size of the entire URL.  If '0', this is left unlimited.
@@ -345,8 +346,8 @@ class RewriteOptions {
   // we don't really care we'll try to keep the code structured better.
   Option<RewriteLevel> level_;
   Option<int64> css_inline_max_bytes_;
-  Option<int64> img_inline_max_bytes_;
-  Option<int64> img_max_rewrites_at_once_;
+  Option<int64> image_inline_max_bytes_;
+  Option<int64> image_max_rewrites_at_once_;
   Option<int64> js_inline_max_bytes_;
   Option<int64> css_outline_min_bytes_;
   Option<int64> js_outline_min_bytes_;

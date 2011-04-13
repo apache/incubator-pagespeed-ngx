@@ -22,7 +22,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
-#include "net/instaweb/rewriter/public/img_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -45,7 +45,7 @@ const char CssImageRewriter::kNoRewrite[] = "css_image_no_rewrite";
 
 CssImageRewriter::CssImageRewriter(RewriteDriver* driver,
                                    CacheExtender* cache_extender,
-                                   ImgRewriteFilter* image_rewriter,
+                                   ImageRewriteFilter* image_rewriter,
                                    ImgCombineFilter* image_combiner)
     : driver_(driver),
       // For now we use the same options as for rewriting and cache-extending

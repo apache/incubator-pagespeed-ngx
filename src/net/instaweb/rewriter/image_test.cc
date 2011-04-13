@@ -4,7 +4,7 @@
 // Unit tests for Image class used in rewriting.
 
 #include "net/instaweb/rewriter/public/image.h"
-#include "net/instaweb/rewriter/public/img_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 
 #include <algorithm>
 
@@ -103,7 +103,7 @@ class ImageTest : public testing::Test {
     // Construct data url, then decode it and check for match.
     GoogleString data_url;
     EXPECT_FALSE(NULL == image->content_type());
-    EXPECT_TRUE(ImgRewriteFilter::CanInline(
+    EXPECT_TRUE(ImageRewriteFilter::CanInline(
         image->output_size(), image->Contents(), image->content_type(),
         &data_url));
     GoogleString data_header("data:");

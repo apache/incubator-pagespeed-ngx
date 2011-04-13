@@ -90,13 +90,13 @@ message CachedResult {
   optional string input_hash = 10;
 
   // Dimensions of an image file, in pixels.  Used by
-  // img_rewrite_filter.  Note that these dimensions are not
+  // image_rewrite_filter.  Note that these dimensions are not
   // necessarily the same as the properties of the img tag,
   // represented by ResourceContext below.
   optional ImageDim image_file_dims = 11;
 
   // base64-encoded data: URI for inlining a small image.
-  // Used by img_rewrite_filter.
+  // Used by image_rewrite_filter.
   optional string image_inlined_uri = 12;
 
   // The result of a spriting operation, containing x/y coordinates for each

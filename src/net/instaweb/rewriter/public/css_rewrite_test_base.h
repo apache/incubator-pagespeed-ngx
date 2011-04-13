@@ -18,8 +18,8 @@
 
 // Base class for tests which do rewrites within CSS.
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_FILTER_TEST_BASE_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_CSS_FILTER_TEST_BASE_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_REWRITE_TEST_BASE_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_CSS_REWRITE_TEST_BASE_H_
 
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 
@@ -27,7 +27,7 @@
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
-#include "net/instaweb/rewriter/public/img_tag_scanner.h"
+#include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -131,4 +131,4 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_CSS_FILTER_TEST_BASE_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_CSS_REWRITE_TEST_BASE_H_

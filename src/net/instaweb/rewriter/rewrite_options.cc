@@ -41,21 +41,21 @@ namespace net_instaweb {
 // jmarantz says:
 //
 // One thing we could do, if we believe they should be conceptually
-// merged, is in img_rewrite_filter you could apply the
+// merged, is in image_rewrite_filter you could apply the
 // base64-bloat-factor before comparing against the threshold.  Then
 // we could use one number if we like that idea.
 //
 
-// jmaessen: For the moment, there's a separate threshold for img inline.
+// jmaessen: For the moment, there's a separate threshold for image inline.
 const int64 RewriteOptions::kDefaultCssInlineMaxBytes = 2048;
-const int64 RewriteOptions::kDefaultImgInlineMaxBytes = 2048;
+const int64 RewriteOptions::kDefaultImageInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultCssOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
 
-// Limit on concurrent ongoing img rewrites.
+// Limit on concurrent ongoing image rewrites.
 // TODO(jmaessen): Determine a sane default for this value.
-const int RewriteOptions::kDefaultImgMaxRewritesAtOnce = 8;
+const int RewriteOptions::kDefaultImageMaxRewritesAtOnce = 8;
 
 // IE limits URL size overall to about 2k characters.  See
 // http://support.microsoft.com/kb/208427/EN-US
@@ -97,8 +97,8 @@ RewriteOptions::RewriteOptions()
     : modified_(false),
       level_(kPassThrough),
       css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
-      img_inline_max_bytes_(kDefaultImgInlineMaxBytes),
-      img_max_rewrites_at_once_(kDefaultImgMaxRewritesAtOnce),
+      image_inline_max_bytes_(kDefaultImageInlineMaxBytes),
+      image_max_rewrites_at_once_(kDefaultImageMaxRewritesAtOnce),
       js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
       css_outline_min_bytes_(kDefaultCssInlineMaxBytes),
       js_outline_min_bytes_(kDefaultJsInlineMaxBytes),
@@ -111,7 +111,7 @@ RewriteOptions::RewriteOptions()
       log_rewrite_timing_(false),
       lowercase_html_names_(false),
       always_rewrite_css_(false) {
-  // TODO: If we instantiate many RewriteOptions, this should become a
+  // TODO(jmarantz): If we instantiate many RewriteOptions, this should become a
   // public static method called once at startup.
   SetUp();
 }
@@ -126,12 +126,14 @@ void RewriteOptions::SetUp() {
   name_filter_map_["combine_css"] = kCombineCss;
   name_filter_map_["combine_javascript"] = kCombineJavascript;
   name_filter_map_["combine_heads"] = kCombineHeads;
-  name_filter_map_["debug_log_img_tags"] = kDebugLogImgTags;
+  name_filter_map_["debug_log_image_tags"] = kDebugLogImageTags;
   name_filter_map_["elide_attributes"] = kElideAttributes;
   name_filter_map_["extend_cache"] = kExtendCache;
   name_filter_map_["inline_css"] = kInlineCss;
   name_filter_map_["inline_javascript"] = kInlineJavascript;
-  name_filter_map_["insert_img_dimensions"] = kInsertImgDimensions;
+  name_filter_map_["insert_img_dimensions"] =
+      kInsertImageDimensions;  // Deprecated due to spelling.
+  name_filter_map_["insert_image_dimensions"] = kInsertImageDimensions;
   name_filter_map_["left_trim_urls"] = kLeftTrimUrls;  // Deprecated
   name_filter_map_["make_google_analytics_async"] = kMakeGoogleAnalyticsAsync;
   name_filter_map_["move_css_to_head"] = kMoveCssToHead;
@@ -155,7 +157,7 @@ void RewriteOptions::SetUp() {
   level_filter_set_map_[kCoreFilters].insert(kExtendCache);
   level_filter_set_map_[kCoreFilters].insert(kInlineCss);
   level_filter_set_map_[kCoreFilters].insert(kInlineJavascript);
-  level_filter_set_map_[kCoreFilters].insert(kInsertImgDimensions);
+  level_filter_set_map_[kCoreFilters].insert(kInsertImageDimensions);
   level_filter_set_map_[kCoreFilters].insert(kLeftTrimUrls);
   level_filter_set_map_[kCoreFilters].insert(kRewriteImages);
   // TODO(jmarantz): re-enable javascript and CSS minification in
@@ -276,10 +278,10 @@ void RewriteOptions::Merge(const RewriteOptions& first,
   level_.Merge(first.level_, second.level_);
   css_inline_max_bytes_.Merge(first.css_inline_max_bytes_,
                               second.css_inline_max_bytes_);
-  img_inline_max_bytes_.Merge(first.img_inline_max_bytes_,
-                              second.img_inline_max_bytes_);
-  img_max_rewrites_at_once_.Merge(first.img_max_rewrites_at_once_,
-                                  second.img_max_rewrites_at_once_);
+  image_inline_max_bytes_.Merge(first.image_inline_max_bytes_,
+                                second.image_inline_max_bytes_);
+  image_max_rewrites_at_once_.Merge(first.image_max_rewrites_at_once_,
+                                    second.image_max_rewrites_at_once_);
   js_inline_max_bytes_.Merge(first.js_inline_max_bytes_,
                              second.js_inline_max_bytes_);
   css_outline_min_bytes_.Merge(first.css_outline_min_bytes_,

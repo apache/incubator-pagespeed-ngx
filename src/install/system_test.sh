@@ -214,6 +214,7 @@ FETCHED=$OUTDIR/$FILE
 check $WGET_PREREQ $URL
 check [ `cat $FETCHED | sed 's/>/>\n/g' | grep -c '<script'` = 0 ]
 
+# http://code.google.com/p/modpagespeed/issues/detail?id=170
 echo "TEST: Make sure 404s aren't rewritten"
 # Note: We run this in the add_instrumentation section because that is the
 # easiest to detect which changes every page
@@ -360,7 +361,7 @@ check [ `stat -c %s $OUTDIR/xBikeCrashIcn*` -lt 25000 ]      # re-encoded
 check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
 
 IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
-echo TEST: headers for rewrritten image "$IMG_URL"
+echo TEST: headers for rewritten image "$IMG_URL"
 IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $IMG_URL 2>&1)
 # Make sure we have some valid headers.
@@ -391,6 +392,12 @@ IMG_URL=${IMG_URL/Puzzle/BadName}
 echo TEST: rewrite_images fails broken image $IMG_URL
 $WGET_PREREQ $IMG_URL;  # fails
 check grep '"404 Not Found"' $WGET_OUTPUT
+
+# [google] b/3328110
+echo "TEST: rewrite_images doesn't 500 on unoptomizable image"
+IMG_URL=$EXAMPLE_ROOT/images/xOptPuzzle.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
+$WGET_PREREQ $IMG_URL
+check grep '"HTTP/1.1 200 OK"' $WGET_OUTPUT
 
 # These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.

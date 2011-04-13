@@ -16,14 +16,14 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/rewriter/public/img_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/image.h"
-#include "net/instaweb/rewriter/public/img_tag_scanner.h"
+#include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/atom.h"
@@ -50,7 +50,7 @@ const double kMaxRewrittenRatio = 1.0;
 
 // Re-scale image if area / originalArea < kMaxAreaRatio
 // Should probably be much less than 1 due to jpeg quality loss.
-// Might need to differ depending upon img format.
+// Might need to differ depending upon image format.
 // TODO(jmaessen): Make adjustable.
 const double kMaxAreaRatio = 1.0;
 
@@ -62,19 +62,19 @@ const char kImageInline[] = "image_inline";
 // name for statistic used to bound rewriting work.
 const char kImageOngoingRewrites[] = "image_ongoing_rewrites";
 
-const char kWidthKey[]  = "ImgRewriteFilter_W";
-const char kHeightKey[] = "ImgRewriteFilter_H";
-const char kDataUrlKey[] = "ImgRewriteFilter_DataUrl";
+const char kWidthKey[]  = "ImageRewriteFilter_W";
+const char kHeightKey[] = "ImageRewriteFilter_H";
+const char kDataUrlKey[] = "ImageRewriteFilter_DataUrl";
 
 }  // namespace
 
-ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
-                                   StringPiece path_prefix,
-                                   size_t img_inline_max_bytes,
-                                   size_t img_max_rewrites_at_once)
+ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver,
+                                       StringPiece path_prefix,
+                                       size_t image_inline_max_bytes,
+                                       size_t image_max_rewrites_at_once)
     : RewriteSingleResourceFilter(driver, path_prefix),
-      img_filter_(new ImgTagScanner(driver)),
-      img_inline_max_bytes_(img_inline_max_bytes),
+      image_filter_(new ImageTagScanner(driver)),
+      image_inline_max_bytes_(image_inline_max_bytes),
       rewrite_count_(NULL),
       inline_count_(NULL),
       rewrite_saved_bytes_(NULL) {
@@ -88,10 +88,10 @@ ImgRewriteFilter::ImgRewriteFilter(RewriteDriver* driver,
     ongoing_rewrites = stats->GetVariable(kImageOngoingRewrites);
   }
   work_bound_.reset(
-      new StatisticsWorkBound(ongoing_rewrites, img_max_rewrites_at_once));
+      new StatisticsWorkBound(ongoing_rewrites, image_max_rewrites_at_once));
 }
 
-void ImgRewriteFilter::Initialize(Statistics* statistics) {
+void ImageRewriteFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kImageInline);
   statistics->AddVariable(kImageRewriteSavedBytes);
   statistics->AddVariable(kImageRewrites);
@@ -99,8 +99,8 @@ void ImgRewriteFilter::Initialize(Statistics* statistics) {
 }
 
 RewriteSingleResourceFilter::RewriteResult
-ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
-                                        OutputResource* result) {
+ImageRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
+                                          OutputResource* result) {
   MessageHandler* message_handler = driver_->message_handler();
   GoogleString url;
   ImageDim page_dim;
@@ -118,13 +118,13 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
     return kRewriteFailed;
   }
 
-  ImageDim img_dim, post_resize_dim;
-  image->Dimensions(&img_dim);
-  post_resize_dim = img_dim;
+  ImageDim image_dim, post_resize_dim;
+  image->Dimensions(&image_dim);
+  post_resize_dim = image_dim;
 
   // Don't rewrite beacons
-  if (!ImageUrlEncoder::HasValidDimensions(img_dim) ||
-      (img_dim.width() <= 1 && img_dim.height() <= 1)) {
+  if (!ImageUrlEncoder::HasValidDimensions(image_dim) ||
+      (image_dim.width() <= 1 && image_dim.height() <= 1)) {
     return kRewriteFailed;
   }
 
@@ -134,11 +134,12 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
 
     const char* message;  // Informational message for logging only.
     if (ImageUrlEncoder::HasValidDimensions(page_dim) &&
-        ImageUrlEncoder::HasValidDimensions(img_dim)) {
+        ImageUrlEncoder::HasValidDimensions(image_dim)) {
       int64 page_area =
           static_cast<int64>(page_dim.width()) * page_dim.height();
-      int64 img_area = static_cast<int64>(img_dim.width()) * img_dim.height();
-      if (page_area < img_area * kMaxAreaRatio) {
+      int64 image_area =
+          static_cast<int64>(image_dim.width()) * image_dim.height();
+      if (page_area < image_area * kMaxAreaRatio) {
         if (image->ResizeTo(page_dim)) {
           post_resize_dim = page_dim;
           message = "Resized image";
@@ -150,7 +151,7 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
       }
       driver_->InfoHere("%s `%s' from %dx%d to %dx%d", message,
                         input_resource->url().c_str(),
-                        img_dim.width(), img_dim.height(),
+                        image_dim.width(), image_dim.height(),
                         page_dim.width(), page_dim.height());
     }
 
@@ -170,7 +171,7 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
 
       // Consider inlining output image (no need to check input, it's bigger)
       // This needs to happen before Write to persist.
-      if (CanInline(img_inline_max_bytes_, image->Contents(),
+      if (CanInline(image_inline_max_bytes_, image->Contents(),
                     result->type(), &inlined_url)) {
         cached->set_image_inlined_uri(inlined_url);
       }
@@ -206,7 +207,7 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
 
     // Try inlining input image if output hasn't been inlined already.
     if (inlined_url.empty() &&
-        CanInline(img_inline_max_bytes_, input_resource->contents(),
+        CanInline(image_inline_max_bytes_, input_resource->contents(),
                   input_resource->type(), &inlined_url)) {
       cached->set_image_inlined_uri(inlined_url);
     }
@@ -215,16 +216,16 @@ ImgRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
   return rewrite_result;
 }
 
-int ImgRewriteFilter::FilterCacheFormatVersion() const {
+int ImageRewriteFilter::FilterCacheFormatVersion() const {
   return 1;
 }
 
-bool ImgRewriteFilter::ReuseByContentHash() const {
+bool ImageRewriteFilter::ReuseByContentHash() const {
   return true;
 }
 
 // Convert (possibly NULL) Image* to corresponding (possibly NULL) ContentType*
-const ContentType* ImgRewriteFilter::ImageToContentType(
+const ContentType* ImageRewriteFilter::ImageToContentType(
     const GoogleString& origin_url, Image* image) {
   const ContentType* content_type = NULL;
   if (image != NULL) {
@@ -251,8 +252,8 @@ const ContentType* ImgRewriteFilter::ImageToContentType(
   return content_type;
 }
 
-void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
-                                       HtmlElement::Attribute* src) {
+void ImageRewriteFilter::RewriteImageUrl(HtmlElement* element,
+                                         HtmlElement::Attribute* src) {
   ResourceContext resource_context;
   ImageDim* page_dim = resource_context.mutable_image_tag_dims();
   int width, height;
@@ -285,7 +286,7 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
       }
     }
 
-    if (driver_->options()->Enabled(RewriteOptions::kInsertImgDimensions) &&
+    if (driver_->options()->Enabled(RewriteOptions::kInsertImageDimensions) &&
         !element->FindAttribute(HtmlName::kWidth) &&
         !element->FindAttribute(HtmlName::kHeight) &&
         cached->has_image_file_dims() &&
@@ -305,22 +306,22 @@ void ImgRewriteFilter::RewriteImageUrl(HtmlElement* element,
   }
 }
 
-bool ImgRewriteFilter::CanInline(
-    int img_inline_max_bytes, const StringPiece& contents,
+bool ImageRewriteFilter::CanInline(
+    int image_inline_max_bytes, const StringPiece& contents,
     const ContentType* content_type, GoogleString* data_url) {
   bool ok = false;
-  if (content_type != NULL && contents.size() <= img_inline_max_bytes) {
+  if (content_type != NULL && contents.size() <= image_inline_max_bytes) {
     DataUrl(*content_type, BASE64, contents, data_url);
     ok = true;
   }
   return ok;
 }
 
-void ImgRewriteFilter::EndElementImpl(HtmlElement* element) {
+void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
   if (!driver_->HasChildrenInFlushWindow(element)) {
-    HtmlElement::Attribute *src = img_filter_->ParseImgElement(element);
+    HtmlElement::Attribute *src = image_filter_->ParseImageElement(element);
     if (src != NULL) {
-      if (driver_->options()->Enabled(RewriteOptions::kDebugLogImgTags)) {
+      if (driver_->options()->Enabled(RewriteOptions::kDebugLogImageTags)) {
         // We now know that element is an img tag.
         // Log the element in its original form.
         GoogleString tagstring;
@@ -334,7 +335,7 @@ void ImgRewriteFilter::EndElementImpl(HtmlElement* element) {
   }
 }
 
-const UrlSegmentEncoder* ImgRewriteFilter::encoder() const {
+const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {
   return &encoder_;
 }
 

@@ -410,9 +410,9 @@
       ],
       'sources': [
         'rewriter/image.cc',
+        'rewriter/image_rewrite_filter.cc',
+        'rewriter/image_tag_scanner.cc',
         'rewriter/image_url_encoder.cc',
-        'rewriter/img_rewrite_filter.cc',
-        'rewriter/img_tag_scanner.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

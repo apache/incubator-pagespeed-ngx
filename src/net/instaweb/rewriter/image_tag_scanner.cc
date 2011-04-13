@@ -16,7 +16,7 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/rewriter/public/img_tag_scanner.h"
+#include "net/instaweb/rewriter/public/image_tag_scanner.h"
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -24,11 +24,11 @@
 
 namespace net_instaweb {
 
-ImgTagScanner::ImgTagScanner(HtmlParse* html_parse) {
+ImageTagScanner::ImageTagScanner(HtmlParse* html_parse) {
 }
 
 HtmlElement::Attribute*
-ImgTagScanner::ParseImgElement(HtmlElement* element) const {
+ImageTagScanner::ParseImageElement(HtmlElement* element) const {
   // Return the src attribute of an <img> tag.
   if (element->keyword() == HtmlName::kImg) {
     return element->FindAttribute(HtmlName::kSrc);

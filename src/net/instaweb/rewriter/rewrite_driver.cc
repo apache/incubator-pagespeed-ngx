@@ -37,7 +37,7 @@
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/img_combine_filter.h"
-#include "net/instaweb/rewriter/public/img_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
@@ -130,7 +130,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     CssCombineFilter::Initialize(statistics);
     CssMoveToHeadFilter::Initialize(statistics);
     GoogleAnalyticsFilter::Initialize(statistics);
-    ImgRewriteFilter::Initialize(statistics);
+    ImageRewriteFilter::Initialize(statistics);
     ImgCombineFilter::Initialize(statistics);
     JavascriptFilter::Initialize(statistics);
     JsCombineFilter::Initialize(statistics);
@@ -154,12 +154,12 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   CacheExtender* cache_extender = new CacheExtender(this, kCacheExtenderId);
   ImgCombineFilter* image_combiner = new ImgCombineFilter(this,
                                                           kImageCombineId);
-  ImgRewriteFilter* image_rewriter =
-      new ImgRewriteFilter(
+  ImageRewriteFilter* image_rewriter =
+      new ImageRewriteFilter(
           this,
           kImageCompressionId,
-          options_.img_inline_max_bytes(),
-          options_.img_max_rewrites_at_once());
+          options_.image_inline_max_bytes(),
+          options_.image_max_rewrites_at_once());
 
   RegisterRewriteFilter(new CssCombineFilter(this, kCssCombinerId));
   RegisterRewriteFilter(

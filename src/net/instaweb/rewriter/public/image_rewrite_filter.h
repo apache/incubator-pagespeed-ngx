@@ -16,8 +16,8 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMG_REWRITE_FILTER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_IMG_REWRITE_FILTER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_
 
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 
@@ -25,7 +25,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
-#include "net/instaweb/rewriter/public/img_tag_scanner.h"
+#include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/string.h"
@@ -45,22 +45,22 @@ class Variable;
 // Identify img tags in html and optimize them.
 // TODO(jmaessen): Big open question: how best to link pulled-in resources to
 //     rewritten urls, when in general those urls will be in a different domain.
-class ImgRewriteFilter : public RewriteSingleResourceFilter {
+class ImageRewriteFilter : public RewriteSingleResourceFilter {
  public:
-  ImgRewriteFilter(RewriteDriver* driver,
-                   StringPiece path_prefix,
-                   size_t img_inline_max_bytes,
-                   size_t img_max_rewrites_at_once);
+  ImageRewriteFilter(RewriteDriver* driver,
+                     StringPiece path_prefix,
+                     size_t image_inline_max_bytes,
+                     size_t image_max_rewrites_at_once);
   static void Initialize(Statistics* statistics);
   virtual void StartDocumentImpl() {}
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element);
-  virtual const char* Name() const { return "ImgRewrite"; }
+  virtual const char* Name() const { return "ImageRewrite"; }
 
   // Can we inline resource?  If so, encode its contents into the data_url,
   // otherwise leave data_url alone.
   static bool CanInline(
-      int img_inline_max_bytes, const StringPiece& contents,
+      int image_inline_max_bytes, const StringPiece& contents,
       const ContentType* content_type, GoogleString* data_url);
 
  protected:
@@ -77,7 +77,7 @@ class ImgRewriteFilter : public RewriteSingleResourceFilter {
                                         Image* image);
   void RewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
 
-  scoped_ptr<const ImgTagScanner> img_filter_;
+  scoped_ptr<const ImageTagScanner> image_filter_;
   scoped_ptr<WorkBound> work_bound_;
   // Threshold size (in bytes) below which we should just inline images
   // encountered.
@@ -90,15 +90,15 @@ class ImgRewriteFilter : public RewriteSingleResourceFilter {
   // of the html.  Otherwise we end up loading the image in favor of the html,
   // which might be a lose.  More work is needed here to figure out the exact
   // tradeoffs involved, especially as we also undermine image cacheability.
-  size_t img_inline_max_bytes_;
+  size_t image_inline_max_bytes_;
   Variable* rewrite_count_;
   Variable* inline_count_;
   Variable* rewrite_saved_bytes_;
   ImageUrlEncoder encoder_;
 
-  DISALLOW_COPY_AND_ASSIGN(ImgRewriteFilter);
+  DISALLOW_COPY_AND_ASSIGN(ImageRewriteFilter);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_IMG_REWRITE_FILTER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_

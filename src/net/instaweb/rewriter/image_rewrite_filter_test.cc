@@ -19,7 +19,7 @@
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/rewriter/public/img_tag_scanner.h"
+#include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/mock_timer.h"
@@ -37,8 +37,8 @@ class ImageRewriteTest : public ResourceManagerTestBase {
   // Simple image rewrite test to check resource fetching functionality.
   void RewriteImage(const GoogleString& tag_string) {
     options_.EnableFilter(RewriteOptions::kRewriteImages);
-    options_.EnableFilter(RewriteOptions::kInsertImgDimensions);
-    options_.set_img_inline_max_bytes(2000);
+    options_.EnableFilter(RewriteOptions::kInsertImageDimensions);
+    options_.set_image_inline_max_bytes(2000);
     rewrite_driver_.AddFilters();
 
     AddOtherFilter(RewriteOptions::kRewriteImages);
@@ -116,35 +116,35 @@ class ImageRewriteTest : public ResourceManagerTestBase {
                                   rewritten_image_data.substr(header_size));
   }
 
-  // Helper class to collect img srcs.
-  class ImgCollector : public EmptyHtmlFilter {
+  // Helper class to collect image srcs.
+  class ImageCollector : public EmptyHtmlFilter {
    public:
-    ImgCollector(HtmlParse* html_parse, StringVector* img_srcs)
+    ImageCollector(HtmlParse* html_parse, StringVector* img_srcs)
         : img_srcs_(img_srcs),
-          img_filter_(html_parse) {
+          image_filter_(html_parse) {
     }
 
     virtual void StartElement(HtmlElement* element) {
-      HtmlElement::Attribute* src = img_filter_.ParseImgElement(element);
+      HtmlElement::Attribute* src = image_filter_.ParseImageElement(element);
       if (src != NULL) {
         img_srcs_->push_back(src->value());
       }
     }
 
-    virtual const char* Name() const { return "ImgCollector"; }
+    virtual const char* Name() const { return "ImageCollector"; }
 
    private:
     StringVector* img_srcs_;
-    ImgTagScanner img_filter_;
+    ImageTagScanner image_filter_;
 
-    DISALLOW_COPY_AND_ASSIGN(ImgCollector);
+    DISALLOW_COPY_AND_ASSIGN(ImageCollector);
   };
 
   // Fills `img_srcs` with the urls in img src attributes in `html`
   void CollectImgSrcs(const StringPiece& id, const StringPiece& html,
-                       StringVector* img_srcs) {
+                        StringVector* img_srcs) {
     HtmlParse html_parse(&message_handler_);
-    ImgCollector collector(&html_parse, img_srcs);
+    ImageCollector collector(&html_parse, img_srcs);
     html_parse.AddFilter(&collector);
     GoogleString dummy_url = StrCat("http://collect.css.links/", id, ".html");
     html_parse.StartParse(dummy_url);
@@ -201,8 +201,8 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     AddFilter(RewriteOptions::kRewriteImages);
 
     StringVector img_srcs;
-    ImgCollector img_collect(&rewrite_driver_, &img_srcs);
-    rewrite_driver_.AddFilter(&img_collect);
+    ImageCollector image_collect(&rewrite_driver_, &img_srcs);
+    rewrite_driver_.AddFilter(&image_collect);
 
     ParseUrl(kTestDomain, kHtml);
     ASSERT_EQ(2, img_srcs.size());
@@ -318,7 +318,7 @@ TEST_F(ImageRewriteTest, NoQueryCorruption) {
 
 TEST_F(ImageRewriteTest, NoCrashOnInvalidDim) {
   options_.EnableFilter(RewriteOptions::kRewriteImages);
-  options_.EnableFilter(RewriteOptions::kInsertImgDimensions);
+  options_.EnableFilter(RewriteOptions::kInsertImageDimensions);
   rewrite_driver_.AddFilters();
   AddFileToMockFetcher(StrCat(kTestDomain, "a.png"), kBikePngFile,
                        kContentTypePng, 100);

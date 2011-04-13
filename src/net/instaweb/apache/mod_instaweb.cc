@@ -93,9 +93,15 @@ const char* kModPagespeedFilters = "ModPagespeedFilters";
 const char* kModPagespeedForceCaching = "ModPagespeedForceCaching";
 const char* kModPagespeedGeneratedFilePrefix =
     "ModPagespeedGeneratedFilePrefix";
+// The following two are deprecated due to spelling
 const char* kModPagespeedImgInlineMaxBytes = "ModPagespeedImgInlineMaxBytes";
 const char* kModPagespeedImgMaxRewritesAtOnce =
     "ModPagespeedImgMaxRewritesAtOnce";
+// The next two options replace the two above.
+const char* kModPagespeedImageInlineMaxBytes =
+    "ModPagespeedImageInlineMaxBytes";
+const char* kModPagespeedImageMaxRewritesAtOnce =
+    "ModPagespeedImageMaxRewritesAtOnce";
 const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
 const char* kModPagespeedJsOutlineMinBytes = "ModPagespeedJsOutlineMinBytes";
 const char* kModPagespeedLRUCacheByteLimit = "ModPagespeedLRUCacheByteLimit";
@@ -892,8 +898,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
         cmd, &ApacheRewriteDriverFactory::set_fetcher_time_out_ms, arg);
   } else if (StringCaseEqual(directive, kModPagespeedFetchProxy)) {
     factory->set_fetcher_proxy(arg);
-  } else if (StringCaseEqual(directive, kModPagespeedFileCacheCleanIntervalMs))
-  {
+  } else if (StringCaseEqual(directive,
+                             kModPagespeedFileCacheCleanIntervalMs)) {
     ret = ParseInt64Option(factory,
         cmd, &ApacheRewriteDriverFactory::set_file_cache_clean_interval_ms,
         arg);
@@ -911,12 +917,21 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
                         " does not exist and can't be created.", NULL);
     }
   } else if (StringCaseEqual(directive, kModPagespeedImgInlineMaxBytes)) {
+    // Deprecated due to spelling
     ret = ParseInt64Option(options,
-        cmd, &RewriteOptions::set_img_inline_max_bytes, arg);
+        cmd, &RewriteOptions::set_image_inline_max_bytes, arg);
   } else if (StringCaseEqual(directive, kModPagespeedImgMaxRewritesAtOnce)) {
+    // Deprecated due to spelling
     // TODO(sligocki): Convert to ParseInt64Option for consistency?
     ret = ParseIntOption(options,
-        cmd, &RewriteOptions::set_img_max_rewrites_at_once, arg);
+        cmd, &RewriteOptions::set_image_max_rewrites_at_once, arg);
+  } else if (StringCaseEqual(directive, kModPagespeedImageInlineMaxBytes)) {
+    ret = ParseInt64Option(options,
+        cmd, &RewriteOptions::set_image_inline_max_bytes, arg);
+  } else if (StringCaseEqual(directive, kModPagespeedImageMaxRewritesAtOnce)) {
+    // TODO(sligocki): Convert to ParseInt64Option for consistency?
+    ret = ParseIntOption(options,
+        cmd, &RewriteOptions::set_image_max_rewrites_at_once, arg);
   } else if (StringCaseEqual(directive, kModPagespeedJsInlineMaxBytes)) {
     ret = ParseInt64Option(options,
         cmd, &RewriteOptions::set_js_inline_max_bytes, arg);
@@ -1053,6 +1068,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDisallow,
         "wildcard_spec for urls"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImgInlineMaxBytes,
+        "DEPRECATED, use ModPagespeedImageInlineMaxBytes."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedImageInlineMaxBytes,
         "Number of bytes below which images will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJsInlineMaxBytes,
         "Number of bytes below which javascript will be inlined."),
@@ -1086,6 +1103,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedGeneratedFilePrefix,
         "Set generated file's prefix"),
   APACHE_CONFIG_OPTION(kModPagespeedImgMaxRewritesAtOnce,
+        "DEPRECATED, use ModPagespeedImageMaxRewritesAtOnce."),
+  APACHE_CONFIG_OPTION(kModPagespeedImageMaxRewritesAtOnce,
         "Set bound on number of images being rewritten at one time "
         "(0 = unbounded)."),
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheByteLimit,

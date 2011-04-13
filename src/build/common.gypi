@@ -64,6 +64,12 @@
         'xcode_settings':{
           'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',        # -fexceptions
           'GCC_ENABLE_CPP_RTTI': 'YES',              # -frtti
+
+          # The Google CSS parser escapes from functions without
+          # returning anything.  Only with flow analysis that is,
+          # evidently, beyond the scope of the g++ configuration in
+          # MacOS, do we see those paths cannot be reached.
+          'OTHER_CFLAGS': ['-funsigned-char', '-Wno-error'],
         },
       }],
     ],

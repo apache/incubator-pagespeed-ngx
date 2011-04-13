@@ -16,6 +16,7 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 
@@ -74,7 +75,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
 
   // Can't serve from new contexts yet, because we're using mock_fetcher_.
   // TODO(sligocki): Resolve that and the just have:
-  //ValidateRewriteInlineCss("cache_extends_images", css_before, css_after);
+  // ValidateRewriteInlineCss("cache_extends_images", css_before, css_after);
   ValidateRewriteInlineCss("cache_extends_images-inline",
                            css_before, css_after,
                            kExpectChange | kExpectSuccess);
@@ -179,7 +180,6 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
                   resource_manager_->hasher()->Hash(expected_output),
                   name, "png");
   }
-
 };
 
 // Test to make sure expiration time for cached result is the
@@ -189,10 +189,10 @@ TEST_F(CssFilterSubresourceTest, SubResourceDepends) {
                         "span { background-image: url(b.png); }";
 
   // Figure out where cache-extended PNGs will go.
-  GoogleString img_url1 = ExpectedUrlForPng("a.png", "notapng");
-  GoogleString img_url2 = ExpectedUrlForPng("b.png", "notbpng");
-  GoogleString output = StrCat("div{background-image:url(", img_url1, ")}",
-                               "span{background-image:url(", img_url2, ")}");
+  GoogleString image_url1 = ExpectedUrlForPng("a.png", "notapng");
+  GoogleString image_url2 = ExpectedUrlForPng("b.png", "notbpng");
+  GoogleString output = StrCat("div{background-image:url(", image_url1, ")}",
+                               "span{background-image:url(", image_url2, ")}");
 
   // Here we don't use the other contexts since it has different
   // synchronicity, and we presently do best-effort for loaded subresources
