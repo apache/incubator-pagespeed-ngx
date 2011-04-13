@@ -356,7 +356,8 @@ void OutputResource::FetchCachedResult(const GoogleString& name_key,
 
   if (callback.state_ == CacheInterface::kAvailable) {
     SharedString* val = callback.value();
-    ArrayInputStream input(val->get()->data(), val->size());
+    const GoogleString* val_str = val->get();
+    ArrayInputStream input(val_str->data(), val_str->size());
     if (cached->ParseFromZeroCopyStream(&input)) {
       cached->set_frozen(false);
       if (!cached->optimizable()) {

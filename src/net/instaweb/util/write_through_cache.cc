@@ -29,7 +29,7 @@ WriteThroughCache::~WriteThroughCache() {
 void WriteThroughCache::PutInCache1(const GoogleString& key,
                                     SharedString* value) {
   if ((cache1_size_limit_ == kUnlimited) ||
-      (key.size() + value->size() < cache1_size_limit_)) {
+      (key.size() + value->get()->size() < cache1_size_limit_)) {
     cache1_->Put(key, value);
   }
 }

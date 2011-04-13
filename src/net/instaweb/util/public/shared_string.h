@@ -26,51 +26,20 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SHARED_STRING_H_
 
 #include "base/basictypes.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
-#include "base/ref_counted.h"
-
 namespace net_instaweb {
 
-
-class RefCountedString : public base::RefCountedThreadSafe<RefCountedString> {
+// Reference-counted string.  This class just adds the StringPiece constructor.
+class SharedString : public RefCountedPtr<GoogleString> {
  public:
-  RefCountedString() { }
-  explicit RefCountedString(const StringPiece& str)
-      : string_(str.data(), str.size()) {
-  }
-  const GoogleString& value() const { return string_; }
-  GoogleString& value() { return string_; }
-  size_t size() const { return string_.size(); }
-  const char* data() const { return string_.data(); }
-
- private:
-  friend class base::RefCountedThreadSafe<RefCountedString>;
-  ~RefCountedString() { }
-
-  GoogleString string_;
-
-  DISALLOW_COPY_AND_ASSIGN(RefCountedString);
-};
-
-class SharedString : public scoped_refptr<RefCountedString> {
- public:
-  SharedString() : scoped_refptr<RefCountedString>(new RefCountedString) {
-  }
-
+  SharedString() {}
   explicit SharedString(const StringPiece& str)
-      : scoped_refptr<RefCountedString>(new RefCountedString(str)) {
+      : RefCountedPtr<GoogleString>(GoogleString(str.data(), str.size())) {
   }
-  GoogleString& operator*() { return ptr_->value(); }
-  GoogleString* get() { return &(ptr_->value()); }
-  const GoogleString* get() const { return &(ptr_->value()); }
-  GoogleString* operator->() { return &(ptr_->value()); }
-  const GoogleString* operator->() const { return &(ptr_->value()); }
-  bool unique() const { return ptr_->HasOneRef(); }
-  GoogleString::size_type size() const { return ptr_->value().size(); }
 };
-
 
 }  // namespace net_instaweb
 
