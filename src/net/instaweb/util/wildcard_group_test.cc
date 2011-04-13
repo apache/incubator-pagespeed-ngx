@@ -32,11 +32,18 @@ class WildcardGroupTest : public testing::Test {
   }
 
   void TestGroup(const WildcardGroup& group) {
-    EXPECT_TRUE(group.Match("x.cc"));
-    EXPECT_FALSE(group.Match("c.cc"));
-    EXPECT_TRUE(group.Match("y.h"));
-    EXPECT_FALSE(group.Match("a.h"));
-    EXPECT_TRUE(group.Match("ab.h"));
+    EXPECT_TRUE(group.Match("x.cc", true));
+    EXPECT_TRUE(group.Match("x.cc", false));
+    EXPECT_FALSE(group.Match("c.cc", true));
+    EXPECT_FALSE(group.Match("c.cc", false));
+    EXPECT_TRUE(group.Match("y.h", true));
+    EXPECT_TRUE(group.Match("y.h", false));
+    EXPECT_FALSE(group.Match("a.h", true));
+    EXPECT_FALSE(group.Match("a.h", false));
+    EXPECT_TRUE(group.Match("ab.h", true));
+    EXPECT_TRUE(group.Match("ab.h", false));
+    EXPECT_TRUE(group.Match("not a match", true));
+    EXPECT_FALSE(group.Match("not a match", false));
   }
 
   WildcardGroup group_;
@@ -50,6 +57,14 @@ TEST_F(WildcardGroupTest, CopySequence) {
   WildcardGroup copy;
   copy.CopyFrom(group_);
   TestGroup(copy);
+}
+
+TEST_F(WildcardGroupTest, AppendSequence) {
+  WildcardGroup appended;
+  appended.Allow("cb*.cc");
+  group_.AppendFrom(appended);
+  EXPECT_TRUE(group_.Match("cb.cc", false));
+  EXPECT_FALSE(group_.Match("ca.cc", true));
 }
 
 }  // namespace net_instaweb

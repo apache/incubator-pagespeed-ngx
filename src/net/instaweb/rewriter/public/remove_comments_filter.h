@@ -24,19 +24,30 @@
 
 namespace net_instaweb {
 
+class RewriteOptions;
+
 // Reduce the size of the HTML by removing all HTML comments (except those
 // which are IE directives).  Note that this is a potentially dangerous
 // optimization; if a site is using comments for some squirrelly purpose, then
 // removing those comments might break something.
 class RemoveCommentsFilter : public EmptyHtmlFilter {
  public:
-  explicit RemoveCommentsFilter(HtmlParse* html_parse);
+  explicit RemoveCommentsFilter(HtmlParse* html_parse)
+      : html_parse_(html_parse),
+        rewrite_options_(NULL) {
+  }
+
+  RemoveCommentsFilter(HtmlParse* html_parse, const RewriteOptions* options)
+      : html_parse_(html_parse),
+        rewrite_options_(options) {
+  }
 
   virtual void Comment(HtmlCommentNode* comment);
   virtual const char* Name() const { return "RemoveComments"; }
 
  private:
   HtmlParse* html_parse_;
+  const RewriteOptions* rewrite_options_;
 
   DISALLOW_COPY_AND_ASSIGN(RemoveCommentsFilter);
 };

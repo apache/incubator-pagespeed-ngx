@@ -271,7 +271,20 @@ class RewriteOptions {
   // Determines, based on the sequence of Allow/Disallow calls above, whether
   // a url is allowed.
   bool IsAllowed(const StringPiece& url) const {
-    return allow_resources_.Match(url);
+    return allow_resources_.Match(url, true);
+  }
+
+  // Adds a new comment wildcard pattern to be retained.
+  void RetainComment(const StringPiece& comment) {
+    modified_ = true;
+    retain_comments_.Allow(comment);
+  }
+
+  // If enabled, the 'remove_comments' filter will remove all HTML comments.
+  // As discussed in Issue 237, some comments have semantic value and must
+  // be retained.
+  bool IsRetainedComment(const StringPiece& comment) const {
+    return retain_comments_.Match(comment, false);
   }
 
   void CopyFrom(const RewriteOptions& src) {
@@ -365,6 +378,7 @@ class RewriteOptions {
   DomainLawyer domain_lawyer_;
 
   WildcardGroup allow_resources_;
+  WildcardGroup retain_comments_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteOptions);
 };

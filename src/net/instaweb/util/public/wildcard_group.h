@@ -47,8 +47,10 @@ class WildcardGroup {
   WildcardGroup() {}
   ~WildcardGroup();
 
-  // Determines whether a string matches the wildcard group.
-  bool Match(const StringPiece& str) const;
+  // Determines whether a string matches the wildcard group.  If
+  // none of the wildcards in the group matches, allow_by_default is
+  // returned.
+  bool Match(const StringPiece& str, bool allow_by_default) const;
 
   // Add an expression to Allow, potentially overriding previous calls to
   // Disallow.
@@ -62,8 +64,6 @@ class WildcardGroup {
   void AppendFrom(const WildcardGroup& src);
 
  private:
-  bool MatchHelper(int piece_index, const StringPiece& str);
-
   // To avoid having to new another structure we use two parallel
   // vectors.  Note that vector<bool> is special-case implemented
   // in STL to be bit-packed.

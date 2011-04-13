@@ -298,7 +298,7 @@ void RewriteDriver::AddFilters() {
     EnableRewriteFilter(kImageCompressionId);
   }
   if (options_.Enabled(RewriteOptions::kRemoveComments)) {
-    AddOwnedFilter(new RemoveCommentsFilter(this));
+    AddOwnedFilter(new RemoveCommentsFilter(this, &options_));
   }
   if (options_.Enabled(RewriteOptions::kCollapseWhitespace)) {
     // Remove excess whitespace in HTML

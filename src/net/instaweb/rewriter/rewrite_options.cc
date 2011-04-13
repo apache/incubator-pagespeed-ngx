@@ -310,6 +310,9 @@ void RewriteOptions::Merge(const RewriteOptions& first,
 
   allow_resources_.CopyFrom(first.allow_resources_);
   allow_resources_.AppendFrom(second.allow_resources_);
+
+  retain_comments_.CopyFrom(first.retain_comments_);
+  retain_comments_.AppendFrom(second.retain_comments_);
 }
 
 }  // namespace net_instaweb

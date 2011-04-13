@@ -36,6 +36,8 @@
         'util/string_writer.cc',
         'util/symbol_table.cc',
         'util/timer.cc',
+        'util/wildcard.cc',
+        'util/wildcard_group.cc',
         'util/writer.cc',
       ],
       'include_dirs': [
@@ -101,6 +103,7 @@
         'rewriter/elide_attributes_filter.cc',
         'rewriter/html_attribute_quote_removal.cc',
         'rewriter/remove_comments_filter.cc',
+        'rewriter/rewrite_options.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',
