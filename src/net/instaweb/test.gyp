@@ -118,6 +118,7 @@
         'rewriter/rewrite_single_resource_filter_test.cc',
         'rewriter/rewriter_test.cc',
         'rewriter/script_tag_scanner_test.cc',
+        'rewriter/static_asserts_test.cc',
         'rewriter/strip_scripts_filter_test.cc',
         'rewriter/url_left_trim_filter_test.cc',
         'rewriter/url_partnership_test.cc',

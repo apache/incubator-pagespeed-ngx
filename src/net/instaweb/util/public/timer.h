@@ -26,15 +26,20 @@ namespace net_instaweb {
 // Timer interface, made virtual so it can be mocked for tests.
 class Timer {
  public:
-  static const int64 kSecondNs;
-  static const int64 kSecondUs;
-  static const int64 kSecondMs;
-  static const int64 kMinuteMs;
-  static const int64 kHourMs;
-  static const int64 kDayMs;
-  static const int64 kWeekMs;
-  static const int64 kMonthMs;
-  static const int64 kYearMs;
+  // Note: it's important that these stay compile-time constants, to
+  // avoid weird init order surprises. (Noticed in the wild on Mac).
+  // If you get a link error due to one of these missing, you're trying
+  // to pass it in by a const reference. You can do something like * 1 to
+  // sidestep the issue.
+  static const int64 kSecondMs = 1000;
+  static const int64 kSecondUs = 1000 * kSecondMs;
+  static const int64 kSecondNs = 1000 * kSecondUs;
+  static const int64 kMinuteMs =   60 * kSecondMs;
+  static const int64 kHourMs   =   60 * kMinuteMs;
+  static const int64 kDayMs    =   24 * kHourMs;
+  static const int64 kWeekMs   =    7 * kDayMs;
+  static const int64 kMonthMs  =   31 * kDayMs;
+  static const int64 kYearMs   =  365 * kDayMs;
 
   virtual ~Timer();
 

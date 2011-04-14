@@ -20,10 +20,13 @@
 // class does *not* implement copy-on-write semantics, but it provides
 // 'unique()', which helps implement COW at a higher level.
 //
+// There are two pointer templates here:
+// - RefCountedPtr<T> --- requires T to inherit off RefCounted<T>,
+//   stores it by pointer to supports full polymorphism.
+// - RefCountedObj<T> --- no requirements on T besides default and copy
+//   construction, but stores T by value so it must always store exactly T.
 //
 // TODO(jmaessen): explore adding C++x0 shared_ptr support
-// TODO(jmarantz): Refactor these two blocks of template magic for
-// RefCountedPtr and RefCountedObj.
 
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_H_
@@ -35,110 +38,61 @@
 namespace net_instaweb {
 
 
-// Predeclare these templates so they can be friended by helpers.
-template<class T> class RefCountedPtr;
-template<class T> class RefCountedObj;
 
-// Helper class for RefCountedPtr<T>.  Do not instantiate directly.
 template<class T>
-class RefCountedPtrHelper
-    : public base::RefCountedThreadSafe<RefCountedPtrHelper<T> > {
- private:
-  friend class base::RefCountedThreadSafe<RefCountedPtrHelper>;
-  friend class RefCountedPtr<T>;
-
-  RefCountedPtrHelper() : object_(NULL) {}
-  ~RefCountedPtrHelper() { delete object_; }
-  explicit RefCountedPtrHelper(T* t) : object_(t) {}
-  T* get() { return object_; }
-  const T* get() const { return object_; }
-
-  T* object_;
-
-  DISALLOW_COPY_AND_ASSIGN(RefCountedPtrHelper);
+class RefCounted : public base::RefCountedThreadSafe<T> {
 };
 
 // Template class to help make reference-counted pointers.  You can use
-// a typedef or subclass RefCountedPtr<YourClass>.  YourClass does not
-// have to implement any helper methods, and does not require a
-// copy-constructor.
-//
-// Use this class rather than RefCountedPtr if you require polymorphism
-// or the ability to represent NULL.  The cost is one level of indirection.
+// a typedef or subclass RefCountedPtr<YourClass>.  YourClass has to inherit
+// off RefCounted<T>.
 template<class T>
-class RefCountedPtr : public scoped_refptr<RefCountedPtrHelper<T> > {
+class RefCountedPtr : public scoped_refptr<T> {
  public:
-  typedef RefCountedPtrHelper<T> Helper;
-
-  RefCountedPtr() : scoped_refptr<Helper>(new Helper) {}
-  explicit RefCountedPtr(T* t) : scoped_refptr<Helper>(new Helper(t)) {}
+  RefCountedPtr() {}
+  explicit RefCountedPtr(T* t) : scoped_refptr<T>(t) {}
 
   // Determines whether any other RefCountedPtr objects share the same
   // storage.  This can be used to create copy-on-write semantics if
   // desired.
-  bool unique() const { return this->ptr_->HasOneRef(); }
-
-  T* get() { return this->ptr_->get(); }
-  const T* get() const { return this->ptr_->get(); }
-  T* operator->() { return this->ptr_->get(); }
-  const T* operator->() const { return this->ptr_->get(); }
-  T& operator*() { return this->ptr_->get(); }
-  const T& operator*() const { return this->ptr_->get(); }
+  bool unique() const { return !this->ptr_ || this->ptr_->HasOneRef(); }
 
   // Note that copy and assign of RefCountedPtr is allowed -- that
   // is how the reference counts are updated.
 };
 
-// Helper class for RefCountedObj<T>.  Do not instantiate directly.
+// If you can't inherit off RefCounted due to using a pre-existing
+// class, you can use RefCountedObj instead. This however is limited to
+// having a single type (so no polymorphism). It also has slightly
+// different semantics in that it initializes to a default-constructed object
+// and not NULL.
 template<class T>
-class RefCountedObjHelper
-    : public base::RefCountedThreadSafe<RefCountedObjHelper<T> > {
- private:
-  friend class base::RefCountedThreadSafe<RefCountedObjHelper>;
-  friend class RefCountedObj<T>;
-
-  RefCountedObjHelper() {}
-  ~RefCountedObjHelper() {}
-  explicit RefCountedObjHelper(const T& t) : object_(t) {}
-  T* get() { return &object_; }
-  const T* get() const { return &object_; }
-
-  T object_;
-
-  DISALLOW_COPY_AND_ASSIGN(RefCountedObjHelper);
-};
-
-// Template class to help make reference-counted objects.  You can use
-// a typedef or subclass RefCountedObj<YourClass>.  YourClass does not
-// have to implement any helper methods, and does not require a
-// copy-constructor.
-//
-// Use this class rather than RefCountedObj if do not need polymorphism:
-// this class embeds the object directly so has one less level of
-// indirection compared to RefCountedPtr.
-template<class T>
-class RefCountedObj : public scoped_refptr<RefCountedObjHelper<T> > {
+class RefCountedObj {
  public:
-  RefCountedObj()
-      : scoped_refptr<RefCountedObjHelper<T> >(new RefCountedObjHelper<T>) {}
-  explicit RefCountedObj(const T& t)
-      : scoped_refptr<RefCountedObjHelper<T> >(new RefCountedObjHelper<T>(t)) {
-  }
+  RefCountedObj() : data_ptr_(new Data()) {}
+  explicit RefCountedObj(const T& val) : data_ptr_(new Data(val)) {}
 
   // Determines whether any other RefCountedObj objects share the same
   // storage.  This can be used to create copy-on-write semantics if
   // desired.
-  bool unique() const { return this->ptr_->HasOneRef(); }
+  bool unique() const { return data_ptr_.unique(); }
 
-  T* get() { return this->ptr_->get(); }
-  const T* get() const { return this->ptr_->get(); }
-  T* operator->() { return this->ptr_->get(); }
-  const T* operator->() const { return this->ptr_->get(); }
-  T& operator*() { return *this->ptr_->get(); }
-  const T& operator*() const { return *this->ptr_->get(); }
+  T* get() { return &data_ptr_->value; }
+  const T* get() const { return &data_ptr_->value; }
+  T* operator->() { return &data_ptr_->value; }
+  const T* operator->() const { return &data_ptr_->value; }
+  T& operator*() { return data_ptr_->value; }
+  const T& operator*() const { return data_ptr_->value; }
 
-  // Note that copy and assign of RefCountedObj is allowed -- that
-  // is how the reference counts are updated.
+ protected:
+  struct Data : public RefCounted<Data> {
+    Data() {}
+    explicit Data(const T& val) : value(val) {}
+    T value;
+  };
+
+  RefCountedPtr<Data> data_ptr_;
+  // Copying, etc., are OK thanks to data_ptr_.
 };
 
 

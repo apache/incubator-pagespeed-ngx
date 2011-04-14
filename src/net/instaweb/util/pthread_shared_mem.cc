@@ -162,46 +162,60 @@ AbstractSharedMemSegment* PthreadSharedMem::CreateSegment(
     return NULL;
   }
 
-  (*segment_bases())[name] = base;
+  SegmentBaseMap* bases = AcquireSegmentBases();
+  (*bases)[name] = base;
+  UnlockSegmentBases();
   return new PthreadSharedMemSegment(base, size, handler);
 }
 
 AbstractSharedMemSegment* PthreadSharedMem::AttachToSegment(
     const GoogleString& name, size_t size, MessageHandler* handler) {
-  SegmentBaseMap* bases = segment_bases();
+  SegmentBaseMap* bases = AcquireSegmentBases();
   SegmentBaseMap::const_iterator i = bases->find(name);
   if (i == bases->end()) {
     handler->Message(kError, "Unable to find SHM segment %s to attach to.",
                      name.c_str());
+    UnlockSegmentBases();
     return NULL;
   }
-
-  return new PthreadSharedMemSegment(i->second, size, handler);
+  char* base = i->second;
+  UnlockSegmentBases();
+  return new PthreadSharedMemSegment(base, size, handler);
 }
 
 void PthreadSharedMem::DestroySegment(const GoogleString& name,
                                       MessageHandler* handler) {
   // Note that in the process state children will not see any mutations
   // we make here, so it acts mostly for checking in that case.
-  SegmentBaseMap* bases = segment_bases();
+  SegmentBaseMap* bases = AcquireSegmentBases();
   SegmentBaseMap::iterator i = bases->find(name);
   if (i != bases->end()) {
     bases->erase(i);
+    if (bases->empty()) {
+      delete segment_bases_;
+      segment_bases_ = NULL;
+    }
   } else {
     handler->Message(kError, "Attempt to destroy unknown SHM segment %s.",
                      name.c_str());
   }
+  UnlockSegmentBases();
 }
 
-PthreadSharedMem::SegmentBaseMap* PthreadSharedMem::segment_bases() {
+PthreadSharedMem::SegmentBaseMap* PthreadSharedMem::AcquireSegmentBases() {
   PthreadSharedMemMutex lock(&segment_bases_lock);
-  ScopedMutex hold_lock(&lock);
+  lock.Lock();
 
   if (segment_bases_ == NULL) {
     segment_bases_ = new SegmentBaseMap();
   }
 
   return segment_bases_;
+}
+
+void  PthreadSharedMem::UnlockSegmentBases() {
+  PthreadSharedMemMutex lock(&segment_bases_lock);
+  lock.Unlock();
 }
 
 }  // namespace net_instaweb

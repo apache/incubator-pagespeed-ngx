@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/meta_data.h"  // HttpAttributes, HttpStatus
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -38,7 +39,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // The number of milliseconds of cache TTL we assign to resources that
   // are "likely cacheable" (e.g. images, js, css, not html) and have no
   // explicit cache ttl or expiration date.
-  static const int64 kImplicitCacheTtlMs;
+  static const int64 kImplicitCacheTtlMs = 5 * Timer::kMinuteMs;
 
   ResponseHeaders();
   virtual ~ResponseHeaders();

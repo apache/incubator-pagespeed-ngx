@@ -27,17 +27,26 @@ namespace {
 
 int counter = 0;
 
-class BaseClass {
+class SimpleClass {
  public:
-  BaseClass() : index_(counter++) {}
+  SimpleClass() : index_(counter++) {}
   int index() const { return index_; }
 
  private:
   int index_;
+  DISALLOW_COPY_AND_ASSIGN(SimpleClass);
+};
+
+class BaseClass : public RefCounted<BaseClass> {
+ public:
+  BaseClass() {}
+  int index() const { return simple_.index(); }
+
+ private:
+  SimpleClass simple_;
   DISALLOW_COPY_AND_ASSIGN(BaseClass);
 };
 
-struct SimpleClass : public BaseClass {};
 struct DerivedA : public BaseClass {};
 struct DerivedB : public BaseClass {};
 

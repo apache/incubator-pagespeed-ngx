@@ -269,7 +269,9 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // Expiration times are not entirely precise as some cache headers
   // have a 1 second resolution, so this permits such a difference.
   void VerifyWithinSecond(int64 time_a_ms, int64 time_b_ms) {
-    EXPECT_LE(std::abs(time_a_ms - time_b_ms), Timer::kSecondMs);
+    // Note: need to pass in 1 * since otherwise we get a link failure
+    // due to conversion of compile-time constant to const reference
+    EXPECT_GE(1 * Timer::kSecondMs, std::abs(time_a_ms - time_b_ms));
   }
 
   void VerifyValidCachedResult(const char* subtest_name, bool test_meta_data,

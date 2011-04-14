@@ -20,16 +20,6 @@
 
 namespace net_instaweb {
 
-const int64 Timer::kSecondMs = 1000;
-const int64 Timer::kSecondUs = 1000 * kSecondMs;
-const int64 Timer::kSecondNs = 1000 * kSecondUs;
-const int64 Timer::kMinuteMs =   60 * Timer::kSecondMs;
-const int64 Timer::kHourMs   =   60 * Timer::kMinuteMs;
-const int64 Timer::kDayMs    =   24 * Timer::kHourMs;
-const int64 Timer::kWeekMs   =    7 * Timer::kDayMs;
-const int64 Timer::kMonthMs  =   31 * Timer::kDayMs;
-const int64 Timer::kYearMs   =  365 * Timer::kDayMs;
-
 Timer::~Timer() {
 }
 

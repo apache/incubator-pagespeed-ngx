@@ -30,9 +30,6 @@
 
 namespace net_instaweb {
 
-const int64 ResponseHeaders::kImplicitCacheTtlMs =
-    5 * net_instaweb::Timer::kMinuteMs;
-
 ResponseHeaders::ResponseHeaders() {
   proto_.reset(new HttpResponseHeaders);
   Clear();

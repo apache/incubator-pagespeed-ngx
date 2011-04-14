@@ -74,7 +74,6 @@ const int64 kRefreshExpirePercent = 75;
 // TODO(jmarantz): inject the SVN version number here to automatically bust
 // caches whenever pagespeed is upgraded.
 const char ResourceManager::kCacheKeyResourceNamePrefix[] = "rname/";
-const int ResourceManager::kNotSharded = -1;
 
 // We set etags for our output resources to "W/0".  The "W" means
 // that this etag indicates a functional consistency, but is not

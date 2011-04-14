@@ -20,10 +20,15 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
-const int64 Resource::kDefaultExpireTimeMs = 5 * 60 * 1000;
+namespace {
+
+const int64 kDefaultExpireTimeMs = 5 * Timer::kMinuteMs;
+
+}  // namespace
 
 Resource::Resource(RewriteDriver* driver, const ContentType* type)
     : driver_(driver),

@@ -62,8 +62,6 @@ class ResourceManager {
  public:
   enum BlockingBehavior { kNeverBlock, kMayBlock };
 
-  static const int kNotSharded;
-
   // This value is a shared constant so that it can also be used in
   // the Apache-specific code that repairs our caching headers downstream
   // of mod_headers.

@@ -37,7 +37,7 @@ class SharedString : public RefCountedObj<GoogleString> {
  public:
   SharedString() {}
   explicit SharedString(const StringPiece& str) {
-    str.CopyToString(this->get());
+    str.CopyToString(get());
   }
 
   // When constructing with a GoogleString, we going through the StringPiece

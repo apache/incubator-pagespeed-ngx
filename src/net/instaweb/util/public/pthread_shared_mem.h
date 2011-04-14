@@ -50,7 +50,10 @@ class PthreadSharedMem : public AbstractSharedMem {
  private:
   typedef std::map<GoogleString, char*> SegmentBaseMap;
 
-  static SegmentBaseMap* segment_bases();
+  // Accessor for below. Note that the segment_bases_lock will be held at exit.
+  static SegmentBaseMap* AcquireSegmentBases();
+
+  static void UnlockSegmentBases();
 
   // The root process stores segment locations here. Child processes will
   // inherit a readonly copy of this map after the fork. Note that this is

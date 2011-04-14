@@ -41,8 +41,6 @@ class RewriteDriver;
 
 class Resource {
  public:
-  static const int64 kDefaultExpireTimeMs;
-
   Resource(RewriteDriver* driver, const ContentType* type);
   virtual ~Resource();
 
