@@ -145,6 +145,7 @@
         'util/pthread_shared_mem_test.cc',
         'util/pool_test.cc',
         'util/query_params_test.cc',
+        'util/ref_counted_ptr_test.cc',
         'util/shared_mem_statistics_test_base.cc',
         'util/shared_mem_test_base.cc',
         'util/simple_stats_test.cc',

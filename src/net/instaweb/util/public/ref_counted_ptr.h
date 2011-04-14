@@ -19,6 +19,11 @@
 // Implements a generic ref-counted class, with full sharing.  This
 // class does *not* implement copy-on-write semantics, but it provides
 // 'unique()', which helps implement COW at a higher level.
+//
+//
+// TODO(jmaessen): explore adding C++x0 shared_ptr support
+// TODO(jmarantz): Refactor these two blocks of template magic for
+// RefCountedPtr and RefCountedObj.
 
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_H_
@@ -30,41 +35,97 @@
 namespace net_instaweb {
 
 
+// Predeclare these templates so they can be friended by helpers.
 template<class T> class RefCountedPtr;
+template<class T> class RefCountedObj;
 
 // Helper class for RefCountedPtr<T>.  Do not instantiate directly.
 template<class T>
-class RefCountedHelper
-    : public base::RefCountedThreadSafe<RefCountedHelper<T> > {
+class RefCountedPtrHelper
+    : public base::RefCountedThreadSafe<RefCountedPtrHelper<T> > {
  private:
-  friend class base::RefCountedThreadSafe<RefCountedHelper>;
+  friend class base::RefCountedThreadSafe<RefCountedPtrHelper>;
   friend class RefCountedPtr<T>;
 
-  RefCountedHelper() {}
-  ~RefCountedHelper() {}
-  explicit RefCountedHelper(const T& t) : object_(t) {}
+  RefCountedPtrHelper() : object_(NULL) {}
+  ~RefCountedPtrHelper() { delete object_; }
+  explicit RefCountedPtrHelper(T* t) : object_(t) {}
+  T* get() { return object_; }
+  const T* get() const { return object_; }
+
+  T* object_;
+
+  DISALLOW_COPY_AND_ASSIGN(RefCountedPtrHelper);
+};
+
+// Template class to help make reference-counted pointers.  You can use
+// a typedef or subclass RefCountedPtr<YourClass>.  YourClass does not
+// have to implement any helper methods, and does not require a
+// copy-constructor.
+//
+// Use this class rather than RefCountedPtr if you require polymorphism
+// or the ability to represent NULL.  The cost is one level of indirection.
+template<class T>
+class RefCountedPtr : public scoped_refptr<RefCountedPtrHelper<T> > {
+ public:
+  typedef RefCountedPtrHelper<T> Helper;
+
+  RefCountedPtr() : scoped_refptr<Helper>(new Helper) {}
+  explicit RefCountedPtr(T* t) : scoped_refptr<Helper>(new Helper(t)) {}
+
+  // Determines whether any other RefCountedPtr objects share the same
+  // storage.  This can be used to create copy-on-write semantics if
+  // desired.
+  bool unique() const { return this->ptr_->HasOneRef(); }
+
+  T* get() { return this->ptr_->get(); }
+  const T* get() const { return this->ptr_->get(); }
+  T* operator->() { return this->ptr_->get(); }
+  const T* operator->() const { return this->ptr_->get(); }
+  T& operator*() { return this->ptr_->get(); }
+  const T& operator*() const { return this->ptr_->get(); }
+
+  // Note that copy and assign of RefCountedPtr is allowed -- that
+  // is how the reference counts are updated.
+};
+
+// Helper class for RefCountedObj<T>.  Do not instantiate directly.
+template<class T>
+class RefCountedObjHelper
+    : public base::RefCountedThreadSafe<RefCountedObjHelper<T> > {
+ private:
+  friend class base::RefCountedThreadSafe<RefCountedObjHelper>;
+  friend class RefCountedObj<T>;
+
+  RefCountedObjHelper() {}
+  ~RefCountedObjHelper() {}
+  explicit RefCountedObjHelper(const T& t) : object_(t) {}
   T* get() { return &object_; }
   const T* get() const { return &object_; }
 
   T object_;
 
-  DISALLOW_COPY_AND_ASSIGN(RefCountedHelper);
+  DISALLOW_COPY_AND_ASSIGN(RefCountedObjHelper);
 };
 
 // Template class to help make reference-counted objects.  You can use
-// a typedef or subclass RefCountedPtr<YourClass>.  YourClass does not
+// a typedef or subclass RefCountedObj<YourClass>.  YourClass does not
 // have to implement any helper methods, and does not require a
 // copy-constructor.
+//
+// Use this class rather than RefCountedObj if do not need polymorphism:
+// this class embeds the object directly so has one less level of
+// indirection compared to RefCountedPtr.
 template<class T>
-class RefCountedPtr : public scoped_refptr<RefCountedHelper<T> > {
+class RefCountedObj : public scoped_refptr<RefCountedObjHelper<T> > {
  public:
-  RefCountedPtr()
-      : scoped_refptr<RefCountedHelper<T> >(new RefCountedHelper<T>) {}
-  explicit RefCountedPtr(const T& t)
-      : scoped_refptr<RefCountedHelper<T> >(new RefCountedHelper<T>(t)) {
+  RefCountedObj()
+      : scoped_refptr<RefCountedObjHelper<T> >(new RefCountedObjHelper<T>) {}
+  explicit RefCountedObj(const T& t)
+      : scoped_refptr<RefCountedObjHelper<T> >(new RefCountedObjHelper<T>(t)) {
   }
 
-  // Determines whether any other RefCountedPtr objects share the same
+  // Determines whether any other RefCountedObj objects share the same
   // storage.  This can be used to create copy-on-write semantics if
   // desired.
   bool unique() const { return this->ptr_->HasOneRef(); }
@@ -76,7 +137,7 @@ class RefCountedPtr : public scoped_refptr<RefCountedHelper<T> > {
   T& operator*() { return *this->ptr_->get(); }
   const T& operator*() const { return *this->ptr_->get(); }
 
-  // Note that copy and assign of RefCountedPtr is allowed -- that
+  // Note that copy and assign of RefCountedObj is allowed -- that
   // is how the reference counts are updated.
 };
 

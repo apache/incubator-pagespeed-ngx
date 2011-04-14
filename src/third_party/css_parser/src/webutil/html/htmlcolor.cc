@@ -724,7 +724,7 @@ static const RgbValue * GetKnownColorValue(const char *colorstr) {
   };
 
   return NULL;
-}
+}  // NOLINT
 
 const unsigned char HtmlColor::kGoodColorValue;
 const unsigned char HtmlColor::kBadColorName;

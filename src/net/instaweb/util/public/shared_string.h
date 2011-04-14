@@ -33,11 +33,25 @@
 namespace net_instaweb {
 
 // Reference-counted string.  This class just adds the StringPiece constructor.
-class SharedString : public RefCountedPtr<GoogleString> {
+class SharedString : public RefCountedObj<GoogleString> {
  public:
   SharedString() {}
-  explicit SharedString(const StringPiece& str)
-      : RefCountedPtr<GoogleString>(GoogleString(str.data(), str.size())) {
+  explicit SharedString(const StringPiece& str) {
+    str.CopyToString(this->get());
+  }
+
+  // When constructing with a GoogleString, we going through the StringPiece
+  // ctor above causes an extra copy compared with string implementations that
+  // use copy-on-write.
+  explicit SharedString(const GoogleString& str)
+      : RefCountedObj<GoogleString>(str) {}
+
+  // Given the two constructors above, it is ambiguous which one gets
+  // called when passed a string-literal, so making an explicit const char*
+  // constructor eliminates the ambiguity.  This is likely beneficial mostly
+  // for tests.
+  explicit SharedString(const char* str) {
+    *get() = str;
   }
 };
 
