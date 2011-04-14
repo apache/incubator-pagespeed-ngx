@@ -16,7 +16,7 @@
 
 // Author: abliss@google.com (Adam Bliss)
 
-#include "net/instaweb/rewriter/public/img_combine_filter.h"
+#include "net/instaweb/rewriter/public/image_combine_filter.h"
 
 #include <map>
 
@@ -43,7 +43,7 @@ namespace net_instaweb {
 namespace {
 
 // names for Statistics variables.
-const char kImgFileCountReduction[] = "img_file_count_reduction";
+const char kImageFileCountReduction[] = "image_file_count_reduction";
 
 // A SpriteFuture keeps track of a single image that is to be sprited.  When
 // constructed, it is in an invalid state and merely serves as a token for the
@@ -370,20 +370,20 @@ class Library : public spriter::ImageLibraryInterface {
 
 // The Combiner does all the work of spriting.  Each combiner takes an image of
 // a certain type (e.g. PNGs) and produces a single sprite as a combination.
-class ImgCombineFilter::Combiner
+class ImageCombineFilter::Combiner
     : public ResourceCombinerTemplate<SpriteFuture*> {
  public:
   Combiner(RewriteDriver* driver, const StringPiece& filter_prefix,
-           const StringPiece& extension, ImgCombineFilter* filter)
+           const StringPiece& extension, ImageCombineFilter* filter)
       : ResourceCombinerTemplate<SpriteFuture*>(driver, filter_prefix,
                                                 extension, filter),
         library_(NULL,
                  driver->resource_manager()->filename_prefix(),
                  driver->message_handler()),
-        img_file_count_reduction_(NULL) {
+        image_file_count_reduction_(NULL) {
     Statistics* stats = driver->resource_manager()->statistics();
     if (stats != NULL) {
-      img_file_count_reduction_ = stats->GetVariable(kImgFileCountReduction);
+      image_file_count_reduction_ = stats->GetVariable(kImageFileCountReduction);
     }
   }
 
@@ -492,9 +492,9 @@ class ImgCombineFilter::Combiner
                       image_position.clip_rect().y_pos());
       delete future;
     }
-    if (img_file_count_reduction_ != NULL) {
+    if (image_file_count_reduction_ != NULL) {
       handler->Message(kInfo, "Sprited %d images!", n);
-      img_file_count_reduction_->Add(n - 1);
+      image_file_count_reduction_->Add(n - 1);
     }
     return true;
   }
@@ -519,12 +519,12 @@ class ImgCombineFilter::Combiner
   }
  private:
   Library library_;
-  Variable* img_file_count_reduction_;
+  Variable* image_file_count_reduction_;
 };
 
 // TODO(jmaessen): The addition of 1 below avoids the leading ".";
 // make this convention consistent and fix all code.
-ImgCombineFilter::ImgCombineFilter(RewriteDriver* driver,
+ImageCombineFilter::ImageCombineFilter(RewriteDriver* driver,
                                    const char* filter_prefix)
     : RewriteFilter(driver, filter_prefix) {
   combiner_.reset(new Combiner(driver, filter_prefix,
@@ -532,14 +532,14 @@ ImgCombineFilter::ImgCombineFilter(RewriteDriver* driver,
                                this));
 }
 
-ImgCombineFilter::~ImgCombineFilter() {
+ImageCombineFilter::~ImageCombineFilter() {
 }
 
-void ImgCombineFilter::Initialize(Statistics* statistics) {
-  statistics->AddVariable(kImgFileCountReduction);
+void ImageCombineFilter::Initialize(Statistics* statistics) {
+  statistics->AddVariable(kImageFileCountReduction);
 }
 
-bool ImgCombineFilter::Fetch(OutputResource* resource,
+bool ImageCombineFilter::Fetch(OutputResource* resource,
                              Writer* writer,
                              const RequestHeaders& request_header,
                              ResponseHeaders* response_headers,
@@ -549,7 +549,7 @@ bool ImgCombineFilter::Fetch(OutputResource* resource,
                           message_handler, callback);
 }
 
-TimedBool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
+TimedBool ImageCombineFilter::AddCssBackground(const GoogleUrl& original_url,
                                              Css::Declarations* declarations,
                                              Css::Value* url_value,
                                              MessageHandler* handler) {
@@ -619,11 +619,11 @@ TimedBool ImgCombineFilter::AddCssBackground(const GoogleUrl& original_url,
   return ret;
 }
 
-bool ImgCombineFilter::DoCombine(MessageHandler* handler) {
+bool ImageCombineFilter::DoCombine(MessageHandler* handler) {
   return combiner_->Realize(handler);
 }
 
-void ImgCombineFilter::Reset() {
+void ImageCombineFilter::Reset() {
   combiner_->Reset();
 }
 

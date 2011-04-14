@@ -54,8 +54,7 @@ ResourceManagerTestBase::ResourceManagerTestBase()
       other_resource_manager_(
           file_prefix_, &other_file_system_,
           &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
-          &other_http_cache_, other_lru_cache_, &other_lock_manager_,
-          &message_handler_),
+          &other_http_cache_, other_lru_cache_, &other_lock_manager_),
       other_rewrite_driver_(&message_handler_, &other_file_system_,
                             &mock_url_async_fetcher_, other_options_) {
   // rewrite_driver_.SetResourceManager(resource_manager_);
@@ -68,8 +67,7 @@ void ResourceManagerTestBase::SetUp() {
   resource_manager_ = new ResourceManager(
       file_prefix_, &file_system_,
       &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
-      &http_cache_, lru_cache_, &lock_manager_,
-      &message_handler_);
+      &http_cache_, lru_cache_, &lock_manager_);
 
   resource_manager_->set_statistics(&statistics_);
   RewriteDriver::Initialize(&statistics_);
@@ -172,8 +170,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   ResourceManager other_resource_manager(
       file_prefix_, &other_file_system,
       &filename_encoder_, &wait_url_async_fetcher, hasher,
-      &other_http_cache, other_lru_cache, &other_lock_manager,
-      &message_handler_);
+      &other_http_cache, other_lru_cache, &other_lock_manager);
 
   SimpleStats stats;
   RewriteDriver::Initialize(&stats);

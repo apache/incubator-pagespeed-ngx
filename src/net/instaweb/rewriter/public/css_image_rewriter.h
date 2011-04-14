@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_IMAGE_REWRITER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_IMAGE_REWRITER_H_
 
-#include "net/instaweb/rewriter/public/img_combine_filter.h"
+#include "net/instaweb/rewriter/public/image_combine_filter.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -48,7 +48,7 @@ class CssImageRewriter {
   CssImageRewriter(RewriteDriver* driver,
                    CacheExtender* cache_extender,
                    ImageRewriteFilter* image_rewriter,
-                   ImgCombineFilter* image_combiner);
+                   ImageCombineFilter* image_combiner);
   ~CssImageRewriter();
 
   static void Initialize(Statistics* statistics);
@@ -89,7 +89,7 @@ class CssImageRewriter {
   // TODO(sligocki): morlovich suggests separating this out as some
   // centralized API call like rewrite_driver_->RewriteImage().
   CacheExtender* cache_extender_;
-  ImgCombineFilter* image_combiner_;
+  ImageCombineFilter* image_combiner_;
   ImageRewriteFilter* image_rewriter_;
 
   // Statistics

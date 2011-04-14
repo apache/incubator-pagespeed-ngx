@@ -16,7 +16,7 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/rewriter/public/img_combine_filter.h"
+#include "net/instaweb/rewriter/public/image_combine_filter.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 
 namespace net_instaweb {

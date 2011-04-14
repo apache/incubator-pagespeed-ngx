@@ -101,7 +101,7 @@ message CachedResult {
 
   // The result of a spriting operation, containing x/y coordinates for each
   // subimage in the sprite.
-  // Used by img_combine_filter.
+  // Used by image_combine_filter.
   optional spriter.SpriterResult spriter_result = 13;
 
 }

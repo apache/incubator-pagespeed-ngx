@@ -214,8 +214,7 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
     resource_manager_.reset(new ResourceManager(
         filename_prefix_, file_system(), filename_encoder(),
         ComputeUrlAsyncFetcher(), hasher(),
-        cache, http_cache_backend_, lock_manager(),
-        message_handler()));
+        cache, http_cache_backend_, lock_manager()));
     resource_manager_->set_store_outputs_in_file_system(
         ShouldWriteResourcesToFileSystem());
   }

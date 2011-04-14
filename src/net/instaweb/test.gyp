@@ -98,7 +98,7 @@
         'rewriter/elide_attributes_filter_test.cc',
         'rewriter/google_analytics_filter_test.cc',
         'rewriter/html_attribute_quote_removal_test.cc',
-        'rewriter/img_combine_filter_test.cc',
+        'rewriter/image_combine_filter_test.cc',
         'rewriter/image_endian_test.cc',
         'rewriter/image_rewrite_filter_test.cc',
         'rewriter/image_test.cc',

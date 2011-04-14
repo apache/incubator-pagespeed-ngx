@@ -36,7 +36,7 @@
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
-#include "net/instaweb/rewriter/public/img_combine_filter.h"
+#include "net/instaweb/rewriter/public/image_combine_filter.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
@@ -131,7 +131,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     CssMoveToHeadFilter::Initialize(statistics);
     GoogleAnalyticsFilter::Initialize(statistics);
     ImageRewriteFilter::Initialize(statistics);
-    ImgCombineFilter::Initialize(statistics);
+    ImageCombineFilter::Initialize(statistics);
     JavascriptFilter::Initialize(statistics);
     JsCombineFilter::Initialize(statistics);
     ResourceManager::Initialize(statistics);
@@ -152,8 +152,8 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   // to determine whether they get added to the html parse filter chain.
   // Note: RegisterRewriteFilter takes ownership of these filters.
   CacheExtender* cache_extender = new CacheExtender(this, kCacheExtenderId);
-  ImgCombineFilter* image_combiner = new ImgCombineFilter(this,
-                                                          kImageCombineId);
+  ImageCombineFilter* image_combiner = new ImageCombineFilter(this,
+                                                              kImageCombineId);
   ImageRewriteFilter* image_rewriter =
       new ImageRewriteFilter(
           this,

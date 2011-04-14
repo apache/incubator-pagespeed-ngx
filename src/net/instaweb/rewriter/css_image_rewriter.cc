@@ -46,7 +46,7 @@ const char CssImageRewriter::kNoRewrite[] = "css_image_no_rewrite";
 CssImageRewriter::CssImageRewriter(RewriteDriver* driver,
                                    CacheExtender* cache_extender,
                                    ImageRewriteFilter* image_rewriter,
-                                   ImgCombineFilter* image_combiner)
+                                   ImageCombineFilter* image_combiner)
     : driver_(driver),
       // For now we use the same options as for rewriting and cache-extending
       // images found in HTML.

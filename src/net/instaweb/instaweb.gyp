@@ -464,7 +464,7 @@
         'rewriter/css_filter.cc',
         'rewriter/css_image_rewriter.cc',
         'rewriter/css_minify.cc',
-        'rewriter/img_combine_filter.cc',
+        'rewriter/image_combine_filter.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

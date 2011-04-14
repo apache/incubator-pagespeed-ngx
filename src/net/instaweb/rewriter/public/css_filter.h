@@ -38,7 +38,7 @@ namespace net_instaweb {
 
 class CacheExtender;
 class HtmlParse;
-class ImgCombineFilter;
+class ImageCombineFilter;
 class ImageRewriteFilter;
 class MessageHandler;
 class OutputResource;
@@ -62,7 +62,7 @@ class CssFilter : public RewriteSingleResourceFilter {
             // way to do this without passing all filters around everywhere.
             CacheExtender* cache_extender,
             ImageRewriteFilter* image_rewriter,
-            ImgCombineFilter* image_combiner);
+            ImageCombineFilter* image_combiner);
 
   static void Initialize(Statistics* statistics);
   static void Terminate();

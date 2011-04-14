@@ -16,8 +16,8 @@
 
 // Author: abliss@google.com (Adam Bliss)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMG_COMBINE_FILTER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_IMG_COMBINE_FILTER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_COMBINE_FILTER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_COMBINE_FILTER_H_
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
@@ -36,20 +36,20 @@ namespace net_instaweb {
 class Statistics;
 
 /**
- * The ImgCombineFilter combines multiple images into a single image (a process
+ * The ImageCombineFilter combines multiple images into a single image (a process
  * called "spriting".  This reduces the total number of round-trips, and reduces
  * bytes downloaded by consolidating image headers and improving compression.
  *
  * Right now this is only used on CSS background-images, so it doesn't need to
  * be in the HTML filter chain.  In the future it will rewrite img tags as well.
  */
-class ImgCombineFilter : public RewriteFilter {
+class ImageCombineFilter : public RewriteFilter {
  public:
-  ImgCombineFilter(RewriteDriver* rewrite_driver, const char* path_prefix);
-  virtual ~ImgCombineFilter();
+  ImageCombineFilter(RewriteDriver* rewrite_driver, const char* path_prefix);
+  virtual ~ImageCombineFilter();
 
   static void Initialize(Statistics* statistics);
-  virtual const char* Name() const { return "ImgCombine"; }
+  virtual const char* Name() const { return "ImageCombine"; }
   virtual bool Fetch(OutputResource* resource,
                      Writer* writer,
                      const RequestHeaders& request_header,
@@ -81,9 +81,9 @@ class ImgCombineFilter : public RewriteFilter {
   class Combiner;
   scoped_ptr<Combiner> combiner_;
 
-  DISALLOW_COPY_AND_ASSIGN(ImgCombineFilter);
+  DISALLOW_COPY_AND_ASSIGN(ImageCombineFilter);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_IMG_COMBINE_FILTER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_COMBINE_FILTER_H_
