@@ -229,6 +229,7 @@
         'util/query_params.cc',
         'util/ref_counted.cc',
         'util/rolling_hash.cc',
+        'util/shared_mem_lock_manager.cc',
         'util/simple_stats.cc',
         'util/shared_mem_statistics.cc',
 #        'util/split_writer.cc',                Not currently needed

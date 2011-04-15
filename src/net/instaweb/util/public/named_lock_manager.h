@@ -28,7 +28,9 @@ namespace net_instaweb {
 class AbstractLock : public AbstractMutex {
  public:
   virtual ~AbstractLock();
-  // If lock is held, return false, otherwise lock and return true
+  // If lock is held, return false, otherwise lock and return true.
+  // Note that implementations of this and other similar 'try' routines are
+  // permitted to return false conservatively.
   virtual bool TryLock() = 0;
   // Wait bounded amount of time to take lock, otherwise return false.
   virtual bool LockTimedWait(int64 wait_ms) = 0;
