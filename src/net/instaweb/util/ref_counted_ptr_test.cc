@@ -42,6 +42,10 @@ class BaseClass : public RefCounted<BaseClass> {
   BaseClass() {}
   int index() const { return simple_.index(); }
 
+ protected:
+  virtual ~BaseClass() {}
+  REFCOUNT_FRIEND_DECLARATION(BaseClass);
+
  private:
   SimpleClass simple_;
   DISALLOW_COPY_AND_ASSIGN(BaseClass);
@@ -92,6 +96,39 @@ TEST_F(RefCountedPtrTest, Polymorphic) {
   PolymorphicPtr poly5;
   EXPECT_TRUE(poly5.get() == NULL);
   EXPECT_TRUE(poly5.unique());
+  poly5.clear();
+  EXPECT_TRUE(poly5.get() == NULL);
+  poly1.reset(new DerivedA);
+  EXPECT_TRUE(poly1.unique());
 }
+
+TEST_F(RefCountedPtrTest, Upcast) {
+  RefCountedPtr<DerivedA> derived(new DerivedA);
+  PolymorphicPtr base(derived);
+  EXPECT_FALSE(derived.unique());
+  EXPECT_FALSE(base.unique());
+  EXPECT_EQ(base->index(), derived->index());
+}
+
+// It is not possible to use RefCountedUpcast to perform a downcast.
+// To prove that to yourself, uncomment this and compile:
+//
+// TEST_F(RefCountedPtrTest, DownCast) {
+//   PolymorphicPtr base(new DerivedB);
+//   RefCountedPtr<DerivedA> derived(base);
+//   EXPECT_FALSE(derived.unique());
+//   EXPECT_FALSE(base.unique());
+//   EXPECT_EQ(base->index(), derived->index());
+// }
+
+// It is not possible to use RefCountedUpcast to perform a cast between two
+// unrelated pointers.  To prove that to yourself, uncomment this:
+//
+// TEST_F(RefCountedPtrTest, CrossCast) {
+//   RefCountedPtr<DerivedA> derived_a(new DerivedA);
+//   RefCountedPtr<DerivedB> derived_b(derived_a);
+//   EXPECT_FALSE(derived_a.unique());
+//   EXPECT_FALSE(derived_b.unique());
+// }
 
 }  // namespace net_instaweb

@@ -38,7 +38,6 @@
 namespace net_instaweb {
 
 
-
 template<class T>
 class RefCounted : public base::RefCountedThreadSafe<T> {
 };
@@ -49,13 +48,32 @@ class RefCounted : public base::RefCountedThreadSafe<T> {
 template<class T>
 class RefCountedPtr : public scoped_refptr<T> {
  public:
-  RefCountedPtr() {}
+  RefCountedPtr() : scoped_refptr<T>(NULL) {}
   explicit RefCountedPtr(T* t) : scoped_refptr<T>(t) {}
+
+  template<class U>
+  explicit RefCountedPtr(const RefCountedPtr<U>& src)
+      : scoped_refptr<T>(src) {
+  }
 
   // Determines whether any other RefCountedPtr objects share the same
   // storage.  This can be used to create copy-on-write semantics if
   // desired.
   bool unique() const { return !this->ptr_ || this->ptr_->HasOneRef(); }
+
+  void clear() {
+    *this = RefCountedPtr();
+  }
+  void reset(T* ptr) {
+    *this = RefCountedPtr(ptr);
+  }
+  void reset(const RefCountedPtr& src) {
+    *this = src;
+  }
+
+ private:
+  operator void*() const;  // don't compare directly to NULL; use get()
+  operator T*() const;     // don't assign directly to pointer; use get()
 
   // Note that copy and assign of RefCountedPtr is allowed -- that
   // is how the reference counts are updated.
@@ -92,9 +110,32 @@ class RefCountedObj {
   };
 
   RefCountedPtr<Data> data_ptr_;
+
+ private:
+  operator void*() const;  // don't compare directly to NULL; use get()
+  operator T*() const;     // don't assign directly to pointer; use get()
+
   // Copying, etc., are OK thanks to data_ptr_.
 };
 
+// Helper macro to allow declaration of user-visible macro
+// REFCOUNT_DISALLOW_EXPLICIT_DESTROY which is used to generate
+// compile-time errors for code that deletes ref-counted objects
+// explicitly.
+#define REFCOUNT_SHARED_MEM_IMPL_CLASS base::RefCountedThreadSafe
+
+
+// Macro for users implementing C++ ref-counted classes to prevent
+// explicit destruction.  Once a class is reference counted, it
+// should never be stack-allocated or explicitly deleted.  It should
+// only be deleted by the reference count object.  Put this declaration
+// in the 'protected:' or 'private:' section, and group it with
+// a destructor declaration.
+//
+// This is only required for RefCountedPtr<T>, not RefCountedObj<T>.
+//
+#define REFCOUNT_FRIEND_DECLARATION(class_name) \
+  friend class REFCOUNT_SHARED_MEM_IMPL_CLASS<class_name>
 
 }  // namespace net_instaweb
 
