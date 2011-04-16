@@ -52,11 +52,20 @@ namespace net_instaweb {
 
 class VerifyContentsCallback : public Resource::AsyncCallback {
  public:
-  explicit VerifyContentsCallback(const GoogleString& contents) :
-      contents_(contents), called_(false) {
+  VerifyContentsCallback(const ResourcePtr& resource,
+                         const GoogleString& contents) :
+      Resource::AsyncCallback(resource),
+      contents_(contents),
+      called_(false) {
   }
-  virtual void Done(bool success, Resource* resource) {
-    EXPECT_EQ(0, contents_.compare(resource->contents().as_string()));
+  VerifyContentsCallback(const OutputResourcePtr& resource,
+                         const GoogleString& contents) :
+      Resource::AsyncCallback(ResourcePtr(resource)),
+      contents_(contents),
+      called_(false) {
+  }
+  virtual void Done(bool success) {
+    EXPECT_EQ(0, contents_.compare(resource()->contents().as_string()));
     called_ = true;
   }
   void AssertCalled() {
@@ -96,22 +105,20 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     url->erase(0, url_prefix_.length());
   }
 
-  OutputResource* CreateOutputResourceForFetch(const StringPiece& url) {
+  OutputResourcePtr CreateOutputResourceForFetch(const StringPiece& url) {
     RewriteFilter* dummy;
     rewrite_driver_.SetBaseUrlForFetch(url);
     return rewrite_driver_.DecodeOutputResource(url, &dummy);
   }
 
-  Resource* CreateInputResourceAndReadIfCached(const StringPiece& url) {
+  ResourcePtr CreateInputResourceAndReadIfCached(const StringPiece& url) {
     rewrite_driver_.SetBaseUrlForFetch(url);
     GoogleUrl resource_url(url);
-    Resource* resource =
-        rewrite_driver_.CreateInputResource(resource_url);
-    if ((resource != NULL) &&
+    ResourcePtr resource(rewrite_driver_.CreateInputResource(resource_url));
+    if ((resource.get() != NULL) &&
         (!resource->IsCacheable() ||
          !rewrite_driver_.ReadIfCached(resource))) {
-      delete resource;
-      resource = NULL;
+      resource.clear();
     }
     return resource;
   }
@@ -126,7 +133,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // places.
     const int64 origin_expire_time_ms = 100000;
     const ContentType* content_type = &kContentTypeText;
-    scoped_ptr<OutputResource> nor(
+    OutputResourcePtr nor(
         rewrite_driver_.CreateOutputResourceWithPath(
             url_prefix_, filter_prefix, name, content_type,
             OutputResource::kRewrittenResource));
@@ -145,7 +152,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       // Check that a non-blocking attempt to lock another resource
       // with the same name returns quickly. We don't need a hash in this
       // case since we're just trying to create the resource, not fetch it.
-      scoped_ptr<OutputResource> nor1(
+      OutputResourcePtr nor1(
           rewrite_driver_.CreateOutputResourceWithPath(
               url_prefix_, filter_prefix, name, content_type,
               OutputResource::kRewrittenResource));
@@ -163,7 +170,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       namer.set_hash("0");
       namer.set_ext("txt");
       GoogleString name = StrCat(url_prefix_, namer.Encode());
-      scoped_ptr<OutputResource> nor1(CreateOutputResourceForFetch(name));
+      OutputResourcePtr nor1(CreateOutputResourceForFetch(name));
       ASSERT_TRUE(nor1.get() != NULL);
 
       // non-blocking
@@ -185,10 +192,9 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     EXPECT_EQ("txt", nor->extension());
 
     // Retrieve the same NOR from the cache.
-    scoped_ptr<OutputResource> nor2(
-        rewrite_driver_.CreateOutputResourceWithPath(
-            url_prefix_, filter_prefix, name, &kContentTypeText,
-            OutputResource::kRewrittenResource));
+    OutputResourcePtr nor2(rewrite_driver_.CreateOutputResourceWithPath(
+        url_prefix_, filter_prefix, name, &kContentTypeText,
+        OutputResource::kRewrittenResource));
     ASSERT_TRUE(nor2.get() != NULL);
     EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor2.get()));
     EXPECT_EQ(OutputResource::kRewrittenResource, nor2->kind());
@@ -198,8 +204,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     EXPECT_EQ(contents, FetchExtantOutputResource(nor2.get()));
 
     // Try asynchronously too
-    VerifyContentsCallback callback(contents);
-    rewrite_driver_.ReadAsync(nor2.get(), &callback, &message_handler_);
+    VerifyContentsCallback callback(nor2, contents);
+    rewrite_driver_.ReadAsync(&callback, &message_handler_);
     callback.AssertCalled();
 
     // Grab the URL and make sure we correctly decode its components
@@ -218,7 +224,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     // But with the URL (which contains the hash), we can retrieve it
     // from the http_cache.
-    scoped_ptr<OutputResource> nor4(CreateOutputResourceForFetch(nor->url()));
+    OutputResourcePtr nor4(CreateOutputResourceForFetch(nor->url()));
     EXPECT_EQ(nor->url(), nor4->url());
     EXPECT_EQ(contents, FetchExtantOutputResource(nor4.get()));
 
@@ -230,15 +236,14 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     EXPECT_EQ(contents, FetchExtantOutputResource(nor4.get()));
     // This also works asynchronously.
     lru_cache_->Clear();
-    VerifyContentsCallback callback2(contents);
-    rewrite_driver_.ReadAsync(nor4.get(), &callback2, &message_handler_);
+    VerifyContentsCallback callback2(nor4, contents);
+    rewrite_driver_.ReadAsync(&callback2, &message_handler_);
     callback2.AssertCalled();
   }
 
   bool ResourceIsCached() {
-    scoped_ptr<Resource> resource(
-        CreateResource(kResourceUrlBase, kResourceUrlPath));
-    bool ok = rewrite_driver_.ReadIfCached(resource.get());
+    ResourcePtr resource(CreateResource(kResourceUrlBase, kResourceUrlPath));
+    bool ok = rewrite_driver_.ReadIfCached(resource);
     // Should not damage resources when freshening
     EXPECT_FALSE(ok && !resource->loaded());
     return ok;
@@ -246,8 +251,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
   // Makes an output resource corresponding to given input resource of
   // given content type
-  OutputResource* CreateTestOutputResource(Resource* input_resource,
-                                           const ContentType* content_type) {
+  OutputResourcePtr CreateTestOutputResource(Resource* input_resource,
+                                             const ContentType* content_type) {
     rewrite_driver_.SetBaseUrlForFetch(input_resource->url());
     return rewrite_driver_.CreateOutputResourceFromResource(
         "tf", content_type, rewrite_driver_.default_encoder(), NULL,
@@ -314,11 +319,10 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     rewrite_driver_.SetBaseUrlForFetch(kResourceUrlBase);
     GoogleUrl base_url(kResourceUrlBase);
     GoogleUrl path_url(base_url, kResourceUrlPath);
-    scoped_ptr<Resource> input(
-        rewrite_driver_.CreateInputResource(path_url));
+    ResourcePtr input(rewrite_driver_.CreateInputResource(path_url));
     ASSERT_TRUE(input.get() != NULL);
 
-    scoped_ptr<OutputResource> output(
+    OutputResourcePtr output(
         CreateTestOutputResource(input.get(), &kContentTypePng));
 
     ASSERT_TRUE(output.get() != NULL);
@@ -400,12 +404,12 @@ TEST_F(ResourceManagerTest, TestNamed) {
 TEST_F(ResourceManagerTest, TestOutputInputUrl) {
   GoogleString url = Encode("http://example.com/dir/123/",
                             RewriteDriver::kJavascriptMinId, "0", "orig", "js");
-  scoped_ptr<OutputResource> output_resource(CreateOutputResourceForFetch(url));
+  OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   RewriteFilter* filter = rewrite_driver_.FindFilter(
       RewriteDriver::kJavascriptMinId);
   ASSERT_TRUE(filter != NULL);
-  scoped_ptr<Resource> input_resource(
+  ResourcePtr input_resource(
       filter->CreateInputResourceFromOutputResource(output_resource.get()));
   EXPECT_EQ("http://example.com/dir/123/orig", input_resource->url());
 }
@@ -415,12 +419,12 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlEvil) {
   UrlEscaper::EncodeToUrlSegment("http://www.evil.com", &escaped_abs);
   GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", escaped_abs, "js");
-  scoped_ptr<OutputResource> output_resource(CreateOutputResourceForFetch(url));
+  OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   RewriteFilter* filter = rewrite_driver_.FindFilter(
       RewriteDriver::kJavascriptMinId);
   ASSERT_TRUE(filter != NULL);
-  scoped_ptr<Resource> input_resource(
+  ResourcePtr input_resource(
       filter->CreateInputResourceFromOutputResource(output_resource.get()));
   EXPECT_EQ(NULL, input_resource.get());
 }
@@ -433,12 +437,12 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlBusy) {
   UrlEscaper::EncodeToUrlSegment("http://www.busy.com", &escaped_abs);
   GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", escaped_abs, "js");
-  scoped_ptr<OutputResource> output_resource(CreateOutputResourceForFetch(url));
+  OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   RewriteFilter* filter = rewrite_driver_.FindFilter(
       RewriteDriver::kJavascriptMinId);
   ASSERT_TRUE(filter != NULL);
-  scoped_ptr<Resource> input_resource(
+  ResourcePtr input_resource(
       filter->CreateInputResourceFromOutputResource(output_resource.get()));
   EXPECT_EQ(NULL, input_resource.get());
   if (input_resource.get() != NULL) {
@@ -457,8 +461,8 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
   EXPECT_TRUE(options_.domain_lawyer()->AddRewriteDomainMapping(
       "cdn.com", kTestDomain, &message_handler_));
 
-  scoped_ptr<Resource> input(CreateResource(StrCat(kTestDomain, "index.html"),
-                                            "style.css"));
+  ResourcePtr input(CreateResource(StrCat(kTestDomain, "index.html"),
+                                   "style.css"));
   ASSERT_TRUE(input.get() != NULL);
   EXPECT_EQ(StrCat(kTestDomain, "style.css"), input->url());
 
@@ -468,11 +472,11 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
   const int kOriginTtlSec = 300;
   InitResponseHeaders("http://localhost/style.css", kContentTypeCss,
                       kStyleContent, kOriginTtlSec);
-  EXPECT_TRUE(rewrite_driver_.ReadIfCached(input.get()));
+  EXPECT_TRUE(rewrite_driver_.ReadIfCached(input));
 
   // When we rewrite the resource as an ouptut, it will show up in the
   // CDN per the rewrite mapping.
-  scoped_ptr<OutputResource> output(
+  OutputResourcePtr output(
       rewrite_driver_.CreateOutputResourceFromResource(
           RewriteDriver::kCacheExtenderId, input->type(),
           rewrite_driver_.default_encoder(), NULL,
@@ -493,7 +497,7 @@ TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
   GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
   RewriteFilter* dummy;
-  scoped_ptr<OutputResource> output_resource(
+  OutputResourcePtr output_resource(
       rewrite_driver_.DecodeOutputResource(StrCat(url, "?query"), &dummy));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(url, output_resource->url());
@@ -502,10 +506,10 @@ TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
 // Input resources and corresponding output resources should keep queries
 TEST_F(ResourceManagerTest, TestInputResourceQuery) {
   const char kUrl[] = "test?param";
-  scoped_ptr<Resource> resource(CreateResource(kResourceUrlBase, kUrl));
+  ResourcePtr resource(CreateResource(kResourceUrlBase, kUrl));
   ASSERT_TRUE(resource.get() != NULL);
   EXPECT_EQ(StrCat(GoogleString(kResourceUrlBase), "/", kUrl), resource->url());
-  scoped_ptr<OutputResource> output(
+  OutputResourcePtr output(
     rewrite_driver_.CreateOutputResourceFromResource(
       "sf", &kContentTypeCss,
       rewrite_driver_.default_encoder(), NULL,
@@ -524,7 +528,7 @@ TEST_F(ResourceManagerTest, TestRemember404) {
   not_found.SetStatusAndReason(HttpStatus::kNotFound);
   mock_url_fetcher_.SetResponse("http://example.com/404", not_found, "");
 
-  scoped_ptr<Resource> resource(
+  ResourcePtr resource(
       CreateInputResourceAndReadIfCached("http://example.com/404"));
   EXPECT_EQ(NULL, resource.get());
 
@@ -546,11 +550,11 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
   no_cache.ComputeCaching();
   mock_url_fetcher_.SetResponse("http://example.com/", no_cache, kContents);
 
-  scoped_ptr<Resource> resource(CreateResource("http://example.com/", "/"));
+  ResourcePtr resource(CreateResource("http://example.com/", "/"));
   ASSERT_TRUE(resource.get() != NULL);
 
-  VerifyContentsCallback callback(kContents);
-  rewrite_driver_.ReadAsync(resource.get(), &callback, &message_handler_);
+  VerifyContentsCallback callback(resource, kContents);
+  rewrite_driver_.ReadAsync(&callback, &message_handler_);
   callback.AssertCalled();
 
   HTTPValue valueOut;
@@ -569,7 +573,7 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache_->num_misses());
   EXPECT_EQ(0, lru_cache_->num_inserts());
   EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
-  scoped_ptr<OutputResource> output_resource(
+  OutputResourcePtr output_resource(
       rewrite_driver_.CreateOutputResourceWithPath(
           url_prefix_, CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
           OutputResource::kOutlinedResource));
@@ -612,7 +616,7 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache_->num_misses());
   EXPECT_EQ(0, lru_cache_->num_inserts());
   EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
-  scoped_ptr<OutputResource> output_resource(
+  OutputResourcePtr output_resource(
       rewrite_driver_.CreateOutputResourceWithPath(
             url_prefix_, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
             OutputResource::kOnTheFlyResource));
@@ -634,10 +638,9 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
 
   // Now try fetching again. Should hit in cache for rname.
-  output_resource.reset(
-      rewrite_driver_.CreateOutputResourceWithPath(
-            url_prefix_, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
-            OutputResource::kOnTheFlyResource));
+  output_resource.reset(rewrite_driver_.CreateOutputResourceWithPath(
+      url_prefix_, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
+      OutputResource::kOnTheFlyResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(1, lru_cache_->num_hits());
@@ -655,7 +658,7 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache_->num_misses());
   EXPECT_EQ(0, lru_cache_->num_inserts());
   EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
-  scoped_ptr<OutputResource> output_resource(
+  OutputResourcePtr output_resource(
       rewrite_driver_.CreateOutputResourceWithPath(
             url_prefix_, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
             OutputResource::kRewrittenResource));
@@ -675,10 +678,9 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
 
   // Now try fetching again. Should hit in cache
-  output_resource.reset(
-      rewrite_driver_.CreateOutputResourceWithPath(
-            url_prefix_, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
-            OutputResource::kRewrittenResource));
+  output_resource.reset(rewrite_driver_.CreateOutputResourceWithPath(
+      url_prefix_, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
+      OutputResource::kRewrittenResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(1, lru_cache_->num_hits());
@@ -857,7 +859,7 @@ class ResourceManagerShardedTest : public ResourceManagerTest {
 TEST_F(ResourceManagerShardedTest, TestNamed) {
   GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
-  scoped_ptr<OutputResource> output_resource(
+  OutputResourcePtr output_resource(
       rewrite_driver_.CreateOutputResourceWithPath(
           "http://example.com/dir/",
           "jm",

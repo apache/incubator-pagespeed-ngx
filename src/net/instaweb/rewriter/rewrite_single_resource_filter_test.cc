@@ -170,9 +170,6 @@ class TestRewriter : public RewriteSingleResourceFilter {
               UrlEscaper::DecodeFromUrlSegment(rewritten_url.substr(magic_len),
                                                &url));
     }
-
-   private:
-    const TestRewriter* parent_;
   };
 
   void TryRewrite(HtmlElement::Attribute* src) {
@@ -258,9 +255,9 @@ class RewriteSingleResourceFilterTest
   // Transfers ownership and may return NULL.
   CachedResult* CachedResultForInput(const char* url) {
     const UrlSegmentEncoder* encoder = filter_->encoder();
-    scoped_ptr<Resource> input_resource(CreateResource(kTestDomain, url));
+    ResourcePtr input_resource(CreateResource(kTestDomain, url));
     EXPECT_TRUE(input_resource.get() != NULL);
-    scoped_ptr<OutputResource> output_resource(
+    OutputResourcePtr output_resource(
         rewrite_driver_.CreateOutputResourceFromResource(
             kTestFilterPrefix, &kContentTypeText, encoder, NULL,
             input_resource.get(), OutputResource::kRewrittenResource));

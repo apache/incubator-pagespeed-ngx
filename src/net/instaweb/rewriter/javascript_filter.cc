@@ -60,13 +60,12 @@ void JavascriptFilter::StartElementImpl(HtmlElement* element) {
   CHECK(script_in_progress_ == NULL);
 
   switch (script_tag_scanner_.ParseScriptElement(element, &script_src_)) {
-    case ScriptTagScanner::kJavaScript: {
+    case ScriptTagScanner::kJavaScript:
       script_in_progress_ = element;
       if (script_src_ != NULL) {
         driver_->InfoHere("Found script with src %s", script_src_->value());
       }
       break;
-    }
     case ScriptTagScanner::kUnknownScript: {
       GoogleString script_dump;
       element->ToString(&script_dump);

@@ -91,7 +91,7 @@ class TestCombineFilter : public RewriteFilter {
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element) {}
   virtual const char* Name() const { return "TestCombine"; }
-  virtual bool Fetch(OutputResource* resource,
+  virtual bool Fetch(const OutputResourcePtr& resource,
                      Writer* writer,
                      const RequestHeaders& request_header,
                      ResponseHeaders* response_headers,
@@ -617,11 +617,11 @@ TEST_F(ResourceCombinerTest, TestContinuingFetchWhenFastFailed) {
   resource_manager_->set_url_async_fetcher(&simulate_async);
 
   // Seed our cache with the fact that nopiece.tcc isn't there.
-  scoped_ptr<Resource> missing(
+  ResourcePtr missing(
       rewrite_driver_.CreateInputResourceAbsoluteUnchecked(
           StrCat(kTestDomain, "nopiece.tcc")));
   ASSERT_TRUE(missing.get() != NULL);
-  EXPECT_FALSE(rewrite_driver_.ReadIfCached(missing.get()));
+  EXPECT_FALSE(rewrite_driver_.ReadIfCached(missing));
   simulate_async.CallCallbacks();
 
   // Now try to fetch a combination with 3 pieces.

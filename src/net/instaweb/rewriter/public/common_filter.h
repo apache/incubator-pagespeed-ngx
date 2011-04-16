@@ -67,23 +67,25 @@ class CommonFilter : public EmptyHtmlFilter {
   // which may need to be absolutified relative to base_url().  Returns NULL if
   // the input resource url isn't valid, or can't legally be rewritten in the
   // context of this page.
-  Resource* CreateInputResource(const StringPiece& input_url);
+  ResourcePtr CreateInputResource(const StringPiece& input_url);
 
   // Create input resource from input_url, if it is legal in the context of
   // base_url(), and if the resource can be read from cache.  If it's not in
   // cache, initiate an asynchronous fetch so it will be on next access.  This
   // is a common case for filters.
-  Resource* CreateInputResourceAndReadIfCached(const StringPiece& input_url);
+  ResourcePtr CreateInputResourceAndReadIfCached(const StringPiece& input_url);
 
   // During the Scan phase, CommonFilters can request URLs from the cache &/or
   // AsyncFetcher.  These requests can be processed before the filter's
   // event-handling methods are executed.
   //
+  // Returns the scanned resource, which may be NULL.
+  //
   // TODO(jmarantz): At some point we want to have this be higher
   // level -- filters don't necessarily need to load entire resources
   // in order to successfully rewrite URLs.  It's preferable, if the
   // rewrite has already occurred, to just get back the updated URL.
-  void ScanRequestUrl(const StringPiece& url);
+  ResourcePtr ScanRequestUrl(const StringPiece& url);
 
   // Methods to help implement two-pass scanning of HTML documents, where:
   // 1.  In the first pass we make requests of an asynchronous cache

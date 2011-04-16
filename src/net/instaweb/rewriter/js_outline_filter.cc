@@ -139,7 +139,7 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
     // Create script file from content.
     MessageHandler* handler = driver_->message_handler();
     // Create outline resource at the document location, not base URL location
-    scoped_ptr<OutputResource> resource(
+    OutputResourcePtr resource(
         driver_->CreateOutputResourceWithPath(
             driver_->google_url().AllExceptLeaf(), kFilterId, "_",
             &kContentTypeJavascript, OutputResource::kOutlinedResource));

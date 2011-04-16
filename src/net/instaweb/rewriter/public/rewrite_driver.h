@@ -47,7 +47,9 @@ class HtmlWriterFilter;
 class Resource;
 class ResourceManager;
 class ResourceNamer;
+class RewriteContext;
 class RewriteFilter;
+class RewriteSingleResourceFilter;
 class Statistics;
 class Timer;
 class UrlAsyncFetcher;
@@ -119,9 +121,7 @@ class RewriteDriver : public HtmlParse {
   void Scan();
 
   // In the rewrite phase, CommonFilters can try to retrieve resources
-  // they requested during scanning with ScanRequestUrl.  These resources
-  // are managed by the RewriteDriver and should not be freed by the
-  // filter.
+  // they requested during scanning with ScanRequestUrl.
   //
   // NULL is returned for resources that:
   //  - were not requested during Scan
@@ -129,8 +129,10 @@ class RewriteDriver : public HtmlParse {
   //  - were requested, but failed
   //
   // TODO(jmarantz): note that the returned resource does not necessarily
-  // have its content loaded.  This needs some more design work.
-  Resource* GetScannedInputResource(const StringPiece& url) const;
+  // have its content loaded. This needs some more design work.
+  ResourcePtr FindResource(const StringPiece& url) const;
+
+  void RememberResource(const StringPiece& url, const ResourcePtr& resource);
 
   void SetUserAgent(const char* user_agent_string) {
     user_agent_.set_user_agent(user_agent_string);
@@ -191,8 +193,8 @@ class RewriteDriver : public HtmlParse {
   // resource (which should mean checking the hash to ensure we generated it
   // ourselves).
   // TODO(jmaessen): add url hash & check thereof.
-  OutputResource* DecodeOutputResource(const StringPiece& url,
-                                       RewriteFilter** filter);
+  OutputResourcePtr DecodeOutputResource(const StringPiece& url,
+                                         RewriteFilter** filter);
 
   FileSystem* file_system() { return file_system_; }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
@@ -227,7 +229,7 @@ class RewriteDriver : public HtmlParse {
   // To avoid if-chains, tolerates a NULL input_resource (by returning NULL).
   // TODO(jmaessen, jmarantz): Do we want to permit NULL input_resources here?
   // jmarantz has evinced a distaste.
-  OutputResource* CreateOutputResourceFromResource(
+  OutputResourcePtr CreateOutputResourceFromResource(
       const StringPiece& filter_prefix,
       const ContentType* content_type,
       const UrlSegmentEncoder* encoder,
@@ -248,7 +250,7 @@ class RewriteDriver : public HtmlParse {
   //
   // 'type' arg can be null if it's not known, or is not in our ContentType
   // library.
-  OutputResource* CreateOutputResourceWithPath(
+  OutputResourcePtr CreateOutputResourceWithPath(
       const StringPiece& path, const StringPiece& filter_prefix,
       const StringPiece& name,  const ContentType* type,
       OutputResource::Kind kind);
@@ -256,12 +258,12 @@ class RewriteDriver : public HtmlParse {
   // Creates an input resource based on input_url.  Returns NULL if
   // the input resource url isn't valid, or can't legally be rewritten in the
   // context of this page.
-  Resource* CreateInputResource(const GoogleUrl& input_url);
+  ResourcePtr CreateInputResource(const GoogleUrl& input_url);
 
   // Creates an input resource from the given absolute url.  Requires that the
   // provided url has been checked, and can legally be rewritten in the current
   // page context.
-  Resource* CreateInputResourceAbsoluteUnchecked(
+  ResourcePtr CreateInputResourceAbsoluteUnchecked(
       const StringPiece& absolute_url);
 
   // Checks to see if we can write the input_url resource in the
@@ -271,23 +273,17 @@ class RewriteDriver : public HtmlParse {
                      const GoogleUrl& input_url) const;
 
   // Loads contents of resource asynchronously, calling callback when
-  // done.  If the resource contents is cached, the callback will
+  // done.  If the resource contents are cached, the callback will
   // be called directly, rather than asynchronously.  The resource
-  // will be passed to the callback, which will be responsible for
-  // ultimately freeing the resource.  The resource will have its
-  // contents and headers filled in.
-  //
-  // The resource can be deleted only after the callback is called.
-  void ReadAsync(Resource* resource, Resource::AsyncCallback* callback,
+  // will be passed to the callback, with its contents and headers filled in.
+  void ReadAsync(Resource::AsyncCallback* callback,
                  MessageHandler* message_handler);
 
   // Load the resource if it is cached (or if it can be fetched quickly).
   // If not send off an asynchronous fetch and store the result in the cache.
   //
   // Returns true if the resource is loaded.
-  //
-  // The resource remains owned by the caller.
-  bool ReadIfCached(Resource* resource);
+  bool ReadIfCached(const ResourcePtr& resource);
 
   // As above, but distinguishes between unavailable in cache and not found
   HTTPCache::FindResult ReadIfCachedWithStatus(Resource* resource);
@@ -310,13 +306,6 @@ class RewriteDriver : public HtmlParse {
   // scope.  It is reset at the beginning of every document by
   // ScanFilter.
   void set_refs_before_base() { refs_before_base_ = true; }
-
-  // This method takes ownership of resource.  If it is called
-  // again with the same str, it will free the previous resource
-  // pointer.
-  void RememberResource(GoogleString str, Resource* resource);
-
-  Resource* FindResource(GoogleString str) const;
 
  private:
   friend class ResourceManagerTestBase;
@@ -360,7 +349,7 @@ class RewriteDriver : public HtmlParse {
   // Internal low-level helper for resource creation.
   // Use only when permission checking has been done explicitly on the
   // caller side.
-  Resource* CreateInputResourceUnchecked(const GoogleUrl& gurl);
+  ResourcePtr CreateInputResourceUnchecked(const GoogleUrl& gurl);
 
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
@@ -414,14 +403,8 @@ class RewriteDriver : public HtmlParse {
   std::vector<HtmlFilter*> filters_;
   ScanFilter scan_filter_;
 
-  // Resource-scoped data: must be cleared by Clear().  The keys here
-  // are fully qualified URLs.
-  //
-  // TODO(jmarantz): this is probably not the right long-term data
-  // model.  We want to initiate all rewriting logic during the scan
-  // phase so that in the rewrite phase we mainly just swap URLs, at
-  // least for single-resource filters.
-  typedef std::map<GoogleString, Resource*> ResourceMap;
+  // Maps encoded URLs to output URLs
+  typedef std::map<GoogleString, ResourcePtr> ResourceMap;
   ResourceMap resource_map_;
 
   Variable* cached_resource_fetches_;

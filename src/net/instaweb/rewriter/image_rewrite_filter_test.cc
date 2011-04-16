@@ -171,19 +171,19 @@ class ImageRewriteTest : public ResourceManagerTestBase {
         "dQa+t1eS//gJVB8WUCgnLYHaYwIAeaQp0GC25S8cG9cWiOrm+AHrnhMJBLplmwLkE8"
         "kEenp/8oyIBf2ZEWaEfyv8BsICdAZ/XeTCAAAAAElFTkSuQmCC";
     GoogleString cuppa_string(kCuppaData);
-    scoped_ptr<Resource> cuppa_resource(
+    ResourcePtr cuppa_resource(
         rewrite_driver_.CreateInputResourceAbsoluteUnchecked(cuppa_string));
-    ASSERT_TRUE(cuppa_resource != NULL);
-    EXPECT_TRUE(rewrite_driver_.ReadIfCached(cuppa_resource.get()));
+    ASSERT_TRUE(cuppa_resource.get() != NULL);
+    EXPECT_TRUE(rewrite_driver_.ReadIfCached(cuppa_resource));
     GoogleString cuppa_contents;
     cuppa_resource->contents().CopyToString(&cuppa_contents);
     // Now make sure axing the original cuppa_string doesn't affect the
     // internals of the cuppa_resource.
-    scoped_ptr<Resource> other_resource(
+    ResourcePtr other_resource(
         rewrite_driver_.CreateInputResourceAbsoluteUnchecked(cuppa_string));
-    ASSERT_TRUE(other_resource != NULL);
+    ASSERT_TRUE(other_resource.get() != NULL);
     cuppa_string.clear();
-    EXPECT_TRUE(rewrite_driver_.ReadIfCached(other_resource.get()));
+    EXPECT_TRUE(rewrite_driver_.ReadIfCached(other_resource));
     GoogleString other_contents;
     cuppa_resource->contents().CopyToString(&other_contents);
     ASSERT_EQ(cuppa_contents, other_contents);

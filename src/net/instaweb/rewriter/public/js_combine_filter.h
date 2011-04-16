@@ -83,7 +83,7 @@ class JsCombineFilter : public RewriteFilter {
   virtual const char* Name() const { return "JsCombine"; }
 
   // RewriteFilter override --- callback for reconstructing resource on demand.
-  virtual bool Fetch(OutputResource* resource,
+  virtual bool Fetch(const OutputResourcePtr& resource,
                      Writer* writer,
                      const RequestHeaders& request_header,
                      ResponseHeaders* response_headers,

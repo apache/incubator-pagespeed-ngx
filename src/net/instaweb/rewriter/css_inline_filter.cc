@@ -66,8 +66,8 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
     // If so, add an inline-in-page policy to domainlawyer in some form,
     // as we make a similar policy decision in js_inline_filter.
     MessageHandler* message_handler = driver_->message_handler();
-    scoped_ptr<Resource> resource(CreateInputResourceAndReadIfCached(href));
-    if (resource == NULL  || !resource->ContentsValid()) {
+    ResourcePtr resource(CreateInputResourceAndReadIfCached(href));
+    if ((resource.get() == NULL) || !resource->ContentsValid()) {
       return;
     }
 

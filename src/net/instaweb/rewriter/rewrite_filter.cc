@@ -26,9 +26,9 @@ namespace net_instaweb {
 RewriteFilter::~RewriteFilter() {
 }
 
-Resource* RewriteFilter::CreateInputResourceFromOutputResource(
+ResourcePtr RewriteFilter::CreateInputResourceFromOutputResource(
     OutputResource* output_resource) {
-  Resource* input_resource = NULL;
+  ResourcePtr input_resource;
   StringVector urls;
   ResourceContext data;
   if (encoder()->Decode(output_resource->name(), &urls, &data,

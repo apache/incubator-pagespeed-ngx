@@ -43,11 +43,13 @@ class RewriteSingleResourceFilter::FetchCallback
     : public Resource::AsyncCallback {
  public:
   FetchCallback(RewriteSingleResourceFilter* filter,
-                Resource* input_resource, OutputResource* output_resource,
+                const ResourcePtr& input_resource,
+                const OutputResourcePtr& output_resource,
                 ResponseHeaders* response_headers, Writer* response_writer,
                 MessageHandler* handler,
                 UrlAsyncFetcher::Callback* base_callback)
-      : filter_(filter),
+      : Resource::AsyncCallback(input_resource),
+        filter_(filter),
         input_resource_(input_resource),
         output_resource_(output_resource),
         response_headers_(response_headers),
@@ -55,8 +57,8 @@ class RewriteSingleResourceFilter::FetchCallback
         handler_(handler),
         base_callback_(base_callback) {}
 
-  virtual void Done(bool success, Resource* resource) {
-    CHECK_EQ(input_resource_.get(), resource);
+  virtual void Done(bool success) {
+    CHECK_EQ(input_resource_.get(), resource().get());
     if (success) {
       // This checks HTTP status was 200 OK.
       success = input_resource_->ContentsValid();
@@ -69,10 +71,10 @@ class RewriteSingleResourceFilter::FetchCallback
     }
 
     if (success) {
-      WriteFromResource(output_resource_);
+      WriteFromResource(output_resource_.get());
     } else {
-      filter_->CacheRewriteFailure(input_resource_.get(), output_resource_,
-                                   handler_);
+      filter_->CacheRewriteFailure(input_resource_.get(),
+                                   output_resource_.get(), handler_);
       // Rewrite failed. If we have the original, write it out instead.
       if (input_resource_->ContentsValid()) {
         WriteFromResource(input_resource_.get());
@@ -99,8 +101,8 @@ class RewriteSingleResourceFilter::FetchCallback
   }
 
   RewriteSingleResourceFilter* filter_;
-  scoped_ptr<Resource> input_resource_;
-  OutputResource* output_resource_;
+  ResourcePtr input_resource_;
+  OutputResourcePtr output_resource_;
   ResponseHeaders* response_headers_;
   Writer* response_writer_;
   MessageHandler* handler_;
@@ -110,7 +112,7 @@ class RewriteSingleResourceFilter::FetchCallback
 };
 
 bool RewriteSingleResourceFilter::Fetch(
-    OutputResource* output_resource,
+    const OutputResourcePtr& output_resource,
     Writer* response_writer,
     const RequestHeaders& request_headers,
     ResponseHeaders* response_headers,
@@ -122,14 +124,14 @@ bool RewriteSingleResourceFilter::Fetch(
   // array of input resources from the output resource name, initiate
   // fetches on all of them, triggering the driver to rewrite when
   // they are all present.
-  Resource* input_resource = CreateInputResourceFromOutputResource(
-      output_resource);
-  if (input_resource != NULL) {
+  ResourcePtr input_resource = CreateInputResourceFromOutputResource(
+      output_resource.get());
+  if (input_resource.get() != NULL) {
     // Callback takes ownership of input_resource, and any custom escaper.
     FetchCallback* fetch_callback = new FetchCallback(
         this, input_resource, output_resource,
         response_headers, response_writer, message_handler, base_callback);
-    driver_->ReadAsync(input_resource, fetch_callback, message_handler);
+    driver_->ReadAsync(fetch_callback, message_handler);
     ret = true;
   } else {
     GoogleString url;
@@ -145,7 +147,7 @@ bool RewriteSingleResourceFilter::Fetch(
 CachedResult* RewriteSingleResourceFilter::RewriteWithCaching(
     const StringPiece& url, const ResourceContext* data) {
   CachedResult* ret = NULL;
-  scoped_ptr<Resource> input_resource(CreateInputResource(url));
+  ResourcePtr input_resource(CreateInputResource(url));
   if (input_resource.get() != NULL) {
     ret = RewriteExternalResource(input_resource.get(), data);
   }
@@ -162,12 +164,13 @@ bool RewriteSingleResourceFilter::ReuseByContentHash() const {
 
 RewriteSingleResourceFilter::RewriteResult
 RewriteSingleResourceFilter::RewriteLoadedResourceAndCacheIfOk(
-    const Resource* input_resource, OutputResource* output_resource) {
+    const Resource* input_resource, const OutputResourcePtr& output_resource) {
   CachedResult* result = output_resource->EnsureCachedResultCreated();
   result->set_input_timestamp_ms(input_resource->metadata()->timestamp_ms());
-  UpdateCacheFormat(output_resource);
+  UpdateCacheFormat(output_resource.get());
   UpdateInputHash(input_resource, result);
-  RewriteResult res = RewriteLoadedResource(input_resource, output_resource);
+  RewriteResult res = RewriteLoadedResource(input_resource,
+                                            output_resource.get());
   if (res == kRewriteOk) {
     CHECK(output_resource->type() != NULL);
   }
@@ -199,7 +202,7 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
   if (ComputeOnTheFly()) {
     kind = OutputResource::kOnTheFlyResource;
   }
-  scoped_ptr<OutputResource> output_resource(
+  OutputResourcePtr output_resource(
       driver_->CreateOutputResourceFromResource(
           filter_prefix_, NULL, encoder(), data, input_resource, kind));
   if (output_resource.get() == NULL) {
@@ -275,7 +278,7 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
     }
 
     RewriteResult res = RewriteLoadedResourceAndCacheIfOk(
-        input_resource, output_resource.get());
+        input_resource, output_resource);
     if (res == kTooBusy) {
       // The system is too loaded to currently do a rewrite; in this case
       // we simply return NULL and don't write anything to the cache since

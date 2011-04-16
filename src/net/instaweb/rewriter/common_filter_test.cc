@@ -60,7 +60,7 @@ class CommonFilterTest : public ResourceManagerTestBase {
   }
 
   bool CanRewriteResource(CommonFilter* filter, const StringPiece& url) {
-    scoped_ptr<Resource> resource(filter->CreateInputResource(url));
+    ResourcePtr resource(filter->CreateInputResource(url));
     return (resource.get() != NULL);
   }
 

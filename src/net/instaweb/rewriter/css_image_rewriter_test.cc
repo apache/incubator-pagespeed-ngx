@@ -162,7 +162,7 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
     GoogleString css_url = ExpectedUrlForCss(id, output);
 
     // See what cache information we have
-    scoped_ptr<OutputResource> output_resource(
+    OutputResourcePtr output_resource(
         rewrite_driver_.CreateOutputResourceWithPath(
             kTestDomain, RewriteDriver::kCssFilterId, StrCat(id, ".css"),
             &kContentTypeCss, OutputResource::kRewrittenResource));

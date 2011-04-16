@@ -86,47 +86,44 @@ bool CommonFilter::BaseUrlIsValid() const {
   return seen_base_;
 }
 
-Resource* CommonFilter::CreateInputResource(const StringPiece& input_url) {
-  Resource* resource = NULL;
-  if (input_url.size() <= 0) {
-    return resource;
-  }
-
-  if (!BaseUrlIsValid()) {
-    const GoogleUrl resource_url(input_url);
-    if (resource_url.is_valid() && resource_url.is_standard()) {
-      resource = driver_->CreateInputResource(resource_url);
-    }
-  } else if (base_url().is_valid()) {
-    const GoogleUrl resource_url(base_url(), input_url);
-    if (resource_url.is_valid() && resource_url.is_standard()) {
-      resource = driver_->CreateInputResource(resource_url);
+ResourcePtr CommonFilter::CreateInputResource(const StringPiece& input_url) {
+  ResourcePtr resource;
+  if (!input_url.empty()) {
+    if (!BaseUrlIsValid()) {
+      const GoogleUrl resource_url(input_url);
+      if (resource_url.is_valid() && resource_url.is_standard()) {
+        resource = driver_->CreateInputResource(resource_url);
+      }
+    } else if (base_url().is_valid()) {
+      const GoogleUrl resource_url(base_url(), input_url);
+      if (resource_url.is_valid() && resource_url.is_standard()) {
+        resource = driver_->CreateInputResource(resource_url);
+      }
     }
   }
   return resource;
 }
 
-Resource* CommonFilter::CreateInputResourceAndReadIfCached(
+ResourcePtr CommonFilter::CreateInputResourceAndReadIfCached(
     const StringPiece& input_url) {
-  Resource* input_resource = CreateInputResource(input_url);
+  ResourcePtr input_resource = CreateInputResource(input_url);
   MessageHandler* handler = driver_->message_handler();
-  if ((input_resource != NULL) &&
+  if ((input_resource.get() != NULL) &&
       (!input_resource->IsCacheable() ||
        !driver_->ReadIfCached(input_resource))) {
     handler->Message(
         kInfo, "%s: Couldn't fetch resource %s to rewrite.",
         base_url().spec_c_str(), input_url.as_string().c_str());
-    delete input_resource;
-    input_resource = NULL;
+    input_resource.clear();
   }
   return input_resource;
 }
 
-void CommonFilter::ScanRequestUrl(const StringPiece& url) {
-  Resource* resource = NULL;
+ResourcePtr CommonFilter::ScanRequestUrl(const StringPiece& url) {
+  ResourcePtr resource;
   GoogleString url_str(url.data(), url.size());
   resource = driver_->FindResource(url_str);
-  if (resource == NULL) {
+  if (resource.get() == NULL) {
     resource = CreateInputResource(url);
 
     // note that 'resource' can be NULL.  If we fail to create
@@ -134,6 +131,7 @@ void CommonFilter::ScanRequestUrl(const StringPiece& url) {
     // attempt the lookup multiple times.
     driver_->RememberResource(url_str, resource);
   }
+  return resource;
 }
 
 void CommonFilter::ScanStartDocument() {

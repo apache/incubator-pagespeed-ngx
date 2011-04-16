@@ -142,7 +142,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       MessageHandler* handler = driver_->message_handler();
       // Create outline resource at the document location,
       // not base URL location.
-      scoped_ptr<OutputResource> output_resource(
+      OutputResourcePtr output_resource(
           driver_->CreateOutputResourceWithPath(
               driver_->google_url().AllExceptLeaf(), kFilterId, "_",
               &kContentTypeCss, OutputResource::kOutlinedResource));

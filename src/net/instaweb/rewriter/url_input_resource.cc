@@ -223,7 +223,7 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
   }
 
   virtual void DoneInternal(bool success) {
-    callback_->Done(success, resource_);
+    callback_->Done(success);
   }
 
   virtual ResponseHeaders* response_headers() { return &resource_->meta_data_; }
@@ -245,8 +245,10 @@ void UrlInputResource::LoadAndCallback(AsyncCallback* callback,
                                        MessageHandler* message_handler) {
   CHECK(callback != NULL) << "A callback must be supplied, or else it will "
       "not be possible to determine when it's safe to delete the resource.";
+  CHECK(this == callback->resource().get())
+      << "The callback must keep a reference to the resource";
   if (loaded()) {
-    callback->Done(true, this);
+    callback->Done(true);
   } else {
     UrlReadAsyncFetchCallback* cb =
         new UrlReadAsyncFetchCallback(callback, this);

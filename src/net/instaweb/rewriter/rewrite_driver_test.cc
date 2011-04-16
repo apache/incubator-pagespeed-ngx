@@ -31,7 +31,7 @@ class RewriteDriverTest : public ResourceManagerTestBase {
 
   bool CanDecodeUrl(const StringPiece& url) {
     RewriteFilter* filter;
-    scoped_ptr<OutputResource> resource(
+    OutputResourcePtr resource(
         rewrite_driver_.DecodeOutputResource(url, &filter));
     return (resource.get() != NULL);
   }
@@ -227,7 +227,7 @@ TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
 
   GoogleString dummy_filter_id = "xy";
 
-  scoped_ptr<OutputResource> resource;
+  OutputResourcePtr resource;
   for (int t = 0; t < arraysize(content_types); ++t) {
     for (int k = 0; k < arraysize(resource_kinds); ++k) {
       // Short name should always succeed at creating new resource.

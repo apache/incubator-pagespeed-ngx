@@ -120,7 +120,7 @@ void JsCombineFilter::JsCombiner::TryCombineAccumulated() {
     }
 
     // Make or reuse from cache the combination of the resources.
-    scoped_ptr<OutputResource> combination(
+    OutputResourcePtr combination(
         Combine(kContentTypeJavascript, handler));
 
     if (combination.get() != NULL) {
@@ -349,7 +349,7 @@ GoogleString JsCombineFilter::VarName(const GoogleString& url) const {
   return StrCat("mod_pagespeed_", url_hash);
 }
 
-bool JsCombineFilter::Fetch(OutputResource* resource,
+bool JsCombineFilter::Fetch(const OutputResourcePtr& resource,
                             Writer* writer,
                             const RequestHeaders& request_header,
                             ResponseHeaders* response_headers,

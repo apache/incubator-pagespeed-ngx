@@ -94,11 +94,11 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
   // TODO(jmarantz): We ought to be able to domain-shard even if the
   // resources are non-cacheable or privately cacheable.
   if ((href != NULL) && driver_->IsRewritable(element)) {
-    Resource* input_resource = driver_->GetScannedInputResource(href->value());
-    if ((input_resource != NULL) &&
+    ResourcePtr input_resource(driver_->FindResource(href->value()));
+    if ((input_resource.get() != NULL) &&
         !IsRewrittenResource(input_resource->url())) {
       scoped_ptr<CachedResult> rewrite_info(
-          RewriteExternalResource(input_resource, NULL));
+          RewriteExternalResource(input_resource.get(), NULL));
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
         // Rewrite URL to cache-extended version
         href->SetValue(rewrite_info->url());
@@ -122,7 +122,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
 // happens for basically every resource.
 bool CacheExtender::IsRewrittenResource(const StringPiece& url) const {
   RewriteFilter* filter;
-  scoped_ptr<OutputResource> output_resource(driver_->DecodeOutputResource(
+  OutputResourcePtr output_resource(driver_->DecodeOutputResource(
       url, &filter));
   return (output_resource.get() != NULL);
 }

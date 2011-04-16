@@ -37,8 +37,8 @@ enum Encoding;
 class DataUrlInputResource : public Resource {
  public:
   // We expose a factory; parse failure returns NULL.
-  static DataUrlInputResource* Make(const StringPiece& url,
-                                    RewriteDriver* driver) {
+  static ResourcePtr Make(const StringPiece& url, RewriteDriver* driver) {
+    ResourcePtr resource;
     const ContentType* type;
     Encoding encoding;
     StringPiece encoded_contents;
@@ -47,11 +47,11 @@ class DataUrlInputResource : public Resource {
     // local copy and must have the same lifetime.
     GoogleString* url_copy = new GoogleString();
     url.CopyToString(url_copy);
-    if (!ParseDataUrl(*url_copy, &type, &encoding, &encoded_contents)) {
-      return NULL;
+    if (ParseDataUrl(*url_copy, &type, &encoding, &encoded_contents)) {
+      resource.reset(new DataUrlInputResource(url_copy, encoding, type,
+                                              encoded_contents, driver));
     }
-    return new DataUrlInputResource(url_copy, encoding, type, encoded_contents,
-                                    driver);
+    return resource;
   }
 
   virtual ~DataUrlInputResource() { }

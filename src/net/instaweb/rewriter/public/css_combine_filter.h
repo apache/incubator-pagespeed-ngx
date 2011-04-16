@@ -51,7 +51,7 @@ class CssCombineFilter : public RewriteFilter {
   virtual void Flush();
   virtual void IEDirective(HtmlIEDirectiveNode* directive);
   virtual const char* Name() const { return "CssCombine"; }
-  virtual bool Fetch(OutputResource* resource,
+  virtual bool Fetch(const OutputResourcePtr& resource,
                      Writer* writer,
                      const RequestHeaders& request_header,
                      ResponseHeaders* response_headers,

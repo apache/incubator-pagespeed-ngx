@@ -21,6 +21,7 @@
 
 #include "base/basictypes.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -28,7 +29,6 @@
 namespace net_instaweb {
 
 class HtmlParse;
-class OutputResource;
 class ResourceManager;
 class RewriteDriver;
 class UrlAsyncFetcher;
@@ -68,7 +68,7 @@ class RewriteFilter : public CommonFilter {
   // response_writer or response_headers from callbacks for any
   // requests it has initiated itself.
   //
-  virtual bool Fetch(OutputResource* output_resource,
+  virtual bool Fetch(const OutputResourcePtr& output_resource,
                      Writer* response_writer,
                      const RequestHeaders& request_header,
                      ResponseHeaders* response_headers,
@@ -79,7 +79,7 @@ class RewriteFilter : public CommonFilter {
 
   // Create an input resource by decoding output_resource using the
   // filter's. Assures legality by explicitly permission-checking the result.
-  Resource* CreateInputResourceFromOutputResource(
+  ResourcePtr CreateInputResourceFromOutputResource(
       OutputResource* output_resource);
 
   // All RewriteFilters define how they encode URLs and other

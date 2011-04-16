@@ -89,7 +89,7 @@ TimedBool ResourceCombiner::AddResource(const StringPiece& url,
   //    as we will eventually need the data, but not when it's
   //    disabled due to policy.
 
-  scoped_ptr<Resource> resource(filter_->CreateInputResource(url));
+  ResourcePtr resource(filter_->CreateInputResource(url));
   TimedBool ret = {0, false};
 
   if (resource.get() == NULL) {
@@ -99,7 +99,7 @@ TimedBool ResourceCombiner::AddResource(const StringPiece& url,
     return ret;
   }
 
-  if (!(rewrite_driver_->ReadIfCached(resource.get()))) {
+  if (!(rewrite_driver_->ReadIfCached(resource))) {
     // Resource is not cached, but may be soon.
     handler->Message(kInfo, "Cannot combine: not cached");
     return ret;
@@ -140,7 +140,7 @@ TimedBool ResourceCombiner::AddResource(const StringPiece& url,
       AccumulateLeafSize(relative_path);
     }
 
-    resources_.push_back(resource.release());
+    resources_.push_back(resource);
     if (UrlTooBig()) {
       handler->Message(kInfo, "Cannot combine: url too big");
       RemoveLastResource();
@@ -153,7 +153,6 @@ TimedBool ResourceCombiner::AddResource(const StringPiece& url,
 
 void ResourceCombiner::RemoveLastResource() {
   partnership_.RemoveLast();
-  delete resources_.back();
   resources_.pop_back();
   multipart_encoder_urls_.pop_back();
   if (partnership_.NumCommonComponents() != prev_num_components_) {
@@ -219,11 +218,12 @@ void ResourceCombiner::UpdateResolvedBase() {
   accumulated_leaf_size_ = 0;
 }
 
-OutputResource* ResourceCombiner::Combine(const ContentType& content_type,
-                                          MessageHandler* handler) {
+OutputResourcePtr ResourceCombiner::Combine(const ContentType& content_type,
+                                            MessageHandler* handler) {
+  OutputResourcePtr combination;
   if (resources_.size() <= 1) {
     // No point in combining.
-    return NULL;
+    return combination;
   }
   // First, compute the name of the new resource based on the names of
   // the old resources.
@@ -231,30 +231,30 @@ OutputResource* ResourceCombiner::Combine(const ContentType& content_type,
   // Start building up the combination.  At this point we are still
   // not committed to the combination, because the 'write' can fail.
   // TODO(jmaessen, jmarantz): encode based on partnership
-  scoped_ptr<OutputResource> combination(
-      rewrite_driver_->CreateOutputResourceWithPath(
-          ResolvedBase(), filter_prefix_, url_safe_id, &content_type,
-          OutputResource::kRewrittenResource));
+  combination.reset(rewrite_driver_->CreateOutputResourceWithPath(
+      ResolvedBase(), filter_prefix_, url_safe_id, &content_type,
+      OutputResource::kRewrittenResource));
   if (combination.get() != NULL) {
     if (combination->cached_result() != NULL &&
         combination->cached_result()->optimizable()) {
       // If the combination has a Url set on it we have cached information
       // on what the output would be, so we'll just use that.
-      return combination.release();
+      return combination;
     }
-    if (WriteCombination(resources_, combination.get(), handler)
+    if (WriteCombination(resources_, combination, handler)
         && combination->IsWritten()) {
       // Otherwise, we have to compute it.
-      return combination.release();
+      return combination;
     }
+    // No dice.
+    combination.clear();
   }
-  // No dice.
-  return NULL;
+  return combination;
 }
 
 bool ResourceCombiner::WriteCombination(
     const ResourceVector& combine_resources,
-    OutputResource* combination,
+    const OutputResourcePtr& combination,
     MessageHandler* handler) {
   bool written = true;
   // TODO(sligocki): Write directly to a temp file rather than doing the extra
@@ -264,7 +264,7 @@ bool ResourceCombiner::WriteCombination(
   int64 min_origin_expiration_time_ms = 0;
 
   for (int i = 0, n = combine_resources.size(); written && (i < n); ++i) {
-    Resource* input = combine_resources[i];
+    ResourcePtr input(combine_resources[i]);
     StringPiece contents = input->contents();
     int64 input_expire_time_ms = input->CacheExpirationTimeMs();
     if ((min_origin_expiration_time_ms == 0) ||
@@ -272,12 +272,12 @@ bool ResourceCombiner::WriteCombination(
       min_origin_expiration_time_ms = input_expire_time_ms;
     }
 
-    written = WritePiece(input, combination, &writer, handler);
+    written = WritePiece(input.get(), combination.get(), &writer, handler);
   }
   if (written) {
     written =
         resource_manager_->Write(
-            HttpStatus::kOK, combined_contents, combination,
+            HttpStatus::kOK, combined_contents, combination.get(),
             min_origin_expiration_time_ms, handler);
   }
   return written;
@@ -293,14 +293,14 @@ bool ResourceCombiner::WritePiece(const Resource* input,
 // Callback to run whenever a resource is collected.  This keeps a
 // count of the resources collected so far.  When the last one is collected,
 // it aggregates the results and calls the final callback with the result.
-class CombinerCallback : public Resource::AsyncCallback {
+class AggregateCombiner {
  public:
-  CombinerCallback(ResourceCombiner* combiner,
-                   MessageHandler* handler,
-                   UrlAsyncFetcher::Callback* callback,
-                   OutputResource* combination,
-                   Writer* writer,
-                   ResponseHeaders* response_headers) :
+  AggregateCombiner(ResourceCombiner* combiner,
+                    MessageHandler* handler,
+                    UrlAsyncFetcher::Callback* callback,
+                    OutputResourcePtr combination,
+                    Writer* writer,
+                    ResponseHeaders* response_headers) :
       enable_completion_(false),
       emit_done_(true),
       done_count_(0),
@@ -313,30 +313,24 @@ class CombinerCallback : public Resource::AsyncCallback {
       response_headers_(response_headers) {
   }
 
-  virtual ~CombinerCallback() {
-    STLDeleteContainerPointers(combine_resources_.begin(),
-                               combine_resources_.end());
+  virtual ~AggregateCombiner() {
   }
 
   // Note that the passed-in resource might be NULL; this gives us a chance
   // to note failure.
-  bool AddResource(Resource* resource) {
+  bool AddResource(const ResourcePtr& resource) {
     bool ret = false;
-    if (resource == NULL) {
+    if (resource.get() == NULL) {
       // Whoops, we've failed to even obtain a resource.
       ++fail_count_;
-    } else if (fail_count_ > 0) {
-      // Another of the resource fetches failed.  Drop this resource
-      // and don't fetch it.
-      delete resource;
-    } else {
+    } else if (fail_count_ == 0) {
       combine_resources_.push_back(resource);
       ret = true;
     }
     return ret;
   }
 
-  virtual void Done(bool success, Resource* resource) {
+  virtual void Done(bool success) {
     if (!success) {
       ++fail_count_;
     }
@@ -362,7 +356,7 @@ class CombinerCallback : public Resource::AsyncCallback {
   void DoCombination() {
     bool ok = fail_count_ == 0;
     for (size_t i = 0; ok && (i < combine_resources_.size()); ++i) {
-      Resource* resource = combine_resources_[i];
+      ResourcePtr resource(combine_resources_[i]);
       ok = resource->ContentsValid();
     }
     if (ok) {
@@ -401,15 +395,44 @@ class CombinerCallback : public Resource::AsyncCallback {
   ResourceCombiner* combiner_;
   MessageHandler* message_handler_;
   UrlAsyncFetcher::Callback* callback_;
-  OutputResource* combination_;
-  ResourceCombiner::ResourceVector combine_resources_;
+  OutputResourcePtr combination_;
+  ResourceVector combine_resources_;
   Writer* writer_;
   ResponseHeaders* response_headers_;
+
+  DISALLOW_COPY_AND_ASSIGN(AggregateCombiner);
+};
+
+namespace {
+
+// The CombinerCallback must own a single input resource, so we need a
+// distinct one for each resource.  This delegates to an AggregateCombiner
+// to determine when all inputs are available and it's possible to process
+// the combination.
+class CombinerCallback : public Resource::AsyncCallback {
+ public:
+  CombinerCallback(const ResourcePtr& resource, AggregateCombiner* combiner)
+      : Resource::AsyncCallback(resource),
+        combiner_(combiner) {
+  }
+
+  virtual ~CombinerCallback() {
+  }
+
+  virtual void Done(bool success) {
+    combiner_->Done(success);
+    delete this;
+  }
+
+ private:
+  AggregateCombiner* combiner_;
 
   DISALLOW_COPY_AND_ASSIGN(CombinerCallback);
 };
 
-bool ResourceCombiner::Fetch(OutputResource* combination,
+}  // namespace
+
+bool ResourceCombiner::Fetch(const OutputResourcePtr& combination,
                              Writer* writer,
                              const RequestHeaders& request_header,
                              ResponseHeaders* response_headers,
@@ -426,7 +449,7 @@ bool ResourceCombiner::Fetch(OutputResource* combination,
       multipart_encoder.Decode(url_safe_id, &urls, NULL, message_handler)) {
     GoogleString url, decoded_resource;
     ret = true;
-    CombinerCallback* combiner = new CombinerCallback(
+    AggregateCombiner* combiner = new AggregateCombiner(
         this, message_handler, callback, combination, writer, response_headers);
 
     StringPiece root = gurl.AllExceptLeaf();
@@ -434,11 +457,12 @@ bool ResourceCombiner::Fetch(OutputResource* combination,
       GoogleString url = StrCat(root, urls[i]);
       // Safe since we use StrCat to absolutize the URL rather than
       // full resolve, so it will always be a subpath of root.
-      Resource* resource =
-          rewrite_driver_->CreateInputResourceAbsoluteUnchecked(url);
+      ResourcePtr resource(
+          rewrite_driver_->CreateInputResourceAbsoluteUnchecked(url));
       ret = combiner->AddResource(resource);
       if (ret) {
-        rewrite_driver_->ReadAsync(resource, combiner, message_handler);
+        rewrite_driver_->ReadAsync(new CombinerCallback(resource, combiner),
+                                   message_handler);
       }
     }
 
@@ -460,7 +484,6 @@ bool ResourceCombiner::Fetch(OutputResource* combination,
 }
 
 void ResourceCombiner::Clear() {
-  STLDeleteElements(&resources_);
   resources_.clear();
   multipart_encoder_urls_.clear();
 }

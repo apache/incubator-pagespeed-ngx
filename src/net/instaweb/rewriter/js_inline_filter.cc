@@ -62,12 +62,12 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
     // TODO(morlovich): Consider async/defer here; it may not be a good
     // idea to inline async scripts in particular
 
-    scoped_ptr<Resource> resource(CreateInputResourceAndReadIfCached(src));
+    ResourcePtr resource(CreateInputResourceAndReadIfCached(src));
     // TODO(jmaessen): Is the domain lawyer policy the appropriate one here?
     // Or do we still have to check for strict domain equivalence?
     // If so, add an inline-in-page policy to domainlawyer in some form,
     // as we make a similar policy decision in css_inline_filter.
-    if (resource != NULL && resource->ContentsValid()) {
+    if ((resource.get() != NULL) && resource->ContentsValid()) {
       StringPiece contents = resource->contents();
       // Only inline if it's small enough, and if it doesn't contain
       // "</script>" anywhere.  If we inline an external script containing

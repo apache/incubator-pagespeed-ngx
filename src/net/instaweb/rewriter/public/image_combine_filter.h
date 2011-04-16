@@ -50,7 +50,7 @@ class ImageCombineFilter : public RewriteFilter {
 
   static void Initialize(Statistics* statistics);
   virtual const char* Name() const { return "ImageCombine"; }
-  virtual bool Fetch(OutputResource* resource,
+  virtual bool Fetch(const OutputResourcePtr& resource,
                      Writer* writer,
                      const RequestHeaders& request_header,
                      ResponseHeaders* response_headers,

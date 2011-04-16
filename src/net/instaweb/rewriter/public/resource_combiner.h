@@ -29,6 +29,8 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -41,9 +43,7 @@ class CommonFilter;
 class ContentType;
 class HtmlElement;
 class MessageHandler;
-class OutputResource;
 class RequestHeaders;
-class Resource;
 class ResourceManager;
 class ResponseHeaders;
 class RewriteDriver;
@@ -85,7 +85,7 @@ class ResourceCombiner {
 
   virtual ~ResourceCombiner();
 
-  bool Fetch(OutputResource* resource,
+  bool Fetch(const OutputResourcePtr& resource,
              Writer* writer,
              const RequestHeaders& request_header,
              ResponseHeaders* response_headers,
@@ -104,7 +104,6 @@ class ResourceCombiner {
   // Returns the number of URLs that have been successfully added.
   int num_urls() const { return partnership_.num_urls(); }
 
-  typedef std::vector<Resource*> ResourceVector;
   const ResourceVector& resources() const { return resources_; }
 
   // Base common to all URLs. Always has a trailing slash.
@@ -124,13 +123,13 @@ class ResourceCombiner {
   // creating it if necessary.  Caller takes ownership.  Returns NULL if the
   // combination does not exist and cannot be created. Will not combine fewer
   // than 2 resources.
-  OutputResource* Combine(const ContentType& content_type,
-                          MessageHandler* handler);
+  OutputResourcePtr Combine(const ContentType& content_type,
+                            MessageHandler* handler);
 
   // Override this if your combination is not a matter of combining
   // text pieces (perhaps adjusted by WritePiece)
   virtual bool WriteCombination(const ResourceVector& combine_resources,
-                                OutputResource* combination,
+                                const OutputResourcePtr& combination,
                                 MessageHandler* handler);
 
   // Override this to alter how pieces are processed when included inside
@@ -147,7 +146,7 @@ class ResourceCombiner {
   RewriteDriver* const rewrite_driver_;
 
  private:
-  friend class CombinerCallback;
+  friend class AggregateCombiner;
 
   // Recomputes the leaf size if our base has changed
   void UpdateResolvedBase();
@@ -171,7 +170,7 @@ class ResourceCombiner {
                                   MessageHandler* handler);
 
   UrlPartnership partnership_;
-  std::vector<Resource*> resources_;
+  ResourceVector resources_;
   StringVector multipart_encoder_urls_;
   int prev_num_components_;
   int accumulated_leaf_size_;

@@ -43,7 +43,7 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   }
   virtual ~RewriteSingleResourceFilter();
 
-  virtual bool Fetch(OutputResource* output_resource,
+  virtual bool Fetch(const OutputResourcePtr& output_resource,
                      Writer* response_writer,
                      const RequestHeaders& request_header,
                      ResponseHeaders* response_headers,
@@ -158,7 +158,7 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   // updates the cache as appropriate. Does not call WriteUnoptimizable on
   // failure.
   RewriteResult RewriteLoadedResourceAndCacheIfOk(
-      const Resource* input_resource, OutputResource* output_resource);
+      const Resource* input_resource, const OutputResourcePtr& output_resource);
 
   // Records that rewrite of input -> output failed (either due to
   // unavailability of input or failed conversion).

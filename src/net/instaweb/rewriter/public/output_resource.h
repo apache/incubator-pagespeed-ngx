@@ -65,7 +65,6 @@ class OutputResource : public Resource {
                  const ContentType* type,
                  const RewriteOptions* options,
                  Kind kind);
-  ~OutputResource();
 
   virtual bool Load(MessageHandler* message_handler);
   virtual GoogleString url() const;
@@ -163,6 +162,10 @@ class OutputResource : public Resource {
 
   Kind kind() const { return kind_; }
 
+ protected:
+  virtual ~OutputResource();
+  REFCOUNT_FRIEND_DECLARATION(OutputResource);
+
  private:
   friend class ResourceManager;
   friend class ResourceManagerTest;
@@ -239,6 +242,8 @@ class OutputResource : public Resource {
 
   DISALLOW_COPY_AND_ASSIGN(OutputResource);
 };
+
+typedef RefCountedPtr<OutputResource> OutputResourcePtr;
 
 }  // namespace net_instaweb
 

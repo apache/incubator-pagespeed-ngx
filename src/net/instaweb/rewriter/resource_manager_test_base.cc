@@ -113,8 +113,8 @@ void ResourceManagerTestBase::DeleteFileIfExists(const GoogleString& filename) {
   }
 }
 
-Resource* ResourceManagerTestBase::CreateResource(const StringPiece& base,
-                                                  const StringPiece& url) {
+ResourcePtr ResourceManagerTestBase::CreateResource(const StringPiece& base,
+                                                    const StringPiece& url) {
   rewrite_driver_.SetBaseUrlForFetch(base);
   GoogleUrl base_url(base);
   GoogleUrl resource_url(base_url, url);

@@ -195,7 +195,7 @@ void CssCombineFilter::Flush() {
 void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
   if (CanRewrite()) {
     MessageHandler* handler = rewrite_driver_->message_handler();
-    scoped_ptr<OutputResource> combination(Combine(kContentTypeCss, handler));
+    OutputResourcePtr combination(Combine(kContentTypeCss, handler));
     if (combination.get() != NULL) {
       // Ideally like to have a data-driven service tell us which elements
       // should be combined together.  Note that both the resources and the
@@ -250,7 +250,7 @@ bool CssCombineFilter::CssCombiner::WritePiece(
   }
 }
 
-bool CssCombineFilter::Fetch(OutputResource* resource,
+bool CssCombineFilter::Fetch(const OutputResourcePtr& resource,
                              Writer* writer,
                              const RequestHeaders& request_header,
                              ResponseHeaders* response_headers,

@@ -83,7 +83,7 @@ void Resource::DetermineContentType() {
 // Resources which can fetch asynchronously should override this.
 void Resource::LoadAndCallback(AsyncCallback* callback,
                                MessageHandler* message_handler) {
-  callback->Done(Load(message_handler), this);
+  callback->Done(Load(message_handler));
 }
 
 Resource::AsyncCallback::~AsyncCallback() {

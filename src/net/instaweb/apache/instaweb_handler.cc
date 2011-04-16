@@ -332,7 +332,7 @@ apr_status_t save_url_hook(request_rec *request) {
         InstawebContext::Factory(request->server);
     RewriteDriver* rewrite_driver = factory->NewRewriteDriver();
     RewriteFilter* filter;
-    scoped_ptr<OutputResource> output_resource(
+    OutputResourcePtr output_resource(
         rewrite_driver->DecodeOutputResource(url, &filter));
     if (output_resource.get() != NULL) {
       bypass_mod_rewrite = true;

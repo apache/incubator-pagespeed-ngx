@@ -52,7 +52,6 @@
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -100,7 +99,7 @@ RewriteDriver::~RewriteDriver() {
 void RewriteDriver::Clear() {
   base_url_.Clear();
   CHECK(!base_url_.is_valid());
-  STLDeleteValues(&resource_map_);
+  resource_map_.clear();
 }
 
 const char* RewriteDriver::kPassThroughRequestAttributes[3] = {
@@ -392,58 +391,26 @@ Statistics* RewriteDriver::statistics() const {
   return (resource_manager_ == NULL) ? NULL : resource_manager_->statistics();
 }
 
-namespace {
-
-// Wraps an async fetcher callback, in order to delete the output
-// resource.
-class ResourceDeleterCallback : public UrlAsyncFetcher::Callback {
- public:
-  ResourceDeleterCallback(OutputResource* output_resource,
-                          UrlAsyncFetcher::Callback* callback,
-                          HTTPCache* http_cache,
-                          MessageHandler* message_handler)
-      : output_resource_(output_resource),
-        callback_(callback),
-        http_cache_(http_cache),
-        message_handler_(message_handler) {
-  }
-
-  virtual void Done(bool status) {
-    callback_->Done(status);
-    delete this;
-  }
-
- private:
-  scoped_ptr<OutputResource> output_resource_;
-  UrlAsyncFetcher::Callback* callback_;
-  HTTPCache* http_cache_;
-  MessageHandler* message_handler_;
-
-  DISALLOW_COPY_AND_ASSIGN(ResourceDeleterCallback);
-};
-
-}  // namespace
-
-OutputResource* RewriteDriver::DecodeOutputResource(const StringPiece& url,
-                                                    RewriteFilter** filter) {
+OutputResourcePtr RewriteDriver::DecodeOutputResource(const StringPiece& url,
+                                                      RewriteFilter** filter) {
   // First, we can't handle anything that's not a valid URL nor is named
   // properly as our resource.
   GoogleUrl gurl(url);
   if (!gurl.is_valid()) {
-    return NULL;
+    return OutputResourcePtr();
   }
 
   StringPiece name = gurl.LeafSansQuery();
   ResourceNamer namer;
   if (!namer.Decode(name)) {
-    return NULL;
+    return OutputResourcePtr();
   }
 
   // URLs without any hash are rejected as well, as they do not produce
   // OutputResources with a computable URL. (We do accept 'wrong' hashes since
   // they could come up legitimately under some asynchrony scenarios)
   if (namer.hash().empty()) {
-    return NULL;
+    return OutputResourcePtr();
   }
 
   // Now let's reject as mal-formed if the id string is not
@@ -468,7 +435,7 @@ OutputResource* RewriteDriver::DecodeOutputResource(const StringPiece& url,
     // TODO(jmarantz): add a unit-test to show serving outline-filter resources.
     kind = OutputResource::kOutlinedResource;
   } else {
-    return NULL;
+    return OutputResourcePtr();
   }
 
   // The RewriteOptions* is not supplied when creating an output-resource
@@ -476,15 +443,14 @@ OutputResource* RewriteDriver::DecodeOutputResource(const StringPiece& url,
   // domain sharding, which is a rewriting activity, not a fetching
   // activity.
   StringPiece base = gurl.AllExceptLeaf();
-  OutputResource* output_resource =
-      new OutputResource(this, base, namer, NULL, NULL, kind);
+  OutputResourcePtr output_resource(new OutputResource(
+      this, base, namer, NULL, NULL, kind));
 
   // We also reject any unknown extensions, which includes rejecting requests
   // with trailing junk. We do this now since OutputResource figures out
   // the type for us.
   if (output_resource->type() == NULL) {
-    delete output_resource;
-    output_resource = NULL;
+    output_resource.clear();
     *filter = NULL;
   }
 
@@ -503,13 +469,11 @@ bool RewriteDriver::FetchResource(
   // Note that this does permission checking and parsing of the url, but doesn't
   // actually fetch any data until we specifically ask it to.
   RewriteFilter* filter = NULL;
-  OutputResource* output_resource = DecodeOutputResource(url, &filter);
+  OutputResourcePtr output_resource(DecodeOutputResource(url, &filter));
 
-  if (output_resource != NULL) {
+  if (output_resource.get() != NULL) {
     handled = true;
-    callback = new ResourceDeleterCallback(output_resource, callback,
-                                           resource_manager_->http_cache(),
-                                           message_handler());
+
     // None of our resources ever change -- the hash of the content is embedded
     // in the filename.  This is why we serve them with very long cache
     // lifetimes.  However, when the user presses Reload, the browser may
@@ -523,7 +487,7 @@ bool RewriteDriver::FetchResource(
       callback->Done(true);
       queued = true;
     } else if (FetchExtantOutputResourceOrLock(
-        output_resource, writer, response_headers)) {
+        output_resource.get(), writer, response_headers)) {
       callback->Done(true);
       queued = true;
       if (cached_resource_fetches_ != NULL) {
@@ -617,14 +581,14 @@ bool RewriteDriver::FetchExtantOutputResource(
 
 // Constructs an output resource corresponding to the specified input resource
 // and encoded using the provided encoder.
-OutputResource* RewriteDriver::CreateOutputResourceFromResource(
+OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
     const StringPiece& filter_id,
     const ContentType* content_type,
     const UrlSegmentEncoder* encoder,
     const ResourceContext* data,
     Resource* input_resource,
     OutputResource::Kind kind) {
-  OutputResource* result = NULL;
+  OutputResourcePtr result;
   if (input_resource != NULL) {
     // TODO(jmarantz): It would be more efficient to pass in the base
     // document GURL or save that in the input resource.
@@ -636,15 +600,15 @@ OutputResource* RewriteDriver::CreateOutputResourceFromResource(
       StringVector v;
       v.push_back(mapped_gurl->LeafWithQuery().as_string());
       encoder->Encode(v, data, &name);
-      result = CreateOutputResourceWithPath(
+      result.reset(CreateOutputResourceWithPath(
           mapped_gurl->AllExceptLeaf(),
-          filter_id, name, content_type, kind);
+          filter_id, name, content_type, kind));
     }
   }
   return result;
 }
 
-OutputResource* RewriteDriver::CreateOutputResourceWithPath(
+OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
     const StringPiece& path,
     const StringPiece& filter_id,
     const StringPiece& name,
@@ -658,14 +622,14 @@ OutputResource* RewriteDriver::CreateOutputResourceWithPath(
     // make this convention consistent and fix all code.
     full_name.set_ext(content_type->file_extension() + 1);
   }
-  OutputResource* resource = NULL;
+  OutputResourcePtr resource;
 
   int leaf_size = full_name.EventualSize(*resource_manager_->hasher());
   int url_size = path.size() + leaf_size;
   if ((leaf_size <= options_.max_url_segment_size()) &&
       (url_size <= options_.max_url_size())) {
-    resource = new OutputResource(
-        this, path, full_name, content_type, &options_, kind);
+    resource.reset(new OutputResource(
+        this, path, full_name, content_type, &options_, kind));
 
     // Determine whether this output resource is still valid by looking
     // up by hash in the http cache.  Note that this cache entry will
@@ -698,8 +662,8 @@ bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
   return ret;
 }
 
-Resource* RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
-  Resource* resource = NULL;
+ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
+  ResourcePtr resource;
   bool may_rewrite = false;
   if (base_url_.is_valid()) {
     may_rewrite = MayRewriteUrl(base_url_, input_url);
@@ -721,7 +685,7 @@ Resource* RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   return resource;
 }
 
-Resource* RewriteDriver::CreateInputResourceAbsoluteUnchecked(
+ResourcePtr RewriteDriver::CreateInputResourceAbsoluteUnchecked(
     const StringPiece& absolute_url) {
   GoogleUrl url(absolute_url);
   if (!url.is_valid()) {
@@ -730,18 +694,18 @@ Resource* RewriteDriver::CreateInputResourceAbsoluteUnchecked(
     // and end up with an invalid GURL.
     message_handler()->Message(kInfo, "Invalid resource url '%s'",
                                url.spec_c_str());
-    return NULL;
+    return ResourcePtr();
   }
   return CreateInputResourceUnchecked(url);
 }
 
-Resource* RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
+ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
   StringPiece url_string = url.Spec();
-  Resource* resource = NULL;
+  ResourcePtr resource;
 
   if (url.SchemeIs("data")) {
     resource = DataUrlInputResource::Make(url_string, this);
-    if (resource == NULL) {
+    if (resource.get() == NULL) {
       // Note: Bad user-content can leave us here.
       message_handler()->Message(kWarning, "Badly formatted data url '%s'",
                                  url_string.as_string().c_str());
@@ -752,7 +716,7 @@ Resource* RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
 
     // Note: type may be NULL if url has an unexpected or malformed extension.
     const ContentType* type = NameExtensionToContentType(url_string);
-    resource = new UrlInputResource(this, &options_, type, url_string);
+    resource.reset(new UrlInputResource(this, &options_, type, url_string));
   } else {
     // Note: Bad user-content can leave us here.
     message_handler()->Message(kWarning, "Unsupported scheme '%s' for url '%s'",
@@ -762,24 +726,26 @@ Resource* RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
   return resource;
 }
 
-void RewriteDriver::ReadAsync(Resource* resource,
-                              Resource::AsyncCallback* callback,
+void RewriteDriver::ReadAsync(Resource::AsyncCallback* callback,
                               MessageHandler* handler) {
   HTTPCache::FindResult result = HTTPCache::kNotFound;
 
   // If the resource is not already loaded, and this type of resource (e.g.
   // URL vs File vs Data) is cacheable, then try to load it.
+  ResourcePtr resource = callback->resource();
   if (resource->loaded()) {
     result = HTTPCache::kFound;
   } else if (resource->IsCacheable()) {
+    // TODO(jmarantz): use the non-blocking form of 'Find' and call
+    // the callback when done.
     result = resource_manager_->http_cache()->Find(
         resource->url(), &resource->value_, resource->metadata(), handler);
   }
 
   switch (result) {
     case HTTPCache::kFound:
-      resource_manager_->RefreshIfImminentlyExpiring(resource, handler);
-      callback->Done(true, resource);
+      resource_manager_->RefreshIfImminentlyExpiring(resource.get(), handler);
+      callback->Done(true);
       break;
     case HTTPCache::kRecentFetchFailedDoNotRefetch:
       // TODO(jmarantz): in this path, should we try to fetch again
@@ -792,7 +758,7 @@ void RewriteDriver::ReadAsync(Resource* resource,
       // The "good" news is that if the admin is willing to crank up
       // logging to 'info' then http_cache.cc will log the
       // 'remembered' failure.
-      callback->Done(false, resource);
+      callback->Done(false);
       break;
     case HTTPCache::kNotFound:
       // If not, load it asynchronously.
@@ -802,8 +768,8 @@ void RewriteDriver::ReadAsync(Resource* resource,
   // TODO(sligocki): Do we need to call DetermineContentType like below?
 }
 
-bool RewriteDriver::ReadIfCached(Resource* resource) {
-  return ReadIfCachedWithStatus(resource) == HTTPCache::kFound;
+bool RewriteDriver::ReadIfCached(const ResourcePtr& resource) {
+  return (ReadIfCachedWithStatus(resource.get()) == HTTPCache::kFound);
 }
 
 HTTPCache::FindResult RewriteDriver::ReadIfCachedWithStatus(
@@ -884,14 +850,21 @@ void RewriteDriver::Scan() {
   set_first_filter(1);
 }
 
-Resource* RewriteDriver::GetScannedInputResource(const StringPiece& url) const {
+ResourcePtr RewriteDriver::FindResource(const StringPiece& url)
+    const {
   GoogleString url_str(url.data(), url.size());
-  Resource* resource = NULL;
+  ResourcePtr resource;
   ResourceMap::const_iterator iter = resource_map_.find(url_str);
   if (iter != resource_map_.end()) {
     resource = iter->second;
   }
   return resource;
+}
+
+void RewriteDriver::RememberResource(const StringPiece& url,
+                                     const ResourcePtr& resource) {
+  GoogleString url_str(url.data(), url.size());
+  resource_map_[url_str] = resource;
 }
 
 RewriteFilter* RewriteDriver::FindFilter(const StringPiece& id) const {
@@ -901,23 +874,6 @@ RewriteFilter* RewriteDriver::FindFilter(const StringPiece& id) const {
     filter = p->second;
   }
   return filter;
-}
-
-Resource* RewriteDriver::FindResource(GoogleString str) const {
-  Resource* resource = NULL;
-  const ResourceMap::const_iterator iter = resource_map_.find(str);
-  if (iter != resource_map_.end()) {
-    resource = iter->second;
-  }
-  return resource;
-}
-
-void RewriteDriver::RememberResource(GoogleString str, Resource* resource) {
-  Resource* old_resource = resource_map_[str];
-  if (old_resource != NULL) {
-    delete old_resource;
-  }
-  resource_map_[str] = resource;
 }
 
 }  // namespace net_instaweb

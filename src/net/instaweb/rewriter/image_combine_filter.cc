@@ -408,7 +408,7 @@ class ImageCombineFilter::Combiner
 
   virtual bool WriteCombination(
       const ResourceVector& combine_resources,
-      OutputResource* combination,
+      const OutputResourcePtr& combination,
       MessageHandler* handler) {
     spriter::ImageSpriter spriter(&library_);
 
@@ -421,7 +421,7 @@ class ImageCombineFilter::Combiner
 
     int64 min_origin_expiration_time_ms = 0;
     for (int i = 0, n = combine_resources.size(); i < n; ++i) {
-      Resource* resource = combine_resources[i];
+      const ResourcePtr& resource = combine_resources[i];
       int64 expire_time_ms = resource->CacheExpirationTimeMs();
       if ((min_origin_expiration_time_ms == 0) ||
           (expire_time_ms < min_origin_expiration_time_ms)) {
@@ -449,7 +449,8 @@ class ImageCombineFilter::Combiner
 
     if (!resource_manager_->Write(HttpStatus::kOK,
                                   result_image->image()->Contents(),
-            combination, min_origin_expiration_time_ms, handler)) {
+                                  combination.get(),
+                                  min_origin_expiration_time_ms, handler)) {
       handler->Error(UrlSafeId().c_str(), 0,
                      "Could not write sprited resource.");
       return false;
@@ -460,7 +461,7 @@ class ImageCombineFilter::Combiner
   bool Realize(MessageHandler* handler) {
     // TODO(abliss): If we encounter the same combination in a different order,
     // we'll needlessly generate a new sprite.
-    scoped_ptr<OutputResource> combination(Combine(kContentTypePng, handler));
+    OutputResourcePtr combination(Combine(kContentTypePng, handler));
     if (combination.get() == NULL) {
       return false;
     }
@@ -539,12 +540,12 @@ void ImageCombineFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kImageFileCountReduction);
 }
 
-bool ImageCombineFilter::Fetch(OutputResource* resource,
-                             Writer* writer,
-                             const RequestHeaders& request_header,
-                             ResponseHeaders* response_headers,
-                             MessageHandler* message_handler,
-                             UrlAsyncFetcher::Callback* callback) {
+bool ImageCombineFilter::Fetch(const OutputResourcePtr& resource,
+                               Writer* writer,
+                               const RequestHeaders& request_header,
+                               ResponseHeaders* response_headers,
+                               MessageHandler* message_handler,
+                               UrlAsyncFetcher::Callback* callback) {
   return combiner_->Fetch(resource, writer, request_header, response_headers,
                           message_handler, callback);
 }
