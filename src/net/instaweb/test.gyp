@@ -82,6 +82,7 @@
         'http/request_headers_test.cc',
         'http/response_headers_test.cc',
         'http/sync_fetcher_adapter_test.cc',
+        'http/url_async_fetcher_test.cc',
         'http/wait_url_async_fetcher_test.cc',
         'rewriter/cache_extender_test.cc',
         'rewriter/collapse_whitespace_filter_test.cc',

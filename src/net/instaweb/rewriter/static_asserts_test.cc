@@ -21,13 +21,22 @@
 // For now this just makes sure that some things are constants so they can be
 // used in initializers safely.
 
-#include "net/instaweb/rewriter/public/image.h"
-
+#include "base/basictypes.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 namespace {
+
+// The COMPILE_ASSERTs and enum MustBeConstants are both testing the same thing.
+// That Timer::k... are compile-time constants. We include both tests because
+// there is enough magic to warrant two different approaches.
+COMPILE_ASSERT(Timer::kSecondMs == 1000, seconds_literal);
+COMPILE_ASSERT(Timer::kSecondUs == 1000 * 1000, seconds_us_literal);
+COMPILE_ASSERT(Timer::kSecondNs == 1000 * 1000 * 1000, seconds_ns_literal);
+COMPILE_ASSERT(Timer::kMinuteMs == 60 * 1000, minutes_literal);
+COMPILE_ASSERT(Timer::kHourMs   == 60 * 60 * 1000, hours_literal);
 
 // enumerators can only be initialized to compile-time constants, so this
 // would not build if any of these weren't compile-time defined.

@@ -47,14 +47,6 @@ class UrlFetcher {
                                  ResponseHeaders* response_headers,
                                  Writer* response_writer,
                                  MessageHandler* message_handler) = 0;
-
-  // Convenience method for fetching URL into a string, with no headers in
-  // our out.  This is primarily for upward compatibility.
-  //
-  // TODO(jmarantz): change callers to use StreamingFetchUrl and remove this.
-  bool FetchUrl(const GoogleString& url,
-                GoogleString* content,
-                MessageHandler* message_handler);
 };
 
 }  // namespace net_instaweb

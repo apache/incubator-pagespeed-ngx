@@ -135,16 +135,15 @@ bool check_pagespeed_applicable(request_rec* request,
   // We can't operate on Content-Ranges.
   if (apr_table_get(request->headers_out, "Content-Range") != NULL) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                  "Content-Range is not available");
+                  "Request not rewritten because: header Content-Range set.");
     return false;
   }
 
   // Only rewrite HTML-like content.
   if (!content_type.IsHtmlLike()) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                  "Content-Type=%s Host=%s Uri=%s",
-                  request->content_type, request->hostname,
-                  request->unparsed_uri);
+                  "Request not rewritten because: request->content_type does "
+                  "not appear to be HTML (was %s)", request->content_type);
     return false;
   }
 
@@ -159,8 +158,9 @@ bool check_pagespeed_applicable(request_rec* request,
   // TODO(abliss): unify this string literal with the one in
   // serf_url_async_fetcher.cc
   if ((user_agent != NULL) && strstr(user_agent, "mod_pagespeed")) {
-    ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
-                  "Not rewriting mod_pagespeed's own fetch");
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                  "Request not rewritten because: User-Agent appears to be "
+                  "mod_pagespeed (was %s)", user_agent);
     return false;
   }
 
@@ -402,7 +402,8 @@ void MergeOptions(const RewriteOptions& a, const RewriteOptions& b,
 }
 
 // Builds a new context for an HTTP request, returning NULL if we decide
-// that we should not handle the request.
+// that we should not handle the request for various reasons.
+// TODO(sligocki): Move most of these checks into non-Apache specific code.
 InstawebContext* build_context_for_request(request_rec* request) {
   ApacheConfig* config = static_cast<ApacheConfig*>
       ap_get_module_config(request->per_dir_config, &pagespeed_module);
@@ -424,8 +425,15 @@ InstawebContext* build_context_for_request(request_rec* request) {
     // TODO(jmarantz): consider adding Debug message if unparsed_uri is NULL,
     // possibly of request->the_request which was non-null in the case where
     // I found this in the debugger.
+    ap_log_rerror(APLOG_MARK, APLOG_ERR, APR_SUCCESS, request,
+                  "Request not rewritten because: "
+                  "request->unparsed_uri == NULL");
     return NULL;
   }
+
+  ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                "ModPagespeed OutputFilter called for request %s",
+                request->unparsed_uri);
 
   // Requests with a non-NULL main pointer are internal requests created by
   // apache (or other modules in apache).  We don't need to process them.
@@ -435,19 +443,17 @@ InstawebContext* build_context_for_request(request_rec* request) {
   // See http://httpd.apache.org/dev/apidoc/apidoc_request_rec.html for
   // request documentation.
   if (request->main != NULL) {
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                  "Request not rewritten because: request->main != NULL");
     return NULL;
   }
-
-  ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                "ModPagespeed OutputFilter called for request %s",
-                request->unparsed_uri);
 
   // TODO(sligocki): Should we rewrite any other statuses?
   // Maybe 206 Partial Content?
   if (request->status != 200) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                  "ModPagespeed not rewriting HTML because status is %d",
-                  request->status);
+                  "Request not rewritten because: request->status != 200 "
+                  "(was %d)", request->status);
     return NULL;
   }
 
@@ -459,10 +465,14 @@ InstawebContext* build_context_for_request(request_rec* request) {
   const ContentType* content_type =
       MimeTypeToContentType(request->content_type);
   if (content_type == NULL) {
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                  "Request not rewritten because: request->content_type was "
+                  "not a recognized type (was %s)", request->content_type);
     return NULL;
   }
 
   // Check if pagespeed optimization is applicable.
+  // TODO(sligocki): Put other checks in this function.
   if (!check_pagespeed_applicable(request, *content_type)) {
     return NULL;
   }
@@ -473,8 +483,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   // optimized by mod_pagespeed.
   if (apr_table_get(request->headers_out, kModPagespeedHeader) != NULL) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                  "URL %s already has been processed by mod_pagespeed",
-                  request->unparsed_uri);
+                  "Request not rewritten because: X-Mod-Pagespeed header set.");
     return NULL;
   }
 
@@ -494,11 +503,15 @@ InstawebContext* build_context_for_request(request_rec* request) {
   // Is ModPagespeed turned off? We check after parsing query params so that
   // they can override .conf settings.
   if (!options->enabled()) {
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                  "Request not rewritten because: ModPagespeed off");
     return NULL;
   }
 
-  // Do ModPagespeedDisallow restrict us from rewriting this URL?
+  // Do ModPagespeedDisallow statements restrict us from rewriting this URL?
   if (!options->IsAllowed(absolute_url)) {
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                  "Request not rewritten because: ModPagespeedDisallow");
     return NULL;
   }
 
@@ -506,8 +519,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
       request, *content_type, factory, absolute_url,
       use_custom_options, *options);
 
-  InstawebContext::ContentEncoding encoding =
-      context->content_encoding();
+  InstawebContext::ContentEncoding encoding = context->content_encoding();
   if ((encoding == InstawebContext::kGzip) ||
       (encoding == InstawebContext::kDeflate)) {
     // Unset the content encoding because the InstawebContext will decode the
@@ -516,6 +528,11 @@ InstawebContext* build_context_for_request(request_rec* request) {
     apr_table_unset(request->err_headers_out, HttpAttributes::kContentEncoding);
   } else if (encoding == InstawebContext::kOther) {
     // We don't know the encoding, so we cannot rewrite the HTML.
+    const char* encoding = apr_table_get(request->headers_out,
+                                         HttpAttributes::kContentEncoding);
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                  "Request not rewritten because: Content-Encoding is "
+                  "unsupported (was %s)", encoding);
     return NULL;
   }
 
@@ -537,6 +554,9 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   // Make sure compression is enabled for this response.
   ap_add_output_filter("DEFLATE", NULL, request, request->connection);
+
+  ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                "Request accepted.");
   return context;
 }
 

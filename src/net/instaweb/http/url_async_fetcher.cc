@@ -17,8 +17,11 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
+
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/time_util.h"
 
 namespace net_instaweb {
 
@@ -34,6 +37,73 @@ bool UrlAsyncFetcher::Callback::EnableThreaded() const {
   // Most fetcher callbacks are not prepared to be called from a different
   // thread.
   return false;
+}
+
+UrlAsyncFetcher::ConditionalCallback::~ConditionalCallback() {
+}
+
+namespace {
+
+// Adaptor from ConditionalCallback to UrlAsyncFetcher::Callback.
+// Forwards results of a StreamingFetch to a ConditionalCallback
+// figuring out sematics of whether the resource was updated or not
+// based on status-code.
+class ConditionalFetchCallback : public UrlAsyncFetcher::Callback {
+ public:
+  ConditionalFetchCallback(UrlAsyncFetcher::ConditionalCallback* base_callback,
+                           const ResponseHeaders* response_headers)
+      : base_callback_(base_callback),
+        response_headers_(response_headers) {}
+  virtual ~ConditionalFetchCallback() {}
+
+  virtual void Done(bool success) {
+    UrlAsyncFetcher::FetchStatus status;
+    if (success) {
+      if (response_headers_->status_code() == HttpStatus::kNotModified) {
+        status = UrlAsyncFetcher::kNotModifiedResource;
+      } else {
+        status = UrlAsyncFetcher::kModifiedResource;
+      }
+    } else {
+      status = UrlAsyncFetcher::kFetchFailure;
+    }
+    base_callback_->Done(status);
+    delete this;
+  }
+
+  // TODO(sligocki): See if we can set EnableThreaded() = True
+
+ private:
+  UrlAsyncFetcher::ConditionalCallback* base_callback_;
+  const ResponseHeaders* response_headers_;
+
+  DISALLOW_COPY_AND_ASSIGN(ConditionalFetchCallback);
+};
+
+}  // namespace
+
+bool UrlAsyncFetcher::ConditionalFetch(const GoogleString& url,
+                                       int64 mod_time_ms,
+                                       const RequestHeaders& request_headers,
+                                       ResponseHeaders* response_headers,
+                                       Writer* response_writer,
+                                       MessageHandler* message_handler,
+                                       ConditionalCallback* base_callback) {
+  // Default implementation just sets the If-Modified-Since GET header.
+  RequestHeaders conditional_headers;
+  conditional_headers.CopyFrom(request_headers);
+  GoogleString mod_time_string;
+  if (ConvertTimeToString(mod_time_ms, &mod_time_string)) {
+    conditional_headers.Add(HttpAttributes::kIfModifiedSince, mod_time_string);
+  } else {
+    message_handler->Message(kError, "Invalid time value %s",
+                             Integer64ToString(mod_time_ms).c_str());
+  }
+  Callback* sub_callback =
+      new ConditionalFetchCallback(base_callback, response_headers);
+  return StreamingFetch(url, conditional_headers,
+                        response_headers, response_writer,
+                        message_handler, sub_callback);
 }
 
 }  // namespace instaweb
