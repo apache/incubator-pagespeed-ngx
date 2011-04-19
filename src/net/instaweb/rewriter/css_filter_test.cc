@@ -183,6 +183,9 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // See http://dimox.net/personal-css-hacks-for-ie6-ie7-ie8/
     "a { color: red\\0/; }",
 
+    // Parameterized pseudo-selector.
+    "div:nth-child(1n) { color: red; }",
+
     // Should fail (bad syntax):
     "a { font:bold verdana 10px; }",
     };

@@ -1433,6 +1433,14 @@ TEST_F(ParserTest, SelectorError) {
   scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
   EXPECT_EQ(0, stylesheet->rulesets().size());
   EXPECT_EQ(Parser::kSelectorError, p.errors_seen_mask());
+
+  Parser p2("div:nth-child(1n) { color: red; }");
+  stylesheet.reset(p2.ParseStylesheet());
+  EXPECT_EQ(Parser::kSelectorError, p2.errors_seen_mask());
+  // Note: We fail to parse the (1n). If this is fixed, this test should be
+  // updated accordingly.
+  EXPECT_EQ("/* AUTHOR */\n\ndiv:nth-child {color: #ff0000}\n",
+            stylesheet->ToString());
 }
 
 TEST_F(ParserTest, MediaError) {

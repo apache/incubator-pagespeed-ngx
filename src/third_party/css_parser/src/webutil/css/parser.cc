@@ -1493,6 +1493,8 @@ SimpleSelector* Parser::ParseSimpleSelector() {
       UnicodeText pseudoclass = ParseIdent();
       // FIXME(yian): skip constructs "(en)" in lang(en) for now.
       if (in_ < end_ && *in_ == '(') {
+        ReportParsingError(kSelectorError,
+                           "Cannot parse parameters for pseudoclass.");
         in_++;
         SkipSpace();
         ParseIdent();
@@ -1576,7 +1578,7 @@ SimpleSelectors* Parser::ParseSimpleSelectors(bool expecting_combinator) {
   }
 
   if (selectors->size() > 0 &&  // at least one simple selector stored
-      in_ == oldin &&         // the last NULL does not make progress
+      in_ == oldin &&           // the last NULL does not make progress
       AtValidSimpleSelectorsTerminator())  // stop at a valid terminator
     return selectors.release();
 
