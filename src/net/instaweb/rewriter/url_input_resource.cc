@@ -108,8 +108,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
         // pointing to the origin URL's hostname.
         GoogleUrl gurl(url());
         if (gurl.is_valid()) {
-          request_headers.Add(HttpAttributes::kHost,
-                              gurl.Host().as_string().c_str());
+          request_headers.Add(HttpAttributes::kHost, gurl.Host());
         }
       }
       ret = fetcher->StreamingFetch(

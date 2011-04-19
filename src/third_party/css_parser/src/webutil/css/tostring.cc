@@ -115,7 +115,7 @@ string Value::ToString() const {
       return StringPrintf("\"%s\"",
                           CSSEscapeString(GetStringValue()).c_str());
     case IDENT:
-      return CSSEscapeString(GetIdentifierText()).c_str();
+      return CSSEscapeString(GetIdentifierText());
     case UNKNOWN:
       return "UNKNOWN";
     case DEFAULT:

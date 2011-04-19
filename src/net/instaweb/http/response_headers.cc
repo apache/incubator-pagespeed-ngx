@@ -292,7 +292,7 @@ void ResponseHeaders::UpdateDateHeader(const StringPiece& attr, int64 date_ms) {
   RemoveAll(attr);
   GoogleString buf;
   if (ConvertTimeToString(date_ms, &buf)) {
-    Add(attr, buf.c_str());
+    Add(attr, buf);
   }
 }
 

@@ -166,6 +166,7 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                                              MessageHandler* handler) {
   image_combiner_->Reset();
   bool edited = false;
+  bool spriting_ok = driver_->options()->Enabled(RewriteOptions::kSpriteImages);
   int64 expire_at_ms = kint64max;
   if (RewritesEnabled()) {
     handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
@@ -175,11 +176,18 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
          ruleset_iter != rulesets.end(); ++ruleset_iter) {
       Css::Ruleset* ruleset = *ruleset_iter;
       Css::Declarations& decls = ruleset->mutable_declarations();
+      bool background_position_found = false;
+      bool background_image_found = false;
       for (Css::Declarations::iterator decl_iter = decls.begin();
            decl_iter != decls.end(); ++decl_iter) {
         Css::Declaration* decl = *decl_iter;
         // Only edit image declarations.
         switch (decl->prop()) {
+          case Css::Property::BACKGROUND_POSITION:
+          case Css::Property::BACKGROUND_POSITION_X:
+          case Css::Property::BACKGROUND_POSITION_Y:
+            background_position_found = true;
+            break;
           case Css::Property::BACKGROUND:
           case Css::Property::BACKGROUND_IMAGE:
           case Css::Property::LIST_STYLE:
@@ -192,6 +200,7 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                  value_index++) {
               Css::Value* value = values->at(value_index);
               if (value->GetLexicalUnitType() == Css::Value::URI) {
+                background_image_found = true;
                 GoogleString rel_url =
                     UnicodeTextToUTF8(value->GetStringValue());
                 handler->Message(kInfo, "Found image URL %s", rel_url.c_str());
@@ -199,8 +208,7 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                 // TODO(abliss): only do this resolution once.
                 const GoogleUrl original_url(base_url, rel_url);
                 TimedBool result = {kint64max, false};
-                if (driver_->options()->Enabled(
-                        RewriteOptions::kSpriteImages)) {
+                if (spriting_ok) {
                   result = image_combiner_->AddCssBackground(
                       original_url, &decls, value, handler);
                 }
@@ -247,13 +255,23 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
             break;
         }
       }
+      // All the declarations in this ruleset have been parsed.
+      if (spriting_ok && background_position_found && !background_image_found) {
+        // A ruleset that contains a background-position but no background image
+        // is a signal that we should not be spriting.
+        handler->Message(kInfo,
+                         "Lone background-position found: Cannot sprite.");
+        spriting_ok = false;
+      }
     }
   } else {
     handler->Message(kInfo, "Image rewriting and cache extension not enabled, "
                      "so not rewriting images in CSS in %s",
                      base_url.spec_c_str());
   }
-  edited |= image_combiner_->DoCombine(handler);
+  if (spriting_ok) {
+    edited |= image_combiner_->DoCombine(handler);
+  }
   TimedBool ret = {expire_at_ms, edited};
   return ret;
 }
