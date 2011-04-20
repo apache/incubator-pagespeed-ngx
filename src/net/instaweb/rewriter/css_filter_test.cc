@@ -188,6 +188,8 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
 
     // Should fail (bad syntax):
     "a { font:bold verdana 10px; }",
+    "}}",
+    "a { color: red; }}}",
     };
 
   for (int i = 0; i < arraysize(fail_examples); ++i) {
@@ -392,9 +394,6 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     { "a { font-family: Arial; }",
       "a{font-family:Arial}" },
 
-    // TODO(sligocki): This should raise an error and fail to rewrite.
-    { "}}", "" },
-
     // Don't drop precision on large integers (this is 2^31 + 1 which is
     // just larger than larges z-index accepted by chrome, 2^31 - 1).
     { "#foo { z-index: 2147483649; }",
@@ -455,12 +454,12 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   // actually expands the statement is not considered an error.)
 
   // When we force always_rewrite_css, we allow rewriting something to nothing.
-  // Note: when this example is fixed in the parser, this test will break :/
   options_.set_always_rewrite_css(true);
-  ValidateRewrite("contracting_example",     "}}", "");
+  ValidateRewrite("contracting_example",     "  ", "");
   // With it set false, we do not allow something to be minified to nothing.
+  // Note: We may allow this in the future if contents are all whitespace.
   options_.set_always_rewrite_css(false);
-  ValidateRewrite("non_contracting_example", "}}", "}}",
+  ValidateRewrite("non_contracting_example", "  ", "  ",
                   kExpectNoChange | kExpectFailure);
 }
 

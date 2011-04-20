@@ -48,6 +48,7 @@ const uint64 Parser::kSelectorError;
 const uint64 Parser::kFunctionError;
 const uint64 Parser::kMediaError;
 const uint64 Parser::kCounterError;
+const uint64 Parser::kHtmlCommentError;
 
 
 // Using isascii with signed chars is unfortunately undefined.
@@ -1611,6 +1612,8 @@ Selectors* Parser::ParseSelectors() {
       case ',':
         if (selector->size() == 0) {
           success = false;
+          ReportParsingError(kSelectorError,
+                             "Could not parse ruleset: unexpected ,");
         } else {
           selector = new Selector();
           selectors->push_back(selector);
@@ -1624,8 +1627,11 @@ Selectors* Parser::ParseSelectors() {
           = ParseSimpleSelectors(expecting_combinator);
         if (!simple_selectors) {
           success = false;
-          if (in_ == oldin)
+          if (in_ == oldin) {
+            ReportParsingError(kSelectorError, StringPrintf(
+                "Could not parse selector: illegal char %c", *in_));
             in_++;
+          }
         } else {
           selector->push_back(simple_selectors);
         }
@@ -1830,16 +1836,23 @@ Stylesheet* Parser::ParseRawStylesheet() {
   Stylesheet* stylesheet = new Stylesheet();
   while (in_ < end_) {
     switch (*in_) {
+      // HTML-style comments are not allowed in CSS.
+      // In fact, "<!--" and "-->" are ignored when parsing CSS.
+      // Probably a legacy from when browsers didn't support <style> tags.
       case '<':
         in_++;
         if (end_ - in_ >= 3 && memcmp(in_, "!--", 3) == 0) {
           in_ += 3;
+        } else {
+          ReportParsingError(kHtmlCommentError, "< without following !--");
         }
         break;
       case '-':
         in_++;
         if (end_ - in_ >= 2 && memcmp(in_, "->", 2) == 0) {
           in_ += 2;
+        } else {
+          ReportParsingError(kHtmlCommentError, "- without following ->");
         }
         break;
       case '@':
@@ -1848,8 +1861,11 @@ Stylesheet* Parser::ParseRawStylesheet() {
       default: {
         const char* oldin = in_;
         scoped_ptr<Ruleset> ruleset(ParseRuleset());
-        if (!ruleset.get() && oldin == in_)
+        if (!ruleset.get() && oldin == in_) {
+          ReportParsingError(kSelectorError, StringPrintf(
+              "Could not parse ruleset: illegal char %c", *in_));
           in_++;
+        }
         if (ruleset.get())
           stylesheet->mutable_rulesets().push_back(ruleset.release());
         break;
@@ -1857,6 +1873,9 @@ Stylesheet* Parser::ParseRawStylesheet() {
     }
     SkipSpace();
   }
+
+  DCHECK(Done()) << "Finished parsing before end of document.";
+
   return stylesheet;
 }
 

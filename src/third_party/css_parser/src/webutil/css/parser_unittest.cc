@@ -1441,6 +1441,11 @@ TEST_F(ParserTest, SelectorError) {
   // updated accordingly.
   EXPECT_EQ("/* AUTHOR */\n\ndiv:nth-child {color: #ff0000}\n",
             stylesheet->ToString());
+
+  Parser p3("}}");
+  stylesheet.reset(p3.ParseStylesheet());
+  EXPECT_EQ(0, stylesheet->rulesets().size());
+  EXPECT_EQ(Parser::kSelectorError, p3.errors_seen_mask());
 }
 
 TEST_F(ParserTest, MediaError) {
@@ -1448,6 +1453,29 @@ TEST_F(ParserTest, MediaError) {
   scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
   EXPECT_EQ(0, stylesheet->rulesets().size());
   EXPECT_EQ(Parser::kMediaError, p.errors_seen_mask());
+}
+
+TEST_F(ParserTest, HtmlCommentError) {
+  Parser good("<!-- a { color: red } -->");
+  scoped_ptr<Stylesheet> stylesheet(good.ParseStylesheet());
+  EXPECT_EQ(Parser::kNoError, good.errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n\na {color: #ff0000}\n", stylesheet->ToString());
+
+  const char* bad_strings[] = {
+    "<    a { color: red } -->",
+    "<!   a { color: red } -->",
+    "<!-  a { color: red } -->",
+    "<!-- a { color: red } --",
+    "<!-- a { color: red } ->",
+    "<!-- a { color: red } -",
+    "<>a { color: red }",
+    };
+
+  for (int i = 0; i < arraysize(bad_strings); ++i) {
+    Parser bad(bad_strings[i]);
+    stylesheet.reset(bad.ParseStylesheet());
+    EXPECT_TRUE(Parser::kHtmlCommentError & bad.errors_seen_mask());
+  }
 }
 
 TEST_F(ParserTest, AcceptCorrectValues) {
