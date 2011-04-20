@@ -38,6 +38,10 @@ void SharedMemLockManagerTestBase::SetUp() {
   EXPECT_TRUE(root_lock_manager_->Initialize());
 }
 
+void SharedMemLockManagerTestBase::TearDown() {
+  root_lock_manager_->GlobalCleanup(&handler_);
+}
+
 bool SharedMemLockManagerTestBase::CreateChild(TestMethod method) {
   MethodCallback* callback = new MethodCallback(this, method);
   return test_env_->CreateChild(callback);
