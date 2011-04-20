@@ -49,18 +49,6 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
       message_handler_(NULL) { }
   virtual ~UrlResourceFetchCallback() {}
 
-  void AddToCache(bool success) {
-    ResponseHeaders* meta_data = response_headers();
-    if (success && !meta_data->IsErrorStatus()
-        && !http_cache()->IsAlreadyExpired(*meta_data)) {
-      HTTPValue* value = http_value();
-      value->SetHeaders(meta_data);
-      http_cache()->Put(url(), value, message_handler_);
-    } else {
-      http_cache()->RememberNotCacheable(url(), message_handler_);
-    }
-  }
-
   bool Fetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
     // TODO(jmarantz): consider request_headers.  E.g. will we ever
     // get different resources depending on user-agent?
@@ -92,8 +80,8 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
         return false;
       }
       message_handler_->Message(
-          kInfo, "%s is being re-fetched asynchronously (lock %s held elsewhere)",
-          url().c_str(), lock_name.c_str());
+          kInfo, "%s is being re-fetched asynchronously "
+          "(lock %s held elsewhere)", url().c_str(), lock_name.c_str());
     } else {
       message_handler_->Message(kInfo, "%s: Locking (lock %s)",
                                 url().c_str(), lock_name.c_str());
@@ -111,6 +99,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
           request_headers.Add(HttpAttributes::kHost, gurl.Host());
         }
       }
+      // TODO(sligocki): Allow ConditionalFetch here
       ret = fetcher->StreamingFetch(
           origin_url, request_headers, response_headers(), http_value(),
           handler, this);
@@ -118,6 +107,18 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
       delete this;
     }
     return ret;
+  }
+
+  void AddToCache(bool success) {
+    ResponseHeaders* headers = response_headers();
+    if (success && !headers->IsErrorStatus()
+        && !http_cache()->IsAlreadyExpired(*headers)) {
+      HTTPValue* value = http_value();
+      value->SetHeaders(headers);
+      http_cache()->Put(url(), value, message_handler_);
+    } else {
+      http_cache()->RememberNotCacheable(url(), message_handler_);
+    }
   }
 
   virtual void Done(bool success) {
@@ -161,6 +162,11 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   DISALLOW_COPY_AND_ASSIGN(UrlResourceFetchCallback);
 };
 
+// Writes result into cache. Use this when you do not need to wait for the
+// response, you just want it to be asynchronously placed in the HttpCache.
+//
+// For example, this is used for fetches and refreshes of resources
+// discovered while rewriting HTML.
 class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
  public:
   UrlReadIfCachedCallback(const GoogleString& url, HTTPCache* http_cache,
@@ -210,7 +216,22 @@ bool UrlInputResource::Load(MessageHandler* handler) {
   return data_available;
 }
 
+void UrlInputResource::Freshen(MessageHandler* handler) {
+  // TODO(jmarantz): use if-modified-since
+  // For now this is much like Load(), except we do not
+  // touch our value, but just the cache
+  HTTPCache* http_cache = resource_manager()->http_cache();
+  UrlReadIfCachedCallback* cb = new UrlReadIfCachedCallback(
+      url_, http_cache, resource_manager(), rewrite_options_);
+  // TODO(sligocki): Ask for Conditional fetch here.
+  cb->Fetch(resource_manager_->url_async_fetcher(), handler);
+}
 
+// Writes result into a resource. Use this when you need to load a resource
+// object and do something specific with the resource once its loaded.
+//
+// For example, this is used for fetches of output_resources where we don't
+// have the input_resource in cache.
 class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
  public:
   explicit UrlReadAsyncFetchCallback(Resource::AsyncCallback* callback,
@@ -253,16 +274,6 @@ void UrlInputResource::LoadAndCallback(AsyncCallback* callback,
         new UrlReadAsyncFetchCallback(callback, this);
     cb->Fetch(resource_manager_->url_async_fetcher(), message_handler);
   }
-}
-
-void UrlInputResource::Freshen(MessageHandler* handler) {
-  // TODO(jmarantz): use if-modified-since
-  // For now this is much like Load(), except we do not
-  // touch our value, but just the cache
-  HTTPCache* http_cache = resource_manager()->http_cache();
-  UrlReadIfCachedCallback* cb = new UrlReadIfCachedCallback(
-      url_, http_cache, resource_manager(), rewrite_options_);
-  cb->Fetch(resource_manager_->url_async_fetcher(), handler);
 }
 
 }  // namespace net_instaweb
