@@ -215,7 +215,7 @@ apr_status_t instaweb_handler(request_rec* request) {
     GoogleString output;
     ResponseHeaders response_headers;
     StringWriter writer(&output);
-    SharedMemStatistics* statistics = factory->statistics();
+    Statistics* statistics = factory->statistics();
     if (statistics) {
       statistics->Dump(&writer, factory->message_handler());
     } else {

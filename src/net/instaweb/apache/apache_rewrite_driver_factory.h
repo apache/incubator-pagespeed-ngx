@@ -22,6 +22,7 @@
 #include "base/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/util/public/shared_mem_statistics.h"
 
 struct apr_pool_t;
 struct server_rec;
@@ -30,7 +31,6 @@ namespace net_instaweb {
 
 class AbstractSharedMem;
 class SerfUrlAsyncFetcher;
-class SharedMemStatistics;
 class SyncFetcherAdapter;
 class UrlPollableAsyncFetcher;
 
@@ -75,10 +75,14 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   StringPiece file_cache_path() { return file_cache_path_; }
   int64 file_cache_clean_size_kb() { return file_cache_clean_size_kb_; }
   int64 fetcher_time_out_ms() { return fetcher_time_out_ms_; }
-  SharedMemStatistics* statistics() { return statistics_; }
+  Statistics* statistics() { return statistics_; }
   void set_statistics(SharedMemStatistics* x) { statistics_ = x; }
   void set_statistics_enabled(bool x) { statistics_enabled_ = x; }
   bool statistics_enabled() const { return statistics_enabled_; }
+
+  // The inter-process statistics initialization requires a method
+  // to be run in each child process.
+  void InitStatisticsVariablesAsChild();
 
   AbstractSharedMem* shmem_runtime() const { return shmem_runtime_.get(); }
 

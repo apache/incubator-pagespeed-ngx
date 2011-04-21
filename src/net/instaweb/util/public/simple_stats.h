@@ -30,6 +30,7 @@ class SimpleStatsVariable : public Variable {
   SimpleStatsVariable() : value_(0) {}
   virtual ~SimpleStatsVariable();
   virtual int Get() const { return value_; }
+  virtual int64 Get64() const { return value_; }
   virtual void Set(int value) { value_ = value; }
 
  private:

@@ -662,7 +662,7 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(next_server);
     factory->set_is_root_process(false);
     if (factory->statistics()) {
-      factory->statistics()->InitVariables(false, factory->message_handler());
+      factory->InitStatisticsVariablesAsChild();
     }
     next_server = next_server->next;
   }

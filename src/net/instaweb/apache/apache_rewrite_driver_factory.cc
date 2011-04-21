@@ -157,6 +157,10 @@ ResourceManager* ApacheRewriteDriverFactory::ComputeResourceManager() {
   return resource_manager;
 }
 
+void ApacheRewriteDriverFactory::InitStatisticsVariablesAsChild() {
+  statistics_->InitVariables(false, message_handler());
+}
+
 void ApacheRewriteDriverFactory::ShutDown() {
   if (serf_url_async_fetcher_ != NULL) {
     serf_url_async_fetcher_->WaitForActiveFetches(

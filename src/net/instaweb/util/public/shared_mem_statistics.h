@@ -95,12 +95,6 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable> {
   // no further children are expected to start.
   void GlobalCleanup(MessageHandler* message_handler);
 
-  // Dump the statistics to the given writer.
-  void Dump(Writer* writer, MessageHandler* message_handler);
-
-  // Set all statistics to 0.
-  void Clear();
-
  private:
   GoogleString SegmentName() const;
 

@@ -23,12 +23,16 @@
 
 namespace net_instaweb {
 
+class MessageHandler;
+class Writer;
+
 class Variable {
  public:
   virtual ~Variable();
   // TODO(sligocki): int -> int64
   virtual int Get() const = 0;
   virtual void Set(int delta) = 0;
+  virtual int64 Get64() const = 0;
 
   virtual void Add(int delta) { Set(delta + Get()); }
   void Clear() { Set(0); }
@@ -53,6 +57,12 @@ class Statistics {
     CHECK(var != NULL) << "Variable not found: " << name;
     return var;
   }
+
+  // Dump the variable-values to a writer.
+  virtual void Dump(Writer* writer, MessageHandler* handler) = 0;
+
+  // Set all variables to 0.
+  virtual void Clear() = 0;
 };
 
 }  // namespace net_instaweb

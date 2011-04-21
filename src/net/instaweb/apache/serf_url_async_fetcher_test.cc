@@ -327,8 +327,8 @@ TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreadedAsync) {
   // fetches and we are hoping they will complete within a certain amount
   // of time.  If the system is running well then we they will finish
   // within a 100ms or so, so we'll loop in 50ms sleep intervals until
-  // we hit a max.  We'll give it 5 seconds before declaring failure.
-  const int kMaxSeconds = 5;
+  // we hit a max.  We'll give it 20 seconds before declaring failure.
+  const int kMaxSeconds = 20;
   const int kPollTimeUs = 50000;
   const int kPollsPerSecond = 1000000 / kPollTimeUs;
   const int kMaxIters = kMaxSeconds * kPollsPerSecond;

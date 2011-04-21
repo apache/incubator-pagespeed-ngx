@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
@@ -50,6 +51,24 @@ template<class Var> class StatisticsTemplate : public Statistics {
     return FindVariableInternal(name);
   }
 
+  virtual void Dump(Writer* writer, MessageHandler* message_handler) {
+    for (int i = 0, n = variables_.size(); i < n; ++i) {
+      Var* var = variables_[i];
+      writer->Write(names_[i], message_handler);
+      writer->Write(": ", message_handler);
+      writer->Write(Integer64ToString(var->Get64()), message_handler);
+      writer->Write("\n", message_handler);
+    }
+  }
+
+  virtual void Clear() {
+    for (int i = 0, n = variables_.size(); i < n; ++i) {
+      Var* var = variables_[i];
+      var->Set(0);
+    }
+  }
+
+
  protected:
   // Adds a variable, returning as the template class Var type, rather
   // than its base class, as AddVariable does.
@@ -58,6 +77,7 @@ template<class Var> class StatisticsTemplate : public Statistics {
     if (var == NULL) {
       var = NewVariable(name, variables_.size());
       variables_.push_back(var);
+      names_.push_back(name.as_string());
       variable_map_[GoogleString(name.data(), name.size())] = var;
     }
     return var;
@@ -80,6 +100,7 @@ template<class Var> class StatisticsTemplate : public Statistics {
   typedef std::vector<Var*> VarVector;
   typedef std::map<GoogleString, Var*> VarMap;
   VarVector variables_;
+  StringVector names_;
   VarMap variable_map_;
 
   DISALLOW_COPY_AND_ASSIGN(StatisticsTemplate);

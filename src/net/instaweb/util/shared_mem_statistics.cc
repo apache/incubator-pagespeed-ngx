@@ -165,24 +165,6 @@ void SharedMemStatistics::GlobalCleanup(MessageHandler* message_handler) {
   }
 }
 
-void SharedMemStatistics::Dump(Writer* writer,
-                               MessageHandler* message_handler) {
-  for (int i = 0, n = variables_.size(); i < n; ++i) {
-    SharedMemVariable* var = variables_[i];
-    writer->Write(var->name_, message_handler);
-    writer->Write(": ", message_handler);
-    writer->Write(Integer64ToString(var->Get64()), message_handler);
-    writer->Write("\n", message_handler);
-  }
-}
-
-void SharedMemStatistics::Clear() {
-  for (int i = 0, n = variables_.size(); i < n; ++i) {
-    SharedMemVariable* var = variables_[i];
-    var->Set(0);
-  }
-}
-
 GoogleString SharedMemStatistics::SegmentName() const {
   return StrCat(filename_prefix_, kStatisticsObjName);
 }
