@@ -22,28 +22,29 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_TEST_BASE_H_
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/fake_url_async_fetcher.h"
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/mock_callback.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/http/public/fake_url_async_fetcher.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
+#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/http/public/wait_url_async_fetcher.h"
 
 #define URL_PREFIX "http://www.example.com/"
 
@@ -86,32 +87,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // on the main rewrite driver.
   void SetBaseUrlForFetch(const StringPiece& url);
 
-  // The async fetchers in these tests are really fake async fetchers, and
-  // will call their callbacks directly.  Hence we don't really need
-  // any functionality in the async callback.
-  class DummyCallback : public UrlAsyncFetcher::Callback {
-   public:
-    explicit DummyCallback(bool expect_success)
-        : done_(false),
-          expect_success_(expect_success) {}
-    virtual ~DummyCallback() {
-      EXPECT_TRUE(done_);
-    }
-    virtual void Done(bool success) {
-      EXPECT_FALSE(done_) << "Already Done; perhaps you reused without Reset()";
-      done_ = true;
-      EXPECT_EQ(expect_success_, success);
-    }
-    void Reset() {
-      done_ = false;
-    }
-
-    bool done_;
-    bool expect_success_;
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(DummyCallback);
-  };
   ResourcePtr CreateResource(const StringPiece& base, const StringPiece& url);
 
   MockTimer* mock_timer() { return file_system_.timer(); }
@@ -149,27 +124,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   void AddFileToMockFetcher(const StringPiece& url,
                             const StringPiece& filename,
                             const ContentType& content_type, int64 ttl_sec);
-
-  // Callback that can be used for testing resource fetches.  As all the
-  // async fetchers in unit-tests call their callbacks immediately, it
-  // is safe to put this on the stack, rather than having it self-delete.
-  // TODO(sligocki): Do we need this and DummyCallback, could we give this
-  // a more descriptive name? MockCallback?
-  class FetchCallback : public UrlAsyncFetcher::Callback {
-   public:
-    FetchCallback() : success_(false), done_(false) {}
-    virtual void Done(bool success) {
-      success_ = success;
-      done_ = true;
-    }
-
-    bool success() const { return success_; }
-    bool done() const { return done_; }
-
-   private:
-    bool success_;
-    bool done_;
-  };
 
   // Helper function to test resource fetching, returning true if the fetch
   // succeeded, and modifying content.  It is up to the caller to EXPECT_TRUE

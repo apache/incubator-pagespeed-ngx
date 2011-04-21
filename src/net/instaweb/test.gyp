@@ -157,6 +157,7 @@
         'util/string_util_test.cc',
         'util/symbol_table_test.cc',
         'util/time_util_test.cc',
+        'util/timer_based_lock_test.cc',
         'util/url_escaper_test.cc',
         'util/url_multipart_encoder_test.cc',
         'util/user_agent_test.cc',

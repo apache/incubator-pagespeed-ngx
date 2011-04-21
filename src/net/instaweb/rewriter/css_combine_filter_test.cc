@@ -139,7 +139,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     ResponseHeaders response_headers;
     GoogleString fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
-    DummyCallback dummy_callback(true);
+    ExpectCallback dummy_callback(true);
     rewrite_driver_.FetchResource(combine_url, request_headers,
                                   &response_headers, &writer,
                                   &dummy_callback);
@@ -194,7 +194,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     ResponseHeaders response_headers;
     GoogleString fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
-    DummyCallback dummy_callback(true);
+    ExpectCallback dummy_callback(true);
 
     // NOTE: This first fetch used to return status 0 because response_headers
     // weren't initialized by the first resource fetch (but were cached
@@ -222,7 +222,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     // an entirely non-existent resource appears to test a strict superset of
     // filter code paths when compared with returning a 404 for the resource.
     mock_url_fetcher_.set_fail_on_unexpected(false);
-    DummyCallback fail_callback(false);
+    ExpectCallback fail_callback(false);
     fetched_resource_content.clear();
     response_headers.Clear();
     EXPECT_TRUE(

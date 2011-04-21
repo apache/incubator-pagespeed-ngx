@@ -39,42 +39,31 @@ bool UrlAsyncFetcher::Callback::EnableThreaded() const {
   return false;
 }
 
-UrlAsyncFetcher::ConditionalCallback::~ConditionalCallback() {
-}
-
 namespace {
 
-// Adaptor from ConditionalCallback to UrlAsyncFetcher::Callback.
-// Forwards results of a StreamingFetch to a ConditionalCallback
-// figuring out sematics of whether the resource was updated or not
-// based on status-code.
+// Callback for default implementation of ConditionalFetch.
+// Gets called back with status from StreamingFetch which does not have
+// modified bit set. Sets modified bit appropriately based upon HTTP
+// response status code.
 class ConditionalFetchCallback : public UrlAsyncFetcher::Callback {
  public:
-  ConditionalFetchCallback(UrlAsyncFetcher::ConditionalCallback* base_callback,
+  ConditionalFetchCallback(UrlAsyncFetcher::Callback* base_callback,
                            const ResponseHeaders* response_headers)
       : base_callback_(base_callback),
         response_headers_(response_headers) {}
   virtual ~ConditionalFetchCallback() {}
 
   virtual void Done(bool success) {
-    UrlAsyncFetcher::FetchStatus status;
-    if (success) {
-      if (response_headers_->status_code() == HttpStatus::kNotModified) {
-        status = UrlAsyncFetcher::kNotModifiedResource;
-      } else {
-        status = UrlAsyncFetcher::kModifiedResource;
-      }
-    } else {
-      status = UrlAsyncFetcher::kFetchFailure;
-    }
-    base_callback_->Done(status);
+    base_callback_->set_modified(
+        response_headers_->status_code() != HttpStatus::kNotModified);
+    base_callback_->Done(success);
     delete this;
   }
 
   // TODO(sligocki): See if we can set EnableThreaded() = True
 
  private:
-  UrlAsyncFetcher::ConditionalCallback* base_callback_;
+  UrlAsyncFetcher::Callback* base_callback_;
   const ResponseHeaders* response_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(ConditionalFetchCallback);
@@ -88,7 +77,7 @@ bool UrlAsyncFetcher::ConditionalFetch(const GoogleString& url,
                                        ResponseHeaders* response_headers,
                                        Writer* response_writer,
                                        MessageHandler* message_handler,
-                                       ConditionalCallback* base_callback) {
+                                       Callback* base_callback) {
   // Default implementation just sets the If-Modified-Since GET header.
   RequestHeaders conditional_headers;
   conditional_headers.CopyFrom(request_headers);

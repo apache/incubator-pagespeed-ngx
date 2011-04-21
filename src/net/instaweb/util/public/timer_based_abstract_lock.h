@@ -32,21 +32,32 @@ class Timer;
 class TimerBasedAbstractLock : public AbstractLock {
  public:
   virtual ~TimerBasedAbstractLock();
+  // Lock blocks until it obtains the lock.
   virtual void Lock();
   virtual bool LockTimedWait(int64 wait_ms);
 
-  virtual void LockStealOld(int64 timeout_ms);
-  virtual bool LockTimedWaitStealOld(int64 wait_ms, int64 timeout_ms);
+  // Note that under load, LockStealOld will retry at 1/2 the steal interval, so
+  // that we can expect to contend for the chance to steal the lock with at most
+  // 1/2 the steal interval total latency.
+  // NOTE: this can still behave badly in the face of very high contention on a
+  // single lock (where we almost never succeed in getting the lock, but
+  // regularly attempt to obtain the lock anyway increasing total contention).
+  // Callers should assure steal_ms is reasonably high (O(max # of contending
+  // threads).  With timeouts exceeding a second this ought to be a non-issue
+  // unless we experience periodic behavior, where a flood of threads wakes up
+  // together every steal_ms (necessitating a randomized backoff scheme).
+  virtual void LockStealOld(int64 steal_ms);
+  virtual bool LockTimedWaitStealOld(int64 wait_ms, int64 steal_ms);
 
  protected:
   virtual Timer* timer() const = 0;
 
  private:
-  typedef bool (TimerBasedAbstractLock::*TryLockMethod)(int64 timeout_ms);
-  bool TryLockIgnoreTimeout(int64 timeout_ignored);
-  bool BusySpin(TryLockMethod try_lock, int64 timeout_ms);
-  void Spin(TryLockMethod try_lock, int64 timeout_ms);
-  bool SpinFor(TryLockMethod try_lock, int64 timeout_ms, int64 wait_ms);
+  typedef bool (TimerBasedAbstractLock::*TryLockMethod)(int64 steal_ms);
+  bool TryLockIgnoreSteal(int64 steal_ignored);
+  bool BusySpin(TryLockMethod try_lock, int64 steal_ms);
+  void Spin(TryLockMethod try_lock, int64 steal_ms, int64 max_interval_ms);
+  bool SpinFor(TryLockMethod try_lock, int64 steal_ms, int64 wait_ms);
 };
 
 }  // namespace net_instaweb

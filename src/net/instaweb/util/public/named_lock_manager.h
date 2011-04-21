@@ -28,9 +28,10 @@ namespace net_instaweb {
 class AbstractLock : public AbstractMutex {
  public:
   virtual ~AbstractLock();
-  // If lock is held, return false, otherwise lock and return true.
-  // Note that implementations of this and other similar 'try' routines are
-  // permitted to return false conservatively.
+  // If lock is held, return false, otherwise lock and return true.  Note that
+  // implementations of this and other similar 'try' routines are permitted to
+  // return false conservatively.  TryLock must *eventually* succeed if called
+  // repeatedly on an unheld lock, however.
   virtual bool TryLock() = 0;
   // Wait bounded amount of time to take lock, otherwise return false.
   virtual bool LockTimedWait(int64 wait_ms) = 0;
@@ -38,15 +39,19 @@ class AbstractLock : public AbstractMutex {
   // ...StealOld versions of locking routines steal the lock if its current
   // holder has locked it for more than timeout_ms.  *WARNING* If you use
   // any ...StealOld methods, your lock becomes "best-effort" and there may
-  // be multiple workers in a section! *WARNING*
+  // be multiple workers in a critical section! *WARNING*
 
-  // LockStealOld will block until the lock is unlocked or times out.
+  // LockStealOld will block until the lock has been locked successfully, either
+  // because it was unlocked by its current holder or because it was stolen from
+  // its current holder.
   virtual void LockStealOld(int64 timeout_ms) = 0;
-  // Locks if lock is unlocked or held longer than timeout_ms.
+  // TryLockStealOld immediately attempts to lock the lock, succeeding if the
+  // lock is unlocked or the lock can be stolen from the current holder.  The
+  // return value is true if the lock was obtained, and false otherwise.
+  // cf TryLock() for other caveats.
   virtual bool TryLockStealOld(int64 timeout_ms) = 0;
   // LockTimedWaitStealOld will block until unlocked, the lock has been held for
-  // timeout_ms, or the caller has waited for wait_ms.  Thus wait_ms is
-  // effectively bounded by timeout_ms.
+  // timeout_ms, or the caller has waited for wait_ms.
   virtual bool LockTimedWaitStealOld(int64 wait_ms, int64 timeout_ms) = 0;
 
   // The name the lock was created with, for debugging/logging purposes.

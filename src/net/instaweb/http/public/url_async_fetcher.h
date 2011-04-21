@@ -38,24 +38,24 @@ class UrlAsyncFetcher {
   static const int64 kUnspecifiedTimeout;
   class Callback {
    public:
+    Callback() : modified_(true) {}
     virtual ~Callback();
     virtual void Done(bool success) = 0;
 
     // Set to true if it's OK to call the callback from a different
     // thread.  The base class implementation returns false.
     virtual bool EnableThreaded() const;
-  };
 
-  enum FetchStatus {
-    kFetchFailure,
-    kNotModifiedResource,
-    kModifiedResource,
-  };
+    // Callers should set these before calling Done(), if appropriate.
+    void set_modified(bool modified) { modified_ = modified; }
+    bool modified() const { return modified_; }
 
-  class ConditionalCallback {
-   public:
-    virtual ~ConditionalCallback();
-    virtual void Done(FetchStatus status) = 0;
+   private:
+    // If we are doing a ConditionalFetch, this tells us if the resource
+    // has been modified. If true, the response will have the new contents
+    // just like for a normal StreamingFetch. If false, only the response
+    // headers are meaningful.
+    bool modified_;
   };
 
   virtual ~UrlAsyncFetcher();
@@ -86,7 +86,7 @@ class UrlAsyncFetcher {
                                 ResponseHeaders* response_headers,
                                 Writer* response_writer,
                                 MessageHandler* message_handler,
-                                ConditionalCallback* callback);
+                                Callback* callback);
 
   // Returns a maximum time that we will allow fetches to take, or
   // kUnspecifiedTimeout (the default) if we don't promise to timeout fetches.

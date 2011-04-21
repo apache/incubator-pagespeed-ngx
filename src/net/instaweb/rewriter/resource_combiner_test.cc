@@ -165,7 +165,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
     RequestHeaders request_headers;
     ResponseHeaders response_headers;
     StringWriter writer(content);
-    FetchCallback callback;
+    MockCallback callback;
     bool fetched = rewrite_driver_.FetchResource(
         url, request_headers, &response_headers, &writer, &callback);
 
@@ -634,7 +634,7 @@ TEST_F(ResourceCombinerTest, TestContinuingFetchWhenFastFailed) {
   RequestHeaders request_headers;
   ResponseHeaders response_headers;
   StringWriter writer(&content);
-  FetchCallback callback;
+  MockCallback callback;
   bool called = rewrite_driver_.FetchResource(url, request_headers,
                                               &response_headers, &writer,
                                               &callback);

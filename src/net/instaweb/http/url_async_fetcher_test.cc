@@ -18,6 +18,7 @@
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
+#include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -77,23 +78,6 @@ class MockConditionalFetcher : public UrlAsyncFetcher {
   DISALLOW_COPY_AND_ASSIGN(MockConditionalFetcher);
 };
 
-class CheckCallback : public UrlAsyncFetcher::ConditionalCallback {
- public:
-  CheckCallback() : done_(false), status_(UrlAsyncFetcher::kFetchFailure) {}
-  virtual ~CheckCallback() {}
-
-  virtual void Done(UrlAsyncFetcher::FetchStatus status) {
-    done_ = true;
-    status_ = status;
-  }
-
-  bool done_;
-  UrlAsyncFetcher::FetchStatus status_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(CheckCallback);
-};
-
 class UrlAsyncFetcherTest : public ::testing::Test {
  protected:
   void TestConditionalFetch(int64 if_modified_since_ms, bool expect_modified) {
@@ -103,20 +87,20 @@ class UrlAsyncFetcherTest : public ::testing::Test {
     GoogleString response;
     StringWriter response_writer(&response);
     NullMessageHandler handler;
-    CheckCallback check_callback;
+    MockCallback check_callback;
 
-    EXPECT_FALSE(check_callback.done_);
+    EXPECT_FALSE(check_callback.done());
     mock_fetcher.ConditionalFetch(kUrl, if_modified_since_ms, request_headers,
                                   &response_headers, &response_writer,
                                   &handler, &check_callback);
 
-    EXPECT_TRUE(check_callback.done_);
+    EXPECT_TRUE(check_callback.done());
+    EXPECT_TRUE(check_callback.success());
+    EXPECT_EQ(expect_modified, check_callback.modified());
     if (expect_modified) {
-      EXPECT_EQ(UrlAsyncFetcher::kModifiedResource, check_callback.status_);
       EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
       EXPECT_FALSE(response.empty());
     } else {
-      EXPECT_EQ(UrlAsyncFetcher::kNotModifiedResource, check_callback.status_);
       EXPECT_EQ(HttpStatus::kNotModified, response_headers.status_code());
       EXPECT_TRUE(response.empty());
     }

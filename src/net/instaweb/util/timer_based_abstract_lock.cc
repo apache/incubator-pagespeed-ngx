@@ -27,26 +27,34 @@ namespace net_instaweb {
 namespace {
 
 // Number of times we busy spin before we start to sleep.
-int kBusySpinIterations = 100;
-int64 kMaxSpinSleepMs = Timer::kMinuteMs;  // Never sleep for more than 60s
+const int kBusySpinIterations = 100;
+const int64 kMaxSpinSleepMs = Timer::kMinuteMs;  // Never sleep for more than 1m
+const int64 kMinTriesPerSteal = 2;  // Try to lock twice / steal interval.
 
-// We back off exponentially, with a constant of 1.5.
-int64 Backoff(int64 interval_ms) {
+// We back off exponentially, with a constant of 1.5.  We add an extra ms to
+// this backoff to avoid problems with wait intervals of 0 or 1.  We bound the
+// blocking time at kMaxSpinSleepMs.
+int64 Backoff(int64 interval_ms, int64 max_interval_ms) {
   int64 new_interval_ms = 1 + interval_ms + (interval_ms >> 1);
-  if (new_interval_ms >= kMaxSpinSleepMs) {
-    new_interval_ms = kMaxSpinSleepMs;
-    if (interval_ms != kMaxSpinSleepMs) {
-      // Log the first time we cross the threshold.
+  if (new_interval_ms >= max_interval_ms) {
+    new_interval_ms = max_interval_ms;
+    // Log the first time we reach or cross the threshold.
+    // TODO(jmaessen): LOG(ERROR) is deadlocking.  Why?  We're using cooperative
+    // thread cancellation in the tests that hang, and it sometimes succeeds.
+    if (false && interval_ms != max_interval_ms) {
       LOG(ERROR) << "Reached maximum sleep time " << StackTraceString().c_str();
     }
   }
   return new_interval_ms;
 }
 
-int64 IntervalWithEnd(Timer* timer, int64 interval_ms, int64 end_time_ms) {
+// Compute new backoff time interval given current interval_ms, but don't exceed
+// max_interval_ms or have the interval continue much past end_time_ms.
+int64 IntervalWithEnd(Timer* timer, int64 interval_ms,
+                      int64 max_interval_ms, int64 end_time_ms) {
   int64 now_ms = timer->NowMs();
   int64 remaining = end_time_ms - now_ms;
-  interval_ms = Backoff(interval_ms);
+  interval_ms = Backoff(interval_ms, max_interval_ms);
   if (remaining > interval_ms) {
     return interval_ms;
   } else {
@@ -59,79 +67,88 @@ int64 IntervalWithEnd(Timer* timer, int64 interval_ms, int64 end_time_ms) {
 TimerBasedAbstractLock::~TimerBasedAbstractLock() { }
 
 void TimerBasedAbstractLock::Lock() {
-  if (TryLock() ||
-      BusySpin(&TimerBasedAbstractLock::TryLockIgnoreTimeout, 0)) {
-    return;
+  if (!TryLock()) {
+    Spin(&TimerBasedAbstractLock::TryLockIgnoreSteal, 0, kMaxSpinSleepMs);
   }
-  Spin(&TimerBasedAbstractLock::TryLockIgnoreTimeout, 0);
 }
 
 bool TimerBasedAbstractLock::LockTimedWait(int64 wait_ms) {
   return (TryLock() ||
-          SpinFor(&TimerBasedAbstractLock::TryLockIgnoreTimeout, 0, wait_ms));
+          SpinFor(&TimerBasedAbstractLock::TryLockIgnoreSteal,
+                  kMinTriesPerSteal * kMaxSpinSleepMs, wait_ms));
 }
 
-void TimerBasedAbstractLock::LockStealOld(int64 timeout_ms) {
-  if (LockTimedWaitStealOld(timeout_ms, timeout_ms)) {
-    return;
+void TimerBasedAbstractLock::LockStealOld(int64 steal_ms) {
+  if (!TryLock()) {
+    int64 max_sleep_ms = (steal_ms + 1) / kMinTriesPerSteal;
+    Spin(&TimerBasedAbstractLock::TryLockStealOld, steal_ms, max_sleep_ms);
   }
-  // Contention!  Restart spin, but don't decay again in future.
-  Spin(&TimerBasedAbstractLock::TryLockStealOld, timeout_ms);
 }
 
 bool TimerBasedAbstractLock::LockTimedWaitStealOld(
-    int64 wait_ms, int64 timeout_ms) {
+    int64 wait_ms, int64 steal_ms) {
   return
       (TryLock() ||
-       SpinFor(&TimerBasedAbstractLock::TryLockStealOld, timeout_ms, wait_ms));
+       SpinFor(&TimerBasedAbstractLock::TryLockStealOld, steal_ms, wait_ms));
 }
 
-// For uniformity, we implement spinning without regard to whether the
-// underlying lock primitive can time out or not.  This wrapper method is just
-// TryLock with a bogus timeout parameter for uniformity.
-bool TimerBasedAbstractLock::TryLockIgnoreTimeout(int64 timeout_ignored) {
+// We implement spinning without regard to whether the underlying lock primitive
+// can time out or not.  This wrapper method is just TryLock with a bogus
+// timeout parameter, so that we can pass timeout-free TryLock to a spin
+// routine.
+bool TimerBasedAbstractLock::TryLockIgnoreSteal(int64 steal_ignored) {
   return TryLock();
 }
 
 // Actively attempt to take lock without pausing.
 bool TimerBasedAbstractLock::BusySpin(TryLockMethod try_lock,
-                                      int64 timeout_ms) {
+                                      int64 steal_ms) {
   for (int i = 0; i < kBusySpinIterations; i++) {
-    if ((this->*try_lock)(timeout_ms)) {
+    if ((this->*try_lock)(steal_ms)) {
       return true;
     }
   }
   return false;
 }
 
-// Attempt to take lock, backing off forever.
-void TimerBasedAbstractLock::Spin(TryLockMethod try_lock, int64 timeout_ms) {
+// Attempt to take lock, starting with a busy spin, and spinning forever if the
+// lock is never obtained or stolen due to timeout.
+void TimerBasedAbstractLock::Spin(
+    TryLockMethod try_lock, int64 steal_ms, int64 max_interval_ms) {
+  if (BusySpin(try_lock, steal_ms)) {
+    return;
+  }
   Timer* the_timer = timer();
-  int64 interval_ms = 1;
-  while (!(this->*try_lock)(timeout_ms)) {
+  int64 interval_ms = 0;
+  while (!(this->*try_lock)(steal_ms)) {
     the_timer->SleepMs(interval_ms);
-    interval_ms = Backoff(interval_ms);
-    // interval_ms can't realistically overflow in geologic time.
+    interval_ms = Backoff(interval_ms, max_interval_ms);
   }
 }
 
-// Attempt to take lock until end_time_ms.
-bool TimerBasedAbstractLock::SpinFor(TryLockMethod try_lock, int64 timeout_ms,
+// Attempt to take or steal lock, but block for approximately at most wait_ms.
+// If we obtain the lock, immediately return true.
+bool TimerBasedAbstractLock::SpinFor(TryLockMethod try_lock, int64 steal_ms,
                                      int64 wait_ms) {
-  int64 end_time_ms = timer()->NowMs() + wait_ms;
-  if (BusySpin(try_lock, timeout_ms)) {
+  Timer* the_timer = timer();
+  int64 end_time_ms = the_timer->NowMs() + wait_ms;
+  if (BusySpin(try_lock, steal_ms)) {
     return true;
   }
-  Timer* the_timer = timer();
-  int64 interval_ms = IntervalWithEnd(the_timer, 0, end_time_ms);
-  bool result;
-  // Ugh.  Here we're spinning until result is true (we got the lock), or we run
-  // out of time.
-  while (!((result = (this->*try_lock)(timeout_ms))) && interval_ms > 0) {
+  int64 max_interval_ms = (steal_ms + 1) / kMinTriesPerSteal;
+  int64 interval_ms =
+      IntervalWithEnd(the_timer, 0, max_interval_ms, end_time_ms);
+  // Spin until the result is true (we got the lock) or we run out of time.
+  while (interval_ms > 0) {
+    if ((this->*try_lock)(steal_ms)) {
+      return true;
+    }
     the_timer->SleepMs(interval_ms);
-    interval_ms = IntervalWithEnd(the_timer, interval_ms, end_time_ms);
+    interval_ms =
+        IntervalWithEnd(the_timer, interval_ms, max_interval_ms, end_time_ms);
   }
-  return result;
+  // Timed out.
+  return false;
 }
 
 }  // namespace net_instaweb

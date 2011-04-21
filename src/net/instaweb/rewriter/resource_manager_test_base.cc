@@ -196,7 +196,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   ResponseHeaders response_headers;
   GoogleString response_contents;
   StringWriter response_writer(&response_contents);
-  DummyCallback callback(true);
+  ExpectCallback callback(true);
 
   // Check that we don't already have it in cache.
   EXPECT_EQ(CacheInterface::kNotFound, other_http_cache.Query(resource_url));
@@ -207,12 +207,12 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
       &callback));
 
   // Content should not be set until we call the callback.
-  EXPECT_EQ(false, callback.done_);
+  EXPECT_EQ(false, callback.done());
   EXPECT_EQ("", response_contents);
 
   // After we call the callback, it should be correct.
   wait_url_async_fetcher.CallCallbacks();
-  EXPECT_EQ(true, callback.done_);
+  EXPECT_EQ(true, callback.done());
   EXPECT_EQ(expected_content, response_contents);
 
   // Check that stats say we took the construct resource path.
@@ -277,7 +277,7 @@ bool ResourceManagerTestBase::ServeResourceUrl(
   RequestHeaders request_headers;
   ResponseHeaders response_headers;
   StringWriter writer(content);
-  FetchCallback callback;
+  MockCallback callback;
   bool fetched = rewrite_driver_.FetchResource(
       url, request_headers, &response_headers, &writer, &callback);
   // The callback should be called if and only if FetchResource

@@ -86,7 +86,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     ResponseHeaders response_headers;
     GoogleString fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
-    DummyCallback dummy_callback(true);
+    ExpectCallback dummy_callback(true);
 
     GoogleString headers;
     AppendDefaultHeaders(kContentTypeJpeg, resource_manager_, &headers);
