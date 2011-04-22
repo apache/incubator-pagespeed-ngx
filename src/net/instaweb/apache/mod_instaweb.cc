@@ -924,7 +924,10 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
         cmd, &ApacheRewriteDriverFactory::set_file_cache_clean_interval_ms,
         arg);
   } else if (StringCaseEqual(directive, kModPagespeedFileCachePath)) {
-    factory->set_file_cache_path(arg);
+    if (!factory->set_file_cache_path(arg)) {
+      ret = apr_pstrcat(cmd->pool, "Directory ", arg,
+                        " does not exist and can't be created.", NULL);
+    }
   } else if (StringCaseEqual(directive, kModPagespeedFileCacheSizeKb)) {
     ret = ParseInt64Option(factory,
         cmd, &ApacheRewriteDriverFactory::set_file_cache_clean_size_kb, arg);

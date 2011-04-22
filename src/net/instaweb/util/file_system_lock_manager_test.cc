@@ -40,14 +40,14 @@ const int64 kWaitMs = 10000;
 class FileSystemLockManagerTest : public testing::Test {
  protected:
   FileSystemLockManagerTest()
-      : manager_(&file_system_, file_system_.timer(), &handler_) { }
+      : manager_(&file_system_, GTestTempDir(),
+                 file_system_.timer(), &handler_) { }
   virtual ~FileSystemLockManagerTest() { }
 
   AbstractLock* MakeLock(const StringPiece& name) {
-    GoogleString fullname = StrCat(GTestTempDir(), "/", name);
-    AbstractLock* result = manager_.CreateNamedLock(fullname);
-    CHECK(NULL != result) << "Creating lock " << fullname;
-    EXPECT_EQ(fullname, result->name());
+    AbstractLock* result = manager_.CreateNamedLock(name);
+    CHECK(NULL != result) << "Creating lock " << name;
+    EXPECT_EQ(StrCat(GTestTempDir(), "/", name), result->name());
     return result;
   }
 

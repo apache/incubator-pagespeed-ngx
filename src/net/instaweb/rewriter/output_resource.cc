@@ -296,9 +296,7 @@ bool OutputResource::LockForCreation(const ResourceManager* resource_manager,
   bool result = true;
   if (creation_lock_.get() == NULL) {
     GoogleString lock_name =
-        StrCat(resource_manager->filename_prefix(),
-               resource_manager->hasher()->Hash(name_key()),
-               kLockSuffix);
+        StrCat(resource_manager->hasher()->Hash(name_key()), kLockSuffix);
     creation_lock_.reset(resource_manager->lock_manager()->
                          CreateNamedLock(lock_name));
   }

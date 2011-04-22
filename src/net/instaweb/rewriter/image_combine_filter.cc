@@ -45,6 +45,13 @@ namespace {
 // names for Statistics variables.
 const char kImageFileCountReduction[] = "image_file_count_reduction";
 
+}  // namespace
+
+// Unfortunately SpriteFuture can't be inside an anonymous namespace due to
+// http://gcc.gnu.org/bugzilla/show_bug.cgi?id=29365, which is relevant to
+// some of our supported open-source platforms.
+namespace spriter_binding {
+
 // A SpriteFuture keeps track of a single image that is to be sprited.  When
 // constructed, it is in an invalid state and merely serves as a token for the
 // partnership.
@@ -366,7 +373,10 @@ class Library : public spriter::ImageLibraryInterface {
   MessageHandler* handler_;
 };
 
-}  // namespace
+}  // namespace spriter_binding
+
+using spriter_binding::Library;
+using spriter_binding::SpriteFuture;
 
 // The Combiner does all the work of spriting.  Each combiner takes an image of
 // a certain type (e.g. PNGs) and produces a single sprite as a combination.

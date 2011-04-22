@@ -188,6 +188,11 @@ class RewriteDriverFactory {
   // manager to write resources to the filesystem.
   virtual bool ShouldWriteResourcesToFileSystem() { return true; }
 
+  // Override this if you want to change what directory locks go into
+  // when using the default filesystem-based lock manager. The default is
+  // filename_prefix()
+  virtual StringPiece LockFilePrefix();
+
  private:
   void SetupSlurpDirectories();
 

@@ -84,10 +84,20 @@ class FileSystemLock : public TimerBasedAbstractLock {
   DISALLOW_COPY_AND_ASSIGN(FileSystemLock);
 };
 
+FileSystemLockManager::FileSystemLockManager(
+    FileSystem* file_system, const StringPiece& base_path, Timer* timer,
+    MessageHandler* handler)
+    : file_system_(file_system),
+      base_path_(base_path.as_string()),
+      timer_(timer),
+      handler_(handler) {
+  EnsureEndsInSlash(&base_path_);
+}
+
 FileSystemLockManager::~FileSystemLockManager() { }
 
 AbstractLock* FileSystemLockManager::CreateNamedLock(const StringPiece& name) {
-  return new FileSystemLock(name, this);
+  return new FileSystemLock(StrCat(base_path_, name), this);
 }
 
 }  // namespace net_instaweb

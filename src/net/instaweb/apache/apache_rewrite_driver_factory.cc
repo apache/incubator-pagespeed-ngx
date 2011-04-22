@@ -91,6 +91,11 @@ MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
   return new ApacheMessageHandler(server_rec_, version_);
 }
 
+bool ApacheRewriteDriverFactory::set_file_cache_path(const StringPiece& p) {
+  p.CopyToString(&file_cache_path_);
+  return file_system()->RecursivelyMakeDir(file_cache_path_, message_handler());
+}
+
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
   FileCache::CachePolicy* policy = new FileCache::CachePolicy(
       timer(), file_cache_clean_interval_ms_, file_cache_clean_size_kb_);

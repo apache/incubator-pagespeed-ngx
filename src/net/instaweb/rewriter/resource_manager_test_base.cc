@@ -38,7 +38,8 @@ ResourceManagerTestBase::ResourceManagerTestBase()
       http_cache_(lru_cache_, file_system_.timer()),
       // TODO(jmaessen): Pull timer out of file_system_ and make it
       // standalone.
-      lock_manager_(&file_system_, file_system_.timer(), &message_handler_),
+      lock_manager_(&file_system_, file_prefix_, file_system_.timer(),
+                    &message_handler_),
       // TODO(sligocki): Why can't I init it here ...
       // resource_manager_(new ResourceManager(
       //    file_prefix_, &file_system_,
@@ -50,7 +51,8 @@ ResourceManagerTestBase::ResourceManagerTestBase()
       other_lru_cache_(new LRUCache(kCacheSize)),
       other_http_cache_(other_lru_cache_, other_file_system_.timer()),
       other_lock_manager_(
-          &other_file_system_, other_file_system_.timer(), &message_handler_),
+          &other_file_system_, file_prefix_,
+          other_file_system_.timer(), &message_handler_),
       other_resource_manager_(
           file_prefix_, &other_file_system_,
           &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
@@ -167,7 +169,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   HTTPCache other_http_cache(other_lru_cache, other_mock_timer);
   DomainLawyer other_domain_lawyer;
   FileSystemLockManager other_lock_manager(
-      &other_file_system, other_mock_timer, &message_handler_);
+      &other_file_system, file_prefix_, other_mock_timer, &message_handler_);
   WaitUrlAsyncFetcher wait_url_async_fetcher(&mock_url_fetcher_);
   ResourceManager other_resource_manager(
       file_prefix_, &other_file_system,

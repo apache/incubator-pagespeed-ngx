@@ -176,7 +176,8 @@ FilenameEncoder* RewriteDriverFactory::filename_encoder() {
 NamedLockManager* RewriteDriverFactory::lock_manager() {
   if (lock_manager_ == NULL) {
     lock_manager_.reset(
-        new FileSystemLockManager(file_system(), timer(), message_handler()));
+        new FileSystemLockManager(file_system(), LockFilePrefix(),
+                                  timer(), message_handler()));
   }
   return lock_manager_.get();
 }
@@ -334,6 +335,10 @@ void RewriteDriverFactory::SetupSlurpDirectories() {
 }
 
 void RewriteDriverFactory::FetcherSetupHooks() {
+}
+
+StringPiece RewriteDriverFactory::LockFilePrefix() {
+  return filename_prefix_;
 }
 
 void RewriteDriverFactory::ShutDown() {

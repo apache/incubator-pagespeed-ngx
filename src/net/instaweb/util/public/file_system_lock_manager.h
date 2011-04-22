@@ -36,14 +36,13 @@ class FileSystemLockManager : public NamedLockManager {
  public:
   // Note: a FileSystemLockManager must outlive
   // any and all locks that it creates.
-  // It does not assume ownership of the passed-in
-  // constructor arguments.
+  // It does not assume ownership of the passed-in constructor arguments.
+  // (Except it does copy in base_path). The caller is responsible for ensuring
+  // that base_path exists.
   FileSystemLockManager(FileSystem* file_system,
+                        const StringPiece& base_path,
                         Timer* timer,
-                        MessageHandler* handler)
-      : file_system_(file_system),
-        timer_(timer),
-        handler_(handler) { }
+                        MessageHandler* handler);
   virtual ~FileSystemLockManager();
 
   // Multiple lock objects with the same name will manage the same underlying
@@ -64,6 +63,7 @@ class FileSystemLockManager : public NamedLockManager {
 
  private:
   FileSystem* file_system_;
+  GoogleString base_path_;
   Timer* timer_;
   MessageHandler* handler_;
 

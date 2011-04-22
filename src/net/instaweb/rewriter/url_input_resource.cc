@@ -54,10 +54,8 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
     // get different resources depending on user-agent?
     RequestHeaders request_headers;
     message_handler_ = handler;
-    GoogleString lock_name = StrCat(
-        resource_manager_->filename_prefix(),
-        resource_manager_->hasher()->Hash(url()),
-        ".lock");
+    GoogleString lock_name =
+        StrCat(resource_manager_->hasher()->Hash(url()), ".lock");
     lock_.reset(resource_manager_->lock_manager()->CreateNamedLock(lock_name));
     int64 lock_timeout = fetcher->timeout_ms();
     if (lock_timeout == UrlAsyncFetcher::kUnspecifiedTimeout) {

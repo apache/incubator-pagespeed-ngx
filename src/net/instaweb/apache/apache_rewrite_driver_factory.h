@@ -60,9 +60,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   }
   void set_file_cache_clean_size_kb(int64 x) { file_cache_clean_size_kb_ = x; }
   void set_fetcher_time_out_ms(int64 x) { fetcher_time_out_ms_ = x; }
-  void set_file_cache_path(const StringPiece& x) {
-    x.CopyToString(&file_cache_path_);
-  }
+  bool set_file_cache_path(const StringPiece& x);
+
   void set_fetcher_proxy(const StringPiece& x) {
     x.CopyToString(&fetcher_proxy_);
   }
@@ -111,6 +110,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // Disable the Resource Manager's filesystem since we have a
   // write-through http_cache.
   virtual bool ShouldWriteResourcesToFileSystem() { return false; }
+
+  // As we use the cache for storage, locks should be scoped to it.
+  virtual StringPiece LockFilePrefix() { return file_cache_path_; }
 
   // When computing the resource manager for Apache, be sure to set up
   // the statistics.
