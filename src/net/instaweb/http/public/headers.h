@@ -69,9 +69,18 @@ template<class Proto> class Headers {
   // Remove all headers by name.  Return true if anything was removed.
   virtual bool RemoveAll(const StringPiece& name);
 
+  // Remove all headers whose name is in |names|.
+  virtual void RemoveAllFromSet(const StringSet& names);
+
   // Similar to RemoveAll followed by Add.  Note that the attribute
   // order may be changed as a side effect of this operation.
   virtual void Replace(const StringPiece& name, const StringPiece& value);
+
+  // Merge headers. Replaces all headers specified both here and in
+  // other with the version in other. Useful for updating headers
+  // when recieving 304 Not Modified responses.
+  // Note: This is order-scrambling.
+  virtual void UpdateFrom(const Headers<Proto>& other);
 
   // Serialize HTTP header to a binary stream.
   virtual bool WriteAsBinary(Writer* writer, MessageHandler* message_handler);

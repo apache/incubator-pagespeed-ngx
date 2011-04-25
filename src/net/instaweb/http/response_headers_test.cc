@@ -269,12 +269,12 @@ TEST_F(ResponseHeadersTest, TestRemoveAll) {
                "Vary: Accept-Encoding\r\n"
                "\r\n");
   ExpectSizes(8, 4);
-  response_headers_.RemoveAll("Vary");
+  response_headers_.RemoveAll(HttpAttributes::kVary);
   ExpectSizes(6, 3);
   response_headers_.RemoveAll(HttpAttributes::kSetCookie);
   ExpectSizes(2, 2);
   EXPECT_EQ(2, response_headers_.NumAttributes());
-  response_headers_.RemoveAll("Date");
+  response_headers_.RemoveAll(HttpAttributes::kDate);
   ExpectSizes(1, 1);
   response_headers_.RemoveAll(HttpAttributes::kCacheControl);
   ExpectSizes(0, 0);
@@ -298,6 +298,64 @@ TEST_F(ResponseHeadersTest, TestSetDate) {
   const int64 k100_sec = 100 * 1000;
   ASSERT_EQ(MockTimer::kApr_5_2010_ms + k100_sec,
             response_headers_.CacheExpirationTimeMs());
+}
+
+TEST_F(ResponseHeadersTest, TestUpdateFrom) {
+  const char old_header_string[] =
+      "HTTP/1.1 200 OK\r\n"
+      "Date: Fri, 22 Apr 2011 19:34:33 GMT\r\n"
+      "Server: Apache/2.2.3 (CentOS)\r\n"
+      "Last-Modified: Tue, 08 Mar 2011 18:28:32 GMT\r\n"
+      "Accept-Ranges: bytes\r\n"
+      "Content-Length: 241260\r\n"
+      "Cache-control: public, max-age=600\r\n"
+      "Content-Type: image/jpeg\r\n"
+      "\r\n";
+  const char new_header_string[] =
+      "HTTP/1.1 304 Not Modified\r\n"
+      "Date: Fri, 22 Apr 2011 19:49:59 GMT\r\n"
+      "Server: Apache/2.2.3 (CentOS)\r\n"
+      "Cache-control: public, max-age=3600\r\n"
+      "Set-Cookie: LA=1275937193\r\n"
+      "Set-Cookie: UA=chrome\r\n"
+      "\r\n";
+  const char expected_merged_header_string[] =
+      "HTTP/1.1 200 OK\r\n"
+      "Last-Modified: Tue, 08 Mar 2011 18:28:32 GMT\r\n"
+      "Accept-Ranges: bytes\r\n"
+      "Content-Length: 241260\r\n"
+      "Content-Type: image/jpeg\r\n"
+      "Date: Fri, 22 Apr 2011 19:49:59 GMT\r\n"
+      "Server: Apache/2.2.3 (CentOS)\r\n"
+      "Cache-control: public, max-age=3600\r\n"
+      "Set-Cookie: LA=1275937193\r\n"
+      "Set-Cookie: UA=chrome\r\n"
+      "\r\n";
+
+  // Setup old and new headers
+  ResponseHeaders old_headers, new_headers;
+  ResponseHeadersParser old_parser(&old_headers), new_parser(&new_headers);
+  old_parser.ParseChunk(old_header_string, &message_handler_);
+  new_parser.ParseChunk(new_header_string, &message_handler_);
+
+  // Update old_headers from new_headers.
+  old_headers.UpdateFrom(new_headers);
+
+  // Make sure in memory map is updated.
+  StringStarVector date_strings;
+  EXPECT_TRUE(old_headers.Lookup("Date", &date_strings));
+  EXPECT_EQ(1, date_strings.size());
+  EXPECT_EQ("Fri, 22 Apr 2011 19:49:59 GMT", *date_strings[0]);
+  StringStarVector set_cookie_strings;
+  EXPECT_TRUE(old_headers.Lookup("Set-Cookie", &set_cookie_strings));
+  EXPECT_EQ(8, old_headers.NumAttributeNames());
+
+  // Make sure protobuf is updated.
+  GoogleString actual_merged_header_string;
+  StringWriter merged_writer(&actual_merged_header_string);
+  old_headers.WriteAsHttp(&merged_writer, &message_handler_);
+
+  EXPECT_EQ(expected_merged_header_string, actual_merged_header_string);
 }
 
 }  // namespace net_instaweb

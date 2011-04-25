@@ -54,9 +54,19 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Remove all headers by name.
   virtual bool RemoveAll(const StringPiece& name);
 
+  // Remove all headers whose name is in |names|.
+  virtual void RemoveAllFromSet(const StringSet& names);
+
   // Similar to RemoveAll followed by Add.  Note that the attribute
   // order may be changed as a side effect of this operation.
   virtual void Replace(const StringPiece& name, const StringPiece& value);
+
+  // Merge headers. Replaces all headers specified both here and in
+  // other with the version in other. Useful for updating headers
+  // when recieving 304 Not Modified responses.
+  // Note: We must use Headers<HttpResponseHeaders> instead of ResponseHeaders
+  // so that we don't expose the base UpdateFrom (and to avoid "hiding" errors).
+  virtual void UpdateFrom(const Headers<HttpResponseHeaders>& other);
 
   // Serialize HTTP response header to a binary stream.
   virtual bool WriteAsBinary(Writer* writer, MessageHandler* message_handler);
@@ -66,7 +76,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // ResponseHeadersParser.
   virtual bool ReadFromBinary(const StringPiece& buf, MessageHandler* handler);
 
-  // Serialize HTTP response header in HTTP format so it can be re-parsed
+  // Serialize HTTP response header in HTTP format so it can be re-parsed.
   virtual bool WriteAsHttp(Writer* writer, MessageHandler* handler) const;
 
   // Compute caching information.  The current time is used to compute

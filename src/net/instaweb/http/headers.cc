@@ -136,11 +136,51 @@ template<class Proto> bool Headers<Proto>::RemoveAll(const StringPiece& name) {
   return removed;
 }
 
+template<class Proto> void Headers<Proto>::RemoveAllFromSet(
+    const StringSet& names) {
+  // Protobufs lack a convenient remove method for array elements, so
+  // we construct a new protobuf and swap them.
+
+  // Copy all headers that aren't slated for removal.
+  Proto temp_proto;
+  for (int i = 0, n = NumAttributes(); i < n; ++i) {
+    if (names.find(Name(i)) == names.end()) {
+      NameValue* name_value = temp_proto.add_header();
+      name_value->set_name(Name(i));
+      name_value->set_value(Value(i));
+    }
+  }
+
+  // Copy back to our protobuf.
+  map_.reset(NULL);  // Map must be repopulated before next lookup operation.
+  proto_->clear_header();
+  for (int i = 0, n = temp_proto.header_size(); i < n; ++i) {
+    NameValue* name_value = proto_->add_header();
+    name_value->set_name(temp_proto.header(i).name());
+    name_value->set_value(temp_proto.header(i).value());
+  }
+}
+
 template<class Proto> void Headers<Proto>::Replace(
     const StringPiece& name, const StringPiece& value) {
   // TODO(jmarantz): This could be arguably be implemented more efficiently.
   RemoveAll(name);
   Add(name, value);
+}
+
+template<class Proto> void Headers<Proto>::UpdateFrom(
+    const Headers<Proto>& other) {
+  // Get set of names to remove.
+  StringSet removing_names;
+  for (int i = 0, n = other.NumAttributes(); i < n; ++i) {
+    removing_names.insert(other.Name(i));
+  }
+  // Remove them.
+  RemoveAllFromSet(removing_names);
+  // Add new values.
+  for (int i = 0, n = other.NumAttributes(); i < n; ++i) {
+    Add(other.Name(i), other.Value(i));
+  }
 }
 
 template<class Proto> bool Headers<Proto>::WriteAsBinary(

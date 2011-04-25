@@ -102,10 +102,20 @@ bool ResponseHeaders::RemoveAll(const StringPiece& name) {
   return false;
 }
 
+void ResponseHeaders::RemoveAllFromSet(const StringSet& names) {
+  cache_fields_dirty_ = true;
+  Headers<HttpResponseHeaders>::RemoveAllFromSet(names);
+}
+
 void ResponseHeaders::Replace(
     const StringPiece& name, const StringPiece& value) {
   cache_fields_dirty_ = true;
   Headers<HttpResponseHeaders>::Replace(name, value);
+}
+
+void ResponseHeaders::UpdateFrom(const Headers<HttpResponseHeaders>& other) {
+  cache_fields_dirty_ = true;
+  Headers<HttpResponseHeaders>::UpdateFrom(other);
 }
 
 bool ResponseHeaders::WriteAsBinary(Writer* writer, MessageHandler* handler) {
