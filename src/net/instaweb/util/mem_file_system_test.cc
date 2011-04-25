@@ -18,7 +18,7 @@
 
 // Unit-test the in-memory filesystem
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/file_system_test.h"

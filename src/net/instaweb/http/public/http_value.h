@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_HTTP_VALUE_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_VALUE_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"

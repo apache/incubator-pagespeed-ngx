@@ -13,7 +13,7 @@ namespace {
 class CssMoveToHeadFilterTest : public ResourceManagerTestBase {
  protected:
   CssMoveToHeadFilterTest()
-      : move_to_head_filter_(&rewrite_driver_, NULL) {
+      : move_to_head_filter_(&rewrite_driver_, statistics_) {
     rewrite_driver_.AddFilter(&move_to_head_filter_);
   }
 

@@ -308,7 +308,7 @@ bool OutputResource::LockForCreation(const ResourceManager* resource_manager,
       result = creation_lock_->TryLockStealOld(break_lock_ms);
       break;
     case ResourceManager::kMayBlock:
-      creation_lock_->LockStealOld(block_lock_ms);
+      creation_lock_->LockTimedWaitStealOld(block_lock_ms, break_lock_ms);
       break;
   }
   return result;

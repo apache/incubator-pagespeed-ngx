@@ -225,6 +225,7 @@
         'util/mock_timer.cc',
         'util/named_lock_manager.cc',
         'util/null_message_handler.cc',
+        'util/null_statistics.cc',
         'util/null_writer.cc',
         'util/query_params.cc',
         'util/ref_counted.cc',

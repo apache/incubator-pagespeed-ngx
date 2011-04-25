@@ -22,7 +22,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_FAKE_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_FAKE_URL_ASYNC_FETCHER_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 

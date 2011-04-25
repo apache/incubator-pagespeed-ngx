@@ -23,7 +23,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"

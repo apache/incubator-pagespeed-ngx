@@ -20,7 +20,7 @@
 // pages, but we generate these urls as a result of image inlining and
 // this confuses subsequent filters in certain cases.
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/data_url.h"

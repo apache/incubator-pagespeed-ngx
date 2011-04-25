@@ -19,7 +19,7 @@
 // Unit-test the html reader/writer to ensure that a few tricky
 // constructs come through without corruption.
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/htmlparse/html_event.h"

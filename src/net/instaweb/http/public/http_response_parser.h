@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_HTTP_RESPONSE_PARSER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_RESPONSE_PARSER_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 // TODO(sligocki): Find a way to forward declare FileSystem::InputFile.
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/util/public/file_system.h"

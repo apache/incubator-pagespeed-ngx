@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_MOVE_TO_HEAD_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_MOVE_TO_HEAD_FILTER_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/util/public/atom.h"

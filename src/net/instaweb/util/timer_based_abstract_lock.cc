@@ -18,7 +18,7 @@
 
 #include "net/instaweb/util/public/timer_based_abstract_lock.h"
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/timer.h"
 

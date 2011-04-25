@@ -18,7 +18,7 @@
 
 #include "net/instaweb/http/public/wget_url_fetcher.h"
 
-#include <errno.h>
+#include <cerrno>
 #include "net/instaweb/http/public/http_response_parser.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/http/public/request_headers.h"

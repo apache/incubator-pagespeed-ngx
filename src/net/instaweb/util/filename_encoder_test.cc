@@ -20,7 +20,7 @@
 
 #include <string>
 #include <vector>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace {

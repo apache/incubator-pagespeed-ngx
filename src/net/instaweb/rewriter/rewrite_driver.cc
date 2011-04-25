@@ -19,7 +19,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 #include <vector>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -133,7 +133,6 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     ImageCombineFilter::Initialize(statistics);
     JavascriptFilter::Initialize(statistics);
     JsCombineFilter::Initialize(statistics);
-    ResourceManager::Initialize(statistics);
     UrlLeftTrimFilter::Initialize(statistics);
   }
   CssFilter::Initialize(statistics);
@@ -490,9 +489,7 @@ bool RewriteDriver::FetchResource(
         output_resource.get(), writer, response_headers)) {
       callback->Done(true);
       queued = true;
-      if (cached_resource_fetches_ != NULL) {
-        cached_resource_fetches_->Add(1);
-      }
+      cached_resource_fetches_->Add(1);
     } else if (filter != NULL) {
       SetBaseUrlForFetch(url);
       // The resource is locked for creation by
@@ -501,13 +498,9 @@ bool RewriteDriver::FetchResource(
                              request_headers, response_headers,
                              message_handler(), callback);
       if (queued) {
-        if (succeeded_filter_resource_fetches_ != NULL) {
-          succeeded_filter_resource_fetches_->Add(1);
-        }
+        succeeded_filter_resource_fetches_->Add(1);
       } else {
-        if (failed_filter_resource_fetches_ != NULL) {
-          failed_filter_resource_fetches_->Add(1);
-        }
+        failed_filter_resource_fetches_->Add(1);
       }
     }
   }
@@ -680,7 +673,7 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   } else {
     message_handler()->Message(kInfo, "No permission to rewrite '%s'",
                                input_url.spec_c_str());
-    resource_manager_->IncrementResourceUrlDomainRejections();
+    resource_manager_->resource_url_domain_rejections()->Add(1);
   }
   return resource;
 }

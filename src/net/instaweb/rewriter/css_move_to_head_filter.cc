@@ -35,10 +35,7 @@ CssMoveToHeadFilter::CssMoveToHeadFilter(HtmlParse* html_parse,
                                          Statistics* statistics)
     : html_parse_(html_parse),
       css_tag_scanner_(html_parse),
-      counter_(NULL) {
-  if (statistics != NULL) {
-    counter_ = statistics->GetVariable(kCssElements);
-  }
+      counter_(statistics->GetVariable(kCssElements)) {
 }
 
 void CssMoveToHeadFilter::Initialize(Statistics* statistics) {
@@ -73,9 +70,7 @@ void CssMoveToHeadFilter::EndElement(HtmlElement* element) {
         css_tag_scanner_.ParseCssElement(element, &href, &media)) {
       html_parse_->MoveCurrentInto(head_element_);
       // TODO(sligocki): It'd be nice to have this pattern simplified.
-      if (counter_ != NULL) {
-        counter_->Add(1);
-      }
+      counter_->Add(1);
     }
   }
 }

@@ -3,12 +3,12 @@
 //
 // Simple HTML minifier, based on pagespeed's minify_html.cc
 
-#include <stdio.h>
+#include <cstdio>
 
 #include <fstream>
 #include <string>
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"

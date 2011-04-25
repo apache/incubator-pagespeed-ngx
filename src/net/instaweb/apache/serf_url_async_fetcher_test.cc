@@ -21,7 +21,7 @@
 #include "apr_pools.h"
 #include "apr_strings.h"
 #include "apr_version.h"
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "base/stl_util-inl.h"
 #include "net/instaweb/apache/apr_file_system.h"

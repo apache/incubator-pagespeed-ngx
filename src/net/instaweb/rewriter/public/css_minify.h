@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_MINIFY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_MINIFY_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace Css {

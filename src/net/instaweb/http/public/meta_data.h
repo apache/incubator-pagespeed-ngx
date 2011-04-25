@@ -24,7 +24,7 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_META_DATA_H_
 
 #include <vector>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

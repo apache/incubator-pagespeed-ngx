@@ -20,7 +20,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_GFLAGS_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_GFLAGS_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 // Holy cow this is ugly.  We get our integer types from base/basictypes.h,
 // but gflags.h, which we include only to gain access to its memory cleanup

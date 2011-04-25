@@ -21,7 +21,7 @@
 
 #include <vector>
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {

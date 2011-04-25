@@ -19,7 +19,7 @@
 
 #include "net/instaweb/http/public/http_dump_url_async_writer.h"
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/fetcher_test.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/mock_timer.h"

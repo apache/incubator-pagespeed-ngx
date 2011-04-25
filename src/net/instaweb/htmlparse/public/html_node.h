@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_NODE_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_NODE_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/arena.h"
 #include "net/instaweb/util/public/string.h"

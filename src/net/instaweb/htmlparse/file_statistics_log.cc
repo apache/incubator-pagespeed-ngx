@@ -18,7 +18,7 @@
 
 #include "net/instaweb/htmlparse/public/file_statistics_log.h"
 
-#include <stdio.h>
+#include <cstdio>
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"

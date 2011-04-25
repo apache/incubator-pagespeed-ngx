@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include <stdio.h>
+#include <cstdio>
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/time_util.h"
 

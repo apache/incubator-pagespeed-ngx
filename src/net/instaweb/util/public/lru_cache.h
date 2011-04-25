@@ -22,7 +22,7 @@
 #include <list>
 #include <map>
 #include <utility>  // for pair
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
 

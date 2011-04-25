@@ -19,19 +19,19 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 
 #include "base/logging.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/cache_url_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
-#include "net/instaweb/util/public/filename_encoder.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/file_system_lock_manager.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_writer.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/file_system_lock_manager.h"
+#include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -39,9 +39,6 @@
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
-
-const char kInstawebResource404Count[] = "resource_404_count";
-const char kInstawebSlurp404Count[] = "slurp_404_count";
 
 RewriteDriverFactory::RewriteDriverFactory()
     : url_fetcher_(NULL),
@@ -51,9 +48,7 @@ RewriteDriverFactory::RewriteDriverFactory()
       force_caching_(false),
       slurp_read_only_(false),
       slurp_print_urls_(false),
-      http_cache_backend_(NULL),
-      resource_404_count_(NULL),
-      slurp_404_count_(NULL) {
+      http_cache_backend_(NULL) {
 }
 
 RewriteDriverFactory::~RewriteDriverFactory() {
@@ -200,7 +195,8 @@ StringPiece RewriteDriverFactory::filename_prefix() {
 HTTPCache* RewriteDriverFactory::http_cache() {
   if (http_cache_ == NULL) {
     http_cache_backend_ = DefaultCacheInterface();
-    http_cache_.reset(new HTTPCache(http_cache_backend_, timer()));
+    http_cache_.reset(new HTTPCache(
+        http_cache_backend_, timer(), statistics()));
     http_cache_->set_force_caching(force_caching_);
   }
   return http_cache_.get();
@@ -212,11 +208,13 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
         << "Must specify --filename_prefix or call "
         << "RewriteDriverFactory::set_filename_prefix.";
     HTTPCache* cache = http_cache();  // Ensure compute http_cache_backend_
+    Statistics* stats = statistics();
     resource_manager_.reset(new ResourceManager(
         filename_prefix_, file_system(), filename_encoder(),
         ComputeUrlAsyncFetcher(), hasher(),
         cache, http_cache_backend_, lock_manager(),
-        message_handler()));
+        message_handler(),
+        stats));
     resource_manager_->set_store_outputs_in_file_system(
         ShouldWriteResourcesToFileSystem());
   }
@@ -365,35 +363,6 @@ void RewriteDriverFactory::ShutDown() {
   http_cache_.reset(NULL);
   cache_fetcher_.reset(NULL);
   cache_async_fetcher_.reset(NULL);
-}
-
-void RewriteDriverFactory::Initialize(Statistics* statistics) {
-  RewriteDriver::Initialize(statistics);
-  if (statistics != NULL) {
-    statistics->AddVariable(kInstawebResource404Count);
-    statistics->AddVariable(kInstawebSlurp404Count);
-    HTTPCache::Initialize(statistics);
-  }
-}
-
-void RewriteDriverFactory::Increment404Count() {
-  Statistics* statistics = resource_manager_->statistics();
-  if (statistics != NULL) {
-    if (resource_404_count_ == NULL) {
-      resource_404_count_ = statistics->GetVariable(kInstawebResource404Count);
-    }
-    resource_404_count_->Add(1);
-  }
-}
-
-void RewriteDriverFactory::IncrementSlurpCount() {
-  Statistics* statistics = resource_manager_->statistics();
-  if (statistics != NULL) {
-    if (slurp_404_count_ == NULL) {
-      slurp_404_count_ = statistics->GetVariable(kInstawebSlurp404Count);
-    }
-    slurp_404_count_->Add(1);
-  }
 }
 
 }  // namespace net_instaweb

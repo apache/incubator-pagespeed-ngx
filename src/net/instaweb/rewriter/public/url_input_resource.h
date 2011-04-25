@@ -21,7 +21,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_URL_INPUT_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_URL_INPUT_RESOURCE_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/resource.h"
 
 namespace net_instaweb {

@@ -19,9 +19,9 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_MEM_FILE_SYSTEM_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_MEM_FILE_SYSTEM_H_
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <map>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
 

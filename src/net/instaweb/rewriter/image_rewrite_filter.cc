@@ -274,16 +274,12 @@ void ImageRewriteFilter::RewriteImageUrl(HtmlElement* element,
   bool ie6or7 = driver_->user_agent().IsIe6or7();
   if (!ie6or7 && cached->has_image_inlined_uri()) {
     src->SetValue(cached->image_inlined_uri());
-    if (inline_count_ != NULL) {
-      inline_count_->Add(1);
-    }
+    inline_count_->Add(1);
   } else {
     if (cached->optimizable()) {
       // Rewritten HTTP url
       src->SetValue(cached->url());
-      if (rewrite_count_ != NULL) {
-        rewrite_count_->Add(1);
-      }
+      rewrite_count_->Add(1);
     }
 
     if (driver_->options()->Enabled(RewriteOptions::kInsertImageDimensions) &&

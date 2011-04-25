@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_SPRITER_MOCK_IMAGE_LIBRARY_INTERFACE_H_
 #define NET_INSTAWEB_SPRITER_MOCK_IMAGE_LIBRARY_INTERFACE_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gmock.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"

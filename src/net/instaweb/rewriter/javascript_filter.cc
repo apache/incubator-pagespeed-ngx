@@ -18,7 +18,7 @@
 
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 
-#include <ctype.h>
+#include <cctype>
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"

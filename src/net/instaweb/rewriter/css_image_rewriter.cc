@@ -104,9 +104,7 @@ TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
           input_resource.get(), &dim));
       ret.expiration_ms = ExpirationTimeMs(rewrite_info.get());
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
-        if (image_rewrites_ != NULL) {
-          image_rewrites_->Add(1);
-        }
+        image_rewrites_->Add(1);
         *new_url = rewrite_info->url();
         ret.value = true;
       }
@@ -121,9 +119,7 @@ TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
                            ExpirationTimeMs(rewrite_info.get()));
 
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
-        if (cache_extends_ != NULL) {
-          cache_extends_->Add(1);
-        }
+        cache_extends_->Add(1);
         *new_url = rewrite_info->url();
         ret.value = true;
       }
@@ -235,9 +231,7 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                   }
                 }
                 if (!result.value)  {
-                  if (no_rewrite_ != NULL) {
-                    no_rewrite_->Add(1);
-                  }
+                  no_rewrite_->Add(1);
                   GoogleString time_str;
                   if (!ConvertTimeToString(result.expiration_ms, &time_str)) {
                     time_str = "?";

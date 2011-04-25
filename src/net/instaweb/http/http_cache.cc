@@ -47,6 +47,17 @@ const char HTTPCache::kCacheExpirations[] = "cache_expirations";
 const char HTTPCache::kCacheInserts[] = "cache_inserts";
 
 
+HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Statistics* stats)
+    : cache_(cache),
+      timer_(timer),
+      force_caching_(false),
+      cache_time_us_(stats->GetVariable(kCacheTimeUs)),
+      cache_hits_(stats->GetVariable(kCacheHits)),
+      cache_misses_(stats->GetVariable(kCacheMisses)),
+      cache_expirations_(stats->GetVariable(kCacheExpirations)),
+      cache_inserts_(stats->GetVariable(kCacheInserts)) {
+}
+
 HTTPCache::~HTTPCache() {}
 
 bool HTTPCache::IsCurrentlyValid(const ResponseHeaders& headers, int64 now_ms) {
@@ -61,9 +72,7 @@ bool HTTPCache::IsCurrentlyValid(const ResponseHeaders& headers, int64 now_ms) {
   if (headers.CacheExpirationTimeMs() > now_ms) {
     return true;
   }
-  if (cache_expirations_ != NULL) {
-    cache_expirations_->Add(1);
-  }
+  cache_expirations_->Add(1);
   return false;
 }
 
@@ -254,16 +263,6 @@ void HTTPCache::Initialize(Statistics* statistics) {
   statistics->AddVariable(kCacheMisses);
   statistics->AddVariable(kCacheExpirations);
   statistics->AddVariable(kCacheInserts);
-}
-
-void HTTPCache::SetStatistics(Statistics* statistics) {
-  if (statistics != NULL) {
-    cache_time_us_ = statistics->GetVariable(kCacheTimeUs);
-    cache_hits_ = statistics->GetVariable(kCacheHits);
-    cache_misses_ = statistics->GetVariable(kCacheMisses);
-    cache_expirations_ = statistics->GetVariable(kCacheExpirations);
-    cache_inserts_ = statistics->GetVariable(kCacheInserts);
-  }
 }
 
 HTTPCache::Callback::~Callback() {

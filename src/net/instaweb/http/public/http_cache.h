@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_HTTP_CACHE_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_CACHE_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -50,17 +50,7 @@ class HTTPCache {
   static const char kCacheInserts[];
 
   // Takes over ownership of the cache.
-  HTTPCache(CacheInterface* cache, Timer* timer)
-      : cache_(cache),
-        timer_(timer),
-        force_caching_(false),
-        cache_time_us_(NULL),
-        cache_hits_(NULL),
-        cache_misses_(NULL),
-        cache_expirations_(NULL),
-        cache_inserts_(NULL) {
-  }
-
+  HTTPCache(CacheInterface* cache, Timer* timer, Statistics* stats);
   ~HTTPCache();
 
   // When a lookup is done in the HTTP Cache, it returns one of these
@@ -119,9 +109,6 @@ class HTTPCache {
   void set_force_caching(bool force) { force_caching_ = force; }
   bool force_caching() const { return force_caching_; }
   Timer* timer() const { return timer_; }
-
-  // Initializes statistics for the cache (time, hits, misses, expirations)
-  void SetStatistics(Statistics* stats);
 
   // Tell the HTTP Cache to remember that a particular key is not cacheable.
   // This may be due to the associated URL failing Fetch, or it may be because

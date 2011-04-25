@@ -18,7 +18,7 @@
 
 #include "net/instaweb/http/public/http_response_parser.h"
 
-#include <stdio.h>
+#include <cstdio>
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/writer.h"

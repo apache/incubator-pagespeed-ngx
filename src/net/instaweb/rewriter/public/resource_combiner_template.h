@@ -38,7 +38,11 @@ class ResourceCombinerTemplate : public ResourceCombiner {
                            CommonFilter* filter)
       : ResourceCombiner(rewrite_driver, path_prefix, extension, filter) {
   }
-  virtual ~ResourceCombinerTemplate() {}
+  virtual ~ResourceCombinerTemplate() {
+    // Note that the superclass's dtor will not call our overridden Clear.
+    // Fortunately there's no harm in calling Clear() several times.
+    Clear();
+  }
 
   TimedBool AddElement(T element, const StringPiece& url,
                        MessageHandler* handler) {
@@ -49,15 +53,18 @@ class ResourceCombinerTemplate : public ResourceCombiner {
     return result;
   }
 
-  // Removes the last element that was added to this combiner.
+  // Removes the last element that was added to this combiner, and the
+  // corresponding resource.
   void RemoveLastElement() {
-    ResourceCombiner::RemoveLastResource();
+    RemoveLastResource();
     elements_.pop_back();
   }
 
   T element(int i) const { return elements_[i]; }
 
  protected:
+  int num_elements() const { return elements_.size(); }
+
   virtual void Clear() {
     elements_.clear();
     ResourceCombiner::Clear();

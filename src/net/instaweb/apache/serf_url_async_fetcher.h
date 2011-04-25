@@ -20,7 +20,7 @@
 #include <vector>
 #include <list>
 #include <map>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/pool.h"
 #include "net/instaweb/util/public/pool_element.h"

@@ -18,7 +18,7 @@
 
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/cache_url_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"

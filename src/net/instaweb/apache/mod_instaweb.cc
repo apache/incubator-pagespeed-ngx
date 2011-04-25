@@ -21,7 +21,7 @@
 #include "apr_timer.h"
 #include "apr_version.h"
 #include "http_request.h"
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/header_util.h"
@@ -322,7 +322,7 @@ class ApacheProcessContext {
       // with a call to InitVariables(false) inside pagespeed_child_init.
       statistics_.reset(
           new SharedMemStatistics(shmem_runtime, filename_prefix.as_string()));
-      RewriteDriverFactory::Initialize(statistics_.get());
+      ResourceManager::Initialize(statistics_.get());
       SerfUrlAsyncFetcher::Initialize(statistics_.get());
       statistics_->AddVariable("merge_time_us");
       statistics_->AddVariable("parse_time_us");
@@ -661,7 +661,7 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   while (next_server) {
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(next_server);
     factory->set_is_root_process(false);
-    if (factory->statistics()) {
+    if (factory->statistics_enabled()) {
       factory->InitStatisticsVariablesAsChild();
     }
     next_server = next_server->next;
@@ -710,15 +710,23 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   }
 
   // Next we do the instance-independent static initialization, once we have
-  // established whether *any* of the servers of stats enabled.
-  RewriteDriverFactory::Initialize(statistics);
+  // established whether *any* of the servers have stats enabled.
+  ResourceManager::Initialize(statistics);
   SerfUrlAsyncFetcher::Initialize(statistics);
 
   // Do a final pass over the servers and init the server-specific statistics.
   for (server_rec* server = server_list; server != NULL;
        server = server->next) {
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
-    factory->set_statistics(factory->statistics_enabled() ? statistics : NULL);
+    if (factory->statistics_enabled()) {
+      factory->SetStatistics(statistics);
+    } else {
+      // Each server with default statistics has its own copy of
+      // NullStatistics, and so the variable names will have to be
+      // established for each one.
+      ResourceManager::Initialize(factory->statistics());
+      SerfUrlAsyncFetcher::Initialize(factory->statistics());
+    }
   }
   return OK;
 }

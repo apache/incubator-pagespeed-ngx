@@ -18,7 +18,7 @@
 
 #include "net/instaweb/http/public/request_headers.h"
 #include <algorithm>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"

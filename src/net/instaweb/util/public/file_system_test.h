@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_FILE_SYSTEM_TEST_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_FILE_SYSTEM_TEST_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/google_message_handler.h"

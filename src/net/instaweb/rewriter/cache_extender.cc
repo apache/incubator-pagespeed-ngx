@@ -102,9 +102,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
         // Rewrite URL to cache-extended version
         href->SetValue(rewrite_info->url());
-        if (extension_count_ != NULL) {
-          extension_count_->Add(1);
-        }
+        extension_count_->Add(1);
       }
     }
   }
@@ -146,9 +144,7 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   bool ok = false;
   if (!resource_manager_->http_cache()->force_caching() &&
       !headers->IsCacheable()) {
-    if (not_cacheable_count_ != NULL) {
-      not_cacheable_count_->Add(1);
-    }
+    not_cacheable_count_->Add(1);
   } else if (ShouldRewriteResource(headers, now_ms, input_resource, url)) {
     output_resource->SetType(input_resource->type());
     ok = true;

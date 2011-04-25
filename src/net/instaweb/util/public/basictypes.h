@@ -1,4 +1,4 @@
-// Copyright 2010 Google Inc.
+// Copyright 2011 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,24 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Author: jmaessen@google.com (Jan Maessen)
 
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_BASICTYPES_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_BASICTYPES_H_
 
-#ifndef MOD_INSTAWEB_MOD_INSTAWEB_H_
-#define MOD_INSTAWEB_MOD_INSTAWEB_H_
+#include "base/basictypes.h"
 
-#include "net/instaweb/util/public/basictypes.h"
-
-// Forward declaration.
-struct server_rec;
-
-namespace net_instaweb {
-
-struct PageSpeedConfig;
-class PageSpeedServerContext;
-
-PageSpeedConfig* mod_pagespeed_get_server_config(server_rec* server);
-PageSpeedServerContext* mod_pagespeed_get_config_server_context(
-    server_rec* server);
-}  // namespace net_instaweb
-
-#endif  // MOD_INSTAWEB_MOD_INSTAWEB_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_BASICTYPES_H_

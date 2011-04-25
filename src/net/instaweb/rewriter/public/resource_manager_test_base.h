@@ -55,6 +55,10 @@ const int kCacheSize = 100 * 1000 * 1000;
 class RewriteFilter;
 
 class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
+ public:
+  static void SetUpTestCase();
+  static void TearDownTestCase();
+
  protected:
   static const char kTestData[];    // Testdata directory.
   static const char kXhtmlDtd[];    // DOCTYPE string for claming XHTML
@@ -175,6 +179,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   LRUCache* lru_cache_;  // Owned by http_cache_
   HTTPCache http_cache_;
   FileSystemLockManager lock_manager_;
+  static SimpleStats* statistics_;
   ResourceManager* resource_manager_;  // TODO(sligocki): Make not a pointer.
   RewriteOptions options_;
   RewriteDriver rewrite_driver_;
@@ -190,8 +195,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   ResourceManager other_resource_manager_;
   RewriteOptions other_options_;
   RewriteDriver other_rewrite_driver_;
-
-  SimpleStats statistics_;
 };
 
 }  // namespace net_instaweb

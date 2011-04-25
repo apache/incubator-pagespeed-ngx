@@ -22,7 +22,7 @@
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_PARSE_TEST_BASE_H_
 
 #include <string>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/html_testing_peer.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"

@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_HTTP_DUMP_URL_ASYNC_WRITER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_DUMP_URL_ASYNC_WRITER_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"

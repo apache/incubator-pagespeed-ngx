@@ -19,10 +19,10 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_PARSE_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_PARSE_H_
 
-#include <stdarg.h>
+#include <cstdarg>
 #include <set>
 #include <vector>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"

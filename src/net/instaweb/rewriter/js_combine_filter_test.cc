@@ -443,7 +443,7 @@ TEST_F(JsCombineFilterTest, TestCrossDomainRecover) {
 
 TEST_F(JsCombineFilterTest, TestCombineStats) {
   Variable* num_reduced =
-      statistics_.GetVariable(JsCombineFilter::kJsFileCountReduction);
+      statistics_->GetVariable(JsCombineFilter::kJsFileCountReduction);
   EXPECT_EQ(0, num_reduced->Get());
 
   // Now combine 3 files into one.

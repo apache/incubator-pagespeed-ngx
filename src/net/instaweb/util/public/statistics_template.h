@@ -64,7 +64,7 @@ template<class Var> class StatisticsTemplate : public Statistics {
   virtual void Clear() {
     for (int i = 0, n = variables_.size(); i < n; ++i) {
       Var* var = variables_[i];
-      var->Set(0);
+      var->Clear();
     }
   }
 

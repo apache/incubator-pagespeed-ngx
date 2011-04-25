@@ -19,7 +19,7 @@
 #include "apr_file_info.h"
 #include "apr_file_io.h"
 #include "apr_pools.h"
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apr_mutex.h"

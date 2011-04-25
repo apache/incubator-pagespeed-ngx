@@ -15,11 +15,11 @@
 #ifndef NET_INSTAWEB_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
 #define NET_INSTAWEB_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
 
-#include <stdio.h>
+#include <cstdio>
 #include <set>
 #include <string>
 #include <vector>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
@@ -31,6 +31,7 @@ namespace net_instaweb {
 
 class AbstractSharedMem;
 class SerfUrlAsyncFetcher;
+class SharedMemStatistics;
 class SyncFetcherAdapter;
 class UrlPollableAsyncFetcher;
 
@@ -74,8 +75,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   StringPiece file_cache_path() { return file_cache_path_; }
   int64 file_cache_clean_size_kb() { return file_cache_clean_size_kb_; }
   int64 fetcher_time_out_ms() { return fetcher_time_out_ms_; }
-  Statistics* statistics() { return statistics_; }
-  void set_statistics(SharedMemStatistics* x) { statistics_ = x; }
+  virtual Statistics* statistics();
+  void SetStatistics(SharedMemStatistics* x);
   void set_statistics_enabled(bool x) { statistics_enabled_ = x; }
   bool statistics_enabled() const { return statistics_enabled_; }
 
@@ -114,10 +115,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // As we use the cache for storage, locks should be scoped to it.
   virtual StringPiece LockFilePrefix() { return file_cache_path_; }
 
-  // When computing the resource manager for Apache, be sure to set up
-  // the statistics.
-  virtual ResourceManager* ComputeResourceManager();
-
   // Release all the resources. It also calls the base class ShutDown to release
   // the base class resources.
   void ShutDown();
@@ -129,7 +126,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   scoped_ptr<AbstractMutex> rewrite_drivers_mutex_;
   SyncFetcherAdapter* serf_url_fetcher_;
   SerfUrlAsyncFetcher* serf_url_async_fetcher_;
-  SharedMemStatistics* statistics_;
+  SharedMemStatistics* shm_statistics_;
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
 
   // TODO(jmarantz): These options could be consolidated in a protobuf or
@@ -146,6 +143,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   std::string fetcher_proxy_;
   std::string version_;
   bool statistics_enabled_;
+  bool statistics_frozen_;
   bool test_proxy_;
   bool is_root_process_;
 

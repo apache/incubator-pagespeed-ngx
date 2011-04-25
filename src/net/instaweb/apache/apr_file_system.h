@@ -15,7 +15,7 @@
 #ifndef NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_
 #define NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 

@@ -18,8 +18,8 @@
 
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 
-#include <stdio.h>
-#include "base/basictypes.h"
+#include <cstdio>
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"

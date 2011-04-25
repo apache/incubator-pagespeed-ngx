@@ -17,7 +17,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_SHARED_MEM_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_SHARED_MEM_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

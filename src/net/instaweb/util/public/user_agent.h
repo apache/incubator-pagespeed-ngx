@@ -15,7 +15,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_USER_AGENT_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_USER_AGENT_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

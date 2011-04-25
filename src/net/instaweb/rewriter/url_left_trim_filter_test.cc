@@ -18,7 +18,7 @@
 
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -32,7 +32,7 @@ class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
   GoogleUrl *base_url_;
 
   UrlLeftTrimFilterTest()
-      : left_trim_filter_(&rewrite_driver_, NULL),
+      : left_trim_filter_(&rewrite_driver_, statistics_),
         base_url_(NULL) {
     rewrite_driver_.AddFilter(&left_trim_filter_);
   }

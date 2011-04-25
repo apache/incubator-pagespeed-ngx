@@ -19,7 +19,7 @@
 // Unit-test the file cache
 
 #include "net/instaweb/util/public/file_cache.h"
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/util/cache_test_base.h"
 #include "net/instaweb/util/public/gtest.h"

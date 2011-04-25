@@ -22,7 +22,7 @@
 
 #include <map>
 #include <vector>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -76,7 +76,8 @@ class ResourceManager {
                   HTTPCache* http_cache,
                   CacheInterface* metadata_cache,
                   NamedLockManager* lock_manager,
-                  MessageHandler* handler);
+                  MessageHandler* handler,
+                  Statistics* statistics);
   ~ResourceManager();
 
   // Initialize statistics gathering.
@@ -158,9 +159,20 @@ class ResourceManager {
   void RefreshIfImminentlyExpiring(Resource* resource,
                                    MessageHandler* handler) const;
 
-  // This method is here because it updates a thread-safe Statistic which
-  // can be shared between multiple requests.
-  void IncrementResourceUrlDomainRejections();
+  Variable* resource_url_domain_rejections() {
+    return resource_url_domain_rejections_;
+  }
+  Variable* cached_output_missed_deadline() {
+    return cached_output_missed_deadline_;
+  }
+  Variable* cached_output_hits() {
+    return cached_output_hits_;
+  }
+  Variable* cached_output_misses() {
+    return cached_output_misses_;
+  }
+  Variable* resource_404_count() { return resource_404_count_; }
+  Variable* slurp_404_count() { return slurp_404_count_; }
 
   MessageHandler* message_handler() const { return message_handler_; }
 
@@ -172,7 +184,29 @@ class ResourceManager {
   UrlAsyncFetcher* url_async_fetcher_;
   Hasher* hasher_;
   Statistics* statistics_;
+
+  // Counts how many URLs we reject because they come from a domain that
+  // is not authorized.
   Variable* resource_url_domain_rejections_;
+
+  // Counts how many times we had a cache-hit for the output resource
+  // partitioning, but it came too late to be used for the rewrite.
+  Variable* cached_output_missed_deadline_;
+
+  // Counts how many times we had a successful cache-hit for output
+  // resource partitioning.
+  Variable* cached_output_hits_;
+
+  // Counts how many times we had a cache-miss for output
+  // resource partitioning.
+  Variable* cached_output_misses_;
+
+  // Tracks 404s sent to clients for resource requests.
+  Variable* resource_404_count_;
+
+  // Tracks 404s sent clients to when slurping.
+  Variable* slurp_404_count_;
+
   HTTPCache* http_cache_;
   CacheInterface* metadata_cache_;
   bool relative_path_;

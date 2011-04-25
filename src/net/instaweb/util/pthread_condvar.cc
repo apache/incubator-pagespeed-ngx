@@ -16,10 +16,10 @@
 
 #include "net/instaweb/util/public/pthread_condvar.h"
 
-#include <errno.h>
 #include <pthread.h>
 #include <sys/time.h>
-#include <time.h>
+#include <cerrno>
+#include <ctime>
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/pthread_mutex.h"

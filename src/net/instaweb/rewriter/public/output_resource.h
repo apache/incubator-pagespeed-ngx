@@ -22,7 +22,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/file_system.h"

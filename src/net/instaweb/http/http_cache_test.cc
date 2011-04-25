@@ -19,7 +19,7 @@
 // Unit-test the lru cache
 
 #include "net/instaweb/http/public/http_cache.h"
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -67,7 +67,8 @@ class HTTPCacheTest : public testing::Test {
   }
 
   HTTPCacheTest() : mock_timer_(ParseDate(kStartDate)),
-                    http_cache_(new LRUCache(kMaxSize), &mock_timer_) {
+                    http_cache_(new LRUCache(kMaxSize), &mock_timer_,
+                                simple_stats_) {
   }
 
   void InitHeaders(ResponseHeaders* headers, const char* cache_control) {
@@ -121,7 +122,6 @@ SimpleStats* HTTPCacheTest::simple_stats_ = NULL;
 
 // Simple flow of putting in an item, getting it.
 TEST_F(HTTPCacheTest, PutGet) {
-  http_cache_.SetStatistics(simple_stats_);
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "max-age=300");
   http_cache_.Put("mykey", &meta_data_in, "content", &message_handler_);

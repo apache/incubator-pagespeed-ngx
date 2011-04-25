@@ -17,10 +17,10 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_RESPONSE_HEADERS_PARSER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_RESPONSE_HEADERS_PARSER_H_
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <map>
 #include <vector>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"

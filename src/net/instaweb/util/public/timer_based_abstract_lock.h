@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_TIMER_BASED_ABSTRACT_LOCK_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_TIMER_BASED_ABSTRACT_LOCK_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 
 namespace net_instaweb {

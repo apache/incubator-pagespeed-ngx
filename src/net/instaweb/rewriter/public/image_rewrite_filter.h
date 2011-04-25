@@ -21,7 +21,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"

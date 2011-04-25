@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_SPRITER_IMAGE_LIBRARY_INTERFACE_H_
 #define NET_INSTAWEB_SPRITER_IMAGE_LIBRARY_INTERFACE_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/spriter/public/image_spriter.pb.h"
 

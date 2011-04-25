@@ -19,7 +19,7 @@
 
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/request_headers.h"

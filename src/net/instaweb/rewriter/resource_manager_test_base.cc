@@ -28,6 +28,8 @@ const char ResourceManagerTestBase::kTestData[] =
 const char ResourceManagerTestBase::kXhtmlDtd[] =
     "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
     "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">";
+SimpleStats* ResourceManagerTestBase::statistics_;
+
 
 ResourceManagerTestBase::ResourceManagerTestBase()
     : mock_url_async_fetcher_(&mock_url_fetcher_),
@@ -35,7 +37,7 @@ ResourceManagerTestBase::ResourceManagerTestBase()
       url_prefix_(URL_PREFIX),
 
       lru_cache_(new LRUCache(kCacheSize)),
-      http_cache_(lru_cache_, file_system_.timer()),
+      http_cache_(lru_cache_, file_system_.timer(), statistics_),
       // TODO(jmaessen): Pull timer out of file_system_ and make it
       // standalone.
       lock_manager_(&file_system_, file_prefix_, file_system_.timer(),
@@ -49,7 +51,8 @@ ResourceManagerTestBase::ResourceManagerTestBase()
                       &mock_url_async_fetcher_, options_),
 
       other_lru_cache_(new LRUCache(kCacheSize)),
-      other_http_cache_(other_lru_cache_, other_file_system_.timer()),
+      other_http_cache_(other_lru_cache_, other_file_system_.timer(),
+                        statistics_),
       other_lock_manager_(
           &other_file_system_, file_prefix_,
           other_file_system_.timer(), &message_handler_),
@@ -57,24 +60,32 @@ ResourceManagerTestBase::ResourceManagerTestBase()
           file_prefix_, &other_file_system_,
           &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
           &other_http_cache_, other_lru_cache_, &other_lock_manager_,
-          &message_handler_),
+          &message_handler_, statistics_),
       other_rewrite_driver_(&message_handler_, &other_file_system_,
                             &mock_url_async_fetcher_, other_options_) {
   // rewrite_driver_.SetResourceManager(resource_manager_);
   other_rewrite_driver_.SetResourceManager(&other_resource_manager_);
 }
 
+void ResourceManagerTestBase::SetUpTestCase() {
+  statistics_ = new SimpleStats();
+  ResourceManager::Initialize(statistics_);
+}
+
+void ResourceManagerTestBase::TearDownTestCase() {
+  delete statistics_;
+  statistics_ = NULL;
+}
+
 void ResourceManagerTestBase::SetUp() {
+  statistics_->Clear();
   HtmlParseTestBaseNoAlloc::SetUp();
   // TODO(sligocki): Init this in constructor.
   resource_manager_ = new ResourceManager(
       file_prefix_, &file_system_,
       &filename_encoder_, &mock_url_async_fetcher_, &mock_hasher_,
       &http_cache_, lru_cache_, &lock_manager_,
-      &message_handler_);
-
-  resource_manager_->set_statistics(&statistics_);
-  RewriteDriver::Initialize(&statistics_);
+      &message_handler_, statistics_);
   rewrite_driver_.SetResourceManager(resource_manager_);
 }
 
@@ -166,7 +177,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   // other_lru_cache is owned by other_http_cache_.
   LRUCache* other_lru_cache(new LRUCache(kCacheSize));
   MockTimer* other_mock_timer = other_file_system.timer();
-  HTTPCache other_http_cache(other_lru_cache, other_mock_timer);
+  HTTPCache other_http_cache(other_lru_cache, other_mock_timer, statistics_);
   DomainLawyer other_domain_lawyer;
   FileSystemLockManager other_lock_manager(
       &other_file_system, file_prefix_, other_mock_timer, &message_handler_);
@@ -175,7 +186,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
       file_prefix_, &other_file_system,
       &filename_encoder_, &wait_url_async_fetcher, hasher,
       &other_http_cache, other_lru_cache, &other_lock_manager,
-      &message_handler_);
+      &message_handler_, statistics_);
 
   SimpleStats stats;
   RewriteDriver::Initialize(&stats);

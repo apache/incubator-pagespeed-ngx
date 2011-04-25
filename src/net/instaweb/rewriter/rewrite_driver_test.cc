@@ -18,7 +18,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"

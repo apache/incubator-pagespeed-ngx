@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_MESSAGE_HANDLER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_MESSAGE_HANDLER_H_
 
-#include <stdarg.h>
+#include <cstdarg>
 
 #include "net/instaweb/util/public/printf_format.h"
 

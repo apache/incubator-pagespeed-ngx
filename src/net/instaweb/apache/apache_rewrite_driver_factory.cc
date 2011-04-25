@@ -42,7 +42,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     : server_rec_(server),
       serf_url_fetcher_(NULL),
       serf_url_async_fetcher_(NULL),
-      statistics_(NULL),
+      shm_statistics_(NULL),
       shmem_runtime_(new PthreadSharedMem()),
       lru_cache_kb_per_process_(0),
       lru_cache_byte_limit_(0),
@@ -52,6 +52,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       slurp_flush_limit_(0),
       version_(version.data(), version.size()),
       statistics_enabled_(true),
+      statistics_frozen_(false),
       test_proxy_(false),
       is_root_process_(true) {
   apr_pool_create(&pool_, NULL);
@@ -139,7 +140,7 @@ UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
 UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   if (serf_url_async_fetcher_ == NULL) {
     serf_url_async_fetcher_ = new SerfUrlAsyncFetcher(
-        fetcher_proxy_.c_str(), pool_, statistics_, timer(),
+        fetcher_proxy_.c_str(), pool_, shm_statistics_, timer(),
         fetcher_time_out_ms_);
   }
   return serf_url_async_fetcher_;
@@ -154,16 +155,21 @@ AbstractMutex* ApacheRewriteDriverFactory::NewMutex() {
   return new AprMutex(pool_);
 }
 
-ResourceManager* ApacheRewriteDriverFactory::ComputeResourceManager() {
-  ResourceManager* resource_manager =
-      RewriteDriverFactory::ComputeResourceManager();
-  resource_manager->set_statistics(statistics_);
-  http_cache()->SetStatistics(statistics_);
-  return resource_manager;
+void ApacheRewriteDriverFactory::InitStatisticsVariablesAsChild() {
+  shm_statistics_->InitVariables(false, message_handler());
 }
 
-void ApacheRewriteDriverFactory::InitStatisticsVariablesAsChild() {
-  statistics_->InitVariables(false, message_handler());
+void ApacheRewriteDriverFactory::SetStatistics(SharedMemStatistics* x) {
+  DCHECK(!statistics_frozen_);
+  shm_statistics_ = x;
+}
+
+Statistics* ApacheRewriteDriverFactory::statistics() {
+  statistics_frozen_ = true;
+  if (shm_statistics_ == NULL) {
+    return RewriteDriverFactory::statistics();  // null implementation
+  }
+  return shm_statistics_;
 }
 
 void ApacheRewriteDriverFactory::ShutDown() {
@@ -174,8 +180,8 @@ void ApacheRewriteDriverFactory::ShutDown() {
   }
   cache_mutex_.reset(NULL);
   rewrite_drivers_mutex_.reset(NULL);
-  if (is_root_process_ && (statistics_ != NULL)) {
-    statistics_->GlobalCleanup(message_handler());
+  if (is_root_process_ && (shm_statistics_ != NULL)) {
+    shm_statistics_->GlobalCleanup(message_handler());
   }
   RewriteDriverFactory::ShutDown();
 }

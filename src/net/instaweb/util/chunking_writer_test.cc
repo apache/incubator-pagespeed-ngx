@@ -18,7 +18,7 @@
 
 #include "net/instaweb/util/public/chunking_writer.h"
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"

@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_STRING_HASH_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_HASH_H_
 
-#include <stddef.h>
+#include <cstddef>
 
 #include "net/instaweb/util/public/string_util.h"
 

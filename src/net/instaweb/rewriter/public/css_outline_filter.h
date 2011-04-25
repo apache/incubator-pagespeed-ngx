@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_OUTLINE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_OUTLINE_FILTER_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/string.h"

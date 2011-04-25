@@ -17,8 +17,8 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_RESPONSE_HEADERS_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_RESPONSE_HEADERS_H_
 
-#include <stdlib.h>
-#include "base/basictypes.h"
+#include <cstdlib>
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/http/public/meta_data.h"  // HttpAttributes, HttpStatus

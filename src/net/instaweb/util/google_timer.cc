@@ -21,8 +21,8 @@
 #include <sys/errno.h>
 #include "base/logging.h"
 #include <sys/time.h>
-#include <time.h>
 #include <unistd.h>
+#include <ctime>
 
 namespace net_instaweb {
 

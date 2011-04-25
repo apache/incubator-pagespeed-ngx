@@ -249,9 +249,9 @@ TEST_F(CacheExtenderTest, MadeOnTheFly) {
                    StrCat("<img src=\"", b_ext, "\">"));
 
   Variable* cached_resource_fetches =
-      statistics_.GetVariable(RewriteDriver::kResourceFetchesCached);
+      statistics_->GetVariable(RewriteDriver::kResourceFetchesCached);
   Variable* succeeded_filter_resource_fetches =
-      statistics_.GetVariable(RewriteDriver::kResourceFetchConstructSuccesses);
+      statistics_->GetVariable(RewriteDriver::kResourceFetchConstructSuccesses);
 
   EXPECT_EQ(0, cached_resource_fetches->Get());
   EXPECT_EQ(0, succeeded_filter_resource_fetches->Get());

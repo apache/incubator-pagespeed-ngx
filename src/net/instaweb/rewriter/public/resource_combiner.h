@@ -26,7 +26,7 @@
 #include <vector>
 #include <utility>
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -114,10 +114,13 @@ class ResourceCombiner {
   // Returns whether successful or not (in which case the partnership will be
   // unchanged). This will succeed only if we both have the data ready and can
   // fit in the names into the combined URL.
-  TimedBool AddResource(const StringPiece& url, MessageHandler* handler);
+  virtual TimedBool AddResource(const StringPiece& url,
+                                MessageHandler* handler);
 
-  // Removes the last resource that was added here.
-  void RemoveLastResource();
+  // Removes the last resource that was added here, assuming the last call to
+  // AddResource was successful.  If the last call to AddResource returned
+  // false, behavior is undefined.
+  virtual void RemoveLastResource();
 
   // Returns one resource containing the combination of all added resources,
   // creating it if necessary.  Caller takes ownership.  Returns NULL if the

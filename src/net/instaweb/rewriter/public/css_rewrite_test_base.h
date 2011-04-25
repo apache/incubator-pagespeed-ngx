@@ -39,12 +39,10 @@ namespace net_instaweb {
 class CssRewriteTestBase : public ResourceManagerTestBase {
  protected:
   CssRewriteTestBase() {
-    RewriteDriver::Initialize(&statistics_);
-
-    num_files_minified_ = statistics_.GetVariable(CssFilter::kFilesMinified);
+    num_files_minified_ = statistics_->GetVariable(CssFilter::kFilesMinified);
     minified_bytes_saved_ =
-        statistics_.GetVariable(CssFilter::kMinifiedBytesSaved);
-    num_parse_failures_ = statistics_.GetVariable(CssFilter::kParseFailures);
+        statistics_->GetVariable(CssFilter::kMinifiedBytesSaved);
+    num_parse_failures_ = statistics_->GetVariable(CssFilter::kParseFailures);
   }
 
   virtual void SetUp() {

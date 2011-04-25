@@ -41,9 +41,8 @@ UrlLeftTrimFilter::UrlLeftTrimFilter(RewriteDriver* rewrite_driver,
                                      Statistics *stats)
     : CommonFilter(rewrite_driver),
       tag_scanner_(rewrite_driver),
-      trim_count_((stats == NULL) ? NULL : stats->GetVariable(kUrlTrims)),
-      trim_saved_bytes_(
-          (stats == NULL) ? NULL : stats->GetVariable(kUrlTrimSavedBytes)) {
+      trim_count_(stats->GetVariable(kUrlTrims)),
+      trim_saved_bytes_(stats->GetVariable(kUrlTrimSavedBytes)) {
   tag_scanner_.set_find_a_tags(true);
 }
 
@@ -165,10 +164,8 @@ void UrlLeftTrimFilter::TrimAttribute(HtmlElement::Attribute* attr) {
     if (Trim(driver_->base_url(), val, &trimmed_val,
              driver_->message_handler())) {
       attr->SetValue(trimmed_val);
-      if (trim_count_ != NULL) {
-        trim_count_->Add(1);
-        trim_saved_bytes_->Add(orig_size - trimmed_val.size());
-      }
+      trim_count_->Add(1);
+      trim_saved_bytes_->Add(orig_size - trimmed_val.size());
     }
   }
 }

@@ -18,7 +18,7 @@
 
 #include "net/instaweb/util/public/file_cache.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <vector>
 #include <queue>
 #include "net/instaweb/util/public/base64_util.h"

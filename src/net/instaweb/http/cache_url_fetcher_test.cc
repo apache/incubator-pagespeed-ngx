@@ -21,7 +21,7 @@
 
 #include "net/instaweb/http/public/cache_url_fetcher.h"
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/cache_fetcher_test.h"
 
 namespace net_instaweb {

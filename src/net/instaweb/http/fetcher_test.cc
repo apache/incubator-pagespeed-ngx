@@ -17,6 +17,7 @@
 // Author: sligocki@google.com (Shawn Ligocki)
 
 #include "net/instaweb/http/public/fetcher_test.h"
+#include "net/instaweb/http/public/http_cache.h"
 
 namespace net_instaweb {
 
@@ -28,6 +29,8 @@ const char FetcherTest::kNotCachedUrl[] = "http://not_cacheable.com";
 const char FetcherTest::kBadUrl[] = "http://this_url_will_fail.com";
 const char FetcherTest::kHeaderName[] = "header-name";
 const char FetcherTest::kHeaderValue[] = "header value";
+
+SimpleStats* FetcherTest::statistics_ = NULL;
 
 void FetcherTest::ValidateMockFetcherResponse(
     bool success, bool check_error_message,
@@ -160,6 +163,16 @@ void FetcherTest::MockAsyncFetcher::CallCallbacks() {
     callback->Done(status);
   }
   deferred_callbacks_.clear();
+}
+
+void FetcherTest::SetUpTestCase() {
+  statistics_ = new SimpleStats;
+  HTTPCache::Initialize(statistics_);
+}
+
+void FetcherTest::TearDownTestCase() {
+  delete statistics_;
+  statistics_ = NULL;
 }
 
 }  // namespace net_isntaweb

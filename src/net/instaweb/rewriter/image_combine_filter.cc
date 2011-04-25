@@ -35,6 +35,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "webutil/css/parser.h"
 
@@ -57,7 +58,15 @@ namespace spriter_binding {
 // partnership.
 class SpriteFuture {
  public:
-  SpriteFuture() : declarations_(NULL), url_value_(NULL) {}
+  // old_url is the original URL which will be replaced with the sprite.  We
+  // keep track of it so that we can avoid putting the same image in the sprite
+  // twice.
+  explicit SpriteFuture(const StringPiece& old_url)
+      : declarations_(NULL), url_value_(NULL) {
+    old_url.CopyToString(&old_url_);
+  }
+
+  ~SpriteFuture() {}
 
   // Bind this Future to a partictular image.  Owns nothing; the inputs must
   // outlive this future.
@@ -65,6 +74,8 @@ class SpriteFuture {
     declarations_ = declarations;
     url_value_ = url_value;
   }
+
+  const GoogleString& old_url() { return old_url_; }
 
   // TODO(abliss): support other values like "10%" and "center"
   static bool GetPixelValue(Css::Value* value, int* out_value_px) {
@@ -165,7 +176,7 @@ class SpriteFuture {
   }
   // Attempt to actually perform the url substitution.  Initialize must have
   // been called first.
-  bool Realize(const char* url, int x, int y) {
+  bool Realize(const char* url, int x, int y, MessageHandler* handler) {
     DCHECK(declarations_ != NULL);
     // Find the original background offsets (if any) so we can add to them.
     bool position_found = false;
@@ -179,12 +190,14 @@ class SpriteFuture {
           if (decl_values->size() != 2) {
             // If only one of the coordinates is specified, the other is
             // "center", which we don't currently support.
+            handler->Info(url, 0, "Cannot realize sprite: decl_values != 2");
             return false;
           }
           if (SetBackgroundPosition(decl_values, 0, x, y)) {
             position_found = true;
           } else {
             // Upon failure here, we abort the sprite.
+            handler->Info(url, 0, "Cannot realize sprite: set bg pos");
             return false;
           }
           break;
@@ -193,6 +206,7 @@ class SpriteFuture {
         case Css::Property::BACKGROUND_POSITION_Y:
           // These are non-standard, though supported in IE and Chrome.
           // TODO(abliss): handle these.
+          handler->Info(url, 0, "Cannot realize sprite: bg pos_xy");
           return false;
         case Css::Property::BACKGROUND: {
           Css::Values* decl_values = decl->mutable_values();
@@ -208,6 +222,7 @@ class SpriteFuture {
                 break;
               } else {
                 // Upon failure here, we abort the sprite.
+                handler->Info(url, 0, "Cannot realize sprite: set bg");
                 return false;
               }
             }
@@ -234,6 +249,7 @@ class SpriteFuture {
     // assuming the node is already sized correctly.
     return true;
   }
+  GoogleString old_url_;
   Css::Declarations* declarations_;
   Css::Value* url_value_;
  private:
@@ -393,7 +409,42 @@ class ImageCombineFilter::Combiner
         image_file_count_reduction_(NULL) {
     Statistics* stats = driver->resource_manager()->statistics();
     if (stats != NULL) {
-      image_file_count_reduction_ = stats->GetVariable(kImageFileCountReduction);
+      image_file_count_reduction_ =
+          stats->GetVariable(kImageFileCountReduction);
+    }
+  }
+
+  virtual ~Combiner() {
+    // Note that the superclass's dtor will not call our overridden Clear.
+    // Fortunately there's no harm in calling Clear() several times.
+    Clear();
+  }
+
+  // Unlike other combiners (css and js) we want to uniquify incoming resources.
+  virtual TimedBool AddResource(const StringPiece& url,
+                                MessageHandler* handler) {
+    if (added_urls_.find(url.as_string()) == added_urls_.end()) {
+      last_added_ = true;
+      TimedBool result = ResourceCombiner::AddResource(url, handler);
+      if (result.value) {
+        added_urls_.insert(url.as_string());
+      }
+      return result;
+    } else {
+      // If the url has been successfully added to the partnership already.
+      // Since the image is already in the sprite, we do nothing and return
+      // success.
+      last_added_ = false;
+      TimedBool ret = {kint64max, true};
+      return ret;
+    }
+  }
+
+  virtual void RemoveLastResource() {
+    // We only want to actually remove the resource from the partnership if the
+    // last call to AddResource actually added it.
+    if (last_added_) {
+      ResourceCombiner::RemoveLastResource();
     }
   }
 
@@ -483,36 +534,40 @@ class ImageCombineFilter::Combiner
     }
     const spriter::SpriterResult& result =
         combination->cached_result()->spriter_result();
-    int n = num_urls();
-    if (n != result.image_position_size()) {
-      handler->Error(UrlSafeId().c_str(), 0,
-                     "Sprite result had %d images but we wanted %d",
-                     result.image_position_size(), n);
-      return false;
+    // Now gather up the positions for each of the original urls.
+    std::map<GoogleString, const spriter::Rect*> url_to_clip_rect;
+    for (int i = result.image_position_size() - 1; i >= 0; i--) {
+      const spriter::ImagePosition& image_position = result.image_position(i);
+      // Where the spriter expects file paths, we are using urls.
+      url_to_clip_rect[image_position.path()] = &image_position.clip_rect();
     }
 
-    // TODO(abliss): If the same image is included multiple times, it may
-    // show up multiple times in the sprite.
     GoogleString new_url = combination->url();
-    const char* new_url_str = new_url.c_str();
-    for (int i = n - 1; i >= 0; i--) {
+    const char* new_url_cstr = new_url.c_str();
+    StringSet replaced_urls;
+    for (int i = num_elements() - 1; i >= 0; i--) {
       SpriteFuture* future = element(i);
-      const spriter::ImagePosition& image_position = result.image_position(i);
-      future->Realize(new_url_str,
-                      image_position.clip_rect().x_pos(),
-                      image_position.clip_rect().y_pos());
-      delete future;
+      const spriter::Rect* clip_rect = url_to_clip_rect[future->old_url()];
+      if ((clip_rect != NULL)
+          && future->Realize(new_url_cstr, clip_rect->x_pos(),
+                             clip_rect->y_pos(), handler)) {
+        replaced_urls.insert(future->old_url());
+      }
     }
     if (image_file_count_reduction_ != NULL) {
-      handler->Message(kInfo, "Sprited %d images!", n);
-      image_file_count_reduction_->Add(n - 1);
+      int sprited = replaced_urls.size();
+      handler->Message(kInfo, "Sprited %d images to %s!", sprited,
+                       new_url_cstr);
+      image_file_count_reduction_->Add(sprited - 1);
     }
     return true;
   }
 
   virtual void Clear() {
+    STLDeleteElements(&elements_);
     ResourceCombinerTemplate<SpriteFuture*>::Clear();
     library_.Clear();
+    added_urls_.clear();
   }
 
   // Returns true if the image at url has already been added to the collection
@@ -529,8 +584,13 @@ class ImageCombineFilter::Combiner
     return (image_width >= width) && (image_height >= height);
   }
  private:
+  StringSet added_urls_;
   Library library_;
   Variable* image_file_count_reduction_;
+  // Whether the last call to AddResource actually called through to super.
+  // TODO(abliss): this is pretty ugly.  Should replace RemoveLast* with a
+  // better API.
+  bool last_added_;
 };
 
 // TODO(jmaessen): The addition of 1 below avoids the leading ".";
@@ -611,14 +671,16 @@ TimedBool ImageCombineFilter::AddCssBackground(const GoogleUrl& original_url,
     handler->Message(kInfo, "Cannot sprite: no explicit dimensions");
     return ret;
   }
-  SpriteFuture* future = new SpriteFuture();
-  ret = combiner_->AddElement(future, original_url.Spec(), handler);
+  SpriteFuture* future = new SpriteFuture(original_url.Spec());
+  ret = combiner_->AddElement(future, future->old_url(), handler);
   if (ret.value) {
     if (combiner_->CheckMinImageDimensions(
             original_url.Spec().as_string(), width, height)) {
       future->Initialize(declarations, url_value);
     } else {
       combiner_->RemoveLastElement();
+      // TODO(abliss): consider the case of scaled BG images (can we resize
+      // them)?
       handler->Message(kInfo, "Cannot sprite: image smaller than element.");
       ret.value = false;
       delete future;

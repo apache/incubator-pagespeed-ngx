@@ -16,12 +16,12 @@
 
 #include "net/instaweb/util/public/pthread_shared_mem.h"
 
-#include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <sys/mman.h>
 #include <sys/types.h>
-#include <pthread.h>
 #include <unistd.h>
+#include <cerrno>
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"

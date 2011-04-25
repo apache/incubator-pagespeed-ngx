@@ -21,7 +21,7 @@
 // For now this just makes sure that some things are constants so they can be
 // used in initializers safely.
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/util/public/timer.h"

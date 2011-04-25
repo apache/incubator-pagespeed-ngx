@@ -91,6 +91,37 @@ TEST_F(CssImageCombineTest, SpritesImages) {
   TestSpriting("-5px 5px", "-5px -65px");
 }
 
+TEST_F(CssImageCombineTest, SpritesMultiple) {
+  const char* html = "<head><style>"
+      "#div1{background:url(%s) 0px 0px;width:10px;height:10px}"
+      "#div2{background:url(%s) 0px %dpx;width:%dpx;height:10px}"
+      "#div3{background:url(%s) 0px %dpx;width:10px;height:10px}"
+      "</style></head>";
+  GoogleString before, after, sprite;
+  // With the same image present 3 times, there should be no sprite.
+  before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 10,
+                        kBikePngFile, 0);
+  ValidateExpected("no_sprite_3_bikes", before, before);
+
+  // With 2 of the same and 1 different, there should be a sprite without
+  // duplication.
+  before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 10,
+                        kCuppaPngFile, 0);
+  sprite = StrCat(kTestDomain, kBikePngFile, "+", kCuppaPngFile,
+                  ".pagespeed.is.n7ABi40xon.png").c_str();
+  after = StringPrintf(html, sprite.c_str(),
+                       sprite.c_str(), 0, 10, sprite.c_str(), -100);
+  ValidateExpected("sprite_2_bikes_1_cuppa", before, after);
+
+  // If the second occurence of the image is unspriteable (e.g. if the div is
+  // larger than the image), the first and third should still sprite correctly.
+  before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 999,
+                        kCuppaPngFile, 0);
+  after = StringPrintf(html, sprite.c_str(),
+                       kBikePngFile, 0, 999, sprite.c_str(), -100);
+  ValidateExpected("sprite_first_and_third", before, after);
+}
+
 TEST_F(CssImageCombineTest, NoCrashUnknownType) {
   // Make sure we don't crash trying to sprite an image with an unknown mimetype
 

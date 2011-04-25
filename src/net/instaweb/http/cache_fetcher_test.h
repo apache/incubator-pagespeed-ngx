@@ -22,7 +22,7 @@
 #ifndef NET_INSTAWEB_HTTP_CACHE_FETCHER_TEST_H_
 #define NET_INSTAWEB_HTTP_CACHE_FETCHER_TEST_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/http/public/fetcher_test.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -38,7 +38,7 @@ class CacheFetcherTest : public FetcherTest {
 
   CacheFetcherTest()
       : mock_timer_(0),
-        http_cache_(new LRUCache(kMaxSize), &mock_timer_) {
+        http_cache_(new LRUCache(kMaxSize), &mock_timer_, statistics_) {
     int64 start_time_ms;
     bool parsed = ResponseHeaders::ParseTime(kStartDate, &start_time_ms);
     CHECK(parsed);

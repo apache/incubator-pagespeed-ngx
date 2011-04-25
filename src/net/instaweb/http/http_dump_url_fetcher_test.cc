@@ -27,7 +27,7 @@
 
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/google_message_handler.h"

@@ -50,6 +50,12 @@ namespace {
 // could have rewritten, except that they lay in a domain that did not
 // permit resource rewriting relative to the current page.
 const char kResourceUrlDomainRejections[] = "resource_url_domain_rejections";
+static const char kCachedOutputMissedDeadline[] =
+    "rewrite_cached_output_missed_deadline";
+static const char kCachedOutputHits[] = "rewrite_cached_output_hits";
+static const char kCachedOutputMisses[] = "rewrite_cached_output_misses";
+const char kInstawebResource404Count[] = "resource_404_count";
+const char kInstawebSlurp404Count[] = "slurp_404_count";
 
 const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
 const int64 kGeneratedMaxAgeSec = Timer::kYearMs / Timer::kSecondMs;
@@ -93,15 +99,23 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
                                  HTTPCache* http_cache,
                                  CacheInterface* metadata_cache,
                                  NamedLockManager* lock_manager,
-                                 MessageHandler* handler)
+                                 MessageHandler* handler,
+                                 Statistics* statistics)
     : file_prefix_(file_prefix.data(), file_prefix.size()),
       resource_id_(0),
       file_system_(file_system),
       filename_encoder_(filename_encoder),
       url_async_fetcher_(url_async_fetcher),
       hasher_(hasher),
-      statistics_(NULL),
-      resource_url_domain_rejections_(NULL),
+      statistics_(statistics),
+      resource_url_domain_rejections_(
+          statistics_->GetVariable(kResourceUrlDomainRejections)),
+      cached_output_missed_deadline_(
+          statistics->GetVariable(kCachedOutputMissedDeadline)),
+      cached_output_hits_(statistics->GetVariable(kCachedOutputHits)),
+      cached_output_misses_(statistics->GetVariable(kCachedOutputMisses)),
+      resource_404_count_(statistics->GetVariable(kInstawebResource404Count)),
+      slurp_404_count_(statistics->GetVariable(kInstawebSlurp404Count)),
       http_cache_(http_cache),
       metadata_cache_(metadata_cache),
       relative_path_(false),
@@ -116,7 +130,16 @@ ResourceManager::~ResourceManager() {
 }
 
 void ResourceManager::Initialize(Statistics* statistics) {
-  statistics->AddVariable(kResourceUrlDomainRejections);
+  if (statistics != NULL) {
+    statistics->AddVariable(kResourceUrlDomainRejections);
+    statistics->AddVariable(kCachedOutputMissedDeadline);
+    statistics->AddVariable(kCachedOutputHits);
+    statistics->AddVariable(kCachedOutputMisses);
+    statistics->AddVariable(kInstawebResource404Count);
+    statistics->AddVariable(kInstawebSlurp404Count);
+    HTTPCache::Initialize(statistics);
+    RewriteDriver::Initialize(statistics);
+  }
 }
 
 // TODO(jmarantz): consider moving this method to ResponseHeaders
@@ -178,21 +201,6 @@ void ResourceManager::SetContentType(const ContentType* content_type,
 
 void ResourceManager::set_filename_prefix(const StringPiece& file_prefix) {
   file_prefix.CopyToString(&file_prefix_);
-}
-
-// Implements lazy initialization of resource_url_domain_rejections_,
-// necessitated by the fact that we can set_statistics before
-// Initialize(...) has been called and thus can't safely look
-// for the variable until first use.
-void ResourceManager::IncrementResourceUrlDomainRejections() {
-  if (resource_url_domain_rejections_ == NULL) {
-    if (statistics_ == NULL) {
-      return;
-    }
-    resource_url_domain_rejections_ =
-        statistics_->GetVariable(kResourceUrlDomainRejections);
-  }
-  resource_url_domain_rejections_->Add(1);
 }
 
 bool ResourceManager::Write(HttpStatus::Code status_code,

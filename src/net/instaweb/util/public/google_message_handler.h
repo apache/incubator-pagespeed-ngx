@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_MESSAGE_HANDLER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_MESSAGE_HANDLER_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 

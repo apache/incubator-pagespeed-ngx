@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_HTML_TESTING_PEER_H_
 #define NET_INSTAWEB_HTMLPARSE_HTML_TESTING_PEER_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 

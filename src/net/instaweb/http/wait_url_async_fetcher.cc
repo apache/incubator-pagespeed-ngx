@@ -18,7 +18,7 @@
 
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/stl_util.h"

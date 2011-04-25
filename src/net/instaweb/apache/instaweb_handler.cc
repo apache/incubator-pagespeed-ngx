@@ -18,7 +18,7 @@
 #include "net/instaweb/apache/instaweb_handler.h"
 
 #include "apr_strings.h"
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -155,7 +155,7 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
     } else {
       message_handler->Message(kError, "Fetch failed for %s, status=%d",
                               url.c_str(), response_headers.status_code());
-      factory->Increment404Count();
+      rewrite_driver->resource_manager()->resource_404_count()->Add(1);
       instaweb_default_handler(url, request);
     }
   } else {
@@ -216,7 +216,7 @@ apr_status_t instaweb_handler(request_rec* request) {
     ResponseHeaders response_headers;
     StringWriter writer(&output);
     Statistics* statistics = factory->statistics();
-    if (statistics) {
+    if (statistics != NULL) {
       statistics->Dump(&writer, factory->message_handler());
     } else {
       writer.Write("mod_pagespeed statistics is not enabled\n",
@@ -256,7 +256,7 @@ apr_status_t instaweb_handler(request_rec* request) {
   } else if (factory->slurping_enabled() || factory->test_proxy()) {
     SlurpUrl(factory, request);
     if (request->status == HTTP_NOT_FOUND) {
-      factory->IncrementSlurpCount();
+      factory->ComputeResourceManager()->slurp_404_count()->Add(1);
     }
     ret = OK;
   }

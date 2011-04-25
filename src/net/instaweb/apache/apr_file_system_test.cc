@@ -16,7 +16,7 @@
 
 #include "apr_file_io.h"
 #include "apr_pools.h"
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_timer.h"

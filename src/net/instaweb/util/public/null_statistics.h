@@ -16,43 +16,42 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_SIMPLE_STATS_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_SIMPLE_STATS_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_NULL_STATISTICS_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_NULL_STATISTICS_H_
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "base/basictypes.h"
 #include "net/instaweb/util/public/statistics_template.h"
 
 namespace net_instaweb {
 
-class SimpleStats;
-class SimpleStatsVariable : public Variable {
+class NullStatistics;
+class NullStatisticsVariable : public Variable {
  public:
-  SimpleStatsVariable() : value_(0) {}
-  virtual ~SimpleStatsVariable();
-  virtual int Get() const { return value_; }
-  virtual int64 Get64() const { return value_; }
-  virtual void Set(int value) { value_ = value; }
+  NullStatisticsVariable() {}
+  virtual ~NullStatisticsVariable();
+  virtual int Get() const { return 0; }
+  virtual void Set(int value) { }
+  virtual int64 Get64() const { return 0; }
 
  private:
-  int value_;
-
-  DISALLOW_COPY_AND_ASSIGN(SimpleStatsVariable);
+  DISALLOW_COPY_AND_ASSIGN(NullStatisticsVariable);
 };
 
 // Simple name/value pair statistics implementation.
-class SimpleStats : public StatisticsTemplate<SimpleStatsVariable> {
+class NullStatistics : public StatisticsTemplate<NullStatisticsVariable> {
  public:
   static const int kNotFound;
 
-  SimpleStats() { }
-  virtual ~SimpleStats();
+  NullStatistics() { }
+  virtual ~NullStatistics();
 
  protected:
-  virtual SimpleStatsVariable* NewVariable(const StringPiece& name, int index);
+  virtual NullStatisticsVariable* NewVariable(const StringPiece& name,
+                                              int index);
 
-  DISALLOW_COPY_AND_ASSIGN(SimpleStats);
+  DISALLOW_COPY_AND_ASSIGN(NullStatistics);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_SIMPLE_STATS_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_NULL_STATISTICS_H_

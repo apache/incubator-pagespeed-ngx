@@ -119,6 +119,7 @@ TimedBool ResourceCombiner::AddResource(const StringPiece& url,
   // Make sure the specific filter is OK with the data --- it may be
   // unable to combine it safely
   if (!ResourceCombinable(resource.get(), handler)) {
+    handler->Message(kInfo, "Cannot combine: not combinable");
     return ret;
   }
 
@@ -146,6 +147,8 @@ TimedBool ResourceCombiner::AddResource(const StringPiece& url,
       RemoveLastResource();
       added = false;
     }
+  } else {
+    handler->Message(kInfo, "Cannot combine: partnership forbids");
   }
   ret.value = added;
   return ret;

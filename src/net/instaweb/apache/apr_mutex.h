@@ -15,7 +15,7 @@
 #ifndef NET_INSTAWEB_APACHE_APR_MUTEX_H_
 #define NET_INSTAWEB_APACHE_APR_MUTEX_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 
 // Forward declaration.

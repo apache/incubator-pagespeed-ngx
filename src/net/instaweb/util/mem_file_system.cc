@@ -18,12 +18,12 @@
 
 #include "net/instaweb/util/public/mem_file_system.h"
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <sys/errno.h>
 #include <sys/stat.h>
+#include <cstdio>
+#include <cstdlib>
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"

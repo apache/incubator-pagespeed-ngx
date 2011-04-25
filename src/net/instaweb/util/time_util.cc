@@ -17,7 +17,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/time_util.h"
-#include <time.h>
+#include <ctime>
 
 #include "pagespeed/core/resource_util.h"
 

@@ -15,7 +15,7 @@
 #include "net/instaweb/http/public/sync_fetcher_adapter.h"
 
 #include <algorithm>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/util/public/timer.h"

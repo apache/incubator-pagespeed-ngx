@@ -19,8 +19,8 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_WGET_URL_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_WGET_URL_FETCHER_H_
 
-#include <stdio.h>
-#include "base/basictypes.h"
+#include <cstdio>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 

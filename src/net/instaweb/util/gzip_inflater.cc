@@ -16,7 +16,7 @@
 
 #include "net/instaweb/util/public/gzip_inflater.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 #include "base/logging.h"
 #ifdef USE_SYSTEM_ZLIB
 #include "zlib.h"

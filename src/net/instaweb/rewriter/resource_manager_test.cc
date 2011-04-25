@@ -34,7 +34,6 @@
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/null_writer.h"
-#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/url_escaper.h"
@@ -711,9 +710,8 @@ class ResourceFreshenTest : public ResourceManagerTest {
 
   virtual void SetUp() {
     ResourceManagerTest::SetUp();
-    HTTPCache::Initialize(&stats_);
-    http_cache_.SetStatistics(&stats_);
-    expirations_ = stats_.GetVariable(HTTPCache::kCacheExpirations);
+    HTTPCache::Initialize(statistics_);
+    expirations_ = statistics_->GetVariable(HTTPCache::kCacheExpirations);
     CHECK(expirations_ != NULL);
     resource_manager_->SetDefaultHeaders(&kContentTypePng, &response_headers_);
     response_headers_.SetStatusAndReason(HttpStatus::kOK);
@@ -731,7 +729,6 @@ class ResourceFreshenTest : public ResourceManagerTest {
     mock_url_fetcher_.SetResponse(kResourceUrl, response_headers_, "");
   }
 
-  SimpleStats stats_;
   Variable* expirations_;
   ResponseHeaders response_headers_;
 };

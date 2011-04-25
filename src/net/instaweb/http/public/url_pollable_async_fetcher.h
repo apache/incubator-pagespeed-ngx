@@ -20,7 +20,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_URL_POLLABLE_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_URL_POLLABLE_ASYNC_FETCHER_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {

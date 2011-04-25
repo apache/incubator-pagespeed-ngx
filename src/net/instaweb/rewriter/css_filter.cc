@@ -190,9 +190,7 @@ TimedBool CssFilter::RewriteCssText(const StringPiece& in_text,
       parser.errors_seen_mask() != Css::Parser::kNoError) {
     ret.value = false;
     driver_->InfoHere("CSS parsing error in %s", css_gurl.spec_c_str());
-    if (num_parse_failures_ != NULL) {
-      num_parse_failures_->Add(1);
-    }
+    num_parse_failures_->Add(1);
   } else {
     // Edit stylesheet.
     TimedBool result = image_rewriter_.RewriteCssImages(
@@ -221,9 +219,7 @@ TimedBool CssFilter::RewriteCssText(const StringPiece& in_text,
       if (out_text_size == 0 && in_text_size != 0) {
         ret.value = false;
         driver_->InfoHere("CSS parsing error in %s", css_gurl.spec_c_str());
-        if (num_parse_failures_ != NULL) {
-          num_parse_failures_->Add(1);
-        }
+        num_parse_failures_->Add(1);
       }
     }
 
@@ -232,10 +228,8 @@ TimedBool CssFilter::RewriteCssText(const StringPiece& in_text,
       driver_->InfoHere("Successfully rewrote CSS file %s saving %lld "
                         "bytes.", css_gurl.spec_c_str(),
                         static_cast<long long int>(bytes_saved));
-      if (num_files_minified_ != NULL) {
-        num_files_minified_->Add(1);
-        minified_bytes_saved_->Add(bytes_saved);
-      }
+      num_files_minified_->Add(1);
+      minified_bytes_saved_->Add(bytes_saved);
     }
     // TODO(sligocki): Do we want to save the AST 'stylesheet' somewhere?
     // It currently, deletes itself at the end of the function.

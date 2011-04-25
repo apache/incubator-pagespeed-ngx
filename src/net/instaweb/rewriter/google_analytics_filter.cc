@@ -206,19 +206,14 @@ void GoogleAnalyticsFilter::Initialize(Statistics* statistics) {
 
 void GoogleAnalyticsFilter::StartDocument() {
   ResetFilter();
-
-  if (page_load_count_ != NULL) {
-    page_load_count_->Add(1);
-  }
+  page_load_count_->Add(1);
 }
 
 void GoogleAnalyticsFilter::EndDocument() {
   if (is_load_found_) {
     if (is_init_found_) {
       if (RewriteAsAsync()) {
-        if (rewritten_count_ != NULL) {
-          rewritten_count_->Add(1);
-        }
+        rewritten_count_->Add(1);
         html_parse_->InfoHere("Google Analytics rewritten: SUCCESS!");
       } else {
         html_parse_->InfoHere("Google Analytics not rewritten: rewrite failed");

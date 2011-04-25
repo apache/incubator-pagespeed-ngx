@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_HTMLPARSE_HTML_EVENT_H_
 
 #include <list>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_node.h"

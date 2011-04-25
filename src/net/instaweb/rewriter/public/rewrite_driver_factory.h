@@ -21,10 +21,11 @@
 
 #include <set>
 #include <vector>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -124,7 +125,7 @@ class RewriteDriverFactory {
   // slurp_directory and slurp_read_only.
   virtual UrlFetcher* ComputeUrlFetcher();
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
-  virtual ResourceManager* ComputeResourceManager();
+  ResourceManager* ComputeResourceManager();
 
   // Generates a new mutex, hasher.
   virtual AbstractMutex* NewMutex() = 0;
@@ -146,13 +147,6 @@ class RewriteDriverFactory {
   // you are done with it.
   RewriteDriver* NewCustomRewriteDriver(const RewriteOptions& options);
 
-  // Initialize statistics variables for 404 responses.
-  static void Initialize(Statistics* statistics);
-  // Increment the count of resource returning 404.
-  void Increment404Count();
-  // Increment the cournt of slurp returning 404.
-  void IncrementSlurpCount();
-
  protected:
   virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
   bool FetchersComputed() const;
@@ -167,6 +161,9 @@ class RewriteDriverFactory {
   virtual FileSystem* DefaultFileSystem() = 0;
   virtual Timer* DefaultTimer() = 0;
   virtual CacheInterface* DefaultCacheInterface() = 0;
+
+  // Overriddable statistics (default is NullStatistics)
+  virtual Statistics* statistics() { return &null_statistics_; }
 
   // Implementors of RewriteDriverFactory must supply two mutexes.
   virtual AbstractMutex* cache_mutex() = 0;
@@ -233,14 +230,15 @@ class RewriteDriverFactory {
   CacheInterface* http_cache_backend_;  // Pointer owned by http_cache_
   scoped_ptr<CacheUrlFetcher> cache_fetcher_;
   scoped_ptr<CacheUrlAsyncFetcher> cache_async_fetcher_;
-  Variable* resource_404_count_;
-  Variable* slurp_404_count_;
 
   // Keep track of authorized domains, sharding, and mappings.
   DomainLawyer domain_lawyer_;
 
   // Manage locks for output resources.
   scoped_ptr<NamedLockManager> lock_manager_;
+
+  // Default statistics implementation, which can be overridden by children.
+  NullStatistics null_statistics_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };

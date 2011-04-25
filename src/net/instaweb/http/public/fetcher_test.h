@@ -24,7 +24,7 @@
 #include <algorithm>
 #include <utility>  // for pair
 #include <vector>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -32,6 +32,7 @@
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 
@@ -49,6 +50,9 @@ class FetcherTest : public testing::Test {
   static const char kErrorMessage[];
 
   FetcherTest() : mock_async_fetcher_(&mock_fetcher_) {}
+
+  static void SetUpTestCase();
+  static void TearDownTestCase();
 
   // Helpful classes for testing.
 
@@ -173,6 +177,7 @@ class FetcherTest : public testing::Test {
   GoogleMessageHandler message_handler_;
   MockFetcher mock_fetcher_;
   MockAsyncFetcher mock_async_fetcher_;
+  static SimpleStats* statistics_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FetcherTest);

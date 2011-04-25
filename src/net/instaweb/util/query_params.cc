@@ -18,7 +18,7 @@
 
 #include "net/instaweb/util/public/query_params.h"
 
-#include <stdio.h>
+#include <cstdio>
 #include <vector>
 #include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"

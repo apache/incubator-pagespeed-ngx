@@ -18,7 +18,7 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_SYNC_FETCHER_ADAPTER_H_
 
 #include <string>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/url_pollable_async_fetcher.h"
 
@@ -51,4 +51,3 @@ class SyncFetcherAdapter : public UrlFetcher {
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_HTTP_PUBLIC_SYNC_FETCHER_ADAPTER_H_
-

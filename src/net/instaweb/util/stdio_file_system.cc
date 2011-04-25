@@ -19,13 +19,13 @@
 #include "net/instaweb/util/public/stdio_file_system.h"
 
 #include <dirent.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <sys/errno.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <cstdio>
+#include <cstdlib>
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"

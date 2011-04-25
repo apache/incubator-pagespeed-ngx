@@ -16,19 +16,19 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/htmlparse/html_event.h"
-#include <cstdio>
-#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/null_statistics.h"
 
 namespace net_instaweb {
 
-HtmlEvent::~HtmlEvent() {
+NullStatisticsVariable::~NullStatisticsVariable() {
 }
 
-void HtmlEvent::DebugPrint() {
-  GoogleString buf;
-  ToString(&buf);
-  fprintf(stdout, "%s\n", buf.c_str());
+NullStatistics::~NullStatistics() {
+}
+
+NullStatisticsVariable* NullStatistics::NewVariable(
+    const StringPiece& name, int index) {
+  return new NullStatisticsVariable;
 }
 
 }  // namespace net_instaweb

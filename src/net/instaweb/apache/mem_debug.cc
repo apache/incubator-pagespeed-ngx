@@ -53,8 +53,8 @@
 //   nm out/Release/libmod_pagespeed.so | /usr/bin/c++filt |grep 'operator new'
 #ifndef NDEBUG
 
-#include <stdlib.h>
-#include "base/basictypes.h"
+#include <cstdlib>
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 
 namespace {

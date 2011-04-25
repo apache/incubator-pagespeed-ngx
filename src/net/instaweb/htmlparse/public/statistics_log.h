@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_STATISTICS_LOG_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_STATISTICS_LOG_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
 

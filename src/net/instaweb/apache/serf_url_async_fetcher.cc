@@ -27,7 +27,7 @@
 #include "apr_strings.h"
 #include "apr_thread_proc.h"
 #include "apr_version.h"
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "base/stl_util-inl.h"
 #include "net/instaweb/apache/apr_condvar.h"
@@ -805,9 +805,7 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
   SerfFetch* fetch = new SerfFetch(
       pool_, url, request_headers, response_headers, fetched_content_writer,
       message_handler, callback, timer_);
-  if (request_count_ != NULL) {
-    request_count_->Add(1);
-  }
+  request_count_->Add(1);
   if (callback->EnableThreaded()) {
     message_handler->Message(kInfo, "Initiating async fetch for %s",
                              url.c_str());
@@ -819,9 +817,7 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
       ScopedMutex mutex(mutex_);
       if (fetch->Start(this)) {
         active_fetches_.Add(fetch);
-        if (active_count_ != NULL) {
-          active_count_->Add(1);
-        }
+        active_count_->Add(1);
       } else {
         callback->Done(false);
         delete fetch;

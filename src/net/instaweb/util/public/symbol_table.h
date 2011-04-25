@@ -61,7 +61,7 @@
 #include <set>
 #endif
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_hash.h"

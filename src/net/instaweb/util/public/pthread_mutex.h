@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_MUTEX_H_
 
 #include <pthread.h>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 
 namespace net_instaweb {

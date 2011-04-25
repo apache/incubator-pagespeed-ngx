@@ -19,9 +19,9 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_HTML_LEXER_H_
 #define NET_INSTAWEB_HTMLPARSE_HTML_LEXER_H_
 
-#include <stdarg.h>
+#include <cstdarg>
 #include <vector>
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/content_type.h"

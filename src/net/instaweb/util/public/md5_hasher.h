@@ -19,7 +19,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_MD5_HASHER_H_
 
 #include <algorithm>  // for std::min
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
 
 namespace net_instaweb {

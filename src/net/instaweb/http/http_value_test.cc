@@ -19,7 +19,7 @@
 // Unit-test the lru cache
 
 #include "net/instaweb/http/public/http_value.h"
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/string.h"

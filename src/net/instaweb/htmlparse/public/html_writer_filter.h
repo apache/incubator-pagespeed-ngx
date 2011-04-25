@@ -19,8 +19,8 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_WRITER_FILTER_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_WRITER_FILTER_H_
 
-#include <string.h>
-#include "base/basictypes.h"
+#include <cstring>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/util/public/string.h"

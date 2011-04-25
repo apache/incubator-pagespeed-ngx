@@ -18,7 +18,7 @@
 
 #include "public/html_element.h"
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
