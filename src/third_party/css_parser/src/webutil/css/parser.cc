@@ -1790,12 +1790,31 @@ void Parser::ParseAtrule(Stylesheet* stylesheet) {
       stylesheet->mutable_imports().push_back(import.release());
 
   // @charset string ;
-  // Note: Currently ignored.
   } else if (ident.utf8_length() == 7 &&
              memcasecmp(ident.utf8_data(), "charset", 7) == 0) {
-    // TODO(sligocki): Keep track of @charsets.
-    ReportParsingError(kCharsetError, "Ignoring charset declaration.");
-    SkipPastDelimiter(';');  // ignore
+    SkipSpace();
+    UnicodeText s;
+    switch (*in_) {
+      case '\'': {
+        s = ParseString<'\''>();
+        break;
+      }
+      case '"': {
+        s = ParseString<'"'>();
+        break;
+      }
+      default: {
+        ReportParsingError(kCharsetError, "@charset lacks string.");
+        break;
+      }
+    }
+    SkipSpace();
+    if (*in_ != ';') {
+      ReportParsingError(kCharsetError,
+                         "Ignoring chars at end of charset declaration.");
+    }
+    SkipPastDelimiter(';');
+    stylesheet->mutable_charsets().push_back(s);
 
   // @media medium-list { ruleset-list }
   } else if (ident.utf8_length() == 5 &&
@@ -1944,6 +1963,7 @@ Stylesheet* Parser::ParseStylesheet() {
 
 Declarations::~Declarations() { STLDeleteElements(this); }
 Rulesets::~Rulesets() { STLDeleteElements(this); }
+Charsets::~Charsets() {}
 Imports::~Imports() { STLDeleteElements(this); }
 
 }  // namespace

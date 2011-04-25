@@ -625,6 +625,13 @@ class Rulesets : public std::vector<Css::Ruleset*> {
   ~Rulesets();
 };
 
+class Charsets : public std::vector<UnicodeText> {
+ public:
+  ~Charsets();
+
+  string ToString() const;
+};
+
 struct Import {
   std::vector<UnicodeText> media;
   UnicodeText link;
@@ -647,19 +654,23 @@ class Stylesheet {
   // USER is currently unused.
   enum StylesheetType { AUTHOR, USER, SYSTEM };
   StylesheetType type() const { return type_; }
+  const Charsets& charsets() const { return charsets_; }
   const Imports& imports() const { return imports_; }
   const Rulesets& rulesets() const { return rulesets_; }
 
+  const UnicodeText& charset(int i) const { return charsets_[i]; }
   const Import& import(int i) const { return *imports_[i]; }
   const Ruleset& ruleset(int i) const { return *rulesets_[i]; }
 
   void set_type(StylesheetType type) { type_ = type; }
+  Charsets& mutable_charsets() { return charsets_; }
   Imports& mutable_imports() { return imports_; }
   Rulesets& mutable_rulesets() { return rulesets_; }
 
   string ToString() const;
  private:
   StylesheetType type_;
+  Charsets charsets_;
   Imports imports_;
   Rulesets rulesets_;
 

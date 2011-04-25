@@ -274,6 +274,14 @@ string Ruleset::ToString() const {
   return result;
 }
 
+string Charsets::ToString() const {
+  string result;
+  for (const_iterator iter = begin(); iter != end(); ++iter) {
+    result += StringPrintf("@charset \"%s\";", CSSEscapeString(*iter).c_str());
+  }
+  return result;
+}
+
 string Import::ToString() const {
   return StringPrintf("@import url(\"%s\") %s;",
                       CSSEscapeString(link).c_str(),
@@ -283,6 +291,7 @@ string Import::ToString() const {
 string Stylesheet::ToString() const {
   string result;
   result += "/* " + StylesheetTypeString(type()) + " */\n";
+  result += charsets().ToString() + "\n";
   result += JoinElementStrings(imports(), "\n") + "\n";
   result += JoinElementStrings(rulesets(), "\n") + "\n";
   return result;

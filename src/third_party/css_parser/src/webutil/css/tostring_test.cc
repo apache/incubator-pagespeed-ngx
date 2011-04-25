@@ -69,16 +69,16 @@ TEST_F(ToStringTest, declarations) {
 }
 
 TEST_F(ToStringTest, selectors) {
-  TESTSTYLESHEET("/* AUTHOR */\n\n"
+  TESTSTYLESHEET("/* AUTHOR */\n\n\n"
                  "a, *, b#id, c.class, :hover:focus {top: 1}\n");
-  TESTSTYLESHEET("/* AUTHOR */\n\n"
+  TESTSTYLESHEET("/* AUTHOR */\n\n\n"
                  "table[width], [disable=no], [x~=y], [lang|=fr] {top: 1}\n");
-  TESTSTYLESHEET("/* AUTHOR */\n\n"
+  TESTSTYLESHEET("/* AUTHOR */\n\n\n"
                  "a > b, a + b, a b + c > d > e f {top: 1}\n");
 }
 
 TEST_F(ToStringTest, misc) {
-  TESTSTYLESHEET("/* AUTHOR */\n"
+  TESTSTYLESHEET("/* AUTHOR */\n\n"
                  "@import url(\"a.html\") ;\n"
                  "@import url(\"b.html\") print;\n"
                  "@media print,screen { a {top: 1} }\n"
@@ -87,7 +87,7 @@ TEST_F(ToStringTest, misc) {
   Css::Parser parser("a {top: 1}");
   scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseStylesheet());
   stylesheet->set_type(Css::Stylesheet::SYSTEM);
-  EXPECT_EQ("/* SYSTEM */\n\n"
+  EXPECT_EQ("/* SYSTEM */\n\n\n"
             "a {top: 1}\n",
             stylesheet->ToString());
 }

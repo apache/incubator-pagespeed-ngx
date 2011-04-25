@@ -1439,7 +1439,7 @@ TEST_F(ParserTest, SelectorError) {
   EXPECT_EQ(Parser::kSelectorError, p2.errors_seen_mask());
   // Note: We fail to parse the (1n). If this is fixed, this test should be
   // updated accordingly.
-  EXPECT_EQ("/* AUTHOR */\n\ndiv:nth-child {color: #ff0000}\n",
+  EXPECT_EQ("/* AUTHOR */\n\n\ndiv:nth-child {color: #ff0000}\n",
             stylesheet->ToString());
 
   Parser p3("}}");
@@ -1450,7 +1450,7 @@ TEST_F(ParserTest, SelectorError) {
   Parser p4("div[too=many=equals] { color: red; }");
   stylesheet.reset(p4.ParseStylesheet());
   EXPECT_EQ(Parser::kSelectorError, p4.errors_seen_mask());
-  EXPECT_EQ("/* AUTHOR */\n\ndiv[too=many] {color: #ff0000}\n",
+  EXPECT_EQ("/* AUTHOR */\n\n\ndiv[too=many] {color: #ff0000}\n",
             stylesheet->ToString());
 }
 
@@ -1465,7 +1465,7 @@ TEST_F(ParserTest, HtmlCommentError) {
   Parser good("<!-- a { color: red } -->");
   scoped_ptr<Stylesheet> stylesheet(good.ParseStylesheet());
   EXPECT_EQ(Parser::kNoError, good.errors_seen_mask());
-  EXPECT_EQ("/* AUTHOR */\n\na {color: #ff0000}\n", stylesheet->ToString());
+  EXPECT_EQ("/* AUTHOR */\n\n\na {color: #ff0000}\n", stylesheet->ToString());
 
   const char* bad_strings[] = {
     "<    a { color: red } -->",
@@ -1501,9 +1501,18 @@ TEST_F(ParserTest, SkippedTokenError) {
 TEST_F(ParserTest, CharsetError) {
   Parser p("@charset \"UTF-8\";");
   scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
-  // TODO(sligocki): Update when we start parsing @charset.
-  EXPECT_EQ(Parser::kCharsetError, p.errors_seen_mask());
-  EXPECT_EQ("/* AUTHOR */\n\n\n", stylesheet->ToString());
+  EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n@charset \"UTF-8\";\n\n\n", stylesheet->ToString());
+
+  Parser p2("@charset foobar;");
+  stylesheet.reset(p2.ParseStylesheet());
+  EXPECT_EQ(Parser::kCharsetError, p2.errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n@charset \"\";\n\n\n", stylesheet->ToString());
+
+  Parser p3("@charset \"UTF-8\" \"or 9\";");
+  stylesheet.reset(p3.ParseStylesheet());
+  EXPECT_EQ(Parser::kCharsetError, p3.errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n@charset \"UTF-8\";\n\n\n", stylesheet->ToString());
 }
 
 TEST_F(ParserTest, AcceptCorrectValues) {

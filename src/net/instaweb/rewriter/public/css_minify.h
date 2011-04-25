@@ -24,6 +24,7 @@
 
 namespace Css {
 class Stylesheet;
+class Charsets;
 class Import;
 class Ruleset;
 class Selector;
@@ -63,6 +64,7 @@ class CssMinify {
   // We name all of these methods identically to simplify the writing of the
   // templated Join* methods.
   void Minify(const Css::Stylesheet& stylesheet);
+  void Minify(const Css::Charsets& charsets);
   void Minify(const Css::Import& import);
   void Minify(const Css::Ruleset& ruleset);
   void Minify(const Css::Selector& selector);

@@ -120,8 +120,18 @@ void CssMinify::JoinMediaMinify(const Container& container,
 void CssMinify::Minify(const Css::Stylesheet& stylesheet) {
   // We might want to add in unnecessary newlines between rules and imports
   // so that some readability is preserved.
+  Minify(stylesheet.charsets());
   JoinMinify(stylesheet.imports(), "");
   JoinMinify(stylesheet.rulesets(), "");
+}
+
+void CssMinify::Minify(const Css::Charsets& charsets) {
+  for (Css::Charsets::const_iterator iter = charsets.begin();
+       iter != charsets.end(); ++iter) {
+    Write("@charset \"");
+    Write(CSSEscapeString(*iter));
+    Write("\";");
+  }
 }
 
 void CssMinify::Minify(const Css::Import& import) {
