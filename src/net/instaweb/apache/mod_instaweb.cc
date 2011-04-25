@@ -660,10 +660,7 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   server_rec* next_server = server;
   while (next_server) {
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(next_server);
-    factory->set_is_root_process(false);
-    if (factory->statistics_enabled()) {
-      factory->InitStatisticsVariablesAsChild();
-    }
+    factory->ChildInit();
     next_server = next_server->next;
   }
 }
@@ -718,6 +715,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   for (server_rec* server = server_list; server != NULL;
        server = server->next) {
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
+    factory->RootInit();
     if (factory->statistics_enabled()) {
       factory->SetStatistics(statistics);
     } else {

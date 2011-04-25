@@ -155,10 +155,6 @@ AbstractMutex* ApacheRewriteDriverFactory::NewMutex() {
   return new AprMutex(pool_);
 }
 
-void ApacheRewriteDriverFactory::InitStatisticsVariablesAsChild() {
-  shm_statistics_->InitVariables(false, message_handler());
-}
-
 void ApacheRewriteDriverFactory::SetStatistics(SharedMemStatistics* x) {
   DCHECK(!statistics_frozen_);
   shm_statistics_ = x;
@@ -170,6 +166,16 @@ Statistics* ApacheRewriteDriverFactory::statistics() {
     return RewriteDriverFactory::statistics();  // null implementation
   }
   return shm_statistics_;
+}
+
+void ApacheRewriteDriverFactory::RootInit() {
+}
+
+void ApacheRewriteDriverFactory::ChildInit() {
+  is_root_process_ = false;
+  if (shm_statistics_ != NULL) {
+    shm_statistics_->InitVariables(false, message_handler());
+  }
 }
 
 void ApacheRewriteDriverFactory::ShutDown() {

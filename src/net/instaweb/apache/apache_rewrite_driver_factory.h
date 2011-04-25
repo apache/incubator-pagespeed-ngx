@@ -80,15 +80,32 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   void set_statistics_enabled(bool x) { statistics_enabled_ = x; }
   bool statistics_enabled() const { return statistics_enabled_; }
 
-  // The inter-process statistics initialization requires a method
-  // to be run in each child process.
-  void InitStatisticsVariablesAsChild();
-
   AbstractSharedMem* shmem_runtime() const { return shmem_runtime_.get(); }
 
-  // Returns whether we are the initial/root apache process.
+  // For shared memory resources the general setup we follow is to have the
+  // first running process (aka the root) create the necessary segments and
+  // fill in their shared data structures, while processes created to actually
+  // handle requests attach to already existing shared data structures.
+  //
+  // During normal server startup[1], RootInit() is called from the Apache hooks
+  // in the root process for the first task, and then ChildInit() is called in
+  // any child process.
+  //
+  // Keep in mind, however, that when fork() is involved a process may
+  // effectively see both calls, in which case the 'ChildInit' call would
+  // come second and override the previous root status. Both calls are also
+  // invoked in the debug single-process mode (httpd -X).
+  //
+  // Note that these are not static methods --- they are invoked on every
+  // ApacheRewriteDriverFactory instance, which exist for the global
+  // configuration as well as all the vhosts.
+  //
+  // [1] Besides normal startup, Apache also uses a temporary process to
+  // syntax check the config file. That basically looks like a complete
+  // normal startup and shutdown to the code.
   bool is_root_process() const { return is_root_process_; }
-  void set_is_root_process(bool p) { is_root_process_ = p; }
+  void RootInit();
+  void ChildInit();
 
   // Relinquish all static data
   static void Terminate();
