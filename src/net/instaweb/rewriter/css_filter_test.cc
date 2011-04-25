@@ -186,6 +186,9 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // Parameterized pseudo-selector.
     "div:nth-child(1n) { color: red; }",
 
+    // @charsets aren't parsed yet.
+    "@charset \"UTF-8\";"
+
     // Should fail (bad syntax):
     "a { font:bold verdana 10px; }",
     "}}",

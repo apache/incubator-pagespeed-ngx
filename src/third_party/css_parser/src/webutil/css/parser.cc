@@ -49,6 +49,11 @@ const uint64 Parser::kFunctionError;
 const uint64 Parser::kMediaError;
 const uint64 Parser::kCounterError;
 const uint64 Parser::kHtmlCommentError;
+const uint64 Parser::kValueError;
+const uint64 Parser::kRulesetError;
+const uint64 Parser::kSkippedTokenError;
+const uint64 Parser::kCharsetError;
+const uint64 Parser::kBlockError;
 
 
 // Using isascii with signed chars is unfortunately undefined.
@@ -197,9 +202,13 @@ bool Parser::SkipToNextToken() {
   while (in_ < end_) {
     switch (*in_) {
       case '{':
+        ReportParsingError(kSkippedTokenError,
+                           "Ignoring block between tokens.");
         ParseBlock();  // ignore
         break;
       case '@':
+        ReportParsingError(kSkippedTokenError,
+                           "Ignoring @ident between tokens.");
         in_++;
         ParseIdent();  // ignore
         break;
@@ -584,7 +593,9 @@ Value* Parser::ParseRgbColor() {
 
     if (*in_ == ')')
       return new Value(HtmlColor(rgb[0], rgb[1], rgb[2]));
-    in_++;  // ','
+
+    DCHECK_EQ(',', *in_);
+    in_++;
   }
 
   return NULL;
@@ -677,6 +688,8 @@ Value* Parser::ParseAny(const StringPiece& allowed_chars) {
       toret = ParseNumber();
       break;
     case '(': case '[': {
+      ReportParsingError(kValueError, StringPrintf(
+          "Unsupported value starting with %c", *in_));
       char delim = *in_ == '(' ? ')' : ']';
       SkipPastDelimiter(delim);
       toret = NULL;  // we don't understand this construct.
@@ -737,6 +750,11 @@ Value* Parser::ParseAny(const StringPiece& allowed_chars) {
                 "Could not parse function parameters for function %s",
                 UnicodeTextToUTF8(id).c_str()));
           }
+        }
+        SkipSpace();
+        if (*in_ != ')') {
+          ReportParsingError(kFunctionError,
+                             "Ignored chars at end of function.");
         }
         SkipPastDelimiter(')');
       } else {
@@ -1285,6 +1303,8 @@ Declarations* Parser::ParseRawDeclarations() {
     bool ignore_this_decl = false;
     switch (*in_) {
       case ';':
+        // TODO(sligocki): Is there any way declarations might not be separated
+        // by ';' in the current code? We don't explicitly check.
         in_++;
         break;
       case '}':
@@ -1322,6 +1342,7 @@ Declarations* Parser::ParseRawDeclarations() {
           ignore_this_decl = true;
           break;
         }
+        DCHECK_EQ(':', *in_);
         in_++;
 
         Values* vals;
@@ -1449,6 +1470,10 @@ SimpleSelector* Parser::ParseAttributeSelector() {
         newcond.reset(SimpleSelector::NewExistAttribute(attr));
         break;
     }
+  }
+  SkipSpace();
+  if (*in_ != ']') {
+    ReportParsingError(kSelectorError, "Ignoring chars in attribute selector.");
   }
   if (SkipPastDelimiter(']'))
     return newcond.release();
@@ -1681,8 +1706,15 @@ Ruleset* Parser::ParseRuleset() {
     ruleset->set_selectors(selectors.release());
   }
 
-  in_++;  // '{'
+  DCHECK_EQ('{', *in_);
+  in_++;
   ruleset->set_declarations(ParseRawDeclarations());
+
+  SkipSpace();
+  if (*in_ != '}') {
+    // TODO(sligocki): Can this ever be hit? Add a test that does.
+    ReportParsingError(kRulesetError, "Ignored chars at end of ruleset.");
+  }
   SkipPastDelimiter('}');
 
   if (success)
@@ -1758,13 +1790,16 @@ void Parser::ParseAtrule(Stylesheet* stylesheet) {
       stylesheet->mutable_imports().push_back(import.release());
 
   // @charset string ;
+  // Note: Currently ignored.
   } else if (ident.utf8_length() == 7 &&
-      memcasecmp(ident.utf8_data(), "charset", 7) == 0) {
-    SkipPastDelimiter(';');
+             memcasecmp(ident.utf8_data(), "charset", 7) == 0) {
+    // TODO(sligocki): Keep track of @charsets.
+    ReportParsingError(kCharsetError, "Ignoring charset declaration.");
+    SkipPastDelimiter(';');  // ignore
 
   // @media medium-list { ruleset-list }
   } else if (ident.utf8_length() == 5 &&
-      memcasecmp(ident.utf8_data(), "media", 5) == 0) {
+             memcasecmp(ident.utf8_data(), "media", 5) == 0) {
     std::vector<UnicodeText> media;
     ParseMediumList(&media);
     if (Done() || *in_ != '{')
@@ -1774,15 +1809,21 @@ void Parser::ParseAtrule(Stylesheet* stylesheet) {
     while (in_ < end_ && *in_ != '}') {
       const char* oldin = in_;
       scoped_ptr<Ruleset> ruleset(ParseRuleset());
-      if (!ruleset.get() && in_ == oldin)
+      if (!ruleset.get() && in_ == oldin) {
+        ReportParsingError(kSelectorError, StringPrintf(
+            "Could not parse ruleset: illegal char %c", *in_));
         in_++;
+      }
       if (ruleset.get()) {
         ruleset->set_media(media);
         stylesheet->mutable_rulesets().push_back(ruleset.release());
       }
       SkipSpace();
     }
-    if (in_ < end_) in_++;
+    if (in_ < end_) {
+      DCHECK_EQ('}', *in_);
+      in_++;
+    }
 
   // @page pseudo_page? { declaration-list }
   } else if (ident.utf8_length() == 4 &&
@@ -1792,8 +1833,11 @@ void Parser::ParseAtrule(Stylesheet* stylesheet) {
 }
 
 // TODO(dpeng): What exactly does this code do?
+// TODO(sligocki): This appears to skip over the next {} block???
 void Parser::ParseBlock() {
   Tracer trace(__func__, &in_);
+
+  ReportParsingError(kBlockError, "Ignoring {} block.");
 
   SkipSpace();
   DCHECK_LT(in_, end_);
@@ -1819,6 +1863,7 @@ void Parser::ParseBlock() {
           return;
         break;
       default:
+        // TODO(sligocki): What's going on here? Just ignoring the next value?
         scoped_ptr<Value> v(ParseAny());
         break;
     }

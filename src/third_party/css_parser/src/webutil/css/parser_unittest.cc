@@ -1446,13 +1446,19 @@ TEST_F(ParserTest, SelectorError) {
   stylesheet.reset(p3.ParseStylesheet());
   EXPECT_EQ(0, stylesheet->rulesets().size());
   EXPECT_EQ(Parser::kSelectorError, p3.errors_seen_mask());
+
+  Parser p4("div[too=many=equals] { color: red; }");
+  stylesheet.reset(p4.ParseStylesheet());
+  EXPECT_EQ(Parser::kSelectorError, p4.errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n\ndiv[too=many] {color: #ff0000}\n",
+            stylesheet->ToString());
 }
 
 TEST_F(ParserTest, MediaError) {
   Parser p("@media screen and (max-width: 290px) {}");
   scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
   EXPECT_EQ(0, stylesheet->rulesets().size());
-  EXPECT_EQ(Parser::kMediaError, p.errors_seen_mask());
+  EXPECT_TRUE(Parser::kMediaError & p.errors_seen_mask());
 }
 
 TEST_F(ParserTest, HtmlCommentError) {
@@ -1476,6 +1482,28 @@ TEST_F(ParserTest, HtmlCommentError) {
     stylesheet.reset(bad.ParseStylesheet());
     EXPECT_TRUE(Parser::kHtmlCommentError & bad.errors_seen_mask());
   }
+}
+
+TEST_F(ParserTest, ValueError) {
+  Parser p("(12)");
+  scoped_ptr<Value> value(p.ParseAny());
+  EXPECT_TRUE(Parser::kValueError & p.errors_seen_mask());
+  EXPECT_TRUE(NULL == value.get());
+}
+
+TEST_F(ParserTest, SkippedTokenError) {
+  Parser p("12pt @foo Arial");
+  scoped_ptr<Values> values(p.ParseValues(Property::FONT));
+  EXPECT_TRUE(Parser::kSkippedTokenError & p.errors_seen_mask());
+  EXPECT_EQ("12pt Arial", values->ToString());
+}
+
+TEST_F(ParserTest, CharsetError) {
+  Parser p("@charset \"UTF-8\";");
+  scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
+  // TODO(sligocki): Update when we start parsing @charset.
+  EXPECT_EQ(Parser::kCharsetError, p.errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n\n\n", stylesheet->ToString());
 }
 
 TEST_F(ParserTest, AcceptCorrectValues) {
