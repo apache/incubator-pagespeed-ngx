@@ -433,4 +433,30 @@ OutputResourcePtr ResourceManager::CreateOutputResourceWithPath(
   return resource;
 }
 
+bool ResourceManager::LockForCreation(const GoogleString& name,
+                                      ResourceManager::BlockingBehavior block,
+                                      scoped_ptr<AbstractLock>* creation_lock) {
+  const int64 kBreakLockMs = 30 * Timer::kSecondMs;
+  const int64 kBlockLockMs = 5 * Timer::kSecondMs;
+  const char kLockSuffix[] = ".outputlock";
+
+  bool result = true;
+  if (creation_lock->get() == NULL) {
+    GoogleString lock_name = StrCat(hasher_->Hash(name), kLockSuffix);
+    creation_lock->reset(lock_manager_->CreateNamedLock(lock_name));
+  }
+  switch (block) {
+    case kNeverBlock:
+      // TODO(jmaessen): When caller retries properly in all cases, use
+      // LockTimedWaitStealOld with a sub-second timeout to try to catch
+      // rewritten data.
+      result = (*creation_lock)->TryLockStealOld(kBreakLockMs);
+      break;
+    case kMayBlock:
+      (*creation_lock)->LockTimedWaitStealOld(kBlockLockMs, kBreakLockMs);
+      break;
+  }
+  return result;
+}
+
 }  // namespace net_instaweb

@@ -156,8 +156,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
               url_prefix_, filter_prefix, name, content_type,
               ResourceManager::kRewrittenResource));
       ASSERT_TRUE(nor1.get() != NULL);
-      EXPECT_FALSE(nor1->LockForCreation(resource_manager_,
-                                         ResourceManager::kNeverBlock));
+      EXPECT_FALSE(nor1->LockForCreation(ResourceManager::kNeverBlock));
       EXPECT_FALSE(nor1->IsWritten());
     }
 
@@ -173,8 +172,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       ASSERT_TRUE(nor1.get() != NULL);
 
       // non-blocking
-      EXPECT_FALSE(nor1->LockForCreation(resource_manager_,
-                                         ResourceManager::kNeverBlock));
+      EXPECT_FALSE(nor1->LockForCreation(ResourceManager::kNeverBlock));
       // blocking but stealing
       EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(nor1.get()));
     }

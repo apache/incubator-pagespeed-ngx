@@ -67,8 +67,7 @@ class OutputResource : public Resource {
   // its creation to avoid multiple rewrites happening at once.
   // The lock will be unlocked on destruction or EndWrite (called from
   // ResourceManager::Write)
-  bool LockForCreation(const ResourceManager* resource_manager,
-                       ResourceManager::BlockingBehavior block);
+  bool LockForCreation(ResourceManager::BlockingBehavior block);
 
   // The NameKey describes the source url and rewriter used, without hash and
   // content type information.  This is used to find previously-computed filter

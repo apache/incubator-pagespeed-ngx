@@ -269,8 +269,7 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
     // NOTE: This locks based on hash's so if you use a MockHasher, you may
     // only rewrite a single resource at a time (e.g. no rewriting resources
     // inside resources, see css_image_rewriter_test.cc for examples.)
-    if (!output_resource->LockForCreation(resource_manager_,
-                                          ResourceManager::kNeverBlock)) {
+    if (!output_resource->LockForCreation(ResourceManager::kNeverBlock)) {
       handler->Message(kInfo, "%s: Someone else is trying to rewrite %s.",
                        base_url().spec_c_str(),
                        input_resource->url().c_str());

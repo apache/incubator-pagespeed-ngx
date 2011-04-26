@@ -43,8 +43,6 @@ namespace net_instaweb {
 
 namespace {
 
-const char kLockSuffix[] = ".outputlock";
-
 // Helper to allow us to use synchronous caches synchronously even with
 // asynchronous interface, until we're changed to be fully asynchronous.
 class SyncCallback : public CacheInterface::Callback {
@@ -292,29 +290,8 @@ void OutputResource::SetType(const ContentType* content_type) {
   full_name_.set_ext(content_type->file_extension() + 1);
 }
 
-bool OutputResource::LockForCreation(const ResourceManager* resource_manager,
-                                     ResourceManager::BlockingBehavior block) {
-  const int64 break_lock_ms = 30 * Timer::kSecondMs;
-  const int64 block_lock_ms = 5 * Timer::kSecondMs;
-  bool result = true;
-  if (creation_lock_.get() == NULL) {
-    GoogleString lock_name =
-        StrCat(resource_manager->hasher()->Hash(name_key()), kLockSuffix);
-    creation_lock_.reset(resource_manager->lock_manager()->
-                         CreateNamedLock(lock_name));
-  }
-  switch (block) {
-    case ResourceManager::kNeverBlock:
-      // TODO(jmaessen): When caller retries properly in all cases, use
-      // LockTimedWaitStealOld with a sub-second timeout to try to catch
-      // rewritten data.
-      result = creation_lock_->TryLockStealOld(break_lock_ms);
-      break;
-    case ResourceManager::kMayBlock:
-      creation_lock_->LockTimedWaitStealOld(block_lock_ms, break_lock_ms);
-      break;
-  }
-  return result;
+bool OutputResource::LockForCreation(ResourceManager::BlockingBehavior block) {
+  return resource_manager_->LockForCreation(name_key(), block, &creation_lock_);
 }
 
 void OutputResource::SaveCachedResult(const GoogleString& name_key,

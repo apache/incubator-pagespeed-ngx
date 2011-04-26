@@ -523,8 +523,7 @@ bool RewriteDriver::FetchExtantOutputResourceOrLock(
   }
 
   // 2) Grab a lock for creation, blocking for it if needed.
-  output_resource->LockForCreation(resource_manager_,
-                                   ResourceManager::kMayBlock);
+  output_resource->LockForCreation(ResourceManager::kMayBlock);
 
   // 3) See if the resource got created while we were waiting for the lock.
   // (If it did, the lock will get released almost immediately in our caller,

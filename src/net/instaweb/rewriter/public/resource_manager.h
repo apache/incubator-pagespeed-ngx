@@ -36,6 +36,7 @@ class GURL;
 
 namespace net_instaweb {
 
+class AbstractLock;
 class CacheInterface;
 class ContentType;
 class DomainLawyer;
@@ -228,6 +229,14 @@ class ResourceManager {
       const RewriteOptions* options, const StringPiece& path,
       const StringPiece& filter_prefix, const StringPiece& name,
       const ContentType* type, Kind kind);
+
+  // Attempt to obtain a named lock.  Return true if we do so.  If the
+  // object is expensive to create, this lock should be held during
+  // its creation to avoid multiple rewrites happening at once.  The
+  // lock will be unlocked when creation_lock is reset or destructed.
+  bool LockForCreation(const GoogleString& name,
+                       ResourceManager::BlockingBehavior block,
+                       scoped_ptr<AbstractLock>* creation_lock);
 
  private:
   GoogleString file_prefix_;
