@@ -735,11 +735,6 @@ void RewriteDriver::SetBaseUrlForFetch(const StringPiece& url) {
   }
 }
 
-void RewriteDriver::Scan() {
-  ApplyFilter(&scan_filter_);
-  set_first_filter(1);
-}
-
 bool RewriteDriver::FindResource(const StringPiece& url,
                                  ResourcePtr* resource) const {
   bool ret = false;

@@ -107,19 +107,6 @@ class RewriteDriver : public HtmlParse {
   // resources. This will replace any previous resource managers.
   void SetResourceManager(ResourceManager* resource_manager);
 
-  // Initiate a Scan to enable filters to preview the HTML and indicate
-  // interest in URLs so that they can be fetched in parallel between
-  // Scan & Flush.  The expected calling sequence is:
-  //
-  //   rewrite_driver_.Scan();
-  //   wait bounded time for async cache and fetchers to complete
-  //   rewrite_driver_.Flush();
-  //
-  // It may eventually make sense to permit more than one scan to
-  // proceed before a flush, or more than one flush to proceed before
-  // a scan.
-  void Scan();
-
   // In the rewrite phase, CommonFilters can try to retrieve resources
   // they requested during scanning with ScanRequestUrl.
   //

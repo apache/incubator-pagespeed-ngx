@@ -151,15 +151,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // pointer to the new fetcher.
   WaitUrlAsyncFetcher* SetupWaitFetcher();
 
-  virtual void PostParseHook() {
-    // This mocks the behavior of a system-integration with an event-loop.
-    rewrite_driver_.Scan();
-
-    // TODO(jmarantz): When the cache is made asynchronous, this is
-    // where we'd mock a delay to allow the caches to return, and
-    // to run its callbacks.
-  }
-
   MockUrlFetcher mock_url_fetcher_;
   FakeUrlAsyncFetcher mock_url_async_fetcher_;
   FilenameEncoder filename_encoder_;
