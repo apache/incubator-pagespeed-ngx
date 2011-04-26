@@ -173,11 +173,13 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
     const StringPiece& expected_content) {
 
   // New objects for the new server.
+  SimpleStats stats;
+  ResourceManager::Initialize(&stats);
   MemFileSystem other_file_system;
   // other_lru_cache is owned by other_http_cache_.
   LRUCache* other_lru_cache(new LRUCache(kCacheSize));
   MockTimer* other_mock_timer = other_file_system.timer();
-  HTTPCache other_http_cache(other_lru_cache, other_mock_timer, statistics_);
+  HTTPCache other_http_cache(other_lru_cache, other_mock_timer, &stats);
   DomainLawyer other_domain_lawyer;
   FileSystemLockManager other_lock_manager(
       &other_file_system, file_prefix_, other_mock_timer, &message_handler_);
@@ -186,11 +188,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
       file_prefix_, &other_file_system,
       &filename_encoder_, &wait_url_async_fetcher, hasher,
       &other_http_cache, other_lru_cache, &other_lock_manager,
-      &message_handler_, statistics_);
-
-  SimpleStats stats;
-  RewriteDriver::Initialize(&stats);
-  other_resource_manager.set_statistics(&stats);
+      &message_handler_, &stats);
 
   RewriteDriver other_rewrite_driver(&message_handler_, &other_file_system,
                                      &wait_url_async_fetcher, options_);

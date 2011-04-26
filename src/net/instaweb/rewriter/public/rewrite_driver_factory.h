@@ -162,7 +162,7 @@ class RewriteDriverFactory {
   virtual Timer* DefaultTimer() = 0;
   virtual CacheInterface* DefaultCacheInterface() = 0;
 
-  // Overriddable statistics (default is NullStatistics)
+  // Overridable statistics (default is NullStatistics)
   virtual Statistics* statistics() { return &null_statistics_; }
 
   // Implementors of RewriteDriverFactory must supply two mutexes.

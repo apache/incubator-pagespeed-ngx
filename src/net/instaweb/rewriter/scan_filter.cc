@@ -36,16 +36,6 @@ void ScanFilter::StartDocument() {
   driver_->InitBaseUrl();
   seen_refs_ = false;
   seen_base_ = false;
-
-  for (int i = 0, n = filters_.size(); i < n; ++i) {
-    filters_[i]->ScanStartDocument();
-  }
-}
-
-void ScanFilter::EndDocument() {
-  for (int i = 0, n = filters_.size(); i < n; ++i) {
-    filters_[i]->ScanEndDocument();
-  }
 }
 
 void ScanFilter::StartElement(HtmlElement* element) {
@@ -68,49 +58,6 @@ void ScanFilter::StartElement(HtmlElement* element) {
              tag_scanner_.ScanElement(element) != NULL) {
     seen_refs_ = true;
   }
-
-  for (int i = 0, n = filters_.size(); i < n; ++i) {
-    filters_[i]->ScanStartElement(element);
-  }
-}
-
-void ScanFilter::EndElement(HtmlElement* element) {
-  for (int i = 0, n = filters_.size(); i < n; ++i) {
-    filters_[i]->ScanEndElement(element);
-  }
-}
-
-void ScanFilter::Cdata(HtmlCdataNode* cdata) {
-  for (int i = 0, n = filters_.size(); i < n; ++i) {
-    filters_[i]->ScanCdata(cdata);
-  }
-}
-
-void ScanFilter::Comment(HtmlCommentNode* comment) {
-  for (int i = 0, n = filters_.size(); i < n; ++i) {
-    filters_[i]->ScanComment(comment);
-  }
-}
-
-void ScanFilter::IEDirective(HtmlIEDirectiveNode* directive) {
-  for (int i = 0, n = filters_.size(); i < n; ++i) {
-    filters_[i]->ScanIEDirective(directive);
-  }
-}
-
-void ScanFilter::Characters(HtmlCharactersNode* characters) {
-  for (int i = 0, n = filters_.size(); i < n; ++i) {
-    filters_[i]->ScanCharacters(characters);
-  }
-}
-
-void ScanFilter::Directive(HtmlDirectiveNode* directive) {
-  for (int i = 0, n = filters_.size(); i < n; ++i) {
-    filters_[i]->ScanDirective(directive);
-  }
-}
-
-void ScanFilter::Flush() {
 }
 
 }  // namespace net_instaweb

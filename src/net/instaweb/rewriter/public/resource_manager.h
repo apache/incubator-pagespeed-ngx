@@ -94,10 +94,6 @@ class ResourceManager {
   StringPiece filename_prefix() const { return file_prefix_; }
   void set_filename_prefix(const StringPiece& file_prefix);
   Statistics* statistics() const { return statistics_; }
-  void set_statistics(Statistics* s) {
-    statistics_ = s;
-    resource_url_domain_rejections_ = NULL;  // Lazily initialized.
-  }
   void set_relative_path(bool x) { relative_path_ = x; }
   NamedLockManager* lock_manager() const { return lock_manager_; }
 

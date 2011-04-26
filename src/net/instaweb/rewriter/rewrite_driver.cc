@@ -348,14 +348,12 @@ void RewriteDriver::AddOwnedFilter(HtmlFilter* filter) {
 void RewriteDriver::AddCommonFilter(CommonFilter* filter) {
   filters_.push_back(filter);
   HtmlParse::AddFilter(filter);
-  scan_filter_.add_filter(filter);
 }
 
 void RewriteDriver::EnableRewriteFilter(const char* id) {
   RewriteFilter* filter = resource_filter_map_[id];
   CHECK(filter);
   HtmlParse::AddFilter(filter);
-  scan_filter_.add_filter(filter);
 }
 
 void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {

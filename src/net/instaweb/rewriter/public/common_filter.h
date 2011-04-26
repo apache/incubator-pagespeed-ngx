@@ -45,10 +45,6 @@ class UrlSegmentEncoder;
 //
 // The base-tag is maintained in the RewriteDriver, although it can be
 // accessed via a convenience method here for historical reasons.
-//
-// CommonFilters are given the opportunity to scan HTML elements for
-// resources prior to the HTML rewriting phase to initiate fetching
-// and rewriting.  See the Scan methods below.
 class CommonFilter : public EmptyHtmlFilter {
  public:
   CommonFilter(RewriteDriver* driver);
@@ -74,37 +70,6 @@ class CommonFilter : public EmptyHtmlFilter {
   // cache, initiate an asynchronous fetch so it will be on next access.  This
   // is a common case for filters.
   ResourcePtr CreateInputResourceAndReadIfCached(const StringPiece& input_url);
-
-  // During the Scan phase, CommonFilters can request URLs from the cache &/or
-  // AsyncFetcher.  These requests can be processed before the filter's
-  // event-handling methods are executed.
-  //
-  // Returns the scanned resource, which may be NULL.
-  //
-  // TODO(jmarantz): At some point we want to have this be higher
-  // level -- filters don't necessarily need to load entire resources
-  // in order to successfully rewrite URLs.  It's preferable, if the
-  // rewrite has already occurred, to just get back the updated URL.
-  ResourcePtr ScanRequestUrl(const StringPiece& url);
-
-  // Methods to help implement two-pass scanning of HTML documents, where:
-  // 1.  In the first pass we make requests of an asynchronous cache
-  // 2.  Between the two passes, we wait a bounded amount of time for caches
-  //     and URL fetchers to respond
-  // 3.  In the second pass we rewrite HTML.
-  //
-  // Each filter's Scan* methods will be called in the first pass.  During
-  // this pass, the document and the filter state should not be mutated.
-  // All that should happen in this pass is new URLs can be requested.
-  virtual void ScanStartDocument();
-  virtual void ScanEndDocument();
-  virtual void ScanStartElement(HtmlElement* element);
-  virtual void ScanEndElement(HtmlElement* element);
-  virtual void ScanComment(HtmlCommentNode* comment);
-  virtual void ScanIEDirective(HtmlIEDirectiveNode* directive);
-  virtual void ScanCharacters(HtmlCharactersNode* characters);
-  virtual void ScanDirective(HtmlDirectiveNode* directive);
-  virtual void ScanCdata(HtmlCdataNode* cdata);
 
   // Returns whether or not the base url is valid.  This value will change
   // as a filter processes the document.  E.g. If there are url refs before

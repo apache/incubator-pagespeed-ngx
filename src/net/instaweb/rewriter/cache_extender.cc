@@ -81,20 +81,13 @@ bool CacheExtender::ShouldRewriteResource(
   return lawyer->WillDomainChange(origin);
 }
 
-void CacheExtender::ScanStartElement(HtmlElement* element) {
-  HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
-  if ((href != NULL) && driver_->IsRewritable(element)) {
-    ScanRequestUrl(href->value());
-  }
-}
-
 void CacheExtender::StartElementImpl(HtmlElement* element) {
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
 
   // TODO(jmarantz): We ought to be able to domain-shard even if the
   // resources are non-cacheable or privately cacheable.
   if ((href != NULL) && driver_->IsRewritable(element)) {
-    ResourcePtr input_resource(driver_->FindResource(href->value()));
+    ResourcePtr input_resource(CreateInputResource(href->value()));
     if ((input_resource.get() != NULL) &&
         !IsRewrittenResource(input_resource->url())) {
       scoped_ptr<CachedResult> rewrite_info(

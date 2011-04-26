@@ -41,7 +41,7 @@ bool SharedMemTestBase::CreateChild(TestMethod method) {
 
 void SharedMemTestBase::TestReadWrite(bool reattach) {
   scoped_ptr<AbstractSharedMemSegment> seg(CreateDefault());
-
+  ASSERT_TRUE(seg.get() != NULL);
   ASSERT_TRUE(CreateChild(&SharedMemTestBase::TestReadWriteChild));
 
   if (reattach) {

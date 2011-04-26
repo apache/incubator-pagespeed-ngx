@@ -119,46 +119,4 @@ ResourcePtr CommonFilter::CreateInputResourceAndReadIfCached(
   return input_resource;
 }
 
-ResourcePtr CommonFilter::ScanRequestUrl(const StringPiece& url) {
-  ResourcePtr resource;
-  GoogleString url_str(url.data(), url.size());
-  resource = driver_->FindResource(url_str);
-  if (resource.get() == NULL) {
-    resource = CreateInputResource(url);
-
-    // note that 'resource' can be NULL.  If we fail to create
-    // the resource, then we record that it the map so we don't
-    // attempt the lookup multiple times.
-    driver_->RememberResource(url_str, resource);
-  }
-  return resource;
-}
-
-void CommonFilter::ScanStartDocument() {
-}
-
-void CommonFilter::ScanEndDocument() {
-}
-
-void CommonFilter::ScanStartElement(HtmlElement* element) {
-}
-
-void CommonFilter::ScanEndElement(HtmlElement* element) {
-}
-
-void CommonFilter::ScanComment(HtmlCommentNode* comment) {
-}
-
-void CommonFilter::ScanIEDirective(HtmlIEDirectiveNode* directive) {
-}
-
-void CommonFilter::ScanCharacters(HtmlCharactersNode* characters) {
-}
-
-void CommonFilter::ScanDirective(HtmlDirectiveNode* directive) {
-}
-
-void CommonFilter::ScanCdata(HtmlCdataNode* cdata) {
-}
-
 }  // namespace net_instaweb

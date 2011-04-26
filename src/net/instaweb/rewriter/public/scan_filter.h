@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_SCAN_FILTER_H_
 
 #include <vector>
-#include "net/instaweb/htmlparse/public/html_filter.h"
+#include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 
 namespace net_instaweb {
@@ -28,32 +28,23 @@ namespace net_instaweb {
 class CommonFilter;
 class RewriteDriver;
 
-// Filter that is run before any other, to help pre-scan for URLs
-// that need to be asynchronously fetched.
-class ScanFilter : public HtmlFilter {
+// Filter that is run before any other, to help track base-tag usage and
+// changes to help identify and deal conservatively with situation where HTML
+// files update the base-tag more than once or use the base-tag prior to it
+// being changed.  Such situations are not well-defined and what we want to
+// do is avoid rewriting any resources whose interpretation might be hard
+// to predict due to browser differences.
+class ScanFilter : public EmptyHtmlFilter {
  public:
   explicit ScanFilter(RewriteDriver* driver);
   virtual ~ScanFilter();
 
   virtual void StartDocument();
-  virtual void EndDocument();
   virtual void StartElement(HtmlElement* element);
-  virtual void EndElement(HtmlElement* element);
-  virtual void Cdata(HtmlCdataNode* cdata);
-  virtual void Comment(HtmlCommentNode* comment);
-  virtual void IEDirective(HtmlIEDirectiveNode* directive);
-  virtual void Characters(HtmlCharactersNode* characters);
-  virtual void Directive(HtmlDirectiveNode* directive);
-  virtual void Flush();
 
   virtual const char* Name() const { return "Scan"; }
 
-  // Adds a filter in to the scan-list so that the filters have
-  // the opportunity to scan for URLs to initiate fetches.
-  void add_filter(CommonFilter* filter) { filters_.push_back(filter); }
-
  private:
-  std::vector<CommonFilter*> filters_;
   RewriteDriver* driver_;
   ResourceTagScanner tag_scanner_;
   bool seen_refs_;

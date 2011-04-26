@@ -69,7 +69,6 @@ void CssMoveToHeadFilter::EndElement(HtmlElement* element) {
     if ((element->keyword() == HtmlName::kStyle) ||
         css_tag_scanner_.ParseCssElement(element, &href, &media)) {
       html_parse_->MoveCurrentInto(head_element_);
-      // TODO(sligocki): It'd be nice to have this pattern simplified.
       counter_->Add(1);
     }
   }
