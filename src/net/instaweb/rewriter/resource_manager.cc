@@ -447,12 +447,16 @@ bool ResourceManager::LockForCreation(const GoogleString& name,
   }
   switch (block) {
     case kNeverBlock:
-      // TODO(jmaessen): When caller retries properly in all cases, use
-      // LockTimedWaitStealOld with a sub-second timeout to try to catch
-      // rewritten data.
       result = (*creation_lock)->TryLockStealOld(kBreakLockMs);
       break;
     case kMayBlock:
+      // TODO(jmaessen): It occurs to me that we probably ought to be
+      // doing something like this if we *really* care about lock aging:
+      // if (!(*creation_lock)->LockTimedWaitStealOld(kBlockLockMs, kBreakLockMs)) {
+      //   (*creation_lock)->TryLockStealOld(0);  // Force lock steal
+      // }
+      // This updates the lock hold time so that another thread is less likely to steal
+      // the lock while we're doing the blocking rewrite.
       (*creation_lock)->LockTimedWaitStealOld(kBlockLockMs, kBreakLockMs);
       break;
   }
