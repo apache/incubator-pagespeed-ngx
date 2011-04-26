@@ -55,12 +55,22 @@ class UrlAsyncFetcher;
 class Variable;
 class Writer;
 
+typedef RefCountedPtr<OutputResource> OutputResourcePtr;
+
 // TODO(jmarantz): Rename this class to ServerContext, as it no longer
 // contains much logic about resources -- that's been moved to RewriteDriver,
 // which should be renamed RequestContext.
 class ResourceManager {
  public:
   enum BlockingBehavior { kNeverBlock, kMayBlock };
+
+  enum Kind {
+    kRewrittenResource,  // derived from some input resource URL or URLs.
+    kOnTheFlyResource,   // derived from some input resource URL or URLs in a
+                         //   very inexpensive way --- it makes no sense to
+                         //   cache the output contents.
+    kOutlinedResource    // derived from page HTML.
+  };
 
   // This value is a shared constant so that it can also be used in
   // the Apache-specific code that repairs our caching headers downstream
@@ -172,6 +182,53 @@ class ResourceManager {
 
   MessageHandler* message_handler() const { return message_handler_; }
 
+  // Loads contents of resource asynchronously, calling callback when
+  // done.  If the resource contents are cached, the callback will
+  // be called directly, rather than asynchronously.  The resource
+  // will be passed to the callback, with its contents and headers filled in.
+  void ReadAsync(Resource::AsyncCallback* callback);
+
+  // Creates a reference-counted pointer to a new OutputResource object.
+  //
+  // All content_type arguments can be NULL if the content type isn't
+  // known or isn't covered by the ContentType library.  Where
+  // necessary, the extension is used to infer a content type if one
+  // is needed and none is provided.  It is faster and more reliable
+  // to provide one explicitly when it is known.
+
+  // Constructs an output resource corresponding to the specified input resource
+  // and encoded using the provided encoder.  Assumes permissions checking
+  // occurred when the input resource was constructed, and does not do it again.
+  // To avoid if-chains, tolerates a NULL input_resource (by returning NULL).
+  // TODO(jmaessen, jmarantz): Do we want to permit NULL input_resources here?
+  // jmarantz has evinced a distaste.
+  OutputResourcePtr CreateOutputResourceFromResource(
+      const RewriteOptions* options,
+      const StringPiece& filter_prefix,
+      const ContentType* content_type,
+      const UrlSegmentEncoder* encoder,
+      const ResourceContext* data,
+      Resource* input_resource,
+      Kind kind);
+
+  // Creates an output resource where the name is provided by the rewriter.
+  // The intent is to be able to derive the content from the name, for example,
+  // by encoding URLs and metadata.
+  //
+  // This method succeeds unless the filename is too long.
+  //
+  // This name is prepended with path for writing hrefs, and the resulting url
+  // is encoded and stored at file_prefix when working with the file system.  So
+  // hrefs are:
+  //    $(PATH)/$(NAME).pagespeed.$(FILTER_PREFIX).$(HASH).$(CONTENT_TYPE_EXT)
+  //
+  // 'type' arg can be null if it's not known, or is not in our ContentType
+  // library.
+  OutputResourcePtr CreateOutputResourceWithPath(
+      const RewriteOptions* options, const StringPiece& path,
+      const StringPiece& filter_prefix, const StringPiece& name,
+      const ContentType* type, Kind kind);
+
  private:
   GoogleString file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.
@@ -212,6 +269,21 @@ class ResourceManager {
   MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
+};
+
+class ResourceManagerHttpCallback : public HTTPCache::Callback {
+ public:
+  ResourceManagerHttpCallback(Resource::AsyncCallback* resource_callback,
+                              ResourceManager* resource_manager)
+      : resource_callback_(resource_callback),
+        resource_manager_(resource_manager) {
+  }
+  virtual ~ResourceManagerHttpCallback();
+  virtual void Done(HTTPCache::FindResult find_result);
+
+ private:
+  Resource::AsyncCallback* resource_callback_;
+  ResourceManager* resource_manager_;
 };
 
 }  // namespace net_instaweb

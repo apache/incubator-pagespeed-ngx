@@ -414,13 +414,13 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const StringPiece& url,
   // in the rewrite drivers. Also figure out the filter's preferred
   // resource kind.
   StringPiece id = namer.id();
-  OutputResource::Kind kind = OutputResource::kRewrittenResource;
+  ResourceManager::Kind kind = ResourceManager::kRewrittenResource;
   StringFilterMap::iterator p = resource_filter_map_.find(
       GoogleString(id.data(), id.size()));
   if (p != resource_filter_map_.end()) {
     *filter = p->second;
     if ((*filter)->ComputeOnTheFly()) {
-      kind = OutputResource::kOnTheFlyResource;
+      kind = ResourceManager::kOnTheFlyResource;
     }
   } else if ((id == CssOutlineFilter::kFilterId) ||
               (id == JsOutlineFilter::kFilterId)) {
@@ -430,7 +430,7 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const StringPiece& url,
     //
     // TODO(jmarantz): figure out a better way to refactor this.
     // TODO(jmarantz): add a unit-test to show serving outline-filter resources.
-    kind = OutputResource::kOutlinedResource;
+    kind = ResourceManager::kOutlinedResource;
   } else {
     return OutputResourcePtr();
   }
@@ -441,7 +441,7 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const StringPiece& url,
   // activity.
   StringPiece base = gurl.AllExceptLeaf();
   OutputResourcePtr output_resource(new OutputResource(
-      this, base, namer, NULL, NULL, kind));
+      resource_manager_, base, namer, NULL, NULL, kind));
 
   // We also reject any unknown extensions, which includes rejecting requests
   // with trailing junk. We do this now since OutputResource figures out
@@ -570,70 +570,6 @@ bool RewriteDriver::FetchExtantOutputResource(
   return ret;
 }
 
-// Constructs an output resource corresponding to the specified input resource
-// and encoded using the provided encoder.
-OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
-    const StringPiece& filter_id,
-    const ContentType* content_type,
-    const UrlSegmentEncoder* encoder,
-    const ResourceContext* data,
-    Resource* input_resource,
-    OutputResource::Kind kind) {
-  OutputResourcePtr result;
-  if (input_resource != NULL) {
-    // TODO(jmarantz): It would be more efficient to pass in the base
-    // document GURL or save that in the input resource.
-    GoogleUrl gurl(input_resource->url());
-    UrlPartnership partnership(&options_, gurl);
-    if (partnership.AddUrl(input_resource->url(), message_handler())) {
-      const GoogleUrl *mapped_gurl = partnership.FullPath(0);
-      GoogleString name;
-      StringVector v;
-      v.push_back(mapped_gurl->LeafWithQuery().as_string());
-      encoder->Encode(v, data, &name);
-      result.reset(CreateOutputResourceWithPath(
-          mapped_gurl->AllExceptLeaf(),
-          filter_id, name, content_type, kind));
-    }
-  }
-  return result;
-}
-
-OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
-    const StringPiece& path,
-    const StringPiece& filter_id,
-    const StringPiece& name,
-    const ContentType* content_type,
-    OutputResource::Kind kind) {
-  ResourceNamer full_name;
-  full_name.set_id(filter_id);
-  full_name.set_name(name);
-  if (content_type != NULL) {
-    // TODO(jmaessen): The addition of 1 below avoids the leading ".";
-    // make this convention consistent and fix all code.
-    full_name.set_ext(content_type->file_extension() + 1);
-  }
-  OutputResourcePtr resource;
-
-  int leaf_size = full_name.EventualSize(*resource_manager_->hasher());
-  int url_size = path.size() + leaf_size;
-  if ((leaf_size <= options_.max_url_segment_size()) &&
-      (url_size <= options_.max_url_size())) {
-    resource.reset(new OutputResource(
-        this, path, full_name, content_type, &options_, kind));
-
-    // Determine whether this output resource is still valid by looking
-    // up by hash in the http cache.  Note that this cache entry will
-    // expire when any of the origin resources expire.
-    if (kind != OutputResource::kOutlinedResource) {
-      GoogleString name_key = StrCat(
-          ResourceManager::kCacheKeyResourceNamePrefix, resource->name_key());
-      resource->FetchCachedResult(name_key, message_handler());
-    }
-  }
-  return resource;
-}
-
 bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
                                   const GoogleUrl& input_url) const {
   bool ret = false;
@@ -695,7 +631,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
   ResourcePtr resource;
 
   if (url.SchemeIs("data")) {
-    resource = DataUrlInputResource::Make(url_string, this);
+    resource = DataUrlInputResource::Make(url_string, resource_manager_);
     if (resource.get() == NULL) {
       // Note: Bad user-content can leave us here.
       message_handler()->Message(kWarning, "Badly formatted data url '%s'",
@@ -707,7 +643,8 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
 
     // Note: type may be NULL if url has an unexpected or malformed extension.
     const ContentType* type = NameExtensionToContentType(url_string);
-    resource.reset(new UrlInputResource(this, &options_, type, url_string));
+    resource.reset(new UrlInputResource(resource_manager_, &options_, type,
+                                        url_string));
   } else {
     // Note: Bad user-content can leave us here.
     message_handler()->Message(kWarning, "Unsupported scheme '%s' for url '%s'",
@@ -719,44 +656,8 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
 
 void RewriteDriver::ReadAsync(Resource::AsyncCallback* callback,
                               MessageHandler* handler) {
-  HTTPCache::FindResult result = HTTPCache::kNotFound;
-
-  // If the resource is not already loaded, and this type of resource (e.g.
-  // URL vs File vs Data) is cacheable, then try to load it.
-  ResourcePtr resource = callback->resource();
-  if (resource->loaded()) {
-    result = HTTPCache::kFound;
-  } else if (resource->IsCacheable()) {
-    // TODO(jmarantz): use the non-blocking form of 'Find' and call
-    // the callback when done.
-    result = resource_manager_->http_cache()->Find(
-        resource->url(), &resource->value_, resource->metadata(), handler);
-  }
-
-  switch (result) {
-    case HTTPCache::kFound:
-      resource_manager_->RefreshIfImminentlyExpiring(resource.get(), handler);
-      callback->Done(true);
-      break;
-    case HTTPCache::kRecentFetchFailedDoNotRefetch:
-      // TODO(jmarantz): in this path, should we try to fetch again
-      // sooner than 5 minutes?  The issue is that in this path we are
-      // serving for the user, not for a rewrite.  This could get
-      // frustrating, even if the software is functioning as intended,
-      // because a missing resource that is put in place by a site
-      // admin will not be checked again for 5 minutes.
-      //
-      // The "good" news is that if the admin is willing to crank up
-      // logging to 'info' then http_cache.cc will log the
-      // 'remembered' failure.
-      callback->Done(false);
-      break;
-    case HTTPCache::kNotFound:
-      // If not, load it asynchronously.
-      resource->LoadAndCallback(callback, handler);
-      break;
-  }
-  // TODO(sligocki): Do we need to call DetermineContentType like below?
+  // TODO(jmarantz): fix call-sites and eliminate this wrapper.
+  resource_manager_->ReadAsync(callback);
 }
 
 bool RewriteDriver::ReadIfCached(const ResourcePtr& resource) {
@@ -841,15 +742,16 @@ void RewriteDriver::Scan() {
   set_first_filter(1);
 }
 
-ResourcePtr RewriteDriver::FindResource(const StringPiece& url)
-    const {
+bool RewriteDriver::FindResource(const StringPiece& url,
+                                 ResourcePtr* resource) const {
+  bool ret = false;
   GoogleString url_str(url.data(), url.size());
-  ResourcePtr resource;
   ResourceMap::const_iterator iter = resource_map_.find(url_str);
   if (iter != resource_map_.end()) {
-    resource = iter->second;
+    resource->reset(iter->second);
+    ret = true;
   }
-  return resource;
+  return ret;
 }
 
 void RewriteDriver::RememberResource(const StringPiece& url,

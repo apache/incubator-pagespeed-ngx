@@ -135,7 +135,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     OutputResourcePtr nor(
         rewrite_driver_.CreateOutputResourceWithPath(
             url_prefix_, filter_prefix, name, content_type,
-            OutputResource::kRewrittenResource));
+            ResourceManager::kRewrittenResource));
     ASSERT_TRUE(nor.get() != NULL);
     // Check name_key against url_prefix/fp.name
     GoogleString name_key = nor->name_key();
@@ -154,7 +154,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       OutputResourcePtr nor1(
           rewrite_driver_.CreateOutputResourceWithPath(
               url_prefix_, filter_prefix, name, content_type,
-              OutputResource::kRewrittenResource));
+              ResourceManager::kRewrittenResource));
       ASSERT_TRUE(nor1.get() != NULL);
       EXPECT_FALSE(nor1->LockForCreation(resource_manager_,
                                          ResourceManager::kNeverBlock));
@@ -181,7 +181,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     // Write some data
     EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor.get()));
-    EXPECT_EQ(OutputResource::kRewrittenResource, nor->kind());
+    EXPECT_EQ(ResourceManager::kRewrittenResource, nor->kind());
     EXPECT_TRUE(resource_manager_->Write(HttpStatus::kOK, contents, nor.get(),
                                          origin_expire_time_ms,
                                          &message_handler_));
@@ -193,10 +193,10 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // Retrieve the same NOR from the cache.
     OutputResourcePtr nor2(rewrite_driver_.CreateOutputResourceWithPath(
         url_prefix_, filter_prefix, name, &kContentTypeText,
-        OutputResource::kRewrittenResource));
+        ResourceManager::kRewrittenResource));
     ASSERT_TRUE(nor2.get() != NULL);
     EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor2.get()));
-    EXPECT_EQ(OutputResource::kRewrittenResource, nor2->kind());
+    EXPECT_EQ(ResourceManager::kRewrittenResource, nor2->kind());
     EXPECT_FALSE(nor2->IsWritten());
 
     // Fetch its contents and make sure they match
@@ -255,7 +255,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     rewrite_driver_.SetBaseUrlForFetch(input_resource->url());
     return rewrite_driver_.CreateOutputResourceFromResource(
         "tf", content_type, rewrite_driver_.default_encoder(), NULL,
-        input_resource, OutputResource::kRewrittenResource);
+        input_resource, ResourceManager::kRewrittenResource);
   }
 
   void VerifyCustomMetadata(OutputResource* output) {
@@ -479,7 +479,7 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
       rewrite_driver_.CreateOutputResourceFromResource(
           RewriteDriver::kCacheExtenderId, input->type(),
           rewrite_driver_.default_encoder(), NULL,
-          input.get(), OutputResource::kRewrittenResource));
+          input.get(), ResourceManager::kRewrittenResource));
   ASSERT_TRUE(output.get() != NULL);
 
   // We need to 'Write' an output resource before we can determine its
@@ -512,7 +512,7 @@ TEST_F(ResourceManagerTest, TestInputResourceQuery) {
     rewrite_driver_.CreateOutputResourceFromResource(
       "sf", &kContentTypeCss,
       rewrite_driver_.default_encoder(), NULL,
-      resource.get(), OutputResource::kRewrittenResource));
+      resource.get(), ResourceManager::kRewrittenResource));
   ASSERT_TRUE(output.get() != NULL);
 
   GoogleString included_name;
@@ -575,7 +575,7 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   OutputResourcePtr output_resource(
       rewrite_driver_.CreateOutputResourceWithPath(
           url_prefix_, CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
-          OutputResource::kOutlinedResource));
+          ResourceManager::kOutlinedResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache_->num_hits());
@@ -595,7 +595,7 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   output_resource.reset(
       rewrite_driver_.CreateOutputResourceWithPath(
           url_prefix_, CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
-          OutputResource::kOutlinedResource));
+          ResourceManager::kOutlinedResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache_->num_hits());
@@ -618,7 +618,7 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   OutputResourcePtr output_resource(
       rewrite_driver_.CreateOutputResourceWithPath(
             url_prefix_, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
-            OutputResource::kOnTheFlyResource));
+            ResourceManager::kOnTheFlyResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache_->num_hits());
@@ -639,7 +639,7 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   // Now try fetching again. Should hit in cache for rname.
   output_resource.reset(rewrite_driver_.CreateOutputResourceWithPath(
       url_prefix_, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
-      OutputResource::kOnTheFlyResource));
+      ResourceManager::kOnTheFlyResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(1, lru_cache_->num_hits());
@@ -660,7 +660,7 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   OutputResourcePtr output_resource(
       rewrite_driver_.CreateOutputResourceWithPath(
             url_prefix_, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
-            OutputResource::kRewrittenResource));
+            ResourceManager::kRewrittenResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache_->num_hits());
@@ -679,7 +679,7 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   // Now try fetching again. Should hit in cache
   output_resource.reset(rewrite_driver_.CreateOutputResourceWithPath(
       url_prefix_, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
-      OutputResource::kRewrittenResource));
+      ResourceManager::kRewrittenResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(1, lru_cache_->num_hits());
@@ -862,7 +862,7 @@ TEST_F(ResourceManagerShardedTest, TestNamed) {
           "jm",
           "orig.js",
           &kContentTypeJavascript,
-          OutputResource::kRewrittenResource));
+          ResourceManager::kRewrittenResource));
   ASSERT_TRUE(output_resource.get());
   ASSERT_TRUE(resource_manager_->Write(HttpStatus::kOK, "alert('hello');",
                                        output_resource.get(), 0,

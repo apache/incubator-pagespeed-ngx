@@ -222,14 +222,14 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
     ret = writer->Write(contents, handler);
     ret &= output->EndWrite(writer.get(), handler);
 
-    if (output->kind() != OutputResource::kOnTheFlyResource) {
+    if (output->kind() != kOnTheFlyResource) {
       http_cache_->Put(output->url(), &output->value_, handler);
     }
 
     // If our URL is derived from some pre-existing URL (and not invented by
     // us due to something like outlining), cache the mapping from original URL
     // to the constructed one.
-    if (output->kind() != OutputResource::kOutlinedResource) {
+    if (output->kind() != kOutlinedResource) {
       output->EnsureCachedResultCreated()->set_optimizable(true);
       CacheComputedResourceMapping(output, origin_expire_time_ms, handler);
     }
@@ -316,6 +316,121 @@ void ResourceManager::RefreshIfImminentlyExpiring(
       resource->Freshen(handler);
     }
   }
+}
+
+ResourceManagerHttpCallback::~ResourceManagerHttpCallback() {
+}
+
+void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
+  ResourcePtr resource(resource_callback_->resource());
+  MessageHandler* handler = resource_manager_->message_handler();
+  switch (find_result) {
+    case HTTPCache::kFound:
+      resource->Link(http_value(), handler);
+      resource->metadata()->CopyFrom(*response_headers());
+      resource_manager_->RefreshIfImminentlyExpiring(resource.get(), handler);
+      resource_callback_->Done(true);
+      break;
+    case HTTPCache::kRecentFetchFailedDoNotRefetch:
+      // TODO(jmarantz): in this path, should we try to fetch again
+      // sooner than 5 minutes?  The issue is that in this path we are
+      // serving for the user, not for a rewrite.  This could get
+      // frustrating, even if the software is functioning as intended,
+      // because a missing resource that is put in place by a site
+      // admin will not be checked again for 5 minutes.
+      //
+      // The "good" news is that if the admin is willing to crank up
+      // logging to 'info' then http_cache.cc will log the
+      // 'remembered' failure.
+      resource_callback_->Done(false);
+      break;
+    case HTTPCache::kNotFound:
+      // If not, load it asynchronously.
+      resource->LoadAndCallback(resource_callback_, handler);
+      break;
+  }
+  delete this;
+}
+
+void ResourceManager::ReadAsync(Resource::AsyncCallback* callback) {
+  // If the resource is not already loaded, and this type of resource (e.g.
+  // URL vs File vs Data) is cacheable, then try to load it.
+  ResourcePtr resource = callback->resource();
+  if (resource->loaded()) {
+    RefreshIfImminentlyExpiring(resource.get(), message_handler_);
+    callback->Done(true);
+  } else if (resource->IsCacheable()) {
+    ResourceManagerHttpCallback* resource_manager_callback =
+        new ResourceManagerHttpCallback(callback, this);
+    http_cache_->Find(resource->url(), message_handler_,
+                      resource_manager_callback);
+  }
+}
+
+// Constructs an output resource corresponding to the specified input resource
+// and encoded using the provided encoder.
+OutputResourcePtr ResourceManager::CreateOutputResourceFromResource(
+    const RewriteOptions* options,
+    const StringPiece& filter_id,
+    const ContentType* content_type,
+    const UrlSegmentEncoder* encoder,
+    const ResourceContext* data,
+    Resource* input_resource,
+    Kind kind) {
+  OutputResourcePtr result;
+  if (input_resource != NULL) {
+    // TODO(jmarantz): It would be more efficient to pass in the base
+    // document GURL or save that in the input resource.
+    GoogleUrl gurl(input_resource->url());
+    UrlPartnership partnership(options, gurl);
+    if (partnership.AddUrl(input_resource->url(), message_handler_)) {
+      const GoogleUrl *mapped_gurl = partnership.FullPath(0);
+      GoogleString name;
+      StringVector v;
+      v.push_back(mapped_gurl->LeafWithQuery().as_string());
+      encoder->Encode(v, data, &name);
+      result.reset(CreateOutputResourceWithPath(
+          options, mapped_gurl->AllExceptLeaf(),
+          filter_id, name, content_type, kind));
+    }
+  }
+  return result;
+}
+
+OutputResourcePtr ResourceManager::CreateOutputResourceWithPath(
+    const RewriteOptions* options,
+    const StringPiece& path,
+    const StringPiece& filter_id,
+    const StringPiece& name,
+    const ContentType* content_type,
+    Kind kind) {
+  ResourceNamer full_name;
+  full_name.set_id(filter_id);
+  full_name.set_name(name);
+  if (content_type != NULL) {
+    // TODO(jmaessen): The addition of 1 below avoids the leading ".";
+    // make this convention consistent and fix all code.
+    full_name.set_ext(content_type->file_extension() + 1);
+  }
+  OutputResourcePtr resource;
+
+  int leaf_size = full_name.EventualSize(*hasher());
+  int url_size = path.size() + leaf_size;
+  if ((leaf_size <= options->max_url_segment_size()) &&
+      (url_size <= options->max_url_size())) {
+    resource.reset(new OutputResource(
+        this, path, full_name, content_type, options, kind));
+
+    // Determine whether this output resource is still valid by looking
+    // up by hash in the http cache.  Note that this cache entry will
+    // expire when any of the origin resources expire.
+    if (kind != kOutlinedResource) {
+      GoogleString name_key = StrCat(
+          ResourceManager::kCacheKeyResourceNamePrefix, resource->name_key());
+      resource->FetchCachedResult(name_key, message_handler_);
+    }
+  }
+  return resource;
 }
 
 }  // namespace net_instaweb

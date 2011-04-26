@@ -28,11 +28,11 @@ namespace net_instaweb {
 
 class FileInputResource : public Resource {
  public:
-  FileInputResource(RewriteDriver* driver,
+  FileInputResource(ResourceManager* resource_manager,
                     const ContentType* type,
                     const StringPiece& url,
                     const StringPiece& filename)
-      : Resource(driver, type),
+      : Resource(resource_manager, type),
         url_(url.data(), url.size()),
         filename_(filename.data(), filename.size()) {
   }

@@ -145,7 +145,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       OutputResourcePtr output_resource(
           driver_->CreateOutputResourceWithPath(
               driver_->google_url().AllExceptLeaf(), kFilterId, "_",
-              &kContentTypeCss, OutputResource::kOutlinedResource));
+              &kContentTypeCss, ResourceManager::kOutlinedResource));
 
       if (output_resource.get() != NULL) {
         // Absolutify URLs in content.

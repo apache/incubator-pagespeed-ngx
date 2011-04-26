@@ -37,7 +37,8 @@ enum Encoding;
 class DataUrlInputResource : public Resource {
  public:
   // We expose a factory; parse failure returns NULL.
-  static ResourcePtr Make(const StringPiece& url, RewriteDriver* driver) {
+  static ResourcePtr Make(const StringPiece& url,
+                          ResourceManager* resource_manager) {
     ResourcePtr resource;
     const ContentType* type;
     Encoding encoding;
@@ -49,7 +50,8 @@ class DataUrlInputResource : public Resource {
     url.CopyToString(url_copy);
     if (ParseDataUrl(*url_copy, &type, &encoding, &encoded_contents)) {
       resource.reset(new DataUrlInputResource(url_copy, encoding, type,
-                                              encoded_contents, driver));
+                                              encoded_contents,
+                                              resource_manager));
     }
     return resource;
   }
@@ -67,8 +69,8 @@ class DataUrlInputResource : public Resource {
                        Encoding encoding,
                        const ContentType* type,
                        const StringPiece& encoded_contents,
-                       RewriteDriver* driver)
-      : Resource(driver, type),
+                       ResourceManager* resource_manager)
+      : Resource(resource_manager, type),
         url_(url),
         encoding_(encoding),
         encoded_contents_(encoded_contents) {

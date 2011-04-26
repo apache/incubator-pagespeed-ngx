@@ -40,17 +40,10 @@ class AbstractLock;
 class MessageHandler;
 class NamedLockManager;
 class RewriteDriver;
+class RewriteOptions;
 
 class OutputResource : public Resource {
  public:
-  enum Kind {
-    kRewrittenResource,  // derived from some input resource URL or URLs.
-    kOnTheFlyResource,   // derived from some input resource URL or URLs in a
-                         //   very inexpensive way --- it makes no sense to
-                         //   cache the output contents.
-    kOutlinedResource    // derived from page HTML.
-  };
-
   // Construct an OutputResource.  For the moment, we pass in type redundantly
   // even though full_name embeds an extension.  This reflects current code
   // structure rather than a principled stand on anything.
@@ -59,12 +52,12 @@ class OutputResource : public Resource {
   // The 'options' argument can be NULL.  This is done in the Fetch path because
   // that field is only used for domain sharding, and during the fetch, further
   // domain makes no sense.
-  OutputResource(RewriteDriver* driver,
+  OutputResource(ResourceManager* resource_manager,
                  const StringPiece& resolved_base,
                  const ResourceNamer& resource_id,
                  const ContentType* type,
                  const RewriteOptions* options,
-                 Kind kind);
+                 ResourceManager::Kind kind);
 
   virtual bool Load(MessageHandler* message_handler);
   virtual GoogleString url() const;
@@ -130,7 +123,7 @@ class OutputResource : public Resource {
   // The output is const because we do not check that the CachedResult has not
   // been written.  If you want to modify the CachedResult, use
   // EnsureCachedResultCreated instead.
-  const CachedResult* cached_result() const { return cached_result_.get(); }
+  const CachedResult* cached_result() const { return cached_result_; }
 
   // If there is no cached output information, creates an empty one,
   // without any information filled in (so no url(), or timestamps).
@@ -140,17 +133,39 @@ class OutputResource : public Resource {
   // This never returns null.
   // We will DCHECK that the cached result has not been written.
   CachedResult* EnsureCachedResultCreated() {
-    if (cached_result() == NULL) {
-      cached_result_.reset(new CachedResult());
+    if (cached_result_ == NULL) {
+      clear_cached_result();
+      cached_result_ = new CachedResult();
+      cached_result_owned_ = true;
     } else {
-      DCHECK(!cached_result_.get()->frozen())
-          << "Cannot mutate frozen cached result.";
+      DCHECK(!cached_result_->frozen()) << "Cannot mutate frozen cached result";
     }
-    return cached_result_.get();
+    return cached_result_;
+  }
+
+  void clear_cached_result() {
+    if (cached_result_owned_) {
+      delete cached_result_;
+      cached_result_owned_ = false;
+    }
+    cached_result_ = NULL;
+  }
+
+  // Sets the cached-result to an already-existing, externally owned
+  // buffer.  We need to make sure not to free it on destruction.
+  void set_cached_result(CachedResult* cached_result) {
+    clear_cached_result();
+    cached_result_ = cached_result;
   }
 
   // Transfers up ownership of any cached result and clears pointer to it.
-  CachedResult* ReleaseCachedResult() { return cached_result_.release(); }
+  CachedResult* ReleaseCachedResult() {
+    CHECK(cached_result_owned_);
+    CachedResult* ret = cached_result_;
+    cached_result_ = NULL;
+    cached_result_owned_ = false;
+    return ret;
+  }
 
   // Resources rewritten via a UrlPartnership will have a resolved
   // base to use in lieu of the legacy UrlPrefix held by the resource
@@ -160,7 +175,7 @@ class OutputResource : public Resource {
     CHECK(EndsInSlash(base)) << "resolved_base must end in a slash.";
   }
 
-  Kind kind() const { return kind_; }
+  ResourceManager::Kind kind() const { return kind_; }
 
  protected:
   virtual ~OutputResource();
@@ -215,7 +230,14 @@ class OutputResource : public Resource {
   FileSystem::OutputFile* output_file_;
   bool writing_complete_;
 
-  scoped_ptr<CachedResult> cached_result_;
+  // TODO(jmarantz): We have a complicated semantic for CachedResult
+  // ownership as we transition from rewriting inline while html parsing
+  // to rewriting asynchronously.  In the asynchronous world, the
+  // CachedResult object will be owned at a higher level.  So it is not
+  // safe to call cached_result_.release() or .reset() directly.  Instead,
+  // go through the clear_cached_result() method.
+  bool cached_result_owned_;
+  CachedResult* cached_result_;
 
   // The resolved_base_ is the domain as reported by UrlPartnership.
   // It takes into account domain-mapping via
@@ -238,12 +260,10 @@ class OutputResource : public Resource {
 
   // Output resource have a 'kind' associated with them that controls the kind
   // of caching we would like to be performed on them when written out.
-  Kind kind_;
+  ResourceManager::Kind kind_;
 
   DISALLOW_COPY_AND_ASSIGN(OutputResource);
 };
-
-typedef RefCountedPtr<OutputResource> OutputResourcePtr;
 
 }  // namespace net_instaweb
 

@@ -198,9 +198,9 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
     Resource* input_resource, const ResourceContext* data) {
   MessageHandler* handler = driver_->message_handler();
 
-  OutputResource::Kind kind = OutputResource::kRewrittenResource;
+  ResourceManager::Kind kind = ResourceManager::kRewrittenResource;
   if (ComputeOnTheFly()) {
-    kind = OutputResource::kOnTheFlyResource;
+    kind = ResourceManager::kOnTheFlyResource;
   }
   OutputResourcePtr output_resource(
       driver_->CreateOutputResourceFromResource(

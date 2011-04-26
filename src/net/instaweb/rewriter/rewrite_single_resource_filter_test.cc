@@ -260,7 +260,7 @@ class RewriteSingleResourceFilterTest
     OutputResourcePtr output_resource(
         rewrite_driver_.CreateOutputResourceFromResource(
             kTestFilterPrefix, &kContentTypeText, encoder, NULL,
-            input_resource.get(), OutputResource::kRewrittenResource));
+            input_resource.get(), ResourceManager::kRewrittenResource));
     EXPECT_TRUE(output_resource.get() != NULL);
 
     return output_resource->ReleaseCachedResult();

@@ -206,10 +206,10 @@ TEST_F(RewriteDriverTest, InvalidBaseTag) {
 
 TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
   const ContentType* content_types[] = { NULL, &kContentTypeJpeg};
-  const OutputResource::Kind resource_kinds[] = {
-    OutputResource::kRewrittenResource,
-    OutputResource::kOnTheFlyResource,
-    OutputResource::kOutlinedResource,
+  const ResourceManager::Kind resource_kinds[] = {
+    ResourceManager::kRewrittenResource,
+    ResourceManager::kOnTheFlyResource,
+    ResourceManager::kOutlinedResource,
   };
 
   // short_path.size() < options_.max_url_size() < long_path.size()

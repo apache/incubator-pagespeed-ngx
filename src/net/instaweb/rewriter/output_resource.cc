@@ -63,15 +63,17 @@ class SyncCallback : public CacheInterface::Callback {
 
 }  // namespace
 
-OutputResource::OutputResource(RewriteDriver* driver,
+OutputResource::OutputResource(ResourceManager* resource_manager,
                                const StringPiece& resolved_base,
                                const ResourceNamer& full_name,
                                const ContentType* type,
                                const RewriteOptions* options,
-                               Kind kind)
-    : Resource(driver, type),
+                               ResourceManager::Kind kind)
+    : Resource(resource_manager, type),
       output_file_(NULL),
       writing_complete_(false),
+      cached_result_owned_(false),
+      cached_result_(NULL),
       resolved_base_(resolved_base.data(), resolved_base.size()),
       rewrite_options_(options),
       kind_(kind) {
@@ -91,6 +93,7 @@ OutputResource::OutputResource(RewriteDriver* driver,
 }
 
 OutputResource::~OutputResource() {
+  clear_cached_result();
 }
 
 bool OutputResource::OutputWriter::Write(const StringPiece& data,
@@ -246,7 +249,7 @@ void OutputResource::SetHash(const StringPiece& hash) {
 
 bool OutputResource::Load(MessageHandler* handler) {
   if (!writing_complete_ && resource_manager_->store_outputs_in_file_system() &&
-      (kind_ != kOnTheFlyResource)) {
+      (kind_ != ResourceManager::kOnTheFlyResource)) {
     FileSystem* file_system = resource_manager_->file_system();
     FileSystem::InputFile* file = file_system->OpenInputFile(
         filename().c_str(), handler);
@@ -345,7 +348,7 @@ void OutputResource::FetchCachedResult(const GoogleString& name_key,
                                        MessageHandler* handler) {
   bool ok = false;
   CacheInterface* cache = resource_manager_->metadata_cache();
-  cached_result_.reset();
+  clear_cached_result();
   CachedResult* cached = EnsureCachedResultCreated();
 
   SyncCallback callback;
@@ -381,7 +384,7 @@ void OutputResource::FetchCachedResult(const GoogleString& name_key,
   }
 
   if (!ok) {
-    cached_result_.reset();
+    clear_cached_result();
   }
 }
 

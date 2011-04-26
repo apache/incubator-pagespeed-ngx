@@ -30,9 +30,8 @@ const int64 kDefaultExpireTimeMs = 5 * Timer::kMinuteMs;
 
 }  // namespace
 
-Resource::Resource(RewriteDriver* driver, const ContentType* type)
-    : driver_(driver),
-      resource_manager_(driver->resource_manager()),
+Resource::Resource(ResourceManager* resource_manager, const ContentType* type)
+    : resource_manager_(resource_manager),
       type_(type) {
 }
 

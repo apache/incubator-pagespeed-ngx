@@ -41,18 +41,16 @@ namespace net_instaweb {
 
 class Resource;
 class ResourceManager;
-class RewriteDriver;
 
 typedef RefCountedPtr<Resource> ResourcePtr;
 typedef std::vector<ResourcePtr> ResourceVector;
 
 class Resource : public RefCounted<Resource> {
  public:
-  Resource(RewriteDriver* driver, const ContentType* type);
+  Resource(ResourceManager* resource_manager, const ContentType* type);
 
   // Common methods across all deriviations
   ResourceManager* resource_manager() const { return resource_manager_; }
-  RewriteDriver* driver() const { return driver_; }
   bool loaded() const { return meta_data_.status_code() != 0; }
   // TODO(sligocki): Change name to HttpStatusOk?
   bool ContentsValid() const {
@@ -107,8 +105,9 @@ class Resource : public RefCounted<Resource> {
   virtual ~Resource();
   REFCOUNT_FRIEND_DECLARATION(Resource);
   friend class ResourceManager;
-  friend class RewriteDriver;
+  friend class RewriteDriver;  // for ReadIfCachedWithStatus
   friend class UrlReadAsyncFetchCallback;
+  friend class ResourceManagerHttpCallback;
 
   // Load the resource asynchronously, storing ResponseHeaders and
   // contents in cache.  Returns true, if the resource is already
@@ -121,7 +120,6 @@ class Resource : public RefCounted<Resource> {
   virtual void LoadAndCallback(AsyncCallback* callback,
                                MessageHandler* message_handler);
 
-  RewriteDriver* driver_;
   ResourceManager* resource_manager_;
 
   const ContentType* type_;

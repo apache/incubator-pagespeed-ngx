@@ -130,7 +130,7 @@ class RewriteDriver : public HtmlParse {
   //
   // TODO(jmarantz): note that the returned resource does not necessarily
   // have its content loaded. This needs some more design work.
-  ResourcePtr FindResource(const StringPiece& url) const;
+  bool FindResource(const StringPiece& url, ResourcePtr* resource) const;
 
   void RememberResource(const StringPiece& url, const ResourcePtr& resource);
 
@@ -212,48 +212,27 @@ class RewriteDriver : public HtmlParse {
   // request-scoped cache is cleared immediately.
   virtual void FinishParse();
 
-  // Created resources are currently the responsibility of the caller.
-  // Ultimately we'd like to move to managing resources in a
-  // request-scoped map.  Every time a Create...Resource... method is
-  // called, a fresh Resource object is generated (or the creation
-  // fails and NULL is returned).  All content_type arguments can be
-  // NULL if the content type isn't known or isn't covered by the
-  // ContentType library.  Where necessary, the extension is used to
-  // infer a content type if one is needed and none is provided.  It
-  // is faster and more reliable to provide one explicitly when it is
-  // known.
-
-  // Constructs an output resource corresponding to the specified input resource
-  // and encoded using the provided encoder.  Assumes permissions checking
-  // occurred when the input resource was constructed, and does not do it again.
-  // To avoid if-chains, tolerates a NULL input_resource (by returning NULL).
-  // TODO(jmaessen, jmarantz): Do we want to permit NULL input_resources here?
-  // jmarantz has evinced a distaste.
+  // See comments in resource_manager.h
   OutputResourcePtr CreateOutputResourceFromResource(
       const StringPiece& filter_prefix,
       const ContentType* content_type,
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
       Resource* input_resource,
-      OutputResource::Kind kind);
+      ResourceManager::Kind kind) {
+    return resource_manager_->CreateOutputResourceFromResource(
+        &options_, filter_prefix, content_type, encoder, data, input_resource,
+        kind);
+  }
 
-  // Creates an output resource where the name is provided by the rewriter.
-  // The intent is to be able to derive the content from the name, for example,
-  // by encoding URLs and metadata.
-  //
-  // This method succeeds unless the filename is too long.
-  //
-  // This name is prepended with path for writing hrefs, and the resulting url
-  // is encoded and stored at file_prefix when working with the file system.  So
-  // hrefs are:
-  //    $(PATH)/$(NAME).pagespeed.$(FILTER_PREFIX).$(HASH).$(CONTENT_TYPE_EXT)
-  //
-  // 'type' arg can be null if it's not known, or is not in our ContentType
-  // library.
+  // See comments in resource_manager.h
   OutputResourcePtr CreateOutputResourceWithPath(
       const StringPiece& path, const StringPiece& filter_prefix,
       const StringPiece& name,  const ContentType* type,
-      OutputResource::Kind kind);
+      ResourceManager::Kind kind) {
+    return resource_manager_->CreateOutputResourceWithPath(
+        &options_, path, filter_prefix, name, type, kind);
+  }
 
   // Creates an input resource based on input_url.  Returns NULL if
   // the input resource url isn't valid, or can't legally be rewritten in the
