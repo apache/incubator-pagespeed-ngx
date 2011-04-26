@@ -153,11 +153,7 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   ImageCombineFilter* image_combiner = new ImageCombineFilter(this,
                                                               kImageCombineId);
   ImageRewriteFilter* image_rewriter =
-      new ImageRewriteFilter(
-          this,
-          kImageCompressionId,
-          options_.image_inline_max_bytes(),
-          options_.image_max_rewrites_at_once());
+      new ImageRewriteFilter(this, kImageCompressionId);
 
   RegisterRewriteFilter(new CssCombineFilter(this, kCssCombinerId));
   RegisterRewriteFilter(
@@ -292,7 +288,10 @@ void RewriteDriver::AddFilters() {
     CHECK(resource_manager_ != NULL);
     AddOwnedFilter(new JsInlineFilter(this));
   }
-  if (options_.Enabled(RewriteOptions::kRewriteImages)) {
+  if (options_.Enabled(RewriteOptions::kInlineImages) ||
+      options_.Enabled(RewriteOptions::kInsertImageDimensions) ||
+      options_.Enabled(RewriteOptions::kRecompressImages) ||
+      options_.Enabled(RewriteOptions::kResizeImages)) {
     EnableRewriteFilter(kImageCompressionId);
   }
   if (options_.Enabled(RewriteOptions::kRemoveComments)) {

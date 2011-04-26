@@ -411,10 +411,6 @@ bool Image::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
   return cv::imencode(content_type()->file_extension(), opencv_image_, *buf);
 }
 
-StringPiece Image::OpenCvBufferToStringPiece(const OpenCvBuffer& buf) {
-  return StringPiece(reinterpret_cast<const char*>(&buf[0]), buf.size());
-}
-
 #else
 
 bool Image::TempFileForImage(FileSystem* fs,
@@ -452,11 +448,11 @@ bool Image::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
   return ok;
 }
 
-StringPiece Image::OpenCvBufferToStringPiece(const OpenCvBuffer& buf) {
-  return StringPiece(buf);
-}
-
 #endif
+
+StringPiece Image::OpenCvBufferToStringPiece(const OpenCvBuffer& buf) {
+  return StringPiece(reinterpret_cast<const char*>(&buf[0]), buf.size());
+}
 
 void Image::Dimensions(ImageDim* natural_dim) {
   if (!ImageUrlEncoder::HasValidDimensions(dims_)) {
@@ -533,7 +529,7 @@ bool Image::ComputeOutputContents() {
           break;
         case IMAGE_PNG: {
           pagespeed::image_compression::PngReader png_reader;
-          ok = PngOptimizer::OptimizePng
+          ok = PngOptimizer::OptimizePngBestCompression
               (png_reader,
               GoogleString(contents.data(), contents.size()),
               &output_contents_);
@@ -541,7 +537,7 @@ bool Image::ComputeOutputContents() {
         }
         case IMAGE_GIF: {
           pagespeed::image_compression::GifReader gif_reader;
-          ok = PngOptimizer::OptimizePng
+          ok = PngOptimizer::OptimizePngBestCompression
               (gif_reader,
               GoogleString(contents.data(), contents.size()),
               &output_contents_);

@@ -1,5 +1,4 @@
 Info: img_tag_identification.html:23: Shrinking image `http://file.name/BikeCrashIcn.png' (26548 bytes) to `http://file.name/xBikeCrashIcn.png.pagespeed.ic.0.png' (23357 bytes)
-Info: img_tag_identification.html:36: Not worth resizing image `http://file.name/Puzzle.jpg' from 1023x766 to 1023x766
 Info: img_tag_identification.html:36: Shrinking image `http://file.name/Puzzle.jpg' (241260 bytes) to `http://file.name/1023x766xPuzzle.jpg.pagespeed.ic.0.jpg' (235391 bytes)
 Info: img_tag_identification.html:37: Resized image `http://file.name/Puzzle.jpg' from 1023x766 to 256x192
 Info: img_tag_identification.html:37: Shrinking image `http://file.name/Puzzle.jpg' (241260 bytes) to `http://file.name/256x192xPuzzle.jpg.pagespeed.ic.0.jpg' (21648 bytes)

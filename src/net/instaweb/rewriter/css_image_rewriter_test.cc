@@ -145,7 +145,7 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
     // We setup the options before the upcall so that the
     // CSS filter is created aware of these.
     options_.EnableFilter(RewriteOptions::kExtendCache);
-    options_.EnableFilter(RewriteOptions::kRewriteImages);
+    options_.EnableFilter(RewriteOptions::kRecompressImages);
     CssRewriteTestBase::SetUp();
 
     // We want a real hasher here so that subresources get separate locks.

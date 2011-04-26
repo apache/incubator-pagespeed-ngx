@@ -126,10 +126,10 @@ void RewriteOptions::SetUp() {
   name_filter_map_["combine_css"] = kCombineCss;
   name_filter_map_["combine_javascript"] = kCombineJavascript;
   name_filter_map_["combine_heads"] = kCombineHeads;
-  name_filter_map_["debug_log_image_tags"] = kDebugLogImageTags;
   name_filter_map_["elide_attributes"] = kElideAttributes;
   name_filter_map_["extend_cache"] = kExtendCache;
   name_filter_map_["inline_css"] = kInlineCss;
+  name_filter_map_["inline_images"] = kInlineImages;
   name_filter_map_["inline_javascript"] = kInlineJavascript;
   name_filter_map_["insert_img_dimensions"] =
       kInsertImageDimensions;  // Deprecated due to spelling.
@@ -139,14 +139,22 @@ void RewriteOptions::SetUp() {
   name_filter_map_["move_css_to_head"] = kMoveCssToHead;
   name_filter_map_["outline_css"] = kOutlineCss;
   name_filter_map_["outline_javascript"] = kOutlineJavascript;
+  name_filter_map_["recompress_images"] = kRecompressImages;
   name_filter_map_["remove_comments"] = kRemoveComments;
   name_filter_map_["remove_quotes"] = kRemoveQuotes;
+  name_filter_map_["resize_images"] = kResizeImages;
   name_filter_map_["rewrite_css"] = kRewriteCss;
-  name_filter_map_["rewrite_images"] = kRewriteImages;
   name_filter_map_["rewrite_javascript"] = kRewriteJavascript;
   name_filter_map_["sprite_images"] = kSpriteImages;
   name_filter_map_["strip_scripts"] = kStripScripts;
   name_filter_map_["trim_urls"] = kLeftTrimUrls;
+
+  // Create filter sets for compound filter flags
+  // (right now this is just rewrite_images)
+  name_filter_set_map_["rewrite_images"].insert(kInlineImages);
+  name_filter_set_map_["rewrite_images"].insert(kInsertImageDimensions);
+  name_filter_set_map_["rewrite_images"].insert(kRecompressImages);
+  name_filter_set_map_["rewrite_images"].insert(kResizeImages);
 
   // Create an empty set for the pass-through level.
   level_filter_set_map_[kPassThrough];
@@ -156,10 +164,12 @@ void RewriteOptions::SetUp() {
   level_filter_set_map_[kCoreFilters].insert(kCombineCss);
   level_filter_set_map_[kCoreFilters].insert(kExtendCache);
   level_filter_set_map_[kCoreFilters].insert(kInlineCss);
+  level_filter_set_map_[kCoreFilters].insert(kInlineImages);
   level_filter_set_map_[kCoreFilters].insert(kInlineJavascript);
   level_filter_set_map_[kCoreFilters].insert(kInsertImageDimensions);
   level_filter_set_map_[kCoreFilters].insert(kLeftTrimUrls);
-  level_filter_set_map_[kCoreFilters].insert(kRewriteImages);
+  level_filter_set_map_[kCoreFilters].insert(kRecompressImages);
+  level_filter_set_map_[kCoreFilters].insert(kResizeImages);
   // TODO(jmarantz): re-enable javascript and CSS minification in
   // the core set after the reported bugs have been fixed.  They
   // can still be enabled individually.
@@ -222,8 +232,20 @@ bool RewriteOptions::AddCommaSeparatedListToFilterSet(
     GoogleString option(names[i].data(), names[i].size());
     NameToFilterMap::iterator p = name_filter_map_.find(option);
     if (p == name_filter_map_.end()) {
-      handler->Message(kWarning, "Invalid filter name: %s", option.c_str());
-      ret = false;
+      // Handle a compound filter name.  This is much less common.
+      NameToFilterSetMap::iterator s = name_filter_set_map_.find(option);
+      if (s == name_filter_set_map_.end()) {
+        handler->Message(kWarning, "Invalid filter name: %s", option.c_str());
+        ret = false;
+      } else {
+        const FilterSet& new_flags = s->second;
+        // Insert all new_flags into set.
+        for (FilterSet::iterator j = new_flags.begin(), m = new_flags.end();
+             j != m; ++j) {
+          std::pair<FilterSet::iterator, bool> inserted = set->insert(*j);
+          modified_ |= inserted.second;
+        }
+      }
     } else {
       std::pair<FilterSet::iterator, bool> inserted = set->insert(p->second);
       modified_ |= inserted.second;

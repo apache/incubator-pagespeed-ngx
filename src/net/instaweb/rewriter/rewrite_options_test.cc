@@ -129,6 +129,22 @@ TEST_F(RewriteOptionsTest, CommaSeparatedList) {
   ASSERT_TRUE(NoneEnabled());
 }
 
+TEST_F(RewriteOptionsTest, CompoundFlag) {
+  FilterSet s;
+  s.insert(RewriteOptions::kInlineImages);
+  s.insert(RewriteOptions::kInsertImageDimensions);
+  s.insert(RewriteOptions::kRecompressImages);
+  s.insert(RewriteOptions::kResizeImages);
+  const char* kList = "rewrite_images";
+  NullMessageHandler handler;
+  ASSERT_TRUE(
+      options_.EnableFiltersByCommaSeparatedList(kList, &handler));
+  ASSERT_TRUE(OnlyEnabled(s));
+  ASSERT_TRUE(
+      options_.DisableFiltersByCommaSeparatedList(kList, &handler));
+  ASSERT_TRUE(NoneEnabled());
+}
+
 TEST_F(RewriteOptionsTest, ParseRewriteLevel) {
   RewriteOptions::RewriteLevel level;
   ASSERT_TRUE(RewriteOptions::ParseRewriteLevel("PassThrough", &level));

@@ -17,7 +17,7 @@ vars = {
   "chromium_revision": "@74824",
   "chromium_deps_root": "src/third_party/chromium_deps",
 
-  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.10.0.0",
+  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.11.1.0",
   "libpagespeed_revision": "@head",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
 
@@ -48,6 +48,7 @@ vars = {
 }
 
 deps = {
+
   # Fetch dependent DEPS so we can sync our other dependencies relative
   # to them.
   Var("chromium_deps_root"):
@@ -71,10 +72,22 @@ deps = {
   "src/build/util": From(Var("libpagespeed_deps_root")),
   "src/build/win": From(Var("libpagespeed_deps_root")),
 
+  "src/third_party/icu":
+    Var("libpagespeed_trunk") + "/src/third_party/icu" + Var("libpagespeed_revision"),
+
+  "src/third_party/icu/public":
+    From(Var("libpagespeed_deps_root")),
+
+  "src/third_party/icu/source/common":
+    From(Var("libpagespeed_deps_root")),
+
+  "src/third_party/icu/source/i18n":
+    From(Var("libpagespeed_deps_root")),
+
   "src/googleurl": From(Var("chromium_deps_root")),
 
-  "src/googleurl_noicu":
-    (Var("libpagespeed_trunk") + "/src/googleurl_noicu" +
+  "src/googleurl_noconv":
+    (Var("libpagespeed_trunk") + "/src/googleurl_noconv" +
      Var("libpagespeed_revision")),
 
   "src/testing": From(Var("libpagespeed_deps_root")),

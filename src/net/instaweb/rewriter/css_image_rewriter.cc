@@ -78,7 +78,7 @@ void CssImageRewriter::Initialize(Statistics* statistics) {
 
 bool CssImageRewriter::RewritesEnabled() const {
   const RewriteOptions* options = driver_->options();
-  return (options->Enabled(RewriteOptions::kRewriteImages) ||
+  return (options->Enabled(RewriteOptions::kRecompressImages) ||
           options->Enabled(RewriteOptions::kLeftTrimUrls) ||
           options->Enabled(RewriteOptions::kExtendCache) ||
           options->Enabled(RewriteOptions::kSpriteImages));
@@ -96,7 +96,7 @@ TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
   if (input_resource.get() != NULL) {
     scoped_ptr<CachedResult> rewrite_info;
     // Try image rewriting.
-    if (options->Enabled(RewriteOptions::kRewriteImages)) {
+    if (options->Enabled(RewriteOptions::kRecompressImages)) {
       handler->Message(kInfo, "Attempting to rewrite image %s",
                        old_rel_url_str.c_str());
       ResourceContext dim;

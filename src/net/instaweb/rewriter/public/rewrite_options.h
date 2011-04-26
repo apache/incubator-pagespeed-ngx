@@ -40,10 +40,10 @@ class RewriteOptions {
     kCombineCss,
     kCombineHeads,
     kCombineJavascript,
-    kDebugLogImageTags,
     kElideAttributes,
     kExtendCache,
     kInlineCss,
+    kInlineImages,
     kInlineJavascript,
     kInsertImageDimensions,
     kLeftTrimUrls,
@@ -51,10 +51,11 @@ class RewriteOptions {
     kMoveCssToHead,
     kOutlineCss,
     kOutlineJavascript,
+    kRecompressImages,
     kRemoveComments,
     kRemoveQuotes,
+    kResizeImages,
     kRewriteCss,
-    kRewriteImages,
     kRewriteJavascript,
     kSpriteImages,
     kStripScripts,  // Update kLastFilter if you add something after this.
@@ -340,6 +341,7 @@ class RewriteOptions {
 
   typedef std::set<Filter> FilterSet;
   typedef std::map<GoogleString, Filter> NameToFilterMap;
+  typedef std::map<GoogleString, FilterSet> NameToFilterSetMap;
   typedef std::map<RewriteLevel, FilterSet> RewriteLevelToFilterSetMap;
 
   void SetUp();
@@ -348,6 +350,7 @@ class RewriteOptions {
 
   bool modified_;
   NameToFilterMap name_filter_map_;
+  NameToFilterSetMap name_filter_set_map_;
   RewriteLevelToFilterSetMap level_filter_set_map_;
   FilterSet enabled_filters_;
   FilterSet disabled_filters_;

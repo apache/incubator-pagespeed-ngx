@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/data_url.h"
@@ -69,12 +70,9 @@ const char kDataUrlKey[] = "ImageRewriteFilter_DataUrl";
 }  // namespace
 
 ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver,
-                                       StringPiece path_prefix,
-                                       size_t image_inline_max_bytes,
-                                       size_t image_max_rewrites_at_once)
+                                       StringPiece path_prefix)
     : RewriteSingleResourceFilter(driver, path_prefix),
       image_filter_(new ImageTagScanner(driver)),
-      image_inline_max_bytes_(image_inline_max_bytes),
       rewrite_count_(NULL),
       inline_count_(NULL),
       rewrite_saved_bytes_(NULL) {
@@ -88,7 +86,8 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver,
     ongoing_rewrites = stats->GetVariable(kImageOngoingRewrites);
   }
   work_bound_.reset(
-      new StatisticsWorkBound(ongoing_rewrites, image_max_rewrites_at_once));
+      new StatisticsWorkBound(ongoing_rewrites,
+                              driver->options()->image_max_rewrites_at_once()));
 }
 
 void ImageRewriteFilter::Initialize(Statistics* statistics) {
@@ -111,17 +110,15 @@ ImageRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
   scoped_ptr<Image> image(
       new Image(input_resource->contents(), input_resource->url(),
                 resource_manager_->filename_prefix(), message_handler));
-
   if (image->image_type() == Image::IMAGE_UNKNOWN) {
     message_handler->Error(result->name().as_string().c_str(), 0,
                            "Unrecognized image content type.");
     return kRewriteFailed;
   }
-
   ImageDim image_dim, post_resize_dim;
   image->Dimensions(&image_dim);
   post_resize_dim = image_dim;
-
+  const RewriteOptions* options = driver_->options();
   // Don't rewrite beacons
   if (!ImageUrlEncoder::HasValidDimensions(image_dim) ||
       (image_dim.width() <= 1 && image_dim.height() <= 1)) {
@@ -131,31 +128,34 @@ ImageRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
   RewriteResult rewrite_result = kTooBusy;
   if (work_bound_->TryToWork()) {
     rewrite_result = kRewriteFailed;
+    bool resized = false;
 
-    const char* message;  // Informational message for logging only.
-    if (ImageUrlEncoder::HasValidDimensions(page_dim) &&
+    // Begin by resizing the image if necessary
+    if (options->Enabled(RewriteOptions::kResizeImages) &&
+        ImageUrlEncoder::HasValidDimensions(page_dim) &&
         ImageUrlEncoder::HasValidDimensions(image_dim)) {
       int64 page_area =
           static_cast<int64>(page_dim.width()) * page_dim.height();
       int64 image_area =
           static_cast<int64>(image_dim.width()) * image_dim.height();
       if (page_area < image_area * kMaxAreaRatio) {
+        const char* message;  // Informational message for logging only.
         if (image->ResizeTo(page_dim)) {
           post_resize_dim = page_dim;
-          message = "Resized image";
+          message = "Resized";
+          resized = true;
         } else {
-          message = "Couldn't resize image";
+          message = "Couldn't resize";
         }
-      } else {
-        message = "Not worth resizing image";
+        driver_->InfoHere("%s image `%s' from %dx%d to %dx%d", message,
+                          input_resource->url().c_str(),
+                          image_dim.width(), image_dim.height(),
+                          page_dim.width(), page_dim.height());
       }
-      driver_->InfoHere("%s `%s' from %dx%d to %dx%d", message,
-                        input_resource->url().c_str(),
-                        image_dim.width(), image_dim.height(),
-                        page_dim.width(), page_dim.height());
     }
 
-    // Cache image dimensions, including any resizing we did
+    // Cache image dimensions, including any resizing we did.
+    // This happens regardless of whether we rewrite the image contents.
     CachedResult* cached = result->EnsureCachedResultCreated();
     if (ImageUrlEncoder::HasValidDimensions(post_resize_dim)) {
       ImageDim* dims = cached->mutable_image_file_dims();
@@ -163,15 +163,22 @@ ImageRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
       dims->set_height(post_resize_dim.height());
     }
 
+    // We will consider whether to inline the image regardless of whether we
+    // optimize it or not, so set up the necessary state for that.
     GoogleString inlined_url;
-    if (image->output_size() <
-        image->input_size() * kMaxRewrittenRatio) {
+    int64 image_inline_max_bytes = options->image_inline_max_bytes();
+
+    // Now re-compress the (possibly resized) image, and decide if it's
+    // saved us anything.
+    if ((resized || options->Enabled(RewriteOptions::kRecompressImages)) &&
+        (image->output_size() < image->input_size() * kMaxRewrittenRatio)) {
       // here output image type could potentially be different from input type.
       result->SetType(ImageToContentType(input_resource->url(), image.get()));
 
       // Consider inlining output image (no need to check input, it's bigger)
       // This needs to happen before Write to persist.
-      if (CanInline(image_inline_max_bytes_, image->Contents(),
+      if (options->Enabled(RewriteOptions::kInlineImages) &&
+          CanInline(image_inline_max_bytes, image->Contents(),
                     result->type(), &inlined_url)) {
         cached->set_image_inlined_uri(inlined_url);
       }
@@ -207,11 +214,15 @@ ImageRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
 
     // Try inlining input image if output hasn't been inlined already.
     if (inlined_url.empty() &&
-        CanInline(image_inline_max_bytes_, input_resource->contents(),
+        options->Enabled(RewriteOptions::kInlineImages) &&
+        CanInline(image_inline_max_bytes, input_resource->contents(),
                   input_resource->type(), &inlined_url)) {
       cached->set_image_inlined_uri(inlined_url);
     }
     work_bound_->WorkComplete();
+  } else {
+    message_handler->Message(kInfo, "%s: Too busy to rewrite image.",
+                             input_resource->url().c_str());
   }
   return rewrite_result;
 }
@@ -257,7 +268,10 @@ void ImageRewriteFilter::RewriteImageUrl(HtmlElement* element,
   ResourceContext resource_context;
   ImageDim* page_dim = resource_context.mutable_image_tag_dims();
   int width, height;
-  if (element->IntAttributeValue(HtmlName::kWidth, &width) &&
+  const RewriteOptions* options = driver_->options();
+
+  if (options->Enabled(RewriteOptions::kResizeImages) &&
+      element->IntAttributeValue(HtmlName::kWidth, &width) &&
       element->IntAttributeValue(HtmlName::kHeight, &height)) {
     // Specific image size is called for.  Rewrite to that size.
     page_dim->set_width(width);
@@ -271,9 +285,11 @@ void ImageRewriteFilter::RewriteImageUrl(HtmlElement* element,
   }
 
   // See if we have a data URL, and if so use it if the browser can handle it
-  bool ie6or7 = driver_->user_agent().IsIe6or7();
-  if (!ie6or7 && cached->has_image_inlined_uri()) {
+  if (!driver_->user_agent().IsIe6or7() && cached->has_image_inlined_uri()) {
     src->SetValue(cached->image_inlined_uri());
+    // Delete dimensions, as they ought to be redundant given inline image data.
+    element->DeleteAttribute(HtmlName::kWidth);
+    element->DeleteAttribute(HtmlName::kHeight);
     inline_count_->Add(1);
   } else {
     if (cached->optimizable()) {
@@ -282,7 +298,7 @@ void ImageRewriteFilter::RewriteImageUrl(HtmlElement* element,
       rewrite_count_->Add(1);
     }
 
-    if (driver_->options()->Enabled(RewriteOptions::kInsertImageDimensions) &&
+    if (options->Enabled(RewriteOptions::kInsertImageDimensions) &&
         !element->FindAttribute(HtmlName::kWidth) &&
         !element->FindAttribute(HtmlName::kHeight) &&
         cached->has_image_file_dims() &&
@@ -317,15 +333,6 @@ void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
   if (!driver_->HasChildrenInFlushWindow(element)) {
     HtmlElement::Attribute *src = image_filter_->ParseImageElement(element);
     if (src != NULL) {
-      if (driver_->options()->Enabled(RewriteOptions::kDebugLogImageTags)) {
-        // We now know that element is an img tag.
-        // Log the element in its original form.
-        GoogleString tagstring;
-        element->ToString(&tagstring);
-        driver_->Info(
-            driver_->id(), element->begin_line_number(),
-            "Found image: %s", tagstring.c_str());
-      }
       RewriteImageUrl(element, src);
     }
   }

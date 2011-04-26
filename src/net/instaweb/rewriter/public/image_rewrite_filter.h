@@ -48,9 +48,7 @@ class Variable;
 class ImageRewriteFilter : public RewriteSingleResourceFilter {
  public:
   ImageRewriteFilter(RewriteDriver* driver,
-                     StringPiece path_prefix,
-                     size_t image_inline_max_bytes,
-                     size_t image_max_rewrites_at_once);
+                     StringPiece path_prefix);
   static void Initialize(Statistics* statistics);
   virtual void StartDocumentImpl() {}
   virtual void StartElementImpl(HtmlElement* element) {}
@@ -79,18 +77,6 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
 
   scoped_ptr<const ImageTagScanner> image_filter_;
   scoped_ptr<WorkBound> work_bound_;
-  // Threshold size (in bytes) below which we should just inline images
-  // encountered.
-  // TODO(jmaessen): Heuristic must be more sophisticated.  Does this image
-  // touch a fresh domain?  Require opening a new connection?  If so we can
-  // afford to inline quite large images (basically anything we could transmit
-  // in the resulting RTTs)---but of course we don't know about RTT here.  In
-  // the absence of such information, we ought to inline if header length + url
-  // size can be saved by inlining image, without increasing the size in packets
-  // of the html.  Otherwise we end up loading the image in favor of the html,
-  // which might be a lose.  More work is needed here to figure out the exact
-  // tradeoffs involved, especially as we also undermine image cacheability.
-  size_t image_inline_max_bytes_;
   Variable* rewrite_count_;
   Variable* inline_count_;
   Variable* rewrite_saved_bytes_;
