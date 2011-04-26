@@ -34,6 +34,12 @@ const char kBlue[] = ".blue {color: blue;}\n";
 
 class CssCombineFilterTest : public ResourceManagerTestBase {
  protected:
+  virtual void SetUp() {
+    ResourceManagerTestBase::SetUp();
+    AddFilter(RewriteOptions::kCombineCss);
+    AddOtherFilter(RewriteOptions::kCombineCss);
+  }
+
   // Test spriting CSS with options to write headers and use a hasher.
   void CombineCss(const StringPiece& id, Hasher* hasher,
                   const char* barrier_text, bool is_barrier) {
@@ -46,9 +52,6 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
                            const char* b_css_name) {
     resource_manager_->set_hasher(hasher);
     other_resource_manager_.set_hasher(hasher);
-
-    AddFilter(RewriteOptions::kCombineCss);
-    AddOtherFilter(RewriteOptions::kCombineCss);
 
     // URLs and content for HTML document and resources.
     CHECK_EQ(StringPiece::npos, id.find("/"));
@@ -175,8 +178,6 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
     const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
     GoogleString expected_combination = StrCat(a_css_body, c_css_body);
-
-    AddFilter(RewriteOptions::kCombineCss);
 
     // Put original CSS files into our fetcher.
     ResponseHeaders default_css_header;
@@ -365,7 +366,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         style += StringPrintf("link rel='stylesheet' type='text/css' href='%s'",
                               link->url_.c_str());
         if (!link->media_.empty()) {
-          style += StrCat(" media='", link->media_, "'");
+          StrAppend(&style, " media='", link->media_, "'");
         }
         style += ">\n";
         html_input += style;
@@ -376,7 +377,6 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     html_input += "</head>\n<body>\n  <div class='yellow'>\n";
     html_input += "    Hello, mod_pagespeed!\n  </div>\n</body>\n";
 
-    AddFilter(RewriteOptions::kCombineCss);
     ParseUrl(html_url, html_input);
     CollectCssLinks("combine_css_missing_files", output_buffer_,
                     output_css_links);
@@ -408,7 +408,6 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
   // Test to make sure we don't miscombine things when handling the input
   // as XHTML producing non-flat <link>'s from the parser
   void TestXhtml(bool flush) {
-    AddFilter(RewriteOptions::kCombineCss);
     GoogleString a_css_url = StrCat(kTestDomain, "a.css");
     GoogleString b_css_url = StrCat(kTestDomain, "b.css");
 
@@ -467,7 +466,6 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     mock_url_fetcher_.SetResponse(c_css_url, default_css_header, c_css_body);
 
     // Rewrite
-    AddFilter(RewriteOptions::kCombineCss);
     ParseUrl(html_url, html_input);
 
     // Check for CSS files in the rewritten page.
@@ -530,7 +528,6 @@ TEST_F(CssCombineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
                                 default_css_header, ".a {}");
   mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "b.css"),
                                 default_css_header, ".b {}");
-  AddFilter(RewriteOptions::kCombineCss);
   ValidateExpected("claims_xhtml_but_has_unclosed_links",
                    StringPrintf(html_format, kXhtmlDtd, unclosed_links),
                    StringPrintf(html_format, kXhtmlDtd, combination));
@@ -643,7 +640,6 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
       "</head>";
 
   // Rewrite
-  AddFilter(RewriteOptions::kCombineCss);
   ParseUrl(html_url, html_input);
 
   // Check for CSS files in the rewritten page.
@@ -778,9 +774,11 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
 // }
 
 TEST_F(CssCombineFilterTest, CombineCssNoInput) {
-  // TODO(sligocki): This is probably not working correctly, we need to put
-  // a_broken.css and b.css in mock_fetcher_ ... not sure why this isn't
-  // crashing right now.
+  mock_url_fetcher_.set_fail_on_unexpected(false);
+  ResponseHeaders default_css_header;
+  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "b.css"),
+                                default_css_header, ".a {}");
   static const char html_input[] =
       "<head>\n"
       "  <link rel='stylesheet' href='a_broken.css' type='text/css'>\n"
@@ -814,7 +812,7 @@ TEST_F(CssCombineFilterTest, CombineCssManyFiles) {
   // abstract them later.
   const int kNumCssLinks = 100;
   // Note: Without CssCombine::Partnership::kUrlSlack this was:
-  //const int kNumCssInCombination = 18
+  // const int kNumCssInCombination = 18
   const int kNumCssInCombination = 70;  // based on how we encode "yellow%d.css"
   CssLink::Vector css_in, css_out;
   for (int i = 0; i < kNumCssLinks; ++i) {
@@ -843,7 +841,7 @@ TEST_F(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
   // This test differs from the previous test in we have exactly one CSS file
   // that stays on its own.
   // Note: Without CssCombine::Partnership::kUrlSlack this was:
-  //const int kNumCssInCombination = 18
+  // const int kNumCssInCombination = 18
   const int kNumCssInCombination = 70;  // based on how we encode "yellow%d.css"
   const int kNumCssLinks = kNumCssInCombination + 1;
   CssLink::Vector css_in, css_out;

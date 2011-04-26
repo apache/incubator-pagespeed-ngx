@@ -26,14 +26,19 @@ namespace {
 
 class JsOutlineFilterTest : public ResourceManagerTestBase {
  protected:
+  // We need an explicitly called method here rather than using SetUp so
+  // that NoOutlineScript can call another AddFilter function first.
+  void SetupOutliner() {
+    options_.set_js_outline_min_bytes(0);
+    options_.EnableFilter(RewriteOptions::kOutlineJavascript);
+    rewrite_driver_.AddFilters();
+  }
+
   // TODO(sligocki): factor out common elements in OutlineStyle and Script.
   // Test outlining scripts with options to write headers and use a hasher.
   void OutlineScript(const StringPiece& id, Hasher* hasher,
                      bool expect_outline) {
     resource_manager_->set_hasher(hasher);
-
-    options_.set_js_outline_min_bytes(0);
-    AddFilter(RewriteOptions::kOutlineJavascript);
 
     GoogleString script_text = "FOOBAR";
     GoogleString outline_text;
@@ -79,9 +84,11 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
 
 // Tests for outlining scripts.
 TEST_F(JsOutlineFilterTest, OutlineScript) {
+  SetupOutliner();
   OutlineScript("outline_scripts_no_hash", &mock_hasher_, true);
 }
 TEST_F(JsOutlineFilterTest, OutlineScriptMd5) {
+  SetupOutliner();
   OutlineScript("outline_scripts_md5", &md5_hasher_, true);
 }
 
@@ -89,9 +96,7 @@ TEST_F(JsOutlineFilterTest, OutlineScriptMd5) {
 // as we may not be able to fetch from it.
 // (The leaf in base href= also covers a previous check failure)
 TEST_F(JsOutlineFilterTest, OutlineScriptWithBase) {
-  options_.EnableFilter(RewriteOptions::kOutlineJavascript);
-  options_.set_js_outline_min_bytes(0);
-  rewrite_driver_.AddFilters();
+  SetupOutliner();
 
   const char kInput[] =
       "<base href='http://cdn.example.com/file.html'><script>42;</script>";
@@ -107,11 +112,10 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   GoogleString url_prefix = "http://mysite/no_outline";
 
   // TODO(sligocki): Maybe test with other hashers.
-  //resource_manager_->set_hasher(hasher);
+  // resource_manager_->set_hasher(hasher);
 
   options_.EnableFilter(RewriteOptions::kOutlineCss);
-  options_.EnableFilter(RewriteOptions::kOutlineJavascript);
-  rewrite_driver_.AddFilters();
+  SetupOutliner();
 
   // We need to make sure we don't create this file, so rm any old one
   GoogleString filename = Encode(file_prefix, JsOutlineFilter::kFilterId, "0",
@@ -137,6 +141,8 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
 }
 
 TEST_F(JsOutlineFilterTest, UrlTooLong) {
+  SetupOutliner();
+
   // By default we succeed at outlining.
   OutlineScript("url_not_too_long", &mock_hasher_, true);
 

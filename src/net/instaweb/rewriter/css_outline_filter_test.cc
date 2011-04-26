@@ -26,6 +26,13 @@ namespace {
 
 class CssOutlineFilterTest : public ResourceManagerTestBase {
  protected:
+  virtual void SetUp() {
+    ResourceManagerTestBase::SetUp();
+    options_.set_css_outline_min_bytes(0);
+    options_.EnableFilter(RewriteOptions::kOutlineCss);
+    rewrite_driver_.AddFilters();
+  }
+
   // Test general situations.
   void TestOutlineCss(const GoogleString& html_url,
                       const GoogleString& other_content,  // E.g. <base href>
@@ -33,8 +40,6 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
                       bool expect_outline,
                       const GoogleString& css_rewritten_body) {
     // TODO(sligocki): Test with outline threshold > 0.
-    options_.set_css_outline_min_bytes(0);
-    AddFilter(RewriteOptions::kOutlineCss);
 
     // Figure out outline_url.
     GoogleString hash = resource_manager_->hasher()->Hash(css_rewritten_body);
