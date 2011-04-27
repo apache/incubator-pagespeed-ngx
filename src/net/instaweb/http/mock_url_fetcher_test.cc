@@ -24,12 +24,34 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/time_util.h"
 
 namespace net_instaweb {
 
 namespace {
 
-// See http://goto/gunitprimer for an introduction to gUnit.
+// Class for encapuslating objects needed to execute fetches.
+class MockFetchContainer {
+ public:
+  MockFetchContainer(UrlFetcher* fetcher)
+      : fetcher_(fetcher), response_writer_(&response_body_) {}
+
+  bool Fetch(const GoogleString& url) {
+    return fetcher_->StreamingFetchUrl(url, request_headers_,
+                                       &response_headers_, &response_writer_,
+                                       &handler_);
+  }
+
+  UrlFetcher* fetcher_;
+  RequestHeaders request_headers_;
+  ResponseHeaders response_headers_;
+  GoogleString response_body_;
+  StringWriter response_writer_;
+  GoogleMessageHandler handler_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockFetchContainer);
+};
 
 class MockUrlFetcherTest : public ::testing::Test {
  protected:
@@ -40,27 +62,15 @@ class MockUrlFetcherTest : public ::testing::Test {
   void TestResponse(const GoogleString& url,
                     const ResponseHeaders& expected_header,
                     const GoogleString& expected_body) {
-    const RequestHeaders dummy_header;
-    ResponseHeaders response_header;
-    GoogleString response_body;
-    StringWriter response_writer(&response_body);
-    GoogleMessageHandler handler;
-
-    EXPECT_TRUE(fetcher_.StreamingFetchUrl(url, dummy_header, &response_header,
-                                           &response_writer, &handler));
-    EXPECT_EQ(expected_header.ToString(), response_header.ToString());
-    EXPECT_EQ(expected_body, response_body);
+    MockFetchContainer fetch(&fetcher_);
+    EXPECT_TRUE(fetch.Fetch(url));
+    EXPECT_EQ(expected_header.ToString(), fetch.response_headers_.ToString());
+    EXPECT_EQ(expected_body, fetch.response_body_);
   }
 
   void TestFetchFail(const GoogleString& url) {
-    const RequestHeaders dummy_header;
-    ResponseHeaders response_header;
-    GoogleString response_body;
-    StringWriter response_writer(&response_body);
-    GoogleMessageHandler handler;
-
-    EXPECT_FALSE(fetcher_.StreamingFetchUrl(url, dummy_header, &response_header,
-                                            &response_writer, &handler));
+    MockFetchContainer fetch(&fetcher_);
+    EXPECT_FALSE(fetch.Fetch(url));
   }
 
   MockUrlFetcher fetcher_;
@@ -111,6 +121,55 @@ TEST_F(MockUrlFetcherTest, GetsCorrectMappedResponse) {
   // Change it back.
   fetcher_.SetResponse(url1, header1, body1);
   TestResponse(url1, header1, body1);
+}
+
+TEST_F(MockUrlFetcherTest, ConditionalFetchTest) {
+  const char url[] = "http://www.example.com/successs.html";
+  ResponseHeaders header;
+  header.set_first_line(1, 1, 200, "OK");
+  // TODO: Perhaps set Last-Modified header...
+  const char body[] = "This website loaded :)";
+
+  int64 old_time = 1000;
+  int64 last_modified_time = 2000;
+  int64 new_time = 3000;
+  GoogleString old_time_string, now_string, new_time_string;
+  ASSERT_TRUE(ConvertTimeToString(old_time, &old_time_string));
+  ASSERT_TRUE(ConvertTimeToString(last_modified_time, &now_string));
+  ASSERT_TRUE(ConvertTimeToString(new_time, &new_time_string));
+
+  fetcher_.SetConditionalResponse(url, last_modified_time, header, body);
+
+  // Response is normal to an un-conditional GET.
+  TestResponse(url, header, body);
+
+  // Also normal for conditional GET with old time.
+  {
+    MockFetchContainer fetch(&fetcher_);
+    fetch.request_headers_.Add(HttpAttributes::kIfModifiedSince,
+                               old_time_string);
+    EXPECT_TRUE(fetch.Fetch(url));
+    EXPECT_EQ(header.ToString(), fetch.response_headers_.ToString());
+    EXPECT_EQ(body, fetch.response_body_);
+  }
+
+  // But conditional GET with current time gets 304 Not Modified response.
+  {
+    MockFetchContainer fetch(&fetcher_);
+    fetch.request_headers_.Add(HttpAttributes::kIfModifiedSince,
+                               now_string);
+    EXPECT_TRUE(fetch.Fetch(url));
+    EXPECT_EQ(HttpStatus::kNotModified, fetch.response_headers_.status_code());
+  }
+
+  // Future time also gets 304 Not Modified.
+  {
+    MockFetchContainer fetch(&fetcher_);
+    fetch.request_headers_.Add(HttpAttributes::kIfModifiedSince,
+                               new_time_string);
+    EXPECT_TRUE(fetch.Fetch(url));
+    EXPECT_EQ(HttpStatus::kNotModified, fetch.response_headers_.status_code());
+  }
 }
 
 }  // namespace

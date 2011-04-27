@@ -37,6 +37,14 @@ class MockUrlFetcher : public UrlFetcher {
                    const ResponseHeaders& response_header,
                    const StringPiece& response_body);
 
+  // Set a conditional response which will either respond with the supplied
+  // response_headers and response_body or a simple 304 Not Modified depending
+  // upon last_modified_time and conditional GET "If-Modified-Since" headers.
+  void SetConditionalResponse(const StringPiece& url,
+                              int64 last_modified_date,
+                              const ResponseHeaders& response_header,
+                              const StringPiece& response_body);
+
   // Fetching unset URLs will cause EXPECT failures as well as return false.
   virtual bool StreamingFetchUrl(const GoogleString& url,
                                  const RequestHeaders& request_headers,
@@ -59,15 +67,19 @@ class MockUrlFetcher : public UrlFetcher {
  private:
   class HttpResponse {
    public:
-    HttpResponse(const ResponseHeaders& in_header, const StringPiece& in_body)
-        : body_(in_body.data(), in_body.size()) {
+    HttpResponse(int64 last_modified_time,
+                 const ResponseHeaders& in_header, const StringPiece& in_body)
+        : last_modified_time_(last_modified_time),
+          body_(in_body.data(), in_body.size()) {
       header_.CopyFrom(in_header);
     }
 
+    const int64 last_modified_time() const { return last_modified_time_; }
     const ResponseHeaders& header() const { return header_; }
     const GoogleString& body() const { return body_; }
 
    private:
+    int64 last_modified_time_;
     ResponseHeaders header_;
     GoogleString body_;
 

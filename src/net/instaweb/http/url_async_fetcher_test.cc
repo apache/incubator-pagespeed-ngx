@@ -18,13 +18,14 @@
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
+#include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/mock_callback.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/time_util.h"
 
 namespace net_instaweb {
 
@@ -35,53 +36,11 @@ const int64 kNewTime = 2000;  // Date of a new resource.
 const char kUrl[] = "http://www.example.com/foo/bar.css";
 const char kNewContents[] = "These are the new contents!";
 
-// Mock fetcher that returns one of two things.
-//   1) Empty "304 Not Modified" if the correct headers and time were sent.
-//   2) Normal "200 OK" with contents otherwise.
-class MockConditionalFetcher : public UrlAsyncFetcher {
- public:
-  MockConditionalFetcher() {}
-  virtual ~MockConditionalFetcher() {}
-
-  virtual bool StreamingFetch(const GoogleString& url,
-                              const RequestHeaders& request_headers,
-                              ResponseHeaders* response_headers,
-                              Writer* response_writer,
-                              MessageHandler* message_handler,
-                              Callback* callback) {
-    StringStarVector values;
-    int64 if_modified_since_time;
-    if (request_headers.Lookup(HttpAttributes::kIfModifiedSince, &values) &&
-        values.size() == 1 &&
-        ConvertStringToTime(*values[0], &if_modified_since_time) &&
-        if_modified_since_time >= kNewTime) {
-      // We recieved and If-Modified-Since header with a date that was
-      // parsable and at least as new our new resource.
-      //
-      // So, just serve 304 Not Modified.
-      response_headers->SetStatusAndReason(HttpStatus::kNotModified);
-      response_headers->Add(HttpAttributes::kContentLength, "0");
-    } else {
-      // Otherwise serve a normal 200 OK response.
-      response_headers->SetStatusAndReason(HttpStatus::kOK);
-      response_headers->SetLastModified(kNewTime);
-      response_headers->Add(HttpAttributes::kContentLength,
-                           IntegerToString(STATIC_STRLEN(kNewContents)));
-      response_writer->Write(kNewContents, message_handler);
-    }
-
-    callback->Done(true);
-    return true;
-  }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(MockConditionalFetcher);
-};
-
 class UrlAsyncFetcherTest : public ::testing::Test {
  protected:
   void TestConditionalFetch(int64 if_modified_since_ms, bool expect_modified) {
-    MockConditionalFetcher mock_fetcher;
+    MockUrlFetcher fetcher;
+    FakeUrlAsyncFetcher async_fetcher(&fetcher);
     RequestHeaders request_headers;
     ResponseHeaders response_headers;
     GoogleString response;
@@ -89,10 +48,18 @@ class UrlAsyncFetcherTest : public ::testing::Test {
     NullMessageHandler handler;
     MockCallback check_callback;
 
+    // Set MockUrlFetcher to respond conditionally based upon time given.
+    {
+      ResponseHeaders good_headers;
+      good_headers.set_first_line(1, 1, HttpStatus::kOK, "OK");
+      fetcher.SetConditionalResponse(kUrl, kNewTime,
+                                     good_headers, kNewContents);
+    }
+
     EXPECT_FALSE(check_callback.done());
-    mock_fetcher.ConditionalFetch(kUrl, if_modified_since_ms, request_headers,
-                                  &response_headers, &response_writer,
-                                  &handler, &check_callback);
+    async_fetcher.ConditionalFetch(kUrl, if_modified_since_ms, request_headers,
+                                   &response_headers, &response_writer,
+                                   &handler, &check_callback);
 
     EXPECT_TRUE(check_callback.done());
     EXPECT_TRUE(check_callback.success());
