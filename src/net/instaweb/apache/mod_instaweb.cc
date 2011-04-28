@@ -113,6 +113,7 @@ const char* kModPagespeedMapOriginDomain = "ModPagespeedMapOriginDomain";
 const char* kModPagespeedMapRewriteDomain = "ModPagespeedMapRewriteDomain";
 const char* kModPagespeedMaxSegmentLength = "ModPagespeedMaxSegmentLength";
 const char* kModPagespeedNumShards = "ModPagespeedNumShards";
+const char* kModPagespeedRetainComment = "ModPagespeedRetainComment";
 const char* kModPagespeedRewriteLevel = "ModPagespeedRewriteLevel";
 const char* kModPagespeedShardDomain = "ModPagespeedShardDomain";
 const char* kModPagespeedSlurpDirectory = "ModPagespeedSlurpDirectory";
@@ -985,6 +986,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
         cmd, &RewriteOptions::set_max_url_segment_size, arg);
   } else if (StringCaseEqual(directive, kModPagespeedNumShards)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
+  } else if (StringCaseEqual(directive, kModPagespeedRetainComment)) {
+    options->RetainComment(arg);
   } else if (StringCaseEqual(directive, kModPagespeedRewriteLevel)) {
     RewriteOptions::RewriteLevel level = RewriteOptions::kPassThrough;
     if (RewriteOptions::ParseRewriteLevel(arg, &level)) {
@@ -1142,6 +1145,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheKbPerProcess,
         "Set the total size, in KB, of the per-process in-memory LRU cache"),
   APACHE_CONFIG_OPTION(kModPagespeedNumShards, "Set number of shards"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedRetainComment,
+        "Retain HTML comments matching wildcard, even with remove_comments "
+        "enabled"),
   APACHE_CONFIG_OPTION(kModPagespeedSlurpDirectory,
         "Directory from which to read slurped resources"),
   APACHE_CONFIG_OPTION(kModPagespeedSlurpFlushLimit,

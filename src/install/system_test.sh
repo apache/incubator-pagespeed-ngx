@@ -336,6 +336,7 @@ check $WGET_PREREQ $URL
 grep "removed" $FETCHED                # comment, should not find
 check [ $? != 0 ]
 check grep -q preserved $FETCHED       # preserves IE directives
+check grep -q retained $FETCHED        # RetainComment directive
 
 test_filter remove_quotes does what it says on the tin.
 check $WGET_PREREQ $URL

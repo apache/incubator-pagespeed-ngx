@@ -21,3 +21,4 @@ ModPagespeedMapRewriteDomain rewrite_to_domain rewrite_from_domain
 ModPagespeedMapOriginDomain origin_to_domain origin_from_domain
 ModPagespeedDomain my_domain
 ModPagespeedAllow *.cgi*
+ModPagespeedRetainComment " google_ad_section*"
