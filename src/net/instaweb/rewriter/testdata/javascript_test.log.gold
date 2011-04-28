@@ -3,7 +3,7 @@ Info: javascript_test.html:45: Unexpected close-tag `script', no tags are open
 Info: javascript_test.html:16: Unrecognized script:'<script type="text/html"></script> 16...19'
 Info: javascript_test.html:21: Found script with src missing.js
 Info: javascript_test.html:24: Found script with src extScript.js
-Info: javascript_test.html:25: Rewrite script http://file.name/extScript.js to http://file.name/extScript.js.pagespeed.jm.0.js
+Info: Rewrite script http://file.name/extScript.js to http://file.name/extScript.js.pagespeed.jm.0.js
 Info: javascript_test.html:27: Found script with src extScript.js
 Error: javascript_test.html:27: Brief close of script tag (non-portable)
 Info: javascript_test.html:35: Found script with src extScript.js
@@ -11,6 +11,6 @@ Warning: javascript_test.html:38: Retaining contents of script tag even though s
 Info: javascript_test.html:40: Found script with src extScript.js
 Warning: javascript_test.html:44: Retaining contents of script tag even though script is external.
 Info: javascript_test.html:47: Found script with src third_party.js
-Info: javascript_test.html:47: Script http://file.name/third_party.js is prototype 1.6.1.0
-Info: javascript_test.html:47: Rewrite script http://file.name/third_party.js to http://file.name/third_party.js.pagespeed.jm.0.js
+Info: Script http://file.name/third_party.js is prototype 1.6.1.0
+Info: Rewrite script http://file.name/third_party.js to http://file.name/third_party.js.pagespeed.jm.0.js
 Info: javascript_test.html:49: Unrecognized script:'<script language="tcl"></script> 49...49'

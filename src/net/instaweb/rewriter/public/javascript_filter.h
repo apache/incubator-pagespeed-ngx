@@ -95,9 +95,6 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
   inline void RewriteInlineScript();
   inline void RewriteExternalScript();
   const StringPiece FlattenBuffer(GoogleString* script_buffer);
-  bool WriteExternalScriptTo(const Resource* script_resource,
-                             const StringPiece& script_out,
-                             OutputResource* script_dest);
 
   std::vector<HtmlCharactersNode*> buffer_;
   HtmlElement* script_in_progress_;

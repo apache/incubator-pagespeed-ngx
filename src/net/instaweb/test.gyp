@@ -113,6 +113,7 @@
         'rewriter/resource_manager_test.cc',
         'rewriter/resource_manager_test_base.cc',
         'rewriter/resource_namer_test.cc',
+        'rewriter/resource_slot_test.cc',
         'rewriter/resource_tag_scanner_test.cc',
         'rewriter/rewrite_driver_test.cc',
         'rewriter/rewrite_options_test.cc',

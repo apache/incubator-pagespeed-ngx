@@ -172,8 +172,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
 // Return value answers the question: May we rewrite?
 // If return false, out_text is undefined.
 // css_gurl is the URL used to resolve relative URLs in the CSS.
-// Specifically, it should be the address of the CSS document itself for
-// external CSS or the HTML document that the CSS is in for inline CSS.
+// Specifically, it should be the address of the CSS document itself.
 // The expiry of the answer is the minimum of the expiries of all subresources
 // in the stylesheet, or kint64max if there are none or the sheet is invalid.
 TimedBool CssFilter::RewriteCssText(const StringPiece& in_text,
@@ -184,12 +183,6 @@ TimedBool CssFilter::RewriteCssText(const StringPiece& in_text,
   // values from original document.
   Css::Parser parser(in_text);
   parser.set_allow_all_values(true);
-  // If we think this is XHTML, turn off quirks-mode so that we don't "fix"
-  // things we shouldn't.
-  // TODO(sligocki): We might need to do this in other cases too.
-  if (driver_->doctype().IsXhtml()) {
-    parser.set_quirks_mode(false);
-  }
   scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
 
   TimedBool ret = {kint64max, true};

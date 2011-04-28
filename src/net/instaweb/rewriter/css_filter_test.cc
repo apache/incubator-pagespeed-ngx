@@ -466,26 +466,6 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
                   kExpectNoChange | kExpectFailure);
 }
 
-TEST_F(CssFilterTest, NoQuirksModeForXhtml) {
-  const char quirky_css[]     = "body {color:DECAFB}";
-  const char normalized_css[] = "body{color:#decafb}";
-  const char no_quirks_css[]  = "body{color:DECAFB}";
-
-  // By default we parse the CSS with quirks-mode enabled and "fix" the CSS.
-  ValidateRewrite("quirks_mode", quirky_css, normalized_css,
-                  kExpectChange | kExpectSuccess);
-
-  // But when in XHTML mode, we don't allow CSS quirks.
-  SetDoctype("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
-             "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">");
-  ValidateRewrite("no_quirks_mode", quirky_css, no_quirks_css,
-                  kExpectChange | kExpectSuccess | kNoOtherContexts);
-  // NOTE: We must set kNoOtherContexts, because this change depends upon the
-  // rewriter knowing that the original resource was found in an XHTML page
-  // which we don't know if we are recieving a Fetch request and don't have
-  // the resource. This could cause issues :/
-}
-
 }  // namespace
 
 }  // namespace net_instaweb

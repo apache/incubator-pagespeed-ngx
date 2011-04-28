@@ -26,8 +26,11 @@
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -55,6 +58,68 @@ JavascriptFilter::~JavascriptFilter() { }
 void JavascriptFilter::Initialize(Statistics* statistics) {
   JavascriptRewriteConfig::Initialize(statistics);
 }
+
+class JavascriptRewriteContext : public SingleRewriteContext {
+ public:
+  JavascriptRewriteContext(RewriteDriver* driver,
+                           const ResourceSlotPtr& slot,
+                           JavascriptRewriteConfig* config)
+      : SingleRewriteContext(driver, slot, NULL),
+        config_(config) {
+  }
+
+  RewriteSingleResourceFilter::RewriteResult Rewrite(
+      const Resource* script_input, OutputResource* output_resource) {
+    MessageHandler* message_handler = resource_manager()->message_handler();
+    StringPiece script = script_input->contents();
+    JavascriptCodeBlock code_block(script, config_, script_input->url(),
+                                   message_handler);
+    JavascriptLibraryId library = code_block.ComputeJavascriptLibrary();
+    if (library.recognized()) {
+      message_handler->Message(kInfo, "Script %s is %s %s",
+                               script_input->url().c_str(),
+                               library.name(), library.version());
+    }
+
+    bool ok = code_block.ProfitableToRewrite();
+    if (ok) {
+      output_resource->SetType(&kContentTypeJavascript);
+      ok = WriteExternalScriptTo(script_input, code_block.Rewritten(),
+                                 output_resource);
+    } else {
+      // Rewriting happened but wasn't useful; as we return false base class
+      // will remember this for later so we don't attempt to rewrite twice.
+      message_handler->Message(kInfo, "Script %s didn't shrink",
+                               script_input->url().c_str());
+    }
+
+    return ok ? RewriteSingleResourceFilter::kRewriteOk :
+        RewriteSingleResourceFilter::kRewriteFailed;
+  }
+
+  // Take script_out, which is derived from the script at script_url,
+  // and write it to script_dest.
+  // Returns true on success, reports failures itself.
+  bool WriteExternalScriptTo(
+      const Resource* script_resource,
+      const StringPiece& script_out, OutputResource* script_dest) {
+    bool ok = false;
+    ResourceManager* rm = resource_manager();
+    MessageHandler* message_handler = rm->message_handler();
+    int64 origin_expire_time_ms = script_resource->CacheExpirationTimeMs();
+    if (rm->Write(HttpStatus::kOK, script_out, script_dest,
+                  origin_expire_time_ms, message_handler)) {
+      ok = true;
+      message_handler->Message(kInfo, "Rewrite script %s to %s",
+                               script_resource->url().c_str(),
+                               script_dest->url().c_str());
+    }
+    return ok;
+  }
+
+ private:
+  JavascriptRewriteConfig* config_;
+};
 
 void JavascriptFilter::StartElementImpl(HtmlElement* element) {
   CHECK(script_in_progress_ == NULL);
@@ -130,28 +195,21 @@ void JavascriptFilter::RewriteInlineScript() {
   }
 }
 
-// Take script_out, which is derived from the script at script_url,
-// and write it to script_dest.
-// Returns true on success, reports failures itself.
-bool JavascriptFilter::WriteExternalScriptTo(
-    const Resource* script_resource,
-    const StringPiece& script_out, OutputResource* script_dest) {
-  bool ok = false;
-  MessageHandler* message_handler = driver_->message_handler();
-  int64 origin_expire_time_ms = script_resource->CacheExpirationTimeMs();
-  if (resource_manager_->Write(HttpStatus::kOK, script_out, script_dest,
-                               origin_expire_time_ms, message_handler)) {
-    ok = true;
-    driver_->InfoHere("Rewrite script %s to %s",
-                      script_resource->url().c_str(),
-                      script_dest->url().c_str());
-  }
-  return ok;
-}
-
 // External script; minify and replace with rewritten version (also external).
 void JavascriptFilter::RewriteExternalScript() {
   const StringPiece script_url(script_src_->value());
+  if (driver_->asynchronous_rewrites()) {
+    ResourcePtr resource = CreateInputResource(script_url);
+    if (resource.get() != NULL) {
+      ResourceSlotPtr slot(
+          driver_->GetSlot(resource, script_in_progress_, script_src_));
+      JavascriptRewriteContext* jrc = new JavascriptRewriteContext(
+          driver_, slot, &config_);
+      driver_->InitiateRewrite(jrc);
+    }
+    return;
+  }
+
   scoped_ptr<CachedResult> rewrite_info(RewriteWithCaching(script_url, NULL));
 
   if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
@@ -236,30 +294,11 @@ bool JavascriptFilter::ReuseByContentHash() const {
 RewriteSingleResourceFilter::RewriteResult
 JavascriptFilter::RewriteLoadedResource(const Resource* script_input,
                                         OutputResource* output_resource) {
-  MessageHandler* message_handler = driver_->message_handler();
-
-  StringPiece script = script_input->contents();
-  JavascriptCodeBlock code_block(script, &config_, script_input->url(),
-                                 message_handler);
-  JavascriptLibraryId library = code_block.ComputeJavascriptLibrary();
-  if (library.recognized()) {
-    driver_->InfoHere("Script %s is %s %s",
-                      script_input->url().c_str(),
-                      library.name(), library.version());
-  }
-
-  bool ok = code_block.ProfitableToRewrite();
-  if (ok) {
-    output_resource->SetType(&kContentTypeJavascript);
-    ok = WriteExternalScriptTo(script_input, code_block.Rewritten(),
-                               output_resource);
-  } else {
-    // Rewriting happened but wasn't useful; as we return false base class
-    // will remember this for later so we don't attempt to rewrite twice.
-    driver_->InfoHere("Script %s didn't shrink", script_input->url().c_str());
-  }
-
-  return ok ? kRewriteOk : kRewriteFailed;
+  // Temporary code so that we can share the rewriting implementation beteween
+  // the old blocking rewrite model and the new async model.
+  ResourceSlotPtr dummy_slot;
+  JavascriptRewriteContext jrc(driver_, dummy_slot, &config_);
+  return jrc.Rewrite(script_input, output_resource);
 }
 
 }  // namespace net_instaweb

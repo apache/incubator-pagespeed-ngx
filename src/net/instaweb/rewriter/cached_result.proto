@@ -103,7 +103,39 @@ message CachedResult {
   // subimage in the sprite.
   // Used by image_combine_filter.
   optional spriter.SpriterResult spriter_result = 13;
+}
 
+// Maps an output to a set of inputs.  This protobuf is the Value in a map,
+// where the Key is a sequence of input urls.  The CachedResult tells us
+// about the URL we will be using in lieu of the inputs.  The input array
+// tells us which inputs are used to construct this output; it must be
+// interpreted using the URL-sequence that was used to form the Key.
+//
+// Consider combine_css (slightly more capable than it is today) over
+// the links:
+//    <link media="print"  href="p0.css"/>
+//    <link media="screen" href="p1.css"/>
+//    <link media="print"  href="p2.css"/>
+//    <link media="screen" href="p3.css"/>
+// Combining these would result in two partitions.
+//    partition0 = {result="p0+p2.css", input={0,2}}
+//    partition1 = {result="p1+p3.css", input={1,3}}
+// Thus the CSS combiner can, as the result of one cache lookup, get
+// back enough information to perform the HTML element substitutions.
+message OutputPartition {
+  optional CachedResult result = 1;
+
+  // The inputs names are not kept in the protobufs, only the indices.
+  // The intended usage is the input names will be used to construct
+  // the key to a cache entry, and the cache value will be an
+  // encoded OutputPartitions.
+  repeated int32 input = 2;
+}
+
+// Contains the mapping of input URLs to output URLs.  In the general
+// case, multiple inputs may map to multiple outputs.
+message OutputPartitions {
+  repeated OutputPartition partition = 1;
 }
 
 // Encapsulates all the data needed to rewrite a resource.

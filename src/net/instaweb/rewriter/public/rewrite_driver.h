@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_H_
 
 #include <map>
+#include <set>
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
@@ -28,6 +29,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/util/public/string.h"
@@ -107,9 +109,6 @@ class RewriteDriver : public HtmlParse {
   // resources. This will replace any previous resource managers.
   void SetResourceManager(ResourceManager* resource_manager);
 
-  // In the rewrite phase, CommonFilters can try to retrieve resources
-  // they requested during scanning with ScanRequestUrl.
-  //
   // NULL is returned for resources that:
   //  - were not requested during Scan
   //  - were requested, but have not yet finished being retrieved
@@ -273,6 +272,24 @@ class RewriteDriver : public HtmlParse {
   // ScanFilter.
   void set_refs_before_base() { refs_before_base_ = true; }
 
+  // Establishes a HtmlElement slot for rewriting.
+  HtmlResourceSlotPtr GetSlot(const ResourcePtr& resource,
+                              HtmlElement* elt,
+                              HtmlElement::Attribute* attr);
+
+  // Method to start a resource rewrite.  This is called by a filter during
+  // parsing, although the Rewrite might continue after deadlines expire
+  // and the rewritten HTML must be flushed.
+  void InitiateRewrite(RewriteContext* rewrite_context);
+
+  // Renders any completed rewrites back into the DOM.
+  void Render();
+
+  // Experimental asynchronous rewrite feature.  This is present only
+  // for regression tests, and should not be used in production.
+  bool asynchronous_rewrites() const { return asynchronous_rewrites_; }
+  void SetAsynchronousRewrites(bool x);
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -336,6 +353,11 @@ class RewriteDriver : public HtmlParse {
   // other url references, this should also be false.
   bool refs_before_base_;
 
+  // Asynchronous rewriting is, at the moment, an experimental-only feature,
+  // which can only be turned on for unit tests.
+  bool asynchronous_rewrites_;
+  bool filters_added_;
+
   GoogleUrl base_url_;
 
   // Attempt to fetch extant version of an OutputResource.  If available,
@@ -356,6 +378,9 @@ class RewriteDriver : public HtmlParse {
 
   StringFilterMap resource_filter_map_;
 
+  typedef std::vector<RewriteContext*> RewriteContextVector;
+  RewriteContextVector rewrites_;
+
   // These objects are provided on construction or later, and are
   // owned by the caller.
   FileSystem* file_system_;
@@ -372,6 +397,8 @@ class RewriteDriver : public HtmlParse {
   // Maps encoded URLs to output URLs
   typedef std::map<GoogleString, ResourcePtr> ResourceMap;
   ResourceMap resource_map_;
+
+  HtmlResourceSlotSet slots_;
 
   Variable* cached_resource_fetches_;
   Variable* succeeded_filter_resource_fetches_;

@@ -95,6 +95,16 @@ TEST_F(JavascriptFilterTest, DoRewrite) {
                    GenerateHtml(expected_rewritten_path_.c_str()));
 }
 
+// Temporarily test one path using the async model.
+// TODO(jmarantz): remove this method and convert everything to async.
+TEST_F(JavascriptFilterTest, DoAsyncRewrite) {
+  rewrite_driver_.SetAsynchronousRewrites(true);
+  InitTest(100);
+  ValidateExpected("do_rewrite",
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(expected_rewritten_path_.c_str()));
+}
+
 TEST_F(JavascriptFilterTest, RewriteAlreadyCachedProperly) {
   InitTest(100000000);  // cached for a long time to begin with
   // But we will rewrite because we can make the data smaller.

@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
+#include <utility>  // for std::pair
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -44,9 +45,12 @@
 #include "net/instaweb/rewriter/public/js_outline_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
+#include "net/instaweb/rewriter/public/render_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
@@ -76,6 +80,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
     : HtmlParse(message_handler),
       base_was_set_(false),
       refs_before_base_(false),
+      asynchronous_rewrites_(false),
+      filters_added_(false),
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),
@@ -100,6 +106,18 @@ void RewriteDriver::Clear() {
   base_url_.Clear();
   CHECK(!base_url_.is_valid());
   resource_map_.clear();
+}
+
+void RewriteDriver::Render() {
+  // LOCK
+  for (int i = 0, n = rewrites_.size(); i < n; ++i) {
+    RewriteContext* rewrite_context = rewrites_[i];
+    rewrite_context->RenderAndDetach();
+  }
+  rewrites_.clear();
+  // UNLOCK
+
+  slots_.clear();
 }
 
 const char* RewriteDriver::kPassThroughRequestAttributes[3] = {
@@ -205,6 +223,8 @@ bool RewriteDriver::ParseKeyInt64(const StringPiece& key, SetInt64Method m,
 
 void RewriteDriver::AddFilters() {
   CHECK(html_writer_filter_ == NULL);
+  CHECK(!filters_added_);
+  filters_added_ = true;
 
   // This function defines the order that filters are run.  We document
   // in pagespeed.conf.template that the order specified in the conf
@@ -334,6 +354,10 @@ void RewriteDriver::AddFilters() {
     EnableRewriteFilter(kImageCombineId);
   }
 
+  if (asynchronous_rewrites_) {
+    AddOwnedFilter(new RenderFilter(this));
+  }
+
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
   // doesn't, it probably should.  If it does, be sure to add it to the
   // Initialize() function above or it will break under Apache!
@@ -371,6 +395,19 @@ void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
   }
   resource_filter_map_[filter->id()] = filter;
   filters_.push_back(filter);
+}
+
+void RewriteDriver::SetAsynchronousRewrites(bool async_rewrites) {
+  if (async_rewrites != asynchronous_rewrites_) {
+    asynchronous_rewrites_ = async_rewrites;
+    if (filters_added_) {
+      if (asynchronous_rewrites_) {
+        AddOwnedFilter(new RenderFilter(this));
+      } else {
+        LOG(DFATAL) << "Cannot disable async behavior after filters are added";
+      }
+    }
+  }
 }
 
 void RewriteDriver::SetWriter(Writer* writer) {
@@ -760,6 +797,27 @@ RewriteFilter* RewriteDriver::FindFilter(const StringPiece& id) const {
     filter = p->second;
   }
   return filter;
+}
+
+HtmlResourceSlotPtr RewriteDriver::GetSlot(
+    const ResourcePtr& resource, HtmlElement* elt,
+    HtmlElement::Attribute* attr) {
+  HtmlResourceSlot* slot_obj = new HtmlResourceSlot(resource, elt, attr);
+  HtmlResourceSlotPtr slot(slot_obj);
+  std::pair<HtmlResourceSlotSet::iterator, bool> iter_found =
+      slots_.insert(slot);
+  if (!iter_found.second) {
+    // The slot was already in the set.  Release the one we just
+    // allocated and use the one already in.
+    HtmlResourceSlotSet::iterator iter = iter_found.first;
+    slot.reset(*iter);
+  }
+  return slot;
+}
+
+void RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {
+  rewrites_.push_back(rewrite_context);
+  rewrite_context->Start();
 }
 
 }  // namespace net_instaweb
