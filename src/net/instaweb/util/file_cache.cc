@@ -18,13 +18,22 @@
 
 #include "net/instaweb/util/public/file_cache.h"
 
+#include <cstddef>
 #include <cstdlib>
 #include <vector>
 #include <queue>
-#include "net/instaweb/util/public/base64_util.h"
+#include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 

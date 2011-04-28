@@ -17,8 +17,12 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/string_util.h"
+
+#include <cstdarg>
 #include "base/logging.h"
+#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 

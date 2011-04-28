@@ -17,7 +17,12 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/threadsafe_cache.h"
+
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 

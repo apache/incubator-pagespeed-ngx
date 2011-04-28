@@ -18,11 +18,13 @@
 
 #include "net/instaweb/util/public/google_timer.h"
 
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/timer.h"
 #include <sys/errno.h>
-#include "base/logging.h"
 #include <sys/time.h>
 #include <unistd.h>
 #include <ctime>
+#include "base/logging.h"
 
 namespace net_instaweb {
 

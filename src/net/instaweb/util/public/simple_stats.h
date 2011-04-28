@@ -20,11 +20,13 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SIMPLE_STATS_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class SimpleStats;
 class SimpleStatsVariable : public Variable {
  public:
   SimpleStatsVariable() : value_(0) {}

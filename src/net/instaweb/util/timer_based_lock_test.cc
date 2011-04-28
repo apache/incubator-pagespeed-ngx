@@ -17,14 +17,15 @@
 #include "net/instaweb/util/public/timer_based_abstract_lock.h"
 
 #include <pthread.h>
-#include <unistd.h>
+#include "base/logging.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/named_lock_manager.h"  // for AbstractLock
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/pthread_condvar.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 

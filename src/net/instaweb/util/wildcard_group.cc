@@ -16,8 +16,11 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+#include <vector>
+#include "base/logging.h"
 #include "net/instaweb/util/public/wildcard_group.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/wildcard.h"
 
 namespace net_instaweb {

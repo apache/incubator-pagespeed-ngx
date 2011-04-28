@@ -16,10 +16,12 @@
 
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_POOL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_POOL_H_
+#include <cstddef>
 #include <list>
-#include "base/stl_util-inl.h"
 #include "base/logging.h"  // for DCHECK
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/pool_element.h"
+#include "net/instaweb/util/public/stl_util.h"
 
 namespace net_instaweb {
 

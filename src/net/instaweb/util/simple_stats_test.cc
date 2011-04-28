@@ -7,6 +7,7 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/statistics.h"
 
 namespace net_instaweb {
 

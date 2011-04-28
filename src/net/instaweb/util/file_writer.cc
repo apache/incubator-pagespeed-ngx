@@ -18,7 +18,12 @@
 
 #include "net/instaweb/util/public/file_writer.h"
 
+#include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/string_util.h"
+
 namespace net_instaweb {
+
+class MessageHandler;
 
 FileWriter::~FileWriter() {
 }

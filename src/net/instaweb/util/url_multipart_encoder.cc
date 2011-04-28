@@ -17,7 +17,11 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/url_multipart_encoder.h"
+
+#include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_escaper.h"
 
 namespace {
@@ -35,6 +39,7 @@ const char kEscapedSeparator[] = "=+";
 }  // namespace
 
 namespace net_instaweb {
+class ResourceContext;
 
 UrlMultipartEncoder::~UrlMultipartEncoder() {
 }

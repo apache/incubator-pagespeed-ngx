@@ -20,14 +20,14 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_FILE_SYSTEM_TEST_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
+class FileSystem;
 class Timer;
 
 // Base class for testing a FileSystem implementation.  Subclasses

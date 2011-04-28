@@ -17,9 +17,15 @@
 // Author: jmaessen@google.com (Jan Maessen)
 
 #include "net/instaweb/util/public/url_segment_encoder.h"
+
+#include "base/logging.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_escaper.h"
 
 namespace net_instaweb {
+class MessageHandler;
+class ResourceContext;
 
 UrlSegmentEncoder::~UrlSegmentEncoder() {
 }

@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_FILENAME_ENCODER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_FILENAME_ENCODER_H_
 
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/tools/dump_cache/url_to_filename_encoder.h"
 namespace net_instaweb {

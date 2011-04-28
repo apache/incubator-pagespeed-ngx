@@ -18,6 +18,10 @@
 
 #include "net/instaweb/util/public/null_message_handler.h"
 
+#include <cstdarg>
+
+#include "net/instaweb/util/public/message_handler.h"
+
 namespace net_instaweb {
 
 NullMessageHandler::~NullMessageHandler() {

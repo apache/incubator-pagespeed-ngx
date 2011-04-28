@@ -18,6 +18,9 @@
 
 #include "net/instaweb/util/public/pthread_mutex.h"
 
+#include <pthread.h>
+#include <stddef.h>
+
 namespace net_instaweb {
 
 PthreadMutex::PthreadMutex() {

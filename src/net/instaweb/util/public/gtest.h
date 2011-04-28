@@ -20,8 +20,6 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_
 
-#include <vector>
-
 #include "net/instaweb/util/public/string.h"
 #include "gtest/gtest.h"
 

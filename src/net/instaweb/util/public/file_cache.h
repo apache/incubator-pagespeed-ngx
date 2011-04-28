@@ -22,14 +22,13 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/filename_encoder.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
-
+class FileSystem;
+class FilenameEncoder;
+class MessageHandler;
+class SharedString;
 class Timer;
 
 // Simple C++ implementation of file cache.

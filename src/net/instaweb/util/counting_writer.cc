@@ -17,8 +17,11 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/counting_writer.h"
+#include "net/instaweb/util/public/writer.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+class MessageHandler;
 
 CountingWriter::~CountingWriter() {
 }

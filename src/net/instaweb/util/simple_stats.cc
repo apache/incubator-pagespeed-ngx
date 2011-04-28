@@ -18,6 +18,8 @@
 
 #include "net/instaweb/util/public/simple_stats.h"
 
+#include "net/instaweb/util/public/string_util.h"
+
 namespace net_instaweb {
 
 SimpleStatsVariable::~SimpleStatsVariable() {

@@ -17,14 +17,15 @@
 #include "net/instaweb/util/public/pthread_condvar.h"
 
 #include <pthread.h>
-#include <unistd.h>
-#include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/abstract_condvar.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar_test_base.h"
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
 
 namespace net_instaweb {
+class Timer;
 
 class PthreadCondvarTest : public CondvarTestBase {
  protected:

@@ -18,6 +18,8 @@
 
 #include "net/instaweb/util/public/timer.h"
 
+#include "net/instaweb/util/public/basictypes.h"
+
 namespace net_instaweb {
 
 Timer::~Timer() {

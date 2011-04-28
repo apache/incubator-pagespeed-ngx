@@ -19,9 +19,11 @@
 // Unit-test the lru cache
 
 #include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "base/logging.h"
+
+#include <cstddef>
 #include "net/instaweb/util/cache_test_base.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -31,6 +33,7 @@ const size_t kMaxSize = 100;
 }
 
 namespace net_instaweb {
+class CacheInterface;
 
 class LRUCacheTest : public CacheTestBase {
  protected:

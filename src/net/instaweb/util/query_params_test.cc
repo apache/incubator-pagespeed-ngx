@@ -4,13 +4,11 @@
 // Unit-test QueryParams.
 
 #include "net/instaweb/util/public/query_params.h"
-#include <algorithm>
+
 #include "net/instaweb/util/public/basictypes.h"
-#include "base/logging.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
 
 namespace {
 

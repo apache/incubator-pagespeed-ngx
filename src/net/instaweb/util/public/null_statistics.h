@@ -19,12 +19,14 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_NULL_STATISTICS_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_NULL_STATISTICS_H_
 
-#include "base/basictypes.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class NullStatistics;
 class NullStatisticsVariable : public Variable {
  public:
   NullStatisticsVariable() {}

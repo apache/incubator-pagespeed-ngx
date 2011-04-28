@@ -5,6 +5,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_H_
 
 #include <string>
+#include <string.h>
 
 typedef std::string GoogleString;
 

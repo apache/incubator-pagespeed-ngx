@@ -20,12 +20,10 @@
 
 #include "net/instaweb/util/public/arena.h"
 
+#include <cstddef>
 #include <set>
 
-#include "base/logging.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 

@@ -15,13 +15,16 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_SHARED_MEM_STATISTICS_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_SHARED_MEM_STATISTICS_H_
 
+#include <cstddef>
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class Writer;
 class MessageHandler;
 class AbstractSharedMem;
 class AbstractSharedMemSegment;

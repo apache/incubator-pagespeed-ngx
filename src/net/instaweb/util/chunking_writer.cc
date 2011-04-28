@@ -19,8 +19,13 @@
 #include "net/instaweb/util/public/chunking_writer.h"
 
 #include <algorithm>
+#include <cstddef>
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 ChunkingWriter::ChunkingWriter(Writer* writer, int flush_limit)
     : writer_(writer), flush_limit_(flush_limit), unflushed_bytes_(0) {

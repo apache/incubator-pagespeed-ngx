@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/data_url.h"
 
+#include <cstddef>
 #include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/string.h"

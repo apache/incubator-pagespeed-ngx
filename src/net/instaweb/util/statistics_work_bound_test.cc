@@ -20,11 +20,14 @@
 
 #include "net/instaweb/util/public/statistics_work_bound.h"
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/simple_stats.h"
 
 namespace net_instaweb {
+class Variable;
 
 namespace {
 

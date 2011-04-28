@@ -17,7 +17,13 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/string_util.h"
+#include <algorithm>
+#include <cstddef>
+#include <ctype.h>
 #include <vector>
+
+#include "base/logging.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 

@@ -14,6 +14,8 @@
 
 #include "net/instaweb/util/public/user_agent.h"
 
+#include "net/instaweb/util/public/string.h"
+
 namespace net_instaweb {
 
 UserAgent::UserAgent() {

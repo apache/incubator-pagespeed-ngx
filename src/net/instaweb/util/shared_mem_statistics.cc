@@ -14,12 +14,17 @@
 
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 
+#include <cstddef>
+#include <iosfwd>
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/statistics_template.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/writer.h"
 
 namespace {
 

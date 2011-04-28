@@ -17,14 +17,16 @@
 // Author: jmaessen@google.com (Jan Maessen)
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/named_lock_manager.h"
-#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/timer_based_abstract_lock.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+class AbstractLock;
+class MessageHandler;
+class Timer;
 
 class FileSystemLock : public TimerBasedAbstractLock {
  public:

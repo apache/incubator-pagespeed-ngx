@@ -19,16 +19,14 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_WRITE_THROUGH_CACHE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_WRITE_THROUGH_CACHE_H_
 
-#include "net/instaweb/util/public/basictypes.h"
+#include <cstddef>
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
-
-class MessageHandler;
-class Writer;
-class AbstractMutex;
+class SharedString;
 
 // Composes two caches to form a write-through cache.
 class WriteThroughCache : public CacheInterface {

@@ -16,6 +16,8 @@
 
 #include "net/instaweb/util/public/pool.h"
 
+#include <list>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/pool_element.h"
 #include "net/instaweb/util/public/string.h"

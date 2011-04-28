@@ -19,7 +19,9 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_FILE_SYSTEM_LOCK_MANAGER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_FILE_SYSTEM_LOCK_MANAGER_H_
 
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

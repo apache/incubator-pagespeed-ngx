@@ -26,9 +26,8 @@
 
 namespace net_instaweb {
 
-class MessageHandler;
-class Writer;
 class AbstractMutex;
+class SharedString;
 
 // Composes a cache with a Mutex to form a threadsafe cache.  Note
 // that cache callbacks will be run in a thread that is dependent

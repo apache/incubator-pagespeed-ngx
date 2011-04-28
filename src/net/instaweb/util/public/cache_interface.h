@@ -19,15 +19,10 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_CACHE_INTERFACE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_CACHE_INTERFACE_H_
 
-// TODO(sligocki): We shouldn't need to include this in the .h, but it was
-// breaking someone somewhere, look into later.
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
-class MessageHandler;
 
 // Abstract interface for a cache.
 class CacheInterface {

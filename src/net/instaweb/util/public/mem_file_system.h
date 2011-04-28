@@ -19,13 +19,15 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_MEM_FILE_SYSTEM_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_MEM_FILE_SYSTEM_H_
 
-#include <cstdlib>
 #include <map>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+class MessageHandler;
 
 // An in-memory implementation of the FileSystem interface, for use in
 // unit tests.  Does not fully support directories.  Not particularly efficient.

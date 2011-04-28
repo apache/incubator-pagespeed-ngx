@@ -17,7 +17,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_GZIP_INFLATER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_GZIP_INFLATER_H_
 
-#include <cstring>
+#include <cstddef>
 #include "net/instaweb/util/public/basictypes.h"
 
 typedef struct z_stream_s z_stream;

@@ -195,7 +195,7 @@ TEST_F(JsCombineFilterTest, CombineJs) {
   // This should produce 3 script elements, with the first one referring to
   // the combination, and the second and third using eval.
   ASSERT_EQ(3, scripts.size());
-  VerifyCombined(scripts[0], StrCat(kJsUrl1, "+", kJsUrl2).c_str());
+  VerifyCombined(scripts[0], StrCat(kJsUrl1, "+", kJsUrl2));
   VerifyUse(scripts[1], kJsUrl1);
   VerifyUse(scripts[2], kJsUrl2);
 
@@ -292,7 +292,7 @@ TEST_F(JsCombineFilterTest, TestNonBarriers) {
   // This should produce 3 script elements, with the first one referring to
   // the combination, and the second and third using eval.
   ASSERT_EQ(3, scripts.size());
-  VerifyCombined(scripts[0], combined_url.c_str());
+  VerifyCombined(scripts[0], combined_url);
   VerifyUse(scripts[1], kJsUrl1);
   VerifyUse(scripts[2], kJsUrl2);
 
@@ -303,7 +303,7 @@ TEST_F(JsCombineFilterTest, TestNonBarriers) {
                                "<b><script src=", kJsUrl2, "></script></b>"));
 
   ASSERT_EQ(3, scripts.size());
-  VerifyCombined(scripts[0], combined_url.c_str());
+  VerifyCombined(scripts[0], combined_url);
   VerifyUse(scripts[1], kJsUrl1);
   VerifyUse(scripts[2], kJsUrl2);
 
@@ -314,7 +314,7 @@ TEST_F(JsCombineFilterTest, TestNonBarriers) {
                                "<b><script src=", kJsUrl2, ">\t</script></b>"));
 
   ASSERT_EQ(3, scripts.size());
-  VerifyCombined(scripts[0], combined_url.c_str());
+  VerifyCombined(scripts[0], combined_url);
   VerifyUse(scripts[1], kJsUrl1);
   VerifyUse(scripts[2], kJsUrl2);
 }
@@ -335,7 +335,7 @@ TEST_F(JsCombineFilterTest, TestFlushMiddle1) {
 
   ASSERT_EQ(4, scripts.size());
   EXPECT_EQ(kJsUrl1, scripts[0].url);
-  VerifyCombined(scripts[1], StrCat(kJsUrl2, "+", kJsUrl3).c_str());
+  VerifyCombined(scripts[1], StrCat(kJsUrl2, "+", kJsUrl3));
   VerifyUse(scripts[2], kJsUrl2);
   VerifyUse(scripts[3], kJsUrl3);
 }
@@ -374,7 +374,7 @@ TEST_F(JsCombineFilterTest, TestFlushMiddle3) {
   html_parse()->FinishParse();
 
   ASSERT_EQ(4, scripts.size());
-  VerifyCombined(scripts[0], StrCat(kJsUrl1, "+", kJsUrl2).c_str());
+  VerifyCombined(scripts[0], StrCat(kJsUrl1, "+", kJsUrl2));
   VerifyUse(scripts[1], kJsUrl1);
   VerifyUse(scripts[2], kJsUrl2);
   EXPECT_EQ(kJsUrl3, scripts[3].url);
@@ -391,7 +391,7 @@ TEST_F(JsCombineFilterTest, TestBase) {
                                "<script src=", kJsUrl2, "></script>"));
   ASSERT_EQ(3, scripts.size());
   VerifyCombinedOnDomain(other_domain_, scripts[0],
-                         StrCat(kJsUrl1, "+", kJsUrl2).c_str());
+                         StrCat(kJsUrl1, "+", kJsUrl2));
   VerifyUseOnDomain(other_domain_, scripts[1], kJsUrl1);
   VerifyUseOnDomain(other_domain_, scripts[2], kJsUrl2);
 }
@@ -431,12 +431,12 @@ TEST_F(JsCombineFilterTest, TestCrossDomainRecover) {
   html_parse()->FinishParse();
 
   ASSERT_EQ(6, scripts.size());
-  VerifyCombined(scripts[0], StrCat(kJsUrl1, "+", kJsUrl2).c_str());
+  VerifyCombined(scripts[0], StrCat(kJsUrl1, "+", kJsUrl2));
   VerifyUse(scripts[1], kJsUrl1);
   VerifyUse(scripts[2], kJsUrl2);
 
   VerifyCombinedOnDomain(other_domain_, scripts[3],
-                         StrCat(kJsUrl1, "+", kJsUrl2).c_str());
+                         StrCat(kJsUrl1, "+", kJsUrl2));
   VerifyUseOnDomain(other_domain_, scripts[4], kJsUrl1);
   VerifyUseOnDomain(other_domain_, scripts[5], kJsUrl2);
 }

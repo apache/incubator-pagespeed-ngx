@@ -17,11 +17,10 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_STRING_MULTI_MAP_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_MULTI_MAP_H_
 
-#include <cstdlib>
 #include <map>
+#include <utility>
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

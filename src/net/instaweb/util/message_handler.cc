@@ -18,6 +18,9 @@
 
 #include "net/instaweb/util/public/message_handler.h"
 
+#include <cstdarg>
+#include <cstddef>
+
 #include "base/logging.h"
 
 namespace net_instaweb {

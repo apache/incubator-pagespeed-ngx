@@ -20,6 +20,7 @@
 #include "net/instaweb/util/public/abstract_condvar.h"
 
 #include <pthread.h>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
 
 namespace net_instaweb {

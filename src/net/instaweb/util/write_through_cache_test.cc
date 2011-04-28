@@ -21,14 +21,12 @@
 #include "net/instaweb/util/public/write_through_cache.h"
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "base/logging.h"
 #include "net/instaweb/util/cache_test_base.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
+class CacheInterface;
 
 class WriteThroughCacheTest : public CacheTestBase {
  protected:

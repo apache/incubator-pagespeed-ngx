@@ -20,9 +20,10 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_ARENA_H_
 
 #include <vector>
+#include <cstddef>
+#include <stdint.h>
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "base/logging.h"
 
 namespace net_instaweb {
 

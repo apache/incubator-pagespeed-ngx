@@ -22,6 +22,7 @@
 #include <ctime>
 
 #include "base/logging.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
 #include "net/instaweb/util/public/timer.h"
 

@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
+#include <cstddef>
 #include <string>
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
-
-#include "testing/gtest/include/gtest/gtest.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 

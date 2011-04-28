@@ -16,18 +16,20 @@
 
 #include <pthread.h>
 #include <unistd.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 
+#include <cstddef>
 #include <cstdlib>
 #include <vector>
 
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
 #include "net/instaweb/util/public/shared_mem_lock_manager_test_base.h"
 #include "net/instaweb/util/public/shared_mem_statistics_test_base.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
 
 namespace net_instaweb {
+class AbstractSharedMem;
 
 namespace {
 

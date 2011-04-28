@@ -19,6 +19,14 @@
 
 #include "net/instaweb/util/public/symbol_table.h"
 
+#include <cstddef>
+#include <cstdlib>
+#include "net/instaweb/util/public/string.h"
+#include <vector>
+#include "base/logging.h"
+#include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/util/public/string_util.h"
+
 namespace {
 
 // Strategically select a chunk size that will allow for some fixed
@@ -100,6 +108,8 @@ Atom SymbolTable<CharTransform>::Intern(const StringPiece& src) {
 }
 
 // We explicitly instantiate since we want ::Intern to be out-of-line
+struct CaseFold;
+struct CasePreserve;
 template class SymbolTable<CaseFold>;
 template class SymbolTable<CasePreserve>;
 

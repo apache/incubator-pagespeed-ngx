@@ -18,14 +18,16 @@
 
 // Unit test the file_system_lock_manager using single-threaded mocks.
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 

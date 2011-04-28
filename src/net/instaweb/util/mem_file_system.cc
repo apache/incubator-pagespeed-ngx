@@ -18,16 +18,16 @@
 
 #include "net/instaweb/util/public/mem_file_system.h"
 
-#include <sys/errno.h>
-#include <sys/stat.h>
-#include <cstdio>
-#include <cstdlib>
+#include <cstddef>
+#include <map>
+#include <utility>
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "base/logging.h"
+#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {

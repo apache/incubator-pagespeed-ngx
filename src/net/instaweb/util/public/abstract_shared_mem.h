@@ -17,12 +17,13 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_SHARED_MEM_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_SHARED_MEM_H_
 
+#include <cstddef>
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class MessageHandler;
 
 // This represents a region of memory shared between between multiple processes

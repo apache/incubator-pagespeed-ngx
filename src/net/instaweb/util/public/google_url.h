@@ -20,6 +20,8 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_URL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_URL_H_
 
+#include <cstddef>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -48,7 +50,7 @@ class GoogleUrl {
   // Resets this URL to be invalid.
   void Clear();
 
-  // For "http://a.com/b/c/d?e=f/g returns "http://a/b/c/",
+  // For "http://a.com/b/c/d?e=f/g returns "http://a.com/b/c/",
   // including trailing slash.
   // Returns a StringPiece, only valid for the lifetime of this object.
   StringPiece AllExceptLeaf() const;

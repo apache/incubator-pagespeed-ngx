@@ -18,10 +18,10 @@
 
 #include "net/instaweb/util/public/query_params.h"
 
-#include <cstdio>
 #include <vector>
 #include "base/logging.h"
-#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 

@@ -18,17 +18,20 @@
 
 #include "net/instaweb/util/public/stdio_file_system.h"
 
-#include <dirent.h>
-#include <sys/errno.h>
-#include <sys/stat.h>
-#include <unistd.h>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <dirent.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 

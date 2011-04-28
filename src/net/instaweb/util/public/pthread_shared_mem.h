@@ -17,12 +17,15 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_SHARED_MEM_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_SHARED_MEM_H_
 
+#include <cstddef>
 #include <map>
 
 #include "net/instaweb/util/public/abstract_shared_mem.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
+class MessageHandler;
 
 // POSIX shared memory support, using mmap/pthread_mutexattr_setpshared
 // Supports both processes and threads, but processes that want to access it

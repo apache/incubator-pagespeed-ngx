@@ -17,8 +17,8 @@
 
 #include "net/instaweb/util/public/md5_hasher.h"
 
-#include "net/instaweb/util/public/base64_util.h"
-
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "base/md5.h"
 
 namespace net_instaweb {

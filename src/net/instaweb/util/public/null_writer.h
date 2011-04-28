@@ -20,8 +20,10 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_NULL_WRITER_H_
 
 #include "net/instaweb/util/public/writer.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+class MessageHandler;
 
 // A writer that silently eats the bytes.  This can be used, for
 // example, with writers is designed to cascade to another one, such

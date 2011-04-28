@@ -19,11 +19,11 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_DATA_URL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_DATA_URL_H_
 
-#include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+struct ContentType;
 
 enum Encoding {
   UNKNOWN,  // Used only for output of ParseDataUrl.

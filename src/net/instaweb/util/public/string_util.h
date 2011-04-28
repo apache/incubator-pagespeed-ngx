@@ -20,10 +20,10 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_UTIL_H_
 
 
-#include <algorithm>
 #include <map>
 #include <set>
 #include <vector>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 
 #include <cstdlib>

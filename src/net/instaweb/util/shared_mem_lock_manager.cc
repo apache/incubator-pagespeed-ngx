@@ -17,16 +17,22 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 
-#include <cstring>
+#include <cstddef>
 
 #include "base/scoped_ptr.h"
+#include "base/logging.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/timer_based_abstract_lock.h"
 
 namespace net_instaweb {
+class AbstractLock;
 
 namespace SharedMemLockData {
 

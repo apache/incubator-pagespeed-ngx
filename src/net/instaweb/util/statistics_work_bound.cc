@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/statistics_work_bound.h"
 
+#include <cstddef>
 #include "net/instaweb/util/public/statistics.h"
 
 namespace net_instaweb {

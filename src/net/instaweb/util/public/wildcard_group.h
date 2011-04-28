@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SELECTOR_H_
 
 #include <vector>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

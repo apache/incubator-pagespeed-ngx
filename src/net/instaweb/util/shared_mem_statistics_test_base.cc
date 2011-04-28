@@ -16,6 +16,13 @@
 
 #include "net/instaweb/util/public/shared_mem_statistics_test_base.h"
 
+#include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/shared_mem_test_base.h"
+#include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {

@@ -18,6 +18,13 @@
 
 #include "net/instaweb/util/public/mock_message_handler.h"
 
+#include <cstdarg>
+#include <map>
+#include <utility>
+
+#include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/message_handler.h"
+
 namespace net_instaweb {
 
 MockMessageHandler::~MockMessageHandler() {

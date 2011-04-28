@@ -18,10 +18,12 @@
 
 #include "net/instaweb/util/public/filename_encoder.h"
 
-#include <string>
 #include <vector>
+#include <cstddef>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace {
 // net::kMaximumSubdirectoryLength is defined in url_to_filename_encoder.cc, but

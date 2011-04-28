@@ -17,6 +17,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/null_statistics.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 

@@ -19,13 +19,10 @@
 // Unit-test the base64 encoder.
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "base/logging.h"
 #include "net/instaweb/util/public/base64_util.h"
-#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
 
 namespace {
 

@@ -20,18 +20,18 @@
 
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "base/logging.h"
 #include "net/instaweb/util/cache_test_base.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+class CacheInterface;
 
 class FileCacheTest : public CacheTestBase {
  protected:

@@ -17,9 +17,12 @@
 
 #include "net/instaweb/util/public/rolling_hash.h"
 
+#include <cstddef>
+#include <cstdio>
+#include <utility>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dense_hash_set.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

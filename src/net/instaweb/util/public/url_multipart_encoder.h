@@ -19,12 +19,14 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_URL_MULTIPART_ENCODER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_URL_MULTIPART_ENCODER_H_
 
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
 
+class ResourceContext;
 class MessageHandler;
 
 // Encodes a multiple strings into a single string so that it

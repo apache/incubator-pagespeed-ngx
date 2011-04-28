@@ -18,7 +18,9 @@
 
 #include "net/instaweb/util/public/time_util.h"
 #include <ctime>
-
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/core/resource_util.h"
 
 namespace net_instaweb {

@@ -18,6 +18,8 @@
 
 #include "net/instaweb/util/public/mock_timer.h"
 
+#include "net/instaweb/util/public/basictypes.h"
+
 namespace net_instaweb {
 
 const int64 MockTimer::kApr_5_2010_ms = 1270493486000LL;

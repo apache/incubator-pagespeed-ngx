@@ -21,6 +21,7 @@
 
 #include <map>
 #include <vector>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -28,6 +29,7 @@
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
+class MessageHandler;
 
 // This class makes it easier to define new Statistics implementations
 // by providing a templatized implementation of variable registration and

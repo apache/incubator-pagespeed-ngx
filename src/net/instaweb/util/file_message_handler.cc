@@ -21,6 +21,8 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "net/instaweb/util/public/message_handler.h"
+
 namespace net_instaweb {
 
 FileMessageHandler::FileMessageHandler(FILE* file) : file_(file) {

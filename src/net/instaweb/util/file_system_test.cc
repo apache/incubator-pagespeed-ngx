@@ -16,13 +16,16 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+#include "net/instaweb/util/public/file_system.h"
+
 #include <unistd.h>
-#include "base/logging.h"
-#include "base/scoped_ptr.h"
+#include <cstddef>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system_test.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {

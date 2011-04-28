@@ -16,17 +16,19 @@
 
 #include "net/instaweb/util/public/pthread_shared_mem.h"
 
+#include <cerrno>
+#include <cstddef>
 #include <fcntl.h>
+#include <map>
 #include <pthread.h>
 #include <sys/mman.h>
-#include <sys/types.h>
 #include <unistd.h>
-#include <cerrno>
-
-#include "base/scoped_ptr.h"
+#include <utility>
+#include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 

@@ -16,6 +16,16 @@
 
 #include "net/instaweb/util/public/shared_mem_lock_manager_test_base.h"
 
+#include <cstddef>
+#include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/shared_mem_lock_manager.h"
+#include "net/instaweb/util/public/shared_mem_test_base.h"
+
 namespace net_instaweb {
 
 namespace {

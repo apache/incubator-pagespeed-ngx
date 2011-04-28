@@ -17,11 +17,12 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //
 
-#include <unistd.h>  // For getpid()
+#include <unistd.h>
 
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/stack_buffer.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 #include "third_party/gflags/src/google/gflags.h"
 

@@ -18,7 +18,8 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_WILDCARD_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_WILDCARD_H_
 
-#include <vector>
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

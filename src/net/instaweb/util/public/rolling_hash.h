@@ -18,8 +18,9 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_CYCLIC_HASH_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_CYCLIC_HASH_H_
 
+#include <cstddef>
+#include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 

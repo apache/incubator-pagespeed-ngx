@@ -15,7 +15,10 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         jmaessen@google.com (Jan-Willem Maessen)
 
+#include <cstddef>
+#include "base/logging.h"
 #include "net/instaweb/util/public/wildcard.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

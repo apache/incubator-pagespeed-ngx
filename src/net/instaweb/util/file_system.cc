@@ -16,11 +16,14 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+#include <cstddef>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/stack_buffer.h"
 
 namespace net_instaweb {

@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_URL_ESCAPER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_URL_ESCAPER_H_
 
-#include "net/instaweb/util/public/url_segment_encoder.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
