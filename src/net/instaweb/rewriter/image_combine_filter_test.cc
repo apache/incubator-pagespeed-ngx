@@ -45,8 +45,8 @@ class CssImageCombineTest : public CssRewriteTestBase {
     // We want a real hasher here so that subresources get separate locks.
     resource_manager_->set_hasher(&md5_hasher_);
   }
-  void TestSpriting(const char* bikePosition,
-                    const char* expectedPosition) {
+  void TestSpriting(const char* bikePosition, const char* expectedPosition,
+                    bool should_sprite) {
     const GoogleString sprite_string = StrCat(kTestDomain, kCuppaPngFile, "+",
                                               kBikePngFile,
                                               ".pagespeed.is.Y-XqNDe-in.png");
@@ -64,7 +64,7 @@ class CssImageCombineTest : public CssRewriteTestBase {
     GoogleString after = StringPrintf(
         html, sprite, sprite, expectedPosition, kPuzzleJpgFile);
 
-    ValidateExpected("sprites_images", before, after);
+    ValidateExpected("sprites_images", before, should_sprite ? after : before);
 
     // Try it again, this time using the background shorthand with a couple
     // different orderings
@@ -80,15 +80,16 @@ class CssImageCombineTest : public CssRewriteTestBase {
     after = StringPrintf(
         html2, sprite, sprite, expectedPosition, kPuzzleJpgFile);
 
-    ValidateExpected("sprites_images", before, after);
+    ValidateExpected("sprites_images", before, should_sprite ? after : before);
   }
 };
 
 TEST_F(CssImageCombineTest, SpritesImages) {
-  TestSpriting("0px 0px", "0px -70px");
-  TestSpriting("left top", "0px -70px");
-  TestSpriting("top 10px", "10px -70px");
-  TestSpriting("-5px 5px", "-5px -65px");
+  TestSpriting("0px 0px", "0px -70px", true);
+  TestSpriting("left top", "0px -70px", true);
+  TestSpriting("top 10px", "10px -70px", true);
+  TestSpriting("-5px 5px", "-5px -65px", true);
+  TestSpriting("center top", "unused", false);
 }
 
 TEST_F(CssImageCombineTest, SpritesMultiple) {

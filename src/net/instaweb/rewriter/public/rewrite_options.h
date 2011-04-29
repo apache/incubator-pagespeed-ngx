@@ -56,6 +56,7 @@ class RewriteOptions {
     kRemoveQuotes,
     kResizeImages,
     kRewriteCss,
+    kRewriteDomains,
     kRewriteJavascript,
     kSpriteImages,
     kStripScripts,  // Update kLastFilter if you add something after this.
@@ -180,11 +181,6 @@ class RewriteOptions {
   void set_js_inline_max_bytes(int64 x) {
     modified_ = true;
     js_inline_max_bytes_.set(x);
-  }
-  int num_shards() const { return num_shards_.value(); }
-  void set_num_shards(int x) {
-    modified_ = true;
-    num_shards_.set(x);
   }
   const GoogleString& beacon_url() const { return beacon_url_.value(); }
   void set_beacon_url(const StringPiece& p) {
@@ -367,7 +363,6 @@ class RewriteOptions {
   Option<int64> js_inline_max_bytes_;
   Option<int64> css_outline_min_bytes_;
   Option<int64> js_outline_min_bytes_;
-  Option<int> num_shards_;
   Option<GoogleString> beacon_url_;
   Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")
   Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")

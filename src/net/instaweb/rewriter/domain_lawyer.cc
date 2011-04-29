@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 
+#include <utility>  // for std::pair
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -341,6 +342,7 @@ bool DomainLawyer::AddRewriteDomainMapping(
     const StringPiece& to_domain_name,
     const StringPiece& comma_separated_from_domains,
     MessageHandler* handler) {
+  can_rewrite_domains_ = true;
   return MapDomainHelper(to_domain_name, comma_separated_from_domains,
                          &Domain::SetRewriteDomain, true, true, handler);
 }
@@ -357,6 +359,7 @@ bool DomainLawyer::AddShard(
     const StringPiece& shard_domain_name,
     const StringPiece& comma_separated_shards,
     MessageHandler* handler) {
+  can_rewrite_domains_ = true;
   return MapDomainHelper(shard_domain_name, comma_separated_shards,
                          &Domain::SetShardFrom, false, true, handler);
 }
@@ -420,6 +423,7 @@ void DomainLawyer::Merge(const DomainLawyer& src) {
       dst_shard->SetShardFrom(dst_domain, NULL);
     }
   }
+  can_rewrite_domains_ |= src.can_rewrite_domains_;
 }
 
 bool DomainLawyer::ShardDomain(const StringPiece& domain_name,

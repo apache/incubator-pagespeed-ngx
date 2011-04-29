@@ -62,17 +62,21 @@ class SpriteFuture {
   // keep track of it so that we can avoid putting the same image in the sprite
   // twice.
   explicit SpriteFuture(const StringPiece& old_url)
-      : declarations_(NULL), url_value_(NULL) {
+      : url_value_(NULL), x_value_(NULL), y_value_(NULL),
+        declarations_(NULL), declaration_to_push_(NULL) {
     old_url.CopyToString(&old_url_);
+    x_offset_ = 0;
+    y_offset_ = 0;
   }
 
   ~SpriteFuture() {}
 
-  // Bind this Future to a partictular image.  Owns nothing; the inputs must
-  // outlive this future.
-  void Initialize(Css::Declarations* declarations, Css::Value* url_value) {
-    declarations_ = declarations;
+  // Bind this Future to a particular image.  Owns nothing; the inputs must
+  // outlive this future.  Returns true if this is a viable sprite-future.  If
+  // we return false, Realize must not be called.
+  bool Initialize(Css::Declarations* declarations, Css::Value* url_value) {
     url_value_ = url_value;
+    return FindBackgroundPositionValues(declarations);
   }
 
   const GoogleString& old_url() { return old_url_; }
@@ -103,12 +107,11 @@ class SpriteFuture {
         return false;
     }
   }
-  // Attempts to adjust the x and y values of the background position.  *values
+  // Attempts to read the x and y values of the background position.  *values
   // is a value array which includes the background-position at values_offset.
   // new_x and new_y are the coordinates of the image in the sprite.  Returns
-  // true if successful
-  static bool SetBackgroundPosition(Css::Values* values, int values_offset,
-                                    int new_x, int new_y) {
+  // true, and sets up {x,y}_{value,offset}_ if successful.
+  bool ReadBackgroundPosition(Css::Values* values, int values_offset) {
     // Parsing these values is trickier than you might think.  If either
     // of the two values is a non-center identifier, it determines which
     // is x and which is y.  So for example, "5px left" means x=0, y=5 but
@@ -153,8 +156,10 @@ class SpriteFuture {
         !GetPixelValue(y_value, &y_px)) {
       return false;
     }
-    *(values->at(values_offset))     = Css::Value(x_px - new_x, Css::Value::PX);
-    *(values->at(values_offset + 1)) = Css::Value(y_px - new_y, Css::Value::PX);
+    x_value_ = values->at(values_offset);
+    x_offset_ = x_px;
+    y_value_ = values->at(values_offset + 1);
+    y_offset_ = y_px;
     return true;
   }
   // Tries to guess whether this value is an x- or y- position value in the
@@ -165,9 +170,11 @@ class SpriteFuture {
     } else if (value.GetLexicalUnitType() == Css::Value::IDENT) {
         switch (value.GetIdentifier().ident()) {
           case Css::Identifier::LEFT:
+          case Css::Identifier::RIGHT:
           case Css::Identifier::TOP:
+          case Css::Identifier::BOTTOM:
+          case Css::Identifier::CENTER:
             return true;
-            // We don't support BOTTOM, RIGHT, or CENTER
           default:
             return false;
         }
@@ -175,13 +182,26 @@ class SpriteFuture {
     return false;
   }
   // Attempt to actually perform the url substitution.  Initialize must have
-  // been called first.
-  bool Realize(const char* url, int x, int y, MessageHandler* handler) {
-    DCHECK(declarations_ != NULL);
+  // been called first, and must have returned true.
+  void Realize(const char* url, int x, int y) {
+    CHECK(x_value_ != NULL);
+    *url_value_ = Css::Value(Css::Value::URI, UTF8ToUnicodeText(url));
+    *x_value_ = Css::Value(x_offset_ - x, Css::Value::PX);
+    *y_value_ = Css::Value(y_offset_ - y, Css::Value::PX);
+    if ((declarations_ != NULL) && (declaration_to_push_ != NULL)) {
+      declarations_->push_back(declaration_to_push_);
+    }
+  }
+
+ private:
+  // Attempt to find the background position values, or create them if
+  // necessary.  If we return true, we should be all set for a call to
+  // Realize().  If we return false, Realize() must never be called.
+  bool FindBackgroundPositionValues(Css::Declarations* declarations) {
     // Find the original background offsets (if any) so we can add to them.
     bool position_found = false;
-    for (Css::Declarations::iterator decl_iter = declarations_->begin();
-         !position_found && (decl_iter != declarations_->end());
+    for (Css::Declarations::iterator decl_iter = declarations->begin();
+         !position_found && (decl_iter != declarations->end());
          ++decl_iter) {
       Css::Declaration* decl = *decl_iter;
       switch (decl->prop()) {
@@ -190,14 +210,12 @@ class SpriteFuture {
           if (decl_values->size() != 2) {
             // If only one of the coordinates is specified, the other is
             // "center", which we don't currently support.
-            handler->Info(url, 0, "Cannot realize sprite: decl_values != 2");
             return false;
           }
-          if (SetBackgroundPosition(decl_values, 0, x, y)) {
+          if (ReadBackgroundPosition(decl_values, 0)) {
             position_found = true;
           } else {
             // Upon failure here, we abort the sprite.
-            handler->Info(url, 0, "Cannot realize sprite: set bg pos");
             return false;
           }
           break;
@@ -206,7 +224,6 @@ class SpriteFuture {
         case Css::Property::BACKGROUND_POSITION_Y:
           // These are non-standard, though supported in IE and Chrome.
           // TODO(abliss): handle these.
-          handler->Info(url, 0, "Cannot realize sprite: bg pos_xy");
           return false;
         case Css::Property::BACKGROUND: {
           Css::Values* decl_values = decl->mutable_values();
@@ -217,12 +234,11 @@ class SpriteFuture {
           for (int i = 0, n = decl_values->size() - 1; i < n; ++i) {
             if (IsPositionValue(*(decl_values->at(i))) &&
                 IsPositionValue(*(decl_values->at(i + 1)))) {
-              if (SetBackgroundPosition(decl_values, i, x, y)) {
+              if (ReadBackgroundPosition(decl_values, i)) {
                 position_found = true;
                 break;
               } else {
                 // Upon failure here, we abort the sprite.
-                handler->Info(url, 0, "Cannot realize sprite: set bg");
                 return false;
               }
             }
@@ -237,22 +253,34 @@ class SpriteFuture {
       // If no position was specified, it defaults to "0% 0%", which is the same
       // as "0px 0px".
       Css::Values* values = new Css::Values();
-      values->push_back(new Css::Value(-x, Css::Value::PX));
-      values->push_back(new Css::Value(-y, Css::Value::PX));
-      declarations_->push_back(new Css::Declaration(
-          Css::Property::BACKGROUND_POSITION, values, false));
+      x_value_ = new Css::Value(0, Css::Value::PX);
+      values->push_back(x_value_);
+      y_value_ = new Css::Value(0, Css::Value::PX);
+      values->push_back(y_value_);
+      declarations_ = declarations;
+      declaration_to_push_ = new Css::Declaration(
+          Css::Property::BACKGROUND_POSITION, values, false);
     }
-    // Replace the old URL with the new one.
-    *(url_value_) = Css::Value(Css::Value::URI, UTF8ToUnicodeText(url));
 
     // TODO(abliss): consider specifying width and height.  Currently we are
     // assuming the node is already sized correctly.
     return true;
   }
+
   GoogleString old_url_;
-  Css::Declarations* declarations_;
+  // Pointer to the value where the url of the image is stored.
   Css::Value* url_value_;
- private:
+  // Pointer to the value where the background position x coordinate is stored.
+  Css::Value* x_value_;
+  // Pointer to the value where the background position y coordinate is stored.
+  Css::Value* y_value_;
+  // Optional pointer to a declarations object where a new declaration will be
+  // pushed.
+  Css::Declarations* declarations_;
+  // Optional pointer to a declaration object to be pushed onto declarations_.
+  Css::Declaration* declaration_to_push_;
+  int x_offset_;
+  int y_offset_;
   DISALLOW_COPY_AND_ASSIGN(SpriteFuture);
 };
 
@@ -548,9 +576,8 @@ class ImageCombineFilter::Combiner
     for (int i = num_elements() - 1; i >= 0; i--) {
       SpriteFuture* future = element(i);
       const spriter::Rect* clip_rect = url_to_clip_rect[future->old_url()];
-      if ((clip_rect != NULL)
-          && future->Realize(new_url_cstr, clip_rect->x_pos(),
-                             clip_rect->y_pos(), handler)) {
+      if (clip_rect != NULL) {
+        future->Realize(new_url_cstr, clip_rect->x_pos(), clip_rect->y_pos());
         replaced_urls.insert(future->old_url());
       }
     }
@@ -583,6 +610,7 @@ class ImageCombineFilter::Combiner
     }
     return (image_width >= width) && (image_height >= height);
   }
+
  private:
   StringSet added_urls_;
   Library library_;
@@ -620,6 +648,8 @@ bool ImageCombineFilter::Fetch(const OutputResourcePtr& resource,
                           message_handler, callback);
 }
 
+// We must not modify *declarations in this method, but we may hold pointers
+// through which we will modify it in DoCombine.
 TimedBool ImageCombineFilter::AddCssBackground(const GoogleUrl& original_url,
                                              Css::Declarations* declarations,
                                              Css::Value* url_value,
@@ -674,14 +704,13 @@ TimedBool ImageCombineFilter::AddCssBackground(const GoogleUrl& original_url,
   SpriteFuture* future = new SpriteFuture(original_url.Spec());
   ret = combiner_->AddElement(future, future->old_url(), handler);
   if (ret.value) {
-    if (combiner_->CheckMinImageDimensions(
-            original_url.Spec().as_string(), width, height)) {
-      future->Initialize(declarations, url_value);
-    } else {
+    if (!combiner_->CheckMinImageDimensions(
+            original_url.Spec().as_string(), width, height)
+        || !future->Initialize(declarations, url_value)) {
       combiner_->RemoveLastElement();
       // TODO(abliss): consider the case of scaled BG images (can we resize
       // them)?
-      handler->Message(kInfo, "Cannot sprite: image smaller than element.");
+      handler->Message(kInfo, "Cannot sprite: failed init.");
       ret.value = false;
       delete future;
     }

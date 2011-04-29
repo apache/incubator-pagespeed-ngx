@@ -48,9 +48,9 @@ class UrlLeftTrimFilter : public CommonFilter {
  public:
   UrlLeftTrimFilter(RewriteDriver* rewrite_driver, Statistics* stats);
   static void Initialize(Statistics* statistics);
-  virtual void StartDocumentImpl () {};
+  virtual void StartDocumentImpl() {}
   virtual void StartElementImpl(HtmlElement* element);
-  virtual void EndElementImpl(HtmlElement* element) {};
+  virtual void EndElementImpl(HtmlElement* element) {}
 
   virtual const char* Name() const { return "UrlLeftTrim"; }
 

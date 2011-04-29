@@ -28,9 +28,6 @@ namespace net_instaweb {
 
 class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
  protected:
-  UrlLeftTrimFilter left_trim_filter_;
-  GoogleUrl *base_url_;
-
   UrlLeftTrimFilterTest()
       : left_trim_filter_(&rewrite_driver_, statistics_),
         base_url_(NULL) {
@@ -42,7 +39,7 @@ class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
   }
 
   void OneTrim(bool changed,
-               const StringPiece init, const StringPiece expected) {
+               const StringPiece& init, const StringPiece& expected) {
     StringPiece url(init);
     GoogleString trimmed;
     CHECK(base_url_ != NULL);
@@ -64,6 +61,9 @@ class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
   virtual bool AddBody() const { return false; }
 
  private:
+  UrlLeftTrimFilter left_trim_filter_;
+  GoogleUrl *base_url_;
+
   DISALLOW_COPY_AND_ASSIGN(UrlLeftTrimFilterTest);
 };
 

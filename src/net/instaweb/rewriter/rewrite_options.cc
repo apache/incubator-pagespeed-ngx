@@ -102,7 +102,6 @@ RewriteOptions::RewriteOptions()
       js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
       css_outline_min_bytes_(kDefaultCssInlineMaxBytes),
       js_outline_min_bytes_(kDefaultJsInlineMaxBytes),
-      num_shards_(0),
       beacon_url_(kDefaultBeaconUrl),
       max_url_segment_size_(kDefaultMaxUrlSegmentSize),
       max_url_size_(kMaxUrlSize),
@@ -144,6 +143,7 @@ void RewriteOptions::SetUp() {
   name_filter_map_["remove_quotes"] = kRemoveQuotes;
   name_filter_map_["resize_images"] = kResizeImages;
   name_filter_map_["rewrite_css"] = kRewriteCss;
+  name_filter_map_["rewrite_domains"] = kRewriteDomains;
   name_filter_map_["rewrite_javascript"] = kRewriteJavascript;
   name_filter_map_["sprite_images"] = kSpriteImages;
   name_filter_map_["strip_scripts"] = kStripScripts;
@@ -175,6 +175,9 @@ void RewriteOptions::SetUp() {
   // can still be enabled individually.
   // level_filter_set_map_[kCoreFilters].insert(kRewriteCss);
   // level_filter_set_map_[kCoreFilters].insert(kRewriteJavascript);
+  //
+  // Same with rewrite_domains:
+  // level_filter_set_map_[kCoreFilters].insert(kRewriteDomains);
 
   // Copy CoreFilters set into TestingCoreFilters set ...
   level_filter_set_map_[kTestingCoreFilters] =
@@ -182,6 +185,7 @@ void RewriteOptions::SetUp() {
   // ... and add possibly unsafe filters.
   level_filter_set_map_[kTestingCoreFilters].insert(kMakeGoogleAnalyticsAsync);
   level_filter_set_map_[kTestingCoreFilters].insert(kRewriteCss);
+  level_filter_set_map_[kTestingCoreFilters].insert(kRewriteDomains);
   level_filter_set_map_[kTestingCoreFilters].insert(kRewriteJavascript);
 
   // Set complete set for all filters set.
@@ -310,8 +314,6 @@ void RewriteOptions::Merge(const RewriteOptions& first,
                                second.css_outline_min_bytes_);
   js_outline_min_bytes_.Merge(first.js_outline_min_bytes_,
                               second.js_outline_min_bytes_);
-  num_shards_.Merge(first.num_shards_,
-                    second.num_shards_);
   beacon_url_.Merge(first.beacon_url_,
                     second.beacon_url_);
   max_url_segment_size_.Merge(first.max_url_segment_size_,

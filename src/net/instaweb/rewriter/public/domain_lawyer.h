@@ -48,7 +48,7 @@ class MessageHandler;
 
 class DomainLawyer {
  public:
-  DomainLawyer() {}
+  DomainLawyer() : can_rewrite_domains_(false) {}
   ~DomainLawyer();
 
   // Determines whether a resource can be rewritten, and returns the domain
@@ -148,6 +148,10 @@ class DomainLawyer {
   // that this does not account for the actual domain shard selected.
   bool WillDomainChange(const StringPiece& domain_name) const;
 
+  // Determines whether any resources might be domain-mapped, either
+  // via sharding or rewriting.
+  bool can_rewrite_domains() const { return can_rewrite_domains_; }
+
  private:
   class Domain;
   typedef bool (Domain::*SetDomainFn)(Domain* domain, MessageHandler* handler);
@@ -174,6 +178,7 @@ class DomainLawyer {
   DomainMap domain_map_;
   typedef std::vector<Domain*> DomainVector;
   DomainVector wildcarded_domains_;
+  bool can_rewrite_domains_;
   // If you add more fields here, please be sure to update Merge().
 
   DISALLOW_COPY_AND_ASSIGN(DomainLawyer);

@@ -389,7 +389,6 @@ class RewriteDriver : public HtmlParse {
 
   AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
-  scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
   UserAgent user_agent_;
   std::vector<HtmlFilter*> filters_;
   ScanFilter scan_filter_;

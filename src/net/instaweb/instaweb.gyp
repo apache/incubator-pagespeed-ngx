@@ -506,6 +506,7 @@
         'rewriter/css_outline_filter.cc',
         'rewriter/css_tag_scanner.cc',
         'rewriter/data_url_input_resource.cc',
+        'rewriter/domain_rewrite_filter.cc',
         'rewriter/file_input_resource.cc',
         'rewriter/google_analytics_filter.cc',
         'rewriter/js_combine_filter.cc',

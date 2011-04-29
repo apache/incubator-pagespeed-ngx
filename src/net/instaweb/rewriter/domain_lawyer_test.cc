@@ -74,6 +74,7 @@ TEST_F(DomainLawyerTest, RelativeDomain) {
   GoogleString mapped_domain_name;
   ASSERT_TRUE(MapRequest(orig_request_, kResourceUrl, &mapped_domain_name));
   EXPECT_EQ(kRequestDomain, mapped_domain_name);
+  EXPECT_FALSE(domain_lawyer_.can_rewrite_domains());
 }
 
 TEST_F(DomainLawyerTest, AbsoluteDomain) {
@@ -81,6 +82,7 @@ TEST_F(DomainLawyerTest, AbsoluteDomain) {
   ASSERT_TRUE(MapRequest(orig_request_, StrCat(kRequestDomain, kResourceUrl),
                          &mapped_domain_name));
   EXPECT_EQ(kRequestDomain, mapped_domain_name);
+  EXPECT_FALSE(domain_lawyer_.can_rewrite_domains());
 }
 
 TEST_F(DomainLawyerTest, ExternalDomainNotDeclared) {
@@ -243,6 +245,7 @@ TEST_F(DomainLawyerTest, MapRewriteDomain) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("http://origin.com/",
                                        &message_handler_));
   ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com", "http://origin.com"));
+  EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
   // First try the mapping from origin.com to cdn.com
   GoogleString mapped_domain_name;
   ASSERT_TRUE(MapRequest(
@@ -377,7 +380,9 @@ TEST_F(DomainLawyerTest, AddMappingFailures) {
 }
 
 TEST_F(DomainLawyerTest, Shard) {
+  EXPECT_FALSE(domain_lawyer_.can_rewrite_domains());
   ASSERT_TRUE(AddShard("foo.com", "bar1.com,bar2.com"));
+  EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
   GoogleString shard;
   ASSERT_TRUE(domain_lawyer_.ShardDomain("http://foo.com/", 0, &shard));
   EXPECT_EQ(GoogleString("http://bar1.com/"), shard);

@@ -34,6 +34,7 @@
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
+#include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
@@ -146,6 +147,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     CacheExtender::Initialize(statistics);
     CssCombineFilter::Initialize(statistics);
     CssMoveToHeadFilter::Initialize(statistics);
+    DomainRewriteFilter::Initialize(statistics);
     GoogleAnalyticsFilter::Initialize(statistics);
     ImageRewriteFilter::Initialize(statistics);
     ImageCombineFilter::Initialize(statistics);
@@ -331,12 +333,23 @@ void RewriteDriver::AddFilters() {
     // Extend the cache lifetime of resources.
     EnableRewriteFilter(kCacheExtenderId);
   }
+  if (options_.domain_lawyer()->can_rewrite_domains() &&
+      options_.Enabled(RewriteOptions::kRewriteDomains)) {
+    // Rewrite mapped domains and shard any resources not otherwise rewritten.
+    // We want do do this after all the content-changing rewrites, because they
+    // will map & shard as part of their execution.
+    //
+    // TODO(jmarantz): Consider removing all the domain-mapping functionality
+    // from other rewrites and do it exclusively in this filter.  Before we
+    // do that we'll need to validate this filter so we can turn it on by
+    // default.
+    AddOwnedFilter(new DomainRewriteFilter(this, statistics()));
+  }
   if (options_.Enabled(RewriteOptions::kLeftTrimUrls)) {
     // Trim extraneous prefixes from urls in attribute values.
     // Happens before RemoveQuotes but after everything else.  Note:
     // we Must left trim urls BEFORE quote removal.
-    left_trim_filter_.reset(new UrlLeftTrimFilter(this, statistics()));
-    HtmlParse::AddFilter(left_trim_filter_.get());
+    AddOwnedFilter(new UrlLeftTrimFilter(this, statistics()));
   }
   if (options_.Enabled(RewriteOptions::kRemoveQuotes)) {
     // Remove extraneous quotes from html attributes.  Does this save
