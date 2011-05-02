@@ -14,7 +14,7 @@
 //
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/util/public/abstract_condvar.h"
+#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/apache/apr_mutex.h"
 
 #ifndef NET_INSTAWEB_APACHE_APR_CONDVAR_H_
@@ -24,8 +24,8 @@ struct apr_thread_cond_t;
 
 namespace net_instaweb {
 
-// Implementation of AbstractCondvar using apr_thread_cond_t.
-class AprCondvar : public AbstractCondvar {
+// Implementation of ThreadSystem::Condvar using apr_thread_cond_t.
+class AprCondvar : public ThreadSystem::Condvar {
  public:
   // The mutex is owned by the caller and must outlive the condvar.
   explicit AprCondvar(AprMutex* mutex);

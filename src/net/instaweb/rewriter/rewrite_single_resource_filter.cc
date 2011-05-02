@@ -66,7 +66,7 @@ class RewriteSingleResourceFilter::FetchCallback
     if (success) {
       // Call the rewrite hook.
       RewriteResult rewrite_result = filter_->RewriteLoadedResourceAndCacheIfOk(
-          input_resource_.get(), output_resource_);
+          input_resource_, output_resource_);
       success = (rewrite_result == kRewriteOk);
     }
 
@@ -149,7 +149,7 @@ CachedResult* RewriteSingleResourceFilter::RewriteWithCaching(
   CachedResult* ret = NULL;
   ResourcePtr input_resource(CreateInputResource(url));
   if (input_resource.get() != NULL) {
-    ret = RewriteExternalResource(input_resource.get(), data);
+    ret = RewriteExternalResource(input_resource, data);
   }
   return ret;
 }
@@ -164,12 +164,13 @@ bool RewriteSingleResourceFilter::ReuseByContentHash() const {
 
 RewriteSingleResourceFilter::RewriteResult
 RewriteSingleResourceFilter::RewriteLoadedResourceAndCacheIfOk(
-    const Resource* input_resource, const OutputResourcePtr& output_resource) {
+    const ResourcePtr& input_resource,
+    const OutputResourcePtr& output_resource) {
   CachedResult* result = output_resource->EnsureCachedResultCreated();
   result->set_input_timestamp_ms(input_resource->metadata()->timestamp_ms());
   UpdateCacheFormat(output_resource.get());
-  UpdateInputHash(input_resource, result);
-  RewriteResult res = RewriteLoadedResource(input_resource,
+  UpdateInputHash(input_resource.get(), result);
+  RewriteResult res = RewriteLoadedResource(input_resource.get(),
                                             output_resource.get());
   if (res == kRewriteOk) {
     CHECK(output_resource->type() != NULL);
@@ -195,7 +196,7 @@ void RewriteSingleResourceFilter::CacheRewriteFailure(
 }
 
 CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
-    Resource* input_resource, const ResourceContext* data) {
+    const ResourcePtr& input_resource, const ResourceContext* data) {
   MessageHandler* handler = driver_->message_handler();
 
   ResourceManager::Kind kind = ResourceManager::kRewrittenResource;
@@ -204,7 +205,7 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
   }
   OutputResourcePtr output_resource(
       driver_->CreateOutputResourceFromResource(
-          filter_prefix_, NULL, encoder(), data, input_resource, kind));
+          filter_prefix_, encoder(), data, input_resource, kind));
   if (output_resource.get() == NULL) {
     return NULL;
   }
@@ -222,12 +223,11 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
   // further below.
   bool check_input_hash = ReuseByContentHash();
   if (result != NULL && !(check_input_hash && IsOriginExpired(result))) {
-    return ReleaseCachedAfterAnyFreshening(input_resource,
-                                           output_resource.get());
+    return ReleaseCachedAfterAnyFreshening(input_resource, output_resource);
   }
 
-  HTTPCache::FindResult input_state =
-      driver_->ReadIfCachedWithStatus(input_resource);
+  HTTPCache::FindResult input_state = driver_->ReadIfCachedWithStatus(
+      input_resource);
   if (input_state == HTTPCache::kNotFound) {
     // The resource has not finished fetching yet; so the caller can't
     // rewrite but there is nothing for us to cache.
@@ -258,7 +258,7 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
                            input_resource->url().c_str());
 
           return ReleaseCachedAfterAnyFreshening(input_resource,
-                                                 output_resource.get());
+                                                 output_resource);
         }
       }
     }
@@ -300,7 +300,7 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
   }
 
   if (!ok) {
-    CacheRewriteFailure(input_resource, output_resource.get(), handler);
+    CacheRewriteFailure(input_resource.get(), output_resource.get(), handler);
   }
 
   // Note: we want to return this even if optimization failed in case the filter
@@ -335,7 +335,8 @@ bool RewriteSingleResourceFilter::IsOriginExpired(CachedResult* cached) const {
 }
 
 CachedResult* RewriteSingleResourceFilter::ReleaseCachedAfterAnyFreshening(
-    Resource* input_resource, OutputResource* output_resource) {
+    const ResourcePtr& input_resource,
+    const OutputResourcePtr& output_resource) {
   CachedResult* cached = output_resource->ReleaseCachedResult();
 
   // We may need to freshen here. Note that we check the metadata we have in

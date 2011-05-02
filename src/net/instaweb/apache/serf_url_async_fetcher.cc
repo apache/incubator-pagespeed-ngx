@@ -88,8 +88,7 @@ std::string GetAprErrorString(apr_status_t status) {
 class SerfFetch : public PoolElement<SerfFetch> {
  public:
   // TODO(lsong): make use of request_headers.
-  SerfFetch(apr_pool_t* pool,
-            const std::string& url,
+  SerfFetch(const std::string& url,
             const RequestHeaders& request_headers,
             ResponseHeaders* response_headers,
             Writer* fetched_content_writer,
@@ -104,20 +103,22 @@ class SerfFetch : public PoolElement<SerfFetch> {
         fetched_content_writer_(fetched_content_writer),
         message_handler_(message_handler),
         callback_(callback),
+        pool_(NULL),  // filled in once assigned to a thread, to use its pool.
+        bucket_alloc_(NULL),
         connection_(NULL),
         bytes_received_(0),
         fetch_start_ms_(0),
         fetch_end_ms_(0) {
     request_headers_.CopyFrom(request_headers);
-    apr_pool_create(&pool_, pool);
-    bucket_alloc_ = serf_bucket_allocator_create(pool_, NULL, NULL);
   }
 
   ~SerfFetch() {
     if (connection_ != NULL) {
       serf_connection_close(connection_);
     }
-    apr_pool_destroy(pool_);
+    if (pool_ != NULL) {
+      apr_pool_destroy(pool_);
+    }
   }
 
   // Start the fetch. It returns immediately.  This can only be run when
@@ -636,8 +637,13 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
 };
 
 bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher) {
-  fetch_start_ms_ = timer_->NowMs();
+  // Note: this is called in the thread's context, so this is when we do
+  // the pool ops.
   fetcher_ = fetcher;
+  apr_pool_create(&pool_, fetcher_->pool());
+  bucket_alloc_ = serf_bucket_allocator_create(pool_, NULL, NULL);
+
+  fetch_start_ms_ = timer_->NowMs();
   // Parse and validate the URL.
   if (!ParseUrl()) {
     return false;
@@ -698,7 +704,7 @@ bool SerfUrlAsyncFetcher::SetupProxy(const char* proxy) {
 SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
                                          Statistics* statistics, Timer* timer,
                                          int64 timeout_ms)
-    : pool_(pool),
+    : pool_(NULL),
       timer_(timer),
       mutex_(NULL),
       serf_context_(NULL),
@@ -722,17 +728,13 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
     timeout_count_ = statistics->GetVariable(
         SerfStats::kSerfFetchTimeoutCount);
   }
-  mutex_ = new AprMutex(pool_);
-  serf_context_ = serf_context_create(pool_);
+  Init(pool, proxy);
   threaded_fetcher_ = new SerfThreadedFetcher(this, proxy);
-  if (!SetupProxy(proxy)) {
-    LOG(WARNING) << "Proxy failed: " << proxy;
-  }
 }
 
 SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
                                          const char* proxy)
-    : pool_(parent->pool_),
+    : pool_(NULL),
       timer_(parent->timer_),
       mutex_(NULL),
       serf_context_(NULL),
@@ -744,12 +746,8 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       cancel_count_(parent->cancel_count_),
       timeout_count_(parent->timeout_count_),
       timeout_ms_(parent->timeout_ms()) {
-  mutex_ = new AprMutex(pool_);
-  serf_context_ = serf_context_create(pool_);
+  Init(parent->pool(), proxy);
   threaded_fetcher_ = NULL;
-  if (!SetupProxy(proxy)) {
-    LOG(WARNING) << "Proxy failed: " << proxy;
-  }
 }
 
 SerfUrlAsyncFetcher::~SerfUrlAsyncFetcher() {
@@ -772,6 +770,32 @@ SerfUrlAsyncFetcher::~SerfUrlAsyncFetcher() {
     delete threaded_fetcher_;
   }
   delete mutex_;
+  apr_pool_destroy(pool_);  // also calls apr_allocator_destroy on the allocator
+}
+
+void SerfUrlAsyncFetcher::Init(apr_pool_t* parent_pool, const char* proxy) {
+  // Here, we give each our Serf threads' (main and work) separate pools
+  // with separate allocators. This is done because:
+  //
+  // 1) Concurrent allocations from the same pools are not (thread)safe.
+  // 2) Concurrent allocations from different pools using the same allocator
+  //    are not safe unless the allocator has a mutex set.
+  // 3) prefork's pchild pool (which is our ancestor) has an allocator without
+  //    a mutex set.
+  //
+  // Note: the above is all about the release version of the pool code, the
+  // checking one has some additional locking!
+  apr_allocator_t* allocator = NULL;
+  CHECK(apr_allocator_create(&allocator) == APR_SUCCESS);
+  apr_pool_create_ex(&pool_, parent_pool, NULL /*abortfn*/, allocator);
+  apr_allocator_owner_set(allocator, pool_);
+
+  mutex_ = new AprMutex(pool_);
+  serf_context_ = serf_context_create(pool_);
+
+  if (!SetupProxy(proxy)) {
+    LOG(WARNING) << "Proxy failed: " << proxy;
+  }
 }
 
 void SerfUrlAsyncFetcher::CancelActiveFetches() {
@@ -803,7 +827,7 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
                                          MessageHandler* message_handler,
                                          UrlAsyncFetcher::Callback* callback) {
   SerfFetch* fetch = new SerfFetch(
-      pool_, url, request_headers, response_headers, fetched_content_writer,
+      url, request_headers, response_headers, fetched_content_writer,
       message_handler, callback, timer_);
   request_count_->Add(1);
   if (callback->EnableThreaded()) {

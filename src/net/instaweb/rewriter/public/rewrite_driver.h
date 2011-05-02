@@ -201,14 +201,12 @@ class RewriteDriver : public HtmlParse {
   // See comments in resource_manager.h
   OutputResourcePtr CreateOutputResourceFromResource(
       const StringPiece& filter_prefix,
-      const ContentType* content_type,
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
-      Resource* input_resource,
+      const ResourcePtr& input_resource,
       ResourceManager::Kind kind) {
     return resource_manager_->CreateOutputResourceFromResource(
-        &options_, filter_prefix, content_type, encoder, data, input_resource,
-        kind);
+        &options_, filter_prefix, encoder, data, input_resource, kind);
   }
 
   // See comments in resource_manager.h
@@ -251,7 +249,7 @@ class RewriteDriver : public HtmlParse {
   bool ReadIfCached(const ResourcePtr& resource);
 
   // As above, but distinguishes between unavailable in cache and not found
-  HTTPCache::FindResult ReadIfCachedWithStatus(Resource* resource);
+  HTTPCache::FindResult ReadIfCachedWithStatus(const ResourcePtr& resource);
 
   // Returns the appropriate base gurl to be used for resolving hrefs
   // in the document.  Note that HtmlParse::google_url() is the URL

@@ -30,7 +30,7 @@ class MockHasher : public Hasher {
  public:
   MockHasher()
       : Hasher(kint32max),
-        hash_value_("\xd0") { // base64-encodes to "0"
+        hash_value_("\xd0") {  // base64-encodes to "0"
   }
 
   virtual ~MockHasher();

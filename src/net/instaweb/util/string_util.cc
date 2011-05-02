@@ -18,8 +18,8 @@
 
 #include "net/instaweb/util/public/string_util.h"
 #include <algorithm>
+#include <cctype>
 #include <cstddef>
-#include <ctype.h>
 #include <vector>
 
 #include "base/logging.h"
@@ -161,7 +161,7 @@ void ParseShellLikeString(const StringPiece& input,
     else if (!isspace(ch)) {
       output->push_back("");
       GoogleString& part = output->back();
-      for (;index < input.size() && !isspace(input[index]); ++index) {
+      for (; index < input.size() && !isspace(input[index]); ++index) {
         part.push_back(input[index]);
       }
     }

@@ -91,7 +91,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
     if ((input_resource.get() != NULL) &&
         !IsRewrittenResource(input_resource->url())) {
       scoped_ptr<CachedResult> rewrite_info(
-          RewriteExternalResource(input_resource.get(), NULL));
+          RewriteExternalResource(input_resource, NULL));
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
         // Rewrite URL to cache-extended version
         href->SetValue(rewrite_info->url());

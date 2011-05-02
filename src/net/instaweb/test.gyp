@@ -116,6 +116,7 @@
         'rewriter/resource_namer_test.cc',
         'rewriter/resource_slot_test.cc',
         'rewriter/resource_tag_scanner_test.cc',
+        'rewriter/rewrite_context_test.cc',
         'rewriter/rewrite_driver_test.cc',
         'rewriter/rewrite_options_test.cc',
         'rewriter/rewrite_single_resource_filter_test.cc',
@@ -147,6 +148,7 @@
         'util/mock_message_handler_test.cc',
         'util/pthread_condvar_test.cc',
         'util/pthread_shared_mem_test.cc',
+        'util/pthread_thread_system_test.cc',
         'util/pool_test.cc',
         'util/query_params_test.cc',
         'util/ref_counted_ptr_test.cc',
@@ -158,6 +160,8 @@
         'util/string_multi_map_test.cc',
         'util/string_util_test.cc',
         'util/symbol_table_test.cc',
+        'util/thread_system_test_base.cc',
+        'util/threadsafe_cache_test.cc',
         'util/time_util_test.cc',
         'util/timer_based_lock_test.cc',
         'util/url_escaper_test.cc',
@@ -168,7 +172,6 @@
         'util/write_through_cache_test.cc',
 #        'util/split_writer_test.cc',               # not currently needed
 #        'util/stdio_file_system_test.cc',          # not currently needed
-#        'util/threadsafe_cache_test.cc',           # not currently needed
       ],
     },
 

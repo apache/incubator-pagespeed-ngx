@@ -18,7 +18,7 @@
 
 #include "net/instaweb/util/public/url_escaper.h"
 
-#include <ctype.h>
+#include <cctype>
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

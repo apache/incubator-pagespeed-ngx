@@ -38,7 +38,7 @@ class FileCacheTest : public CacheTestBase {
   FileCacheTest()
       : mock_timer_(0),
         kCleanIntervalMs(Timer::kMinuteMs),
-        kTargetSize(12), // Small enough to overflow with a few strings.
+        kTargetSize(12),  // Small enough to overflow with a few strings.
         cache_(GTestTempDir(), &file_system_, &filename_encoder_,
                new FileCache::CachePolicy(
                    &mock_timer_, kCleanIntervalMs, kTargetSize),
@@ -50,7 +50,7 @@ class FileCacheTest : public CacheTestBase {
     file_system_.ReadFile(cache_.clean_time_path_.c_str(), &buffer,
                            &message_handler_);
     int64 clean_time_ms;
-    StringToInt64(buffer,&clean_time_ms);
+    StringToInt64(buffer, &clean_time_ms);
     EXPECT_LT(min_time_ms, clean_time_ms);
   }
 

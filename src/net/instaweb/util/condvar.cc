@@ -14,10 +14,12 @@
 //
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/util/public/abstract_condvar.h"
+#include "net/instaweb/util/public/condvar.h"
+
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
-AbstractCondvar::~AbstractCondvar() { }
+ThreadSystem::Condvar::~Condvar() { }
 
 }  // namespace net_instaweb

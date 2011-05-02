@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
+
 class SharedString;
 
 // Composes two caches to form a write-through cache.

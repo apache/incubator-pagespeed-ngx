@@ -17,18 +17,19 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_CONDVAR_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_CONDVAR_H_
 
-#include "net/instaweb/util/public/abstract_condvar.h"
-
 #include <pthread.h>
+
+#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
 
 namespace net_instaweb {
 
-class PthreadCondvar : public AbstractCondvar {
+class PthreadCondvar : public ThreadSystem::Condvar {
  public:
   // The mutex is owned by the caller and must outlive the condvar.
-  PthreadCondvar(PthreadMutex* mutex)
+  explicit PthreadCondvar(PthreadMutex* mutex)
       : mutex_(mutex) {
     Init();
   }

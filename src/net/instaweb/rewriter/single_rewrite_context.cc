@@ -50,20 +50,26 @@ bool SingleRewriteContext::PartitionAndRewrite(OutputPartitions* partitions) {
   // We CHECK num_slots because there's no way we should be creating
   // a RewriteContext for this filter with more than one slot.
   CHECK_EQ(1, num_slots());
-  ResourcePtr resource(slot(0)->resource());
-
-  ResourceManager::Kind kind = ResourceManager::kRewrittenResource;
-  if (ComputeOnTheFly()) {
-    kind = ResourceManager::kOnTheFlyResource;
-  }
-  OutputResourcePtr output_resource(
-      resource_manager()->CreateOutputResourceFromResource(
-          options(), RewriteDriver::kJavascriptMinId, NULL, encoder(),
-          resource_context(), resource.get(), kind));
+  RewriteSingleResourceFilter::RewriteResult result =
+      RewriteSingleResourceFilter::kRewriteFailed;
   OutputPartition* partition = partitions->add_partition();
-  output_resource->set_cached_result(partition->mutable_result());
+
+  ResourcePtr resource(slot(0)->resource());
+  if ((resource.get() != NULL) && resource->loaded() &&
+      resource->ContentsValid()) {
+    ResourceManager::Kind kind = ResourceManager::kRewrittenResource;
+    if (ComputeOnTheFly()) {
+      kind = ResourceManager::kOnTheFlyResource;
+    }
+    OutputResourcePtr output_resource(
+        resource_manager()->CreateOutputResourceFromResource(
+            options(), id(), encoder(), resource_context(), resource, kind));
+    output_resource->set_cached_result(partition->mutable_result());
+    result = Rewrite(resource.get(), output_resource.get());
+  }
+
   bool ret = true;
-  switch (Rewrite(resource.get(), output_resource.get())) {
+  switch (result) {
     case RewriteSingleResourceFilter::kRewriteOk:
       partition->add_input(0);
       break;

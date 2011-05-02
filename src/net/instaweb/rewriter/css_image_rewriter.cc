@@ -101,7 +101,7 @@ TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
                        old_rel_url_str.c_str());
       ResourceContext dim;
       rewrite_info.reset(image_rewriter_->RewriteExternalResource(
-          input_resource.get(), &dim));
+          input_resource, &dim));
       ret.expiration_ms = ExpirationTimeMs(rewrite_info.get());
       if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
         image_rewrites_->Add(1);
@@ -114,7 +114,7 @@ TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
       handler->Message(kInfo, "Attempting to cache extend image %s",
                        old_rel_url_str.c_str());
       rewrite_info.reset(
-          cache_extender_->RewriteExternalResource(input_resource.get(), NULL));
+          cache_extender_->RewriteExternalResource(input_resource, NULL));
       ret.expiration_ms = std::min(ret.expiration_ms,
                            ExpirationTimeMs(rewrite_info.get()));
 

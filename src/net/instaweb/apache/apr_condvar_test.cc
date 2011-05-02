@@ -87,7 +87,7 @@ TEST_F(AprCondvarTest, BlindSignals) {
 }
 
 TEST_F(AprCondvarTest, BroadcastBlindSignals) {
-  signal_method_ = &AbstractCondvar::Broadcast;
+  signal_method_ = &ThreadSystem::Condvar::Broadcast;
   BlindSignalsTest();
 }
 
@@ -96,7 +96,7 @@ TEST_F(AprCondvarTest, TestPingPong) {
 }
 
 TEST_F(AprCondvarTest, BroadcastTestPingPong) {
-  signal_method_ = &AbstractCondvar::Broadcast;
+  signal_method_ = &ThreadSystem::Condvar::Broadcast;
   PingPongTest();
 }
 
@@ -115,7 +115,7 @@ TEST_F(AprCondvarTest, TimeoutPingPong) {
 }
 
 TEST_F(AprCondvarTest, BroadcastTimeoutPingPong) {
-  signal_method_ = &AbstractCondvar::Broadcast;
+  signal_method_ = &ThreadSystem::Condvar::Broadcast;
   TimeoutPingPongTest();
 }
 

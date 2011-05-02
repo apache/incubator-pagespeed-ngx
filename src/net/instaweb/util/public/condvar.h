@@ -14,24 +14,23 @@
 //
 // Author: jmaessen@google.com (Jan Maessen)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_CONDVAR_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_CONDVAR_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_CONDVAR_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_CONDVAR_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
-class AbstractMutex;
-
 // Abstract interface for implementing a condition variable layered on top of a
-// given mutex type, which ought to extend AbstractMutex.
-class AbstractCondvar {
+// given mutex type, which ought to extend CondvarCapableMutex.
+class ThreadSystem::Condvar {
  public:
-  AbstractCondvar() { }
-  virtual ~AbstractCondvar();
+  Condvar() { }
+  virtual ~Condvar();
 
   // Return the mutex associated with this condition variable.
-  virtual const AbstractMutex* mutex() const = 0;
+  virtual const CondvarCapableMutex* mutex() const = 0;
 
   // Signal the condvar, waking a waiting thread if any.  mutex() must be held
   // by caller.  Example:
@@ -58,14 +57,14 @@ class AbstractCondvar {
   // }
   virtual void Wait() = 0;
 
-  // Wait for condition to be signaled, or timeout to occur.  Works like Wait(), and
-  // cv.mutex() must be held on entry and re-taken on exit.
+  // Wait for condition to be signaled, or timeout to occur.  Works like Wait(),
+  // and cv.mutex() must be held on entry and re-taken on exit.
   virtual void TimedWait(int64 timeout_ms) = 0;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(AbstractCondvar);
+  DISALLOW_COPY_AND_ASSIGN(Condvar);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_CONDVAR_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_CONDVAR_H_

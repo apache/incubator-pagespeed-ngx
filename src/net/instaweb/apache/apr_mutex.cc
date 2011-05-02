@@ -17,6 +17,8 @@
 #include "apr_pools.h"
 #include "apr_thread_mutex.h"
 
+#include "net/instaweb/apache/apr_condvar.h"
+
 namespace net_instaweb {
 
 AprMutex::AprMutex(apr_pool_t* pool) {
@@ -28,11 +30,15 @@ AprMutex::~AprMutex() {
 }
 
 void AprMutex::Lock() {
-    apr_thread_mutex_lock(thread_mutex_);
+  apr_thread_mutex_lock(thread_mutex_);
 }
 
 void AprMutex::Unlock() {
-    apr_thread_mutex_unlock(thread_mutex_);
+  apr_thread_mutex_unlock(thread_mutex_);
+}
+
+ThreadSystem::Condvar* AprMutex::NewCondvar() {
+  return new AprCondvar(this);
 }
 
 }  // namespace net_instaweb

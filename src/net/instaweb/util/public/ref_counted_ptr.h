@@ -28,8 +28,8 @@
 //
 // TODO(jmaessen): explore adding C++x0 shared_ptr support
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_PTR_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_PTR_H_
 
 #include "net/instaweb/util/public/basictypes.h"
 
@@ -139,4 +139,4 @@ class RefCountedObj {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_PTR_H_

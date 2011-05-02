@@ -16,7 +16,7 @@
 #define NET_INSTAWEB_APACHE_APR_MUTEX_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/condvar.h"
 
 // Forward declaration.
 struct apr_thread_mutex_t;
@@ -24,12 +24,14 @@ struct apr_pool_t;
 
 namespace net_instaweb {
 
-class AprMutex : public net_instaweb::AbstractMutex {
+class AprMutex : public ThreadSystem::CondvarCapableMutex {
  public:
   explicit AprMutex(apr_pool_t* pool);
   virtual ~AprMutex();
   virtual void Lock();
   virtual void Unlock();
+  virtual ThreadSystem::Condvar* NewCondvar();
+
  private:
   friend class AprCondvar;
 

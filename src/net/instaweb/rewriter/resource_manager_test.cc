@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/resource_manager_testing_peer.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -246,13 +247,12 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     return ok;
   }
 
-  // Makes an output resource corresponding to given input resource of
-  // given content type
-  OutputResourcePtr CreateTestOutputResource(Resource* input_resource,
-                                             const ContentType* content_type) {
+  // Make an output resource with the same type as the input resource.
+  OutputResourcePtr CreateTestOutputResource(
+      const ResourcePtr& input_resource) {
     rewrite_driver_.SetBaseUrlForFetch(input_resource->url());
     return rewrite_driver_.CreateOutputResourceFromResource(
-        "tf", content_type, rewrite_driver_.default_encoder(), NULL,
+        "tf", rewrite_driver_.default_encoder(), NULL,
         input_resource, ResourceManager::kRewrittenResource);
   }
 
@@ -319,8 +319,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     ResourcePtr input(rewrite_driver_.CreateInputResource(path_url));
     ASSERT_TRUE(input.get() != NULL);
 
-    OutputResourcePtr output(
-        CreateTestOutputResource(input.get(), &kContentTypePng));
+    OutputResourcePtr output(CreateTestOutputResource(input));
 
     ASSERT_TRUE(output.get() != NULL);
     EXPECT_EQ(NULL, output->cached_result());
@@ -347,14 +346,18 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     // Now create the output resource again. We should recover the info,
     // including everything in cached_result and the URL and content-type
-    // for the resource (notice this is passing NULL for content-type)
-    output.reset(CreateTestOutputResource(input.get(), NULL));
+    // for the resource (notice this is passing an input resource that
+    // lacks a content type.
+    ResourcePtr resource_without_content_type(new UrlInputResource(
+        resource_manager_, &options_, NULL, input->url()));
+    EXPECT_TRUE(resource_without_content_type->type() == NULL);
+    output.reset(CreateTestOutputResource(resource_without_content_type));
     VerifyValidCachedResult("initial cached", test_meta_data, output.get(),
                             producedUrl, kTtlMs);
 
     // Fast-forward the time, to make sure the entry's TTL passes.
     mock_timer()->advance_ms(kTtlMs + 1);
-    output.reset(CreateTestOutputResource(input.get(), &kContentTypePng));
+    output.reset(CreateTestOutputResource(input));
 
     if (auto_expire) {
       EXPECT_EQ(NULL, output->cached_result());
@@ -377,13 +380,13 @@ class ResourceManagerTest : public ResourceManagerTestBase {
         "initial unopt", test_meta_data, output.get(), next_expire);
 
     // Make a new resource, test for cached data getting fetched
-    output.reset(CreateTestOutputResource(input.get(), NULL));
+    output.reset(CreateTestOutputResource(resource_without_content_type));
     VerifyUnoptimizableCachedResult(
         "unopt cached", test_meta_data, output.get(), next_expire);
 
     // Now test expiration
     mock_timer()->advance_ms(kTtlMs);
-    output.reset(CreateTestOutputResource(input.get(), &kContentTypePng));
+    output.reset(CreateTestOutputResource(input));
     if (auto_expire) {
       EXPECT_EQ(NULL, output->cached_result());
     } else {
@@ -475,9 +478,8 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
   // CDN per the rewrite mapping.
   OutputResourcePtr output(
       rewrite_driver_.CreateOutputResourceFromResource(
-          RewriteDriver::kCacheExtenderId, input->type(),
-          rewrite_driver_.default_encoder(), NULL,
-          input.get(), ResourceManager::kRewrittenResource));
+          RewriteDriver::kCacheExtenderId, rewrite_driver_.default_encoder(),
+          NULL, input, ResourceManager::kRewrittenResource));
   ASSERT_TRUE(output.get() != NULL);
 
   // We need to 'Write' an output resource before we can determine its
@@ -506,11 +508,9 @@ TEST_F(ResourceManagerTest, TestInputResourceQuery) {
   ResourcePtr resource(CreateResource(kResourceUrlBase, kUrl));
   ASSERT_TRUE(resource.get() != NULL);
   EXPECT_EQ(StrCat(GoogleString(kResourceUrlBase), "/", kUrl), resource->url());
-  OutputResourcePtr output(
-    rewrite_driver_.CreateOutputResourceFromResource(
-      "sf", &kContentTypeCss,
-      rewrite_driver_.default_encoder(), NULL,
-      resource.get(), ResourceManager::kRewrittenResource));
+  OutputResourcePtr output(rewrite_driver_.CreateOutputResourceFromResource(
+      "sf", rewrite_driver_.default_encoder(), NULL, resource,
+      ResourceManager::kRewrittenResource));
   ASSERT_TRUE(output.get() != NULL);
 
   GoogleString included_name;

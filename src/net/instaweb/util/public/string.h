@@ -4,8 +4,8 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_STRING_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_H_
 
-#include <string>
 #include <string.h>
+#include <string>
 
 typedef std::string GoogleString;
 

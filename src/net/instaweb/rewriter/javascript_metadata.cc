@@ -26,7 +26,9 @@ static const LibraryInfo kLibraryMetadata[] = {
     { "prototype", "1.6.0.3",
       0x6d056fb74c5f131cULL, 0xe63b907ad7e2163cULL, 95347},
     { "prototype", "1.6.1.0",
-      0x6ddb883a16ace985ULL, 0xea6f76a9731dc118ULL, 105569}
+      0x6ddb883a16ace985ULL, 0xea6f76a9731dc118ULL, 105569},
+    { "prototype", "1.6.1.0",
+      0x6ddb883a16ace985ULL, 0x0ba931f44d5ddeebULL, 105527}
 };
 
 }  // namespace net_instaweb

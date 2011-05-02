@@ -87,7 +87,9 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
  protected:
   typedef Pool<SerfFetch> SerfFetchPool;
 
+  void Init(apr_pool_t* parent_pool, const char* proxy);
   bool SetupProxy(const char* proxy);
+
   // AnyPendingFetches is accurate only at the time of call; this is
   // used conservatively during shutdown.  It counts fetches that have been
   // requested by some thread, and can include fetches for which no action

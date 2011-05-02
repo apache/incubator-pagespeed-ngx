@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,36 +14,30 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
+// Author: morlovich@google.com (Maksim Orlovich)
+//
+// Implementation of the Thread class, which routes things to an underlying
+// ThreadImpl.
 
-#include "net/instaweb/util/public/pthread_mutex.h"
-
-#include <pthread.h>
-#include <cstddef>
-#include "net/instaweb/util/public/pthread_condvar.h"
+#include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
-PthreadMutex::PthreadMutex() {
-  pthread_mutex_init(&mutex_, NULL);
+ThreadSystem::Thread::Thread(ThreadSystem* runtime, ThreadFlags flags)
+    : impl_(runtime->NewThreadImpl(this, flags)) {
 }
 
-PthreadMutex::~PthreadMutex() {
-  pthread_mutex_destroy(&mutex_);
+ThreadSystem::Thread::~Thread() {
 }
 
-void PthreadMutex::Lock() {
-  pthread_mutex_lock(&mutex_);
+bool ThreadSystem::Thread::Start() {
+  return impl_->StartImpl();
 }
 
-void PthreadMutex::Unlock() {
-  pthread_mutex_unlock(&mutex_);
+void ThreadSystem::Thread::Join() {
+  impl_->JoinImpl();
 }
-
-ThreadSystem::Condvar* PthreadMutex::NewCondvar() {
-  return new PthreadCondvar(this);
-}
-
 
 }  // namespace net_instaweb

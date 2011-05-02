@@ -80,7 +80,7 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   // width and height.
   //
   // Precondition: in != NULL, in is security-checked
-  CachedResult* RewriteExternalResource(Resource* in,
+  CachedResult* RewriteExternalResource(const ResourcePtr& in,
                                         const ResourceContext* data);
 
  protected:
@@ -152,13 +152,15 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   // Releases a valid cached result inside output_resource,
   // taking care to freshen the input if needed.
   CachedResult* ReleaseCachedAfterAnyFreshening(
-      Resource* input_resource, OutputResource* output_resource);
+      const ResourcePtr& input_resource,
+      const OutputResourcePtr& output_resource);
 
   // Tries to rewrite input_resource to output_resource, and if successful
   // updates the cache as appropriate. Does not call WriteUnoptimizable on
   // failure.
   RewriteResult RewriteLoadedResourceAndCacheIfOk(
-      const Resource* input_resource, const OutputResourcePtr& output_resource);
+      const ResourcePtr& input_resource,
+      const OutputResourcePtr& output_resource);
 
   // Records that rewrite of input -> output failed (either due to
   // unavailability of input or failed conversion).

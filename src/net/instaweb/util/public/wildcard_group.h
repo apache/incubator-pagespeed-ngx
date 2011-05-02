@@ -16,8 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_SELECTOR_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_SELECTOR_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_WILDCARD_GROUP_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_WILDCARD_GROUP_H_
 
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
@@ -75,4 +75,4 @@ class WildcardGroup {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_SELECTOR_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_WILDCARD_GROUP_H_

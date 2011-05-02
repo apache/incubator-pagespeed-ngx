@@ -372,13 +372,12 @@ void ResourceManager::ReadAsync(Resource::AsyncCallback* callback) {
 OutputResourcePtr ResourceManager::CreateOutputResourceFromResource(
     const RewriteOptions* options,
     const StringPiece& filter_id,
-    const ContentType* content_type,
     const UrlSegmentEncoder* encoder,
     const ResourceContext* data,
-    Resource* input_resource,
+    const ResourcePtr& input_resource,
     Kind kind) {
   OutputResourcePtr result;
-  if (input_resource != NULL) {
+  if (input_resource.get() != NULL) {
     // TODO(jmarantz): It would be more efficient to pass in the base
     // document GURL or save that in the input resource.
     GoogleUrl gurl(input_resource->url());
@@ -391,7 +390,7 @@ OutputResourcePtr ResourceManager::CreateOutputResourceFromResource(
       encoder->Encode(v, data, &name);
       result.reset(CreateOutputResourceWithPath(
           options, mapped_gurl->AllExceptLeaf(),
-          filter_id, name, content_type, kind));
+          filter_id, name, input_resource->type(), kind));
     }
   }
   return result;

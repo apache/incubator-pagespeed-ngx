@@ -19,9 +19,9 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_ARENA_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_ARENA_H_
 
+#include <stdint.h>
 #include <vector>
 #include <cstddef>
-#include <stdint.h>
 
 #include "base/logging.h"
 

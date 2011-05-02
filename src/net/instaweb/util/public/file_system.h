@@ -227,7 +227,7 @@ class FileSystem {
   // than the given number of milliseconds.  (The default implementation never
   // actually breaks locks.)  If you obtain a lock through this method, there
   // are no hard guarantees that nobody else has it too.
-   // <blink> If you use this function, your lock becomes "best-effort". </blink>
+  // <blink> If you use this function, your lock becomes "best-effort". </blink>
   virtual BoolOrError TryLockWithTimeout(const StringPiece& lock_name,
                                          int64 timeout_millis,
                                          MessageHandler* handler) {

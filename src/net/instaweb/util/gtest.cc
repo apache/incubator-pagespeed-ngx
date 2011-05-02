@@ -17,13 +17,13 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //
 
-#include <unistd.h>
-
-#include "net/instaweb/util/stack_buffer.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
+#include <unistd.h>  // For getpid()
+#include <vector>
+#include "net/instaweb/util/stack_buffer.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "third_party/gflags/src/google/gflags.h"
 
 namespace net_instaweb {

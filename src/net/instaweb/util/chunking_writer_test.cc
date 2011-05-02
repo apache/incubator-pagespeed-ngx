@@ -39,7 +39,7 @@ namespace {
 // trigger failures on a given operation.
 class TracingWriter : public Writer {
  public:
-  TracingWriter(MessageHandler* expected_handler) :
+  explicit TracingWriter(MessageHandler* expected_handler) :
       expected_handler_(expected_handler), ops_(0), fail_on_op_(-1) {
   }
 
@@ -121,7 +121,8 @@ TEST_F(ChunkingWriterTest, ChunkedBasicLong) {
   SetUpWithLimit(4);
   EXPECT_TRUE(chunker_->Write("abcdefghijklmnopqrs", &message_handler_));
   EXPECT_TRUE(chunker_->Flush(&message_handler_));
-  EXPECT_EQ("W:abcd|F|W:efgh|F|W:ijkl|F|W:mnop|F|W:qrs|F|", tracer_->recorded());
+  EXPECT_EQ("W:abcd|F|W:efgh|F|W:ijkl|F|W:mnop|F|W:qrs|F|",
+            tracer_->recorded());
 }
 
 TEST_F(ChunkingWriterTest, ChunkedManualFlush) {

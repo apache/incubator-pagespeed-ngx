@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,10 +21,10 @@
 
 #include <cstddef>
 #include <cstdlib>
-#include "net/instaweb/util/public/string.h"
 #include <vector>
 #include "base/logging.h"
 #include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace {

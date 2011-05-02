@@ -709,11 +709,11 @@ void RewriteDriver::ReadAsync(Resource::AsyncCallback* callback,
 }
 
 bool RewriteDriver::ReadIfCached(const ResourcePtr& resource) {
-  return (ReadIfCachedWithStatus(resource.get()) == HTTPCache::kFound);
+  return (ReadIfCachedWithStatus(resource) == HTTPCache::kFound);
 }
 
 HTTPCache::FindResult RewriteDriver::ReadIfCachedWithStatus(
-    Resource* resource) {
+    const ResourcePtr& resource) {
   HTTPCache::FindResult result = HTTPCache::kNotFound;
   MessageHandler* handler = message_handler();
 
@@ -730,7 +730,7 @@ HTTPCache::FindResult RewriteDriver::ReadIfCachedWithStatus(
   }
   if (result == HTTPCache::kFound) {
     resource->DetermineContentType();
-    resource_manager_->RefreshIfImminentlyExpiring(resource, handler);
+    resource_manager_->RefreshIfImminentlyExpiring(resource.get(), handler);
   }
   return result;
 }

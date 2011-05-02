@@ -17,12 +17,13 @@
 #include "net/instaweb/util/public/pthread_condvar.h"
 
 #include <pthread.h>
-#include "net/instaweb/util/public/abstract_condvar.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/condvar_test_base.h"
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 class Timer;
@@ -66,7 +67,7 @@ TEST_F(PthreadCondvarTest, BlindSignals) {
 }
 
 TEST_F(PthreadCondvarTest, BroadcastBlindSignals) {
-  signal_method_ = &AbstractCondvar::Broadcast;
+  signal_method_ = &ThreadSystem::Condvar::Broadcast;
   BlindSignalsTest();
 }
 
@@ -75,7 +76,7 @@ TEST_F(PthreadCondvarTest, TestPingPong) {
 }
 
 TEST_F(PthreadCondvarTest, BroadcastTestPingPong) {
-  signal_method_ = &AbstractCondvar::Broadcast;
+  signal_method_ = &ThreadSystem::Condvar::Broadcast;
   PingPongTest();
 }
 
@@ -95,7 +96,7 @@ TEST_F(PthreadCondvarTest, TimeoutPingPong) {
 }
 
 TEST_F(PthreadCondvarTest, BroadcastTimeoutPingPong) {
-  signal_method_ = &AbstractCondvar::Broadcast;
+  signal_method_ = &ThreadSystem::Condvar::Broadcast;
   TimeoutPingPongTest();
 }
 

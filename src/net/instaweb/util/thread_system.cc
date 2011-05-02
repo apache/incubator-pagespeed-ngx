@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,36 +14,19 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
+// Author: morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/util/public/pthread_mutex.h"
-
-#include <pthread.h>
-#include <cstddef>
-#include "net/instaweb/util/public/pthread_condvar.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
-PthreadMutex::PthreadMutex() {
-  pthread_mutex_init(&mutex_, NULL);
+ThreadSystem::~ThreadSystem() {
 }
 
-PthreadMutex::~PthreadMutex() {
-  pthread_mutex_destroy(&mutex_);
+ThreadSystem::CondvarCapableMutex::~CondvarCapableMutex() {
 }
 
-void PthreadMutex::Lock() {
-  pthread_mutex_lock(&mutex_);
+ThreadSystem::ThreadImpl::~ThreadImpl() {
 }
-
-void PthreadMutex::Unlock() {
-  pthread_mutex_unlock(&mutex_);
-}
-
-ThreadSystem::Condvar* PthreadMutex::NewCondvar() {
-  return new PthreadCondvar(this);
-}
-
 
 }  // namespace net_instaweb

@@ -58,4 +58,4 @@ class MockMessageHandler : public GoogleMessageHandler {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_MOCK_HASHER_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_MOCK_MESSAGE_HANDLER_H_

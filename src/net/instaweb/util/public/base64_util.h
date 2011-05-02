@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_BASE64_UTIL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_BASE64_UTIL_H_
 
-
 #include "net/instaweb/util/public/string.h"
 
 #include "base/string_piece.h"

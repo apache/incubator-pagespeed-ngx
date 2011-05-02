@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,34 +14,31 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
+// Author: morlovich@google.com (Maksim Orlovich)
+//
+// Implementation of thread-creation for pthreads
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_MUTEX_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_MUTEX_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_THREAD_SYSTEM_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_THREAD_SYSTEM_H_
 
-#include <pthread.h>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
-// Implementation of ThreadSystem::CondvarCapableMutexMutex for Pthread mutexes.
-class PthreadMutex : public ThreadSystem::CondvarCapableMutex {
+class PthreadThreadSystem : public ThreadSystem {
  public:
-  PthreadMutex();
-  virtual ~PthreadMutex();
-  virtual void Lock();
-  virtual void Unlock();
-  virtual ThreadSystem::Condvar* NewCondvar();
+  PthreadThreadSystem();
+  virtual ~PthreadThreadSystem();
+
+  virtual CondvarCapableMutex* NewMutex();
 
  private:
-  friend class PthreadCondvar;
+  virtual ThreadImpl* NewThreadImpl(Thread* wrapper, ThreadFlags flags);
 
-  pthread_mutex_t mutex_;
-
-  DISALLOW_COPY_AND_ASSIGN(PthreadMutex);
+  DISALLOW_COPY_AND_ASSIGN(PthreadThreadSystem);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_MUTEX_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_THREAD_SYSTEM_H_

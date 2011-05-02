@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include <ctype.h>
+#include <cctype>
 #include <cstddef>
 #include "net/instaweb/util/public/url_escaper.h"
 #include "net/instaweb/util/public/gtest.h"

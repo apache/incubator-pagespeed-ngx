@@ -153,6 +153,9 @@ class RewriteContext {
   // TODO(jmarantz): remove the encoder from RewriteFilter.
   virtual const UrlSegmentEncoder* encoder() const;
 
+  // Returrns the filter ID.
+  virtual const char* id() const = 0;
+
  private:
   // With all resources loaded, the rewrite can now be done, writing:
   //    The metadata into the cache

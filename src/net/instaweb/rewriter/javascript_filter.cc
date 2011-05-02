@@ -83,7 +83,6 @@ class JavascriptRewriteContext : public SingleRewriteContext {
 
     bool ok = code_block.ProfitableToRewrite();
     if (ok) {
-      output_resource->SetType(&kContentTypeJavascript);
       ok = WriteExternalScriptTo(script_input, code_block.Rewritten(),
                                  output_resource);
     } else {
@@ -116,6 +115,9 @@ class JavascriptRewriteContext : public SingleRewriteContext {
     }
     return ok;
   }
+
+ protected:
+  virtual const char* id() const { return RewriteDriver::kJavascriptMinId; }
 
  private:
   JavascriptRewriteConfig* config_;

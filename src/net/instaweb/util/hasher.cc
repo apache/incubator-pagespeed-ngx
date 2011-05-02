@@ -28,7 +28,7 @@
 namespace net_instaweb {
 
 Hasher::Hasher(int max_chars): max_chars_(max_chars) {
-  CHECK(max_chars >= 0);
+  CHECK_LE(0, max_chars);
 }
 
 Hasher::~Hasher() {

@@ -15,8 +15,8 @@
  */
 // Author: jmaessen@google.com (Jan Maessen)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_CYCLIC_HASH_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_CYCLIC_HASH_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_ROLLING_HASH_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_ROLLING_HASH_H_
 
 #include <cstddef>
 #include "base/logging.h"

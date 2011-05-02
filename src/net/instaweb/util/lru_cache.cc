@@ -24,7 +24,6 @@
 #include <utility>
 #include "base/logging.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
 

@@ -191,11 +191,8 @@ class ResourceManager {
 
   // Creates a reference-counted pointer to a new OutputResource object.
   //
-  // All content_type arguments can be NULL if the content type isn't
-  // known or isn't covered by the ContentType library.  Where
-  // necessary, the extension is used to infer a content type if one
-  // is needed and none is provided.  It is faster and more reliable
-  // to provide one explicitly when it is known.
+  // The content type is taken from the input_resource, but can be modified
+  // with SetType later if that is not correct (e.g. due to image transcoding).
 
   // Constructs an output resource corresponding to the specified input resource
   // and encoded using the provided encoder.  Assumes permissions checking
@@ -206,10 +203,9 @@ class ResourceManager {
   OutputResourcePtr CreateOutputResourceFromResource(
       const RewriteOptions* options,
       const StringPiece& filter_prefix,
-      const ContentType* content_type,
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
-      Resource* input_resource,
+      const ResourcePtr& input_resource,
       Kind kind);
 
   // Creates an output resource where the name is provided by the rewriter.
