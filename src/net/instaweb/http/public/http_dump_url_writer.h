@@ -19,14 +19,20 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_HTTP_DUMP_URL_WRITER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_DUMP_URL_WRITER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class FileSystem;
+class MessageHandler;
+class RequestHeaders;
+class ResponseHeaders;
+class Timer;
+class Writer;
 
 // HttpDumpWriter checks to see whether the HTTP dump is available on the
 // filesystem.  If not, it fetches it from another fetcher (e.g. one that

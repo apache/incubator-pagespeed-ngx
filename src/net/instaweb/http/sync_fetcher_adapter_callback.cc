@@ -16,9 +16,14 @@
 //         lsong@google.com (Libo Song)
 
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 namespace {
 

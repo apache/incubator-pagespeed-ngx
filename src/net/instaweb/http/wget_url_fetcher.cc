@@ -19,10 +19,14 @@
 #include "net/instaweb/http/public/wget_url_fetcher.h"
 
 #include <cerrno>
+#include <cstdio>                      // for pclose, popen, FILE
 #include "net/instaweb/http/public/http_response_parser.h"
-#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace {

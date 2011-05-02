@@ -19,14 +19,17 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_HTTP_VALUE_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_VALUE_H_
 
+#include <cstddef>                     // for size_t
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
 class ResponseHeaders;
+class MessageHandler;
 
 // Provides shared, ref-counted, copy-on-write storage for HTTP
 // contents, to aid sharing between active fetches and filters, and

@@ -22,11 +22,16 @@
 #include <vector>
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 
+class MessageHandler;
+class RequestHeaders;
+class ResponseHeaders;
 class UrlFetcher;
+class Writer;
 
 // Fake UrlAsyncFetcher which waits to call underlying blocking fetcher until
 // you explicitly call CallCallbacks().

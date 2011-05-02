@@ -19,13 +19,16 @@
 
 #include "net/instaweb/http/public/http_dump_url_async_writer.h"
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/http/public/fetcher_test.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
+class UrlAsyncFetcher;
 
 // TODO(sligocki): Merge with CacheUrlAsyncFetcherTest and refactor into
 // FetcherTestBase.

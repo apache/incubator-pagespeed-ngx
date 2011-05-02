@@ -16,15 +16,19 @@
 
 #include "net/instaweb/http/public/headers.h"
 
+#include <set>
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/http/http.pb.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/proto_util.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_multi_map.h"
-#include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 template<class Proto> Headers<Proto>::Headers() {
   proto_.reset(new Proto);

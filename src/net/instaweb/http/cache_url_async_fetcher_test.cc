@@ -21,11 +21,13 @@
 
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/cache_fetcher_test.h"
-#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/fetcher_test.h"
+#include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {
+
+class UrlAsyncFetcher;
 
 class CacheUrlAsyncFetcherTest : public CacheFetcherTest {
  protected:

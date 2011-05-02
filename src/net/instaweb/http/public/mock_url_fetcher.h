@@ -21,11 +21,16 @@
 
 #include <map>
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/http/public/url_fetcher.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
+class RequestHeaders;
+class Writer;
 
 // Simple UrlFetcher meant for tests, you can set responses for individual URLs.
 class MockUrlFetcher : public UrlFetcher {

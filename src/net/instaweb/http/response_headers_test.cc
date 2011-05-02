@@ -17,13 +17,14 @@
 // Unit-test SimpleUrlData, in particular it's HTTP header parser.
 
 #include "net/instaweb/http/public/response_headers.h"
+
+#include <cstddef>                     // for size_t
 #include <algorithm>
-#include "net/instaweb/util/public/basictypes.h"
-#include "base/logging.h"
+#include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes
 #include "net/instaweb/http/public/response_headers_parser.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"

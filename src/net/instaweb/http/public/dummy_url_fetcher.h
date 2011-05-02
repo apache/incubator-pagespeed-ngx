@@ -22,10 +22,14 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_DUMMY_URL_FETCHER_H_
 
 #include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
+class RequestHeaders;
+class ResponseHeaders;
+class Writer;
 
 class DummyUrlFetcher : public UrlFetcher {
  public:

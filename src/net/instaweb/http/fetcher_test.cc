@@ -17,9 +17,27 @@
 // Author: sligocki@google.com (Shawn Ligocki)
 
 #include "net/instaweb/http/public/fetcher_test.h"
+
+#include <utility>                      // for pair, make_pair
+#include <vector>
+#include "base/logging.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/simple_stats.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/writer.h"
+#include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 const char FetcherTest::kStartDate[] = "Sun, 16 Dec 1979 02:27:45 GMT";
 const char FetcherTest::kHtmlContent[] = "<html><body>Nuts!</body></html>";

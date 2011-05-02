@@ -23,10 +23,12 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
+class RequestHeaders;
 class ResponseHeaders;
 class Writer;
 

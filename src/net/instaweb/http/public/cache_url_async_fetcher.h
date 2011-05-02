@@ -20,15 +20,16 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_CACHE_URL_ASYNC_FETCHER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "base/scoped_ptr.h"
-#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
-class UrlAsyncFetcher;
+class RequestHeaders;
+class ResponseHeaders;
+class Writer;
 
 // Composes an asynchronous URL fetcher with an http cache, to
 // generate an asynchronous caching URL fetcher.

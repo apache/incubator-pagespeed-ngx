@@ -21,8 +21,11 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
+
+class Writer;
 
 // Class to help run an asynchronous fetch synchronously with a timeout.
 class SyncFetcherAdapterCallback : public UrlAsyncFetcher::Callback {

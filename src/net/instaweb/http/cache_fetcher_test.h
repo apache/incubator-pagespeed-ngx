@@ -22,13 +22,15 @@
 #ifndef NET_INSTAWEB_HTTP_CACHE_FETCHER_TEST_H_
 #define NET_INSTAWEB_HTTP_CACHE_FETCHER_TEST_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 #include "net/instaweb/http/public/fetcher_test.h"
-#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/simple_stats.h"
 
 namespace net_instaweb {
 

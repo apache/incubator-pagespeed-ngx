@@ -16,11 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include <cstdio>
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/time_util.h"
 
-#include "pagespeed/core/resource_util.h"
+#include "net/instaweb/http/public/meta_data.h"
 
 namespace net_instaweb {
 

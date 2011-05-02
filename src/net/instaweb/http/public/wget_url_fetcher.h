@@ -19,12 +19,16 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_WGET_URL_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_WGET_URL_FETCHER_H_
 
-#include <cstdio>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
+class RequestHeaders;
+class ResponseHeaders;
+class Writer;
 
 // Runs 'wget' via popen for blocking URL fetches.
 class WgetUrlFetcher : public UrlFetcher {

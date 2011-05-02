@@ -5,10 +5,11 @@
 
 #include "net/instaweb/http/public/fetcher_test.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
-
 namespace net_instaweb {
 
 class HttpResponseParserTest : public FetcherTest {

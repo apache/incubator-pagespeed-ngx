@@ -15,12 +15,19 @@
 #include "net/instaweb/http/public/sync_fetcher_adapter.h"
 
 #include <algorithm>
+#include "base/logging.h"
+#include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
+#include "net/instaweb/http/public/url_pollable_async_fetcher.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+
+class RequestHeaders;
+class ResponseHeaders;
+class Writer;
 
 SyncFetcherAdapter::SyncFetcherAdapter(Timer* timer,
                                        int64 fetcher_timeout_ms,

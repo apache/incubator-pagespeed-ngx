@@ -21,22 +21,25 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_FETCHER_TEST_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_FETCHER_TEST_H_
 
-#include <algorithm>
 #include <utility>  // for pair
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
+class RequestHeaders;
+class SimpleStats;
+class Writer;
 
 class FetcherTest : public testing::Test {
  protected:

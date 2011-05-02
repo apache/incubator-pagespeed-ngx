@@ -16,15 +16,16 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/http/public/url_async_fetcher.h"
-
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {

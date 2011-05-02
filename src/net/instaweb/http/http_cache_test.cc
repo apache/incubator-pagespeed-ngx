@@ -19,16 +19,19 @@
 // Unit-test the lru cache
 
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "base/logging.h"
+
+#include <cstddef>                     // for size_t
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_stats.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -39,6 +42,8 @@ const char kStartDate[] = "Sun, 16 Dec 1979 02:27:45 GMT";
 }
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 class HTTPCacheTest : public testing::Test {
  protected:

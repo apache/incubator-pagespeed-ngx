@@ -18,13 +18,18 @@
 
 #include "net/instaweb/http/public/http_cache.h"
 
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/cache_interface.h"
+#include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {

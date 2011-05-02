@@ -17,17 +17,14 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_HEADERS_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_HEADERS_H_
 
-#include <cstdlib>
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/http/public/meta_data.h"  // HttpAttributes, HttpStatus
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
-class HttpResponseHeaders;
 class StringMultiMapInsensitive;
 class Writer;
 

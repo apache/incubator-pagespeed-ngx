@@ -17,7 +17,12 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/http/public/http_value.h"
+
+#include "base/logging.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace {
@@ -39,6 +44,8 @@ const unsigned int kStorageOverhead =
 }  // namespace
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 void HTTPValue::CopyOnWrite() {
   if (!storage_.unique()) {

@@ -17,15 +17,14 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_RESPONSE_HEADERS_PARSER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_RESPONSE_HEADERS_PARSER_H_
 
-#include <cstdlib>
-#include <map>
-#include <vector>
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
+class ResponseHeaders;
 
 // Parses a stream of HTTP header text into a ResponseHeaders instance.
 class ResponseHeadersParser {

@@ -16,19 +16,26 @@
 
 #include "net/instaweb/http/public/response_headers.h"
 
-#include "base/logging.h"
-#include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
+#include <cstdio>                      // for fprintf, stderr, snprintf
+#include <map>
 
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/proto_util.h"
+#include "base/logging.h"
+#include "base/scoped_ptr.h"
+#include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
+#include "net/instaweb/http/public/headers.h"  // for Headers
+#include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_multi_map.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/core/resource_util.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 ResponseHeaders::ResponseHeaders() {
   proto_.reset(new HttpResponseHeaders);

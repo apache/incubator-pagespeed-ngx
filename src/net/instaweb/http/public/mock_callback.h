@@ -22,6 +22,7 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_MOCK_CALLBACK_H_
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {

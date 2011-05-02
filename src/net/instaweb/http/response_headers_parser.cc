@@ -16,10 +16,13 @@
 
 #include "net/instaweb/http/public/response_headers_parser.h"
 
+#include <cctype>                      // for isspace
 #include <cstdio>
 #include "base/logging.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 

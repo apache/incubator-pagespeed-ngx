@@ -19,18 +19,24 @@
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 
 #include <cstdio>
-#include "net/instaweb/util/public/basictypes.h"
+#include <cstddef>                     // for size_t
+#include <set>
+#include <utility>                      // for pair
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/http_response_parser.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
-#include "net/instaweb/http/public/http_response_parser.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/stack_buffer.h"

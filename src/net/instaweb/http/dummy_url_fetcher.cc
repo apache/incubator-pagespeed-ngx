@@ -23,6 +23,10 @@
 
 namespace net_instaweb {
 
+class RequestHeaders;
+class ResponseHeaders;
+class Writer;
+
 bool DummyUrlFetcher::StreamingFetchUrl(const GoogleString& url,
                                         const RequestHeaders& request_headers,
                                         ResponseHeaders* response_headers,
