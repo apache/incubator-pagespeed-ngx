@@ -37,6 +37,10 @@ TEST_ROOT=http://$HOSTNAME/mod_pagespeed_test
 STATISTICS_URL=http://localhost:$PORT/mod_pagespeed_statistics
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/bad.pagespeed.cf.hash.css
 
+# Version timestamped with nanoseconds, making it extremely unlikely to hit.
+BAD_RND_RESOURCE_URL="http://$HOSTNAME/mod_pagespeed/bad`date +%N`.\
+pagespeed.cf.hash.css"
+
 OUTDIR=/tmp/mod_pagespeed_test.$USER/fetched_directory
 rm -rf $OUTDIR
 
@@ -173,7 +177,8 @@ echo Checking for absense of Expires
 echo $HTML_HEADERS | grep -qi 'Expires'
 check [ $? != 0 ]
 
-# Determine whether statistics are enabled or not.  If not, don't test them.
+# Determine whether statistics are enabled or not.  If not, don't test them,
+# but do an additional regression test that tries harder to get a cache miss.
 grep "# ModPagespeedStatistics off" /usr/local/apache2/conf/pagespeed.conf \
    >/dev/null
 if [ $? = 0 ]; then
@@ -185,6 +190,9 @@ if [ $? = 0 ]; then
 else
   echo TEST: 404s are served.  Statistics are disabled so not checking them.
   check "$WGET -O /dev/null $BAD_RESOURCE_URL 2>&1| grep -q '404 Not Found'"
+
+  echo TEST: 404s properly on uncached invalid resource.
+  check "$WGET -O /dev/null $BAD_RND_RESOURCE_URL 2>&1| grep -q '404 Not Found'"
 fi
 
 echo TEST: directory is mapped to index.html.

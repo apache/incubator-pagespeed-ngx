@@ -716,18 +716,15 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       cancel_count_(NULL),
       timeout_count_(NULL),
       timeout_ms_(timeout_ms) {
-  if (statistics != NULL) {
-    request_count_  =
-        statistics->GetVariable(SerfStats::kSerfFetchRequestCount);
-    byte_count_ = statistics->GetVariable(SerfStats::kSerfFetchByteCount);
-    time_duration_ms_ =
-        statistics->GetVariable(SerfStats::kSerfFetchTimeDurationMs);
-    cancel_count_ = statistics->GetVariable(SerfStats::kSerfFetchCancelCount);
-    active_count_ = statistics->GetVariable(
-        SerfStats::kSerfFetchActiveCount);
-    timeout_count_ = statistics->GetVariable(
-        SerfStats::kSerfFetchTimeoutCount);
-  }
+  CHECK(statistics != NULL);
+  request_count_  =
+      statistics->GetVariable(SerfStats::kSerfFetchRequestCount);
+  byte_count_ = statistics->GetVariable(SerfStats::kSerfFetchByteCount);
+  time_duration_ms_ =
+      statistics->GetVariable(SerfStats::kSerfFetchTimeDurationMs);
+  cancel_count_ = statistics->GetVariable(SerfStats::kSerfFetchCancelCount);
+  active_count_ = statistics->GetVariable(SerfStats::kSerfFetchActiveCount);
+  timeout_count_ = statistics->GetVariable(SerfStats::kSerfFetchTimeoutCount);
   Init(pool, proxy);
   threaded_fetcher_ = new SerfThreadedFetcher(this, proxy);
 }
