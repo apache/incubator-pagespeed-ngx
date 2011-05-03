@@ -18,13 +18,16 @@
 
 #include "net/instaweb/htmlparse/html_lexer.h"
 #include <cctype>
+#include <cstdarg>
+#include <cstddef>
 #include <cstdio>
-#include <cstring>
 #include <algorithm>
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 

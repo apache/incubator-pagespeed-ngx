@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 
 #include <set>
+#include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -140,7 +141,7 @@ const TagAttrValue kDefaultList[] = {
   // 4: http://www.w3.org/TR/html4/interact/forms.html#h-17.5
   // 5: http://www.w3.org/TR/html5/the-button-element.html#the-button-element
   // IE does not support this default.
-  //{HtmlName::kButton, HtmlName::kType, "submit", false},
+  // {HtmlName::kButton, HtmlName::kType, "submit", false},
   // 4: The <command> tag does not exist in HTML 4.
   // 5: http://www.w3.org/TR/html5/interactive-elements.html#the-command
   {HtmlName::kCommand, HtmlName::kType, "command", true},

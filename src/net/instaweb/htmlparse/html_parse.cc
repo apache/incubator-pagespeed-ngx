@@ -18,10 +18,10 @@
 
 #include "net/instaweb/htmlparse/public/html_parse.h"
 
-#include <cerrno>
+#include <cstdarg>
 #include <cstdio>
-#include <cstring>
-#include <utility>  // for std::pair
+#include <list>
+#include <vector>
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/html_event.h"
@@ -29,12 +29,21 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/htmlparse/public/html_parser_types.h"
+#include "net/instaweb/util/public/arena.h"
+#include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/symbol_table.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+class DocType;
+struct ContentType;
 
 HtmlParse::HtmlParse(MessageHandler* message_handler)
     : lexer_(NULL),  // Can't initialize here, since "this" should not be used

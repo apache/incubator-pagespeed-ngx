@@ -18,6 +18,8 @@
 
 #include <vector>
 
+#include "base/logging.h"
+#include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -66,7 +68,7 @@ bool DocType::Parse(const StringPiece& directive,
   ParseShellLikeString(directive, &parts);
 
   // Sanity check:
-  DCHECK(parts.size() >= 1);
+  DCHECK_LE(1U, parts.size());
   DCHECK(StringCaseEqual(parts[0], "doctype"));
 
   // Check for known doctypes.

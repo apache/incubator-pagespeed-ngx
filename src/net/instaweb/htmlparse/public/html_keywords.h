@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_KEYWORDS_H_
 
 #include <map>
-#include <vector>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/util/public/string.h"

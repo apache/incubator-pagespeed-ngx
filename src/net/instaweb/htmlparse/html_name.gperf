@@ -2,7 +2,9 @@
 // html_name.cc is automatically generated from html_name.gperf.
 // Author: jmarantz@google.com
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 %}

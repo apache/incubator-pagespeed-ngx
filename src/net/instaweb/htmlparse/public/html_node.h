@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_NODE_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_NODE_H_
 
+#include <cstddef>
+#include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/arena.h"

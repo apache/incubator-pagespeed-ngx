@@ -19,9 +19,8 @@
 
 #include "net/instaweb/util/public/string_util.h"  // for StringPiece
 
-#include "net/instaweb/util/public/content_type.h"
-
 namespace net_instaweb {
+struct ContentType;
 
 class DocType {
  public:
@@ -78,7 +77,7 @@ class DocType {
     XHTML_1_0_TRANSITIONAL,
   };
 
-  DocType(DocTypeEnum doctype) : doctype_(doctype) {}
+  explicit DocType(DocTypeEnum doctype) : doctype_(doctype) {}
 
   DocTypeEnum doctype_;
 };

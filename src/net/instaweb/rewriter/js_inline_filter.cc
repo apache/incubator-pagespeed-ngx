@@ -19,6 +19,7 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "base/string_util.h"
+#include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -98,10 +99,9 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
             driver_->InsertElementBeforeCurrent(node);
             element->DeleteAttribute(HtmlName::kSrc);
           }
-        }
-        // If we're not in XHTML, we can simply paste in the external script
-        // verbatim.
-        else {
+        } else {
+          // If we're not in XHTML, we can simply paste in the external script
+          // verbatim.
           driver_->InsertElementBeforeCurrent(
               driver_->NewCharactersNode(element, contents));
           element->DeleteAttribute(HtmlName::kSrc);

@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_NAME_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_NAME_H_
 
-#include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

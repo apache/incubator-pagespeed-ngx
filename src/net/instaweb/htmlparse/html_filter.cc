@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "public/html_filter.h"
+#include "net/instaweb/htmlparse/public/html_filter.h"
 
 namespace net_instaweb {
 

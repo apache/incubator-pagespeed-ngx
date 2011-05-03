@@ -18,6 +18,13 @@
 
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include <set>
+#include <cstddef>
+#include <map>
+#include <utility>
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace {
 

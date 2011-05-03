@@ -22,12 +22,13 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/logging_html_filter.h"
-#include "net/instaweb/htmlparse/public/statistics_log.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
+class FileSystem;
+class MessageHandler;
+class StatisticsLog;
 
 // Framework for reading an input HTML file, running it through
 // a chain of HTML filters, and writing an output file.

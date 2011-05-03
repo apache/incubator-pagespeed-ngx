@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_HTML_EVENT_H_
 #define NET_INSTAWEB_HTMLPARSE_HTML_EVENT_H_
 
-#include <list>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"

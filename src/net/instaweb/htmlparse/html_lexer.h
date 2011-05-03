@@ -19,14 +19,16 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_HTML_LEXER_H_
 #define NET_INSTAWEB_HTMLPARSE_HTML_LEXER_H_
 
-#include <cstdarg>
 #include <vector>
-#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/printf_format.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 

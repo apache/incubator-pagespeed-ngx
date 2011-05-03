@@ -19,11 +19,14 @@
 #include "net/instaweb/htmlparse/public/file_driver.h"
 
 #include "net/instaweb/htmlparse/public/file_statistics_log.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/htmlparse/public/logging_html_filter.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
-#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace {
 
@@ -48,6 +51,7 @@ bool GenerateFilename(
 }  // namespace
 
 namespace net_instaweb {
+class MessageHandler;
 
 FileDriver::FileDriver(HtmlParse* html_parse, FileSystem* file_system)
     : html_parse_(html_parse),

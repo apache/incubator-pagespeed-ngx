@@ -20,12 +20,11 @@
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_PARSE_H_
 
 #include <cstdarg>
-#include <set>
+#include <cstddef>
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/arena.h"
 #include "net/instaweb/util/public/content_type.h"
@@ -36,7 +35,8 @@
 #include "net/instaweb/util/public/symbol_table.h"
 
 namespace net_instaweb {
-
+class DocType;
+class MessageHandler;
 class Timer;
 
 // TODO(jmarantz): rename HtmlParse to HtmlContext.  The actual
