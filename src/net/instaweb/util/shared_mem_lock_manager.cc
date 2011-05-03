@@ -18,12 +18,11 @@
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 
 #include <cstddef>
-
-#include "base/scoped_ptr.h"
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
@@ -309,8 +308,9 @@ bool SharedMemLockManager::Attach() {
   return true;
 }
 
-void SharedMemLockManager::GlobalCleanup(MessageHandler* message_handler) {
-  shm_runtime_->DestroySegment(path_, message_handler);
+void SharedMemLockManager::GlobalCleanup(
+  AbstractSharedMem* shm, const GoogleString& path, MessageHandler* handler) {
+  shm->DestroySegment(path, handler);
 }
 
 AbstractLock* SharedMemLockManager::CreateNamedLock(const StringPiece& name) {

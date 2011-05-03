@@ -31,19 +31,22 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
+#include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 
 namespace net_instaweb {
 
+SharedMemOwnerMap* ApacheRewriteDriverFactory::lock_manager_owners_ = NULL;
+
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     server_rec* server, const StringPiece& version)
     : server_rec_(server),
       serf_url_fetcher_(NULL),
       serf_url_async_fetcher_(NULL),
-      shm_statistics_(NULL),
-      shmem_runtime_(new PthreadSharedMem()),
+      shared_mem_statistics_(NULL),
+      shared_mem_runtime_(new PthreadSharedMem()),
       lru_cache_kb_per_process_(0),
       lru_cache_byte_limit_(0),
       file_cache_clean_interval_ms_(Timer::kHourMs),
@@ -54,7 +57,13 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       statistics_enabled_(true),
       statistics_frozen_(false),
       test_proxy_(false),
-      is_root_process_(true) {
+      is_root_process_(true),
+      use_shared_mem_locking_(true),
+      shared_mem_lock_manager_lifecycler_(
+          this,
+          &ApacheRewriteDriverFactory::CreateSharedMemLockManager,
+          "lock manager",
+          &lock_manager_owners_) {
   apr_pool_create(&pool_, NULL);
   cache_mutex_.reset(NewMutex());
   rewrite_drivers_mutex_.reset(NewMutex());
@@ -70,6 +79,12 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
   ShutDown();
 
   apr_pool_destroy(pool_);
+}
+
+SharedMemLockManager* ApacheRewriteDriverFactory::CreateSharedMemLockManager() {
+  return new SharedMemLockManager(shared_mem_runtime_.get(),
+                                  StrCat(file_cache_path(), "/named_locks"),
+                                  timer(), hasher(), message_handler());
 }
 
 FileSystem* ApacheRewriteDriverFactory::DefaultFileSystem() {
@@ -123,6 +138,14 @@ CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
   return cache;
 }
 
+NamedLockManager* ApacheRewriteDriverFactory::DefaultLockManager() {
+  if (use_shared_mem_locking_ &&
+      (shared_mem_lock_manager_lifecycler_.Get() != NULL)) {
+    return shared_mem_lock_manager_lifecycler_.Release();
+  }
+  return RewriteDriverFactory::DefaultLockManager();
+}
+
 UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::SubResourceFetcher() {
   assert(FetchersComputed());
   return serf_url_async_fetcher_;  // may be null in a readonly slurping mode
@@ -140,7 +163,7 @@ UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
 UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   if (serf_url_async_fetcher_ == NULL) {
     serf_url_async_fetcher_ = new SerfUrlAsyncFetcher(
-        fetcher_proxy_.c_str(), pool_, shm_statistics_, timer(),
+        fetcher_proxy_.c_str(), pool_, shared_mem_statistics_, timer(),
         fetcher_time_out_ms_);
   }
   return serf_url_async_fetcher_;
@@ -157,24 +180,30 @@ AbstractMutex* ApacheRewriteDriverFactory::NewMutex() {
 
 void ApacheRewriteDriverFactory::SetStatistics(SharedMemStatistics* x) {
   DCHECK(!statistics_frozen_);
-  shm_statistics_ = x;
+  shared_mem_statistics_ = x;
 }
 
 Statistics* ApacheRewriteDriverFactory::statistics() {
   statistics_frozen_ = true;
-  if (shm_statistics_ == NULL) {
+  if (shared_mem_statistics_ == NULL) {
     return RewriteDriverFactory::statistics();  // null implementation
   }
-  return shm_statistics_;
+  return shared_mem_statistics_;
 }
 
 void ApacheRewriteDriverFactory::RootInit() {
+  if (use_shared_mem_locking_) {
+    shared_mem_lock_manager_lifecycler_.RootInit();
+  }
 }
 
 void ApacheRewriteDriverFactory::ChildInit() {
   is_root_process_ = false;
-  if (shm_statistics_ != NULL) {
-    shm_statistics_->InitVariables(false, message_handler());
+  if (shared_mem_statistics_ != NULL) {
+    shared_mem_statistics_->InitVariables(false, message_handler());
+  }
+  if (use_shared_mem_locking_) {
+    shared_mem_lock_manager_lifecycler_.ChildInit();
   }
 }
 
@@ -186,8 +215,11 @@ void ApacheRewriteDriverFactory::ShutDown() {
   }
   cache_mutex_.reset(NULL);
   rewrite_drivers_mutex_.reset(NULL);
-  if (is_root_process_ && (shm_statistics_ != NULL)) {
-    shm_statistics_->GlobalCleanup(message_handler());
+  if (is_root_process_) {
+    if (shared_mem_statistics_ != NULL) {
+      shared_mem_statistics_->GlobalCleanup(message_handler());
+    }
+    shared_mem_lock_manager_lifecycler_.GlobalCleanup(message_handler());
   }
   RewriteDriverFactory::ShutDown();
 }

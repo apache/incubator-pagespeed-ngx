@@ -20,10 +20,11 @@
 // setting up some dummy rewriters in our test framework.
 
 #include "net/instaweb/rewriter/public/rewrite_context.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/rewriter/public/simple_text_filter.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 
 namespace net_instaweb {
 
@@ -32,62 +33,30 @@ namespace net_instaweb {
 // TODO(jmarantz): take as many lines of code out of this simplistic
 // example as possible.  The actual rewrite code in this case is
 // just one call to TrimWhitespace -- why all the other junk?
-class TrimWhitespaceFilter : public CommonFilter {
+class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
  public:
-  explicit TrimWhitespaceFilter(RewriteDriver* driver) : CommonFilter(driver) {}
-  virtual ~TrimWhitespaceFilter() {}
-  virtual const char* Name() const { return "TrimWhitespace"; }
-
-  class TrimRewriteContext : public SingleRewriteContext {
-   public:
-    TrimRewriteContext(RewriteDriver* driver,
-                       const ResourceSlotPtr& slot)
-        : SingleRewriteContext(driver, slot, NULL) {
-    }
-
-    // TODO(jmarantz): consider changing this interface to take a string in/out
-    // and provide interfaces to override origin_expire via a method or an
-    // extra arg to be modified.
-    virtual RewriteSingleResourceFilter::RewriteResult Rewrite(
-        const Resource* input_resource, OutputResource* output_resource) {
-      RewriteSingleResourceFilter::RewriteResult result =
-          RewriteSingleResourceFilter::kRewriteFailed;
-      GoogleString rewritten;
-      TrimWhitespace(input_resource->contents(), &rewritten);
-      if (rewritten != input_resource->contents()) {
-        ResourceManager* rm = resource_manager();
-        MessageHandler* message_handler = rm->message_handler();
-        int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
-        if (rm->Write(HttpStatus::kOK, rewritten, output_resource,
-                      origin_expire_time_ms, message_handler)) {
-          result = RewriteSingleResourceFilter::kRewriteOk;
-        }
-      }
-      return result;
-    }
-
-   protected:
-    virtual const char* id() const { return "tw"; }
-  };
-
-  virtual void StartDocumentImpl() {}
-  virtual void EndElementImpl(HtmlElement* element) {}
-
-  // TODO(jmarantz): Consider a new interface which provides pre-populated
-  // slots, perhaps based on a virtual method provided by the filter to
-  // indicate element/attr patterns of interest.
-  virtual void StartElementImpl(HtmlElement* element) {
-    if (element->keyword() == HtmlName::kLink) {
-      HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kHref);
-      if (attr != NULL) {
-        ResourcePtr resource = CreateInputResource(attr->value());
-        if (resource.get() != NULL) {
-          ResourceSlotPtr slot(driver_->GetSlot(resource, element, attr));
-          driver_->InitiateRewrite(new TrimRewriteContext(driver_, slot));
-        }
-      }
-    }
+  static SimpleTextFilter* MakeFilter(RewriteDriver* driver) {
+    return new SimpleTextFilter(new TrimWhitespaceRewriter, driver);
   }
+
+ protected:
+  REFCOUNT_FRIEND_DECLARATION(TrimWhitespaceRewriter);
+  virtual ~TrimWhitespaceRewriter() {}
+
+  virtual bool RewriteText(const StringPiece& url, const StringPiece& in,
+                           GoogleString* out,
+                           ResourceManager* resource_manager) {
+    TrimWhitespace(in, out);
+    return in != *out;
+  }
+  virtual HtmlElement::Attribute* FindResourceAttribute(HtmlElement* element) {
+    if (element->keyword() == HtmlName::kLink) {
+      return element->FindAttribute(HtmlName::kHref);
+    }
+    return NULL;
+  }
+  virtual const char* id() const { return "tw"; }
+  virtual const char* Name() const { return "TrimWhitespace"; }
 };
 
 class RewriteContextTest : public ResourceManagerTestBase {
@@ -105,7 +74,8 @@ class RewriteContextTest : public ResourceManagerTestBase {
 };
 
 TEST_F(RewriteContextTest, Trim) {
-  rewrite_driver_.AddOwnedFilter(new TrimWhitespaceFilter(&rewrite_driver_));
+  rewrite_driver_.AddOwnedFilter(
+      TrimWhitespaceRewriter::MakeFilter(&rewrite_driver_));
   rewrite_driver_.AddFilters();
   ResponseHeaders default_css_header;
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);

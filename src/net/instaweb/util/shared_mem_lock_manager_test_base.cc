@@ -49,7 +49,7 @@ void SharedMemLockManagerTestBase::SetUp() {
 }
 
 void SharedMemLockManagerTestBase::TearDown() {
-  root_lock_manager_->GlobalCleanup(&handler_);
+  SharedMemLockManager::GlobalCleanup(shmem_runtime_.get(), kPath, &handler_);
 }
 
 bool SharedMemLockManagerTestBase::CreateChild(TestMethod method) {

@@ -62,11 +62,13 @@ class SharedMemLockManager : public NamedLockManager {
   // Returns whether successful.
   bool Attach();
 
-  // This should be called from the root process as it is about to exit.
-  //
-  // This takes a MessageHandler to use for logging in case the normal one
-  // passed to the constructor can no longer be used due to cleanup sequence.
-  void GlobalCleanup(MessageHandler* message_handler);
+  // This should be called from the root process as it is about to exit,
+  // with the same value as were passed to the constructor of any
+  // instance on which Initialize() was called, except the message_handler
+  // may be different (if for example the original one is no longer available
+  // due to the cleanup sequence).
+  static void GlobalCleanup(AbstractSharedMem* shm, const GoogleString& path,
+                            MessageHandler* message_handler);
 
   virtual AbstractLock* CreateNamedLock(const StringPiece& name);
 

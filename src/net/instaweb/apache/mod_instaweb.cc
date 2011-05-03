@@ -116,6 +116,7 @@ const char* kModPagespeedNumShards = "ModPagespeedNumShards";
 const char* kModPagespeedRetainComment = "ModPagespeedRetainComment";
 const char* kModPagespeedRewriteLevel = "ModPagespeedRewriteLevel";
 const char* kModPagespeedShardDomain = "ModPagespeedShardDomain";
+const char* kModPagespeedSharedMemoryLocks = "ModPagespeedSharedMemoryLocks";
 const char* kModPagespeedSlurpDirectory = "ModPagespeedSlurpDirectory";
 const char* kModPagespeedSlurpFlushLimit = "ModPagespeedSlurpFlushLimit";
 const char* kModPagespeedSlurpReadOnly = "ModPagespeedSlurpReadOnly";
@@ -701,7 +702,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       }
       if ((factory->statistics_enabled() && (statistics == NULL))) {
         statistics = apache_process_context.InitStatistics(
-            factory->shmem_runtime(), factory->filename_prefix(),
+            factory->shared_mem_runtime(), factory->filename_prefix(),
             factory->message_handler());
       }
     }
@@ -712,7 +713,8 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   ResourceManager::Initialize(statistics);
   SerfUrlAsyncFetcher::Initialize(statistics);
 
-  // Do a final pass over the servers and init the server-specific statistics.
+  // Do a final pass over the servers and init the server-specific statistics
+  // and shared memory resources.
   for (server_rec* server = server_list; server != NULL;
        server = server->next) {
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
@@ -995,6 +997,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     } else {
       ret = "Failed to parse RewriteLevel.";
     }
+  } else if (StringCaseEqual(directive, kModPagespeedSharedMemoryLocks)) {
+    ret = ParseBoolOption(factory, cmd,
+        &ApacheRewriteDriverFactory::set_use_shared_mem_locking, arg);
   } else if (StringCaseEqual(directive, kModPagespeedSlurpDirectory)) {
     factory->set_slurp_directory(arg);
   } else if (StringCaseEqual(directive, kModPagespeedSlurpFlushLimit)) {
@@ -1148,6 +1153,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRetainComment,
         "Retain HTML comments matching wildcard, even with remove_comments "
         "enabled"),
+  APACHE_CONFIG_OPTION(kModPagespeedSharedMemoryLocks,
+        "Use shared memory for internal named lock service"),
   APACHE_CONFIG_OPTION(kModPagespeedSlurpDirectory,
         "Directory from which to read slurped resources"),
   APACHE_CONFIG_OPTION(kModPagespeedSlurpFlushLimit,

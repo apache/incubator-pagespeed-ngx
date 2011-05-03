@@ -165,6 +165,10 @@ class RewriteDriverFactory {
   // Overridable statistics (default is NullStatistics)
   virtual Statistics* statistics() { return &null_statistics_; }
 
+  // They may also supply a custom lock manager. The default implementation
+  // will use the file system.
+  virtual NamedLockManager* DefaultLockManager();
+
   // Implementors of RewriteDriverFactory must supply two mutexes.
   virtual AbstractMutex* cache_mutex() = 0;
   virtual AbstractMutex* rewrite_drivers_mutex() = 0;

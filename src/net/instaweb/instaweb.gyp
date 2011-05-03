@@ -526,6 +526,7 @@
         'rewriter/rewrite_single_resource_filter.cc',
         'rewriter/scan_filter.cc',
         'rewriter/script_tag_scanner.cc',
+        'rewriter/simple_text_filter.cc',
         'rewriter/single_rewrite_context.cc',
         'rewriter/strip_scripts_filter.cc',
         'rewriter/url_input_resource.cc',

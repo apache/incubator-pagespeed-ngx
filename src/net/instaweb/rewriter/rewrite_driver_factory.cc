@@ -168,11 +168,14 @@ FilenameEncoder* RewriteDriverFactory::filename_encoder() {
   return filename_encoder_.get();
 }
 
+NamedLockManager* RewriteDriverFactory::DefaultLockManager() {
+  return new FileSystemLockManager(file_system(), LockFilePrefix(),
+                                   timer(), message_handler());
+}
+
 NamedLockManager* RewriteDriverFactory::lock_manager() {
   if (lock_manager_ == NULL) {
-    lock_manager_.reset(
-        new FileSystemLockManager(file_system(), LockFilePrefix(),
-                                  timer(), message_handler()));
+    lock_manager_.reset(DefaultLockManager());
   }
   return lock_manager_.get();
 }

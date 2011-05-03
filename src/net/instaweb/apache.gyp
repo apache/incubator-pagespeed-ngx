@@ -54,6 +54,7 @@
         'apache/instaweb_context.cc',
         'apache/log_message_handler.cc',
         'apache/serf_url_async_fetcher.cc',
+        'apache/shared_mem_lifecycle.cc'
       ],
       'export_dependent_settings': [
         '<(instaweb_root)/instaweb.gyp:instaweb_util',
