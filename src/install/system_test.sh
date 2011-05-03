@@ -473,8 +473,8 @@ check [ `grep -ce href=\"http://shard2 $OUTDIR/shard.out.html` = 2 ];
 echo TEST: server-side includes
 rm -rf $OUTDIR
 mkdir $OUTDIR
-echo $WGET_DUMP $TEST_ROOT/ssi/ssi.shtml
-check $WGET_DUMP $TEST_ROOT/ssi/ssi.shtml \
+echo $WGET_DUMP $TEST_ROOT/ssi/ssi.shtml?ModPagespeedFilters=combine_css
+check $WGET_DUMP $TEST_ROOT/ssi/ssi.shtml?ModPagespeedFilters=combine_css \
   > $OUTDIR/ssi.out.html
 check [ `grep -ce $combine_css_filename $OUTDIR/ssi.out.html` = 1 ];
 

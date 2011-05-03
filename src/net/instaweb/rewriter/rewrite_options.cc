@@ -170,23 +170,16 @@ void RewriteOptions::SetUp() {
   level_filter_set_map_[kCoreFilters].insert(kLeftTrimUrls);
   level_filter_set_map_[kCoreFilters].insert(kRecompressImages);
   level_filter_set_map_[kCoreFilters].insert(kResizeImages);
-  // TODO(jmarantz): re-enable javascript and CSS minification in
-  // the core set after the reported bugs have been fixed.  They
-  // can still be enabled individually.
-  // level_filter_set_map_[kCoreFilters].insert(kRewriteCss);
-  // level_filter_set_map_[kCoreFilters].insert(kRewriteJavascript);
-  //
-  // Same with rewrite_domains:
-  // level_filter_set_map_[kCoreFilters].insert(kRewriteDomains);
+  level_filter_set_map_[kCoreFilters].insert(kRewriteCss);
+  level_filter_set_map_[kCoreFilters].insert(kRewriteJavascript);
 
   // Copy CoreFilters set into TestingCoreFilters set ...
   level_filter_set_map_[kTestingCoreFilters] =
       level_filter_set_map_[kCoreFilters];
   // ... and add possibly unsafe filters.
+  // TODO(jmarantz): Migrate these over to CoreFilters.
   level_filter_set_map_[kTestingCoreFilters].insert(kMakeGoogleAnalyticsAsync);
-  level_filter_set_map_[kTestingCoreFilters].insert(kRewriteCss);
   level_filter_set_map_[kTestingCoreFilters].insert(kRewriteDomains);
-  level_filter_set_map_[kTestingCoreFilters].insert(kRewriteJavascript);
 
   // Set complete set for all filters set.
   for (int f = kFirstFilter; f != kLastFilter; ++f) {
