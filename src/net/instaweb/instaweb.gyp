@@ -485,8 +485,8 @@
       },
     },
     {
-      'target_name': 'instaweb_rewriter',
-      'type': '<(library)',
+      'target_name': 'pagespeed_automatic',
+      'type': 'static_library',
       'dependencies': [
         'instaweb_rewriter_base',
         'instaweb_core.gyp:instaweb_rewriter_html',

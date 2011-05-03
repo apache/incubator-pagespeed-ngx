@@ -34,7 +34,7 @@
         '<(instaweb_root)/instaweb.gyp:instaweb_htmlparse',
         '<(instaweb_root)/instaweb.gyp:instaweb_http',
         '<(instaweb_root)/instaweb.gyp:instaweb_spriter',
-        '<(instaweb_root)/instaweb.gyp:instaweb_rewriter',
+        '<(instaweb_root)/instaweb.gyp:pagespeed_automatic',
         '<(instaweb_root)/instaweb.gyp:instaweb_util',
         '<(instaweb_root)/instaweb.gyp:instaweb_util_pthread',
       ],
