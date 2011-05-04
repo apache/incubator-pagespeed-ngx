@@ -17,15 +17,15 @@
 // Copyright 2006, Google Inc.  All rights reserved.
 // Author: mec@google.com  (Michael Chastain)
 
-#include <ctype.h>
-#include <string.h>
 #include "webutil/html/htmltagindex.h"
-#include "base/basictypes.h"
+
+#include <utility>
+
 #include "base/logging.h"
 #include "base/paranoid.h"
 #include "strings/ascii_ctype.h"
 #include "util/gtl/dense_hash_map.h"
-#include "util/hash/hash.h"
+#include "util/gtl/densehashtable.h"
 
 // Assert character properties that the fast path depends on.
 //   (Uppercase letter | 0x20) == lowercase letter

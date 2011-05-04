@@ -21,12 +21,12 @@
 
 #include "webutil/html/htmlcolor.h"
 
+#include <string.h>
 #include <cmath>
 
 #include "base/stringprintf.h"
 #include "strings/ascii_ctype.h"
 #include "strings/escaping.h"
-#include "strings/strutil.h"
 
 typedef struct RgbValue {
   unsigned char r_;

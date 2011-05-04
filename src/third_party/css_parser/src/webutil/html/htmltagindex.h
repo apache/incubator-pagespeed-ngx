@@ -27,9 +27,13 @@
 #ifndef WEBUTIL_HTML_HTMLTAGINDEX_H__
 #define WEBUTIL_HTML_HTMLTAGINDEX_H__
 
+#include <string.h>
 #include <string>
 #include "string_using.h"
+
 #include "base/basictypes.h"
+#include "base/integral_types.h"
+#include "base/macros.h"
 #include "base/scoped_ptr.h"
 #include "util/gtl/dense_hash_map.h"
 #include "webutil/html/htmltagenum.h"

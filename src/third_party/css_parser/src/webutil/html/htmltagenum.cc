@@ -17,9 +17,10 @@
 // Copyright 2006 Google Inc. All Rights Reserved.
 // Author: dpeng@google.com (Daniel Peng)
 
-#include "base/basictypes.h"
 #include "webutil/html/htmltagenum.h"
-#include "strings/stringprintf.h"
+
+#include "base/macros.h"
+#include "base/stringprintf.h"
 
 const char* HtmlTagEnumNames[] =
 {    "Unknown",
