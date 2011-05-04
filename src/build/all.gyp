@@ -27,7 +27,7 @@
       'target_name': 'mod_pagespeed',
       'type': 'none',
       'dependencies': [
-        '../net/instaweb/instaweb.gyp:pagespeed_automatic',
+        '../net/instaweb/instaweb.gyp:instaweb_rewriter',
         '../net/instaweb/apache.gyp:*',
         '../net/instaweb/mod_pagespeed.gyp:*',
         'install.gyp:*',

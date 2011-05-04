@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/file_message_handler.h"
 
+#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 

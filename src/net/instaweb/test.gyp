@@ -197,7 +197,7 @@
       'target_name': 'test_infrastructure',
       'type': '<(library)',
       'dependencies': [
-        'instaweb.gyp:pagespeed_automatic',
+        'instaweb.gyp:instaweb_rewriter',
         'instaweb.gyp:instaweb_http_test',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
