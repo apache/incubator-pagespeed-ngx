@@ -83,6 +83,9 @@ class JavascriptRewriteContext : public SingleRewriteContext {
 
     bool ok = code_block.ProfitableToRewrite();
     if (ok) {
+      // Give the script a nice mimetype and extension.
+      // (There is no harm in doing this, they're ignored anyway).
+      output_resource->SetType(&kContentTypeJavascript);
       ok = WriteExternalScriptTo(script_input, code_block.Rewritten(),
                                  output_resource);
     } else {

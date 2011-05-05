@@ -132,6 +132,18 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
                                 kJsMinData);
 }
 
+TEST_F(JavascriptFilterTest, InvalidInputMimetype) {
+  // Make sure we can rewrite properly even when input has corrupt mimetype.
+  ContentType not_java_script = kContentTypeJavascript;
+  not_java_script.mime_type_ = "text/semicolon-inserted";
+  const char* kNotJsFile = "script.notjs";
+
+  InitResponseHeaders(kNotJsFile, not_java_script, kJsData, 100);
+  ValidateExpected("wrong_mime", GenerateHtml(kNotJsFile),
+                   GenerateHtml(StrCat(
+                       kTestDomain, kNotJsFile, ".pagespeed.jm.0.js").c_str()));
+}
+
 // Make sure bad requests do not corrupt our extension.
 TEST_F(JavascriptFilterTest, NoExtensionCorruption) {
   TestCorruptUrl("%22", false);
