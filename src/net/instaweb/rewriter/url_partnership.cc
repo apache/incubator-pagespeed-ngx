@@ -18,12 +18,17 @@
 
 #include "net/instaweb/rewriter/public/url_partnership.h"
 
-#include <algorithm>  // for std::min
-#include <string>
+#include <cstddef>
+#include <vector>
+#include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -54,8 +59,7 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
     handler->Message(
         kInfo, "Cannot rewrite empty URL relative to %s",
         original_origin_and_path_.spec_c_str());
-  }
-  else if (!original_origin_and_path_.is_valid()) {
+  } else if (!original_origin_and_path_.is_valid()) {
     handler->Message(
         kInfo, "Cannot rewrite %s relative to invalid url %s",
         resource_url.c_str(),
@@ -98,7 +102,6 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
         IncrementalResolve(index);
       }
     }
-
   }
   return ret;
 }
@@ -139,7 +142,7 @@ void UrlPartnership::IncrementalResolve(int index) {
   if (index == 0) {
     StringPiece base = url_vector_[0]->AllExceptLeaf();
     SplitStringPieceToVector(base, "/", &components, omit_empty);
-    components.pop_back(); // base ends with "/"
+    components.pop_back();            // base ends with "/"
     CHECK_LE(3U, components.size());  // expect {"http:", "", "x"...}
     for (size_t i = 0; i < components.size(); ++i) {
       const StringPiece& sp = components[i];
@@ -150,7 +153,7 @@ void UrlPartnership::IncrementalResolve(int index) {
     // until one doesn't match, then shortening common_components.
     StringPiece all_but_leaf = url_vector_[index]->AllExceptLeaf();
     SplitStringPieceToVector(all_but_leaf, "/", &components, omit_empty);
-    components.pop_back(); // base ends with "/"
+    components.pop_back();            // base ends with "/"
     CHECK_LE(3U, components.size());  // expect {"http:", "", "x"...}
 
     if (components.size() < common_components_.size()) {

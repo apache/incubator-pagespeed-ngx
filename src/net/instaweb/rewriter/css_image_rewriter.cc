@@ -19,22 +19,32 @@
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <vector>
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
+#include "net/instaweb/rewriter/public/image_combine_filter.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/public/timer.h"
+#include "util/utf8/public/unicodetext.h"
 #include "webutil/css/parser.h"
+#include "webutil/css/property.h"
+#include "webutil/css/value.h"
 
 namespace net_instaweb {
 

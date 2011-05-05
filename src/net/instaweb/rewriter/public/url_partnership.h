@@ -18,11 +18,11 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_URL_PARTNERSHIP_H_
 
 #include <vector>
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string.h"
 
-class GoogleUrl;
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 

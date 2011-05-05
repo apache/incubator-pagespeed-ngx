@@ -35,14 +35,11 @@ class AbstractMutex;
 class CacheInterface;
 class CacheUrlAsyncFetcher;
 class CacheUrlFetcher;
-class DelayController;
-class FileDriver;
 class FileSystem;
 class FilenameEncoder;
 class Hasher;
 class HtmlParse;
 class HTTPCache;
-class LRUCache;
 class MessageHandler;
 class NamedLockManager;
 class ResourceManager;
@@ -51,7 +48,6 @@ class Statistics;
 class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
-class Variable;
 
 // A base RewriteDriverFactory.
 class RewriteDriverFactory {

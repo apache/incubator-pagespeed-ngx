@@ -18,8 +18,12 @@
 
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 
+#include <cstddef>
+
+#include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/jsminify/js_minify.h"
 

@@ -17,9 +17,12 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/util/public/google_message_handler.h"
+
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace {
 
@@ -216,7 +219,8 @@ TEST_F(DomainLawyerTest, VerifyPortIsDistinct1) {
 }
 
 TEST_F(DomainLawyerTest, VerifyPortIsDistinct2) {
-  ASSERT_TRUE(domain_lawyer_.AddDomain("www.example.com:81", &message_handler_));
+  ASSERT_TRUE(
+      domain_lawyer_.AddDomain("www.example.com:81", &message_handler_));
   GoogleString mapped_domain_name;
   GoogleUrl context_gurl("http://www.other.com/index.html");
   EXPECT_FALSE(MapRequest(

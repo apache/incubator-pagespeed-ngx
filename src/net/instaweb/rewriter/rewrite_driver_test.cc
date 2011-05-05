@@ -18,12 +18,24 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mock_hasher.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
+class RewriteFilter;
 
 class RewriteDriverTest : public ResourceManagerTestBase {
  protected:
@@ -206,10 +218,10 @@ TEST_F(RewriteDriverTest, InvalidBaseTag) {
 
 TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
   const ContentType* content_types[] = { NULL, &kContentTypeJpeg};
-  const ResourceManager::Kind resource_kinds[] = {
-    ResourceManager::kRewrittenResource,
-    ResourceManager::kOnTheFlyResource,
-    ResourceManager::kOutlinedResource,
+  const OutputResourceKind resource_kinds[] = {
+    kRewrittenResource,
+    kOnTheFlyResource,
+    kOutlinedResource,
   };
 
   // short_path.size() < options_.max_url_size() < long_path.size()

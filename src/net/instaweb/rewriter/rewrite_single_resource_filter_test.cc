@@ -16,14 +16,40 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
-#include "base/scoped_ptr.h"
-#include "net/instaweb/http/public/counting_url_async_fetcher.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+
+#include "base/logging.h"
+#include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/counting_url_async_fetcher.h"
+#include "net/instaweb/http/public/fake_url_async_fetcher.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/wait_url_async_fetcher.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_hasher.h"
+#include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
+#include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
+class MessageHandler;
 
 namespace {
 
@@ -260,7 +286,7 @@ class RewriteSingleResourceFilterTest
     OutputResourcePtr output_resource(
         rewrite_driver_.CreateOutputResourceFromResource(
             kTestFilterPrefix, encoder, NULL, input_resource,
-            ResourceManager::kRewrittenResource));
+            kRewrittenResource));
     EXPECT_TRUE(output_resource.get() != NULL);
 
     return output_resource->ReleaseCachedResult();

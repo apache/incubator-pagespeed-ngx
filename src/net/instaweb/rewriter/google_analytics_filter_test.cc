@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,15 +15,18 @@
  */
 
 // Author: slamm@google.com (Stephen Lamm)
-#include "net/instaweb/rewriter/google_analytics_snippet.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 
+#include "net/instaweb/rewriter/google_analytics_snippet.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+class Statistics;
 
 namespace {
 

@@ -23,7 +23,8 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 class HtmlParse;
@@ -41,9 +42,9 @@ class ScriptTagScanner {
     kExecuteSync = 0,
     kExecuteDefer = 1,
     kExecuteAsync = 2,
-    kExecuteForEvent = 4 // IE extension. If this is set,
-                         // script will not run in browsers following HTML5,
-                         // and will run at hard-to-describe time in IE.
+    kExecuteForEvent = 4  // IE extension. If this is set,
+                          // script will not run in browsers following HTML5,
+                          // and will run at hard-to-describe time in IE.
   };
 
   explicit ScriptTagScanner(HtmlParse* html_parse);

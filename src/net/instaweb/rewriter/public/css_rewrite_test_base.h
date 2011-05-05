@@ -21,20 +21,18 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_REWRITE_TEST_BASE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_REWRITE_TEST_BASE_H_
 
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-
-#include "base/scoped_ptr.h"
+#include "base/logging.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
-#include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
-#include "net/instaweb/rewriter/public/css_tag_scanner.h"
-#include "net/instaweb/rewriter/public/image_tag_scanner.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+class ResourceNamer;
+class Variable;
+struct ContentType;
 
 class CssRewriteTestBase : public ResourceManagerTestBase {
  protected:

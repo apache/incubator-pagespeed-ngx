@@ -16,14 +16,14 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
-
-#include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace {

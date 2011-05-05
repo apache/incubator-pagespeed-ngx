@@ -17,10 +17,11 @@
 // Author: jmaessen@google.com (Jan Maessen)
 
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
+
 #include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace {
 

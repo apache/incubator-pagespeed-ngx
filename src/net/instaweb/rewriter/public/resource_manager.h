@@ -20,41 +20,37 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
 
-#include <map>
-#include <vector>
-#include "net/instaweb/util/public/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/rewriter/public/blocking_behavior.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/util/public/url_segment_encoder.h"
 
-class GURL;
+template <class C> class scoped_ptr;
 
 namespace net_instaweb {
 
 class AbstractLock;
 class CacheInterface;
 class ContentType;
-class DomainLawyer;
 class FileSystem;
 class FilenameEncoder;
-class HTTPCache;
-class HTTPValue;
 class Hasher;
 class MessageHandler;
-class ResponseHeaders;
 class NamedLockManager;
-class OutputResource;
-class ResourceNamer;
+class ResourceContext;
+class ResponseHeaders;
 class RewriteOptions;
 class Statistics;
+class Timer;
 class UrlAsyncFetcher;
+class UrlSegmentEncoder;
 class Variable;
-class Writer;
 
 typedef RefCountedPtr<OutputResource> OutputResourcePtr;
 
@@ -63,16 +59,6 @@ typedef RefCountedPtr<OutputResource> OutputResourcePtr;
 // which should be renamed RequestContext.
 class ResourceManager {
  public:
-  enum BlockingBehavior { kNeverBlock, kMayBlock };
-
-  enum Kind {
-    kRewrittenResource,  // derived from some input resource URL or URLs.
-    kOnTheFlyResource,   // derived from some input resource URL or URLs in a
-                         //   very inexpensive way --- it makes no sense to
-                         //   cache the output contents.
-    kOutlinedResource    // derived from page HTML.
-  };
-
   // This value is a shared constant so that it can also be used in
   // the Apache-specific code that repairs our caching headers downstream
   // of mod_headers.
@@ -206,7 +192,7 @@ class ResourceManager {
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
       const ResourcePtr& input_resource,
-      Kind kind);
+      OutputResourceKind kind);
 
   // Creates an output resource where the name is provided by the rewriter.
   // The intent is to be able to derive the content from the name, for example,
@@ -224,14 +210,14 @@ class ResourceManager {
   OutputResourcePtr CreateOutputResourceWithPath(
       const RewriteOptions* options, const StringPiece& path,
       const StringPiece& filter_prefix, const StringPiece& name,
-      const ContentType* type, Kind kind);
+      const ContentType* type, OutputResourceKind kind);
 
   // Attempt to obtain a named lock.  Return true if we do so.  If the
   // object is expensive to create, this lock should be held during
   // its creation to avoid multiple rewrites happening at once.  The
   // lock will be unlocked when creation_lock is reset or destructed.
   bool LockForCreation(const GoogleString& name,
-                       ResourceManager::BlockingBehavior block,
+                       BlockingBehavior block,
                        scoped_ptr<AbstractLock>* creation_lock);
 
  private:

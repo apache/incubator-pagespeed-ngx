@@ -19,23 +19,26 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_CONTEXT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_CONTEXT_H_
 
-#include <vector>
-
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
-#include "net/instaweb/util/public/proto_util.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
-
-class CacheInterface;
-class InputUrl;
-class RewriteDriver;
+class AbstractLock;
+class CachedResult;
+class OutputPartition;
+class OutputPartitions;
 class ResourceContext;
+class ResourceManager;
+class RewriteDriver;
+class SharedString;
+class Statistics;
 
 // Class to retain state as we rewrite a collection of resources.  The
 // rewriting flow is callback driven.  We use callbacks to wake up
@@ -228,7 +231,7 @@ class RewriteContext {
   // Lock guarding output partitioning and rewriting.  Lazily initialized by
   // LockForCreation, unlocked on destruction or the end of Finish().
   scoped_ptr<AbstractLock> lock_;
-  ResourceManager::BlockingBehavior block_;
+  BlockingBehavior block_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };

@@ -23,14 +23,43 @@
 // TestCombineFilter is used to hook TestCombiner up with the framework.
 // ResourceCombinerTest is the test fixture.
 
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
+
+#include <cstdio>
+
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/mock_callback.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/wait_url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner_template.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
+class CommonFilter;
+class MessageHandler;
+class OutputResource;
+class HtmlElement;
 
 namespace {
 

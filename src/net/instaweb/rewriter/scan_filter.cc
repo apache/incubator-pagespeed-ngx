@@ -17,7 +17,12 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/rewriter/public/scan_filter.h"
-#include "net/instaweb/rewriter/public/common_filter.h"
+
+#include <cstddef>
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 namespace net_instaweb {
 

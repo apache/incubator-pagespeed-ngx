@@ -21,26 +21,21 @@
 
 #include <vector>
 
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
-
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
-#include "net/instaweb/util/public/atom.h"
-#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
-class HtmlParse;
-class MessageHandler;
-class ResponseHeaders;
+class HtmlCharactersNode;
+class HtmlIEDirectiveNode;
 class OutputResource;
 class Resource;
-class ResourceManager;
+class RewriteDriver;
 class Statistics;
-class Writer;
 
 /*
  * Find Javascript elements (either inline scripts or imported js files) and

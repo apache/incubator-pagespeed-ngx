@@ -24,35 +24,32 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/wait_url_async_fetcher.h"
-#include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/filename_encoder.h"
-#include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/null_writer.h"
-#include "net/instaweb/util/public/simple_stats.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string.h"
 
 #define URL_PREFIX "http://www.example.com/"
 
 namespace net_instaweb {
+class Hasher;
+class LRUCache;
+class MockTimer;
+class RewriteFilter;
+class SimpleStats;
+class WaitUrlAsyncFetcher;
+struct ContentType;
 
 const int kCacheSize = 100 * 1000 * 1000;
-
-class RewriteFilter;
 
 class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
  public:

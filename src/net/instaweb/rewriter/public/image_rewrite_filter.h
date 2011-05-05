@@ -19,28 +19,25 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_
 
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
-
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
-#include "net/instaweb/rewriter/public/image_tag_scanner.h"
-#include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/url_segment_encoder.h"
-#include "net/instaweb/util/public/work_bound.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
 class ContentType;
-class FileSystem;
-class HtmlParse;
 class Image;
+class ImageTagScanner;
 class OutputResource;
-class ResourceManager;
+class Resource;
+class RewriteDriver;
+class Statistics;
+class UrlSegmentEncoder;
 class Variable;
+class WorkBound;
 
 // Identify img tags in html and optimize them.
 // TODO(jmaessen): Big open question: how best to link pulled-in resources to

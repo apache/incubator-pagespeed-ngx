@@ -21,10 +21,15 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_FILE_INPUT_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_FILE_INPUT_RESOURCE_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+class MessageHandler;
+class ResourceManager;
+struct ContentType;
 
 class FileInputResource : public Resource {
  public:

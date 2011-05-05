@@ -4,17 +4,17 @@
 // Simple HTML minifier, based on pagespeed's minify_html.cc
 
 #include <cstdio>
-
 #include <fstream>
-#include <string>
+#include <iosfwd>
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"

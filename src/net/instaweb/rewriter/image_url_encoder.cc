@@ -16,7 +16,12 @@
 // Author: jmaessen@google.com (Jan Maessen)
 
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
+
+#include "base/logging.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_escaper.h"
 
 namespace net_instaweb {

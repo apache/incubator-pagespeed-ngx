@@ -19,12 +19,19 @@
 // Unit-test the RewriteContext class.  This is made simplest by
 // setting up some dummy rewriters in our test framework.
 
-#include "net/instaweb/rewriter/public/rewrite_context.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
+#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace {
 

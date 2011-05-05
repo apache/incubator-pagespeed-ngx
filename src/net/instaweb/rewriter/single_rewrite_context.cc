@@ -18,7 +18,20 @@
 
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 
+#include <cstddef>
+#include "base/logging.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
+
 namespace net_instaweb {
+
+class RewriteDriver;
 
 SingleRewriteContext::SingleRewriteContext(RewriteDriver* driver,
                                            const ResourceSlotPtr& slot,
@@ -57,9 +70,9 @@ bool SingleRewriteContext::PartitionAndRewrite(OutputPartitions* partitions) {
   ResourcePtr resource(slot(0)->resource());
   if ((resource.get() != NULL) && resource->loaded() &&
       resource->ContentsValid()) {
-    ResourceManager::Kind kind = ResourceManager::kRewrittenResource;
+    OutputResourceKind kind = kRewrittenResource;
     if (ComputeOnTheFly()) {
-      kind = ResourceManager::kOnTheFlyResource;
+      kind = kOnTheFlyResource;
     }
     OutputResourcePtr output_resource(
         resource_manager()->CreateOutputResourceFromResource(

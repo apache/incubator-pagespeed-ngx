@@ -19,13 +19,11 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_TAG_SCANNER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_TAG_SCANNER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/util/public/atom.h"
-#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
+class HtmlParse;
 
 class ResourceTagScanner {
  public:

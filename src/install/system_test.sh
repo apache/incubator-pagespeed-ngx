@@ -88,7 +88,7 @@ function check() {
   fi;
 }
 
-# Continously fetches URL and pipes the output to COMMAND.  Loops until
+# Continuously fetches URL and pipes the output to COMMAND.  Loops until
 # COMMAND outputs RESULT, in which case we return 0, or until 10 seconds have
 # passed, in which case we return 1.
 function fetch_until() {
@@ -483,6 +483,15 @@ echo $WGET_DUMP $TEST_ROOT/redirect/php/
 check $WGET_DUMP $TEST_ROOT/redirect/php/ > $OUTDIR/redirect_php.html
 check \
   [ `grep -ce "href=\"/mod_pagespeed_test/" $OUTDIR/redirect_php.html` = 2 ];
+
+echo TEST: Connection refused handling
+echo $WGET_DUMP $TEST_ROOT/connection_refused.html
+check $WGET_DUMP $TEST_ROOT/connection_refused.html > /dev/null
+ERRS=`cat /usr/local/apache2/logs/error_log | grep "Serf status 111" | wc -l`
+sleep 1
+# Check that we have one error or less --- might not have flushed the log yet..
+# (luckily we nearly certainly do when spewing dozens of errors)
+check [ `expr $ERRS` -le 1 ];
 
 # Cleanup
 rm -rf $OUTDIR

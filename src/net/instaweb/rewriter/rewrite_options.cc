@@ -16,9 +16,16 @@
 
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
-#include <vector>
+#include <map>
+#include <set>
 #include <utility>
+#include <vector>
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/wildcard_group.h"
 
 namespace net_instaweb {
 

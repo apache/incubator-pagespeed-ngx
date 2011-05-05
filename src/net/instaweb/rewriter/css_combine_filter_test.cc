@@ -17,14 +17,45 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //     and sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include <vector>
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/mock_callback.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/mem_file_system.h"
+#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/mock_hasher.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 
+
 namespace net_instaweb {
+class Hasher;
 
 namespace {
 
@@ -765,13 +796,6 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
             css_urls[0]);
   EXPECT_TRUE(GoogleUrl(css_urls[0]).is_valid());
 }
-
-// TODO(jmaessen): Re-write for new sharding story when it exists.
-// TEST_F(CssCombineFilterTest, CombineCssShards) {
-//   num_shards_ = 10;
-//   url_prefix_ = "http://mysite%d/";
-//   CombineCss("combine_css_sha1", &mock_hasher_, "", false);
-// }
 
 TEST_F(CssCombineFilterTest, CombineCssNoInput) {
   mock_url_fetcher_.set_fail_on_unexpected(false);

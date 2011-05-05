@@ -18,11 +18,14 @@
 
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include <cstddef>
+
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace {
@@ -30,6 +33,7 @@ const char kTextCss[] = "text/css";
 }
 
 namespace net_instaweb {
+class HtmlParse;
 
 const char CssTagScanner::kStylesheet[] = "stylesheet";
 

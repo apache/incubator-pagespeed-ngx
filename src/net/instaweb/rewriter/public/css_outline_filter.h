@@ -19,17 +19,23 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_OUTLINE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_OUTLINE_FILTER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
+#include <cstddef>
+
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
+class HtmlCdataNode;
+class HtmlCharactersNode;
+class HtmlCommentNode;
+class HtmlDirectiveNode;
+class HtmlElement;
+class HtmlIEDirectiveNode;
 class MessageHandler;
-class ResponseHeaders;
 class OutputResource;
-class ResourceManager;
+class RewriteDriver;
 
 // Filter to take explicit <style> and <script> tags and outline them to files.
 class CssOutlineFilter : public CommonFilter {

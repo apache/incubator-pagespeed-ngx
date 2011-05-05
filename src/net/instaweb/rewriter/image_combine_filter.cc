@@ -19,27 +19,42 @@
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
 
 #include <map>
+#include <vector>
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_combiner_template.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/spriter/image_library_interface.h"
 #include "net/instaweb/spriter/public/image_spriter.h"
 #include "net/instaweb/spriter/public/image_spriter.pb.h"
-#include "net/instaweb/spriter/image_library_interface.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/proto_util.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
+#include "util/utf8/public/unicodetext.h"
+#include "webutil/css/identifier.h"
 #include "webutil/css/parser.h"
+#include "webutil/css/property.h"
+#include "webutil/css/value.h"
 
 namespace net_instaweb {
+class RequestHeaders;
+class ResponseHeaders;
+class Writer;
 
 namespace {
 
@@ -302,7 +317,7 @@ class Library : public spriter::ImageLibraryInterface {
 
     virtual ~SpriterImage() {}
 
-    virtual bool GetDimensions(int* out_width, int* out_height) {
+    virtual bool GetDimensions(int* out_width, int* out_height) const {
       ImageDim dim;
       image_->Dimensions(&dim);
       *out_width = dim.width();

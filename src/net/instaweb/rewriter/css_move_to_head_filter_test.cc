@@ -3,8 +3,14 @@
 
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 
+#include <cstddef>
+
+#include "base/logging.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/simple_stats.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 

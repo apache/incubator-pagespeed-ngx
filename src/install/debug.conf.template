@@ -48,6 +48,9 @@ ModPagespeedEnableFilters add_instrumentation
 AddType text/html .shtml
 AddOutputFilter INCLUDES .shtml
 
+# For regression test of connection failing.
+ModPagespeedDomain www.google.co.ca:8085
+
 #SPELING # Enable mod_speling to ensure that we don't regress Issue 194
 #SPELING CheckSpelling on
 

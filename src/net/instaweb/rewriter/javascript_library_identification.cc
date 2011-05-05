@@ -17,6 +17,9 @@
 
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 
+#include <cstddef>
+
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/rolling_hash.h"
 #include "net/instaweb/util/public/string_util.h"
 

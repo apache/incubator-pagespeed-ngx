@@ -23,32 +23,22 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_COMBINER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_COMBINER_H_
 
-#include <vector>
-#include <utility>
-
-#include "net/instaweb/util/public/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
-#include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace net_instaweb {
-
 class CommonFilter;
 class ContentType;
-class HtmlElement;
 class MessageHandler;
+class OutputResource;
 class RequestHeaders;
-class ResourceManager;
 class ResponseHeaders;
 class RewriteDriver;
-class RewriteDriver;
-class Variable;
 class Writer;
 
 // A boolean with an expiration date.

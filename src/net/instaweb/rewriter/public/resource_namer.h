@@ -17,6 +17,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_NAMER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_NAMER_H_
 
+#include "base/logging.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -24,7 +26,6 @@ namespace net_instaweb {
 
 class ContentType;
 class Hasher;
-class ResourceManager;
 
 // Encapsulates the naming of resource URL leafs.  The class holds the context
 // of a single resource, and is not intended for re-use.  We could, of course,

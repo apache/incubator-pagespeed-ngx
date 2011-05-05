@@ -16,10 +16,13 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "public/add_head_filter.h"
+#include "net/instaweb/rewriter/public/add_head_filter.h"
 
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include <cstddef>
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
 
 namespace net_instaweb {
 

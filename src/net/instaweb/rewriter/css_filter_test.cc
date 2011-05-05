@@ -17,8 +17,14 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //     and sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -57,7 +63,7 @@ TEST_F(CssFilterTest, RewriteEmptyCssTest) {
                            kExpectChange | kExpectSuccess | kNoStatCheck);
   // Note: We must check stats ourselves because, for technical reasons,
   // empty inline styles are not treated as being rewritten at all.
-  //EXPECT_EQ(0, num_files_minified_->Get());
+  // EXPECT_EQ(0, num_files_minified_->Get());
   EXPECT_EQ(0, minified_bytes_saved_->Get());
   EXPECT_EQ(0, num_parse_failures_->Get());
 
@@ -124,7 +130,7 @@ TEST_F(CssFilterTest, NoQueryCorruption) {
 
 TEST_F(CssFilterTest, RewriteVariousCss) {
   // TODO(sligocki): Get these tests to pass with setlocale.
-  //EXPECT_TRUE(setlocale(LC_ALL, "tr_TR.utf8"));
+  // EXPECT_TRUE(setlocale(LC_ALL, "tr_TR.utf8"));
   // Distilled examples.
   const char* good_examples[] = {
     "a.b #c.d e#d,f:g>h+i>j{color:red}",  // .#,>+: in selectors

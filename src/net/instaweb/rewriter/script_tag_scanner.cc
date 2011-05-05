@@ -18,13 +18,18 @@
 
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 
+#include <set>
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 // The list is from HTML5, "4.3.1.1 Scripting languages"
+class HtmlParse;
+
 static const char* const javascript_mimetypes[] = {
   "application/ecmascript",
   "application/javascript",
@@ -45,7 +50,7 @@ static const char* const javascript_mimetypes[] = {
 };
 
 ScriptTagScanner::ScriptTagScanner(HtmlParse* html_parse) {
-  for (int i = 0; i < int(arraysize(javascript_mimetypes)); ++i) {
+  for (int i = 0; i < static_cast<int>(arraysize(javascript_mimetypes)); ++i) {
     javascript_mimetypes_.insert(GoogleString(javascript_mimetypes[i]));
   }
 }

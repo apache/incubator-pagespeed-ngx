@@ -20,9 +20,17 @@
 
 #include "net/instaweb/rewriter/public/resource_slot.h"
 
+#include <cstddef>
 #include <set>
 #include <utility>  // for std::pair
+
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 
 namespace net_instaweb {
 

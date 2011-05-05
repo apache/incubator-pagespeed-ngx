@@ -20,18 +20,19 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_H_
 
 #include <map>
-#include <set>
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
@@ -39,25 +40,22 @@
 
 namespace net_instaweb {
 
+struct ContentType;
+
 class AddInstrumentationFilter;
 class CommonFilter;
 class FileSystem;
-class Hasher;
 class HtmlFilter;
-class HtmlParse;
 class HtmlWriterFilter;
-class Resource;
-class ResourceManager;
-class ResourceNamer;
+class MessageHandler;
+class OutputResource;
+class RequestHeaders;
+class ResourceContext;
+class ResponseHeaders;
 class RewriteContext;
 class RewriteFilter;
-class RewriteSingleResourceFilter;
+class RewriteOptions;
 class Statistics;
-class Timer;
-class UrlAsyncFetcher;
-class UrlFetcher;
-class UrlLeftTrimFilter;
-class UrlSegmentEncoder;
 class Variable;
 class Writer;
 
@@ -211,7 +209,7 @@ class RewriteDriver : public HtmlParse {
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
       const ResourcePtr& input_resource,
-      ResourceManager::Kind kind) {
+      OutputResourceKind kind) {
     return resource_manager_->CreateOutputResourceFromResource(
         &options_, filter_prefix, encoder, data, input_resource, kind);
   }
@@ -220,7 +218,7 @@ class RewriteDriver : public HtmlParse {
   OutputResourcePtr CreateOutputResourceWithPath(
       const StringPiece& path, const StringPiece& filter_prefix,
       const StringPiece& name,  const ContentType* type,
-      ResourceManager::Kind kind) {
+      OutputResourceKind kind) {
     return resource_manager_->CreateOutputResourceWithPath(
         &options_, path, filter_prefix, name, type, kind);
   }

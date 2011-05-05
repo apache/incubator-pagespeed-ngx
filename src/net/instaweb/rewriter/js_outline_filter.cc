@@ -18,17 +18,25 @@
 
 #include "net/instaweb/rewriter/public/js_outline_filter.h"
 
-#include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/script_tag_scanner.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/content_type.h"
-#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 const char JsOutlineFilter::kFilterId[] = "jo";
 
@@ -142,7 +150,7 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
     OutputResourcePtr resource(
         driver_->CreateOutputResourceWithPath(
             driver_->google_url().AllExceptLeaf(), kFilterId, "_",
-            &kContentTypeJavascript, ResourceManager::kOutlinedResource));
+            &kContentTypeJavascript, kOutlinedResource));
     if (resource.get() != NULL &&
         WriteResource(content, resource.get(), handler)) {
       HtmlElement* outline_element = driver_->CloneElement(inline_element);

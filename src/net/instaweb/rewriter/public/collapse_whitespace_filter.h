@@ -21,12 +21,14 @@
 
 #include <vector>
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
+class HtmlParse;
+class HtmlElement;
+class HtmlCharactersNode;
 
 // Reduce the size of the HTML by collapsing whitespace (except within certain
 // tags, e.g. <pre> and <script>).  Note that this is a dangerous filter, as

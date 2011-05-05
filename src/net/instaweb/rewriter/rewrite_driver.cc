@@ -468,13 +468,13 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const StringPiece& url,
   // in the rewrite drivers. Also figure out the filter's preferred
   // resource kind.
   StringPiece id = namer.id();
-  ResourceManager::Kind kind = ResourceManager::kRewrittenResource;
+  OutputResourceKind kind = kRewrittenResource;
   StringFilterMap::iterator p = resource_filter_map_.find(
       GoogleString(id.data(), id.size()));
   if (p != resource_filter_map_.end()) {
     *filter = p->second;
     if ((*filter)->ComputeOnTheFly()) {
-      kind = ResourceManager::kOnTheFlyResource;
+      kind = kOnTheFlyResource;
     }
   } else if ((id == CssOutlineFilter::kFilterId) ||
               (id == JsOutlineFilter::kFilterId)) {
@@ -484,7 +484,7 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const StringPiece& url,
     //
     // TODO(jmarantz): figure out a better way to refactor this.
     // TODO(jmarantz): add a unit-test to show serving outline-filter resources.
-    kind = ResourceManager::kOutlinedResource;
+    kind = kOutlinedResource;
   } else {
     return OutputResourcePtr();
   }
@@ -578,7 +578,7 @@ bool RewriteDriver::FetchExtantOutputResourceOrLock(
   }
 
   // 2) Grab a lock for creation, blocking for it if needed.
-  output_resource->LockForCreation(ResourceManager::kMayBlock);
+  output_resource->LockForCreation(kMayBlock);
 
   // 3) See if the resource got created while we were waiting for the lock.
   // (If it did, the lock will get released almost immediately in our caller,

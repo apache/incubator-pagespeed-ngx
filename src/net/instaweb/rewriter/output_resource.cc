@@ -22,24 +22,39 @@
 #include <algorithm>
 
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/blocking_behavior.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/content_type.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/file_writer.h"
 #include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/proto_util.h"
+#include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_hash.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"
 
 namespace net_instaweb {
+class MessageHandler;
 
 namespace {
 
@@ -66,7 +81,7 @@ OutputResource::OutputResource(ResourceManager* resource_manager,
                                const ResourceNamer& full_name,
                                const ContentType* type,
                                const RewriteOptions* options,
-                               ResourceManager::Kind kind)
+                               OutputResourceKind kind)
     : Resource(resource_manager, type),
       output_file_(NULL),
       writing_complete_(false),
@@ -247,7 +262,7 @@ void OutputResource::SetHash(const StringPiece& hash) {
 
 bool OutputResource::Load(MessageHandler* handler) {
   if (!writing_complete_ && resource_manager_->store_outputs_in_file_system() &&
-      (kind_ != ResourceManager::kOnTheFlyResource)) {
+      (kind_ != kOnTheFlyResource)) {
     FileSystem* file_system = resource_manager_->file_system();
     FileSystem::InputFile* file = file_system->OpenInputFile(
         filename().c_str(), handler);
@@ -290,7 +305,7 @@ void OutputResource::SetType(const ContentType* content_type) {
   full_name_.set_ext(content_type->file_extension() + 1);
 }
 
-bool OutputResource::LockForCreation(ResourceManager::BlockingBehavior block) {
+bool OutputResource::LockForCreation(BlockingBehavior block) {
   return resource_manager_->LockForCreation(name_key(), block, &creation_lock_);
 }
 

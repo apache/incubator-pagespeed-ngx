@@ -375,7 +375,7 @@ OutputResourcePtr ResourceManager::CreateOutputResourceFromResource(
     const UrlSegmentEncoder* encoder,
     const ResourceContext* data,
     const ResourcePtr& input_resource,
-    Kind kind) {
+    OutputResourceKind kind) {
   OutputResourcePtr result;
   if (input_resource.get() != NULL) {
     // TODO(jmarantz): It would be more efficient to pass in the base
@@ -402,7 +402,7 @@ OutputResourcePtr ResourceManager::CreateOutputResourceWithPath(
     const StringPiece& filter_id,
     const StringPiece& name,
     const ContentType* content_type,
-    Kind kind) {
+    OutputResourceKind kind) {
   ResourceNamer full_name;
   full_name.set_id(filter_id);
   full_name.set_name(name);
@@ -433,7 +433,7 @@ OutputResourcePtr ResourceManager::CreateOutputResourceWithPath(
 }
 
 bool ResourceManager::LockForCreation(const GoogleString& name,
-                                      ResourceManager::BlockingBehavior block,
+                                      BlockingBehavior block,
                                       scoped_ptr<AbstractLock>* creation_lock) {
   const int64 kBreakLockMs = 30 * Timer::kSecondMs;
   const int64 kBlockLockMs = 5 * Timer::kSecondMs;
@@ -451,11 +451,12 @@ bool ResourceManager::LockForCreation(const GoogleString& name,
     case kMayBlock:
       // TODO(jmaessen): It occurs to me that we probably ought to be
       // doing something like this if we *really* care about lock aging:
-      // if (!(*creation_lock)->LockTimedWaitStealOld(kBlockLockMs, kBreakLockMs)) {
+      // if (!(*creation_lock)->LockTimedWaitStealOld(kBlockLockMs,
+      //                                              kBreakLockMs)) {
       //   (*creation_lock)->TryLockStealOld(0);  // Force lock steal
       // }
-      // This updates the lock hold time so that another thread is less likely to steal
-      // the lock while we're doing the blocking rewrite.
+      // This updates the lock hold time so that another thread is less likely
+      // to steal the lock while we're doing the blocking rewrite.
       (*creation_lock)->LockTimedWaitStealOld(kBlockLockMs, kBreakLockMs);
       break;
   }

@@ -18,11 +18,14 @@
 
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 
+#include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 FileInputResource::~FileInputResource() {
 }

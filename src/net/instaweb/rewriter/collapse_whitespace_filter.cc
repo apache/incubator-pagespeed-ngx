@@ -18,13 +18,19 @@
 
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 
+#include <algorithm>
+#include <cstddef>
+#include <vector>
+
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
+class HtmlParse;
 
 namespace {
 

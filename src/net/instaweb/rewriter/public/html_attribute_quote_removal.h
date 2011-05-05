@@ -38,7 +38,6 @@ namespace net_instaweb {
 
 class HtmlElement;
 class HtmlParse;
-class ResourceManager;
 
 class HtmlAttributeQuoteRemoval : public EmptyHtmlFilter {
  public:

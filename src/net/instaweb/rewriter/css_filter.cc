@@ -19,23 +19,36 @@
 #include "net/instaweb/rewriter/public/css_filter.h"
 
 #include <algorithm>
+#include <vector>
+
+#include "base/logging.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/css_image_rewriter.h"
+#include "net/instaweb/rewriter/public/resource_combiner.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "util/utf8/public/unicodetext.h"
 
 #include "base/at_exit.h"
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/url_escaper.h"
-#include "net/instaweb/util/public/writer.h"
 #include "webutil/css/parser.h"
 
 namespace {
@@ -45,6 +58,10 @@ base::AtExitManager* at_exit_manager = NULL;
 }  // namespace
 
 namespace net_instaweb {
+class CacheExtender;
+class ImageCombineFilter;
+class ImageRewriteFilter;
+class MessageHandler;
 
 namespace {
 

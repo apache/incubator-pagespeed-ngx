@@ -16,9 +16,12 @@
 
 // Author: mdsteele@google.com (Matthew D. Steele)
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
+
+#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {
 

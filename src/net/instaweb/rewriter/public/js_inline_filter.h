@@ -19,15 +19,15 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_JS_INLINE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_JS_INLINE_FILTER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
+#include <cstddef>
+
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
-#include "net/instaweb/util/public/atom.h"
-#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
-
-class ResourceManager;
+class HtmlElement;
+class HtmlCharactersNode;
 class RewriteDriver;
 
 // Inline small Javascript files.

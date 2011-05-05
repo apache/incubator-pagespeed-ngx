@@ -18,10 +18,20 @@
 
 #include "net/instaweb/rewriter/public/css_minify.h"
 
+#include <vector>
+
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
+#include "util/utf8/public/unicodetext.h"
 #include "webutil/css/parser.h"
+#include "webutil/css/property.h"
+#include "webutil/css/selector.h"
+#include "webutil/css/value.h"
+#include "webutil/html/htmlcolor.h"
 
 namespace net_instaweb {
 

@@ -21,10 +21,10 @@
 
 #include <vector>
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
+#include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
-#include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -37,13 +37,17 @@ class Stylesheet;
 namespace net_instaweb {
 
 class CacheExtender;
-class HtmlParse;
+class GoogleUrl;
+class HtmlCharactersNode;
+class HtmlElement;
 class ImageCombineFilter;
 class ImageRewriteFilter;
 class MessageHandler;
 class OutputResource;
 class Resource;
-class ResourceManager;
+class RewriteDriver;
+class Statistics;
+class Variable;
 
 // Find and parse all CSS in the page and apply transformations including:
 // minification, combining, refactoring, and optimizing sub-resources.

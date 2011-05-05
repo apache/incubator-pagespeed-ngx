@@ -22,26 +22,39 @@
 
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 
-#include "base/scoped_ptr.h"
-#include "net/instaweb/http/public/request_headers.h"
+#include <cstddef>
+
+#include "base/logging.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/rewriter/public/url_partnership.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
+#include "net/instaweb/util/public/url_multipart_encoder.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
+
+class RequestHeaders;
+struct ContentType;
 
 ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
                                    const StringPiece& filter_prefix,
@@ -236,7 +249,7 @@ OutputResourcePtr ResourceCombiner::Combine(const ContentType& content_type,
   // TODO(jmaessen, jmarantz): encode based on partnership
   combination.reset(rewrite_driver_->CreateOutputResourceWithPath(
       ResolvedBase(), filter_prefix_, url_safe_id, &content_type,
-      ResourceManager::kRewrittenResource));
+      kRewrittenResource));
   if (combination.get() != NULL) {
     if (combination->cached_result() != NULL &&
         combination->cached_result()->optimizable()) {

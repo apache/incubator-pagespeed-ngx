@@ -19,8 +19,6 @@
 // Unit tests for endian-dependent operations used in image rewriting.
 
 #include "net/instaweb/rewriter/public/image.h"
-
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {

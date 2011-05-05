@@ -16,7 +16,15 @@
 
 // Author: mdsteele@google.com (Matthew D. Steele)
 
+#include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -31,11 +39,11 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
                             bool expect_inline) {
     TestInlineJavascriptGeneral(
         html_url,
-        "", // don't use a doctype for these tests
+        "",  // don't use a doctype for these tests
         js_url,
         js_original_inline_body,
         js_outline_body,
-        js_outline_body, // expect ouline body to be inlined verbatim
+        js_outline_body,  // expect ouline body to be inlined verbatim
         expect_inline);
   }
 
@@ -48,7 +56,7 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
         "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" "
         "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">",
         js_url,
-        "", // use an empty original inline body for these tests
+        "",  // use an empty original inline body for these tests
         js_outline_body,
         // Expect outline body to get surrounded by a CDATA block:
         "//<![CDATA[\n" + js_outline_body + "\n//]]>",

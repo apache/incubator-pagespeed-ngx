@@ -19,13 +19,22 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_SINGLE_RESOURCE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_SINGLE_RESOURCE_FILTER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
+class CachedResult;
+class MessageHandler;
+class OutputResource;
+class RequestHeaders;
 class ResourceContext;
+class ResponseHeaders;
+class RewriteDriver;
+class Writer;
 
 // A helper base class for RewriteFilters which only convert one input resource
 // to one output resource. This class helps implement both HTML rewriting
@@ -131,6 +140,7 @@ class RewriteSingleResourceFilter : public RewriteFilter {
 
  private:
   class FetchCallback;
+
   friend class FetchCallback;
   friend class RewriteSingleResourceFilterTest;
 

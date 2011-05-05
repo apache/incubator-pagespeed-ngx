@@ -57,7 +57,7 @@ const char kFetchMethod[] = "GET";
 }  // namespace
 
 extern "C" {
-  // Declares a new function added to
+  // Declares new functions added to
   // src/third_party/serf/instaweb_context.c
 serf_bucket_t* serf_request_bucket_request_create_for_host(
     serf_request_t *request,
@@ -65,7 +65,9 @@ serf_bucket_t* serf_request_bucket_request_create_for_host(
     const char *uri,
     serf_bucket_t *body,
     serf_bucket_alloc_t *allocator, const char* host);
-}
+
+int serf_connection_is_in_error_state(serf_connection_t* connection);
+}  // extern "C"
 
 namespace net_instaweb {
 
@@ -150,6 +152,25 @@ class SerfFetch : public PoolElement<SerfFetch> {
       callback->Done(success);
       fetch_end_ms_ = timer_->NowMs();
       fetcher_->FetchComplete(this);
+    }
+  }
+
+  // If last poll of this fetch's connection resulted in an error, clean it up.
+  // Must be called after serf_context_run, with fetcher's mutex_ held.
+  void CleanupIfError() {
+    if ((connection_ != NULL) &&
+        serf_connection_is_in_error_state(connection_)) {
+      message_handler_->Message(
+          kInfo, "Serf cleanup for error'd fetch of: %s", str_url());
+
+      // Close the errant connection here immediately to remove it from
+      // the poll set immediately so that other jobs can proceed w/o trouble,
+      // rather than waiting for ~SerfFetch.
+      serf_connection_close(connection_);
+      connection_ = NULL;
+
+      // Do the rest of normal cleanup, including calling Done(false);
+      Cancel();
     }
   }
 
@@ -917,6 +938,7 @@ int SerfUrlAsyncFetcher::Poll(int64 max_wait_ms) {
                      : ": (non-blocking)")
                  << " (" << this << ") for " << max_wait_ms/1.0e3
                  << " seconds";
+      CleanupFetchesWithErrors();
     }
   }
   return active_fetches_.size();
@@ -992,6 +1014,23 @@ bool SerfUrlAsyncFetcher::WaitForActiveFetchesHelper(
   }
   return true;
 }
+
+void SerfUrlAsyncFetcher::CleanupFetchesWithErrors() {
+  // Create a copy of list of active fetches, as we may have to cancel
+  // some failed ones, modifying the list.
+  std::vector<SerfFetch*> fetches;
+  for (SerfFetchPool::iterator i = active_fetches_.begin();
+       i != active_fetches_.end(); ++i) {
+    fetches.push_back(*i);
+  }
+
+  // Check each fetch to see if it needs cleanup because its serf connection
+  // got into an error state.
+  for (int i = 0, size = fetches.size(); i < size; ++i) {
+    fetches[i]->CleanupIfError();
+  }
+}
+
 void SerfUrlAsyncFetcher::Initialize(Statistics* statistics) {
   if (statistics != NULL) {
     statistics->AddVariable(SerfStats::kSerfFetchRequestCount);

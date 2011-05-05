@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,19 +50,20 @@
 
 #include <vector>
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/htmlparse/public/html_parser_types.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
-class MessageHandler;
-class MetaData;
-class OutputResource;
-class ResourceManager;
+class HtmlCdataNode;
+class HtmlCharactersNode;
+class HtmlCommentNode;
+class HtmlElement;
+class HtmlIEDirectiveNode;
+class HtmlParse;
 class Statistics;
 class Variable;
 

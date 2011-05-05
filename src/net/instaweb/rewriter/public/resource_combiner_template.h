@@ -22,10 +22,12 @@
 #include <vector>
 
 #include "net/instaweb/rewriter/public/resource_combiner.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
+class CommonFilter;
 class MessageHandler;
+class RewriteDriver;
 
 // A templatized extension of ResourceCombiner that can track elements of a
 // custom type.

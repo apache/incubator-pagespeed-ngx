@@ -22,12 +22,13 @@
 #include <map>
 #include <set>
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
+class HtmlElement;
+class HtmlParse;
 
 // Remove attributes and attribute values that can be safely elided.
 class ElideAttributesFilter : public EmptyHtmlFilter {

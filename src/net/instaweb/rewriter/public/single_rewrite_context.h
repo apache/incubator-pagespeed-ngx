@@ -19,10 +19,18 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_SINGLE_REWRITE_CONTEXT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_SINGLE_REWRITE_CONTEXT_H_
 
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
+class OutputPartition;
+class OutputPartitions;
+class OutputResource;
+class ResourceContext;
+class RewriteDriver;
 
 // Class that unifies tasks common to building rewriters for filters
 // that only do one-for-one URL substitutions.

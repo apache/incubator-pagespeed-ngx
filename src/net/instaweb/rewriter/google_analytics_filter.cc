@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,12 +32,18 @@
 //        the current buffer).
 //
 
-
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
-#include "net/instaweb/rewriter/google_analytics_snippet.h"
 
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include <cctype>
+#include <vector>
+
+#include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/rewriter/google_analytics_snippet.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -161,10 +167,10 @@ GoogleAnalyticsFilter::GoogleAnalyticsFilter(
   glue_methods_->push_back("_setXValue");
 
   unhandled_methods_->push_back("_anonymizeIp");
-  unhandled_methods_->push_back("_createEventTracker"); // getter method
-  unhandled_methods_->push_back("_createXObj");         // getter method
+  unhandled_methods_->push_back("_createEventTracker");  // getter method
+  unhandled_methods_->push_back("_createXObj");          // getter method
   unhandled_methods_->push_back("_require");
-  unhandled_methods_->push_back("_visitCode");          // getter method
+  unhandled_methods_->push_back("_visitCode");           // getter method
   unhandled_methods_->push_back("_get");
   unhandled_methods_->push_back("_getAccount");
   unhandled_methods_->push_back("_getClientInfo");

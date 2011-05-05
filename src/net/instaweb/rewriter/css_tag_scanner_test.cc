@@ -20,15 +20,16 @@
 
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 
-#include <string>
-#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-
-#include "net/instaweb/util/public/google_url.h"
 
 namespace net_instaweb {
 

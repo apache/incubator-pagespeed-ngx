@@ -18,9 +18,16 @@
 
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 
+#include <map>
 #include <utility>  // for std::pair
+#include <vector>
+
+#include "base/logging.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/wildcard.h"
 

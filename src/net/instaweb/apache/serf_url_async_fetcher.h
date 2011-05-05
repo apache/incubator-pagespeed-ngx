@@ -102,6 +102,11 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   bool WaitForActiveFetchesHelper(int64 max_ms,
                                   MessageHandler* message_handler);
 
+  // This cleans up the serf resources for fetches that errored out.
+  // Must be called only immediately after running the serf event loop.
+  // Must be called with mutex_ held.
+  void CleanupFetchesWithErrors();
+
   apr_pool_t* pool_;
   Timer* timer_;
 

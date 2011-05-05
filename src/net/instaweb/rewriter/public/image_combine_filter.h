@@ -20,9 +20,11 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_COMBINE_FILTER_H_
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace Css {
 
@@ -33,9 +35,16 @@ class Value;
 
 namespace net_instaweb {
 
+class GoogleUrl;
+class HtmlElement;
+class MessageHandler;
+class RequestHeaders;
+class ResponseHeaders;
+class RewriteDriver;
 class Statistics;
+class Writer;
 
-/**
+/*
  * The ImageCombineFilter combines multiple images into a single image (a process
  * called "spriting".  This reduces the total number of round-trips, and reduces
  * bytes downloaded by consolidating image headers and improving compression.
@@ -79,6 +88,7 @@ class ImageCombineFilter : public RewriteFilter {
 
  private:
   class Combiner;
+
   scoped_ptr<Combiner> combiner_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageCombineFilter);

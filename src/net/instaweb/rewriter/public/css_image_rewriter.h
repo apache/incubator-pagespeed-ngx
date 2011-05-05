@@ -19,12 +19,10 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_IMAGE_REWRITER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_IMAGE_REWRITER_H_
 
-#include "net/instaweb/rewriter/public/image_combine_filter.h"
-#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/rewriter/public/resource_combiner.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-
-class GoogleUrl;
 
 namespace Css {
 
@@ -36,10 +34,11 @@ namespace net_instaweb {
 
 class CacheExtender;
 class CachedResult;
+class GoogleUrl;
+class ImageCombineFilter;
 class ImageRewriteFilter;
 class MessageHandler;
 class RewriteDriver;
-class RewriteOptions;
 class Statistics;
 class Variable;
 

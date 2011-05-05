@@ -22,18 +22,14 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/util/public/atom.h"
-#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
+class GoogleUrl;
 class HtmlElement;
-class HtmlParse;
-class Resource;
 class ResourceManager;
 class RewriteOptions;
-class OutputResource;
-class UrlSegmentEncoder;
 
 // CommonFilter encapsulates useful functionality that many filters will want.
 // All filters who want this functionality should inherit from CommonFilter and
@@ -47,7 +43,7 @@ class UrlSegmentEncoder;
 // accessed via a convenience method here for historical reasons.
 class CommonFilter : public EmptyHtmlFilter {
  public:
-  CommonFilter(RewriteDriver* driver);
+  explicit CommonFilter(RewriteDriver* driver);
   virtual ~CommonFilter();
 
   // Getters

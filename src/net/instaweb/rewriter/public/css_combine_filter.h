@@ -19,24 +19,23 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_COMBINE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_COMBINE_FILTER_H_
 
-#include <vector>
-
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
-#include "net/instaweb/util/public/atom.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace net_instaweb {
-
+class HtmlElement;
+class HtmlIEDirectiveNode;
 class MessageHandler;
-class OutputResource;
-class Resource;
-class ResourceManager;
-class Variable;
+class RequestHeaders;
+class ResponseHeaders;
+class RewriteDriver;
+class Statistics;
+class UrlSegmentEncoder;
 class Writer;
 
 class CssCombineFilter : public RewriteFilter {
@@ -47,7 +46,7 @@ class CssCombineFilter : public RewriteFilter {
   static void Initialize(Statistics* statistics);
   virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element);
-  virtual void EndElementImpl(HtmlElement* element) {};
+  virtual void EndElementImpl(HtmlElement* element) {}
   virtual void Flush();
   virtual void IEDirective(HtmlIEDirectiveNode* directive);
   virtual const char* Name() const { return "CssCombine"; }
@@ -63,6 +62,7 @@ class CssCombineFilter : public RewriteFilter {
 
  private:
   class CssCombiner;
+
   CssTagScanner css_tag_scanner_;
   scoped_ptr<CssCombiner> combiner_;
   UrlMultipartEncoder multipart_encoder_;

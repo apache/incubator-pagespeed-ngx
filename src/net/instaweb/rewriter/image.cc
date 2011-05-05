@@ -18,19 +18,15 @@
 
 #include "net/instaweb/rewriter/public/image.h"
 
-#include <string>
-#include <vector>
+#include <cstddef>
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "base/logging.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
-#include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/writer.h"
 #ifdef USE_SYSTEM_OPENCV
 #include "cv.h"
 #include "highgui.h"

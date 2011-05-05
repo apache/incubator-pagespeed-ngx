@@ -19,11 +19,12 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REMOVE_COMMENTS_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REMOVE_COMMENTS_FILTER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
-
+class HtmlCommentNode;
+class HtmlParse;
 class RewriteOptions;
 
 // Reduce the size of the HTML by removing all HTML comments (except those

@@ -20,13 +20,13 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_ADD_INSTRUMENTATION_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
+class HtmlElement;
+class HtmlParse;
 class Statistics;
 class Variable;
 

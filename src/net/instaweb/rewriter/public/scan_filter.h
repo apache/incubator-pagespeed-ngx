@@ -19,13 +19,12 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_SCAN_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_SCAN_FILTER_H_
 
-#include <vector>
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 
 namespace net_instaweb {
 
-class CommonFilter;
+class HtmlElement;
 class RewriteDriver;
 
 // Filter that is run before any other, to help track base-tag usage and

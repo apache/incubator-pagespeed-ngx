@@ -19,20 +19,32 @@
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 
 #include <algorithm>
-
-#include "base/scoped_ptr.h"
+#include "base/logging.h"
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/url_escaper.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
 // ... and the input timestamp under this key.
+class RequestHeaders;
+
 const char RewriteSingleResourceFilter::kInputTimestampKey[] =
     "RewriteSingleResourceFilter_InputTimestamp";
 
@@ -199,9 +211,9 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
     const ResourcePtr& input_resource, const ResourceContext* data) {
   MessageHandler* handler = driver_->message_handler();
 
-  ResourceManager::Kind kind = ResourceManager::kRewrittenResource;
+  OutputResourceKind kind = kRewrittenResource;
   if (ComputeOnTheFly()) {
-    kind = ResourceManager::kOnTheFlyResource;
+    kind = kOnTheFlyResource;
   }
   OutputResourcePtr output_resource(
       driver_->CreateOutputResourceFromResource(
@@ -269,7 +281,7 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
     // NOTE: This locks based on hash's so if you use a MockHasher, you may
     // only rewrite a single resource at a time (e.g. no rewriting resources
     // inside resources, see css_image_rewriter_test.cc for examples.)
-    if (!output_resource->LockForCreation(ResourceManager::kNeverBlock)) {
+    if (!output_resource->LockForCreation(kNeverBlock)) {
       handler->Message(kInfo, "%s: Someone else is trying to rewrite %s.",
                        base_url().spec_c_str(),
                        input_resource->url().c_str());

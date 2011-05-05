@@ -19,10 +19,11 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_H_
 
+#include <cstddef>
 #include <vector>
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #ifdef USE_SYSTEM_OPENCV
@@ -37,10 +38,8 @@
 
 namespace net_instaweb {
 
-struct ContentType;
-class FileSystem;
 class MessageHandler;
-class Writer;
+struct ContentType;
 
 // The following four helper functions were moved here for testability.  We ran
 // into problems with sign extension under different compiler versions, and we'd

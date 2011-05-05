@@ -19,10 +19,15 @@
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 
 #include <vector>
-#include "net/instaweb/util/public/basictypes.h"
+
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -38,7 +43,7 @@ class ScriptTagScannerTest : public HtmlParseTestBase {
   // and attributes)
   class ScriptCollector : public EmptyHtmlFilter {
    public:
-    ScriptCollector(HtmlParse* html_parse)
+    explicit ScriptCollector(HtmlParse* html_parse)
         : script_tag_scanner_(html_parse) {
     }
 
@@ -200,17 +205,17 @@ TEST_F(ScriptTagScannerTest, TypeScripts) {
       ScriptWithType("text/javascript1.0") +
       ScriptWithType("text/javascript1.1") +
       ScriptWithType("text/javascript1.2") +
-      ScriptWithType("text/javascript1.3") + // 9
+      ScriptWithType("text/javascript1.3") +  // 9
       ScriptWithType("text/javascript1.4") +
       ScriptWithType("text/javascript1.5") +
       ScriptWithType("text/jscript") +
       ScriptWithType("text/livescript") +
-      ScriptWithType("text/x-ecmascript") + // 14
-      ScriptWithType("text/x-javascript") + // 15 -- last valid one
+      ScriptWithType("text/x-ecmascript") +  // 14
+      ScriptWithType("text/x-javascript") +  // 15 -- last valid one
       ScriptWithType("text/tcl") +
       ScriptWithType("text/ecmascript4") +
       ScriptWithType("text/javascript2.0") +
-      ScriptWithType("                  ")); // 19 -- last invalid one
+      ScriptWithType("                  "));  // 19 -- last invalid one
 
   ASSERT_EQ(20, collector_.Size());
   for (int i = 0; i <= 15; ++i) {
@@ -237,17 +242,17 @@ TEST_F(ScriptTagScannerTest, TypeScriptsNormalize) {
       ScriptWithType(" TEXt/javascript1.0\t") +
       ScriptWithType("  text/javascript1.1") +
       ScriptWithType(" teXt/javascripT1.2") +
-      ScriptWithType("\ttExt/javascRipt1.3 ") + // 9
+      ScriptWithType("\ttExt/javascRipt1.3 ") +  // 9
       ScriptWithType("  text/javascRipT1.4  ") +
       ScriptWithType("  Text/javAscript1.5 ") +
       ScriptWithType("   Text/jscrIpt") +
       ScriptWithType("   text/lIvescript") +
-      ScriptWithType("teXt/x-ecmasCript ") + // 14
-      ScriptWithType("tExt/x-jaVascript ") + // 15 -- last valid one
+      ScriptWithType("teXt/x-ecmasCript ") +  // 14
+      ScriptWithType("tExt/x-jaVascript ") +  // 15 -- last valid one
       ScriptWithType("Text/Tcl ") +
       ScriptWithType(" text/Ecmascript4") +
       ScriptWithType("tExt/javascript2.0")+
-      ScriptWithType("text/javasc ript")); // 19 -- last invalid one
+      ScriptWithType("text/javasc ript"));  // 19 -- last invalid one
 
   ASSERT_EQ(20, collector_.Size());
   for (int i = 0; i <= 15; ++i) {
@@ -269,17 +274,17 @@ TEST_F(ScriptTagScannerTest, LangScripts) {
       ScriptWithLang("javascript") +
       ScriptWithLang("javascript1.0") +
       ScriptWithLang("javascript1.1") +
-      ScriptWithLang("javascript1.2") + // 4
+      ScriptWithLang("javascript1.2") +  // 4
       ScriptWithLang("javascript1.3") +
       ScriptWithLang("javascript1.4") +
       ScriptWithLang("javascript1.5") +
       ScriptWithLang("jscript") +
       ScriptWithLang("livescript") +   // 9
       ScriptWithLang("x-ecmascript") +
-      ScriptWithLang("x-javascript") + // 11 -- last valid one
+      ScriptWithLang("x-javascript") +  // 11 -- last valid one
       ScriptWithLang("tcl") +
       ScriptWithLang("ecmascript4") +
-      ScriptWithLang("javascript2.0")); // 14 -- last invalid one
+      ScriptWithLang("javascript2.0"));  // 14 -- last invalid one
 
   ASSERT_EQ(15, collector_.Size());
   for (int i = 0; i <= 11; ++i) {
@@ -300,17 +305,17 @@ TEST_F(ScriptTagScannerTest, LangScriptsNormalizeCase) {
       ScriptWithLang("javAscript") +
       ScriptWithLang("javascript1.0") +
       ScriptWithLang("javascRipt1.1") +
-      ScriptWithLang("javascripT1.2") + // 4
+      ScriptWithLang("javascripT1.2") +  // 4
       ScriptWithLang("javaScrIpt1.3") +
       ScriptWithLang("jaVasCript1.4") +
       ScriptWithLang("javaScriPt1.5") +
       ScriptWithLang("jscRiPt") +
       ScriptWithLang("livEscript") +   // 9
       ScriptWithLang("x-ecmaScript") +
-      ScriptWithLang("x-jaVascript") + // 11 -- last valid one
+      ScriptWithLang("x-jaVascript") +  // 11 -- last valid one
       ScriptWithLang("tCl") +
       ScriptWithLang("ecmasCript4") +
-      ScriptWithLang("jaVascript2.0")); // 14 -- last invalid one
+      ScriptWithLang("jaVascript2.0"));  // 14 -- last invalid one
 
   ASSERT_EQ(15, collector_.Size());
   for (int i = 0; i <= 11; ++i) {
@@ -332,7 +337,7 @@ TEST_F(ScriptTagScannerTest, LangScriptsNormalizeWhitespace) {
       ScriptWithLang("javascript\t") +
       ScriptWithLang("  javascript1.0  ") +
       ScriptWithLang(" javascript1.1") +
-      ScriptWithLang("javascript1.2 ") + // 4
+      ScriptWithLang("javascript1.2 ") +  // 4
       ScriptWithLang("  javascript1.3") +
       ScriptWithLang("javascript1.4 ") +
       ScriptWithLang("  javascript1.5") +
@@ -342,7 +347,7 @@ TEST_F(ScriptTagScannerTest, LangScriptsNormalizeWhitespace) {
       ScriptWithLang("x-javascript\t") +
       ScriptWithLang("  tcl  ") +
       ScriptWithLang("ecmascript4  ") +
-      ScriptWithLang("  javascript2.0")); // 14 -- last invalid one
+      ScriptWithLang("  javascript2.0"));  // 14 -- last invalid one
 
   ASSERT_EQ(15, collector_.Size());
   for (int i = 0; i <= 14; ++i) {

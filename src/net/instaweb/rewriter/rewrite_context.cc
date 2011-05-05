@@ -17,13 +17,26 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/rewriter/public/rewrite_context.h"
+
+#include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/blocking_behavior.h"
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/proto_util.h"
+#include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
 
@@ -85,7 +98,7 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     started_(false),
     outstanding_fetches_(0),
     resource_context_(resource_context),
-    block_(ResourceManager::kNeverBlock) {
+    block_(kNeverBlock) {
   // TODO(jmarantz): if this duplication proves expensive, then do this
   // lazily.  We don't need our own copy of the RewriteOptions until the
   // RewriteDriver is detached.  for now just do the simple thing and

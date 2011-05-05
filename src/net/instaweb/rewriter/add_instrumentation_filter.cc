@@ -16,11 +16,17 @@
 
 // Author: abliss@google.com (Adam Bliss)
 
-#include "public/add_instrumentation_filter.h"
+#include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include <cstddef>
+
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

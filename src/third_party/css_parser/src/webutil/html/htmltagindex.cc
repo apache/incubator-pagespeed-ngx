@@ -25,7 +25,6 @@
 #include "base/paranoid.h"
 #include "strings/ascii_ctype.h"
 #include "util/gtl/dense_hash_map.h"
-#include "util/gtl/densehashtable.h"
 
 // Assert character properties that the fast path depends on.
 //   (Uppercase letter | 0x20) == lowercase letter

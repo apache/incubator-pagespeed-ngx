@@ -17,8 +17,25 @@
 // Author: sligocki@google.com (Shawn Ligocki)
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/css_image_rewriter.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/wait_url_async_fetcher.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/mem_file_system.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -165,7 +182,7 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
     OutputResourcePtr output_resource(
         rewrite_driver_.CreateOutputResourceWithPath(
             kTestDomain, RewriteDriver::kCssFilterId, StrCat(id, ".css"),
-            &kContentTypeCss, ResourceManager::kRewrittenResource));
+            &kContentTypeCss, kRewrittenResource));
     ASSERT_TRUE(output_resource.get() != NULL);
     EXPECT_EQ(css_url, output_resource->url());
     ASSERT_TRUE(output_resource->cached_result() != NULL);

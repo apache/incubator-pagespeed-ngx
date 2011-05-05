@@ -19,10 +19,12 @@
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
 
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/util/public/atom.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
+
+class HtmlParse;
 
 ImageTagScanner::ImageTagScanner(HtmlParse* html_parse) {
 }

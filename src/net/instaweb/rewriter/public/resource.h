@@ -28,19 +28,20 @@
 
 #include <vector>
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "base/logging.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
+class MessageHandler;
 class Resource;
 class ResourceManager;
+struct ContentType;
 
 typedef RefCountedPtr<Resource> ResourcePtr;
 typedef std::vector<ResourcePtr> ResourceVector;
@@ -79,7 +80,7 @@ class Resource : public RefCounted<Resource> {
   // collect the fetched data.
   class AsyncCallback {
    public:
-    AsyncCallback(const ResourcePtr& resource) : resource_(resource) {}
+    explicit AsyncCallback(const ResourcePtr& resource) : resource_(resource) {}
 
     virtual ~AsyncCallback();
     virtual void Done(bool success) = 0;

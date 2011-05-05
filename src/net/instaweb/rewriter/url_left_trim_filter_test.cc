@@ -18,10 +18,14 @@
 
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "base/logging.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/simple_stats.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -80,7 +84,7 @@ TEST_F(UrlLeftTrimFilterTest, SimpleTrims) {
   OneTrim(true, "/baz/quux", "quux");
   OneTrim(true, "//foo.bar/img/img1.jpg", "/img/img1.jpg");
   OneTrim(false, "/img/img1.jpg", "/img/img1.jpg");
-  OneTrim(false, kHttp, kHttp);  //false, because /baz/ is 5 chars long
+  OneTrim(false, kHttp, kHttp);  // false, because /baz/ is 5 chars long
   OneTrim(true, "//foo.bar/baz/quux", "quux");
   OneTrim(false, "baz/img.jpg", "baz/img.jpg");
 }

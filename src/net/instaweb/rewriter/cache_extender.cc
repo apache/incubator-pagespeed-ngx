@@ -18,20 +18,31 @@
 
 #include "net/instaweb/rewriter/public/cache_extender.h"
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/css_tag_scanner.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/url_escaper.h"
 
 namespace {
 
@@ -42,6 +53,8 @@ const char kNotCacheable[] = "not_cacheable";
 }  // namespace
 
 namespace net_instaweb {
+class MessageHandler;
+class RewriteFilter;
 
 // We do not want to bother to extend the cache lifetime for any resource
 // that is already cached for a month.

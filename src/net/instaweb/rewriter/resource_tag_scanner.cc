@@ -18,9 +18,12 @@
 
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 
+#include <cstddef>
+
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 

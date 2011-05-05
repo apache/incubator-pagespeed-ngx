@@ -18,14 +18,17 @@
 
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 
-#include <vector>
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_hash.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace {
@@ -36,6 +39,7 @@ const char kDomainRewrites[] = "domain_rewrites";
 }  // namespace
 
 namespace net_instaweb {
+class RewriteFilter;
 
 DomainRewriteFilter::DomainRewriteFilter(RewriteDriver* rewrite_driver,
                                      Statistics *stats)

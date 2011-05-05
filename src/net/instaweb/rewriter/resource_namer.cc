@@ -18,11 +18,14 @@
 
 #include "net/instaweb/rewriter/public/resource_namer.h"
 
+#include <cctype>
 #include <vector>
+
+#include "base/logging.h"
 #include "net/instaweb/util/public/content_type.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/string_hash.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -137,7 +140,7 @@ GoogleString ResourceNamer::Encode() const {
   CHECK(!hash_.empty());
   CHECK_EQ(StringPiece::npos, hash_.find(kSeparatorChar));
   CHECK_EQ(StringPiece::npos, ext_.find(kSeparatorChar));
- return InternalEncode();
+  return InternalEncode();
 }
 
 GoogleString ResourceNamer::EncodeIdName() const {

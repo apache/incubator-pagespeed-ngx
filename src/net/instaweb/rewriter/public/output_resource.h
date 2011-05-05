@@ -22,28 +22,31 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/blocking_behavior.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/rewriter/public/resource_namer.h"
 
 namespace net_instaweb {
-
 class AbstractLock;
+class HTTPValue;
 class MessageHandler;
-class NamedLockManager;
-class RewriteDriver;
+class ResourceManager;
 class RewriteOptions;
+struct ContentType;
 
 class OutputResource : public Resource {
  public:
+
   // Construct an OutputResource.  For the moment, we pass in type redundantly
   // even though full_name embeds an extension.  This reflects current code
   // structure rather than a principled stand on anything.
@@ -57,7 +60,7 @@ class OutputResource : public Resource {
                  const ResourceNamer& resource_id,
                  const ContentType* type,
                  const RewriteOptions* options,
-                 ResourceManager::Kind kind);
+                 OutputResourceKind kind);
 
   virtual bool Load(MessageHandler* message_handler);
   virtual GoogleString url() const;
@@ -67,7 +70,7 @@ class OutputResource : public Resource {
   // its creation to avoid multiple rewrites happening at once.
   // The lock will be unlocked on destruction or EndWrite (called from
   // ResourceManager::Write)
-  bool LockForCreation(ResourceManager::BlockingBehavior block);
+  bool LockForCreation(BlockingBehavior block);
 
   // The NameKey describes the source url and rewriter used, without hash and
   // content type information.  This is used to find previously-computed filter
@@ -174,7 +177,7 @@ class OutputResource : public Resource {
     CHECK(EndsInSlash(base)) << "resolved_base must end in a slash.";
   }
 
-  ResourceManager::Kind kind() const { return kind_; }
+  OutputResourceKind kind() const { return kind_; }
 
  protected:
   virtual ~OutputResource();
@@ -259,7 +262,7 @@ class OutputResource : public Resource {
 
   // Output resource have a 'kind' associated with them that controls the kind
   // of caching we would like to be performed on them when written out.
-  ResourceManager::Kind kind_;
+  OutputResourceKind kind_;
 
   DISALLOW_COPY_AND_ASSIGN(OutputResource);
 };

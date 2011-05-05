@@ -16,9 +16,13 @@
 
 // Author: bmcquade@google.com (Bryan McQuade)
 
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+
+#include <cstddef>
+#include <set>
+
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/null_message_handler.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 
 namespace {
 

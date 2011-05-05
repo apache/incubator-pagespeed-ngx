@@ -18,19 +18,27 @@
 
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 
-#include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/content_type.h"
-#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 const char kStylesheet[] = "stylesheet";
 
@@ -145,7 +153,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       OutputResourcePtr output_resource(
           driver_->CreateOutputResourceWithPath(
               driver_->google_url().AllExceptLeaf(), kFilterId, "_",
-              &kContentTypeCss, ResourceManager::kOutlinedResource));
+              &kContentTypeCss, kOutlinedResource));
 
       if (output_resource.get() != NULL) {
         // Absolutify URLs in content.
@@ -158,7 +166,6 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
           content_valid = CssTagScanner::AbsolutifyUrls(
               content, base_url().Spec(), &absolute_writer, handler);
           content = absolute_content;  // StringPiece point to the new string.
-
         }
         if (content_valid &&
             WriteResource(content, output_resource.get(), handler)) {

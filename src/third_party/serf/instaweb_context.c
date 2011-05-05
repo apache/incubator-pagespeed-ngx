@@ -1295,6 +1295,21 @@ SERF_DECLARE(apr_status_t) serf_connection_close(
     return APR_NOTFOUND;
 }
 
+/*
+ Returns true if this connection has had error events reported during the last
+ call to serf_context_run. It should be called after serf_context_run
+ invocation, and not within callbacks.
+
+ Return value is conceptually bool, but Serf implementation language is C.
+
+ google-added.
+*/
+
+SERF_DECLARE(int) serf_connection_is_in_error_state(serf_connection_t* conn)
+{
+  return ((conn->seen_in_pollset & (APR_POLLERR | APR_POLLHUP)) != 0);
+}
+
 SERF_DECLARE(void)
 serf_connection_set_max_outstanding_requests(serf_connection_t *conn,
                                              unsigned int max_requests)

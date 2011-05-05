@@ -21,15 +21,16 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_URL_INPUT_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_URL_INPUT_RESOURCE_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
+struct ContentType;
 class MessageHandler;
-class ResponseHeaders;
+class ResourceManager;
 class RewriteOptions;
-class UrlFetcher;
 
 class UrlInputResource : public Resource {
  public:

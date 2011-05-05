@@ -21,7 +21,6 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/util/public/atom.h"
 
 namespace net_instaweb {
 class HtmlParse;
