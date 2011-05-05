@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_SIMPLE_TEXT_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 
@@ -36,7 +36,7 @@ class RewriteDriver;
 // Implementors of this mechanism do not have to worry about
 // resource-loading, cache reading/writing, expiration times, etc.
 // Subclass SimpleTextFilter::Rewriter to define how to rewrite text.
-class SimpleTextFilter : public CommonFilter {
+class SimpleTextFilter : public RewriteFilter {
  public:
   class Rewriter : public RefCounted<Rewriter> {
    public:
@@ -59,10 +59,12 @@ class SimpleTextFilter : public CommonFilter {
     DISALLOW_COPY_AND_ASSIGN(Rewriter);
   };
 
+  typedef RefCountedPtr<Rewriter> RewriterPtr;
+
   class Context : public SingleRewriteContext {
    public:
     Context(const ResourceSlotPtr& slot,
-            const RefCountedPtr<Rewriter>& rewriter,
+            const RewriterPtr& rewriter,
             RewriteDriver* driver)
         : SingleRewriteContext(driver, slot, NULL),
           rewriter_(rewriter) {
@@ -75,7 +77,7 @@ class SimpleTextFilter : public CommonFilter {
     virtual const char* id() const { return rewriter_->id(); }
 
    private:
-    RefCountedPtr<Rewriter> rewriter_;
+    RewriterPtr rewriter_;
 
     DISALLOW_COPY_AND_ASSIGN(Context);
   };
@@ -86,13 +88,20 @@ class SimpleTextFilter : public CommonFilter {
   virtual void StartDocumentImpl() {}
   virtual void EndElementImpl(HtmlElement* element) {}
   virtual void StartElementImpl(HtmlElement* element);
+  virtual bool Fetch(const OutputResourcePtr& output_resource,
+                     Writer* response_writer,
+                     const RequestHeaders& request_header,
+                     ResponseHeaders* response_headers,
+                     MessageHandler* message_handler,
+                     UrlAsyncFetcher::Callback* callback);
 
  protected:
   virtual GoogleString id() const { return rewriter_->id(); }
   virtual const char* Name() const { return rewriter_->Name(); }
 
  private:
-  RefCountedPtr<Rewriter> rewriter_;
+  class FetchCallback;
+  RewriterPtr rewriter_;
 
   DISALLOW_COPY_AND_ASSIGN(SimpleTextFilter);
 };

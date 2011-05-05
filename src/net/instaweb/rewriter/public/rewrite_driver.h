@@ -137,6 +137,13 @@ class RewriteDriver : public HtmlParse {
   // Add any HtmlFilter to the HtmlParse chain and take ownership of the filter.
   void AddOwnedFilter(HtmlFilter* filter);
 
+  // Add a RewriteFilter to the HtmlParse chain and take ownership of the
+  // filter.  This differs from AddOwnedFilter in that it adds the filter's ID
+  // into a dispatch table for serving rewritten resources.  E.g. if your
+  // filter->id == "xy" and FetchResource("NAME.pagespeed.xy.HASH.EXT"...)
+  // is called, then RewriteDriver will dispatch to filter->Fetch().
+  void AddRewriteFilter(RewriteFilter* filter);
+
   // Controls how HTML output is written.  Be sure to call this last, after
   // all other filters have been established.
   //

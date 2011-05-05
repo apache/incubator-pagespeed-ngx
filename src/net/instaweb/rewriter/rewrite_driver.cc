@@ -386,6 +386,11 @@ void RewriteDriver::AddCommonFilter(CommonFilter* filter) {
   HtmlParse::AddFilter(filter);
 }
 
+void RewriteDriver::AddRewriteFilter(RewriteFilter* filter) {
+  RegisterRewriteFilter(filter);
+  EnableRewriteFilter(filter->id().c_str());
+}
+
 void RewriteDriver::EnableRewriteFilter(const char* id) {
   RewriteFilter* filter = resource_filter_map_[id];
   CHECK(filter);

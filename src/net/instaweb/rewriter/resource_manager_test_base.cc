@@ -164,8 +164,8 @@ void ResourceManagerTestBase::ServeResourceFromManyContexts(
   //   5) With nothing available (failure).
 }
 
-// Test that a resource can be served from an new server that has not already
-// constructed it.
+// Test that a resource can be served from a new server that has not yet
+// been constructed.
 void ResourceManagerTestBase::ServeResourceFromNewContext(
     const GoogleString& resource_url,
     RewriteOptions::Filter /*filter*/,  // TODO(sligocki): remove
@@ -295,6 +295,76 @@ bool ResourceManagerTestBase::ServeResourceUrl(
   // returns true.
   EXPECT_EQ(fetched, callback.done());
   return fetched && callback.success();
+}
+
+void ResourceManagerTestBase::TestServeFiles(
+    const ContentType* content_type,
+    const StringPiece& filter_id,
+    const StringPiece& rewritten_ext,
+    const StringPiece& orig_name,
+    const StringPiece& orig_content,
+    const StringPiece& rewritten_name,
+    const StringPiece& rewritten_content) {
+  ResourceNamer namer;
+  namer.set_id(filter_id);
+  namer.set_name(rewritten_name);
+  namer.set_ext(rewritten_ext);
+  namer.set_hash("0");
+  GoogleString expected_rewritten_path = StrCat(kTestDomain, namer.Encode());
+  GoogleString content;
+
+  // When we start, there are no mock fetchers, so we'll need to get it
+  // from the cache or the disk.  Start with the cache.
+  file_system_.Disable();
+  ResponseHeaders headers;
+  resource_manager_->SetDefaultHeaders(content_type, &headers);
+  http_cache_.Put(expected_rewritten_path, &headers, rewritten_content,
+                  &message_handler_);
+  EXPECT_EQ(0U, lru_cache_->num_hits());
+  EXPECT_TRUE(ServeResource(kTestDomain, filter_id,
+                            rewritten_name, rewritten_ext, &content));
+  EXPECT_EQ(1U, lru_cache_->num_hits());
+  EXPECT_EQ(rewritten_content, content);
+
+  // Now remove it from the cache, but put it in the file system.  Make sure
+  // that works.  Still there is no mock fetcher.
+  file_system_.Enable();
+  lru_cache_->Clear();
+
+  // Getting the filename is kind of a drag, isn't it.  But someone's
+  // gotta do it.
+  GoogleString filename;
+  FilenameEncoder* encoder = resource_manager_->filename_encoder();
+  encoder->Encode(resource_manager_->filename_prefix(),
+                  expected_rewritten_path, &filename);
+  GoogleString data = StrCat(headers.ToString(), rewritten_content);
+  EXPECT_TRUE(file_system_.WriteFile(filename.c_str(), data,
+                                     &message_handler_));
+
+  EXPECT_TRUE(ServeResource(kTestDomain, filter_id,
+                            rewritten_name, rewritten_ext, &content));
+  EXPECT_EQ(rewritten_content, content);
+
+  // After serving from the disk, we should have seeded our cache.  Check it.
+  EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(
+      expected_rewritten_path));
+
+  // Finally, nuke the file, nuke the cache, get it via a fetch.
+  file_system_.Disable();
+  EXPECT_TRUE(file_system_.RemoveFile(filename.c_str(), &message_handler_));
+  lru_cache_->Clear();
+  InitResponseHeaders(orig_name, *content_type, orig_content,
+                      100 /* ttl in seconds */);
+  EXPECT_TRUE(ServeResource(kTestDomain, filter_id,
+                            rewritten_name, rewritten_ext, &content));
+  EXPECT_EQ(rewritten_content, content);
+
+  // Now we expect both the file and the cache entry to be there.
+  EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(
+      expected_rewritten_path));
+  file_system_.Enable();
+  EXPECT_TRUE(file_system_.Exists(filename.c_str(), &message_handler_)
+              .is_true());
 }
 
 // Just check if we can fetch a resource successfully, ignore response.

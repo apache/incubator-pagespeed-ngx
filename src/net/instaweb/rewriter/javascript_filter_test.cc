@@ -121,63 +121,9 @@ TEST_F(JavascriptFilterTest, NoRewriteOriginUncacheable) {
 }
 
 TEST_F(JavascriptFilterTest, ServeFiles) {
-  GoogleString content;
-
-  // TODO(jmarantz): Factor some of this logic-flow out so that
-  // cache_extender_test.cc can share it.
-
-  // When we start, there are no mock fetchers, so we'll need to get it
-  // from the cache or the disk.  Start with the cache.
-  file_system_.Disable();
-  ResponseHeaders headers;
-  resource_manager_->SetDefaultHeaders(&kContentTypeJavascript, &headers);
-  http_cache_.Put(expected_rewritten_path_, &headers, kJsMinData,
-                  &message_handler_);
-  EXPECT_EQ(0, lru_cache_->num_hits());
-  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId,
-                            kRewrittenJsName, "js", &content));
-  EXPECT_EQ(1, lru_cache_->num_hits());
-  EXPECT_EQ(GoogleString(kJsMinData), content);
-
-  // Now remove it from the cache, but put it in the file system.  Make sure
-  // that works.  Still there is no mock fetcher.
-  file_system_.Enable();
-  lru_cache_->Clear();
-
-  // Getting the filename is kind of a drag, isn't it.  But someone's
-  // gotta do it.
-  // TODO(jmarantz): refactor this and share it with other filter_tests.
-  GoogleString filename;
-  FilenameEncoder* encoder = resource_manager_->filename_encoder();
-  encoder->Encode(resource_manager_->filename_prefix(),
-                  expected_rewritten_path_, &filename);
-  GoogleString data = StrCat(headers.ToString(), kJsMinData);
-  ASSERT_TRUE(file_system_.WriteFile(filename.c_str(), data,
-                                     &message_handler_));
-
-  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId,
-                            kRewrittenJsName, "js", &content));
-  EXPECT_EQ(GoogleString(kJsMinData), content);
-
-  // After serving from the disk, we should have seeded our cache.  Check it.
-  EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(
-      expected_rewritten_path_));
-
-  // Finally, nuke the file, nuke the cache, get it via a fetch.
-  file_system_.Disable();
-  ASSERT_TRUE(file_system_.RemoveFile(filename.c_str(), &message_handler_));
-  lru_cache_->Clear();
-  InitTest(100);
-  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId,
-                            kRewrittenJsName, "js", &content));
-  EXPECT_EQ(GoogleString(kJsMinData), content);
-
-  // Now we expect both the file and the cache entry to be there.
-  EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query(
-      expected_rewritten_path_));
-  file_system_.Enable();
-  EXPECT_TRUE(file_system_.Exists(filename.c_str(), &message_handler_)
-              .is_true());
+  TestServeFiles(&kContentTypeJavascript, kFilterId, "js",
+                 kOrigJsName, kJsData,
+                 kRewrittenJsName, kJsMinData);
 
   // Finally, serve from a completely separate server.
   ServeResourceFromManyContexts(expected_rewritten_path_,

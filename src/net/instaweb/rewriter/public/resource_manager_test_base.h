@@ -151,6 +151,15 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // pointer to the new fetcher.
   WaitUrlAsyncFetcher* SetupWaitFetcher();
 
+  // Helper method to test all manner of resource serving from a filter.
+  void TestServeFiles(const ContentType* content_type,
+                      const StringPiece& filter_id,
+                      const StringPiece& rewritten_ext,
+                      const StringPiece& orig_name,
+                      const StringPiece& orig_content,
+                      const StringPiece& rewritten_name,
+                      const StringPiece& rewritten_content);
+
   MockUrlFetcher mock_url_fetcher_;
   FakeUrlAsyncFetcher mock_url_async_fetcher_;
   FilenameEncoder filename_encoder_;

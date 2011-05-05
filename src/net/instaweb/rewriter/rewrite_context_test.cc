@@ -26,6 +26,12 @@
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 
+namespace {
+
+const char kTrimWhitespaceFilterId[] = "tw";
+
+}  // namespace
+
 namespace net_instaweb {
 
 // Simple test filter just trims whitespace from the input resource.
@@ -55,7 +61,7 @@ class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
     }
     return NULL;
   }
-  virtual const char* id() const { return "tw"; }
+  virtual const char* id() const { return kTrimWhitespaceFilterId; }
   virtual const char* Name() const { return "TrimWhitespace"; }
 };
 
@@ -63,20 +69,25 @@ class RewriteContextTest : public ResourceManagerTestBase {
  protected:
   virtual bool AddBody() const { return false; }
 
-  GoogleString CssLink(const StringPiece& url) {
-    return StrCat("<link rel=stylesheet href=", url, ">");
-  }
-
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    rewrite_driver_.SetAsynchronousRewrites(true);
+    InitTrimFilter(&rewrite_driver_);
+    InitTrimFilter(&other_rewrite_driver_);
+  }
+
+  void InitTrimFilter(RewriteDriver* rewrite_driver) {
+    rewrite_driver->SetAsynchronousRewrites(true);
+    rewrite_driver->AddRewriteFilter(
+        TrimWhitespaceRewriter::MakeFilter(&rewrite_driver_));
+    rewrite_driver->AddFilters();
+  }
+
+  GoogleString CssLink(const StringPiece& url) {
+    return StrCat("<link rel=stylesheet href=", url, ">");
   }
 };
 
 TEST_F(RewriteContextTest, Trim) {
-  rewrite_driver_.AddOwnedFilter(
-      TrimWhitespaceRewriter::MakeFilter(&rewrite_driver_));
-  rewrite_driver_.AddFilters();
   ResponseHeaders default_css_header;
   resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   mock_url_fetcher_.SetResponse("http://test.com/a.css", default_css_header,
@@ -86,6 +97,14 @@ TEST_F(RewriteContextTest, Trim) {
   ValidateExpected("trimmable", CssLink("a.css"),
                    CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
   ValidateNoChanges("no_trimmable", CssLink("b.css"));
+}
+
+TEST_F(RewriteContextTest, FetchColdCache) {
+  TestServeFiles(&kContentTypeCss, kTrimWhitespaceFilterId, "css",
+                 "a.css", " a ",
+                 "a.css", "a");
+
+  // TODO(jmarantz): test failure cases (failed to fetch, failed to rewrite).
 }
 
 }  // namespace net_instaweb
