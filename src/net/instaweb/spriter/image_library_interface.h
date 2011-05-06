@@ -48,7 +48,7 @@ class ImageLibraryInterface {
   // is informend of errors.
   class Delegate {
    public:
-    virtual void OnError(const GoogleString& error) const = 0;
+    virtual void OnError(const GoogleString& error) = 0;
     virtual ~Delegate() {}
   };
 
@@ -56,7 +56,7 @@ class ImageLibraryInterface {
   class Image {
    public:
     // Get the width and height of an image.
-    virtual bool GetDimensions(int* out_width, int* out_height) const = 0;
+    virtual bool GetDimensions(int* out_width, int* out_height) = 0;
     virtual ~Image() {}
    protected:
     // Only methods of ImageLibraryInterface may create images.

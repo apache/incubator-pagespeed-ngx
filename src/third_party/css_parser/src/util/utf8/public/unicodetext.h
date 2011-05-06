@@ -21,10 +21,13 @@
 #ifndef UTIL_UTF8_UNICODETEXT_H__
 #define UTIL_UTF8_UNICODETEXT_H__
 
-#include <iterator>
-#include <string>
-#include <utility>
+#include <stddef.h>                     // for NULL, ptrdiff_t
+#include <iterator>                     // for bidirectional_iterator_tag, etc
+#include <string>                       // for string
+#include <utility>                      // for pair
+
 #include "base/basictypes.h"
+#include "base/integral_types.h"        // for char32
 #include "util/utf8/public/config.h"
 
 // ***************************** UnicodeText **************************

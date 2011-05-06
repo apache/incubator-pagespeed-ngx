@@ -77,7 +77,6 @@
         'instaweb_spriter_pb',
       ],
       'sources': [
-          'spriter/libpng_image_library.cc',
           'spriter/image_library_interface.cc',
           'spriter/image_spriter.cc',
           'spriter/public/image_spriter.proto',
@@ -148,7 +147,6 @@
       ],
       'sources': [
         'spriter/image_spriter_test.cc',
-        'spriter/libpng_image_library_test.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

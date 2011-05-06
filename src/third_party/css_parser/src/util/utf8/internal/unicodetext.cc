@@ -20,11 +20,14 @@
 
 #include "util/utf8/public/unicodetext.h"
 
-#include "base/logging.h"
-#include "strings/stringpiece.h"
-#include "strings/stringprintf.h"
-#include "third_party/utf/utf.h"
-#include "util/utf8/public/unilib.h"
+#include <string.h>                     // for memcpy, NULL, memcmp, etc
+#include <algorithm>                    // for max
+
+#include "base/logging.h"               // for operator<<, CHECK, etc
+#include "base/stringprintf.h"          // for StringPrintf, StringAppendF
+#include "strings/stringpiece.h"        // for StringPiece, etc
+#include "third_party/utf/utf.h"        // for isvalidcharntorune, etc
+#include "util/utf8/public/unilib.h"    // for IsInterchangeValid, etc
 
 static int CodepointDistance(const char* start, const char* end) {
   int n = 0;

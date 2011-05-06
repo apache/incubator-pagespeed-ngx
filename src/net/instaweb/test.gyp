@@ -110,7 +110,6 @@
         'rewriter/strip_scripts_filter_test.cc',
         'rewriter/url_left_trim_filter_test.cc',
         'rewriter/url_partnership_test.cc',
-        'spriter/libpng_image_library_test.cc',
         'spriter/image_spriter_test.cc',
         'util/arena_test.cc',
         'util/base64_test.cc',

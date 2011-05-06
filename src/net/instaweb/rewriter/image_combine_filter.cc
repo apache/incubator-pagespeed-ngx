@@ -317,7 +317,7 @@ class Library : public spriter::ImageLibraryInterface {
 
     virtual ~SpriterImage() {}
 
-    virtual bool GetDimensions(int* out_width, int* out_height) const {
+    virtual bool GetDimensions(int* out_width, int* out_height) {
       ImageDim dim;
       image_->Dimensions(&dim);
       *out_width = dim.width();
