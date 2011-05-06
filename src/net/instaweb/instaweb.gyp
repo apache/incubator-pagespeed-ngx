@@ -456,6 +456,9 @@
       },
     },
     {
+      'variables': {
+        'chromium_code': 0,
+      },
       'target_name': 'instaweb_rewriter_css',
       'type': '<(library)',
       'dependencies': [
