@@ -34,7 +34,7 @@ class MockImageLibraryInterface : public ImageLibraryInterface {
   class MockImage : public ImageLibraryInterface::Image {
    public:
     MockImage() : Image(NULL) {}
-    MOCK_METHOD2(GetDimensions, bool(int* out_width, int* out_height));
+    MOCK_CONST_METHOD2(GetDimensions, bool(int* out_width, int* out_height));
     virtual ~MockImage() {}
    private:
     explicit MockImage(MockImageLibraryInterface* lib) : Image(lib) {}

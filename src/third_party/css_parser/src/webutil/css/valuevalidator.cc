@@ -17,6 +17,8 @@
 // Copyright 2007 Google Inc. All Rights Reserved.
 // Author: yian@google.com (Yi-An Huang)
 
+#include <set>
+
 #include "base/logging.h"
 #include "base/macros.h"
 #include "util/gtl/map-util.h"

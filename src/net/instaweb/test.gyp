@@ -42,6 +42,7 @@
         'instaweb.gyp:instaweb_util_pthread',
         '<(DEPTH)/testing/gmock.gyp:gmock',
         '<(DEPTH)/testing/gtest.gyp:gtest_main',
+        '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
       ],
       'include_dirs': [
         '<(DEPTH)/third_party/protobuf/src',
@@ -110,6 +111,7 @@
         'rewriter/strip_scripts_filter_test.cc',
         'rewriter/url_left_trim_filter_test.cc',
         'rewriter/url_partnership_test.cc',
+        'spriter/libpng_image_library_test.cc',
         'spriter/image_spriter_test.cc',
         'util/arena_test.cc',
         'util/base64_test.cc',

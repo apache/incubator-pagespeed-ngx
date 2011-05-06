@@ -75,8 +75,10 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_spriter_pb',
+        '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
       ],
       'sources': [
+          'spriter/libpng_image_library.cc',
           'spriter/image_library_interface.cc',
           'spriter/image_spriter.cc',
           'spriter/public/image_spriter.proto',
@@ -142,11 +144,13 @@
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/testing/gmock.gyp:gmock',
         'instaweb_spriter_genproto',
+        '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protoc#host',
       ],
       'sources': [
         'spriter/image_spriter_test.cc',
+        'spriter/libpng_image_library_test.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',
@@ -456,9 +460,6 @@
       },
     },
     {
-      'variables': {
-        'chromium_code': 0,
-      },
       'target_name': 'instaweb_rewriter_css',
       'type': '<(library)',
       'dependencies': [
