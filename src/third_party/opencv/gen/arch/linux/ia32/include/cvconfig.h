@@ -1,3 +1,8 @@
+/* Note: we don't want any dependencies enabled below (such as v4l) which are
+ * for functionality we do not actually use, as they may not be consistently
+ * available for all versions of that OS + CPU pair.
+ */
+
 /* Define to one of `_getb67', `GETB67', `getb67' for Cray-2 and Cray-YMP
    systems. This function is required for `alloca.c' support on those systems.
    */
@@ -14,10 +19,10 @@
 #define HAVE_ALLOCA_H 1
 
 /* V4L capturing support */
-#define HAVE_CAMV4L
+/* #undef HAVE_CAMV4L */
 
 /* V4L2 capturing support */
-#define HAVE_CAMV4L2
+/* #undef HAVE_CAMV4L2 */
 
 /* Carbon windowing environment */
 /* #undef HAVE_CARBON */

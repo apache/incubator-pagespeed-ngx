@@ -471,9 +471,7 @@
           'sources': [
             'src/opencv/src/highgui/bitstrm.cpp',
             'src/opencv/src/highgui/cvcap.cpp',
-            'src/opencv/src/highgui/cvcap_dc1394.cpp',
             'src/opencv/src/highgui/cvcap_images.cpp',
-            'src/opencv/src/highgui/cvcap_v4l.cpp',
             'src/opencv/src/highgui/grfmt_base.cpp',
             'src/opencv/src/highgui/grfmt_bmp.cpp',
             'src/opencv/src/highgui/grfmt_jpeg.cpp',
