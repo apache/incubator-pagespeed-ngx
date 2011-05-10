@@ -252,7 +252,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
       &callback));
 
   // Content should not be set until we call the callback.
-  EXPECT_EQ(false, callback.done());
+  EXPECT_FALSE(callback.done());
   EXPECT_EQ("", response_contents);
 
   // After we call the callback, it should be correct.

@@ -304,7 +304,6 @@ void HtmlParse::SanityCheck() {
     // sure the elements have the expected parent based on context, when
     // we can figure out what the expected parent is.
     HtmlElement* start_element = event->GetElementIfStartEvent();
-    HtmlElement* actual_parent = NULL;
     if (start_element != NULL) {
       CheckEventParent(event, expect_parent, start_element->parent());
       message_handler_->Check(start_element->begin() == current_,
@@ -329,7 +328,6 @@ void HtmlParse::SanityCheck() {
                                   "element_stack.back() != end_element");
           element_stack.pop_back();
         }
-        actual_parent = end_element->parent();
         expect_parent = element_stack.empty() ? NULL : element_stack.back();
         CheckEventParent(event, expect_parent, end_element->parent());
       } else {

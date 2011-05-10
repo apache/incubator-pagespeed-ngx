@@ -332,7 +332,7 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
   // Now we see if policy permits us merging this element with previous ones.
   StringPiece url = src->value();
   MessageHandler* handler = driver_->message_handler();
-  if (!combiner_->AddElement(element, src->value(), handler).value) {
+  if (!combiner_->AddElement(element, url, handler).value) {
     // No -> try to flush what we have thus far.
     // Note: this flush is important in part because it ensure that all scripts
     // within combination have the same hostname, so we can safely name
@@ -341,7 +341,7 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
     combiner_->TryCombineAccumulated();
 
     // ... and try to start a new combination
-    combiner_->AddElement(element, src->value(), handler);
+    combiner_->AddElement(element, url, handler);
   }
 }
 
