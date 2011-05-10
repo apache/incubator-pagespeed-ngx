@@ -221,16 +221,16 @@ TEST_F(JsCombineFilterTest, CombineJs) {
   // but this is also not dependent on VarName working right.
   EXPECT_EQ(
       AddHtmlBody(StrCat("<script src=\"", kTestDomain,
-                         "a.js+b.js.pagespeed.jc.wgwjWQEQqW.js\"></script>",
-                         "<script>eval(mod_pagespeed_JPl3LTiJFD);</script>",
-                         "<script>eval(mod_pagespeed_cw38xVFr$1);</script>")),
+                         "a.js+b.js.pagespeed.jc.g2Xe9o4bQ2.js\"></script>",
+                         "<script>eval(mod_pagespeed_KecOGCIjKt);</script>",
+                         "<script>eval(mod_pagespeed_dzsx6RqvJJ);</script>")),
       output_buffer_);
 
   // Now fetch the combined URL.
   GoogleString combination_src;
   ASSERT_TRUE(ServeResourceUrl(scripts[0].url, &combination_src));
-  EXPECT_EQ(StrCat("var mod_pagespeed_JPl3LTiJFD = ", kEscapedJs1, ";\n",
-                   "var mod_pagespeed_cw38xVFr$1 = ", kEscapedJs2, ";\n"),
+  EXPECT_EQ(StrCat("var mod_pagespeed_KecOGCIjKt = ", kEscapedJs1, ";\n",
+                   "var mod_pagespeed_dzsx6RqvJJ = ", kEscapedJs2, ";\n"),
             combination_src);
 
   ServeResourceFromManyContexts(scripts[0].url,
@@ -470,6 +470,24 @@ TEST_F(JsCombineFilterTest, TestCombineStats) {
                   StrCat("<script src=", kJsUrl3, "></script>")));
 
   EXPECT_EQ(2, num_reduced->Get());
+}
+
+TEST_F(JsCombineFilterTest, TestCombineShard) {
+  // Make sure we produce consistent output when sharding/serving off a
+  // different host.
+  GoogleString path = StrCat(kJsUrl1, "+", kJsUrl2, ".pagespeed.jc.0.js");
+
+  GoogleString src1;
+  EXPECT_TRUE(ServeResourceUrl(StrCat(kTestDomain, path), &src1));
+
+  const char kOtherDomain[] = "http://cdn.example.com/";
+  SimulateJsResourceOnDomain(kOtherDomain, kJsUrl1, kJsText1);
+  SimulateJsResourceOnDomain(kOtherDomain, kJsUrl2, kJsText2);
+
+  GoogleString src2;
+  EXPECT_TRUE(ServeResourceUrl(StrCat(kOtherDomain, path), &src2));
+
+  EXPECT_EQ(src1, src2);
 }
 
 }  // namespace net_instaweb
