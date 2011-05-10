@@ -55,6 +55,7 @@ RewriteDriverFactory::RewriteDriverFactory()
       url_async_fetcher_(NULL),
       html_parse_(NULL),
       filename_prefix_(""),
+      filename_prefix_created_(false),
       force_caching_(false),
       slurp_read_only_(false),
       slurp_print_urls_(false),
@@ -192,12 +193,19 @@ NamedLockManager* RewriteDriverFactory::lock_manager() {
 
 bool RewriteDriverFactory::set_filename_prefix(StringPiece p) {
   p.CopyToString(&filename_prefix_);
+  if (file_system()->IsDir(filename_prefix_.c_str(),
+                           message_handler()).is_true()) {
+    filename_prefix_created_ = false;
+    return true;
+  }
+
   if (!file_system()->RecursivelyMakeDir(filename_prefix_, message_handler())) {
     message_handler()->FatalError(
         filename_prefix_.c_str(), 0,
         "Directory does not exist and cannot be created");
     return false;
   }
+  filename_prefix_created_ = true;
   return true;
 }
 

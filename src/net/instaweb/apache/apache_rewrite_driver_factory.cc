@@ -53,6 +53,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       file_cache_clean_size_kb_(100 * 1024),  // 100 megabytes
       fetcher_time_out_ms_(5 * Timer::kSecondMs),
       slurp_flush_limit_(0),
+      file_cache_path_created_(false),
       version_(version.data(), version.size()),
       statistics_enabled_(true),
       statistics_frozen_(false),
@@ -109,7 +110,15 @@ MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
 
 bool ApacheRewriteDriverFactory::set_file_cache_path(const StringPiece& p) {
   p.CopyToString(&file_cache_path_);
-  return file_system()->RecursivelyMakeDir(file_cache_path_, message_handler());
+  if (file_system()->IsDir(file_cache_path_.c_str(),
+                           message_handler()).is_true()) {
+    file_cache_path_created_ = false;
+    return true;
+  }
+
+  file_cache_path_created_ =
+      file_system()->RecursivelyMakeDir(file_cache_path_, message_handler());
+  return file_cache_path_created_;
 }
 
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {

@@ -21,7 +21,7 @@
 #include "apr_timer.h"
 #include "apr_version.h"
 #include "http_request.h"
-#include "net/instaweb/util/public/basictypes.h"
+#include "unixd.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/header_util.h"
@@ -35,6 +35,7 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -667,6 +668,17 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   }
 }
 
+// Gives permissions to given directory to the UID/GID Apache will morph to
+void give_apache_user_permissions(ApacheRewriteDriverFactory* factory,
+                             const StringPiece& path) {
+  if (chown(path.as_string().c_str(), unixd_config.user_id,
+            unixd_config.group_id) != 0) {
+    factory->message_handler()->Message(
+        kError, "Unable to set proper ownership of %s (%s)",
+        path.as_string().c_str(), strerror(errno));
+  }
+}
+
 int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                           server_rec *server_list) {
   SharedMemStatistics* statistics = NULL;
@@ -700,10 +712,24 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
         factory->message_handler()->Message(kError, "%s", buf.c_str());
         return HTTP_INTERNAL_SERVER_ERROR;
       }
+
       if ((factory->statistics_enabled() && (statistics == NULL))) {
         statistics = apache_process_context.InitStatistics(
             factory->shared_mem_runtime(), factory->filename_prefix(),
             factory->message_handler());
+      }
+
+      // If we are running as root, hand over the ownership of data directories
+      // we made to the eventual Apache uid/gid
+      if (geteuid() == 0 &&
+          ((unixd_config.user_id != 0) || (unixd_config.group_id != 0))) {
+        if (factory->filename_prefix_created()) {
+          give_apache_user_permissions(factory, factory->filename_prefix());
+        }
+
+        if (factory->file_cache_path_created()) {
+          give_apache_user_permissions(factory, factory->file_cache_path());
+        }
       }
     }
   }

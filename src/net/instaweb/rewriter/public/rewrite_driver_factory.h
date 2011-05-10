@@ -103,6 +103,10 @@ class RewriteDriverFactory {
 
   bool set_filename_prefix(StringPiece p);
 
+  // Returns whether the last call to set_filename_prefix made the directory
+  // itself.
+  bool filename_prefix_created() const { return filename_prefix_created_; }
+
   RewriteOptions* options() { return &options_; }
   MessageHandler* html_parse_message_handler();
   MessageHandler* message_handler();
@@ -206,6 +210,7 @@ class RewriteDriverFactory {
   HtmlParse* html_parse_;
 
   GoogleString filename_prefix_;
+  bool filename_prefix_created_;
   GoogleString slurp_directory_;
   RewriteOptions options_;
   bool force_caching_;
