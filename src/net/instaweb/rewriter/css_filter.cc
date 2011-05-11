@@ -342,8 +342,8 @@ bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
 }
 
 RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
-    const Resource* input_resource,
-    OutputResource* output_resource) {
+    const ResourcePtr& input_resource,
+    const OutputResourcePtr& output_resource) {
   CHECK(input_resource->loaded());
   bool ret = false;
   if (input_resource->ContentsValid()) {
@@ -362,7 +362,7 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
         output_resource->SetType(&kContentTypeCss);
         if (resource_manager_->Write(HttpStatus::kOK,
                                      out_contents,
-                                     output_resource,
+                                     output_resource.get(),
                                      expire_ms,
                                      driver_->message_handler())) {
           ret = output_resource->IsWritten();

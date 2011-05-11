@@ -68,8 +68,11 @@ class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
     }
     return NULL;
   }
+  virtual OutputResourceKind kind() const {
+    return kOnTheFlyResource;
+  }
   virtual const char* id() const { return kTrimWhitespaceFilterId; }
-  virtual const char* Name() const { return "TrimWhitespace"; }
+  virtual const char* name() const { return "TrimWhitespace"; }
 };
 
 class RewriteContextTest : public ResourceManagerTestBase {

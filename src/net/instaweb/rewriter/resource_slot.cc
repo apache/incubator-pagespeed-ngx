@@ -33,6 +33,13 @@ void ResourceSlot::SetResource(const ResourcePtr& resource) {
   resource_ = ResourcePtr(resource);
 }
 
+FetchResourceSlot::~FetchResourceSlot() {
+}
+
+void FetchResourceSlot::Render() {
+  DCHECK(false) << "FetchResourceSLot::Render should never be called";
+}
+
 HtmlResourceSlot::~HtmlResourceSlot() {
 }
 

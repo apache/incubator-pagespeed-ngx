@@ -102,8 +102,8 @@ void ImageRewriteFilter::Initialize(Statistics* statistics) {
 }
 
 RewriteSingleResourceFilter::RewriteResult
-ImageRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
-                                          OutputResource* result) {
+ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
+                                          const OutputResourcePtr& result) {
   MessageHandler* message_handler = driver_->message_handler();
   GoogleString url;
   ImageDim page_dim;
@@ -189,7 +189,7 @@ ImageRewriteFilter::RewriteLoadedResource(const Resource* input_resource,
 
       int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
       if (resource_manager_->Write(
-              HttpStatus::kOK, image->Contents(), result,
+              HttpStatus::kOK, image->Contents(), result.get(),
               origin_expire_time_ms, message_handler)) {
         driver_->InfoHere(
             "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",

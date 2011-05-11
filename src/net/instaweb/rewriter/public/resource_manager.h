@@ -20,6 +20,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
 
+#include <vector>
+
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/public/blocking_behavior.h"
@@ -53,6 +55,7 @@ class UrlSegmentEncoder;
 class Variable;
 
 typedef RefCountedPtr<OutputResource> OutputResourcePtr;
+typedef std::vector<OutputResourcePtr> OutputResourceVector;
 
 // TODO(jmarantz): Rename this class to ServerContext, as it no longer
 // contains much logic about resources -- that's been moved to RewriteDriver,

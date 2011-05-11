@@ -55,14 +55,15 @@ class CacheExtender : public RewriteSingleResourceFilter {
 
  protected:
   virtual bool ComputeOnTheFly() const;
-  virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
-                                              OutputResource* output_resource);
+  virtual RewriteResult RewriteLoadedResource(
+      const ResourcePtr& input_resource,
+      const OutputResourcePtr& output_resource);
 
  private:
   bool IsRewrittenResource(const StringPiece& url) const;
   bool ShouldRewriteResource(
       const ResponseHeaders* headers, int64 now_ms,
-      const Resource* input_resource, const StringPiece& url) const;
+      const ResourcePtr& input_resource, const StringPiece& url) const;
 
   ResourceTagScanner tag_scanner_;
   Variable* extension_count_;

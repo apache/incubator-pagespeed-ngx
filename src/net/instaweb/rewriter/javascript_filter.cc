@@ -69,20 +69,21 @@ class JavascriptRewriteContext : public SingleRewriteContext {
   JavascriptRewriteContext(RewriteDriver* driver,
                            const ResourceSlotPtr& slot,
                            JavascriptRewriteConfig* config)
-      : SingleRewriteContext(driver, slot, NULL),
+      : SingleRewriteContext(driver, NULL),
         config_(config) {
+    AddSlot(slot);
   }
 
-  RewriteSingleResourceFilter::RewriteResult Rewrite(
-      const Resource* script_input, OutputResource* output_resource) {
+  RewriteSingleResourceFilter::RewriteResult RewriteSingle(
+      const ResourcePtr& input, const OutputResourcePtr& output) {
     MessageHandler* message_handler = resource_manager()->message_handler();
-    StringPiece script = script_input->contents();
-    JavascriptCodeBlock code_block(script, config_, script_input->url(),
+    StringPiece script = input->contents();
+    JavascriptCodeBlock code_block(script, config_, input->url(),
                                    message_handler);
     JavascriptLibraryId library = code_block.ComputeJavascriptLibrary();
     if (library.recognized()) {
       message_handler->Message(kInfo, "Script %s is %s %s",
-                               script_input->url().c_str(),
+                               input->url().c_str(),
                                library.name(), library.version());
     }
 
@@ -90,14 +91,14 @@ class JavascriptRewriteContext : public SingleRewriteContext {
     if (ok) {
       // Give the script a nice mimetype and extension.
       // (There is no harm in doing this, they're ignored anyway).
-      output_resource->SetType(&kContentTypeJavascript);
-      ok = WriteExternalScriptTo(script_input, code_block.Rewritten(),
-                                 output_resource);
+      output->SetType(&kContentTypeJavascript);
+      ok = WriteExternalScriptTo(input.get(), code_block.Rewritten(),
+                                 output.get());
     } else {
       // Rewriting happened but wasn't useful; as we return false base class
       // will remember this for later so we don't attempt to rewrite twice.
       message_handler->Message(kInfo, "Script %s didn't shrink",
-                               script_input->url().c_str());
+                               input->url().c_str());
     }
 
     return ok ? RewriteSingleResourceFilter::kRewriteOk :
@@ -123,6 +124,8 @@ class JavascriptRewriteContext : public SingleRewriteContext {
     }
     return ok;
   }
+
+  virtual OutputResourceKind kind() const { return kRewrittenResource; }
 
  protected:
   virtual const char* id() const { return RewriteDriver::kJavascriptMinId; }
@@ -302,13 +305,14 @@ bool JavascriptFilter::ReuseByContentHash() const {
 }
 
 RewriteSingleResourceFilter::RewriteResult
-JavascriptFilter::RewriteLoadedResource(const Resource* script_input,
-                                        OutputResource* output_resource) {
+JavascriptFilter::RewriteLoadedResource(
+    const ResourcePtr& script_input,
+    const OutputResourcePtr& output_resource) {
   // Temporary code so that we can share the rewriting implementation beteween
   // the old blocking rewrite model and the new async model.
   ResourceSlotPtr dummy_slot;
   JavascriptRewriteContext jrc(driver_, dummy_slot, &config_);
-  return jrc.Rewrite(script_input, output_resource);
+  return jrc.RewriteSingle(script_input, output_resource);
 }
 
 }  // namespace net_instaweb

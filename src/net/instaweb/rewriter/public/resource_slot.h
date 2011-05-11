@@ -71,6 +71,25 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
 
  private:
   ResourcePtr resource_;
+
+  DISALLOW_COPY_AND_ASSIGN(ResourceSlot);
+};
+
+// A resource-slot created for a Fetch has an empty Render method -- Render
+// should never be called.
+class FetchResourceSlot : public ResourceSlot {
+ public:
+  explicit FetchResourceSlot(const ResourcePtr& resource)
+      : ResourceSlot(resource) {
+  }
+
+ protected:
+  REFCOUNT_FRIEND_DECLARATION(FetchResourceSlot);
+  virtual ~FetchResourceSlot();
+  virtual void Render();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(FetchResourceSlot);
 };
 
 class HtmlResourceSlot : public ResourceSlot {
@@ -82,17 +101,20 @@ class HtmlResourceSlot : public ResourceSlot {
         element_(element),
         attribute_(attribute) {
   }
-  virtual ~HtmlResourceSlot();
 
   HtmlElement* element() { return element_; }
   HtmlElement::Attribute* attribute() { return attribute_; }
 
  protected:
+  REFCOUNT_FRIEND_DECLARATION(HtmlResourceSlot);
+  virtual ~HtmlResourceSlot();
   virtual void Render();
 
  private:
   HtmlElement* element_;
   HtmlElement::Attribute* attribute_;
+
+  DISALLOW_COPY_AND_ASSIGN(HtmlResourceSlot);
 };
 
 class HtmlResourceSlotComparator {

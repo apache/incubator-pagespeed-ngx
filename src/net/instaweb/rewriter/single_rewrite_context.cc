@@ -34,17 +34,15 @@ namespace net_instaweb {
 class RewriteDriver;
 
 SingleRewriteContext::SingleRewriteContext(RewriteDriver* driver,
-                                           const ResourceSlotPtr& slot,
                                            ResourceContext* resource_context)
     : RewriteContext(driver, resource_context) {
-  AddSlot(slot);
 }
 
 SingleRewriteContext::~SingleRewriteContext() {
 }
 
 void SingleRewriteContext::Render(const OutputPartition& partition,
-                                  const ResourcePtr& output_resource) {
+                                  const OutputResourcePtr& output_resource) {
   // We CHECK num_slots because there's no way we should be creating
   // a SingleRewriteContext with more than one slot.
   CHECK_EQ(1, num_slots());
@@ -52,21 +50,39 @@ void SingleRewriteContext::Render(const OutputPartition& partition,
   // However, we soft-fail on corrupt data read from the cache.
   if ((partition.input_size() == 1) && (partition.input(0) == 0)) {
     ResourceSlotPtr resource_slot(slot(0));
-    resource_slot->SetResource(output_resource);
+    ResourcePtr resource(output_resource);
+    resource_slot->SetResource(resource);
     RenderSlotOnDetach(resource_slot);
   } else {
     // TODO(jmarantz): bump a failure-due-to-corrupt-cache statistic
   }
 }
 
-bool SingleRewriteContext::PartitionAndRewrite(OutputPartitions* partitions) {
-  // We CHECK num_slots because there's no way we should be creating
-  // a RewriteContext for this filter with more than one slot.
-  CHECK_EQ(1, num_slots());
+bool SingleRewriteContext::PartitionAndRewrite(OutputPartitions* partitions,
+                                               OutputResourceVector* outputs) {
+  bool ret = false;
+  if (num_slots() == 1) {
+    ResourcePtr resource(slot(0)->resource());
+    OutputResourcePtr output_resource(
+        resource_manager()->CreateOutputResourceFromResource(
+            options(), id(), encoder(), resource_context(), resource, kind()));
+    if (output_resource.get() != NULL) {
+      OutputPartition partition;
+      if (Rewrite(&partition, output_resource)) {
+        partition.add_input(0);
+        *partitions->add_partition() = partition;
+        outputs->push_back(output_resource);
+        ret = true;
+      }
+    }
+  }
+  return ret;
+}
+
+bool SingleRewriteContext::Rewrite(OutputPartition* partition,
+                                   const OutputResourcePtr& output_resource) {
   RewriteSingleResourceFilter::RewriteResult result =
       RewriteSingleResourceFilter::kRewriteFailed;
-  OutputPartition* partition = partitions->add_partition();
-
   ResourcePtr resource(slot(0)->resource());
   if ((resource.get() != NULL) && resource->loaded() &&
       resource->ContentsValid()) {
@@ -74,26 +90,19 @@ bool SingleRewriteContext::PartitionAndRewrite(OutputPartitions* partitions) {
     if (ComputeOnTheFly()) {
       kind = kOnTheFlyResource;
     }
-    OutputResourcePtr output_resource(
-        resource_manager()->CreateOutputResourceFromResource(
-            options(), id(), encoder(), resource_context(), resource, kind));
     output_resource->set_cached_result(partition->mutable_result());
-    result = Rewrite(resource.get(), output_resource.get());
+    result = RewriteSingle(resource, output_resource);
   }
 
-  bool ret = true;
-  switch (result) {
-    case RewriteSingleResourceFilter::kRewriteOk:
-      partition->add_input(0);
-      break;
-    case RewriteSingleResourceFilter::kTooBusy:
-      ret = false;
-      break;
-    case RewriteSingleResourceFilter::kRewriteFailed:
-      partition->mutable_result()->set_optimizable(false);
-      break;
+  if (result == RewriteSingleResourceFilter::kRewriteOk) {
+    return true;
+  } else if (result == RewriteSingleResourceFilter::kRewriteFailed) {
+    partition->mutable_result()->set_optimizable(false);
+    // TODO(jmarantz): currently this optimizable=false bit is tossed
+    // because we don't add the partition to the OutputPartitions unless
+    // it passed.  Test & change this.
   }
-  return ret;
+  return false;
 }
 
 }  // namespace net_instaweb

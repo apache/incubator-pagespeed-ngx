@@ -136,7 +136,8 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   // factors such as system load (rather than contents of the input)
   // return kTooBusy.
   virtual RewriteResult RewriteLoadedResource(
-      const Resource* input_resource, OutputResource* output_resource) = 0;
+      const ResourcePtr& input_resource,
+      const OutputResourcePtr& output_resource) = 0;
 
  private:
   class FetchCallback;

@@ -81,7 +81,7 @@ void CacheExtender::Initialize(Statistics* statistics) {
 
 bool CacheExtender::ShouldRewriteResource(
     const ResponseHeaders* headers, int64 now_ms,
-    const Resource* input_resource, const StringPiece& url) const {
+    const ResourcePtr& input_resource, const StringPiece& url) const {
   if (input_resource->type() == NULL) {
     return false;
   }
@@ -136,8 +136,8 @@ bool CacheExtender::ComputeOnTheFly() const {
 }
 
 RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
-    const Resource* input_resource,
-    OutputResource* output_resource) {
+    const ResourcePtr& input_resource,
+    const OutputResourcePtr& output_resource) {
   CHECK(input_resource->loaded());
 
   MessageHandler* message_handler = driver_->message_handler();
@@ -178,7 +178,7 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   // TODO(sligocki): Maybe we shouldn't cache the rewritten resource,
   // just the input_resource.
   ok = resource_manager_->Write(
-      HttpStatus::kOK, contents, output_resource,
+      HttpStatus::kOK, contents, output_resource.get(),
       headers->CacheExpirationTimeMs(), message_handler);
   return ok ? kRewriteOk : kRewriteFailed;
 }

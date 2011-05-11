@@ -126,11 +126,12 @@ class TestRewriter : public RewriteSingleResourceFilter {
 
   void set_reuse_by_content_hash(bool r) { reuse_by_content_hash_ = r; }
 
-  virtual RewriteResult RewriteLoadedResource(const Resource* input_resource,
-                                              OutputResource* output_resource) {
+  virtual RewriteResult RewriteLoadedResource(
+      const ResourcePtr& input_resource,
+      const OutputResourcePtr& output_resource) {
     ++num_rewrites_called_;
-    EXPECT_TRUE(input_resource != NULL);
-    EXPECT_TRUE(output_resource != NULL);
+    EXPECT_TRUE(input_resource.get() != NULL);
+    EXPECT_TRUE(output_resource.get() != NULL);
     EXPECT_TRUE(input_resource->ContentsValid());
 
     StringPiece contents = input_resource->contents();
@@ -144,7 +145,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
 
     output_resource->SetType(&kContentTypeText);
     bool ok = resource_manager_->Write(
-        HttpStatus::kOK, StrCat(contents, contents), output_resource,
+        HttpStatus::kOK, StrCat(contents, contents), output_resource.get(),
         input_resource->metadata()->CacheExpirationTimeMs(),
         driver_->message_handler());
     return ok ? kRewriteOk : kRewriteFailed;
