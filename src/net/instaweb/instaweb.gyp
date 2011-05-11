@@ -460,6 +460,18 @@
       },
     },
     {
+      'variables': {
+        # OpenCV has compile warnings in gcc 4.1 in a header file so turn off
+        # strict checking.
+        #
+        # TODO(jmarantz): disable the specific warning rather than
+        # turning off all warnings, and also scope this down to a
+        # minimal wrapper around the offending header file.
+        #
+        # TODO(jmarantz): figure out how to test for this failure in
+        # checkin tests, as it passes in gcc 4.2 and fails in gcc 4.1.
+        'chromium_code': 0,
+      },
       'target_name': 'instaweb_rewriter_css',
       'type': '<(library)',
       'dependencies': [
