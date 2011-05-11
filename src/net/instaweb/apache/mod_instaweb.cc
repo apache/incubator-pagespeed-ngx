@@ -670,7 +670,7 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
 
 // Gives permissions to given directory to the UID/GID Apache will morph to
 void give_apache_user_permissions(ApacheRewriteDriverFactory* factory,
-                             const StringPiece& path) {
+                                  const StringPiece& path) {
   if (chown(path.as_string().c_str(), unixd_config.user_id,
             unixd_config.group_id) != 0) {
     factory->message_handler()->Message(
@@ -720,7 +720,9 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       }
 
       // If we are running as root, hand over the ownership of data directories
-      // we made to the eventual Apache uid/gid
+      // we made to the eventual Apache uid/gid.
+      // (Apache will not switch from current euid otherwise --- see
+      //  http://httpd.apache.org/docs/2.2/mod/mpm_common.html#user).
       if (geteuid() == 0 &&
           ((unixd_config.user_id != 0) || (unixd_config.group_id != 0))) {
         if (factory->filename_prefix_created()) {
