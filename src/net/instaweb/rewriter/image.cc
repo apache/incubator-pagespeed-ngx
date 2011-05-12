@@ -43,6 +43,8 @@
 #if (CV_MAJOR_VERSION == 2 && CV_MINOR_VERSION >= 1) || (CV_MAJOR_VERSION > 2)
 #include <vector>
 #define USE_OPENCV_2_1
+#else
+#include "net/instaweb/util/public/stdio_file_system.h"
 #endif
 
 using pagespeed::image_compression::PngOptimizer;
