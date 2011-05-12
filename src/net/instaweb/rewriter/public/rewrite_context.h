@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
@@ -146,12 +147,22 @@ class RewriteContext {
   // the end results into the http cache.  Return 'true' if the partitioning
   // could complete (whether a rewrite was found or not), false if the attempt
   // was abandoned and no conclusion can be drawn.
+  //
+  // Note that if partitioner finds that the resources are not
+  // rewritable, it will still return true; it will simply have
+  // an empty inputs-array in OutputPartitions and leave
+  // 'outputs' unmodified.  'false' is only returned if the subclass
+  // skipped the rewrite attempt due to a lock conflict.
   virtual bool PartitionAndRewrite(OutputPartitions* partitions,
                                    OutputResourceVector* outputs) = 0;
 
-  // Rewrites the specified partition, returning true of successful.
-  virtual bool Rewrite(OutputPartition* partition,
-                       const OutputResourcePtr& output_resource) = 0;
+  // Rewrites the specified partition, returning
+  // RewriteSingleResourceFilter::kRewriteOk if successful.  Note
+  // that a return value of RewriteSingleResourceFilter::kTooBusy means
+  // that an HTML rewrite will skip this resource, but we should not
+  // cache it as "do not optimize".
+  virtual RewriteSingleResourceFilter::RewriteResult Rewrite(
+      OutputPartition* partition, const OutputResourcePtr& output_resource) = 0;
 
   // This final set of protected methods can be optionally overridden
   // by subclasses.
@@ -190,6 +201,12 @@ class RewriteContext {
   // that way too (though we don't at the moment).
   virtual OutputResourceKind kind() const = 0;
 
+  // Deconstructs a URL by name and creates an output resource that
+  // corresponds to it.
+  bool CreateOutputResourceForCachedOutput(const StringPiece& url,
+                                           const ContentType* content_type,
+                                           OutputResourcePtr* output_resource);
+
  private:
   // Initiates an asynchronous fetch for the resources associated with
   // each slot, calling ResourceFetchDone() when complete.
@@ -203,17 +220,13 @@ class RewriteContext {
   // the same rewrite.
   void FetchInputs(BlockingBehavior block);
 
-  // Deconstructs a URL by name and creates an output resource that
-  // corresponds to it.
-  bool CreateOutputResourceForCachedOutput(const StringPiece& url,
-                                           OutputResourcePtr* output_resource);
-
   // With all resources loaded, the rewrite can now be done, writing:
   //    The metadata into the cache
   //    The output resource into the cache
   //    if the driver has not been detached,
   //      the url+data->rewritten_resource is written into the rewrite
   //      driver's map, for each of the URLs.
+  void Finish();
   void FinishRewrite();
   void FinishFetch();
 

@@ -179,6 +179,14 @@ class OutputResource : public Resource {
 
   OutputResourceKind kind() const { return kind_; }
 
+  // TODO(jmarantz): get rid of this bool when RewriteContext is fully deployed.
+  bool written_using_rewrite_context_flow() const {
+    return written_using_rewrite_context_flow_;
+  }
+  void set_written_using_rewrite_context_flow(bool x) {
+    written_using_rewrite_context_flow_ = x;
+  }
+
  protected:
   virtual ~OutputResource();
   REFCOUNT_FRIEND_DECLARATION(OutputResource);
@@ -263,6 +271,13 @@ class OutputResource : public Resource {
   // Output resource have a 'kind' associated with them that controls the kind
   // of caching we would like to be performed on them when written out.
   OutputResourceKind kind_;
+
+  // Outputs written using the newer async flow in RewriteContext.cc do not need
+  // rname caches, because the meta-data is contained in the OutputPartitions.
+  //
+  // TODO(jmarantz): when the new flow is completley deployed this bool
+  // can be removed.
+  bool written_using_rewrite_context_flow_;
 
   DISALLOW_COPY_AND_ASSIGN(OutputResource);
 };

@@ -54,8 +54,8 @@ class SingleRewriteContext : public RewriteContext {
                       const OutputResourcePtr& output_resource);
   virtual bool PartitionAndRewrite(OutputPartitions* partitions,
                                    OutputResourceVector* outputs);
-  virtual bool Rewrite(OutputPartition* partition,
-                       const OutputResourcePtr& output);
+  virtual RewriteSingleResourceFilter::RewriteResult Rewrite(
+      OutputPartition* partition, const OutputResourcePtr& output);
 
   DISALLOW_COPY_AND_ASSIGN(SingleRewriteContext);
 };

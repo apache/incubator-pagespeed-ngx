@@ -159,7 +159,7 @@ TEST_F(CssImageCombineTest, NoCrashUnknownType) {
 }
 
 TEST_F(CssImageCombineTest, SpritesImagesExternal) {
-  scoped_ptr<WaitUrlAsyncFetcher> wait_fetcher(SetupWaitFetcher());
+  SetupWaitFetcher();
 
   const GoogleString beforeCss = StrCat(" "  // extra whitespace allows rewrite
       "#div1{background-image:url(", kCuppaPngFile, ");"
@@ -175,7 +175,7 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
       kExpectNoChange | kExpectSuccess);
 
   // Get the CSS to load (resources are still unavailable).
-  wait_fetcher->CallCallbacks();
+  wait_url_async_fetcher_.CallCallbacks();
 
   // On the second run, we will rewrite the CSS but not sprite.
   const GoogleString rewrittenCss = StrCat(
@@ -188,7 +188,7 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
       kExpectChange | kExpectSuccess);
 
   // Allow the images to load
-  wait_fetcher->CallCallbacks();
+  wait_url_async_fetcher_.CallCallbacks();
   // The inability to rewrite this image will be remembered for 1 second.
   mock_timer()->advance_ms(3 * Timer::kSecondMs);
 

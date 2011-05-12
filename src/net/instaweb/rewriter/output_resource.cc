@@ -89,7 +89,8 @@ OutputResource::OutputResource(ResourceManager* resource_manager,
       cached_result_(NULL),
       resolved_base_(resolved_base.data(), resolved_base.size()),
       rewrite_options_(options),
-      kind_(kind) {
+      kind_(kind),
+      written_using_rewrite_context_flow_(false) {
   full_name_.CopyFrom(full_name);
   if (type == NULL) {
     GoogleString ext_with_dot = StrCat(".", full_name.ext());
@@ -338,6 +339,9 @@ void OutputResource::SaveCachedResult(const GoogleString& name_key,
 
 void OutputResource::FetchCachedResult(const GoogleString& name_key,
                                        MessageHandler* handler) {
+  if (written_using_rewrite_context_flow_) {
+    return;
+  }
   bool ok = false;
   CacheInterface* cache = resource_manager_->metadata_cache();
   clear_cached_result();

@@ -98,6 +98,13 @@ class RewriteFilter : public CommonFilter {
   // The default implementation returns false.
   virtual bool ComputeOnTheFly() const;
 
+  // Determines whether this filter supports the asynchronous writing flow,
+  // and the RewriteDriver is in async mode.
+  //
+  // TODO(jmarnatz): remove this method once all filters use the async
+  // writing flow.
+  virtual bool HasAsyncFlow() const;
+
  protected:
   GoogleString filter_prefix_;  // Prefix that should be used in front of all
                                 // rewritten URLs

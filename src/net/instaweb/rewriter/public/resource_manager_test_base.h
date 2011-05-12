@@ -22,9 +22,11 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_TEST_BASE_H_
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -144,9 +146,13 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                       const StringPiece& name, const StringPiece& ext);
 
   // Overrides the async fetcher on the primary context to be a
-  // wait fetcher which permits delaying callback invocation, and returns a
-  // pointer to the new fetcher.
-  WaitUrlAsyncFetcher* SetupWaitFetcher();
+  // wait fetcher which permits delaying callback invocation.
+  // CallFetcherCallbacks can then be called to let the fetches complete.
+  void SetupWaitFetcher();
+
+  // TODO(jmarantz): change the 8 remaining direct calls to go through this
+  // abstraction.
+  void CallFetcherCallbacks() { wait_url_async_fetcher_.CallCallbacks(); }
 
   // Helper method to test all manner of resource serving from a filter.
   void TestServeFiles(const ContentType* content_type,
@@ -157,8 +163,24 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                       const StringPiece& rewritten_name,
                       const StringPiece& rewritten_content);
 
+  // These functions help test the ResourceManager::store_outputs_in_file_system
+  // functionality.
+
+  // Translates an output URL into a full file pathname.
+  GoogleString OutputResourceFilename(const StringPiece& url);
+
+  // Writes an output resource into the file system.
+  void WriteOutputResourceFile(const StringPiece& url,
+                               const ContentType* content_type,
+                               const StringPiece& rewritten_content);
+
+  // Removes the output resource from the file system.
+  void RemoveOutputResourceFile(const StringPiece& url);
+
   MockUrlFetcher mock_url_fetcher_;
   FakeUrlAsyncFetcher mock_url_async_fetcher_;
+  CountingUrlAsyncFetcher counting_url_async_fetcher_;
+  WaitUrlAsyncFetcher wait_url_async_fetcher_;
   FilenameEncoder filename_encoder_;
 
   MockHasher mock_hasher_;

@@ -267,6 +267,13 @@ void ResourceManager::WriteUnoptimizable(OutputResource* output,
 // TODO(morlovich) We should consider caching based on the input hash, too,
 // so we don't end redoing work when input resources don't change but have
 // short expiration.
+//
+// TODO(jmarantz): It would be nicer for all the cache-related
+// twiddling for the new methodology (including both
+// set_optimizable(true) and set_optimizable(false)) was in
+// RewriteContext, perhaps right next to the Put; and if
+// CacheComputedResourceMapping was not called if
+// written_using_rewrite_context_flow at all.
 void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
     int64 origin_expire_time_ms, MessageHandler* handler) {
   GoogleString name_key = StrCat(kCacheKeyResourceNamePrefix,
@@ -276,7 +283,9 @@ void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
     cached->set_url(output->url());
   }
   cached->set_origin_expiration_time_ms(origin_expire_time_ms);
-  output->SaveCachedResult(name_key, handler);
+  if (!output->written_using_rewrite_context_flow()) {
+    output->SaveCachedResult(name_key, handler);
+  }
 }
 
 bool ResourceManager::IsImminentlyExpiring(int64 start_date_ms,

@@ -471,11 +471,13 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const StringPiece& url,
   OutputResourceKind kind = kRewrittenResource;
   StringFilterMap::iterator p = resource_filter_map_.find(
       GoogleString(id.data(), id.size()));
+  bool has_async_flow = false;
   if (p != resource_filter_map_.end()) {
     *filter = p->second;
     if ((*filter)->ComputeOnTheFly()) {
       kind = kOnTheFlyResource;
     }
+    has_async_flow = (*filter)->HasAsyncFlow();
   } else if ((id == CssOutlineFilter::kFilterId) ||
               (id == JsOutlineFilter::kFilterId)) {
     // OutlineFilter is special because it's not a RewriteFilter -- it's
@@ -496,6 +498,7 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const StringPiece& url,
   StringPiece base = gurl.AllExceptLeaf();
   OutputResourcePtr output_resource(new OutputResource(
       resource_manager_, base, namer, NULL, NULL, kind));
+  output_resource->set_written_using_rewrite_context_flow(has_async_flow);
 
   // We also reject any unknown extensions, which includes rejecting requests
   // with trailing junk. We do this now since OutputResource figures out
@@ -572,6 +575,10 @@ bool RewriteDriver::FetchResource(
 bool RewriteDriver::FetchExtantOutputResourceOrLock(
     OutputResource* output_resource,
     Writer* writer, ResponseHeaders* response_headers) {
+  if (output_resource->kind() == kOnTheFlyResource) {
+    return false;
+  }
+
   // 1) See if resource is already cached, if so return it.
   if (FetchExtantOutputResource(output_resource, writer, response_headers)) {
     return true;

@@ -111,6 +111,10 @@ class SimpleTextFilter : public RewriteFilter {
  protected:
   virtual GoogleString id() const { return rewriter_->id(); }
   virtual const char* Name() const { return rewriter_->name(); }
+  virtual bool HasAsyncFlow() const { return driver_->asynchronous_rewrites(); }
+  virtual bool ComputeOnTheFly() const {
+    return rewriter_->kind() == kOnTheFlyResource;
+  }
 
  private:
   RewriterPtr rewriter_;

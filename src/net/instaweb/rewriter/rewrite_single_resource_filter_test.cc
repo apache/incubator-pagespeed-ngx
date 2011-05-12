@@ -293,14 +293,6 @@ class RewriteSingleResourceFilterTest
     return output_resource->ReleaseCachedResult();
   }
 
-  CountingUrlAsyncFetcher* SetupCountingFetcher() {
-    CountingUrlAsyncFetcher* counter =
-        new CountingUrlAsyncFetcher(&mock_url_async_fetcher_);
-    rewrite_driver_.set_async_fetcher(counter);
-    resource_manager_->set_url_async_fetcher(counter);
-    return counter;
-  }
-
   GoogleString in_tag_;
   GoogleString out_tag_;
   TestRewriter* filter_;  // owned by the rewrite_driver_.
@@ -379,14 +371,14 @@ TEST_P(RewriteSingleResourceFilterTest, VersionChangeBad) {
 }
 
 TEST_P(RewriteSingleResourceFilterTest, BasicAsync) {
-  scoped_ptr<WaitUrlAsyncFetcher> delayer(SetupWaitFetcher());
+  SetupWaitFetcher();
 
   // First fetch should not rewrite since resources haven't loaded yet
   ValidateNoChanges("async.not_yet", in_tag_);
   EXPECT_EQ(0, filter_->num_rewrites_called());
 
   // Now let it load
-  delayer->CallCallbacks();
+  wait_url_async_fetcher_.CallCallbacks();
 
   // This time should rewrite
   ValidateExpected("async.loaded", in_tag_, out_tag_);
@@ -464,29 +456,26 @@ TEST_P(RewriteSingleResourceFilterTest, CacheExpire) {
 }
 
 TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshen) {
-  scoped_ptr<CountingUrlAsyncFetcher> counter(SetupCountingFetcher());
-
   // Start with non-zero time
   mock_timer()->advance_ms(TtlMs() / 2);
   MockResource("a.tst", "whatever", TtlSec());
 
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counter->fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher_.fetch_count());
 
   // Advance time past TTL, but re-mock the resource so it can be refetched
   mock_timer()->advance_ms(TtlMs() + 10);
   MockResource("a.tst", "whatever", TtlSec());
   ValidateExpected("refetch", in_tag_, out_tag_);
   EXPECT_EQ(2, filter_->num_rewrites_called());
-  EXPECT_EQ(2, counter->fetch_count());
+  EXPECT_EQ(2, counting_url_async_fetcher_.fetch_count());
 }
 
 TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshenHashCheck) {
   // Like above, but we rely on the input hash check to recover the result
   // for us.
   filter_->set_reuse_by_content_hash(true);
-  scoped_ptr<CountingUrlAsyncFetcher> counter(SetupCountingFetcher());
 
   // Start with non-zero time.
   mock_timer()->advance_ms(TtlMs() / 2);
@@ -494,7 +483,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshenHashCheck) {
 
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counter->fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher_.fetch_count());
 
   // Advance time past TTL, but re-mock the resource so it can be refetched.
   mock_timer()->advance_ms(TtlMs() + 10);
@@ -503,13 +492,12 @@ TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshenHashCheck) {
 
   // Here, we did re-fetch it, but did not recompute.
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(2, counter->fetch_count());
+  EXPECT_EQ(2, counting_url_async_fetcher_.fetch_count());
 }
 
 TEST_P(RewriteSingleResourceFilterTest, CacheHashCheckChange) {
   // Now the hash check should fail because the hash changed
   filter_->set_reuse_by_content_hash(true);
-  scoped_ptr<CountingUrlAsyncFetcher> counter(SetupCountingFetcher());
 
   // Start with non-zero time
   mock_timer()->advance_ms(TtlMs() / 2);
@@ -517,7 +505,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheHashCheckChange) {
 
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counter->fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher_.fetch_count());
 
   // Advance time past TTL, but re-mock the resource so it can be refetched.
   mock_timer()->advance_ms(TtlMs() + 10);
@@ -528,21 +516,19 @@ TEST_P(RewriteSingleResourceFilterTest, CacheHashCheckChange) {
 
   // Since we changed the hash, this needs to recompute.
   EXPECT_EQ(2, filter_->num_rewrites_called());
-  EXPECT_EQ(2, counter->fetch_count());
+  EXPECT_EQ(2, counting_url_async_fetcher_.fetch_count());
 }
 
 
 
 TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
-  scoped_ptr<CountingUrlAsyncFetcher> counter(SetupCountingFetcher());
-
   // Start with non-zero time
   mock_timer()->advance_ms(TtlMs() / 2);
   MockResource("a.tst", "whatever", TtlSec());
 
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counter->fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher_.fetch_count());
 
   // Advance close to TTL and rewrite, having updated the data.
   // We expect it to be freshened to that.
@@ -550,7 +536,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
   MockResource("a.tst", "whatever", TtlSec());
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(2, counter->fetch_count());  // the 2nd fetch is freshening
+  EXPECT_EQ(2, counting_url_async_fetcher_.fetch_count());  // the 2nd fetch is freshening
 
   // Now advance past original TTL, but it should still be alive
   // due to freshening.
@@ -561,7 +547,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
   EXPECT_EQ(2, filter_->num_rewrites_called());
   // definitely should not have to fetch here --- freshening should have
   // done it already.
-  EXPECT_EQ(2, counter->fetch_count());
+  EXPECT_EQ(2, counting_url_async_fetcher_.fetch_count());
 }
 
 // Make sure that fetching normal content works
@@ -619,18 +605,16 @@ TEST_P(RewriteSingleResourceFilterTest, FetchFirstVersioned) {
 // Failure path #1: fetch of a URL we refuse to rewrite. Should return
 // unchanged
 TEST_P(RewriteSingleResourceFilterTest, FetchRewriteFailed) {
-  scoped_ptr<CountingUrlAsyncFetcher> counter(SetupCountingFetcher());
-
   GoogleString out;
   ASSERT_TRUE(ServeRelativeUrl(OutputName("bad.tst"), &out));
   EXPECT_EQ("bad", out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counter->fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher_.fetch_count());
 
   // Make sure the above also cached the failure.
   ValidateNoChanges("postfetch.bad", "<tag src=\"bad.tst\"></tag>");
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counter->fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher_.fetch_count());
 }
 
 // Rewriting a 404 however propagates error

@@ -60,4 +60,8 @@ bool RewriteFilter::ComputeOnTheFly() const {
   return false;
 }
 
+bool RewriteFilter::HasAsyncFlow() const {
+  return false;
+}
+
 }  // namespace net_instaweb
