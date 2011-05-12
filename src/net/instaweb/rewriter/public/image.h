@@ -20,78 +20,15 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_H_
 
 #include <cstddef>
-#include <vector>
 
-#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#ifdef USE_SYSTEM_OPENCV
-#include "cv.h"
-#else
-#include "third_party/opencv/src/opencv/include/opencv/cv.h"
-#endif
-
-#if (CV_MAJOR_VERSION == 2 && CV_MINOR_VERSION >= 1) || (CV_MAJOR_VERSION > 2)
-#define USE_OPENCV_2_1
-#endif
 
 namespace net_instaweb {
-
+class ImageDim;
 class MessageHandler;
 struct ContentType;
-
-// The following four helper functions were moved here for testability.  We ran
-// into problems with sign extension under different compiler versions, and we'd
-// like to catch regressions on that front in the future.
-
-// char to int *without sign extension*.
-inline int CharToInt(char c) {
-  uint8 uc = static_cast<uint8>(c);
-  return static_cast<int>(uc);
-}
-
-inline int JpegIntAtPosition(const StringPiece& buf, size_t pos) {
-  return (CharToInt(buf[pos]) << 8) |
-         (CharToInt(buf[pos + 1]));
-}
-
-inline int GifIntAtPosition(const StringPiece& buf, size_t pos) {
-  return (CharToInt(buf[pos + 1]) << 8) |
-         (CharToInt(buf[pos]));
-}
-
-inline int PngIntAtPosition(const StringPiece& buf, size_t pos) {
-  return (CharToInt(buf[pos    ]) << 24) |
-         (CharToInt(buf[pos + 1]) << 16) |
-         (CharToInt(buf[pos + 2]) << 8) |
-         (CharToInt(buf[pos + 3]));
-}
-
-inline bool PngSectionIdIs(const char* hdr,
-                           const StringPiece& buf, size_t pos) {
-  return ((buf[pos + 4] == hdr[0]) &&
-          (buf[pos + 5] == hdr[1]) &&
-          (buf[pos + 6] == hdr[2]) &&
-          (buf[pos + 7] == hdr[3]));
-}
-
-namespace ImageHeaders {
-  // Constants that are shared by Image and its tests.
-  extern const char kPngHeader[];
-  extern const size_t kPngHeaderLength;
-  extern const char kPngIHDR[];
-  extern const size_t kPngIHDRLength;
-  extern const size_t kIHDRDataStart;
-  extern const size_t kPngIntSize;
-
-  extern const char kGifHeader[];
-  extern const size_t kGifHeaderLength;
-  extern const size_t kGifDimStart;
-  extern const size_t kGifIntSize;
-
-  extern const size_t kJpegIntSize;
-}  // namespace ImageHeaders
 
 class Image {
  public:
@@ -114,21 +51,7 @@ class Image {
     IMAGE_GIF,
   };
 
-  // Image owns none of its inputs.  All of the arguments to Image(...) (the
-  // original_contents in particular) must outlive the Image object itself.  The
-  // intent is that an Image is created in a scoped fashion from an existing
-  // known resource.
-  Image(const StringPiece& original_contents,
-        const GoogleString& url,
-        const StringPiece& file_prefix,
-        MessageHandler* handler);
-
-  // Creates a blank image of the given dimensions and type.
-  // For now, this is assumed to be an 8-bit 3-channel image.
-  Image(int width, int height, Type type,
-        const StringPiece& tmp_dir, MessageHandler* handler);
-
-  ~Image();
+  virtual ~Image();
 
   // Stores the image dimensions in natural_dim (on success, sets
   // natural_dim->{width, height} and
@@ -138,7 +61,7 @@ class Image {
   // format, we can't find the headers, the library doesn't support a
   // particular encoding, etc.  In that case the other fields are left
   // alone.
-  void Dimensions(ImageDim* natural_dim);
+  virtual void Dimensions(ImageDim* natural_dim) = 0;
 
   // Returns the size of original input in bytes.
   size_t input_size() const {
@@ -166,7 +89,7 @@ class Image {
   // Changes the size of the image to the given width and height.  This will run
   // image processing on the image, and return false if the image processing
   // fails.  Otherwise the image contents and type can change.
-  bool ResizeTo(const ImageDim& new_dim);
+  virtual bool ResizeTo(const ImageDim& new_dim) = 0;
 
   // Returns image-appropriate content type, or NULL if no content type is
   // known.  Result is a top-level const pointer and should not be deleted etc.
@@ -178,68 +101,42 @@ class Image {
 
   // Draws the given image on top of this one at the given offset.  Returns true
   // if successful.
-  bool DrawImage(Image* image, int x, int y);
+  virtual bool DrawImage(Image* image, int x, int y) = 0;
 
   // Attempts to decode this image and load its raster into memory.  If this
   // returns false, future calls to DrawImage and ResizeTo will fail.
-  bool EnsureLoaded() { return LoadOpenCv(); }
+  virtual bool EnsureLoaded() = 0;
 
- private:
-  // byte buffer type most convenient for working with given OpenCV version
-#ifdef USE_OPENCV_2_1
-  typedef std::vector<unsigned char> OpenCvBuffer;
-#else
-  typedef GoogleString OpenCvBuffer;
-#endif
+ protected:
+  explicit Image(const StringPiece& original_contents);
+  explicit Image(Type type);
 
-  // Internal helper used only in image.cc.
-  static bool ComputePngTransparency(const StringPiece& buf);
+  // Internal helpers
+  virtual void ComputeImageType() = 0;
+  virtual bool ComputeOutputContents() = 0;
 
-  // Internal methods used only in image.cc (see there for more).
-  void UndoChange();
-  void ComputeImageType();
-  void FindJpegSize();
-  inline void FindPngSize();
-  inline void FindGifSize();
-  bool HasTransparency(const StringPiece& buf);
-  bool LoadOpenCv();
-  void CleanOpenCv();
-  bool ComputeOutputContents();
-
-  // Initializes an empty image.
-  bool LoadOpenCvEmpty();
-
-  // Assumes all filetype + transparency checks have been done.
-  // Reads data, writes to opencv_image_
-  bool LoadOpenCvFromBuffer(const StringPiece& data);
-
-  // Reads from opencv_image_, writes to buf
-  bool SaveOpenCvToBuffer(OpenCvBuffer* buf);
-
-  // Encodes 'buf' in a StringPiece
-  static StringPiece OpenCvBufferToStringPiece(const OpenCvBuffer& buf);
-
-#ifndef USE_OPENCV_2_1
-  // Helper that creates & writes a temporary file for us in proper prefix with
-  // proper extension.
-  bool TempFileForImage(FileSystem* fs, const StringPiece& contents,
-                        GoogleString* filename);
-#endif
-
-  const GoogleString file_prefix_;
-  MessageHandler* handler_;
   Type image_type_;  // Lazily initialized, initially IMAGE_UNKNOWN.
   const StringPiece original_contents_;
   GoogleString output_contents_;  // Lazily filled.
   bool output_valid_;             // Indicates output_contents_ now correct.
-  IplImage* opencv_image_;        // Lazily filled on OpenCV load.
-  bool opencv_load_possible_;     // Attempt opencv_load in future?
-  bool changed_;
-  const GoogleString url_;
-  ImageDim dims_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(Image);
 };
+
+// Image owns none of its inputs.  All of the arguments to Image(...) (the
+// original_contents in particular) must outlive the Image object itself.  The
+// intent is that an Image is created in a scoped fashion from an existing
+// known resource.
+Image* NewImage(const StringPiece& original_contents,
+                const GoogleString& url,
+                const StringPiece& file_prefix,
+                MessageHandler* handler);
+
+// Creates a blank image of the given dimensions and type.
+// For now, this is assumed to be an 8-bit 3-channel image.
+Image* BlankImage(int width, int height, Image::Type type,
+                  const StringPiece& tmp_dir, MessageHandler* handler);
 
 }  // namespace net_instaweb
 

@@ -112,8 +112,8 @@ ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
     return kRewriteFailed;
   }
   scoped_ptr<Image> image(
-      new Image(input_resource->contents(), input_resource->url(),
-                resource_manager_->filename_prefix(), message_handler));
+      NewImage(input_resource->contents(), input_resource->url(),
+               resource_manager_->filename_prefix(), message_handler));
   if (image->image_type() == Image::IMAGE_UNKNOWN) {
     message_handler->Error(result->name().as_string().c_str(), 0,
                            "Unrecognized image content type.");

@@ -342,9 +342,9 @@ class Library : public spriter::ImageLibraryInterface {
         spriter::ImageLibraryInterface::Canvas(lib),
         lib_(lib) {
       DCHECK(lib != NULL);
-      image_.reset(new net_instaweb::Image(width, height,
-                                           net_instaweb::Image::IMAGE_PNG,
-                                           tmp_dir, handler));
+      image_.reset(net_instaweb::BlankImage(width, height,
+                                            net_instaweb::Image::IMAGE_PNG,
+                                            tmp_dir, handler));
     }
 
     virtual ~Canvas() {}
@@ -402,7 +402,7 @@ class Library : public spriter::ImageLibraryInterface {
   // the resource, meaning that resource must not be destroyed before the next
   // call to Clear().
   bool Register(Resource* resource) {
-    net_instaweb::Image* image = new net_instaweb::Image(
+    net_instaweb::Image* image = net_instaweb::NewImage(
         resource->contents(), resource->url(), tmp_dir_, handler_);
     if (image->EnsureLoaded()) {
       Register(resource->url(), image);

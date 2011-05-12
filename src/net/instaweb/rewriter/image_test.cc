@@ -9,6 +9,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/image_data_lookup.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/util/public/base64_util.h"
@@ -40,7 +41,7 @@ class ImageTest : public testing::Test {
   ImageTest() { }
   Image* ImageFromString(const GoogleString& name,
                          const GoogleString& contents) {
-    return new Image(contents, name, GTestTempDir(), &handler_);
+    return NewImage(contents, name, GTestTempDir(), &handler_);
   }
 
   void ExpectDimensions(Image::Type image_type, int size,
@@ -232,8 +233,8 @@ TEST_F(ImageTest, DrawImage) {
   int height = image_dim1.height() + image_dim2.height();
   ASSERT_GT(width, 0);
   ASSERT_GT(height, 0);
-  ImagePtr canvas(new Image(width, height, Image::IMAGE_PNG,
-                            GTestTempDir(), &handler_));
+  ImagePtr canvas(BlankImage(width, height, Image::IMAGE_PNG,
+                             GTestTempDir(), &handler_));
   EXPECT_TRUE(canvas->DrawImage(image1.get(), 0, 0));
   EXPECT_TRUE(canvas->DrawImage(image2.get(), 0, image_dim1.height()));
   // The combined image should be bigger than either of the components, but
