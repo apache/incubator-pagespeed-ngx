@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_SLOT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_SLOT_H_
 
+#include <deque>
 #include <set>
 #include <vector>
 
@@ -30,6 +31,7 @@ namespace net_instaweb {
 
 class HtmlResourceSlot;
 class ResourceSlot;
+class RewriteContext;
 
 typedef RefCountedPtr<ResourceSlot> ResourceSlotPtr;
 typedef RefCountedPtr<HtmlResourceSlot> HtmlResourceSlotPtr;
@@ -39,6 +41,8 @@ typedef std::vector<ResourceSlotPtr> ResourceSlotVector;
 // rewritten.  Types of slots include HTML element attributes and CSS
 // background URLs.  In principle they could also include JS ajax
 // requests, although this is NYI.
+//
+// TODO(jmarantz): make this class thread-safe.
 class ResourceSlot : public RefCounted<ResourceSlot> {
  public:
   explicit ResourceSlot(const ResourcePtr& resource) : resource_(resource) {
@@ -65,12 +69,27 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // owns the DOM or CSS file.
   virtual void Render() = 0;
 
+  // Return the last context to have been added to this slot.  Returns NULL
+  // if no context has been added to the slot so far.
+  RewriteContext* LastContext() const;
+
+  // Adds a new context to this slot.
+  void AddContext(RewriteContext* context) { contexts_.push_back(context); }
+
+  // Detaches a context from the slot.  This must be the first context
+  // that was added.
+  void DetachContext(RewriteContext* context);
+
  protected:
   virtual ~ResourceSlot();
   REFCOUNT_FRIEND_DECLARATION(ResourceSlot);
 
  private:
   ResourcePtr resource_;
+
+  // We track the RewriteContexts that are atempting to rewrite this
+  // slot, to help us build a dependency graph between ResourceContexts.
+  std::deque<RewriteContext*> contexts_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceSlot);
 };

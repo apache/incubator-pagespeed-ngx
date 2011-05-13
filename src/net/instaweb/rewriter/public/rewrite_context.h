@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_CONTEXT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_CONTEXT_H_
 
+#include <vector>
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/blocking_behavior.h"
@@ -220,13 +222,17 @@ class RewriteContext {
   // the same rewrite.
   void FetchInputs(BlockingBehavior block);
 
+  // Generally a RewriteContext is waiting for one or more
+  // asynchronous events to take place.  Activate is called
+  // to run some action to help us advance to the next state.
+  void Activate();
+
   // With all resources loaded, the rewrite can now be done, writing:
   //    The metadata into the cache
   //    The output resource into the cache
   //    if the driver has not been detached,
   //      the url+data->rewritten_resource is written into the rewrite
   //      driver's map, for each of the URLs.
-  void Finish();
   void FinishRewrite();
   void FinishFetch();
 
@@ -242,6 +248,18 @@ class RewriteContext {
   // Returns 'true' if the resources are not expired.  Freshens resources
   // proactively to avoid expiration in the near future.
   bool FreshenAndCheckExpiration(const CachedResult& group);
+
+  // Determines whether the Context is in a state where it's ready to
+  // rewrite.  This requires:
+  //    - no preceding RewriteContexts in progress
+  //    - no outstanding cache lookups
+  //    - no outstanding fetches
+  //    - rewriting not already complete.
+  bool ReadyToRewrite() const;
+
+  // Activate any Rewrites that come after this one, for serializability
+  // of access to common slots.
+  void RunSuccessors();
 
   // To perform a rewrite, we need to have data for all of its input slots.
   ResourceSlotVector slots_;
@@ -300,6 +318,16 @@ class RewriteContext {
   // FetchContext so they can be used once the inputs are available.
   class FetchContext;
   scoped_ptr<FetchContext> fetch_;
+
+  // Track the number of ResourceContexts that must be run before this one.
+  int num_predecessors_;
+
+  bool cache_lookup_active_;
+  bool rewrite_done_;
+
+  // Track the RewriteContexts that must be run after this one because they
+  // share a slot.
+  std::vector<RewriteContext*> successors_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };

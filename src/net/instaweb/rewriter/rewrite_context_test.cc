@@ -514,8 +514,7 @@ TEST_F(RewriteContextTest, TwoFiltersDelayedFetches) {
   CallFetcherCallbacks();
   ValidateExpected(
       "trimmable2", CssLink("a.css"),
-      // WANT CssLink("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"));
-      CssLink("http://test.com/a.css.pagespeed.uc.0.css"));
+      CssLink("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"));
 
   // TODO(jmarantz): This is broken because we do not have the right graph
   // built yet between different RewriteContexts running on the same slots.

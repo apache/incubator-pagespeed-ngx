@@ -33,6 +33,18 @@ void ResourceSlot::SetResource(const ResourcePtr& resource) {
   resource_ = ResourcePtr(resource);
 }
 
+RewriteContext* ResourceSlot::LastContext() const {
+  if (contexts_.empty()) {
+    return NULL;
+  }
+  return contexts_.back();
+}
+
+void ResourceSlot::DetachContext(RewriteContext* context) {
+  CHECK_EQ(contexts_.front(), context);
+  contexts_.pop_front();
+}
+
 FetchResourceSlot::~FetchResourceSlot() {
 }
 
