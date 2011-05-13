@@ -16,7 +16,11 @@
   'variables': {
     'instaweb_root': '../..',
     'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
-    'protoc_executable': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
+    'protoc_executable':
+        '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
+    # Setting chromium_code to 1 turns on extra warnings. Also, if the compiler
+    # is whitelisted in our common.gypi, those warnings will get treated as
+    # errors.
     'chromium_code': 1,
   },
   'targets': [
@@ -393,18 +397,6 @@
       ],
     },
     {
-      'variables': {
-        # OpenCV has compile warnings in gcc 4.1 in a header file so turn off
-        # strict checking.
-        #
-        # TODO(jmarantz): disable the specific warning rather than
-        # turning off all warnings, and also scope this down to a
-        # minimal wrapper around the offending header file.
-        #
-        # TODO(jmarantz): figure out how to test for this failure in
-        # checkin tests, as it passes in gcc 4.2 and fails in gcc 4.1.
-        'chromium_code': 0,
-      },
       'target_name': 'instaweb_rewriter_image',
       'type': '<(library)',
       'dependencies': [
@@ -460,18 +452,6 @@
       },
     },
     {
-      'variables': {
-        # OpenCV has compile warnings in gcc 4.1 in a header file so turn off
-        # strict checking.
-        #
-        # TODO(jmarantz): disable the specific warning rather than
-        # turning off all warnings, and also scope this down to a
-        # minimal wrapper around the offending header file.
-        #
-        # TODO(jmarantz): figure out how to test for this failure in
-        # checkin tests, as it passes in gcc 4.2 and fails in gcc 4.1.
-        'chromium_code': 0,
-      },
       'target_name': 'instaweb_rewriter_css',
       'type': '<(library)',
       'dependencies': [

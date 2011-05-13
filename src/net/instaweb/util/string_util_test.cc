@@ -247,6 +247,16 @@ TEST_F(SplitStringTest, TestSplitOmitOneDot) {
   ASSERT_EQ(static_cast<size_t>(0), components.size());
 }
 
+TEST_F(SplitStringTest, TestSplitMultiSeparator) {
+  std::vector<StringPiece> components;
+  SplitStringPieceToVector("a/b c;d,", " /;", &components, true);
+  ASSERT_EQ(static_cast<size_t>(4), components.size());
+  ASSERT_EQ("a", components[0]);
+  ASSERT_EQ("b", components[1]);
+  ASSERT_EQ("c", components[2]);
+  ASSERT_EQ("d,", components[3]);
+}
+
 TEST(StringCaseTest, TestStringCaseEqual) {
   EXPECT_FALSE(StringCaseEqual("foobar", "fobar"));
   EXPECT_TRUE(StringCaseEqual("foobar", "foobar"));

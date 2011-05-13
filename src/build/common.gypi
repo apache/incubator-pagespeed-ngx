@@ -29,6 +29,10 @@
       'use_system_libs%': 0,
     },
 
+    # Which version development is usually done with. This version will
+    # get -Werror
+    'gcc_devel_version%': '44',
+
     'conditions': [
       ['use_system_libs==1', {
         'use_system_apache_dev': 1,
@@ -46,6 +50,12 @@
   ],
   'target_defaults': {
     'conditions': [
+      # Disable -Werror when not using the version of gcc that development
+      # is generally done with, to avoid breaking things for users with
+      # something older or newer (which produces different warnings).
+      ['<(gcc_version) != <(gcc_devel_version)', {
+        'cflags!': ['-Werror']
+      }],
       ['OS == "linux"', {
         'cflags': [
           # Our dependency on OpenCV need us to turn on exceptions.

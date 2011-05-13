@@ -326,7 +326,8 @@ bool ImageRewriteFilter::CanInline(
     int image_inline_max_bytes, const StringPiece& contents,
     const ContentType* content_type, GoogleString* data_url) {
   bool ok = false;
-  if (content_type != NULL && contents.size() <= image_inline_max_bytes) {
+  if (content_type != NULL &&
+      static_cast<int>(contents.size()) <= image_inline_max_bytes) {
     DataUrl(*content_type, BASE64, contents, data_url);
     ok = true;
   }
