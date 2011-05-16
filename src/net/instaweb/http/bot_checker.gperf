@@ -1,0 +1,118 @@
+%{
+// bot_checker.cc is automatically generated from bot_checker.gperf.
+// Author: fangfei@google.com
+
+#include "base/logging.h"
+#include "net/instaweb/http/public/bot_checker.h"
+#include "net/instaweb/util/public/string_util.h"
+
+namespace net_instaweb {
+%}
+%compare-strncmp
+%define class-name RobotDetect
+%define lookup-function-name Lookup
+%global-table
+%includes
+%language=C++
+%readonly-tables
+
+%%
+### These names are either application names or domain names of BOTs.
+### This is not a complete list of BOTs names -- just the ones we want
+### to scan for now. We leave the ones we are not quite sure in comment area
+### at the end of the list.
+### The process to get the following names.
+### Go website http://www.robotstxt.org/db.html.
+### Download all.txt from 'Robots Database Export' page.
+### Run awk '/robot-useragent:/ {print $2}' all.txt >> step1.txt.
+### awk '/[Bb][Oo][Tt]/||/[Rr]boto/||/[Ss]pider/ {print $0}' >> step2.txt.
+### awk -F / '{print $1}' step2.txt.
+### add Googlebot-Image, bingbot, Yahoo!. 
+### about.ask.com, Baiduspider+(+http://www.baidu.com/search/spider.htm).
+### BackRub, Gigabot, OntoSpider, YodaoBot, YandexBot, mod_pagespeed.
+AlkalineBOT
+AraybOt
+ArchitextSpider
+ASpider
+about.ask.com
+BaySpider
+BackRub
+Baiduspider+(+http://www.baidu.com/search/spider.htm)
+bbot
+bingbot
+borg-bot
+BoxSeaBot
+BSpider
+Checkbot
+Confuzzledbot
+CoolBot
+CydralSpider
+dienstspider
+DIIbot
+DNAbot
+DragonBot
+EIT-Link-Verifier-Robot
+Fish-Search-Robot
+Robot
+gammaSpider
+Gigabot
+Googlebot
+Googlebot-Image
+AITCSRobot
+wired-digital-newsbot
+iajaBot
+InfoSpiders
+JBot
+Jobot
+JoeBot
+JubiiRobot
+Lycos
+KO_Yappo_Robot
+mod_pagespeed
+MOMspider
+MSNBOT
+NDSpider
+PortalBSpider
+psbot
+RixBot
+Roverbot
+SimBot
+ESISmartSpider
+Solbot
+Spider
+SpiderBot
+spiderline
+tarspider
+dlw3robot
+TechBOT
+TLSpider
+uptimebot
+Verticrawlbot
+void-bot
+VWbot_K
+Yahoo!
+YodaoBot
+YandexBot
+w@pSpider
+%%
+
+// TODO:(fangfei) check other cases
+bool BotChecker::Lookup(const StringPiece& user_agent) {
+  // check whether the whole string is in database
+  if (RobotDetect::Lookup(user_agent.data(), user_agent.size()) != NULL) {
+    return true;
+  }
+  // get the application_name/domain_name/email
+  const char separator[] = " /;";
+  std::vector<StringPiece> names;
+  SplitStringPieceToVector(user_agent, separator, &names, true);
+  for (int i = 0, n = names.size(); i < n; ++i) {
+    if (RobotDetect::Lookup(names[i].data(),
+                            names[i].size()) != NULL) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace net_instaweb

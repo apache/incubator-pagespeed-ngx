@@ -53,6 +53,7 @@
         'htmlparse/html_keywords_test.cc',
         'htmlparse/html_name_test.cc',
         'htmlparse/html_parse_test.cc',
+        'http/bot_checker_test.cc',
         'http/cache_fetcher_test.cc',
         'http/cache_url_async_fetcher_test.cc',
         'http/cache_url_fetcher_test.cc',
