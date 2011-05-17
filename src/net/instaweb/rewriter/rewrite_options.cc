@@ -113,6 +113,7 @@ RewriteOptions::RewriteOptions()
       max_url_segment_size_(kDefaultMaxUrlSegmentSize),
       max_url_size_(kMaxUrlSize),
       enabled_(true),
+      botdetect_enabled_(false),
       combine_across_paths_(true),
       log_rewrite_timing_(false),
       lowercase_html_names_(false),
@@ -299,6 +300,8 @@ void RewriteOptions::Merge(const RewriteOptions& first,
   // TODO(jmarantz): Use a virtual base class for Option so we can put
   // this in a loop.  Or something.
   enabled_.Merge(first.enabled_, second.enabled_);
+  botdetect_enabled_.Merge(first.botdetect_enabled_,
+                           second.botdetect_enabled_);
   combine_across_paths_.Merge(first.combine_across_paths_,
                               second.combine_across_paths_);
   level_.Merge(first.level_, second.level_);

@@ -30,6 +30,7 @@
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/http/public/bot_checker.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/public/global_constants.h"
@@ -76,6 +77,7 @@ namespace {
 const char* kModPagespeed = "ModPagespeed";
 const char* kModPagespeedAllow = "ModPagespeedAllow";
 const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
+const char* kModPagespeedDisableForBots = "ModPagespeedDisableForBots";
 const char* kModPagespeedCombineAcrossPaths = "ModPagespeedCombineAcrossPaths";
 const char* kModPagespeedCssInlineMaxBytes = "ModPagespeedCssInlineMaxBytes";
 const char* kModPagespeedCssOutlineMinBytes = "ModPagespeedCssOutlineMinBytes";
@@ -234,6 +236,16 @@ bool ScanQueryParamsForRewriterOptions(RewriteDriverFactory* factory,
       } else {
         // TODO(sligocki): Return 404s instead of logging server errors here
         // and below.
+        handler->Message(kWarning, "Invalid value for %s: %s "
+                         "(should be on or off)", name, value->c_str());
+        ret = false;
+      }
+    } else if (strcmp(name, kModPagespeedDisableForBots) == 0) {
+      bool is_on = (value->compare("on") == 0);
+      if (is_on || (value->compare("off") == 0)) {
+        options->set_botdetect_enabled(is_on);
+        ++option_count;
+      } else {
         handler->Message(kWarning, "Invalid value for %s: %s "
                          "(should be on or off)", name, value->c_str());
         ret = false;
@@ -516,6 +528,18 @@ InstawebContext* build_context_for_request(request_rec* request) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Request not rewritten because: ModPagespeedDisallow");
     return NULL;
+  }
+
+  // Disable mod_pagespeed if the user-agent belongs to search bots.
+  if (options->botdetect_enabled()) {
+    const char* user_agent = apr_table_get(request->headers_in,
+                                           HttpAttributes::kUserAgent);
+    if ((user_agent != NULL) && BotChecker::Lookup(user_agent)) {
+      ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                    "Request not rewritten because: User-Agent appears "
+                    "to be a bot (%s)", user_agent);
+      return NULL;
+    }
   }
 
   InstawebContext* context = new InstawebContext(
@@ -929,6 +953,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     options->Allow(arg);
   } else if (StringCaseEqual(directive, kModPagespeedBeaconUrl)) {
     options->set_beacon_url(arg);
+  } else if (StringCaseEqual(directive, kModPagespeedDisableForBots)) {
+    ret = ParseBoolOption(options, cmd,
+                          &RewriteOptions::set_botdetect_enabled, arg);
   } else if (StringCaseEqual(directive, kModPagespeedCombineAcrossPaths)) {
     ret = ParseBoolOption(options, cmd,
                           &RewriteOptions::set_combine_across_paths, arg);
@@ -1118,6 +1145,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "wildcard_spec for urls"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedBeaconUrl,
         "URL for beacon callback injected by add_instrumentation."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedDisableForBots,
+        "Disable mod_pagespeed for bots."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCombineAcrossPaths,
         "Allow combining resources from different paths"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCssInlineMaxBytes,

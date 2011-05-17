@@ -216,6 +216,12 @@ class RewriteOptions {
   }
   bool enabled() const { return enabled_.value(); }
 
+  void set_botdetect_enabled(bool x) {
+    modified_ = true;
+    botdetect_enabled_.set(x);
+  }
+  bool botdetect_enabled() const { return botdetect_enabled_.value(); }
+
   void set_combine_across_paths(bool x) {
     modified_ = true;
     combine_across_paths_.set(x);
@@ -367,6 +373,7 @@ class RewriteOptions {
   Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")
   Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")
   Option<bool> enabled_;
+  Option<bool> botdetect_enabled_;
   Option<bool> combine_across_paths_;
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?
   Option<bool> lowercase_html_names_;

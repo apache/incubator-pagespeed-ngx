@@ -3,6 +3,10 @@
     # can set this to "off".
     ModPagespeed on
 
+    # By default, mod_pagespeed optimizes pages for bots.
+    # To disable rewritting to bots, you can set this to "on".
+    ModPagespeedDisableForBots off
+
     # Direct Apache to send all HTML output to the mod_pagespeed
     # output handler.
     AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER text/html

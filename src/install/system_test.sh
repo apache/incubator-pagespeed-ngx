@@ -493,6 +493,24 @@ sleep 1
 # (luckily we nearly certainly do when spewing dozens of errors)
 check [ `expr $ERRS` -le 1 ];
 
+echo TEST: User-agent is a bot, ModPagespeedDisableForBots is off by default
+BOT="Googlebot/2.1"
+HTML_HEADERS=$($WGET_DUMP -U $BOT $EXAMPLE_ROOT/combine_css.html)
+echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
+check [ $? = 0 ]
+
+echo TEST: User-agent is a bot, ModPagespeedDisableForBots is on
+PARAM="?ModPagespeedDisableForBots=on"
+HTML_HEADERS=$($WGET_DUMP -U $BOT $EXAMPLE_ROOT/combine_css.html$PARAM)
+echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
+check [ $? != 0 ]
+
+echo TEST: User-agent is not bot, ModPagespeedDisableForBots is on
+PARAM="?ModPagespeedDisableForBots=on"
+HTML_HEADERS=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html$PARAM)
+echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
+check [ $? = 0 ]
+
 # Cleanup
 rm -rf $OUTDIR
 echo "PASS."
