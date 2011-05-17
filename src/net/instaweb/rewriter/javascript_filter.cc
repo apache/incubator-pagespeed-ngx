@@ -74,7 +74,7 @@ class JavascriptRewriteContext : public SingleRewriteContext {
     AddSlot(slot);
   }
 
-  RewriteSingleResourceFilter::RewriteResult RewriteSingle(
+  RewriteSingleResourceFilter::RewriteResult RewriteJavascript(
       const ResourcePtr& input, const OutputResourcePtr& output) {
     MessageHandler* message_handler = resource_manager()->message_handler();
     StringPiece script = input->contents();
@@ -100,9 +100,18 @@ class JavascriptRewriteContext : public SingleRewriteContext {
       message_handler->Message(kInfo, "Script %s didn't shrink",
                                input->url().c_str());
     }
+    return ok ? RewriteSingleResourceFilter::kRewriteOk
+      : RewriteSingleResourceFilter::kRewriteFailed;
+  }
 
-    return ok ? RewriteSingleResourceFilter::kRewriteOk :
-        RewriteSingleResourceFilter::kRewriteFailed;
+  // Implements the asynchronous interface required by SingleRewriteContext.
+  //
+  // TODO(jmarantz): this should be done as a SimpleTextFilter, but that would
+  // require cutting the umbilical chord with RewriteSingleResourceFilter,
+  // because we can't inherite from both that and SimpleTextFilter.
+  virtual void RewriteSingle(
+      const ResourcePtr& input, const OutputResourcePtr& output) {
+    RewriteDone(RewriteJavascript(input, output), 0);
   }
 
   // Take script_out, which is derived from the script at script_url,
@@ -312,7 +321,7 @@ JavascriptFilter::RewriteLoadedResource(
   // the old blocking rewrite model and the new async model.
   ResourceSlotPtr dummy_slot;
   JavascriptRewriteContext jrc(driver_, dummy_slot, &config_);
-  return jrc.RewriteSingle(script_input, output_resource);
+  return jrc.RewriteJavascript(script_input, output_resource);
 }
 
 }  // namespace net_instaweb

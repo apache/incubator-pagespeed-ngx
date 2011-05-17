@@ -82,7 +82,7 @@ class SimpleTextFilter : public RewriteFilter {
           rewriter_(rewriter) {
     }
     virtual ~Context();
-    virtual RewriteSingleResourceFilter::RewriteResult RewriteSingle(
+    virtual void RewriteSingle(
         const ResourcePtr& input, const OutputResourcePtr& output);
 
    protected:

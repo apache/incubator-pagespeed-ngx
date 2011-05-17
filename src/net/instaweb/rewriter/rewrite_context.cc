@@ -178,10 +178,12 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     resource_manager_(driver->resource_manager()),
     started_(false),
     outstanding_fetches_(0),
+    outstanding_rewrites_(0),
     resource_context_(resource_context),
     num_predecessors_(0),
     cache_lookup_active_(false),
-    rewrite_done_(false) {
+    rewrite_done_(false),
+    ok_to_write_output_partitions_(true) {
   // TODO(jmarantz): if this duplication proves expensive, then do this
   // lazily.  We don't need our own copy of the RewriteOptions until the
   // RewriteDriver is detached.  for now just do the simple thing and
@@ -268,24 +270,24 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
     // be a protobuf.  Try to parse it.
     const GoogleString* val_str = value->get();
     ArrayInputStream input(val_str->data(), val_str->size());
-    OutputPartitions partitions;
-    if (partitions.ParseFromZeroCopyStream(&input)) {
-      OutputResourceVector outputs;
-      for (int i = 0, n = partitions.partition_size(); i < n; ++i) {
-        const OutputPartition& partition = partitions.partition(i);
+    if (partitions_.ParseFromZeroCopyStream(&input)) {
+      for (int i = 0, n = partitions_.partition_size(); i < n; ++i) {
+        const OutputPartition& partition = partitions_.partition(i);
         const CachedResult& cached_result = partition.result();
         OutputResourcePtr output_resource;
         const ContentType* content_type = NameExtensionToContentType(
             StrCat(".", cached_result.extension()));
-        if (CreateOutputResourceForCachedOutput(
-            cached_result.url(), content_type, &output_resource)) {
-          outputs.push_back(output_resource);
+        if (cached_result.optimizable() &&
+            CreateOutputResourceForCachedOutput(
+            cached_result.url(), content_type, &output_resource) &&
+            FreshenAndCheckExpiration(cached_result)) {
+          outputs_.push_back(output_resource);
+          RenderSlotOnDetach(i);
+        } else {
+          outputs_.push_back(OutputResourcePtr(NULL));
         }
       }
-
-      if (outputs.size() == static_cast<size_t>(partitions.partition_size())) {
-        RenderPartitions(partitions, outputs);
-      }
+      rewrite_done_ = true;
     } else {
       state = CacheInterface::kNotFound;
       // TODO(jmarantz): count cache corruptions in a stat?
@@ -373,7 +375,7 @@ void RewriteContext::Activate() {
   if (ReadyToRewrite()) {
     if (fetch_.get() == NULL) {
       if (started_) {
-        FinishRewrite();
+        StartRewrite();
       } else {
         Start();
       }
@@ -383,25 +385,82 @@ void RewriteContext::Activate() {
   }
 }
 
-void RewriteContext::FinishRewrite() {
-  OutputPartitions partitions;
-  OutputResourceVector outputs;
-  if (PartitionAndRewrite(&partitions, &outputs)) {
+void RewriteContext::StartRewrite() {
+  if (Partition(&partitions_, &outputs_)) {
+    outstanding_rewrites_ = partitions_.partition_size();
+    if (outstanding_rewrites_ == 0) {
+      // The partitioning succeeded, but yielded zero rewrites.  Write out the
+      // empty partition table and let any successor Rewrites run.  Note that
+      // WritePartitoin can 'delete this'.
+      rewrite_done_ = true;
+      WritePartition();
+    } else {
+      // We will let the Rewrites complete prior to writing the
+      // OutputPartitions, which contain not just the partition table
+      // but the content-hashes for the rewritten content.  So we must
+      // rewrite before callling WritePartitions.
+      for (int i = 0; i < outstanding_rewrites_; ++i) {
+        Rewrite(partitions_.mutable_partition(i), outputs_[i]);
+      }
+    }
+  }
+}
+
+void RewriteContext::WritePartition() {
+  if (ok_to_write_output_partitions_) {
     CacheInterface* metadata_cache = resource_manager_->metadata_cache();
     SharedString buf;
     {
       StringOutputStream sstream(buf.get());
-      partitions.SerializeToZeroCopyStream(&sstream);
+      partitions_.SerializeToZeroCopyStream(&sstream);
       // destructor of sstream prepares *buf.get()
     }
     metadata_cache->Put(partition_key_, &buf);
-    RenderPartitions(partitions, outputs);
   }
   lock_.reset();
   RunSuccessors();
   if (driver_ == NULL) {
     delete this;
   }
+}
+
+void RewriteContext::RewriteDone(
+    RewriteSingleResourceFilter::RewriteResult result,
+    int rewrite_index) {
+  if (result == RewriteSingleResourceFilter::kTooBusy) {
+    ok_to_write_output_partitions_ = false;
+  } else {
+    OutputPartition* partition = partitions_.mutable_partition(rewrite_index);
+    bool optimizable = (result == RewriteSingleResourceFilter::kRewriteOk);
+    partition->mutable_result()->set_optimizable(optimizable);
+    if (optimizable && (fetch_.get() == NULL)) {
+      // TODO(jmarantz): In the async world we consider any mutation
+      // to the DOM an 'optimization', even if the resource is not
+      // rewritten.  We should cache that in the OutputPartitions.  I
+      // think our current usage of the CachedResult protobuf does not
+      // have a representation for that but we could probably invent
+      // a convention, like leaving the url() in the protobuf unset.
+      RenderSlotOnDetach(rewrite_index);
+    }
+  }
+  --outstanding_rewrites_;
+  if (outstanding_rewrites_ == 0) {
+    rewrite_done_ = true;
+    if (fetch_.get() != NULL) {
+      bool success = (result == RewriteSingleResourceFilter::kRewriteOk);
+      fetch_->FetchDone(success);
+      delete this;
+    } else {
+      WritePartition();
+    }
+  }
+}
+
+void RewriteContext::RenderSlotOnDetach(int rewrite_index) {
+  ResourceSlotPtr resource_slot(slot(rewrite_index));
+  ResourcePtr resource(outputs_[rewrite_index]);
+  resource_slot->SetResource(resource);
+  render_slots_.push_back(resource_slot);
 }
 
 void RewriteContext::RunSuccessors() {
@@ -420,15 +479,24 @@ void RewriteContext::RunSuccessors() {
 void RewriteContext::FinishFetch() {
   // Make a fake partition that has all the inputs, since we are
   // performing the rewrite for only one output resource.
-  OutputPartition partition;
+  OutputPartition* partition = partitions_.add_partition();
+  bool ok_to_rewrite = true;
   for (int i = 0, n = slots_.size(); i < n; ++i) {
-    partition.add_input(i);
+    ResourcePtr resource(slot(i)->resource());
+    if (resource->loaded() && resource->ContentsValid()) {
+      partition->add_input(i);
+    } else {
+      ok_to_rewrite = false;
+      break;
+    }
   }
   OutputResourcePtr output(fetch_->output_resource());
-  bool success = Rewrite(&partition, output);
-  rewrite_done_ = true;
-  fetch_->FetchDone(success);
-  delete this;
+  ++outstanding_rewrites_;
+  if (ok_to_rewrite) {
+    Rewrite(partition, output);
+  } else {
+    RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+  }
 }
 
 bool RewriteContext::CreateOutputResourceForCachedOutput(
@@ -445,22 +513,6 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
     ret = true;
   }
   return ret;
-}
-
-void RewriteContext::RenderPartitions(const OutputPartitions& partitions,
-                                      const OutputResourceVector& outputs) {
-  for (int i = 0, n = partitions.partition_size(); i < n; ++i) {
-    const OutputPartition& partition = partitions.partition(i);
-    const CachedResult& cached_result = partition.result();
-    OutputResourcePtr output_resource(outputs[i]);
-    if ((output_resource.get() != NULL) &&
-        FreshenAndCheckExpiration(cached_result)) {
-      Render(partition, output_resource);
-    } else {
-      // TODO(jmarantz): bump a failure-due-to-corrupt-cache statistic
-    }
-  }
-  rewrite_done_ = true;
 }
 
 bool RewriteContext::FreshenAndCheckExpiration(const CachedResult& group) {

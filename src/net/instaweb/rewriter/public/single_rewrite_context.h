@@ -46,16 +46,14 @@ class SingleRewriteContext : public RewriteContext {
 
  protected:
   // Subclasses of SingleRewriteContext must override this:
-  virtual RewriteSingleResourceFilter::RewriteResult RewriteSingle(
-      const ResourcePtr& input, const OutputResourcePtr& output) = 0;
+  virtual void RewriteSingle(const ResourcePtr& input,
+                             const OutputResourcePtr& output) = 0;
 
   // SingleRewriteContext takes care of these methods from RewriteContext:
-  virtual void Render(const OutputPartition& partition,
-                      const OutputResourcePtr& output_resource);
-  virtual bool PartitionAndRewrite(OutputPartitions* partitions,
-                                   OutputResourceVector* outputs);
-  virtual RewriteSingleResourceFilter::RewriteResult Rewrite(
-      OutputPartition* partition, const OutputResourcePtr& output);
+  virtual bool Partition(OutputPartitions* partitions,
+                         OutputResourceVector* outputs);
+  virtual void Rewrite(OutputPartition* partition,
+                       const OutputResourcePtr& output);
 
   DISALLOW_COPY_AND_ASSIGN(SingleRewriteContext);
 };

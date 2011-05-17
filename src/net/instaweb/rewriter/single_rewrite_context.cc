@@ -42,32 +42,18 @@ SingleRewriteContext::SingleRewriteContext(RewriteDriver* driver,
 SingleRewriteContext::~SingleRewriteContext() {
 }
 
-void SingleRewriteContext::Render(const OutputPartition& partition,
-                                  const OutputResourcePtr& output_resource) {
-  // We CHECK num_slots because there's no way we should be creating
-  // a SingleRewriteContext with more than one slot.
-  CHECK_EQ(1, num_slots());
-
-  // However, we soft-fail on corrupt data read from the cache.
-  if ((partition.input_size() == 1) && (partition.input(0) == 0)) {
-    ResourceSlotPtr resource_slot(slot(0));
-    ResourcePtr resource(output_resource);
-    resource_slot->SetResource(resource);
-    RenderSlotOnDetach(resource_slot);
-  } else {
-    // TODO(jmarantz): bump a failure-due-to-corrupt-cache statistic
-  }
-}
-
-bool SingleRewriteContext::PartitionAndRewrite(OutputPartitions* partitions,
-                                               OutputResourceVector* outputs) {
+bool SingleRewriteContext::Partition(OutputPartitions* partitions,
+                                     OutputResourceVector* outputs) {
   bool ret = false;
   if (num_slots() == 1) {
+    ret = true;
     ResourcePtr resource(slot(0)->resource());
     GoogleUrl gurl(resource->url());
     UrlPartnership partnership(options(), gurl);
     ResourceNamer full_name;
-    if (partnership.AddUrl(resource->url(),
+    if (resource->loaded() &&
+        resource->ContentsValid() &&
+        partnership.AddUrl(resource->url(),
                            resource_manager()->message_handler())) {
       const GoogleUrl* mapped_gurl = partnership.FullPath(0);
       GoogleString name;
@@ -88,34 +74,23 @@ bool SingleRewriteContext::PartitionAndRewrite(OutputPartitions* partitions,
           resource_manager(), gurl.AllExceptLeaf(), full_name, content_type,
           options(), kind()));
       output_resource->set_written_using_rewrite_context_flow(true);
-      OutputPartition partition;
-      RewriteSingleResourceFilter::RewriteResult result =
-        Rewrite(&partition, output_resource);
-      if (result == RewriteSingleResourceFilter::kRewriteOk) {
-        partition.add_input(0);
-        *partitions->add_partition() = partition;
-        outputs->push_back(output_resource);
-        ret = true;
-      } else if (result == RewriteSingleResourceFilter::kRewriteFailed) {
-        ret = true;  // write empty partition table
-      }
+      OutputPartition* partition = partitions->add_partition();
+      partition->add_input(0);
+      output_resource->set_cached_result(partition->mutable_result());
+      outputs->push_back(output_resource);
     }
   }
   return ret;
 }
 
-RewriteSingleResourceFilter::RewriteResult
-SingleRewriteContext::Rewrite(OutputPartition* partition,
-                              const OutputResourcePtr& output_resource) {
-  RewriteSingleResourceFilter::RewriteResult result =
-      RewriteSingleResourceFilter::kRewriteFailed;
+void SingleRewriteContext::Rewrite(OutputPartition* partition,
+                                   const OutputResourcePtr& output_resource) {
   ResourcePtr resource(slot(0)->resource());
-  if ((resource.get() != NULL) && resource->loaded() &&
-      resource->ContentsValid()) {
-    output_resource->set_cached_result(partition->mutable_result());
-    result = RewriteSingle(resource, output_resource);
-  }
-  return result;
+  CHECK(resource.get() != NULL);
+  CHECK(resource->loaded());
+  CHECK(resource->ContentsValid());
+  output_resource->set_cached_result(partition->mutable_result());
+  RewriteSingle(resource, output_resource);
 }
 
 }  // namespace net_instaweb

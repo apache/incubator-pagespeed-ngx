@@ -56,9 +56,8 @@ SimpleTextFilter::~SimpleTextFilter() {
 SimpleTextFilter::Context::~Context() {
 }
 
-RewriteSingleResourceFilter::RewriteResult
-SimpleTextFilter::Context::RewriteSingle(const ResourcePtr& input,
-                                         const OutputResourcePtr& output) {
+void SimpleTextFilter::Context::RewriteSingle(const ResourcePtr& input,
+                                              const OutputResourcePtr& output) {
   RewriteSingleResourceFilter::RewriteResult result =
       RewriteSingleResourceFilter::kRewriteFailed;
   GoogleString rewritten;
@@ -72,7 +71,7 @@ SimpleTextFilter::Context::RewriteSingle(const ResourcePtr& input,
       result = RewriteSingleResourceFilter::kRewriteOk;
     }
   }
-  return result;
+  RewriteDone(result, 0);
 }
 
 void SimpleTextFilter::StartElementImpl(HtmlElement* element) {
