@@ -21,15 +21,27 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
 class HtmlParse;
 class MessageHandler;
 class Writer;
 
 class CssTagScanner {
  public:
+  // Helper class for TransformUrls to allow any URL transformation to
+  // be applied to a CSS file.
+  class Transformer {
+   public:
+    virtual ~Transformer();
+
+    // Returns 'false' if no transformation was made by the transformer.
+    virtual bool Transform(const StringPiece& in, GoogleString* out) = 0;
+  };
+
   static const char kStylesheet[];
 
   explicit CssTagScanner(HtmlParse* html_parse);
@@ -38,6 +50,11 @@ class CssTagScanner {
   // extracting out the HREF and the media-type.
   bool ParseCssElement(
       HtmlElement* element, HtmlElement::Attribute** href, const char** media);
+
+  // Performs an arbitrary mutation on all URLs in a CSS file.
+  static bool TransformUrls(
+      const StringPiece& contents, Writer* writer, Transformer* transformer,
+      MessageHandler* handler);
 
   // Scans the contents of a CSS file, looking for the pattern url(xxx).
   // If xxx is a relative URL, it absolutifies it based on the passed-in base

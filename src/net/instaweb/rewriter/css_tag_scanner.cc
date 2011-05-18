@@ -35,6 +35,9 @@ const char kTextCss[] = "text/css";
 namespace net_instaweb {
 class HtmlParse;
 
+CssTagScanner::Transformer::~Transformer() {
+}
+
 const char CssTagScanner::kStylesheet[] = "stylesheet";
 
 // Finds CSS files and calls another filter.
@@ -110,16 +113,55 @@ bool ExtractQuote(GoogleString* url, char* quote) {
   return ret;
 }
 
+// Class to transform URLs by resolving them relative to a base that's
+// passed into the constructor.
+class AbsolutifyTransformer : public CssTagScanner::Transformer {
+ public:
+  AbsolutifyTransformer(const StringPiece& base_url, MessageHandler* handler)
+      : base_gurl_(base_url),
+        handler_(handler) {
+  }
+
+  virtual ~AbsolutifyTransformer() {}
+
+  bool is_valid() { return base_gurl_.is_valid(); }
+
+  virtual bool Transform(const StringPiece& in, GoogleString* out) {
+    GoogleUrl resolved(base_gurl_, in);
+    if (resolved.is_valid()) {
+      resolved.Spec().CopyToString(out);
+      return true;
+    }
+    handler_->Message(kError, "CSS URL resolution failed, base=%s url=%s",
+                      base_gurl_.Spec().as_string().c_str(),
+                      in.as_string().c_str());
+    return false;
+  }
+
+ private:
+  GoogleUrl base_gurl_;
+  MessageHandler* handler_;
+};
+
 }  // namespace
+
+bool CssTagScanner::AbsolutifyUrls(
+    const StringPiece& contents, const StringPiece& base_url,
+    Writer* writer, MessageHandler* handler) {
+  AbsolutifyTransformer transformer(base_url, handler);
+  bool ok = (transformer.is_valid() &&
+             TransformUrls(contents, writer, &transformer, handler));
+  return ok;
+}
 
 // TODO(jmarantz): replace this scan-and-replace-in-one-shot methdology with
 // a proper scanner/parser/filtering mechanism akin to HtmlParse/HtmlLexer.
 // See http://www.w3.org/Style/CSS/SAC/ for the C Parser.
 //
 // TODO(jmarantz): Add parsing & absolutification of @import.
-bool CssTagScanner::AbsolutifyUrls(
-    const StringPiece& contents, const StringPiece& base_url,
-    Writer* writer, MessageHandler* handler) {
+bool CssTagScanner::TransformUrls(
+    const StringPiece& contents, Writer* writer, Transformer* transformer,
+    MessageHandler* handler) {
   size_t pos = 0;
   size_t prev_pos = 0;
   bool ok = true;
@@ -133,46 +175,28 @@ bool CssTagScanner::AbsolutifyUrls(
   //
   // TODO(jmarantz): Consider calling image optimization, if enabled, on any
   // images found.
-  GoogleUrl base_gurl(base_url);
-  if (base_gurl.is_valid()) {
-    while (ok && ((pos = contents.find("url(", pos)) != StringPiece::npos)) {
-      ok = writer->Write(contents.substr(prev_pos, pos - prev_pos), handler);
-      prev_pos = pos;
-      pos += 4;
-      size_t end_of_url = contents.find(')', pos);
-      if ((end_of_url != StringPiece::npos) && (end_of_url != pos)) {
-        GoogleString url;
-        TrimWhitespace(contents.substr(pos, end_of_url - pos), &url);
-        char quote;
-        bool is_quoted = ExtractQuote(&url, &quote);
-        GoogleUrl gurl(url);
-
-        // Relative paths are considered invalid by GURL, and those are the
-        // ones we need to resolve.
-        if (!gurl.is_valid()) {
-          GoogleUrl resolved(base_gurl, url);
-          if (resolved.is_valid()) {
-            ok = writer->Write("url(", handler);
-            if (is_quoted) {
-              writer->Write(StringPiece(&quote, 1), handler);
-            }
-            ok = writer->Write(resolved.Spec(), handler);
-            if (is_quoted) {
-              writer->Write(StringPiece(&quote, 1), handler);
-            }
-            ok = writer->Write(")", handler);
-            prev_pos = end_of_url + 1;
-          } else {
-            int line = 1;
-            for (size_t i = 0; i < pos; ++i) {
-              line += (contents[i] == '\n');
-            }
-            handler->Error(
-                base_url.as_string().c_str(), line,
-                "CSS URL resolution failed: %s",
-                url.c_str());
-          }
+  while (ok && ((pos = contents.find("url(", pos)) != StringPiece::npos)) {
+    ok = writer->Write(contents.substr(prev_pos, pos - prev_pos), handler);
+    prev_pos = pos;
+    pos += 4;
+    size_t end_of_url = contents.find(')', pos);
+    GoogleString transformed;
+    if ((end_of_url != StringPiece::npos) && (end_of_url != pos)) {
+      GoogleString url;
+      TrimWhitespace(contents.substr(pos, end_of_url - pos), &url);
+      char quote;
+      bool is_quoted = ExtractQuote(&url, &quote);
+      if (transformer->Transform(url, &transformed)) {
+        ok = writer->Write("url(", handler);
+        if (is_quoted) {
+          writer->Write(StringPiece(&quote, 1), handler);
         }
+        ok = writer->Write(transformed, handler);
+        if (is_quoted) {
+          writer->Write(StringPiece(&quote, 1), handler);
+        }
+        ok = writer->Write(")", handler);
+        prev_pos = end_of_url + 1;
       }
     }
   }
