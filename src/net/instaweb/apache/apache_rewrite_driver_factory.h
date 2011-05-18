@@ -85,6 +85,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   virtual Statistics* statistics();
   void SetStatistics(SharedMemStatistics* x);
   void set_statistics_enabled(bool x) { statistics_enabled_ = x; }
+  void set_owns_statistics(bool o) { owns_statistics_ = o; }
   bool statistics_enabled() const { return statistics_enabled_; }
 
   AbstractSharedMem* shared_mem_runtime() const {
@@ -176,6 +177,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   std::string version_;
   bool statistics_enabled_;
   bool statistics_frozen_;
+  bool owns_statistics_;  // If true, this particular factory is responsible
+                          // for calling GlobalCleanup on the (global)
+                          // statistics object (but not delete'ing it)
   bool test_proxy_;
   bool is_root_process_;
 

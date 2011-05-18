@@ -57,6 +57,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       version_(version.data(), version.size()),
       statistics_enabled_(true),
       statistics_frozen_(false),
+      owns_statistics_(false),
       test_proxy_(false),
       is_root_process_(true),
       use_shared_mem_locking_(false),
@@ -225,7 +226,7 @@ void ApacheRewriteDriverFactory::ShutDown() {
   cache_mutex_.reset(NULL);
   rewrite_drivers_mutex_.reset(NULL);
   if (is_root_process_) {
-    if (shared_mem_statistics_ != NULL) {
+    if (owns_statistics_ && (shared_mem_statistics_ != NULL)) {
       shared_mem_statistics_->GlobalCleanup(message_handler());
     }
     shared_mem_lock_manager_lifecycler_.GlobalCleanup(message_handler());

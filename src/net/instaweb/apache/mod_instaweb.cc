@@ -328,21 +328,24 @@ class ApacheProcessContext {
     configs_.erase(config);
   }
 
-  SharedMemStatistics* InitStatistics(AbstractSharedMem* shmem_runtime,
-                                      const StringPiece& filename_prefix,
-                                      MessageHandler* message_handler) {
+  // Initializes global statistics object if needed, using factory to
+  // help with the settings if needed.
+  // Note: does not call set_statistics() on the factory.
+  SharedMemStatistics* InitStatistics(ApacheRewriteDriverFactory* factory) {
     if (statistics_.get() == NULL) {
       // Note that we create the statistics object in the parent process, and
       // it stays around in the kids but gets reinitialized for them
       // with a call to InitVariables(false) inside pagespeed_child_init.
+      factory->set_owns_statistics(true);
       statistics_.reset(
-          new SharedMemStatistics(shmem_runtime, filename_prefix.as_string()));
+          new SharedMemStatistics(factory->shared_mem_runtime(),
+                                  factory->filename_prefix().as_string()));
       ResourceManager::Initialize(statistics_.get());
       SerfUrlAsyncFetcher::Initialize(statistics_.get());
       statistics_->AddVariable("merge_time_us");
       statistics_->AddVariable("parse_time_us");
       statistics_->AddVariable("html_rewrite_time_us");
-      statistics_->InitVariables(true, message_handler);
+      statistics_->InitVariables(true, factory->message_handler());
       merge_time_us_ = statistics_->GetVariable("merge_time_us");
       parse_time_us_ = statistics_->GetVariable("parse_time_us");
       html_rewrite_time_us_ = statistics_->GetVariable("html_rewrite_time_us");
@@ -738,9 +741,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       }
 
       if ((factory->statistics_enabled() && (statistics == NULL))) {
-        statistics = apache_process_context.InitStatistics(
-            factory->shared_mem_runtime(), factory->filename_prefix(),
-            factory->message_handler());
+        statistics = apache_process_context.InitStatistics(factory);
       }
 
       // If we are running as root, hand over the ownership of data directories
