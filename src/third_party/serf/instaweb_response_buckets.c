@@ -11,17 +11,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * This is an Instaweb-specific modification of
- *   src/third_party/serf/src/buckets/response_buckets.c
- *
- * 1. Fix a buffer overrun in fetch_headers() by guarding the call to
- *    serf_bucket_headers_setx.
- * 2. Removing the block of code responsible for gunzipping zipped content.
- *    If the caller as specified Accept-Encoding:gzip then serf should not
- *    unzip it.
- * 3. Follow HTTP spec by checking "Transfer-Encoding: chunked", before
- *    "Content-Length".
  */
 
 #include <apr_lib.h>
@@ -55,7 +44,7 @@ typedef struct {
 } response_context_t;
 
 
-SERF_DECLARE(serf_bucket_t *) serf_bucket_response_create(
+serf_bucket_t *serf_bucket_response_create(
     serf_bucket_t *stream,
     serf_bucket_alloc_t *allocator)
 {
@@ -74,7 +63,7 @@ SERF_DECLARE(serf_bucket_t *) serf_bucket_response_create(
     return serf_bucket_create(&serf_bucket_type_response, allocator, ctx);
 }
 
-SERF_DECLARE(void) serf_bucket_response_set_head(
+void serf_bucket_response_set_head(
     serf_bucket_t *bucket)
 {
     response_context_t *ctx = bucket->data;
@@ -82,7 +71,7 @@ SERF_DECLARE(void) serf_bucket_response_set_head(
     ctx->head_req = 1;
 }
 
-SERF_DECLARE(serf_bucket_t *) serf_bucket_response_get_headers(
+serf_bucket_t *serf_bucket_response_get_headers(
     serf_bucket_t *bucket)
 {
     return ((response_context_t *)bucket->data)->headers;
@@ -164,24 +153,24 @@ static apr_status_t fetch_headers(serf_bucket_t *bkt, response_context_t *ctx)
             return APR_EGENERAL;
         }
 
-        /* Skip over initial : and spaces. */
-        while (apr_isspace(*++c))
-            continue;
+        /* Skip over initial ':' */
+        c++;
+
+        /* And skip all whitespaces. */
+        for(; c < ctx->linebuf.line + ctx->linebuf.used; c++)
+        {
+            if (!apr_isspace(*c))
+            {
+              break;
+            }
+        }
 
         /* Always copy the headers (from the linebuf into new mem). */
         /* ### we should be able to optimize some mem copies */
-
-        /*
-         * In Instaweb, we noticed that this code needs to be fixed to
-         * avoid risking a buffer overrun.
-         */
-        if (ctx->linebuf.line + ctx->linebuf.used > c) {
-            apr_size_t value_size = ctx->linebuf.line + ctx->linebuf.used - c;
-            serf_bucket_headers_setx(
-                ctx->headers,
-                ctx->linebuf.line, end_key - ctx->linebuf.line, 1,
-                c, value_size, 1);
-        }
+        serf_bucket_headers_setx(
+            ctx->headers,
+            ctx->linebuf.line, end_key - ctx->linebuf.line, 1,
+            c, ctx->linebuf.line + ctx->linebuf.used - c, 1);
     }
 
     return status;
@@ -213,6 +202,14 @@ static apr_status_t run_machine(serf_bucket_t *bkt, response_context_t *ctx)
             status = parse_status_line(ctx, bkt->allocator);
             if (status)
                 return status;
+
+            /* Good times ahead: we're switching protocols! */
+            if (ctx->sl.code == 101) {
+                ctx->body =
+                    serf_bucket_barrier_create(ctx->stream, bkt->allocator);
+                ctx->state = STATE_DONE;
+                break;
+            }
 
             /* Okay... move on to reading the headers. */
             ctx->state = STATE_HEADERS;
@@ -264,8 +261,7 @@ static apr_status_t run_machine(serf_bucket_t *bkt, response_context_t *ctx)
                     ctx->body = serf_bucket_limit_create(ctx->body, length,
                                                          bkt->allocator);
                 }
-
-                if (!v && (ctx->sl.code == 204 || ctx->sl.code == 304)) {
+                else if ((ctx->sl.code == 204 || ctx->sl.code == 304)) {
                     ctx->state = STATE_DONE;
                 }
             }
@@ -276,17 +272,17 @@ static apr_status_t run_machine(serf_bucket_t *bkt, response_context_t *ctx)
              *
              * v = serf_bucket_headers_get(ctx->headers, "Content-Encoding");
              * if (v) {
-             *     * Need to handle multiple content-encoding. *
-             *     if (v && strcasecmp("gzip", v) == 0) {
-             *         ctx->body =
-             *             serf_bucket_deflate_create(ctx->body, bkt->allocator,
-             *                                        SERF_DEFLATE_GZIP);
-             *     }
-             *     else if (v && strcasecmp("deflate", v) == 0) {
-             *         ctx->body =
-             *             serf_bucket_deflate_create(ctx->body, bkt->allocator,
-             *                                        SERF_DEFLATE_DEFLATE);
-             *     }
+             *   * Need to handle multiple content-encoding. *
+             *  if (v && strcasecmp("gzip", v) == 0) {
+             *      ctx->body =
+             *          serf_bucket_deflate_create(ctx->body, bkt->allocator,
+             *                                     SERF_DEFLATE_GZIP);
+             *  }
+             *  else if (v && strcasecmp("deflate", v) == 0) {
+             *      ctx->body =
+             *          serf_bucket_deflate_create(ctx->body, bkt->allocator,
+             *                                     SERF_DEFLATE_DEFLATE);
+             *  }
              * }
              */
 
@@ -339,7 +335,7 @@ static apr_status_t wait_for_body(serf_bucket_t *bkt, response_context_t *ctx)
     return APR_SUCCESS;
 }
 
-SERF_DECLARE(apr_status_t) serf_bucket_response_wait_for_headers(
+apr_status_t serf_bucket_response_wait_for_headers(
     serf_bucket_t *bucket)
 {
     response_context_t *ctx = bucket->data;
@@ -347,7 +343,7 @@ SERF_DECLARE(apr_status_t) serf_bucket_response_wait_for_headers(
     return wait_for_body(bucket, ctx);
 }
 
-SERF_DECLARE(apr_status_t) serf_bucket_response_status(
+apr_status_t serf_bucket_response_status(
     serf_bucket_t *bkt,
     serf_status_line *sline)
 {
@@ -427,7 +423,7 @@ static apr_status_t serf_response_readline(serf_bucket_t *bucket,
 /* ### need to implement */
 #define serf_response_peek NULL
 
-SERF_DECLARE_DATA const serf_bucket_type_t serf_bucket_type_response = {
+const serf_bucket_type_t serf_bucket_type_response = {
     "RESPONSE",
     serf_response_read,
     serf_response_readline,

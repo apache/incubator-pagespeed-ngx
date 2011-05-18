@@ -1,28 +1,25 @@
-Index: buckets/allocator.c
-===================================================================
---- buckets/allocator.c	(revision 1421)
-+++ buckets/allocator.c	(working copy)
+--- src/third_party/serf/src/buckets/allocator.c	2011-05-06 16:22:56.220366814 -0400
++++ instaweb_allocator.c	2011-05-06 11:08:31.684199000 -0400
 @@ -83,6 +83,7 @@
  struct serf_bucket_alloc_t {
      apr_pool_t *pool;
      apr_allocator_t *allocator;
 +    int own_allocator;
- 
+
      serf_unfreed_func_t unfreed;
      void *unfreed_baton;
-@@ -106,7 +107,9 @@
+@@ -106,6 +107,9 @@
      if (allocator->blocks) {
          apr_allocator_free(allocator->allocator, allocator->blocks);
      }
--
 +    if (allocator->own_allocator == 1) {
 +        apr_allocator_destroy(allocator->allocator);
 +    }
+
      return APR_SUCCESS;
  }
- 
-@@ -119,10 +122,12 @@
- 
+@@ -119,10 +123,12 @@
+
      allocator->pool = pool;
      allocator->allocator = apr_pool_allocator_get(pool);
 +    allocator->own_allocator = 0;
@@ -34,25 +31,229 @@ Index: buckets/allocator.c
      }
      allocator->unfreed = unfreed;
      allocator->unfreed_baton = unfreed_baton;
-@@ -408,4 +413,3 @@
-     }
- #endif
- }
+--- src/third_party/serf/src/buckets/headers_buckets.c	2011-05-06 16:22:56.220366814 -0400
++++ instaweb_headers_buckets.c	2011-05-13 10:46:49.896368000 -0400
+@@ -20,6 +20,7 @@
+ #include "serf.h"
+ #include "serf_bucket_util.h"
+
++#include <stdio.h>
+
+ typedef struct header_list {
+     const char *header;
+@@ -163,11 +164,11 @@
+                    be comma-separated, that is clearly the correct behavior;
+                    for others, the correct behavior is undefined anyway. */
+
+-                /* The "+1" is for the comma; serf_bstrmemdup() will also add
+-                   one slot for the terminating '\0'. */
++                /* The "+1" here is for the comma; the +1 in the alloc
++                   call is for the terminating '\0' */
+                 apr_size_t new_size = found->value_size + value_size + 1;
+                 char *new_val = serf_bucket_mem_alloc(headers_bucket->allocator,
+-                                                      new_size);
++                                                      new_size + 1);
+                 memcpy(new_val, val, value_size);
+                 new_val[value_size] = ',';
+                 memcpy(new_val + value_size + 1, found->value,
+--- src/third_party/serf/src/buckets/response_buckets.c	2011-05-06 16:22:56.220366814 -0400
++++ instaweb_response_buckets.c	2011-05-06 11:27:29.823839000 -0400
+@@ -242,44 +242,50 @@
+                 serf_bucket_barrier_create(ctx->stream, bkt->allocator);
+
+             /* Are we C-L, chunked, or conn close? */
+-            v = serf_bucket_headers_get(ctx->headers, "Content-Length");
+-            if (v) {
+-                apr_uint64_t length;
+-                length = apr_strtoi64(v, NULL, 10);
+-                if (errno == ERANGE) {
+-                    return APR_FROM_OS_ERROR(ERANGE);
+-                }
+-                ctx->body = serf_bucket_limit_create(ctx->body, length,
+-                                                     bkt->allocator);
++            v = serf_bucket_headers_get(ctx->headers, "Transfer-Encoding");
++
++            /* Need to handle multiple transfer-encoding. */
++            if (v && strcasecmp("chunked", v) == 0) {
++                ctx->chunked = 1;
++                ctx->body = serf_bucket_dechunk_create(ctx->body,
++                                                        bkt->allocator);
+             }
+             else {
+-                v = serf_bucket_headers_get(ctx->headers, "Transfer-Encoding");
 -
-Index: buckets/headers_buckets.c
-===================================================================
---- buckets/headers_buckets.c	(revision 1421)
-+++ buckets/headers_buckets.c	(working copy)
-@@ -97,6 +97,12 @@
-         new_val[found->value_size] = ',';
-         memcpy(new_val + found->value_size + 1, value, value_size);
-         new_val[new_size] = '\0';
+-                /* Need to handle multiple transfer-encoding. */
+-                if (v && strcasecmp("chunked", v) == 0) {
+-                    ctx->chunked = 1;
+-                    ctx->body = serf_bucket_dechunk_create(ctx->body,
+-                                                           bkt->allocator);
++                v = serf_bucket_headers_get(ctx->headers, "Content-Length");
++                if (v) {
++                    apr_uint64_t length;
++                    length = apr_strtoi64(v, NULL, 10);
++                    if (errno == ERANGE) {
++                        return APR_FROM_OS_ERROR(ERANGE);
++                    }
++                    ctx->body = serf_bucket_limit_create(ctx->body, length,
++                                                         bkt->allocator);
+                 }
+-
+-                if (!v && (ctx->sl.code == 204 || ctx->sl.code == 304)) {
++                else if ((ctx->sl.code == 204 || ctx->sl.code == 304)) {
+                     ctx->state = STATE_DONE;
+                 }
+             }
+-            v = serf_bucket_headers_get(ctx->headers, "Content-Encoding");
+-            if (v) {
+-                /* Need to handle multiple content-encoding. */
+-                if (v && strcasecmp("gzip", v) == 0) {
+-                    ctx->body =
+-                        serf_bucket_deflate_create(ctx->body, bkt->allocator,
+-                                                   SERF_DEFLATE_GZIP);
+-                }
+-                else if (v && strcasecmp("deflate", v) == 0) {
+-                    ctx->body =
+-                        serf_bucket_deflate_create(ctx->body, bkt->allocator,
+-                                                   SERF_DEFLATE_DEFLATE);
+-                }
+-            }
 +
-+        // If the previous value was added, we must free it before overwriting
-+        if (found->alloc_flags & ALLOC_VALUE) {
-+            serf_bucket_mem_free(bkt->allocator, (void *)found->value);
-+        }
++            /*
++             * Instaweb would prefer to receive gzipped output if that's what
++             * was asked for.
++             *
++             * v = serf_bucket_headers_get(ctx->headers, "Content-Encoding");
++             * if (v) {
++             *   * Need to handle multiple content-encoding. *
++             *  if (v && strcasecmp("gzip", v) == 0) {
++             *      ctx->body =
++             *          serf_bucket_deflate_create(ctx->body, bkt->allocator,
++             *                                     SERF_DEFLATE_GZIP);
++             *  }
++             *  else if (v && strcasecmp("deflate", v) == 0) {
++             *      ctx->body =
++             *          serf_bucket_deflate_create(ctx->body, bkt->allocator,
++             *                                     SERF_DEFLATE_DEFLATE);
++             *  }
++             * }
++             */
 +
-         found->value = new_val;
-         found->value_size = new_size;
-         found->alloc_flags |= ALLOC_VALUE;
+             /* If we're a HEAD request, we don't receive a body. */
+             if (ctx->head_req) {
+                 ctx->state = STATE_DONE;
+--- src/third_party/serf/src/outgoing.c	2011-05-06 16:22:56.390522788 -0400
++++ instaweb_outgoing.c	2011-05-06 14:09:51.837823000 -0400
+@@ -691,9 +691,9 @@
+             /* If we hit the end of the request bucket and all of its data has
+              * been written, then clear it out to signify that we're done
+              * sending the request. On the next iteration through this loop:
+-             * - if there are remaining bytes they will be written, and as the
++             * - if there are remaining bytes they will be written, and as the
+              * request bucket will be completely read it will be destroyed then.
+-             * - we'll see if there are other requests that need to be sent
++             * - we'll see if there are other requests that need to be sent
+              * ("pipelining").
+              */
+             conn->hit_eof = 0;
+@@ -737,6 +737,7 @@
+      * This permits older Serf apps to still handle authentication
+      * themselves by not registering credential callbacks.
+      */
++#if 0 /* This disables authentication support for now */
+     if (request->conn->ctx->cred_cb) {
+       status = serf__handle_auth_response(&consumed_response,
+                                           request,
+@@ -755,6 +756,7 @@
+           return status;
+       }
+     }
++#endif
+
+     if (!consumed_response) {
+         return (*request->handler)(request,
+@@ -1071,9 +1073,17 @@
+         return APR_ENOTIMPL;
+
+     /* Parse the url, store the address of the server. */
+-    status = apr_sockaddr_info_get(&host_address,
+-                                   host_info.hostname,
+-                                   APR_UNSPEC, host_info.port, 0, pool);
++    if (ctx->proxy_address) {
++        host_address = ctx->proxy_address;
++        status = APR_SUCCESS;
++    } else {
++        status = apr_sockaddr_info_get(&host_address,
++                                       host_info.hostname,
++                                       APR_UNSPEC, host_info.port, 0, pool);
++        if (status)
++            return status;
++    }
++
+     if (status)
+         return status;
+
+@@ -1147,6 +1155,19 @@
+     return APR_NOTFOUND;
+ }
+
++/*
++ Returns true if this connection has had error events reported during the last
++ call to serf_context_run. It should be called after serf_context_run
++ invocation, and not within callbacks.
++
++ Return value is conceptually bool, but Serf implementation language is C.
++
++ google-added.
++*/
++int serf_connection_is_in_error_state(serf_connection_t* conn)
++{
++  return ((conn->seen_in_pollset & (APR_POLLERR | APR_POLLHUP)) != 0);
++}
+
+ void serf_connection_set_max_outstanding_requests(
+     serf_connection_t *conn,
+@@ -1299,12 +1320,13 @@
+ }
+
+
+-serf_bucket_t *serf_request_bucket_request_create(
++serf_bucket_t *serf_request_bucket_request_create_for_host(
+     serf_request_t *request,
+     const char *method,
+     const char *uri,
+     serf_bucket_t *body,
+-    serf_bucket_alloc_t *allocator)
++    serf_bucket_alloc_t *allocator,
++    const char* host)
+ {
+     serf_bucket_t *req_bkt, *hdrs_bkt;
+     serf_connection_t *conn = request->conn;
+@@ -1317,9 +1339,10 @@
+     if (ctx->proxy_address && conn->host_url)
+         serf_bucket_request_set_root(req_bkt, conn->host_url);
+
+-    if (conn->host_info.hostinfo)
+-        serf_bucket_headers_setn(hdrs_bkt, "Host",
+-                                 conn->host_info.hostinfo);
++    if (host == NULL)
++        host = request->conn->host_info.hostname;
++    if (host)
++        serf_bucket_headers_setn(hdrs_bkt, "Host", host);
+
+     /* Setup server authorization headers */
+     if (ctx->authn_info.scheme)
+@@ -1333,3 +1356,14 @@
+
+     return req_bkt;
+ }
++
++serf_bucket_t *serf_request_bucket_request_create(
++    serf_request_t *request,
++    const char *method,
++    const char *uri,
++    serf_bucket_t *body,
++    serf_bucket_alloc_t *allocator)
++{
++    return serf_request_bucket_request_create_for_host(
++        request, method, uri, body, allocator, NULL);
++}

@@ -25,7 +25,7 @@ vars = {
   "mod_spdy_revision": "@143",
   "mod_spdy_deps_root": "src/third_party/mod_spdy_deps",
 
-  "serf_src": "http://serf.googlecode.com/svn/tags/0.3.1",
+  "serf_src": "http://serf.googlecode.com/svn/tags/0.7.2",
   "serf_revision": "@head",
 
   "apr_src": "http://svn.apache.org/repos/asf/apr/apr/tags/1.4.2",

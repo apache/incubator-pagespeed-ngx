@@ -27,33 +27,44 @@
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [
-        '<(serf_root)/instaweb_context.c',
-        '<(serf_src)/context.c',
+        # This is a mixture of original serf sources (in serf_src)
+        # and our patched versions in serf_root
         '<(serf_src)/buckets/aggregate_buckets.c',
-        '<(serf_root)/instaweb_allocator.c',
-        '<(serf_src)/buckets/barrier_buckets.c',
+        '<(serf_src)/buckets/request_buckets.c',
+        '<(serf_src)/buckets/request_buckets.c',
+        '<(serf_src)/context.c',
         '<(serf_src)/buckets/buckets.c',
-        '<(serf_src)/buckets/chunk_buckets.c',
+        '<(serf_src)/buckets/simple_buckets.c',
+        '<(serf_src)/buckets/file_buckets.c',
+        '<(serf_src)/buckets/mmap_buckets.c',
+        '<(serf_src)/buckets/socket_buckets.c',
+        '<(serf_root)/instaweb_response_buckets.c',
+        '<(serf_root)/instaweb_headers_buckets.c',
+        '<(serf_root)/instaweb_allocator.c',
         '<(serf_src)/buckets/dechunk_buckets.c',
         '<(serf_src)/buckets/deflate_buckets.c',
-        '<(serf_src)/buckets/file_buckets.c',
-        '<(serf_root)/instaweb_headers_buckets.c',
         '<(serf_src)/buckets/limit_buckets.c',
-        '<(serf_src)/buckets/mmap_buckets.c',
-        '<(serf_src)/buckets/request_buckets.c',
-# There are two bugs in serf 0.3.1.
-#    1. There is a buffer-overrun risk in fetch_headers
-#    2. Serf always unzips zipped content, which is not what we want, and
-#       then it leaves the 'gzip' headers in.  This is in contrast to the
-#       behavior of curl and wget, which provide gzipped output if that's
-#       what was requested.
-#
-# We will try to pursue fixes to these issues with the Serf community but
-# in the meantime we will override our own version of response_buckets.c,
-# which will be placed in the root directory.
-        '<(serf_root)/instaweb_response_buckets.c',
-        '<(serf_src)/buckets/simple_buckets.c',
-        '<(serf_src)/buckets/socket_buckets.c',
+        '<(serf_src)/buckets/ssl_buckets.c',
+        '<(serf_src)/buckets/barrier_buckets.c',
+        '<(serf_src)/buckets/chunk_buckets.c',
+        '<(serf_src)/buckets/bwtp_buckets.c',
+        '<(serf_src)/incoming.c',
+        '<(serf_root)/instaweb_outgoing.c',
+        # If we ever want to support authentication, the following changes will
+        # need to be made:
+        # 1) Uncomment these lines below.
+        # 2) Update aprutil.gyp to provide some more files (md5, uuid, etc. ---
+        #    the link errors will be your guide).
+        # 3) Re-enable call to serf__handle_auth_response in handle_response in
+        #    instaweb_outgoing.c.
+        # 4) Setup a callback via serf_config_credentials_callback to actually
+        #    provide login info.
+        #
+        #'<(serf_src)/auth/auth.c',
+        #'<(serf_src)/auth/auth_basic.c',
+        #'<(serf_src)/auth/auth_digest.c',
+        #'<(serf_src)/auth/auth_kerb.c',
+        #'<(serf_src)/auth/auth_kerb_gss.c'
       ],
      'include_dirs': [
         '<(serf_src)',

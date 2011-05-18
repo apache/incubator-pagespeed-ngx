@@ -67,6 +67,7 @@ serf_bucket_t* serf_request_bucket_request_create_for_host(
     serf_bucket_alloc_t *allocator, const char* host);
 
 int serf_connection_is_in_error_state(serf_connection_t* connection);
+
 }  // extern "C"
 
 namespace net_instaweb {
@@ -189,10 +190,13 @@ class SerfFetch : public PoolElement<SerfFetch> {
  private:
 
   // Static functions used in callbacks.
-  static serf_bucket_t* ConnectionSetup(
-      apr_socket_t* socket, void* setup_baton, apr_pool_t* pool) {
+  static apr_status_t ConnectionSetup(
+      apr_socket_t* socket, serf_bucket_t **read_bkt, serf_bucket_t **write_bkt,
+      void* setup_baton, apr_pool_t* pool) {
+    // TODO(morlovich): the serf tests do SSL setup in their equivalent.
     SerfFetch* fetch = static_cast<SerfFetch*>(setup_baton);
-    return serf_bucket_socket_create(socket, fetch->bucket_alloc_);
+    *read_bkt = serf_bucket_socket_create(socket, fetch->bucket_alloc_);
+    return APR_SUCCESS;
   }
 
   static void ClosedConnection(serf_connection_t* conn,

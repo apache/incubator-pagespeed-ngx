@@ -1,0 +1,20 @@
+URL: http://code.google.com/p/serf/downloads/detail?name=serf-0.7.2.tar.bz2
+License: Apache 2.0
+
+Source files we modified from the Serf 0.7.2 http fetcher.
+
+Local Modifications:
+1) Do not lookup IP of destination host when using a proxy.
+2) Add serf_request_bucket_request_create_for_host which lets Host: be set
+   separately from the URL.
+3) If we create an allocator in serf_bucket_allocator_create, make sure to
+   free it in allocator_cleanup.
+4) Remove the block of code responsible for gunzipping zipped content.
+   If the caller specified Accept-Encoding:gzip then serf should not
+   unzip it.
+5) Follow HTTP spec by checking "Transfer-Encoding: chunked", before
+   "Content-Length".
+6) Add serf_connection_is_in_error_state to permit errant connections to be
+   cleaned up.
+7) Fix an off-by-one in buffer sizing in serf_bucket_headers_get.
+8) Disabled authentication support temporarily to simplify dependencies.
