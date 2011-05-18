@@ -18,29 +18,25 @@
 
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 
-#include <algorithm>  // for std::max
-#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 class RequestHeaders;
+class ResponseHeaders;
+class Writer;
 
 SimpleTextFilter::Rewriter::~Rewriter() {
 }
@@ -98,6 +94,10 @@ bool SimpleTextFilter::Fetch(const OutputResourcePtr& output_resource,
   Context* context = new Context(rewriter_, driver_);
   return context->Fetch(driver_, output_resource, response_writer,
                         response_headers, message_handler, callback);
+}
+
+bool SimpleTextFilter::HasAsyncFlow() const {
+  return driver_->asynchronous_rewrites();
 }
 
 }  // namespace net_instaweb

@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -42,6 +43,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -322,6 +324,10 @@ JavascriptFilter::RewriteLoadedResource(
   ResourceSlotPtr dummy_slot;
   JavascriptRewriteContext jrc(driver_, dummy_slot, &config_);
   return jrc.RewriteJavascript(script_input, output_resource);
+}
+
+bool JavascriptFilter::HasAsyncFlow() const {
+  return driver_->asynchronous_rewrites();
 }
 
 }  // namespace net_instaweb

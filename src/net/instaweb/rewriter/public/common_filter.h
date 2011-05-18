@@ -21,7 +21,6 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -29,6 +28,7 @@ namespace net_instaweb {
 class GoogleUrl;
 class HtmlElement;
 class ResourceManager;
+class RewriteDriver;
 class RewriteOptions;
 
 // CommonFilter encapsulates useful functionality that many filters will want.
@@ -47,7 +47,7 @@ class CommonFilter : public EmptyHtmlFilter {
   virtual ~CommonFilter();
 
   // Getters
-  const GoogleUrl& base_url() const { return driver_->base_url(); }
+  const GoogleUrl& base_url() const;
   HtmlElement* noscript_element() const { return noscript_element_; }
 
   // Note: Don't overload these methods, overload the implementers instead!
