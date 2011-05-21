@@ -28,13 +28,13 @@ namespace net_instaweb {
 class BotCheckerTest : public testing::Test {};
 
 // Case for bot user-agent string contains no separator
-TEST_F(BotCheckerTest, DetectUserAgentWithnoSeparator) {
+TEST_F(BotCheckerTest, DetectUserAgentWithNoSeparator) {
   const char user_agent[] = "Baiduspider+(+http://www.baidu.com/search/spider.htm)";
   EXPECT_TRUE(BotChecker::Lookup(user_agent));
 }
 
 // Case for bot user-agent with no version
-TEST_F(BotCheckerTest, DetectUserAgentWithnoVersion) {
+TEST_F(BotCheckerTest, DetectUserAgentWithNoVersion) {
   const char user_agent[] = "Mozilla/5.0 (compatible; Yahoo! Slurp;"
                "http://help.yahoo.com/help/us/ysearch/slurp)";
   EXPECT_TRUE(BotChecker::Lookup(user_agent));
@@ -54,15 +54,8 @@ TEST_F(BotCheckerTest, DetectUserAgentWithDomain) {
   EXPECT_TRUE(BotChecker::Lookup(user_agent));
 }
 
-// Case for mod_pagespeed
-TEST_F(BotCheckerTest, DetectUserAgentModPagespeed) {
-  const char user_agent[] = "Serf/0.3.1 mod_pagespeed/0.9.0.0-700";
-  EXPECT_TRUE(BotChecker::Lookup(user_agent));
-}
-
-
 // Case for non-bot
-TEST_F(BotCheckerTest, DetectUserAgentWithnoBot) {
+TEST_F(BotCheckerTest, DetectUserAgentWithNoBot) {
   const char user_agent[] = "Wget/1.12 (linux-gnu)";
   EXPECT_FALSE(BotChecker::Lookup(user_agent));
 }

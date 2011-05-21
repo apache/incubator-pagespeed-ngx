@@ -75,6 +75,7 @@ class DocType {
     XHTML_1_1,
     XHTML_1_0_STRICT,
     XHTML_1_0_TRANSITIONAL,
+    OTHER_XHTML,
   };
 
   explicit DocType(DocTypeEnum doctype) : doctype_(doctype) {}

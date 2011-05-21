@@ -21,7 +21,6 @@
 
 #include <map>
 #include <vector>
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -32,6 +31,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -44,6 +44,7 @@ struct ContentType;
 
 class AddInstrumentationFilter;
 class CommonFilter;
+class DomainRewriteFilter;
 class FileSystem;
 class HtmlFilter;
 class HtmlWriterFilter;
@@ -395,6 +396,7 @@ class RewriteDriver : public HtmlParse {
   UserAgent user_agent_;
   std::vector<HtmlFilter*> filters_;
   ScanFilter scan_filter_;
+  scoped_ptr<DomainRewriteFilter> domain_rewriter_;
 
   // Maps encoded URLs to output URLs
   typedef std::map<GoogleString, ResourcePtr> ResourceMap;

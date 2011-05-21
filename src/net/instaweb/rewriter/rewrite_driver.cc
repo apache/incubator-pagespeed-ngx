@@ -88,6 +88,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       resource_manager_(NULL),
       add_instrumentation_filter_(NULL),
       scan_filter_(this),
+      domain_rewriter_(NULL),
       cached_resource_fetches_(NULL),
       succeeded_filter_resource_fetches_(NULL),
       failed_filter_resource_fetches_(NULL),
@@ -184,6 +185,16 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   RegisterRewriteFilter(image_rewriter);
   RegisterRewriteFilter(cache_extender);
   RegisterRewriteFilter(image_combiner);
+
+  // When cache-extending CSS files, we must rewrite the embedded
+  // resource URLs (usually images) based on any rewriting rules
+  // that we have.
+  //
+  // Note we set this relationship here unconditionally.  Turning
+  // on the extend_cache filter and adding domains to rewrite is
+  // done separately.
+  domain_rewriter_.reset(new DomainRewriteFilter(this, statistics()));
+  cache_extender->set_domain_rewriter(domain_rewriter_.get());
 }
 
 // If flag starts with key (a string ending in "="), call m on the remainder of
@@ -343,7 +354,12 @@ void RewriteDriver::AddFilters() {
     // from other rewrites and do it exclusively in this filter.  Before we
     // do that we'll need to validate this filter so we can turn it on by
     // default.
-    AddOwnedFilter(new DomainRewriteFilter(this, statistics()));
+    //
+    // Note that the "domain_lawyer" filter controls whether we rewrite
+    // domains for resources in HTML files.  However, when we cache-extend
+    // CSS files, we rewrite the domains in them whether this filter is
+    // specified or not.
+    HtmlParse::AddFilter(domain_rewriter_.get());
   }
   if (options_.Enabled(RewriteOptions::kLeftTrimUrls)) {
     // Trim extraneous prefixes from urls in attribute values.

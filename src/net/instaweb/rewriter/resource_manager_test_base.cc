@@ -16,15 +16,19 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
+#include <vector>
+
+#include "base/logging.h"               // for CHECK_LT
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -37,6 +41,7 @@
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
+#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -50,6 +55,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
 
@@ -433,7 +439,32 @@ GoogleString ResourceManagerTestBase::Encode(
   ResourceNamer namer;
   namer.set_id(id);
   namer.set_hash(hash);
-  namer.set_name(name);
+
+  // We only want to encode the last path-segment of 'name'.
+  // Note that this block of code could be avoided if all call-sites
+  // put subdirectory info in the 'path' argument, but it turns out
+  // to be a lot more convenient for tests if we allow relative paths
+  // in the 'name' argument for this method, so the one-time effort of
+  // teasing out the leaf and encoding that saves a whole lot of clutter
+  // in, at least, CacheExtenderTest.
+  std::vector<StringPiece> path_vector;
+  SplitStringPieceToVector(name, "/", &path_vector, false);
+  UrlSegmentEncoder encoder;
+  GoogleString encoded_name;
+  StringVector v;
+  CHECK_LT(0U, path_vector.size());
+  v.push_back(path_vector[path_vector.size() - 1].as_string());
+  encoder.Encode(v, NULL, &encoded_name);
+
+  // Now reconstruct the path.
+  GoogleString pathname;
+  for (int i = 0, n = path_vector.size() - 1; i < n; ++i) {
+    path_vector[i].AppendToString(&pathname);
+    pathname += "/";
+  }
+  pathname += encoded_name;
+
+  namer.set_name(pathname);
   namer.set_ext(ext);
   return StrCat(path, namer.Encode());
 }

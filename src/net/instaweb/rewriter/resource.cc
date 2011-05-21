@@ -20,6 +20,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/content_type.h"
@@ -65,7 +66,7 @@ void Resource::DetermineContentType() {
   StringStarVector content_types;
   ResponseHeaders* headers = metadata();
   const ContentType* content_type = NULL;
-  if (headers->Lookup("Content-type", &content_types)) {
+  if (headers->Lookup(HttpAttributes::kContentType, &content_types)) {
     for (int i = 0, n = content_types.size(); (i < n) && (content_type == NULL);
          ++i) {
       if (content_types[i] != NULL) {

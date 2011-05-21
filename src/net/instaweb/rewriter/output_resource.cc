@@ -233,6 +233,7 @@ GoogleString OutputResource::url() const {
   GoogleString encoded(full_name_.Encode());
   if (rewrite_options_ != NULL) {
     StringPiece hash = full_name_.hash();
+    DCHECK(!hash.empty());
     uint32 int_hash = HashString<CasePreserve, uint32>(
         hash.data(), hash.size());
     const DomainLawyer* lawyer = rewrite_options_->domain_lawyer();

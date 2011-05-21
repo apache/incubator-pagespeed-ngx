@@ -339,6 +339,7 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
     case HTTPCache::kFound:
       resource->Link(http_value(), handler);
       resource->metadata()->CopyFrom(*response_headers());
+      resource->DetermineContentType();
       resource_manager_->RefreshIfImminentlyExpiring(resource.get(), handler);
       resource_callback_->Done(true);
       break;

@@ -41,12 +41,12 @@
 namespace net_instaweb {
 #include <string.h>
 
-#define TOTAL_KEYWORDS 64
+#define TOTAL_KEYWORDS 63
 #define MIN_WORD_LENGTH 4
 #define MAX_WORD_LENGTH 53
 #define MIN_HASH_VALUE 4
-#define MAX_HASH_VALUE 67
-/* maximum key range = 64, duplicates = 0 */
+#define MAX_HASH_VALUE 66
+/* maximum key range = 63, duplicates = 0 */
 
 class RobotDetect
 {
@@ -61,32 +61,32 @@ RobotDetect::hash (register const char *str, register unsigned int len)
 {
   static const unsigned char asso_values[] =
     {
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 43, 13,  3, 40, 20, 21,
-      37, 15, 68, 16,  0, 42, 50, 46, 15,  9,
-      48, 68, 17, 11,  0, 68,  0, 52, 68,  8,
-      68, 68, 68, 68, 68, 68, 68,  1,  0, 68,
-      16, 49, 68, 42,  3, 12, 68, 68, 13, 37,
-      22,  0,  6, 68, 16, 17,  0, 17,  1, 15,
-      68,  0, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68, 68, 68, 68, 68,
-      68, 68, 68, 68, 68, 68
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 39, 13,  3, 43, 20, 24,
+      36, 15, 67, 16,  0, 32, 57, 31, 15, 18,
+      48, 67, 17, 11, 33, 67, 21, 31, 67,  8,
+      67, 67, 67, 67, 67, 67, 67,  1,  0, 67,
+      16, 20, 67, 41,  1, 12, 67, 67, 13, 67,
+      19,  0,  6, 67, 16, 17,  0, 17,  1, 18,
+      67,  0, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
+      67, 67, 67, 67, 67, 67
     };
   return len + asso_values[(unsigned char)str[1]] + asso_values[(unsigned char)str[0]];
 }
@@ -136,25 +136,24 @@ static const char * const wordlist[] =
     "NDSpider",
     "ArchitextSpider",
     "DragonBot",
+    "InfoSpiders",
+    "OntoSpider",
+    "MSNBOT",
     "ESISmartSpider",
     "CoolBot",
     "wired-digital-newsbot",
-    "InfoSpiders",
-    "mod_pagespeed",
     "Checkbot",
+    "gammaSpider",
+    "Verticrawlbot",
     "CydralSpider",
     "Confuzzledbot",
-    "gammaSpider",
-    "Lycos",
-    "TechBOT",
     "Baiduspider+(+http://www.baidu.com/search/spider.htm)",
-    "TLSpider",
-    "VWbot_K",
-    "EIT-Link-Verifier-Robot",
-    "PortalBSpider",
-    "Verticrawlbot",
-    "MSNBOT",
     "MOMspider",
+    "VWbot_K",
+    "TechBOT",
+    "PortalBSpider",
+    "Lycos",
+    "EIT-Link-Verifier-Robot",
     "KO_Yappo_Robot",
     "Fish-Search-Robot",
     "w@pSpider"
@@ -177,7 +176,7 @@ RobotDetect::Lookup (register const char *str, register unsigned int len)
     }
   return 0;
 }
-#line 97 "http/bot_checker.gperf"
+#line 87 "http/bot_checker.gperf"
 
 
 // TODO:(fangfei) check other cases

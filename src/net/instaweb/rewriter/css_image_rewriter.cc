@@ -209,10 +209,17 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                 background_image_found = true;
                 GoogleString rel_url =
                     UnicodeTextToUTF8(value->GetStringValue());
-                handler->Message(kInfo, "Found image URL %s", rel_url.c_str());
-                GoogleString new_url;
                 // TODO(abliss): only do this resolution once.
                 const GoogleUrl original_url(base_url, rel_url);
+                if (!original_url.is_valid()) {
+                  handler->Message(kInfo, "Invalid URL %s", rel_url.c_str());
+                  continue;
+                }
+                if (!driver_->options()->IsAllowed(original_url.Spec())) {
+                  handler->Message(kInfo, "Disallowed URL %s", rel_url.c_str());
+                  continue;
+                }
+                handler->Message(kInfo, "Found image URL %s", rel_url.c_str());
                 TimedBool result = {kint64max, false};
                 if (spriting_ok) {
                   result = image_combiner_->AddCssBackground(
@@ -227,6 +234,7 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                   // CSS, since we'll assume it's going to be sprited, but it
                   // won't be.
                 } else {
+                  GoogleString new_url;
                   result = RewriteImageUrl(base_url, rel_url, &new_url,
                                            handler);
                   expire_at_ms = std::min(expire_at_ms, result.expiration_ms);

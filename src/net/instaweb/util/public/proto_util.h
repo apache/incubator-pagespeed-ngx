@@ -17,6 +17,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_PROTO_UTIL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_PROTO_UTIL_H_
 
+#include "net/instaweb/util/public/basictypes.h"
 #include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 
 namespace net_instaweb {

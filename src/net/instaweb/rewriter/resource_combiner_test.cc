@@ -629,8 +629,8 @@ TEST_F(ResourceCombinerTest, TestFetchFailSevereAsync) {
 
 TEST_F(ResourceCombinerTest, TestFetchNonsense) {
   // Make sure we handle URL decoding failing OK
-  GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
-                            "piece1.tcc+nopiece.tcc,", "txt");
+  GoogleString url = StrCat(kTestDomain, "piece1.tcc+nopiece.tcc,.pagespeeed.",
+                            kTestCombinerId, ".0.txt");
   GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
 }

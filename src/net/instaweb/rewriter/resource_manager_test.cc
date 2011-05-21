@@ -418,6 +418,14 @@ class ResourceManagerTest : public ResourceManagerTestBase {
                                       next_expire);
     }
   }
+
+  GoogleString MakeEvilUrl(const StringPiece& host, const StringPiece& name) {
+    GoogleString escaped_abs;
+    UrlEscaper::EncodeToUrlSegment(name, &escaped_abs);
+    // Do not use Encode, which will make the URL non-evil.
+    return StrCat("http://", host, "/dir/123/", escaped_abs,
+                  ".pagespeed.jm.0.js");
+  }
 };
 
 TEST_F(ResourceManagerTest, TestNamed) {
@@ -438,10 +446,7 @@ TEST_F(ResourceManagerTest, TestOutputInputUrl) {
 }
 
 TEST_F(ResourceManagerTest, TestOutputInputUrlEvil) {
-  GoogleString escaped_abs;
-  UrlEscaper::EncodeToUrlSegment("http://www.evil.com", &escaped_abs);
-  GoogleString url = Encode("http://example.com/dir/123/",
-                            "jm", "0", escaped_abs, "js");
+  GoogleString url = MakeEvilUrl("example.com", "http://www.evil.com");
   OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   RewriteFilter* filter = rewrite_driver_.FindFilter(
@@ -456,10 +461,7 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlBusy) {
   EXPECT_TRUE(options_.domain_lawyer()->AddOriginDomainMapping(
       "www.busy.com", "example.com", &message_handler_));
 
-  GoogleString escaped_abs;
-  UrlEscaper::EncodeToUrlSegment("http://www.busy.com", &escaped_abs);
-  GoogleString url = Encode("http://example.com/dir/123/",
-                            "jm", "0", escaped_abs, "js");
+  GoogleString url = MakeEvilUrl("example.com", "http://www.busy.com");
   OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   RewriteFilter* filter = rewrite_driver_.FindFilter(

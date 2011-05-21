@@ -26,7 +26,9 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
 class HtmlElement;
+class GoogleUrl;
 class RewriteDriver;
 class Statistics;
 class Variable;
@@ -45,9 +47,12 @@ class DomainRewriteFilter : public CommonFilter {
 
   virtual const char* Name() const { return "DomainRewrite"; }
 
- private:
-  bool Rewrite(const StringPiece& url_to_trim, GoogleString* trimmed_url);
+  // Rewrites the specified URL (which might be relative to the base tag)
+  // into an absolute sharded url.
+  bool Rewrite(const StringPiece& input_url, const GoogleUrl& base_url,
+               GoogleString* output_url);
 
+ private:
   ResourceTagScanner tag_scanner_;
   // Stats on how much domain-rewriting we've done.
   Variable* rewrite_count_;

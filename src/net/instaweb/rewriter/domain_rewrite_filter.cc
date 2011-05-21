@@ -58,7 +58,7 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
   if (attr != NULL) {
     StringPiece val(attr->value());
     GoogleString rewritten_val;
-    if (Rewrite(val, &rewritten_val)) {
+    if (Rewrite(val, driver_->base_url(), &rewritten_val)) {
       attr->SetValue(rewritten_val);
       rewrite_count_->Add(1);
     }
@@ -67,12 +67,13 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
 
 // Resolve the url we want to rewrite, and then shard as appropriate.
 bool DomainRewriteFilter::Rewrite(const StringPiece& url_to_rewrite,
+                                  const GoogleUrl& base_url,
                                   GoogleString* rewritten_url) {
   if (url_to_rewrite.empty() || !BaseUrlIsValid()) {
     return false;
   }
 
-  GoogleUrl orig_url(driver_->base_url(), url_to_rewrite);
+  GoogleUrl orig_url(base_url, url_to_rewrite);
   StringPiece orig_spec = orig_url.Spec();
   const RewriteOptions* options = driver_->options();
   if (!orig_url.is_valid() || !orig_url.is_standard() ||
@@ -100,7 +101,7 @@ bool DomainRewriteFilter::Rewrite(const StringPiece& url_to_rewrite,
   const DomainLawyer* lawyer = options->domain_lawyer();
   GoogleString mapped_domain_name;
   GoogleUrl resolved_request;
-  if (!lawyer->MapRequestToDomain(driver_->base_url(), url_to_rewrite,
+  if (!lawyer->MapRequestToDomain(base_url, url_to_rewrite,
                                   &mapped_domain_name, &resolved_request,
                                   driver_->message_handler())) {
     return false;

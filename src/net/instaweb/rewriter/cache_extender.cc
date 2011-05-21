@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -66,7 +67,8 @@ CacheExtender::CacheExtender(RewriteDriver* driver, const char* filter_prefix)
     : RewriteSingleResourceFilter(driver, filter_prefix),
       tag_scanner_(driver_),
       extension_count_(NULL),
-      not_cacheable_count_(NULL) {
+      not_cacheable_count_(NULL),
+      domain_rewriter_(NULL) {
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
     extension_count_ = stats->GetVariable(kCacheExtensions);
@@ -135,6 +137,28 @@ bool CacheExtender::ComputeOnTheFly() const {
   return true;
 }
 
+namespace {
+
+class RewriteDomainTransformer : public CssTagScanner::Transformer {
+ public:
+  RewriteDomainTransformer(const GoogleUrl& base_url,
+                           DomainRewriteFilter* domain_rewrite_filter)
+      : base_url_(base_url), domain_rewrite_filter_(domain_rewrite_filter) {
+  }
+
+  virtual ~RewriteDomainTransformer() {}
+
+  virtual bool Transform(const StringPiece& in, GoogleString* out) {
+    return domain_rewrite_filter_->Rewrite(in, base_url_, out);
+  }
+
+ private:
+  const GoogleUrl& base_url_;
+  DomainRewriteFilter* domain_rewrite_filter_;
+};
+
+}  // namespace
+
 RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
@@ -164,14 +188,24 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   GoogleString absolutified;
   GoogleUrl input_resource_gurl(input_resource->url());
   StringPiece input_dir = input_resource_gurl.AllExceptLeaf();
-  if ((input_resource->type() == &kContentTypeCss) &&
-      (input_dir != output_resource->resolved_base())) {
-    // TODO(jmarantz): find a mechanism to write this directly into
-    // the HTTPValue so we can reduce the number of times that we
-    // copy entire resources.
-    StringWriter writer(&absolutified);
-    CssTagScanner::AbsolutifyUrls(contents, url, &writer, message_handler);
-    contents = absolutified;
+  const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
+  if ((domain_rewriter_ != NULL) &&
+      (input_resource->type() == &kContentTypeCss) &&
+      (lawyer->WillDomainChange(input_resource_gurl.Origin()) ||
+       (input_dir != output_resource->resolved_base()))) {
+    // Embedded URLs in the CSS must be evaluated with respect to
+    // the CSS files rewritten domain, not the input domain.
+    GoogleUrl output_gurl(output_resource->resolved_base());
+    if (output_gurl.is_valid()) {
+      // TODO(jmarantz): find a mechanism to write this directly into
+      // the HTTPValue so we can reduce the number of times that we
+      // copy entire resources.
+      StringWriter writer(&absolutified);
+      RewriteDomainTransformer transformer(output_gurl, domain_rewriter_);
+      CssTagScanner::TransformUrls(contents, &writer, &transformer,
+                                   message_handler);
+      contents = absolutified;
+    }
   }
   // TODO(sligocki): Should we preserve the response headers from the
   // original resource?

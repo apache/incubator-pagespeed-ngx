@@ -15,7 +15,6 @@
  */
 
 #include <cstddef>
-#include <string>
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/string.h"

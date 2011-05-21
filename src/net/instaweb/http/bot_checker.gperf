@@ -19,25 +19,17 @@ namespace net_instaweb {
 %%
 ### These names are either application names or domain names of BOTs.
 ### This is not a complete list of BOTs names -- just the ones we want
-### to scan for now. We leave the ones we are not quite sure in comment area
-### at the end of the list.
-### The process to get the following names.
-### Go website http://www.robotstxt.org/db.html.
-### Download all.txt from 'Robots Database Export' page.
-### Run awk '/robot-useragent:/ {print $2}' all.txt >> step1.txt.
-### awk '/[Bb][Oo][Tt]/||/[Rr]boto/||/[Ss]pider/ {print $0}' >> step2.txt.
-### awk -F / '{print $1}' step2.txt.
-### add Googlebot-Image, bingbot, Yahoo!. 
-### about.ask.com, Baiduspider+(+http://www.baidu.com/search/spider.htm).
-### BackRub, Gigabot, OntoSpider, YodaoBot, YandexBot, mod_pagespeed.
+### to scan for now.
+### The script to get the following names is generate_bots_list.sh.
+about.ask.com
+AITCSRobot
 AlkalineBOT
 AraybOt
 ArchitextSpider
 ASpider
-about.ask.com
-BaySpider
 BackRub
 Baiduspider+(+http://www.baidu.com/search/spider.htm)
+BaySpider
 bbot
 bingbot
 borg-bot
@@ -49,51 +41,49 @@ CoolBot
 CydralSpider
 dienstspider
 DIIbot
+dlw3robot
 DNAbot
 DragonBot
 EIT-Link-Verifier-Robot
+ESISmartSpider
 Fish-Search-Robot
-Robot
 gammaSpider
 Gigabot
 Googlebot
 Googlebot-Image
-AITCSRobot
-wired-digital-newsbot
 iajaBot
 InfoSpiders
 JBot
 Jobot
 JoeBot
 JubiiRobot
-Lycos
 KO_Yappo_Robot
-mod_pagespeed
+Lycos
 MOMspider
 MSNBOT
 NDSpider
+OntoSpider
 PortalBSpider
 psbot
 RixBot
+Robot
 Roverbot
 SimBot
-ESISmartSpider
 Solbot
 Spider
 SpiderBot
 spiderline
 tarspider
-dlw3robot
 TechBOT
-TLSpider
 uptimebot
 Verticrawlbot
 void-bot
 VWbot_K
-Yahoo!
-YodaoBot
-YandexBot
 w@pSpider
+wired-digital-newsbot
+Yahoo!
+YandexBot
+YodaoBot
 %%
 
 // TODO:(fangfei) check other cases

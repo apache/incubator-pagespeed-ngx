@@ -19,15 +19,17 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CACHE_EXTENDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CACHE_EXTENDER_H_
 
+#include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
+class DomainRewriteFilter;
 class HtmlElement;
-class OutputResource;
-class Resource;
 class ResponseHeaders;
 class RewriteDriver;
 class Statistics;
@@ -53,6 +55,10 @@ class CacheExtender : public RewriteSingleResourceFilter {
 
   virtual const char* Name() const { return "CacheExtender"; }
 
+  void set_domain_rewriter(DomainRewriteFilter* domain_rewriter) {
+    domain_rewriter_ = domain_rewriter;
+  }
+
  protected:
   virtual bool ComputeOnTheFly() const;
   virtual RewriteResult RewriteLoadedResource(
@@ -68,6 +74,7 @@ class CacheExtender : public RewriteSingleResourceFilter {
   ResourceTagScanner tag_scanner_;
   Variable* extension_count_;
   Variable* not_cacheable_count_;
+  DomainRewriteFilter* domain_rewriter_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheExtender);
 };

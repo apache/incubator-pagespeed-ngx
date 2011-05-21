@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -30,6 +31,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"        // for shared_ptr
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -46,6 +48,17 @@ class RewriteDriverTest : public ResourceManagerTestBase {
     OutputResourcePtr resource(
         rewrite_driver_.DecodeOutputResource(url, &filter));
     return (resource.get() != NULL);
+  }
+
+  const ContentType* DecodeContentType(const StringPiece& url) {
+    const ContentType* type = NULL;
+    RewriteFilter* filter;
+    OutputResourcePtr output_resource(
+        rewrite_driver_.DecodeOutputResource(url, &filter));
+    if (output_resource.get() != NULL) {
+      type = output_resource->type();
+    }
+    return type;
   }
 
   GoogleString BaseUrlSpec() {
@@ -78,6 +91,23 @@ TEST_F(RewriteDriverTest, TestLegacyUrl) {
       << "invalid hash code -- not 1 or 32 chars";
   ASSERT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig.x"))
       << "invalid extension";
+}
+
+TEST_F(RewriteDriverTest, TestInferContentType) {
+  rewrite_driver_.AddFilters();
+  SetBaseUrlForFetch("http://example.com/dir/123/index.html");
+  EXPECT_TRUE(DecodeContentType("http://example.com/z.pagespeed.jm.0.unknown")
+              == NULL);
+  EXPECT_EQ(&kContentTypeJavascript,
+            DecodeContentType("http://example.com/orig.pagespeed.jm.0.js"));
+  EXPECT_EQ(&kContentTypeCss,
+            DecodeContentType("http://example.com/orig.pagespeed.cf.0.css"));
+  EXPECT_EQ(&kContentTypeJpeg,
+            DecodeContentType("http://example.com/xorig.pagespeed.ic.0.jpg"));
+  EXPECT_EQ(&kContentTypePng,
+            DecodeContentType("http://example.com/orig.pagespeed.ce.0.png"));
+  EXPECT_EQ(&kContentTypeGif,
+            DecodeContentType("http://example.com/dir/xy.pagespeed.ic.0.gif"));
 }
 
 TEST_F(RewriteDriverTest, TestModernUrl) {

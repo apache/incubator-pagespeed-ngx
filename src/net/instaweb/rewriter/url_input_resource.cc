@@ -247,6 +247,12 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
   }
 
   virtual void DoneInternal(bool success) {
+    if (success) {
+      // Because we've authorized the Fetcher to directly populate the
+      // ResponseHeaders in resource_->meta_data_, we must explicitly
+      // propagate the content-type to the resource_->type_.
+      resource_->DetermineContentType();
+    }
     callback_->Done(success);
   }
 

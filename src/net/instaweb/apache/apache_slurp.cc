@@ -38,15 +38,16 @@
 // For now use wget when slurping additional files.
 
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/util/public/chunking_writer.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/http/public/url_fetcher.h"
 
 // The Apache headers must be after instaweb headers.  Otherwise, the
 // compiler will complain
@@ -197,14 +198,30 @@ GoogleString RemoveModPageSpeedQueryParams(
 // rather not send ModPagespeed=off to servers that are not expecting it.
 class ModPagespeedStrippingFetcher : public UrlFetcher {
  public:
-  ModPagespeedStrippingFetcher(UrlFetcher* fetcher) : fetcher_(fetcher) {}
-  virtual bool StreamingFetchUrl(const GoogleString& url,
-                                 const RequestHeaders& request_headers,
+  ModPagespeedStrippingFetcher(UrlFetcher* fetcher, DomainLawyer* lawyer)
+      : fetcher_(fetcher),
+        lawyer_(lawyer) {
+  }
+  virtual bool StreamingFetchUrl(const GoogleString& url_input,
+                                 const RequestHeaders& request_headers_input,
                                  ResponseHeaders* response_headers,
                                  Writer* fetched_content_writer,
                                  MessageHandler* message_handler) {
     GoogleString contents;
     StringWriter writer(&contents);
+
+    // To test sharding domains from a slurp of a site that does not support
+    // sharded domains, we apply mapping origin domain here.  Simply map all
+    // the shards back into the origin domain in pagespeed.conf.
+    GoogleString url(url_input), origin_url;
+    RequestHeaders request_headers;
+    request_headers.CopyFrom(request_headers_input);
+    if (lawyer_->MapOrigin(url, &origin_url)) {
+      url = origin_url;
+      GoogleUrl gurl(url);
+      request_headers.Replace(HttpAttributes::kHost, gurl.Host());
+    }
+
     bool fetched = fetcher_->StreamingFetchUrl(
         url, request_headers, response_headers, &writer, message_handler);
     if (fetched) {
@@ -212,14 +229,13 @@ class ModPagespeedStrippingFetcher : public UrlFetcher {
       if (response_headers->Lookup(kModPagespeedHeader, &v)) {
         response_headers->Clear();
         GoogleString::size_type question = url.find('?');
-        GoogleString url_pagespeed_off(url);
         if (question == GoogleString::npos) {
-          url_pagespeed_off += "?ModPagespeed=off";
+          url += "?ModPagespeed=off";
         } else {
-          url_pagespeed_off += "&ModPagespeed=off";
+          url += "&ModPagespeed=off";
         }
         fetched = fetcher_->StreamingFetchUrl(
-            url_pagespeed_off, request_headers, response_headers,
+            url, request_headers, response_headers,
             fetched_content_writer, message_handler);
       } else {
         // It was not mod-pagespeed in the first place; just pass it through
@@ -231,6 +247,7 @@ class ModPagespeedStrippingFetcher : public UrlFetcher {
   }
  private:
   UrlFetcher* fetcher_;
+  DomainLawyer* lawyer_;
 };
 
 void SlurpUrl(ApacheRewriteDriverFactory* factory, request_rec* r) {
@@ -245,7 +262,8 @@ void SlurpUrl(ApacheRewriteDriverFactory* factory, request_rec* r) {
       uri, r->parsed_uri.query);
 
   UrlFetcher* fetcher = factory->ComputeUrlFetcher();
-  ModPagespeedStrippingFetcher stripping_fetcher(fetcher);
+  ModPagespeedStrippingFetcher stripping_fetcher(
+      fetcher, factory->options()->domain_lawyer());
 
   if (stripping_fetcher.StreamingFetchUrl(stripped_url, request_headers,
                                           &response_headers, &writer,

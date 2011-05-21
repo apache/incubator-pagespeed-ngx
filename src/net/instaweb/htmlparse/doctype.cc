@@ -40,6 +40,7 @@ bool DocType::IsXhtml() const {
     case XHTML_1_1:
     case XHTML_1_0_STRICT:
     case XHTML_1_0_TRANSITIONAL:
+    case OTHER_XHTML:
       return true;
     default:
       return false;
@@ -82,16 +83,23 @@ bool DocType::Parse(const StringPiece& directive,
         doctype_ = HTML_5;
       }
     } else if (parts.size() == 5 && StringCaseEqual(parts[2], "public")) {
-      if (parts[3] == "-//W3C//DTD HTML 4.01//EN") {
+      const StringPiece parts3(parts[3]);
+      if (parts3.starts_with("-//W3C//DTD XHTML")) {
+        if (parts3 == "-//W3C//DTD XHTML 1.1//EN") {
+          doctype_ = XHTML_1_1;
+        } else if (parts3 == "-//W3C//DTD XHTML 1.0 Strict//EN") {
+          doctype_ = XHTML_1_0_STRICT;
+        } else if (parts3 == "-//W3C//DTD XHTML 1.0 Transitional//EN") {
+          doctype_ = XHTML_1_0_TRANSITIONAL;
+        } else {
+          // This should catch other weird XHTML cases (e.g. XHTML+RDFa,
+          // XHTML+MathML+SVG, and so forth).
+          doctype_ = OTHER_XHTML;
+        }
+      } else if (parts3 == "-//W3C//DTD HTML 4.01//EN") {
         doctype_ = HTML_4_STRICT;
-      } else if (parts[3] == "-//W3C//DTD HTML 4.01 Transitional//EN") {
+      } else if (parts3 == "-//W3C//DTD HTML 4.01 Transitional//EN") {
         doctype_ = HTML_4_TRANSITIONAL;
-      } else if (parts[3] == "-//W3C//DTD XHTML 1.1//EN") {
-        doctype_ = XHTML_1_1;
-      } else if (parts[3] == "-//W3C//DTD XHTML 1.0 Strict//EN") {
-        doctype_ = XHTML_1_0_STRICT;
-      } else if (parts[3] == "-//W3C//DTD XHTML 1.0 Transitional//EN") {
-        doctype_ = XHTML_1_0_TRANSITIONAL;
       }
     }
   }
