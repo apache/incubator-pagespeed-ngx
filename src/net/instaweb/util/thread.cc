@@ -19,6 +19,7 @@
 // Implementation of the Thread class, which routes things to an underlying
 // ThreadImpl.
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -26,17 +27,30 @@
 namespace net_instaweb {
 
 ThreadSystem::Thread::Thread(ThreadSystem* runtime, ThreadFlags flags)
-    : impl_(runtime->NewThreadImpl(this, flags)) {
+    : impl_(runtime->NewThreadImpl(this, flags)),
+      flags_(flags),
+      started_(false) {
 }
 
 ThreadSystem::Thread::~Thread() {
 }
 
 bool ThreadSystem::Thread::Start() {
-  return impl_->StartImpl();
+  started_ = impl_->StartImpl();
+  return started_;
 }
 
 void ThreadSystem::Thread::Join() {
+  if (!started_) {
+    DCHECK(false) << "Trying to join thread that wasn't Start()ed";
+    return;
+  }
+
+  if ((flags_ & ThreadSystem::kJoinable) == 0) {
+    DCHECK(false) << "Trying to join a detached thread";
+    return;
+  }
+
   impl_->JoinImpl();
 }
 

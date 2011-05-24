@@ -206,6 +206,7 @@ endif
 $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.template
 	sed -e "s!@@APACHE_DOC_ROOT@@!$(APACHE_DOC_ROOT)!g" \
 	    -e "s!@@APACHE_DOMAIN@@!$(APACHE_DOMAIN)!g" \
+	    -e "s!@@APACHE_MODULES@@!$(APACHE_MODULES)!g" \
 	    -e "s!@@MODPAGESPEED_CACHE_ROOT@@!$(MOD_PAGESPEED_FILE_ROOT)!g" \
 	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
 	    -e "s@# ModPagespeedSlurpReadOnly on@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
@@ -230,18 +231,18 @@ setup_staging_dir :
 
 # Generate a configuration file and copy it to the staging area.
 # Also copy the example tree, and the built Apache module
-staging: setup_staging_dir $(CONF_TEMPLATES)
+staging_except_module: setup_staging_dir $(CONF_TEMPLATES)
 	echo "LoadModule pagespeed_module $(APACHE_MODULES)/mod_pagespeed.so" \
 	 	> $(STAGING_DIR)/pagespeed.load
 	echo "LoadModule deflate_module $(APACHE_MODULES)/mod_deflate.so" \
 	 	>> $(STAGING_DIR)/pagespeed.load
 	$(MODS_ENABLED_STAGING_COMMANDS)
 	cp -rp mod_pagespeed_example mod_pagespeed_test $(STAGING_DIR)
+
+staging: staging_except_module
 	cp $(PAGESPEED_MODULE) $(STAGING_DIR)/mod_pagespeed.so
 
-# To install the mod_pagespeed configuration into the system, you must
-# run this as root, or under sudo.
-install : mod_pagespeed_file_root
+install_except_module : mod_pagespeed_file_root
 	$(MODS_ENABLED_INSTALL_COMMANDS)
 	cat $(CONF_SOURCES) > $(APACHE_CONF)/pagespeed.conf
 	rm -rf $(APACHE_DOC_ROOT)/mod_pagespeed_example \
@@ -250,6 +251,10 @@ install : mod_pagespeed_file_root
 	      $(STAGING_DIR)/mod_pagespeed_test $(APACHE_DOC_ROOT)
 	chown -R $(APACHE_USER) $(APACHE_DOC_ROOT)/mod_pagespeed_example \
 	 			$(APACHE_DOC_ROOT)/mod_pagespeed_test
+
+# To install the mod_pagespeed configuration into the system, you must
+# run this as root, or under sudo.
+install : install_except_module
 	cp $(STAGING_DIR)/mod_pagespeed.so $(APACHE_MODULES)
 
 mod_pagespeed_file_root :
@@ -286,3 +291,32 @@ restart : staging
 # Tests that the installed mod_pagespeed server is working.
 test :
 	./system_test.sh localhost
+
+# Now hook in the full integration test suite. It needs to be run as root.
+apache_install_conf:
+	$(MAKE) staging_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
+	                $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
+	                $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST)
+	$(MAKE) install_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
+	                $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
+	                $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST)
+
+apache_debug_restart:
+	$(APACHE_CONTROL_PROGRAM) restart
+
+apache_debug_stop: stop
+
+# Hooks for tests we can only run in development due to needing extensive
+# configuration changes in Apache (and potentially different build flags).
+# Stubbed out here.
+apache_debug_leak_test:
+apache_debug_proxy_test:
+apache_debug_slurp_test:
+
+APACHE_DEBUG_PORT=80
+APACHE_CTRL_BIN=$(APACHE_CONTROL_PROGRAM)
+APACHE_DEBUG_PAGESPEED_CONF=$(APACHE_CONF)/pagespeed.conf
+PAGESPEED_ROOT=$(MOD_PAGESPEED_FILE_ROOT)
+INSTALL_DATA_DIR=.
+
+include tests.mk

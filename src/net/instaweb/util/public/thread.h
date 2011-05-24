@@ -65,6 +65,9 @@ class ThreadSystem::Thread {
   // implementation of threading and which does the actual threading work.
   scoped_ptr<ThreadImpl> impl_;
 
+  ThreadFlags flags_;
+  bool started_;
+
   DISALLOW_COPY_AND_ASSIGN(Thread);
 };
 

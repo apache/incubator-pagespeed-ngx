@@ -39,12 +39,19 @@
 ModPagespeedEnableFilters add_instrumentation
 
 # Enable htaccess
-<Directory "@@APACHE_DOC_ROOT@@" >
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/" >
+    AllowOverride All
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/" >
     AllowOverride All
 </Directory>
 
 # This is needed for the server-side includes test at the end of
 # system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
+<IfModule !include_module>
+  LoadModule include_module @@APACHE_MODULES@@/mod_include.so
+</IfModule>
 AddType text/html .shtml
 AddOutputFilter INCLUDES .shtml
 
@@ -52,6 +59,9 @@ AddOutputFilter INCLUDES .shtml
 ModPagespeedDomain www.google.co.ca:8085
 
 #SPELING # Enable mod_speling to ensure that we don't regress Issue 194
+#SPELING <IfModule !speling_module>
+#SPELING   LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so
+#SPELING </IfModule>
 #SPELING CheckSpelling on
 
 #STRESS # These lines are only needed for the stress test.

@@ -5,11 +5,21 @@
 # Usage: ./system_test.sh HOSTNAME
 # Tests a mod_pagespeed installation by fetching and verifying all the examples.
 # Exits with status 0 if all tests pass.  Exits 1 immediately if any test fails.
+# Expects APACHE_DEBUG_PAGESPEED_CONF to point to our config file,
+# APACHE_LOG to the log file
 
 if [ $# != 1 ]; then
   echo Usage: ./system_test.sh HOSTNAME
   exit 2
 fi;
+
+if [ -z $APACHE_DEBUG_PAGESPEED_CONF ]; then
+  APACHE_DEBUG_PAGESPEED_CONF=/usr/local/apache2/conf/pagespeed.conf
+fi
+
+if [ -z $APACHE_LOG ]; then
+  APACHE_LOG=/usr/local/apache2/logs/error_log
+fi
 
 # If the user has specified an alternate WGET as an environment variable, then
 # use that, otherwise use the one in the path.
@@ -179,8 +189,7 @@ check [ $? != 0 ]
 
 # Determine whether statistics are enabled or not.  If not, don't test them,
 # but do an additional regression test that tries harder to get a cache miss.
-grep "# ModPagespeedStatistics off" /usr/local/apache2/conf/pagespeed.conf \
-   >/dev/null
+grep "# ModPagespeedStatistics off" $APACHE_DEBUG_PAGESPEED_CONF > /dev/null
 if [ $? = 0 ]; then
   echo TEST: 404s are served and properly recorded.
   NUM_404=$($WGET_DUMP $STATISTICS_URL | grep resource_404_count | cut -d: -f2)
@@ -487,7 +496,7 @@ check \
 echo TEST: Connection refused handling
 echo $WGET_DUMP $TEST_ROOT/connection_refused.html
 check $WGET_DUMP $TEST_ROOT/connection_refused.html > /dev/null
-ERRS=`cat /usr/local/apache2/logs/error_log | grep "Serf status 111" | wc -l`
+ERRS=`cat $APACHE_LOG | grep "Serf status 111" | wc -l`
 sleep 1
 # Check that we have one error or less --- might not have flushed the log yet..
 # (luckily we nearly certainly do when spewing dozens of errors)

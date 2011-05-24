@@ -50,13 +50,15 @@
   ],
   'target_defaults': {
     'conditions': [
-      # Disable -Werror when not using the version of gcc that development
-      # is generally done with, to avoid breaking things for users with
-      # something older or newer (which produces different warnings).
-      ['<(gcc_version) != <(gcc_devel_version)', {
-        'cflags!': ['-Werror']
-      }],
       ['OS == "linux"', {
+        # Disable -Werror when not using the version of gcc that development
+        # is generally done with, to avoid breaking things for users with
+        # something older or newer (which produces different warnings).
+        'conditions': [
+          ['<(gcc_version) != <(gcc_devel_version)', {
+          'cflags!': ['-Werror']
+          }],
+        ],
         'cflags': [
           # Our dependency on OpenCV need us to turn on exceptions.
           '-fexceptions',

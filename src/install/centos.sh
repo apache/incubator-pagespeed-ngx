@@ -5,4 +5,5 @@ exec make \
     APACHE_CONTROL_PROGRAM=/etc/init.d/httpd \
     APACHE_USER=apache \
     APACHE_DOC_ROOT=/var/www/html \
+    APACHE_LOG=/var/log/httpd/error_log \
     $*
