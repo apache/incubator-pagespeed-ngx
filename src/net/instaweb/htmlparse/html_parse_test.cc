@@ -770,6 +770,8 @@ class AttributeManipulationTest : public HtmlParseTest {
     html_parse_.AddAttribute(node_, HtmlName::kHref, "http://www.google.com/");
     node_->AddAttribute(html_parse_.MakeName(HtmlName::kId), "37", "");
     node_->AddAttribute(html_parse_.MakeName(HtmlName::kClass), "search!", "'");
+    // Add a binary attribute (one without value).
+    node_->AddAttribute(html_parse_.MakeName(HtmlName::kSelected), NULL, "");
     html_parse_.CloseElement(node_, HtmlElement::BRIEF_CLOSE, 0);
   }
 
@@ -794,36 +796,49 @@ TEST_F(AttributeManipulationTest, PropertiesAndDeserialize) {
   StringPiece google("http://www.google.com/");
   StringPiece number37("37");
   StringPiece search("search!");
-  EXPECT_EQ(3, node_->attribute_size());
+  EXPECT_EQ(4, node_->attribute_size());
   EXPECT_EQ(google, node_->AttributeValue(HtmlName::kHref));
   EXPECT_EQ(number37, node_->AttributeValue(HtmlName::kId));
   EXPECT_EQ(search, node_->AttributeValue(HtmlName::kClass));
+  // Returns NULL for attributes that do not exist ...
   EXPECT_TRUE(NULL == node_->AttributeValue(HtmlName::kNotAKeyword));
+  // ... and for attributes which have no value.
+  EXPECT_TRUE(NULL == node_->AttributeValue(HtmlName::kSelected));
   int val = -35;
   EXPECT_FALSE(node_->IntAttributeValue(HtmlName::kNotAKeyword, &val));
+  EXPECT_EQ(-35, val);
+  EXPECT_FALSE(node_->IntAttributeValue(HtmlName::kSelected, &val));
   EXPECT_EQ(-35, val);
   EXPECT_FALSE(node_->IntAttributeValue(HtmlName::kHref, &val));
   EXPECT_EQ(0, val);
   EXPECT_TRUE(node_->IntAttributeValue(HtmlName::kId, &val));
   EXPECT_EQ(37, val);
+  // Returns NULL for attributes that do not exist.
   EXPECT_TRUE(NULL == node_->FindAttribute(HtmlName::kNotAKeyword));
+  // Returns an attribute reference for attributes without values.
+  EXPECT_TRUE(NULL != node_->FindAttribute(HtmlName::kSelected));
+  EXPECT_TRUE(NULL == node_->FindAttribute(HtmlName::kSelected)->value());
   EXPECT_EQ(google, node_->FindAttribute(HtmlName::kHref)->value());
   EXPECT_EQ(number37, node_->FindAttribute(HtmlName::kId)->value());
   EXPECT_EQ(search, node_->FindAttribute(HtmlName::kClass)->value());
   EXPECT_EQ(google, node_->FindAttribute(HtmlName::kHref)->escaped_value());
   EXPECT_EQ(number37, node_->FindAttribute(HtmlName::kId)->escaped_value());
   EXPECT_EQ(search, node_->FindAttribute(HtmlName::kClass)->escaped_value());
-  CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'/>");
+  CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'"
+                " selected />");
 }
 
 TEST_F(AttributeManipulationTest, AddAttribute) {
   html_parse_.AddAttribute(node_, HtmlName::kLang, "ENG-US");
   CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'"
-                " lang=\"ENG-US\"/>");
+                " selected lang=\"ENG-US\"/>");
 }
 
 TEST_F(AttributeManipulationTest, DeleteAttribute) {
   node_->DeleteAttribute(1);
+  CheckExpected("<a href=\"http://www.google.com/\" class='search!'"
+                " selected />");
+  node_->DeleteAttribute(2);
   CheckExpected("<a href=\"http://www.google.com/\" class='search!'/>");
 }
 
@@ -834,7 +849,7 @@ TEST_F(AttributeManipulationTest, ModifyAttribute) {
   href->SetValue("google");
   href->set_quote("'");
   html_parse_.SetAttributeName(href, HtmlName::kSrc);
-  CheckExpected("<a src='google' id=37 class='search!'/>");
+  CheckExpected("<a src='google' id=37 class='search!' selected />");
 }
 
 TEST_F(AttributeManipulationTest, ModifyKeepAttribute) {
@@ -845,7 +860,8 @@ TEST_F(AttributeManipulationTest, ModifyKeepAttribute) {
   href->SetValue(href->value());
   href->set_quote(href->quote());
   href->set_name(href->name());
-  CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'/>");
+  CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'"
+                " selected />");
 }
 
 TEST_F(AttributeManipulationTest, BadUrl) {
@@ -862,7 +878,7 @@ TEST_F(AttributeManipulationTest, CloneElement) {
   EXPECT_NE(clone, node_);
   EXPECT_EQ(HtmlName::kA, clone->keyword());
   EXPECT_EQ(node_->close_style(), clone->close_style());
-  EXPECT_EQ(3, clone->attribute_size());
+  EXPECT_EQ(4, clone->attribute_size());
   EXPECT_EQ(HtmlName::kHref, clone->attribute(0).keyword());
   EXPECT_EQ(GoogleString("http://www.google.com/"),
             clone->attribute(0).value());
@@ -870,18 +886,23 @@ TEST_F(AttributeManipulationTest, CloneElement) {
   EXPECT_EQ(GoogleString("37"), clone->attribute(1).value());
   EXPECT_EQ(HtmlName::kClass, clone->attribute(2).keyword());
   EXPECT_EQ(GoogleString("search!"), clone->attribute(2).value());
+  EXPECT_EQ(HtmlName::kSelected, clone->attribute(3).keyword());
+  EXPECT_EQ(NULL, clone->attribute(3).value());
 
   HtmlElement::Attribute* id = clone->FindAttribute(HtmlName::kId);
   ASSERT_TRUE(id != NULL);
   id->SetValue("38");
 
   // Clone is not added initially, and the original is not touched.
-  CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'/>");
+  CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'"
+                " selected />");
 
   // Looks sane when added.
   html_parse_.InsertElementBeforeElement(node_, clone);
-  CheckExpected("<a href=\"http://www.google.com/\" id=38 class='search!'/>"
-                "<a href=\"http://www.google.com/\" id=37 class='search!'/>");
+  CheckExpected("<a href=\"http://www.google.com/\" id=38 class='search!'"
+                " selected />"
+                "<a href=\"http://www.google.com/\" id=37 class='search!'"
+                " selected />");
 }
 
 }  // namespace net_instaweb

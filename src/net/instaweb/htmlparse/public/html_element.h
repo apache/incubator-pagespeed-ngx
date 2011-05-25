@@ -150,7 +150,11 @@ class HtmlElement : public HtmlNode {
   void AddAttribute(const Attribute& attr);
 
   // Unconditionally add attribute, copying value.
-  // Quote is assumed to be a static const char *.
+  // For binary attributes (those without values) use value=NULL.
+  // TODO(sligocki): StringPiece(NULL) seems fragile because what it is or
+  // how it's treated is not docutmented.
+  //
+  // quote is assumed to be a static const char *.
   // Doesn't check for attribute duplication (which is illegal in html).
   //
   // The value, if non-null, is assumed to be unescaped.  See also
@@ -182,7 +186,9 @@ class HtmlElement : public HtmlNode {
     return const_cast<Attribute*>(result);
   }
 
-  // Look up attribute value by name.  NULL if no attribute exists.
+  // Look up attribute value by name.
+  // Returns NULL if no attribute exists or if attribute has no value.
+  // If you care about this distinction, call FindAttribute.
   // Use this only if you don't intend to change the attribute value;
   // if you might change the attribute value, use FindAttribute instead
   // (this avoids a double lookup).
@@ -199,7 +205,7 @@ class HtmlElement : public HtmlNode {
   // sets *value.
   bool IntAttributeValue(HtmlName::Keyword name, int* value) const {
     const Attribute* attribute = FindAttribute(name);
-    if (attribute != NULL) {
+    if (attribute != NULL && attribute->value() != NULL) {
       return StringToInt(attribute->value(), value);
     }
     return false;

@@ -205,7 +205,7 @@ void HtmlKeywords::ShutDown() {
 }
 
 StringPiece HtmlKeywords::UnescapeHelper(const StringPiece& escaped,
-                                       GoogleString* buf) const {
+                                         GoogleString* buf) const {
   if (escaped.data() == NULL) {
     return escaped;
   }

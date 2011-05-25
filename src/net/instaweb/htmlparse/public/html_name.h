@@ -26,7 +26,7 @@ namespace net_instaweb {
 // HTML names are case insensitive.  However, in the parser, we keep
 // the original parsed case of the name, in addition to the html
 // keyword enumeration, if any.  Thus for both tags and attribute
-// namees, we have an enum representation which is used in filters
+// names, we have an enum representation which is used in filters
 // for scanning, plus we have the original string representation.
 class HtmlName {
  public:
