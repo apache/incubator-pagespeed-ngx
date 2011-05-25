@@ -119,12 +119,17 @@ class RewriteDriver : public HtmlParse {
 
   void RememberResource(const StringPiece& url, const ResourcePtr& resource);
 
-  void SetUserAgent(const char* user_agent_string) {
-    user_agent_.set_user_agent(user_agent_string);
-  }
-
-  const UserAgent& user_agent() const {
+  const GoogleString& user_agent() const {
     return user_agent_;
+  }
+  inline void set_user_agent(const StringPiece& user_agent_string) {
+    user_agent_string.CopyToString(&user_agent_);
+  }
+  const UserAgent& user_agent_matcher() const {
+    return user_agent_matcher_;
+  }
+  bool UserAgentSupportsImageInlining() const {
+    return user_agent_matcher_.SupportsImageInlining(user_agent_);
   }
 
   // Adds the filters from the options, specified by name in enabled_filters.
@@ -363,7 +368,7 @@ class RewriteDriver : public HtmlParse {
   bool filters_added_;
 
   GoogleUrl base_url_;
-
+  GoogleString user_agent_;
   // Attempt to fetch extant version of an OutputResource.  If available,
   // return true. If not, returns false and makes sure the resource is
   // locked for creation. This method may block trying to lock resource
@@ -393,7 +398,7 @@ class RewriteDriver : public HtmlParse {
 
   AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
-  UserAgent user_agent_;
+  UserAgent user_agent_matcher_;
   std::vector<HtmlFilter*> filters_;
   ScanFilter scan_filter_;
   scoped_ptr<DomainRewriteFilter> domain_rewriter_;

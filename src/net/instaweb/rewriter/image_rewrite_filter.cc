@@ -36,11 +36,11 @@
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_work_bound.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/user_agent.h"
 #include "net/instaweb/util/public/work_bound.h"
 
 namespace net_instaweb {
@@ -289,7 +289,8 @@ void ImageRewriteFilter::RewriteImageUrl(HtmlElement* element,
   }
 
   // See if we have a data URL, and if so use it if the browser can handle it
-  if (!driver_->user_agent().IsIe6or7() && cached->has_image_inlined_uri()) {
+  if (driver_->UserAgentSupportsImageInlining() &&
+      cached->has_image_inlined_uri()) {
     src->SetValue(cached->image_inlined_uri());
     // Delete dimensions, as they ought to be redundant given inline image data.
     element->DeleteAttribute(HtmlName::kWidth);

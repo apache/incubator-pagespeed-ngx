@@ -40,15 +40,17 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string.h"
 
+#include "net/instaweb/util/public/pthread_thread_system.h"
+
 #define URL_PREFIX "http://www.example.com/"
 
 namespace net_instaweb {
+
 class Hasher;
 class LRUCache;
 class MockTimer;
 class RewriteFilter;
 class SimpleStats;
-class WaitUrlAsyncFetcher;
 struct ContentType;
 
 const int kCacheSize = 100 * 1000 * 1000;
@@ -185,6 +187,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   MockHasher mock_hasher_;
   MD5Hasher md5_hasher_;
+  PthreadThreadSystem thread_system_;
 
   GoogleString file_prefix_;
   GoogleString url_prefix_;

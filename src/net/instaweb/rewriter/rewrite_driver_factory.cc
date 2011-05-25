@@ -43,6 +43,7 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -235,7 +236,7 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
         ComputeUrlAsyncFetcher(), hasher(),
         cache, http_cache_backend_, lock_manager(),
         message_handler(),
-        stats));
+        stats, thread_system()));
     resource_manager_->set_store_outputs_in_file_system(
         ShouldWriteResourcesToFileSystem());
   }
@@ -384,6 +385,13 @@ void RewriteDriverFactory::ShutDown() {
   http_cache_.reset(NULL);
   cache_fetcher_.reset(NULL);
   cache_async_fetcher_.reset(NULL);
+}
+
+ThreadSystem* RewriteDriverFactory::thread_system() {
+  if (thread_system_.get() == NULL) {
+    thread_system_.reset(DefaultThreadSystem());
+  }
+  return thread_system_.get();
 }
 
 }  // namespace net_instaweb

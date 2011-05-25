@@ -49,6 +49,7 @@ class ResourceContext;
 class ResponseHeaders;
 class RewriteOptions;
 class Statistics;
+class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
 class UrlSegmentEncoder;
@@ -77,7 +78,8 @@ class ResourceManager {
                   CacheInterface* metadata_cache,
                   NamedLockManager* lock_manager,
                   MessageHandler* handler,
-                  Statistics* statistics);
+                  Statistics* statistics,
+                  ThreadSystem* thread_system);
   ~ResourceManager();
 
   // Initialize statistics gathering.
@@ -261,6 +263,7 @@ class ResourceManager {
   NamedLockManager* lock_manager_;
   GoogleString max_age_string_;
   MessageHandler* message_handler_;
+  ThreadSystem* thread_system_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

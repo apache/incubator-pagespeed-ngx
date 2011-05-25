@@ -132,6 +132,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   virtual Timer* DefaultTimer();
   virtual CacheInterface* DefaultCacheInterface();
   virtual NamedLockManager* DefaultLockManager();
+  virtual ThreadSystem* DefaultThreadSystem();
   virtual AbstractMutex* cache_mutex() { return cache_mutex_.get(); }
   virtual AbstractMutex* rewrite_drivers_mutex() {
     return rewrite_drivers_mutex_.get(); }

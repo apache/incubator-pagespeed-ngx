@@ -191,7 +191,6 @@
         "apache/mem_clean_up.cc",
         'apache/apr_condvar_test.cc',
         'apache/apr_file_system_test.cc',
-        'apache/mem_debug.cc',
         'apache/speed_test.cc',
         'apache/serf_url_async_fetcher_test.cc',
       ],
@@ -214,6 +213,7 @@
         '<(DEPTH)',
       ],
       'sources': [
+        'apache/mem_debug.cc',
         'htmlparse/html_parse_test_base.cc',
         'http/mock_url_fetcher.cc',
         'rewriter/resource_manager_test_base.cc',

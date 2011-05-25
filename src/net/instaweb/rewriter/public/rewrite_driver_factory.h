@@ -45,6 +45,7 @@ class NamedLockManager;
 class ResourceManager;
 class RewriteDriver;
 class Statistics;
+class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
@@ -147,6 +148,8 @@ class RewriteDriverFactory {
   // you are done with it.
   RewriteDriver* NewCustomRewriteDriver(const RewriteOptions& options);
 
+  ThreadSystem* thread_system();
+
  protected:
   virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
   bool FetchersComputed() const;
@@ -161,6 +164,7 @@ class RewriteDriverFactory {
   virtual FileSystem* DefaultFileSystem() = 0;
   virtual Timer* DefaultTimer() = 0;
   virtual CacheInterface* DefaultCacheInterface() = 0;
+  virtual ThreadSystem* DefaultThreadSystem() = 0;
 
   // Overridable statistics (default is NullStatistics)
   virtual Statistics* statistics() { return &null_statistics_; }
@@ -241,6 +245,8 @@ class RewriteDriverFactory {
 
   // Manage locks for output resources.
   scoped_ptr<NamedLockManager> lock_manager_;
+
+  scoped_ptr<ThreadSystem> thread_system_;
 
   // Default statistics implementation, which can be overridden by children.
   NullStatistics null_statistics_;
