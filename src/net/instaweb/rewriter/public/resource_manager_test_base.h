@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -184,6 +185,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   CountingUrlAsyncFetcher counting_url_async_fetcher_;
   WaitUrlAsyncFetcher wait_url_async_fetcher_;
   FilenameEncoder filename_encoder_;
+  FileLoadPolicy null_file_load_policy_;
 
   MockHasher mock_hasher_;
   MD5Hasher md5_hasher_;

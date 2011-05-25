@@ -30,9 +30,16 @@ class MessageHandler;
 FileInputResource::~FileInputResource() {
 }
 
+// Note: We do not save this resource to the HttpCache, so it will be
+// reloaded for every request.
 bool FileInputResource::Load(MessageHandler* message_handler) {
   FileSystem* file_system = resource_manager_->file_system();
   if (file_system->ReadFile(filename_.c_str(), &value_, message_handler)) {
+    // TODO(sligocki): Is this reasonable? People might want custom headers.
+    // For example, Content-Type is set solely by file extension and will not
+    // be set if the extension is unknown :/
+    // Also, this sets a one year cache lifetime on the input resource.
+    // It's not clear that that matters, but it seems inappropriate.
     resource_manager_->SetDefaultHeaders(type_, &meta_data_);
     value_.SetHeaders(&meta_data_);
   }

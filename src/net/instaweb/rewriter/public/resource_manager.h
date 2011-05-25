@@ -40,6 +40,7 @@ namespace net_instaweb {
 class AbstractLock;
 class CacheInterface;
 class ContentType;
+class FileLoadPolicy;
 class FileSystem;
 class FilenameEncoder;
 class Hasher;
@@ -73,6 +74,7 @@ class ResourceManager {
                   FileSystem* file_system,
                   FilenameEncoder* filename_encoder,
                   UrlAsyncFetcher* url_async_fetcher,
+                  FileLoadPolicy* file_load_policy,
                   Hasher* hasher,
                   HTTPCache* http_cache,
                   CacheInterface* metadata_cache,
@@ -130,15 +132,10 @@ class ResourceManager {
 
   // TODO(jmarantz): check thread safety in Apache.
   Hasher* hasher() const { return hasher_; }
-  // This setter should probably only be used in testing.
-  void set_hasher(Hasher* hasher) { hasher_ = hasher; }
-
   FileSystem* file_system() { return file_system_; }
   FilenameEncoder* filename_encoder() const { return filename_encoder_; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
-  void set_url_async_fetcher(UrlAsyncFetcher* fetcher) {
-    url_async_fetcher_ = fetcher;
-  }
+  FileLoadPolicy* file_load_policy() const { return file_load_policy_; }
   Timer* timer() const { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
 
@@ -225,12 +222,22 @@ class ResourceManager {
                        BlockingBehavior block,
                        scoped_ptr<AbstractLock>* creation_lock);
 
+  // Setters should probably only be used in testing.
+  void set_hasher(Hasher* hasher) { hasher_ = hasher; }
+  void set_url_async_fetcher(UrlAsyncFetcher* fetcher) {
+    url_async_fetcher_ = fetcher;
+  }
+  void set_file_load_policy(FileLoadPolicy* policy) {
+    file_load_policy_ = policy;
+  }
+
  private:
   GoogleString file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
   UrlAsyncFetcher* url_async_fetcher_;
+  FileLoadPolicy* file_load_policy_;
   Hasher* hasher_;
   Statistics* statistics_;
 

@@ -27,31 +27,41 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
+struct ContentType;
 class MessageHandler;
 class ResourceManager;
-struct ContentType;
+class RewriteOptions;
 
 class FileInputResource : public Resource {
  public:
   FileInputResource(ResourceManager* resource_manager,
+                    const RewriteOptions* options,
                     const ContentType* type,
                     const StringPiece& url,
                     const StringPiece& filename)
       : Resource(resource_manager, type),
         url_(url.data(), url.size()),
-        filename_(filename.data(), filename.size()) {
+        filename_(filename.data(), filename.size()),
+        rewrite_options_(options) {
   }
 
   virtual ~FileInputResource();
+
+  // Uses default no-op Freshen implementation because file-based resources
+  // are fetched each time they are needed.
 
   virtual GoogleString url() const { return url_; }
 
  protected:
   virtual bool Load(MessageHandler* message_handler);
+  // Uses default, blocking LoadAndCallback implementation.
 
  private:
   GoogleString url_;
   GoogleString filename_;
+
+  const RewriteOptions* rewrite_options_;
 
   DISALLOW_COPY_AND_ASSIGN(FileInputResource);
 };

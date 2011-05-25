@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
+#include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
@@ -714,15 +715,21 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
                                  url_string.as_string().c_str());
     }
   } else if (url.SchemeIs("http")) {
-    // TODO(sligocki): Figure out if these are actually local, in
-    // which case we can do a local file read.
-
     // Note: type may be NULL if url has an unexpected or malformed extension.
     const ContentType* type = NameExtensionToContentType(url_string);
-    resource.reset(new UrlInputResource(resource_manager_, &options_, type,
-                                        url_string));
+    GoogleString filename;
+    FileLoadPolicy* policy = resource_manager_->file_load_policy();
+    if (policy->ShouldLoadFromFile(url, &filename)) {
+      resource.reset(new FileInputResource(resource_manager_, &options_, type,
+                                           url_string, filename));
+    } else {
+      resource.reset(new UrlInputResource(resource_manager_, &options_, type,
+                                          url_string));
+    }
   } else {
-    // Note: Bad user-content can leave us here.
+    // Note: Valid user-content can leave us here.
+    // Specifically, any URLs with scheme other than data: or http:, say https:.
+    // TODO(sligocki): Is this true? Or will such URLs not make it this far?
     message_handler()->Message(kWarning, "Unsupported scheme '%s' for url '%s'",
                                url.Scheme().as_string().c_str(),
                                url_string.as_string().c_str());

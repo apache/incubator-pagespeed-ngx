@@ -508,6 +508,7 @@
         'rewriter/data_url_input_resource.cc',
         'rewriter/domain_rewrite_filter.cc',
         'rewriter/file_input_resource.cc',
+        'rewriter/file_load_policy.cc',
         'rewriter/google_analytics_filter.cc',
         'rewriter/js_combine_filter.cc',
         'rewriter/js_inline_filter.cc',

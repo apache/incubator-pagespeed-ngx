@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/rewriter/public/mock_resource_callback.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -312,6 +313,131 @@ TEST_F(RewriteDriverTest, MultipleDomains) {
   EXPECT_TRUE(TryFetchResource(rewritten1));
   rewrite_driver_.Clear();
   EXPECT_TRUE(TryFetchResource(rewritten2));
+}
+
+class MockFileLoadPolicy : public FileLoadPolicy {
+ public:
+  MockFileLoadPolicy() {}
+
+  virtual bool ShouldLoadFromFile(const GoogleUrl& url,
+                                  GoogleString* filename) const {
+    bool ret = false;
+    StringPiece url_string = url.Spec();
+    if (url_string.starts_with(url_prefix_)) {
+      // Replace url_prefix_ with filename_prefix_.
+      url_string.remove_prefix(url_prefix_.size());
+      *filename = StrCat(filename_prefix_, url_string);
+      ret = true;
+    }
+    return ret;
+  }
+
+  GoogleString url_prefix_;
+  GoogleString filename_prefix_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockFileLoadPolicy);
+};
+
+// Test caching behavior for normal UrlInputResources.
+// This is the base case that LoadResourcesFromFiles below contrasts with.
+TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
+  const char kStaticUrlPrefix[] = "http://www.example.com/";
+  const char kResourceName[ ]= "foo.css";
+  GoogleString resource_url = StrCat(kStaticUrlPrefix, kResourceName);
+  const char kResourceContents1[] = "body { background: red; }";
+  const char kResourceContents2[] = "body { background: blue; }";
+  ResponseHeaders resource_headers;
+  // This sets 1 year cache lifetime :/ TODO(sligocki): Shorten this.
+  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &resource_headers);
+
+  // Set the fetch value.
+  mock_url_fetcher_.SetResponse(resource_url,
+                                resource_headers, kResourceContents1);
+  // Make sure file can be loaded. Note this cannot be loaded through the
+  // mock_url_fetcher, because it has not been set in that fetcher.
+  ResourcePtr resource(
+      rewrite_driver_.CreateInputResourceAbsoluteUnchecked(resource_url));
+  MockResourceCallback mock_callback(resource);
+  EXPECT_TRUE(resource.get() != NULL);
+  resource_manager_->ReadAsync(&mock_callback);
+  EXPECT_TRUE(mock_callback.done());
+  EXPECT_TRUE(mock_callback.success());
+  EXPECT_EQ(kResourceContents1, resource->contents());
+  // TODO(sligocki): Check it was cached.
+
+  // Change the fetch value.
+  mock_url_fetcher_.SetResponse(resource_url,
+                                resource_headers, kResourceContents2);
+  // Check that the resource loads cached.
+  ResourcePtr resource2(
+      rewrite_driver_.CreateInputResourceAbsoluteUnchecked(resource_url));
+  MockResourceCallback mock_callback2(resource2);
+  EXPECT_TRUE(resource2.get() != NULL);
+  resource_manager_->ReadAsync(&mock_callback2);
+  EXPECT_TRUE(mock_callback2.done());
+  EXPECT_TRUE(mock_callback2.success());
+  EXPECT_EQ(kResourceContents1, resource2->contents());
+
+  // Advance timer and check that the resource loads updated.
+  mock_timer()->advance_ms(10 * Timer::kYearMs);
+
+  // Check that the resource loads updated.
+  ResourcePtr resource3(
+      rewrite_driver_.CreateInputResourceAbsoluteUnchecked(resource_url));
+  MockResourceCallback mock_callback3(resource3);
+  EXPECT_TRUE(resource3.get() != NULL);
+  resource_manager_->ReadAsync(&mock_callback3);
+  EXPECT_TRUE(mock_callback3.done());
+  EXPECT_TRUE(mock_callback3.success());
+  EXPECT_EQ(kResourceContents2, resource3->contents());
+}
+
+// Test that we successfully load specified resources from files and that
+// file resources have the appropriate properties, such as being loaded from
+// file every time they are fetched (not being cached).
+TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
+  const char kStaticUrlPrefix[] = "http://www.example.com/static/";
+  const char kStaticFilenamePrefix[] = "/htmlcontent/static/";
+  const char kResourceName[ ]= "foo.css";
+  GoogleString resource_filename = StrCat(kStaticFilenamePrefix, kResourceName);
+  GoogleString resource_url = StrCat(kStaticUrlPrefix, kResourceName);
+  const char kResourceContents1[] = "body { background: red; }";
+  const char kResourceContents2[] = "body { background: blue; }";
+
+  // Tell RewriteDriver to associate static URLs with filenames.
+  MockFileLoadPolicy policy;
+  policy.url_prefix_ = kStaticUrlPrefix;
+  policy.filename_prefix_ = kStaticFilenamePrefix;
+  resource_manager_->set_file_load_policy(&policy);
+
+  // Write a file.
+  file_system_.WriteFile(resource_filename.c_str(), kResourceContents1,
+                         &message_handler_);
+  // Make sure file can be loaded. Note this cannot be loaded through the
+  // mock_url_fetcher, because it has not been set in that fetcher.
+  ResourcePtr resource(
+      rewrite_driver_.CreateInputResourceAbsoluteUnchecked(resource_url));
+  MockResourceCallback mock_callback(resource);
+  EXPECT_TRUE(resource.get() != NULL);
+  resource_manager_->ReadAsync(&mock_callback);
+  EXPECT_TRUE(mock_callback.done());
+  EXPECT_TRUE(mock_callback.success());
+  EXPECT_EQ(kResourceContents1, resource->contents());
+  // TODO(sligocki): Check it wasn't cached.
+
+  // Change the file.
+  file_system_.WriteFile(resource_filename.c_str(), kResourceContents2,
+                         &message_handler_);
+  // Make sure the resource loads updated.
+  ResourcePtr resource2(
+      rewrite_driver_.CreateInputResourceAbsoluteUnchecked(resource_url));
+  MockResourceCallback mock_callback2(resource2);
+  EXPECT_TRUE(resource2.get() != NULL);
+  resource_manager_->ReadAsync(&mock_callback2);
+  EXPECT_TRUE(mock_callback2.done());
+  EXPECT_TRUE(mock_callback2.success());
+  EXPECT_EQ(kResourceContents2, resource2->contents());
 }
 
 }  // namespace net_instaweb

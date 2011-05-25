@@ -35,6 +35,7 @@ class AbstractMutex;
 class CacheInterface;
 class CacheUrlAsyncFetcher;
 class CacheUrlFetcher;
+class FileLoadPolicy;
 class FileSystem;
 class FilenameEncoder;
 class Hasher;
@@ -66,6 +67,7 @@ class RewriteDriverFactory {
   void set_hasher(Hasher* hasher);
   void set_filename_encoder(FilenameEncoder* filename_encoder);
   void set_timer(Timer* timer);
+  void set_file_load_policy(FileLoadPolicy* policy);
 
   // Set up a directory for slurped files for HTML and resources.  If
   // read_only is true, then it will only read from these files, and
@@ -80,9 +82,6 @@ class RewriteDriverFactory {
   void set_slurp_directory(const StringPiece& directory);
   void set_slurp_read_only(bool read_only);
   void set_slurp_print_urls(bool read_only);
-
-  // Determines whether Slurping is enabled.
-  bool slurping_enabled() const { return !slurp_directory_.empty(); }
 
   // Setting HTTP caching on causes both the fetcher and the async
   // fecher to return cached versions.
@@ -104,11 +103,15 @@ class RewriteDriverFactory {
 
   bool set_filename_prefix(StringPiece p);
 
+  // Determines whether Slurping is enabled.
+  bool slurping_enabled() const { return !slurp_directory_.empty(); }
+
   // Returns whether the last call to set_filename_prefix made the directory
   // itself.
   bool filename_prefix_created() const { return filename_prefix_created_; }
 
   RewriteOptions* options() { return &options_; }
+
   MessageHandler* html_parse_message_handler();
   MessageHandler* message_handler();
   FileSystem* file_system();
@@ -117,6 +120,7 @@ class RewriteDriverFactory {
   Hasher* hasher();
   FilenameEncoder* filename_encoder();
   Timer* timer();
+  FileLoadPolicy* file_load_policy();
   HTTPCache* http_cache();
   NamedLockManager* lock_manager();
 
@@ -173,6 +177,9 @@ class RewriteDriverFactory {
   // will use the file system.
   virtual NamedLockManager* DefaultLockManager();
 
+  // Current DefaultFileLoadPolicy never loads resources from files.
+  virtual FileLoadPolicy* DefaultFileLoadPolicy();
+
   // Implementors of RewriteDriverFactory must supply two mutexes.
   virtual AbstractMutex* cache_mutex() = 0;
   virtual AbstractMutex* rewrite_drivers_mutex() = 0;
@@ -211,6 +218,8 @@ class RewriteDriverFactory {
   scoped_ptr<Hasher> hasher_;
   scoped_ptr<FilenameEncoder> filename_encoder_;
   scoped_ptr<Timer> timer_;
+  scoped_ptr<FileLoadPolicy> file_load_policy_;
+
   HtmlParse* html_parse_;
 
   GoogleString filename_prefix_;

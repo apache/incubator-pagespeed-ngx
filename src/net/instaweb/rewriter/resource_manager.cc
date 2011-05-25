@@ -29,7 +29,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/content_type.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -97,6 +96,7 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
                                  FileSystem* file_system,
                                  FilenameEncoder* filename_encoder,
                                  UrlAsyncFetcher* url_async_fetcher,
+                                 FileLoadPolicy* file_load_policy,
                                  Hasher* hasher,
                                  HTTPCache* http_cache,
                                  CacheInterface* metadata_cache,
@@ -109,6 +109,7 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       file_system_(file_system),
       filename_encoder_(filename_encoder),
       url_async_fetcher_(url_async_fetcher),
+      file_load_policy_(file_load_policy),
       hasher_(hasher),
       statistics_(statistics),
       resource_url_domain_rejections_(
@@ -366,6 +367,10 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
   delete this;
 }
 
+// TODO(sligocki): Move into Resource? This would allow us to treat
+// file- and URL-based resources differently as far as cacheability, etc.
+// Specifically, we are now making a cache request for file-based resources
+// which will always fail, for FileInputResources, we should just Load them.
 void ResourceManager::ReadAsync(Resource::AsyncCallback* callback) {
   // If the resource is not already loaded, and this type of resource (e.g.
   // URL vs File vs Data) is cacheable, then try to load it.

@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/http_dump_url_writer.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -138,6 +139,10 @@ void RewriteDriverFactory::set_filename_encoder(FilenameEncoder* e) {
   filename_encoder_.reset(e);
 }
 
+void RewriteDriverFactory::set_file_load_policy(FileLoadPolicy* policy) {
+  file_load_policy_.reset(policy);
+}
+
 MessageHandler* RewriteDriverFactory::html_parse_message_handler() {
   if (html_parse_message_handler_ == NULL) {
     html_parse_message_handler_.reset(DefaultHtmlParseMessageHandler());
@@ -178,6 +183,17 @@ FilenameEncoder* RewriteDriverFactory::filename_encoder() {
     filename_encoder_.reset(new FilenameEncoder);
   }
   return filename_encoder_.get();
+}
+
+FileLoadPolicy* RewriteDriverFactory::DefaultFileLoadPolicy() {
+  return new FileLoadPolicy;
+}
+
+FileLoadPolicy* RewriteDriverFactory::file_load_policy() {
+  if (file_load_policy_ == NULL) {
+    file_load_policy_.reset(DefaultFileLoadPolicy());
+  }
+  return file_load_policy_.get();
 }
 
 NamedLockManager* RewriteDriverFactory::DefaultLockManager() {
@@ -233,7 +249,7 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
     Statistics* stats = statistics();
     resource_manager_.reset(new ResourceManager(
         filename_prefix_, file_system(), filename_encoder(),
-        ComputeUrlAsyncFetcher(), hasher(),
+        ComputeUrlAsyncFetcher(), file_load_policy(), hasher(),
         cache, http_cache_backend_, lock_manager(),
         message_handler(),
         stats, thread_system()));
@@ -385,6 +401,7 @@ void RewriteDriverFactory::ShutDown() {
   http_cache_.reset(NULL);
   cache_fetcher_.reset(NULL);
   cache_async_fetcher_.reset(NULL);
+  file_load_policy_.reset(NULL);
 }
 
 ThreadSystem* RewriteDriverFactory::thread_system() {

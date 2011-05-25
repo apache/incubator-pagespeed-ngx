@@ -99,8 +99,8 @@ ResourceManagerTestBase::ResourceManagerTestBase()
           other_file_system_.timer(), &message_handler_),
 
       other_resource_manager_(
-          file_prefix_, &other_file_system_,
-          &filename_encoder_, &counting_url_async_fetcher_, &mock_hasher_,
+          file_prefix_, &other_file_system_, &filename_encoder_,
+          &counting_url_async_fetcher_, &null_file_load_policy_, &mock_hasher_,
           &other_http_cache_, other_lru_cache_, &other_lock_manager_,
           &message_handler_, statistics_, &thread_system_),
       other_rewrite_driver_(&message_handler_, &other_file_system_,
@@ -124,8 +124,8 @@ void ResourceManagerTestBase::SetUp() {
   HtmlParseTestBaseNoAlloc::SetUp();
   // TODO(sligocki): Init this in constructor.
   resource_manager_ = new ResourceManager(
-      file_prefix_, &file_system_,
-      &filename_encoder_, &counting_url_async_fetcher_, &mock_hasher_,
+      file_prefix_, &file_system_, &filename_encoder_,
+      &counting_url_async_fetcher_, &null_file_load_policy_, &mock_hasher_,
       &http_cache_, lru_cache_, &lock_manager_,
       &message_handler_, statistics_, &thread_system_);
   rewrite_driver_.SetResourceManager(resource_manager_);
@@ -227,8 +227,8 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
       &other_file_system, file_prefix_, other_mock_timer, &message_handler_);
   WaitUrlAsyncFetcher wait_url_async_fetcher(&mock_url_fetcher_);
   ResourceManager other_resource_manager(
-      file_prefix_, &other_file_system,
-      &filename_encoder_, &wait_url_async_fetcher, hasher,
+      file_prefix_, &other_file_system, &filename_encoder_,
+      &wait_url_async_fetcher, &null_file_load_policy_, hasher,
       &other_http_cache, other_lru_cache, &other_lock_manager,
       &message_handler_, &stats, &thread_system_);
 
