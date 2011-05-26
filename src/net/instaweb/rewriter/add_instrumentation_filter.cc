@@ -18,14 +18,11 @@
 
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 
-#include <cstddef>
-
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -52,32 +49,16 @@ const char kTailScript[] =
     "f=window.attachEvent;if(f){f('onload',g);}}"
     "</script>";
 
-// Timing tag for total page load time.  Also embedded in kTailScript above!
-const char kLoadTag[] = "load:";
-
-// Variables for the beacon to increment.  These are currently handled in
-// mod_pagespeed_handler on apache.  The average load time in milliseconds is
-// total_page_load_ms / page_load_count.  Note that these are not updated
-// together atomically, so you might get a slightly bogus value.
-const char kTotalPageLoadMs[] = "total_page_load_ms";
-const char kPageLoadCount[] = "page_load_count";
-
 }  // namespace
 
-AddInstrumentationFilter::AddInstrumentationFilter(
-    HtmlParse* html_parse, const StringPiece& beacon_url, Statistics* stats)
-    : html_parse_(html_parse),
-      found_head_(false),
-      total_page_load_ms_((stats == NULL) ? NULL :
-                          stats->GetVariable(kTotalPageLoadMs)),
-      page_load_count_((stats == NULL) ? NULL :
-                       stats->GetVariable(kPageLoadCount)) {
-  beacon_url.CopyToString(&beacon_url_);
-}
+// Timing tag for total page load time.  Also embedded in kTailScript above!
+const char AddInstrumentationFilter::kLoadTag[] = "load:";
 
-void AddInstrumentationFilter::Initialize(Statistics* statistics) {
-  statistics->AddVariable(kTotalPageLoadMs);
-  statistics->AddVariable(kPageLoadCount);
+AddInstrumentationFilter::AddInstrumentationFilter(
+    HtmlParse* html_parse, const StringPiece& beacon_url)
+    : html_parse_(html_parse),
+      found_head_(false) {
+  beacon_url.CopyToString(&beacon_url_);
 }
 
 void AddInstrumentationFilter::StartDocument() {
@@ -108,26 +89,6 @@ void AddInstrumentationFilter::EndElement(HtmlElement* element) {
         html_parse_->NewCharactersNode(element, tailScript);
     html_parse_->InsertElementBeforeCurrent(script);
   }
-}
-
-bool AddInstrumentationFilter::HandleBeacon(const StringPiece& unparsed_url) {
-  if ((total_page_load_ms_ == NULL) || (page_load_count_ == NULL)) {
-    return false;
-  }
-  GoogleString url = unparsed_url.as_string();
-  // TODO(abliss): proper query parsing
-  size_t index = url.find(kLoadTag);
-  if (index == GoogleString::npos) {
-    return false;
-  }
-  url = url.substr(index + strlen(kLoadTag));
-  int value = 0;
-  if (!StringToInt(url, &value)) {
-    return false;
-  }
-  total_page_load_ms_->Add(value);
-  page_load_count_->Add(1);
-  return true;
 }
 
 }  // namespace net_instaweb

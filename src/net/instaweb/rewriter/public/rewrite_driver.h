@@ -26,18 +26,18 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
-#include "net/instaweb/util/public/user_agent.h"
 
 namespace net_instaweb {
 
@@ -56,7 +56,6 @@ class ResourceContext;
 class ResponseHeaders;
 class RewriteContext;
 class RewriteFilter;
-class RewriteOptions;
 class Statistics;
 class Variable;
 class Writer;
@@ -91,8 +90,7 @@ class RewriteDriver : public HtmlParse {
 
   RewriteDriver(MessageHandler* message_handler,
                 FileSystem* file_system,
-                UrlAsyncFetcher* url_async_fetcher,
-                const RewriteOptions& options);
+                UrlAsyncFetcher* url_async_fetcher);
 
   // Need explicit destructors to allow destruction of scoped_ptr-controlled
   // instances without propagating the include files.
@@ -126,7 +124,7 @@ class RewriteDriver : public HtmlParse {
   inline void set_user_agent(const StringPiece& user_agent_string) {
     user_agent_string.CopyToString(&user_agent_);
   }
-  const UserAgent& user_agent_matcher() const {
+  const UserAgentMatcher& user_agent_matcher() const {
     return user_agent_matcher_;
   }
   bool UserAgentSupportsImageInlining() const {
@@ -204,10 +202,29 @@ class RewriteDriver : public HtmlParse {
     return add_instrumentation_filter_;
   }
 
-  const RewriteOptions* options() { return &options_; }
+  // Determines whether this RewriteDriver was built with custom options
+  bool has_custom_options() const { return (custom_options_.get() != NULL); }
+
+  // Takes ownership of 'options'.
+  void set_custom_options(RewriteOptions* options) {
+    custom_options_.reset(options);
+  }
+
+  // Return the options used for this RewriteDriver.
+  const RewriteOptions* options() const {
+    return (has_custom_options() ? custom_options_.get()
+            : resource_manager_->options());
+  }
+
+  // Override HtmlParse's StartParseId to propagate any required options.
+  virtual bool StartParseId(const StringPiece& url, const StringPiece& id,
+                            const ContentType& content_type);
 
   // Override HtmlParse's FinishParse to ensure that the
   // request-scoped cache is cleared immediately.
+  //
+  // Note that this method can delete this, if its not externally managed,
+  // and if all RewriteContexts have been completed.
   virtual void FinishParse();
 
   // See comments in resource_manager.h
@@ -218,7 +235,7 @@ class RewriteDriver : public HtmlParse {
       const ResourcePtr& input_resource,
       OutputResourceKind kind) {
     return resource_manager_->CreateOutputResourceFromResource(
-        &options_, filter_prefix, encoder, data, input_resource, kind);
+        options(), filter_prefix, encoder, data, input_resource, kind);
   }
 
   // See comments in resource_manager.h
@@ -227,7 +244,7 @@ class RewriteDriver : public HtmlParse {
       const StringPiece& name,  const ContentType* type,
       OutputResourceKind kind) {
     return resource_manager_->CreateOutputResourceWithPath(
-        &options_, path, filter_prefix, name, type, kind);
+        options(), path, filter_prefix, name, type, kind);
   }
 
   // Creates an input resource based on input_url.  Returns NULL if
@@ -292,6 +309,15 @@ class RewriteDriver : public HtmlParse {
   // and the rewritten HTML must be flushed.
   void InitiateRewrite(RewriteContext* rewrite_context);
 
+  // Provides a mechanism for a RewriteContext to notify a
+  // RewriteDriver that it is complete, to allow the RewriteDriver
+  // to delete itself or return it back to a free pool in the ResourceManager.
+  void RewriteComplete(RewriteContext* rewrite_context);
+
+  // If there are not outstanding references to this RewriteDriver,
+  // delete it or recycle it to a free pool in the ResourceManager.
+  void Cleanup();
+
   // Renders any completed rewrites back into the DOM.
   void Render();
 
@@ -300,9 +326,18 @@ class RewriteDriver : public HtmlParse {
   bool asynchronous_rewrites() const { return asynchronous_rewrites_; }
   void SetAsynchronousRewrites(bool x);
 
+  // Indicate that this RewriteDriver will be explicitly deleted, and
+  // thus should not be auto-deleted at the end of the parse.  This is
+  // primarily for tests.
+  //
+  // TODO(jmarantz): Consider phasing this out to make tests behave
+  // more like servers.
+  void set_externally_managed(bool x) { externally_managed_ = x; }
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
+
   typedef std::map<GoogleString, RewriteFilter*> StringFilterMap;
   typedef void (RewriteDriver::*SetStringMethod)(const StringPiece& value);
   typedef void (RewriteDriver::*SetInt64Method)(int64 value);
@@ -344,6 +379,22 @@ class RewriteDriver : public HtmlParse {
   // caller side.
   ResourcePtr CreateInputResourceUnchecked(const GoogleUrl& gurl);
 
+  // Attempt to fetch extant version of an OutputResource.  If available,
+  // return true. If not, returns false and makes sure the resource is
+  // locked for creation. This method may block trying to lock resource
+  // for creation, with timeouts of a few seconds.
+  // Precondition: output_resource must have a valid URL set (including a hash).
+  bool FetchExtantOutputResourceOrLock(
+    OutputResource* output_resource,
+    Writer* writer, ResponseHeaders* response_headers);
+
+  // Attempt to fetch extant version of an OutputResource, returning true
+  // and writing it out to writer and response_headers if available.
+  // Does not block or touch resource creation locks.
+  bool FetchExtantOutputResource(
+    OutputResource* output_resource,
+    Writer* writer, ResponseHeaders* response_headers);
+
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
   // tag, if one exists.  See
@@ -367,29 +418,15 @@ class RewriteDriver : public HtmlParse {
   // which can only be turned on for unit tests.
   bool asynchronous_rewrites_;
   bool filters_added_;
+  bool externally_managed_;
 
   GoogleUrl base_url_;
   GoogleString user_agent_;
-  // Attempt to fetch extant version of an OutputResource.  If available,
-  // return true. If not, returns false and makes sure the resource is
-  // locked for creation. This method may block trying to lock resource
-  // for creation, with timeouts of a few seconds.
-  // Precondition: output_resource must have a valid URL set (including a hash).
-  bool FetchExtantOutputResourceOrLock(
-    OutputResource* output_resource,
-    Writer* writer, ResponseHeaders* response_headers);
-
-  // Attempt to fetch extant version of an OutputResource, returning true
-  // and writing it out to writer and response_headers if available.
-  // Does not block or touch resource creation locks.
-  bool FetchExtantOutputResource(
-    OutputResource* output_resource,
-    Writer* writer, ResponseHeaders* response_headers);
-
   StringFilterMap resource_filter_map_;
 
   typedef std::vector<RewriteContext*> RewriteContextVector;
   RewriteContextVector rewrites_;
+  int num_rewrites_complete_;
 
   // These objects are provided on construction or later, and are
   // owned by the caller.
@@ -399,7 +436,7 @@ class RewriteDriver : public HtmlParse {
 
   AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
-  UserAgent user_agent_matcher_;
+  UserAgentMatcher user_agent_matcher_;
   std::vector<HtmlFilter*> filters_;
   ScanFilter scan_filter_;
   scoped_ptr<DomainRewriteFilter> domain_rewriter_;
@@ -414,7 +451,7 @@ class RewriteDriver : public HtmlParse {
   Variable* succeeded_filter_resource_fetches_;
   Variable* failed_filter_resource_fetches_;
 
-  const RewriteOptions& options_;
+  scoped_ptr<RewriteOptions> custom_options_;
 
   // The default resource encoder
   UrlSegmentEncoder default_encoder_;

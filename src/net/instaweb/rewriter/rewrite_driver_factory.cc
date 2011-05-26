@@ -18,9 +18,6 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 
-#include <set>
-#include <vector>
-
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
@@ -33,15 +30,13 @@
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
-#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -49,7 +44,7 @@
 
 namespace net_instaweb {
 
-class RewriteOptions;
+class RewriteDriver;
 class Statistics;
 
 RewriteDriverFactory::RewriteDriverFactory()
@@ -252,56 +247,21 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
         ComputeUrlAsyncFetcher(), file_load_policy(), hasher(),
         cache, http_cache_backend_, lock_manager(),
         message_handler(),
-        stats, thread_system()));
+        stats, thread_system(), this));
+    if (temp_options_.get() != NULL) {
+      resource_manager_->options()->CopyFrom(*temp_options_.get());
+      temp_options_.reset(NULL);
+    }
     resource_manager_->set_store_outputs_in_file_system(
         ShouldWriteResourcesToFileSystem());
   }
   return resource_manager_.get();
 }
 
-// TODO(jmaessen): Note that we *could* re-structure the
-// rewrite_driver freelist code as follows: Keep a
-// std::vector<RewriteDriver*> of all rewrite drivers.  Have each
-// driver hold its index in the vector (as a number or iterator).
-// Keep index of first in use.  To free, swap with first in use,
-// adjusting indexes, and increment first in use.  To allocate,
-// decrement first in use and return that driver.  If first in use was
-// 0, allocate a fresh driver and push it.
-
-RewriteDriver* RewriteDriverFactory::NewCustomRewriteDriver(
-    const RewriteOptions& options) {
-  RewriteDriver* rewrite_driver =  new RewriteDriver(
-      message_handler(), file_system(), ComputeUrlAsyncFetcher(), options);
-  rewrite_driver->SetResourceManager(ComputeResourceManager());
-  AddPlatformSpecificRewritePasses(rewrite_driver);
-  rewrite_driver->AddFilters();
-  return rewrite_driver;
-}
-
-
 RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
-  ScopedMutex lock(rewrite_drivers_mutex());
-  RewriteDriver* rewrite_driver = NULL;
-  if (!available_rewrite_drivers_.empty()) {
-    rewrite_driver = available_rewrite_drivers_.back();
-    available_rewrite_drivers_.pop_back();
-  } else {
-    rewrite_driver = NewCustomRewriteDriver(options_);
-  }
-  active_rewrite_drivers_.insert(rewrite_driver);
-  return rewrite_driver;
-}
-
-void RewriteDriverFactory::ReleaseRewriteDriver(
-    RewriteDriver* rewrite_driver) {
-  ScopedMutex lock(rewrite_drivers_mutex());
-  int count = active_rewrite_drivers_.erase(rewrite_driver);
-  if (count != 1) {
-    LOG(ERROR) << "ReleaseRewriteDriver called with driver not in active set.";
-  } else {
-    available_rewrite_drivers_.push_back(rewrite_driver);
-    rewrite_driver->Clear();
-  }
+  ResourceManager* resource_manager = ComputeResourceManager();
+  RewriteDriver* driver = resource_manager->NewRewriteDriver();
+  return driver;
 }
 
 void RewriteDriverFactory::AddPlatformSpecificRewritePasses(
@@ -389,8 +349,6 @@ void RewriteDriverFactory::ShutDown() {
     delete url_fetcher_;
   }
   url_fetcher_ = NULL;
-  STLDeleteElements(&active_rewrite_drivers_);
-  STLDeleteElements(&available_rewrite_drivers_);
 
   file_system_.reset(NULL);
   hasher_.reset(NULL);
@@ -402,6 +360,23 @@ void RewriteDriverFactory::ShutDown() {
   cache_fetcher_.reset(NULL);
   cache_async_fetcher_.reset(NULL);
   file_load_policy_.reset(NULL);
+}
+
+// Return a writable RewriteOptions.  If the ResourceManager has
+// not yet been created, we lazily create a temp RewriteOptions to
+// receive any Options changes, e.g. from flags or config-file parsing.
+// Once the ResourceManager is created, which might require some of
+// those options to be parsed already, we can transfer the temp
+// options to the ResourceManager and get rid of them.
+RewriteOptions* RewriteDriverFactory::options() {
+  if (resource_manager_.get() == NULL) {
+    if (temp_options_.get() == NULL) {
+      temp_options_.reset(new RewriteOptions);
+    }
+    return temp_options_.get();
+  }
+  DCHECK(temp_options_.get() == NULL);
+  return resource_manager_->options();
 }
 
 ThreadSystem* RewriteDriverFactory::thread_system() {

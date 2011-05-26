@@ -25,33 +25,26 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
 class HtmlElement;
 class HtmlParse;
-class Statistics;
-class Variable;
 
 // Injects javascript instrumentation for monitoring page-rendering time.
 class AddInstrumentationFilter : public EmptyHtmlFilter {
  public:
-  explicit AddInstrumentationFilter(HtmlParse* parser,
-                                    const StringPiece& beacon_url,
-                                    Statistics* statistics);
+  static const char kLoadTag[];
 
-  static void Initialize(Statistics* statistics);
+  explicit AddInstrumentationFilter(HtmlParse* parser,
+                                    const StringPiece& beacon_url);
+
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
   virtual const char* Name() const { return "AddInstrumentation"; }
-  // Handles an incoming beacon request by incrementing the appropriate
-  // variables.  Returns true if the url was parsed and handled correctly; in
-  // this case a 204 No Content response should be sent.  Returns false if the
-  // url could not be parsed; in this case the request should be declined.
-  bool HandleBeacon(const StringPiece& unparsed_url);
+
  private:
   HtmlParse* html_parse_;
   bool found_head_;
-  Variable* total_page_load_ms_;
-  Variable* page_load_count_;
   GoogleString beacon_url_;
 
   DISALLOW_COPY_AND_ASSIGN(AddInstrumentationFilter);

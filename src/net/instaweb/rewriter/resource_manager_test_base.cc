@@ -83,13 +83,15 @@ ResourceManagerTestBase::ResourceManagerTestBase()
       // standalone.
       lock_manager_(&file_system_, file_prefix_, file_system_.timer(),
                     &message_handler_),
+      factory_(NULL),  // Not using the Factory in tests for now.
       // TODO(sligocki): Why can't I init it here ...
       // resource_manager_(new ResourceManager(
       //    file_prefix_, &file_system_,
       //    &filename_encoder_, &counting_url_async_fetcher_, &mock_hasher_,
       //    &http_cache_)),
+      options_(*new RewriteOptions),
       rewrite_driver_(&message_handler_, &file_system_,
-                      &counting_url_async_fetcher_, options_),
+                      &counting_url_async_fetcher_),
 
       other_lru_cache_(new LRUCache(kCacheSize)),
       other_http_cache_(other_lru_cache_, other_file_system_.timer(),
@@ -102,11 +104,20 @@ ResourceManagerTestBase::ResourceManagerTestBase()
           file_prefix_, &other_file_system_, &filename_encoder_,
           &counting_url_async_fetcher_, &null_file_load_policy_, &mock_hasher_,
           &other_http_cache_, other_lru_cache_, &other_lock_manager_,
-          &message_handler_, statistics_, &thread_system_),
+          &message_handler_, statistics_, &thread_system_, NULL),
+      other_options_(*new RewriteOptions),
       other_rewrite_driver_(&message_handler_, &other_file_system_,
-                            &counting_url_async_fetcher_, other_options_) {
+                            &counting_url_async_fetcher_) {
+  rewrite_driver_.set_custom_options(&options_);
+  other_rewrite_driver_.set_custom_options(&other_options_);
   // rewrite_driver_.SetResourceManager(resource_manager_);
   other_rewrite_driver_.SetResourceManager(&other_resource_manager_);
+
+  // TODO(jmarantz): Lots of tests send multiple HTML files through the
+  // same RewriteDriver.  Once this is changed then we can allow the
+  // RewriteDrivers to be self-managed.
+  rewrite_driver_.set_externally_managed(true);
+  other_rewrite_driver_.set_externally_managed(true);
 }
 
 void ResourceManagerTestBase::SetUpTestCase() {
@@ -127,7 +138,7 @@ void ResourceManagerTestBase::SetUp() {
       file_prefix_, &file_system_, &filename_encoder_,
       &counting_url_async_fetcher_, &null_file_load_policy_, &mock_hasher_,
       &http_cache_, lru_cache_, &lock_manager_,
-      &message_handler_, statistics_, &thread_system_);
+      &message_handler_, statistics_, &thread_system_, factory_);
   rewrite_driver_.SetResourceManager(resource_manager_);
 }
 
@@ -230,10 +241,13 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
       file_prefix_, &other_file_system, &filename_encoder_,
       &wait_url_async_fetcher, &null_file_load_policy_, hasher,
       &other_http_cache, other_lru_cache, &other_lock_manager,
-      &message_handler_, &stats, &thread_system_);
+      &message_handler_, &stats, &thread_system_, factory_);
 
   RewriteDriver other_rewrite_driver(&message_handler_, &other_file_system,
-                                     &wait_url_async_fetcher, options_);
+                                     &wait_url_async_fetcher);
+  RewriteOptions* options = new RewriteOptions;
+  options->CopyFrom(options_);
+  other_rewrite_driver.set_custom_options(options);
   other_rewrite_driver.SetResourceManager(&other_resource_manager);
   other_rewrite_driver.AddFilters();
 

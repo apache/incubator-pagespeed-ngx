@@ -93,11 +93,9 @@ class InstawebContext {
   net_instaweb::RewriteDriver* rewrite_driver_;
   net_instaweb::StringWriter string_writer_;
   scoped_ptr<GzipInflater> inflater_;
-  scoped_ptr<RewriteDriver> custom_rewriter_;
   GoogleString buffer_;
   ContentDetectionState content_detection_state_;
   GoogleString absolute_url_;
-  RewriteOptions rewrite_options_;
 
   DISALLOW_COPY_AND_ASSIGN(InstawebContext);
 };

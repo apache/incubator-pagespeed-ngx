@@ -19,12 +19,9 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 
-#include <set>
-#include <vector>
 #include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -45,6 +42,7 @@ class MessageHandler;
 class NamedLockManager;
 class ResourceManager;
 class RewriteDriver;
+class RewriteOptions;
 class Statistics;
 class ThreadSystem;
 class Timer;
@@ -110,8 +108,7 @@ class RewriteDriverFactory {
   // itself.
   bool filename_prefix_created() const { return filename_prefix_created_; }
 
-  RewriteOptions* options() { return &options_; }
-
+  RewriteOptions* options();
   MessageHandler* html_parse_message_handler();
   MessageHandler* message_handler();
   FileSystem* file_system();
@@ -136,26 +133,16 @@ class RewriteDriverFactory {
   virtual AbstractMutex* NewMutex() = 0;
   virtual Hasher* NewHasher() = 0;
 
-  // Generates a new managed RewriteDriver using the RewriteOptions
-  // managed by this class.  Each RewriteDriver is not thread-safe,
-  // but you can generate a RewriteDriver* for each thread.  The
-  // returned drivers are deleted by the factory; they do not need to
-  // be deleted by the allocator.
+  // See doc for in resource_manager.cc.
   RewriteDriver* NewRewriteDriver();
 
-  // Releases a rewrite driver back into the pool.  These are free-listed
-  // because they are not cheap to construct.
-  void ReleaseRewriteDriver(RewriteDriver* rewrite_driver);
-
-  // Generates a custom RewriteDriver using the passed-in options.  This
-  // driver is *not* managed by the factory: you must delete it after
-  // you are done with it.
-  RewriteDriver* NewCustomRewriteDriver(const RewriteOptions& options);
+  // Provides an optional hook for adding rewrite passes that are
+  // specific to an implementation of RewriteDriverFactory.
+  virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
 
   ThreadSystem* thread_system();
 
  protected:
-  virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
   bool FetchersComputed() const;
 
   // Implementors of RewriteDriverFactory must supply default definitions
@@ -225,23 +212,18 @@ class RewriteDriverFactory {
   GoogleString filename_prefix_;
   bool filename_prefix_created_;
   GoogleString slurp_directory_;
-  RewriteOptions options_;
   bool force_caching_;
   bool slurp_read_only_;
   bool slurp_print_urls_;
 
   scoped_ptr<ResourceManager> resource_manager_;
 
-  // RewriteDrivers that were previously allocated, but have
-  // been released with ReleaseRewriteDriver, and are ready
-  // for re-use with NewRewriteDriver.
-  std::vector<RewriteDriver*> available_rewrite_drivers_;
-
-  // RewriteDrivers that are currently in use.  This is retained
-  // as a sanity check to make sure our system is coherent,
-  // and to facilitate complete cleanup if a Shutdown occurs
-  // while a request is in flight.
-  std::set<RewriteDriver*> active_rewrite_drivers_;
+  // Prior to computing the resource manager, which requires some options
+  // to be set, we need a place to write the options.  These will be
+  // permanently transferred to the ResourceManager when it is created.
+  // This two-phase creation is needed to deal a variety of order-of-startup
+  // issues across tests, Apache, and internal Google infrastructure.
+  scoped_ptr<RewriteOptions> temp_options_;
 
   // Caching support
   scoped_ptr<HTTPCache> http_cache_;

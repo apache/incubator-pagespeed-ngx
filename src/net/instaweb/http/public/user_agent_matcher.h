@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_USER_AGENT_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_USER_AGENT_H_
+#ifndef NET_INSTAWEB_HTTP_PUBLIC_USER_AGENT_MATCHER_H_
+#define NET_INSTAWEB_HTTP_PUBLIC_USER_AGENT_MATCHER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -21,10 +21,9 @@
 
 namespace net_instaweb {
 
-class UserAgent {
-// TODO(fangfei): rename this class to UserAgentMatcher or something better.
+class UserAgentMatcher {
  public:
-  UserAgent();
+  UserAgentMatcher();
 
   bool IsIe(const StringPiece& user_agent) const;
   bool IsIe6(const StringPiece& user_agent) const;
@@ -36,9 +35,9 @@ class UserAgent {
  private:
   WildcardGroup supports_image_inlining_;
 
-  DISALLOW_COPY_AND_ASSIGN(UserAgent);
+  DISALLOW_COPY_AND_ASSIGN(UserAgentMatcher);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_USER_AGENT_H_
+#endif  // NET_INSTAWEB_HTTP_PUBLIC_USER_AGENT_MATCHER_H_

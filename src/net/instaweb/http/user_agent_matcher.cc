@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/user_agent.h"
 #include "net/instaweb/util/public/wildcard_group.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -49,7 +49,7 @@ namespace {
   };
 }
 
-UserAgent::UserAgent() {
+UserAgentMatcher::UserAgentMatcher() {
   // Initialize WildcardGroup for image inlining whitelist & blacklist.
   for (int i = 0, n = arraysize(kImageInliningWhitelist); i < n; ++i) {
     supports_image_inlining_.Allow(kImageInliningWhitelist[i]);
@@ -59,19 +59,20 @@ UserAgent::UserAgent() {
   }
 }
 
-bool UserAgent::IsIe(const StringPiece& user_agent) const {
+bool UserAgentMatcher::IsIe(const StringPiece& user_agent) const {
   return user_agent.find(" MSIE ") != GoogleString::npos;
 }
 
-bool UserAgent::IsIe6(const StringPiece& user_agent) const {
+bool UserAgentMatcher::IsIe6(const StringPiece& user_agent) const {
   return user_agent.find(" MSIE 6.") != GoogleString::npos;
 }
 
-bool UserAgent::IsIe7(const StringPiece& user_agent) const {
+bool UserAgentMatcher::IsIe7(const StringPiece& user_agent) const {
   return user_agent.find(" MSIE 7.") != GoogleString::npos;
 }
 
-bool UserAgent::SupportsImageInlining(const StringPiece& user_agent) const {
+bool UserAgentMatcher::SupportsImageInlining(
+    const StringPiece& user_agent) const {
   if (user_agent.empty()) {
     return true;
   }

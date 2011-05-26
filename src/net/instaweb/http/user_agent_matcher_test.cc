@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "net/instaweb/util/public/user_agent.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace {
@@ -61,12 +61,12 @@ const char kSafariUserAgent[] =
 
 namespace net_instaweb {
 
-class UserAgentTest : public testing::Test {
+class UserAgentMatcherTest : public testing::Test {
  protected:
-  UserAgent user_agent_matcher_;
+  UserAgentMatcher user_agent_matcher_;
 };
 
-TEST_F(UserAgentTest, IsIeTest) {
+TEST_F(UserAgentMatcherTest, IsIeTest) {
   EXPECT_TRUE(user_agent_matcher_.IsIe(kIe6UserAgent));
   EXPECT_TRUE(user_agent_matcher_.IsIe6(kIe6UserAgent));
   EXPECT_FALSE(user_agent_matcher_.IsIe7(kIe6UserAgent));
@@ -83,7 +83,7 @@ TEST_F(UserAgentTest, IsIeTest) {
   EXPECT_FALSE(user_agent_matcher_.IsIe6or7(kIe8UserAgent));
 }
 
-TEST_F(UserAgentTest, IsNotIeTest) {
+TEST_F(UserAgentMatcherTest, IsNotIeTest) {
   EXPECT_FALSE(user_agent_matcher_.IsIe(kFirefoxUserAgent));
   EXPECT_FALSE(user_agent_matcher_.IsIe6(kFirefoxUserAgent));
   EXPECT_FALSE(user_agent_matcher_.IsIe6or7(kFirefoxUserAgent));
@@ -91,47 +91,47 @@ TEST_F(UserAgentTest, IsNotIeTest) {
   EXPECT_FALSE(user_agent_matcher_.IsIe(kChromeUserAgent));
 }
 
-TEST_F(UserAgentTest, NotSupportsImageInliningIe6) {
+TEST_F(UserAgentMatcherTest, NotSupportsImageInliningIe6) {
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kIe6UserAgent));
 }
 
-TEST_F(UserAgentTest, SupportsImageInliningIe9) {
+TEST_F(UserAgentMatcherTest, SupportsImageInliningIe9) {
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kIe9UserAgent));
 }
 
-TEST_F(UserAgentTest, SupportsImageInliningChrome) {
+TEST_F(UserAgentMatcherTest, SupportsImageInliningChrome) {
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kChromeUserAgent));
 }
 
-TEST_F(UserAgentTest, SupportsImageInliningFF3) {
+TEST_F(UserAgentMatcherTest, SupportsImageInliningFF3) {
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kFirefoxUserAgent));
 }
 
-TEST_F(UserAgentTest, NotSupportsImageInliningFF1) {
+TEST_F(UserAgentMatcherTest, NotSupportsImageInliningFF1) {
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kFirefox1UserAgent));
 }
 
-TEST_F(UserAgentTest, SupportsImageInliningOpera8) {
+TEST_F(UserAgentMatcherTest, SupportsImageInliningOpera8) {
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kOpera8UserAgent));
 }
 
-TEST_F(UserAgentTest, SupportsImageInliningOpera5) {
+TEST_F(UserAgentMatcherTest, SupportsImageInliningOpera5) {
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kOpera5UserAgent));
 }
 
-TEST_F(UserAgentTest, SupportsImageInliningSafari) {
+TEST_F(UserAgentMatcherTest, SupportsImageInliningSafari) {
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kSafariUserAgent));
 }
 
-TEST_F(UserAgentTest, NotSupportsImageInliningNokia) {
+TEST_F(UserAgentMatcherTest, NotSupportsImageInliningNokia) {
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kNokiaUserAgent));
 }
 
-TEST_F(UserAgentTest, SupportImageInliningiPhone) {
+TEST_F(UserAgentMatcherTest, SupportImageInliningiPhone) {
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kIPhoneUserAgent));
 }
 
-TEST_F(UserAgentTest, NotSupportImageInliningPSP) {
+TEST_F(UserAgentMatcherTest, NotSupportImageInliningPSP) {
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kPSPUserAgent));
 }
 }  // namespace net_instaweb

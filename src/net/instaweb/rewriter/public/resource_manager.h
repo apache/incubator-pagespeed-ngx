@@ -20,24 +20,26 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
 
+#include <set>
 #include <vector>
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
-template <class C> class scoped_ptr;
-
 namespace net_instaweb {
 
 class AbstractLock;
+class AbstractMutex;
 class CacheInterface;
 class ContentType;
 class FileLoadPolicy;
@@ -48,7 +50,8 @@ class MessageHandler;
 class NamedLockManager;
 class ResourceContext;
 class ResponseHeaders;
-class RewriteOptions;
+class RewriteDriver;
+class RewriteDriverFactory;
 class Statistics;
 class ThreadSystem;
 class Timer;
@@ -81,7 +84,8 @@ class ResourceManager {
                   NamedLockManager* lock_manager,
                   MessageHandler* handler,
                   Statistics* statistics,
-                  ThreadSystem* thread_system);
+                  ThreadSystem* thread_system,
+                  RewriteDriverFactory* factory);
   ~ResourceManager();
 
   // Initialize statistics gathering.
@@ -231,6 +235,55 @@ class ResourceManager {
     file_load_policy_ = policy;
   }
 
+  // Releases a rewrite driver.  If created with the default options,
+  // then the driver is returned to a free list.  Currently, drivers
+  // with custom options are deleted and must be reconstructed when
+  // needed again.
+  void RecycleRewriteDriver(RewriteDriver* rewrite_driver);
+
+  // Handles an incoming beacon request by incrementing the appropriate
+  // variables.  Returns true if the url was parsed and handled correctly; in
+  // this case a 204 No Content response should be sent.  Returns false if the
+  // url could not be parsed; in this case the request should be declined.
+  bool HandleBeacon(const StringPiece& unparsed_url);
+
+  RewriteDriver* decoding_driver() const { return decoding_driver_.get(); }
+
+  RewriteOptions* options() { return &options_; }
+
+  // Generates a new managed RewriteDriver using the RewriteOptions
+  // managed by this class.  Each RewriteDriver is not thread-safe,
+  // but you can generate a RewriteDriver* for each thread.  The
+  // returned drivers manage themselves: when the HTML parsing and
+  // rewriting is done they will be returned to the pool.
+  //
+  // Filters allocated using this mechanism have their filter-chain
+  // already frozen (see AddFilters()).
+  RewriteDriver* NewRewriteDriver();
+
+  // Generates a new unmanaged RewriteDriver using the RewriteOptions
+  // managed by this class.  Each RewriteDriver is not thread-safe,
+  // but you can generate a RewriteDriver* for each thread.  The
+  // returned drivers must be explicitly deleted by the caller.
+  //
+  // Filters allocated using this mechanism have not yet frozen their
+  // filters, and so callers may explicitly enable individual filters
+  // on the driver, and then call AddFilters to freeze them.
+  RewriteDriver* NewUnmanagedRewriteDriver();
+
+  // Like NewUnmanagedRewriteDriver, but adds adds all the filters
+  // specified in the options.
+  //
+  // Filters allocated using this mechanism have their filter-chain
+  // already frozen (see AddFilters()).
+  //
+  // Takes ownership of 'options'.
+  RewriteDriver* NewCustomRewriteDriver(RewriteOptions* options);
+
+  // This is intended to be called by RewriteContext, when it completes
+  // async rewrites.
+  void ReleaseRewriteDriver(RewriteDriver* rewrite_driver);
+
  private:
   GoogleString file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.
@@ -263,6 +316,10 @@ class ResourceManager {
   // Tracks 404s sent clients to when slurping.
   Variable* slurp_404_count_;
 
+  // Used for recording results from beacons from 'add_instrumentation_filter'.
+  Variable* total_page_load_ms_;
+  Variable* page_load_count_;
+
   HTTPCache* http_cache_;
   CacheInterface* metadata_cache_;
   bool relative_path_;
@@ -271,6 +328,36 @@ class ResourceManager {
   GoogleString max_age_string_;
   MessageHandler* message_handler_;
   ThreadSystem* thread_system_;
+
+  // RewriteDrivers that were previously allocated, but have
+  // been released with ReleaseRewriteDriver, and are ready
+  // for re-use with NewRewriteDriver.
+  std::vector<RewriteDriver*> available_rewrite_drivers_;
+
+  // RewriteDrivers that are currently in use.  This is retained
+  // as a sanity check to make sure our system is coherent,
+  // and to facilitate complete cleanup if a Shutdown occurs
+  // while a request is in flight.
+  std::set<RewriteDriver*> active_rewrite_drivers_;
+
+  // If set, a RewriteDriverFactory provides a mechanism to add
+  // platform-specific filters to a RewriteDriver.
+  RewriteDriverFactory* factory_;
+
+  scoped_ptr<AbstractMutex> rewrite_drivers_mutex_;
+
+  // Keep around a RewriteDriver just for decoding resource URLs, using
+  // the default options.  This is possible because the id->RewriteFilter
+  // table is fully constructed independent of the options.
+  //
+  // TODO(jmarantz): If domain-sharding or domain-rewriting is
+  // specified in a Directory scope or .htaccess file, the decoding
+  // driver will not see them.  This is blocks effective
+  // implementation of these features in environments where all
+  // configuration must be done by .htaccess.
+  scoped_ptr<RewriteDriver> decoding_driver_;
+
+  RewriteOptions options_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

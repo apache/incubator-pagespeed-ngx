@@ -21,6 +21,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -38,6 +39,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
@@ -57,6 +59,14 @@ static const char kCachedOutputHits[] = "rewrite_cached_output_hits";
 static const char kCachedOutputMisses[] = "rewrite_cached_output_misses";
 const char kInstawebResource404Count[] = "resource_404_count";
 const char kInstawebSlurp404Count[] = "slurp_404_count";
+
+// Variables for the beacon to increment.  These are currently handled in
+// mod_pagespeed_handler on apache.  The average load time in milliseconds is
+// total_page_load_ms / page_load_count.  Note that these are not updated
+// together atomically, so you might get a slightly bogus value.
+const char kTotalPageLoadMs[] = "total_page_load_ms";
+const char kPageLoadCount[] = "page_load_count";
+
 
 const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
 const int64 kGeneratedMaxAgeSec = Timer::kYearMs / Timer::kSecondMs;
@@ -103,7 +113,8 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
                                  NamedLockManager* lock_manager,
                                  MessageHandler* handler,
                                  Statistics* statistics,
-                                 ThreadSystem* thread_system)
+                                 ThreadSystem* thread_system,
+                                 RewriteDriverFactory* factory)
     : file_prefix_(file_prefix.data(), file_prefix.size()),
       resource_id_(0),
       file_system_(file_system),
@@ -120,6 +131,8 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       cached_output_misses_(statistics->GetVariable(kCachedOutputMisses)),
       resource_404_count_(statistics->GetVariable(kInstawebResource404Count)),
       slurp_404_count_(statistics->GetVariable(kInstawebSlurp404Count)),
+      total_page_load_ms_(statistics->GetVariable(kTotalPageLoadMs)),
+      page_load_count_(statistics->GetVariable(kPageLoadCount)),
       http_cache_(http_cache),
       metadata_cache_(metadata_cache),
       relative_path_(false),
@@ -128,10 +141,15 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       max_age_string_(StringPrintf("max-age=%d",
                                    static_cast<int>(kGeneratedMaxAgeSec))),
       message_handler_(handler),
-      thread_system_(thread_system) {
+      thread_system_(thread_system),
+      factory_(factory),
+      rewrite_drivers_mutex_(thread_system->NewMutex()),
+      decoding_driver_(NewUnmanagedRewriteDriver()) {
 }
 
 ResourceManager::~ResourceManager() {
+  STLDeleteElements(&active_rewrite_drivers_);
+  STLDeleteElements(&available_rewrite_drivers_);
 }
 
 void ResourceManager::Initialize(Statistics* statistics) {
@@ -142,6 +160,8 @@ void ResourceManager::Initialize(Statistics* statistics) {
     statistics->AddVariable(kCachedOutputMisses);
     statistics->AddVariable(kInstawebResource404Count);
     statistics->AddVariable(kInstawebSlurp404Count);
+    statistics->AddVariable(kTotalPageLoadMs);
+    statistics->AddVariable(kPageLoadCount);
     HTTPCache::Initialize(statistics);
     RewriteDriver::Initialize(statistics);
   }
@@ -480,6 +500,84 @@ bool ResourceManager::LockForCreation(const GoogleString& name,
       break;
   }
   return result;
+}
+
+bool ResourceManager::HandleBeacon(const StringPiece& unparsed_url) {
+  if ((total_page_load_ms_ == NULL) || (page_load_count_ == NULL)) {
+    return false;
+  }
+  GoogleString url = unparsed_url.as_string();
+  // TODO(abliss): proper query parsing
+  size_t index = url.find(AddInstrumentationFilter::kLoadTag);
+  if (index == GoogleString::npos) {
+    return false;
+  }
+  url = url.substr(index + strlen(AddInstrumentationFilter::kLoadTag));
+  int value = 0;
+  if (!StringToInt(url, &value)) {
+    return false;
+  }
+  total_page_load_ms_->Add(value);
+  page_load_count_->Add(1);
+  return true;
+}
+
+// TODO(jmaessen): Note that we *could* re-structure the
+// rewrite_driver freelist code as follows: Keep a
+// std::vector<RewriteDriver*> of all rewrite drivers.  Have each
+// driver hold its index in the vector (as a number or iterator).
+// Keep index of first in use.  To free, swap with first in use,
+// adjusting indexes, and increment first in use.  To allocate,
+// decrement first in use and return that driver.  If first in use was
+// 0, allocate a fresh driver and push it.
+//
+// The benefit of Jan's idea is that we could avoid the overhead
+// of keeping the RewriteDrivers in a std::set, which has log n
+// insert/remove behavior, and instead get constant time and less
+// memory overhead.
+
+RewriteDriver* ResourceManager::NewCustomRewriteDriver(
+    RewriteOptions* options) {
+  RewriteDriver* rewrite_driver = NewUnmanagedRewriteDriver();
+  rewrite_driver->set_custom_options(options);
+  rewrite_driver->AddFilters();
+  return rewrite_driver;
+}
+
+RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver() {
+  RewriteDriver* rewrite_driver = new RewriteDriver(
+      message_handler_, file_system_, url_async_fetcher_);
+  rewrite_driver->SetResourceManager(this);
+  if (factory_ != NULL) {
+    factory_->AddPlatformSpecificRewritePasses(rewrite_driver);
+  }
+  return rewrite_driver;
+}
+
+RewriteDriver* ResourceManager::NewRewriteDriver() {
+  ScopedMutex lock(rewrite_drivers_mutex_.get());
+  RewriteDriver* rewrite_driver = NULL;
+  if (!available_rewrite_drivers_.empty()) {
+    rewrite_driver = available_rewrite_drivers_.back();
+    available_rewrite_drivers_.pop_back();
+  } else {
+    rewrite_driver = NewUnmanagedRewriteDriver();
+    rewrite_driver->AddFilters();
+  }
+  active_rewrite_drivers_.insert(rewrite_driver);
+  return rewrite_driver;
+}
+
+void ResourceManager::ReleaseRewriteDriver(
+    RewriteDriver* rewrite_driver) {
+  ScopedMutex lock(rewrite_drivers_mutex_.get());
+  int count = active_rewrite_drivers_.erase(rewrite_driver);
+  if (count != 1) {
+    LOG(ERROR) << "ReleaseRewriteDriver called with driver not in active set.";
+  } else {
+    available_rewrite_drivers_.push_back(rewrite_driver);
+    rewrite_driver->Clear();
+  }
 }
 
 }  // namespace net_instaweb

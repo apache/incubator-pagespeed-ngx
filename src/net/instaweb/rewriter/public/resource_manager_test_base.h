@@ -50,6 +50,7 @@ namespace net_instaweb {
 class Hasher;
 class LRUCache;
 class MockTimer;
+class RewriteDriverFactory;
 class RewriteFilter;
 class SimpleStats;
 struct ContentType;
@@ -204,8 +205,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   HTTPCache http_cache_;
   FileSystemLockManager lock_manager_;
   static SimpleStats* statistics_;
+  RewriteDriverFactory* factory_;
   ResourceManager* resource_manager_;  // TODO(sligocki): Make not a pointer.
-  RewriteOptions options_;
+
+  // TODO(jmarantz): the 'options_' and 'other_options_' variables should
+  // be changed from references to pointers, in a follow-up CL.
+  RewriteOptions& options_;  // owned by rewrite_driver_.
   RewriteDriver rewrite_driver_;
 
   // Server B runs other_rewrite_driver_ and will get a request for
@@ -217,7 +222,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   HTTPCache other_http_cache_;
   FileSystemLockManager other_lock_manager_;
   ResourceManager other_resource_manager_;
-  RewriteOptions other_options_;
+  RewriteOptions& other_options_;  // owned by other_rewrite_driver_.
   RewriteDriver other_rewrite_driver_;
 };
 

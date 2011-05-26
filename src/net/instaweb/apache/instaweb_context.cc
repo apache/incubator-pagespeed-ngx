@@ -47,17 +47,18 @@ InstawebContext::InstawebContext(request_rec* request,
       inflater_(NULL),
       content_detection_state_(kStart),
       absolute_url_(absolute_url) {
+  ResourceManager* resource_manager = factory->ComputeResourceManager();
   if (use_custom_options) {
     // TODO(jmarantz): this is a temporary hack until we sort out better
     // memory management of RewriteOptions.  This will drag on performance.
     // We need to do this because we are changing RewriteDriver to keep
     // a reference to its options throughout its lifetime to refer to the
     // domain lawyer and other options.
-    rewrite_options_.CopyFrom(custom_options);
-    custom_rewriter_.reset(factory->NewCustomRewriteDriver(rewrite_options_));
-    rewrite_driver_ = custom_rewriter_.get();
+    RewriteOptions* options = new RewriteOptions;
+    options->CopyFrom(custom_options);
+    rewrite_driver_ = resource_manager->NewCustomRewriteDriver(options);
   } else {
-    rewrite_driver_ = factory->NewRewriteDriver();
+    rewrite_driver_ = resource_manager->NewRewriteDriver();
   }
 
   ComputeContentEncoding(request);
@@ -88,9 +89,6 @@ InstawebContext::InstawebContext(request_rec* request,
 }
 
 InstawebContext::~InstawebContext() {
-  if (custom_rewriter_ == NULL) {
-    factory_->ReleaseRewriteDriver(rewrite_driver_);
-  }
 }
 
 void InstawebContext::Rewrite(const char* input, int size) {

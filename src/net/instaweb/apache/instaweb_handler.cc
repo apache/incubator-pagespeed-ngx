@@ -108,7 +108,6 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
                         request_rec* request,
                         const GoogleString& url) {
   RewriteDriver* rewrite_driver = factory->NewRewriteDriver();
-
   RequestHeaders request_headers;
   ResponseHeaders response_headers;
   int n = arraysize(RewriteDriver::kPassThroughRequestAttributes);
@@ -162,7 +161,6 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
     callback->Done(false);
   }
   callback->Release();
-  factory->ReleaseRewriteDriver(rewrite_driver);
   return handled;
 }
 
@@ -236,14 +234,9 @@ apr_status_t instaweb_handler(request_rec* request) {
     ret = OK;
 
   } else if (strcmp(request->handler, kBeaconHandler) == 0) {
-    RewriteDriver* driver = factory->NewRewriteDriver();
-    AddInstrumentationFilter* aif = driver->add_instrumentation_filter();
-    if (aif != NULL) {
-      aif->HandleBeacon(request->unparsed_uri);
-    }
-    factory->ReleaseRewriteDriver(driver);
+    ResourceManager* resource_manager = factory->ComputeResourceManager();
+    resource_manager->HandleBeacon(request->unparsed_uri);
     ret = HTTP_NO_CONTENT;
-
   } else if (url != NULL) {
     // Only handle GET request
     if (request->method_number != M_GET) {
@@ -337,7 +330,6 @@ apr_status_t save_url_hook(request_rec *request) {
     if (output_resource.get() != NULL) {
       bypass_mod_rewrite = true;
     }
-    factory->ReleaseRewriteDriver(rewrite_driver);
   }
 
   if (bypass_mod_rewrite) {

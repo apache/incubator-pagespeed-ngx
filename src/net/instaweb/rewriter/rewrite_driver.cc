@@ -37,6 +37,7 @@
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
@@ -77,13 +78,14 @@ const char RewriteDriver::kJavascriptMinId[] = "jm";
 
 RewriteDriver::RewriteDriver(MessageHandler* message_handler,
                              FileSystem* file_system,
-                             UrlAsyncFetcher* url_async_fetcher,
-                             const RewriteOptions& options)
+                             UrlAsyncFetcher* url_async_fetcher)
     : HtmlParse(message_handler),
       base_was_set_(false),
       refs_before_base_(false),
       asynchronous_rewrites_(false),
       filters_added_(false),
+      externally_managed_(false),
+      num_rewrites_complete_(0),
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),
@@ -92,10 +94,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       domain_rewriter_(NULL),
       cached_resource_fetches_(NULL),
       succeeded_filter_resource_fetches_(NULL),
-      failed_filter_resource_fetches_(NULL),
-      options_(options) {
-  set_log_rewrite_timing(options.log_rewrite_timing());
-
+      failed_filter_resource_fetches_(NULL) {
   // The Scan filter always goes first so it can find base-tags.
   HtmlParse::AddFilter(&scan_filter_);
 }
@@ -145,7 +144,6 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     // TODO(jmarantz): Make all of these work with null statistics so that
     // they could mdo other required static initializations if desired
     // without having to edit code to this method.
-    AddInstrumentationFilter::Initialize(statistics);
     CacheExtender::Initialize(statistics);
     CssCombineFilter::Initialize(statistics);
     CssMoveToHeadFilter::Initialize(statistics);
@@ -251,102 +249,103 @@ void RewriteDriver::AddFilters() {
   //
   // Now process boolean options, which may include propagating non-boolean
   // and boolean parameter settings to filters.
-  if (options_.Enabled(RewriteOptions::kAddHead) ||
-      options_.Enabled(RewriteOptions::kCombineHeads) ||
-      options_.Enabled(RewriteOptions::kMoveCssToHead) ||
-      options_.Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync) ||
-      options_.Enabled(RewriteOptions::kAddInstrumentation)) {
+  const RewriteOptions* rewrite_options = options();
+  if (rewrite_options->Enabled(RewriteOptions::kAddHead) ||
+      rewrite_options->Enabled(RewriteOptions::kCombineHeads) ||
+      rewrite_options->Enabled(RewriteOptions::kMoveCssToHead) ||
+      rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync) ||
+      rewrite_options->Enabled(RewriteOptions::kAddInstrumentation)) {
     // Adds a filter that adds a 'head' section to html documents if
     // none found prior to the body.
     AddOwnedFilter(new AddHeadFilter(
-        this, options_.Enabled(RewriteOptions::kCombineHeads)));
+        this, rewrite_options->Enabled(RewriteOptions::kCombineHeads)));
   }
-  if (options_.Enabled(RewriteOptions::kStripScripts)) {
+  if (rewrite_options->Enabled(RewriteOptions::kStripScripts)) {
     // Experimental filter that blindly strips all scripts from a page.
     AddOwnedFilter(new StripScriptsFilter(this));
   }
-  if (options_.Enabled(RewriteOptions::kOutlineCss)) {
+  if (rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
     // Cut out inlined styles and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
     CHECK(resource_manager_ != NULL);
     CssOutlineFilter* css_outline_filter = new CssOutlineFilter(this);
     AddOwnedFilter(css_outline_filter);
   }
-  if (options_.Enabled(RewriteOptions::kOutlineJavascript)) {
+  if (rewrite_options->Enabled(RewriteOptions::kOutlineJavascript)) {
     // Cut out inlined scripts and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
     CHECK(resource_manager_ != NULL);
     JsOutlineFilter* js_outline_filter = new JsOutlineFilter(this);
     AddOwnedFilter(js_outline_filter);
   }
-  if (options_.Enabled(RewriteOptions::kMoveCssToHead)) {
+  if (rewrite_options->Enabled(RewriteOptions::kMoveCssToHead)) {
     // It's good to move CSS links to the head prior to running CSS combine,
     // which only combines CSS links that are already in the head.
     AddOwnedFilter(new CssMoveToHeadFilter(this, statistics()));
   }
-  if (options_.Enabled(RewriteOptions::kCombineCss)) {
+  if (rewrite_options->Enabled(RewriteOptions::kCombineCss)) {
     // Combine external CSS resources after we've outlined them.
     // CSS files in html document.  This can only be called
     // once and requires a resource_manager to be set.
     EnableRewriteFilter(kCssCombinerId);
   }
-  if (options_.Enabled(RewriteOptions::kRewriteCss)) {
+  if (rewrite_options->Enabled(RewriteOptions::kRewriteCss)) {
     EnableRewriteFilter(kCssFilterId);
   }
-  if (options_.Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync)) {
+  if (rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync)) {
     // Converts sync loads of Google Analytics javascript to async loads.
     // This needs to be listed before rewrite_javascript because it injects
     // javascript that has comments and extra whitespace.
     AddOwnedFilter(new GoogleAnalyticsFilter(this, statistics()));
   }
-  if (options_.Enabled(RewriteOptions::kRewriteJavascript)) {
+  if (rewrite_options->Enabled(RewriteOptions::kRewriteJavascript)) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
     // interaction.
     EnableRewriteFilter(kJavascriptMinId);
   }
-  if (options_.Enabled(RewriteOptions::kCombineJavascript)) {
+  if (rewrite_options->Enabled(RewriteOptions::kCombineJavascript)) {
     // Combine external JS resources. Done after minification and analytics
     // detection, as it converts script sources into string literals, making
     // them opaque to analysis.
     EnableRewriteFilter(kJavascriptCombinerId);
   }
-  if (options_.Enabled(RewriteOptions::kInlineCss)) {
+  if (rewrite_options->Enabled(RewriteOptions::kInlineCss)) {
     // Inline small CSS files.  Give CssCombineFilter and CSS minification a
     // chance to run before we decide what counts as "small".
     CHECK(resource_manager_ != NULL);
     AddOwnedFilter(new CssInlineFilter(this));
   }
-  if (options_.Enabled(RewriteOptions::kInlineJavascript)) {
+  if (rewrite_options->Enabled(RewriteOptions::kInlineJavascript)) {
     // Inline small Javascript files.  Give JS minification a chance to run
     // before we decide what counts as "small".
     CHECK(resource_manager_ != NULL);
     AddOwnedFilter(new JsInlineFilter(this));
   }
-  if (options_.Enabled(RewriteOptions::kInlineImages) ||
-      options_.Enabled(RewriteOptions::kInsertImageDimensions) ||
-      options_.Enabled(RewriteOptions::kRecompressImages) ||
-      options_.Enabled(RewriteOptions::kResizeImages)) {
+  if (rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
+      rewrite_options->Enabled(RewriteOptions::kInsertImageDimensions) ||
+      rewrite_options->Enabled(RewriteOptions::kRecompressImages) ||
+      rewrite_options->Enabled(RewriteOptions::kResizeImages)) {
     EnableRewriteFilter(kImageCompressionId);
   }
-  if (options_.Enabled(RewriteOptions::kRemoveComments)) {
-    AddOwnedFilter(new RemoveCommentsFilter(this, &options_));
+  if (rewrite_options->Enabled(RewriteOptions::kRemoveComments)) {
+    AddOwnedFilter(new RemoveCommentsFilter(this, rewrite_options));
   }
-  if (options_.Enabled(RewriteOptions::kCollapseWhitespace)) {
+  if (rewrite_options->Enabled(RewriteOptions::kCollapseWhitespace)) {
     // Remove excess whitespace in HTML
     AddOwnedFilter(new CollapseWhitespaceFilter(this));
   }
-  if (options_.Enabled(RewriteOptions::kElideAttributes)) {
+  if (rewrite_options->Enabled(RewriteOptions::kElideAttributes)) {
     // Remove HTML element attribute values where
     // http://www.w3.org/TR/html4/loose.dtd says that the name is all
     // that's necessary
     AddOwnedFilter(new ElideAttributesFilter(this));
   }
-  if (options_.Enabled(RewriteOptions::kExtendCache)) {
+  if (rewrite_options->Enabled(RewriteOptions::kExtendCache)) {
     // Extend the cache lifetime of resources.
     EnableRewriteFilter(kCacheExtenderId);
   }
-  if (options_.domain_lawyer()->can_rewrite_domains() &&
-      options_.Enabled(RewriteOptions::kRewriteDomains)) {
+  if (rewrite_options->domain_lawyer()->can_rewrite_domains() &&
+      rewrite_options->Enabled(RewriteOptions::kRewriteDomains)) {
     // Rewrite mapped domains and shard any resources not otherwise rewritten.
     // We want do do this after all the content-changing rewrites, because they
     // will map & shard as part of their execution.
@@ -362,25 +361,25 @@ void RewriteDriver::AddFilters() {
     // specified or not.
     HtmlParse::AddFilter(domain_rewriter_.get());
   }
-  if (options_.Enabled(RewriteOptions::kLeftTrimUrls)) {
+  if (rewrite_options->Enabled(RewriteOptions::kLeftTrimUrls)) {
     // Trim extraneous prefixes from urls in attribute values.
     // Happens before RemoveQuotes but after everything else.  Note:
     // we Must left trim urls BEFORE quote removal.
     AddOwnedFilter(new UrlLeftTrimFilter(this, statistics()));
   }
-  if (options_.Enabled(RewriteOptions::kRemoveQuotes)) {
+  if (rewrite_options->Enabled(RewriteOptions::kRemoveQuotes)) {
     // Remove extraneous quotes from html attributes.  Does this save
     // enough bytes to be worth it after compression?  If we do it
     // everywhere it seems to give a small savings.
     AddOwnedFilter(new HtmlAttributeQuoteRemoval(this));
   }
-  if (options_.Enabled(RewriteOptions::kAddInstrumentation)) {
+  if (rewrite_options->Enabled(RewriteOptions::kAddInstrumentation)) {
     // Inject javascript to instrument loading-time.
     add_instrumentation_filter_ = new AddInstrumentationFilter(
-        this, options_.beacon_url(), statistics());
+        this, rewrite_options->beacon_url());
     AddOwnedFilter(add_instrumentation_filter_);
   }
-  if (options_.Enabled(RewriteOptions::kSpriteImages)) {
+  if (rewrite_options->Enabled(RewriteOptions::kSpriteImages)) {
     EnableRewriteFilter(kImageCombineId);
   }
 
@@ -450,7 +449,7 @@ void RewriteDriver::SetWriter(Writer* writer) {
     HtmlWriterFilter* writer_filter = new HtmlWriterFilter(this);
     html_writer_filter_.reset(writer_filter);
     HtmlParse::AddFilter(writer_filter);
-    writer_filter->set_case_fold(options_.lowercase_html_names());
+    writer_filter->set_case_fold(options()->lowercase_html_names());
   }
   html_writer_filter_->set_writer(writer);
 }
@@ -651,12 +650,12 @@ bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
                                   const GoogleUrl& input_url) const {
   bool ret = false;
   if (domain_url.is_valid()) {
-    if (options_.IsAllowed(input_url.Spec())) {
+    if (options()->IsAllowed(input_url.Spec())) {
       scoped_ptr<GoogleUrl> resolved_request(new GoogleUrl());
       GoogleString mapped_domain_name;
       // TODO(nforman): MapRequestToDomain() may be heavier-weight than we need.
       // Replace it with something that does less copying.
-      if (options_.domain_lawyer()->MapRequestToDomain(
+      if (options()->domain_lawyer()->MapRequestToDomain(
               domain_url, input_url.Spec(), &mapped_domain_name,
               resolved_request.get(), message_handler())) {
         ret = true;
@@ -720,10 +719,10 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
     GoogleString filename;
     FileLoadPolicy* policy = resource_manager_->file_load_policy();
     if (policy->ShouldLoadFromFile(url, &filename)) {
-      resource.reset(new FileInputResource(resource_manager_, &options_, type,
+      resource.reset(new FileInputResource(resource_manager_, options(), type,
                                            url_string, filename));
     } else {
-      resource.reset(new UrlInputResource(resource_manager_, &options_, type,
+      resource.reset(new UrlInputResource(resource_manager_, options(), type,
                                           url_string));
     }
   } else {
@@ -770,9 +769,38 @@ HTTPCache::FindResult RewriteDriver::ReadIfCachedWithStatus(
   return result;
 }
 
+bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
+                                 const ContentType& content_type) {
+  set_log_rewrite_timing(options()->log_rewrite_timing());
+  return HtmlParse::StartParseId(url, id, content_type);
+}
+
+void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
+  ++num_rewrites_complete_;
+  Cleanup();
+}
+
+void RewriteDriver::Cleanup() {
+  // TODO(jmarantz): No one actually increments num_rewrites_complete_ now,
+  // but the RewriteContextTest only runs when with externally-managed
+  // RewriteDrivers so it doesn't fail tests.
+  //
+  // In a follow-up CL, make RewriteContexts call RewriteComplete when done.
+  // If I do this now, it'll just cause a conflict in the next CL.
+  if (!externally_managed_ &&
+      (num_rewrites_complete_ == static_cast<int>(rewrites_.size()))) {
+    if (has_custom_options()) {
+      delete this;
+    } else {
+      resource_manager_->ReleaseRewriteDriver(this);
+    }
+  }
+}
+
 void RewriteDriver::FinishParse() {
   HtmlParse::FinishParse();
   Clear();
+  Cleanup();
 }
 
 void RewriteDriver::SetBaseUrlIfUnset(const StringPiece& new_base) {
