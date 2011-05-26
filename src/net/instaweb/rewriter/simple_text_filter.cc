@@ -49,6 +49,12 @@ SimpleTextFilter::SimpleTextFilter(Rewriter* rewriter, RewriteDriver* driver)
 SimpleTextFilter::~SimpleTextFilter() {
 }
 
+SimpleTextFilter::Context::Context(const RewriterPtr& rewriter,
+                                   RewriteDriver* driver)
+    : SingleRewriteContext(driver, NULL, NULL),
+      rewriter_(rewriter) {
+}
+
 SimpleTextFilter::Context::~Context() {
 }
 
@@ -57,7 +63,7 @@ void SimpleTextFilter::Context::RewriteSingle(const ResourcePtr& input,
   RewriteSingleResourceFilter::RewriteResult result =
       RewriteSingleResourceFilter::kRewriteFailed;
   GoogleString rewritten;
-  ResourceManager* resource_manager = this->resource_manager();
+  ResourceManager* resource_manager = Manager();
   if (rewriter_->RewriteText(input->url(), input->contents(), &rewritten,
                              resource_manager))  {
     MessageHandler* message_handler = resource_manager->message_handler();

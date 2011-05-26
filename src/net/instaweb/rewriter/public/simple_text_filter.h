@@ -75,11 +75,7 @@ class SimpleTextFilter : public RewriteFilter {
 
   class Context : public SingleRewriteContext {
    public:
-    Context(const RewriterPtr& rewriter,
-            RewriteDriver* driver)
-        : SingleRewriteContext(driver, NULL),
-          rewriter_(rewriter) {
-    }
+    Context(const RewriterPtr& rewriter, RewriteDriver* driver);
     virtual ~Context();
     virtual void RewriteSingle(
         const ResourcePtr& input, const OutputResourcePtr& output);

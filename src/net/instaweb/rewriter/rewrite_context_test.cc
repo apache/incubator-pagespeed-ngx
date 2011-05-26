@@ -19,18 +19,36 @@
 // Unit-test the RewriteContext class.  This is made simplest by
 // setting up some dummy rewriters in our test framework.
 
+#include "net/instaweb/rewriter/public/rewrite_context.h"
+
+#include <vector>
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/counting_url_async_fetcher.h"
+#include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr, etc
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
+#include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/google_url.h"  // for GoogleUrl
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/md5_hasher.h"  // for MD5Hasher
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -38,10 +56,16 @@ namespace {
 
 const char kTrimWhitespaceFilterId[] = "tw";
 const char kUpperCaseFilterId[] = "uc";
+const char kNestedFilterId[] = "nf";
+
 
 }  // namespace
 
 namespace net_instaweb {
+
+class MessageHandler;
+class RequestHeaders;
+class Writer;
 
 // Simple test filter just trims whitespace from the input resource.
 class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
@@ -114,6 +138,167 @@ class UpperCaseRewriter : public SimpleTextFilter::Rewriter {
   DISALLOW_COPY_AND_ASSIGN(UpperCaseRewriter);
 };
 
+// Filter that contains nested resources that must themselves
+// be rewritten.
+class NestedFilter : public RewriteFilter {
+ public:
+  explicit NestedFilter(RewriteDriver* driver) : RewriteFilter(
+      driver, kUpperCaseFilterId) {}
+
+ protected:
+  virtual ~NestedFilter() {}
+
+  class NestedSlot : public ResourceSlot {
+   public:
+    explicit NestedSlot(const ResourcePtr& resource) : ResourceSlot(resource) {}
+    virtual void Render() {}
+  };
+
+  class NestedContext : public SingleRewriteContext {
+   public:
+    explicit NestedContext(RewriteContext* parent)
+        : SingleRewriteContext(NULL, parent, NULL) {}
+    virtual ~NestedContext() {}
+
+   protected:
+    virtual void RewriteSingle(
+        const ResourcePtr& input, const OutputResourcePtr& output) {
+      GoogleString text = input->contents().as_string();
+      UpperString(&text);
+      RewriteSingleResourceFilter::RewriteResult result =
+          RewriteSingleResourceFilter::kRewriteFailed;
+      if (input->contents() != text) {
+        int64 origin_expire_time_ms = input->CacheExpirationTimeMs();
+        ResourceManager* resource_manager = Manager();
+        MessageHandler* message_handler = resource_manager->message_handler();
+        if (resource_manager->Write(HttpStatus::kOK, text, output.get(),
+                                    origin_expire_time_ms, message_handler)) {
+          result = RewriteSingleResourceFilter::kRewriteOk;
+        }
+      }
+      RewriteDone(result, 0);
+    }
+
+    virtual const char* id() const { return kUpperCaseFilterId; }
+    virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
+  };
+
+  class Context : public SingleRewriteContext {
+   public:
+    explicit Context(RewriteDriver* driver)
+        : SingleRewriteContext(driver, NULL, NULL) {
+    }
+    virtual ~Context() {
+      STLDeleteElements(&strings_);
+    }
+    virtual void RewriteSingle(
+        const ResourcePtr& input, const OutputResourcePtr& output) {
+      output_ = output;
+      // Assume that this file just has nested CSS URLs one per line,
+      // which we will rewrite.
+      std::vector<StringPiece> pieces;
+      SplitStringPieceToVector(input->contents(), "\n", &pieces, true);
+
+      GoogleUrl base(input->url());
+      if (base.is_valid()) {
+        // Add a new nested multi-slot context.
+        for (int i = 0, n = pieces.size(); i < n; ++i) {
+          GoogleUrl url(base, pieces[i]);
+          if (url.is_valid()) {
+            ResourcePtr resource(Driver()->CreateInputResource(url));
+            if (resource.get() != NULL) {
+              NestedContext* nested_context = new NestedContext(this);
+              AddNestedContext(nested_context);
+              ResourceSlotPtr slot(new NestedSlot(resource));
+              nested_context->AddSlot(slot);
+            }
+          }
+        }
+        // TODO(jmarantz): start this automatically.  This will be easier
+        // to do once the states are kept more explicitly via a refactor.
+        StartNestedTasks();
+      }
+    }
+
+    virtual void Harvest() {
+      RewriteSingleResourceFilter::RewriteResult result =
+          RewriteSingleResourceFilter::kRewriteFailed;
+      GoogleString new_content;
+
+      // TODO(jmarantz): Make RewriteContext handle the aggregation of
+      // of expiration times.
+      int64 min_expire_ms = 0;
+      CHECK_EQ(1, num_slots());
+      for (int i = 0, n = num_nested(); i < n; ++i) {
+        CHECK_EQ(1, nested(i)->num_slots());
+        ResourceSlotPtr slot(nested(i)->slot(0));
+        nested(i)->Detach();
+        ResourcePtr resource(slot->resource());
+        int64 expire_ms = resource->CacheExpirationTimeMs();
+        if ((i == 0) || (expire_ms < min_expire_ms)) {
+          min_expire_ms = expire_ms;
+        }
+        StrAppend(&new_content, resource->url(), "\n");
+      }
+      ResourceManager* resource_manager = Manager();
+      MessageHandler* message_handler = resource_manager->message_handler();
+      if (resource_manager->Write(HttpStatus::kOK, new_content, output(0).get(),
+                                  min_expire_ms, message_handler)) {
+        result = RewriteSingleResourceFilter::kRewriteOk;
+      }
+      RewriteDone(result, 0);
+    }
+
+   protected:
+    virtual const char* id() const { return kNestedFilterId; }
+    virtual OutputResourceKind kind() const { return kRewrittenResource; }
+
+   private:
+    OutputResourcePtr output_;
+    std::vector<GoogleString*> strings_;
+
+    DISALLOW_COPY_AND_ASSIGN(Context);
+  };
+
+  bool Fetch(const OutputResourcePtr& output_resource,
+             Writer* response_writer,
+             const RequestHeaders& request_header,
+             ResponseHeaders* response_headers,
+             MessageHandler* message_handler,
+             UrlAsyncFetcher::Callback* callback) {
+    Context* context = new Context(driver_);
+    return context->Fetch(driver_, output_resource, response_writer,
+                          response_headers, message_handler, callback);
+  }
+
+  void StartElementImpl(HtmlElement* element) {
+    HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kHref);
+    if (attr != NULL) {
+      ResourcePtr resource = CreateInputResource(attr->value());
+      if (resource.get() != NULL) {
+        ResourceSlotPtr slot(driver_->GetSlot(resource, element, attr));
+
+        // This 'new' is paired with a delete in RewriteContext::FinishFetch()
+        Context* context = new Context(driver_);
+        context->AddSlot(slot);
+        driver_->InitiateRewrite(context);
+      }
+    }
+  }
+
+
+  virtual OutputResourceKind kind() const { return kind_; }
+  virtual const char* id() const { return kNestedFilterId; }
+  virtual const char* Name() const { return "NestedFilter"; }
+  virtual void StartDocumentImpl() {}
+  virtual void EndElementImpl(HtmlElement* element) {}
+
+ private:
+  OutputResourceKind kind_;
+
+  DISALLOW_COPY_AND_ASSIGN(NestedFilter);
+};
+
 class RewriteContextTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
@@ -130,6 +315,8 @@ class RewriteContextTest : public ResourceManagerTestBase {
                                   " a ");  // trimmable
     mock_url_fetcher_.SetResponse("http://test.com/b.css", default_css_header,
                                   "b");    // not trimmable
+    mock_url_fetcher_.SetResponse("http://test.com/c.css", default_css_header,
+                                  "a.css\nb.css\n");
   }
 
   void InitTrimFilters(OutputResourceKind kind) {
@@ -519,6 +706,22 @@ TEST_F(RewriteContextTest, TwoFiltersDelayedFetches) {
   // TODO(jmarantz): This is broken because we do not have the right graph
   // built yet between different RewriteContexts running on the same slots.
   // Fix this.
+}
+
+TEST_F(RewriteContextTest, Nested) {
+  // We must use a non-mock hasher because otherwise the lock names
+  // generated for multiple input resources clash.
+  //
+  // TODO(jmarantz): inject a separate hasher for the lock-name
+  // generator so we don't have to re-discover this issue on every new
+  // test that reads multiple inputs.
+  resource_manager_->set_hasher(&md5_hasher_);
+  rewrite_driver_.AddRewriteFilter(new NestedFilter(&rewrite_driver_));
+  rewrite_driver_.AddFilters();
+  InitResources();
+  ValidateExpected(
+      "trimmable2", CssLink("c.css"),
+      CssLink("http://test.com/c.css.pagespeed.nf.WTYjEzrEWX.css"));
 }
 
 }  // namespace net_instaweb

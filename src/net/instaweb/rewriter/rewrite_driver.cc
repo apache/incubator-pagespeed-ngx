@@ -114,7 +114,8 @@ void RewriteDriver::Render() {
   // LOCK
   for (int i = 0, n = rewrites_.size(); i < n; ++i) {
     RewriteContext* rewrite_context = rewrites_[i];
-    rewrite_context->RenderAndDetach();
+    rewrite_context->Render();
+    rewrite_context->Detach();
   }
   rewrites_.clear();
   // UNLOCK

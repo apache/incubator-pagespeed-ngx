@@ -18,20 +18,24 @@
 
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 
-#include <algorithm>  // for std::max
+#include <vector>
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/blocking_behavior.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/url_input_resource.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/shared_string.h"
@@ -39,8 +43,12 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
+class RewriteOptions;
 
 namespace {
 
@@ -106,12 +114,13 @@ class RewriteContext::FetchContext {
         response_headers_(response_headers),
         callback_(callback),
         output_resource_(output_resource),
-        handler_(handler) {
+        handler_(handler),
+        success_(false) {
   }
 
-  void FetchDone(bool success) {
+  void FetchDone() {
     GoogleString output;
-    if (success) {
+    if (success_) {
       // TODO(sligocki): It might be worth streaming this.
       response_headers_->CopyFrom(*(output_resource_->metadata()));
       writer_->Write(output_resource_->contents(), handler_);
@@ -135,34 +144,10 @@ class RewriteContext::FetchContext {
       // the passthrough fallback)
     }
 
-    callback_->Done(success);
+    callback_->Done(success_);
   }
 
-#if 0
-  void RewriteContext::CacheRewriteFailure() {
-    // Either we couldn't rewrite this successfully or the input resource plain
-    // isn't there. If so, do not try again until the input resource expires
-    // or a minimal TTL has passed.
-    int64 now_ms = resource_manager_->timer()->NowMs();
-    int64 expire_at_ms = std::max(now_ms + ResponseHeaders::kImplicitCacheTtlMs,
-                                  input_resource_->CacheExpirationTimeMs());
-    CachedResult* result = output_resource_->EnsureCachedResultCreated();
-
-    // TODO(jmarantz): add versioning.
-    result->set_cache_version(0 /* FilterCacheFormatVersion()*/);
-    if (input_resource_->ContentsValid()) {
-      // TODO(jmarantz): handle & test ReuseByContentHash:
-      //
-      // if (ReuseByContentHash()) {
-      //   cached->set_input_hash(
-      //   resource_manager_->hasher()->Hash(input_resource->contents()));
-      // }
-    }
-    resource_manager_->WriteUnoptimizable(output_resource_.get(),
-                                          expire_at_ms, handler_);
-  }
-#endif
-
+  void set_success(bool success) { success_ = success; }
   OutputResourcePtr output_resource() { return output_resource_; }
 
   Writer* writer_;
@@ -170,25 +155,25 @@ class RewriteContext::FetchContext {
   UrlAsyncFetcher::Callback* callback_;
   OutputResourcePtr output_resource_;
   MessageHandler* handler_;
+  bool success_;
 };
 
 RewriteContext::RewriteContext(RewriteDriver* driver,
+                               RewriteContext* parent,
                                ResourceContext* resource_context)
-  : driver_(driver),
-    resource_manager_(driver->resource_manager()),
+  : attached_(true),
+    written_(false),
     started_(false),
     outstanding_fetches_(0),
     outstanding_rewrites_(0),
     resource_context_(resource_context),
+    num_pending_nested_(0),
+    parent_(parent),
+    driver_(driver),
     num_predecessors_(0),
     cache_lookup_active_(false),
     rewrite_done_(false),
     ok_to_write_output_partitions_(true) {
-  // TODO(jmarantz): if this duplication proves expensive, then do this
-  // lazily.  We don't need our own copy of the RewriteOptions until the
-  // RewriteDriver is detached.  for now just do the simple thing and
-  // copy on creation, or ref-count them.
-  options_.CopyFrom(*driver_->options());
 }
 
 RewriteContext::~RewriteContext() {
@@ -242,7 +227,7 @@ void RewriteContext::Start() {
       urls.push_back(slot(i)->resource()->url());
     }
     encoder()->Encode(urls, resource_context_.get(), &partition_key_);
-    CacheInterface* metadata_cache = resource_manager_->metadata_cache();
+    CacheInterface* metadata_cache = Manager()->metadata_cache();
 
     // When the cache lookup is finished, OutputCacheDone will be called.
     cache_lookup_active_ = true;
@@ -260,10 +245,10 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
     // the cache system will respond to HIT by making the next HIT faster
     // so it meets our deadline.  In either case we will track with stats.
     //
-    if (driver_ == NULL) {
-      resource_manager_->cached_output_missed_deadline()->Add(1);
+    if (attached_) {
+      Manager()->cached_output_hits()->Add(1);
     } else {
-      resource_manager_->cached_output_hits()->Add(1);
+      Manager()->cached_output_missed_deadline()->Add(1);
     }
 
     // We've got a hit on the output metadata; the contents should
@@ -293,13 +278,14 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
       // TODO(jmarantz): count cache corruptions in a stat?
     }
   } else {
-    resource_manager_->cached_output_misses()->Add(1);
+    Manager()->cached_output_misses()->Add(1);
   }
 
   // If the cache gave a miss, or yielded unparsable data, then acquire a lock
   // and start fetching the input resources.
   if (state == CacheInterface::kAvailable) {
-    RunSuccessors();
+    ok_to_write_output_partitions_ = false;  // partitions were read succesfully
+    Finalize();
   } else {
     FetchInputs(kNeverBlock);
   }
@@ -318,7 +304,7 @@ void RewriteContext::FetchInputs(BlockingBehavior block) {
   // and use that.
   GoogleString lock_name = StrCat(kRewriteContextLockPrefix, partition_key_);
 
-  if (resource_manager_->LockForCreation(lock_name, block, &lock_)) {
+  if (Manager()->LockForCreation(lock_name, block, &lock_)) {
     ++num_predecessors_;
 
     for (int i = 0, n = slots_.size(); i < n; ++i) {
@@ -328,7 +314,7 @@ void RewriteContext::FetchInputs(BlockingBehavior block) {
         ResourceFetchCallback* callback = new ResourceFetchCallback(
             this, resource, i);
         ++outstanding_fetches_;
-        resource_manager_->ReadAsync(callback);
+        Manager()->ReadAsync(callback);
 
         // TODO(jmarantz): as currently coded this will not work with Apache,
         // as we don't do these async fetches using the threaded fetcher.
@@ -399,7 +385,7 @@ void RewriteContext::StartRewrite() {
       // OutputPartitions, which contain not just the partition table
       // but the content-hashes for the rewritten content.  So we must
       // rewrite before callling WritePartitions.
-      for (int i = 0; i < outstanding_rewrites_; ++i) {
+      for (int i = 0, n = outstanding_rewrites_; i < n; ++i) {
         Rewrite(partitions_.mutable_partition(i), outputs_[i]);
       }
     }
@@ -408,7 +394,7 @@ void RewriteContext::StartRewrite() {
 
 void RewriteContext::WritePartition() {
   if (ok_to_write_output_partitions_) {
-    CacheInterface* metadata_cache = resource_manager_->metadata_cache();
+    CacheInterface* metadata_cache = Manager()->metadata_cache();
     SharedString buf;
     {
       StringOutputStream sstream(buf.get());
@@ -418,9 +404,38 @@ void RewriteContext::WritePartition() {
     metadata_cache->Put(partition_key_, &buf);
   }
   lock_.reset();
+  if (parent_ != NULL) {
+    parent_->NestedRewriteDone();
+  }
   RunSuccessors();
-  if (driver_ == NULL) {
+  if (!attached_) {
     delete this;
+  } else {
+    written_ = true;
+  }
+}
+
+void RewriteContext::AddNestedContext(RewriteContext* context) {
+  ++num_pending_nested_;
+  nested_.push_back(context);
+  context->parent_ = this;
+}
+
+void RewriteContext::StartNestedTasks() {
+  for (int i = 0, n = nested_.size(); i < n; ++i) {
+    nested_[i]->Start();
+    DCHECK_EQ(n, static_cast<int>(nested_.size()))
+        << "Cannot add new nested tasks once the nested tasks have started";
+  }
+}
+
+void RewriteContext::NestedRewriteDone() {
+  DCHECK_LT(0, num_pending_nested_);
+  --num_pending_nested_;
+  if (num_pending_nested_ == 0) {
+    DCHECK(!rewrite_done_);
+    Harvest();
+    DCHECK(rewrite_done_);
   }
 }
 
@@ -447,8 +462,28 @@ void RewriteContext::RewriteDone(
   if (outstanding_rewrites_ == 0) {
     rewrite_done_ = true;
     if (fetch_.get() != NULL) {
-      bool success = (result == RewriteSingleResourceFilter::kRewriteOk);
-      fetch_->FetchDone(success);
+      fetch_->set_success((result == RewriteSingleResourceFilter::kRewriteOk));
+    }
+    Finalize();
+  }
+}
+
+void RewriteContext::Harvest() {
+}
+
+void RewriteContext::Render() {
+  if (rewrite_done_ && (num_pending_nested_ == 0)) {
+    for (int i = 0, n = render_slots_.size(); i < n; ++i) {
+      render_slots_[i]->Render();
+    }
+  }
+}
+
+void RewriteContext::Finalize() {
+  DCHECK(rewrite_done_);
+  if (num_pending_nested_ == 0) {
+    if (fetch_.get() != NULL) {
+      fetch_->FetchDone();
       delete this;
     } else {
       WritePartition();
@@ -507,8 +542,8 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
   ResourceNamer namer;
   if (gurl.is_valid() && namer.Decode(gurl.LeafWithQuery())) {
     output_resource->reset(new OutputResource(
-        resource_manager_, gurl.AllExceptLeaf(), namer, content_type,
-        &options_, kind()));
+        Manager(), gurl.AllExceptLeaf(), namer, content_type,
+        Options(), kind()));
     (*output_resource)->set_written_using_rewrite_context_flow(true);
     ret = true;
   }
@@ -528,18 +563,15 @@ bool RewriteContext::ComputeOnTheFly() const {
   return false;
 }
 
-void RewriteContext::RenderAndDetach() {
-  // LOCK driver_
-  if (rewrite_done_) {
-    for (int i = 0, n = render_slots_.size(); i < n; ++i) {
-      render_slots_[i]->Render();
-    }
+void RewriteContext::Detach() {
+  DCHECK(attached_);
+  attached_ = false;
+  if (written_) {
     delete this;
-  } else {
-    // TODO(jmarantz): Add unit-test that covers this branch.
-    driver_ = NULL;
   }
-  // UNLOCK driver_
+  // If written_ is false that means that the HTML rewriter's rewrite deadline
+  // expired without the rewrites completing.  The Rewrite will continue until
+  // it is done, and will delete itself at the end of WriteParitition.
 }
 
 bool RewriteContext::Fetch(
@@ -575,6 +607,22 @@ bool RewriteContext::Fetch(
     ret = true;
   }
   return ret;
+}
+
+RewriteDriver* RewriteContext::Driver() {
+  RewriteContext* rc;
+  for (rc = this; rc->driver_ == NULL; rc = rc->parent_) {
+    CHECK(rc != NULL);
+  }
+  return rc->driver_;
+}
+
+ResourceManager* RewriteContext::Manager() {
+  return Driver()->resource_manager();
+}
+
+const RewriteOptions* RewriteContext::Options() {
+  return Driver()->options();
 }
 
 }  // namespace net_instaweb

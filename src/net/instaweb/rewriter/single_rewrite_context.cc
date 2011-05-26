@@ -35,11 +35,13 @@
 
 namespace net_instaweb {
 
+class RewriteContext;
 class RewriteDriver;
 
 SingleRewriteContext::SingleRewriteContext(RewriteDriver* driver,
+                                           RewriteContext* parent,
                                            ResourceContext* resource_context)
-    : RewriteContext(driver, resource_context) {
+    : RewriteContext(driver, parent, resource_context) {
 }
 
 SingleRewriteContext::~SingleRewriteContext() {
@@ -52,12 +54,11 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
     ret = true;
     ResourcePtr resource(slot(0)->resource());
     GoogleUrl gurl(resource->url());
-    UrlPartnership partnership(options(), gurl);
+    UrlPartnership partnership(Options(), gurl);
     ResourceNamer full_name;
     if (resource->loaded() &&
         resource->ContentsValid() &&
-        partnership.AddUrl(resource->url(),
-                           resource_manager()->message_handler())) {
+        partnership.AddUrl(resource->url(), Manager()->message_handler())) {
       const GoogleUrl* mapped_gurl = partnership.FullPath(0);
       GoogleString name;
       StringVector v;
@@ -74,8 +75,8 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
       }
 
       OutputResourcePtr output_resource(new OutputResource(
-          resource_manager(), gurl.AllExceptLeaf(), full_name, content_type,
-          options(), kind()));
+          Manager(), gurl.AllExceptLeaf(), full_name, content_type,
+          Options(), kind()));
       output_resource->set_written_using_rewrite_context_flow(true);
       OutputPartition* partition = partitions->add_partition();
       partition->add_input(0);

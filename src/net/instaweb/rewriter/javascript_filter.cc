@@ -71,14 +71,14 @@ class JavascriptRewriteContext : public SingleRewriteContext {
   JavascriptRewriteContext(RewriteDriver* driver,
                            const ResourceSlotPtr& slot,
                            JavascriptRewriteConfig* config)
-      : SingleRewriteContext(driver, NULL),
+      : SingleRewriteContext(driver, NULL, NULL),
         config_(config) {
     AddSlot(slot);
   }
 
   RewriteSingleResourceFilter::RewriteResult RewriteJavascript(
       const ResourcePtr& input, const OutputResourcePtr& output) {
-    MessageHandler* message_handler = resource_manager()->message_handler();
+    MessageHandler* message_handler = Manager()->message_handler();
     StringPiece script = input->contents();
     JavascriptCodeBlock code_block(script, config_, input->url(),
                                    message_handler);
@@ -106,6 +106,7 @@ class JavascriptRewriteContext : public SingleRewriteContext {
       : RewriteSingleResourceFilter::kRewriteFailed;
   }
 
+ protected:
   // Implements the asynchronous interface required by SingleRewriteContext.
   //
   // TODO(jmarantz): this should be done as a SimpleTextFilter, but that would
@@ -116,6 +117,11 @@ class JavascriptRewriteContext : public SingleRewriteContext {
     RewriteDone(RewriteJavascript(input, output), 0);
   }
 
+  virtual OutputResourceKind kind() const { return kRewrittenResource; }
+
+  virtual const char* id() const { return RewriteDriver::kJavascriptMinId; }
+
+ private:
   // Take script_out, which is derived from the script at script_url,
   // and write it to script_dest.
   // Returns true on success, reports failures itself.
@@ -123,11 +129,11 @@ class JavascriptRewriteContext : public SingleRewriteContext {
       const Resource* script_resource,
       const StringPiece& script_out, OutputResource* script_dest) {
     bool ok = false;
-    ResourceManager* rm = resource_manager();
-    MessageHandler* message_handler = rm->message_handler();
+    ResourceManager* resource_manager = Manager();
+    MessageHandler* message_handler = resource_manager->message_handler();
     int64 origin_expire_time_ms = script_resource->CacheExpirationTimeMs();
-    if (rm->Write(HttpStatus::kOK, script_out, script_dest,
-                  origin_expire_time_ms, message_handler)) {
+    if (resource_manager->Write(HttpStatus::kOK, script_out, script_dest,
+                                origin_expire_time_ms, message_handler)) {
       ok = true;
       message_handler->Message(kInfo, "Rewrite script %s to %s",
                                script_resource->url().c_str(),
@@ -136,12 +142,6 @@ class JavascriptRewriteContext : public SingleRewriteContext {
     return ok;
   }
 
-  virtual OutputResourceKind kind() const { return kRewrittenResource; }
-
- protected:
-  virtual const char* id() const { return RewriteDriver::kJavascriptMinId; }
-
- private:
   JavascriptRewriteConfig* config_;
 };
 
