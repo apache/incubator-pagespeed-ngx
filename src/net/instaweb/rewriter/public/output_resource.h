@@ -24,7 +24,6 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -37,7 +36,9 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
 class AbstractLock;
+class CachedResult;
 class HTTPValue;
 class MessageHandler;
 class ResourceManager;
@@ -134,24 +135,9 @@ class OutputResource : public Resource {
   // want before calling ResourceManager::Write.
   // This never returns null.
   // We will DCHECK that the cached result has not been written.
-  CachedResult* EnsureCachedResultCreated() {
-    if (cached_result_ == NULL) {
-      clear_cached_result();
-      cached_result_ = new CachedResult();
-      cached_result_owned_ = true;
-    } else {
-      DCHECK(!cached_result_->frozen()) << "Cannot mutate frozen cached result";
-    }
-    return cached_result_;
-  }
+  CachedResult* EnsureCachedResultCreated();
 
-  void clear_cached_result() {
-    if (cached_result_owned_) {
-      delete cached_result_;
-      cached_result_owned_ = false;
-    }
-    cached_result_ = NULL;
-  }
+  void clear_cached_result();
 
   // Sets the cached-result to an already-existing, externally owned
   // buffer.  We need to make sure not to free it on destruction.

@@ -36,12 +36,53 @@ OUTPUT_DIR = $(PWD)
 # on Linux.
 BUILDTYPE = Release
 
-MOD_PAGESPEED_INCLUDE = \
-    -I$(MOD_PAGESPEED_ROOT) \
-    -I$(MOD_PAGESPEED_ROOT)/third_party/chromium/src
-
 # TODO(jmarantz): this library-list should be automatically generated
 # from the 'gyp' flow, rather than hand-entered here.
+BASE_LIBS = \
+  base/libbase.a \
+  build/temp_gyp/libgoogleurl.a \
+  net/instaweb/libinstaweb_flags.a \
+  net/instaweb/libinstaweb_htmlparse.a \
+  net/instaweb/libinstaweb_htmlparse_core.a \
+  net/instaweb/libinstaweb_http.a \
+  net/instaweb/libinstaweb_http_pb.a \
+  net/instaweb/libinstaweb_rewriter.a \
+  net/instaweb/libinstaweb_rewriter_base.a \
+  net/instaweb/libinstaweb_rewriter_css.a \
+  net/instaweb/libinstaweb_rewriter_html.a \
+  net/instaweb/libinstaweb_rewriter_image.a \
+  net/instaweb/libinstaweb_rewriter_javascript.a \
+  net/instaweb/libinstaweb_rewriter_pb.a \
+  net/instaweb/libinstaweb_spriter.a \
+  net/instaweb/libinstaweb_spriter_pb.a \
+  net/instaweb/libinstaweb_util.a \
+  net/instaweb/libinstaweb_util_core.a \
+  net/instaweb/libinstaweb_util_pthread.a \
+  third_party/base64/libbase64.a \
+  third_party/chromium/src/net/tools/liburl_to_filename_encoder.a \
+  third_party/css_parser/libcss_parser.a \
+  third_party/gflags/libgflags.a \
+  third_party/icu/libicudata.a \
+  third_party/icu/libicuuc.a \
+  third_party/libjpeg/libjpeg.a \
+  third_party/libpagespeed/src/pagespeed/core/libpagespeed_core.a \
+  third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_optimizer.a \
+  third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_reader.a \
+  third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_png_optimizer.a \
+  third_party/libpagespeed/src/pagespeed/jsminify/libpagespeed_jsminify.a \
+  third_party/libpagespeed/src/pagespeed/proto/libpagespeed_output_pb.a \
+  third_party/libpagespeed/src/third_party/giflib/libdgiflib.a \
+  third_party/libpagespeed/src/third_party/giflib/libgiflib_core.a \
+  third_party/libpagespeed/src/third_party/libjpeg_trans/libjpeg_trans.a \
+  third_party/libpagespeed/src/third_party/optipng/libopngreduc.a \
+  third_party/libpng/libpng.a \
+  third_party/opencv/libcv.a \
+  third_party/opencv/libcxcore.a \
+  third_party/opencv/libflann.a \
+  third_party/opencv/libhighgui.a \
+  third_party/opencv/liblapack.a \
+  third_party/protobuf/libprotobuf_lite.a \
+  third_party/zlib/libchrome_zlib.a
 
 # The 'gclient' build flow uses 'xcodebuild' on Mac and 'make' on Linux.
 # To make matters worse, it puts all the intermediate libraries in the same
@@ -49,117 +90,14 @@ MOD_PAGESPEED_INCLUDE = \
 
 ifeq ($(HOSTTYPE),intel-mac)
 
-# TODO(jmarantz): specify only the Linux libraries (which have subdirs)
-# and use gmake file-expressions to generate the Mac one when running on
-# mac, rather than replicating the library-list.
-LIB_ROOT = $(MOD_PAGESPEED_ROOT)/xcodebuild/$(BUILDTYPE)
-LIBS = $(LIB_ROOT)/libbase.a \
-       $(LIB_ROOT)/libbase64.a \
-       $(LIB_ROOT)/libchrome_zlib.a \
-       $(LIB_ROOT)/libcss_parser.a \
-       $(LIB_ROOT)/libcv.a \
-       $(LIB_ROOT)/libcxcore.a \
-       $(LIB_ROOT)/libdgiflib.a \
-       $(LIB_ROOT)/libflann.a \
-       $(LIB_ROOT)/libgflags.a \
-       $(LIB_ROOT)/libgiflib_core.a \
-       $(LIB_ROOT)/libgoogleurl.a \
-       $(LIB_ROOT)/libhighgui.a \
-       $(LIB_ROOT)/libicudata.a \
-       $(LIB_ROOT)/libicuuc.a \
-       $(LIB_ROOT)/libinstaweb_htmlparse.a \
-       $(LIB_ROOT)/libinstaweb_htmlparse_core.a \
-       $(LIB_ROOT)/libinstaweb_http.a \
-       $(LIB_ROOT)/libinstaweb_http_pb.a \
-       $(LIB_ROOT)/libinstaweb_rewriter.a \
-       $(LIB_ROOT)/libinstaweb_rewriter_base.a \
-       $(LIB_ROOT)/libinstaweb_rewriter_css.a \
-       $(LIB_ROOT)/libinstaweb_rewriter_html.a \
-       $(LIB_ROOT)/libinstaweb_rewriter_image.a \
-       $(LIB_ROOT)/libinstaweb_rewriter_javascript.a \
-       $(LIB_ROOT)/libinstaweb_rewriter_pb.a \
-       $(LIB_ROOT)/libinstaweb_spriter.a \
-       $(LIB_ROOT)/libinstaweb_spriter_pb.a \
-       $(LIB_ROOT)/libinstaweb_util.a \
-       $(LIB_ROOT)/libinstaweb_util_core.a \
-       $(LIB_ROOT)/libinstaweb_util_pthread.a \
-       $(LIB_ROOT)/libjpeg.a \
-       $(LIB_ROOT)/libjpeg_trans.a \
-       $(LIB_ROOT)/liblapack.a \
-       $(LIB_ROOT)/libopngreduc.a \
-       $(LIB_ROOT)/libpagespeed_core.a \
-       $(LIB_ROOT)/libpagespeed_jpeg_optimizer.a \
-       $(LIB_ROOT)/libpagespeed_jpeg_reader.a \
-       $(LIB_ROOT)/libpagespeed_jsminify.a \
-       $(LIB_ROOT)/libpagespeed_output_pb.a \
-       $(LIB_ROOT)/libpagespeed_png_optimizer.a \
-       $(LIB_ROOT)/libpng.a \
-       $(LIB_ROOT)/libprotobuf_lite.a \
-       $(LIB_ROOT)/liburl_to_filename_encoder.a
+# on MacOS the xcodebuild system puts all the libraries in the same directory
+# so we strip it with 'notdir'.
+INCLUDE_ARCH = arch/mac/ia32
+LIBS = $(addprefix $(MOD_PAGESPEED_ROOT)/xcodebuild/$(BUILDTYPE)/,$(notdir $(BASE_LIBS)))
+BINDIR = /Developer/usr/bin
+CXX = $(BINDIR)/gcc-4.2 -arch i386 -fvisibility=hidden
+SYSLIBS = -Wl,-search_paths_first -framework AppKit -lpthread -lstdc++
 
-else
-
-LIB_ROOT          = $(MOD_PAGESPEED_ROOT)/out/$(BUILDTYPE)/obj.target
-INSTAWEB_LIB      = $(LIB_ROOT)/net/instaweb
-THIRD_PARTY_LIB   = $(LIB_ROOT)/third_party
-LIBS = \
-  $(LIB_ROOT)/base/libbase.a \
-  $(INSTAWEB_LIB)/libinstaweb_rewriter_javascript.a \
-  $(INSTAWEB_LIB)/libinstaweb_rewriter_pb.a \
-  $(INSTAWEB_LIB)/libinstaweb_util.a \
-  $(INSTAWEB_LIB)/libinstaweb_spriter.a \
-  $(INSTAWEB_LIB)/libinstaweb_util_core.a \
-  $(INSTAWEB_LIB)/libinstaweb_spriter_pb.a \
-  $(INSTAWEB_LIB)/libinstaweb_rewriter_base.a \
-  $(INSTAWEB_LIB)/libinstaweb_http.a \
-  $(INSTAWEB_LIB)/libinstaweb_htmlparse.a \
-  $(INSTAWEB_LIB)/libinstaweb_rewriter_image.a \
-  $(INSTAWEB_LIB)/libinstaweb_util_pthread.a \
-  $(INSTAWEB_LIB)/libinstaweb_rewriter_html.a \
-  $(INSTAWEB_LIB)/libinstaweb_rewriter_css.a \
-  $(INSTAWEB_LIB)/libinstaweb_http_pb.a \
-  $(INSTAWEB_LIB)/libinstaweb_htmlparse_core.a \
-  $(INSTAWEB_LIB)/libinstaweb_rewriter.a \
-  $(THIRD_PARTY_LIB)/libpng/libpng.a \
-  $(THIRD_PARTY_LIB)/base64/libbase64.a \
-  $(THIRD_PARTY_LIB)/gflags/libgflags.a \
-  $(THIRD_PARTY_LIB)/icu/libicuuc.a \
-  $(THIRD_PARTY_LIB)/icu/libicudata.a \
-  $(THIRD_PARTY_LIB)/libpagespeed/src/pagespeed/jsminify/libpagespeed_jsminify.a \
-  $(THIRD_PARTY_LIB)/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_reader.a \
-  $(THIRD_PARTY_LIB)/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_optimizer.a \
-  $(THIRD_PARTY_LIB)/libpagespeed/src/pagespeed/image_compression/libpagespeed_png_optimizer.a \
-  $(THIRD_PARTY_LIB)/libpagespeed/src/pagespeed/core/libpagespeed_core.a \
-  $(THIRD_PARTY_LIB)/libpagespeed/src/pagespeed/proto/libpagespeed_output_pb.a \
-  $(THIRD_PARTY_LIB)/libpagespeed/src/third_party/giflib/libdgiflib.a \
-  $(THIRD_PARTY_LIB)/libpagespeed/src/third_party/giflib/libgiflib_core.a \
-  $(THIRD_PARTY_LIB)/libpagespeed/src/third_party/optipng/libopngreduc.a \
-  $(THIRD_PARTY_LIB)/libpagespeed/src/third_party/libjpeg_trans/libjpeg_trans.a \
-  $(THIRD_PARTY_LIB)/protobuf/libprotobuf_lite.a \
-  $(THIRD_PARTY_LIB)/opencv/libcv.a \
-  $(THIRD_PARTY_LIB)/opencv/liblapack.a \
-  $(THIRD_PARTY_LIB)/opencv/libhighgui.a \
-  $(THIRD_PARTY_LIB)/opencv/libflann.a \
-  $(THIRD_PARTY_LIB)/opencv/libcxcore.a \
-  $(THIRD_PARTY_LIB)/chromium/src/net/tools/liburl_to_filename_encoder.a \
-  $(THIRD_PARTY_LIB)/libjpeg/libjpeg.a \
-  $(THIRD_PARTY_LIB)/css_parser/libcss_parser.a \
-  $(THIRD_PARTY_LIB)/zlib/libchrome_zlib.a \
-  $(LIB_ROOT)/build/temp_gyp/libgoogleurl.a
-
-endif
-
-EXE = $(OUTPUT_DIR)/static_rewriter
-
-exe : $(EXE)
-
-# Specifying 'build_libraries' as a dependency but recursively making
-# 'static_rewriter' allows 'make -j' to work.  This is needed because
-# we don't articulate all the dependencies required to build the libraries.
-all : build_libraries
-	$(MAKE) exe
-
-ifeq ($(HOSTTYPE),intel-mac)
 build_libraries:
 	cd $(MOD_PAGESPEED_ROOT)/build && xcodebuild -project all.xcodeproj \
 		-configuration $(BUILDTYPE) -target pagespeed_automatic
@@ -168,19 +106,42 @@ build_libraries:
 # noisy.
 #		| egrep -v '(BUILD NATIVE|Check dependencies|$^|PhaseScriptExecution|BUILD AGGREGATE|.build/Script-|Nothing to be done for|cd /)'
 
-BINDIR = /Developer/usr/bin
-CXX = $(BINDIR)/gcc-4.2 -arch i386 -fvisibility=hidden
-SYSLIBS = -Wl,-search_paths_first -framework AppKit -lpthread -lstdc++
-
 else
 
-CXX = /usr/bin/g++
+# TODO(jmarantz): test this on 32-bit systems.  Add fail handler for non-linux
+# non-mac.
+ifeq ($(HOSTTYPE),x86_64-linux)
+ INCLUDE_ARCH = arch/linux/x64
+else
+ INCLUDE_ARCH = arch/linux/ia32
+endif
+INCLUDE_ARCH = arch/linux/x64
+LIBS = $(addprefix $(MOD_PAGESPEED_ROOT)/out/$(BUILDTYPE)/obj.target/, $(BASE_LIBS))
 SYSLIBS = -lpthread -lrt
+CXX = /usr/bin/g++
 
 build_libraries:
 	cd $(MOD_PAGESPEED_ROOT) && make BUILDTYPE=$(BUILDTYPE)
 
 endif
+
+INCLUDE_PATH = \
+    -I$(MOD_PAGESPEED_ROOT) \
+    -I$(MOD_PAGESPEED_ROOT)/third_party/chromium/src \
+    -I$(MOD_PAGESPEED_ROOT)/third_party/gflags/gen/$(INCLUDE_ARCH)/include
+OBJS          = $(OUTPUT_DIR)/static_rewriter.o \
+		$(OUTPUT_DIR)/pagespeed_automatic.a
+EXE           = $(OUTPUT_DIR)/static_rewriter
+EXAMPLE_ROOT  = $(MOD_PAGESPEED_ROOT)/install/mod_pagespeed_example
+EXAMPLES      = $(OUTPUT_DIR)/collapse_whitespace.html
+
+exe : $(EXE)
+
+# Specifying 'build_libraries' as a dependency but recursively making
+# 'static_rewriter' allows 'make -j' to work.  This is needed because
+# we don't articulate all the dependencies required to build the libraries.
+all : build_libraries
+	$(MAKE) examples
 
 # Flags used to compile static_rewriter.cc.  Note that these are not
 # the flags used to compile pagespeed_automatic, which is compiled
@@ -193,12 +154,19 @@ $(OUTPUT_DIR)/pagespeed_automatic.a : $(LIBS)
 
 
 $(OUTPUT_DIR)/static_rewriter.o : static_rewriter.cc
-	$(CXX) $(MOD_PAGESPEED_INCLUDE) $(CXXFLAGS) $(MOD_PAGESPEED_INCLUDE) -c $< -o $@
-
-OBJS = $(OUTPUT_DIR)/static_rewriter.o $(OUTPUT_DIR)/pagespeed_automatic.a
+	$(CXX) $(INCLUDE_PATH) $(CXXFLAGS) $(MOD_PAGESPEED_INCLUDE) -c $< -o $@
 
 $(EXE) : $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(SYSLIBS)
 
+$(OUTPUT_DIR)/collapse_whitespace.html : $(EXE) $(EXAMPLE_ROOT)/collapse_whitespace.html
+	$(EXE) --rewriters=collapse_whitespace $(EXAMPLE_ROOT) $(OUTPUT_DIR) \
+                collapse_whitespace.html
+
+examples: $(EXAMPLES)
+
 clean:
-	rm -f $(OUTPUT_DIR)/static_rewriter $(EXE) $(OBJS)
+	rm -f $(OUTPUT_DIR)/static_rewriter $(EXE) $(OBJS) $(EXAMPLES)
+
+echo_libs :
+	echo LIBS = $(LIBS)

@@ -601,5 +601,16 @@
         'hard_dependency': 1,
       }
     },
+    {
+      'target_name': 'instaweb_flags',
+      'type': '<(library)',
+      'dependencies': [
+        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
+        'instaweb_util',
+       ],
+      'sources': [
+        'rewriter/rewrite_gflags.cc',
+      ],
+    },
   ],
 }

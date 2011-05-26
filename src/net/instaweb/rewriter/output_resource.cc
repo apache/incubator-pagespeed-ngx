@@ -385,4 +385,23 @@ void OutputResource::FetchCachedResult(const GoogleString& name_key,
   }
 }
 
+CachedResult* OutputResource::EnsureCachedResultCreated() {
+  if (cached_result_ == NULL) {
+    clear_cached_result();
+    cached_result_ = new CachedResult();
+    cached_result_owned_ = true;
+  } else {
+    DCHECK(!cached_result_->frozen()) << "Cannot mutate frozen cached result";
+  }
+  return cached_result_;
+}
+
+void OutputResource::clear_cached_result() {
+  if (cached_result_owned_) {
+    delete cached_result_;
+    cached_result_owned_ = false;
+  }
+  cached_result_ = NULL;
+}
+
 }  // namespace net_instaweb

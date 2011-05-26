@@ -174,6 +174,7 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     cache_lookup_active_(false),
     rewrite_done_(false),
     ok_to_write_output_partitions_(true) {
+  partitions_.reset(new OutputPartitions);
 }
 
 RewriteContext::~RewriteContext() {
@@ -255,9 +256,9 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
     // be a protobuf.  Try to parse it.
     const GoogleString* val_str = value->get();
     ArrayInputStream input(val_str->data(), val_str->size());
-    if (partitions_.ParseFromZeroCopyStream(&input)) {
-      for (int i = 0, n = partitions_.partition_size(); i < n; ++i) {
-        const OutputPartition& partition = partitions_.partition(i);
+    if (partitions_->ParseFromZeroCopyStream(&input)) {
+      for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
+        const OutputPartition& partition = partitions_->partition(i);
         const CachedResult& cached_result = partition.result();
         OutputResourcePtr output_resource;
         const ContentType* content_type = NameExtensionToContentType(
@@ -372,8 +373,8 @@ void RewriteContext::Activate() {
 }
 
 void RewriteContext::StartRewrite() {
-  if (Partition(&partitions_, &outputs_)) {
-    outstanding_rewrites_ = partitions_.partition_size();
+  if (Partition(partitions_.get(), &outputs_)) {
+    outstanding_rewrites_ = partitions_->partition_size();
     if (outstanding_rewrites_ == 0) {
       // The partitioning succeeded, but yielded zero rewrites.  Write out the
       // empty partition table and let any successor Rewrites run.  Note that
@@ -386,7 +387,7 @@ void RewriteContext::StartRewrite() {
       // but the content-hashes for the rewritten content.  So we must
       // rewrite before callling WritePartitions.
       for (int i = 0, n = outstanding_rewrites_; i < n; ++i) {
-        Rewrite(partitions_.mutable_partition(i), outputs_[i]);
+        Rewrite(partitions_->mutable_partition(i), outputs_[i]);
       }
     }
   }
@@ -398,7 +399,7 @@ void RewriteContext::WritePartition() {
     SharedString buf;
     {
       StringOutputStream sstream(buf.get());
-      partitions_.SerializeToZeroCopyStream(&sstream);
+      partitions_->SerializeToZeroCopyStream(&sstream);
       // destructor of sstream prepares *buf.get()
     }
     metadata_cache->Put(partition_key_, &buf);
@@ -445,7 +446,7 @@ void RewriteContext::RewriteDone(
   if (result == RewriteSingleResourceFilter::kTooBusy) {
     ok_to_write_output_partitions_ = false;
   } else {
-    OutputPartition* partition = partitions_.mutable_partition(rewrite_index);
+    OutputPartition* partition = partitions_->mutable_partition(rewrite_index);
     bool optimizable = (result == RewriteSingleResourceFilter::kRewriteOk);
     partition->mutable_result()->set_optimizable(optimizable);
     if (optimizable && (fetch_.get() == NULL)) {
@@ -514,7 +515,7 @@ void RewriteContext::RunSuccessors() {
 void RewriteContext::FinishFetch() {
   // Make a fake partition that has all the inputs, since we are
   // performing the rewrite for only one output resource.
-  OutputPartition* partition = partitions_.add_partition();
+  OutputPartition* partition = partitions_->add_partition();
   bool ok_to_rewrite = true;
   for (int i = 0, n = slots_.size(); i < n; ++i) {
     ResourcePtr resource(slot(i)->resource());

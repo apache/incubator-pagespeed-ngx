@@ -341,7 +341,7 @@ class RewriteContext {
   // UrlAsyncFetcher.
 
   bool started_;
-  OutputPartitions partitions_;
+  scoped_ptr<OutputPartitions> partitions_;
   OutputResourceVector outputs_;
   int outstanding_fetches_;
   int outstanding_rewrites_;
