@@ -497,8 +497,8 @@
         {
           'target_name': 'highgui',
           'type': 'settings',
-          'include_dirs': [
-            '<(opencv_system_include)',
+          'cflags': [
+            '<!@(pkg-config --cflags opencv)',
           ],
           'direct_dependent_settings': {
             'defines': [
@@ -512,10 +512,11 @@
             'USE_SYSTEM_OPENCV',
           ],
           'link_settings': {
+            'ldflags': [
+              '<!@(pkg-config --libs-only-L --libs-only-other opencv)',
+            ],
             'libraries': [
-              '-lcv',
-              '-lcxcore',
-              '-lhighgui',
+              '<!@(pkg-config --libs-only-l opencv)',
             ],
           },
         },

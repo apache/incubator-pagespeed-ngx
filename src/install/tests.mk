@@ -20,6 +20,9 @@
 # We want order of dependencies honored..
 .NOTPARALLEL :
 
+# Want |& support; and /bin/sh doesn't provide it at least on Ubuntu 11.04
+SHELL=/bin/bash
+
 # Make conf + log file locations accessible to system_test.sh
 export APACHE_DEBUG_PAGESPEED_CONF
 export APACHE_LOG

@@ -55,6 +55,11 @@ ModPagespeedEnableFilters add_instrumentation
 AddType text/html .shtml
 AddOutputFilter INCLUDES .shtml
 
+# For the mod_rewrite test in system_test.sh
+<IfModule !rewrite_module>
+  LoadModule rewrite_module  @@APACHE_MODULES@@/mod_rewrite.so
+</IfModule>
+
 # For regression test of connection failing.
 ModPagespeedDomain www.google.co.ca:8085
 

@@ -136,6 +136,7 @@
         # if the Apache server is protected by a reverse proxy that will
         # filter URLs in some fashion.
         Allow from localhost
+        Allow from 127.0.0.1
         SetHandler mod_pagespeed_statistics
     </Location>
 </IfModule>

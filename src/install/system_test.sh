@@ -81,6 +81,9 @@ rm -rf $OUTDIR
 # $OUTDIR/$FILE and nuke $OUTDIR when we're done.
 # TODO(abliss): some of these will fail on windows where wget escapes saved
 # filenames differently.
+# TODO(morlovich): This isn't actually true, since we never pass in -r,
+#                  so this fetch isn't recursive. Clean this up.
+
 
 WGET_OUTPUT=$OUTDIR/wget_output.txt
 WGET_DUMP="$WGET -q -O - --save-headers"
@@ -207,8 +210,8 @@ fi
 echo TEST: directory is mapped to index.html.
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
-check "$WGET_PREREQ $EXAMPLE_ROOT"
-check "$WGET_PREREQ $EXAMPLE_ROOT/index.html"
+check "$WGET -q $EXAMPLE_ROOT" -O $OUTDIR/mod_pagespeed_example
+check "$WGET -q $EXAMPLE_ROOT/index.html" -O $OUTDIR/index.html
 check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
 echo TEST: compression is enabled for HTML.
@@ -495,12 +498,14 @@ check \
 
 echo TEST: Connection refused handling
 echo $WGET_DUMP $TEST_ROOT/connection_refused.html
+ERR_BEFORE=`cat $APACHE_LOG | grep "Serf status 111" | wc -l`
+ERR_LIMIT=`expr $ERR_BEFORE + 1`
 check $WGET_DUMP $TEST_ROOT/connection_refused.html > /dev/null
 ERRS=`cat $APACHE_LOG | grep "Serf status 111" | wc -l`
 sleep 1
-# Check that we have one error or less --- might not have flushed the log yet..
-# (luckily we nearly certainly do when spewing dozens of errors)
-check [ `expr $ERRS` -le 1 ];
+# Check that we have one additional error or less --- might not have flushed
+# the log yet; (luckily we nearly certainly do when spewing dozens of errors)
+check [ `expr $ERRS` -le $ERR_LIMIT ];
 
 echo TEST: User-agent is a bot, ModPagespeedDisableForBots is off by default
 BOT="Googlebot/2.1"
