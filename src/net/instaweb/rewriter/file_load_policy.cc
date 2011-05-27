@@ -24,7 +24,46 @@ FileLoadPolicy::~FileLoadPolicy() {}
 
 bool FileLoadPolicy::ShouldLoadFromFile(const GoogleUrl& url,
                                         GoogleString* filename) const {
+  StringPiece url_string = url.Spec();
+
+  // TODO(sligocki): Consider layering a cache over this lookup.
+
+  // Later associations take precedence over earlier ones.
+  UrlFilenames::const_reverse_iterator iter;
+  for (iter = url_filenames_.rbegin(); iter != url_filenames_.rend(); ++iter) {
+    if (url_string.starts_with(iter->url_prefix)) {
+      // Replace url_prefix_ with filename_prefix_.
+      StringPiece suffix = url_string.substr(iter->url_prefix.size());
+      *filename = StrCat(iter->filename_prefix, suffix);
+      return true;
+    }
+  }
+
   return false;
+}
+
+void FileLoadPolicy::Associate(const StringPiece& url_prefix_in,
+                               const StringPiece& filename_prefix_in) {
+  GoogleString url_prefix(url_prefix_in.data(), url_prefix_in.size());
+  GoogleString filename_prefix(filename_prefix_in.data(),
+                               filename_prefix_in.size());
+
+  // Make sure these are directories.
+  EnsureEndsInSlash(&url_prefix);
+  EnsureEndsInSlash(&filename_prefix);
+
+  // TODO(sligocki): Should fail if filename_prefix doesn't start with '/'?
+
+  url_filenames_.push_back(UrlFilename(url_prefix, filename_prefix));
+}
+
+void FileLoadPolicy::Merge(const FileLoadPolicy& other) {
+  UrlFilenames::const_iterator iter;
+  for (iter = other.url_filenames_.begin();
+       iter != other.url_filenames_.end(); ++iter) {
+    // Copy associations over.
+    url_filenames_.push_back(*iter);
+  }
 }
 
 }  // namespace net_instaweb

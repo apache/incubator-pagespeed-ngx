@@ -65,7 +65,6 @@ class RewriteDriverFactory {
   void set_hasher(Hasher* hasher);
   void set_filename_encoder(FilenameEncoder* filename_encoder);
   void set_timer(Timer* timer);
-  void set_file_load_policy(FileLoadPolicy* policy);
 
   // Set up a directory for slurped files for HTML and resources.  If
   // read_only is true, then it will only read from these files, and
@@ -117,7 +116,6 @@ class RewriteDriverFactory {
   Hasher* hasher();
   FilenameEncoder* filename_encoder();
   Timer* timer();
-  FileLoadPolicy* file_load_policy();
   HTTPCache* http_cache();
   NamedLockManager* lock_manager();
 
@@ -164,9 +162,6 @@ class RewriteDriverFactory {
   // will use the file system.
   virtual NamedLockManager* DefaultLockManager();
 
-  // Current DefaultFileLoadPolicy never loads resources from files.
-  virtual FileLoadPolicy* DefaultFileLoadPolicy();
-
   // Clean up all the resources. When shutdown Apache, and destroy the process
   // sub-pool.  The RewriteDriverFactory owns some elements that were created
   // from that sub-pool. The sub-pool is destroyed in ApacheRewriteFactory,
@@ -201,7 +196,6 @@ class RewriteDriverFactory {
   scoped_ptr<Hasher> hasher_;
   scoped_ptr<FilenameEncoder> filename_encoder_;
   scoped_ptr<Timer> timer_;
-  scoped_ptr<FileLoadPolicy> file_load_policy_;
 
   HtmlParse* html_parse_;
 

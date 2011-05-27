@@ -718,8 +718,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
     // Note: type may be NULL if url has an unexpected or malformed extension.
     const ContentType* type = NameExtensionToContentType(url_string);
     GoogleString filename;
-    FileLoadPolicy* policy = resource_manager_->file_load_policy();
-    if (policy->ShouldLoadFromFile(url, &filename)) {
+    if (options()->file_load_policy()->ShouldLoadFromFile(url, &filename)) {
       resource.reset(new FileInputResource(resource_manager_, options(), type,
                                            url_string, filename));
     } else {

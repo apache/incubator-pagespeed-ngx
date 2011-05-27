@@ -217,6 +217,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(SLURP_TEST_SED_PATTERN)@@" \
 	    -e "s@$(SPELING_TEST_SED_PATTERN)@@" \
 		$^ > $@
+	! grep '@@' $@  # Make sure we don't have any remaining @@variables@@
 
 $(STAGING_DIR)/proxy.conf : proxy.conf.template
 	sed -e s@APACHE_MODULES@$(APACHE_MODULES)@g \

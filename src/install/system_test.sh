@@ -525,6 +525,12 @@ HTML_HEADERS=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html$PARAM)
 echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
 check [ $? = 0 ]
 
+echo "Test: ModPagespeedLoadFromFile"
+URL=$TEST_ROOT/load_from_file/index.html?ModPagespeedFilters=inline_css
+echo $WGET_DUMP $URL
+$WGET_DUMP $URL | grep blue
+check [ $? = 0 ]
+
 # Cleanup
 rm -rf $OUTDIR
 echo "PASS."

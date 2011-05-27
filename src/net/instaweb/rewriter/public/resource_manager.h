@@ -42,7 +42,6 @@ class AbstractLock;
 class AbstractMutex;
 class CacheInterface;
 class ContentType;
-class FileLoadPolicy;
 class FileSystem;
 class FilenameEncoder;
 class Hasher;
@@ -77,7 +76,6 @@ class ResourceManager {
                   FileSystem* file_system,
                   FilenameEncoder* filename_encoder,
                   UrlAsyncFetcher* url_async_fetcher,
-                  FileLoadPolicy* file_load_policy,
                   Hasher* hasher,
                   HTTPCache* http_cache,
                   CacheInterface* metadata_cache,
@@ -139,7 +137,6 @@ class ResourceManager {
   FileSystem* file_system() { return file_system_; }
   FilenameEncoder* filename_encoder() const { return filename_encoder_; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
-  FileLoadPolicy* file_load_policy() const { return file_load_policy_; }
   Timer* timer() const { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
 
@@ -231,9 +228,6 @@ class ResourceManager {
   void set_url_async_fetcher(UrlAsyncFetcher* fetcher) {
     url_async_fetcher_ = fetcher;
   }
-  void set_file_load_policy(FileLoadPolicy* policy) {
-    file_load_policy_ = policy;
-  }
 
   // Releases a rewrite driver.  If created with the default options,
   // then the driver is returned to a free list.  Currently, drivers
@@ -290,7 +284,6 @@ class ResourceManager {
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
   UrlAsyncFetcher* url_async_fetcher_;
-  FileLoadPolicy* file_load_policy_;
   Hasher* hasher_;
   Statistics* statistics_;
 
@@ -346,6 +339,9 @@ class ResourceManager {
 
   scoped_ptr<AbstractMutex> rewrite_drivers_mutex_;
 
+  // Note: this must be before decoding_driver_ since it's needed to init it.
+  RewriteOptions options_;
+
   // Keep around a RewriteDriver just for decoding resource URLs, using
   // the default options.  This is possible because the id->RewriteFilter
   // table is fully constructed independent of the options.
@@ -356,8 +352,6 @@ class ResourceManager {
   // implementation of these features in environments where all
   // configuration must be done by .htaccess.
   scoped_ptr<RewriteDriver> decoding_driver_;
-
-  RewriteOptions options_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

@@ -63,6 +63,9 @@ AddOutputFilter INCLUDES .shtml
 # For regression test of connection failing.
 ModPagespeedDomain www.google.co.ca:8085
 
+# Test LoadFromFile mapping by mapping one dir to another.
+ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"
+
 #SPELING # Enable mod_speling to ensure that we don't regress Issue 194
 #SPELING <IfModule !speling_module>
 #SPELING   LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so

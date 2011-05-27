@@ -335,6 +335,9 @@ void RewriteOptions::Merge(const RewriteOptions& first,
   domain_lawyer_.Merge(first.domain_lawyer_);
   domain_lawyer_.Merge(second.domain_lawyer_);
 
+  file_load_policy_.Merge(first.file_load_policy_);
+  file_load_policy_.Merge(second.file_load_policy_);
+
   allow_resources_.CopyFrom(first.allow_resources_);
   allow_resources_.AppendFrom(second.allow_resources_);
 

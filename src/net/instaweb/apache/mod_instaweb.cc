@@ -110,6 +110,7 @@ const char* kModPagespeedJsOutlineMinBytes = "ModPagespeedJsOutlineMinBytes";
 const char* kModPagespeedLRUCacheByteLimit = "ModPagespeedLRUCacheByteLimit";
 const char* kModPagespeedLRUCacheKbPerProcess =
     "ModPagespeedLRUCacheKbPerProcess";
+const char* kModPagespeedLoadFromFile = "ModPagespeedLoadFromFile";
 const char* kModPagespeedLogRewriteTiming = "ModPagespeedLogRewriteTiming";
 const char* kModPagespeedLowercaseHtmlNames = "ModPagespeedLowercaseHtmlNames";
 const char* kModPagespeedMapOriginDomain = "ModPagespeedMapOriginDomain";
@@ -1106,7 +1107,11 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
   RewriteOptions* options = CmdOptions(cmd, data);
   const char* directive = cmd->directive->directive;
   const char* ret = NULL;
-  if (StringCaseEqual(directive, kModPagespeedMapRewriteDomain)) {
+  if (StringCaseEqual(directive, kModPagespeedLoadFromFile)) {
+    // TODO(sligocki): Only allow relative file paths below DocumentRoot.
+    // TODO(sligocki): Perhaps merge with ModPagespeedMapOriginDomain.
+    options->file_load_policy()->Associate(arg1, arg2);
+  } else if (StringCaseEqual(directive, kModPagespeedMapRewriteDomain)) {
     options->domain_lawyer()->AddRewriteDomainMapping(
         arg1, arg2, factory->message_handler());
   } else if (StringCaseEqual(directive, kModPagespeedMapOriginDomain)) {
@@ -1244,6 +1249,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "Set the url prefix"),
 
   // All two parameter options that are allowed in <Directory> blocks.
+  APACHE_CONFIG_DIR_OPTION2(kModPagespeedLoadFromFile,
+        "url_prefix filename_prefix"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,
         "to_domain from_domain[,from_domain]*"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapRewriteDomain,

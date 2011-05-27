@@ -322,30 +322,6 @@ TEST_F(RewriteDriverTest, MultipleDomains) {
   EXPECT_TRUE(TryFetchResource(rewritten2));
 }
 
-class MockFileLoadPolicy : public FileLoadPolicy {
- public:
-  MockFileLoadPolicy() {}
-
-  virtual bool ShouldLoadFromFile(const GoogleUrl& url,
-                                  GoogleString* filename) const {
-    bool ret = false;
-    StringPiece url_string = url.Spec();
-    if (url_string.starts_with(url_prefix_)) {
-      // Replace url_prefix_ with filename_prefix_.
-      url_string.remove_prefix(url_prefix_.size());
-      *filename = StrCat(filename_prefix_, url_string);
-      ret = true;
-    }
-    return ret;
-  }
-
-  GoogleString url_prefix_;
-  GoogleString filename_prefix_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(MockFileLoadPolicy);
-};
-
 // Test caching behavior for normal UrlInputResources.
 // This is the base case that LoadResourcesFromFiles below contrasts with.
 TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
@@ -413,10 +389,8 @@ TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
   const char kResourceContents2[] = "body { background: blue; }";
 
   // Tell RewriteDriver to associate static URLs with filenames.
-  MockFileLoadPolicy policy;
-  policy.url_prefix_ = kStaticUrlPrefix;
-  policy.filename_prefix_ = kStaticFilenamePrefix;
-  resource_manager_->set_file_load_policy(&policy);
+  options()->file_load_policy()->Associate(kStaticUrlPrefix,
+                                           kStaticFilenamePrefix);
 
   // Write a file.
   file_system_.WriteFile(resource_filename.c_str(), kResourceContents1,
