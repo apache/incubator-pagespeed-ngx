@@ -16,8 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-// Unit-test the string-splitter.
-#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/http/public/content_type.h"
 
 #include <cstddef>
 #include "net/instaweb/util/public/gtest.h"

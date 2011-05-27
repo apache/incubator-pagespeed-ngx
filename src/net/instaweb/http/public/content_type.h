@@ -18,8 +18,8 @@
 //
 // A collection of content-types and their attributes.
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_CONTENT_TYPE_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_CONTENT_TYPE_H_
+#ifndef NET_INSTAWEB_HTTP_PUBLIC_CONTENT_TYPE_H_
+#define NET_INSTAWEB_HTTP_PUBLIC_CONTENT_TYPE_H_
 
 #include "net/instaweb/util/public/string_util.h"
 
@@ -82,4 +82,4 @@ const ContentType* MimeTypeToContentType(const StringPiece& mime_type);
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_CONTENT_TYPE_H_
+#endif  // NET_INSTAWEB_HTTP_PUBLIC_CONTENT_TYPE_H_

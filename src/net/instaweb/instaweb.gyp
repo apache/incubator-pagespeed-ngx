@@ -321,9 +321,9 @@
       'target_name': 'instaweb_http',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_core.gyp:instaweb_util_core',
-        'instaweb_http_pb',
         '<(DEPTH)/base/base.gyp:base',
+        'instaweb_core.gyp:http_core',
+        'instaweb_http_pb',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
       ],
       'sources': [

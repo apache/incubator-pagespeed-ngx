@@ -22,6 +22,8 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -31,8 +33,6 @@ namespace net_instaweb {
 class ContentType;
 class Image;
 class ImageTagScanner;
-class OutputResource;
-class Resource;
 class RewriteDriver;
 class Statistics;
 class UrlSegmentEncoder;

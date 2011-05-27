@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

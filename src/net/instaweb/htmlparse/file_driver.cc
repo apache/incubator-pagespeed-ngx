@@ -22,7 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/htmlparse/public/logging_html_filter.h"
-#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
 #include "net/instaweb/util/public/string.h"

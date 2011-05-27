@@ -23,7 +23,6 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -39,7 +38,11 @@
 namespace net_instaweb {
 
 class AbstractLock;
+class CachedResult;
 class MessageHandler;
+class OutputPartition;
+class OutputPartitions;
+class ResourceContext;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;

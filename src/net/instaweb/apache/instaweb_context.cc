@@ -17,7 +17,7 @@
 
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/header_util.h"
-#include "net/instaweb/util/public/content_type.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/stack_buffer.h"
 #include "apr_strings.h"
