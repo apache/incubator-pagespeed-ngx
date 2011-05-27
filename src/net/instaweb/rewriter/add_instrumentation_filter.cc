@@ -37,13 +37,14 @@ const char kHeadScript[] =
     "window.mod_pagespeed_start = Number(new Date());"
     "</script>";
 
-// The javascript tag to insert at the bottom of document.  The %s will be
-// replaced with the custom beacon url, by default
-// "./mod_pagespeed_beacon?ets=".  Then our timing info, e.g. "load:123", will
-// be appended.
-const char kTailScript[] =
+// The javascript tag to insert at the bottom of document.  The first %s will
+// be replaced with the custom beacon url, by default
+// "./mod_pagespeed_beacon?ets=".  The second %s will be replaced by kLoadTag.
+//
+// Then our timing info, e.g. "load:123", will be appended.
+const char kTailScriptFormat[] =
     "<script type='text/javascript'>"
-    "function g(){new Image().src='%sload:'+"
+    "function g(){new Image().src='%s%s'+"
     "(Number(new Date())-window.mod_pagespeed_start);};"
     "var f=window.addEventListener;if(f){f('load',g,false);}else{"
     "f=window.attachEvent;if(f){f('onload',g);}}"
@@ -51,7 +52,8 @@ const char kTailScript[] =
 
 }  // namespace
 
-// Timing tag for total page load time.  Also embedded in kTailScript above!
+// Timing tag for total page load time.  Also embedded in kTailScriptFormat
+// above via the second %s.
 const char AddInstrumentationFilter::kLoadTag[] = "load:";
 
 AddInstrumentationFilter::AddInstrumentationFilter(
@@ -84,7 +86,8 @@ void AddInstrumentationFilter::EndElement(HtmlElement* element) {
     // assured by add_head_filter.
     CHECK(found_head_) << "Reached end of document without finding <head>."
         "  Please turn on the add_head filter.";
-    GoogleString tailScript = StringPrintf(kTailScript, beacon_url_.c_str());
+    GoogleString tailScript = StringPrintf(kTailScriptFormat,
+                                           beacon_url_.c_str(), kLoadTag);
     HtmlCharactersNode* script =
         html_parse_->NewCharactersNode(element, tailScript);
     html_parse_->InsertElementBeforeCurrent(script);

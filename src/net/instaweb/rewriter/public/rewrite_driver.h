@@ -223,8 +223,9 @@ class RewriteDriver : public HtmlParse {
   // Override HtmlParse's FinishParse to ensure that the
   // request-scoped cache is cleared immediately.
   //
-  // Note that this method can delete this, if its not externally managed,
-  // and if all RewriteContexts have been completed.
+  // Note that the RewriteDriver can delete itslef in this method, if
+  // its not externally managed, and if all RewriteContexts have been
+  // completed.
   virtual void FinishParse();
 
   // See comments in resource_manager.h

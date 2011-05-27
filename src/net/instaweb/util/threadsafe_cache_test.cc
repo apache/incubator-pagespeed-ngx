@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/cache_test_base.h"
+#include "net/instaweb/util/public/dynamic_annotations.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/shared_string.h"
@@ -66,7 +67,8 @@ class CacheSpammer : public ThreadSystem::Thread {
       *inserts[j] = StringPrintf(value_pattern_, j);
     }
 
-    for (int i = 0; i < kNumIters; ++i) {
+    int iter_limit = RunningOnValgrind() ? kNumIters / 100 : kNumIters;
+    for (int i = 0; i < iter_limit; ++i) {
       for (int j = 0; j < kNumInserts; ++j) {
         cache_->Put(StringPrintf(name_pattern, j), &inserts[j]);
       }

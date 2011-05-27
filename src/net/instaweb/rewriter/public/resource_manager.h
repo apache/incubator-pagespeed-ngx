@@ -229,12 +229,6 @@ class ResourceManager {
     url_async_fetcher_ = fetcher;
   }
 
-  // Releases a rewrite driver.  If created with the default options,
-  // then the driver is returned to a free list.  Currently, drivers
-  // with custom options are deleted and must be reconstructed when
-  // needed again.
-  void RecycleRewriteDriver(RewriteDriver* rewrite_driver);
-
   // Handles an incoming beacon request by incrementing the appropriate
   // variables.  Returns true if the url was parsed and handled correctly; in
   // this case a 204 No Content response should be sent.  Returns false if the
@@ -274,8 +268,24 @@ class ResourceManager {
   // Takes ownership of 'options'.
   RewriteDriver* NewCustomRewriteDriver(RewriteOptions* options);
 
-  // This is intended to be called by RewriteContext, when it completes
-  // async rewrites.
+  // Puts a RewriteDriver back on the free pool.  This is intended to
+  // be called by a RewriteDriver on itself, once all pending
+  // activites on it have completed, including HTML Parsing
+  // (FinishParse) and all pending Rewrites.
+  //
+  // This can only be used with RewriteDrivers created with default
+  // options.  RewiteDrivers with custom options cannot be recycled
+  // and must be deleted.
+  //
+  // RewriteDrivers with custom options should not call this function on
+  // themselves.
+  //
+  // TODO(jmarantz): this is a potential performance issue for Apache
+  // installations that set custom options in .htaccess files, where
+  // essentially every RewriteDriver will be a custom driver.  To
+  // resolve this we need to make a comparator for RewriteOptions
+  // so that we can determine option-equivalence and, potentially,
+  // keep free-lists for each unique option-set.
   void ReleaseRewriteDriver(RewriteDriver* rewrite_driver);
 
  private:
