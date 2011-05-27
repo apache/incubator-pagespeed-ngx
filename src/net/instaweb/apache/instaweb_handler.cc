@@ -30,6 +30,7 @@
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -161,6 +162,7 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
     callback->Done(false);
   }
   callback->Release();
+  rewrite_driver->Cleanup();
   return handled;
 }
 
@@ -323,7 +325,8 @@ apr_status_t save_url_hook(request_rec *request) {
   } else {
     ApacheRewriteDriverFactory* factory =
         InstawebContext::Factory(request->server);
-    RewriteDriver* rewrite_driver = factory->NewRewriteDriver();
+    ResourceManager* resource_manager = factory->ComputeResourceManager();
+    RewriteDriver* rewrite_driver = resource_manager->decoding_driver();
     RewriteFilter* filter;
     OutputResourcePtr output_resource(
         rewrite_driver->DecodeOutputResource(url, &filter));

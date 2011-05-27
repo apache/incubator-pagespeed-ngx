@@ -63,6 +63,8 @@ class InstawebContext {
   void Finish() {
     if (content_detection_state_ == kHtml) {
       rewrite_driver_->FinishParse();
+    } else {
+      rewrite_driver_->Cleanup();
     }
   }
   bool empty() const { return output_.empty(); }

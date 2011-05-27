@@ -792,6 +792,7 @@ void RewriteDriver::Cleanup() {
     if (has_custom_options()) {
       delete this;
     } else {
+      Clear();
       resource_manager_->ReleaseRewriteDriver(this);
     }
   }
@@ -799,7 +800,6 @@ void RewriteDriver::Cleanup() {
 
 void RewriteDriver::FinishParse() {
   HtmlParse::FinishParse();
-  Clear();
   Cleanup();
 }
 

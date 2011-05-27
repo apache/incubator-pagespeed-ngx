@@ -147,6 +147,8 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
 }
 
 ResourceManager::~ResourceManager() {
+  // We scan for "leaked_rewrite_drivers" in apache/install/tests.mk.
+  DCHECK(active_rewrite_drivers_.empty()) << "leaked_rewrite_drivers";
   STLDeleteElements(&active_rewrite_drivers_);
   STLDeleteElements(&available_rewrite_drivers_);
 }
