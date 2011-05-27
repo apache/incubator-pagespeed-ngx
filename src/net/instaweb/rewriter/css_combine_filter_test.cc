@@ -995,7 +995,7 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
 
 // Verifies that we don't allow path-crossing URLs if that option is turned off.
 TEST_F(CssCombineFilterTest, CrossAcrossPathsDisallowed) {
-  options_.set_combine_across_paths(false);
+  options()->set_combine_across_paths(false);
   CssLink::Vector css_in, css_out;
   css_in.Add("a/a.css", "a", "", true);
   css_in.Add("b/b.css", "b", "", true);
@@ -1007,7 +1007,7 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsDisallowed) {
 
 TEST_F(CssCombineFilterTest, CrossMappedDomain) {
   CssLink::Vector css_in, css_out;
-  DomainLawyer* laywer = options_.domain_lawyer();
+  DomainLawyer* laywer = options()->domain_lawyer();
   laywer->AddRewriteDomainMapping("a.com", "b.com", &message_handler_);
   bool supply_mock = false;
   css_in.Add("http://a.com/1.css", kYellow, "", supply_mock);
@@ -1031,7 +1031,7 @@ TEST_F(CssCombineFilterTest, CrossMappedDomain) {
 // the domain mapping.
 TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
   CssLink::Vector css_in, css_out;
-  DomainLawyer* laywer = options_.domain_lawyer();
+  DomainLawyer* laywer = options()->domain_lawyer();
   laywer->AddDomain("a.com", &message_handler_);
   laywer->AddDomain("b.com", &message_handler_);
   bool supply_mock = false;

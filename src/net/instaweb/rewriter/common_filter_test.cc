@@ -190,8 +190,8 @@ TEST_F(CommonFilterTest, DetectsNoScriptCorrectly) {
 
 TEST_F(CommonFilterTest, TestTwoDomainLawyers) {
   static const char kBaseUrl[] = "http://www.base.com/";
-  CommonFilter* a = MakeFilter(kBaseUrl, "a.com", &options_, &rewrite_driver_);
-  CommonFilter* b = MakeFilter(kBaseUrl, "b.com", &other_options_,
+  CommonFilter* a = MakeFilter(kBaseUrl, "a.com", options(), &rewrite_driver_);
+  CommonFilter* b = MakeFilter(kBaseUrl, "b.com", other_options(),
                                &other_rewrite_driver_);
 
   // Either filter can rewrite resources from the base URL

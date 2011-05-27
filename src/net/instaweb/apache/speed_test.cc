@@ -27,7 +27,7 @@ class SpeedTest : public ResourceManagerTestBase {
 TEST_F(SpeedTest, FilterSpeedTest) {
 #ifdef NDEBUG
   // Enables all filters.
-  options_.SetRewriteLevel(RewriteOptions::kAllFilters);
+  options()->SetRewriteLevel(RewriteOptions::kAllFilters);
   rewrite_driver_.AddFilters();
 
   GoogleString html;

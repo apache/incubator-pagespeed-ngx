@@ -131,7 +131,7 @@ TEST_F(CacheExtenderTest, UrlTooLong) {
   AddFilter(RewriteOptions::kExtendCache);
 
   // Make the filename too long.
-  GoogleString long_string(options_.max_url_segment_size() + 1, 'z');
+  GoogleString long_string(options()->max_url_segment_size() + 1, 'z');
 
   GoogleString css_name = StrCat("style.css?z=", long_string);
   GoogleString jpg_name = StrCat("image.jpg?z=", long_string);
@@ -161,7 +161,7 @@ TEST_F(CacheExtenderTest, NoExtendAlreadyCachedProperly) {
 
 TEST_F(CacheExtenderTest, ExtendIfSharded) {
   InitTest(kLongTtlSec);  // cached for a long time to begin with
-  EXPECT_TRUE(options_.domain_lawyer()->AddShard(
+  EXPECT_TRUE(options()->domain_lawyer()->AddShard(
       kTestDomain, "shard0.com,shard1.com", &message_handler_));
   // shard0 is always selected in the test because of our mock hasher
   // that always returns 0.
@@ -176,7 +176,7 @@ TEST_F(CacheExtenderTest, ExtendIfSharded) {
 TEST_F(CacheExtenderTest, ExtendIfRewritten) {
   InitTest(kLongTtlSec);  // cached for a long time to begin with
 
-  EXPECT_TRUE(options_.domain_lawyer()->AddRewriteDomainMapping(
+  EXPECT_TRUE(options()->domain_lawyer()->AddRewriteDomainMapping(
       "cdn.com", kTestDomain, &message_handler_));
   ValidateExpected("extend_if_rewritten",
                    GenerateHtml(kCssFile, "b.jpg", "c.js"),
@@ -189,11 +189,11 @@ TEST_F(CacheExtenderTest, ExtendIfRewritten) {
 TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritten) {
   InitTest(kLongTtlSec);  // cached for a long time to begin with
 
-  EXPECT_TRUE(options_.domain_lawyer()->AddRewriteDomainMapping(
+  EXPECT_TRUE(options()->domain_lawyer()->AddRewriteDomainMapping(
       "cdn.com", kTestDomain, &message_handler_));
 
   // Domain-rewriting is performed first.  Then we shard.
-  EXPECT_TRUE(options_.domain_lawyer()->AddShard(
+  EXPECT_TRUE(options()->domain_lawyer()->AddShard(
       "cdn.com", "shard0.com,shard1.com", &message_handler_));
   // shard0 is always selected in the test because of our mock hasher
   // that always returns 0.
@@ -234,7 +234,7 @@ TEST_F(CacheExtenderTest, ConsistentHashWithRewrite) {
   // don't cache it.  However, what we must do is generate the correct hash
   // code.  To test that we need to use the real hasher.
   resource_manager_->set_hasher(&md5_hasher_);
-  DomainLawyer* lawyer = options_.domain_lawyer();
+  DomainLawyer* lawyer = options()->domain_lawyer();
   lawyer->AddRewriteDomainMapping(kNewDomain, kTestDomain, &message_handler_);
   InitTest(kShortTtlSec);
 
@@ -277,7 +277,7 @@ TEST_F(CacheExtenderTest, ConsistentHashWithShard) {
   // different than that for the .css file, thus the references within the
   // css file are rewritten as absolute.
   resource_manager_->set_hasher(&md5_hasher_);
-  DomainLawyer* lawyer = options_.domain_lawyer();
+  DomainLawyer* lawyer = options()->domain_lawyer();
   lawyer->AddRewriteDomainMapping(kNewDomain, kTestDomain, &message_handler_);
   lawyer->AddShard(kNewDomain, "shard1.com,shard2.com", &message_handler_);
   InitTest(kShortTtlSec);
@@ -311,7 +311,7 @@ TEST_F(CacheExtenderTest, ConsistentHashWithShard) {
 
 TEST_F(CacheExtenderTest, ServeFilesWithRewriteDomainsEnabled) {
   GoogleString content;
-  DomainLawyer* lawyer = options_.domain_lawyer();
+  DomainLawyer* lawyer = options()->domain_lawyer();
   lawyer->AddRewriteDomainMapping(kNewDomain, kTestDomain, &message_handler_);
   InitTest(kShortTtlSec);
   ASSERT_TRUE(ServeResource(kTestDomain, kFilterId, kCssFile, "css", &content));
@@ -320,7 +320,7 @@ TEST_F(CacheExtenderTest, ServeFilesWithRewriteDomainsEnabled) {
 
 TEST_F(CacheExtenderTest, ServeFilesWithShard) {
   GoogleString content;
-  DomainLawyer* lawyer = options_.domain_lawyer();
+  DomainLawyer* lawyer = options()->domain_lawyer();
   lawyer->AddRewriteDomainMapping(kNewDomain, kTestDomain, &message_handler_);
   lawyer->AddShard(kNewDomain, "shard1.com,shard2.com", &message_handler_);
   InitTest(kShortTtlSec);
@@ -347,9 +347,9 @@ TEST_F(CacheExtenderTest, ServeFilesFromDelayedFetch) {
 }
 
 TEST_F(CacheExtenderTest, MinimizeCacheHits) {
-  options_.EnableFilter(RewriteOptions::kOutlineCss);
-  options_.EnableFilter(RewriteOptions::kExtendCache);
-  options_.set_css_outline_min_bytes(1);
+  options()->EnableFilter(RewriteOptions::kOutlineCss);
+  options()->EnableFilter(RewriteOptions::kExtendCache);
+  options()->set_css_outline_min_bytes(1);
   rewrite_driver_.AddFilters();
   GoogleString html_input = StrCat("<style>", kCssData, "</style>");
   GoogleString html_output = StringPrintf(

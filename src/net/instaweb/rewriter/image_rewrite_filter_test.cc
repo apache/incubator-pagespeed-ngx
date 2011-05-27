@@ -55,9 +55,9 @@ class ImageRewriteTest : public ResourceManagerTestBase {
  protected:
   // Simple image rewrite test to check resource fetching functionality.
   void RewriteImage(const GoogleString& tag_string) {
-    options_.EnableFilter(RewriteOptions::kInsertImageDimensions);
-    options_.EnableFilter(RewriteOptions::kRecompressImages);
-    options_.set_image_inline_max_bytes(2000);
+    options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+    options()->EnableFilter(RewriteOptions::kRecompressImages);
+    options()->set_image_inline_max_bytes(2000);
     rewrite_driver_.AddFilters();
 
     // URLs and content for HTML document and resources.
@@ -307,7 +307,7 @@ TEST_F(ImageRewriteTest, DataUrlTest) {
 TEST_F(ImageRewriteTest, AddDimTest) {
   // Make sure optimizable image isn't optimized, but
   // dimensions are inserted.
-  options_.EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   rewrite_driver_.AddFilters();
   TestSingleRewrite(kBikePngFile, kContentTypePng,
                     "", " width=\"100\" height=\"100\"", false, false);
@@ -315,7 +315,7 @@ TEST_F(ImageRewriteTest, AddDimTest) {
 
 TEST_F(ImageRewriteTest, ResizeTest) {
   // Make sure we resize images, but don't optimize them in place.
-  options_.EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver_.AddFilters();
   const char kResizedDims[] = " width=\"256\" height=\"192\"";
   // Without explicit resizing, we leave the image alone.
@@ -328,10 +328,10 @@ TEST_F(ImageRewriteTest, ResizeTest) {
 
 TEST_F(ImageRewriteTest, InlineTest) {
   // Make sure we resize and inline images, but don't optimize them in place.
-  options_.set_image_inline_max_bytes(10000);
-  options_.EnableFilter(RewriteOptions::kResizeImages);
-  options_.EnableFilter(RewriteOptions::kInlineImages);
-  options_.EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->set_image_inline_max_bytes(10000);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   rewrite_driver_.AddFilters();
   const char kChefDims[] = " width=\"192\" height=\"256\"";
   const char kResizedDims[] = " width=48 height=64";
@@ -347,8 +347,8 @@ TEST_F(ImageRewriteTest, InlineTest) {
 
 TEST_F(ImageRewriteTest, InlineNoRewrite) {
   // Make sure we inline an image that isn't otherwise altered in any way.
-  options_.set_image_inline_max_bytes(30000);
-  options_.EnableFilter(RewriteOptions::kInlineImages);
+  options()->set_image_inline_max_bytes(30000);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
   rewrite_driver_.AddFilters();
   const char kChefDims[] = " width=192 height=256";
   // This image is just small enough to inline, which also erases
@@ -451,8 +451,8 @@ TEST_F(ImageRewriteTest, NoQueryCorruption) {
 }
 
 TEST_F(ImageRewriteTest, NoCrashOnInvalidDim) {
-  options_.EnableFilter(RewriteOptions::kRecompressImages);
-  options_.EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kRecompressImages);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   rewrite_driver_.AddFilters();
   AddFileToMockFetcher(StrCat(kTestDomain, "a.png"), kBikePngFile,
                        kContentTypePng, 100);

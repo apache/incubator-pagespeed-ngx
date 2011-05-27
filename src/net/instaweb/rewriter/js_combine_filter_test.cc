@@ -430,8 +430,8 @@ TEST_F(JsCombineFilterTest, TestCrossDomainReject) {
 
 // Validate that we can recover a combination after a cross-domain rejection
 TEST_F(JsCombineFilterTest, TestCrossDomainRecover) {
-  ASSERT_TRUE(options_.domain_lawyer()->AddDomain(other_domain_,
-                                                  &message_handler_));
+  ASSERT_TRUE(options()->domain_lawyer()->AddDomain(other_domain_,
+                                                    &message_handler_));
 
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);

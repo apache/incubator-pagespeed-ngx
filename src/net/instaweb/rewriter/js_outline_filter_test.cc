@@ -44,8 +44,8 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
   // We need an explicitly called method here rather than using SetUp so
   // that NoOutlineScript can call another AddFilter function first.
   void SetupOutliner() {
-    options_.set_js_outline_min_bytes(0);
-    options_.EnableFilter(RewriteOptions::kOutlineJavascript);
+    options()->set_js_outline_min_bytes(0);
+    options()->EnableFilter(RewriteOptions::kOutlineJavascript);
     rewrite_driver_.AddFilters();
   }
 
@@ -129,7 +129,7 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   // TODO(sligocki): Maybe test with other hashers.
   // resource_manager_->set_hasher(hasher);
 
-  options_.EnableFilter(RewriteOptions::kOutlineCss);
+  options()->EnableFilter(RewriteOptions::kOutlineCss);
   SetupOutliner();
 
   // We need to make sure we don't create this file, so rm any old one
@@ -162,7 +162,7 @@ TEST_F(JsOutlineFilterTest, UrlTooLong) {
   OutlineScript("url_not_too_long", &mock_hasher_, true);
 
   // But if we set max_url_size too small, it will fail cleanly.
-  options_.set_max_url_size(0);
+  options()->set_max_url_size(0);
   OutlineScript("url_too_long", &mock_hasher_, false);
 }
 

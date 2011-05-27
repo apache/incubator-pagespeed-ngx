@@ -227,11 +227,11 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
   // Check to make sure we are within various URL limits
   void VerifyLengthLimits() {
     EXPECT_LE(LeafLength(partnership_->UrlSafeId().length()),
-              options_.max_url_segment_size() - UrlSlack());
+              options()->max_url_segment_size() - UrlSlack());
 
     EXPECT_LE(partnership_->ResolvedBase().length() +
                   LeafLength(partnership_->UrlSafeId().length()),
-              options_.max_url_size() - UrlSlack());
+              options()->max_url_size() - UrlSlack());
   }
 
   int UrlSlack() const {
@@ -464,7 +464,7 @@ TEST_F(ResourceCombinerTest, TestRebaseRemoveAdd) {
 TEST_F(ResourceCombinerTest, TestRebaseOverflow) {
   // Test to make sure that we notice when we go over the limit when
   // we rebase - we lower the segment size limit just for that.
-  options_.set_max_url_segment_size(LeafLength(strlen(kPathCombined) - 1) +
+  options()->set_max_url_segment_size(LeafLength(strlen(kPathCombined) - 1) +
                                     UrlSlack());
   HtmlElement* e1 = TestElement();
   EXPECT_TRUE(AddElement(e1, kPathPiece, &message_handler_));
@@ -486,7 +486,7 @@ TEST_F(ResourceCombinerTest, TestRebaseOverflow) {
 
 TEST_F(ResourceCombinerTest, TestRebaseOverflow2) {
   // Test to make sure we are exact in our size limit
-  options_.set_max_url_segment_size(LeafLength(strlen(kPathCombined)) +
+  options()->set_max_url_segment_size(LeafLength(strlen(kPathCombined)) +
                                     UrlSlack());
   HtmlElement* e1 = TestElement();
   EXPECT_TRUE(AddElement(e1, kPathPiece, &message_handler_));
@@ -506,7 +506,7 @@ TEST_F(ResourceCombinerTest, TestRebaseOverflow2) {
 TEST_F(ResourceCombinerTest, TestRebaseOverflow3) {
   // Make sure that if we add url, rebase, and then rollback we
   // don't end up overlimit due to the first piece expanding
-  options_.set_max_url_segment_size(LeafLength(strlen("piece.tcc")) +
+  options()->set_max_url_segment_size(LeafLength(strlen("piece.tcc")) +
                                     UrlSlack());
   HtmlElement* e1 = TestElement();
   EXPECT_TRUE(AddElement(e1, kPathPiece, &message_handler_));
@@ -523,7 +523,7 @@ TEST_F(ResourceCombinerTest, TestRebaseOverflow3) {
 
 TEST_F(ResourceCombinerTest, TestMaxUrlOverflow) {
   // Make sure we don't produce URLs bigger than the max_url_size().
-  options_.set_max_url_size(
+  options()->set_max_url_size(
       strlen(kTestDomain) + LeafLength(strlen(kPathCombined)) + UrlSlack() - 1);
   HtmlElement* e1 = TestElement();
   EXPECT_TRUE(AddElement(e1, kPathPiece, &message_handler_));
@@ -540,7 +540,7 @@ TEST_F(ResourceCombinerTest, TestMaxUrlOverflow) {
 
 TEST_F(ResourceCombinerTest, TestMaxUrlOverflow2) {
   // This one is just right
-  options_.set_max_url_size(
+  options()->set_max_url_size(
       strlen(kTestDomain) + LeafLength(strlen(kPathCombined)) + UrlSlack());
   HtmlElement* e1 = TestElement();
   EXPECT_TRUE(AddElement(e1, kPathPiece, &message_handler_));

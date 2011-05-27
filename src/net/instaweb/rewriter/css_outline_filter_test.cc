@@ -43,8 +43,8 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    options_.set_css_outline_min_bytes(0);
-    options_.EnableFilter(RewriteOptions::kOutlineCss);
+    options()->set_css_outline_min_bytes(0);
+    options()->EnableFilter(RewriteOptions::kOutlineCss);
     rewrite_driver_.AddFilters();
   }
 
@@ -157,7 +157,7 @@ TEST_F(CssOutlineFilterTest, UrlTooLong) {
   TestOutlineCss(html_url, "", style_text, true, style_text);
 
   // But if we set max_url_size too small, it will fail cleanly.
-  options_.set_max_url_size(0);
+  options()->set_max_url_size(0);
   TestOutlineCss(html_url, "", style_text, false, style_text);
 }
 

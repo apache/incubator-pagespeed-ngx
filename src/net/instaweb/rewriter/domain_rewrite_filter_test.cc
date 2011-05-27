@@ -45,8 +45,8 @@ class DomainRewriteFilterTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    options_.Disallow("*dont_shard*");
-    DomainLawyer* lawyer = options_.domain_lawyer();
+    options()->Disallow("*dont_shard*");
+    DomainLawyer* lawyer = options()->domain_lawyer();
     lawyer->AddRewriteDomainMapping(kTo1Domain, kFrom1Domain,
                                     &message_handler_);
     lawyer->AddRewriteDomainMapping(kTo2Domain, kFrom2Domain,

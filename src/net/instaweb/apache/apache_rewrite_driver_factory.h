@@ -133,9 +133,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   virtual CacheInterface* DefaultCacheInterface();
   virtual NamedLockManager* DefaultLockManager();
   virtual ThreadSystem* DefaultThreadSystem();
-  virtual AbstractMutex* cache_mutex() { return cache_mutex_.get(); }
-  virtual AbstractMutex* rewrite_drivers_mutex() {
-    return rewrite_drivers_mutex_.get(); }
 
   // Disable the Resource Manager's filesystem since we have a
   // write-through http_cache.
@@ -155,8 +152,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
  private:
   apr_pool_t* pool_;
   server_rec* server_rec_;
-  scoped_ptr<AbstractMutex> cache_mutex_;
-  scoped_ptr<AbstractMutex> rewrite_drivers_mutex_;
   SyncFetcherAdapter* serf_url_fetcher_;
   SerfUrlAsyncFetcher* serf_url_async_fetcher_;
   SharedMemStatistics* shared_mem_statistics_;

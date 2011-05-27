@@ -167,10 +167,6 @@ class RewriteDriverFactory {
   // Current DefaultFileLoadPolicy never loads resources from files.
   virtual FileLoadPolicy* DefaultFileLoadPolicy();
 
-  // Implementors of RewriteDriverFactory must supply two mutexes.
-  virtual AbstractMutex* cache_mutex() = 0;
-  virtual AbstractMutex* rewrite_drivers_mutex() = 0;
-
   // Clean up all the resources. When shutdown Apache, and destroy the process
   // sub-pool.  The RewriteDriverFactory owns some elements that were created
   // from that sub-pool. The sub-pool is destroyed in ApacheRewriteFactory,

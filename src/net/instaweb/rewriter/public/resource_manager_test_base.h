@@ -21,6 +21,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_TEST_BASE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_TEST_BASE_H_
 
+#include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
@@ -151,12 +153,13 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   // Overrides the async fetcher on the primary context to be a
   // wait fetcher which permits delaying callback invocation.
-  // CallFetcherCallbacks can then be called to let the fetches complete.
+  // CallFetcherCallbacks can then be called to let the fetches complete
+  // and call the callbacks.
   void SetupWaitFetcher();
-
-  // TODO(jmarantz): change the 8 remaining direct calls to go through this
-  // abstraction.
   void CallFetcherCallbacks() { wait_url_async_fetcher_.CallCallbacks(); }
+
+  RewriteOptions* options() { return options_; }
+  RewriteOptions* other_options() { return other_options_; }
 
   // Helper method to test all manner of resource serving from a filter.
   void TestServeFiles(const ContentType* content_type,
@@ -184,13 +187,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   MockUrlFetcher mock_url_fetcher_;
   FakeUrlAsyncFetcher mock_url_async_fetcher_;
   CountingUrlAsyncFetcher counting_url_async_fetcher_;
-  WaitUrlAsyncFetcher wait_url_async_fetcher_;
   FilenameEncoder filename_encoder_;
   FileLoadPolicy null_file_load_policy_;
 
   MockHasher mock_hasher_;
   MD5Hasher md5_hasher_;
-  PthreadThreadSystem thread_system_;
+  scoped_ptr<ThreadSystem> thread_system_;
 
   GoogleString file_prefix_;
   GoogleString url_prefix_;
@@ -210,7 +212,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   // TODO(jmarantz): the 'options_' and 'other_options_' variables should
   // be changed from references to pointers, in a follow-up CL.
-  RewriteOptions& options_;  // owned by rewrite_driver_.
+  RewriteOptions* options_;  // owned by rewrite_driver_.
   RewriteDriver rewrite_driver_;
 
   // Server B runs other_rewrite_driver_ and will get a request for
@@ -222,8 +224,11 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   HTTPCache other_http_cache_;
   FileSystemLockManager other_lock_manager_;
   ResourceManager other_resource_manager_;
-  RewriteOptions& other_options_;  // owned by other_rewrite_driver_.
+  RewriteOptions* other_options_;  // owned by other_rewrite_driver_.
   RewriteDriver other_rewrite_driver_;
+
+ private:
+  WaitUrlAsyncFetcher wait_url_async_fetcher_;
 };
 
 }  // namespace net_instaweb

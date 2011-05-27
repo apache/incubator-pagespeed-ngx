@@ -262,18 +262,18 @@ TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
     kOutlinedResource,
   };
 
-  // short_path.size() < options_.max_url_size() < long_path.size()
+  // short_path.size() < options()->max_url_size() < long_path.size()
   GoogleString short_path = "http://www.example.com/dir/";
   GoogleString long_path = short_path;
-  for (int i = 0; 2 * i < options_.max_url_size(); ++i) {
+  for (int i = 0; 2 * i < options()->max_url_size(); ++i) {
     long_path += "z/";
   }
 
-  // short_name.size() < options_.max_url_segment_size() < long_name.size()
+  // short_name.size() < options()->max_url_segment_size() < long_name.size()
   GoogleString short_name = "foo.html";
   GoogleString long_name =
       StrCat("foo.html?",
-             GoogleString(options_.max_url_segment_size() + 1, 'z'));
+             GoogleString(options()->max_url_segment_size() + 1, 'z'));
 
   GoogleString dummy_filter_id = "xy";
 

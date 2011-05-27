@@ -17,6 +17,7 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/pthread_thread_system.h"
 
 namespace net_instaweb {
 
@@ -27,6 +28,10 @@ ThreadSystem::CondvarCapableMutex::~CondvarCapableMutex() {
 }
 
 ThreadSystem::ThreadImpl::~ThreadImpl() {
+}
+
+ThreadSystem* ThreadSystem::CreateThreadSystem() {
+  return new PthreadThreadSystem;
 }
 
 }  // namespace net_instaweb

@@ -28,7 +28,6 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -377,7 +376,7 @@ TEST_P(RewriteSingleResourceFilterTest, BasicAsync) {
   EXPECT_EQ(0, filter_->num_rewrites_called());
 
   // Now let it load
-  wait_url_async_fetcher_.CallCallbacks();
+  CallFetcherCallbacks();
 
   // This time should rewrite
   ValidateExpected("async.loaded", in_tag_, out_tag_);

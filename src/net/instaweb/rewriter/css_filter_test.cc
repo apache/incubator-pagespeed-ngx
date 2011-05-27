@@ -47,7 +47,7 @@ TEST_F(CssFilterTest, SimpleRewriteCssTest) {
 TEST_F(CssFilterTest, UrlTooLong) {
   // Make the filename maximum size, so we cannot rewrite it.
   // -4 because .css will be appended.
-  GoogleString filename(options_.max_url_segment_size() - 4, 'z');
+  GoogleString filename(options()->max_url_segment_size() - 4, 'z');
   // If filename wasn't too long, this would be rewritten (like in
   // SimpleRewriteCssTest).
   GoogleString input_style =
@@ -448,13 +448,13 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   // When we force always_rewrite_css, we can expand some statements.
   // Note: when this example is fixed in the minifier, this test will break :/
-  options_.set_always_rewrite_css(true);
+  options()->set_always_rewrite_css(true);
   ValidateRewrite("expanding_example",
                   "@import url(http://www.example.com)",
                   "@import url(http://www.example.com) ;");
   // With it set false, we do not expand CSS (as long as we didn't do anything
   // else, like rewrite sub-resources.
-  options_.set_always_rewrite_css(false);
+  options()->set_always_rewrite_css(false);
   ValidateRewrite("non_expanding_example",
                   "@import url(http://www.example.com)",
                   "@import url(http://www.example.com)",
@@ -463,11 +463,11 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   // actually expands the statement is not considered an error.)
 
   // When we force always_rewrite_css, we allow rewriting something to nothing.
-  options_.set_always_rewrite_css(true);
+  options()->set_always_rewrite_css(true);
   ValidateRewrite("contracting_example",     "  ", "");
   // With it set false, we do not allow something to be minified to nothing.
   // Note: We may allow this in the future if contents are all whitespace.
-  options_.set_always_rewrite_css(false);
+  options()->set_always_rewrite_css(false);
   ValidateRewrite("non_contracting_example", "  ", "  ",
                   kExpectNoChange | kExpectFailure);
 }

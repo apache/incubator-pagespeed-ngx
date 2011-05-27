@@ -18,7 +18,8 @@
 
 #include <vector>
 
-#include "base/logging.h"               // for CHECK_LT
+#include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
@@ -55,6 +56,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
@@ -73,7 +75,7 @@ SimpleStats* ResourceManagerTestBase::statistics_;
 ResourceManagerTestBase::ResourceManagerTestBase()
     : mock_url_async_fetcher_(&mock_url_fetcher_),
       counting_url_async_fetcher_(&mock_url_async_fetcher_),
-      wait_url_async_fetcher_(&mock_url_fetcher_),
+      thread_system_(ThreadSystem::CreateThreadSystem()),
       file_prefix_(StrCat(GTestTempDir(), "/")),
       url_prefix_(URL_PREFIX),
 
@@ -84,12 +86,7 @@ ResourceManagerTestBase::ResourceManagerTestBase()
       lock_manager_(&file_system_, file_prefix_, file_system_.timer(),
                     &message_handler_),
       factory_(NULL),  // Not using the Factory in tests for now.
-      // TODO(sligocki): Why can't I init it here ...
-      // resource_manager_(new ResourceManager(
-      //    file_prefix_, &file_system_,
-      //    &filename_encoder_, &counting_url_async_fetcher_, &mock_hasher_,
-      //    &http_cache_)),
-      options_(*new RewriteOptions),
+      options_(new RewriteOptions),
       rewrite_driver_(&message_handler_, &file_system_,
                       &counting_url_async_fetcher_),
 
@@ -104,12 +101,13 @@ ResourceManagerTestBase::ResourceManagerTestBase()
           file_prefix_, &other_file_system_, &filename_encoder_,
           &counting_url_async_fetcher_, &null_file_load_policy_, &mock_hasher_,
           &other_http_cache_, other_lru_cache_, &other_lock_manager_,
-          &message_handler_, statistics_, &thread_system_, NULL),
-      other_options_(*new RewriteOptions),
+          &message_handler_, statistics_, thread_system_.get(), NULL),
+      other_options_(new RewriteOptions),
       other_rewrite_driver_(&message_handler_, &other_file_system_,
-                            &counting_url_async_fetcher_) {
-  rewrite_driver_.set_custom_options(&options_);
-  other_rewrite_driver_.set_custom_options(&other_options_);
+                            &counting_url_async_fetcher_),
+      wait_url_async_fetcher_(&mock_url_fetcher_) {
+  rewrite_driver_.set_custom_options(options_);
+  other_rewrite_driver_.set_custom_options(other_options_);
   // rewrite_driver_.SetResourceManager(resource_manager_);
   other_rewrite_driver_.SetResourceManager(&other_resource_manager_);
 
@@ -138,7 +136,7 @@ void ResourceManagerTestBase::SetUp() {
       file_prefix_, &file_system_, &filename_encoder_,
       &counting_url_async_fetcher_, &null_file_load_policy_, &mock_hasher_,
       &http_cache_, lru_cache_, &lock_manager_,
-      &message_handler_, statistics_, &thread_system_, factory_);
+      &message_handler_, statistics_, thread_system_.get(), factory_);
   rewrite_driver_.SetResourceManager(resource_manager_);
 }
 
@@ -149,13 +147,13 @@ void ResourceManagerTestBase::TearDown() {
 
 // Add a single rewrite filter to rewrite_driver_.
 void ResourceManagerTestBase::AddFilter(RewriteOptions::Filter filter) {
-  options_.EnableFilter(filter);
+  options_->EnableFilter(filter);
   rewrite_driver_.AddFilters();
 }
 
 // Add a single rewrite filter to other_rewrite_driver_.
 void ResourceManagerTestBase::AddOtherFilter(RewriteOptions::Filter filter) {
-  other_options_.EnableFilter(filter);
+  other_options_->EnableFilter(filter);
   other_rewrite_driver_.AddFilters();
 }
 
@@ -241,12 +239,12 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
       file_prefix_, &other_file_system, &filename_encoder_,
       &wait_url_async_fetcher, &null_file_load_policy_, hasher,
       &other_http_cache, other_lru_cache, &other_lock_manager,
-      &message_handler_, &stats, &thread_system_, factory_);
+      &message_handler_, &stats, thread_system_.get(), factory_);
 
   RewriteDriver other_rewrite_driver(&message_handler_, &other_file_system,
                                      &wait_url_async_fetcher);
   RewriteOptions* options = new RewriteOptions;
-  options->CopyFrom(options_);
+  options->CopyFrom(*options_);
   other_rewrite_driver.set_custom_options(options);
   other_rewrite_driver.SetResourceManager(&other_resource_manager);
   other_rewrite_driver.AddFilters();

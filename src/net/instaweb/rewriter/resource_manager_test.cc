@@ -372,7 +372,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // for the resource (notice this is passing an input resource that
     // lacks a content type.
     ResourcePtr resource_without_content_type(new UrlInputResource(
-        resource_manager_, &options_, NULL, input->url()));
+        resource_manager_, options(), NULL, input->url()));
     EXPECT_TRUE(resource_without_content_type->type() == NULL);
     output.reset(CreateTestOutputResource(resource_without_content_type));
     VerifyValidCachedResult("initial cached", test_meta_data, output.get(),
@@ -458,7 +458,7 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlEvil) {
 }
 
 TEST_F(ResourceManagerTest, TestOutputInputUrlBusy) {
-  EXPECT_TRUE(options_.domain_lawyer()->AddOriginDomainMapping(
+  EXPECT_TRUE(options()->domain_lawyer()->AddOriginDomainMapping(
       "www.busy.com", "example.com", &message_handler_));
 
   GoogleString url = MakeEvilUrl("example.com", "http://www.busy.com");
@@ -481,9 +481,9 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlBusy) {
 // rewrite domain, preventing us from finding the origin-mapping when
 // fetching the URL.
 TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
-  ASSERT_TRUE(options_.domain_lawyer()->AddOriginDomainMapping(
+  ASSERT_TRUE(options()->domain_lawyer()->AddOriginDomainMapping(
       "localhost", kTestDomain, &message_handler_));
-  EXPECT_TRUE(options_.domain_lawyer()->AddRewriteDomainMapping(
+  EXPECT_TRUE(options()->domain_lawyer()->AddRewriteDomainMapping(
       "cdn.com", kTestDomain, &message_handler_));
 
   ResourcePtr input(CreateResource(StrCat(kTestDomain, "index.html"),
@@ -871,7 +871,7 @@ class ResourceManagerShardedTest : public ResourceManagerTest {
  protected:
   virtual void SetUp() {
     ResourceManagerTest::SetUp();
-    EXPECT_TRUE(options_.domain_lawyer()->AddShard(
+    EXPECT_TRUE(options()->domain_lawyer()->AddShard(
         "example.com", "shard0.com,shard1.com", &message_handler_));
   }
 };

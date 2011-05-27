@@ -18,7 +18,6 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -52,7 +51,7 @@ class CssImageRewriterTest : public CssRewriteTestBase {
   virtual void SetUp() {
     // We setup the options before the upcall so that the
     // CSS filter is created aware of these.
-    options_.EnableFilter(RewriteOptions::kExtendCache);
+    options()->EnableFilter(RewriteOptions::kExtendCache);
     CssRewriteTestBase::SetUp();
   }
 };
@@ -160,8 +159,8 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
   virtual void SetUp() {
     // We setup the options before the upcall so that the
     // CSS filter is created aware of these.
-    options_.EnableFilter(RewriteOptions::kExtendCache);
-    options_.EnableFilter(RewriteOptions::kRecompressImages);
+    options()->EnableFilter(RewriteOptions::kExtendCache);
+    options()->EnableFilter(RewriteOptions::kRecompressImages);
     CssRewriteTestBase::SetUp();
 
     // We want a real hasher here so that subresources get separate locks.
@@ -241,7 +240,7 @@ TEST_F(CssFilterSubresourceTest, SubResourceDependsNotYetLoaded) {
                              kExpectNoChange | kExpectSuccess);
 
   // Get the CSS to load (resources are still unavailable).
-  wait_url_async_fetcher_.CallCallbacks();
+  CallFetcherCallbacks();
   ValidateRewriteExternalCss(
       "wip", kInput, kOutput, kNoOtherContexts | kNoClearFetcher |
                               kExpectChange | kExpectSuccess);
@@ -251,7 +250,7 @@ TEST_F(CssFilterSubresourceTest, SubResourceDependsNotYetLoaded) {
   ValidateExpirationTime("wip", kOutput, Timer::kSecondMs);
 
   // Make sure the subresource callbacks fire for leak cleanliness
-  wait_url_async_fetcher_.CallCallbacks();
+  CallFetcherCallbacks();
 }
 
 }  // namespace

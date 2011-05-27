@@ -68,8 +68,6 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
           "lock manager",
           &lock_manager_owners_) {
   apr_pool_create(&pool_, NULL);
-  cache_mutex_.reset(NewMutex());
-  rewrite_drivers_mutex_.reset(NewMutex());
 
   // In Apache, we default to using the "core filters".
   options()->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
@@ -136,7 +134,7 @@ CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
     // is naturally thread-safe because it's got no writable member variables.
     // And surrounding that slower-running class with a mutex would likely
     // cause contention.
-    ThreadsafeCache* ts_cache = new ThreadsafeCache(lru_cache, cache_mutex());
+    ThreadsafeCache* ts_cache = new ThreadsafeCache(lru_cache, NewMutex());
     WriteThroughCache* write_through_cache =
         new WriteThroughCache(ts_cache, cache);
     // By default, WriteThroughCache does not limit the size of entries going
@@ -233,8 +231,6 @@ void ApacheRewriteDriverFactory::ShutDown() {
         fetcher_time_out_ms_, message_handler(),
         SerfUrlAsyncFetcher::kThreadedAndMainline);
   }
-  cache_mutex_.reset(NULL);
-  rewrite_drivers_mutex_.reset(NULL);
   if (is_root_process_) {
     if (owns_statistics_ && (shared_mem_statistics_ != NULL)) {
       shared_mem_statistics_->GlobalCleanup(message_handler());

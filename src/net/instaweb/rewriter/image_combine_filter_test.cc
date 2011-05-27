@@ -21,7 +21,6 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -47,7 +46,7 @@ class CssImageCombineTest : public CssRewriteTestBase {
   virtual void SetUp() {
     // We setup the options before the upcall so that the
     // CSS filter is created aware of these.
-    options_.EnableFilter(RewriteOptions::kSpriteImages);
+    options()->EnableFilter(RewriteOptions::kSpriteImages);
     CssRewriteTestBase::SetUp();
     AddFileToMockFetcher(StrCat(kTestDomain, kBikePngFile), kBikePngFile,
                          kContentTypePng, 100);
@@ -174,7 +173,7 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
       kExpectNoChange | kExpectSuccess);
 
   // Get the CSS to load (resources are still unavailable).
-  wait_url_async_fetcher_.CallCallbacks();
+  CallFetcherCallbacks();
 
   // On the second run, we will rewrite the CSS but not sprite.
   const GoogleString rewrittenCss = StrCat(
@@ -187,7 +186,7 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
       kExpectChange | kExpectSuccess);
 
   // Allow the images to load
-  wait_url_async_fetcher_.CallCallbacks();
+  CallFetcherCallbacks();
   // The inability to rewrite this image will be remembered for 1 second.
   mock_timer()->advance_ms(3 * Timer::kSecondMs);
 

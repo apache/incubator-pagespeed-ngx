@@ -60,22 +60,22 @@ class ThreadsafeCallback : public CacheInterface::Callback {
 }  // namespace
 
 void ThreadsafeCache::Get(const GoogleString& key, Callback* callback) {
-  ThreadsafeCallback* cb = new ThreadsafeCallback(mutex_, key, callback);
+  ThreadsafeCallback* cb = new ThreadsafeCallback(mutex_.get(), key, callback);
   cache_->Get(key, cb);
 }
 
 void ThreadsafeCache::Put(const GoogleString& key, SharedString* value) {
-  ScopedMutex mutex(mutex_);
+  ScopedMutex mutex(mutex_.get());
   cache_->Put(key, value);
 }
 
 void ThreadsafeCache::Delete(const GoogleString& key) {
-  ScopedMutex mutex(mutex_);
+  ScopedMutex mutex(mutex_.get());
   cache_->Delete(key);
 }
 
 void ThreadsafeCache::Query(const GoogleString& key, Callback* callback) {
-  cache_->Query(key, new ThreadsafeCallback(mutex_, key, callback));
+  cache_->Query(key, new ThreadsafeCallback(mutex_.get(), key, callback));
 }
 
 }  // namespace net_instaweb

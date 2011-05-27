@@ -35,7 +35,7 @@ class SharedString;
 // the thread safety of the cache itself, not the callbacks.
 class ThreadsafeCache : public CacheInterface {
  public:
-  // Takes ownership of the cache that's passed in.
+  // Takes ownership of the cache and mutex that's passed in.
   ThreadsafeCache(CacheInterface* cache, AbstractMutex* mutex)
       : cache_(cache),
         mutex_(mutex) {
@@ -49,7 +49,7 @@ class ThreadsafeCache : public CacheInterface {
 
  private:
   scoped_ptr<CacheInterface> cache_;
-  AbstractMutex* mutex_;
+  scoped_ptr<AbstractMutex> mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(ThreadsafeCache);
 };

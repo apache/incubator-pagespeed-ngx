@@ -46,7 +46,7 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     AddFilter(RewriteOptions::kRewriteCss);
-    options_.set_always_rewrite_css(true);
+    options()->set_always_rewrite_css(true);
   }
 
   enum ValidationFlags {
