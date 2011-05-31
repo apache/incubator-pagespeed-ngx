@@ -75,6 +75,7 @@ SimpleStats* ResourceManagerTestBase::statistics_;
 ResourceManagerTestBase::ResourceManagerTestBase()
     : mock_url_async_fetcher_(&mock_url_fetcher_),
       counting_url_async_fetcher_(&mock_url_async_fetcher_),
+      wait_for_fetches_(false),
       thread_system_(ThreadSystem::CreateThreadSystem()),
       file_prefix_(StrCat(GTestTempDir(), "/")),
       url_prefix_(URL_PREFIX),
@@ -345,6 +346,9 @@ bool ResourceManagerTestBase::ServeResourceUrl(
   MockCallback callback;
   bool fetched = rewrite_driver_.FetchResource(
       url, request_headers, &response_headers, &writer, &callback);
+  rewrite_driver_.WaitForCompletion();
+  rewrite_driver_.Clear();
+
   // The callback should be called if and only if FetchResource
   // returns true.
   EXPECT_EQ(fetched, callback.done());
@@ -484,6 +488,22 @@ GoogleString ResourceManagerTestBase::Encode(
 
 void ResourceManagerTestBase::SetupWaitFetcher() {
   counting_url_async_fetcher_.set_fetcher(&wait_url_async_fetcher_);
+  wait_for_fetches_ = true;
+}
+
+void ResourceManagerTestBase::ParseUrl(const StringPiece& url,
+                                       const GoogleString& html_input) {
+  HtmlParseTestBaseNoAlloc::ParseUrl(url, html_input);
+  if (!wait_for_fetches_) {
+    rewrite_driver_.WaitForCompletion();
+    rewrite_driver_.Clear();
+  }
+}
+
+void ResourceManagerTestBase::CallFetcherCallbacks() {
+  wait_url_async_fetcher_.CallCallbacks();
+  rewrite_driver_.WaitForCompletion();
+  rewrite_driver_.Clear();
 }
 
 }  // namespace net_instaweb

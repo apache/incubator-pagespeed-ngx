@@ -114,5 +114,25 @@ TEST_F(SlowWorkerTest, Cancellation) {
   worker_.reset(NULL);
 }
 
+// Used to check that quit_requested is false by default normally.
+class CheckDefaultCancelClosure : public WorkerTestBase::NotifyRunClosure {
+ public:
+  explicit CheckDefaultCancelClosure(WorkerTestBase::SyncPoint* sync)
+      : NotifyRunClosure(sync) {}
+
+  virtual void Run() {
+    CHECK(!quit_requested());
+    NotifyRunClosure::Run();
+  }
+};
+
+TEST_F(SlowWorkerTest, CancelDefaultFalse) {
+  SyncPoint start_sync(thread_runtime_.get());
+
+  ASSERT_TRUE(worker_->Start());
+  worker_->RunIfNotBusy(new CheckDefaultCancelClosure(&start_sync));
+  start_sync.Wait();
+}
+
 }  // namespace
 }  // namespace net_instaweb

@@ -144,7 +144,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
     output_resource->SetType(&kContentTypeText);
     bool ok = resource_manager_->Write(
         HttpStatus::kOK, StrCat(contents, contents), output_resource.get(),
-        input_resource->metadata()->CacheExpirationTimeMs(),
+        input_resource->response_headers()->CacheExpirationTimeMs(),
         driver_->message_handler());
     return ok ? kRewriteOk : kRewriteFailed;
   }

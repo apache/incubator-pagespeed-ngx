@@ -380,11 +380,11 @@ class AggregateCombiner {
             combination_->IsWritten() &&
             ((writer_ == NULL) ||
              writer_->Write(combination_->contents(), message_handler_)));
-      // Above code fills in combination_->metadata(); now propagate to
+      // Above code fills in combination_->response_headers(); now propagate to
       // response_headers_.
     }
     if (ok) {
-      response_headers_->CopyFrom(*combination_->metadata());
+      response_headers_->CopyFrom(*combination_->response_headers());
     } else if (emit_done_) {
       // we can only safely touch response_headers_ if we can emit
       // Done() safely.

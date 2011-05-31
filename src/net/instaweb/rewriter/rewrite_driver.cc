@@ -624,7 +624,7 @@ bool RewriteDriver::FetchExtantOutputResource(
   bool ret = false;
   StringPiece content;
   MessageHandler* handler = message_handler();
-  ResponseHeaders* meta_data = output_resource->metadata();
+  ResponseHeaders* meta_data = output_resource->response_headers();
   GoogleString url = output_resource->url();
   HTTPCache* http_cache = resource_manager_->http_cache();
   if ((http_cache->Find(url, &output_resource->value_, meta_data, handler)
@@ -757,7 +757,8 @@ HTTPCache::FindResult RewriteDriver::ReadIfCachedWithStatus(
     result = HTTPCache::kFound;
   } else if (resource->IsCacheable()) {
     result = resource_manager_->http_cache()->Find(
-        resource->url(), &resource->value_, resource->metadata(), handler);
+        resource->url(), &resource->value_, resource->response_headers(),
+        handler);
   }
   if ((result == HTTPCache::kNotFound) && resource->Load(handler)) {
     result = HTTPCache::kFound;

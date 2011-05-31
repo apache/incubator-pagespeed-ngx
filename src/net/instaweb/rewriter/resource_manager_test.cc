@@ -109,7 +109,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     GoogleString contents;
     StringWriter writer(&contents);
     EXPECT_TRUE(rewrite_driver_.FetchExtantOutputResourceOrLock(
-        resource, &writer, resource->metadata()));
+        resource, &writer, resource->response_headers()));
     return contents;
   }
 
@@ -118,7 +118,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   bool TryFetchExtantOutputResourceOrLock(OutputResource* resource) {
     NullWriter writer;
     return rewrite_driver_.FetchExtantOutputResourceOrLock(
-        resource, &writer, resource->metadata());
+        resource, &writer, resource->response_headers());
   }
 
   // Asserts that the given url starts with an appropriate prefix;

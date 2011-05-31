@@ -201,7 +201,7 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
 };
 
 bool UrlInputResource::Load(MessageHandler* handler) {
-  meta_data_.Clear();
+  response_headers_.Clear();
   value_.Clear();
 
   HTTPCache* http_cache = resource_manager()->http_cache();
@@ -215,7 +215,7 @@ bool UrlInputResource::Load(MessageHandler* handler) {
   // than having to deserialize from cache.
   bool data_available =
       (cb->Fetch(resource_manager_->url_async_fetcher(), handler) &&
-       (http_cache->Find(url_, &value_, &meta_data_, handler) ==
+       (http_cache->Find(url_, &value_, &response_headers_, handler) ==
         HTTPCache::kFound));
   return data_available;
 }
@@ -249,14 +249,16 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
   virtual void DoneInternal(bool success) {
     if (success) {
       // Because we've authorized the Fetcher to directly populate the
-      // ResponseHeaders in resource_->meta_data_, we must explicitly
+      // ResponseHeaders in resource_->response_headers_, we must explicitly
       // propagate the content-type to the resource_->type_.
       resource_->DetermineContentType();
     }
     callback_->Done(success);
   }
 
-  virtual ResponseHeaders* response_headers() { return &resource_->meta_data_; }
+  virtual ResponseHeaders* response_headers() {
+    return &resource_->response_headers_;
+  }
   virtual HTTPValue* http_value() { return &resource_->value_; }
   virtual GoogleString url() const { return resource_->url(); }
   virtual HTTPCache* http_cache() {

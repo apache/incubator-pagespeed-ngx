@@ -165,7 +165,7 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   CHECK(input_resource->loaded());
 
   MessageHandler* message_handler = driver_->message_handler();
-  const ResponseHeaders* headers = input_resource->metadata();
+  const ResponseHeaders* headers = input_resource->response_headers();
   GoogleString url = input_resource->url();
   int64 now_ms = resource_manager_->timer()->NowMs();
 

@@ -49,7 +49,7 @@ class Worker {
   // policy.
   class Closure {
    public:
-    Closure() {}
+    Closure();
     virtual ~Closure();
 
     virtual void Run() = 0;

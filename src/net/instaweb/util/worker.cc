@@ -25,6 +25,7 @@
 #include <deque>
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/atomicops.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
@@ -33,6 +34,10 @@
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
+
+Worker::Closure::Closure() {
+  base::subtle::Release_Store(&quit_requested_, false);
+}
 
 Worker::Closure::~Closure() {
 }

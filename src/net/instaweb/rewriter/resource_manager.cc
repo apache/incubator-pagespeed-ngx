@@ -234,7 +234,7 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
                             OutputResource* output,
                             int64 origin_expire_time_ms,
                             MessageHandler* handler) {
-  ResponseHeaders* meta_data = output->metadata();
+  ResponseHeaders* meta_data = output->response_headers();
   SetDefaultHeaders(output->type(), meta_data);
   meta_data->SetStatusAndReason(status_code);
 
@@ -344,7 +344,7 @@ bool ResourceManager::IsImminentlyExpiring(int64 start_date_ms,
 void ResourceManager::RefreshIfImminentlyExpiring(
     Resource* resource, MessageHandler* handler) const {
   if (!http_cache_->force_caching() && resource->IsCacheable()) {
-    const ResponseHeaders* headers = resource->metadata();
+    const ResponseHeaders* headers = resource->response_headers();
     int64 start_date_ms = headers->timestamp_ms();
     int64 expire_ms = headers->CacheExpirationTimeMs();
     if (IsImminentlyExpiring(start_date_ms, expire_ms)) {
@@ -362,7 +362,7 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
   switch (find_result) {
     case HTTPCache::kFound:
       resource->Link(http_value(), handler);
-      resource->metadata()->CopyFrom(*response_headers());
+      resource->response_headers()->CopyFrom(*response_headers());
       resource->DetermineContentType();
       resource_manager_->RefreshIfImminentlyExpiring(resource.get(), handler);
       resource_callback_->Done(true);

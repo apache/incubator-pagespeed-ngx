@@ -52,10 +52,10 @@ class Resource : public RefCounted<Resource> {
 
   // Common methods across all deriviations
   ResourceManager* resource_manager() const { return resource_manager_; }
-  bool loaded() const { return meta_data_.status_code() != 0; }
+  bool loaded() const { return response_headers_.status_code() != 0; }
   // TODO(sligocki): Change name to HttpStatusOk?
   bool ContentsValid() const {
-    return (meta_data_.status_code() == HttpStatus::kOK);
+    return (response_headers_.status_code() == HttpStatus::kOK);
   }
   int64 CacheExpirationTimeMs() const;
   StringPiece contents() const {
@@ -64,8 +64,8 @@ class Resource : public RefCounted<Resource> {
     CHECK(got_contents) << "Resource contents read before loading";
     return val;
   }
-  ResponseHeaders* metadata() { return &meta_data_; }
-  const ResponseHeaders* metadata() const { return &meta_data_; }
+  ResponseHeaders* response_headers() { return &response_headers_; }
+  const ResponseHeaders* response_headers() const { return &response_headers_; }
   const ContentType* type() const { return type_; }
   virtual void SetType(const ContentType* type);
   virtual bool IsCacheable() const;
@@ -94,7 +94,7 @@ class Resource : public RefCounted<Resource> {
   // Links in the HTTP contents and header from a fetched value.
   // The contents are linked by sharing.  The HTTPValue also
   // contains a serialization of the headers, and this routine
-  // parses them into meta_data_ and return whether that was
+  // parses them into response_headers_ and return whether that was
   // successful.
   bool Link(HTTPValue* source, MessageHandler* handler);
 
@@ -125,7 +125,7 @@ class Resource : public RefCounted<Resource> {
 
   const ContentType* type_;
   HTTPValue value_;  // contains contents and meta-data
-  ResponseHeaders meta_data_;
+  ResponseHeaders response_headers_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Resource);

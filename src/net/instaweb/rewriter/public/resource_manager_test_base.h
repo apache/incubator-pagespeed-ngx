@@ -97,6 +97,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   ResourcePtr CreateResource(const StringPiece& base, const StringPiece& url);
 
+  virtual void ParseUrl(const StringPiece& url,
+                        const GoogleString& html_input);
+
   MockTimer* mock_timer() { return file_system_.timer(); }
 
   void DeleteFileIfExists(const GoogleString& filename);
@@ -155,7 +158,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // CallFetcherCallbacks can then be called to let the fetches complete
   // and call the callbacks.
   void SetupWaitFetcher();
-  void CallFetcherCallbacks() { wait_url_async_fetcher_.CallCallbacks(); }
+  void CallFetcherCallbacks();
 
   RewriteOptions* options() { return options_; }
   RewriteOptions* other_options() { return other_options_; }
@@ -186,6 +189,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   MockUrlFetcher mock_url_fetcher_;
   FakeUrlAsyncFetcher mock_url_async_fetcher_;
   CountingUrlAsyncFetcher counting_url_async_fetcher_;
+  bool wait_for_fetches_;
   FilenameEncoder filename_encoder_;
 
   MockHasher mock_hasher_;

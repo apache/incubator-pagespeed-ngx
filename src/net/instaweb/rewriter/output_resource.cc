@@ -135,7 +135,8 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
     if (success) {
       GoogleString header;
       StringWriter string_writer(&header);
-      meta_data_.WriteAsHttp(&string_writer, handler);  // Serialize header.
+      // Serialize headers.
+      response_headers_.WriteAsHttp(&string_writer, handler);
       // It does not make sense to have the headers in the hash.
       // call output_file_->Write directly, rather than going through
       // OutputWriter.
@@ -156,7 +157,7 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
 
 bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
   CHECK(!writing_complete_);
-  value_.SetHeaders(&meta_data_);
+  value_.SetHeaders(&response_headers_);
   Hasher* hasher = resource_manager_->hasher();
   full_name_.set_hash(hasher->Hash(contents()));
   writing_complete_ = true;
@@ -273,16 +274,16 @@ bool OutputResource::Load(MessageHandler* handler) {
       int nread = 0, num_consumed = 0;
       // TODO(jmarantz): this logic is duplicated in util/wget_url_fetcher.cc,
       // consider a refactor to merge it.
-      meta_data_.Clear();
+      response_headers_.Clear();
       value_.Clear();
 
       // TODO(jmarantz): convert to binary headers
-      ResponseHeadersParser parser(&meta_data_);
+      ResponseHeadersParser parser(&response_headers_);
       while (!parser.headers_complete() &&
              ((nread = file->Read(buf, sizeof(buf), handler)) != 0)) {
         num_consumed = parser.ParseChunk(StringPiece(buf, nread), handler);
       }
-      value_.SetHeaders(&meta_data_);
+      value_.SetHeaders(&response_headers_);
       writing_complete_ = value_.Write(
           StringPiece(buf + num_consumed, nread - num_consumed),
           handler);

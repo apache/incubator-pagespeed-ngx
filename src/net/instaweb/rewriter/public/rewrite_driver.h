@@ -319,6 +319,9 @@ class RewriteDriver : public HtmlParse {
   // delete it or recycle it to a free pool in the ResourceManager.
   void Cleanup();
 
+  // Wait for outstanding Rewrite to complete.
+  void WaitForCompletion() {}  // TODO(jmarantz): Implemented in pending CL.
+
   // Renders any completed rewrites back into the DOM.
   void Render();
 

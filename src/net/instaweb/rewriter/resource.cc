@@ -49,8 +49,8 @@ Resource::~Resource() {
 
 int64 Resource::CacheExpirationTimeMs() const {
   int64 input_expire_time_ms = kDefaultExpireTimeMs;
-  if (meta_data_.IsCacheable()) {
-    input_expire_time_ms = meta_data_.CacheExpirationTimeMs();
+  if (response_headers_.IsCacheable()) {
+    input_expire_time_ms = response_headers_.CacheExpirationTimeMs();
   }
   return input_expire_time_ms;
 }
@@ -64,7 +64,7 @@ void Resource::DetermineContentType() {
   // Try to determine the content type from the URL extension, or
   // the response headers.
   StringStarVector content_types;
-  ResponseHeaders* headers = metadata();
+  ResponseHeaders* headers = response_headers();
   const ContentType* content_type = NULL;
   if (headers->Lookup(HttpAttributes::kContentType, &content_types)) {
     for (int i = 0, n = content_types.size(); (i < n) && (content_type == NULL);
@@ -99,7 +99,7 @@ Resource::AsyncCallback::~AsyncCallback() {
 
 bool Resource::Link(HTTPValue* value, MessageHandler* handler) {
   SharedString* contents_and_headers = value->share();
-  return value_.Link(contents_and_headers, &meta_data_, handler);
+  return value_.Link(contents_and_headers, &response_headers_, handler);
 }
 
 bool Resource::IsCacheable() const {

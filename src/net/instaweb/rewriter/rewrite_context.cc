@@ -121,7 +121,7 @@ class RewriteContext::FetchContext {
     GoogleString output;
     if (success_) {
       // TODO(sligocki): It might be worth streaming this.
-      response_headers_->CopyFrom(*(output_resource_->metadata()));
+      response_headers_->CopyFrom(*(output_resource_->response_headers()));
       writer_->Write(output_resource_->contents(), handler_);
     } else {
       // TODO(jmarantz): implement this:

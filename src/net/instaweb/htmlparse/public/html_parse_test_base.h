@@ -43,11 +43,6 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   }
   virtual ~HtmlParseTestBaseNoAlloc();
 
-  virtual void TearDown() {
-    output_buffer_.clear();
-    doctype_string_.clear();
-  }
-
   // To make the tests more concise, we generally omit the <html>...</html>
   // tags bracketing the input.  The libxml parser will add those in
   // if we don't have them.  To avoid having that make the test data more
@@ -106,45 +101,24 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   }
 
   // Parse given an explicit URL rather than an id to build URL around.
-  void ParseUrl(const StringPiece& url, const GoogleString& html_input) {
-    // We don't add the filter in the constructor because it needs to be the
-    // last filter added.
-    SetupWriter();
-    html_parse()->StartParse(url);
-    html_parse()->ParseText(doctype_string_ + AddHtmlBody(html_input));
-    html_parse()->FinishParse();
-  }
+  virtual void ParseUrl(const StringPiece& url,
+                        const GoogleString& html_input);
 
   // Validate that the output HTML serializes as specified in
   // 'expected', which might not be identical to the input.
   void ValidateExpected(const StringPiece& case_id,
                         const GoogleString& html_input,
-                        const GoogleString& expected) {
-    Parse(case_id, html_input);
-    GoogleString xbody = doctype_string_ + AddHtmlBody(expected);
-    EXPECT_EQ(xbody, output_buffer_);
-    output_buffer_.clear();
-  }
+                        const GoogleString& expected);
 
   // Same as ValidateExpected, but with an explicit URL rather than an id.
   void ValidateExpectedUrl(const StringPiece& url,
                            const GoogleString& html_input,
-                           const GoogleString& expected) {
-    ParseUrl(url, html_input);
-    GoogleString xbody = doctype_string_ + AddHtmlBody(expected);
-    EXPECT_EQ(xbody, output_buffer_);
-    output_buffer_.clear();
-  }
+                           const GoogleString& expected);
 
   // Fail to ValidateExpected.
   void ValidateExpectedFail(const StringPiece& case_id,
                             const GoogleString& html_input,
-      const GoogleString& expected) {
-    Parse(case_id, html_input);
-    GoogleString xbody = AddHtmlBody(expected);
-    EXPECT_NE(xbody, output_buffer_);
-    output_buffer_.clear();
-  }
+                            const GoogleString& expected);
 
   virtual HtmlParse* html_parse() = 0;
 

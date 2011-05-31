@@ -40,8 +40,8 @@ bool FileInputResource::Load(MessageHandler* message_handler) {
     // be set if the extension is unknown :/
     // Also, this sets a one year cache lifetime on the input resource.
     // It's not clear that that matters, but it seems inappropriate.
-    resource_manager_->SetDefaultHeaders(type_, &meta_data_);
-    value_.SetHeaders(&meta_data_);
+    resource_manager_->SetDefaultHeaders(type_, &response_headers_);
+    value_.SetHeaders(&response_headers_);
   }
   return loaded();
 }

@@ -17,6 +17,12 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/htmlparse/public/html_keywords.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+
 
 namespace net_instaweb {
 
@@ -24,5 +30,61 @@ const char HtmlParseTestBaseNoAlloc::kTestDomain[] = "http://test.com/";
 
 HtmlParseTestBaseNoAlloc::~HtmlParseTestBaseNoAlloc() {
 }
+
+void HtmlParseTestBaseNoAlloc::ParseUrl(const StringPiece& url,
+                                        const GoogleString& html_input) {
+  // We don't add the filter in the constructor because it needs to be the
+  // last filter added.
+  SetupWriter();
+  html_parse()->StartParse(url);
+  html_parse()->ParseText(doctype_string_ + AddHtmlBody(html_input));
+  html_parse()->FinishParse();
+}
+
+void HtmlParseTestBaseNoAlloc::ValidateExpected(const StringPiece& case_id,
+                                                const GoogleString& html_input,
+                                                const GoogleString& expected) {
+  Parse(case_id, html_input);
+  GoogleString xbody = doctype_string_ + AddHtmlBody(expected);
+  EXPECT_EQ(xbody, output_buffer_);
+  output_buffer_.clear();
+}
+
+void HtmlParseTestBaseNoAlloc::ValidateExpectedUrl(
+    const StringPiece& url,
+    const GoogleString& html_input,
+    const GoogleString& expected) {
+  ParseUrl(url, html_input);
+  GoogleString xbody = doctype_string_ + AddHtmlBody(expected);
+  EXPECT_EQ(xbody, output_buffer_);
+  output_buffer_.clear();
+}
+
+void HtmlParseTestBaseNoAlloc::ValidateExpectedFail(
+    const StringPiece& case_id,
+    const GoogleString& html_input,
+    const GoogleString& expected) {
+  Parse(case_id, html_input);
+  GoogleString xbody = AddHtmlBody(expected);
+  EXPECT_NE(xbody, output_buffer_);
+  output_buffer_.clear();
+}
+
+// Reduces valgrind noise by cleaning the HtmlKeywords singleton on
+// destruction.  This does not appear to work as a SetUpTestCase
+// method of a test base class.  It's easiest to do this via
+// static ctor/dtor.
+class HtmlKeywordsTestSingleton {
+ public:
+  HtmlKeywordsTestSingleton() {
+    HtmlKeywords::Init();
+  }
+  ~HtmlKeywordsTestSingleton() {
+    HtmlKeywords::ShutDown();
+  }
+};
+
+HtmlKeywordsTestSingleton html_keywords_test_singleton;
+
 
 }  // namespace net_instaweb
