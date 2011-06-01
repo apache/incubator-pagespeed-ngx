@@ -37,6 +37,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/queued_worker.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -144,6 +145,8 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       factory_(factory),
       rewrite_drivers_mutex_(thread_system->NewMutex()),
       decoding_driver_(NewUnmanagedRewriteDriver()) {
+  rewrite_worker_.reset(new QueuedWorker(thread_system_));
+  rewrite_worker_->Start();
 }
 
 ResourceManager::~ResourceManager() {
@@ -579,6 +582,10 @@ void ResourceManager::ReleaseRewriteDriver(
     available_rewrite_drivers_.push_back(rewrite_driver);
     rewrite_driver->Clear();
   }
+}
+
+void ResourceManager::AddRewriteTask(Worker::Closure* task) {
+  rewrite_worker_->RunInWorkThread(task);
 }
 
 }  // namespace net_instaweb

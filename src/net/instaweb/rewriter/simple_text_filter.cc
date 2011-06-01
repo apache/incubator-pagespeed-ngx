@@ -98,7 +98,7 @@ bool SimpleTextFilter::Fetch(const OutputResourcePtr& output_resource,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
   Context* context = new Context(rewriter_, driver_);
-  return context->Fetch(driver_, output_resource, response_writer,
+  return context->Fetch(output_resource, response_writer,
                         response_headers, message_handler, callback);
 }
 

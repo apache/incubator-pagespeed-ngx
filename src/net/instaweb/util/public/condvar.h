@@ -45,9 +45,11 @@ class ThreadSystem::Condvar {
   // Signal().
   virtual void Broadcast() = 0;
 
-  // Wait for condition to be signaled.  mutex() must be held; it will be
-  // released and then reclaimed when a signal is received.  Note that spurious
-  // wakeup is possible, and the condition must be re-checked.  Example:
+  // Wait for condition to be signaled.  mutex() must be held; it will
+  // be released and then reclaimed when a signal is received.  Note
+  // that a Wait() may be terminated based on a condition being true,
+  // but the condition may no longer be true at the time the thread
+  // wakes up.  Example:
   // {
   //   ScopedMutex lock(cv.mutex());
   //   while (status && !resource_available()) status = cv.wait();

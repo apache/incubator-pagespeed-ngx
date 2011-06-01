@@ -35,6 +35,7 @@
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/worker.h"
 
 namespace net_instaweb {
 
@@ -47,6 +48,7 @@ class FilenameEncoder;
 class Hasher;
 class MessageHandler;
 class NamedLockManager;
+class QueuedWorker;
 class ResourceContext;
 class ResponseHeaders;
 class RewriteDriver;
@@ -288,6 +290,11 @@ class ResourceManager {
   // keep free-lists for each unique option-set.
   void ReleaseRewriteDriver(RewriteDriver* rewrite_driver);
 
+  // Queues up a task to run on the Rewrite thread.
+  void AddRewriteTask(Worker::Closure* task);
+
+  ThreadSystem* thread_system() { return thread_system_; }
+
  private:
   GoogleString file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.
@@ -362,6 +369,8 @@ class ResourceManager {
   // implementation of these features in environments where all
   // configuration must be done by .htaccess.
   scoped_ptr<RewriteDriver> decoding_driver_;
+
+  scoped_ptr<QueuedWorker> rewrite_worker_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

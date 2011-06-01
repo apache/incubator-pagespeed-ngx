@@ -37,6 +37,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
@@ -98,6 +99,9 @@ class RewriteDriver : public HtmlParse {
 
   // Clears the current request cache of resources and base URL.  The
   // filter-chain is left intact so that a new request can be issued.
+  // Deletes all RewriteContexts.
+  //
+  // WaitForCompletion must be called prior to Clear().
   void Clear();
 
   // Calls Initialize on all known rewrite_drivers.
@@ -201,9 +205,6 @@ class RewriteDriver : public HtmlParse {
   AddInstrumentationFilter* add_instrumentation_filter() {
     return add_instrumentation_filter_;
   }
-
-  // Determines whether this RewriteDriver was built with custom options
-  bool has_custom_options() const { return (custom_options_.get() != NULL); }
 
   // Takes ownership of 'options'.
   void set_custom_options(RewriteOptions* options) {
@@ -309,6 +310,7 @@ class RewriteDriver : public HtmlParse {
   // parsing, although the Rewrite might continue after deadlines expire
   // and the rewritten HTML must be flushed.
   void InitiateRewrite(RewriteContext* rewrite_context);
+  void InitiateFetch(RewriteContext* rewrite_context);
 
   // Provides a mechanism for a RewriteContext to notify a
   // RewriteDriver that it is complete, to allow the RewriteDriver
@@ -319,8 +321,9 @@ class RewriteDriver : public HtmlParse {
   // delete it or recycle it to a free pool in the ResourceManager.
   void Cleanup();
 
-  // Wait for outstanding Rewrite to complete.
-  void WaitForCompletion() {}  // TODO(jmarantz): Implemented in pending CL.
+  // Wait for outstanding Rewrite to complete.  Once the rewrites are
+  // complete they can be rendered or deleted.
+  void WaitForCompletion();
 
   // Renders any completed rewrites back into the DOM.
   void Render();
@@ -338,6 +341,10 @@ class RewriteDriver : public HtmlParse {
   // more like servers.
   void set_externally_managed(bool x) { externally_managed_ = x; }
 
+  // Called by RewriteContext when an async fetch is complete, allowing
+  // the RewriteDriver to be recycled.
+  void FetchComplete();
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -345,6 +352,13 @@ class RewriteDriver : public HtmlParse {
   typedef std::map<GoogleString, RewriteFilter*> StringFilterMap;
   typedef void (RewriteDriver::*SetStringMethod)(const StringPiece& value);
   typedef void (RewriteDriver::*SetInt64Method)(int64 value);
+
+  // Determines whether this RewriteDriver was built with custom options
+  bool has_custom_options() const { return (custom_options_.get() != NULL); }
+
+  // Determines what to do with a completed RewriteDrive, either deleting it
+  // or releasing it into the ResourceManager's free list.
+  void Recycle();
 
   // Sets the base GURL in response to a base-tag being parsed.  This
   // should only be called by ScanFilter.
@@ -424,13 +438,21 @@ class RewriteDriver : public HtmlParse {
   bool filters_added_;
   bool externally_managed_;
 
+  // Indicates that a resource fetch has been dispatched to a RewriteContext,
+  // and thus the RewriteDriver should not recycled until that RewriteContext
+  // has called FetchComplete().
+  bool fetch_queued_;
+
   GoogleUrl base_url_;
   GoogleString user_agent_;
   StringFilterMap resource_filter_map_;
 
   typedef std::vector<RewriteContext*> RewriteContextVector;
   RewriteContextVector rewrites_;
-  int num_rewrites_complete_;
+  RewriteContextVector completed_rewrites_;
+  int pending_rewrites_;
+  scoped_ptr<ThreadSystem::CondvarCapableMutex> rewrite_mutex_;
+  scoped_ptr<ThreadSystem::Condvar> rewrite_condvar_;
 
   // These objects are provided on construction or later, and are
   // owned by the caller.

@@ -230,7 +230,6 @@ class NestedFilter : public RewriteFilter {
       for (int i = 0, n = num_nested(); i < n; ++i) {
         CHECK_EQ(1, nested(i)->num_slots());
         ResourceSlotPtr slot(nested(i)->slot(0));
-        nested(i)->Detach();
         ResourcePtr resource(slot->resource());
         int64 expire_ms = resource->CacheExpirationTimeMs();
         if ((i == 0) || (expire_ms < min_expire_ms)) {
@@ -265,7 +264,7 @@ class NestedFilter : public RewriteFilter {
              MessageHandler* message_handler,
              UrlAsyncFetcher::Callback* callback) {
     Context* context = new Context(driver_);
-    return context->Fetch(driver_, output_resource, response_writer,
+    return context->Fetch(output_resource, response_writer,
                           response_headers, message_handler, callback);
   }
 
@@ -700,10 +699,6 @@ TEST_F(RewriteContextTest, TwoFiltersDelayedFetches) {
   ValidateExpected(
       "trimmable2", CssLink("a.css"),
       CssLink("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"));
-
-  // TODO(jmarantz): This is broken because we do not have the right graph
-  // built yet between different RewriteContexts running on the same slots.
-  // Fix this.
 }
 
 TEST_F(RewriteContextTest, Nested) {

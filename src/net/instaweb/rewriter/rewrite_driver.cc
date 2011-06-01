@@ -59,11 +59,25 @@
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/thread_system.h"
+
+namespace {
+
+// TODO(jmarantz): make this changeable from the Factory based on the
+// requirements of the testing system and the platform.  This might
+// also want to change based on how many Flushes there are, as each
+// Flush can potentially add this much more latency.
+const int kWaitForRewriteMsPerFlush = 10;
+const int kTestTimeoutMs = 10000;
+
+}  // namespace
 
 namespace net_instaweb {
 
@@ -85,7 +99,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       asynchronous_rewrites_(false),
       filters_added_(false),
       externally_managed_(false),
-      num_rewrites_complete_(0),
+      fetch_queued_(false),
+      pending_rewrites_(0),
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),
@@ -108,18 +123,60 @@ void RewriteDriver::Clear() {
   base_url_.Clear();
   CHECK(!base_url_.is_valid());
   resource_map_.clear();
+  completed_rewrites_.clear();
+  STLDeleteElements(&rewrites_);
+  pending_rewrites_ = 0;
+  fetch_queued_ = false;
+}
+
+void RewriteDriver::WaitForCompletion() {
+  if (asynchronous_rewrites_) {
+    ScopedMutex lock(rewrite_mutex_.get());
+    while ((pending_rewrites_ > 0) || fetch_queued_) {
+      LOG(INFO) << "waiting for completion...";
+      rewrite_condvar_->TimedWait(kTestTimeoutMs);
+      LOG(INFO) << "timed wait complete";
+    }
+    LOG(INFO) << "Wait complete";
+  }
 }
 
 void RewriteDriver::Render() {
-  // LOCK
+  // Note that no actualy resource Rewriting can occur until this point
+  // is reached.
   for (int i = 0, n = rewrites_.size(); i < n; ++i) {
-    RewriteContext* rewrite_context = rewrites_[i];
-    rewrite_context->Render();
-    rewrite_context->Detach();
+    rewrites_[i]->Initiate();
   }
-  rewrites_.clear();
-  // UNLOCK
+  ScopedMutex lock(rewrite_mutex_.get());
+  DCHECK(!fetch_queued_);
+  if (pending_rewrites_ == 0) {
+    LOG(INFO) << "All " << rewrites_.size() << " rewrites complete "
+              << "by the time Render was called";
+  } else {
+    LOG(INFO) << "waiting for " << rewrites_.size() << " rewrites";
+    rewrite_condvar_->TimedWait(kWaitForRewriteMsPerFlush);
+    LOG(INFO) << "found " << completed_rewrites_.size()
+              << " completed rewrites";
+  }
 
+  // If the output cache lookup came as a HIT in after the deadline, that
+  // means that (a) we can't use the result and (b) we don't need
+  // to re-initiate the rewrite since it was in fact in cache.  Hopefully
+  // the cache system will respond to HIT by making the next HIT faster
+  // so it meets our deadline.  In either case we will track with stats.
+  //
+  resource_manager_->cached_output_hits()->Add(completed_rewrites_.size());
+  resource_manager_->cached_output_missed_deadline()->Add(pending_rewrites_);
+
+
+  // TODO(jmarantz): block the updating of chained Rewrites during Render.
+  // Probably we want to block each Rewrite's Render method, rather than
+  // at the individual slot level.
+  for (int i = 0, n = completed_rewrites_.size(); i < n; ++i) {
+    RewriteContext* rewrite_context = completed_rewrites_[i];
+    rewrite_context->Render();
+  }
+  completed_rewrites_.clear();
   slots_.clear();
 }
 
@@ -160,7 +217,10 @@ void RewriteDriver::Initialize(Statistics* statistics) {
 }
 
 void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
+  DCHECK(resource_manager_ == NULL);
   resource_manager_ = resource_manager;
+  rewrite_mutex_.reset(resource_manager_->thread_system()->NewMutex());
+  rewrite_condvar_.reset(rewrite_mutex_->NewCondvar());
   set_timer(resource_manager->timer());
 
   DCHECK(resource_filter_map_.empty());
@@ -528,13 +588,37 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const StringPiece& url,
   return output_resource;
 }
 
+namespace {
+
+class FetchCallback : public UrlAsyncFetcher::Callback {
+ public:
+  FetchCallback(RewriteDriver* driver, UrlAsyncFetcher::Callback* callback)
+    : driver_(driver),
+      callback_(callback) {
+  }
+  virtual ~FetchCallback() {}
+  virtual void Done(bool success) {
+    callback_->Done(success);
+    driver_->FetchComplete();
+    delete this;
+  }
+
+ private:
+  RewriteDriver* driver_;
+  UrlAsyncFetcher::Callback* callback_;
+};
+
+}  // namespace
+
 bool RewriteDriver::FetchResource(
     const StringPiece& url,
     const RequestHeaders& request_headers,
     ResponseHeaders* response_headers,
     Writer* writer,
     UrlAsyncFetcher::Callback* callback) {
+  DCHECK(!fetch_queued_);
   bool queued = false;
+  DCHECK_EQ(0, pending_rewrites_);
   bool handled = false;
 
   // Note that this does permission checking and parsing of the url, but doesn't
@@ -559,6 +643,8 @@ bool RewriteDriver::FetchResource(
       queued = true;
     } else if (FetchExtantOutputResourceOrLock(
         output_resource.get(), writer, response_headers)) {
+      // TODO(jmarantz): this clause needs to go asynchronous, possibly via
+      // RewriteContext.
       callback->Done(true);
       queued = true;
       cached_resource_fetches_->Add(1);
@@ -566,6 +652,8 @@ bool RewriteDriver::FetchResource(
       SetBaseUrlForFetch(url);
       // The resource is locked for creation by
       // the call to FetchExtantOutputResourceOrLock() above.
+      callback = new FetchCallback(this, callback);
+      fetch_queued_ = true;
       queued = filter->Fetch(output_resource, writer,
                              request_headers, response_headers,
                              message_handler(), callback);
@@ -582,6 +670,14 @@ bool RewriteDriver::FetchResource(
     callback->Done(false);
   }
   return handled;
+}
+
+void RewriteDriver::FetchComplete() {
+  ScopedMutex lock(rewrite_mutex_.get());
+  DCHECK(fetch_queued_);
+  fetch_queued_ = false;
+  DCHECK_EQ(0, pending_rewrites_);
+  rewrite_condvar_->Signal();
 }
 
 // TODO(jmarantz): remove writer/response_headers args from this function
@@ -777,24 +873,41 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
 }
 
 void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
-  ++num_rewrites_complete_;
-  Cleanup();
+  LOG(INFO) << "rewrite complete";
+  bool completed = false;
+  {
+    ScopedMutex lock(rewrite_mutex_.get());
+    DCHECK(!fetch_queued_);
+    completed_rewrites_.push_back(rewrite_context);
+    --pending_rewrites_;
+    if (pending_rewrites_ == 0) {
+      completed = true;
+      rewrite_condvar_->Signal();
+    }
+  }
+  if (completed && !externally_managed_) {
+    Recycle();
+  }
+}
+
+void RewriteDriver::Recycle() {
+  if (has_custom_options()) {
+    delete this;
+  } else {
+    Clear();
+    resource_manager_->ReleaseRewriteDriver(this);
+  }
 }
 
 void RewriteDriver::Cleanup() {
-  // TODO(jmarantz): No one actually increments num_rewrites_complete_ now,
-  // but the RewriteContextTest only runs when with externally-managed
-  // RewriteDrivers so it doesn't fail tests.
-  //
-  // In a follow-up CL, make RewriteContexts call RewriteComplete when done.
-  // If I do this now, it'll just cause a conflict in the next CL.
-  if (!externally_managed_ &&
-      (num_rewrites_complete_ == static_cast<int>(rewrites_.size()))) {
-    if (has_custom_options()) {
-      delete this;
-    } else {
-      Clear();
-      resource_manager_->ReleaseRewriteDriver(this);
+  if (!externally_managed_) {
+    bool done = false;
+    {
+      ScopedMutex lock(rewrite_mutex_.get());
+      done = (pending_rewrites_ == 0);
+    }
+    if (done) {
+      Recycle();
     }
   }
 }
@@ -894,7 +1007,17 @@ HtmlResourceSlotPtr RewriteDriver::GetSlot(
 
 void RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {
   rewrites_.push_back(rewrite_context);
-  rewrite_context->Start();
+  ++pending_rewrites_;
+}
+
+void RewriteDriver::InitiateFetch(RewriteContext* rewrite_context) {
+  // Note that we don't let the fetch start until ::Render(), above,
+  // loops through all the rewriters_ and calls Initiate().  This
+  // avoids races between rewriters mutating slots, and filters adding
+  // new Rewriters with slots.
+  DCHECK_EQ(0, pending_rewrites_);
+  DCHECK(fetch_queued_);
+  rewrites_.push_back(rewrite_context);
 }
 
 }  // namespace net_instaweb
