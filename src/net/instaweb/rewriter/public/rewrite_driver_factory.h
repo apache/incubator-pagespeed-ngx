@@ -32,7 +32,6 @@ class AbstractMutex;
 class CacheInterface;
 class CacheUrlAsyncFetcher;
 class CacheUrlFetcher;
-class FileLoadPolicy;
 class FileSystem;
 class FilenameEncoder;
 class Hasher;

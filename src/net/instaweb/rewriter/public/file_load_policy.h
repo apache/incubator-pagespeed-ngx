@@ -20,13 +20,15 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_FILE_LOAD_POLICY_H_
 
 #include <list>
-#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 #include "testing/gtest/include/gtest/gtest_prod.h"
 
 namespace net_instaweb {
+
+class GoogleUrl;
 
 // Class for deciding which URLs get loaded from which files.
 //

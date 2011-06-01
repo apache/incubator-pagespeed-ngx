@@ -18,6 +18,12 @@
 
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 
+#include <list>
+
+#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+
 namespace net_instaweb {
 
 FileLoadPolicy::~FileLoadPolicy() {}

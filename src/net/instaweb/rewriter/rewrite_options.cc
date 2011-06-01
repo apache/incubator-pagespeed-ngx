@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
