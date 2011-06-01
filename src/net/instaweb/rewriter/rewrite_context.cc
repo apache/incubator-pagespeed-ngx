@@ -325,6 +325,7 @@ void RewriteContext::Start() {
 
 void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
                                      SharedString* value) {
+  DCHECK_LE(0, outstanding_fetches_);
   cache_lookup_active_ = false;
   if (state == CacheInterface::kAvailable) {
     // We've got a hit on the output metadata; the contents should
@@ -474,6 +475,7 @@ void RewriteContext::WritePartition() {
     metadata_cache->Put(partition_key_, &buf);
   }
   lock_.reset();
+  RunSuccessors();
   if (parent_ != NULL) {
     DCHECK(driver_ == NULL);
     parent_->NestedRewriteDone();
@@ -481,7 +483,6 @@ void RewriteContext::WritePartition() {
     CHECK(driver_ != NULL);
     driver_->RewriteComplete(this);
   }
-  RunSuccessors();
 }
 
 void RewriteContext::AddNestedContext(RewriteContext* context) {
@@ -564,6 +565,12 @@ void RewriteContext::Finalize() {
 
 void RewriteContext::RenderSlotOnDetach(int rewrite_index) {
   ResourcePtr resource(outputs_[rewrite_index]);
+  // TODO(jmarantz): This is a race condition.  We should not allow async
+  // Rewrites to continue updating slots, which are ready by
+  // RewriteDriver::Render, without acquiring a mutex.  Probably the best
+  // way to do this is to make the slots owned by the RewriteDriver and
+  // use a method provided in RewriteDriver to update the resource
+  // associated with them.
   slots_[rewrite_index]->SetResource(resource);
   render_slots_[rewrite_index] = true;
 }

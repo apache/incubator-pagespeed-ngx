@@ -30,7 +30,6 @@
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
-#include "net/instaweb/http/public/bot_checker.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/version.h"
@@ -549,18 +548,6 @@ InstawebContext* build_context_for_request(request_rec* request) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Request not rewritten because: ModPagespeedDisallow");
     return NULL;
-  }
-
-  // Disable mod_pagespeed if the user-agent belongs to search bots.
-  if (options->botdetect_enabled()) {
-    const char* user_agent = apr_table_get(request->headers_in,
-                                           HttpAttributes::kUserAgent);
-    if ((user_agent != NULL) && BotChecker::Lookup(user_agent)) {
-      ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                    "Request not rewritten because: User-Agent appears "
-                    "to be a bot (%s)", user_agent);
-      return NULL;
-    }
   }
 
   InstawebContext* context = new InstawebContext(

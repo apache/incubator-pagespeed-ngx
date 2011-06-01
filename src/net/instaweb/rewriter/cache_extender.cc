@@ -97,6 +97,12 @@ bool CacheExtender::ShouldRewriteResource(
 }
 
 void CacheExtender::StartElementImpl(HtmlElement* element) {
+  // Disable extend_cache for img is ModPagespeedDisableForBots is on
+  // and the user-agent is a bot.
+  if (element->keyword() == HtmlName::kImg &&
+      driver_->RewriteImages()) {
+    return;
+  }
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
 
   // TODO(jmarantz): We ought to be able to domain-shard even if the

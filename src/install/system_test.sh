@@ -105,7 +105,9 @@ function check() {
 # COMMAND outputs RESULT, in which case we return 0, or until 10 seconds have
 # passed, in which case we return 1.
 function fetch_until() {
-  URL=$1
+  # Should not user URL as PARAM here, it rewrites value of URL for
+  # the rest tests.
+  REQUESTURL=$1
   COMMAND=$2
   RESULT=$3
 
@@ -113,15 +115,48 @@ function fetch_until() {
   START=`date +%s`
   STOP=$((START+$TIMEOUT))
 
-  echo "     " Fetching $URL until '`'$COMMAND'`' = $RESULT
+  echo "     " Fetching $REQUESTURL until '`'$COMMAND'`' = $RESULT
   while test -t; do
-    if [ `$WGET -q -O - $URL 2>&1 | $COMMAND` = $RESULT ]; then
+    if [ `$WGET -q -O - $REQUESTURL 2>&1 | $COMMAND` = $RESULT ]; then
       /bin/echo "."
       return;
     fi;
     if [ `date +%s` -gt $STOP ]; then
       /bin/echo "FAIL."
       exit 1;
+    fi;
+    /bin/echo -n "."
+    sleep 0.1
+  done;
+}
+
+# Continuously fetches URL and pipes the output to COMMAND until the request
+# completes, for up to 10 seconds.  
+# Unlike fetch_until(), fetch_fail() provides the user agent from $4 to wget. 
+function fetch_fail() {
+  REQUESTURL=$1
+  COMMAND=$2
+  RESULT=$3
+  USERAGENT=$4
+  WGET_WITHU=$WGET
+
+  TIMEOUT=10
+  START=`date +%s`
+  STOP=$((START+$TIMEOUT))
+
+  if [[ -n "$USERAGENT" ]]
+  then WGET_WITHU=$WGET" -U "$USERAGENT
+  fi
+
+  echo "     " Fetching $REQUESTURL until '`'$COMMAND'`' = $RESULT
+  while test -t; do
+    if [ `$WGET_WITHU -q -O - $REQUESTURL 2>&1 | $COMMAND` = $RESULT ]; then
+      /bin/echo "FAIL."
+      exit 1;
+    fi;
+    if [ `date +%s` -gt $STOP ]; then
+      /bin/echo "PASS."
+      return;
     fi;
     /bin/echo -n "."
     sleep 0.1
@@ -303,6 +338,12 @@ check $WGET_PREREQ $URL
 echo about to test resource ext corruption...
 test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
+echo Test: ModPagespeedDisableForBots is on and user-agent is a bot.
+BOT="Googlebot/2.1"
+PARAM="\&ModPagespeedDisableForBots=on"
+fetch_fail $URL$PARAM 'grep -c src.*91_WewrLtP' 1 $BOT
+
+
 echo TEST: Attempt to fetch cache-extended image without hash should 404
 $WGET_PREREQ $EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce..jpg
 check grep '"404 Not Found"' $WGET_OUTPUT
@@ -376,10 +417,46 @@ check [ $? != 0 ]
 check [ `stat -c %s $FETCHED` -lt 680 ]   # down from 689
 
 test_filter rewrite_images inlines, compresses, and resizes.
+URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
 fetch_until $URL 'grep -c image/png' 1    # inlined
 check $WGET_PREREQ $URL
 check [ `stat -c %s $OUTDIR/xBikeCrashIcn*` -lt 25000 ]      # re-encoded
 check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
+
+# When ModPagespeedDisableForBots is off, rewrite_image should work
+# no matter what user-agent is.
+echo TEST: User-agent is a bot, ModPagespeedDisableForBots is off by default
+BOT="Googlebot/2.1"
+PARAM="\&ModPagespeedDisableForBots=on"
+HTML_HEADERS=$($WGET_DUMP -U $BOT $EXAMPLE_ROOT/combine_css.html)
+echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
+check [ $? = 0 ]
+rm $OUTDIR/*pagespeed*
+fetch_fail $URL 'grep -c image/png' 1 $BOT                   # not inlined
+check $WGET_PREREQ -U $BOT $URL
+check [ `stat -c %s $OUTDIR/xBikeCrashIcn*` -lt 25000 ]      # re-encoded
+check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
+
+# When ModPagespeedDisableForBots is on, rewrite_image should work
+# if user-agent is not a bot.
+echo TEST: User-agent is not bot, ModPagespeedDisableForBots is on
+echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
+check [ $? = 0 ]
+rm $OUTDIR/*pagespeed*
+fetch_until $URL$PARAM 'grep -c image/png' 1                 # inlined
+check $WGET_PREREQ $URL$PARAM
+check [ `stat -c %s $OUTDIR/xBikeCrashIcn*` -lt 25000 ]      # re-encoded
+check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
+
+# When ModPagespeedDisableForBots is on and user-agent is a bot.
+# Modpagespeed is still on but rewrite_image should not work.
+echo TEST: User-agent is a bot, ModPagespeedDisableForBots is on
+echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
+check [ $? = 0 ]
+fetch_fail $URL$PARAM 'grep -c image/png' 1 $BOT           # not inlined
+check $WGET_PREREQ -U $BOT $URL$PARAM
+check [ `stat -c %s $OUTDIR/BikeCrashIcn*` -gt 25000 ]      # not re-encoded
+check [ `stat -c %s $OUTDIR/Puzzle*`  -gt 24126  ]          # not resized
 
 IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
 echo TEST: headers for rewritten image "$IMG_URL"
@@ -506,24 +583,6 @@ sleep 1
 # Check that we have one additional error or less --- might not have flushed
 # the log yet; (luckily we nearly certainly do when spewing dozens of errors)
 check [ `expr $ERRS` -le $ERR_LIMIT ];
-
-echo TEST: User-agent is a bot, ModPagespeedDisableForBots is off by default
-BOT="Googlebot/2.1"
-HTML_HEADERS=$($WGET_DUMP -U $BOT $EXAMPLE_ROOT/combine_css.html)
-echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
-check [ $? = 0 ]
-
-echo TEST: User-agent is a bot, ModPagespeedDisableForBots is on
-PARAM="?ModPagespeedDisableForBots=on"
-HTML_HEADERS=$($WGET_DUMP -U $BOT $EXAMPLE_ROOT/combine_css.html$PARAM)
-echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
-check [ $? != 0 ]
-
-echo TEST: User-agent is not bot, ModPagespeedDisableForBots is on
-PARAM="?ModPagespeedDisableForBots=on"
-HTML_HEADERS=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html$PARAM)
-echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
-check [ $? = 0 ]
 
 echo "Test: ModPagespeedLoadFromFile"
 URL=$TEST_ROOT/load_from_file/index.html?ModPagespeedFilters=inline_css

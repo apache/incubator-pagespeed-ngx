@@ -30,7 +30,7 @@ AraybOt
 ArchitextSpider
 ASpider
 BackRub
-Baiduspider+(+http://www.baidu.com/search/spider.htm)
+Baiduspider
 BaySpider
 bbot
 bingbot
@@ -95,7 +95,7 @@ bool BotChecker::Lookup(const StringPiece& user_agent) {
     return true;
   }
   // get the application_name/domain_name/email
-  const char separator[] = " /;";
+  const char separator[] = " /;+";
   std::vector<StringPiece> names;
   SplitStringPieceToVector(user_agent, separator, &names, true);
   for (int i = 0, n = names.size(); i < n; ++i) {

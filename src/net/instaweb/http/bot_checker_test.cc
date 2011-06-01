@@ -20,19 +20,24 @@
 // wrapper around that.
 
 #include "net/instaweb/http/public/bot_checker.h"
-#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {
 
 class BotCheckerTest : public testing::Test {};
 
-// Case for bot user-agent string contains no separator
-TEST_F(BotCheckerTest, DetectUserAgentWithNoSeparator) {
-  const char user_agent[] = "Baiduspider+(+http://www.baidu.com/search/spider.htm)";
+// Updated test case for Baidu
+TEST_F(BotCheckerTest, DetectUserAgentBaidu1) {
+  const char user_agent[] = "Baiduspider+"
+               "(+http://www.baidu.com/search/spider.htm)";
   EXPECT_TRUE(BotChecker::Lookup(user_agent));
 }
 
+TEST_F(BotCheckerTest, DetectUserAgentBaidu2) {
+  const char user_agent[] = "Baiduspider+"
+               "(+http://help.baidu.jp/system/05.html)";
+  EXPECT_TRUE(BotChecker::Lookup(user_agent));
+}
 // Case for bot user-agent with no version
 TEST_F(BotCheckerTest, DetectUserAgentWithNoVersion) {
   const char user_agent[] = "Mozilla/5.0 (compatible; Yahoo! Slurp;"

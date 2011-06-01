@@ -20,10 +20,12 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_H_
 
 #include <map>
+#include <set>
 #include <vector>
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/http/public/bot_checker.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
@@ -120,8 +122,11 @@ class RewriteDriver : public HtmlParse {
   // have its content loaded. This needs some more design work.
   bool FindResource(const StringPiece& url, ResourcePtr* resource) const;
 
+  bool RewriteImages() const {
+    return (options()->botdetect_enabled() &&
+            BotChecker::Lookup(user_agent_));
+  }
   void RememberResource(const StringPiece& url, const ResourcePtr& resource);
-
   const GoogleString& user_agent() const {
     return user_agent_;
   }
@@ -448,9 +453,11 @@ class RewriteDriver : public HtmlParse {
   StringFilterMap resource_filter_map_;
 
   typedef std::vector<RewriteContext*> RewriteContextVector;
-  RewriteContextVector rewrites_;
+  RewriteContextVector rewrites_;  // ordered list of rewrites to inititate
   RewriteContextVector completed_rewrites_;
+  std::set<RewriteContext*> initiated_rewrites_;
   int pending_rewrites_;
+  int rewrite_deadline_ms_;
   scoped_ptr<ThreadSystem::CondvarCapableMutex> rewrite_mutex_;
   scoped_ptr<ThreadSystem::Condvar> rewrite_condvar_;
 

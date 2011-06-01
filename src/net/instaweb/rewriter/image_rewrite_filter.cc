@@ -122,7 +122,7 @@ ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
   ImageDim image_dim, post_resize_dim;
   image->Dimensions(&image_dim);
   post_resize_dim = image_dim;
-  const RewriteOptions* options = driver_->options();
+
   // Don't rewrite beacons
   if (!ImageUrlEncoder::HasValidDimensions(image_dim) ||
       (image_dim.width() <= 1 && image_dim.height() <= 1)) {
@@ -133,7 +133,7 @@ ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
   if (work_bound_->TryToWork()) {
     rewrite_result = kRewriteFailed;
     bool resized = false;
-
+    const RewriteOptions* options = driver_->options();
     // Begin by resizing the image if necessary
     if (options->Enabled(RewriteOptions::kResizeImages) &&
         ImageUrlEncoder::HasValidDimensions(page_dim) &&
@@ -336,6 +336,11 @@ bool ImageRewriteFilter::CanInline(
 }
 
 void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
+  // Don't rewrite if ModPagespeedDisableForBots is on
+  // and the user-agent is a bot.
+  if (driver_->RewriteImages()) {
+    return;
+  }
   if (!driver_->HasChildrenInFlushWindow(element)) {
     HtmlElement::Attribute *src = image_filter_->ParseImageElement(element);
     if (src != NULL) {

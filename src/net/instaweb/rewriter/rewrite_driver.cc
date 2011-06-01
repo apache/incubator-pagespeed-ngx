@@ -62,6 +62,7 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
+#include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -70,11 +71,13 @@
 
 namespace {
 
-// TODO(jmarantz): make this changeable from the Factory based on the
+// TODO(jmarantz): make these changeable from the Factory based on the
 // requirements of the testing system and the platform.  This might
 // also want to change based on how many Flushes there are, as each
 // Flush can potentially add this much more latency.
-const int kWaitForRewriteMsPerFlush = 10;
+const int kDebugWaitForRewriteMsPerFlush = 100;
+const int kOptWaitForRewriteMsPerFlush = 20;
+const int kValgrindWaitForRewriteMsPerFlush = 1000;
 const int kTestTimeoutMs = 10000;
 
 }  // namespace
@@ -110,6 +113,15 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       cached_resource_fetches_(NULL),
       succeeded_filter_resource_fetches_(NULL),
       failed_filter_resource_fetches_(NULL) {
+  if (RunningOnValgrind()) {
+    rewrite_deadline_ms_ = kValgrindWaitForRewriteMsPerFlush;
+  } else {
+#ifdef NDEBUG
+    rewrite_deadline_ms_ = kOptWaitForRewriteMsPerFlush;
+#else
+    rewrite_deadline_ms_ = kDebugWaitForRewriteMsPerFlush;
+#endif
+  }
   // The Scan filter always goes first so it can find base-tags.
   HtmlParse::AddFilter(&scan_filter_);
 }
@@ -121,9 +133,10 @@ RewriteDriver::~RewriteDriver() {
 
 void RewriteDriver::Clear() {
   base_url_.Clear();
-  CHECK(!base_url_.is_valid());
+  DCHECK(!base_url_.is_valid());
   resource_map_.clear();
-  completed_rewrites_.clear();
+  DCHECK(initiated_rewrites_.empty());
+  STLDeleteElements(&completed_rewrites_);
   STLDeleteElements(&rewrites_);
   pending_rewrites_ = 0;
   fetch_queued_ = false;
@@ -133,11 +146,15 @@ void RewriteDriver::WaitForCompletion() {
   if (asynchronous_rewrites_) {
     ScopedMutex lock(rewrite_mutex_.get());
     while ((pending_rewrites_ > 0) || fetch_queued_) {
-      LOG(INFO) << "waiting for completion...";
+      if (fetch_queued_) {
+        message_handler()->Message(kInfo, "waiting for fetch completion");
+      } else {
+        message_handler()->Message(kInfo, "waiting for %d rewrites to complete",
+                                   pending_rewrites_);
+      }
       rewrite_condvar_->TimedWait(kTestTimeoutMs);
       LOG(INFO) << "timed wait complete";
     }
-    LOG(INFO) << "Wait complete";
   }
 }
 
@@ -145,16 +162,19 @@ void RewriteDriver::Render() {
   // Note that no actualy resource Rewriting can occur until this point
   // is reached.
   for (int i = 0, n = rewrites_.size(); i < n; ++i) {
-    rewrites_[i]->Initiate();
+    RewriteContext* rewrite_context = rewrites_[i];
+    rewrite_context->Initiate();
+    initiated_rewrites_.insert(rewrite_context);
   }
+  rewrites_.clear();
   ScopedMutex lock(rewrite_mutex_.get());
   DCHECK(!fetch_queued_);
   if (pending_rewrites_ == 0) {
-    LOG(INFO) << "All " << rewrites_.size() << " rewrites complete "
+    LOG(INFO) << "All " << completed_rewrites_.size() << " rewrites complete "
               << "by the time Render was called";
   } else {
-    LOG(INFO) << "waiting for " << rewrites_.size() << " rewrites";
-    rewrite_condvar_->TimedWait(kWaitForRewriteMsPerFlush);
+    LOG(INFO) << "waiting for " << initiated_rewrites_.size() << " rewrites";
+    rewrite_condvar_->TimedWait(rewrite_deadline_ms_);
     LOG(INFO) << "found " << completed_rewrites_.size()
               << " completed rewrites";
   }
@@ -168,16 +188,22 @@ void RewriteDriver::Render() {
   resource_manager_->cached_output_hits()->Add(completed_rewrites_.size());
   resource_manager_->cached_output_missed_deadline()->Add(pending_rewrites_);
 
-
-  // TODO(jmarantz): block the updating of chained Rewrites during Render.
-  // Probably we want to block each Rewrite's Render method, rather than
-  // at the individual slot level.
   for (int i = 0, n = completed_rewrites_.size(); i < n; ++i) {
     RewriteContext* rewrite_context = completed_rewrites_[i];
     rewrite_context->Render();
+    delete rewrite_context;
   }
   completed_rewrites_.clear();
   slots_.clear();
+
+  // While new slots are created for distinct HtmlElements, Resources can be
+  // shared across multiple slots, via resource_map_.  However, to avoid
+  // races between outstanding RewriteContexts, we must create new Resources
+  // after each Flush.  Note that we only need to do this if there are
+  // outstanding rewrites.
+  if (pending_rewrites_ != 0) {
+    resource_map_.clear();
+  }
 }
 
 const char* RewriteDriver::kPassThroughRequestAttributes[3] = {
@@ -678,6 +704,10 @@ void RewriteDriver::FetchComplete() {
   fetch_queued_ = false;
   DCHECK_EQ(0, pending_rewrites_);
   rewrite_condvar_->Signal();
+  if (asynchronous_rewrites_) {
+    CHECK_EQ(1U, rewrites_.size());
+    STLDeleteElements(&rewrites_);
+  }
 }
 
 // TODO(jmarantz): remove writer/response_headers args from this function
@@ -879,6 +909,8 @@ void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
     ScopedMutex lock(rewrite_mutex_.get());
     DCHECK(!fetch_queued_);
     completed_rewrites_.push_back(rewrite_context);
+    int erased = initiated_rewrites_.erase(rewrite_context);
+    CHECK_EQ(1, erased);
     --pending_rewrites_;
     if (pending_rewrites_ == 0) {
       completed = true;
