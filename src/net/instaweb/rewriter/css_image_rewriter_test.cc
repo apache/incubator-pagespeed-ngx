@@ -28,7 +28,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -101,7 +100,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
 
 TEST_F(CssImageRewriterTest, UseCorrectBaseUrl) {
   // We want a real hasher here so that subresources get separate locks.
-  resource_manager_->set_hasher(&md5_hasher_);
+  UseMd5Hasher();
 
   // Initialize resources.
   static const char css_url[] = "http://www.example.com/bar/style.css";
@@ -164,7 +163,7 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
     CssRewriteTestBase::SetUp();
 
     // We want a real hasher here so that subresources get separate locks.
-    resource_manager_->set_hasher(&md5_hasher_);
+    UseMd5Hasher();
 
     // As we use invalid payloads, we expect image rewriting to
     // fail but cache extension to succeed.
@@ -178,7 +177,7 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
 
     // See what cache information we have
     OutputResourcePtr output_resource(
-        rewrite_driver_.CreateOutputResourceWithPath(
+        rewrite_driver()->CreateOutputResourceWithPath(
             kTestDomain, RewriteDriver::kCssFilterId, StrCat(id, ".css"),
             &kContentTypeCss, kRewrittenResource));
     ASSERT_TRUE(output_resource.get() != NULL);
@@ -192,7 +191,7 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
   GoogleString ExpectedUrlForPng(const StringPiece& name,
                                  const GoogleString& expected_output) {
     return Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
-                  resource_manager_->hasher()->Hash(expected_output),
+                  hasher()->Hash(expected_output),
                   name, "png");
   }
 };
@@ -226,7 +225,7 @@ TEST_F(CssFilterSubresourceTest, SubResourceDependsNotYetLoaded) {
   SetupWaitFetcher();
 
   // Disable atime simulation so that the clock doesn't move on us.
-  file_system_.set_atime_enabled(false);
+  file_system()->set_atime_enabled(false);
 
   const char kInput[] = "div { background-image: url(a.png); }"
                         "span { background-image: url(b.png); }";

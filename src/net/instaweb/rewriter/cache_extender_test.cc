@@ -22,17 +22,14 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/md5_hasher.h"  // for MD5Hasher
-#include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -233,7 +230,7 @@ TEST_F(CacheExtenderTest, ConsistentHashWithRewrite) {
   // of generating the rewritten content in the HTML path too -- we just
   // don't cache it.  However, what we must do is generate the correct hash
   // code.  To test that we need to use the real hasher.
-  resource_manager_->set_hasher(&md5_hasher_);
+  UseMd5Hasher();
   DomainLawyer* lawyer = options()->domain_lawyer();
   lawyer->AddRewriteDomainMapping(kNewDomain, kTestDomain, &message_handler_);
   InitTest(kShortTtlSec);
@@ -248,7 +245,7 @@ TEST_F(CacheExtenderTest, ConsistentHashWithRewrite) {
   // Note that the only thing that gets cached is the MetaData insert, not
   // the rewritten content, because this is an on-the-fly filter and we
   // elect not to add cache pressure.
-  EXPECT_EQ(1, lru_cache_->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_hits());
 
   // TODO(jmarantz): To make this test pass we need to set up the mock
   // fetcher so it can find the resource in new.com, not just
@@ -268,7 +265,7 @@ TEST_F(CacheExtenderTest, ConsistentHashWithRewrite) {
   GoogleString content;
   ASSERT_TRUE(ServeResourceUrl(extended_css, &content));
   EXPECT_EQ(kCssData, content);
-  EXPECT_EQ(kHash, md5_hasher_.Hash(content));
+  EXPECT_EQ(kHash, hasher()->Hash(content));
 }
 
 TEST_F(CacheExtenderTest, ConsistentHashWithShard) {
@@ -276,7 +273,7 @@ TEST_F(CacheExtenderTest, ConsistentHashWithShard) {
   // and the shard computed for the embedded image is (luckily for the test)
   // different than that for the .css file, thus the references within the
   // css file are rewritten as absolute.
-  resource_manager_->set_hasher(&md5_hasher_);
+  UseMd5Hasher();
   DomainLawyer* lawyer = options()->domain_lawyer();
   lawyer->AddRewriteDomainMapping(kNewDomain, kTestDomain, &message_handler_);
   lawyer->AddShard(kNewDomain, "shard1.com,shard2.com", &message_handler_);
@@ -293,7 +290,7 @@ TEST_F(CacheExtenderTest, ConsistentHashWithShard) {
   // Note that the only thing that gets cached is the MetaData insert, not
   // the rewritten content, because this is an on-the-fly filter and we
   // elect not to add cache pressure.
-  EXPECT_EQ(1, lru_cache_->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_hits());
 
   // TODO(jmarantz): eliminate this when we canonicalize URLs before caching.
   InitResponseHeaders(StrCat("http://shard2.com/", kCssFile), kContentTypeCss,
@@ -306,7 +303,7 @@ TEST_F(CacheExtenderTest, ConsistentHashWithShard) {
   // Note that, through the luck of hashes, we've sharded the embedded
   // image differently than the css file.
   EXPECT_EQ(CssData("http://shard1.com/sub/"), content);
-  EXPECT_EQ(kHash, md5_hasher_.Hash(content));
+  EXPECT_EQ(kHash, hasher()->Hash(content));
 }
 
 TEST_F(CacheExtenderTest, ServeFilesWithRewriteDomainsEnabled) {
@@ -331,14 +328,11 @@ TEST_F(CacheExtenderTest, ServeFilesWithShard) {
 TEST_F(CacheExtenderTest, ServeFilesFromDelayedFetch) {
   InitTest(kShortTtlSec);
   ServeResourceFromManyContexts(Encode(kTestDomain, "ce", "0", kCssFile, "css"),
-                                RewriteOptions::kExtendCache,
-                                &mock_hasher_, kCssData);
+                                RewriteOptions::kExtendCache, kCssData);
   ServeResourceFromManyContexts(Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
-                                RewriteOptions::kExtendCache,
-                                &mock_hasher_, kImageData);
+                                RewriteOptions::kExtendCache, kImageData);
   ServeResourceFromManyContexts(Encode(kTestDomain, "ce", "0", "c.js", "js"),
-                                RewriteOptions::kExtendCache,
-                                &mock_hasher_, kJsData);
+                                RewriteOptions::kExtendCache, kJsData);
 
   // TODO(jmarantz): make ServeResourceFromManyContexts check:
   //  1. Gets the data from the cache, with no mock fetchers, null file system
@@ -350,7 +344,7 @@ TEST_F(CacheExtenderTest, MinimizeCacheHits) {
   options()->EnableFilter(RewriteOptions::kOutlineCss);
   options()->EnableFilter(RewriteOptions::kExtendCache);
   options()->set_css_outline_min_bytes(1);
-  rewrite_driver_.AddFilters();
+  rewrite_driver()->AddFilters();
   GoogleString html_input = StrCat("<style>", kCssData, "</style>");
   GoogleString html_output = StringPrintf(
       "<link rel=\"stylesheet\" href=\"%s\">",
@@ -366,8 +360,8 @@ TEST_F(CacheExtenderTest, MinimizeCacheHits) {
   // the name of the resource, that it should not be cache extended.
   // The CSS outliner also should not produce any cache misses, as it currently
   // does not cache.
-  EXPECT_EQ(0, lru_cache_->num_hits());
-  EXPECT_EQ(0, lru_cache_->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
 TEST_F(CacheExtenderTest, NoExtensionCorruption) {
@@ -386,10 +380,10 @@ TEST_F(CacheExtenderTest, MadeOnTheFly) {
   ValidateExpected("and_img", "<img src=\"b.jpg\">",
                    StrCat("<img src=\"", b_ext, "\">"));
 
-  Variable* cached_resource_fetches =
-      statistics_->GetVariable(RewriteDriver::kResourceFetchesCached);
-  Variable* succeeded_filter_resource_fetches =
-      statistics_->GetVariable(RewriteDriver::kResourceFetchConstructSuccesses);
+  Variable* cached_resource_fetches = statistics()->GetVariable(
+      RewriteDriver::kResourceFetchesCached);
+  Variable* succeeded_filter_resource_fetches = statistics()->GetVariable(
+      RewriteDriver::kResourceFetchConstructSuccesses);
 
   EXPECT_EQ(0, cached_resource_fetches->Get());
   EXPECT_EQ(0, succeeded_filter_resource_fetches->Get());

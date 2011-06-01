@@ -17,9 +17,7 @@
 // Author: mdsteele@google.com (Matthew D. Steele)
 
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -91,9 +89,8 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
 
     // Put original Javascript file into our fetcher.
     ResponseHeaders default_js_header;
-    resource_manager_->SetDefaultHeaders(&kContentTypeJavascript,
-                                         &default_js_header);
-    mock_url_fetcher_.SetResponse(js_url, default_js_header, js_outline_body);
+    SetDefaultHeaders(&kContentTypeJavascript, &default_js_header);
+    SetFetchResponse(js_url, default_js_header, js_outline_body);
 
     // Rewrite the HTML page.
     ValidateExpectedUrl(html_url, html_input, expected_output);

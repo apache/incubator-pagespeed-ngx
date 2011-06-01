@@ -24,7 +24,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -33,9 +32,9 @@ namespace net_instaweb {
 class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
  protected:
   UrlLeftTrimFilterTest()
-      : left_trim_filter_(&rewrite_driver_, statistics_),
+      : left_trim_filter_(rewrite_driver(), statistics()),
         base_url_(NULL) {
-    rewrite_driver_.AddFilter(&left_trim_filter_);
+    rewrite_driver()->AddFilter(&left_trim_filter_);
   }
 
   ~UrlLeftTrimFilterTest() {
@@ -49,7 +48,7 @@ class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
     CHECK(base_url_ != NULL);
     EXPECT_EQ(changed, left_trim_filter_.Trim(
         *base_url_, url, &trimmed,
-        rewrite_driver_.message_handler()));
+        rewrite_driver()->message_handler()));
     if (changed) {
       EXPECT_EQ(expected, trimmed);
     }

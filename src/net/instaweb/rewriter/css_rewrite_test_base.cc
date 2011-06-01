@@ -20,15 +20,12 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/mock_url_fetcher.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -92,7 +89,7 @@ GoogleString CssRewriteTestBase::ExpectedRewrittenUrl(
 
   ResourceNamer namer;
   namer.set_id(filter_id);
-  namer.set_hash(resource_manager_->hasher()->Hash(expected_contents));
+  namer.set_hash(hasher()->Hash(expected_contents));
   namer.set_ext(content_type.file_extension() + 1);  // +1 to skip '.'
   namer.set_name(leaf);
 
@@ -104,7 +101,7 @@ void CssRewriteTestBase::GetNamerForCss(const StringPiece& id,
                                         const GoogleString& expected_css_output,
                                         ResourceNamer* namer) {
   namer->set_id(RewriteDriver::kCssFilterId);
-  namer->set_hash(resource_manager_->hasher()->Hash(expected_css_output));
+  namer->set_hash(hasher()->Hash(expected_css_output));
   namer->set_ext("css");
   namer->set_name(StrCat(id, ".css"));
 }
@@ -135,7 +132,7 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
 
   // Set input file.
   if ((flags & kNoClearFetcher) == 0) {
-    mock_url_fetcher_.Clear();
+    ClearFetcherResponses();
   }
   InitResponseHeaders(StrCat(id, ".css"), kContentTypeCss, css_input, 300);
 
@@ -200,7 +197,7 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
     if ((flags & kNoOtherContexts) == 0) {
       ServeResourceFromManyContexts(expected_new_url,
                                     RewriteOptions::kRewriteCss,
-                                    &mock_hasher_, expected_css_output);
+                                    expected_css_output);
     }
   }
 }

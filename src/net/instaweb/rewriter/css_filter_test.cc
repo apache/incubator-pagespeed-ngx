@@ -78,11 +78,11 @@ TEST_F(CssFilterTest, RewriteEmptyCssTest) {
 TEST_F(CssFilterTest, RewriteRepeated) {
   ValidateRewriteExternalCss("rep", " div { } ", "div{}",
                              kExpectChange | kExpectSuccess);
-  int inserts_before = lru_cache_->num_inserts();
+  int inserts_before = lru_cache()->num_inserts();
   ValidateRewriteExternalCss("rep", " div { } ", "div{}",
                              kExpectChange | kExpectSuccess | kNoStatCheck);
-  int inserts_after = lru_cache_->num_inserts();
-  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+  int inserts_after = lru_cache()->num_inserts();
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
   EXPECT_EQ(inserts_before, inserts_after);
   // We expect num_files_minified_ to be reset to 0 by
   // ValidateRewriteExternalCss and left there since we should not re-minimize.

@@ -20,17 +20,13 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mem_file_system.h"
-#include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -46,26 +42,22 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
   void SetupOutliner() {
     options()->set_js_outline_min_bytes(0);
     options()->EnableFilter(RewriteOptions::kOutlineJavascript);
-    rewrite_driver_.AddFilters();
+    rewrite_driver()->AddFilters();
   }
 
   // TODO(sligocki): factor out common elements in OutlineStyle and Script.
-  // Test outlining scripts with options to write headers and use a hasher.
-  void OutlineScript(const StringPiece& id, Hasher* hasher,
-                     bool expect_outline) {
-    resource_manager_->set_hasher(hasher);
-
+  // Test outlining scripts with options to write headers.
+  void OutlineScript(const StringPiece& id, bool expect_outline) {
     GoogleString script_text = "FOOBAR";
     GoogleString outline_text;
-    AppendDefaultHeaders(kContentTypeJavascript, resource_manager_,
-                         &outline_text);
+    AppendDefaultHeaders(kContentTypeJavascript, &outline_text);
     outline_text += script_text;
 
-    GoogleString hash = hasher->Hash(script_text);
+    GoogleString hash = hasher()->Hash(script_text);
     GoogleString outline_filename;
     GoogleString outline_url = Encode(
         kTestDomain, JsOutlineFilter::kFilterId,  hash, "_", "js");
-    filename_encoder_.Encode(file_prefix_, outline_url, &outline_filename);
+    EncodeFilename(outline_url, &outline_filename);
 
     // Make sure the file we check later was written this time, rm any old one.
     DeleteFileIfExists(outline_filename);
@@ -89,9 +81,7 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
 
     if (expect_outline) {
       GoogleString actual_outline;
-      ASSERT_TRUE(file_system_.ReadFile(outline_filename.c_str(),
-                                        &actual_outline,
-                                        &message_handler_));
+      ASSERT_TRUE(ReadFile(outline_filename.c_str(), &actual_outline));
       EXPECT_EQ(outline_text, actual_outline);
     }
   }
@@ -100,11 +90,12 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
 // Tests for outlining scripts.
 TEST_F(JsOutlineFilterTest, OutlineScript) {
   SetupOutliner();
-  OutlineScript("outline_scripts_no_hash", &mock_hasher_, true);
+  OutlineScript("outline_scripts_no_hash", true);
 }
 TEST_F(JsOutlineFilterTest, OutlineScriptMd5) {
+  UseMd5Hasher();
   SetupOutliner();
-  OutlineScript("outline_scripts_md5", &md5_hasher_, true);
+  OutlineScript("outline_scripts_md5", true);
 }
 
 // Make sure we don't misplace things into domain of the base tag,
@@ -127,7 +118,7 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   GoogleString url_prefix = "http://mysite/no_outline";
 
   // TODO(sligocki): Maybe test with other hashers.
-  // resource_manager_->set_hasher(hasher);
+  // SetHasher(hasher);
 
   options()->EnableFilter(RewriteOptions::kOutlineCss);
   SetupOutliner();
@@ -151,19 +142,19 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   // TODO(jmarantz): this is pretty brittle, and perhaps obsolete.
   // We just change the test to ensure that we are not outlining when
   // we don't want to.
-  EXPECT_FALSE(file_system_.Exists(filename.c_str(),
-                                   &message_handler_).is_true());
+  EXPECT_FALSE(file_system()->Exists(filename.c_str(),
+                                     &message_handler_).is_true());
 }
 
 TEST_F(JsOutlineFilterTest, UrlTooLong) {
   SetupOutliner();
 
   // By default we succeed at outlining.
-  OutlineScript("url_not_too_long", &mock_hasher_, true);
+  OutlineScript("url_not_too_long", true);
 
   // But if we set max_url_size too small, it will fail cleanly.
   options()->set_max_url_size(0);
-  OutlineScript("url_too_long", &mock_hasher_, false);
+  OutlineScript("url_too_long", false);
 }
 
 }  // namespace

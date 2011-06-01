@@ -59,8 +59,8 @@ class CountingFilter : public CommonFilter {
 
 class CommonFilterTest : public ResourceManagerTestBase {
  protected:
-  CommonFilterTest() : filter_(&rewrite_driver_) {
-    rewrite_driver_.AddFilter(&filter_);
+  CommonFilterTest() : filter_(rewrite_driver()) {
+    rewrite_driver()->AddFilter(&filter_);
   }
 
   void ExpectUrl(const GoogleString& expected_url,
@@ -96,7 +96,8 @@ TEST_F(CommonFilterTest, DoesCallImpls) {
   filter_.StartDocument();
   EXPECT_EQ(1, filter_.start_doc_calls_);
 
-  HtmlElement* element = rewrite_driver_.NewElement(NULL, "foo");
+  RewriteDriver* driver = rewrite_driver();
+  HtmlElement* element = driver->NewElement(NULL, "foo");
   EXPECT_EQ(0, filter_.start_element_calls_);
   filter_.StartElement(element);
   EXPECT_EQ(1, filter_.start_element_calls_);
@@ -108,91 +109,93 @@ TEST_F(CommonFilterTest, DoesCallImpls) {
 
 TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   GoogleString doc_url = "http://www.example.com/";
-  rewrite_driver_.StartParse(doc_url);
-  rewrite_driver_.Flush();
+  RewriteDriver* driver = rewrite_driver();
+  driver->StartParse(doc_url);
+  driver->Flush();
   // Base URL starts out as document URL.
-  ExpectUrl(doc_url, rewrite_driver_.google_url());
+  ExpectUrl(doc_url, driver->google_url());
   ExpectUrl(doc_url, filter_.base_url());
 
-  rewrite_driver_.ParseText(
+  driver->ParseText(
       "<html><head><link rel='stylesheet' href='foo.css'>");
-  rewrite_driver_.Flush();
+  driver->Flush();
   ExpectUrl(doc_url, filter_.base_url());
 
   GoogleString base_url = "http://www.baseurl.com/foo/";
-  rewrite_driver_.ParseText("<base href='");
-  rewrite_driver_.ParseText(base_url);
-  rewrite_driver_.ParseText("' />");
-  rewrite_driver_.Flush();
+  driver->ParseText("<base href='");
+  driver->ParseText(base_url);
+  driver->ParseText("' />");
+  driver->Flush();
   // Update to base URL.
   ExpectUrl(base_url, filter_.base_url());
   // Make sure we didn't change the document URL.
-  ExpectUrl(doc_url, rewrite_driver_.google_url());
+  ExpectUrl(doc_url, driver->google_url());
 
-  rewrite_driver_.ParseText("<link rel='stylesheet' href='foo.css'>");
-  rewrite_driver_.Flush();
+  driver->ParseText("<link rel='stylesheet' href='foo.css'>");
+  driver->Flush();
   ExpectUrl(base_url, filter_.base_url());
 
   GoogleString new_base_url = "http://www.somewhere-else.com/";
-  rewrite_driver_.ParseText("<base href='");
-  rewrite_driver_.ParseText(new_base_url);
-  rewrite_driver_.ParseText("' />");
-  rewrite_driver_.Flush();
+  driver->ParseText("<base href='");
+  driver->ParseText(new_base_url);
+  driver->ParseText("' />");
+  driver->Flush();
   EXPECT_EQ(1, message_handler_.TotalMessages());
 
   // Uses old base URL.
   ExpectUrl(base_url, filter_.base_url());
 
-  rewrite_driver_.ParseText("</head></html>");
-  rewrite_driver_.Flush();
+  driver->ParseText("</head></html>");
+  driver->Flush();
   ExpectUrl(base_url, filter_.base_url());
-  rewrite_driver_.FinishParse();
-  ExpectUrl(doc_url, rewrite_driver_.google_url());
+  driver->FinishParse();
+  ExpectUrl(doc_url, driver->google_url());
 }
 
 TEST_F(CommonFilterTest, DetectsNoScriptCorrectly) {
   GoogleString doc_url = "http://www.example.com/";
-  rewrite_driver_.StartParse(doc_url);
-  rewrite_driver_.Flush();
+  RewriteDriver* driver = rewrite_driver();
+  driver->StartParse(doc_url);
+  driver->Flush();
   EXPECT_TRUE(filter_.noscript_element() == NULL);
 
-  rewrite_driver_.ParseText("<html><head><title>Example Site");
-  rewrite_driver_.Flush();
+  driver->ParseText("<html><head><title>Example Site");
+  driver->Flush();
   EXPECT_TRUE(filter_.noscript_element() == NULL);
 
-  rewrite_driver_.ParseText("</title><noscript>");
-  rewrite_driver_.Flush();
+  driver->ParseText("</title><noscript>");
+  driver->Flush();
   EXPECT_TRUE(filter_.noscript_element() != NULL);
 
   // Nested <noscript> elements
-  rewrite_driver_.ParseText("Blah blah blah <noscript><noscript> do-de-do-do ");
-  rewrite_driver_.Flush();
+  driver->ParseText("Blah blah blah <noscript><noscript> do-de-do-do ");
+  driver->Flush();
   EXPECT_TRUE(filter_.noscript_element() != NULL);
 
-  rewrite_driver_.ParseText("<link href='style.css'>");
-  rewrite_driver_.Flush();
+  driver->ParseText("<link href='style.css'>");
+  driver->Flush();
   EXPECT_TRUE(filter_.noscript_element() != NULL);
 
   // Close inner <noscript>s
-  rewrite_driver_.ParseText("</noscript></noscript>");
-  rewrite_driver_.Flush();
+  driver->ParseText("</noscript></noscript>");
+  driver->Flush();
   EXPECT_TRUE(filter_.noscript_element() != NULL);
 
   // Close outter <noscript>
-  rewrite_driver_.ParseText("</noscript>");
-  rewrite_driver_.Flush();
+  driver->ParseText("</noscript>");
+  driver->Flush();
   EXPECT_TRUE(filter_.noscript_element() == NULL);
 
-  rewrite_driver_.ParseText("</head></html>");
-  rewrite_driver_.FinishParse();
+  driver->ParseText("</head></html>");
+  driver->FinishParse();
   EXPECT_TRUE(filter_.noscript_element() == NULL);
 }
 
 TEST_F(CommonFilterTest, TestTwoDomainLawyers) {
   static const char kBaseUrl[] = "http://www.base.com/";
-  CommonFilter* a = MakeFilter(kBaseUrl, "a.com", options(), &rewrite_driver_);
+  CommonFilter* a = MakeFilter(kBaseUrl, "a.com", options(), rewrite_driver());
   CommonFilter* b = MakeFilter(kBaseUrl, "b.com", other_options(),
-                               &other_rewrite_driver_);
+                               other_rewrite_driver());
 
   // Either filter can rewrite resources from the base URL
   EXPECT_TRUE(CanRewriteResource(a, StrCat(kBaseUrl, "base.css")));

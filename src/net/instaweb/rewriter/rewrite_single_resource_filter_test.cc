@@ -26,7 +26,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -37,7 +36,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_hasher.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -227,10 +226,10 @@ class RewriteSingleResourceFilterTest
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
 
-    filter_ = new TestRewriter(&rewrite_driver_, GetParam());
+    filter_ = new TestRewriter(rewrite_driver(), GetParam());
     AddRewriteFilter(filter_);
     AddOtherRewriteFilter(
-        new TestRewriter(&other_rewrite_driver_, GetParam()));
+        new TestRewriter(other_rewrite_driver(), GetParam()));
 
     MockResource("a.tst", "good", TtlSec());
     MockResource("bad.tst", "bad", TtlSec());
@@ -254,9 +253,9 @@ class RewriteSingleResourceFilterTest
   // Creates a resource that 404s
   void MockMissingResource(const char* rel_path) {
     ResponseHeaders response_headers;
-    resource_manager_->SetDefaultHeaders(&kContentTypeText, &response_headers);
+    SetDefaultHeaders(&kContentTypeText, &response_headers);
     response_headers.SetStatusAndReason(HttpStatus::kNotFound);
-    mock_url_fetcher_.SetResponse(
+    SetFetchResponse(
         StrCat(kTestDomain, rel_path), response_headers, StringPiece());
   }
 
@@ -264,11 +263,10 @@ class RewriteSingleResourceFilterTest
   // input filename
   GoogleString OutputName(const StringPiece& in_name) {
     if (filter_->create_custom_encoder()) {
-      return Encode("", kTestFilterPrefix, mock_hasher_.Hash(""),
+      return Encode("", kTestFilterPrefix, hasher()->Hash(""),
                     StrCat(kTestEncoderUrlExtra, in_name), "txt");
     } else {
-      return Encode("", kTestFilterPrefix, mock_hasher_.Hash(""), in_name,
-                    "txt");
+      return Encode("", kTestFilterPrefix, hasher()->Hash(""), in_name, "txt");
     }
   }
 
@@ -283,7 +281,7 @@ class RewriteSingleResourceFilterTest
     ResourcePtr input_resource(CreateResource(kTestDomain, url));
     EXPECT_TRUE(input_resource.get() != NULL);
     OutputResourcePtr output_resource(
-        rewrite_driver_.CreateOutputResourceFromResource(
+        rewrite_driver()->CreateOutputResourceFromResource(
             kTestFilterPrefix, encoder, NULL, input_resource,
             kRewrittenResource));
     EXPECT_TRUE(output_resource.get() != NULL);
@@ -460,14 +458,14 @@ TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshen) {
 
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counting_url_async_fetcher_.fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // Advance time past TTL, but re-mock the resource so it can be refetched
   mock_timer()->advance_ms(TtlMs() + 10);
   MockResource("a.tst", "whatever", TtlSec());
   ValidateExpected("refetch", in_tag_, out_tag_);
   EXPECT_EQ(2, filter_->num_rewrites_called());
-  EXPECT_EQ(2, counting_url_async_fetcher_.fetch_count());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
 TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshenHashCheck) {
@@ -481,7 +479,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshenHashCheck) {
 
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counting_url_async_fetcher_.fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // Advance time past TTL, but re-mock the resource so it can be refetched.
   mock_timer()->advance_ms(TtlMs() + 10);
@@ -490,7 +488,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshenHashCheck) {
 
   // Here, we did re-fetch it, but did not recompute.
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(2, counting_url_async_fetcher_.fetch_count());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
 TEST_P(RewriteSingleResourceFilterTest, CacheHashCheckChange) {
@@ -503,18 +501,18 @@ TEST_P(RewriteSingleResourceFilterTest, CacheHashCheckChange) {
 
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counting_url_async_fetcher_.fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // Advance time past TTL, but re-mock the resource so it can be refetched.
   mock_timer()->advance_ms(TtlMs() + 10);
-  mock_hasher_.set_hash_value("1");
+  SetMockHashValue("1");
   MockResource("a.tst", "whatever", TtlSec());
   // Here ComputeOutTag() != out_tag_ due to the new hasher.
   ValidateExpected("refetch", in_tag_, ComputeOutTag());
 
   // Since we changed the hash, this needs to recompute.
   EXPECT_EQ(2, filter_->num_rewrites_called());
-  EXPECT_EQ(2, counting_url_async_fetcher_.fetch_count());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
 
@@ -526,7 +524,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
 
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counting_url_async_fetcher_.fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // Advance close to TTL and rewrite, having updated the data.
   // We expect it to be freshened to that.
@@ -534,7 +532,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
   MockResource("a.tst", "whatever", TtlSec());
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(2, counting_url_async_fetcher_.fetch_count());  // the 2nd fetch is freshening
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // the 2nd fetch is freshening
 
   // Now advance past original TTL, but it should still be alive
   // due to freshening.
@@ -545,7 +543,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
   EXPECT_EQ(2, filter_->num_rewrites_called());
   // definitely should not have to fetch here --- freshening should have
   // done it already.
-  EXPECT_EQ(2, counting_url_async_fetcher_.fetch_count());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
 // Make sure that fetching normal content works
@@ -607,12 +605,12 @@ TEST_P(RewriteSingleResourceFilterTest, FetchRewriteFailed) {
   ASSERT_TRUE(ServeRelativeUrl(OutputName("bad.tst"), &out));
   EXPECT_EQ("bad", out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counting_url_async_fetcher_.fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // Make sure the above also cached the failure.
   ValidateNoChanges("postfetch.bad", "<tag src=\"bad.tst\"></tag>");
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counting_url_async_fetcher_.fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 }
 
 // Rewriting a 404 however propagates error
@@ -633,17 +631,17 @@ TEST_P(RewriteSingleResourceFilterTest, FetchInvalidResourceName) {
 
 TEST_P(RewriteSingleResourceFilterTest, FetchBadStatus) {
   ResponseHeaders response_headers;
-  resource_manager_->SetDefaultHeaders(&kContentTypeText, &response_headers);
+  SetDefaultHeaders(&kContentTypeText, &response_headers);
   response_headers.SetStatusAndReason(HttpStatus::kFound);
-  mock_url_fetcher_.SetResponse(
+  SetFetchResponse(
       StrCat(kTestDomain, "redirect"), response_headers, StringPiece());
-  mock_url_fetcher_.set_fail_on_unexpected(false);
+  SetFetchFailOnUnexpected(false);
   ValidateNoChanges("redirected_resource", "<tag src=\"/redirect\"></tag>");
 
   ResponseHeaders response_headers2;
-  resource_manager_->SetDefaultHeaders(&kContentTypeText, &response_headers2);
+  SetDefaultHeaders(&kContentTypeText, &response_headers2);
   response_headers2.SetStatusAndReason(HttpStatus::kImATeapot);
-  mock_url_fetcher_.SetResponse(
+  SetFetchResponse(
       StrCat(kTestDomain, "pot-1"), response_headers2, StringPiece());
   ValidateNoChanges("teapot_resource", "<tag src=\"/pot-1\"></tag>");
   // The second time, this resource will be cached with its bad status code.

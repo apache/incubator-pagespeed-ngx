@@ -9,7 +9,6 @@
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -19,8 +18,8 @@ namespace {
 class CssMoveToHeadFilterTest : public ResourceManagerTestBase {
  protected:
   CssMoveToHeadFilterTest()
-      : move_to_head_filter_(&rewrite_driver_, statistics_) {
-    rewrite_driver_.AddFilter(&move_to_head_filter_);
+      : move_to_head_filter_(rewrite_driver(), statistics()) {
+    rewrite_driver()->AddFilter(&move_to_head_filter_);
   }
 
   CssMoveToHeadFilter move_to_head_filter_;

@@ -18,9 +18,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -51,10 +49,8 @@ class CssInlineFilterTest : public ResourceManagerTestBase {
 
     // Put original CSS file into our fetcher.
     ResponseHeaders default_css_header;
-    resource_manager_->SetDefaultHeaders(&kContentTypeCss,
-                                         &default_css_header);
-    mock_url_fetcher_.SetResponse(css_url, default_css_header,
-                                  css_original_body);
+    SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+    SetFetchResponse(css_url, default_css_header, css_original_body);
 
     // Rewrite the HTML page.
     ParseUrl(html_url, html_input);
@@ -164,8 +160,8 @@ TEST_F(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
 
   // Put original CSS files into our fetcher.
   ResponseHeaders default_css_header;
-  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "a.css"),
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(StrCat(kTestDomain, "a.css"),
                                 default_css_header, ".a {}");
   AddFilter(RewriteOptions::kInlineCss);
   ValidateExpected("claims_xhtml_but_has_unclosed_links",

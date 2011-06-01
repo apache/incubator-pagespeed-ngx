@@ -31,11 +31,9 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
-#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner_template.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -56,10 +54,11 @@
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
+
 class CommonFilter;
+class HtmlElement;
 class MessageHandler;
 class OutputResource;
-class HtmlElement;
 
 namespace {
 
@@ -140,9 +139,9 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
 
-    filter_ = new TestCombineFilter(&rewrite_driver_);
+    filter_ = new TestCombineFilter(rewrite_driver());
     AddRewriteFilter(filter_);
-    AddOtherRewriteFilter(new TestCombineFilter(&other_rewrite_driver_));
+    AddOtherRewriteFilter(new TestCombineFilter(other_rewrite_driver()));
 
     // Make sure to set the domain so we authorize fetches.
     SetBaseUrlForFetch(kTestDomain);
@@ -169,10 +168,10 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
   // Creates a resource that 404s
   void MockMissingResource(const char* rel_path) {
     ResponseHeaders response_headers;
-    resource_manager_->SetDefaultHeaders(&kContentTypeText, &response_headers);
+    SetDefaultHeaders(&kContentTypeText, &response_headers);
     response_headers.SetStatusAndReason(HttpStatus::kNotFound);
-    mock_url_fetcher_.SetResponse(AbsoluteUrl(rel_path), response_headers,
-                                  StringPiece());
+    SetFetchResponse(AbsoluteUrl(rel_path), response_headers,
+                     StringPiece());
   }
 
   enum FetchFlags {
@@ -183,10 +182,8 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
   // Fetches a resource, optionally permitting asynchronous loading (delayed
   // invocation and fetches that may fail. Returns whether succeeded
   bool FetchResource(const StringPiece& url, GoogleString* content, int flags) {
-    WaitUrlAsyncFetcher simulate_async(&mock_url_fetcher_);
     if (flags & kFetchAsync) {
-      rewrite_driver_.set_async_fetcher(&simulate_async);
-      resource_manager_->set_url_async_fetcher(&simulate_async);
+      SetupWaitFetcher();
     }
 
     // TODO(morlovich): This is basically copy-paste from ServeResourceUrl.
@@ -195,7 +192,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
     ResponseHeaders response_headers;
     StringWriter writer(content);
     MockCallback callback;
-    bool fetched = rewrite_driver_.FetchResource(
+    bool fetched = rewrite_driver()->FetchResource(
         url, request_headers, &response_headers, &writer, &callback);
 
     if (!fetched) {
@@ -203,7 +200,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
     }
 
     if (flags & kFetchAsync) {
-      simulate_async.CallCallbacks();
+      CallFetcherCallbacks();
     }
 
     EXPECT_TRUE(callback.done());
@@ -239,7 +236,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
   }
 
   HtmlElement* TestElement() {
-    return rewrite_driver_.NewElement(NULL, "test");
+    return rewrite_driver()->NewElement(NULL, "test");
   }
 
   GoogleString StringOfLength(int n, char fill) {
@@ -253,7 +250,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
   int LeafLength(int resource_len) {
     ResourceNamer namer;
     namer.set_hash(
-        StringOfLength(resource_manager_->hasher()->HashSizeInChars(), '#'));
+        StringOfLength(hasher()->HashSizeInChars(), '#'));
     namer.set_name(StringOfLength(resource_len, 'P'));
     namer.set_id(kTestCombinerId);
     namer.set_ext("tcc");
@@ -277,7 +274,7 @@ TEST_F(ResourceCombinerTest, TestPartnershipBasic) {
   HtmlElement* e2 = TestElement();
   HtmlElement* e3 = TestElement();
 
-  printf("driver base url is %s\n", rewrite_driver_.base_url().spec_c_str());
+  printf("driver base url is %s\n", rewrite_driver()->base_url().spec_c_str());
 
   EXPECT_EQ(0, partnership_->num_urls());
   EXPECT_TRUE(AddElement(e1, kTestPiece1, &message_handler_));
@@ -585,7 +582,7 @@ TEST_F(ResourceCombinerTest, TestFetchFail) {
 }
 
 TEST_F(ResourceCombinerTest, TestFetchFail2) {
-  mock_url_fetcher_.set_fail_on_unexpected(false);
+  SetFetchFailOnUnexpected(false);
   // This is slightly different from above, as we get a complete
   // fetch failure rather than a 404.
   GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
@@ -604,7 +601,7 @@ TEST_F(ResourceCombinerTest, TestFetchFailAsync) {
 }
 
 TEST_F(ResourceCombinerTest, TestFetchFailAsync2) {
-  mock_url_fetcher_.set_fail_on_unexpected(false);
+  SetFetchFailOnUnexpected(false);
   GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
                             "piece1.tcc+weird.tcc+piece2.tcc", "txt");
 
@@ -641,17 +638,15 @@ TEST_F(ResourceCombinerTest, TestContinuingFetchWhenFastFailed) {
   // In that case, we need to be careful to make sure we don't try to write
   // the headers anyway, as their lifetime can't be guaranteed if ::Fetch
   // returned false.
-  WaitUrlAsyncFetcher simulate_async(&mock_url_fetcher_);
-  rewrite_driver_.set_async_fetcher(&simulate_async);
-  resource_manager_->set_url_async_fetcher(&simulate_async);
+  SetupWaitFetcher();
 
   // Seed our cache with the fact that nopiece.tcc isn't there.
   ResourcePtr missing(
-      rewrite_driver_.CreateInputResourceAbsoluteUnchecked(
+      rewrite_driver()->CreateInputResourceAbsoluteUnchecked(
           StrCat(kTestDomain, "nopiece.tcc")));
   ASSERT_TRUE(missing.get() != NULL);
-  EXPECT_FALSE(rewrite_driver_.ReadIfCached(missing));
-  simulate_async.CallCallbacks();
+  EXPECT_FALSE(rewrite_driver()->ReadIfCached(missing));
+  CallFetcherCallbacks();
 
   // Now try to fetch a combination with 3 pieces.
   // The first one will start loading, on the second, nopiece.tcc,
@@ -664,16 +659,16 @@ TEST_F(ResourceCombinerTest, TestContinuingFetchWhenFastFailed) {
   ResponseHeaders response_headers;
   StringWriter writer(&content);
   MockCallback callback;
-  bool called = rewrite_driver_.FetchResource(url, request_headers,
-                                              &response_headers, &writer,
-                                              &callback);
+  bool called = rewrite_driver()->FetchResource(url, request_headers,
+                                                &response_headers, &writer,
+                                                &callback);
   EXPECT_TRUE(called);  // RewriteDriver took care of it after filter failure.
   EXPECT_TRUE(callback.done());
   EXPECT_FALSE(callback.success());
   EXPECT_FALSE(response_headers.headers_complete());
 
   // Now finish loading of the initialized piece1.tcc fetch...
-  simulate_async.CallCallbacks();
+  CallFetcherCallbacks();
   EXPECT_FALSE(response_headers.headers_complete())
       << "Writing to headers which might be dead. Can cause crashes!";
 }

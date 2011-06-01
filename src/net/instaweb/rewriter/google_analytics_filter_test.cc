@@ -18,7 +18,6 @@
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 
 #include "net/instaweb/rewriter/google_analytics_snippet.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -26,7 +25,6 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-class Statistics;
 
 namespace {
 
@@ -61,9 +59,7 @@ class GoogleAnalyticsFilterTest : public ResourceManagerTestBase {
     // Setup the statistics.
     ResourceManagerTestBase::SetUp();
 
-    Statistics* statistics = resource_manager_->statistics();
-
-    GoogleAnalyticsFilter::Initialize(statistics);
+    GoogleAnalyticsFilter::Initialize(statistics());
     GoogleAnalyticsFilter::MethodVector* glue_methods =
         new GoogleAnalyticsFilter::MethodVector;
     GoogleAnalyticsFilter::MethodVector* unhandled_methods =
@@ -73,8 +69,9 @@ class GoogleAnalyticsFilterTest : public ResourceManagerTestBase {
     unhandled_methods->push_back("_get");
     unhandled_methods->push_back("_getLinkerUrl");
 
-    rewrite_driver_.AddOwnedFilter(new GoogleAnalyticsFilter(
-        &rewrite_driver_, statistics, glue_methods, unhandled_methods));
+    RewriteDriver* driver = rewrite_driver();
+    driver->AddOwnedFilter(new GoogleAnalyticsFilter(
+        driver, statistics(), glue_methods, unhandled_methods));
   }
 
   // Create the expected html.

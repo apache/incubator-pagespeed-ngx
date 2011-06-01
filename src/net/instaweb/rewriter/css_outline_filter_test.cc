@@ -19,21 +19,14 @@
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/util/public/mem_file_system.h"
-#include "net/instaweb/util/public/mock_hasher.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-
 
 namespace net_instaweb {
 
@@ -45,7 +38,7 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
     ResourceManagerTestBase::SetUp();
     options()->set_css_outline_min_bytes(0);
     options()->EnableFilter(RewriteOptions::kOutlineCss);
-    rewrite_driver_.AddFilters();
+    rewrite_driver()->AddFilters();
   }
 
   // Test general situations.
@@ -57,7 +50,7 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
     // TODO(sligocki): Test with outline threshold > 0.
 
     // Figure out outline_url.
-    GoogleString hash = resource_manager_->hasher()->Hash(css_rewritten_body);
+    GoogleString hash = hasher()->Hash(css_rewritten_body);
     GoogleUrl html_gurl(html_url);
     GoogleUrl outline_gurl(
         html_gurl,
@@ -66,7 +59,7 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
     GoogleString outline_url(spec.data(), spec.length());
     // Figure out outline_filename.
     GoogleString outline_filename;
-    filename_encoder_.Encode(file_prefix_, outline_url, &outline_filename);
+    EncodeFilename(outline_url, &outline_filename);
     // Make sure the file we check later was written this time, rm any old one.
     DeleteFileIfExists(outline_filename);
 
@@ -93,15 +86,12 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
     if (expect_outline) {
       // Expected headers.
       GoogleString expected_headers;
-      AppendDefaultHeaders(kContentTypeCss, resource_manager_,
-                           &expected_headers);
+      AppendDefaultHeaders(kContentTypeCss, &expected_headers);
 
       // Check file was written.
       // TODO(sligocki): Should we check this or only the fetch below?
       GoogleString actual_outline;
-      ASSERT_TRUE(file_system_.ReadFile(outline_filename.c_str(),
-                                        &actual_outline,
-                                        &message_handler_));
+      ASSERT_TRUE(ReadFile(outline_filename.c_str(), &actual_outline));
       EXPECT_EQ(expected_headers + css_rewritten_body, actual_outline);
 
       // Check fetched resource.
@@ -112,10 +102,7 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
     }
   }
 
-  // Test with different hashers for a specific situation.
-  void OutlineStyle(const StringPiece& id, Hasher* hasher) {
-    resource_manager_->set_hasher(hasher);
-
+  void OutlineStyle(const StringPiece& id) {
     GoogleString html_url = StrCat("http://outline_style.test/", id, ".html");
     GoogleString style_text = "background_blue { background-color: blue; }\n"
                               "foreground_yellow { color: yellow; }\n";
@@ -125,11 +112,12 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
 
 // Tests for Outlining styles.
 TEST_F(CssOutlineFilterTest, OutlineStyle) {
-  OutlineStyle("outline_styles_no_hash", &mock_hasher_);
+  OutlineStyle("outline_styles_no_hash");
 }
 
 TEST_F(CssOutlineFilterTest, OutlineStyleMD5) {
-  OutlineStyle("outline_styles_md5", &md5_hasher_);
+  UseMd5Hasher();
+  OutlineStyle("outline_styles_md5");
 }
 
 

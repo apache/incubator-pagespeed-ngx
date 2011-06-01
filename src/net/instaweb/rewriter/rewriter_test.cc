@@ -20,14 +20,12 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -67,8 +65,7 @@ TEST_F(RewriterTest, MergeHead) {
 }
 
 TEST_F(RewriterTest, HandlingOfInvalidUrls) {
-  Hasher* hasher = &md5_hasher_;
-  resource_manager_->set_hasher(hasher);
+  UseMd5Hasher();
   AddFilter(RewriteOptions::kRewriteCss);
 
   const char kCssData[] = "a { color: red }";
@@ -77,20 +74,20 @@ TEST_F(RewriterTest, HandlingOfInvalidUrls) {
 
   // Fetching the real rewritten resource name should work.
   // TODO(sligocki): This will need to be regolded if naming format changes.
-  GoogleString hash = hasher->Hash(kMinimizedCssData);
+  GoogleString hash = hasher()->Hash(kMinimizedCssData);
   GoogleString good_url =
       Encode(kTestDomain, RewriteDriver::kCssFilterId, hash, "a.css", "css");
   EXPECT_TRUE(TryFetchResource(good_url));
 
   // Querying with an appended query should work fine, too, and cause a cache
   // hit from the above, not recomputation
-  int inserts_before = lru_cache_->num_inserts();
-  int hits_before = lru_cache_->num_hits();
+  int inserts_before = lru_cache()->num_inserts();
+  int hits_before = lru_cache()->num_hits();
   EXPECT_TRUE(TryFetchResource(StrCat(good_url, "?foo")));
-  int inserts_after = lru_cache_->num_inserts();
-  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+  int inserts_after = lru_cache()->num_inserts();
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
   EXPECT_EQ(inserts_before, inserts_after);
-  EXPECT_EQ(hits_before + 1, lru_cache_->num_hits());
+  EXPECT_EQ(hits_before + 1, lru_cache()->num_hits());
 
   // Fetching variants should not cause system problems.
   // Changing hash still works.

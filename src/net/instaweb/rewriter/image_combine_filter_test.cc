@@ -19,13 +19,10 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -55,7 +52,7 @@ class CssImageCombineTest : public CssRewriteTestBase {
     AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
                          kContentTypeJpeg, 100);
     // We want a real hasher here so that subresources get separate locks.
-    resource_manager_->set_hasher(&md5_hasher_);
+    UseMd5Hasher();
   }
   void TestSpriting(const char* bikePosition, const char* expectedPosition,
                     bool should_sprite) {
@@ -139,11 +136,11 @@ TEST_F(CssImageCombineTest, NoCrashUnknownType) {
   // Make sure we don't crash trying to sprite an image with an unknown mimetype
 
   ResponseHeaders response_headers;
-  resource_manager_->SetDefaultHeaders(&kContentTypePng, &response_headers);
+  SetDefaultHeaders(&kContentTypePng, &response_headers);
   response_headers.Replace(HttpAttributes::kContentType, "image/x-bewq");
   response_headers.ComputeCaching();
-  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "bar.bewq"),
-                                response_headers, "unused payload");
+  SetFetchResponse(StrCat(kTestDomain, "bar.bewq"),
+                   response_headers, "unused payload");
   InitResponseHeaders("foo.png", kContentTypePng, "unused payload", 100);
 
   const GoogleString before =

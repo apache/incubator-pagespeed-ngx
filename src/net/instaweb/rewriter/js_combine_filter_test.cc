@@ -28,10 +28,8 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -39,9 +37,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -125,17 +121,15 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    resource_manager_->set_hasher(&md5_hasher_);
-    other_resource_manager_.set_hasher(&md5_hasher_);
-    resource_manager_->SetDefaultHeaders(&kContentTypeJavascript,
-                                         &default_js_header_);
+    UseMd5Hasher();
+    SetDefaultHeaders(&kContentTypeJavascript, &default_js_header_);
     SimulateJsResource(kJsUrl1, kJsText1);
     SimulateJsResource(kJsUrl2, kJsText2);
     SimulateJsResource(kJsUrl3, kJsText3);
     SimulateJsResource(kStrictUrl1, kStrictText1);
     SimulateJsResource(kStrictUrl2, kStrictText2);
 
-    filter_ = new JsCombineFilter(&rewrite_driver_,
+    filter_ = new JsCombineFilter(rewrite_driver(),
                                   RewriteDriver::kJavascriptCombinerId);
     AddRewriteFilter(filter_);
 
@@ -157,12 +151,11 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
   void SimulateJsResourceOnDomain(const StringPiece& domain,
                                   const StringPiece& url,
                                   const StringPiece& text) {
-    mock_url_fetcher_.SetResponse(StrCat(domain, url), default_js_header_,
-                                  text);
+    SetFetchResponse(StrCat(domain, url), default_js_header_, text);
   }
 
   void PrepareToCollectScriptsInto(ScriptInfoVector* output) {
-    rewrite_driver_.AddOwnedFilter(new ScriptCollector(output));
+    rewrite_driver()->AddOwnedFilter(new ScriptCollector(output));
   }
 
   // Makes sure that the script looks like a combination.
@@ -235,7 +228,7 @@ TEST_F(JsCombineFilterTest, CombineJs) {
 
   ServeResourceFromManyContexts(scripts[0].url,
                                 RewriteOptions::kCombineJavascript,
-                                &md5_hasher_, combination_src);
+                                combination_src);
 }
 
 // Various things that prevent combining
@@ -460,7 +453,7 @@ TEST_F(JsCombineFilterTest, TestCrossDomainRecover) {
 
 TEST_F(JsCombineFilterTest, TestCombineStats) {
   Variable* num_reduced =
-      statistics_->GetVariable(JsCombineFilter::kJsFileCountReduction);
+      statistics()->GetVariable(JsCombineFilter::kJsFileCountReduction);
   EXPECT_EQ(0, num_reduced->Get());
 
   // Now combine 3 files into one.

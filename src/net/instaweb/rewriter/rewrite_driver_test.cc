@@ -20,7 +20,6 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
@@ -31,11 +30,10 @@
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/mem_file_system.h"
-#include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -54,7 +52,7 @@ class RewriteDriverTest : public ResourceManagerTestBase {
   bool CanDecodeUrl(const StringPiece& url) {
     RewriteFilter* filter;
     OutputResourcePtr resource(
-        rewrite_driver_.DecodeOutputResource(url, &filter));
+        rewrite_driver()->DecodeOutputResource(url, &filter));
     return (resource.get() != NULL);
   }
 
@@ -62,7 +60,7 @@ class RewriteDriverTest : public ResourceManagerTestBase {
     const ContentType* type = NULL;
     RewriteFilter* filter;
     OutputResourcePtr output_resource(
-        rewrite_driver_.DecodeOutputResource(url, &filter));
+        rewrite_driver()->DecodeOutputResource(url, &filter));
     if (output_resource.get() != NULL) {
       type = output_resource->type();
     }
@@ -70,7 +68,7 @@ class RewriteDriverTest : public ResourceManagerTestBase {
   }
 
   GoogleString BaseUrlSpec() {
-    return rewrite_driver_.base_url().Spec().as_string();
+    return rewrite_driver()->base_url().Spec().as_string();
   }
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverTest);
@@ -85,7 +83,7 @@ TEST_F(RewriteDriverTest, NoChanges) {
 }
 
 TEST_F(RewriteDriverTest, TestLegacyUrl) {
-  rewrite_driver_.AddFilters();
+  rewrite_driver()->AddFilters();
   EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig"))
       << "not enough dots";
   EXPECT_TRUE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig.js"));
@@ -102,7 +100,7 @@ TEST_F(RewriteDriverTest, TestLegacyUrl) {
 }
 
 TEST_F(RewriteDriverTest, TestInferContentType) {
-  rewrite_driver_.AddFilters();
+  rewrite_driver()->AddFilters();
   SetBaseUrlForFetch("http://example.com/dir/123/index.html");
   EXPECT_TRUE(DecodeContentType("http://example.com/z.pagespeed.jm.0.unknown")
               == NULL);
@@ -119,7 +117,7 @@ TEST_F(RewriteDriverTest, TestInferContentType) {
 }
 
 TEST_F(RewriteDriverTest, TestModernUrl) {
-  rewrite_driver_.AddFilters();
+  rewrite_driver()->AddFilters();
 
   // Sanity-check on a valid one
   EXPECT_TRUE(
@@ -153,7 +151,7 @@ TEST_F(RewriteDriverTest, TestCacheUse) {
 
   GoogleString cssMinifiedUrl =
       Encode(kTestDomain, RewriteDriver::kCssFilterId,
-             mock_hasher_.Hash(kMinCss), "a.css", "css");
+             hasher()->Hash(kMinCss), "a.css", "css");
 
   // Cold load.
   EXPECT_TRUE(TryFetchResource(cssMinifiedUrl));
@@ -162,13 +160,13 @@ TEST_F(RewriteDriverTest, TestCacheUse) {
   // 1) the source data
   // 2) the result
   // 3) the rname entry for the result
-  int cold_num_inserts = lru_cache_->num_inserts();
+  int cold_num_inserts = lru_cache()->num_inserts();
   EXPECT_EQ(3, cold_num_inserts);
 
   // Warm load. This one should not change the number of inserts at all
   EXPECT_TRUE(TryFetchResource(cssMinifiedUrl));
-  EXPECT_EQ(cold_num_inserts, lru_cache_->num_inserts());
-  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+  EXPECT_EQ(cold_num_inserts, lru_cache()->num_inserts());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 }
 
 // Similar to the above, but with cache-extender which reconstructs on the fly.
@@ -180,7 +178,7 @@ TEST_F(RewriteDriverTest, TestCacheUseOnTheFly) {
 
   GoogleString cacheExtendedUrl =
       Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
-             mock_hasher_.Hash(kCss), "a.css", "css");
+             hasher()->Hash(kCss), "a.css", "css");
 
   // Cold load.
   EXPECT_TRUE(TryFetchResource(cacheExtendedUrl));
@@ -188,69 +186,69 @@ TEST_F(RewriteDriverTest, TestCacheUseOnTheFly) {
   // We should have 2 things inserted:
   // 1) the source data
   // 2) the rname entry for the result
-  int cold_num_inserts = lru_cache_->num_inserts();
+  int cold_num_inserts = lru_cache()->num_inserts();
   EXPECT_EQ(2, cold_num_inserts);
 
   // Warm load. This one re-inserts in the rname entry, without changing it.
   EXPECT_TRUE(TryFetchResource(cacheExtendedUrl));
-  EXPECT_EQ(cold_num_inserts, lru_cache_->num_inserts());
-  EXPECT_EQ(1, lru_cache_->num_identical_reinserts());
+  EXPECT_EQ(cold_num_inserts, lru_cache()->num_inserts());
+  EXPECT_EQ(1, lru_cache()->num_identical_reinserts());
 }
 
 
 TEST_F(RewriteDriverTest, BaseTags) {
   // Starting the parse, the base-tag will be derived from the html url.
-  ASSERT_TRUE(rewrite_driver_.StartParse("http://example.com/index.html"));
-  rewrite_driver_.Flush();
+  ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
+  rewrite_driver()->Flush();
   EXPECT_EQ("http://example.com/", BaseUrlSpec());
 
   // If we then encounter a base tag, that will become the new base.
-  rewrite_driver_.ParseText("<base href='http://new.example.com/subdir/'>");
-  rewrite_driver_.Flush();
+  rewrite_driver()->ParseText("<base href='http://new.example.com/subdir/'>");
+  rewrite_driver()->Flush();
   EXPECT_EQ(0, message_handler_.TotalMessages());
   EXPECT_EQ("http://new.example.com/subdir/", BaseUrlSpec());
 
   // A second base tag will be ignored, and an info message will be printed.
-  rewrite_driver_.ParseText("<base href='http://second.example.com/subdir2'>");
-  rewrite_driver_.Flush();
+  rewrite_driver()->ParseText("<base href=http://second.example.com/subdir2>");
+  rewrite_driver()->Flush();
   EXPECT_EQ(1, message_handler_.TotalMessages());
   EXPECT_EQ("http://new.example.com/subdir/", BaseUrlSpec());
 
   // Restart the parse with a new URL and we start fresh.
-  rewrite_driver_.FinishParse();
-  ASSERT_TRUE(rewrite_driver_.StartParse(
+  rewrite_driver()->FinishParse();
+  ASSERT_TRUE(rewrite_driver()->StartParse(
       "http://restart.example.com/index.html"));
-  rewrite_driver_.Flush();
+  rewrite_driver()->Flush();
   EXPECT_EQ("http://restart.example.com/", BaseUrlSpec());
 
   // We should be able to reset again.
-  rewrite_driver_.ParseText("<base href='http://new.example.com/subdir/'>");
-  rewrite_driver_.Flush();
+  rewrite_driver()->ParseText("<base href='http://new.example.com/subdir/'>");
+  rewrite_driver()->Flush();
   EXPECT_EQ(1, message_handler_.TotalMessages());
   EXPECT_EQ("http://new.example.com/subdir/", BaseUrlSpec());
 }
 
 TEST_F(RewriteDriverTest, RelativeBaseTag) {
   // Starting the parse, the base-tag will be derived from the html url.
-  ASSERT_TRUE(rewrite_driver_.StartParse("http://example.com/index.html"));
-  rewrite_driver_.ParseText("<base href='subdir/'>");
-  rewrite_driver_.Flush();
+  ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
+  rewrite_driver()->ParseText("<base href='subdir/'>");
+  rewrite_driver()->Flush();
   EXPECT_EQ(0, message_handler_.TotalMessages());
   EXPECT_EQ("http://example.com/subdir/", BaseUrlSpec());
 }
 
 TEST_F(RewriteDriverTest, InvalidBaseTag) {
   // Encountering an invalid base tag should be ignored (except info message).
-  ASSERT_TRUE(rewrite_driver_.StartParse("slwly://example.com/index.html"));
-  rewrite_driver_.ParseText("<base href='subdir_not_allowed_on_slwly/'>");
-  rewrite_driver_.Flush();
+  ASSERT_TRUE(rewrite_driver()->StartParse("slwly://example.com/index.html"));
+  rewrite_driver()->ParseText("<base href='subdir_not_allowed_on_slwly/'>");
+  rewrite_driver()->Flush();
 
   EXPECT_EQ(1, message_handler_.TotalMessages());
   EXPECT_EQ("slwly://example.com/", BaseUrlSpec());
 
   // And we will accept a subsequent base-tag with legal aboslute syntax.
-  rewrite_driver_.ParseText("<base href='http://example.com/absolute/'>");
-  rewrite_driver_.Flush();
+  rewrite_driver()->ParseText("<base href='http://example.com/absolute/'>");
+  rewrite_driver()->Flush();
   EXPECT_EQ("http://example.com/absolute/", BaseUrlSpec());
 }
 
@@ -281,19 +279,19 @@ TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
   for (int t = 0; t < arraysize(content_types); ++t) {
     for (int k = 0; k < arraysize(resource_kinds); ++k) {
       // Short name should always succeed at creating new resource.
-      resource.reset(rewrite_driver_.CreateOutputResourceWithPath(
+      resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
           short_path, dummy_filter_id, short_name,
           content_types[t], resource_kinds[k]));
       EXPECT_TRUE(NULL != resource.get());
 
       // Long leaf-name should always fail at creating new resource.
-      resource.reset(rewrite_driver_.CreateOutputResourceWithPath(
+      resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
           short_path, dummy_filter_id, long_name,
           content_types[t], resource_kinds[k]));
       EXPECT_TRUE(NULL == resource.get());
 
       // Long total URL length should always fail at creating new resource.
-      resource.reset(rewrite_driver_.CreateOutputResourceWithPath(
+      resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
           long_path, dummy_filter_id, short_name,
           content_types[t], resource_kinds[k]));
       EXPECT_TRUE(NULL == resource.get());
@@ -312,13 +310,13 @@ TEST_F(RewriteDriverTest, MultipleDomains) {
   InitResponseHeaders(StrCat(kAltDomain, "b.css"), kContentTypeCss, kCss, 100);
 
   GoogleString rewritten1 = Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
-                                   mock_hasher_.Hash(kCss), "a.css", "css");
+                                   hasher()->Hash(kCss), "a.css", "css");
 
   GoogleString rewritten2 = Encode(kAltDomain, RewriteDriver::kCacheExtenderId,
-                                   mock_hasher_.Hash(kCss), "b.css", "css");
+                                   hasher()->Hash(kCss), "b.css", "css");
 
   EXPECT_TRUE(TryFetchResource(rewritten1));
-  rewrite_driver_.Clear();
+  rewrite_driver()->Clear();
   EXPECT_TRUE(TryFetchResource(rewritten2));
 }
 
@@ -332,32 +330,30 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   const char kResourceContents2[] = "body { background: blue; }";
   ResponseHeaders resource_headers;
   // This sets 1 year cache lifetime :/ TODO(sligocki): Shorten this.
-  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &resource_headers);
+  SetDefaultHeaders(&kContentTypeCss, &resource_headers);
 
   // Set the fetch value.
-  mock_url_fetcher_.SetResponse(resource_url,
-                                resource_headers, kResourceContents1);
+  SetFetchResponse(resource_url, resource_headers, kResourceContents1);
   // Make sure file can be loaded. Note this cannot be loaded through the
   // mock_url_fetcher, because it has not been set in that fetcher.
   ResourcePtr resource(
-      rewrite_driver_.CreateInputResourceAbsoluteUnchecked(resource_url));
+      rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
   MockResourceCallback mock_callback(resource);
   EXPECT_TRUE(resource.get() != NULL);
-  resource_manager_->ReadAsync(&mock_callback);
+  resource_manager()->ReadAsync(&mock_callback);
   EXPECT_TRUE(mock_callback.done());
   EXPECT_TRUE(mock_callback.success());
   EXPECT_EQ(kResourceContents1, resource->contents());
   // TODO(sligocki): Check it was cached.
 
   // Change the fetch value.
-  mock_url_fetcher_.SetResponse(resource_url,
-                                resource_headers, kResourceContents2);
+  SetFetchResponse(resource_url, resource_headers, kResourceContents2);
   // Check that the resource loads cached.
   ResourcePtr resource2(
-      rewrite_driver_.CreateInputResourceAbsoluteUnchecked(resource_url));
+      rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
   MockResourceCallback mock_callback2(resource2);
   EXPECT_TRUE(resource2.get() != NULL);
-  resource_manager_->ReadAsync(&mock_callback2);
+  resource_manager()->ReadAsync(&mock_callback2);
   EXPECT_TRUE(mock_callback2.done());
   EXPECT_TRUE(mock_callback2.success());
   EXPECT_EQ(kResourceContents1, resource2->contents());
@@ -367,10 +363,10 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
 
   // Check that the resource loads updated.
   ResourcePtr resource3(
-      rewrite_driver_.CreateInputResourceAbsoluteUnchecked(resource_url));
+      rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
   MockResourceCallback mock_callback3(resource3);
   EXPECT_TRUE(resource3.get() != NULL);
-  resource_manager_->ReadAsync(&mock_callback3);
+  resource_manager()->ReadAsync(&mock_callback3);
   EXPECT_TRUE(mock_callback3.done());
   EXPECT_TRUE(mock_callback3.success());
   EXPECT_EQ(kResourceContents2, resource3->contents());
@@ -393,29 +389,27 @@ TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
                                            kStaticFilenamePrefix);
 
   // Write a file.
-  file_system_.WriteFile(resource_filename.c_str(), kResourceContents1,
-                         &message_handler_);
+  WriteFile(resource_filename.c_str(), kResourceContents1);
   // Make sure file can be loaded. Note this cannot be loaded through the
   // mock_url_fetcher, because it has not been set in that fetcher.
   ResourcePtr resource(
-      rewrite_driver_.CreateInputResourceAbsoluteUnchecked(resource_url));
+      rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
   MockResourceCallback mock_callback(resource);
   EXPECT_TRUE(resource.get() != NULL);
-  resource_manager_->ReadAsync(&mock_callback);
+  resource_manager()->ReadAsync(&mock_callback);
   EXPECT_TRUE(mock_callback.done());
   EXPECT_TRUE(mock_callback.success());
   EXPECT_EQ(kResourceContents1, resource->contents());
   // TODO(sligocki): Check it wasn't cached.
 
   // Change the file.
-  file_system_.WriteFile(resource_filename.c_str(), kResourceContents2,
-                         &message_handler_);
+  WriteFile(resource_filename.c_str(), kResourceContents2);
   // Make sure the resource loads updated.
   ResourcePtr resource2(
-      rewrite_driver_.CreateInputResourceAbsoluteUnchecked(resource_url));
+      rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
   MockResourceCallback mock_callback2(resource2);
   EXPECT_TRUE(resource2.get() != NULL);
-  resource_manager_->ReadAsync(&mock_callback2);
+  resource_manager()->ReadAsync(&mock_callback2);
   EXPECT_TRUE(mock_callback2.done());
   EXPECT_TRUE(mock_callback2.success());
   EXPECT_EQ(kResourceContents2, resource2->contents());

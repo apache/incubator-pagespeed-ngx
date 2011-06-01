@@ -27,25 +27,20 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
-#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -53,9 +48,7 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 
-
 namespace net_instaweb {
-class Hasher;
 
 namespace {
 
@@ -72,18 +65,16 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
   }
 
   // Test spriting CSS with options to write headers and use a hasher.
-  void CombineCss(const StringPiece& id, Hasher* hasher,
-                  const char* barrier_text, bool is_barrier) {
-    CombineCssWithNames(id, hasher, barrier_text, is_barrier, "a.css", "b.css");
+  void CombineCss(const StringPiece& id, const char* barrier_text,
+                  bool is_barrier) {
+    CombineCssWithNames(id, barrier_text, is_barrier, "a.css", "b.css");
   }
 
-  void CombineCssWithNames(const StringPiece& id, Hasher* hasher,
-                           const char* barrier_text, bool is_barrier,
+  void CombineCssWithNames(const StringPiece& id,
+                           const char* barrier_text,
+                           bool is_barrier,
                            const char* a_css_name,
                            const char* b_css_name) {
-    resource_manager_->set_hasher(hasher);
-    other_resource_manager_.set_hasher(hasher);
-
     // URLs and content for HTML document and resources.
     CHECK_EQ(StringPiece::npos, id.find("/"));
     GoogleString html_url = StrCat(kDomain, id, ".html");
@@ -114,15 +105,15 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
     // Put original CSS files into our fetcher.
     ResponseHeaders default_css_header;
-    resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-    mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
-    mock_url_fetcher_.SetResponse(b_css_url, default_css_header, b_css_body);
-    mock_url_fetcher_.SetResponse(c_css_url, default_css_header, c_css_body);
+    SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+    SetFetchResponse(a_css_url, default_css_header, a_css_body);
+    SetFetchResponse(b_css_url, default_css_header, b_css_body);
+    SetFetchResponse(c_css_url, default_css_header, c_css_body);
 
     ParseUrl(html_url, html_input);
 
     GoogleString headers;
-    AppendDefaultHeaders(kContentTypeCss, resource_manager_, &headers);
+    AppendDefaultHeaders(kContentTypeCss, &headers);
 
     // Check for CSS files in the rewritten page.
     StringVector css_urls;
@@ -133,7 +124,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     GoogleUrl gurl(combine_url);
 
     GoogleString combine_filename;
-    filename_encoder_.Encode(file_prefix_, combine_url, &combine_filename);
+    EncodeFilename(combine_url, &combine_filename);
 
     // Expected CSS combination.
     // This syntax must match that in css_combine_filter
@@ -164,8 +155,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
     GoogleString actual_combination;
-    ASSERT_TRUE(file_system_.ReadFile(combine_filename.c_str(),
-                                      &actual_combination, &message_handler_));
+    ASSERT_TRUE(ReadFile(combine_filename.c_str(), &actual_combination));
     EXPECT_EQ(headers + expected_combination, actual_combination);
 
     // Fetch the combination to make sure we can serve the result from above.
@@ -174,30 +164,30 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     GoogleString fetched_resource_content;
     StringWriter writer(&fetched_resource_content);
     ExpectCallback dummy_callback(true);
-    rewrite_driver_.FetchResource(combine_url, request_headers,
-                                  &response_headers, &writer,
-                                  &dummy_callback);
+    rewrite_driver()->FetchResource(combine_url, request_headers,
+                                    &response_headers, &writer,
+                                    &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) << combine_url;
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
-    // Now try to fetch from another server (other_rewrite_driver_) that
+    // Now try to fetch from another server (other_rewrite_driver()) that
     // does not already have the combination cached.
     // TODO(sligocki): This has too much shared state with the first server.
     // See RewriteImage for details.
     ResponseHeaders other_response_headers;
     fetched_resource_content.clear();
     message_handler_.Message(kInfo, "Now with serving.");
-    file_system_.Enable();
+    file_system()->Enable();
     dummy_callback.Reset();
-    other_rewrite_driver_.FetchResource(combine_url, request_headers,
-                                        &other_response_headers, &writer,
-                                        &dummy_callback);
+    other_rewrite_driver()->FetchResource(combine_url, request_headers,
+                                          &other_response_headers, &writer,
+                                          &dummy_callback);
     EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
     // Try to fetch from an independent server.
     ServeResourceFromManyContexts(combine_url, RewriteOptions::kCombineCss,
-                                  hasher, fetched_resource_content);
+                                  fetched_resource_content);
   }
 
   // Test what happens when CSS combine can't find a previously-rewritten
@@ -212,9 +202,9 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
     // Put original CSS files into our fetcher.
     ResponseHeaders default_css_header;
-    resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-    mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
-    mock_url_fetcher_.SetResponse(c_css_url, default_css_header, c_css_body);
+    SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+    SetFetchResponse(a_css_url, default_css_header, a_css_body);
+    SetFetchResponse(c_css_url, default_css_header, c_css_body);
 
     // First make sure we can serve the combination of a & c.  This is to avoid
     // spurious test successes.
@@ -232,9 +222,9 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     // weren't initialized by the first resource fetch (but were cached
     // correctly).  Content was correct.
     EXPECT_TRUE(
-        rewrite_driver_.FetchResource(kACUrl, request_headers,
-                                      &response_headers, &writer,
-                                      &dummy_callback));
+        rewrite_driver()->FetchResource(kACUrl, request_headers,
+                                        &response_headers, &writer,
+                                        &dummy_callback));
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
@@ -243,9 +233,9 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     dummy_callback.Reset();
     response_headers.Clear();
     EXPECT_TRUE(
-        rewrite_driver_.FetchResource(kACUrl, request_headers,
-                                      &response_headers, &writer,
-                                      &dummy_callback));
+        rewrite_driver()->FetchResource(kACUrl, request_headers,
+                                        &response_headers, &writer,
+                                        &dummy_callback));
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
@@ -253,14 +243,14 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     // (bbb.css) in addition to the two that do exist, a.css and c.css.  Using
     // an entirely non-existent resource appears to test a strict superset of
     // filter code paths when compared with returning a 404 for the resource.
-    mock_url_fetcher_.set_fail_on_unexpected(false);
+    SetFetchFailOnUnexpected(false);
     ExpectCallback fail_callback(false);
     fetched_resource_content.clear();
     response_headers.Clear();
     EXPECT_TRUE(
-        rewrite_driver_.FetchResource(kABCUrl, request_headers,
-                                      &response_headers, &writer,
-                                      &fail_callback));
+        rewrite_driver()->FetchResource(kABCUrl, request_headers,
+                                        &response_headers, &writer,
+                                        &fail_callback));
     // What status we get here depends a lot on details of when exactly
     // we detect the failure. If done early enough, nothing will be set.
     // This test may change, but see also
@@ -443,28 +433,28 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     GoogleString b_css_url = StrCat(kTestDomain, "b.css");
 
     ResponseHeaders default_css_header;
-    resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-    mock_url_fetcher_.SetResponse(a_css_url, default_css_header, "A");
-    mock_url_fetcher_.SetResponse(b_css_url, default_css_header, "B");
+    SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+    SetFetchResponse(a_css_url, default_css_header, "A");
+    SetFetchResponse(b_css_url, default_css_header, "B");
 
     GoogleString combined_url =
         StrCat(kTestDomain, "a.css+b.css.pagespeed.cc.0.css");
 
     SetupWriter();
-    rewrite_driver_.StartParse(kTestDomain);
+    rewrite_driver()->StartParse(kTestDomain);
     GoogleString input_beginning =
         StrCat(kXhtmlDtd, "<div><link rel=stylesheet href=a.css>",
                "<link rel=stylesheet href=b.css>");
-    rewrite_driver_.ParseText(input_beginning);
+    rewrite_driver()->ParseText(input_beginning);
 
     if (flush) {
       // This is a regression test: previously getting a flush here would
       // cause attempts to modify data structures, as we would only
       // start seeing the links at the </div>
-      rewrite_driver_.Flush();
+      rewrite_driver()->Flush();
     }
-    rewrite_driver_.ParseText("</div>");
-    rewrite_driver_.FinishParse();
+    rewrite_driver()->ParseText("</div>");
+    rewrite_driver()->FinishParse();
 
     // Note: As of 3/25/2011 our parser ignores XHTML directives from DOCTYPE
     // or mime-type, since those are not reliable: see Issue 252.  So we
@@ -491,10 +481,10 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
 
     ResponseHeaders default_css_header;
-    resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-    mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
-    mock_url_fetcher_.SetResponse(b_css_url, default_css_header, b_css_body);
-    mock_url_fetcher_.SetResponse(c_css_url, default_css_header, c_css_body);
+    SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+    SetFetchResponse(a_css_url, default_css_header, a_css_body);
+    SetFetchResponse(b_css_url, default_css_header, b_css_body);
+    SetFetchResponse(c_css_url, default_css_header, c_css_body);
 
     // Rewrite
     ParseUrl(html_url, html_input);
@@ -505,30 +495,31 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 };
 
 TEST_F(CssCombineFilterTest, CombineCss) {
-  CombineCss("combine_css_no_hash", &mock_hasher_, "", false);
+  CombineCss("combine_css_no_hash", "", false);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssMD5) {
-  CombineCss("combine_css_md5", &md5_hasher_, "", false);
+  UseMd5Hasher();
+  CombineCss("combine_css_md5", "", false);
 }
 
 // Make sure that if we re-parse the same html twice we do not
 // end up recomputing the CSS (and writing to cache) again
 TEST_F(CssCombineFilterTest, CombineCssRecombine) {
-  CombineCss("combine_css_recombine", &md5_hasher_, "", false);
-  int inserts_before = lru_cache_->num_inserts();
+  UseMd5Hasher();
+  CombineCss("combine_css_recombine", "", false);
+  int inserts_before = lru_cache()->num_inserts();
 
-  CombineCss("combine_css_recombine", &md5_hasher_, "", false);
-  int inserts_after = lru_cache_->num_inserts();
+  CombineCss("combine_css_recombine", "", false);
+  int inserts_after = lru_cache()->num_inserts();
   EXPECT_EQ(inserts_before, inserts_after);
-  EXPECT_EQ(0, lru_cache_->num_identical_reinserts());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 }
 
 
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=39
 TEST_F(CssCombineFilterTest, DealWithParams) {
-  CombineCssWithNames("deal_with_params", &mock_hasher_, "", false,
-                      "a.css?U", "b.css?rev=138");
+  CombineCssWithNames("with_params", "", false, "a.css?U", "b.css?rev=138");
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=252
@@ -554,10 +545,10 @@ TEST_F(CssCombineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
 
   // Put original CSS files into our fetcher.
   ResponseHeaders default_css_header;
-  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "a.css"),
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(StrCat(kTestDomain, "a.css"),
                                 default_css_header, ".a {}");
-  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "b.css"),
+  SetFetchResponse(StrCat(kTestDomain, "b.css"),
                                 default_css_header, ".b {}");
   ValidateExpected("claims_xhtml_but_has_unclosed_links",
                    StringPrintf(html_format, kXhtmlDtd, unclosed_links),
@@ -571,18 +562,21 @@ TEST_F(CssCombineFilterTest, CombineCssWithIEDirective) {
       "href=\"http://graphics8.nytimes.com/css/"
       "0.1/screen/build/homepage/ie.css\">\n"
       "<![endif]-->";
-  CombineCss("combine_css_ie", &md5_hasher_, ie_directive_barrier, true);
+  UseMd5Hasher();
+  CombineCss("combine_css_ie", ie_directive_barrier, true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithStyle) {
   const char style_barrier[] = "<style>a { color: red }</style>\n";
-  CombineCss("combine_css_style", &md5_hasher_, style_barrier, true);
+  UseMd5Hasher();
+  CombineCss("combine_css_style", style_barrier, true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithBogusLink) {
   const char bogus_barrier[] = "<link rel='stylesheet' type='text/css' "
       "href='crazee://big/blue/fake'>\n";
-  CombineCss("combine_css_bogus_link", &md5_hasher_, bogus_barrier, true);
+  UseMd5Hasher();
+  CombineCss("combine_css_bogus_link", bogus_barrier, true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithImportInFirst) {
@@ -614,10 +608,11 @@ TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
   GoogleString d_css_url = StrCat(kDomain, "d.css");
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
   ResponseHeaders default_css_header;
-  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-  mock_url_fetcher_.SetResponse(d_css_url, default_css_header, d_css_body);
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(d_css_url, default_css_header, d_css_body);
 
-  CombineCss("combine_css_noscript", &md5_hasher_, noscript_barrier, true);
+  UseMd5Hasher();
+  CombineCss("combine_css_noscript", noscript_barrier, true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithFakeNoscriptBarrier) {
@@ -625,7 +620,8 @@ TEST_F(CssCombineFilterTest, CombineCssWithFakeNoscriptBarrier) {
       "<noscript>\n"
       "  <p>You have no scripts installed</p>\n"
       "</noscript>\n";
-  CombineCss("combine_css_fake_noscript", &md5_hasher_, non_barrier, false);
+  UseMd5Hasher();
+  CombineCss("combine_css_fake_noscript", non_barrier, false);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
@@ -635,10 +631,11 @@ TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
   GoogleString d_css_url = StrCat(kDomain, "d.css");
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
   ResponseHeaders default_css_header;
-  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-  mock_url_fetcher_.SetResponse(d_css_url, default_css_header, d_css_body);
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(d_css_url, default_css_header, d_css_body);
 
-  CombineCss("combine_css_media", &md5_hasher_, media_barrier, true);
+  UseMd5Hasher();
+  CombineCss("combine_css_media", media_barrier, true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
@@ -655,11 +652,11 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
 
   ResponseHeaders default_css_header;
-  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-  mock_url_fetcher_.SetResponse(a_css_url, default_css_header, a_css_body);
-  mock_url_fetcher_.SetResponse(b_css_url, default_css_header, b_css_body);
-  mock_url_fetcher_.SetResponse(c_css_url, default_css_header, c_css_body);
-  mock_url_fetcher_.SetResponse(d_css_url, default_css_header, d_css_body);
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(a_css_url, default_css_header, a_css_body);
+  SetFetchResponse(b_css_url, default_css_header, b_css_body);
+  SetFetchResponse(c_css_url, default_css_header, c_css_body);
+  SetFetchResponse(d_css_url, default_css_header, d_css_body);
 
   // Only the first two CSS files should be combined.
   const char html_input[] =
@@ -798,11 +795,11 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
 }
 
 TEST_F(CssCombineFilterTest, CombineCssNoInput) {
-  mock_url_fetcher_.set_fail_on_unexpected(false);
+  SetFetchFailOnUnexpected(false);
   ResponseHeaders default_css_header;
-  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "b.css"),
-                                default_css_header, ".a {}");
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(StrCat(kTestDomain, "b.css"),
+                   default_css_header, ".a {}");
   static const char html_input[] =
       "<head>\n"
       "  <link rel='stylesheet' href='a_broken.css' type='text/css'>\n"
@@ -898,7 +895,7 @@ TEST_F(CssCombineFilterTest, CombineCssNotCached) {
   css_in.Add("2.css", kYellow, "", true);
   css_in.Add("3.css", kYellow, "", false);
   css_in.Add("4.css", kYellow, "", true);
-  mock_url_fetcher_.set_fail_on_unexpected(false);
+  SetFetchFailOnUnexpected(false);
   BarrierTestHelper("combine_css_not_cached", css_in, &css_out);
   EXPECT_EQ(3, css_out.size());
   GoogleString base;
@@ -1013,10 +1010,10 @@ TEST_F(CssCombineFilterTest, CrossMappedDomain) {
   css_in.Add("http://a.com/1.css", kYellow, "", supply_mock);
   css_in.Add("http://b.com/2.css", kBlue, "", supply_mock);
   ResponseHeaders default_css_header;
-  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-  mock_url_fetcher_.SetResponse("http://a.com/1.css", default_css_header,
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse("http://a.com/1.css", default_css_header,
                                 kYellow);
-  mock_url_fetcher_.SetResponse("http://b.com/2.css", default_css_header,
+  SetFetchResponse("http://b.com/2.css", default_css_header,
                                 kBlue);
   BarrierTestHelper("combine_css_with_style", css_in, &css_out);
   EXPECT_EQ(1, css_out.size());
@@ -1040,9 +1037,9 @@ TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
   css_in.Add(kUrl1, kYellow, "", supply_mock);
   css_in.Add(kUrl2, kBlue, "", supply_mock);
   ResponseHeaders default_css_header;
-  resource_manager_->SetDefaultHeaders(&kContentTypeCss, &default_css_header);
-  mock_url_fetcher_.SetResponse(kUrl1, default_css_header, kYellow);
-  mock_url_fetcher_.SetResponse(kUrl2, default_css_header, kBlue);
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(kUrl1, default_css_header, kYellow);
+  SetFetchResponse(kUrl2, default_css_header, kBlue);
   BarrierTestHelper("combine_css_with_style", css_in, &css_out);
   EXPECT_EQ(2, css_out.size());
   GoogleString actual_combination;

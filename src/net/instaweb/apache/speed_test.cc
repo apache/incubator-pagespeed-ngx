@@ -28,7 +28,8 @@ TEST_F(SpeedTest, FilterSpeedTest) {
 #ifdef NDEBUG
   // Enables all filters.
   options()->SetRewriteLevel(RewriteOptions::kAllFilters);
-  rewrite_driver_.AddFilters();
+  RewriteDriver* driver = rewrite_driver();
+  driver->AddFilters();
 
   GoogleString html;
   for (int i = 0; i < 1000; ++i) {
@@ -39,13 +40,13 @@ TEST_F(SpeedTest, FilterSpeedTest) {
   int64 start_us = timer.NowUs();
 
   for (int i = 0; i < 1000; ++i) {
-    rewrite_driver_.StartParse("http://example.com/index.html");
-    rewrite_driver_.ParseText("<html><head></head><body>");
-    rewrite_driver_.Flush();
-    rewrite_driver_.ParseText(html);
-    rewrite_driver_.Flush();
-    rewrite_driver_.ParseText("</body></html>");
-    rewrite_driver_.FinishParse();
+    driver->StartParse("http://example.com/index.html");
+    driver->ParseText("<html><head></head><body>");
+    driver->Flush();
+    driver->ParseText(html);
+    driver->Flush();
+    driver->ParseText("</body></html>");
+    driver->FinishParse();
   }
 
   int64 end_us = timer.NowUs();

@@ -61,7 +61,6 @@
 
 namespace net_instaweb {
 
-class Hasher;
 struct ContentType;
 
 const char ResourceManagerTestBase::kTestData[] =
@@ -188,13 +187,12 @@ ResourcePtr ResourceManagerTestBase::CreateResource(const StringPiece& base,
 
 void ResourceManagerTestBase::AppendDefaultHeaders(
     const ContentType& content_type,
-    ResourceManager* resource_manager,
     GoogleString* text) {
   ResponseHeaders header;
   int64 time = mock_timer()->NowUs();
   // Reset mock timer so synthetic headers match original.
   mock_timer()->set_time_us(0);
-  resource_manager->SetDefaultHeaders(&content_type, &header);
+  resource_manager_->SetDefaultHeaders(&content_type, &header);
   // Then set it back
   mock_timer()->set_time_us(time);
   StringWriter writer(text);
@@ -204,7 +202,6 @@ void ResourceManagerTestBase::AppendDefaultHeaders(
 void ResourceManagerTestBase::ServeResourceFromManyContexts(
     const GoogleString& resource_url,
     RewriteOptions::Filter filter,
-    Hasher* hasher,
     const StringPiece& expected_content) {
   // TODO(sligocki): Serve the resource under several contexts. For example:
   //   1) With output-resource cached,
@@ -212,7 +209,7 @@ void ResourceManagerTestBase::ServeResourceFromManyContexts(
   //   3) With output-resource unavailable, but input-resource cached,
   //   4) With output-resource unavailable and input-resource not cached,
   //      but still fetchable,
-  ServeResourceFromNewContext(resource_url, filter, hasher, expected_content);
+  ServeResourceFromNewContext(resource_url, filter, expected_content);
   //   5) With nothing available (failure).
 }
 
@@ -221,7 +218,6 @@ void ResourceManagerTestBase::ServeResourceFromManyContexts(
 void ResourceManagerTestBase::ServeResourceFromNewContext(
     const GoogleString& resource_url,
     RewriteOptions::Filter /*filter*/,  // TODO(sligocki): remove
-    Hasher* hasher,
     const StringPiece& expected_content) {
 
   // New objects for the new server.
@@ -238,7 +234,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   WaitUrlAsyncFetcher wait_url_async_fetcher(&mock_url_fetcher_);
   ResourceManager other_resource_manager(
       file_prefix_, &other_file_system, &filename_encoder_,
-      &wait_url_async_fetcher, hasher,
+      &wait_url_async_fetcher, hasher(),
       &other_http_cache, other_lru_cache, &other_lock_manager,
       &message_handler_, &stats, thread_system_.get(), factory_);
 

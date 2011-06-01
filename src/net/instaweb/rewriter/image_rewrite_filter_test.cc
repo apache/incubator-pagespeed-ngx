@@ -31,11 +31,8 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mem_file_system.h"
-#include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -58,7 +55,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
     options()->EnableFilter(RewriteOptions::kRecompressImages);
     options()->set_image_inline_max_bytes(2000);
-    rewrite_driver_.AddFilters();
+    rewrite_driver()->AddFilters();
 
     // URLs and content for HTML document and resources.
     const char domain[] = "http://rewrite_image.test/";
@@ -91,12 +88,10 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
     GoogleString rewritten_filename;
-    filename_encoder_.Encode(file_prefix_, src_string, &rewritten_filename);
+    EncodeFilename(src_string, &rewritten_filename);
 
     GoogleString rewritten_image_data;
-    ASSERT_TRUE(file_system_.ReadFile(rewritten_filename.c_str(),
-                                      &rewritten_image_data,
-                                      &message_handler_));
+    ASSERT_TRUE(ReadFile(rewritten_filename.c_str(), &rewritten_image_data));
 
     // Also fetch the resource to ensure it can be created dynamically
     RequestHeaders request_headers;
@@ -106,15 +101,15 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     ExpectCallback dummy_callback(true);
 
     GoogleString headers;
-    AppendDefaultHeaders(kContentTypeJpeg, resource_manager_, &headers);
+    AppendDefaultHeaders(kContentTypeJpeg, &headers);
 
     writer.Write(headers, &message_handler_);
     writer.Flush(&message_handler_);
     int header_size = fetched_resource_content.length();
     EXPECT_TRUE(
-        rewrite_driver_.FetchResource(src_string, request_headers,
-                                      &response_headers, &writer,
-                                      &dummy_callback));
+        rewrite_driver()->FetchResource(src_string, request_headers,
+                                        &response_headers, &writer,
+                                        &dummy_callback));
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) <<
         "Looking for " << src_string;
     // For readability, only do EXPECT_EQ on initial portions of data
@@ -129,7 +124,6 @@ class ImageRewriteTest : public ResourceManagerTestBase {
 
     // Try to fetch from an independent server.
     ServeResourceFromManyContexts(src_string, RewriteOptions::kRecompressImages,
-                                  &mock_hasher_,
                                   rewritten_image_data.substr(header_size));
   }
 
@@ -189,18 +183,18 @@ class ImageRewriteTest : public ResourceManagerTestBase {
         "kEenp/8oyIBf2ZEWaEfyv8BsICdAZ/XeTCAAAAAElFTkSuQmCC";
     GoogleString cuppa_string(kCuppaData);
     ResourcePtr cuppa_resource(
-        rewrite_driver_.CreateInputResourceAbsoluteUnchecked(cuppa_string));
+        rewrite_driver()->CreateInputResourceAbsoluteUnchecked(cuppa_string));
     ASSERT_TRUE(cuppa_resource.get() != NULL);
-    EXPECT_TRUE(rewrite_driver_.ReadIfCached(cuppa_resource));
+    EXPECT_TRUE(rewrite_driver()->ReadIfCached(cuppa_resource));
     GoogleString cuppa_contents;
     cuppa_resource->contents().CopyToString(&cuppa_contents);
     // Now make sure axing the original cuppa_string doesn't affect the
     // internals of the cuppa_resource.
     ResourcePtr other_resource(
-        rewrite_driver_.CreateInputResourceAbsoluteUnchecked(cuppa_string));
+        rewrite_driver()->CreateInputResourceAbsoluteUnchecked(cuppa_string));
     ASSERT_TRUE(other_resource.get() != NULL);
     cuppa_string.clear();
-    EXPECT_TRUE(rewrite_driver_.ReadIfCached(other_resource));
+    EXPECT_TRUE(rewrite_driver()->ReadIfCached(other_resource));
     GoogleString other_contents;
     cuppa_resource->contents().CopyToString(&other_contents);
     ASSERT_EQ(cuppa_contents, other_contents);
@@ -222,8 +216,8 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     AddFilter(RewriteOptions::kRecompressImages);
 
     StringVector img_srcs;
-    ImageCollector image_collect(&rewrite_driver_, &img_srcs);
-    rewrite_driver_.AddFilter(&image_collect);
+    ImageCollector image_collect(rewrite_driver(), &img_srcs);
+    rewrite_driver()->AddFilter(&image_collect);
 
     ParseUrl(kTestDomain, kHtml);
     ASSERT_EQ(3, img_srcs.size());
@@ -308,7 +302,7 @@ TEST_F(ImageRewriteTest, AddDimTest) {
   // Make sure optimizable image isn't optimized, but
   // dimensions are inserted.
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
-  rewrite_driver_.AddFilters();
+  rewrite_driver()->AddFilters();
   TestSingleRewrite(kBikePngFile, kContentTypePng,
                     "", " width=\"100\" height=\"100\"", false, false);
 }
@@ -316,7 +310,7 @@ TEST_F(ImageRewriteTest, AddDimTest) {
 TEST_F(ImageRewriteTest, ResizeTest) {
   // Make sure we resize images, but don't optimize them in place.
   options()->EnableFilter(RewriteOptions::kResizeImages);
-  rewrite_driver_.AddFilters();
+  rewrite_driver()->AddFilters();
   const char kResizedDims[] = " width=\"256\" height=\"192\"";
   // Without explicit resizing, we leave the image alone.
   TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
@@ -332,7 +326,7 @@ TEST_F(ImageRewriteTest, InlineTest) {
   options()->EnableFilter(RewriteOptions::kResizeImages);
   options()->EnableFilter(RewriteOptions::kInlineImages);
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
-  rewrite_driver_.AddFilters();
+  rewrite_driver()->AddFilters();
   const char kChefDims[] = " width=\"192\" height=\"256\"";
   const char kResizedDims[] = " width=48 height=64";
   // Without resize, it's not optimizable.
@@ -349,7 +343,7 @@ TEST_F(ImageRewriteTest, InlineNoRewrite) {
   // Make sure we inline an image that isn't otherwise altered in any way.
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
-  rewrite_driver_.AddFilters();
+  rewrite_driver()->AddFilters();
   const char kChefDims[] = " width=192 height=256";
   // This image is just small enough to inline, which also erases
   // dimension information.
@@ -453,7 +447,7 @@ TEST_F(ImageRewriteTest, NoQueryCorruption) {
 TEST_F(ImageRewriteTest, NoCrashOnInvalidDim) {
   options()->EnableFilter(RewriteOptions::kRecompressImages);
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
-  rewrite_driver_.AddFilters();
+  rewrite_driver()->AddFilters();
   AddFileToMockFetcher(StrCat(kTestDomain, "a.png"), kBikePngFile,
                        kContentTypePng, 100);
 

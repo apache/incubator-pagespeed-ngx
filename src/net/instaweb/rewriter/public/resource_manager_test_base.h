@@ -22,7 +22,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_TEST_BASE_H_
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
@@ -39,10 +38,12 @@
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 
-#include "net/instaweb/util/public/pthread_thread_system.h"
 
 #define URL_PREFIX "http://www.example.com/"
 
@@ -50,10 +51,12 @@ namespace net_instaweb {
 
 class Hasher;
 class LRUCache;
+class MessageHandler;
 class MockTimer;
+class ResponseHeaders;
 class RewriteDriverFactory;
 class RewriteFilter;
-class SimpleStats;
+class Statistics;
 struct ContentType;
 
 const int kCacheSize = 100 * 1000 * 1000;
@@ -105,12 +108,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   void DeleteFileIfExists(const GoogleString& filename);
 
   void AppendDefaultHeaders(const ContentType& content_type,
-                            ResourceManager* resource_manager,
                             GoogleString* text);
 
   void ServeResourceFromManyContexts(const GoogleString& resource_url,
                                      RewriteOptions::Filter filter,
-                                     Hasher* hasher,
                                      const StringPiece& expected_content);
 
   // Test that a resource can be served from an new server that has not already
@@ -118,7 +119,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   void ServeResourceFromNewContext(
       const GoogleString& resource_url,
       RewriteOptions::Filter filter,
-      Hasher* hasher,
       const StringPiece& expected_content);
 
   // This definition is required by HtmlParseTestBase which defines this as
@@ -186,6 +186,64 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Removes the output resource from the file system.
   void RemoveOutputResourceFile(const StringPiece& url);
 
+  RewriteDriverFactory* factory() { return factory_; }
+
+  void UseMd5Hasher() {
+    resource_manager_->set_hasher(&md5_hasher_);
+    other_resource_manager_.set_hasher(&md5_hasher_);
+  }
+
+
+  void SetDefaultHeaders(const ContentType* content_type,
+                         ResponseHeaders* header) {
+    resource_manager_->SetDefaultHeaders(content_type, header);
+  }
+
+  void SetFetchResponse(const StringPiece& url,
+                        const ResponseHeaders& response_header,
+                        const StringPiece& response_body) {
+    mock_url_fetcher_.SetResponse(url, response_header, response_body);
+  }
+  void SetFetchFailOnUnexpected(bool fail) {
+    mock_url_fetcher_.set_fail_on_unexpected(fail);
+  }
+  void ClearFetcherResponses() { mock_url_fetcher_.Clear(); }
+
+  void EncodeFilename(const StringPiece& url, GoogleString* filename) {
+    filename_encoder_.Encode(file_prefix_, url, filename);
+  }
+
+  Hasher* hasher() { return resource_manager_->hasher(); }
+  LRUCache* lru_cache() { return lru_cache_; }
+  Statistics* statistics() { return statistics_; }
+  MemFileSystem* file_system() { return &file_system_; }
+  StringPiece url_prefix() const { return url_prefix_; }
+  HTTPCache* http_cache() { return &http_cache_; }
+  MessageHandler* message_handler() { return &message_handler_; }
+
+  // TODO(jmarantz): These abstractions are not satisfactory long-term
+  // where we want to have driver-lifetime in tests be reflective of
+  // how servers work.  But for now we use these accessors.
+  RewriteDriver* rewrite_driver() { return &rewrite_driver_; }
+  RewriteDriver* other_rewrite_driver() { return &other_rewrite_driver_; }
+
+  bool ReadFile(const char* filename, GoogleString* contents) {
+    return file_system_.ReadFile(filename, contents, &message_handler_);
+  }
+  bool WriteFile(const char* filename, const StringPiece& contents) {
+    return file_system_.WriteFile(filename, contents, &message_handler_);
+  }
+
+  ResourceManager* resource_manager() { return resource_manager_; }
+  CountingUrlAsyncFetcher* counting_url_async_fetcher() {
+    return &counting_url_async_fetcher_;
+  }
+
+  void SetMockHashValue(const GoogleString& value) {
+    mock_hasher_.set_hash_value(value);
+  }
+
+ private:
   MockUrlFetcher mock_url_fetcher_;
   FakeUrlAsyncFetcher mock_url_async_fetcher_;
   CountingUrlAsyncFetcher counting_url_async_fetcher_;
@@ -228,8 +286,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   ResourceManager other_resource_manager_;
   RewriteOptions* other_options_;  // owned by other_rewrite_driver_.
   RewriteDriver other_rewrite_driver_;
-
- private:
   WaitUrlAsyncFetcher wait_url_async_fetcher_;
 };
 

@@ -26,7 +26,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -101,7 +100,7 @@ TEST_F(JavascriptFilterTest, DoRewrite) {
 // Temporarily test one path using the async model.
 // TODO(jmarantz): remove this method and convert everything to async.
 TEST_F(JavascriptFilterTest, DoAsyncRewrite) {
-  rewrite_driver_.SetAsynchronousRewrites(true);
+  rewrite_driver()->SetAsynchronousRewrites(true);
   InitTest(100);
   ValidateExpected("do_rewrite",
                    GenerateHtml(kOrigJsName),
@@ -130,9 +129,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
 
   // Finally, serve from a completely separate server.
   ServeResourceFromManyContexts(expected_rewritten_path_,
-                                RewriteOptions::kRewriteJavascript,
-                                &mock_hasher_,
-                                kJsMinData);
+                                RewriteOptions::kRewriteJavascript, kJsMinData);
 }
 
 TEST_F(JavascriptFilterTest, InvalidInputMimetype) {

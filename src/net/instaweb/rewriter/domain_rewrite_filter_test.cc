@@ -21,7 +21,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -54,7 +53,7 @@ class DomainRewriteFilterTest : public ResourceManagerTestBase {
     lawyer->AddShard(kTo2Domain, StrCat(kTo2ADomain, ",", kTo2BDomain),
                      &message_handler_);
     AddFilter(RewriteOptions::kRewriteDomains);
-    domain_rewrites_ = statistics_->GetVariable("domain_rewrites");
+    domain_rewrites_ = statistics()->GetVariable("domain_rewrites");
     prev_num_rewrites_ = 0;
   }
 
