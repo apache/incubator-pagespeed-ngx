@@ -180,6 +180,19 @@ bool HasPrefixString(const StringPiece& str, const StringPiece& prefix) {
           (str.substr(0, prefix.size()) == prefix));
 }
 
+// In-place StringPiece whitespace trimming.  This mutates the StringPiece.
+void TrimWhitespace(StringPiece* str) {
+  while (str->size() && isspace(str->data()[0])) {
+    str->remove_prefix(1);
+  }
+
+  int size = str->size();
+  while (size && isspace(str->data()[size - 1])) {
+    str->remove_suffix(1);
+    size = str->size();
+  }
+}
+
 // ----------------------------------------------------------------------
 // GlobalReplaceSubstring()
 //    Replaces all instances of a substring in a string.  Returns the

@@ -359,4 +359,54 @@ TEST_F(ResponseHeadersTest, TestUpdateFrom) {
   EXPECT_EQ(expected_merged_header_string, actual_merged_header_string);
 }
 
+//Make sure resources that vary user-agent and cookie don't get cached.
+TEST_F(ResponseHeadersTest, TestCachingVary) {
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Cache-control: public, max-age=300\r\n"
+               "Vary: User-Agent\r\n\r\n\r\n");
+
+  EXPECT_FALSE(response_headers_.IsCacheable());
+}
+
+TEST_F(ResponseHeadersTest, TestCachingVaryCookie) {
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Cache-control: public, max-age=300\r\n"
+               "Vary: Cookie\t\r\n\r\n\r\n");
+  EXPECT_FALSE(response_headers_.IsCacheable());
+}
+
+TEST_F(ResponseHeadersTest, TestCachingVaryBoth) {
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Cache-control: public, max-age=300\r\n"
+               "Vary: Accept-Encoding, Cookie\r\n\r\n\r\n");
+  EXPECT_FALSE(response_headers_.IsCacheable());
+}
+
+TEST_F(ResponseHeadersTest, TestCachingVaryStar) {
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Cache-control: public, max-age=300\r\n"
+               "Vary: *\r\n\r\n\r\n");
+  EXPECT_FALSE(response_headers_.IsCacheable());
+}
+
+TEST_F(ResponseHeadersTest, TestCachingVaryNegative) {
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Cache-control: public, max-age=300\r\n"
+               "Vary: Accept-Encoding\r\n\r\n\r\n");
+  EXPECT_TRUE(response_headers_.IsCacheable());
+}
+
+TEST_F(ResponseHeadersTest, TestCachingVarySpaces) {
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Cache-control: public, max-age=300\r\n"
+               "Vary: Accept-Encoding, ,\r\n\r\n\r\n");
+  EXPECT_TRUE(response_headers_.IsCacheable());
+}
+
 }  // namespace net_instaweb

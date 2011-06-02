@@ -166,6 +166,8 @@ inline void TrimWhitespace(const StringPiece& in, GoogleString* output) {
   TrimString(GoogleString(in.data(), in.size()), whitespace, output);
 }
 
+void TrimWhitespace(StringPiece* str);
+
 // Accumulates a decimal value from 'c' into *value.
 // Returns false and leaves *value unchanged if c is not a decimal digit.
 bool AccumulateDecimalValue(char c, int* value);

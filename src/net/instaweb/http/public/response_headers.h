@@ -140,6 +140,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
  private:
   friend class ResponseHeadersTest;
 
+  // Returns true if this resource is not cacheable because it has a
+  // Vary header we don't know how to cache around.
+  bool VariesUncacheable();
   bool cache_fields_dirty_;
 
   DISALLOW_COPY_AND_ASSIGN(ResponseHeaders);

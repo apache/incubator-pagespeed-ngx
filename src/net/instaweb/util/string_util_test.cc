@@ -349,6 +349,15 @@ TEST(ParseShellLikeStringTest, UnclosedQuoteAndBackslash) {
   EXPECT_EQ("a b", parts[0]);
 }
 
+class BasicUtilsTest : public testing::Test {
+};
+
+TEST(BasicUtilsTest, TrimWhitespaceTest) {
+  StringPiece test_piece("\t Mary had a little lamb.\n \r ");
+  TrimWhitespace(&test_piece);
+  EXPECT_EQ("Mary had a little lamb.", test_piece);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

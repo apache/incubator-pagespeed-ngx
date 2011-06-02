@@ -190,6 +190,25 @@ void ResponseHeaders::SetLastModified(int64 last_modified_ms) {
   }
 }
 
+bool ResponseHeaders::VariesUncacheable() {
+  StringStarVector values;
+  if (Lookup(HttpAttributes::kVary, &values)) {
+    for (int i = 0, n = values.size(); i < n; ++i) {
+      StringPieceVector vals_split;
+      SplitStringPieceToVector(*values[i], ",", &vals_split, true);
+      for (int j = 0, m = vals_split.size(); j < m; ++j) {
+        StringPiece val = vals_split[j];
+        TrimWhitespace(&val);
+        if (!val.empty() &&
+            !StringCaseEqual(HttpAttributes::kAcceptEncoding, val)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 void ResponseHeaders::ComputeCaching() {
   pagespeed::Resource resource;
   for (int i = 0, n = NumAttributes(); i < n; ++i) {
@@ -232,7 +251,7 @@ void ResponseHeaders::ComputeCaching() {
           resource, &freshness_lifetime_ms) && has_timestamp_ms();
   proto_->set_cacheable(!explicit_no_cache &&
                        (explicit_cacheable || likely_static) &&
-                       status_cacheable);
+                       status_cacheable && !VariesUncacheable());
 
   if (proto_->cacheable()) {
     // TODO(jmarantz): check "Age" resource and use that to reduce

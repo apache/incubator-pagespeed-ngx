@@ -75,7 +75,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
 	grep ModPagespeedStatistics $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_stop
-	./scripts/expectfail grep leaked_rewrite_drivers $(APACHE_LOG)
+	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
 
 apache_debug_rewrite_test : rewrite_test_prepare apache_install_conf apache_debug_restart
 	sleep 2
