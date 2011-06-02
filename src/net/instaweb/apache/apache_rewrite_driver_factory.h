@@ -64,9 +64,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   void set_fetcher_time_out_ms(int64 x) { fetcher_time_out_ms_ = x; }
   bool set_file_cache_path(const StringPiece& x);
 
-  // Returns true if the call to set_file_cache_path created the directory.
-  bool file_cache_path_created() const { return file_cache_path_created_; }
-
   void set_fetcher_proxy(const StringPiece& x) {
     x.CopyToString(&fetcher_proxy_);
   }
@@ -168,7 +165,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   int64 fetcher_time_out_ms_;
   int64 slurp_flush_limit_;
   std::string file_cache_path_;
-  bool file_cache_path_created_;
   std::string fetcher_proxy_;
   std::string version_;
   bool statistics_enabled_;

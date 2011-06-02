@@ -51,7 +51,6 @@ RewriteDriverFactory::RewriteDriverFactory()
       url_async_fetcher_(NULL),
       html_parse_(NULL),
       filename_prefix_(""),
-      filename_prefix_created_(false),
       force_caching_(false),
       slurp_read_only_(false),
       slurp_print_urls_(false),
@@ -191,7 +190,6 @@ bool RewriteDriverFactory::set_filename_prefix(StringPiece p) {
   p.CopyToString(&filename_prefix_);
   if (file_system()->IsDir(filename_prefix_.c_str(),
                            message_handler()).is_true()) {
-    filename_prefix_created_ = false;
     return true;
   }
 
@@ -201,7 +199,8 @@ bool RewriteDriverFactory::set_filename_prefix(StringPiece p) {
         "Directory does not exist and cannot be created");
     return false;
   }
-  filename_prefix_created_ = true;
+
+  AddCreatedDirectory(filename_prefix_);
   return true;
 }
 
@@ -367,6 +366,10 @@ ThreadSystem* RewriteDriverFactory::thread_system() {
     thread_system_.reset(DefaultThreadSystem());
   }
   return thread_system_.get();
+}
+
+void RewriteDriverFactory::AddCreatedDirectory(const GoogleString& dir) {
+  created_directories_.insert(dir);
 }
 
 }  // namespace net_instaweb

@@ -700,14 +700,37 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   }
 }
 
-// Gives permissions to given directory to the UID/GID Apache will morph to
-void give_apache_user_permissions(ApacheRewriteDriverFactory* factory,
-                                  const StringPiece& path) {
-  if (chown(path.as_string().c_str(), unixd_config.user_id,
+void give_dir_apache_user_permissions(ApacheRewriteDriverFactory* factory,
+                                      const GoogleString& path) {
+  // (Apache will not switch from current euid if it's not root --- see
+  //  http://httpd.apache.org/docs/2.2/mod/mpm_common.html#user).
+  if (geteuid() != 0) {
+    return;
+  }
+
+  // .user_id, .group_id default to -1 if they haven't been parsed yet.
+  if ((unixd_config.user_id == 0) ||
+      (unixd_config.user_id == static_cast<uid_t>(-1)) ||
+      (unixd_config.group_id == 0) ||
+      (unixd_config.group_id == static_cast<gid_t>(-1))) {
+    return;
+  }
+
+  if (chown(path.c_str(), unixd_config.user_id,
             unixd_config.group_id) != 0) {
     factory->message_handler()->Message(
         kError, "Unable to set proper ownership of %s (%s)",
-        path.as_string().c_str(), strerror(errno));
+        path.c_str(), strerror(errno));
+  }
+}
+
+// If we are running as root, hands over the ownership of data directories
+// we made to the eventual Apache uid/gid.
+void give_apache_user_permissions(ApacheRewriteDriverFactory* factory) {
+  const StringSet& created_dirs = factory->created_directories();
+  for (StringSet::iterator i = created_dirs.begin();
+       i != created_dirs.end(); ++i) {
+    give_dir_apache_user_permissions(factory, *i);
   }
 }
 
@@ -744,21 +767,6 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
         factory->message_handler()->Message(kError, "%s", buf.c_str());
         return HTTP_INTERNAL_SERVER_ERROR;
       }
-
-      // If we are running as root, hand over the ownership of data directories
-      // we made to the eventual Apache uid/gid.
-      // (Apache will not switch from current euid otherwise --- see
-      //  http://httpd.apache.org/docs/2.2/mod/mpm_common.html#user).
-      if (geteuid() == 0 &&
-          ((unixd_config.user_id != 0) || (unixd_config.group_id != 0))) {
-        if (factory->filename_prefix_created()) {
-          give_apache_user_permissions(factory, factory->filename_prefix());
-        }
-
-        if (factory->file_cache_path_created()) {
-          give_apache_user_permissions(factory, factory->file_cache_path());
-        }
-      }
     }
 
     // See if we need a statistics object. We may need that even when
@@ -766,6 +774,15 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
     if (factory->statistics_enabled() && (statistics == NULL)) {
       statistics = apache_process_context.InitStatistics(factory);
     }
+
+    // chown any directories we created. We may have to do it here in
+    // post_config since we may not have our user/group yet during parse
+    // (example: Fedora 11).
+    //
+    // We also have to do it during the parse, however, since if we're started
+    // to /just/ check the config with -t (as opposed to doing it as a
+    // preliminary for a proper startup) we won't get a post_config!
+    give_apache_user_permissions(factory);
   }
   // Next we do the instance-independent static initialization, once we have
   // established whether *any* of the servers have stats enabled.
@@ -995,7 +1012,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
         cmd, &ApacheRewriteDriverFactory::set_file_cache_clean_interval_ms,
         arg);
   } else if (StringCaseEqual(directive, kModPagespeedFileCachePath)) {
-    if (!factory->set_file_cache_path(arg)) {
+    if (factory->set_file_cache_path(arg)) {
+      give_apache_user_permissions(factory);
+    } else {
       ret = apr_pstrcat(cmd->pool, "Directory ", arg,
                         " does not exist and can't be created.", NULL);
     }
@@ -1006,7 +1025,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
         cmd, &ApacheRewriteDriverFactory::set_force_caching, arg);
   } else if (StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix)) {
-    if (!factory->set_filename_prefix(arg)) {
+    if (factory->set_filename_prefix(arg)) {
+      give_apache_user_permissions(factory);
+    } else {
       ret = apr_pstrcat(cmd->pool, "Directory ", arg,
                         " does not exist and can't be created.", NULL);
     }

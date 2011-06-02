@@ -19,9 +19,9 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -102,10 +102,6 @@ class RewriteDriverFactory {
   // Determines whether Slurping is enabled.
   bool slurping_enabled() const { return !slurp_directory_.empty(); }
 
-  // Returns whether the last call to set_filename_prefix made the directory
-  // itself.
-  bool filename_prefix_created() const { return filename_prefix_created_; }
-
   RewriteOptions* options();
   MessageHandler* html_parse_message_handler();
   MessageHandler* message_handler();
@@ -138,6 +134,12 @@ class RewriteDriverFactory {
   virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
 
   ThreadSystem* thread_system();
+
+  // Returns the set of directories that we (our our subclasses) have created
+  // thus far.
+  const StringSet& created_directories() const {
+    return created_directories_;
+  }
 
  protected:
   bool FetchersComputed() const;
@@ -182,6 +184,9 @@ class RewriteDriverFactory {
   // filename_prefix()
   virtual StringPiece LockFilePrefix();
 
+  // Registers the directory as having been created by us.
+  void AddCreatedDirectory(const GoogleString& dir);
+
  private:
   void SetupSlurpDirectories();
 
@@ -199,7 +204,6 @@ class RewriteDriverFactory {
   HtmlParse* html_parse_;
 
   GoogleString filename_prefix_;
-  bool filename_prefix_created_;
   GoogleString slurp_directory_;
   bool force_caching_;
   bool slurp_read_only_;
@@ -230,6 +234,8 @@ class RewriteDriverFactory {
 
   // Default statistics implementation, which can be overridden by children.
   NullStatistics null_statistics_;
+
+  StringSet created_directories_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };
