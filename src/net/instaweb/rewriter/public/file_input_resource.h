@@ -31,6 +31,7 @@ namespace net_instaweb {
 struct ContentType;
 class MessageHandler;
 class ResourceManager;
+class ResponseHeaders;
 class RewriteOptions;
 
 class FileInputResource : public Resource {
@@ -54,6 +55,9 @@ class FileInputResource : public Resource {
   virtual GoogleString url() const { return url_; }
 
  protected:
+  void SetDefaultHeaders(const ContentType* content_type,
+                         ResponseHeaders* header, MessageHandler* handler);
+
   virtual bool Load(MessageHandler* message_handler);
   // Uses default, blocking LoadAndCallback implementation.
 

@@ -330,7 +330,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   const char kResourceContents2[] = "body { background: blue; }";
   ResponseHeaders resource_headers;
   // This sets 1 year cache lifetime :/ TODO(sligocki): Shorten this.
-  SetDefaultHeaders(&kContentTypeCss, &resource_headers);
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &resource_headers);
 
   // Set the fetch value.
   SetFetchResponse(resource_url, resource_headers, kResourceContents1);

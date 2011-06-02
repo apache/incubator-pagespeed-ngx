@@ -89,7 +89,7 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
 
     // Put original Javascript file into our fetcher.
     ResponseHeaders default_js_header;
-    SetDefaultHeaders(&kContentTypeJavascript, &default_js_header);
+    SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_js_header);
     SetFetchResponse(js_url, default_js_header, js_outline_body);
 
     // Rewrite the HTML page.

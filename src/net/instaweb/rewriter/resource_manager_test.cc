@@ -541,7 +541,7 @@ TEST_F(ResourceManagerTest, TestInputResourceQuery) {
 TEST_F(ResourceManagerTest, TestRemember404) {
   // Make sure our resources remember that a page 404'd
   ResponseHeaders not_found;
-  SetDefaultHeaders(&kContentTypeHtml, &not_found);
+  SetDefaultLongCacheHeaders(&kContentTypeHtml, &not_found);
   not_found.SetStatusAndReason(HttpStatus::kNotFound);
   SetFetchResponse("http://example.com/404", not_found, "");
 
@@ -562,7 +562,7 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
   // Make sure that when we get non-cacheable resources
   // we mark the fetch as failed in the cache.
   ResponseHeaders no_cache;
-  SetDefaultHeaders(&kContentTypeHtml, &no_cache);
+  SetDefaultLongCacheHeaders(&kContentTypeHtml, &no_cache);
   no_cache.Replace(HttpAttributes::kCacheControl, "no-cache");
   no_cache.ComputeCaching();
   SetFetchResponse("http://example.com/", no_cache, kContents);
@@ -732,7 +732,7 @@ class ResourceFreshenTest : public ResourceManagerTest {
     HTTPCache::Initialize(statistics());
     expirations_ = statistics()->GetVariable(HTTPCache::kCacheExpirations);
     CHECK(expirations_ != NULL);
-    SetDefaultHeaders(&kContentTypePng, &response_headers_);
+    SetDefaultLongCacheHeaders(&kContentTypePng, &response_headers_);
     response_headers_.SetStatusAndReason(HttpStatus::kOK);
     response_headers_.RemoveAll(HttpAttributes::kCacheControl);
     response_headers_.RemoveAll(HttpAttributes::kExpires);

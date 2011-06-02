@@ -194,9 +194,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   }
 
 
-  void SetDefaultHeaders(const ContentType* content_type,
-                         ResponseHeaders* header) {
-    resource_manager_->SetDefaultHeaders(content_type, header);
+  void SetDefaultLongCacheHeaders(const ContentType* content_type,
+                                  ResponseHeaders* header) {
+    resource_manager_->SetDefaultLongCacheHeaders(content_type, header);
   }
 
   void SetFetchResponse(const StringPiece& url,
