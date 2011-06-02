@@ -37,7 +37,9 @@ class MessageHandler;
 class MemFileSystem : public FileSystem {
  public:
   MemFileSystem() : enabled_(true), timer_(0), temp_file_index_(0),
-                    atime_enabled_(true)  {}
+                    atime_enabled_(true) {
+    ClearStats();
+  }
   virtual ~MemFileSystem();
 
   // We offer a "simulated atime" in which the clock ticks forward one
@@ -84,8 +86,19 @@ class MemFileSystem : public FileSystem {
   // Accessor for timer.  Timer is owned by mem_file_system.
   MockTimer* timer() { return &timer_; }
 
+  // Access statistics.
+  void ClearStats() {
+    num_input_file_opens_ = 0;
+    num_output_file_opens_ = 0;
+    num_temp_file_opens_ = 0;
+  }
+  int num_input_file_opens() const { return num_input_file_opens_; }
+  int num_output_file_opens() const { return num_output_file_opens_; }
+  int num_temp_file_opens() const { return num_temp_file_opens_; }
+
  private:
   inline void UpdateAtime(const StringPiece& path);
+
   bool enabled_;  // When disabled, OpenInputFile returns NULL.
   StringStringMap string_map_;
   MockTimer timer_;
@@ -98,6 +111,12 @@ class MemFileSystem : public FileSystem {
   // locking and unlocking don't advance time.
   std::map<GoogleString, int64> lock_map_;
   bool atime_enabled_;
+
+  // Access statistics.
+  int num_input_file_opens_;
+  int num_output_file_opens_;
+  int num_temp_file_opens_;
+
   DISALLOW_COPY_AND_ASSIGN(MemFileSystem);
 };
 

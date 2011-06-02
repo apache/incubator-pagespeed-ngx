@@ -140,8 +140,8 @@ class UpperCaseRewriter : public SimpleTextFilter::Rewriter {
 // be rewritten.
 class NestedFilter : public RewriteFilter {
  public:
-  explicit NestedFilter(RewriteDriver* driver) : RewriteFilter(
-      driver, kUpperCaseFilterId) {}
+  explicit NestedFilter(RewriteDriver* driver)
+      : RewriteFilter(driver, kUpperCaseFilterId) {}
 
  protected:
   virtual ~NestedFilter() {}
@@ -345,6 +345,7 @@ class RewriteContextTest : public ResourceManagerTestBase {
   void ClearStats() {
     lru_cache()->ClearStats();
     counting_url_async_fetcher()->Clear();
+    file_system()->ClearStats();
   }
 };
 
@@ -377,7 +378,7 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
-TEST_F(RewriteContextTest, TrimOnTheFlyUnOptimizable) {
+TEST_F(RewriteContextTest, TrimOnTheFlyNonOptimizable) {
   InitTrimFilters(kOnTheFlyResource);
   InitResources();
 
@@ -716,6 +717,79 @@ TEST_F(RewriteContextTest, Nested) {
   ValidateExpected(
       "trimmable2", CssLink("c.css"),
       CssLink("http://test.com/c.css.pagespeed.nf.WTYjEzrEWX.css"));
+}
+
+// Test that rewriting works correctly when input resource is loaded from disk.
+
+TEST_F(RewriteContextTest, LoadFromFileOnTheFly) {
+  options()->file_load_policy()->Associate("http://test.com/", "/test/");
+  InitTrimFilters(kOnTheFlyResource);
+
+  // Init file resources.
+  WriteFile("/test/a.css", " foo b ar ");
+
+  // The first rewrite was successful because we block for reading from
+  // filesystem, not because we did any cache lookups.
+  ClearStats();
+  ValidateExpected("trimmable", CssLink("a.css"),
+                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  // 2 cache misses: one for the OutputPartitions, one for the input resource.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  // 1 cache insertion: resource mapping (OutputPartition).
+  // Output resource not stored in cache (because it's an on-the-fly resource).
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+  // No fetches because it's loaded from file.
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, file_system()->num_input_file_opens());
+
+  // The second cache time we request this URL, we should find no additional
+  // cache inserts or fetches.  The rewrite should complete using a single
+  // cache hit for the metadata.  No cache misses will occur.
+  ClearStats();
+  ValidateExpected("trimmable", CssLink("a.css"),
+                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
+  // Note: We do not load the resource again until the fetch.
+}
+
+TEST_F(RewriteContextTest, LoadFromFileRewritten) {
+  options()->file_load_policy()->Associate("http://test.com/", "/test/");
+  InitTrimFilters(kRewrittenResource);
+
+  // Init file resources.
+  WriteFile("/test/a.css", " foo b ar ");
+
+  // The first rewrite was successful because we block for reading from
+  // filesystem, not because we did any cache lookups.
+  ClearStats();
+  ValidateExpected("trimmable", CssLink("a.css"),
+                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  // 2 cache misses: one for the OutputPartitions, one for the input resource.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  // 2 cache insertion: resource mapping (OutputPartition) and output resource.
+  EXPECT_EQ(2, lru_cache()->num_inserts());
+  // No fetches because it's loaded from file.
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, file_system()->num_input_file_opens());
+
+  // The second cache time we request this URL, we should find no additional
+  // cache inserts or fetches.  The rewrite should complete using a single
+  // cache hit for the metadata.  No cache misses will occur.
+  ClearStats();
+  ValidateExpected("trimmable", CssLink("a.css"),
+                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
+  // Note: We do not load the resource again until the fetch.
 }
 
 }  // namespace net_instaweb

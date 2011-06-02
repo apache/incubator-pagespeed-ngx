@@ -139,6 +139,7 @@ bool MemFileSystem::MakeDir(const char* path, MessageHandler* handler) {
 
 FileSystem::InputFile* MemFileSystem::OpenInputFile(
     const char* filename, MessageHandler* message_handler) {
+  ++num_input_file_opens_;
   if (!enabled_) {
     return NULL;
   }
@@ -157,6 +158,7 @@ FileSystem::InputFile* MemFileSystem::OpenInputFile(
 FileSystem::OutputFile* MemFileSystem::OpenOutputFileHelper(
     const char* filename, MessageHandler* message_handler) {
   UpdateAtime(filename);
+  ++num_output_file_opens_;
   return new MemOutputFile(filename, &(string_map_[filename]));
 }
 
@@ -164,6 +166,7 @@ FileSystem::OutputFile* MemFileSystem::OpenTempFileHelper(
     const StringPiece& prefix, MessageHandler* message_handler) {
   GoogleString filename = StringPrintf("tmpfile%d", temp_file_index_++);
   UpdateAtime(filename);
+  ++num_temp_file_opens_;
   return new MemOutputFile(filename, &string_map_[filename]);
 }
 
