@@ -45,6 +45,9 @@ ModPagespeedEnableFilters add_instrumentation
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/" >
     AllowOverride All
+    # Some versions of mod_rewrite will refuse to do any work if
+    # symlink handling is off.
+    Options +SymLinksIfOwnerMatch
 </Directory>
 
 # This is needed for the server-side includes test at the end of

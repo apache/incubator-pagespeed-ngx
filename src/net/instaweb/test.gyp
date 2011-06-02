@@ -98,6 +98,7 @@
         'rewriter/js_combine_filter_test.cc',
         'rewriter/js_inline_filter_test.cc',
         'rewriter/js_outline_filter_test.cc',
+        'rewriter/mem_clean_up.cc',
         'rewriter/mock_resource_callback.cc',
         'rewriter/remove_comments_filter_test.cc',
         'rewriter/resource_combiner_test.cc',
@@ -130,6 +131,7 @@
         'util/gzip_inflater_test.cc',
         'util/lru_cache_test.cc',
         'util/md5_hasher_test.cc',
+        'util/mem_debug.cc',
         'util/mem_file_system_test.cc',
         'util/message_handler_test.cc',
         'util/mock_message_handler_test.cc',
@@ -193,11 +195,12 @@
         '<(DEPTH)',
       ],
       'sources': [
-        "apache/mem_clean_up.cc",
         'apache/apr_condvar_test.cc',
         'apache/apr_file_system_test.cc',
         'apache/speed_test.cc',
         'apache/serf_url_async_fetcher_test.cc',
+        'rewriter/mem_clean_up.cc',
+        'util/mem_debug.cc',
       ],
     },
     {
@@ -218,7 +221,6 @@
         '<(DEPTH)',
       ],
       'sources': [
-        'apache/mem_debug.cc',
         'htmlparse/html_parse_test_base.cc',
         'http/mock_url_fetcher.cc',
         'rewriter/resource_manager_test_base.cc',
