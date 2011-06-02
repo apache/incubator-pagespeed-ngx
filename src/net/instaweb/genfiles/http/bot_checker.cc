@@ -45,7 +45,7 @@ namespace net_instaweb {
 
 #define TOTAL_KEYWORDS 63
 #define MIN_WORD_LENGTH 4
-#define MAX_WORD_LENGTH 53
+#define MAX_WORD_LENGTH 23
 #define MIN_HASH_VALUE 4
 #define MAX_HASH_VALUE 66
 /* maximum key range = 63, duplicates = 0 */
@@ -69,12 +69,12 @@ RobotDetect::hash (register const char *str, register unsigned int len)
       67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
       67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
       67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 39, 13,  3, 43, 20, 24,
-      36, 15, 67, 16,  0, 32, 57, 31, 15, 18,
-      48, 67, 17, 11, 33, 67, 21, 31, 67,  8,
+      67, 67, 67, 67, 39, 13,  3, 44, 20, 24,
+      35, 15, 67, 17,  0, 25, 56, 31, 20, 23,
+      47, 67, 18, 12, 31, 67, 21, 30, 67,  9,
       67, 67, 67, 67, 67, 67, 67,  1,  0, 67,
-      16, 20, 67, 41,  1, 12, 67, 67, 13, 67,
-      19,  0,  6, 67, 16, 17,  0, 17,  1, 18,
+      16, 21, 67, 42,  1, 13, 67, 67, 14, 67,
+      14,  0,  7, 67, 16, 17,  0, 17,  1, 18,
       67,  0, 67, 67, 67, 67, 67, 67, 67, 67,
       67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
       67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
@@ -107,6 +107,7 @@ static const char * const wordlist[] =
     "BoxSeaBot",
     "BaySpider",
     "about.ask.com",
+    "Baiduspider",
     "Yahoo!",
     "YodaoBot",
     "Solbot",
@@ -115,31 +116,31 @@ static const char * const wordlist[] =
     "iajaBot",
     "BSpider",
     "Robot",
-    "Spider",
     "Googlebot",
+    "Spider",
     "Roverbot",
-    "SpiderBot",
     "JubiiRobot",
+    "SpiderBot",
     "psbot",
-    "SimBot",
     "Googlebot-Image",
+    "SimBot",
     "ASpider",
     "uptimebot",
     "spiderline",
     "Gigabot",
-    "RixBot",
     "AraybOt",
+    "RixBot",
     "AlkalineBOT",
     "dlw3robot",
     "AITCSRobot",
     "dienstspider",
-    "DNAbot",
+    "InfoSpiders",
     "DIIbot",
-    "NDSpider",
     "ArchitextSpider",
     "DragonBot",
-    "InfoSpiders",
+    "DNAbot",
     "OntoSpider",
+    "NDSpider",
     "MSNBOT",
     "ESISmartSpider",
     "CoolBot",
@@ -149,14 +150,13 @@ static const char * const wordlist[] =
     "Verticrawlbot",
     "CydralSpider",
     "Confuzzledbot",
-    "Baiduspider+(+http://www.baidu.com/search/spider.htm)",
-    "MOMspider",
     "VWbot_K",
     "TechBOT",
     "PortalBSpider",
     "Lycos",
-    "EIT-Link-Verifier-Robot",
     "KO_Yappo_Robot",
+    "MOMspider",
+    "EIT-Link-Verifier-Robot",
     "Fish-Search-Robot",
     "w@pSpider"
   };
@@ -188,7 +188,7 @@ bool BotChecker::Lookup(const StringPiece& user_agent) {
     return true;
   }
   // get the application_name/domain_name/email
-  const char separator[] = " /;";
+  const char separator[] = " /;+";
   std::vector<StringPiece> names;
   SplitStringPieceToVector(user_agent, separator, &names, true);
   for (int i = 0, n = names.size(); i < n; ++i) {

@@ -21,6 +21,7 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -100,7 +101,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
   // Disable extend_cache for img is ModPagespeedDisableForBots is on
   // and the user-agent is a bot.
   if (element->keyword() == HtmlName::kImg &&
-      driver_->RewriteImages()) {
+      driver_->CanRewriteImages()) {
     return;
   }
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);

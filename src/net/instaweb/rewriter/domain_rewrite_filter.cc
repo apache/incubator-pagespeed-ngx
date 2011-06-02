@@ -17,8 +17,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
-
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
@@ -57,7 +57,7 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
   // Disable domain_rewrite for img is ModPagespeedDisableForBots is on
   // and the user-agent is a bot.
   if (element->keyword() == HtmlName::kImg &&
-      driver_->RewriteImages()) {
+      driver_->CanRewriteImages()) {
     return;
   }
   HtmlElement::Attribute* attr = tag_scanner_.ScanElement(element);
