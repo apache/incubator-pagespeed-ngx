@@ -340,7 +340,7 @@ test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
 echo Test: ModPagespeedDisableForBots is on and user-agent is a bot.
 BOT="Googlebot/2.1"
-PARAM="&ModPagespeedDisableForBots=on"
+PARAM="\&ModPagespeedDisableForBots=on"
 fetch_fail $URL$PARAM 'grep -c src.*91_WewrLtP' 1 $BOT
 
 
@@ -427,7 +427,7 @@ check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
 # no matter what user-agent is.
 echo TEST: User-agent is a bot, ModPagespeedDisableForBots is off by default
 BOT="Googlebot/2.1"
-PARAM="&ModPagespeedDisableForBots=on"
+PARAM="\&ModPagespeedDisableForBots=on"
 HTML_HEADERS=$($WGET_DUMP -U $BOT $EXAMPLE_ROOT/combine_css.html)
 echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
 check [ $? = 0 ]
@@ -446,7 +446,7 @@ check [ $? = 0 ]
 rm $OUTDIR/*pagespeed*
 URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
 fetch_until $URL$PARAM 'grep -c image/png' 1                 # inlined
-check $WGET_PREREQ '$URL$PARAM'
+check $WGET_PREREQ $URL$PARAM
 check [ `stat -c %s $OUTDIR/xBikeCrashIcn*` -lt 25000 ]      # re-encoded
 check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
 
@@ -457,7 +457,7 @@ echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
 check [ $? = 0 ]
 URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
 fetch_fail $URL$PARAM 'grep -c image/png' 1 $BOT           # not inlined
-check $WGET_PREREQ -U $BOT '$URL$PARAM'
+check $WGET_PREREQ -U $BOT $URL$PARAM
 check [ `stat -c %s $OUTDIR/BikeCrashIcn*` -gt 25000 ]      # not re-encoded
 check [ `stat -c %s $OUTDIR/Puzzle*`  -gt 24126  ]          # not resized
 

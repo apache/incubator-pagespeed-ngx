@@ -91,13 +91,10 @@ class ResourceManager {
   // Initialize statistics gathering.
   static void Initialize(Statistics* statistics);
 
-  // Set time and cache headers with long TTL (including Date, Last-Modified,
-  // Cache-Control, Etags, Expires).
-  //
-  // Also sets Content-Type headers if content_type is provided.
-  // If content_type is null, the Content-Type header is omitted.
-  void SetDefaultLongCacheHeaders(const ContentType* content_type,
-                                  ResponseHeaders* header) const;
+  // Set up a basic header for a given content_type.
+  // If content_type is null, the Content-Type is omitted.
+  void SetDefaultHeaders(const ContentType* content_type,
+                         ResponseHeaders* header) const;
 
   // Changes the content type of a pre-initialized header.
   void SetContentType(const ContentType* content_type, ResponseHeaders* header);

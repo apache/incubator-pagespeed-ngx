@@ -105,7 +105,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
     // Put original CSS files into our fetcher.
     ResponseHeaders default_css_header;
-    SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+    SetDefaultHeaders(&kContentTypeCss, &default_css_header);
     SetFetchResponse(a_css_url, default_css_header, a_css_body);
     SetFetchResponse(b_css_url, default_css_header, b_css_body);
     SetFetchResponse(c_css_url, default_css_header, c_css_body);
@@ -202,7 +202,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
     // Put original CSS files into our fetcher.
     ResponseHeaders default_css_header;
-    SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+    SetDefaultHeaders(&kContentTypeCss, &default_css_header);
     SetFetchResponse(a_css_url, default_css_header, a_css_body);
     SetFetchResponse(c_css_url, default_css_header, c_css_body);
 
@@ -433,7 +433,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     GoogleString b_css_url = StrCat(kTestDomain, "b.css");
 
     ResponseHeaders default_css_header;
-    SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+    SetDefaultHeaders(&kContentTypeCss, &default_css_header);
     SetFetchResponse(a_css_url, default_css_header, "A");
     SetFetchResponse(b_css_url, default_css_header, "B");
 
@@ -481,7 +481,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
 
     ResponseHeaders default_css_header;
-    SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+    SetDefaultHeaders(&kContentTypeCss, &default_css_header);
     SetFetchResponse(a_css_url, default_css_header, a_css_body);
     SetFetchResponse(b_css_url, default_css_header, b_css_body);
     SetFetchResponse(c_css_url, default_css_header, c_css_body);
@@ -545,9 +545,11 @@ TEST_F(CssCombineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
 
   // Put original CSS files into our fetcher.
   ResponseHeaders default_css_header;
-  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
-  SetFetchResponse(StrCat(kTestDomain, "a.css"), default_css_header, ".a {}");
-  SetFetchResponse(StrCat(kTestDomain, "b.css"), default_css_header, ".b {}");
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(StrCat(kTestDomain, "a.css"),
+                                default_css_header, ".a {}");
+  SetFetchResponse(StrCat(kTestDomain, "b.css"),
+                                default_css_header, ".b {}");
   ValidateExpected("claims_xhtml_but_has_unclosed_links",
                    StringPrintf(html_format, kXhtmlDtd, unclosed_links),
                    StringPrintf(html_format, kXhtmlDtd, combination));
@@ -606,7 +608,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
   GoogleString d_css_url = StrCat(kDomain, "d.css");
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
   ResponseHeaders default_css_header;
-  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   SetFetchResponse(d_css_url, default_css_header, d_css_body);
 
   UseMd5Hasher();
@@ -629,7 +631,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
   GoogleString d_css_url = StrCat(kDomain, "d.css");
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
   ResponseHeaders default_css_header;
-  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   SetFetchResponse(d_css_url, default_css_header, d_css_body);
 
   UseMd5Hasher();
@@ -650,7 +652,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
 
   ResponseHeaders default_css_header;
-  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   SetFetchResponse(a_css_url, default_css_header, a_css_body);
   SetFetchResponse(b_css_url, default_css_header, b_css_body);
   SetFetchResponse(c_css_url, default_css_header, c_css_body);
@@ -795,7 +797,7 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
 TEST_F(CssCombineFilterTest, CombineCssNoInput) {
   SetFetchFailOnUnexpected(false);
   ResponseHeaders default_css_header;
-  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   SetFetchResponse(StrCat(kTestDomain, "b.css"),
                    default_css_header, ".a {}");
   static const char html_input[] =
@@ -1008,7 +1010,7 @@ TEST_F(CssCombineFilterTest, CrossMappedDomain) {
   css_in.Add("http://a.com/1.css", kYellow, "", supply_mock);
   css_in.Add("http://b.com/2.css", kBlue, "", supply_mock);
   ResponseHeaders default_css_header;
-  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   SetFetchResponse("http://a.com/1.css", default_css_header,
                                 kYellow);
   SetFetchResponse("http://b.com/2.css", default_css_header,
@@ -1035,7 +1037,7 @@ TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
   css_in.Add(kUrl1, kYellow, "", supply_mock);
   css_in.Add(kUrl2, kBlue, "", supply_mock);
   ResponseHeaders default_css_header;
-  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
   SetFetchResponse(kUrl1, default_css_header, kYellow);
   SetFetchResponse(kUrl2, default_css_header, kBlue);
   BarrierTestHelper("combine_css_with_style", css_in, &css_out);

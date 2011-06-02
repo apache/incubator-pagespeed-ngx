@@ -122,7 +122,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     UseMd5Hasher();
-    SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_js_header_);
+    SetDefaultHeaders(&kContentTypeJavascript, &default_js_header_);
     SimulateJsResource(kJsUrl1, kJsText1);
     SimulateJsResource(kJsUrl2, kJsText2);
     SimulateJsResource(kJsUrl3, kJsText3);

@@ -49,7 +49,7 @@ class CssInlineFilterTest : public ResourceManagerTestBase {
 
     // Put original CSS file into our fetcher.
     ResponseHeaders default_css_header;
-    SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+    SetDefaultHeaders(&kContentTypeCss, &default_css_header);
     SetFetchResponse(css_url, default_css_header, css_original_body);
 
     // Rewrite the HTML page.
@@ -160,8 +160,9 @@ TEST_F(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
 
   // Put original CSS files into our fetcher.
   ResponseHeaders default_css_header;
-  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
-  SetFetchResponse(StrCat(kTestDomain, "a.css"), default_css_header, ".a {}");
+  SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(StrCat(kTestDomain, "a.css"),
+                                default_css_header, ".a {}");
   AddFilter(RewriteOptions::kInlineCss);
   ValidateExpected("claims_xhtml_but_has_unclosed_links",
                    StringPrintf(html_format, kXhtmlDtd, unclosed_css),

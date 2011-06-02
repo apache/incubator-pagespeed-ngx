@@ -253,7 +253,7 @@ class RewriteSingleResourceFilterTest
   // Creates a resource that 404s
   void MockMissingResource(const char* rel_path) {
     ResponseHeaders response_headers;
-    SetDefaultLongCacheHeaders(&kContentTypeText, &response_headers);
+    SetDefaultHeaders(&kContentTypeText, &response_headers);
     response_headers.SetStatusAndReason(HttpStatus::kNotFound);
     SetFetchResponse(
         StrCat(kTestDomain, rel_path), response_headers, StringPiece());
@@ -631,7 +631,7 @@ TEST_P(RewriteSingleResourceFilterTest, FetchInvalidResourceName) {
 
 TEST_P(RewriteSingleResourceFilterTest, FetchBadStatus) {
   ResponseHeaders response_headers;
-  SetDefaultLongCacheHeaders(&kContentTypeText, &response_headers);
+  SetDefaultHeaders(&kContentTypeText, &response_headers);
   response_headers.SetStatusAndReason(HttpStatus::kFound);
   SetFetchResponse(
       StrCat(kTestDomain, "redirect"), response_headers, StringPiece());
@@ -639,7 +639,7 @@ TEST_P(RewriteSingleResourceFilterTest, FetchBadStatus) {
   ValidateNoChanges("redirected_resource", "<tag src=\"/redirect\"></tag>");
 
   ResponseHeaders response_headers2;
-  SetDefaultLongCacheHeaders(&kContentTypeText, &response_headers2);
+  SetDefaultHeaders(&kContentTypeText, &response_headers2);
   response_headers2.SetStatusAndReason(HttpStatus::kImATeapot);
   SetFetchResponse(
       StrCat(kTestDomain, "pot-1"), response_headers2, StringPiece());

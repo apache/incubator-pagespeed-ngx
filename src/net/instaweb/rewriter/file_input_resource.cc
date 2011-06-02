@@ -18,11 +18,9 @@
 
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -32,33 +30,17 @@ class MessageHandler;
 FileInputResource::~FileInputResource() {
 }
 
-// TODO(sligocki): Is this reasonable? People might want custom headers.
-//
-// For example, Content-Type is set solely by file extension and will not
-// be set if the extension is unknown :/
-//
-// We also set no Date, Last-Modified, Cache-Control, etc. headers.
-void FileInputResource::SetDefaultHeaders(const ContentType* content_type,
-                                          ResponseHeaders* header,
-                                          MessageHandler* handler) {
-  header->set_major_version(1);
-  header->set_minor_version(1);
-  header->SetStatusAndReason(HttpStatus::kOK);
-  header->RemoveAll(HttpAttributes::kContentType);
-  if (content_type == NULL) {
-    handler->Message(kError, "Loaded resource with no Content-Type %s",
-                     url_.c_str());
-  } else {
-    header->Add(HttpAttributes::kContentType, content_type->mime_type());
-  }
-}
-
 // Note: We do not save this resource to the HttpCache, so it will be
 // reloaded for every request.
-bool FileInputResource::Load(MessageHandler* handler) {
+bool FileInputResource::Load(MessageHandler* message_handler) {
   FileSystem* file_system = resource_manager_->file_system();
-  if (file_system->ReadFile(filename_.c_str(), &value_, handler)) {
-    SetDefaultHeaders(type_, &response_headers_, handler);
+  if (file_system->ReadFile(filename_.c_str(), &value_, message_handler)) {
+    // TODO(sligocki): Is this reasonable? People might want custom headers.
+    // For example, Content-Type is set solely by file extension and will not
+    // be set if the extension is unknown :/
+    // Also, this sets a one year cache lifetime on the input resource.
+    // It's not clear that that matters, but it seems inappropriate.
+    resource_manager_->SetDefaultHeaders(type_, &response_headers_);
     value_.SetHeaders(&response_headers_);
   }
   return loaded();

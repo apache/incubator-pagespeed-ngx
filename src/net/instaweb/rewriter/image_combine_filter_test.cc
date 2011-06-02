@@ -136,7 +136,7 @@ TEST_F(CssImageCombineTest, NoCrashUnknownType) {
   // Make sure we don't crash trying to sprite an image with an unknown mimetype
 
   ResponseHeaders response_headers;
-  SetDefaultLongCacheHeaders(&kContentTypePng, &response_headers);
+  SetDefaultHeaders(&kContentTypePng, &response_headers);
   response_headers.Replace(HttpAttributes::kContentType, "image/x-bewq");
   response_headers.ComputeCaching();
   SetFetchResponse(StrCat(kTestDomain, "bar.bewq"),

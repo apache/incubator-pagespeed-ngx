@@ -307,11 +307,11 @@ class RewriteContextTest : public ResourceManagerTestBase {
 
   void InitResources() {
     ResponseHeaders default_css_header;
-    SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
-    // trimmable
-    SetFetchResponse("http://test.com/a.css", default_css_header, " a ");
-    // not trimmable
-    SetFetchResponse("http://test.com/b.css", default_css_header, "b");
+    SetDefaultHeaders(&kContentTypeCss, &default_css_header);
+    SetFetchResponse("http://test.com/a.css", default_css_header,
+                     " a ");  // trimmable
+    SetFetchResponse("http://test.com/b.css", default_css_header,
+                     "b");    // not trimmable
     SetFetchResponse("http://test.com/c.css", default_css_header,
                      "a.css\nb.css\n");
   }

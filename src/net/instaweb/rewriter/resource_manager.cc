@@ -172,8 +172,8 @@ void ResourceManager::Initialize(Statistics* statistics) {
 }
 
 // TODO(jmarantz): consider moving this method to ResponseHeaders
-void ResourceManager::SetDefaultLongCacheHeaders(
-    const ContentType* content_type, ResponseHeaders* header) const {
+void ResourceManager::SetDefaultHeaders(const ContentType* content_type,
+                                        ResponseHeaders* header) const {
   header->set_major_version(1);
   header->set_minor_version(1);
   header->SetStatusAndReason(HttpStatus::kOK);
@@ -238,7 +238,7 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
                             int64 origin_expire_time_ms,
                             MessageHandler* handler) {
   ResponseHeaders* meta_data = output->response_headers();
-  SetDefaultLongCacheHeaders(output->type(), meta_data);
+  SetDefaultHeaders(output->type(), meta_data);
   meta_data->SetStatusAndReason(status_code);
 
   // The URL for any resource we will write includes the hash of contents,
