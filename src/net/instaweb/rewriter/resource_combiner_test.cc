@@ -168,7 +168,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
   // Creates a resource that 404s
   void MockMissingResource(const char* rel_path) {
     ResponseHeaders response_headers;
-    SetDefaultHeaders(&kContentTypeText, &response_headers);
+    SetDefaultLongCacheHeaders(&kContentTypeText, &response_headers);
     response_headers.SetStatusAndReason(HttpStatus::kNotFound);
     SetFetchResponse(AbsoluteUrl(rel_path), response_headers,
                      StringPiece());

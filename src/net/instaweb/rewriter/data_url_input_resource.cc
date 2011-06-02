@@ -29,7 +29,8 @@ bool DataUrlInputResource::Load(MessageHandler* message_handler) {
   if (DecodeDataUrlContent(encoding_, encoded_contents_,
                            &decoded_contents_) &&
       value_.Write(decoded_contents_, message_handler)) {
-    resource_manager_->SetDefaultHeaders(type_, &response_headers_);
+    // TODO(sligocki): Should we be doing this?
+    resource_manager_->SetDefaultLongCacheHeaders(type_, &response_headers_);
     value_.SetHeaders(&response_headers_);
   }
   return loaded();

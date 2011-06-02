@@ -192,7 +192,7 @@ void ResourceManagerTestBase::AppendDefaultHeaders(
   int64 time = mock_timer()->NowUs();
   // Reset mock timer so synthetic headers match original.
   mock_timer()->set_time_us(0);
-  resource_manager_->SetDefaultHeaders(&content_type, &header);
+  resource_manager_->SetDefaultLongCacheHeaders(&content_type, &header);
   // Then set it back
   mock_timer()->set_time_us(time);
   StringWriter writer(text);
@@ -296,7 +296,8 @@ void ResourceManagerTestBase::InitResponseHeaders(
     name = StrCat(kTestDomain, resource_name);
   }
   ResponseHeaders response_headers;
-  resource_manager_->SetDefaultHeaders(&content_type, &response_headers);
+  resource_manager_->SetDefaultLongCacheHeaders(&content_type,
+                                                &response_headers);
   response_headers.RemoveAll(HttpAttributes::kCacheControl);
   response_headers.Add(HttpAttributes::kCacheControl,
                        StrCat("public, max-age=", Integer64ToString(ttl_sec)));
@@ -371,7 +372,7 @@ void ResourceManagerTestBase::TestServeFiles(
   // from the cache or the disk.  Start with the cache.
   file_system_.Disable();
   ResponseHeaders headers;
-  resource_manager_->SetDefaultHeaders(content_type, &headers);
+  resource_manager_->SetDefaultLongCacheHeaders(content_type, &headers);
   http_cache_.Put(expected_rewritten_path, &headers, rewritten_content,
                   &message_handler_);
   EXPECT_EQ(0U, lru_cache_->num_hits());
@@ -429,7 +430,7 @@ void ResourceManagerTestBase::WriteOutputResourceFile(
     const StringPiece& url, const ContentType* content_type,
     const StringPiece& rewritten_content) {
   ResponseHeaders headers;
-  resource_manager_->SetDefaultHeaders(content_type, &headers);
+  resource_manager_->SetDefaultLongCacheHeaders(content_type, &headers);
   GoogleString data = StrCat(headers.ToString(), rewritten_content);
   EXPECT_TRUE(file_system_.WriteFile(OutputResourceFilename(url).c_str(), data,
                                      &message_handler_));
