@@ -18,32 +18,45 @@
 
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
 namespace {
 
-class WaitUrlAsyncFetcherTest : public ::testing::Test {};
+const char kUrl[] = "http://www.example.com/";
+const char kBody[] = "Contents.";
+
+class WaitUrlAsyncFetcherTest : public ::testing::Test {
+ protected:
+  virtual void SetUp() {
+    thread_system_.reset(ThreadSystem::CreateThreadSystem());
+    wait_fetcher_.reset(new WaitUrlAsyncFetcher(
+        &base_fetcher_, thread_system_->NewMutex()));
+
+    ResponseHeaders header;
+    header.set_first_line(1, 1, 200, "OK");
+    base_fetcher_.SetResponse(kUrl, header, kBody);
+  }
+
+  WaitUrlAsyncFetcher* wait_fetcher() { return wait_fetcher_.get(); }
+
+ private:
+  MockUrlFetcher base_fetcher_;
+  scoped_ptr<ThreadSystem> thread_system_;
+  scoped_ptr<WaitUrlAsyncFetcher> wait_fetcher_;
+};
 
 TEST_F(WaitUrlAsyncFetcherTest, FetcherWaits) {
-  MockUrlFetcher base_fetcher;
-  WaitUrlAsyncFetcher wait_fetcher(&base_fetcher);
-
-  const char url[] = "http://www.example.com/";
-  ResponseHeaders header;
-  header.set_first_line(1, 1, 200, "OK");
-  const char body[] = "Contents.";
-
-  base_fetcher.SetResponse(url, header, body);
-
   const RequestHeaders request_headers;
   ResponseHeaders response_headers;
   GoogleString response_body;
@@ -51,18 +64,53 @@ TEST_F(WaitUrlAsyncFetcherTest, FetcherWaits) {
   GoogleMessageHandler handler;
   ExpectCallback callback(true);
 
-  EXPECT_FALSE(wait_fetcher.StreamingFetch(url, request_headers,
-                                           &response_headers, &response_writer,
-                                           &handler, &callback));
+  EXPECT_FALSE(wait_fetcher()->StreamingFetch(
+      kUrl, request_headers, &response_headers, &response_writer, &handler,
+      &callback));
 
   // Nothing gets set ...
   EXPECT_EQ(false, callback.done());
   EXPECT_EQ("", response_body);
 
   // ... until we CallCallbacks.
-  wait_fetcher.CallCallbacks();
+  wait_fetcher()->CallCallbacks();
   EXPECT_EQ(true, callback.done());
-  EXPECT_EQ(body, response_body);
+  EXPECT_EQ(kBody, response_body);
+}
+
+TEST_F(WaitUrlAsyncFetcherTest, PassThrough) {
+  const RequestHeaders request_headers;
+  ResponseHeaders response_headers;
+  GoogleString response_body;
+  StringWriter response_writer(&response_body);
+  GoogleMessageHandler handler;
+  ExpectCallback callback(true);
+
+  EXPECT_FALSE(wait_fetcher()->StreamingFetch(
+      kUrl, request_headers, &response_headers, &response_writer, &handler,
+      &callback));
+
+  // Nothing gets set ...
+  EXPECT_EQ(false, callback.done());
+  EXPECT_EQ("", response_body);
+
+  // Now switch to pass-through mode.  This causes the callback to get called.
+  bool prev_mode = wait_fetcher()->SetPassThroughMode(true);
+  EXPECT_FALSE(prev_mode);
+  EXPECT_EQ(true, callback.done());
+  EXPECT_EQ(kBody, response_body);
+
+  // Now fetches happen instantly.
+  ResponseHeaders response_headers2;
+  GoogleString response_body2;
+  StringWriter response_writer2(&response_body2);
+  ExpectCallback callback2(true);
+
+  EXPECT_TRUE(wait_fetcher()->StreamingFetch(
+      kUrl, request_headers, &response_headers2, &response_writer2, &handler,
+      &callback2));
+  EXPECT_EQ(true, callback2.done());
+  EXPECT_EQ(kBody, response_body2);
 }
 
 }  // namespace

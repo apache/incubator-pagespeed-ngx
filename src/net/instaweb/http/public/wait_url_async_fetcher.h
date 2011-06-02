@@ -21,12 +21,14 @@
 
 #include <vector>
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
@@ -37,8 +39,11 @@ class Writer;
 // you explicitly call CallCallbacks().
 class WaitUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
-  explicit WaitUrlAsyncFetcher(UrlFetcher* url_fetcher)
-      : url_fetcher_(url_fetcher) {}
+  WaitUrlAsyncFetcher(UrlFetcher* url_fetcher, AbstractMutex* mutex)
+      : url_fetcher_(url_fetcher),
+        pass_through_mode_(false),
+        mutex_(mutex) {
+  }
   virtual ~WaitUrlAsyncFetcher();
 
   // Initiate fetches that will finish when CallCallbacks is called.
@@ -52,11 +57,20 @@ class WaitUrlAsyncFetcher : public UrlAsyncFetcher {
   // Call all callbacks from previously initiated fetches.
   void CallCallbacks();
 
+  // Sets a mode where no waiting occurs -- fetches propagate immediately.
+  // The previous mode is returned.  When turning pass-through mode on,
+  // any pending callbacks are called.
+  bool SetPassThroughMode(bool pass_through_mode);
+
  private:
   class DelayedFetch;
 
+  bool CallCallbacksAndSwitchModesHelper(bool new_mode);
+
   UrlFetcher* url_fetcher_;
   std::vector<DelayedFetch*> delayed_fetches_;
+  bool pass_through_mode_;
+  scoped_ptr<AbstractMutex> mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(WaitUrlAsyncFetcher);
 };

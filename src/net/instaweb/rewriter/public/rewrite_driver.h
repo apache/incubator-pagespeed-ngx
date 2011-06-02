@@ -350,6 +350,13 @@ class RewriteDriver : public HtmlParse {
   // the RewriteDriver to be recycled.
   void FetchComplete();
 
+  // Deletes the specified RewriteContext.  If this is the last RewriteContext
+  // active on this Driver, and there is no other outstanding activity, then
+  // the RewriteDriver itself can be recycled, and WaitForCompletion can return.
+  //
+  // We expect to this method to be called on the Rewrite thread.
+  void DeleteRewriteContext(RewriteContext* rewrite_context);
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -364,6 +371,9 @@ class RewriteDriver : public HtmlParse {
   // Determines what to do with a completed RewriteDrive, either deleting it
   // or releasing it into the ResourceManager's free list.
   void Recycle();
+
+  // Must be called with rewrites_mutex_ held.
+  bool RewritesComplete() const;
 
   // Sets the base GURL in response to a base-tag being parsed.  This
   // should only be called by ScanFilter.
@@ -446,20 +456,57 @@ class RewriteDriver : public HtmlParse {
   // Indicates that a resource fetch has been dispatched to a RewriteContext,
   // and thus the RewriteDriver should not recycled until that RewriteContext
   // has called FetchComplete().
-  bool fetch_queued_;
+  bool fetch_queued_;            // protected by rewrite_mutex_
+
+  // Indicates that WaitForCompletion() has been called in the HTML thread,
+  // and we are now blocked on a condition variable in that function.  Thus
+  // it only makes sense to examine this from the Rewrite thread.
+  bool waiting_for_completion_;  // protected by rewrite_mutex_
+
+  // Tracks the number of RewriteContexts that have been completed,
+  // but not yet deleted.  Once RewriteComplete has been called,
+  // rewrite_context->Propagate() is called to render slots (if not
+  // detached) and to queue up activity that must occur prior to the
+  // context being deleted: specifically running any successors.
+  // After all that occurs, DeleteRewriteContext must be called and
+  // that will decrement this counter.
+  int rewrites_to_delete_;       // protected by rewrite_mutex_
 
   GoogleUrl base_url_;
   GoogleString user_agent_;
   StringFilterMap resource_filter_map_;
 
+  // This group of rewrite-context-related variables is accessed
+  // only in the main thread of RewriteDriver (aka the HTML thread).
   typedef std::vector<RewriteContext*> RewriteContextVector;
-  RewriteContextVector rewrites_;  // ordered list of rewrites to inititate
-  RewriteContextVector completed_rewrites_;
-  std::set<RewriteContext*> initiated_rewrites_;
-  int pending_rewrites_;
+  RewriteContextVector rewrites_;  // ordered list of rewrites to initiate
   int rewrite_deadline_ms_;
+
   scoped_ptr<ThreadSystem::CondvarCapableMutex> rewrite_mutex_;
   scoped_ptr<ThreadSystem::Condvar> rewrite_condvar_;
+
+  typedef std::set<RewriteContext*> RewriteContextSet;
+
+  // Contains the RewriteContext* that have been queued into the
+  // RewriteThread, but have not gotten to the point where
+  // RewriteComplete() has been called.  This set is cleared
+  // one the rewrite_deadline_ms has passed.
+  RewriteContextSet initiated_rewrites_;  // protected by rewrite_mutex_
+
+  // Contains the RewriteContext* that were still running at the deadline.
+  // They are said to be in a "detached" state although the RewriteContexts
+  // themselves don't know that.  They will continue performing their
+  // Rewrite in the RewriteThread, and caching the results.  And until
+  // they complete, the RewriteDriver must stay alive and not be Recycled
+  // or deleted.  WaitForCompletion() blocks until all detached_rewrites
+  // have been retird.
+  RewriteContextSet detached_rewrites_;   // protected by rewrite_mutex_
+
+  // The number of rewrites that have been requested, and not yet
+  // completed.  This can actually be derived, more or less, from
+  // initiated_rewrites_.size() and rewrites_.size() but is kept
+  // separate for programming convenience.
+  int pending_rewrites_;                  // protected by rewrite_mutex_
 
   // These objects are provided on construction or later, and are
   // owned by the caller.

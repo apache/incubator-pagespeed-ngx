@@ -103,6 +103,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       filters_added_(false),
       externally_managed_(false),
       fetch_queued_(false),
+      waiting_for_completion_(false),
+      rewrites_to_delete_(0),
       pending_rewrites_(0),
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
@@ -136,73 +138,101 @@ void RewriteDriver::Clear() {
   DCHECK(!base_url_.is_valid());
   resource_map_.clear();
   DCHECK(initiated_rewrites_.empty());
-  STLDeleteElements(&completed_rewrites_);
-  STLDeleteElements(&rewrites_);
-  pending_rewrites_ = 0;
-  fetch_queued_ = false;
+  DCHECK(detached_rewrites_.empty());
+  DCHECK(rewrites_.empty());
+  DCHECK_EQ(0, rewrites_to_delete_);
+  DCHECK_EQ(0, pending_rewrites_);
+  DCHECK(!fetch_queued_);
+}
+
+// Must be called with rewrite_mutex_ held.
+bool RewriteDriver::RewritesComplete() const {
+  return ((pending_rewrites_ == 0) && !fetch_queued_ &&
+          detached_rewrites_.empty() && (rewrites_to_delete_ == 0));
 }
 
 void RewriteDriver::WaitForCompletion() {
   if (asynchronous_rewrites_) {
     ScopedMutex lock(rewrite_mutex_.get());
-    while ((pending_rewrites_ > 0) || fetch_queued_) {
+    waiting_for_completion_ = true;
+    while (!RewritesComplete()) {
       if (fetch_queued_) {
         message_handler()->Message(kInfo, "waiting for fetch completion");
       } else {
-        message_handler()->Message(kInfo, "waiting for %d rewrites to complete",
-                                   pending_rewrites_);
+        message_handler()->Message(
+            kInfo, "waiting for %d rewrites to complete",
+            static_cast<int>(pending_rewrites_ + detached_rewrites_.size()));
       }
       rewrite_condvar_->TimedWait(kTestTimeoutMs);
+      // TODO(jmarantz): Eliminate these LOG(INFO) and/or convert them
+      // into message_handler()->Message(kInfo...).
       LOG(INFO) << "timed wait complete";
     }
+    waiting_for_completion_ = false;
   }
 }
 
 void RewriteDriver::Render() {
-  // Note that no actualy resource Rewriting can occur until this point
-  // is reached.
-  for (int i = 0, n = rewrites_.size(); i < n; ++i) {
+  // Note that no actual resource Rewriting can occur until this point
+  // is reached, where we initiate all the RewriteContexts.
+  DCHECK(initiated_rewrites_.empty());
+  int num_rewrites = rewrites_.size();
+  DCHECK_EQ(pending_rewrites_, num_rewrites);
+
+  // Copy  all of the RewriteContext* into the initiated_rewrites_ set
+  // *before* initiating them, as we are doing this before we lock.
+  // The RewriteThread can start mutating the initiated_rewrites_
+  // set as soon as one is initiated.
+  initiated_rewrites_.insert(rewrites_.begin(), rewrites_.end());
+  for (int i = 0; i < num_rewrites; ++i) {
     RewriteContext* rewrite_context = rewrites_[i];
+    LOG(INFO) << "Initiating rewrite: " << rewrite_context;
     rewrite_context->Initiate();
-    initiated_rewrites_.insert(rewrite_context);
   }
   rewrites_.clear();
-  ScopedMutex lock(rewrite_mutex_.get());
-  DCHECK(!fetch_queued_);
-  if (pending_rewrites_ == 0) {
-    LOG(INFO) << "All " << completed_rewrites_.size() << " rewrites complete "
-              << "by the time Render was called";
-  } else {
-    LOG(INFO) << "waiting for " << initiated_rewrites_.size() << " rewrites";
-    rewrite_condvar_->TimedWait(rewrite_deadline_ms_);
-    LOG(INFO) << "found " << completed_rewrites_.size()
-              << " completed rewrites";
-  }
+  {
+    ScopedMutex lock(rewrite_mutex_.get());
+    DCHECK(!fetch_queued_);
+    int completed_rewrites = num_rewrites - pending_rewrites_;
+    if (pending_rewrites_ == 0) {
+      LOG(INFO) << "All " << completed_rewrites
+                << " rewrites complete by the time Render was called";
+    } else {
+      LOG(INFO) << "waiting for " << pending_rewrites_ << " rewrites";
+      rewrite_condvar_->TimedWait(rewrite_deadline_ms_);
+      completed_rewrites = num_rewrites - pending_rewrites_;
+      LOG(INFO) << "found " << completed_rewrites << " completed rewrites";
+    }
 
-  // If the output cache lookup came as a HIT in after the deadline, that
-  // means that (a) we can't use the result and (b) we don't need
-  // to re-initiate the rewrite since it was in fact in cache.  Hopefully
-  // the cache system will respond to HIT by making the next HIT faster
-  // so it meets our deadline.  In either case we will track with stats.
-  //
-  resource_manager_->cached_output_hits()->Add(completed_rewrites_.size());
-  resource_manager_->cached_output_missed_deadline()->Add(pending_rewrites_);
+    // If the output cache lookup came as a HIT in after the deadline, that
+    // means that (a) we can't use the result and (b) we don't need
+    // to re-initiate the rewrite since it was in fact in cache.  Hopefully
+    // the cache system will respond to HIT by making the next HIT faster
+    // so it meets our deadline.  In either case we will track with stats.
+    //
+    resource_manager_->cached_output_hits()->Add(completed_rewrites);
+    resource_manager_->cached_output_missed_deadline()->Add(pending_rewrites_);
 
-  for (int i = 0, n = completed_rewrites_.size(); i < n; ++i) {
-    RewriteContext* rewrite_context = completed_rewrites_[i];
-    rewrite_context->Render();
-    delete rewrite_context;
-  }
-  completed_rewrites_.clear();
-  slots_.clear();
+    // While new slots are created for distinct HtmlElements, Resources can be
+    // shared across multiple slots, via resource_map_.  However, to avoid
+    // races between outstanding RewriteContexts, we must create new Resources
+    // after each Flush.  Note that we only need to do this if there are
+    // outstanding rewrites.
+    if (pending_rewrites_ != 0) {
+      resource_map_.clear();
+      for (RewriteContextSet::iterator p = initiated_rewrites_.begin(),
+               e = initiated_rewrites_.end(); p != e; ++p) {
+        RewriteContext* rewrite_context = *p;
+        detached_rewrites_.insert(rewrite_context);
+        --pending_rewrites_;
+      }
+      DCHECK_EQ(0, pending_rewrites_);
+      initiated_rewrites_.clear();
+    } else {
+      DCHECK(initiated_rewrites_.empty());
+    }
 
-  // While new slots are created for distinct HtmlElements, Resources can be
-  // shared across multiple slots, via resource_map_.  However, to avoid
-  // races between outstanding RewriteContexts, we must create new Resources
-  // after each Flush.  Note that we only need to do this if there are
-  // outstanding rewrites.
-  if (pending_rewrites_ != 0) {
-    resource_map_.clear();
+    slots_.clear();
   }
 }
 
@@ -903,21 +933,54 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
 }
 
 void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
-  LOG(INFO) << "rewrite complete";
-  bool completed = false;
-  {
-    ScopedMutex lock(rewrite_mutex_.get());
-    DCHECK(!fetch_queued_);
-    completed_rewrites_.push_back(rewrite_context);
-    int erased = initiated_rewrites_.erase(rewrite_context);
-    CHECK_EQ(1, erased);
+  ScopedMutex lock(rewrite_mutex_.get());
+  DCHECK(!fetch_queued_);
+  bool signal = false;
+  bool attached = false;
+  RewriteContextSet::iterator p = initiated_rewrites_.find(rewrite_context);
+  if (p != initiated_rewrites_.end()) {
+    initiated_rewrites_.erase(p);
+    attached = true;
+
     --pending_rewrites_;
     if (pending_rewrites_ == 0) {
-      completed = true;
-      rewrite_condvar_->Signal();
+      signal = true;
+    }
+  } else {
+    int erased = detached_rewrites_.erase(rewrite_context);
+    CHECK_EQ(1, erased) << " rewrite_context " << rewrite_context
+                        << " not in either detached_rewrites or "
+                        << "initiated_rewrites_";
+    if (waiting_for_completion_ && detached_rewrites_.empty()) {
+      signal = true;
     }
   }
-  if (completed && !externally_managed_) {
+  LOG(INFO) << "rewrite_context " << rewrite_context << " complete "
+            << (attached ? "(attached)" : "(detached)");
+  rewrite_context->Propagate(attached);
+  ++rewrites_to_delete_;
+  if (signal) {
+    DCHECK(!fetch_queued_);
+    rewrite_condvar_->Signal();
+  }
+}
+
+void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
+  bool ready_to_recycle = false;
+  {
+    ScopedMutex lock(rewrite_mutex_.get());
+    DCHECK_LT(0, rewrites_to_delete_);
+    --rewrites_to_delete_;
+    delete rewrite_context;
+    if (RewritesComplete()) {
+      if (waiting_for_completion_) {
+        rewrite_condvar_->Signal();
+      } else {
+        ready_to_recycle = !externally_managed_;
+      }
+    }
+  }
+  if (ready_to_recycle) {
     Recycle();
   }
 }
@@ -936,7 +999,7 @@ void RewriteDriver::Cleanup() {
     bool done = false;
     {
       ScopedMutex lock(rewrite_mutex_.get());
-      done = (pending_rewrites_ == 0);
+      done = RewritesComplete();
     }
     if (done) {
       Recycle();

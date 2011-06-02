@@ -84,11 +84,11 @@ struct ContentType;
 // called, the RewiteContext runs purely in the RewriteThread, until
 // it completes.  At that time it calls
 // RewriteDriver::RewriteComplete.  Once complete, the RewriteDriver
-// can call RewriteContext::Render() and finally delete the object.
+// can call RewriteContext::Propagate() and finally delete the object.
 //
 // RewriteContexts can also be nested, in which case they are constructed,
 // slotted, and Initated all within the RewriteThread.  However, they
-// are Rendered and destructed by their parent, which is initiated by the
+// are Propagated and destructed by their parent, which is initiated by the
 // RewriteDriver.
 class RewriteContext {
  public:
@@ -141,10 +141,29 @@ class RewriteContext {
              UrlAsyncFetcher::Callback* callback);
 
   // Runs after all Rewrites have been completed, and all nested
-  // RewriteContexts have completed and harvested.  This method can be
-  // optionally derived by subclasses -- its default implementation
-  // calls the Render method on all slots.
-  virtual void Render();
+  // RewriteContexts have completed and harvested.
+  //
+  // For top-level Rewrites, this must be called from the HTML thread.
+  // For nested Rewrites it runs from the Rewrite thread.
+  //
+  // If render_slots is true, then all the slots owned by this context
+  // will have Render() called on them.  For top-level Rewrites, this
+  // should only be done if the rewrite completes before the rewrite
+  // deadline expires.  After that, the HTML elements referred to by
+  // the slots have already been flushed to the network.  For nested
+  // Rewrites it's done unconditionally.
+  //
+  // Rewriting and propagation continue even after this deadline, so
+  // that we may cache the rewritten results, allowing the deadline to
+  // be easier-to-hit next time the same resources need to be
+  // rewritten.
+  //
+  // And in all cases, the successors Rewrites are queued up in the
+  // Rewrite thread once any nested propagation is complete.  And, in
+  // particular, each slot must be updated with any rewritten
+  // resources, before the successors can be run, independent of
+  // whether the slots can be rendered into HTML.
+  void Propagate(bool render_slots);
 
  protected:
   // The following methods are provided for the benefit of subclasses.
@@ -157,7 +176,7 @@ class RewriteContext {
   RewriteDriver* Driver();
   const ResourceContext* resource_context() { return resource_context_.get(); }
 
-  // Establishes that a slot has been rewritten.  So when RenderAndDetach
+  // Establishes that a slot has been rewritten.  So when Propagate()
   // is called, the resource update that has been written to this slot can
   // be propagated to the DOM.
   void RenderSlotOnDetach(int rewrite_index);
@@ -286,6 +305,10 @@ class RewriteContext {
   // enable successor rewrites to proceed.
   void Finalize();
 
+  // Renders any nested contexts, and harvests their results.  This must
+  // be called only when the nested contexts are finished.
+  void PropagateNestedAndHarvest();
+
   // Initiates an asynchronous fetch for the resources associated with
   // each slot, calling ResourceFetchDone() when complete.
   //
@@ -311,14 +334,6 @@ class RewriteContext {
   //      driver's map, for each of the URLs.
   void StartRewrite();
   void FinishFetch();
-
-  // Collects all rewritten results and queues them for rendering into
-  // the DOM.
-  //
-  // TODO(jmarantz): This method should be made thread-safe so it can
-  // be called from a worker thread once callbacks are done or rewrites
-  // are complete.
-  void RenderPartitions();
 
   // Returns 'true' if the resources are not expired.  Freshens resources
   // proactively to avoid expiration in the near future.
@@ -350,15 +365,6 @@ class RewriteContext {
   // optimization was deemed non-beneficial then we skip rendering the slot.
   // So keep the slots requiring rendering in a bitvector.
   std::vector<bool> render_slots_;
-
-  // RewriteContexts are created with a parent, which might be a
-  // RewriteDriver or another RewriteContext.  However,
-  // RewriteDrivers may not stay around until the rewrite is complete,
-  // so we also keep track of the resource manager.  The 'attached_'
-  // field will be set to 'false' on Detach, which might happen in a
-  // different thread from various callbacks that wake up on the
-  // context.  Thus we must protect it with a mutex.
-  bool attached_;
 
   // It's feasible that callbacks for different resources will be delivered
   // on different threads, thus we must protect these counters with a mutex

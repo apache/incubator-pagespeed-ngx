@@ -105,7 +105,7 @@ ResourceManagerTestBase::ResourceManagerTestBase()
       other_options_(new RewriteOptions),
       other_rewrite_driver_(&message_handler_, &other_file_system_,
                             &counting_url_async_fetcher_),
-      wait_url_async_fetcher_(&mock_url_fetcher_) {
+      wait_url_async_fetcher_(&mock_url_fetcher_, thread_system_->NewMutex()) {
   rewrite_driver_.set_custom_options(options_);
   other_rewrite_driver_.set_custom_options(other_options_);
   // rewrite_driver_.SetResourceManager(resource_manager_);
@@ -231,7 +231,8 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   DomainLawyer other_domain_lawyer;
   FileSystemLockManager other_lock_manager(
       &other_file_system, file_prefix_, other_mock_timer, &message_handler_);
-  WaitUrlAsyncFetcher wait_url_async_fetcher(&mock_url_fetcher_);
+  WaitUrlAsyncFetcher wait_url_async_fetcher(&mock_url_fetcher_,
+                                             thread_system_->NewMutex());
   ResourceManager other_resource_manager(
       file_prefix_, &other_file_system, &filename_encoder_,
       &wait_url_async_fetcher, hasher(),
@@ -498,8 +499,9 @@ void ResourceManagerTestBase::ParseUrl(const StringPiece& url,
 }
 
 void ResourceManagerTestBase::CallFetcherCallbacks() {
-  wait_url_async_fetcher_.CallCallbacks();
+  bool pass_through_mode = wait_url_async_fetcher_.SetPassThroughMode(true);
   rewrite_driver_.WaitForCompletion();
+  wait_url_async_fetcher_.SetPassThroughMode(pass_through_mode);
   rewrite_driver_.Clear();
 }
 

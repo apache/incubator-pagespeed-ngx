@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr, etc
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -38,6 +39,7 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
@@ -45,6 +47,7 @@
 #include "net/instaweb/util/public/google_url.h"  // for GoogleUrl
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -301,6 +304,10 @@ class RewriteContextTest : public ResourceManagerTestBase {
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     rewrite_driver()->SetAsynchronousRewrites(true);
+  }
+  virtual void TearDown() {
+    rewrite_driver()->WaitForCompletion();
+    ResourceManagerTestBase::TearDown();
   }
 
   virtual bool AddBody() const { return false; }
@@ -577,7 +584,7 @@ TEST_F(RewriteContextTest, FetchColdCacheRewritten) {
 TEST_F(RewriteContextTest, OnTheFlyNotFound) {
   InitTrimFilters(kOnTheFlyResource);
 
-  // note: no InitResources so we'll get a file-not found.
+  // note: no InitResources so we'll get a file-not-found.
   SetFetchFailOnUnexpected(false);
 
   // In this case, the resource is optimizable but we'll fail to fetch it.

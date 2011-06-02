@@ -15,6 +15,12 @@
  */
 
 // Author: jmarantz@google.com (Joshua Marantz)
+//
+// Note: when making changes to this file, a very good sanity-check to run,
+// once tests pass, is:
+//
+// valgrind --leak-check=full ..../src/out/Debug/pagespeed_automatic_test
+//     "--gtest_filter=RewriteContextTest*"
 
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 
@@ -79,6 +85,7 @@ class RewriteContextTask : public Worker::Closure {
   }
   void StartFetch() { rewrite_context_->StartFetch(); }
   void Start() { rewrite_context_->Start(); }
+  void RunSuccessors() { rewrite_context_->RunSuccessors(); }
 
  private:
   RewriteContext* rewrite_context_;
@@ -174,6 +181,13 @@ class FetchTask : public RewriteContextTask {
   explicit FetchTask(RewriteContext* rc) : RewriteContextTask(rc) {}
   virtual ~FetchTask() {}
   virtual void Run() { StartFetch(); }
+};
+
+class SuccessorsTask : public RewriteContextTask {
+ public:
+  explicit SuccessorsTask(RewriteContext* rc) : RewriteContextTask(rc) {}
+  virtual ~SuccessorsTask() {}
+  virtual void Run() { RunSuccessors(); }
 };
 
 }  // namespace
@@ -473,13 +487,18 @@ void RewriteContext::WritePartition() {
       // destructor of sstream prepares *buf.get()
     }
     metadata_cache->Put(partition_key_, &buf);
+  } else {
+    // TODO(jmarantz): if our rewrite failed due to lock contention or
+    // being too busy, then cancel all successors.
   }
   lock_.reset();
-  RunSuccessors();
   if (parent_ != NULL) {
     DCHECK(driver_ == NULL);
     parent_->NestedRewriteDone();
   } else {
+    // The RewriteDriver is waiting for this to complete.  Defer to the
+    // RewriteDriver to schedule the Rendering of this context on the main
+    // thread.
     CHECK(driver_ != NULL);
     driver_->RewriteComplete(this);
   }
@@ -504,8 +523,7 @@ void RewriteContext::NestedRewriteDone() {
   --num_pending_nested_;
   if (num_pending_nested_ == 0) {
     DCHECK(!rewrite_done_);
-    Harvest();
-    DCHECK(rewrite_done_);
+    PropagateNestedAndHarvest();
   }
 }
 
@@ -538,18 +556,30 @@ void RewriteContext::RewriteDone(
   }
 }
 
+void RewriteContext::PropagateNestedAndHarvest() {
+  for (int i = 0, n = nested_.size(); i < n; ++i) {
+    nested_[i]->Propagate(true);
+  }
+  Harvest();
+}
+
 void RewriteContext::Harvest() {
 }
 
-void RewriteContext::Render() {
+void RewriteContext::Propagate(bool render_slots) {
   DCHECK(rewrite_done_ && (num_pending_nested_ == 0));
   if (rewrite_done_ && (num_pending_nested_ == 0)) {
     for (int i = 0, n = slots_.size(); i < n; ++i) {
       if (render_slots_[i]) {
-        slots_[i]->Render();
+        ResourcePtr resource(outputs_[i]);
+        slots_[i]->SetResource(resource);
+        if (render_slots) {
+          slots_[i]->Render();
+        }
       }
     }
   }
+  Manager()->AddRewriteTask(new SuccessorsTask(this));
 }
 
 void RewriteContext::Finalize() {
@@ -564,14 +594,6 @@ void RewriteContext::Finalize() {
 }
 
 void RewriteContext::RenderSlotOnDetach(int rewrite_index) {
-  ResourcePtr resource(outputs_[rewrite_index]);
-  // TODO(jmarantz): This is a race condition.  We should not allow async
-  // Rewrites to continue updating slots, which are ready by
-  // RewriteDriver::Render, without acquiring a mutex.  Probably the best
-  // way to do this is to make the slots owned by the RewriteDriver and
-  // use a method provided in RewriteDriver to update the resource
-  // associated with them.
-  slots_[rewrite_index]->SetResource(resource);
   render_slots_[rewrite_index] = true;
 }
 
@@ -582,10 +604,15 @@ void RewriteContext::RunSuccessors() {
 
   for (int i = 0, n = successors_.size(); i < n; ++i) {
     RewriteContext* successor = successors_[i];
-    --successor->num_predecessors_;
-    successor->Activate();
+    if (--successor->num_predecessors_ == 0) {
+      successor->Initiate();
+    }
   }
   successors_.clear();
+  if (driver_ != NULL) {
+    DCHECK(rewrite_done_ && (num_pending_nested_ == 0));
+    driver_->DeleteRewriteContext(this);
+  }
 }
 
 void RewriteContext::FinishFetch() {
