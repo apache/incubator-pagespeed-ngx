@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/image_data_lookup.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
+#include "net/instaweb/rewriter/public/webp_optimizer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
@@ -81,6 +82,7 @@ class ImageImpl : public Image {
   ImageImpl(const StringPiece& original_contents,
             const GoogleString& url,
             const StringPiece& file_prefix,
+            bool webp_preferred,
             MessageHandler* handler);
   ImageImpl(int width, int height, Type type,
             const StringPiece& tmp_dir, MessageHandler* handler);
@@ -142,6 +144,7 @@ class ImageImpl : public Image {
   bool changed_;
   const GoogleString url_;
   ImageDim dims_;
+  bool webp_preferred_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageImpl);
 };
@@ -155,6 +158,7 @@ Image::Image(const StringPiece& original_contents)
 ImageImpl::ImageImpl(const StringPiece& original_contents,
                      const GoogleString& url,
                      const StringPiece& file_prefix,
+                     bool webp_preferred,
                      MessageHandler* handler)
     : Image(original_contents),
       file_prefix_(file_prefix.data(), file_prefix.size()),
@@ -162,13 +166,16 @@ ImageImpl::ImageImpl(const StringPiece& original_contents,
       opencv_image_(NULL),
       opencv_load_possible_(true),
       changed_(false),
-      url_(url) { }
+      url_(url),
+      webp_preferred_(webp_preferred) { }
 
 Image* NewImage(const StringPiece& original_contents,
                 const GoogleString& url,
                 const StringPiece& file_prefix,
+                bool webp_preferred,
                 MessageHandler* handler) {
-  return new ImageImpl(original_contents, url, file_prefix, handler);
+  return new ImageImpl(original_contents, url, file_prefix, webp_preferred,
+                       handler);
 }
 
 Image::Image(Type type)
@@ -185,7 +192,8 @@ ImageImpl::ImageImpl(int width, int height, Type type,
       opencv_image_(NULL),
       opencv_load_possible_(true),
       changed_(false),
-      url_() {
+      url_(),
+      webp_preferred_(false) {
   dims_.set_width(width);
   dims_.set_height(height);
 }
@@ -336,6 +344,9 @@ void ImageImpl::ComputeImageType() {
           FindGifSize();
         }
         break;
+      // TODO(jmaessen): Recognize webp files in original site, auto-downgrade
+      // to jpg if necessary.  Right now we don't identify webp on input, we
+      // only create webp from jpeg on output.
       default:
         break;
     }
@@ -355,6 +366,9 @@ const ContentType* Image::content_type() {
       break;
     case IMAGE_GIF:
       res = &kContentTypeGif;
+      break;
+    case IMAGE_WEBP:
+      res = &kContentTypeWebp;
       break;
   }
   return res;
@@ -492,6 +506,7 @@ bool ImageImpl::LoadOpenCvEmpty() {
 }
 
 #ifdef USE_OPENCV_2_1
+// OpenCV 2.1 supports memory-to-memory format conversion.
 
 bool ImageImpl::LoadOpenCvFromBuffer(const StringPiece& data) {
   CvMat cv_original_contents =
@@ -510,6 +525,8 @@ bool ImageImpl::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
 }
 
 #else
+// Older OpenCV libraries require compressed data to reside on disk,
+// so we need to write image data out and read it back in.
 
 bool ImageImpl::TempFileForImage(FileSystem* fs,
                              const StringPiece& contents,
@@ -614,31 +631,49 @@ bool ImageImpl::ComputeOutputContents() {
     if (ok) {
       // If we can't optimize the image, we'll fail.
       ok = false;
+      // We copy the data to a string eagerly as we're very likely to need it
+      // (only unrecognized formats don't require it, in which case we probably
+      // don't get this far in the first place).
+      // TODO(jmarantz): The PageSpeed library should, ideally, take StringPiece
+      // args rather than const string&.  We would save lots of string-copying
+      // if we made that change.
+      GoogleString string_for_image(contents.data(), contents.size());
       switch (image_type()) {
         case IMAGE_UNKNOWN:
           break;
+        case IMAGE_WEBP:
+          break;
         case IMAGE_JPEG:
-          // TODO(jmarantz): The PageSpeed library should, ideally, take
-          // StringPiece args rather than const string&.  We would save
-          // lots of string-copying if we made that change.
-          ok = pagespeed::image_compression::OptimizeJpeg(
-              GoogleString(contents.data(), contents.size()),
-              &output_contents_);
+          if (webp_preferred_) {
+            // Right now we just compute the webp, and assume that it'll be
+            // smaller than the equivalent re-compressed jpg.  Doing jpg
+            // recompression *as well* and picking the smaller file is very
+            // expensive for what's likely to be minimal gain.  We fall back
+            // to jpg reoptimization if webp fails.
+            ok = OptimizeWebp(string_for_image, &output_contents_);
+            if (!ok) {
+              handler_->Error(url_.c_str(), 0,
+                              "Failed to create webp!");
+            }
+          }
+          if (ok) {  // && webp_preferred, which is implied.
+            image_type_ = IMAGE_WEBP;
+          } else {
+            ok = pagespeed::image_compression::OptimizeJpeg(
+                string_for_image,
+                &output_contents_);
+          }
           break;
         case IMAGE_PNG: {
           pagespeed::image_compression::PngReader png_reader;
           ok = PngOptimizer::OptimizePngBestCompression
-              (png_reader,
-              GoogleString(contents.data(), contents.size()),
-              &output_contents_);
+              (png_reader, string_for_image, &output_contents_);
           break;
         }
         case IMAGE_GIF: {
           pagespeed::image_compression::GifReader gif_reader;
           ok = PngOptimizer::OptimizePngBestCompression
-              (gif_reader,
-              GoogleString(contents.data(), contents.size()),
-              &output_contents_);
+              (gif_reader, string_for_image, &output_contents_);
           if (ok) {
             image_type_ = IMAGE_PNG;
           }

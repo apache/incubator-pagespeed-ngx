@@ -409,6 +409,7 @@
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/image_compression/image_compression.gyp:pagespeed_jpeg_optimizer',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/image_compression/image_compression.gyp:pagespeed_png_optimizer',
+        '<(DEPTH)/third_party/libwebp/libwebp.gyp:libwebp',
         '<(DEPTH)/third_party/opencv/opencv.gyp:highgui',
       ],
       'sources': [
@@ -416,6 +417,7 @@
         'rewriter/image_rewrite_filter.cc',
         'rewriter/image_tag_scanner.cc',
         'rewriter/image_url_encoder.cc',
+        'rewriter/webp_optimizer.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

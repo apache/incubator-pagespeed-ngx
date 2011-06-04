@@ -402,8 +402,9 @@ class Library : public spriter::ImageLibraryInterface {
   // the resource, meaning that resource must not be destroyed before the next
   // call to Clear().
   bool Register(Resource* resource) {
+    bool prefer_webp = false;  // Not working with jpg/webp at all.
     net_instaweb::Image* image = net_instaweb::NewImage(
-        resource->contents(), resource->url(), tmp_dir_, handler_);
+        resource->contents(), resource->url(), tmp_dir_, prefer_webp, handler_);
     if (image->EnsureLoaded()) {
       Register(resource->url(), image);
       return true;

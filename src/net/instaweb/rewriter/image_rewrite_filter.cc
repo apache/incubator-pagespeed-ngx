@@ -21,7 +21,6 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/image.h"
@@ -41,10 +40,12 @@
 #include "net/instaweb/util/public/statistics_work_bound.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/work_bound.h"
 
 namespace net_instaweb {
 class UrlSegmentEncoder;
+struct ContentType;
 
 namespace {
 
@@ -111,9 +112,12 @@ ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
                                        message_handler)) {
     return kRewriteFailed;
   }
+  bool supports_webp =
+      driver_->user_agent_matcher().SupportsWebp(driver_->user_agent());
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),
-               resource_manager_->filename_prefix(), message_handler));
+               resource_manager_->filename_prefix(),
+               supports_webp, message_handler));
   if (image->image_type() == Image::IMAGE_UNKNOWN) {
     message_handler->Error(result->name().as_string().c_str(), 0,
                            "Unrecognized image content type.");
@@ -247,22 +251,7 @@ const ContentType* ImageRewriteFilter::ImageToContentType(
     // Even if we know the content type from the extension coming
     // in, the content-type can change as a result of compression,
     // e.g. gif to png, or anything to vp8.
-    switch (image->image_type()) {
-      case Image::IMAGE_JPEG:
-        content_type = &kContentTypeJpeg;
-        break;
-      case Image::IMAGE_PNG:
-        content_type = &kContentTypePng;
-        break;
-      case Image::IMAGE_GIF:
-        content_type = &kContentTypeGif;
-        break;
-      default:
-        driver_->InfoHere(
-            "Cannot detect content type of image url `%s`",
-            origin_url.c_str());
-        break;
-    }
+    return image->content_type();
   }
   return content_type;
 }
@@ -338,7 +327,7 @@ bool ImageRewriteFilter::CanInline(
 void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
   // Don't rewrite if ModPagespeedDisableForBots is on
   // and the user-agent is a bot.
-  if (driver_->CanRewriteImages()) {
+  if (driver_->ShouldNotRewriteImages()) {
     return;
   }
   if (!driver_->HasChildrenInFlushWindow(element)) {

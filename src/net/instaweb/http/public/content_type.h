@@ -38,6 +38,7 @@ struct ContentType {
     kPng,
     kGif,
     kJpeg,
+    kWebp,
   };
 
   const char* mime_type() const { return mime_type_; }
@@ -74,6 +75,7 @@ extern const ContentType& kContentTypeXml;
 extern const ContentType& kContentTypePng;
 extern const ContentType& kContentTypeGif;
 extern const ContentType& kContentTypeJpeg;
+extern const ContentType& kContentTypeWebp;
 
 // Given a name (file or url), see if it has the canonical extension
 // corresponding to a particular content type.

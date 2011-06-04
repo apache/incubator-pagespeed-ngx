@@ -183,7 +183,16 @@ void RewriteDriver::Render() {
   // *before* initiating them, as we are doing this before we lock.
   // The RewriteThread can start mutating the initiated_rewrites_
   // set as soon as one is initiated.
-  initiated_rewrites_.insert(rewrites_.begin(), rewrites_.end());
+  {
+    // If not locked, this WRITE to initiated_rewrites_ can race with
+    // locked READs of initiated_rewrites_ in RewriteComplete which
+    // runs in the Rewrite thread, and RewritesCompete(), which runs
+    // in either thread.  Note that the DCHECK above, of
+    // initiated_rewrites_.empty(), is a READ and it's OK to have
+    // concurrent READs.
+    ScopedMutex lock(rewrite_mutex_.get());
+    initiated_rewrites_.insert(rewrites_.begin(), rewrites_.end());
+  }
   for (int i = 0; i < num_rewrites; ++i) {
     RewriteContext* rewrite_context = rewrites_[i];
     LOG(INFO) << "Initiating rewrite: " << rewrite_context;

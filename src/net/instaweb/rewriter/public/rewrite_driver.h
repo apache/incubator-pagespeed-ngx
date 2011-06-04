@@ -122,7 +122,7 @@ class RewriteDriver : public HtmlParse {
   // have its content loaded. This needs some more design work.
   bool FindResource(const StringPiece& url, ResourcePtr* resource) const;
 
-  bool CanRewriteImages() const {
+  bool ShouldNotRewriteImages() const {
     return (options()->botdetect_enabled() &&
             BotChecker::Lookup(user_agent_));
   }

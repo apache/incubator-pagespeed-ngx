@@ -21,6 +21,10 @@ vars = {
   "libpagespeed_revision": "@head",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
 
+  # We check libwebp out of Chromium repo to get the .gyp file.
+  "libwebp_src": "http://src.chromium.org/svn/trunk/src/third_party/libwebp/",
+  "libwebp_revision": "@80421",
+
   "mod_spdy_trunk": "http://mod-spdy.googlecode.com/svn/trunk",
   "mod_spdy_revision": "@143",
   "mod_spdy_deps_root": "src/third_party/mod_spdy_deps",
@@ -174,6 +178,8 @@ deps = {
     Var("opencv_src") + "/opencv/3rdparty/include" + Var("opencv_revision"),
 
   "src/third_party/serf/src": Var("serf_src") + Var("serf_revision"),
+
+  "src/third_party/libwebp": Var("libwebp_src") + Var("libwebp_revision"),
 
   "src/third_party/zlib": From(Var("libpagespeed_deps_root")),
 

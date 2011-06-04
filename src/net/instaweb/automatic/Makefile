@@ -76,6 +76,7 @@ BASE_LIBS = \
   third_party/libpagespeed/src/third_party/libjpeg_trans/libjpeg_trans.a \
   third_party/libpagespeed/src/third_party/optipng/libopngreduc.a \
   third_party/libpng/libpng.a \
+  third_party/libwebp/libwebp_enc.a \
   third_party/opencv/libcv.a \
   third_party/opencv/libcxcore.a \
   third_party/opencv/libflann.a \

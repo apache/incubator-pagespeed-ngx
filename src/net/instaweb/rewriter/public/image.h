@@ -49,6 +49,7 @@ class Image {
     IMAGE_JPEG,
     IMAGE_PNG,
     IMAGE_GIF,
+    IMAGE_WEBP,
   };
 
   virtual ~Image();
@@ -124,13 +125,19 @@ class Image {
   DISALLOW_COPY_AND_ASSIGN(Image);
 };
 
-// Image owns none of its inputs.  All of the arguments to Image(...) (the
+// Image owns none of its inputs.  All of the arguments to NewImage(...) (the
 // original_contents in particular) must outlive the Image object itself.  The
-// intent is that an Image is created in a scoped fashion from an existing
-// known resource.
+// intent is that an Image is created in a scoped fashion from an existing known
+// resource.
+//
+// The webp_preferred flag indicates that webp output should be produced rather
+// than jpg, unless webp creation fails for any reason (in which case jpg is
+// used as a fallback).  It has no effect if original_contents are a non-jpg or
+// non-webp image format.
 Image* NewImage(const StringPiece& original_contents,
                 const GoogleString& url,
                 const StringPiece& file_prefix,
+                bool webp_preferred,
                 MessageHandler* handler);
 
 // Creates a blank image of the given dimensions and type.
