@@ -73,6 +73,8 @@ class CommonFilter : public EmptyHtmlFilter {
   // base tag.  After the filter sees the base tag, it will return true.
   bool BaseUrlIsValid() const;
 
+  RewriteDriver* driver() { return driver_; }
+
  protected:
   // Overload these implementer methods:
   // Intentionally left abstract so that implementers don't forget to change

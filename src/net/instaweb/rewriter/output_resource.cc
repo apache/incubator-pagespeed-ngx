@@ -85,6 +85,7 @@ OutputResource::OutputResource(ResourceManager* resource_manager,
     : Resource(resource_manager, type),
       output_file_(NULL),
       writing_complete_(false),
+      locked_(false),
       cached_result_owned_(false),
       cached_result_(NULL),
       resolved_base_(resolved_base.data(), resolved_base.size()),
@@ -186,6 +187,7 @@ bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
     // We've created the data, never need to lock again.
     creation_lock_->Unlock();
     creation_lock_.reset(NULL);
+    locked_ = false;
   }
   return ret;
 }
@@ -309,7 +311,11 @@ void OutputResource::SetType(const ContentType* content_type) {
 }
 
 bool OutputResource::LockForCreation(BlockingBehavior block) {
-  return resource_manager_->LockForCreation(name_key(), block, &creation_lock_);
+  if (!locked_ &&
+      resource_manager_->LockForCreation(name_key(), block, &creation_lock_)) {
+    locked_ = true;
+  }
+  return locked_;
 }
 
 void OutputResource::SaveCachedResult(const GoogleString& name_key,

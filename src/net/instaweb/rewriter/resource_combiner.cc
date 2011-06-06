@@ -241,6 +241,10 @@ void ResourceCombiner::UpdateResolvedBase() {
   accumulated_leaf_size_ = 0;
 }
 
+bool ResourceCombiner::UseAsyncFlow() const {
+  return false;
+}
+
 OutputResourcePtr ResourceCombiner::Combine(const ContentType& content_type,
                                             MessageHandler* handler) {
   OutputResourcePtr combination;
@@ -256,7 +260,7 @@ OutputResourcePtr ResourceCombiner::Combine(const ContentType& content_type,
   // TODO(jmaessen, jmarantz): encode based on partnership
   combination.reset(rewrite_driver_->CreateOutputResourceWithPath(
       ResolvedBase(), filter_prefix_, url_safe_id, &content_type,
-      kRewrittenResource));
+      kRewrittenResource, UseAsyncFlow()));
   if (combination.get() != NULL) {
     if (combination->cached_result() != NULL &&
         combination->cached_result()->optimizable()) {

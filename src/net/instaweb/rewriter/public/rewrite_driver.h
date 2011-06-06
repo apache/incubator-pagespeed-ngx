@@ -53,14 +53,12 @@ class FileSystem;
 class HtmlFilter;
 class HtmlWriterFilter;
 class MessageHandler;
-class OutputResource;
 class RequestHeaders;
 class ResourceContext;
 class ResponseHeaders;
 class RewriteContext;
 class RewriteFilter;
 class Statistics;
-class Variable;
 class Writer;
 
 // TODO(jmarantz): rename this class to RequestContext.  This extends
@@ -78,11 +76,6 @@ class RewriteDriver : public HtmlParse {
   static const char kImageCompressionId[];
   static const char kJavascriptCombinerId[];
   static const char kJavascriptMinId[];
-
-  // Statistics
-  static const char kResourceFetchesCached[];
-  static const char kResourceFetchConstructSuccesses[];
-  static const char kResourceFetchConstructFailures[];
 
   // A list of HTTP request headers.  These are the headers which
   // should be passed through from the client request into the
@@ -192,6 +185,19 @@ class RewriteDriver : public HtmlParse {
                      Writer* writer,
                      UrlAsyncFetcher::Callback* callback);
 
+  // See FetchResource.  There are two differences:
+  //   1. It takes an OutputResource instead of a URL.
+  //   2. It returns whether a fetch was queued or not.  This is safe
+  //      to ignore because in either case the callback will be called.
+  //   3. If 'filter' is NULL then the request only checks cache and
+  //      (if enabled) the file system.
+  bool FetchOutputResource(const OutputResourcePtr& output_resource,
+                           RewriteFilter* filter,
+                           const RequestHeaders& request_headers,
+                           ResponseHeaders* response_headers,
+                           Writer* writer,
+                           UrlAsyncFetcher::Callback* callback);
+
   // Attempts to decode an output resource based on the URL pattern
   // without actually rewriting it. No permission checks are performed on the
   // url, though it is parsed to see if it looks like the url of a generated
@@ -240,18 +246,20 @@ class RewriteDriver : public HtmlParse {
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
       const ResourcePtr& input_resource,
-      OutputResourceKind kind) {
+      OutputResourceKind kind,
+      bool use_async_flow) {
     return resource_manager_->CreateOutputResourceFromResource(
-        options(), filter_prefix, encoder, data, input_resource, kind);
+        options(), filter_prefix, encoder, data, input_resource, kind,
+        use_async_flow);
   }
 
   // See comments in resource_manager.h
   OutputResourcePtr CreateOutputResourceWithPath(
       const StringPiece& path, const StringPiece& filter_prefix,
       const StringPiece& name,  const ContentType* type,
-      OutputResourceKind kind) {
+      OutputResourceKind kind, bool use_async_flow) {
     return resource_manager_->CreateOutputResourceWithPath(
-        options(), path, filter_prefix, name, type, kind);
+        options(), path, filter_prefix, name, type, kind, use_async_flow);
   }
 
   // Creates an input resource based on input_url.  Returns NULL if
@@ -408,22 +416,6 @@ class RewriteDriver : public HtmlParse {
   // caller side.
   ResourcePtr CreateInputResourceUnchecked(const GoogleUrl& gurl);
 
-  // Attempt to fetch extant version of an OutputResource.  If available,
-  // return true. If not, returns false and makes sure the resource is
-  // locked for creation. This method may block trying to lock resource
-  // for creation, with timeouts of a few seconds.
-  // Precondition: output_resource must have a valid URL set (including a hash).
-  bool FetchExtantOutputResourceOrLock(
-    OutputResource* output_resource,
-    Writer* writer, ResponseHeaders* response_headers);
-
-  // Attempt to fetch extant version of an OutputResource, returning true
-  // and writing it out to writer and response_headers if available.
-  // Does not block or touch resource creation locks.
-  bool FetchExtantOutputResource(
-    OutputResource* output_resource,
-    Writer* writer, ResponseHeaders* response_headers);
-
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
   // tag, if one exists.  See
@@ -522,10 +514,6 @@ class RewriteDriver : public HtmlParse {
   ResourceMap resource_map_;
 
   HtmlResourceSlotSet slots_;
-
-  Variable* cached_resource_fetches_;
-  Variable* succeeded_filter_resource_fetches_;
-  Variable* failed_filter_resource_fetches_;
 
   scoped_ptr<RewriteOptions> custom_options_;
 

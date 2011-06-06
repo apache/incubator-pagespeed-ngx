@@ -278,23 +278,25 @@ TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
   OutputResourcePtr resource;
   for (int t = 0; t < arraysize(content_types); ++t) {
     for (int k = 0; k < arraysize(resource_kinds); ++k) {
-      // Short name should always succeed at creating new resource.
-      resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-          short_path, dummy_filter_id, short_name,
-          content_types[t], resource_kinds[k]));
-      EXPECT_TRUE(NULL != resource.get());
+      for (int use_async_flow = 0; use_async_flow < 2; ++use_async_flow) {
+        // Short name should always succeed at creating new resource.
+        resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
+            short_path, dummy_filter_id, short_name,
+            content_types[t], resource_kinds[k], use_async_flow != 0));
+        EXPECT_TRUE(NULL != resource.get());
 
-      // Long leaf-name should always fail at creating new resource.
-      resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-          short_path, dummy_filter_id, long_name,
-          content_types[t], resource_kinds[k]));
-      EXPECT_TRUE(NULL == resource.get());
+        // Long leaf-name should always fail at creating new resource.
+        resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
+            short_path, dummy_filter_id, long_name,
+            content_types[t], resource_kinds[k], use_async_flow != 0));
+        EXPECT_TRUE(NULL == resource.get());
 
-      // Long total URL length should always fail at creating new resource.
-      resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-          long_path, dummy_filter_id, short_name,
-          content_types[t], resource_kinds[k]));
-      EXPECT_TRUE(NULL == resource.get());
+        // Long total URL length should always fail at creating new resource.
+        resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
+            long_path, dummy_filter_id, short_name,
+            content_types[t], resource_kinds[k], use_async_flow != 0));
+        EXPECT_TRUE(NULL == resource.get());
+      }
     }
   }
 }

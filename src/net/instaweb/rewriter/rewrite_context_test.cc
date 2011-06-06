@@ -299,6 +299,7 @@ class NestedFilter : public RewriteFilter {
   virtual const char* Name() const { return "NestedFilter"; }
   virtual void StartDocumentImpl() {}
   virtual void EndElementImpl(HtmlElement* element) {}
+  virtual bool HasAsyncFlow() const { return true; }
 
  private:
   OutputResourceKind kind_;
@@ -325,6 +326,7 @@ class CombiningFilter : public RewriteFilter {
     bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
       return WriteCombination(in, out, rewrite_driver_->message_handler());
     }
+    virtual bool UseAsyncFlow() const { return true; }
   };
 
 
@@ -353,7 +355,6 @@ class CombiningFilter : public RewriteFilter {
         }
       }
       OutputResourcePtr combination(combiner_.MakeOutput());
-      combination->set_written_using_rewrite_context_flow(true);
 
       // ResourceCombiner provides us with a pre-populated CachedResult,
       // so we need to copy it over to our OutputPartition.  This is
@@ -439,6 +440,7 @@ class CombiningFilter : public RewriteFilter {
     return context->Fetch(resource, writer, response, handler, callback);
   }
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
+  virtual bool HasAsyncFlow() const { return true; }
 
  private:
   scoped_ptr<Context> context_;
@@ -877,11 +879,8 @@ TEST_F(RewriteContextTest, CombinationRewrite) {
       "combination_rewrite", StrCat(CssLink("a.css"), CssLink("b.css")),
       CssLink(combined_url));
   EXPECT_EQ(0, lru_cache()->num_hits());
-#define CL_21685831_SUBMITTED 0
-#if CL_21685831_SUBMITTED
   EXPECT_EQ(3, lru_cache()->num_misses());   // partition, and 2 inputs.
   EXPECT_EQ(4, lru_cache()->num_inserts());  // partition, output, and 2 inputs.
-#endif
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   ClearStats();
 
@@ -908,9 +907,7 @@ TEST_F(RewriteContextTest, CombinationFetch) {
   EXPECT_EQ(" a b", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(4, lru_cache()->num_misses());  // 2 inputs + 2 calls to ExtantFetch
-#if CL_21685831_SUBMITTED
   EXPECT_EQ(3, lru_cache()->num_inserts());  // 2 inputs, 1 output.
-#endif
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   ClearStats();
   content.clear();

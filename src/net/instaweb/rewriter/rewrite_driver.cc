@@ -111,10 +111,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       resource_manager_(NULL),
       add_instrumentation_filter_(NULL),
       scan_filter_(this),
-      domain_rewriter_(NULL),
-      cached_resource_fetches_(NULL),
-      succeeded_filter_resource_fetches_(NULL),
-      failed_filter_resource_fetches_(NULL) {
+      domain_rewriter_(NULL) {
   if (RunningOnValgrind()) {
     rewrite_deadline_ms_ = kValgrindWaitForRewriteMsPerFlush;
   } else {
@@ -251,19 +248,8 @@ const char* RewriteDriver::kPassThroughRequestAttributes[3] = {
   HttpAttributes::kUserAgent
 };
 
-// names for Statistics variables.
-const char RewriteDriver::kResourceFetchesCached[] = "resource_fetches_cached";
-const char RewriteDriver::kResourceFetchConstructSuccesses[] =
-    "resource_fetch_construct_successes";
-const char RewriteDriver::kResourceFetchConstructFailures[] =
-    "resource_fetch_construct_failures";
-
 void RewriteDriver::Initialize(Statistics* statistics) {
   if (statistics != NULL) {
-    statistics->AddVariable(kResourceFetchesCached);
-    statistics->AddVariable(kResourceFetchConstructSuccesses);
-    statistics->AddVariable(kResourceFetchConstructFailures);
-
     // TODO(jmarantz): Make all of these work with null statistics so that
     // they could mdo other required static initializations if desired
     // without having to edit code to this method.
@@ -545,14 +531,6 @@ void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
   // should be set up prior to the rewrite_driver.
   //
   // TODO(sligocki): It'd be nice to get this into the constructor.
-  Statistics* stats = statistics();
-  if ((stats != NULL) && (cached_resource_fetches_ == NULL)) {
-    cached_resource_fetches_ = stats->GetVariable(kResourceFetchesCached);
-    succeeded_filter_resource_fetches_ =
-        stats->GetVariable(kResourceFetchConstructSuccesses);
-    failed_filter_resource_fetches_ =
-        stats->GetVariable(kResourceFetchConstructFailures);
-  }
   resource_filter_map_[filter->id()] = filter;
   filters_.push_back(filter);
 }
@@ -655,21 +633,131 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const StringPiece& url,
 
 namespace {
 
-class FetchCallback : public UrlAsyncFetcher::Callback {
+class FilterFetch : public UrlAsyncFetcher::Callback {
  public:
-  FetchCallback(RewriteDriver* driver, UrlAsyncFetcher::Callback* callback)
+  FilterFetch(RewriteDriver* driver, UrlAsyncFetcher::Callback* callback)
     : driver_(driver),
       callback_(callback) {
   }
-  virtual ~FetchCallback() {}
+  virtual ~FilterFetch() {}
   virtual void Done(bool success) {
+    ResourceManager* resource_manager = driver_->resource_manager();
+    if (success) {
+      resource_manager->succeeded_filter_resource_fetches()->Add(1);
+    } else {
+      resource_manager->failed_filter_resource_fetches()->Add(1);
+    }
     callback_->Done(success);
     driver_->FetchComplete();
     delete this;
   }
 
+  static bool Start(RewriteFilter* filter,
+                    const OutputResourcePtr& output_resource,
+                    Writer* writer,
+                    const RequestHeaders& request,
+                    ResponseHeaders* response,
+                    MessageHandler* handler,
+                    UrlAsyncFetcher::Callback* callback) {
+    RewriteDriver* driver = filter->driver();
+    FilterFetch* cb = new FilterFetch(driver, callback);
+    bool queued = filter->Fetch(output_resource, writer, request,
+                                 response, handler, cb);
+    if (!queued) {
+      ResourceManager* resource_manager = driver->resource_manager();
+      resource_manager->failed_filter_resource_fetches()->Add(1);
+      callback->Done(false);
+      driver->FetchComplete();
+      delete cb;
+    }
+    return queued;
+  }
+
  private:
   RewriteDriver* driver_;
+  UrlAsyncFetcher::Callback* callback_;
+};
+
+class CacheCallback : public HTTPCache::Callback {
+ public:
+  CacheCallback(RewriteDriver* driver,
+                RewriteFilter* filter,
+                const OutputResourcePtr& output_resource,
+                const RequestHeaders& request,
+                ResponseHeaders* response,
+                Writer* writer,
+                MessageHandler* handler,
+                UrlAsyncFetcher::Callback* callback)
+      : driver_(driver),
+        filter_(filter),
+        output_resource_(output_resource),
+        response_(response),
+        writer_(writer),
+        handler_(handler),
+        callback_(callback) {
+    request_.CopyFrom(request);
+  }
+
+  virtual ~CacheCallback() {}
+
+  virtual void Done(HTTPCache::FindResult find_result) {
+    ResourceManager* resource_manager = driver_->resource_manager();
+    HTTPCache* http_cache = resource_manager->http_cache();
+
+    StringPiece content;
+    if (find_result == HTTPCache::kFound) {
+      HTTPValue* value = http_value();
+      bool success = (value->ExtractContents(&content) &&
+                      value->ExtractHeaders(response_, handler_));
+      if (success) {
+        output_resource_->Link(value, handler_);
+        output_resource_->set_written(true);
+        success = writer_->Write(content, handler_);
+      }
+      callback_->Done(success);
+      driver_->FetchComplete();
+      delete this;
+    } else if (output_resource_->has_lock()) {
+      if (output_resource_->Load(handler_)) {
+        // OutputResources can also be loaded while not in cache if
+        // store_outputs_in_file_system() is true.
+        content = output_resource_->contents();
+        response_->CopyFrom(*output_resource_->response_headers());
+        http_cache->Put(output_resource_->url(), response_, content, handler_);
+        callback_->Done(writer_->Write(content, handler_));
+        driver_->FetchComplete();
+      } else {
+        // We already had the lock and failed our cache lookup.  Use the filter
+        // to reconstruct.
+        if (filter_ != NULL) {
+          FilterFetch::Start(filter_, output_resource_, writer_,
+                             request_, response_, handler_,
+                             callback_);
+        } else {
+          callback_->Done(false);
+        }
+      }
+      delete this;
+    } else if (output_resource_->LockForCreation(kMayBlock)) {
+      // See if the resource got created while we were waiting for the
+      // lock.  (If it did, the lock will get released almost
+      // immediately in our caller, as it will cleanup the resource).
+      http_cache->Find(output_resource_->url(), handler_, this);
+    } else {
+      LOG(DFATAL) << "Failed to grab lock despite having passed kMayBlock";
+      callback_->Done(false);
+      delete this;
+    }
+  }
+
+ private:
+  RewriteDriver* driver_;
+  RewriteFilter* filter_;
+  OutputResourcePtr output_resource_;
+  RequestHeaders request_;
+  ResponseHeaders* response_;
+  Writer* writer_;
+  MessageHandler* handler_;
   UrlAsyncFetcher::Callback* callback_;
 };
 
@@ -682,7 +770,6 @@ bool RewriteDriver::FetchResource(
     Writer* writer,
     UrlAsyncFetcher::Callback* callback) {
   DCHECK(!fetch_queued_);
-  bool queued = false;
   DCHECK_EQ(0, pending_rewrites_);
   bool handled = false;
 
@@ -693,48 +780,53 @@ bool RewriteDriver::FetchResource(
 
   if (output_resource.get() != NULL) {
     handled = true;
-
-    // None of our resources ever change -- the hash of the content is embedded
-    // in the filename.  This is why we serve them with very long cache
-    // lifetimes.  However, when the user presses Reload, the browser may
-    // attempt to validate that the cached copy is still fresh by sending a GET
-    // with an If-Modified-Since header.  If this header is present, we should
-    // return a 304 Not Modified, since any representation of the resource
-    // that's in the browser's cache must be correct.
-    StringStarVector values;
-    if (request_headers.Lookup(HttpAttributes::kIfModifiedSince, &values)) {
-      response_headers->SetStatusAndReason(HttpStatus::kNotModified);
-      callback->Done(true);
-      queued = true;
-    } else if (FetchExtantOutputResourceOrLock(
-        output_resource.get(), writer, response_headers)) {
-      // TODO(jmarantz): this clause needs to go asynchronous, possibly via
-      // RewriteContext.
-      callback->Done(true);
-      queued = true;
-      cached_resource_fetches_->Add(1);
-    } else if (filter != NULL) {
-      SetBaseUrlForFetch(url);
-      // The resource is locked for creation by
-      // the call to FetchExtantOutputResourceOrLock() above.
-      callback = new FetchCallback(this, callback);
-      fetch_queued_ = true;
-      queued = filter->Fetch(output_resource, writer,
-                             request_headers, response_headers,
-                             message_handler(), callback);
-      if (queued) {
-        succeeded_filter_resource_fetches_->Add(1);
-      } else {
-        failed_filter_resource_fetches_->Add(1);
-      }
-    }
-  }
-  if (!queued && handled) {
-    // If we got here, we were asked to decode a resource for which we have
-    // no filter or an invalid URL.
-    callback->Done(false);
+    FetchOutputResource(output_resource, filter, request_headers,
+                        response_headers, writer, callback);
   }
   return handled;
+}
+
+bool RewriteDriver::FetchOutputResource(
+    const OutputResourcePtr& output_resource,
+    RewriteFilter* filter,
+    const RequestHeaders& request_headers,
+    ResponseHeaders* response_headers,
+    Writer* writer,
+    UrlAsyncFetcher::Callback* callback) {
+  // None of our resources ever change -- the hash of the content is embedded
+  // in the filename.  This is why we serve them with very long cache
+  // lifetimes.  However, when the user presses Reload, the browser may
+  // attempt to validate that the cached copy is still fresh by sending a GET
+  // with an If-Modified-Since header.  If this header is present, we should
+  // return a 304 Not Modified, since any representation of the resource
+  // that's in the browser's cache must be correct.
+  bool queued = false;
+  StringStarVector values;
+  if (request_headers.Lookup(HttpAttributes::kIfModifiedSince, &values)) {
+    response_headers->SetStatusAndReason(HttpStatus::kNotModified);
+    callback->Done(true);
+    queued = false;
+  } else {
+    SetBaseUrlForFetch(output_resource->url());
+    fetch_queued_ = true;
+    if (output_resource->kind() == kOnTheFlyResource) {
+      // Don't bother to look up the resource in the cache: ask the filter.
+      if (filter != NULL) {
+        queued = FilterFetch::Start(filter, output_resource, writer,
+                                    request_headers, response_headers,
+                                    message_handler(), callback);
+      }
+    } else {
+      HTTPCache::Callback* cache_callback = new CacheCallback(
+          this, filter, output_resource, request_headers, response_headers,
+          writer, message_handler(), callback);
+      HTTPCache* http_cache = resource_manager_->http_cache();
+      http_cache->Find(output_resource->url(), message_handler(),
+                       cache_callback);
+      queued = true;
+    }
+  }
+  return queued;
 }
 
 void RewriteDriver::FetchComplete() {
@@ -743,73 +835,7 @@ void RewriteDriver::FetchComplete() {
   fetch_queued_ = false;
   DCHECK_EQ(0, pending_rewrites_);
   rewrite_condvar_->Signal();
-  if (asynchronous_rewrites_) {
-    CHECK_EQ(1U, rewrites_.size());
-    STLDeleteElements(&rewrites_);
-  }
-}
-
-// TODO(jmarantz): remove writer/response_headers args from this function
-// and force caller to pull those directly from output_resource, as that will
-// save the effort of copying the headers.
-//
-// It will also simplify this routine quite a bit.
-bool RewriteDriver::FetchExtantOutputResourceOrLock(
-    OutputResource* output_resource,
-    Writer* writer, ResponseHeaders* response_headers) {
-  if (output_resource->kind() == kOnTheFlyResource) {
-    return false;
-  }
-
-  // 1) See if resource is already cached, if so return it.
-  if (FetchExtantOutputResource(output_resource, writer, response_headers)) {
-    return true;
-  }
-
-  // 2) Grab a lock for creation, blocking for it if needed.
-  output_resource->LockForCreation(kMayBlock);
-
-  // 3) See if the resource got created while we were waiting for the lock.
-  // (If it did, the lock will get released almost immediately in our caller,
-  //  as it will cleanup the resource).
-  return FetchExtantOutputResource(output_resource, writer, response_headers);
-}
-
-bool RewriteDriver::FetchExtantOutputResource(
-    OutputResource* output_resource,
-    Writer* writer, ResponseHeaders* response_headers) {
-  // TODO(jmarantz): we are making lots of copies of the data.  We should
-  // retrieve the data from the cache without copying it.
-
-  // The http_cache is shared between multiple different classes in Instaweb.
-  // To avoid colliding hash keys, we use a class-specific prefix.
-  //
-  // TODO(jmarantz): consider formalizing this in the HTTPCache API and
-  // doing the StrCat inside.
-  bool ret = false;
-  StringPiece content;
-  MessageHandler* handler = message_handler();
-  ResponseHeaders* meta_data = output_resource->response_headers();
-  GoogleString url = output_resource->url();
-  HTTPCache* http_cache = resource_manager_->http_cache();
-  if ((http_cache->Find(url, &output_resource->value_, meta_data, handler)
-          == HTTPCache::kFound) &&
-      output_resource->value_.ExtractContents(&content) &&
-      writer->Write(content, handler)) {
-    output_resource->set_written(true);
-    ret = true;
-  } else if (output_resource->Load(handler)) {
-    // OutputResources can also be loaded while not in cache if
-    // store_outputs_in_file_system() is true.
-    content = output_resource->contents();
-    http_cache->Put(url, meta_data, content, handler);
-    ret = writer->Write(content, handler);
-  }
-
-  if (ret && (response_headers != meta_data)) {
-    response_headers->CopyFrom(*meta_data);
-  }
-  return ret;
+  STLDeleteElements(&rewrites_);
 }
 
 bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,

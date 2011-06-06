@@ -231,26 +231,19 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
       &other_file_system, file_prefix_, other_mock_timer, &message_handler_);
   WaitUrlAsyncFetcher wait_url_async_fetcher(&mock_url_fetcher_,
                                              thread_system_->NewMutex());
-  ResourceManager other_resource_manager(
+  ResourceManager new_resource_manager(
       file_prefix_, &other_file_system, &filename_encoder_,
       &wait_url_async_fetcher, hasher(),
       &other_http_cache, other_lru_cache, &other_lock_manager,
       &message_handler_, &stats, thread_system_.get(), factory_);
 
-  RewriteDriver other_rewrite_driver(&message_handler_, &other_file_system,
-                                     &wait_url_async_fetcher);
+  RewriteDriver new_rewrite_driver(&message_handler_, &other_file_system,
+                                   &wait_url_async_fetcher);
   RewriteOptions* options = new RewriteOptions;
   options->CopyFrom(*options_);
-  other_rewrite_driver.set_custom_options(options);
-  other_rewrite_driver.SetResourceManager(&other_resource_manager);
-  other_rewrite_driver.AddFilters();
-
-  Variable* cached_resource_fetches =
-      stats.GetVariable(RewriteDriver::kResourceFetchesCached);
-  Variable* succeeded_filter_resource_fetches =
-      stats.GetVariable(RewriteDriver::kResourceFetchConstructSuccesses);
-  Variable* failed_filter_resource_fetches =
-      stats.GetVariable(RewriteDriver::kResourceFetchConstructFailures);
+  new_rewrite_driver.set_custom_options(options);
+  new_rewrite_driver.SetResourceManager(&new_resource_manager);
+  new_rewrite_driver.AddFilters();
 
   RequestHeaders request_headers;
   // TODO(sligocki): We should set default request headers.
@@ -263,7 +256,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   EXPECT_EQ(CacheInterface::kNotFound, other_http_cache.Query(resource_url));
 
   // Initiate fetch.
-  EXPECT_EQ(true, other_rewrite_driver.FetchResource(
+  EXPECT_EQ(true, new_rewrite_driver.FetchResource(
       resource_url, request_headers, &response_headers, &response_writer,
       &callback));
 
@@ -272,14 +265,14 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   EXPECT_EQ("", response_contents);
 
   // After we call the callback, it should be correct.
-  CallFetcherCallbacksForDriver(&wait_url_async_fetcher, &other_rewrite_driver);
+  CallFetcherCallbacksForDriver(&wait_url_async_fetcher, &new_rewrite_driver);
   EXPECT_EQ(true, callback.done());
   EXPECT_EQ(expected_content, response_contents);
 
   // Check that stats say we took the construct resource path.
-  EXPECT_EQ(0, cached_resource_fetches->Get());
-  EXPECT_EQ(1, succeeded_filter_resource_fetches->Get());
-  EXPECT_EQ(0, failed_filter_resource_fetches->Get());
+  EXPECT_EQ(0, new_resource_manager.cached_resource_fetches()->Get());
+  EXPECT_EQ(1, new_resource_manager.succeeded_filter_resource_fetches()->Get());
+  EXPECT_EQ(0, new_resource_manager.failed_filter_resource_fetches()->Get());
 }
 
 // Initializes a resource for mock fetching.

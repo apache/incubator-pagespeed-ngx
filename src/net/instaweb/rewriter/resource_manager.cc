@@ -61,6 +61,11 @@ static const char kCachedOutputHits[] = "rewrite_cached_output_hits";
 static const char kCachedOutputMisses[] = "rewrite_cached_output_misses";
 const char kInstawebResource404Count[] = "resource_404_count";
 const char kInstawebSlurp404Count[] = "slurp_404_count";
+const char kResourceFetchesCached[] = "resource_fetches_cached";
+const char kResourceFetchConstructSuccesses[] =
+    "resource_fetch_construct_successes";
+const char kResourceFetchConstructFailures[] =
+    "resource_fetch_construct_failures";
 
 // Variables for the beacon to increment.  These are currently handled in
 // mod_pagespeed_handler on apache.  The average load time in milliseconds is
@@ -134,6 +139,11 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       slurp_404_count_(statistics->GetVariable(kInstawebSlurp404Count)),
       total_page_load_ms_(statistics->GetVariable(kTotalPageLoadMs)),
       page_load_count_(statistics->GetVariable(kPageLoadCount)),
+      cached_resource_fetches_(statistics->GetVariable(kResourceFetchesCached)),
+      succeeded_filter_resource_fetches_(
+          statistics->GetVariable(kResourceFetchConstructSuccesses)),
+      failed_filter_resource_fetches_(
+          statistics->GetVariable(kResourceFetchConstructFailures)),
       http_cache_(http_cache),
       metadata_cache_(metadata_cache),
       relative_path_(false),
@@ -167,6 +177,9 @@ void ResourceManager::Initialize(Statistics* statistics) {
     statistics->AddVariable(kInstawebSlurp404Count);
     statistics->AddVariable(kTotalPageLoadMs);
     statistics->AddVariable(kPageLoadCount);
+    statistics->AddVariable(kResourceFetchesCached);
+    statistics->AddVariable(kResourceFetchConstructSuccesses);
+    statistics->AddVariable(kResourceFetchConstructFailures);
     HTTPCache::Initialize(statistics);
     RewriteDriver::Initialize(statistics);
   }
@@ -419,7 +432,8 @@ OutputResourcePtr ResourceManager::CreateOutputResourceFromResource(
     const UrlSegmentEncoder* encoder,
     const ResourceContext* data,
     const ResourcePtr& input_resource,
-    OutputResourceKind kind) {
+    OutputResourceKind kind,
+    bool use_async_flow) {
   OutputResourcePtr result;
   if (input_resource.get() != NULL) {
     // TODO(jmarantz): It would be more efficient to pass in the base
@@ -434,7 +448,7 @@ OutputResourcePtr ResourceManager::CreateOutputResourceFromResource(
       encoder->Encode(v, data, &name);
       result.reset(CreateOutputResourceWithPath(
           options, mapped_gurl->AllExceptLeaf(),
-          filter_id, name, input_resource->type(), kind));
+          filter_id, name, input_resource->type(), kind, use_async_flow));
     }
   }
   return result;
@@ -446,7 +460,8 @@ OutputResourcePtr ResourceManager::CreateOutputResourceWithPath(
     const StringPiece& filter_id,
     const StringPiece& name,
     const ContentType* content_type,
-    OutputResourceKind kind) {
+    OutputResourceKind kind,
+    bool use_async_flow) {
   ResourceNamer full_name;
   full_name.set_id(filter_id);
   full_name.set_name(name);
@@ -461,13 +476,15 @@ OutputResourcePtr ResourceManager::CreateOutputResourceWithPath(
   int url_size = path.size() + leaf_size;
   if ((leaf_size <= options->max_url_segment_size()) &&
       (url_size <= options->max_url_size())) {
-    resource.reset(new OutputResource(
-        this, path, full_name, content_type, options, kind));
+    OutputResource* output_resource = new OutputResource(
+        this, path, full_name, content_type, options, kind);
+    output_resource->set_written_using_rewrite_context_flow(use_async_flow);
+    resource.reset(output_resource);
 
     // Determine whether this output resource is still valid by looking
     // up by hash in the http cache.  Note that this cache entry will
     // expire when any of the origin resources expire.
-    if (kind != kOutlinedResource) {
+      if ((kind != kOutlinedResource) && !use_async_flow) {
       GoogleString name_key = StrCat(
           ResourceManager::kCacheKeyResourceNamePrefix, resource->name_key());
       resource->FetchCachedResult(name_key, message_handler_);

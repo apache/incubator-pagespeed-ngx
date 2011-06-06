@@ -176,6 +176,13 @@ class ResourceManager {
   }
   Variable* resource_404_count() { return resource_404_count_; }
   Variable* slurp_404_count() { return slurp_404_count_; }
+  Variable* cached_resource_fetches() { return cached_resource_fetches_; }
+  Variable* succeeded_filter_resource_fetches() {
+    return succeeded_filter_resource_fetches_;
+  }
+  Variable* failed_filter_resource_fetches() {
+    return failed_filter_resource_fetches_;
+  }
 
   MessageHandler* message_handler() const { return message_handler_; }
 
@@ -202,7 +209,8 @@ class ResourceManager {
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
       const ResourcePtr& input_resource,
-      OutputResourceKind kind);
+      OutputResourceKind kind,
+      bool use_async_flow);
 
   // Creates an output resource where the name is provided by the rewriter.
   // The intent is to be able to derive the content from the name, for example,
@@ -220,7 +228,8 @@ class ResourceManager {
   OutputResourcePtr CreateOutputResourceWithPath(
       const RewriteOptions* options, const StringPiece& path,
       const StringPiece& filter_prefix, const StringPiece& name,
-      const ContentType* type, OutputResourceKind kind);
+      const ContentType* type, OutputResourceKind kind,
+      bool use_async_flow);
 
   // Attempt to obtain a named lock.  Return true if we do so.  If the
   // object is expensive to create, this lock should be held during
@@ -335,6 +344,10 @@ class ResourceManager {
   // Used for recording results from beacons from 'add_instrumentation_filter'.
   Variable* total_page_load_ms_;
   Variable* page_load_count_;
+
+  Variable* cached_resource_fetches_;
+  Variable* succeeded_filter_resource_fetches_;
+  Variable* failed_filter_resource_fetches_;
 
   HTTPCache* http_cache_;
   CacheInterface* metadata_cache_;

@@ -173,6 +173,11 @@ class OutputResource : public Resource {
     written_using_rewrite_context_flow_ = x;
   }
 
+  bool has_lock() const { return locked_; }
+
+  // This is called by CacheCallback::Done in rewrite_driver.cc.
+  void set_written(bool written) { writing_complete_ = true; }
+
  protected:
   virtual ~OutputResource();
   REFCOUNT_FRIEND_DECLARATION(OutputResource);
@@ -181,7 +186,6 @@ class OutputResource : public Resource {
   friend class ResourceManager;
   friend class ResourceManagerTest;
   friend class ResourceManagerTestingPeer;
-  friend class RewriteDriver;
 
   class OutputWriter {
    public:
@@ -207,7 +211,6 @@ class OutputResource : public Resource {
   StringPiece extension() const { return full_name_.ext(); }
   StringPiece hash() const { return full_name_.hash(); }
   bool has_hash() const { return !hash().empty(); }
-  void set_written(bool written) { writing_complete_ = true; }
   GoogleString TempPrefix() const;
 
   OutputWriter* BeginWrite(MessageHandler* message_handler);
@@ -225,6 +228,7 @@ class OutputResource : public Resource {
 
   FileSystem::OutputFile* output_file_;
   bool writing_complete_;
+  bool locked_;
 
   // TODO(jmarantz): We have a complicated semantic for CachedResult
   // ownership as we transition from rewriting inline while html parsing

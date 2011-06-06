@@ -22,6 +22,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -380,17 +381,12 @@ TEST_F(CacheExtenderTest, MadeOnTheFly) {
   ValidateExpected("and_img", "<img src=\"b.jpg\">",
                    StrCat("<img src=\"", b_ext, "\">"));
 
-  Variable* cached_resource_fetches = statistics()->GetVariable(
-      RewriteDriver::kResourceFetchesCached);
-  Variable* succeeded_filter_resource_fetches = statistics()->GetVariable(
-      RewriteDriver::kResourceFetchConstructSuccesses);
-
-  EXPECT_EQ(0, cached_resource_fetches->Get());
-  EXPECT_EQ(0, succeeded_filter_resource_fetches->Get());
+  EXPECT_EQ(0, resource_manager()->cached_resource_fetches()->Get());
+  EXPECT_EQ(0, resource_manager()->succeeded_filter_resource_fetches()->Get());
   GoogleString out;
   EXPECT_TRUE(ServeResourceUrl(b_ext, &out));
-  EXPECT_EQ(0, cached_resource_fetches->Get());
-  EXPECT_EQ(1, succeeded_filter_resource_fetches->Get());
+  EXPECT_EQ(0, resource_manager()->cached_resource_fetches()->Get());
+  EXPECT_EQ(1, resource_manager()->succeeded_filter_resource_fetches()->Get());
 }
 
 }  // namespace

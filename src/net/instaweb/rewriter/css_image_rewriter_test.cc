@@ -170,10 +170,11 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
     GoogleString css_url = ExpectedUrlForCss(id, output);
 
     // See what cache information we have
+    bool use_async_flow = false;
     OutputResourcePtr output_resource(
         rewrite_driver()->CreateOutputResourceWithPath(
             kTestDomain, RewriteDriver::kCssFilterId, StrCat(id, ".css"),
-            &kContentTypeCss, kRewrittenResource));
+            &kContentTypeCss, kRewrittenResource, use_async_flow));
     ASSERT_TRUE(output_resource.get() != NULL);
     EXPECT_EQ(css_url, output_resource->url());
     ASSERT_TRUE(output_resource->cached_result() != NULL);

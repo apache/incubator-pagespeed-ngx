@@ -280,10 +280,11 @@ class RewriteSingleResourceFilterTest
     const UrlSegmentEncoder* encoder = filter_->encoder();
     ResourcePtr input_resource(CreateResource(kTestDomain, url));
     EXPECT_TRUE(input_resource.get() != NULL);
+    bool use_async_flow = false;
     OutputResourcePtr output_resource(
         rewrite_driver()->CreateOutputResourceFromResource(
             kTestFilterPrefix, encoder, NULL, input_resource,
-            kRewrittenResource));
+            kRewrittenResource, use_async_flow));
     EXPECT_TRUE(output_resource.get() != NULL);
 
     return output_resource->ReleaseCachedResult();

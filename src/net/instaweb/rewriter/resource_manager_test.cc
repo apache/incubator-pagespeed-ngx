@@ -29,6 +29,8 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/mock_callback.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/blocking_behavior.h"
@@ -68,6 +70,8 @@ const char kResourceUrlPath[] = "/image.png";
 
 namespace net_instaweb {
 
+class Writer;
+
 class VerifyContentsCallback : public Resource::AsyncCallback {
  public:
   VerifyContentsCallback(const ResourcePtr& resource,
@@ -100,20 +104,39 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // Fetches data (which is expected to exist) for given resource,
   // but making sure to go through the path that checks for its
   // non-existence and potentially doing locking, too.
-  GoogleString FetchExtantOutputResource(OutputResource* resource) {
+  bool FetchExtantOutputResourceHelper(const OutputResourcePtr& resource,
+                                       Writer* writer) {
+    MockCallback callback;
+    RewriteFilter* null_filter = NULL;  // We want to test the cache only.
+    RequestHeaders request;
+    EXPECT_TRUE(rewrite_driver()->FetchOutputResource(
+        resource, null_filter, request, resource->response_headers(), writer,
+        &callback));
+    EXPECT_TRUE(callback.done());
+    return callback.success();
+  }
+
+  GoogleString GetOutputResourceWithoutLock(const OutputResourcePtr& resource) {
     GoogleString contents;
     StringWriter writer(&contents);
-    EXPECT_TRUE(rewrite_driver()->FetchExtantOutputResourceOrLock(
-        resource, &writer, resource->response_headers()));
+    EXPECT_TRUE(FetchExtantOutputResourceHelper(resource, &writer));
+    EXPECT_FALSE(resource->has_lock());
+    return contents;
+  }
+
+  GoogleString GetOutputResourceWithLock(const OutputResourcePtr& resource) {
+    GoogleString contents;
+    StringWriter writer(&contents);
+    EXPECT_TRUE(FetchExtantOutputResourceHelper(resource, &writer));
+    EXPECT_TRUE(resource->has_lock());
     return contents;
   }
 
   // Returns whether there was an existing copy of data for the resource.
   // If not, makes sure the resource is wrapped.
-  bool TryFetchExtantOutputResourceOrLock(OutputResource* resource) {
-    NullWriter writer;
-    return rewrite_driver()->FetchExtantOutputResourceOrLock(
-        resource, &writer, resource->response_headers());
+  bool TryFetchExtantOutputResourceOrLock(const OutputResourcePtr& resource) {
+    NullWriter null_writer;
+    return FetchExtantOutputResourceHelper(resource, &null_writer);
   }
 
   // Asserts that the given url starts with an appropriate prefix;
@@ -151,10 +174,11 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // places.
     const int64 origin_expire_time_ms = 100000;
     const ContentType* content_type = &kContentTypeText;
+    bool use_async_flow = false;
     OutputResourcePtr nor(
         rewrite_driver()->CreateOutputResourceWithPath(
             url_prefix(), filter_prefix, name, content_type,
-            kRewrittenResource));
+            kRewrittenResource, use_async_flow));
     ASSERT_TRUE(nor.get() != NULL);
     // Check name_key against url_prefix/fp.name
     GoogleString name_key = nor->name_key();
@@ -163,7 +187,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // Make sure the resource hasn't already been created (and lock it for
     // creation). We do need to give it a hash for fetching to do anything.
     ResourceManagerTestingPeer::SetHash(nor.get(), "42");
-    EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(nor.get()));
+    EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(nor));
     EXPECT_FALSE(nor->IsWritten());
 
     {
@@ -173,7 +197,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       OutputResourcePtr nor1(
           rewrite_driver()->CreateOutputResourceWithPath(
               url_prefix(), filter_prefix, name, content_type,
-              kRewrittenResource));
+              kRewrittenResource, use_async_flow));
       ASSERT_TRUE(nor1.get() != NULL);
       EXPECT_FALSE(nor1->LockForCreation(kNeverBlock));
       EXPECT_FALSE(nor1->IsWritten());
@@ -193,7 +217,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       // non-blocking
       EXPECT_FALSE(nor1->LockForCreation(kNeverBlock));
       // blocking but stealing
-      EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(nor1.get()));
+      EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(nor1));
     }
 
     // Write some data
@@ -210,14 +234,14 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // Retrieve the same NOR from the cache.
     OutputResourcePtr nor2(rewrite_driver()->CreateOutputResourceWithPath(
         url_prefix(), filter_prefix, name, &kContentTypeText,
-        kRewrittenResource));
+        kRewrittenResource, use_async_flow));
     ASSERT_TRUE(nor2.get() != NULL);
     EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor2.get()));
     EXPECT_EQ(kRewrittenResource, nor2->kind());
     EXPECT_FALSE(nor2->IsWritten());
 
     // Fetch its contents and make sure they match
-    EXPECT_EQ(contents, FetchExtantOutputResource(nor2.get()));
+    EXPECT_EQ(contents, GetOutputResourceWithoutLock(nor2));
 
     // Try asynchronously too
     VerifyContentsCallback callback(nor2, contents);
@@ -242,14 +266,14 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // from the http_cache.
     OutputResourcePtr nor4(CreateOutputResourceForFetch(nor->url()));
     EXPECT_EQ(nor->url(), nor4->url());
-    EXPECT_EQ(contents, FetchExtantOutputResource(nor4.get()));
+    EXPECT_EQ(contents, GetOutputResourceWithoutLock(nor4));
 
     // If it's evicted from the http_cache, we can also retrieve it from the
     // filesystem.
     lru_cache()->Clear();
     nor4.reset(CreateOutputResourceForFetch(nor->url()));
     EXPECT_EQ(nor->url(), nor4->url());
-    EXPECT_EQ(contents, FetchExtantOutputResource(nor4.get()));
+    EXPECT_EQ(contents, GetOutputResourceWithLock(nor4));
     // This also works asynchronously.
     lru_cache()->Clear();
     VerifyContentsCallback callback2(nor4, contents);
@@ -269,9 +293,10 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   OutputResourcePtr CreateTestOutputResource(
       const ResourcePtr& input_resource) {
     rewrite_driver()->SetBaseUrlForFetch(input_resource->url());
+    bool use_async_flow = false;
     return rewrite_driver()->CreateOutputResourceFromResource(
         "tf", rewrite_driver()->default_encoder(), NULL,
-        input_resource, kRewrittenResource);
+        input_resource, kRewrittenResource, use_async_flow);
   }
 
   void VerifyCustomMetadata(OutputResource* output) {
@@ -496,10 +521,11 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
 
   // When we rewrite the resource as an ouptut, it will show up in the
   // CDN per the rewrite mapping.
+  bool use_async_flow = false;
   OutputResourcePtr output(
       rewrite_driver()->CreateOutputResourceFromResource(
           RewriteDriver::kCacheExtenderId, rewrite_driver()->default_encoder(),
-          NULL, input, kRewrittenResource));
+          NULL, input, kRewrittenResource, use_async_flow));
   ASSERT_TRUE(output.get() != NULL);
 
   // We need to 'Write' an output resource before we can determine its
@@ -528,9 +554,10 @@ TEST_F(ResourceManagerTest, TestInputResourceQuery) {
   ResourcePtr resource(CreateResource(kResourceUrlBase, kUrl));
   ASSERT_TRUE(resource.get() != NULL);
   EXPECT_EQ(StrCat(GoogleString(kResourceUrlBase), "/", kUrl), resource->url());
+  bool use_async_flow = false;
   OutputResourcePtr output(rewrite_driver()->CreateOutputResourceFromResource(
       "sf", rewrite_driver()->default_encoder(), NULL, resource,
-      kRewrittenResource));
+      kRewrittenResource, use_async_flow));
   ASSERT_TRUE(output.get() != NULL);
 
   GoogleString included_name;
@@ -590,10 +617,11 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+  bool use_async_flow = false;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
           url_prefix(), CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
-          kOutlinedResource));
+          kOutlinedResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -613,7 +641,7 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   output_resource.reset(
       rewrite_driver()->CreateOutputResourceWithPath(
           url_prefix(), CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
-          kOutlinedResource));
+          kOutlinedResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -633,10 +661,11 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+  bool use_async_flow = false;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
           url_prefix(), RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
-          kOnTheFlyResource));
+          kOnTheFlyResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -657,7 +686,7 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   // Now try fetching again. Should hit in cache for rname.
   output_resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
       url_prefix(), RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
-      kOnTheFlyResource));
+      kOnTheFlyResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -675,10 +704,11 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+  bool use_async_flow = false;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
           url_prefix(), RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
-          kRewrittenResource));
+          kRewrittenResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -698,7 +728,7 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   // Now try fetching again. Should hit in cache
   output_resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
       url_prefix(), RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
-      kRewrittenResource));
+      kRewrittenResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -865,13 +895,14 @@ class ResourceManagerShardedTest : public ResourceManagerTest {
 TEST_F(ResourceManagerShardedTest, TestNamed) {
   GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
+  bool use_async_flow = false;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
           "http://example.com/dir/",
           "jm",
           "orig.js",
           &kContentTypeJavascript,
-          kRewrittenResource));
+          kRewrittenResource, use_async_flow));
   ASSERT_TRUE(output_resource.get());
   ASSERT_TRUE(resource_manager()->Write(HttpStatus::kOK, "alert('hello');",
                                        output_resource.get(), 0,
