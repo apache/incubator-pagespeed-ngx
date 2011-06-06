@@ -128,8 +128,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
                  kRewrittenJsName, kJsMinData);
 
   // Finally, serve from a completely separate server.
-  ServeResourceFromManyContexts(expected_rewritten_path_,
-                                RewriteOptions::kRewriteJavascript, kJsMinData);
+  ServeResourceFromManyContexts(expected_rewritten_path_, kJsMinData);
 }
 
 TEST_F(JavascriptFilterTest, InvalidInputMimetype) {

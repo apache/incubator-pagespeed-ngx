@@ -123,7 +123,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
         "In " << src_string;
 
     // Try to fetch from an independent server.
-    ServeResourceFromManyContexts(src_string, RewriteOptions::kRecompressImages,
+    ServeResourceFromManyContexts(src_string,
                                   rewritten_image_data.substr(header_size));
   }
 

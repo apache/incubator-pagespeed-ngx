@@ -51,14 +51,12 @@ class CssImageCombineTest : public CssRewriteTestBase {
                          kContentTypePng, 100);
     AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
                          kContentTypeJpeg, 100);
-    // We want a real hasher here so that subresources get separate locks.
-    UseMd5Hasher();
   }
   void TestSpriting(const char* bikePosition, const char* expectedPosition,
                     bool should_sprite) {
     const GoogleString sprite_string = StrCat(kTestDomain, kCuppaPngFile, "+",
                                               kBikePngFile,
-                                              ".pagespeed.is.Y-XqNDe-in.png");
+                                              ".pagespeed.is.0.png");
     const char* sprite = sprite_string.c_str();
     // The JPEG will not be included in the sprite because we only handle PNGs.
     const char* html = "<head><style>"
@@ -118,7 +116,7 @@ TEST_F(CssImageCombineTest, SpritesMultiple) {
   before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 10,
                         kCuppaPngFile, 0);
   sprite = StrCat(kTestDomain, kBikePngFile, "+", kCuppaPngFile,
-                  ".pagespeed.is.n7ABi40xon.png").c_str();
+                  ".pagespeed.is.0.png").c_str();
   after = StringPrintf(html, sprite.c_str(),
                        sprite.c_str(), 0, 10, sprite.c_str(), -100);
   ValidateExpected("sprite_2_bikes_1_cuppa", before, after);
@@ -190,7 +188,7 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
   // On the third run, we get spriting.
   const GoogleString sprite = StrCat(kTestDomain, kCuppaPngFile, "+",
                                      kBikePngFile,
-                                     ".pagespeed.is.Y-XqNDe-in.png");
+                                     ".pagespeed.is.0.png");
   const GoogleString spriteCss = StrCat(
       "#div1{background-image:url(", sprite, ");"
       "width:10px;height:10px;"

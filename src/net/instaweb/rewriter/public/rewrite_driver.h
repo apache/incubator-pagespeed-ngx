@@ -379,10 +379,6 @@ class RewriteDriver : public HtmlParse {
   // should only be called by ScanFilter.
   void SetBaseUrlIfUnset(const StringPiece& new_base);
 
-  // Initializes the base URL at the start of the document.  This is for
-  // ScanFilter only.
-  void InitBaseUrl();
-
   // Sets the base URL for a resource fetch.  This should only be called from
   // test code and from FetchResource.
   void SetBaseUrlForFetch(const StringPiece& url);

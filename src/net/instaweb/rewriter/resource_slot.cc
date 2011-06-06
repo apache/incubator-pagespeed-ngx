@@ -23,6 +23,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 
@@ -59,10 +60,16 @@ HtmlResourceSlot::~HtmlResourceSlot() {
 }
 
 void HtmlResourceSlot::Render() {
-  if (attribute_ != NULL) {
-    attribute_->SetValue(resource()->url());
-    // Note, for inserting image-dimensions, we will likely have
-    // to subclass or augment HtmlResourceSlot.
+  if (delete_element()) {
+    DCHECK(element_ != NULL);
+    html_parse_->DeleteElement(element_);
+  } else {
+    DCHECK(attribute_ != NULL);
+    if (attribute_ != NULL) {
+      attribute_->SetValue(resource()->url());
+      // Note, for inserting image-dimensions, we will likely have
+      // to subclass or augment HtmlResourceSlot.
+    }
   }
 }
 

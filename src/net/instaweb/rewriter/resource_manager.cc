@@ -122,6 +122,7 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       filename_encoder_(filename_encoder),
       url_async_fetcher_(url_async_fetcher),
       hasher_(hasher),
+      lock_hasher_(20),
       statistics_(statistics),
       resource_url_domain_rejections_(
           statistics_->GetVariable(kResourceUrlDomainRejections)),
@@ -484,7 +485,7 @@ bool ResourceManager::LockForCreation(const GoogleString& name,
 
   bool result = true;
   if (creation_lock->get() == NULL) {
-    GoogleString lock_name = StrCat(hasher_->Hash(name), kLockSuffix);
+    GoogleString lock_name = StrCat(lock_hasher_.Hash(name), kLockSuffix);
     creation_lock->reset(lock_manager_->CreateNamedLock(lock_name));
   }
   switch (block) {

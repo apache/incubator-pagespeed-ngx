@@ -38,7 +38,6 @@ ScanFilter::~ScanFilter() {
 void ScanFilter::StartDocument() {
   // TODO(jmarantz): consider having rewrite_driver access the url in this
   // class, rather than poking it into rewrite_driver.
-  driver_->InitBaseUrl();
   seen_refs_ = false;
   seen_base_ = false;
 }

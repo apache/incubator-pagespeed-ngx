@@ -23,6 +23,7 @@
 
 #include <vector>
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
@@ -31,9 +32,12 @@
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr, etc
+#include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -52,12 +56,14 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace {
 
 const char kTrimWhitespaceFilterId[] = "tw";
 const char kUpperCaseFilterId[] = "uc";
 const char kNestedFilterId[] = "nf";
+const char kCombinerFilterId[] = "cr";
 
 
 }  // namespace
@@ -66,6 +72,7 @@ namespace net_instaweb {
 
 class MessageHandler;
 class RequestHeaders;
+class UrlSegmentEncoder;
 class Writer;
 
 // Simple test filter just trims whitespace from the input resource.
@@ -297,6 +304,146 @@ class NestedFilter : public RewriteFilter {
   OutputResourceKind kind_;
 
   DISALLOW_COPY_AND_ASSIGN(NestedFilter);
+};
+
+class CombiningFilter : public RewriteFilter {
+ public:
+  explicit CombiningFilter(RewriteDriver* driver)
+      : RewriteFilter(driver, kCombinerFilterId) {}
+  virtual ~CombiningFilter() {}
+
+  class Combiner : public ResourceCombiner {
+   public:
+    Combiner(RewriteDriver* driver, RewriteFilter* filter)
+        : ResourceCombiner(
+            driver, kCombinerFilterId, kContentTypeCss.file_extension() + 1,
+            filter) {
+    }
+    OutputResourcePtr MakeOutput() {
+      return Combine(kContentTypeCss, rewrite_driver_->message_handler());
+    }
+    bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
+      return WriteCombination(in, out, rewrite_driver_->message_handler());
+    }
+  };
+
+
+  class Context : public RewriteContext {
+   public:
+    Context(RewriteDriver* driver, RewriteFilter* filter)
+        : RewriteContext(driver, NULL, NULL),
+          combiner_(driver, filter) {
+    }
+
+    void AddElement(HtmlElement* element, HtmlElement::Attribute* href,
+                    const ResourcePtr& resource) {
+      ResourceSlotPtr slot(Driver()->GetSlot(resource, element, href));
+      AddSlot(slot);
+    }
+
+   protected:
+    virtual bool Partition(OutputPartitions* partitions,
+                           OutputResourceVector* outputs) {
+      MessageHandler* handler = Driver()->message_handler();
+      OutputPartition* partition = partitions->add_partition();
+      for (int i = 0, n = num_slots(); i < n; ++i) {
+        partition->add_input(i);
+        if (!combiner_.AddResourceNoFetch(slot(i)->resource(), handler).value) {
+          return false;
+        }
+      }
+      OutputResourcePtr combination(combiner_.MakeOutput());
+      combination->set_written_using_rewrite_context_flow(true);
+
+      // ResourceCombiner provides us with a pre-populated CachedResult,
+      // so we need to copy it over to our OutputPartition.  This is
+      // less efficient than having ResourceCombiner work with our
+      // cached_result directly but this allows code-sharing as we
+      // transition to the async flow.
+      CachedResult* partition_result = partition->mutable_result();
+      const CachedResult* combination_result = combination->cached_result();
+      *partition_result = *combination_result;
+      outputs->push_back(combination);
+      return true;
+    }
+
+    virtual void Rewrite(OutputPartition* partition,
+                         const OutputResourcePtr& output) {
+      // resource_combiner.cc takes calls WriteCombination as part
+      // of Combine.  But if we are being called on behalf of a
+      // fetch then the resource still needs to be written.
+      RewriteSingleResourceFilter::RewriteResult result =
+          RewriteSingleResourceFilter::kRewriteOk;
+      if (!output->IsWritten()) {
+        ResourceVector resources;
+        for (int i = 0, n = num_slots(); i < n; ++i) {
+          ResourcePtr resource(slot(i)->resource());
+          resources.push_back(resource);
+        }
+        if (!combiner_.Write(resources, output)) {
+          result = RewriteSingleResourceFilter::kRewriteFailed;
+        }
+      }
+      RewriteDone(result, 0);
+    }
+
+    virtual void Render() {
+      // Slot 0 will be replaced by the combined resource as part of
+      // rewrite_context.cc.  But we still need to delete slots 1-N.
+      for (int i = 1, n = num_slots(); i < n; ++i) {
+        slot(i)->set_delete_element(true);
+        RenderSlotOnDetach(i);
+      }
+    }
+
+    virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
+    virtual const char* id() const { return kCombinerFilterId; }
+    virtual OutputResourceKind kind() const { return kRewrittenResource; }
+
+   private:
+    Combiner combiner_;
+    UrlMultipartEncoder encoder_;
+  };
+
+  virtual void StartDocumentImpl() {}
+  virtual void StartElementImpl(HtmlElement* element) {
+    if (element->keyword() == HtmlName::kLink) {
+      HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
+      if (href != NULL) {
+        ResourcePtr resource(CreateInputResource(href->value()));
+        if (resource.get() != NULL) {
+          if (context_.get() == NULL) {
+            context_.reset(new Context(driver_, this));
+          }
+          context_->AddElement(element, href, resource);
+        }
+      }
+    }
+  }
+
+  virtual void Flush() {
+    if (context_.get() != NULL) {
+      driver_->InitiateRewrite(context_.release());
+    }
+  }
+
+  virtual void EndElementImpl(HtmlElement* element) {}
+  virtual const char* Name() const { return "Combiner"; }
+  virtual bool Fetch(const OutputResourcePtr& resource,
+                     Writer* writer,
+                     const RequestHeaders& request_header,
+                     ResponseHeaders* response,
+                     MessageHandler* handler,
+                     UrlAsyncFetcher::Callback* callback) {
+    Context* context = new Context(driver_, this);
+    return context->Fetch(resource, writer, response, handler, callback);
+  }
+  virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
+
+ private:
+  scoped_ptr<Context> context_;
+  UrlMultipartEncoder encoder_;
+  DISALLOW_COPY_AND_ASSIGN(CombiningFilter);
 };
 
 class RewriteContextTest : public ResourceManagerTestBase {
@@ -693,7 +840,7 @@ TEST_F(RewriteContextTest, TwoFilters) {
   InitResources();
 
   ValidateExpected(
-      "trimmable", CssLink("a.css"),
+      "two_filters", CssLink("a.css"),
       CssLink("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"));
 }
 
@@ -705,26 +852,78 @@ TEST_F(RewriteContextTest, TwoFiltersDelayedFetches) {
   ValidateNoChanges("trimmable1", CssLink("a.css"));
   CallFetcherCallbacks();
   ValidateExpected(
-      "trimmable2", CssLink("a.css"),
+      "delayed_fetches", CssLink("a.css"),
       CssLink("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"));
 }
 
 TEST_F(RewriteContextTest, Nested) {
-  // We must use a non-mock hasher because otherwise the lock names
-  // generated for multiple input resources clash.
-  //
-  // TODO(jmarantz): inject a separate hasher for the lock-name
-  // generator so we don't have to re-discover this issue on every new
-  // test that reads multiple inputs.
-  UseMd5Hasher();
   RewriteDriver* driver = rewrite_driver();
   driver->AddRewriteFilter(new NestedFilter(driver));
   driver->AddFilters();
   InitResources();
   ValidateExpected(
-      "trimmable2", CssLink("c.css"),
-      CssLink("http://test.com/c.css.pagespeed.nf.WTYjEzrEWX.css"));
+      "async3", CssLink("c.css"),
+      CssLink("http://test.com/c.css.pagespeed.nf.0.css"));
 }
+
+TEST_F(RewriteContextTest, CombinationRewrite) {
+  RewriteDriver* driver = rewrite_driver();
+  driver->AddRewriteFilter(new CombiningFilter(driver));
+  driver->AddFilters();
+  InitResources();
+  GoogleString combined_url = Encode(kTestDomain, kCombinerFilterId, "0",
+                                     "a.css+b.css", "css");
+  ValidateExpected(
+      "combination_rewrite", StrCat(CssLink("a.css"), CssLink("b.css")),
+      CssLink(combined_url));
+  EXPECT_EQ(0, lru_cache()->num_hits());
+#define CL_21685831_SUBMITTED 0
+#if CL_21685831_SUBMITTED
+  EXPECT_EQ(3, lru_cache()->num_misses());   // partition, and 2 inputs.
+  EXPECT_EQ(4, lru_cache()->num_inserts());  // partition, output, and 2 inputs.
+#endif
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  ValidateExpected(
+      "combination_rewrite2", StrCat(CssLink("a.css"), CssLink("b.css")),
+      CssLink(combined_url));
+  EXPECT_EQ(1, lru_cache()->num_hits());     // the output is all we need
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(RewriteContextTest, CombinationFetch) {
+  RewriteDriver* driver = rewrite_driver();
+  driver->AddRewriteFilter(new CombiningFilter(driver));
+  InitResources();
+
+  GoogleString combined_url = Encode(kTestDomain, kCombinerFilterId, "0",
+                                     "a.css+b.css", "css");
+
+  // The input URLs are not in cache, but the fetch should work.
+  GoogleString content;
+  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  EXPECT_EQ(" a b", content);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(4, lru_cache()->num_misses());  // 2 inputs + 2 calls to ExtantFetch
+#if CL_21685831_SUBMITTED
+  EXPECT_EQ(3, lru_cache()->num_inserts());  // 2 inputs, 1 output.
+#endif
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+  content.clear();
+
+  // Now fetch it again.  This time the input URL is cached.
+  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  EXPECT_EQ(" a b", content);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+}
+
 
 // Test that rewriting works correctly when input resource is loaded from disk.
 

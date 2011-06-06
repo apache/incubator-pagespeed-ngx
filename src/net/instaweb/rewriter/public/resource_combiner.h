@@ -99,6 +99,11 @@ class ResourceCombiner {
   // Base common to all URLs. Always has a trailing slash.
   GoogleString ResolvedBase() const { return partnership_.ResolvedBase(); }
 
+  // TODO(jmarantz): remove AddResource and rename this once async flow
+  // is live.
+  TimedBool AddResourceNoFetch(const ResourcePtr& resource,
+                               MessageHandler* handler);
+
  protected:
   // Tries to add a resource with given source URL to the current partnership.
   // Returns whether successful or not (in which case the partnership will be

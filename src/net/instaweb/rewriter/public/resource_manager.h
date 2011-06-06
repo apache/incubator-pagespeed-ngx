@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -139,6 +140,7 @@ class ResourceManager {
 
   // TODO(jmarantz): check thread safety in Apache.
   Hasher* hasher() const { return hasher_; }
+  const Hasher* lock_hasher() const { return &lock_hasher_; }
   FileSystem* file_system() { return file_system_; }
   FilenameEncoder* filename_encoder() const { return filename_encoder_; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
@@ -305,6 +307,7 @@ class ResourceManager {
   FilenameEncoder* filename_encoder_;
   UrlAsyncFetcher* url_async_fetcher_;
   Hasher* hasher_;
+  MD5Hasher lock_hasher_;  // Used to compute named lock names.
   Statistics* statistics_;
 
   // Counts how many URLs we reject because they come from a domain that

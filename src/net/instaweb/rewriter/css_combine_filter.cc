@@ -66,7 +66,6 @@ class CssCombineFilter::CssCombiner
           filter),
         css_tag_scanner_(css_tag_scanner),
         css_file_count_reduction_(NULL) {
-    filter_prefix.CopyToString(&filter_prefix_);
     Statistics* stats = resource_manager_->statistics();
     if (stats != NULL) {
       css_file_count_reduction_ = stats->GetVariable(kCssFileCountReduction);
@@ -115,7 +114,6 @@ class CssCombineFilter::CssCombiner
   }
 
   GoogleString media_;
-  GoogleString filter_prefix_;
   CssTagScanner* css_tag_scanner_;
   Variable* css_file_count_reduction_;
 };

@@ -24,32 +24,53 @@
 #include <set>
 #include <utility>  // for std::pair
 
+#include "base/scoped_ptr.h"            // for scoped_ptr
+
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/string_util.h"               // for StrCat
+
+namespace {
+
+static const char kHtmlUrl[] = "http://html.parse.test/event_list_test.html";
+static const char kUpdatedUrl[] = "http://html.parse.test/new_css.css";
+
+}  // namespace
 
 namespace net_instaweb {
 
-class ResourceSlotTest : public HtmlParseTestBase {
+class ResourceSlotTest : public ResourceManagerTestBase {
  protected:
   typedef std::set<HtmlResourceSlotPtr, HtmlResourceSlotComparator> SlotSet;
 
   virtual bool AddBody() const { return false; }
 
   virtual void SetUp() {
-    HtmlParseTestBase::SetUp();
+    ResourceManagerTestBase::SetUp();
 
     // Set up 4 slots for testing.
-    elements_[0] = html_parse_.NewElement(NULL, HtmlName::kLink);
-    html_parse_.AddAttribute(elements_[0], HtmlName::kHref, "v1");
-    html_parse_.AddAttribute(elements_[0], HtmlName::kSrc, "v2");
-    elements_[1] = html_parse_.NewElement(NULL, HtmlName::kLink);
-    html_parse_.AddAttribute(element(1), HtmlName::kHref, "v1");
-    html_parse_.AddAttribute(element(1), HtmlName::kSrc, "v2");
+    RewriteDriver* driver = rewrite_driver();
+    ASSERT_TRUE(driver->StartParseId(kHtmlUrl, "resource_slot_test",
+                                     kContentTypeHtml));
+    elements_[0] = driver->NewElement(NULL, HtmlName::kLink);
+    driver->AddAttribute(elements_[0], HtmlName::kHref, "v1");
+    driver->AddAttribute(elements_[0], HtmlName::kSrc, "v2");
+    elements_[1] = driver->NewElement(NULL, HtmlName::kLink);
+    driver->AddAttribute(element(1), HtmlName::kHref, "v3");
+    driver->AddAttribute(element(1), HtmlName::kSrc, "v4");
+
+    driver->AddElement(element(0), -1);
+    driver->CloseElement(element(0), HtmlElement::BRIEF_CLOSE, -1);
+    driver->AddElement(element(1), -1);
+    driver->CloseElement(element(1), HtmlElement::BRIEF_CLOSE, -1);
 
     slots_[0] = MakeSlot(0, 0);
     slots_[1] = MakeSlot(0, 1);
@@ -57,11 +78,17 @@ class ResourceSlotTest : public HtmlParseTestBase {
     slots_[3] = MakeSlot(1, 1);
   }
 
+  virtual void TearDown() {
+    rewrite_driver()->FinishParse();
+    ResourceManagerTestBase::TearDown();
+  }
+
   HtmlResourceSlotPtr MakeSlot(int element_index, int attribute_index) {
     ResourcePtr empty;
     HtmlResourceSlot* slot = new HtmlResourceSlot(
         empty, element(element_index),
-        attribute(element_index, attribute_index));
+        attribute(element_index, attribute_index),
+        html_parse());
     return HtmlResourceSlotPtr(slot);
   }
 
@@ -107,6 +134,28 @@ TEST_F(ResourceSlotTest, Comparator) {
   EXPECT_FALSE(InsertAndReturnTrueIfAdded(s4_dup))
       << "s4_dup is equivalent to slots_[3] so it should not add to the set";
   EXPECT_EQ(4, num_slots());
+}
+
+TEST_F(ResourceSlotTest, RenderUpdate) {
+  SetupWriter();
+  GoogleUrl gurl(kUpdatedUrl);
+  ResourcePtr updated(rewrite_driver()->CreateInputResource(gurl));
+  slot(0)->SetResource(updated);
+  slot(0)->Render();
+
+  html_parse()->ApplyFilter(html_writer_filter_.get());
+  EXPECT_EQ(StrCat("<link href=\"", kUpdatedUrl,
+                   "\" src=\"v2\"/><link href=\"v3\" src=\"v4\"/>"),
+            output_buffer_);
+}
+
+TEST_F(ResourceSlotTest, RenderDelete) {
+  SetupWriter();
+  slot(0)->set_delete_element(true);
+  slot(0)->Render();
+
+  html_parse()->ApplyFilter(html_writer_filter_.get());
+  EXPECT_EQ("<link href=\"v3\" src=\"v4\"/>", output_buffer_);
 }
 
 }  // namespace net_instaweb

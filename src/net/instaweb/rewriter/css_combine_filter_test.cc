@@ -186,8 +186,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
     // Try to fetch from an independent server.
-    ServeResourceFromManyContexts(combine_url, RewriteOptions::kCombineCss,
-                                  fetched_resource_content);
+    ServeResourceFromManyContexts(combine_url, fetched_resource_content);
   }
 
   // Test what happens when CSS combine can't find a previously-rewritten

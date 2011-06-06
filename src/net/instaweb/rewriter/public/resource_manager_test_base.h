@@ -111,14 +111,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                             GoogleString* text);
 
   void ServeResourceFromManyContexts(const GoogleString& resource_url,
-                                     RewriteOptions::Filter filter,
                                      const StringPiece& expected_content);
 
   // Test that a resource can be served from an new server that has not already
   // constructed it.
   void ServeResourceFromNewContext(
       const GoogleString& resource_url,
-      RewriteOptions::Filter filter,
       const StringPiece& expected_content);
 
   // This definition is required by HtmlParseTestBase which defines this as
@@ -244,6 +242,11 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   }
 
  private:
+  // Calls callbacks on given wait fetcher, making sure to properly synchronize
+  // with async rewrite flows given driver.
+  void CallFetcherCallbacksForDriver(WaitUrlAsyncFetcher* fetcher,
+                                     RewriteDriver* driver);
+
   MockUrlFetcher mock_url_fetcher_;
   FakeUrlAsyncFetcher mock_url_async_fetcher_;
   CountingUrlAsyncFetcher counting_url_async_fetcher_;

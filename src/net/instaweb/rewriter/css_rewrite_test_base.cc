@@ -22,7 +22,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -195,9 +194,7 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
 
     // Serve from new context.
     if ((flags & kNoOtherContexts) == 0) {
-      ServeResourceFromManyContexts(expected_new_url,
-                                    RewriteOptions::kRewriteCss,
-                                    expected_css_output);
+      ServeResourceFromManyContexts(expected_new_url, expected_css_output);
     }
   }
 }

@@ -938,7 +938,14 @@ HTTPCache::FindResult RewriteDriver::ReadIfCachedWithStatus(
 bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
                                  const ContentType& content_type) {
   set_log_rewrite_timing(options()->log_rewrite_timing());
-  return HtmlParse::StartParseId(url, id, content_type);
+  bool ret = HtmlParse::StartParseId(url, id, content_type);
+  if (ret) {
+    base_was_set_ = false;
+    if (is_url_valid()) {
+      base_url_.Reset(google_url().AllExceptLeaf());
+    }
+  }
+  return ret;
 }
 
 void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
@@ -1044,13 +1051,6 @@ void RewriteDriver::SetBaseUrlIfUnset(const StringPiece& new_base) {
   }
 }
 
-void RewriteDriver::InitBaseUrl() {
-  base_was_set_ = false;
-  if (is_url_valid()) {
-    base_url_.Reset(google_url().AllExceptLeaf());
-  }
-}
-
 void RewriteDriver::SetBaseUrlForFetch(const StringPiece& url) {
   // Set the base url for the resource fetch.  This corresponds to where the
   // fetched resource resides (which might or might not be where the original
@@ -1096,7 +1096,7 @@ RewriteFilter* RewriteDriver::FindFilter(const StringPiece& id) const {
 HtmlResourceSlotPtr RewriteDriver::GetSlot(
     const ResourcePtr& resource, HtmlElement* elt,
     HtmlElement::Attribute* attr) {
-  HtmlResourceSlot* slot_obj = new HtmlResourceSlot(resource, elt, attr);
+  HtmlResourceSlot* slot_obj = new HtmlResourceSlot(resource, elt, attr, this);
   HtmlResourceSlotPtr slot(slot_obj);
   std::pair<HtmlResourceSlotSet::iterator, bool> iter_found =
       slots_.insert(slot);

@@ -99,9 +99,6 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
 }
 
 TEST_F(CssImageRewriterTest, UseCorrectBaseUrl) {
-  // We want a real hasher here so that subresources get separate locks.
-  UseMd5Hasher();
-
   // Initialize resources.
   static const char css_url[] = "http://www.example.com/bar/style.css";
   static const char css_before[] = "body { background: url(image.png); }";
@@ -161,9 +158,6 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
     options()->EnableFilter(RewriteOptions::kExtendCache);
     options()->EnableFilter(RewriteOptions::kRecompressImages);
     CssRewriteTestBase::SetUp();
-
-    // We want a real hasher here so that subresources get separate locks.
-    UseMd5Hasher();
 
     // As we use invalid payloads, we expect image rewriting to
     // fail but cache extension to succeed.

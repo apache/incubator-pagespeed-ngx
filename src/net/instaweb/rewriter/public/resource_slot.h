@@ -30,6 +30,7 @@
 
 namespace net_instaweb {
 
+class HtmlParse;
 class HtmlResourceSlot;
 class ResourceSlot;
 class RewriteContext;
@@ -46,7 +47,9 @@ typedef std::vector<ResourceSlotPtr> ResourceSlotVector;
 // TODO(jmarantz): make this class thread-safe.
 class ResourceSlot : public RefCounted<ResourceSlot> {
  public:
-  explicit ResourceSlot(const ResourcePtr& resource) : resource_(resource) {
+  explicit ResourceSlot(const ResourcePtr& resource)
+      : resource_(resource),
+        delete_element_(false) {
   }
 
   ResourcePtr resource() const { return resource_; }
@@ -65,6 +68,12 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // preventing unwanted interference between renderer's reads and
   // worker writes.
   void SetResource(const ResourcePtr& resource);
+
+  // Request that Rendering the slot will delete it.  E.g. for
+  // HTML, the Element will be deleted entirely (not just the
+  // attribute).
+  void set_delete_element(bool x) { delete_element_ = x; }
+  bool delete_element() const { return delete_element_; }
 
   // Render is not thread-safe.  This must be called from the thread that
   // owns the DOM or CSS file.
@@ -87,6 +96,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
 
  private:
   ResourcePtr resource_;
+  bool delete_element_;
 
   // We track the RewriteContexts that are atempting to rewrite this
   // slot, to help us build a dependency graph between ResourceContexts.
@@ -103,10 +113,11 @@ class FetchResourceSlot : public ResourceSlot {
       : ResourceSlot(resource) {
   }
 
+  virtual void Render();
+
  protected:
   REFCOUNT_FRIEND_DECLARATION(FetchResourceSlot);
   virtual ~FetchResourceSlot();
-  virtual void Render();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FetchResourceSlot);
@@ -116,23 +127,27 @@ class HtmlResourceSlot : public ResourceSlot {
  public:
   HtmlResourceSlot(const ResourcePtr& resource,
                    HtmlElement* element,
-                   HtmlElement::Attribute* attribute)
+                   HtmlElement::Attribute* attribute,
+                   HtmlParse* html_parse)
       : ResourceSlot(resource),
         element_(element),
-        attribute_(attribute) {
+        attribute_(attribute),
+        html_parse_(html_parse) {
   }
 
   HtmlElement* element() { return element_; }
   HtmlElement::Attribute* attribute() { return attribute_; }
 
+  virtual void Render();
+
  protected:
   REFCOUNT_FRIEND_DECLARATION(HtmlResourceSlot);
   virtual ~HtmlResourceSlot();
-  virtual void Render();
 
  private:
   HtmlElement* element_;
   HtmlElement::Attribute* attribute_;
+  HtmlParse* html_parse_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlResourceSlot);
 };

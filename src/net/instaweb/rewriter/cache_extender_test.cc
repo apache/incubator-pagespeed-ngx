@@ -328,11 +328,11 @@ TEST_F(CacheExtenderTest, ServeFilesWithShard) {
 TEST_F(CacheExtenderTest, ServeFilesFromDelayedFetch) {
   InitTest(kShortTtlSec);
   ServeResourceFromManyContexts(Encode(kTestDomain, "ce", "0", kCssFile, "css"),
-                                RewriteOptions::kExtendCache, kCssData);
+                                kCssData);
   ServeResourceFromManyContexts(Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
-                                RewriteOptions::kExtendCache, kImageData);
+                                kImageData);
   ServeResourceFromManyContexts(Encode(kTestDomain, "ce", "0", "c.js", "js"),
-                                RewriteOptions::kExtendCache, kJsData);
+                                kJsData);
 
   // TODO(jmarantz): make ServeResourceFromManyContexts check:
   //  1. Gets the data from the cache, with no mock fetchers, null file system

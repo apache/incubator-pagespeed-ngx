@@ -328,6 +328,7 @@ void RewriteContext::Start() {
       urls.push_back(slot(i)->resource()->url());
     }
     encoder()->Encode(urls, resource_context_.get(), &partition_key_);
+    StrAppend(&partition_key_, ":", id());
     CacheInterface* metadata_cache = Manager()->metadata_cache();
 
     // When the cache lookup is finished, OutputCacheDone will be called.
@@ -355,7 +356,7 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
             StrCat(".", cached_result.extension()));
         if (cached_result.optimizable() &&
             CreateOutputResourceForCachedOutput(
-            cached_result.url(), content_type, &output_resource) &&
+                cached_result.url(), content_type, &output_resource) &&
             FreshenAndCheckExpiration(cached_result)) {
           outputs_.push_back(output_resource);
           RenderSlotOnDetach(i);
@@ -474,6 +475,14 @@ void RewriteContext::StartRewrite() {
         Rewrite(partitions_->mutable_partition(i), outputs_[i]);
       }
     }
+  } else {
+    // The partioning failed.
+    //
+    // TODO(jmarantz): Remember that!  The filter is indicating there
+    // is no useful way to rewrite this group of resources, so on
+    // subsequent attempts we should be able to rediscover this with
+    // one cache lookup.
+    DCHECK(false);
   }
 }
 
@@ -566,15 +575,38 @@ void RewriteContext::PropagateNestedAndHarvest() {
 void RewriteContext::Harvest() {
 }
 
+void RewriteContext::Render() {
+}
+
 void RewriteContext::Propagate(bool render_slots) {
   DCHECK(rewrite_done_ && (num_pending_nested_ == 0));
   if (rewrite_done_ && (num_pending_nested_ == 0)) {
-    for (int i = 0, n = slots_.size(); i < n; ++i) {
-      if (render_slots_[i]) {
-        ResourcePtr resource(outputs_[i]);
-        slots_[i]->SetResource(resource);
-        if (render_slots) {
-          slots_[i]->Render();
+    Render();
+    // TODO(jmarantz): the current data model is not sufficient for
+    // arbitrary output->input mapping.  We need to record, in each
+    // partition, which outputs are affected.
+    //
+    // For example, if we have HTML:
+    //   <link href=1/><link  href=2/><link href=3/><link href=4/>
+    // and we want to merge together 1&3 with 2&4, we'll get two
+    // partitions partition1={inputs=(1,3)} and
+    // partition2={inputs=(2,4)}.  We know that partition1 is composed
+    // of inputs(1,3) but we don't know whether to call
+    // input1->SetResource(output[0]->resource()) and delete input2,
+    // or vice versa.  And I think we have no way to represent the
+    // sort of transformation done by either spriting or js-combining
+    // where every input gets a separate mutation, where a new resource
+    // is inserted to load the combination and every other resource needs
+    // a queued mutation to reference a slice of the combined one.
+    if (!outputs_.empty()) {
+      CHECK_EQ(1U, outputs_.size());
+      for (int i = 0, n = slots_.size(); i < n; ++i) {
+        if (render_slots_[i]) {
+          ResourcePtr resource(outputs_[0]);
+          slots_[i]->SetResource(resource);
+          if (render_slots) {
+            slots_[i]->Render();
+          }
         }
       }
     }
@@ -661,10 +693,6 @@ bool RewriteContext::FreshenAndCheckExpiration(const CachedResult& group) {
 
 const UrlSegmentEncoder* RewriteContext::encoder() const {
   return &default_encoder_;
-}
-
-bool RewriteContext::ComputeOnTheFly() const {
-  return false;
 }
 
 bool RewriteContext::Fetch(

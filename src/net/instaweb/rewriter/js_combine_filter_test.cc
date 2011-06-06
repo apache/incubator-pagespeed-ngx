@@ -226,9 +226,7 @@ TEST_F(JsCombineFilterTest, CombineJs) {
                    "var mod_pagespeed_dzsx6RqvJJ = ", kEscapedJs2, ";\n"),
             combination_src);
 
-  ServeResourceFromManyContexts(scripts[0].url,
-                                RewriteOptions::kCombineJavascript,
-                                combination_src);
+  ServeResourceFromManyContexts(scripts[0].url, combination_src);
 }
 
 // Various things that prevent combining

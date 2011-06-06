@@ -201,7 +201,6 @@ void ResourceManagerTestBase::AppendDefaultHeaders(
 
 void ResourceManagerTestBase::ServeResourceFromManyContexts(
     const GoogleString& resource_url,
-    RewriteOptions::Filter filter,
     const StringPiece& expected_content) {
   // TODO(sligocki): Serve the resource under several contexts. For example:
   //   1) With output-resource cached,
@@ -209,7 +208,7 @@ void ResourceManagerTestBase::ServeResourceFromManyContexts(
   //   3) With output-resource unavailable, but input-resource cached,
   //   4) With output-resource unavailable and input-resource not cached,
   //      but still fetchable,
-  ServeResourceFromNewContext(resource_url, filter, expected_content);
+  ServeResourceFromNewContext(resource_url, expected_content);
   //   5) With nothing available (failure).
 }
 
@@ -217,7 +216,6 @@ void ResourceManagerTestBase::ServeResourceFromManyContexts(
 // been constructed.
 void ResourceManagerTestBase::ServeResourceFromNewContext(
     const GoogleString& resource_url,
-    RewriteOptions::Filter /*filter*/,  // TODO(sligocki): remove
     const StringPiece& expected_content) {
 
   // New objects for the new server.
@@ -274,7 +272,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   EXPECT_EQ("", response_contents);
 
   // After we call the callback, it should be correct.
-  wait_url_async_fetcher.CallCallbacks();
+  CallFetcherCallbacksForDriver(&wait_url_async_fetcher, &other_rewrite_driver);
   EXPECT_EQ(true, callback.done());
   EXPECT_EQ(expected_content, response_contents);
 
@@ -498,11 +496,17 @@ void ResourceManagerTestBase::ParseUrl(const StringPiece& url,
   }
 }
 
+void ResourceManagerTestBase::CallFetcherCallbacksForDriver(
+      WaitUrlAsyncFetcher* fetcher,
+      RewriteDriver* driver) {
+  bool pass_through_mode = fetcher->SetPassThroughMode(true);
+  driver->WaitForCompletion();
+  fetcher->SetPassThroughMode(pass_through_mode);
+  driver->Clear();
+}
+
 void ResourceManagerTestBase::CallFetcherCallbacks() {
-  bool pass_through_mode = wait_url_async_fetcher_.SetPassThroughMode(true);
-  rewrite_driver_.WaitForCompletion();
-  wait_url_async_fetcher_.SetPassThroughMode(pass_through_mode);
-  rewrite_driver_.Clear();
+  CallFetcherCallbacksForDriver(&wait_url_async_fetcher_, &rewrite_driver_);
 }
 
 }  // namespace net_instaweb

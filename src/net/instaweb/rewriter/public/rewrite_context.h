@@ -238,27 +238,25 @@ class RewriteContext {
   virtual void Rewrite(OutputPartition* partition,
                        const OutputResourcePtr& output) = 0;
 
-  // Once any nested processes have completed, the results of these
+  // Once any nested rewrites have completed, the results of these
   // can be incorporated into the rewritten data.  For contexts that
   // do not require any nested RewriteContexts, it is OK to skip
   // overriding this method -- the empty default implementation is fine.
   virtual void Harvest();
 
+  // Performs rendering activities that span multiple HTML slots.  For
+  // example, in a filter that combines N slots to 1, N-1 of the HTML
+  // elements might need to be removed.  That can be performed in
+  // Render().  This method is optional; the base-calss implementation
+  // is empty.
+  //
+  // Note that unlike Harvest(), this method runs in the HTML thread (for
+  // top-level rewrites), and only runs if the rewrite completes prior to
+  // the rewrite-deadline.
+  virtual void Render();
+
   // This final set of protected methods can be optionally overridden
   // by subclasses.
-
-  // If this method returns true, the data output of this filter will not be
-  // cached, and will instead be recomputed on the fly every time it is needed.
-  // (However, the transformed URL and similar metadata in CachedResult will be
-  //  kept in cache).
-  //
-  // The default implementation returns 'false'.
-  //
-  // A subclass will change this to return 'true' if the rewrite that it makes
-  // is extremely quick, and so there is not much benefit to caching it as
-  // an output.  CacheExtender is an obvious case, since it doesn't change the
-  // bytes of the resource.
-  virtual bool ComputeOnTheFly() const;
 
   // All RewriteContexts define how they encode URLs and other
   // associated information needed for a rewrite into a URL.

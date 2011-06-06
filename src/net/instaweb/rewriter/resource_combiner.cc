@@ -88,14 +88,6 @@ ResourceCombiner::~ResourceCombiner() {
 
 TimedBool ResourceCombiner::AddResource(const StringPiece& url,
                                         MessageHandler* handler) {
-  // Assert the sanity of three parallel vectors.
-  CHECK_EQ(num_urls(), static_cast<int>(resources_.size()));
-  CHECK_EQ(num_urls(), static_cast<int>(multipart_encoder_urls_.size()));
-  if (num_urls() == 0) {
-    // Make sure to initialize the base URL.
-    Reset();
-  }
-
   // See if we have the source loaded, or start loading it
   // TODO(morlovich) this may not always be desirable.
   //    we want to do this if we can't combine due to URL limits,
@@ -125,6 +117,21 @@ TimedBool ResourceCombiner::AddResource(const StringPiece& url,
     return ret;
   }
 
+  return AddResourceNoFetch(resource, handler);
+}
+
+TimedBool ResourceCombiner::AddResourceNoFetch(const ResourcePtr& resource,
+                                               MessageHandler* handler) {
+  TimedBool ret = {0, false};
+
+  // Assert the sanity of three parallel vectors.
+  CHECK_EQ(num_urls(), static_cast<int>(resources_.size()));
+  CHECK_EQ(num_urls(), static_cast<int>(multipart_encoder_urls_.size()));
+  if (num_urls() == 0) {
+    // Make sure to initialize the base URL.
+    Reset();
+  }
+
   // From here on out, the answer will not change until the resource itself
   // does.
   ret.expiration_ms = resource->CacheExpirationTimeMs();
@@ -137,7 +144,7 @@ TimedBool ResourceCombiner::AddResource(const StringPiece& url,
   }
 
   // Now manage the URL and policy.
-  bool added = partnership_.AddUrl(url, handler);
+  bool added = partnership_.AddUrl(resource->url(), handler);
 
   if (added) {
     int index = num_urls() - 1;
