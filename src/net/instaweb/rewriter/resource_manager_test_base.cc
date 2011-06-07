@@ -243,6 +243,8 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   options->CopyFrom(*options_);
   new_rewrite_driver.set_custom_options(options);
   new_rewrite_driver.SetResourceManager(&new_resource_manager);
+  new_rewrite_driver.SetAsynchronousRewrites(
+      rewrite_driver_.asynchronous_rewrites());
   new_rewrite_driver.AddFilters();
 
   RequestHeaders request_headers;

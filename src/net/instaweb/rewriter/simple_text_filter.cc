@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -36,6 +37,7 @@ namespace net_instaweb {
 class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
+class RewriteContext;
 class Writer;
 
 SimpleTextFilter::Rewriter::~Rewriter() {
@@ -97,9 +99,12 @@ bool SimpleTextFilter::Fetch(const OutputResourcePtr& output_resource,
                              ResponseHeaders* response_headers,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
-  Context* context = new Context(rewriter_, driver_);
-  return context->Fetch(output_resource, response_writer,
-                        response_headers, message_handler, callback);
+  DCHECK(false);
+  return false;
+}
+
+RewriteContext* SimpleTextFilter::MakeRewriteContext() {
+  return new Context(rewriter_, driver_);
 }
 
 bool SimpleTextFilter::HasAsyncFlow() const {

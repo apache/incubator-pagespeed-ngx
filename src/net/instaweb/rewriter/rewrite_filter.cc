@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 
+#include <cstddef>                     // for NULL
+
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -27,6 +29,8 @@
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
+
+class RewriteContext;
 
 RewriteFilter::~RewriteFilter() {
 }
@@ -63,6 +67,10 @@ bool RewriteFilter::ComputeOnTheFly() const {
 
 bool RewriteFilter::HasAsyncFlow() const {
   return false;
+}
+
+RewriteContext* RewriteFilter::MakeRewriteContext() {
+  return NULL;
 }
 
 }  // namespace net_instaweb

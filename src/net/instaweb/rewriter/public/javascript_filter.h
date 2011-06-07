@@ -33,6 +33,7 @@
 
 namespace net_instaweb {
 
+class RewriteContext;
 class HtmlCharactersNode;
 class HtmlIEDirectiveNode;
 class RewriteDriver;
@@ -80,6 +81,8 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
   }
 
   virtual const char* Name() const { return "Javascript"; }
+
+  virtual RewriteContext* MakeRewriteContext();
 
  protected:
   virtual bool ReuseByContentHash() const;

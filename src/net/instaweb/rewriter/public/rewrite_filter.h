@@ -32,6 +32,7 @@ class MessageHandler;
 class OutputResource;
 class RequestHeaders;
 class ResponseHeaders;
+class RewriteContext;
 class RewriteDriver;
 class UrlSegmentEncoder;
 class Writer;
@@ -70,6 +71,8 @@ class RewriteFilter : public CommonFilter {
   // response_writer or response_headers from callbacks for any
   // requests it has initiated itself.
   //
+  // This is *not* called in async mode, and the override will be
+  // eliminated once async mode is the only option.
   virtual bool Fetch(const OutputResourcePtr& output_resource,
                      Writer* response_writer,
                      const RequestHeaders& request_header,
@@ -104,6 +107,12 @@ class RewriteFilter : public CommonFilter {
   // TODO(jmarnatz): remove this method once all filters use the async
   // writing flow.
   virtual bool HasAsyncFlow() const;
+
+  // Generates a RewriteContext appropriate for this filter.  This will only
+  // be called if in asynchronous mode, for filters that support asynchrous
+  // mode.  Default implementation return NULL.  This must be overridden by
+  // filters when they add async support.  This is used to implement Fetch.
+  virtual RewriteContext* MakeRewriteContext();
 
  protected:
   GoogleString filter_prefix_;  // Prefix that should be used in front of all

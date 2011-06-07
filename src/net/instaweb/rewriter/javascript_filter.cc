@@ -27,6 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
@@ -41,7 +42,6 @@
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -49,8 +49,8 @@
 
 namespace net_instaweb {
 
+class RewriteContext;
 class Statistics;
-
 JavascriptFilter::JavascriptFilter(RewriteDriver* driver,
                                    const StringPiece& path_prefix)
     : RewriteSingleResourceFilter(driver, path_prefix),
@@ -69,11 +69,9 @@ void JavascriptFilter::Initialize(Statistics* statistics) {
 class JavascriptRewriteContext : public SingleRewriteContext {
  public:
   JavascriptRewriteContext(RewriteDriver* driver,
-                           const ResourceSlotPtr& slot,
                            JavascriptRewriteConfig* config)
       : SingleRewriteContext(driver, NULL, NULL),
         config_(config) {
-    AddSlot(slot);
   }
 
   RewriteSingleResourceFilter::RewriteResult RewriteJavascript(
@@ -228,7 +226,8 @@ void JavascriptFilter::RewriteExternalScript() {
       ResourceSlotPtr slot(
           driver_->GetSlot(resource, script_in_progress_, script_src_));
       JavascriptRewriteContext* jrc = new JavascriptRewriteContext(
-          driver_, slot, &config_);
+          driver_, &config_);
+      jrc->AddSlot(slot);
       driver_->InitiateRewrite(jrc);
     }
     return;
@@ -321,13 +320,16 @@ JavascriptFilter::RewriteLoadedResource(
     const OutputResourcePtr& output_resource) {
   // Temporary code so that we can share the rewriting implementation beteween
   // the old blocking rewrite model and the new async model.
-  ResourceSlotPtr dummy_slot;
-  JavascriptRewriteContext jrc(driver_, dummy_slot, &config_);
+  JavascriptRewriteContext jrc(driver_, &config_);
   return jrc.RewriteJavascript(script_input, output_resource);
 }
 
 bool JavascriptFilter::HasAsyncFlow() const {
   return driver_->asynchronous_rewrites();
+}
+
+RewriteContext* JavascriptFilter::MakeRewriteContext() {
+  return new JavascriptRewriteContext(driver_, &config_);
 }
 
 }  // namespace net_instaweb

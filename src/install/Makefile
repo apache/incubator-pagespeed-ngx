@@ -157,7 +157,7 @@ ifeq ($(STRESS_TEST),1)
   STRESS_TEST_SED_PATTERN=^\#STRESS
 else
   # remove whole line
-  STRESS_TEST_SED_PATTERN=^\#STRESS.*
+  STRESS_TEST_SED_PATTERN=^\#STRESS.*\n
 endif
 
 ifeq ($(REWRITE_TEST),1)
@@ -165,7 +165,7 @@ ifeq ($(REWRITE_TEST),1)
   REWRITE_TEST_SED_PATTERN=^\#REWRITE
 else
   # remove whole line
-  REWRITE_TEST_SED_PATTERN=^\#REWRITE.*
+  REWRITE_TEST_SED_PATTERN=^\#REWRITE.*\n
 endif
 
 ifeq ($(COVERAGE_TRACE_TEST),1)
@@ -173,7 +173,7 @@ ifeq ($(COVERAGE_TRACE_TEST),1)
   COVERAGE_TEST_SED_PATTERN=^\#COVERAGE
 else
   # remove coverage lines
-  COVERAGE_TEST_SED_PATTERN=^\#COVERAGE.*
+  COVERAGE_TEST_SED_PATTERN=^\#COVERAGE.*\n
 endif
 
 ifeq ($(PROXY_TEST),1)
@@ -181,7 +181,7 @@ ifeq ($(PROXY_TEST),1)
   PROXY_TEST_SED_PATTERN=^\#PROXY
 else
   # remove whole line
-  PROXY_TEST_SED_PATTERN=^\#PROXY.*
+  PROXY_TEST_SED_PATTERN=^\#PROXY.*\n
 endif
 
 ifeq ($(SLURP_TEST),1)
@@ -189,7 +189,7 @@ ifeq ($(SLURP_TEST),1)
   SLURP_TEST_SED_PATTERN=^\#SLURP
 else
   # remove whole line
-  SLURP_TEST_SED_PATTERN=^\#SLURP.*
+  SLURP_TEST_SED_PATTERN=^\#SLURP.*\n
 endif
 
 ifeq ($(SPELING_TEST),1)
@@ -197,7 +197,7 @@ ifeq ($(SPELING_TEST),1)
   SPELING_TEST_SED_PATTERN=^\#SPELING
 else
   # remove whole line
-  SPELING_TEST_SED_PATTERN=^\#SPELING.*
+  SPELING_TEST_SED_PATTERN=^\#SPELING.*\n
 endif
 
 # Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because

@@ -76,7 +76,7 @@ namespace {
 // also want to change based on how many Flushes there are, as each
 // Flush can potentially add this much more latency.
 const int kDebugWaitForRewriteMsPerFlush = 500;
-const int kOptWaitForRewriteMsPerFlush = 20;
+const int kOptWaitForRewriteMsPerFlush = 100;
 const int kValgrindWaitForRewriteMsPerFlush = 1000;
 const int kTestTimeoutMs = 10000;
 
@@ -661,8 +661,20 @@ class FilterFetch : public UrlAsyncFetcher::Callback {
                     UrlAsyncFetcher::Callback* callback) {
     RewriteDriver* driver = filter->driver();
     FilterFetch* cb = new FilterFetch(driver, callback);
-    bool queued = filter->Fetch(output_resource, writer, request,
-                                 response, handler, cb);
+
+    bool queued = false;
+    if (filter->HasAsyncFlow()) {
+      RewriteContext* context = filter->MakeRewriteContext();
+      DCHECK(context != NULL);
+      if (context != NULL) {
+        context->Fetch(output_resource, writer, response, handler, cb);
+        queued = true;
+      }
+    }
+    if (!queued) {
+      queued = filter->Fetch(output_resource, writer, request,
+                             response, handler, cb);
+    }
     if (!queued) {
       ResourceManager* resource_manager = driver->resource_manager();
       resource_manager->failed_filter_resource_fetches()->Add(1);

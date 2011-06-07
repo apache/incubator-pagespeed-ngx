@@ -36,6 +36,7 @@ namespace net_instaweb {
 class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
+class RewriteContext;
 class RewriteDriver;
 class Writer;
 
@@ -102,6 +103,8 @@ class SimpleTextFilter : public RewriteFilter {
                      ResponseHeaders* response_headers,
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback);
+
+  virtual RewriteContext* MakeRewriteContext();
 
  protected:
   virtual GoogleString id() const { return rewriter_->id(); }

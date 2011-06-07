@@ -273,10 +273,10 @@ class NestedFilter : public RewriteFilter {
              ResponseHeaders* response_headers,
              MessageHandler* message_handler,
              UrlAsyncFetcher::Callback* callback) {
-    Context* context = new Context(driver_);
-    return context->Fetch(output_resource, response_writer,
-                          response_headers, message_handler, callback);
+    CHECK(false);
   }
+
+  RewriteContext* MakeRewriteContext() { return new Context(driver_); }
 
   void StartElementImpl(HtmlElement* element) {
     HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kHref);
@@ -430,14 +430,15 @@ class CombiningFilter : public RewriteFilter {
 
   virtual void EndElementImpl(HtmlElement* element) {}
   virtual const char* Name() const { return "Combiner"; }
+  RewriteContext* MakeRewriteContext() { return new Context(driver_, this); }
   virtual bool Fetch(const OutputResourcePtr& resource,
                      Writer* writer,
                      const RequestHeaders& request_header,
                      ResponseHeaders* response,
                      MessageHandler* handler,
                      UrlAsyncFetcher::Callback* callback) {
-    Context* context = new Context(driver_, this);
-    return context->Fetch(resource, writer, response, handler, callback);
+    CHECK(false);
+    return false;
   }
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
   virtual bool HasAsyncFlow() const { return true; }

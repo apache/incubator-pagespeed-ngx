@@ -47,10 +47,12 @@ const char kRewrittenJsName[] = "hello.js";
 
 namespace net_instaweb {
 
-class JavascriptFilterTest : public ResourceManagerTestBase {
+class JavascriptFilterTest : public ResourceManagerTestBase,
+                             public ::testing::WithParamInterface<bool> {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
+    rewrite_driver()->SetAsynchronousRewrites(GetParam());
     AddFilter(RewriteOptions::kRewriteJavascript);
     ResourceNamer namer;
     namer.set_id(kFilterId);
@@ -90,24 +92,14 @@ class JavascriptFilterTest : public ResourceManagerTestBase {
   GoogleString expected_rewritten_path_;
 };
 
-TEST_F(JavascriptFilterTest, DoRewrite) {
+TEST_P(JavascriptFilterTest, DoRewrite) {
   InitTest(100);
   ValidateExpected("do_rewrite",
                    GenerateHtml(kOrigJsName),
                    GenerateHtml(expected_rewritten_path_.c_str()));
 }
 
-// Temporarily test one path using the async model.
-// TODO(jmarantz): remove this method and convert everything to async.
-TEST_F(JavascriptFilterTest, DoAsyncRewrite) {
-  rewrite_driver()->SetAsynchronousRewrites(true);
-  InitTest(100);
-  ValidateExpected("do_rewrite",
-                   GenerateHtml(kOrigJsName),
-                   GenerateHtml(expected_rewritten_path_.c_str()));
-}
-
-TEST_F(JavascriptFilterTest, RewriteAlreadyCachedProperly) {
+TEST_P(JavascriptFilterTest, RewriteAlreadyCachedProperly) {
   InitTest(100000000);  // cached for a long time to begin with
   // But we will rewrite because we can make the data smaller.
   ValidateExpected("rewrite_despite_being_cached_properly",
@@ -115,14 +107,14 @@ TEST_F(JavascriptFilterTest, RewriteAlreadyCachedProperly) {
                    GenerateHtml(expected_rewritten_path_.c_str()));
 }
 
-TEST_F(JavascriptFilterTest, NoRewriteOriginUncacheable) {
+TEST_P(JavascriptFilterTest, NoRewriteOriginUncacheable) {
   InitTest(0);  // origin not cacheable
   ValidateExpected("no_extend_origin_not_cacheable",
                    GenerateHtml(kOrigJsName),
                    GenerateHtml(kOrigJsName));
 }
 
-TEST_F(JavascriptFilterTest, ServeFiles) {
+TEST_P(JavascriptFilterTest, ServeFiles) {
   TestServeFiles(&kContentTypeJavascript, kFilterId, "js",
                  kOrigJsName, kJsData,
                  kRewrittenJsName, kJsMinData);
@@ -131,7 +123,7 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   ServeResourceFromManyContexts(expected_rewritten_path_, kJsMinData);
 }
 
-TEST_F(JavascriptFilterTest, InvalidInputMimetype) {
+TEST_P(JavascriptFilterTest, InvalidInputMimetype) {
   // Make sure we can rewrite properly even when input has corrupt mimetype.
   ContentType not_java_script = kContentTypeJavascript;
   not_java_script.mime_type_ = "text/semicolon-inserted";
@@ -144,12 +136,18 @@ TEST_F(JavascriptFilterTest, InvalidInputMimetype) {
 }
 
 // Make sure bad requests do not corrupt our extension.
-TEST_F(JavascriptFilterTest, NoExtensionCorruption) {
+TEST_P(JavascriptFilterTest, NoExtensionCorruption) {
   TestCorruptUrl("%22", false);
 }
 
-TEST_F(JavascriptFilterTest, NoQueryCorruption) {
+TEST_P(JavascriptFilterTest, NoQueryCorruption) {
   TestCorruptUrl("?query", true);
 }
+
+// We runs the test with GetParam() both true and false, in order to
+// test both the traditional and async flows.
+INSTANTIATE_TEST_CASE_P(JavascriptFilterTestInstance,
+                        JavascriptFilterTest,
+                        ::testing::Bool());
 
 }  // namespace net_instaweb

@@ -20,6 +20,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -58,6 +59,8 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
     ResourceNamer full_name;
     if (resource->loaded() &&
         resource->ContentsValid() &&
+        !Manager()->http_cache()->IsAlreadyExpired(
+            *resource->response_headers()) &&
         partnership.AddUrl(resource->url(), Manager()->message_handler())) {
       const GoogleUrl* mapped_gurl = partnership.FullPath(0);
       GoogleString name;
