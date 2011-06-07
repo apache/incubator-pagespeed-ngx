@@ -18,13 +18,12 @@
 //
 
 #include "net/instaweb/util/public/gtest.h"
+//#include "net/instaweb/util/public/gflags.h"
 #include "net/instaweb/util/public/string.h"
-
 #include <unistd.h>  // For getpid()
 #include <vector>
 #include "net/instaweb/util/stack_buffer.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "third_party/gflags/src/google/gflags.h"
 
 namespace net_instaweb {
 
@@ -60,19 +59,6 @@ GoogleString GTestSrcDir() {
 GoogleString GTestTempDir() {
   return StringPrintf("/tmp/gtest.%d", getpid());
 }
-
-// We must auto-destruct the command-line flags after all tests are
-// complete, otherwise valgrind will complain about memory leaks.  There
-// is not an obvious place to do this in the general testing
-// framework, so we need to use a static object destructor to trigger
-// this.
-class GTestProcessContext {
- public:
-  ~GTestProcessContext() {
-    google::ShutDownCommandLineFlags();
-  }
-};
-GTestProcessContext gtest_process_context;
 
 
 }  // namespace net_instaweb

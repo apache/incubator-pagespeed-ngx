@@ -616,5 +616,16 @@
         'rewriter/rewrite_gflags.cc',
       ],
     },
+    {
+      'target_name': 'mem_clean_up',
+      'type': '<(library)',
+      'dependencies': [
+        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
+        'instaweb_rewriter',
+       ],
+      'sources': [
+        'rewriter/mem_clean_up.cc',
+      ],
+    },
   ],
 }

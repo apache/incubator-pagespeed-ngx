@@ -31,6 +31,7 @@ namespace net_instaweb {
 class DomainRewriteFilter;
 class HtmlElement;
 class ResponseHeaders;
+class RewriteContext;
 class RewriteDriver;
 class Statistics;
 class Variable;
@@ -52,6 +53,7 @@ class CacheExtender : public RewriteSingleResourceFilter {
   virtual void StartDocumentImpl() {}
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element) {}
+  virtual void Flush();
 
   virtual const char* Name() const { return "CacheExtender"; }
 
@@ -60,12 +62,17 @@ class CacheExtender : public RewriteSingleResourceFilter {
   }
 
  protected:
-  virtual bool ComputeOnTheFly() const;
   virtual RewriteResult RewriteLoadedResource(
       const ResourcePtr& input_resource,
       const OutputResourcePtr& output_resource);
+  virtual bool ComputeOnTheFly() const;
+  virtual bool HasAsyncFlow() const;
+  virtual RewriteContext* MakeRewriteContext();
 
  private:
+  class Context;
+  friend class Context;
+
   bool IsRewrittenResource(const StringPiece& url) const;
   bool ShouldRewriteResource(
       const ResponseHeaders* headers, int64 now_ms,

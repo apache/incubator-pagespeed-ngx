@@ -58,6 +58,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_util.a \
   net/instaweb/libinstaweb_util_core.a \
   net/instaweb/libinstaweb_util_pthread.a \
+  net/instaweb/libmem_clean_up.a \
   third_party/base64/libbase64.a \
   third_party/chromium/src/net/tools/liburl_to_filename_encoder.a \
   third_party/css_parser/libcss_parser.a \

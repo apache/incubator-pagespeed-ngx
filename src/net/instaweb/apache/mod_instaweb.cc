@@ -34,6 +34,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/rewriter/public/mem_clean_up.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -303,7 +304,6 @@ class ApacheProcessContext {
     STLDeleteElements(&factories_);
     STLDeleteElements(&configs_);
     statistics_.reset(NULL);
-    ApacheRewriteDriverFactory::Terminate();
     log_message_handler::ShutDown();
   }
 
@@ -407,6 +407,9 @@ class ApacheProcessContext {
   // to actual config parse + startup without ~ApacheProcessContext being
   // called.
   bool all_factories_cleared_;
+
+  // Process-scoped static variable cleanups, mainly for valgrind.
+  MemCleanUp mem_cleanup_;
 };
 ApacheProcessContext apache_process_context;
 

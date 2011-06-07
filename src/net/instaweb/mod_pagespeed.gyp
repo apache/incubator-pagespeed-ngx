@@ -40,7 +40,6 @@
         'apache/apache_config.cc',
         'apache/instaweb_handler.cc',
         'apache/log_message_handler.cc',
-        "rewriter/mem_clean_up.cc",
         'util/mem_debug.cc',
         'apache/mod_instaweb.cc',
       ],

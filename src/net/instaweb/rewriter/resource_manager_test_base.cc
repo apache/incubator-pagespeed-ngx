@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/mem_clean_up.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -501,5 +502,18 @@ void ResourceManagerTestBase::CallFetcherCallbacksForDriver(
 void ResourceManagerTestBase::CallFetcherCallbacks() {
   CallFetcherCallbacksForDriver(&wait_url_async_fetcher_, &rewrite_driver_);
 }
+
+// Logging at the INFO level slows down tests, adds to the noise, and
+// adds considerably to the speed variability.
+class ResourceManagerProcessContext {
+ public:
+  ResourceManagerProcessContext() {
+    logging::SetMinLogLevel(logging::LOG_WARNING);
+  }
+
+ private:
+  MemCleanUp mem_clean_up_;
+};
+ResourceManagerProcessContext resource_manager_process_context;
 
 }  // namespace net_instaweb

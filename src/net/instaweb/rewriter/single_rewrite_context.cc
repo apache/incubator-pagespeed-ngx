@@ -19,20 +19,14 @@
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
-#include "net/instaweb/rewriter/public/url_partnership.h"
-#include "net/instaweb/util/public/google_url.h"  // for GoogleUrl
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"  // for GoogleString, NULL
-#include "net/instaweb/util/public/string_util.h"  // for StringVector, etc
-#include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
 
@@ -54,37 +48,20 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
   if (num_slots() == 1) {
     ret = true;
     ResourcePtr resource(slot(0)->resource());
-    GoogleUrl gurl(resource->url());
-    UrlPartnership partnership(Options(), gurl);
-    ResourceNamer full_name;
     if (resource->loaded() &&
         resource->ContentsValid() &&
         !Manager()->http_cache()->IsAlreadyExpired(
-            *resource->response_headers()) &&
-        partnership.AddUrl(resource->url(), Manager()->message_handler())) {
-      const GoogleUrl* mapped_gurl = partnership.FullPath(0);
-      GoogleString name;
-      StringVector v;
-      GoogleString encoded_url;
-      v.push_back(mapped_gurl->LeafWithQuery().as_string());
-      encoder()->Encode(v, resource_context(), &encoded_url);
-      full_name.set_name(encoded_url);
-      full_name.set_id(id());
-      const ContentType* content_type = resource->type();
-      if (content_type != NULL) {
-        // TODO(jmaessen): The addition of 1 below avoids the leading ".";
-        // make this convention consistent and fix all code.
-        full_name.set_ext(content_type->file_extension() + 1);
+            *resource->response_headers())) {
+      OutputResourcePtr output_resource(
+          Manager()->CreateOutputResourceFromResource(
+              Options(), id(), encoder(), resource_context(),
+              resource, kind(), true /* async flow */));
+      if (output_resource.get() != NULL) {
+        OutputPartition* partition = partitions->add_partition();
+        partition->add_input(0);
+        output_resource->set_cached_result(partition->mutable_result());
+        outputs->push_back(output_resource);
       }
-
-      OutputResourcePtr output_resource(new OutputResource(
-          Manager(), gurl.AllExceptLeaf(), full_name, content_type,
-          Options(), kind()));
-      output_resource->set_written_using_rewrite_context_flow(true);
-      OutputPartition* partition = partitions->add_partition();
-      partition->add_input(0);
-      output_resource->set_cached_result(partition->mutable_result());
-      outputs->push_back(output_resource);
     }
   }
   return ret;

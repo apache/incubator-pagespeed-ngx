@@ -114,9 +114,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   void RootInit();
   void ChildInit();
 
-  // Relinquish all static data
-  static void Terminate();
-
  protected:
   virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();

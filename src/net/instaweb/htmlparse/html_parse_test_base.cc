@@ -17,7 +17,6 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
@@ -69,22 +68,5 @@ void HtmlParseTestBaseNoAlloc::ValidateExpectedFail(
   EXPECT_NE(xbody, output_buffer_);
   output_buffer_.clear();
 }
-
-// Reduces valgrind noise by cleaning the HtmlKeywords singleton on
-// destruction.  This does not appear to work as a SetUpTestCase
-// method of a test base class.  It's easiest to do this via
-// static ctor/dtor.
-class HtmlKeywordsTestSingleton {
- public:
-  HtmlKeywordsTestSingleton() {
-    HtmlKeywords::Init();
-  }
-  ~HtmlKeywordsTestSingleton() {
-    HtmlKeywords::ShutDown();
-  }
-};
-
-HtmlKeywordsTestSingleton html_keywords_test_singleton;
-
 
 }  // namespace net_instaweb

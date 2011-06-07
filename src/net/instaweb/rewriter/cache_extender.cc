@@ -31,12 +31,15 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -56,13 +59,33 @@ const char kNotCacheable[] = "not_cacheable";
 
 namespace net_instaweb {
 class MessageHandler;
+class RewriteContext;
 class RewriteFilter;
 
 // We do not want to bother to extend the cache lifetime for any resource
 // that is already cached for a month.
 const int64 kMinThresholdMs = Timer::kMonthMs;
 
-// TODO(jmarantz): consider factoring out the code that finds external resources
+class CacheExtender::Context : public SingleRewriteContext {
+ public:
+  Context(CacheExtender* extender, RewriteDriver* driver)
+      : SingleRewriteContext(driver, NULL /* no parent */,
+                             NULL /* no resource context */),
+        extender_(extender),
+        driver_(driver) {}
+  virtual ~Context() {}
+
+  virtual void Render();
+  virtual void RewriteSingle(const ResourcePtr& input,
+                             const OutputResourcePtr& output);
+  virtual const char* id() const { return extender_->id().c_str(); }
+  virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
+
+ private:
+  CacheExtender* extender_;
+  RewriteDriver* driver_;
+  DISALLOW_COPY_AND_ASSIGN(Context);
+};
 
 CacheExtender::CacheExtender(RewriteDriver* driver, const char* filter_prefix)
     : RewriteSingleResourceFilter(driver, filter_prefix),
@@ -89,6 +112,7 @@ bool CacheExtender::ShouldRewriteResource(
     return false;
   }
   if ((headers->CacheExpirationTimeMs() - now_ms) < kMinThresholdMs) {
+    // This also includes the case where a previous filter rewrote this.
     return true;
   }
   GoogleUrl origin_gurl(url);
@@ -112,15 +136,27 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
     ResourcePtr input_resource(CreateInputResource(href->value()));
     if ((input_resource.get() != NULL) &&
         !IsRewrittenResource(input_resource->url())) {
-      scoped_ptr<CachedResult> rewrite_info(
-          RewriteExternalResource(input_resource, NULL));
-      if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
-        // Rewrite URL to cache-extended version
-        href->SetValue(rewrite_info->url());
-        extension_count_->Add(1);
+      if (HasAsyncFlow()) {
+        ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, href));
+        Context* context = new Context(this, driver_);
+        context->AddSlot(slot);
+        driver_->InitiateRewrite(context);
+      } else {
+        scoped_ptr<CachedResult> rewrite_info(
+            RewriteExternalResource(input_resource, NULL));
+        if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
+          // Rewrite URL to cache-extended version
+          href->SetValue(rewrite_info->url());
+          extension_count_->Add(1);
+        }
       }
     }
   }
+}
+
+void CacheExtender::Flush() {
+  // Temporary hack until everything is ported.
+  driver_->Render();
 }
 
 // Just based on the pattern of the URL, see if we think this was
@@ -166,6 +202,17 @@ class RewriteDomainTransformer : public CssTagScanner::Transformer {
 
 }  // namespace
 
+void CacheExtender::Context::RewriteSingle(
+    const ResourcePtr& input_resource,
+    const OutputResourcePtr& output_resource) {
+  RewriteDone(
+      extender_->RewriteLoadedResource(input_resource, output_resource), 0);
+}
+
+void CacheExtender::Context::Render() {
+  extender_->extension_count_->Add(1);
+}
+
 RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
@@ -188,7 +235,7 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   }
 
   if (!ok) {
-    return kRewriteFailed;
+    return RewriteSingleResourceFilter::kRewriteFailed;
   }
 
   StringPiece contents(input_resource->contents());
@@ -216,12 +263,21 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   }
   // TODO(sligocki): Should we preserve the response headers from the
   // original resource?
-  // TODO(sligocki): Maybe we shouldn't cache the rewritten resource,
-  // just the input_resource.
-  ok = resource_manager_->Write(
-      HttpStatus::kOK, contents, output_resource.get(),
-      headers->CacheExpirationTimeMs(), message_handler);
-  return ok ? kRewriteOk : kRewriteFailed;
+  if (resource_manager_->Write(
+          HttpStatus::kOK, contents, output_resource.get(),
+          headers->CacheExpirationTimeMs(), message_handler)) {
+    return RewriteSingleResourceFilter::kRewriteOk;
+  } else {
+    return RewriteSingleResourceFilter::kRewriteFailed;
+  }
+}
+
+bool CacheExtender::HasAsyncFlow() const {
+  return driver_->asynchronous_rewrites();
+}
+
+RewriteContext* CacheExtender::MakeRewriteContext() {
+  return new Context(this, driver_);
 }
 
 }  // namespace net_instaweb

@@ -98,7 +98,6 @@
         'rewriter/js_combine_filter_test.cc',
         'rewriter/js_inline_filter_test.cc',
         'rewriter/js_outline_filter_test.cc',
-        'rewriter/mem_clean_up.cc',
         'rewriter/mock_resource_callback.cc',
         'rewriter/remove_comments_filter_test.cc',
         'rewriter/resource_combiner_test.cc',
@@ -199,7 +198,6 @@
         'apache/apr_file_system_test.cc',
         'apache/speed_test.cc',
         'apache/serf_url_async_fetcher_test.cc',
-        'rewriter/mem_clean_up.cc',
         'util/mem_debug.cc',
       ],
     },
@@ -209,6 +207,7 @@
       'dependencies': [
         'instaweb.gyp:instaweb_rewriter',
         'instaweb.gyp:instaweb_http_test',
+        'instaweb.gyp:mem_clean_up',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
         '<(DEPTH)/testing/gtest.gyp:gtest',

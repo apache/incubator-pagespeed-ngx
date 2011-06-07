@@ -1,4 +1,4 @@
-// Copyright 2010 Google Inc.
+// Copyright 2011 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,23 +17,31 @@
 #include "googleurl/src/url_util.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
+#include "net/instaweb/rewriter/public/mem_clean_up.h"
+#include "net/instaweb/util/public/gflags.h"
+
 #include "third_party/protobuf/src/google/protobuf/stubs/common.h"
+using namespace google;  // NOLINT
 
 // Clean up valgrind-based memory-leak checks by deleting statically allocated
 // data from various libraries.  This must be called both from unit-tests
 // and from the Apache module, so that valgrind can be run on both of them.
 
-namespace {
+namespace net_instaweb {
 
-class MemCleanUp {
- public:
-  ~MemCleanUp() {
-    net_instaweb::CssFilter::Terminate();
-    net_instaweb::HtmlKeywords::ShutDown();
-    google::protobuf::ShutdownProtobufLibrary();
-    url_util::Shutdown();
-  }
-};
-MemCleanUp mem_clean_up;
+MemCleanUp::MemCleanUp() {
+  HtmlKeywords::Init();
+}
 
-}  // namespace
+MemCleanUp::~MemCleanUp() {
+  // Clean up statics from third_party code first.
+  ShutDownCommandLineFlags();
+  google::protobuf::ShutdownProtobufLibrary();
+  url_util::Shutdown();
+
+  // Then clean up statics net_instaweb code.
+  CssFilter::Terminate();
+  HtmlKeywords::ShutDown();
+}
+
+}  // namespace net_instaweb

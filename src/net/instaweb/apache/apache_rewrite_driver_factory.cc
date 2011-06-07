@@ -240,8 +240,4 @@ void ApacheRewriteDriverFactory::ShutDown() {
   RewriteDriverFactory::ShutDown();
 }
 
-void ApacheRewriteDriverFactory::Terminate() {
-  google::ShutDownCommandLineFlags();
-}
-
 }  // namespace net_instaweb
