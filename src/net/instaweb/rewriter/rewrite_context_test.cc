@@ -392,7 +392,7 @@ class CombiningFilter : public RewriteFilter {
       // Slot 0 will be replaced by the combined resource as part of
       // rewrite_context.cc.  But we still need to delete slots 1-N.
       for (int i = 1, n = num_slots(); i < n; ++i) {
-        slot(i)->set_delete_element(true);
+        slot(i)->set_should_delete_element(true);
         RenderSlotOnDetach(i);
       }
     }
@@ -906,8 +906,13 @@ TEST_F(RewriteContextTest, CombinationFetch) {
   EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
   EXPECT_EQ(" a b", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(4, lru_cache()->num_misses());  // 2 inputs + 2 calls to ExtantFetch
-  EXPECT_EQ(3, lru_cache()->num_inserts());  // 2 inputs, 1 output.
+  EXPECT_EQ(4, lru_cache()->num_misses())
+      << "2 misses for the output.  1 before we acquire the lock, "
+      << "and one after we acquire the lock.  Then we miss on the two inputs.";
+
+  // TODO(jmarantz): add another Insert to write partition-table for filters
+  // that always make exactly one partition.
+  EXPECT_EQ(3, lru_cache()->num_inserts()) << "2 inputs, 1 output.";
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   ClearStats();
   content.clear();

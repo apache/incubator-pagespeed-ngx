@@ -41,7 +41,8 @@ ResourcePtr RewriteFilter::CreateInputResourceFromOutputResource(
       (urls.size() == 1)) {
     GoogleUrl base_gurl(output_resource->resolved_base());
     GoogleUrl resource_url(base_gurl, urls[0]);
-    if (base_gurl != driver_->base_url()) {
+    if (driver_->base_url().AllExceptLeaf() !=
+        output_resource->resolved_base()) {
       if (driver_->MayRewriteUrl(base_gurl, resource_url)) {
         input_resource = driver_->CreateInputResource(resource_url);
       }

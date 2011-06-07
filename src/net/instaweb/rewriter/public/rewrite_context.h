@@ -247,7 +247,7 @@ class RewriteContext {
   // Performs rendering activities that span multiple HTML slots.  For
   // example, in a filter that combines N slots to 1, N-1 of the HTML
   // elements might need to be removed.  That can be performed in
-  // Render().  This method is optional; the base-calss implementation
+  // Render().  This method is optional; the base-class implementation
   // is empty.
   //
   // Note that unlike Harvest(), this method runs in the HTML thread (for

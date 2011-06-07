@@ -46,6 +46,7 @@ class GoogleUrl {
   void Swap(GURL* gurl) { gurl_.Swap(gurl); }
   void Swap(GoogleUrl* google_url) { gurl_.Swap(&google_url->gurl_); }
   bool Reset(const StringPiece& new_url);
+  bool Reset(const GoogleUrl& new_url);
 
   // Resets this URL to be invalid.
   void Clear();

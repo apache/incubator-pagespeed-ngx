@@ -91,6 +91,11 @@ bool GoogleUrl::Reset(const StringPiece& new_value) {
   return gurl_.is_valid();
 }
 
+bool GoogleUrl::Reset(const GoogleUrl& new_value) {
+  gurl_ = GURL(new_value.gurl_);
+  return gurl_.is_valid();
+}
+
 void GoogleUrl::Clear() {
   gurl_ = GURL();
 }

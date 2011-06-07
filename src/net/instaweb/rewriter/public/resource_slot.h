@@ -49,7 +49,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
  public:
   explicit ResourceSlot(const ResourcePtr& resource)
       : resource_(resource),
-        delete_element_(false) {
+        should_delete_element_(false) {
   }
 
   ResourcePtr resource() const { return resource_; }
@@ -69,11 +69,11 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // worker writes.
   void SetResource(const ResourcePtr& resource);
 
-  // Request that Rendering the slot will delete it.  E.g. for
-  // HTML, the Element will be deleted entirely (not just the
-  // attribute).
-  void set_delete_element(bool x) { delete_element_ = x; }
-  bool delete_element() const { return delete_element_; }
+  // Determines whether rendering the slot deletes the HTML Element.
+  // For example, in the CSS combine filter we want the Render to
+  // rewrite the first <link href>, but delete all the other <link>s.
+  void set_should_delete_element(bool x) { should_delete_element_ = x; }
+  bool should_delete_element() const { return should_delete_element_; }
 
   // Render is not thread-safe.  This must be called from the thread that
   // owns the DOM or CSS file.
@@ -96,7 +96,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
 
  private:
   ResourcePtr resource_;
-  bool delete_element_;
+  bool should_delete_element_;
 
   // We track the RewriteContexts that are atempting to rewrite this
   // slot, to help us build a dependency graph between ResourceContexts.

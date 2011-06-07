@@ -160,7 +160,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
         // Absolutify URLs in content.
         GoogleString absolute_content;
         StringWriter absolute_writer(&absolute_content);
-        StringPiece base_dir = base_url().Spec();      // base url has no leaf.
+        StringPiece base_dir = base_url().AllExceptLeaf();
         bool content_valid = true;
         if (base_dir != output_resource->resolved_base()) {
           // TODO(sligocki): Use CssParser instead of CssTagScanner hack.

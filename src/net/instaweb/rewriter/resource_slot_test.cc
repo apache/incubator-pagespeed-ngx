@@ -20,7 +20,6 @@
 
 #include "net/instaweb/rewriter/public/resource_slot.h"
 
-#include <cstddef>
 #include <set>
 #include <utility>  // for std::pair
 
@@ -36,6 +35,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"               // for StrCat
 
 namespace {
@@ -104,6 +104,12 @@ class ResourceSlotTest : public ResourceManagerTestBase {
     return &element(element_index)->attribute(attribute_index);
   }
 
+  GoogleString GetHtmlDomAsString() {
+    output_buffer_.clear();
+    html_parse()->ApplyFilter(html_writer_filter_.get());
+    return output_buffer_;
+  }
+
  private:
   HtmlResourceSlotSet slot_set_;
   HtmlResourceSlotPtr slots_[4];
@@ -136,26 +142,38 @@ TEST_F(ResourceSlotTest, Comparator) {
   EXPECT_EQ(4, num_slots());
 }
 
+// Tests that a slot resource-update has the desired effect on the DOM.
 TEST_F(ResourceSlotTest, RenderUpdate) {
   SetupWriter();
   GoogleUrl gurl(kUpdatedUrl);
+
+  // Before update: first href=v1.
+  EXPECT_EQ("<link href=\"v1\" src=\"v2\"/><link href=\"v3\" src=\"v4\"/>",
+            GetHtmlDomAsString());
+
   ResourcePtr updated(rewrite_driver()->CreateInputResource(gurl));
   slot(0)->SetResource(updated);
   slot(0)->Render();
 
-  html_parse()->ApplyFilter(html_writer_filter_.get());
+  // After update: first href=kUpdated.
   EXPECT_EQ(StrCat("<link href=\"", kUpdatedUrl,
                    "\" src=\"v2\"/><link href=\"v3\" src=\"v4\"/>"),
-            output_buffer_);
+            GetHtmlDomAsString());
 }
 
+// Tests that a slot deletion takes effect as expected.
 TEST_F(ResourceSlotTest, RenderDelete) {
   SetupWriter();
-  slot(0)->set_delete_element(true);
+
+  // Before update: first link is present.
+  EXPECT_EQ("<link href=\"v1\" src=\"v2\"/><link href=\"v3\" src=\"v4\"/>",
+            GetHtmlDomAsString());
+
+  slot(0)->set_should_delete_element(true);
   slot(0)->Render();
 
-  html_parse()->ApplyFilter(html_writer_filter_.get());
-  EXPECT_EQ("<link href=\"v3\" src=\"v4\"/>", output_buffer_);
+  // After update, first link is gone.
+  EXPECT_EQ("<link href=\"v3\" src=\"v4\"/>", GetHtmlDomAsString());
 }
 
 }  // namespace net_instaweb

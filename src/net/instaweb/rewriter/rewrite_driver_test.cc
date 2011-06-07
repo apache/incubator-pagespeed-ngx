@@ -200,7 +200,7 @@ TEST_F(RewriteDriverTest, BaseTags) {
   // Starting the parse, the base-tag will be derived from the html url.
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
   rewrite_driver()->Flush();
-  EXPECT_EQ("http://example.com/", BaseUrlSpec());
+  EXPECT_EQ("http://example.com/index.html", BaseUrlSpec());
 
   // If we then encounter a base tag, that will become the new base.
   rewrite_driver()->ParseText("<base href='http://new.example.com/subdir/'>");
@@ -219,7 +219,7 @@ TEST_F(RewriteDriverTest, BaseTags) {
   ASSERT_TRUE(rewrite_driver()->StartParse(
       "http://restart.example.com/index.html"));
   rewrite_driver()->Flush();
-  EXPECT_EQ("http://restart.example.com/", BaseUrlSpec());
+  EXPECT_EQ("http://restart.example.com/index.html", BaseUrlSpec());
 
   // We should be able to reset again.
   rewrite_driver()->ParseText("<base href='http://new.example.com/subdir/'>");
@@ -244,7 +244,7 @@ TEST_F(RewriteDriverTest, InvalidBaseTag) {
   rewrite_driver()->Flush();
 
   EXPECT_EQ(1, message_handler_.TotalMessages());
-  EXPECT_EQ("slwly://example.com/", BaseUrlSpec());
+  EXPECT_EQ("slwly://example.com/index.html", BaseUrlSpec());
 
   // And we will accept a subsequent base-tag with legal aboslute syntax.
   rewrite_driver()->ParseText("<base href='http://example.com/absolute/'>");
@@ -415,6 +415,13 @@ TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
   EXPECT_TRUE(mock_callback2.done());
   EXPECT_TRUE(mock_callback2.success());
   EXPECT_EQ(kResourceContents2, resource2->contents());
+}
+
+TEST_F(RewriteDriverTest, ResolveAnchorUrl) {
+  ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
+  GoogleUrl resolved(rewrite_driver()->base_url(), "#anchor");
+  EXPECT_EQ("http://example.com/index.html#anchor", resolved.Spec());
+  rewrite_driver()->FinishParse();
 }
 
 }  // namespace net_instaweb

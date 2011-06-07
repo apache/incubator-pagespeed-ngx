@@ -75,7 +75,7 @@ namespace {
 // requirements of the testing system and the platform.  This might
 // also want to change based on how many Flushes there are, as each
 // Flush can potentially add this much more latency.
-const int kDebugWaitForRewriteMsPerFlush = 100;
+const int kDebugWaitForRewriteMsPerFlush = 500;
 const int kOptWaitForRewriteMsPerFlush = 20;
 const int kValgrindWaitForRewriteMsPerFlush = 1000;
 const int kTestTimeoutMs = 10000;
@@ -968,7 +968,7 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
   if (ret) {
     base_was_set_ = false;
     if (is_url_valid()) {
-      base_url_.Reset(google_url().AllExceptLeaf());
+      base_url_.Reset(google_url());
     }
   }
   return ret;
