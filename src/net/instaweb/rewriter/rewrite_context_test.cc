@@ -1001,4 +1001,122 @@ TEST_F(RewriteContextTest, LoadFromFileRewritten) {
   // Note: We do not load the resource again until the fetch.
 }
 
+
+
+// Test resource update behavior.
+class ResourceUpdateTest : public RewriteContextTest {
+ protected:
+  static const char kOriginalUrl[];
+  static const char kRewrittenUrl[];
+
+  GoogleString RewriteResource(const StringPiece& id) {
+    // Rewrite page ...
+    ValidateExpected(id, CssLink(kOriginalUrl), CssLink(kRewrittenUrl));
+    // ... and check that rewritten resource is correct.
+    GoogleString content;
+    EXPECT_TRUE(ServeResourceUrl(kRewrittenUrl, &content));
+    return content;
+  }
+};
+
+const char ResourceUpdateTest::kOriginalUrl[] = "a.css";
+const char ResourceUpdateTest::kRewrittenUrl[] =
+    "http://test.com/a.css.pagespeed.tw.0.css";
+
+TEST_F(ResourceUpdateTest, OnTheFly) {
+  InitTrimFilters(kOnTheFlyResource);
+
+  int64 ttl_ms = 5 * Timer::kMinuteMs;
+
+  // 1) Set first version of resource.
+  InitResponseHeaders(kOriginalUrl, kContentTypeCss, " init ", ttl_ms / 1000);
+  EXPECT_EQ("init", RewriteResource("first_load"));
+
+  // 2) Advance time, but not so far that resources have expired.
+  mock_timer()->advance_ms(ttl_ms / 2);
+  // Rewrite should be the same.
+  EXPECT_EQ("init", RewriteResource("advance_time"));
+
+  // 3) Change resource.
+  InitResponseHeaders(kOriginalUrl, kContentTypeCss, " new ", ttl_ms / 1000);
+  // Rewrite should still be the same, because it's found in cache.
+  EXPECT_EQ("init", RewriteResource("stale_content"));
+
+  // 4) Advance time so that old cached input resource expires.
+  mock_timer()->advance_ms(ttl_ms);
+  // Rewrite should now use new resource.
+  EXPECT_EQ("new", RewriteResource("updated_content"));
+}
+
+TEST_F(ResourceUpdateTest, Rewritten) {
+  InitTrimFilters(kRewrittenResource);
+
+  int64 ttl_ms = 5 * Timer::kMinuteMs;
+
+  // 1) Set first version of resource.
+  InitResponseHeaders(kOriginalUrl, kContentTypeCss, " init ", ttl_ms / 1000);
+  EXPECT_EQ("init", RewriteResource("first_load"));
+
+  // 2) Advance time, but not so far that resources have expired.
+  mock_timer()->advance_ms(ttl_ms / 2);
+  // Rewrite should be the same.
+  EXPECT_EQ("init", RewriteResource("advance_time"));
+
+  // 3) Change resource.
+  InitResponseHeaders(kOriginalUrl, kContentTypeCss, " new ", ttl_ms / 1000);
+  // Rewrite should still be the same, because it's found in cache.
+  EXPECT_EQ("init", RewriteResource("stale_content"));
+
+  // 4) Advance time so that old cached input resource expires.
+  mock_timer()->advance_ms(ttl_ms);
+  // Rewrite should now use new resource.
+  // TODO(sligocki): Fix
+  //EXPECT_EQ("new", RewriteResource("updated_content"));
+}
+
+TEST_F(ResourceUpdateTest, LoadFromFileOnTheFly) {
+  options()->file_load_policy()->Associate("http://test.com/", "/test/");
+  InitTrimFilters(kOnTheFlyResource);
+
+  int64 ttl_ms = 5 * Timer::kMinuteMs;
+
+  // 1) Set first version of resource.
+  WriteFile("/test/a.css", " init ");
+  EXPECT_EQ("init", RewriteResource("first_load"));
+
+  // 2) Advance time, but not so far that resources would have expired if
+  // they were loaded by UrlFetch.
+  mock_timer()->advance_ms(ttl_ms / 2);
+  // Rewrite should be the same.
+  EXPECT_EQ("init", RewriteResource("advance_time"));
+
+  // 3) Change resource.
+  WriteFile("/test/a.css", " new ");
+  // Rewrite should imediately update.
+  EXPECT_EQ("new", RewriteResource("updated_content"));
+}
+
+TEST_F(ResourceUpdateTest, LoadFromFileRewritten) {
+  options()->file_load_policy()->Associate("http://test.com/", "/test/");
+  InitTrimFilters(kRewrittenResource);
+
+  int64 ttl_ms = 5 * Timer::kMinuteMs;
+
+  // 1) Set first version of resource.
+  WriteFile("/test/a.css", " init ");
+  EXPECT_EQ("init", RewriteResource("first_load"));
+
+  // 2) Advance time, but not so far that resources would have expired if
+  // they were loaded by UrlFetch.
+  mock_timer()->advance_ms(ttl_ms / 2);
+  // Rewrite should be the same.
+  EXPECT_EQ("init", RewriteResource("advance_time"));
+
+  // 3) Change resource.
+  WriteFile("/test/a.css", " new ");
+  // Rewrite should imediately update.
+  // TODO(sligocki): Fix
+  //EXPECT_EQ("new", RewriteResource("updated_content"));
+}
+
 }  // namespace net_instaweb

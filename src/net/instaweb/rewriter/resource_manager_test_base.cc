@@ -290,13 +290,12 @@ void ResourceManagerTestBase::InitResponseHeaders(
     name = StrCat(kTestDomain, resource_name);
   }
   ResponseHeaders response_headers;
-  resource_manager_->SetDefaultLongCacheHeaders(&content_type,
-                                                &response_headers);
-  response_headers.RemoveAll(HttpAttributes::kCacheControl);
-  response_headers.Add(HttpAttributes::kCacheControl,
-                       StrCat("public, max-age=", Integer64ToString(ttl_sec)));
+  SetDefaultLongCacheHeaders(&content_type, &response_headers);
+  response_headers.Replace(HttpAttributes::kCacheControl,
+                           StrCat("public, max-age=",
+                                  Integer64ToString(ttl_sec)));
   response_headers.ComputeCaching();
-  mock_url_fetcher_.SetResponse(name, response_headers, content);
+  SetFetchResponse(name, response_headers, content);
 }
 
 void ResourceManagerTestBase::AddFileToMockFetcher(
@@ -340,8 +339,7 @@ bool ResourceManagerTestBase::ServeResourceUrl(
   rewrite_driver_.WaitForCompletion();
   rewrite_driver_.Clear();
 
-  // The callback should be called if and only if FetchResource
-  // returns true.
+  // The callback should be called if and only if FetchResource returns true.
   EXPECT_EQ(fetched, callback.done());
   return fetched && callback.success();
 }
