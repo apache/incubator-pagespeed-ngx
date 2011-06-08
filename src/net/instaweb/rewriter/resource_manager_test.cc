@@ -260,7 +260,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     // Now expire it from the HTTP cache.  Since we don't know its hash, we
     // cannot fetch it (even though the contents are still in the filesystem).
-    mock_timer()->advance_ms(2 * origin_expire_time_ms);
+    mock_timer()->AdvanceMs(2 * origin_expire_time_ms);
 
     // But with the URL (which contains the hash), we can retrieve it
     // from the http_cache.
@@ -368,7 +368,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     EXPECT_EQ(NULL, output->cached_result());
 
     const int kTtlMs = 100000;
-    mock_timer()->set_time_us(0);
+    mock_timer()->SetTimeUs(0);
 
     output->EnsureCachedResultCreated()->set_auto_expire(auto_expire);
     if (test_meta_data) {
@@ -399,7 +399,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
                             producedUrl, kTtlMs);
 
     // Fast-forward the time, to make sure the entry's TTL passes.
-    mock_timer()->advance_ms(kTtlMs + 1);
+    mock_timer()->AdvanceMs(kTtlMs + 1);
     output.reset(CreateTestOutputResource(input));
 
     if (auto_expire) {
@@ -428,7 +428,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
         "unopt cached", test_meta_data, output.get(), next_expire);
 
     // Now test expiration
-    mock_timer()->advance_ms(kTtlMs);
+    mock_timer()->AdvanceMs(kTtlMs);
     output.reset(CreateTestOutputResource(input));
     if (auto_expire) {
       EXPECT_EQ(NULL, output->cached_result());
@@ -772,7 +772,7 @@ class ResourceFreshenTest : public ResourceManagerTest {
   // Updates kResourceUrl's headers as ssen by the mock fetcher, to
   // match the new mock timestamp.
   void AdvanceTimeAndUpdateOriginHeaders(int delta_sec) {
-    mock_timer()->advance_ms(delta_sec * Timer::kSecondMs);
+    mock_timer()->AdvanceMs(delta_sec * Timer::kSecondMs);
     response_headers_.SetDate(mock_timer()->NowMs());
     response_headers_.ComputeCaching();
     SetFetchResponse(kResourceUrl, response_headers_, "");

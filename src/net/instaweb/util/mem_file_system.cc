@@ -109,7 +109,7 @@ void MemFileSystem::UpdateAtime(const StringPiece& path) {
   if (atime_enabled_) {
     int64 now_us = timer_.NowUs();
     int64 now_s = now_us / Timer::kSecondUs;
-    timer_.advance_us(Timer::kSecondUs);
+    timer_.AdvanceUs(Timer::kSecondUs);
     atime_map_[path.as_string()] = now_s;
   }
 }

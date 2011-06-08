@@ -119,6 +119,9 @@ ResourceManagerTestBase::ResourceManagerTestBase()
   other_rewrite_driver_.set_externally_managed(true);
 }
 
+ResourceManagerTestBase::~ResourceManagerTestBase() {
+}
+
 void ResourceManagerTestBase::SetUpTestCase() {
   statistics_ = new SimpleStats();
   ResourceManager::Initialize(statistics_);
@@ -192,10 +195,11 @@ void ResourceManagerTestBase::AppendDefaultHeaders(
   ResponseHeaders header;
   int64 time = mock_timer()->NowUs();
   // Reset mock timer so synthetic headers match original.
-  mock_timer()->set_time_us(0);
+  mock_timer()->SetTimeUs(0);
   resource_manager_->SetDefaultLongCacheHeaders(&content_type, &header);
-  // Then set it back
-  mock_timer()->set_time_us(time);
+  // Then set it back.  Note that no alarms should fire at this point
+  // because alarms work on absolute time.
+  mock_timer()->SetTimeUs(time);
   StringWriter writer(text);
   header.WriteAsHttp(&writer, &message_handler_);
 }

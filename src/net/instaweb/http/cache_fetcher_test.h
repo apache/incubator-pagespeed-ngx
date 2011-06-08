@@ -44,7 +44,7 @@ class CacheFetcherTest : public FetcherTest {
     int64 start_time_ms;
     bool parsed = ResponseHeaders::ParseTime(kStartDate, &start_time_ms);
     CHECK(parsed);
-    mock_timer_.set_time_ms(start_time_ms);
+    mock_timer_.SetTimeUs(1000 * start_time_ms);
   }
 
   MockTimer mock_timer_;

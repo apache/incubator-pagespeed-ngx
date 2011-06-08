@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_MOCK_TIMER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_MOCK_TIMER_H_
 
+#include <set>
+
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -29,21 +31,81 @@ class MockTimer : public Timer {
   // A useful recent time-constant for testing.
   static const int64 kApr_5_2010_ms;
 
-  explicit MockTimer(int64 time_ms) : time_us_(1000 * time_ms) {}
+  // Alarms provide a mechanism for tests employing mock timers
+  // to get notified when a certain mock-time passes.  When a
+  // MockTimer::set_time_us is called (or any of the other functions
+  // that adjust time), time advances in phases broken up by outstanding
+  // alarms, so that the system is seen in a consistent state.
+  class Alarm {
+   private:
+    static const int kIndexUninitialized = -1;
+
+   public:
+    explicit Alarm(int64 wakeup_time_us)
+        : index_(kIndexUninitialized),
+          wakeup_time_us_(wakeup_time_us) {}
+    virtual ~Alarm();
+
+    virtual void Run() = 0;
+    int64 wakeup_time_us() const { return wakeup_time_us_; }
+
+    // Compares two alarms, giving a total deterministic ordering based
+    // first, on wakeup time, and, in the event of two simultaneous
+    // alarms, the order in which the Alarm was added.
+    int Compare(const Alarm* that) const;
+
+   private:
+    friend class MockTimer;
+
+    // Provides a mechanism to deterministically order alarms, even
+    // if multiple alarms are scheduled for the same point in time.
+    void SetIndex(int index_);
+
+    int index_;
+    int64 wakeup_time_us_;
+    DISALLOW_COPY_AND_ASSIGN(Alarm);
+  };
+
+  // Sorting comparator for alarms.  This is public so that std::set
+  // can see it.
+  struct CompareAlarms {
+    bool operator()(const Alarm* a, const Alarm* b) const {
+      return a->Compare(b) < 0;
+    }
+  };
+
+  explicit MockTimer(int64 time_ms);
   virtual ~MockTimer();
 
-  void set_time_us(int64 time_us) { time_us_ = time_us; }
-  void set_time_ms(int64 time_ms) { set_time_us(1000 * time_ms); }
-  void advance_us(int64 delta_us) { time_us_ += delta_us; }
-  void advance_ms(int64 delta_ms) { advance_us(1000 * delta_ms); }
+  // Sets the time as in microseconds, calling any outstanding alarms
+  // with wakeup times up to and including time_us.
+  void SetTimeUs(int64 time_us);
+
+  // Advance forward time by the specified number of microseconds.
+  void AdvanceUs(int64 delta_us) { SetTimeUs(time_us_ + delta_us); }
+
+  // Advance time, in milliseconds.
+  void AdvanceMs(int64 delta_ms) { AdvanceUs(1000 * delta_ms); }
 
   // Returns number of microseconds since 1970.
   virtual int64 NowUs() const { return time_us_; }
-  virtual void SleepUs(int64 us) { advance_us(us); }
-  virtual void SleepMs(int64 ms) { advance_us(1000 * ms); }
+  virtual void SleepUs(int64 us) { AdvanceUs(us); }
+  virtual void SleepMs(int64 ms) { AdvanceUs(1000 * ms); }
+
+  // Schedules an alarm, called when the time is advanced to, or beyond,
+  // alarm->wakeup_time_us().  Takes ownership of Alarm: it will be
+  // deleted when it's finished.
+  void AddAlarm(Alarm* alarm);
+
+  // Cancels an outstanding alarm and deletes it.
+  void CancelAlarm(Alarm* alarm);
 
  private:
   int64 time_us_;
+  int next_index_;
+  typedef std::set<Alarm*, CompareAlarms> AlarmSet;
+  AlarmSet alarms_;
+  bool setting_;
 
   DISALLOW_COPY_AND_ASSIGN(MockTimer);
 };

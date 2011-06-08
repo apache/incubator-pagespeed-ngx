@@ -172,17 +172,17 @@ TEST_F(FileSystemLockManagerTest, StealOld) {
   EXPECT_TRUE(lock1->TryLock());
   // Now we can't steal the lock until after >kTimeoutMs has elapsed.
   EXPECT_FALSE(lock1->TryLockStealOld(kTimeoutMs));
-  timer()->advance_ms(kTimeoutMs);
+  timer()->AdvanceMs(kTimeoutMs);
   EXPECT_FALSE(lock1->TryLockStealOld(kTimeoutMs));
   // But 1ms longer than kTimeoutMs and we can steal the lock.
-  timer()->advance_ms(1);
+  timer()->AdvanceMs(1);
   EXPECT_TRUE(lock1->TryLockStealOld(kTimeoutMs));
   // After steal the timer should reset.
   EXPECT_FALSE(lock1->TryLockStealOld(kTimeoutMs));
-  timer()->advance_ms(kTimeoutMs);
+  timer()->AdvanceMs(kTimeoutMs);
   EXPECT_FALSE(lock1->TryLockStealOld(kTimeoutMs));
   // But again expire after >kTimeoutMs elapses.
-  timer()->advance_ms(1);
+  timer()->AdvanceMs(1);
   EXPECT_TRUE(lock1->TryLockStealOld(kTimeoutMs));
 }
 
@@ -196,9 +196,9 @@ TEST_F(FileSystemLockManagerTest, BlockingStealOld) {
   EXPECT_LT(start_ms + kTimeoutMs, end_ms);
   // Again the timer should reset after the lock is obtained.
   EXPECT_FALSE(lock1->TryLockStealOld(kTimeoutMs));
-  timer()->advance_ms(kTimeoutMs);
+  timer()->AdvanceMs(kTimeoutMs);
   EXPECT_FALSE(lock1->TryLockStealOld(kTimeoutMs));
-  timer()->advance_ms(1);
+  timer()->AdvanceMs(1);
   EXPECT_TRUE(lock1->TryLockStealOld(kTimeoutMs));
 }
 
@@ -212,7 +212,8 @@ TEST_F(FileSystemLockManagerTest, WaitStealOld) {
   EXPECT_LE(start_ms + kWaitMs, end_ms);
   EXPECT_GT(start_ms + kTimeoutMs, end_ms);
   // Advance time so that the lock timeout is within the wait time.
-  timer()->set_time_ms(start_ms + kTimeoutMs - kWaitMs / 2);
+  int64 time_ms = start_ms + kTimeoutMs - kWaitMs / 2;
+  timer()->SetTimeUs(1000 * time_ms);
   start_ms = timer()->NowMs();
   EXPECT_TRUE(lock1->LockTimedWaitStealOld(kWaitMs, kTimeoutMs));
   end_ms = timer()->NowMs();

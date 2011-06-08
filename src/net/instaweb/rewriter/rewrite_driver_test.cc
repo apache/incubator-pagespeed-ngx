@@ -361,7 +361,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   EXPECT_EQ(kResourceContents1, resource2->contents());
 
   // Advance timer and check that the resource loads updated.
-  mock_timer()->advance_ms(10 * Timer::kYearMs);
+  mock_timer()->AdvanceMs(10 * Timer::kYearMs);
 
   // Check that the resource loads updated.
   ResourcePtr resource3(

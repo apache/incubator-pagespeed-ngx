@@ -437,7 +437,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheExpire) {
   EXPECT_EQ(1, filter_->num_optimizable());
 
   // Next fetch should be still in there.
-  mock_timer()->advance_ms(TtlMs() / 2);
+  mock_timer()->AdvanceMs(TtlMs() / 2);
   ValidateExpected("initial.2", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
   EXPECT_EQ(2, filter_->num_cached_results());
@@ -445,7 +445,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheExpire) {
 
   // ... but not once we get past the ttl, when we don't rewrite since the data
   // will have expiration time in the past, making it uncacheable for us.
-  mock_timer()->advance_ms(TtlMs() * 2);
+  mock_timer()->AdvanceMs(TtlMs() * 2);
   ValidateNoChanges("expire", in_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
   EXPECT_EQ(2, filter_->num_cached_results());
@@ -454,7 +454,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheExpire) {
 
 TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshen) {
   // Start with non-zero time
-  mock_timer()->advance_ms(TtlMs() / 2);
+  mock_timer()->AdvanceMs(TtlMs() / 2);
   MockResource("a.tst", "whatever", TtlSec());
 
   ValidateExpected("initial", in_tag_, out_tag_);
@@ -462,7 +462,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshen) {
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // Advance time past TTL, but re-mock the resource so it can be refetched
-  mock_timer()->advance_ms(TtlMs() + 10);
+  mock_timer()->AdvanceMs(TtlMs() + 10);
   MockResource("a.tst", "whatever", TtlSec());
   ValidateExpected("refetch", in_tag_, out_tag_);
   EXPECT_EQ(2, filter_->num_rewrites_called());
@@ -475,7 +475,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshenHashCheck) {
   filter_->set_reuse_by_content_hash(true);
 
   // Start with non-zero time.
-  mock_timer()->advance_ms(TtlMs() / 2);
+  mock_timer()->AdvanceMs(TtlMs() / 2);
   MockResource("a.tst", "whatever", TtlSec());
 
   ValidateExpected("initial", in_tag_, out_tag_);
@@ -483,7 +483,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshenHashCheck) {
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // Advance time past TTL, but re-mock the resource so it can be refetched.
-  mock_timer()->advance_ms(TtlMs() + 10);
+  mock_timer()->AdvanceMs(TtlMs() + 10);
   MockResource("a.tst", "whatever", TtlSec());
   ValidateExpected("refetch", in_tag_, out_tag_);
 
@@ -497,7 +497,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheHashCheckChange) {
   filter_->set_reuse_by_content_hash(true);
 
   // Start with non-zero time
-  mock_timer()->advance_ms(TtlMs() / 2);
+  mock_timer()->AdvanceMs(TtlMs() / 2);
   MockResource("a.tst", "whatever", TtlSec());
 
   ValidateExpected("initial", in_tag_, out_tag_);
@@ -505,7 +505,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheHashCheckChange) {
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   // Advance time past TTL, but re-mock the resource so it can be refetched.
-  mock_timer()->advance_ms(TtlMs() + 10);
+  mock_timer()->AdvanceMs(TtlMs() + 10);
   SetMockHashValue("1");
   MockResource("a.tst", "whatever", TtlSec());
   // Here ComputeOutTag() != out_tag_ due to the new hasher.
@@ -520,7 +520,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheHashCheckChange) {
 
 TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
   // Start with non-zero time
-  mock_timer()->advance_ms(TtlMs() / 2);
+  mock_timer()->AdvanceMs(TtlMs() / 2);
   MockResource("a.tst", "whatever", TtlSec());
 
   ValidateExpected("initial", in_tag_, out_tag_);
@@ -529,7 +529,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
 
   // Advance close to TTL and rewrite, having updated the data.
   // We expect it to be freshened to that.
-  mock_timer()->advance_ms(TtlMs() * 9 / 10);
+  mock_timer()->AdvanceMs(TtlMs() * 9 / 10);
   MockResource("a.tst", "whatever", TtlSec());
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
@@ -537,7 +537,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
 
   // Now advance past original TTL, but it should still be alive
   // due to freshening.
-  mock_timer()->advance_ms(TtlMs() / 2);
+  mock_timer()->AdvanceMs(TtlMs() / 2);
   ValidateExpected("refetch", in_tag_, out_tag_);
   // we have to recompute since the rewrite cache entry has expired
   // (this behavior may change in the future)

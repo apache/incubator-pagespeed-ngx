@@ -205,7 +205,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
 
   int TestFetch(size_t begin, size_t end) {
     StartFetches(begin, end, false);
-    timer_->advance_ms(kTimerAdvanceMs);
+    timer_->AdvanceMs(kTimerAdvanceMs);
     int done = WaitTillDone(begin, end, kMaxMs);
     ValidateFetches(begin, end);
     return (done == (end - begin));
@@ -404,7 +404,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTimeout) {
   int timeouts =
       statistics_.GetVariable(SerfStats::kSerfFetchTimeoutCount)->Get();
   ASSERT_EQ(0, WaitTillDone(3, 4, kThreadedPollMs));
-  timer_->advance_ms(2 * kFetcherTimeoutMs);
+  timer_->AdvanceMs(2 * kFetcherTimeoutMs);
   ASSERT_EQ(1, WaitTillDone(3, 4, kThreadedPollMs));
   ASSERT_TRUE(callbacks_[3]->IsDone());
   EXPECT_FALSE(callbacks_[3]->success());

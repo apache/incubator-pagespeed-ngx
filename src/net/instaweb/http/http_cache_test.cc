@@ -149,7 +149,7 @@ TEST_F(HTTPCacheTest, PutGet) {
 
   // Now advance time 301 seconds and the we should no longer
   // be able to fetch this resource out of the cache.
-  mock_timer_.advance_ms(301 * 1000);
+  mock_timer_.AdvanceMs(301 * 1000);
   found = Find("mykey", &value, &meta_data_out, &message_handler_);
   ASSERT_EQ(HTTPCache::kNotFound, found);
   ASSERT_FALSE(meta_data_out.headers_complete());
@@ -168,7 +168,7 @@ TEST_F(HTTPCacheTest, RememberNotCacheable) {
 
   // Now advance time 301 seconds; the cache should allow us to try fetching
   // again.
-  mock_timer_.advance_ms(301 * 1000);
+  mock_timer_.AdvanceMs(301 * 1000);
   EXPECT_EQ(HTTPCache::kNotFound,
             Find("mykey", &value, &meta_data_out, &message_handler_));
 }

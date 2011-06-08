@@ -183,7 +183,7 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
   // Allow the images to load
   CallFetcherCallbacks();
   // The inability to rewrite this image will be remembered for 1 second.
-  mock_timer()->advance_ms(3 * Timer::kSecondMs);
+  mock_timer()->AdvanceMs(3 * Timer::kSecondMs);
 
   // On the third run, we get spriting.
   const GoogleString sprite = StrCat(kTestDomain, kCuppaPngFile, "+",

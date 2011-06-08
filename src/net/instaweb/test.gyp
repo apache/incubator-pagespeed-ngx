@@ -134,6 +134,7 @@
         'util/mem_file_system_test.cc',
         'util/message_handler_test.cc',
         'util/mock_message_handler_test.cc',
+        'util/mock_timer_test.cc',
         'util/pthread_condvar_test.cc',
         'util/pthread_shared_mem_test.cc',
         'util/pthread_thread_system_test.cc',

@@ -155,7 +155,7 @@ void SharedMemLockManagerTestBase::TestStealChild() {
     test_env_->ChildFailed();
   }
 
-  timer_.advance_ms(kStealTimeMs + 1);
+  timer_.AdvanceMs(kStealTimeMs + 1);
 
   // Now it should succeed.
   if (!lock_a->TryLockStealOld(kStealTimeMs)) {

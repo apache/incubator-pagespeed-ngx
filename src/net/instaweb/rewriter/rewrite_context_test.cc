@@ -52,10 +52,12 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mem_file_system.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace {
@@ -1061,7 +1063,7 @@ TEST_F(ResourceUpdateTest, OnTheFly) {
   EXPECT_EQ("init", RewriteResource("first_load", "init"));
 
   // 2) Advance time, but not so far that resources have expired.
-  mock_timer()->advance_ms(ttl_ms / 2);
+  mock_timer()->AdvanceMs(ttl_ms / 2);
   // Rewrite should be the same.
   EXPECT_EQ("init", RewriteResource("advance_time", "init"));
 
@@ -1071,7 +1073,7 @@ TEST_F(ResourceUpdateTest, OnTheFly) {
   EXPECT_EQ("init", RewriteResource("stale_content", "init"));
 
   // 4) Advance time so that old cached input resource expires.
-  mock_timer()->advance_ms(ttl_ms);
+  mock_timer()->AdvanceMs(ttl_ms);
   // Rewrite should now use new resource.
   // TODO(sligocki): Fix
   //EXPECT_EQ("new", RewriteResource("updated_content", "new"));
@@ -1087,7 +1089,7 @@ TEST_F(ResourceUpdateTest, Rewritten) {
   EXPECT_EQ("init", RewriteResource("first_load", "init"));
 
   // 2) Advance time, but not so far that resources have expired.
-  mock_timer()->advance_ms(ttl_ms / 2);
+  mock_timer()->AdvanceMs(ttl_ms / 2);
   // Rewrite should be the same.
   EXPECT_EQ("init", RewriteResource("advance_time", "init"));
 
@@ -1097,7 +1099,7 @@ TEST_F(ResourceUpdateTest, Rewritten) {
   EXPECT_EQ("init", RewriteResource("stale_content", "init"));
 
   // 4) Advance time so that old cached input resource expires.
-  mock_timer()->advance_ms(ttl_ms);
+  mock_timer()->AdvanceMs(ttl_ms);
   // Rewrite should now use new resource.
   // TODO(sligocki): Fix
   //EXPECT_EQ("new", RewriteResource("updated_content", "new"));
@@ -1115,7 +1117,7 @@ TEST_F(ResourceUpdateTest, LoadFromFileOnTheFly) {
 
   // 2) Advance time, but not so far that resources would have expired if
   // they were loaded by UrlFetch.
-  mock_timer()->advance_ms(ttl_ms / 2);
+  mock_timer()->AdvanceMs(ttl_ms / 2);
   // Rewrite should be the same.
   EXPECT_EQ("init", RewriteResource("advance_time", "init"));
 
@@ -1138,7 +1140,7 @@ TEST_F(ResourceUpdateTest, LoadFromFileRewritten) {
 
   // 2) Advance time, but not so far that resources would have expired if
   // they were loaded by UrlFetch.
-  mock_timer()->advance_ms(ttl_ms / 2);
+  mock_timer()->AdvanceMs(ttl_ms / 2);
   // Rewrite should be the same.
   EXPECT_EQ("init", RewriteResource("advance_time", "init"));
 

@@ -42,7 +42,6 @@
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
 
 
 #define URL_PREFIX "http://www.example.com/"
@@ -57,6 +56,7 @@ class ResponseHeaders;
 class RewriteDriverFactory;
 class RewriteFilter;
 class Statistics;
+class ThreadSystem;
 struct ContentType;
 
 const int kCacheSize = 100 * 1000 * 1000;
@@ -71,6 +71,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   static const char kXhtmlDtd[];    // DOCTYPE string for claming XHTML
 
   ResourceManagerTestBase();
+  ~ResourceManagerTestBase();
 
   virtual void SetUp();
   virtual void TearDown();
