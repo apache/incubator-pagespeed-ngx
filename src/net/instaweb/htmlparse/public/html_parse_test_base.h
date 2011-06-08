@@ -64,7 +64,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
     directive.CopyToString(&doctype_string_);
   }
 
-  GoogleString AddHtmlBody(const GoogleString& html) {
+  virtual GoogleString AddHtmlBody(const GoogleString& html) {
     GoogleString ret = AddBody() ? "<html><body>\n" : "<html>\n";
     ret += html + (AddBody() ? "\n</body></html>\n" : "\n</html>");
     return ret;
