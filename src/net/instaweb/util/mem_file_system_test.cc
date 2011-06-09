@@ -31,7 +31,9 @@ namespace net_instaweb {
 
 class MemFileSystemTest : public FileSystemTest {
  protected:
-  MemFileSystemTest() {}
+  MemFileSystemTest() {
+    mem_file_system_.set_advance_time_on_update(true);
+  }
   virtual void DeleteRecursively(const StringPiece& filename) {
     mem_file_system_.Clear();
   }

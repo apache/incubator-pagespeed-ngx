@@ -43,6 +43,7 @@ class FileCacheTest : public CacheTestBase {
                new FileCache::CachePolicy(
                    &mock_timer_, kCleanIntervalMs, kTargetSize),
                &message_handler_) {
+    file_system_.set_advance_time_on_update(true);
   }
 
   void CheckCleanTimestamp(int64 min_time_ms) {

@@ -36,10 +36,7 @@ class MessageHandler;
 // enable testing resilience to concurrency problems with real filesystems.
 class MemFileSystem : public FileSystem {
  public:
-  MemFileSystem() : enabled_(true), timer_(0), temp_file_index_(0),
-                    atime_enabled_(true) {
-    ClearStats();
-  }
+  MemFileSystem();
   virtual ~MemFileSystem();
 
   // We offer a "simulated atime" in which the clock ticks forward one
@@ -74,6 +71,14 @@ class MemFileSystem : public FileSystem {
 
   // When atime is disabled, reading a file will not update its atime.
   void set_atime_enabled(bool enabled) { atime_enabled_ = enabled; }
+
+  // In order to test file-system 'atime' code, we need to move mock
+  // time forward during tests by an entire second (aka 1000 ms).
+  // However, that's disruptive to other tests that try to use
+  // mock-time to examine millisecond-level timing, so we leave this
+  // behavior off by default.
+  bool advance_time_on_update() { return advance_time_on_update_; }
+  void set_advance_time_on_update(bool x) { advance_time_on_update_ = x; }
 
   // Empties out the entire filesystem.  Should not be called while files
   // are open.
@@ -111,6 +116,10 @@ class MemFileSystem : public FileSystem {
   // locking and unlocking don't advance time.
   std::map<GoogleString, int64> lock_map_;
   bool atime_enabled_;
+
+  // Indicates whether MemFileSystem will advance mock time whenever
+  // a file is written.
+  bool advance_time_on_update_;
 
   // Access statistics.
   int num_input_file_opens_;

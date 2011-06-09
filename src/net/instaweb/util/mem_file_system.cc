@@ -102,6 +102,15 @@ class MemOutputFile : public FileSystem::OutputFile {
   DISALLOW_COPY_AND_ASSIGN(MemOutputFile);
 };
 
+MemFileSystem::MemFileSystem()
+    : enabled_(true),
+      timer_(0),
+      temp_file_index_(0),
+      atime_enabled_(true),
+      advance_time_on_update_(false) {
+  ClearStats();
+}
+
 MemFileSystem::~MemFileSystem() {
 }
 
@@ -109,7 +118,9 @@ void MemFileSystem::UpdateAtime(const StringPiece& path) {
   if (atime_enabled_) {
     int64 now_us = timer_.NowUs();
     int64 now_s = now_us / Timer::kSecondUs;
-    timer_.AdvanceUs(Timer::kSecondUs);
+    if (advance_time_on_update_) {
+      timer_.AdvanceUs(Timer::kSecondUs);
+    }
     atime_map_[path.as_string()] = now_s;
   }
 }
