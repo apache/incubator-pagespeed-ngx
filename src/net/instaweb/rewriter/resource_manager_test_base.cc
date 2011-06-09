@@ -50,6 +50,7 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_thread_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -59,6 +60,7 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "net/instaweb/util/public/worker.h"
 
 namespace net_instaweb {
 
@@ -71,12 +73,26 @@ const char ResourceManagerTestBase::kXhtmlDtd[] =
     "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">";
 SimpleStats* ResourceManagerTestBase::statistics_;
 
+namespace {
+
+class IdleCallback : public Worker::Closure {
+ public:
+  IdleCallback(RewriteDriver* driver) : rewrite_driver_(driver) {}
+  virtual void Run() { rewrite_driver_->WakeupFromIdle(); }
+
+ private:
+  RewriteDriver* rewrite_driver_;
+};
+
+}  // namespace
 
 ResourceManagerTestBase::ResourceManagerTestBase()
     : mock_url_async_fetcher_(&mock_url_fetcher_),
       counting_url_async_fetcher_(&mock_url_async_fetcher_),
       wait_for_fetches_(false),
-      thread_system_(ThreadSystem::CreateThreadSystem()),
+      base_thread_system_(ThreadSystem::CreateThreadSystem()),
+      thread_system_(new MockThreadSystem(base_thread_system_.get(),
+                                          mock_timer())),
       file_prefix_(StrCat(GTestTempDir(), "/")),
       url_prefix_(URL_PREFIX),
 
@@ -251,6 +267,8 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   new_rewrite_driver.SetAsynchronousRewrites(
       rewrite_driver_.asynchronous_rewrites());
   new_rewrite_driver.AddFilters();
+
+  new_resource_manager.SetIdleCallback(new IdleCallback(&new_rewrite_driver));
 
   RequestHeaders request_headers;
   // TODO(sligocki): We should set default request headers.
@@ -481,6 +499,9 @@ GoogleString ResourceManagerTestBase::Encode(
 }
 
 void ResourceManagerTestBase::SetupWaitFetcher() {
+  resource_manager_->SetIdleCallback(new IdleCallback(rewrite_driver()));
+  other_resource_manager_.SetIdleCallback(new IdleCallback(
+      other_rewrite_driver()));
   counting_url_async_fetcher_.set_fetcher(&wait_url_async_fetcher_);
   wait_for_fetches_ = true;
 }

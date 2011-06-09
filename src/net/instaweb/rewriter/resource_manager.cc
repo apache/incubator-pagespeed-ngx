@@ -602,6 +602,10 @@ void ResourceManager::ReleaseRewriteDriver(
   }
 }
 
+void ResourceManager::SetIdleCallback(Worker::Closure* callback) {
+  rewrite_worker_->set_idle_callback(callback);
+}
+
 void ResourceManager::AddRewriteTask(Worker::Closure* task) {
   rewrite_worker_->RunInWorkThread(task);
 }

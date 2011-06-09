@@ -309,6 +309,19 @@ class ResourceManager {
 
   ThreadSystem* thread_system() { return thread_system_; }
 
+  // Specifies a function to be called whenever the worker
+  // thread enters the Idle state.  When all queued tasks
+  // have been executed, and there are none on the task queue,
+  // the Worker will then call the provided callback.  This
+  // is used during testing with mock-time to indicate that
+  // nothing can happen to advance the state of the test.
+  //
+  // This is not ordinarily needed when running a live server
+  // because real-time moves forward naturally, causing
+  // the TimedWait in RewriteDriver::Render to return and
+  // keep progress moving forward.
+  void SetIdleCallback(Worker::Closure* callback);
+
  private:
   GoogleString file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.

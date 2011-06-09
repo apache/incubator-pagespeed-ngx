@@ -51,6 +51,7 @@ namespace net_instaweb {
 class Hasher;
 class LRUCache;
 class MessageHandler;
+class MockThreadSystem;
 class MockTimer;
 class ResponseHeaders;
 class RewriteDriverFactory;
@@ -256,10 +257,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   MockHasher mock_hasher_;
   MD5Hasher md5_hasher_;
-  scoped_ptr<ThreadSystem> thread_system_;
-
-  GoogleString file_prefix_;
-  GoogleString url_prefix_;
 
   // We have two independent RewriteDrivers representing two completely
   // separate servers for the same domain (say behind a load-balancer).
@@ -267,6 +264,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Server A runs rewrite_driver_ and will be used to rewrite pages and
   // served the rewritten resources.
   MemFileSystem file_system_;
+  scoped_ptr<ThreadSystem> base_thread_system_;
+  scoped_ptr<MockThreadSystem> thread_system_;
+
+  GoogleString file_prefix_;
+  GoogleString url_prefix_;
+
   LRUCache* lru_cache_;  // Owned by http_cache_
   HTTPCache http_cache_;
   FileSystemLockManager lock_manager_;

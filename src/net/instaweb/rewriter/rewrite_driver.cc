@@ -75,8 +75,8 @@ namespace {
 // requirements of the testing system and the platform.  This might
 // also want to change based on how many Flushes there are, as each
 // Flush can potentially add this much more latency.
-const int kDebugWaitForRewriteMsPerFlush = 500;
-const int kOptWaitForRewriteMsPerFlush = 100;
+const int kDebugWaitForRewriteMsPerFlush = 100;
+const int kOptWaitForRewriteMsPerFlush = 10;
 const int kValgrindWaitForRewriteMsPerFlush = 1000;
 const int kTestTimeoutMs = 10000;
 
@@ -848,6 +848,10 @@ void RewriteDriver::FetchComplete() {
   DCHECK_EQ(0, pending_rewrites_);
   rewrite_condvar_->Signal();
   STLDeleteElements(&rewrites_);
+}
+
+void RewriteDriver::WakeupFromIdle() {
+  rewrite_condvar_->Signal();
 }
 
 bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,

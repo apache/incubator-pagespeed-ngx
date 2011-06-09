@@ -365,6 +365,10 @@ class RewriteDriver : public HtmlParse {
   // We expect to this method to be called on the Rewrite thread.
   void DeleteRewriteContext(RewriteContext* rewrite_context);
 
+  // This function called when testing with mock-time to allow
+  // the TimedWait in Render() to complete.
+  void WakeupFromIdle();
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
