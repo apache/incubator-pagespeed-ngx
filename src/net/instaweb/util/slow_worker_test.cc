@@ -33,13 +33,7 @@ namespace {
 
 class SlowWorkerTest: public WorkerTestBase {
  public:
-  SlowWorkerTest() {
-    worker_.reset(new SlowWorker(thread_runtime_.get()));
-  }
-
-  ~SlowWorkerTest() {
-    worker_.reset(NULL);
-  }
+  SlowWorkerTest() : worker_(new SlowWorker(thread_runtime_.get())) {}
 
  protected:
   scoped_ptr<SlowWorker> worker_;
@@ -132,6 +126,17 @@ TEST_F(SlowWorkerTest, CancelDefaultFalse) {
   ASSERT_TRUE(worker_->Start());
   worker_->RunIfNotBusy(new CheckDefaultCancelClosure(&start_sync));
   start_sync.Wait();
+}
+
+TEST_F(SlowWorkerTest, IdleCallback) {
+  // All the jobs we queued should be run in order
+  int count = 0;
+  SyncPoint sync(thread_runtime_.get());
+  worker_->set_idle_callback(new NotifyRunClosure(&sync));
+  ASSERT_TRUE(worker_->Start());
+  worker_->RunIfNotBusy(new CountClosure(&count));
+  sync.Wait();
+  EXPECT_EQ(1, count);
 }
 
 }  // namespace

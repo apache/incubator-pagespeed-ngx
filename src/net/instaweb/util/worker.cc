@@ -42,6 +42,12 @@ Worker::Closure::Closure() {
 Worker::Closure::~Closure() {
 }
 
+void Worker::RunIdleCallback() {
+  if (idle_callback_.get() != NULL) {
+    idle_callback_->Run();
+  }
+}
+
 // The actual thread that does the work.
 class Worker::WorkThread : public ThreadSystem::Thread {
  public:
@@ -56,6 +62,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
   }
 
   virtual void Run() {
+    bool was_running = false;
     while (true) {
       // Grab new task or exit command
       {
@@ -65,11 +72,18 @@ class Worker::WorkThread : public ThreadSystem::Thread {
 
         ScopedMutex lock(mutex_.get());
         while (!exit_ && tasks_.empty()) {
+          if (was_running) {
+            was_running = false;
+            owner_->RunIdleCallback();
+          }
           state_change_->Wait();
         }
 
         // Handle exit.
         if (exit_) {
+          if (was_running && tasks_.empty()) {
+            owner_->RunIdleCallback();
+          }
           return;
         }
 
@@ -82,6 +96,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
       // Handle task (with lock released)
       if (current_task_ != NULL) {
         current_task_->Run();
+        was_running = true;
       }
     }
   }

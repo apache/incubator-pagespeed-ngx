@@ -70,6 +70,19 @@ class Worker {
   // Returns whether successful.
   bool Start();
 
+  // An Idle callback is called when a worker that is running
+  // a task completes all its tasks, and goes into a wait-state
+  // for more tasks to be queued.
+  //
+  // The idle callback will not be called immediately when a Worker
+  // is started, even if it starts in the idle state.  It is only called
+  // on the completion of all queued tasks.
+  //
+  // The idle-callback is intended only for testing purposes.  If
+  // this is ever used for anything else we should consider making
+  // a vector of callbacks and changing the method to add_idle_callback.
+  void set_idle_callback(Closure* cb) { idle_callback_.reset(cb); }
+
  protected:
   explicit Worker(ThreadSystem* runtime);
   virtual ~Worker();
@@ -96,7 +109,10 @@ class Worker {
   class WorkThread;
   friend class WorkThread;
 
+  void RunIdleCallback();
+
   scoped_ptr<WorkThread> thread_;
+  scoped_ptr<Closure> idle_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Worker);
 };

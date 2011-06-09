@@ -22,6 +22,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/worker.h"
 #include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
@@ -29,19 +30,35 @@ namespace {
 
 class QueuedWorkerTest: public WorkerTestBase {
  public:
-  QueuedWorkerTest() {
-    worker_.reset(new QueuedWorker(thread_runtime_.get()));
-  }
-
-  ~QueuedWorkerTest() {
-    worker_.reset(NULL);
-  }
+  QueuedWorkerTest() : worker_(new QueuedWorker(thread_runtime_.get())) {}
 
  protected:
   scoped_ptr<QueuedWorker> worker_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(QueuedWorkerTest);
+};
+
+// A closure that enqueues a new version of itself 'count' times.
+class ChainedTask : public Worker::Closure {
+ public:
+  ChainedTask(int* count, QueuedWorker* worker)
+      : count_(count),
+        worker_(worker) {
+  }
+
+  virtual void Run() {
+    --*count_;
+    if (*count_ > 0) {
+      worker_->RunInWorkThread(new ChainedTask(count_, worker_));
+    }
+  }
+
+ private:
+  int* count_;
+  QueuedWorker* worker_;
+
+  DISALLOW_COPY_AND_ASSIGN(ChainedTask);
 };
 
 TEST_F(QueuedWorkerTest, BasicOperation) {
@@ -58,6 +75,19 @@ TEST_F(QueuedWorkerTest, BasicOperation) {
   worker_->RunInWorkThread(new NotifyRunClosure(&sync));
   sync.Wait();
   EXPECT_EQ(kBound, count);
+}
+
+TEST_F(QueuedWorkerTest, ChainedTasks) {
+  // The ChainedTask closure ensures that there is always a task
+  // queued until we've executed all 11 tasks in the chain, at which
+  // point the 'idle' callback fires and we can complete the test.
+  int count = 11;
+  SyncPoint sync(thread_runtime_.get());
+  worker_->set_idle_callback(new NotifyRunClosure(&sync));
+  ASSERT_TRUE(worker_->Start());
+  worker_->RunInWorkThread(new ChainedTask(&count, worker_.get()));
+  sync.Wait();
+  EXPECT_EQ(0, count);
 }
 
 }  // namespace
