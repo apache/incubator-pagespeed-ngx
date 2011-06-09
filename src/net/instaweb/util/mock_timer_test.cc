@@ -41,6 +41,32 @@ class AppendCharToStringTask : public MockTimer::Alarm {
   GoogleString* string_;
 };
 
+// This is an alarm implementation which adds new alarms and optionally advances
+// time in its callback.
+class ChainedAlarm : public MockTimer::Alarm {
+ public:
+  ChainedAlarm(MockTimer* timer, int* count, int wakeup_time_us, bool advance)
+    : MockTimer::Alarm(wakeup_time_us),
+      timer_(timer),
+      count_(count) ,
+      advance_(advance) {}
+
+  virtual void Run() {
+    if (--*count_ > 0) {
+      timer_->AddAlarm(new ChainedAlarm(timer_, count_,
+                                        wakeup_time_us() + 100, advance_));
+      if (advance_) {
+        timer_->AdvanceMs(100);
+      }
+    }
+  }
+
+ private:
+  MockTimer* timer_;
+  int* count_;
+  bool advance_;
+};
+
 }  // namespace
 
 class MockTimerTest : public testing::Test {
@@ -93,6 +119,22 @@ TEST_F(MockTimerTest, Cancellation) {
   timer_.CancelAlarm(alarm_to_cancel);
   timer_.AdvanceUs(4);  // runs the 3 tasks not canceled.
   EXPECT_EQ("124", string_);
+}
+
+// Verifies that we can add a new alarm from an Alarm::Run() method.
+TEST_F(MockTimerTest, ChainedAlarms) {
+  int count = 10;
+  timer_.AddAlarm(new ChainedAlarm(&timer_, &count, 100, false));
+  timer_.AdvanceMs(1000);
+  EXPECT_EQ(0, count);
+}
+
+// Verifies that we can advance time from an Alarm::Run() method.
+TEST_F(MockTimerTest, AdvanceFromRun) {
+  int count = 10;
+  timer_.AddAlarm(new ChainedAlarm(&timer_, &count, 100, true));
+  timer_.AdvanceMs(100);
+  EXPECT_EQ(0, count);
 }
 
 }  // namespace net_instaweb

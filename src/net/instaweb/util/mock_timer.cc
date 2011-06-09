@@ -31,8 +31,7 @@ const int64 MockTimer::kApr_5_2010_ms = 1270493486000LL;
 
 MockTimer::MockTimer(int64 time_ms)
     : time_us_(1000 * time_ms),
-      next_index_(0),
-      setting_(false) {
+      next_index_(0) {
 }
 
 MockTimer::~MockTimer() {
@@ -62,10 +61,6 @@ void MockTimer::Alarm::SetIndex(int index) {
 }
 
 void MockTimer::AddAlarm(Alarm* alarm) {
-  // TODO(jmarantz): it might be necessary to support reentrant
-  // adjustment of the alarm-sets, but it is NYI.  For now, DCHECK.
-  DCHECK(!setting_) << "We do not expect to add an alarm from "
-      "inside a call to Alarm->Run().";
   alarm->SetIndex(next_index_++);
   size_t prev_count = alarms_.size();
   alarms_.insert(alarm);
@@ -73,8 +68,6 @@ void MockTimer::AddAlarm(Alarm* alarm) {
 }
 
 void MockTimer::CancelAlarm(Alarm* alarm) {
-  DCHECK(!setting_) << "We do not expect to cancel an alarm from "
-      "inside a call to Alarm->Run().";
   int erased = alarms_.erase(alarm);
   if (erased == 1) {
     delete alarm;
@@ -84,24 +77,19 @@ void MockTimer::CancelAlarm(Alarm* alarm) {
 }
 
 void MockTimer::SetTimeUs(int64 time_us) {
-  CHECK(!setting_) << "We do not expect to set the time from "
-      "inside a call to Alarm->Run().";
-  setting_ = true;
-  for (AlarmSet::iterator p = alarms_.begin(), e = alarms_.end(); p != e; ) {
+  while (!alarms_.empty()) {
+    AlarmOrderedSet::iterator p = alarms_.begin();
     Alarm* alarm = *p;
     if (time_us < alarm->wakeup_time_us()) {
       break;
     } else {
-      AlarmSet::iterator iter_to_erase = p;
-      ++p;
-      alarms_.erase(iter_to_erase);
+      alarms_.erase(p);
       time_us_ = alarm->wakeup_time_us();
       alarm->Run();
       delete alarm;
     }
   }
   time_us_ = time_us;
-  setting_ = false;
 }
 
 }  // namespace net_instaweb

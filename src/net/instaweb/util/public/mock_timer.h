@@ -103,9 +103,8 @@ class MockTimer : public Timer {
  private:
   int64 time_us_;
   int next_index_;
-  typedef std::set<Alarm*, CompareAlarms> AlarmSet;
-  AlarmSet alarms_;
-  bool setting_;
+  typedef std::set<Alarm*, CompareAlarms> AlarmOrderedSet;
+  AlarmOrderedSet alarms_;
 
   DISALLOW_COPY_AND_ASSIGN(MockTimer);
 };
