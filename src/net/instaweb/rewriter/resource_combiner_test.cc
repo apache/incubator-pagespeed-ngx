@@ -55,7 +55,6 @@
 
 namespace net_instaweb {
 
-class CommonFilter;
 class HtmlElement;
 class MessageHandler;
 class OutputResource;
@@ -85,9 +84,9 @@ class TestCombineFilter : public RewriteFilter {
   //    input's contents with a  | character.
   class TestCombiner : public ResourceCombinerTemplate<HtmlElement*> {
    public:
-    explicit TestCombiner(RewriteDriver* driver, CommonFilter* filter)
-        : ResourceCombinerTemplate<HtmlElement*>(driver, kTestCombinerId,
-                                                 kTestCombinerExt, filter) {
+    explicit TestCombiner(RewriteDriver* driver, RewriteFilter* filter)
+        : ResourceCombinerTemplate<HtmlElement*>(
+            driver, kTestCombinerExt, filter) {
     };
 
    protected:

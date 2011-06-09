@@ -21,13 +21,15 @@
 
 #include <vector>
 
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-class CommonFilter;
+
 class MessageHandler;
 class RewriteDriver;
+class RewriteFilter;
 
 // A templatized extension of ResourceCombiner that can track elements of a
 // custom type.
@@ -35,10 +37,9 @@ template<typename T>
 class ResourceCombinerTemplate : public ResourceCombiner {
  public:
   ResourceCombinerTemplate(RewriteDriver* rewrite_driver,
-                           const StringPiece& path_prefix,
                            const StringPiece& extension,
-                           CommonFilter* filter)
-      : ResourceCombiner(rewrite_driver, path_prefix, extension, filter) {
+                           RewriteFilter* filter)
+      : ResourceCombiner(rewrite_driver, extension, filter) {
   }
   virtual ~ResourceCombinerTemplate() {
     // Note that the superclass's dtor will not call our overridden Clear.
@@ -49,6 +50,15 @@ class ResourceCombinerTemplate : public ResourceCombiner {
   TimedBool AddElement(T element, const StringPiece& url,
                        MessageHandler* handler) {
     TimedBool result = AddResource(url, handler);
+    if (result.value) {
+      elements_.push_back(element);
+    }
+    return result;
+  }
+
+  TimedBool AddElementNoFetch(T element, const ResourcePtr& resource,
+                              MessageHandler* handler) {
+    TimedBool result = AddResourceNoFetch(resource, handler);
     if (result.value) {
       elements_.push_back(element);
     }

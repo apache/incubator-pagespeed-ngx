@@ -50,6 +50,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"  // for GoogleUrl
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
@@ -319,8 +320,7 @@ class CombiningFilter : public RewriteFilter {
    public:
     Combiner(RewriteDriver* driver, RewriteFilter* filter)
         : ResourceCombiner(
-            driver, kCombinerFilterId, kContentTypeCss.file_extension() + 1,
-            filter) {
+            driver, kContentTypeCss.file_extension() + 1, filter) {
     }
     OutputResourcePtr MakeOutput() {
       return Combine(kContentTypeCss, rewrite_driver_->message_handler());

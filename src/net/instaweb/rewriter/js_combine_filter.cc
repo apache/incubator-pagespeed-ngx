@@ -61,14 +61,11 @@ const char JsCombineFilter::kJsFileCountReduction[] = "js_file_count_reduction";
 class JsCombineFilter::JsCombiner
     : public ResourceCombinerTemplate<HtmlElement*> {
  public:
-  JsCombiner(JsCombineFilter* filter, RewriteDriver* driver,
-             const StringPiece& filter_id)
+  JsCombiner(JsCombineFilter* filter, RewriteDriver* driver)
       : ResourceCombinerTemplate<HtmlElement*>(
-            driver, filter_id, kContentTypeJavascript.file_extension() + 1,
-            filter),
+            driver, kContentTypeJavascript.file_extension() + 1, filter),
         filter_(filter),
         js_file_count_reduction_(NULL) {
-    filter_id.CopyToString(&filter_id_);
     Statistics* stats = resource_manager_->statistics();
     if (stats != NULL) {
       js_file_count_reduction_ = stats->GetVariable(kJsFileCountReduction);
@@ -104,7 +101,6 @@ class JsCombineFilter::JsCombiner
                           Writer* writer, MessageHandler* handler);
 
   JsCombineFilter* filter_;
-  GoogleString filter_id_;
   Variable* js_file_count_reduction_;
 
   DISALLOW_COPY_AND_ASSIGN(JsCombiner);
@@ -213,7 +209,7 @@ JsCombineFilter::JsCombineFilter(RewriteDriver* driver,
       script_scanner_(driver),
       script_depth_(0),
       current_js_script_(NULL) {
-  combiner_.reset(new JsCombiner(this, driver, filter_id));
+  combiner_.reset(new JsCombiner(this, driver));
 }
 
 JsCombineFilter::~JsCombineFilter() {

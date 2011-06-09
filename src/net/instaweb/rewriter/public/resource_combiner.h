@@ -32,13 +32,14 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-class CommonFilter;
+
 class ContentType;
 class MessageHandler;
 class OutputResource;
 class RequestHeaders;
 class ResponseHeaders;
 class RewriteDriver;
+class RewriteFilter;
 class Writer;
 
 // A boolean with an expiration date.
@@ -69,9 +70,8 @@ class ResourceCombiner {
 
   // Note: extension should not include the leading dot here.
   ResourceCombiner(RewriteDriver* rewrite_driver,
-                   const StringPiece& path_prefix,
                    const StringPiece& extension,
-                   CommonFilter* filter);
+                   RewriteFilter* filter);
 
   virtual ~ResourceCombiner();
 
@@ -178,8 +178,7 @@ class ResourceCombiner {
   int accumulated_leaf_size_;
   GoogleString resolved_base_;
   const int url_overhead_;
-  GoogleString filter_prefix_;
-  CommonFilter *filter_;
+  RewriteFilter* filter_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceCombiner);
 };

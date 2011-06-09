@@ -29,13 +29,13 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -57,9 +57,8 @@ class RequestHeaders;
 struct ContentType;
 
 ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
-                                   const StringPiece& filter_prefix,
                                    const StringPiece& extension,
-                                   CommonFilter* filter)
+                                   RewriteFilter* filter)
     : resource_manager_(driver->resource_manager()),
       rewrite_driver_(driver),
       partnership_(driver->options()),
@@ -72,14 +71,13 @@ ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
       // Another option too is to just instantiate a ResourceNamer and a
       // hasher put in the correct ID and EXT and leave the name blank and
       // take size of that.
-      url_overhead_(filter_prefix.size() + ResourceNamer::kOverhead +
+      url_overhead_(filter->id().size() + ResourceNamer::kOverhead +
                     extension.size()),
       filter_(filter) {
   // This CHECK is here because RewriteDriver is constructed with its
   // resource_manager_ == NULL.
   // TODO(sligocki): Construct RewriteDriver with a ResourceManager.
   CHECK(resource_manager_ != NULL);
-  filter_prefix.CopyToString(&filter_prefix_);
 }
 
 ResourceCombiner::~ResourceCombiner() {
@@ -259,7 +257,7 @@ OutputResourcePtr ResourceCombiner::Combine(const ContentType& content_type,
   // not committed to the combination, because the 'write' can fail.
   // TODO(jmaessen, jmarantz): encode based on partnership
   combination.reset(rewrite_driver_->CreateOutputResourceWithPath(
-      ResolvedBase(), filter_prefix_, url_safe_id, &content_type,
+      ResolvedBase(), filter_->id(), url_safe_id, &content_type,
       kRewrittenResource, UseAsyncFlow()));
   if (combination.get() != NULL) {
     if (combination->cached_result() != NULL &&

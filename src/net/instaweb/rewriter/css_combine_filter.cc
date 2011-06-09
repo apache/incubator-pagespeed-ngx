@@ -62,8 +62,7 @@ class CssCombineFilter::CssCombiner
   CssCombiner(RewriteDriver* driver, const StringPiece& filter_prefix,
               CssTagScanner* css_tag_scanner, CssCombineFilter *filter)
       : ResourceCombinerTemplate<HtmlElement*>(
-          driver, filter_prefix, kContentTypeCss.file_extension() + 1,
-          filter),
+          driver, kContentTypeCss.file_extension() + 1, filter),
         css_tag_scanner_(css_tag_scanner),
         css_file_count_reduction_(NULL) {
     Statistics* stats = resource_manager_->statistics();

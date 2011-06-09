@@ -443,10 +443,9 @@ using spriter_binding::SpriteFuture;
 class ImageCombineFilter::Combiner
     : public ResourceCombinerTemplate<SpriteFuture*> {
  public:
-  Combiner(RewriteDriver* driver, const StringPiece& filter_prefix,
-           const StringPiece& extension, ImageCombineFilter* filter)
-      : ResourceCombinerTemplate<SpriteFuture*>(driver, filter_prefix,
-                                                extension, filter),
+  Combiner(RewriteDriver* driver, const StringPiece& extension,
+           ImageCombineFilter* filter)
+      : ResourceCombinerTemplate<SpriteFuture*>(driver, extension, filter),
         library_(NULL,
                  driver->resource_manager()->filename_prefix(),
                  driver->message_handler()),
@@ -642,8 +641,7 @@ class ImageCombineFilter::Combiner
 ImageCombineFilter::ImageCombineFilter(RewriteDriver* driver,
                                    const char* filter_prefix)
     : RewriteFilter(driver, filter_prefix) {
-  combiner_.reset(new Combiner(driver, filter_prefix,
-                               kContentTypePng.file_extension() + 1,
+  combiner_.reset(new Combiner(driver, kContentTypePng.file_extension() + 1,
                                this));
 }
 
