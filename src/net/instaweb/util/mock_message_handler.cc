@@ -22,10 +22,19 @@
 #include <map>
 #include <utility>
 
+#include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
+
+MockMessageHandler::MockMessageHandler() {
+  // TODO(morlovich): Allow providing the thread system as an argument.
+  scoped_ptr<ThreadSystem> thread_runtime(ThreadSystem::CreateThreadSystem());
+  mutex_.reset(thread_runtime->NewMutex());
+}
 
 MockMessageHandler::~MockMessageHandler() {
 }
@@ -33,6 +42,7 @@ MockMessageHandler::~MockMessageHandler() {
 void MockMessageHandler::MessageVImpl(MessageType type,
                                       const char* msg,
                                       va_list args) {
+  ScopedMutex hold_mutex(mutex_.get());
   GoogleMessageHandler::MessageVImpl(type, msg, args);
   ++message_counts_[type];
 }
@@ -40,11 +50,17 @@ void MockMessageHandler::MessageVImpl(MessageType type,
 void MockMessageHandler::FileMessageVImpl(MessageType type,
                                           const char* filename, int line,
                                           const char* msg, va_list args) {
+  ScopedMutex hold_mutex(mutex_.get());
   GoogleMessageHandler::FileMessageVImpl(type, filename, line, msg, args);
   ++message_counts_[type];
 }
 
 int MockMessageHandler::MessagesOfType(MessageType type) const {
+  ScopedMutex hold_mutex(mutex_.get());
+  return MessagesOfTypeImpl(type);
+}
+
+int MockMessageHandler::MessagesOfTypeImpl(MessageType type) const {
   MessageCountMap::const_iterator i = message_counts_.find(type);
   if (i != message_counts_.end()) {
     return i->second;
@@ -54,6 +70,12 @@ int MockMessageHandler::MessagesOfType(MessageType type) const {
 }
 
 int MockMessageHandler::TotalMessages() const {
+  ScopedMutex hold_mutex(mutex_.get());
+  return TotalMessagesImpl();
+}
+
+int MockMessageHandler::TotalMessagesImpl() const {
+
   int total = 0;
   for (MessageCountMap::const_iterator i = message_counts_.begin();
        i != message_counts_.end(); ++i) {
@@ -63,7 +85,8 @@ int MockMessageHandler::TotalMessages() const {
 }
 
 int MockMessageHandler::SeriousMessages() const {
-  return TotalMessages() - MessagesOfType(kInfo);
+  ScopedMutex hold_mutex(mutex_.get());
+  return TotalMessagesImpl() - MessagesOfTypeImpl(kInfo);
 }
 
 }  // namespace net_instaweb

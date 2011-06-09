@@ -22,17 +22,20 @@
 #include <cstdarg>
 #include <map>
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
 
 namespace net_instaweb {
 
+class AbstractMutex;
+
 // A version of GoogleMessageHandler to use in testcases that keeps
 // track of number of messages output, to validate diagnostics
 class MockMessageHandler : public GoogleMessageHandler {
  public:
-  MockMessageHandler() {}
+  MockMessageHandler();
   virtual ~MockMessageHandler();
 
   // Returns number of messages of given type issued
@@ -52,6 +55,12 @@ class MockMessageHandler : public GoogleMessageHandler {
 
  private:
   typedef std::map<MessageType, int> MessageCountMap;
+
+  // The Impl versions don't grab the lock themselves
+  int TotalMessagesImpl() const;
+  int MessagesOfTypeImpl(MessageType type) const;
+
+  scoped_ptr<AbstractMutex> mutex_;
   MessageCountMap message_counts_;
   DISALLOW_COPY_AND_ASSIGN(MockMessageHandler);
 };

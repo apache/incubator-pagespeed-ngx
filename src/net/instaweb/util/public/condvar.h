@@ -30,7 +30,7 @@ class ThreadSystem::Condvar {
   virtual ~Condvar();
 
   // Return the mutex associated with this condition variable.
-  virtual const CondvarCapableMutex* mutex() const = 0;
+  virtual CondvarCapableMutex* mutex() const = 0;
 
   // Signal the condvar, waking a waiting thread if any.  mutex() must be held
   // by caller.  Example:
