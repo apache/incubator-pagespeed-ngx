@@ -409,4 +409,16 @@ TEST_F(ResponseHeadersTest, TestCachingVarySpaces) {
   EXPECT_TRUE(response_headers_.IsCacheable());
 }
 
+TEST_F(ResponseHeadersTest, TestSetDateAndCaching) {
+  response_headers_.SetDateAndCaching(MockTimer::kApr_5_2010_ms,
+                                      6 * Timer::kMinuteMs);
+  const char expected_headers[] =
+      "HTTP/1.0 0 (null)\r\n"
+      "Date: Mon, 05 Apr 2010 18:51:26 GMT\r\n"
+      "Expires: Mon, 05 Apr 2010 18:57:26 GMT\r\n"
+      "Cache-Control: max-age=360\r\n"
+      "\r\n";
+  EXPECT_EQ(expected_headers, response_headers_.ToString());
+}
+
 }  // namespace net_instaweb

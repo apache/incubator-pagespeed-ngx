@@ -29,13 +29,15 @@
 namespace net_instaweb {
 
 class MessageHandler;
+class MockTimer;
 class RequestHeaders;
 class Writer;
 
 // Simple UrlFetcher meant for tests, you can set responses for individual URLs.
 class MockUrlFetcher : public UrlFetcher {
  public:
-  MockUrlFetcher() : enabled_(true), fail_on_unexpected_(true) {}
+  MockUrlFetcher() : enabled_(true), fail_on_unexpected_(true),
+                     update_date_headers_(false), timer_(NULL) {}
   virtual ~MockUrlFetcher();
 
   void SetResponse(const StringPiece& url,
@@ -69,6 +71,12 @@ class MockUrlFetcher : public UrlFetcher {
   // Useful in MockUrlFetcher unittest :)
   void set_fail_on_unexpected(bool x) { fail_on_unexpected_ = x; }
 
+  // Update response header's Date using supplied timer.
+  // Note: Must set_timer().
+  void set_update_date_headers(bool x) { update_date_headers_ = x; }
+
+  void set_timer(MockTimer* timer) { timer_ = timer; }
+
  private:
   class HttpResponse {
    public:
@@ -93,8 +101,12 @@ class MockUrlFetcher : public UrlFetcher {
   typedef std::map<const GoogleString, const HttpResponse*> ResponseMap;
 
   ResponseMap response_map_;
+
   bool enabled_;
-  bool fail_on_unexpected_;  // Should we EXPECT if unexpected url called?
+  bool fail_on_unexpected_;   // Should we EXPECT if unexpected url called?
+  bool update_date_headers_;  // Should we update Date headers from timer?
+
+  MockTimer* timer_;  // Timer to use for updating header dates.
 
   DISALLOW_COPY_AND_ASSIGN(MockUrlFetcher);
 };

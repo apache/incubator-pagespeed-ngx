@@ -84,8 +84,15 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   bool IsCacheable() const;
   bool IsProxyCacheable() const;
   int64 CacheExpirationTimeMs() const;
-  void SetDate(int64 date_ms);
-  void SetLastModified(int64 last_modified_ms);
+
+  // Sets Date, Cache-Control and Expires headers appropriately.
+  void SetDateAndCaching(int64 date_ms, int64 ttl_ms);
+  // Set a time-based header, converting ms since epoch to a string.
+  void SetTimeHeader(const StringPiece& header, int64 time_ms);
+  void SetDate(int64 date_ms) { SetTimeHeader(HttpAttributes::kDate, date_ms); }
+  void SetLastModified(int64 last_modified_ms) {
+    SetTimeHeader(HttpAttributes::kLastModified, last_modified_ms);
+  }
 
   // TODO(jmarantz): consider an alternative representation
   bool headers_complete() const { return has_status_code(); }

@@ -176,17 +176,17 @@ int64 ResponseHeaders::CacheExpirationTimeMs() const {
   return proto_->expiration_time_ms();
 }
 
-void ResponseHeaders::SetDate(int64 date_ms) {
-  GoogleString time_string;
-  if (ConvertTimeToString(date_ms, &time_string)) {
-    Replace(HttpAttributes::kDate, time_string);
-  }
+void ResponseHeaders::SetDateAndCaching(int64 date_ms, int64 ttl_ms) {
+  SetDate(date_ms);
+  SetTimeHeader(HttpAttributes::kExpires, date_ms + ttl_ms);
+  Replace(HttpAttributes::kCacheControl,
+          StrCat("max-age=", Integer64ToString(ttl_ms / Timer::kSecondMs)));
 }
 
-void ResponseHeaders::SetLastModified(int64 last_modified_ms) {
+void ResponseHeaders::SetTimeHeader(const StringPiece& header, int64 time_ms) {
   GoogleString time_string;
-  if (ConvertTimeToString(last_modified_ms, &time_string)) {
-    Replace(HttpAttributes::kLastModified, time_string);
+  if (ConvertTimeToString(time_ms, &time_string)) {
+    Replace(header, time_string);
   }
 }
 
@@ -265,7 +265,7 @@ void ResponseHeaders::ComputeCaching() {
       freshness_lifetime_ms = kImplicitCacheTtlMs;
     }
     proto_->set_expiration_time_ms(proto_->timestamp_ms() +
-                                  freshness_lifetime_ms);
+                                   freshness_lifetime_ms);
 
     // Assume it's proxy cacheable.  Then iterate over all the headers
     // with key HttpAttributes::kCacheControl, and all the comma-separated

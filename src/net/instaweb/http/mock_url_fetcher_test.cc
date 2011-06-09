@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
@@ -172,6 +173,41 @@ TEST_F(MockUrlFetcherTest, ConditionalFetchTest) {
                                new_time_string);
     EXPECT_TRUE(fetch.Fetch(url));
     EXPECT_EQ(HttpStatus::kNotModified, fetch.response_headers_.status_code());
+  }
+}
+
+TEST_F(MockUrlFetcherTest, UpdateHeaderDates) {
+  MockTimer timer(MockTimer::kApr_5_2010_ms);
+  fetcher_.set_timer(&timer);
+  fetcher_.set_update_date_headers(true);
+
+  const char url[] = "http://www.example.com/foo.css";
+  const char body[] = "resource body";
+  ResponseHeaders header;
+  header.set_first_line(1, 1, 200, "OK");
+  header.SetLastModified(MockTimer::kApr_5_2010_ms - 2 * Timer::kDayMs);
+  const int64 ttl_ms = 5 * Timer::kMinuteMs;
+  header.SetDateAndCaching(timer.NowMs(), ttl_ms);
+
+  fetcher_.SetResponse(url, header, body);
+
+  // Fetch it at current time.
+  {
+    MockFetchContainer fetch(&fetcher_);
+    EXPECT_TRUE(fetch.Fetch(url));
+    // Check that response header's expiration time is set correctly.
+    EXPECT_EQ(timer.NowMs() + ttl_ms,
+              fetch.response_headers_.CacheExpirationTimeMs());
+  }
+
+  // Fetch it at current time.
+  timer.AdvanceMs(1 * Timer::kYearMs);  // Arbitrary time > 5min (max-age).
+  {
+    MockFetchContainer fetch(&fetcher_);
+    EXPECT_TRUE(fetch.Fetch(url));
+    // Check that response header's expiration time is set correctly.
+    EXPECT_EQ(timer.NowMs() + ttl_ms,
+              fetch.response_headers_.CacheExpirationTimeMs());
   }
 }
 
