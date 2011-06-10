@@ -18,6 +18,7 @@
 // This contains things that are common between unit tests for Worker and its
 // subclasses, such as runtime creation and various closures.
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
@@ -97,6 +98,23 @@ class WorkerTestBase::WaitRunClosure : public Worker::Closure {
  private:
   SyncPoint* sync_;
   DISALLOW_COPY_AND_ASSIGN(WaitRunClosure);
+};
+
+// Closure that signals on destruction and check fails when run.
+class DeleteNotifyClosure : public Worker::Closure {
+ public:
+  explicit DeleteNotifyClosure(WorkerTestBase::SyncPoint* sync) : sync_(sync) {}
+  virtual ~DeleteNotifyClosure() {
+    sync_->Notify();
+  }
+
+  virtual void Run() {
+    CHECK(false) << "DeleteNotifyClosure ran.";
+  }
+
+ private:
+  WorkerTestBase::SyncPoint* sync_;
+  DISALLOW_COPY_AND_ASSIGN(DeleteNotifyClosure);
 };
 
 }  // namespace net_instaweb

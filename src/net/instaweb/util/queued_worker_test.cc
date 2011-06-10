@@ -90,5 +90,16 @@ TEST_F(QueuedWorkerTest, ChainedTasks) {
   EXPECT_EQ(0, count);
 }
 
+TEST_F(QueuedWorkerTest, TestShutDown) {
+  // Make sure that shutdown cancels jobs put in after it --- that
+  // the job gets deleted (making clean.Wait() return), and doesn't
+  // run (which would CHECK(false)).
+  SyncPoint clean(thread_runtime_.get());
+  ASSERT_TRUE(worker_->Start());
+  worker_->ShutDown();
+  worker_->RunInWorkThread(new DeleteNotifyClosure(&clean));
+  clean.Wait();
+}
+
 }  // namespace
 }  // namespace net_instaweb

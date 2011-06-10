@@ -161,6 +161,7 @@ void ResourceManagerTestBase::SetUp() {
 }
 
 void ResourceManagerTestBase::TearDown() {
+  other_resource_manager_.ShutDownWorker();
   delete resource_manager_;
   HtmlParseTestBaseNoAlloc::TearDown();
 }
@@ -298,6 +299,10 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   EXPECT_EQ(0, new_resource_manager.cached_resource_fetches()->Get());
   EXPECT_EQ(1, new_resource_manager.succeeded_filter_resource_fetches()->Get());
   EXPECT_EQ(0, new_resource_manager.failed_filter_resource_fetches()->Get());
+
+  // Make sure to shut the new worker down before we hit ~RewriteDriver for
+  // new_rewrite_driver.
+  new_resource_manager.ShutDownWorker();
 }
 
 // Initializes a resource for mock fetching.

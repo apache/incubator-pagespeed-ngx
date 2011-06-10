@@ -320,7 +320,16 @@ class ResourceManager {
   // because real-time moves forward naturally, causing
   // the TimedWait in RewriteDriver::Render to return and
   // keep progress moving forward.
+  //
+  // If you use this, make sure to call ShutDownWorker() before
+  // deleting anything these callbacks refer to.
   void SetIdleCallback(Worker::Closure* callback);
+
+  // Waits for the currently running job to complete, and stops accepting
+  // new jobs in the worker. This is meant for use in tests to make sure
+  // that any idle callbacks are completed before deleting objects they may
+  // refer to.
+  void ShutDownWorker();
 
  private:
   GoogleString file_prefix_;

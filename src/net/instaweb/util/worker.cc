@@ -23,7 +23,7 @@
 
 #include <cstddef>
 #include <deque>
-#include "base/logging.h"
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/atomicops.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -96,17 +96,13 @@ class Worker::WorkThread : public ThreadSystem::Thread {
   }
 
   virtual void Run() {
-    while (true) {
-      if (WaitForNextTask()) {
-        // Run tasks (not holding the lock, so new tasks can be added).
-        current_task_->Run();
-      } else {
-        return;  // exit requested
-      }
+    while (WaitForNextTask()) {
+      // Run tasks (not holding the lock, so new tasks can be added).
+      current_task_->Run();
     }
   }
 
-  void Shutdown() {
+  void ShutDown() {
     if (!started_) {
       return;
     }
@@ -123,6 +119,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
 
     Join();
     STLDeleteElements(&tasks_);
+    started_ = false;  // Reject further jobs on explicit shutdown.
   }
 
   bool Start() {
@@ -131,7 +128,6 @@ class Worker::WorkThread : public ThreadSystem::Thread {
   }
 
   bool QueueIfPermitted(Closure* closure) {
-    DCHECK(started_);
     if (!started_) {
       delete closure;
       return true;
@@ -176,7 +172,7 @@ Worker::Worker(ThreadSystem* runtime) : thread_(new WorkThread(this, runtime)) {
 }
 
 Worker::~Worker() {
-  thread_->Shutdown();
+  thread_->ShutDown();
 }
 
 bool Worker::Start() {
@@ -189,6 +185,10 @@ bool Worker::QueueIfPermitted(Closure* closure) {
 
 int Worker::NumJobs() {
   return thread_->NumJobs();
+}
+
+void Worker::ShutDown() {
+  thread_->ShutDown();
 }
 
 }  // namespace net_instaweb

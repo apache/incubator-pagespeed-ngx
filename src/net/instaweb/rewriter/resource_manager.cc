@@ -161,6 +161,9 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
 }
 
 ResourceManager::~ResourceManager() {
+  // stop job traffic before deleting any rewrite drivers.
+  rewrite_worker_->ShutDown();
+
   // We scan for "leaked_rewrite_drivers" in apache/install/tests.mk.
   DCHECK(active_rewrite_drivers_.empty()) << "leaked_rewrite_drivers";
   STLDeleteElements(&active_rewrite_drivers_);
@@ -604,6 +607,10 @@ void ResourceManager::ReleaseRewriteDriver(
 
 void ResourceManager::SetIdleCallback(Worker::Closure* callback) {
   rewrite_worker_->set_idle_callback(callback);
+}
+
+void ResourceManager::ShutDownWorker() {
+  rewrite_worker_->ShutDown();
 }
 
 void ResourceManager::AddRewriteTask(Worker::Closure* task) {

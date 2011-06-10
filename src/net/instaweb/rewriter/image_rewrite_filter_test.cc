@@ -118,6 +118,7 @@ class ImageRewriteTest : public ResourceManagerTestBase,
         rewrite_driver()->FetchResource(src_string, request_headers,
                                         &response_headers, &writer,
                                         &dummy_callback));
+    rewrite_driver()->WaitForCompletion();
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) <<
         "Looking for " << src_string;
     // For readability, only do EXPECT_EQ on initial portions of data

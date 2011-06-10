@@ -42,23 +42,6 @@ class SlowWorkerTest: public WorkerTestBase {
   DISALLOW_COPY_AND_ASSIGN(SlowWorkerTest);
 };
 
-// Closure that signals on destruction and check fails when run.
-class DeleteNotifyClosure : public Worker::Closure {
- public:
-  explicit DeleteNotifyClosure(WorkerTestBase::SyncPoint* sync) : sync_(sync) {}
-  virtual ~DeleteNotifyClosure() {
-    sync_->Notify();
-  }
-
-  virtual void Run() {
-    CHECK(false) << "SlowWorker ran a job while an another is active!?";
-  }
-
- private:
-  WorkerTestBase::SyncPoint* sync_;
-  DISALLOW_COPY_AND_ASSIGN(DeleteNotifyClosure);
-};
-
 TEST_F(SlowWorkerTest, BasicOperation) {
   // Add in a job that waits for our OK before finishing Run() and an another
   // job that fails if Run. Since we don't let the first one proceed, the second
