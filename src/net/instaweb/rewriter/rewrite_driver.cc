@@ -667,11 +667,9 @@ class FilterFetch : public UrlAsyncFetcher::Callback {
       RewriteContext* context = filter->MakeRewriteContext();
       DCHECK(context != NULL);
       if (context != NULL) {
-        context->Fetch(output_resource, writer, response, handler, cb);
-        queued = true;
+        queued = context->Fetch(output_resource, writer, response, handler, cb);
       }
-    }
-    if (!queued) {
+    } else {
       queued = filter->Fetch(output_resource, writer, request,
                              response, handler, cb);
     }

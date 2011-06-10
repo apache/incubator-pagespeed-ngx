@@ -30,9 +30,11 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+class CachedResult;
 class ContentType;
 class Image;
 class ImageTagScanner;
+class RewriteContext;
 class RewriteDriver;
 class Statistics;
 class UrlSegmentEncoder;
@@ -66,11 +68,19 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
   virtual bool ReuseByContentHash() const;
   virtual const UrlSegmentEncoder* encoder() const;
 
+  virtual bool HasAsyncFlow() const;
+  virtual RewriteContext* MakeRewriteContext();
+
  private:
+  class Context;
+  friend class Context;
+
   // Helper methods.
   const ContentType* ImageToContentType(const GoogleString& origin_url,
                                         Image* image);
-  void RewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
+  void BeginRewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
+  void FinishRewriteImageUrl(const CachedResult* cached, HtmlElement* element,
+                             HtmlElement::Attribute* src);
 
   scoped_ptr<const ImageTagScanner> image_filter_;
   scoped_ptr<WorkBound> work_bound_;

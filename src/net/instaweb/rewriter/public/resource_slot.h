@@ -49,6 +49,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
  public:
   explicit ResourceSlot(const ResourcePtr& resource)
       : resource_(resource),
+        disable_rendering_(false),
         should_delete_element_(false) {
   }
 
@@ -68,6 +69,12 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // preventing unwanted interference between renderer's reads and
   // worker writes.
   void SetResource(const ResourcePtr& resource);
+
+  // If disable_rendering is true, this slot will do nothing on rendering,
+  // neither changing the URL or deleting any elements. This is intended for
+  // use of filters which do the entire work in the Context.
+  void set_disable_rendering(bool x) { disable_rendering_ = x; }
+  bool disable_rendering() const { return disable_rendering_; }
 
   // Determines whether rendering the slot deletes the HTML Element.
   // For example, in the CSS combine filter we want the Render to
@@ -96,6 +103,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
 
  private:
   ResourcePtr resource_;
+  bool disable_rendering_;
   bool should_delete_element_;
 
   // We track the RewriteContexts that are atempting to rewrite this

@@ -274,6 +274,14 @@ RewriteContext::~RewriteContext() {
   STLDeleteElements(&nested_);
 }
 
+int RewriteContext::num_output_partitions() const {
+  return partitions_->partition_size();
+}
+
+const OutputPartition* RewriteContext::output_partition(int i) const {
+  return &partitions_->partition(i);
+}
+
 void RewriteContext::AddSlot(const ResourceSlotPtr& slot) {
   CHECK(!started_);
 
@@ -470,13 +478,13 @@ void RewriteContext::StartRewrite() {
       // We will let the Rewrites complete prior to writing the
       // OutputPartitions, which contain not just the partition table
       // but the content-hashes for the rewritten content.  So we must
-      // rewrite before callling WritePartitions.
+      // rewrite before calling WritePartitions.
       for (int i = 0, n = outstanding_rewrites_; i < n; ++i) {
         Rewrite(partitions_->mutable_partition(i), outputs_[i]);
       }
     }
   } else {
-    // The partioning failed.
+    // The partitioning failed.
     //
     // TODO(jmarantz): Remember that!  The filter is indicating there
     // is no useful way to rewrite this group of resources, so on
@@ -581,7 +589,9 @@ void RewriteContext::Render() {
 void RewriteContext::Propagate(bool render_slots) {
   DCHECK(rewrite_done_ && (num_pending_nested_ == 0));
   if (rewrite_done_ && (num_pending_nested_ == 0)) {
-    Render();
+    if (render_slots) {
+      Render();
+    }
     // TODO(jmarantz): the current data model is not sufficient for
     // arbitrary output->input mapping.  We need to record, in each
     // partition, which outputs are affected.

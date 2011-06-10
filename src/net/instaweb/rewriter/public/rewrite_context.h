@@ -114,6 +114,11 @@ class RewriteContext {
   int num_outputs() const { return outputs_.size(); }
   OutputResourcePtr output(int i) const { return outputs_[i]; }
 
+  // There are generally accessed in the Rewrite thread,
+  // but may also be accessed in ::Render.
+  int num_output_partitions() const;
+  const OutputPartition* output_partition(int i) const;
+
   // Resource slots must be added to a Rewrite before Initiate() can
   // be called.  Starting the rewrite sets in motion a sequence
   // of async cache-lookups &/or fetches.
@@ -134,6 +139,7 @@ class RewriteContext {
   // when complete.
   //
   // True is returned if an asynchronous fetch got queued up.
+  // If false, Done() will not be called.
   bool Fetch(const OutputResourcePtr& output_resource,
              Writer* response_writer,
              ResponseHeaders* response_headers,

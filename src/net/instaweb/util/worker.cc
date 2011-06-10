@@ -61,42 +61,47 @@ class Worker::WorkThread : public ThreadSystem::Thread {
       started_(false) {
   }
 
-  virtual void Run() {
-    bool was_running = false;
-    while (true) {
-      // Grab new task or exit command
-      {
-        // Clean any task we were running last iteration
-        delete current_task_;
-        current_task_ = NULL;
+  // If worker thread exit is requested, returns false.
+  // Returns true and fetches next task into current_task_ otherwise.
+  // Takes care of synchronization, including waiting for next state change.
+  bool WaitForNextTask() {
+    ScopedMutex lock(mutex_.get());
 
-        ScopedMutex lock(mutex_.get());
-        while (!exit_ && tasks_.empty()) {
-          if (was_running) {
-            was_running = false;
-            owner_->RunIdleCallback();
-          }
-          state_change_->Wait();
-        }
+    bool was_running = (current_task_ != NULL);
 
-        // Handle exit.
-        if (exit_) {
-          if (was_running && tasks_.empty()) {
-            owner_->RunIdleCallback();
-          }
-          return;
-        }
+    // Clean any task we were running last iteration
+    delete current_task_;
+    current_task_ = NULL;
 
-        if (!tasks_.empty()) {
-          current_task_ = tasks_.front();
-          tasks_.pop_front();
-        }
+    while (!exit_ && tasks_.empty()) {
+      if (was_running) {
+        was_running = false;
+        owner_->RunIdleCallback();
       }
+      state_change_->Wait();
+    }
 
-      // Handle task (with lock released)
-      if (current_task_ != NULL) {
+    // Handle exit.
+    if (exit_) {
+      if (was_running && tasks_.empty()) {
+        owner_->RunIdleCallback();
+      }
+      return false;
+    }
+
+    // Get task.
+    current_task_ = tasks_.front();
+    tasks_.pop_front();
+    return true;
+  }
+
+  virtual void Run() {
+    while (true) {
+      if (WaitForNextTask()) {
+        // Run tasks (not holding the lock, so new tasks can be added).
         current_task_->Run();
-        was_running = true;
+      } else {
+        return;  // exit requested
       }
     }
   }

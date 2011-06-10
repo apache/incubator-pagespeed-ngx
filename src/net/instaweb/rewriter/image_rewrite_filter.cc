@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 
+#include "base/logging.h"               // for CHECK, etc
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -27,11 +28,14 @@
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -44,6 +48,7 @@
 #include "net/instaweb/util/public/work_bound.h"
 
 namespace net_instaweb {
+class RewriteContext;
 class UrlSegmentEncoder;
 struct ContentType;
 
@@ -73,6 +78,49 @@ const char kHeightKey[] = "ImageRewriteFilter_H";
 const char kDataUrlKey[] = "ImageRewriteFilter_DataUrl";
 
 }  // namespace
+
+class ImageRewriteFilter::Context : public SingleRewriteContext {
+ public:
+  Context(ImageRewriteFilter* filter, RewriteDriver* driver,
+          ResourceContext* resource_context)
+      : SingleRewriteContext(driver, NULL /* no parent */, resource_context),
+        filter_(filter),
+        driver_(driver) {}
+  virtual ~Context() {}
+
+  virtual void Render();
+  virtual void RewriteSingle(const ResourcePtr& input,
+                             const OutputResourcePtr& output);
+  virtual const char* id() const { return filter_->id().c_str(); }
+  virtual OutputResourceKind kind() const { return kRewrittenResource; }
+  virtual const UrlSegmentEncoder* encoder() const;
+
+ private:
+  ImageRewriteFilter* filter_;
+  RewriteDriver* driver_;
+  DISALLOW_COPY_AND_ASSIGN(Context);
+};
+
+void ImageRewriteFilter::Context::RewriteSingle(
+    const ResourcePtr& input_resource,
+    const OutputResourcePtr& output_resource) {
+  RewriteDone(
+      filter_->RewriteLoadedResource(input_resource, output_resource), 0);
+}
+
+void ImageRewriteFilter::Context::Render() {
+  CHECK(num_slots() == 1);
+  CHECK(num_output_partitions() == 1);
+  CHECK(output_partition(0)->has_result());
+  HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(slot(0).get());
+  filter_->FinishRewriteImageUrl(&output_partition(0)->result(),
+                                 html_slot->element(),
+                                 html_slot->attribute());
+}
+
+const UrlSegmentEncoder* ImageRewriteFilter::Context::encoder() const {
+  return filter_->encoder();
+}
 
 ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver,
                                        StringPiece path_prefix)
@@ -256,10 +304,10 @@ const ContentType* ImageRewriteFilter::ImageToContentType(
   return content_type;
 }
 
-void ImageRewriteFilter::RewriteImageUrl(HtmlElement* element,
-                                         HtmlElement::Attribute* src) {
-  ResourceContext resource_context;
-  ImageDim* page_dim = resource_context.mutable_image_tag_dims();
+void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
+                                              HtmlElement::Attribute* src) {
+  scoped_ptr<ResourceContext> resource_context(new ResourceContext);
+  ImageDim* page_dim = resource_context->mutable_image_tag_dims();
   int width, height;
   const RewriteOptions* options = driver_->options();
 
@@ -271,11 +319,29 @@ void ImageRewriteFilter::RewriteImageUrl(HtmlElement* element,
     page_dim->set_height(height);
   }
 
-  scoped_ptr<CachedResult> cached(RewriteWithCaching(src->value(),
-                                                     &resource_context));
-  if (cached.get() == NULL) {
-    return;
+  if (HasAsyncFlow()) {
+    ResourcePtr input_resource = CreateInputResource(src->value());
+    if (input_resource.get() != NULL) {
+      Context* context = new Context(this, driver_, resource_context.release());
+      ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
+      // Disable default slot rendering as it won't know to use a data: URL.
+      slot->set_disable_rendering(true);
+      context->AddSlot(slot);
+      driver_->InitiateRewrite(context);
+    }
+  } else {
+    scoped_ptr<CachedResult> cached(RewriteWithCaching(src->value(),
+                                                       resource_context.get()));
+    if (cached.get() != NULL) {
+      FinishRewriteImageUrl(cached.get(), element, src);
+    }
   }
+}
+
+void ImageRewriteFilter::FinishRewriteImageUrl(
+    const CachedResult* cached, HtmlElement* element,
+    HtmlElement::Attribute* src) {
+  const RewriteOptions* options = driver_->options();
 
   // See if we have a data URL, and if so use it if the browser can handle it
   if (driver_->UserAgentSupportsImageInlining() &&
@@ -333,13 +399,21 @@ void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
   if (!driver_->HasChildrenInFlushWindow(element)) {
     HtmlElement::Attribute *src = image_filter_->ParseImageElement(element);
     if (src != NULL) {
-      RewriteImageUrl(element, src);
+      BeginRewriteImageUrl(element, src);
     }
   }
 }
 
 const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {
   return &encoder_;
+}
+
+bool ImageRewriteFilter::HasAsyncFlow() const {
+  return driver_->asynchronous_rewrites();
+}
+
+RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
+  return new Context(this, driver_, new ResourceContext());
 }
 
 }  // namespace net_instaweb

@@ -21,6 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -33,6 +34,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -48,8 +50,14 @@ const char kBikePngFile[] = "BikeCrashIcn.png";
 const char kPuzzleJpgFile[] = "Puzzle.jpg";
 const char kChefGifFile[] = "IronChef2.gif";
 
-class ImageRewriteTest : public ResourceManagerTestBase {
+class ImageRewriteTest : public ResourceManagerTestBase,
+                         public ::testing::WithParamInterface<bool> {
  protected:
+  virtual void SetUp() {
+    ResourceManagerTestBase::SetUp();
+    rewrite_driver()->SetAsynchronousRewrites(GetParam());
+  }
+
   // Simple image rewrite test to check resource fetching functionality.
   void RewriteImage(const GoogleString& tag_string) {
     options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
@@ -252,9 +260,8 @@ class ImageRewriteTest : public ResourceManagerTestBase {
                          const ContentType& content_type,
                          const char* initial_dims, const char* final_dims,
                          bool expect_rewritten, bool expect_inline) {
-    const char domain[] = "http://single_rewrite.test/";
-    GoogleString initial_url = StrCat(domain, name);
-    GoogleString page_url = StrCat(domain, "test.html");
+    GoogleString initial_url = StrCat(kTestDomain, name);
+    GoogleString page_url = StrCat(kTestDomain, "test.html");
     AddFileToMockFetcher(initial_url, name, content_type, 100);
 
     const char html_boilerplate[] = "<img src='%s'%s>";
@@ -286,28 +293,38 @@ class ImageRewriteTest : public ResourceManagerTestBase {
   }
 };
 
-TEST_F(ImageRewriteTest, ImgTag) {
+TEST_P(ImageRewriteTest, ImgTag) {
   RewriteImage("img");
 }
 
-TEST_F(ImageRewriteTest, InputTag) {
+TEST_P(ImageRewriteTest, InputTag) {
   RewriteImage("input type=\"image\"");
 }
 
-TEST_F(ImageRewriteTest, DataUrlTest) {
+TEST_P(ImageRewriteTest, DataUrlTest) {
   DataUrlResource();
 }
 
-TEST_F(ImageRewriteTest, AddDimTest) {
+TEST_P(ImageRewriteTest, AddDimTest) {
   // Make sure optimizable image isn't optimized, but
   // dimensions are inserted.
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   rewrite_driver()->AddFilters();
   TestSingleRewrite(kBikePngFile, kContentTypePng,
                     "", " width=\"100\" height=\"100\"", false, false);
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Force any image read to be a fetch.
+  lru_cache()->Delete(StrCat(kTestDomain, kBikePngFile));
+
+  // .. Now make sure we cached dimension insertion properly, and can do it
+  // without re-fetching the image.
+  TestSingleRewrite(kBikePngFile, kContentTypePng,
+                    "", " width=\"100\" height=\"100\"", false, false);
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 }
 
-TEST_F(ImageRewriteTest, ResizeTest) {
+TEST_P(ImageRewriteTest, ResizeTest) {
   // Make sure we resize images, but don't optimize them in place.
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
@@ -320,7 +337,7 @@ TEST_F(ImageRewriteTest, ResizeTest) {
                     kResizedDims, kResizedDims, true, false);
 }
 
-TEST_F(ImageRewriteTest, InlineTest) {
+TEST_P(ImageRewriteTest, InlineTest) {
   // Make sure we resize and inline images, but don't optimize them in place.
   options()->set_image_inline_max_bytes(10000);
   options()->EnableFilter(RewriteOptions::kResizeImages);
@@ -339,7 +356,7 @@ TEST_F(ImageRewriteTest, InlineTest) {
                     kResizedDims, "", true, true);
 }
 
-TEST_F(ImageRewriteTest, InlineNoRewrite) {
+TEST_P(ImageRewriteTest, InlineNoRewrite) {
   // Make sure we inline an image that isn't otherwise altered in any way.
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
@@ -355,7 +372,7 @@ TEST_F(ImageRewriteTest, InlineNoRewrite) {
                     "", "", false, false);
 }
 
-TEST_F(ImageRewriteTest, RespectsBaseUrl) {
+TEST_P(ImageRewriteTest, RespectsBaseUrl) {
   // Put original files into our fetcher.
   const char html_url[] = "http://image.test/base_url.html";
   const char png_url[]  = "http://other_domain.test/foo/bar/a.png";
@@ -426,7 +443,7 @@ TEST_F(ImageRewriteTest, RespectsBaseUrl) {
   }
 }
 
-TEST_F(ImageRewriteTest, FetchInvalid) {
+TEST_P(ImageRewriteTest, FetchInvalid) {
   // Make sure that fetching invalid URLs cleanly reports a problem by
   // calling Done(false).
   AddFilter(RewriteOptions::kRecompressImages);
@@ -436,15 +453,15 @@ TEST_F(ImageRewriteTest, FetchInvalid) {
           "http://www.example.com/70x53x,.pagespeed.ic.ABCDEFGHIJ.jpg", &out));
 }
 
-TEST_F(ImageRewriteTest, NoExtensionCorruption) {
+TEST_P(ImageRewriteTest, NoExtensionCorruption) {
   TestCorruptUrl("%22", false);
 }
 
-TEST_F(ImageRewriteTest, NoQueryCorruption) {
+TEST_P(ImageRewriteTest, NoQueryCorruption) {
   TestCorruptUrl("?query", true);
 }
 
-TEST_F(ImageRewriteTest, NoCrashOnInvalidDim) {
+TEST_P(ImageRewriteTest, NoCrashOnInvalidDim) {
   options()->EnableFilter(RewriteOptions::kRecompressImages);
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   rewrite_driver()->AddFilters();
@@ -459,6 +476,11 @@ TEST_F(ImageRewriteTest, NoCrashOnInvalidDim) {
   ParseUrl(kTestDomain, "<img width=\"-5\" height=\"-5\" src=\"a.png\">");
   ParseUrl(kTestDomain, "<img width=\"5\" height=\"-5\" src=\"a.png\">");
 }
+
+// We test with asynchronous_rewrites() == GetParam() as both true and false.
+INSTANTIATE_TEST_CASE_P(ImageRewriteTestInstance,
+                        ImageRewriteTest,
+                        ::testing::Bool());
 
 }  // namespace
 

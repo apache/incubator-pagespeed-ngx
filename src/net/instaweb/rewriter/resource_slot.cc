@@ -60,7 +60,9 @@ HtmlResourceSlot::~HtmlResourceSlot() {
 }
 
 void HtmlResourceSlot::Render() {
-  if (should_delete_element()) {
+  if (disable_rendering()) {
+    return;  // nothing done here.
+  } else if (should_delete_element()) {
     DCHECK(element_ != NULL);
     html_parse_->DeleteElement(element_);
   } else {
