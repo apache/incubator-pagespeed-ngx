@@ -334,6 +334,17 @@ void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
   }
 }
 
+bool ResourceManager::IsCachedResultExpired(
+    const CachedResult& cached_result) const {
+  bool expired = false;
+  if (cached_result.auto_expire()) {
+    if (cached_result.origin_expiration_time_ms() <= timer()->NowMs()) {
+      expired = true;
+    }
+  }
+  return expired;
+}
+
 bool ResourceManager::IsImminentlyExpiring(int64 start_date_ms,
                                            int64 expire_ms) const {
   // Consider a resource with 5 minute expiration time (the default

@@ -48,10 +48,7 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
   if (num_slots() == 1) {
     ret = true;
     ResourcePtr resource(slot(0)->resource());
-    if (resource->loaded() &&
-        resource->ContentsValid() &&
-        !Manager()->http_cache()->IsAlreadyExpired(
-            *resource->response_headers())) {
+    if (resource->IsValidAndCacheable()) {
       OutputResourcePtr output_resource(
           Manager()->CreateOutputResourceFromResource(
               Options(), id(), encoder(), resource_context(),
@@ -73,6 +70,7 @@ void SingleRewriteContext::Rewrite(OutputPartition* partition,
   CHECK(resource.get() != NULL);
   CHECK(resource->loaded());
   CHECK(resource->ContentsValid());
+  CHECK(output_resource.get() != NULL);
   output_resource->set_cached_result(partition->mutable_result());
   RewriteSingle(resource, output_resource);
 }

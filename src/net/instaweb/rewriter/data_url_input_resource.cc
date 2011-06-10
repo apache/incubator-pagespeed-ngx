@@ -25,6 +25,11 @@
 
 namespace net_instaweb {
 
+// data: URLs never expire. So we only check that it was decoded correctly.
+bool DataUrlInputResource::IsValidAndCacheable() {
+  return response_headers_.status_code() == HttpStatus::kOK;
+}
+
 bool DataUrlInputResource::Load(MessageHandler* message_handler) {
   if (DecodeDataUrlContent(encoding_, encoded_contents_,
                            &decoded_contents_) &&

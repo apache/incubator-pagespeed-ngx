@@ -32,6 +32,13 @@ class MessageHandler;
 FileInputResource::~FileInputResource() {
 }
 
+// File input resources don't have expirations, we assume that the resource
+// is valid as long as the FileInputResource lives.
+bool FileInputResource::IsValidAndCacheable() {
+  // TODO(sligocki): Stat the file to make sure it hasn't changed since load.
+  return response_headers_.status_code() == HttpStatus::kOK;
+}
+
 // TODO(sligocki): Is this reasonable? People might want custom headers.
 //
 // For example, Content-Type is set solely by file extension and will not

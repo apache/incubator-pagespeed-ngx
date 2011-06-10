@@ -58,6 +58,8 @@ class DataUrlInputResource : public Resource {
 
   virtual ~DataUrlInputResource() { }
 
+  virtual bool IsValidAndCacheable();
+
   virtual GoogleString url() const { return *url_.get(); }
 
  protected:

@@ -207,6 +207,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   void SetFetchFailOnUnexpected(bool fail) {
     mock_url_fetcher_.set_fail_on_unexpected(fail);
   }
+  void FetcherUpdateDateHeaders() {
+    mock_url_fetcher_.set_timer(mock_timer());
+    mock_url_fetcher_.set_update_date_headers(true);
+  }
   void ClearFetcherResponses() { mock_url_fetcher_.Clear(); }
 
   void EncodeFilename(const StringPiece& url, GoogleString* filename) {

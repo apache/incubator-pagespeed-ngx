@@ -52,6 +52,8 @@ class FileInputResource : public Resource {
   // Uses default no-op Freshen implementation because file-based resources
   // are fetched each time they are needed.
 
+  virtual bool IsValidAndCacheable();
+
   virtual GoogleString url() const { return url_; }
 
  protected:

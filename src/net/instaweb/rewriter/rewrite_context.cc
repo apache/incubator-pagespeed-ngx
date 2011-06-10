@@ -349,6 +349,7 @@ void RewriteContext::Start() {
 void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
                                      SharedString* value) {
   DCHECK_LE(0, outstanding_fetches_);
+  DCHECK_EQ(static_cast<size_t>(0), outputs_.size());
   cache_lookup_active_ = false;
   if (state == CacheInterface::kAvailable) {
     // We've got a hit on the output metadata; the contents should
@@ -362,6 +363,16 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
         OutputResourcePtr output_resource;
         const ContentType* content_type = NameExtensionToContentType(
             StrCat(".", cached_result.extension()));
+        // TODO(sligocki): cached_results telling us to remember not to
+        // rewrite resources are failing here.
+        // TODO(sligocki): Move this into FreshenAndCheckExpiration or delete
+        // that (currently empty) method.
+        if (Manager()->IsCachedResultExpired(cached_result)) {
+          // If a single output resource has expired, we update them all.
+          state = CacheInterface::kNotFound;
+          outputs_.clear();
+          break;
+        }
         if (cached_result.optimizable() &&
             CreateOutputResourceForCachedOutput(
                 cached_result.url(), content_type, &output_resource) &&
@@ -372,7 +383,6 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
           outputs_.push_back(OutputResourcePtr(NULL));
         }
       }
-      rewrite_done_ = true;
     } else {
       state = CacheInterface::kNotFound;
       // TODO(jmarantz): count cache corruptions in a stat?
@@ -384,9 +394,11 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
   // If the cache gave a miss, or yielded unparsable data, then acquire a lock
   // and start fetching the input resources.
   if (state == CacheInterface::kAvailable) {
+    rewrite_done_ = true;
     ok_to_write_output_partitions_ = false;  // partitions were read succesfully
     Finalize();
   } else {
+    partitions_->Clear();
     FetchInputs(kNeverBlock);
   }
 }
@@ -428,7 +440,7 @@ void RewriteContext::FetchInputs(BlockingBehavior block) {
     // contention.
   }
 
-  Activate();
+  Activate();  // TODO(jmarantz): remove.
 }
 
 void RewriteContext::ResourceFetchDone(
@@ -479,6 +491,7 @@ void RewriteContext::StartRewrite() {
       // OutputPartitions, which contain not just the partition table
       // but the content-hashes for the rewritten content.  So we must
       // rewrite before calling WritePartitions.
+      CHECK_EQ(outstanding_rewrites_, static_cast<int>(outputs_.size()));
       for (int i = 0, n = outstanding_rewrites_; i < n; ++i) {
         Rewrite(partitions_->mutable_partition(i), outputs_[i]);
       }
@@ -553,6 +566,15 @@ void RewriteContext::RewriteDone(
     OutputPartition* partition = partitions_->mutable_partition(rewrite_index);
     bool optimizable = (result == RewriteSingleResourceFilter::kRewriteOk);
     partition->mutable_result()->set_optimizable(optimizable);
+    if (!optimizable) {
+      // TODO(sligocki): We are indescriminantly setting a 5min cache lifetime
+      // for all failed rewrites. We should use the input resource's cache
+      // lifetime instead. Or better yet, do conditional fetches of input
+      // resources and only invalidate mapping if inputs change.
+      int64 now_ms = Manager()->timer()->NowMs();
+      partition->mutable_result()->set_origin_expiration_time_ms(
+          now_ms + ResponseHeaders::kImplicitCacheTtlMs);
+    }
     if (optimizable && (fetch_.get() == NULL)) {
       // TODO(jmarantz): In the async world we consider any mutation
       // to the DOM an 'optimization', even if the resource is not

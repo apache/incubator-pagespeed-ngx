@@ -552,7 +552,7 @@ TEST_F(RewriteContextTest, TrimOnTheFlyNonOptimizable) {
 
   // We should have cached the failed rewrite, no misses, fetches, or inserts.
   ValidateNoChanges("no_trimmable", CssLink("b.css"));
-  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_hits());  // partition
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
@@ -607,7 +607,7 @@ TEST_F(RewriteContextTest, TrimRewrittenNonOptimizable) {
 
   // We should have cached the failed rewrite, no misses, fetches, or inserts.
   ValidateNoChanges("no_trimmable", CssLink("b.css"));
-  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_hits());  // partition
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
@@ -1011,6 +1011,10 @@ class ResourceUpdateTest : public RewriteContextTest {
   static const char kOriginalUrl[];
   static const char kRewrittenUrlFormat[];
 
+  ResourceUpdateTest() {
+    FetcherUpdateDateHeaders();
+  }
+
   // Simulates requesting HTML doc and then loading resource.
   GoogleString RewriteResource(const StringPiece& id,
                                const StringPiece& expected_contents) {
@@ -1075,8 +1079,7 @@ TEST_F(ResourceUpdateTest, OnTheFly) {
   // 4) Advance time so that old cached input resource expires.
   mock_timer()->AdvanceMs(ttl_ms);
   // Rewrite should now use new resource.
-  // TODO(sligocki): Fix
-  //EXPECT_EQ("new", RewriteResource("updated_content", "new"));
+  EXPECT_EQ("new", RewriteResource("updated_content", "new"));
 }
 
 TEST_F(ResourceUpdateTest, Rewritten) {
@@ -1101,8 +1104,7 @@ TEST_F(ResourceUpdateTest, Rewritten) {
   // 4) Advance time so that old cached input resource expires.
   mock_timer()->AdvanceMs(ttl_ms);
   // Rewrite should now use new resource.
-  // TODO(sligocki): Fix
-  //EXPECT_EQ("new", RewriteResource("updated_content", "new"));
+  EXPECT_EQ("new", RewriteResource("updated_content", "new"));
 }
 
 TEST_F(ResourceUpdateTest, LoadFromFileOnTheFly) {
@@ -1124,8 +1126,15 @@ TEST_F(ResourceUpdateTest, LoadFromFileOnTheFly) {
   // 3) Change resource.
   WriteFile("/test/a.css", " new ");
   // Rewrite should imediately update.
-  // TODO(sligocki): Fix
+  // TODO(sligocki): This should get updated immediately.
+  // We need to fix cache lifetimes.
   //EXPECT_EQ("new", RewriteResource("updated_content", "new"));
+  EXPECT_EQ("new", RewriteResource("updated_content", "init"));
+
+  // 4) Advance time so that old cached input resource expires.
+  mock_timer()->AdvanceMs(ttl_ms);
+  // Rewrite should now use new resource.
+  EXPECT_EQ("new", RewriteResource("updated_content", "new"));
 }
 
 TEST_F(ResourceUpdateTest, LoadFromFileRewritten) {
@@ -1147,8 +1156,15 @@ TEST_F(ResourceUpdateTest, LoadFromFileRewritten) {
   // 3) Change resource.
   WriteFile("/test/a.css", " new ");
   // Rewrite should imediately update.
-  // TODO(sligocki): Fix
+  // TODO(sligocki): This should get updated immediately.
+  // We need to fix cache lifetimes.
   //EXPECT_EQ("new", RewriteResource("updated_content", "new"));
+  EXPECT_EQ("init", RewriteResource("updated_content", "init"));
+
+  // 4) Advance time so that old cached input resource expires.
+  mock_timer()->AdvanceMs(ttl_ms);
+  // Rewrite should now use new resource.
+  EXPECT_EQ("new", RewriteResource("updated_content", "new"));
 }
 
 }  // namespace net_instaweb

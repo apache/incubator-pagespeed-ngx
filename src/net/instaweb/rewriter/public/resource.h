@@ -52,11 +52,21 @@ class Resource : public RefCounted<Resource> {
 
   // Common methods across all deriviations
   ResourceManager* resource_manager() const { return resource_manager_; }
+
+  // Answers question: Are we allowed to rewrite the contents now?
+  //
+  // Checks if the contents are loaded and valid and also if the resource is
+  // up-to-date and cacheable enought to be rewritten by us right now.
+  virtual bool IsValidAndCacheable();
+
+  // TODO(sligocki): Do we need these or can we just use IsValidAndCacheable
+  // everywhere?
   bool loaded() const { return response_headers_.status_code() != 0; }
   // TODO(sligocki): Change name to HttpStatusOk?
   bool ContentsValid() const {
     return (response_headers_.status_code() == HttpStatus::kOK);
   }
+
   int64 CacheExpirationTimeMs() const;
   StringPiece contents() const {
     StringPiece val;
@@ -68,7 +78,11 @@ class Resource : public RefCounted<Resource> {
   const ResponseHeaders* response_headers() const { return &response_headers_; }
   const ContentType* type() const { return type_; }
   virtual void SetType(const ContentType* type);
-  virtual bool IsCacheable() const;
+
+  // This function is a mis-nomer, it only says whether or not this type of
+  // resource is cacheable, not whether this actual resource is cacheable.
+  // TODO(sligocki): Rename or get rid of this.
+  virtual bool IsCacheable() const { return true; }
 
   // Gets the absolute URL of the resource
   virtual GoogleString url() const = 0;

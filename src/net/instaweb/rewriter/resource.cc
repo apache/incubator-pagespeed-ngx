@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -45,6 +46,16 @@ Resource::Resource(ResourceManager* resource_manager, const ContentType* type)
 }
 
 Resource::~Resource() {
+}
+
+bool Resource::IsValidAndCacheable() {
+  // TODO(sligocki): This checks that the result is valid (200 OK) and that
+  // it is not expired or Cache-Control: no-cache, should we also call
+  // Naomi's function which would also check if it was cacheable because of
+  // Vary: headers, etc.  Should we just merge these functions?
+  return ((response_headers_.status_code() == HttpStatus::kOK) &&
+          !resource_manager_->http_cache()->IsAlreadyExpired(
+              response_headers_));
 }
 
 int64 Resource::CacheExpirationTimeMs() const {
@@ -100,10 +111,6 @@ Resource::AsyncCallback::~AsyncCallback() {
 bool Resource::Link(HTTPValue* value, MessageHandler* handler) {
   SharedString* contents_and_headers = value->share();
   return value_.Link(contents_and_headers, &response_headers_, handler);
-}
-
-bool Resource::IsCacheable() const {
-  return true;
 }
 
 void Resource::Freshen(MessageHandler* handler) {
