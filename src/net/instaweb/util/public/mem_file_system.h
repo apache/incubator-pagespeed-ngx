@@ -22,21 +22,24 @@
 #include <map>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
 class MessageHandler;
+class MockTimer;
 
 // An in-memory implementation of the FileSystem interface, for use in
 // unit tests.  Does not fully support directories.  Not particularly efficient.
 // Not threadsafe.
 // TODO(abliss): add an ability to block writes for arbitrarily long, to
 // enable testing resilience to concurrency problems with real filesystems.
+//
+// TODO(jmarantz): make threadsafe.
 class MemFileSystem : public FileSystem {
  public:
-  MemFileSystem();
+  explicit MemFileSystem(MockTimer* timer);
   virtual ~MemFileSystem();
 
   // We offer a "simulated atime" in which the clock ticks forward one
@@ -89,7 +92,7 @@ class MemFileSystem : public FileSystem {
   void Enable() { enabled_ = true; }
 
   // Accessor for timer.  Timer is owned by mem_file_system.
-  MockTimer* timer() { return &timer_; }
+  MockTimer* timer() { return timer_; }
 
   // Access statistics.
   void ClearStats() {
@@ -106,7 +109,8 @@ class MemFileSystem : public FileSystem {
 
   bool enabled_;  // When disabled, OpenInputFile returns NULL.
   StringStringMap string_map_;
-  MockTimer timer_;
+  MockTimer* timer_;
+
   // atime_map_ holds times (in s) that files were last opened/modified.  Each
   // time we do such an operation, timer() advances by 1s (so all ATimes are
   // distinct).

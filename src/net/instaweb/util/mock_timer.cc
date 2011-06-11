@@ -22,7 +22,10 @@
 #include <set>
 
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/stl_util.h"
 
 namespace net_instaweb {
@@ -31,7 +34,8 @@ const int64 MockTimer::kApr_5_2010_ms = 1270493486000LL;
 
 MockTimer::MockTimer(int64 time_ms)
     : time_us_(1000 * time_ms),
-      next_index_(0) {
+      next_index_(0),
+      mutex_(new NullMutex) {
 }
 
 MockTimer::~MockTimer() {
@@ -61,6 +65,7 @@ void MockTimer::Alarm::SetIndex(int index) {
 }
 
 void MockTimer::AddAlarm(Alarm* alarm) {
+  ScopedMutex lock(mutex_.get());
   alarm->SetIndex(next_index_++);
   size_t prev_count = alarms_.size();
   alarms_.insert(alarm);
@@ -68,6 +73,7 @@ void MockTimer::AddAlarm(Alarm* alarm) {
 }
 
 void MockTimer::CancelAlarm(Alarm* alarm) {
+  ScopedMutex lock(mutex_.get());
   int erased = alarms_.erase(alarm);
   if (erased == 1) {
     delete alarm;
@@ -77,6 +83,7 @@ void MockTimer::CancelAlarm(Alarm* alarm) {
 }
 
 void MockTimer::SetTimeUs(int64 time_us) {
+  mutex_->Lock();
   while (!alarms_.empty()) {
     AlarmOrderedSet::iterator p = alarms_.begin();
     Alarm* alarm = *p;
@@ -85,11 +92,20 @@ void MockTimer::SetTimeUs(int64 time_us) {
     } else {
       alarms_.erase(p);
       time_us_ = alarm->wakeup_time_us();
+      mutex_->Unlock();
       alarm->Run();
       delete alarm;
+      mutex_->Lock();
     }
   }
-  time_us_ = time_us;
+
+  // If an Alarm::Run function moved us forward in function,
+  // don't move us back.
+  if (time_us_ < time_us) {
+    time_us_ = time_us;
+  }
+
+  mutex_->Unlock();
 }
 
 }  // namespace net_instaweb

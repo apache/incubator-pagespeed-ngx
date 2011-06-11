@@ -19,15 +19,18 @@
 // Unit-test the file cache
 
 #include "net/instaweb/util/public/file_cache.h"
+
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/cache_test_base.h"
-#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -36,13 +39,19 @@ class CacheInterface;
 class FileCacheTest : public CacheTestBase {
  protected:
   FileCacheTest()
-      : mock_timer_(0),
+      : thread_system_(ThreadSystem::CreateThreadSystem()),
+        mock_timer_(0),
+        file_system_(&mock_timer_),
         kCleanIntervalMs(Timer::kMinuteMs),
         kTargetSize(12),  // Small enough to overflow with a few strings.
         cache_(GTestTempDir(), &file_system_, &filename_encoder_,
                new FileCache::CachePolicy(
                    &mock_timer_, kCleanIntervalMs, kTargetSize),
                &message_handler_) {
+    // TODO(jmarantz): consider using mock_thread_system if we want
+    // explicit control of time.  For now, just mutex-protect the
+    // MockTimer.
+    mock_timer_.set_mutex(thread_system_->NewMutex());
     file_system_.set_advance_time_on_update(true);
   }
 
@@ -64,9 +73,10 @@ class FileCacheTest : public CacheTestBase {
   virtual void SanityCheck() { }
 
  protected:
+  scoped_ptr<ThreadSystem> thread_system_;
+  MockTimer mock_timer_;
   MemFileSystem file_system_;
   FilenameEncoder filename_encoder_;
-  MockTimer mock_timer_;
   const int64 kCleanIntervalMs;
   const int64 kTargetSize;
   FileCache cache_;

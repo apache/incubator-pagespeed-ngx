@@ -39,6 +39,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -91,8 +92,11 @@ ResourceManagerTestBase::ResourceManagerTestBase()
       counting_url_async_fetcher_(&mock_url_async_fetcher_),
       wait_for_fetches_(false),
       base_thread_system_(ThreadSystem::CreateThreadSystem()),
+      timer_(0),
       thread_system_(new MockThreadSystem(base_thread_system_.get(),
                                           mock_timer())),
+      file_system_(&timer_),
+      other_file_system_(&timer_),
       file_prefix_(StrCat(GTestTempDir(), "/")),
       url_prefix_(URL_PREFIX),
 
@@ -243,7 +247,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   // New objects for the new server.
   SimpleStats stats;
   ResourceManager::Initialize(&stats);
-  MemFileSystem other_file_system;
+  MemFileSystem other_file_system(mock_timer());
   // other_lru_cache is owned by other_http_cache_.
   LRUCache* other_lru_cache(new LRUCache(kCacheSize));
   MockTimer* other_mock_timer = other_file_system.timer();

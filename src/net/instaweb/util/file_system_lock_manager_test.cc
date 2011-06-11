@@ -42,7 +42,9 @@ const int64 kWaitMs = 10000;
 class FileSystemLockManagerTest : public testing::Test {
  protected:
   FileSystemLockManagerTest()
-      : manager_(&file_system_, GTestTempDir(),
+      : timer_(0),
+        file_system_(&timer_),
+        manager_(&file_system_, GTestTempDir(),
                  file_system_.timer(), &handler_) { }
   virtual ~FileSystemLockManagerTest() { }
 
@@ -65,9 +67,10 @@ class FileSystemLockManagerTest : public testing::Test {
   }
 
   MockTimer* timer() {
-    return file_system_.timer();
+    return &timer_;
   }
 
+  MockTimer timer_;
   GoogleMessageHandler handler_;
   MemFileSystem file_system_;
   FileSystemLockManager manager_;

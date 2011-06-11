@@ -102,9 +102,9 @@ class MemOutputFile : public FileSystem::OutputFile {
   DISALLOW_COPY_AND_ASSIGN(MemOutputFile);
 };
 
-MemFileSystem::MemFileSystem()
+MemFileSystem::MemFileSystem(MockTimer* timer)
     : enabled_(true),
-      timer_(0),
+      timer_(timer),
       temp_file_index_(0),
       atime_enabled_(true),
       advance_time_on_update_(false) {
@@ -116,10 +116,10 @@ MemFileSystem::~MemFileSystem() {
 
 void MemFileSystem::UpdateAtime(const StringPiece& path) {
   if (atime_enabled_) {
-    int64 now_us = timer_.NowUs();
+    int64 now_us = timer_->NowUs();
     int64 now_s = now_us / Timer::kSecondUs;
     if (advance_time_on_update_) {
-      timer_.AdvanceUs(Timer::kSecondUs);
+      timer_->AdvanceUs(Timer::kSecondUs);
     }
     atime_map_[path.as_string()] = now_s;
   }
@@ -264,7 +264,7 @@ BoolOrError MemFileSystem::TryLock(const StringPiece& lock_name,
   if (lock_map_.count(lock_name.as_string()) != 0) {
     return BoolOrError(false);
   } else {
-    lock_map_[lock_name.as_string()] = timer_.NowMs();
+    lock_map_[lock_name.as_string()] = timer_->NowMs();
     return BoolOrError(true);
   }
 }
@@ -275,12 +275,12 @@ BoolOrError MemFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
   // As above, not actually threadsafe (and quick-and-dirty rather than
   // efficient; efficiency requires map::find).
   GoogleString name = lock_name.as_string();
-  int64 now = timer_.NowMs();
+  int64 now = timer_->NowMs();
   if (lock_map_.count(name) != 0 &&
       now <= lock_map_[name] + timeout_ms) {
     return BoolOrError(false);
   } else {
-    lock_map_[name] = timer_.NowMs();
+    lock_map_[name] = timer_->NowMs();
     return BoolOrError(true);
   }
 }

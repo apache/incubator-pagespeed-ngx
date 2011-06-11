@@ -24,6 +24,7 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mem_file_system.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -31,7 +32,9 @@ namespace net_instaweb {
 
 class MemFileSystemTest : public FileSystemTest {
  protected:
-  MemFileSystemTest() {
+  MemFileSystemTest()
+      : timer_(0),
+        mem_file_system_(&timer_) {
     mem_file_system_.set_advance_time_on_update(true);
   }
   virtual void DeleteRecursively(const StringPiece& filename) {
@@ -44,6 +47,7 @@ class MemFileSystemTest : public FileSystemTest {
     return GTestTempDir();
   }
  private:
+  MockTimer timer_;
   MemFileSystem mem_file_system_;
 
   DISALLOW_COPY_AND_ASSIGN(MemFileSystemTest);

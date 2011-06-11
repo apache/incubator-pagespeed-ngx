@@ -34,12 +34,17 @@ namespace net_instaweb {
 
 class MockTimer;
 
+// Thread System wrapper used to help build tests and debugging
+// environments with deterministic behavior.  When MockThreadSystem is
+// constructed, it makes its MockTimer* variable thread-safe by
+// injecting a real mutex.
+//
+// It should be noted that the MockThreadSystem uses real threads --
+// it just allows condition-variables to be created that will work
+// in mock-time.
 class MockThreadSystem : public ThreadSystem {
  public:
-  MockThreadSystem(ThreadSystem* thread_system, MockTimer* mock_timer)
-      : thread_system_(thread_system),
-        mock_timer_(mock_timer) {
-  }
+  MockThreadSystem(ThreadSystem* thread_system, MockTimer* mock_timer);
   virtual ~MockThreadSystem();
   virtual CondvarCapableMutex* NewMutex();
   virtual ThreadImpl* NewThreadImpl(Thread* wrapper, ThreadFlags flags);

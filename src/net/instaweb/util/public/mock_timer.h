@@ -21,6 +21,8 @@
 
 #include <set>
 
+#include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -59,6 +61,8 @@ class MockTimer : public Timer {
 
     // Provides a mechanism to deterministically order alarms, even
     // if multiple alarms are scheduled for the same point in time.
+    //
+    // This must be called with mutex_ held.
     void SetIndex(int index_);
 
     int index_;
@@ -100,11 +104,17 @@ class MockTimer : public Timer {
   // Cancels an outstanding alarm and deletes it.
   void CancelAlarm(Alarm* alarm);
 
+  // By default, mutex_ is a NullMutex and so MockTimer is only suitable
+  // for single-threaded systems.  To use in a multi-threaded system, create
+  // a mutex for MockTimer to use.  This transfers ownership.
+  void set_mutex(AbstractMutex* mutex) { mutex_.reset(mutex); }
+
  private:
   int64 time_us_;
   int next_index_;
   typedef std::set<Alarm*, CompareAlarms> AlarmOrderedSet;
   AlarmOrderedSet alarms_;
+  scoped_ptr<AbstractMutex> mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(MockTimer);
 };

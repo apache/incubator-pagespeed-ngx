@@ -225,9 +225,12 @@
         'htmlparse/html_parse_test_base.cc',
         'http/mock_url_fetcher.cc',
         'rewriter/resource_manager_test_base.cc',
-        'util/mem_file_system.cc',
         'util/file_system_test.cc',
         'util/gtest.cc',
+        'util/mem_file_system.cc',
+        'util/mock_time_condvar.cc',
+        'util/mock_timer.cc',
+        'util/null_mutex.cc',
       ],
     },
 

@@ -39,6 +39,7 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -48,11 +49,11 @@
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class Hasher;
 class LRUCache;
 class MessageHandler;
 class MockThreadSystem;
-class MockTimer;
 class ResponseHeaders;
 class RewriteDriverFactory;
 class RewriteFilter;
@@ -105,7 +106,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   virtual void ParseUrl(const StringPiece& url,
                         const GoogleString& html_input);
 
-  MockTimer* mock_timer() { return file_system_.timer(); }
+  MockTimer* mock_timer() { return &timer_; }
 
   void DeleteFileIfExists(const GoogleString& filename);
 
@@ -267,9 +268,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   //
   // Server A runs rewrite_driver_ and will be used to rewrite pages and
   // served the rewritten resources.
-  MemFileSystem file_system_;
   scoped_ptr<ThreadSystem> base_thread_system_;
+  scoped_ptr<AbstractMutex> timer_mutex_;
+  MockTimer timer_;
   scoped_ptr<MockThreadSystem> thread_system_;
+  MemFileSystem file_system_;
+  MemFileSystem other_file_system_;
 
   GoogleString file_prefix_;
   GoogleString url_prefix_;
@@ -290,7 +294,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // resources that server A has rewritten, but server B has not heard
   // of yet. Thus, server B will have to decode the instructions on how
   // to rewrite the resource just from the request.
-  MemFileSystem other_file_system_;
   LRUCache* other_lru_cache_;  // Owned by other_http_cache_
   HTTPCache other_http_cache_;
   FileSystemLockManager other_lock_manager_;

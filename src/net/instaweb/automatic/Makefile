@@ -41,8 +41,8 @@ BUILDTYPE = Release
 BASE_LIBS = \
   base/libbase.a \
   build/temp_gyp/libgoogleurl.a \
+  net/instaweb/libautomatic_util.a \
   net/instaweb/libhttp_core.a \
-  net/instaweb/libinstaweb_flags.a \
   net/instaweb/libinstaweb_htmlparse_core.a \
   net/instaweb/libinstaweb_http.a \
   net/instaweb/libinstaweb_http_pb.a \

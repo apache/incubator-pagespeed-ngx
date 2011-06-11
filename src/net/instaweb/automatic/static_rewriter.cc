@@ -23,9 +23,9 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_gflags.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
 #include "net/instaweb/util/public/pthread_thread_system.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
@@ -69,7 +69,7 @@ class FileRewriter : public net_instaweb::RewriteDriverFactory {
     return new net_instaweb::StdioFileSystem;
   }
   virtual net_instaweb::Timer* DefaultTimer() {
-    return new net_instaweb::MockTimer(0);
+    return new net_instaweb::GoogleTimer;
   }
   virtual net_instaweb::CacheInterface* DefaultCacheInterface() {
     return new net_instaweb::LRUCache(gflags_->lru_cache_size_bytes());

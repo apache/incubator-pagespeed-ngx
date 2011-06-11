@@ -233,8 +233,6 @@
         'util/mock_hasher.cc',
         'util/mock_message_handler.cc',
         'util/mock_thread_system.cc',
-        'util/mock_time_condvar.cc',
-        'util/mock_timer.cc',
         'util/named_lock_manager.cc',
         'util/null_message_handler.cc',
         'util/null_statistics.cc',
@@ -608,7 +606,7 @@
       }
     },
     {
-      'target_name': 'instaweb_flags',
+      'target_name': 'automatic_util',
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
@@ -616,6 +614,7 @@
        ],
       'sources': [
         'rewriter/rewrite_gflags.cc',
+        'util/google_timer.cc',
       ],
     },
     {

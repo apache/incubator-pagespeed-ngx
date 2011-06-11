@@ -27,11 +27,17 @@
 #include "net/instaweb/util/public/mock_thread_system.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/mock_time_condvar.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
-class MockTimer;
+MockThreadSystem::MockThreadSystem(ThreadSystem* thread_system,
+                                   MockTimer* mock_timer)
+    : thread_system_(thread_system),
+      mock_timer_(mock_timer) {
+  mock_timer_->set_mutex(NewMutex());
+}
 
 MockThreadSystem::~MockThreadSystem() {
 }
