@@ -1048,8 +1048,8 @@ class ResourceUpdateTest : public RewriteContextTest {
   }
 
   // Don't mess with the HTML.
-  virtual GoogleString AddHtmlBody(const GoogleString& html) {
-    return html;
+  virtual GoogleString AddHtmlBody(const StringPiece& html) {
+    return html.as_string();
   }
 };
 

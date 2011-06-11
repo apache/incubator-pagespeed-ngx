@@ -516,7 +516,7 @@ void ResourceManagerTestBase::SetupWaitFetcher() {
 }
 
 void ResourceManagerTestBase::ParseUrl(const StringPiece& url,
-                                       const GoogleString& html_input) {
+                                       const StringPiece& html_input) {
   HtmlParseTestBaseNoAlloc::ParseUrl(url, html_input);
   if (!wait_for_fetches_) {
     rewrite_driver_.WaitForCompletion();

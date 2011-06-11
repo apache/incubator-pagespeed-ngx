@@ -31,7 +31,7 @@ HtmlParseTestBaseNoAlloc::~HtmlParseTestBaseNoAlloc() {
 }
 
 void HtmlParseTestBaseNoAlloc::ParseUrl(const StringPiece& url,
-                                        const GoogleString& html_input) {
+                                        const StringPiece& html_input) {
   // We don't add the filter in the constructor because it needs to be the
   // last filter added.
   SetupWriter();

@@ -37,7 +37,7 @@
       'type': 'none',
       'dependencies': [
         '../net/instaweb/test.gyp:pagespeed_automatic_test',
-        '../net/instaweb/instaweb.gyp:instaweb_flags',
+        '../net/instaweb/instaweb.gyp:automatic_util',
       ],},
     {
       'target_name': 'test',

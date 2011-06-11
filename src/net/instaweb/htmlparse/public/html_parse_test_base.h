@@ -64,9 +64,9 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
     directive.CopyToString(&doctype_string_);
   }
 
-  virtual GoogleString AddHtmlBody(const GoogleString& html) {
+  virtual GoogleString AddHtmlBody(const StringPiece& html) {
     GoogleString ret = AddBody() ? "<html><body>\n" : "<html>\n";
-    ret += html + (AddBody() ? "\n</body></html>\n" : "\n</html>");
+    StrAppend(&ret, html, (AddBody() ? "\n</body></html>\n" : "\n</html>"));
     return ret;
   }
 
@@ -101,8 +101,7 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   }
 
   // Parse given an explicit URL rather than an id to build URL around.
-  virtual void ParseUrl(const StringPiece& url,
-                        const GoogleString& html_input);
+  virtual void ParseUrl(const StringPiece& url, const StringPiece& html_input);
 
   // Validate that the output HTML serializes as specified in
   // 'expected', which might not be identical to the input.

@@ -56,6 +56,7 @@ const char kDomain[] = "http://combine_css.test/";
 const char kYellow[] = ".yellow {background-color: yellow;}";
 const char kBlue[] = ".blue {color: blue;}\n";
 
+
 class CssCombineFilterTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
@@ -65,13 +66,30 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
   }
 
   // Test spriting CSS with options to write headers and use a hasher.
-  void CombineCss(const StringPiece& id, const char* barrier_text,
+  void CombineCss(const StringPiece& id, const StringPiece& barrier_text,
                   bool is_barrier) {
     CombineCssWithNames(id, barrier_text, is_barrier, "a.css", "b.css");
   }
 
+  // Synthesizes an HTML css link element, with no media tag.
+  virtual GoogleString Link(const StringPiece& href) {
+    return Link(href, "");
+  }
+
+  // Synthesizes an HTML css link element.  If media is non-empty, then a
+  // media tag is included.
+  virtual GoogleString Link(const StringPiece& href, const StringPiece& media) {
+    GoogleString out(StrCat(
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"", href, "\""));
+    if (!media.empty()) {
+      StrAppend(&out, " media=\"", media, "\"");
+    }
+    out.append(">");
+    return out;
+  }
+
   void CombineCssWithNames(const StringPiece& id,
-                           const char* barrier_text,
+                           const StringPiece& barrier_text,
                            bool is_barrier,
                            const char* a_css_name,
                            const char* b_css_name) {
@@ -82,23 +100,22 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     GoogleString b_css_url = StrCat(kDomain, b_css_name);
     GoogleString c_css_url = StrCat(kDomain, "c.css");
 
-    static const char html_input_format[] =
+    GoogleString html_input = StrCat(
         "<head>\n"
-        "  <link rel='stylesheet' href='%s' type='text/css'>\n"
-        "  <link rel='stylesheet' href='%s' type='text/css'>\n"
-        "  <title>Hello, Instaweb</title>\n"
-        "%s"
+        "  ", Link(a_css_name), "\n"
+        "  ", Link(b_css_name), "\n");
+    StrAppend(&html_input,
+        "  <title>Hello, Instaweb</title>\n",
+        barrier_text,
         "</head>\n"
         "<body>\n"
-        "  <div class=\"c1\">\n"
-        "    <div class=\"c2\">\n"
+        "  <div class='c1'>\n"
+        "    <div class='c2'>\n"
         "      Yellow on Blue\n"
         "    </div>\n"
         "  </div>\n"
-        "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
-        "</body>\n";
-    GoogleString html_input =
-        StringPrintf(html_input_format, a_css_name, b_css_name, barrier_text);
+        "  ", Link("c.css"), "\n"
+        "</body>\n");
     const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
     const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
     const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
@@ -133,25 +150,21 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
       expected_combination.append(c_css_body);
     }
 
-    static const char expected_output_format[] =
+    GoogleString expected_output(StrCat(
         "<head>\n"
-        "  <link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">\n"
+        "  ", Link(combine_url), "\n"
         "  \n"  // The whitespace from the original link is preserved here ...
-        "  <title>Hello, Instaweb</title>\n"
-        "%s"
+        "  <title>Hello, Instaweb</title>\n",
+        barrier_text,
         "</head>\n"
         "<body>\n"
-        "  <div class=\"c1\">\n"
-        "    <div class=\"c2\">\n"
+        "  <div class='c1'>\n"
+        "    <div class='c2'>\n"
         "      Yellow on Blue\n"
         "    </div>\n"
         "  </div>\n"
-        "  %s\n"
-        "</body>\n";
-    GoogleString expected_output = StringPrintf(
-        expected_output_format, combine_url.c_str(), barrier_text,
-        is_barrier ? "<link rel='stylesheet' href='c.css' type='text/css'>"
-        : "");
+        "  ", (is_barrier ? Link("c.css") : ""), "\n"
+        "</body>\n"));
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
     GoogleString actual_combination;
@@ -167,6 +180,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     rewrite_driver()->FetchResource(combine_url, request_headers,
                                     &response_headers, &writer,
                                     &dummy_callback);
+    rewrite_driver()->WaitForCompletion();
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) << combine_url;
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
@@ -182,6 +196,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     other_rewrite_driver()->FetchResource(combine_url, request_headers,
                                           &other_response_headers, &writer,
                                           &dummy_callback);
+    rewrite_driver()->WaitForCompletion();
     EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
@@ -224,6 +239,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         rewrite_driver()->FetchResource(kACUrl, request_headers,
                                         &response_headers, &writer,
                                         &dummy_callback));
+    rewrite_driver()->WaitForCompletion();
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
@@ -235,6 +251,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         rewrite_driver()->FetchResource(kACUrl, request_headers,
                                         &response_headers, &writer,
                                         &dummy_callback));
+    rewrite_driver()->WaitForCompletion();
     EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
 
@@ -250,6 +267,8 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         rewrite_driver()->FetchResource(kABCUrl, request_headers,
                                         &response_headers, &writer,
                                         &fail_callback));
+    rewrite_driver()->WaitForCompletion();
+
     // What status we get here depends a lot on details of when exactly
     // we detect the failure. If done early enough, nothing will be set.
     // This test may change, but see also
@@ -382,14 +401,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
           // mock fetcher with headers and content for the CSS file.
           InitResponseHeaders(link->url_, kContentTypeCss, link->content_, 600);
         }
-        GoogleString style("  <");
-        style += StringPrintf("link rel='stylesheet' type='text/css' href='%s'",
-                              link->url_.c_str());
-        if (!link->media_.empty()) {
-          StrAppend(&style, " media='", link->media_, "'");
-        }
-        style += ">\n";
-        html_input += style;
+        StrAppend(&html_input, "  ", Link(link->url_, link->media_), "\n");
       } else {
         html_input += link->content_;
       }
@@ -442,8 +454,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     SetupWriter();
     rewrite_driver()->StartParse(kTestDomain);
     GoogleString input_beginning =
-        StrCat(kXhtmlDtd, "<div><link rel=stylesheet href=a.css>",
-               "<link rel=stylesheet href=b.css>");
+        StrCat(kXhtmlDtd, "<div>", Link("a.css"), Link("b.css"));
     rewrite_driver()->ParseText(input_beginning);
 
     if (flush) {
@@ -462,13 +473,12 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     // parser constraints, in which case the expected results from this
     // code might change depending on the 'flush' arg to this method.
     EXPECT_EQ(
-        StrCat(kXhtmlDtd, "<div>",
-               "<link rel=\"stylesheet\" type=\"text/css\" href=\"",
-               combined_url, "\"></div>"),
+        StrCat(kXhtmlDtd, "<div>", Link(combined_url), "</div>"),
         output_buffer_);
   }
 
-  void CombineWithBaseTag(const char* html_input, StringVector *css_urls) {
+  void CombineWithBaseTag(const StringPiece& html_input,
+                          StringVector *css_urls) {
     // Put original CSS files into our fetcher.
     GoogleString html_url = StrCat(kDomain, "base_url.html");
     const char a_css_url[] = "http://other_domain.test/foo/a.css";
@@ -530,17 +540,16 @@ TEST_F(CssCombineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
       "  %s\n"
       "  %s\n"
       "</head>\n"
-      "<body><div class=\"c1\"><div class=\"c2\"><p>\n"
+      "<body><div class='c1'><div class='c2'><p>\n"
       "  Yellow on Blue</p></div></div></body>";
 
-  static const char unclosed_links[] =
-      "  <link rel='stylesheet' href='a.css' type='text/css'>\n"  // unclosed
+  GoogleString unclosed_links(StrCat(
+      "  ", Link("a.css"), "\n"  // unclosed
       "  <script type='text/javascript' src='c.js'></script>"     // 'in' <link>
-      "  <link rel='stylesheet' href='b.css' type='text/css'>";
-  static const char combination[] =
-      "  <link rel=\"stylesheet\" type=\"text/css\" "
-      "href=\"http://test.com/a.css+b.css.pagespeed.cc.0.css\">\n"
-      "  <script type='text/javascript' src='c.js'></script>  ";
+      "  ", Link("b.css")));
+  GoogleString combination(StrCat(
+      "  ", Link("http://test.com/a.css+b.css.pagespeed.cc.0.css"), "\n"
+      "  <script type='text/javascript' src='c.js'></script>  "));
 
   // Put original CSS files into our fetcher.
   ResponseHeaders default_css_header;
@@ -548,17 +557,15 @@ TEST_F(CssCombineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
   SetFetchResponse(StrCat(kTestDomain, "a.css"), default_css_header, ".a {}");
   SetFetchResponse(StrCat(kTestDomain, "b.css"), default_css_header, ".b {}");
   ValidateExpected("claims_xhtml_but_has_unclosed_links",
-                   StringPrintf(html_format, kXhtmlDtd, unclosed_links),
-                   StringPrintf(html_format, kXhtmlDtd, combination));
+                   StringPrintf(html_format, kXhtmlDtd, unclosed_links.c_str()),
+                   StringPrintf(html_format, kXhtmlDtd, combination.c_str()));
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithIEDirective) {
-  const char ie_directive_barrier[] =
-      "<!--[if IE]>\n"
-      "<link rel=\"stylesheet\" type=\"text/css\" "
-      "href=\"http://graphics8.nytimes.com/css/"
-      "0.1/screen/build/homepage/ie.css\">\n"
-      "<![endif]-->";
+  GoogleString ie_directive_barrier(StrCat(
+      "<!--[if IE]>\n",
+      Link("http://graphics8.nytimes.com/css/0.1/screen/build/homepage/ie.css"),
+      "\n<![endif]-->"));
   UseMd5Hasher();
   CombineCss("combine_css_ie", ie_directive_barrier, true);
 }
@@ -570,15 +577,15 @@ TEST_F(CssCombineFilterTest, CombineCssWithStyle) {
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithBogusLink) {
-  const char bogus_barrier[] = "<link rel='stylesheet' type='text/css' "
-      "href='crazee://big/blue/fake'>\n";
+  const char bogus_barrier[] = "<link rel='stylesheet' "
+      "href='crazee://big/blue/fake' type='text/css'>\n";
   UseMd5Hasher();
   CombineCss("combine_css_bogus_link", bogus_barrier, true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithImportInFirst) {
   CssLink::Vector css_in, css_out;
-  css_in.Add("1.css", "@Import \"1a.css\"", "", true);
+  css_in.Add("1.css", "@Import '1a.css'", "", true);
   css_in.Add("2.css", kYellow, "", true);
   css_in.Add("3.css", kYellow, "", true);
   BarrierTestHelper("combine_css_with_import1", css_in, &css_out);
@@ -588,7 +595,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithImportInFirst) {
 TEST_F(CssCombineFilterTest, CombineCssWithImportInSecond) {
   CssLink::Vector css_in, css_out;
   css_in.Add("1.css", kYellow, "", true);
-  css_in.Add("2.css", "@Import \"2a.css\"", "", true);
+  css_in.Add("2.css", "@Import '2a.css'", "", true);
   css_in.Add("3.css", kYellow, "", true);
   BarrierTestHelper("combine_css_with_import1", css_in, &css_out);
   EXPECT_EQ("1.css", css_out[0]->url_);
@@ -598,7 +605,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithImportInSecond) {
 TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
   const char noscript_barrier[] =
       "<noscript>\n"
-      "  <link rel='stylesheet' type='text/css' href='d.css'>\n"
+      "  <link rel='stylesheet' href='d.css' type='text/css'>\n"
       "</noscript>\n";
 
   // Put this in the Test class to remove repetition here and below.
@@ -623,7 +630,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithFakeNoscriptBarrier) {
 
 TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
   const char media_barrier[] =
-      "<link rel='stylesheet' type='text/css' href='d.css' media='print'>\n";
+      "<link rel='stylesheet' href='d.css' type='text/css' media='print'>\n";
 
   GoogleString d_css_url = StrCat(kDomain, "d.css");
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
@@ -656,13 +663,14 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   SetFetchResponse(d_css_url, default_css_header, d_css_body);
 
   // Only the first two CSS files should be combined.
-  const char html_input[] =
+  GoogleString html_input(StrCat(
       "<head>\n"
-      "  <link rel='stylesheet' type='text/css' href='a.css' media='print'>\n"
-      "  <link rel='stylesheet' type='text/css' href='b.css' media='print'>\n"
-      "  <link rel='stylesheet' type='text/css' href='c.css'>\n"
-      "  <link rel='stylesheet' type='text/css' href='d.css' media='print'>\n"
-      "</head>";
+      "  ", Link("a.css", "print"), "\n"
+      "  ", Link("b.css", "print"), "\n"));
+  StrAppend(&html_input,
+      "  ", Link("c.css"), "\n"
+      "  ", Link("d.css", "print"), "\n"
+      "</head>");
 
   // Rewrite
   ParseUrl(html_url, html_input);
@@ -673,17 +681,13 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   EXPECT_EQ(3UL, css_urls.size());
   const GoogleString& combine_url = css_urls[0];
 
-  const char expected_output_format[] =
+  GoogleString expected_output(StrCat(
       "<head>\n"
-      "  <link rel=\"stylesheet\" type=\"text/css\" media=\"print\" "
-      "href=\"%s\">\n"
+      "  ", Link(combine_url, "print"), "\n"
       "  \n"
-      "  <link rel='stylesheet' type='text/css' href='c.css'>\n"
-      "  <link rel='stylesheet' type='text/css' href='d.css' media='print'>\n"
-      "</head>";
-  GoogleString expected_output = StringPrintf(expected_output_format,
-                                              combine_url.c_str());
-
+      "  ", Link("c.css"), "\n"
+      "  ", Link("d.css", "print"), "\n"
+      "</head>"));
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 }
 
@@ -694,12 +698,12 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
 // the base tag, it should leave that one alone.
 TEST_F(CssCombineFilterTest, NoCombineCssBaseUrlOutOfOrder) {
   StringVector css_urls;
-  const char input_buffer[] =
+  GoogleString input_buffer(StrCat(
       "<head>\n"
-      "  <link rel='stylesheet' type='text/css' href='a.css'>\n"
+      "  ", Link("a.css"), "\n"
       "  <base href='http://other_domain.test/foo/'>\n"
-      "  <link rel='stylesheet' type='text/css' href='b.css'>\n"
-      "</head>\n";
+      "  ", Link("b.css"), "\n"
+      "</head>\n"));
   CombineWithBaseTag(input_buffer, &css_urls);
   EXPECT_EQ(2UL, css_urls.size());
   EXPECT_EQ(AddHtmlBody(input_buffer), output_buffer_);
@@ -709,26 +713,23 @@ TEST_F(CssCombineFilterTest, NoCombineCssBaseUrlOutOfOrder) {
 // which should get combined.
 TEST_F(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
   StringVector css_urls;
-  const char input_buffer[] =
+  GoogleString input_buffer(StrCat(
       "<head>\n"
-      "  <link rel='stylesheet' type='text/css' href='a.css'>\n"
+      "  ", Link("a.css"), "\n"
       "  <base href='http://other_domain.test/foo/'>\n"
-      "  <link rel='stylesheet' type='text/css' href='b.css'>\n"
-      "  <link rel='stylesheet' type='text/css' href='c.css'>\n"
-      "</head>\n";
+      "  ", Link("b.css"), "\n"
+      "  ", Link("c.css"), "\n"
+      "</head>\n"));
   CombineWithBaseTag(input_buffer, &css_urls);
 
-  const char expected_output_format[] =
+  GoogleString expected_output(StrCat(
       "<head>\n"
-      "  <link rel='stylesheet' type='text/css' href='a.css'>\n"
+      "  ", Link("a.css"), "\n"
       "  <base href='http://other_domain.test/foo/'>\n"
-      "  <link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">\n"
+      "  ", Link(css_urls[1]), "\n"
       "  \n"
-      "</head>\n";
+      "</head>\n"));
   EXPECT_EQ(2UL, css_urls.size());
-
-  GoogleString expected_output = StringPrintf(expected_output_format,
-                                              css_urls[1].c_str());
   EXPECT_EQ("http://other_domain.test/foo/b.css+c.css.pagespeed.cc.0.css",
             css_urls[1]);
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
@@ -739,25 +740,21 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
 // the base tag.  We should be able to find and combine that one.
 TEST_F(CssCombineFilterTest, CombineCssAbsoluteBaseUrlOutOfOrder) {
   StringVector css_urls;
-  const char input_buffer[] =
+  GoogleString input_buffer(StrCat(
       "<head>\n"
-      "  <link rel='stylesheet' type='text/css'"
-      " href='http://other_domain.test/foo/a.css'>\n"
+      "  ", Link("http://other_domain.test/foo/a.css"), "\n"
       "  <base href='http://other_domain.test/foo/'>\n"
-      "  <link rel='stylesheet' type='text/css' href='b.css'>\n"
-      "</head>\n";
+      "  ", Link("b.css"), "\n"
+      "</head>\n"));
   CombineWithBaseTag(input_buffer, &css_urls);
 
-  const char expected_output_format[] =
+  GoogleString expected_output(StrCat(
       "<head>\n"
-      "  <link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">\n"
+      "  ", Link(css_urls[0]), "\n"
       "  <base href='http://other_domain.test/foo/'>\n"
       "  \n"
-      "</head>\n";
+      "</head>\n"));
   EXPECT_EQ(1UL, css_urls.size());
-
-  GoogleString expected_output = StringPrintf(expected_output_format,
-                                              css_urls[0].c_str());
   EXPECT_EQ("http://other_domain.test/foo/a.css+b.css.pagespeed.cc.0.css",
             css_urls[0]);
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
@@ -769,22 +766,20 @@ TEST_F(CssCombineFilterTest, CombineCssAbsoluteBaseUrlOutOfOrder) {
 TEST_F(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
   // <base> tag correctly precedes any urls.
   StringVector css_urls;
-  CombineWithBaseTag(
+  CombineWithBaseTag(StrCat(
       "<head>\n"
       "  <base href='http://other_domain.test/foo/'>\n"
-      "  <link rel='stylesheet' type='text/css' href='a.css'>\n"
-      "  <link rel='stylesheet' type='text/css' href='b.css'>\n"
-      "</head>\n", &css_urls);
+      "  ", Link("a.css"), "\n"
+      "  ", Link("b.css"), "\n"
+      "</head>\n"), &css_urls);
 
-  const char expected_output_format[] =
+  GoogleString expected_output(StrCat(
       "<head>\n"
       "  <base href='http://other_domain.test/foo/'>\n"
-      "  <link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">\n"
+      "  ", Link(css_urls[0]), "\n"
       "  \n"
-      "</head>\n";
+      "</head>\n"));
   EXPECT_EQ(1UL, css_urls.size());
-  GoogleString expected_output = StringPrintf(expected_output_format,
-                                              css_urls[0].c_str());
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
   EXPECT_EQ("http://other_domain.test/foo/a.css+b.css.pagespeed.cc.0.css",
             css_urls[0]);
@@ -802,7 +797,7 @@ TEST_F(CssCombineFilterTest, CombineCssNoInput) {
       "  <link rel='stylesheet' href='a_broken.css' type='text/css'>\n"
       "  <link rel='stylesheet' href='b.css' type='text/css'>\n"
       "</head>\n"
-      "<body><div class=\"c1\"><div class=\"c2\"><p>\n"
+      "<body><div class='c1'><div class='c2'><p>\n"
       "  Yellow on Blue</p></div></div></body>";
   ValidateNoChanges("combine_css_missing_input", html_input);
 }

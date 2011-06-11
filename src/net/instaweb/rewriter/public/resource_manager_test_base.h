@@ -103,8 +103,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   ResourcePtr CreateResource(const StringPiece& base, const StringPiece& url);
 
-  virtual void ParseUrl(const StringPiece& url,
-                        const GoogleString& html_input);
+  virtual void ParseUrl(const StringPiece& url, const StringPiece& html_input);
 
   MockTimer* mock_timer() { return &timer_; }
 

@@ -212,13 +212,13 @@ void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
           combine_element, HtmlName::kRel, "stylesheet");
       rewrite_driver_->AddAttribute(combine_element, HtmlName::kType,
                                     kContentTypeCss.mime_type());
+      rewrite_driver_->AddAttribute(combine_element, HtmlName::kHref,
+                                    combination->url());
       if (!media_.empty()) {
         rewrite_driver_->AddAttribute(
             combine_element, HtmlName::kMedia, media_);
       }
 
-      rewrite_driver_->AddAttribute(combine_element, HtmlName::kHref,
-                                    combination->url());
       // TODO(sligocki): Put at top of head/flush-window.
       // Right now we're putting it where the first original element used to be.
       rewrite_driver_->InsertElementBeforeElement(element(0),
