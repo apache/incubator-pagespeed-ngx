@@ -64,8 +64,8 @@ class RewriteOptionsTest : public ::testing::Test {
   RewriteOptions options_;
 };
 
-TEST_F(RewriteOptionsTest, BotDetectDisabledByDefault) {
-  ASSERT_FALSE(options_.botdetect_enabled());
+TEST_F(RewriteOptionsTest, BotDetectEnabledByDefault) {
+  ASSERT_TRUE(options_.botdetect_enabled());
 }
 
 TEST_F(RewriteOptionsTest, BotDetectEnable) {

@@ -114,7 +114,7 @@ RewriteOptions::RewriteOptions()
       max_url_segment_size_(kDefaultMaxUrlSegmentSize),
       max_url_size_(kMaxUrlSize),
       enabled_(true),
-      botdetect_enabled_(false),
+      botdetect_enabled_(true),
       combine_across_paths_(true),
       log_rewrite_timing_(false),
       lowercase_html_names_(false),

@@ -5,7 +5,7 @@
 
     # By default, mod_pagespeed optimizes pages for bots.
     # To disable rewritting to bots, you can set this to "on".
-    ModPagespeedDisableForBots off
+    # ModPagespeedDisableForBots on
 
     # Direct Apache to send all HTML output to the mod_pagespeed
     # output handler.
