@@ -76,7 +76,6 @@ const char kPageLoadCount[] = "page_load_count";
 
 
 const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
-const int64 kGeneratedMaxAgeSec = Timer::kYearMs / Timer::kSecondMs;
 const int64 kRefreshExpirePercent = 75;
 
 }  // namespace
@@ -149,8 +148,6 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       relative_path_(false),
       store_outputs_in_file_system_(true),
       lock_manager_(lock_manager),
-      max_age_string_(StringPrintf("max-age=%d",
-                                   static_cast<int>(kGeneratedMaxAgeSec))),
       message_handler_(handler),
       thread_system_(thread_system),
       factory_(factory),
@@ -194,17 +191,14 @@ void ResourceManager::SetDefaultLongCacheHeaders(
   header->set_major_version(1);
   header->set_minor_version(1);
   header->SetStatusAndReason(HttpStatus::kOK);
+
   header->RemoveAll(HttpAttributes::kContentType);
   if (content_type != NULL) {
     header->Add(HttpAttributes::kContentType, content_type->mime_type());
   }
+
   int64 now_ms = http_cache_->timer()->NowMs();
-  header->Replace(HttpAttributes::kCacheControl, max_age_string_);
-  GoogleString expires_string;
-  header->RemoveAll(HttpAttributes::kExpires);
-  if (ConvertTimeToString(now_ms + kGeneratedMaxAgeMs, &expires_string)) {
-    header->Add(HttpAttributes::kExpires, expires_string);
-  }
+  header->SetDateAndCaching(now_ms, kGeneratedMaxAgeMs);
 
   // While PageSpeed claims the "Vary" header is needed to avoid proxy cache
   // issues for clients where some accept gzipped content and some don't, it
@@ -221,9 +215,6 @@ void ResourceManager::SetDefaultLongCacheHeaders(
 
   // TODO(jmarantz): add date/last-modified headers by default.
   StringStarVector v;
-  if (!header->Lookup(HttpAttributes::kDate, &v)) {
-    header->SetDate(now_ms);
-  }
   if (!header->Lookup(HttpAttributes::kLastModified, &v)) {
     header->SetLastModified(now_ms);
   }

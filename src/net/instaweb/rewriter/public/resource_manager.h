@@ -348,25 +348,19 @@ class ResourceManager {
   // Counts how many URLs we reject because they come from a domain that
   // is not authorized.
   Variable* resource_url_domain_rejections_;
-
   // Counts how many times we had a cache-hit for the output resource
   // partitioning, but it came too late to be used for the rewrite.
   Variable* cached_output_missed_deadline_;
-
   // Counts how many times we had a successful cache-hit for output
   // resource partitioning.
   Variable* cached_output_hits_;
-
   // Counts how many times we had a cache-miss for output
   // resource partitioning.
   Variable* cached_output_misses_;
-
   // Tracks 404s sent to clients for resource requests.
   Variable* resource_404_count_;
-
   // Tracks 404s sent clients to when slurping.
   Variable* slurp_404_count_;
-
   // Used for recording results from beacons from 'add_instrumentation_filter'.
   Variable* total_page_load_ms_;
   Variable* page_load_count_;
@@ -377,10 +371,11 @@ class ResourceManager {
 
   HTTPCache* http_cache_;
   CacheInterface* metadata_cache_;
+
   bool relative_path_;
   bool store_outputs_in_file_system_;
+
   NamedLockManager* lock_manager_;
-  GoogleString max_age_string_;
   MessageHandler* message_handler_;
   ThreadSystem* thread_system_;
 

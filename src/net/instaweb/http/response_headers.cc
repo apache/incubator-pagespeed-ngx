@@ -178,6 +178,8 @@ int64 ResponseHeaders::CacheExpirationTimeMs() const {
 
 void ResponseHeaders::SetDateAndCaching(int64 date_ms, int64 ttl_ms) {
   SetDate(date_ms);
+  // Note: We set both Expires and Cache-Control headers so that legacy
+  // HTTP/1.0 browsers and proxies correctly cache these resources.
   SetTimeHeader(HttpAttributes::kExpires, date_ms + ttl_ms);
   Replace(HttpAttributes::kCacheControl,
           StrCat("max-age=", Integer64ToString(ttl_ms / Timer::kSecondMs)));

@@ -769,7 +769,7 @@ class ResourceFreshenTest : public ResourceManagerTest {
   }
 
   // Moves the mock-timer forward by the specified number of seconds.
-  // Updates kResourceUrl's headers as ssen by the mock fetcher, to
+  // Updates kResourceUrl's headers as seen by the mock fetcher, to
   // match the new mock timestamp.
   void AdvanceTimeAndUpdateOriginHeaders(int delta_sec) {
     mock_timer()->AdvanceMs(delta_sec * Timer::kSecondMs);

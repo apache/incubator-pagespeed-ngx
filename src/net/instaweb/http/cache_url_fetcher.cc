@@ -102,8 +102,8 @@ void CacheUrlFetcher::AsyncFetch::UpdateCache() {
       // header X-Instaweb-Disable-cache to avoid letting this escape into
       // the wild.  We may want to revisit if this proves problematic.
       remember_not_cached.SetStatusAndReason(HttpStatus::kOK);
-      remember_not_cached.SetDate(http_cache_->timer()->NowMs());
-      remember_not_cached.Add("Cache-control", "max-age=300");
+      int64 now_ms = http_cache_->timer()->NowMs();
+      remember_not_cached.SetDateAndCaching(now_ms, 5 * Timer::kMinuteMs);
       remember_not_cached.Add(kRememberNotCached, "1");  // value doesn't matter
       dummy_value.Write("", message_handler_);
       dummy_value.SetHeaders(&remember_not_cached);
