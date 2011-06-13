@@ -28,11 +28,13 @@
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace net_instaweb {
+
 class HtmlElement;
 class HtmlIEDirectiveNode;
 class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
+class RewriteContext;
 class RewriteDriver;
 class Statistics;
 class UrlSegmentEncoder;
@@ -60,11 +62,19 @@ class CssCombineFilter : public RewriteFilter {
     return &multipart_encoder_;
   }
 
+  virtual bool HasAsyncFlow() const;
+  virtual RewriteContext* MakeRewriteContext();
+
  private:
+  class Context;
   class CssCombiner;
 
+  CssCombiner* combiner();
+  void NextCombination();
+  Context* MakeContext();
+
   CssTagScanner css_tag_scanner_;
-  scoped_ptr<CssCombiner> combiner_;
+  scoped_ptr<Context> context_;
   UrlMultipartEncoder multipart_encoder_;
 
   DISALLOW_COPY_AND_ASSIGN(CssCombineFilter);

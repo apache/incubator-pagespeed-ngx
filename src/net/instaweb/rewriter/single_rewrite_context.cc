@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -64,8 +63,10 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
   return ret;
 }
 
-void SingleRewriteContext::Rewrite(OutputPartition* partition,
+void SingleRewriteContext::Rewrite(int partition_index,
+                                   OutputPartition* partition,
                                    const OutputResourcePtr& output_resource) {
+  CHECK_EQ(0, partition_index);
   ResourcePtr resource(slot(0)->resource());
   CHECK(resource.get() != NULL);
   CHECK(resource->loaded());

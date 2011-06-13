@@ -118,6 +118,7 @@ class RewriteContext {
   // but may also be accessed in ::Render.
   int num_output_partitions() const;
   const OutputPartition* output_partition(int i) const;
+  OutputPartition* output_partition(int i);
 
   // Resource slots must be added to a Rewrite before Initiate() can
   // be called.  Starting the rewrite sets in motion a sequence
@@ -185,13 +186,13 @@ class RewriteContext {
   // Establishes that a slot has been rewritten.  So when Propagate()
   // is called, the resource update that has been written to this slot can
   // be propagated to the DOM.
-  void RenderSlotOnDetach(int rewrite_index);
+  void RenderPartitionOnDetach(int partition_index);
 
   // Called by subclasses when an individual rewrite partition is
   // done.  Note that RewriteDone may directly 'delete this' so no
   // further references to 'this' should follow a call to RewriteDone.
   void RewriteDone(RewriteSingleResourceFilter::RewriteResult result,
-                   int rewrite_index);
+                   int partition_index);
 
   // Adds a new nested RewriteContext.  This RewriteContext will not
   // be considered complete until all nested contexts have completed.
@@ -241,7 +242,8 @@ class RewriteContext {
   // TODO(jmarantz): check for resource completion from a different
   // thread (while we were waiting for resource fetches) when Rewrite
   // gets called.
-  virtual void Rewrite(OutputPartition* partition,
+  virtual void Rewrite(int partition_index,
+                       OutputPartition* partition,
                        const OutputResourcePtr& output) = 0;
 
   // Once any nested rewrites have completed, the results of these

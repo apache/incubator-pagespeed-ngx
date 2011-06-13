@@ -370,7 +370,8 @@ class CombiningFilter : public RewriteFilter {
       return true;
     }
 
-    virtual void Rewrite(OutputPartition* partition,
+    virtual void Rewrite(int partition_index,
+                         OutputPartition* partition,
                          const OutputResourcePtr& output) {
       // resource_combiner.cc takes calls WriteCombination as part
       // of Combine.  But if we are being called on behalf of a
@@ -387,15 +388,18 @@ class CombiningFilter : public RewriteFilter {
           result = RewriteSingleResourceFilter::kRewriteFailed;
         }
       }
-      RewriteDone(result, 0);
+      RewriteDone(result, partition_index);
     }
 
     virtual void Render() {
       // Slot 0 will be replaced by the combined resource as part of
       // rewrite_context.cc.  But we still need to delete slots 1-N.
-      for (int i = 1, n = num_slots(); i < n; ++i) {
-        slot(i)->set_should_delete_element(true);
-        RenderSlotOnDetach(i);
+      for (int p = 0, np = num_output_partitions(); p < np; ++p) {
+        OutputPartition* partition = output_partition(p);
+        for (int i = 1; i < partition->input_size(); ++i) {
+          int slot_index = partition->input(i);
+          slot(slot_index)->set_should_delete_element(true);
+        }
       }
     }
 

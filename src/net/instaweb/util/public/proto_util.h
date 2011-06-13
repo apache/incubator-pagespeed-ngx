@@ -19,6 +19,7 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "google/protobuf/io/zero_copy_stream_impl_lite.h"
+#include "google/protobuf/repeated_field.h"
 
 namespace net_instaweb {
 

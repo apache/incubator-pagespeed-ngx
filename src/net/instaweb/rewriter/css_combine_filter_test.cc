@@ -57,10 +57,14 @@ const char kYellow[] = ".yellow {background-color: yellow;}";
 const char kBlue[] = ".blue {color: blue;}\n";
 
 
-class CssCombineFilterTest : public ResourceManagerTestBase {
+class CssCombineFilterTest : public ResourceManagerTestBase,
+                             public ::testing::WithParamInterface<bool> {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
+    bool async_rewrites = GetParam();
+    RewriteDriver* driver = rewrite_driver();
+    driver->SetAsynchronousRewrites(async_rewrites);
     AddFilter(RewriteOptions::kCombineCss);
     AddOtherFilter(RewriteOptions::kCombineCss);
   }
@@ -503,18 +507,18 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
   }
 };
 
-TEST_F(CssCombineFilterTest, CombineCss) {
+TEST_P(CssCombineFilterTest, CombineCss) {
   CombineCss("combine_css_no_hash", "", false);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssMD5) {
+TEST_P(CssCombineFilterTest, CombineCssMD5) {
   UseMd5Hasher();
   CombineCss("combine_css_md5", "", false);
 }
 
 // Make sure that if we re-parse the same html twice we do not
 // end up recomputing the CSS (and writing to cache) again
-TEST_F(CssCombineFilterTest, CombineCssRecombine) {
+TEST_P(CssCombineFilterTest, CombineCssRecombine) {
   UseMd5Hasher();
   CombineCss("combine_css_recombine", "", false);
   int inserts_before = lru_cache()->num_inserts();
@@ -527,12 +531,12 @@ TEST_F(CssCombineFilterTest, CombineCssRecombine) {
 
 
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=39
-TEST_F(CssCombineFilterTest, DealWithParams) {
+TEST_P(CssCombineFilterTest, DealWithParams) {
   CombineCssWithNames("with_params", "", false, "a.css?U", "b.css?rev=138");
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=252
-TEST_F(CssCombineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
+TEST_P(CssCombineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
   // XHTML text should not have unclosed links.  But if they do, like
   // in Issue 252, then we should leave them alone.
   static const char html_format[] =
@@ -561,7 +565,7 @@ TEST_F(CssCombineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
                    StringPrintf(html_format, kXhtmlDtd, combination.c_str()));
 }
 
-TEST_F(CssCombineFilterTest, CombineCssWithIEDirective) {
+TEST_P(CssCombineFilterTest, CombineCssWithIEDirective) {
   GoogleString ie_directive_barrier(StrCat(
       "<!--[if IE]>\n",
       Link("http://graphics8.nytimes.com/css/0.1/screen/build/homepage/ie.css"),
@@ -570,20 +574,20 @@ TEST_F(CssCombineFilterTest, CombineCssWithIEDirective) {
   CombineCss("combine_css_ie", ie_directive_barrier, true);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssWithStyle) {
+TEST_P(CssCombineFilterTest, CombineCssWithStyle) {
   const char style_barrier[] = "<style>a { color: red }</style>\n";
   UseMd5Hasher();
   CombineCss("combine_css_style", style_barrier, true);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssWithBogusLink) {
+TEST_P(CssCombineFilterTest, CombineCssWithBogusLink) {
   const char bogus_barrier[] = "<link rel='stylesheet' "
       "href='crazee://big/blue/fake' type='text/css'>\n";
   UseMd5Hasher();
   CombineCss("combine_css_bogus_link", bogus_barrier, true);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssWithImportInFirst) {
+TEST_P(CssCombineFilterTest, CombineCssWithImportInFirst) {
   CssLink::Vector css_in, css_out;
   css_in.Add("1.css", "@Import '1a.css'", "", true);
   css_in.Add("2.css", kYellow, "", true);
@@ -592,7 +596,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithImportInFirst) {
   EXPECT_EQ(1, css_out.size());
 }
 
-TEST_F(CssCombineFilterTest, CombineCssWithImportInSecond) {
+TEST_P(CssCombineFilterTest, CombineCssWithImportInSecond) {
   CssLink::Vector css_in, css_out;
   css_in.Add("1.css", kYellow, "", true);
   css_in.Add("2.css", "@Import '2a.css'", "", true);
@@ -602,7 +606,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithImportInSecond) {
   EXPECT_EQ(2, css_out.size());
 }
 
-TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
+TEST_P(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
   const char noscript_barrier[] =
       "<noscript>\n"
       "  <link rel='stylesheet' href='d.css' type='text/css'>\n"
@@ -619,7 +623,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
   CombineCss("combine_css_noscript", noscript_barrier, true);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssWithFakeNoscriptBarrier) {
+TEST_P(CssCombineFilterTest, CombineCssWithFakeNoscriptBarrier) {
   const char non_barrier[] =
       "<noscript>\n"
       "  <p>You have no scripts installed</p>\n"
@@ -628,7 +632,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithFakeNoscriptBarrier) {
   CombineCss("combine_css_fake_noscript", non_barrier, false);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
+TEST_P(CssCombineFilterTest, CombineCssWithMediaBarrier) {
   const char media_barrier[] =
       "<link rel='stylesheet' href='d.css' type='text/css' media='print'>\n";
 
@@ -642,7 +646,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
   CombineCss("combine_css_media", media_barrier, true);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
+TEST_P(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   // Put original CSS files into our fetcher.
   GoogleString html_url = StrCat(kDomain, "no_media_barrier.html");
   GoogleString a_css_url = StrCat(kDomain, "a.css");
@@ -696,7 +700,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
 // behavior is that we leave any urls before the base tag alone, and then try
 // to combine urls after the base tag.  Since this test has only one css after
 // the base tag, it should leave that one alone.
-TEST_F(CssCombineFilterTest, NoCombineCssBaseUrlOutOfOrder) {
+TEST_P(CssCombineFilterTest, NoCombineCssBaseUrlOutOfOrder) {
   StringVector css_urls;
   GoogleString input_buffer(StrCat(
       "<head>\n"
@@ -711,7 +715,7 @@ TEST_F(CssCombineFilterTest, NoCombineCssBaseUrlOutOfOrder) {
 
 // Same invalid configuration, but now with two css refs after the base tag,
 // which should get combined.
-TEST_F(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
+TEST_P(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
   StringVector css_urls;
   GoogleString input_buffer(StrCat(
       "<head>\n"
@@ -738,7 +742,7 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
 
 // Same invalid configuration, but now with a full qualified url before
 // the base tag.  We should be able to find and combine that one.
-TEST_F(CssCombineFilterTest, CombineCssAbsoluteBaseUrlOutOfOrder) {
+TEST_P(CssCombineFilterTest, CombineCssAbsoluteBaseUrlOutOfOrder) {
   StringVector css_urls;
   GoogleString input_buffer(StrCat(
       "<head>\n"
@@ -763,7 +767,7 @@ TEST_F(CssCombineFilterTest, CombineCssAbsoluteBaseUrlOutOfOrder) {
 
 // Here's the same test as NoCombineCssBaseUrlOutOfOrder, legalized to have
 // the base url before the first link.
-TEST_F(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
+TEST_P(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
   // <base> tag correctly precedes any urls.
   StringVector css_urls;
   CombineWithBaseTag(StrCat(
@@ -786,7 +790,7 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
   EXPECT_TRUE(GoogleUrl(css_urls[0]).is_valid());
 }
 
-TEST_F(CssCombineFilterTest, CombineCssNoInput) {
+TEST_P(CssCombineFilterTest, CombineCssNoInput) {
   SetFetchFailOnUnexpected(false);
   ResponseHeaders default_css_header;
   SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
@@ -802,19 +806,19 @@ TEST_F(CssCombineFilterTest, CombineCssNoInput) {
   ValidateNoChanges("combine_css_missing_input", html_input);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssXhtml) {
+TEST_P(CssCombineFilterTest, CombineCssXhtml) {
   TestXhtml(false);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssXhtmlWithFlush) {
+TEST_P(CssCombineFilterTest, CombineCssXhtmlWithFlush) {
   TestXhtml(true);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssMissingResource) {
+TEST_P(CssCombineFilterTest, CombineCssMissingResource) {
   CssCombineMissingResource();
 }
 
-TEST_F(CssCombineFilterTest, CombineCssManyFiles) {
+TEST_P(CssCombineFilterTest, CombineCssManyFiles) {
   // Prepare an HTML fragment with too many CSS files to combine,
   // exceeding the char limit.
   //
@@ -850,7 +854,7 @@ TEST_F(CssCombineFilterTest, CombineCssManyFiles) {
   EXPECT_EQ(kNumCssLinks - kNumCssInCombination, segments.size());
 }
 
-TEST_F(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
+TEST_P(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
   // This test differs from the previous test in we have exactly one CSS file
   // that stays on its own.
   // Note: Without CssCombine::Partnership::kUrlSlack this was:
@@ -881,7 +885,7 @@ TEST_F(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
 // is a taste test.  This new mechanism is more code per test but I think
 // the failures are more obvious and the expect/assert tests are in the
 // top level of the test which might make it easier to debug.
-TEST_F(CssCombineFilterTest, CombineCssNotCached) {
+TEST_P(CssCombineFilterTest, CombineCssNotCached) {
   CssLink::Vector css_in, css_out;
   css_in.Add("1.css", kYellow, "", true);
   css_in.Add("2.css", kYellow, "", true);
@@ -903,7 +907,7 @@ TEST_F(CssCombineFilterTest, CombineCssNotCached) {
 
 // Note -- this test is redundant with CombineCssWithIEDirective -- this
 // is a taste test.
-TEST_F(CssCombineFilterTest, CombineStyleTag) {
+TEST_P(CssCombineFilterTest, CombineStyleTag) {
   CssLink::Vector css_in, css_out;
   css_in.Add("1.css", kYellow, "", true);
   css_in.Add("2.css", kYellow, "", true);
@@ -921,7 +925,7 @@ TEST_F(CssCombineFilterTest, CombineStyleTag) {
   EXPECT_EQ("4.css", css_out[1]->url_);
 }
 
-TEST_F(CssCombineFilterTest, NoAbsolutifySameDir) {
+TEST_P(CssCombineFilterTest, NoAbsolutifySameDir) {
   CssLink::Vector css_in, css_out;
   css_in.Add("1.css", ".yellow {background-image: url('1.png');}\n", "", true);
   css_in.Add("2.css", ".yellow {background-image: url('2.png');}\n", "", true);
@@ -940,7 +944,7 @@ TEST_F(CssCombineFilterTest, NoAbsolutifySameDir) {
   EXPECT_EQ(expected_combination, actual_combination);
 }
 
-TEST_F(CssCombineFilterTest, DoAbsolutifyDifferentDir) {
+TEST_P(CssCombineFilterTest, DoAbsolutifyDifferentDir) {
   CssLink::Vector css_in, css_out;
   css_in.Add("1.css", ".yellow {background-image: url('1.png');}\n", "", true);
   css_in.Add("foo/2.css", ".yellow {background-image: url('2.png');}\n",
@@ -960,7 +964,7 @@ TEST_F(CssCombineFilterTest, DoAbsolutifyDifferentDir) {
 }
 
 // Verifies that we don't produce URLs that are too long in a corner case.
-TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
+TEST_P(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   CssLink::Vector css_in, css_out;
   GoogleString long_name(600, 'z');
   css_in.Add(long_name + "/a.css", "a", "", true);
@@ -983,7 +987,7 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
 }
 
 // Verifies that we don't allow path-crossing URLs if that option is turned off.
-TEST_F(CssCombineFilterTest, CrossAcrossPathsDisallowed) {
+TEST_P(CssCombineFilterTest, CrossAcrossPathsDisallowed) {
   options()->set_combine_across_paths(false);
   CssLink::Vector css_in, css_out;
   css_in.Add("a/a.css", "a", "", true);
@@ -994,7 +998,7 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsDisallowed) {
   EXPECT_EQ("b/b.css", css_out[1]->url_);
 }
 
-TEST_F(CssCombineFilterTest, CrossMappedDomain) {
+TEST_P(CssCombineFilterTest, CrossMappedDomain) {
   CssLink::Vector css_in, css_out;
   DomainLawyer* laywer = options()->domain_lawyer();
   laywer->AddRewriteDomainMapping("a.com", "b.com", &message_handler_);
@@ -1018,7 +1022,7 @@ TEST_F(CssCombineFilterTest, CrossMappedDomain) {
 
 // Verifies that we cannot do the same cross-domain combo when we lack
 // the domain mapping.
-TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
+TEST_P(CssCombineFilterTest, CrossUnmappedDomain) {
   CssLink::Vector css_in, css_out;
   DomainLawyer* laywer = options()->domain_lawyer();
   laywer->AddDomain("a.com", &message_handler_);
@@ -1040,11 +1044,11 @@ TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
 }
 
 // Make sure bad requests do not corrupt our extension.
-TEST_F(CssCombineFilterTest, NoExtensionCorruption) {
+TEST_P(CssCombineFilterTest, NoExtensionCorruption) {
   TestCorruptUrl("%22", false);
 }
 
-TEST_F(CssCombineFilterTest, NoQueryCorruption) {
+TEST_P(CssCombineFilterTest, NoQueryCorruption) {
   TestCorruptUrl("?query", true);
 }
 
@@ -1059,6 +1063,9 @@ TEST_F(CssCombineFilterTest, NoQueryCorruption) {
            incompatible domain
            intervening inline style tag (TODO: outline first?)
 */
+
+INSTANTIATE_TEST_CASE_P(CssCombineFilterTestInstance, CssCombineFilterTest,
+                        ::testing::Bool());
 
 }  // namespace
 

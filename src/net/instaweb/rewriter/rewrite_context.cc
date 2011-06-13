@@ -24,6 +24,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 
+#include <cstddef>                     // for size_t
 #include <vector>
 
 #include "base/logging.h"
@@ -40,6 +41,7 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
@@ -49,6 +51,7 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 #include "net/instaweb/util/public/worker.h"
 #include "net/instaweb/util/public/writer.h"
@@ -282,6 +285,10 @@ const OutputPartition* RewriteContext::output_partition(int i) const {
   return &partitions_->partition(i);
 }
 
+OutputPartition* RewriteContext::output_partition(int i) {
+  return partitions_->mutable_partition(i);
+}
+
 void RewriteContext::AddSlot(const ResourceSlotPtr& slot) {
   CHECK(!started_);
 
@@ -333,7 +340,8 @@ void RewriteContext::Start() {
     // Write partition to metadata cache.
     StringVector urls;
     for (int i = 0, n = num_slots(); i < n; ++i) {
-      urls.push_back(slot(i)->resource()->url());
+      ResourcePtr resource(slot(i)->resource());
+      urls.push_back(resource->url());
     }
     encoder()->Encode(urls, resource_context_.get(), &partition_key_);
     StrAppend(&partition_key_, ":", id());
@@ -378,7 +386,7 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
                 cached_result.url(), content_type, &output_resource) &&
             FreshenAndCheckExpiration(cached_result)) {
           outputs_.push_back(output_resource);
-          RenderSlotOnDetach(i);
+          RenderPartitionOnDetach(i);
         } else {
           outputs_.push_back(OutputResourcePtr(NULL));
         }
@@ -479,31 +487,26 @@ void RewriteContext::Activate() {
 }
 
 void RewriteContext::StartRewrite() {
-  if (Partition(partitions_.get(), &outputs_)) {
-    outstanding_rewrites_ = partitions_->partition_size();
-    if (outstanding_rewrites_ == 0) {
-      // The partitioning succeeded, but yielded zero rewrites.  Write out the
-      // empty partition table and let any successor Rewrites run.
-      rewrite_done_ = true;
-      WritePartition();
-    } else {
-      // We will let the Rewrites complete prior to writing the
-      // OutputPartitions, which contain not just the partition table
-      // but the content-hashes for the rewritten content.  So we must
-      // rewrite before calling WritePartitions.
-      CHECK_EQ(outstanding_rewrites_, static_cast<int>(outputs_.size()));
-      for (int i = 0, n = outstanding_rewrites_; i < n; ++i) {
-        Rewrite(partitions_->mutable_partition(i), outputs_[i]);
-      }
-    }
+  if (!Partition(partitions_.get(), &outputs_)) {
+    partitions_->clear_partition();
+    outputs_.clear();
+  }
+
+  outstanding_rewrites_ = partitions_->partition_size();
+  if (outstanding_rewrites_ == 0) {
+    // The partitioning succeeded, but yielded zero rewrites.  Write out the
+    // empty partition table and let any successor Rewrites run.
+    rewrite_done_ = true;
+    WritePartition();
   } else {
-    // The partitioning failed.
-    //
-    // TODO(jmarantz): Remember that!  The filter is indicating there
-    // is no useful way to rewrite this group of resources, so on
-    // subsequent attempts we should be able to rediscover this with
-    // one cache lookup.
-    DCHECK(false);
+    // We will let the Rewrites complete prior to writing the
+    // OutputPartitions, which contain not just the partition table
+    // but the content-hashes for the rewritten content.  So we must
+    // rewrite before calling WritePartitions.
+    CHECK_EQ(outstanding_rewrites_, static_cast<int>(outputs_.size()));
+    for (int i = 0, n = outstanding_rewrites_; i < n; ++i) {
+      Rewrite(i, partitions_->mutable_partition(i), outputs_[i]);
+    }
   }
 }
 
@@ -559,11 +562,12 @@ void RewriteContext::NestedRewriteDone() {
 
 void RewriteContext::RewriteDone(
     RewriteSingleResourceFilter::RewriteResult result,
-    int rewrite_index) {
+    int partition_index) {
   if (result == RewriteSingleResourceFilter::kTooBusy) {
     ok_to_write_output_partitions_ = false;
   } else {
-    OutputPartition* partition = partitions_->mutable_partition(rewrite_index);
+    OutputPartition* partition =
+        partitions_->mutable_partition(partition_index);
     bool optimizable = (result == RewriteSingleResourceFilter::kRewriteOk);
     partition->mutable_result()->set_optimizable(optimizable);
     if (!optimizable) {
@@ -582,7 +586,7 @@ void RewriteContext::RewriteDone(
       // think our current usage of the CachedResult protobuf does not
       // have a representation for that but we could probably invent
       // a convention, like leaving the url() in the protobuf unset.
-      RenderSlotOnDetach(rewrite_index);
+      RenderPartitionOnDetach(partition_index);
     }
   }
   --outstanding_rewrites_;
@@ -614,30 +618,16 @@ void RewriteContext::Propagate(bool render_slots) {
     if (render_slots) {
       Render();
     }
-    // TODO(jmarantz): the current data model is not sufficient for
-    // arbitrary output->input mapping.  We need to record, in each
-    // partition, which outputs are affected.
-    //
-    // For example, if we have HTML:
-    //   <link href=1/><link  href=2/><link href=3/><link href=4/>
-    // and we want to merge together 1&3 with 2&4, we'll get two
-    // partitions partition1={inputs=(1,3)} and
-    // partition2={inputs=(2,4)}.  We know that partition1 is composed
-    // of inputs(1,3) but we don't know whether to call
-    // input1->SetResource(output[0]->resource()) and delete input2,
-    // or vice versa.  And I think we have no way to represent the
-    // sort of transformation done by either spriting or js-combining
-    // where every input gets a separate mutation, where a new resource
-    // is inserted to load the combination and every other resource needs
-    // a queued mutation to reference a slice of the combined one.
-    if (!outputs_.empty()) {
-      CHECK_EQ(1U, outputs_.size());
-      for (int i = 0, n = slots_.size(); i < n; ++i) {
-        if (render_slots_[i]) {
-          ResourcePtr resource(outputs_[0]);
-          slots_[i]->SetResource(resource);
+    CHECK_EQ(num_output_partitions(), static_cast<int>(outputs_.size()));
+    for (int p = 0, np = num_output_partitions(); p < np; ++p) {
+      OutputPartition* partition = output_partition(p);
+      for (int i = 0, n = partition->input_size(); i < n; ++i) {
+        int slot_index = partition->input(i);
+        if (render_slots_[slot_index]) {
+          ResourcePtr resource(outputs_[p]);
+          slots_[slot_index]->SetResource(resource);
           if (render_slots) {
-            slots_[i]->Render();
+            slots_[slot_index]->Render();
           }
         }
       }
@@ -657,8 +647,12 @@ void RewriteContext::Finalize() {
   }
 }
 
-void RewriteContext::RenderSlotOnDetach(int rewrite_index) {
-  render_slots_[rewrite_index] = true;
+void RewriteContext::RenderPartitionOnDetach(int rewrite_index) {
+  OutputPartition* partition = output_partition(rewrite_index);
+  for (int i = 0; i < partition->input_size(); ++i) {
+    int slot_index = partition->input(i);
+    render_slots_[slot_index] = true;
+  }
 }
 
 void RewriteContext::RunSuccessors() {
@@ -696,7 +690,7 @@ void RewriteContext::FinishFetch() {
   OutputResourcePtr output(fetch_->output_resource());
   ++outstanding_rewrites_;
   if (ok_to_rewrite) {
-    Rewrite(partition, output);
+    Rewrite(0, partition, output);
   } else {
     RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
   }

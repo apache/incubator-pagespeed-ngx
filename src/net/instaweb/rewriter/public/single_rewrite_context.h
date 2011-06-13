@@ -51,7 +51,8 @@ class SingleRewriteContext : public RewriteContext {
   // SingleRewriteContext takes care of these methods from RewriteContext:
   virtual bool Partition(OutputPartitions* partitions,
                          OutputResourceVector* outputs);
-  virtual void Rewrite(OutputPartition* partition,
+  virtual void Rewrite(int partition_index,
+                       OutputPartition* partition,
                        const OutputResourcePtr& output);
 
   DISALLOW_COPY_AND_ASSIGN(SingleRewriteContext);
