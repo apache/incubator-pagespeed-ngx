@@ -20,6 +20,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -30,8 +31,14 @@ namespace net_instaweb {
 
 namespace {
 
-class CssInlineFilterTest : public ResourceManagerTestBase {
+class CssInlineFilterTest : public ResourceManagerTestBase,
+                            public ::testing::WithParamInterface<bool> {
  protected:
+  virtual void SetUp() {
+    ResourceManagerTestBase::SetUp();
+    rewrite_driver()->SetAsynchronousRewrites(GetParam());
+  }
+
   void TestInlineCss(const GoogleString& html_url,
                      const GoogleString& css_url,
                      const GoogleString& other_attrs,
@@ -65,14 +72,14 @@ class CssInlineFilterTest : public ResourceManagerTestBase {
   }
 };
 
-TEST_F(CssInlineFilterTest, InlineCssSimple) {
+TEST_P(CssInlineFilterTest, InlineCssSimple) {
   const GoogleString css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "", css, true, css);
 }
 
-TEST_F(CssInlineFilterTest, InlineCssAbsolutifyUrls1) {
+TEST_P(CssInlineFilterTest, InlineCssAbsolutifyUrls1) {
   // CSS with a relative URL that needs to be changed:
   const GoogleString css1 =
       "BODY { background-image: url('bg.png'); }\n";
@@ -84,7 +91,7 @@ TEST_F(CssInlineFilterTest, InlineCssAbsolutifyUrls1) {
                 "", css1, true, css2);
 }
 
-TEST_F(CssInlineFilterTest, InlineCssAbsolutifyUrls2) {
+TEST_P(CssInlineFilterTest, InlineCssAbsolutifyUrls2) {
   // CSS with a relative URL, this time with ".." in it:
   const GoogleString css1 =
       "BODY { background-image: url('../quux/bg.png'); }\n";
@@ -96,28 +103,28 @@ TEST_F(CssInlineFilterTest, InlineCssAbsolutifyUrls2) {
                 "", css1, true, css2);
 }
 
-TEST_F(CssInlineFilterTest, NoAbsolutifyUrlsSameDir) {
+TEST_P(CssInlineFilterTest, NoAbsolutifyUrlsSameDir) {
   const GoogleString css = "BODY { background-image: url('bg.png'); }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/baz.css",
                 "", css, true, css);
 }
 
-TEST_F(CssInlineFilterTest, DoNotInlineCssWithMediaAttr) {
+TEST_P(CssInlineFilterTest, DoNotInlineCssWithMediaAttr) {
   const GoogleString css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "media=\"print\"", css, false, "");
 }
 
-TEST_F(CssInlineFilterTest, DoInlineCssWithMediaAll) {
+TEST_P(CssInlineFilterTest, DoInlineCssWithMediaAll) {
   const GoogleString css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "media=\"all\"", css, true, css);
 }
 
-TEST_F(CssInlineFilterTest, DoNotInlineCssTooBig) {
+TEST_P(CssInlineFilterTest, DoNotInlineCssTooBig) {
   // CSS too large to inline:
   const int64 length = 2 * RewriteOptions::kDefaultCssInlineMaxBytes;
   TestInlineCss("http://www.example.com/index.html",
@@ -127,14 +134,14 @@ TEST_F(CssInlineFilterTest, DoNotInlineCssTooBig) {
                 false, "");
 }
 
-TEST_F(CssInlineFilterTest, DoNotInlineCssDifferentDomain) {
+TEST_P(CssInlineFilterTest, DoNotInlineCssDifferentDomain) {
   // TODO(mdsteele): Is switching domains in fact an issue for CSS?
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.org/styles.css",
                 "", "BODY { color: red; }\n", false, "");
 }
 
-TEST_F(CssInlineFilterTest, DoNotInlineCssWithImports) {
+TEST_P(CssInlineFilterTest, DoNotInlineCssWithImports) {
   // TODO(mdsteele): Is switching domains in fact an issue for CSS?
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
@@ -142,7 +149,7 @@ TEST_F(CssInlineFilterTest, DoNotInlineCssWithImports) {
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=252
-TEST_F(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
+TEST_P(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
   // XHTML text should not have unclosed links.  But if they do, like
   // in Issue 252, then we should leave them alone.
   static const char html_format[] =
@@ -167,6 +174,12 @@ TEST_F(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
                    StringPrintf(html_format, kXhtmlDtd, unclosed_css),
                    StringPrintf(html_format, kXhtmlDtd, inlined_css));
 }
+
+// We test with asynchronous_rewrites() == GetParam() as both true and false.
+INSTANTIATE_TEST_CASE_P(CssInlineFilterTestInstance,
+                        CssInlineFilterTest,
+                        ::testing::Bool());
+
 
 }  // namespace
 

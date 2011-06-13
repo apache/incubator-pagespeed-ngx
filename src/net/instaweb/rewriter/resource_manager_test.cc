@@ -300,15 +300,15 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   }
 
   void VerifyCustomMetadata(OutputResource* output) {
-    EXPECT_TRUE(output->cached_result()->has_image_inlined_uri());
-    EXPECT_EQ(kResourceUrl, output->cached_result()->image_inlined_uri());
+    EXPECT_TRUE(output->cached_result()->has_inlined_data());
+    EXPECT_EQ(kResourceUrl, output->cached_result()->inlined_data());
   }
 
   void StoreCustomMetadata(OutputResource* output) {
     CachedResult* cached = output->EnsureCachedResultCreated();
     ASSERT_TRUE(cached != NULL);
     EXPECT_EQ(cached, output->cached_result());
-    cached->set_image_inlined_uri(kResourceUrl);
+    cached->set_inlined_data(kResourceUrl);
   }
 
   // Expiration times are not entirely precise as some cache headers

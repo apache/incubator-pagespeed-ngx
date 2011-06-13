@@ -7,7 +7,7 @@
 # Exits with status 0 if all tests pass.  Exits 1 immediately if any test fails.
 # Expects APACHE_DEBUG_PAGESPEED_CONF to point to our config file,
 # APACHE_LOG to the log file
-set -x
+
 if [ $# != 1 ]; then
   echo Usage: ./system_test.sh HOSTNAME
   exit 2

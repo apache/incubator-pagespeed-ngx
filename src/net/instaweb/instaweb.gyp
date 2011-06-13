@@ -514,6 +514,7 @@
         'rewriter/domain_rewrite_filter.cc',
         'rewriter/file_input_resource.cc',
         'rewriter/google_analytics_filter.cc',
+        'rewriter/inline_rewrite_context.cc',
         'rewriter/js_combine_filter.cc',
         'rewriter/js_inline_filter.cc',
         'rewriter/js_outline_filter.cc',

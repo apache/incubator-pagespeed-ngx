@@ -95,9 +95,10 @@ message CachedResult {
   // represented by ResourceContext below.
   optional ImageDim image_file_dims = 11;
 
-  // base64-encoded data: URI for inlining a small image.
-  // Used by image_rewrite_filter.
-  optional string image_inlined_uri = 12;
+  // If a filter decides to inline the input, it will store its contents here.
+  // In case of images, this is the base64-encoded data: URI; in other cases
+  // it's the original text.
+  optional string inlined_data = 12;
 
   // The result of a spriting operation, containing x/y coordinates for each
   // subimage in the sprite.

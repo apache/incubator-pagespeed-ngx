@@ -236,7 +236,7 @@ ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
       if (options->Enabled(RewriteOptions::kInlineImages) &&
           CanInline(image_inline_max_bytes, image->Contents(),
                     result->type(), &inlined_url)) {
-        cached->set_image_inlined_uri(inlined_url);
+        cached->set_inlined_data(inlined_url);
       }
 
       int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
@@ -273,7 +273,7 @@ ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
         options->Enabled(RewriteOptions::kInlineImages) &&
         CanInline(image_inline_max_bytes, input_resource->contents(),
                   input_resource->type(), &inlined_url)) {
-      cached->set_image_inlined_uri(inlined_url);
+      cached->set_inlined_data(inlined_url);
     }
     work_bound_->WorkComplete();
   } else {
@@ -345,8 +345,8 @@ void ImageRewriteFilter::FinishRewriteImageUrl(
 
   // See if we have a data URL, and if so use it if the browser can handle it
   if (driver_->UserAgentSupportsImageInlining() &&
-      cached->has_image_inlined_uri()) {
-    src->SetValue(cached->image_inlined_uri());
+      cached->has_inlined_data()) {
+    src->SetValue(cached->inlined_data());
     // Delete dimensions, as they ought to be redundant given inline image data.
     element->DeleteAttribute(HtmlName::kWidth);
     element->DeleteAttribute(HtmlName::kHeight);

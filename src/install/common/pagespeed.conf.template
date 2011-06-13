@@ -3,10 +3,8 @@
     # can set this to "off".
     ModPagespeed on
 
-    # By default, mod_pagespeed disables image optimization and cache
-    # extension of images when serving traffic to web crawlers, known as
-    # "bots".  To enable rewritting images for bots, set this variable to
-    # "off".
+    # By default, mod_pagespeed optimizes pages for bots.
+    # To disable rewritting to bots, you can set this to "on".
     # ModPagespeedDisableForBots on
 
     # Direct Apache to send all HTML output to the mod_pagespeed

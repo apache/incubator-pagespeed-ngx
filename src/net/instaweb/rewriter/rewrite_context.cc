@@ -41,7 +41,7 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
-#include "net/instaweb/util/public/basictypes.h"        // for int64
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
@@ -580,12 +580,9 @@ void RewriteContext::RewriteDone(
           now_ms + ResponseHeaders::kImplicitCacheTtlMs);
     }
     if (optimizable && (fetch_.get() == NULL)) {
-      // TODO(jmarantz): In the async world we consider any mutation
-      // to the DOM an 'optimization', even if the resource is not
-      // rewritten.  We should cache that in the OutputPartitions.  I
-      // think our current usage of the CachedResult protobuf does not
-      // have a representation for that but we could probably invent
-      // a convention, like leaving the url() in the protobuf unset.
+      // TODO(morlovich): currently in async mode, we tie rendering of slot
+      // to the optimizable bit, making it impossible to do per-slot mutation
+      // that doesn't involve the output URL.
       RenderPartitionOnDetach(partition_index);
     }
   }

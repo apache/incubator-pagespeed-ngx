@@ -64,12 +64,16 @@ SharedMemLockManager* SharedMemLockManagerTestBase::CreateLockManager() {
 
 SharedMemLockManager* SharedMemLockManagerTestBase::AttachDefault() {
   SharedMemLockManager* lock_man = CreateLockManager();
-  EXPECT_TRUE(lock_man->Attach());
+  if (!lock_man->Attach()) {
+    delete lock_man;
+    lock_man = NULL;
+  }
   return lock_man;
 }
 
 void SharedMemLockManagerTestBase::TestBasic() {
   scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
+  ASSERT_TRUE(lock_manager_.get() != NULL);
   scoped_ptr<AbstractLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
   scoped_ptr<AbstractLock> lock_b(lock_manager_->CreateNamedLock(kLockB));
 
@@ -124,6 +128,7 @@ void SharedMemLockManagerTestBase::TestDestructorUnlock() {
   // Standalone test for destructors cleaning up. It is covered by the
   // above, but this does it single-threaded, without weird things.
   scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
+  ASSERT_TRUE(lock_manager_.get() != NULL);
 
   {
     scoped_ptr<AbstractLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
@@ -138,6 +143,7 @@ void SharedMemLockManagerTestBase::TestDestructorUnlock() {
 
 void SharedMemLockManagerTestBase::TestSteal() {
   scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
+  ASSERT_TRUE(lock_manager_.get() != NULL);
   scoped_ptr<AbstractLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
   lock_a->Lock();
   CreateChild(&SharedMemLockManagerTestBase::TestStealChild);
@@ -148,6 +154,7 @@ void SharedMemLockManagerTestBase::TestStealChild() {
   const int kStealTimeMs = 1000;
 
   scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
+  ASSERT_TRUE(lock_manager_.get() != NULL);
   scoped_ptr<AbstractLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
 
   // First, attempting to steal should fail, as 'time' hasn't moved yet.

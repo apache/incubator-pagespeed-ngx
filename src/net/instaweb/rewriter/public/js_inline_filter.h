@@ -22,8 +22,10 @@
 #include <cstddef>
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 class HtmlElement;
@@ -42,8 +44,17 @@ class JsInlineFilter : public CommonFilter {
   virtual void EndElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
   virtual const char* Name() const { return "InlineJs"; }
+  virtual bool HasAsyncFlow() const;
+  virtual void Flush();
 
  private:
+  class Context;
+  friend class Context;
+
+  bool ShouldInline(const StringPiece& input) const;
+  void RenderInline(const ResourcePtr& resource, const StringPiece& text,
+                    HtmlElement* element);
+
   const size_t size_threshold_bytes_;
   ScriptTagScanner script_tag_scanner_;
 

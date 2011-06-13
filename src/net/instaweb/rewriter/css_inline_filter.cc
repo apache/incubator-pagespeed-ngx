@@ -20,9 +20,11 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/rewriter/public/inline_rewrite_context.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -32,6 +34,40 @@
 namespace net_instaweb {
 
 class MessageHandler;
+
+class CssInlineFilter::Context : public InlineRewriteContext {
+ public:
+  Context(CssInlineFilter* filter, const GoogleUrl& base_url,
+          HtmlElement* element, HtmlElement::Attribute* src)
+      : InlineRewriteContext(filter, element, src),
+        filter_(filter) {
+    base_url_.Reset(base_url);
+  }
+
+  virtual bool ShouldInline(const StringPiece& input) const {
+    return filter_->ShouldInline(input);
+  }
+
+  virtual void RenderInline(
+      const ResourcePtr& resource, const StringPiece& text,
+      HtmlElement* element) {
+    filter_->RenderInline(resource, base_url_, text, element);
+  }
+
+  virtual const char* id() const {
+    // Unlike filters with output resources, which use their ID as part of URLs
+    // they make, we are not constrained to 2 characters, so we make our
+    // name (used for our cache key) nice and long so at not to worry about
+    // someone else using it.
+    return "css_inline";
+  }
+
+ private:
+  CssInlineFilter* filter_;
+  GoogleUrl base_url_;
+
+  DISALLOW_COPY_AND_ASSIGN(Context);
+};
 
 CssInlineFilter::CssInlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
@@ -57,66 +93,95 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
     }
 
     // Get the URL where the external script is stored
-    const char* href = element->AttributeValue(HtmlName::kHref);
-    if (href == NULL) {
+    HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kHref);
+    if (attr == NULL || attr->value() == NULL) {
       return;  // We obviously can't inline if the URL isn't there.
     }
 
-    // Make sure we're not moving across domains -- CSS can potentially contain
-    // Javascript expressions.
-    // TODO(jmaessen): Is the domain lawyer policy the appropriate one here?
-    // Or do we still have to check for strict domain equivalence?
-    // If so, add an inline-in-page policy to domainlawyer in some form,
-    // as we make a similar policy decision in js_inline_filter.
-    MessageHandler* message_handler = driver_->message_handler();
-    ResourcePtr resource(CreateInputResourceAndReadIfCached(href));
-    if ((resource.get() == NULL) || !resource->ContentsValid()) {
-      return;
-    }
-
-    // Check that the file is small enough to inline.
-    StringPiece contents = resource->contents();
-    if (contents.size() > size_threshold_bytes_) {
-      return;
-    }
-
-    // Check that the file does not have imports, which we cannot yet
-    // correct paths yet.
-    //
-    // Remove this once CssTagScanner::AbsolutifyUrls handles imports.
-    if (CssTagScanner::HasImport(contents, message_handler)) {
-      return;
-    }
-
-    // Absolutify the URLs in the CSS -- relative URLs will break otherwise.
-    GoogleString rewritten_contents;
-    StringWriter writer(&rewritten_contents);
-    GoogleUrl resource_url(resource->url());
-    StringPiece input_dir = resource_url.AllExceptLeaf();
-    StringPiece base_dir = base_url().AllExceptLeaf();
-    bool written;
-    if (input_dir == base_dir) {
-      // We don't need to absolutify URLs if input directory is same as base.
-      written = writer.Write(contents, message_handler);
+    if (HasAsyncFlow()) {
+      (new Context(this, base_url(), element, attr))->Initiate();
     } else {
-      // If they are different directories, we need to absolutify.
-      // TODO(sligocki): Perhaps we should use the real CSS parser.
-      written = CssTagScanner::AbsolutifyUrls(contents, resource->url(),
-                                              &writer, message_handler);
-    }
-    if (!written) {
-      return;
-    }
+      // Make sure we're not moving across domains -- CSS can potentially
+      // contain Javascript expressions.
+      // TODO(jmaessen): Is the domain lawyer policy the appropriate one here?
+      // Or do we still have to check for strict domain equivalence?
+      // If so, add an inline-in-page policy to domainlawyer in some form,
+      // as we make a similar policy decision in js_inline_filter.
+      ResourcePtr resource(CreateInputResourceAndReadIfCached(attr->value()));
+      if ((resource.get() == NULL) || !resource->ContentsValid()) {
+        return;
+      }
 
-    // Inline the CSS.
-    HtmlElement* style_element =
-        driver_->NewElement(element->parent(), HtmlName::kStyle);
-    if (driver_->ReplaceNode(element, style_element)) {
-      driver_->AppendChild(
-          style_element,
-          driver_->NewCharactersNode(element, rewritten_contents));
+      StringPiece contents = resource->contents();
+      if (ShouldInline(contents)) {
+        RenderInline(resource, base_url(), contents, element);
+      }
     }
   }
+}
+
+bool CssInlineFilter::ShouldInline(const StringPiece& contents) const {
+  if (contents.size() > size_threshold_bytes_) {
+    return false;
+  }
+
+  // Check that the file does not have imports, which we cannot yet
+  // correct paths yet.
+  //
+  // Remove this once CssTagScanner::AbsolutifyUrls handles imports.
+  if (CssTagScanner::HasImport(contents, driver_->message_handler())) {
+    return false;
+  }
+
+  return true;
+}
+
+void CssInlineFilter::RenderInline(const ResourcePtr& resource,
+                                   const GoogleUrl& base_url,
+                                   const StringPiece& contents,
+                                   HtmlElement* element) {
+  MessageHandler* message_handler = driver_->message_handler();
+
+  // Absolutify the URLs in the CSS -- relative URLs will break otherwise.
+  // Note that we have to do this at rendering stage, since the same stylesheet
+  // may be included from HTML in different directories.
+  // TODO(jmarantz): fix bug 295:  domain-rewrite & shard here.
+  GoogleString rewritten_contents;
+  StringWriter writer(&rewritten_contents);
+  GoogleUrl resource_url(resource->url());
+  StringPiece input_dir = resource_url.AllExceptLeaf();
+  StringPiece base_dir = base_url.AllExceptLeaf();
+  bool written;
+  if (input_dir == base_dir) {
+    // We don't need to absolutify URLs if input directory is same as base.
+    written = writer.Write(contents, message_handler);
+  } else {
+    // If they are different directories, we need to absolutify.
+    // TODO(sligocki): Perhaps we should use the real CSS parser.
+    written = CssTagScanner::AbsolutifyUrls(contents, resource->url(),
+                                            &writer, message_handler);
+  }
+  if (!written) {
+    return;
+  }
+
+  // Inline the CSS.
+  HtmlElement* style_element =
+      driver_->NewElement(element->parent(), HtmlName::kStyle);
+  if (driver_->ReplaceNode(element, style_element)) {
+    driver_->AppendChild(
+        style_element,
+        driver_->NewCharactersNode(element, rewritten_contents));
+  }
+}
+
+void CssInlineFilter::Flush() {
+  // Temporary hack until everything is ported.
+  driver_->Render();
+}
+
+bool CssInlineFilter::HasAsyncFlow() const {
+  return driver_->asynchronous_rewrites();
 }
 
 }  // namespace net_instaweb

@@ -22,10 +22,13 @@
 #include <cstddef>
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+class GoogleUrl;
 class HtmlElement;
 class RewriteDriver;
 
@@ -38,8 +41,17 @@ class CssInlineFilter : public CommonFilter {
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "InlineCss"; }
+  virtual void Flush();
+  virtual bool HasAsyncFlow() const;
 
  private:
+  class Context;
+  friend class Context;
+
+  bool ShouldInline(const StringPiece& input) const;
+  void RenderInline(const ResourcePtr& resource, const GoogleUrl& base_url,
+                    const StringPiece& text, HtmlElement* element);
+
   const size_t size_threshold_bytes_;
 
   GoogleString domain_;

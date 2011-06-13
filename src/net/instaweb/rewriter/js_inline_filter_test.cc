@@ -19,6 +19,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -28,8 +29,14 @@ namespace net_instaweb {
 
 namespace {
 
-class JsInlineFilterTest : public ResourceManagerTestBase {
+class JsInlineFilterTest : public ResourceManagerTestBase,
+                           public ::testing::WithParamInterface<bool> {
  protected:
+  virtual void SetUp() {
+    ResourceManagerTestBase::SetUp();
+    rewrite_driver()->SetAsynchronousRewrites(GetParam());
+  }
+
   void TestInlineJavascript(const GoogleString& html_url,
                             const GoogleString& js_url,
                             const GoogleString& js_original_inline_body,
@@ -97,7 +104,7 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
   }
 };
 
-TEST_F(JsInlineFilterTest, DoInlineJavascriptSimple) {
+TEST_P(JsInlineFilterTest, DoInlineJavascriptSimple) {
   // Simple case:
   TestInlineJavascript("http://www.example.com/index.html",
                        "http://www.example.com/script.js",
@@ -106,7 +113,7 @@ TEST_F(JsInlineFilterTest, DoInlineJavascriptSimple) {
                        true);
 }
 
-TEST_F(JsInlineFilterTest, DoInlineJavascriptWhitespace) {
+TEST_P(JsInlineFilterTest, DoInlineJavascriptWhitespace) {
   // Whitespace between <script> and </script>:
   TestInlineJavascript("http://www.example.com/index2.html",
                        "http://www.example.com/script2.js",
@@ -115,7 +122,7 @@ TEST_F(JsInlineFilterTest, DoInlineJavascriptWhitespace) {
                        true);
 }
 
-TEST_F(JsInlineFilterTest, DoNotInlineJavascriptDifferentDomain) {
+TEST_P(JsInlineFilterTest, DoNotInlineJavascriptDifferentDomain) {
   // Different domains:
   TestInlineJavascript("http://www.example.net/index.html",
                        "http://scripts.example.org/script.js",
@@ -124,7 +131,7 @@ TEST_F(JsInlineFilterTest, DoNotInlineJavascriptDifferentDomain) {
                        false);
 }
 
-TEST_F(JsInlineFilterTest, DoNotInlineJavascriptInlineContents) {
+TEST_P(JsInlineFilterTest, DoNotInlineJavascriptInlineContents) {
   // Inline contents:
   TestInlineJavascript("http://www.example.com/index.html",
                        "http://www.example.com/script.js",
@@ -133,7 +140,7 @@ TEST_F(JsInlineFilterTest, DoNotInlineJavascriptInlineContents) {
                        false);
 }
 
-TEST_F(JsInlineFilterTest, DoNotInlineJavascriptTooBig) {
+TEST_P(JsInlineFilterTest, DoNotInlineJavascriptTooBig) {
   // Javascript too long:
   const int64 length = 2 * RewriteOptions::kDefaultJsInlineMaxBytes;
   TestInlineJavascript("http://www.example.com/index.html",
@@ -144,7 +151,7 @@ TEST_F(JsInlineFilterTest, DoNotInlineJavascriptTooBig) {
                        false);
 }
 
-TEST_F(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag) {
+TEST_P(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag) {
   // External script contains "</script>":
   TestInlineJavascript("http://www.example.com/index.html",
                        "http://www.example.com/script.js",
@@ -153,7 +160,7 @@ TEST_F(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag) {
                        false);
 }
 
-TEST_F(JsInlineFilterTest, DoInlineJavascriptXhtml) {
+TEST_P(JsInlineFilterTest, DoInlineJavascriptXhtml) {
   // Simple case:
   TestInlineJavascriptXhtml("http://www.example.com/index.html",
                             "http://www.example.com/script.js",
@@ -161,13 +168,18 @@ TEST_F(JsInlineFilterTest, DoInlineJavascriptXhtml) {
                             true);
 }
 
-TEST_F(JsInlineFilterTest, DoNotInlineJavascriptXhtmlWithCdataEnd) {
+TEST_P(JsInlineFilterTest, DoNotInlineJavascriptXhtmlWithCdataEnd) {
   // External script contains "]]>":
   TestInlineJavascriptXhtml("http://www.example.com/index.html",
                             "http://www.example.com/script.js",
                             "function end(x) { return ']]>'; }\n",
                             false);
 }
+
+// We test with asynchronous_rewrites() == GetParam() as both true and false.
+INSTANTIATE_TEST_CASE_P(JsInlineFilterTestInstance,
+                        JsInlineFilterTest,
+                        ::testing::Bool());
 
 }  // namespace
 
