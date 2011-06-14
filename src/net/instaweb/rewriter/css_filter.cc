@@ -33,12 +33,15 @@
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -48,6 +51,7 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/parser.h"
+
 
 #include "base/at_exit.h"
 
@@ -62,6 +66,7 @@ class CacheExtender;
 class ImageCombineFilter;
 class ImageRewriteFilter;
 class MessageHandler;
+class RewriteContext;
 
 namespace {
 
@@ -73,6 +78,35 @@ const char kStylesheet[] = "stylesheet";
 const char CssFilter::kFilesMinified[] = "css_filter_files_minified";
 const char CssFilter::kMinifiedBytesSaved[] = "css_filter_minified_bytes_saved";
 const char CssFilter::kParseFailures[] = "css_filter_parse_failures";
+
+class CssFilter::Context : public SingleRewriteContext {
+ public:
+  Context(CssFilter* filter, RewriteDriver* driver)
+      : SingleRewriteContext(driver, NULL /* no parent */,
+                             NULL /* no resource context */),
+        filter_(filter),
+        driver_(driver) {}
+  virtual ~Context() {}
+
+  virtual void Render() {}
+  virtual void RewriteSingle(const ResourcePtr& input,
+                             const OutputResourcePtr& output);
+  virtual const char* id() const { return filter_->id().c_str(); }
+  virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
+
+ private:
+  CssFilter* filter_;
+  RewriteDriver* driver_;
+
+  DISALLOW_COPY_AND_ASSIGN(Context);
+};
+
+void CssFilter::Context::RewriteSingle(
+    const ResourcePtr& input_resource,
+    const OutputResourcePtr& output_resource) {
+  RewriteDone(
+      filter_->RewriteLoadedResource(input_resource, output_resource), 0);
+}
 
 CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix,
                      CacheExtender* cache_extender,
@@ -176,9 +210,21 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
           HtmlName::kHref);
       if (element_href != NULL) {
         // If it has a href= attribute
-        GoogleString new_url;
-        if (RewriteExternalCss(element_href->value(), &new_url)) {
-          element_href->SetValue(new_url);  // Update the href= attribute.
+        if (HasAsyncFlow()) {
+          ResourcePtr input_resource(
+              CreateInputResource(element_href->value()));
+          if (input_resource.get() != NULL) {
+            ResourceSlotPtr slot(
+                driver_->GetSlot(input_resource, element, element_href));
+            Context* context = new Context(this, driver_);
+            context->AddSlot(slot);
+            driver_->InitiateRewrite(context);
+          }
+        } else {
+          GoogleString new_url;
+          if (RewriteExternalCss(element_href->value(), &new_url)) {
+            element_href->SetValue(new_url);  // Update the href= attribute.
+          }
         }
       } else {
         driver_->ErrorHere("Link element with no href.");
@@ -218,9 +264,15 @@ TimedBool CssFilter::RewriteCssText(const StringPiece& in_text,
     num_parse_failures_->Add(1);
   } else {
     // Edit stylesheet.
-    TimedBool result = image_rewriter_.RewriteCssImages(
-        css_gurl, stylesheet.get(), handler);
-    ret.expiration_ms = result.expiration_ms;
+    TimedBool result;
+    if (HasAsyncFlow()) {
+      // TODO(morlovich): Nested rewrites disabled for async flow as first step!
+      result.value = false;
+    } else {
+      result = image_rewriter_.RewriteCssImages(
+          css_gurl, stylesheet.get(), handler);
+      ret.expiration_ms = result.expiration_ms;
+    }
 
     // Re-serialize stylesheet.
     StringWriter writer(out_text);
@@ -371,6 +423,14 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
     }
   }
   return ret ? kRewriteOk : kRewriteFailed;
+}
+
+bool CssFilter::HasAsyncFlow() const {
+  return driver_->asynchronous_rewrites();
+}
+
+RewriteContext* CssFilter::MakeRewriteContext() {
+  return new Context(this, driver_);
 }
 
 }  // namespace net_instaweb

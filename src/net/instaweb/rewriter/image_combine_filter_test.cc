@@ -91,7 +91,8 @@ class CssImageCombineTest : public CssRewriteTestBase {
   }
 };
 
-TEST_F(CssImageCombineTest, SpritesImages) {
+TEST_P(CssImageCombineTest, SpritesImages) {
+  CSS_XFAIL_ASYNC();
   TestSpriting("0px 0px", "0px -70px", true);
   TestSpriting("left top", "0px -70px", true);
   TestSpriting("top 10px", "10px -70px", true);
@@ -99,7 +100,8 @@ TEST_F(CssImageCombineTest, SpritesImages) {
   TestSpriting("center top", "unused", false);
 }
 
-TEST_F(CssImageCombineTest, SpritesMultiple) {
+TEST_P(CssImageCombineTest, SpritesMultiple) {
+  CSS_XFAIL_ASYNC();
   const char* html = "<head><style>"
       "#div1{background:url(%s) 0px 0px;width:10px;height:10px}"
       "#div2{background:url(%s) 0px %dpx;width:%dpx;height:10px}"
@@ -130,7 +132,7 @@ TEST_F(CssImageCombineTest, SpritesMultiple) {
   ValidateExpected("sprite_first_and_third", before, after);
 }
 
-TEST_F(CssImageCombineTest, NoCrashUnknownType) {
+TEST_P(CssImageCombineTest, NoCrashUnknownType) {
   // Make sure we don't crash trying to sprite an image with an unknown mimetype
 
   ResponseHeaders response_headers;
@@ -151,7 +153,9 @@ TEST_F(CssImageCombineTest, NoCrashUnknownType) {
   ParseUrl(kTestDomain, before);
 }
 
-TEST_F(CssImageCombineTest, SpritesImagesExternal) {
+TEST_P(CssImageCombineTest, SpritesImagesExternal) {
+  CSS_XFAIL_ASYNC();
+
   SetupWaitFetcher();
 
   const GoogleString beforeCss = StrCat(" "  // extra whitespace allows rewrite
@@ -199,6 +203,11 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
       "wip", beforeCss, spriteCss, kNoOtherContexts | kNoClearFetcher |
       kExpectChange | kExpectSuccess);
 }
+
+// We test with asynchronous_rewrites() == GetParam() as both true and false.
+INSTANTIATE_TEST_CASE_P(CssImageCombineTestInstance,
+                        CssImageCombineTest,
+                        ::testing::Bool());
 
 }  // namespace
 

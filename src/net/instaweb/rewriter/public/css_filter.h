@@ -45,6 +45,7 @@ class HtmlElement;
 class ImageCombineFilter;
 class ImageRewriteFilter;
 class MessageHandler;
+class RewriteContext;
 class RewriteDriver;
 class Statistics;
 class Variable;
@@ -88,7 +89,14 @@ class CssFilter : public RewriteSingleResourceFilter {
   static const char kMinifiedBytesSaved[];
   static const char kParseFailures[];
 
+ protected:
+  virtual bool HasAsyncFlow() const;
+  virtual RewriteContext* MakeRewriteContext();
+
  private:
+  class Context;
+  friend class Context;
+
   TimedBool RewriteCssText(const StringPiece& in_text, GoogleString* out_text,
                            const GoogleUrl& css_gurl,
                            MessageHandler* handler);

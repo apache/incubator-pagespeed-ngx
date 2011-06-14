@@ -24,7 +24,9 @@
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -33,7 +35,12 @@ namespace net_instaweb {
 class ResourceNamer;
 struct ContentType;
 
-class CssRewriteTestBase : public ResourceManagerTestBase {
+// Macro for tests involving nested async rewrite paths that haven't been
+// ported yet.
+#define CSS_XFAIL_ASYNC() if (SkipIfAsync()) { return; }
+
+class CssRewriteTestBase : public ResourceManagerTestBase,
+                           public ::testing::WithParamInterface<bool> {
  protected:
   CssRewriteTestBase() {
     num_files_minified_ = statistics()->GetVariable(CssFilter::kFilesMinified);
@@ -44,6 +51,7 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
+    rewrite_driver()->SetAsynchronousRewrites(GetParam());
     AddFilter(RewriteOptions::kRewriteCss);
     options()->set_always_rewrite_css(true);
   }
@@ -118,6 +126,10 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
 
   // Helper to test for how we handle trailing junk
   void TestCorruptUrl(const char* junk, bool should_fetch_ok);
+
+  // Helper for CSS_XFAIL_ASYNC above. Returns true & logs if it async mode
+  // is on.
+  bool SkipIfAsync();
 
   Variable* num_files_minified_;
   Variable* minified_bytes_saved_;

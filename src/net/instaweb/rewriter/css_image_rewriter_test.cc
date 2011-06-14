@@ -55,7 +55,8 @@ class CssImageRewriterTest : public CssRewriteTestBase {
   }
 };
 
-TEST_F(CssImageRewriterTest, CacheExtendsImages) {
+TEST_P(CssImageRewriterTest, CacheExtendsImages) {
+  CSS_XFAIL_ASYNC();
   InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
   InitResponseHeaders("bar.png", kContentTypePng, kImageData, 100);
   InitResponseHeaders("baz.png", kContentTypePng, kImageData, 100);
@@ -98,7 +99,9 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
                              kExpectChange | kExpectSuccess | kNoOtherContexts);
 }
 
-TEST_F(CssImageRewriterTest, UseCorrectBaseUrl) {
+TEST_P(CssImageRewriterTest, UseCorrectBaseUrl) {
+  CSS_XFAIL_ASYNC();
+
   // Initialize resources.
   static const char css_url[] = "http://www.example.com/bar/style.css";
   static const char css_before[] = "body { background: url(image.png); }";
@@ -136,6 +139,10 @@ TEST_F(CssImageRewriterTest, UseCorrectBaseUrl) {
   EXPECT_EQ(css_after, actual_css_after);
 }
 
+// We test with asynchronous_rewrites() == GetParam() as both true and false.
+INSTANTIATE_TEST_CASE_P(CssImageRewriterTestInstance,
+                        CssImageRewriterTest,
+                        ::testing::Bool());
 
 // Note that these values of "10" and "20" are very tight.  This is a
 // feature.  It serves as an early warning system because extra cache
@@ -193,7 +200,9 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
 
 // Test to make sure expiration time for cached result is the
 // smallest of subresource and CSS times, not just CSS time.
-TEST_F(CssFilterSubresourceTest, SubResourceDepends) {
+TEST_P(CssFilterSubresourceTest, SubResourceDepends) {
+  CSS_XFAIL_ASYNC();
+
   const char kInput[] = "div { background-image: url(a.png); }"
                         "span { background-image: url(b.png); }";
 
@@ -216,7 +225,9 @@ TEST_F(CssFilterSubresourceTest, SubResourceDepends) {
 
 // Test to make sure we don't cache for long if the rewrite was based
 // on not-yet-loaded resources.
-TEST_F(CssFilterSubresourceTest, SubResourceDependsNotYetLoaded) {
+TEST_P(CssFilterSubresourceTest, SubResourceDependsNotYetLoaded) {
+  CSS_XFAIL_ASYNC();
+
   SetupWaitFetcher();
 
   // Disable atime simulation so that the clock doesn't move on us.
@@ -246,6 +257,12 @@ TEST_F(CssFilterSubresourceTest, SubResourceDependsNotYetLoaded) {
   // Make sure the subresource callbacks fire for leak cleanliness
   CallFetcherCallbacks();
 }
+
+// We test with asynchronous_rewrites() == GetParam() as both true and false.
+INSTANTIATE_TEST_CASE_P(CssFilterSubresourceTestInstance,
+                        CssFilterSubresourceTest,
+                        ::testing::Bool());
+
 
 }  // namespace
 
