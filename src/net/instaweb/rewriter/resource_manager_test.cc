@@ -768,16 +768,6 @@ class ResourceFreshenTest : public ResourceManagerTest {
     response_headers_.RemoveAll(HttpAttributes::kExpires);
   }
 
-  // Moves the mock-timer forward by the specified number of seconds.
-  // Updates kResourceUrl's headers as seen by the mock fetcher, to
-  // match the new mock timestamp.
-  void AdvanceTimeAndUpdateOriginHeaders(int delta_sec) {
-    mock_timer()->AdvanceMs(delta_sec * Timer::kSecondMs);
-    response_headers_.SetDate(mock_timer()->NowMs());
-    response_headers_.ComputeCaching();
-    SetFetchResponse(kResourceUrl, response_headers_, "");
-  }
-
   Variable* expirations_;
   ResponseHeaders response_headers_;
 };
@@ -790,13 +780,14 @@ const char ResourceFreshenTest::kContents[] = "ok";
 // fetch it rather than allowing it to expire.
 TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
   SetupWaitFetcher();
+  FetcherUpdateDateHeaders();
 
   // Make sure we don't try to insert non-cacheable resources
   // into the cache wastefully, but still fetch them well.
   int max_age_sec = ResponseHeaders::kImplicitCacheTtlMs / Timer::kSecondMs;
   response_headers_.Add(HttpAttributes::kCacheControl,
                        StringPrintf("max-age=%d", max_age_sec));
-  AdvanceTimeAndUpdateOriginHeaders(0);
+  SetFetchResponse(kResourceUrl, response_headers_, "");
 
   // The test here is not that the ReadIfCached will succeed, because
   // it's a fake url fetcher.
@@ -808,7 +799,7 @@ TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
   // This is because we do not proactively initiate refreshes for all resources;
   // only the ones that are actually asked for on a regular basis.  So a
   // completely inactive site will not see its resources freshened.
-  AdvanceTimeAndUpdateOriginHeaders(max_age_sec + 1);
+  mock_timer()->AdvanceMs((max_age_sec + 1) * Timer::kSecondMs);
   expirations_->Clear();
   EXPECT_FALSE(ResourceIsCached());
   EXPECT_EQ(1, expirations_->Get());
@@ -818,10 +809,10 @@ TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
 
   // But if we have just a little bit of traffic then when we get a request
   // for a soon-to-expire resource it will auto-freshen.
-  AdvanceTimeAndUpdateOriginHeaders(1 + (max_age_sec * 4) / 5);
+  mock_timer()->AdvanceMs((1 + (max_age_sec * 4) / 5) * Timer::kSecondMs);
   EXPECT_TRUE(ResourceIsCached());
   CallFetcherCallbacks();  // freshens cache.
-  AdvanceTimeAndUpdateOriginHeaders(max_age_sec / 5);
+  mock_timer()->AdvanceMs((max_age_sec / 5) * Timer::kSecondMs);
   EXPECT_TRUE(ResourceIsCached());  // Yay, no cache misses after 301 seconds
   EXPECT_EQ(0, expirations_->Get());
 }
@@ -832,9 +823,10 @@ TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
 TEST_F(ResourceFreshenTest, NoFreshenOfForcedCachedResources) {
   const GoogleString kContents = "ok";
   http_cache()->set_force_caching(true);
+  FetcherUpdateDateHeaders();
 
   response_headers_.Add(HttpAttributes::kCacheControl, "max-age=0");
-  AdvanceTimeAndUpdateOriginHeaders(0);
+  SetFetchResponse(kResourceUrl, response_headers_, "");
 
   // We should get just 1 fetch.  If we were aggressively freshening
   // we would get 2.
@@ -846,7 +838,7 @@ TEST_F(ResourceFreshenTest, NoFreshenOfForcedCachedResources) {
   // either, because the cache expiration time is irrelevant -- we are
   // forcing caching so we consider the resource to always be fresh.
   // So even after an hour we should have no expirations.
-  AdvanceTimeAndUpdateOriginHeaders(3600);  // 1 hour
+  mock_timer()->AdvanceMs(1 * Timer::kHourMs);
   EXPECT_TRUE(ResourceIsCached());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
@@ -858,11 +850,12 @@ TEST_F(ResourceFreshenTest, NoFreshenOfForcedCachedResources) {
 // which could impact the performance of the server.
 TEST_F(ResourceFreshenTest, NoFreshenOfShortLivedResources) {
   const GoogleString kContents = "ok";
+  FetcherUpdateDateHeaders();
 
   int max_age_sec = ResponseHeaders::kImplicitCacheTtlMs / Timer::kSecondMs - 1;
   response_headers_.Add(HttpAttributes::kCacheControl,
                        StringPrintf("max-age=%d", max_age_sec));
-  AdvanceTimeAndUpdateOriginHeaders(0);
+  SetFetchResponse(kResourceUrl, response_headers_, "");
 
   EXPECT_TRUE(ResourceIsCached());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
@@ -870,14 +863,14 @@ TEST_F(ResourceFreshenTest, NoFreshenOfShortLivedResources) {
   // There should be no extra fetches required because our cache is
   // still active.  We shouldn't have needed an extra fetch to freshen,
   // either.
-  AdvanceTimeAndUpdateOriginHeaders(max_age_sec - 1);
+  mock_timer()->AdvanceMs((max_age_sec - 1) * Timer::kSecondMs);
   EXPECT_TRUE(ResourceIsCached());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, expirations_->Get());
 
   // Now let the resource expire.  We'll need another fetch since we did not
   // freshen.
-  AdvanceTimeAndUpdateOriginHeaders(2);
+  mock_timer()->AdvanceMs(2 * Timer::kSecondMs);
   EXPECT_TRUE(ResourceIsCached());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, expirations_->Get());
