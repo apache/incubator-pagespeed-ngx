@@ -21,8 +21,8 @@
 #include <stdint.h>
 #include <csetjmp>
 #include <cstddef>
-#include <cstdlib>
 
+#include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "pagespeed/image_compression/jpeg_reader.h"
@@ -99,17 +99,16 @@ class WebpOptimizer {
     return static_cast<int>(pixels_[plane + source_offset +
                                     PixelOffset(x_offset, y_offset)]);
   }
+  bool DoReadJpegPixels(J_COLOR_SPACE color_space,
+                        const GoogleString& original_jpeg);
   bool ReadJpegPixels(J_COLOR_SPACE color_space,
-                      const GoogleString& original_jpeg,
-                      jpeg_decompress_struct* jpeg_decompress);
+                      const GoogleString& original_jpeg);
   bool WebPImportYUV(WebPPicture* const picture);
-  bool DoCreateOptimizedWebp(const GoogleString& original_jpeg,
-                             jpeg_decompress_struct* jpeg_decompress,
-                             GoogleString* compressed_webp);
 
   // Structure for jpeg decompression
   pagespeed::image_compression::JpegReader reader_;
   uint8* pixels_;
+  uint8** rows_;  // Holds offsets into pixels_ during decompression
   unsigned int width_, height_;  // Type-compatible with libjpeg.
   size_t row_stride_;
   // Structures for webp recompression
@@ -117,51 +116,31 @@ class WebpOptimizer {
   DISALLOW_COPY_AND_ASSIGN(WebpOptimizer);
 };  // class WebpOptimizer
 
-WebpOptimizer::WebpOptimizer() : pixels_(NULL) { }
+WebpOptimizer::WebpOptimizer() : pixels_(NULL), rows_(NULL) { }
 WebpOptimizer::~WebpOptimizer() {
-  free(pixels_);
+  delete[] pixels_;
+  DCHECK(rows_ == NULL);
 }
 
-// Using context in WebpOptimizer, transcode the jpeg to webp.
-bool WebpOptimizer::CreateOptimizedWebp(
-    const GoogleString& original_jpeg, GoogleString* compressed_webp) {
-  jpeg_decompress_struct* jpeg_decompress = reader_.decompress_struct();
-
-  // We pull the actual image creation into a separate method, because
-  // there's internal non-local control flow and we want to factor out
-  // the common cleanup path in a clean way.
-  bool result =
-      DoCreateOptimizedWebp(original_jpeg, jpeg_decompress, compressed_webp);
-
-  // Clean up setjmp state regardless of success or failure.
-  jpeg_decompress->client_data = NULL;
-  return result;
-}
-
-// Initialize width_, height_, row_stride_, and pixels_ with data from the
-// jpeg_decompress structure.  Returns a status for errors that are caught in
-// our code.  Jpeglib errors are handled by longjmp-ing to internal handler
-// code.  We rely on the destructor to clean up malloc'd data after an error.
-bool WebpOptimizer::ReadJpegPixels(J_COLOR_SPACE color_space,
-                                   const GoogleString& original_jpeg,
-                                   jpeg_decompress_struct* jpeg_decompress) {
-  uint8** rows = NULL;  // Used to store row offsets, used only during read.
-
+// Does most of the work of ReadJpegPixels (see below); errors transfer control
+// out so that we can clean up properly.
+bool WebpOptimizer::DoReadJpegPixels(J_COLOR_SPACE color_space,
+                                     const GoogleString& original_jpeg) {
   // Set up jpeg error handling.
   jmp_buf env;
   if (setjmp(env)) {
     // We get here if libjpeg encountered a decompression error.
-    // We must clean up the jpeg library data structures.
-    jpeg_abort_decompress(jpeg_decompress);
-    free(rows);
     return false;
   }
   // Install env so that it is longjmp'd to on error:
+  jpeg_decompress_struct* jpeg_decompress = reader_.decompress_struct();
   jpeg_decompress->client_data = static_cast<void*>(&env);
 
   reader_.PrepareForRead(original_jpeg);
 
-  jpeg_read_header(jpeg_decompress, TRUE);
+  if (jpeg_read_header(jpeg_decompress, TRUE) != JPEG_HEADER_OK) {
+    return false;
+  }
 
   // Settings largely cribbed from the cwebp.c example source code.
   // Difference: we ask for YCbCr as the out_color_space.  Not sure
@@ -175,12 +154,8 @@ bool WebpOptimizer::ReadJpegPixels(J_COLOR_SPACE color_space,
   //  jpeg_decompress->dct_method = JDCT_FASTEST;
   jpeg_decompress->do_fancy_upsampling = TRUE;
 
-  jpeg_start_decompress(jpeg_decompress);
-
-  // Sanity check.
-  if (jpeg_decompress->output_components != kPlanes) {
-    free(rows);
-    jpeg_abort_decompress(jpeg_decompress);
+  if (!jpeg_start_decompress(jpeg_decompress) ||
+      jpeg_decompress->output_components != kPlanes) {
     return false;
   }
 
@@ -189,42 +164,47 @@ bool WebpOptimizer::ReadJpegPixels(J_COLOR_SPACE color_space,
   height_ = jpeg_decompress->output_height;
   row_stride_ = width_ * jpeg_decompress->output_components * sizeof(*pixels_);
 
-  pixels_ = static_cast<uint8*>(malloc(row_stride_ * height_));
-  if (pixels_ == NULL) {
-    jpeg_abort_decompress(jpeg_decompress);
-    return false;
-  }
+  pixels_ = new uint8[row_stride_ * height_];
   // jpeglib expects to get an array of pointers to rows, so allocate one and
   // point it to contiguous rows in *pixels_.
-  rows = static_cast<uint8**>(malloc(height_ * sizeof(*rows)));
-  if (rows == NULL) {
-    jpeg_abort_decompress(jpeg_decompress);
-    return false;
-  }
+  rows_ = new uint8*[height_];
   for (unsigned int i = 0; i < height_; ++i) {
-    rows[i] = pixels_ + PixelOffset(0, i);
+    rows_[i] = pixels_ + PixelOffset(0, i);
   }
-
   while (jpeg_decompress->output_scanline < height_) {
     // Try to read all remaining lines; we should get as many as the library is
     // comfortable handing over at one go.
     int rows_read =
         jpeg_read_scanlines(jpeg_decompress,
-                            rows + jpeg_decompress->output_scanline,
+                            rows_ + jpeg_decompress->output_scanline,
                             height_ - jpeg_decompress->output_scanline);
     if (rows_read == 0) {
-      free(rows);
-      jpeg_abort_decompress(jpeg_decompress);
       return false;
     }
   }
-  // We're done with rows, so clean it up to free some extra space for
-  // conversion.
-  free(rows);
+  return jpeg_finish_decompress(jpeg_decompress);
+}
 
-  jpeg_finish_decompress(jpeg_decompress);
+// Initialize width_, height_, row_stride_, and pixels_ with data from the
+// jpeg_decompress structure.  Returns a status for errors that are caught in
+// our code.  Jpeglib errors are handled by longjmp-ing to internal handler
+// code.  We rely on the destructor to clean up pixel data after an error.
+//
+// Most of the work is done in DoReadJpegPixels, with errors ending up out here
+// where we can clean them up.  This avoids stack variable trouble if
+// decompression fails and longjmps.
+bool WebpOptimizer::ReadJpegPixels(J_COLOR_SPACE color_space,
+                                   const GoogleString& original_jpeg) {
+  bool read_ok = DoReadJpegPixels(color_space, original_jpeg);
+  delete[] rows_;
+  rows_ = NULL;
+  jpeg_decompress_struct* jpeg_decompress = reader_.decompress_struct();
+  // NULL out the setjmp information stored by DoReadJpegPixels; there should be
+  // no further decompression failures, and the stack would be invalid if there
+  // were.
+  jpeg_decompress->client_data = NULL;
   jpeg_destroy_decompress(jpeg_decompress);
-  return true;
+  return read_ok;
 }
 
 // Import YUV pixels_ into *picture, downsampling UV as appropriate.  This is
@@ -314,9 +294,8 @@ bool WebpOptimizer::WebPImportYUV(WebPPicture* const picture) {
 }
 
 // Main body of transcode.
-bool WebpOptimizer::DoCreateOptimizedWebp(
-    const GoogleString& original_jpeg, jpeg_decompress_struct* jpeg_decompress,
-    GoogleString* compressed_webp) {
+bool WebpOptimizer::CreateOptimizedWebp(
+    const GoogleString& original_jpeg, GoogleString* compressed_webp) {
   // Begin by making sure we can create a webp image at all:
   WebPPicture picture;
   WebPConfig config;
@@ -332,11 +311,11 @@ bool WebpOptimizer::DoCreateOptimizedWebp(
 
   J_COLOR_SPACE color_space = kUseYUV ? JCS_YCbCr : JCS_RGB;
 
-  if (!ReadJpegPixels(color_space, original_jpeg, jpeg_decompress)) {
+  if (!ReadJpegPixels(color_space, original_jpeg)) {
     return false;
   }
 
-  // At this point, we're done reading the jpeg, and the YCrCb data
+  // At this point, we're done reading the jpeg, and the color data
   // is stored in *pixels.  Now we just need to turn this into a webp.
   // Regardless of the import method we use, we need to set the picture
   // up beforehand as follows:
@@ -355,8 +334,9 @@ bool WebpOptimizer::DoCreateOptimizedWebp(
     return false;
   }
 
-  // We're done with the original pixels, so clean them up.
-  free(pixels_);
+  // We're done with the original pixels, so clean them up.  If an error occurs,
+  // this cleanup will happen in the destructor instead.
+  delete[] pixels_;
   pixels_ = NULL;
 
   // Now we need to take picture and WebP encode it.

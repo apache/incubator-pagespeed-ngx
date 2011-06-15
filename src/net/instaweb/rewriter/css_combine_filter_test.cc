@@ -46,7 +46,6 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace net_instaweb {
 
@@ -279,105 +278,6 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
     // ResourceCombinerTest.TestContinuingFetchWhenFastFailed
     EXPECT_FALSE(response_headers.headers_complete());
     EXPECT_EQ("", fetched_resource_content);
-  }
-
-  // Representation for a CSS tag.
-  class CssLink {
-   public:
-    CssLink(const StringPiece& url, const StringPiece& content,
-            const StringPiece& media, bool supply_mock)
-        : url_(url.data(), url.size()),
-          content_(content.data(), content.size()),
-          media_(media.data(), media.size()),
-          supply_mock_(supply_mock) {
-    }
-
-    // A vector of CssLink* should know how to accumulate and add.
-    class Vector : public std::vector<CssLink*> {
-     public:
-      ~Vector() {
-        STLDeleteElements(this);
-      }
-
-      void Add(const StringPiece& url, const StringPiece& content,
-               const StringPiece& media, bool supply_mock) {
-        push_back(new CssLink(url, content, media, supply_mock));
-      }
-    };
-
-    // Parses a combined CSS elementand provides the segments from which
-    // it came.
-    bool DecomposeCombinedUrl(GoogleString* base, StringVector* segments,
-                              MessageHandler* handler) {
-      GoogleUrl gurl(url_);
-      bool ret = false;
-      if (gurl.is_valid()) {
-        gurl.AllExceptLeaf().CopyToString(base);
-        ResourceNamer namer;
-        if (namer.Decode(gurl.LeafWithQuery()) &&
-            (namer.id() == RewriteDriver::kCssCombinerId)) {
-          UrlMultipartEncoder multipart_encoder;
-          GoogleString segment;
-          ret = multipart_encoder.Decode(namer.name(), segments, NULL, handler);
-        }
-      }
-      return ret;
-    }
-
-    GoogleString url_;
-    GoogleString content_;
-    GoogleString media_;
-    bool supply_mock_;
-  };
-
-  // Helper class to collect CSS hrefs.
-  class CssCollector : public EmptyHtmlFilter {
-   public:
-    CssCollector(HtmlParse* html_parse, CssLink::Vector* css_links)
-        : css_links_(css_links),
-          css_tag_scanner_(html_parse) {
-    }
-
-    virtual void EndElement(HtmlElement* element) {
-      HtmlElement::Attribute* href;
-      const char* media;
-      if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
-        // TODO(jmarantz): collect content of the CSS files, before and
-        // after combination, so we can diff.
-        const char* content = "";
-        css_links_->Add(href->value(), content, media, false);
-      }
-    }
-
-    virtual const char* Name() const { return "CssCollector"; }
-
-   private:
-    CssLink::Vector* css_links_;
-    CssTagScanner css_tag_scanner_;
-
-    DISALLOW_COPY_AND_ASSIGN(CssCollector);
-  };
-
-  // Collects just the hrefs from CSS links into a string vector.
-  void CollectCssLinks(const StringPiece& id, const StringPiece& html,
-                       StringVector* css_links) {
-    CssLink::Vector v;
-    CollectCssLinks(id, html, &v);
-    for (int i = 0, n = v.size(); i < n; ++i) {
-      css_links->push_back(v[i]->url_);
-    }
-  }
-
-  // Collects all information about CSS links into a CssLink::Vector.
-  void CollectCssLinks(const StringPiece& id, const StringPiece& html,
-                       CssLink::Vector* css_links) {
-    HtmlParse html_parse(&message_handler_);
-    CssCollector collector(&html_parse, css_links);
-    html_parse.AddFilter(&collector);
-    GoogleString dummy_url = StrCat("http://collect.css.links/", id, ".html");
-    html_parse.StartParse(dummy_url);
-    html_parse.ParseText(html.data(), html.size());
-    html_parse.FinishParse();
   }
 
   // Common framework for testing barriers.  A null-terminated set of css

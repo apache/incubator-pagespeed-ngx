@@ -844,8 +844,8 @@ void RewriteDriver::FetchComplete() {
   DCHECK(fetch_queued_);
   fetch_queued_ = false;
   DCHECK_EQ(0, pending_rewrites_);
-  rewrite_condvar_->Signal();
   STLDeleteElements(&rewrites_);
+  rewrite_condvar_->Signal();
 }
 
 void RewriteDriver::WakeupFromIdle() {

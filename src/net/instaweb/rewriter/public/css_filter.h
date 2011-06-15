@@ -21,12 +21,16 @@
 
 #include <vector>
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -39,7 +43,6 @@ class Stylesheet;
 namespace net_instaweb {
 
 class CacheExtender;
-class GoogleUrl;
 class HtmlCharactersNode;
 class HtmlElement;
 class ImageCombineFilter;
@@ -62,6 +65,8 @@ class Variable;
 // It does not consider style= attributes on arbitrary elements.
 class CssFilter : public RewriteSingleResourceFilter {
  public:
+  class Context;
+
   CssFilter(RewriteDriver* driver, const StringPiece& filter_prefix,
             // TODO(sligocki): Temporary pattern until we figure out a better
             // way to do this without passing all filters around everywhere.
@@ -94,15 +99,31 @@ class CssFilter : public RewriteSingleResourceFilter {
   virtual RewriteContext* MakeRewriteContext();
 
  private:
-  class Context;
   friend class Context;
 
-  TimedBool RewriteCssText(const StringPiece& in_text, GoogleString* out_text,
+  TimedBool RewriteCssText(Context* context,
                            const GoogleUrl& css_gurl,
+                           const StringPiece& in_text,
+                           GoogleString* out_text,
                            MessageHandler* handler);
   bool RewriteExternalCss(const StringPiece& in_url, GoogleString* out_url);
 
+  // Tries to write out a (potentially edited) stylesheet out to out_text,
+  // and returns whether we should consider the result as an improvement.
+  bool SerializeCss(int64 in_text_size,
+                    const Css::Stylesheet* stylesheet,
+                    const GoogleUrl& css_gurl,
+                    bool previously_optimized,
+                    GoogleString* out_text,
+                    MessageHandler* handler);
+
   virtual RewriteResult RewriteLoadedResource(
+      const ResourcePtr& input_resource,
+      const OutputResourcePtr& output_resource);
+
+  // Here context may be null for now, if we're in a sync flow.
+  RewriteResult DoRewriteLoadedResource(
+      Context* context,
       const ResourcePtr& input_resource,
       const OutputResourcePtr& output_resource);
 
@@ -120,12 +141,65 @@ class CssFilter : public RewriteSingleResourceFilter {
 
   CssImageRewriter image_rewriter_;
 
+  // Filters we delegate to.
+  CacheExtender* cache_extender_;
+  ImageRewriteFilter* image_rewrite_filter_;
+  ImageCombineFilter* image_combiner_;
+
   // Statistics
   Variable* num_files_minified_;
   Variable* minified_bytes_saved_;
   Variable* num_parse_failures_;
 
   DISALLOW_COPY_AND_ASSIGN(CssFilter);
+};
+
+// Context used by CssFilter under async flow.
+class CssFilter::Context : public SingleRewriteContext {
+ public:
+  Context(CssFilter* filter, RewriteDriver* driver,
+          CacheExtender* cache_extender,
+          ImageRewriteFilter* image_rewriter,
+          ImageCombineFilter* image_combiner);
+  virtual ~Context();
+
+  // Starts nested rewrite jobs for any images contained in the CSS.
+  void RewriteImages(int64 in_text_size, const GoogleUrl& css_gurl,
+                     Css::Stylesheet* stylesheet);
+
+  // Registers a context that was started on our behalf.
+  void RegisterNested(RewriteContext* nested);
+
+ protected:
+  virtual void Render();
+  virtual void Harvest();
+  virtual void RewriteSingle(const ResourcePtr& input,
+                             const OutputResourcePtr& output);
+  virtual const char* id() const { return filter_->id().c_str(); }
+  virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
+
+ private:
+  CssFilter* filter_;
+  RewriteDriver* driver_;
+  CssImageRewriter image_rewriter_;
+
+  // If this is true, we have asked image_rewriter_ to look at inner context,
+  // making it potentially initiate nested rewrites. In that case, we do not
+  // want to finish the rewrite just yet.
+  bool may_need_nested_rewrites_;
+
+  // If this is true, the image_rewriter_ has actually asked us to start nested
+  // rewrites.
+  bool have_nested_rewrites_;
+
+  // Information needed for nested rewrites or finishing up serialization.
+  int64 in_text_size_;
+  scoped_ptr<Css::Stylesheet> stylesheet_;
+  GoogleUrl css_gurl_;
+  ResourcePtr input_resource_;
+  OutputResourcePtr output_resource_;
+
+  DISALLOW_COPY_AND_ASSIGN(Context);
 };
 
 }  // namespace net_instaweb

@@ -66,7 +66,7 @@ namespace {
 const char kTrimWhitespaceFilterId[] = "tw";
 const char kUpperCaseFilterId[] = "uc";
 const char kNestedFilterId[] = "nf";
-const char kCombinerFilterId[] = "cr";
+const char kCombiningFilterId[] = "cr";
 
 
 }  // namespace
@@ -154,7 +154,18 @@ class UpperCaseRewriter : public SimpleTextFilter::Rewriter {
 class NestedFilter : public RewriteFilter {
  public:
   explicit NestedFilter(RewriteDriver* driver)
-      : RewriteFilter(driver, kUpperCaseFilterId) {}
+      : RewriteFilter(driver, kNestedFilterId) {
+    ClearStats();
+  }
+
+  // Stats
+  int num_top_rewrites() const { return num_top_rewrites_; }
+  int num_sub_rewrites() const { return num_sub_rewrites_; }
+
+  void ClearStats() {
+    num_top_rewrites_ = 0;
+    num_sub_rewrites_ = 0;
+  }
 
  protected:
   virtual ~NestedFilter() {}
@@ -167,13 +178,15 @@ class NestedFilter : public RewriteFilter {
 
   class NestedContext : public SingleRewriteContext {
    public:
-    explicit NestedContext(RewriteContext* parent)
-        : SingleRewriteContext(NULL, parent, NULL) {}
+    NestedContext(RewriteContext* parent, NestedFilter* filter)
+        : SingleRewriteContext(NULL, parent, NULL),
+          filter_(filter) {}
     virtual ~NestedContext() {}
 
    protected:
     virtual void RewriteSingle(
         const ResourcePtr& input, const OutputResourcePtr& output) {
+      ++filter_->num_sub_rewrites_;
       GoogleString text = input->contents().as_string();
       UpperString(&text);
       RewriteSingleResourceFilter::RewriteResult result =
@@ -190,24 +203,28 @@ class NestedFilter : public RewriteFilter {
       RewriteDone(result, 0);
     }
 
-    virtual const char* id() const { return kUpperCaseFilterId; }
+    virtual const char* id() const { return kNestedFilterId; }
     virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
+
+    NestedFilter* filter_;
   };
 
   class Context : public SingleRewriteContext {
    public:
-    explicit Context(RewriteDriver* driver)
-        : SingleRewriteContext(driver, NULL, NULL) {
+    Context(RewriteDriver* driver, NestedFilter* filter)
+        : SingleRewriteContext(driver, NULL, NULL),
+          filter_(filter) {
     }
     virtual ~Context() {
       STLDeleteElements(&strings_);
     }
     virtual void RewriteSingle(
         const ResourcePtr& input, const OutputResourcePtr& output) {
+      ++filter_->num_top_rewrites_;
       output_ = output;
       // Assume that this file just has nested CSS URLs one per line,
       // which we will rewrite.
-      std::vector<StringPiece> pieces;
+      StringPieceVector pieces;
       SplitStringPieceToVector(input->contents(), "\n", &pieces, true);
 
       GoogleUrl base(input->url());
@@ -218,7 +235,7 @@ class NestedFilter : public RewriteFilter {
           if (url.is_valid()) {
             ResourcePtr resource(Driver()->CreateInputResource(url));
             if (resource.get() != NULL) {
-              NestedContext* nested_context = new NestedContext(this);
+              NestedContext* nested_context = new NestedContext(this, filter_);
               AddNestedContext(nested_context);
               ResourceSlotPtr slot(new NestedSlot(resource));
               nested_context->AddSlot(slot);
@@ -266,6 +283,7 @@ class NestedFilter : public RewriteFilter {
    private:
     OutputResourcePtr output_;
     std::vector<GoogleString*> strings_;
+    NestedFilter* filter_;
 
     DISALLOW_COPY_AND_ASSIGN(Context);
   };
@@ -279,7 +297,7 @@ class NestedFilter : public RewriteFilter {
     CHECK(false);
   }
 
-  RewriteContext* MakeRewriteContext() { return new Context(driver_); }
+  RewriteContext* MakeRewriteContext() { return new Context(driver_, this); }
 
   void StartElementImpl(HtmlElement* element) {
     HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kHref);
@@ -289,7 +307,7 @@ class NestedFilter : public RewriteFilter {
         ResourceSlotPtr slot(driver_->GetSlot(resource, element, attr));
 
         // This 'new' is paired with a delete in RewriteContext::FinishFetch()
-        Context* context = new Context(driver_);
+        Context* context = new Context(driver_, this);
         context->AddSlot(slot);
         driver_->InitiateRewrite(context);
       }
@@ -307,13 +325,23 @@ class NestedFilter : public RewriteFilter {
  private:
   OutputResourceKind kind_;
 
+  // Stats
+  int num_top_rewrites_;
+  int num_sub_rewrites_;
+
   DISALLOW_COPY_AND_ASSIGN(NestedFilter);
 };
 
+// Simple version of CombineCssFilter.
+//
+// Concatenates all CSS files loaded from <link> tags into a single output.
+// Does not consider barriers, @import statements, absolutification, etc.
 class CombiningFilter : public RewriteFilter {
  public:
   explicit CombiningFilter(RewriteDriver* driver)
-      : RewriteFilter(driver, kCombinerFilterId) {}
+      : RewriteFilter(driver, kCombiningFilterId) {
+    ClearStats();
+  }
   virtual ~CombiningFilter() {}
 
   class Combiner : public ResourceCombiner {
@@ -334,9 +362,10 @@ class CombiningFilter : public RewriteFilter {
 
   class Context : public RewriteContext {
    public:
-    Context(RewriteDriver* driver, RewriteFilter* filter)
+    Context(RewriteDriver* driver, CombiningFilter* filter)
         : RewriteContext(driver, NULL, NULL),
-          combiner_(driver, filter) {
+          combiner_(driver, filter),
+          filter_(filter) {
     }
 
     void AddElement(HtmlElement* element, HtmlElement::Attribute* href,
@@ -373,6 +402,7 @@ class CombiningFilter : public RewriteFilter {
     virtual void Rewrite(int partition_index,
                          OutputPartition* partition,
                          const OutputResourcePtr& output) {
+      ++filter_->num_rewrites_;
       // resource_combiner.cc takes calls WriteCombination as part
       // of Combine.  But if we are being called on behalf of a
       // fetch then the resource still needs to be written.
@@ -404,12 +434,13 @@ class CombiningFilter : public RewriteFilter {
     }
 
     virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
-    virtual const char* id() const { return kCombinerFilterId; }
+    virtual const char* id() const { return kCombiningFilterId; }
     virtual OutputResourceKind kind() const { return kRewrittenResource; }
 
    private:
     Combiner combiner_;
     UrlMultipartEncoder encoder_;
+    CombiningFilter* filter_;
   };
 
   virtual void StartDocumentImpl() {}
@@ -435,7 +466,7 @@ class CombiningFilter : public RewriteFilter {
   }
 
   virtual void EndElementImpl(HtmlElement* element) {}
-  virtual const char* Name() const { return "Combiner"; }
+  virtual const char* Name() const { return "Combining"; }
   RewriteContext* MakeRewriteContext() { return new Context(driver_, this); }
   virtual bool Fetch(const OutputResourcePtr& resource,
                      Writer* writer,
@@ -449,14 +480,26 @@ class CombiningFilter : public RewriteFilter {
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
   virtual bool HasAsyncFlow() const { return true; }
 
+  // Stats
+  bool num_rewrites() const { return num_rewrites_; }
+
+  void ClearStats() { num_rewrites_ = 0; }
+
  private:
+  friend class Context;
+
   scoped_ptr<Context> context_;
   UrlMultipartEncoder encoder_;
+  int num_rewrites_;
+
   DISALLOW_COPY_AND_ASSIGN(CombiningFilter);
 };
 
 class RewriteContextTest : public ResourceManagerTestBase {
  protected:
+  RewriteContextTest() : combining_filter_(NULL), nested_filter_(NULL) {}
+  virtual ~RewriteContextTest() {}
+
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     rewrite_driver()->SetAsynchronousRewrites(true);
@@ -501,6 +544,20 @@ class RewriteContextTest : public ResourceManagerTestBase {
     InitTrimFilter(kind, rewrite_driver);
   }
 
+  void InitCombiningFilter() {
+    RewriteDriver* driver = rewrite_driver();
+    combining_filter_ = new CombiningFilter(driver);
+    driver->AddRewriteFilter(combining_filter_);
+    driver->AddFilters();
+  }
+
+  void InitNestedFilter() {
+    RewriteDriver* driver = rewrite_driver();
+    nested_filter_ = new NestedFilter(driver);
+    driver->AddRewriteFilter(nested_filter_);
+    driver->AddFilters();
+  }
+
   GoogleString CssLink(const StringPiece& url) {
     return StrCat("<link rel=stylesheet href=", url, ">");
   }
@@ -509,7 +566,16 @@ class RewriteContextTest : public ResourceManagerTestBase {
     lru_cache()->ClearStats();
     counting_url_async_fetcher()->Clear();
     file_system()->ClearStats();
+    if (combining_filter_ != NULL) {
+      combining_filter_->ClearStats();
+    }
+    if (nested_filter_ != NULL) {
+      nested_filter_->ClearStats();
+    }
   }
+
+  CombiningFilter* combining_filter_;
+  NestedFilter* nested_filter_;
 };
 
 TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
@@ -866,9 +932,7 @@ TEST_F(RewriteContextTest, TwoFiltersDelayedFetches) {
 }
 
 TEST_F(RewriteContextTest, Nested) {
-  RewriteDriver* driver = rewrite_driver();
-  driver->AddRewriteFilter(new NestedFilter(driver));
-  driver->AddFilters();
+  InitNestedFilter();
   InitResources();
   ValidateExpected(
       "async3", CssLink("c.css"),
@@ -876,11 +940,9 @@ TEST_F(RewriteContextTest, Nested) {
 }
 
 TEST_F(RewriteContextTest, CombinationRewrite) {
-  RewriteDriver* driver = rewrite_driver();
-  driver->AddRewriteFilter(new CombiningFilter(driver));
-  driver->AddFilters();
+  InitCombiningFilter();
   InitResources();
-  GoogleString combined_url = Encode(kTestDomain, kCombinerFilterId, "0",
+  GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
                                      "a.css+b.css", "css");
   ValidateExpected(
       "combination_rewrite", StrCat(CssLink("a.css"), CssLink("b.css")),
@@ -901,11 +963,10 @@ TEST_F(RewriteContextTest, CombinationRewrite) {
 }
 
 TEST_F(RewriteContextTest, CombinationFetch) {
-  RewriteDriver* driver = rewrite_driver();
-  driver->AddRewriteFilter(new CombiningFilter(driver));
+  InitCombiningFilter();
   InitResources();
 
-  GoogleString combined_url = Encode(kTestDomain, kCombinerFilterId, "0",
+  GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
                                      "a.css+b.css", "css");
 
   // The input URLs are not in cache, but the fetch should work.
@@ -924,7 +985,7 @@ TEST_F(RewriteContextTest, CombinationFetch) {
   ClearStats();
   content.clear();
 
-  // Now fetch it again.  This time the input URL is cached.
+  // Now fetch it again.  This time the output resource is cached.
   EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
   EXPECT_EQ(" a b", content);
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -1019,41 +1080,45 @@ class ResourceUpdateTest : public RewriteContextTest {
     FetcherUpdateDateHeaders();
   }
 
-  // Simulates requesting HTML doc and then loading resource.
+  // Rewrite supplied HTML, search find rewritten resource URL (EXPECT only 1),
+  // and return the fetched contents of that resource.
+  //
+  // Helper function to specific functions below.
   GoogleString RewriteResource(const StringPiece& id,
-                               const StringPiece& expected_contents) {
+                               const GoogleString& html_input) {
     // We use MD5 hasher instead of mock hasher so that different resources
     // are assigned different URLs.
     UseMd5Hasher();
 
-    GoogleString prefix = "<link rel=stylesheet href=\"";
-    GoogleString suffix = "\">";
+    // Rewrite HTML.
+    Parse(id, html_input);
 
-    GoogleString hash = hasher()->Hash(expected_contents);
-    GoogleString expected_rewritten_url =
-        StringPrintf(kRewrittenUrlFormat, hash.c_str());
+    // Find rewritten resource URL.
+    StringVector css_urls;
+    CollectCssLinks(StrCat(id, "-collect"), output_buffer_, &css_urls);
+    EXPECT_EQ(1UL, css_urls.size());
+    const GoogleString& rewritten_url = css_urls[0];
 
-    // Rewrite page ...
-    Parse(id, StrCat(prefix, kOriginalUrl, suffix));
-
-    // ... find rewritten resource URL ...
-    StringPiece output_html = output_buffer_;
-    EXPECT_TRUE(output_html.starts_with(prefix)) << output_html;
-    EXPECT_TRUE(output_html.ends_with(suffix)) << output_html;
-    StringPiece rewritten_url = output_html;
-    rewritten_url.remove_prefix(prefix.size());
-    rewritten_url.remove_suffix(suffix.size());
-    EXPECT_EQ(expected_rewritten_url, rewritten_url);
-
-    // ... and check that rewritten resource is correct.
-    GoogleString rewritten_contents;
-    EXPECT_TRUE(ServeResourceUrl(rewritten_url, &rewritten_contents));
-    return rewritten_contents;
+    // Fetch rewritten resource
+    return FetchUrlAndCheckHash(rewritten_url);
   }
 
-  // Don't mess with the HTML.
-  virtual GoogleString AddHtmlBody(const StringPiece& html) {
-    return html.as_string();
+  GoogleString FetchUrlAndCheckHash(const StringPiece& url) {
+    // Fetch resource.
+    GoogleString contents;
+    EXPECT_TRUE(ServeResourceUrl(url, &contents));
+
+    // Check that hash code is correct.
+    ResourceNamer namer;
+    namer.Decode(url);
+    EXPECT_EQ(hasher()->Hash(contents), namer.hash());
+
+    return contents;
+  }
+
+  // Simulates requesting HTML doc and then loading resource.
+  GoogleString RewriteSingleResource(const StringPiece& id) {
+    return RewriteResource(id, CssLink(kOriginalUrl));
   }
 };
 
@@ -1068,22 +1133,22 @@ TEST_F(ResourceUpdateTest, OnTheFly) {
 
   // 1) Set first version of resource.
   InitResponseHeaders(kOriginalUrl, kContentTypeCss, " init ", ttl_ms / 1000);
-  EXPECT_EQ("init", RewriteResource("first_load", "init"));
+  EXPECT_EQ("init", RewriteSingleResource("first_load"));
 
   // 2) Advance time, but not so far that resources have expired.
   mock_timer()->AdvanceMs(ttl_ms / 2);
   // Rewrite should be the same.
-  EXPECT_EQ("init", RewriteResource("advance_time", "init"));
+  EXPECT_EQ("init", RewriteSingleResource("advance_time"));
 
   // 3) Change resource.
   InitResponseHeaders(kOriginalUrl, kContentTypeCss, " new ", ttl_ms / 1000);
   // Rewrite should still be the same, because it's found in cache.
-  EXPECT_EQ("init", RewriteResource("stale_content", "init"));
+  EXPECT_EQ("init", RewriteSingleResource("stale_content"));
 
   // 4) Advance time so that old cached input resource expires.
   mock_timer()->AdvanceMs(ttl_ms);
   // Rewrite should now use new resource.
-  EXPECT_EQ("new", RewriteResource("updated_content", "new"));
+  EXPECT_EQ("new", RewriteSingleResource("updated_content"));
 }
 
 TEST_F(ResourceUpdateTest, Rewritten) {
@@ -1093,22 +1158,22 @@ TEST_F(ResourceUpdateTest, Rewritten) {
 
   // 1) Set first version of resource.
   InitResponseHeaders(kOriginalUrl, kContentTypeCss, " init ", ttl_ms / 1000);
-  EXPECT_EQ("init", RewriteResource("first_load", "init"));
+  EXPECT_EQ("init", RewriteSingleResource("first_load"));
 
   // 2) Advance time, but not so far that resources have expired.
   mock_timer()->AdvanceMs(ttl_ms / 2);
   // Rewrite should be the same.
-  EXPECT_EQ("init", RewriteResource("advance_time", "init"));
+  EXPECT_EQ("init", RewriteSingleResource("advance_time"));
 
   // 3) Change resource.
   InitResponseHeaders(kOriginalUrl, kContentTypeCss, " new ", ttl_ms / 1000);
   // Rewrite should still be the same, because it's found in cache.
-  EXPECT_EQ("init", RewriteResource("stale_content", "init"));
+  EXPECT_EQ("init", RewriteSingleResource("stale_content"));
 
   // 4) Advance time so that old cached input resource expires.
   mock_timer()->AdvanceMs(ttl_ms);
   // Rewrite should now use new resource.
-  EXPECT_EQ("new", RewriteResource("updated_content", "new"));
+  EXPECT_EQ("new", RewriteSingleResource("updated_content"));
 }
 
 TEST_F(ResourceUpdateTest, LoadFromFileOnTheFly) {
@@ -1119,26 +1184,25 @@ TEST_F(ResourceUpdateTest, LoadFromFileOnTheFly) {
 
   // 1) Set first version of resource.
   WriteFile("/test/a.css", " init ");
-  EXPECT_EQ("init", RewriteResource("first_load", "init"));
+  EXPECT_EQ("init", RewriteSingleResource("first_load"));
 
   // 2) Advance time, but not so far that resources would have expired if
   // they were loaded by UrlFetch.
   mock_timer()->AdvanceMs(ttl_ms / 2);
   // Rewrite should be the same.
-  EXPECT_EQ("init", RewriteResource("advance_time", "init"));
+  EXPECT_EQ("init", RewriteSingleResource("advance_time"));
 
   // 3) Change resource.
   WriteFile("/test/a.css", " new ");
   // Rewrite should imediately update.
   // TODO(sligocki): This should get updated immediately.
   // We need to fix cache lifetimes.
-  //EXPECT_EQ("new", RewriteResource("updated_content", "new"));
-  EXPECT_EQ("new", RewriteResource("updated_content", "init"));
+  //EXPECT_EQ("new", RewriteSingleResource("updated_content"));
 
   // 4) Advance time so that old cached input resource expires.
   mock_timer()->AdvanceMs(ttl_ms);
   // Rewrite should now use new resource.
-  EXPECT_EQ("new", RewriteResource("updated_content", "new"));
+  EXPECT_EQ("new", RewriteSingleResource("updated_content"));
 }
 
 TEST_F(ResourceUpdateTest, LoadFromFileRewritten) {
@@ -1149,26 +1213,243 @@ TEST_F(ResourceUpdateTest, LoadFromFileRewritten) {
 
   // 1) Set first version of resource.
   WriteFile("/test/a.css", " init ");
-  EXPECT_EQ("init", RewriteResource("first_load", "init"));
+  EXPECT_EQ("init", RewriteSingleResource("first_load"));
 
   // 2) Advance time, but not so far that resources would have expired if
   // they were loaded by UrlFetch.
   mock_timer()->AdvanceMs(ttl_ms / 2);
   // Rewrite should be the same.
-  EXPECT_EQ("init", RewriteResource("advance_time", "init"));
+  EXPECT_EQ("init", RewriteSingleResource("advance_time"));
 
   // 3) Change resource.
   WriteFile("/test/a.css", " new ");
   // Rewrite should imediately update.
   // TODO(sligocki): This should get updated immediately.
   // We need to fix cache lifetimes.
-  //EXPECT_EQ("new", RewriteResource("updated_content", "new"));
-  EXPECT_EQ("init", RewriteResource("updated_content", "init"));
+  //EXPECT_EQ("new", RewriteSingleResource("updated_content"));
+  EXPECT_EQ("init", RewriteSingleResource("updated_content"));
 
   // 4) Advance time so that old cached input resource expires.
   mock_timer()->AdvanceMs(ttl_ms);
   // Rewrite should now use new resource.
-  EXPECT_EQ("new", RewriteResource("updated_content", "new"));
+  EXPECT_EQ("new", RewriteSingleResource("updated_content"));
+}
+
+class CombineResourceUpdateTest : public ResourceUpdateTest {
+ protected:
+  GoogleString CombineResources(const StringPiece& id) {
+    return RewriteResource(
+        id, StrCat(CssLink("web/a.css"), CssLink("file/b.css"),
+                   CssLink("web/c.css"), CssLink("file/d.css")));
+  }
+};
+
+TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
+  // Initialize system.
+  InitCombiningFilter();
+  options()->file_load_policy()->Associate("http://test.com/file/", "/test/");
+
+  // Initialize resources.
+  int64 kLongTtlMs = 1 * Timer::kMonthMs;
+  int64 kShortTtlMs = 1 * Timer::kMinuteMs;
+  InitResponseHeaders("http://test.com/web/a.css", kContentTypeCss,
+                      " a1 ", kLongTtlMs / 1000);
+  WriteFile("/test/b.css", " b1 ");
+  InitResponseHeaders("http://test.com/web/c.css", kContentTypeCss,
+                      " c1 ", kShortTtlMs / 1000);
+  WriteFile("/test/d.css", " d1 ");
+
+  // 1) Initial combined resource.
+  EXPECT_EQ(" a1  b1  c1  d1 ", CombineResources("first_load"));
+  EXPECT_EQ(1, combining_filter_->num_rewrites());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(2, file_system()->num_input_file_opens());
+  // TODO(sligocki): EXPECT_EQ(0, file_system()->num_input_file_stats());
+  ClearStats();
+
+  // 2) Advance time, but not so far that any resources have expired.
+  mock_timer()->AdvanceMs(kShortTtlMs / 2);
+  // Rewrite should be the same.
+  EXPECT_EQ(" a1  b1  c1  d1 ", CombineResources("advance_time"));
+  EXPECT_EQ(0, combining_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
+  // TODO(sligocki): EXPECT_EQ(2, file_system()->num_input_file_stats());
+  ClearStats();
+
+  // 3) Change resources
+  InitResponseHeaders("http://test.com/web/a.css", kContentTypeCss,
+                      " a2 ", kLongTtlMs / 1000);
+  WriteFile("/test/b.css", " b2 ");
+  InitResponseHeaders("http://test.com/web/c.css", kContentTypeCss,
+                      " c2 ", kShortTtlMs / 1000);
+  WriteFile("/test/d.css", " d2 ");
+  // File-based resources should be updated, but web-based ones still cached.
+  // TODO(sligocki): Fix
+  //EXPECT_EQ(" a1  b2  c1  d2 ", CombineResources("stale_content"));
+  EXPECT_EQ(" a1  b1  c1  d1 ", CombineResources("stale_content"));
+  //EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
+  EXPECT_EQ(0, combining_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  //EXPECT_EQ(2, file_system()->num_input_file_opens());  // Read both files.
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
+  // TODO(sligocki): EXPECT_EQ(2, file_system()->num_input_file_stats());
+  ClearStats();
+
+  // 4) Advance time so that short-cached input expires.
+  mock_timer()->AdvanceMs(kShortTtlMs);
+  // All but long TTL UrlInputResource should be updated.
+  EXPECT_EQ(" a1  b2  c2  d2 ", CombineResources("short_updated"));
+  EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());  // One expired.
+  //EXPECT_EQ(0, file_system()->num_input_file_opens());  // Files unchanged.
+  EXPECT_EQ(2, file_system()->num_input_file_opens());
+  // TODO(sligocki): EXPECT_EQ(2, file_system()->num_input_file_stats());
+  ClearStats();
+
+  // 5) Advance time so that all inputs have expired and been updated.
+  mock_timer()->AdvanceMs(kLongTtlMs);
+  // Rewrite should now use all new resources.
+  EXPECT_EQ(" a2  b2  c2  d2 ", CombineResources("all_updated"));
+  EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // Both expired.
+  //EXPECT_EQ(0, file_system()->num_input_file_opens());  // Files unchanged.
+  EXPECT_EQ(2, file_system()->num_input_file_opens());
+  // TODO(sligocki): EXPECT_EQ(2, file_system()->num_input_file_stats());
+  ClearStats();
+}
+
+class NestedResourceUpdateTest : public ResourceUpdateTest {
+ protected:
+  StringVector RewriteNestedResources(const StringPiece& id) {
+    // Rewrite everything and fetch the rewritten main resource.
+    GoogleString rewritten_list = RewriteResource(id, CssLink("main.txt"));
+
+    // Parse URLs for subresources.
+    StringPieceVector urls;
+    SplitStringPieceToVector(rewritten_list, "\n", &urls, true);
+
+    // Load text of subresources.
+    StringVector subresources;
+    for (StringPieceVector::const_iterator iter = urls.begin();
+         iter != urls.end(); ++iter) {
+      subresources.push_back(FetchUrlAndCheckHash(*iter));
+    }
+    return subresources;
+  }
+};
+
+TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
+  // Initialize system.
+  InitNestedFilter();
+  options()->file_load_policy()->Associate("http://test.com/file/", "/test/");
+
+  // Initialize resources.
+  int64 kLongTtlMs = 1 * Timer::kMonthMs;
+  int64 kShortTtlMs = 1 * Timer::kMinuteMs;
+  InitResponseHeaders("http://test.com/main.txt", kContentTypeCss,
+                      "web/a.css\n"
+                      "file/b.css\n"
+                      "web/c.css\n", kLongTtlMs / 1000);
+  InitResponseHeaders("http://test.com/web/a.css", kContentTypeCss,
+                      " a1 ", kLongTtlMs / 1000);
+  WriteFile("/test/b.css", " b1 ");
+  InitResponseHeaders("http://test.com/web/c.css", kContentTypeCss,
+                      " c1 ", kShortTtlMs / 1000);
+
+  ClearStats();
+  // 1) Initial combined resource.
+  StringVector result_vector;
+  result_vector = RewriteNestedResources("first_load");
+  EXPECT_EQ(" A1 ", result_vector[0]);
+  EXPECT_EQ(" B1 ", result_vector[1]);
+  EXPECT_EQ(" C1 ", result_vector[2]);
+  EXPECT_EQ(1, nested_filter_->num_top_rewrites());
+  EXPECT_EQ(3, nested_filter_->num_sub_rewrites());
+  EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
+  //EXPECT_EQ(1, file_system()->num_input_file_opens());  // b.css
+  // {a,b,c}.css.pagespeed.nf.HASH.css and b.css
+  EXPECT_EQ(4, file_system()->num_input_file_opens());
+  // TODO(sligocki): EXPECT_EQ(0, file_system()->num_input_file_stats());
+  ClearStats();
+
+  // 2) Advance time, but not so far that any resources have expired.
+  mock_timer()->AdvanceMs(kShortTtlMs / 2);
+  // Rewrite should be the same.
+  result_vector = RewriteNestedResources("advance_time");
+  EXPECT_EQ(" A1 ", result_vector[0]);
+  EXPECT_EQ(" B1 ", result_vector[1]);
+  EXPECT_EQ(" C1 ", result_vector[2]);
+  EXPECT_EQ(0, nested_filter_->num_top_rewrites());
+  EXPECT_EQ(0, nested_filter_->num_sub_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
+  // TODO(sligocki): EXPECT_EQ(1, file_system()->num_input_file_stats());
+  ClearStats();
+
+  // 3) Change resources
+  InitResponseHeaders("http://test.com/web/a.css", kContentTypeCss,
+                      " a2 ", kLongTtlMs / 1000);
+  WriteFile("/test/b.css", " b2 ");
+  InitResponseHeaders("http://test.com/web/c.css", kContentTypeCss,
+                      " c2 ", kShortTtlMs / 1000);
+  // File-based resources should be updated, but web-based ones still cached.
+  result_vector = RewriteNestedResources("stale_content");
+  EXPECT_EQ(" A1 ", result_vector[0]);
+  // TODO(sligocki): Fix
+  //EXPECT_EQ(" B2 ", result_vector[1]);
+  EXPECT_EQ(" B1 ", result_vector[1]);
+  EXPECT_EQ(" C1 ", result_vector[2]);
+  //EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
+  EXPECT_EQ(0, nested_filter_->num_top_rewrites());
+  //EXPECT_EQ(1, nested_filter_->num_sub_rewrites());  // b.css
+  EXPECT_EQ(0, nested_filter_->num_sub_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  //EXPECT_EQ(1, file_system()->num_input_file_opens());  // b.css
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
+  // TODO(sligocki): EXPECT_EQ(1, file_system()->num_input_file_stats());
+  ClearStats();
+
+  // 4) Advance time so that short-cached input expires.
+  mock_timer()->AdvanceMs(kShortTtlMs);
+  // All but long TTL UrlInputResrouce should be updated.
+  result_vector = RewriteNestedResources("short_updated");
+  EXPECT_EQ(" A1 ", result_vector[0]);
+  // TODO(sligocki): Fix
+  //EXPECT_EQ(" B2 ", result_vector[1]);
+  EXPECT_EQ(" B1 ", result_vector[1]);
+  //EXPECT_EQ(" C2 ", result_vector[2]);
+  EXPECT_EQ(" C1 ", result_vector[2]);
+  //EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
+  EXPECT_EQ(0, nested_filter_->num_top_rewrites());
+  //EXPECT_EQ(1, nested_filter_->num_sub_rewrites());  // c.css
+  EXPECT_EQ(0, nested_filter_->num_sub_rewrites());
+  //EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());  // c.css
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
+  // TODO(sligocki): EXPECT_EQ(1, file_system()->num_input_file_stats());
+  ClearStats();
+
+  // 5) Advance time so that all inputs have expired and been updated.
+  mock_timer()->AdvanceMs(kLongTtlMs);
+  // Rewrite should now use all new resources.
+  result_vector = RewriteNestedResources("short_updated");
+  // TODO(sligocki): Fix
+  //EXPECT_EQ(" A2 ", result_vector[0]);
+  EXPECT_EQ(" A1 ", result_vector[0]);
+  //EXPECT_EQ(" B2 ", result_vector[1]);
+  EXPECT_EQ(" B1 ", result_vector[1]);
+  //EXPECT_EQ(" C2 ", result_vector[2]);
+  EXPECT_EQ(" C1 ", result_vector[2]);
+  //EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
+  EXPECT_EQ(0, nested_filter_->num_top_rewrites());
+  //EXPECT_EQ(2, nested_filter_->num_sub_rewrites());  // a.css, c.css
+  EXPECT_EQ(0, nested_filter_->num_sub_rewrites());
+  //EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // a.css, c.css
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
+  // TODO(sligocki): EXPECT_EQ(1, file_system()->num_input_file_stats());
+  ClearStats();
 }
 
 }  // namespace net_instaweb

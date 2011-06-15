@@ -33,7 +33,6 @@
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
-#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -41,7 +40,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
-#include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -79,33 +77,79 @@ const char CssFilter::kFilesMinified[] = "css_filter_files_minified";
 const char CssFilter::kMinifiedBytesSaved[] = "css_filter_minified_bytes_saved";
 const char CssFilter::kParseFailures[] = "css_filter_parse_failures";
 
-class CssFilter::Context : public SingleRewriteContext {
- public:
-  Context(CssFilter* filter, RewriteDriver* driver)
-      : SingleRewriteContext(driver, NULL /* no parent */,
-                             NULL /* no resource context */),
-        filter_(filter),
-        driver_(driver) {}
-  virtual ~Context() {}
+CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
+                            CacheExtender* cache_extender,
+                            ImageRewriteFilter* image_rewriter,
+                            ImageCombineFilter* image_combiner)
+    : SingleRewriteContext(driver, NULL /* no parent */,
+                           NULL /* no resource context */),
+      filter_(filter),
+      driver_(driver),
+      image_rewriter_(driver, cache_extender, image_rewriter,
+                      image_combiner),
+      may_need_nested_rewrites_(false),
+      have_nested_rewrites_(false),
+      in_text_size_(-1) {
+}
 
-  virtual void Render() {}
-  virtual void RewriteSingle(const ResourcePtr& input,
-                             const OutputResourcePtr& output);
-  virtual const char* id() const { return filter_->id().c_str(); }
-  virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
+CssFilter::Context::~Context() {
+}
 
- private:
-  CssFilter* filter_;
-  RewriteDriver* driver_;
-
-  DISALLOW_COPY_AND_ASSIGN(Context);
-};
+void CssFilter::Context::Render() {
+}
 
 void CssFilter::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
-  RewriteDone(
-      filter_->RewriteLoadedResource(input_resource, output_resource), 0);
+  input_resource_ = input_resource;
+  output_resource_ = output_resource;
+  RewriteResult result =
+      filter_->DoRewriteLoadedResource(this, input_resource, output_resource);
+  if (may_need_nested_rewrites_) {
+    if (have_nested_rewrites_) {
+      StartNestedTasks();
+    } else {
+      // Just call harvest ourselves so we can centralize all the output there.
+      Harvest();
+    }
+  } else {
+    RewriteDone(result, 0);
+  }
+}
+
+void CssFilter::Context::RewriteImages(int64 in_text_size,
+                                       const GoogleUrl& css_gurl,
+                                       Css::Stylesheet* stylesheet) {
+  may_need_nested_rewrites_ = true;
+  in_text_size_ = in_text_size;
+  stylesheet_.reset(stylesheet);
+  css_gurl_.Reset(css_gurl);
+}
+
+void CssFilter::Context::RegisterNested(RewriteContext* nested) {
+  have_nested_rewrites_ = true;
+  AddNestedContext(nested);
+}
+
+void CssFilter::Context::Harvest() {
+  GoogleString out_text;
+  bool ok = filter_->SerializeCss(in_text_size_, stylesheet_.get(), css_gurl_,
+                                  false /*TODO*/, &out_text,
+                                  driver_->message_handler());
+  if (ok) {
+    // TODO(morlovich): Incorporate time from nested rewrites.
+    int64 expire_ms = input_resource_->CacheExpirationTimeMs();
+    output_resource_->SetType(&kContentTypeCss);
+    ok = Manager()->Write(HttpStatus::kOK, out_text,
+                          output_resource_.get(),
+                          expire_ms, Driver()->message_handler());
+  }
+
+  if (ok) {
+    RewriteDone(RewriteSingleResourceFilter::kRewriteOk, 0);
+  } else {
+    RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+  }
 }
 
 CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix,
@@ -115,6 +159,9 @@ CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix,
     : RewriteSingleResourceFilter(driver, path_prefix),
       in_style_element_(false),
       image_rewriter_(driver, cache_extender, image_rewriter, image_combiner),
+      cache_extender_(cache_extender),
+      image_rewrite_filter_(image_rewriter),
+      image_combiner_(image_combiner),
       num_files_minified_(NULL),
       minified_bytes_saved_(NULL),
       num_parse_failures_(NULL) {
@@ -190,8 +237,10 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
     if (driver_->IsRewritable(element) && style_char_node_ != NULL) {
       CHECK(element == style_char_node_->parent());  // Sanity check.
       GoogleString new_content;
-      if (RewriteCssText(style_char_node_->contents(), &new_content,
-                         driver_->base_url(),
+      // TODO(morlovich): Figure out what our context should look like when
+      // recursing into inline stuff!
+      if (RewriteCssText(NULL, driver_->base_url(),
+                         style_char_node_->contents(), &new_content,
                          driver_->message_handler()).value) {
         // Note: Copy of new_content here.
         HtmlCharactersNode* new_style_char_node =
@@ -216,7 +265,9 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
           if (input_resource.get() != NULL) {
             ResourceSlotPtr slot(
                 driver_->GetSlot(input_resource, element, element_href));
-            Context* context = new Context(this, driver_);
+            Context* context =
+                new Context(this, driver_, cache_extender_,
+                            image_rewrite_filter_, image_combiner_);
             context->AddSlot(slot);
             driver_->InitiateRewrite(context);
           }
@@ -240,10 +291,12 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
 // external CSS or the HTML document that the CSS is in for inline CSS.
 // The expiry of the answer is the minimum of the expiries of all subresources
 // in the stylesheet, or kint64max if there are none or the sheet is invalid.
-TimedBool CssFilter::RewriteCssText(const StringPiece& in_text,
-                               GoogleString* out_text,
-                               const GoogleUrl& css_gurl,
-                               MessageHandler* handler) {
+TimedBool CssFilter::RewriteCssText(Context* context,
+                                    const GoogleUrl& css_gurl,
+                                    const StringPiece& in_text,
+                                    GoogleString* out_text,
+                                    MessageHandler* handler) {
+  int64 in_text_size = static_cast<int64>(in_text.size());
   // Load stylesheet w/o expanding background attributes and preserving all
   // values from original document.
   Css::Parser parser(in_text);
@@ -264,54 +317,76 @@ TimedBool CssFilter::RewriteCssText(const StringPiece& in_text,
     num_parse_failures_->Add(1);
   } else {
     // Edit stylesheet.
-    TimedBool result;
+    bool previously_optimized = false;
     if (HasAsyncFlow()) {
-      // TODO(morlovich): Nested rewrites disabled for async flow as first step!
-      result.value = false;
+      // TODO(morlovich): Figure out the nested-rewrites in inline context
+      // case, which currently corresponds to context = NULL here.
+      if (context != NULL) {
+        // Start out any nested rewrite tasks
+        context->RewriteImages(in_text_size,
+                               css_gurl,
+                               stylesheet.release());
+        // Don't want to write out now, will finish it asynchronously, or
+        // in Context::RewriteSingle.
+        ret.value = false;
+        return ret;
+      } else {
+        previously_optimized = false;
+      }
     } else {
-      result = image_rewriter_.RewriteCssImages(
-          css_gurl, stylesheet.get(), handler);
+      TimedBool result = image_rewriter_.RewriteCssImages(
+                             css_gurl, stylesheet.get(), handler);
       ret.expiration_ms = result.expiration_ms;
+      previously_optimized = result.value;
     }
 
-    // Re-serialize stylesheet.
-    StringWriter writer(out_text);
-    CssMinify::Stylesheet(*stylesheet, &writer, handler);
+    ret.value = SerializeCss(in_text_size, stylesheet.get(), css_gurl,
+                             previously_optimized, out_text, handler);
+  }
+  return ret;
+}
 
-    // Get signed versions so that we can subtract them.
-    int64 out_text_size = static_cast<int64>(out_text->size());
-    int64 in_text_size = static_cast<int64>(in_text.size());
-    int64 bytes_saved = in_text_size - out_text_size;
+bool CssFilter::SerializeCss(int64 in_text_size,
+                             const Css::Stylesheet* stylesheet,
+                             const GoogleUrl& css_gurl,
+                             bool previously_optimized,
+                             GoogleString* out_text,
+                             MessageHandler* handler) {
+  bool ret = true;
 
-    if (!driver_->options()->always_rewrite_css()) {
-      // Don't rewrite if we didn't edit it or make it any smaller.
-      if (!result.value && bytes_saved <= 0) {
-        ret.value = false;
-        driver_->InfoHere("CSS parser increased size of CSS file %s by %lld "
-                          "bytes.", css_gurl.spec_c_str(),
-                          static_cast<long long int>(-bytes_saved));
-      }
-      // Don't rewrite if we blanked the CSS file! (This is a parse error)
-      // TODO(sligocki): Don't error if in_text is all whitespace.
-      if (out_text_size == 0 && in_text_size != 0) {
-        ret.value = false;
-        driver_->InfoHere("CSS parsing error in %s", css_gurl.spec_c_str());
-        num_parse_failures_->Add(1);
-      }
-    }
+  // Re-serialize stylesheet.
+  StringWriter writer(out_text);
+  CssMinify::Stylesheet(*stylesheet, &writer, handler);
 
-    // Statistics
-    if (ret.value) {
-      driver_->InfoHere("Successfully rewrote CSS file %s saving %lld "
+  // Get signed versions so that we can subtract them.
+  int64 out_text_size = static_cast<int64>(out_text->size());
+  int64 bytes_saved = in_text_size - out_text_size;
+
+  if (!driver_->options()->always_rewrite_css()) {
+    // Don't rewrite if we didn't edit it or make it any smaller.
+    if (!previously_optimized && bytes_saved <= 0) {
+      ret = false;
+      driver_->InfoHere("CSS parser increased size of CSS file %s by %s "
                         "bytes.", css_gurl.spec_c_str(),
-                        static_cast<long long int>(bytes_saved));
-      num_files_minified_->Add(1);
-      minified_bytes_saved_->Add(bytes_saved);
+                        Integer64ToString(-bytes_saved).c_str());
     }
-    // TODO(sligocki): Do we want to save the AST 'stylesheet' somewhere?
-    // It currently, deletes itself at the end of the function.
+    // Don't rewrite if we blanked the CSS file! (This is a parse error)
+    // TODO(sligocki): Don't error if in_text is all whitespace.
+    if (out_text_size == 0 && in_text_size != 0) {
+      ret = false;
+      driver_->InfoHere("CSS parsing error in %s", css_gurl.spec_c_str());
+      num_parse_failures_->Add(1);
+    }
   }
 
+  // Statistics
+  if (ret) {
+    driver_->InfoHere("Successfully rewrote CSS file %s saving %s "
+                      "bytes.", css_gurl.spec_c_str(),
+                      Integer64ToString(bytes_saved).c_str());
+    num_files_minified_->Add(1);
+    minified_bytes_saved_->Add(bytes_saved);
+  }
   return ret;
 }
 
@@ -396,6 +471,13 @@ bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
 RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
+  return DoRewriteLoadedResource(NULL, input_resource, output_resource);
+}
+
+RewriteSingleResourceFilter::RewriteResult CssFilter::DoRewriteLoadedResource(
+    Context* context,
+    const ResourcePtr& input_resource,
+    const OutputResourcePtr& output_resource) {
   CHECK(input_resource->loaded());
   bool ret = false;
   if (input_resource->ContentsValid()) {
@@ -405,7 +487,8 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
     // TODO(sligocki): Store the GURL in the input_resource.
     GoogleUrl css_gurl(input_resource->url());
     if (css_gurl.is_valid()) {
-      TimedBool result = RewriteCssText(in_contents, &out_contents, css_gurl,
+      TimedBool result = RewriteCssText(context, css_gurl, in_contents,
+                                        &out_contents,
                                         driver_->message_handler());
       if (result.value) {
         // Write new stylesheet.
@@ -430,7 +513,8 @@ bool CssFilter::HasAsyncFlow() const {
 }
 
 RewriteContext* CssFilter::MakeRewriteContext() {
-  return new Context(this, driver_);
+  return new Context(this, driver_, cache_extender_,
+                     image_rewrite_filter_, image_combiner_);
 }
 
 }  // namespace net_instaweb

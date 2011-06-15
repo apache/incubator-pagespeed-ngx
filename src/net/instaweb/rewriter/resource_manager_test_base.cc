@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/mem_clean_up.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -60,6 +61,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 #include "net/instaweb/util/public/worker.h"
 
@@ -471,6 +473,100 @@ bool ResourceManagerTestBase::TryFetchResource(const StringPiece& url) {
   return ServeResourceUrl(url, &contents);
 }
 
+
+ResourceManagerTestBase::CssLink::CssLink(
+    const StringPiece& url, const StringPiece& content,
+    const StringPiece& media, bool supply_mock)
+    : url_(url.data(), url.size()),
+      content_(content.data(), content.size()),
+      media_(media.data(), media.size()),
+      supply_mock_(supply_mock) {
+}
+
+ResourceManagerTestBase::CssLink::Vector::~Vector() {
+  STLDeleteElements(this);
+}
+
+void ResourceManagerTestBase::CssLink::Vector::Add(
+    const StringPiece& url, const StringPiece& content,
+    const StringPiece& media, bool supply_mock) {
+  push_back(new CssLink(url, content, media, supply_mock));
+}
+
+bool ResourceManagerTestBase::CssLink::DecomposeCombinedUrl(
+    GoogleString* base, StringVector* segments, MessageHandler* handler) {
+  GoogleUrl gurl(url_);
+  bool ret = false;
+  if (gurl.is_valid()) {
+    gurl.AllExceptLeaf().CopyToString(base);
+    ResourceNamer namer;
+    if (namer.Decode(gurl.LeafWithQuery()) &&
+        (namer.id() == RewriteDriver::kCssCombinerId)) {
+      UrlMultipartEncoder multipart_encoder;
+      GoogleString segment;
+      ret = multipart_encoder.Decode(namer.name(), segments, NULL, handler);
+    }
+  }
+  return ret;
+}
+
+namespace {
+
+// Helper class to collect CSS hrefs.
+class CssCollector : public EmptyHtmlFilter {
+ public:
+  CssCollector(HtmlParse* html_parse,
+               ResourceManagerTestBase::CssLink::Vector* css_links)
+      : css_links_(css_links),
+        css_tag_scanner_(html_parse) {
+  }
+
+  virtual void EndElement(HtmlElement* element) {
+    HtmlElement::Attribute* href;
+    const char* media;
+    if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
+      // TODO(jmarantz): collect content of the CSS files, before and
+      // after combination, so we can diff.
+      const char* content = "";
+      css_links_->Add(href->value(), content, media, false);
+    }
+  }
+
+  virtual const char* Name() const { return "CssCollector"; }
+
+ private:
+  ResourceManagerTestBase::CssLink::Vector* css_links_;
+  CssTagScanner css_tag_scanner_;
+
+  DISALLOW_COPY_AND_ASSIGN(CssCollector);
+};
+
+}  // namespace
+
+// Collects just the hrefs from CSS links into a string vector.
+void ResourceManagerTestBase::CollectCssLinks(
+    const StringPiece& id, const StringPiece& html, StringVector* css_links) {
+  CssLink::Vector v;
+  CollectCssLinks(id, html, &v);
+  for (int i = 0, n = v.size(); i < n; ++i) {
+    css_links->push_back(v[i]->url_);
+  }
+}
+
+// Collects all information about CSS links into a CssLink::Vector.
+void ResourceManagerTestBase::CollectCssLinks(
+    const StringPiece& id, const StringPiece& html,
+    CssLink::Vector* css_links) {
+  HtmlParse html_parse(&message_handler_);
+  CssCollector collector(&html_parse, css_links);
+  html_parse.AddFilter(&collector);
+  GoogleString dummy_url = StrCat("http://collect.css.links/", id, ".html");
+  html_parse.StartParse(dummy_url);
+  html_parse.ParseText(html.data(), html.size());
+  html_parse.FinishParse();
+}
+
+
 GoogleString ResourceManagerTestBase::Encode(
     const StringPiece& path, const StringPiece& id, const StringPiece& hash,
     const StringPiece& name, const StringPiece& ext) {
@@ -485,7 +581,7 @@ GoogleString ResourceManagerTestBase::Encode(
   // in the 'name' argument for this method, so the one-time effort of
   // teasing out the leaf and encoding that saves a whole lot of clutter
   // in, at least, CacheExtenderTest.
-  std::vector<StringPiece> path_vector;
+  StringPieceVector path_vector;
   SplitStringPieceToVector(name, "/", &path_vector, false);
   UrlSegmentEncoder encoder;
   GoogleString encoded_name;

@@ -68,7 +68,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   static void SetUpTestCase();
   static void TearDownTestCase();
 
- protected:
   static const char kTestData[];    // Testdata directory.
   static const char kXhtmlDtd[];    // DOCTYPE string for claming XHTML
 
@@ -147,6 +146,41 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   // Just check if we can fetch a resource successfully, ignore response.
   bool TryFetchResource(const StringPiece& url);
+
+
+  // Representation for a CSS <link> tag.
+  class CssLink {
+   public:
+    CssLink(const StringPiece& url, const StringPiece& content,
+            const StringPiece& media, bool supply_mock);
+
+    // A vector of CssLink* should know how to accumulate and add.
+    class Vector : public std::vector<CssLink*> {
+     public:
+      ~Vector();
+      void Add(const StringPiece& url, const StringPiece& content,
+               const StringPiece& media, bool supply_mock);
+    };
+
+    // Parses a combined CSS elementand provides the segments from which
+    // it came.
+    bool DecomposeCombinedUrl(GoogleString* base, StringVector* segments,
+                              MessageHandler* handler);
+
+    GoogleString url_;
+    GoogleString content_;
+    GoogleString media_;
+    bool supply_mock_;
+  };
+
+  // Collects the hrefs for all CSS <link>s on the page.
+  void CollectCssLinks(const StringPiece& id, const StringPiece& html,
+                       StringVector* css_links);
+
+  // Collects all information about CSS links into a CssLink::Vector.
+  void CollectCssLinks(const StringPiece& id, const StringPiece& html,
+                       CssLink::Vector* css_links);
+
 
   // Helper function to encode a resource name from its pieces.
   GoogleString Encode(const StringPiece& path,
