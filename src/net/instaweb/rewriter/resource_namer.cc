@@ -94,7 +94,7 @@ bool ResourceNamer::LegacyDecode(const StringPiece& encoded_string) {
   bool ret = false;
   // First check that this URL has a known extension type
   if (NameExtensionToContentType(encoded_string) != NULL) {
-    std::vector<StringPiece> names;
+    StringPieceVector names;
     SplitStringPieceToVector(encoded_string, kSeparatorString, &names, true);
     if (names.size() == 4) {
       names[1].CopyToString(&hash_);

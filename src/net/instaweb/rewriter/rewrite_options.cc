@@ -231,7 +231,7 @@ void RewriteOptions::DisableFilter(Filter filter) {
 
 bool RewriteOptions::AddCommaSeparatedListToFilterSet(
     const StringPiece& filters, MessageHandler* handler, FilterSet* set) {
-  std::vector<StringPiece> names;
+  StringPieceVector names;
   SplitStringPieceToVector(filters, ",", &names, true);
   bool ret = true;
   for (int i = 0, n = names.size(); i < n; ++i) {

@@ -104,7 +104,7 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory) const {
     LOG(ERROR) << "Invalid filters-list: " << FLAGS_rewriters;
     ret = false;
   }
-  std::vector<StringPiece> domains;
+  StringPieceVector domains;
   SplitStringPieceToVector(FLAGS_domains, ",", &domains, true);
   DomainLawyer* lawyer = options->domain_lawyer();
   for (int i = 0, n = domains.size(); i < n; ++i) {
