@@ -569,6 +569,12 @@ CheckBots 'on' '-lt'
 echo "Test: UserAgent is not a bot, ModPagespeedDisableForBots is default"
 CheckBots 'default' '-lt'
 
+echo TEST: respect vary user-agent
+URL=$TEST_ROOT/vary/index.html?ModPagespeedFilters=inline_css
+echo $WGET_DUMP $URL
+$WGET_DUMP $URL | grep -q "<style>"
+check [ $? != 0 ]
+
 # Cleanup
 rm -rf $OUTDIR
 echo "PASS."

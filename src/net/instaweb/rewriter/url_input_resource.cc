@@ -104,8 +104,9 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
         }
       }
       // TODO(sligocki): Allow ConditionalFetch here
+      ResponseHeaders* headers = response_headers();
       ret = fetcher->StreamingFetch(
-          origin_url, request_headers, response_headers(), http_value(),
+          origin_url, request_headers, headers, http_value(),
           handler, this);
     } else {
       delete this;
@@ -113,20 +114,42 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
     return ret;
   }
 
-  void AddToCache(bool success) {
+  // Recompute whether or not this resource is cacheable, taking into
+  // consideration rewrite options.
+  // Even if we have force_caching on (for testing), do the header
+  // manipulation instead of returning early so that the headers
+  // are in the same state as they would be otherwise.
+  bool AreHeadersCacheable(ResponseHeaders *headers) {
+    bool cacheable = true;
+    if (rewrite_options_->respect_vary()) {
+      cacheable = headers->VaryCacheable();
+    } else {
+      headers->ComputeCaching();
+      cacheable = headers->IsCacheable();
+    }
+    // Recompute whether or not we can cache the resource with these headers.
+    bool force = http_cache()->force_caching();
+    return force || cacheable;
+  }
+
+  bool AddToCache(bool success) {
     ResponseHeaders* headers = response_headers();
-    if (success && !headers->IsErrorStatus()
-        && !http_cache()->IsAlreadyExpired(*headers)) {
+    if (success && AreHeadersCacheable(headers) &&
+        !headers->IsErrorStatus() &&
+        !http_cache()->IsAlreadyExpired(*headers)) {
       HTTPValue* value = http_value();
       value->SetHeaders(headers);
       http_cache()->Put(url(), value, message_handler_);
+      return true;
     } else {
       http_cache()->RememberNotCacheable(url(), message_handler_);
+      return false;
     }
   }
 
   virtual void Done(bool success) {
-    AddToCache(success);
+    bool cached = AddToCache(success);
+    success = cached;
     if (lock_.get() != NULL) {
       message_handler_->Message(
           kInfo, "%s: Unlocking lock %s with success=%s",

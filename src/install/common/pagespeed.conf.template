@@ -115,6 +115,10 @@
     #
     # ModPagespeedEnableFilters add_instrumentation
 
+    # Uncomment the following line so that ModPagespeed will not cache or
+    # rewrite resources with Vary: in the header, e.g. Vary: User-Agent.
+    # ModPagespeedRespectVary on
+
     # This handles the client-side instrumentation callbacks which are injected
     # by the add_instrumentation filter.
     # You can use a different location by adding the ModPagespeedBeaconUrl

@@ -46,7 +46,7 @@ class FilenameEncoderTest : public ::testing::Test {
 
  protected:
   void CheckSegmentLength(const StringPiece& escaped_word) {
-    StringPieceVector components;
+    std::vector<StringPiece> components;
     SplitStringPieceToVector(escaped_word, "/", &components, false);
     for (size_t i = 0; i < components.size(); ++i) {
       EXPECT_GE(kMaxLen, components[i].size());

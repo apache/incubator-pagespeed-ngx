@@ -576,11 +576,11 @@ TEST_F(ResourceManagerTest, TestRemember404) {
       CreateInputResourceAndReadIfCached("http://example.com/404"));
   EXPECT_EQ(NULL, resource.get());
 
-  HTTPValue valueOut;
-  ResponseHeaders headersOut;
+  HTTPValue value_out;
+  ResponseHeaders headers_out;
   EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
-            http_cache()->Find("http://example.com/404", &valueOut, &headersOut,
-                               message_handler()));
+            http_cache()->Find("http://example.com/404", &value_out,
+                               &headers_out, message_handler()));
 }
 
 TEST_F(ResourceManagerTest, TestNonCacheable) {
@@ -592,6 +592,31 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
   SetDefaultLongCacheHeaders(&kContentTypeHtml, &no_cache);
   no_cache.Replace(HttpAttributes::kCacheControl, "no-cache");
   no_cache.ComputeCaching();
+  SetFetchResponse("http://example.com/", no_cache, kContents);
+
+  ResourcePtr resource(CreateResource("http://example.com/", "/"));
+  ASSERT_TRUE(resource.get() != NULL);
+
+  VerifyContentsCallback callback(resource, kContents);
+  rewrite_driver()->ReadAsync(&callback, message_handler());
+  callback.AssertCalled();
+
+  HTTPValue value_out;
+  ResponseHeaders headers_out;
+  EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
+            http_cache()->Find("http://example.com/", &value_out, &headers_out,
+                               message_handler()));
+}
+
+TEST_F(ResourceManagerTest, TestVaryOption) {
+  // Make sure that when we get non-cacheable resources
+  // we mark the fetch as failed in the cache.
+  options()->set_respect_vary(true);
+  ResponseHeaders no_cache;
+  const GoogleString kContents = "ok";
+  SetDefaultLongCacheHeaders(&kContentTypeHtml, &no_cache);
+  no_cache.Add(HttpAttributes::kVary, HttpAttributes::kAcceptEncoding);
+  no_cache.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
   SetFetchResponse("http://example.com/", no_cache, kContents);
 
   ResourcePtr resource(CreateResource("http://example.com/", "/"));

@@ -107,7 +107,7 @@ class ScriptEditor {
 // Rewrite qualifying sync loads of Google Analytics as async loads.
 class GoogleAnalyticsFilter : public EmptyHtmlFilter {
  public:
-  typedef StringPieceVector MethodVector;
+  typedef std::vector<StringPiece> MethodVector;
 
   explicit GoogleAnalyticsFilter(HtmlParse* html_parse,
                                  Statistics* statistics);

@@ -127,6 +127,7 @@ const char* kModPagespeedSlurpReadOnly = "ModPagespeedSlurpReadOnly";
 const char* kModPagespeedStatistics = "ModPagespeedStatistics";
 const char* kModPagespeedTestProxy = "ModPagespeedTestProxy";
 const char* kModPagespeedUrlPrefix = "ModPagespeedUrlPrefix";
+const char* kModPagespeedRespectVary = "ModPagespeedRespectVary";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -1072,6 +1073,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     // TODO(sligocki): Convert to ParseInt64Option for consistency?
     ret = ParseIntOption(options,
         cmd, &RewriteOptions::set_max_url_segment_size, arg);
+  } else if (StringCaseEqual(directive, kModPagespeedRespectVary)) {
+    ret = ParseBoolOption(options, cmd,
+                          &RewriteOptions::set_respect_vary, arg);
   } else if (StringCaseEqual(directive, kModPagespeedNumShards)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (StringCaseEqual(directive, kModPagespeedRetainComment)) {
@@ -1215,6 +1219,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Base level of rewriting (PassThrough, CoreFilters)"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedStatistics,
         "Whether to collect cross-process statistics."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedRespectVary,
+        "Whether to respect the Vary header."),
 
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)

@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/public/timer.h"  // for Timer
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/core/resource_util.h"
 
@@ -192,23 +193,27 @@ void ResponseHeaders::SetTimeHeader(const StringPiece& header, int64 time_ms) {
   }
 }
 
-bool ResponseHeaders::VariesUncacheable() {
-  StringStarVector values;
-  if (Lookup(HttpAttributes::kVary, &values)) {
+bool ResponseHeaders::VaryCacheable() {
+  // Recompute whether or not we can cache the resource with these headers.
+  if (cache_fields_dirty_) {
+    ComputeCaching();
+  }
+  if (IsCacheable()) {
+    StringStarVector values;
+    Lookup(HttpAttributes::kVary, &values);
+    bool vary_uncacheable = false;
     for (int i = 0, n = values.size(); i < n; ++i) {
-      StringPieceVector vals_split;
-      SplitStringPieceToVector(*values[i], ",", &vals_split, true);
-      for (int j = 0, m = vals_split.size(); j < m; ++j) {
-        StringPiece val = vals_split[j];
-        TrimWhitespace(&val);
-        if (!val.empty() &&
-            !StringCaseEqual(HttpAttributes::kAcceptEncoding, val)) {
-          return true;
-        }
+      StringPiece val(*values[i]);
+      if (!val.empty() &&
+          !StringCaseEqual(HttpAttributes::kAcceptEncoding, val)) {
+        vary_uncacheable = true;
+        break;
       }
     }
+    return !vary_uncacheable;
+  } else {
+    return false;
   }
-  return false;
 }
 
 void ResponseHeaders::ComputeCaching() {
@@ -221,9 +226,9 @@ void ResponseHeaders::ComputeCaching() {
   StringStarVector values;
   int64 date;
   // Compute the timestamp if we can find it
-  if (Lookup("Date", &values) && (values.size() == 1) &&
+  if (Lookup(HttpAttributes::kDate, &values) && (values.size() == 1) &&
       ConvertStringToTime(*(values[0]), &date)) {
-    proto_->set_timestamp_ms(date);
+      proto_->set_timestamp_ms(date);
   }
 
   // TODO(jmarantz): Should we consider as cacheable a resource
@@ -251,10 +256,10 @@ void ResponseHeaders::ComputeCaching() {
   bool explicit_cacheable =
       pagespeed::resource_util::GetFreshnessLifetimeMillis(
           resource, &freshness_lifetime_ms) && has_timestamp_ms();
+
   proto_->set_cacheable(!explicit_no_cache &&
                        (explicit_cacheable || likely_static) &&
-                       status_cacheable && !VariesUncacheable());
-
+                        status_cacheable);
   if (proto_->cacheable()) {
     // TODO(jmarantz): check "Age" resource and use that to reduce
     // the expiration_time_ms_.  This is, says, bmcquade@google.com,

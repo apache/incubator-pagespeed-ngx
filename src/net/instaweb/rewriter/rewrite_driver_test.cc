@@ -370,7 +370,6 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   EXPECT_TRUE(resource3.get() != NULL);
   resource_manager()->ReadAsync(&mock_callback3);
   EXPECT_TRUE(mock_callback3.done());
-  EXPECT_TRUE(mock_callback3.success());
   EXPECT_EQ(kResourceContents2, resource3->contents());
 }
 

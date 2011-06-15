@@ -118,7 +118,8 @@ RewriteOptions::RewriteOptions()
       combine_across_paths_(true),
       log_rewrite_timing_(false),
       lowercase_html_names_(false),
-      always_rewrite_css_(false) {
+      always_rewrite_css_(false),
+      respect_vary_(false) {
   // TODO(jmarantz): If we instantiate many RewriteOptions, this should become a
   // public static method called once at startup.
   SetUp();
@@ -231,7 +232,7 @@ void RewriteOptions::DisableFilter(Filter filter) {
 
 bool RewriteOptions::AddCommaSeparatedListToFilterSet(
     const StringPiece& filters, MessageHandler* handler, FilterSet* set) {
-  StringPieceVector names;
+  std::vector<StringPiece> names;
   SplitStringPieceToVector(filters, ",", &names, true);
   bool ret = true;
   for (int i = 0, n = names.size(); i < n; ++i) {
@@ -330,7 +331,8 @@ void RewriteOptions::Merge(const RewriteOptions& first,
                               second.lowercase_html_names_);
   always_rewrite_css_.Merge(first.always_rewrite_css_,
                             second.always_rewrite_css_);
-
+  respect_vary_.Merge(first.respect_vary_,
+                      second.respect_vary_);
   // Note that the domain-lawyer merge works one-at-a-time, which is easier
   // to unit test.  So we have to call it twice.
   domain_lawyer_.Merge(first.domain_lawyer_);

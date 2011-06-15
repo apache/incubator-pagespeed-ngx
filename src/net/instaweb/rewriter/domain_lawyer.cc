@@ -385,7 +385,7 @@ bool DomainLawyer::MapDomainHelper(
     handler->Message(kError, "Cannot map to a wildcarded domain: %s",
                      to_domain_name.as_string().c_str());
   } else if (to_domain != NULL) {
-    StringPieceVector domains;
+    std::vector<StringPiece> domains;
     SplitStringPieceToVector(comma_separated_from_domains, ",", &domains, true);
     ret = true;
     for (int i = 0, n = domains.size(); i < n; ++i) {

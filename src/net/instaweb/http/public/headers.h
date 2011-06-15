@@ -89,7 +89,7 @@ template<class Proto> class Headers {
   virtual bool WriteAsHttp(Writer* writer, MessageHandler* handler) const;
 
  protected:
-  void PopulateMap() const;  // the 'const' is a lie -- it mutates map_.
+  void PopulateMap() const;  // const is a lie, mutates map_.
 
   // We have two represenations for the name/value pairs.  The
   // HttpResponseHeader protobuf contains a simple string-pair vector, but
@@ -100,6 +100,18 @@ template<class Proto> class Headers {
   scoped_ptr<Proto> proto_;
 
  private:
+  bool CommaSeparatedField(const StringPiece& name) const;
+
+  // If name is a comma-separated field (above), then split value at commas,
+  // and add name, val for each of the comma-separated values
+  // (removing whitespace and commas).
+  // Otherwise, add the name, value pair to the map_.
+  // const is a lie
+  // NOTE: the map will contain the comma-split values, but the protobuf
+  // will contain the original pairs including comma-separated values.
+  void AddToMap(const StringPiece& name, const StringPiece& value) const;
+
+
   DISALLOW_COPY_AND_ASSIGN(Headers);
 };
 

@@ -247,6 +247,12 @@ class RewriteOptions {
   }
   bool always_rewrite_css() const { return always_rewrite_css_.value(); }
 
+  void set_respect_vary(bool x) {
+    modified_ = true;
+    respect_vary_.set(x);
+  }
+  bool respect_vary() const { return respect_vary_.value(); }
+
   // Merge together two source RewriteOptions to populate this.  The order
   // is significant: the second will override the first.  One semantic
   // subject to interpretation is when a core-filter is disabled in the
@@ -382,6 +388,7 @@ class RewriteOptions {
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?
   Option<bool> lowercase_html_names_;
   Option<bool> always_rewrite_css_;  // For tests/debugging.
+  Option<bool> respect_vary_;
   // Be sure to update Merge() if a new field is added.
 
   DomainLawyer domain_lawyer_;

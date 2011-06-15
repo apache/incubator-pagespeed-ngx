@@ -137,7 +137,7 @@ void UrlPartnership::IncrementalResolve(int index) {
   // When tokenizing a URL, we don't want to omit empty segments
   // because we need to avoid aliasing "http://x" with "/http:/x".
   bool omit_empty = false;
-  StringPieceVector components;
+  std::vector<StringPiece> components;
 
   if (index == 0) {
     StringPiece base = url_vector_[0]->AllExceptLeaf();
