@@ -179,8 +179,8 @@ RewriteSingleResourceFilter::RewriteLoadedResourceAndCacheIfOk(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
   CachedResult* result = output_resource->EnsureCachedResultCreated();
-  result->set_input_timestamp_ms(
-      input_resource->response_headers()->timestamp_ms());
+  result->set_input_fetch_time_ms(
+      input_resource->response_headers()->fetch_time_ms());
   UpdateCacheFormat(output_resource.get());
   UpdateInputHash(input_resource.get(), result);
   RewriteResult res = RewriteLoadedResource(input_resource, output_resource);
@@ -262,8 +262,8 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
           // The input has not changed, so we can return the same output.
           // We do need to update the cache entry for new input expiration
           // and load times.
-          result->set_input_timestamp_ms(
-              input_resource->response_headers()->timestamp_ms());
+          result->set_input_fetch_time_ms(
+              input_resource->response_headers()->fetch_time_ms());
           resource_manager_->CacheComputedResourceMapping(
               output_resource.get(), input_resource->CacheExpirationTimeMs(),
               handler);
@@ -355,9 +355,9 @@ CachedResult* RewriteSingleResourceFilter::ReleaseCachedAfterAnyFreshening(
   // We may need to freshen here. Note that we check the timestamps we have in
   // cached result and not the actual input resource since we've not read
   // the latter and so don't have any response headers for it.
-  if (cached->has_input_timestamp_ms()) {
+  if (cached->has_input_fetch_time_ms()) {
     if (resource_manager_->IsImminentlyExpiring(
-            cached->input_timestamp_ms(),
+            cached->input_fetch_time_ms(),
             cached->origin_expiration_time_ms())) {
       input_resource->Freshen(driver_->message_handler());
     }

@@ -32,7 +32,8 @@ message HttpResponseHeaders {
   optional int32 minor_version = 3;
   optional int32 major_version = 4 [ default = 1 ];
   optional int64 expiration_time_ms = 5;
-  optional int64 timestamp_ms = 6;
+  optional int64 fetch_time_ms = 6;  // Timestamp from Date header.
+  optional int64 last_modified_time_ms = 10;
   optional bool cacheable = 7;
   optional bool proxy_cacheable = 8;
   repeated NameValue header = 9;

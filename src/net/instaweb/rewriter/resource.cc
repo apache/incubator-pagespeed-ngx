@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -56,6 +57,21 @@ bool Resource::IsValidAndCacheable() {
   return ((response_headers_.status_code() == HttpStatus::kOK) &&
           !resource_manager_->http_cache()->IsAlreadyExpired(
               response_headers_));
+}
+
+void Resource::AddInputInfoToPartition(int index, OutputPartition* partition) {
+  InputInfo* input = partition->add_input();
+  input->set_index(index);
+  // FillInPartitionInputInfo can be specialized based on resource type.
+  FillInPartitionInputInfo(input);
+}
+
+// Default version.
+void Resource::FillInPartitionInputInfo(InputInfo* input) {
+  CHECK(loaded());
+  input->set_type(InputInfo::CACHED);
+  input->set_last_modified_time_ms(response_headers_.last_modified_time_ms());
+  input->set_expiration_time_ms(response_headers_.CacheExpirationTimeMs());
 }
 
 int64 Resource::CacheExpirationTimeMs() const {

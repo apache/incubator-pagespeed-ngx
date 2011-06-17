@@ -396,7 +396,7 @@ class CombiningFilter : public RewriteFilter {
       MessageHandler* handler = Driver()->message_handler();
       OutputPartition* partition = partitions->add_partition();
       for (int i = 0, n = num_slots(); i < n; ++i) {
-        partition->add_input(i);
+        slot(i)->resource()->AddInputInfoToPartition(i, partition);
         if (!combiner_.AddResourceNoFetch(slot(i)->resource(), handler).value) {
           return false;
         }
@@ -443,7 +443,7 @@ class CombiningFilter : public RewriteFilter {
       for (int p = 0, np = num_output_partitions(); p < np; ++p) {
         OutputPartition* partition = output_partition(p);
         for (int i = 1; i < partition->input_size(); ++i) {
-          int slot_index = partition->input(i);
+          int slot_index = partition->input(i).index();
           slot(slot_index)->set_should_delete_element(true);
         }
       }
@@ -1235,9 +1235,7 @@ TEST_F(ResourceUpdateTest, LoadFromFileOnTheFly) {
   // 3) Change resource.
   WriteFile("/test/a.css", " new ");
   // Rewrite should imediately update.
-  // TODO(sligocki): This should get updated immediately.
-  // We need to fix cache lifetimes.
-  //EXPECT_EQ("new", RewriteSingleResource("updated_content"));
+  EXPECT_EQ("new", RewriteSingleResource("updated_content"));
 
   // 4) Advance time so that old cached input resource expires.
   mock_timer()->AdvanceMs(ttl_ms);
@@ -1264,10 +1262,7 @@ TEST_F(ResourceUpdateTest, LoadFromFileRewritten) {
   // 3) Change resource.
   WriteFile("/test/a.css", " new ");
   // Rewrite should imediately update.
-  // TODO(sligocki): This should get updated immediately.
-  // We need to fix cache lifetimes.
-  //EXPECT_EQ("new", RewriteSingleResource("updated_content"));
-  EXPECT_EQ("init", RewriteSingleResource("updated_content"));
+  EXPECT_EQ("new", RewriteSingleResource("updated_content"));
 
   // 4) Advance time so that old cached input resource expires.
   mock_timer()->AdvanceMs(ttl_ms);
@@ -1326,13 +1321,10 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   WriteFile("/test/d.css", " d2 ");
   // File-based resources should be updated, but web-based ones still cached.
   // TODO(sligocki): Fix
-  //EXPECT_EQ(" a1  b2  c1  d2 ", CombineResources("stale_content"));
-  EXPECT_EQ(" a1  b1  c1  d1 ", CombineResources("stale_content"));
-  //EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
-  EXPECT_EQ(0, combining_filter_->num_rewrites());
+  EXPECT_EQ(" a1  b2  c1  d2 ", CombineResources("stale_content"));
+  EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  //EXPECT_EQ(2, file_system()->num_input_file_opens());  // Read both files.
-  EXPECT_EQ(0, file_system()->num_input_file_opens());
+  EXPECT_EQ(2, file_system()->num_input_file_opens());  // Read both files.
   // TODO(sligocki): EXPECT_EQ(2, file_system()->num_input_file_stats());
   ClearStats();
 
@@ -1342,8 +1334,7 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   EXPECT_EQ(" a1  b2  c2  d2 ", CombineResources("short_updated"));
   EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());  // One expired.
-  //EXPECT_EQ(0, file_system()->num_input_file_opens());  // Files unchanged.
-  EXPECT_EQ(2, file_system()->num_input_file_opens());
+  EXPECT_EQ(2, file_system()->num_input_file_opens());  // Re-read files.
   // TODO(sligocki): EXPECT_EQ(2, file_system()->num_input_file_stats());
   ClearStats();
 
@@ -1353,8 +1344,7 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   EXPECT_EQ(" a2  b2  c2  d2 ", CombineResources("all_updated"));
   EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // Both expired.
-  //EXPECT_EQ(0, file_system()->num_input_file_opens());  // Files unchanged.
-  EXPECT_EQ(2, file_system()->num_input_file_opens());
+  EXPECT_EQ(2, file_system()->num_input_file_opens());  // Re-read files.
   // TODO(sligocki): EXPECT_EQ(2, file_system()->num_input_file_stats());
   ClearStats();
 }
@@ -1475,19 +1465,16 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   // Rewrite should now use all new resources.
   result_vector = RewriteNestedResources("short_updated");
   // TODO(sligocki): Fix
-  //EXPECT_EQ(" A2 ", result_vector[0]);
-  EXPECT_EQ(" A1 ", result_vector[0]);
-  //EXPECT_EQ(" B2 ", result_vector[1]);
-  EXPECT_EQ(" B1 ", result_vector[1]);
-  //EXPECT_EQ(" C2 ", result_vector[2]);
-  EXPECT_EQ(" C1 ", result_vector[2]);
-  //EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
-  EXPECT_EQ(0, nested_filter_->num_top_rewrites());
+  EXPECT_EQ(" A2 ", result_vector[0]);
+  EXPECT_EQ(" B2 ", result_vector[1]);
+  EXPECT_EQ(" C2 ", result_vector[2]);
+  EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
   //EXPECT_EQ(2, nested_filter_->num_sub_rewrites());  // a.css, c.css
-  EXPECT_EQ(0, nested_filter_->num_sub_rewrites());
+  EXPECT_EQ(3, nested_filter_->num_sub_rewrites());  // a.css, b.css, c.css
   //EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // a.css, c.css
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(0, file_system()->num_input_file_opens());
+  EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
+  //EXPECT_EQ(0, file_system()->num_input_file_opens());
+  EXPECT_EQ(4, file_system()->num_input_file_opens());
   // TODO(sligocki): EXPECT_EQ(1, file_system()->num_input_file_stats());
   ClearStats();
 }

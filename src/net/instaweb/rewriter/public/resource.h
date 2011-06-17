@@ -38,10 +38,13 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
+struct ContentType;
+class InputInfo;
 class MessageHandler;
+class OutputPartition;
 class Resource;
 class ResourceManager;
-struct ContentType;
 
 typedef RefCountedPtr<Resource> ResourcePtr;
 typedef std::vector<ResourcePtr> ResourceVector;
@@ -66,6 +69,10 @@ class Resource : public RefCounted<Resource> {
   bool ContentsValid() const {
     return (response_headers_.status_code() == HttpStatus::kOK);
   }
+
+  // Adds a new InputInfo object representing this resource to OutputPartition,
+  // assigning the index supplied.
+  void AddInputInfoToPartition(int index, OutputPartition* partition);
 
   int64 CacheExpirationTimeMs() const;
   StringPiece contents() const {
@@ -123,6 +130,13 @@ class Resource : public RefCounted<Resource> {
   friend class RewriteDriver;  // for ReadIfCachedWithStatus
   friend class UrlReadAsyncFetchCallback;
   friend class ResourceManagerHttpCallback;
+
+  // Set OutputPartition's input info used for expiration validation.
+  //
+  // Default one sets resource type as CACHED and sets an expiration timestamp.
+  // If a derived class has a different criterion for validity, override
+  // this method.
+  virtual void FillInPartitionInputInfo(InputInfo* input);
 
   // Load the resource asynchronously, storing ResponseHeaders and
   // contents in cache.  Returns true, if the resource is already

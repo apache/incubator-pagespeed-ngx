@@ -60,6 +60,9 @@ class DataUrlInputResource : public Resource {
 
   virtual bool IsValidAndCacheable();
 
+  // Set OutputPartition's input info used for expiration validation.
+  virtual void FillInPartitionInputInfo(InputInfo* input);
+
   virtual GoogleString url() const { return *url_.get(); }
 
  protected:

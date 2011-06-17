@@ -226,7 +226,7 @@ class CssCombineFilter::Context : public RewriteContext {
         if (partition == NULL) {
           partition = partitions->add_partition();
         }
-        partition->add_input(i);
+        resource->AddInputInfoToPartition(i, partition);
       }
     }
     FinalizePartition(partitions, partition, outputs);
@@ -262,7 +262,7 @@ class CssCombineFilter::Context : public RewriteContext {
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
       OutputPartition* partition = output_partition(p);
       for (int i = 1; i < partition->input_size(); ++i) {
-        int slot_index = partition->input(i);
+        int slot_index = partition->input(i).index();
         slot(slot_index)->set_should_delete_element(true);
       }
     }

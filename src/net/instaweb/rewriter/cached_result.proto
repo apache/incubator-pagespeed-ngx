@@ -79,7 +79,7 @@ message CachedResult {
 
   // The timestamp of the input resource.
   // Used by rewrite_single_resource_filter.
-  optional int64 input_timestamp_ms = 8;
+  optional int64 input_fetch_time_ms = 8;
 
   // Cache format key version.
   // Used by rewrite_single_resource_filter.
@@ -106,6 +106,33 @@ message CachedResult {
   optional spriter.SpriterResult spriter_result = 13;
 }
 
+// Info about the input resource that was used to create this CachedResult.
+message InputInfo {
+  // The inputs names are not kept in the protobufs, only the indices.
+  // The intended usage is the input names will be used to construct
+  // the key to a cache entry, and the cache value will be an
+  // encoded OutputPartitions.
+  required int32 index = 1;
+
+  // This type affects how we check that OutputPartitions are up-to-date.
+  enum Type {
+    // Cached resources are valid until the expiration_time_ms.
+    CACHED = 1;
+    // File based resources are valid as long as the file has not changed.
+    // We stat the file and compare it's mtime to last_modified_time_ms
+    // to decide if the file has changed or not.
+    FILE_BASED = 2;
+    // E.g. data: URL resources never expire or change.
+    ALWAYS_VALID = 3;
+  }
+  required Type type = 2;
+  // An identifying timestamp which can be used to decide if a resource has
+  // been updated or not. For web-based resources, we use Last-Modified headers.
+  // For file-based resources, we use mtime.
+  optional int64 last_modified_time_ms = 3;
+  optional int64 expiration_time_ms = 4;
+}
+
 // Maps an output to a set of inputs.  This protobuf is the Value in a map,
 // where the Key is a sequence of input urls.  The CachedResult tells us
 // about the URL we will be using in lieu of the inputs.  The input array
@@ -125,12 +152,8 @@ message CachedResult {
 // back enough information to perform the HTML element substitutions.
 message OutputPartition {
   optional CachedResult result = 1;
-
-  // The inputs names are not kept in the protobufs, only the indices.
-  // The intended usage is the input names will be used to construct
-  // the key to a cache entry, and the cache value will be an
-  // encoded OutputPartitions.
-  repeated int32 input = 2;
+  // Info about the input resources needed to create this CachedResult.
+  repeated InputInfo input = 2;
 }
 
 // Contains the mapping of input URLs to output URLs.  In the general

@@ -134,10 +134,6 @@ class ResourceManager {
                                     int64 origin_expire_time_ms,
                                     MessageHandler* handler);
 
-  // Simple routine to check if cached information is no longer valid.
-  // Ought to be in the CachedResult class, but that a protobuf :(
-  bool IsCachedResultExpired(const CachedResult& cached_result) const;
-
   // Returns true if the resource with given date and TTL is going to expire
   // shortly and should hence be proactively re-fetched.
   bool IsImminentlyExpiring(int64 start_date_ms, int64 expire_ms) const;

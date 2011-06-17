@@ -92,7 +92,7 @@ struct ContentType;
 // RewriteDriver.
 class RewriteContext {
  public:
-  // Transfers ownership of resource_context, which must be NULL or
+  // Takes ownership of resource_context, which must be NULL or
   // allocated with 'new'.
   RewriteContext(RewriteDriver* driver,   // exactly one of driver & parent
                  RewriteContext* parent,  // is non-null
@@ -114,7 +114,7 @@ class RewriteContext {
   int num_outputs() const { return outputs_.size(); }
   OutputResourcePtr output(int i) const { return outputs_[i]; }
 
-  // There are generally accessed in the Rewrite thread,
+  // These are generally accessed in the Rewrite thread,
   // but may also be accessed in ::Render.
   int num_output_partitions() const;
   const OutputPartition* output_partition(int i) const;
@@ -182,6 +182,10 @@ class RewriteContext {
   const RewriteOptions* Options();
   RewriteDriver* Driver();
   const ResourceContext* resource_context() { return resource_context_.get(); }
+
+  // Check that an OutputPartition is valid, specifically, that all the
+  // inputs are still valid/non-expired.
+  bool OutputPartitionIsValid(const OutputPartition& partition);
 
   // Establishes that a slot has been rewritten.  So when Propagate()
   // is called, the resource update that has been written to this slot can

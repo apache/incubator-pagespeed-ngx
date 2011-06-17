@@ -354,6 +354,50 @@ void RewriteContext::Start() {
   }
 }
 
+// Check if this mapping from input to output URLs is still valid.
+bool RewriteContext::OutputPartitionIsValid(const OutputPartition& partition) {
+  bool partition_is_valid = true;
+  for (int j = 0, m = partition.input_size(); j < m; ++j) {
+    const InputInfo& input_info = partition.input(j);
+    switch (input_info.type()) {
+      case InputInfo::CACHED: {
+        // It is invalid if cacheable inputs have expired or ...
+        CHECK(input_info.has_expiration_time_ms());
+        int64 now_ms = Manager()->timer()->NowMs();
+        if (now_ms > input_info.expiration_time_ms()) {
+          partition_is_valid = false;
+        }
+        break;
+      }
+      case InputInfo::FILE_BASED: {
+        // ... if file-based inputs have changed.
+        GoogleString url = slot(input_info.index())->resource()->url();
+        GoogleUrl gurl(url);
+        GoogleString filename;
+        if (Options()->file_load_policy()->ShouldLoadFromFile(
+                gurl, &filename)) {
+          int64 mtime_sec;
+          Manager()->file_system()->Mtime(filename, &mtime_sec,
+                                          Manager()->message_handler());
+          CHECK(input_info.has_last_modified_time_ms());
+          if (mtime_sec * Timer::kSecondMs !=
+              input_info.last_modified_time_ms()) {
+            partition_is_valid = false;
+          }
+        } else {
+          LOG(DFATAL) << "Input resource incorrectly marked File-based: "
+                      << url;
+          partition_is_valid = false;
+        }
+        break;
+      }
+      case InputInfo::ALWAYS_VALID:
+        break;
+    }
+  }
+  return partition_is_valid;
+}
+
 void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
                                      SharedString* value) {
   DCHECK_LE(0, outstanding_fetches_);
@@ -371,16 +415,16 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
         OutputResourcePtr output_resource;
         const ContentType* content_type = NameExtensionToContentType(
             StrCat(".", cached_result.extension()));
-        // TODO(sligocki): cached_results telling us to remember not to
-        // rewrite resources are failing here.
+
         // TODO(sligocki): Move this into FreshenAndCheckExpiration or delete
         // that (currently empty) method.
-        if (Manager()->IsCachedResultExpired(cached_result)) {
-          // If a single output resource has expired, we update them all.
+        if (!OutputPartitionIsValid(partition)) {
+          // If a single output resource is invalid, we update them all.
           state = CacheInterface::kNotFound;
           outputs_.clear();
           break;
         }
+
         if (cached_result.optimizable() &&
             CreateOutputResourceForCachedOutput(
                 cached_result.url(), content_type, &output_resource) &&
@@ -613,7 +657,7 @@ void RewriteContext::Propagate(bool render_slots) {
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
       OutputPartition* partition = output_partition(p);
       for (int i = 0, n = partition->input_size(); i < n; ++i) {
-        int slot_index = partition->input(i);
+        int slot_index = partition->input(i).index();
         if (render_slots_[slot_index]) {
           ResourcePtr resource(outputs_[p]);
           slots_[slot_index]->SetResource(resource);
@@ -641,7 +685,7 @@ void RewriteContext::Finalize() {
 void RewriteContext::RenderPartitionOnDetach(int rewrite_index) {
   OutputPartition* partition = output_partition(rewrite_index);
   for (int i = 0; i < partition->input_size(); ++i) {
-    int slot_index = partition->input(i);
+    int slot_index = partition->input(i).index();
     render_slots_[slot_index] = true;
   }
 }
@@ -672,7 +716,7 @@ void RewriteContext::FinishFetch() {
   for (int i = 0, n = slots_.size(); i < n; ++i) {
     ResourcePtr resource(slot(i)->resource());
     if (resource->loaded() && resource->ContentsValid()) {
-      partition->add_input(i);
+      resource->AddInputInfoToPartition(i, partition);
     } else {
       ok_to_rewrite = false;
       break;

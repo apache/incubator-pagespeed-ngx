@@ -20,6 +20,7 @@
 
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -36,7 +37,15 @@ FileInputResource::~FileInputResource() {
 // is valid as long as the FileInputResource lives.
 bool FileInputResource::IsValidAndCacheable() {
   // TODO(sligocki): Stat the file to make sure it hasn't changed since load.
+  // Do we really want to stat it here? We are currently statting it in
+  // RewriteContext::OutputPartitionIsValid.
   return response_headers_.status_code() == HttpStatus::kOK;
+}
+
+void FileInputResource::FillInPartitionInputInfo(InputInfo* input) {
+  CHECK(loaded());
+  input->set_type(InputInfo::FILE_BASED);
+  input->set_last_modified_time_ms(last_modified_time_sec_ * Timer::kSecondMs);
 }
 
 // TODO(sligocki): Is this reasonable? People might want custom headers.
@@ -64,7 +73,8 @@ void FileInputResource::SetDefaultHeaders(const ContentType* content_type,
 // reloaded for every request.
 bool FileInputResource::Load(MessageHandler* handler) {
   FileSystem* file_system = resource_manager_->file_system();
-  if (file_system->ReadFile(filename_.c_str(), &value_, handler)) {
+  if (file_system->ReadFile(filename_.c_str(), &value_, handler) &&
+      file_system->Mtime(filename_, &last_modified_time_sec_, handler)) {
     SetDefaultHeaders(type_, &response_headers_, handler);
     value_.SetHeaders(&response_headers_);
   }

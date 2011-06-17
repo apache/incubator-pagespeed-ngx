@@ -54,7 +54,7 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
               resource, kind(), true /* async flow */));
       if (output_resource.get() != NULL) {
         OutputPartition* partition = partitions->add_partition();
-        partition->add_input(0);
+        resource->AddInputInfoToPartition(0, partition);
         output_resource->set_cached_result(partition->mutable_result());
         outputs->push_back(output_resource);
       }

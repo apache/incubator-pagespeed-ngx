@@ -59,7 +59,7 @@ void ResponseHeaders::Clear() {
   proto_->set_cacheable(false);
   proto_->set_proxy_cacheable(false);   // accurate only if !cache_fields_dirty_
   proto_->clear_expiration_time_ms();
-  proto_->clear_timestamp_ms();
+  proto_->clear_fetch_time_ms();
   proto_->clear_status_code();
   proto_->clear_reason_phrase();
   proto_->clear_header();
@@ -70,21 +70,6 @@ int ResponseHeaders::status_code() const {
   return proto_->status_code();
 }
 
-const char* ResponseHeaders::reason_phrase() const {
-  return proto_->has_reason_phrase()
-      ? proto_->reason_phrase().c_str()
-      : "(null)";
-}
-
-int64 ResponseHeaders::timestamp_ms() const {
-  DCHECK(!cache_fields_dirty_) << "Call ComputeCaching() before timestamp_ms()";
-  return proto_->timestamp_ms();
-}
-
-bool ResponseHeaders::has_timestamp_ms() const {
-  return proto_->has_timestamp_ms();
-}
-
 void ResponseHeaders::set_status_code(int code) {
   proto_->set_status_code(code);
 }
@@ -93,8 +78,30 @@ bool ResponseHeaders::has_status_code() const {
   return proto_->has_status_code();
 }
 
+const char* ResponseHeaders::reason_phrase() const {
+  return proto_->has_reason_phrase()
+      ? proto_->reason_phrase().c_str()
+      : "(null)";
+}
+
 void ResponseHeaders::set_reason_phrase(const StringPiece& reason_phrase) {
   proto_->set_reason_phrase(reason_phrase.data(), reason_phrase.size());
+}
+
+int64 ResponseHeaders::last_modified_time_ms() const {
+  DCHECK(!cache_fields_dirty_)
+      << "Call ComputeCaching() before last_modified_time_ms()";
+  return proto_->last_modified_time_ms();
+}
+
+int64 ResponseHeaders::fetch_time_ms() const {
+  DCHECK(!cache_fields_dirty_)
+      << "Call ComputeCaching() before fetch_time_ms()";
+  return proto_->fetch_time_ms();
+}
+
+bool ResponseHeaders::has_fetch_time_ms() const {
+  return proto_->has_fetch_time_ms();
 }
 
 void ResponseHeaders::Add(const StringPiece& name, const StringPiece& value) {
@@ -228,7 +235,7 @@ void ResponseHeaders::ComputeCaching() {
   // Compute the timestamp if we can find it
   if (Lookup(HttpAttributes::kDate, &values) && (values.size() == 1) &&
       ConvertStringToTime(*(values[0]), &date)) {
-      proto_->set_timestamp_ms(date);
+      proto_->set_fetch_time_ms(date);
   }
 
   // TODO(jmarantz): Should we consider as cacheable a resource
@@ -255,7 +262,7 @@ void ResponseHeaders::ComputeCaching() {
   int64 freshness_lifetime_ms;
   bool explicit_cacheable =
       pagespeed::resource_util::GetFreshnessLifetimeMillis(
-          resource, &freshness_lifetime_ms) && has_timestamp_ms();
+          resource, &freshness_lifetime_ms) && has_fetch_time_ms();
 
   proto_->set_cacheable(!explicit_no_cache &&
                        (explicit_cacheable || likely_static) &&
@@ -271,7 +278,7 @@ void ResponseHeaders::ComputeCaching() {
       // other heuristic value from the PageSpeed libraries.
       freshness_lifetime_ms = kImplicitCacheTtlMs;
     }
-    proto_->set_expiration_time_ms(proto_->timestamp_ms() +
+    proto_->set_expiration_time_ms(proto_->fetch_time_ms() +
                                    freshness_lifetime_ms);
 
     // Assume it's proxy cacheable.  Then iterate over all the headers
@@ -352,10 +359,12 @@ void ResponseHeaders::DebugPrint() const {
   fprintf(stderr, "cache_fields_dirty_ = %s\n",
           BoolToString(cache_fields_dirty_));
   if (!cache_fields_dirty_) {
-    fprintf(stderr, "expiration_time_ms_ = %ld\n",
-            static_cast<long>(proto_->expiration_time_ms()));  // NOLINT
-    fprintf(stderr, "timestamp_ms_ = %ld\n",
-            static_cast<long>(proto_->timestamp_ms()));        // NOLINT
+    fprintf(stderr, "expiration_time_ms_ = %s\n",
+            Integer64ToString(proto_->expiration_time_ms()).c_str());
+    fprintf(stderr, "last_modified_time_ms_ = %s\n",
+            Integer64ToString(last_modified_time_ms()).c_str());
+    fprintf(stderr, "fetch_time_ms_ = %s\n",
+            Integer64ToString(proto_->fetch_time_ms()).c_str());
     fprintf(stderr, "cacheable_ = %s\n", BoolToString(proto_->cacheable()));
     fprintf(stderr, "proxy_cacheable_ = %s\n",
             BoolToString(proto_->proxy_cacheable()));

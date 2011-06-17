@@ -99,11 +99,13 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   int status_code() const;
   bool has_status_code() const;
-  int64 timestamp_ms() const;
-  bool has_timestamp_ms() const;
   void set_status_code(const int code);
   const char* reason_phrase() const;
   void set_reason_phrase(const StringPiece& reason_phrase);
+
+  int64 last_modified_time_ms() const;
+  int64 fetch_time_ms() const;  // Timestamp from Date header.
+  bool has_fetch_time_ms() const;
 
   GoogleString ToString() const;
 

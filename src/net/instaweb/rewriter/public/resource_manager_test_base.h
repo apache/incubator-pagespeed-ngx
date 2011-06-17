@@ -303,6 +303,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // served the rewritten resources.
   scoped_ptr<ThreadSystem> base_thread_system_;
   scoped_ptr<AbstractMutex> timer_mutex_;
+  int64 start_time_ms_;
   MockTimer timer_;
   scoped_ptr<MockThreadSystem> thread_system_;
   MemFileSystem file_system_;

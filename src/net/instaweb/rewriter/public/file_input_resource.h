@@ -54,6 +54,9 @@ class FileInputResource : public Resource {
 
   virtual bool IsValidAndCacheable();
 
+  // Set OutputPartition's input info used for expiration validation.
+  virtual void FillInPartitionInputInfo(InputInfo* input);
+
   virtual GoogleString url() const { return url_; }
 
  protected:
@@ -66,6 +69,7 @@ class FileInputResource : public Resource {
  private:
   GoogleString url_;
   GoogleString filename_;
+  int64 last_modified_time_sec_;  // Loaded from file mtime.
 
   const RewriteOptions* rewrite_options_;
 

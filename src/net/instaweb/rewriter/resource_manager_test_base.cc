@@ -94,7 +94,12 @@ ResourceManagerTestBase::ResourceManagerTestBase()
       counting_url_async_fetcher_(&mock_url_async_fetcher_),
       wait_for_fetches_(false),
       base_thread_system_(ThreadSystem::CreateThreadSystem()),
-      timer_(0),
+      // TODO(sligocki): Get this working with a non-0 start time.
+      // 0 has the unfortunate property that 0 / 1000 = 0 which could make
+      // tests pass erroniously.
+      //start_time_ms_(MockTimer::kApr_5_2010_ms),
+      start_time_ms_(0),
+      timer_(start_time_ms_),
       thread_system_(new MockThreadSystem(base_thread_system_.get(),
                                           mock_timer())),
       file_system_(&timer_),
@@ -218,7 +223,7 @@ void ResourceManagerTestBase::AppendDefaultHeaders(
   ResponseHeaders header;
   int64 time = mock_timer()->NowUs();
   // Reset mock timer so synthetic headers match original.
-  mock_timer()->SetTimeUs(0);
+  mock_timer()->SetTimeUs(start_time_ms_);
   resource_manager_->SetDefaultLongCacheHeaders(&content_type, &header);
   // Then set it back.  Note that no alarms should fire at this point
   // because alarms work on absolute time.
