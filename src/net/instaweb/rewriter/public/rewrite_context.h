@@ -311,10 +311,6 @@ class RewriteContext {
   // enable successor rewrites to proceed.
   void Finalize();
 
-  // Renders any nested contexts, and harvests their results.  This must
-  // be called only when the nested contexts are finished.
-  void PropagateNestedAndHarvest();
-
   // Initiates an asynchronous fetch for the resources associated with
   // each slot, calling ResourceFetchDone() when complete.
   //

@@ -96,7 +96,7 @@ bool BotChecker::Lookup(const StringPiece& user_agent) {
   }
   // get the application_name/domain_name/email
   const char separator[] = " /;+";
-  std::vector<StringPiece> names;
+  StringPieceVector names;
   SplitStringPieceToVector(user_agent, separator, &names, true);
   for (int i = 0, n = names.size(); i < n; ++i) {
     if (RobotDetect::Lookup(names[i].data(),

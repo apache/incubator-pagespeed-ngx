@@ -35,7 +35,7 @@ GoogleString GTestSrcDir() {
 
   char cwd[kStackBufferSize];
   CHECK(getcwd(cwd, sizeof(cwd)) != NULL);
-  std::vector<StringPiece> components;
+  StringPieceVector components;
   SplitStringPieceToVector(cwd, "/", &components, true);
   int level = components.size();
   bool found = false;

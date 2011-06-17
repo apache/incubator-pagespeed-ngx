@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/css_image_rewriter.h"
+#include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
@@ -42,6 +42,8 @@ class Stylesheet;
 
 namespace net_instaweb {
 
+class CssImageRewriter;
+class CssImageRewriterAsync;
 class CacheExtender;
 class HtmlCharactersNode;
 class HtmlElement;
@@ -139,7 +141,7 @@ class CssFilter : public RewriteSingleResourceFilter {
   HtmlElement* style_element_;  // The element we are in.
   HtmlCharactersNode* style_char_node_;  // The single character node in style.
 
-  CssImageRewriter image_rewriter_;
+  scoped_ptr<CssImageRewriter> image_rewriter_;
 
   // Filters we delegate to.
   CacheExtender* cache_extender_;
@@ -170,6 +172,8 @@ class CssFilter::Context : public SingleRewriteContext {
   // Registers a context that was started on our behalf.
   void RegisterNested(RewriteContext* nested);
 
+  CssResourceSlotFactory* slot_factory() { return &slot_factory_; }
+
  protected:
   virtual void Render();
   virtual void Harvest();
@@ -181,7 +185,8 @@ class CssFilter::Context : public SingleRewriteContext {
  private:
   CssFilter* filter_;
   RewriteDriver* driver_;
-  CssImageRewriter image_rewriter_;
+  scoped_ptr<CssImageRewriterAsync> image_rewriter_;
+  CssResourceSlotFactory slot_factory_;
 
   // If this is true, we have asked image_rewriter_ to look at inner context,
   // making it potentially initiate nested rewrites. In that case, we do not

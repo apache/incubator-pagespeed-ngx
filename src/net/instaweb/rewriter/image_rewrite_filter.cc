@@ -82,8 +82,8 @@ const char kDataUrlKey[] = "ImageRewriteFilter_DataUrl";
 class ImageRewriteFilter::Context : public SingleRewriteContext {
  public:
   Context(ImageRewriteFilter* filter, RewriteDriver* driver,
-          ResourceContext* resource_context)
-      : SingleRewriteContext(driver, NULL /* no parent */, resource_context),
+          RewriteContext* parent, ResourceContext* resource_context)
+      : SingleRewriteContext(driver, parent, resource_context),
         filter_(filter),
         driver_(driver) {}
   virtual ~Context() {}
@@ -112,10 +112,18 @@ void ImageRewriteFilter::Context::Render() {
   CHECK(num_slots() == 1);
   CHECK(num_output_partitions() == 1);
   CHECK(output_partition(0)->has_result());
-  HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(slot(0).get());
-  filter_->FinishRewriteImageUrl(&output_partition(0)->result(),
-                                 html_slot->element(),
-                                 html_slot->attribute());
+
+  // We use automatic rendering for CSS, as we merely write out the improved
+  // URL, and manual for HTML, as we have to consider whether to inline, and
+  // may also add in width and height attributes.
+  if (slot(0)->disable_rendering()) {
+    HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(slot(0).get());
+    filter_->FinishRewriteImageUrl(&output_partition(0)->result(),
+                                   html_slot->element(),
+                                   html_slot->attribute());
+  } else {
+    filter_->rewrite_count_->Add(1);
+  }
 }
 
 const UrlSegmentEncoder* ImageRewriteFilter::Context::encoder() const {
@@ -322,7 +330,8 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   if (HasAsyncFlow()) {
     ResourcePtr input_resource = CreateInputResource(src->value());
     if (input_resource.get() != NULL) {
-      Context* context = new Context(this, driver_, resource_context.release());
+      Context* context = new Context(this, driver_, NULL /*not nested */,
+                                     resource_context.release());
       ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
       // Disable default slot rendering as it won't know to use a data: URL.
       slot->set_disable_rendering(true);
@@ -413,7 +422,16 @@ bool ImageRewriteFilter::HasAsyncFlow() const {
 }
 
 RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
-  return new Context(this, driver_, new ResourceContext());
+  return new Context(this, driver_, NULL /*not nested */,
+                     new ResourceContext());
+}
+
+RewriteContext* ImageRewriteFilter::MakeNestedContext(
+    RewriteContext* parent, const ResourceSlotPtr& slot) {
+  Context* context = new Context(this, NULL /* driver*/, parent,
+                                 new ResourceContext);
+  context->AddSlot(slot);
+  return context;
 }
 
 }  // namespace net_instaweb

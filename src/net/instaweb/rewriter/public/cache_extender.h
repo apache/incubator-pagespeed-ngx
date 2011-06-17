@@ -21,6 +21,7 @@
 
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -60,6 +61,11 @@ class CacheExtender : public RewriteSingleResourceFilter {
   void set_domain_rewriter(DomainRewriteFilter* domain_rewriter) {
     domain_rewriter_ = domain_rewriter;
   }
+
+  // Creates a nested rewrite for given parent and slot, and returns it.
+  // The result is not registered with the parent.
+  RewriteContext* MakeNestedContext(RewriteContext* parent,
+                                    const ResourceSlotPtr& slot);
 
  protected:
   virtual RewriteResult RewriteLoadedResource(

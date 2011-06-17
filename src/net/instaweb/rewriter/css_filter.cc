@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
+#include "net/instaweb/rewriter/public/css_image_rewriter_async.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -49,7 +50,6 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/parser.h"
-
 
 #include "base/at_exit.h"
 
@@ -85,8 +85,9 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
                            NULL /* no resource context */),
       filter_(filter),
       driver_(driver),
-      image_rewriter_(driver, cache_extender, image_rewriter,
-                      image_combiner),
+      image_rewriter_(
+          new CssImageRewriterAsync(
+              this, driver, cache_extender, image_rewriter, image_combiner)),
       may_need_nested_rewrites_(false),
       have_nested_rewrites_(false),
       in_text_size_(-1) {
@@ -124,6 +125,9 @@ void CssFilter::Context::RewriteImages(int64 in_text_size,
   in_text_size_ = in_text_size;
   stylesheet_.reset(stylesheet);
   css_gurl_.Reset(css_gurl);
+
+  image_rewriter_->RewriteCssImages(css_gurl, stylesheet,
+                                    driver_->message_handler());
 }
 
 void CssFilter::Context::RegisterNested(RewriteContext* nested) {
@@ -158,7 +162,8 @@ CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix,
                      ImageCombineFilter* image_combiner)
     : RewriteSingleResourceFilter(driver, path_prefix),
       in_style_element_(false),
-      image_rewriter_(driver, cache_extender, image_rewriter, image_combiner),
+      image_rewriter_(new CssImageRewriter(driver, cache_extender,
+                                           image_rewriter, image_combiner)),
       cache_extender_(cache_extender),
       image_rewrite_filter_(image_rewriter),
       image_combiner_(image_combiner),
@@ -334,7 +339,7 @@ TimedBool CssFilter::RewriteCssText(Context* context,
         previously_optimized = false;
       }
     } else {
-      TimedBool result = image_rewriter_.RewriteCssImages(
+      TimedBool result = image_rewriter_->RewriteCssImages(
                              css_gurl, stylesheet.get(), handler);
       ret.expiration_ms = result.expiration_ms;
       previously_optimized = result.value;

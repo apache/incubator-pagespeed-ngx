@@ -96,12 +96,44 @@ TEST_P(CssImageRewriterTest, CacheExtendsImages) {
                            kExpectChange | kExpectSuccess);
   ValidateRewriteExternalCss("cache_extends_images-external",
                              css_before, css_after,
-                             kExpectChange | kExpectSuccess | kNoOtherContexts);
+                             kExpectChange | kExpectSuccess |
+                             kNoOtherContexts | kNoClearFetcher);
+}
+
+TEST_P(CssImageRewriterTest, TrimsImageUrls) {
+  options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
+  InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
+  static const char kCss[] =
+      "body {\n"
+      "  background-image: url(foo.png);\n"
+      "}\n";
+
+  static const char kCssAfter[] =
+      "body{background-image:url(foo.png.pagespeed.ce.0.png)}";
+
+  ValidateRewriteExternalCss("trims_css_urls", kCss, kCssAfter,
+                              kExpectChange | kExpectSuccess |
+                              kNoOtherContexts | kNoClearFetcher);
+}
+
+TEST_P(CssImageRewriterTest, RecompressImages) {
+  options()->EnableFilter(RewriteOptions::kRecompressImages);
+  AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
+                        kContentTypePng, 100);
+  static const char kCss[] =
+      "body {\n"
+      "  background-image: url(foo.png);\n"
+      "}\n";
+
+  static const char kCssAfter[] =
+      "body{background-image:url(http://test.com/xfoo.png.pagespeed.ic.0.png)}";
+
+  ValidateRewriteExternalCss("recompress_css_images", kCss, kCssAfter,
+                              kExpectChange | kExpectSuccess |
+                              kNoOtherContexts | kNoClearFetcher);
 }
 
 TEST_P(CssImageRewriterTest, UseCorrectBaseUrl) {
-  CSS_XFAIL_ASYNC();
-
   // Initialize resources.
   static const char css_url[] = "http://www.example.com/bar/style.css";
   static const char css_before[] = "body { background: url(image.png); }";
@@ -201,6 +233,7 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
 // Test to make sure expiration time for cached result is the
 // smallest of subresource and CSS times, not just CSS time.
 TEST_P(CssFilterSubresourceTest, SubResourceDepends) {
+  // These tests rely on the guts of the old expiration machinery.
   CSS_XFAIL_ASYNC();
 
   const char kInput[] = "div { background-image: url(a.png); }"
@@ -226,6 +259,7 @@ TEST_P(CssFilterSubresourceTest, SubResourceDepends) {
 // Test to make sure we don't cache for long if the rewrite was based
 // on not-yet-loaded resources.
 TEST_P(CssFilterSubresourceTest, SubResourceDependsNotYetLoaded) {
+  // These tests rely on the guts of the old expiration machinery.
   CSS_XFAIL_ASYNC();
 
   SetupWaitFetcher();

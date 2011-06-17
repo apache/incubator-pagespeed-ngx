@@ -68,8 +68,9 @@ const int64 kMinThresholdMs = Timer::kMonthMs;
 
 class CacheExtender::Context : public SingleRewriteContext {
  public:
-  Context(CacheExtender* extender, RewriteDriver* driver)
-      : SingleRewriteContext(driver, NULL /* no parent */,
+  Context(CacheExtender* extender, RewriteDriver* driver,
+          RewriteContext* parent)
+      : SingleRewriteContext(driver, parent,
                              NULL /* no resource context */),
         extender_(extender),
         driver_(driver) {}
@@ -138,7 +139,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
         !IsRewrittenResource(input_resource->url())) {
       if (HasAsyncFlow()) {
         ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, href));
-        Context* context = new Context(this, driver_);
+        Context* context = new Context(this, driver_, NULL /* not nested */);
         context->AddSlot(slot);
         driver_->InitiateRewrite(context);
       } else {
@@ -277,7 +278,14 @@ bool CacheExtender::HasAsyncFlow() const {
 }
 
 RewriteContext* CacheExtender::MakeRewriteContext() {
-  return new Context(this, driver_);
+  return new Context(this, driver_, NULL /*not nested*/);
+}
+
+RewriteContext* CacheExtender::MakeNestedContext(
+    RewriteContext* parent, const ResourceSlotPtr& slot) {
+  Context* context = new Context(this, NULL /* driver*/, parent);
+  context->AddSlot(slot);
+  return context;
 }
 
 }  // namespace net_instaweb

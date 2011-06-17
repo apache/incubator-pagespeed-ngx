@@ -180,7 +180,7 @@ class SplitStringTest : public testing::Test {
 };
 
 TEST_F(SplitStringTest, TestSplitNoOmitTrailing) {
-  std::vector<StringPiece> components;
+  StringPieceVector components;
   SplitStringPieceToVector(".a.b..c.", ".", &components, false);
   ASSERT_EQ(static_cast<size_t>(6), components.size());
   ASSERT_EQ("", components[0]);
@@ -192,7 +192,7 @@ TEST_F(SplitStringTest, TestSplitNoOmitTrailing) {
 }
 
 TEST_F(SplitStringTest, TestSplitNoOmitNoTrailing) {
-  std::vector<StringPiece> components;
+  StringPieceVector components;
   SplitStringPieceToVector(".a.b..c", ".", &components, false);
   ASSERT_EQ(static_cast<size_t>(5), components.size());
   ASSERT_EQ("", components[0]);
@@ -203,14 +203,14 @@ TEST_F(SplitStringTest, TestSplitNoOmitNoTrailing) {
 }
 
 TEST_F(SplitStringTest, TestSplitNoOmitEmpty) {
-  std::vector<StringPiece> components;
+  StringPieceVector components;
   SplitStringPieceToVector("", ".", &components, false);
   ASSERT_EQ(static_cast<size_t>(1), components.size());
   ASSERT_EQ("", components[0]);
 }
 
 TEST_F(SplitStringTest, TestSplitNoOmitOneDot) {
-  std::vector<StringPiece> components;
+  StringPieceVector components;
   SplitStringPieceToVector(".", ".", &components, false);
   ASSERT_EQ(static_cast<size_t>(2), components.size());
   ASSERT_EQ("", components[0]);
@@ -218,7 +218,7 @@ TEST_F(SplitStringTest, TestSplitNoOmitOneDot) {
 }
 
 TEST_F(SplitStringTest, TestSplitOmitTrailing) {
-  std::vector<StringPiece> components;
+  StringPieceVector components;
   SplitStringPieceToVector(".a.b..c.", ".", &components, true);
   ASSERT_EQ(static_cast<size_t>(3), components.size());
   ASSERT_EQ("a", components[0]);
@@ -227,7 +227,7 @@ TEST_F(SplitStringTest, TestSplitOmitTrailing) {
 }
 
 TEST_F(SplitStringTest, TestSplitOmitNoTrailing) {
-  std::vector<StringPiece> components;
+  StringPieceVector components;
   SplitStringPieceToVector(".a.b..c", ".", &components, true);
   ASSERT_EQ(static_cast<size_t>(3), components.size());
   ASSERT_EQ("a", components[0]);
@@ -236,19 +236,19 @@ TEST_F(SplitStringTest, TestSplitOmitNoTrailing) {
 }
 
 TEST_F(SplitStringTest, TestSplitOmitEmpty) {
-  std::vector<StringPiece> components;
+  StringPieceVector components;
   SplitStringPieceToVector("", ".", &components, true);
   ASSERT_EQ(static_cast<size_t>(0), components.size());
 }
 
 TEST_F(SplitStringTest, TestSplitOmitOneDot) {
-  std::vector<StringPiece> components;
+  StringPieceVector components;
   SplitStringPieceToVector(".", ".", &components, true);
   ASSERT_EQ(static_cast<size_t>(0), components.size());
 }
 
 TEST_F(SplitStringTest, TestSplitMultiSeparator) {
-  std::vector<StringPiece> components;
+  StringPieceVector components;
   SplitStringPieceToVector("a/b c;d,", " /;", &components, true);
   ASSERT_EQ(static_cast<size_t>(4), components.size());
   ASSERT_EQ("a", components[0]);

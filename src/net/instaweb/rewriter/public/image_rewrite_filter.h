@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -59,6 +60,11 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
   static bool CanInline(
       int image_inline_max_bytes, const StringPiece& contents,
       const ContentType* content_type, GoogleString* data_url);
+
+  // Creates a nested rewrite for given parent and slot, and returns it.
+  // The result is not registered with the parent.
+  RewriteContext* MakeNestedContext(RewriteContext* parent,
+                                    const ResourceSlotPtr& slot);
 
  protected:
   // Interface to RewriteSingleResourceFilter

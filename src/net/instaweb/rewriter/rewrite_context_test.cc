@@ -40,6 +40,7 @@
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -154,7 +155,7 @@ class UpperCaseRewriter : public SimpleTextFilter::Rewriter {
 class NestedFilter : public RewriteFilter {
  public:
   explicit NestedFilter(RewriteDriver* driver)
-      : RewriteFilter(driver, kNestedFilterId) {
+      : RewriteFilter(driver, kNestedFilterId), chain_(false) {
     ClearStats();
   }
 
@@ -166,6 +167,9 @@ class NestedFilter : public RewriteFilter {
     num_top_rewrites_ = 0;
     num_sub_rewrites_ = 0;
   }
+
+  // Set this to true to create a chain of nested rewrites on the same slot.
+  void set_chain(bool x) { chain_ = x; }
 
  protected:
   virtual ~NestedFilter() {}
@@ -211,9 +215,10 @@ class NestedFilter : public RewriteFilter {
 
   class Context : public SingleRewriteContext {
    public:
-    Context(RewriteDriver* driver, NestedFilter* filter)
+    Context(RewriteDriver* driver, NestedFilter* filter, bool chain)
         : SingleRewriteContext(driver, NULL, NULL),
-          filter_(filter) {
+          filter_(filter),
+          chain_(chain) {
     }
     virtual ~Context() {
       STLDeleteElements(&strings_);
@@ -239,6 +244,14 @@ class NestedFilter : public RewriteFilter {
               AddNestedContext(nested_context);
               ResourceSlotPtr slot(new NestedSlot(resource));
               nested_context->AddSlot(slot);
+
+              // Test chaining of a 2nd rewrite on the same slot, if asked.
+              if (chain_) {
+                NestedContext* nested_context2 =
+                    new NestedContext(this, filter_);
+                AddNestedContext(nested_context2);
+                nested_context2->AddSlot(slot);
+              }
             }
           }
         }
@@ -284,6 +297,7 @@ class NestedFilter : public RewriteFilter {
     OutputResourcePtr output_;
     std::vector<GoogleString*> strings_;
     NestedFilter* filter_;
+    bool chain_;
 
     DISALLOW_COPY_AND_ASSIGN(Context);
   };
@@ -297,7 +311,9 @@ class NestedFilter : public RewriteFilter {
     CHECK(false);
   }
 
-  RewriteContext* MakeRewriteContext() { return new Context(driver_, this); }
+  RewriteContext* MakeRewriteContext() {
+    return new Context(driver_, this, chain_);
+  }
 
   void StartElementImpl(HtmlElement* element) {
     HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kHref);
@@ -307,13 +323,12 @@ class NestedFilter : public RewriteFilter {
         ResourceSlotPtr slot(driver_->GetSlot(resource, element, attr));
 
         // This 'new' is paired with a delete in RewriteContext::FinishFetch()
-        Context* context = new Context(driver_, this);
+        Context* context = new Context(driver_, this, chain_);
         context->AddSlot(slot);
         driver_->InitiateRewrite(context);
       }
     }
   }
-
 
   virtual OutputResourceKind kind() const { return kind_; }
   virtual const char* id() const { return kNestedFilterId; }
@@ -324,6 +339,7 @@ class NestedFilter : public RewriteFilter {
 
  private:
   OutputResourceKind kind_;
+  bool chain_;
 
   // Stats
   int num_top_rewrites_;
@@ -932,11 +948,35 @@ TEST_F(RewriteContextTest, TwoFiltersDelayedFetches) {
 }
 
 TEST_F(RewriteContextTest, Nested) {
+  const char kRewrittenUrl[] = "http://test.com/c.css.pagespeed.nf.0.css";
   InitNestedFilter();
   InitResources();
+  ValidateExpected("async3", CssLink("c.css"), CssLink(kRewrittenUrl));
+  GoogleString rewritten_contents;
+  EXPECT_TRUE(ServeResourceUrl(kRewrittenUrl, &rewritten_contents));
+  EXPECT_EQ("http://test.com/a.css.pagespeed.nf.0.css\n"
+            "http://test.com/b.css.pagespeed.nf.0.css\n", rewritten_contents);
+}
+
+TEST_F(RewriteContextTest, NestedChained) {
+  const char kRewrittenUrl[] = "http://test.com/c.css.pagespeed.nf.0.css";
+
+  RewriteDriver* driver = rewrite_driver();
+  NestedFilter* nf = new NestedFilter(driver);
+  nf->set_chain(true);
+  driver->AddRewriteFilter(nf);
+  driver->AddFilters();
+  InitResources();
   ValidateExpected(
-      "async3", CssLink("c.css"),
-      CssLink("http://test.com/c.css.pagespeed.nf.0.css"));
+      "async_nest_chain", CssLink("c.css"), CssLink(kRewrittenUrl));
+  GoogleString rewritten_contents;
+  EXPECT_TRUE(ServeResourceUrl(kRewrittenUrl, &rewritten_contents));
+  // We expect each URL twice since we have two nested jobs for it, and the
+  // Harvest() just dumps each nested rewrites' slots.
+  EXPECT_EQ("http://test.com/a.css.pagespeed.nf.0.css\n"
+            "http://test.com/a.css.pagespeed.nf.0.css\n"
+            "http://test.com/b.css.pagespeed.nf.0.css\n"
+            "http://test.com/b.css.pagespeed.nf.0.css\n", rewritten_contents);
 }
 
 TEST_F(RewriteContextTest, CombinationRewrite) {

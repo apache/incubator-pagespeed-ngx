@@ -527,6 +527,7 @@ void RewriteContext::WritePartition() {
   lock_.reset();
   if (parent_ != NULL) {
     DCHECK(driver_ == NULL);
+    Propagate(true);
     parent_->NestedRewriteDone();
   } else {
     // The RewriteDriver is waiting for this to complete.  Defer to the
@@ -556,7 +557,7 @@ void RewriteContext::NestedRewriteDone() {
   --num_pending_nested_;
   if (num_pending_nested_ == 0) {
     DCHECK(!rewrite_done_);
-    PropagateNestedAndHarvest();
+    Harvest();
   }
 }
 
@@ -594,13 +595,6 @@ void RewriteContext::RewriteDone(
     }
     Finalize();
   }
-}
-
-void RewriteContext::PropagateNestedAndHarvest() {
-  for (int i = 0, n = nested_.size(); i < n; ++i) {
-    nested_[i]->Propagate(true);
-  }
-  Harvest();
 }
 
 void RewriteContext::Harvest() {
