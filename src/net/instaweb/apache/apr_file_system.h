@@ -15,10 +15,12 @@
 #ifndef NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_
 #define NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_
 
+#include "apr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 
+struct apr_finfo_t;
 struct apr_pool_t;
 
 namespace net_instaweb {
@@ -32,37 +34,37 @@ class AprFileSystem : public FileSystem {
  public:
   explicit AprFileSystem(apr_pool_t* pool);
   ~AprFileSystem();
-  virtual bool Atime(const StringPiece& path,
-                     int64* timestamp_sec, MessageHandler* handler);
-  bool Ctime(const StringPiece& path,
-             int64* timestamp_sec, MessageHandler* handler);
+
   virtual InputFile* OpenInputFile(
       const char* file, MessageHandler* message_handler);
   virtual OutputFile* OpenOutputFileHelper(
       const char* file, MessageHandler* message_handler);
   // See FileSystem interface for specifics of OpenTempFile.
-  virtual OutputFile* OpenTempFileHelper(
-      const StringPiece& prefix_name,
-      MessageHandler* message_handler);
-  virtual bool RenameFileHelper(const char* old_filename,
-                                const char* new_filename,
-                                MessageHandler* message_handler);
-  virtual bool RemoveFile(const char* filename,
-                          MessageHandler* message_handler);
-  virtual bool Size(const StringPiece& path, int64* size,
-                    MessageHandler* handler);
-  // Like POSIX 'mkdir', makes a directory only if parent directory exists.
-  // Fails if directory_name already exists or parent directory doesn't exist.
-  virtual bool MakeDir(const char* directory_path, MessageHandler* handler);
-
-  // Like POSIX 'test -e', checks if path exists (is a file, directory, etc.).
-  virtual BoolOrError Exists(const char* path, MessageHandler* handler);
-
-  // Like POSIX 'test -d', checks if path exists and refers to a directory.
-  virtual BoolOrError IsDir(const char* path, MessageHandler* handler);
+  virtual OutputFile* OpenTempFileHelper(const StringPiece& prefix_name,
+                                         MessageHandler* message_handler);
 
   virtual bool ListContents(const StringPiece& dir, StringVector* files,
                             MessageHandler* handler);
+  // Like POSIX 'mkdir', makes a directory only if parent directory exists.
+  // Fails if directory_name already exists or parent directory doesn't exist.
+  virtual bool MakeDir(const char* directory_path, MessageHandler* handler);
+  virtual bool RemoveFile(const char* filename,
+                          MessageHandler* message_handler);
+  virtual bool RenameFileHelper(const char* old_filename,
+                                const char* new_filename,
+                                MessageHandler* message_handler);
+
+  virtual bool Atime(const StringPiece& path,
+                     int64* timestamp_sec, MessageHandler* handler);
+  virtual bool Ctime(const StringPiece& path,
+                     int64* timestamp_sec, MessageHandler* handler);
+  virtual bool Mtime(const StringPiece& path,
+                     int64* timestamp_sec, MessageHandler* handler);
+  virtual bool Size(const StringPiece& path, int64* size,
+                    MessageHandler* handler);
+  virtual BoolOrError Exists(const char* path, MessageHandler* handler);
+  virtual BoolOrError IsDir(const char* path, MessageHandler* handler);
+
   virtual BoolOrError TryLock(const StringPiece& lock_name,
                               MessageHandler* handler);
   virtual BoolOrError TryLockWithTimeout(const StringPiece& lock_name,
@@ -71,6 +73,11 @@ class AprFileSystem : public FileSystem {
   virtual bool Unlock(const StringPiece& lock_name, MessageHandler* handler);
 
  private:
+  // Used by *time and Size methods to get file info.
+  bool Stat(const StringPiece& path,
+            apr_finfo_t* file_info, apr_int32_t field_wanted,
+            MessageHandler* handler);
+
   apr_pool_t* pool_;
 
   // We use a mutex to protect the pool above when calling into apr's file

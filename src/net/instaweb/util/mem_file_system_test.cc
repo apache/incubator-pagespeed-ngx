@@ -33,19 +33,16 @@ namespace net_instaweb {
 class MemFileSystemTest : public FileSystemTest {
  protected:
   MemFileSystemTest()
-      : timer_(0),
-        mem_file_system_(&timer_) {
+      : timer_(0), mem_file_system_(&timer_) {
     mem_file_system_.set_advance_time_on_update(true);
   }
   virtual void DeleteRecursively(const StringPiece& filename) {
     mem_file_system_.Clear();
   }
-  virtual FileSystem* file_system() {
-    return &mem_file_system_;
-  }
-  virtual GoogleString test_tmpdir() {
-    return GTestTempDir();
-  }
+  virtual FileSystem* file_system() { return &mem_file_system_; }
+  virtual Timer* timer() { return &timer_; }
+  virtual GoogleString test_tmpdir() { return GTestTempDir(); }
+
  private:
   MockTimer timer_;
   MemFileSystem mem_file_system_;
@@ -89,7 +86,29 @@ TEST_F(MemFileSystemTest, TestMakeDir) {
   TestMakeDir();
 }
 
+// We intentionally do not test TestIsDir, TestRecursivelyMakeDir*
+
+TEST_F(MemFileSystemTest, TestListContents) {
+  TestListContents();
+}
+
+TEST_F(MemFileSystemTest, TestAtime) {
+  TestAtime();
+}
+
+TEST_F(MemFileSystemTest, TestCtime) {
+  TestCtime();
+}
+
+TEST_F(MemFileSystemTest, TestMtime) {
+  TestMtime();
+}
+
 TEST_F(MemFileSystemTest, TestSize) {
+  TestSize();
+}
+
+TEST_F(MemFileSystemTest, TestSizeOld) {
   // Since we don't have directories, we need to do a slightly
   // different size test.
   GoogleString filename1 = "file-in-dir.txt";
@@ -108,43 +127,14 @@ TEST_F(MemFileSystemTest, TestSize) {
   EXPECT_EQ(10, size);
 }
 
-TEST_F(MemFileSystemTest, TestListContents) {
-  TestListContents();
-}
-
-TEST_F(MemFileSystemTest, TestAtime) {
-  // Slightly modified version of TestAtime, without the sleeps
-  GoogleString dir_name = test_tmpdir() + "/make_dir";
-  DeleteRecursively(dir_name);
-  GoogleString filename1 = "file-in-dir.txt";
-  GoogleString filename2 = "another-file-in-dir.txt";
-  GoogleString full_path1 = dir_name + "/" + filename1;
-  GoogleString full_path2 = dir_name + "/" + filename2;
-  GoogleString content = "Lorem ipsum dolor sit amet";
-
-  ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
-  ASSERT_TRUE(file_system()->WriteFile(full_path1.c_str(),
-                                       content, &handler_));
-  ASSERT_TRUE(file_system()->WriteFile(full_path2.c_str(),
-                                       content, &handler_));
-
-  int64 atime1, atime2;
-  CheckRead(full_path1, content);
-  CheckRead(full_path2, content);
-  ASSERT_TRUE(file_system()->Atime(full_path1, &atime1, &handler_));
-  ASSERT_TRUE(file_system()->Atime(full_path2, &atime2, &handler_));
-  EXPECT_LT(atime1, atime2);
-
-  CheckRead(full_path2, content);
-  CheckRead(full_path1, content);
-  ASSERT_TRUE(file_system()->Atime(full_path1, &atime1, &handler_));
-  ASSERT_TRUE(file_system()->Atime(full_path2, &atime2, &handler_));
-  EXPECT_LT(atime2, atime1);
-}
-
 TEST_F(MemFileSystemTest, TestLock) {
   TestLock();
 }
+
+// TODO(sligocki): This test does not seem to work for MemFileSystem
+//TEST_F(MemFileSystemTest, TestLockTimeout) {
+//  TestLockTimeout();
+//}
 
 // Since this filesystem doesn't support directories, we skip these tests:
 // TestIsDir

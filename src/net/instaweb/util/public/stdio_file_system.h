@@ -23,7 +23,10 @@
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/string_util.h"
 
+struct stat;
+
 namespace net_instaweb {
+
 class MessageHandler;
 
 class StdioFileSystem : public FileSystem {
@@ -31,34 +34,44 @@ class StdioFileSystem : public FileSystem {
   StdioFileSystem() {}
   virtual ~StdioFileSystem();
 
-  virtual bool Atime(const StringPiece& path, int64* timestamp_sec,
-                     MessageHandler* handler);
   virtual InputFile* OpenInputFile(const char* filename,
                                    MessageHandler* message_handler);
   virtual OutputFile* OpenOutputFileHelper(const char* filename,
-                                          MessageHandler* message_handler);
+                                           MessageHandler* message_handler);
   virtual OutputFile* OpenTempFileHelper(const StringPiece& prefix_name,
-                                        MessageHandler* message_handle);
+                                         MessageHandler* message_handle);
 
-  virtual bool RemoveFile(const char* filename, MessageHandler* handler);
-  virtual bool RenameFileHelper(const char* old_file, const char* new_file,
-                               MessageHandler* handler);
-  virtual bool MakeDir(const char* directory_path, MessageHandler* handler);
-  virtual BoolOrError Exists(const char* path, MessageHandler* handler);
-  virtual BoolOrError IsDir(const char* path, MessageHandler* handler);
   virtual bool ListContents(const StringPiece& dir, StringVector* files,
                             MessageHandler* handler);
+  virtual bool MakeDir(const char* directory_path, MessageHandler* handler);
+  virtual bool RemoveFile(const char* filename, MessageHandler* handler);
+  virtual bool RenameFileHelper(const char* old_file, const char* new_file,
+                                MessageHandler* handler);
+
+  virtual bool Atime(const StringPiece& path, int64* timestamp_sec,
+                     MessageHandler* handler);
+  virtual bool Ctime(const StringPiece& path, int64* timestamp_sec,
+                     MessageHandler* handler);
+  virtual bool Mtime(const StringPiece& path, int64* timestamp_sec,
+                     MessageHandler* handler);
   virtual bool Size(const StringPiece& path, int64* size,
                     MessageHandler* handler);
+  virtual BoolOrError Exists(const char* path, MessageHandler* handler);
+  virtual BoolOrError IsDir(const char* path, MessageHandler* handler);
+
   virtual BoolOrError TryLock(const StringPiece& lock_name,
                               MessageHandler* handler);
-  virtual bool Unlock(const StringPiece& lock_name,
-                      MessageHandler* handler);
+  virtual bool Unlock(const StringPiece& lock_name, MessageHandler* handler);
+
   InputFile* Stdin();
   OutputFile* Stdout();
   OutputFile* Stderr();
 
  private:
+  // Used by *time and Size methods to get file info.
+  bool Stat(const StringPiece& path, struct stat* statbuf,
+            MessageHandler* handler);
+
   DISALLOW_COPY_AND_ASSIGN(StdioFileSystem);
 };
 

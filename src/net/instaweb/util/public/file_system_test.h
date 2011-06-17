@@ -51,12 +51,18 @@ class FileSystemTest : public testing::Test {
   // Provide a pointer to your favorite filesystem implementation.
   virtual FileSystem* file_system() = 0;
 
+  // Pointer to a timer to use in tests.
+  virtual Timer* timer() = 0;
+
   // Provide a temporary directory for tests to put files in.
   virtual GoogleString test_tmpdir() = 0;
 
   GoogleString WriteNewFile(const StringPiece& suffix,
                             const GoogleString& content);
 
+  // All FileSystem implementations should run the following tests.
+  // Note: If you add a test below, please add invocations in:
+  // AprFileSystemTest, StdioFileSystemTest, MemFileSystemTest.
   void TestWriteRead();
   void TestTemp();
   void TestRename();
@@ -70,9 +76,11 @@ class FileSystemTest : public testing::Test {
   void TestRecursivelyMakeDir_FileInPath();
   void TestListContents();
   void TestAtime();
+  void TestCtime();
+  void TestMtime();
   void TestSize();
   void TestLock();
-  void TestLockTimeout(Timer* timer);
+  void TestLockTimeout();
 
   GoogleMessageHandler handler_;
 

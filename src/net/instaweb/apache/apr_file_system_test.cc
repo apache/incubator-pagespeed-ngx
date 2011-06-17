@@ -33,12 +33,9 @@ class AprFileSystemTest : public FileSystemTest {
   virtual void DeleteRecursively(const StringPiece& filename) {
     MyDeleteFileRecursively(filename.as_string(), NULL, NULL);
   }
-  virtual FileSystem* file_system() {
-    return file_system_.get();
-  }
-  virtual std::string test_tmpdir() {
-    return test_tmpdir_;
-  }
+  virtual FileSystem* file_system() { return file_system_.get(); }
+  virtual Timer* timer() { return &timer_; }
+  virtual std::string test_tmpdir() { return test_tmpdir_; }
   virtual void SetUp() {
     apr_initialize();
     atexit(apr_terminate);
@@ -107,6 +104,7 @@ class AprFileSystemTest : public FileSystemTest {
 
  protected:
   GoogleMessageHandler handler_;
+  AprTimer timer_;
   scoped_ptr<AprFileSystem> file_system_;
   apr_pool_t* pool_;
   std::string test_tmpdir_;
@@ -167,6 +165,14 @@ TEST_F(AprFileSystemTest, TestAtime) {
   TestAtime();
 }
 
+TEST_F(AprFileSystemTest, TestCtime) {
+  TestCtime();
+}
+
+TEST_F(AprFileSystemTest, TestMtime) {
+  TestMtime();
+}
+
 TEST_F(AprFileSystemTest, TestSize) {
   TestSize();
 }
@@ -176,8 +182,7 @@ TEST_F(AprFileSystemTest, TestLock) {
 }
 
 TEST_F(AprFileSystemTest, TestLockTimeout) {
-  AprTimer timer;
-  TestLockTimeout(&timer);
+  TestLockTimeout();
 }
 
 }  // namespace net_instaweb

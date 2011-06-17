@@ -42,35 +42,41 @@ class MemFileSystem : public FileSystem {
   explicit MemFileSystem(MockTimer* timer);
   virtual ~MemFileSystem();
 
-  // We offer a "simulated atime" in which the clock ticks forward one
-  // second every time you read or write a file.
-  virtual bool Atime(const StringPiece& path, int64* timestamp_sec,
-                     MessageHandler* handler);
-  virtual BoolOrError Exists(const char* path, MessageHandler* handler);
-  virtual BoolOrError IsDir(const char* path, MessageHandler* handler);
-  virtual bool ListContents(const StringPiece& dir, StringVector* files,
-                            MessageHandler* handler);
-  virtual bool MakeDir(const char* directory_path, MessageHandler* handler);
   virtual InputFile* OpenInputFile(const char* filename,
                                    MessageHandler* message_handler);
   virtual OutputFile* OpenOutputFileHelper(const char* filename,
                                           MessageHandler* message_handler);
   virtual OutputFile* OpenTempFileHelper(const StringPiece& prefix_name,
                                         MessageHandler* message_handle);
+
+  virtual bool ListContents(const StringPiece& dir, StringVector* files,
+                            MessageHandler* handler);
+  virtual bool MakeDir(const char* directory_path, MessageHandler* handler);
   virtual bool RecursivelyMakeDir(const StringPiece& directory_path,
                                   MessageHandler* handler);
   virtual bool RemoveFile(const char* filename, MessageHandler* handler);
   virtual bool RenameFileHelper(const char* old_file, const char* new_file,
                                MessageHandler* handler);
+
+  // We offer a "simulated atime" in which the clock ticks forward one
+  // second every time you read or write a file.
+  virtual bool Atime(const StringPiece& path, int64* timestamp_sec,
+                     MessageHandler* handler);
+  virtual bool Ctime(const StringPiece& path, int64* timestamp_sec,
+                     MessageHandler* handler);
+  virtual bool Mtime(const StringPiece& path, int64* timestamp_sec,
+                     MessageHandler* handler);
   virtual bool Size(const StringPiece& path, int64* size,
                     MessageHandler* handler);
+  virtual BoolOrError Exists(const char* path, MessageHandler* handler);
+  virtual BoolOrError IsDir(const char* path, MessageHandler* handler);
+
   virtual BoolOrError TryLock(const StringPiece& lock_name,
                               MessageHandler* handler);
   virtual BoolOrError TryLockWithTimeout(const StringPiece& lock_name,
                                          int64 timeout_ms,
                                          MessageHandler* handler);
-  virtual bool Unlock(const StringPiece& lock_name,
-                      MessageHandler* handler);
+  virtual bool Unlock(const StringPiece& lock_name, MessageHandler* handler);
 
   // When atime is disabled, reading a file will not update its atime.
   void set_atime_enabled(bool enabled) { atime_enabled_ = enabled; }
@@ -106,6 +112,8 @@ class MemFileSystem : public FileSystem {
 
  private:
   inline void UpdateAtime(const StringPiece& path);
+  inline void UpdateCtime(const StringPiece& path);
+  inline void UpdateMtime(const StringPiece& path);
 
   bool enabled_;  // When disabled, OpenInputFile returns NULL.
   StringStringMap string_map_;
@@ -114,7 +122,10 @@ class MemFileSystem : public FileSystem {
   // atime_map_ holds times (in s) that files were last opened/modified.  Each
   // time we do such an operation, timer() advances by 1s (so all ATimes are
   // distinct).
+  // ctime and mtime are updated only for moves and modifications.
   std::map<GoogleString, int64> atime_map_;
+  std::map<GoogleString, int64> ctime_map_;
+  std::map<GoogleString, int64> mtime_map_;
   int temp_file_index_;
   // lock_map_ holds times that locks were established (in ms).
   // locking and unlocking don't advance time.

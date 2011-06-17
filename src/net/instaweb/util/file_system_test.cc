@@ -18,7 +18,6 @@
 
 #include "net/instaweb/util/public/file_system.h"
 
-#include <unistd.h>
 #include <cstddef>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system_test.h"
@@ -211,10 +210,8 @@ void FileSystemTest::TestListContents() {
   StringVector mylist;
 
   ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
-  ASSERT_TRUE(file_system()->WriteFile(filename1.c_str(),
-                                       content, &handler_));
-  ASSERT_TRUE(file_system()->WriteFile(filename2.c_str(),
-                                       content, &handler_));
+  ASSERT_TRUE(file_system()->WriteFile(filename1.c_str(), content, &handler_));
+  ASSERT_TRUE(file_system()->WriteFile(filename2.c_str(), content, &handler_));
   EXPECT_TRUE(file_system()->ListContents(dir_name, &mylist, &handler_));
   EXPECT_EQ(size_t(2), mylist.size());
   // Make sure our filenames are in there
@@ -234,28 +231,122 @@ void FileSystemTest::TestAtime() {
   GoogleString content = "Lorem ipsum dolor sit amet";
   // We need to sleep a bit between accessing files so that the
   // difference shows up in in atimes which are measured in seconds.
-  unsigned int sleep_micros = 1500000;
+  unsigned int sleep_us = 1500000;
 
   ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
-  ASSERT_TRUE(file_system()->WriteFile(full_path1.c_str(),
-                                       content, &handler_));
-  ASSERT_TRUE(file_system()->WriteFile(full_path2.c_str(),
-                                       content, &handler_));
+  ASSERT_TRUE(file_system()->WriteFile(full_path1.c_str(), content, &handler_));
+  ASSERT_TRUE(file_system()->WriteFile(full_path2.c_str(), content, &handler_));
 
   int64 atime1, atime2;
   CheckRead(full_path1, content);
-  usleep(sleep_micros);
+  timer()->SleepUs(sleep_us);
   CheckRead(full_path2, content);
   ASSERT_TRUE(file_system()->Atime(full_path1, &atime1, &handler_));
   ASSERT_TRUE(file_system()->Atime(full_path2, &atime2, &handler_));
   EXPECT_LT(atime1, atime2);
 
   CheckRead(full_path2, content);
-  usleep(sleep_micros);
+  timer()->SleepUs(sleep_us);
   CheckRead(full_path1, content);
   ASSERT_TRUE(file_system()->Atime(full_path1, &atime1, &handler_));
   ASSERT_TRUE(file_system()->Atime(full_path2, &atime2, &handler_));
   EXPECT_LT(atime2, atime1);
+}
+
+void FileSystemTest::TestCtime() {
+  GoogleString dir_name = test_tmpdir() + "/make_dir";
+  DeleteRecursively(dir_name);
+  GoogleString filename1 = "file-in-dir.txt";
+  GoogleString filename2 = "another-file-in-dir.txt";
+  GoogleString full_path1 = dir_name + "/" + filename1;
+  GoogleString full_path2 = dir_name + "/" + filename2;
+  GoogleString content = "Lorem ipsum dolor sit amet";
+  // We need to sleep a bit between accessing files so that the
+  // difference shows up in in atimes which are measured in seconds.
+  unsigned int sleep_us = 1500000;
+
+  // Setup directory to play in.
+  ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
+
+  // Write two files with pause between
+  ASSERT_TRUE(file_system()->WriteFile(full_path1.c_str(), content, &handler_));
+  timer()->SleepUs(sleep_us);
+  ASSERT_TRUE(file_system()->WriteFile(full_path2.c_str(), content, &handler_));
+
+  int64 ctime1_orig, ctime2_orig;
+  // Check that File1 was created before File2.
+  ASSERT_TRUE(file_system()->Ctime(full_path1, &ctime1_orig, &handler_));
+  ASSERT_TRUE(file_system()->Ctime(full_path2, &ctime2_orig, &handler_));
+  EXPECT_LT(ctime1_orig, ctime2_orig);
+
+  int64 ctime1_read, ctime2_read;
+  // And that even if you read from File1 later, the C-time is still preserved.
+  timer()->SleepUs(sleep_us);
+  CheckRead(full_path1, content);
+  ASSERT_TRUE(file_system()->Ctime(full_path1, &ctime1_read, &handler_));
+  ASSERT_TRUE(file_system()->Ctime(full_path2, &ctime2_read, &handler_));
+  EXPECT_EQ(ctime1_orig, ctime1_read);
+  EXPECT_EQ(ctime2_orig, ctime2_read);
+
+  int64 ctime1_recreate, ctime2_recreate;
+  // But if we delete File1 and re-create it, the C-time is updated.
+  timer()->SleepUs(sleep_us);
+  ASSERT_TRUE(file_system()->RemoveFile(full_path1.c_str(), &handler_));
+  ASSERT_TRUE(file_system()->WriteFile(full_path1.c_str(), content, &handler_));
+  ASSERT_TRUE(file_system()->Ctime(full_path1, &ctime1_recreate, &handler_));
+  ASSERT_TRUE(file_system()->Ctime(full_path2, &ctime2_recreate, &handler_));
+  EXPECT_LT(ctime1_orig, ctime1_recreate);
+  EXPECT_EQ(ctime2_orig, ctime2_recreate);
+
+  EXPECT_GT(ctime1_recreate, ctime2_recreate);
+}
+
+void FileSystemTest::TestMtime() {
+  GoogleString dir_name = test_tmpdir() + "/make_dir";
+  DeleteRecursively(dir_name);
+  GoogleString filename1 = "file-in-dir.txt";
+  GoogleString filename2 = "another-file-in-dir.txt";
+  GoogleString full_path1 = dir_name + "/" + filename1;
+  GoogleString full_path2 = dir_name + "/" + filename2;
+  GoogleString content = "Lorem ipsum dolor sit amet";
+  // We need to sleep a bit between accessing files so that the
+  // difference shows up in in atimes which are measured in seconds.
+  unsigned int sleep_us = 1500000;
+
+  // Setup directory to play in.
+  ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
+
+  // Write two files with pause between
+  ASSERT_TRUE(file_system()->WriteFile(full_path1.c_str(), content, &handler_));
+  timer()->SleepUs(sleep_us);
+  ASSERT_TRUE(file_system()->WriteFile(full_path2.c_str(), content, &handler_));
+
+  int64 mtime1_orig, mtime2_orig;
+  // Check that File1 was created before File2.
+  ASSERT_TRUE(file_system()->Mtime(full_path1, &mtime1_orig, &handler_));
+  ASSERT_TRUE(file_system()->Mtime(full_path2, &mtime2_orig, &handler_));
+  EXPECT_LT(mtime1_orig, mtime2_orig);
+
+  int64 mtime1_read, mtime2_read;
+  // And that even if you read from File1 later, the C-time is still preserved.
+  timer()->SleepUs(sleep_us);
+  CheckRead(full_path1, content);
+  ASSERT_TRUE(file_system()->Mtime(full_path1, &mtime1_read, &handler_));
+  ASSERT_TRUE(file_system()->Mtime(full_path2, &mtime2_read, &handler_));
+  EXPECT_EQ(mtime1_orig, mtime1_read);
+  EXPECT_EQ(mtime2_orig, mtime2_read);
+
+  int64 mtime1_recreate, mtime2_recreate;
+  // But if we delete File1 and re-create it, the C-time is updated.
+  timer()->SleepUs(sleep_us);
+  ASSERT_TRUE(file_system()->RemoveFile(full_path1.c_str(), &handler_));
+  ASSERT_TRUE(file_system()->WriteFile(full_path1.c_str(), content, &handler_));
+  ASSERT_TRUE(file_system()->Mtime(full_path1, &mtime1_recreate, &handler_));
+  ASSERT_TRUE(file_system()->Mtime(full_path2, &mtime2_recreate, &handler_));
+  EXPECT_LT(mtime1_orig, mtime1_recreate);
+  EXPECT_EQ(mtime2_orig, mtime2_recreate);
+
+  EXPECT_GT(mtime1_recreate, mtime2_recreate);
 }
 
 void FileSystemTest::TestSize() {
@@ -307,7 +398,7 @@ void FileSystemTest::TestLock() {
 
 // Test lock timeout; assumes the file system has at least 1-second creation
 // granularity.
-void FileSystemTest::TestLockTimeout(Timer* timer) {
+void FileSystemTest::TestLockTimeout() {
   GoogleString dir_name = test_tmpdir() + "/make_dir";
   DeleteRecursively(dir_name);
   ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
@@ -320,7 +411,7 @@ void FileSystemTest::TestLockTimeout(Timer* timer) {
                                                 &handler_).is_false());
   // Wait 1 second so that we're definitely different from ctime.
   // Now we should seize lock.
-  timer->SleepMs(Timer::kSecondMs);
+  timer()->SleepMs(Timer::kSecondMs);
   EXPECT_TRUE(file_system()->TryLockWithTimeout(lock_name, Timer::kSecondMs,
                                                 &handler_).is_true());
   // Lock should still be held.

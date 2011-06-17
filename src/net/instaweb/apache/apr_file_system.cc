@@ -342,57 +342,61 @@ bool AprFileSystem::ListContents(const StringPiece& dir,
   return true;
 }
 
-bool AprFileSystem::Atime(const StringPiece& path,
-                          int64* timestamp_sec, MessageHandler* handler) {
+bool AprFileSystem::Stat(const StringPiece& path,
+                         apr_finfo_t* file_info, apr_int32_t field_wanted,
+                         MessageHandler* handler) {
   ScopedMutex hold_mutex(mutex_);
-  // TODO(abliss): there are some situations where this doesn't work
-  // -- e.g. if the filesystem is mounted noatime.
   const std::string path_string = path.as_string();
   const char* path_str = path_string.c_str();
-  apr_int32_t wanted = APR_FINFO_ATIME;
-  apr_finfo_t finfo;
-  apr_status_t ret = apr_stat(&finfo, path_str, wanted, pool_);
+  apr_status_t ret = apr_stat(file_info, path_str, field_wanted, pool_);
   if (ret != APR_SUCCESS) {
     AprReportError(handler, path_str, 0, "failed to stat", ret);
     return false;
   } else {
-    *timestamp_sec = finfo.atime;
     return true;
   }
+}
+
+// TODO(abliss): there are some situations where this doesn't work
+// -- e.g. if the filesystem is mounted noatime.
+bool AprFileSystem::Atime(const StringPiece& path,
+                          int64* timestamp_sec, MessageHandler* handler) {
+  apr_finfo_t file_info;
+  bool ret = Stat(path, &file_info, APR_FINFO_ATIME, handler);
+  if (ret) {
+    *timestamp_sec = file_info.atime;
+  }
+  return ret;
 }
 
 bool AprFileSystem::Ctime(const StringPiece& path,
                           int64* timestamp_sec, MessageHandler* handler) {
-  ScopedMutex hold_mutex(mutex_);
-  const std::string path_string = path.as_string();
-  const char* path_str = path_string.c_str();
-  apr_int32_t wanted = APR_FINFO_CTIME;
-  apr_finfo_t finfo;
-  apr_status_t ret = apr_stat(&finfo, path_str, wanted, pool_);
-  if (ret != APR_SUCCESS) {
-    AprReportError(handler, path_str, 0, "failed to stat", ret);
-    return false;
-  } else {
-    *timestamp_sec = finfo.ctime;
-    return true;
+  apr_finfo_t file_info;
+  bool ret = Stat(path, &file_info, APR_FINFO_CTIME, handler);
+  if (ret) {
+    *timestamp_sec = file_info.ctime;
   }
+  return ret;
+}
+
+bool AprFileSystem::Mtime(const StringPiece& path,
+                          int64* timestamp_sec, MessageHandler* handler) {
+  apr_finfo_t file_info;
+  bool ret = Stat(path, &file_info, APR_FINFO_MTIME, handler);
+  if (ret) {
+    *timestamp_sec = file_info.mtime;
+  }
+  return ret;
 }
 
 bool AprFileSystem::Size(const StringPiece& path, int64* size,
                            MessageHandler* handler) {
-  ScopedMutex hold_mutex(mutex_);
-  const std::string path_string = path.as_string();
-  const char* path_str = path_string.c_str();
-  apr_int32_t wanted = APR_FINFO_SIZE;
-  apr_finfo_t finfo;
-  apr_status_t ret = apr_stat(&finfo, path_str, wanted, pool_);
-  if (ret != APR_SUCCESS) {
-    AprReportError(handler, path_str, 0, "failed to stat", ret);
-    return false;
-  } else {
-    *size = finfo.size;
-    return true;
+  apr_finfo_t file_info;
+  bool ret = Stat(path, &file_info, APR_FINFO_SIZE, handler);
+  if (ret) {
+    *size = file_info.size;
   }
+  return ret;
 }
 
 BoolOrError AprFileSystem::TryLock(const StringPiece& lock_name,

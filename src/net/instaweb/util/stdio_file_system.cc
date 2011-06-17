@@ -304,16 +304,11 @@ bool StdioFileSystem::ListContents(const StringPiece& dir, StringVector* files,
   }
 }
 
-bool StdioFileSystem::Atime(const StringPiece& path, int64* timestamp_sec,
-                            MessageHandler* handler) {
-  // TODO(abliss): there are some situations where this doesn't work
-  // -- e.g. if the filesystem is mounted noatime.  We should try to
-  // detect that and provide a workaround.
+bool StdioFileSystem::Stat(const StringPiece& path, struct stat* statbuf,
+                           MessageHandler* handler) {
   const GoogleString path_string = path.as_string();
   const char* path_str = path_string.c_str();
-  struct stat statbuf;
-  if (stat(path_str, &statbuf) == 0) {
-    *timestamp_sec = statbuf.st_atime;
+  if (stat(path_str, statbuf) == 0) {
     return true;
   } else {
     handler->Message(kError, "Failed to stat %s: %s",
@@ -322,19 +317,47 @@ bool StdioFileSystem::Atime(const StringPiece& path, int64* timestamp_sec,
   }
 }
 
+// TODO(abliss): there are some situations where this doesn't work
+// -- e.g. if the filesystem is mounted noatime.  We should try to
+// detect that and provide a workaround.
+bool StdioFileSystem::Atime(const StringPiece& path, int64* timestamp_sec,
+                            MessageHandler* handler) {
+  struct stat statbuf;
+  bool ret = Stat(path, &statbuf, handler);
+  if (ret) {
+    *timestamp_sec = statbuf.st_atime;
+  }
+  return ret;
+}
+
+bool StdioFileSystem::Ctime(const StringPiece& path, int64* timestamp_sec,
+                            MessageHandler* handler) {
+  struct stat statbuf;
+  bool ret = Stat(path, &statbuf, handler);
+  if (ret) {
+    *timestamp_sec = statbuf.st_ctime;
+  }
+  return ret;
+}
+
+bool StdioFileSystem::Mtime(const StringPiece& path, int64* timestamp_sec,
+                            MessageHandler* handler) {
+  struct stat statbuf;
+  bool ret = Stat(path, &statbuf, handler);
+  if (ret) {
+    *timestamp_sec = statbuf.st_mtime;
+  }
+  return ret;
+}
+
 bool StdioFileSystem::Size(const StringPiece& path, int64* size,
                            MessageHandler* handler) {
-  const GoogleString path_string = path.as_string();
-  const char* path_str = path_string.c_str();
   struct stat statbuf;
-  if (stat(path_str, &statbuf) == 0) {
+  bool ret = Stat(path, &statbuf, handler);
+  if (ret) {
     *size = statbuf.st_size;
-    return true;
-  } else {
-    handler->Message(kError, "Failed to stat %s: %s",
-                     path_str, strerror(errno));
-    return false;
   }
+  return ret;
 }
 
 BoolOrError StdioFileSystem::TryLock(const StringPiece& lock_name,
