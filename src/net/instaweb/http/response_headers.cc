@@ -109,6 +109,15 @@ void ResponseHeaders::Add(const StringPiece& name, const StringPiece& value) {
   cache_fields_dirty_ = true;
 }
 
+bool ResponseHeaders::Remove(const StringPiece& name,
+                             const StringPiece& value) {
+  if (Headers<HttpResponseHeaders>::Remove(name, value)) {
+    cache_fields_dirty_ = true;
+    return true;
+  }
+  return false;
+}
+
 bool ResponseHeaders::RemoveAll(const StringPiece& name) {
   if (Headers<HttpResponseHeaders>::RemoveAll(name)) {
     cache_fields_dirty_ = true;
@@ -325,10 +334,33 @@ bool ResponseHeaders::ParseTime(const char* time_str, int64* time_ms) {
   return pagespeed::resource_util::ParseTimeValuedHeader(time_str, time_ms);
 }
 
+// Content-coding values are case-insensitive:
+// http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html
+// See Section 3.5
 bool ResponseHeaders::IsGzipped() const {
   StringStarVector v;
-  return (Lookup(HttpAttributes::kContentEncoding, &v) && (v.size() == 1) &&
-          (v[0] != NULL) && (v[0]->compare(HttpAttributes::kGzip) == 0));
+  bool found = Lookup(HttpAttributes::kContentEncoding, &v);
+  if (found) {
+    for (int i = 0, n = v.size(); i < n; ++i) {
+      if ((v[i] != NULL) && StringCaseEqual(*v[i], HttpAttributes::kGzip)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool ResponseHeaders::WasGzippedLast() const {
+  StringStarVector v;
+  bool found = Lookup(HttpAttributes::kContentEncoding, &v);
+  if (found) {
+    int index = v.size() - 1;
+    if ((index > -1) && (v[index] != NULL) &&
+        StringCaseEqual(*v[index], HttpAttributes::kGzip)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool ResponseHeaders::ParseDateHeader(

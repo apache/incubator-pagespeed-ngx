@@ -100,14 +100,14 @@ template<class Proto> bool Headers<Proto>::Lookup(
   return map_->Lookup(name, values);
 }
 
-template<class Proto> bool Headers<Proto>::CommaSeparatedField(
+template<class Proto> bool Headers<Proto>::IsCommaSeparatedField(
     const StringPiece& name) const {
   // TODO(nforman): Make this a complete list.  The list of header names
   // that are not safe to comma-split is at
   // http://src.chromium.org/viewvc/chrome/trunk/src/net/http/http_util.cc
   // (search for IsNonCoalescingHeader)
-  // TODO(nforman): add & test inclustion of Content-Encoding to the list.
-  if (StringCaseEqual(name, HttpAttributes::kVary)) {
+  if (StringCaseEqual(name, HttpAttributes::kVary) ||
+      StringCaseEqual(name, HttpAttributes::kContentEncoding)) {
     return true;
   } else {
     return false;
@@ -125,7 +125,7 @@ template<class Proto> void Headers<Proto>::Add(
 template<class Proto> void Headers<Proto>::AddToMap(
     const StringPiece& name, const StringPiece& value) const {
   if (map_.get() != NULL) {
-    if (CommaSeparatedField(name)) {
+    if (IsCommaSeparatedField(name)) {
       StringPieceVector split;
       SplitStringPieceToVector(value, ",", &split, true);
       for (int i = 0, n = split.size(); i < n; ++i) {
@@ -137,6 +137,62 @@ template<class Proto> void Headers<Proto>::AddToMap(
       map_->Add(name, value);
     }
   }
+}
+
+
+// Remove works in a perverted manner.
+// First comb through the values, from back to front, looking for the last
+// instance of 'value'.
+// Then remove all the values for name.
+// Then add back in the ones that were not the 'value'.
+// The string manipulation makes this horrendous, but hopefully no one has
+// listed a header with 100 (or more) values.
+template<class Proto> bool Headers<Proto>::Remove(const StringPiece& name,
+                                                  const StringPiece& value) {
+  PopulateMap();
+  StringStarVector values;
+  bool found = map_->Lookup(name, &values);
+  if (found) {
+    int val_index = -1;
+    for (int i = values.size() - 1; i >= 0; --i) {
+      if (values[i] != NULL) {
+        if (StringCaseEqual(*values[i], value)) {
+          val_index = i;
+          break;
+        }
+      }
+    }
+    if (val_index != -1) {
+      StringVector new_vals;
+      bool concat = IsCommaSeparatedField(name);
+      GoogleString combined;
+      const char kSeparator[] = ", ";
+      for (int i = 0, n = values.size(); i < n; ++i) {
+        if (values[i] != NULL) {
+          StringPiece val(*values[i]);
+          if (i != val_index && !val.empty()) {
+            if (concat) {
+              StrAppend(&combined, val, kSeparator);
+            } else {
+              new_vals.push_back(val.as_string());
+            }
+          }
+        }
+      }
+      RemoveAll(name);
+      if (concat) {
+        combined.erase(combined.length() - STATIC_STRLEN(kSeparator),
+                       STATIC_STRLEN(kSeparator));
+        Add(name, StringPiece(combined.data(), combined.size()));
+      } else {
+        for (int i = 0, n = new_vals.size(); i < n; ++i) {
+          Add(name, new_vals[i]);
+        }
+      }
+      return true;
+    }
+  }
+  return false;
 }
 
 template<class Proto> bool Headers<Proto>::RemoveAll(const StringPiece& name) {

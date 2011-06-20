@@ -396,4 +396,58 @@ TEST_F(ResponseHeadersTest, TestReserializingCommaValues) {
   EXPECT_EQ(comma_headers, response_headers_.ToString());
 }
 
+TEST_F(ResponseHeadersTest, TestGzipped) {
+  const char comma_headers[] =
+      "HTTP/1.0 0 (null)\r\n"
+      "Date: Mon, 05 Apr 2010 18:51:26 GMT\r\n"
+      "Expires: Mon, 05 Apr 2010 18:57:26 GMT\r\n"
+      "Cache-Control: max-age=360\r\n"
+      "Content-Encoding: deflate, gzip\r\n"
+      "\r\n";
+  response_headers_.Clear();
+  ParseHeaders(comma_headers);
+  StringStarVector values;
+  response_headers_.Lookup(HttpAttributes::kContentEncoding, &values);
+  EXPECT_EQ(2, values.size());
+  EXPECT_TRUE(response_headers_.IsGzipped());
+  EXPECT_TRUE(response_headers_.WasGzippedLast());
+}
+
+TEST_F(ResponseHeadersTest, TestGzippedNotLast) {
+  const char comma_headers[] =
+      "HTTP/1.0 0 (null)\r\n"
+      "Date: Mon, 05 Apr 2010 18:51:26 GMT\r\n"
+      "Expires: Mon, 05 Apr 2010 18:57:26 GMT\r\n"
+      "Cache-Control: max-age=360\r\n"
+      "Content-Encoding: gzip, deflate\r\n"
+      "\r\n";
+  response_headers_.Clear();
+  ParseHeaders(comma_headers);
+  StringStarVector values;
+  response_headers_.Lookup(HttpAttributes::kContentEncoding, &values);
+  EXPECT_EQ(2, values.size());
+  EXPECT_TRUE(response_headers_.IsGzipped());
+  EXPECT_FALSE(response_headers_.WasGzippedLast());
+}
+
+TEST_F(ResponseHeadersTest, TestRemove) {
+  const char headers[] =
+      "HTTP/1.0 0 (null)\r\n"
+      "Date: Mon, 05 Apr 2010 18:51:26 GMT\r\n"
+      "Expires: Mon, 05 Apr 2010 18:57:26 GMT\r\n"
+      "Cache-Control: max-age=360\r\n"
+      "Content-Encoding: chunked, deflate, chunked, gzip\r\n"
+      "\r\n";
+  const char headers_removed[] =
+      "HTTP/1.0 0 (null)\r\n"
+      "Date: Mon, 05 Apr 2010 18:51:26 GMT\r\n"
+      "Expires: Mon, 05 Apr 2010 18:57:26 GMT\r\n"
+      "Cache-Control: max-age=360\r\n"
+      "Content-Encoding: chunked, deflate, gzip\r\n"
+      "\r\n";
+  response_headers_.Clear();
+  ParseHeaders(headers);
+  response_headers_.Remove(HttpAttributes::kContentEncoding, "chunked");
+  EXPECT_EQ(headers_removed, response_headers_.ToString());
+}
 }  // namespace net_instaweb

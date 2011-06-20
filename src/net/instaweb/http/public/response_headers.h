@@ -48,6 +48,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Add a new header.
   virtual void Add(const StringPiece& name, const StringPiece& value);
 
+  // Remove headers by name and value.
+  virtual bool Remove(const StringPiece& name, const StringPiece& value);
+
   // Remove all headers by name.
   virtual bool RemoveAll(const StringPiece& name);
 
@@ -125,6 +128,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   // Determines whether a response header is marked as gzipped.
   bool IsGzipped() const;
+  bool WasGzippedLast() const;
 
   // Parses a date header such as HttpAttributes::kDate or
   // HttpAttributes::kExpires, returning the timestamp as

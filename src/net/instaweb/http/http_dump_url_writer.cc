@@ -72,7 +72,6 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(
       compress_headers.Replace(HttpAttributes::kAcceptEncoding,
                                HttpAttributes::kGzip);
     }
-
     ret = base_fetcher_->StreamingFetchUrl(url, compress_headers,
                                            &compressed_response, &string_writer,
                                            handler);
@@ -83,12 +82,12 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(
     // Do not write an empty file if the fetch failed.
     if (ret) {
       // Check to see if a response marked as gzipped are really unzippable.
-      if (compressed_response.IsGzipped()) {
+      if (compressed_response.WasGzippedLast()) {
         GzipInflater inflater(GzipInflater::kGzip);
         inflater.Init();
         if (contents.data() == NULL || contents.size() == 0) {
-          // CHECK below would fail on these.
-          compressed_response.RemoveAll(HttpAttributes::kContentEncoding);
+          compressed_response.Remove(HttpAttributes::kContentEncoding,
+                                     HttpAttributes::kGzip);
         } else {
           CHECK(inflater.SetInput(contents.data(), contents.size()));
           while (inflater.HasUnconsumedInput()) {
