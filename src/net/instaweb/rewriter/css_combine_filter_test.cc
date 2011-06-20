@@ -20,22 +20,17 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -62,8 +57,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     bool async_rewrites = GetParam();
-    RewriteDriver* driver = rewrite_driver();
-    driver->SetAsynchronousRewrites(async_rewrites);
+    SetAsynchronousRewrites(async_rewrites);
     AddFilter(RewriteOptions::kCombineCss);
     AddOtherFilter(RewriteOptions::kCombineCss);
   }
@@ -199,7 +193,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
     other_rewrite_driver()->FetchResource(combine_url, request_headers,
                                           &other_response_headers, &writer,
                                           &dummy_callback);
-    rewrite_driver()->WaitForCompletion();
+    other_rewrite_driver()->WaitForCompletion();
     EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code());
     EXPECT_EQ(expected_combination, fetched_resource_content);
 

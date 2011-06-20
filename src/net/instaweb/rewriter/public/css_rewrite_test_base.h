@@ -24,7 +24,6 @@
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -51,7 +50,7 @@ class CssRewriteTestBase : public ResourceManagerTestBase,
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    rewrite_driver()->SetAsynchronousRewrites(GetParam());
+    SetAsynchronousRewrites(GetParam());
     AddFilter(RewriteOptions::kRewriteCss);
     options()->set_always_rewrite_css(true);
   }

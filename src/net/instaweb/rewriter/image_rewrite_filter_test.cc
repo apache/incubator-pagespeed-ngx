@@ -55,7 +55,7 @@ class ImageRewriteTest : public ResourceManagerTestBase,
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    rewrite_driver()->SetAsynchronousRewrites(GetParam());
+    SetAsynchronousRewrites(GetParam());
   }
 
   // Simple image rewrite test to check resource fetching functionality.

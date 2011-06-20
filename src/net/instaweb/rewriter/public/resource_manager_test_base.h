@@ -21,6 +21,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_TEST_BASE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_TEST_BASE_H_
 
+#include <vector>
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
@@ -99,6 +101,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Sets the active context URL for purposes of XS checks of fetches
   // on the main rewrite driver.
   void SetBaseUrlForFetch(const StringPiece& url);
+
+  // Sets whether asynchronous rewrites are on, for both main and 'other'
+  // rewrite drivers we manage.
+  void SetAsynchronousRewrites(bool async);
 
   ResourcePtr CreateResource(const StringPiece& base, const StringPiece& url);
 

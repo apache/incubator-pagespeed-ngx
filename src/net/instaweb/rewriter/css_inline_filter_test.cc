@@ -20,7 +20,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -36,7 +35,7 @@ class CssInlineFilterTest : public ResourceManagerTestBase,
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    rewrite_driver()->SetAsynchronousRewrites(GetParam());
+    SetAsynchronousRewrites(GetParam());
   }
 
   void TestInlineCss(const GoogleString& html_url,

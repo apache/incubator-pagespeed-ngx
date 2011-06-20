@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/webp_optimizer.h"
 
-#include <stdint.h>
 #include <csetjmp>
 #include <cstddef>
 

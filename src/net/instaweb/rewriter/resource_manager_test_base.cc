@@ -20,6 +20,9 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
@@ -57,6 +60,7 @@
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -68,6 +72,7 @@
 namespace net_instaweb {
 
 struct ContentType;
+class MessageHandler;
 
 const char ResourceManagerTestBase::kTestData[] =
     "/net/instaweb/rewriter/testdata/";
@@ -201,6 +206,11 @@ void ResourceManagerTestBase::AddOtherRewriteFilter(RewriteFilter* filter) {
 
 void ResourceManagerTestBase::SetBaseUrlForFetch(const StringPiece& url) {
   rewrite_driver_.SetBaseUrlForFetch(url);
+}
+
+void ResourceManagerTestBase::SetAsynchronousRewrites(bool async) {
+  rewrite_driver_.SetAsynchronousRewrites(async);
+  other_rewrite_driver_.SetAsynchronousRewrites(async);
 }
 
 void ResourceManagerTestBase::DeleteFileIfExists(const GoogleString& filename) {

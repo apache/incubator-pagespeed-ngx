@@ -518,7 +518,7 @@ class RewriteContextTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    rewrite_driver()->SetAsynchronousRewrites(true);
+    SetAsynchronousRewrites(true);
   }
   virtual void TearDown() {
     rewrite_driver()->WaitForCompletion();

@@ -72,7 +72,7 @@ class CacheExtenderTest : public ResourceManagerTestBase,
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    rewrite_driver()->SetAsynchronousRewrites(GetParam());
+    SetAsynchronousRewrites(GetParam());
   }
 
   void InitTest(int64 ttl) {
