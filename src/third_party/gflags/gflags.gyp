@@ -21,12 +21,6 @@
     {
       'target_name': 'gflags',
       'type': '<(library)',
-      'direct_dependent_settings': {
-        'include_dirs': [
-          '<(gflags_gen_arch_root)/include',  # For configured files.
-          '<(gflags_root)/src',  # For everything else.
-        ],
-      },
       'include_dirs': [
         '<(gflags_gen_arch_root)/include/private',  # For config.h
         '<(gflags_gen_arch_root)/include',  # For configured files.
