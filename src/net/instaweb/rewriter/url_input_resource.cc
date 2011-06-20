@@ -124,8 +124,6 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
     if (rewrite_options_->respect_vary()) {
       cacheable = headers->VaryCacheable();
     } else {
-      // TODO(sligocki): Should we be running this expensive func here?
-      headers->ComputeCaching();
       cacheable = headers->IsCacheable();
     }
     // Recompute whether or not we can cache the resource with these headers.
