@@ -192,7 +192,7 @@ deps = {
 deps_os = {
   "win": {
     "src/third_party/cygwin": From(Var("chromium_deps_root")),
-    "src/third_party/python_24": From(Var("chromium_deps_root")),
+    "src/third_party/python_26": From(Var("chromium_deps_root")),
   },
   "mac": {
   },
