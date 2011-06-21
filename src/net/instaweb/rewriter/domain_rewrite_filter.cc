@@ -119,7 +119,7 @@ bool DomainRewriteFilter::Rewrite(const StringPiece& url_to_rewrite,
   uint32 int_hash = HashString<CasePreserve, uint32>(
       rewritten_url->data(), rewritten_url->size());
   if (lawyer->ShardDomain(domain, int_hash, &shard)) {
-    *rewritten_url = StrCat(shard, resolved_request.Path().substr(1));
+    *rewritten_url = StrCat(shard, resolved_request.PathAndLeaf().substr(1));
   }
 
   // Return true if really changed the url with this rewrite.

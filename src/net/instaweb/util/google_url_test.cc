@@ -70,7 +70,7 @@ TEST_F(GoogleUrlTest, TestSpec) {
   EXPECT_EQ(GoogleString("d.ext"), gurl_.LeafSansQuery());
   EXPECT_EQ(GoogleString("http://a.com"), gurl_.Origin());
   EXPECT_EQ(GoogleString("/b/c/d.ext?f=g/h"), gurl_.PathAndLeaf());
-  EXPECT_EQ(GoogleString("/b/c/d.ext"), gurl_.Path());
+  EXPECT_EQ(GoogleString("/b/c/d.ext"), gurl_.PathSansQuery());
 }
 
 
@@ -85,7 +85,7 @@ TEST_F(GoogleUrlTest, TestSpecWithPort) {
             gurl_with_port_.Origin());
   EXPECT_EQ(GoogleString("/b/c/d.ext?f=g/h"),
             gurl_with_port_.PathAndLeaf());
-  EXPECT_EQ(GoogleString("/b/c/d.ext"), gurl_.Path());
+  EXPECT_EQ(GoogleString("/b/c/d.ext"), gurl_.PathSansQuery());
   EXPECT_EQ(GoogleString("/b/c/"), gurl_.PathSansLeaf());
 }
 
@@ -101,7 +101,7 @@ TEST_F(GoogleUrlTest, ResolveRelative) {
   ASSERT_TRUE(resolved.is_valid());
   EXPECT_EQ(GoogleString("http://www.google.com/test.html"),
             resolved.Spec());
-  EXPECT_EQ(GoogleString("/test.html"), resolved.Path());
+  EXPECT_EQ(GoogleString("/test.html"), resolved.PathSansQuery());
 }
 
 TEST_F(GoogleUrlTest, ResolveAbsolute) {
@@ -111,7 +111,7 @@ TEST_F(GoogleUrlTest, ResolveAbsolute) {
   ASSERT_TRUE(resolved.is_valid());
   EXPECT_EQ(GoogleString("http://www.google.com/"),
             resolved.Spec());
-  EXPECT_EQ(GoogleString("/"), resolved.Path());
+  EXPECT_EQ(GoogleString("/"), resolved.PathSansQuery());
 }
 
 TEST_F(GoogleUrlTest, TestReset) {

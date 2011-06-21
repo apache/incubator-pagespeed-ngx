@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/url_partnership.h"
 
 #include <cstddef>
-#include <vector>
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -85,7 +84,7 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
         domain_.swap(mapped_domain_name);
         GoogleUrl domain_origin_gurl(domain_);
         GoogleUrl tmp(domain_origin_gurl,
-                      original_origin_and_path_.Path());
+                      original_origin_and_path_.PathAndLeaf());
         domain_gurl_.Swap(&tmp);
 
         ret = true;

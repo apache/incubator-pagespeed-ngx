@@ -86,8 +86,9 @@ class GoogleUrl {
   // Returns a StringPiece, only valid for the lifetime of this object.
   StringPiece Origin() const;
 
-  // For "http://a.com/b/c/d?E=f/g returns "/b/c/d" including leading slash
-  StringPiece Path() const;
+  // For "http://a.com/b/c/d?E=f/g returns "/b/c/d" including leading slash,
+  // and excluding the query.
+  StringPiece PathSansQuery() const;
 
   StringPiece Query() const;
 

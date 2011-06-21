@@ -109,13 +109,7 @@ bool HttpDumpUrlFetcher::GetFilenameFromUrl(const StringPiece& root_dir,
     // password, port and ref (stuff after '#').
     // TODO(sligocki): Perhaps we should include these (except ref).
     StringPiece domain = gurl.Host();
-    GoogleString path(gurl.Path().data(), gurl.Path().length());
-
-    // Add other bits of url used by latency lab.
-    if (!gurl.Query().empty()) {  // Part after '?' in url.
-      path.append(1, '?');
-      path.append(gurl.Query().data(), gurl.Query().length());
-    }
+    GoogleString path = gurl.PathAndLeaf().as_string();
 
     FilenameEncoder encoder;
     const GoogleString prefix = StrCat(root_dir, domain);

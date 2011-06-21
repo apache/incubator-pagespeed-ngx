@@ -248,7 +248,7 @@ GoogleString OutputResource::url() const {
       // make them all fit together.  Note that we could have used
       // string's substr method but that would have made another temp
       // copy, which seems like a waste.
-      shard_path = StrCat(shard, gurl.Path().substr(1));
+      shard_path = StrCat(shard, gurl.PathAndLeaf().substr(1));
     }
   }
   if (shard_path.empty()) {

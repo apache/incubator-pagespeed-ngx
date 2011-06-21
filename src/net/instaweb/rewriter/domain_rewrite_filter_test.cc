@@ -99,8 +99,12 @@ TEST_F(DomainRewriteFilterTest, DontTouch) {
 TEST_F(DomainRewriteFilterTest, MappedAndSharded) {
   ExpectChange("rewrite", StrCat(kFrom1Domain, "absolute.css"),
                StrCat(kTo1Domain, "absolute.css"));
+  ExpectChange("rewrite", StrCat(kFrom1Domain, "absolute.css?p1=v1"),
+               StrCat(kTo1Domain, "absolute.css?p1=v1"));
   ExpectChange("shard0", StrCat(kFrom2Domain, "0.css"),
                StrCat(kTo2ADomain, "0.css"));
+  ExpectChange("shard0", StrCat(kFrom2Domain, "0.css?p1=v1&amp;p2=v2"),
+               StrCat(kTo2BDomain, "0.css?p1=v1&amp;p2=v2"));
 }
 
 TEST_F(DomainRewriteFilterTest, DontTouchIfAlreadyRewritten) {

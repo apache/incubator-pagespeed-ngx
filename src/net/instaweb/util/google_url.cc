@@ -173,7 +173,7 @@ StringPiece GoogleUrl::Host() const {
                      parsed.host.len);
 }
 
-StringPiece GoogleUrl::Path() const {
+StringPiece GoogleUrl::PathSansQuery() const {
   const std::string& spec = gurl_.spec();
   url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
   size_t path_start = PathStartPosition();
