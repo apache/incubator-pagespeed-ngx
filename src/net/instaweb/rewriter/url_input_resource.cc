@@ -278,6 +278,8 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
     callback_->Done(success);
   }
 
+  virtual bool EnableThreaded() const { return callback_->EnableThreaded(); }
+
   virtual ResponseHeaders* response_headers() {
     return &resource_->response_headers_;
   }

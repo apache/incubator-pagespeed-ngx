@@ -108,6 +108,10 @@ class Resource : public RefCounted<Resource> {
 
     const ResourcePtr& resource() { return resource_; }
 
+    // Override this to return true if this callback is safe to invoke from
+    // thread other than the main html parse/http request serving thread.
+    virtual bool EnableThreaded() const { return false; }
+
    private:
     ResourcePtr resource_;
   };

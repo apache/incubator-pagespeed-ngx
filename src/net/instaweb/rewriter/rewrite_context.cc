@@ -34,15 +34,18 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/blocking_behavior.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/proto_util.h"
@@ -59,7 +62,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class RewriteOptions;
 
 const char kRewriteContextLockPrefix[] = "rc:";
 
@@ -156,6 +158,8 @@ class ResourceFetchTask : public RewriteContextTask {
       task_->success_ = success;
       task_->Queue();
     }
+
+    virtual bool EnableThreaded() const { return true; }
 
    private:
     ResourceFetchTask* task_;
