@@ -361,7 +361,8 @@ void RewriteContext::Start() {
 // Check if this mapping from input to output URLs is still valid.
 bool RewriteContext::OutputPartitionIsValid(const OutputPartition& partition) {
   bool partition_is_valid = true;
-  for (int j = 0, m = partition.input_size(); j < m; ++j) {
+  for (int j = 0, m = partition.input_size();
+       (j < m) && partition_is_valid; ++j) {
     const InputInfo& input_info = partition.input(j);
     switch (input_info.type()) {
       case InputInfo::CACHED: {

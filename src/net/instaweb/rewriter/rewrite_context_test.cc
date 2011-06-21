@@ -1464,11 +1464,11 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   mock_timer()->AdvanceMs(kLongTtlMs);
   // Rewrite should now use all new resources.
   result_vector = RewriteNestedResources("short_updated");
-  // TODO(sligocki): Fix
   EXPECT_EQ(" A2 ", result_vector[0]);
   EXPECT_EQ(" B2 ", result_vector[1]);
   EXPECT_EQ(" C2 ", result_vector[2]);
   EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
+  // TODO(sligocki): Fix
   //EXPECT_EQ(2, nested_filter_->num_sub_rewrites());  // a.css, c.css
   EXPECT_EQ(3, nested_filter_->num_sub_rewrites());  // a.css, b.css, c.css
   //EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // a.css, c.css

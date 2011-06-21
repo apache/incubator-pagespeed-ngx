@@ -60,6 +60,7 @@ void ResponseHeaders::Clear() {
   proto_->set_proxy_cacheable(false);   // accurate only if !cache_fields_dirty_
   proto_->clear_expiration_time_ms();
   proto_->clear_fetch_time_ms();
+  proto_->clear_last_modified_time_ms();
   proto_->clear_status_code();
   proto_->clear_reason_phrase();
   proto_->clear_header();
