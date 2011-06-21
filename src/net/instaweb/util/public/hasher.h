@@ -48,6 +48,9 @@ class Hasher {
   // passed in to the constructor.
   int HashSizeInChars() const;
 
+  // Uses first 64-bits of hash to make a uint64 version of hash.
+  uint64 HashToUint64(const StringPiece& content) const;
+
   // Computes a binary hash of the given content. The returned value
   // is not printable as it is the direct binary encoding of the hash.
   // This operation is thread-safe.

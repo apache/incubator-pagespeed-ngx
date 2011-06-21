@@ -52,4 +52,17 @@ int Hasher::HashSizeInChars() const {
   return std::min(max_chars_, RawHashSizeInBytes() * 4 / 3);
 }
 
+uint64 Hasher::HashToUint64(const StringPiece& content) const {
+  GoogleString raw_hash = RawHash(content);
+
+  CHECK_LE(8UL, raw_hash.size());
+  DCHECK_EQ(1UL, sizeof(raw_hash[0]));  // 1 byte == 8 bits.
+  uint64 result = 0;
+  for (int i = 0; i < 8; ++i) {
+    result <<= 8;
+    result |= static_cast<unsigned char>(raw_hash[i]);
+  }
+  return result;
+}
+
 }  // namespace net_instaweb

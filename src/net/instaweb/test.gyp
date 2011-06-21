@@ -128,6 +128,7 @@
         'util/google_timer.cc',
         'util/google_url_test.cc',
         'util/gzip_inflater_test.cc',
+        'util/hasher_test.cc',
         'util/lru_cache_test.cc',
         'util/md5_hasher_test.cc',
         'util/mem_debug.cc',
