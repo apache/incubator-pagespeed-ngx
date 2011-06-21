@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 
 #include <map>
+#include <set>
 #include <utility>  // for std::pair
 #include <vector>
 
@@ -48,7 +49,7 @@ class DomainLawyer::Domain {
   bool Match(const StringPiece& domain) { return wildcard_.Match(domain); }
   Domain* rewrite_domain() const { return rewrite_domain_; }
   Domain* origin_domain() const { return origin_domain_; }
-  StringPiece name() const { return name_; }
+  const GoogleString& name() const { return name_; }
 
   // When multiple domains are mapped to the same rewrite-domain, they
   // should have consistent origins.  If they don't, we print an error
@@ -307,7 +308,7 @@ bool DomainLawyer::MapRequestToDomain(
         Domain* mapped_domain = resolved_domain->rewrite_domain();
         if (mapped_domain != NULL) {
           CHECK(!mapped_domain->IsWildcarded());
-          mapped_domain->name().CopyToString(mapped_domain_name);
+          *mapped_domain_name = mapped_domain->name();
           GoogleUrl mapped_domain_url(*mapped_domain_name);
           GoogleUrl tmp(mapped_domain_url, resolved_request->PathAndLeaf());
           resolved_request->Swap(&tmp);
@@ -410,6 +411,7 @@ DomainLawyer::Domain* DomainLawyer::CloneAndAdd(const Domain* src) {
 }
 
 void DomainLawyer::Merge(const DomainLawyer& src) {
+  int num_existing_wildcards = num_wildcarded_domains();
   for (DomainMap::const_iterator
            p = src.domain_map_.begin(),
            e = src.domain_map_.end();
@@ -430,6 +432,25 @@ void DomainLawyer::Merge(const DomainLawyer& src) {
       dst_shard->SetShardFrom(dst_domain, NULL);
     }
   }
+
+  // Remove the wildcards we just added in map order, and instead add them
+  // in the order they were in src.wildcarded_domains.
+  wildcarded_domains_.resize(num_existing_wildcards);
+  std::set<Domain*> dup_detector(wildcarded_domains_.begin(),
+                                 wildcarded_domains_.end());
+  for (int i = 0, n = src.wildcarded_domains_.size(); i < n; ++i) {
+    Domain* src_domain = src.wildcarded_domains_[i];
+    DomainMap::const_iterator p = domain_map_.find(src_domain->name());
+    if (p == domain_map_.end()) {
+      LOG(DFATAL) << "Domain " << src_domain->name() << " not found in dst";
+    } else {
+      Domain* dst_domain = p->second;
+      if (dup_detector.find(dst_domain) == dup_detector.end()) {
+        wildcarded_domains_.push_back(dst_domain);
+      }
+    }
+  }
+
   can_rewrite_domains_ |= src.can_rewrite_domains_;
 }
 
@@ -443,7 +464,7 @@ bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
     if (domain->num_shards() != 0) {
       int shard_index = hash % domain->num_shards();
       domain = domain->shard(shard_index);
-      domain->name().CopyToString(shard);
+      *shard = domain->name();
       sharded = true;
     }
   }

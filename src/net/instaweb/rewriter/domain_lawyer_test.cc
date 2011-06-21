@@ -595,4 +595,36 @@ TEST_F(DomainLawyerTest, RewriteOriginCycle) {
   EXPECT_EQ(2, message_handler_.SeriousMessages());
 }
 
+TEST_F(DomainLawyerTest, WildcardOrder) {
+  ASSERT_TRUE(AddOriginDomainMapping("host1", "abc*.com"));
+  ASSERT_TRUE(AddOriginDomainMapping("host2", "*z.com"));
+
+  GoogleString mapped;
+  ASSERT_TRUE(domain_lawyer_.MapOrigin("http://abc.com/x", &mapped));
+  EXPECT_EQ("http://host1/x", mapped);
+  ASSERT_TRUE(domain_lawyer_.MapOrigin("http://z.com/x", &mapped));
+  EXPECT_EQ("http://host2/x", mapped);
+
+  // Define a second lawyer with definitions "*abc*.com" which should
+  // come after "abc*.com".
+  DomainLawyer second_lawyer, merged_lawyer;
+  ASSERT_TRUE(second_lawyer.AddOriginDomainMapping("host3", "*abc*.com",
+                                                   &message_handler_));
+  ASSERT_TRUE(second_lawyer.AddOriginDomainMapping(
+      "host1", "abc*.com", &message_handler_));  // duplicate entry.
+  merged_lawyer.Merge(domain_lawyer_);
+  merged_lawyer.Merge(second_lawyer);
+  EXPECT_EQ(3, merged_lawyer.num_wildcarded_domains());
+
+  // Hopefully we didn't bork the order of "abc* and "*".  Note that just
+  // iterating over a std::set will yield the "*" first, as '*' is ascii
+  // 42 and 'a' is ascii 97, and the domain-map is over GoogleString.
+  ASSERT_TRUE(merged_lawyer.MapOrigin("http://abc.com/x", &mapped));
+  EXPECT_EQ("http://host1/x", mapped);
+  ASSERT_TRUE(merged_lawyer.MapOrigin("http://xyz.com/x", &mapped));
+  EXPECT_EQ("http://host2/x", mapped);
+  ASSERT_TRUE(merged_lawyer.MapOrigin("http://xabc.com/x", &mapped));
+  EXPECT_EQ("http://host3/x", mapped);
+}
+
 }  // namespace net_instaweb

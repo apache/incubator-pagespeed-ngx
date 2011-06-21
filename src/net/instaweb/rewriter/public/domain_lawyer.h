@@ -150,6 +150,9 @@ class DomainLawyer {
   // via sharding or rewriting.
   bool can_rewrite_domains() const { return can_rewrite_domains_; }
 
+  // Visible for testing.
+  int num_wildcarded_domains() const { return wildcarded_domains_.size(); }
+
  private:
   class Domain;
 
