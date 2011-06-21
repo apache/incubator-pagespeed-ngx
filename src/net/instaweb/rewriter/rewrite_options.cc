@@ -19,7 +19,6 @@
 #include <map>
 #include <set>
 #include <utility>
-#include <vector>
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -106,11 +105,11 @@ RewriteOptions::RewriteOptions()
       level_(kPassThrough),
       css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
       image_inline_max_bytes_(kDefaultImageInlineMaxBytes),
-      image_max_rewrites_at_once_(kDefaultImageMaxRewritesAtOnce),
       js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
       css_outline_min_bytes_(kDefaultCssInlineMaxBytes),
       js_outline_min_bytes_(kDefaultJsInlineMaxBytes),
       beacon_url_(kDefaultBeaconUrl),
+      image_max_rewrites_at_once_(kDefaultImageMaxRewritesAtOnce),
       max_url_segment_size_(kDefaultMaxUrlSegmentSize),
       max_url_size_(kMaxUrlSize),
       enabled_(true),
@@ -247,8 +246,8 @@ bool RewriteOptions::AddCommaSeparatedListToFilterSet(
       } else {
         const FilterSet& new_flags = s->second;
         // Insert all new_flags into set.
-        for (FilterSet::iterator j = new_flags.begin(), m = new_flags.end();
-             j != m; ++j) {
+        FilterSet::const_iterator end = new_flags.end();
+        for (FilterSet::const_iterator j = new_flags.begin(); j != end; ++j) {
           std::pair<FilterSet::iterator, bool> inserted = set->insert(*j);
           modified_ |= inserted.second;
         }

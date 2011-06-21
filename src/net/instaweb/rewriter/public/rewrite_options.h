@@ -375,11 +375,11 @@ class RewriteOptions {
   Option<RewriteLevel> level_;
   Option<int64> css_inline_max_bytes_;
   Option<int64> image_inline_max_bytes_;
-  Option<int64> image_max_rewrites_at_once_;
   Option<int64> js_inline_max_bytes_;
   Option<int64> css_outline_min_bytes_;
   Option<int64> js_outline_min_bytes_;
   Option<GoogleString> beacon_url_;
+  Option<int> image_max_rewrites_at_once_;
   Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")
   Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")
   Option<bool> enabled_;
