@@ -165,10 +165,6 @@ TEST_F(AprFileSystemTest, TestAtime) {
   TestAtime();
 }
 
-TEST_F(AprFileSystemTest, TestCtime) {
-  TestCtime();
-}
-
 TEST_F(AprFileSystemTest, TestMtime) {
   TestMtime();
 }

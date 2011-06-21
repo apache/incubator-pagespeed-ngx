@@ -330,16 +330,6 @@ bool StdioFileSystem::Atime(const StringPiece& path, int64* timestamp_sec,
   return ret;
 }
 
-bool StdioFileSystem::Ctime(const StringPiece& path, int64* timestamp_sec,
-                            MessageHandler* handler) {
-  struct stat statbuf;
-  bool ret = Stat(path, &statbuf, handler);
-  if (ret) {
-    *timestamp_sec = statbuf.st_ctime;
-  }
-  return ret;
-}
-
 bool StdioFileSystem::Mtime(const StringPiece& path, int64* timestamp_sec,
                             MessageHandler* handler) {
   struct stat statbuf;

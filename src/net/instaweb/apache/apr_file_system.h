@@ -56,8 +56,6 @@ class AprFileSystem : public FileSystem {
 
   virtual bool Atime(const StringPiece& path,
                      int64* timestamp_sec, MessageHandler* handler);
-  virtual bool Ctime(const StringPiece& path,
-                     int64* timestamp_sec, MessageHandler* handler);
   virtual bool Mtime(const StringPiece& path,
                      int64* timestamp_sec, MessageHandler* handler);
   virtual bool Size(const StringPiece& path, int64* size,

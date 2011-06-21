@@ -198,12 +198,6 @@ class FileSystem {
   virtual bool Atime(const StringPiece& path, int64* timestamp_sec,
                      MessageHandler* handler) = 0;
 
-  // TODO(sligocki): Do we need both ctime and mtime?
-
-  // "Change" time. Time the file contents or meta-data were modified.
-  virtual bool Ctime(const StringPiece& path, int64* timestamp_sec,
-                     MessageHandler* handler) = 0;
-
   // Modified time. Time the file contents were modified.
   virtual bool Mtime(const StringPiece& path, int64* timestamp_sec,
                      MessageHandler* handler) = 0;

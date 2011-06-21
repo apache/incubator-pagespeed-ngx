@@ -76,7 +76,6 @@ class FileSystemTest : public testing::Test {
   void TestRecursivelyMakeDir_FileInPath();
   void TestListContents();
   void TestAtime();
-  void TestCtime();
   void TestMtime();
   void TestSize();
   void TestLock();

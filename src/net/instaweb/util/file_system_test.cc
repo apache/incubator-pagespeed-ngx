@@ -253,54 +253,6 @@ void FileSystemTest::TestAtime() {
   EXPECT_LT(atime2, atime1);
 }
 
-void FileSystemTest::TestCtime() {
-  GoogleString dir_name = test_tmpdir() + "/make_dir";
-  DeleteRecursively(dir_name);
-  GoogleString filename1 = "file-in-dir.txt";
-  GoogleString filename2 = "another-file-in-dir.txt";
-  GoogleString full_path1 = dir_name + "/" + filename1;
-  GoogleString full_path2 = dir_name + "/" + filename2;
-  GoogleString content = "Lorem ipsum dolor sit amet";
-  // We need to sleep a bit between accessing files so that the
-  // difference shows up in in atimes which are measured in seconds.
-  unsigned int sleep_us = 1500000;
-
-  // Setup directory to play in.
-  ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
-
-  // Write two files with pause between
-  ASSERT_TRUE(file_system()->WriteFile(full_path1.c_str(), content, &handler_));
-  timer()->SleepUs(sleep_us);
-  ASSERT_TRUE(file_system()->WriteFile(full_path2.c_str(), content, &handler_));
-
-  int64 ctime1_orig, ctime2_orig;
-  // Check that File1 was created before File2.
-  ASSERT_TRUE(file_system()->Ctime(full_path1, &ctime1_orig, &handler_));
-  ASSERT_TRUE(file_system()->Ctime(full_path2, &ctime2_orig, &handler_));
-  EXPECT_LT(ctime1_orig, ctime2_orig);
-
-  int64 ctime1_read, ctime2_read;
-  // And that even if you read from File1 later, the C-time is still preserved.
-  timer()->SleepUs(sleep_us);
-  CheckRead(full_path1, content);
-  ASSERT_TRUE(file_system()->Ctime(full_path1, &ctime1_read, &handler_));
-  ASSERT_TRUE(file_system()->Ctime(full_path2, &ctime2_read, &handler_));
-  EXPECT_EQ(ctime1_orig, ctime1_read);
-  EXPECT_EQ(ctime2_orig, ctime2_read);
-
-  int64 ctime1_recreate, ctime2_recreate;
-  // But if we delete File1 and re-create it, the C-time is updated.
-  timer()->SleepUs(sleep_us);
-  ASSERT_TRUE(file_system()->RemoveFile(full_path1.c_str(), &handler_));
-  ASSERT_TRUE(file_system()->WriteFile(full_path1.c_str(), content, &handler_));
-  ASSERT_TRUE(file_system()->Ctime(full_path1, &ctime1_recreate, &handler_));
-  ASSERT_TRUE(file_system()->Ctime(full_path2, &ctime2_recreate, &handler_));
-  EXPECT_LT(ctime1_orig, ctime1_recreate);
-  EXPECT_EQ(ctime2_orig, ctime2_recreate);
-
-  EXPECT_GT(ctime1_recreate, ctime2_recreate);
-}
-
 void FileSystemTest::TestMtime() {
   GoogleString dir_name = test_tmpdir() + "/make_dir";
   DeleteRecursively(dir_name);

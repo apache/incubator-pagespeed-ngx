@@ -125,15 +125,6 @@ void MemFileSystem::UpdateAtime(const StringPiece& path) {
   }
 }
 
-void MemFileSystem::UpdateCtime(const StringPiece& path) {
-  // TODO(sligocki): Rename this to account for broader use.
-  if (atime_enabled_) {
-    int64 now_us = timer_->NowUs();
-    int64 now_s = now_us / Timer::kSecondUs;
-    ctime_map_[path.as_string()] = now_s;
-  }
-}
-
 void MemFileSystem::UpdateMtime(const StringPiece& path) {
   // TODO(sligocki): Rename this to account for broader use.
   if (atime_enabled_) {
@@ -163,7 +154,6 @@ bool MemFileSystem::MakeDir(const char* path, MessageHandler* handler) {
   EnsureEndsInSlash(&path_string);
   string_map_[path_string] = "";
   UpdateAtime(path_string);
-  UpdateCtime(path_string);
   UpdateMtime(path_string);
   return true;
 }
@@ -189,7 +179,6 @@ FileSystem::InputFile* MemFileSystem::OpenInputFile(
 FileSystem::OutputFile* MemFileSystem::OpenOutputFileHelper(
     const char* filename, MessageHandler* message_handler) {
   UpdateAtime(filename);
-  UpdateCtime(filename);
   UpdateMtime(filename);
   ++num_output_file_opens_;
   return new MemOutputFile(filename, &(string_map_[filename]));
@@ -199,7 +188,6 @@ FileSystem::OutputFile* MemFileSystem::OpenTempFileHelper(
     const StringPiece& prefix, MessageHandler* message_handler) {
   GoogleString filename = StringPrintf("tmpfile%d", temp_file_index_++);
   UpdateAtime(filename);
-  UpdateCtime(filename);
   UpdateMtime(filename);
   ++num_temp_file_opens_;
   return new MemOutputFile(filename, &string_map_[filename]);
@@ -223,7 +211,6 @@ bool MemFileSystem::RenameFileHelper(const char* old_file,
                                      const char* new_file,
                                      MessageHandler* handler) {
   UpdateAtime(new_file);
-  UpdateCtime(new_file);
   if (strcmp(old_file, new_file) == 0) {
     handler->Error(old_file, 0, "Cannot move a file to itself");
     return false;
@@ -268,12 +255,6 @@ bool MemFileSystem::ListContents(const StringPiece& dir, StringVector* files,
 bool MemFileSystem::Atime(const StringPiece& path, int64* timestamp_sec,
                           MessageHandler* handler) {
   *timestamp_sec = atime_map_[path.as_string()];
-  return true;
-}
-
-bool MemFileSystem::Ctime(const StringPiece& path, int64* timestamp_sec,
-                          MessageHandler* handler) {
-  *timestamp_sec = ctime_map_[path.as_string()];
   return true;
 }
 

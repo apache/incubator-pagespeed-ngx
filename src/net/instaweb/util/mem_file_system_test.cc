@@ -96,10 +96,6 @@ TEST_F(MemFileSystemTest, TestAtime) {
   TestAtime();
 }
 
-TEST_F(MemFileSystemTest, TestCtime) {
-  TestCtime();
-}
-
 TEST_F(MemFileSystemTest, TestMtime) {
   TestMtime();
 }

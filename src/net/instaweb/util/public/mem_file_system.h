@@ -62,8 +62,6 @@ class MemFileSystem : public FileSystem {
   // second every time you read or write a file.
   virtual bool Atime(const StringPiece& path, int64* timestamp_sec,
                      MessageHandler* handler);
-  virtual bool Ctime(const StringPiece& path, int64* timestamp_sec,
-                     MessageHandler* handler);
   virtual bool Mtime(const StringPiece& path, int64* timestamp_sec,
                      MessageHandler* handler);
   virtual bool Size(const StringPiece& path, int64* size,
@@ -112,7 +110,6 @@ class MemFileSystem : public FileSystem {
 
  private:
   inline void UpdateAtime(const StringPiece& path);
-  inline void UpdateCtime(const StringPiece& path);
   inline void UpdateMtime(const StringPiece& path);
 
   bool enabled_;  // When disabled, OpenInputFile returns NULL.
@@ -124,7 +121,6 @@ class MemFileSystem : public FileSystem {
   // distinct).
   // ctime and mtime are updated only for moves and modifications.
   std::map<GoogleString, int64> atime_map_;
-  std::map<GoogleString, int64> ctime_map_;
   std::map<GoogleString, int64> mtime_map_;
   int temp_file_index_;
   // lock_map_ holds times that locks were established (in ms).
