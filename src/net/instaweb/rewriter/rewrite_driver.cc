@@ -20,21 +20,36 @@
 
 #include <utility>  // for std::pair
 #include <vector>
+#include <map>
+#include <set>
+
+#include "base/logging.h"
+#include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/http/public/bot_checker.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
+#include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_inline_filter.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
@@ -48,6 +63,7 @@
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
 #include "net/instaweb/rewriter/public/js_outline_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/rewriter/public/render_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -55,19 +71,25 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
-#include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace {
 
@@ -83,6 +105,8 @@ const int kTestTimeoutMs = 10000;
 }  // namespace
 
 namespace net_instaweb {
+
+class FileSystem;
 
 // RewriteFilter prefixes
 const char RewriteDriver::kCssCombinerId[] = "cc";
@@ -979,6 +1003,11 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
                                  const ContentType& content_type) {
   set_log_rewrite_timing(options()->log_rewrite_timing());
   bool ret = HtmlParse::StartParseId(url, id, content_type);
+  {
+    ScopedMutex lock(rewrite_mutex_.get());
+    parsing_ = true;
+  }
+
   if (ret) {
     base_was_set_ = false;
     if (is_url_valid()) {
@@ -1032,7 +1061,7 @@ void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
       if (waiting_for_completion_) {
         rewrite_condvar_->Signal();
       } else {
-        ready_to_recycle = !externally_managed_;
+        ready_to_recycle = !externally_managed_ && !parsing_;
       }
     }
   }
@@ -1056,6 +1085,9 @@ void RewriteDriver::Cleanup() {
     {
       ScopedMutex lock(rewrite_mutex_.get());
       done = RewritesComplete();
+      if (!done) {
+        parsing_ = false;  // Permit recycle when contexts done.
+      }
     }
     if (done) {
       Recycle();
@@ -1162,6 +1194,10 @@ void RewriteDriver::InitiateFetch(RewriteContext* rewrite_context) {
   DCHECK_EQ(0, pending_rewrites_);
   DCHECK(fetch_queued_);
   rewrites_.push_back(rewrite_context);
+}
+
+bool RewriteDriver::ShouldNotRewriteImages() const {
+  return (options()->botdetect_enabled() && BotChecker::Lookup(user_agent_));
 }
 
 }  // namespace net_instaweb

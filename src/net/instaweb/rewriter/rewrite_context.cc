@@ -47,6 +47,7 @@
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/shared_string.h"
@@ -60,8 +61,6 @@
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
-
-class MessageHandler;
 
 const char kRewriteContextLockPrefix[] = "rc:";
 
@@ -203,12 +202,14 @@ class SuccessorsTask : public RewriteContextTask {
 // resource-requests when the output_resource is not in cache.
 class RewriteContext::FetchContext {
  public:
-  FetchContext(Writer* writer,
+  FetchContext(RewriteContext* rewrite_context,
+               Writer* writer,
                ResponseHeaders* response_headers,
                UrlAsyncFetcher::Callback* callback,
                const OutputResourcePtr& output_resource,
                MessageHandler* handler)
-      : writer_(writer),
+      : rewrite_context_(rewrite_context),
+        writer_(writer),
         response_headers_(response_headers),
         callback_(callback),
         output_resource_(output_resource),
@@ -219,36 +220,38 @@ class RewriteContext::FetchContext {
   // Note that the callback is called from the RewriteThread.
   void FetchDone() {
     GoogleString output;
+    bool ok = false;
     if (success_) {
       // TODO(sligocki): It might be worth streaming this.
       response_headers_->CopyFrom(*(output_resource_->response_headers()));
-      writer_->Write(output_resource_->contents(), handler_);
+      ok = writer_->Write(output_resource_->contents(), handler_);
     } else {
       // TODO(jmarantz): implement this:
       // CacheRewriteFailure();
-      // Rewrite failed. If we have the original, write it out instead.
-      // if (input_resource_->ContentsValid()) {
-      //  WriteFromResource(input_resource_.get());
-      //    success = true;
-      // }   else {
-      //  // If not, log the failure.
-      //  GoogleString url = input_resource_.get()->url();
-      //  handler_->Error(
-      //      output_resource_->name().as_string().c_str(), 0,
-      //      "Resource based on %s but cannot find the original", url.c_str());
-      // }
-      //
-      // TODO(jmarantz): morlovich points out: Looks like you'll need the
-      // vector of inputs for both cases (and multiple inputs can't do
-      // the passthrough fallback)
+
+      // Rewrite failed. If we have a single original, write it out instead.
+      if (rewrite_context_->num_slots() == 1) {
+        ResourcePtr input_resource(rewrite_context_->slot(0)->resource());
+        if (input_resource.get() != NULL && input_resource->ContentsValid()) {
+          response_headers_->CopyFrom(*input_resource->response_headers());
+          ok = writer_->Write(input_resource->contents(), handler_);
+        } else {
+          GoogleString url = input_resource.get()->url();
+          handler_->Error(
+              output_resource_->name().as_string().c_str(), 0,
+              "Resource based on %s but cannot access the original",
+              url.c_str());
+        }
+      }
     }
 
-    callback_->Done(success_);
+    callback_->Done(ok);
   }
 
   void set_success(bool success) { success_ = success; }
   OutputResourcePtr output_resource() { return output_resource_; }
 
+  RewriteContext* rewrite_context_;
   Writer* writer_;
   ResponseHeaders* response_headers_;
   UrlAsyncFetcher::Callback* callback_;
@@ -789,8 +792,9 @@ bool RewriteContext::Fetch(
       ResourceSlotPtr slot(new FetchResourceSlot(resource));
       AddSlot(slot);
     }
-    fetch_.reset(new FetchContext(response_writer, response_headers, callback,
-                                  output_resource, message_handler));
+    fetch_.reset(
+        new FetchContext(this, response_writer, response_headers, callback,
+                         output_resource, message_handler));
     Manager()->AddRewriteTask(new FetchTask(this));
     ret = true;
   }

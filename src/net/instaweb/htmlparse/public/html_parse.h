@@ -56,6 +56,8 @@ class HtmlParse {
   // Initiate a chunked parsing session.  Finish with FinishParse.  The
   // url is only used to resolve relative URLs; the contents are not
   // directly fetched.  The caller must supply the text and call ParseText.
+  //
+  // Returns whether the URL is valid.
   bool StartParse(const StringPiece& url) {
     return StartParseWithType(url, kContentTypeHtml);
   }
@@ -69,6 +71,8 @@ class HtmlParse {
 
   // Mostly useful for file-based rewriters so that messages can reference
   // the HTML file and produce navigable errors.
+  //
+  // Returns whether the URL is valid.
   virtual bool StartParseId(const StringPiece& url, const StringPiece& id,
                             const ContentType& content_type);
 

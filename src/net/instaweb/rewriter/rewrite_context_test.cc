@@ -33,6 +33,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -61,6 +62,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
+#include "net/instaweb/util/worker_test_base.h"
 
 namespace {
 
@@ -699,6 +701,25 @@ TEST_F(RewriteContextTest, TrimRewrittenNonOptimizable) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
+TEST_F(RewriteContextTest, FetchNonOptimizable) {
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  // Fetching a resource that's not optimizable under the rewritten URL
+  // should still work in a single-input case. This is important to be more
+  // robust against JS URL manipulation.
+  GoogleString output;
+  EXPECT_TRUE(ServeResourceUrl("http://test.com/b.css.pagespeed.tw.0.css",
+                               &output));
+  EXPECT_EQ("b", output);
+}
+
+TEST_F(RewriteContextTest, FetchNoSource) {
+  InitTrimFilters(kRewrittenResource);
+  SetFetchFailOnUnexpected(false);
+  EXPECT_FALSE(TryFetchResource("http://test.com/b.css.pagespeed.tw.0.css"));
+}
+
 // In the above tests, our URL fetcher called its callback directly, allowing
 // the Rewrite to occur while the RewriteDriver was still attached.  In this
 // run, we will delay the URL fetcher's callback so that the initial Rewrite
@@ -1034,6 +1055,13 @@ TEST_F(RewriteContextTest, CombinationFetch) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
+TEST_F(RewriteContextTest, CombinationFetchMissing) {
+  InitCombiningFilter();
+  SetFetchFailOnUnexpected(false);
+  GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
+                                     "a.css+b.css", "css");
+  EXPECT_FALSE(TryFetchResource(combined_url));
+}
 
 // Test that rewriting works correctly when input resource is loaded from disk.
 
@@ -1108,7 +1136,113 @@ TEST_F(RewriteContextTest, LoadFromFileRewritten) {
   // Note: We do not load the resource again until the fetch.
 }
 
+namespace {
 
+// Filter that blocks on Flush() in order to let an actual rewrite succeed
+// while we are still 'parsing'.
+class TestWaitFilter : public CommonFilter {
+ public:
+  TestWaitFilter(RewriteDriver* driver,
+                 WorkerTestBase::SyncPoint* sync)
+      : CommonFilter(driver), sync_(sync) {}
+  virtual ~TestWaitFilter() {}
+
+  virtual const char* Name() const { return "TestWait"; }
+  virtual void StartDocumentImpl() {}
+  virtual void StartElementImpl(net_instaweb::HtmlElement*) {}
+  virtual void EndElementImpl(net_instaweb::HtmlElement*) {}
+
+  virtual void Flush() {
+    driver()->Render();  // as we're added late, after the RenderFilter
+    sync_->Wait();
+    driver()->set_externally_managed(true);
+    CommonFilter::Flush();
+  }
+
+ private:
+  WorkerTestBase::SyncPoint* sync_;
+  DISALLOW_COPY_AND_ASSIGN(TestWaitFilter);
+};
+
+// Filter that wakes up a given sync point once its rewrite context is
+// getting destroyed.
+class TestNotifyFilter : public CommonFilter {
+ public:
+  class Context : public SingleRewriteContext {
+   public:
+    Context(RewriteDriver* driver, WorkerTestBase::SyncPoint* sync)
+        : SingleRewriteContext(driver, NULL /* parent */,
+                               NULL /* resource context*/),
+          sync_(sync) {}
+
+    virtual ~Context() {
+      sync_->Notify();
+    }
+
+   protected:
+    virtual void RewriteSingle(
+        const ResourcePtr& input, const OutputResourcePtr& output) {
+      RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+    }
+
+    virtual const char* id() const { return "testnotify"; }
+    virtual OutputResourceKind kind() const { return kRewrittenResource; }
+
+   private:
+    WorkerTestBase::SyncPoint* sync_;
+    DISALLOW_COPY_AND_ASSIGN(Context);
+  };
+
+  TestNotifyFilter(RewriteDriver* driver, WorkerTestBase::SyncPoint* sync)
+      : CommonFilter(driver), sync_(sync)  {}
+  virtual ~TestNotifyFilter() {}
+
+  virtual const char* Name() const {
+    return "Notify";
+  }
+
+  virtual void StartDocumentImpl() {}
+  virtual void StartElementImpl(net_instaweb::HtmlElement* element) {
+    HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
+    if (href != NULL) {
+      ResourcePtr input_resource(CreateInputResource(href->value()));
+      ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, href));
+      Context* context = new Context(driver(), sync_);
+      context->AddSlot(slot);
+      driver()->InitiateRewrite(context);
+    }
+  }
+
+  virtual void EndElementImpl(net_instaweb::HtmlElement*) {}
+  virtual bool HasAsyncFlow() const { return true; }
+
+ private:
+  WorkerTestBase::SyncPoint* sync_;
+  DISALLOW_COPY_AND_ASSIGN(TestNotifyFilter);
+};
+
+}  // namespace
+
+// Test to make sure we don't crash/delete a RewriteContext when it's completed
+// while we're still writing. Not 100% guaranteed to crash, however, as
+// we notice in ~TestNotifyFilter::Context and not when context is fully
+// destroyed.
+TEST_F(RewriteContextTest, UltraQuickRewrite) {
+  // Turn on automatic memory management for now, to see if it tries to
+  // auto-delete while still parsing. We turn it off inside
+  // TestWaitFilter::Flush.
+  rewrite_driver()->set_externally_managed(false);
+  InitResources();
+
+  WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
+  rewrite_driver()->AddOwnedFilter(
+      new TestNotifyFilter(rewrite_driver(), &sync));
+  rewrite_driver()->AddOwnedFilter(
+      new TestWaitFilter(rewrite_driver(), &sync));
+
+  ValidateExpected("trimmable.quick", CssLink("a.css"),
+                   CssLink("a.css"));
+}
 
 // Test resource update behavior.
 class ResourceUpdateTest : public RewriteContextTest {

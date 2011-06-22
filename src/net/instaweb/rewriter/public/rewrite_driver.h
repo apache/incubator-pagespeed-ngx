@@ -25,7 +25,6 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/http/public/bot_checker.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
@@ -115,10 +114,13 @@ class RewriteDriver : public HtmlParse {
   // have its content loaded. This needs some more design work.
   bool FindResource(const StringPiece& url, ResourcePtr* resource) const;
 
-  bool ShouldNotRewriteImages() const {
-    return (options()->botdetect_enabled() &&
-            BotChecker::Lookup(user_agent_));
-  }
+  // Determines whether images should be rewritten.
+  // TODO(jmarantz): Another approach to allow rewriting to be friendly
+  // to image-search link rel=canonical, described in:
+  //   http://googlewebmastercentral.blogspot.com/2011/06/
+  //   supporting-relcanonical-http-headers.html
+  bool ShouldNotRewriteImages() const;
+
   void RememberResource(const StringPiece& url, const ResourcePtr& resource);
   const GoogleString& user_agent() const {
     return user_agent_;
@@ -449,6 +451,10 @@ class RewriteDriver : public HtmlParse {
   // and thus the RewriteDriver should not recycled until that RewriteContext
   // has called FetchComplete().
   bool fetch_queued_;            // protected by rewrite_mutex_
+
+  // Indicates that the rewrite driver is currently parsing the HTML,
+  // and thus should not be recycled under FinishParse() is called.
+  bool parsing_;  // protected by rewrite_mutex_
 
   // Indicates that WaitForCompletion() has been called in the HTML thread,
   // and we are now blocked on a condition variable in that function.  Thus
