@@ -126,8 +126,9 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
 
     ParseUrl(html_url, html_input);
 
-    GoogleString headers;
-    AppendDefaultHeaders(kContentTypeCss, &headers);
+    if (combined_headers_.empty()) {
+      AppendDefaultHeaders(kContentTypeCss, &combined_headers_);
+    }
 
     // Check for CSS files in the rewritten page.
     StringVector css_urls;
@@ -166,7 +167,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
 
     GoogleString actual_combination;
     ASSERT_TRUE(ReadFile(combine_filename.c_str(), &actual_combination));
-    EXPECT_EQ(headers + expected_combination, actual_combination);
+    EXPECT_EQ(combined_headers_ + expected_combination, actual_combination);
 
     // Fetch the combination to make sure we can serve the result from above.
     RequestHeaders request_headers;
@@ -399,6 +400,9 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
     // Check for CSS files in the rewritten page.
     CollectCssLinks("combine_css_no_media-links", output_buffer_, css_urls);
   }
+
+ private:
+  GoogleString combined_headers_;
 };
 
 TEST_P(CssCombineFilterTest, CombineCss) {

@@ -20,10 +20,11 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
-#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
+
+class MockTimer;
 
 // Implements a condition-variable whose TimedWait works with
 // MockTime.  This is implemented on top of a real condition
@@ -42,16 +43,13 @@ class MockTimeCondvar : public ThreadSystem::Condvar {
   virtual void Wait() { condvar_->Wait(); }
   virtual void Signal() { condvar_->Signal(); }
 
-  // This implementation registers a handler with the MockTimer so we can
-  // track when time passes.
+  // TimedWait should not be called on MockCondvar.  See
+  // MockThreadSystem::TimedWait.  This call will CHECK-fail.
   virtual void TimedWait(int64 timeout_ms);
-
-  void AlarmFired();
 
  private:
   scoped_ptr<ThreadSystem::Condvar> condvar_;
   MockTimer* timer_;
-  MockTimer::Alarm* alarm_;
 
   DISALLOW_COPY_AND_ASSIGN(MockTimeCondvar);
 };

@@ -70,7 +70,7 @@ const char kTrimWhitespaceFilterId[] = "tw";
 const char kUpperCaseFilterId[] = "uc";
 const char kNestedFilterId[] = "nf";
 const char kCombiningFilterId[] = "cr";
-
+const int64 kRewriteDelayMs = 40;
 
 }  // namespace
 
@@ -80,6 +80,27 @@ class MessageHandler;
 class RequestHeaders;
 class UrlSegmentEncoder;
 class Writer;
+
+// TODO(jmarantz): Make a new closure.h with this definition and
+// some similar ones.  Remove MockTimer::Alarm class and instead
+// add a timeout argument to AddAlarm.  Remove Worker::Closure,
+// so that it can also share this definition.
+template<class C, typename T1, typename T2, typename T3>
+class DelayedFunction : public MockTimer::Alarm {
+ public:
+  typedef void (C::*Func)(T1, T2, T3);
+
+  DelayedFunction(int64 wakeup_us, Func f, C* c, T1 v1, T2 v2, T3 v3)
+      : MockTimer::Alarm(wakeup_us), f_(f), c_(c), v1_(v1), v2_(v2), v3_(v3) {}
+# define CALL_MEMBER_FN(object, ptrToMember)  ((object)->*(ptrToMember))
+  virtual void Run() { CALL_MEMBER_FN(c_, f_)(v1_, v2_, v3_); }
+ private:
+  Func f_;
+  C* c_;
+  T1 v1_;
+  T2 v2_;
+  T3 v3_;
+};
 
 // Simple test filter just trims whitespace from the input resource.
 class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
@@ -356,8 +377,12 @@ class NestedFilter : public RewriteFilter {
 // Does not consider barriers, @import statements, absolutification, etc.
 class CombiningFilter : public RewriteFilter {
  public:
-  explicit CombiningFilter(RewriteDriver* driver)
-      : RewriteFilter(driver, kCombiningFilterId) {
+  CombiningFilter(RewriteDriver* driver,
+                  MockTimer* timer,
+                  int64 rewrite_delay_ms)
+    : RewriteFilter(driver, kCombiningFilterId),
+      timer_(timer),
+      rewrite_delay_ms_(rewrite_delay_ms) {
     ClearStats();
   }
   virtual ~CombiningFilter() {}
@@ -377,12 +402,13 @@ class CombiningFilter : public RewriteFilter {
     virtual bool UseAsyncFlow() const { return true; }
   };
 
-
   class Context : public RewriteContext {
    public:
-    Context(RewriteDriver* driver, CombiningFilter* filter)
+    Context(RewriteDriver* driver, CombiningFilter* filter, MockTimer* timer)
         : RewriteContext(driver, NULL, NULL),
           combiner_(driver, filter),
+          timer_(timer),
+          time_at_start_of_rewrite_us_(timer->NowUs()),
           filter_(filter) {
     }
 
@@ -420,6 +446,23 @@ class CombiningFilter : public RewriteFilter {
     virtual void Rewrite(int partition_index,
                          OutputPartition* partition,
                          const OutputResourcePtr& output) {
+      if (filter_->rewrite_delay_ms() == 0) {
+        DoRewrite(partition_index, partition, output);
+      } else {
+        int64 wakeup_us = time_at_start_of_rewrite_us_ +
+            1000 * filter_->rewrite_delay_ms();
+        MockTimer::Alarm* alarm =
+            new DelayedFunction<Context, int, OutputPartition*,
+                                const OutputResourcePtr&>(
+                wakeup_us, &Context::DoRewrite, this, partition_index,
+                partition, output);
+        timer_->AddAlarm(alarm);
+      }
+    }
+
+    void DoRewrite(int partition_index,
+                   OutputPartition* partition,
+                   const OutputResourcePtr& output) {
       ++filter_->num_rewrites_;
       // resource_combiner.cc takes calls WriteCombination as part
       // of Combine.  But if we are being called on behalf of a
@@ -458,6 +501,8 @@ class CombiningFilter : public RewriteFilter {
    private:
     Combiner combiner_;
     UrlMultipartEncoder encoder_;
+    MockTimer* timer_;
+    int64 time_at_start_of_rewrite_us_;
     CombiningFilter* filter_;
   };
 
@@ -469,7 +514,7 @@ class CombiningFilter : public RewriteFilter {
         ResourcePtr resource(CreateInputResource(href->value()));
         if (resource.get() != NULL) {
           if (context_.get() == NULL) {
-            context_.reset(new Context(driver_, this));
+            context_.reset(new Context(driver_, this, timer_));
           }
           context_->AddElement(element, href, resource);
         }
@@ -485,7 +530,9 @@ class CombiningFilter : public RewriteFilter {
 
   virtual void EndElementImpl(HtmlElement* element) {}
   virtual const char* Name() const { return "Combining"; }
-  RewriteContext* MakeRewriteContext() { return new Context(driver_, this); }
+  RewriteContext* MakeRewriteContext() {
+    return new Context(driver_, this, timer_);
+  }
   virtual bool Fetch(const OutputResourcePtr& resource,
                      Writer* writer,
                      const RequestHeaders& request_header,
@@ -498,17 +545,18 @@ class CombiningFilter : public RewriteFilter {
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
   virtual bool HasAsyncFlow() const { return true; }
 
-  // Stats
   bool num_rewrites() const { return num_rewrites_; }
-
   void ClearStats() { num_rewrites_ = 0; }
+  int64 rewrite_delay_ms() const { return rewrite_delay_ms_; }
 
  private:
   friend class Context;
 
   scoped_ptr<Context> context_;
   UrlMultipartEncoder encoder_;
+  MockTimer* timer_;
   int num_rewrites_;
+  int64 rewrite_delay_ms_;
 
   DISALLOW_COPY_AND_ASSIGN(CombiningFilter);
 };
@@ -562,9 +610,10 @@ class RewriteContextTest : public ResourceManagerTestBase {
     InitTrimFilter(kind, rewrite_driver);
   }
 
-  void InitCombiningFilter() {
+  void InitCombiningFilter(int64 rewrite_delay_ms) {
     RewriteDriver* driver = rewrite_driver();
-    combining_filter_ = new CombiningFilter(driver);
+    combining_filter_ = new CombiningFilter(driver, mock_timer(),
+                                            rewrite_delay_ms);
     driver->AddRewriteFilter(combining_filter_);
     driver->AddFilters();
   }
@@ -1001,7 +1050,7 @@ TEST_F(RewriteContextTest, NestedChained) {
 }
 
 TEST_F(RewriteContextTest, CombinationRewrite) {
-  InitCombiningFilter();
+  InitCombiningFilter(0);
   InitResources();
   GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
                                      "a.css+b.css", "css");
@@ -1023,8 +1072,52 @@ TEST_F(RewriteContextTest, CombinationRewrite) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
+// Proof-of-concept simulation of a Rewriter where delay is injected into
+// the Rewrite flow.
+TEST_F(RewriteContextTest, CombinationRewriteWithDelay) {
+  InitCombiningFilter(kRewriteDelayMs);
+  InitResources();
+  GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
+                                     "a.css+b.css", "css");
+  ValidateNoChanges("xx", StrCat(CssLink("a.css"), CssLink("b.css")));
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());   // partition, and 2 inputs.
+  EXPECT_EQ(3, lru_cache()->num_inserts());  // partition+2 in, output not ready
+  ClearStats();
+
+  // The delay was too large so we were not able to complete the
+  // Rewrite.  Now give it more time so it will complete.  Note that a
+  // delay will automatically be injected by the RewriteDriver, so
+  // this additional delay is more than strictly needed.  We could
+  // also subtract out the simulated delay already added in
+  // rewrite_driver.cc, which is dependent on whether running valgrind
+  // or compiled for debug.
+  rewrite_driver()->TimedWait(kRewriteDelayMs);  // Allow rewrites to complete
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_inserts());  // finally we cache the output.
+  ClearStats();
+
+  ValidateExpected(
+      "combination_rewrite", StrCat(CssLink("a.css"), CssLink("b.css")),
+      CssLink(combined_url));
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());   // partition, and 2 inputs.
+  EXPECT_EQ(0, lru_cache()->num_inserts());  // partition, output, and 2 inputs.
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  ValidateExpected(
+      "combination_rewrite2", StrCat(CssLink("a.css"), CssLink("b.css")),
+      CssLink(combined_url));
+  EXPECT_EQ(1, lru_cache()->num_hits());     // the output is all we need
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+}
+
 TEST_F(RewriteContextTest, CombinationFetch) {
-  InitCombiningFilter();
+  InitCombiningFilter(0);
   InitResources();
 
   GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
@@ -1056,7 +1149,7 @@ TEST_F(RewriteContextTest, CombinationFetch) {
 }
 
 TEST_F(RewriteContextTest, CombinationFetchMissing) {
-  InitCombiningFilter();
+  InitCombiningFilter(0);
   SetFetchFailOnUnexpected(false);
   GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
                                      "a.css+b.css", "css");
@@ -1415,7 +1508,7 @@ class CombineResourceUpdateTest : public ResourceUpdateTest {
 
 TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   // Initialize system.
-  InitCombiningFilter();
+  InitCombiningFilter(0);
   options()->file_load_policy()->Associate("http://test.com/file/", "/test/");
 
   // Initialize resources.

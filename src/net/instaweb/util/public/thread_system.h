@@ -32,6 +32,8 @@
 
 namespace net_instaweb {
 
+class QueuedWorker;
+
 // Subclasses of this represent threading support under given environment,
 // and help create various primitives for it.
 class ThreadSystem {
@@ -67,6 +69,23 @@ class ThreadSystem {
 
   // Creates an appropriate ThreadSystem for the platform.
   static ThreadSystem* CreateThreadSystem();
+
+  // Execute a timed wait on the specified condition variable.  Under
+  // normal server operation this just runs the condition variable's
+  // TimedWait method.  When running fast simulated-time unit tests,
+  // however, we need to synchronize timer-advance events using the
+  // rewrite_worker so we use this entry-point.
+  //
+  // TODO(jmarantz): refactor out the dependence from ThreadSystem
+  // to QueuedWorker.  This can be done in at least two different ways:
+  //  1. Make a separate virtual class hierarchy to wrap Time, ThreadSystem,
+  //     and condition-variables.
+  //  2. Change the general architecture to have only one QueuedWorker which the
+  //     MockThreadSystem will know about.
+  // This was the most expedient approach but it's not that hard to change it.
+  virtual void TimedWait(QueuedWorker* worker,
+                         ThreadSystem::Condvar* condvar,
+                         int64 timeout_ms);
 
  private:
   friend class Thread;

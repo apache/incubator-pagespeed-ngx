@@ -36,6 +36,7 @@
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/worker.h"
 
 namespace net_instaweb {
@@ -55,7 +56,6 @@ class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
 class Statistics;
-class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
 class UrlSegmentEncoder;
@@ -330,6 +330,13 @@ class ResourceManager {
   // that any idle callbacks are completed before deleting objects they may
   // refer to.
   void ShutDownWorker();
+
+  // Execute a timed wait on the specified condition variable.  Under
+  // normal server operation this just runs the condition variable's
+  // TimedWait method.  When running fast simulated-time unit tests,
+  // however, we need to synchronize timer-advance events using the
+  // rewrite_worker so we use this entry-point.
+  void TimedWait(ThreadSystem::Condvar* condvar, int64 timeout_ms);
 
  private:
   GoogleString file_prefix_;

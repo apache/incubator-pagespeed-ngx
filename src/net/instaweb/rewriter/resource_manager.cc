@@ -18,36 +18,50 @@
 
 #include "net/instaweb/rewriter/public/resource_manager.h"
 
+#include <cstddef>                     // for size_t
+#include <set>
+#include <vector>
+#include "base/logging.h"               // for operator<<, etc
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
-#include "net/instaweb/rewriter/public/data_url_input_resource.h"
-#include "net/instaweb/rewriter/public/file_input_resource.h"
+#include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
-#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/queued_worker.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/stl_util.h"          // for STLDeleteElements
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/url_escaper.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "net/instaweb/util/public/worker.h"  // for Worker
 
 namespace net_instaweb {
+
+class CacheInterface;
+class FileSystem;
+class FilenameEncoder;
+class Hasher;
+class UrlAsyncFetcher;
 
 namespace {
 
@@ -606,6 +620,11 @@ void ResourceManager::ShutDownWorker() {
 
 void ResourceManager::AddRewriteTask(Worker::Closure* task) {
   rewrite_worker_->RunInWorkThread(task);
+}
+
+void ResourceManager::TimedWait(ThreadSystem::Condvar* condvar,
+                                int64 timeout_ms) {
+  thread_system_->TimedWait(rewrite_worker_.get(), condvar, timeout_ms);
 }
 
 }  // namespace net_instaweb

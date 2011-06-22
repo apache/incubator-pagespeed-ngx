@@ -174,9 +174,14 @@ void ResourceManagerTestBase::SetUp() {
       &http_cache_, lru_cache_, &lock_manager_,
       &message_handler_, statistics_, thread_system_.get(), factory_);
   rewrite_driver_.SetResourceManager(resource_manager_);
+  resource_manager_->SetIdleCallback(new IdleCallback(rewrite_driver()));
+  other_resource_manager_.SetIdleCallback(new IdleCallback(
+      other_rewrite_driver()));
 }
 
 void ResourceManagerTestBase::TearDown() {
+  rewrite_driver()->WaitForCompletion();
+  other_rewrite_driver()->WaitForCompletion();
   other_resource_manager_.ShutDownWorker();
   delete resource_manager_;
   HtmlParseTestBaseNoAlloc::TearDown();
@@ -385,6 +390,10 @@ bool ResourceManagerTestBase::ServeResourceUrl(
   MockCallback callback;
   bool fetched = rewrite_driver_.FetchResource(
       url, request_headers, &response_headers, &writer, &callback);
+
+  // We call WaitForCompletion when testing the serving of rewritten
+  // resources, because that's how the server will work.  It will
+  // complete the Rewrite independent of how long it takes.
   rewrite_driver_.WaitForCompletion();
   rewrite_driver_.Clear();
 
@@ -619,26 +628,28 @@ GoogleString ResourceManagerTestBase::Encode(
 }
 
 void ResourceManagerTestBase::SetupWaitFetcher() {
-  resource_manager_->SetIdleCallback(new IdleCallback(rewrite_driver()));
-  other_resource_manager_.SetIdleCallback(new IdleCallback(
-      other_rewrite_driver()));
   counting_url_async_fetcher_.set_fetcher(&wait_url_async_fetcher_);
   wait_for_fetches_ = true;
 }
 
-void ResourceManagerTestBase::ParseUrl(const StringPiece& url,
-                                       const StringPiece& html_input) {
-  HtmlParseTestBaseNoAlloc::ParseUrl(url, html_input);
-  if (!wait_for_fetches_) {
-    rewrite_driver_.WaitForCompletion();
-    rewrite_driver_.Clear();
-  }
-}
+// Note that we do not override ParseUrl() here, as we used to.  We
+// previously did this to have a point to inject a call to
+// WaitForCompletion, but this is not necessary.  Now, only the
+// passage of sufficient mock-time to accomodate all delays guarantees
+// that a Rewrite is completed before the expiration of the mocked TimedWait
+// call from rewrite_driver.  We rely on WakeupOnIdle to release us from the
+// condition-variable-wait.
 
 void ResourceManagerTestBase::CallFetcherCallbacksForDriver(
       WaitUrlAsyncFetcher* fetcher,
       RewriteDriver* driver) {
   bool pass_through_mode = fetcher->SetPassThroughMode(true);
+
+  // TODO(jmarantz): parameterize whether this is to be used for
+  // simulating delayed fetches for a ResourceFetch, in which case
+  // we'll want WaitForCompletion, or whether this is to be used for
+  // simulation of Rewrites, in which case we can do a TimedWait
+  // according to the needs of the simulation.
   driver->WaitForCompletion();
   fetcher->SetPassThroughMode(pass_through_mode);
   driver->Clear();

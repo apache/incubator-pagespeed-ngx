@@ -26,11 +26,33 @@
 
 #include "net/instaweb/util/public/mock_thread_system.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/basictypes.h"        // for int64
+#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/mock_time_condvar.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/queued_worker.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/worker.h"
 
 namespace net_instaweb {
+
+namespace {
+
+class AdvanceTimer : public Worker::Closure {
+ public:
+  AdvanceTimer(MockTimer* timer, int64 timeout_us)
+    : timer_(timer),
+      timeout_us_(timeout_us) {
+  }
+
+  virtual void Run() { timer_->AdvanceUs(timeout_us_); }
+
+ private:
+  MockTimer* timer_;
+  int64 timeout_us_;
+};
+
+}  // namespace
 
 MockThreadSystem::MockThreadSystem(ThreadSystem* thread_system,
                                    MockTimer* mock_timer)
@@ -67,6 +89,14 @@ ThreadSystem::CondvarCapableMutex* MockThreadSystem::NewMutex() {
 ThreadSystem::ThreadImpl* MockThreadSystem::NewThreadImpl(
     Thread* wrapper, ThreadFlags flags) {
   return thread_system_->NewThreadImpl(wrapper, flags);
+}
+
+void MockThreadSystem::TimedWait(QueuedWorker* worker,
+                                 ThreadSystem::Condvar* condvar,
+                                 int64 timeout_ms) {
+  int64 timeout_us = 1000 * timeout_ms;
+  worker->RunInWorkThread(new AdvanceTimer(mock_timer_, timeout_us));
+  condvar->Wait();
 }
 
 }  // namespace net_instaweb

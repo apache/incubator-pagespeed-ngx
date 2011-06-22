@@ -65,11 +65,23 @@ void MockTimer::Alarm::SetIndex(int index) {
 }
 
 void MockTimer::AddAlarm(Alarm* alarm) {
-  ScopedMutex lock(mutex_.get());
-  alarm->SetIndex(next_index_++);
-  size_t prev_count = alarms_.size();
-  alarms_.insert(alarm);
-  CHECK_EQ(1 + prev_count, alarms_.size());
+  bool call_now = false;
+  {
+    ScopedMutex lock(mutex_.get());
+    if (time_us_ >= alarm->wakeup_time_us()) {
+      call_now = true;
+    } else {
+      alarm->SetIndex(next_index_++);
+      size_t prev_count = alarms_.size();
+      alarms_.insert(alarm);
+      CHECK_EQ(1 + prev_count, alarms_.size());
+    }
+    // Release lock before running potentially the Alarm.
+  }
+  if (call_now) {
+    alarm->Run();
+    delete alarm;
+  }
 }
 
 void MockTimer::CancelAlarm(Alarm* alarm) {
@@ -99,13 +111,16 @@ void MockTimer::SetTimeUs(int64 time_us) {
     }
   }
 
-  // If an Alarm::Run function moved us forward in function,
-  // don't move us back.
+  // If an Alarm::Run function moved us forward in time, don't move us back.
   if (time_us_ < time_us) {
     time_us_ = time_us;
   }
-
   mutex_->Unlock();
+}
+
+int64 MockTimer::NowUs() const {
+  ScopedMutex(mutex_.get());
+  return time_us_;
 }
 
 }  // namespace net_instaweb

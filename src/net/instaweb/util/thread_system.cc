@@ -17,9 +17,14 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 
 #include "net/instaweb/util/public/thread_system.h"
+
+#include "net/instaweb/util/public/basictypes.h"        // for int64
+#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/pthread_thread_system.h"
 
 namespace net_instaweb {
+
+class QueuedWorker;
 
 ThreadSystem::~ThreadSystem() {
 }
@@ -32,6 +37,12 @@ ThreadSystem::ThreadImpl::~ThreadImpl() {
 
 ThreadSystem* ThreadSystem::CreateThreadSystem() {
   return new PthreadThreadSystem;
+}
+
+void ThreadSystem::TimedWait(QueuedWorker* queued_worker,
+                             ThreadSystem::Condvar* condvar,
+                             int64 timeout_ms) {
+  condvar->TimedWait(timeout_ms);
 }
 
 }  // namespace net_instaweb

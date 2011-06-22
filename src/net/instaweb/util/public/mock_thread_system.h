@@ -33,6 +33,7 @@
 namespace net_instaweb {
 
 class MockTimer;
+class QueuedWorker;
 
 // Thread System wrapper used to help build tests and debugging
 // environments with deterministic behavior.  When MockThreadSystem is
@@ -49,6 +50,9 @@ class MockThreadSystem : public ThreadSystem {
   virtual CondvarCapableMutex* NewMutex();
   virtual ThreadImpl* NewThreadImpl(Thread* wrapper, ThreadFlags flags);
 
+  virtual void TimedWait(QueuedWorker* worker,
+                         ThreadSystem::Condvar* condvar,
+                         int64 timeout_ms);
  private:
   ThreadSystem* thread_system_;
   MockTimer* mock_timer_;

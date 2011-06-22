@@ -371,6 +371,11 @@ class RewriteDriver : public HtmlParse {
   // the TimedWait in Render() to complete.
   void WakeupFromIdle();
 
+  // Wait the specified number of milliseconds for in-progress renders
+  // to complete.  This is intended for testing in simulated time, where
+  // the Rewrites don't complete in time for the deadline.
+  void TimedWait(int wait_time_ms);
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;

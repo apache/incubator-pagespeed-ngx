@@ -92,7 +92,7 @@ class MockTimer : public Timer {
   void AdvanceMs(int64 delta_ms) { AdvanceUs(1000 * delta_ms); }
 
   // Returns number of microseconds since 1970.
-  virtual int64 NowUs() const { return time_us_; }
+  virtual int64 NowUs() const;
   virtual void SleepUs(int64 us) { AdvanceUs(us); }
   virtual void SleepMs(int64 ms) { AdvanceUs(1000 * ms); }
 

@@ -23,11 +23,10 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_QUEUED_WORKER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/worker.h"
 
 namespace net_instaweb {
-
-class ThreadSystem;
 
 // See file comment.
 class QueuedWorker : public Worker {
@@ -45,6 +44,11 @@ class QueuedWorker : public Worker {
   //
   // Takes ownership of the closure.
   void RunInWorkThread(Closure* closure);
+
+  // Issue a TimedWait on the specified condition variable.  In a mock-time
+  // world, this queues a time-advancement closure on the worker, and then
+  // blocks waiting for the work-queue to be drained.
+  void TimedWait(ThreadSystem::Condvar* condvar, int64 timeout_ms);
 
  private:
   virtual bool IsPermitted(Closure* closure);

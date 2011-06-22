@@ -31,17 +31,33 @@ namespace net_instaweb {
 namespace {
 
 // Make the simulated times be very long just to show that we are in
-// mock time and don't need to wait 50 years for this test to finish.
-const int64 kWorkerAdvanceMs = 100 * Timer::kYearMs;
-const int64 kMainlineWaitMs = 50 * Timer::kYearMs;
+// mock time and don't need to wait a century for this test to finish.
+const int64 kDelayMs = 50 * Timer::kYearMs;
+const int64 kWaitMs = 100 * Timer::kYearMs;
 
-class AdvanceTime : public Worker::Closure {
+class RunCondvar : public Worker::Closure {
  public:
-  AdvanceTime(MockTimer* timer) : timer_(timer) {}
-  virtual void Run() { timer_->AdvanceMs(kWorkerAdvanceMs); }
+  RunCondvar(ThreadSystem::Condvar* condvar)
+    : condvar_(condvar) {}
+  virtual void Run() { condvar_->Signal(); }
 
  private:
-  MockTimer* timer_;
+  ThreadSystem::Condvar* condvar_;
+};
+
+class QueueRunCondvar : public MockTimer::Alarm {
+ public:
+  QueueRunCondvar(QueuedWorker* worker, ThreadSystem::Condvar* condvar,
+                  int64 timeout_us)
+      : MockTimer::Alarm(timeout_us),
+        condvar_(condvar),
+        worker_(worker) {
+  }
+  virtual void Run() { worker_->RunInWorkThread(new RunCondvar(condvar_)); }
+
+ private:
+  ThreadSystem::Condvar* condvar_;
+  QueuedWorker* worker_;
 };
 
 }  // namespace
@@ -71,9 +87,9 @@ class MockTimeCondvarTest : public testing::Test {
 
 TEST_F(MockTimeCondvarTest, WakeupOnAdvancementOfSimulatedTime) {
   ASSERT_TRUE(worker_.Start());
-  worker_.RunInWorkThread(new AdvanceTime(&timer_));
+  timer_.AddAlarm(new QueueRunCondvar(&worker_, condvar_.get(), kDelayMs));
   ScopedMutex lock(mutex_.get());
-  condvar_->TimedWait(kMainlineWaitMs);
+  thread_system_.TimedWait(&worker_, condvar_.get(), kWaitMs);
 }
 
 }  // namespace net_instaweb

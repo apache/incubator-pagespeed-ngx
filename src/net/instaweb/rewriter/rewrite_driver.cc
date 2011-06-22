@@ -97,7 +97,7 @@ namespace {
 // requirements of the testing system and the platform.  This might
 // also want to change based on how many Flushes there are, as each
 // Flush can potentially add this much more latency.
-const int kDebugWaitForRewriteMsPerFlush = 100;
+const int kDebugWaitForRewriteMsPerFlush = 20;
 const int kOptWaitForRewriteMsPerFlush = 10;
 const int kValgrindWaitForRewriteMsPerFlush = 1000;
 const int kTestTimeoutMs = 10000;
@@ -184,13 +184,18 @@ void RewriteDriver::WaitForCompletion() {
             kInfo, "waiting for %d rewrites to complete",
             static_cast<int>(pending_rewrites_ + detached_rewrites_.size()));
       }
-      rewrite_condvar_->TimedWait(kTestTimeoutMs);
+      resource_manager_->TimedWait(rewrite_condvar_.get(), kTestTimeoutMs);
       // TODO(jmarantz): Eliminate these LOG(INFO) and/or convert them
       // into message_handler()->Message(kInfo...).
       LOG(INFO) << "timed wait complete";
     }
     waiting_for_completion_ = false;
   }
+}
+
+void RewriteDriver::TimedWait(int wait_time_ms) {
+  ScopedMutex lock(rewrite_mutex_.get());
+  resource_manager_->TimedWait(rewrite_condvar_.get(), wait_time_ms);
 }
 
 void RewriteDriver::Render() {
@@ -229,7 +234,8 @@ void RewriteDriver::Render() {
                 << " rewrites complete by the time Render was called";
     } else {
       LOG(INFO) << "waiting for " << pending_rewrites_ << " rewrites";
-      rewrite_condvar_->TimedWait(rewrite_deadline_ms_);
+      resource_manager_->TimedWait(rewrite_condvar_.get(),
+                                   rewrite_deadline_ms_);
       completed_rewrites = num_rewrites - pending_rewrites_;
       LOG(INFO) << "found " << completed_rewrites << " completed rewrites";
     }
