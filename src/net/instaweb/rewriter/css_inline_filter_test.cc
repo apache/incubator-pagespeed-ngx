@@ -32,6 +32,9 @@ namespace {
 
 class CssInlineFilterTest : public ResourceManagerTestBase,
                             public ::testing::WithParamInterface<bool> {
+ public:
+  CssInlineFilterTest() : filters_added_(false) {}
+
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
@@ -44,7 +47,10 @@ class CssInlineFilterTest : public ResourceManagerTestBase,
                      const GoogleString& css_original_body,
                      bool expect_inline,
                      const GoogleString& css_rewritten_body) {
-    AddFilter(RewriteOptions::kInlineCss);
+    if (!filters_added_) {
+      AddFilter(RewriteOptions::kInlineCss);
+      filters_added_ = true;
+    }
 
     const GoogleString html_input =
         "<head>\n"
@@ -69,10 +75,24 @@ class CssInlineFilterTest : public ResourceManagerTestBase,
          "<body>Hello, world!</body>\n");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
   }
+
+ private:
+  bool filters_added_;
 };
 
 TEST_P(CssInlineFilterTest, InlineCssSimple) {
   const GoogleString css = "BODY { color: red; }\n";
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/styles.css",
+                "", css, true, css);
+}
+
+TEST_P(CssInlineFilterTest, InlineCssCached) {
+  // Doing it twice should be safe, too.
+  const GoogleString css = "BODY { color: red; }\n";
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/styles.css",
+                "", css, true, css);
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "", css, true, css);

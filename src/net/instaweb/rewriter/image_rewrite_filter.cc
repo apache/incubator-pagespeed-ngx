@@ -151,6 +151,8 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver,
                               driver->options()->image_max_rewrites_at_once()));
 }
 
+ImageRewriteFilter::~ImageRewriteFilter() {}
+
 void ImageRewriteFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kImageInline);
   statistics->AddVariable(kImageRewriteSavedBytes);

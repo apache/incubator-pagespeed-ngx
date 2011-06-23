@@ -49,6 +49,7 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
  public:
   ImageRewriteFilter(RewriteDriver* driver,
                      StringPiece path_prefix);
+  virtual ~ImageRewriteFilter();
   static void Initialize(Statistics* statistics);
   virtual void StartDocumentImpl() {}
   virtual void StartElementImpl(HtmlElement* element) {}

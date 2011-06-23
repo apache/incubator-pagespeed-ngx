@@ -30,6 +30,9 @@ namespace {
 
 class JsInlineFilterTest : public ResourceManagerTestBase,
                            public ::testing::WithParamInterface<bool> {
+ public:
+  JsInlineFilterTest() : filters_added_(false) {}
+
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
@@ -74,7 +77,10 @@ class JsInlineFilterTest : public ResourceManagerTestBase,
                                    const GoogleString& js_outline_body,
                                    const GoogleString& js_expected_inline_body,
                                    bool expect_inline) {
-    AddFilter(RewriteOptions::kInlineJavascript);
+    if (!filters_added_) {
+      AddFilter(RewriteOptions::kInlineJavascript);
+      filters_added_ = true;
+    }
 
     // Specify the input and expected output.
     if (!doctype.empty()) {
@@ -101,6 +107,9 @@ class JsInlineFilterTest : public ResourceManagerTestBase,
     // Rewrite the HTML page.
     ValidateExpectedUrl(html_url, html_input, expected_output);
   }
+
+ private:
+  bool filters_added_;
 };
 
 TEST_P(JsInlineFilterTest, DoInlineJavascriptSimple) {
@@ -173,6 +182,16 @@ TEST_P(JsInlineFilterTest, DoNotInlineJavascriptXhtmlWithCdataEnd) {
                             "http://www.example.com/script.js",
                             "function end(x) { return ']]>'; }\n",
                             false);
+}
+
+TEST_P(JsInlineFilterTest, CachedRewrite) {
+  // Make sure we work fine when result is cached.
+  const char kPageUrl[] = "http://www.example.com/index.html";
+  const char kJsUrl[] = "http://www.example.com/script.js";
+  const char kJs[] = "function id(x) { return x; }\n";
+  const char kNothingInsideScript[] = "";
+  TestInlineJavascript(kPageUrl, kJsUrl, kNothingInsideScript, kJs, true);
+  TestInlineJavascript(kPageUrl, kJsUrl, kNothingInsideScript, kJs, true);
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.

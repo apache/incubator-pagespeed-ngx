@@ -89,8 +89,9 @@ void InlineRewriteContext::Render() {
   if (num_output_partitions() == 1) {
     // We've decided to inline...
     ResourceSlotPtr our_slot = slot(0);
-    RenderInline(our_slot->resource(), our_slot->resource()->contents(),
-                 element_);
+    RenderInline(
+        our_slot->resource(), output_partition(0)->result().inlined_data(),
+        element_);
   }
 }
 
