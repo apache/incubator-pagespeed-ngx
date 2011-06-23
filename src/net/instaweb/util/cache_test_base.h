@@ -58,11 +58,13 @@ class CacheTestBase : public testing::Test {
                 const GoogleString& expected_value) {
     cache->Get(key, callback_.Reset());
     ASSERT_TRUE(callback_.called_);
-    ASSERT_EQ(CacheInterface::kAvailable, callback_.state_);
-    EXPECT_EQ(expected_value, **callback_.value());
+    ASSERT_EQ(CacheInterface::kAvailable, callback_.state_)
+        << "For key: " << key;
+    EXPECT_EQ(expected_value, **callback_.value()) << "For key: " << key;
     cache->Query(key, callback_.Reset());
-    ASSERT_TRUE(callback_.called_);
-    ASSERT_EQ(CacheInterface::kAvailable, callback_.state_);
+    ASSERT_TRUE(callback_.called_) << "For key: " << key;
+    ASSERT_EQ(CacheInterface::kAvailable, callback_.state_)
+        << "For key: " << key;
     SanityCheck();
   }
 
@@ -83,10 +85,12 @@ class CacheTestBase : public testing::Test {
   void CheckNotFound(CacheInterface* cache, const char* key) {
     cache->Get(key, callback_.Reset());
     ASSERT_TRUE(callback_.called_);
-    EXPECT_NE(CacheInterface::kAvailable, callback_.state_);
+    EXPECT_NE(CacheInterface::kAvailable, callback_.state_)
+        << "For key: " << key;
     cache->Query(key, callback_.Reset());
     ASSERT_TRUE(callback_.called_);
-    EXPECT_EQ(CacheInterface::kNotFound, callback_.state_);
+    EXPECT_EQ(CacheInterface::kNotFound, callback_.state_)
+        << "For key: " << key;
     SanityCheck();
   }
 
