@@ -61,7 +61,6 @@ class LRUCache : public CacheInterface {
   // SharedString to Copy-On-Write semantics.
   virtual void Put(const GoogleString& key, SharedString* new_value);
   virtual void Delete(const GoogleString& key);
-  virtual void Query(const GoogleString& key, Callback* callback);
 
   // Total size in bytes of keys and values stored.
   size_t size_bytes() const { return current_bytes_in_cache_; }

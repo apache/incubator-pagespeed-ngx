@@ -45,7 +45,6 @@ class WriteThroughCache : public CacheInterface {
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
-  virtual void Query(const GoogleString& key, Callback* callback);
 
   // By default, all data goes into both cache1 and cache2.  But
   // if you only want to put small items in cache1, you can set the

@@ -54,7 +54,7 @@ class FileCache : public CacheInterface {
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
-  virtual void Query(const GoogleString& key, Callback* callback);
+
   // Attempts to clean the cache.  Returns false if we failed and the
   // cache still needs to be cleaned.  Returns true if everything's
   // fine.  This may take a while.  It's OK for others to write and

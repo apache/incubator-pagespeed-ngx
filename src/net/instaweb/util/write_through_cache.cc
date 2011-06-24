@@ -42,18 +42,16 @@ class WriteThroughCallback : public CacheInterface::Callback {
  public:
   WriteThroughCallback(WriteThroughCache* wtc,
                        const GoogleString& key,
-                       bool is_query,
                        CacheInterface::Callback* callback)
       : write_through_cache_(wtc),
         key_(key),
-        is_query_(is_query),
         callback_(callback),
         trying_cache2_(false) {
   }
 
   virtual void Done(CacheInterface::KeyState state) {
     if (state == CacheInterface::kAvailable) {
-      if (trying_cache2_ && !is_query_) {
+      if (trying_cache2_) {
         write_through_cache_->PutInCache1(key_, value());
       }
       *callback_->value() = *value();
@@ -64,24 +62,19 @@ class WriteThroughCallback : public CacheInterface::Callback {
       delete this;
     } else {
       trying_cache2_ = true;
-      if (is_query_) {
-        write_through_cache_->cache2()->Query(key_, this);
-      } else {
-        write_through_cache_->cache2()->Get(key_, this);
-      }
+      write_through_cache_->cache2()->Get(key_, this);
     }
   }
 
 
   WriteThroughCache* write_through_cache_;
   const GoogleString& key_;
-  bool is_query_;
   CacheInterface::Callback* callback_;
   bool trying_cache2_;
 };
 
 void WriteThroughCache::Get(const GoogleString& key, Callback* callback) {
-  cache1_->Get(key, new WriteThroughCallback(this, key, false, callback));
+  cache1_->Get(key, new WriteThroughCallback(this, key, callback));
 }
 
 void WriteThroughCache::Put(const GoogleString& key, SharedString* value) {
@@ -92,10 +85,6 @@ void WriteThroughCache::Put(const GoogleString& key, SharedString* value) {
 void WriteThroughCache::Delete(const GoogleString& key) {
   cache1_->Delete(key);
   cache2_->Delete(key);
-}
-
-void WriteThroughCache::Query(const GoogleString& key, Callback* callback) {
-  cache1_->Query(key, new WriteThroughCallback(this, key, true, callback));
 }
 
 }  // namespace net_instaweb

@@ -74,8 +74,4 @@ void ThreadsafeCache::Delete(const GoogleString& key) {
   cache_->Delete(key);
 }
 
-void ThreadsafeCache::Query(const GoogleString& key, Callback* callback) {
-  cache_->Query(key, new ThreadsafeCallback(mutex_.get(), key, callback));
-}
-
 }  // namespace net_instaweb

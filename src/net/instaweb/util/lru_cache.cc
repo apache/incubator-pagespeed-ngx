@@ -177,15 +177,6 @@ void LRUCache::SanityCheck() {
   CHECK(count == map_.size());
 }
 
-void LRUCache::Query(const GoogleString& key, Callback* callback) {
-  Map::iterator p = map_.find(key);
-  KeyState state = kNotFound;
-  if (p != map_.end()) {
-    state = kAvailable;
-  }
-  callback->Done(state);
-}
-
 // TODO(jmarantz): consider accounting for overhead for list cells, map
 // cells, string objects, etc.  Currently we are only accounting for the
 // actual characters in the key and value.

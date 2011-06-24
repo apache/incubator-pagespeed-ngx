@@ -53,9 +53,6 @@ class CacheInterface {
   // count is bumped.
   virtual void Put(const GoogleString& key, SharedString* value) = 0;
   virtual void Delete(const GoogleString& key) = 0;
-
-  // TODO(sligocki): Kill Query, it is unused.
-  virtual void Query(const GoogleString& key, Callback* callback) = 0;
 };
 
 }  // namespace net_instaweb

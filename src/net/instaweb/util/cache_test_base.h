@@ -30,7 +30,7 @@ namespace net_instaweb {
 
 class CacheTestBase : public testing::Test {
  public:
-  // Helper class for calling Get and Query methods on cache implementations
+  // Helper class for calling Get on cache implementations
   // that are blocking in nature (e.g. in-memory LRU or blocking file-system).
   class Callback : public CacheInterface::Callback {
    public:
@@ -61,10 +61,6 @@ class CacheTestBase : public testing::Test {
     ASSERT_EQ(CacheInterface::kAvailable, callback_.state_)
         << "For key: " << key;
     EXPECT_EQ(expected_value, **callback_.value()) << "For key: " << key;
-    cache->Query(key, callback_.Reset());
-    ASSERT_TRUE(callback_.called_) << "For key: " << key;
-    ASSERT_EQ(CacheInterface::kAvailable, callback_.state_)
-        << "For key: " << key;
     SanityCheck();
   }
 
@@ -86,10 +82,6 @@ class CacheTestBase : public testing::Test {
     cache->Get(key, callback_.Reset());
     ASSERT_TRUE(callback_.called_);
     EXPECT_NE(CacheInterface::kAvailable, callback_.state_)
-        << "For key: " << key;
-    cache->Query(key, callback_.Reset());
-    ASSERT_TRUE(callback_.called_);
-    EXPECT_EQ(CacheInterface::kNotFound, callback_.state_)
         << "For key: " << key;
     SanityCheck();
   }

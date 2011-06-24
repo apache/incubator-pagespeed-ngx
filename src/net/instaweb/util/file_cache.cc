@@ -137,18 +137,6 @@ bool FileCache::EncodeFilename(const GoogleString& key,
   return true;
 }
 
-void FileCache::Query(const GoogleString& key, Callback* callback) {
-  GoogleString filename;
-  KeyState state = CacheInterface::kNotFound;
-  if (EncodeFilename(key, &filename)) {
-    NullMessageHandler null_handler;
-    if (file_system_->Exists(filename.c_str(), &null_handler).is_true()) {
-      state = CacheInterface::kAvailable;
-    }
-  }
-  callback->Done(state);
-}
-
 bool FileCache::Clean(int64 target_size) {
   StringVector files;
   int64 file_size;

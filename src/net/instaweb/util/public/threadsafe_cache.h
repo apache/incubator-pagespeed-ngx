@@ -45,7 +45,6 @@ class ThreadsafeCache : public CacheInterface {
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
-  virtual void Query(const GoogleString& key, Callback* callback);
 
  private:
   scoped_ptr<CacheInterface> cache_;
