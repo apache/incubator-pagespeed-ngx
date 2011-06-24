@@ -594,7 +594,7 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
                       opencv_image_->nChannels);
     ok = rescaled_image != NULL;
     if (ok) {
-      cvResize(opencv_image_, rescaled_image);
+      cvResize(opencv_image_, rescaled_image, CV_INTER_AREA);
       cvReleaseImage(&opencv_image_);
       opencv_image_ = rescaled_image;
       changed_ = true;
