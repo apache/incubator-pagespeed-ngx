@@ -87,6 +87,15 @@ TEST_P(CssInlineFilterTest, InlineCssSimple) {
                 "", css, true, css);
 }
 
+TEST_P(CssInlineFilterTest, InlineCss404) {
+  // Test to make sure that a missing input is handled well.
+  SetFetchResponse404("404.css");
+  ValidateNoChanges("404", "<link rel=stylesheet href='404.css'>");
+
+  // Second time, to make sure caching doesn't break it.
+  ValidateNoChanges("404", "<link rel=stylesheet href='404.css'>");
+}
+
 TEST_P(CssInlineFilterTest, InlineCssCached) {
   // Doing it twice should be safe, too.
   const GoogleString css = "BODY { color: red; }\n";

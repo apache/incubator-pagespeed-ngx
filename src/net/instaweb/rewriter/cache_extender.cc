@@ -155,11 +155,6 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
   }
 }
 
-void CacheExtender::Flush() {
-  // Temporary hack until everything is ported.
-  driver_->Render();
-}
-
 // Just based on the pattern of the URL, see if we think this was
 // already the result of a rewrite.  It should, in general, be
 // functionally correct to apply a new filter to an

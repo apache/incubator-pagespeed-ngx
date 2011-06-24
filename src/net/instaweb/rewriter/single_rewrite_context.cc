@@ -71,8 +71,9 @@ void SingleRewriteContext::Rewrite(int partition_index,
   CHECK(resource.get() != NULL);
   CHECK(resource->loaded());
   CHECK(resource->ContentsValid());
-  CHECK(output_resource.get() != NULL);
-  output_resource->set_cached_result(partition->mutable_result());
+  if (output_resource.get() != NULL) {
+    output_resource->set_cached_result(partition->mutable_result());
+  }
   RewriteSingle(resource, output_resource);
 }
 

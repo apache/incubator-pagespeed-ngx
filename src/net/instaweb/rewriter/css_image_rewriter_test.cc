@@ -19,6 +19,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -30,6 +31,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -54,6 +56,27 @@ class CssImageRewriterTest : public CssRewriteTestBase {
     CssRewriteTestBase::SetUp();
   }
 };
+
+TEST_P(CssImageRewriterTest, CacheExtendsImagesSimple) {
+  // Simplified version of CacheExtendsImages, which doesn't have many copies of
+  // the same URL.
+  InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
+
+  static const char css_before[] =
+      "body {\n"
+      "  background-image: url(foo.png);\n"
+      "}\n";
+  static const char css_after[] =
+      "body{background-image:url(http://test.com/foo.png.pagespeed.ce.0.png)}";
+
+  ValidateRewriteInlineCss("cache_extends_images-inline",
+                           css_before, css_after,
+                           kExpectChange | kExpectSuccess);
+  ValidateRewriteExternalCss("cache_extends_images-external",
+                             css_before, css_after,
+                             kExpectChange | kExpectSuccess |
+                             kNoOtherContexts | kNoClearFetcher);
+}
 
 TEST_P(CssImageRewriterTest, CacheExtendsImages) {
   CSS_XFAIL_ASYNC();
@@ -114,6 +137,79 @@ TEST_P(CssImageRewriterTest, TrimsImageUrls) {
   ValidateRewriteExternalCss("trims_css_urls", kCss, kCssAfter,
                               kExpectChange | kExpectSuccess |
                               kNoOtherContexts | kNoClearFetcher);
+}
+
+TEST_P(CssImageRewriterTest, InlinePaths) {
+  // Make sure we properly handle CSS relative references when we have the same
+  // inline CSS in different places. This is also a regression test for a bug
+  // during development of async + inline case which caused us to do
+  // null rewrites from cache.
+  options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
+  InitResponseHeaders("dir/foo.png", kContentTypePng, kImageData, 100);
+
+  static const char kCssBefore[] =
+      "body {\n"
+      "  background-image: url(http://test.com/dir/foo.png);\n"
+      "}\n";
+
+  static const char kCssAfter[] =
+      "body{background-image:url(dir/foo.png.pagespeed.ce.0.png)}";
+  ValidateRewriteInlineCss("nosubdir",
+                           kCssBefore, kCssAfter,
+                           kExpectChange | kExpectSuccess);
+
+  static const char kCssAfterRel[] =
+      "body{background-image:url(foo.png.pagespeed.ce.0.png)}";
+  ValidateRewriteInlineCss("dir/yessubdir",
+                           kCssBefore, kCssAfterRel,
+                           kExpectChange | kExpectSuccess);
+}
+
+TEST_P(CssImageRewriterTest, RewriteCached) {
+  // Make sure we produce the same output from cache.
+  options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
+  InitResponseHeaders("dir/foo.png", kContentTypePng, kImageData, 100);
+
+  static const char kCssBefore[] =
+      "body {\n"
+      "  background-image: url(http://test.com/dir/foo.png);\n"
+      "}\n";
+
+  static const char kCssAfter[] =
+      "body{background-image:url(dir/foo.png.pagespeed.ce.0.png)}";
+  ValidateRewriteInlineCss("nosubdir",
+                           kCssBefore, kCssAfter,
+                           kExpectChange | kExpectSuccess);
+
+  statistics()->Clear();
+  ValidateRewriteInlineCss("nosubdir2",
+                           kCssBefore, kCssAfter,
+                           kExpectChange | kExpectSuccess | kNoStatCheck);
+  // Should not re-serialize. Works only under the new flow...
+  if (rewrite_driver()->asynchronous_rewrites()) {
+    EXPECT_EQ(
+        0, statistics()->GetVariable(CssFilter::kMinifiedBytesSaved)->Get());
+  }
+}
+
+TEST_P(CssImageRewriterTest, CacheInlineParseFailures) {
+  const char kInvalidCss[] = " div{";
+
+  Variable* num_parse_failures =
+      statistics()->GetVariable(CssFilter::kParseFailures);
+
+  ValidateRewriteInlineCss("inline-invalid", kInvalidCss, kInvalidCss,
+                           kExpectNoChange | kExpectFailure | kNoOtherContexts);
+  EXPECT_EQ(1, num_parse_failures->Get());
+
+  // This works properly only under new flow...
+  if (rewrite_driver()->asynchronous_rewrites()) {
+    ValidateRewriteInlineCss(
+        "inline-invalid2", kInvalidCss, kInvalidCss,
+        kExpectNoChange | kExpectFailure | kNoOtherContexts | kNoStatCheck);
+    // Shouldn't reparse -- and stats are reset between runs.
+    EXPECT_EQ(0, num_parse_failures->Get());
+  }
 }
 
 TEST_P(CssImageRewriterTest, RecompressImages) {

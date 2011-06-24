@@ -175,11 +175,6 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
   }
 }
 
-void CssInlineFilter::Flush() {
-  // Temporary hack until everything is ported.
-  driver_->Render();
-}
-
 bool CssInlineFilter::HasAsyncFlow() const {
   return driver_->asynchronous_rewrites();
 }

@@ -109,8 +109,12 @@ void ImageRewriteFilter::Context::RewriteSingle(
 }
 
 void ImageRewriteFilter::Context::Render() {
+  if (num_output_partitions() != 1) {
+    // Partition failed since one of the inputs was unavailable; nothing to do.
+    return;
+  }
+
   CHECK(num_slots() == 1);
-  CHECK(num_output_partitions() == 1);
   CHECK(output_partition(0)->has_result());
 
   // We use automatic rendering for CSS, as we merely write out the improved

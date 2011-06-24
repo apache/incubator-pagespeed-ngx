@@ -134,6 +134,15 @@ TEST_P(JavascriptFilterTest, InvalidInputMimetype) {
                        kTestDomain, kNotJsFile, ".pagespeed.jm.0.js").c_str()));
 }
 
+TEST_P(JavascriptFilterTest, RewriteJs404) {
+  // Test to make sure that a missing input is handled well.
+  SetFetchResponse404("404.js");
+  ValidateNoChanges("404", "<script src='404.js'></script>");
+
+  // Second time, to make sure caching doesn't break it.
+  ValidateNoChanges("404", "<script src='404.js'></script>");
+}
+
 // Make sure bad requests do not corrupt our extension.
 TEST_P(JavascriptFilterTest, NoExtensionCorruption) {
   TestCorruptUrl("%22", false);

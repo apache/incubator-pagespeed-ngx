@@ -29,7 +29,6 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -150,7 +149,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
     MockResource(kTestPiece3, "pie3", 30000);
     MockResource(kPathPiece, "path", 30000);
     MockResource(kVetoPiece, kVetoText, 30000);
-    MockMissingResource(kNoSuchPiece);
+    SetFetchResponse404(kNoSuchPiece);
 
     partnership_ = filter_->combiner();
   }
@@ -162,15 +161,6 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
   // Create a resource with given data and TTL
   void MockResource(const char* rel_path, const StringPiece& data, int64 ttl) {
     InitResponseHeaders(rel_path, kContentTypeText, data, ttl);
-  }
-
-  // Creates a resource that 404s
-  void MockMissingResource(const char* rel_path) {
-    ResponseHeaders response_headers;
-    SetDefaultLongCacheHeaders(&kContentTypeText, &response_headers);
-    response_headers.SetStatusAndReason(HttpStatus::kNotFound);
-    SetFetchResponse(AbsoluteUrl(rel_path), response_headers,
-                     StringPiece());
   }
 
   enum FetchFlags {

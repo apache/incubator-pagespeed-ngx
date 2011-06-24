@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -46,13 +47,14 @@ class CssImageRewriter;
 class CssImageRewriterAsync;
 class CacheExtender;
 class HtmlCharactersNode;
-class HtmlElement;
 class ImageCombineFilter;
 class ImageRewriteFilter;
 class MessageHandler;
+class OutputPartitions;
 class RewriteContext;
 class RewriteDriver;
 class Statistics;
+class UrlSegmentEncoder;
 class Variable;
 
 // Find and parse all CSS in the page and apply transformations including:
@@ -75,6 +77,7 @@ class CssFilter : public RewriteSingleResourceFilter {
             CacheExtender* cache_extender,
             ImageRewriteFilter* image_rewriter,
             ImageCombineFilter* image_combiner);
+  virtual ~CssFilter();
 
   static void Initialize(Statistics* statistics);
   static void Terminate();
@@ -102,6 +105,7 @@ class CssFilter : public RewriteSingleResourceFilter {
 
  private:
   friend class Context;
+  Context* MakeContext();
 
   TimedBool RewriteCssText(Context* context,
                            const GoogleUrl& css_gurl,
@@ -120,12 +124,6 @@ class CssFilter : public RewriteSingleResourceFilter {
                     MessageHandler* handler);
 
   virtual RewriteResult RewriteLoadedResource(
-      const ResourcePtr& input_resource,
-      const OutputResourcePtr& output_resource);
-
-  // Here context may be null for now, if we're in a sync flow.
-  RewriteResult DoRewriteLoadedResource(
-      Context* context,
       const ResourcePtr& input_resource,
       const OutputResourcePtr& output_resource);
 
@@ -165,9 +163,18 @@ class CssFilter::Context : public SingleRewriteContext {
           ImageCombineFilter* image_combiner);
   virtual ~Context();
 
+  // Starts the asynchronous rewrite process for inline CSS inside
+  // given style_element, with text in text.
+  // Takes over the ownership of 'this'.
+  void StartInlineRewrite(HtmlElement* style_element, HtmlCharactersNode* text);
+
+  // Starts the asynchronous rewrite process for external CSS reference to
+  // by attribute 'src' of 'link'.
+  // Takes over the ownership of 'this'
+  void StartExternalRewrite(HtmlElement* link, HtmlElement::Attribute* src);
+
   // Starts nested rewrite jobs for any images contained in the CSS.
-  void RewriteImages(int64 in_text_size, const GoogleUrl& css_gurl,
-                     Css::Stylesheet* stylesheet);
+  void RewriteImages(int64 in_text_size, Css::Stylesheet* stylesheet);
 
   // Registers a context that was started on our behalf.
   void RegisterNested(RewriteContext* nested);
@@ -177,10 +184,13 @@ class CssFilter::Context : public SingleRewriteContext {
  protected:
   virtual void Render();
   virtual void Harvest();
+  virtual bool Partition(OutputPartitions* partitions,
+                         OutputResourceVector* outputs);
   virtual void RewriteSingle(const ResourcePtr& input,
                              const OutputResourcePtr& output);
   virtual const char* id() const { return filter_->id().c_str(); }
   virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
+  virtual const UrlSegmentEncoder* encoder() const;
 
  private:
   CssFilter* filter_;
@@ -188,19 +198,23 @@ class CssFilter::Context : public SingleRewriteContext {
   scoped_ptr<CssImageRewriterAsync> image_rewriter_;
   CssResourceSlotFactory slot_factory_;
 
-  // If this is true, we have asked image_rewriter_ to look at inner context,
-  // making it potentially initiate nested rewrites. In that case, we do not
-  // want to finish the rewrite just yet.
-  bool may_need_nested_rewrites_;
-
-  // If this is true, the image_rewriter_ has actually asked us to start nested
-  // rewrites.
+  // If this is true, the image_rewriter_ has asked us to start nested rewrites.
   bool have_nested_rewrites_;
+
+  // Style element containing inline CSS, or NULL if we're rewriting external
+  // stuff.
+  HtmlElement* rewrite_inline_element_;
+
+  // Node with inline CSS to rewrite, or NULL if we're rewriting external stuff.
+  HtmlCharactersNode* rewrite_inline_char_node_;
+
+  // If we rewrite inline CSS, we use a custom encoder to name our key.
+  scoped_ptr<UrlSegmentEncoder> inline_css_key_encoder_;
 
   // Information needed for nested rewrites or finishing up serialization.
   int64 in_text_size_;
   scoped_ptr<Css::Stylesheet> stylesheet_;
-  GoogleUrl css_gurl_;
+  GoogleUrl css_base_gurl_;
   ResourcePtr input_resource_;
   OutputResourcePtr output_resource_;
 

@@ -95,9 +95,17 @@ message CachedResult {
   // represented by ResourceContext below.
   optional ImageDim image_file_dims = 11;
 
-  // If a filter decides to inline the input, it will store its contents here.
+  // Filters that produce inlined data --- either due to inlining an external
+  // resource or rewriting one that's already inline --- use this field to
+  // cache either their input or the output.
+  //
+  // The input is cached in filters that have very cheap rewrites, and
+  // vary the output based on things like the base URL. Output is cached
+  // when the rewrite is expensive, with different base URLs being instead
+  // incorporated into the key.
+  //
   // In case of images, this is the base64-encoded data: URI; in other cases
-  // it's the original text.
+  // it's the raw data.
   optional string inlined_data = 12;
 
   // The result of a spriting operation, containing x/y coordinates for each

@@ -454,6 +454,16 @@ TEST_P(ImageRewriteTest, FetchInvalid) {
           "http://www.example.com/70x53x,.pagespeed.ic.ABCDEFGHIJ.jpg", &out));
 }
 
+TEST_P(ImageRewriteTest, Rewrite404) {
+  // Make sure we don't fail when rewriting with invalid input.
+  SetFetchResponse404("404.jpg");
+  AddFilter(RewriteOptions::kRecompressImages);
+  ValidateNoChanges("404", "<img src='404.jpg'>");
+
+  // Try again to exercise cached case.
+  ValidateNoChanges("404", "<img src='404.jpg'>");
+}
+
 TEST_P(ImageRewriteTest, NoExtensionCorruption) {
   TestCorruptUrl("%22", false);
 }

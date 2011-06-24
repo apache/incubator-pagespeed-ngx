@@ -24,6 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -71,7 +72,6 @@
 
 namespace net_instaweb {
 
-struct ContentType;
 class MessageHandler;
 
 const char ResourceManagerTestBase::kTestData[] =
@@ -331,18 +331,24 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   new_resource_manager.ShutDownWorker();
 }
 
-// Initializes a resource for mock fetching.
-void ResourceManagerTestBase::InitResponseHeaders(
-    const StringPiece& resource_name,
-    const ContentType& content_type,
-    const StringPiece& content,
-    int64 ttl_sec) {
+GoogleString ResourceManagerTestBase::AbsolutifyUrl(
+    const StringPiece& resource_name) {
   GoogleString name;
   if (resource_name.starts_with("http://")) {
     resource_name.CopyToString(&name);
   } else {
     name = StrCat(kTestDomain, resource_name);
   }
+  return name;
+}
+
+// Initializes a resource for mock fetching.
+void ResourceManagerTestBase::InitResponseHeaders(
+    const StringPiece& resource_name,
+    const ContentType& content_type,
+    const StringPiece& content,
+    int64 ttl_sec) {
+  GoogleString name = AbsolutifyUrl(resource_name);
   ResponseHeaders response_headers;
   SetDefaultLongCacheHeaders(&content_type, &response_headers);
   response_headers.Replace(HttpAttributes::kCacheControl,
@@ -350,6 +356,15 @@ void ResourceManagerTestBase::InitResponseHeaders(
                                   Integer64ToString(ttl_sec)));
   response_headers.ComputeCaching();
   SetFetchResponse(name, response_headers, content);
+}
+
+void ResourceManagerTestBase::SetFetchResponse404(
+    const StringPiece& resource_name) {
+  GoogleString name = AbsolutifyUrl(resource_name);
+  ResponseHeaders response_headers;
+  SetDefaultLongCacheHeaders(&kContentTypeText, &response_headers);
+  response_headers.SetStatusAndReason(HttpStatus::kNotFound);
+  SetFetchResponse(name, response_headers, StringPiece());
 }
 
 void ResourceManagerTestBase::AddFileToMockFetcher(

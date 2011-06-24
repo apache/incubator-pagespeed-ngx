@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
 #include "net/instaweb/rewriter/public/css_image_rewriter_async.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
+#include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
@@ -41,13 +42,18 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/url_escaper.h"
+#include "net/instaweb/util/public/url_segment_encoder.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/parser.h"
 
@@ -70,6 +76,64 @@ namespace {
 
 const char kStylesheet[] = "stylesheet";
 
+// A slot we use when rewriting inline CSS --- there is no place or need
+// to write out an output URL, so it has a no-op Render().
+class InlineCssSlot : public ResourceSlot {
+ public:
+  explicit InlineCssSlot(const ResourcePtr& resource)
+      : ResourceSlot(resource) {}
+  virtual ~InlineCssSlot() {}
+  virtual void Render() {}
+ private:
+  DISALLOW_COPY_AND_ASSIGN(InlineCssSlot);
+};
+
+// While we use data: URLs for describing input to rewrites of inline CSS,
+// using them for cache keys would be both inefficient (as they may be quite
+// long) and incorrect, as we can't cache the same rewritten inline CSS
+// across different base paths. Further, our output may also depend on
+// some of the options.
+//
+// To help with that, we use a custom encoder to name our key, shortening
+// the data portion via a hash, and incorporating the base URL and some
+// of the settings.
+class InlineCssUrlEncoder : public UrlSegmentEncoder {
+ public:
+  InlineCssUrlEncoder(const GoogleUrl& css_base_gurl, RewriteDriver* driver)
+      : driver_(driver) {
+    css_base_gurl.AllExceptLeaf().CopyToString(&base_dir_);
+  }
+
+  virtual ~InlineCssUrlEncoder() {}
+
+  virtual void Encode(const StringVector& urls,  const ResourceContext* data,
+                      GoogleString* url_segment) const {
+    DCHECK_EQ(1U, urls.size());
+
+    MD5Hasher hasher;
+    GoogleString key =
+      StrCat("data-key:", hasher.Hash(urls[0]), "@", base_dir_,
+             driver_->options()->always_rewrite_css() ? "A" : "m",
+             driver_->doctype().IsXhtml() ? "X" : "h");
+    UrlEscaper::EncodeToUrlSegment(key, url_segment);
+  }
+
+  virtual bool Decode(const StringPiece& url_segment,
+                      StringVector* urls, ResourceContext* out_data,
+                      MessageHandler* handler) const {
+    // We should never be created to handle output URLs (since we are made
+    // to rewrite inline things), so this should never be called.
+    CHECK(false);
+    return false;
+  }
+
+ private:
+  GoogleString base_dir_;
+  RewriteDriver* driver_;
+
+  DISALLOW_COPY_AND_ASSIGN(InlineCssUrlEncoder);
+};
+
 }  // namespace
 
 // Statistics variable names.
@@ -88,8 +152,9 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       image_rewriter_(
           new CssImageRewriterAsync(
               this, driver, cache_extender, image_rewriter, image_combiner)),
-      may_need_nested_rewrites_(false),
       have_nested_rewrites_(false),
+      rewrite_inline_element_(NULL),
+      rewrite_inline_char_node_(NULL),
       in_text_size_(-1) {
 }
 
@@ -97,6 +162,50 @@ CssFilter::Context::~Context() {
 }
 
 void CssFilter::Context::Render() {
+  if (num_output_partitions() == 0) {
+    return;
+  }
+
+  const CachedResult& result = output_partition(0)->result();
+  if (rewrite_inline_char_node_ != NULL && result.optimizable()) {
+    HtmlCharactersNode* new_style_char_node =
+        driver_->NewCharactersNode(rewrite_inline_element_,
+                                   result.inlined_data());
+    driver_->ReplaceNode(rewrite_inline_char_node_, new_style_char_node);
+  }
+}
+
+void CssFilter::Context::StartInlineRewrite(HtmlElement* style_element,
+                                            HtmlCharactersNode* text) {
+  // To handle nested rewrites of inline CSS, we internally handle it
+  // as a rewrite of a data: URL.
+  css_base_gurl_.Reset(driver_->base_url());
+  rewrite_inline_element_ = style_element;
+  rewrite_inline_char_node_ = text;
+  inline_css_key_encoder_.reset(
+      new InlineCssUrlEncoder(css_base_gurl_, Driver()));
+
+  GoogleString data_url;
+  // TODO(morlovich): This does a lot of useless conversions and
+  // copying. Get rid of them.
+  DataUrl(kContentTypeCss, PLAIN, text->contents(), &data_url);
+  ResourcePtr input_resource(DataUrlInputResource::Make(data_url, Manager()));
+  ResourceSlotPtr slot(new InlineCssSlot(input_resource));
+  AddSlot(slot);
+  driver_->InitiateRewrite(this);
+}
+
+void CssFilter::Context::StartExternalRewrite(HtmlElement* link,
+                                              HtmlElement::Attribute* src) {
+  ResourcePtr input_resource(filter_->CreateInputResource(src->value()));
+  if (input_resource.get() != NULL) {
+    css_base_gurl_.Reset(input_resource->url());
+    ResourceSlotPtr slot(driver_->GetSlot(input_resource, link, src));
+    AddSlot(slot);
+    driver_->InitiateRewrite(this);
+  } else {
+    delete this;
+  }
 }
 
 void CssFilter::Context::RewriteSingle(
@@ -104,29 +213,38 @@ void CssFilter::Context::RewriteSingle(
     const OutputResourcePtr& output_resource) {
   input_resource_ = input_resource;
   output_resource_ = output_resource;
-  RewriteResult result =
-      filter_->DoRewriteLoadedResource(this, input_resource, output_resource);
-  if (may_need_nested_rewrites_) {
+
+  TimedBool result = filter_->RewriteCssText(
+      this, css_base_gurl_, input_resource->contents(),
+      NULL /* out_text --- not written in RewriteCssText in async case */,
+      driver_->message_handler());
+
+  if (result.value) {
     if (have_nested_rewrites_) {
       StartNestedTasks();
     } else {
-      // Just call harvest ourselves so we can centralize all the output there.
+      // We call Harvest() ourselves so we can centralize all the output there.
       Harvest();
     }
   } else {
-    RewriteDone(result, 0);
+    RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+  }
+}
+
+const UrlSegmentEncoder* CssFilter::Context::encoder() const {
+  if (inline_css_key_encoder_.get() != NULL) {
+    return inline_css_key_encoder_.get();
+  } else {
+    return SingleRewriteContext::encoder();
   }
 }
 
 void CssFilter::Context::RewriteImages(int64 in_text_size,
-                                       const GoogleUrl& css_gurl,
                                        Css::Stylesheet* stylesheet) {
-  may_need_nested_rewrites_ = true;
   in_text_size_ = in_text_size;
   stylesheet_.reset(stylesheet);
-  css_gurl_.Reset(css_gurl);
 
-  image_rewriter_->RewriteCssImages(css_gurl, stylesheet,
+  image_rewriter_->RewriteCssImages(css_base_gurl_, stylesheet,
                                     driver_->message_handler());
 }
 
@@ -137,22 +255,43 @@ void CssFilter::Context::RegisterNested(RewriteContext* nested) {
 
 void CssFilter::Context::Harvest() {
   GoogleString out_text;
-  bool ok = filter_->SerializeCss(in_text_size_, stylesheet_.get(), css_gurl_,
-                                  false /*TODO*/, &out_text,
-                                  driver_->message_handler());
+  // TODO(morlovich): Propagate whether we previously optimized properly
+  // from the nested rewrites.
+  bool ok = filter_->SerializeCss(
+      in_text_size_, stylesheet_.get(), css_base_gurl_,
+      false /* previously_optimized */, &out_text,
+      driver_->message_handler());
   if (ok) {
-    // TODO(morlovich): Incorporate time from nested rewrites.
-    int64 expire_ms = input_resource_->CacheExpirationTimeMs();
-    output_resource_->SetType(&kContentTypeCss);
-    ok = Manager()->Write(HttpStatus::kOK, out_text,
-                          output_resource_.get(),
-                          expire_ms, Driver()->message_handler());
+    if (rewrite_inline_char_node_ == NULL) {
+      // TODO(morlovich): Incorporate time from nested rewrites.
+      int64 expire_ms = input_resource_->CacheExpirationTimeMs();
+      output_resource_->SetType(&kContentTypeCss);
+      ok = Manager()->Write(HttpStatus::kOK, out_text,
+                            output_resource_.get(),
+                            expire_ms, Driver()->message_handler());
+    } else {
+      output_partition(0)->mutable_result()->set_inlined_data(out_text);
+    }
   }
 
   if (ok) {
     RewriteDone(RewriteSingleResourceFilter::kRewriteOk, 0);
   } else {
     RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+  }
+}
+
+bool CssFilter::Context::Partition(OutputPartitions* partitions,
+                                   OutputResourceVector* outputs) {
+  if (rewrite_inline_char_node_ == NULL) {
+    return SingleRewriteContext::Partition(partitions, outputs);
+  } else {
+    // In case where we're rewriting inline CSS, we don't want an output
+    // resource but still want a non-trivial partition.
+    OutputPartition* partition = partitions->add_partition();
+    slot(0)->resource()->AddInputInfoToPartition(0, partition);
+    outputs->push_back(OutputResourcePtr(NULL));
+    return true;
   }
 }
 
@@ -177,6 +316,8 @@ CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix,
     num_parse_failures_ = stats->GetVariable(CssFilter::kParseFailures);
   }
 }
+
+CssFilter::~CssFilter() {}
 
 int CssFilter::FilterCacheFormatVersion() const {
   return 1;
@@ -242,11 +383,13 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
     if (driver_->IsRewritable(element) && style_char_node_ != NULL) {
       CHECK(element == style_char_node_->parent());  // Sanity check.
       GoogleString new_content;
-      // TODO(morlovich): Figure out what our context should look like when
-      // recursing into inline stuff!
-      if (RewriteCssText(NULL, driver_->base_url(),
-                         style_char_node_->contents(), &new_content,
-                         driver_->message_handler()).value) {
+
+      if (HasAsyncFlow()) {
+        Context* context = MakeContext();
+        context->StartInlineRewrite(element, style_char_node_);
+      } else if (RewriteCssText(NULL /* no async context*/, driver_->base_url(),
+                                style_char_node_->contents(), &new_content,
+                                driver_->message_handler()).value) {
         // Note: Copy of new_content here.
         HtmlCharactersNode* new_style_char_node =
             driver_->NewCharactersNode(element, new_content);
@@ -265,17 +408,8 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
       if (element_href != NULL) {
         // If it has a href= attribute
         if (HasAsyncFlow()) {
-          ResourcePtr input_resource(
-              CreateInputResource(element_href->value()));
-          if (input_resource.get() != NULL) {
-            ResourceSlotPtr slot(
-                driver_->GetSlot(input_resource, element, element_href));
-            Context* context =
-                new Context(this, driver_, cache_extender_,
-                            image_rewrite_filter_, image_combiner_);
-            context->AddSlot(slot);
-            driver_->InitiateRewrite(context);
-          }
+          Context* context = MakeContext();
+          context->StartExternalRewrite(element, element_href);
         } else {
           GoogleString new_url;
           if (RewriteExternalCss(element_href->value(), &new_url)) {
@@ -322,31 +456,20 @@ TimedBool CssFilter::RewriteCssText(Context* context,
     num_parse_failures_->Add(1);
   } else {
     // Edit stylesheet.
-    bool previously_optimized = false;
     if (HasAsyncFlow()) {
-      // TODO(morlovich): Figure out the nested-rewrites in inline context
-      // case, which currently corresponds to context = NULL here.
-      if (context != NULL) {
-        // Start out any nested rewrite tasks
-        context->RewriteImages(in_text_size,
-                               css_gurl,
-                               stylesheet.release());
-        // Don't want to write out now, will finish it asynchronously, or
-        // in Context::RewriteSingle.
-        ret.value = false;
-        return ret;
-      } else {
-        previously_optimized = false;
-      }
+      // Start any nested rewrite tasks
+      context->RewriteImages(in_text_size, stylesheet.release());
+
+      // Rewrite OK thus far.
+      ret.value = true;
+      return ret;
     } else {
       TimedBool result = image_rewriter_->RewriteCssImages(
                              css_gurl, stylesheet.get(), handler);
       ret.expiration_ms = result.expiration_ms;
-      previously_optimized = result.value;
+      ret.value = SerializeCss(in_text_size, stylesheet.get(), css_gurl,
+                               result.value, out_text, handler);
     }
-
-    ret.value = SerializeCss(in_text_size, stylesheet.get(), css_gurl,
-                             previously_optimized, out_text, handler);
   }
   return ret;
 }
@@ -476,13 +599,6 @@ bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
 RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
-  return DoRewriteLoadedResource(NULL, input_resource, output_resource);
-}
-
-RewriteSingleResourceFilter::RewriteResult CssFilter::DoRewriteLoadedResource(
-    Context* context,
-    const ResourcePtr& input_resource,
-    const OutputResourcePtr& output_resource) {
   CHECK(input_resource->loaded());
   bool ret = false;
   if (input_resource->ContentsValid()) {
@@ -492,9 +608,9 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::DoRewriteLoadedResource(
     // TODO(sligocki): Store the GURL in the input_resource.
     GoogleUrl css_gurl(input_resource->url());
     if (css_gurl.is_valid()) {
-      TimedBool result = RewriteCssText(context, css_gurl, in_contents,
-                                        &out_contents,
-                                        driver_->message_handler());
+      TimedBool result = RewriteCssText(
+          NULL /* no context*/, css_gurl, in_contents, &out_contents,
+          driver_->message_handler());
       if (result.value) {
         // Write new stylesheet.
         int64 expire_ms = std::min(result.expiration_ms,
@@ -517,9 +633,13 @@ bool CssFilter::HasAsyncFlow() const {
   return driver_->asynchronous_rewrites();
 }
 
-RewriteContext* CssFilter::MakeRewriteContext() {
+CssFilter::Context* CssFilter::MakeContext() {
   return new Context(this, driver_, cache_extender_,
                      image_rewrite_filter_, image_combiner_);
+}
+
+RewriteContext* CssFilter::MakeRewriteContext() {
+  return MakeContext();
 }
 
 }  // namespace net_instaweb

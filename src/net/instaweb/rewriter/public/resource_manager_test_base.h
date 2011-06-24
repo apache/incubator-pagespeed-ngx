@@ -242,6 +242,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                         const StringPiece& response_body) {
     mock_url_fetcher_.SetResponse(url, response_header, response_body);
   }
+
+  void SetFetchResponse404(const StringPiece& url);
+
   void SetFetchFailOnUnexpected(bool fail) {
     mock_url_fetcher_.set_fail_on_unexpected(fail);
   }
@@ -290,6 +293,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // with async rewrite flows given driver.
   void CallFetcherCallbacksForDriver(WaitUrlAsyncFetcher* fetcher,
                                      RewriteDriver* driver);
+
+  // Converts a potentially relative URL off kTestDomain to absolute if needed.
+  GoogleString AbsolutifyUrl(const StringPiece& in);
 
   MockUrlFetcher mock_url_fetcher_;
   FakeUrlAsyncFetcher mock_url_async_fetcher_;

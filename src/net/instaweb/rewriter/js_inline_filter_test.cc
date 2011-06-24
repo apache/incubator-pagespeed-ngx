@@ -194,6 +194,16 @@ TEST_P(JsInlineFilterTest, CachedRewrite) {
   TestInlineJavascript(kPageUrl, kJsUrl, kNothingInsideScript, kJs, true);
 }
 
+TEST_P(JsInlineFilterTest, InlineJs404) {
+  // Test to make sure that a missing input is handled well.
+  SetFetchResponse404("404.js");
+  AddFilter(RewriteOptions::kInlineJavascript);
+  ValidateNoChanges("404", "<script src='404.js'></script>");
+
+  // Second time, to make sure caching doesn't break it.
+  ValidateNoChanges("404", "<script src='404.js'></script>");
+}
+
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(JsInlineFilterTestInstance,
                         JsInlineFilterTest,

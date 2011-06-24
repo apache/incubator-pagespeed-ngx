@@ -417,6 +417,7 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
 // file- and URL-based resources differently as far as cacheability, etc.
 // Specifically, we are now making a cache request for file-based resources
 // which will always fail, for FileInputResources, we should just Load them.
+// TODO(morlovich): Should this load non-cacheable + non-loaded resources?
 void ResourceManager::ReadAsync(Resource::AsyncCallback* callback) {
   // If the resource is not already loaded, and this type of resource (e.g.
   // URL vs File vs Data) is cacheable, then try to load it.

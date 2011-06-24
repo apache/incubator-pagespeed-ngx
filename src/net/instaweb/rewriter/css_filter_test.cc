@@ -44,6 +44,15 @@ TEST_P(CssFilterTest, SimpleRewriteCssTest) {
   ValidateRewrite("rewrite_css", input_style, output_style);
 }
 
+TEST_P(CssFilterTest, RewriteCss404) {
+  // Test to make sure that a missing input is handled well.
+  SetFetchResponse404("404.css");
+  ValidateNoChanges("404", "<link rel=stylesheet href='404.css'>");
+
+  // Second time, to make sure caching doesn't break it.
+  ValidateNoChanges("404", "<link rel=stylesheet href='404.css'>");
+}
+
 TEST_P(CssFilterTest, UrlTooLong) {
   // Make the filename maximum size, so we cannot rewrite it.
   // -4 because .css will be appended.

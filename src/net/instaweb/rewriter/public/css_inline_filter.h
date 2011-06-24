@@ -41,7 +41,6 @@ class CssInlineFilter : public CommonFilter {
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "InlineCss"; }
-  virtual void Flush();
   virtual bool HasAsyncFlow() const;
 
  private:

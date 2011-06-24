@@ -45,7 +45,6 @@ class JsInlineFilter : public CommonFilter {
   virtual void Characters(HtmlCharactersNode* characters);
   virtual const char* Name() const { return "InlineJs"; }
   virtual bool HasAsyncFlow() const;
-  virtual void Flush();
 
  private:
   class Context;
