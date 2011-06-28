@@ -575,6 +575,11 @@ echo $WGET_DUMP $URL
 $WGET_DUMP $URL | grep -q "<style>"
 check [ $? != 0 ]
 
+# Error path for fetch of outlined resources that are not in cache leaked
+# at one point of development.
+echo TEST: regression test for RewriteDriver leak
+$WGET -O /dev/null -o /dev/null $TEST_ROOT/_.pagespeed.jo.3tPymVdi9b.js
+
 # Cleanup
 rm -rf $OUTDIR
 echo "PASS."

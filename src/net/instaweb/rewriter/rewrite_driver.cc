@@ -775,6 +775,7 @@ class CacheCallback : public HTTPCache::Callback {
                              callback_);
         } else {
           callback_->Done(false);
+          driver_->FetchComplete();
         }
       }
       delete this;
@@ -786,6 +787,7 @@ class CacheCallback : public HTTPCache::Callback {
     } else {
       LOG(DFATAL) << "Failed to grab lock despite having passed kMayBlock";
       callback_->Done(false);
+      driver_->FetchComplete();
       delete this;
     }
   }

@@ -125,6 +125,9 @@ class RewriteContext {
   // of async cache-lookups &/or fetches.
   void AddSlot(const ResourceSlotPtr& slot);
 
+  // Remove the slot at i from the context's slot list.
+  void RemoveSlot(int i);
+
   // Starts a resource rewrite.  Once Inititated, the Rewrite object
   // should only be accessed from the Rewrite thread, until it
   // Completes, at which point top-level Contexts will call
@@ -217,8 +220,6 @@ class RewriteContext {
   bool CreateOutputResourceForCachedOutput(const StringPiece& url,
                                            const ContentType* content_type,
                                            OutputResourcePtr* output_resource);
-
-  // The next set of methods must be implemented by subclasses:
 
   // Partitions the input resources into one or more outputs.  Return
   // 'true' if the partitioning could complete (whether a rewrite was
