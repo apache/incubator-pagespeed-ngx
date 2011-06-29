@@ -104,7 +104,7 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     int64 now_ms = now_us / 1000;
     ResponseHeaders* headers = callback_->response_headers();
     if ((state == CacheInterface::kAvailable) &&
-        (callback_->http_value()->Link(value(), headers, handler_)) &&
+        callback_->http_value()->Link(value(), headers, handler_) &&
         http_cache_->IsCurrentlyValid(*headers, now_ms)) {
       if (headers->status_code() == HttpStatus::kRememberNotFoundStatusCode) {
         int64 remember_not_found_time_ms = headers->CacheExpirationTimeMs()

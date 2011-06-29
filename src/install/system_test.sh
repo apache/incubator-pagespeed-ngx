@@ -2,14 +2,13 @@
 # Copyright 2010 Google Inc. All Rights Reserved.
 # Author: abliss@google.com (Adam Bliss)
 #
-# Usage: ./system_test.sh HOSTNAME
 # Tests a mod_pagespeed installation by fetching and verifying all the examples.
 # Exits with status 0 if all tests pass.  Exits 1 immediately if any test fails.
 # Expects APACHE_DEBUG_PAGESPEED_CONF to point to our config file,
 # APACHE_LOG to the log file
 
-if [ $# != 1 ]; then
-  echo Usage: ./system_test.sh HOSTNAME
+if [ $# < 1 or $# > 2 ]; then
+  echo Usage: ./system_test.sh HOSTNAME [PROXY_HOST]
   exit 2
 fi;
 
@@ -29,8 +28,6 @@ else
   echo WGET = $WGET
 fi
 
-WGET="$WGET --no-proxy"
-
 $WGET --version | head -1 | grep 1.12 >/dev/null
 if [ $? != 0 ]; then
   echo You have the wrong version of wget.  1.12 is required.
@@ -38,14 +35,22 @@ if [ $? != 0 ]; then
 fi
 
 HOSTNAME=$1
-PORT=${HOSTNAME/*:/};
+PORT=${HOSTNAME/*:/}
 if [ $PORT = $HOSTNAME ]; then
   PORT=80
-fi;
+fi
 EXAMPLE_ROOT=http://$HOSTNAME/mod_pagespeed_example
 TEST_ROOT=http://$HOSTNAME/mod_pagespeed_test
+# We load explicitly from localhost because of Apache config requirements.
+# Note: This only works if $HOSTNAME is a synonym for localhost.
 STATISTICS_URL=http://localhost:$PORT/mod_pagespeed_statistics
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/bad.pagespeed.cf.hash.css
+
+# Setup wget proxy information
+export http_proxy=$2
+export https_proxy=$2
+export ftp_proxy=$2
+export no_proxy=""
 
 # Version timestamped with nanoseconds, making it extremely unlikely to hit.
 BAD_RND_RESOURCE_URL="http://$HOSTNAME/mod_pagespeed/bad`date +%N`.\
@@ -170,6 +175,7 @@ function test_resource_ext_corruption() {
 # General system tests
 
 echo TEST: mod_pagespeed is running in Apache and writes the expected header.
+echo $WGET_DUMP $EXAMPLE_ROOT/combine_css.html
 HTML_HEADERS=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
 
 echo Checking for X-Mod-Pagespeed header

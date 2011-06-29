@@ -31,10 +31,17 @@
 
 using namespace google;  // NOLINT
 
-DEFINE_string(filename_prefix, "", "Filesystem prefix for storing resources.");
+// TODO(sligocki): What is this used for these days?
+DEFINE_string(filename_prefix, "/tmp/instaweb/",
+              "Filesystem prefix for storing resources.");
 
+DEFINE_string(rewrite_level, "CoreFilters",
+              "Base rewrite level. Must be one of: "
+              "PassThrough, CoreFilters, TestingCoreFilters, AllFilters.");
 DEFINE_string(rewriters, "", "Comma-separated list of rewriters");
 DEFINE_string(domains, "", "Comma-separated list of domains");
+
+// TODO(sligocki): DEFINE_string(cache_server, "", ...);
 
 DEFINE_int64(css_outline_min_bytes,
              net_instaweb::RewriteOptions::kDefaultCssOutlineMinBytes,
@@ -99,11 +106,20 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory) const {
     options->set_log_rewrite_timing(FLAGS_log_rewrite_timing);
   }
 
+  RewriteOptions::RewriteLevel rewrite_level;
+  if (options->ParseRewriteLevel(FLAGS_rewrite_level, &rewrite_level)) {
+    options->SetRewriteLevel(rewrite_level);
+  } else {
+    LOG(ERROR) << "Invalid --rewrite_level: " << FLAGS_rewrite_level;
+    ret = false;
+  }
+
   MessageHandler* handler = factory->message_handler();
   if (!options->EnableFiltersByCommaSeparatedList(FLAGS_rewriters, handler)) {
     LOG(ERROR) << "Invalid filters-list: " << FLAGS_rewriters;
     ret = false;
   }
+
   StringPieceVector domains;
   SplitStringPieceToVector(FLAGS_domains, ",", &domains, true);
   DomainLawyer* lawyer = options->domain_lawyer();
