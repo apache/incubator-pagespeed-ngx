@@ -319,12 +319,6 @@ void RewriteContext::AddSlot(const ResourceSlotPtr& slot) {
   slot->AddContext(this);
 }
 
-void RewriteContext::RemoveSlot(int index) {
-  slot(index)->DetachContext(this);
-  slots_.erase(slots_.begin() + index);
-  render_slots_.erase(render_slots_.begin() + index);
-}
-
 void RewriteContext::Initiate() {
   CHECK(!started_);
   Manager()->AddRewriteTask(new StartTask(this));

@@ -24,6 +24,7 @@
 
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
+#include "net/instaweb/util/public/shared_circular_buffer_test_base.h"
 #include "net/instaweb/util/public/shared_mem_lock_manager_test_base.h"
 #include "net/instaweb/util/public/shared_mem_statistics_test_base.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
@@ -131,11 +132,15 @@ INSTANTIATE_TYPED_TEST_CASE_P(PthreadProc, SharedMemLockManagerTestTemplate,
                               PthreadSharedMemProcEnv);
 INSTANTIATE_TYPED_TEST_CASE_P(PthreadProc, SharedMemStatisticsTestTemplate,
                               PthreadSharedMemProcEnv);
+INSTANTIATE_TYPED_TEST_CASE_P(PthreadProc, SharedCircularBufferTestTemplate,
+                              PthreadSharedMemProcEnv);
 INSTANTIATE_TYPED_TEST_CASE_P(PthreadThread, SharedMemTestTemplate,
                               PthreadSharedMemThreadEnv);
 INSTANTIATE_TYPED_TEST_CASE_P(PthreadThread, SharedMemLockManagerTestTemplate,
                               PthreadSharedMemThreadEnv);
 INSTANTIATE_TYPED_TEST_CASE_P(PthreadThread, SharedMemStatisticsTestTemplate,
+                              PthreadSharedMemThreadEnv);
+INSTANTIATE_TYPED_TEST_CASE_P(PthreadThread, SharedCircularBufferTestTemplate,
                               PthreadSharedMemThreadEnv);
 
 }  // namespace
