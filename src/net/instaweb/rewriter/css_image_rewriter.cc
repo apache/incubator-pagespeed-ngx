@@ -88,6 +88,8 @@ void CssImageRewriter::Initialize(Statistics* statistics) {
 
 bool CssImageRewriter::RewritesEnabled() const {
   const RewriteOptions* options = driver_->options();
+  // TODO(jmaessen): Enable webp conversion and image inlining in
+  // css files.  These are user-agent sensitive.
   return (options->Enabled(RewriteOptions::kRecompressImages) ||
           options->Enabled(RewriteOptions::kLeftTrimUrls) ||
           options->Enabled(RewriteOptions::kExtendCache) ||

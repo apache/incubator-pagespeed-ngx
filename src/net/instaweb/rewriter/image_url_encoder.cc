@@ -28,24 +28,29 @@ namespace net_instaweb {
 
 namespace {
 
-// decodes decimal int followed by x at start of source, removing them
+// Decodes decimal int followed by x or w at start of source, removing them
 // from source.  Returns true on success.  This is a utility for the
 // decoding of image dimensions.
-bool DecodeIntX(StringPiece* in, int *result) {
+// The separator character (x or w) is stored in sep if the parse succeeds.
+bool DecodeIntXW(StringPiece* in, int* result, char* sep) {
   *result = 0;
   bool ok = false;
+  char curr_char = '\0';
   for (; !in->empty(); in->remove_prefix(1)) {
     // TODO(jmaessen): roll strtol-like functionality for StringPiece in util
-    if (!AccumulateDecimalValue((*in)[0], result)) {
+    curr_char = (*in)[0];
+    if (!AccumulateDecimalValue(curr_char, result)) {
       break;
     }
     ok = true;
   }
-  if (in->empty()) {
-    ok = false;
-  } else if ((*in)[0] != 'x') {
+  // If we get here, either curr_char is a non-digit, or in->empty().  In the
+  // latter case, curr_char is the last char of in (a digit) or '\0', and we
+  // fall through the next test and fail.
+  if (curr_char != 'x' && curr_char != 'w') {
     ok = false;
   } else {
+    *sep = curr_char;
     in->remove_prefix(1);
   }
   return ok;
@@ -60,40 +65,19 @@ void ImageUrlEncoder::Encode(const StringVector& urls,
                              GoogleString* rewritten_url) const {
   DCHECK(data != NULL) << "null data passed to ImageUrlEncoder::Encode";
   DCHECK_EQ(1U, urls.size());
-  if ((data != NULL) && HasDimensions(*data)) {
-    const ImageDim& dims = data->image_tag_dims();
-    StrAppend(rewritten_url, IntegerToString(dims.width()), "x",
-              IntegerToString(dims.height()));
+  if (data != NULL) {
+    if (HasDimensions(*data)) {
+      const ImageDim& dims = data->image_tag_dims();
+      StrAppend(rewritten_url, IntegerToString(dims.width()), "x",
+                IntegerToString(dims.height()));
+    }
+    if (data->attempt_webp()) {
+      rewritten_url->append("w");
+    } else {
+      rewritten_url->append("x");
+    }
   }
-  rewritten_url->append("x");
   UrlEscaper::EncodeToUrlSegment(urls[0], rewritten_url);
-}
-
-bool ImageUrlEncoder::DecodeUrlAndDimensions(const StringPiece& encoded,
-                                             ImageDim* image_dims,
-                                             GoogleString* url,
-                                             MessageHandler* handler) const {
-  // Note that "remaining" is shortened from the left as we parse.
-  StringPiece remaining(encoded);
-  bool ok = true;
-  int width, height;
-  if (remaining.empty()) {
-    handler->Message(kInfo, "Empty Image URL");
-    ok = false;
-  } else if (remaining[0] == 'x') {
-    // No dimensions.
-    remaining.remove_prefix(1);
-  } else if (DecodeIntX(&remaining, &width) &&
-             DecodeIntX(&remaining, &height)) {
-    image_dims->set_width(width);
-    image_dims->set_height(height);
-  } else {
-    handler->Message(kInfo, "Invalid Image URL encoding: %s",
-                     encoded.as_string().c_str());
-    ok = false;
-  }
-
-  return (ok && UrlEscaper::DecodeFromUrlSegment(remaining, url));
 }
 
 // The generic Decode interface is supplied so that
@@ -104,16 +88,43 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
                              StringVector* urls,
                              ResourceContext* data,
                              MessageHandler* handler) const {
-  ImageDim dims;
-  GoogleString url;
-  bool ret = DecodeUrlAndDimensions(encoded, &dims, &url, handler);
-  if (ret) {
-    if (HasValidDimensions(dims)) {
-      *data->mutable_image_tag_dims() = dims;
-    }
-    urls->push_back(url);
+  ImageDim* dims = data->mutable_image_tag_dims();
+  DCHECK(dims != NULL);  // TODO(jmaessen): sanity check on my api understanding
+  // Note that "remaining" is shortened from the left as we parse.
+  StringPiece remaining(encoded);
+  int width, height;
+  char sep = 'x';
+  if (remaining.empty()) {
+    handler->Message(kInfo, "Empty Image URL");
+    return false;
+  } else if (remaining[0] == 'x' || remaining[0] == 'w') {
+    // No dimensions.
+    sep = remaining[0];
+    remaining.remove_prefix(1);
+  } else if (DecodeIntXW(&remaining, &width, &sep) && (sep == 'x') &&
+             DecodeIntXW(&remaining, &height, &sep)) {
+    dims->set_width(width);
+    dims->set_height(height);
+  } else {
+    handler->Message(kInfo, "Invalid Image URL encoding: %s",
+                     encoded.as_string().c_str());
+    return false;
   }
-  return ret;
+  DCHECK(sep == 'w' || sep == 'x');
+  if (sep == 'w') {
+    data->set_attempt_webp(true);
+  }
+
+  // Avoid even more string copies by decoding url directly into urls->back().
+  GoogleString empty;
+  urls->push_back(empty);
+  GoogleString& url = urls->back();
+  if (UrlEscaper::DecodeFromUrlSegment(remaining, &url)) {
+    return true;
+  } else {
+    urls->pop_back();
+    return false;
+  }
 }
 
 }  // namespace net_instaweb

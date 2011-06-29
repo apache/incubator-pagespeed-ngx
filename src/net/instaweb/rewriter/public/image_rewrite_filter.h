@@ -94,6 +94,7 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
   Variable* rewrite_count_;
   Variable* inline_count_;
   Variable* rewrite_saved_bytes_;
+  Variable* webp_count_;
   ImageUrlEncoder encoder_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageRewriteFilter);

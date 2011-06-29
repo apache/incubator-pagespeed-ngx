@@ -34,6 +34,9 @@ const char kPuzzle[] = "Puzzle.jpg";
 
 namespace net_instaweb {
 
+const bool kNoWebp = false;
+const bool kWebp   = true;
+
 class ImageTest : public testing::Test {
  protected:
   typedef scoped_ptr<Image> ImagePtr;
@@ -64,7 +67,7 @@ class ImageTest : public testing::Test {
     EXPECT_EQ(expected_width, image_dim.width());
     EXPECT_EQ(expected_height, image_dim.height());
     EXPECT_EQ(StringPrintf("%dx%dxZZ", image_dim.width(), image_dim.height()),
-              EncodeUrlAndDimensions("ZZ", image_dim));
+              EncodeUrlAndDimensions(kNoWebp, "ZZ", image_dim));
   }
 
   void CheckInvalid(const GoogleString& name, const GoogleString& contents,
@@ -82,7 +85,7 @@ class ImageTest : public testing::Test {
     EXPECT_FALSE(image_dim.has_width());
     EXPECT_FALSE(image_dim.has_height());
     EXPECT_EQ(contents.size(), image->output_size());
-    EXPECT_EQ("xZZ", EncodeUrlAndDimensions("ZZ", image_dim));
+    EXPECT_EQ("xZZ", EncodeUrlAndDimensions(kNoWebp, "ZZ", image_dim));
   }
 
   // We use the output_type (ultimate expected output type after image
@@ -146,21 +149,32 @@ class ImageTest : public testing::Test {
     CheckInvalid(filename, junk, Image::IMAGE_UNKNOWN, Image::IMAGE_UNKNOWN);
   }
 
-  GoogleString EncodeUrlAndDimensions(const StringPiece& origin_url,
-                                      const ImageDim& dim) {
+  GoogleString EncodeUrlAndDimensions(
+      bool use_webp, const StringPiece& origin_url, const ImageDim& dim) {
     StringVector v;
     v.push_back(origin_url.as_string());
     GoogleString out;
     ResourceContext data;
     *data.mutable_image_tag_dims() = dim;
+    data.set_attempt_webp(use_webp);
     encoder_.Encode(v, &data, &out);
     return out;
   }
 
-  bool DecodeUrlAndDimensions(const StringPiece& encoded,
+  bool DecodeUrlAndDimensions(bool expect_webp,
+                              const StringPiece& encoded,
                               ImageDim* dim,
                               GoogleString* url) {
-    return encoder_.DecodeUrlAndDimensions(encoded, dim, url, &handler_);
+    ResourceContext context;
+    StringVector urls;
+    bool result = encoder_.Decode(encoded, &urls, &context, &handler_);
+    if (result) {
+      EXPECT_EQ(expect_webp, context.attempt_webp());
+      EXPECT_EQ(1, urls.size());
+      url->assign(urls.back());
+      *dim = context.image_tag_dims();
+    }
+    return result;
   }
 
   StdioFileSystem file_system_;
@@ -254,29 +268,59 @@ TEST_F(ImageTest, NoDims) {
   const char kNoDimsUrl[] = "x,hencoded.url,_with,_various.stuff";
   GoogleString origin_url;
   ImageDim dim;
-  EXPECT_TRUE(DecodeUrlAndDimensions(kNoDimsUrl, &dim, &origin_url));
+  EXPECT_TRUE(DecodeUrlAndDimensions(kNoWebp, kNoDimsUrl, &dim, &origin_url));
   EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
   EXPECT_EQ(kActualUrl, origin_url);
-  EXPECT_EQ(kNoDimsUrl, EncodeUrlAndDimensions(origin_url, dim));
+  EXPECT_EQ(kNoDimsUrl, EncodeUrlAndDimensions(kNoWebp, origin_url, dim));
+}
+
+TEST_F(ImageTest, NoDimsWebp) {
+  const char kNoDimsUrl[] = "w,hencoded.url,_with,_various.stuff";
+  GoogleString origin_url;
+  ImageDim dim;
+  EXPECT_TRUE(DecodeUrlAndDimensions(kWebp, kNoDimsUrl, &dim, &origin_url));
+  EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
+  EXPECT_EQ(kActualUrl, origin_url);
+  EXPECT_EQ(kNoDimsUrl, EncodeUrlAndDimensions(kWebp, origin_url, dim));
 }
 
 TEST_F(ImageTest, HasDims) {
   const char kDimsUrl[] = "17x33x,hencoded.url,_with,_various.stuff";
   GoogleString origin_url;
   ImageDim dim;
-  EXPECT_TRUE(DecodeUrlAndDimensions(kDimsUrl, &dim, &origin_url));
+  EXPECT_TRUE(DecodeUrlAndDimensions(kNoWebp, kDimsUrl, &dim, &origin_url));
   EXPECT_TRUE(ImageUrlEncoder::HasValidDimensions(dim));
   EXPECT_EQ(17, dim.width());
   EXPECT_EQ(33, dim.height());
   EXPECT_EQ(kActualUrl, origin_url);
-  EXPECT_EQ(kDimsUrl, EncodeUrlAndDimensions(origin_url, dim));
+  EXPECT_EQ(kDimsUrl, EncodeUrlAndDimensions(kNoWebp, origin_url, dim));
+}
+
+TEST_F(ImageTest, HasDimsWebp) {
+  const char kDimsUrl[] = "17x33w,hencoded.url,_with,_various.stuff";
+  GoogleString origin_url;
+  ImageDim dim;
+  EXPECT_TRUE(DecodeUrlAndDimensions(kWebp, kDimsUrl, &dim, &origin_url));
+  EXPECT_TRUE(ImageUrlEncoder::HasValidDimensions(dim));
+  EXPECT_EQ(17, dim.width());
+  EXPECT_EQ(33, dim.height());
+  EXPECT_EQ(kActualUrl, origin_url);
+  EXPECT_EQ(kDimsUrl, EncodeUrlAndDimensions(kWebp, origin_url, dim));
 }
 
 TEST_F(ImageTest, BadFirst) {
   const char kBadFirst[] = "badx33x,hencoded.url,_with,_various.stuff";
   GoogleString origin_url;
   ImageDim dim;
-  EXPECT_FALSE(DecodeUrlAndDimensions(kBadFirst, &dim, &origin_url));
+  EXPECT_FALSE(DecodeUrlAndDimensions(kNoWebp, kBadFirst, &dim, &origin_url));
+  EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
+}
+
+TEST_F(ImageTest, BadFirstWebp) {
+  const char kBadFirst[] = "badx33w,hencoded.url,_with,_various.stuff";
+  GoogleString origin_url;
+  ImageDim dim;
+  EXPECT_FALSE(DecodeUrlAndDimensions(kWebp, kBadFirst, &dim, &origin_url));
   EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
 }
 
@@ -284,7 +328,15 @@ TEST_F(ImageTest, BadSecond) {
   const char kBadSecond[] = "17xbadx,hencoded.url,_with,_various.stuff";
   GoogleString origin_url;
   ImageDim dim;
-  EXPECT_FALSE(DecodeUrlAndDimensions(kBadSecond, &dim, &origin_url));
+  EXPECT_FALSE(DecodeUrlAndDimensions(kNoWebp, kBadSecond, &dim, &origin_url));
+  EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
+}
+
+TEST_F(ImageTest, BadSecondWebp) {
+  const char kBadSecond[] = "17xbadw,hencoded.url,_with,_various.stuff";
+  GoogleString origin_url;
+  ImageDim dim;
+  EXPECT_FALSE(DecodeUrlAndDimensions(kWebp, kBadSecond, &dim, &origin_url));
   EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
 }
 
@@ -292,7 +344,7 @@ TEST_F(ImageTest, NoXs) {
   const char kNoXs[] = ",hencoded.url,_with,_various.stuff";
   GoogleString origin_url;
   ImageDim dim;
-  EXPECT_FALSE(DecodeUrlAndDimensions(kNoXs, &dim, &origin_url));
+  EXPECT_FALSE(DecodeUrlAndDimensions(kNoWebp, kNoXs, &dim, &origin_url));
   EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
 }
 
@@ -300,7 +352,16 @@ TEST_F(ImageTest, BlankSecond) {
   const char kBlankSecond[] = "17xx,hencoded.url,_with,_various.stuff";
   GoogleString origin_url;
   ImageDim dim;
-  EXPECT_FALSE(DecodeUrlAndDimensions(kBlankSecond, &dim, &origin_url));
+  EXPECT_FALSE(
+      DecodeUrlAndDimensions(kNoWebp, kBlankSecond, &dim, &origin_url));
+  EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
+}
+
+TEST_F(ImageTest, BlankSecondWebp) {
+  const char kBlankSecond[] = "17xw,hencoded.url,_with,_various.stuff";
+  GoogleString origin_url;
+  ImageDim dim;
+  EXPECT_FALSE(DecodeUrlAndDimensions(kWebp, kBlankSecond, &dim, &origin_url));
   EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
 }
 

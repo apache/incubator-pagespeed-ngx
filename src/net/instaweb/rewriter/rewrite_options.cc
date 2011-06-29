@@ -134,6 +134,7 @@ void RewriteOptions::SetUp() {
   name_filter_map_["combine_css"] = kCombineCss;
   name_filter_map_["combine_javascript"] = kCombineJavascript;
   name_filter_map_["combine_heads"] = kCombineHeads;
+  name_filter_map_["convert_jpeg_to_webp"] = kConvertJpegToWebp;
   name_filter_map_["elide_attributes"] = kElideAttributes;
   name_filter_map_["extend_cache"] = kExtendCache;
   name_filter_map_["inline_css"] = kInlineCss;
@@ -160,6 +161,8 @@ void RewriteOptions::SetUp() {
 
   // Create filter sets for compound filter flags
   // (right now this is just rewrite_images)
+  // TODO(jmaessen): add kConvertJpegToWebp here when it becomes part of
+  // rewrite_images.
   name_filter_set_map_["rewrite_images"].insert(kInlineImages);
   name_filter_set_map_["rewrite_images"].insert(kInsertImageDimensions);
   name_filter_set_map_["rewrite_images"].insert(kRecompressImages);
@@ -169,6 +172,8 @@ void RewriteOptions::SetUp() {
   level_filter_set_map_[kPassThrough];
 
   // Core filter level includes the "core" filter set.
+  // TODO(jmaessen): add kConvertJpegToWebp here when it becomes part of
+  // rewrite_images.
   level_filter_set_map_[kCoreFilters].insert(kAddHead);
   level_filter_set_map_[kCoreFilters].insert(kCombineCss);
   level_filter_set_map_[kCoreFilters].insert(kExtendCache);
@@ -187,6 +192,7 @@ void RewriteOptions::SetUp() {
       level_filter_set_map_[kCoreFilters];
   // ... and add possibly unsafe filters.
   // TODO(jmarantz): Migrate these over to CoreFilters.
+  level_filter_set_map_[kTestingCoreFilters].insert(kConvertJpegToWebp);
   level_filter_set_map_[kTestingCoreFilters].insert(kMakeGoogleAnalyticsAsync);
   level_filter_set_map_[kTestingCoreFilters].insert(kRewriteDomains);
 

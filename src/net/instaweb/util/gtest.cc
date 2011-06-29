@@ -20,13 +20,14 @@
 #include "net/instaweb/util/public/gtest.h"
 //#include "net/instaweb/util/public/gflags.h"
 #include "net/instaweb/util/public/string.h"
+#include <dirent.h>
+#include <sys/stat.h>
 #include <unistd.h>  // For getpid()
 #include <vector>
 #include "net/instaweb/util/stack_buffer.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
 
 GoogleString GTestSrcDir() {
   // Climb up the directory hierarchy till we find "src".
@@ -39,6 +40,7 @@ GoogleString GTestSrcDir() {
   SplitStringPieceToVector(cwd, "/", &components, true);
   int level = components.size();
   bool found = false;
+  GoogleString src_dir;
   for (int i = level - 1; i >= 0; --i) {
     if (components[i] == "src") {
       level = i + 1;
@@ -46,13 +48,25 @@ GoogleString GTestSrcDir() {
       break;
     }
   }
-
-  CHECK(found) << "Cannot find 'src' directory from cwd=" << cwd;
-  GoogleString src_dir;
-  for (int i = 0; i < level; ++i) {
-    src_dir += "/";
-    components[i].AppendToString(&src_dir);
+  if (found) {
+    for (int i = 0; i < level; ++i) {
+      src_dir += "/";
+      components[i].AppendToString(&src_dir);
+    }
+  } else {
+    // Try going down the directory structure to see if we can find "src".
+    // Just go down one layer, in case there are multiple clients with
+    // multiple src dirs from where you are.
+    src_dir += cwd;
+    src_dir += "/src";
+    struct stat file_info;
+    // Attempt to get the file attributes
+    int ret = stat(src_dir.c_str(), &file_info);
+    if (ret == 0 && S_ISDIR(file_info.st_mode)) {
+      found = true;
+    }
   }
+  CHECK(found) << "Cannot find 'src' directory from cwd=" << cwd;
   return src_dir;
 }
 

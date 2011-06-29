@@ -170,7 +170,9 @@ message OutputPartitions {
   repeated OutputPartition partition = 1;
 }
 
-// Encapsulates all the data needed to rewrite a resource.
+// Encapsulates all the data needed to rewrite a resource.  Any filter needing
+// additional information should add it as optional fields here.
 message ResourceContext {
   optional ImageDim image_tag_dims = 1;
+  optional bool attempt_webp = 2 [ default = false ];
 }

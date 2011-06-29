@@ -27,8 +27,14 @@
 namespace net_instaweb {
 class MessageHandler;
 
-// This class implements the encoding of image urls with optional
-// additional dimension metadata.
+// This class implements the encoding of image urls with optional additional
+// dimension metadata.  It basically prepends characters indicating image
+// dimensions on the page and webp eligibility (this information is conveyed in
+// the ResourceContext).
+//   http://...path.../50x75xurl...  No webp, image is 50x75 on page
+//   http://...path.../50x75wurl...  Webp requested, image is 50x75 on page
+//   http://...path.../xurl...  Page does not specify both dimensions.  No webp.
+//   http://...path.../wurl...  Webp requested, page missing dimensions.
 class ImageUrlEncoder : public UrlSegmentEncoder {
  public:
   ImageUrlEncoder() {}
@@ -51,12 +57,6 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
   static bool HasValidDimensions(const ImageDim& dims) {
     return (dims.has_width() && dims.has_height());
   }
-
-  // Helper method that's easier to call for image code than the virtual Decode
-  // interface, providing a single URL and ImageDim* as direct outputs.
-  bool DecodeUrlAndDimensions(
-      const StringPiece& encoded, ImageDim* dim, GoogleString* url,
-      MessageHandler* handler) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ImageUrlEncoder);

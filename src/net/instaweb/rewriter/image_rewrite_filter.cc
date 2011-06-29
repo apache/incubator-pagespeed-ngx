@@ -44,7 +44,6 @@
 #include "net/instaweb/util/public/statistics_work_bound.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/work_bound.h"
 
 namespace net_instaweb {
@@ -69,6 +68,7 @@ const double kMaxAreaRatio = 1.0;
 const char kImageRewrites[] = "image_rewrites";
 const char kImageRewriteSavedBytes[] = "image_rewrite_saved_bytes";
 const char kImageInline[] = "image_inline";
+const char kImageWebpRewrites[] = "image_webp_rewrites";
 
 // name for statistic used to bound rewriting work.
 const char kImageOngoingRewrites[] = "image_ongoing_rewrites";
@@ -114,7 +114,7 @@ void ImageRewriteFilter::Context::Render() {
     return;
   }
 
-  CHECK(num_slots() == 1);
+  CHECK_EQ(1, num_slots());
   CHECK(output_partition(0)->has_result());
 
   // We use automatic rendering for CSS, as we merely write out the improved
@@ -140,7 +140,8 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver,
       image_filter_(new ImageTagScanner(driver)),
       rewrite_count_(NULL),
       inline_count_(NULL),
-      rewrite_saved_bytes_(NULL) {
+      rewrite_saved_bytes_(NULL),
+      webp_count_(NULL) {
   Statistics* stats = resource_manager_->statistics();
   Variable* ongoing_rewrites = NULL;
   if (stats != NULL) {
@@ -149,6 +150,7 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver,
         kImageRewriteSavedBytes);
     inline_count_ = stats->GetVariable(kImageInline);
     ongoing_rewrites = stats->GetVariable(kImageOngoingRewrites);
+    webp_count_ = stats->GetVariable(kImageWebpRewrites);
   }
   work_bound_.reset(
       new StatisticsWorkBound(ongoing_rewrites,
@@ -162,32 +164,29 @@ void ImageRewriteFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kImageRewriteSavedBytes);
   statistics->AddVariable(kImageRewrites);
   statistics->AddVariable(kImageOngoingRewrites);
+  statistics->AddVariable(kImageWebpRewrites);
 }
 
 RewriteSingleResourceFilter::RewriteResult
 ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
                                           const OutputResourcePtr& result) {
   MessageHandler* message_handler = driver_->message_handler();
-  GoogleString url;
-  ImageDim page_dim;
-  if (!encoder_.DecodeUrlAndDimensions(result->name(), &page_dim, &url,
-                                       message_handler)) {
+  StringVector urls;
+  ResourceContext context;
+  if (!encoder_.Decode(result->name(), &urls, &context, message_handler)) {
     return kRewriteFailed;
   }
-  bool supports_webp =
-      driver_->user_agent_matcher().SupportsWebp(driver_->user_agent());
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),
                resource_manager_->filename_prefix(),
-               supports_webp, message_handler));
+               context.attempt_webp(), message_handler));
   if (image->image_type() == Image::IMAGE_UNKNOWN) {
     message_handler->Error(result->name().as_string().c_str(), 0,
                            "Unrecognized image content type.");
     return kRewriteFailed;
   }
-  ImageDim image_dim, post_resize_dim;
+  ImageDim image_dim;
   image->Dimensions(&image_dim);
-  post_resize_dim = image_dim;
 
   // Don't rewrite beacons
   if (!ImageUrlEncoder::HasValidDimensions(image_dim) ||
@@ -201,6 +200,8 @@ ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
     bool resized = false;
     const RewriteOptions* options = driver_->options();
     // Begin by resizing the image if necessary
+    const ImageDim& page_dim = context.image_tag_dims();
+    const ImageDim* post_resize_dim = &image_dim;
     if (options->Enabled(RewriteOptions::kResizeImages) &&
         ImageUrlEncoder::HasValidDimensions(page_dim) &&
         ImageUrlEncoder::HasValidDimensions(image_dim)) {
@@ -211,7 +212,7 @@ ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
       if (page_area < image_area * kMaxAreaRatio) {
         const char* message;  // Informational message for logging only.
         if (image->ResizeTo(page_dim)) {
-          post_resize_dim = page_dim;
+          post_resize_dim = &page_dim;
           message = "Resized";
           resized = true;
         } else {
@@ -227,10 +228,10 @@ ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
     // Cache image dimensions, including any resizing we did.
     // This happens regardless of whether we rewrite the image contents.
     CachedResult* cached = result->EnsureCachedResultCreated();
-    if (ImageUrlEncoder::HasValidDimensions(post_resize_dim)) {
+    if (ImageUrlEncoder::HasValidDimensions(*post_resize_dim)) {
       ImageDim* dims = cached->mutable_image_file_dims();
-      dims->set_width(post_resize_dim.width());
-      dims->set_height(post_resize_dim.height());
+      dims->set_width(post_resize_dim->width());
+      dims->set_height(post_resize_dim->height());
     }
 
     // We will consider whether to inline the image regardless of whether we
@@ -312,7 +313,7 @@ const ContentType* ImageRewriteFilter::ImageToContentType(
   if (image != NULL) {
     // Even if we know the content type from the extension coming
     // in, the content-type can change as a result of compression,
-    // e.g. gif to png, or anything to vp8.
+    // e.g. gif to png, or jpeg to webp.
     return image->content_type();
   }
   return content_type;
@@ -321,7 +322,6 @@ const ContentType* ImageRewriteFilter::ImageToContentType(
 void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
                                               HtmlElement::Attribute* src) {
   scoped_ptr<ResourceContext> resource_context(new ResourceContext);
-  ImageDim* page_dim = resource_context->mutable_image_tag_dims();
   int width, height;
   const RewriteOptions* options = driver_->options();
 
@@ -329,8 +329,25 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
       element->IntAttributeValue(HtmlName::kWidth, &width) &&
       element->IntAttributeValue(HtmlName::kHeight, &height)) {
     // Specific image size is called for.  Rewrite to that size.
+    ImageDim* page_dim = resource_context->mutable_image_tag_dims();
     page_dim->set_width(width);
     page_dim->set_height(height);
+  }
+  StringPiece url(src->value());
+  if (options->Enabled(RewriteOptions::kConvertJpegToWebp) &&
+      driver_->UserAgentSupportsWebp() &&
+      !url.ends_with(".png") && !url.ends_with(".gif")) {
+    // Note that we guess content type based on extension above.  This avoids
+    // the common case where we rewrite a .png twice, once for webp capable
+    // browsers and once for non-webp browsers, even though neither rewrite uses
+    // webp code paths at all.  We only consider webp as a candidate image
+    // format if we might have a jpg.
+    // TODO(jmaessen): if we instead set up the ResourceContext mapping
+    // explicitly from within the filter, we can imagine doing so after we know
+    // the content type of the image.  But that involves throwing away quite a
+    // bit of the plumbing that is otherwise provided for us by
+    // SingleRewriteContext.
+    resource_context->set_attempt_webp(true);
   }
 
   if (HasAsyncFlow()) {
@@ -359,8 +376,8 @@ void ImageRewriteFilter::FinishRewriteImageUrl(
   const RewriteOptions* options = driver_->options();
 
   // See if we have a data URL, and if so use it if the browser can handle it
-  if (driver_->UserAgentSupportsImageInlining() &&
-      cached->has_inlined_data()) {
+  if (cached->has_inlined_data() &&
+      driver_->UserAgentSupportsImageInlining()) {
     src->SetValue(cached->inlined_data());
     // Delete dimensions, as they ought to be redundant given inline image data.
     element->DeleteAttribute(HtmlName::kWidth);

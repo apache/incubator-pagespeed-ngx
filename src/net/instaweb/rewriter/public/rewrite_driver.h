@@ -134,6 +134,9 @@ class RewriteDriver : public HtmlParse {
   bool UserAgentSupportsImageInlining() const {
     return user_agent_matcher_.SupportsImageInlining(user_agent_);
   }
+  bool UserAgentSupportsWebp() const {
+    return user_agent_matcher_.SupportsWebp(user_agent_);
+  }
 
   // Adds the filters from the options, specified by name in enabled_filters.
   // This must be called explicitly after object construction to provide an

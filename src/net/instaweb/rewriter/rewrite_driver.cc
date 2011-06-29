@@ -463,7 +463,8 @@ void RewriteDriver::AddFilters() {
     CHECK(resource_manager_ != NULL);
     AddOwnedFilter(new JsInlineFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
+  if (rewrite_options->Enabled(RewriteOptions::kConvertJpegToWebp) ||
+      rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
       rewrite_options->Enabled(RewriteOptions::kInsertImageDimensions) ||
       rewrite_options->Enabled(RewriteOptions::kRecompressImages) ||
       rewrite_options->Enabled(RewriteOptions::kResizeImages)) {

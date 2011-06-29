@@ -41,6 +41,7 @@ class RewriteOptions {
     kCombineCss,
     kCombineHeads,
     kCombineJavascript,
+    kConvertJpegToWebp,
     kElideAttributes,
     kExtendCache,
     kInlineCss,
