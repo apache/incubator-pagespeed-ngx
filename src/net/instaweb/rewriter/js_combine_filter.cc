@@ -26,19 +26,26 @@
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
 
 #include <cstddef>
+#include <vector>
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_combiner_template.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -47,6 +54,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
@@ -54,6 +62,7 @@ namespace net_instaweb {
 class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
+class UrlSegmentEncoder;
 
 const char JsCombineFilter::kJsFileCountReduction[] = "js_file_count_reduction";
 
@@ -96,6 +105,23 @@ class JsCombineFilter::JsCombiner
   // combination is currently open, it will be excluded from the combination.
   void TryCombineAccumulated();
 
+  // This eventually calls WritePiece().
+  bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
+    return WriteCombination(in, out, rewrite_driver_->message_handler());
+  }
+
+  // Create the output resource for this combination.
+  OutputResourcePtr MakeOutput() {
+    return Combine(kContentTypeJavascript, rewrite_driver_->message_handler());
+  }
+
+  // Stats.
+  void AddFileCountReduction(int files) {
+    if (js_file_count_reduction_ != NULL) {
+      js_file_count_reduction_->Add(files);
+    }
+  }
+
  private:
   virtual bool WritePiece(const Resource* input, OutputResource* combination,
                           Writer* writer, MessageHandler* handler);
@@ -104,6 +130,214 @@ class JsCombineFilter::JsCombiner
   Variable* js_file_count_reduction_;
 
   DISALLOW_COPY_AND_ASSIGN(JsCombiner);
+};
+
+class JsCombineFilter::Context : public RewriteContext {
+ public:
+  Context(RewriteDriver* driver, JsCombineFilter* filter)
+      : RewriteContext(driver, NULL, NULL),
+        combiner_(filter, driver),
+        filter_(filter),
+        fresh_combination_(true) {
+  }
+
+  // Create and add the slot that corresponds to this element.
+  bool AddElement(HtmlElement* element, HtmlElement::Attribute* href) {
+    bool ret = true;
+    ResourcePtr resource(filter_->CreateInputResource(href->value()));
+    if (resource.get() != NULL) {
+      ResourceSlotPtr slot(Driver()->GetSlot(resource, element, href));
+      AddSlot(slot);
+      elements_.push_back(element);
+      fresh_combination_ = false;
+    } else {
+      ret = false;
+    }
+    return ret;
+  }
+
+  // If we get a flush in the middle of things, we may have put a
+  // script tag on that now can't be re-written and should be removed
+  // from the combination.  Remove the corresponding slot as well,
+  // because we are no longer handling the resource associated with it.
+  void RemoveLastElement() {
+    if (filter_->HasAsyncFlow()) {
+      RemoveSlot(num_slots() - 1);
+      elements_.resize(elements_.size() - 1);
+    } else {
+      combiner_.RemoveLastElement();
+    }
+  }
+
+  bool HasElementLast(HtmlElement* element) {
+    return !empty() && elements_[elements_.size() - 1] == element;
+  }
+
+  JsCombiner* combiner() { return &combiner_; }
+  bool empty() const { return elements_.empty(); }
+  bool fresh_combination() { return fresh_combination_; }
+
+  void Reset() {
+    fresh_combination_ = true;
+    combiner_.Reset();
+  }
+
+ protected:
+  // Divide the slots into partitions according to which js files can
+  // be combined together.
+  virtual bool Partition(OutputPartitions* partitions,
+                         OutputResourceVector* outputs) {
+    MessageHandler* handler = Driver()->message_handler();
+    OutputPartition* partition = NULL;
+    CHECK_EQ(static_cast<int>(elements_.size()), num_slots());
+
+    // For each slot, try to add its resource to the current partition.
+    // If we can't, then finalize the last combination, and then
+    // move on to the next slot.
+    for (int i = 0, n = num_slots(); i < n; ++i) {
+      bool add_input = false;
+      ResourcePtr resource(slot(i)->resource());
+      HtmlElement* element = elements_[i];
+      // Don't add an element that's not re-writable (e.g. un-closed tag).
+      if (resource->IsValidAndCacheable() && Driver()->IsRewritable(element)) {
+        if (combiner_.AddElementNoFetch(element, resource, handler).value) {
+          add_input = true;
+        } else if (partition != NULL) {
+          FinalizePartition(partitions, partition, outputs);
+          partition = NULL;
+          if (combiner_.AddElementNoFetch(element, resource, handler).value) {
+            add_input = true;
+          }
+        }
+      } else {
+        FinalizePartition(partitions, partition, outputs);
+        partition = NULL;
+      }
+      if (add_input) {
+        if (partition == NULL) {
+          partition = partitions->add_partition();
+        }
+        resource->AddInputInfoToPartition(i, partition);
+      }
+    }
+    FinalizePartition(partitions, partition, outputs);
+    return (partitions->partition_size() != 0);
+  }
+
+  // Actually write the new resource.
+  virtual void Rewrite(int partition_index,
+                       OutputPartition* partition,
+                       const OutputResourcePtr& output) {
+    RewriteSingleResourceFilter::RewriteResult result =
+        RewriteSingleResourceFilter::kRewriteOk;
+    if (!output->IsWritten()) {
+      ResourceVector resources;
+      for (int i = 0, n = num_slots(); i < n; ++i) {
+        ResourcePtr resource(slot(i)->resource());
+        resources.push_back(resource);
+      }
+      if (!combiner_.Write(resources, output)) {
+        result = RewriteSingleResourceFilter::kRewriteFailed;
+      }
+    }
+    RewriteDone(result, partition_index);
+  }
+
+  // For every partition, write a new script tag that points to the
+  // combined resource.  Then create new script tags for each slot
+  // in the partition that evaluate the variable that refers to the
+  // original script for that tag.
+  virtual void Render() {
+    for (int p = 0, np = num_output_partitions(); p < np; ++p) {
+      OutputPartition* partition = output_partition(p);
+      int partition_size = partition->input_size();
+      if (partition_size > 1) {
+        MakeCombinedElement(partition);
+        // we still need to add eval() in place of the
+        // other slots.
+        for (int i = 0; i < partition_size; ++i) {
+          int slot_index = partition->input(i).index();
+          MakeScriptElement(slot_index);
+        }
+        combiner_.AddFileCountReduction(partition_size - 1);
+      }
+    }
+  }
+
+  virtual const UrlSegmentEncoder* encoder() const {
+    return &encoder_;
+  }
+  virtual const char* id() const {
+    return filter_->id().c_str();
+  }
+  virtual OutputResourceKind kind() const {
+    return kRewrittenResource;
+  }
+
+ private:
+  // If we can combine, put the result into outputs and then reset
+  // the context (and the combiner) so we start with a fresh slate
+  // for any new slots.
+  void FinalizePartition(OutputPartitions* partitions,
+                         OutputPartition* partition,
+                         OutputResourceVector* outputs) {
+    if (partition != NULL) {
+      OutputResourcePtr combination_output(combiner_.MakeOutput());
+      if (combination_output.get() == NULL) {
+        partitions->mutable_partition()->RemoveLast();
+      } else {
+        CachedResult* partition_result = partition->mutable_result();
+        const CachedResult* combination_result =
+            combination_output->cached_result();
+        *partition_result = *combination_result;
+        outputs->push_back(combination_output);
+      }
+      Reset();
+    }
+  }
+
+  // Create an element for the combination of all the elements in the
+  // partition. Insert it before first one.
+  void MakeCombinedElement(OutputPartition* partition) {
+    int first_index = partition->input(0).index();
+    HtmlResourceSlot* first_slot =
+        static_cast<HtmlResourceSlot*>(slot(first_index).get());
+    HtmlElement* combine_element =
+        Driver()->NewElement(NULL,  // no parent yet.
+                             HtmlName::kScript);
+    Driver()->InsertElementBeforeElement(first_slot->element(),
+                                         combine_element);
+    Driver()->AddAttribute(combine_element, HtmlName::kSrc,
+                           partition->result().url());
+  }
+
+  // Make a script element with eval(<variable name>), and replace
+  // the existing element with it.
+  void MakeScriptElement(int slot_index) {
+    HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(
+        slot(slot_index).get());
+    // Create a new element that doesn't have any children the
+    // original element had.
+    HtmlElement* original = html_slot->element();
+    HtmlElement* element = Driver()->NewElement(NULL, HtmlName::kScript);
+    Driver()->InsertElementBeforeElement(original, element);
+    //    Driver()->DeleteElement(original);
+    GoogleString var_name = filter_->VarName(
+        html_slot->resource()->url());
+    HtmlNode* script_code = Driver()->NewCharactersNode(
+        element, StrCat("eval(", var_name, ");"));
+    Driver()->AppendChild(element, script_code);
+    // Don't render this slot because it no longer has a resource attached
+    // to it.
+    //    html_slot->set_disable_rendering(true);
+    html_slot->set_should_delete_element(true);
+  }
+
+  JsCombineFilter::JsCombiner combiner_;
+  JsCombineFilter* filter_;
+  std::vector<HtmlElement*> elements_;
+  bool fresh_combination_;
+  UrlMultipartEncoder encoder_;
 };
 
 void JsCombineFilter::JsCombiner::TryCombineAccumulated() {
@@ -122,7 +356,6 @@ void JsCombineFilter::JsCombiner::TryCombineAccumulated() {
       if (num_urls() == 1) {
         // We ended up with only one thing in collection, so there is nothing
         // to do any more.
-        Reset();
         return;
       }
     }
@@ -159,11 +392,8 @@ void JsCombineFilter::JsCombiner::TryCombineAccumulated() {
     rewrite_driver_->InfoHere("Combined %d JS files into one at %s",
                               num_urls(),
                               combination->url().c_str());
-    if (js_file_count_reduction_ != NULL) {
-      js_file_count_reduction_->Add(num_urls() - 1);
-    }
+    AddFileCountReduction(num_urls() - 1);
   }
-  Reset();
 }
 
 bool JsCombineFilter::JsCombiner::WritePiece(
@@ -208,8 +438,8 @@ JsCombineFilter::JsCombineFilter(RewriteDriver* driver,
     : RewriteFilter(driver, filter_id),
       script_scanner_(driver),
       script_depth_(0),
-      current_js_script_(NULL) {
-  combiner_.reset(new JsCombiner(this, driver));
+      current_js_script_(NULL),
+      context_(MakeContext()) {
 }
 
 JsCombineFilter::~JsCombineFilter() {
@@ -233,9 +463,9 @@ void JsCombineFilter::StartElementImpl(HtmlElement* element) {
         // it may be meaningful so we don't want to destroy it;
         // so flush the complete things before us, and call it a day.
         if (IsCurrentScriptInCombination()) {
-          combiner_->RemoveLastElement();
+          context_->RemoveLastElement();
         }
-        combiner_->TryCombineAccumulated();
+        NextCombination();
       }
       break;
 
@@ -246,7 +476,7 @@ void JsCombineFilter::StartElementImpl(HtmlElement* element) {
 
     case ScriptTagScanner::kUnknownScript:
       // We have something like vbscript. Handle this as a barrier
-      combiner_->TryCombineAccumulated();
+      NextCombination();
       ++script_depth_;
       break;
   }
@@ -262,7 +492,7 @@ void JsCombineFilter::EndElementImpl(HtmlElement* element) {
 }
 
 void JsCombineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
-  combiner_->TryCombineAccumulated();
+  NextCombination();
 }
 
 void JsCombineFilter::Characters(HtmlCharactersNode* characters) {
@@ -270,8 +500,8 @@ void JsCombineFilter::Characters(HtmlCharactersNode* characters) {
   // replace its contents with a call to eval, as they may be needed.
   if (script_depth_ > 0 && !OnlyWhitespace(characters->contents())) {
     if (IsCurrentScriptInCombination()) {
-      combiner_->RemoveLastElement();
-      combiner_->TryCombineAccumulated();
+      context_->RemoveLastElement();
+      NextCombination();
     }
   }
 }
@@ -283,16 +513,19 @@ void JsCombineFilter::Flush() {
   //    but as late as possible.
   // 2) Ensures we do combine eventually (as we will get a flush at the end of
   //    parsing).
-  combiner_->TryCombineAccumulated();
+  NextCombination();
 }
 
+// Determine if we can add this script to the combination or not.
+// If not, call NextCombination() to write out what we've got and then
+// reset.
 void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
                                                HtmlElement::Attribute* src) {
   // Worst-case scenario is if we somehow ended up with nested scripts.
   // In this case, we just give up entirely.
   if (script_depth_ > 0) {
     driver_->WarningHere("Nested <script> elements");
-    combiner_->Reset();
+    context_->Reset();
     return;
   }
 
@@ -308,13 +541,13 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
   // If our current script may be inside a noscript, which means
   // we should not be making it runnable.
   if (noscript_element() != NULL) {
-    combiner_->TryCombineAccumulated();
+    NextCombination();
     return;
   }
 
   // An inline script.
   if (src == NULL || src->value() == NULL) {
-    combiner_->TryCombineAccumulated();
+    NextCombination();
     return;
   }
 
@@ -322,31 +555,39 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
   // TODO(morlovich): is it worth combining multiple scripts with
   // async/defer if the flags are the same?
   if (script_scanner_.ExecutionMode(element) != script_scanner_.kExecuteSync) {
-    combiner_->TryCombineAccumulated();
+    NextCombination();
     return;
   }
 
   // Now we see if policy permits us merging this element with previous ones.
-  StringPiece url = src->value();
-  MessageHandler* handler = driver_->message_handler();
-  if (!combiner_->AddElement(element, url, handler).value) {
-    // No -> try to flush what we have thus far.
-    // Note: this flush is important in part because it ensure that all scripts
-    // within combination have the same hostname, so we can safely name
-    // variables excluding the hostname, without worrying about foo.com/a.js
-    // and bar.com/a.js colliding.
-    combiner_->TryCombineAccumulated();
+  if (HasAsyncFlow()) {
+    context_->AddElement(element, src);
+  } else {
+    StringPiece url = src->value();
+    MessageHandler* handler = driver_->message_handler();
+    if (!combiner()->AddElement(element, url, handler).value) {
+      // No -> try to flush what we have thus far.
+      // Note: this flush is important in part because it ensure that all
+      // scripts within combination have the same hostname, so we can safely
+      // name variables excluding the hostname, without worrying about
+      // foo.com/a.js and bar.com/a.js colliding.
+      NextCombination();
 
-    // ... and try to start a new combination
-    combiner_->AddElement(element, url, handler);
+      // ... and try to start a new combination
+      combiner()->AddElement(element, url, handler);
+    }
   }
 }
 
 bool JsCombineFilter::IsCurrentScriptInCombination() const {
-  int included_urls = combiner_->num_urls();
-  return (current_js_script_ != NULL) &&
-         (included_urls >= 1) &&
-         (combiner_->element(included_urls - 1) == current_js_script_);
+  if (HasAsyncFlow()) {
+    return context_->HasElementLast(current_js_script_);
+  } else {
+    int included_urls = combiner()->num_urls();
+    return (current_js_script_ != NULL) &&
+        (included_urls >= 1) &&
+        (combiner()->element(included_urls - 1) == current_js_script_);
+  }
 }
 
 GoogleString JsCombineFilter::VarName(const GoogleString& url) const {
@@ -371,8 +612,41 @@ bool JsCombineFilter::Fetch(const OutputResourcePtr& resource,
                             ResponseHeaders* response_headers,
                             MessageHandler* message_handler,
                             UrlAsyncFetcher::Callback* callback) {
-  return combiner_->Fetch(resource, writer, request_header, response_headers,
+  DCHECK(!HasAsyncFlow());
+  return combiner()->Fetch(resource, writer, request_header, response_headers,
                           message_handler, callback);
+}
+
+bool JsCombineFilter::HasAsyncFlow() const {
+  return driver_->asynchronous_rewrites();
+}
+
+JsCombineFilter::Context* JsCombineFilter::MakeContext() {
+  return new Context(driver_, this);
+}
+
+RewriteContext* JsCombineFilter::MakeRewriteContext() {
+  return MakeContext();
+}
+
+JsCombineFilter::JsCombiner* JsCombineFilter::combiner() const {
+  return context_->combiner();
+}
+
+// In async flow, tell the rewrite_driver to write out the last
+// combination, and reset our context to a new one.
+// In sync flow, just write out what we have so far, and then
+// reset the context.
+void JsCombineFilter::NextCombination() {
+  if (HasAsyncFlow()) {
+    if (!context_->empty()) {
+      driver_->InitiateRewrite(context_.release());
+      context_.reset(MakeContext());
+    }
+  } else {
+    combiner()->TryCombineAccumulated();
+  }
+  context_->Reset();
 }
 
 }  // namespace net_instaweb

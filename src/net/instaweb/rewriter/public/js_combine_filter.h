@@ -40,6 +40,7 @@ class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
 class RewriteDriver;
+class RewriteContext;
 class Statistics;
 class Writer;
 
@@ -82,6 +83,8 @@ class JsCombineFilter : public RewriteFilter {
   virtual void Flush();
   virtual void IEDirective(HtmlIEDirectiveNode* directive);
   virtual const char* Name() const { return "JsCombine"; }
+  virtual bool HasAsyncFlow() const;
+  virtual RewriteContext* MakeRewriteContext();
 
   // RewriteFilter override --- callback for reconstructing resource on demand.
   virtual bool Fetch(const OutputResourcePtr& resource,
@@ -93,6 +96,7 @@ class JsCombineFilter : public RewriteFilter {
 
  private:
   class JsCombiner;
+  class Context;
 
   friend class JsCombineFilterTest;
 
@@ -106,11 +110,17 @@ class JsCombineFilter : public RewriteFilter {
   // Returns JS variable name where code for given URL should be stored.
   GoogleString VarName(const GoogleString& url) const;
 
+  void NextCombination();
+
+  Context* MakeContext();
+
+  JsCombiner* combiner() const;
+
   ScriptTagScanner script_scanner_;
-  scoped_ptr<JsCombiner> combiner_;
   int script_depth_;  // how many script elements we are inside
   // current outermost <script> not with JavaScript we are inside, or NULL
   HtmlElement* current_js_script_;  // owned by the html parser.
+  scoped_ptr<Context> context_;
 
   DISALLOW_COPY_AND_ASSIGN(JsCombineFilter);
 };

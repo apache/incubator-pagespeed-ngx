@@ -63,7 +63,8 @@ const char kEscapedJs2[] = "\"// script2\\r\\nvar b=42;\\n\"";
 }  // namespace
 
 // Test fixture for JsCombineFilter unit tests.
-class JsCombineFilterTest : public ResourceManagerTestBase {
+class JsCombineFilterTest : public ResourceManagerTestBase,
+                            public ::testing::WithParamInterface<bool> {
  public:
   struct ScriptInfo {
     HtmlElement* element;
@@ -121,6 +122,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
+    bool async_rewrites = GetParam();
     UseMd5Hasher();
     SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_js_header_);
     SimulateJsResource(kJsUrl1, kJsText1);
@@ -129,10 +131,11 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
     SimulateJsResource(kStrictUrl1, kStrictText1);
     SimulateJsResource(kStrictUrl2, kStrictText2);
 
+    rewrite_driver()->SetAsynchronousRewrites(async_rewrites);
     filter_ = new JsCombineFilter(rewrite_driver(),
                                   RewriteDriver::kJavascriptCombinerId);
     AddRewriteFilter(filter_);
-
+    rewrite_driver()->AddFilters();
     // Some tests need an another domain, with (different)source files on it as
     // well.
     GoogleString test_domain(kTestDomain);
@@ -196,7 +199,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
 };
 
 // Test for basic operation, including escaping and fetch reconstruction.
-TEST_F(JsCombineFilterTest, CombineJs) {
+TEST_P(JsCombineFilterTest, CombineJs) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
@@ -225,12 +228,11 @@ TEST_F(JsCombineFilterTest, CombineJs) {
   EXPECT_EQ(StrCat("var mod_pagespeed_KecOGCIjKt = ", kEscapedJs1, ";\n",
                    "var mod_pagespeed_dzsx6RqvJJ = ", kEscapedJs2, ";\n"),
             combination_src);
-
   ServeResourceFromManyContexts(scripts[0].url, combination_src);
 }
 
 // Various things that prevent combining
-TEST_F(JsCombineFilterTest, TestBarriers) {
+TEST_P(JsCombineFilterTest, TestBarriers) {
   ValidateNoChanges("noscript",
                     StrCat("<noscript><script src=", kJsUrl1, "></script>",
                            "</noscript><script src=", kJsUrl2, "></script>"));
@@ -287,7 +289,7 @@ TEST_F(JsCombineFilterTest, TestBarriers) {
 }
 
 // Things between scripts that should not prevent combination
-TEST_F(JsCombineFilterTest, TestNonBarriers) {
+TEST_P(JsCombineFilterTest, TestNonBarriers) {
   GoogleString combined_url = StrCat(kJsUrl1, "+", kJsUrl2);
 
   // Intervening text
@@ -329,7 +331,7 @@ TEST_F(JsCombineFilterTest, TestNonBarriers) {
 
 // Flush in the middle of first one --- should not change first one;
 // should combine the next two
-TEST_F(JsCombineFilterTest, TestFlushMiddle1) {
+TEST_P(JsCombineFilterTest, TestFlushMiddle1) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   SetupWriter();
@@ -350,7 +352,7 @@ TEST_F(JsCombineFilterTest, TestFlushMiddle1) {
 
 // Flush in the middle of a second tag - should back it out and realize
 // that the single entry left should not be touched
-TEST_F(JsCombineFilterTest, TestFlushMiddle2) {
+TEST_P(JsCombineFilterTest, TestFlushMiddle2) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   SetupWriter();
@@ -370,7 +372,7 @@ TEST_F(JsCombineFilterTest, TestFlushMiddle2) {
 }
 
 // Flush in the middle of a third tag -- first two should be combined.
-TEST_F(JsCombineFilterTest, TestFlushMiddle3) {
+TEST_P(JsCombineFilterTest, TestFlushMiddle3) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   SetupWriter();
@@ -391,7 +393,7 @@ TEST_F(JsCombineFilterTest, TestFlushMiddle3) {
 // Make sure we honor <base> properly.
 // Note: this test relies on <base> tag implicitly authorizing things,
 // which we may wish to change in the future.
-TEST_F(JsCombineFilterTest, TestBase) {
+TEST_P(JsCombineFilterTest, TestBase) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   ParseUrl(kTestDomain, StrCat("<base href=", other_domain_, ">",
@@ -405,7 +407,7 @@ TEST_F(JsCombineFilterTest, TestBase) {
 }
 
 // Make sure we check for cross-domain rejections.
-TEST_F(JsCombineFilterTest, TestCrossDomainReject) {
+TEST_P(JsCombineFilterTest, TestCrossDomainReject) {
   ValidateNoChanges("xd",
                     StrCat("<script src=", other_domain_, kJsUrl1, "></script>",
                            "<script src=", kJsUrl2, "></script>"));
@@ -420,7 +422,7 @@ TEST_F(JsCombineFilterTest, TestCrossDomainReject) {
 }
 
 // Validate that we can recover a combination after a cross-domain rejection
-TEST_F(JsCombineFilterTest, TestCrossDomainRecover) {
+TEST_P(JsCombineFilterTest, TestCrossDomainRecover) {
   ASSERT_TRUE(options()->domain_lawyer()->AddDomain(other_domain_,
                                                     &message_handler_));
 
@@ -449,7 +451,7 @@ TEST_F(JsCombineFilterTest, TestCrossDomainRecover) {
   VerifyUseOnDomain(other_domain_, scripts[5], kJsUrl2);
 }
 
-TEST_F(JsCombineFilterTest, TestCombineStats) {
+TEST_P(JsCombineFilterTest, TestCombineStats) {
   Variable* num_reduced =
       statistics()->GetVariable(JsCombineFilter::kJsFileCountReduction);
   EXPECT_EQ(0, num_reduced->Get());
@@ -463,7 +465,7 @@ TEST_F(JsCombineFilterTest, TestCombineStats) {
   EXPECT_EQ(2, num_reduced->Get());
 }
 
-TEST_F(JsCombineFilterTest, TestCombineShard) {
+TEST_P(JsCombineFilterTest, TestCombineShard) {
   // Make sure we produce consistent output when sharding/serving off a
   // different host.
   GoogleString path = StrCat(kJsUrl1, "+", kJsUrl2, ".pagespeed.jc.0.js");
@@ -480,5 +482,8 @@ TEST_F(JsCombineFilterTest, TestCombineShard) {
 
   EXPECT_EQ(src1, src2);
 }
+
+INSTANTIATE_TEST_CASE_P(JsCombineFilterTestInstance, JsCombineFilterTest,
+                        ::testing::Bool());
 
 }  // namespace net_instaweb
