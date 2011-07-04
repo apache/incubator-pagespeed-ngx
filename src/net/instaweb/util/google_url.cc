@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <string>
 #include "base/logging.h"
+#include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -60,23 +61,70 @@ GoogleUrl::GoogleUrl()
     : gurl_() {
 }
 
-// Returns the offset at which the leaf starts in the fully
-// qualified spec.
-size_t GoogleUrl::LeafStartPosition() const {
-  url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+GoogleUrl* GoogleUrl::CopyAndAddQueryParam(const StringPiece& name,
+                                          const StringPiece& value) {
+  QueryParams query_params;
+  query_params.Parse(Query());
+  query_params.Add(name, value);
+  GoogleString query_params_string = query_params.ToString();
+  url_canon::Replacements<char> replace_query;
+  url_parse::Component query;
+  query.len = query_params_string.size();
+  replace_query.SetQuery(query_params_string.c_str(), query);
+  GoogleUrl* result =
+      new GoogleUrl(gurl_.ReplaceComponents(replace_query));
+  return result;
+}
+
+size_t GoogleUrl::LeafEndPosition(const GURL& gurl) {
+  url_parse::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
+  if (parsed.path.is_valid()) {
+    return parsed.path.end();
+  }
+  if (parsed.port.is_valid()) {
+    return parsed.port.end();
+  }
+  if (parsed.host.is_valid()) {
+    return parsed.host.end();
+  }
+  if (parsed.password.is_valid()) {
+    return parsed.password.end();
+  }
+  if (parsed.username.is_valid()) {
+    return parsed.username.end();
+  }
+  if (parsed.scheme.is_valid()) {
+    return parsed.scheme.end();
+  }
+  return 0;
+}
+
+// Returns the offset at which the leaf ends in valid url spec.
+// If there is no path, steps backward until valid end is found.
+size_t GoogleUrl::LeafEndPosition() const {
+  return LeafEndPosition(gurl_);
+}
+
+size_t GoogleUrl::LeafStartPosition(const GURL& gurl) {
+  url_parse::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
   size_t start_reverse_search_from = std::string::npos;
   if (parsed.query.is_valid() && (parsed.query.begin > 0)) {
-    // query includes include '?', so start the search from the character
+    // query includes '?', so start the search from the character
     // before it.
     start_reverse_search_from = parsed.query.begin - 1;
   }
-  return gurl_.possibly_invalid_spec().rfind('/', start_reverse_search_from);
+  return gurl.possibly_invalid_spec().rfind('/', start_reverse_search_from);
 }
 
-// Find the start of the path, includes '/'
-size_t GoogleUrl::PathStartPosition() const {
-  const std::string& spec = gurl_.spec();
-  url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+// Returns the offset at which the leaf starts in the fully
+// qualified spec.
+size_t GoogleUrl::LeafStartPosition() const {
+  return LeafStartPosition(gurl_);
+}
+
+size_t GoogleUrl::PathStartPosition(const GURL& gurl) {
+  const std::string& spec = gurl.spec();
+  url_parse::Parsed parsed = gurl.parsed_for_possibly_invalid_spec();
   size_t origin_size = parsed.path.begin;
   if (!parsed.path.is_valid()) {
     origin_size = spec.size();
@@ -84,6 +132,11 @@ size_t GoogleUrl::PathStartPosition() const {
   CHECK_LT(0, static_cast<int>(origin_size));
   CHECK_LE(origin_size, spec.size());
   return origin_size;
+}
+
+// Find the start of the path, includes '/'
+size_t GoogleUrl::PathStartPosition() const {
+  return PathStartPosition(gurl_);
 }
 
 bool GoogleUrl::Reset(const StringPiece& new_value) {
@@ -100,19 +153,46 @@ void GoogleUrl::Clear() {
   gurl_ = GURL();
 }
 
+StringPiece GoogleUrl::AllExceptQuery() const {
+  const std::string& spec = gurl_.possibly_invalid_spec();
+  if (gurl_.is_valid()) {
+    size_t leaf_end = LeafEndPosition();
+    return StringPiece(spec.data(), leaf_end);
+  } else {
+    return StringPiece(spec.data(), 0);
+  }
+}
+
+StringPiece GoogleUrl::AllAfterQuery() const {
+  const std::string& spec = gurl_.possibly_invalid_spec();
+  if (gurl_.is_valid()) {
+    url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+    size_t query_end;
+    if (gurl_.has_query()) {
+      query_end = parsed.query.end();
+    } else {
+      query_end = LeafEndPosition();
+    }
+    return StringPiece(spec.data() + query_end, spec.size() - query_end);
+  } else {
+    return StringPiece(spec.data(), 0);
+  }
+}
+
 // Find the last slash before the question-mark, if any.  See
 // http://en.wikipedia.org/wiki/URI_scheme -- the query-string
 // syntax is not well-defined.  But the query-separator is well-defined:
 // it's a ? so I believe this implies that the first ? has to delimit
 // the query string.
 StringPiece GoogleUrl::AllExceptLeaf() const {
-  CHECK(gurl_.is_valid());
+  DCHECK(gurl_.is_valid()) << "Invalid URL: " << gurl_.possibly_invalid_spec();
   size_t last_slash = LeafStartPosition();
   CHECK(last_slash != std::string::npos);
   return StringPiece(gurl_.spec().data(), last_slash + 1);
 }
 
 StringPiece GoogleUrl::LeafWithQuery() const {
+  DCHECK(gurl_.is_valid()) << "Invalid URL: " << gurl_.possibly_invalid_spec();
   size_t last_slash = LeafStartPosition();
   const std::string& spec = gurl_.spec();
   CHECK(last_slash != spec.npos);
@@ -121,6 +201,7 @@ StringPiece GoogleUrl::LeafWithQuery() const {
 }
 
 StringPiece GoogleUrl::LeafSansQuery() const {
+  DCHECK(gurl_.is_valid()) << "Invalid URL: " << gurl_.possibly_invalid_spec();
   const std::string& spec = gurl_.spec();
   size_t after_last_slash = LeafStartPosition() + 1;
   size_t leaf_length = spec.size() - after_last_slash;
@@ -136,12 +217,14 @@ StringPiece GoogleUrl::LeafSansQuery() const {
 
 // For "http://a.com/b/c/d?e=f/g returns "http://a.com" without trailing slash
 StringPiece GoogleUrl::Origin() const {
+  DCHECK(gurl_.is_valid()) << "Invalid URL: " << gurl_.possibly_invalid_spec();
   size_t origin_size = PathStartPosition();
   return StringPiece(gurl_.spec().data(), origin_size);
 }
 
 // For "http://a.com/b/c/d?e=f/g returns "/b/c/d?e=f/g" including leading slash
 StringPiece GoogleUrl::PathAndLeaf() const {
+  DCHECK(gurl_.is_valid()) << "Invalid URL: " << gurl_.possibly_invalid_spec();
   const std::string& spec = gurl_.spec();
   size_t origin_size = PathStartPosition();
   return StringPiece(spec.data() + origin_size,
@@ -152,6 +235,7 @@ StringPiece GoogleUrl::PathAndLeaf() const {
 // trailing slashes.
 // For queries, "http://a.com/b/c/d?E=f/g" returns "/b/c/".
 StringPiece GoogleUrl::PathSansLeaf() const {
+  DCHECK(gurl_.is_valid()) << "Invalid URL: " << gurl_.possibly_invalid_spec();
   size_t path_start = PathStartPosition();
   size_t leaf_start = LeafStartPosition();
   return StringPiece(gurl_.spec().data() + path_start,

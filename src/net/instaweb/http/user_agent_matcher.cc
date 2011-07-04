@@ -50,18 +50,17 @@ const char* kImageInliningBlacklist[] = {
   "*Opera?5*",
   "*Opera?6*"
 };
+// For webp rewriting, we whitelist Chrome and Opera, but blacklist
+// older versions of either browser that are not webp capable.  As
+// other browsers roll out webp support we will need to update this
+// list to include them.
 const char* kWebpWhitelist[] = {
-#if 0
-  // TODO(jmaessen): re-enable after further testing.
   "*Chrome/*",
   "*Opera/9.80*Version/??.*",
   "*Opera???.*",
-#endif
   // User agent used only for internal testing
   "webp",
 };
-#if 0
-// TODO(jmaessen): re-enable after further testing.
 const char* kWebpBlacklist[] = {
   "*Chrome/0.*",
   "*Chrome/1.*",
@@ -78,7 +77,6 @@ const char* kWebpBlacklist[] = {
   "*Opera/9.80*Version/11.0*",
   "*Opera?11.0*",
 };
-#endif
 }
 
 UserAgentMatcher::UserAgentMatcher() {
@@ -93,12 +91,9 @@ UserAgentMatcher::UserAgentMatcher() {
   for (int i = 0, n = arraysize(kWebpWhitelist); i < n; ++i) {
     supports_webp_.Allow(kWebpWhitelist[i]);
   }
-#if 0
-  // TODO(jmaessen): re-enable after further testing.
   for (int i = 0, n = arraysize(kWebpBlacklist); i < n; ++i) {
     supports_webp_.Disallow(kWebpBlacklist[i]);
   }
-#endif
 }
 
 bool UserAgentMatcher::IsIe(const StringPiece& user_agent) const {

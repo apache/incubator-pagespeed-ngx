@@ -238,7 +238,6 @@
         'util/null_message_handler.cc',
         'util/null_statistics.cc',
         'util/null_writer.cc',
-        'util/query_params.cc',
         'util/queued_worker.cc',
         'util/ref_counted.cc',
         'util/rolling_hash.cc',

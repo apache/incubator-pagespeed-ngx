@@ -34,6 +34,7 @@ Baiduspider
 BaySpider
 bbot
 bingbot
+bitlybot
 borg-bot
 BoxSeaBot
 BSpider
@@ -78,6 +79,7 @@ spiderline
 tarspider
 TechBOT
 uptimebot
+vcbot
 Verticrawlbot
 void-bot
 VWbot_K
@@ -95,7 +97,7 @@ bool BotChecker::Lookup(const StringPiece& user_agent) {
     return true;
   }
   // get the application_name/domain_name/email
-  const char separator[] = " /;+";
+  const char separator[] = " /,;+";
   StringPieceVector names;
   SplitStringPieceToVector(user_agent, separator, &names, true);
   for (int i = 0, n = names.size(); i < n; ++i) {

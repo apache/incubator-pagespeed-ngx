@@ -26,6 +26,16 @@ namespace {
 const char kChromeUserAgent[] =
     "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) "
     "AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.A.B.C Safari/525.13";
+const char kChrome9UserAgent[] =  // Not webp capable
+    "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) "
+    "AppleWebKit/534.13 (KHTML, like Gecko) Chrome/9.0.597.19 Safari/534.13";
+const char kChrome12UserAgent[] =  // webp capable
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_4) "
+    "AppleWebKit/534.30 (KHTML, like Gecko) Chrome/12.0.742.100 Safari/534.30";
+const char kOpera1101UserAgent[] =  // Not webp capable
+    "Opera/9.80 (Windows NT 5.2; U; ru) Presto/2.7.62 Version/11.01";
+const char kOpera1110UserAgent[] =  // webp capable
+    "Opera/9.80 (Windows NT 6.0; U; en) Presto/2.8.99 Version/11.10";
 const char kFirefoxUserAgent[] =
     "Mozilla/5.0 (X11; U; Linux x86_64; zh-CN; rv:1.9.2.10) "
     "Gecko/20100922 Ubuntu/10.10 (maverick) Firefox/3.6.10";
@@ -87,51 +97,50 @@ TEST_F(UserAgentMatcherTest, IsNotIeTest) {
   EXPECT_FALSE(user_agent_matcher_.IsIe(kFirefoxUserAgent));
   EXPECT_FALSE(user_agent_matcher_.IsIe6(kFirefoxUserAgent));
   EXPECT_FALSE(user_agent_matcher_.IsIe6or7(kFirefoxUserAgent));
-
   EXPECT_FALSE(user_agent_matcher_.IsIe(kChromeUserAgent));
 }
 
-TEST_F(UserAgentMatcherTest, NotSupportsImageInliningIe6) {
-  EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kIe6UserAgent));
-}
-
-TEST_F(UserAgentMatcherTest, SupportsImageInliningIe9) {
+TEST_F(UserAgentMatcherTest, SupportsImageInlining) {
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kIe9UserAgent));
-}
-
-TEST_F(UserAgentMatcherTest, SupportsImageInliningChrome) {
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kChromeUserAgent));
-}
-
-TEST_F(UserAgentMatcherTest, SupportsImageInliningFF3) {
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kFirefoxUserAgent));
-}
-
-TEST_F(UserAgentMatcherTest, NotSupportsImageInliningFF1) {
-  EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kFirefox1UserAgent));
-}
-
-TEST_F(UserAgentMatcherTest, SupportsImageInliningOpera8) {
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kOpera8UserAgent));
-}
-
-TEST_F(UserAgentMatcherTest, SupportsImageInliningOpera5) {
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kOpera5UserAgent));
-}
-
-TEST_F(UserAgentMatcherTest, SupportsImageInliningSafari) {
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kSafariUserAgent));
-}
-
-TEST_F(UserAgentMatcherTest, NotSupportsImageInliningNokia) {
-  EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kNokiaUserAgent));
-}
-
-TEST_F(UserAgentMatcherTest, SupportImageInliningiPhone) {
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kIPhoneUserAgent));
 }
 
-TEST_F(UserAgentMatcherTest, NotSupportImageInliningPSP) {
+TEST_F(UserAgentMatcherTest, NotSupportsImageInlining) {
+  EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kIe6UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kFirefox1UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kNokiaUserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kPSPUserAgent));
 }
+
+
+TEST_F(UserAgentMatcherTest, SupportsWebp) {
+  EXPECT_TRUE(user_agent_matcher_.SupportsWebp(kChrome12UserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsWebp(kOpera1110UserAgent));
+}
+
+TEST_F(UserAgentMatcherTest, DoesntSupportWebp) {
+  // The most interesting tests here are the recent but slightly older versions
+  // of Chrome and Opera that can't display webp.
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kChromeUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kChrome9UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kOpera1101UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kFirefoxUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kFirefox1UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kIe6UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kIe7UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kIe8UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kIe9UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kIPhoneUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kNokiaUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kOpera5UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kOpera8UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kPSPUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kSafariUserAgent));
+}
+
 }  // namespace net_instaweb

@@ -59,6 +59,12 @@ TEST_F(BotCheckerTest, DetectUserAgentWithDomain) {
   EXPECT_TRUE(BotChecker::Lookup(user_agent));
 }
 
+// Case for comma separated bot agents.
+TEST_F(BotCheckerTest, DetectCommaSeparatedUserAgent) {
+  const char user_agent[] = "bitlybot,gzip(gfe)";
+  EXPECT_TRUE(BotChecker::Lookup(user_agent));
+}
+
 // Case for non-bot
 TEST_F(BotCheckerTest, DetectUserAgentWithNoBot) {
   const char user_agent[] = "Wget/1.12 (linux-gnu)";

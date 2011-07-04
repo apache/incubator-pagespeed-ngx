@@ -41,8 +41,6 @@ DEFINE_string(rewrite_level, "CoreFilters",
 DEFINE_string(rewriters, "", "Comma-separated list of rewriters");
 DEFINE_string(domains, "", "Comma-separated list of domains");
 
-// TODO(sligocki): DEFINE_string(cache_server, "", ...);
-
 DEFINE_int64(css_outline_min_bytes,
              net_instaweb::RewriteOptions::kDefaultCssOutlineMinBytes,
              "Number of bytes above which inline "

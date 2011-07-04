@@ -16,6 +16,8 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
+#include <cstddef>
+
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -59,9 +61,11 @@ class ImageRewriteTest : public ResourceManagerTestBase,
   }
 
   // Simple image rewrite test to check resource fetching functionality.
-  void RewriteImage(const GoogleString& tag_string) {
+  void RewriteImage(const GoogleString& tag_string,
+                    const ContentType& content_type) {
     options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
     options()->EnableFilter(RewriteOptions::kRecompressImages);
+    options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
     options()->set_image_inline_max_bytes(2000);
     rewrite_driver()->AddFilters();
 
@@ -86,7 +90,10 @@ class ImageRewriteTest : public ResourceManagerTestBase,
     // Make sure the next two checks won't abort().
     ASSERT_LT(strlen(domain) + 4, src_string.size());
     EXPECT_EQ(domain, src_string.substr(0, strlen(domain)));
-    EXPECT_EQ(".jpg", src_string.substr(src_string.size() - 4, 4));
+    const char* extension = content_type.file_extension();
+    size_t extension_size = strlen(extension);
+    EXPECT_EQ(extension, src_string.substr(src_string.size() - extension_size,
+                                           extension_size));
 
     GoogleString rewritten_data;
 
@@ -109,7 +116,7 @@ class ImageRewriteTest : public ResourceManagerTestBase,
     ExpectCallback dummy_callback(true);
 
     GoogleString headers;
-    AppendDefaultHeaders(kContentTypeJpeg, &headers);
+    AppendDefaultHeaders(content_type, &headers);
 
     writer.Write(headers, &message_handler_);
     writer.Flush(&message_handler_);
@@ -127,7 +134,8 @@ class ImageRewriteTest : public ResourceManagerTestBase,
     // first, and we caught doubled headers this way.
     EXPECT_EQ(rewritten_image_data.substr(0, 250),
               fetched_resource_content.substr(0, 250)) <<
-        "In " << src_string;
+        "In " << src_string <<
+        " response headers " << response_headers.ToString();
     EXPECT_TRUE(rewritten_image_data == fetched_resource_content) <<
         "In " << src_string;
 
@@ -295,11 +303,27 @@ class ImageRewriteTest : public ResourceManagerTestBase,
 };
 
 TEST_P(ImageRewriteTest, ImgTag) {
-  RewriteImage("img");
+  RewriteImage("img", kContentTypeJpeg);
+}
+
+TEST_P(ImageRewriteTest, ImgTagWebp) {
+  // We use the webp testing user agent; real webp-capable user agents are
+  // tested as part of user_agent_matcher_test and are likely to remain in flux
+  // over time.
+  rewrite_driver()->set_user_agent("webp");
+  RewriteImage("img", kContentTypeWebp);
 }
 
 TEST_P(ImageRewriteTest, InputTag) {
-  RewriteImage("input type=\"image\"");
+  RewriteImage("input type=\"image\"", kContentTypeJpeg);
+}
+
+TEST_P(ImageRewriteTest, InputTagWebp) {
+  // We use the webp testing user agent; real webp-capable user agents are
+  // tested as part of user_agent_matcher_test and are likely to remain in flux
+  // over time.
+  rewrite_driver()->set_user_agent("webp");
+  RewriteImage("input type=\"image\"", kContentTypeWebp);
 }
 
 TEST_P(ImageRewriteTest, DataUrlTest) {

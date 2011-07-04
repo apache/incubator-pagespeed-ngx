@@ -51,25 +51,46 @@ class GoogleUrl {
   // Resets this URL to be invalid.
   void Clear();
 
-  // For "http://a.com/b/c/d?e=f/g returns "http://a.com/b/c/",
+  // Returns a new GoogleUrl that is identical to this one but with additional
+  // query param.  Name and value should both be legal and already encoded.
+  // This is a factory method that returns a pointer, the caller is responsible
+  // for the management of the new object's memory (the caller owns the
+  // pointer).
+  GoogleUrl* CopyAndAddQueryParam(const StringPiece& name,
+                                  const StringPiece& value);
+
+  // For "http://a.com/b/c/d?e=f/g#r" returns "http://a.com/b/c/d"
+  // Returns empty StringPiece for invalid url.
+  // Returns a StringPiece, only valid for the lifetime of this object.
+  StringPiece AllExceptQuery() const;
+
+  // For "http://a.com/b/c/d?e=f#r" returns "#r"
+  // For "http://a.com/b/c/d?e=f#r1#r2" returns "#r1#r2"
+  // Returns empty StringPiece for invalid url.
+  // AllExceptQuery() + Query() + AllAfterQuery() = Spec() when url is valid
+  // Different from Parsed.ref in the case of multiple "#"s after "?"
+  // Returns a StringPiece, only valid for the lifetime of this object.
+  StringPiece AllAfterQuery() const;
+
+  // For "http://a.com/b/c/d?e=f/g" returns "http://a.com/b/c/",
   // including trailing slash.
   // Returns a StringPiece, only valid for the lifetime of this object.
   StringPiece AllExceptLeaf() const;
 
-  // For "http://a.com/b/c/d?e=f/g returns "d?e=f/g", omitting leading slash.
+  // For "http://a.com/b/c/d?e=f/g" returns "d?e=f/g", omitting leading slash.
   // Returns a StringPiece, only valid for the lifetime of this object.
   StringPiece LeafWithQuery() const;
 
-  // For "http://a.com/b/c/d?e=f/g returns "d", omitting leading slash.
+  // For "http://a.com/b/c/d?e=f/g" returns "d", omitting leading slash.
   // Returns a StringPiece, only valid for the lifetime of this object.
   StringPiece LeafSansQuery() const;
 
-  // For "http://a.com/b/c/d?E=f/g returns "/b/c/d?e=f/g"
+  // For "http://a.com/b/c/d?E=f/g" returns "/b/c/d?e=f/g"
   // including leading slash
   // Returns a StringPiece, only valid for the lifetime of this object.
   StringPiece PathAndLeaf() const;
 
-  // For "http://a.com/b/c/d/g.html returns "/b/c/d/" including leading and
+  // For "http://a.com/b/c/d/g.html" returns "/b/c/d/" including leading and
   // trailing slashes.
   // For queries, "http://a.com/b/c/d?E=f/g" returns "/b/c/".
   // Returns a StringPiece, only valid for the lifetime of this object.
@@ -152,10 +173,13 @@ class GoogleUrl {
   bool operator!=(const GoogleUrl& other) const {
     return gurl_ != other.gurl_;
   }
+
  private:
   GURL gurl_;
+  static size_t LeafEndPosition(const GURL &gurl);
   static size_t LeafStartPosition(const GURL &gurl);
   static size_t PathStartPosition(const GURL &gurl);
+  size_t LeafEndPosition() const;
   size_t LeafStartPosition() const;
   size_t PathStartPosition() const;
 
