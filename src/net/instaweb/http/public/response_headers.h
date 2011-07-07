@@ -139,10 +139,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // since 1970.
   void UpdateDateHeader(const StringPiece& attr, int64 date_ms);
 
+  void ParseFirstLine(const StringPiece& first_line);
   // Set whole first line.
-  void set_first_line(int major_version,
-                      int minor_version,
-                      int status_code,
+  void set_first_line(int major_version, int minor_version, int status_code,
                       const StringPiece& reason_phrase) {
     set_major_version(major_version);
     set_minor_version(minor_version);
