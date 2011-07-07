@@ -18,7 +18,6 @@
 
 #include "net/instaweb/util/public/filename_encoder.h"
 
-#include <vector>
 #include <cstddef>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"

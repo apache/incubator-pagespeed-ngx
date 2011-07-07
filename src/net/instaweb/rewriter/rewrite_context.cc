@@ -271,6 +271,7 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     parent_(parent),
     driver_(driver),
     num_predecessors_(0),
+    chained_(false),
     cache_lookup_active_(false),
     rewrite_done_(false),
     ok_to_write_output_partitions_(true) {
@@ -315,6 +316,7 @@ void RewriteContext::AddSlot(const ResourceSlotPtr& slot) {
     DCHECK(!predecessor->started_);
     predecessor->successors_.push_back(this);
     ++num_predecessors_;
+    chained_ = true;
   }
   slot->AddContext(this);
 }
@@ -351,12 +353,7 @@ void RewriteContext::Start() {
     // Note that the output_key_name is not necessarily the same as the
     // name of the output.
     // Write partition to metadata cache.
-    StringVector urls;
-    for (int i = 0, n = num_slots(); i < n; ++i) {
-      ResourcePtr resource(slot(i)->resource());
-      urls.push_back(resource->url());
-    }
-    encoder()->Encode(urls, resource_context_.get(), &partition_key_);
+    partition_key_ = CacheKey();
     StrAppend(&partition_key_, ":", id());
     CacheInterface* metadata_cache = Manager()->metadata_cache();
 
@@ -768,6 +765,17 @@ bool RewriteContext::FreshenAndCheckExpiration(const CachedResult& group) {
 
 const UrlSegmentEncoder* RewriteContext::encoder() const {
   return &default_encoder_;
+}
+
+GoogleString RewriteContext::CacheKey() const {
+  GoogleString key;
+  StringVector urls;
+  for (int i = 0, n = num_slots(); i < n; ++i) {
+    ResourcePtr resource(slot(i)->resource());
+    urls.push_back(resource->url());
+  }
+  encoder()->Encode(urls, resource_context_.get(), &key);
+  return key;
 }
 
 bool RewriteContext::Fetch(

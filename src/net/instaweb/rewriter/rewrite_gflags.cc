@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/rewrite_gflags.h"
 
-#include <vector>
-
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"

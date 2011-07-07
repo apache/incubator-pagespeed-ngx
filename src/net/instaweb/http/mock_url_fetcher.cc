@@ -20,6 +20,7 @@
 
 #include <map>
 #include <utility>                      // for pair
+#include "base/logging.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"

@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 
-#include <cstddef>                     // for NULL
-
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"

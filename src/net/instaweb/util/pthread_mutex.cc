@@ -19,7 +19,6 @@
 #include "net/instaweb/util/public/pthread_mutex.h"
 
 #include <pthread.h>
-#include <cstddef>
 #include "net/instaweb/util/public/pthread_condvar.h"
 #include "net/instaweb/util/public/thread_system.h"
 

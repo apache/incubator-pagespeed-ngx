@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_MOCK_RESOURCE_CALLBACK_H_
 
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
 

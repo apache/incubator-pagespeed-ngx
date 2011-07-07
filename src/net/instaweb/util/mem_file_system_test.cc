@@ -30,6 +30,8 @@
 
 namespace net_instaweb {
 
+class Timer;
+
 class MemFileSystemTest : public FileSystemTest {
  protected:
   MemFileSystemTest()

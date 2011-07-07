@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
-#include <cstddef>
 #include <set>
 
 #include "net/instaweb/util/public/gtest.h"

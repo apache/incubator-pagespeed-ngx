@@ -28,8 +28,6 @@
 
 namespace net_instaweb {
 
-class UrlAsyncFetcher;
-
 // TODO(sligocki): Merge with CacheUrlAsyncFetcherTest and refactor into
 // FetcherTestBase.
 class HttpDumpUrlAsyncWriterTest : public FetcherTest {

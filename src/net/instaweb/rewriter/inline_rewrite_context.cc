@@ -29,7 +29,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/string.h"  // for GoogleString, NULL
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

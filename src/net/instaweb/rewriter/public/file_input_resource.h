@@ -29,6 +29,7 @@
 namespace net_instaweb {
 
 struct ContentType;
+class InputInfo;
 class MessageHandler;
 class ResourceManager;
 class ResponseHeaders;

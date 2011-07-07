@@ -108,8 +108,6 @@ Atom SymbolTable<CharTransform>::Intern(const StringPiece& src) {
 }
 
 // We explicitly instantiate since we want ::Intern to be out-of-line
-struct CaseFold;
-struct CasePreserve;
 template class SymbolTable<CaseFold>;
 template class SymbolTable<CasePreserve>;
 

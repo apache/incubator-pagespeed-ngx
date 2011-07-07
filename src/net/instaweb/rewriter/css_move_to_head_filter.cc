@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 
-#include <cstddef>
-
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"

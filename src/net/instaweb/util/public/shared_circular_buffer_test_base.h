@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 class SharedCircularBuffer;
@@ -53,6 +54,10 @@ class SharedCircularBufferTestBase : public testing::Test {
   void TestCreateChild();
   void TestAddChild();
   void TestClearChild();
+  // Write to SharedCircularBuffer in a child process.
+  void TestChildWrite();
+  // Check content of SharedCircularBuffer in a child process.
+  void TestChildBuff();
 
   // Initialize SharedMemoryCircularBuffer from child process.
   SharedCircularBuffer* ChildInit();
@@ -62,6 +67,13 @@ class SharedCircularBufferTestBase : public testing::Test {
   scoped_ptr<SharedMemTestEnv> test_env_;
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
   MockMessageHandler handler_;
+  // Message to write in Child process.
+  // We can't pass in argument in callback functions in this TestBase,
+  // stick value to member variable instead.
+  StringPiece message_;
+  // Expected content of SharedCircularBuffer.
+  // Used to check buffer content in a child process.
+  StringPiece expected_result_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedCircularBufferTestBase);
 };

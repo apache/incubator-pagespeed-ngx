@@ -25,11 +25,9 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/string.h"  // for GoogleString, NULL
 
 namespace net_instaweb {
 
-class RewriteContext;
 class RewriteDriver;
 
 SingleRewriteContext::SingleRewriteContext(RewriteDriver* driver,

@@ -20,6 +20,7 @@
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/shared_circular_buffer_test_base.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -115,24 +116,49 @@ void SharedCircularBufferTestBase::TestClearChild() {
   buff->Clear();
 }
 
-// Check if the circular buffer works well when two processes
-// write to it alternatively.
+void SharedCircularBufferTestBase::TestChildWrite() {
+  scoped_ptr<SharedCircularBuffer> buff(ChildInit());
+  buff->InitSegment(false, &handler_);
+  buff->Write(message_);
+}
+
+void SharedCircularBufferTestBase::TestChildBuff() {
+  scoped_ptr<SharedCircularBuffer> buff(ChildInit());
+  buff->InitSegment(false, &handler_);
+  // Check if buffer content is correct.
+  if (expected_result_ != buff->ToString(&handler_)) {
+    test_env_->ChildFailed();
+  }
+}
+
+// Check various operations, and wraparound, with multiple processes.
 void SharedCircularBufferTestBase::TestCircular() {
   scoped_ptr<SharedCircularBuffer> parent(ParentInit());
-  scoped_ptr<SharedCircularBuffer> child(ChildInit());
+  parent->Clear();
+  // Write in parent process.
   parent->Write("012345");
   EXPECT_EQ("012345", parent->ToString(&handler_));
-  child->Write("67");
-  EXPECT_EQ("01234567", child->ToString(&handler_));
+  // Write in a child process.
+  message_ = "67";
+  ASSERT_TRUE(CreateChild(
+      &SharedCircularBufferTestBase::TestChildWrite));
+  test_env_->WaitForChildren();
+  EXPECT_EQ("01234567", parent->ToString(&handler_));
+  // Write in parent process.
   parent->Write("89");
+  // Check buffer content in a child process.
   // Buffer size is 10. It should be filled exactly so far.
-  EXPECT_EQ("0123456789", parent->ToString(&handler_));
+  expected_result_ = "0123456789";
+  ASSERT_TRUE(CreateChild(
+      &SharedCircularBufferTestBase::TestChildBuff));
+  test_env_->WaitForChildren();
   // Lose the first char.
-  child->Write("a");
-  EXPECT_EQ("123456789a", child->ToString(&handler_));
+  parent->Write("a");
+  EXPECT_EQ("123456789a", parent->ToString(&handler_));
   // Write a message with length larger than buffer.
   parent->Write("bcdefghijkl");
   EXPECT_EQ("cdefghijkl", parent->ToString(&handler_));
+  parent->GlobalCleanup(&handler_);
 }
 
 }  // namespace net_instaweb

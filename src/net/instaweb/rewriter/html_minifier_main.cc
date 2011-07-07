@@ -5,7 +5,6 @@
 
 #include <cstdio>
 #include <fstream>
-#include <iosfwd>
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"

@@ -21,7 +21,6 @@
 
 #include "net/instaweb/util/public/worker.h"
 
-#include <cstddef>
 #include <deque>
 
 #include "base/scoped_ptr.h"
@@ -154,6 +153,11 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     return num;
   }
 
+  bool IsBusy() const {
+    ScopedMutex lock(mutex_.get());
+    return (current_task_ != NULL) || !tasks_.empty();
+  }
+
  private:
   Worker* owner_;
 
@@ -177,6 +181,10 @@ Worker::~Worker() {
 
 bool Worker::Start() {
   return thread_->Start();
+}
+
+bool Worker::IsBusy() {
+  return thread_->IsBusy();
 }
 
 bool Worker::QueueIfPermitted(Closure* closure) {

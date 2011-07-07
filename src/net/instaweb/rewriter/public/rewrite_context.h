@@ -120,6 +120,10 @@ class RewriteContext {
   const OutputPartition* output_partition(int i) const;
   OutputPartition* output_partition(int i);
 
+  // Returns true if this context is chained to some predecessors, and
+  // must therefore be started by a predecessor and not RewriteDriver.
+  bool chained() const { return chained_ != 0; }
+
   // Resource slots must be added to a Rewrite before Initiate() can
   // be called.  Starting the rewrite sets in motion a sequence
   // of async cache-lookups &/or fetches.
@@ -279,6 +283,13 @@ class RewriteContext {
   // TODO(jmarantz): remove the encoder from RewriteFilter.
   virtual const UrlSegmentEncoder* encoder() const;
 
+  // Returns the cache key that should be used to identify the input &
+  // settings for the rewrites we're representing. The default implementation
+  // Just passes in the URLs through the encoder.
+  //
+  // (Filter ID will be incorporated separately)
+  virtual GoogleString CacheKey() const;
+
   // Returrns the filter ID.
   virtual const char* id() const = 0;
 
@@ -430,6 +441,10 @@ class RewriteContext {
 
   // Track the number of ResourceContexts that must be run before this one.
   int num_predecessors_;
+
+  // If true, this context's execution must follow some other context's
+  // completion (which may have occurred already).
+  bool chained_;
 
   // TODO(jmarantz): Refactor to replace a bunch bool member variables with
   // an explicit state_ member variable, with a set of possibilties that

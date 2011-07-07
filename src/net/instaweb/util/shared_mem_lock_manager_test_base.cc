@@ -16,7 +16,6 @@
 
 #include "net/instaweb/util/public/shared_mem_lock_manager_test_base.h"
 
-#include <cstddef>
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/md5_hasher.h"

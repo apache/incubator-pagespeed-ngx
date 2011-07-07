@@ -33,7 +33,6 @@ const size_t kMaxSize = 100;
 }
 
 namespace net_instaweb {
-class CacheInterface;
 
 class LRUCacheTest : public CacheTestBase {
  protected:

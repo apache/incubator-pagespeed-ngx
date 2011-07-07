@@ -24,8 +24,6 @@
 
 namespace net_instaweb {
 
-class ThreadSystem;
-
 QueuedWorker::QueuedWorker(ThreadSystem* runtime)
     : Worker(runtime) {
 }

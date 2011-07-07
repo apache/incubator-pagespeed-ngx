@@ -26,7 +26,6 @@
 #include "net/instaweb/util/public/lru_cache.h"
 
 namespace net_instaweb {
-class CacheInterface;
 
 class WriteThroughCacheTest : public CacheTestBase {
  protected:

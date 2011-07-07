@@ -34,12 +34,15 @@
 #include "net/instaweb/util/public/pthread_thread_system.h"
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
+#include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 
 namespace net_instaweb {
 
 SharedMemOwnerMap* ApacheRewriteDriverFactory::lock_manager_owners_ = NULL;
+RefCountedOwner<SlowWorker>::Family
+    ApacheRewriteDriverFactory::slow_worker_family_;
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     server_rec* server, const StringPiece& version)
@@ -48,6 +51,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       serf_url_async_fetcher_(NULL),
       shared_mem_statistics_(NULL),
       shared_mem_runtime_(new PthreadSharedMem()),
+      slow_worker_(&slow_worker_family_),
       lru_cache_kb_per_process_(0),
       lru_cache_byte_limit_(0),
       file_cache_clean_interval_ms_(Timer::kHourMs),
@@ -73,6 +77,14 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
 }
 
 ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
+  // Finish up any background tasks and stop accepting new ones. This ensures
+  // that as soon as the first ApacheRewriteDriverFactory is shutdown we
+  // no longer have to worry about outstanding jobs in the slow_worker_ trying
+  // to access FileCache and similar objects we're about to blow away.
+  if (!is_root_process_) {
+    slow_worker_.Get()->ShutDown();
+  }
+
   // We free all the resources before destroying the pool, because some of the
   // resource uses the sub-pool and will need that pool to be around to
   // clean up properly.
@@ -125,8 +137,8 @@ CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
   FileCache::CachePolicy* policy = new FileCache::CachePolicy(
       timer(), file_cache_clean_interval_ms_, file_cache_clean_size_kb_);
   CacheInterface* cache = new FileCache(
-      file_cache_path_, file_system(), filename_encoder(), policy,
-      message_handler());
+      file_cache_path_, file_system(), slow_worker_.Get(), filename_encoder(),
+      policy, message_handler());
   if (lru_cache_kb_per_process_ != 0) {
     LRUCache* lru_cache = new LRUCache(lru_cache_kb_per_process_ * 1024);
 
@@ -217,6 +229,13 @@ void ApacheRewriteDriverFactory::RootInit() {
 
 void ApacheRewriteDriverFactory::ChildInit() {
   is_root_process_ = false;
+  if (!slow_worker_.Attach()) {
+    slow_worker_.Initialize(new SlowWorker(thread_system()));
+    if (!slow_worker_.Get()->Start()) {
+      message_handler()->Message(
+          kError, "Unable to start background work thread.");
+    }
+  }
   if (shared_mem_statistics_ != NULL) {
     shared_mem_statistics_->InitVariables(false, message_handler());
   }

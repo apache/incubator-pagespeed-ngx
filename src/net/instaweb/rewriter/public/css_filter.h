@@ -54,7 +54,6 @@ class OutputPartitions;
 class RewriteContext;
 class RewriteDriver;
 class Statistics;
-class UrlSegmentEncoder;
 class Variable;
 
 // Find and parse all CSS in the page and apply transformations including:
@@ -190,7 +189,7 @@ class CssFilter::Context : public SingleRewriteContext {
                              const OutputResourcePtr& output);
   virtual const char* id() const { return filter_->id().c_str(); }
   virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
-  virtual const UrlSegmentEncoder* encoder() const;
+  virtual GoogleString CacheKey() const;
 
  private:
   CssFilter* filter_;
@@ -207,9 +206,6 @@ class CssFilter::Context : public SingleRewriteContext {
 
   // Node with inline CSS to rewrite, or NULL if we're rewriting external stuff.
   HtmlCharactersNode* rewrite_inline_char_node_;
-
-  // If we rewrite inline CSS, we use a custom encoder to name our key.
-  scoped_ptr<UrlSegmentEncoder> inline_css_key_encoder_;
 
   // Information needed for nested rewrites or finishing up serialization.
   int64 in_text_size_;

@@ -37,8 +37,6 @@
 
 namespace net_instaweb {
 
-class UrlFetcher;
-
 class HttpDumpUrlWriterTest : public FetcherTest {
  protected:
   HttpDumpUrlWriterTest()

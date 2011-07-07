@@ -15,7 +15,6 @@
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 
 #include <cstddef>
-#include <iosfwd>
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"

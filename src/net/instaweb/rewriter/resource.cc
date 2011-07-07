@@ -20,6 +20,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
@@ -32,7 +33,6 @@
 
 namespace net_instaweb {
 class MessageHandler;
-class ResourceManager;
 class SharedString;
 
 namespace {

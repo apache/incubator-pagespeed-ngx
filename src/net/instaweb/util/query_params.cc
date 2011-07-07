@@ -18,7 +18,6 @@
 
 #include "net/instaweb/util/public/query_params.h"
 
-#include <vector>
 #include "base/logging.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"

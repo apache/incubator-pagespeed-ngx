@@ -29,6 +29,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 

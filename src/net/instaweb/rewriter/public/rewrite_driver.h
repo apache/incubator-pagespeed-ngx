@@ -505,7 +505,7 @@ class RewriteDriver : public HtmlParse {
   // Rewrite in the RewriteThread, and caching the results.  And until
   // they complete, the RewriteDriver must stay alive and not be Recycled
   // or deleted.  WaitForCompletion() blocks until all detached_rewrites
-  // have been retird.
+  // have been retired.
   RewriteContextSet detached_rewrites_;   // protected by rewrite_mutex_
 
   // The number of rewrites that have been requested, and not yet

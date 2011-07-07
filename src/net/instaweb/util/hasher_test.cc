@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/hasher.h"
 
+#include "base/logging.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {

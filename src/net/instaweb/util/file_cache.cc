@@ -30,9 +30,11 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/worker.h"
 
 namespace net_instaweb {
 
@@ -59,6 +61,23 @@ struct CompareByAtime {
 
 }  // namespace for structs used only in Clean().
 
+class FileCache::CacheCleanClosure : public SlowWorker::Closure {
+ public:
+  CacheCleanClosure(FileCache* cache, int64 next_clean_time_ms)
+      : cache_(cache),
+        next_clean_time_ms_(next_clean_time_ms) {}
+  virtual ~CacheCleanClosure() {}
+  virtual void Run() {
+    cache_->last_conditional_clean_result_ =
+        cache_->CleanWithLocking(next_clean_time_ms_);
+  }
+
+ private:
+  FileCache* cache_;
+  int64 next_clean_time_ms_;
+  DISALLOW_COPY_AND_ASSIGN(CacheCleanClosure);
+};
+
 // Filenames for the next scheduled clean time and the lockfile.  In
 // order to prevent these from colliding with actual cachefiles, they
 // contain characters that our filename encoder would escape.
@@ -68,11 +87,13 @@ const char FileCache::kCleanLockName[] = "!clean!lock!";
 // TODO(abliss): remove policy from constructor; provide defaults here
 // and setters below.
 FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
+                     SlowWorker* worker,
                      FilenameEncoder* filename_encoder,
                      CachePolicy* policy,
                      MessageHandler* handler)
     : path_(path),
       file_system_(file_system),
+      worker_(worker),
       filename_encoder_(filename_encoder),
       message_handler_(handler),
       cache_policy_(policy),
@@ -115,7 +136,7 @@ void FileCache::Put(const GoogleString& key, SharedString* value) {
                                message_handler_);
     }
   }
-  CheckClean();
+  CleanIfNeeded();
 }
 
 void FileCache::Delete(const GoogleString& key) {
@@ -142,6 +163,11 @@ bool FileCache::Clean(int64 target_size) {
   int64 file_size;
   int64 file_atime;
   int64 total_size = 0;
+
+  message_handler_->Message(kInfo,
+                            "Checking cache size against target %ld",
+                            static_cast<long>(target_size));
+
   if (!file_system_->RecursiveDirSize(path_, &total_size, message_handler_)) {
     return false;
   }
@@ -226,61 +252,80 @@ bool FileCache::Clean(int64 target_size) {
   return everything_ok;
 }
 
-bool FileCache::CheckClean() {
-  const int64 now_ms = cache_policy_->timer->NowMs();
-  if (now_ms < next_clean_ms_) {
-    return false;
-  }
+bool FileCache::CleanWithLocking(int64 next_clean_time_ms) {
+  bool to_return = false;
+
   GoogleString lock_name(path_);
   EnsureEndsInSlash(&lock_name);
   lock_name += kCleanLockName;
-  bool to_return = false;
-  if (file_system_->TryLock(lock_name, message_handler_).is_true()) {
-    GoogleString clean_time_str;
-    int64 clean_time_ms = 0;
-    int64 new_clean_time_ms = now_ms + cache_policy_->clean_interval_ms;
-    NullMessageHandler null_handler;
-    if (file_system_->ReadFile(clean_time_path_.c_str(), &clean_time_str,
-                               &null_handler)) {
-      StringToInt64(clean_time_str, &clean_time_ms);
-    } else {
-      message_handler_->Message(
-          kWarning, "Failed to read cache clean timestamp %s. "
-          " Doing an extra cache clean to be safe.", clean_time_path_.c_str());
-    }
-    // If the "clean time" written in the file is older than now, we
-    // clean.
-    if (clean_time_ms < now_ms) {
-      message_handler_->Message(kInfo,
-                                "Checking file cache size against target %ld",
-                                static_cast<long>(cache_policy_->target_size));
-      to_return = true;
-    }
-    // If the "clean time" is  later than now plus one interval, something
-    // went wrong (like the system clock moving backwards or the file
-    // getting corrupt) so we clean and reset it.
-    if (clean_time_ms > new_clean_time_ms) {
-      message_handler_->Message(kError,
-                                "Next scheduled file cache clean time %ld"
-                                " is implausibly remote.  Cleaning now.",
-                                static_cast<long>(clean_time_ms));
-      to_return = true;
-    }
-    if (to_return) {
-      clean_time_str = Integer64ToString(new_clean_time_ms);
-      file_system_->WriteFile(clean_time_path_.c_str(), clean_time_str,
-                              message_handler_);
-    }
+  if (file_system_->TryLockWithTimeout(
+      lock_name, Timer::kHourMs, message_handler_).is_true()) {
+    // Update the timestamp file..
+    next_clean_ms_ = next_clean_time_ms;
+    file_system_->WriteFile(clean_time_path_.c_str(),
+                            Integer64ToString(next_clean_time_ms),
+                            message_handler_);
+
+    // Now actually clean.
+    to_return = Clean(cache_policy_->target_size);
     file_system_->Unlock(lock_name, message_handler_);
-  } else {
-    // TODO(abliss): add a way to break a stale lock
-  }
-  next_clean_ms_ = now_ms + cache_policy_->clean_interval_ms;
-  if (to_return) {
-    // TODO(abliss): add a thread here so we don't block the unlucky request.
-    to_return &= Clean(cache_policy_->target_size);
   }
   return to_return;
+}
+
+bool FileCache::ShouldClean(int64* suggested_next_clean_time_ms) {
+  bool to_return = false;
+  const int64 now_ms = cache_policy_->timer->NowMs();
+  if (now_ms < next_clean_ms_) {
+    *suggested_next_clean_time_ms = next_clean_ms_;  // No change yet.
+    return false;
+  }
+
+  GoogleString clean_time_str;
+  int64 clean_time_ms = 0;
+  int64 new_clean_time_ms = now_ms + cache_policy_->clean_interval_ms;
+  NullMessageHandler null_handler;
+  if (file_system_->ReadFile(clean_time_path_.c_str(), &clean_time_str,
+                              &null_handler)) {
+    StringToInt64(clean_time_str, &clean_time_ms);
+  } else {
+    message_handler_->Message(
+        kWarning, "Failed to read cache clean timestamp %s. "
+        " Doing an extra cache clean to be safe.", clean_time_path_.c_str());
+  }
+
+  // If the "clean time" written in the file is older than now, we
+  // clean.
+  if (clean_time_ms < now_ms) {
+    message_handler_->Message(kInfo,
+                              "Need to check cache size against target %ld",
+                              static_cast<long>(cache_policy_->target_size));
+    to_return = true;
+  }
+  // If the "clean time" is later than now plus one interval, something
+  // went wrong (like the system clock moving backwards or the file
+  // getting corrupt) so we clean and reset it.
+  if (clean_time_ms > new_clean_time_ms) {
+    message_handler_->Message(kError,
+                              "Next scheduled file cache clean time %s"
+                              " is implausibly remote.  Cleaning now.",
+                              Integer64ToString(clean_time_ms).c_str());
+    to_return = true;
+  }
+
+  *suggested_next_clean_time_ms = new_clean_time_ms;
+  return to_return;
+}
+
+void FileCache::CleanIfNeeded() {
+  int64 suggested_next_clean_time_ms;
+  last_conditional_clean_result_ = false;
+  if (ShouldClean(&suggested_next_clean_time_ms)) {
+    worker_->RunIfNotBusy(
+        new CacheCleanClosure(this, suggested_next_clean_time_ms));
+  } else {
+    next_clean_ms_ = suggested_next_clean_time_ms;
+  }
 }
 
 }  // namespace net_instaweb

@@ -17,34 +17,37 @@
 // Author: lsong@google.com (Libo Song)
 
 // Unit-test the file cache
-
 #include "net/instaweb/util/public/file_cache.h"
 
+#include <unistd.h>
+
 #include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/cache_test_base.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/filename_encoder.h"
-#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
-class CacheInterface;
 
 class FileCacheTest : public CacheTestBase {
  protected:
   FileCacheTest()
       : thread_system_(ThreadSystem::CreateThreadSystem()),
+        worker_(thread_system_.get()),
         mock_timer_(0),
         file_system_(&mock_timer_),
         kCleanIntervalMs(Timer::kMinuteMs),
         kTargetSize(12),  // Small enough to overflow with a few strings.
-        cache_(GTestTempDir(), &file_system_, &filename_encoder_,
+        cache_(GTestTempDir(), &file_system_, &worker_,
+               &filename_encoder_,
                new FileCache::CachePolicy(
                    &mock_timer_, kCleanIntervalMs, kTargetSize),
                &message_handler_) {
@@ -65,6 +68,7 @@ class FileCacheTest : public CacheTestBase {
   }
 
   virtual void SetUp() {
+    EXPECT_TRUE(worker_.Start());
     file_system_.Clear();
     file_system_.set_atime_enabled(true);
   }
@@ -72,8 +76,18 @@ class FileCacheTest : public CacheTestBase {
   virtual CacheInterface* Cache() { return &cache_; }
   virtual void SanityCheck() { }
 
+  bool Clean(int64 size) { return cache_.Clean(size); }
+  bool CheckClean() {
+    cache_.CleanIfNeeded();
+    while (worker_.IsBusy()) {
+      usleep(10);
+    }
+    return cache_.last_conditional_clean_result_;
+  }
+
  protected:
   scoped_ptr<ThreadSystem> thread_system_;
+  SlowWorker worker_;
   MockTimer mock_timer_;
   MemFileSystem file_system_;
   FilenameEncoder filename_encoder_;
@@ -130,7 +144,7 @@ TEST_F(FileCacheTest, Clean) {
   EXPECT_EQ((2 + 4 + 8) * 4, total_size);
 
   // Clean should not remove anything if target is bigger than total size.
-  EXPECT_TRUE(cache_.Clean(total_size + 1));
+  EXPECT_TRUE(Clean(total_size + 1));
   for (int i = 0; i < 27; i++) {
     // This pattern represents more common usage of the names1 files.
     CheckGet(names1[i % 3], values1[i % 3]);
@@ -140,7 +154,7 @@ TEST_F(FileCacheTest, Clean) {
   // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
   // but this really should be factored into a settable member var.
   int64 target_size = (4 * total_size) / 5 - 1;
-  EXPECT_TRUE(cache_.Clean(target_size));
+  EXPECT_TRUE(Clean(target_size));
   // Common files should stay
   for (int i = 0; i < 3; i++) {
     CheckGet(names1[i], values1[i]);
@@ -155,11 +169,11 @@ TEST_F(FileCacheTest, Clean) {
 TEST_F(FileCacheTest, CheckClean) {
   CheckPut("Name1", "Value1");
   // Cache should not clean at first.
-  EXPECT_FALSE(cache_.CheckClean());
+  EXPECT_FALSE(CheckClean());
   mock_timer_.SleepMs(kCleanIntervalMs + 1);
   // Because there's no timestamp, the cache should be cleaned.
   int64 time_ms = mock_timer_.NowUs() / 1000;
-  EXPECT_TRUE(cache_.CheckClean());
+  EXPECT_TRUE(CheckClean());
   // .. but since we're under the desired size, nothing should be removed.
   CheckGet("Name1", "Value1");
   // Check that the timestamp was written correctly.
@@ -169,13 +183,13 @@ TEST_F(FileCacheTest, CheckClean) {
   CheckPut("Name2", "Value2");
   CheckPut("Name3", "Value3");
   // Not enough time has elapsed.
-  EXPECT_FALSE(cache_.CheckClean());
+  EXPECT_FALSE(CheckClean());
   mock_timer_.SleepMs(kCleanIntervalMs + 1);
   // Now we should clean.  This should work even if atime doesn't work as we
   // expect.
   file_system_.set_atime_enabled(false);
   time_ms = mock_timer_.NowUs() / 1000;
-  EXPECT_TRUE(cache_.CheckClean());
+  EXPECT_TRUE(CheckClean());
   // And the timestamp should be updated.
   CheckCleanTimestamp(time_ms);
 }

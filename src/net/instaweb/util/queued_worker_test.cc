@@ -101,5 +101,17 @@ TEST_F(QueuedWorkerTest, TestShutDown) {
   clean.Wait();
 }
 
+TEST_F(QueuedWorkerTest, TestIsBusy) {
+  ASSERT_TRUE(worker_->Start());
+  EXPECT_FALSE(worker_->IsBusy());
+
+  SyncPoint start_sync(thread_runtime_.get());
+  worker_->RunInWorkThread(new WaitRunClosure(&start_sync));
+  EXPECT_TRUE(worker_->IsBusy());
+  start_sync.Notify();
+  worker_->ShutDown();
+  EXPECT_FALSE(worker_->IsBusy());
+}
+
 }  // namespace
 }  // namespace net_instaweb

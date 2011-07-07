@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 
-#include <cstddef>
-
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"

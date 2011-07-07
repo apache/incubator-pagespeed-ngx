@@ -53,7 +53,6 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/url_escaper.h"
-#include "net/instaweb/util/public/url_segment_encoder.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/parser.h"
 
@@ -86,52 +85,6 @@ class InlineCssSlot : public ResourceSlot {
   virtual void Render() {}
  private:
   DISALLOW_COPY_AND_ASSIGN(InlineCssSlot);
-};
-
-// While we use data: URLs for describing input to rewrites of inline CSS,
-// using them for cache keys would be both inefficient (as they may be quite
-// long) and incorrect, as we can't cache the same rewritten inline CSS
-// across different base paths. Further, our output may also depend on
-// some of the options.
-//
-// To help with that, we use a custom encoder to name our key, shortening
-// the data portion via a hash, and incorporating the base URL and some
-// of the settings.
-class InlineCssUrlEncoder : public UrlSegmentEncoder {
- public:
-  InlineCssUrlEncoder(const GoogleUrl& css_base_gurl, RewriteDriver* driver)
-      : driver_(driver) {
-    css_base_gurl.AllExceptLeaf().CopyToString(&base_dir_);
-  }
-
-  virtual ~InlineCssUrlEncoder() {}
-
-  virtual void Encode(const StringVector& urls,  const ResourceContext* data,
-                      GoogleString* url_segment) const {
-    DCHECK_EQ(1U, urls.size());
-
-    MD5Hasher hasher;
-    GoogleString key =
-      StrCat("data-key:", hasher.Hash(urls[0]), "@", base_dir_,
-             driver_->options()->always_rewrite_css() ? "A" : "m",
-             driver_->doctype().IsXhtml() ? "X" : "h");
-    UrlEscaper::EncodeToUrlSegment(key, url_segment);
-  }
-
-  virtual bool Decode(const StringPiece& url_segment,
-                      StringVector* urls, ResourceContext* out_data,
-                      MessageHandler* handler) const {
-    // We should never be created to handle output URLs (since we are made
-    // to rewrite inline things), so this should never be called.
-    CHECK(false);
-    return false;
-  }
-
- private:
-  GoogleString base_dir_;
-  RewriteDriver* driver_;
-
-  DISALLOW_COPY_AND_ASSIGN(InlineCssUrlEncoder);
 };
 
 }  // namespace
@@ -182,8 +135,6 @@ void CssFilter::Context::StartInlineRewrite(HtmlElement* style_element,
   css_base_gurl_.Reset(driver_->base_url());
   rewrite_inline_element_ = style_element;
   rewrite_inline_char_node_ = text;
-  inline_css_key_encoder_.reset(
-      new InlineCssUrlEncoder(css_base_gurl_, Driver()));
 
   GoogleString data_url;
   // TODO(morlovich): This does a lot of useless conversions and
@@ -228,14 +179,6 @@ void CssFilter::Context::RewriteSingle(
     }
   } else {
     RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
-  }
-}
-
-const UrlSegmentEncoder* CssFilter::Context::encoder() const {
-  if (inline_css_key_encoder_.get() != NULL) {
-    return inline_css_key_encoder_.get();
-  } else {
-    return SingleRewriteContext::encoder();
   }
 }
 
@@ -293,6 +236,43 @@ bool CssFilter::Context::Partition(OutputPartitions* partitions,
     outputs->push_back(OutputResourcePtr(NULL));
     return true;
   }
+}
+
+GoogleString CssFilter::Context::CacheKey() const {
+  GoogleString base_key;
+  if (rewrite_inline_char_node_ != NULL) {
+    // When rewriting inline CSS we pack all the data inside the URL, which
+    // is too long to sensibly use as a cache key; so we shorten it via a hash.
+    //
+    // We also incorporate the base path of the HTML as part of the key --- it
+    // matters  for inline CSS since resources are resolved against that (while
+    // it doesn't for external CSS, since that uses the stylesheet as the base).
+    MD5Hasher hasher;
+    GoogleString raw_key =
+      StrCat("data-key:", hasher.Hash(slot(0)->resource()->url()),
+             "@", css_base_gurl_.AllExceptLeaf());
+    UrlEscaper::EncodeToUrlSegment(raw_key, &base_key);
+  } else {
+    base_key = SingleRewriteContext::CacheKey();
+  }
+
+  // We want to incorporate various of our settings inside our cache key,
+  // so if our configuration changes (like due to a different .htaccess)
+  // we do not end up serving the wrong thing. We don't want it inside
+  // the URL, however, since it's not critical for reconstructing the resource.
+  //
+  // TODO(morlovich): Make the quirks bit part of the actual output resource
+  // name; as ignoring it on the fetch path is unsafe.
+  const RewriteOptions* options = driver_->options();
+  GoogleString key =
+    StrCat(base_key,
+           options->always_rewrite_css() ? "A" : "m",
+           driver_->doctype().IsXhtml() ? "X" : "h",
+           options->Enabled(RewriteOptions::kRecompressImages) ? "R" : "_",
+           options->Enabled(RewriteOptions::kLeftTrimUrls) ? "T" : "_",
+           options->Enabled(RewriteOptions::kExtendCache) ? "E" : "_",
+           options->Enabled(RewriteOptions::kSpriteImages) ? "S" : "_");
+  return key;
 }
 
 CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix,

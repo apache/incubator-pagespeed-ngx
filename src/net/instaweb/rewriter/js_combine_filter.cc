@@ -198,8 +198,7 @@ class JsCombineFilter::Context : public RewriteContext {
       bool add_input = false;
       ResourcePtr resource(slot(i)->resource());
       HtmlElement* element = elements_[i];
-      // Don't add an element that's not re-writable (e.g. un-closed tag).
-      if (resource->IsValidAndCacheable() && Driver()->IsRewritable(element)) {
+      if (resource->IsValidAndCacheable()) {
         if (combiner_.AddElementNoFetch(element, resource, handler).value) {
           add_input = true;
         } else if (partition != NULL) {
@@ -252,15 +251,33 @@ class JsCombineFilter::Context : public RewriteContext {
       OutputPartition* partition = output_partition(p);
       int partition_size = partition->input_size();
       if (partition_size > 1) {
-        MakeCombinedElement(partition);
-        // we still need to add eval() in place of the
-        // other slots.
+        // Make sure we can edit every element here.
+        bool can_rewrite = true;
         for (int i = 0; i < partition_size; ++i) {
           int slot_index = partition->input(i).index();
-          MakeScriptElement(slot_index);
+          HtmlResourceSlot* html_slot =
+              static_cast<HtmlResourceSlot*>(slot(slot_index).get());
+          if (!Driver()->IsRewritable(html_slot->element())) {
+            can_rewrite = false;
+          }
         }
-        combiner_.AddFileCountReduction(partition_size - 1);
-      }
+
+        if (can_rewrite) {
+          MakeCombinedElement(partition);
+          // we still need to add eval() in place of the
+          // other slots.
+          for (int i = 0; i < partition_size; ++i) {
+            int slot_index = partition->input(i).index();
+            MakeScriptElement(slot_index);
+          }
+          combiner_.AddFileCountReduction(partition_size - 1);
+        } else {
+          // Make sure we don't change any of the URLs.
+          for (int i = 0; i < partition_size; ++i) {
+            slot(partition->input(i).index())->set_disable_rendering(true);
+          }
+        }  // if (can_rewrite)
+      }  // if (partition_size > 1)
     }
   }
 

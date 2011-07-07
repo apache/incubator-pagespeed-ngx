@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/resource_slot.h"
 
-#include <cstddef>
 #include <deque>
 
 #include "base/logging.h"

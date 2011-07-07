@@ -24,7 +24,7 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-class AbstractLock;
+
 class MessageHandler;
 class Timer;
 

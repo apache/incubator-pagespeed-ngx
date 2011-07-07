@@ -27,8 +27,6 @@
 
 namespace net_instaweb {
 
-class UrlAsyncFetcher;
-
 class CacheUrlAsyncFetcherTest : public CacheFetcherTest {
  protected:
   CacheUrlAsyncFetcherTest()

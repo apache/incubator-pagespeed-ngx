@@ -20,7 +20,6 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_GFLAGS_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_GFLAGS_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "gflags/gflags.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_GFLAGS_H_

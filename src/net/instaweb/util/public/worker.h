@@ -83,6 +83,10 @@ class Worker {
   // a vector of callbacks and changing the method to add_idle_callback.
   void set_idle_callback(Closure* cb) { idle_callback_.reset(cb); }
 
+  // Returns true if there was a job running or any jobs queued at the time
+  // this function was called.
+  bool IsBusy();
+
   // Finishes the currently running jobs, and deletes any queued jobs.
   // No further jobs will be accepted after this call either; they will
   // just be deleted. It is safe to call this method multiple times.

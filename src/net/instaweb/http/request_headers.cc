@@ -16,7 +16,6 @@
 
 #include "net/instaweb/http/public/request_headers.h"
 
-#include <vector>
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/http.pb.h"  // for HttpRequestHeaders

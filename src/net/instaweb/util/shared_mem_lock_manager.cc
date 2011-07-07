@@ -31,7 +31,6 @@
 #include "net/instaweb/util/public/timer_based_abstract_lock.h"
 
 namespace net_instaweb {
-class AbstractLock;
 
 namespace SharedMemLockData {
 

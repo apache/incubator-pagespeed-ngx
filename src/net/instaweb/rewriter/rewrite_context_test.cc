@@ -78,7 +78,6 @@ namespace net_instaweb {
 
 class MessageHandler;
 class RequestHeaders;
-class UrlSegmentEncoder;
 class Writer;
 
 // TODO(jmarantz): Make a new closure.h with this definition and

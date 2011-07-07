@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 
 #include <cctype>
-#include <vector>
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/content_type.h"

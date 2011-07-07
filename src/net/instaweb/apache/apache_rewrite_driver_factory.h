@@ -19,10 +19,12 @@
 #include <set>
 #include <string>
 #include <vector>
-#include "net/instaweb/util/public/basictypes.h"
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/shared_mem_lifecycle.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/ref_counted_owner.h"
 
 struct apr_pool_t;
 struct server_rec;
@@ -33,6 +35,7 @@ class AbstractSharedMem;
 class SerfUrlAsyncFetcher;
 class SharedMemLockManager;
 class SharedMemStatistics;
+class SlowWorker;
 class SyncFetcherAdapter;
 class UrlPollableAsyncFetcher;
 
@@ -150,6 +153,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   SerfUrlAsyncFetcher* serf_url_async_fetcher_;
   SharedMemStatistics* shared_mem_statistics_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
+
+  static RefCountedOwner<SlowWorker>::Family slow_worker_family_;
+  RefCountedOwner<SlowWorker> slow_worker_;
 
   // TODO(jmarantz): These options could be consolidated in a protobuf or
   // some other struct, which would keep them distinct from the rest of the
