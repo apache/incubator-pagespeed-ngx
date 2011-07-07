@@ -102,7 +102,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
         new SerfUrlAsyncFetcher(kProxy, pool_, &statistics_,
                                 timer_.get(), kFetcherTimeoutMs));
     mutex_ = new AprMutex(pool_);
-    AddTestUrl("http://www.google.com/", "<!doctype html>");
+    AddTestUrl("http://www.modpagespeed.com/", "<!doctype html>");
     AddTestUrl("http://www.google.com/favicon.ico",
                std::string("\000\000\001\000", 4));
     AddTestUrl("http://www.google.com/intl/en_ALL/images/logo.gif", "GIF");
@@ -239,7 +239,8 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {
   EXPECT_EQ(1, request_count);
   int bytes_count =
       statistics_.GetVariable(SerfStats::kSerfFetchByteCount)->Get();
-  // google.com is changing every time, check if we get a rough number.
+  // We don't care about the exact size, which can change, just that response
+  // is non-trivial.
   EXPECT_LT(7500, bytes_count);
   int time_duration =
       statistics_.GetVariable(SerfStats::kSerfFetchTimeDurationMs)->Get();
@@ -249,15 +250,6 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {
 TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
   request_headers_[0]->Add(HttpAttributes::kAcceptEncoding,
                            HttpAttributes::kGzip);
-
-  // www.google.com doesn't respect our 'gzip' encoding request unless
-  // we have a reasonable user agent.
-  const char kDefaultUserAgent[] =
-    "Mozilla/5.0 (X11; U; Linux x86_64; en-US) "
-    "AppleWebKit/534.0 (KHTML, like Gecko) Chrome/6.0.408.1 Safari/534.0";
-
-  request_headers_[0]->Add(HttpAttributes::kUserAgent,
-                           kDefaultUserAgent);
   StartFetches(0, 1, false);
   EXPECT_EQ(1, ActiveFetches());
   ASSERT_EQ(1, WaitTillDone(0, 1, kMaxMs));
