@@ -239,7 +239,7 @@ bool CssFilter::Context::Partition(OutputPartitions* partitions,
 }
 
 GoogleString CssFilter::Context::CacheKey() const {
-  GoogleString base_key;
+  GoogleString key;
   if (rewrite_inline_char_node_ != NULL) {
     // When rewriting inline CSS we pack all the data inside the URL, which
     // is too long to sensibly use as a cache key; so we shorten it via a hash.
@@ -251,9 +251,9 @@ GoogleString CssFilter::Context::CacheKey() const {
     GoogleString raw_key =
       StrCat("data-key:", hasher.Hash(slot(0)->resource()->url()),
              "@", css_base_gurl_.AllExceptLeaf());
-    UrlEscaper::EncodeToUrlSegment(raw_key, &base_key);
+    UrlEscaper::EncodeToUrlSegment(raw_key, &key);
   } else {
-    base_key = SingleRewriteContext::CacheKey();
+    key = SingleRewriteContext::CacheKey();
   }
 
   // We want to incorporate various of our settings inside our cache key,
@@ -264,14 +264,13 @@ GoogleString CssFilter::Context::CacheKey() const {
   // TODO(morlovich): Make the quirks bit part of the actual output resource
   // name; as ignoring it on the fetch path is unsafe.
   const RewriteOptions* options = driver_->options();
-  GoogleString key =
-    StrCat(base_key,
-           options->always_rewrite_css() ? "A" : "m",
-           driver_->doctype().IsXhtml() ? "X" : "h",
-           options->Enabled(RewriteOptions::kRecompressImages) ? "R" : "_",
-           options->Enabled(RewriteOptions::kLeftTrimUrls) ? "T" : "_",
-           options->Enabled(RewriteOptions::kExtendCache) ? "E" : "_",
-           options->Enabled(RewriteOptions::kSpriteImages) ? "S" : "_");
+  StrAppend(&key,
+            options->always_rewrite_css() ? "A" : "m",
+            driver_->doctype().IsXhtml() ? "X" : "h",
+            options->Enabled(RewriteOptions::kRecompressImages) ? "R" : "_",
+            options->Enabled(RewriteOptions::kLeftTrimUrls) ? "T" : "_",
+            options->Enabled(RewriteOptions::kExtendCache) ? "E" : "_",
+            options->Enabled(RewriteOptions::kSpriteImages) ? "S" : "_");
   return key;
 }
 

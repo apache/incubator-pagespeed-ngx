@@ -133,6 +133,7 @@ bool ApacheRewriteDriverFactory::set_file_cache_path(const StringPiece& p) {
   return ok;
 }
 
+// Note: DefaultCacheInterface should return a thread-safe cache object.
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
   FileCache::CachePolicy* policy = new FileCache::CachePolicy(
       timer(), file_cache_clean_interval_ms_, file_cache_clean_size_kb_);

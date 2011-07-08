@@ -126,7 +126,7 @@ class RewriteDriverFactory {
   virtual AbstractMutex* NewMutex() = 0;
   virtual Hasher* NewHasher() = 0;
 
-  // See doc for in resource_manager.cc.
+  // See doc in resource_manager.cc.
   RewriteDriver* NewRewriteDriver();
 
   // Provides an optional hook for adding rewrite passes that are
@@ -153,15 +153,17 @@ class RewriteDriverFactory {
   virtual MessageHandler* DefaultMessageHandler() = 0;
   virtual FileSystem* DefaultFileSystem() = 0;
   virtual Timer* DefaultTimer() = 0;
-  virtual CacheInterface* DefaultCacheInterface() = 0;
   virtual ThreadSystem* DefaultThreadSystem() = 0;
 
-  // Overridable statistics (default is NullStatistics)
-  virtual Statistics* statistics() { return &null_statistics_; }
+    // Note: Returned CacheInterface should be thread-safe.
+  virtual CacheInterface* DefaultCacheInterface() = 0;
 
   // They may also supply a custom lock manager. The default implementation
   // will use the file system.
   virtual NamedLockManager* DefaultLockManager();
+
+  // Overridable statistics (default is NullStatistics)
+  virtual Statistics* statistics() { return &null_statistics_; }
 
   // Clean up all the resources. When shutdown Apache, and destroy the process
   // sub-pool.  The RewriteDriverFactory owns some elements that were created

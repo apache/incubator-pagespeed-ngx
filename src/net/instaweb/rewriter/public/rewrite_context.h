@@ -285,7 +285,7 @@ class RewriteContext {
 
   // Returns the cache key that should be used to identify the input &
   // settings for the rewrites we're representing. The default implementation
-  // Just passes in the URLs through the encoder.
+  // just passes in the URLs through the encoder.
   //
   // (Filter ID will be incorporated separately)
   virtual GoogleString CacheKey() const;

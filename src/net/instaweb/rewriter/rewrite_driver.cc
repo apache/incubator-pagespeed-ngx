@@ -817,8 +817,8 @@ bool RewriteDriver::FetchResource(
     ResponseHeaders* response_headers,
     Writer* writer,
     UrlAsyncFetcher::Callback* callback) {
-  DCHECK(!fetch_queued_);
-  DCHECK_EQ(0, pending_rewrites_);
+  DCHECK(!fetch_queued_) << this;
+  DCHECK_EQ(0, pending_rewrites_) << this;
   bool handled = false;
 
   // Note that this does permission checking and parsing of the url, but doesn't
