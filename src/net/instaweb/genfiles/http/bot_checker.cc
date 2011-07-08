@@ -43,12 +43,12 @@
 namespace net_instaweb {
 #include <string.h>
 
-#define TOTAL_KEYWORDS 63
+#define TOTAL_KEYWORDS 65
 #define MIN_WORD_LENGTH 4
 #define MAX_WORD_LENGTH 23
 #define MIN_HASH_VALUE 4
-#define MAX_HASH_VALUE 66
-/* maximum key range = 63, duplicates = 0 */
+#define MAX_HASH_VALUE 74
+/* maximum key range = 71, duplicates = 0 */
 
 class RobotDetect
 {
@@ -63,32 +63,32 @@ RobotDetect::hash (register const char *str, register unsigned int len)
 {
   static const unsigned char asso_values[] =
     {
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 39, 13,  3, 44, 20, 24,
-      35, 15, 67, 17,  0, 25, 56, 31, 20, 23,
-      47, 67, 18, 12, 31, 67, 21, 30, 67,  9,
-      67, 67, 67, 67, 67, 67, 67,  1,  0, 67,
-      16, 21, 67, 42,  1, 13, 67, 67, 14, 67,
-      14,  0,  7, 67, 16, 17,  0, 17,  1, 18,
-      67,  0, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67, 67, 67, 67, 67,
-      67, 67, 67, 67, 67, 67
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 26, 10,  1, 37, 20, 32,
+      50, 19, 75, 19, 19, 30, 56, 39, 20, 22,
+      43, 75, 15,  5, 32, 75, 24, 31, 75,  9,
+      75, 75, 75, 75, 75, 75, 75,  2,  0, 16,
+      32, 24, 75, 46, 12,  0, 75, 75,  2, 75,
+      17,  8, 16, 75, 12, 14, 45,  9, 39, 33,
+      75,  4, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75, 75, 75, 75, 75,
+      75, 75, 75, 75, 75, 75
     };
   return len + asso_values[(unsigned char)str[1]] + asso_values[(unsigned char)str[0]];
 }
@@ -97,68 +97,73 @@ static const char * const wordlist[] =
   {
     "", "", "", "",
     "bbot",
-    "Jobot",
-    "JoeBot",
-    "JBot",
-    "borg-bot",
-    "void-bot",
-    "tarspider",
+    "", "",
+    "bingbot",
+    "bitlybot",
+    "iajaBot",
     "BackRub",
-    "BoxSeaBot",
+    "SimBot",
     "BaySpider",
-    "about.ask.com",
+    "BSpider",
     "Baiduspider",
+    "about.ask.com",
+    "borg-bot",
     "Yahoo!",
-    "YodaoBot",
+    "BoxSeaBot",
     "Solbot",
     "YandexBot",
-    "bingbot",
-    "iajaBot",
-    "BSpider",
-    "Robot",
-    "Googlebot",
-    "Spider",
-    "Roverbot",
-    "JubiiRobot",
-    "SpiderBot",
-    "psbot",
-    "Googlebot-Image",
-    "SimBot",
-    "ASpider",
-    "uptimebot",
-    "spiderline",
-    "Gigabot",
-    "AraybOt",
     "RixBot",
+    "ASpider",
     "AlkalineBOT",
-    "dlw3robot",
-    "AITCSRobot",
-    "dienstspider",
-    "InfoSpiders",
-    "DIIbot",
+    "JBot",
+    "YodaoBot",
+    "Gigabot",
+    "Spider",
+    "Robot",
+    "AraybOt",
+    "SpiderBot",
+    "Roverbot",
+    "Jobot",
+    "JoeBot",
+    "uptimebot",
+    "psbot",
+    "Googlebot",
     "ArchitextSpider",
+    "JubiiRobot",
+    "AITCSRobot",
+    "spiderline",
     "DragonBot",
+    "Googlebot-Image",
+    "dlw3robot",
+    "dienstspider",
+    "DIIbot",
     "DNAbot",
-    "OntoSpider",
+    "InfoSpiders",
     "NDSpider",
+    "OntoSpider",
     "MSNBOT",
     "ESISmartSpider",
     "CoolBot",
-    "wired-digital-newsbot",
-    "Checkbot",
-    "gammaSpider",
-    "Verticrawlbot",
     "CydralSpider",
+    "wired-digital-newsbot",
+    "void-bot",
+    "tarspider",
+    "Checkbot",
     "Confuzzledbot",
+    "gammaSpider",
+    "vcbot",
+    "Verticrawlbot",
     "VWbot_K",
     "TechBOT",
     "PortalBSpider",
     "Lycos",
     "KO_Yappo_Robot",
-    "MOMspider",
-    "EIT-Link-Verifier-Robot",
     "Fish-Search-Robot",
-    "w@pSpider"
+    "w@pSpider",
+    "",
+    "MOMspider",
+    "", "", "",
+    "EIT-Link-Verifier-Robot"
   };
 
 const char *
@@ -178,7 +183,7 @@ RobotDetect::Lookup (register const char *str, register unsigned int len)
     }
   return 0;
 }
-#line 89 "http/bot_checker.gperf"
+#line 91 "http/bot_checker.gperf"
 
 
 // TODO:(fangfei) check other cases
@@ -188,7 +193,7 @@ bool BotChecker::Lookup(const StringPiece& user_agent) {
     return true;
   }
   // get the application_name/domain_name/email
-  const char separator[] = " /;+";
+  const char separator[] = " /,;+";
   StringPieceVector names;
   SplitStringPieceToVector(user_agent, separator, &names, true);
   for (int i = 0, n = names.size(); i < n; ++i) {
