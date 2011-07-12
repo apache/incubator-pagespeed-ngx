@@ -36,15 +36,16 @@
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
 
 struct ContentType;
 
+class AbstractMutex;
 class AddInstrumentationFilter;
 class CommonFilter;
 class DomainRewriteFilter;
@@ -103,7 +104,13 @@ class RewriteDriver : public HtmlParse {
 
   // Adds a resource manager and/or resource_server, enabling the rewriting of
   // resources. This will replace any previous resource managers.
-  void SetResourceManager(ResourceManager* resource_manager);
+  //
+  // The Scheduler abstracts the mechanism by which threads are blocked
+  // waiting for time to advance, so time can be mocked during tests.
+  //
+  // The driver takes ownership of the scheduler, but not the resource manager.
+  void SetResourceManagerAndScheduler(ResourceManager* resource_manager,
+                                      Scheduler* scheduler);
 
   // NULL is returned for resources that:
   //  - were not requested during Scan
@@ -370,10 +377,6 @@ class RewriteDriver : public HtmlParse {
   // We expect to this method to be called on the Rewrite thread.
   void DeleteRewriteContext(RewriteContext* rewrite_context);
 
-  // This function called when testing with mock-time to allow
-  // the TimedWait in Render() to complete.
-  void WakeupFromIdle();
-
   // Wait the specified number of milliseconds for in-progress renders
   // to complete.  This is intended for testing in simulated time, where
   // the Rewrites don't complete in time for the deadline.
@@ -411,6 +414,9 @@ class RewriteDriver : public HtmlParse {
   // Sets the base URL for a resource fetch.  This should only be called from
   // test code and from FetchResource.
   void SetBaseUrlForFetch(const StringPiece& url);
+
+  // The rewrite_mutex is owned by the scheduler.
+  AbstractMutex* rewrite_mutex() { return scheduler_->mutex(); }
 
   friend class ScanFilter;
 
@@ -465,16 +471,16 @@ class RewriteDriver : public HtmlParse {
   // Indicates that a resource fetch has been dispatched to a RewriteContext,
   // and thus the RewriteDriver should not recycled until that RewriteContext
   // has called FetchComplete().
-  bool fetch_queued_;            // protected by rewrite_mutex_
+  bool fetch_queued_;            // protected by rewrite_mutex()
 
   // Indicates that the rewrite driver is currently parsing the HTML,
   // and thus should not be recycled under FinishParse() is called.
-  bool parsing_;  // protected by rewrite_mutex_
+  bool parsing_;  // protected by rewrite_mutex()
 
   // Indicates that WaitForCompletion() has been called in the HTML thread,
   // and we are now blocked on a condition variable in that function.  Thus
   // it only makes sense to examine this from the Rewrite thread.
-  bool waiting_for_completion_;  // protected by rewrite_mutex_
+  bool waiting_for_completion_;  // protected by rewrite_mutex()
 
   // Tracks the number of RewriteContexts that have been completed,
   // but not yet deleted.  Once RewriteComplete has been called,
@@ -483,7 +489,7 @@ class RewriteDriver : public HtmlParse {
   // context being deleted: specifically running any successors.
   // After all that occurs, DeleteRewriteContext must be called and
   // that will decrement this counter.
-  int rewrites_to_delete_;       // protected by rewrite_mutex_
+  int rewrites_to_delete_;       // protected by rewrite_mutex()
 
   GoogleUrl base_url_;
   GoogleString user_agent_;
@@ -495,16 +501,13 @@ class RewriteDriver : public HtmlParse {
   RewriteContextVector rewrites_;  // ordered list of rewrites to initiate
   int rewrite_deadline_ms_;
 
-  scoped_ptr<ThreadSystem::CondvarCapableMutex> rewrite_mutex_;
-  scoped_ptr<ThreadSystem::Condvar> rewrite_condvar_;
-
   typedef std::set<RewriteContext*> RewriteContextSet;
 
   // Contains the RewriteContext* that have been queued into the
   // RewriteThread, but have not gotten to the point where
   // RewriteComplete() has been called.  This set is cleared
   // one the rewrite_deadline_ms has passed.
-  RewriteContextSet initiated_rewrites_;  // protected by rewrite_mutex_
+  RewriteContextSet initiated_rewrites_;  // protected by rewrite_mutex()
 
   // Contains the RewriteContext* that were still running at the deadline.
   // They are said to be in a "detached" state although the RewriteContexts
@@ -513,19 +516,20 @@ class RewriteDriver : public HtmlParse {
   // they complete, the RewriteDriver must stay alive and not be Recycled
   // or deleted.  WaitForCompletion() blocks until all detached_rewrites
   // have been retired.
-  RewriteContextSet detached_rewrites_;   // protected by rewrite_mutex_
+  RewriteContextSet detached_rewrites_;   // protected by rewrite_mutex()
 
   // The number of rewrites that have been requested, and not yet
   // completed.  This can actually be derived, more or less, from
   // initiated_rewrites_.size() and rewrites_.size() but is kept
   // separate for programming convenience.
-  int pending_rewrites_;                  // protected by rewrite_mutex_
+  int pending_rewrites_;                  // protected by rewrite_mutex()
 
   // These objects are provided on construction or later, and are
   // owned by the caller.
   FileSystem* file_system_;
   UrlAsyncFetcher* url_async_fetcher_;
   ResourceManager* resource_manager_;
+  scoped_ptr<Scheduler> scheduler_;
 
   AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;

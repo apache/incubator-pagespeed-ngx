@@ -233,7 +233,6 @@
         'util/md5_hasher.cc',
         'util/mock_hasher.cc',
         'util/mock_message_handler.cc',
-        'util/mock_thread_system.cc',
         'util/named_lock_manager.cc',
         'util/null_message_handler.cc',
         'util/null_statistics.cc',
@@ -244,6 +243,7 @@
         'util/shared_circular_buffer.cc',
         'util/shared_mem_lock_manager.cc',
         'util/simple_stats.cc',
+        'util/scheduler.cc',
         'util/shared_mem_statistics.cc',
         'util/slow_worker.cc',
 #        'util/split_writer.cc',                Not currently needed

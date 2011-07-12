@@ -50,7 +50,9 @@ class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
         *base_url_, url, &trimmed,
         rewrite_driver()->message_handler()));
     if (changed) {
-      EXPECT_EQ(expected, trimmed);
+      EXPECT_EQ(expected, trimmed) <<
+          "\nExpected: " << expected <<
+          "\nSaw     : " << trimmed;
     }
   }
 
@@ -72,12 +74,12 @@ class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
 
 static const char kBase[] = "http://foo.bar/baz/";
 static const char kHttp[] = "http:";
-static const char kDomain[] = "//foo.bar/";
 static const char kPath[] = "/baz/";
 
 TEST_F(UrlLeftTrimFilterTest, SimpleTrims) {
   SetFilterBaseUrl("http://foo.bar/baz/");
-  OneTrim(true, "http://www.google.com/", "//www.google.com/");
+  // TODO(jmaessen): strip protocol given user-agent-sensitive trimming
+  OneTrim(false, "http://www.google.com/", "http://www.google.com/");
   OneTrim(true, kBase, kPath);
   OneTrim(true, "http://foo.bar/baz/quux", "quux");
   OneTrim(true, "/baz/quux", "quux");
@@ -93,7 +95,8 @@ static const char kRootedBase[] = "http://foo.bar/";
 // Catch screw cases when a base url lies at the root of a domain.
 TEST_F(UrlLeftTrimFilterTest, RootedTrims) {
   SetFilterBaseUrl(kRootedBase);
-  OneTrim(true, "http://www.google.com/", "//www.google.com/");
+  // TODO(jmaessen): strip protocol given user-agent-sensitive trimming
+  OneTrim(false, "http://www.google.com/", "http://www.google.com/");
   OneTrim(true, kBase, "baz/");
   OneTrim(false, "//www.google.com/", "//www.google.com/");
   OneTrim(true, kPath, "baz/");
@@ -123,7 +126,7 @@ static const char kSome[] =
 static const char kSomeRewritten[] =
     "<head><base href='http://foo.bar/baz/'/>"
     "<link rel='stylesheet' href='/baz/'/></head>"
-    "<body><a href='//www.google.com/'>google</a>"
+    "<body><a href='http://www.google.com/'>google</a>"
     "<img src='nav.jpg'/>"
     "<img src='/img/img1.jpg'/>"
     "<img src='img2.jpg'/>"
@@ -155,7 +158,7 @@ static const char kSecondDoc[] =
 
 static const char kSecondDocRewritten[] =
     "<head><base href='http://newurl/baz/'/></head>"
-    "<body><a href='//foo/baz/abc'>text</a>"
+    "<body><a href='http://foo/baz/abc'>text</a>"
     "<a href='target'>more text</a>"
     "<img src='www.google.com/pretty_picture.jpg'>"
     "<img src='image.jpg'></body>";
@@ -173,7 +176,7 @@ static const char kPartialUrl[] =
 static const char kPartialUrlRewritten[] =
     "<head><base href='http://abcdef/123'/></head>"
     "<body><a href='abcdef/something'>link</a>"
-    "<img src='//abcdefg/'></body>";
+    "<img src='http://abcdefg'></body>";
 
 TEST_F(UrlLeftTrimFilterTest, PartialUrl) {
   ValidateExpected("partial_url", kPartialUrl, kPartialUrlRewritten);
@@ -243,7 +246,8 @@ TEST_F(UrlLeftTrimFilterTest, Dots) {
 
 TEST_F(UrlLeftTrimFilterTest, XKCD) {
   SetFilterBaseUrl("http://forums.xkcd.com/");
-  OneTrim(true, "http://xkcd.com/", "//xkcd.com/");
+  // TODO(jmaessen): strip protocol given user-agent-sensitive trimming
+  OneTrim(false, "http://xkcd.com/", "http://xkcd.com/");
 }
 
 TEST_F(UrlLeftTrimFilterTest, OneDot) {
@@ -268,7 +272,8 @@ TEST_F(UrlLeftTrimFilterTest, DoubleSlashPath) {
 
 TEST_F(UrlLeftTrimFilterTest, DoubleSlashBeginningPath) {
   SetFilterBaseUrl("http://foo.bar/index.html");
-  OneTrim(true, "http://foo.bar//other.html", "//foo.bar//other.html");
+  // TODO(jmaessen): strip protocol given user-agent-sensitive trimming
+  OneTrim(false, "http://foo.bar//other.html", "http://foo.bar//other.html");
 }
 
 TEST_F(UrlLeftTrimFilterTest, TripleSlashPath) {
@@ -284,7 +289,7 @@ static const char kBlankBase[] =
 static const char kBlankBaseRewritten[] =
     "<head><base href=''>"
     "</head><body>"
-    "<a href='//www.google.com/'>foo</a></body>";
+    "<a href='http://www.google.com/'>foo</a></body>";
 
 TEST_F(UrlLeftTrimFilterTest, BlankBase) {
   ValidateExpected("wiki", kBlankBase, kBlankBaseRewritten);

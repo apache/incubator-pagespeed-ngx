@@ -48,6 +48,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -69,7 +70,6 @@ class CacheExtender;
 class ImageCombineFilter;
 class ImageRewriteFilter;
 class MessageHandler;
-class RewriteContext;
 
 namespace {
 
@@ -198,12 +198,21 @@ void CssFilter::Context::RegisterNested(RewriteContext* nested) {
 
 void CssFilter::Context::Harvest() {
   GoogleString out_text;
-  // TODO(morlovich): Propagate whether we previously optimized properly
-  // from the nested rewrites.
+
+  bool previously_optimized = false;
+  for (int i = 0; i < num_nested(); ++i) {
+    RewriteContext* nested_context = nested(i);
+    for (int j = 0; j < nested_context->num_slots(); ++j) {
+      if (nested_context->slot(j)->was_optimized()) {
+        previously_optimized = true;
+        break;
+      }
+    }
+  }
+
   bool ok = filter_->SerializeCss(
       in_text_size_, stylesheet_.get(), css_base_gurl_,
-      false /* previously_optimized */, &out_text,
-      driver_->message_handler());
+      previously_optimized, &out_text, driver_->message_handler());
   if (ok) {
     if (rewrite_inline_char_node_ == NULL) {
       // TODO(morlovich): Incorporate time from nested rewrites.

@@ -46,6 +46,7 @@
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/queued_worker.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"          // for STLDeleteElements
 #include "net/instaweb/util/public/string.h"
@@ -578,7 +579,8 @@ RewriteDriver* ResourceManager::NewCustomRewriteDriver(
 RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver() {
   RewriteDriver* rewrite_driver = new RewriteDriver(
       message_handler_, file_system_, url_async_fetcher_);
-  rewrite_driver->SetResourceManager(this);
+  Scheduler* scheduler = new Scheduler(thread_system_);
+  rewrite_driver->SetResourceManagerAndScheduler(this, scheduler);
   if (factory_ != NULL) {
     factory_->AddPlatformSpecificRewritePasses(rewrite_driver);
   }
@@ -611,21 +613,12 @@ void ResourceManager::ReleaseRewriteDriver(
   }
 }
 
-void ResourceManager::SetIdleCallback(Worker::Closure* callback) {
-  rewrite_worker_->set_idle_callback(callback);
-}
-
 void ResourceManager::ShutDownWorker() {
   rewrite_worker_->ShutDown();
 }
 
 void ResourceManager::AddRewriteTask(Worker::Closure* task) {
   rewrite_worker_->RunInWorkThread(task);
-}
-
-void ResourceManager::TimedWait(ThreadSystem::Condvar* condvar,
-                                int64 timeout_ms) {
-  thread_system_->TimedWait(rewrite_worker_.get(), condvar, timeout_ms);
 }
 
 }  // namespace net_instaweb

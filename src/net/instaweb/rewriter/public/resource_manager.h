@@ -36,7 +36,6 @@
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/worker.h"
 
 namespace net_instaweb {
@@ -56,6 +55,7 @@ class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
 class Statistics;
+class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
 class UrlSegmentEncoder;
@@ -309,34 +309,13 @@ class ResourceManager {
 
   ThreadSystem* thread_system() { return thread_system_; }
 
-  // Specifies a function to be called whenever the worker
-  // thread enters the Idle state.  When all queued tasks
-  // have been executed, and there are none on the task queue,
-  // the Worker will then call the provided callback.  This
-  // is used during testing with mock-time to indicate that
-  // nothing can happen to advance the state of the test.
-  //
-  // This is not ordinarily needed when running a live server
-  // because real-time moves forward naturally, causing
-  // the TimedWait in RewriteDriver::Render to return and
-  // keep progress moving forward.
-  //
-  // If you use this, make sure to call ShutDownWorker() before
-  // deleting anything these callbacks refer to.
-  void SetIdleCallback(Worker::Closure* callback);
-
   // Waits for the currently running job to complete, and stops accepting
   // new jobs in the worker. This is meant for use in tests to make sure
   // that any idle callbacks are completed before deleting objects they may
   // refer to.
   void ShutDownWorker();
 
-  // Execute a timed wait on the specified condition variable.  Under
-  // normal server operation this just runs the condition variable's
-  // TimedWait method.  When running fast simulated-time unit tests,
-  // however, we need to synchronize timer-advance events using the
-  // rewrite_worker so we use this entry-point.
-  void TimedWait(ThreadSystem::Condvar* condvar, int64 timeout_ms);
+  QueuedWorker* rewrite_worker() { return rewrite_worker_.get(); }
 
  private:
   GoogleString file_prefix_;

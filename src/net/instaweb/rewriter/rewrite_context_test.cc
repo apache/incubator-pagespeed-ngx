@@ -73,6 +73,10 @@ const char kCombiningFilterId[] = "cr";
 const int64 kRewriteDeadlineMs = 20;
 const int64 kRewriteDelayMs = 40;
 
+// For use with NestedFilter constructor
+const bool kExpectNestedRewritesSucceed = true;
+const bool kExpectNestedRewritesFail = false;
+
 }  // namespace
 
 namespace net_instaweb {
@@ -177,8 +181,9 @@ class UpperCaseRewriter : public SimpleTextFilter::Rewriter {
 // be rewritten.
 class NestedFilter : public RewriteFilter {
  public:
-  explicit NestedFilter(RewriteDriver* driver)
-      : RewriteFilter(driver, kNestedFilterId), chain_(false) {
+  explicit NestedFilter(RewriteDriver* driver, bool expected_nested_result)
+      : RewriteFilter(driver, kNestedFilterId), chain_(false),
+        expected_nested_rewrite_result_(expected_nested_result) {
     ClearStats();
   }
 
@@ -193,6 +198,10 @@ class NestedFilter : public RewriteFilter {
 
   // Set this to true to create a chain of nested rewrites on the same slot.
   void set_chain(bool x) { chain_ = x; }
+
+  bool expected_nested_rewrite_result() const {
+    return expected_nested_rewrite_result_;
+  }
 
  protected:
   virtual ~NestedFilter() {}
@@ -267,6 +276,7 @@ class NestedFilter : public RewriteFilter {
               AddNestedContext(nested_context);
               ResourceSlotPtr slot(new NestedSlot(resource));
               nested_context->AddSlot(slot);
+              nested_slots_.push_back(slot);
 
               // Test chaining of a 2nd rewrite on the same slot, if asked.
               if (chain_) {
@@ -288,6 +298,11 @@ class NestedFilter : public RewriteFilter {
       RewriteSingleResourceFilter::RewriteResult result =
           RewriteSingleResourceFilter::kRewriteFailed;
       GoogleString new_content;
+
+      for (int i = 0, n = nested_slots_.size(); i < n; ++i) {
+        EXPECT_EQ(filter_->expected_nested_rewrite_result(),
+                  nested_slots_[i]->was_optimized());
+      }
 
       // TODO(jmarantz): Make RewriteContext handle the aggregation of
       // of expiration times.
@@ -321,6 +336,7 @@ class NestedFilter : public RewriteFilter {
     std::vector<GoogleString*> strings_;
     NestedFilter* filter_;
     bool chain_;
+    ResourceSlotVector nested_slots_;
 
     DISALLOW_COPY_AND_ASSIGN(Context);
   };
@@ -363,6 +379,9 @@ class NestedFilter : public RewriteFilter {
  private:
   OutputResourceKind kind_;
   bool chain_;
+
+  // Whether we expect nested rewrites to be successful.
+  bool expected_nested_rewrite_result_;
 
   // Stats
   int num_top_rewrites_;
@@ -624,9 +643,9 @@ class RewriteContextTest : public ResourceManagerTestBase {
     driver->AddFilters();
   }
 
-  void InitNestedFilter() {
+  void InitNestedFilter(bool expected_nested_rewrite_result) {
     RewriteDriver* driver = rewrite_driver();
-    nested_filter_ = new NestedFilter(driver);
+    nested_filter_ = new NestedFilter(driver, expected_nested_rewrite_result);
     driver->AddRewriteFilter(nested_filter_);
     driver->AddFilters();
   }
@@ -1025,7 +1044,7 @@ TEST_F(RewriteContextTest, TwoFiltersDelayedFetches) {
 
 TEST_F(RewriteContextTest, Nested) {
   const char kRewrittenUrl[] = "http://test.com/c.css.pagespeed.nf.0.css";
-  InitNestedFilter();
+  InitNestedFilter(kExpectNestedRewritesSucceed);
   InitResources();
   ValidateExpected("async3", CssLink("c.css"), CssLink(kRewrittenUrl));
   GoogleString rewritten_contents;
@@ -1034,11 +1053,27 @@ TEST_F(RewriteContextTest, Nested) {
             "http://test.com/b.css.pagespeed.nf.0.css\n", rewritten_contents);
 }
 
+TEST_F(RewriteContextTest, NestedFailed) {
+  // Make sure that the was_optimized() bit is not set when the nested
+  // rewrite fails (which it will since it's already all caps)
+  const char kRewrittenUrl[] = "http://test.com/d.css.pagespeed.nf.0.css";
+  InitNestedFilter(kExpectNestedRewritesFail);
+  InitResources();
+  ResponseHeaders default_css_header;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse("http://test.com/u.css", default_css_header,
+                     "UPPERCASE");
+  SetFetchResponse("http://test.com/d.css", default_css_header,
+                     "u.css");
+  ValidateExpected("nested-noop", CssLink("d.css"), CssLink(kRewrittenUrl));
+}
+
 TEST_F(RewriteContextTest, NestedChained) {
   const char kRewrittenUrl[] = "http://test.com/c.css.pagespeed.nf.0.css";
 
   RewriteDriver* driver = rewrite_driver();
-  NestedFilter* nf = new NestedFilter(driver);
+  NestedFilter* nf =
+      new NestedFilter(driver, kExpectNestedRewritesSucceed);
   nf->set_chain(true);
   driver->AddRewriteFilter(nf);
   driver->AddFilters();
@@ -1604,7 +1639,7 @@ class NestedResourceUpdateTest : public ResourceUpdateTest {
 
 TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   // Initialize system.
-  InitNestedFilter();
+  InitNestedFilter(kExpectNestedRewritesSucceed);
   options()->file_load_policy()->Associate("http://test.com/file/", "/test/");
 
   // Initialize resources.

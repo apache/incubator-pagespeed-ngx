@@ -79,16 +79,15 @@
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace {
@@ -171,7 +170,7 @@ void RewriteDriver::Clear() {
   DCHECK(!fetch_queued_);
 }
 
-// Must be called with rewrite_mutex_ held.
+// Must be called with rewrite_mutex() held.
 bool RewriteDriver::RewritesComplete() const {
   return ((pending_rewrites_ == 0) && !fetch_queued_ &&
           detached_rewrites_.empty() && (rewrites_to_delete_ == 0));
@@ -179,7 +178,7 @@ bool RewriteDriver::RewritesComplete() const {
 
 void RewriteDriver::WaitForCompletion() {
   if (asynchronous_rewrites_) {
-    ScopedMutex lock(rewrite_mutex_.get());
+    ScopedMutex lock(rewrite_mutex());
     waiting_for_completion_ = true;
     while (!RewritesComplete()) {
       if (fetch_queued_) {
@@ -189,7 +188,7 @@ void RewriteDriver::WaitForCompletion() {
             kInfo, "waiting for %d rewrites to complete",
             static_cast<int>(pending_rewrites_ + detached_rewrites_.size()));
       }
-      resource_manager_->TimedWait(rewrite_condvar_.get(), kTestTimeoutMs);
+      scheduler_->TimedWait(kTestTimeoutMs);
       // TODO(jmarantz): Eliminate these LOG(INFO) and/or convert them
       // into message_handler()->Message(kInfo...).
       LOG(INFO) << "timed wait complete";
@@ -199,8 +198,8 @@ void RewriteDriver::WaitForCompletion() {
 }
 
 void RewriteDriver::TimedWait(int wait_time_ms) {
-  ScopedMutex lock(rewrite_mutex_.get());
-  resource_manager_->TimedWait(rewrite_condvar_.get(), wait_time_ms);
+  ScopedMutex lock(rewrite_mutex());
+  scheduler_->TimedWait(wait_time_ms);
 }
 
 void RewriteDriver::Render() {
@@ -220,7 +219,7 @@ void RewriteDriver::Render() {
     // runs in the Rewrite thread.  Note that the DCHECK above, of
     // initiated_rewrites_.empty(), is a READ and it's OK to have
     // concurrent READs.
-    ScopedMutex lock(rewrite_mutex_.get());
+    ScopedMutex lock(rewrite_mutex());
     initiated_rewrites_.insert(rewrites_.begin(), rewrites_.end());
 
     // We must also start tasks while holding the lock, as otherwise a
@@ -236,7 +235,7 @@ void RewriteDriver::Render() {
   }
   rewrites_.clear();
   {
-    ScopedMutex lock(rewrite_mutex_.get());
+    ScopedMutex lock(rewrite_mutex());
     DCHECK(!fetch_queued_);
     int completed_rewrites = num_rewrites - pending_rewrites_;
     if (pending_rewrites_ == 0) {
@@ -244,8 +243,7 @@ void RewriteDriver::Render() {
                 << " rewrites complete by the time Render was called";
     } else {
       LOG(INFO) << "waiting for " << pending_rewrites_ << " rewrites";
-      resource_manager_->TimedWait(rewrite_condvar_.get(),
-                                   rewrite_deadline_ms_);
+      scheduler_->TimedWait(rewrite_deadline_ms_);
       completed_rewrites = num_rewrites - pending_rewrites_;
       LOG(INFO) << "found " << completed_rewrites << " completed rewrites";
     }
@@ -307,11 +305,11 @@ void RewriteDriver::Initialize(Statistics* statistics) {
   CssFilter::Initialize(statistics);
 }
 
-void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
+void RewriteDriver::SetResourceManagerAndScheduler(
+    ResourceManager* resource_manager, Scheduler* scheduler) {
   DCHECK(resource_manager_ == NULL);
   resource_manager_ = resource_manager;
-  rewrite_mutex_.reset(resource_manager_->thread_system()->NewMutex());
-  rewrite_condvar_.reset(rewrite_mutex_->NewCondvar());
+  scheduler_.reset(scheduler);
   set_timer(resource_manager->timer());
 
   DCHECK(resource_filter_map_.empty());
@@ -883,16 +881,12 @@ bool RewriteDriver::FetchOutputResource(
 }
 
 void RewriteDriver::FetchComplete() {
-  ScopedMutex lock(rewrite_mutex_.get());
+  ScopedMutex lock(rewrite_mutex());
   DCHECK(fetch_queued_);
   fetch_queued_ = false;
   DCHECK_EQ(0, pending_rewrites_);
   STLDeleteElements(&rewrites_);
-  rewrite_condvar_->Signal();
-}
-
-void RewriteDriver::WakeupFromIdle() {
-  rewrite_condvar_->Signal();
+  scheduler_->Signal();
 }
 
 bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
@@ -1023,7 +1017,7 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
   set_log_rewrite_timing(options()->log_rewrite_timing());
   bool ret = HtmlParse::StartParseId(url, id, content_type);
   {
-    ScopedMutex lock(rewrite_mutex_.get());
+    ScopedMutex lock(rewrite_mutex());
     parsing_ = true;
   }
 
@@ -1037,7 +1031,7 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
 }
 
 void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
-  ScopedMutex lock(rewrite_mutex_.get());
+  ScopedMutex lock(rewrite_mutex());
   DCHECK(!fetch_queued_);
   bool signal = false;
   bool attached = false;
@@ -1065,20 +1059,20 @@ void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
   ++rewrites_to_delete_;
   if (signal) {
     DCHECK(!fetch_queued_);
-    rewrite_condvar_->Signal();
+    scheduler_->Signal();
   }
 }
 
 void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
   bool ready_to_recycle = false;
   {
-    ScopedMutex lock(rewrite_mutex_.get());
+    ScopedMutex lock(rewrite_mutex());
     DCHECK_LT(0, rewrites_to_delete_);
     --rewrites_to_delete_;
     delete rewrite_context;
     if (RewritesComplete()) {
       if (waiting_for_completion_) {
-        rewrite_condvar_->Signal();
+        scheduler_->Signal();
       } else {
         ready_to_recycle = !externally_managed_ && !parsing_;
       }
@@ -1102,7 +1096,7 @@ void RewriteDriver::Cleanup() {
   if (!externally_managed_) {
     bool done = false;
     {
-      ScopedMutex lock(rewrite_mutex_.get());
+      ScopedMutex lock(rewrite_mutex());
       done = RewritesComplete();
       if (!done) {
         parsing_ = false;  // Permit recycle when contexts done.

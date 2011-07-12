@@ -94,11 +94,10 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
     // servers will do the same thing with it.
     // E.g. on http://example.com/foo.html, don't trim
     // http://example.com//bar.html to //bar or /bar.
-    if (long_url_buffer.data()[to_trim + 1] == '/' &&
-        long_url_buffer.data()[to_trim] == '/') {
+    if (long_url_buffer.substr(to_trim, 2) == "//") {
       to_trim = 0;
     } else if (to_trim + path.length() < long_url_buffer.length() &&
-               long_url.PathSansLeaf().find(path) == 0) {
+               StringPiece(long_url.PathSansLeaf()).starts_with(path)) {
       // Don't trim the path off queries in the form http://foo.com/?a=b
       // Instead resolve to /?a=b (not ?a=b, which resolves to
       // index.html?a=b on http://foo.com/index.html).
@@ -109,7 +108,7 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
         // E.g. on http://example.com/foo/bar/index.html, don't trim
         // http://example.com/foo/bar//baz/other.html to //baz/other.html
         // or to /baz/other.html.
-        if (long_url_buffer.data()[to_trim] == '/') {
+        if (long_url_buffer[to_trim] == '/') {
           to_trim -= path.length();
         }
       }
@@ -117,12 +116,18 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
   }
 
   // If we can't strip the whole origin, see if we can strip off the scheme.
+  // TODO(jmaessen): disabled; causes IE8 to double-fetch urls, and problems
+  // with other scripting.  Switch on for whitelisted user-agents in future?
+  // Not a huge savings in general anyway.
+#define STRIP_URL_SCHEME 0
+#if STRIP_URL_SCHEME
   StringPiece scheme = base_url.Scheme();
-  if (to_trim == 0 && scheme.length() + 1 < long_url_buffer.length() &&
+  if (false && to_trim == 0 && scheme.length() + 1 < long_url_buffer.length() &&
       long_url.SchemeIs(scheme)) {
     // +1 for : (not included in scheme)
     to_trim = scheme.length() + 1;
   }
+#endif
 
   // Candidate trimmed URL.
   StringPiece trimmed_url_piece(long_url_buffer);

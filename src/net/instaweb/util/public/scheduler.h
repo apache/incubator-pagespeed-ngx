@@ -14,8 +14,8 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_MOCK_TIME_CONDVAR_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_MOCK_TIME_CONDVAR_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_SCHEDULER_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_SCHEDULER_H_
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -24,36 +24,35 @@
 
 namespace net_instaweb {
 
-class MockTimer;
+class AbstractMutex;
 
-// Implements a condition-variable whose TimedWait works with
-// MockTime.  This is implemented on top of a real condition
-// variable.
-class MockTimeCondvar : public ThreadSystem::Condvar {
+// Implements a simple schedule that allows a thread to block until either
+// time expires, or a condition variable is signaled.  The default
+// implementation uses a condition variable to block the calling thread
+// until one of these occurs.  However this implementation can be overridden,
+// e.g. see MockScheduler.
+class Scheduler {
  public:
-  MockTimeCondvar(ThreadSystem::Condvar* condvar, MockTimer* timer);
-  virtual ~MockTimeCondvar();
+  explicit Scheduler(ThreadSystem* thread_system);
+  virtual ~Scheduler();
 
-  virtual ThreadSystem::CondvarCapableMutex* mutex() const {
-    return condvar_->mutex();
-  }
+  AbstractMutex* mutex() { return mutex_.get(); }
+  ThreadSystem::Condvar* condvar() { return condvar_.get(); }
 
-  // Broadcast is NYI in the mock system.
-  virtual void Broadcast();
-  virtual void Wait() { condvar_->Wait(); }
-  virtual void Signal() { condvar_->Signal(); }
-
-  // TimedWait should not be called on MockCondvar.  See
-  // MockThreadSystem::TimedWait.  This call will CHECK-fail.
+  // mutex() must be held when calling TimedWait.
   virtual void TimedWait(int64 timeout_ms);
 
- private:
-  scoped_ptr<ThreadSystem::Condvar> condvar_;
-  MockTimer* timer_;
+  // mutex() must be held when calling TimedWait.
+  void Signal() { condvar_->Signal(); }
 
-  DISALLOW_COPY_AND_ASSIGN(MockTimeCondvar);
+ private:
+  ThreadSystem* thread_system_;
+  scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
+  scoped_ptr<ThreadSystem::Condvar> condvar_;
+
+  DISALLOW_COPY_AND_ASSIGN(Scheduler);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_CONDVAR_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_SCHEDULER_H_

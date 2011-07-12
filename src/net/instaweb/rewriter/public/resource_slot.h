@@ -50,7 +50,8 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   explicit ResourceSlot(const ResourcePtr& resource)
       : resource_(resource),
         disable_rendering_(false),
-        should_delete_element_(false) {
+        should_delete_element_(false),
+        was_optimized_(false) {
   }
 
   ResourcePtr resource() const { return resource_; }
@@ -82,6 +83,15 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   void set_should_delete_element(bool x) { should_delete_element_ = x; }
   bool should_delete_element() const { return should_delete_element_; }
 
+  // Returns true if any of the contexts touching this slot optimized it
+  // successfully. This in particular includes the case where a
+  // call to RewriteContext::Rewrite() on a partition containing this
+  // slot returned kRewriteOk.
+  bool was_optimized() const { return was_optimized_; }
+
+  // Marks the slot as having been optimized.
+  void set_was_optimized() { was_optimized_ = true; }
+
   // Render is not thread-safe.  This must be called from the thread that
   // owns the DOM or CSS file.
   virtual void Render() = 0;
@@ -105,6 +115,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   ResourcePtr resource_;
   bool disable_rendering_;
   bool should_delete_element_;
+  bool was_optimized_;
 
   // We track the RewriteContexts that are atempting to rewrite this
   // slot, to help us build a dependency graph between ResourceContexts.

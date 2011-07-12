@@ -78,6 +78,28 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesSimple) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
+TEST_P(CssImageRewriterTest, CacheExtendsWhenCssGrows) {
+  // We run most tests with set_always_rewrite_css(true) which bypasses
+  // checks on whether rewriting is worthwhile or not. Test to make sure we make
+  // the right decision when we do do the check in the case where the produced
+  // CSS is actually larger, but contains rewritten resources.
+  // (We want to rewrite the CSS in that case)
+  options()->set_always_rewrite_css(false);
+  InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
+  static const char css_before[] =
+      "body{background-image: url(foo.png)}";
+  static const char css_after[] =
+      "body{background-image:url(http://test.com/foo.png.pagespeed.ce.0.png)}";
+
+  ValidateRewriteInlineCss("cache_extends_images_growcheck-inline",
+                           css_before, css_after,
+                           kExpectChange | kExpectSuccess);
+  ValidateRewriteExternalCss("cache_extends_images_growcheck-external",
+                             css_before, css_after,
+                             kExpectChange | kExpectSuccess |
+                             kNoOtherContexts | kNoClearFetcher);
+}
+
 TEST_P(CssImageRewriterTest, CacheExtendsImages) {
   CSS_XFAIL_ASYNC();
   InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);

@@ -56,7 +56,7 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/mock_thread_system.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -68,11 +68,11 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
-#include "net/instaweb/util/public/worker.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
+class Scheduler;
 
 const char ResourceManagerTestBase::kTestData[] =
     "/net/instaweb/rewriter/testdata/";
@@ -81,32 +81,17 @@ const char ResourceManagerTestBase::kXhtmlDtd[] =
     "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">";
 SimpleStats* ResourceManagerTestBase::statistics_;
 
-namespace {
-
-class IdleCallback : public Worker::Closure {
- public:
-  IdleCallback(RewriteDriver* driver) : rewrite_driver_(driver) {}
-  virtual void Run() { rewrite_driver_->WakeupFromIdle(); }
-
- private:
-  RewriteDriver* rewrite_driver_;
-};
-
-}  // namespace
-
 ResourceManagerTestBase::ResourceManagerTestBase()
     : mock_url_async_fetcher_(&mock_url_fetcher_),
       counting_url_async_fetcher_(&mock_url_async_fetcher_),
       wait_for_fetches_(false),
-      base_thread_system_(ThreadSystem::CreateThreadSystem()),
+      thread_system_(ThreadSystem::CreateThreadSystem()),
       // TODO(sligocki): Get this working with a non-0 start time.
       // 0 has the unfortunate property that 0 / 1000 = 0 which could make
       // tests pass erroniously.
       //start_time_ms_(MockTimer::kApr_5_2010_ms),
       start_time_ms_(0),
       timer_(start_time_ms_),
-      thread_system_(new MockThreadSystem(base_thread_system_.get(),
-                                          mock_timer())),
       file_system_(&timer_),
       other_file_system_(&timer_),
       file_prefix_(StrCat(GTestTempDir(), "/")),
@@ -141,8 +126,7 @@ ResourceManagerTestBase::ResourceManagerTestBase()
       wait_url_async_fetcher_(&mock_url_fetcher_, thread_system_->NewMutex()) {
   rewrite_driver_.set_custom_options(options_);
   other_rewrite_driver_.set_custom_options(other_options_);
-  // rewrite_driver_.SetResourceManager(resource_manager_);
-  other_rewrite_driver_.SetResourceManager(&other_resource_manager_);
+  SetupDriver(&other_resource_manager_, &other_rewrite_driver_);
 
   // TODO(jmarantz): Lots of tests send multiple HTML files through the
   // same RewriteDriver.  Once this is changed then we can allow the
@@ -173,10 +157,7 @@ void ResourceManagerTestBase::SetUp() {
       &counting_url_async_fetcher_, &mock_hasher_,
       &http_cache_, lru_cache_, &lock_manager_,
       &message_handler_, statistics_, thread_system_.get(), factory_);
-  rewrite_driver_.SetResourceManager(resource_manager_);
-  resource_manager_->SetIdleCallback(new IdleCallback(rewrite_driver()));
-  other_resource_manager_.SetIdleCallback(new IdleCallback(
-      other_rewrite_driver()));
+  SetupDriver(resource_manager_, &rewrite_driver_);
 }
 
 void ResourceManagerTestBase::TearDown() {
@@ -290,12 +271,10 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   RewriteOptions* options = new RewriteOptions;
   options->CopyFrom(*options_);
   new_rewrite_driver.set_custom_options(options);
-  new_rewrite_driver.SetResourceManager(&new_resource_manager);
+  SetupDriver(&new_resource_manager, &new_rewrite_driver);
   new_rewrite_driver.SetAsynchronousRewrites(
       rewrite_driver_.asynchronous_rewrites());
   new_rewrite_driver.AddFilters();
-
-  new_resource_manager.SetIdleCallback(new IdleCallback(&new_rewrite_driver));
 
   RequestHeaders request_headers;
   // TODO(sligocki): We should set default request headers.
@@ -672,6 +651,13 @@ void ResourceManagerTestBase::CallFetcherCallbacksForDriver(
 
 void ResourceManagerTestBase::CallFetcherCallbacks() {
   CallFetcherCallbacksForDriver(&wait_url_async_fetcher_, &rewrite_driver_);
+}
+
+void ResourceManagerTestBase::SetupDriver(ResourceManager* rm,
+                                          RewriteDriver* rd) {
+  Scheduler* scheduler = new MockScheduler(
+      rm->thread_system(), rm->rewrite_worker(), &timer_);
+  rd->SetResourceManagerAndScheduler(rm, scheduler);
 }
 
 // Logging at the INFO level slows down tests, adds to the noise, and

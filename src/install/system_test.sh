@@ -377,7 +377,7 @@ check [ `grep -c "'" $FETCHED` = 0 ]                    # no apostrophes
 
 test_filter trim_urls makes urls relative
 check $WGET_PREREQ $URL
-grep "http:" $FETCHED                     # scheme, should not find
+grep "mod_pagespeed_example" $FETCHED     # base dir, shouldn't find
 check [ $? != 0 ]
 check [ `stat -c %s $FETCHED` -lt 153 ]   # down from 157
 

@@ -707,6 +707,7 @@ void RewriteContext::RenderPartitionOnDetach(int rewrite_index) {
   OutputPartition* partition = output_partition(rewrite_index);
   for (int i = 0; i < partition->input_size(); ++i) {
     int slot_index = partition->input(i).index();
+    slot(slot_index)->set_was_optimized();
     render_slots_[slot_index] = true;
   }
 }

@@ -55,7 +55,6 @@ class AbstractMutex;
 class Hasher;
 class LRUCache;
 class MessageHandler;
-class MockThreadSystem;
 class ResponseHeaders;
 class RewriteDriverFactory;
 class RewriteFilter;
@@ -288,6 +287,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     mock_hasher_.set_hash_value(value);
   }
 
+  // Connects a RewriteDriver to ResourceManager, establishing a MockScheduler
+  // to advance time.
+  void SetupDriver(ResourceManager* rm, RewriteDriver* rd);
+
  private:
   // Calls callbacks on given wait fetcher, making sure to properly synchronize
   // with async rewrite flows given driver.
@@ -311,11 +314,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   //
   // Server A runs rewrite_driver_ and will be used to rewrite pages and
   // served the rewritten resources.
-  scoped_ptr<ThreadSystem> base_thread_system_;
+  scoped_ptr<ThreadSystem> thread_system_;
   scoped_ptr<AbstractMutex> timer_mutex_;
   int64 start_time_ms_;
   MockTimer timer_;
-  scoped_ptr<MockThreadSystem> thread_system_;
   MemFileSystem file_system_;
   MemFileSystem other_file_system_;
 
