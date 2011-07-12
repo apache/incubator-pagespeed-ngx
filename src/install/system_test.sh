@@ -7,7 +7,7 @@
 # Expects APACHE_DEBUG_PAGESPEED_CONF to point to our config file,
 # APACHE_LOG to the log file
 
-if [ $# < 1 or $# > 2 ]; then
+if [ $# -lt 1 -o $# -gt 2 ]; then
   echo Usage: ./system_test.sh HOSTNAME [PROXY_HOST]
   exit 2
 fi;

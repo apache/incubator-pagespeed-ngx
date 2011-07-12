@@ -70,6 +70,7 @@ const char kTrimWhitespaceFilterId[] = "tw";
 const char kUpperCaseFilterId[] = "uc";
 const char kNestedFilterId[] = "nf";
 const char kCombiningFilterId[] = "cr";
+const int64 kRewriteDeadlineMs = 20;
 const int64 kRewriteDelayMs = 40;
 
 }  // namespace
@@ -398,7 +399,6 @@ class CombiningFilter : public RewriteFilter {
     bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
       return WriteCombination(in, out, rewrite_driver_->message_handler());
     }
-    virtual bool UseAsyncFlow() const { return true; }
   };
 
   class Context : public RewriteContext {
@@ -568,6 +568,13 @@ class RewriteContextTest : public ResourceManagerTestBase {
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     SetAsynchronousRewrites(true);
+
+    // The default deadline set in RewriteDriver is dependent on whether
+    // the system was compiled for debug, or is being run under valgrind.
+    // However, the unit-tests here use mock-time so we want to set the
+    // deadline explicitly.
+    rewrite_driver()->set_rewrite_deadline_ms(kRewriteDeadlineMs);
+    other_rewrite_driver()->set_rewrite_deadline_ms(kRewriteDeadlineMs);
   }
   virtual void TearDown() {
     rewrite_driver()->WaitForCompletion();

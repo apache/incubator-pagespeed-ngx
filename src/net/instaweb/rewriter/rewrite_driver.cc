@@ -136,6 +136,11 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       add_instrumentation_filter_(NULL),
       scan_filter_(this),
       domain_rewriter_(NULL) {
+
+  // Set up default values for the amount of time an HTML rewrite will wait for
+  // Rewrites to complete, based on whether compiled for debug or running on
+  // valgrind.  Note that unit-tests can explicitly override this value via
+  // set_rewrite_deadline_ms().
   if (RunningOnValgrind()) {
     rewrite_deadline_ms_ = kValgrindWaitForRewriteMsPerFlush;
   } else {

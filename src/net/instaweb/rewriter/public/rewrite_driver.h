@@ -379,6 +379,13 @@ class RewriteDriver : public HtmlParse {
   // the Rewrites don't complete in time for the deadline.
   void TimedWait(int wait_time_ms);
 
+  // Explicitly sets the number of milliseconds to wait for Rewrites
+  // to complete while HTML parsing, overriding a default value which
+  // is dependent on whether the system is compiled for debug or
+  // release, or whether it's been detected as running on valgrind
+  // at runtime.
+  void set_rewrite_deadline_ms(int x) { rewrite_deadline_ms_ = x; }
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;

@@ -31,10 +31,12 @@ class Writer;
 
 SyncFetcherAdapter::SyncFetcherAdapter(Timer* timer,
                                        int64 fetcher_timeout_ms,
-                                       UrlPollableAsyncFetcher* async_fetcher)
+                                       UrlPollableAsyncFetcher* async_fetcher,
+                                       ThreadSystem* thread_system)
     : timer_(timer),
       fetcher_timeout_ms_(fetcher_timeout_ms),
-      async_fetcher_(async_fetcher) {
+      async_fetcher_(async_fetcher),
+      thread_system_(thread_system) {
 }
 
 SyncFetcherAdapter::~SyncFetcherAdapter() {
@@ -45,7 +47,7 @@ bool SyncFetcherAdapter::StreamingFetchUrl(
     ResponseHeaders* response_headers, Writer* fetched_content_writer,
     MessageHandler* message_handler) {
   SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
-      response_headers, fetched_content_writer);
+      thread_system_, response_headers, fetched_content_writer);
   async_fetcher_->StreamingFetch(
       url, request_headers, callback->response_headers(),
       callback->writer(), message_handler, callback);

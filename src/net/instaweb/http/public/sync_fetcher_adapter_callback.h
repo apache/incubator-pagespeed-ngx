@@ -25,12 +25,15 @@
 
 namespace net_instaweb {
 
+class AbstractMutex;
+class ThreadSystem;
 class Writer;
 
 // Class to help run an asynchronous fetch synchronously with a timeout.
 class SyncFetcherAdapterCallback : public UrlAsyncFetcher::Callback {
  public:
-  SyncFetcherAdapterCallback(ResponseHeaders* response_headers, Writer* writer);
+  SyncFetcherAdapterCallback(ThreadSystem* thread_system,
+                             ResponseHeaders* response_headers, Writer* writer);
   virtual ~SyncFetcherAdapterCallback();
   virtual void Done(bool success);
 
@@ -42,6 +45,10 @@ class SyncFetcherAdapterCallback : public UrlAsyncFetcher::Callback {
   // by this Callback class, which will forward the output and headers
   // to the caller *if* it has not been released by the time the callback
   // is called.
+  //
+  // If this object may be accessed from multiple threads (e.g. due to
+  // async rewrites), you should use LockIfNotReleased() and Unlock()
+  // to guard access to these.
   ResponseHeaders* response_headers() { return &response_headers_buffer_; }
   Writer* writer() { return writer_.get(); }
 
@@ -55,11 +62,20 @@ class SyncFetcherAdapterCallback : public UrlAsyncFetcher::Callback {
   // Done() is finally called.
   void Release();
 
-  bool done() const { return done_; }
-  bool success() const { return success_; }
-  bool released() const { return released_; }
+  bool done() const;
+  bool success() const;
+  bool released() const;
+
+  // If this fetcher hasn't yet been released(), returns true with mutex_ held.
+  // Otherwise, returns false with the mutex_ released. These methods
+  // should be used to guard accesses to writer() and response_headers().
+  bool LockIfNotReleased();
+
+  // Releases mutex acquired by a successful LockIfNotReleased() call.
+  void Unlock();
 
  private:
+  scoped_ptr<AbstractMutex> mutex_;
   bool done_;
   bool success_;
   bool released_;

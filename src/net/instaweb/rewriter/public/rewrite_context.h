@@ -129,8 +129,9 @@ class RewriteContext {
   // of async cache-lookups &/or fetches.
   void AddSlot(const ResourceSlotPtr& slot);
 
-  // Remove the slot at i from the context's slot list.
-  void RemoveSlot(int i);
+  // Remove the last slot from the context's slot list. This
+  // context must be the last one attached to the slot.
+  void RemoveLastSlot();
 
   // Starts a resource rewrite.  Once Inititated, the Rewrite object
   // should only be accessed from the Rewrite thread, until it

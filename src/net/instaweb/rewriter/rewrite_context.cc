@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 
 #include <cstddef>                     // for size_t
+#include <algorithm>
 #include <vector>
 
 #include "base/logging.h"
@@ -321,8 +322,17 @@ void RewriteContext::AddSlot(const ResourceSlotPtr& slot) {
   slot->AddContext(this);
 }
 
-void RewriteContext::RemoveSlot(int index) {
+void RewriteContext::RemoveLastSlot() {
+  int index = num_slots() - 1;
   slot(index)->DetachContext(this);
+  RewriteContext* predecessor = slot(index)->LastContext();
+  if (predecessor) {
+    predecessor->successors_.erase(
+        std::find(predecessor->successors_.begin(),
+                  predecessor->successors_.end(), this));
+    --num_predecessors_;
+  }
+
   slots_.erase(slots_.begin() + index);
   render_slots_.erase(render_slots_.begin() + index);
 }

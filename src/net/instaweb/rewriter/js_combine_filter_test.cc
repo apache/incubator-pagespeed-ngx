@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -121,6 +122,10 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
   };
 
   virtual void SetUp() {
+    SetUpWithJsFilter(false);
+  }
+
+  void SetUpWithJsFilter(bool use_js_filter) {
     ResourceManagerTestBase::SetUp();
     bool async_rewrites = GetParam();
     UseMd5Hasher();
@@ -132,6 +137,11 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
     SimulateJsResource(kStrictUrl2, kStrictText2);
 
     rewrite_driver()->SetAsynchronousRewrites(async_rewrites);
+    if (use_js_filter) {
+      AddRewriteFilter(
+          new JavascriptFilter(rewrite_driver(),
+                               RewriteDriver::kJavascriptMinId));
+    }
     filter_ = new JsCombineFilter(rewrite_driver(),
                                   RewriteDriver::kJavascriptCombinerId);
     AddRewriteFilter(filter_);
@@ -286,6 +296,25 @@ TEST_P(JsCombineFilterTest, TestBarriers) {
   ValidateNoChanges("strict4",
                     StrCat("<script src=", kStrictUrl2, "></script>",
                            "<script src=", kJsUrl1, "></script>"));
+}
+
+// Make sure that rolling back a <script> that has both a source and inline data
+// out of the combination works even when we have more than one filter involved.
+// This used to crash under async flow.
+class JsFilterAndCombineFilterTest : public JsCombineFilterTest {
+  virtual void SetUp() {
+    SetUpWithJsFilter(true);
+  }
+};
+
+TEST_P(JsFilterAndCombineFilterTest, TestScriptInlineTextRollback) {
+  ValidateExpected("rollback1",
+      StrCat("<script src=", kJsUrl1, "></script>",
+             "<script src=", kJsUrl2, ">TEXT HERE</script>"),
+      StrCat("<script src=http://test.com/a.js.pagespeed.jm.FUEwDOA7jh.js>",
+             "</script>",
+             "<script src=http://test.com/b.js.pagespeed.jm.Y1kknPfzVs.js>",
+             "TEXT HERE</script>"));
 }
 
 // Things between scripts that should not prevent combination
@@ -485,5 +514,8 @@ TEST_P(JsCombineFilterTest, TestCombineShard) {
 
 INSTANTIATE_TEST_CASE_P(JsCombineFilterTestInstance, JsCombineFilterTest,
                         ::testing::Bool());
+INSTANTIATE_TEST_CASE_P(
+    JsCombineFilterTestInstance, JsFilterAndCombineFilterTest,
+    ::testing::Bool());
 
 }  // namespace net_instaweb

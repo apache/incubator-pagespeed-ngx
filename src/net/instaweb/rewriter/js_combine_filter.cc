@@ -162,7 +162,7 @@ class JsCombineFilter::Context : public RewriteContext {
   // because we are no longer handling the resource associated with it.
   void RemoveLastElement() {
     if (filter_->HasAsyncFlow()) {
-      RemoveSlot(num_slots() - 1);
+      RemoveLastSlot();
       elements_.resize(elements_.size() - 1);
     } else {
       combiner_.RemoveLastElement();

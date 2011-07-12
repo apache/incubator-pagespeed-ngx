@@ -125,7 +125,7 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
   StringWriter writer(&output);
   MessageHandler* message_handler = factory->message_handler();
   SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
-      &response_headers, &writer);
+      factory->thread_system(), &response_headers, &writer);
   bool handled = rewrite_driver->FetchResource(
       url, request_headers, callback->response_headers(), callback->writer(),
       callback);

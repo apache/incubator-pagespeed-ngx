@@ -26,6 +26,7 @@ namespace net_instaweb {
 class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
+class ThreadSystem;
 class Timer;
 class UrlPollableAsyncFetcher;
 class Writer;
@@ -36,7 +37,8 @@ class SyncFetcherAdapter : public UrlFetcher {
   // fetcher_timeout_ms (or none at all)
   SyncFetcherAdapter(Timer* timer,
                      int64 fetcher_timeout_ms,
-                     UrlPollableAsyncFetcher* async_fetcher);
+                     UrlPollableAsyncFetcher* async_fetcher,
+                     ThreadSystem* thread_system);
   virtual ~SyncFetcherAdapter();
   virtual bool StreamingFetchUrl(const GoogleString& url,
                                  const RequestHeaders& request_headers,
@@ -48,6 +50,7 @@ class SyncFetcherAdapter : public UrlFetcher {
   Timer* timer_;
   int64 fetcher_timeout_ms_;
   UrlPollableAsyncFetcher* async_fetcher_;
+  ThreadSystem* thread_system_;
 
   DISALLOW_COPY_AND_ASSIGN(SyncFetcherAdapter);
 };

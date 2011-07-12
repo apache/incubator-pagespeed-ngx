@@ -44,8 +44,13 @@ RewriteContext* ResourceSlot::LastContext() const {
 }
 
 void ResourceSlot::DetachContext(RewriteContext* context) {
-  CHECK_EQ(contexts_.front(), context);
-  contexts_.pop_front();
+  if (contexts_.front() == context) {
+    contexts_.pop_front();
+  } else if (contexts_.back() == context) {
+    contexts_.pop_back();
+  } else {
+    DCHECK(false) << "Can only detach first or last context";
+  }
 }
 
 FetchResourceSlot::~FetchResourceSlot() {

@@ -950,6 +950,37 @@ TEST_P(CssCombineFilterTest, NoQueryCorruption) {
   TestCorruptUrl("?query", true);
 }
 
+TEST_P(CssCombineFilterTest, TwoCombinationsTwice) {
+  // Regression test for a case where we were picking up some
+  // partial cache results for sync path even in async path, and hence
+  // got confused and CHECK-failed.
+
+  CssLink::Vector input_css_links, output_css_links;
+  SetFetchResponse404("404.css");
+  input_css_links.Add("a.css", kYellow, "", true /* supply_mock*/);
+  input_css_links.Add("b.css", kYellow, "", true /* supply_mock*/);
+  input_css_links.Add("404.css", kYellow, "", false /* supply_mock*/);
+  input_css_links.Add("c.css", kYellow, "", true /* supply_mock*/);
+  input_css_links.Add("d.css", kYellow, "", true /* supply_mock*/);
+
+  BarrierTestHelper("two_comb", input_css_links, &output_css_links);
+
+  ASSERT_EQ(3, output_css_links.size());
+  EXPECT_EQ("http://test.com/a.css+b.css.pagespeed.cc.0.css",
+            output_css_links[0]->url_);
+  EXPECT_EQ("404.css", output_css_links[1]->url_);
+  EXPECT_EQ("http://test.com/c.css+d.css.pagespeed.cc.0.css",
+            output_css_links[2]->url_);
+
+  // Get rid of the "modern" cache key, while keeping the old one.
+  lru_cache()->Delete(
+      ",htest.com,_a.css+,htest.com,_b.css+,htest.com,_404.css+"
+      ",htest.com,_c.css+,htest.com,_d.css:cc");
+
+  // Now do it again...
+  BarrierTestHelper("two_comb", input_css_links, &output_css_links);
+}
+
 /*
   TODO(jmarantz): cover intervening FLUSH
   TODO(jmarantz): consider converting some of the existing tests to this

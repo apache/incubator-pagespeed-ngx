@@ -140,10 +140,6 @@ class ResourceCombiner {
   // Your implementation must call the superclass.
   virtual void Clear();
 
-  // Override this if your filter uses the new async flow.  Default
-  // implementation returns false.
-  virtual bool UseAsyncFlow() const;
-
   ResourceManager* const resource_manager_;
   RewriteDriver* const rewrite_driver_;
 

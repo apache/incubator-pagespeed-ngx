@@ -145,7 +145,6 @@ class HtmlColor {
 
 class HtmlColorUtils {
  public:
-
   // Converts a color into its shortest possible CSS representation.
   // For 9 colors, that is their color name. Example: "#008000" returns "green".
   // For colors in the form #rrggbb, where r=r, g=g, and b=b, that is #rgb.

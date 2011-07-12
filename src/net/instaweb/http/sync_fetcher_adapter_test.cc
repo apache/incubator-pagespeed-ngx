@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -32,6 +33,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 
@@ -151,7 +153,9 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
 
 class SyncFetcherAdapterTest : public testing::Test {
  public:
-  SyncFetcherAdapterTest(): timer_(0) {}
+  SyncFetcherAdapterTest(): timer_(0) {
+    thread_system_.reset(ThreadSystem::CreateThreadSystem());
+  }
 
  protected:
   bool DoFetch(UrlFetcher* fetcher, ResponseHeaders* response_headers,
@@ -164,11 +168,14 @@ class SyncFetcherAdapterTest : public testing::Test {
                                       &handler_);
   }
 
-  void TestSuccessfulFetch(UrlFetcher* fetcher) {
+  void TestSuccessfulFetch(UrlPollableAsyncFetcher* async_fetcher) {
+    SyncFetcherAdapter fetcher(&timer_, 1000, async_fetcher,
+                               thread_system_.get());
+
     ResponseHeaders out_headers;
     GoogleString out_str;
     StringWriter out_writer(&out_str);
-    EXPECT_TRUE(DoFetch(fetcher, &out_headers, &out_writer));
+    EXPECT_TRUE(DoFetch(&fetcher, &out_headers, &out_writer));
     EXPECT_EQ(kText, out_str);
 
     StringStarVector values;
@@ -177,16 +184,24 @@ class SyncFetcherAdapterTest : public testing::Test {
     EXPECT_EQ(GoogleString(kText), *(values[0]));
   }
 
-  void TestFailedFetch(UrlFetcher* fetcher) {
+  void TestFailedFetch(UrlPollableAsyncFetcher* async_fetcher) {
+    SyncFetcherAdapter fetcher(&timer_, 1000, async_fetcher,
+                               thread_system_.get());
+    TestFailedFetchSync(&fetcher);
+  }
+
+  void TestFailedFetchSync(UrlFetcher* fetcher) {
     ResponseHeaders out_headers;
     TrapWriter trap_writer;
     EXPECT_FALSE(DoFetch(fetcher, &out_headers, &trap_writer));
   }
 
-  void TestTimeoutFetch(UrlPollableAsyncFetcher* async_fetcher,
-                        UrlFetcher* fetcher) {
-    // First let the sync fetcher tineout, and return failure.
-    TestFailedFetch(fetcher);
+  void TestTimeoutFetch(UrlPollableAsyncFetcher* async_fetcher) {
+    SyncFetcherAdapter fetcher(&timer_, 1000, async_fetcher,
+                               thread_system_.get());
+
+    // First let the sync fetcher timeout, and return failure.
+    TestFailedFetchSync(&fetcher);
 
     // Now spin until async fetcher delivers the result, to make sure
     // we do not blow up
@@ -195,42 +210,37 @@ class SyncFetcherAdapterTest : public testing::Test {
 
   MockMessageHandler handler_;
   MockTimer timer_;
+  scoped_ptr<ThreadSystem> thread_system_;
 };
 
 TEST_F(SyncFetcherAdapterTest, QuickOk) {
   DelayedFetcher async_fetcher(&timer_, &handler_, 0, true);
-  SyncFetcherAdapter sync_fetcher(&timer_, 1000, &async_fetcher);
-  TestSuccessfulFetch(&sync_fetcher);
+  TestSuccessfulFetch(&async_fetcher);
 }
 
 TEST_F(SyncFetcherAdapterTest, SlowOk) {
   DelayedFetcher async_fetcher(&timer_, &handler_, 500, true);
-  SyncFetcherAdapter sync_fetcher(&timer_, 1000, &async_fetcher);
-  TestSuccessfulFetch(&sync_fetcher);
+  TestSuccessfulFetch(&async_fetcher);
 }
 
 TEST_F(SyncFetcherAdapterTest, QuickFail) {
   DelayedFetcher async_fetcher(&timer_, &handler_, 0, false);
-  SyncFetcherAdapter sync_fetcher(&timer_, 1000, &async_fetcher);
-  TestFailedFetch(&sync_fetcher);
+  TestFailedFetch(&async_fetcher);
 }
 
 TEST_F(SyncFetcherAdapterTest, SlowFail) {
   DelayedFetcher async_fetcher(&timer_, &handler_, 500, false);
-  SyncFetcherAdapter sync_fetcher(&timer_, 1000, &async_fetcher);
-  TestFailedFetch(&sync_fetcher);
+  TestFailedFetch(&async_fetcher);
 }
 
 TEST_F(SyncFetcherAdapterTest, TimeoutOk) {
   DelayedFetcher async_fetcher(&timer_, &handler_, 5000, true);
-  SyncFetcherAdapter sync_fetcher(&timer_, 1000, &async_fetcher);
-  TestTimeoutFetch(&async_fetcher, &sync_fetcher);
+  TestTimeoutFetch(&async_fetcher);
 }
 
 TEST_F(SyncFetcherAdapterTest, TimeoutFail) {
   DelayedFetcher async_fetcher(&timer_, &handler_, 5000, false);
-  SyncFetcherAdapter sync_fetcher(&timer_, 1000, &async_fetcher);
-  TestTimeoutFetch(&async_fetcher, &sync_fetcher);
+  TestTimeoutFetch(&async_fetcher);
 }
 
 }  // namespace net_instaweb

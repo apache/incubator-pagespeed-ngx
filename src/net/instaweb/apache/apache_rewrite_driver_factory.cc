@@ -177,7 +177,8 @@ UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
   if (serf_url_fetcher_ == NULL) {
     DefaultAsyncUrlFetcher();  // Create async fetcher if necessary.
     serf_url_fetcher_ = new SyncFetcherAdapter(
-        timer(), fetcher_time_out_ms_, serf_url_async_fetcher_);
+        timer(), fetcher_time_out_ms_, serf_url_async_fetcher_,
+        thread_system());
   }
   return serf_url_fetcher_;
 }

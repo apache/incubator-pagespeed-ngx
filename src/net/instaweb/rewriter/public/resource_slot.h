@@ -93,7 +93,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // Adds a new context to this slot.
   void AddContext(RewriteContext* context) { contexts_.push_back(context); }
 
-  // Detaches a context from the slot.  This must be the first context
+  // Detaches a context from the slot.  This must be the first or last context
   // that was added.
   void DetachContext(RewriteContext* context);
 
