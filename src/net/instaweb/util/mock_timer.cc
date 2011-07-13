@@ -25,6 +25,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/stl_util.h"
 
@@ -40,6 +41,12 @@ MockTimer::MockTimer(int64 time_ms)
 
 MockTimer::~MockTimer() {
   STLDeleteElements(&alarms_);
+}
+
+MockTimer::Alarm::Alarm(int64 wakeup_time_us, Closure* closure)
+    : index_(kIndexUninitialized),
+      wakeup_time_us_(wakeup_time_us),
+      closure_(closure) {
 }
 
 MockTimer::Alarm::~Alarm() {
@@ -64,8 +71,9 @@ void MockTimer::Alarm::SetIndex(int index) {
   index_ = index;
 }
 
-void MockTimer::AddAlarm(Alarm* alarm) {
+MockTimer::Alarm* MockTimer::AddAlarm(int64 wakeup_time_us, Closure* closure) {
   bool call_now = false;
+  Alarm* alarm = new Alarm(wakeup_time_us, closure);
   {
     ScopedMutex lock(mutex_.get());
     if (time_us_ >= alarm->wakeup_time_us()) {
@@ -79,9 +87,11 @@ void MockTimer::AddAlarm(Alarm* alarm) {
     // Release lock before running potentially the Alarm.
   }
   if (call_now) {
-    alarm->Run();
+    alarm->closure()->Run();
     delete alarm;
+    alarm = NULL;
   }
+  return alarm;
 }
 
 void MockTimer::CancelAlarm(Alarm* alarm) {
@@ -105,7 +115,7 @@ void MockTimer::SetTimeUs(int64 time_us) {
       alarms_.erase(p);
       time_us_ = alarm->wakeup_time_us();
       mutex_->Unlock();
-      alarm->Run();
+      alarm->closure()->Run();
       delete alarm;
       mutex_->Lock();
     }

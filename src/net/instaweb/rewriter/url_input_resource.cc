@@ -52,7 +52,8 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
                            const RewriteOptions* rewrite_options) :
       resource_manager_(resource_manager),
       rewrite_options_(rewrite_options),
-      message_handler_(NULL) { }
+      message_handler_(NULL),
+      respect_vary_(rewrite_options_->respect_vary()) { }
   virtual ~UrlResourceFetchCallback() {}
 
   bool Fetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
@@ -94,6 +95,11 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
     GoogleString origin_url;
     bool ret = false;
     const DomainLawyer* lawyer = rewrite_options_->domain_lawyer();
+
+    // We shouldn't use rewrite_options_ in callbacks (as they could potentially
+    // have been deleted by then), so clear the pointer now to guard against
+    // that.
+    rewrite_options_ = NULL;
     if (lawyer->MapOrigin(url(), &origin_url)) {
       if (origin_url != url()) {
         // If mapping the URL changes its host, then add a 'Host' header
@@ -121,7 +127,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   // are in the same state as they would be otherwise.
   bool AreHeadersCacheable(ResponseHeaders *headers) {
     bool cacheable = true;
-    if (rewrite_options_->respect_vary()) {
+    if (respect_vary_) {
       cacheable = headers->VaryCacheable();
     } else {
       cacheable = headers->IsCacheable();
@@ -185,6 +191,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
 
  private:
   scoped_ptr<AbstractLock> lock_;
+  bool respect_vary_;
   DISALLOW_COPY_AND_ASSIGN(UrlResourceFetchCallback);
 };
 

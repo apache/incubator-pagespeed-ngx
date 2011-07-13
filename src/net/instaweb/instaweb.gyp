@@ -219,6 +219,7 @@
         'util/cache_interface.cc',
         'util/chunking_writer.cc',
         'util/circular_buffer.cc',
+        'util/closure.cc',
         'util/condvar.cc',
         'util/data_url.cc',
         'util/debug.cc',

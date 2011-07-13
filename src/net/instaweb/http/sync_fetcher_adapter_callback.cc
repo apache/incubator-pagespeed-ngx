@@ -141,5 +141,4 @@ void SyncFetcherAdapterCallback::Unlock() {
   mutex_->Unlock();
 }
 
-
 }  // namespace net_instaweb

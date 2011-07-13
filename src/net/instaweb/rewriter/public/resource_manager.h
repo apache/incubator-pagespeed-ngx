@@ -36,13 +36,13 @@
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/worker.h"
 
 namespace net_instaweb {
 
 class AbstractLock;
 class AbstractMutex;
 class CacheInterface;
+class Closure;
 class ContentType;
 class FileSystem;
 class FilenameEncoder;
@@ -305,7 +305,7 @@ class ResourceManager {
   void ReleaseRewriteDriver(RewriteDriver* rewrite_driver);
 
   // Queues up a task to run on the Rewrite thread.
-  void AddRewriteTask(Worker::Closure* task);
+  void AddRewriteTask(Closure* task);
 
   ThreadSystem* thread_system() { return thread_system_; }
 

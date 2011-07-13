@@ -16,6 +16,7 @@
 
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -23,38 +24,19 @@ namespace net_instaweb {
 
 namespace {
 
-class AppendCharToStringTask : public MockTimer::Alarm {
- public:
-  AppendCharToStringTask(int64 wakeup_time_us,
-                         char ch,
-                         GoogleString* str)
-      : MockTimer::Alarm(wakeup_time_us),
-        ch_(ch),
-        string_(str) {
-  }
-  virtual void Run() {
-    *string_ += ch_;
-  }
-
- private:
-  char ch_;
-  GoogleString* string_;
-};
-
 // This is an alarm implementation which adds new alarms and optionally advances
 // time in its callback.
-class ChainedAlarm : public MockTimer::Alarm {
+class ChainedAlarm : public Closure {
  public:
-  ChainedAlarm(MockTimer* timer, int* count, int wakeup_time_us, bool advance)
-    : MockTimer::Alarm(wakeup_time_us),
-      timer_(timer),
+  ChainedAlarm(MockTimer* timer, int* count, bool advance)
+    : timer_(timer),
       count_(count) ,
       advance_(advance) {}
 
   virtual void Run() {
     if (--*count_ > 0) {
-      timer_->AddAlarm(new ChainedAlarm(timer_, count_,
-                                        wakeup_time_us() + 100, advance_));
+      timer_->AddAlarm(timer_->NowUs() + 100,
+                       new ChainedAlarm(timer_, count_, advance_));
       if (advance_) {
         timer_->AdvanceMs(100);
       }
@@ -74,10 +56,9 @@ class MockTimerTest : public testing::Test {
   MockTimerTest() : timer_(0) {}
 
   MockTimer::Alarm* AddTask(int64 wakeup_time_us, char c) {
-    MockTimer::Alarm* alarm = new AppendCharToStringTask(
-        wakeup_time_us, c, &string_);
-    timer_.AddAlarm(alarm);
-    return alarm;
+    Closure* append_char = new DelayedFunction1<GoogleString, char>(
+        &GoogleString::push_back, &string_, c);
+    return timer_.AddAlarm(wakeup_time_us, append_char);
   }
 
  protected:
@@ -124,7 +105,7 @@ TEST_F(MockTimerTest, Cancellation) {
 // Verifies that we can add a new alarm from an Alarm::Run() method.
 TEST_F(MockTimerTest, ChainedAlarms) {
   int count = 10;
-  timer_.AddAlarm(new ChainedAlarm(&timer_, &count, 100, false));
+  timer_.AddAlarm(100, new ChainedAlarm(&timer_, &count, false));
   timer_.AdvanceMs(1000);
   EXPECT_EQ(0, count);
 }
@@ -132,7 +113,7 @@ TEST_F(MockTimerTest, ChainedAlarms) {
 // Verifies that we can advance time from an Alarm::Run() method.
 TEST_F(MockTimerTest, AdvanceFromRun) {
   int count = 10;
-  timer_.AddAlarm(new ChainedAlarm(&timer_, &count, 100, true));
+  timer_.AddAlarm(100, new ChainedAlarm(&timer_, &count, true));
   timer_.AdvanceMs(100);
   EXPECT_EQ(0, count);
 }

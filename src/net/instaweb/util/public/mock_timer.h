@@ -28,6 +28,8 @@
 
 namespace net_instaweb {
 
+class Closure;
+
 class MockTimer : public Timer {
  public:
   // A useful recent time-constant for testing.
@@ -43,18 +45,17 @@ class MockTimer : public Timer {
     static const int kIndexUninitialized = -1;
 
    public:
-    explicit Alarm(int64 wakeup_time_us)
-        : index_(kIndexUninitialized),
-          wakeup_time_us_(wakeup_time_us) {}
+    Alarm(int64 wakeup_time_us, Closure* closure);
     virtual ~Alarm();
 
-    virtual void Run() = 0;
     int64 wakeup_time_us() const { return wakeup_time_us_; }
 
     // Compares two alarms, giving a total deterministic ordering based
     // first, on wakeup time, and, in the event of two simultaneous
     // alarms, the order in which the Alarm was added.
     int Compare(const Alarm* that) const;
+
+    Closure* closure() { return closure_.get(); }
 
    private:
     friend class MockTimer;
@@ -67,6 +68,8 @@ class MockTimer : public Timer {
 
     int index_;
     int64 wakeup_time_us_;
+    scoped_ptr<Closure> closure_;
+
     DISALLOW_COPY_AND_ASSIGN(Alarm);
   };
 
@@ -99,7 +102,10 @@ class MockTimer : public Timer {
   // Schedules an alarm, called when the time is advanced to, or beyond,
   // alarm->wakeup_time_us().  Takes ownership of Alarm: it will be
   // deleted when it's finished.
-  void AddAlarm(Alarm* alarm);
+  //
+  // Returns the Alarm* so it can be canceled, or NULL if the alarm
+  // was called immediately due to the wakeup_time already being reached.
+  Alarm* AddAlarm(int64 wakeup_time_us, Closure* alarm);
 
   // Cancels an outstanding alarm and deletes it.
   void CancelAlarm(Alarm* alarm);

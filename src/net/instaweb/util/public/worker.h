@@ -17,15 +17,14 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 //
 // This contains Worker, which is a base class for classes managing running
-// of work in background, as well as Worker::Closure, the base class for the
-// work to run.
+// of work in background.
 
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_WORKER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_WORKER_H_
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/atomicops.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/closure.h"
 
 namespace net_instaweb {
 
@@ -40,32 +39,6 @@ class ThreadSystem;
 // wrapper around QueueIfPermitted().
 class Worker {
  public:
-  // Tasks you wish the worker to perform must subclass this and implement
-  // Run(). Long running tasks should check quit_requested() inside it
-  // periodically.
-  //
-  // Worker classes take ownership of any closures passed to them, and
-  // may also delete them without running on shutdown or if dictated by
-  // policy.
-  class Closure {
-   public:
-    Closure();
-    virtual ~Closure();
-
-    virtual void Run() = 0;
-    bool quit_requested() const {
-      return base::subtle::Acquire_Load(&quit_requested_);
-    }
-
-    void set_quit_requested(bool q) {
-      base::subtle::Release_Store(&quit_requested_, q);
-    }
-
-   private:
-    base::subtle::AtomicWord quit_requested_;
-    DISALLOW_COPY_AND_ASSIGN(Closure);
-  };
-
   // Tries to start the thread. It will be cleaned up by ~Worker().
   // Returns whether successful.
   bool Start();

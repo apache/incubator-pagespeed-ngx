@@ -50,7 +50,8 @@
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_url.h"  // for GoogleUrl
+#include "net/instaweb/util/public/closure.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -84,27 +85,6 @@ namespace net_instaweb {
 class MessageHandler;
 class RequestHeaders;
 class Writer;
-
-// TODO(jmarantz): Make a new closure.h with this definition and
-// some similar ones.  Remove MockTimer::Alarm class and instead
-// add a timeout argument to AddAlarm.  Remove Worker::Closure,
-// so that it can also share this definition.
-template<class C, typename T1, typename T2, typename T3>
-class DelayedFunction : public MockTimer::Alarm {
- public:
-  typedef void (C::*Func)(T1, T2, T3);
-
-  DelayedFunction(int64 wakeup_us, Func f, C* c, T1 v1, T2 v2, T3 v3)
-      : MockTimer::Alarm(wakeup_us), f_(f), c_(c), v1_(v1), v2_(v2), v3_(v3) {}
-# define CALL_MEMBER_FN(object, ptrToMember)  ((object)->*(ptrToMember))
-  virtual void Run() { CALL_MEMBER_FN(c_, f_)(v1_, v2_, v3_); }
- private:
-  Func f_;
-  C* c_;
-  T1 v1_;
-  T2 v2_;
-  T3 v3_;
-};
 
 // Simple test filter just trims whitespace from the input resource.
 class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
@@ -469,12 +449,12 @@ class CombiningFilter : public RewriteFilter {
       } else {
         int64 wakeup_us = time_at_start_of_rewrite_us_ +
             1000 * filter_->rewrite_delay_ms();
-        MockTimer::Alarm* alarm =
-            new DelayedFunction<Context, int, OutputPartition*,
-                                const OutputResourcePtr&>(
-                wakeup_us, &Context::DoRewrite, this, partition_index,
+        Closure* closure =
+            new DelayedFunction3<Context, int, OutputPartition*,
+                                 const OutputResourcePtr&>(
+                &Context::DoRewrite, this, partition_index,
                 partition, output);
-        timer_->AddAlarm(alarm);
+        timer_->AddAlarm(wakeup_us, closure);
       }
     }
 

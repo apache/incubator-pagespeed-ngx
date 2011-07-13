@@ -24,7 +24,7 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/worker.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/worker_test_base.h"
 
@@ -60,7 +60,7 @@ TEST_F(SlowWorkerTest, BasicOperation) {
   worker_.reset(NULL);
 }
 
-class WaitCancelClosure : public Worker::Closure {
+class WaitCancelClosure : public Closure {
  public:
   explicit WaitCancelClosure(WorkerTestBase::SyncPoint* sync) : sync_(sync) {}
 

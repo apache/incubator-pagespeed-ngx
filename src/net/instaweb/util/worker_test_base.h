@@ -21,10 +21,10 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/worker.h"
 
 #ifndef NET_INSTAWEB_UTIL_WORKER_TEST_BASE_H_
 #define NET_INSTAWEB_UTIL_WORKER_TEST_BASE_H_
@@ -50,7 +50,7 @@ class WorkerTestBase : public ::testing::Test {
 };
 
 // A closure that increments a variable on running.
-class WorkerTestBase::CountClosure : public Worker::Closure {
+class WorkerTestBase::CountClosure : public Closure {
  public:
   explicit CountClosure(int* variable) : variable_(variable) {}
 
@@ -79,7 +79,7 @@ class WorkerTestBase::SyncPoint {
 };
 
 // Notifies of itself having run on a given SyncPoint.
-class WorkerTestBase::NotifyRunClosure : public Worker::Closure {
+class WorkerTestBase::NotifyRunClosure : public Closure {
  public:
   explicit NotifyRunClosure(SyncPoint* sync);
   virtual void Run();
@@ -90,7 +90,7 @@ class WorkerTestBase::NotifyRunClosure : public Worker::Closure {
 };
 
 // Waits on a given SyncPoint before completing Run()
-class WorkerTestBase::WaitRunClosure : public Worker::Closure {
+class WorkerTestBase::WaitRunClosure : public Closure {
  public:
   explicit WaitRunClosure(SyncPoint* sync);
   virtual void Run();
@@ -101,7 +101,7 @@ class WorkerTestBase::WaitRunClosure : public Worker::Closure {
 };
 
 // Closure that signals on destruction and check fails when run.
-class DeleteNotifyClosure : public Worker::Closure {
+class DeleteNotifyClosure : public Closure {
  public:
   explicit DeleteNotifyClosure(WorkerTestBase::SyncPoint* sync) : sync_(sync) {}
   virtual ~DeleteNotifyClosure() {

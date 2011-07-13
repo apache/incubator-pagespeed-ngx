@@ -20,7 +20,7 @@
 
 #include "net/instaweb/util/public/slow_worker.h"
 
-#include "net/instaweb/util/public/worker.h"
+#include "net/instaweb/util/public/closure.h"
 
 namespace net_instaweb {
 

@@ -88,6 +88,7 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace {
@@ -127,6 +128,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       externally_managed_(false),
       fetch_queued_(false),
       waiting_for_completion_(false),
+      cleanup_on_fetch_complete_(false),
       rewrites_to_delete_(0),
       pending_rewrites_(0),
       file_system_(file_system),
@@ -159,6 +161,7 @@ RewriteDriver::~RewriteDriver() {
 }
 
 void RewriteDriver::Clear() {
+  cleanup_on_fetch_complete_ = false;
   base_url_.Clear();
   DCHECK(!base_url_.is_valid());
   resource_map_.clear();
@@ -177,6 +180,10 @@ bool RewriteDriver::RewritesComplete() const {
 }
 
 void RewriteDriver::WaitForCompletion() {
+  BoundedWaitForCompletion(-1);
+}
+
+void RewriteDriver::BoundedWaitForCompletion(int64 timeout_ms) {
   if (asynchronous_rewrites_) {
     ScopedMutex lock(rewrite_mutex());
     waiting_for_completion_ = true;
@@ -188,10 +195,21 @@ void RewriteDriver::WaitForCompletion() {
             kInfo, "waiting for %d rewrites to complete",
             static_cast<int>(pending_rewrites_ + detached_rewrites_.size()));
       }
-      scheduler_->TimedWait(kTestTimeoutMs);
+      int64 start_ms = resource_manager_->timer()->NowMs();
+      scheduler_->TimedWait(timeout_ms > 0 ? timeout_ms : kTestTimeoutMs);
+      int64 end_ms = resource_manager_->timer()->NowMs();
+
       // TODO(jmarantz): Eliminate these LOG(INFO) and/or convert them
       // into message_handler()->Message(kInfo...).
       LOG(INFO) << "timed wait complete";
+
+      if (timeout_ms > 0) {
+        timeout_ms -= (end_ms - start_ms);
+        if (timeout_ms <= 0) {
+          // Remaining became <=0 => timed out, rather than unbounded.
+          return;
+        }
+      }
     }
     waiting_for_completion_ = false;
   }
@@ -881,12 +899,20 @@ bool RewriteDriver::FetchOutputResource(
 }
 
 void RewriteDriver::FetchComplete() {
-  ScopedMutex lock(rewrite_mutex());
-  DCHECK(fetch_queued_);
-  fetch_queued_ = false;
-  DCHECK_EQ(0, pending_rewrites_);
-  STLDeleteElements(&rewrites_);
-  scheduler_->Signal();
+  {
+    ScopedMutex lock(rewrite_mutex());
+    DCHECK(fetch_queued_);
+    fetch_queued_ = false;
+    DCHECK_EQ(0, pending_rewrites_);
+    STLDeleteElements(&rewrites_);
+    scheduler_->Signal();
+  }
+  if (cleanup_on_fetch_complete_) {
+    // If cleanup_on_fetch_complete_ is set, the main thread has already tried
+    // to call Cleanup on us, so it's not going to be touching us any more ---
+    // and so this is race-free.
+    Cleanup();
+  }
 }
 
 bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
@@ -1100,6 +1126,11 @@ void RewriteDriver::Cleanup() {
       done = RewritesComplete();
       if (!done) {
         parsing_ = false;  // Permit recycle when contexts done.
+        if (fetch_queued_) {
+          // Asynchronous resource fetch we gave up on --- make sure to cleanup
+          // ourselves when we are done.
+          cleanup_on_fetch_complete_ = true;
+        }
       }
     }
     if (done) {

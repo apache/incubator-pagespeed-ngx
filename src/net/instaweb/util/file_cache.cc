@@ -25,6 +25,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -34,7 +35,6 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/worker.h"
 
 namespace net_instaweb {
 
@@ -61,7 +61,7 @@ struct CompareByAtime {
 
 }  // namespace for structs used only in Clean().
 
-class FileCache::CacheCleanClosure : public SlowWorker::Closure {
+class FileCache::CacheCleanClosure : public Closure {
  public:
   CacheCleanClosure(FileCache* cache, int64 next_clean_time_ms)
       : cache_(cache),

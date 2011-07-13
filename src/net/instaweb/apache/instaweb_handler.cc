@@ -135,12 +135,19 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
     if (!callback->done()) {
       UrlPollableAsyncFetcher* sub_resource_fetcher =
           factory->SubResourceFetcher();
+      bool sub_resource_fetch_done = (sub_resource_fetcher == NULL);
       int64 max_ms = factory->fetcher_time_out_ms();
       for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
            !callback->done() && now_ms - start_ms < max_ms;
            now_ms = timer.NowMs()) {
         int64 remaining_ms = max_ms - (now_ms - start_ms);
-        sub_resource_fetcher->Poll(remaining_ms);
+
+        if (sub_resource_fetch_done) {
+          rewrite_driver->BoundedWaitForCompletion(remaining_ms);
+        } else {
+          sub_resource_fetch_done =
+            (sub_resource_fetcher->Poll(remaining_ms) == 0);
+        }
       }
 
       if (!callback->done()) {

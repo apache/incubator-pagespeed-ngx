@@ -46,6 +46,7 @@
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -58,45 +59,11 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
-#include "net/instaweb/util/public/worker.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
 const char kRewriteContextLockPrefix[] = "rc:";
-
-// Base class for synchronizing fetcher & cache callbacks with the Rewrite
-// thread by adding them to the work-queue in the ResourceManager.  This
-// class is also responsible for calling the private methods in RewriteContext,
-// as it's been authorized to do so via a 'friend' declaration, which does
-// not extend to the subclasses.
-class RewriteContextTask : public Worker::Closure {
- public:
-  explicit RewriteContextTask(RewriteContext* rc) : rewrite_context_(rc) {}
-  void Queue() {
-    ResourceManager* resource_manager = rewrite_context_->Manager();
-    resource_manager->AddRewriteTask(this);
-  }
- protected:
-  // Provide helper methods for subclasses, because RewriteContextTask
-  // has been given 'friend' access to these private methods of RewriteContext.
-  void OutputCacheDone(CacheInterface::KeyState state,
-                       SharedString* value) {
-    rewrite_context_->OutputCacheDone(state, value);
-  }
-  void ResourceFetchDone(
-      bool success, const ResourcePtr& resource, int slot_index) {
-    rewrite_context_->ResourceFetchDone(success, resource, slot_index);
-  }
-  void StartFetch() { rewrite_context_->StartFetch(); }
-  void Start() { rewrite_context_->Start(); }
-  void RunSuccessors() { rewrite_context_->RunSuccessors(); }
-
- private:
-  RewriteContext* rewrite_context_;
-};
-
-namespace {
 
 // Two callback classes for completed caches & fetches.  These gaskets
 // help RewriteContext, which knows about all the pending inputs,
@@ -107,97 +74,48 @@ namespace {
 // in the cache.  The RewriteContext can then decide whether to queue the
 // output-resource for a DOM update, or re-initiate the Rewrite, depending
 // on the metadata returned.
-class OutputCacheTask : public RewriteContextTask {
+class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
  public:
-  explicit OutputCacheTask(RewriteContext* rc)
-      : RewriteContextTask(rc),
-        callback_(this) {
-  }
-  virtual ~OutputCacheTask() {}
-  virtual void Run() { OutputCacheDone(state_, &value_); }
-  class Callback : public CacheInterface::Callback {
-   public:
-    explicit Callback(OutputCacheTask* task) : task_(task) {}
-    virtual ~Callback() {}
-    virtual void Done(CacheInterface::KeyState state) {
-      task_->state_ = state;
-      task_->value_ = *value();
-      task_->Queue();
-    }
-
-   private:
-    OutputCacheTask* task_;
-  };
-  Callback* callback() { return &callback_; }
-
-  Callback callback_;
-  CacheInterface::KeyState state_;
-  SharedString value_;
-};
-
-// Callback to wake up the RewriteContext when an input resource is fetched.
-// Once all the resources are fetched (and preceding RewriteContexts completed)
-// the Rewrite can proceed.
-class ResourceFetchTask : public RewriteContextTask {
- public:
-  ResourceFetchTask(RewriteContext* rc, const ResourcePtr& resource,
-                    int slot_index)
-      : RewriteContextTask(rc),
-        callback_(resource, this),
-        slot_index_(slot_index) {}
-  virtual ~ResourceFetchTask() {}
-
-  class Callback : public Resource::AsyncCallback {
-   public:
-    Callback(const ResourcePtr& resource, ResourceFetchTask* task)
-        : Resource::AsyncCallback(resource),
-          task_(task) {
-    }
-    virtual ~Callback() {}
-    virtual void Done(bool success) {
-      task_->success_ = success;
-      task_->Queue();
-    }
-
-    virtual bool EnableThreaded() const { return true; }
-
-   private:
-    ResourceFetchTask* task_;
-  };
-
-  Callback* callback() { return &callback_; }
-  virtual void Run() {
-    ResourceFetchDone(success_, callback_.resource(), slot_index_);
+  explicit OutputCacheCallback(RewriteContext* rc) : rewrite_context_(rc) {}
+  virtual ~OutputCacheCallback() {}
+  virtual void Done(CacheInterface::KeyState state) {
+    ResourceManager* resource_manager = rewrite_context_->Manager();
+    resource_manager->AddRewriteTask(
+        new DelayedFunction2<RewriteContext, CacheInterface::KeyState,
+            SharedString>(&RewriteContext::OutputCacheDone, rewrite_context_,
+                          state, *value()));
+    delete this;
   }
 
  private:
-  Callback callback_;
+  RewriteContext* rewrite_context_;
+};
+
+class RewriteContext::ResourceFetchCallback : public Resource::AsyncCallback {
+ public:
+  ResourceFetchCallback(RewriteContext* rc, const ResourcePtr& resource,
+                        int slot_index)
+      : Resource::AsyncCallback(resource),
+        rewrite_context_(rc),
+        slot_index_(slot_index) {
+  }
+  virtual ~ResourceFetchCallback() {}
+  virtual void Done(bool success) {
+    ResourceManager* resource_manager = rewrite_context_->Manager();
+    ResourcePtr r(resource());
+    resource_manager->AddRewriteTask(
+        new DelayedFunction3<RewriteContext, bool, ResourcePtr, int>(
+            &RewriteContext::ResourceFetchDone, rewrite_context_,
+            success, r, slot_index_));
+    delete this;
+  }
+
+  virtual bool EnableThreaded() const { return true; }
+
+ private:
+  RewriteContext* rewrite_context_;
   int slot_index_;
-  bool success_;
 };
-
-class StartTask : public RewriteContextTask {
- public:
-  explicit StartTask(RewriteContext* rc) : RewriteContextTask(rc) {}
-  virtual ~StartTask() {}
-  virtual void Run() { Start(); }
-};
-
-class FetchTask : public RewriteContextTask {
- public:
-  explicit FetchTask(RewriteContext* rc) : RewriteContextTask(rc) {}
-  virtual ~FetchTask() {}
-  virtual void Run() { StartFetch(); }
-};
-
-class SuccessorsTask : public RewriteContextTask {
- public:
-  explicit SuccessorsTask(RewriteContext* rc) : RewriteContextTask(rc) {}
-  virtual ~SuccessorsTask() {}
-  virtual void Run() { RunSuccessors(); }
-};
-
-}  // namespace
 
 // This class encodes a few data members used for responding to
 // resource-requests when the output_resource is not in cache.
@@ -339,7 +257,8 @@ void RewriteContext::RemoveLastSlot() {
 
 void RewriteContext::Initiate() {
   CHECK(!started_);
-  Manager()->AddRewriteTask(new StartTask(this));
+  Manager()->AddRewriteTask(new DelayedFunction0<RewriteContext>(
+      &RewriteContext::Start, this));
 }
 
 // Initiate a Rewrite if it's ready to be started.  A Rewrite would not
@@ -369,8 +288,7 @@ void RewriteContext::Start() {
 
     // When the cache lookup is finished, OutputCacheDone will be called.
     cache_lookup_active_ = true;
-    metadata_cache->Get(partition_key_,
-                        (new OutputCacheTask(this))->callback());
+    metadata_cache->Get(partition_key_, new OutputCacheCallback(this));
   }
 }
 
@@ -420,14 +338,14 @@ bool RewriteContext::OutputPartitionIsValid(const OutputPartition& partition) {
 }
 
 void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
-                                     SharedString* value) {
+                                     SharedString value) {
   DCHECK_LE(0, outstanding_fetches_);
   DCHECK_EQ(static_cast<size_t>(0), outputs_.size());
   cache_lookup_active_ = false;
   if (state == CacheInterface::kAvailable) {
     // We've got a hit on the output metadata; the contents should
     // be a protobuf.  Try to parse it.
-    const GoogleString* val_str = value->get();
+    const GoogleString* val_str = value.get();
     ArrayInputStream input(val_str->data(), val_str->size());
     if (partitions_->ParseFromZeroCopyStream(&input)) {
       for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
@@ -496,9 +414,8 @@ void RewriteContext::FetchInputs(BlockingBehavior block) {
       const ResourceSlotPtr& slot = slots_[i];
       ResourcePtr resource(slot->resource());
       if (!(resource->loaded() && resource->ContentsValid())) {
-        ResourceFetchTask* task = new ResourceFetchTask(this, resource, i);
         ++outstanding_fetches_;
-        Manager()->ReadAsync(task->callback());
+        Manager()->ReadAsync(new ResourceFetchCallback(this, resource, i));
 
         // TODO(jmarantz): as currently coded this will not work with Apache,
         // as we don't do these async fetches using the threaded fetcher.
@@ -517,7 +434,7 @@ void RewriteContext::FetchInputs(BlockingBehavior block) {
 }
 
 void RewriteContext::ResourceFetchDone(
-    bool success, const ResourcePtr& resource, int slot_index) {
+    bool success, ResourcePtr resource, int slot_index) {
   CHECK_LT(0, outstanding_fetches_);
   --outstanding_fetches_;
 
@@ -689,7 +606,8 @@ void RewriteContext::Propagate(bool render_slots) {
       }
     }
   }
-  Manager()->AddRewriteTask(new SuccessorsTask(this));
+  Manager()->AddRewriteTask(new DelayedFunction0<RewriteContext>(
+      &RewriteContext::RunSuccessors, this));
 }
 
 void RewriteContext::Finalize() {
@@ -820,7 +738,8 @@ bool RewriteContext::Fetch(
     fetch_.reset(
         new FetchContext(this, response_writer, response_headers, callback,
                          output_resource, message_handler));
-    Manager()->AddRewriteTask(new FetchTask(this));
+    Manager()->AddRewriteTask(new DelayedFunction0<RewriteContext>(
+        &RewriteContext::StartFetch, this));
     ret = true;
   }
   return ret;

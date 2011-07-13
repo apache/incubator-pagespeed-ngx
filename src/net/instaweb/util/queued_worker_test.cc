@@ -21,8 +21,8 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/worker.h"
 #include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
@@ -40,7 +40,7 @@ class QueuedWorkerTest: public WorkerTestBase {
 };
 
 // A closure that enqueues a new version of itself 'count' times.
-class ChainedTask : public Worker::Closure {
+class ChainedTask : public Closure {
  public:
   ChainedTask(int* count, QueuedWorker* worker)
       : count_(count),

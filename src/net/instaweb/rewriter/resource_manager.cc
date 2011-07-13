@@ -54,7 +54,6 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
-#include "net/instaweb/util/public/worker.h"  // for Worker
 
 namespace net_instaweb {
 
@@ -617,7 +616,7 @@ void ResourceManager::ShutDownWorker() {
   rewrite_worker_->ShutDown();
 }
 
-void ResourceManager::AddRewriteTask(Worker::Closure* task) {
+void ResourceManager::AddRewriteTask(Closure* task) {
   rewrite_worker_->RunInWorkThread(task);
 }
 

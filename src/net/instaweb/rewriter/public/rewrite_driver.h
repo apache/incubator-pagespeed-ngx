@@ -344,11 +344,16 @@ class RewriteDriver : public HtmlParse {
 
   // If there are not outstanding references to this RewriteDriver,
   // delete it or recycle it to a free pool in the ResourceManager.
+  // If this is a fetch, calling this also signals to the system that you
+  // are no longer interested in its results.
   void Cleanup();
 
   // Wait for outstanding Rewrite to complete.  Once the rewrites are
   // complete they can be rendered or deleted.
   void WaitForCompletion();
+
+  // As above, but with a time bound. Non-positive values of timeout disable it.
+  void BoundedWaitForCompletion(int64 timeout_ms);
 
   // Renders any completed rewrites back into the DOM.
   void Render();
@@ -481,6 +486,10 @@ class RewriteDriver : public HtmlParse {
   // and we are now blocked on a condition variable in that function.  Thus
   // it only makes sense to examine this from the Rewrite thread.
   bool waiting_for_completion_;  // protected by rewrite_mutex()
+
+  // If this is true, this RewriteDriver should Cleanup() itself when it
+  // finishes handling the current fetch.
+  bool cleanup_on_fetch_complete_;
 
   // Tracks the number of RewriteContexts that have been completed,
   // but not yet deleted.  Once RewriteComplete has been called,

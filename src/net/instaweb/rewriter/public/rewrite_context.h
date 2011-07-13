@@ -309,14 +309,16 @@ class RewriteContext {
   RewriteContext* nested(int i) const { return nested_[i]; }
 
  private:
-  friend class RewriteContextTask;
+  class OutputCacheCallback;
+  friend class OutputCacheCallback;
+  class ResourceFetchCallback;
+  friend class ResourceFetchCallback;
 
   // Callback helper functions.
   void Start();
   void StartFetch();
-  void OutputCacheDone(CacheInterface::KeyState state, SharedString* value);
-  void ResourceFetchDone(bool success, const ResourcePtr& resource,
-                         int slot_index);
+  void OutputCacheDone(CacheInterface::KeyState state, SharedString value);
+  void ResourceFetchDone(bool success, ResourcePtr resource, int slot_index);
 
   // After a Rewrite is complete, writes the metadata for the rewrite
   // operation to the cache, and runs any further rewites that are

@@ -17,6 +17,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
@@ -33,9 +34,9 @@ namespace {
 const int64 kDelayMs = 50 * Timer::kYearMs;
 const int64 kWaitMs = 100 * Timer::kYearMs;
 
-class Alarm : public MockTimer::Alarm {
+class Alarm : public Closure {
  public:
-  Alarm(int64 timeout_us) : MockTimer::Alarm(timeout_us) {}
+  Alarm() {}
   virtual void Run() { }
 };
 
@@ -62,7 +63,7 @@ class MockSchedulerTest : public testing::Test {
 
 TEST_F(MockSchedulerTest, WakeupOnAdvancementOfSimulatedTime) {
   ASSERT_TRUE(worker_.Start());
-  timer_.AddAlarm(new Alarm(1000 * kDelayMs));
+  timer_.AddAlarm(1000 * kDelayMs, new Alarm());
   {
     ScopedMutex lock(scheduler_.mutex());
     scheduler_.TimedWait(kWaitMs);
