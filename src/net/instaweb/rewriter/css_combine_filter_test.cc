@@ -70,16 +70,20 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
 
   // Synthesizes an HTML css link element, with no media tag.
   virtual GoogleString Link(const StringPiece& href) {
-    return Link(href, "");
+    return Link(href, "", false);
   }
 
   // Synthesizes an HTML css link element.  If media is non-empty, then a
   // media tag is included.
-  virtual GoogleString Link(const StringPiece& href, const StringPiece& media) {
+  virtual GoogleString Link(const StringPiece& href, const StringPiece& media,
+                            bool close) {
     GoogleString out(StrCat(
         "<link rel=\"stylesheet\" type=\"text/css\" href=\"", href, "\""));
     if (!media.empty()) {
       StrAppend(&out, " media=\"", media, "\"");
+    }
+    if (close) {
+      out.append("/");
     }
     out.append(">");
     return out;
@@ -300,7 +304,8 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
           // mock fetcher with headers and content for the CSS file.
           InitResponseHeaders(link->url_, kContentTypeCss, link->content_, 600);
         }
-        StrAppend(&html_input, "  ", Link(link->url_, link->media_), "\n");
+        StrAppend(&html_input, "  ", Link(link->url_, link->media_, false),
+                  "\n");
       } else {
         html_input += link->content_;
       }
@@ -372,7 +377,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
     // parser constraints, in which case the expected results from this
     // code might change depending on the 'flush' arg to this method.
     EXPECT_EQ(
-        StrCat(kXhtmlDtd, "<div>", Link(combined_url), "</div>"),
+        StrCat(kXhtmlDtd, "<div>", Link(combined_url, "", true), "</div>"),
         output_buffer_);
   }
 
@@ -450,7 +455,8 @@ TEST_P(CssCombineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
       "  <script type='text/javascript' src='c.js'></script>"     // 'in' <link>
       "  ", Link("b.css")));
   GoogleString combination(StrCat(
-      "  ", Link("http://test.com/a.css+b.css.pagespeed.cc.0.css"), "\n"
+      "  ", Link("http://test.com/a.css+b.css.pagespeed.cc.0.css", "", true),
+      "\n"
       "  <script type='text/javascript' src='c.js'></script>  "));
 
   // Put original CSS files into our fetcher.
@@ -460,6 +466,33 @@ TEST_P(CssCombineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
   SetFetchResponse(StrCat(kTestDomain, "b.css"), default_css_header, ".b {}");
   ValidateExpected("claims_xhtml_but_has_unclosed_links",
                    StringPrintf(html_format, kXhtmlDtd, unclosed_links.c_str()),
+                   StringPrintf(html_format, kXhtmlDtd, combination.c_str()));
+}
+
+// http://code.google.com/p/modpagespeed/issues/detail?id=306
+TEST_P(CssCombineFilterTest, XhtmlCombineLinkClosed) {
+  // XHTML text should not have unclosed links.  But if they do, like
+  // in Issue 252, then we should leave them alone.
+  static const char html_format[] =
+      "<head>\n"
+      "  %s\n"
+      "  %s\n"
+      "</head>\n"
+      "<body><div class='c1'><div class='c2'><p>\n"
+      "  Yellow on Blue</p></div></div></body>";
+
+  GoogleString links(StrCat(
+      Link("a.css", "screen", true), Link("b.css", "screen", true)));
+  GoogleString combination(
+      Link("http://test.com/a.css+b.css.pagespeed.cc.0.css", "screen", true));
+
+  // Put original CSS files into our fetcher.
+  ResponseHeaders default_css_header;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(StrCat(kTestDomain, "a.css"), default_css_header, ".a {}");
+  SetFetchResponse(StrCat(kTestDomain, "b.css"), default_css_header, ".b {}");
+  ValidateExpected("xhtml_combination_closed",
+                   StringPrintf(html_format, kXhtmlDtd, links.c_str()),
                    StringPrintf(html_format, kXhtmlDtd, combination.c_str()));
 }
 
@@ -567,11 +600,11 @@ TEST_P(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   // Only the first two CSS files should be combined.
   GoogleString html_input(StrCat(
       "<head>\n"
-      "  ", Link("a.css", "print"), "\n"
-      "  ", Link("b.css", "print"), "\n"));
+      "  ", Link("a.css", "print", false), "\n"
+      "  ", Link("b.css", "print", false), "\n"));
   StrAppend(&html_input,
       "  ", Link("c.css"), "\n"
-      "  ", Link("d.css", "print"), "\n"
+      "  ", Link("d.css", "print", false), "\n"
       "</head>");
 
   // Rewrite
@@ -585,10 +618,10 @@ TEST_P(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
 
   GoogleString expected_output(StrCat(
       "<head>\n"
-      "  ", Link(combine_url, "print"), "\n"
+      "  ", Link(combine_url, "print", false), "\n"
       "  \n"
       "  ", Link("c.css"), "\n"
-      "  ", Link("d.css", "print"), "\n"
+      "  ", Link("d.css", "print", false), "\n"
       "</head>"));
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 }

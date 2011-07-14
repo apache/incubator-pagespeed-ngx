@@ -26,6 +26,7 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -261,6 +262,11 @@ class CssCombineFilter::Context : public RewriteContext {
     // rewrite_context.cc.  But we still need to delete slots 1-N.
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
       OutputPartition* partition = output_partition(p);
+      if (filter_->driver()->doctype().IsXhtml()) {
+        int first_element_index = partition->input(0).index();
+        HtmlElement* first_element = elements_[first_element_index];
+        first_element->set_close_style(HtmlElement::BRIEF_CLOSE);
+      }
       for (int i = 1; i < partition->input_size(); ++i) {
         int slot_index = partition->input(i).index();
         slot(slot_index)->set_should_delete_element(true);
@@ -400,6 +406,9 @@ void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
 
       HtmlElement* combine_element =
           rewrite_driver_->NewElement(NULL, HtmlName::kLink);
+      if (rewrite_driver_->doctype().IsXhtml()) {
+        combine_element->set_close_style(HtmlElement::BRIEF_CLOSE);
+      }
       rewrite_driver_->AddAttribute(
           combine_element, HtmlName::kRel, "stylesheet");
       rewrite_driver_->AddAttribute(combine_element, HtmlName::kType,
