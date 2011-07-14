@@ -50,17 +50,17 @@ void WorkerTestBase::SyncPoint::Notify() {
   notify_->Signal();
 }
 
-WorkerTestBase::NotifyRunClosure::NotifyRunClosure(SyncPoint* sync)
+WorkerTestBase::NotifyRunFunction::NotifyRunFunction(SyncPoint* sync)
     : sync_(sync) {}
 
-void WorkerTestBase::NotifyRunClosure::Run() {
+void WorkerTestBase::NotifyRunFunction::Run() {
   sync_->Notify();
 }
 
-WorkerTestBase::WaitRunClosure::WaitRunClosure(SyncPoint* sync)
+WorkerTestBase::WaitRunFunction::WaitRunFunction(SyncPoint* sync)
     : sync_(sync) {}
 
-void WorkerTestBase::WaitRunClosure::Run() {
+void WorkerTestBase::WaitRunFunction::Run() {
   sync_->Wait();
 }
 

@@ -21,7 +21,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/closure.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/worker_test_base.h"
 
@@ -40,7 +40,7 @@ class QueuedWorkerTest: public WorkerTestBase {
 };
 
 // A closure that enqueues a new version of itself 'count' times.
-class ChainedTask : public Closure {
+class ChainedTask : public Function {
  public:
   ChainedTask(int* count, QueuedWorker* worker)
       : count_(count),
@@ -69,10 +69,10 @@ TEST_F(QueuedWorkerTest, BasicOperation) {
 
   ASSERT_TRUE(worker_->Start());
   for (int i = 0; i < kBound; ++i) {
-    worker_->RunInWorkThread(new CountClosure(&count));
+    worker_->RunInWorkThread(new CountFunction(&count));
   }
 
-  worker_->RunInWorkThread(new NotifyRunClosure(&sync));
+  worker_->RunInWorkThread(new NotifyRunFunction(&sync));
   sync.Wait();
   EXPECT_EQ(kBound, count);
 }
@@ -83,7 +83,7 @@ TEST_F(QueuedWorkerTest, ChainedTasks) {
   // point the 'idle' callback fires and we can complete the test.
   int count = 11;
   SyncPoint sync(thread_runtime_.get());
-  worker_->set_idle_callback(new NotifyRunClosure(&sync));
+  worker_->set_idle_callback(new NotifyRunFunction(&sync));
   ASSERT_TRUE(worker_->Start());
   worker_->RunInWorkThread(new ChainedTask(&count, worker_.get()));
   sync.Wait();
@@ -97,7 +97,7 @@ TEST_F(QueuedWorkerTest, TestShutDown) {
   SyncPoint clean(thread_runtime_.get());
   ASSERT_TRUE(worker_->Start());
   worker_->ShutDown();
-  worker_->RunInWorkThread(new DeleteNotifyClosure(&clean));
+  worker_->RunInWorkThread(new DeleteNotifyFunction(&clean));
   clean.Wait();
 }
 
@@ -106,7 +106,7 @@ TEST_F(QueuedWorkerTest, TestIsBusy) {
   EXPECT_FALSE(worker_->IsBusy());
 
   SyncPoint start_sync(thread_runtime_.get());
-  worker_->RunInWorkThread(new WaitRunClosure(&start_sync));
+  worker_->RunInWorkThread(new WaitRunFunction(&start_sync));
   EXPECT_TRUE(worker_->IsBusy());
   start_sync.Notify();
   worker_->ShutDown();

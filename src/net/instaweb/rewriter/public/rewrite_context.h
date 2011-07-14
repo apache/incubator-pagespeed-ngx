@@ -73,7 +73,7 @@ struct ContentType;
 // TODO(jmarantz): add support for controlling TTL on failures.
 //
 // A RewriteContext does almost all its work in the RewriteThread, by
-// adding Closures to a worker-thread owned by the ResourceManager.
+// adding Functions to a worker-thread owned by the ResourceManager.
 // Thus, within a server, there can be at most one Rewrite consuming
 // CPU time (e.g. optimizing images).  However, multiple Rewrites can
 // be in-progres, waiting for HTTP fetches and cache lookups.

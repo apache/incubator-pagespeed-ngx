@@ -24,6 +24,7 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -207,8 +208,19 @@ void JavascriptFilter::RewriteInlineScript() {
     if (code_block.ProfitableToRewrite()) {
       // Now replace all CharactersNodes with a single CharactersNode containing
       // the minified script.
-      HtmlCharactersNode* new_script = driver_->NewCharactersNode(
-          buffer_[0]->parent(), code_block.Rewritten());
+      HtmlCharactersNode* new_script =
+          driver_->NewCharactersNode(buffer_[0]->parent(), "");
+      if (driver_->doctype().IsXhtml() &&
+          script.find("<![CDATA[") != StringPiece::npos) {
+        // Minifier strips leading and trailing CDATA comments from scripts.
+        // Restore them if necessary and safe according to the original script.
+        new_script->Append("//<![CDATA[\n");
+        new_script->Append(code_block.Rewritten());
+        new_script->Append("\n//]]>");
+      } else {
+        new_script->Append(code_block.Rewritten());
+      }
+
       driver_->ReplaceNode(buffer_[0], new_script);
       for (int i = 1; i < buffer_size; i++) {
         driver_->DeleteElement(buffer_[i]);

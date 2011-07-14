@@ -25,9 +25,9 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/shared_string.h"
@@ -61,12 +61,12 @@ struct CompareByAtime {
 
 }  // namespace for structs used only in Clean().
 
-class FileCache::CacheCleanClosure : public Closure {
+class FileCache::CacheCleanFunction : public Function {
  public:
-  CacheCleanClosure(FileCache* cache, int64 next_clean_time_ms)
+  CacheCleanFunction(FileCache* cache, int64 next_clean_time_ms)
       : cache_(cache),
         next_clean_time_ms_(next_clean_time_ms) {}
-  virtual ~CacheCleanClosure() {}
+  virtual ~CacheCleanFunction() {}
   virtual void Run() {
     cache_->last_conditional_clean_result_ =
         cache_->CleanWithLocking(next_clean_time_ms_);
@@ -75,7 +75,7 @@ class FileCache::CacheCleanClosure : public Closure {
  private:
   FileCache* cache_;
   int64 next_clean_time_ms_;
-  DISALLOW_COPY_AND_ASSIGN(CacheCleanClosure);
+  DISALLOW_COPY_AND_ASSIGN(CacheCleanFunction);
 };
 
 // Filenames for the next scheduled clean time and the lockfile.  In
@@ -322,7 +322,7 @@ void FileCache::CleanIfNeeded() {
   last_conditional_clean_result_ = false;
   if (ShouldClean(&suggested_next_clean_time_ms)) {
     worker_->RunIfNotBusy(
-        new CacheCleanClosure(this, suggested_next_clean_time_ms));
+        new CacheCleanFunction(this, suggested_next_clean_time_ms));
   } else {
     next_clean_ms_ = suggested_next_clean_time_ms;
   }

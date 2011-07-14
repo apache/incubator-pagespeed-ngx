@@ -321,6 +321,12 @@ StringPiece RewriteDriverFactory::LockFilePrefix() {
 }
 
 void RewriteDriverFactory::ShutDown() {
+  // Stop the worker thread first, as it may have outstanding requests
+  // that touch various things we're about to blow up.
+  if (resource_manager_.get() != NULL) {
+    resource_manager_->ShutDownWorker();
+  }
+
   // Avoid double-destructing the url fetchers if they were not overridden
   // programmatically
   if ((url_async_fetcher_ != NULL) &&

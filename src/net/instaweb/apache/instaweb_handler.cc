@@ -154,8 +154,8 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
         message_handler->Message(kError, "Timeout on url %s", url.c_str());
       }
     }
-    response_headers.SetDate(timer.NowMs());
     if (callback->success()) {
+      response_headers.SetDate(timer.NowMs());
       message_handler->Message(kInfo, "Fetch succeeded for %s, status=%d",
                               url.c_str(), response_headers.status_code());
       send_out_headers_and_body(request, response_headers, output);

@@ -28,7 +28,7 @@
 
 namespace net_instaweb {
 
-class Closure;
+class Function;
 
 class MockTimer : public Timer {
  public:
@@ -45,7 +45,7 @@ class MockTimer : public Timer {
     static const int kIndexUninitialized = -1;
 
    public:
-    Alarm(int64 wakeup_time_us, Closure* closure);
+    Alarm(int64 wakeup_time_us, Function* closure);
     virtual ~Alarm();
 
     int64 wakeup_time_us() const { return wakeup_time_us_; }
@@ -55,7 +55,7 @@ class MockTimer : public Timer {
     // alarms, the order in which the Alarm was added.
     int Compare(const Alarm* that) const;
 
-    Closure* closure() { return closure_.get(); }
+    Function* closure() { return closure_.get(); }
 
    private:
     friend class MockTimer;
@@ -68,7 +68,7 @@ class MockTimer : public Timer {
 
     int index_;
     int64 wakeup_time_us_;
-    scoped_ptr<Closure> closure_;
+    scoped_ptr<Function> closure_;
 
     DISALLOW_COPY_AND_ASSIGN(Alarm);
   };
@@ -105,7 +105,7 @@ class MockTimer : public Timer {
   //
   // Returns the Alarm* so it can be canceled, or NULL if the alarm
   // was called immediately due to the wakeup_time already being reached.
-  Alarm* AddAlarm(int64 wakeup_time_us, Closure* alarm);
+  Alarm* AddAlarm(int64 wakeup_time_us, Function* alarm);
 
   // Cancels an outstanding alarm and deletes it.
   void CancelAlarm(Alarm* alarm);

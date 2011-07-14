@@ -16,8 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_CLOSURE_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_CLOSURE_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_FUNCTION_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_FUNCTION_H_
 
 #include "net/instaweb/util/public/atomicops.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -26,17 +26,17 @@ namespace net_instaweb {
 
 // Encapsulates a task to be run in response to some event, such as
 // a Timer callback, an fetch, or a cache lookup.
-class Closure {
+class Function {
  public:
-  Closure();
-  virtual ~Closure();
+  Function();
+  virtual ~Function();
 
   // Callers must override this to define the action to take when a closure
   // is run.
   virtual void Run() = 0;
 
   // Allows an infrastructure (e.g. Worker or Alarm) to request that
-  // a running Closure stop soon, as it is being shut down.
+  // a running Function stop soon, as it is being shut down.
   bool quit_requested() const {
     return base::subtle::Acquire_Load(&quit_requested_);
   }
@@ -48,21 +48,21 @@ class Closure {
 
  private:
   base::subtle::AtomicWord quit_requested_;
-  DISALLOW_COPY_AND_ASSIGN(Closure);
+  DISALLOW_COPY_AND_ASSIGN(Function);
 };
 
 // A Macro is recommended for making a readable call to a pointer-to-member
 // function per section 33.6 of
 // http://www.parashift.com/c++-faq-lite/pointers-to-members.html
-#define CALL_MEMBER_FN(object, ptrToMember)  ((object)->*(ptrToMember))
+#define CALL_MEMBER_FN(object, ptrToMember) ((object)->*(ptrToMember))
 
 // Captures a delayed call to a 0-arg member function as a closure.
 template<class C>
-class DelayedFunction0 : public Closure {
+class MemberFunction0 : public Function {
  public:
   typedef void (C::*Func)();
 
-  DelayedFunction0(Func f, C* c) : f_(f), c_(c) {}
+  MemberFunction0(Func f, C* c) : f_(f), c_(c) {}
   virtual void Run() { CALL_MEMBER_FN(c_, f_)(); }
  private:
   Func f_;
@@ -71,11 +71,11 @@ class DelayedFunction0 : public Closure {
 
 // Captures a delayed call to a 1-arg member function as a closure.
 template<class C, typename T1>
-class DelayedFunction1 : public Closure {
+class MemberFunction1 : public Function {
  public:
   typedef void (C::*Func)(T1);
 
-  DelayedFunction1(Func f, C* c, T1 v1) : f_(f), c_(c), v1_(v1) {}
+  MemberFunction1(Func f, C* c, T1 v1) : f_(f), c_(c), v1_(v1) {}
   virtual void Run() { CALL_MEMBER_FN(c_, f_)(v1_); }
  private:
   Func f_;
@@ -85,11 +85,11 @@ class DelayedFunction1 : public Closure {
 
 // Captures a delayed call to a 2-arg member function as a closure.
 template<class C, typename T1, typename T2>
-class DelayedFunction2 : public Closure {
+class MemberFunction2 : public Function {
  public:
   typedef void (C::*Func)(T1, T2);
 
-  DelayedFunction2(Func f, C* c, T1 v1, T2 v2)
+  MemberFunction2(Func f, C* c, T1 v1, T2 v2)
       : f_(f), c_(c), v1_(v1), v2_(v2) {}
   virtual void Run() { CALL_MEMBER_FN(c_, f_)(v1_, v2_); }
  private:
@@ -101,11 +101,11 @@ class DelayedFunction2 : public Closure {
 
 // Captures a delayed call to a 3-arg member function as a closure.
 template<class C, typename T1, typename T2, typename T3>
-class DelayedFunction3 : public Closure {
+class MemberFunction3 : public Function {
  public:
   typedef void (C::*Func)(T1, T2, T3);
 
-  DelayedFunction3(Func f, C* c, T1 v1, T2 v2, T3 v3)
+  MemberFunction3(Func f, C* c, T1 v1, T2 v2, T3 v3)
       : f_(f), c_(c), v1_(v1), v2_(v2), v3_(v3) {}
   virtual void Run() { CALL_MEMBER_FN(c_, f_)(v1_, v2_, v3_); }
  private:
@@ -120,4 +120,4 @@ class DelayedFunction3 : public Closure {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_CLOSURE_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_FUNCTION_H_

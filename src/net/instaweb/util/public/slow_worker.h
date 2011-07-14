@@ -27,6 +27,7 @@
 
 namespace net_instaweb {
 
+class Function;
 class ThreadSystem;
 
 // See file comment.
@@ -43,10 +44,10 @@ class SlowWorker : public Worker {
   // Otherwise, the closure will simply be deleted.
   //
   // Takes ownership of the closure.
-  void RunIfNotBusy(Closure* closure);
+  void RunIfNotBusy(Function* closure);
 
  private:
-  virtual bool IsPermitted(Closure* closure);
+  virtual bool IsPermitted(Function* closure);
 
   DISALLOW_COPY_AND_ASSIGN(SlowWorker);
 };

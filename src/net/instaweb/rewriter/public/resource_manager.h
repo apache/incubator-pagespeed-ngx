@@ -42,10 +42,10 @@ namespace net_instaweb {
 class AbstractLock;
 class AbstractMutex;
 class CacheInterface;
-class Closure;
 class ContentType;
 class FileSystem;
 class FilenameEncoder;
+class Function;
 class Hasher;
 class MessageHandler;
 class NamedLockManager;
@@ -305,14 +305,14 @@ class ResourceManager {
   void ReleaseRewriteDriver(RewriteDriver* rewrite_driver);
 
   // Queues up a task to run on the Rewrite thread.
-  void AddRewriteTask(Closure* task);
+  void AddRewriteTask(Function* task);
 
   ThreadSystem* thread_system() { return thread_system_; }
 
   // Waits for the currently running job to complete, and stops accepting
-  // new jobs in the worker. This is meant for use in tests to make sure
-  // that any idle callbacks are completed before deleting objects they may
-  // refer to.
+  // new jobs in the worker. This is meant for use when shutting down
+  // processing, so that jobs running in background do not access objects
+  // that are about to be deleted.
   void ShutDownWorker();
 
   QueuedWorker* rewrite_worker() { return rewrite_worker_.get(); }

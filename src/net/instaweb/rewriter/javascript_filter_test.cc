@@ -30,8 +30,17 @@
 
 namespace {
 
+const char kXhtmlHeader[] =
+    "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" "
+    "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">";
+
 const char kHtmlFormat[] =
     "<script type='text/javascript' src='%s'></script>\n";
+
+const char kCdataWrapper[] = "//<![CDATA[\n%s\n//]]>";
+
+const char kInlineJs[] =
+    "<script type='text/javascript'>%s</script>\n";
 
 const char kJsData[] =
     "alert     (    'hello, world!'    ) "
@@ -150,6 +159,35 @@ TEST_P(JavascriptFilterTest, NoExtensionCorruption) {
 
 TEST_P(JavascriptFilterTest, NoQueryCorruption) {
   TestCorruptUrl("?query", true);
+}
+
+TEST_P(JavascriptFilterTest, InlineJavascript) {
+  // Test minification of a simple inline script
+  InitTest(100);
+  ValidateExpected("inline javascript",
+                   StringPrintf(kInlineJs, kJsData),
+                   StringPrintf(kInlineJs, kJsMinData));
+}
+
+TEST_P(JavascriptFilterTest, CdataJavascript) {
+  // Test minification of a simple inline script in html (NOT xhtml) where the
+  // script is wrapped in a commented-out CDATA.
+  InitTest(100);
+  ValidateExpected(
+      "cdata non-xhtml javascript",
+      StringPrintf(kInlineJs, StringPrintf(kCdataWrapper, kJsData).c_str()),
+      StringPrintf(kInlineJs, kJsMinData));
+}
+
+TEST_P(JavascriptFilterTest, XHtmlInlineJavascript) {
+  // Test minification of a simple inline script in xhtml
+  // where it must be wrapped in CDATA.
+  InitTest(100);
+  const GoogleString xhtml_script_format =
+      StrCat(kXhtmlHeader, StringPrintf(kInlineJs, kCdataWrapper));
+  ValidateExpected("xhtml inline javascript",
+                   StringPrintf(xhtml_script_format.c_str(), kJsData),
+                   StringPrintf(xhtml_script_format.c_str(), kJsMinData));
 }
 
 // We runs the test with GetParam() both true and false, in order to

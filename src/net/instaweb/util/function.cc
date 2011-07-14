@@ -14,34 +14,17 @@
  * limitations under the License.
  */
 
-// Author: morlovich@google.com (Maksim Orlovich)
-//
-// Implements SlowWorker, which runs a single task only in a background thread.
-
-#include "net/instaweb/util/public/slow_worker.h"
+// Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/function.h"
 
 namespace net_instaweb {
 
-class ThreadSystem;
-
-SlowWorker::SlowWorker(ThreadSystem* runtime)
-    : Worker(runtime) {
+Function::Function() {
+  base::subtle::Release_Store(&quit_requested_, false);
 }
 
-SlowWorker::~SlowWorker() {
-}
-
-void SlowWorker::RunIfNotBusy(Function* closure) {
-  bool ok = QueueIfPermitted(closure);
-  if (!ok) {
-    delete closure;
-  }
-}
-
-bool SlowWorker::IsPermitted(Function* closure) {
-  return NumJobs() == 0;
+Function::~Function() {
 }
 
 }  // namespace net_instaweb

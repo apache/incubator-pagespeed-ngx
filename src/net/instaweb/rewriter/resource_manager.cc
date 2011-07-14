@@ -616,7 +616,7 @@ void ResourceManager::ShutDownWorker() {
   rewrite_worker_->ShutDown();
 }
 
-void ResourceManager::AddRewriteTask(Closure* task) {
+void ResourceManager::AddRewriteTask(Function* task) {
   rewrite_worker_->RunInWorkThread(task);
 }
 
