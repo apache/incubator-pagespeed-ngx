@@ -45,9 +45,6 @@ TEST_ROOT=http://$HOSTNAME/mod_pagespeed_test
 # Note: This only works if $HOSTNAME is a synonym for localhost.
 STATISTICS_URL=http://localhost:$PORT/mod_pagespeed_statistics
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/bad.pagespeed.cf.hash.css
-# MESSAGE_URL is to test page /mod_pagespeed_message.
-# Note: this page is only accessbile from localhost by default.
-MESSAGE_URL=http://localhost:$PORT/mod_pagespeed_message
 
 # Setup wget proxy information
 export http_proxy=$2
@@ -221,11 +218,6 @@ else
   echo TEST: 404s properly on uncached invalid resource.
   check "$WGET -O /dev/null $BAD_RND_RESOURCE_URL 2>&1| grep -q '404 Not Found'"
 fi
-
-# Test /mod_pagespeed_message exists.
-echo TEST: Check if /mod_pagespeed_message page exists.
-$WGET --save-headers -q -O - $MESSAGE_URL | head -1 | grep "HTTP/1.1 200 OK"
-check [ $? = 0 ];
 
 echo TEST: directory is mapped to index.html.
 rm -rf $OUTDIR

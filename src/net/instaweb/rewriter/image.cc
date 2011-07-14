@@ -594,7 +594,18 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
                       opencv_image_->nChannels);
     ok = rescaled_image != NULL;
     if (ok) {
+#ifdef USE_OPENCV_2_1
+      {
+        // Inlined from: cvResize(opencv_image_, rescaled_image, CV_INTER_AREA);
+        cv::Mat src = cv::cvarrToMat(opencv_image_);
+        cv::Mat dst = cv::cvarrToMat(rescaled_image);
+        DCHECK( src.type() == dst.type() );
+        cv::resize(src, dst, dst.size(), (double)dst.cols/src.cols,
+                   (double)dst.rows/src.rows, CV_INTER_AREA);
+      }
+#else
       cvResize(opencv_image_, rescaled_image, CV_INTER_AREA);
+#endif
       cvReleaseImage(&opencv_image_);
       opencv_image_ = rescaled_image;
       changed_ = true;

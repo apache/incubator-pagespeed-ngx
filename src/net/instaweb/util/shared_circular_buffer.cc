@@ -34,14 +34,11 @@ namespace {
 
 namespace net_instaweb {
 
-SharedCircularBuffer::SharedCircularBuffer(AbstractSharedMem* shm_runtime,
-                                           const int buffer_capacity,
-                                           const GoogleString& filename_prefix,
-                                           const GoogleString& filename_suffix)
-    : shm_runtime_(shm_runtime),
-      buffer_capacity_(buffer_capacity),
-      filename_prefix_(filename_prefix),
-      filename_suffix_(filename_suffix) {
+SharedCircularBuffer::SharedCircularBuffer(int buffer_capacity,
+                                           AbstractSharedMem* shm_runtime,
+                                           const GoogleString& filename_prefix)
+    : buffer_capacity_(buffer_capacity),
+      shm_runtime_(shm_runtime), filename_prefix_(filename_prefix) {
 }
 
 SharedCircularBuffer::~SharedCircularBuffer() {
@@ -118,8 +115,7 @@ void SharedCircularBuffer::GlobalCleanup(MessageHandler* handler) {
 }
 
 GoogleString SharedCircularBuffer::SegmentName() const {
-  return StrCat(filename_prefix_, kSharedCircularBufferObjName, ".",
-                filename_suffix_);
+  return StrCat(filename_prefix_, kSharedCircularBufferObjName);
 }
 
 }  // namespace net_instaweb

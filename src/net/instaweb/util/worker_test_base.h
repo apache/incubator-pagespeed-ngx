@@ -21,8 +21,8 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/condvar.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -33,11 +33,11 @@ namespace net_instaweb {
 
 class WorkerTestBase : public ::testing::Test {
  public:
-  class CountClosure;
+  class CountFunction;
   class SyncPoint;
-  class NotifyRunClosure;
-  class WaitRunClosure;
-  class FailureClosure;
+  class NotifyRunFunction;
+  class WaitRunFunction;
+  class FailureFunction;
 
   WorkerTestBase();
   ~WorkerTestBase();
@@ -50,9 +50,9 @@ class WorkerTestBase : public ::testing::Test {
 };
 
 // A closure that increments a variable on running.
-class WorkerTestBase::CountClosure : public Closure {
+class WorkerTestBase::CountFunction : public Function {
  public:
-  explicit CountClosure(int* variable) : variable_(variable) {}
+  explicit CountFunction(int* variable) : variable_(variable) {}
 
   virtual void Run() {
     ++*variable_;
@@ -60,7 +60,7 @@ class WorkerTestBase::CountClosure : public Closure {
 
  private:
   int* variable_;
-  DISALLOW_COPY_AND_ASSIGN(CountClosure);
+  DISALLOW_COPY_AND_ASSIGN(CountFunction);
 };
 
 // A way for one thread to wait for another.
@@ -79,42 +79,43 @@ class WorkerTestBase::SyncPoint {
 };
 
 // Notifies of itself having run on a given SyncPoint.
-class WorkerTestBase::NotifyRunClosure : public Closure {
+class WorkerTestBase::NotifyRunFunction : public Function {
  public:
-  explicit NotifyRunClosure(SyncPoint* sync);
+  explicit NotifyRunFunction(SyncPoint* sync);
   virtual void Run();
 
  private:
   SyncPoint* sync_;
-  DISALLOW_COPY_AND_ASSIGN(NotifyRunClosure);
+  DISALLOW_COPY_AND_ASSIGN(NotifyRunFunction);
 };
 
 // Waits on a given SyncPoint before completing Run()
-class WorkerTestBase::WaitRunClosure : public Closure {
+class WorkerTestBase::WaitRunFunction : public Function {
  public:
-  explicit WaitRunClosure(SyncPoint* sync);
+  explicit WaitRunFunction(SyncPoint* sync);
   virtual void Run();
 
  private:
   SyncPoint* sync_;
-  DISALLOW_COPY_AND_ASSIGN(WaitRunClosure);
+  DISALLOW_COPY_AND_ASSIGN(WaitRunFunction);
 };
 
-// Closure that signals on destruction and check fails when run.
-class DeleteNotifyClosure : public Closure {
+// Function that signals on destruction and check fails when run.
+class DeleteNotifyFunction : public Function {
  public:
-  explicit DeleteNotifyClosure(WorkerTestBase::SyncPoint* sync) : sync_(sync) {}
-  virtual ~DeleteNotifyClosure() {
+  explicit DeleteNotifyFunction(WorkerTestBase::SyncPoint* sync)
+      : sync_(sync) {}
+  virtual ~DeleteNotifyFunction() {
     sync_->Notify();
   }
 
   virtual void Run() {
-    CHECK(false) << "DeleteNotifyClosure ran.";
+    CHECK(false) << "DeleteNotifyFunction ran.";
   }
 
  private:
   WorkerTestBase::SyncPoint* sync_;
-  DISALLOW_COPY_AND_ASSIGN(DeleteNotifyClosure);
+  DISALLOW_COPY_AND_ASSIGN(DeleteNotifyFunction);
 };
 
 }  // namespace net_instaweb

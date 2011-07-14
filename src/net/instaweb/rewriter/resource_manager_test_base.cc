@@ -298,7 +298,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   // After we call the callback, it should be correct.
   CallFetcherCallbacksForDriver(&wait_url_async_fetcher, &new_rewrite_driver);
   EXPECT_EQ(true, callback.done());
-  EXPECT_EQ(expected_content, response_contents);
+  EXPECT_STREQ(expected_content, response_contents);
 
   // Check that stats say we took the construct resource path.
   EXPECT_EQ(0, new_resource_manager.cached_resource_fetches()->Get());

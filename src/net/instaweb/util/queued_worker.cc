@@ -24,6 +24,8 @@
 
 namespace net_instaweb {
 
+class Function;
+
 QueuedWorker::QueuedWorker(ThreadSystem* runtime)
     : Worker(runtime) {
 }
@@ -31,12 +33,12 @@ QueuedWorker::QueuedWorker(ThreadSystem* runtime)
 QueuedWorker::~QueuedWorker() {
 }
 
-void QueuedWorker::RunInWorkThread(Closure* closure) {
+void QueuedWorker::RunInWorkThread(Function* closure) {
   bool ok = QueueIfPermitted(closure);
   CHECK(ok);
 }
 
-bool QueuedWorker::IsPermitted(Closure* closure) {
+bool QueuedWorker::IsPermitted(Function* closure) {
   return true;
 }
 

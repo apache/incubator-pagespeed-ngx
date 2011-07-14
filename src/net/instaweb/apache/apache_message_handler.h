@@ -18,11 +18,8 @@
 #define NET_INSTAWEB_APACHE_APACHE_MESSAGE_HANDLER_H_
 
 #include <string>
-#include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -34,20 +31,7 @@ namespace net_instaweb {
 // logging to emit messsages.
 class ApacheMessageHandler : public MessageHandler {
  public:
-  // Timer is used to generate timestamp for messages in shared memory.
-  // pid is the process writing messages.
-  ApacheMessageHandler(const server_rec* server, const StringPiece& version,
-                       Timer* timer);
-  // When we initialize ApacheMessageHandler in ApacheRewriteDriverFactory,
-  // SharedCircularBuffer of ApacheRewriteDriverFactory is not initialized yet.
-  // We need to set buffer_ later in RootInit() or ChildInit().
-  inline void set_buffer(SharedCircularBuffer* buff) {
-    buffer_ = buff;
-  }
-  void SetPidString(const int64 pid) {
-    pid_string_ = StrCat("[", Integer64ToString(pid), "]");
-  }
-  bool Dump(Writer* writer);
+  ApacheMessageHandler(const server_rec* server, const StringPiece& version);
 
  protected:
   virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
@@ -60,18 +44,7 @@ class ApacheMessageHandler : public MessageHandler {
   GoogleString Format(const char* msg, va_list args);
 
   const server_rec* server_rec_;
-  const GoogleString version_;
-  // This timer is used to prepend time when writing a message
-  // to SharedCircularBuffer.
-  Timer* timer_;
-  // String "[pid]".
-  GoogleString pid_string_;
-  // This handler is for internal use.
-  // Some functions of SharedCircularBuffer need MessageHandler as argument,
-  // We do not want to pass in another ApacheMessageHandler to cause infinite
-  // loop.
-  GoogleMessageHandler handler_;
-  SharedCircularBuffer* buffer_;
+  const std::string version_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheMessageHandler);
 };

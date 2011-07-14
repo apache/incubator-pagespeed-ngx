@@ -35,14 +35,13 @@
 using base::StringAppendF;
 using base::StringAppendV;
 using base::SStringPrintf;
+using base::StringPiece;
 
 // Quick macro to get the size of a static char[] without trailing '\0'.
 // Note: Cannot be used for char*, std::string, etc.
 #define STATIC_STRLEN(static_string) (arraysize(static_string) - 1)
 
 namespace net_instaweb {
-
-typedef base::StringPiece StringPiece;
 
 typedef std::map<GoogleString, GoogleString> StringStringMap;
 typedef std::set<GoogleString> StringSet;

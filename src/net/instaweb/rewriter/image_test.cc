@@ -29,6 +29,7 @@ const char kBikeCrash[] = "BikeCrashIcn.png";
 const char kIronChef[] = "IronChef2.gif";
 const char kCradle[] = "CradleAnimation.gif";
 const char kPuzzle[] = "Puzzle.jpg";
+const char kLarge[] = "Large.png";
 
 }  // namespace
 
@@ -363,6 +364,19 @@ TEST_F(ImageTest, BlankSecondWebp) {
   ImageDim dim;
   EXPECT_FALSE(DecodeUrlAndDimensions(kWebp, kBlankSecond, &dim, &origin_url));
   EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(dim));
+}
+
+// Test OpenCV bug where width * height of image could be allocated on the
+// stack. kLarge is a 10000x10000 image, so it will try to allocate > 100MB
+// on the stack, which should overflow the stack and SEGV.
+TEST_F(ImageTest, OpencvStackOverflow) {
+  GoogleString buf;
+  ImagePtr image(ReadImageFromFile(Image::IMAGE_JPEG, kLarge, &buf));
+
+  ImageDim new_dim;
+  new_dim.set_width(1);
+  new_dim.set_height(1);
+  image->ResizeTo(new_dim);
 }
 
 }  // namespace net_instaweb

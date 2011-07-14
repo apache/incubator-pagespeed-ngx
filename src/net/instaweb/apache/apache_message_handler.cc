@@ -15,9 +15,8 @@
 // Author: sligocki@google.com (Shawn Ligocki)
 
 #include "net/instaweb/apache/apache_message_handler.h"
-#include "net/instaweb/apache/apr_timer.h"
+
 #include "net/instaweb/apache/log_message_handler.h"
-#include "net/instaweb/util/public/time_util.h"
 
 #include "httpd.h"
 // When HAVE_SYSLOG is defined, apache http_log.h will include syslog.h, which
@@ -36,33 +35,16 @@ const char kModuleName[] = "mod_pagespeed";
 
 namespace net_instaweb {
 
-// filename_prefix of ApacheRewriteDriverFactory is needed to initialize
-// SharedCircuarBuffer. However, ApacheRewriteDriverFactory needs
-// ApacheMessageHandler before its filename_prefix is set. So we initialize
-// ApacheMessageHandler without SharedCircularBuffer first, then initalize its
-// SharedCircularBuffer in RootInit() when filename_prefix is set.
 ApacheMessageHandler::ApacheMessageHandler(const server_rec* server,
-                                           const StringPiece& version,
-                                           Timer* timer)
+                                           const StringPiece& version)
     : server_rec_(server),
-      version_(version.data(), version.size()),
-      timer_(timer),
-      buffer_(NULL) {
+      version_(version.data(), version.size()) {
   // Tell log_message_handler about this server_rec and version.
   log_message_handler::AddServerConfig(server_rec_, version);
-  // Set pid string.
-  SetPidString(static_cast<int64>(getpid()));
+
   // TODO(jmarantz): consider making this a little terser by default.
   // The string we expect in is something like "0.9.1.1-171" and we will
   // may be able to pick off some of the 5 fields that prove to be boring.
-}
-
-bool ApacheMessageHandler::Dump(Writer* writer) {
-  // Can't dump before SharedCircularBuffer is set up.
-  if (buffer_ == NULL) {
-    return false;
-  }
-  return buffer_->Dump(writer, &handler_);
 }
 
 int ApacheMessageHandler::GetApacheLogLevel(MessageType type) {
@@ -91,18 +73,6 @@ void ApacheMessageHandler::MessageVImpl(MessageType type, const char* msg,
                "[%s %s @%ld] %s",
                kModuleName, version_.c_str(), static_cast<long>(getpid()),
                formatted_message.c_str());
-  // Can not write to SharedCircularBuffer before it's set up.
-  if (buffer_ != NULL) {
-    // Prepend time (down to microseconds) and severity to message.
-    // Format is [time:microseconds] [severity] [pid] message.
-    GoogleString message;
-    GoogleString time_us;
-    ConvertTimeToStringWithUs(timer_->NowUs(), &time_us);
-    StrAppend(&message, "[", time_us, "] ",
-              "[", MessageTypeToString(type), "] ");
-    StrAppend(&message, pid_string_, " ", formatted_message, "\n");
-    buffer_->Write(message);
-  }
 }
 
 void ApacheMessageHandler::FileMessageVImpl(MessageType type, const char* file,

@@ -27,7 +27,6 @@ namespace net_instaweb {
 namespace {
 const int kBufferSize = 10;
 const char kPrefix[] = "/prefix/";
-const char kPostfix[] = "postfix";
 const char kString[] = "012";
 }  // namespace
 
@@ -44,16 +43,14 @@ bool SharedCircularBufferTestBase::CreateChild(TestMethod method) {
 
 SharedCircularBuffer* SharedCircularBufferTestBase::ChildInit() {
   SharedCircularBuffer* buff =
-      new SharedCircularBuffer(shmem_runtime_.get(), kBufferSize, kPrefix,
-                               kPostfix);
+      new SharedCircularBuffer(kBufferSize, shmem_runtime_.get(), kPrefix);
   buff->InitSegment(false, &handler_);
   return buff;
 }
 
 SharedCircularBuffer* SharedCircularBufferTestBase::ParentInit() {
   SharedCircularBuffer* buff =
-      new SharedCircularBuffer(shmem_runtime_.get(), kBufferSize, kPrefix,
-                               kPostfix);
+      new SharedCircularBuffer(kBufferSize, shmem_runtime_.get(), kPrefix);
   buff->InitSegment(true, &handler_);
   return buff;
 }

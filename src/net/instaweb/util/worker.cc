@@ -26,8 +26,8 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/condvar.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -119,7 +119,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     return started_;
   }
 
-  bool QueueIfPermitted(Closure* closure) {
+  bool QueueIfPermitted(Function* closure) {
     if (!started_) {
       delete closure;
       return true;
@@ -157,8 +157,8 @@ class Worker::WorkThread : public ThreadSystem::Thread {
   // guards state_change_, current_task_, tasks_, exit_;
   scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
   scoped_ptr<ThreadSystem::Condvar> state_change_;
-  Closure* current_task_;  // non-NULL if we are actually running something.
-  std::deque<Closure*> tasks_;  // things waiting to be run.
+  Function* current_task_;  // non-NULL if we are actually running something.
+  std::deque<Function*> tasks_;  // things waiting to be run.
   bool exit_;
   bool started_;
 
@@ -180,7 +180,7 @@ bool Worker::IsBusy() {
   return thread_->IsBusy();
 }
 
-bool Worker::QueueIfPermitted(Closure* closure) {
+bool Worker::QueueIfPermitted(Function* closure) {
   return thread_->QueueIfPermitted(closure);
 }
 

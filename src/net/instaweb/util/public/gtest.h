@@ -21,6 +21,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_
 
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "gtest/gtest.h"
 
 namespace net_instaweb {
@@ -30,8 +31,8 @@ GoogleString GTestTempDir();
 
 }  // namespace net_instaweb
 
-
 namespace testing {
+
 
 // Extracted from newer GoogleTest version, until we can upgrade
 template <typename T>
@@ -64,7 +65,19 @@ class WithParamInterface {
 template <typename T>
 const T* WithParamInterface<T>::parameter_ = NULL;
 
-}  // namespace testing
 
+// Allows EXPECT_STREQ to be used on StringPiece.
+namespace internal {
+inline GTEST_API_ AssertionResult CmpHelperSTREQ(
+    const char* expected_expression,
+    const char* actual_expression,
+    const StringPiece& expected,
+    const StringPiece& actual) {
+  return CmpHelperSTREQ(expected_expression, actual_expression,
+                        expected.as_string().c_str(),
+                        actual.as_string().c_str());
+}
+}  // namespace internal
+}  // namespace testing
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_

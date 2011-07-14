@@ -28,7 +28,6 @@
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class CacheInterface;
 class CacheUrlAsyncFetcher;
 class CacheUrlFetcher;
@@ -123,7 +122,6 @@ class RewriteDriverFactory {
   ResourceManager* ComputeResourceManager();
 
   // Generates a new mutex, hasher.
-  virtual AbstractMutex* NewMutex() = 0;
   virtual Hasher* NewHasher() = 0;
 
   // See doc in resource_manager.cc.

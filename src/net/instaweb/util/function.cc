@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +16,15 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_TIME_UTIL_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_TIME_UTIL_H_
-
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/function.h"
 
 namespace net_instaweb {
 
-// Converts time, in milliseconds, to a string.  Returns false on failure.
-bool ConvertTimeToString(int64 time_ms, GoogleString* time_string);
+Function::Function() {
+  base::subtle::Release_Store(&quit_requested_, false);
+}
 
-// Converts time in string format, to the number of milliseconds since 1970.
-// Returns false on failure.
-bool ConvertStringToTime(const StringPiece& time_string, int64 *time_ms);
+Function::~Function() {
+}
 
 }  // namespace net_instaweb
-
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_TIME_UTIL_H_

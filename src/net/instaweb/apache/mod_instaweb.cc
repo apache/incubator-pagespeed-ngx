@@ -116,7 +116,6 @@ const char* kModPagespeedLowercaseHtmlNames = "ModPagespeedLowercaseHtmlNames";
 const char* kModPagespeedMapOriginDomain = "ModPagespeedMapOriginDomain";
 const char* kModPagespeedMapRewriteDomain = "ModPagespeedMapRewriteDomain";
 const char* kModPagespeedMaxSegmentLength = "ModPagespeedMaxSegmentLength";
-const char* kModPagespeedMessageBufferSize = "ModPagespeedMessageBufferSize";
 const char* kModPagespeedNumShards = "ModPagespeedNumShards";
 const char* kModPagespeedRetainComment = "ModPagespeedRetainComment";
 const char* kModPagespeedRewriteLevel = "ModPagespeedRewriteLevel";
@@ -1074,9 +1073,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     // TODO(sligocki): Convert to ParseInt64Option for consistency?
     ret = ParseIntOption(options,
         cmd, &RewriteOptions::set_max_url_segment_size, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedMessageBufferSize)) {
-    ret = ParseIntOption(factory,
-        cmd, &ApacheRewriteDriverFactory::set_message_buffer_size, arg);
   } else if (StringCaseEqual(directive, kModPagespeedRespectVary)) {
     ret = ParseBoolOption(options, cmd,
                           &RewriteOptions::set_respect_vary, arg);
@@ -1093,7 +1089,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     }
   } else if (StringCaseEqual(directive, kModPagespeedSharedMemoryLocks)) {
     ret = ParseBoolOption(factory, cmd,
-       &ApacheRewriteDriverFactory::set_use_shared_mem_locking, arg);
+        &ApacheRewriteDriverFactory::set_use_shared_mem_locking, arg);
   } else if (StringCaseEqual(directive, kModPagespeedSlurpDirectory)) {
     factory->set_slurp_directory(arg);
   } else if (StringCaseEqual(directive, kModPagespeedSlurpFlushLimit)) {
@@ -1243,8 +1239,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Set generated file's prefix"),
   APACHE_CONFIG_OPTION(kModPagespeedImgMaxRewritesAtOnce,
         "DEPRECATED, use ModPagespeedImageMaxRewritesAtOnce."),
-  APACHE_CONFIG_OPTION(kModPagespeedMessageBufferSize,
-        "Set the size of buffer used for /mod_pagespeed_message."),
   APACHE_CONFIG_OPTION(kModPagespeedImageMaxRewritesAtOnce,
         "Set bound on number of images being rewritten at one time "
         "(0 = unbounded)."),

@@ -42,13 +42,10 @@ class Writer;
 
 class SharedCircularBuffer {
  public:
-  // Construct with shared memory, data buffer capacity, filename_prefix and
-  // filename_suffix. filename_prefix and filename_suffix are used to name
-  // segment for the shared circular buffer.
-  SharedCircularBuffer(AbstractSharedMem* shm_runtime,
-                       const int buffer_capacity,
-                       const GoogleString& filename_prefix,
-                       const GoogleString& filename_suffix);
+  // Construct with shared memory segment and buffer size.
+  SharedCircularBuffer(int buffer_capacity_,
+                       AbstractSharedMem* shm_runtime,
+                       const GoogleString& filename_prefix);
   virtual ~SharedCircularBuffer();
   // Initialize the shared memory segment.
   // parent = true if this is invoked in root process -- initialize the shared
@@ -71,17 +68,15 @@ class SharedCircularBuffer {
   bool InitMutex(MessageHandler* handler);
   GoogleString SegmentName() const;
 
-  // SegmentName looks like:
-  // filename_prefix/SharedCircularBuffer.filename_suffix.
-  AbstractSharedMem* shm_runtime_;
   // Capacity of circular buffer.
   const int buffer_capacity_;
+  // Size to allocate for circular buffer.
+  int buffer_size_;
+  AbstractSharedMem* shm_runtime_;
   // Circular buffer.
   CircularBuffer* buffer_;
-  const GoogleString filename_prefix_;
-  // filename_suffix_ is used to distinguish SharedCircularBuffer.
-  const GoogleString filename_suffix_;
   // Mutex for segment.
+  const GoogleString filename_prefix_;
   scoped_ptr<AbstractMutex> mutex_;
   // Shared memory segment.
   scoped_ptr<AbstractSharedMemSegment> segment_;

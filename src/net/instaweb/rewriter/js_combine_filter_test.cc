@@ -60,6 +60,8 @@ const char kStrictText2[] = "\"use strict\"; var x = 42;";
 const char kEscapedJs1[] =
     "\"// script1\\nvar a=\\\"hello\\\\nsecond line\\\"\"";
 const char kEscapedJs2[] = "\"// script2\\r\\nvar b=42;\\n\"";
+const char kMinifiedEscapedJs1[] = "\"var a=\\\"hello\\\\nsecond line\\\"\"";
+const char kMinifiedEscapedJs2[] = "\"var b=42;\"";
 
 }  // namespace
 
@@ -177,12 +179,12 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
     EXPECT_FALSE(info.url.empty());
     // The combination url should incorporate both names...
     GoogleUrl combination_url(info.url);
-    EXPECT_EQ(domain, combination_url.AllExceptLeaf());
+    EXPECT_STREQ(domain, combination_url.AllExceptLeaf());
     ResourceNamer namer;
     EXPECT_TRUE(namer.Decode(combination_url.LeafWithQuery()));
-    EXPECT_EQ(RewriteDriver::kJavascriptCombinerId, namer.id());
-    EXPECT_EQ(name, namer.name());
-    EXPECT_EQ("js", namer.ext());
+    EXPECT_STREQ(RewriteDriver::kJavascriptCombinerId, namer.id());
+    EXPECT_STREQ(name, namer.name());
+    EXPECT_STREQ("js", namer.ext());
   }
 
   void VerifyCombined(const ScriptInfo& info, const StringPiece& name) {
@@ -202,43 +204,98 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
     VerifyUseOnDomain(kTestDomain, info, rel_url);
   }
 
+  // Test basic combining of multiple JS files.  The resultant names and
+  // hashes may differ depending on whether we are working with rewritten
+  // or sharded domains, and whether we minify the js files before combining
+  // them.  Thus we must pass in the hashes for the various components.
+  //
+  // Note that we must use the MD5 hasher for this test because the
+  // combiner generates local javascript variable names using the
+  // content-hasher.
+  void TestCombineJs(const StringPiece& combined_name,
+                     const StringPiece& combined_hash,
+                     const StringPiece& hash1,
+                     const StringPiece& hash2,
+                     bool minified,
+                     const StringPiece& domain) {
+    ScriptInfoVector scripts;
+    PrepareToCollectScriptsInto(&scripts);
+    ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
+                                 "<script src=", kJsUrl2, "></script>"));
+
+    // This should produce 3 script elements, with the first one referring to
+    // the combination, and the second and third using eval.
+    ASSERT_EQ(3, scripts.size());
+    VerifyCombinedOnDomain(domain, scripts[0], combined_name);
+    if (!minified) {
+      VerifyUse(scripts[1], kJsUrl1);
+      VerifyUse(scripts[2], kJsUrl2);
+    }
+
+    // Now check the actual contents. These might change slightly
+    // during implementation changes, requiring update of the test;
+    // but this is also not dependent on VarName working right.
+    GoogleString combined_path = StrCat(
+        combined_name, ".pagespeed.jc.", combined_hash, ".js");
+    EXPECT_STREQ(AddHtmlBody(
+        StrCat("<script src=\"", domain, combined_path, "\"></script>"
+               "<script>eval(mod_pagespeed_", hash1, ");</script>"
+               "<script>eval(mod_pagespeed_", hash2, ");</script>")),
+        output_buffer_);
+
+    // Now fetch the combined URL.
+    GoogleString combination_src;
+    ASSERT_TRUE(ServeResourceUrl(scripts[0].url, &combination_src));
+    EXPECT_STREQ(StrCat(
+        StrCat("var mod_pagespeed_", hash1, " = ",
+               (minified ? kMinifiedEscapedJs1 : kEscapedJs1), ";\n"),
+        StrCat("var mod_pagespeed_", hash2, " = ",
+               (minified ? kMinifiedEscapedJs2 : kEscapedJs2), ";\n")),
+                 combination_src);
+
+    // TODO(jmarantz): The delayed_fetcher test infrastructure doesn't
+    // quite work for chained rewrites yet.  In fact, it doesn't work
+    // optimally in production either, as we wind up doing loopback
+    // fetches for our own generated resources.  This should be fixed
+    // by decoding the URLs prior to fetching and handling them locally
+    // if they are pagespeed-generated URLs.
+    if (!minified) {
+      ServeResourceFromManyContexts(scripts[0].url, combination_src);
+    }
+  }
+
  protected:
   ResponseHeaders default_js_header_;
   GoogleString other_domain_;
   JsCombineFilter* filter_;  // Owned by rewrite_driver_
 };
 
+class JsFilterAndCombineFilterTest : public JsCombineFilterTest {
+  virtual void SetUp() {
+    SetUpWithJsFilter(true);
+  }
+};
+
 // Test for basic operation, including escaping and fetch reconstruction.
 TEST_P(JsCombineFilterTest, CombineJs) {
-  ScriptInfoVector scripts;
-  PrepareToCollectScriptsInto(&scripts);
-  ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
-                               "<script src=", kJsUrl2, "></script>"));
+  TestCombineJs("a.js+b.js", "g2Xe9o4bQ2", "KecOGCIjKt", "dzsx6RqvJJ", false,
+                kTestDomain);
+}
 
-  // This should produce 3 script elements, with the first one referring to
-  // the combination, and the second and third using eval.
-  ASSERT_EQ(3, scripts.size());
-  VerifyCombined(scripts[0], StrCat(kJsUrl1, "+", kJsUrl2));
-  VerifyUse(scripts[1], kJsUrl1);
-  VerifyUse(scripts[2], kJsUrl2);
+TEST_P(JsFilterAndCombineFilterTest, MinifyCombineJs) {
+  TestCombineJs("a.js,Mjm.FUEwDOA7jh.js+b.js,Mjm.Y1kknPfzVs.js",
+                "FA3Pqioukh", "S$0tgbTH0O", "ose8Vzgyj9", true,
+                kTestDomain);
+}
 
-  // Now check the actual contents. These might change slightly
-  // during implementation changes, requiring update of the test;
-  // but this is also not dependent on VarName working right.
-  EXPECT_EQ(
-      AddHtmlBody(StrCat("<script src=\"", kTestDomain,
-                         "a.js+b.js.pagespeed.jc.g2Xe9o4bQ2.js\"></script>",
-                         "<script>eval(mod_pagespeed_KecOGCIjKt);</script>",
-                         "<script>eval(mod_pagespeed_dzsx6RqvJJ);</script>")),
-      output_buffer_);
-
-  // Now fetch the combined URL.
-  GoogleString combination_src;
-  ASSERT_TRUE(ServeResourceUrl(scripts[0].url, &combination_src));
-  EXPECT_EQ(StrCat("var mod_pagespeed_KecOGCIjKt = ", kEscapedJs1, ";\n",
-                   "var mod_pagespeed_dzsx6RqvJJ = ", kEscapedJs2, ";\n"),
-            combination_src);
-  ServeResourceFromManyContexts(scripts[0].url, combination_src);
+// Issue 308: ModPagespeedShardDomain disables combine_js.  Actually
+// the code (in url_partnership.cc) was already doing the right thing,
+// but was not previously confirmed in a unit-test.
+TEST_P(JsFilterAndCombineFilterTest, MinifyShardCombineJs) {
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  ASSERT_TRUE(lawyer->AddShard(kTestDomain, "a.com,b.com", &message_handler_));
+  TestCombineJs("a.js,Mjm.FUEwDOA7jh.js+b.js,Mjm.Y1kknPfzVs.js", "FA3Pqioukh",
+                "S$0tgbTH0O", "ose8Vzgyj9", true, "http://b.com/");
 }
 
 // Various things that prevent combining
@@ -301,12 +358,6 @@ TEST_P(JsCombineFilterTest, TestBarriers) {
 // Make sure that rolling back a <script> that has both a source and inline data
 // out of the combination works even when we have more than one filter involved.
 // This used to crash under async flow.
-class JsFilterAndCombineFilterTest : public JsCombineFilterTest {
-  virtual void SetUp() {
-    SetUpWithJsFilter(true);
-  }
-};
-
 TEST_P(JsFilterAndCombineFilterTest, TestScriptInlineTextRollback) {
   ValidateExpected("rollback1",
       StrCat("<script src=", kJsUrl1, "></script>",
@@ -452,8 +503,8 @@ TEST_P(JsCombineFilterTest, TestCrossDomainReject) {
 
 // Validate that we can recover a combination after a cross-domain rejection
 TEST_P(JsCombineFilterTest, TestCrossDomainRecover) {
-  ASSERT_TRUE(options()->domain_lawyer()->AddDomain(other_domain_,
-                                                    &message_handler_));
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  ASSERT_TRUE(lawyer->AddDomain(other_domain_, &message_handler_));
 
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
