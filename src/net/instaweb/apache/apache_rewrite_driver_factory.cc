@@ -15,6 +15,7 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 
 #include "apr_pools.h"
+#include "httpd.h"
 
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apr_file_system.h"
@@ -28,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/gflags.h"
+#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
@@ -37,6 +39,8 @@
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -51,7 +55,9 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       serf_url_async_fetcher_(NULL),
       shared_mem_statistics_(NULL),
       shared_mem_runtime_(new PthreadSharedMem()),
+      shared_circular_buffer_(NULL),
       slow_worker_(&slow_worker_family_),
+      message_buffer_size_(100000),  // 100k bytes
       lru_cache_kb_per_process_(0),
       lru_cache_byte_limit_(0),
       file_cache_clean_interval_ms_(Timer::kHourMs),
@@ -65,6 +71,13 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       test_proxy_(false),
       is_root_process_(true),
       use_shared_mem_locking_(false),
+      hostname_identifier_(StrCat(server->server_hostname,
+                                  ":",
+                                  IntegerToString(server->port))),
+      apache_message_handler_(new ApacheMessageHandler(
+          server_rec_, version_, timer())),
+      apache_html_parse_message_handler_(new ApacheMessageHandler(
+          server_rec_, version_, timer())),
       shared_mem_lock_manager_lifecycler_(
           this,
           &ApacheRewriteDriverFactory::CreateSharedMemLockManager,
@@ -74,6 +87,12 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
 
   // In Apache, we default to using the "core filters".
   options()->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  // Make sure the ownership of apache_message_handler_ and
+  // apache_html_parse_message_handler_ is given to scoped pointer.
+  // Otherwise may result in leak error in test.
+  message_handler();
+  html_parse_message_handler();
+
 }
 
 ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
@@ -112,11 +131,11 @@ Timer* ApacheRewriteDriverFactory::DefaultTimer() {
 }
 
 MessageHandler* ApacheRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
-  return new ApacheMessageHandler(server_rec_, version_);
+  return apache_html_parse_message_handler_;
 }
 
 MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
-  return new ApacheMessageHandler(server_rec_, version_);
+  return apache_message_handler_;
 }
 
 bool ApacheRewriteDriverFactory::set_file_cache_path(const StringPiece& p) {
@@ -223,7 +242,23 @@ Statistics* ApacheRewriteDriverFactory::statistics() {
   return shared_mem_statistics_;
 }
 
+void ApacheRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
+  // Set buffer size to 0 means turning it off
+  if (shared_mem_runtime() != NULL && message_buffer_size_ != 0) {
+    shared_circular_buffer_.reset(new SharedCircularBuffer(
+        shared_mem_runtime(),
+        message_buffer_size_,
+        filename_prefix().as_string(),
+        hostname_identifier()));
+    shared_circular_buffer_->InitSegment(is_root, message_handler());
+    apache_message_handler_->set_buffer(shared_circular_buffer_.get());
+    apache_html_parse_message_handler_->set_buffer(
+        shared_circular_buffer_.get());
+  }
+}
+
 void ApacheRewriteDriverFactory::RootInit() {
+  SharedCircularBufferInit(is_root_process_);
   if (use_shared_mem_locking_) {
     shared_mem_lock_manager_lifecycler_.RootInit();
   }
@@ -231,6 +266,11 @@ void ApacheRewriteDriverFactory::RootInit() {
 
 void ApacheRewriteDriverFactory::ChildInit() {
   is_root_process_ = false;
+  // Reinitialize pid for child process.
+  apache_message_handler_->SetPidString(static_cast<int64>(getpid()));
+  apache_html_parse_message_handler_->SetPidString(
+      static_cast<int64>(getpid()));
+  SharedCircularBufferInit(is_root_process_);
   if (!slow_worker_.Attach()) {
     slow_worker_.Initialize(new SlowWorker(thread_system()));
     if (!slow_worker_.Get()->Start()) {
@@ -253,12 +293,25 @@ void ApacheRewriteDriverFactory::ShutDown() {
         SerfUrlAsyncFetcher::kThreadedAndMainline);
   }
   if (is_root_process_) {
+    // Cleanup statistics.
     if (owns_statistics_ && (shared_mem_statistics_ != NULL)) {
       shared_mem_statistics_->GlobalCleanup(message_handler());
     }
     shared_mem_lock_manager_lifecycler_.GlobalCleanup(message_handler());
+    // Cleanup SharedCircularBuffer.
+    // Use GoogleMessageHandler instead of ApacheMessageHandler.
+    // As we are cleaning SharedCircularBuffer, we do not want to write to its
+    // buffer and passing ApacheMessageHandler here may cause infinite loop.
+    GoogleMessageHandler handler;
+    if (shared_circular_buffer_ != NULL) {
+        shared_circular_buffer_->GlobalCleanup(&handler);
+      // Reset SharedCircularBuffer to NULL as precaution.
+        apache_message_handler_->set_buffer(NULL);
+        apache_html_parse_message_handler_->set_buffer(NULL);
+    }
   }
   RewriteDriverFactory::ShutDown();
 }
 
 }  // namespace net_instaweb
+

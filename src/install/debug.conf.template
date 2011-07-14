@@ -124,6 +124,12 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 #COVERAGE       Allow from localhost
 #COVERAGE       SetHandler mod_pagespeed_statistics
 #COVERAGE   </Location>
+#COVERAGE    ModPagespeedMessageBufferSize 100000
+#COVERAGE    <Location /mod_pagespeed_message>
+#COVERAGE        Allow from localhost
+#COVERAGE        Allow from 127.0.0.1
+#COVERAGE        SetHandler mod_pagespeed_message
+#COVERAGE    </Location>
 #COVERAGE </VirtualHost>
 #COVERAGE
 #COVERAGE <VirtualHost *:8081>
@@ -135,7 +141,12 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 #COVERAGE
 #COVERAGE   # ModPagespeedSlurpDirectory ...
 #COVERAGE   # ModPagespeedSlurpReadOnly on
-#COVERAGE
+#COVERAGE   
+#COVERAGE   <Location /mod_pagespeed_message>
+#COVERAGE        Allow from localhost
+#COVERAGE        Allow from 127.0.0.1
+#COVERAGE        SetHandler mod_pagespeed_message
+#COVERAGE   </Location>
 #COVERAGE </VirtualHost>
 
 

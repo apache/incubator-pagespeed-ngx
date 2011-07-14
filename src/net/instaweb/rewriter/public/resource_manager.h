@@ -42,10 +42,10 @@ namespace net_instaweb {
 class AbstractLock;
 class AbstractMutex;
 class CacheInterface;
+class Closure;
 class ContentType;
 class FileSystem;
 class FilenameEncoder;
-class Function;
 class Hasher;
 class MessageHandler;
 class NamedLockManager;
@@ -305,7 +305,7 @@ class ResourceManager {
   void ReleaseRewriteDriver(RewriteDriver* rewrite_driver);
 
   // Queues up a task to run on the Rewrite thread.
-  void AddRewriteTask(Function* task);
+  void AddRewriteTask(Closure* task);
 
   ThreadSystem* thread_system() { return thread_system_; }
 

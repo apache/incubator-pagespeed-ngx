@@ -24,7 +24,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/closure.h"
 
 namespace net_instaweb {
 
@@ -54,7 +54,7 @@ class Worker {
   // The idle-callback is intended only for testing purposes.  If
   // this is ever used for anything else we should consider making
   // a vector of callbacks and changing the method to add_idle_callback.
-  void set_idle_callback(Function* cb) { idle_callback_.reset(cb); }
+  void set_idle_callback(Closure* cb) { idle_callback_.reset(cb); }
 
   // Returns true if there was a job running or any jobs queued at the time
   // this function was called.
@@ -74,11 +74,11 @@ class Worker {
   // thread to actually run it if it's idle)
   //
   // Otherwise it merely returns false, and doesn't do anything else.
-  bool QueueIfPermitted(Function* closure);
+  bool QueueIfPermitted(Closure* closure);
 
   // Subclasses should implement this method to implement the policy
   // on whether to run given tasks or not.
-  virtual bool IsPermitted(Function* closure) = 0;
+  virtual bool IsPermitted(Closure* closure) = 0;
 
   // Returns the number of jobs, including any running and queued jobs.
   // The lock semantics here are as follows:
@@ -94,7 +94,7 @@ class Worker {
   void RunIdleCallback();
 
   scoped_ptr<WorkThread> thread_;
-  scoped_ptr<Function> idle_callback_;
+  scoped_ptr<Closure> idle_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Worker);
 };

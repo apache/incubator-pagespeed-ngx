@@ -25,7 +25,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/stl_util.h"
 
@@ -43,7 +43,7 @@ MockTimer::~MockTimer() {
   STLDeleteElements(&alarms_);
 }
 
-MockTimer::Alarm::Alarm(int64 wakeup_time_us, Function* closure)
+MockTimer::Alarm::Alarm(int64 wakeup_time_us, Closure* closure)
     : index_(kIndexUninitialized),
       wakeup_time_us_(wakeup_time_us),
       closure_(closure) {
@@ -71,7 +71,7 @@ void MockTimer::Alarm::SetIndex(int index) {
   index_ = index;
 }
 
-MockTimer::Alarm* MockTimer::AddAlarm(int64 wakeup_time_us, Function* closure) {
+MockTimer::Alarm* MockTimer::AddAlarm(int64 wakeup_time_us, Closure* closure) {
   bool call_now = false;
   Alarm* alarm = new Alarm(wakeup_time_us, closure);
   {

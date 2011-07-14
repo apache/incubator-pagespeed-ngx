@@ -16,7 +16,7 @@
 
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -26,7 +26,7 @@ namespace {
 
 // This is an alarm implementation which adds new alarms and optionally advances
 // time in its callback.
-class ChainedAlarm : public Function {
+class ChainedAlarm : public Closure {
  public:
   ChainedAlarm(MockTimer* timer, int* count, bool advance)
     : timer_(timer),
@@ -56,7 +56,7 @@ class MockTimerTest : public testing::Test {
   MockTimerTest() : timer_(0) {}
 
   MockTimer::Alarm* AddTask(int64 wakeup_time_us, char c) {
-    Function* append_char = new MemberFunction1<GoogleString, char>(
+    Closure* append_char = new DelayedFunction1<GoogleString, char>(
         &GoogleString::push_back, &string_, c);
     return timer_.AddAlarm(wakeup_time_us, append_char);
   }

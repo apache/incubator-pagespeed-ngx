@@ -24,7 +24,7 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/worker_test_base.h"
 
@@ -50,8 +50,8 @@ TEST_F(SlowWorkerTest, BasicOperation) {
   SyncPoint delete_sync(thread_runtime_.get());
 
   ASSERT_TRUE(worker_->Start());
-  worker_->RunIfNotBusy(new WaitRunFunction(&start_sync));
-  worker_->RunIfNotBusy(new DeleteNotifyFunction(&delete_sync));
+  worker_->RunIfNotBusy(new WaitRunClosure(&start_sync));
+  worker_->RunIfNotBusy(new DeleteNotifyClosure(&delete_sync));
   delete_sync.Wait();
   start_sync.Notify();
 
@@ -60,9 +60,9 @@ TEST_F(SlowWorkerTest, BasicOperation) {
   worker_.reset(NULL);
 }
 
-class WaitCancelFunction : public Function {
+class WaitCancelClosure : public Closure {
  public:
-  explicit WaitCancelFunction(WorkerTestBase::SyncPoint* sync) : sync_(sync) {}
+  explicit WaitCancelClosure(WorkerTestBase::SyncPoint* sync) : sync_(sync) {}
 
   virtual void Run() {
     sync_->Notify();
@@ -73,7 +73,7 @@ class WaitCancelFunction : public Function {
 
  private:
   WorkerTestBase::SyncPoint* sync_;
-  DISALLOW_COPY_AND_ASSIGN(WaitCancelFunction);
+  DISALLOW_COPY_AND_ASSIGN(WaitCancelClosure);
 };
 
 TEST_F(SlowWorkerTest, Cancellation) {
@@ -82,7 +82,7 @@ TEST_F(SlowWorkerTest, Cancellation) {
   SyncPoint start_sync(thread_runtime_.get());
 
   ASSERT_TRUE(worker_->Start());
-  worker_->RunIfNotBusy(new WaitCancelFunction(&start_sync));
+  worker_->RunIfNotBusy(new WaitCancelClosure(&start_sync));
 
   // Wait for the thread to start...
   start_sync.Wait();
@@ -92,14 +92,14 @@ TEST_F(SlowWorkerTest, Cancellation) {
 }
 
 // Used to check that quit_requested is false by default normally.
-class CheckDefaultCancelFunction : public WorkerTestBase::NotifyRunFunction {
+class CheckDefaultCancelClosure : public WorkerTestBase::NotifyRunClosure {
  public:
-  explicit CheckDefaultCancelFunction(WorkerTestBase::SyncPoint* sync)
-      : NotifyRunFunction(sync) {}
+  explicit CheckDefaultCancelClosure(WorkerTestBase::SyncPoint* sync)
+      : NotifyRunClosure(sync) {}
 
   virtual void Run() {
     CHECK(!quit_requested());
-    NotifyRunFunction::Run();
+    NotifyRunClosure::Run();
   }
 };
 
@@ -107,7 +107,7 @@ TEST_F(SlowWorkerTest, CancelDefaultFalse) {
   SyncPoint start_sync(thread_runtime_.get());
 
   ASSERT_TRUE(worker_->Start());
-  worker_->RunIfNotBusy(new CheckDefaultCancelFunction(&start_sync));
+  worker_->RunIfNotBusy(new CheckDefaultCancelClosure(&start_sync));
   start_sync.Wait();
 }
 
@@ -115,9 +115,9 @@ TEST_F(SlowWorkerTest, IdleCallback) {
   // All the jobs we queued should be run in order
   int count = 0;
   SyncPoint sync(thread_runtime_.get());
-  worker_->set_idle_callback(new NotifyRunFunction(&sync));
+  worker_->set_idle_callback(new NotifyRunClosure(&sync));
   ASSERT_TRUE(worker_->Start());
-  worker_->RunIfNotBusy(new CountFunction(&count));
+  worker_->RunIfNotBusy(new CountClosure(&count));
   sync.Wait();
   EXPECT_EQ(1, count);
 }

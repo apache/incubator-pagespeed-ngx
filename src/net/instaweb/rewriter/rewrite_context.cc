@@ -46,8 +46,8 @@
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
@@ -81,7 +81,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   virtual void Done(CacheInterface::KeyState state) {
     ResourceManager* resource_manager = rewrite_context_->Manager();
     resource_manager->AddRewriteTask(
-        new MemberFunction2<RewriteContext, CacheInterface::KeyState,
+        new DelayedFunction2<RewriteContext, CacheInterface::KeyState,
             SharedString>(&RewriteContext::OutputCacheDone, rewrite_context_,
                           state, *value()));
     delete this;
@@ -104,7 +104,7 @@ class RewriteContext::ResourceFetchCallback : public Resource::AsyncCallback {
     ResourceManager* resource_manager = rewrite_context_->Manager();
     ResourcePtr r(resource());
     resource_manager->AddRewriteTask(
-        new MemberFunction3<RewriteContext, bool, ResourcePtr, int>(
+        new DelayedFunction3<RewriteContext, bool, ResourcePtr, int>(
             &RewriteContext::ResourceFetchDone, rewrite_context_,
             success, r, slot_index_));
     delete this;
@@ -257,7 +257,7 @@ void RewriteContext::RemoveLastSlot() {
 
 void RewriteContext::Initiate() {
   CHECK(!started_);
-  Manager()->AddRewriteTask(new MemberFunction0<RewriteContext>(
+  Manager()->AddRewriteTask(new DelayedFunction0<RewriteContext>(
       &RewriteContext::Start, this));
 }
 
@@ -606,7 +606,7 @@ void RewriteContext::Propagate(bool render_slots) {
       }
     }
   }
-  Manager()->AddRewriteTask(new MemberFunction0<RewriteContext>(
+  Manager()->AddRewriteTask(new DelayedFunction0<RewriteContext>(
       &RewriteContext::RunSuccessors, this));
 }
 
@@ -738,7 +738,7 @@ bool RewriteContext::Fetch(
     fetch_.reset(
         new FetchContext(this, response_writer, response_headers, callback,
                          output_resource, message_handler));
-    Manager()->AddRewriteTask(new MemberFunction0<RewriteContext>(
+    Manager()->AddRewriteTask(new DelayedFunction0<RewriteContext>(
         &RewriteContext::StartFetch, this));
     ret = true;
   }

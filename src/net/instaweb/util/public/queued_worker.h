@@ -28,8 +28,6 @@
 
 namespace net_instaweb {
 
-class Function;
-
 // See file comment.
 class QueuedWorker : public Worker {
  public:
@@ -45,7 +43,7 @@ class QueuedWorker : public Worker {
   // down.
   //
   // Takes ownership of the closure.
-  void RunInWorkThread(Function* closure);
+  void RunInWorkThread(Closure* closure);
 
   // Issue a TimedWait on the specified condition variable.  In a mock-time
   // world, this queues a time-advancement closure on the worker, and then
@@ -53,7 +51,7 @@ class QueuedWorker : public Worker {
   void TimedWait(ThreadSystem::Condvar* condvar, int64 timeout_ms);
 
  private:
-  virtual bool IsPermitted(Function* closure);
+  virtual bool IsPermitted(Closure* closure);
 
   DISALLOW_COPY_AND_ASSIGN(QueuedWorker);
 };

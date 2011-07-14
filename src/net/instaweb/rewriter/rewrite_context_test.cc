@@ -50,7 +50,7 @@
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -449,8 +449,8 @@ class CombiningFilter : public RewriteFilter {
       } else {
         int64 wakeup_us = time_at_start_of_rewrite_us_ +
             1000 * filter_->rewrite_delay_ms();
-        Function* closure =
-            new MemberFunction3<Context, int, OutputPartition*,
+        Closure* closure =
+            new DelayedFunction3<Context, int, OutputPartition*,
                                  const OutputResourcePtr&>(
                 &Context::DoRewrite, this, partition_index,
                 partition, output);

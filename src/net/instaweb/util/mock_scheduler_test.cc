@@ -17,7 +17,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/closure.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
@@ -34,7 +34,7 @@ namespace {
 const int64 kDelayMs = 50 * Timer::kYearMs;
 const int64 kWaitMs = 100 * Timer::kYearMs;
 
-class Alarm : public Function {
+class Alarm : public Closure {
  public:
   Alarm() {}
   virtual void Run() { }

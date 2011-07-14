@@ -20,7 +20,7 @@
 
 #include "net/instaweb/util/public/slow_worker.h"
 
-#include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/closure.h"
 
 namespace net_instaweb {
 
@@ -33,14 +33,14 @@ SlowWorker::SlowWorker(ThreadSystem* runtime)
 SlowWorker::~SlowWorker() {
 }
 
-void SlowWorker::RunIfNotBusy(Function* closure) {
+void SlowWorker::RunIfNotBusy(Closure* closure) {
   bool ok = QueueIfPermitted(closure);
   if (!ok) {
     delete closure;
   }
 }
 
-bool SlowWorker::IsPermitted(Function* closure) {
+bool SlowWorker::IsPermitted(Closure* closure) {
   return NumJobs() == 0;
 }
 

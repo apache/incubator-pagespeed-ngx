@@ -57,9 +57,9 @@ class FileCache : public CacheInterface {
   virtual void Delete(const GoogleString& key);
 
  private:
-  class CacheCleanFunction;
+  class CacheCleanClosure;
   friend class FileCacheTest;
-  friend class CacheCleanFunction;
+  friend class CacheCleanClosure;
 
   // Attempts to clean the cache.  Returns false if we failed and the
   // cache still needs to be cleaned.  Returns true if everything's
