@@ -175,9 +175,13 @@ class RewriteDriverFactory {
   // Called before creating the url fetchers.
   virtual void FetcherSetupHooks();
 
-  // Override this to return false if you don't want the resource
-  // manager to write resources to the filesystem.
-  virtual bool ShouldWriteResourcesToFileSystem() { return true; }
+  // Override this to return true if you do want the resource manager
+  // to write resources to the filesystem.
+  //
+  // TODO(sligocki): Do we ever want that? Or is it a relic from a
+  // forgotten time? I think we never want to write OutputResources
+  // written to disk automatically any more.
+  virtual bool ShouldWriteResourcesToFileSystem() { return false; }
 
   // Override this if you want to change what directory locks go into
   // when using the default filesystem-based lock manager. The default is
