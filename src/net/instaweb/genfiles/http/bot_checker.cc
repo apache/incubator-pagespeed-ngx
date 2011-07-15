@@ -34,9 +34,6 @@
 // bot_checker.cc is automatically generated from bot_checker.gperf.
 // Author: fangfei@google.com
 
-#include <vector>
-
-#include "base/logging.h"
 #include "net/instaweb/http/public/bot_checker.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -183,7 +180,7 @@ RobotDetect::Lookup (register const char *str, register unsigned int len)
     }
   return 0;
 }
-#line 91 "http/bot_checker.gperf"
+#line 88 "http/bot_checker.gperf"
 
 
 // TODO:(fangfei) check other cases
