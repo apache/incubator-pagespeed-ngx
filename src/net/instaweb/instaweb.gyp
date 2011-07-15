@@ -411,6 +411,7 @@
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/image_compression/image_compression.gyp:pagespeed_jpeg_optimizer',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/image_compression/image_compression.gyp:pagespeed_png_optimizer',
+        '<(DEPTH)/third_party/libjpeg/libjpeg.gyp:libjpeg',
         '<(DEPTH)/third_party/libwebp/libwebp.gyp:libwebp',
         '<(DEPTH)/third_party/opencv/opencv.gyp:highgui',
       ],
