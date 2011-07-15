@@ -17,6 +17,7 @@
 #include "apr_pools.h"
 
 #include "net/instaweb/apache/apache_message_handler.h"
+#include "net/instaweb/apache/apache_thread_system.h"
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/apache/apr_timer.h"
@@ -31,7 +32,6 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
-#include "net/instaweb/util/public/pthread_thread_system.h"
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/slow_worker.h"
@@ -199,12 +199,7 @@ HtmlParse* ApacheRewriteDriverFactory::DefaultHtmlParse() {
 }
 
 ThreadSystem* ApacheRewriteDriverFactory::DefaultThreadSystem() {
-  // TODO(morlovich): We need an ApacheThreadSystem, but it will likely
-  // not use the apr_ library for threads, which is difficult to use
-  // because it uses apr_pools, which are not thread-safe.  Instead
-  // we will subclass PthreadThreadSystem and add any additional signal
-  // masking needed to enable clean shutdowns.
-  return new PthreadThreadSystem;
+  return new ApacheThreadSystem;
 }
 
 void ApacheRewriteDriverFactory::SetStatistics(SharedMemStatistics* x) {

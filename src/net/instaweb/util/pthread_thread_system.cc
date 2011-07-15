@@ -27,13 +27,13 @@
 
 namespace net_instaweb {
 
-namespace {
-
 class PthreadThreadImpl : public ThreadSystem::ThreadImpl {
  public:
-  PthreadThreadImpl(ThreadSystem::Thread* wrapper,
+  PthreadThreadImpl(PthreadThreadSystem* thread_system,
+                    ThreadSystem::Thread* wrapper,
                     ThreadSystem::ThreadFlags flags)
-      : wrapper_(wrapper),
+      : thread_system_(thread_system),
+        wrapper_(wrapper),
         flags_(flags) {
   }
 
@@ -59,7 +59,7 @@ class PthreadThreadImpl : public ThreadSystem::ThreadImpl {
       return false;
     }
 
-    result = pthread_create(&thread_obj_, &attr, InvokeRun, wrapper_);
+    result = pthread_create(&thread_obj_, &attr, InvokeRun, this);
     if (result != 0) {
       return false;
     }
@@ -74,19 +74,20 @@ class PthreadThreadImpl : public ThreadSystem::ThreadImpl {
   }
 
  private:
-  static void* InvokeRun(void* wrapper) {
-    static_cast<ThreadSystem::Thread*>(wrapper)->Run();
+  static void* InvokeRun(void* self_ptr) {
+    PthreadThreadImpl* self = static_cast<PthreadThreadImpl*>(self_ptr);
+    self->thread_system_->BeforeThreadRunHook();
+    self->wrapper_->Run();
     return NULL;
   }
 
+  PthreadThreadSystem* thread_system_;
   ThreadSystem::Thread* wrapper_;
   ThreadSystem::ThreadFlags flags_;
   pthread_t thread_obj_;
 
   DISALLOW_COPY_AND_ASSIGN(PthreadThreadImpl);
 };
-
-}  // namespace
 
 PthreadThreadSystem::PthreadThreadSystem() {
 }
@@ -98,9 +99,12 @@ ThreadSystem::CondvarCapableMutex* PthreadThreadSystem::NewMutex() {
   return new PthreadMutex;
 }
 
+void PthreadThreadSystem::BeforeThreadRunHook() {
+}
+
 ThreadSystem::ThreadImpl* PthreadThreadSystem::NewThreadImpl(
     ThreadSystem::Thread* wrapper, ThreadSystem::ThreadFlags flags) {
-  return new PthreadThreadImpl(wrapper, flags);
+  return new PthreadThreadImpl(this, wrapper, flags);
 }
 
 }  // namespace net_instaweb

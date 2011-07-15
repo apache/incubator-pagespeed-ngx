@@ -16,36 +16,30 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 //
-// Implementation of thread-creation for pthreads
+// A wrapper around PthreadThreadSystem for use in Apache that takes care of
+// some signal masking issues that arise in prefork. We prefer pthreads to APR
+// as APR mutex, etc., creation requires pools which are generally thread
+// unsafe, introducing some additional risks.
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_THREAD_SYSTEM_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_THREAD_SYSTEM_H_
+#ifndef NET_INSTAWEB_APACHE_APACHE_THREAD_SYSTEM_H_
+#define NET_INSTAWEB_APACHE_APACHE_THREAD_SYSTEM_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/pthread_thread_system.h"
 
 namespace net_instaweb {
 
-class PthreadThreadSystem : public ThreadSystem {
+class ApacheThreadSystem : public PthreadThreadSystem {
  public:
-  PthreadThreadSystem();
-  virtual ~PthreadThreadSystem();
-
-  virtual CondvarCapableMutex* NewMutex();
+  ApacheThreadSystem();
+  virtual ~ApacheThreadSystem();
 
  protected:
-  // This hook will get invoked by the implementation in the context of a
-  // thread before invoking its Run() method.
   virtual void BeforeThreadRunHook();
 
- private:
-  friend class PthreadThreadImpl;
-
-  virtual ThreadImpl* NewThreadImpl(Thread* wrapper, ThreadFlags flags);
-
-  DISALLOW_COPY_AND_ASSIGN(PthreadThreadSystem);
+  DISALLOW_COPY_AND_ASSIGN(ApacheThreadSystem);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_THREAD_SYSTEM_H_
+#endif  // NET_INSTAWEB_APACHE_APACHE_THREAD_SYSTEM_H_

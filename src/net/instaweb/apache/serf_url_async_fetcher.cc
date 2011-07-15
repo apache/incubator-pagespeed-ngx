@@ -611,6 +611,12 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   }
 
   void SerfThread() {
+    // Make sure we don't get yet-another copy of signals used by Apache to
+    // shutdown here, to avoid double-free.
+    // TODO(morlovich): Port this to use ThreadSystem stuff, and have
+    // ApacheThreadSystem take care of this automatically.
+    apr_setup_signal_thread();
+
     // Initially there's no active fetch work to be done.
     int num_active_fetches = 0;
     while (!TransferFetchesAndCheckDone(num_active_fetches == 0)) {
