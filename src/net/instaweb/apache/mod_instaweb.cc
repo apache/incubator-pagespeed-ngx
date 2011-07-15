@@ -1173,6 +1173,9 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
                 NULL, OR_ALL, help)
 
 // Like APACHE_CONFIG_OPTION, but gets 2 arguments.
+#define APACHE_CONFIG_OPTION2(name, help) \
+  AP_INIT_TAKE2(name, reinterpret_cast<const char*(*)()>(ParseDirective2), \
+                NULL, RSRC_CONF, help)
 #define APACHE_CONFIG_DIR_OPTION2(name, help) \
   AP_INIT_TAKE2(name, reinterpret_cast<const char*(*)()>(ParseDirective2), \
                 NULL, OR_ALL, help)
@@ -1266,14 +1269,18 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "Set the url prefix"),
 
   // All two parameter options that are allowed in <Directory> blocks.
-  APACHE_CONFIG_DIR_OPTION2(kModPagespeedLoadFromFile,
-        "url_prefix filename_prefix"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,
         "to_domain from_domain[,from_domain]*"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapRewriteDomain,
         "to_domain from_domain[,from_domain]*"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedShardDomain,
         "from_domain shard_domain1[,shard_domain2]*"),
+
+  // All two parameter options that can only be specified at the server level.
+  // (Not in <Directory> blocks.)
+  APACHE_CONFIG_OPTION2(kModPagespeedLoadFromFile,
+        "url_prefix filename_prefix"),
+
   {NULL}
 };
 
