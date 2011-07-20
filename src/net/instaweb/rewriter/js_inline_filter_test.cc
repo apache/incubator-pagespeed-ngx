@@ -16,6 +16,7 @@
 
 // Author: mdsteele@google.com (Matthew D. Steele)
 
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -23,6 +24,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -48,6 +50,7 @@ class JsInlineFilterTest : public ResourceManagerTestBase,
         html_url,
         "",  // don't use a doctype for these tests
         js_url,
+        js_url,
         js_original_inline_body,
         js_outline_body,
         js_outline_body,  // expect ouline body to be inlined verbatim
@@ -63,6 +66,7 @@ class JsInlineFilterTest : public ResourceManagerTestBase,
         "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" "
         "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">",
         js_url,
+        js_url,
         "",  // use an empty original inline body for these tests
         js_outline_body,
         // Expect outline body to get surrounded by a CDATA block:
@@ -73,6 +77,7 @@ class JsInlineFilterTest : public ResourceManagerTestBase,
   void TestInlineJavascriptGeneral(const GoogleString& html_url,
                                    const GoogleString& doctype,
                                    const GoogleString& js_url,
+                                   const GoogleString& js_out_url,
                                    const GoogleString& js_original_inline_body,
                                    const GoogleString& js_outline_body,
                                    const GoogleString& js_expected_inline_body,
@@ -86,14 +91,23 @@ class JsInlineFilterTest : public ResourceManagerTestBase,
     if (!doctype.empty()) {
       SetDoctype(doctype);
     }
-    const GoogleString html_input =
+
+    const char kHtmlTemplate[] =
         "<head>\n"
-        "  <script src=\"" + js_url + "\">" +
-          js_original_inline_body + "</script>\n"
+        "  <script src=\"%s\">%s</script>\n"
         "</head>\n"
         "<body>Hello, world!</body>\n";
+
+    const GoogleString html_input =
+        StringPrintf(kHtmlTemplate, js_url.c_str(),
+                     js_original_inline_body.c_str());
+
+    const GoogleString outline_html_output =
+          StringPrintf(kHtmlTemplate, js_out_url.c_str(),
+                    js_original_inline_body.c_str());
+
     const GoogleString expected_output =
-        (!expect_inline ? html_input :
+        (!expect_inline ? outline_html_output :
          "<head>\n"
          "  <script>" + js_expected_inline_body + "</script>\n"
          "</head>\n"
@@ -202,6 +216,23 @@ TEST_P(JsInlineFilterTest, InlineJs404) {
 
   // Second time, to make sure caching doesn't break it.
   ValidateNoChanges("404", "<script src='404.js'></script>");
+}
+
+TEST_P(JsInlineFilterTest, InlineMinimizeInteraction) {
+  // There was a bug in async mode where we would accidentally prevent
+  // minification results from rendering when inlining was not to be done.
+  options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+  options()->set_js_inline_max_bytes(4);
+
+  TestInlineJavascriptGeneral(
+      StrCat(kTestDomain, "minimize_but_not_inline.html"),
+      "",  // No doctype
+      StrCat(kTestDomain, "a.js"),
+      StrCat(kTestDomain, "a.js.pagespeed.jm.0.js"),
+      "",  // No inline body in,
+      "var answer = 42; // const is non-standard",  // out-of-line body
+      "",  // No inline body out,
+      false);  // Not inlining
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.

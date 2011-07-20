@@ -63,6 +63,11 @@ AddOutputFilter INCLUDES .shtml
   LoadModule rewrite_module  @@APACHE_MODULES@@/mod_rewrite.so
 </IfModule>
 
+# For the vary: handling test
+<IfModule !headers_module>
+  LoadModule headers_module  @@APACHE_MODULES@@/mod_headers.so
+</IfModule>
+
 # For regression test of connection failing.
 ModPagespeedDomain www.google.co.ca:8085
 

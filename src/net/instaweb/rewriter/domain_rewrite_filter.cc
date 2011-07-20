@@ -54,7 +54,7 @@ void DomainRewriteFilter::Initialize(Statistics* statistics) {
 }
 
 void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
-  // Disable domain_rewrite for img is ModPagespeedDisableForBots is on
+  // Disable domain_rewrite for img if ModPagespeedDisableForBots is on
   // and the user-agent is a bot.
   if (element->keyword() == HtmlName::kImg &&
       driver_->ShouldNotRewriteImages()) {

@@ -469,7 +469,8 @@ function check_for_sprite() {
   # Now find the parameter of the first url() in the stylesheet.
   cut -d\( -f 2 | cut -d\) -f 1 |
   # This url should include BikeCrash (not just Cuppa), and be fetchable.
-  grep BikeCrashIcn | xargs wget -S -O /dev/null |& grep -c '200 OK'
+  grep BikeCrashIcn | xargs wget -S -O /dev/null 2>&1 |
+  grep -c '200 OK'
 }
 fetch_until $URL check_for_sprite 1
 # We can't do this here because of the wget bug mentioned above.
@@ -527,8 +528,8 @@ $WGET_DUMP $URL | grep blue
 check [ $? = 0 ]
 
 # Helper to test directive ModPagespeedForBots
-# By default directive ModPagespeedForBots is on and image rewriting is disabled
-# for bots while other filters such as inline_css still work.
+# By default directive ModPagespeedForBots is off; otherwise image rewriting is
+# disabled for bots while other filters such as inline_css still work.
 function CheckBots() {
   ON=$1
   COMPARE=$2
@@ -536,8 +537,8 @@ function CheckBots() {
   FILTER="?ModPagespeedFilters=inline_css,rewrite_images"
   PARAM="&ModPagespeedDisableForBots=$ON";
   FILE="bot_test.html"$FILTER
-  # By default ModPagespeedDisableForBots is true, no need to set it in url.
-  # If the test wants it to be off, set it in url.
+  # By default ModPagespeedDisableForBots is false, no need to set it in url.
+  # If the test wants to set it explicitly, set it in url.
   if [[ $ON != "default" ]]; then
     FILE=$FILE$PARAM
   fi
@@ -567,7 +568,7 @@ CheckBots 'off' '-lt' 'Googlebot/2.1'
 echo "Test: UserAgent is a bot; ModPagespeedDisableForBots=on"
 CheckBots 'on' '-gt' 'Googlebot/2.1'
 echo "Test: UserAgent is a bot; ModPagespeedDisableForBots is default"
-CheckBots 'default' '-gt' 'Googlebot/2.1'
+CheckBots 'default' '-lt' 'Googlebot/2.1'
 echo "Test: UserAgent is not a bot, ModPagespeedDisableForBots=off"
 CheckBots 'off' '-lt'
 echo "Test: UserAgent is not a bot, ModPagespeedDisableForBots=on"

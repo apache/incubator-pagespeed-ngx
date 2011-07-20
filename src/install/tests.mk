@@ -96,8 +96,8 @@ rewrite_test_prepare:
 # (multiple choices).
 apache_debug_speling_test : speling_test_prepare apache_install_conf apache_debug_restart
 	@echo Testing compatibility with mod_speling:
-	$(WGET) -O - --save-headers $(EXAMPLE_IMAGE) \
-	  |& head | grep "HTTP request sent, awaiting response... 200 OK"
+	$(WGET) -O /dev/null --save-headers $(EXAMPLE_IMAGE) 2>&1 \
+	  | head | grep "HTTP request sent, awaiting response... 200 OK"
 
 speling_test_prepare:
 	$(eval OPT_SPELING_TEST="SPELING_TEST=1")
@@ -112,8 +112,8 @@ apache_debug_vhost_only_test:
 	  OPT_STRESS_TEST=STRESS_TEST=1
 	echo 'ModPagespeed off' >> $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_restart
-	$(WGET) -O - --save-headers $(EXAMPLE) \
-	  |& head | grep "HTTP request sent, awaiting response... 200 OK"
+	$(WGET) -O /dev/null --save-headers $(EXAMPLE) 2>&1 \
+	  | head | grep "HTTP request sent, awaiting response... 200 OK"
 
 # Test to make sure we don't crash due to uninitialized statistics if we
 # are off by default but turned on in some place.
@@ -121,6 +121,6 @@ apache_debug_global_off_test:
 	$(MAKE) apache_install_conf
 	echo 'ModPagespeed off' >> $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_restart
-	$(WGET) -O - --save-headers $(EXAMPLE)?ModPagespeed=on \
-	  |& head | grep "HTTP request sent, awaiting response... 200 OK"
+	$(WGET) -O /dev/null --save-headers $(EXAMPLE)?ModPagespeed=on 2>&1 \
+	  | head | grep "HTTP request sent, awaiting response... 200 OK"
 

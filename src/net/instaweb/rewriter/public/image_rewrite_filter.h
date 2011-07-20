@@ -86,7 +86,9 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
   const ContentType* ImageToContentType(const GoogleString& origin_url,
                                         Image* image);
   void BeginRewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
-  void FinishRewriteImageUrl(const CachedResult* cached, HtmlElement* element,
+
+  // Returns true if it rewrote the URL.
+  bool FinishRewriteImageUrl(const CachedResult* cached, HtmlElement* element,
                              HtmlElement::Attribute* src);
 
   scoped_ptr<const ImageTagScanner> image_filter_;

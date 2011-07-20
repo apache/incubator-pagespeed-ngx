@@ -64,12 +64,17 @@ class RewriteOptionsTest : public ::testing::Test {
 };
 
 TEST_F(RewriteOptionsTest, BotDetectEnabledByDefault) {
-  ASSERT_TRUE(options_.botdetect_enabled());
+  ASSERT_FALSE(options_.botdetect_enabled());
 }
 
 TEST_F(RewriteOptionsTest, BotDetectEnable) {
   options_.set_botdetect_enabled(true);
   ASSERT_TRUE(options_.botdetect_enabled());
+}
+
+TEST_F(RewriteOptionsTest, BotDetectDisable) {
+  options_.set_botdetect_enabled(false);
+  ASSERT_FALSE(options_.botdetect_enabled());
 }
 
 TEST_F(RewriteOptionsTest, NoneEnabledByDefault) {

@@ -308,6 +308,9 @@ class RewriteContext {
   int num_nested() const { return nested_.size(); }
   RewriteContext* nested(int i) const { return nested_[i]; }
 
+  // Returns true if this is a nested rewriter.
+  bool has_parent() const { return parent_ != NULL; }
+
  private:
   class OutputCacheCallback;
   friend class OutputCacheCallback;

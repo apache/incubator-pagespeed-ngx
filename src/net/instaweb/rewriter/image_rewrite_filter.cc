@@ -120,11 +120,16 @@ void ImageRewriteFilter::Context::Render() {
   // We use automatic rendering for CSS, as we merely write out the improved
   // URL, and manual for HTML, as we have to consider whether to inline, and
   // may also add in width and height attributes.
-  if (slot(0)->disable_rendering()) {
+  if (!has_parent()) {
+    const CachedResult* result = &output_partition(0)->result();
     HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(slot(0).get());
-    filter_->FinishRewriteImageUrl(&output_partition(0)->result(),
-                                   html_slot->element(),
-                                   html_slot->attribute());
+    bool rewrote_url = filter_->FinishRewriteImageUrl(
+        result, html_slot->element(), html_slot->attribute());
+    // If we wrote out the URL ourselves, don't let the default handling
+    // mess it up (in particular replacing data: with out-of-line version)
+    if (rewrote_url) {
+      html_slot->set_disable_rendering(true);
+    }
   } else {
     filter_->rewrite_count_->Add(1);
   }
@@ -356,8 +361,6 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
       Context* context = new Context(this, driver_, NULL /*not nested */,
                                      resource_context.release());
       ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
-      // Disable default slot rendering as it won't know to use a data: URL.
-      slot->set_disable_rendering(true);
       context->AddSlot(slot);
       driver_->InitiateRewrite(context);
     }
@@ -370,10 +373,11 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   }
 }
 
-void ImageRewriteFilter::FinishRewriteImageUrl(
+bool ImageRewriteFilter::FinishRewriteImageUrl(
     const CachedResult* cached, HtmlElement* element,
     HtmlElement::Attribute* src) {
   const RewriteOptions* options = driver_->options();
+  bool rewrote_url = false;
 
   // See if we have a data URL, and if so use it if the browser can handle it
   if (cached->has_inlined_data() &&
@@ -383,11 +387,13 @@ void ImageRewriteFilter::FinishRewriteImageUrl(
     element->DeleteAttribute(HtmlName::kWidth);
     element->DeleteAttribute(HtmlName::kHeight);
     inline_count_->Add(1);
+    rewrote_url = true;
   } else {
     if (cached->optimizable()) {
       // Rewritten HTTP url
       src->SetValue(cached->url());
       rewrite_count_->Add(1);
+      rewrote_url = true;
     }
 
     if (options->Enabled(RewriteOptions::kInsertImageDimensions) &&
@@ -408,6 +414,8 @@ void ImageRewriteFilter::FinishRewriteImageUrl(
       driver_->AddAttribute(element, HtmlName::kHeight, file_dims.height());
     }
   }
+
+  return rewrote_url;
 }
 
 bool ImageRewriteFilter::CanInline(

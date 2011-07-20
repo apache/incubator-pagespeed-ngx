@@ -123,7 +123,7 @@ bool CacheExtender::ShouldRewriteResource(
 }
 
 void CacheExtender::StartElementImpl(HtmlElement* element) {
-  // Disable extend_cache for img is ModPagespeedDisableForBots is on
+  // Disable extend_cache for img if ModPagespeedDisableForBots is on
   // and the user-agent is a bot.
   if (element->keyword() == HtmlName::kImg &&
       driver_->ShouldNotRewriteImages()) {

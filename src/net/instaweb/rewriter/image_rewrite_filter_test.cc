@@ -512,6 +512,21 @@ TEST_P(ImageRewriteTest, NoCrashOnInvalidDim) {
   ParseUrl(kTestDomain, "<img width=\"5\" height=\"-5\" src=\"a.png\">");
 }
 
+TEST_P(ImageRewriteTest, RewriteCacheExtendInteraction) {
+  // There was a bug in async mode where rewriting failing would prevent
+  // cache extension from working as well.
+  options()->EnableFilter(RewriteOptions::kRecompressImages);
+  options()->EnableFilter(RewriteOptions::kExtendCache);
+  rewrite_driver()->AddFilters();
+
+  // Provide a non-image file, so image rewrite fails (but cache extension
+  // works)
+  InitResponseHeaders("a.png", kContentTypePng, "Not a PNG", 600);
+
+  ValidateExpected("cache_extend_fallback", "<img src=a.png>",
+                   "<img src=http://test.com/a.png.pagespeed.ce.0.png>");
+}
+
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(ImageRewriteTestInstance,
                         ImageRewriteTest,

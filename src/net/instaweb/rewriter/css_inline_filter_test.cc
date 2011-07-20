@@ -41,8 +41,10 @@ class CssInlineFilterTest : public ResourceManagerTestBase,
     SetAsynchronousRewrites(GetParam());
   }
 
-  void TestInlineCss(const GoogleString& html_url,
+  void TestInlineCssWithOutputUrl(
+                     const GoogleString& html_url,
                      const GoogleString& css_url,
+                     const GoogleString& css_out_url,
                      const GoogleString& other_attrs,
                      const GoogleString& css_original_body,
                      bool expect_inline,
@@ -52,12 +54,18 @@ class CssInlineFilterTest : public ResourceManagerTestBase,
       filters_added_ = true;
     }
 
+    GoogleString html_template = StrCat(
+        "<head>\n",
+        "  <link rel=\"stylesheet\" href=\"%s\"",
+        (other_attrs.empty() ? "" : " " + other_attrs) + ">\n",
+        "</head>\n",
+        "<body>Hello, world!</body>\n");
+
     const GoogleString html_input =
-        "<head>\n"
-        "  <link rel=\"stylesheet\" href=\"" + css_url + "\"" +
-        (other_attrs.empty() ? "" : " " + other_attrs) + ">\n"
-        "</head>\n"
-        "<body>Hello, world!</body>\n";
+        StringPrintf(html_template.c_str(), css_url.c_str());
+
+    const GoogleString outline_html_output =
+        StringPrintf(html_template.c_str(), css_out_url.c_str());
 
     // Put original CSS file into our fetcher.
     ResponseHeaders default_css_header;
@@ -68,12 +76,23 @@ class CssInlineFilterTest : public ResourceManagerTestBase,
     ParseUrl(html_url, html_input);
 
     const GoogleString expected_output =
-        (!expect_inline ? html_input :
+        (!expect_inline ? outline_html_output :
          "<head>\n"
          "  <style>" + css_rewritten_body + "</style>\n"
          "</head>\n"
          "<body>Hello, world!</body>\n");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
+  }
+
+  void TestInlineCss(const GoogleString& html_url,
+                     const GoogleString& css_url,
+                     const GoogleString& other_attrs,
+                     const GoogleString& css_original_body,
+                     bool expect_inline,
+                     const GoogleString& css_rewritten_body) {
+    TestInlineCssWithOutputUrl(
+        html_url, css_url, css_url, other_attrs, css_original_body,
+        expect_inline, css_rewritten_body);
   }
 
  private:
@@ -201,6 +220,22 @@ TEST_P(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
   ValidateExpected("claims_xhtml_but_has_unclosed_links",
                    StringPrintf(html_format, kXhtmlDtd, unclosed_css),
                    StringPrintf(html_format, kXhtmlDtd, inlined_css));
+}
+
+TEST_P(CssInlineFilterTest, InlineMinimizeInteraction) {
+  // There was a bug in async mode where we would accidentally prevent
+  // minification results from rendering when inlining was not to be done.
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->set_css_inline_max_bytes(4);
+
+  TestInlineCssWithOutputUrl(
+      StrCat(kTestDomain, "minimize_but_not_inline.html"),
+      StrCat(kTestDomain, "a.css"),
+      StrCat(kTestDomain, "a.css.pagespeed.cf.0.css"),
+      "", /* no other attributes*/
+      "div{display: none;}",
+      false,
+      "div{display: none}");
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.

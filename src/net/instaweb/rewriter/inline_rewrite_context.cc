@@ -50,7 +50,6 @@ void InlineRewriteContext::Initiate() {
   ResourcePtr input_resource(filter_->CreateInputResource(src_->value()));
   if (input_resource.get() != NULL) {
     ResourceSlotPtr slot(driver->GetSlot(input_resource, element_, src_));
-    slot->set_disable_rendering(true);
     AddSlot(slot);
     driver->InitiateRewrite(this);
   } else {
@@ -68,6 +67,7 @@ bool InlineRewriteContext::Partition(OutputPartitions* partitions,
     partition->mutable_result()->set_inlined_data(
         resource->contents().as_string());
     outputs->push_back(OutputResourcePtr(NULL));
+    slot(0)->set_disable_rendering(true);
   }
   // If we don't inline, or resource is invalid, we write out an empty partition
   // table, making us do nothing.
