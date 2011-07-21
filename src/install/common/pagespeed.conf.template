@@ -150,4 +150,19 @@
         Allow from 127.0.0.1
         SetHandler mod_pagespeed_statistics
     </Location>
+
+    # Page /mod_pagespeed_message lets you view the latest messages from
+    # mod_pagespeed, regardless of log-level in your httpd.conf
+    # ModPagespeedMessageBufferSize is the maximum number of bytes you would
+    # like to dump to your /mod_pagespeed_message page at one time,
+    # its default value is 100k bytes.
+    # Set it to 0 if you want to disable this feature.
+
+    ModPagespeedMessageBufferSize 100000
+
+    <Location /mod_pagespeed_message>
+        Allow from localhost
+        Allow from 127.0.0.1
+        SetHandler mod_pagespeed_message
+    </Location>
 </IfModule>

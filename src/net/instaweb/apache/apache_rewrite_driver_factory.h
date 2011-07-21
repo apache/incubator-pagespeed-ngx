@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_owner.h"
+#include "net/instaweb/util/public/shared_circular_buffer.h"
 
 struct apr_pool_t;
 struct server_rec;
@@ -32,6 +33,7 @@ struct server_rec;
 namespace net_instaweb {
 
 class AbstractSharedMem;
+class ApacheMessageHandler;
 class SerfUrlAsyncFetcher;
 class SharedMemLockManager;
 class SharedMemStatistics;
@@ -70,6 +72,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
     x.CopyToString(&fetcher_proxy_);
   }
 
+  void set_message_buffer_size(const int x) {
+    message_buffer_size_ = x;
+  }
   // Controls whether we act as a rewriting proxy, fetching
   // URLs from origin without managing a slurp dump.
   void set_test_proxy(bool p) { test_proxy_ = p; }
@@ -81,6 +86,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   StringPiece file_cache_path() { return file_cache_path_; }
   int64 file_cache_clean_size_kb() { return file_cache_clean_size_kb_; }
   int64 fetcher_time_out_ms() { return fetcher_time_out_ms_; }
+  GoogleString hostname_identifier() { return hostname_identifier_; }
+
   virtual Statistics* statistics();
   void SetStatistics(SharedMemStatistics* x);
   void set_statistics_enabled(bool x) { statistics_enabled_ = x; }
@@ -90,7 +97,13 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
   }
-
+  // Give access to apache_message_handler_ for the cases we need
+  // to use ApacheMessageHandler rather than MessageHandler.
+  // e.g. Use ApacheMessageHandler::Dump()
+  // This is a better choice than cast from MessageHandler.
+  ApacheMessageHandler* apache_message_handler() {
+    return apache_message_handler_;
+  }
   // For shared memory resources the general setup we follow is to have the
   // first running process (aka the root) create the necessary segments and
   // fill in their shared data structures, while processes created to actually
@@ -113,6 +126,10 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // syntax check the config file. That basically looks like a complete
   // normal startup and shutdown to the code.
   bool is_root_process() const { return is_root_process_; }
+  // Initialize SharedCircularBuffer and pass it to ApacheMessageHandler and
+  // ApacheHtmlParseMessageHandler. is_root is true if this is invoked from
+  // root (ie. parent) process.
+  void SharedCircularBufferInit(bool is_root);
   void RootInit();
   void ChildInit();
 
@@ -152,6 +169,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   SerfUrlAsyncFetcher* serf_url_async_fetcher_;
   SharedMemStatistics* shared_mem_statistics_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
+  scoped_ptr<SharedCircularBuffer> shared_circular_buffer_;
 
   static RefCountedOwner<SlowWorker>::Family slow_worker_family_;
   RefCountedOwner<SlowWorker> slow_worker_;
@@ -160,6 +178,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // some other struct, which would keep them distinct from the rest of the
   // state.  Note also that some of the options are in the base class,
   // RewriteDriverFactory, so we'd have to sort out how that worked.
+  int message_buffer_size_;
   int64 lru_cache_kb_per_process_;
   int64 lru_cache_byte_limit_;
   int64 file_cache_clean_interval_ms_;
@@ -169,6 +188,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   std::string file_cache_path_;
   std::string fetcher_proxy_;
   std::string version_;
+
   bool statistics_enabled_;
   bool statistics_frozen_;
   bool owns_statistics_;  // If true, this particular factory is responsible
@@ -180,6 +200,21 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // Shared memory locking is enabled.
   bool use_shared_mem_locking_;
 
+  // hostname_identifier_ equals to "server_hostname:port" of Apache,
+  // it's used to distinguish the name of shared memory,
+  // so that each vhost has its own SharedCircularBuffer.
+  const GoogleString hostname_identifier_;
+  // This will be assigned to message_handler_ when message_handler() or
+  // html_parse_message_handler is invoked for the first time.
+  // We keep an extra link because we need to refer them as
+  // ApacheMessageHandlers rather than just MessageHandler in initialization
+  // process.
+  ApacheMessageHandler* apache_message_handler_;
+  // This will be assigned to html_parse_message_handler_ when
+  // html_parse_message_handler() is invoked for the first time.
+  // Note that apache_message_handler_ and apache_html_parse_message_handler
+  // writes to the same shared memory which is owned by the factory.
+  ApacheMessageHandler* apache_html_parse_message_handler_;
   SharedMemLifecycle<SharedMemLockManager> shared_mem_lock_manager_lifecycler_;
 
   // These maps keeps are used by SharedMemSubsystemLifecycleManager to

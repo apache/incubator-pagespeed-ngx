@@ -67,7 +67,6 @@ bool InlineRewriteContext::Partition(OutputPartitions* partitions,
     partition->mutable_result()->set_inlined_data(
         resource->contents().as_string());
     outputs->push_back(OutputResourcePtr(NULL));
-    slot(0)->set_disable_rendering(true);
   }
   // If we don't inline, or resource is invalid, we write out an empty partition
   // table, making us do nothing.
@@ -87,6 +86,7 @@ void InlineRewriteContext::Rewrite(int partition_index,
 void InlineRewriteContext::Render() {
   if (num_output_partitions() == 1) {
     // We've decided to inline...
+    slot(0)->set_disable_rendering(true);
     ResourceSlotPtr our_slot = slot(0);
     RenderInline(
         our_slot->resource(), output_partition(0)->result().inlined_data(),
