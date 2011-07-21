@@ -425,6 +425,12 @@ echo TEST: Etags is present
 echo "$IMG_HEADERS" | grep -qi 'Etag: W/0'
 check [ $? = 0 ]
 
+# Make sure an extra header is propagated from input resource to output
+# resource.  X-Extra-Header is added in debug.conf.template.
+echo TEST: Extra header is present
+echo "$IMG_HEADERS" | grep -qi 'X-Extra-Header'
+check [ $? = 0 ]
+
 # Make sure there is a last-modified tag
 echo TEST: Last-modified is present
 echo "$IMG_HEADERS" | grep -qi 'Last-Modified'

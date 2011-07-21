@@ -317,6 +317,36 @@ class ResourceManager {
 
   QueuedWorker* rewrite_worker() { return rewrite_worker_.get(); }
 
+  // Take any headers that are not caching-related, and not otherwise
+  // filled in by SetDefaultLongCacheHeaders or SetContentType, but
+  // *were* set on the input resource, and copy them to the output
+  // resource.  This allows user headers to be preserved.  This must
+  // be called as needed by individual filters, prior to Write().
+  //
+  // Note that this API is only usable for single-input rewriters.
+  // Combiners will need to execute some kind of merge, union, or
+  // intersection policy, if we wish to preserve origin response
+  // headers.
+  //
+  // Note: this does not call ComputeCaching() on the output headers,
+  // so that method must be called prior to invoking any caching predicates
+  // on the output's ResponseHeader.  In theory we shouldn't mark the
+  // caching bits dirty because we are only adding headers that will
+  // not affect caching, but at the moment the dirty-bit is set independent
+  // of that.
+  //
+  // TODO(jmarantz): avoid setting caching_dirty bit in ResponseHeaders when
+  // the header is not caching-related.
+  void MergeNonCachingResponseHeaders(const ResourcePtr& input,
+                                      const OutputResourcePtr& output) {
+    MergeNonCachingResponseHeaders(*input->response_headers(),
+                                   output->response_headers());
+  }
+
+  // Entry-point with the same functionality, exposed for easier testing.
+  void MergeNonCachingResponseHeaders(const ResponseHeaders& input_headers,
+                                      ResponseHeaders* output_headers);
+
  private:
   GoogleString file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.

@@ -80,7 +80,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 apache_debug_rewrite_test : rewrite_test_prepare apache_install_conf apache_debug_restart
 	sleep 2
 	$(WGET) -q -O - --save-headers $(EXAMPLE_IMAGE) \
-	  | head -12 | grep "Content-Type: image/jpeg"
+	  | head -13 | grep "Content-Type: image/jpeg"
 	$(WGET) -q -O - $(APACHE_SERVER)/mod_pagespeed_statistics \
 	  | grep cache_hits
 	$(WGET) -q -O - $(APACHE_SERVER)/shortcut.html \

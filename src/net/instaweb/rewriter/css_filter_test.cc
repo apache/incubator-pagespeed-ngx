@@ -17,6 +17,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //     and sligocki@google.com (Shawn Ligocki)
 
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -30,18 +32,18 @@ namespace net_instaweb {
 
 namespace {
 
+const char kInputStyle[] =
+    ".background_blue { background-color: #f00; }\n"
+    ".foreground_yellow { color: yellow; }\n";
+const char kOutputStyle[] =
+    ".background_blue{background-color:red}"
+    ".foreground_yellow{color:#ff0}";
+
 class CssFilterTest : public CssRewriteTestBase {
 };
 
 TEST_P(CssFilterTest, SimpleRewriteCssTest) {
-  GoogleString input_style =
-      ".background_blue { background-color: #f00; }\n"
-      ".foreground_yellow { color: yellow; }\n";
-  GoogleString output_style =
-      ".background_blue{background-color:red}"
-      ".foreground_yellow{color:#ff0}";
-
-  ValidateRewrite("rewrite_css", input_style, output_style);
+  ValidateRewrite("rewrite_css", kInputStyle, kOutputStyle);
 }
 
 TEST_P(CssFilterTest, RewriteCss404) {
@@ -59,10 +61,7 @@ TEST_P(CssFilterTest, UrlTooLong) {
   GoogleString filename(options()->max_url_segment_size() - 4, 'z');
   // If filename wasn't too long, this would be rewritten (like in
   // SimpleRewriteCssTest).
-  GoogleString input_style =
-      ".background_blue { background-color: #f00; }\n"
-      ".foreground_yellow { color: yellow; }\n";
-  ValidateRewriteExternalCss(filename, input_style, input_style,
+  ValidateRewriteExternalCss(filename, kInputStyle, kInputStyle,
                              kExpectNoChange | kExpectSuccess);
 }
 
@@ -499,6 +498,13 @@ TEST_P(CssFilterTest, NoQuirksModeForXhtml) {
   // rewriter knowing that the original resource was found in an XHTML page
   // which we don't know if we are recieving a Fetch request and don't have
   // the resource. This could cause issues :/
+}
+
+// http://code.google.com/p/modpagespeed/issues/detail?id=324
+TEST_P(CssFilterTest, RetainExtraHeaders) {
+  GoogleString url = StrCat(kTestDomain, "retain.css");
+  InitResponseHeaders(url, kContentTypeCss, kInputStyle, 300);
+  TestRetainExtraHeaders("retain.css", "retain.css", "cf", "css");
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.

@@ -527,6 +527,16 @@ TEST_P(ImageRewriteTest, RewriteCacheExtendInteraction) {
                    "<img src=http://test.com/a.png.pagespeed.ce.0.png>");
 }
 
+// http://code.google.com/p/modpagespeed/issues/detail?id=324
+TEST_P(ImageRewriteTest, RetainExtraHeaders) {
+  // Store image contents into fetcher.
+  AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+  TestRetainExtraHeaders(kPuzzleJpgFile,
+                         StrCat("x", kPuzzleJpgFile),
+                         "ic", "jpg");
+}
+
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(ImageRewriteTestInstance,
                         ImageRewriteTest,

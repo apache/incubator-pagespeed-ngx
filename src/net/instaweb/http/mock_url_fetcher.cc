@@ -50,6 +50,17 @@ void MockUrlFetcher::SetResponse(const StringPiece& url,
   SetConditionalResponse(url, 0, response_header, response_body);
 }
 
+void MockUrlFetcher::AddToResponse(const StringPiece& url,
+                                   const StringPiece& name,
+                                   const StringPiece& value) {
+  ResponseMap::iterator iter = response_map_.find(url.as_string());
+  CHECK(iter != response_map_.end());
+  HttpResponse* http_response = iter->second;
+  ResponseHeaders* response = http_response->mutable_header();
+  response->Add(name, value);
+  response->ComputeCaching();
+}
+
 void MockUrlFetcher::SetConditionalResponse(
     const StringPiece& url, int64 last_modified_time,
     const ResponseHeaders& response_header, const StringPiece& response_body) {

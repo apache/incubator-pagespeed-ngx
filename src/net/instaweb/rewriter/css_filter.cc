@@ -218,9 +218,12 @@ void CssFilter::Context::Harvest() {
       // TODO(morlovich): Incorporate time from nested rewrites.
       int64 expire_ms = input_resource_->CacheExpirationTimeMs();
       output_resource_->SetType(&kContentTypeCss);
-      ok = Manager()->Write(HttpStatus::kOK, out_text,
-                            output_resource_.get(),
-                            expire_ms, Driver()->message_handler());
+      ResourceManager* manager = Manager();
+      manager->MergeNonCachingResponseHeaders(input_resource_,
+                                              output_resource_);
+      ok = manager->Write(HttpStatus::kOK, out_text,
+                          output_resource_.get(),
+                          expire_ms, Driver()->message_handler());
     } else {
       output_partition(0)->mutable_result()->set_inlined_data(out_text);
     }
@@ -604,6 +607,8 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
         int64 expire_ms = std::min(result.expiration_ms,
                                    input_resource->CacheExpirationTimeMs());
         output_resource->SetType(&kContentTypeCss);
+        resource_manager_->MergeNonCachingResponseHeaders(input_resource,
+                                                          output_resource);
         if (resource_manager_->Write(HttpStatus::kOK,
                                      out_contents,
                                      output_resource.get(),

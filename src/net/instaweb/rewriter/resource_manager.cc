@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/resource_manager.h"
 
+#include <algorithm>                   // for std::binary_search
 #include <cstddef>                     // for size_t
 #include <set>
 #include <vector>
@@ -91,6 +92,25 @@ const char kPageLoadCount[] = "page_load_count";
 
 const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
 const int64 kRefreshExpirePercent = 75;
+
+// Attributes that should not be automatically copied from inputs to outputs
+const char* kExcludedAttributes[] = {
+  HttpAttributes::kCacheControl,
+  HttpAttributes::kContentEncoding,
+  HttpAttributes::kContentLength,
+  HttpAttributes::kContentType,
+  HttpAttributes::kDate,
+  HttpAttributes::kEtag,
+  HttpAttributes::kExpires,
+  HttpAttributes::kLastModified,
+  HttpAttributes::kVary
+};
+
+bool IsExcludedAttribute(const char* attribute) {
+  const char** end = kExcludedAttributes + arraysize(kExcludedAttributes);
+  return std::binary_search(kExcludedAttributes, end, attribute,
+                            CharStarCompareInsensitive());
+}
 
 }  // namespace
 
@@ -169,6 +189,13 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       decoding_driver_(NewUnmanagedRewriteDriver()) {
   rewrite_worker_.reset(new QueuedWorker(thread_system_));
   rewrite_worker_->Start();
+
+  // Make sure the excluded-attributes are in abc order so binary_search works.
+  // Make sure to use the same comparator that we pass to the binary_search.
+  for (int i = 1, n = arraysize(kExcludedAttributes); i < n; ++i) {
+    DCHECK(CharStarCompareInsensitive()(kExcludedAttributes[i - 1],
+                                        kExcludedAttributes[i]));
+  }
 }
 
 ResourceManager::~ResourceManager() {
@@ -240,6 +267,17 @@ void ResourceManager::SetDefaultLongCacheHeaders(
   // time.
 
   header->ComputeCaching();
+}
+
+void ResourceManager::MergeNonCachingResponseHeaders(
+    const ResponseHeaders& input_headers,
+    ResponseHeaders* output_headers) {
+  for (int i = 0, n = input_headers.NumAttributes(); i < n; ++i) {
+    const GoogleString& name = input_headers.Name(i);
+    if (!IsExcludedAttribute(name.c_str())) {
+      output_headers->Add(name, input_headers.Value(i));
+    }
+  }
 }
 
 // TODO(jmarantz): consider moving this method to ResponseHeaders

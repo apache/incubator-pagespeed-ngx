@@ -190,6 +190,13 @@ TEST_P(JavascriptFilterTest, XHtmlInlineJavascript) {
                    StringPrintf(xhtml_script_format.c_str(), kJsMinData));
 }
 
+// http://code.google.com/p/modpagespeed/issues/detail?id=324
+TEST_P(JavascriptFilterTest, RetainExtraHeaders) {
+  GoogleString url = StrCat(kTestDomain, kOrigJsName);
+  InitResponseHeaders(url, kContentTypeJavascript, kJsData, 300);
+  TestRetainExtraHeaders(kOrigJsName, kOrigJsName, "jm", "js");
+}
+
 // We runs the test with GetParam() both true and false, in order to
 // test both the traditional and async flows.
 INSTANTIATE_TEST_CASE_P(JavascriptFilterTestInstance,

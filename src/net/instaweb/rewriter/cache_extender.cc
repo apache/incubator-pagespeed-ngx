@@ -257,8 +257,9 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
       contents = absolutified;
     }
   }
-  // TODO(sligocki): Should we preserve the response headers from the
-  // original resource?
+
+  resource_manager_->MergeNonCachingResponseHeaders(
+      input_resource, output_resource);
   if (resource_manager_->Write(
           HttpStatus::kOK, contents, output_resource.get(),
           headers->CacheExpirationTimeMs(), message_handler)) {

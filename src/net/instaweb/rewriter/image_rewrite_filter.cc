@@ -260,6 +260,7 @@ ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
       }
 
       int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
+      resource_manager_->MergeNonCachingResponseHeaders(input_resource, result);
       if (resource_manager_->Write(
               HttpStatus::kOK, image->Contents(), result.get(),
               origin_expire_time_ms, message_handler)) {

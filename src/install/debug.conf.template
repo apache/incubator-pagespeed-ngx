@@ -68,6 +68,12 @@ AddOutputFilter INCLUDES .shtml
   LoadModule headers_module  @@APACHE_MODULES@@/mod_headers.so
 </IfModule>
 
+# Helps tests that extra headers supplied by the apache conf
+# survive single-resource rewrites
+#
+# http://code.google.com/p/modpagespeed/issues/detail?id=324
+Header append 'X-Extra-Header' '1'
+
 # For regression test of connection failing.
 ModPagespeedDomain www.google.co.ca:8085
 

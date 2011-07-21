@@ -145,6 +145,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                      const StringPiece& name, const StringPiece& ext,
                      GoogleString* content);
 
+  bool ServeResourceUrl(const StringPiece& url, GoogleString* content,
+                        ResponseHeaders* response);
   bool ServeResourceUrl(const StringPiece& url, GoogleString* content);
 
   // Just check if we can fetch a resource successfully, ignore response.
@@ -242,6 +244,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     mock_url_fetcher_.SetResponse(url, response_header, response_body);
   }
 
+  void AddToResponse(const StringPiece& url,
+                     const StringPiece& name,
+                     const StringPiece& value) {
+    mock_url_fetcher_.AddToResponse(url, name, value);
+  }
+
   void SetFetchResponse404(const StringPiece& url);
 
   void SetFetchFailOnUnexpected(bool fail) {
@@ -291,14 +299,29 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // to advance time.
   void SetupDriver(ResourceManager* rm, RewriteDriver* rd);
 
+  // Converts a potentially relative URL off kTestDomain to absolute if needed.
+  GoogleString AbsolutifyUrl(const StringPiece& in);
+
+  // Tests that non-caching-related response-header attributes are propagated
+  // to output resources.
+  //
+  // 'name' is the original name of the resource.
+  // 'encoded_name' is the result of encoding the resource with the relevant
+  // filter.
+  //
+  // TODO(jmarantz): the 'encoded_name' arg could be removed if the filter_id
+  // is used to lookup the relevant filter in the RewriteDriver, to find
+  // its UrlSegmentEncoder*.
+  void TestRetainExtraHeaders(const StringPiece& name,
+                              const StringPiece& encoded_name,
+                              const StringPiece& filter_id,
+                              const StringPiece& ext);
+
  private:
   // Calls callbacks on given wait fetcher, making sure to properly synchronize
   // with async rewrite flows given driver.
   void CallFetcherCallbacksForDriver(WaitUrlAsyncFetcher* fetcher,
                                      RewriteDriver* driver);
-
-  // Converts a potentially relative URL off kTestDomain to absolute if needed.
-  GoogleString AbsolutifyUrl(const StringPiece& in);
 
   MockUrlFetcher mock_url_fetcher_;
   FakeUrlAsyncFetcher mock_url_async_fetcher_;

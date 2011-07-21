@@ -44,6 +44,12 @@ class MockUrlFetcher : public UrlFetcher {
                    const ResponseHeaders& response_header,
                    const StringPiece& response_body);
 
+  // Adds a new response-header attribute name/value pair to an existing
+  // response.  If the response does not already exist, the method check-fails.
+  void AddToResponse(const StringPiece& url,
+                     const StringPiece& name,
+                     const StringPiece& value);
+
   // Set a conditional response which will either respond with the supplied
   // response_headers and response_body or a simple 304 Not Modified depending
   // upon last_modified_time and conditional GET "If-Modified-Since" headers.
@@ -89,6 +95,7 @@ class MockUrlFetcher : public UrlFetcher {
 
     const int64 last_modified_time() const { return last_modified_time_; }
     const ResponseHeaders& header() const { return header_; }
+    ResponseHeaders* mutable_header() { return &header_; }
     const GoogleString& body() const { return body_; }
 
    private:
@@ -98,7 +105,7 @@ class MockUrlFetcher : public UrlFetcher {
 
     DISALLOW_COPY_AND_ASSIGN(HttpResponse);
   };
-  typedef std::map<const GoogleString, const HttpResponse*> ResponseMap;
+  typedef std::map<const GoogleString, HttpResponse*> ResponseMap;
 
   ResponseMap response_map_;
 
