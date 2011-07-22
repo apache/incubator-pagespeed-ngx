@@ -26,35 +26,10 @@
 
 namespace net_instaweb {
 
+class Function;
+
 class SharedMemTestEnv {
  public:
-  class Callback {
-   public:
-    // Note: unlike usual, these callbacks should not auto-cleanup themselves
-    // on invocation. The responsibility is given to the TestEnv as the #
-    // of copies floating around depends on how the memory sharing ends up.
-    virtual void Run() = 0;
-    virtual ~Callback();
-  };
-
-  // A little helper for using member functions with CreateChild.
-  template<typename T>
-  class MethodCallback : public Callback {
-   public:
-    typedef void (T::*Method)();
-
-    MethodCallback(T* base, Method method) : base_(base), method_(method) {
-    }
-
-    virtual void Run() {
-      (base_->*method_)();
-    }
-
-   private:
-    T* base_;
-    Method method_;
-  };
-
   virtual ~SharedMemTestEnv();
   SharedMemTestEnv() {}
 
@@ -65,7 +40,7 @@ class SharedMemTestEnv {
   // object properly.
   //
   // Returns whether started OK or not.
-  virtual bool CreateChild(Callback* callback) = 0;
+  virtual bool CreateChild(Function* callback) = 0;
 
   // This method must be overridden to block until all processes/threads started
   // by CreateChild exit.
@@ -112,8 +87,6 @@ class SharedMemTestBase : public testing::Test {
   void TestMutex();
 
  private:
-  typedef SharedMemTestEnv::MethodCallback<SharedMemTestBase> MethodCallback;
-
   static const int kLarge = 0x1000 - 4;  // not a multiple of any page size, but
                                          // a multiple of 4.
   static const int kNumIncrements = 0xFFFFF;

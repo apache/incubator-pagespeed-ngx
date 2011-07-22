@@ -15,6 +15,7 @@
 // Author: fangfei@google.com (Fangfei Zhou)
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
@@ -38,7 +39,8 @@ SharedCircularBufferTestBase::SharedCircularBufferTestBase(
 }
 
 bool SharedCircularBufferTestBase::CreateChild(TestMethod method) {
-  MethodCallback* callback = new MethodCallback(this, method);
+  Function* callback =
+      new MemberFunction0<SharedCircularBufferTestBase>(method, this);
   return test_env_->CreateChild(callback);
 }
 

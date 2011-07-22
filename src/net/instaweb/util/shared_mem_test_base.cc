@@ -20,8 +20,9 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 
 namespace net_instaweb {
 
@@ -33,16 +34,13 @@ namespace {
 SharedMemTestEnv::~SharedMemTestEnv() {
 }
 
-SharedMemTestEnv::Callback::~Callback() {
-}
-
 SharedMemTestBase::SharedMemTestBase(SharedMemTestEnv* test_env)
     : test_env_(test_env),
       shmem_runtime_(test_env->CreateSharedMemRuntime()) {
 }
 
 bool SharedMemTestBase::CreateChild(TestMethod method) {
-  MethodCallback* callback = new MethodCallback(this, method);
+  Function* callback = new MemberFunction0<SharedMemTestBase>(method, this);
   return test_env_->CreateChild(callback);
 }
 

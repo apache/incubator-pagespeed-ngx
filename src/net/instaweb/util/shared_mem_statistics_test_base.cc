@@ -17,6 +17,7 @@
 #include "net/instaweb/util/public/shared_mem_statistics_test_base.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
@@ -42,7 +43,8 @@ SharedMemStatisticsTestBase::SharedMemStatisticsTestBase(
 }
 
 bool SharedMemStatisticsTestBase::CreateChild(TestMethod method) {
-  MethodCallback* callback = new MethodCallback(this, method);
+  Function* callback =
+      new MemberFunction0<SharedMemStatisticsTestBase>(method, this);
   return test_env_->CreateChild(callback);
 }
 
@@ -183,7 +185,7 @@ void SharedMemStatisticsTestBase::TestAdd() {
     ASSERT_TRUE(CreateChild(&SharedMemStatisticsTestBase::TestAddChild));
   }
   test_env_->WaitForChildren();
-  EXPECT_EQ( 3 + 10 * 1, v1->Get());
+  EXPECT_EQ(3 + 10 * 1, v1->Get());
   EXPECT_EQ(17 + 10 * 2, v2->Get());
 
   GoogleString dump;

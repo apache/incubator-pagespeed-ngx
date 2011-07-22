@@ -17,6 +17,7 @@
 #include "net/instaweb/util/public/shared_mem_lock_manager_test_base.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
@@ -52,7 +53,8 @@ void SharedMemLockManagerTestBase::TearDown() {
 }
 
 bool SharedMemLockManagerTestBase::CreateChild(TestMethod method) {
-  MethodCallback* callback = new MethodCallback(this, method);
+  Function* callback =
+      new MemberFunction0<SharedMemLockManagerTestBase>(method, this);
   return test_env_->CreateChild(callback);
 }
 

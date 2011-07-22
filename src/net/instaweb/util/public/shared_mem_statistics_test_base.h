@@ -41,9 +41,6 @@ class SharedMemStatisticsTestBase : public testing::Test {
   void TestAdd();
 
  private:
-  typedef SharedMemTestEnv::MethodCallback<SharedMemStatisticsTestBase>
-      MethodCallback;
-
   void TestCreateChild();
   void TestSetChild();
   void TestClearChild();
