@@ -36,7 +36,8 @@ struct ContentType;
 
 // Macro for tests involving nested async rewrite paths that haven't been
 // ported yet.
-#define CSS_XFAIL_ASYNC() if (SkipIfAsync()) { return; }
+#define CSS_XFAIL_ASYNC() if (SkipAndWarnIfAsync()) { return; }
+#define CSS_XFAIL_SYNC() if (SkipAndWarnIfSync()) { return; }
 
 class CssRewriteTestBase : public ResourceManagerTestBase,
                            public ::testing::WithParamInterface<bool> {
@@ -128,7 +129,9 @@ class CssRewriteTestBase : public ResourceManagerTestBase,
 
   // Helper for CSS_XFAIL_ASYNC above. Returns true & logs if it async mode
   // is on.
-  bool SkipIfAsync();
+  // SkipIfSync() does the oposite.
+  bool SkipAndWarnIfAsync();
+  bool SkipAndWarnIfSync();
 
   Variable* num_files_minified_;
   Variable* minified_bytes_saved_;

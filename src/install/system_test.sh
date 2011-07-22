@@ -463,30 +463,40 @@ FETCHED=$OUTDIR/$FILE
 fetch_until $URL 'grep -c .pagespeed.ic.' 1  # image rewritten
 check $WGET_PREREQ $URL
 
-test_filter rewrite_css,sprite_images sprites images in CSS
-FILE=sprite_images.html?ModPagespeedFilters=$FILTER_NAME
-URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
-# Warning: tricky code ahead!  The html contains a reference to an external CSS
-# which contains references to images.  On the first fetch nothing will be
-# rewritten since the CSS file isn't cached.  On a subsequent fetch, the CSS
-# will be rewritten; however the images weren't fetched until this point, so
-# they won't be sprited.  On a *subsequent* fetch, the CSS will be rewritten a
-# *second* time to include a reference to the sprited image (which we want to
-# fetch).  Checking this using fetch_until requires some deft plumbing.  We
-# *could* just use a recursive wget for this, but for a bug in wget's css
-# parser: https://savannah.gnu.org/bugs/?32940 .
+# This test is only valid for async.
+# TODO(nforman): uncomment this when async is on by default.
+# test_filter rewrite_css,sprite_images sprites images in CSS
+# FILE=sprite_images.html?ModPagespeedFilters=$FILTER_NAME
+# URL=$EXAMPLE_ROOT/$FILE
+# FETCHED=$OUTDIR/$FILE
+# # Warning: tricky code ahead!  The html contains a reference to an external
+# # CSS which contains references to images.  On the first fetch nothing will be
+# # rewritten since the CSS file isn't cached.  On a subsequent fetch, the CSS
+# # will be rewritten; however the images weren't fetched until this point, so
+# # they won't be sprited.  On a *subsequent* fetch, the CSS will be rewritten a
+# # *second* time to include a reference to the sprited image (which we want to
+# # fetch).  Checking this using fetch_until requires some deft plumbing.  We
+# # *could* just use a recursive wget for this, but for a bug in wget's css
+# # parser: https://savannah.gnu.org/bugs/?32940 .
 
-function check_for_sprite() {
-  # First, find the <link rel="stylesheet"> tag; extract its href; fetch that.
-  grep stylesheet | cut -d\" -f 6 | xargs wget -q -O - |
-  # Now find the parameter of the first url() in the stylesheet.
-  cut -d\( -f 2 | cut -d\) -f 1 |
-  # This url should include BikeCrash (not just Cuppa), and be fetchable.
-  grep BikeCrashIcn | xargs wget -S -O /dev/null 2>&1 |
-  grep -c '200 OK'
-}
-fetch_until $URL check_for_sprite 1
+# function check_for_sprite() {
+#   # First, find the <link rel="stylesheet"> tag; extract its href; fetch that.
+#   grep stylesheet | cut -d\" -f 6 | xargs wget -q -O - |
+#   # Now find the parameter of the first url() in the stylesheet.
+#   cut -d\( -f 2 | cut -d\) -f 1 |
+#   # This url should include BikeCrash (not just Cuppa), and be fetchable.
+#   grep BikeCrashIcn | xargs wget -S -O /dev/null 2>&1 |
+#   grep -c '200 OK'
+# }
+# #fetch until the css file is re-written.
+# fetch_until $URL 'grep -c css.pagespeed.cf' 1
+# echo $WGET_DUMP $URL
+# $WGET_DUMP $URL > $OUTDIR/sprite_output
+# CSS=`grep stylesheet $OUTDIR/sprite_output | cut -d\" -f 6`
+
+# echo css is $CSS
+# fetch_until $CSS 'grep -c BikeCrashIcn.png' 2
+
 # We can't do this here because of the wget bug mentioned above.
 #check $WGET_PREREQ $URL
 

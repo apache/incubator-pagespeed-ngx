@@ -221,9 +221,17 @@ void CssRewriteTestBase::TestCorruptUrl(const char* junk,
       kExpectChange | kExpectSuccess | kNoClearFetcher | kNoStatCheck);
 }
 
-bool CssRewriteTestBase::SkipIfAsync() {
+bool CssRewriteTestBase::SkipAndWarnIfAsync() {
   if (rewrite_driver()->asynchronous_rewrites()) {
     LOG(ERROR) << "Skipping test in async mode!";
+    return true;
+  }
+  return false;
+}
+
+bool CssRewriteTestBase::SkipAndWarnIfSync() {
+  if (!rewrite_driver()->asynchronous_rewrites()) {
+    LOG(ERROR) << "Skipping test in sync mode!";
     return true;
   }
   return false;

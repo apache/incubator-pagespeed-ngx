@@ -77,6 +77,11 @@ CssResourceSlotPtr CssResourceSlotFactory::GetSlot(
   CssResourceSlot* slot_obj =
       new CssResourceSlot(resource, values, value_index);
   CssResourceSlotPtr slot(slot_obj);
+  return UniquifySlot(slot);
+}
+
+CssResourceSlotPtr CssResourceSlotFactory::UniquifySlot(
+    CssResourceSlotPtr slot) {
   std::pair<SlotSet::iterator, bool> iter_found = slots_.insert(slot);
   if (!iter_found.second) {
     // The slot was already in the set.  Release the one we just

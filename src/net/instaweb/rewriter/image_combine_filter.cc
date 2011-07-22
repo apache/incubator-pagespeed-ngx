@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
 
+#include <cstddef>                     // for size_t
 #include <map>
 #include <vector>
 
@@ -27,13 +28,18 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_combiner_template.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/spriter/image_library_interface.h"
 #include "net/instaweb/spriter/public/image_spriter.h"
 #include "net/instaweb/spriter/public/image_spriter.pb.h"
@@ -45,6 +51,7 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/identifier.h"
 #include "webutil/css/parser.h"
@@ -54,8 +61,10 @@
 namespace net_instaweb {
 class RequestHeaders;
 class ResponseHeaders;
+class UrlSegmentEncoder;
 class Writer;
 
+typedef std::map<GoogleString, const spriter::Rect*> RectMap;
 namespace {
 
 // names for Statistics variables.
@@ -76,9 +85,19 @@ class SpriteFuture {
   // old_url is the original URL which will be replaced with the sprite.  We
   // keep track of it so that we can avoid putting the same image in the sprite
   // twice.
-  explicit SpriteFuture(const StringPiece& old_url)
-      : url_value_(NULL), x_value_(NULL), y_value_(NULL),
-        declarations_(NULL), declaration_to_push_(NULL) {
+  // Initialize declarations for future use.
+  // Used for async flow where we can't check image against decls
+  // when the future is created.
+  explicit SpriteFuture(const StringPiece& old_url, int width, int height,
+                        Css::Declarations* decls)
+      : url_value_(NULL),
+        x_value_(NULL),
+        y_value_(NULL),
+        declarations_(decls),
+        declaration_to_push_(NULL),
+        width_(width),
+        height_(height),
+        has_position_(false) {
     old_url.CopyToString(&old_url_);
     x_offset_ = 0;
     y_offset_ = 0;
@@ -89,12 +108,16 @@ class SpriteFuture {
   // Bind this Future to a particular image.  Owns nothing; the inputs must
   // outlive this future.  Returns true if this is a viable sprite-future.  If
   // we return false, Realize must not be called.
+  // TODO(nforman): when taking out syn version, remove declarations
+  // argument, which should be the same as declarations_.
   bool Initialize(Css::Declarations* declarations, Css::Value* url_value) {
     url_value_ = url_value;
     return FindBackgroundPositionValues(declarations);
   }
 
   const GoogleString& old_url() { return old_url_; }
+
+  Css::Declarations* decls() { return declarations_; }
 
   // TODO(abliss): support other values like "10%" and "center"
   static bool GetPixelValue(Css::Value* value, int* out_value_px) {
@@ -196,27 +219,51 @@ class SpriteFuture {
     }
     return false;
   }
+
   // Attempt to actually perform the url substitution.  Initialize must have
   // been called first, and must have returned true.
   void Realize(const char* url, int x, int y) {
+    if (!has_position_) {
+      // If no position was specified, it defaults to "0% 0%", which is the same
+      // as "0px 0px".
+      Css::Values* values = new Css::Values();
+      x_value_ = new Css::Value(0, Css::Value::PX);
+      values->push_back(x_value_);
+      y_value_ = new Css::Value(0, Css::Value::PX);
+      values->push_back(y_value_);
+      declaration_to_push_ = new Css::Declaration(
+          Css::Property::BACKGROUND_POSITION, values, false);
+    }
     CHECK(x_value_ != NULL);
     *url_value_ = Css::Value(Css::Value::URI, UTF8ToUnicodeText(url));
     *x_value_ = Css::Value(x_offset_ - x, Css::Value::PX);
     *y_value_ = Css::Value(y_offset_ - y, Css::Value::PX);
+
     if ((declarations_ != NULL) && (declaration_to_push_ != NULL)) {
       declarations_->push_back(declaration_to_push_);
     }
+  }
+
+  int width() {
+    return width_;
+  }
+
+  int height() {
+    return height_;
   }
 
  private:
   // Attempt to find the background position values, or create them if
   // necessary.  If we return true, we should be all set for a call to
   // Realize().  If we return false, Realize() must never be called.
+  // set has_position_ to true if there is already a position declaration.
+  // If has_position_ is false, we will create a new declaration when
+  // rendering.
   bool FindBackgroundPositionValues(Css::Declarations* declarations) {
     // Find the original background offsets (if any) so we can add to them.
-    bool position_found = false;
+    has_position_ = false;
     for (Css::Declarations::iterator decl_iter = declarations->begin();
-         !position_found && (decl_iter != declarations->end());
+         !has_position_ && (decl_iter != declarations->end());
          ++decl_iter) {
       Css::Declaration* decl = *decl_iter;
       switch (decl->prop()) {
@@ -228,7 +275,7 @@ class SpriteFuture {
             return false;
           }
           if (ReadBackgroundPosition(decl_values, 0)) {
-            position_found = true;
+            has_position_ = true;
           } else {
             // Upon failure here, we abort the sprite.
             return false;
@@ -250,7 +297,7 @@ class SpriteFuture {
             if (IsPositionValue(*(decl_values->at(i))) &&
                 IsPositionValue(*(decl_values->at(i + 1)))) {
               if (ReadBackgroundPosition(decl_values, i)) {
-                position_found = true;
+                has_position_ = true;
                 break;
               } else {
                 // Upon failure here, we abort the sprite.
@@ -264,19 +311,6 @@ class SpriteFuture {
           break;
       }
     }
-    if (!position_found) {
-      // If no position was specified, it defaults to "0% 0%", which is the same
-      // as "0px 0px".
-      Css::Values* values = new Css::Values();
-      x_value_ = new Css::Value(0, Css::Value::PX);
-      values->push_back(x_value_);
-      y_value_ = new Css::Value(0, Css::Value::PX);
-      values->push_back(y_value_);
-      declarations_ = declarations;
-      declaration_to_push_ = new Css::Declaration(
-          Css::Property::BACKGROUND_POSITION, values, false);
-    }
-
     // TODO(abliss): consider specifying width and height.  Currently we are
     // assuming the node is already sized correctly.
     return true;
@@ -296,6 +330,12 @@ class SpriteFuture {
   Css::Declaration* declaration_to_push_;
   int x_offset_;
   int y_offset_;
+  // Width and height of original div.  We use these to check against
+  // the image's dimensions once the image is loaded, so we can determine
+  // if the image can be sprited in this context.
+  int width_;
+  int height_;
+  bool has_position_;
   DISALLOW_COPY_AND_ASSIGN(SpriteFuture);
 };
 
@@ -403,7 +443,12 @@ class Library : public spriter::ImageLibraryInterface {
   // call to Clear().
   bool Register(Resource* resource) {
     bool prefer_webp = false;  // Not working with jpg/webp at all.
-    net_instaweb::Image* image = net_instaweb::NewImage(
+    net_instaweb::Image* image = fake_fs_[resource->url()];
+    if (image != NULL) {
+      // Already registered
+      return (image->EnsureLoaded());
+    }
+    image = net_instaweb::NewImage(
         resource->contents(), resource->url(), tmp_dir_, prefer_webp, handler_);
     if (image->EnsureLoaded()) {
       Register(resource->url(), image);
@@ -550,7 +595,6 @@ class ImageCombineFilter::Combiner
 
     combination->EnsureCachedResultCreated()->mutable_spriter_result()->
         CopyFrom(*result);
-
     if (!resource_manager_->Write(HttpStatus::kOK,
                                   result_image->image()->Contents(),
                                   combination.get(),
@@ -562,6 +606,10 @@ class ImageCombineFilter::Combiner
     return true;
   }
 
+  OutputResourcePtr MakeOutput() {
+    return Combine(kContentTypePng, rewrite_driver_->message_handler());
+  }
+
   bool Realize(MessageHandler* handler) {
     // TODO(abliss): If we encounter the same combination in a different order,
     // we'll needlessly generate a new sprite.
@@ -569,7 +617,6 @@ class ImageCombineFilter::Combiner
     if (combination.get() == NULL) {
       return false;
     }
-    GoogleString result_buf;
     if (!combination->cached_result()->has_spriter_result()) {
       handler->Error(UrlSafeId().c_str(), 0,
                      "No remembered sprite result.");
@@ -578,7 +625,7 @@ class ImageCombineFilter::Combiner
     const spriter::SpriterResult& result =
         combination->cached_result()->spriter_result();
     // Now gather up the positions for each of the original urls.
-    std::map<GoogleString, const spriter::Rect*> url_to_clip_rect;
+    RectMap url_to_clip_rect;
     for (int i = result.image_position_size() - 1; i >= 0; i--) {
       const spriter::ImagePosition& image_position = result.image_position(i);
       // Where the spriter expects file paths, we are using urls.
@@ -596,17 +643,15 @@ class ImageCombineFilter::Combiner
         replaced_urls.insert(future->old_url());
       }
     }
-    if (image_file_count_reduction_ != NULL) {
-      int sprited = replaced_urls.size();
-      handler->Message(kInfo, "Sprited %d images to %s!", sprited,
-                       new_url_cstr);
-      image_file_count_reduction_->Add(sprited - 1);
-    }
+
+    int sprited = replaced_urls.size();
+    AddFilesReducedStat(sprited);
+    handler->Message(kInfo, "Sprited %d images to %s!", sprited,
+                     new_url_cstr);
     return true;
   }
 
   virtual void Clear() {
-    STLDeleteElements(&elements_);
     ResourceCombinerTemplate<SpriteFuture*>::Clear();
     library_.Clear();
     added_urls_.clear();
@@ -626,6 +671,21 @@ class ImageCombineFilter::Combiner
     return (image_width >= width) && (image_height >= height);
   }
 
+  bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
+    return WriteCombination(in, out, rewrite_driver_->message_handler());
+  }
+
+  void AddFilesReducedStat(int reduced) {
+    if (image_file_count_reduction_ != NULL) {
+      image_file_count_reduction_->Add(reduced);
+    }
+  }
+
+  // Put this resource in the library.
+  bool RegisterResource(Resource* resource) {
+    return library_.Register(resource);
+  }
+
  private:
   StringSet added_urls_;
   Library library_;
@@ -636,13 +696,266 @@ class ImageCombineFilter::Combiner
   bool last_added_;
 };
 
+// Special resource slot that has a future_ pointer.
+class SpriteFutureSlot : public CssResourceSlot {
+ public:
+  SpriteFutureSlot(const ResourcePtr& resource, Css::Values* values,
+                   size_t value_index, SpriteFuture* future)
+      : CssResourceSlot(resource, values, value_index),
+        future_(future),
+        may_sprite_(true) {
+  }
+
+  SpriteFuture* future() { return future_.get(); }
+
+  virtual void Render() {
+    // This is taken care of in Context::Render().
+  }
+
+  void set_may_sprite(bool x) { may_sprite_ = x; }
+
+  bool may_sprite() const { return may_sprite_; }
+
+ protected:
+  REFCOUNT_FRIEND_DECLARATION(SpriteFutureSlot);
+  virtual ~SpriteFutureSlot() {
+  }
+
+ private:
+  scoped_ptr<SpriteFuture> future_;
+  bool may_sprite_;
+  DISALLOW_COPY_AND_ASSIGN(SpriteFutureSlot);
+};
+
+typedef RefCountedPtr<SpriteFutureSlot> SpriteFutureSlotPtr;
+
+class ImageCombineFilter::Context : public RewriteContext {
+ public:
+  Context(RewriteDriver* driver, ImageCombineFilter* filter)
+      : RewriteContext(driver, NULL, NULL),
+        combiner_(Driver(), kContentTypePng.file_extension() + 1,
+                  filter),
+        filter_(filter) {
+  }
+
+  Context(ImageCombineFilter* filter, RewriteContext* parent)
+      : RewriteContext(NULL, parent, NULL),
+        combiner_(filter->driver(),
+                  kContentTypePng.file_extension() + 1,
+                  filter),
+        filter_(filter) {
+  }
+
+  ~Context() {
+    combiner_.Clear();
+  }
+
+  bool AddFuture(CssResourceSlotPtr slot) {
+    SpriteFutureSlot* future_slot = static_cast<SpriteFutureSlot*>(slot.get());
+    StringPiece url(future_slot->future()->old_url());
+    AddSlot(ResourceSlotPtr(slot));
+    return true;
+  }
+
+  ImageCombineFilter::Combiner* combiner() {
+    return &combiner_;
+  }
+
+  virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
+  virtual const char* id() const { return filter_->id().c_str(); }
+  virtual OutputResourceKind kind() const { return kRewrittenResource; }
+
+  void Reset() {
+    combiner_.Clear();
+    combiner_.Reset();
+  }
+
+ protected:
+  // Write the combination out.
+  virtual void Rewrite(int partition_index, OutputPartition* partition,
+                       const OutputResourcePtr& output) {
+    // TODO(nforman): make multiple partitions when we can and should.
+    DCHECK_EQ(0, partition_index);
+    RewriteSingleResourceFilter::RewriteResult result =
+        RewriteSingleResourceFilter::kRewriteOk;
+    if (!output->IsWritten()) {
+      ResourceVector resources;
+      for (int i = 0, n = num_slots(); i < n; ++i) {
+        ResourcePtr resource(slot(i)->resource());
+        resources.push_back(resource);
+      }
+      if (!combiner_.Write(resources, output)) {
+        result = RewriteSingleResourceFilter::kRewriteFailed;
+      }
+    }
+    RewriteDone(result, partition_index);
+  }
+
+  // Finalize the declarations for the sprited slots.
+  // TODO(nforman): be smarter about when to sprite and when not.
+  // e.g. if it turns out all the divs are too big to use the sprite
+  // except for one, don't use it.
+  virtual void Render() {
+    for (int p = 0, np = num_output_partitions(); p < np; ++p) {
+      OutputPartition* partition = output_partition(p);
+      int num_inputs = partition->input_size();
+      if (num_inputs > 1) {
+        CachedResult* result = partition->mutable_result();
+        if (!result->has_spriter_result()) {
+          // TODO(nforman): some error handling here.
+          DCHECK(false) << "spriting failed during Render";
+          break;
+        }
+        const spriter::SpriterResult& spriter_result = result->spriter_result();
+        RectMap url_to_clip_rect;
+        // Now gather up the positions for each of the original urls.
+        for (int i = spriter_result.image_position_size() - 1; i >= 0; i--) {
+          const spriter::ImagePosition& image_position =
+              spriter_result.image_position(i);
+          // Where the spriter expects file paths, we are using urls.
+          url_to_clip_rect[image_position.path()] = &image_position.clip_rect();
+        }
+
+        GoogleString new_url = partition->result().url();
+        const char* new_url_cstr = new_url.c_str();
+        StringSet replaced_urls;  // for stats purposes
+        for (int i = 0; i < num_inputs; ++i) {
+          int slot_index = partition->input(i).index();
+          SpriteFutureSlot* sprite_slot =
+              static_cast<SpriteFutureSlot*>(slot(slot_index).get());
+          if (sprite_slot->may_sprite()) {
+            SpriteFuture* future = sprite_slot->future();
+            // Check against original image dimensions.
+            // If these are smaller than the div we're putting the image
+            // into then we can't sprite this declaraion.
+            const spriter::Rect* clip_rect =
+                url_to_clip_rect[future->old_url()];
+            if (clip_rect->width() < future->width() ||
+                clip_rect->height() < future->height()) {
+              continue;
+            }
+            if (clip_rect != NULL) {
+              future->Realize(new_url_cstr, clip_rect->x_pos(),
+                              clip_rect->y_pos());
+              replaced_urls.insert(future->old_url());
+            }
+          }
+        }
+        int sprited = replaced_urls.size();
+        combiner_.AddFilesReducedStat(sprited - 1);
+      }
+    }
+    Reset();
+  }
+
+  // Partition the slots by what can get sprited and what can't.
+  // Currently, there is only one partition made for all the
+  // spriteable resources.  We skip over slots that point to images
+  // that are too small for the context they're in.
+  // TODO(nforman): create multiple partitions with images that
+  // can be combined with each other (but not necessarily with
+  // everything else.  Also, separate by color map.
+  virtual bool Partition(OutputPartitions* partitions,
+                         OutputResourceVector* outputs) {
+    MessageHandler* handler = filter_->driver()->message_handler();
+    OutputPartition* partition = NULL;
+    // For each slot, try to add its resource to the current partition.
+    // If we can't, then finalize the last combination, and then
+    // move on to the next slot.
+    StringSet urls;
+    for (int i = 0, n = num_slots(); i < n; ++i) {
+      bool add_input = false;
+      ResourcePtr resource(slot(i)->resource());
+      SpriteFutureSlot* sprite_slot =
+              static_cast<SpriteFutureSlot*>(slot(i).get());
+      SpriteFuture* future = sprite_slot->future();
+      GoogleString resource_url = future->old_url();
+
+      // Don't add the same url to a combination twice.
+      if (!urls.empty() && urls.find(resource_url) != urls.end()) {
+        // Don't need to register this resource because it was already
+        // registered the last time we dealt with this url.
+        if (!combiner_.CheckMinImageDimensions(
+                future->old_url(), future->width(), future->height())) {
+          sprite_slot->set_may_sprite(false);
+          continue;
+        }
+        // In theory, we shouldn't get into this case, because if the
+        // partition is NULL then urls should be empty.  However, just
+        // in case, don't dereference null pointers.
+        if (partition != NULL) {
+          resource->AddInputInfoToPartition(i, partition);
+        }
+        continue;
+      }
+      if (resource->IsValidAndCacheable()) {
+        // Register the resource with the library and then check
+        // its dimensions against those of the declaration to make
+        // sure we can sprite here.
+        // TODO(nforman): cheaper image dimension checking.
+        combiner_.RegisterResource(resource.get());
+        if (!combiner_.CheckMinImageDimensions(
+                future->old_url(), future->width(), future->height())) {
+          sprite_slot->set_may_sprite(false);
+          continue;
+        }
+        if (combiner_.AddElementNoFetch(future, resource, handler).value) {
+          add_input = true;
+        } else if (partition != NULL) {
+          FinalizePartition(partitions, partition, outputs);
+          urls.clear();
+          partition = NULL;
+          sprite_slot->set_may_sprite(false);
+          if (combiner_.AddResourceNoFetch(resource, handler).value) {
+            add_input = true;
+          }
+        }
+      } else {
+        FinalizePartition(partitions, partition, outputs);
+        urls.clear();
+        partition = NULL;
+      }
+      if (add_input) {
+        urls.insert(resource_url);
+        if (partition == NULL) {
+          partition = partitions->add_partition();
+        }
+        resource->AddInputInfoToPartition(i, partition);
+      }
+    }
+    FinalizePartition(partitions, partition, outputs);
+    return (partitions->partition_size() != 0);
+  }
+
+ private:
+  void FinalizePartition(OutputPartitions* partitions,
+                         OutputPartition* partition,
+                         OutputResourceVector* outputs) {
+    if (partition != NULL) {
+      OutputResourcePtr combination_output(combiner_.MakeOutput());
+      if (combination_output.get() == NULL) {
+        partitions->mutable_partition()->RemoveLast();
+      } else {
+        CachedResult* partition_result = partition->mutable_result();
+        const CachedResult* combination_result =
+            combination_output->cached_result();
+        *partition_result = *combination_result;
+        outputs->push_back(combination_output);
+      }
+    }
+  }
+
+  ImageCombineFilter::Combiner combiner_;
+  ImageCombineFilter* filter_;
+  UrlMultipartEncoder encoder_;
+};
+
 // TODO(jmaessen): The addition of 1 below avoids the leading ".";
 // make this convention consistent and fix all code.
 ImageCombineFilter::ImageCombineFilter(RewriteDriver* driver,
-                                   const char* filter_prefix)
-    : RewriteFilter(driver, filter_prefix) {
-  combiner_.reset(new Combiner(driver, kContentTypePng.file_extension() + 1,
-                               this));
+                                       const char* filter_prefix)
+    : RewriteFilter(driver, filter_prefix),
+      context_(NULL) {
 }
 
 ImageCombineFilter::~ImageCombineFilter() {
@@ -658,25 +971,21 @@ bool ImageCombineFilter::Fetch(const OutputResourcePtr& resource,
                                ResponseHeaders* response_headers,
                                MessageHandler* message_handler,
                                UrlAsyncFetcher::Callback* callback) {
-  return combiner_->Fetch(resource, writer, request_header, response_headers,
+  return combiner()->Fetch(resource, writer, request_header, response_headers,
                           message_handler, callback);
 }
 
-// We must not modify *declarations in this method, but we may hold pointers
-// through which we will modify it in DoCombine.
-TimedBool ImageCombineFilter::AddCssBackground(const GoogleUrl& original_url,
-                                             Css::Declarations* declarations,
-                                             Css::Value* url_value,
-                                             MessageHandler* handler) {
-  handler->Message(kInfo, "Attempting to sprite css background.");
+// Get the dimensions of the declaration.  This is tricky.
+bool ImageCombineFilter::GetDeclarationDimensions(
+    Css::Declarations* declarations, int* width, int* height) {
   // If the element is larger than the image, spriting will not work correctly.
   // TODO(abliss): support same-sized vertically-repeating backgrounds in a
   // horizontal sprite, and horizontal ones in a vertical sprite.
-  TimedBool ret = {kint64max, false};
-  int width = -1;
-  int height = -1;
+  *width = -1;
+  *height = -1;
+  bool no_dim = false;
   for (Css::Declarations::iterator decl_iter = declarations->begin();
-       decl_iter != declarations->end(); ++decl_iter) {
+       decl_iter != declarations->end() && !no_dim; ++decl_iter) {
     Css::Declaration* decl = *decl_iter;
     switch (decl->prop()) {
       case Css::Property::WIDTH: {
@@ -686,9 +995,9 @@ TimedBool ImageCombineFilter::AddCssBackground(const GoogleUrl& original_url,
           Css::Value* value = *value_iter;
           if ((value->GetLexicalUnitType() == Css::Value::NUMBER)
               && (value->GetDimension() == Css::Value::PX)) {
-            width = value->GetIntegerValue();
+            *width = value->GetIntegerValue();
           } else {
-            return ret;
+            no_dim = true;
           }
         }
         break;
@@ -700,9 +1009,9 @@ TimedBool ImageCombineFilter::AddCssBackground(const GoogleUrl& original_url,
           Css::Value* value = *value_iter;
           if ((value->GetLexicalUnitType() == Css::Value::NUMBER)
               && (value->GetDimension() == Css::Value::PX)) {
-            height = value->GetIntegerValue();
+            *height = value->GetIntegerValue();
           } else {
-            return ret;
+            no_dim = true;
           }
         }
         break;
@@ -711,17 +1020,71 @@ TimedBool ImageCombineFilter::AddCssBackground(const GoogleUrl& original_url,
         break;
     }
   }
-  if ((width == -1) || (height == -1)) {
+  return (*width != -1) && (*height != -1);
+}
+
+// Must initialize context_ with appropriate parent before hand.
+// parent passed here because it's private.
+bool ImageCombineFilter::AddCssBackgroundContext(
+    const GoogleUrl& original_url, Css::Values* values, int value_index,
+    CssFilter::Context* parent, Css::Declarations* decls,
+    MessageHandler* handler) {
+  CHECK(context_ != NULL);
+  handler->Message(kInfo, "Attempting to sprite css background.");
+  bool ret = false;
+  int width, height;
+  if (!GetDeclarationDimensions(decls, &width, &height)) {
     handler->Message(kInfo, "Cannot sprite: no explicit dimensions");
     return ret;
   }
-  SpriteFuture* future = new SpriteFuture(original_url.Spec());
-  ret = combiner_->AddElement(future, future->old_url(), handler);
+  StringPiece url_piece(original_url.Spec());
+  SpriteFuture* future = new SpriteFuture(url_piece, width, height, decls);
+
+  // Failed to find/handle declaration.
+  if (!future->Initialize(decls, values->at(value_index))) {
+    delete future;
+    return ret;
+  }
+
+  ResourcePtr resource = CreateInputResource(url_piece);
+  if (resource.get() != NULL) {
+    // transfers ownership of future to slot_obj
+    SpriteFutureSlot* slot_obj = new SpriteFutureSlot(
+        resource, values, value_index, future);
+    CssResourceSlotPtr slot(slot_obj);
+    parent->slot_factory()->UniquifySlot(slot);
+    // Spriting does not currently share resources with other filters.
+    // Spriting must also run first.
+    // TODO(nforman): if spriting fails, allow other filters to run.
+    if (slot.get() != slot_obj) {
+      return ret;
+    }
+    ret = context_->AddFuture(slot);
+  }
+  return ret;
+}
+
+// We must not modify *declarations in this method, but we may hold pointers
+// through which we will modify it in DoCombine.
+TimedBool ImageCombineFilter::AddCssBackground(const GoogleUrl& original_url,
+                                               Css::Declarations* declarations,
+                                               Css::Value* url_value,
+                                               MessageHandler* handler) {
+  handler->Message(kInfo, "Attempting to sprite css background.");
+  TimedBool ret = {kint64max, false};
+  int width, height;
+  if (!GetDeclarationDimensions(declarations, &width, &height)) {
+    handler->Message(kInfo, "Cannot sprite: no explicit dimensions");
+    return ret;
+  }
+  SpriteFuture* future = new SpriteFuture(original_url.Spec(), width,
+                                          height, NULL);
+  ret = combiner()->AddElement(future, future->old_url(), handler);
   if (ret.value) {
-    if (!combiner_->CheckMinImageDimensions(
+    if (!combiner()->CheckMinImageDimensions(
             original_url.Spec().as_string(), width, height)
         || !future->Initialize(declarations, url_value)) {
-      combiner_->RemoveLastElement();
+      combiner()->RemoveLastElement();
       // TODO(abliss): consider the case of scaled BG images (can we resize
       // them)?
       handler->Message(kInfo, "Cannot sprite: failed init.");
@@ -736,11 +1099,37 @@ TimedBool ImageCombineFilter::AddCssBackground(const GoogleUrl& original_url,
 }
 
 bool ImageCombineFilter::DoCombine(MessageHandler* handler) {
-  return combiner_->Realize(handler);
+  return combiner()->Realize(handler);
 }
 
 void ImageCombineFilter::Reset() {
-  combiner_->Reset();
+  if (context_ != NULL) {
+    context_->Reset();
+  }
+}
+
+void ImageCombineFilter::Reset(CssFilter::Context* parent) {
+  context_ = MakeNestedContext(parent);
+  parent->RegisterNested(context_);
+}
+
+ImageCombineFilter::Context* ImageCombineFilter::MakeContext() {
+  return new Context(driver_, this);
+}
+
+// Make a new context that is nested under parent.
+ImageCombineFilter::Context* ImageCombineFilter::MakeNestedContext(
+    RewriteContext* parent) {
+  Context* context = new Context(this, parent);
+  return context;
+}
+
+RewriteContext* ImageCombineFilter::MakeRewriteContext() {
+  return MakeContext();
+}
+
+ImageCombineFilter::Combiner* ImageCombineFilter::combiner() {
+  return context_->combiner();
 }
 
 }  // namespace net_instaweb

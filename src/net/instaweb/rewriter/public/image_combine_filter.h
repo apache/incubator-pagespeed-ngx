@@ -19,8 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_COMBINE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_COMBINE_FILTER_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -30,6 +30,7 @@ namespace Css {
 
 class Declarations;
 class Value;
+class Values;
 
 }  // namespace Css
 
@@ -40,6 +41,7 @@ class HtmlElement;
 class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
+class RewriteContext;
 class RewriteDriver;
 class Statistics;
 class Writer;
@@ -79,17 +81,37 @@ class ImageCombineFilter : public RewriteFilter {
                              Css::Value* url_value,
                              MessageHandler* handler);
 
+  // Async version of AddCssBackground().
+  // This will succeed in cases when AddCssBackground() would have failed,
+  // because we don't have the loaded resource to check yet.
+  bool AddCssBackgroundContext(const GoogleUrl& original_url,
+                               Css::Values* values,
+                               int value_index,
+                               CssFilter::Context* parent,
+                               Css::Declarations* decls,
+                               MessageHandler* handler);
+
+  OutputResourcePtr MakeOutput();
+
   // Visit all CSS background images that have been added, replacing their urls
   // with the url of the sprite, and adding CSS declarations to position them
   // correctly.  Returns true if anything was changed.
   bool DoCombine(MessageHandler* handler);
 
   void Reset();
+  void Reset(CssFilter::Context* context);
+  virtual RewriteContext* MakeRewriteContext();
 
  private:
   class Combiner;
+  class Context;
 
-  scoped_ptr<Combiner> combiner_;
+  Context* context_;
+  Context* MakeContext();
+  Context* MakeNestedContext(RewriteContext* parent);
+  Combiner* combiner();
+  bool GetDeclarationDimensions(Css::Declarations* declarations,
+                                int* width, int* height);
 
   DISALLOW_COPY_AND_ASSIGN(ImageCombineFilter);
 };

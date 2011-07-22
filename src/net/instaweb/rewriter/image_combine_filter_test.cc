@@ -23,10 +23,8 @@
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -92,7 +90,7 @@ class CssImageCombineTest : public CssRewriteTestBase {
 };
 
 TEST_P(CssImageCombineTest, SpritesImages) {
-  CSS_XFAIL_ASYNC();
+  CSS_XFAIL_SYNC();
   TestSpriting("0px 0px", "0px -70px", true);
   TestSpriting("left top", "0px -70px", true);
   TestSpriting("top 10px", "10px -70px", true);
@@ -101,7 +99,7 @@ TEST_P(CssImageCombineTest, SpritesImages) {
 }
 
 TEST_P(CssImageCombineTest, SpritesMultiple) {
-  CSS_XFAIL_ASYNC();
+  CSS_XFAIL_SYNC();
   const char* html = "<head><style>"
       "#div1{background:url(%s) 0px 0px;width:10px;height:10px}"
       "#div2{background:url(%s) 0px %dpx;width:%dpx;height:10px}"
@@ -133,8 +131,8 @@ TEST_P(CssImageCombineTest, SpritesMultiple) {
 }
 
 TEST_P(CssImageCombineTest, NoCrashUnknownType) {
+  CSS_XFAIL_SYNC();
   // Make sure we don't crash trying to sprite an image with an unknown mimetype
-
   ResponseHeaders response_headers;
   SetDefaultLongCacheHeaders(&kContentTypePng, &response_headers);
   response_headers.Replace(HttpAttributes::kContentType, "image/x-bewq");
@@ -154,8 +152,7 @@ TEST_P(CssImageCombineTest, NoCrashUnknownType) {
 }
 
 TEST_P(CssImageCombineTest, SpritesImagesExternal) {
-  CSS_XFAIL_ASYNC();
-
+  CSS_XFAIL_SYNC();
   SetupWaitFetcher();
 
   const GoogleString beforeCss = StrCat(" "  // extra whitespace allows rewrite
@@ -171,25 +168,10 @@ TEST_P(CssImageCombineTest, SpritesImagesExternal) {
       "wip", beforeCss, beforeCss, kNoOtherContexts | kNoClearFetcher |
       kExpectNoChange | kExpectSuccess);
 
-  // Get the CSS to load (resources are still unavailable).
-  CallFetcherCallbacks();
-
-  // On the second run, we will rewrite the CSS but not sprite.
-  const GoogleString rewrittenCss = StrCat(
-      "#div1{background-image:url(", kCuppaPngFile, ");"
-      "width:10px;height:10px}"
-      "#div2{background:transparent url(", kBikePngFile,
-      ");width:10px;height:10px}");
-  ValidateRewriteExternalCss(
-      "wip", beforeCss, rewrittenCss, kNoOtherContexts | kNoClearFetcher |
-      kExpectChange | kExpectSuccess);
-
   // Allow the images to load
   CallFetcherCallbacks();
-  // The inability to rewrite this image will be remembered for 1 second.
-  mock_timer()->AdvanceMs(3 * Timer::kSecondMs);
 
-  // On the third run, we get spriting.
+  // On the second run, we get spriting.
   const GoogleString sprite = StrCat(kTestDomain, kCuppaPngFile, "+",
                                      kBikePngFile,
                                      ".pagespeed.is.0.png");
@@ -201,7 +183,7 @@ TEST_P(CssImageCombineTest, SpritesImagesExternal) {
       ");width:10px;height:10px;background-position:0px -70px}");
   ValidateRewriteExternalCss(
       "wip", beforeCss, spriteCss, kNoOtherContexts | kNoClearFetcher |
-      kExpectChange | kExpectSuccess);
+      kExpectChange | kExpectSuccess | kNoStatCheck);
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.

@@ -174,7 +174,9 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                                              MessageHandler* handler) {
   image_combiner_->Reset();
   bool edited = false;
-  bool spriting_ok = driver_->options()->Enabled(RewriteOptions::kSpriteImages);
+  // Spriting is not supported in synchronous mode.
+  // TODO(nforman): remove spriting-related code from sync flow.
+  bool spriting_ok = false;
   int64 expire_at_ms = kint64max;
   if (RewritesEnabled()) {
     handler->Message(kInfo, "Starting to rewrite images in CSS in %s",

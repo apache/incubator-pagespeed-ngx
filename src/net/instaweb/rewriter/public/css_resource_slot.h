@@ -50,18 +50,18 @@ class CssResourceSlot : public ResourceSlot {
   void EnableTrim(const GoogleUrl& base_url);
 
  protected:
-  REFCOUNT_FRIEND_DECLARATION(CssResourceSlot);
-  virtual ~CssResourceSlot();
-
- private:
-  friend class CssResourceSlotFactory;
-
   CssResourceSlot(const ResourcePtr& resource, Css::Values* values,
                   size_t value_index)
       : ResourceSlot(resource),
         values_(values),
         value_index_(value_index) {
   }
+
+  REFCOUNT_FRIEND_DECLARATION(CssResourceSlot);
+  virtual ~CssResourceSlot();
+
+ private:
+  friend class CssResourceSlotFactory;
 
   Css::Values* values_;
   size_t value_index_;
@@ -83,6 +83,7 @@ class CssResourceSlotFactory {
   // not modified while this exists.
   CssResourceSlotPtr GetSlot(const ResourcePtr& resource,
                              Css::Values* values, size_t value_index);
+  CssResourceSlotPtr UniquifySlot(CssResourceSlotPtr slot);
 
  private:
   class SlotComparator {
