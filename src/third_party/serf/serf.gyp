@@ -44,7 +44,7 @@
         '<(serf_src)/buckets/dechunk_buckets.c',
         '<(serf_src)/buckets/deflate_buckets.c',
         '<(serf_src)/buckets/limit_buckets.c',
-        '<(serf_src)/buckets/ssl_buckets.c',
+        #'<(serf_src)/buckets/ssl_buckets.c',
         '<(serf_src)/buckets/barrier_buckets.c',
         '<(serf_src)/buckets/chunk_buckets.c',
         '<(serf_src)/buckets/bwtp_buckets.c',
