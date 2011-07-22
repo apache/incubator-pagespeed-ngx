@@ -539,12 +539,7 @@ void RewriteContext::NestedRewriteDone() {
   --num_pending_nested_;
   if (num_pending_nested_ == 0) {
     DCHECK(!rewrite_done_);
-    // TODO(nforman): We are exploiting the propoerties of our worker
-    // queue here in order top defer the call to Harvest() and thereby
-    // avoid pre-mature deletion of our context.  Fix this so that the
-    // queue scheduling doesn't matter.
-    Manager()->AddRewriteTask(new MemberFunction0<RewriteContext>(
-        &RewriteContext::Harvest, this));
+    Harvest();
   }
 }
 
@@ -559,7 +554,7 @@ void RewriteContext::RewriteDone(
     bool optimizable = (result == RewriteSingleResourceFilter::kRewriteOk);
     partition->mutable_result()->set_optimizable(optimizable);
     if (!optimizable) {
-      // TODO(sligocki): We are indescriminantly setting a 5min cache lifetime
+      // TODO(sligocki): We are indiscriminately setting a 5min cache lifetime
       // for all failed rewrites. We should use the input resource's cache
       // lifetime instead. Or better yet, do conditional fetches of input
       // resources and only invalidate mapping if inputs change.
@@ -611,8 +606,8 @@ void RewriteContext::Propagate(bool render_slots) {
       }
     }
   }
-  Manager()->AddRewriteTask(new MemberFunction0<RewriteContext>(
-      &RewriteContext::RunSuccessors, this));
+
+  RunSuccessors();
 }
 
 void RewriteContext::Finalize() {
@@ -649,7 +644,9 @@ void RewriteContext::RunSuccessors() {
   successors_.clear();
   if (driver_ != NULL) {
     DCHECK(rewrite_done_ && (num_pending_nested_ == 0));
-    driver_->DeleteRewriteContext(this);
+    Manager()->AddRewriteTask(
+        new MemberFunction1<RewriteDriver, RewriteContext*>(
+            &RewriteDriver::DeleteRewriteContext, driver_, this));
   }
 }
 

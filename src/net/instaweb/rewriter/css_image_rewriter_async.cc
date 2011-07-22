@@ -195,9 +195,6 @@ void CssImageRewriterAsync::RewriteCssImages(
                      "so not rewriting images in CSS in %s",
                      base_url.spec_c_str());
   }
-  if (spriting_ok) {
-    image_combiner_->DoCombine(handler);
-  }
 }
 
 }  // namespace net_instaweb

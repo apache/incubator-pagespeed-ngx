@@ -25,7 +25,6 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
-#include "net/instaweb/rewriter/public/image_combine_filter.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
@@ -55,13 +54,11 @@ const char CssImageRewriter::kNoRewrite[] = "css_image_no_rewrite";
 
 CssImageRewriter::CssImageRewriter(RewriteDriver* driver,
                                    CacheExtender* cache_extender,
-                                   ImageRewriteFilter* image_rewriter,
-                                   ImageCombineFilter* image_combiner)
+                                   ImageRewriteFilter* image_rewriter)
     : driver_(driver),
       // For now we use the same options as for rewriting and cache-extending
       // images found in HTML.
       cache_extender_(cache_extender),
-      image_combiner_(image_combiner),
       image_rewriter_(image_rewriter),
       image_rewrites_(NULL),
       cache_extends_(NULL),
@@ -172,11 +169,7 @@ int64 CssImageRewriter::ExpirationTimeMs(CachedResult* cached_result) {
 TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                                              Css::Stylesheet* stylesheet,
                                              MessageHandler* handler) {
-  image_combiner_->Reset();
   bool edited = false;
-  // Spriting is not supported in synchronous mode.
-  // TODO(nforman): remove spriting-related code from sync flow.
-  bool spriting_ok = false;
   int64 expire_at_ms = kint64max;
   if (RewritesEnabled()) {
     handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
@@ -186,18 +179,11 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
          ruleset_iter != rulesets.end(); ++ruleset_iter) {
       Css::Ruleset* ruleset = *ruleset_iter;
       Css::Declarations& decls = ruleset->mutable_declarations();
-      bool background_position_found = false;
-      bool background_image_found = false;
       for (Css::Declarations::iterator decl_iter = decls.begin();
            decl_iter != decls.end(); ++decl_iter) {
         Css::Declaration* decl = *decl_iter;
         // Only edit image declarations.
         switch (decl->prop()) {
-          case Css::Property::BACKGROUND_POSITION:
-          case Css::Property::BACKGROUND_POSITION_X:
-          case Css::Property::BACKGROUND_POSITION_Y:
-            background_position_found = true;
-            break;
           case Css::Property::BACKGROUND:
           case Css::Property::BACKGROUND_IMAGE:
           case Css::Property::LIST_STYLE:
@@ -210,7 +196,6 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                  value_index++) {
               Css::Value* value = values->at(value_index);
               if (value->GetLexicalUnitType() == Css::Value::URI) {
-                background_image_found = true;
                 GoogleString rel_url =
                     UnicodeTextToUTF8(value->GetStringValue());
                 // TODO(abliss): only do this resolution once.
@@ -225,32 +210,19 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                 }
                 handler->Message(kInfo, "Found image URL %s", rel_url.c_str());
                 TimedBool result = {kint64max, false};
-                if (spriting_ok) {
-                  result = image_combiner_->AddCssBackground(
-                      original_url, &decls, value, handler);
-                }
+                expire_at_ms = std::min(expire_at_ms, result.expiration_ms);
+                GoogleString new_url;
+                result = RewriteImageUrl(base_url, rel_url, &new_url,
+                                         handler);
                 expire_at_ms = std::min(expire_at_ms, result.expiration_ms);
                 if (result.value) {
-                  // TODO(abliss): sharing between spriting and other rewrites.
-                  // For now we assume that spriting subsumes all other rewrites
-                  // -- i.e. cache extending and recompressing.  This is
-                  // particularly bad news if there's exactly one image in the
-                  // CSS, since we'll assume it's going to be sprited, but it
-                  // won't be.
-                } else {
-                  GoogleString new_url;
-                  result = RewriteImageUrl(base_url, rel_url, &new_url,
-                                           handler);
-                  expire_at_ms = std::min(expire_at_ms, result.expiration_ms);
-                  if (result.value) {
-                    // Replace the URL.
-                    (*values)[value_index] = new Css::Value(
-                        Css::Value::URI, UTF8ToUnicodeText(new_url));
-                    delete value;
-                    edited = true;
-                    handler->Message(kInfo, "Successfully rewrote %s to %s",
-                                     rel_url.c_str(), new_url.c_str());
-                  }
+                  // Replace the URL.
+                  (*values)[value_index] = new Css::Value(
+                      Css::Value::URI, UTF8ToUnicodeText(new_url));
+                  delete value;
+                  edited = true;
+                  handler->Message(kInfo, "Successfully rewrote %s to %s",
+                                   rel_url.c_str(), new_url.c_str());
                 }
                 if (!result.value)  {
                   no_rewrite_->Add(1);
@@ -271,22 +243,11 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
             break;
         }
       }
-      // All the declarations in this ruleset have been parsed.
-      if (spriting_ok && background_position_found && !background_image_found) {
-        // A ruleset that contains a background-position but no background image
-        // is a signal that we should not be spriting.
-        handler->Message(kInfo,
-                         "Lone background-position found: Cannot sprite.");
-        spriting_ok = false;
-      }
     }
   } else {
     handler->Message(kInfo, "Image rewriting and cache extension not enabled, "
                      "so not rewriting images in CSS in %s",
                      base_url.spec_c_str());
-  }
-  if (spriting_ok) {
-    edited |= image_combiner_->DoCombine(handler);
   }
   TimedBool ret = {expire_at_ms, edited};
   return ret;

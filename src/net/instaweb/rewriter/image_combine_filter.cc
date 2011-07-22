@@ -108,11 +108,9 @@ class SpriteFuture {
   // Bind this Future to a particular image.  Owns nothing; the inputs must
   // outlive this future.  Returns true if this is a viable sprite-future.  If
   // we return false, Realize must not be called.
-  // TODO(nforman): when taking out syn version, remove declarations
-  // argument, which should be the same as declarations_.
-  bool Initialize(Css::Declarations* declarations, Css::Value* url_value) {
+  bool Initialize(Css::Value* url_value) {
     url_value_ = url_value;
-    return FindBackgroundPositionValues(declarations);
+    return FindBackgroundPositionValues();
   }
 
   const GoogleString& old_url() { return old_url_; }
@@ -259,11 +257,11 @@ class SpriteFuture {
   // set has_position_ to true if there is already a position declaration.
   // If has_position_ is false, we will create a new declaration when
   // rendering.
-  bool FindBackgroundPositionValues(Css::Declarations* declarations) {
+  bool FindBackgroundPositionValues() {
     // Find the original background offsets (if any) so we can add to them.
     has_position_ = false;
-    for (Css::Declarations::iterator decl_iter = declarations->begin();
-         !has_position_ && (decl_iter != declarations->end());
+    for (Css::Declarations::iterator decl_iter = declarations_->begin();
+         !has_position_ && (decl_iter != declarations_->end());
          ++decl_iter) {
       Css::Declaration* decl = *decl_iter;
       switch (decl->prop()) {
@@ -508,34 +506,6 @@ class ImageCombineFilter::Combiner
     Clear();
   }
 
-  // Unlike other combiners (css and js) we want to uniquify incoming resources.
-  virtual TimedBool AddResource(const StringPiece& url,
-                                MessageHandler* handler) {
-    if (added_urls_.find(url.as_string()) == added_urls_.end()) {
-      last_added_ = true;
-      TimedBool result = ResourceCombiner::AddResource(url, handler);
-      if (result.value) {
-        added_urls_.insert(url.as_string());
-      }
-      return result;
-    } else {
-      // If the url has been successfully added to the partnership already.
-      // Since the image is already in the sprite, we do nothing and return
-      // success.
-      last_added_ = false;
-      TimedBool ret = {kint64max, true};
-      return ret;
-    }
-  }
-
-  virtual void RemoveLastResource() {
-    // We only want to actually remove the resource from the partnership if the
-    // last call to AddResource actually added it.
-    if (last_added_) {
-      ResourceCombiner::RemoveLastResource();
-    }
-  }
-
   virtual bool ResourceCombinable(Resource* resource, MessageHandler* handler) {
     // TODO(abliss) We exhibit zero intelligence about which images files to
     // combine; we combine whatever is possible.  This can reduce cache
@@ -610,47 +580,6 @@ class ImageCombineFilter::Combiner
     return Combine(kContentTypePng, rewrite_driver_->message_handler());
   }
 
-  bool Realize(MessageHandler* handler) {
-    // TODO(abliss): If we encounter the same combination in a different order,
-    // we'll needlessly generate a new sprite.
-    OutputResourcePtr combination(Combine(kContentTypePng, handler));
-    if (combination.get() == NULL) {
-      return false;
-    }
-    if (!combination->cached_result()->has_spriter_result()) {
-      handler->Error(UrlSafeId().c_str(), 0,
-                     "No remembered sprite result.");
-      return false;
-    }
-    const spriter::SpriterResult& result =
-        combination->cached_result()->spriter_result();
-    // Now gather up the positions for each of the original urls.
-    RectMap url_to_clip_rect;
-    for (int i = result.image_position_size() - 1; i >= 0; i--) {
-      const spriter::ImagePosition& image_position = result.image_position(i);
-      // Where the spriter expects file paths, we are using urls.
-      url_to_clip_rect[image_position.path()] = &image_position.clip_rect();
-    }
-
-    GoogleString new_url = combination->url();
-    const char* new_url_cstr = new_url.c_str();
-    StringSet replaced_urls;
-    for (int i = num_elements() - 1; i >= 0; i--) {
-      SpriteFuture* future = element(i);
-      const spriter::Rect* clip_rect = url_to_clip_rect[future->old_url()];
-      if (clip_rect != NULL) {
-        future->Realize(new_url_cstr, clip_rect->x_pos(), clip_rect->y_pos());
-        replaced_urls.insert(future->old_url());
-      }
-    }
-
-    int sprited = replaced_urls.size();
-    AddFilesReducedStat(sprited);
-    handler->Message(kInfo, "Sprited %d images to %s!", sprited,
-                     new_url_cstr);
-    return true;
-  }
-
   virtual void Clear() {
     ResourceCombinerTemplate<SpriteFuture*>::Clear();
     library_.Clear();
@@ -693,7 +622,6 @@ class ImageCombineFilter::Combiner
   // Whether the last call to AddResource actually called through to super.
   // TODO(abliss): this is pretty ugly.  Should replace RemoveLast* with a
   // better API.
-  bool last_added_;
 };
 
 // Special resource slot that has a future_ pointer.
@@ -971,8 +899,9 @@ bool ImageCombineFilter::Fetch(const OutputResourcePtr& resource,
                                ResponseHeaders* response_headers,
                                MessageHandler* message_handler,
                                UrlAsyncFetcher::Callback* callback) {
-  return combiner()->Fetch(resource, writer, request_header, response_headers,
-                          message_handler, callback);
+  return context_->combiner()->Fetch(resource, writer, request_header,
+                                     response_headers, message_handler,
+                                     callback);
 }
 
 // Get the dimensions of the declaration.  This is tricky.
@@ -1041,7 +970,7 @@ bool ImageCombineFilter::AddCssBackgroundContext(
   SpriteFuture* future = new SpriteFuture(url_piece, width, height, decls);
 
   // Failed to find/handle declaration.
-  if (!future->Initialize(decls, values->at(value_index))) {
+  if (!future->Initialize(values->at(value_index))) {
     delete future;
     return ret;
   }
@@ -1062,44 +991,6 @@ bool ImageCombineFilter::AddCssBackgroundContext(
     ret = context_->AddFuture(slot);
   }
   return ret;
-}
-
-// We must not modify *declarations in this method, but we may hold pointers
-// through which we will modify it in DoCombine.
-TimedBool ImageCombineFilter::AddCssBackground(const GoogleUrl& original_url,
-                                               Css::Declarations* declarations,
-                                               Css::Value* url_value,
-                                               MessageHandler* handler) {
-  handler->Message(kInfo, "Attempting to sprite css background.");
-  TimedBool ret = {kint64max, false};
-  int width, height;
-  if (!GetDeclarationDimensions(declarations, &width, &height)) {
-    handler->Message(kInfo, "Cannot sprite: no explicit dimensions");
-    return ret;
-  }
-  SpriteFuture* future = new SpriteFuture(original_url.Spec(), width,
-                                          height, NULL);
-  ret = combiner()->AddElement(future, future->old_url(), handler);
-  if (ret.value) {
-    if (!combiner()->CheckMinImageDimensions(
-            original_url.Spec().as_string(), width, height)
-        || !future->Initialize(declarations, url_value)) {
-      combiner()->RemoveLastElement();
-      // TODO(abliss): consider the case of scaled BG images (can we resize
-      // them)?
-      handler->Message(kInfo, "Cannot sprite: failed init.");
-      ret.value = false;
-      delete future;
-    }
-  } else {
-    handler->Message(kInfo, "Cannot sprite: combiner forbids.");
-    delete future;
-  }
-  return ret;
-}
-
-bool ImageCombineFilter::DoCombine(MessageHandler* handler) {
-  return combiner()->Realize(handler);
 }
 
 void ImageCombineFilter::Reset() {
@@ -1128,8 +1019,8 @@ RewriteContext* ImageCombineFilter::MakeRewriteContext() {
   return MakeContext();
 }
 
-ImageCombineFilter::Combiner* ImageCombineFilter::combiner() {
-  return context_->combiner();
+bool ImageCombineFilter::HasAsyncFlow() const {
+  return driver_->asynchronous_rewrites();
 }
 
 }  // namespace net_instaweb
