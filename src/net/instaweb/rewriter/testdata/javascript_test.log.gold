@@ -7,9 +7,9 @@ Info: Rewrite script http://file.name/extScript.js to http://file.name/extScript
 Info: javascript_test.html:27: Found script with src extScript.js
 Error: javascript_test.html:27: Brief close of script tag (non-portable)
 Info: javascript_test.html:35: Found script with src extScript.js
-Warning: javascript_test.html:38: Retaining contents of script tag even though script is external.
+Info: javascript_test.html:38: Retaining contents of script tag; probably data for external script.
 Info: javascript_test.html:40: Found script with src extScript.js
-Warning: javascript_test.html:44: Retaining contents of script tag even though script is external.
+Info: javascript_test.html:44: Retaining contents of script tag; probably data for external script.
 Info: javascript_test.html:47: Found script with src third_party.js
 Info: Script http://file.name/third_party.js is prototype 1.6.1.0
 Info: Rewrite script http://file.name/third_party.js to http://file.name/third_party.js.pagespeed.jm.0.js

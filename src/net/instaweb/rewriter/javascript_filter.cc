@@ -265,8 +265,8 @@ void JavascriptFilter::RewriteExternalScript() {
     for (size_t j = 0; allSpaces && j < contents.size(); ++j) {
       char c = contents[j];
       if (!isspace(c) && c != 0) {
-        driver_->WarningHere("Retaining contents of script tag"
-                             " even though script is external.");
+        driver_->InfoHere("Retaining contents of script tag;"
+                          " probably data for external script.");
         allSpaces = false;
       }
     }
