@@ -24,12 +24,19 @@ namespace net_instaweb {
 NullStatisticsVariable::~NullStatisticsVariable() {
 }
 
+NullStatisticsHistogram::~NullStatisticsHistogram() {
+}
+
 NullStatistics::~NullStatistics() {
 }
 
 NullStatisticsVariable* NullStatistics::NewVariable(
     const StringPiece& name, int index) {
   return new NullStatisticsVariable;
+}
+
+NullStatisticsHistogram* NullStatistics::NewHistogram() {
+  return new NullStatisticsHistogram;
 }
 
 }  // namespace net_instaweb

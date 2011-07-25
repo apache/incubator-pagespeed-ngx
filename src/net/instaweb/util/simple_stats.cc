@@ -33,4 +33,8 @@ SimpleStatsVariable* SimpleStats::NewVariable(
   return new SimpleStatsVariable;
 }
 
+NullStatisticsHistogram* SimpleStats::NewHistogram() {
+  return new NullStatisticsHistogram();
+}
+
 }  // namespace net_instaweb

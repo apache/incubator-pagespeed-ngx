@@ -28,6 +28,35 @@ namespace net_instaweb {
 class MessageHandler;
 class Writer;
 
+class Histogram {
+ public:
+  virtual ~Histogram();
+
+  virtual double Average() = 0;
+  // Return estimated value that is greater than perc% of all data.
+  // e.g. Percentile(20) returns the value which is greater than
+  // 20% of data.
+  virtual double Percentile(const double perc) = 0;
+  virtual double StandardDeviation() = 0;
+  virtual double Count() = 0;
+  virtual double Maximum() = 0;
+  virtual double Minimum() = 0;
+
+  // Record a value in its bucket.
+  virtual void Add(const double value) = 0;
+  // Throw away all data.
+  virtual void Clear() = 0;
+  // True if the histogram is empty.
+  virtual bool Empty() = 0;
+  // Write script and function to web page. Note that this function should be
+  // called only once for one page, should not be used for each histogram.
+  virtual void RenderHeader(Writer* writer,
+                            MessageHandler* handler) = 0;
+  // Export data for histogram graph.
+  virtual void Render(const StringPiece& title, Writer* writer,
+                      MessageHandler* handler) = 0;
+};
+
 class Variable {
  public:
   virtual ~Variable();
@@ -60,10 +89,23 @@ class Statistics {
     return var;
   }
 
+  // Add a new histogram, or returns an existing one of that name.
+  // The Histogram* is owned by the Statistics class -- it should not
+  // be deleted by the caller.
+  virtual Histogram* AddHistogram(const StringPiece& name) = 0;
+  // Find a histogram from a name, returning NULL if not found.
+  virtual Histogram* FindHistogram(const StringPiece& name) const = 0;
+  // Find a histogram from a name, aborting if not found.
+  virtual Histogram* GetHistogram(const StringPiece& name) const {
+    Histogram* hist = FindHistogram(name);
+    CHECK(hist != NULL) << "Histogram not found: " << name;
+    return hist;
+  }
   // Dump the variable-values to a writer.
   virtual void Dump(Writer* writer, MessageHandler* handler) = 0;
 
   // Set all variables to 0.
+  // Throw away all data in histograms.
   virtual void Clear() = 0;
 };
 

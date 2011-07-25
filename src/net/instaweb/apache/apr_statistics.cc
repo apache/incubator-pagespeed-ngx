@@ -241,6 +241,10 @@ AprVariable* AprStatistics::NewVariable(const StringPiece& name, int index) {
   }
 }
 
+NullStatisticsHistogram* AprStatistics::NewHistogram() {
+  return new NullStatisticsHistogram();
+}
+
 void AprStatistics::InitVariables(bool parent) {
   is_child_ |= !parent;
   if (frozen_) {

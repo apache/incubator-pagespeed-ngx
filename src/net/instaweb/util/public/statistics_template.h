@@ -34,11 +34,13 @@ class MessageHandler;
 // This class makes it easier to define new Statistics implementations
 // by providing a templatized implementation of variable registration and
 // management.
-template<class Var> class StatisticsTemplate : public Statistics {
+template<class Var, class Hist> class StatisticsTemplate
+    : public Statistics {
  public:
   StatisticsTemplate() {}
   virtual ~StatisticsTemplate() {
     STLDeleteContainerPointers(variables_.begin(), variables_.end());
+    STLDeleteContainerPointers(histograms_.begin(), histograms_.end());
   }
 
   // Add a new variable, or returns an existing one of that name.
@@ -53,10 +55,22 @@ template<class Var> class StatisticsTemplate : public Statistics {
     return FindVariableInternal(name);
   }
 
+  // Add a new histogram, or returns an exisiting one of that name.
+  // The Histogram* is owned by the Statistics class -- it should
+  // not be deleted by the caller.
+  virtual Histogram* AddHistogram(const StringPiece& name) {
+    return AddHistogramInternal(name);
+  }
+
+  // Find a histogram from a name, returning NULL if not found.
+  virtual Histogram* FindHistogram(const StringPiece& name) const {
+    return FindHistogramInternal(name);
+  }
+
   virtual void Dump(Writer* writer, MessageHandler* message_handler) {
     for (int i = 0, n = variables_.size(); i < n; ++i) {
       Var* var = variables_[i];
-      writer->Write(names_[i], message_handler);
+      writer->Write(variable_names_[i], message_handler);
       writer->Write(": ", message_handler);
       writer->Write(Integer64ToString(var->Get64()), message_handler);
       writer->Write("\n", message_handler);
@@ -67,6 +81,10 @@ template<class Var> class StatisticsTemplate : public Statistics {
     for (int i = 0, n = variables_.size(); i < n; ++i) {
       Var* var = variables_[i];
       var->Clear();
+    }
+    for (int i = 0, n = histograms_.size(); i < n; ++i) {
+      Histogram* hist = histograms_[i];
+      hist->Clear();
     }
   }
 
@@ -79,7 +97,7 @@ template<class Var> class StatisticsTemplate : public Statistics {
     if (var == NULL) {
       var = NewVariable(name, variables_.size());
       variables_.push_back(var);
-      names_.push_back(name.as_string());
+      variable_names_.push_back(name.as_string());
       variable_map_[GoogleString(name.data(), name.size())] = var;
     }
     return var;
@@ -98,12 +116,39 @@ template<class Var> class StatisticsTemplate : public Statistics {
 
   virtual Var* NewVariable(const StringPiece& name, int index) = 0;
 
- protected:
+  virtual Hist* AddHistogramInternal(const StringPiece& name) {
+    Hist* hist = FindHistogramInternal(name);
+    if (hist == NULL) {
+      hist = NewHistogram();
+      histograms_.push_back(hist);
+      histogram_names_.push_back(name.as_string());
+      histogram_map_[GoogleString(name.data(), name.size())] = hist;
+    }
+    return hist;
+  }
+  // Finds a histogram, returning as the template class Hist type, rather
+  // than its base class, as FindHistogram does.
+  virtual Hist* FindHistogramInternal(const StringPiece& name) const {
+    typename HistMap::const_iterator p = histogram_map_.find(name.as_string());
+    Hist* hist = NULL;
+    if (p != histogram_map_.end()) {
+      hist = p->second;
+    }
+    return hist;
+  }
+
+  virtual Hist* NewHistogram() = 0;
+
   typedef std::vector<Var*> VarVector;
   typedef std::map<GoogleString, Var*> VarMap;
+  typedef std::vector<Hist*> HistVector;
+  typedef std::map<GoogleString, Hist*> HistMap;
   VarVector variables_;
-  StringVector names_;
   VarMap variable_map_;
+  HistVector histograms_;
+  HistMap histogram_map_;
+  StringVector variable_names_;
+  StringVector histogram_names_;
 
   DISALLOW_COPY_AND_ASSIGN(StatisticsTemplate);
 };

@@ -18,6 +18,7 @@
 #include <cstddef>
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string.h"
@@ -79,13 +80,15 @@ class SharedMemVariable : public Variable {
   DISALLOW_COPY_AND_ASSIGN(SharedMemVariable);
 };
 
-class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable> {
+// TODO(fangfei): shared memory histogram.
+// NullStatisticsHistogram is for temporary util we have a shared memory
+// histogram implemented.
+class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
+                                                      NullStatisticsHistogram> {
  public:
   SharedMemStatistics(AbstractSharedMem* shm_runtime,
                       const GoogleString& filename_prefix);
   virtual ~SharedMemStatistics();
-
-  virtual SharedMemVariable* NewVariable(const StringPiece& name, int index);
 
   // This method initializes or attaches to shared memory. You should call this
   // exactly once in each process/thread, after all calls to AddVariables have
@@ -97,6 +100,10 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable> {
   // This should be called from the root process as it is about to exit, when
   // no further children are expected to start.
   void GlobalCleanup(MessageHandler* message_handler);
+
+ protected:
+  virtual SharedMemVariable* NewVariable(const StringPiece& name, int index);
+  virtual NullStatisticsHistogram* NewHistogram();
 
  private:
   GoogleString SegmentName() const;
