@@ -84,7 +84,7 @@ void InlineRewriteContext::Rewrite(int partition_index,
 }
 
 void InlineRewriteContext::Render() {
-  if (num_output_partitions() == 1) {
+  if (num_output_partitions() == 1 && !slot(0)->should_delete_element()) {
     // We've decided to inline...
     slot(0)->set_disable_rendering(true);
     ResourceSlotPtr our_slot = slot(0);

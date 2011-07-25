@@ -20,6 +20,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -220,6 +221,27 @@ TEST_P(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
   ValidateExpected("claims_xhtml_but_has_unclosed_links",
                    StringPrintf(html_format, kXhtmlDtd, unclosed_css),
                    StringPrintf(html_format, kXhtmlDtd, inlined_css));
+}
+
+TEST_P(CssInlineFilterTest, InlineCombined) {
+  // Make sure we interact with CSS combiner properly, including in cached
+  // case.
+  options()->EnableFilter(RewriteOptions::kInlineCss);
+  options()->EnableFilter(RewriteOptions::kCombineCss);
+  rewrite_driver()->AddFilters();
+
+  const char kCssUrl[] = "a.css";
+  const char kCss[] = "div {display:block;}";
+
+  InitResponseHeaders(kCssUrl, kContentTypeCss, kCss, 3000);
+
+  GoogleString html_input =
+      StrCat("<link rel=stylesheet href=\"", kCssUrl, "\">",
+             "<link rel=stylesheet href=\"", kCssUrl, "\">");
+  GoogleString html_output= StrCat("<style>", kCss, kCss, "</style>");
+
+  ValidateExpected("inline_combined", html_input, html_output);
+  ValidateExpected("inline_combined", html_input, html_output);
 }
 
 TEST_P(CssInlineFilterTest, InlineMinimizeInteraction) {

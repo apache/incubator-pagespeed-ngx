@@ -20,6 +20,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -228,6 +229,27 @@ TEST_P(JsInlineFilterTest, CachedWithSuccesors) {
 
   ValidateExpected("inline_with_succ", html_input, html_output);
   ValidateExpected("inline_with_succ", html_input, html_output);
+}
+
+TEST_P(JsInlineFilterTest, CachedWithPredecessors) {
+  // Regression test for crash: trying to inline after combining would crash.
+  // (Current state is not to inline after combining due to the
+  //  <script> element with src= being new).
+  options()->EnableFilter(RewriteOptions::kInlineJavascript);
+  options()->EnableFilter(RewriteOptions::kCombineJavascript);
+  rewrite_driver()->AddFilters();
+
+  const char kJsUrl[] = "script.js";
+  const char kJs[] = "function id(x) { return x; }\n";
+
+  InitResponseHeaders(kJsUrl, kContentTypeJavascript,
+                      kJs, 3000);
+
+  GoogleString html_input = StrCat("<script src=\"", kJsUrl, "\"></script>",
+                                   "<script src=\"", kJsUrl, "\"></script>");
+
+  Parse("inline_with_pred", html_input);
+  Parse("inline_with_pred", html_input);
 }
 
 TEST_P(JsInlineFilterTest, InlineJs404) {
