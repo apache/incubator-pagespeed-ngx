@@ -86,6 +86,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   void ComputeCaching();
   bool IsCacheable() const;
   bool IsProxyCacheable() const;
+  // Note(sligocki): I think CacheExpirationTimeMs will return 0 if !IsCacheable
+  // TODO(sligocki): Look through callsites and make sure this is being
+  // interpretted correctly.
   int64 CacheExpirationTimeMs() const;
 
   // Sets Date, Cache-Control and Expires headers appropriately.

@@ -74,7 +74,11 @@ class Resource : public RefCounted<Resource> {
   // assigning the index supplied.
   void AddInputInfoToPartition(int index, OutputPartition* partition);
 
+  // Returns 0 if resource is not cacheable.
+  // TODO(sligocki): Look through callsites and make sure this is being
+  // interpretted correctly.
   int64 CacheExpirationTimeMs() const;
+
   StringPiece contents() const {
     StringPiece val;
     bool got_contents = value_.ExtractContents(&val);

@@ -194,6 +194,29 @@ TEST_F(ResponseHeadersTest, TestCachingNeedDate) {
   EXPECT_EQ(0, response_headers_.CacheExpirationTimeMs());
 }
 
+// Make sure we deal correctly when we have no Date or Cache-Control headers.
+TEST_F(ResponseHeadersTest, TestNoHeaders) {
+  ParseHeaders("HTTP/1.0 200 OK\r\n\r\n");
+  EXPECT_FALSE(response_headers_.IsCacheable());
+  EXPECT_EQ(0, response_headers_.CacheExpirationTimeMs());
+}
+
+// Corner case, bug noticed when we have Content-Type, but no Date header.
+TEST_F(ResponseHeadersTest, TestNoContentTypeNoDate) {
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Content-Type: text/css\r\n\r\n");
+  EXPECT_FALSE(response_headers_.IsCacheable());
+  EXPECT_EQ(0, response_headers_.CacheExpirationTimeMs());
+}
+
+TEST_F(ResponseHeadersTest, TestNoContentTypeCacheNoDate) {
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Content-Type: text/css\r\n"
+               "Cache-Control: max-age=301\r\n\r\n");
+  EXPECT_FALSE(response_headers_.IsCacheable());
+  EXPECT_EQ(0, response_headers_.CacheExpirationTimeMs());
+}
+
 TEST_F(ResponseHeadersTest, TestCachingPublic) {
   // In this test we'll leave the explicit "public" flag in to make sure
   // we can parse it.

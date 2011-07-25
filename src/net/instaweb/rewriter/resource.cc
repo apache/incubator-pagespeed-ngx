@@ -37,7 +37,7 @@ class SharedString;
 
 namespace {
 
-const int64 kDefaultExpireTimeMs = 5 * Timer::kMinuteMs;
+const int64 kNotCacheable = 0;
 
 }  // namespace
 
@@ -75,7 +75,7 @@ void Resource::FillInPartitionInputInfo(InputInfo* input) {
 }
 
 int64 Resource::CacheExpirationTimeMs() const {
-  int64 input_expire_time_ms = kDefaultExpireTimeMs;
+  int64 input_expire_time_ms = kNotCacheable;
   if (response_headers_.IsCacheable()) {
     input_expire_time_ms = response_headers_.CacheExpirationTimeMs();
   }
