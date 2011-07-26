@@ -41,6 +41,26 @@ class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
     delete base_url_;
   }
 
+  // Must set base url to "http://www.example.com/dir/*something*"
+  // before running these.
+  void TestAnchors(const StringPiece& base_url) {
+    SetFilterBaseUrl(base_url);
+    OneTrim(true, "http://www.example.com/dir/?var=val#anchor",
+            "/dir/?var=val#anchor");
+    OneTrim(true, "http://www.example.com/dir/#anchor", "/dir/#anchor");
+    OneTrim(true, "http://www.example.com/dir/foo.html", "foo.html");
+    OneTrim(true, "http://www.example.com/dir/abc/f?g=h", "abc/f?g=h");
+    OneTrim(true, "http://www.example.com/dir/f?g=h#anchor",
+            "f?g=h#anchor");
+    OneTrim(true, "http://www.example.com/dir/index.html#",
+            "index.html#");
+    OneTrim(true, "http://www.example.com/dir/index.html?f=g#bottom",
+            "index.html?f=g#bottom");
+    OneTrim(true, "http://www.example.com/dir/index.html?f=g#bottom",
+            "index.html?f=g#bottom");
+    OneTrim(false, "#top", "");
+  }
+
   void OneTrim(bool changed,
                const StringPiece& init, const StringPiece& expected) {
     StringPiece url(init);
@@ -50,9 +70,7 @@ class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
         *base_url_, url, &trimmed,
         rewrite_driver()->message_handler()));
     if (changed) {
-      EXPECT_EQ(expected, trimmed) <<
-          "\nExpected: " << expected <<
-          "\nSaw     : " << trimmed;
+      EXPECT_STREQ(expected, trimmed);
     }
   }
 
@@ -307,6 +325,15 @@ static const char kRelativeBaseRewritten[] =
 
 TEST_F(UrlLeftTrimFilterTest, RelativeBase) {
   ValidateExpected("wiki", kRelativeBase, kRelativeBaseRewritten);
+}
+
+
+TEST_F(UrlLeftTrimFilterTest, Anchors) {
+  TestAnchors("http://www.example.com/dir/?var=val");
+  TestAnchors("http://www.example.com/dir/index.html");
+  TestAnchors("http://www.example.com/dir/index.html#top");
+  TestAnchors("http://www.example.com/dir/index.html?f=g");
+  TestAnchors("http://www.example.com/dir/index.html?f=g&y=z#bottom");
 }
 
 }  // namespace net_instaweb

@@ -25,7 +25,6 @@
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -108,7 +107,11 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
         // E.g. on http://example.com/foo/bar/index.html, don't trim
         // http://example.com/foo/bar//baz/other.html to //baz/other.html
         // or to /baz/other.html.
-        if (long_url_buffer[to_trim] == '/') {
+        // a url ".../#anchor" with resolve relative to the base page instead
+          // of the base directory.
+        if (long_url_buffer[to_trim] == '/' ||
+            long_url_buffer[to_trim] == '#' ||
+            long_url_buffer[to_trim] == '?') {
           to_trim -= path.length();
         }
       }
@@ -147,14 +150,10 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
       }
     }
     GoogleUrl resolved_newurl(base_url, trimmed_url_piece);
+    // Error condition: this shouldn't happen.
+    DCHECK(resolved_newurl.is_valid());
     DCHECK(resolved_newurl == long_url);
     if (!resolved_newurl.is_valid() || resolved_newurl != long_url) {
-      handler->Message(kError, "Left trimming of %s referring to %s was %s, "
-                       "which instead refers to %s.",
-                       url_to_trim.as_string().c_str(),
-                       long_url_buffer.as_string().c_str(),
-                       trimmed_url_piece.as_string().c_str(),
-                       resolved_newurl.spec_c_str());
       return false;
     }
     *trimmed_url = trimmed_url_piece.as_string();
