@@ -23,7 +23,7 @@
 # Want |& support; and /bin/sh doesn't provide it at least on Ubuntu 11.04
 SHELL=/bin/bash
 
-# Make conf + log file locations accessible to system_test.sh
+# Make conf + log file locations accessible to apache_system_test.sh
 export APACHE_DEBUG_PAGESPEED_CONF
 export APACHE_LOG
 
@@ -61,8 +61,10 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	rm -rf $(PAGESPEED_ROOT)/cache
 	$(APACHE_CTRL_BIN) start
 	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER)
+	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER)
 	@echo '***' System-test with warm cache
 	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER)
+	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER)
 	@echo '***' System-test With statistics off
 	mv $(APACHE_DEBUG_PAGESPEED_CONF) $(APACHE_DEBUG_PAGESPEED_CONF).save
 	sed -e "s/# ModPagespeedStatistics off/ModPagespeedStatistics off/" \
@@ -72,6 +74,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	-$(APACHE_CTRL_BIN) restart
 	sleep 2
 	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER)
+	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER)
 	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
 	grep ModPagespeedStatistics $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_stop

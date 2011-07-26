@@ -292,6 +292,7 @@ restart : staging
 # Tests that the installed mod_pagespeed server is working.
 test :
 	./system_test.sh localhost
+	./apache_system_test.sh localhost
 
 # Now hook in the full integration test suite. It needs to be run as root.
 apache_install_conf:

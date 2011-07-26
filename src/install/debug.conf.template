@@ -50,15 +50,15 @@ ModPagespeedEnableFilters add_instrumentation
     Options +SymLinksIfOwnerMatch
 </Directory>
 
-# This is needed for the server-side includes test at the end of
-# system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
+# This is needed for the server-side includes test in
+# apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
 <IfModule !include_module>
   LoadModule include_module @@APACHE_MODULES@@/mod_include.so
 </IfModule>
 AddType text/html .shtml
 AddOutputFilter INCLUDES .shtml
 
-# For the mod_rewrite test in system_test.sh
+# For the mod_rewrite test in apache_system_test.sh
 <IfModule !rewrite_module>
   LoadModule rewrite_module  @@APACHE_MODULES@@/mod_rewrite.so
 </IfModule>
