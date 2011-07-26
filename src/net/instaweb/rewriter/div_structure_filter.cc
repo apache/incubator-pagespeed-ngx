@@ -70,17 +70,19 @@ void DivStructureFilter::StartElement(HtmlElement* element) {
     div_count_stack_.push_back(0);
   } else if (keyword == HtmlName::kA) {
     HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
-    const char* url = href->value();
-    if (url != NULL) {
-      GoogleUrl google_url(url);
-      if (google_url.is_valid()) {
-        GoogleString param_value = GetDivCountStackEncoding(div_count_stack_);
-        scoped_ptr<GoogleUrl> new_url(
-           google_url.CopyAndAddQueryParam(kParamName,
-                                           param_value.c_str()));
-        // new url should be valid, so we can use Spec()
-        href->SetValue(new_url->Spec());
-        div_count_stack_.back()++;
+    if (href != NULL) {
+      const char* url = href->value();
+      if (url != NULL) {
+        GoogleUrl google_url(url);
+        if (google_url.is_valid()) {
+          GoogleString param_value = GetDivCountStackEncoding(div_count_stack_);
+          scoped_ptr<GoogleUrl> new_url(
+             google_url.CopyAndAddQueryParam(kParamName,
+                                             param_value.c_str()));
+          // new url should be valid, so we can use Spec()
+          href->SetValue(new_url->Spec());
+          div_count_stack_.back()++;
+        }
       }
     }
   }

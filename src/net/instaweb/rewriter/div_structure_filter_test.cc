@@ -40,7 +40,7 @@ class DivStructureFilterTest : public HtmlParseTestBase {
 };
 
 // TODO(jhoch): Make tests agnostic to query param value encoding.
-TEST_F(DivStructureFilterTest, NoDivtest) {
+TEST_F(DivStructureFilterTest, NoDivTest) {
   static const char html_input[] =
       "<html>\n"
       "  <head>\n"
@@ -78,6 +78,19 @@ TEST_F(DivStructureFilterTest, NoDivtest) {
       "  </body>\n"
       "</html>\n";
   ValidateExpected("no_div_test", html_input, html_expected_output);
+}
+
+TEST_F(DivStructureFilterTest, NoHrefTest) {
+  static const char html_input[] =
+      "<html>\n"
+      "  <head>\n"
+      "  </head>\n"
+      "  <body>\n"
+      "  I guess people do this:\n"
+      "  <a onclick=\"function();\">\n"
+      "  </body>\n"
+      "</html>\n";
+  ValidateNoChanges("no_href_test", html_input);
 }
 
 TEST_F(DivStructureFilterTest, WithDivsTest) {
