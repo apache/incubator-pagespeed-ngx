@@ -700,7 +700,7 @@ class ImageCombineFilter::Context : public RewriteContext {
 
  protected:
   // Write the combination out.
-  virtual void Rewrite(int partition_index, OutputPartition* partition,
+  virtual void Rewrite(int partition_index, CachedResult* partition,
                        const OutputResourcePtr& output) {
     // TODO(nforman): make multiple partitions when we can and should.
     DCHECK_EQ(0, partition_index);
@@ -725,16 +725,16 @@ class ImageCombineFilter::Context : public RewriteContext {
   // except for one, don't use it.
   virtual void Render() {
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
-      OutputPartition* partition = output_partition(p);
+      CachedResult* partition = output_partition(p);
       int num_inputs = partition->input_size();
       if (num_inputs > 1) {
-        CachedResult* result = partition->mutable_result();
-        if (!result->has_spriter_result()) {
+        if (!partition->has_spriter_result()) {
           // TODO(nforman): some error handling here.
           DCHECK(false) << "spriting failed during Render";
           break;
         }
-        const spriter::SpriterResult& spriter_result = result->spriter_result();
+        const spriter::SpriterResult& spriter_result =
+            partition->spriter_result();
         RectMap url_to_clip_rect;
         // Now gather up the positions for each of the original urls.
         for (int i = spriter_result.image_position_size() - 1; i >= 0; i--) {
@@ -744,7 +744,7 @@ class ImageCombineFilter::Context : public RewriteContext {
           url_to_clip_rect[image_position.path()] = &image_position.clip_rect();
         }
 
-        GoogleString new_url = partition->result().url();
+        GoogleString new_url = partition->url();
         const char* new_url_cstr = new_url.c_str();
         StringSet replaced_urls;  // for stats purposes
         for (int i = 0; i < num_inputs; ++i) {
@@ -786,7 +786,7 @@ class ImageCombineFilter::Context : public RewriteContext {
   virtual bool Partition(OutputPartitions* partitions,
                          OutputResourceVector* outputs) {
     MessageHandler* handler = filter_->driver()->message_handler();
-    OutputPartition* partition = NULL;
+    CachedResult* partition = NULL;
     // For each slot, try to add its resource to the current partition.
     // If we can't, then finalize the last combination, and then
     // move on to the next slot.
@@ -857,17 +857,14 @@ class ImageCombineFilter::Context : public RewriteContext {
 
  private:
   void FinalizePartition(OutputPartitions* partitions,
-                         OutputPartition* partition,
+                         CachedResult* partition,
                          OutputResourceVector* outputs) {
     if (partition != NULL) {
       OutputResourcePtr combination_output(combiner_.MakeOutput());
       if (combination_output.get() == NULL) {
         partitions->mutable_partition()->RemoveLast();
       } else {
-        CachedResult* partition_result = partition->mutable_result();
-        const CachedResult* combination_result =
-            combination_output->cached_result();
-        *partition_result = *combination_result;
+        combination_output->UpdateCachedResultPreservingInputInfo(partition);
         outputs->push_back(combination_output);
       }
     }

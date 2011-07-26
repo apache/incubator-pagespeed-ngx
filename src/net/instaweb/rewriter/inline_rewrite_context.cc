@@ -62,10 +62,9 @@ bool InlineRewriteContext::Partition(OutputPartitions* partitions,
   CHECK(num_slots() == 1) << "InlineRewriteContext only handles one slot";
   ResourcePtr resource(slot(0)->resource());
   if (resource->IsValidAndCacheable() && ShouldInline(resource->contents())) {
-    OutputPartition* partition = partitions->add_partition();
+    CachedResult* partition = partitions->add_partition();
     resource->AddInputInfoToPartition(0, partition);
-    partition->mutable_result()->set_inlined_data(
-        resource->contents().as_string());
+    partition->set_inlined_data(resource->contents().as_string());
     outputs->push_back(OutputResourcePtr(NULL));
   }
   // If we don't inline, or resource is invalid, we write out an empty partition
@@ -74,7 +73,7 @@ bool InlineRewriteContext::Partition(OutputPartitions* partitions,
 }
 
 void InlineRewriteContext::Rewrite(int partition_index,
-                                   OutputPartition* partition,
+                                   CachedResult* partition,
                                    const OutputResourcePtr& output_resource) {
   CHECK(output_resource.get() == NULL);
   CHECK(partition_index == 0);
@@ -89,8 +88,7 @@ void InlineRewriteContext::Render() {
     slot(0)->set_disable_rendering(true);
     ResourceSlotPtr our_slot = slot(0);
     RenderInline(
-        our_slot->resource(), output_partition(0)->result().inlined_data(),
-        element_);
+        our_slot->resource(), output_partition(0)->inlined_data(), element_);
   }
 }
 

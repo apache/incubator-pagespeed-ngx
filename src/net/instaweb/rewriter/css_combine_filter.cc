@@ -192,7 +192,7 @@ class CssCombineFilter::Context : public RewriteContext {
   virtual bool Partition(OutputPartitions* partitions,
                          OutputResourceVector* outputs) {
     MessageHandler* handler = Driver()->message_handler();
-    OutputPartition* partition = NULL;
+    CachedResult* partition = NULL;
     CHECK_EQ(static_cast<int>(elements_.size()), num_slots());
     for (int i = 0, n = num_slots(); i < n; ++i) {
       bool add_input = false;
@@ -235,7 +235,7 @@ class CssCombineFilter::Context : public RewriteContext {
   }
 
   virtual void Rewrite(int partition_index,
-                       OutputPartition* partition,
+                       CachedResult* partition,
                        const OutputResourcePtr& output) {
     // resource_combiner.cc calls WriteCombination as part
     // of Combine.  But if we are being called on behalf of a
@@ -261,7 +261,7 @@ class CssCombineFilter::Context : public RewriteContext {
     // Slot 0 will be replaced by the combined resource as part of
     // rewrite_context.cc.  But we still need to delete slots 1-N.
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
-      OutputPartition* partition = output_partition(p);
+      CachedResult* partition = output_partition(p);
       if (filter_->driver()->doctype().IsXhtml()) {
         int first_element_index = partition->input(0).index();
         HtmlElement* first_element = elements_[first_element_index];
@@ -282,17 +282,14 @@ class CssCombineFilter::Context : public RewriteContext {
 
  private:
   void FinalizePartition(OutputPartitions* partitions,
-                         OutputPartition* partition,
+                         CachedResult* partition,
                          OutputResourceVector* outputs) {
     if (partition != NULL) {
       OutputResourcePtr combination_output(combiner_.MakeOutput());
       if (combination_output.get() == NULL) {
         partitions->mutable_partition()->RemoveLast();
       } else {
-        CachedResult* partition_result = partition->mutable_result();
-        const CachedResult* combination_result =
-            combination_output->cached_result();
-        *partition_result = *combination_result;
+        combination_output->UpdateCachedResultPreservingInputInfo(partition);
         outputs->push_back(combination_output);
       }
       Reset();

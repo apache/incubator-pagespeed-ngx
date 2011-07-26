@@ -54,7 +54,7 @@ bool Resource::IsValidAndCacheable() {
               response_headers_));
 }
 
-void Resource::AddInputInfoToPartition(int index, OutputPartition* partition) {
+void Resource::AddInputInfoToPartition(int index, CachedResult* partition) {
   InputInfo* input = partition->add_input();
   input->set_index(index);
   // FillInPartitionInputInfo can be specialized based on resource type.

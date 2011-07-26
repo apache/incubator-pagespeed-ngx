@@ -29,8 +29,8 @@
 
 namespace net_instaweb {
 
+class CachedResult;
 class CommonFilter;
-class OutputPartition;
 class OutputPartitions;
 
 // Class that unifies tasks common to building rewriters for filters
@@ -58,7 +58,7 @@ class InlineRewriteContext : public RewriteContext {
   virtual bool Partition(OutputPartitions* partitions,
                          OutputResourceVector* outputs);
   virtual void Rewrite(int partition_index,
-                       OutputPartition* partition,
+                       CachedResult* partition,
                        const OutputResourcePtr& output);
   virtual void Render();
   virtual OutputResourceKind kind() const;

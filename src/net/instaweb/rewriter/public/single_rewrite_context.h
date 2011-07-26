@@ -26,7 +26,7 @@
 
 namespace net_instaweb {
 
-class OutputPartition;
+class CachedResult;
 class OutputPartitions;
 class ResourceContext;
 class RewriteDriver;
@@ -52,7 +52,7 @@ class SingleRewriteContext : public RewriteContext {
   virtual bool Partition(OutputPartitions* partitions,
                          OutputResourceVector* outputs);
   virtual void Rewrite(int partition_index,
-                       OutputPartition* partition,
+                       CachedResult* partition,
                        const OutputResourcePtr& output);
 
   DISALLOW_COPY_AND_ASSIGN(SingleRewriteContext);

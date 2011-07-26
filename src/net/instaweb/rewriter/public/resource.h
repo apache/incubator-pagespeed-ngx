@@ -39,10 +39,10 @@
 
 namespace net_instaweb {
 
+class CachedResult;
 struct ContentType;
 class InputInfo;
 class MessageHandler;
-class OutputPartition;
 class Resource;
 class ResourceManager;
 
@@ -70,9 +70,9 @@ class Resource : public RefCounted<Resource> {
     return (response_headers_.status_code() == HttpStatus::kOK);
   }
 
-  // Adds a new InputInfo object representing this resource to OutputPartition,
+  // Adds a new InputInfo object representing this resource to CachedResult,
   // assigning the index supplied.
-  void AddInputInfoToPartition(int index, OutputPartition* partition);
+  void AddInputInfoToPartition(int index, CachedResult* partition);
 
   // Returns 0 if resource is not cacheable.
   // TODO(sligocki): Look through callsites and make sure this is being
@@ -139,7 +139,7 @@ class Resource : public RefCounted<Resource> {
   friend class UrlReadAsyncFetchCallback;
   friend class ResourceManagerHttpCallback;
 
-  // Set OutputPartition's input info used for expiration validation.
+  // Set CachedResult's input info used for expiration validation.
   //
   // Default one sets resource type as CACHED and sets an expiration timestamp.
   // If a derived class has a different criterion for validity, override

@@ -420,7 +420,7 @@ class CombiningFilter : public RewriteFilter {
     virtual bool Partition(OutputPartitions* partitions,
                            OutputResourceVector* outputs) {
       MessageHandler* handler = Driver()->message_handler();
-      OutputPartition* partition = partitions->add_partition();
+      CachedResult* partition = partitions->add_partition();
       for (int i = 0, n = num_slots(); i < n; ++i) {
         slot(i)->resource()->AddInputInfoToPartition(i, partition);
         if (!combiner_.AddResourceNoFetch(slot(i)->resource(), handler).value) {
@@ -430,19 +430,17 @@ class CombiningFilter : public RewriteFilter {
       OutputResourcePtr combination(combiner_.MakeOutput());
 
       // ResourceCombiner provides us with a pre-populated CachedResult,
-      // so we need to copy it over to our OutputPartition.  This is
+      // so we need to copy it over to our CachedResult.  This is
       // less efficient than having ResourceCombiner work with our
       // cached_result directly but this allows code-sharing as we
       // transition to the async flow.
-      CachedResult* partition_result = partition->mutable_result();
-      const CachedResult* combination_result = combination->cached_result();
-      *partition_result = *combination_result;
+      combination->UpdateCachedResultPreservingInputInfo(partition);
       outputs->push_back(combination);
       return true;
     }
 
     virtual void Rewrite(int partition_index,
-                         OutputPartition* partition,
+                         CachedResult* partition,
                          const OutputResourcePtr& output) {
       if (filter_->rewrite_delay_ms() == 0) {
         DoRewrite(partition_index, partition, output);
@@ -450,7 +448,7 @@ class CombiningFilter : public RewriteFilter {
         int64 wakeup_us = time_at_start_of_rewrite_us_ +
             1000 * filter_->rewrite_delay_ms();
         Function* closure =
-            new MemberFunction3<Context, int, OutputPartition*,
+            new MemberFunction3<Context, int, CachedResult*,
                                  const OutputResourcePtr&>(
                 &Context::DoRewrite, this, partition_index,
                 partition, output);
@@ -459,7 +457,7 @@ class CombiningFilter : public RewriteFilter {
     }
 
     void DoRewrite(int partition_index,
-                   OutputPartition* partition,
+                   CachedResult* partition,
                    const OutputResourcePtr& output) {
       ++filter_->num_rewrites_;
       // resource_combiner.cc takes calls WriteCombination as part
@@ -484,7 +482,7 @@ class CombiningFilter : public RewriteFilter {
       // Slot 0 will be replaced by the combined resource as part of
       // rewrite_context.cc.  But we still need to delete slots 1-N.
       for (int p = 0, np = num_output_partitions(); p < np; ++p) {
-        OutputPartition* partition = output_partition(p);
+        CachedResult* partition = output_partition(p);
         for (int i = 1; i < partition->input_size(); ++i) {
           int slot_index = partition->input(i).index();
           slot(slot_index)->set_should_delete_element(true);
@@ -1194,7 +1192,7 @@ TEST_F(RewriteContextTest, LoadFromFileOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_hits());
   // 2 cache misses: one for the OutputPartitions, one for the input resource.
   EXPECT_EQ(2, lru_cache()->num_misses());
-  // 1 cache insertion: resource mapping (OutputPartition).
+  // 1 cache insertion: resource mapping (CachedResult).
   // Output resource not stored in cache (because it's an on-the-fly resource).
   EXPECT_EQ(1, lru_cache()->num_inserts());
   // No fetches because it's loaded from file.
@@ -1230,7 +1228,7 @@ TEST_F(RewriteContextTest, LoadFromFileRewritten) {
   EXPECT_EQ(0, lru_cache()->num_hits());
   // 2 cache misses: one for the OutputPartitions, one for the input resource.
   EXPECT_EQ(2, lru_cache()->num_misses());
-  // 2 cache insertion: resource mapping (OutputPartition) and output resource.
+  // 2 cache insertion: resource mapping (CachedResult) and output resource.
   EXPECT_EQ(2, lru_cache()->num_inserts());
   // No fetches because it's loaded from file.
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());

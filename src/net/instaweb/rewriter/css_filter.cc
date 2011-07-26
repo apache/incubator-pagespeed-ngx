@@ -119,7 +119,7 @@ void CssFilter::Context::Render() {
     return;
   }
 
-  const CachedResult& result = output_partition(0)->result();
+  const CachedResult& result = *output_partition(0);
   if (rewrite_inline_char_node_ != NULL && result.optimizable()) {
     HtmlCharactersNode* new_style_char_node =
         driver_->NewCharactersNode(rewrite_inline_element_,
@@ -225,7 +225,7 @@ void CssFilter::Context::Harvest() {
                           output_resource_.get(),
                           expire_ms, Driver()->message_handler());
     } else {
-      output_partition(0)->mutable_result()->set_inlined_data(out_text);
+      output_partition(0)->set_inlined_data(out_text);
     }
   }
 
@@ -243,7 +243,7 @@ bool CssFilter::Context::Partition(OutputPartitions* partitions,
   } else {
     // In case where we're rewriting inline CSS, we don't want an output
     // resource but still want a non-trivial partition.
-    OutputPartition* partition = partitions->add_partition();
+    CachedResult* partition = partitions->add_partition();
     slot(0)->resource()->AddInputInfoToPartition(0, partition);
     outputs->push_back(OutputResourcePtr(NULL));
     return true;

@@ -40,7 +40,6 @@ namespace net_instaweb {
 class AbstractLock;
 class CachedResult;
 class MessageHandler;
-class OutputPartition;
 class OutputPartitions;
 class ResourceContext;
 class ResponseHeaders;
@@ -117,8 +116,8 @@ class RewriteContext {
   // These are generally accessed in the Rewrite thread,
   // but may also be accessed in ::Render.
   int num_output_partitions() const;
-  const OutputPartition* output_partition(int i) const;
-  OutputPartition* output_partition(int i);
+  const CachedResult* output_partition(int i) const;
+  CachedResult* output_partition(int i);
 
   // Returns true if this context is chained to some predecessors, and
   // must therefore be started by a predecessor and not RewriteDriver.
@@ -191,9 +190,9 @@ class RewriteContext {
   RewriteDriver* Driver();
   const ResourceContext* resource_context() { return resource_context_.get(); }
 
-  // Check that an OutputPartition is valid, specifically, that all the
+  // Check that an CachedResult is valid, specifically, that all the
   // inputs are still valid/non-expired.
-  bool OutputPartitionIsValid(const OutputPartition& partition);
+  bool IsCachedResultValid(const CachedResult& partition);
 
   // Establishes that a slot has been rewritten.  So when Propagate()
   // is called, the resource update that has been written to this slot can
@@ -253,7 +252,7 @@ class RewriteContext {
   // thread (while we were waiting for resource fetches) when Rewrite
   // gets called.
   virtual void Rewrite(int partition_index,
-                       OutputPartition* partition,
+                       CachedResult* partition,
                        const OutputResourcePtr& output) = 0;
 
   // Once any nested rewrites have completed, the results of these

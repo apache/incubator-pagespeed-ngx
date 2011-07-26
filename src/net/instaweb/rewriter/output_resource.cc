@@ -403,6 +403,15 @@ CachedResult* OutputResource::EnsureCachedResultCreated() {
   return cached_result_;
 }
 
+void OutputResource::UpdateCachedResultPreservingInputInfo(
+    CachedResult* to_update) const {
+  // TODO(sligocki): Fix this so that the *cached_result() does have inputs set.
+  protobuf::RepeatedPtrField<InputInfo> temp;
+  temp.Swap(to_update->mutable_input());
+  *to_update = *cached_result();
+  temp.Swap(to_update->mutable_input());
+}
+
 void OutputResource::clear_cached_result() {
   if (cached_result_owned_) {
     delete cached_result_;

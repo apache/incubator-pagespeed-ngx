@@ -266,11 +266,11 @@ int RewriteContext::num_output_partitions() const {
   return partitions_->partition_size();
 }
 
-const OutputPartition* RewriteContext::output_partition(int i) const {
+const CachedResult* RewriteContext::output_partition(int i) const {
   return &partitions_->partition(i);
 }
 
-OutputPartition* RewriteContext::output_partition(int i) {
+CachedResult* RewriteContext::output_partition(int i) {
   return partitions_->mutable_partition(i);
 }
 
@@ -355,7 +355,7 @@ void RewriteContext::SetPartitionKey() {
 }
 
 // Check if this mapping from input to output URLs is still valid.
-bool RewriteContext::OutputPartitionIsValid(const OutputPartition& partition) {
+bool RewriteContext::IsCachedResultValid(const CachedResult& partition) {
   bool partition_is_valid = true;
   for (int j = 0, m = partition.input_size();
        (j < m) && partition_is_valid; ++j) {
@@ -411,25 +411,24 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
     ArrayInputStream input(val_str->data(), val_str->size());
     if (partitions_->ParseFromZeroCopyStream(&input)) {
       for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
-        const OutputPartition& partition = partitions_->partition(i);
-        const CachedResult& cached_result = partition.result();
+        const CachedResult& partition = partitions_->partition(i);
         OutputResourcePtr output_resource;
         const ContentType* content_type = NameExtensionToContentType(
-            StrCat(".", cached_result.extension()));
+            StrCat(".", partition.extension()));
 
         // TODO(sligocki): Move this into FreshenAndCheckExpiration or delete
         // that (currently empty) method.
-        if (!OutputPartitionIsValid(partition)) {
+        if (!IsCachedResultValid(partition)) {
           // If a single output resource is invalid, we update them all.
           state = CacheInterface::kNotFound;
           outputs_.clear();
           break;
         }
 
-        if (cached_result.optimizable() &&
+        if (partition.optimizable() &&
             CreateOutputResourceForCachedOutput(
-                cached_result.url(), content_type, &output_resource) &&
-            FreshenAndCheckExpiration(cached_result)) {
+                partition.url(), content_type, &output_resource) &&
+            FreshenAndCheckExpiration(partition)) {
           outputs_.push_back(output_resource);
           RenderPartitionOnDetach(i);
         } else {
@@ -645,17 +644,17 @@ void RewriteContext::RewriteDone(
   if (result == RewriteSingleResourceFilter::kTooBusy) {
     ok_to_write_output_partitions_ = false;
   } else {
-    OutputPartition* partition =
+    CachedResult* partition =
         partitions_->mutable_partition(partition_index);
     bool optimizable = (result == RewriteSingleResourceFilter::kRewriteOk);
-    partition->mutable_result()->set_optimizable(optimizable);
+    partition->set_optimizable(optimizable);
     if (!optimizable) {
       // TODO(sligocki): We are indiscriminately setting a 5min cache lifetime
       // for all failed rewrites. We should use the input resource's cache
       // lifetime instead. Or better yet, do conditional fetches of input
       // resources and only invalidate mapping if inputs change.
       int64 now_ms = Manager()->timer()->NowMs();
-      partition->mutable_result()->set_origin_expiration_time_ms(
+      partition->set_origin_expiration_time_ms(
           now_ms + ResponseHeaders::kImplicitCacheTtlMs);
     }
     if (optimizable && (fetch_.get() == NULL)) {
@@ -689,7 +688,7 @@ void RewriteContext::Propagate(bool render_slots) {
     }
     CHECK_EQ(num_output_partitions(), static_cast<int>(outputs_.size()));
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
-      OutputPartition* partition = output_partition(p);
+      CachedResult* partition = output_partition(p);
       for (int i = 0, n = partition->input_size(); i < n; ++i) {
         int slot_index = partition->input(i).index();
         if (render_slots_[slot_index]) {
@@ -718,7 +717,7 @@ void RewriteContext::Finalize() {
 }
 
 void RewriteContext::RenderPartitionOnDetach(int rewrite_index) {
-  OutputPartition* partition = output_partition(rewrite_index);
+  CachedResult* partition = output_partition(rewrite_index);
   for (int i = 0; i < partition->input_size(); ++i) {
     int slot_index = partition->input(i).index();
     slot(slot_index)->set_was_optimized();
@@ -749,7 +748,7 @@ void RewriteContext::RunSuccessors() {
 void RewriteContext::FinishFetch() {
   // Make a fake partition that has all the inputs, since we are
   // performing the rewrite for only one output resource.
-  OutputPartition* partition = partitions_->add_partition();
+  CachedResult* partition = partitions_->add_partition();
   bool ok_to_rewrite = true;
   for (int i = 0, n = slots_.size(); i < n; ++i) {
     ResourcePtr resource(slot(i)->resource());

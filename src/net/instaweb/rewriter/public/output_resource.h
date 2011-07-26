@@ -73,6 +73,10 @@ class OutputResource : public Resource {
   // ResourceManager::Write)
   bool LockForCreation(BlockingBehavior block);
 
+  // Update the passed in CachedResult from the CachedResult in this
+  // OutputResource.
+  void UpdateCachedResultPreservingInputInfo(CachedResult* to_update) const;
+
   // The NameKey describes the source url and rewriter used, without hash and
   // content type information.  This is used to find previously-computed filter
   // results whose output hash and content type is unknown.  The full name of a

@@ -18,14 +18,23 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_PROTO_UTIL_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+
+
 #include "google/protobuf/io/zero_copy_stream_impl_lite.h"
 #include "google/protobuf/repeated_field.h"
 
 namespace net_instaweb {
 
+// TODO(sligocki): Get rid of these special cases.
 typedef google::protobuf::io::StringOutputStream StringOutputStream;
 typedef google::protobuf::io::ArrayInputStream ArrayInputStream;
 
+namespace protobuf {
+
+// Pulls all google::protobuf namespace into net_instaweb::protobuf namespace.
+using namespace google::protobuf;
+
+}  // namespace protobuf
 }  // namespace net_instaweb
 
 
