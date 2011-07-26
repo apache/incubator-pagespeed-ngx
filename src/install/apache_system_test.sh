@@ -306,10 +306,10 @@ URL=$EXAMPLE_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
 check "$WGET_DUMP $URL | grep -q 'HTTP/1.1 200 OK'"
 
 # TODO(sligocki): Get passing in rewrite_proxy_server and move to system_test.sh
-test_filter outline_javascript outlines large scripts, but not small ones.	
-check $WGET_PREREQ $URL	
-check egrep -q "'<script.*large.*src='" $FETCHED       # outlined	
-check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined	
+test_filter outline_javascript outlines large scripts, but not small ones.
+check $WGET_PREREQ $URL
+check egrep -q "'<script.*large.*src='" $FETCHED       # outlined
+check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
 echo TEST: compression is enabled for rewritten JS.
 echo JS_URL=\$\(egrep -o http://.*.pagespeed.*.js $FETCHED\)
 JS_URL=$(egrep -o http://.*.pagespeed.*.js $FETCHED)
@@ -335,7 +335,8 @@ check grep -q retained $FETCHED        # RetainComment directive
 # TODO(sligocki): Get passing in rewrite_proxy_server and move to system_test.sh
 test_filter rewrite_images inlines, compresses, and resizes.
 URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
-fetch_until $URL 'grep -c image/png' 1    # inlined
+fetch_until $URL 'grep -c image/png' 1      # inlined
+fetch_until $URL 'grep -c .pagespeed.ic' 2  # other 2 images optimized
 check $WGET_PREREQ $URL
 check [ `stat -c %s $OUTDIR/xBikeCrashIcn*` -lt 25000 ]      # re-encoded
 check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
@@ -481,6 +482,6 @@ CheckBots 'on' '-lt'
 echo "Test: UserAgent is not a bot, ModPagespeedDisableForBots is default"
 CheckBots 'default' '-lt'
 
-# Cleanup	
-rm -rf $OUTDIR	
+# Cleanup
+rm -rf $OUTDIR
 echo "PASS."

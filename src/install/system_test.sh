@@ -376,7 +376,8 @@ check [ `stat -c %s $FETCHED` -lt 680 ]   # down from 689
 # TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
 #test_filter rewrite_images inlines, compresses, and resizes.
 URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
-#fetch_until $URL 'grep -c image/png' 1    # inlined
+#fetch_until $URL 'grep -c image/png' 1      # inlined
+#fetch_until $URL 'grep -c .pagespeed.ic' 2  # other 2 images optimized
 #check $WGET_PREREQ $URL
 #check [ `stat -c %s $OUTDIR/xBikeCrashIcn*` -lt 25000 ]      # re-encoded
 #check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
