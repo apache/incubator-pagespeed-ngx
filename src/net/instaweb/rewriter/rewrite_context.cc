@@ -31,6 +31,7 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -51,6 +52,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -62,6 +64,8 @@
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
+
+class RewriteFilter;
 
 const char kRewriteContextLockPrefix[] = "rc:";
 
@@ -91,30 +95,84 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   RewriteContext* rewrite_context_;
 };
 
-class RewriteContext::ResourceFetchCallback : public Resource::AsyncCallback {
+// Common code for invoking RewriteContext::ResourceFetchDone for use
+// in ResourceFetchCallback and ResourceReconstructCallback.
+class RewriteContext::ResourceCallbackUtils {
  public:
-  ResourceFetchCallback(RewriteContext* rc, const ResourcePtr& resource,
+  ResourceCallbackUtils(RewriteContext* rc, const ResourcePtr& resource,
                         int slot_index)
-      : Resource::AsyncCallback(resource),
+      : resource_(resource),
         rewrite_context_(rc),
         slot_index_(slot_index) {
   }
-  virtual ~ResourceFetchCallback() {}
-  virtual void Done(bool success) {
+
+  void Done(bool success) {
     ResourceManager* resource_manager = rewrite_context_->Manager();
-    ResourcePtr r(resource());
     resource_manager->AddRewriteTask(
         new MemberFunction3<RewriteContext, bool, ResourcePtr, int>(
             &RewriteContext::ResourceFetchDone, rewrite_context_,
-            success, r, slot_index_));
+            success, resource_, slot_index_));
+  }
+
+ private:
+  ResourcePtr resource_;
+  RewriteContext* rewrite_context_;
+  int slot_index_;
+};
+
+// Callback when reading a resource from the network.
+class RewriteContext::ResourceFetchCallback : public Resource::AsyncCallback {
+ public:
+  ResourceFetchCallback(RewriteContext* rc, const ResourcePtr& r,
+                        int slot_index)
+      : Resource::AsyncCallback(r),
+        delegate_(rc, r, slot_index) {
+  }
+
+  virtual ~ResourceFetchCallback() {}
+  virtual void Done(bool success) {
+    delegate_.Done(success);
     delete this;
   }
 
   virtual bool EnableThreaded() const { return true; }
 
  private:
-  RewriteContext* rewrite_context_;
-  int slot_index_;
+  ResourceCallbackUtils delegate_;
+};
+
+// Callback used when we need to reconstruct a resource we made to satisfy
+// a fetch (due to rewrites being nested inside each other).
+class RewriteContext::ResourceReconstructCallback :
+    public UrlAsyncFetcher::Callback {
+ public:
+  // Takes ownership of the driver (e.g. will call Cleanup)
+  ResourceReconstructCallback(RewriteDriver* driver, RewriteContext* rc,
+                              const ResourcePtr& resource, int slot_index)
+      : driver_(driver), delegate_(rc, resource, slot_index) {
+  }
+
+  virtual ~ResourceReconstructCallback() {
+  }
+
+  virtual void Done(bool success) {
+    delegate_.Done(success);
+    driver_->Cleanup();
+    delete this;
+  }
+
+  const RequestHeaders& request_headers() const { return request_headers_; }
+  ResponseHeaders* response_headers() { return &response_headers_; }
+  Writer* writer() { return &writer_; }
+
+ private:
+  RewriteDriver* driver_;
+  ResourceCallbackUtils delegate_;
+
+  // We ignore the output here as it's also put into the resource itself.
+  NullWriter writer_;
+  ResponseHeaders response_headers_;
+  RequestHeaders request_headers_;
 };
 
 // This class encodes a few data members used for responding to
@@ -282,14 +340,18 @@ void RewriteContext::Start() {
     // Note that the output_key_name is not necessarily the same as the
     // name of the output.
     // Write partition to metadata cache.
-    partition_key_ = CacheKey();
-    StrAppend(&partition_key_, ":", id());
     CacheInterface* metadata_cache = Manager()->metadata_cache();
+    SetPartitionKey();
 
     // When the cache lookup is finished, OutputCacheDone will be called.
     cache_lookup_active_ = true;
     metadata_cache->Get(partition_key_, new OutputCacheCallback(this));
   }
+}
+
+void RewriteContext::SetPartitionKey() {
+  partition_key_ = CacheKey();
+  StrAppend(&partition_key_, ":", id());
 }
 
 // Check if this mapping from input to output URLs is still valid.
@@ -415,12 +477,46 @@ void RewriteContext::FetchInputs(BlockingBehavior block) {
       ResourcePtr resource(slot->resource());
       if (!(resource->loaded() && resource->ContentsValid())) {
         ++outstanding_fetches_;
-        Manager()->ReadAsync(new ResourceFetchCallback(this, resource, i));
 
-        // TODO(jmarantz): as currently coded this will not work with Apache,
-        // as we don't do these async fetches using the threaded fetcher.
-        // Those details need to be sorted before we test async rewrites
-        // with Apache.
+        // In case of fetches, we may need to handle rewrites nested inside
+        // each other; so we want to pass them on to other rewrite tasks
+        // rather than try to fetch them over HTTP.
+        bool handled_internally = false;
+        if (fetch_.get() != NULL) {
+          RewriteFilter* filter = NULL;
+          OutputResourcePtr output_resource(
+              Driver()->DecodeOutputResource(resource->url(), &filter));
+          if (output_resource.get() != NULL) {
+            RewriteDriver* nested_driver = Driver()->Clone();
+            // Re-grab the filter so we get one that's bound to the new
+            // RewriteDriver.
+            // TODO(morlovich): How inefficient. Maybe I should have
+            // DecodeOutputResource return the filter enum as well?
+            output_resource =
+                nested_driver->DecodeOutputResource(resource->url(), &filter);
+            DCHECK(output_resource.get() != NULL);
+            if (output_resource.get() != NULL) {
+              handled_internally = true;
+              ResourcePtr updated_resource(output_resource);
+              slot->SetResource(updated_resource);
+              ResourceReconstructCallback* callback =
+                  new ResourceReconstructCallback(
+                      nested_driver, this, updated_resource, i);
+              nested_driver->FetchOutputResource(
+                  output_resource, filter,
+                  callback->request_headers(),
+                  callback->response_headers(),
+                  callback->writer(),
+                  callback);
+            } else {
+              Manager()->ReleaseRewriteDriver(nested_driver);
+            }
+          }
+        }
+
+        if (!handled_internally) {
+          Manager()->ReadAsync(new ResourceFetchCallback(this, resource, i));
+        }
       }
     }
 
@@ -737,6 +833,7 @@ bool RewriteContext::Fetch(
       ResourceSlotPtr slot(new FetchResourceSlot(resource));
       AddSlot(slot);
     }
+    SetPartitionKey();
     fetch_.reset(
         new FetchContext(this, response_writer, response_headers, callback,
                          output_resource, message_handler));

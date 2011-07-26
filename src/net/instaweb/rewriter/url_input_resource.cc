@@ -42,6 +42,35 @@
 
 namespace net_instaweb {
 
+namespace {
+
+bool IsValidAndCacheableImpl(HTTPCache* http_cache,
+                             bool respect_vary,
+                             ResponseHeaders* headers) {
+  // Even if we have force_caching on (for testing), do the header
+  // manipulation instead of returning early so that the headers
+  // are in the same state (with respect to cache_fields_dirty_) as they would
+  // be otherwise.
+  bool cacheable = true;
+  if (respect_vary) {
+    cacheable = headers->VaryCacheable();
+  } else {
+    cacheable = headers->IsCacheable();
+  }
+
+  if (!cacheable && !http_cache->force_caching()) {
+    return false;
+  }
+
+  if (headers->status_code() != HttpStatus::kOK) {
+    return false;
+  }
+
+  return !http_cache->IsAlreadyExpired(*headers);
+}
+
+}  // namespace
+
 UrlInputResource::~UrlInputResource() {
 }
 
@@ -120,28 +149,10 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
     return ret;
   }
 
-  // Recompute whether or not this resource is cacheable, taking into
-  // consideration rewrite options.
-  // Even if we have force_caching on (for testing), do the header
-  // manipulation instead of returning early so that the headers
-  // are in the same state as they would be otherwise.
-  bool AreHeadersCacheable(ResponseHeaders *headers) {
-    bool cacheable = true;
-    if (respect_vary_) {
-      cacheable = headers->VaryCacheable();
-    } else {
-      cacheable = headers->IsCacheable();
-    }
-    // Recompute whether or not we can cache the resource with these headers.
-    bool force = http_cache()->force_caching();
-    return force || cacheable;
-  }
-
   bool AddToCache(bool success) {
     ResponseHeaders* headers = response_headers();
-    if (success && AreHeadersCacheable(headers) &&
-        !headers->IsErrorStatus() &&
-        !http_cache()->IsAlreadyExpired(*headers)) {
+    if (success &&
+        IsValidAndCacheableImpl(http_cache(), respect_vary_, headers)) {
       HTTPValue* value = http_value();
       value->SetHeaders(headers);
       http_cache()->Put(url(), value, message_handler_);
@@ -228,6 +239,12 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
 
   DISALLOW_COPY_AND_ASSIGN(UrlReadIfCachedCallback);
 };
+
+bool UrlInputResource::IsValidAndCacheable() {
+  return IsValidAndCacheableImpl(resource_manager()->http_cache(),
+                                 respect_vary_,
+                                 &response_headers_);
+}
 
 bool UrlInputResource::Load(MessageHandler* handler) {
   response_headers_.Clear();

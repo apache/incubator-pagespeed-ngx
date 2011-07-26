@@ -625,6 +625,7 @@ TEST_F(ResourceManagerTest, TestVaryOption) {
   VerifyContentsCallback callback(resource, kContents);
   rewrite_driver()->ReadAsync(&callback, message_handler());
   callback.AssertCalled();
+  EXPECT_FALSE(resource->IsValidAndCacheable());
 
   HTTPValue valueOut;
   ResponseHeaders headersOut;

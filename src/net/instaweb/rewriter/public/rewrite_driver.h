@@ -92,6 +92,9 @@ class RewriteDriver : public HtmlParse {
   // instances without propagating the include files.
   virtual ~RewriteDriver();
 
+  // Returns a fresh instance using the same options we do.
+  RewriteDriver* Clone();
+
   // Clears the current request cache of resources and base URL.  The
   // filter-chain is left intact so that a new request can be issued.
   // Deletes all RewriteContexts.
@@ -401,6 +404,10 @@ class RewriteDriver : public HtmlParse {
   typedef std::map<GoogleString, RewriteFilter*> StringFilterMap;
   typedef void (RewriteDriver::*SetStringMethod)(const StringPiece& value);
   typedef void (RewriteDriver::*SetInt64Method)(int64 value);
+
+  // Implementation of the main loop of BoundedWaitForCompletion; assumes
+  // that the lock is held (and that asynchronous_rewrites_ is true)
+  void BoundedWaitForCompletionImpl(int64 timeout_ms);
 
   // Determines whether this RewriteDriver was built with custom options
   bool has_custom_options() const { return (custom_options_.get() != NULL); }

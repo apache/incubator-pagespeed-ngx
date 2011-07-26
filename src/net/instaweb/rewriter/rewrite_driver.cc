@@ -160,6 +160,19 @@ RewriteDriver::~RewriteDriver() {
   Clear();
 }
 
+RewriteDriver* RewriteDriver::Clone() {
+  RewriteDriver* result;
+  if (has_custom_options()) {
+    RewriteOptions* options_copy = new RewriteOptions();
+    options_copy->CopyFrom(*options());
+    result = resource_manager_->NewCustomRewriteDriver(options_copy);
+  } else {
+    result = resource_manager_->NewRewriteDriver();
+  }
+  result->SetAsynchronousRewrites(asynchronous_rewrites_);
+  return result;
+}
+
 void RewriteDriver::Clear() {
   cleanup_on_fetch_complete_ = false;
   base_url_.Clear();
@@ -187,31 +200,35 @@ void RewriteDriver::BoundedWaitForCompletion(int64 timeout_ms) {
   if (asynchronous_rewrites_) {
     ScopedMutex lock(rewrite_mutex());
     waiting_for_completion_ = true;
-    while (!RewritesComplete()) {
-      if (fetch_queued_) {
-        message_handler()->Message(kInfo, "waiting for fetch completion");
-      } else {
-        message_handler()->Message(
-            kInfo, "waiting for %d rewrites to complete",
-            static_cast<int>(pending_rewrites_ + detached_rewrites_.size()));
-      }
-      int64 start_ms = resource_manager_->timer()->NowMs();
-      scheduler_->TimedWait(timeout_ms > 0 ? timeout_ms : kTestTimeoutMs);
-      int64 end_ms = resource_manager_->timer()->NowMs();
+    BoundedWaitForCompletionImpl(timeout_ms);
+    waiting_for_completion_ = false;
+  }
+}
 
-      // TODO(jmarantz): Eliminate these LOG(INFO) and/or convert them
-      // into message_handler()->Message(kInfo...).
-      LOG(INFO) << "timed wait complete";
+void RewriteDriver::BoundedWaitForCompletionImpl(int64 timeout_ms) {
+  while (!RewritesComplete()) {
+    if (fetch_queued_) {
+      message_handler()->Message(kInfo, "waiting for fetch completion");
+    } else {
+      message_handler()->Message(
+          kInfo, "waiting for %d rewrites to complete",
+          static_cast<int>(pending_rewrites_ + detached_rewrites_.size()));
+    }
+    int64 start_ms = resource_manager_->timer()->NowMs();
+    scheduler_->TimedWait(timeout_ms > 0 ? timeout_ms : kTestTimeoutMs);
+    int64 end_ms = resource_manager_->timer()->NowMs();
 
-      if (timeout_ms > 0) {
-        timeout_ms -= (end_ms - start_ms);
-        if (timeout_ms <= 0) {
-          // Remaining became <=0 => timed out, rather than unbounded.
-          return;
-        }
+    // TODO(jmarantz): Eliminate these LOG(INFO) and/or convert them
+    // into message_handler()->Message(kInfo...).
+    LOG(INFO) << "timed wait complete";
+
+    if (timeout_ms > 0) {
+      timeout_ms -= (end_ms - start_ms);
+      if (timeout_ms <= 0) {
+        // Remaining became <=0 => timed out, rather than unbounded.
+        return;
       }
     }
-    waiting_for_completion_ = false;
   }
 }
 
@@ -261,7 +278,9 @@ void RewriteDriver::Render() {
                 << " rewrites complete by the time Render was called";
     } else {
       LOG(INFO) << "waiting for " << pending_rewrites_ << " rewrites";
-      scheduler_->TimedWait(rewrite_deadline_ms_);
+      BoundedWaitForCompletionImpl(
+          resource_manager_->block_until_completion_in_render() ?
+              -1 : rewrite_deadline_ms_);
       completed_rewrites = num_rewrites - pending_rewrites_;
       LOG(INFO) << "found " << completed_rewrites << " completed rewrites";
     }
@@ -513,6 +532,9 @@ void RewriteDriver::AddFilters() {
     // Extend the cache lifetime of resources.
     EnableRewriteFilter(kCacheExtenderId);
   }
+
+  AddOwnedFilter(new RenderFilter(this));
+
   if (rewrite_options->domain_lawyer()->can_rewrite_domains() &&
       rewrite_options->Enabled(RewriteOptions::kRewriteDomains)) {
     // Rewrite mapped domains and shard any resources not otherwise rewritten.
@@ -550,10 +572,6 @@ void RewriteDriver::AddFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kSpriteImages)) {
     EnableRewriteFilter(kImageCombineId);
-  }
-
-  if (asynchronous_rewrites_) {
-    AddOwnedFilter(new RenderFilter(this));
   }
 
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
@@ -595,13 +613,6 @@ void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
 void RewriteDriver::SetAsynchronousRewrites(bool async_rewrites) {
   if (async_rewrites != asynchronous_rewrites_) {
     asynchronous_rewrites_ = async_rewrites;
-    if (filters_added_) {
-      if (asynchronous_rewrites_) {
-        AddOwnedFilter(new RenderFilter(this));
-      } else {
-        LOG(DFATAL) << "Cannot disable async behavior after filters are added";
-      }
-    }
   }
 }
 

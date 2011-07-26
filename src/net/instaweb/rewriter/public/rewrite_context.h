@@ -314,11 +314,14 @@ class RewriteContext {
  private:
   class OutputCacheCallback;
   friend class OutputCacheCallback;
+  class ResourceCallbackUtils;
   class ResourceFetchCallback;
-  friend class ResourceFetchCallback;
+  class ResourceReconstructCallback;
+  friend class ResourceCallbackUtils;
 
   // Callback helper functions.
   void Start();
+  void SetPartitionKey();
   void StartFetch();
   void OutputCacheDone(CacheInterface::KeyState state, SharedString value);
   void ResourceFetchDone(bool success, ResourcePtr resource, int slot_index);

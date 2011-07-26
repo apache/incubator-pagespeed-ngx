@@ -29,7 +29,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 class MessageHandler;
@@ -50,10 +49,6 @@ Resource::~Resource() {
 }
 
 bool Resource::IsValidAndCacheable() {
-  // TODO(sligocki): This checks that the result is valid (200 OK) and that
-  // it is not expired or Cache-Control: no-cache, should we also call
-  // Naomi's function which would also check if it was cacheable because of
-  // Vary: headers, etc.  Should we just merge these functions?
   return ((response_headers_.status_code() == HttpStatus::kOK) &&
           !resource_manager_->http_cache()->IsAlreadyExpired(
               response_headers_));

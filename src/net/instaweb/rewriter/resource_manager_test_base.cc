@@ -302,7 +302,10 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
 
   // Check that stats say we took the construct resource path.
   EXPECT_EQ(0, new_resource_manager.cached_resource_fetches()->Get());
-  EXPECT_EQ(1, new_resource_manager.succeeded_filter_resource_fetches()->Get());
+  // We should construct at least one resource, and maybe more if the
+  // output resource was produced by multiple filters (e.g. JS minimize
+  // then combine).
+  EXPECT_LE(1, new_resource_manager.succeeded_filter_resource_fetches()->Get());
   EXPECT_EQ(0, new_resource_manager.failed_filter_resource_fetches()->Get());
 
   // Make sure to shut the new worker down before we hit ~RewriteDriver for

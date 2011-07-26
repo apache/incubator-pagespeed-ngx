@@ -26,7 +26,6 @@
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/util/public/pthread_mutex.h"
 #include "net/instaweb/util/public/pthread_thread_system.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/simple_stats.h"
@@ -47,9 +46,6 @@ class FileRewriter : public net_instaweb::RewriteDriverFactory {
     net_instaweb::ResourceManager::Initialize(&simple_stats_);
   }
 
-  virtual net_instaweb::AbstractMutex* NewMutex() {
-    return new net_instaweb::PthreadMutex;
-  }
   virtual net_instaweb::Hasher* NewHasher() {
     return new net_instaweb::MD5Hasher;
   }
@@ -74,12 +70,6 @@ class FileRewriter : public net_instaweb::RewriteDriverFactory {
   virtual net_instaweb::CacheInterface* DefaultCacheInterface() {
     return new net_instaweb::LRUCache(gflags_->lru_cache_size_bytes());
   }
-  virtual net_instaweb::AbstractMutex* cache_mutex() {
-    return &cache_mutex_;
-  }
-  virtual net_instaweb::AbstractMutex* rewrite_drivers_mutex() {
-    return &rewrite_drivers_mutex_;
-  }
   virtual net_instaweb::ThreadSystem* DefaultThreadSystem() {
     return new net_instaweb::PthreadThreadSystem;
   }
@@ -89,8 +79,6 @@ class FileRewriter : public net_instaweb::RewriteDriverFactory {
 
  private:
   const net_instaweb::RewriteGflags* gflags_;
-  net_instaweb::PthreadMutex cache_mutex_;
-  net_instaweb::PthreadMutex rewrite_drivers_mutex_;
   net_instaweb::SimpleStats simple_stats_;
 };
 
@@ -131,6 +119,13 @@ int main(int argc, char** argv) {
     fprintf(stderr, "failed to read file %s\n", input_file_path.c_str());
     return 1;
   }
+
+  // For this simple file transformation utility we always want to perform
+  // any optimizations we can, so we wait until everything is done rather
+  // than using a deadline, the way a server deployment would.
+  file_rewriter.ComputeResourceManager()->
+      set_block_until_completion_in_render(true);
+
   net_instaweb::RewriteDriver* driver = file_rewriter.NewRewriteDriver();
 
   // Set up a Writer callback to serialize rewritten output to a string buffer.

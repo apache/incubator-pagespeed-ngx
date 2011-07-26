@@ -22,6 +22,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_URL_INPUT_RESOURCE_H_
 
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -30,7 +31,6 @@ namespace net_instaweb {
 struct ContentType;
 class MessageHandler;
 class ResourceManager;
-class RewriteOptions;
 
 class UrlInputResource : public Resource {
  public:
@@ -40,10 +40,12 @@ class UrlInputResource : public Resource {
                    const StringPiece& url)
       : Resource(resource_manager, type),
         url_(url.data(), url.size()),
-        rewrite_options_(options) {
+        rewrite_options_(options),
+        respect_vary_(rewrite_options_->respect_vary()){
   }
   virtual ~UrlInputResource();
 
+  virtual bool IsValidAndCacheable();
   virtual GoogleString url() const { return url_; }
   const RewriteOptions* rewrite_options() const { return rewrite_options_; }
 
@@ -57,6 +59,7 @@ class UrlInputResource : public Resource {
  private:
   GoogleString url_;
   const RewriteOptions* rewrite_options_;
+  bool respect_vary_;
 
   DISALLOW_COPY_AND_ASSIGN(UrlInputResource);
 };
