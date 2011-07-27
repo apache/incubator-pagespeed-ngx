@@ -211,10 +211,6 @@ void ResponseHeaders::SetTimeHeader(const StringPiece& header, int64 time_ms) {
 }
 
 bool ResponseHeaders::VaryCacheable() {
-  // Recompute whether or not we can cache the resource with these headers.
-  if (cache_fields_dirty_) {
-    ComputeCaching();
-  }
   if (IsCacheable()) {
     StringStarVector values;
     Lookup(HttpAttributes::kVary, &values);

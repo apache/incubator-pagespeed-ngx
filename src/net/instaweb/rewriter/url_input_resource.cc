@@ -47,10 +47,10 @@ namespace {
 bool IsValidAndCacheableImpl(HTTPCache* http_cache,
                              bool respect_vary,
                              ResponseHeaders* headers) {
-  // Even if we have force_caching on (for testing), do the header
-  // manipulation instead of returning early so that the headers
-  // are in the same state (with respect to cache_fields_dirty_) as they would
-  // be otherwise.
+  if (headers->status_code() != HttpStatus::kOK) {
+    return false;
+  }
+
   bool cacheable = true;
   if (respect_vary) {
     cacheable = headers->VaryCacheable();
@@ -59,10 +59,6 @@ bool IsValidAndCacheableImpl(HTTPCache* http_cache,
   }
 
   if (!cacheable && !http_cache->force_caching()) {
-    return false;
-  }
-
-  if (headers->status_code() != HttpStatus::kOK) {
     return false;
   }
 

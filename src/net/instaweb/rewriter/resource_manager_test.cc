@@ -617,6 +617,7 @@ TEST_F(ResourceManagerTest, TestVaryOption) {
   SetDefaultLongCacheHeaders(&kContentTypeHtml, &no_cache);
   no_cache.Add(HttpAttributes::kVary, HttpAttributes::kAcceptEncoding);
   no_cache.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
+  no_cache.ComputeCaching();
   SetFetchResponse("http://example.com/", no_cache, kContents);
 
   ResourcePtr resource(CreateResource("http://example.com/", "/"));
