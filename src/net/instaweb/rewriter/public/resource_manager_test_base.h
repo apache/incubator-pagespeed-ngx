@@ -261,6 +261,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   }
   void ClearFetcherResponses() { mock_url_fetcher_.Clear(); }
 
+  virtual void ClearStats();
+
   void EncodeFilename(const StringPiece& url, GoogleString* filename) {
     filename_encoder_.Encode(file_prefix_, url, filename);
   }
@@ -350,6 +352,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   LRUCache* lru_cache_;  // Owned by http_cache_
   HTTPCache http_cache_;
   FileSystemLockManager lock_manager_;
+  // TODO(sligocki): Why are statistics_ static!
   static SimpleStats* statistics_;
   RewriteDriverFactory* factory_;
   ResourceManager* resource_manager_;  // TODO(sligocki): Make not a pointer.

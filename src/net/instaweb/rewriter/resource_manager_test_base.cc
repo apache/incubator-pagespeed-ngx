@@ -688,6 +688,13 @@ void ResourceManagerTestBase::TestRetainExtraHeaders(
   EXPECT_STREQ("attribute", *v[0]);
 }
 
+void ResourceManagerTestBase::ClearStats() {
+  statistics_->Clear();
+  lru_cache()->ClearStats();
+  counting_url_async_fetcher()->Clear();
+  file_system()->ClearStats();
+}
+
 // Logging at the INFO level slows down tests, adds to the noise, and
 // adds considerably to the speed variability.
 class ResourceManagerProcessContext {

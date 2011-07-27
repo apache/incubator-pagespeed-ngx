@@ -89,11 +89,13 @@ class Writer;
 // Simple test filter just trims whitespace from the input resource.
 class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
  public:
-  explicit TrimWhitespaceRewriter(OutputResourceKind kind) : kind_(kind) {}
-  static SimpleTextFilter* MakeFilter(OutputResourceKind kind,
-                                      RewriteDriver* driver) {
-    return new SimpleTextFilter(new TrimWhitespaceRewriter(kind), driver);
+  explicit TrimWhitespaceRewriter(OutputResourceKind kind) : kind_(kind) {
+    ClearStats();
   }
+
+  // Stats
+  int num_rewrites() const { return num_rewrites_; }
+  void ClearStats() { num_rewrites_ = 0; }
 
  protected:
   REFCOUNT_FRIEND_DECLARATION(TrimWhitespaceRewriter);
@@ -102,6 +104,7 @@ class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
   virtual bool RewriteText(const StringPiece& url, const StringPiece& in,
                            GoogleString* out,
                            ResourceManager* resource_manager) {
+    ++num_rewrites_;
     TrimWhitespace(in, out);
     return in != *out;
   }
@@ -117,6 +120,8 @@ class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
 
  private:
   OutputResourceKind kind_;
+
+  int num_rewrites_;
 
   DISALLOW_COPY_AND_ASSIGN(TrimWhitespaceRewriter);
 };
@@ -559,7 +564,8 @@ class CombiningFilter : public RewriteFilter {
 
 class RewriteContextTest : public ResourceManagerTestBase {
  protected:
-  RewriteContextTest() : combining_filter_(NULL), nested_filter_(NULL) {}
+  RewriteContextTest() : trim_filter_(NULL), other_trim_filter_(NULL),
+                         combining_filter_(NULL), nested_filter_(NULL) {}
   virtual ~RewriteContextTest() {}
 
   virtual void SetUp() {
@@ -592,25 +598,26 @@ class RewriteContextTest : public ResourceManagerTestBase {
   }
 
   void InitTrimFilters(OutputResourceKind kind) {
-    InitTrimFilter(kind, rewrite_driver());
-    InitTrimFilter(kind, other_rewrite_driver());
+    trim_filter_ = new TrimWhitespaceRewriter(kind);
+    rewrite_driver()->AddRewriteFilter(
+        new SimpleTextFilter(trim_filter_, rewrite_driver()));
+    rewrite_driver()->AddFilters();
+
+    other_trim_filter_ = new TrimWhitespaceRewriter(kind);
+    other_rewrite_driver()->AddRewriteFilter(
+        new SimpleTextFilter(other_trim_filter_, other_rewrite_driver()));
+    other_rewrite_driver()->AddFilters();
   }
 
   void InitTwoFilters(OutputResourceKind kind) {
-    InitTwoFilters(kind, rewrite_driver());
-    InitTwoFilters(kind, other_rewrite_driver());
+    InitUpperFilter(kind, rewrite_driver());
+    InitUpperFilter(kind, other_rewrite_driver());
+    InitTrimFilters(kind);
   }
 
-  void InitTrimFilter(OutputResourceKind kind, RewriteDriver* rewrite_driver) {
-    rewrite_driver->AddRewriteFilter(
-        TrimWhitespaceRewriter::MakeFilter(kind, rewrite_driver));
-    rewrite_driver->AddFilters();
-  }
-
-  void InitTwoFilters(OutputResourceKind kind, RewriteDriver* rewrite_driver) {
+  void InitUpperFilter(OutputResourceKind kind, RewriteDriver* rewrite_driver) {
     rewrite_driver->AddRewriteFilter(
         UpperCaseRewriter::MakeFilter(kind, rewrite_driver));
-    InitTrimFilter(kind, rewrite_driver);
   }
 
   void InitCombiningFilter(int64 rewrite_delay_ms) {
@@ -628,14 +635,20 @@ class RewriteContextTest : public ResourceManagerTestBase {
     driver->AddFilters();
   }
 
+  // TODO(sligocki): Rename. This name can cause mixups with
+  // class ResourceManagerTestBase::CssLink
   GoogleString CssLink(const StringPiece& url) {
     return StrCat("<link rel=stylesheet href=", url, ">");
   }
 
-  void ClearStats() {
-    lru_cache()->ClearStats();
-    counting_url_async_fetcher()->Clear();
-    file_system()->ClearStats();
+  virtual void ClearStats() {
+    ResourceManagerTestBase::ClearStats();
+    if (trim_filter_ != NULL) {
+      trim_filter_->ClearStats();
+    }
+    if (other_trim_filter_ != NULL) {
+      other_trim_filter_->ClearStats();
+    }
     if (combining_filter_ != NULL) {
       combining_filter_->ClearStats();
     }
@@ -644,6 +657,8 @@ class RewriteContextTest : public ResourceManagerTestBase {
     }
   }
 
+  TrimWhitespaceRewriter* trim_filter_;
+  TrimWhitespaceRewriter* other_trim_filter_;
   CombiningFilter* combining_filter_;
   NestedFilter* nested_filter_;
 };
@@ -1419,22 +1434,41 @@ TEST_F(ResourceUpdateTest, OnTheFly) {
 
   // 1) Set first version of resource.
   InitResponseHeaders(kOriginalUrl, kContentTypeCss, " init ", ttl_ms / 1000);
+  ClearStats();
   EXPECT_EQ("init", RewriteSingleResource("first_load"));
+  // TODO(sligocki): Why are we rewriting twice here?
+  //EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(2, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 2) Advance time, but not so far that resources have expired.
   mock_timer()->AdvanceMs(ttl_ms / 2);
+  ClearStats();
   // Rewrite should be the same.
   EXPECT_EQ("init", RewriteSingleResource("advance_time"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 3) Change resource.
   InitResponseHeaders(kOriginalUrl, kContentTypeCss, " new ", ttl_ms / 1000);
+  ClearStats();
   // Rewrite should still be the same, because it's found in cache.
   EXPECT_EQ("init", RewriteSingleResource("stale_content"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 4) Advance time so that old cached input resource expires.
   mock_timer()->AdvanceMs(ttl_ms);
+  ClearStats();
   // Rewrite should now use new resource.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
+  //EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(2, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
 }
 
 TEST_F(ResourceUpdateTest, Rewritten) {
@@ -1444,22 +1478,38 @@ TEST_F(ResourceUpdateTest, Rewritten) {
 
   // 1) Set first version of resource.
   InitResponseHeaders(kOriginalUrl, kContentTypeCss, " init ", ttl_ms / 1000);
+  ClearStats();
   EXPECT_EQ("init", RewriteSingleResource("first_load"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 2) Advance time, but not so far that resources have expired.
   mock_timer()->AdvanceMs(ttl_ms / 2);
+  ClearStats();
   // Rewrite should be the same.
   EXPECT_EQ("init", RewriteSingleResource("advance_time"));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 3) Change resource.
   InitResponseHeaders(kOriginalUrl, kContentTypeCss, " new ", ttl_ms / 1000);
+  ClearStats();
   // Rewrite should still be the same, because it's found in cache.
   EXPECT_EQ("init", RewriteSingleResource("stale_content"));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 4) Advance time so that old cached input resource expires.
   mock_timer()->AdvanceMs(ttl_ms);
+  ClearStats();
   // Rewrite should now use new resource.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
 }
 
 TEST_F(ResourceUpdateTest, LoadFromFileOnTheFly) {
@@ -1470,23 +1520,43 @@ TEST_F(ResourceUpdateTest, LoadFromFileOnTheFly) {
 
   // 1) Set first version of resource.
   WriteFile("/test/a.css", " init ");
+  ClearStats();
   EXPECT_EQ("init", RewriteSingleResource("first_load"));
+  //EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(2, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  //EXPECT_EQ(1, file_system()->num_input_file_opens());
+  EXPECT_EQ(2, file_system()->num_input_file_opens());
 
   // 2) Advance time, but not so far that resources would have expired if
   // they were loaded by UrlFetch.
   mock_timer()->AdvanceMs(ttl_ms / 2);
+  ClearStats();
   // Rewrite should be the same.
   EXPECT_EQ("init", RewriteSingleResource("advance_time"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, file_system()->num_input_file_opens());
 
   // 3) Change resource.
   WriteFile("/test/a.css", " new ");
+  ClearStats();
   // Rewrite should imediately update.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
+  //EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(2, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  //EXPECT_EQ(1, file_system()->num_input_file_opens());
+  EXPECT_EQ(2, file_system()->num_input_file_opens());
 
   // 4) Advance time so that old cached input resource expires.
   mock_timer()->AdvanceMs(ttl_ms);
+  ClearStats();
   // Rewrite should now use new resource.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, file_system()->num_input_file_opens());
 }
 
 TEST_F(ResourceUpdateTest, LoadFromFileRewritten) {
@@ -1497,23 +1567,39 @@ TEST_F(ResourceUpdateTest, LoadFromFileRewritten) {
 
   // 1) Set first version of resource.
   WriteFile("/test/a.css", " init ");
+  ClearStats();
   EXPECT_EQ("init", RewriteSingleResource("first_load"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, file_system()->num_input_file_opens());
 
   // 2) Advance time, but not so far that resources would have expired if
   // they were loaded by UrlFetch.
   mock_timer()->AdvanceMs(ttl_ms / 2);
+  ClearStats();
   // Rewrite should be the same.
   EXPECT_EQ("init", RewriteSingleResource("advance_time"));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 3) Change resource.
   WriteFile("/test/a.css", " new ");
+  ClearStats();
   // Rewrite should imediately update.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, file_system()->num_input_file_opens());
 
   // 4) Advance time so that old cached input resource expires.
   mock_timer()->AdvanceMs(ttl_ms);
+  ClearStats();
   // Rewrite should now use new resource.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
 }
 
 class CombineResourceUpdateTest : public ResourceUpdateTest {
