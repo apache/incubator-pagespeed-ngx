@@ -99,6 +99,7 @@
         'rewriter/js_combine_filter_test.cc',
         'rewriter/js_inline_filter_test.cc',
         'rewriter/js_outline_filter_test.cc',
+        'rewriter/load_from_file_sync_test.cc',
         'rewriter/mock_resource_callback.cc',
         'rewriter/remove_comments_filter_test.cc',
         'rewriter/resource_combiner_test.cc',

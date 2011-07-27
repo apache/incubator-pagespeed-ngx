@@ -1541,7 +1541,7 @@ TEST_F(ResourceUpdateTest, LoadFromFileOnTheFly) {
   // 3) Change resource.
   WriteFile("/test/a.css", " new ");
   ClearStats();
-  // Rewrite should imediately update.
+  // Rewrite should immediately update.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
   //EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(2, trim_filter_->num_rewrites());
@@ -1586,7 +1586,7 @@ TEST_F(ResourceUpdateTest, LoadFromFileRewritten) {
   // 3) Change resource.
   WriteFile("/test/a.css", " new ");
   ClearStats();
-  // Rewrite should imediately update.
+  // Rewrite should immediately update.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
