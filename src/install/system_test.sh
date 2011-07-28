@@ -6,20 +6,10 @@
 # Page Speed Automatic (not just the Apache module).
 # Exits with status 0 if all tests pass.  Exits 1 immediately if any test fails.
 
-# TODO(sligocki): rm refs to APACHE_DEBUG_PAGESPEED_CONF & APACHE_LOG.
-
 if [ $# -lt 1 -o $# -gt 2 ]; then
   echo Usage: ./system_test.sh HOSTNAME [PROXY_HOST]
   exit 2
 fi;
-
-if [ -z $APACHE_DEBUG_PAGESPEED_CONF ]; then
-  APACHE_DEBUG_PAGESPEED_CONF=/usr/local/apache2/conf/pagespeed.conf
-fi
-
-if [ -z $APACHE_LOG ]; then
-  APACHE_LOG=/usr/local/apache2/logs/error_log
-fi
 
 # If the user has specified an alternate WGET as an environment variable, then
 # use that, otherwise use the one in the path.
@@ -181,7 +171,7 @@ function test_resource_ext_corruption() {
 
 # General system tests
 
-echo TEST: mod_pagespeed is running in Apache and writes the expected header.
+echo TEST: Page Speed Automatic is running and writes the expected header.
 echo $WGET_DUMP $EXAMPLE_ROOT/combine_css.html
 HTML_HEADERS=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
 

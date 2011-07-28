@@ -34,8 +34,8 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/simple_stats.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/serf/src/serf.h"
 
 namespace net_instaweb {
 
@@ -49,7 +49,7 @@ const int kFetcherTimeoutMs = 5 * 1000;
 
 class SerfTestCallback : public UrlAsyncFetcher::Callback {
  public:
-  explicit SerfTestCallback(AprMutex* mutex, const std::string& url)
+  explicit SerfTestCallback(AbstractMutex* mutex, const GoogleString& url)
       : done_(false),
         mutex_(mutex),
         url_(url),
@@ -74,8 +74,8 @@ class SerfTestCallback : public UrlAsyncFetcher::Callback {
   bool success() const { return success_; }
  private:
   bool done_;
-  AprMutex* mutex_;
-  std::string url_;
+  AbstractMutex* mutex_;
+  GoogleString url_;
   bool enable_threaded_;
   bool success_;
 
@@ -98,13 +98,14 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     apr_pool_create(&pool_, NULL);
     timer_.reset(new MockTimer(MockTimer::kApr_5_2010_ms));
     SerfUrlAsyncFetcher::Initialize(&statistics_);
+    thread_system_.reset(ThreadSystem::CreateThreadSystem());
     serf_url_async_fetcher_.reset(
-        new SerfUrlAsyncFetcher(kProxy, pool_, &statistics_,
-                                timer_.get(), kFetcherTimeoutMs));
-    mutex_ = new AprMutex(pool_);
+        new SerfUrlAsyncFetcher(kProxy, pool_, thread_system_.get(),
+                                &statistics_, timer_.get(), kFetcherTimeoutMs));
+    mutex_.reset(thread_system_->NewMutex());
     AddTestUrl("http://www.modpagespeed.com/", "<!doctype html>");
     AddTestUrl("http://www.google.com/favicon.ico",
-               std::string("\000\000\001\000", 4));
+               GoogleString("\000\000\001\000", 4));
     AddTestUrl("http://www.google.com/intl/en_ALL/images/logo.gif", "GIF");
     AddTestUrl("http://stevesouders.com/bin/resource.cgi?type=js&sleep=10",
                "var");
@@ -120,19 +121,18 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     STLDeleteElements(&contents_);
     STLDeleteElements(&writers_);
     STLDeleteElements(&callbacks_);
-    delete mutex_;
     apr_pool_destroy(pool_);
   }
 
-  void AddTestUrl(const std::string& url,
-                  const std::string& content_start) {
+  void AddTestUrl(const GoogleString& url,
+                  const GoogleString& content_start) {
     urls_.push_back(url);
     content_starts_.push_back(content_start);
     request_headers_.push_back(new RequestHeaders);
     response_headers_.push_back(new ResponseHeaders);
-    contents_.push_back(new std::string);
+    contents_.push_back(new GoogleString);
     writers_.push_back(new StringWriter(contents_.back()));
-    callbacks_.push_back(new SerfTestCallback(mutex_, url));
+    callbacks_.push_back(new SerfTestCallback(mutex_.get(), url));
   }
 
   void StartFetches(size_t begin, size_t end, bool enable_threaded) {
@@ -212,11 +212,11 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   }
 
   apr_pool_t* pool_;
-  std::vector<std::string> urls_;
-  std::vector<std::string> content_starts_;
+  std::vector<GoogleString> urls_;
+  std::vector<GoogleString> content_starts_;
   std::vector<RequestHeaders*> request_headers_;
   std::vector<ResponseHeaders*> response_headers_;
-  std::vector<std::string*> contents_;
+  std::vector<GoogleString*> contents_;
   std::vector<StringWriter*> writers_;
   std::vector<SerfTestCallback*> callbacks_;
   // The fetcher to be tested.
@@ -225,7 +225,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   SimpleStats statistics_;  // TODO(jmarantz): make this thread-safe
   GoogleMessageHandler message_handler_;
   size_t prev_done_count;
-  AprMutex* mutex_;
+  scoped_ptr<AbstractMutex> mutex_;
+  scoped_ptr<ThreadSystem> thread_system_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcherTest);

@@ -1,5 +1,6 @@
 URL: http://code.google.com/p/serf/downloads/detail?name=serf-0.7.2.tar.bz2
 License: Apache 2.0
+License File: LICENSE
 
 Source files we modified from the Serf 0.7.2 http fetcher.
 
@@ -18,3 +19,4 @@ Local Modifications:
    cleaned up.
 7) Fix an off-by-one in buffer sizing in serf_bucket_headers_get.
 8) Disabled authentication support temporarily to simplify dependencies.
+9) Init status variable to APR_EGENERAL in outgoing.c:handle_response.

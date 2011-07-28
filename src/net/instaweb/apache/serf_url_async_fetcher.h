@@ -24,6 +24,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/pool.h"
 #include "net/instaweb/util/public/pool_element.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_pollable_async_fetcher.h"
 
@@ -33,7 +34,6 @@ struct apr_thread_mutex_t;
 
 namespace net_instaweb {
 
-class AprMutex;
 class Statistics;
 class SerfFetch;
 class SerfThreadedFetcher;
@@ -52,11 +52,12 @@ struct SerfStats {
 class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
  public:
   SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
+                      ThreadSystem* thread_system,
                       Statistics* statistics, Timer* timer, int64 timeout_ms);
   SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent, const char* proxy);
   virtual ~SerfUrlAsyncFetcher();
   static void Initialize(Statistics* statistics);
-  virtual bool StreamingFetch(const std::string& url,
+  virtual bool StreamingFetch(const GoogleString& url,
                               const RequestHeaders& request_headers,
                               ResponseHeaders* response_headers,
                               Writer* fetched_content_writer,
@@ -83,6 +84,7 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
 
   void PrintActiveFetches(MessageHandler* handler) const;
   virtual int64 timeout_ms() { return timeout_ms_; }
+  ThreadSystem* thread_system() { return thread_system_; }
 
  protected:
   typedef Pool<SerfFetch> SerfFetchPool;
@@ -108,10 +110,11 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   void CleanupFetchesWithErrors();
 
   apr_pool_t* pool_;
+  ThreadSystem* thread_system_;
   Timer* timer_;
 
   // mutex_ protects serf_context_ and active_fetches_.
-  AprMutex* mutex_;
+  ThreadSystem::CondvarCapableMutex* mutex_;
   serf_context_t* serf_context_;
   SerfFetchPool active_fetches_;
 

@@ -30,17 +30,17 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "base/stl_util-inl.h"
-#include "net/instaweb/apache/apr_condvar.h"
-#include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/public/version.h"
+#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/pool.h"
 #include "net/instaweb/util/public/pool_element.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "third_party/serf/src/serf.h"
@@ -81,7 +81,7 @@ const char SerfStats::kSerfFetchActiveCount[] =
     "serf_fetch_active_count";
 const char SerfStats::kSerfFetchTimeoutCount[] = "serf_fetch_timeout_count";
 
-std::string GetAprErrorString(apr_status_t status) {
+GoogleString GetAprErrorString(apr_status_t status) {
   char error_str[1024];
   apr_strerror(status, error_str, sizeof(error_str));
   return error_str;
@@ -91,7 +91,7 @@ std::string GetAprErrorString(apr_status_t status) {
 class SerfFetch : public PoolElement<SerfFetch> {
  public:
   // TODO(lsong): make use of request_headers.
-  SerfFetch(const std::string& url,
+  SerfFetch(const GoogleString& url,
             const RequestHeaders& request_headers,
             ResponseHeaders* response_headers,
             Writer* fetched_content_writer,
@@ -439,7 +439,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
 
   SerfUrlAsyncFetcher* fetcher_;
   Timer* timer_;
-  const std::string str_url_;
+  const GoogleString str_url_;
   RequestHeaders request_headers_;
   ResponseHeaders* response_headers_;
   ResponseHeadersParser parser_;
@@ -462,9 +462,9 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
  public:
   SerfThreadedFetcher(SerfUrlAsyncFetcher* parent, const char* proxy) :
       SerfUrlAsyncFetcher(parent, proxy),
-      initiate_mutex_(pool_),
+      initiate_mutex_(parent->thread_system()->NewMutex()),
       initiate_fetches_(new SerfFetchPool()),
-      initiate_fetches_nonempty_(&initiate_mutex_),
+      initiate_fetches_nonempty_(initiate_mutex_->NewCondvar()),
       thread_finish_(false) {
     CHECK_EQ(APR_SUCCESS,
              apr_thread_create(&thread_id_, NULL, SerfThreadFn, this, pool_));
@@ -475,9 +475,9 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     // then waiting for it to finish its next active Poll operation.
     {
       // Indicate termination and unblock the worker thread so it can clean up.
-      ScopedMutex lock(&initiate_mutex_);
+      ScopedMutex lock(initiate_mutex_.get());
       thread_finish_ = true;
-      initiate_fetches_nonempty_.Signal();
+      initiate_fetches_nonempty_->Signal();
     }
 
     LOG(INFO) << "Waiting for threaded serf fetcher to terminate";
@@ -508,19 +508,19 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   // Called from mainline to queue up a fetch for the thread.  If the
   // thread is idle then we can unlock it.
   void InitiateFetch(SerfFetch* fetch) {
-    ScopedMutex lock(&initiate_mutex_);
+    ScopedMutex lock(initiate_mutex_.get());
     // TODO(jmaessen): Consider adding an awaiting_nonempty_ flag to avoid
     // spurious calls to Signal().
     bool signal = initiate_fetches_->empty();
     initiate_fetches_->Add(fetch);
     if (signal) {
-      initiate_fetches_nonempty_.Signal();
+      initiate_fetches_nonempty_->Signal();
     }
   }
 
  protected:
   bool AnyPendingFetches() {
-    ScopedMutex lock(&initiate_mutex_);
+    ScopedMutex lock(initiate_mutex_.get());
     // NOTE: We must hold both mutexes to avoid the case where we miss a fetch
     // in transit.
     return !initiate_fetches_->empty() ||
@@ -547,7 +547,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     // blocked trying to initiate fetches.
     scoped_ptr<SerfFetchPool> xfer_fetches(NULL);
     {
-      ScopedMutex lock(&initiate_mutex_);
+      ScopedMutex lock(initiate_mutex_.get());
       // We must do this checking under the initiate_mutex_ lock.
       if (initiate_fetches_->empty()) {
         // No new work to do now.
@@ -556,7 +556,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
         } else {
           // Wait until some work shows up.  Note that after the wait we still
           // must actually check that there's some work to be done.
-          initiate_fetches_nonempty_.TimedWait(Timer::kSecondMs);
+          initiate_fetches_nonempty_->TimedWait(Timer::kSecondMs);
           if (initiate_fetches_->empty()) {
             // On timeout / false wakeup, return control to caller; we might be
             // finished or have other things to attend to.
@@ -650,7 +650,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   apr_thread_t* thread_id_;
 
   // protects initiate_fetches_, initiate_fetches_nonempty_, and thread_finish_.
-  AprMutex initiate_mutex_;
+  scoped_ptr<ThreadSystem::CondvarCapableMutex> initiate_mutex_;
   // pushed in the main thread; popped by TransferFetches().
   scoped_ptr<SerfFetchPool> initiate_fetches_;
   // condvar that indicates that initiate_fetches_ has become nonempty.  During
@@ -659,7 +659,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   // caveats apply: Just because the condition variable indicates
   // initiate_fetches_nonempty_ doesn't mean it's true, and a waiting thread
   // must check initiate_fetches_ explicitly while holding initiate_mutex_.
-  AprCondvar initiate_fetches_nonempty_;
+  scoped_ptr<ThreadSystem::Condvar> initiate_fetches_nonempty_;
 
   // Flag to signal worker to finish working and terminate.
   bool thread_finish_;
@@ -733,9 +733,11 @@ bool SerfUrlAsyncFetcher::SetupProxy(const char* proxy) {
 }
 
 SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
+                                         ThreadSystem* thread_system,
                                          Statistics* statistics, Timer* timer,
                                          int64 timeout_ms)
     : pool_(NULL),
+      thread_system_(thread_system),
       timer_(timer),
       mutex_(NULL),
       serf_context_(NULL),
@@ -763,6 +765,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
 SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
                                          const char* proxy)
     : pool_(NULL),
+      thread_system_(parent->thread_system_),
       timer_(parent->timer_),
       mutex_(NULL),
       serf_context_(NULL),
@@ -818,7 +821,7 @@ void SerfUrlAsyncFetcher::Init(apr_pool_t* parent_pool, const char* proxy) {
   apr_pool_create_ex(&pool_, parent_pool, NULL /*abortfn*/, allocator);
   apr_allocator_owner_set(allocator, pool_);
 
-  mutex_ = new AprMutex(pool_);
+  mutex_ = thread_system_->NewMutex();
   serf_context_ = serf_context_create(pool_);
 
   if (!SetupProxy(proxy)) {
@@ -848,7 +851,7 @@ void SerfUrlAsyncFetcher::CancelActiveFetches() {
   }
 }
 
-bool SerfUrlAsyncFetcher::StreamingFetch(const std::string& url,
+bool SerfUrlAsyncFetcher::StreamingFetch(const GoogleString& url,
                                          const RequestHeaders& request_headers,
                                          ResponseHeaders* response_headers,
                                          Writer* fetched_content_writer,

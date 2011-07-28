@@ -728,7 +728,7 @@ static apr_status_t write_to_connection(serf_connection_t *conn)
 static apr_status_t handle_response(serf_request_t *request,
                                     apr_pool_t *pool)
 {
-    apr_status_t status;
+    apr_status_t status = APR_EGENERAL;
     int consumed_response = 0;
 
     /* Only enable the new authentication framework if the program has
