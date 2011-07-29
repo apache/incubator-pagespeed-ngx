@@ -188,7 +188,7 @@ class CssFilter::Context : public SingleRewriteContext {
   virtual void RewriteSingle(const ResourcePtr& input,
                              const OutputResourcePtr& output);
   virtual const char* id() const { return filter_->id().c_str(); }
-  virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
+  virtual OutputResourceKind kind() const { return kRewrittenResource; }
   virtual GoogleString CacheKey() const;
 
  private:

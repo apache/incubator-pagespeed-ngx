@@ -109,6 +109,7 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       rewrite_inline_element_(NULL),
       rewrite_inline_char_node_(NULL),
       in_text_size_(-1) {
+  css_base_gurl_.Reset(filter_->base_url());
 }
 
 CssFilter::Context::~Context() {
@@ -132,10 +133,8 @@ void CssFilter::Context::StartInlineRewrite(HtmlElement* style_element,
                                             HtmlCharactersNode* text) {
   // To handle nested rewrites of inline CSS, we internally handle it
   // as a rewrite of a data: URL.
-  css_base_gurl_.Reset(driver_->base_url());
   rewrite_inline_element_ = style_element;
   rewrite_inline_char_node_ = text;
-
   GoogleString data_url;
   // TODO(morlovich): This does a lot of useless conversions and
   // copying. Get rid of them.
@@ -164,7 +163,6 @@ void CssFilter::Context::RewriteSingle(
     const OutputResourcePtr& output_resource) {
   input_resource_ = input_resource;
   output_resource_ = output_resource;
-
   TimedBool result = filter_->RewriteCssText(
       this, css_base_gurl_, input_resource->contents(),
       NULL /* out_text --- not written in RewriteCssText in async case */,

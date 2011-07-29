@@ -514,7 +514,8 @@ class ImageCombineFilter::Combiner
 
     // We only handle PNGs for now.
     if (resource->type() && (resource->type()->type() != ContentType::kPng)) {
-      handler->Message(kInfo, "Cannot sprite: not PNG");
+      handler->Message(kInfo, "Cannot sprite: not PNG, %s",
+                       resource->url().c_str());
       return false;
     }
     // Need to make sure our image library can handle this image.
