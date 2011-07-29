@@ -39,6 +39,7 @@ namespace net_instaweb {
 
 class AbstractLock;
 class CachedResult;
+class InputInfo;
 class MessageHandler;
 class OutputPartitions;
 class ResourceContext;
@@ -194,6 +195,17 @@ class RewriteContext {
   // inputs are still valid/non-expired.
   bool IsCachedResultValid(const CachedResult& partition);
 
+  // Checks whether all the entries in the given partition tables' other
+  // dependency table are valid.
+  bool IsOtherDependencyValid(const OutputPartitions* partitions);
+
+  // Checks whether the given input is still unchanged.
+  bool IsInputValid(const InputInfo& input_info);
+
+  // Add a dummy other_dependency that will force the rewrite's OutputPartitions
+  // to be rechecked after a modest TTL.
+  void AddRecheckDependency();
+
   // Establishes that a slot has been rewritten.  So when Propagate()
   // is called, the resource update that has been written to this slot can
   // be propagated to the DOM.
@@ -211,9 +223,9 @@ class RewriteContext {
 
   // Called on the parent from a nested Rewrite when it is complete.
   // Note that we don't track rewrite success/failure here.  We only
-  // care whether the nested rewrites are complete.  In fact we don't
-  // even track which particular nested rewrite is done.
-  void NestedRewriteDone();
+  // care whether the nested rewrites are complete, and whether there
+  // are any dependencies.
+  void NestedRewriteDone(const RewriteContext* context);
 
   // Called on the parent to initiate all nested tasks.  This is so
   // that they can all be added before any of them are started.

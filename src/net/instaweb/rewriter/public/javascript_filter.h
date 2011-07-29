@@ -62,6 +62,8 @@ class Statistics;
  */
 class JavascriptFilter : public RewriteSingleResourceFilter {
  public:
+  typedef std::vector<HtmlCharactersNode*> HtmlCharNodeVector;
+
   JavascriptFilter(RewriteDriver* rewrite_driver,
                    const StringPiece& path_prefix);
   virtual ~JavascriptFilter();
@@ -92,12 +94,13 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
   virtual bool HasAsyncFlow() const;
 
  private:
+  class Context;
   inline void CompleteScriptInProgress();
   inline void RewriteInlineScript();
   inline void RewriteExternalScript();
   const StringPiece FlattenBuffer(GoogleString* script_buffer);
 
-  std::vector<HtmlCharactersNode*> buffer_;
+  HtmlCharNodeVector buffer_;
   HtmlElement* script_in_progress_;
   HtmlElement::Attribute* script_src_;
   // some_missing_scripts indicates that we stopped processing a script and

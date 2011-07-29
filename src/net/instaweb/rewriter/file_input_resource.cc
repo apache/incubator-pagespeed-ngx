@@ -48,6 +48,7 @@ void FileInputResource::FillInPartitionInputInfo(InputInfo* input) {
   CHECK(loaded());
   input->set_type(InputInfo::FILE_BASED);
   input->set_last_modified_time_ms(last_modified_time_sec_ * Timer::kSecondMs);
+  input->set_filename(filename_);
 }
 
 // TODO(sligocki): Is this reasonable? People might want custom headers.

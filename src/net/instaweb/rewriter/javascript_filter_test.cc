@@ -169,6 +169,25 @@ TEST_P(JavascriptFilterTest, InlineJavascript) {
                    StringPrintf(kInlineJs, kJsMinData));
 }
 
+TEST_P(JavascriptFilterTest, StripInlineWhitespace) {
+  // Make sure we strip inline whitespace when minifying external scripts.
+  InitTest(100);
+  ValidateExpected(
+      "StripInlineWhitespace",
+      StrCat("<script src='", kOrigJsName, "'>   \t\n   </script>"),
+      StrCat("<script src='", kTestDomain, kOrigJsName, ".pagespeed.jm.0.js",
+             "'></script>"));
+}
+
+TEST_P(JavascriptFilterTest, RetainInlineData) {
+  // Test to make sure we keep inline data when minifying external scripts.
+  InitTest(100);
+  ValidateExpected("StripInlineWhitespace",
+                   StrCat("<script src='", kOrigJsName, "'> data </script>"),
+                   StrCat("<script src='", kTestDomain, kOrigJsName,
+                          ".pagespeed.jm.0.js", "'> data </script>"));
+}
+
 TEST_P(JavascriptFilterTest, CdataJavascript) {
   // Test minification of a simple inline script in html (NOT xhtml) where the
   // script is wrapped in a commented-out CDATA.

@@ -96,6 +96,16 @@ bool FileSystem::WriteTempFile(const StringPiece& prefix_name,
   return ok;
 }
 
+bool FileSystem::WriteFileAtomic(const StringPiece& filename_sp,
+                                 const StringPiece& buffer,
+                                 MessageHandler* message_handler) {
+  const GoogleString filename(filename_sp.as_string());
+  GoogleString tempfilename;
+  return (WriteTempFile(StrCat(filename, ".temp"), buffer, &tempfilename,
+                        message_handler) &&
+          RenameFile(tempfilename.c_str(), filename.c_str(), message_handler));
+}
+
 bool FileSystem::Close(File* file, MessageHandler* message_handler) {
   bool ret = file->Close(message_handler);
   delete file;

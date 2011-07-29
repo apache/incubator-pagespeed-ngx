@@ -188,6 +188,10 @@ class NestedFilter : public RewriteFilter {
     return expected_nested_rewrite_result_;
   }
 
+  void set_expected_nested_rewrite_result(bool x) {
+    expected_nested_rewrite_result_ = x;
+  }
+
  protected:
   virtual ~NestedFilter() {}
 
@@ -633,6 +637,11 @@ class RewriteContextTest : public ResourceManagerTestBase {
     nested_filter_ = new NestedFilter(driver, expected_nested_rewrite_result);
     driver->AddRewriteFilter(nested_filter_);
     driver->AddFilters();
+  }
+
+  void ReconfigureNestedFilter(bool expected_nested_rewrite_result) {
+    nested_filter_->set_expected_nested_rewrite_result(
+        expected_nested_rewrite_result);
   }
 
   // TODO(sligocki): Rename. This name can cause mixups with
@@ -1427,6 +1436,23 @@ const char ResourceUpdateTest::kOriginalUrl[] = "a.css";
 const char ResourceUpdateTest::kRewrittenUrlFormat[] =
     "http://test.com/a.css.pagespeed.tw.%s.css";
 
+// Test to make sure that 404's expire.
+TEST_F(ResourceUpdateTest, TestExpire404) {
+  InitTrimFilters(kRewrittenResource);
+
+  // First, set a 404.
+  SetFetchResponse404(kOriginalUrl);
+
+  // Trying to rewrite it should not do anything..
+  ValidateNoChanges("404", CssLink(kOriginalUrl));
+
+  // Now move forward a millennium and upload a new version. We should
+  // be ready to optimize at that point.
+  mock_timer()->AdvanceMs(1000 * Timer::kYearMs);
+  InitResponseHeaders(kOriginalUrl, kContentTypeCss, " init ", 100);
+  EXPECT_EQ("init", RewriteSingleResource("200"));
+}
+
 TEST_F(ResourceUpdateTest, OnTheFly) {
   InitTrimFilters(kOnTheFlyResource);
 
@@ -1631,7 +1657,8 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   EXPECT_EQ(1, combining_filter_->num_rewrites());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(2, file_system()->num_input_file_opens());
-  // TODO(sligocki): EXPECT_EQ(0, file_system()->num_input_file_stats());
+  // Note that we stat each file as we load it in.
+  EXPECT_EQ(2, file_system()->num_input_file_stats());
   ClearStats();
 
   // 2) Advance time, but not so far that any resources have expired.
@@ -1641,7 +1668,7 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   EXPECT_EQ(0, combining_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
-  // TODO(sligocki): EXPECT_EQ(2, file_system()->num_input_file_stats());
+  EXPECT_EQ(2, file_system()->num_input_file_stats());
   ClearStats();
 
   // 3) Change resources
@@ -1652,12 +1679,12 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
                       " c2 ", kShortTtlMs / 1000);
   WriteFile("/test/d.css", " d2 ");
   // File-based resources should be updated, but web-based ones still cached.
-  // TODO(sligocki): Fix
   EXPECT_EQ(" a1  b2  c1  d2 ", CombineResources("stale_content"));
   EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(2, file_system()->num_input_file_opens());  // Read both files.
-  // TODO(sligocki): EXPECT_EQ(2, file_system()->num_input_file_stats());
+  // 2 reads + stat of b
+  EXPECT_EQ(3, file_system()->num_input_file_stats());
   ClearStats();
 
   // 4) Advance time so that short-cached input expires.
@@ -1667,7 +1694,8 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());  // One expired.
   EXPECT_EQ(2, file_system()->num_input_file_opens());  // Re-read files.
-  // TODO(sligocki): EXPECT_EQ(2, file_system()->num_input_file_stats());
+  // 2 file reads + stat of b, which we get to as a has long TTL.
+  EXPECT_EQ(3, file_system()->num_input_file_stats());
   ClearStats();
 
   // 5) Advance time so that all inputs have expired and been updated.
@@ -1677,7 +1705,8 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // Both expired.
   EXPECT_EQ(2, file_system()->num_input_file_opens());  // Re-read files.
-  // TODO(sligocki): EXPECT_EQ(2, file_system()->num_input_file_stats());
+  // 2 read-induced stats, no actual checks as a has expired.
+  EXPECT_EQ(2, file_system()->num_input_file_stats());
   ClearStats();
 }
 
@@ -1701,18 +1730,53 @@ class NestedResourceUpdateTest : public ResourceUpdateTest {
   }
 };
 
+TEST_F(NestedResourceUpdateTest, TestExpireNested404) {
+  UseMd5Hasher();
+  InitNestedFilter(kExpectNestedRewritesFail);
+
+  const int64 kDecadeMs = 10 * Timer::kYearMs;
+  const int64 kCenturyMs = 100 * Timer::kYearMs;
+
+  // Have the nested one have a 404...
+  const char kOutUrl[] = "http://test.com/main.txt.pagespeed.nf.sdUklQf3sx.css";
+  InitResponseHeaders("http://test.com/main.txt", kContentTypeCss,
+                      "a.css\n", kCenturyMs / 1000);
+  SetFetchResponse404("a.css");
+
+  ValidateExpected("nested_404", CssLink("main.txt"), CssLink(kOutUrl));
+  GoogleString contents;
+  EXPECT_TRUE(ServeResourceUrl(kOutUrl, &contents));
+  EXPECT_EQ("http://test.com/a.css\n", contents);
+
+  // Now move forward two decades, and upload a new version. We should
+  // be ready to optimize at that point, but input should not be expired.
+  mock_timer()->AdvanceMs(2 * kDecadeMs);
+  InitResponseHeaders("a.css", kContentTypeCss, " lowercase ", 100);
+  ReconfigureNestedFilter(kExpectNestedRewritesSucceed);
+  const char kFullOutUrl[] =
+      "http://test.com/main.txt.pagespeed.nf.wtz1oZ56O0.css";
+  const char kInnerUrl[] =
+      "http://test.com/a.css.pagespeed.nf.N4LKMOq9ms.css\n";
+  ValidateExpected("nested_404", CssLink("main.txt"), CssLink(kFullOutUrl));
+  EXPECT_TRUE(ServeResourceUrl(kFullOutUrl, &contents));
+  EXPECT_EQ(kInnerUrl, contents);
+  EXPECT_TRUE(ServeResourceUrl(kInnerUrl, &contents));
+  EXPECT_EQ(" LOWERCASE ", contents);
+}
+
 TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   // Initialize system.
   InitNestedFilter(kExpectNestedRewritesSucceed);
   options()->file_load_policy()->Associate("http://test.com/file/", "/test/");
 
   // Initialize resources.
-  int64 kLongTtlMs = 1 * Timer::kMonthMs;
-  int64 kShortTtlMs = 1 * Timer::kMinuteMs;
+  const int64 kExtraLongTtlMs = 10 * Timer::kMonthMs;
+  const int64 kLongTtlMs = 1 * Timer::kMonthMs;
+  const int64 kShortTtlMs = 1 * Timer::kMinuteMs;
   InitResponseHeaders("http://test.com/main.txt", kContentTypeCss,
                       "web/a.css\n"
                       "file/b.css\n"
-                      "web/c.css\n", kLongTtlMs / 1000);
+                      "web/c.css\n", kExtraLongTtlMs / 1000);
   InitResponseHeaders("http://test.com/web/a.css", kContentTypeCss,
                       " a1 ", kLongTtlMs / 1000);
   WriteFile("/test/b.css", " b1 ");
@@ -1729,10 +1793,10 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   EXPECT_EQ(1, nested_filter_->num_top_rewrites());
   EXPECT_EQ(3, nested_filter_->num_sub_rewrites());
   EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
-  //EXPECT_EQ(1, file_system()->num_input_file_opens());  // b.css
   // {a,b,c}.css.pagespeed.nf.HASH.css and b.css
   EXPECT_EQ(4, file_system()->num_input_file_opens());
-  // TODO(sligocki): EXPECT_EQ(0, file_system()->num_input_file_stats());
+  // Loading b.css the first time.
+  EXPECT_EQ(1, file_system()->num_input_file_stats());
   ClearStats();
 
   // 2) Advance time, but not so far that any resources have expired.
@@ -1746,7 +1810,8 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   EXPECT_EQ(0, nested_filter_->num_sub_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
-  // TODO(sligocki): EXPECT_EQ(1, file_system()->num_input_file_stats());
+  // re-checked b.
+  EXPECT_EQ(1, file_system()->num_input_file_stats());
   ClearStats();
 
   // 3) Change resources
@@ -1758,38 +1823,33 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   // File-based resources should be updated, but web-based ones still cached.
   result_vector = RewriteNestedResources("stale_content");
   EXPECT_EQ(" A1 ", result_vector[0]);
-  // TODO(sligocki): Fix
-  //EXPECT_EQ(" B2 ", result_vector[1]);
-  EXPECT_EQ(" B1 ", result_vector[1]);
+  EXPECT_EQ(" B2 ", result_vector[1]);
   EXPECT_EQ(" C1 ", result_vector[2]);
-  //EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
-  EXPECT_EQ(0, nested_filter_->num_top_rewrites());
-  //EXPECT_EQ(1, nested_filter_->num_sub_rewrites());  // b.css
-  EXPECT_EQ(0, nested_filter_->num_sub_rewrites());
+  EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
+  EXPECT_EQ(1, nested_filter_->num_sub_rewrites());  // b.css
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  //EXPECT_EQ(1, file_system()->num_input_file_opens());  // b.css
-  EXPECT_EQ(0, file_system()->num_input_file_opens());
-  // TODO(sligocki): EXPECT_EQ(1, file_system()->num_input_file_stats());
+  // b.css, b.css.pagespeed.nf.HASH.css
+  EXPECT_EQ(2, file_system()->num_input_file_opens());
+
+  // The stats here are:
+  // 1) Stat b.css to figure out if top-level rewrite is valid.
+  // 2) Stat b.css to figure out if nested rewrite is valid.
+  // 3) Stat b.css to figure out its time on loading it.
+  EXPECT_EQ(3, file_system()->num_input_file_stats());
   ClearStats();
 
   // 4) Advance time so that short-cached input expires.
   mock_timer()->AdvanceMs(kShortTtlMs);
-  // All but long TTL UrlInputResrouce should be updated.
+  // All but long TTL UrlInputResource should be updated.
   result_vector = RewriteNestedResources("short_updated");
   EXPECT_EQ(" A1 ", result_vector[0]);
-  // TODO(sligocki): Fix
-  //EXPECT_EQ(" B2 ", result_vector[1]);
-  EXPECT_EQ(" B1 ", result_vector[1]);
-  //EXPECT_EQ(" C2 ", result_vector[2]);
-  EXPECT_EQ(" C1 ", result_vector[2]);
-  //EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
-  EXPECT_EQ(0, nested_filter_->num_top_rewrites());
-  //EXPECT_EQ(1, nested_filter_->num_sub_rewrites());  // c.css
-  EXPECT_EQ(0, nested_filter_->num_sub_rewrites());
-  //EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());  // c.css
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(0, file_system()->num_input_file_opens());
-  // TODO(sligocki): EXPECT_EQ(1, file_system()->num_input_file_stats());
+  EXPECT_EQ(" B2 ", result_vector[1]);
+  EXPECT_EQ(" C2 ", result_vector[2]);
+  EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
+  EXPECT_EQ(1, nested_filter_->num_sub_rewrites());  // c.css
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());  // c.css
+  EXPECT_EQ(1, file_system()->num_input_file_opens());  // rewritten c.css
+  EXPECT_EQ(1, file_system()->num_input_file_stats());  // verify b.css
   ClearStats();
 
   // 5) Advance time so that all inputs have expired and been updated.
@@ -1800,14 +1860,10 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   EXPECT_EQ(" B2 ", result_vector[1]);
   EXPECT_EQ(" C2 ", result_vector[2]);
   EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
-  // TODO(sligocki): Fix
-  //EXPECT_EQ(2, nested_filter_->num_sub_rewrites());  // a.css, c.css
-  EXPECT_EQ(3, nested_filter_->num_sub_rewrites());  // a.css, b.css, c.css
-  //EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // a.css, c.css
-  EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
-  //EXPECT_EQ(0, file_system()->num_input_file_opens());
-  EXPECT_EQ(4, file_system()->num_input_file_opens());
-  // TODO(sligocki): EXPECT_EQ(1, file_system()->num_input_file_stats());
+  EXPECT_EQ(2, nested_filter_->num_sub_rewrites());  // a.css, c.css
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // a.css, c.css
+  EXPECT_EQ(1, file_system()->num_input_file_opens());  // rewritten a.css
+  EXPECT_EQ(1, file_system()->num_input_file_stats());  // check b.css (nested)
   ClearStats();
 }
 

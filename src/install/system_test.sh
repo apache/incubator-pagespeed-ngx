@@ -183,7 +183,7 @@ echo Checking for lack of E-tag
 echo $HTML_HEADERS | grep -qi Etag
 check [ $? != 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #echo Checking for presence of Vary.
 #echo $HTML_HEADERS | grep -qi 'Vary: Accept-Encoding'
 #check [ $? = 0 ]
@@ -192,7 +192,7 @@ echo Checking for absence of Last-Modified
 echo $HTML_HEADERS | grep -qi 'Last-Modified'
 check [ $? != 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #echo Checking for presence of Cache-control: no-cache
 #echo $HTML_HEADERS | grep -qi 'Cache-Control: max-age=0, no-cache, no-store'
 #check [ $? = 0 ]
@@ -208,7 +208,7 @@ check "$WGET -q $EXAMPLE_ROOT/" -O $OUTDIR/mod_pagespeed_example
 check "$WGET -q $EXAMPLE_ROOT/index.html" -O $OUTDIR/index.html
 check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #echo TEST: compression is enabled for HTML.
 #check "$WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
 #  $EXAMPLE_ROOT/ 2>&1 | grep -qi 'Content-Encoding: gzip'"
@@ -229,19 +229,19 @@ test_filter collapse_whitespace removes whitespace, but not from pre tags.
 check $WGET_PREREQ $URL
 check [ `egrep -c '^ +<' $FETCHED` = 1 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #test_filter combine_css combines 4 CSS files into 1.
 #fetch_until $URL 'grep -c text/css' 1
 #check $WGET_PREREQ $URL
 #test_resource_ext_corruption $URL\
 #  $combine_css_filename
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #echo TEST: combine_css without hash field should 404
 #$WGET_PREREQ $EXAMPLE_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
 #check grep '"404 Not Found"' $WGET_OUTPUT
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 # Note: this large URL can only be processed by Apache if
 # ap_hook_map_to_storage is called to bypass the default
 # handler that maps URLs to filenames.
@@ -279,26 +279,26 @@ check [ $? != 0 ]
 grep "type=" $FETCHED       # default, should not find
 check [ $? != 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #test_filter extend_cache rewrites an image tag.
 #fetch_until $URL 'grep -c src.*91_WewrLtP' 1
 #check $WGET_PREREQ $URL
 #echo about to test resource ext corruption...
 #test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #echo TEST: Attempt to fetch cache-extended image without hash should 404
 #$WGET_PREREQ $EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce..jpg
 #check grep '"404 Not Found"' $WGET_OUTPUT
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #echo TEST: Cache-extended image should respond 304 to an If-Modified-Since.
 #URL=$EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 #DATE=`date -R`
 #$WGET_PREREQ --header "If-Modified-Since: $DATE" $URL
 #check grep '"304 Not Modified"' $WGET_OUTPUT
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #echo TEST: Legacy format URLs should still work.
 #URL=$EXAMPLE_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
 #check "$WGET_DUMP $URL | grep -q 'HTTP/1.1 200 OK'"
@@ -323,7 +323,7 @@ check $WGET_PREREQ $URL
 check egrep -q "'<script.*large.*src='" $FETCHED       # outlined
 check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #echo TEST: compression is enabled for rewritten JS.
 #echo JS_URL=\$\(egrep -o http://.*.pagespeed.*.js $FETCHED\)
 #JS_URL=$(egrep -o http://.*.pagespeed.*.js $FETCHED)
@@ -338,7 +338,7 @@ check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
 #echo $JS_HEADERS | grep -qi 'Last-Modified:'
 #check [ $? = 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #test_filter remove_comments removes comments but not IE directives.
 #check $WGET_PREREQ $URL
 #grep "removed" $FETCHED                # comment, should not find
@@ -363,7 +363,7 @@ grep "comment" $FETCHED                   # comment, should not find
 check [ $? != 0 ]
 check [ `stat -c %s $FETCHED` -lt 680 ]   # down from 689
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #test_filter rewrite_images inlines, compresses, and resizes.
 URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
 #fetch_until $URL 'grep -c image/png' 1      # inlined
@@ -372,7 +372,7 @@ URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
 #check [ `stat -c %s $OUTDIR/xBikeCrashIcn*` -lt 25000 ]      # re-encoded
 #check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
 #echo TEST: headers for rewritten image "$IMG_URL"
 #IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
@@ -391,32 +391,32 @@ echo TEST: Vary is not set for images
 echo "$IMG_HEADERS" | grep -qi 'Vary: Accept-Encoding'
 check [ $? != 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 # Make sure there is an etag
 #echo TEST: Etags is present
 #echo "$IMG_HEADERS" | grep -qi 'Etag: W/0'
 #check [ $? = 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 # Make sure an extra header is propagated from input resource to output
 # resource.  X-Extra-Header is added in debug.conf.template.
 #echo TEST: Extra header is present
 #echo "$IMG_HEADERS" | grep -qi 'X-Extra-Header'
 #check [ $? = 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 # Make sure there is a last-modified tag
 #echo TEST: Last-modified is present
 #echo "$IMG_HEADERS" | grep -qi 'Last-Modified'
 #check [ $? = 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #IMG_URL=${IMG_URL/Puzzle/BadName}
 #echo TEST: rewrite_images fails broken image $IMG_URL
 #$WGET_PREREQ $IMG_URL;  # fails
 #check grep '"404 Not Found"' $WGET_OUTPUT
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 # [google] b/3328110
 #echo "TEST: rewrite_images doesn't 500 on unoptomizable image"
 #IMG_URL=$EXAMPLE_ROOT/images/xOptPuzzle.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
@@ -476,7 +476,7 @@ check $WGET_PREREQ $URL
 # We can't do this here because of the wget bug mentioned above.
 #check $WGET_PREREQ $URL
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #test_filter rewrite_javascript removes comments and saves a bunch of bytes.
 #fetch_until $URL 'grep -c src.*1o978_K0_L' 2   # external scripts rewritten
 #check $WGET_PREREQ $URL
@@ -488,11 +488,12 @@ check $WGET_PREREQ $URL
 #check grep -qi "'Cache-control: max-age=31536000'" $WGET_OUTPUT
 #check grep -qi "'Expires:'" $WGET_OUTPUT
 
-echo TEST: respect vary user-agent
-URL=$TEST_ROOT/vary/index.html?ModPagespeedFilters=inline_css
-echo $WGET_DUMP $URL
-$WGET_DUMP $URL | grep -q "<style>"
-check [ $? != 0 ]
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
+#echo TEST: respect vary user-agent
+#URL=$TEST_ROOT/vary/index.html?ModPagespeedFilters=inline_css
+#echo $WGET_DUMP $URL
+#$WGET_DUMP $URL | grep -q "<style>"
+#check [ $? != 0 ]
 
 # Error path for fetch of outlined resources that are not in cache leaked
 # at one point of development.

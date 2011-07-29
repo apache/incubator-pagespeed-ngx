@@ -132,6 +132,14 @@ class FileSystem {
                              GoogleString* filename,
                              MessageHandler* handler);
 
+  // Write a temp file first and then copy to filename so that the file
+  // cannot be read after being partially written.
+  // Temp file name is based on filename.
+  // TODO(sligocki): Use thoughout code where appropriate.
+  bool WriteFileAtomic(const StringPiece& filename,
+                       const StringPiece& buffer,
+                       MessageHandler* handler);
+
   virtual InputFile* OpenInputFile(const char* filename,
                                    MessageHandler* handler) = 0;
   // Automatically creates sub-directories to filename.
@@ -161,7 +169,7 @@ class FileSystem {
   // Like POSIX 'mv', except it automatically creates sub-directories for
   // new_filename.
   bool RenameFile(const char* old_filename, const char* new_filename,
-                          MessageHandler* handler) {
+                  MessageHandler* handler) {
     SetupFileDir(new_filename, handler);
     return RenameFileHelper(old_filename, new_filename, handler);
   }

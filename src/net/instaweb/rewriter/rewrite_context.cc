@@ -36,14 +36,12 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/blocking_behavior.h"
-#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -356,47 +354,65 @@ void RewriteContext::SetPartitionKey() {
 
 // Check if this mapping from input to output URLs is still valid.
 bool RewriteContext::IsCachedResultValid(const CachedResult& partition) {
-  bool partition_is_valid = true;
-  for (int j = 0, m = partition.input_size();
-       (j < m) && partition_is_valid; ++j) {
-    const InputInfo& input_info = partition.input(j);
-    switch (input_info.type()) {
-      case InputInfo::CACHED: {
-        // It is invalid if cacheable inputs have expired or ...
-        CHECK(input_info.has_expiration_time_ms());
-        int64 now_ms = Manager()->timer()->NowMs();
-        if (now_ms > input_info.expiration_time_ms()) {
-          partition_is_valid = false;
-        }
-        break;
-      }
-      case InputInfo::FILE_BASED: {
-        // ... if file-based inputs have changed.
-        GoogleString url = slot(input_info.index())->resource()->url();
-        GoogleUrl gurl(url);
-        GoogleString filename;
-        if (Options()->file_load_policy()->ShouldLoadFromFile(
-                gurl, &filename)) {
-          int64 mtime_sec;
-          Manager()->file_system()->Mtime(filename, &mtime_sec,
-                                          Manager()->message_handler());
-          CHECK(input_info.has_last_modified_time_ms());
-          if (mtime_sec * Timer::kSecondMs !=
-              input_info.last_modified_time_ms()) {
-            partition_is_valid = false;
-          }
-        } else {
-          LOG(DFATAL) << "Input resource incorrectly marked File-based: "
-                      << url;
-          partition_is_valid = false;
-        }
-        break;
-      }
-      case InputInfo::ALWAYS_VALID:
-        break;
+  for (int j = 0, m = partition.input_size(); j < m; ++j) {
+    if (!IsInputValid(partition.input(j))) {
+      return false;
     }
   }
-  return partition_is_valid;
+  return true;
+}
+
+bool RewriteContext::IsOtherDependencyValid(
+    const OutputPartitions* partitions) {
+  for (int j = 0, m = partitions->other_dependency_size(); j < m; ++j) {
+    if (!IsInputValid(partitions->other_dependency(j))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void RewriteContext::AddRecheckDependency() {
+  int64 now_ms = Manager()->timer()->NowMs();
+  InputInfo* force_recheck = partitions_->add_other_dependency();
+  force_recheck->set_type(InputInfo::CACHED);
+  force_recheck->set_expiration_time_ms(
+      now_ms + ResponseHeaders::kImplicitCacheTtlMs);
+}
+
+bool RewriteContext::IsInputValid(const InputInfo& input_info) {
+  switch (input_info.type()) {
+    case InputInfo::CACHED: {
+      // It is invalid if cacheable inputs have expired or ...
+      DCHECK(input_info.has_expiration_time_ms());
+      if (!input_info.has_expiration_time_ms()) {
+        return false;
+      }
+      int64 now_ms = Manager()->timer()->NowMs();
+      return (now_ms <= input_info.expiration_time_ms());
+      break;
+    }
+    case InputInfo::FILE_BASED: {
+      // ... if file-based inputs have changed.
+      DCHECK(input_info.has_last_modified_time_ms() &&
+             input_info.has_filename());
+      if (!input_info.has_last_modified_time_ms() ||
+          !input_info.has_filename()) {
+        return false;
+      }
+      int64 mtime_sec;
+      Manager()->file_system()->Mtime(input_info.filename(), &mtime_sec,
+                                      Manager()->message_handler());
+      return (mtime_sec * Timer::kSecondMs ==
+                input_info.last_modified_time_ms());
+      break;
+    }
+    case InputInfo::ALWAYS_VALID:
+      return true;
+  }
+
+  DCHECK(false) << "Corrupt InputInfo object !?";
+  return false;
 }
 
 void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
@@ -409,7 +425,8 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
     // be a protobuf.  Try to parse it.
     const GoogleString* val_str = value.get();
     ArrayInputStream input(val_str->data(), val_str->size());
-    if (partitions_->ParseFromZeroCopyStream(&input)) {
+    if (partitions_->ParseFromZeroCopyStream(&input) &&
+        IsOtherDependencyValid(partitions_.get())) {
       for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
         const CachedResult& partition = partitions_->partition(i);
         OutputResourcePtr output_resource;
@@ -574,6 +591,11 @@ void RewriteContext::StartRewrite() {
     // The partitioning succeeded, but yielded zero rewrites.  Write out the
     // empty partition table and let any successor Rewrites run.
     rewrite_done_ = true;
+
+    // TODO(morlovich): The filters really should be doing this themselves,
+    // since there may be partial failures in cases of multiple inputs which
+    // we do not see here.
+    AddRecheckDependency();
     WritePartition();
   } else {
     // We will let the Rewrites complete prior to writing the
@@ -605,7 +627,7 @@ void RewriteContext::WritePartition() {
   if (parent_ != NULL) {
     DCHECK(driver_ == NULL);
     Propagate(true);
-    parent_->NestedRewriteDone();
+    parent_->NestedRewriteDone(this);
   } else {
     // The RewriteDriver is waiting for this to complete.  Defer to the
     // RewriteDriver to schedule the Rendering of this context on the main
@@ -629,7 +651,27 @@ void RewriteContext::StartNestedTasks() {
   }
 }
 
-void RewriteContext::NestedRewriteDone() {
+void RewriteContext::NestedRewriteDone(const RewriteContext* context) {
+  // Record any external dependencies we have.
+  // TODO(morlovich): Eliminate duplicates?
+  for (int p = 0; p < context->num_output_partitions(); ++p) {
+    const CachedResult* nested_result = context->output_partition(p);
+    for (int i = 0; i < nested_result->input_size(); ++i) {
+      InputInfo* dep = partitions_->add_other_dependency();
+      dep->CopyFrom(nested_result->input(i));
+      // The input index here is with respect to the nested context's inputs,
+      // so would not be interpretable at top-level, and we don't use it for
+      // other_dependency entries anyway, so be both defensive and frugal
+      // and don't write it out.
+      dep->clear_index();
+    }
+  }
+
+  for (int p = 0; p < context->partitions_->other_dependency_size(); ++p) {
+    InputInfo* dep = partitions_->add_other_dependency();
+    dep->CopyFrom(context->partitions_->other_dependency(p));
+  }
+
   DCHECK_LT(0, num_pending_nested_);
   --num_pending_nested_;
   if (num_pending_nested_ == 0) {
@@ -648,15 +690,6 @@ void RewriteContext::RewriteDone(
         partitions_->mutable_partition(partition_index);
     bool optimizable = (result == RewriteSingleResourceFilter::kRewriteOk);
     partition->set_optimizable(optimizable);
-    if (!optimizable) {
-      // TODO(sligocki): We are indiscriminately setting a 5min cache lifetime
-      // for all failed rewrites. We should use the input resource's cache
-      // lifetime instead. Or better yet, do conditional fetches of input
-      // resources and only invalidate mapping if inputs change.
-      int64 now_ms = Manager()->timer()->NowMs();
-      partition->set_origin_expiration_time_ms(
-          now_ms + ResponseHeaders::kImplicitCacheTtlMs);
-    }
     if (optimizable && (fetch_.get() == NULL)) {
       // TODO(morlovich): currently in async mode, we tie rendering of slot
       // to the optimizable bit, making it impossible to do per-slot mutation
