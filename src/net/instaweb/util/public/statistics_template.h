@@ -46,12 +46,12 @@ template<class Var, class Hist> class StatisticsTemplate
   // Add a new variable, or returns an existing one of that name.
   // The Variable* is owned by the Statistics class -- it should
   // not be deleted by the caller.
-  virtual Variable* AddVariable(const StringPiece& name) {
+  virtual Var* AddVariable(const StringPiece& name) {
     return AddVariableInternal(name);
   }
 
   // Find a variable from a name, returning NULL if not found.
-  virtual Variable* FindVariable(const StringPiece& name) const {
+  virtual Var* FindVariable(const StringPiece& name) const {
     return FindVariableInternal(name);
   }
 
