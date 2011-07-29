@@ -183,19 +183,17 @@ echo Checking for lack of E-tag
 echo $HTML_HEADERS | grep -qi Etag
 check [ $? != 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#echo Checking for presence of Vary.
-#echo $HTML_HEADERS | grep -qi 'Vary: Accept-Encoding'
-#check [ $? = 0 ]
+echo Checking for presence of Vary.
+echo $HTML_HEADERS | grep -qi 'Vary: Accept-Encoding'
+check [ $? = 0 ]
 
 echo Checking for absence of Last-Modified
 echo $HTML_HEADERS | grep -qi 'Last-Modified'
 check [ $? != 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#echo Checking for presence of Cache-control: no-cache
-#echo $HTML_HEADERS | grep -qi 'Cache-Control: max-age=0, no-cache, no-store'
-#check [ $? = 0 ]
+echo Checking for presence of Cache-Control: max-age=0, no-cache, no-store
+echo $HTML_HEADERS | grep -qi 'Cache-Control: max-age=0, no-cache, no-store'
+check [ $? = 0 ]
 
 echo Checking for absense of Expires
 echo $HTML_HEADERS | grep -qi 'Expires'

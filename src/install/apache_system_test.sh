@@ -186,18 +186,6 @@ echo TEST: mod_pagespeed is running in Apache and writes the expected header.
 echo $WGET_DUMP $EXAMPLE_ROOT/combine_css.html
 HTML_HEADERS=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
 
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
-echo Checking for presence of Vary.
-echo $HTML_HEADERS | grep -qi 'Vary: Accept-Encoding'
-check [ $? = 0 ]
-
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
-echo Checking for presence of Cache-control: no-cache
-echo $HTML_HEADERS | grep -qi 'Cache-Control: max-age=0, no-cache, no-store'
-check [ $? = 0 ]
-
 # Determine whether statistics are enabled or not.  If not, don't test them,
 # but do an additional regression test that tries harder to get a cache miss.
 grep "# ModPagespeedStatistics off" $APACHE_DEBUG_PAGESPEED_CONF > /dev/null
