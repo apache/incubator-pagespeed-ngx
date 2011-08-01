@@ -139,6 +139,13 @@ class RewriteDriverFactory {
     return created_directories_;
   }
 
+  bool async_rewrites() { return async_rewrites_; }
+
+  // Sets the resource manager into async_rewrite mode.  This can be
+  // called before or after ComputeResourceManager, but will only
+  // affect RewriteDrivers that are created after the call is made.
+  void SetAsyncRewrites(bool x);
+
  protected:
   bool FetchersComputed() const;
 
@@ -212,6 +219,7 @@ class RewriteDriverFactory {
   bool force_caching_;
   bool slurp_read_only_;
   bool slurp_print_urls_;
+  bool async_rewrites_;
 
   scoped_ptr<ResourceManager> resource_manager_;
 

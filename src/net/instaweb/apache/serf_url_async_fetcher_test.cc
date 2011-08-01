@@ -109,6 +109,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     AddTestUrl("http://www.google.com/intl/en_ALL/images/logo.gif", "GIF");
     AddTestUrl("http://stevesouders.com/bin/resource.cgi?type=js&sleep=10",
                "var");
+    AddTestUrl("http://modpagespeed.com/mod_pagespeed_beacon", "");
     prev_done_count = 0;
   }
 
@@ -163,8 +164,14 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   void ValidateFetches(size_t begin, size_t end) {
     for (size_t idx = begin; idx < end; ++idx) {
       ASSERT_TRUE(callbacks_[idx]->IsDone());
-      EXPECT_LT(static_cast<size_t>(0), contents_[idx]->size());
-      EXPECT_EQ(200, response_headers_[idx]->status_code());
+      if (content_starts_[idx].empty()) {
+        EXPECT_TRUE(contents_[idx]->empty());
+        EXPECT_EQ(HttpStatus::kNoContent,
+                  response_headers_[idx]->status_code());
+      } else {
+        EXPECT_LT(static_cast<size_t>(0), contents_[idx]->size());
+        EXPECT_EQ(HttpStatus::kOK, response_headers_[idx]->status_code());
+      }
       EXPECT_EQ(content_starts_[idx],
                 contents_[idx]->substr(0, content_starts_[idx].size()));
     }
@@ -403,6 +410,11 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTimeout) {
   EXPECT_FALSE(callbacks_[3]->success());
   EXPECT_EQ(timeouts + 1,
             statistics_.GetVariable(SerfStats::kSerfFetchTimeoutCount)->Get());
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, Test204) {
+  TestFetch(4, 5);
+  EXPECT_EQ(HttpStatus::kNoContent, response_headers_[4]->status_code());
 }
 
 }  // namespace net_instaweb

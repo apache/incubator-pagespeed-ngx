@@ -43,6 +43,7 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
+#include "net/instaweb/util/stack_buffer.h"
 #include "third_party/serf/src/serf.h"
 #include "third_party/serf/src/serf_bucket_util.h"
 
@@ -52,7 +53,6 @@
 #define SERF_DEBUG(x)
 
 namespace {
-const int kBufferSize = 2048;
 const char kFetchMethod[] = "GET";
 }  // namespace
 
@@ -103,6 +103,10 @@ class SerfFetch : public PoolElement<SerfFetch> {
         str_url_(url),
         response_headers_(response_headers),
         parser_(response_headers),
+        status_line_read_(false),
+        one_byte_read_(false),
+        has_saved_byte_(false),
+        saved_byte_('\0'),
         fetched_content_writer_(fetched_content_writer),
         message_handler_(message_handler),
         callback_(callback),
@@ -235,7 +239,17 @@ class SerfFetch : public PoolElement<SerfFetch> {
                                      void* handler_baton,
                                      apr_pool_t* pool) {
     SerfFetch* fetch = static_cast<SerfFetch*>(handler_baton);
-    return fetch->HandleResponse(request, response);
+    return fetch->HandleResponse(response);
+  }
+
+  static bool MoreDataAvailable(apr_status_t status) {
+    return (APR_STATUS_IS_EAGAIN(status) || APR_STATUS_IS_EINTR(status));
+  }
+
+  static bool IsStatusOk(apr_status_t status) {
+    return ((status == APR_SUCCESS) ||
+            APR_STATUS_IS_EOF(status) ||
+            MoreDataAvailable(status));
   }
 
   // The handler MUST process data from the response bucket until the
@@ -243,90 +257,127 @@ class SerfFetch : public PoolElement<SerfFetch> {
   // The handler is invoked only when new data arrives. If no further data
   // arrives, and the handler does not process all available data, then the
   // system can result in a deadlock around the unprocessed, but read, data.
-  apr_status_t HandleResponse(serf_request_t* request,
-                              serf_bucket_t* response) {
-    apr_status_t status = APR_EGENERAL;
+  apr_status_t HandleResponse(serf_bucket_t* response) {
+    if (response == NULL) {
+      message_handler_->Message(
+          kInfo, "serf HandlerReponse called with NULL response for %s",
+          str_url());
+      CallCallback(false);
+      return APR_EGENERAL;
+    }
 
-    serf_status_line status_line;
-    if ((response != NULL) &&
-        ((status = serf_bucket_response_status(response, &status_line))
-         == APR_SUCCESS)) {
-      if (response_headers_ != NULL) {
-        response_headers_->SetStatusAndReason(
-            static_cast<HttpStatus::Code>(status_line.code));
-        response_headers_->set_major_version(status_line.version / 1000);
-        response_headers_->set_minor_version(status_line.version % 1000);
-      } else {
-        // TODO(jmaessen): Do we ever see duplicate header drops for a single
-        // url?  Are we re-parsing headers on re-entry?  If the latter is
-        // happening we ought to protect against it.
-        LOG(INFO) << "Dropping headers and content for " <<
-            str_url() << "(" << this << ") due to request timeout";
+    // The response-handling code must be robust to packets coming in all at
+    // once, one byte at a time, or anything in between.  EAGAIN indicates
+    // that more data is available in the socket so another read should
+    // be issued before returning.
+    apr_status_t status = APR_EAGAIN;
+    while (MoreDataAvailable(status) && (response_headers_ != NULL) &&
+            !parser_.headers_complete()) {
+      if (!status_line_read_) {
+        ReadStatusLine(response);
       }
-      const char* data = NULL;
-      apr_size_t len = 0;
-      while ((status = serf_bucket_read(response, kBufferSize, &data, &len))
-             == APR_SUCCESS || APR_STATUS_IS_EOF(status) ||
-             APR_STATUS_IS_EAGAIN(status)) {
-        bytes_received_ += len;
-        if (len > 0 && fetched_content_writer_ != NULL &&
-            !fetched_content_writer_->Write(
-                StringPiece(data, len), message_handler_)) {
-          status = APR_EGENERAL;
-          break;
-        }
-        if (status != APR_SUCCESS) {
-          break;
-        }
+
+      if (status_line_read_ && !one_byte_read_) {
+        ReadOneByteFromBody(response);
       }
-      // We could read the headers earlier, but then we have to check if we
-      // have received the headers.  At EOF of response, we have the headers
-      // already. Read them.
-      if (APR_STATUS_IS_EOF(status)) {
+
+      if (one_byte_read_ && !parser_.headers_complete()) {
         status = ReadHeaders(response);
       }
     }
-    if (!APR_STATUS_IS_EAGAIN(status) && response_headers_ != NULL) {
-      bool success = APR_STATUS_IS_EOF(status);
+
+    if (parser_.headers_complete()) {
+      status = ReadBody(response);
+    }
+
+    if ((response_headers_ != NULL) &&
+        ((APR_STATUS_IS_EOF(status) && parser_.headers_complete()) ||
+         (status == APR_EGENERAL))) {
+      bool success = (IsStatusOk(status) && parser_.headers_complete());
       CallCallback(success);
     }
     return status;
   }
 
-  apr_status_t ReadHeaders(serf_bucket_t* response) {
-    apr_status_t status = APR_SUCCESS;
-    serf_bucket_t* headers = serf_bucket_response_get_headers(response);
+  void ReadStatusLine(serf_bucket_t* response) {
+    serf_status_line status_line;
+    apr_status_t status = serf_bucket_response_status(response, &status_line);
+    if (status == APR_SUCCESS) {
+      response_headers_->SetStatusAndReason(
+          static_cast<HttpStatus::Code>(status_line.code));
+      response_headers_->set_major_version(status_line.version / 1000);
+      response_headers_->set_minor_version(status_line.version % 1000);
+      status_line_read_ = true;
+    }
+  }
+
+  // Know what's weird?  You have do a body-read to get access to the
+  // headers.  You need to read 1 byte of body to force an FSM inside
+  // Serf to parse the headers.  Then you can parse the headers and
+  // finally read the rest of the body.  I know, right?
+  //
+  // The simpler approach, and likely what the Serf designers intended,
+  // is that you read the entire body first, and then read the headers.
+  // But if you are trying to stream the data as its fetched through some
+  // kind of function that needs to know the content-type, then it's
+  // really a drag to have to wait till the end of the body to get the
+  // content type.
+  void ReadOneByteFromBody(serf_bucket_t* response) {
+    apr_size_t len = 0;
     const char* data = NULL;
-    apr_size_t num_bytes = 0;
-    while ((status = serf_bucket_read(headers, kBufferSize, &data, &num_bytes))
-           == APR_SUCCESS || APR_STATUS_IS_EOF(status) ||
-           APR_STATUS_IS_EAGAIN(status)) {
-      if (response_headers_ == NULL) {
-        // Don't attempt to parse the headers, as the parser will push data into
-        // a deallocated data structure.
-      } else if (parser_.headers_complete()) {
-        status = APR_EGENERAL;
-        message_handler_->Info(str_url_.c_str(), 0,
-                               "headers complete but more data coming");
-      } else {
-        StringPiece str_piece(data, num_bytes);
-        apr_size_t parsed_len = parser_.ParseChunk(str_piece, message_handler_);
-        if (parsed_len != num_bytes) {
-          status = APR_EGENERAL;
-          message_handler_->Error(str_url_.c_str(), 0,
-                                  "unexpected bytes at end of header");
-        }
-      }
-      if (status != APR_SUCCESS) {
-        break;
+    apr_status_t status = serf_bucket_read(response, 1, &data, &len);
+    if (!APR_STATUS_IS_EINTR(status) && IsStatusOk(status)) {
+      one_byte_read_ = true;
+      if (len == 1) {
+        has_saved_byte_ = true;
+        saved_byte_ = data[0];
       }
     }
-    if (response_headers_ != NULL &&
-        APR_STATUS_IS_EOF(status) && !parser_.headers_complete()) {
-      message_handler_->Error(str_url_.c_str(), 0,
-                              "eof on incomplete headers code=%d %s",
-                              status, GetAprErrorString(status).c_str());
-      status = APR_EGENERAL;
+  }
+
+  // Once that one byte is read from the body, we can go ahead and
+  // parse the headers.  The dynamics of this appear that for N
+  // headers we'll get 2N calls to serf_bucket_read: one each for
+  // attribute names & values.
+  apr_status_t ReadHeaders(serf_bucket_t* response) {
+    serf_bucket_t* headers = serf_bucket_response_get_headers(response);
+    const char* data = NULL;
+    apr_size_t len = 0;
+    apr_status_t status = serf_bucket_read(headers, kStackBufferSize,
+                                           &data, &len);
+    if (IsStatusOk(status)) {
+      if (parser_.ParseChunk(StringPiece(data, len), message_handler_)) {
+        if (parser_.headers_complete()) {
+          // Stream the one byte read from ReadOneByteFromBody to writer.
+          if (has_saved_byte_) {
+            ++bytes_received_;
+            if (!fetched_content_writer_->Write(StringPiece(&saved_byte_, 1),
+                                                message_handler_)) {
+              status = APR_EGENERAL;
+            }
+          }
+        }
+      } else {
+        status = APR_EGENERAL;
+      }
+    }
+    return status;
+  }
+
+  // Once headers are complete we can get the body.  The dynamics of this
+  // are likely dependent on everything on the network between the client
+  // and server, but for a 10k buffer I seem to frequently get 8k chunks.
+  apr_status_t ReadBody(serf_bucket_t* response) {
+    apr_status_t status = APR_EAGAIN;
+    const char* data = NULL;
+    apr_size_t len = 0;
+    while (MoreDataAvailable(status) && (fetched_content_writer_ != NULL)) {
+      status = serf_bucket_read(response, kStackBufferSize, &data, &len);
+      bytes_received_ += len;
+      if (IsStatusOk(status) && !fetched_content_writer_->Write(
+              StringPiece(data, len), message_handler_)) {
+        status = APR_EGENERAL;
+      }
     }
     return status;
   }
@@ -443,6 +494,10 @@ class SerfFetch : public PoolElement<SerfFetch> {
   RequestHeaders request_headers_;
   ResponseHeaders* response_headers_;
   ResponseHeadersParser parser_;
+  bool status_line_read_;
+  bool one_byte_read_;
+  bool has_saved_byte_;
+  char saved_byte_;
   Writer* fetched_content_writer_;
   MessageHandler* message_handler_;
   UrlAsyncFetcher::Callback* callback_;
@@ -748,7 +803,8 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       time_duration_ms_(NULL),
       cancel_count_(NULL),
       timeout_count_(NULL),
-      timeout_ms_(timeout_ms) {
+      timeout_ms_(timeout_ms),
+      force_threaded_(false) {
   CHECK(statistics != NULL);
   request_count_  =
       statistics->GetVariable(SerfStats::kSerfFetchRequestCount);
@@ -776,7 +832,8 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       time_duration_ms_(parent->time_duration_ms_),
       cancel_count_(parent->cancel_count_),
       timeout_count_(parent->timeout_count_),
-      timeout_ms_(parent->timeout_ms()) {
+      timeout_ms_(parent->timeout_ms()),
+      force_threaded_(parent->force_threaded_) {
   Init(parent->pool(), proxy);
   threaded_fetcher_ = NULL;
 }
@@ -861,7 +918,7 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const GoogleString& url,
       url, request_headers, response_headers, fetched_content_writer,
       message_handler, callback, timer_);
   request_count_->Add(1);
-  if (callback->EnableThreaded()) {
+  if (force_threaded_ || callback->EnableThreaded()) {
     message_handler->Message(kInfo, "Initiating async fetch for %s",
                              url.c_str());
     threaded_fetcher_->InitiateFetch(fetch);

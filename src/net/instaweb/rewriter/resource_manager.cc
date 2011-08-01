@@ -182,6 +182,7 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       relative_path_(false),
       store_outputs_in_file_system_(true),
       block_until_completion_in_render_(false),
+      async_rewrites_(false),
       lock_manager_(lock_manager),
       message_handler_(handler),
       thread_system_(thread_system),
@@ -617,6 +618,7 @@ RewriteDriver* ResourceManager::NewCustomRewriteDriver(
 RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver() {
   RewriteDriver* rewrite_driver = new RewriteDriver(
       message_handler_, file_system_, url_async_fetcher_);
+  rewrite_driver->SetAsynchronousRewrites(async_rewrites_);
   Scheduler* scheduler = new Scheduler(thread_system_);
   rewrite_driver->SetResourceManagerAndScheduler(this, scheduler);
   if (factory_ != NULL) {
@@ -631,6 +633,7 @@ RewriteDriver* ResourceManager::NewRewriteDriver() {
   if (!available_rewrite_drivers_.empty()) {
     rewrite_driver = available_rewrite_drivers_.back();
     available_rewrite_drivers_.pop_back();
+    rewrite_driver->SetAsynchronousRewrites(async_rewrites_);
   } else {
     rewrite_driver = NewUnmanagedRewriteDriver();
     rewrite_driver->AddFilters();

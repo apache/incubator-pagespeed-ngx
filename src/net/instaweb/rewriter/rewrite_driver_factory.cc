@@ -54,6 +54,7 @@ RewriteDriverFactory::RewriteDriverFactory()
       force_caching_(false),
       slurp_read_only_(false),
       slurp_print_urls_(false),
+      async_rewrites_(false),
       http_cache_backend_(NULL) {
 }
 
@@ -218,6 +219,13 @@ HTTPCache* RewriteDriverFactory::http_cache() {
   return http_cache_.get();
 }
 
+void RewriteDriverFactory::SetAsyncRewrites(bool x) {
+  async_rewrites_ = x;
+  if (resource_manager_.get() != NULL) {
+    resource_manager_->set_async_rewrites(async_rewrites_);
+  }
+}
+
 ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
   if (resource_manager_ == NULL) {
     CHECK(!filename_prefix_.empty())
@@ -238,6 +246,7 @@ ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
     resource_manager_->set_store_outputs_in_file_system(
         ShouldWriteResourcesToFileSystem());
   }
+  resource_manager_->set_async_rewrites(async_rewrites_);
   return resource_manager_.get();
 }
 

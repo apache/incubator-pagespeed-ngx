@@ -86,6 +86,14 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   virtual int64 timeout_ms() { return timeout_ms_; }
   ThreadSystem* thread_system() { return thread_system_; }
 
+  // By default, the Serf fetcher will call
+  // UrlAsyncFetcher::Callback::EnableThreaded() to determine whether
+  // a particular URL fetch should be executed in the fetcher thread.
+  //
+  // Setting this variable causes the fetches to be threaded independent
+  // of the value of UrlAsyncFetcher::Callback::EnableThreaded().
+  void set_force_threaded(bool x) { force_threaded_ = x; }
+
  protected:
   typedef Pool<SerfFetch> SerfFetchPool;
 
@@ -133,6 +141,7 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   Variable* cancel_count_;
   Variable* timeout_count_;
   const int64 timeout_ms_;
+  bool force_threaded_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcher);
 };

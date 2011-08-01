@@ -170,6 +170,9 @@ class ResourceManager {
     block_until_completion_in_render_ = x;
   }
 
+  bool async_rewrites() { return async_rewrites_; }
+  void set_async_rewrites(bool x) { async_rewrites_ = x; }
+
   void RefreshIfImminentlyExpiring(Resource* resource,
                                    MessageHandler* handler) const;
 
@@ -398,6 +401,7 @@ class ResourceManager {
   bool relative_path_;
   bool store_outputs_in_file_system_;
   bool block_until_completion_in_render_;
+  bool async_rewrites_;
 
   NamedLockManager* lock_manager_;
   MessageHandler* message_handler_;
