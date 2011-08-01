@@ -140,6 +140,9 @@ class RewriteContext {
   // NestedRewriteComplete on their parent.  Nested rewrites will be
   // Started directly from their parent context, and Initiate will not
   // be called.
+  //
+  // Precondition: this rewrite isn't anyone's successor (e.g. chain() == false)
+  //               and has not been started before.
   void Initiate();
 
   // Fetch the specified output resource by reconstructing it from
@@ -483,9 +486,6 @@ class RewriteContext {
   //   kRender,      // Ready to render the rewrites into the DOM.
   //   kComplete     // Ready to delete.
   // };
-
-  // True if there is a pending lookup to the metadata cache.
-  bool cache_lookup_active_;
 
   // True if all the rewriting is done for this context.
   bool rewrite_done_;

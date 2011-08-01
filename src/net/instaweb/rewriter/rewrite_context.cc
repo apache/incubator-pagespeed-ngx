@@ -247,7 +247,6 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     driver_(driver),
     num_predecessors_(0),
     chained_(false),
-    cache_lookup_active_(false),
     rewrite_done_(false),
     ok_to_write_output_partitions_(true) {
   partitions_.reset(new OutputPartitions);
@@ -313,6 +312,7 @@ void RewriteContext::RemoveLastSlot() {
 
 void RewriteContext::Initiate() {
   CHECK(!started_);
+  DCHECK(num_predecessors_ == 0);
   Manager()->AddRewriteTask(new MemberFunction0<RewriteContext>(
       &RewriteContext::Start, this));
 }
@@ -323,28 +323,26 @@ void RewriteContext::Initiate() {
 // to complete before starting this one.
 void RewriteContext::Start() {
   DCHECK(!started_);
-  if (num_predecessors_ == 0) {
-    started_ = true;
+  DCHECK(num_predecessors_ == 0);
+  started_ = true;
 
-    // The best-case scenario for a Rewrite is that we have already done
-    // it, and just need to look up in our metadata cache what the final
-    // rewritten URL is.  In the simplest scenario, we are doing a
-    // simple URL substitution.  In a more complex example, we have M
-    // css files that get reduced to N combinations.  The
-    // OutputPartitions held in the cache tells us that, and we don't
-    // need to get any data about the resources that need to be
-    // rewritten.  But in either case, we only need one cache lookup.
-    //
-    // Note that the output_key_name is not necessarily the same as the
-    // name of the output.
-    // Write partition to metadata cache.
-    CacheInterface* metadata_cache = Manager()->metadata_cache();
-    SetPartitionKey();
+  // The best-case scenario for a Rewrite is that we have already done
+  // it, and just need to look up in our metadata cache what the final
+  // rewritten URL is.  In the simplest scenario, we are doing a
+  // simple URL substitution.  In a more complex example, we have M
+  // css files that get reduced to N combinations.  The
+  // OutputPartitions held in the cache tells us that, and we don't
+  // need to get any data about the resources that need to be
+  // rewritten.  But in either case, we only need one cache lookup.
+  //
+  // Note that the output_key_name is not necessarily the same as the
+  // name of the output.
+  // Write partition to metadata cache.
+  CacheInterface* metadata_cache = Manager()->metadata_cache();
+  SetPartitionKey();
 
-    // When the cache lookup is finished, OutputCacheDone will be called.
-    cache_lookup_active_ = true;
-    metadata_cache->Get(partition_key_, new OutputCacheCallback(this));
-  }
+  // When the cache lookup is finished, OutputCacheDone will be called.
+  metadata_cache->Get(partition_key_, new OutputCacheCallback(this));
 }
 
 void RewriteContext::SetPartitionKey() {
@@ -419,7 +417,6 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
                                      SharedString value) {
   DCHECK_LE(0, outstanding_fetches_);
   DCHECK_EQ(static_cast<size_t>(0), outputs_.size());
-  cache_lookup_active_ = false;
   if (state == CacheInterface::kAvailable) {
     // We've got a hit on the output metadata; the contents should
     // be a protobuf.  Try to parse it.
@@ -561,19 +558,16 @@ void RewriteContext::ResourceFetchDone(
 }
 
 bool RewriteContext::ReadyToRewrite() const {
-  bool ready = ((outstanding_fetches_ == 0) && (num_predecessors_ == 0) &&
-                !cache_lookup_active_ && !rewrite_done_);
+  DCHECK(!rewrite_done_);
+  bool ready = ((outstanding_fetches_ == 0) && (num_predecessors_ == 0));
   return ready;
 }
 
 void RewriteContext::Activate() {
   if (ReadyToRewrite()) {
     if (fetch_.get() == NULL) {
-      if (started_) {
-        StartRewrite();
-      } else {
-        Start();
-      }
+      DCHECK(started_);
+      StartRewrite();
     } else {
       FinishFetch();
     }
@@ -645,9 +639,11 @@ void RewriteContext::AddNestedContext(RewriteContext* context) {
 
 void RewriteContext::StartNestedTasks() {
   for (int i = 0, n = nested_.size(); i < n; ++i) {
-    nested_[i]->Start();
-    DCHECK_EQ(n, static_cast<int>(nested_.size()))
-        << "Cannot add new nested tasks once the nested tasks have started";
+    if (!nested_[i]->chained()) {
+      nested_[i]->Start();
+      DCHECK_EQ(n, static_cast<int>(nested_.size()))
+          << "Cannot add new nested tasks once the nested tasks have started";
+    }
   }
 }
 
