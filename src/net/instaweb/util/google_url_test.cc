@@ -202,4 +202,15 @@ TEST_F(GoogleUrlTest, TestReset) {
   EXPECT_TRUE(url.UncheckedSpec().empty());
 }
 
+TEST_F(GoogleUrlTest, TestPort) {
+  EXPECT_EQ(5, GoogleUrl("http://example.com:5").IntPort());
+  EXPECT_EQ(5, GoogleUrl("http://example.com:5").EffectiveIntPort());
+  EXPECT_EQ(5, GoogleUrl("https://example.com:5").IntPort());
+  EXPECT_EQ(5, GoogleUrl("https://example.com:5").EffectiveIntPort());
+  EXPECT_EQ(-1, GoogleUrl("http://example.com").IntPort());
+  EXPECT_EQ(80, GoogleUrl("http://example.com").EffectiveIntPort());
+  EXPECT_EQ(-1, GoogleUrl("https://example.com").IntPort());
+  EXPECT_EQ(443, GoogleUrl("https://example.com").EffectiveIntPort());
+}
+
 }  // namespace net_instaweb
