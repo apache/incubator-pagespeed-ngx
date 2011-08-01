@@ -10,6 +10,8 @@
 # APACHE_LOG to the log file
 
 if [ $# -lt 1 -o $# -gt 2 ]; then
+  # Note: HOSTNAME should generally be localhost:PORT. Specifically, by default
+  # /mod_pagespeed_statistics is only accessible when accessed as localhost.
   echo Usage: ./apache_system_test.sh HOSTNAME [PROXY_HOST]
   exit 2
 fi;
@@ -37,19 +39,11 @@ if [ $? != 0 ]; then
 fi
 
 HOSTNAME=$1
-PORT=${HOSTNAME/*:/}
-if [ $PORT = $HOSTNAME ]; then
-  PORT=80
-fi
 EXAMPLE_ROOT=http://$HOSTNAME/mod_pagespeed_example
 TEST_ROOT=http://$HOSTNAME/mod_pagespeed_test
-# We load explicitly from localhost because of Apache config requirements.
-# Note: This only works if $HOSTNAME is a synonym for localhost.
-STATISTICS_URL=http://localhost:$PORT/mod_pagespeed_statistics
+STATISTICS_URL=http://$HOSTNAME/mod_pagespeed_statistics
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/bad.pagespeed.cf.hash.css
-# MESSAGE_URL is to test page /mod_pagespeed_message.
-# Note: this page is only accessbile from localhost by default.
-MESSAGE_URL=http://localhost:$PORT/mod_pagespeed_message
+MESSAGE_URL=http://$HOSTNAME/mod_pagespeed_message
 
 # Setup wget proxy information
 export http_proxy=$2
@@ -216,12 +210,6 @@ check "$WGET -q $EXAMPLE_ROOT" -O $OUTDIR/mod_pagespeed_example
 check "$WGET -q $EXAMPLE_ROOT/index.html" -O $OUTDIR/index.html
 check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
-echo TEST: compression is enabled for HTML.
-check "$WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
-  $EXAMPLE_ROOT/ 2>&1 | grep -qi 'Content-Encoding: gzip'"
-
 
 # Individual filter tests, in alphabetical order
 
@@ -296,12 +284,6 @@ URL=$EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 DATE=`date -R`
 $WGET_PREREQ --header "If-Modified-Since: $DATE" $URL
 check grep '"304 Not Modified"' $WGET_OUTPUT
-
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
-echo TEST: Legacy format URLs should still work.
-URL=$EXAMPLE_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
-check "$WGET_DUMP $URL | grep -q 'HTTP/1.1 200 OK'"
 
 # TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
 # move to system_test.sh                                   // [google]

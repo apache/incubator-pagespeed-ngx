@@ -7,6 +7,8 @@
 # Exits with status 0 if all tests pass.  Exits 1 immediately if any test fails.
 
 if [ $# -lt 1 -o $# -gt 2 ]; then
+  # Note: HOSTNAME should generally be localhost:PORT. Specifically, by default
+  # /mod_pagespeed_statistics is only accessible when accessed as localhost.
   echo Usage: ./system_test.sh HOSTNAME [PROXY_HOST]
   exit 2
 fi;
@@ -25,20 +27,15 @@ if [ $? != 0 ]; then
   exit 1
 fi
 
+# Use a Chrome User-Agent, so that we get real responses (including compression)
+WGET="$WGET --user-agent=\"Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/534.0 (KHTML, like Gecko) Chrome/6.0.408.1 Safari/534.0\""
+
 HOSTNAME=$1
-PORT=${HOSTNAME/*:/}
-if [ $PORT = $HOSTNAME ]; then
-  PORT=80
-fi
 EXAMPLE_ROOT=http://$HOSTNAME/mod_pagespeed_example
 TEST_ROOT=http://$HOSTNAME/mod_pagespeed_test
-# We load explicitly from localhost because of Apache config requirements.
-# Note: This only works if $HOSTNAME is a synonym for localhost.
-STATISTICS_URL=http://localhost:$PORT/mod_pagespeed_statistics
+STATISTICS_URL=http://$HOSTNAME/mod_pagespeed_statistics
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/bad.pagespeed.cf.hash.css
-# MESSAGE_URL is to test page /mod_pagespeed_message.
-# Note: this page is only accessbile from localhost by default.
-MESSAGE_URL=http://localhost:$PORT/mod_pagespeed_message
+MESSAGE_URL=http://$HOSTNAME/mod_pagespeed_message
 
 # Setup wget proxy information
 export http_proxy=$2
@@ -206,10 +203,9 @@ check "$WGET -q $EXAMPLE_ROOT/" -O $OUTDIR/mod_pagespeed_example
 check "$WGET -q $EXAMPLE_ROOT/index.html" -O $OUTDIR/index.html
 check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#echo TEST: compression is enabled for HTML.
-#check "$WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
-#  $EXAMPLE_ROOT/ 2>&1 | grep -qi 'Content-Encoding: gzip'"
+echo TEST: compression is enabled for HTML.
+check "$WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+  $EXAMPLE_ROOT/ 2>&1 | grep -qi 'Content-Encoding: gzip'"
 
 
 # Individual filter tests, in alphabetical order
@@ -277,11 +273,13 @@ check [ $? != 0 ]
 grep "type=" $FETCHED       # default, should not find
 check [ $? != 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#test_filter extend_cache rewrites an image tag.
-#fetch_until $URL 'grep -c src.*91_WewrLtP' 1
-#check $WGET_PREREQ $URL
-#echo about to test resource ext corruption...
+test_filter extend_cache rewrites an image tag.
+fetch_until $URL 'grep -c src.*/Puzzle.jpg.pagespeed.ce.*.jpg' 1
+check $WGET_PREREQ $URL
+echo about to test resource ext corruption...
+# TODO(sligocki): This does not work in rewrite_proxy_server
+# because of hash mismatch. Do we want to enforce hash consistency between
+# rewrite_proxy_server and mod_pagespeed?
 #test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
 # TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
@@ -296,10 +294,10 @@ check [ $? != 0 ]
 #$WGET_PREREQ --header "If-Modified-Since: $DATE" $URL
 #check grep '"304 Not Modified"' $WGET_OUTPUT
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#echo TEST: Legacy format URLs should still work.
-#URL=$EXAMPLE_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
-#check "$WGET_DUMP $URL | grep -q 'HTTP/1.1 200 OK'"
+echo TEST: Legacy format URLs should still work.
+URL=$EXAMPLE_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
+# TODO(sligocki): Do we want to test that we respond as HTTP/1.1?
+check "$WGET_DUMP $URL | grep -qe 'HTTP/1\.. 200 OK'"
 
 test_filter move_css_to_head does what it says on the tin.
 check $WGET_PREREQ $URL
