@@ -321,7 +321,7 @@ static apr_status_t serf_headers_read(serf_bucket_t *bucket,
                                       const char **data, apr_size_t *len)
 {
     headers_context_t *ctx = bucket->data;
-    apr_size_t avail;
+    apr_size_t avail = 0;
 
     select_value(ctx, data, &avail);
     if (ctx->state == READ_DONE)
@@ -381,9 +381,9 @@ static apr_status_t serf_headers_read_iovec(serf_bucket_t *bucket,
     *vecs_used = 0;
 
     for (i = 0; i < vecs_size; i++) {
-        const char *data;
-        apr_size_t len;
-        apr_status_t status;
+        const char *data = NULL;
+        apr_size_t len = 0;
+        apr_status_t status = 0;
 
         /* Calling read() would not be a safe opt in the general case, but it
          * is here for the header bucket as it only frees all of the header

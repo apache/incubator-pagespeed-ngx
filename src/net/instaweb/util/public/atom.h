@@ -33,7 +33,7 @@ template<class CharTransform> class SymbolTable;
 class Atom {
  public:
   Atom(const Atom& src) : str_(src.str_) {}
-  Atom() : str_("") {}
+  Atom();
   ~Atom() {}  // atoms are memory-managed by SymbolTables.
 
   Atom& operator=(const Atom& src) {
