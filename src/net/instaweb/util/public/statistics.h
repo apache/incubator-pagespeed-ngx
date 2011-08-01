@@ -28,6 +28,18 @@ namespace net_instaweb {
 class MessageHandler;
 class Writer;
 
+class Variable {
+ public:
+  virtual ~Variable();
+  // TODO(sligocki): int -> int64
+  virtual int Get() const = 0;
+  virtual void Set(int delta) = 0;
+  virtual int64 Get64() const = 0;
+
+  virtual void Add(int delta) { Set(delta + Get()); }
+  void Clear() { Set(0); }
+};
+
 class Histogram {
  public:
   virtual ~Histogram();
@@ -57,16 +69,56 @@ class Histogram {
                       MessageHandler* handler) = 0;
 };
 
-class Variable {
+// TimedVaraible is a statistic class returns the amount added in the
+// last interval, which could be last 10 seconds, last minute
+// last one hour and total.
+class TimedVariable {
  public:
-  virtual ~Variable();
-  // TODO(sligocki): int -> int64
-  virtual int Get() const = 0;
-  virtual void Set(int delta) = 0;
-  virtual int64 Get64() const = 0;
+  // The intervals for which we keep stats.
+  enum Levels { TENSEC, MINUTE, HOUR, START };
+  virtual ~TimedVariable();
+  // Update the stat value. delta is in milliseconds.
+  virtual void IncBy(int64 delta) = 0;
+  // Get the amount added over the last time interval
+  // specified by "level".
+  virtual int64 Get(int level) = 0;
+  // Throw away all data.
+  virtual void Clear() = 0;
+};
 
-  virtual void Add(int delta) { Set(delta + Get()); }
-  void Clear() { Set(0); }
+// FakeTimedVariable is an implementation of abstract class TimedVariable
+// based on class Variable. This class could be derived in AprStatistics,
+// NullStatistics, SpreadSheet, etc. In VarzStatistics, we have class
+// VarzTimedVariable which is implemented based on google class
+// TenSecMinHourStat instead of class Variable, that is derived from
+// TimedVaraible.
+class FakeTimedVariable : public TimedVariable {
+ public:
+  explicit FakeTimedVariable(Variable* var) : var_(var) {
+  }
+  virtual ~FakeTimedVariable();
+  // Update the stat value. delta is in milliseconds.
+  virtual void IncBy(int64 delta) {
+    var_->Add(delta);
+  }
+  // Get the amount added over the last time interval
+  // specified by "level".
+  virtual int64 Get(int level) {
+    // This is a default implementation. Variable can only return the
+    // total value. This should be override in subclass if we want the
+    // values for different levels.
+    if (level == START) {
+      return var_->Get64();
+    }
+    return 0;
+  }
+  // Throw away all data.
+  virtual void Clear() {
+    return var_->Clear();
+  }
+
+ protected:
+  Variable* var_;
 };
 
 // Helps build a statistics that can be exported as a CSV file.
@@ -101,11 +153,32 @@ class Statistics {
     CHECK(hist != NULL) << "Histogram not found: " << name;
     return hist;
   }
+
+  // Add a new TimedVariable, or returns an existing one of that name.
+  // The TimedVariable* is owned by the Statistics class -- it should
+  // not be deleted by the caller. Each stat belongs to a group, such as
+  // "Statistics", "Disk Statistics", etc.
+  virtual TimedVariable* AddTimedVariable(
+      const StringPiece& name, const StringPiece& group) = 0;
+  // Find a TimedVariable from a name, returning NULL if not found.
+  virtual TimedVariable* FindTimedVariable(
+      const StringPiece& name) const = 0;
+  // Find a TimedVariable from a name, aborting if not found.
+  virtual TimedVariable* GetTimedVariable(
+      const StringPiece& name) const {
+    TimedVariable* stat = FindTimedVariable(name);
+    CHECK(stat != NULL) << "TimedVariable not found: " << name;
+    return stat;
+  }
+
   // Dump the variable-values to a writer.
   virtual void Dump(Writer* writer, MessageHandler* handler) = 0;
-
+  // Export statistics to a writer. Statistics in a group are exported in one
+  // table.
+  virtual void RenderTimedVariable(Writer* writer,
+                                   MessageHandler* handler) = 0;
   // Set all variables to 0.
-  // Throw away all data in histograms.
+  // Throw away all data in histograms and stats.
   virtual void Clear() = 0;
 };
 

@@ -57,6 +57,7 @@ class SharedMemVariable : public Variable {
   virtual void Add(int delta);
 
  private:
+  friend class SharedMemTimedVariable;
   friend class SharedMemStatistics;
 
   explicit SharedMemVariable(const StringPiece& name);
@@ -84,7 +85,7 @@ class SharedMemVariable : public Variable {
 // NullStatisticsHistogram is for temporary util we have a shared memory
 // histogram implemented.
 class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
-                                                      NullStatisticsHistogram> {
+    NullStatisticsHistogram, FakeTimedVariable> {
  public:
   SharedMemStatistics(AbstractSharedMem* shm_runtime,
                       const GoogleString& filename_prefix);
@@ -104,6 +105,8 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
  protected:
   virtual SharedMemVariable* NewVariable(const StringPiece& name, int index);
   virtual NullStatisticsHistogram* NewHistogram();
+  virtual FakeTimedVariable* NewTimedVariable(const StringPiece& name,
+                                              int index);
 
  private:
   GoogleString SegmentName() const;

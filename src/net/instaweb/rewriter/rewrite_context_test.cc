@@ -1446,9 +1446,11 @@ TEST_F(ResourceUpdateTest, TestExpire404) {
   // Trying to rewrite it should not do anything..
   ValidateNoChanges("404", CssLink(kOriginalUrl));
 
-  // Now move forward a millennium and upload a new version. We should
+  // Now move forward 40 years and upload a new version. We should
   // be ready to optimize at that point.
-  mock_timer()->AdvanceMs(1000 * Timer::kYearMs);
+  // "And thus Moses wandered the desert for only 40 years, because of a
+  // limitation in the implementation of time_t."
+  mock_timer()->AdvanceMs(40 * Timer::kYearMs);
   InitResponseHeaders(kOriginalUrl, kContentTypeCss, " init ", 100);
   EXPECT_EQ("init", RewriteSingleResource("200"));
 }
@@ -1735,12 +1737,11 @@ TEST_F(NestedResourceUpdateTest, TestExpireNested404) {
   InitNestedFilter(kExpectNestedRewritesFail);
 
   const int64 kDecadeMs = 10 * Timer::kYearMs;
-  const int64 kCenturyMs = 100 * Timer::kYearMs;
 
   // Have the nested one have a 404...
   const char kOutUrl[] = "http://test.com/main.txt.pagespeed.nf.sdUklQf3sx.css";
   InitResponseHeaders("http://test.com/main.txt", kContentTypeCss,
-                      "a.css\n", kCenturyMs / 1000);
+                      "a.css\n", 4 * kDecadeMs / 1000);
   SetFetchResponse404("a.css");
 
   ValidateExpected("nested_404", CssLink("main.txt"), CssLink(kOutUrl));

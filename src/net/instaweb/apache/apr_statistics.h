@@ -17,6 +17,7 @@
 
 #include <string>
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -58,6 +59,7 @@ class AprVariable : public Variable {
   virtual void Set(int newValue);
   virtual void Add(int delta);
  private:
+  friend class AprTimedVariable;
   friend class AprStatistics;
   friend class AprScopedGlobalLock;
 
@@ -84,7 +86,8 @@ class AprVariable : public Variable {
 };
 
 class AprStatistics : public StatisticsTemplate<AprVariable,
-                                                NullStatisticsHistogram> {
+                                                NullStatisticsHistogram,
+                                                FakeTimedVariable> {
  public:
   AprStatistics(const StringPiece& filename_prefix);
   virtual ~AprStatistics();
@@ -106,7 +109,8 @@ class AprStatistics : public StatisticsTemplate<AprVariable,
  protected:
   virtual AprVariable* NewVariable(const StringPiece& name, int index);
   virtual NullStatisticsHistogram* NewHistogram();
-
+  virtual FakeTimedVariable* NewTimedVariable(const StringPiece& name,
+                                              int index);
  private:
   bool frozen_;
   bool is_child_;

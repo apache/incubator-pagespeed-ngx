@@ -21,6 +21,7 @@
 
 #include <map>
 #include <vector>
+#include <utility>                      // for pair
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -34,13 +35,14 @@ class MessageHandler;
 // This class makes it easier to define new Statistics implementations
 // by providing a templatized implementation of variable registration and
 // management.
-template<class Var, class Hist> class StatisticsTemplate
+template<class Var, class Hist, class TimedVar> class StatisticsTemplate
     : public Statistics {
  public:
   StatisticsTemplate() {}
   virtual ~StatisticsTemplate() {
     STLDeleteContainerPointers(variables_.begin(), variables_.end());
     STLDeleteContainerPointers(histograms_.begin(), histograms_.end());
+    STLDeleteContainerPointers(timed_vars_.begin(), timed_vars_.end());
   }
 
   // Add a new variable, or returns an existing one of that name.
@@ -67,6 +69,16 @@ template<class Var, class Hist> class StatisticsTemplate
     return FindHistogramInternal(name);
   }
 
+  virtual TimedVariable* AddTimedVariable(
+      const StringPiece& name, const StringPiece& group) {
+    return AddTimedVariableInternal(name, group);
+  }
+
+  virtual TimedVariable* FindTimedVariable(
+      const StringPiece& name) const {
+    return FindTimedVariableInternal(name);
+  }
+
   virtual void Dump(Writer* writer, MessageHandler* message_handler) {
     for (int i = 0, n = variables_.size(); i < n; ++i) {
       Var* var = variables_[i];
@@ -74,6 +86,45 @@ template<class Var, class Hist> class StatisticsTemplate
       writer->Write(": ", message_handler);
       writer->Write(Integer64ToString(var->Get64()), message_handler);
       writer->Write("\n", message_handler);
+    }
+  }
+
+  virtual void RenderTimedVariable(Writer* writer,
+                                   MessageHandler* message_handler) {
+    TimedVar* timedvar = NULL;
+    const GoogleString end("</table>\n<td>\n<td>\n");
+    std::map<GoogleString, StringVector>::const_iterator p;
+
+    // Export statistics in each group in one table.
+    for (p = timed_var_group_map_.begin(); p != timed_var_group_map_.end(); ++p) {
+      // Write table header for each group.
+      const GoogleString begin = StrCat(
+          "<p><table bgcolor=#eeeeff width=100%%>",
+          "<tr align=center><td><font size=+2>", p->first,
+          "</font></td></tr></table>",
+          "</p>\n<td>\n<td>\n<td>\n<td>\n<td>\n",
+          "<table bgcolor=#fff5ee frame=box cellspacing=1 cellpadding=2>\n",
+          "<tr bgcolor=#eee5de><td>"
+          "<form action=\"/statusz/reset\" method = \"post\">"
+          "<input type=\"submit\" value = \"Reset Statistics\"</form></td>"
+          "<th align=right>TenSec</th><th align=right>Minute</th>"
+          "<th align=right>Hour</th><th align=right>Total</th></tr>");
+      writer->Write(begin.c_str(), message_handler);
+      // Write each statistic as a row in the table.
+      for (int i = 0, n = p->second.size(); i < n; ++i) {
+        timedvar = FindTimedVariableInternal(p->second[i]);
+        const GoogleString content = StringPrintf("<tr><td> %s </td>"
+            "<td align=right> %s </td><td align=right> %s </td>"
+            "<td align=right> %s </td><td align=right> %s </td></tr>",
+        p->second[i].c_str(),
+        Integer64ToString(timedvar->Get(TimedVariable::TENSEC)).c_str(),
+        Integer64ToString(timedvar->Get(TimedVariable::MINUTE)).c_str(),
+        Integer64ToString(timedvar->Get(TimedVariable::HOUR)).c_str(),
+        Integer64ToString(timedvar->Get(TimedVariable::START)).c_str());
+        writer->Write(content.c_str(), message_handler);
+      }
+      // Write table ending part.
+      writer->Write(end.c_str(), message_handler);
     }
   }
 
@@ -85,6 +136,10 @@ template<class Var, class Hist> class StatisticsTemplate
     for (int i = 0, n = histograms_.size(); i < n; ++i) {
       Histogram* hist = histograms_[i];
       hist->Clear();
+    }
+    for (int i = 0, n = timed_vars_.size(); i < n; ++i) {
+      TimedVariable* timedvar = timed_vars_[i];
+      timedvar->Clear();
     }
   }
 
@@ -139,14 +194,45 @@ template<class Var, class Hist> class StatisticsTemplate
 
   virtual Hist* NewHistogram() = 0;
 
+  virtual TimedVar* AddTimedVariableInternal(const StringPiece& name,
+                                             const StringPiece& group) {
+    TimedVar* timedvar = FindTimedVariableInternal(name);
+    if (timedvar == NULL) {
+      timedvar = NewTimedVariable(name, timed_vars_.size());
+      timed_vars_.push_back(timedvar);
+      timed_var_map_[GoogleString(name.data(), name.size())] = timedvar;
+      timed_var_group_map_[GoogleString(group.data(), group.size())].push_back(
+          name.as_string());
+    }
+    return timedvar;
+  }
+
+  virtual TimedVar* FindTimedVariableInternal(const StringPiece& name) const {
+    typename TimedVarMap::const_iterator p =
+        timed_var_map_.find(name.as_string());
+    TimedVar* timedvar = NULL;
+    if (p != timed_var_map_.end()) {
+      timedvar = p->second;
+    }
+    return timedvar;
+  }
+
+  virtual TimedVar* NewTimedVariable(const StringPiece& name, int index) = 0;
+
   typedef std::vector<Var*> VarVector;
   typedef std::map<GoogleString, Var*> VarMap;
   typedef std::vector<Hist*> HistVector;
   typedef std::map<GoogleString, Hist*> HistMap;
+  typedef std::vector<TimedVar*> TimedVarVector;
+  typedef std::map<GoogleString, TimedVar*> TimedVarMap;
   VarVector variables_;
   VarMap variable_map_;
   HistVector histograms_;
   HistMap histogram_map_;
+  TimedVarVector timed_vars_;
+  TimedVarMap timed_var_map_;
+  // map between group and names of stats.
+  std::map<GoogleString, StringVector> timed_var_group_map_;
   StringVector variable_names_;
   StringVector histogram_names_;
 

@@ -245,6 +245,11 @@ NullStatisticsHistogram* AprStatistics::NewHistogram() {
   return new NullStatisticsHistogram();
 }
 
+FakeTimedVariable* AprStatistics::NewTimedVariable(
+    const StringPiece& name, int index) {
+  return new FakeTimedVariable(NewVariable(name, index));
+}
+
 void AprStatistics::InitVariables(bool parent) {
   is_child_ |= !parent;
   if (frozen_) {

@@ -39,4 +39,8 @@ NullStatisticsHistogram* NullStatistics::NewHistogram() {
   return new NullStatisticsHistogram;
 }
 
+FakeTimedVariable* NullStatistics::NewTimedVariable(
+    const StringPiece& name, int index) {
+  return new FakeTimedVariable(NewVariable(name, index));
+}
 }  // namespace net_instaweb

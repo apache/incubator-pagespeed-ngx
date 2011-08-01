@@ -26,6 +26,12 @@ Variable::~Variable() {
 Histogram::~Histogram() {
 }
 
+TimedVariable::~TimedVariable() {
+}
+
+FakeTimedVariable::~FakeTimedVariable() {
+}
+
 Statistics::~Statistics() {
 }
 

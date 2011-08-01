@@ -30,6 +30,18 @@ namespace net_instaweb {
 class MessageHandler;
 class Writer;
 
+class NullStatisticsVariable : public Variable {
+ public:
+  NullStatisticsVariable() {}
+  virtual ~NullStatisticsVariable();
+  virtual int Get() const { return 0; }
+  virtual void Set(int value) { }
+  virtual int64 Get64() const { return 0; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(NullStatisticsVariable);
+};
+
 class NullStatisticsHistogram : public Histogram {
  public:
   NullStatisticsHistogram() {}
@@ -52,21 +64,10 @@ class NullStatisticsHistogram : public Histogram {
   DISALLOW_COPY_AND_ASSIGN(NullStatisticsHistogram);
 };
 
-class NullStatisticsVariable : public Variable {
- public:
-  NullStatisticsVariable() {}
-  virtual ~NullStatisticsVariable();
-  virtual int Get() const { return 0; }
-  virtual void Set(int value) { }
-  virtual int64 Get64() const { return 0; }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(NullStatisticsVariable);
-};
-
 // Simple name/value pair statistics implementation.
 class NullStatistics : public StatisticsTemplate<NullStatisticsVariable,
-                                                 NullStatisticsHistogram> {
+                                                 NullStatisticsHistogram,
+                                                 FakeTimedVariable> {
  public:
   static const int kNotFound;
 
@@ -77,6 +78,8 @@ class NullStatistics : public StatisticsTemplate<NullStatisticsVariable,
   virtual NullStatisticsVariable* NewVariable(const StringPiece& name,
                                               int index);
   virtual NullStatisticsHistogram* NewHistogram();
+  virtual FakeTimedVariable* NewTimedVariable(const StringPiece& name,
+                                              int index);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NullStatistics);
