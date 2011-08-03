@@ -13,6 +13,8 @@ if [ $# -lt 1 -o $# -gt 2 ]; then
   exit 2
 fi;
 
+TEMPDIR=${TEMPDIR-/tmp/mod_pagespeed_test.$USER}
+
 # If the user has specified an alternate WGET as an environment variable, then
 # use that, otherwise use the one in the path.
 if [ "$WGET" == "" ]; then
@@ -27,8 +29,14 @@ if [ $? != 0 ]; then
   exit 1
 fi
 
+# We need to set a wgetrc file because of the stupid way that the bash deals
+# with strings and variable expansion.
+mkdir -p $TEMPDIR || exit 1
+export WGETRC=$TEMPDIR/wgetrc
 # Use a Chrome User-Agent, so that we get real responses (including compression)
-WGET="$WGET --user-agent=\"Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/534.0 (KHTML, like Gecko) Chrome/6.0.408.1 Safari/534.0\""
+cat > $WGETRC <<EOF
+user_agent = "Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/534.0 (KHTML, like Gecko) Chrome/6.0.408.1 Safari/534.0"
+EOF
 
 HOSTNAME=$1
 EXAMPLE_ROOT=http://$HOSTNAME/mod_pagespeed_example
@@ -50,7 +58,7 @@ pagespeed.cf.hash.css"
 combine_css_filename=\
 styles/yellow.css+blue.css+big.css+bold.css.pagespeed.cc.xo4He3_gYf.css
 
-OUTDIR=/tmp/mod_pagespeed_test.$USER/fetched_directory
+OUTDIR=$TEMPDIR/fetched_directory
 rm -rf $OUTDIR
 
 # Wget is used three different ways.  The first way is nonrecursive and dumps a
@@ -86,7 +94,7 @@ rm -rf $OUTDIR
 
 WGET_OUTPUT=$OUTDIR/wget_output.txt
 WGET_DUMP="$WGET -q -O - --save-headers"
-WGET_PREREQ="$WGET -H -p -S -o $WGET_OUTPUT -nd -P $OUTDIR"
+WGET_PREREQ="$WGET -H -p -S -o $WGET_OUTPUT -nd -P $OUTDIR -e robots=off"
 
 # Call with a command and its args.  Echos the command, then tries to eval it.
 # If it returns false, fail the tests.
@@ -120,7 +128,7 @@ function fetch_until() {
   fi
   echo "     " Fetching $REQUESTURL until '`'$COMMAND'`' = $RESULT
   while test -t; do
-    if [ `$WGET_HERE -O - $REQUESTURL 2>&1 | $COMMAND` = $RESULT ]; then
+    if [ "$($WGET_HERE -O - $REQUESTURL 2>&1 | $COMMAND)" = "$RESULT" ]; then
       /bin/echo ".";
       return;
     fi;
@@ -223,16 +231,19 @@ test_filter collapse_whitespace removes whitespace, but not from pre tags.
 check $WGET_PREREQ $URL
 check [ `egrep -c '^ +<' $FETCHED` = 1 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#test_filter combine_css combines 4 CSS files into 1.
-#fetch_until $URL 'grep -c text/css' 1
-#check $WGET_PREREQ $URL
-#test_resource_ext_corruption $URL\
-#  $combine_css_filename
+test_filter combine_css combines 4 CSS files into 1.
+fetch_until $URL 'grep -c text/css' 1
+check $WGET_PREREQ $URL
+# TODO(sligocki): This does not work in rewrite_proxy_server
+# because of hash mismatch. Do we want to enforce hash consistency between
+# rewrite_proxy_server and mod_pagespeed?
+#test_resource_ext_corruption $URL $combine_css_filename
 
 # TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #echo TEST: combine_css without hash field should 404
+#echo $WGET_PREREQ $EXAMPLE_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
 #$WGET_PREREQ $EXAMPLE_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
+# TODO(sligocki): Currently rewrite_proxy_server returns 400.  // [google]
 #check grep '"404 Not Found"' $WGET_OUTPUT
 
 # TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
@@ -251,6 +262,7 @@ big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
 big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
 big.css+bold.css+yellow.css+blue.css+big.css+\
 bold.css.pagespeed.cc.46IlzLf_NK.css"
+#echo "$WGET --save-headers -q -O - $LARGE_URL | head -1 | grep \"HTTP/1.1 200 OK\""
 #$WGET --save-headers -q -O - $LARGE_URL | head -1 | grep "HTTP/1.1 200 OK"
 #check [ $? = 0 ];
 #LARGE_URL_LINE_COUNT=$($WGET -q -O - $LARGE_URL | wc -l)
@@ -318,13 +330,16 @@ test_filter outline_javascript outlines large scripts, but not small ones.
 check $WGET_PREREQ $URL
 check egrep -q "'<script.*large.*src='" $FETCHED       # outlined
 check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
-
 # TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #echo TEST: compression is enabled for rewritten JS.
-#echo JS_URL=\$\(egrep -o http://.*.pagespeed.*.js $FETCHED\)
 #JS_URL=$(egrep -o http://.*.pagespeed.*.js $FETCHED)
+#echo JS_URL=\$\(egrep -o http://.*.pagespeed.*.js $FETCHED\)=\"$JS_URL\"
 #JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
 #  $JS_URL 2>&1)
+#echo JS_HEADERS=$JS_HEADERS
+# TODO(sligocki): This is 404ing for rewrite_proxy_server.  // [google]
+#echo $JS_HEADERS | grep -qie 'HTTP/1\.. 200 OK'
+#check [ $? = 0 ]
 #echo $JS_HEADERS | grep -qi 'Content-Encoding: gzip'
 #check [ $? = 0 ]
 #echo $JS_HEADERS | grep -qi 'Vary: Accept-Encoding'
@@ -334,13 +349,11 @@ check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
 #echo $JS_HEADERS | grep -qi 'Last-Modified:'
 #check [ $? = 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#test_filter remove_comments removes comments but not IE directives.
-#check $WGET_PREREQ $URL
-#grep "removed" $FETCHED                # comment, should not find
-#check [ $? != 0 ]
-#check grep -q preserved $FETCHED       # preserves IE directives
-#check grep -q retained $FETCHED        # RetainComment directive
+test_filter remove_comments removes comments but not IE directives.
+check $WGET_PREREQ $URL
+grep "removed" $FETCHED                # comment, should not find
+check [ $? != 0 ]
+check grep -q preserved $FETCHED       # preserves IE directives
 
 test_filter remove_quotes does what it says on the tin.
 check $WGET_PREREQ $URL
@@ -359,48 +372,43 @@ grep "comment" $FETCHED                   # comment, should not find
 check [ $? != 0 ]
 check [ `stat -c %s $FETCHED` -lt 680 ]   # down from 689
 
+test_filter rewrite_images inlines, compresses, and resizes.
+fetch_until $URL 'grep -c data:image/png' 1  # inlined
+fetch_until $URL 'grep -c .pagespeed.ic' 2   # other 2 images optimized
+check $WGET_PREREQ $URL
+ls -l $OUTDIR
+check [ "$(stat -c %s $OUTDIR/xBikeCrashIcn*)" -lt 25000 ]      # re-encoded
+check [ "$(stat -c %s $OUTDIR/*256x192*Puzzle*)"  -lt 24126  ]  # resized
 # TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#test_filter rewrite_images inlines, compresses, and resizes.
-URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
-#fetch_until $URL 'grep -c image/png' 1      # inlined
-#fetch_until $URL 'grep -c .pagespeed.ic' 2  # other 2 images optimized
-#check $WGET_PREREQ $URL
-#check [ `stat -c %s $OUTDIR/xBikeCrashIcn*` -lt 25000 ]      # re-encoded
-#check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
-
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
+#URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
+#IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
 #echo TEST: headers for rewritten image "$IMG_URL"
 #IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
 #  $IMG_URL 2>&1)
-# Make sure we have some valid headers.
-#echo \"$IMG_HEADERS\" | grep -qi 'Content-Type: image/jpeg'
+#echo IMG_HEADERS=\"$IMG_HEADERS\"
+# TODO(sligocki): This is 404ing for rewrite_proxy_server.  // [google]
+#echo $IMG_HEADERS | grep -qie 'HTTP/1\.. 200 OK'
 #check [ $? = 0 ]
-
+# Make sure we have some valid headers.
+#echo "$IMG_HEADERS" | grep -qi 'Content-Type: image/jpeg'
+#check [ $? = 0 ]
 # Make sure the response was not gzipped.
-echo TEST: Images are not gzipped
-echo "$IMG_HEADERS" | grep -qi 'Content-Encoding: gzip'
-check [ $? != 0 ]
-
+#echo TEST: Images are not gzipped
+#echo "$IMG_HEADERS" | grep -qi 'Content-Encoding: gzip'
+#check [ $? != 0 ]
 # Make sure there is no vary-encoding
-echo TEST: Vary is not set for images
-echo "$IMG_HEADERS" | grep -qi 'Vary: Accept-Encoding'
-check [ $? != 0 ]
-
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
+#echo TEST: Vary is not set for images
+#echo "$IMG_HEADERS" | grep -qi 'Vary: Accept-Encoding'
+#check [ $? != 0 ]
 # Make sure there is an etag
 #echo TEST: Etags is present
 #echo "$IMG_HEADERS" | grep -qi 'Etag: W/0'
 #check [ $? = 0 ]
-
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 # Make sure an extra header is propagated from input resource to output
 # resource.  X-Extra-Header is added in debug.conf.template.
 #echo TEST: Extra header is present
 #echo "$IMG_HEADERS" | grep -qi 'X-Extra-Header'
 #check [ $? = 0 ]
-
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 # Make sure there is a last-modified tag
 #echo TEST: Last-modified is present
 #echo "$IMG_HEADERS" | grep -qi 'Last-Modified'
@@ -460,24 +468,17 @@ check $WGET_PREREQ $URL
 # echo ""
 # check [ `grep -c "ic.pagespeed.is" $OUTDIR/sprite_css_output` -gt 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#test_filter rewrite_javascript removes comments and saves a bunch of bytes.
-#fetch_until $URL 'grep -c src.*1o978_K0_L' 2   # external scripts rewritten
-#check $WGET_PREREQ $URL
-#grep -R "removed" $OUTDIR                 # comments, should not find any
-#check [ $? != 0 ]
-#check [ `stat -c %s $FETCHED` -lt 1560 ]  # net savings
-#check grep -q preserved $FETCHED          # preserves certain comments
-# rewritten JS is cache-extended
-#check grep -qi "'Cache-control: max-age=31536000'" $WGET_OUTPUT
-#check grep -qi "'Expires:'" $WGET_OUTPUT
-
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#echo TEST: respect vary user-agent
-#URL=$TEST_ROOT/vary/index.html?ModPagespeedFilters=inline_css
-#echo $WGET_DUMP $URL
-#$WGET_DUMP $URL | grep -q "<style>"
-#check [ $? != 0 ]
+test_filter rewrite_javascript removes comments and saves a bunch of bytes.
+# External scripts rewritten.
+fetch_until $URL 'grep -c src.*/rewrite_javascript\.js\.pagespeed\.jm\.' 2
+check $WGET_PREREQ $URL
+grep -R "removed" $OUTDIR                 # Comments, should not find any.
+check [ $? != 0 ]
+check [ "$(stat -c %s $FETCHED)" -lt 1560 ]  # Net savings
+check grep -q preserved $FETCHED             # Preserves certain comments.
+# Rewritten JS is cache-extended.
+check grep -qi "'Cache-control: max-age=31536000'" $WGET_OUTPUT
+check grep -qi "'Expires:'" $WGET_OUTPUT
 
 # Error path for fetch of outlined resources that are not in cache leaked
 # at one point of development.
