@@ -55,7 +55,7 @@ class Histogram {
   virtual double Minimum() = 0;
 
   // Record a value in its bucket.
-  virtual void Add(const double value) = 0;
+  virtual void Add(double value) = 0;
   // Throw away all data.
   virtual void Clear() = 0;
   // True if the histogram is empty.

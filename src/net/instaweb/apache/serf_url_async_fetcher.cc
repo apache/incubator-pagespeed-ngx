@@ -43,7 +43,6 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
-#include "net/instaweb/util/stack_buffer.h"
 #include "third_party/serf/src/serf.h"
 #include "third_party/serf/src/serf_bucket_util.h"
 
@@ -343,7 +342,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     serf_bucket_t* headers = serf_bucket_response_get_headers(response);
     const char* data = NULL;
     apr_size_t len = 0;
-    apr_status_t status = serf_bucket_read(headers, kStackBufferSize,
+    apr_status_t status = serf_bucket_read(headers, SERF_READ_ALL_AVAIL,
                                            &data, &len);
     if (IsStatusOk(status)) {
       if (parser_.ParseChunk(StringPiece(data, len), message_handler_)) {
@@ -372,12 +371,15 @@ class SerfFetch : public PoolElement<SerfFetch> {
     const char* data = NULL;
     apr_size_t len = 0;
     while (MoreDataAvailable(status) && (fetched_content_writer_ != NULL)) {
-      status = serf_bucket_read(response, kStackBufferSize, &data, &len);
+      status = serf_bucket_read(response, SERF_READ_ALL_AVAIL, &data, &len);
       bytes_received_ += len;
       if (IsStatusOk(status) && !fetched_content_writer_->Write(
               StringPiece(data, len), message_handler_)) {
         status = APR_EGENERAL;
       }
+    }
+    if (!fetched_content_writer_->Flush(message_handler_)) {
+      status = APR_EGENERAL;
     }
     return status;
   }
