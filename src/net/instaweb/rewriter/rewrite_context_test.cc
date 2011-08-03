@@ -777,6 +777,56 @@ TEST_F(RewriteContextTest, TrimRewrittenNonOptimizable) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
+TEST_F(RewriteContextTest, TrimRepeatedOptimizable) {
+  // Make sure two instances of the same link are handled properly,
+  // when optimization succeeds.
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+  ValidateExpected("trimmable2", StrCat(CssLink("a.css"), CssLink("a.css")),
+                   StrCat(CssLink("http://test.com/a.css.pagespeed.tw.0.css"),
+                          CssLink("http://test.com/a.css.pagespeed.tw.0.css")));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+}
+
+TEST_F(RewriteContextTest, TrimRepeatedOptimizableDelayed) {
+  // Make sure two instances of the same link are handled properly,
+  // when optimization succeeds --- but fetches are slow.
+  SetupWaitFetcher();
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  // First time nothing happens by deadline.
+  ValidateNoChanges("trimable2_notyet",
+                    StrCat(CssLink("a.css"), CssLink("a.css")));
+
+  CallFetcherCallbacks();
+
+  // Second time we get both rewritten right.
+  ValidateExpected("trimmable2_now",
+                   StrCat(CssLink("a.css"), CssLink("a.css")),
+                   StrCat(CssLink("http://test.com/a.css.pagespeed.tw.0.css"),
+                          CssLink("http://test.com/a.css.pagespeed.tw.0.css")));
+
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+}
+
+TEST_F(RewriteContextTest, TrimRepeatedNonOptimizable) {
+  // Make sure two instances of the same link are handled properly --
+  // when optimization fails.
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+  ValidateNoChanges("notrimmable2", StrCat(CssLink("b.css"), CssLink("b.css")));
+}
+
+TEST_F(RewriteContextTest, TrimRepeated404) {
+  // Make sure two instances of the same link are handled properly --
+  // when fetch fails.
+  InitTrimFilters(kRewrittenResource);
+  SetFetchResponse404("404.css");
+  ValidateNoChanges("repeat404",
+                    StrCat(CssLink("404.css"), CssLink("404.css")));
+}
+
 TEST_F(RewriteContextTest, FetchNonOptimizable) {
   InitTrimFilters(kRewrittenResource);
   InitResources();
@@ -1042,6 +1092,18 @@ TEST_F(RewriteContextTest, TwoFiltersDelayedFetches) {
   ValidateExpected(
       "delayed_fetches", CssLink("a.css"),
       CssLink("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"));
+}
+
+TEST_F(RewriteContextTest, RepeatedTwoFilters) {
+  // Make sure if we have repeated URLs and chaining, it still works right.
+  InitTwoFilters(kRewrittenResource);
+  InitResources();
+
+  ValidateExpected(
+    "two_filters2", StrCat(CssLink("a.css"), CssLink("a.css")),
+    StrCat(CssLink("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"),
+           CssLink("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css")));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
 }
 
 TEST_F(RewriteContextTest, Nested) {

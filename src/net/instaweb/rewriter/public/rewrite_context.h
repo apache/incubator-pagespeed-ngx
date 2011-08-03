@@ -338,7 +338,15 @@ class RewriteContext {
   void SetPartitionKey();
   void StartFetch();
   void OutputCacheDone(CacheInterface::KeyState state, SharedString value);
+  void OutputCacheHit();
   void ResourceFetchDone(bool success, ResourcePtr resource, int slot_index);
+
+  // When a RewriteContext 'B' discovers that it's doing the exact same rewrite
+  // as a previous RewriteContext 'A', B adds itself to A->repeated_, and
+  // suspends its work, expecting 'A' to call B->RepeatedSuccess(A) or
+  // B->RepeatedFailure() to give it the result of the rewrite.
+  void RepeatedSuccess(const RewriteContext* primary);
+  void RepeatedFailure();
 
   // After a Rewrite is complete, writes the metadata for the rewrite
   // operation to the cache, and runs any further rewites that are
@@ -441,6 +449,11 @@ class RewriteContext {
   // Track the RewriteContexts that must be run after this one because they
   // share a slot.
   std::vector<RewriteContext*> successors_;
+
+  // Other places on the page (or CSS) that should be rewritten the same
+  // way 'this' is (e.g. because they refer to the same URL, filter and
+  // settings).
+  std::vector<RewriteContext*> repeated_;
 
   // Track the number of nested contexts that must be completed before
   // this one can be marked complete.  Nested contexts are typically

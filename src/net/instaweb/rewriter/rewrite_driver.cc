@@ -178,6 +178,7 @@ void RewriteDriver::Clear() {
   base_url_.Clear();
   DCHECK(!base_url_.is_valid());
   resource_map_.clear();
+  DCHECK(primary_rewrite_context_map_.empty());
   DCHECK(initiated_rewrites_.empty());
   DCHECK(detached_rewrites_.empty());
   DCHECK(rewrites_.empty());
@@ -1117,6 +1118,32 @@ void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
   }
   if (ready_to_recycle) {
     Recycle();
+  }
+}
+
+RewriteContext* RewriteDriver::RegisterForPartitionKey(
+    const GoogleString& partition_key, RewriteContext* candidate) {
+  std::pair<PrimaryRewriteContextMap::iterator, bool> insert_result =
+      primary_rewrite_context_map_.insert(
+          std::make_pair(partition_key, candidate));
+  if (insert_result.second) {
+    // Our value is new, so just return NULL.
+    return NULL;
+  } else {
+    // Insert failed, return the old value.
+    return insert_result.first->second;
+  }
+}
+
+void RewriteDriver::DeregisterForPartitionKey(const GoogleString& partition_key,
+                                              RewriteContext* rewrite_context) {
+  // If the context being deleted is the primary for some cache key,
+  // deregister it.
+  PrimaryRewriteContextMap::iterator i =
+      primary_rewrite_context_map_.find(partition_key);
+  if ((i != primary_rewrite_context_map_.end()) &&
+      (i->second == rewrite_context)) {
+    primary_rewrite_context_map_.erase(i);
   }
 }
 

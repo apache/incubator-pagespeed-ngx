@@ -341,8 +341,15 @@ void RewriteContext::Start() {
   CacheInterface* metadata_cache = Manager()->metadata_cache();
   SetPartitionKey();
 
-  // When the cache lookup is finished, OutputCacheDone will be called.
-  metadata_cache->Get(partition_key_, new OutputCacheCallback(this));
+  // See if some other handler already had to do an identical rewrite.
+  RewriteContext* previous_handler =
+      Driver()->RegisterForPartitionKey(partition_key_, this);
+  if (previous_handler == NULL) {
+    // When the cache lookup is finished, OutputCacheDone will be called.
+    metadata_cache->Get(partition_key_, new OutputCacheCallback(this));
+  } else {
+    previous_handler->repeated_.push_back(this);
+  }
 }
 
 void RewriteContext::SetPartitionKey() {
@@ -460,13 +467,42 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
   // If the cache gave a miss, or yielded unparsable data, then acquire a lock
   // and start fetching the input resources.
   if (state == CacheInterface::kAvailable) {
-    rewrite_done_ = true;
-    ok_to_write_output_partitions_ = false;  // partitions were read succesfully
-    Finalize();
+    OutputCacheHit();
   } else {
     partitions_->Clear();
     FetchInputs(kNeverBlock);
   }
+}
+
+void RewriteContext::OutputCacheHit() {
+  rewrite_done_ = true;
+  ok_to_write_output_partitions_ = false;  // partitions were read succesfully
+  Finalize();
+}
+
+void RewriteContext::RepeatedSuccess(const RewriteContext* primary) {
+  CHECK(outputs_.empty());
+  CHECK_EQ(num_slots(), primary->num_slots());
+  // Copy over partition tables, outputs, and render_slot_ (as well as
+  // was_optimized) information --- everything we can set in normal
+  // OutputCacheDone.
+  partitions_->CopyFrom(*primary->partitions_.get());
+  for (int i = 0, n = primary->outputs_.size(); i < n; ++i) {
+    outputs_.push_back(primary->outputs_[i]);
+  }
+  for (int i = 0, n = primary->num_slots(); i < n; ++i) {
+    slot(i)->set_was_optimized(primary->slot(i)->was_optimized());
+    render_slots_[i] = primary->render_slots_[i];
+  }
+  OutputCacheHit();
+}
+
+void RewriteContext::RepeatedFailure() {
+  CHECK(outputs_.empty());
+  CHECK_EQ(0, num_output_partitions());
+  rewrite_done_ = true;
+  ok_to_write_output_partitions_ = false;
+  WritePartition();
 }
 
 void RewriteContext::FetchInputs(BlockingBehavior block) {
@@ -595,7 +631,7 @@ void RewriteContext::StartRewrite() {
     // We will let the Rewrites complete prior to writing the
     // OutputPartitions, which contain not just the partition table
     // but the content-hashes for the rewritten content.  So we must
-    // rewrite before calling WritePartitions.
+    // rewrite before calling WritePartition.
     CHECK_EQ(outstanding_rewrites_, static_cast<int>(outputs_.size()));
     for (int i = 0, n = outstanding_rewrites_; i < n; ++i) {
       Rewrite(i, partitions_->mutable_partition(i), outputs_[i]);
@@ -604,6 +640,20 @@ void RewriteContext::StartRewrite() {
 }
 
 void RewriteContext::WritePartition() {
+  DCHECK(fetch_.get() == NULL);
+
+  bool partition_ok = (partitions_->partition_size() != 0);
+  // Tells each of the repeated rewrites of the same thing if we have a valid
+  // result or not.
+  for (int c = 0, n = repeated_.size(); c < n; ++c) {
+    if (partition_ok) {
+      repeated_[c]->RepeatedSuccess(this);
+    } else {
+      repeated_[c]->RepeatedFailure();
+    }
+  }
+  Driver()->DeregisterForPartitionKey(partition_key_, this);
+
   if (ok_to_write_output_partitions_) {
     CacheInterface* metadata_cache = Manager()->metadata_cache();
     SharedString buf;
@@ -749,7 +799,7 @@ void RewriteContext::RenderPartitionOnDetach(int rewrite_index) {
   CachedResult* partition = output_partition(rewrite_index);
   for (int i = 0; i < partition->input_size(); ++i) {
     int slot_index = partition->input(i).index();
-    slot(slot_index)->set_was_optimized();
+    slot(slot_index)->set_was_optimized(true);
     render_slots_[slot_index] = true;
   }
 }

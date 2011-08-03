@@ -126,7 +126,7 @@ TEST_F(ResourceSlotTest, Accessors) {
   EXPECT_EQ(element(1), slot(3)->element());
   EXPECT_EQ(&element(1)->attribute(1), slot(3)->attribute());
   EXPECT_FALSE(slot(0)->was_optimized());
-  slot(0)->set_was_optimized();
+  slot(0)->set_was_optimized(true);
   EXPECT_TRUE(slot(0)->was_optimized());
 }
 

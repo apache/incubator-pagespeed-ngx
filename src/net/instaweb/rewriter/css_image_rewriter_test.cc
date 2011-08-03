@@ -100,8 +100,35 @@ TEST_P(CssImageRewriterTest, CacheExtendsWhenCssGrows) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
+TEST_P(CssImageRewriterTest, CacheExtendsRepeatedTopLevel) {
+  // Test to make sure that if we cache extend inside CSS we can do it
+  // for the same image in HTML at the same time.
+  const char kImg[] = "img.png";
+  const char kExtendedImg[] = "http://test.com/img.png.pagespeed.ce.0.png";
+
+  const char kCss[] = "stylesheet.css";
+  const char kRewrittenCss[] =
+      "http://test.com/stylesheet.css.pagespeed.cf.0.css";
+  const char kCssTemplate[] = "body{background-image:url(%s)}";
+
+  InitResponseHeaders(kImg, kContentTypePng, kImageData, 100);
+  InitResponseHeaders(
+      kCss, kContentTypeCss, StringPrintf(kCssTemplate, kImg), 100);
+
+  const char kHtmlTemplate[] =
+      "<link rel='stylesheet' href='%s'>"
+      "<img src='%s'>";
+
+  ValidateExpected("repeated_top_level",
+                   StringPrintf(kHtmlTemplate, kCss, kImg),
+                   StringPrintf(kHtmlTemplate, kRewrittenCss, kExtendedImg));
+
+  GoogleString css_out;
+  EXPECT_TRUE(ServeResourceUrl(kRewrittenCss, &css_out));
+  EXPECT_EQ(StringPrintf(kCssTemplate, kExtendedImg), css_out);
+}
+
 TEST_P(CssImageRewriterTest, CacheExtendsImages) {
-  CSS_XFAIL_ASYNC();
   InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
   InitResponseHeaders("bar.png", kContentTypePng, kImageData, 100);
   InitResponseHeaders("baz.png", kContentTypePng, kImageData, 100);

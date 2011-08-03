@@ -90,7 +90,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   bool was_optimized() const { return was_optimized_; }
 
   // Marks the slot as having been optimized.
-  void set_was_optimized() { was_optimized_ = true; }
+  void set_was_optimized(bool x) { was_optimized_ = x; }
 
   // Render is not thread-safe.  This must be called from the thread that
   // owns the DOM or CSS file.

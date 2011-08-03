@@ -397,6 +397,21 @@ class RewriteDriver : public HtmlParse {
   // at runtime.
   void set_rewrite_deadline_ms(int x) { rewrite_deadline_ms_ = x; }
 
+  // Tries to register the given rewrite context as working on
+  // its partition key. If this context is the first one to try to handle it,
+  // returns NULL. Otherwise returns the previous such context.
+  //
+  // Must only be called from rewrite thread.
+  RewriteContext* RegisterForPartitionKey(const GoogleString& partition_key,
+                                          RewriteContext* candidate);
+
+  // Must be called after all other rewrites that are currently relying on this
+  // one have had their RepeatedSuccess or RepeatedFailure methods called.
+  //
+  // Must only be called from rewrite thread.
+  void DeregisterForPartitionKey(
+      const GoogleString& partition_key, RewriteContext* candidate);
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -557,6 +572,11 @@ class RewriteDriver : public HtmlParse {
   // Maps encoded URLs to output URLs
   typedef std::map<GoogleString, ResourcePtr> ResourceMap;
   ResourceMap resource_map_;
+
+  // Maps rewrite context partition keys to the context responsible for
+  // rewriting them, in case a URL occurs more than once.
+  typedef std::map<GoogleString, RewriteContext*> PrimaryRewriteContextMap;
+  PrimaryRewriteContextMap primary_rewrite_context_map_;
 
   HtmlResourceSlotSet slots_;
 
