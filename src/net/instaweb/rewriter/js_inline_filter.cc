@@ -93,7 +93,6 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
     CHECK(attr != NULL);
     const char* src = attr->value();
     DCHECK(src != NULL);
-    should_inline_ = false;
 
     // TODO(morlovich): Consider async/defer here; it may not be a good
     // idea to inline async scripts in particular.
@@ -114,6 +113,7 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
       }
     }
   }
+  should_inline_ = false;
 }
 
 bool JsInlineFilter::ShouldInline(const StringPiece& contents) const {
