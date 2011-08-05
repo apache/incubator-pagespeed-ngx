@@ -29,6 +29,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -67,10 +68,10 @@ class ResourceSlotTest : public ResourceManagerTestBase {
     driver->AddAttribute(element(1), HtmlName::kHref, "v3");
     driver->AddAttribute(element(1), HtmlName::kSrc, "v4");
 
-    driver->AddElement(element(0), -1);
-    driver->CloseElement(element(0), HtmlElement::BRIEF_CLOSE, -1);
-    driver->AddElement(element(1), -1);
-    driver->CloseElement(element(1), HtmlElement::BRIEF_CLOSE, -1);
+    driver->AddElement(element(0), 1);
+    driver->CloseElement(element(0), HtmlElement::BRIEF_CLOSE, 1);
+    driver->AddElement(element(1), 2);
+    driver->CloseElement(element(1), HtmlElement::BRIEF_CLOSE, 3);
 
     slots_[0] = MakeSlot(0, 0);
     slots_[1] = MakeSlot(0, 1);
@@ -128,6 +129,15 @@ TEST_F(ResourceSlotTest, Accessors) {
   EXPECT_FALSE(slot(0)->was_optimized());
   slot(0)->set_was_optimized(true);
   EXPECT_TRUE(slot(0)->was_optimized());
+
+  EXPECT_EQ("resource_slot_test:1", slot(0)->LocationString());
+  EXPECT_EQ("resource_slot_test:2-3", slot(2)->LocationString());
+
+  const char kDataUrl[] = "data:text/plain,Huh";
+  ResourcePtr resource =
+      DataUrlInputResource::Make(kDataUrl, resource_manager());
+  ResourceSlotPtr fetch_slot(new FetchResourceSlot(resource));
+  EXPECT_EQ(StrCat("Fetch of ", kDataUrl), fetch_slot->LocationString());
 }
 
 TEST_F(ResourceSlotTest, Comparator) {

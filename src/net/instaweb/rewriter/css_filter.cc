@@ -79,11 +79,14 @@ const char kStylesheet[] = "stylesheet";
 // to write out an output URL, so it has a no-op Render().
 class InlineCssSlot : public ResourceSlot {
  public:
-  explicit InlineCssSlot(const ResourcePtr& resource)
-      : ResourceSlot(resource) {}
+  InlineCssSlot(const ResourcePtr& resource, const GoogleString& location)
+      : ResourceSlot(resource), location_(location) {}
   virtual ~InlineCssSlot() {}
   virtual void Render() {}
+  virtual GoogleString LocationString() { return location_; }
+
  private:
+  GoogleString location_;
   DISALLOW_COPY_AND_ASSIGN(InlineCssSlot);
 };
 
@@ -140,7 +143,7 @@ void CssFilter::Context::StartInlineRewrite(HtmlElement* style_element,
   // copying. Get rid of them.
   DataUrl(kContentTypeCss, PLAIN, text->contents(), &data_url);
   ResourcePtr input_resource(DataUrlInputResource::Make(data_url, Manager()));
-  ResourceSlotPtr slot(new InlineCssSlot(input_resource));
+  ResourceSlotPtr slot(new InlineCssSlot(input_resource, Driver()->UrlLine()));
   AddSlot(slot);
   driver_->InitiateRewrite(this);
 }
@@ -209,7 +212,7 @@ void CssFilter::Context::Harvest() {
   }
 
   bool ok = filter_->SerializeCss(
-      in_text_size_, stylesheet_.get(), css_base_gurl_,
+      this, in_text_size_, stylesheet_.get(), css_base_gurl_,
       previously_optimized, &out_text, driver_->message_handler());
   if (ok) {
     if (rewrite_inline_char_node_ == NULL) {
@@ -441,7 +444,7 @@ TimedBool CssFilter::RewriteCssText(Context* context,
   if (stylesheet.get() == NULL ||
       parser.errors_seen_mask() != Css::Parser::kNoError) {
     ret.value = false;
-    driver_->InfoHere("CSS parsing error in %s", css_gurl.spec_c_str());
+    driver_->InfoAt(context, "CSS parsing error in %s", css_gurl.spec_c_str());
     num_parse_failures_->Add(1);
   } else {
     // Edit stylesheet.
@@ -456,14 +459,17 @@ TimedBool CssFilter::RewriteCssText(Context* context,
       TimedBool result = image_rewriter_->RewriteCssImages(
                              css_gurl, stylesheet.get(), handler);
       ret.expiration_ms = result.expiration_ms;
-      ret.value = SerializeCss(in_text_size, stylesheet.get(), css_gurl,
+      RewriteContext* no_rewrite_context = NULL;
+      ret.value = SerializeCss(no_rewrite_context, in_text_size,
+                               stylesheet.get(), css_gurl,
                                result.value, out_text, handler);
     }
   }
   return ret;
 }
 
-bool CssFilter::SerializeCss(int64 in_text_size,
+bool CssFilter::SerializeCss(RewriteContext* context,
+                             int64 in_text_size,
                              const Css::Stylesheet* stylesheet,
                              const GoogleUrl& css_gurl,
                              bool previously_optimized,
@@ -483,24 +489,25 @@ bool CssFilter::SerializeCss(int64 in_text_size,
     // Don't rewrite if we didn't edit it or make it any smaller.
     if (!previously_optimized && bytes_saved <= 0) {
       ret = false;
-      driver_->InfoHere("CSS parser increased size of CSS file %s by %s "
-                        "bytes.", css_gurl.spec_c_str(),
-                        Integer64ToString(-bytes_saved).c_str());
+      driver_->InfoAt(context, "CSS parser increased size of CSS file %s by %s "
+                      "bytes.", css_gurl.spec_c_str(),
+                      Integer64ToString(-bytes_saved).c_str());
     }
     // Don't rewrite if we blanked the CSS file! (This is a parse error)
     // TODO(sligocki): Don't error if in_text is all whitespace.
     if (out_text_size == 0 && in_text_size != 0) {
       ret = false;
-      driver_->InfoHere("CSS parsing error in %s", css_gurl.spec_c_str());
+      driver_->InfoAt(context, "CSS parsing error in %s",
+                      css_gurl.spec_c_str());
       num_parse_failures_->Add(1);
     }
   }
 
   // Statistics
   if (ret) {
-    driver_->InfoHere("Successfully rewrote CSS file %s saving %s "
-                      "bytes.", css_gurl.spec_c_str(),
-                      Integer64ToString(bytes_saved).c_str());
+    driver_->InfoAt(context, "Successfully rewrote CSS file %s saving %s "
+                    "bytes.", css_gurl.spec_c_str(),
+                    Integer64ToString(bytes_saved).c_str());
     num_files_minified_->Add(1);
     minified_bytes_saved_->Add(bytes_saved);
   }

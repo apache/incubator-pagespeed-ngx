@@ -18,10 +18,11 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
-#include <utility>  // for std::pair
-#include <vector>
+#include <cstdarg>
 #include <map>
 #include <set>
+#include <utility>  // for std::pair
+#include <vector>
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
@@ -221,7 +222,7 @@ void RewriteDriver::BoundedWaitForCompletionImpl(int64 timeout_ms) {
 
     // TODO(jmarantz): Eliminate these LOG(INFO) and/or convert them
     // into message_handler()->Message(kInfo...).
-    LOG(INFO) << "timed wait complete";
+    // LOG(INFO) << "timed wait complete";
 
     if (timeout_ms > 0) {
       timeout_ms -= (end_ms - start_ms);
@@ -1180,6 +1181,26 @@ void RewriteDriver::Cleanup() {
 void RewriteDriver::FinishParse() {
   HtmlParse::FinishParse();
   Cleanup();
+}
+
+void RewriteDriver::InfoAt(RewriteContext* context, const char* msg, ...) {
+  va_list args;
+  va_start(args, msg);
+
+  if ((context == NULL) || (context->num_slots() == 0)) {
+    InfoHereV(msg, args);
+  } else {
+    GoogleString new_msg;
+    for (int c = 0; c < context->num_slots(); ++c) {
+      StrAppend(&new_msg, context->slot(c)->LocationString(),
+                ((c == context->num_slots() - 1) ? ": " : " "));
+    }
+
+    new_msg.append(msg);
+    message_handler()->MessageV(kInfo, new_msg.c_str(), args);
+  }
+
+  va_end(args);
 }
 
 void RewriteDriver::SetBaseUrlIfUnset(const StringPiece& new_base) {

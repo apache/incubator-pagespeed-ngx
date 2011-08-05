@@ -199,6 +199,7 @@ class NestedFilter : public RewriteFilter {
    public:
     explicit NestedSlot(const ResourcePtr& resource) : ResourceSlot(resource) {}
     virtual void Render() {}
+    virtual GoogleString LocationString() { return "nested:"; }
   };
 
   class NestedContext : public SingleRewriteContext {

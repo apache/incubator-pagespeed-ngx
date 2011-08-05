@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/printf_format.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -254,6 +255,12 @@ class RewriteDriver : public HtmlParse {
   // its not externally managed, and if all RewriteContexts have been
   // completed.
   virtual void FinishParse();
+
+  // Report error message with description of context's location
+  // (such as filenames and line numbers). context may be NULL, in which case
+  // the current parse position will be used.
+  void InfoAt(RewriteContext* context,
+              const char* msg, ...) INSTAWEB_PRINTF_FORMAT(3, 4);
 
   // See comments in resource_manager.h
   OutputResourcePtr CreateOutputResourceFromResource(

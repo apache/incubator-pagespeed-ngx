@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -107,6 +108,10 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // that was added.
   void DetachContext(RewriteContext* context);
 
+  // Returns a human-readable description of where this slot occurs, for use
+  // in log messages.
+  virtual GoogleString LocationString() = 0;
+
  protected:
   virtual ~ResourceSlot();
   REFCOUNT_FRIEND_DECLARATION(ResourceSlot);
@@ -133,6 +138,7 @@ class FetchResourceSlot : public ResourceSlot {
   }
 
   virtual void Render();
+  virtual GoogleString LocationString();
 
  protected:
   REFCOUNT_FRIEND_DECLARATION(FetchResourceSlot);
@@ -151,13 +157,16 @@ class HtmlResourceSlot : public ResourceSlot {
       : ResourceSlot(resource),
         element_(element),
         attribute_(attribute),
-        html_parse_(html_parse) {
+        html_parse_(html_parse),
+        begin_line_number_(element->begin_line_number()),
+        end_line_number_(element->end_line_number()) {
   }
 
   HtmlElement* element() { return element_; }
   HtmlElement::Attribute* attribute() { return attribute_; }
 
   virtual void Render();
+  virtual GoogleString LocationString();
 
  protected:
   REFCOUNT_FRIEND_DECLARATION(HtmlResourceSlot);
@@ -167,6 +176,9 @@ class HtmlResourceSlot : public ResourceSlot {
   HtmlElement* element_;
   HtmlElement::Attribute* attribute_;
   HtmlParse* html_parse_;
+
+  int begin_line_number_;
+  int end_line_number_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlResourceSlot);
 };

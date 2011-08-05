@@ -105,7 +105,8 @@ void ImageRewriteFilter::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
   RewriteDone(
-      filter_->RewriteLoadedResource(input_resource, output_resource), 0);
+      filter_->RewriteLoadedResourceImpl(this, input_resource, output_resource),
+      0);
 }
 
 void ImageRewriteFilter::Context::Render() {
@@ -174,6 +175,14 @@ void ImageRewriteFilter::Initialize(Statistics* statistics) {
 RewriteSingleResourceFilter::RewriteResult
 ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
                                           const OutputResourcePtr& result) {
+  return RewriteLoadedResourceImpl(NULL /* no rewrite_context*/,
+                                   input_resource, result);
+}
+
+RewriteSingleResourceFilter::RewriteResult
+ImageRewriteFilter::RewriteLoadedResourceImpl(
+      RewriteContext* rewrite_context, const ResourcePtr& input_resource,
+      const OutputResourcePtr& result) {
   MessageHandler* message_handler = driver_->message_handler();
   StringVector urls;
   ResourceContext context;
@@ -222,10 +231,10 @@ ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
         } else {
           message = "Couldn't resize";
         }
-        driver_->InfoHere("%s image `%s' from %dx%d to %dx%d", message,
-                          input_resource->url().c_str(),
-                          image_dim.width(), image_dim.height(),
-                          page_dim.width(), page_dim.height());
+        driver_->InfoAt(rewrite_context, "%s image `%s' from %dx%d to %dx%d",
+                        message, input_resource->url().c_str(),
+                        image_dim.width(), image_dim.height(),
+                        page_dim.width(), page_dim.height());
       }
     }
 
@@ -263,7 +272,8 @@ ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
       if (resource_manager_->Write(
               HttpStatus::kOK, image->Contents(), result.get(),
               origin_expire_time_ms, message_handler)) {
-        driver_->InfoHere(
+        driver_->InfoAt(
+            rewrite_context,
             "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",
             input_resource->url().c_str(),
             static_cast<unsigned>(image->input_size()),

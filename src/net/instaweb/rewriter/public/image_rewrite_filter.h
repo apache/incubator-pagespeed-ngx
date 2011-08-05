@@ -87,6 +87,11 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
                                         Image* image);
   void BeginRewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
 
+  RewriteResult RewriteLoadedResourceImpl(RewriteContext* context,
+                                          const ResourcePtr& input_resource,
+                                          const OutputResourcePtr& result);
+
+
   // Returns true if it rewrote the URL.
   bool FinishRewriteImageUrl(const CachedResult* cached, HtmlElement* element,
                              HtmlElement::Attribute* src);

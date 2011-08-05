@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace Css { class Values; }
 
@@ -42,6 +43,7 @@ class GoogleUrl;
 class CssResourceSlot : public ResourceSlot {
  public:
   virtual void Render();
+  virtual GoogleString LocationString();
 
   Css::Values* values() const { return values_; }
   size_t value_index() const { return value_index_; }

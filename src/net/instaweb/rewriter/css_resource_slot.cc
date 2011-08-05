@@ -58,6 +58,11 @@ void CssResourceSlot::Render() {
   }
 }
 
+GoogleString CssResourceSlot::LocationString() {
+  // TODO(morlovich): Improve quality of this diagnostic.
+  return "Inside CSS";
+}
+
 void CssResourceSlot::EnableTrim(const GoogleUrl& base_url) {
   trim_base_.reset(new GoogleUrl);
   trim_base_->Reset(base_url);

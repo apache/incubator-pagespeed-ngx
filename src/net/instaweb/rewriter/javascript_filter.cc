@@ -52,7 +52,8 @@ namespace net_instaweb {
 namespace {
 
 void CleanupWhitespaceScriptBody(
-    RewriteDriver* driver, const JavascriptFilter::HtmlCharNodeVector& nodes) {
+    RewriteDriver* driver, RewriteContext* context,
+    const JavascriptFilter::HtmlCharNodeVector& nodes) {
   // Finally, note that the script might contain body data.
   // We erase this if it is just whitespace; otherwise we leave it alone.
   // The script body is ignored by all browsers we know of.
@@ -65,8 +66,8 @@ void CleanupWhitespaceScriptBody(
     for (size_t j = 0; j < contents.size(); ++j) {
       char c = contents[j];
       if (!isspace(c) && c != 0) {
-        driver->InfoHere("Retaining contents of script tag;"
-                         " probably data for external script.");
+        driver->InfoAt(context, "Retaining contents of script tag;"
+                       " probably data for external script.");
         return;
       }
     }
@@ -145,7 +146,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
   }
 
   virtual void Render() {
-    CleanupWhitespaceScriptBody(Driver(), inline_text_);
+    CleanupWhitespaceScriptBody(Driver(), this, inline_text_);
   }
 
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
@@ -288,7 +289,7 @@ void JavascriptFilter::RewriteExternalScript() {
     script_src_->SetValue(rewrite_info->url());
   }
 
-  CleanupWhitespaceScriptBody(driver_, buffer_);
+  CleanupWhitespaceScriptBody(driver_, NULL, buffer_);
 }
 
 // Reset state at end of script.

@@ -115,7 +115,8 @@ class CssFilter : public RewriteSingleResourceFilter {
 
   // Tries to write out a (potentially edited) stylesheet out to out_text,
   // and returns whether we should consider the result as an improvement.
-  bool SerializeCss(int64 in_text_size,
+  bool SerializeCss(RewriteContext* context,
+                    int64 in_text_size,
                     const Css::Stylesheet* stylesheet,
                     const GoogleUrl& css_gurl,
                     bool previously_optimized,
