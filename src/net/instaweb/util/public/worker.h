@@ -43,6 +43,10 @@ class Worker {
   // Returns whether successful.
   bool Start();
 
+  // Tries to start the work thread if it hasn't been started already;
+  // returns true if it was started successfully or was previously running.
+  bool StartIfNeeded();
+
   // An Idle callback is called when a worker that is running
   // a task completes all its tasks, and goes into a wait-state
   // for more tasks to be queued.

@@ -147,6 +147,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   virtual NamedLockManager* DefaultLockManager();
   virtual ThreadSystem* DefaultThreadSystem();
 
+  virtual void ResourceManagerCreatedHook();
+
   // Disable the Resource Manager's filesystem since we have a
   // write-through http_cache.
   virtual bool ShouldWriteResourcesToFileSystem() { return false; }

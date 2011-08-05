@@ -119,6 +119,13 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     return started_;
   }
 
+  bool StartIfNeeded() {
+    if (started_) {
+      return true;
+    }
+    return Start();
+  }
+
   bool QueueIfPermitted(Function* closure) {
     if (!started_) {
       delete closure;
@@ -174,6 +181,10 @@ Worker::~Worker() {
 
 bool Worker::Start() {
   return thread_->Start();
+}
+
+bool Worker::StartIfNeeded() {
+  return thread_->StartIfNeeded();
 }
 
 bool Worker::IsBusy() {

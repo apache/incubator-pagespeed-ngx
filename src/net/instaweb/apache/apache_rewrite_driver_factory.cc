@@ -265,16 +265,23 @@ void ApacheRewriteDriverFactory::ChildInit() {
   SharedCircularBufferInit(is_root_process_);
   if (!slow_worker_.Attach()) {
     slow_worker_.Initialize(new SlowWorker(thread_system()));
-    if (!slow_worker_.Get()->Start()) {
-      message_handler()->Message(
-          kError, "Unable to start background work thread.");
-    }
   }
   if (shared_mem_statistics_ != NULL) {
     shared_mem_statistics_->InitVariables(false, message_handler());
   }
   if (use_shared_mem_locking_) {
     shared_mem_lock_manager_lifecycler_.ChildInit();
+  }
+}
+
+void ApacheRewriteDriverFactory::ResourceManagerCreatedHook() {
+  // We lazily start the slow worker here to avoid problems with ITK MPM:
+  // it forks prior to handling the request, so we need to be sure not to
+  // start any threads from normal initialization.
+  // See http://code.google.com/p/modpagespeed/issues/detail?id=330
+  if ((slow_worker_.Get() != NULL) && !slow_worker_.Get()->StartIfNeeded()) {
+    message_handler()->Message(
+        kError, "Unable to start background work thread.");
   }
 }
 

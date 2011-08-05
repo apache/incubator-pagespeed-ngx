@@ -182,6 +182,9 @@ class RewriteDriverFactory {
   // Called before creating the url fetchers.
   virtual void FetcherSetupHooks();
 
+  // Called after creating the resource manager in ComputeResourceManager.
+  virtual void ResourceManagerCreatedHook();
+
   // Override this to return true if you do want the resource manager
   // to write resources to the filesystem.
   //
