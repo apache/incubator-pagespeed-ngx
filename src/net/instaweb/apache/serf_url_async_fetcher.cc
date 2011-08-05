@@ -373,7 +373,8 @@ class SerfFetch : public PoolElement<SerfFetch> {
     while (MoreDataAvailable(status) && (fetched_content_writer_ != NULL)) {
       status = serf_bucket_read(response, SERF_READ_ALL_AVAIL, &data, &len);
       bytes_received_ += len;
-      if (IsStatusOk(status) && !fetched_content_writer_->Write(
+      if (IsStatusOk(status) && (len != 0) &&
+          !fetched_content_writer_->Write(
               StringPiece(data, len), message_handler_)) {
         status = APR_EGENERAL;
       }
