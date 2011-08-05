@@ -180,6 +180,10 @@ class Statistics {
   // Set all variables to 0.
   // Throw away all data in histograms and stats.
   virtual void Clear() = 0;
+
+ protected:
+  virtual TimedVariable* NewTimedVariable(const StringPiece& name, int index);
+  virtual Variable* NewVariable(const StringPiece& name, int index) = 0;
 };
 
 }  // namespace net_instaweb

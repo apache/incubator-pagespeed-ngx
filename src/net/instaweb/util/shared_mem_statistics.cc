@@ -123,11 +123,6 @@ bool SharedMemStatistics::InitMutexes(size_t per_var,
   return true;
 }
 
-FakeTimedVariable* SharedMemStatistics::NewTimedVariable(
-    const StringPiece& name, int index) {
-  return new FakeTimedVariable(NewVariable(name, index));
-}
-
 void SharedMemStatistics::InitVariables(bool parent,
                                         MessageHandler* message_handler) {
   frozen_ = true;

@@ -48,12 +48,12 @@ template<class Var, class Hist, class TimedVar> class StatisticsTemplate
   // Add a new variable, or returns an existing one of that name.
   // The Variable* is owned by the Statistics class -- it should
   // not be deleted by the caller.
-  virtual Var* AddVariable(const StringPiece& name) {
+  virtual Variable* AddVariable(const StringPiece& name) {
     return AddVariableInternal(name);
   }
 
   // Find a variable from a name, returning NULL if not found.
-  virtual Var* FindVariable(const StringPiece& name) const {
+  virtual Variable* FindVariable(const StringPiece& name) const {
     return FindVariableInternal(name);
   }
 
@@ -91,7 +91,7 @@ template<class Var, class Hist, class TimedVar> class StatisticsTemplate
 
   virtual void RenderTimedVariable(Writer* writer,
                                    MessageHandler* message_handler) {
-    TimedVar* timedvar = NULL;
+    TimedVariable* timedvar = NULL;
     const GoogleString end("</table>\n<td>\n<td>\n");
     std::map<GoogleString, StringVector>::const_iterator p;
 
@@ -194,9 +194,9 @@ template<class Var, class Hist, class TimedVar> class StatisticsTemplate
 
   virtual Hist* NewHistogram() = 0;
 
-  virtual TimedVar* AddTimedVariableInternal(const StringPiece& name,
-                                             const StringPiece& group) {
-    TimedVar* timedvar = FindTimedVariableInternal(name);
+  virtual TimedVariable* AddTimedVariableInternal(const StringPiece& name,
+                                                  const StringPiece& group) {
+    TimedVariable* timedvar = FindTimedVariableInternal(name);
     if (timedvar == NULL) {
       timedvar = NewTimedVariable(name, timed_vars_.size());
       timed_vars_.push_back(timedvar);
@@ -207,24 +207,23 @@ template<class Var, class Hist, class TimedVar> class StatisticsTemplate
     return timedvar;
   }
 
-  virtual TimedVar* FindTimedVariableInternal(const StringPiece& name) const {
+  virtual TimedVariable* FindTimedVariableInternal(
+      const StringPiece& name) const {
     typename TimedVarMap::const_iterator p =
         timed_var_map_.find(name.as_string());
-    TimedVar* timedvar = NULL;
+    TimedVariable* timedvar = NULL;
     if (p != timed_var_map_.end()) {
       timedvar = p->second;
     }
     return timedvar;
   }
 
-  virtual TimedVar* NewTimedVariable(const StringPiece& name, int index) = 0;
-
   typedef std::vector<Var*> VarVector;
   typedef std::map<GoogleString, Var*> VarMap;
   typedef std::vector<Hist*> HistVector;
   typedef std::map<GoogleString, Hist*> HistMap;
-  typedef std::vector<TimedVar*> TimedVarVector;
-  typedef std::map<GoogleString, TimedVar*> TimedVarMap;
+  typedef std::vector<TimedVariable*> TimedVarVector;
+  typedef std::map<GoogleString, TimedVariable*> TimedVarMap;
   VarVector variables_;
   VarMap variable_map_;
   HistVector histograms_;

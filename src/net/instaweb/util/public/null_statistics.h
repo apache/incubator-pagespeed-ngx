@@ -78,8 +78,6 @@ class NullStatistics : public StatisticsTemplate<NullStatisticsVariable,
   virtual NullStatisticsVariable* NewVariable(const StringPiece& name,
                                               int index);
   virtual NullStatisticsHistogram* NewHistogram();
-  virtual FakeTimedVariable* NewTimedVariable(const StringPiece& name,
-                                              int index);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NullStatistics);
