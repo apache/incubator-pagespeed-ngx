@@ -1014,6 +1014,38 @@ TEST_P(CssCombineFilterTest, TwoCombinationsTwice) {
   BarrierTestHelper("two_comb", input_css_links, &output_css_links);
 }
 
+class CssFilterWithCombineTest : public CssCombineFilterTest {
+ protected:
+  virtual void SetUp() {
+    // We setup the options before the upcall so that the
+    // CSS filter is created aware of these.
+    options()->EnableFilter(RewriteOptions::kRewriteCss);
+    CssCombineFilterTest::SetUp();
+  }
+};
+
+TEST_P(CssFilterWithCombineTest, TestFollowCombine) {
+  // Make sure we don't regress dealing with combiner deleting things sanely
+  // in rewrite filter.
+  const char kCssA[] = "a.css";
+  const char kCssB[] = "b.css";
+  const char kCssOut[] = "a.css+b.css,Mcc.0.css.pagespeed.cf.0.css";
+  const char kCssText[] = " div {    } ";
+  const char kCssTextOptimized[] = "div{}";
+
+  InitResponseHeaders(kCssA, kContentTypeCss, kCssText, 300);
+  InitResponseHeaders(kCssB, kContentTypeCss, kCssText, 300);
+
+  ValidateExpected(
+      "follow_combine",
+      StrCat(Link(kCssA), Link(kCssB)),
+      Link(StrCat(kTestDomain, kCssOut)));
+
+  GoogleString content;
+  EXPECT_TRUE(ServeResourceUrl(StrCat(kTestDomain, kCssOut), &content));
+  EXPECT_EQ(StrCat(kCssTextOptimized, kCssTextOptimized), content);
+}
+
 /*
   TODO(jmarantz): cover intervening FLUSH
   TODO(jmarantz): consider converting some of the existing tests to this
@@ -1027,6 +1059,11 @@ TEST_P(CssCombineFilterTest, TwoCombinationsTwice) {
 */
 
 INSTANTIATE_TEST_CASE_P(CssCombineFilterTestInstance, CssCombineFilterTest,
+                        ::testing::Bool());
+
+
+INSTANTIATE_TEST_CASE_P(CssFilterWithCombineTestInstance,
+                        CssFilterWithCombineTest,
                         ::testing::Bool());
 
 }  // namespace

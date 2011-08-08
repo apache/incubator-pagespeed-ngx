@@ -35,6 +35,7 @@ class CacheTestBase : public testing::Test {
   class Callback : public CacheInterface::Callback {
    public:
     Callback() { Reset(); }
+    virtual ~Callback() {}
     Callback* Reset() {
       called_ = false;
       state_ = CacheInterface::kNotFound;
@@ -46,8 +47,12 @@ class CacheTestBase : public testing::Test {
       called_ = true;
       state_ = state;
     }
+
     bool called_;
     CacheInterface::KeyState state_;
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(Callback);
   };
 
   void CheckGet(const char* key, const GoogleString& expected_value) {

@@ -235,56 +235,11 @@ test_resource_ext_corruption $URL $combine_css_filename
 
 # TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
 # move to system_test.sh                                   // [google]
-echo TEST: combine_css without hash field should 404
-$WGET_PREREQ $EXAMPLE_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
-check grep '"404 Not Found"' $WGET_OUTPUT
-
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
-# Note: this large URL can only be processed by Apache if
-# ap_hook_map_to_storage is called to bypass the default
-# handler that maps URLs to filenames.
-echo TEST: Fetch large css_combine URL
-LARGE_URL="$EXAMPLE_ROOT/styles/yellow.css+blue.css+big.css+\
-bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
-big.css+bold.css+yellow.css+blue.css+big.css+\
-bold.css.pagespeed.cc.46IlzLf_NK.css"
-echo "$WGET --save-headers -q -O - $LARGE_URL | head -1 | grep \"HTTP/1.1 200 OK\""
-$WGET --save-headers -q -O - $LARGE_URL | head -1 | grep "HTTP/1.1 200 OK"
-check [ $? = 0 ];
-LARGE_URL_LINE_COUNT=$($WGET -q -O - $LARGE_URL | wc -l)
-check [ $? = 0 ]
-echo Checking that response body is at least 900 lines -- it should be 954
-check [ $LARGE_URL_LINE_COUNT -gt 900 ]
-
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
 test_filter extend_cache rewrites an image tag.
 fetch_until $URL 'grep -c src.*91_WewrLtP' 1
 check $WGET_PREREQ $URL
 echo about to test resource ext corruption...
 test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
-
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
-echo TEST: Attempt to fetch cache-extended image without hash should 404
-$WGET_PREREQ $EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce..jpg
-check grep '"404 Not Found"' $WGET_OUTPUT
-
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
-echo TEST: Cache-extended image should respond 304 to an If-Modified-Since.
-URL=$EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
-DATE=`date -R`
-$WGET_PREREQ --header "If-Modified-Since: $DATE" $URL
-check grep '"304 Not Modified"' $WGET_OUTPUT
 
 # TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
 # move to system_test.sh                                   // [google]
@@ -359,21 +314,6 @@ check [ $? = 0 ]
 echo TEST: Last-modified is present
 echo "$IMG_HEADERS" | grep -qi 'Last-Modified'
 check [ $? = 0 ]
-
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
-IMG_URL=${IMG_URL/Puzzle/BadName}
-echo TEST: rewrite_images fails broken image $IMG_URL
-$WGET_PREREQ $IMG_URL;  # fails
-check grep '"404 Not Found"' $WGET_OUTPUT
-
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
-# [google] b/3328110
-echo "TEST: rewrite_images doesn't 500 on unoptomizable image"
-IMG_URL=$EXAMPLE_ROOT/images/xOptPuzzle.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
-$WGET_PREREQ $IMG_URL
-check grep '"HTTP/1.1 200 OK"' $WGET_OUTPUT
 
 # Depends upon "Header append Vary User-Agent" and ModPagespeedRespectVary.
 # TODO(sligocki): Get working somehow on rewrite_proxy_server.  // [google]

@@ -645,12 +645,6 @@ class RewriteContextTest : public ResourceManagerTestBase {
         expected_nested_rewrite_result);
   }
 
-  // TODO(sligocki): Rename. This name can cause mixups with
-  // class ResourceManagerTestBase::CssLink
-  GoogleString CssLink(const StringPiece& url) {
-    return StrCat("<link rel=stylesheet href=", url, ">");
-  }
-
   virtual void ClearStats() {
     ResourceManagerTestBase::ClearStats();
     if (trim_filter_ != NULL) {
@@ -683,8 +677,8 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   // should need two items in the cache: the element and the resource
   // mapping (OutputPartitions).  The output resource should not be
   // stored.
-  ValidateExpected("trimmable", CssLink("a.css"),
-                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());  // 2 because it's kOnTheFlyResource
@@ -694,8 +688,8 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   // The second time we request this URL, we should find no additional
   // cache inserts or fetches.  The rewrite should complete using a
   // single cache hit for the metadata.  No cache misses will occur.
-  ValidateExpected("trimmable", CssLink("a.css"),
-                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -708,7 +702,7 @@ TEST_F(RewriteContextTest, TrimOnTheFlyNonOptimizable) {
 
   // In this case, the resource is not optimizable.  The cache pattern is
   // exactly the same as when the resource was optimizable.
-  ValidateNoChanges("no_trimmable", CssLink("b.css"));
+  ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());
@@ -716,7 +710,7 @@ TEST_F(RewriteContextTest, TrimOnTheFlyNonOptimizable) {
   ClearStats();
 
   // We should have cached the failed rewrite, no misses, fetches, or inserts.
-  ValidateNoChanges("no_trimmable", CssLink("b.css"));
+  ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
   EXPECT_EQ(1, lru_cache()->num_hits());  // partition
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -736,8 +730,8 @@ TEST_F(RewriteContextTest, TrimRewrittenOptimizable) {
   // should need two items in the cache: the element and the resource
   // mapping (OutputPartitions).  The output resource should not be
   // stored.
-  ValidateExpected("trimmable", CssLink("a.css"),
-                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(3, lru_cache()->num_inserts());  // 3 cause it's kRewrittenResource
@@ -747,8 +741,8 @@ TEST_F(RewriteContextTest, TrimRewrittenOptimizable) {
   // The second cache time we request this URL, we should find no additional
   // cache inserts or fetches.  The rewrite should complete using a single
   // cache hit for the metadata.  No cache misses will occur.
-  ValidateExpected("trimmable", CssLink("a.css"),
-                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -763,7 +757,7 @@ TEST_F(RewriteContextTest, TrimRewrittenNonOptimizable) {
   // exactly the same as when the resource was optimizable.  We'll cache
   // the successfully fetched resource, and the OutputPartitions which
   // indicates the unsuccessful optimization.
-  ValidateNoChanges("no_trimmable", CssLink("b.css"));
+  ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());
@@ -771,7 +765,7 @@ TEST_F(RewriteContextTest, TrimRewrittenNonOptimizable) {
   ClearStats();
 
   // We should have cached the failed rewrite, no misses, fetches, or inserts.
-  ValidateNoChanges("no_trimmable", CssLink("b.css"));
+  ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
   EXPECT_EQ(1, lru_cache()->num_hits());  // partition
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -783,9 +777,10 @@ TEST_F(RewriteContextTest, TrimRepeatedOptimizable) {
   // when optimization succeeds.
   InitTrimFilters(kRewrittenResource);
   InitResources();
-  ValidateExpected("trimmable2", StrCat(CssLink("a.css"), CssLink("a.css")),
-                   StrCat(CssLink("http://test.com/a.css.pagespeed.tw.0.css"),
-                          CssLink("http://test.com/a.css.pagespeed.tw.0.css")));
+  ValidateExpected(
+        "trimmable2", StrCat(CssLinkHref("a.css"), CssLinkHref("a.css")),
+        StrCat(CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"),
+               CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css")));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
 }
 
@@ -798,15 +793,16 @@ TEST_F(RewriteContextTest, TrimRepeatedOptimizableDelayed) {
 
   // First time nothing happens by deadline.
   ValidateNoChanges("trimable2_notyet",
-                    StrCat(CssLink("a.css"), CssLink("a.css")));
+                    StrCat(CssLinkHref("a.css"), CssLinkHref("a.css")));
 
   CallFetcherCallbacks();
 
   // Second time we get both rewritten right.
-  ValidateExpected("trimmable2_now",
-                   StrCat(CssLink("a.css"), CssLink("a.css")),
-                   StrCat(CssLink("http://test.com/a.css.pagespeed.tw.0.css"),
-                          CssLink("http://test.com/a.css.pagespeed.tw.0.css")));
+  ValidateExpected(
+      "trimmable2_now",
+      StrCat(CssLinkHref("a.css"), CssLinkHref("a.css")),
+      StrCat(CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"),
+             CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css")));
 
   EXPECT_EQ(1, trim_filter_->num_rewrites());
 }
@@ -816,7 +812,8 @@ TEST_F(RewriteContextTest, TrimRepeatedNonOptimizable) {
   // when optimization fails.
   InitTrimFilters(kRewrittenResource);
   InitResources();
-  ValidateNoChanges("notrimmable2", StrCat(CssLink("b.css"), CssLink("b.css")));
+  ValidateNoChanges("notrimmable2",
+                    StrCat(CssLinkHref("b.css"), CssLinkHref("b.css")));
 }
 
 TEST_F(RewriteContextTest, TrimRepeated404) {
@@ -825,7 +822,7 @@ TEST_F(RewriteContextTest, TrimRepeated404) {
   InitTrimFilters(kRewrittenResource);
   SetFetchResponse404("404.css");
   ValidateNoChanges("repeat404",
-                    StrCat(CssLink("404.css"), CssLink("404.css")));
+                    StrCat(CssLinkHref("404.css"), CssLinkHref("404.css")));
 }
 
 TEST_F(RewriteContextTest, FetchNonOptimizable) {
@@ -856,7 +853,7 @@ TEST_F(RewriteContextTest, TrimDelayed) {
   InitTrimFilters(kOnTheFlyResource);
   InitResources();
 
-  ValidateNoChanges("trimmable", CssLink("a.css"));
+  ValidateNoChanges("trimmable", CssLinkHref("a.css"));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -877,8 +874,8 @@ TEST_F(RewriteContextTest, TrimDelayed) {
   // The second cache time we request this URL, we should find no additional
   // cache inserts or fetches.  The rewrite should complete using a single
   // cache hit for the metadata.  No cache misses will occur.
-  ValidateExpected("trimmable", CssLink("a.css"),
-                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -948,8 +945,8 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
 TEST_F(RewriteContextTest, FetchColdCacheOnTheFly) {
   InitTrimFilters(kOnTheFlyResource);
   InitResources();
-  ValidateExpected("trimmable", CssLink("a.css"),
-                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
   ClearStats();
   TestServeFiles(&kContentTypeCss, kTrimWhitespaceFilterId, "css",
                  "a.css", " a ",
@@ -959,8 +956,8 @@ TEST_F(RewriteContextTest, FetchColdCacheOnTheFly) {
 TEST_F(RewriteContextTest, FetchColdCacheRewritten) {
   InitTrimFilters(kOnTheFlyResource);
   InitResources();
-  ValidateExpected("trimmable", CssLink("a.css"),
-                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
   ClearStats();
   TestServeFiles(&kContentTypeCss, kTrimWhitespaceFilterId, "css",
                  "a.css", " a ",
@@ -974,7 +971,7 @@ TEST_F(RewriteContextTest, OnTheFlyNotFound) {
   SetFetchFailOnUnexpected(false);
 
   // In this case, the resource is optimizable but we'll fail to fetch it.
-  ValidateNoChanges("no_trimmable", CssLink("a.css"));
+  ValidateNoChanges("no_trimmable", CssLinkHref("a.css"));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());
@@ -982,7 +979,7 @@ TEST_F(RewriteContextTest, OnTheFlyNotFound) {
   ClearStats();
 
   // We should have cached the failed rewrite, no misses, fetches, or inserts.
-  ValidateNoChanges("no_trimmable", CssLink("a.css"));
+  ValidateNoChanges("no_trimmable", CssLinkHref("a.css"));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -996,7 +993,7 @@ TEST_F(RewriteContextTest, RewrittenNotFound) {
   SetFetchFailOnUnexpected(false);
 
   // In this case, the resource is optimizable but we'll fail to fetch it.
-  ValidateNoChanges("no_trimmable", CssLink("a.css"));
+  ValidateNoChanges("no_trimmable", CssLinkHref("a.css"));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());
@@ -1004,7 +1001,7 @@ TEST_F(RewriteContextTest, RewrittenNotFound) {
   ClearStats();
 
   // We should have cached the failed rewrite, no misses, fetches, or inserts.
-  ValidateNoChanges("no_trimmable", CssLink("a.css"));
+  ValidateNoChanges("no_trimmable", CssLinkHref("a.css"));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -1079,8 +1076,8 @@ TEST_F(RewriteContextTest, TwoFilters) {
   InitResources();
 
   ValidateExpected(
-      "two_filters", CssLink("a.css"),
-      CssLink("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"));
+      "two_filters", CssLinkHref("a.css"),
+      CssLinkHref("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"));
 }
 
 TEST_F(RewriteContextTest, TwoFiltersDelayedFetches) {
@@ -1088,11 +1085,11 @@ TEST_F(RewriteContextTest, TwoFiltersDelayedFetches) {
   InitTwoFilters(kOnTheFlyResource);
   InitResources();
 
-  ValidateNoChanges("trimmable1", CssLink("a.css"));
+  ValidateNoChanges("trimmable1", CssLinkHref("a.css"));
   CallFetcherCallbacks();
   ValidateExpected(
-      "delayed_fetches", CssLink("a.css"),
-      CssLink("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"));
+      "delayed_fetches", CssLinkHref("a.css"),
+      CssLinkHref("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"));
 }
 
 TEST_F(RewriteContextTest, RepeatedTwoFilters) {
@@ -1101,9 +1098,9 @@ TEST_F(RewriteContextTest, RepeatedTwoFilters) {
   InitResources();
 
   ValidateExpected(
-    "two_filters2", StrCat(CssLink("a.css"), CssLink("a.css")),
-    StrCat(CssLink("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"),
-           CssLink("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css")));
+    "two_filters2", StrCat(CssLinkHref("a.css"), CssLinkHref("a.css")),
+    StrCat(CssLinkHref("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css"),
+           CssLinkHref("http://test.com/a.css,Muc.0.css.pagespeed.tw.0.css")));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
 }
 
@@ -1111,7 +1108,7 @@ TEST_F(RewriteContextTest, Nested) {
   const char kRewrittenUrl[] = "http://test.com/c.css.pagespeed.nf.0.css";
   InitNestedFilter(kExpectNestedRewritesSucceed);
   InitResources();
-  ValidateExpected("async3", CssLink("c.css"), CssLink(kRewrittenUrl));
+  ValidateExpected("async3", CssLinkHref("c.css"), CssLinkHref(kRewrittenUrl));
   GoogleString rewritten_contents;
   EXPECT_TRUE(ServeResourceUrl(kRewrittenUrl, &rewritten_contents));
   EXPECT_EQ("http://test.com/a.css.pagespeed.nf.0.css\n"
@@ -1130,7 +1127,8 @@ TEST_F(RewriteContextTest, NestedFailed) {
                      "UPPERCASE");
   SetFetchResponse("http://test.com/d.css", default_css_header,
                      "u.css");
-  ValidateExpected("nested-noop", CssLink("d.css"), CssLink(kRewrittenUrl));
+  ValidateExpected("nested-noop", CssLinkHref("d.css"),
+                   CssLinkHref(kRewrittenUrl));
 }
 
 TEST_F(RewriteContextTest, NestedChained) {
@@ -1144,7 +1142,7 @@ TEST_F(RewriteContextTest, NestedChained) {
   driver->AddFilters();
   InitResources();
   ValidateExpected(
-      "async_nest_chain", CssLink("c.css"), CssLink(kRewrittenUrl));
+      "async_nest_chain", CssLinkHref("c.css"), CssLinkHref(kRewrittenUrl));
   GoogleString rewritten_contents;
   EXPECT_TRUE(ServeResourceUrl(kRewrittenUrl, &rewritten_contents));
   // We expect each URL twice since we have two nested jobs for it, and the
@@ -1161,8 +1159,8 @@ TEST_F(RewriteContextTest, CombinationRewrite) {
   GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
                                      "a.css+b.css", "css");
   ValidateExpected(
-      "combination_rewrite", StrCat(CssLink("a.css"), CssLink("b.css")),
-      CssLink(combined_url));
+      "combination_rewrite", StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+      CssLinkHref(combined_url));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(3, lru_cache()->num_misses());   // partition, and 2 inputs.
   EXPECT_EQ(4, lru_cache()->num_inserts());  // partition, output, and 2 inputs.
@@ -1170,8 +1168,9 @@ TEST_F(RewriteContextTest, CombinationRewrite) {
   ClearStats();
 
   ValidateExpected(
-      "combination_rewrite2", StrCat(CssLink("a.css"), CssLink("b.css")),
-      CssLink(combined_url));
+      "combination_rewrite2",
+      StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+      CssLinkHref(combined_url));
   EXPECT_EQ(1, lru_cache()->num_hits());     // the output is all we need
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -1185,7 +1184,7 @@ TEST_F(RewriteContextTest, CombinationRewriteWithDelay) {
   InitResources();
   GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
                                      "a.css+b.css", "css");
-  ValidateNoChanges("xx", StrCat(CssLink("a.css"), CssLink("b.css")));
+  ValidateNoChanges("xx", StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(3, lru_cache()->num_misses());   // partition, and 2 inputs.
   EXPECT_EQ(3, lru_cache()->num_inserts());  // partition+2 in, output not ready
@@ -1205,8 +1204,8 @@ TEST_F(RewriteContextTest, CombinationRewriteWithDelay) {
   ClearStats();
 
   ValidateExpected(
-      "combination_rewrite", StrCat(CssLink("a.css"), CssLink("b.css")),
-      CssLink(combined_url));
+      "combination_rewrite", StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+      CssLinkHref(combined_url));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());   // partition, and 2 inputs.
   EXPECT_EQ(0, lru_cache()->num_inserts());  // partition, output, and 2 inputs.
@@ -1214,8 +1213,9 @@ TEST_F(RewriteContextTest, CombinationRewriteWithDelay) {
   ClearStats();
 
   ValidateExpected(
-      "combination_rewrite2", StrCat(CssLink("a.css"), CssLink("b.css")),
-      CssLink(combined_url));
+      "combination_rewrite2",
+      StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+      CssLinkHref(combined_url));
   EXPECT_EQ(1, lru_cache()->num_hits());     // the output is all we need
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -1274,8 +1274,8 @@ TEST_F(RewriteContextTest, LoadFromFileOnTheFly) {
   // The first rewrite was successful because we block for reading from
   // filesystem, not because we did any cache lookups.
   ClearStats();
-  ValidateExpected("trimmable", CssLink("a.css"),
-                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
   EXPECT_EQ(0, lru_cache()->num_hits());
   // 2 cache misses: one for the OutputPartitions, one for the input resource.
   EXPECT_EQ(2, lru_cache()->num_misses());
@@ -1290,8 +1290,8 @@ TEST_F(RewriteContextTest, LoadFromFileOnTheFly) {
   // cache inserts or fetches.  The rewrite should complete using a single
   // cache hit for the metadata.  No cache misses will occur.
   ClearStats();
-  ValidateExpected("trimmable", CssLink("a.css"),
-                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -1310,8 +1310,8 @@ TEST_F(RewriteContextTest, LoadFromFileRewritten) {
   // The first rewrite was successful because we block for reading from
   // filesystem, not because we did any cache lookups.
   ClearStats();
-  ValidateExpected("trimmable", CssLink("a.css"),
-                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
   EXPECT_EQ(0, lru_cache()->num_hits());
   // 2 cache misses: one for the OutputPartitions, one for the input resource.
   EXPECT_EQ(2, lru_cache()->num_misses());
@@ -1325,8 +1325,8 @@ TEST_F(RewriteContextTest, LoadFromFileRewritten) {
   // cache inserts or fetches.  The rewrite should complete using a single
   // cache hit for the metadata.  No cache misses will occur.
   ClearStats();
-  ValidateExpected("trimmable", CssLink("a.css"),
-                   CssLink("http://test.com/a.css.pagespeed.tw.0.css"));
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -1439,8 +1439,8 @@ TEST_F(RewriteContextTest, UltraQuickRewrite) {
   rewrite_driver()->AddOwnedFilter(
       new TestWaitFilter(rewrite_driver(), &sync));
 
-  ValidateExpected("trimmable.quick", CssLink("a.css"),
-                   CssLink("a.css"));
+  ValidateExpected("trimmable.quick", CssLinkHref("a.css"),
+                   CssLinkHref("a.css"));
 }
 
 // Test resource update behavior.
@@ -1491,7 +1491,7 @@ class ResourceUpdateTest : public RewriteContextTest {
 
   // Simulates requesting HTML doc and then loading resource.
   GoogleString RewriteSingleResource(const StringPiece& id) {
-    return RewriteResource(id, CssLink(kOriginalUrl));
+    return RewriteResource(id, CssLinkHref(kOriginalUrl));
   }
 };
 
@@ -1507,7 +1507,7 @@ TEST_F(ResourceUpdateTest, TestExpire404) {
   SetFetchResponse404(kOriginalUrl);
 
   // Trying to rewrite it should not do anything..
-  ValidateNoChanges("404", CssLink(kOriginalUrl));
+  ValidateNoChanges("404", CssLinkHref(kOriginalUrl));
 
   // Now move forward 40 years and upload a new version. We should
   // be ready to optimize at that point.
@@ -1697,8 +1697,8 @@ class CombineResourceUpdateTest : public ResourceUpdateTest {
  protected:
   GoogleString CombineResources(const StringPiece& id) {
     return RewriteResource(
-        id, StrCat(CssLink("web/a.css"), CssLink("file/b.css"),
-                   CssLink("web/c.css"), CssLink("file/d.css")));
+        id, StrCat(CssLinkHref("web/a.css"), CssLinkHref("file/b.css"),
+                   CssLinkHref("web/c.css"), CssLinkHref("file/d.css")));
   }
 };
 
@@ -1779,7 +1779,7 @@ class NestedResourceUpdateTest : public ResourceUpdateTest {
  protected:
   StringVector RewriteNestedResources(const StringPiece& id) {
     // Rewrite everything and fetch the rewritten main resource.
-    GoogleString rewritten_list = RewriteResource(id, CssLink("main.txt"));
+    GoogleString rewritten_list = RewriteResource(id, CssLinkHref("main.txt"));
 
     // Parse URLs for subresources.
     StringPieceVector urls;
@@ -1807,7 +1807,7 @@ TEST_F(NestedResourceUpdateTest, TestExpireNested404) {
                       "a.css\n", 4 * kDecadeMs / 1000);
   SetFetchResponse404("a.css");
 
-  ValidateExpected("nested_404", CssLink("main.txt"), CssLink(kOutUrl));
+  ValidateExpected("nested_404", CssLinkHref("main.txt"), CssLinkHref(kOutUrl));
   GoogleString contents;
   EXPECT_TRUE(ServeResourceUrl(kOutUrl, &contents));
   EXPECT_EQ("http://test.com/a.css\n", contents);
@@ -1821,7 +1821,8 @@ TEST_F(NestedResourceUpdateTest, TestExpireNested404) {
       "http://test.com/main.txt.pagespeed.nf.wtz1oZ56O0.css";
   const char kInnerUrl[] =
       "http://test.com/a.css.pagespeed.nf.N4LKMOq9ms.css\n";
-  ValidateExpected("nested_404", CssLink("main.txt"), CssLink(kFullOutUrl));
+  ValidateExpected("nested_404", CssLinkHref("main.txt"),
+                   CssLinkHref(kFullOutUrl));
   EXPECT_TRUE(ServeResourceUrl(kFullOutUrl, &contents));
   EXPECT_EQ(kInnerUrl, contents);
   EXPECT_TRUE(ServeResourceUrl(kInnerUrl, &contents));

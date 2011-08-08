@@ -370,16 +370,19 @@ class SerfFetch : public PoolElement<SerfFetch> {
     apr_status_t status = APR_EAGAIN;
     const char* data = NULL;
     apr_size_t len = 0;
+    apr_size_t bytes_to_flush = 0;
     while (MoreDataAvailable(status) && (fetched_content_writer_ != NULL)) {
       status = serf_bucket_read(response, SERF_READ_ALL_AVAIL, &data, &len);
       bytes_received_ += len;
+      bytes_to_flush += len;
       if (IsStatusOk(status) && (len != 0) &&
           !fetched_content_writer_->Write(
               StringPiece(data, len), message_handler_)) {
         status = APR_EGENERAL;
       }
     }
-    if (!fetched_content_writer_->Flush(message_handler_)) {
+    if ((bytes_to_flush != 0) &&
+        !fetched_content_writer_->Flush(message_handler_)) {
       status = APR_EGENERAL;
     }
     return status;

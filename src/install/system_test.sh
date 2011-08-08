@@ -239,18 +239,15 @@ check $WGET_PREREQ $URL
 # rewrite_proxy_server and mod_pagespeed?
 #test_resource_ext_corruption $URL $combine_css_filename
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#echo TEST: combine_css without hash field should 404
-#echo $WGET_PREREQ $EXAMPLE_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
-#$WGET_PREREQ $EXAMPLE_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
-# TODO(sligocki): Currently rewrite_proxy_server returns 400.  // [google]
-#check grep '"404 Not Found"' $WGET_OUTPUT
+echo TEST: combine_css without hash field should 404
+echo $WGET_PREREQ $EXAMPLE_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
+$WGET_PREREQ $EXAMPLE_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
+check grep '"404 Not Found"' $WGET_OUTPUT
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 # Note: this large URL can only be processed by Apache if
 # ap_hook_map_to_storage is called to bypass the default
 # handler that maps URLs to filenames.
-#echo TEST: Fetch large css_combine URL
+echo TEST: Fetch large css_combine URL
 LARGE_URL="$EXAMPLE_ROOT/styles/yellow.css+blue.css+big.css+\
 bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
 big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
@@ -262,13 +259,13 @@ big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
 big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
 big.css+bold.css+yellow.css+blue.css+big.css+\
 bold.css.pagespeed.cc.46IlzLf_NK.css"
-#echo "$WGET --save-headers -q -O - $LARGE_URL | head -1 | grep \"HTTP/1.1 200 OK\""
-#$WGET --save-headers -q -O - $LARGE_URL | head -1 | grep "HTTP/1.1 200 OK"
-#check [ $? = 0 ];
-#LARGE_URL_LINE_COUNT=$($WGET -q -O - $LARGE_URL | wc -l)
-#check [ $? = 0 ]
-#echo Checking that response body is at least 900 lines -- it should be 954
-#check [ $LARGE_URL_LINE_COUNT -gt 900 ]
+echo "$WGET --save-headers -q -O - $LARGE_URL | head -1 | grep \"HTTP/1.1 200 OK\""
+$WGET --save-headers -q -O - $LARGE_URL | head -1 | grep -e "HTTP/1\.. 200 OK"
+check [ $? = 0 ];
+LARGE_URL_LINE_COUNT=$($WGET -q -O - $LARGE_URL | wc -l)
+check [ $? = 0 ]
+echo Checking that response body is at least 900 lines -- it should be 954
+check [ $LARGE_URL_LINE_COUNT -gt 900 ]
 
 test_filter combine_javascript combines 2 JS files into 1.
 fetch_until $URL 'grep -c src=' 1
@@ -294,17 +291,15 @@ echo about to test resource ext corruption...
 # rewrite_proxy_server and mod_pagespeed?
 #test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#echo TEST: Attempt to fetch cache-extended image without hash should 404
-#$WGET_PREREQ $EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce..jpg
-#check grep '"404 Not Found"' $WGET_OUTPUT
+echo TEST: Attempt to fetch cache-extended image without hash should 404
+$WGET_PREREQ $EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce..jpg
+check grep '"404 Not Found"' $WGET_OUTPUT
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#echo TEST: Cache-extended image should respond 304 to an If-Modified-Since.
-#URL=$EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
-#DATE=`date -R`
-#$WGET_PREREQ --header "If-Modified-Since: $DATE" $URL
-#check grep '"304 Not Modified"' $WGET_OUTPUT
+echo TEST: Cache-extended image should respond 304 to an If-Modified-Since.
+URL=$EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
+DATE=`date -R`
+$WGET_PREREQ --header "If-Modified-Since: $DATE" $URL
+check grep '"304 Not Modified"' $WGET_OUTPUT
 
 echo TEST: Legacy format URLs should still work.
 URL=$EXAMPLE_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
@@ -330,24 +325,23 @@ test_filter outline_javascript outlines large scripts, but not small ones.
 check $WGET_PREREQ $URL
 check egrep -q "'<script.*large.*src='" $FETCHED       # outlined
 check egrep -q "'<script.*small.*var hello'" $FETCHED  # not outlined
+echo TEST: compression is enabled for rewritten JS.
+JS_URL=$(egrep -o http://.*.pagespeed.*.js $FETCHED)
+echo JS_URL=\$\(egrep -o http://.*.pagespeed.*.js $FETCHED\)=\"$JS_URL\"
+JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+  $JS_URL 2>&1)
+echo JS_HEADERS=$JS_HEADERS
+echo $JS_HEADERS | grep -qie 'HTTP/1\.. 200 OK'
+check [ $? = 0 ]
+echo $JS_HEADERS | grep -qi 'Content-Encoding: gzip'
+check [ $? = 0 ]
 # TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#echo TEST: compression is enabled for rewritten JS.
-#JS_URL=$(egrep -o http://.*.pagespeed.*.js $FETCHED)
-#echo JS_URL=\$\(egrep -o http://.*.pagespeed.*.js $FETCHED\)=\"$JS_URL\"
-#JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
-#  $JS_URL 2>&1)
-#echo JS_HEADERS=$JS_HEADERS
-# TODO(sligocki): This is 404ing for rewrite_proxy_server.  // [google]
-#echo $JS_HEADERS | grep -qie 'HTTP/1\.. 200 OK'
-#check [ $? = 0 ]
-#echo $JS_HEADERS | grep -qi 'Content-Encoding: gzip'
-#check [ $? = 0 ]
 #echo $JS_HEADERS | grep -qi 'Vary: Accept-Encoding'
 #check [ $? = 0 ]
 #echo $JS_HEADERS | grep -qi 'Etag: W/0'
 #check [ $? = 0 ]
-#echo $JS_HEADERS | grep -qi 'Last-Modified:'
-#check [ $? = 0 ]
+echo $JS_HEADERS | grep -qi 'Last-Modified:'
+check [ $? = 0 ]
 
 test_filter remove_comments removes comments but not IE directives.
 check $WGET_PREREQ $URL
@@ -379,53 +373,52 @@ check $WGET_PREREQ $URL
 ls -l $OUTDIR
 check [ "$(stat -c %s $OUTDIR/xBikeCrashIcn*)" -lt 25000 ]      # re-encoded
 check [ "$(stat -c %s $OUTDIR/*256x192*Puzzle*)"  -lt 24126  ]  # resized
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
-#IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
-#echo TEST: headers for rewritten image "$IMG_URL"
-#IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
-#  $IMG_URL 2>&1)
-#echo IMG_HEADERS=\"$IMG_HEADERS\"
-# TODO(sligocki): This is 404ing for rewrite_proxy_server.  // [google]
-#echo $IMG_HEADERS | grep -qie 'HTTP/1\.. 200 OK'
-#check [ $? = 0 ]
+URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
+IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
+echo TEST: headers for rewritten image "$IMG_URL"
+IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+  $IMG_URL 2>&1)
+echo IMG_HEADERS=\"$IMG_HEADERS\"
+echo $IMG_HEADERS | grep -qie 'HTTP/1\.. 200 OK'
+check [ $? = 0 ]
 # Make sure we have some valid headers.
-#echo "$IMG_HEADERS" | grep -qi 'Content-Type: image/jpeg'
-#check [ $? = 0 ]
+echo "$IMG_HEADERS" | grep -qi 'Content-Type: image/jpeg'
+check [ $? = 0 ]
 # Make sure the response was not gzipped.
-#echo TEST: Images are not gzipped
-#echo "$IMG_HEADERS" | grep -qi 'Content-Encoding: gzip'
-#check [ $? != 0 ]
+echo TEST: Images are not gzipped
+echo "$IMG_HEADERS" | grep -qi 'Content-Encoding: gzip'
+check [ $? != 0 ]
 # Make sure there is no vary-encoding
-#echo TEST: Vary is not set for images
-#echo "$IMG_HEADERS" | grep -qi 'Vary: Accept-Encoding'
-#check [ $? != 0 ]
+echo TEST: Vary is not set for images
+echo "$IMG_HEADERS" | grep -qi 'Vary: Accept-Encoding'
+check [ $? != 0 ]
+# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 # Make sure there is an etag
 #echo TEST: Etags is present
 #echo "$IMG_HEADERS" | grep -qi 'Etag: W/0'
 #check [ $? = 0 ]
+# TODO(sligocki): Allow setting arbitrary headers in static_server.
 # Make sure an extra header is propagated from input resource to output
 # resource.  X-Extra-Header is added in debug.conf.template.
 #echo TEST: Extra header is present
 #echo "$IMG_HEADERS" | grep -qi 'X-Extra-Header'
 #check [ $? = 0 ]
 # Make sure there is a last-modified tag
-#echo TEST: Last-modified is present
-#echo "$IMG_HEADERS" | grep -qi 'Last-Modified'
-#check [ $? = 0 ]
+echo TEST: Last-modified is present
+echo "$IMG_HEADERS" | grep -qi 'Last-Modified'
+check [ $? = 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
-#IMG_URL=${IMG_URL/Puzzle/BadName}
-#echo TEST: rewrite_images fails broken image $IMG_URL
-#$WGET_PREREQ $IMG_URL;  # fails
-#check grep '"404 Not Found"' $WGET_OUTPUT
+BAD_IMG_URL=$EXAMPLE_ROOT/images/xBadName.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
+echo TEST: rewrite_images fails broken image \"$BAD_IMG_URL\"
+echo $WGET_PREREQ $BAD_IMG_URL
+$WGET_PREREQ $BAD_IMG_URL  # fails
+check grep '"404 Not Found"' $WGET_OUTPUT
 
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 # [google] b/3328110
-#echo "TEST: rewrite_images doesn't 500 on unoptomizable image"
-#IMG_URL=$EXAMPLE_ROOT/images/xOptPuzzle.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
-#$WGET_PREREQ $IMG_URL
-#check grep '"HTTP/1.1 200 OK"' $WGET_OUTPUT
+echo "TEST: rewrite_images doesn't 500 on unoptomizable image"
+IMG_URL=$EXAMPLE_ROOT/images/xOptPuzzle.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
+$WGET_PREREQ $IMG_URL
+check grep -e '"HTTP/1\.. 200 OK"' $WGET_OUTPUT
 
 # These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.

@@ -72,9 +72,10 @@ void HtmlResourceSlot::Render() {
   if (disable_rendering()) {
     return;  // nothing done here.
   } else if (should_delete_element()) {
-    DCHECK(element_ != NULL);
-    html_parse_->DeleteElement(element_);
-    element_ = NULL;
+    if (element_ != NULL) {
+      html_parse_->DeleteElement(element_);
+      element_ = NULL;
+    }
   } else {
     DCHECK(attribute_ != NULL);
     if (attribute_ != NULL) {

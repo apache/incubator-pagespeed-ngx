@@ -152,6 +152,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Just check if we can fetch a resource successfully, ignore response.
   bool TryFetchResource(const StringPiece& url);
 
+  GoogleString CssLinkHref(const StringPiece& url) {
+    return StrCat("<link rel=stylesheet href=", url, ">");
+  }
 
   // Representation for a CSS <link> tag.
   class CssLink {

@@ -82,6 +82,29 @@ class SerfTestCallback : public UrlAsyncFetcher::Callback {
   DISALLOW_COPY_AND_ASSIGN(SerfTestCallback);
 };
 
+class CheckedWriter : public Writer {
+ public:
+  // Takes ownership of writer passed in.
+  CheckedWriter(Writer* writer)
+      : writer_(writer),
+        first_(true) {
+  }
+
+  virtual bool Write(const StringPiece& str, MessageHandler* handler) {
+    first_ = false;
+    return writer_->Write(str, handler);
+  }
+
+  virtual bool Flush(MessageHandler* handler) {
+    CHECK(!first_) << "Flush called before Write()";
+    return writer_->Flush(handler);
+  }
+
+ private:
+  scoped_ptr<Writer> writer_;
+  bool first_;
+};
+
 }  // namespace
 
 class SerfUrlAsyncFetcherTest: public ::testing::Test {
@@ -132,7 +155,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     request_headers_.push_back(new RequestHeaders);
     response_headers_.push_back(new ResponseHeaders);
     contents_.push_back(new GoogleString);
-    writers_.push_back(new StringWriter(contents_.back()));
+    writers_.push_back(new CheckedWriter(new StringWriter(contents_.back())));
     callbacks_.push_back(new SerfTestCallback(mutex_.get(), url));
   }
 
@@ -224,7 +247,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   std::vector<RequestHeaders*> request_headers_;
   std::vector<ResponseHeaders*> response_headers_;
   std::vector<GoogleString*> contents_;
-  std::vector<StringWriter*> writers_;
+  std::vector<Writer*> writers_;
   std::vector<SerfTestCallback*> callbacks_;
   // The fetcher to be tested.
   scoped_ptr<SerfUrlAsyncFetcher> serf_url_async_fetcher_;

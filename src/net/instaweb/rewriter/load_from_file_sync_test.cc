@@ -22,14 +22,33 @@
 // Branched from rewrite_context_test, because the sync flow is dying and we
 // don't want to have to maintain that test for both flows.
 
+#include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/counting_url_async_fetcher.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
-#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/mem_file_system.h"
+#include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/url_segment_encoder.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 
 namespace net_instaweb {
 
@@ -114,10 +133,6 @@ class LoadFromFileSyncTest : public ResourceManagerTestBase {
     //other_rewrite_driver()->AddRewriteFilter(
     //    new TrimFilter(kind, other_rewrite_driver(), message_handler()));
     //other_rewrite_driver()->AddFilters();
-  }
-
-  GoogleString CssLinkHref(const StringPiece& url) {
-    return StrCat("<link rel=stylesheet href=", url, ">");
   }
 
   virtual void ClearStats() {
