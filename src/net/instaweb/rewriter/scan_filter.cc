@@ -23,6 +23,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/public/statistics.h"
 
 namespace net_instaweb {
 
@@ -62,6 +63,10 @@ void ScanFilter::StartElement(HtmlElement* element) {
              tag_scanner_.ScanElement(element) != NULL) {
     seen_refs_ = true;
   }
+}
+
+void ScanFilter::Flush() {
+  driver_->resource_manager()->num_flushes()->Add(1);
 }
 
 }  // namespace net_instaweb

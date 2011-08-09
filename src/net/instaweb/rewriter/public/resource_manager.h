@@ -197,6 +197,7 @@ class ResourceManager {
   Variable* failed_filter_resource_fetches() {
     return failed_filter_resource_fetches_;
   }
+  Variable* num_flushes() { return num_flushes_; }
 
   MessageHandler* message_handler() const { return message_handler_; }
 
@@ -394,6 +395,7 @@ class ResourceManager {
   Variable* cached_resource_fetches_;
   Variable* succeeded_filter_resource_fetches_;
   Variable* failed_filter_resource_fetches_;
+  Variable* num_flushes_;
 
   HTTPCache* http_cache_;
   CacheInterface* metadata_cache_;

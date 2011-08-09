@@ -55,6 +55,7 @@
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/rewriter/public/flush_html_filter.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
@@ -574,6 +575,14 @@ void RewriteDriver::AddFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kSpriteImages)) {
     EnableRewriteFilter(kImageCombineId);
+  }
+
+  if (rewrite_options->Enabled(RewriteOptions::kFlushHtml)) {
+    // Note that this does not get hooked into the normal html-parse
+    // filter-chain as it gets run immediately after every call to
+    // ParseText, possibly inducing the system to trigger a Flush
+    // based on the content it sees.
+    set_event_listener(new FlushHtmlFilter(this));
   }
 
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it

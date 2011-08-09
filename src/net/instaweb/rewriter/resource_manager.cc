@@ -81,6 +81,7 @@ const char kResourceFetchConstructSuccesses[] =
     "resource_fetch_construct_successes";
 const char kResourceFetchConstructFailures[] =
     "resource_fetch_construct_failures";
+const char kNumFlushes[] = "num_flushes";
 
 // Variables for the beacon to increment.  These are currently handled in
 // mod_pagespeed_handler on apache.  The average load time in milliseconds is
@@ -177,6 +178,7 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
           statistics->GetVariable(kResourceFetchConstructSuccesses)),
       failed_filter_resource_fetches_(
           statistics->GetVariable(kResourceFetchConstructFailures)),
+      num_flushes_(statistics->GetVariable(kNumFlushes)),
       http_cache_(http_cache),
       metadata_cache_(metadata_cache),
       relative_path_(false),
@@ -223,6 +225,7 @@ void ResourceManager::Initialize(Statistics* statistics) {
     statistics->AddVariable(kResourceFetchesCached);
     statistics->AddVariable(kResourceFetchConstructSuccesses);
     statistics->AddVariable(kResourceFetchConstructFailures);
+    statistics->AddVariable(kNumFlushes);
     HTTPCache::Initialize(statistics);
     RewriteDriver::Initialize(statistics);
   }

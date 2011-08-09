@@ -96,7 +96,8 @@ GoogleString StrCat(const StringPiece& a, const StringPiece& b,
                     const StringPiece& h = EmptyString::kEmptyString);
 
 void StrAppend(GoogleString* target,
-               const StringPiece& a, const StringPiece& b,
+               const StringPiece& a,
+               const StringPiece& b = EmptyString::kEmptyString,
                const StringPiece& c = EmptyString::kEmptyString,
                const StringPiece& d = EmptyString::kEmptyString,
                const StringPiece& e = EmptyString::kEmptyString,

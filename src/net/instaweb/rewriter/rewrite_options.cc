@@ -137,6 +137,7 @@ void RewriteOptions::SetUp() {
   name_filter_map_["convert_jpeg_to_webp"] = kConvertJpegToWebp;
   name_filter_map_["elide_attributes"] = kElideAttributes;
   name_filter_map_["extend_cache"] = kExtendCache;
+  name_filter_map_["flush_html"] = kFlushHtml;
   name_filter_map_["inline_css"] = kInlineCss;
   name_filter_map_["inline_images"] = kInlineImages;
   name_filter_map_["inline_javascript"] = kInlineJavascript;
@@ -193,6 +194,7 @@ void RewriteOptions::SetUp() {
   // ... and add possibly unsafe filters.
   // TODO(jmarantz): Migrate these over to CoreFilters.
   level_filter_set_map_[kTestingCoreFilters].insert(kConvertJpegToWebp);
+  level_filter_set_map_[kTestingCoreFilters].insert(kFlushHtml);
   level_filter_set_map_[kTestingCoreFilters].insert(kMakeGoogleAnalyticsAsync);
   level_filter_set_map_[kTestingCoreFilters].insert(kRewriteDomains);
 

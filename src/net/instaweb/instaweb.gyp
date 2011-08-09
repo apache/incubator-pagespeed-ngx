@@ -520,6 +520,7 @@
         'rewriter/div_structure_filter.cc',
         'rewriter/domain_rewrite_filter.cc',
         'rewriter/file_input_resource.cc',
+        'rewriter/flush_html_filter.cc',
         'rewriter/google_analytics_filter.cc',
         'rewriter/inline_rewrite_context.cc',
         'rewriter/js_combine_filter.cc',

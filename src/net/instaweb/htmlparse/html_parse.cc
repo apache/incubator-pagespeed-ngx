@@ -43,7 +43,6 @@
 
 namespace net_instaweb {
 class DocType;
-struct ContentType;
 
 HtmlParse::HtmlParse(MessageHandler* message_handler)
     : lexer_(NULL),  // Can't initialize here, since "this" should not be used
@@ -59,6 +58,8 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       need_coalesce_characters_(false),
       url_valid_(false),
       log_rewrite_timing_(false),
+      flush_requested_(false),
+      running_filters_(false),
       parse_start_time_us_(0),
       timer_(NULL),
       first_filter_(0) {
@@ -118,6 +119,12 @@ void HtmlParse::AddEvent(HtmlEvent* event) {
   if (leaf != NULL) {
     leaf->set_iter(Last());
     message_handler_->Check(IsRewritable(leaf), "!IsRewritable(leaf)");
+  }
+  HtmlFilter* listener = event_listener_.get();
+  if (listener != NULL) {
+    running_filters_ = true;
+    event->Run(listener);
+    running_filters_ = false;
   }
 }
 
@@ -221,6 +228,9 @@ void HtmlParse::ParseText(const char* text, int size) {
   DCHECK(url_valid_) << "Invalid to call ParseText with invalid url";
   if (url_valid_) {
     lexer_->Parse(text, size);
+    if (flush_requested_) {
+      Flush();
+    }
   }
 }
 
@@ -346,6 +356,16 @@ void HtmlParse::SanityCheck() {
 }
 
 void HtmlParse::Flush() {
+  if (running_filters_) {
+    flush_requested_ = true;
+    return;
+  }
+
+  HtmlFilter* listener = event_listener_.get();
+  if (listener != NULL) {
+    listener->Flush();
+  }
+
   DCHECK(url_valid_) << "Invalid to call FinishParse with invalid url";
   if (url_valid_) {
     ShowProgress("Flush");
@@ -381,6 +401,7 @@ void HtmlParse::Flush() {
     need_sanity_check_ = false;
     need_coalesce_characters_ = false;
   }
+  flush_requested_ = false;
 }
 
 void HtmlParse::InsertElementBeforeElement(const HtmlNode* existing_node,
@@ -664,6 +685,8 @@ bool HtmlParse::IsInEventWindow(const HtmlEventListIterator& iter) const {
 
 void HtmlParse::ClearElements() {
   nodes_.DestroyObjects();
+  DCHECK(!flush_requested_);
+  DCHECK(!running_filters_);
 }
 
 void HtmlParse::DebugPrintQueue() {
@@ -799,6 +822,10 @@ HtmlName HtmlParse::MakeName(const StringPiece& str_piece) {
     str = atom.c_str();
   }
   return HtmlName(keyword, str);
+}
+
+void HtmlParse::set_event_listener(HtmlFilter* listener) {
+  event_listener_.reset(listener);
 }
 
 }  // namespace net_instaweb

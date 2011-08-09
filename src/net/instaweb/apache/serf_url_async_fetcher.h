@@ -49,6 +49,12 @@ struct SerfStats {
   static const char kSerfFetchTimeoutCount[];
 };
 
+// TODO(sligocki): Serf does not seem to act appropriately in IPv6
+// environments, fix and test this.
+// Specifically:
+//   (1) It does not attempt to fall-back to IPv4 if IPv6 connection fails;
+//   (2) It may not correctly signal failure, which causes the incoming
+//       connection to hang.
 class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
  public:
   SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,

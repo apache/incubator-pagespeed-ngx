@@ -22,6 +22,7 @@
 #include <cstdarg>
 #include <cstddef>
 #include <vector>
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -86,7 +87,9 @@ class HtmlParse {
   // It is invalid to call ParseText when the StartParse* routines returned
   // false.
   void ParseText(const char* content, int size);
-  void ParseText(const StringPiece& sp) { ParseText(sp.data(), sp.size()); }
+  void ParseText(const StringPiece& sp) {
+    ParseText(sp.data(), sp.size());
+  }
 
   // Flush the currently queued events through the filters.  It is desirable
   // for large web pages, particularly dynamically generated ones, to start
@@ -99,6 +102,9 @@ class HtmlParse {
   //
   // It is invalid to call Flush when the StartParse* routines returned
   // false.
+  //
+  // If this is called from a Filter, the request will be deferred until after
+  // currently active filters are completed.
   void Flush();
 
   // Finish a chunked parsing session.  This also induces a Flush.
@@ -303,6 +309,10 @@ class HtmlParse {
   void set_timer(Timer* timer) { timer_ = timer; }
   void set_log_rewrite_timing(bool x) { log_rewrite_timing_ = x; }
 
+  // Sets up a filter to be called during parsing as new events are added.
+  // Takes ownership of the HtmlFilter passed in.
+  void set_event_listener(HtmlFilter* listener);
+
  protected:
   // Subclasses that want more explicit control of when initial filters
   // are activated can do so by adjusting the first filter index, which
@@ -318,6 +328,7 @@ class HtmlParse {
   void set_first_filter(int index) { first_filter_ = index; }
 
  private:
+  void ApplyFilterHelper(HtmlFilter* filter);
   HtmlEventListIterator Last();  // Last element in queue
   bool IsInEventWindow(const HtmlEventListIterator& iter) const;
   void InsertElementBeforeEvent(const HtmlEventListIterator& event,
@@ -343,6 +354,7 @@ class HtmlParse {
     return string_table_.string_bytes_allocated();
   }
 
+  scoped_ptr<HtmlFilter> event_listener_;
   SymbolTableSensitive string_table_;
   std::vector<HtmlFilter*> filters_;
   HtmlLexer* lexer_;
@@ -362,6 +374,8 @@ class HtmlParse {
   bool need_coalesce_characters_;
   bool url_valid_;
   bool log_rewrite_timing_;  // Should we time the speed of parsing?
+  bool flush_requested_;
+  bool running_filters_;
   int64 parse_start_time_us_;
   Timer* timer_;
   int first_filter_;

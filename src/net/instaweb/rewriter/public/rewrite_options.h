@@ -44,6 +44,7 @@ class RewriteOptions {
     kConvertJpegToWebp,
     kElideAttributes,
     kExtendCache,
+    kFlushHtml,
     kInlineCss,
     kInlineImages,
     kInlineJavascript,
