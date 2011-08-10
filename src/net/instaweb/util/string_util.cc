@@ -27,24 +27,6 @@
 
 namespace net_instaweb {
 
-void SplitStringPieceToVector(const StringPiece& sp, const char* separator,
-                              StringPieceVector* components,
-                              bool omit_empty_strings) {
-  size_t prev_pos = 0;
-  size_t pos = 0;
-  StringPiece sep(separator);
-  while ((pos = sp.find_first_of(sep, pos)) != StringPiece::npos) {
-    if (!omit_empty_strings || (pos > prev_pos)) {
-      components->push_back(sp.substr(prev_pos, pos - prev_pos));
-    }
-    ++pos;
-    prev_pos = pos;
-  }
-  if (!omit_empty_strings || (prev_pos < sp.size())) {
-    components->push_back(sp.substr(prev_pos, prev_pos - sp.size()));
-  }
-}
-
 GoogleString StrCat(const StringPiece& a,
                     const StringPiece& b,
                     const StringPiece& c,
@@ -89,6 +71,24 @@ void StrAppend(GoogleString* target,
   h.AppendToString(target);
 }
 
+void SplitStringPieceToVector(const StringPiece& sp, const char* separator,
+                              StringPieceVector* components,
+                              bool omit_empty_strings) {
+  size_t prev_pos = 0;
+  size_t pos = 0;
+  StringPiece sep(separator);
+  while ((pos = sp.find_first_of(sep, pos)) != StringPiece::npos) {
+    if (!omit_empty_strings || (pos > prev_pos)) {
+      components->push_back(sp.substr(prev_pos, pos - prev_pos));
+    }
+    ++pos;
+    prev_pos = pos;
+  }
+  if (!omit_empty_strings || (prev_pos < sp.size())) {
+    components->push_back(sp.substr(prev_pos, prev_pos - sp.size()));
+  }
+}
+
 void BackslashEscape(const StringPiece& src,
                      const StringPiece& to_escape,
                      GoogleString* dest) {
@@ -105,6 +105,21 @@ void BackslashEscape(const StringPiece& src,
 // From src/third_party/protobuf/src/google/protobuf/stubs/strutil.h
 // but we don't need any other aspect of protobufs so we don't want to
 // incur the link cost.
+bool HasPrefixString(const StringPiece& str, const StringPiece& prefix) {
+  return ((str.size() >= prefix.size()) &&
+          (str.substr(0, prefix.size()) == prefix));
+}
+
+// From src/third_party/protobuf/src/google/protobuf/stubs/strutil.h
+// but we don't need any other aspect of protobufs so we don't want to
+// incur the link cost.
+void UpperString(GoogleString* s) {
+  GoogleString::iterator end = s->end();
+  for (GoogleString::iterator i = s->begin(); i != end; ++i) {
+    *i = UpperChar(*i);
+  }
+}
+
 void LowerString(GoogleString* s) {
   GoogleString::iterator end = s->end();
   for (GoogleString::iterator i = s->begin(); i != end; ++i) {
@@ -112,11 +127,39 @@ void LowerString(GoogleString* s) {
   }
 }
 
-void UpperString(GoogleString* s) {
-  GoogleString::iterator end = s->end();
-  for (GoogleString::iterator i = s->begin(); i != end; ++i) {
-    *i = UpperChar(*i);
+// ----------------------------------------------------------------------
+// GlobalReplaceSubstring()
+//    Replaces all instances of a substring in a string.  Returns the
+//    number of replacements.
+//
+//    NOTE: The string pieces must not overlap s.
+// ----------------------------------------------------------------------
+int GlobalReplaceSubstring(const StringPiece& substring,
+                           const StringPiece& replacement,
+                           GoogleString* s) {
+  CHECK(s != NULL);
+  if (s->empty())
+    return 0;
+  GoogleString tmp;
+  int num_replacements = 0;
+  size_t pos = 0;
+  for (size_t match_pos = s->find(substring.data(), pos, substring.length());
+       match_pos != GoogleString::npos;
+       pos = match_pos + substring.length(),
+           match_pos = s->find(substring.data(), pos, substring.length())) {
+    ++num_replacements;
+    // Append the original content before the match.
+    tmp.append(*s, pos, match_pos - pos);
+    // Append the replacement for the match.
+    tmp.append(replacement.begin(), replacement.end());
   }
+  // Append the content after the last match. If no replacements were made, the
+  // original string is left untouched.
+  if (num_replacements > 0) {
+    tmp.append(*s, pos, s->length() - pos);
+    s->swap(tmp);
+  }
+  return num_replacements;
 }
 
 bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2) {
@@ -172,14 +215,6 @@ void ParseShellLikeString(const StringPiece& input,
   }
 }
 
-// From src/third_party/protobuf/src/google/protobuf/stubs/strutil.h
-// but we don't need any other aspect of protobufs so we don't want to
-// incur the link cost.
-bool HasPrefixString(const StringPiece& str, const StringPiece& prefix) {
-  return ((str.size() >= prefix.size()) &&
-          (str.substr(0, prefix.size()) == prefix));
-}
-
 // In-place StringPiece whitespace trimming.  This mutates the StringPiece.
 void TrimWhitespace(StringPiece* str) {
   while (str->size() && isspace(str->data()[0])) {
@@ -191,41 +226,6 @@ void TrimWhitespace(StringPiece* str) {
     str->remove_suffix(1);
     size = str->size();
   }
-}
-
-// ----------------------------------------------------------------------
-// GlobalReplaceSubstring()
-//    Replaces all instances of a substring in a string.  Returns the
-//    number of replacements.
-//
-//    NOTE: The string pieces must not overlap s.
-// ----------------------------------------------------------------------
-int GlobalReplaceSubstring(const StringPiece& substring,
-                           const StringPiece& replacement,
-                           GoogleString* s) {
-  CHECK(s != NULL);
-  if (s->empty())
-    return 0;
-  GoogleString tmp;
-  int num_replacements = 0;
-  size_t pos = 0;
-  for (size_t match_pos = s->find(substring.data(), pos, substring.length());
-       match_pos != GoogleString::npos;
-       pos = match_pos + substring.length(),
-           match_pos = s->find(substring.data(), pos, substring.length())) {
-    ++num_replacements;
-    // Append the original content before the match.
-    tmp.append(*s, pos, match_pos - pos);
-    // Append the replacement for the match.
-    tmp.append(replacement.begin(), replacement.end());
-  }
-  // Append the content after the last match. If no replacements were made, the
-  // original string is left untouched.
-  if (num_replacements > 0) {
-    tmp.append(*s, pos, s->length() - pos);
-    s->swap(tmp);
-  }
-  return num_replacements;
 }
 
 // TODO(jmarantz): This is a very slow implementation.  But strncasecmp
