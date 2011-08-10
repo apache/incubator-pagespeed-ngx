@@ -1852,6 +1852,7 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   // 1) Initial combined resource.
   StringVector result_vector;
   result_vector = RewriteNestedResources("first_load");
+  ASSERT_EQ(3, result_vector.size());
   EXPECT_EQ(" A1 ", result_vector[0]);
   EXPECT_EQ(" B1 ", result_vector[1]);
   EXPECT_EQ(" C1 ", result_vector[2]);
@@ -1868,6 +1869,7 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   mock_timer()->AdvanceMs(kShortTtlMs / 2);
   // Rewrite should be the same.
   result_vector = RewriteNestedResources("advance_time");
+  ASSERT_EQ(3, result_vector.size());
   EXPECT_EQ(" A1 ", result_vector[0]);
   EXPECT_EQ(" B1 ", result_vector[1]);
   EXPECT_EQ(" C1 ", result_vector[2]);
@@ -1887,6 +1889,7 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
                       " c2 ", kShortTtlMs / 1000);
   // File-based resources should be updated, but web-based ones still cached.
   result_vector = RewriteNestedResources("stale_content");
+  ASSERT_EQ(3, result_vector.size());
   EXPECT_EQ(" A1 ", result_vector[0]);
   EXPECT_EQ(" B2 ", result_vector[1]);
   EXPECT_EQ(" C1 ", result_vector[2]);
@@ -1907,6 +1910,7 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   mock_timer()->AdvanceMs(kShortTtlMs);
   // All but long TTL UrlInputResource should be updated.
   result_vector = RewriteNestedResources("short_updated");
+  ASSERT_EQ(3, result_vector.size());
   EXPECT_EQ(" A1 ", result_vector[0]);
   EXPECT_EQ(" B2 ", result_vector[1]);
   EXPECT_EQ(" C2 ", result_vector[2]);
@@ -1921,6 +1925,7 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   mock_timer()->AdvanceMs(kLongTtlMs);
   // Rewrite should now use all new resources.
   result_vector = RewriteNestedResources("short_updated");
+  ASSERT_EQ(3, result_vector.size());
   EXPECT_EQ(" A2 ", result_vector[0]);
   EXPECT_EQ(" B2 ", result_vector[1]);
   EXPECT_EQ(" C2 ", result_vector[2]);

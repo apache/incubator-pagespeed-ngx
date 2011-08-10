@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/waveform.h"
 
 namespace net_instaweb {
 
@@ -84,6 +85,8 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     // Get task.
     current_task_ = tasks_.front();
     tasks_.pop_front();
+    owner_->UpdateQueueSizeStat(tasks_.size());
+
     return true;
   }
 
@@ -111,6 +114,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
 
     Join();
     STLDeleteElements(&tasks_);
+    owner_->UpdateQueueSizeStat(0);
     started_ = false;  // Reject further jobs on explicit shutdown.
   }
 
@@ -135,6 +139,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     ScopedMutex lock(mutex_.get());
     if (owner_->IsPermitted(closure)) {
       tasks_.push_back(closure);
+      owner_->UpdateQueueSizeStat(tasks_.size());
       if (current_task_ == NULL) {  // wake the thread up if it's idle.
         state_change_->Signal();
       }
@@ -172,7 +177,9 @@ class Worker::WorkThread : public ThreadSystem::Thread {
   DISALLOW_COPY_AND_ASSIGN(WorkThread);
 };
 
-Worker::Worker(ThreadSystem* runtime) : thread_(new WorkThread(this, runtime)) {
+Worker::Worker(ThreadSystem* runtime)
+    : thread_(new WorkThread(this, runtime)),
+      queue_size_(NULL) {
 }
 
 Worker::~Worker() {
@@ -202,5 +209,12 @@ int Worker::NumJobs() {
 void Worker::ShutDown() {
   thread_->ShutDown();
 }
+
+void Worker::UpdateQueueSizeStat(int value) {
+  if (queue_size_ != NULL) {
+    queue_size_->Add(value);
+  }
+}
+
 
 }  // namespace net_instaweb

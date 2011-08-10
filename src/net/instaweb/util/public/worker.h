@@ -29,6 +29,7 @@
 namespace net_instaweb {
 
 class ThreadSystem;
+class Waveform;
 
 // This class is a base for various mechanisms of running things in background.
 //
@@ -69,6 +70,11 @@ class Worker {
   // just be deleted. It is safe to call this method multiple times.
   void ShutDown();
 
+  // Sets up a timed-variable statistic indicating the current queue depth.
+  //
+  // This must be called prior to starting the thread.
+  void set_queue_size_stat(Waveform* x) { queue_size_ = x; }
+
  protected:
   explicit Worker(ThreadSystem* runtime);
   virtual ~Worker();
@@ -97,8 +103,12 @@ class Worker {
 
   void RunIdleCallback();
 
+  // This is called whenever a task is added or removed from the queue.
+  void UpdateQueueSizeStat(int size);
+
   scoped_ptr<WorkThread> thread_;
   scoped_ptr<Function> idle_callback_;
+  Waveform* queue_size_;
 
   DISALLOW_COPY_AND_ASSIGN(Worker);
 };

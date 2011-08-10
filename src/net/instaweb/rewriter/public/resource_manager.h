@@ -60,6 +60,7 @@ class Timer;
 class UrlAsyncFetcher;
 class UrlSegmentEncoder;
 class Variable;
+class Waveform;
 
 typedef RefCountedPtr<OutputResource> OutputResourcePtr;
 typedef std::vector<OutputResourcePtr> OutputResourceVector;
@@ -198,6 +199,9 @@ class ResourceManager {
     return failed_filter_resource_fetches_;
   }
   Variable* num_flushes() { return num_flushes_; }
+  Waveform* rewrite_thread_queue_depth() {
+    return rewrite_thread_queue_depth_.get();
+  }
 
   MessageHandler* message_handler() const { return message_handler_; }
 
@@ -396,6 +400,7 @@ class ResourceManager {
   Variable* succeeded_filter_resource_fetches_;
   Variable* failed_filter_resource_fetches_;
   Variable* num_flushes_;
+  scoped_ptr<Waveform> rewrite_thread_queue_depth_;
 
   HTTPCache* http_cache_;
   CacheInterface* metadata_cache_;

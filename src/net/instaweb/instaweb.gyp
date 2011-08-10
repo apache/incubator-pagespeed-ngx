@@ -260,6 +260,7 @@
         'util/url_escaper.cc',
         'util/url_multipart_encoder.cc',
         'util/url_segment_encoder.cc',
+        'util/waveform.cc',
         'util/worker.cc',
         'util/work_bound.cc',
         'util/write_through_cache.cc',

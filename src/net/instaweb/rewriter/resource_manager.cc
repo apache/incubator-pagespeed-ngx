@@ -55,6 +55,7 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "net/instaweb/util/public/waveform.h"
 
 namespace net_instaweb {
 
@@ -192,6 +193,8 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       rewrite_drivers_mutex_(thread_system->NewMutex()),
       decoding_driver_(NewUnmanagedRewriteDriver()) {
   rewrite_worker_.reset(new QueuedWorker(thread_system_));
+  rewrite_thread_queue_depth_.reset(new Waveform(thread_system, timer(), 200));
+  rewrite_worker_->set_queue_size_stat(rewrite_thread_queue_depth_.get());
   rewrite_worker_->Start();
 
   // Make sure the excluded-attributes are in abc order so binary_search works.

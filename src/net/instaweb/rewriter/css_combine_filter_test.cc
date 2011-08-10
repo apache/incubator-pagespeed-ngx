@@ -910,6 +910,7 @@ TEST_P(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   GoogleString actual_combination;
   EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
   GoogleUrl gurl(css_out[0]->url_);
+  ASSERT_TRUE(gurl.is_valid());
   EXPECT_EQ("/" + long_name + "/", gurl.PathSansLeaf());
   ResourceNamer namer;
   ASSERT_TRUE(namer.Decode(gurl.LeafWithQuery()));
