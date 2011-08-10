@@ -107,6 +107,23 @@ class HtmlParse {
   // currently active filters are completed.
   void Flush();
 
+  // Indicates that a Flush through the HTML parser chain should happen
+  // soon, e.g. once the network pauses its incoming byte stream.
+  void RequestFlush() { flush_requested_ = true; }
+
+  // Executes an Flush() if RequestFlush() was called, e.g. from the
+  // Listener Filter (see set_event_listener below).  Consider an HTML
+  // parse driven by a UrlAsyncFetcher.  When the UrlAsyncFetcher
+  // temporarily runs out of bytes to read, it calls
+  // response_writer->Flush().  When that happens, we may want to
+  // consider flushing the outstanding HTML events through the system
+  // so that the browser can start fetching subresources and
+  // rendering.  The event_listener (see set_event_listener below)
+  // helps determine whether enough "interesting" events have passed
+  // in the current flush window so that we should take this incoming
+  // network pause as an opportunity.
+  void ExecuteFlushIfRequested();
+
   // Finish a chunked parsing session.  This also induces a Flush.
   //
   // It is invalid to call FinishParse when the StartParse* routines returned

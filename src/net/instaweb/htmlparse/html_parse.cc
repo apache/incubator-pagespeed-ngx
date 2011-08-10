@@ -224,13 +224,16 @@ void HtmlParse::FinishParse() {
   }
 }
 
+void HtmlParse::ExecuteFlushIfRequested() {
+  if (flush_requested_) {
+    Flush();
+  }
+}
+
 void HtmlParse::ParseText(const char* text, int size) {
   DCHECK(url_valid_) << "Invalid to call ParseText with invalid url";
   if (url_valid_) {
     lexer_->Parse(text, size);
-    if (flush_requested_) {
-      Flush();
-    }
   }
 }
 
@@ -356,8 +359,8 @@ void HtmlParse::SanityCheck() {
 }
 
 void HtmlParse::Flush() {
+  DCHECK(!running_filters_);
   if (running_filters_) {
-    flush_requested_ = true;
     return;
   }
 

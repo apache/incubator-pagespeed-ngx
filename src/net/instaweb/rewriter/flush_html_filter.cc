@@ -77,7 +77,7 @@ void FlushHtmlFilter::EndElementImpl(HtmlElement* element) {
   if (href != NULL) {
     if (score_ >= kFlushScoreThreshold) {
       score_ = 0;
-      driver_->Flush();
+      driver_->RequestFlush();
     }
   }
 }
