@@ -1,0 +1,21 @@
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=UTF-8
+Connection: close
+Cache-control: max-age=0, no-cache, no-store
+Accept-Ranges: bytes
+Last-Modified: Wed, 03 Nov 2010 03:25:09 GMT
+Server: Apache/2.2.3 (CentOS)
+Date: Fri, 04 Mar 2011 03:46:05 GMT
+Empty-Header-Bug-Test:
+Content-Length: 338
+
+<html>
+  <body>
+    <p>mod_pagespeed will rewrite this image's source to include a content-hash.
+    Note that this requires a background asynchronous fetch of the image;
+    therefore the page may not be rewritten the first time.  If it isn't, wait
+    a few seconds and reload.</p>
+
+    <img src="images/Puzzle.jpg"/>
+  </body>
+</html>

@@ -293,6 +293,11 @@ class SerfFetch : public PoolElement<SerfFetch> {
         ((APR_STATUS_IS_EOF(status) && parser_.headers_complete()) ||
          (status == APR_EGENERAL))) {
       bool success = (IsStatusOk(status) && parser_.headers_complete());
+      if (!parser_.headers_complete() && (response_headers_ != NULL)) {
+        // Be careful not to leave headers in inconsistent state in some error
+        // conditions.
+        response_headers_->Clear();
+      }
       CallCallback(success);
     }
     return status;
@@ -344,7 +349,11 @@ class SerfFetch : public PoolElement<SerfFetch> {
     apr_size_t len = 0;
     apr_status_t status = serf_bucket_read(headers, SERF_READ_ALL_AVAIL,
                                            &data, &len);
-    if (IsStatusOk(status)) {
+
+    // Feed valid chunks to the header parser --- but skip empty ones,
+    // which can occur for value-less headers, since otherwise they'd
+    // look like parse errors.
+    if (IsStatusOk(status) && (len > 0)) {
       if (parser_.ParseChunk(StringPiece(data, len), message_handler_)) {
         if (parser_.headers_complete()) {
           // Stream the one byte read from ReadOneByteFromBody to writer.

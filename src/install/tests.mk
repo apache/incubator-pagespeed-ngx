@@ -33,6 +33,7 @@ apache_system_tests :
 	$(MAKE) apache_debug_rewrite_test
 	$(MAKE) apache_debug_proxy_test
 	$(MAKE) apache_debug_slurp_test
+	$(MAKE) apache_debug_serf_empty_header_test
 	$(MAKE) apache_debug_speling_test
 	$(MAKE) apache_debug_vhost_only_test
 	$(MAKE) apache_debug_global_off_test
@@ -117,6 +118,19 @@ apache_debug_vhost_only_test:
 	$(MAKE) apache_debug_restart
 	$(WGET) -O /dev/null --save-headers $(EXAMPLE) 2>&1 \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
+
+# Regression test for serf fetching something with an empty header.
+# We use a slurp-serving server to produce that.
+EMPTY_HEADER_URL=http://www.modpagespeed.com/empty_header.html
+apache_debug_serf_empty_header_test:
+	$(MAKE) apache_install_conf \
+	  OPT_COVERAGE_TRACE_TEST=COVERAGE_TRACE_TEST=1 \
+	  OPT_STRESS_TEST=STRESS_TEST=1 \
+	  SLURP_DIR=$(PWD)/$(INSTALL_DATA_DIR)/mod_pagespeed_test/slurp
+	$(MAKE) apache_debug_restart
+	# Make sure we can fetch a URL with empty header correctly..
+	$(WGET_PROXY) $(EMPTY_HEADER_URL) > /dev/null
+
 
 # Test to make sure we don't crash due to uninitialized statistics if we
 # are off by default but turned on in some place.
