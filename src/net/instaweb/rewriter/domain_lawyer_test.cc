@@ -48,8 +48,17 @@ class DomainLawyerTest : public testing::Test {
                   const StringPiece& resource_url,
                   GoogleString* mapped_domain_name) {
     GoogleUrl resolved_request;
+    return MapRequest(original_request, resource_url, mapped_domain_name,
+                      &resolved_request);
+  }
+
+  // Syntactic sugar to map a request.
+  bool MapRequest(const GoogleUrl& original_request,
+                  const StringPiece& resource_url,
+                  GoogleString* mapped_domain_name,
+                  GoogleUrl* resolved_request) {
     return domain_lawyer_.MapRequestToDomain(
-        original_request, resource_url, mapped_domain_name, &resolved_request,
+        original_request, resource_url, mapped_domain_name, resolved_request,
         &message_handler_);
   }
 
@@ -104,7 +113,7 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclared) {
 
   // Make sure that we do not allow requests when the port is present; we've
   // only authorized origin "http://www.nytimes.com/",
-  // not "http://www.nytimes.com:8080/
+  // not "http://www.nytimes.com:8080/".
   GoogleString orig_cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
   GoogleString port_cdn_domain(cdn_domain.data(), cdn_domain.size() - 1);
   port_cdn_domain += ":8080/";
@@ -174,7 +183,7 @@ TEST_F(DomainLawyerTest, PortExternalDomainDeclared) {
 
   // Make sure that we do not allow requests when the port is missing; we've
   // only authorized origin "http://www.nytimes.com:8080/",
-  // not "http://www.nytimes.com:8080
+  // not "http://www.nytimes.com:8080".
   GoogleString orig_cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
   orig_cdn_domain += "/";
   EXPECT_FALSE(MapRequest(port_request_, StrCat(orig_cdn_domain, kResourceUrl),
@@ -250,7 +259,7 @@ TEST_F(DomainLawyerTest, MapRewriteDomain) {
                                        &message_handler_));
   ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com", "http://origin.com"));
   EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
-  // First try the mapping from origin.com to cdn.com
+  // First try the mapping from "origin.com" to "cdn.com".
   GoogleString mapped_domain_name;
   ASSERT_TRUE(MapRequest(
       context_gurl,
@@ -258,15 +267,15 @@ TEST_F(DomainLawyerTest, MapRewriteDomain) {
       &mapped_domain_name));
   EXPECT_EQ("http://cdn.com/", mapped_domain_name);
 
-  // But a relative reference will not map because we mapped origin.com,
-  // not www.origin.com
+  // But a relative reference will not map because we mapped "origin.com",
+  // not "www.origin.com".
   ASSERT_TRUE(MapRequest(
       context_gurl,
       "styles/blue.css",
       &mapped_domain_name));
   EXPECT_EQ("http://www.origin.com/", mapped_domain_name);
 
-  // Now add the mapping from www.
+  // Now add the mapping from "www".
   ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com",
                                       "http://www.origin.com"));
   ASSERT_TRUE(MapRequest(
@@ -274,6 +283,48 @@ TEST_F(DomainLawyerTest, MapRewriteDomain) {
       "styles/blue.css",
       &mapped_domain_name));
   EXPECT_EQ("http://cdn.com/", mapped_domain_name);
+}
+
+TEST_F(DomainLawyerTest, MapRewriteDomainAndPath) {
+  GoogleUrl context_gurl("http://www.origin.com/index.html");
+  ASSERT_TRUE(domain_lawyer_.AddDomain("http://cdn.com/origin/",
+                                       &message_handler_));
+  ASSERT_TRUE(domain_lawyer_.AddDomain("http://origin.com/",
+                                       &message_handler_));
+  ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com/origin",
+                                      "http://origin.com"));
+  EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
+  // First try the mapping from "origin.com" to "cdn.com/origin".
+  GoogleUrl resolved_request;
+  GoogleString mapped_domain_name;
+  ASSERT_TRUE(MapRequest(
+      context_gurl,
+      "http://origin.com/styles/blue.css",
+      &mapped_domain_name,
+      &resolved_request));
+  EXPECT_EQ("http://cdn.com/origin/", mapped_domain_name);
+  EXPECT_EQ("http://cdn.com/origin/styles/blue.css", resolved_request.Spec());
+
+  // But a relative reference will not map because we mapped "origin.com",
+  // not "www.origin.com".
+  ASSERT_TRUE(MapRequest(
+      context_gurl,
+      "styles/blue.css",
+      &mapped_domain_name,
+      &resolved_request));
+  EXPECT_EQ("http://www.origin.com/", mapped_domain_name);
+  EXPECT_EQ("http://www.origin.com/styles/blue.css", resolved_request.Spec());
+
+  // Now add the mapping from "www".
+  ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com/origin",
+                                      "http://www.origin.com"));
+  ASSERT_TRUE(MapRequest(
+      context_gurl,
+      "styles/blue.css",
+      &mapped_domain_name,
+      &resolved_request));
+  EXPECT_EQ("http://cdn.com/origin/", mapped_domain_name);
+  EXPECT_EQ("http://cdn.com/origin/styles/blue.css", resolved_request.Spec());
 }
 
 TEST_F(DomainLawyerTest, MapOriginDomain) {
@@ -308,7 +359,7 @@ TEST_F(DomainLawyerTest, Merge) {
   ASSERT_TRUE(AddOriginDomainMapping(
       "http://localhost:8080", "http://o1.com:8080"));
 
-  // We'll also a mapping that will conflict, and one that won't
+  // We'll also a mapping that will conflict, and one that won't.
   ASSERT_TRUE(AddOriginDomainMapping("http://dest1/", "http://common_src1"));
   ASSERT_TRUE(AddOriginDomainMapping("http://dest2/", "http://common_src2"));
   ASSERT_TRUE(AddShard("foo.com", "bar1.com,bar2.com"));
@@ -368,6 +419,28 @@ TEST_F(DomainLawyerTest, Merge) {
 }
 
 TEST_F(DomainLawyerTest, AddMappingFailures) {
+  // Corner cases.
+  ASSERT_FALSE(AddRewriteDomainMapping("", "http://origin.com"));
+  ASSERT_FALSE(AddRewriteDomainMapping("http://cdn.com", ""));
+  ASSERT_FALSE(AddRewriteDomainMapping("http://cdn.com", ","));
+
+  // Ensure that we ignore a mapping of a domain to itself.
+  ASSERT_FALSE(AddRewriteDomainMapping("http://origin.com",
+                                       "http://origin.com"));
+  EXPECT_FALSE(domain_lawyer_.can_rewrite_domains());
+  ASSERT_FALSE(AddRewriteDomainMapping("http://origin.com/newroot",
+                                       "http://origin.com"));
+  EXPECT_FALSE(domain_lawyer_.can_rewrite_domains());
+
+  ASSERT_FALSE(AddRewriteDomainMapping("http://origin.com",
+                                       "http://origin.com,"));
+  ASSERT_FALSE(AddRewriteDomainMapping("http://origin.com",
+                                       ",http://origin.com"));
+  ASSERT_FALSE(AddRewriteDomainMapping("http://origin.com/newroot",
+                                       "http://origin.com,"));
+  ASSERT_FALSE(AddRewriteDomainMapping("http://origin.com/newroot",
+                                       ",http://origin.com"));
+
   // You can never wildcard the target domains.
   EXPECT_FALSE(AddRewriteDomainMapping("foo*.com", "bar.com"));
   EXPECT_FALSE(AddOriginDomainMapping("foo*.com", "bar.com"));
@@ -414,7 +487,7 @@ TEST_F(DomainLawyerTest, MapRewriteToOriginDomain) {
   ASSERT_TRUE(AddOriginDomainMapping("localhost", "myhost.com"));
   GoogleString mapped;
 
-  // Check that we can warp all the way from the rewrite to localhost
+  // Check that we can warp all the way from the rewrite to localhost.
   ASSERT_TRUE(domain_lawyer_.MapOrigin("http://rewrite.com/a/b/c?d=f",
                                        &mapped));
   EXPECT_EQ("http://localhost/a/b/c?d=f", mapped);
@@ -426,7 +499,7 @@ TEST_F(DomainLawyerTest, MapShardToOriginDomain) {
   ASSERT_TRUE(AddShard("cdn.myhost.com", "s1.com,s2.com"));
   GoogleString mapped;
 
-  // Check that we can warp all the way from the cdn to localhost
+  // Check that we can warp all the way from the cdn to localhost.
   ASSERT_TRUE(domain_lawyer_.MapOrigin("http://s1.com/a/b/c?d=f",
                                        &mapped));
   EXPECT_EQ("http://localhost/a/b/c?d=f", mapped);
@@ -485,12 +558,12 @@ TEST_F(DomainLawyerTest, ConflictedOrigin2) {
   ASSERT_TRUE(AddRewriteDomainMapping("cdn.com", "myhost1.com,myhost2.com"));
   EXPECT_EQ(1, message_handler_.SeriousMessages());
 
-  // The second mapping will win for the automatic propagation for cdn.com.
+  // The second mapping will win for the automatic propagation for "cdn.com".
   GoogleString mapped;
   ASSERT_TRUE(domain_lawyer_.MapOrigin("http://cdn.com/x", &mapped));
   EXPECT_EQ("http://origin2.com/x", mapped);
 
-  // However, myhost1.com's explicitly set origin will not be overridden.
+  // However, "myhost1.com"'s explicitly set origin will not be overridden.
   ASSERT_TRUE(domain_lawyer_.MapOrigin("http://myhost1.com/y", &mapped));
   EXPECT_EQ("http://origin1.com/y", mapped);
 }
@@ -578,7 +651,7 @@ TEST_F(DomainLawyerTest, ShardConflict1) {
 TEST_F(DomainLawyerTest, RewriteOriginCycle) {
   ASSERT_TRUE(AddShard("b.com", "a.com"));
   ASSERT_TRUE(AddRewriteDomainMapping("b.com", "a.com"));
-  // We now have a.com and b.com in a shard/rewrite cycle.  That's
+  // We now have "a.com" and "b.com" in a shard/rewrite cycle.  That's
   // ugly and we don't actually detect that because we don't have a
   // graph traversal that can detect it until we start applying origin
   // domains, which auto-propagate.

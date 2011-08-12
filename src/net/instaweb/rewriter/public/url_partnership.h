@@ -79,7 +79,6 @@ class UrlPartnership {
   typedef std::vector<GoogleUrl*> GurlVector;
   GurlVector url_vector_;
   GoogleString domain_;
-  GoogleUrl domain_gurl_;
   const RewriteOptions* rewrite_options_;
   GoogleUrl original_origin_and_path_;
 

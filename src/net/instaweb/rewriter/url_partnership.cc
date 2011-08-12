@@ -82,11 +82,6 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
         resolved_request.get(), handler)) {
       if (url_vector_.empty()) {
         domain_.swap(mapped_domain_name);
-        GoogleUrl domain_origin_gurl(domain_);
-        GoogleUrl tmp(domain_origin_gurl,
-                      original_origin_and_path_.PathAndLeaf());
-        domain_gurl_.Swap(&tmp);
-
         ret = true;
       } else {
         ret = (domain_ == mapped_domain_name);

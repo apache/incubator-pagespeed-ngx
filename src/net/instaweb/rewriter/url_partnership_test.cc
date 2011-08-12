@@ -215,10 +215,55 @@ TEST_F(UrlPartnershipTest, ResourcesFromMappedDomains) {
       "http://graphics8.nytimes.com", "http://styles.com", &message_handler_);
 
   // We can legally combine resources across multiple domains if they are
-  // all mapped together
+  // all mapped together.
   ASSERT_TRUE(AddUrls(kCdnResourceUrl, kResourceUrl1,
                       "http://styles.com/external.css"));
   EXPECT_EQ("http://graphics8.nytimes.com/", partnership_.ResolvedBase());
+}
+
+TEST_F(UrlPartnershipTest, ResourcesFromMappedSameDomainsDifferentPaths) {
+  domain_lawyer_->AddRewriteDomainMapping(
+      "http://cdn.com/nytimes", "http://www.nytimes.com", &message_handler_);
+  domain_lawyer_->AddRewriteDomainMapping(
+      "http://cdn.com/nytimes", "http://styles.com", &message_handler_);
+  domain_lawyer_->AddDomain("http://cdn.com/notw", &message_handler_);
+
+  // We cannot combine these resources because they don't all map to the same
+  // domain+path [cdn.com/notw is authorized but != cdm.com/nytimes].
+  ASSERT_FALSE(AddUrls("http://cdn.com/notw/style.css",
+                       "r/styles/style.css?appearance=reader/writer?",
+                       "http://styles.com/external.css"));
+}
+
+TEST_F(UrlPartnershipTest, ResourcesFromMappedSameDomainsSamePaths) {
+  domain_lawyer_->AddRewriteDomainMapping(
+      "http://cdn.com/nytimes", "http://www.nytimes.com", &message_handler_);
+  domain_lawyer_->AddRewriteDomainMapping(
+      "http://cdn.com/nytimes", "http://styles.com", &message_handler_);
+
+  // We can legally combine resources across multiple domains if they all
+  // map to the same domain+path.
+  ASSERT_TRUE(AddUrls("http://cdn.com/nytimes/style.css",
+                      "r/styles/style.css?appearance=reader/writer?",
+                      "http://styles.com/external.css"));
+  EXPECT_EQ("http://cdn.com/nytimes/", partnership_.ResolvedBase());
+}
+
+TEST_F(UrlPartnershipTest, ResourcesFromMappedDifferentDomainsSamePaths) {
+  domain_lawyer_->AddRewriteDomainMapping(
+      "http://cdn.com/nytimes", "http://www.nytimes.com", &message_handler_);
+  domain_lawyer_->AddRewriteDomainMapping(
+      "http://cdn.com/nytimes", "http://styles.com", &message_handler_);
+  domain_lawyer_->AddRewriteDomainMapping(
+      "http://cdn.com/nypost", "http://www.nypost.com", &message_handler_);
+  domain_lawyer_->AddRewriteDomainMapping(
+      "http://cdn.com/nypost", "http://money.com", &message_handler_);
+
+  // We cannot combine these resources because the relative one resolves
+  // to the nytimes domain/mapping, not the nypost domain/mapping.
+  ASSERT_FALSE(AddUrls("http://cdn.com/nypost/style.css",
+                       "r/styles/style.css?appearance=reader/writer?",
+                       "http://money.com/external.css"));
 }
 
 TEST_F(UrlPartnershipTest, AllowDisallow) {

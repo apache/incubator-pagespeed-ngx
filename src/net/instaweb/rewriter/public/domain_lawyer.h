@@ -50,10 +50,14 @@ class DomainLawyer {
   ~DomainLawyer();
 
   // Determines whether a resource can be rewritten, and returns the domain
-  // that it should be written to.  Only the domain of the resolved request
-  // is considered.  If the resource_url is relative (has no domain) then
-  // the resource can always be written, and will share the domain of the
-  // original request.
+  // that it should be written to.  The domain and the path of the resolved
+  // request are considered - first just the domain, then the domain plus the
+  // root of the path, and so on down the path until a match is found or the
+  // path is exhausted; this is done because we can map to a domain plus a
+  // path and we want to retain the previous behavior of 'working' when a
+  // mapped-to domain was provided.  If the resource_url is relative (has no
+  // domain) then the resource can always be written, and will share the domain
+  // of the original request.
   //
   // The resource_url is considered relative to original_request.  Generally
   // it is always accessible to rewrite resources in the same domain as the
@@ -174,7 +178,7 @@ class DomainLawyer {
                           MessageHandler* handler);
   Domain* CloneAndAdd(const Domain* src);
 
-  Domain* FindDomain(const GoogleString& domain_name) const;
+  Domain* FindDomain(const GoogleUrl& gurl) const;
 
   typedef std::map<GoogleString, Domain*> DomainMap;
   DomainMap domain_map_;

@@ -339,6 +339,16 @@ TEST_P(CacheExtenderTest, ServeFilesWithRewriteDomainsEnabled) {
   EXPECT_EQ(CssData("http://new.com/sub/"), content);
 }
 
+TEST_P(CacheExtenderTest, ServeFilesWithRewriteDomainAndPathEnabled) {
+  GoogleString content;
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  lawyer->AddRewriteDomainMapping("http://new.com/test/", kTestDomain,
+                                  &message_handler_);
+  InitTest(kShortTtlSec);
+  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId, kCssFile, "css", &content));
+  EXPECT_EQ(CssData("http://new.com/test/sub/"), content);
+}
+
 TEST_P(CacheExtenderTest, ServeFilesWithShard) {
   GoogleString content;
   DomainLawyer* lawyer = options()->domain_lawyer();
