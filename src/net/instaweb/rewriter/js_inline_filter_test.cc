@@ -279,8 +279,8 @@ TEST_P(JsInlineFilterTest, InlineMinimizeInteraction) {
 
 TEST_P(JsInlineFilterTest, FlushSplittingScriptTag) {
   options()->EnableFilter(RewriteOptions::kInlineJavascript);
-  SetupWriter();
   rewrite_driver()->AddFilters();
+  SetupWriter();
 
   const char kJsUrl[] = "http://www.example.com/script.js";
   const char kJs[] = "function id(x) { return x; }\n";
@@ -292,6 +292,23 @@ TEST_P(JsInlineFilterTest, FlushSplittingScriptTag) {
   html_parse()->ParseText("</script> </div>");
   html_parse()->FinishParse();
   EXPECT_EQ("<div><script src=\"script.js\"> </script> </div>", output_buffer_);
+}
+
+TEST_P(JsInlineFilterTest, NoFlushSplittingScriptTag) {
+  options()->EnableFilter(RewriteOptions::kInlineJavascript);
+  rewrite_driver()->AddFilters();
+  SetupWriter();
+
+  const char kJsUrl[] = "http://www.example.com/script.js";
+  const char kJs[] = "function id(x) { return x; }\n";
+  InitResponseHeaders(kJsUrl, kContentTypeJavascript, kJs, 3000);
+
+  html_parse()->StartParse("http://www.example.com");
+  html_parse()->ParseText("<div><script src=\"script.js\">     ");
+  html_parse()->ParseText("     </script> </div>");
+  html_parse()->FinishParse();
+  EXPECT_EQ("<div><script>function id(x) { return x; }\n</script> </div>",
+            output_buffer_);
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.

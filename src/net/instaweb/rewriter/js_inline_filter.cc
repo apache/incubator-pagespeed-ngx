@@ -162,9 +162,11 @@ void JsInlineFilter::RenderInline(
 
 void JsInlineFilter::Characters(HtmlCharactersNode* characters) {
   if (should_inline_) {
-    DCHECK(characters->parent() != NULL);
-    DCHECK(characters->parent()->keyword() == HtmlName::kScript);
-    if (OnlyWhitespace(characters->contents())) {
+    HtmlElement* script_element = characters->parent();
+    DCHECK(script_element != NULL);
+    DCHECK_EQ(HtmlName::kScript, script_element->keyword());
+    if (driver_->IsRewritable(script_element) &&
+        OnlyWhitespace(characters->contents())) {
       // If it's just whitespace inside the script tag, it's (probably) safe to
       // just remove it.
       driver_->DeleteElement(characters);
