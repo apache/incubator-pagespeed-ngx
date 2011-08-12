@@ -70,7 +70,7 @@ class GoogleAnalyticsFilterTest : public ResourceManagerTestBase {
     unhandled_methods->push_back("_getLinkerUrl");
 
     RewriteDriver* driver = rewrite_driver();
-    driver->AddOwnedFilter(new GoogleAnalyticsFilter(
+    driver->AddOwnedPreRenderFilter(new GoogleAnalyticsFilter(
         driver, statistics(), glue_methods, unhandled_methods));
   }
 

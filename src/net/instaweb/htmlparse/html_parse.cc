@@ -58,11 +58,9 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       need_coalesce_characters_(false),
       url_valid_(false),
       log_rewrite_timing_(false),
-      flush_requested_(false),
       running_filters_(false),
       parse_start_time_us_(0),
-      timer_(NULL),
-      first_filter_(0) {
+      timer_(NULL) {
   lexer_ = new HtmlLexer(this);
   HtmlKeywords::Init();
 }
@@ -224,12 +222,6 @@ void HtmlParse::FinishParse() {
   }
 }
 
-void HtmlParse::ExecuteFlushIfRequested() {
-  if (flush_requested_) {
-    Flush();
-  }
-}
-
 void HtmlParse::ParseText(const char* text, int size) {
   DCHECK(url_valid_) << "Invalid to call ParseText with invalid url";
   if (url_valid_) {
@@ -373,38 +365,39 @@ void HtmlParse::Flush() {
   if (url_valid_) {
     ShowProgress("Flush");
 
-    for (int i = first_filter_, n = filters_.size(); i < n; ++i) {
+    for (int i = 0, n = filters_.size(); i < n; ++i) {
       HtmlFilter* filter = filters_[i];
       ApplyFilter(filter);
     }
-    first_filter_ = 0;
+    ClearEvents();
+  }
+}
 
-    // Detach all the elements from their events, as we are now invalidating
-    // the events, but not the elements.
-    for (current_ = queue_.begin(); current_ != queue_.end(); ++current_) {
-      HtmlEvent* event = *current_;
-      line_number_ = event->line_number();
-      HtmlElement* element = event->GetElementIfStartEvent();
+void HtmlParse::ClearEvents() {
+  // Detach all the elements from their events, as we are now invalidating
+  // the events, but not the elements.
+  for (current_ = queue_.begin(); current_ != queue_.end(); ++current_) {
+    HtmlEvent* event = *current_;
+    line_number_ = event->line_number();
+    HtmlElement* element = event->GetElementIfStartEvent();
+    if (element != NULL) {
+      element->set_begin(queue_.end());
+    } else {
+      element = event->GetElementIfEndEvent();
       if (element != NULL) {
-        element->set_begin(queue_.end());
+        element->set_end(queue_.end());
       } else {
-        element = event->GetElementIfEndEvent();
-        if (element != NULL) {
-          element->set_end(queue_.end());
-        } else {
-          HtmlLeafNode* leaf_node = event->GetLeafNode();
-          if (leaf_node != NULL) {
-            leaf_node->set_iter(queue_.end());
-          }
+        HtmlLeafNode* leaf_node = event->GetLeafNode();
+        if (leaf_node != NULL) {
+          leaf_node->set_iter(queue_.end());
         }
       }
-      delete event;
     }
-    queue_.clear();
-    need_sanity_check_ = false;
-    need_coalesce_characters_ = false;
+    delete event;
   }
-  flush_requested_ = false;
+  queue_.clear();
+  need_sanity_check_ = false;
+  need_coalesce_characters_ = false;
 }
 
 void HtmlParse::InsertElementBeforeElement(const HtmlNode* existing_node,
@@ -688,7 +681,6 @@ bool HtmlParse::IsInEventWindow(const HtmlEventListIterator& iter) const {
 
 void HtmlParse::ClearElements() {
   nodes_.DestroyObjects();
-  DCHECK(!flush_requested_);
   DCHECK(!running_filters_);
 }
 

@@ -170,7 +170,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
   }
 
   void PrepareToCollectScriptsInto(ScriptInfoVector* output) {
-    rewrite_driver()->AddOwnedFilter(new ScriptCollector(output));
+    rewrite_driver()->AddOwnedPostRenderFilter(new ScriptCollector(output));
   }
 
   // Makes sure that the script looks like a combination.

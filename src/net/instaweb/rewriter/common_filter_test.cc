@@ -80,7 +80,7 @@ class CommonFilterTest : public ResourceManagerTestBase {
                            RewriteDriver* driver) {
     options->domain_lawyer()->AddDomain(domain, &message_handler_);
     CountingFilter* filter = new CountingFilter(driver);
-    driver->AddOwnedFilter(filter);
+    driver->AddOwnedPostRenderFilter(filter);
     driver->StartParse(base_url);
     driver->Flush();
     return filter;

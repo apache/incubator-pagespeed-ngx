@@ -530,7 +530,6 @@
         'rewriter/resource_combiner.cc',
         'rewriter/resource_slot.cc',
         'rewriter/resource_tag_scanner.cc',
-        'rewriter/render_filter.cc',
         'rewriter/rewrite_context.cc',
         'rewriter/rewrite_driver.cc',
         'rewriter/rewrite_driver_factory.cc',

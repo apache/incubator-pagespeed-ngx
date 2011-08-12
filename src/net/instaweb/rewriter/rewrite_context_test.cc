@@ -1352,7 +1352,6 @@ class TestWaitFilter : public CommonFilter {
   virtual void EndElementImpl(net_instaweb::HtmlElement*) {}
 
   virtual void Flush() {
-    driver()->Render();  // as we're added late, after the RenderFilter
     sync_->Wait();
     driver()->set_externally_managed(true);
     CommonFilter::Flush();
@@ -1434,9 +1433,9 @@ TEST_F(RewriteContextTest, UltraQuickRewrite) {
   InitResources();
 
   WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
-  rewrite_driver()->AddOwnedFilter(
+  rewrite_driver()->AddOwnedPreRenderFilter(
       new TestNotifyFilter(rewrite_driver(), &sync));
-  rewrite_driver()->AddOwnedFilter(
+  rewrite_driver()->AddOwnedPostRenderFilter(
       new TestWaitFilter(rewrite_driver(), &sync));
 
   ValidateExpected("trimmable.quick", CssLinkHref("a.css"),

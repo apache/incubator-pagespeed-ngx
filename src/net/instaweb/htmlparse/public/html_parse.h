@@ -105,24 +105,7 @@ class HtmlParse {
   //
   // If this is called from a Filter, the request will be deferred until after
   // currently active filters are completed.
-  void Flush();
-
-  // Indicates that a Flush through the HTML parser chain should happen
-  // soon, e.g. once the network pauses its incoming byte stream.
-  void RequestFlush() { flush_requested_ = true; }
-
-  // Executes an Flush() if RequestFlush() was called, e.g. from the
-  // Listener Filter (see set_event_listener below).  Consider an HTML
-  // parse driven by a UrlAsyncFetcher.  When the UrlAsyncFetcher
-  // temporarily runs out of bytes to read, it calls
-  // response_writer->Flush().  When that happens, we may want to
-  // consider flushing the outstanding HTML events through the system
-  // so that the browser can start fetching subresources and
-  // rendering.  The event_listener (see set_event_listener below)
-  // helps determine whether enough "interesting" events have passed
-  // in the current flush window so that we should take this incoming
-  // network pause as an opportunity.
-  void ExecuteFlushIfRequested();
+  virtual void Flush();
 
   // Finish a chunked parsing session.  This also induces a Flush.
   //
@@ -317,8 +300,7 @@ class HtmlParse {
   void CloseElement(HtmlElement* element, HtmlElement::CloseStyle close_style,
                     int line_number);
 
-  // Run a filter on the current queue of parse nodes.  This is visible
-  // for testing.
+  // Run a filter on the current queue of parse nodes.
   void ApplyFilter(HtmlFilter* filter);
 
   // Provide timer to helping to report timing of each filter.  You must also
@@ -331,18 +313,9 @@ class HtmlParse {
   void set_event_listener(HtmlFilter* listener);
 
  protected:
-  // Subclasses that want more explicit control of when initial filters
-  // are activated can do so by adjusting the first filter index, which
-  // will be respected by Flush() when it loops through the filters.
-  // Note that this must be called before every Flush, as it is reset
-  // to 0 on flush.
-  //
-  // The intended use case is a scan-filter inserted at the beginning
-  // of the vector.  We want to run the scan first, then allow some
-  // delay for async cache requests to be answered, then run the
-  // rest of the filters.  This could also have been done with
-  // a flag kept in the filter.
-  void set_first_filter(int index) { first_filter_ = index; }
+  typedef std::vector<HtmlFilter*> FilterVector;
+
+  void ClearEvents();
 
  private:
   void ApplyFilterHelper(HtmlFilter* filter);
@@ -373,7 +346,7 @@ class HtmlParse {
 
   scoped_ptr<HtmlFilter> event_listener_;
   SymbolTableSensitive string_table_;
-  std::vector<HtmlFilter*> filters_;
+  FilterVector filters_;
   HtmlLexer* lexer_;
   int sequence_;
   Arena<HtmlNode> nodes_;
@@ -391,7 +364,6 @@ class HtmlParse {
   bool need_coalesce_characters_;
   bool url_valid_;
   bool log_rewrite_timing_;  // Should we time the speed of parsing?
-  bool flush_requested_;
   bool running_filters_;
   int64 parse_start_time_us_;
   Timer* timer_;

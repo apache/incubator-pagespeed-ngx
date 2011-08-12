@@ -51,6 +51,7 @@ class AddInstrumentationFilter;
 class CommonFilter;
 class DomainRewriteFilter;
 class FileSystem;
+class Function;
 class HtmlFilter;
 class HtmlWriterFilter;
 class MessageHandler;
@@ -155,14 +156,23 @@ class RewriteDriver : public HtmlParse {
   // in RewriteOptions, via AddFilter(HtmlFilter* filter) (below).
   void AddFilters();
 
-  // Add any HtmlFilter to the HtmlParse chain and take ownership of the filter.
-  void AddOwnedFilter(HtmlFilter* filter);
+  // Adds a filter to the post-render chain, taking ownership.
+  void AddOwnedPostRenderFilter(HtmlFilter* filter);
 
-  // Add a RewriteFilter to the HtmlParse chain and take ownership of the
-  // filter.  This differs from AddOwnedFilter in that it adds the filter's ID
-  // into a dispatch table for serving rewritten resources.  E.g. if your
-  // filter->id == "xy" and FetchResource("NAME.pagespeed.xy.HASH.EXT"...)
-  // is called, then RewriteDriver will dispatch to filter->Fetch().
+  // Adds a filter to the pre-render chain, taking ownership.
+  void AddOwnedPreRenderFilter(HtmlFilter* filter);
+
+  // Add a RewriteFilter to the pre-render chain and take ownership of
+  // the filter.  This differs from AddOwnedPreRenderFilter in that
+  // it adds the filter's ID into a dispatch table for serving
+  // rewritten resources.  E.g. if your filter->id == "xy" and
+  // FetchResource("NAME.pagespeed.xy.HASH.EXT"...)  is called, then
+  // RewriteDriver will dispatch to filter->Fetch().
+  //
+  // This is used when the filter being added is not part of the
+  // core set built into RewriteDriver and RewriteOptions, such
+  // as platform-specific or server-specific filters, or filters
+  // invented for unit-testing the framework.
   void AddRewriteFilter(RewriteFilter* filter);
 
   // Controls how HTML output is written.  Be sure to call this last, after
@@ -424,6 +434,38 @@ class RewriteDriver : public HtmlParse {
   void DeregisterForPartitionKey(
       const GoogleString& partition_key, RewriteContext* candidate);
 
+  // Indicates that a Flush through the HTML parser chain should happen
+  // soon, e.g. once the network pauses its incoming byte stream.
+  void RequestFlush() { flush_requested_ = true; }
+
+  // Executes an Flush() if RequestFlush() was called, e.g. from the
+  // Listener Filter (see set_event_listener below).  Consider an HTML
+  // parse driven by a UrlAsyncFetcher.  When the UrlAsyncFetcher
+  // temporarily runs out of bytes to read, it calls
+  // response_writer->Flush().  When that happens, we may want to
+  // consider flushing the outstanding HTML events through the system
+  // so that the browser can start fetching subresources and
+  // rendering.  The event_listener (see set_event_listener below)
+  // helps determine whether enough "interesting" events have passed
+  // in the current flush window so that we should take this incoming
+  // network pause as an opportunity.
+  void ExecuteFlushIfRequested();
+
+  // Overrides HtmlParse::Flush so that it can happen in two phases:
+  //    1. Pre-render chain runs, resulting in async rewrite activity
+  //    2. async rewrite activity ends, calling callback, and post-render
+  //       filters run.
+  // This API is used for unit-tests & Apache (which lacks a useful event
+  // model) and results in blocking behavior.
+  //
+  // FlushAsync is prefered for event-driven servers.
+  virtual void Flush();
+
+  // Initiates an asynchronous Flush.  done->Run() will be called when
+  // the flush is complete.  Further calls to ParseText should be
+  // deferred until the callback is called.
+  void FlushAsync(Function* done);
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -479,17 +521,23 @@ class RewriteDriver : public HtmlParse {
   void AddCommonFilter(CommonFilter* filter);
 
   // Registers RewriteFilter in the map, but does not put it in the
-  // html parse filter filter chain.  This allows it to serve resource
+  // html parse filter chain.  This allows it to serve resource
   // requests.
   void RegisterRewriteFilter(RewriteFilter* filter);
 
-  // Adds a pre-added rewrite filter to the html parse chain.
+  // Adds an already-owned rewrite filter to the pre-render chain.  This
+  // is used for filters that are unconditionally created for handling of
+  // resources, but their presence in the html-rewrite chain is conditional
+  // on options.
   void EnableRewriteFilter(const char* id);
 
   // Internal low-level helper for resource creation.
   // Use only when permission checking has been done explicitly on the
   // caller side.
   ResourcePtr CreateInputResourceUnchecked(const GoogleUrl& gurl);
+
+  void AddPreRenderFilters();
+  void AddPostRenderFilters();
 
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
@@ -536,6 +584,8 @@ class RewriteDriver : public HtmlParse {
   // If this is true, this RewriteDriver should Cleanup() itself when it
   // finishes handling the current fetch.
   bool cleanup_on_fetch_complete_;
+
+  bool flush_requested_;
 
   // Tracks the number of RewriteContexts that have been completed,
   // but not yet deleted.  Once RewriteComplete has been called,
@@ -592,7 +642,6 @@ class RewriteDriver : public HtmlParse {
   AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
   UserAgentMatcher user_agent_matcher_;
-  std::vector<HtmlFilter*> filters_;
   ScanFilter scan_filter_;
   scoped_ptr<DomainRewriteFilter> domain_rewriter_;
 
@@ -611,6 +660,14 @@ class RewriteDriver : public HtmlParse {
 
   // The default resource encoder
   UrlSegmentEncoder default_encoder_;
+
+  // The chain of filters called prior to waiting for Rewrites to complete.
+  FilterVector pre_render_filters_;
+
+  // A container of filters to delete when RewriteDriver is deleted.  This
+  // can include pre_render_filters as well as those added to the post-render
+  // chain owned by HtmlParse.
+  FilterVector filters_to_delete_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };
