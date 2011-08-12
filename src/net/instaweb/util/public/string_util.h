@@ -224,6 +224,12 @@ inline void EnsureEndsInSlash(GoogleString* dir) {
 void ParseShellLikeString(const StringPiece& input,
                           std::vector<GoogleString>* output);
 
+// Counts the number of times that substring appears in text
+// Note: for a substring that can overlap itself, it counts not necessarily
+// disjoint occurrences of the substring.
+// For example: "aaa" appears in "aaaaa" 3 times, not once
+int CountSubstring(const StringPiece& text, const StringPiece& substring);
+
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_STRING_UTIL_H_

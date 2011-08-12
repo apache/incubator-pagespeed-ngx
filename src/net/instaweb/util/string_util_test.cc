@@ -358,6 +358,27 @@ TEST(BasicUtilsTest, TrimWhitespaceTest) {
   EXPECT_EQ("Mary had a little lamb.", test_piece);
 }
 
+TEST(BasicUtilsTest, CountSubstringTest) {
+  StringPiece text1("This sentence contains twice twice.");
+  StringPiece e("e");
+  StringPiece twice("twice");
+  StringPiece en("en");
+  EXPECT_EQ(5, CountSubstring(text1, e));
+  EXPECT_EQ(2, CountSubstring(text1, twice));
+  EXPECT_EQ(2, CountSubstring(text1, en));
+  StringPiece text2("Finished files are the result\nof years of scientific "
+                    "study\ncombined with the experience\nof years...");
+  StringPiece f("f");
+  StringPiece of("of");
+  EXPECT_EQ(5, CountSubstring(text2, f));
+  EXPECT_EQ(3, CountSubstring(text2, of));
+  StringPiece text3("abababab");
+  StringPiece ab("ab");
+  StringPiece abab("abab");
+  EXPECT_EQ(4, CountSubstring(text3, ab));
+  EXPECT_EQ(3, CountSubstring(text3, abab));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

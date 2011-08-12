@@ -22,7 +22,6 @@
 #include <cstddef>
 #include <vector>
 
-#include "base/logging.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -213,6 +212,17 @@ void ParseShellLikeString(const StringPiece& input,
       ++index;
     }
   }
+}
+
+int CountSubstring(const StringPiece& text, const StringPiece& substring) {
+  int number_of_occurrences = 0;
+  size_t pos = 0;
+  for (size_t match_pos = text.find(substring, pos);
+       match_pos != StringPiece::npos;
+       pos = match_pos + 1, match_pos = text.find(substring, pos)) {
+    number_of_occurrences++;
+  }
+  return number_of_occurrences;
 }
 
 // In-place StringPiece whitespace trimming.  This mutates the StringPiece.

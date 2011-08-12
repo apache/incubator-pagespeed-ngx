@@ -22,13 +22,10 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
-// We don't want this to conflict with another query parameter name, and length
-// also matters (shorter is better).  I picked this somewhat arbitrarily...
-const char DivStructureFilter::kParamName[] = "div_location";
 
 DivStructureFilter::DivStructureFilter() {}
 
@@ -76,9 +73,8 @@ void DivStructureFilter::StartElement(HtmlElement* element) {
         GoogleUrl google_url(url);
         if (google_url.is_valid()) {
           GoogleString param_value = GetDivCountStackEncoding(div_count_stack_);
-          scoped_ptr<GoogleUrl> new_url(
-             google_url.CopyAndAddQueryParam(kParamName,
-                                             param_value.c_str()));
+          scoped_ptr<GoogleUrl> new_url(google_url.CopyAndAddQueryParam(
+              SharedMemRefererStatistics::kParamName, param_value.c_str()));
           // new url should be valid, so we can use Spec()
           href->SetValue(new_url->Spec());
           div_count_stack_.back()++;
