@@ -1204,9 +1204,8 @@ void RewriteDriver::InfoAt(RewriteContext* context, const char* msg, ...) {
       StrAppend(&new_msg, context->slot(c)->LocationString(),
                 ((c == context->num_slots() - 1) ? ": " : " "));
     }
-
-    new_msg.append(msg);
-    message_handler()->MessageV(kInfo, new_msg.c_str(), args);
+    StringAppendV(&new_msg, msg, args);
+    message_handler()->Message(kInfo, "%s", new_msg.c_str());
   }
 
   va_end(args);

@@ -28,7 +28,9 @@
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr, etc
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -431,6 +433,37 @@ TEST_P(RewriteDriverTest, ResolveAnchorUrl) {
   GoogleUrl resolved(rewrite_driver()->base_url(), "#anchor");
   EXPECT_EQ("http://example.com/index.html#anchor", resolved.Spec());
   rewrite_driver()->FinishParse();
+}
+
+namespace {
+
+// A rewrite context that's not actually capable of rewriting -- we just need
+// one to pass in to InfoAt in test below.
+class MockRewriteContext : public SingleRewriteContext {
+ public:
+  explicit MockRewriteContext(RewriteDriver* driver) :
+      SingleRewriteContext(driver, NULL, NULL) {}
+
+  virtual void RewriteSingle(const ResourcePtr& input,
+                             const OutputResourcePtr& output) {}
+  virtual const char* id() const { return "mock"; }
+  virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
+};
+
+}  // namespace
+
+TEST_P(RewriteDriverTest, DiagnosticsWithPercent) {
+  // Regression test for crash in InfoAt where location has %stuff in it.
+  // (make sure it actually shows up first, though).
+  int prev_log_level = logging::GetMinLogLevel();
+  logging::SetMinLogLevel(logging::LOG_INFO);
+  MockRewriteContext context(rewrite_driver());
+  ResourcePtr resource(rewrite_driver()->CreateInputResourceAbsoluteUnchecked(
+      "http://www.example.com/%s%s%s%d%f"));
+  ResourceSlotPtr slot(new FetchResourceSlot(resource));
+  context.AddSlot(slot);
+  rewrite_driver()->InfoAt(&context, "Just a test");
+  logging::SetMinLogLevel(prev_log_level);
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
