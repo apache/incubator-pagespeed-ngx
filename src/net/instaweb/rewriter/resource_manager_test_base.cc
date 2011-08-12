@@ -57,6 +57,7 @@
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
+#include "net/instaweb/util/public/mock_time_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -96,9 +97,9 @@ ResourceManagerTestBase::ResourceManagerTestBase()
       other_file_system_(&timer_),
       file_prefix_(StrCat(GTestTempDir(), "/")),
       url_prefix_(URL_PREFIX),
-
       lru_cache_(new LRUCache(kCacheSize)),
-      http_cache_(lru_cache_, file_system_.timer(), statistics_),
+      mock_time_cache_(new MockTimeCache(&timer_, lru_cache_)),
+      http_cache_(mock_time_cache_, file_system_.timer(), statistics_),
       // TODO(jmaessen): Pull timer out of file_system_ and make it
       // standalone.
       lock_manager_(&file_system_, file_prefix_, file_system_.timer(),
@@ -155,7 +156,7 @@ void ResourceManagerTestBase::SetUp() {
   resource_manager_ = new ResourceManager(
       file_prefix_, &file_system_, &filename_encoder_,
       &counting_url_async_fetcher_, &mock_hasher_,
-      &http_cache_, lru_cache_, &lock_manager_,
+      &http_cache_, mock_time_cache_, &lock_manager_,
       &message_handler_, statistics_, thread_system_.get(), factory_);
   SetupDriver(resource_manager_, &rewrite_driver_);
 }
@@ -693,6 +694,10 @@ void ResourceManagerTestBase::ClearStats() {
   lru_cache()->ClearStats();
   counting_url_async_fetcher()->Clear();
   file_system()->ClearStats();
+}
+
+void ResourceManagerTestBase::SetCacheDelayUs(int64 delay_us) {
+  mock_time_cache_->set_delay_us(delay_us);
 }
 
 // Logging at the INFO level slows down tests, adds to the noise, and

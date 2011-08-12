@@ -26,6 +26,7 @@
 
 #include <cstddef>                     // for size_t
 #include <algorithm>
+#include <utility>                      // for pair
 #include <vector>
 
 #include "base/logging.h"
@@ -248,7 +249,8 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     num_predecessors_(0),
     chained_(false),
     rewrite_done_(false),
-    ok_to_write_output_partitions_(true) {
+    ok_to_write_output_partitions_(true),
+    slow_(false) {
   partitions_.reset(new OutputPartitions);
 }
 
@@ -348,6 +350,9 @@ void RewriteContext::Start() {
     // When the cache lookup is finished, OutputCacheDone will be called.
     metadata_cache->Get(partition_key_, new OutputCacheCallback(this));
   } else {
+    if (previous_handler->slow()) {
+      MarkSlow();
+    }
     previous_handler->repeated_.push_back(this);
   }
 }
@@ -469,6 +474,7 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
   if (state == CacheInterface::kAvailable) {
     OutputCacheHit();
   } else {
+    MarkSlow();
     partitions_->Clear();
     FetchInputs(kNeverBlock);
   }
@@ -611,6 +617,7 @@ void RewriteContext::Activate() {
 }
 
 void RewriteContext::StartRewrite() {
+  CHECK(has_parent() || slow_) << "slow_ not set on a rewriting job?";
   if (!Partition(partitions_.get(), &outputs_)) {
     partitions_->clear_partition();
     outputs_.clear();
@@ -844,6 +851,47 @@ void RewriteContext::FinishFetch() {
     Rewrite(0, partition, output);
   } else {
     RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+  }
+}
+
+void RewriteContext::MarkSlow() {
+  if (has_parent()) {
+    return;
+  }
+
+  ContextSet to_detach;
+  CollectDependentTopLevel(&to_detach);
+
+  int num_new_slow = 0;
+  for (ContextSet::iterator i = to_detach.begin();
+        i != to_detach.end(); ++i) {
+    RewriteContext* c = *i;
+    if (!c->slow_) {
+      c->slow_ = true;
+      ++num_new_slow;
+    }
+  }
+
+  Driver()->ReportSlowRewrites(num_new_slow);
+}
+
+void RewriteContext::CollectDependentTopLevel(ContextSet* contexts) {
+  std::pair<ContextSet::iterator, bool> insert_result = contexts->insert(this);
+  if (!insert_result.second) {
+    // We were already there.
+    return;
+  }
+
+  for (int c = 0, n = successors_.size(); c < n; ++c) {
+    if (!successors_[c]->has_parent()) {
+      successors_[c]->CollectDependentTopLevel(contexts);
+    }
+  }
+
+  for (int c = 0, n = repeated_.size(); c < n; ++c) {
+    if (!repeated_[c]->has_parent()) {
+      repeated_[c]->CollectDependentTopLevel(contexts);
+    }
   }
 }
 

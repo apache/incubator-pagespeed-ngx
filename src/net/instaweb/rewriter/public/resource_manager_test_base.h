@@ -54,6 +54,7 @@ namespace net_instaweb {
 class AbstractMutex;
 class Hasher;
 class LRUCache;
+class MockTimeCache;
 class MessageHandler;
 class ResponseHeaders;
 class RewriteDriverFactory;
@@ -300,6 +301,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     mock_hasher_.set_hash_value(value);
   }
 
+  void SetCacheDelayUs(int64 delay_us);
+
   // Connects a RewriteDriver to ResourceManager, establishing a MockScheduler
   // to advance time.
   void SetupDriver(ResourceManager* rm, RewriteDriver* rd);
@@ -352,7 +355,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   GoogleString file_prefix_;
   GoogleString url_prefix_;
 
-  LRUCache* lru_cache_;  // Owned by http_cache_
+  LRUCache* lru_cache_;  // Owned by mock_time_cache_
+  MockTimeCache* mock_time_cache_;  // Owned by http_cache_
   HTTPCache http_cache_;
   FileSystemLockManager lock_manager_;
   // TODO(sligocki): Why are statistics_ static!

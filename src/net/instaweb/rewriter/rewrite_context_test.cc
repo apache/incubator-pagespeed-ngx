@@ -1443,6 +1443,20 @@ TEST_F(RewriteContextTest, UltraQuickRewrite) {
                    CssLinkHref("a.css"));
 }
 
+TEST_F(RewriteContextTest, RenderCompletesCacheAsync) {
+  // Make sure we finish rendering fully even when cache is ultra-slow.
+  SetCacheDelayUs(50 * kRewriteDeadlineMs * 1000);
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  // First time we're fetching, so we don't know.
+  Parse("trimmable_async", CssLinkHref("a.css"));
+  rewrite_driver()->WaitForCompletion();
+
+  ValidateExpected("trimmable_async", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+}
+
 // Test resource update behavior.
 class ResourceUpdateTest : public RewriteContextTest {
  protected:

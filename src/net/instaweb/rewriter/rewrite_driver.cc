@@ -130,9 +130,11 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       externally_managed_(false),
       fetch_queued_(false),
       waiting_for_completion_(false),
+      waiting_for_render_(false),
       cleanup_on_fetch_complete_(false),
       rewrites_to_delete_(0),
       pending_rewrites_(0),
+      possibly_quick_rewrites_(0),
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),
@@ -186,6 +188,7 @@ void RewriteDriver::Clear() {
   DCHECK(rewrites_.empty());
   DCHECK_EQ(0, rewrites_to_delete_);
   DCHECK_EQ(0, pending_rewrites_);
+  DCHECK_EQ(0, possibly_quick_rewrites_);
   DCHECK(!fetch_queued_);
 }
 
@@ -202,35 +205,53 @@ void RewriteDriver::WaitForCompletion() {
 void RewriteDriver::BoundedWaitForCompletion(int64 timeout_ms) {
   if (asynchronous_rewrites_) {
     ScopedMutex lock(rewrite_mutex());
-    waiting_for_completion_ = true;
-    BoundedWaitForCompletionImpl(timeout_ms);
-    waiting_for_completion_ = false;
+    BoundedWaitForCompletionImpl(kWaitForCompletion, timeout_ms);
   }
 }
 
-void RewriteDriver::BoundedWaitForCompletionImpl(int64 timeout_ms) {
-  while (!RewritesComplete()) {
-    if (fetch_queued_) {
-      message_handler()->Message(kInfo, "waiting for fetch completion");
-    } else {
-      message_handler()->Message(
-          kInfo, "waiting for %d rewrites to complete",
-          static_cast<int>(pending_rewrites_ + detached_rewrites_.size()));
-    }
+void RewriteDriver::BoundedWaitForCompletionImpl(WaitMode wait_mode,
+                                                 int64 timeout_ms) {
+  if (wait_mode == kWaitForCompletion) {
+    waiting_for_completion_ = true;
+  } else {
+    waiting_for_render_ = true;
+  }
+
+  bool deadline_reached = false;
+  while (!IsDone(wait_mode, deadline_reached)) {
+    // At this point there are pending_rewrites_ we may still render and
+    // detached_rewrites_.size() rewrites which are going on in background.
     int64 start_ms = resource_manager_->timer()->NowMs();
     scheduler_->TimedWait(timeout_ms > 0 ? timeout_ms : kTestTimeoutMs);
     int64 end_ms = resource_manager_->timer()->NowMs();
-
-    // TODO(jmarantz): Eliminate these LOG(INFO) and/or convert them
-    // into message_handler()->Message(kInfo...).
-    // LOG(INFO) << "timed wait complete";
 
     if (timeout_ms > 0) {
       timeout_ms -= (end_ms - start_ms);
       if (timeout_ms <= 0) {
         // Remaining became <=0 => timed out, rather than unbounded.
-        return;
+        deadline_reached = true;
       }
+    }
+  }
+
+  waiting_for_completion_ = false;
+  waiting_for_render_ = false;
+}
+
+bool RewriteDriver::IsDone(WaitMode wait_mode, bool deadline_reached) {
+  // Before deadline, we're happy only if we're 100% done.
+  if (!deadline_reached) {
+    return RewritesComplete();
+  } else {
+    // When we've reached the deadline, if we're Render()'ing
+    // we also give the jobs we can serve from cache a chance to finish
+    // (so they always render).
+    // We do not have to worry about possibly_quick_rewrites_ not being
+    // incremented yet as jobs are only initiated from the HTML parse thread.
+    if (wait_mode == kWaitForCachedRender) {
+      return (possibly_quick_rewrites_ == 0);
+    } else {
+      return true;
     }
   }
 }
@@ -266,6 +287,8 @@ void RewriteDriver::Render() {
     for (int i = 0; i < num_rewrites; ++i) {
       RewriteContext* rewrite_context = rewrites_[i];
       if (!rewrite_context->chained()) {
+        // TODO(jmarantz): Eliminate these LOG(INFO) and/or convert them
+        // into message_handler()->Message(kInfo...).
         LOG(INFO) << "Initiating rewrite: " << rewrite_context;
         rewrite_context->Initiate();
       }
@@ -275,18 +298,13 @@ void RewriteDriver::Render() {
   {
     ScopedMutex lock(rewrite_mutex());
     DCHECK(!fetch_queued_);
-    int completed_rewrites = num_rewrites - pending_rewrites_;
-    if (pending_rewrites_ == 0) {
-      LOG(INFO) << "All " << completed_rewrites
-                << " rewrites complete by the time Render was called";
+    if (resource_manager_->block_until_completion_in_render()) {
+      BoundedWaitForCompletionImpl(kWaitForCompletion, -1);
     } else {
-      LOG(INFO) << "waiting for " << pending_rewrites_ << " rewrites";
-      BoundedWaitForCompletionImpl(
-          resource_manager_->block_until_completion_in_render() ?
-              -1 : rewrite_deadline_ms_);
-      completed_rewrites = num_rewrites - pending_rewrites_;
-      LOG(INFO) << "found " << completed_rewrites << " completed rewrites";
+      BoundedWaitForCompletionImpl(kWaitForCachedRender, rewrite_deadline_ms_);
     }
+    DCHECK_EQ(0, possibly_quick_rewrites_);
+    int completed_rewrites = num_rewrites - pending_rewrites_;
 
     // If the output cache lookup came as a HIT in after the deadline, that
     // means that (a) we can't use the result and (b) we don't need
@@ -1089,6 +1107,13 @@ void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
     attached = true;
 
     --pending_rewrites_;
+    if (!rewrite_context->slow()) {
+      --possibly_quick_rewrites_;
+      if ((possibly_quick_rewrites_ == 0) && waiting_for_render_) {
+        signal = true;
+      }
+    }
+
     if (pending_rewrites_ == 0) {
       signal = true;
     }
@@ -1109,6 +1134,12 @@ void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
     DCHECK(!fetch_queued_);
     scheduler_->Signal();
   }
+}
+
+void RewriteDriver::ReportSlowRewrites(int num) {
+  ScopedMutex lock(rewrite_mutex());
+  possibly_quick_rewrites_ -= num;
+  CHECK_LE(0, possibly_quick_rewrites_);
 }
 
 void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
@@ -1295,6 +1326,7 @@ HtmlResourceSlotPtr RewriteDriver::GetSlot(
 void RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {
   rewrites_.push_back(rewrite_context);
   ++pending_rewrites_;
+  ++possibly_quick_rewrites_;
 }
 
 void RewriteDriver::InitiateFetch(RewriteContext* rewrite_context) {

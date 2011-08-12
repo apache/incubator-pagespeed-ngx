@@ -352,6 +352,11 @@ class RewriteDriver : public HtmlParse {
   // to delete itself or return it back to a free pool in the ResourceManager.
   void RewriteComplete(RewriteContext* rewrite_context);
 
+  // Provides a mechanism for a RewriteContext to notify a
+  // RewriteDriver that a certain number of rewrites have been discovered
+  // to need to take the slow path.
+  void ReportSlowRewrites(int num);
+
   // If there are not outstanding references to this RewriteDriver,
   // delete it or recycle it to a free pool in the ResourceManager.
   // If this is a fetch, calling this also signals to the system that you
@@ -427,9 +432,18 @@ class RewriteDriver : public HtmlParse {
   typedef void (RewriteDriver::*SetStringMethod)(const StringPiece& value);
   typedef void (RewriteDriver::*SetInt64Method)(int64 value);
 
+  enum WaitMode {
+    kWaitForCompletion,   // wait for everything to complete (upto deadline)
+    kWaitForCachedRender  // wait for at least cached rewrites to complete,
+                          // and anything else that finishes within deadline.
+  };
+
   // Implementation of the main loop of BoundedWaitForCompletion; assumes
   // that the lock is held (and that asynchronous_rewrites_ is true)
-  void BoundedWaitForCompletionImpl(int64 timeout_ms);
+  void BoundedWaitForCompletionImpl(WaitMode wait_mode, int64 timeout_ms);
+
+  // Termination predicate for above; assumes locks held.
+  bool IsDone(WaitMode wait_mode, bool deadline_reached);
 
   // Determines whether this RewriteDriver was built with custom options
   bool has_custom_options() const { return (custom_options_.get() != NULL); }
@@ -516,6 +530,9 @@ class RewriteDriver : public HtmlParse {
   // it only makes sense to examine this from the Rewrite thread.
   bool waiting_for_completion_;  // protected by rewrite_mutex()
 
+  // Likewise for Render() (except when that's emulating WaitForCompletion)
+  bool waiting_for_render_;  //  protected by rewrite_mutex()
+
   // If this is true, this RewriteDriver should Cleanup() itself when it
   // finishes handling the current fetch.
   bool cleanup_on_fetch_complete_;
@@ -561,6 +578,9 @@ class RewriteDriver : public HtmlParse {
   // initiated_rewrites_.size() and rewrites_.size() but is kept
   // separate for programming convenience.
   int pending_rewrites_;                  // protected by rewrite_mutex()
+
+  // Rewrites that may possibly be satisfied from metadata cache alone.
+  int possibly_quick_rewrites_;           // protected by rewrite_mutex()
 
   // These objects are provided on construction or later, and are
   // owned by the caller.

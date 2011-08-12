@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_CONTEXT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_CONTEXT_H_
 
+#include <set>
 #include <vector>
 
 #include "base/scoped_ptr.h"
@@ -183,6 +184,10 @@ class RewriteContext {
   // whether the slots can be rendered into HTML.
   void Propagate(bool render_slots);
 
+  // If true, we have determined that this job can't be rendered just
+  // from metadata cache (including all prerequisites).
+  bool slow() const { return slow_; }
+
  protected:
   // The following methods are provided for the benefit of subclasses.
 
@@ -333,6 +338,8 @@ class RewriteContext {
   class ResourceReconstructCallback;
   friend class ResourceCallbackUtils;
 
+  typedef std::set<RewriteContext*> ContextSet;
+
   // Callback helper functions.
   void Start();
   void SetPartitionKey();
@@ -406,6 +413,15 @@ class RewriteContext {
   // It will *not* call 'delete this' if there is a live RewriteDriver,
   // waiting for a convenient point to render the rewrites into HTML.
   void WritePartition();
+
+  // Marks this job and any dependents slow as appropriate, notifying the
+  // RewriteDriver of any changes.
+  void MarkSlow();
+
+  // Collect all non-nested contexts that depend on this one (including
+  // itself). Note that this might exclude some repeated jobs that haven't
+  // gotten far enough to realize that yet.
+  void CollectDependentTopLevel(ContextSet* contexts);
 
   // To perform a rewrite, we need to have data for all of its input slots.
   ResourceSlotVector slots_;
@@ -507,6 +523,11 @@ class RewriteContext {
   // We would *not* want to do that if one of the Rewrites completed
   // with status kTooBusy.
   bool ok_to_write_output_partitions_;
+
+  // We mark a job as "slow" when we cannot render it entirely from the
+  // metadata cache (including rendering its predecessors). We only do this
+  // for top-level jobs.
+  bool slow_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };
