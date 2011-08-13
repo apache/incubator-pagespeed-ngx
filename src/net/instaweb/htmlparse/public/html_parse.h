@@ -315,8 +315,6 @@ class HtmlParse {
  protected:
   typedef std::vector<HtmlFilter*> FilterVector;
 
-  void ClearEvents();
-
  private:
   void ApplyFilterHelper(HtmlFilter* filter);
   HtmlEventListIterator Last();  // Last element in queue
@@ -334,6 +332,8 @@ class HtmlParse {
                   HtmlElement* new_parent);
   void CoalesceAdjacentCharactersNodes();
   void ShowProgress(const char* message);
+  void ClearEvents();
+
 
   // Visible for testing only, via HtmlTestingPeer
   friend class HtmlTestingPeer;

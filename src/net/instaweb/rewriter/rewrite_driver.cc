@@ -261,6 +261,8 @@ void RewriteDriver::TimedWait(int wait_time_ms) {
   scheduler_->TimedWait(wait_time_ms);
 }
 
+namespace {
+
 // TODO(jmarantz): replace with real blocking callback once  RunAsync
 // actually runs asynchronously, following new scheduler support.
 class WaitFunction : public Function {
@@ -271,6 +273,8 @@ class WaitFunction : public Function {
  private:
   bool done_;
 };
+
+}  // namespace
 
 // TODO(jmarantz): add callback version of this.
 void RewriteDriver::ExecuteFlushIfRequested() {
@@ -650,8 +654,8 @@ void RewriteDriver::AddPostRenderFilters() {
 }
 
 void RewriteDriver::AddOwnedPreRenderFilter(HtmlFilter* filter) {
-  pre_render_filters_.push_back(filter);
   filters_to_delete_.push_back(filter);
+  pre_render_filters_.push_back(filter);
 }
 
 void RewriteDriver::AddOwnedPostRenderFilter(HtmlFilter* filter) {
