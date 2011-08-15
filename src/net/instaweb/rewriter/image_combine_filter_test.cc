@@ -121,7 +121,7 @@ TEST_P(CssImageCombineTest, SpritesMultiple) {
                        sprite.c_str(), 0, 10, sprite.c_str(), -100);
   ValidateExpected("sprite_2_bikes_1_cuppa", before, after);
 
-  // If the second occurence of the image is unspriteable (e.g. if the div is
+  // If the second occurrence of the image is unspriteable (e.g. if the div is
   // larger than the image), the first and third should still sprite correctly.
   before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 999,
                         kCuppaPngFile, 0);
@@ -184,6 +184,77 @@ TEST_P(CssImageCombineTest, SpritesImagesExternal) {
   ValidateRewriteExternalCss(
       "wip", beforeCss, spriteCss, kNoOtherContexts | kNoClearFetcher |
       kExpectChange | kExpectSuccess | kNoStatCheck);
+}
+
+TEST_P(CssImageCombineTest, SpritesOkAfter404) {
+  // Make sure the handling of a 404 is correct, and doesn't interrupt spriting
+  // (nor check fail, as it used to before).
+  CSS_XFAIL_SYNC();
+
+  AddFileToMockFetcher(StrCat(kTestDomain, "bike2.png"), kBikePngFile,
+                       kContentTypePng, 100);
+  AddFileToMockFetcher(StrCat(kTestDomain, "bike3.png"), kBikePngFile,
+                       kContentTypePng, 100);
+  SetFetchResponse404("404.png");
+
+  const char kHtmlTemplate[] = "<head><style>"
+      "#div1{background:url(%s);width:10px;height:10px}"
+      "#div2{background:url(%s);width:10px;height:10px}"
+      "#div3{background:url(%s);width:10px;height:10px}"
+      "#div4{background:url(%s);width:10px;height:10px}"
+      "#div5{background:url(%s);width:10px;height:10px}"
+      "</style></head>";
+
+  GoogleString html = StringPrintf(kHtmlTemplate,
+                                   kBikePngFile,
+                                   kCuppaPngFile,
+                                   "404.png",
+                                   "bike2.png",
+                                   "bike3.png");
+  Parse("sprite_with_404", html);  // Parse
+  EXPECT_NE(GoogleString::npos,
+            output_buffer_.find(
+                StrCat(kBikePngFile, "+", kCuppaPngFile,
+                       "+bike2.png+bike3.png.pagespeed.is.0.png")));
+}
+
+TEST_P(CssImageCombineTest, SpritesMultiSite) {
+  // Make sure we do something sensible when we're forced to split into multiple
+  // partitions due to different host names -- at lest when it doesn't require
+  // us to keep track of multiple partitions intelligently.
+  CSS_XFAIL_SYNC();
+
+  const char kAltDomain[] = "http://images.example.com/";
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  lawyer->AddDomain(kAltDomain, message_handler());
+
+  AddFileToMockFetcher(StrCat(kAltDomain, kBikePngFile), kBikePngFile,
+                        kContentTypePng, 100);
+  AddFileToMockFetcher(StrCat(kAltDomain, kCuppaPngFile), kCuppaPngFile,
+                        kContentTypePng, 100);
+
+  const char kHtmlTemplate[] = "<head><style>"
+      "#div1{background:url(%s);width:10px;height:10px}"
+      "#div2{background:url(%s);width:10px;height:10px}"
+      "#div3{background:url(%s);width:10px;height:10px}"
+      "#div4{background:url(%s);width:10px;height:10px}"
+      "</style></head>";
+
+  GoogleString html = StringPrintf(kHtmlTemplate,
+                                   StrCat(kTestDomain, kBikePngFile).c_str(),
+                                   StrCat(kTestDomain, kCuppaPngFile).c_str(),
+                                   StrCat(kAltDomain, kBikePngFile).c_str(),
+                                   StrCat(kAltDomain, kCuppaPngFile).c_str());
+  Parse("sprite_multi_site", html);
+  EXPECT_NE(GoogleString::npos,
+            output_buffer_.find(
+                StrCat(kTestDomain, kBikePngFile, "+", kCuppaPngFile,
+                       ".pagespeed.is.0.png")));
+
+  EXPECT_NE(GoogleString::npos,
+            output_buffer_.find(
+                StrCat(kAltDomain, kBikePngFile, "+", kCuppaPngFile,
+                       ".pagespeed.is.0.png")));
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.

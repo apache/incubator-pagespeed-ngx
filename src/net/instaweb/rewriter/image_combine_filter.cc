@@ -695,7 +695,6 @@ class ImageCombineFilter::Context : public RewriteContext {
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
 
   void Reset() {
-    combiner_.Clear();
     combiner_.Reset();
   }
 
@@ -703,11 +702,14 @@ class ImageCombineFilter::Context : public RewriteContext {
   // Write the combination out.
   virtual void Rewrite(int partition_index, CachedResult* partition,
                        const OutputResourcePtr& output) {
-    // TODO(nforman): make multiple partitions when we can and should.
-    DCHECK_EQ(0, partition_index);
     RewriteSingleResourceFilter::RewriteResult result =
         RewriteSingleResourceFilter::kRewriteOk;
     if (!output->IsWritten()) {
+      // Note that this method expects to do something for only the fetch path,
+      // when only one partition should be in use --- in the rewrite path
+      // we should have already written everything out in Partition().
+      DCHECK_EQ(0, partition_index);
+
       ResourceVector resources;
       for (int i = 0, n = num_slots(); i < n; ++i) {
         ResourcePtr resource(slot(i)->resource());
@@ -839,10 +841,6 @@ class ImageCombineFilter::Context : public RewriteContext {
             add_input = true;
           }
         }
-      } else {
-        FinalizePartition(partitions, partition, outputs);
-        urls.clear();
-        partition = NULL;
       }
       if (add_input) {
         urls.insert(resource_url);
@@ -868,6 +866,7 @@ class ImageCombineFilter::Context : public RewriteContext {
         combination_output->UpdateCachedResultPreservingInputInfo(partition);
         outputs->push_back(combination_output);
       }
+      Reset();
     }
   }
 
