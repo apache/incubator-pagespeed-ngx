@@ -164,6 +164,8 @@ class DomainLawyer {
 
   static GoogleString NormalizeDomainName(const StringPiece& domain_name);
 
+  static bool IsSchemeHttpOrMissing(const StringPiece& domain_name);
+
   bool MapDomainHelper(
       const StringPiece& to_domain_name,
       const StringPiece& comma_separated_from_domains,

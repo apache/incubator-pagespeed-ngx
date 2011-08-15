@@ -220,7 +220,6 @@ $WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=on \
   | grep -i X-Mod-Pagespeed
 check [ $? = 0 ]
 
-# TODO(sligocki): Fix in rewrite_proxy_server // [google]
 #echo TEST: X-Mod-Pagespeed header not added when ModPagespeed=off
 #$WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=off \
 #  | grep -i X-Mod-Pagespeed
@@ -357,7 +356,6 @@ echo $JS_HEADERS | grep -qie 'HTTP/1\.. 200 OK'
 check [ $? = 0 ]
 echo $JS_HEADERS | grep -qi 'Content-Encoding: gzip'
 check [ $? = 0 ]
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 #echo $JS_HEADERS | grep -qi 'Vary: Accept-Encoding'
 #check [ $? = 0 ]
 #echo $JS_HEADERS | grep -qi 'Etag: W/0'
@@ -414,7 +412,6 @@ check [ $? != 0 ]
 echo TEST: Vary is not set for images
 echo "$IMG_HEADERS" | grep -qi 'Vary: Accept-Encoding'
 check [ $? != 0 ]
-# TODO(sligocki): Fix in rewrite_proxy_server and re-enable.  // [google]
 # Make sure there is an etag
 #echo TEST: Etags is present
 #echo "$IMG_HEADERS" | grep -qi 'Etag: W/0'

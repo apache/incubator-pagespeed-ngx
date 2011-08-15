@@ -218,23 +218,17 @@ test_filter add_instrumentation beacons load.
 check $WGET_PREREQ http://$HOSTNAME/mod_pagespeed_beacon?ets=load:13
 check grep -q '"204 No Content"' $WGET_OUTPUT
 
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
 test_filter combine_css combines 4 CSS files into 1.
 fetch_until $URL 'grep -c text/css' 1
 check $WGET_PREREQ $URL
 test_resource_ext_corruption $URL $combine_css_filename
 
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
 test_filter extend_cache rewrites an image tag.
 fetch_until $URL 'grep -c src.*91_WewrLtP' 1
 check $WGET_PREREQ $URL
 echo about to test resource ext corruption...
 test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
 test_filter outline_javascript outlines large scripts, but not small ones.
 check $WGET_PREREQ $URL
 check egrep -q "'<script.*large.*src='" $FETCHED       # outlined
@@ -257,8 +251,6 @@ echo $JS_HEADERS | grep -qi 'Last-Modified:'
 check [ $? = 0 ]
 
 # Test RetainComment directive.
-# TODO(sligocki): Support RetainComment directive in  // [google]
-# rewrite_proxy_server.                               // [google]
 test_filter remove_comments retains appropriate comments.
 check $WGET_PREREQ $URL
 check grep -q retained $FETCHED        # RetainComment directive
@@ -272,8 +264,6 @@ fetch_until $URL 'grep -c .pagespeed.ic' 2  # other 2 images optimized
 check $WGET_PREREQ $URL
 check [ `stat -c %s $OUTDIR/xBikeCrashIcn*` -lt 25000 ]      # re-encoded
 check [ `stat -c %s $OUTDIR/*256x192*Puzzle*`  -lt 24126  ]  # resized
-# TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
-# move to system_test.sh                                   // [google]
 IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
 check [ x"$IMG_URL" != x ]
 echo TEST: headers for rewritten image "$IMG_URL"
@@ -308,15 +298,12 @@ echo "$IMG_HEADERS" | grep -qi 'Last-Modified'
 check [ $? = 0 ]
 
 # Depends upon "Header append Vary User-Agent" and ModPagespeedRespectVary.
-# TODO(sligocki): Get working somehow on rewrite_proxy_server.  // [google]
 echo TEST: respect vary user-agent
 URL=$TEST_ROOT/vary/index.html?ModPagespeedFilters=inline_css
 echo $WGET_DUMP $URL
 $WGET_DUMP $URL | grep -q "<style>"
 check [ $? != 0 ]
 
-# TODO(sligocki): Support ModPagespeedShardDomain in  // [google]
-# rewrite_proxy_server.                               // [google]
 echo TEST: ModPagespeedShardDomain directive in .htaccess file
 rm -rf $OUTDIR
 mkdir $OUTDIR

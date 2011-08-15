@@ -295,11 +295,8 @@ bool DomainLawyer::MapRequestToDomain(
     return false;
   }
   bool ret = false;
-  // At present we're not sure about appropriate resource
-  // policies for https: etc., so we only permit http resources
-  // to be rewritten.
-  // TODO(jmaessen): Figure out if this is appropriate.
-  if (resolved_request->is_valid() && resolved_request->SchemeIs("http")) {
+  // We can map TO http only (see MapDomainHelper), but FROM http or https.
+  if (resolved_request->is_valid()) {
     GoogleUrl resolved_origin(resolved_request->Origin());
 
     // Looks at the resolved domain name + path from the original request
@@ -350,10 +347,8 @@ bool DomainLawyer::MapRequestToDomain(
 bool DomainLawyer::MapOrigin(const StringPiece& in, GoogleString* out) const {
   bool ret = false;
   GoogleUrl gurl(in);
-  // At present we're not sure about appropriate resource
-  // policies for https: etc., so we only permit http resources
-  // to be rewritten.
-  if (gurl.is_valid() && gurl.SchemeIs("http")) {
+  // We can map TO http only (see MapDomainHelper), but FROM http or https.
+  if (gurl.is_valid()) {
     ret = true;
     in.CopyToString(out);
     Domain* domain = FindDomain(gurl);
@@ -400,6 +395,12 @@ bool DomainLawyer::AddShard(
   return result;
 }
 
+bool DomainLawyer::IsSchemeHttpOrMissing(const StringPiece& domain_name) {
+  // The scheme defaults to http so that's the same as explicitly saying http.
+  return (domain_name.find("://") == GoogleString::npos ||
+          domain_name.starts_with("http://"));
+}
+
 bool DomainLawyer::MapDomainHelper(
     const StringPiece& to_domain_name,
     const StringPiece& comma_separated_from_domains,
@@ -407,6 +408,12 @@ bool DomainLawyer::MapDomainHelper(
     bool allow_wildcards,
     bool authorize_to_domain,
     MessageHandler* handler) {
+  // TODO(matterbury): remove this condition once it's 'safe' to do so,
+  // namely we've validated that downstream components (such as the fetcher)
+  // handle https sanely.
+  if (!IsSchemeHttpOrMissing(to_domain_name)) {
+    return false;
+  }
   Domain* to_domain = AddDomainHelper(to_domain_name, false,
                                       authorize_to_domain, handler);
   if (to_domain == NULL) {
@@ -419,7 +426,7 @@ bool DomainLawyer::MapDomainHelper(
     handler->Message(kError, "Cannot map to a wildcarded domain: %s",
                      to_domain_name.as_string().c_str());
   } else {
-    GoogleUrl to_url(to_domain_name);
+    GoogleUrl to_url(to_domain->name());
     StringPieceVector domains;
     SplitStringPieceToVector(comma_separated_from_domains, ",", &domains, true);
     ret = true;
@@ -428,8 +435,8 @@ bool DomainLawyer::MapDomainHelper(
       Domain* from_domain = AddDomainHelper(domain_name, false, true, handler);
       if (from_domain != NULL) {
         GoogleUrl from_url(from_domain->name());
-        if (to_url.Host() == from_url.Host()) {
-          // ignore requests to map to the same hostname
+        if (to_url.Origin() == from_url.Origin()) {
+          // Ignore requests to map to the same scheme://hostname:port/.
         } else if (!allow_wildcards && from_domain->IsWildcarded()) {
           handler->Message(kError, "Cannot map from a wildcarded domain: %s",
                            to_domain_name.as_string().c_str());

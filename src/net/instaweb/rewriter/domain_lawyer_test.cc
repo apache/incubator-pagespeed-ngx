@@ -200,14 +200,118 @@ TEST_F(DomainLawyerTest, PortWildcardDomainDeclared) {
   EXPECT_EQ(port_cdn_domain, mapped_domain_name);
 }
 
+TEST_F(DomainLawyerTest, HttpsDomain) {
+  ASSERT_TRUE(domain_lawyer_.AddDomain("https://nytimes.com",
+                                       &message_handler_));
+}
+
 TEST_F(DomainLawyerTest, ResourceFromHttpsPage) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.nytimes.com", &message_handler_));
   GoogleString mapped_domain_name;
 
-  // When a relative resource is requested from an https page we will fail.
-  ASSERT_FALSE(MapRequest(https_request_, kResourceUrl, &mapped_domain_name));
+  // We now handle requests for https, though subsequent fetching might fail.
+  ASSERT_TRUE(MapRequest(https_request_, kResourceUrl, &mapped_domain_name));
   ASSERT_TRUE(MapRequest(https_request_, StrCat(kRequestDomain, kResourceUrl),
                          &mapped_domain_name));
+}
+
+TEST_F(DomainLawyerTest, MapHttpsAcrossHosts) {
+  ASSERT_TRUE(AddOriginDomainMapping("http://insecure.nytimes.com",
+                                     "https://secure.nytimes.com"));
+  ASSERT_FALSE(AddOriginDomainMapping("https://secure.nytimes.com",
+                                      "http://insecure.nytimes.com"));
+  GoogleString mapped;
+  ASSERT_TRUE(domain_lawyer_.MapOrigin(
+      "https://secure.nytimes.com/css/stylesheet.css", &mapped));
+  EXPECT_EQ("http://insecure.nytimes.com/css/stylesheet.css", mapped);
+}
+
+TEST_F(DomainLawyerTest, MapHttpsAcrossSchemes) {
+  ASSERT_TRUE(AddOriginDomainMapping("http://nytimes.com",
+                                     "https://nytimes.com"));
+  ASSERT_FALSE(AddOriginDomainMapping("https://nytimes.com",
+                                      "http://nytimes.com"));
+  GoogleString mapped;
+  ASSERT_TRUE(domain_lawyer_.MapOrigin(
+      "https://nytimes.com/css/stylesheet.css", &mapped));
+  EXPECT_EQ("http://nytimes.com/css/stylesheet.css", mapped);
+}
+
+TEST_F(DomainLawyerTest, MapHttpsAcrossPorts) {
+  ASSERT_TRUE(AddOriginDomainMapping("http://nytimes.com:8181",
+                                     "https://nytimes.com"));
+  GoogleString mapped;
+  ASSERT_TRUE(domain_lawyer_.MapOrigin(
+      "https://nytimes.com/css/stylesheet.css", &mapped));
+  EXPECT_EQ("http://nytimes.com:8181/css/stylesheet.css", mapped);
+}
+
+TEST_F(DomainLawyerTest, RewriteHttpsAcrossHosts) {
+  ASSERT_TRUE(AddRewriteDomainMapping("http://insecure.nytimes.com",
+                                      "https://secure.nytimes.com"));
+  EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
+  GoogleString mapped_domain_name;
+  ASSERT_TRUE(MapRequest(GoogleUrl("http://insecure.nytimes.com/index.html"),
+                         "https://secure.nytimes.com/css/stylesheet.css",
+                         &mapped_domain_name));
+  EXPECT_EQ("http://insecure.nytimes.com/", mapped_domain_name);
+  // Succeeds because http://insecure... is authorized and matches the request.
+  ASSERT_TRUE(MapRequest(GoogleUrl("https://secure.nytimes.com/index.html"),
+                         "http://insecure.nytimes.com/css/stylesheet.css",
+                         &mapped_domain_name));
+  EXPECT_EQ("http://insecure.nytimes.com/", mapped_domain_name);
+  // Succeeds because https://secure... maps to http://insecure...
+  ASSERT_TRUE(MapRequest(GoogleUrl("https://secure.nytimes.com/index.html"),
+                         "https://secure.nytimes.com/css/stylesheet.css",
+                         &mapped_domain_name));
+  EXPECT_EQ("http://insecure.nytimes.com/", mapped_domain_name);
+}
+
+TEST_F(DomainLawyerTest, RewriteHttpsAcrossPorts) {
+  ASSERT_TRUE(AddRewriteDomainMapping("http://nytimes.com:8181",
+                                      "https://nytimes.com"));
+  EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
+  GoogleString mapped_domain_name;
+  // Succeeds because we map it as specified above.
+  ASSERT_TRUE(MapRequest(GoogleUrl("http://nytimes.com/index.html"),
+                         "https://nytimes.com/css/stylesheet.css",
+                         &mapped_domain_name));
+  EXPECT_EQ("http://nytimes.com:8181/", mapped_domain_name);
+  // Fails because http://nytimes/ is not authorized.
+  ASSERT_FALSE(MapRequest(GoogleUrl("https://nytimes.com/index.html"),
+                          "http://nytimes.com/css/stylesheet.css",
+                          &mapped_domain_name));
+  // Succeeds because http://nytimes:8181/ is authorized & matches the request.
+  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com/index.html"),
+                         "http://nytimes.com:8181/css/stylesheet.css",
+                         &mapped_domain_name));
+  EXPECT_EQ("http://nytimes.com:8181/", mapped_domain_name);
+  // Succeeds because https://nytimes/ maps to http://nytimes:8181/.
+  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com/index.html"),
+                         "https://nytimes.com/css/stylesheet.css",
+                         &mapped_domain_name));
+  EXPECT_EQ("http://nytimes.com:8181/", mapped_domain_name);
+}
+
+TEST_F(DomainLawyerTest, RewriteHttpsAcrossSchemes) {
+  ASSERT_TRUE(AddRewriteDomainMapping("http://nytimes.com",
+                                      "https://nytimes.com"));
+  EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
+  GoogleString mapped_domain_name;
+  ASSERT_TRUE(MapRequest(GoogleUrl("http://nytimes.com/index.html"),
+                         "https://nytimes.com/css/stylesheet.css",
+                         &mapped_domain_name));
+  EXPECT_EQ("http://nytimes.com/", mapped_domain_name);
+  // Succeeds because http://nytimes/ is authorized and matches the request.
+  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com/index.html"),
+                          "http://nytimes.com/css/stylesheet.css",
+                          &mapped_domain_name));
+  EXPECT_EQ("http://nytimes.com/", mapped_domain_name);
+  // Succeeds because https://nytimes/ maps to http://nytimes/.
+  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com/index.html"),
+                          "https://nytimes.com/css/stylesheet.css",
+                          &mapped_domain_name));
+  EXPECT_EQ("http://nytimes.com/", mapped_domain_name);
 }
 
 TEST_F(DomainLawyerTest, AddDomainRedundantly) {
