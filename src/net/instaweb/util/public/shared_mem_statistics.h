@@ -18,7 +18,6 @@
 #include <cstddef>
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string.h"
@@ -85,7 +84,7 @@ class SharedMemVariable : public Variable {
 // NullStatisticsHistogram is for temporary util we have a shared memory
 // histogram implemented.
 class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
-    NullStatisticsHistogram, FakeTimedVariable> {
+    FakeHistogram, FakeTimedVariable> {
  public:
   SharedMemStatistics(AbstractSharedMem* shm_runtime,
                       const GoogleString& filename_prefix);
@@ -104,7 +103,6 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
 
  protected:
   virtual SharedMemVariable* NewVariable(const StringPiece& name, int index);
-  virtual NullStatisticsHistogram* NewHistogram();
 
  private:
   GoogleString SegmentName() const;

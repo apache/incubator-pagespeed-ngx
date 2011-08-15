@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SIMPLE_STATS_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string.h"
@@ -44,7 +43,7 @@ class SimpleStatsVariable : public Variable {
 
 // Simple name/value pair statistics implementation.
 class SimpleStats : public StatisticsTemplate<SimpleStatsVariable,
-                                              NullStatisticsHistogram,
+                                              FakeHistogram,
                                               FakeTimedVariable> {
  public:
   static const int kNotFound;
@@ -54,7 +53,6 @@ class SimpleStats : public StatisticsTemplate<SimpleStatsVariable,
 
  protected:
   virtual SimpleStatsVariable* NewVariable(const StringPiece& name, int index);
-  virtual NullStatisticsHistogram* NewHistogram();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SimpleStats);

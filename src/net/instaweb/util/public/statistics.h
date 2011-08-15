@@ -19,8 +19,10 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_STATISTICS_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_STATISTICS_H_
 
+#include <map>
 #include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -43,7 +45,39 @@ class Variable {
 class Histogram {
  public:
   virtual ~Histogram();
+  // Record a value in its bucket.
+  virtual void Add(double value) = 0;
+  // Throw away all data.
+  virtual void Clear() = 0;
+  // True if the histogram is empty.
+  virtual bool Empty() = 0;
+  // Write Histogram Data to the writer.
+  // Default implementation does not include histogram graph, but only raw
+  // histogram data table. It looks like:
+  // ________________________________________
+  // |  TITLE String                         |
+  // |  Avg: StdDev: Median: 90%: 95%: 99%   |
+  // |  Raw Histogram Data:                  |
+  // |  [0,1] 1 25% 25%  |||||               |
+  // |  [2,3] 1 25% 50%  |||||               |
+  // |  [4,5] 2 50% 100% ||||||||||          |
+  // |_______________________________________|
+  virtual void Render(const StringPiece& title, Writer* writer,
+                      MessageHandler* handler);
+  // Maxmum number of buckets. This number can be used to allocate a buffer for
+  // Histogram.
+  virtual int MaxBuckets() = 0;
+  // Allow histogram have negative values.
+  virtual void EnableNegativeBuckets() = 0;
+  // Set the minimum value allowed in histogram.
+  virtual void SetMinValue(double value) = 0;
+  // Set the maximum value allowed in histogram.
+  virtual void SetMaxValue(double value) = 0;
+  // Set the maximum number of buckets.
+  virtual void SetMaxBuckets(int i) = 0;
+  // Record a value in its bucket.
 
+ protected:
   virtual double Average() = 0;
   // Return estimated value that is greater than perc% of all data.
   // e.g. Percentile(20) returns the value which is greater than
@@ -53,20 +87,54 @@ class Histogram {
   virtual double Count() = 0;
   virtual double Maximum() = 0;
   virtual double Minimum() = 0;
+  virtual double Median() {
+    return Percentile(50);
+  }
+  // Number of buckets needs to render, ignore the empty buckets in the front
+  // and at the end.
+  virtual int NumBuckets() = 0;
+  // Lower bound of a bucket. If index == MaxBuckets() + 1, returns the
+  // upper bound of the histogram. DCHECK if index is in the range of
+  // [0, MaxBuckets()+1].
+  virtual double BucketStart(int index) = 0;
+  // Upper bound of a bucket.
+  virtual double BucketLimit(int index) {
+    return BucketStart(index + 1);
+  }
+  // Value of a bucket.
+  virtual double BucketCount(int index) = 0;
+  // Helper function of Render(), write entries of histogram raw data table.
+  // Each entry includes bucket range, bucket count, percentage,
+  // cumulative percentage, bar. It looks like:
+  // [0,1] 1 5%  5%  ||||
+  // [2,3] 2 10% 15% ||||||||
+  virtual void WriteRawHistogramData(Writer* writer, MessageHandler* handler);
+};
 
-  // Record a value in its bucket.
-  virtual void Add(double value) = 0;
-  // Throw away all data.
-  virtual void Clear() = 0;
-  // True if the histogram is empty.
-  virtual bool Empty() = 0;
-  // Write script and function to web page. Note that this function should be
-  // called only once for one page, should not be used for each histogram.
-  virtual void RenderHeader(Writer* writer,
-                            MessageHandler* handler) = 0;
-  // Export data for histogram graph.
-  virtual void Render(const StringPiece& title, Writer* writer,
-                      MessageHandler* handler) = 0;
+// FakeHistogram is an empty implemenation of Histogram.
+class FakeHistogram : public Histogram {
+ public:
+  FakeHistogram() {}
+  virtual ~FakeHistogram();
+  virtual void Add(const double value) { }
+  virtual void Clear() { }
+  virtual bool Empty() { return true; }
+  virtual int MaxBuckets() { return 0; }
+  virtual void EnableNegativeBuckets() { }
+  virtual void SetMinValue(double value) { }
+  virtual void SetMaxValue(double value) { }
+  virtual void SetMaxBuckets(int i) { }
+
+ protected:
+  virtual double Average() { return 0.0; }
+  virtual double Percentile(const double perc) { return 0.0; }
+  virtual double StandardDeviation() { return 0.0; }
+  virtual double Count() { return 0.0; }
+  virtual double Maximum() { return 0.0; }
+  virtual double Minimum() { return 0.0; }
+  virtual int NumBuckets() { return 0; }
+  virtual double BucketStart(int index) { return 0.0; }
+  virtual double BucketCount(int index) { return 0.0; }
 };
 
 // TimedVaraible is a statistic class returns the amount added in the
@@ -170,18 +238,24 @@ class Statistics {
     CHECK(stat != NULL) << "TimedVariable not found: " << name;
     return stat;
   }
-
+  // Return the names of all the histograms for render.
+  virtual StringVector& HistogramNames() = 0;
+  // Return the map of groupnames and names of all timedvariables for render.
+  virtual std::map<GoogleString, StringVector>& TimedVariableMap() = 0;
   // Dump the variable-values to a writer.
   virtual void Dump(Writer* writer, MessageHandler* handler) = 0;
   // Export statistics to a writer. Statistics in a group are exported in one
   // table.
-  virtual void RenderTimedVariable(Writer* writer,
-                                   MessageHandler* handler) = 0;
+  virtual void RenderTimedVariables(Writer* writer,
+                                    MessageHandler* handler);
+  // Write all the histograms in this Statistic object to a writer.
+  virtual void RenderHistograms(Writer* writer, MessageHandler* handler);
   // Set all variables to 0.
   // Throw away all data in histograms and stats.
   virtual void Clear() = 0;
 
  protected:
+  virtual Histogram* NewHistogram();
   virtual TimedVariable* NewTimedVariable(const StringPiece& name, int index);
   virtual Variable* NewVariable(const StringPiece& name, int index) = 0;
 };

@@ -18,7 +18,6 @@
 #include <string>
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "apr_shm.h"
@@ -86,7 +85,7 @@ class AprVariable : public Variable {
 };
 
 class AprStatistics : public StatisticsTemplate<AprVariable,
-                                                NullStatisticsHistogram,
+                                                FakeHistogram,
                                                 FakeTimedVariable> {
  public:
   AprStatistics(const StringPiece& filename_prefix);
@@ -108,9 +107,7 @@ class AprStatistics : public StatisticsTemplate<AprVariable,
 
  protected:
   virtual AprVariable* NewVariable(const StringPiece& name, int index);
-  virtual NullStatisticsHistogram* NewHistogram();
-  virtual FakeTimedVariable* NewTimedVariable(const StringPiece& name,
-                                              int index);
+
  private:
   bool frozen_;
   bool is_child_;
