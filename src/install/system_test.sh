@@ -215,8 +215,30 @@ echo TEST: compression is enabled for HTML.
 check "$WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $EXAMPLE_ROOT/ 2>&1 | grep -qi 'Content-Encoding: gzip'"
 
+echo TEST: X-Mod-Pagespeed header added when ModPagespeed=on
+$WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=on \
+  | grep -i X-Mod-Pagespeed
+check [ $? = 0 ]
+
+# TODO(sligocki): Fix in rewrite_proxy_server // [google]
+#echo TEST: X-Mod-Pagespeed header not added when ModPagespeed=off
+#$WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=off \
+#  | grep -i X-Mod-Pagespeed
+#check [ $? != 0 ]
+
 
 # Individual filter tests, in alphabetical order
+
+test_filter add_instrumentation adds 2 script tags
+check $WGET_PREREQ $URL
+check [ `cat $FETCHED | sed 's/>/>\n/g' | grep -c '<script'` = 2 ]
+
+echo "TEST: We don't add_instrumentation if URL params tell us not to"
+FILE=add_instrumentation.html?ModPagespeedFilters=
+URL=$EXAMPLE_ROOT/$FILE
+FETCHED=$OUTDIR/$FILE
+check $WGET_PREREQ $URL
+check [ `cat $FETCHED | sed 's/>/>\n/g' | grep -c '<script'` = 0 ]
 
 # http://code.google.com/p/modpagespeed/issues/detail?id=170
 echo "TEST: Make sure 404s aren't rewritten"

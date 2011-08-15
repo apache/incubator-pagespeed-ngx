@@ -213,18 +213,10 @@ check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
 # Individual filter tests, in alphabetical order
 
-test_filter add_instrumentation adds 2 script tags
-check $WGET_PREREQ $URL
-check [ `cat $FETCHED | sed 's/>/>\n/g' | grep -c '<script'` = 2 ]
+# This is dependent upon having a /mod_pagespeed_beacon handler.
+test_filter add_instrumentation beacons load.
 check $WGET_PREREQ http://$HOSTNAME/mod_pagespeed_beacon?ets=load:13
 check grep -q '"204 No Content"' $WGET_OUTPUT
-
-echo "TEST: We don't add_instrumentation if URL params tell us not to"
-FILE=add_instrumentation.html?ModPagespeedFilters=
-URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
-check $WGET_PREREQ $URL
-check [ `cat $FETCHED | sed 's/>/>\n/g' | grep -c '<script'` = 0 ]
 
 # TODO(sligocki): Get passing in rewrite_proxy_server and  // [google]
 # move to system_test.sh                                   // [google]
