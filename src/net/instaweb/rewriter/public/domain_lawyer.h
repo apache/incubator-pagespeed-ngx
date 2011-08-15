@@ -180,9 +180,9 @@ class DomainLawyer {
 
   Domain* FindDomain(const GoogleUrl& gurl) const;
 
-  typedef std::map<GoogleString, Domain*> DomainMap;
+  typedef std::map<GoogleString, Domain*> DomainMap;  // see AddDomainHelper
   DomainMap domain_map_;
-  typedef std::vector<Domain*> DomainVector;
+  typedef std::vector<Domain*> DomainVector;          // see AddDomainHelper
   DomainVector wildcarded_domains_;
   bool can_rewrite_domains_;
   // If you add more fields here, please be sure to update Merge().

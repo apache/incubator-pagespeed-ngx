@@ -211,6 +211,11 @@ DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
     return NULL;
   }
 
+  // TODO(matterbury): need better data structures to eliminate the O(N) logic:
+  // 1) Use a trie for domain_map_ as we need to find the domain whose trie
+  //    path matches the beginning of the given domain_name since we no longer
+  //    match just the domain name.
+  // 2) Use a better lookup structure for wildcard searching.
   GoogleString domain_name_str = NormalizeDomainName(domain_name);
   Domain* domain = NULL;
   std::pair<DomainMap::iterator, bool> p = domain_map_.insert(
@@ -244,15 +249,13 @@ DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
 DomainLawyer::Domain* DomainLawyer::FindDomain(const GoogleUrl& gurl) const {
   // First do a quick lookup on the domain name only, since that's the most
   // common case. Failing that, try searching for domain + path.
+  // TODO(matterbury): see AddDomainHelper for speed issues.
   GoogleString domain_name;
   gurl.Origin().CopyToString(&domain_name);
   EnsureEndsInSlash(&domain_name);
   DomainMap::const_iterator p = domain_map_.find(domain_name);
   if (p == domain_map_.end() && gurl.has_path()) {
     StringPiece domain_spec(gurl.Spec());
-    // TODO(matterbury): use a better lookup structure for domain_map_ not O(n),
-    // such as a map from just the domain name ("http://example.com") to a map
-    // of pathnames ("/", "/root/", etc), each mapping to its target Domain*.
     for (p = domain_map_.begin(); p != domain_map_.end(); ++p) {
       Domain* src_domain = p->second;
       if (!src_domain->IsWildcarded() &&
@@ -266,7 +269,6 @@ DomainLawyer::Domain* DomainLawyer::FindDomain(const GoogleUrl& gurl) const {
   if (p != domain_map_.end()) {
     domain = p->second;
   } else {
-    // TODO(jmarantz): use a better lookup structure for this
     for (int i = 0, n = wildcarded_domains_.size(); i < n; ++i) {
       domain = wildcarded_domains_[i];
       if (domain->Match(domain_name)) {
