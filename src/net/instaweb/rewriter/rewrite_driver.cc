@@ -1186,6 +1186,9 @@ void RewriteDriver::ReportSlowRewrites(int num) {
   ScopedMutex lock(rewrite_mutex());
   possibly_quick_rewrites_ -= num;
   CHECK_LE(0, possibly_quick_rewrites_);
+  if ((possibly_quick_rewrites_ == 0) && waiting_for_render_) {
+    scheduler_->Signal();
+  }
 }
 
 void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
