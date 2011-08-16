@@ -49,6 +49,7 @@ struct HttpAttributes {
   static const char kReferer[];  // sic
   static const char kServer[];
   static const char kSetCookie[];
+  static const char kSetCookie2[];
   static const char kTransferEncoding[];
   static const char kUserAgent[];
   static const char kVary[];

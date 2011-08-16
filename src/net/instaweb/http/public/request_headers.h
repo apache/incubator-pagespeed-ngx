@@ -31,7 +31,8 @@ class Writer;
 // Read/write API for HTTP request headers.
 class RequestHeaders : public Headers<HttpRequestHeaders> {
  public:
-  enum Method { kOptions, kGet, kHead, kPost, kPut, kDelete, kTrace, kConnect };
+  enum Method { kOptions, kGet, kHead, kPost, kPut, kDelete, kTrace, kConnect,
+                kError };
 
   RequestHeaders();
 

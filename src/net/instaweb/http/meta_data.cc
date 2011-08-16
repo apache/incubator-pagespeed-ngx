@@ -40,6 +40,7 @@ const char HttpAttributes::kNoCache[] = "max-age=0, no-cache, no-store";
 const char HttpAttributes::kReferer[] = "Referer";  // sic
 const char HttpAttributes::kServer[] = "Server";
 const char HttpAttributes::kSetCookie[] = "Set-Cookie";
+const char HttpAttributes::kSetCookie2[] = "Set-Cookie2";
 const char HttpAttributes::kTransferEncoding[] = "Transfer-Encoding";
 const char HttpAttributes::kUserAgent[] = "User-Agent";
 const char HttpAttributes::kVary[] = "Vary";

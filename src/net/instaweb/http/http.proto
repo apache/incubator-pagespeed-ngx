@@ -49,6 +49,7 @@ message HttpRequestHeaders {
     DELETE = 6;
     TRACE = 7;
     CONNECT = 8;
+    INVALID = 9;  // Originally ERROR, but that is a macro in C++.
   };
 
   // Note: the URL is not part of this protobuf, as it's typically kept
