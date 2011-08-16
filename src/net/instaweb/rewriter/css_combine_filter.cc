@@ -317,8 +317,7 @@ class CssCombineFilter::Context : public RewriteContext {
 CssCombineFilter::CssCombineFilter(RewriteDriver* driver,
                                    const char* filter_prefix)
     : RewriteFilter(driver, filter_prefix),
-      css_tag_scanner_(driver_),
-      context_(MakeContext()) {
+      css_tag_scanner_(driver_) {
 }
 
 CssCombineFilter::~CssCombineFilter() {
@@ -329,7 +328,7 @@ void CssCombineFilter::Initialize(Statistics* statistics) {
 }
 
 void CssCombineFilter::StartDocumentImpl() {
-  context_->Reset();
+  context_.reset(MakeContext());
 }
 
 void CssCombineFilter::StartElementImpl(HtmlElement* element) {
@@ -459,6 +458,7 @@ bool CssCombineFilter::Fetch(const OutputResourcePtr& resource,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
   DCHECK(!driver_->asynchronous_rewrites());
+  context_.reset(MakeContext());
   return combiner()->Fetch(resource, writer, request_header, response_headers,
                            message_handler, callback);
 }

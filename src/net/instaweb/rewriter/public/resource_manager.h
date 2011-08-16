@@ -45,7 +45,7 @@ class CacheInterface;
 class ContentType;
 class FileSystem;
 class FilenameEncoder;
-class Function;
+class GoogleUrl;
 class Hasher;
 class MessageHandler;
 class NamedLockManager;
@@ -134,6 +134,9 @@ class ResourceManager {
   void CacheComputedResourceMapping(OutputResource* output,
                                     int64 origin_expire_time_ms,
                                     MessageHandler* handler);
+
+  // Is this URL a ref to a Pagespeed resource?
+  bool IsPagespeedResource(const GoogleUrl& url);
 
   // Returns true if the resource with given date and TTL is going to expire
   // shortly and should hence be proactively re-fetched.
@@ -323,18 +326,13 @@ class ResourceManager {
   // keep free-lists for each unique option-set.
   void ReleaseRewriteDriver(RewriteDriver* rewrite_driver);
 
-  // Queues up a task to run on the Rewrite thread.
-  void AddRewriteTask(Function* task);
-
   ThreadSystem* thread_system() { return thread_system_; }
 
-  // Waits for the currently running job to complete, and stops accepting
-  // new jobs in the worker. This is meant for use when shutting down
+  // Waits for all currently running jobs to complete, and stops accepting
+  // new jobs in the workers.  This is meant for use when shutting down
   // processing, so that jobs running in background do not access objects
   // that are about to be deleted.
-  void ShutDownWorker();
-
-  QueuedWorker* rewrite_worker() { return rewrite_worker_.get(); }
+  void ShutDownWorkers();
 
   // Take any headers that are not caching-related, and not otherwise
   // filled in by SetDefaultLongCacheHeaders or SetContentType, but
@@ -367,6 +365,11 @@ class ResourceManager {
                                       ResponseHeaders* output_headers);
 
  private:
+  // Must be called with rewrite_drivers_mutex_ held.
+  void AssignRewriteWorker(RewriteDriver* rewrite_driver);
+
+  RewriteDriver* NewUnmanagedRewriteDriverHelper(bool assign_worker);
+
   GoogleString file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.
   FileSystem* file_system_;
@@ -445,7 +448,17 @@ class ResourceManager {
   // configuration must be done by .htaccess.
   scoped_ptr<RewriteDriver> decoding_driver_;
 
-  scoped_ptr<QueuedWorker> rewrite_worker_;
+  // These queued workers are assigned to RewriteDrivers in cyclic order.
+  // We are willing to have more than one RewriteDriver share a QueuedWorker
+  // but would like to distribute the load across threads.
+  //
+  // TODO(jmarantz): consider whether cyclic order can yield hot-spots and
+  // we should instead randomize or order based on queue depth.
+
+  // protected by rewrite_drivers_mutex_.
+  std::vector<QueuedWorker*> rewrite_workers_;
+  int max_queued_workers_;
+  int queued_worker_index_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

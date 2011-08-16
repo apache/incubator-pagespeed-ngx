@@ -95,6 +95,11 @@ const char kPageLoadCount[] = "page_load_count";
 const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
 const int64 kRefreshExpirePercent = 75;
 
+// TODO(jmarantz): allow setting the kMaxQueuedWorkers via set_ method so that
+// command-line- or pagespeed.conf-based experiments can be run to see what a
+// good value is.
+const int kMaxQueuedWorkers = 1;
+
 // Attributes that should not be automatically copied from inputs to outputs
 const char* kExcludedAttributes[] = {
   HttpAttributes::kCacheControl,
@@ -157,7 +162,6 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
                                  ThreadSystem* thread_system,
                                  RewriteDriverFactory* factory)
     : file_prefix_(file_prefix.data(), file_prefix.size()),
-      resource_id_(0),
       file_system_(file_system),
       filename_encoder_(filename_encoder),
       url_async_fetcher_(url_async_fetcher),
@@ -191,11 +195,10 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       thread_system_(thread_system),
       factory_(factory),
       rewrite_drivers_mutex_(thread_system->NewMutex()),
-      decoding_driver_(NewUnmanagedRewriteDriver()) {
-  rewrite_worker_.reset(new QueuedWorker(thread_system_));
+      max_queued_workers_(kMaxQueuedWorkers),
+      queued_worker_index_(-1) {
   rewrite_thread_queue_depth_.reset(new Waveform(thread_system, timer(), 200));
-  rewrite_worker_->set_queue_size_stat(rewrite_thread_queue_depth_.get());
-  rewrite_worker_->Start();
+  decoding_driver_.reset(NewUnmanagedRewriteDriver());
 
   // Make sure the excluded-attributes are in abc order so binary_search works.
   // Make sure to use the same comparator that we pass to the binary_search.
@@ -207,7 +210,7 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
 
 ResourceManager::~ResourceManager() {
   // stop job traffic before deleting any rewrite drivers.
-  rewrite_worker_->ShutDown();
+  ShutDownWorkers();
 
   // We scan for "leaked_rewrite_drivers" in apache/install/tests.mk.
   DCHECK(active_rewrite_drivers_.empty()) << "leaked_rewrite_drivers";
@@ -383,6 +386,11 @@ void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
   if (!output->written_using_rewrite_context_flow()) {
     output->SaveCachedResult(name_key, handler);
   }
+}
+
+bool ResourceManager::IsPagespeedResource(const GoogleUrl& url) {
+  ResourceNamer namer;
+  return (url.is_valid() && namer.Decode(url.LeafSansQuery()));
 }
 
 bool ResourceManager::IsImminentlyExpiring(int64 start_date_ms,
@@ -615,13 +623,29 @@ bool ResourceManager::HandleBeacon(const StringPiece& unparsed_url) {
 
 RewriteDriver* ResourceManager::NewCustomRewriteDriver(
     RewriteOptions* options) {
-  RewriteDriver* rewrite_driver = NewUnmanagedRewriteDriver();
+  RewriteDriver* rewrite_driver = NewUnmanagedRewriteDriverHelper(true);
   rewrite_driver->set_custom_options(options);
   rewrite_driver->AddFilters();
   return rewrite_driver;
 }
 
+void ResourceManager::AssignRewriteWorker(RewriteDriver* rewrite_driver) {
+  if (rewrite_workers_.size() < static_cast<size_t>(max_queued_workers_)) {
+    QueuedWorker* worker = new QueuedWorker(thread_system_);
+    worker->set_queue_size_stat(rewrite_thread_queue_depth_.get());
+    worker->Start();
+    rewrite_workers_.push_back(worker);
+  }
+  queued_worker_index_ = (queued_worker_index_ + 1) % max_queued_workers_;
+  rewrite_driver->set_rewrite_worker(rewrite_workers_[queued_worker_index_]);
+}
+
 RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver() {
+  return NewUnmanagedRewriteDriverHelper(true);
+}
+
+RewriteDriver* ResourceManager::NewUnmanagedRewriteDriverHelper(
+    bool assign_worker) {
   RewriteDriver* rewrite_driver = new RewriteDriver(
       message_handler_, file_system_, url_async_fetcher_);
   rewrite_driver->SetAsynchronousRewrites(async_rewrites_);
@@ -629,6 +653,10 @@ RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver() {
   rewrite_driver->SetResourceManagerAndScheduler(this, scheduler);
   if (factory_ != NULL) {
     factory_->AddPlatformSpecificRewritePasses(rewrite_driver);
+  }
+  if (assign_worker) {
+    ScopedMutex lock(rewrite_drivers_mutex_.get());
+    AssignRewriteWorker(rewrite_driver);
   }
   return rewrite_driver;
 }
@@ -641,8 +669,9 @@ RewriteDriver* ResourceManager::NewRewriteDriver() {
     available_rewrite_drivers_.pop_back();
     rewrite_driver->SetAsynchronousRewrites(async_rewrites_);
   } else {
-    rewrite_driver = NewUnmanagedRewriteDriver();
+    rewrite_driver = NewUnmanagedRewriteDriverHelper(false);
     rewrite_driver->AddFilters();
+    AssignRewriteWorker(rewrite_driver);
   }
   active_rewrite_drivers_.insert(rewrite_driver);
   return rewrite_driver;
@@ -660,12 +689,14 @@ void ResourceManager::ReleaseRewriteDriver(
   }
 }
 
-void ResourceManager::ShutDownWorker() {
-  rewrite_worker_->ShutDown();
-}
-
-void ResourceManager::AddRewriteTask(Function* task) {
-  rewrite_worker_->RunInWorkThread(task);
+void ResourceManager::ShutDownWorkers() {
+  ScopedMutex lock(rewrite_drivers_mutex_.get());
+  for (int i = 0, n = rewrite_workers_.size(); i < n; ++i) {
+    QueuedWorker* rewrite_worker = rewrite_workers_[i];
+    rewrite_worker->ShutDown();
+    delete rewrite_worker;
+  }
+  rewrite_workers_.clear();
 }
 
 }  // namespace net_instaweb

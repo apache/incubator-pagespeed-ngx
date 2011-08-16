@@ -55,6 +55,7 @@ class Function;
 class HtmlFilter;
 class HtmlWriterFilter;
 class MessageHandler;
+class QueuedWorker;
 class RequestHeaders;
 class ResourceContext;
 class ResponseHeaders;
@@ -466,6 +467,14 @@ class RewriteDriver : public HtmlParse {
   // deferred until the callback is called.
   void FlushAsync(Function* done);
 
+  // Queues up a task to run on the Rewrite thread.
+  void AddRewriteTask(Function* task);
+
+  void set_rewrite_worker(QueuedWorker* worker) { rewrite_worker_ = worker; }
+  QueuedWorker* rewrite_worker() { return rewrite_worker_; }
+
+  void set_scheduler(Scheduler* scheduler) { scheduler_.reset(scheduler); }
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -645,7 +654,7 @@ class RewriteDriver : public HtmlParse {
   ScanFilter scan_filter_;
   scoped_ptr<DomainRewriteFilter> domain_rewriter_;
 
-  // Maps encoded URLs to output URLs
+  // Maps encoded URLs to output URLs.
   typedef std::map<GoogleString, ResourcePtr> ResourceMap;
   ResourceMap resource_map_;
 
@@ -668,6 +677,8 @@ class RewriteDriver : public HtmlParse {
   // can include pre_render_filters as well as those added to the post-render
   // chain owned by HtmlParse.
   FilterVector filters_to_delete_;
+
+  QueuedWorker* rewrite_worker_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

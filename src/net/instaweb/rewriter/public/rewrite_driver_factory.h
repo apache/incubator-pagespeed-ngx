@@ -121,7 +121,7 @@ class RewriteDriverFactory {
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
   ResourceManager* ComputeResourceManager();
 
-  // Generates a new mutex, hasher.
+  // Generates a new hasher.
   virtual Hasher* NewHasher() = 0;
 
   // See doc in resource_manager.cc.

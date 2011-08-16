@@ -82,8 +82,8 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   explicit OutputCacheCallback(RewriteContext* rc) : rewrite_context_(rc) {}
   virtual ~OutputCacheCallback() {}
   virtual void Done(CacheInterface::KeyState state) {
-    ResourceManager* resource_manager = rewrite_context_->Manager();
-    resource_manager->AddRewriteTask(
+    RewriteDriver* rewrite_driver = rewrite_context_->Driver();
+    rewrite_driver->AddRewriteTask(
         new MemberFunction2<RewriteContext, CacheInterface::KeyState,
             SharedString>(&RewriteContext::OutputCacheDone, rewrite_context_,
                           state, *value()));
@@ -106,8 +106,8 @@ class RewriteContext::ResourceCallbackUtils {
   }
 
   void Done(bool success) {
-    ResourceManager* resource_manager = rewrite_context_->Manager();
-    resource_manager->AddRewriteTask(
+    RewriteDriver* rewrite_driver = rewrite_context_->Driver();
+    rewrite_driver->AddRewriteTask(
         new MemberFunction3<RewriteContext, bool, ResourcePtr, int>(
             &RewriteContext::ResourceFetchDone, rewrite_context_,
             success, resource_, slot_index_));
@@ -315,7 +315,7 @@ void RewriteContext::RemoveLastSlot() {
 void RewriteContext::Initiate() {
   CHECK(!started_);
   DCHECK(num_predecessors_ == 0);
-  Manager()->AddRewriteTask(new MemberFunction0<RewriteContext>(
+  Driver()->AddRewriteTask(new MemberFunction0<RewriteContext>(
       &RewriteContext::Start, this));
 }
 
@@ -825,7 +825,7 @@ void RewriteContext::RunSuccessors() {
   successors_.clear();
   if (driver_ != NULL) {
     DCHECK(rewrite_done_ && (num_pending_nested_ == 0));
-    Manager()->AddRewriteTask(
+    Driver()->AddRewriteTask(
         new MemberFunction1<RewriteDriver, RewriteContext*>(
             &RewriteDriver::DeleteRewriteContext, driver_, this));
   }
@@ -963,7 +963,7 @@ bool RewriteContext::Fetch(
     fetch_.reset(
         new FetchContext(this, response_writer, response_headers, callback,
                          output_resource, message_handler));
-    Manager()->AddRewriteTask(new MemberFunction0<RewriteContext>(
+    Driver()->AddRewriteTask(new MemberFunction0<RewriteContext>(
         &RewriteContext::StartFetch, this));
     ret = true;
   }

@@ -83,6 +83,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/queued_worker.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -139,7 +140,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       resource_manager_(NULL),
       add_instrumentation_filter_(NULL),
       scan_filter_(this),
-      domain_rewriter_(NULL) {
+      domain_rewriter_(NULL),
+      rewrite_worker_(NULL) {
 
   // Set up default values for the amount of time an HTML rewrite will wait for
   // Rewrites to complete, based on whether compiled for debug or running on
@@ -1390,6 +1392,10 @@ void RewriteDriver::InitiateFetch(RewriteContext* rewrite_context) {
 
 bool RewriteDriver::ShouldNotRewriteImages() const {
   return (options()->botdetect_enabled() && BotChecker::Lookup(user_agent_));
+}
+
+void RewriteDriver::AddRewriteTask(Function* task) {
+  rewrite_worker_->RunInWorkThread(task);
 }
 
 }  // namespace net_instaweb

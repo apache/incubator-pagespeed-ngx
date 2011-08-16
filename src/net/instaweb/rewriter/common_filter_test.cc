@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/common_filter.h"
 
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -59,8 +60,10 @@ class CountingFilter : public CommonFilter {
 
 class CommonFilterTest : public ResourceManagerTestBase {
  protected:
-  CommonFilterTest() : filter_(rewrite_driver()) {
-    rewrite_driver()->AddFilter(&filter_);
+  virtual void SetUp() {
+    ResourceManagerTestBase::SetUp();
+    filter_.reset(new CountingFilter(rewrite_driver()));
+    rewrite_driver()->AddFilter(filter_.get());
   }
 
   void ExpectUrl(const GoogleString& expected_url,
@@ -88,23 +91,23 @@ class CommonFilterTest : public ResourceManagerTestBase {
 
   GoogleMessageHandler handler_;
   HtmlParse* html_parse_;
-  CountingFilter filter_;
+  scoped_ptr<CountingFilter> filter_;
 };
 
 TEST_F(CommonFilterTest, DoesCallImpls) {
-  EXPECT_EQ(0, filter_.start_doc_calls_);
-  filter_.StartDocument();
-  EXPECT_EQ(1, filter_.start_doc_calls_);
+  EXPECT_EQ(0, filter_->start_doc_calls_);
+  filter_->StartDocument();
+  EXPECT_EQ(1, filter_->start_doc_calls_);
 
   RewriteDriver* driver = rewrite_driver();
   HtmlElement* element = driver->NewElement(NULL, "foo");
-  EXPECT_EQ(0, filter_.start_element_calls_);
-  filter_.StartElement(element);
-  EXPECT_EQ(1, filter_.start_element_calls_);
+  EXPECT_EQ(0, filter_->start_element_calls_);
+  filter_->StartElement(element);
+  EXPECT_EQ(1, filter_->start_element_calls_);
 
-  EXPECT_EQ(0, filter_.end_element_calls_);
-  filter_.EndElement(element);
-  EXPECT_EQ(1, filter_.end_element_calls_);
+  EXPECT_EQ(0, filter_->end_element_calls_);
+  filter_->EndElement(element);
+  EXPECT_EQ(1, filter_->end_element_calls_);
 }
 
 TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
@@ -114,12 +117,12 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   driver->Flush();
   // Base URL starts out as document URL.
   ExpectUrl(doc_url, driver->google_url());
-  ExpectUrl(doc_url, filter_.base_url());
+  ExpectUrl(doc_url, filter_->base_url());
 
   driver->ParseText(
       "<html><head><link rel='stylesheet' href='foo.css'>");
   driver->Flush();
-  ExpectUrl(doc_url, filter_.base_url());
+  ExpectUrl(doc_url, filter_->base_url());
 
   GoogleString base_url = "http://www.baseurl.com/foo/";
   driver->ParseText("<base href='");
@@ -127,13 +130,13 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   driver->ParseText("' />");
   driver->Flush();
   // Update to base URL.
-  ExpectUrl(base_url, filter_.base_url());
+  ExpectUrl(base_url, filter_->base_url());
   // Make sure we didn't change the document URL.
   ExpectUrl(doc_url, driver->google_url());
 
   driver->ParseText("<link rel='stylesheet' href='foo.css'>");
   driver->Flush();
-  ExpectUrl(base_url, filter_.base_url());
+  ExpectUrl(base_url, filter_->base_url());
 
   GoogleString new_base_url = "http://www.somewhere-else.com/";
   driver->ParseText("<base href='");
@@ -143,11 +146,11 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   EXPECT_EQ(1, message_handler_.TotalMessages());
 
   // Uses old base URL.
-  ExpectUrl(base_url, filter_.base_url());
+  ExpectUrl(base_url, filter_->base_url());
 
   driver->ParseText("</head></html>");
   driver->Flush();
-  ExpectUrl(base_url, filter_.base_url());
+  ExpectUrl(base_url, filter_->base_url());
   driver->FinishParse();
   ExpectUrl(doc_url, driver->google_url());
 }
@@ -157,38 +160,38 @@ TEST_F(CommonFilterTest, DetectsNoScriptCorrectly) {
   RewriteDriver* driver = rewrite_driver();
   driver->StartParse(doc_url);
   driver->Flush();
-  EXPECT_TRUE(filter_.noscript_element() == NULL);
+  EXPECT_TRUE(filter_->noscript_element() == NULL);
 
   driver->ParseText("<html><head><title>Example Site");
   driver->Flush();
-  EXPECT_TRUE(filter_.noscript_element() == NULL);
+  EXPECT_TRUE(filter_->noscript_element() == NULL);
 
   driver->ParseText("</title><noscript>");
   driver->Flush();
-  EXPECT_TRUE(filter_.noscript_element() != NULL);
+  EXPECT_TRUE(filter_->noscript_element() != NULL);
 
   // Nested <noscript> elements
   driver->ParseText("Blah blah blah <noscript><noscript> do-de-do-do ");
   driver->Flush();
-  EXPECT_TRUE(filter_.noscript_element() != NULL);
+  EXPECT_TRUE(filter_->noscript_element() != NULL);
 
   driver->ParseText("<link href='style.css'>");
   driver->Flush();
-  EXPECT_TRUE(filter_.noscript_element() != NULL);
+  EXPECT_TRUE(filter_->noscript_element() != NULL);
 
   // Close inner <noscript>s
   driver->ParseText("</noscript></noscript>");
   driver->Flush();
-  EXPECT_TRUE(filter_.noscript_element() != NULL);
+  EXPECT_TRUE(filter_->noscript_element() != NULL);
 
   // Close outter <noscript>
   driver->ParseText("</noscript>");
   driver->Flush();
-  EXPECT_TRUE(filter_.noscript_element() == NULL);
+  EXPECT_TRUE(filter_->noscript_element() == NULL);
 
   driver->ParseText("</head></html>");
   driver->FinishParse();
-  EXPECT_TRUE(filter_.noscript_element() == NULL);
+  EXPECT_TRUE(filter_->noscript_element() == NULL);
 }
 
 TEST_F(CommonFilterTest, TestTwoDomainLawyers) {

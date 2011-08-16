@@ -32,7 +32,7 @@
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"  // needed for upcast
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
@@ -127,7 +127,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // This definition is required by HtmlParseTestBase which defines this as
   // pure abstract, so that the test subclass can define how it instantiates
   // HtmlParse.
-  virtual RewriteDriver* html_parse() { return &rewrite_driver_; }
+  virtual RewriteDriver* html_parse() { return rewrite_driver_; }
 
   // Initializes a resource for mock fetching.
   void InitResponseHeaders(const StringPiece& resource_name,
@@ -282,8 +282,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // TODO(jmarantz): These abstractions are not satisfactory long-term
   // where we want to have driver-lifetime in tests be reflective of
   // how servers work.  But for now we use these accessors.
-  RewriteDriver* rewrite_driver() { return &rewrite_driver_; }
-  RewriteDriver* other_rewrite_driver() { return &other_rewrite_driver_; }
+  //
+  // Note that the *rewrite_driver() methods are not valid during
+  // construction, so any test classes that need to use them must
+  // do so from SetUp() methods.
+  RewriteDriver* rewrite_driver() { return rewrite_driver_; }
+  RewriteDriver* other_rewrite_driver() { return other_rewrite_driver_; }
 
   bool ReadFile(const char* filename, GoogleString* contents) {
     return file_system_.ReadFile(filename, contents, &message_handler_);
@@ -367,7 +371,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // TODO(jmarantz): the 'options_' and 'other_options_' variables should
   // be changed from references to pointers, in a follow-up CL.
   RewriteOptions* options_;  // owned by rewrite_driver_.
-  RewriteDriver rewrite_driver_;
+  RewriteDriver* rewrite_driver_;
 
   // Server B runs other_rewrite_driver_ and will get a request for
   // resources that server A has rewritten, but server B has not heard
@@ -378,7 +382,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   FileSystemLockManager other_lock_manager_;
   ResourceManager other_resource_manager_;
   RewriteOptions* other_options_;  // owned by other_rewrite_driver_.
-  RewriteDriver other_rewrite_driver_;
+  RewriteDriver* other_rewrite_driver_;
   WaitUrlAsyncFetcher wait_url_async_fetcher_;
 };
 

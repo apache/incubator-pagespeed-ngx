@@ -7,7 +7,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -17,12 +17,10 @@ namespace {
 
 class CssMoveToHeadFilterTest : public ResourceManagerTestBase {
  protected:
-  CssMoveToHeadFilterTest()
-      : move_to_head_filter_(rewrite_driver(), statistics()) {
-    rewrite_driver()->AddFilter(&move_to_head_filter_);
+  virtual void SetUp() {
+    ResourceManagerTestBase::SetUp();
+    AddFilter(RewriteOptions::kMoveCssToHead);
   }
-
-  CssMoveToHeadFilter move_to_head_filter_;
 };
 
 TEST_F(CssMoveToHeadFilterTest, MovesCssToHead) {

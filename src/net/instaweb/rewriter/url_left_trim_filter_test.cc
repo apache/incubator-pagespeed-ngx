@@ -19,9 +19,9 @@
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
@@ -31,14 +31,11 @@ namespace net_instaweb {
 
 class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
  protected:
-  UrlLeftTrimFilterTest()
-      : left_trim_filter_(rewrite_driver(), statistics()),
-        base_url_(NULL) {
-    rewrite_driver()->AddFilter(&left_trim_filter_);
-  }
-
-  ~UrlLeftTrimFilterTest() {
-    delete base_url_;
+  virtual void SetUp() {
+    ResourceManagerTestBase::SetUp();
+    left_trim_filter_.reset(new UrlLeftTrimFilter(rewrite_driver(),
+                                                  statistics()));
+    rewrite_driver()->AddFilter(left_trim_filter_.get());
   }
 
   // Must set base url to "http://www.example.com/dir/*something*"
@@ -65,9 +62,9 @@ class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
                const StringPiece& init, const StringPiece& expected) {
     StringPiece url(init);
     GoogleString trimmed;
-    CHECK(base_url_ != NULL);
-    EXPECT_EQ(changed, left_trim_filter_.Trim(
-        *base_url_, url, &trimmed,
+    CHECK(base_url_.get() != NULL);
+    EXPECT_EQ(changed, left_trim_filter_->Trim(
+        *base_url_.get(), url, &trimmed,
         rewrite_driver()->message_handler()));
     if (changed) {
       EXPECT_STREQ(expected, trimmed);
@@ -75,19 +72,14 @@ class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
   }
 
   void SetFilterBaseUrl(const StringPiece& base_url) {
-    if (base_url_ != NULL) {
-      delete base_url_;
-    }
-    base_url_ = new GoogleUrl(base_url);
+    base_url_.reset(new GoogleUrl(base_url));
   }
 
   virtual bool AddBody() const { return false; }
 
  private:
-  UrlLeftTrimFilter left_trim_filter_;
-  GoogleUrl *base_url_;
-
-  DISALLOW_COPY_AND_ASSIGN(UrlLeftTrimFilterTest);
+  scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
+  scoped_ptr<GoogleUrl> base_url_;
 };
 
 static const char kBase[] = "http://foo.bar/baz/";
