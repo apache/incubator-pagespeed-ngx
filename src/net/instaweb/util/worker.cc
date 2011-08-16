@@ -85,7 +85,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     // Get task.
     current_task_ = tasks_.front();
     tasks_.pop_front();
-    owner_->UpdateQueueSizeStat(tasks_.size());
+    owner_->UpdateQueueSizeStat(-1);
 
     return true;
   }
@@ -113,8 +113,9 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     }
 
     Join();
+    int delta = tasks_.size();
     STLDeleteElements(&tasks_);
-    owner_->UpdateQueueSizeStat(0);
+    owner_->UpdateQueueSizeStat(-delta);
     started_ = false;  // Reject further jobs on explicit shutdown.
   }
 
@@ -139,7 +140,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     ScopedMutex lock(mutex_.get());
     if (owner_->IsPermitted(closure)) {
       tasks_.push_back(closure);
-      owner_->UpdateQueueSizeStat(tasks_.size());
+      owner_->UpdateQueueSizeStat(1);
       if (current_task_ == NULL) {  // wake the thread up if it's idle.
         state_change_->Signal();
       }
@@ -212,7 +213,7 @@ void Worker::ShutDown() {
 
 void Worker::UpdateQueueSizeStat(int value) {
   if (queue_size_ != NULL) {
-    queue_size_->Add(value);
+    queue_size_->AddDelta(value);
   }
 }
 

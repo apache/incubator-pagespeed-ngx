@@ -54,6 +54,9 @@ class Waveform {
   // Records a value at the current time using the Timer.
   void Add(double value);
 
+  // Records a delta relative to the previous value using the Timer.
+  void AddDelta(double value);
+
   // Write script and function to web page. Note that this function
   // should be called only once for each HTML page, and should not be
   // used for each waveform.
@@ -66,8 +69,8 @@ class Waveform {
  private:
   typedef std::pair<int64, double> TimeValue;
 
-  // Must be called with mutex held.
-  TimeValue* GetSample(int index);
+  TimeValue* GetSample(int index);  // Must be called with mutex held.
+  void AddHelper(double value);     // Must be called with mutex held.
 
   Timer* timer_;
   int capacity_;
@@ -78,6 +81,7 @@ class Waveform {
   double total_since_clear_;
   double min_;
   double max_;
+  double previous_value_;
   scoped_ptr<AbstractMutex> mutex_;  // protects all the above member variables.
 
   DISALLOW_COPY_AND_ASSIGN(Waveform);

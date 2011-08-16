@@ -94,6 +94,25 @@ TEST_F(WaveformTest, BasicGraph) {
   EXPECT_NE(GoogleString::npos, html.find("'My Values'"));
 }
 
+// Instantiate a waveform and make sure one of the values shows up.
+TEST_F(WaveformTest, Delta) {
+  Waveform waveform(thread_system_.get(), &timer_, 10);
+  timer_.SetTimeUs(MockTimer::kApr_5_2010_ms);
+  waveform.AddDelta(10);
+  timer_.AdvanceMs(10);
+  waveform.AddDelta(20);
+  timer_.AdvanceMs(10);
+  waveform.AddDelta(-5);
+  timer_.AdvanceMs(10);
+
+  GoogleString html;
+  StringWriter writer(&html);
+  waveform.Render("My Waveform", "My Values", &writer, &handler_);
+  EXPECT_TRUE(Contains(html, 20, 25));
+  EXPECT_NE(GoogleString::npos, html.find("'My Waveform'"));
+  EXPECT_NE(GoogleString::npos, html.find("'My Values'"));
+}
+
 // Overflows the number of samples and makes sure the desired results
 // are shown.
 TEST_F(WaveformTest, Overflow) {

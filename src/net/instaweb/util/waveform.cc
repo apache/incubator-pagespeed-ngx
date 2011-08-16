@@ -49,6 +49,7 @@ void Waveform::Clear() {
   total_since_clear_ = 0.0;
   min_ = 0.0;
   max_ = 0.0;
+  previous_value_ = 0.0;
 }
 
 int Waveform::Size() {
@@ -93,9 +94,20 @@ Waveform::TimeValue* Waveform::GetSample(int index) {
   return &samples_[(start_index_ + index) % capacity_];
 }
 
+void Waveform::AddDelta(double delta) {
+  // TODO(jmarantz): use writer-lock.
+  ScopedMutex lock(mutex_.get());
+  previous_value_ += delta;
+  AddHelper(previous_value_);
+}
+
 void Waveform::Add(double value) {
   // TODO(jmarantz): use writer-lock.
   ScopedMutex lock(mutex_.get());
+  AddHelper(value);
+}
+
+void Waveform::AddHelper(double value) {
   int64 now_us = timer_->NowUs();
   if (size_ == 0) {
     max_ = value;
