@@ -145,7 +145,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
   // This must be called while holding SerfUrlAsyncFetcher's mutex_.
   void CallCallback(bool success) {
     if (callback_ == NULL) {
-      LOG(FATAL) << "BUG: Serf callback more than once on same fetch "
+      LOG(FATAL) << "BUG: Serf callback called more than once on same fetch "
                  << str_url() << " (" << this << ").  Please report this "
                  << "at http://code.google.com/p/modpagespeed/issues/";
     } else {
@@ -166,7 +166,6 @@ class SerfFetch : public PoolElement<SerfFetch> {
         serf_connection_is_in_error_state(connection_)) {
       message_handler_->Message(
           kInfo, "Serf cleanup for error'd fetch of: %s", str_url());
-
       // Close the errant connection here immediately to remove it from
       // the poll set immediately so that other jobs can proceed w/o trouble,
       // rather than waiting for ~SerfFetch.
@@ -189,6 +188,8 @@ class SerfFetch : public PoolElement<SerfFetch> {
 
   size_t bytes_received() const { return bytes_received_; }
   MessageHandler* message_handler() { return message_handler_; }
+
+  UrlAsyncFetcher::Callback* callback() { return callback_; }
 
  private:
 
@@ -655,26 +656,13 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     // queue up the fetches, employing the proper lock for the active_fetches_
     // set.  Actually we expect we wll never have contention on this mutex
     // from the thread.
-    int num_started = 0;
     while (!xfer_fetches->empty()) {
       SerfFetch* fetch = xfer_fetches->RemoveOldest();
-      if (fetch->Start(this)) {
+      if (StartFetch(fetch)) {
         SERF_DEBUG(LOG(INFO) << "Adding threaded fetch to url "
                    << fetch->str_url()
                    << " (" << active_fetches_.size() << ")");
-        active_fetches_.Add(fetch);
-        ++num_started;
-      } else {
-        delete fetch;
       }
-    }
-    if ((num_started != 0) && (active_count_ != NULL)) {
-      // Note that we could do this after mutex_->Unlock(), but then in the
-      // actual tests we see cases where we complete the fetch and decrement
-      // num_started before we perform the Add here (because we're shutting down
-      // and the main thread is trying to help us along by calling Poll(...) on
-      // our behalf).
-      active_count_->Add(num_started);
     }
     mutex_->Unlock();
     return false;
@@ -923,6 +911,19 @@ void SerfUrlAsyncFetcher::CancelActiveFetches() {
   }
 }
 
+bool SerfUrlAsyncFetcher::StartFetch(SerfFetch* fetch) {
+  bool started = fetch->Start(this);
+  if (started) {
+    active_fetches_.Add(fetch);
+    active_count_->Add(1);
+  } else {
+    LOG(WARNING) << "Fetch failed to start: " << fetch->str_url();
+    fetch->callback()->Done(false);
+    delete fetch;
+  }
+  return started;
+}
+
 bool SerfUrlAsyncFetcher::StreamingFetch(const GoogleString& url,
                                          const RequestHeaders& request_headers,
                                          ResponseHeaders* response_headers,
@@ -942,13 +943,7 @@ bool SerfUrlAsyncFetcher::StreamingFetch(const GoogleString& url,
                              url.c_str());
     {
       ScopedMutex mutex(mutex_);
-      if (fetch->Start(this)) {
-        active_fetches_.Add(fetch);
-        active_count_->Add(1);
-      } else {
-        callback->Done(false);
-        delete fetch;
-      }
+      StartFetch(fetch);
     }
   }
   return false;

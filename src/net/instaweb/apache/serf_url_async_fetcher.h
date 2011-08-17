@@ -106,6 +106,12 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   void Init(apr_pool_t* parent_pool, const char* proxy);
   bool SetupProxy(const char* proxy);
 
+  // Start a SerfFetch. Takes ownership of fetch and makes sure callback is
+  // called even if fetch fails to start.
+  //
+  // mutex_ must be held before calling StartFetch.
+  bool StartFetch(SerfFetch* fetch);
+
   // AnyPendingFetches is accurate only at the time of call; this is
   // used conservatively during shutdown.  It counts fetches that have been
   // requested by some thread, and can include fetches for which no action

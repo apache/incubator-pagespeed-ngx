@@ -36,6 +36,7 @@
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/symbol_table.h"
@@ -67,6 +68,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
 
 HtmlParse::~HtmlParse() {
   delete lexer_;
+  STLDeleteElements(&queue_);
   ClearElements();
 }
 
