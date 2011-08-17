@@ -97,8 +97,7 @@ Waveform::TimeValue* Waveform::GetSample(int index) {
 void Waveform::AddDelta(double delta) {
   // TODO(jmarantz): use writer-lock.
   ScopedMutex lock(mutex_.get());
-  previous_value_ += delta;
-  AddHelper(previous_value_);
+  AddHelper(previous_value_ + delta);
 }
 
 void Waveform::Add(double value) {
@@ -108,6 +107,7 @@ void Waveform::Add(double value) {
 }
 
 void Waveform::AddHelper(double value) {
+  previous_value_ = value;
   int64 now_us = timer_->NowUs();
   if (size_ == 0) {
     max_ = value;

@@ -55,7 +55,8 @@ class Waveform {
   void Add(double value);
 
   // Records a delta relative to the previous value using the Timer.
-  void AddDelta(double value);
+  // This is equivalent to calling Add(previous_value + delta).
+  void AddDelta(double delta);
 
   // Write script and function to web page. Note that this function
   // should be called only once for each HTML page, and should not be
