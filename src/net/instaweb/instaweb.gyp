@@ -536,6 +536,7 @@
         'rewriter/rewrite_driver.cc',
         'rewriter/rewrite_driver_factory.cc',
         'rewriter/rewrite_filter.cc',
+        'rewriter/rewrite_query.cc',
         'rewriter/rewrite_single_resource_filter.cc',
         'rewriter/scan_filter.cc',
         'rewriter/script_tag_scanner.cc',

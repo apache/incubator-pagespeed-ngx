@@ -112,6 +112,7 @@
         'rewriter/rewrite_context_test.cc',
         'rewriter/rewrite_driver_test.cc',
         'rewriter/rewrite_options_test.cc',
+        'rewriter/rewrite_query_test.cc',
         'rewriter/rewrite_single_resource_filter_test.cc',
         'rewriter/rewriter_test.cc',
         'rewriter/script_tag_scanner_test.cc',
