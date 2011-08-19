@@ -119,6 +119,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
   }
 
   ~SerfFetch() {
+    DCHECK(callback_ == NULL);
     if (connection_ != NULL) {
       serf_connection_close(connection_);
     }
@@ -149,14 +150,19 @@ class SerfFetch : public PoolElement<SerfFetch> {
                  << str_url() << " (" << this << ").  Please report this "
                  << "at http://code.google.com/p/modpagespeed/issues/";
     } else {
-      UrlAsyncFetcher::Callback* callback = callback_;
-      callback_ = NULL;
+      CallbackDone(success);
       response_headers_ = NULL;
       fetched_content_writer_ = NULL;
-      callback->Done(success);
       fetch_end_ms_ = timer_->NowMs();
       fetcher_->FetchComplete(this);
     }
+  }
+
+  void CallbackDone(bool success) {
+    callback_->Done(success);
+    // We should always NULL the callback_ out after calling otherwise we
+    // could get weird double calling errors.
+    callback_ = NULL;
   }
 
   // If last poll of this fetch's connection resulted in an error, clean it up.
@@ -188,8 +194,6 @@ class SerfFetch : public PoolElement<SerfFetch> {
 
   size_t bytes_received() const { return bytes_received_; }
   MessageHandler* message_handler() { return message_handler_; }
-
-  UrlAsyncFetcher::Callback* callback() { return callback_; }
 
  private:
 
@@ -918,7 +922,7 @@ bool SerfUrlAsyncFetcher::StartFetch(SerfFetch* fetch) {
     active_count_->Add(1);
   } else {
     LOG(WARNING) << "Fetch failed to start: " << fetch->str_url();
-    fetch->callback()->Done(false);
+    fetch->CallbackDone(false);
     delete fetch;
   }
   return started;

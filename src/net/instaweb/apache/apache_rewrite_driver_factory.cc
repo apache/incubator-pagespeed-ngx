@@ -340,7 +340,7 @@ void ApacheRewriteDriverFactory::ChildInit() {
     slow_worker_.Initialize(new SlowWorker(thread_system()));
   }
   if (shared_mem_statistics_ != NULL) {
-    shared_mem_statistics_->InitVariables(false, message_handler());
+    shared_mem_statistics_->Init(false, message_handler());
   }
   if (use_shared_mem_locking_) {
     shared_mem_lock_manager_lifecycler_.ChildInit();

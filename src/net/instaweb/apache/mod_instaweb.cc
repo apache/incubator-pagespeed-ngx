@@ -133,6 +133,13 @@ const char* kModPagespeedTestProxy = "ModPagespeedTestProxy";
 const char* kModPagespeedUrlPrefix = "ModPagespeedUrlPrefix";
 const char* kModPagespeedRespectVary = "ModPagespeedRespectVary";
 
+// Statistics variable names.
+const char* kMergeTimeUs = "merge_time_us";
+const char* kParseTimeUs = "parse_time_us";
+const char* kHtmlRewriteTimeUs = "html_rewrite_time_us";
+// Statistics histogram names.
+const char* kMergeTimeUsHistogram = "Merge Time us Histogram";
+
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
     LASTCHANGE_STRING;
@@ -285,13 +292,17 @@ class ApacheProcessContext {
                                   factory->filename_prefix().as_string()));
       ResourceManager::Initialize(statistics_.get());
       SerfUrlAsyncFetcher::Initialize(statistics_.get());
-      statistics_->AddVariable("merge_time_us");
-      statistics_->AddVariable("parse_time_us");
-      statistics_->AddVariable("html_rewrite_time_us");
-      statistics_->InitVariables(true, factory->message_handler());
-      merge_time_us_ = statistics_->GetVariable("merge_time_us");
-      parse_time_us_ = statistics_->GetVariable("parse_time_us");
-      html_rewrite_time_us_ = statistics_->GetVariable("html_rewrite_time_us");
+      statistics_->AddVariable(kMergeTimeUs);
+      statistics_->AddVariable(kParseTimeUs);
+      statistics_->AddVariable(kHtmlRewriteTimeUs);
+      statistics_->AddHistogram(kMergeTimeUsHistogram);
+      statistics_->Init(true, factory->message_handler());
+      merge_time_us_ = statistics_->GetVariable(kMergeTimeUs);
+      parse_time_us_ = statistics_->GetVariable(kParseTimeUs);
+      html_rewrite_time_us_ = statistics_->GetVariable(kHtmlRewriteTimeUs);
+      merge_time_us_histogram_ = statistics_->GetHistogram(
+          kMergeTimeUsHistogram);
+      merge_time_us_histogram_->SetMaxValue(2000);
       parse_time_us_->Add(stored_parse_time_us_);
       stored_parse_time_us_ = 0;
     }
@@ -301,6 +312,7 @@ class ApacheProcessContext {
   void AddMergeTimeUs(int64 merge_time_us) {
     if (statistics_.get() != NULL) {
       merge_time_us_->Add(merge_time_us);
+      merge_time_us_histogram_->Add(merge_time_us);
     }
   }
 
@@ -332,6 +344,7 @@ class ApacheProcessContext {
   Variable* merge_time_us_;
   Variable* parse_time_us_;
   Variable* html_rewrite_time_us_;
+  Histogram* merge_time_us_histogram_;
   int64 stored_parse_time_us_;
 
   // This variable is used to detect us retaining some state from between

@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
@@ -28,7 +29,6 @@ namespace net_instaweb {
 class MessageHandler;
 class AbstractSharedMem;
 class AbstractSharedMemSegment;
-class AbstractMutex;
 
 // An implementation of Statistics using our shared memory infrastructure.
 // These statistics will be shared amongst all processes and threads
@@ -80,22 +80,98 @@ class SharedMemVariable : public Variable {
   DISALLOW_COPY_AND_ASSIGN(SharedMemVariable);
 };
 
-// TODO(fangfei): shared memory histogram.
+class SharedMemHistogram : public Histogram {
+ public:
+  virtual ~SharedMemHistogram();
+  virtual void Add(double value);
+  virtual void Clear();
+  virtual int MaxBuckets();
+  // Call the following functions after statistics->Init and before add values.
+  // EnableNegativeBuckets, SetMinValue and SetMaxValue will
+  // cause resetting Histogram.
+  virtual void EnableNegativeBuckets();
+  // Set the minimum value allowed in histogram.
+  virtual void SetMinValue(double value);
+  // Set the upper-bound of value in histogram,
+  // The value range in histogram is [MinValue, MaxValue) or
+  // (-MaxValue, MaxValue) if negative buckets are enabled.
+  virtual void SetMaxValue(double value);
+  // We rely on MaxBuckets to allocate memory segment for histogram. If we want
+  // to call SetMaxBuckets(), we should call it right after AddHistogram().
+  virtual void SetMaxBuckets(int i);
+  // Return the allocation size for this Histogram object except Mutex size.
+  // Shared memory space should include a mutex, HistogramBody and
+  // sizeof(double) * MaxBuckets(). Here we do not know mutex size.
+  size_t AllocationSize() {
+    size_t total = sizeof(HistogramBody) + sizeof(double) * MaxBuckets();
+    return total;
+  }
+
+ protected:
+  virtual AbstractMutex* lock() {
+    return mutex_.get();
+  }
+  virtual double AverageInternal();
+  virtual double PercentileInternal(const double perc);
+  virtual double StandardDeviationInternal();
+  virtual double CountInternal();
+  virtual double MaximumInternal();
+  virtual double MinimumInternal();
+  virtual double BucketStart(int index);
+  virtual double BucketCount(int index);
+
+ private:
+  friend class SharedMemStatistics;
+  SharedMemHistogram();
+  void AttachTo(AbstractSharedMemSegment* segment_, size_t offset,
+                MessageHandler* message_handler);
+  double BucketWidth();
+  int FindBucket(double value);
+  void Init();
+  void Reset();
+  const GoogleString name_;
+  scoped_ptr<AbstractMutex> mutex_;
+  // TODO(fangfei): implement a non-shared-mem histogram.
+  struct HistogramBody {
+    // Enable negative values in histogram, false by default.
+    bool enable_negative_;
+    // Minimum value allowed in Histogram, 0 by default.
+    double min_value_;
+    // Maximum value allowed in Histogram,
+    // numeric_limits<double>::max() by default.
+    double max_value_;
+    // Real minimum value.
+    double min_;
+    // Real maximum value.
+    double max_;
+    double count_;
+    double sum_;
+    double sum_of_squares_;
+    // Histogram buckets data.
+    double values_[1];
+  };
+  // Maximum number of buckets in Histogram.
+  int max_buckets_;
+  HistogramBody *buffer_;
+  DISALLOW_COPY_AND_ASSIGN(SharedMemHistogram);
+};
+
 // NullStatisticsHistogram is for temporary util we have a shared memory
 // histogram implemented.
 class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
-    FakeHistogram, FakeTimedVariable> {
+    SharedMemHistogram, FakeTimedVariable> {
  public:
   SharedMemStatistics(AbstractSharedMem* shm_runtime,
                       const GoogleString& filename_prefix);
   virtual ~SharedMemStatistics();
 
   // This method initializes or attaches to shared memory. You should call this
-  // exactly once in each process/thread, after all calls to AddVariables have
-  // been done. The root process (the one that starts all the other child
+  // exactly once in each process/thread, after all calls to AddVariables,
+  // AddHistograms and SetMaxBuckets have been done.
+  // The root process (the one that starts all the other child
   // threads and processes) must be the first one to make the call, with
   // parent = true, with all other calling it with = false.
-  void InitVariables(bool parent, MessageHandler* message_handler);
+  void Init(bool parent, MessageHandler* message_handler);
 
   // This should be called from the root process as it is about to exit, when
   // no further children are expected to start.
@@ -103,6 +179,7 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
 
  protected:
   virtual SharedMemVariable* NewVariable(const StringPiece& name, int index);
+  virtual SharedMemHistogram* NewHistogram();
 
  private:
   GoogleString SegmentName() const;

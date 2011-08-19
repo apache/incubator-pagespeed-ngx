@@ -200,7 +200,7 @@ void write_handler_response(const StringPiece& output, request_rec* request) {
   response_headers.SetStatusAndReason(HttpStatus::kOK);
   response_headers.set_major_version(1);
   response_headers.set_minor_version(1);
-  response_headers.Add(HttpAttributes::kContentType, "text/plain");
+  response_headers.Add(HttpAttributes::kContentType, "text/html");
   AprTimer timer;
   int64 now_ms = timer.NowMs();
   response_headers.SetDate(now_ms);
@@ -265,7 +265,11 @@ apr_status_t instaweb_handler(request_rec* request) {
     StringWriter writer(&output);
     Statistics* statistics = factory->statistics();
     if (statistics != NULL) {
+      // Write <pre></pre> for Dump to keep good format.
+      writer.Write("<pre>", factory->message_handler());
       statistics->Dump(&writer, factory->message_handler());
+      writer.Write("</pre>", factory->message_handler());
+      statistics->RenderHistograms(&writer, factory->message_handler());
     } else {
       writer.Write("mod_pagespeed statistics is not enabled\n",
                    factory->message_handler());
@@ -285,11 +289,14 @@ apr_status_t instaweb_handler(request_rec* request) {
     GoogleString output;
     StringWriter writer(&output);
     ApacheMessageHandler* handler = factory->apache_message_handler();
+    // Write <pre></pre> for Dump to keep good format.
+    writer.Write("<pre>", factory->message_handler());
     if (!handler->Dump(&writer)) {
       writer.Write("Writing to mod_pagespeed_message failed. \n"
                    "Please check if it's enabled in pagespeed.conf.\n",
                    factory->message_handler());
     }
+    writer.Write("</pre>", factory->message_handler());
     write_handler_response(output, request);
     ret = OK;
 

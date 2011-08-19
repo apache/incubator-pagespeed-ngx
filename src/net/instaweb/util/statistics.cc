@@ -20,12 +20,21 @@
 #include <utility>
 #include <vector>
 
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 
+namespace {
+// As we do fix size buckets, each bucket has the same height.
+const double kBarHeightPerBucket = 20;
+// Each bucket has different width, depends on the percentage of bucket value
+// out of total counts.
+// The width of a bucket is percentage_of_bucket_value * kBarWidthTotal.
+const double kBarWidthTotal = 400;
+}  // namespace
 namespace net_instaweb {
 
 class MessageHandler;
@@ -48,37 +57,35 @@ FakeTimedVariable::~FakeTimedVariable() {
 void Histogram::WriteRawHistogramData(Writer* writer, MessageHandler* handler) {
   const char bucket_style[] = "<tr><td style=\"padding: 0 0 0 0.25em\">"
       "[</td><td style=\"text-align:right;padding:0 0.25em 0 0\">"
-      "%.0f,</td><td style=text-align:right;padding: 0 0.25em\">%.f]</td>";
+      "%.0f,</td><td style=text-align:right;padding: 0 0.25em\">%.f)</td>";
   const char value_style[] = "<td style=\"text-align:right;padding:0 0.25em\">"
                              "%.f</td>";
-  const char bar_style[] = "<td><div style=\"width: %dpx;height:%dpx;"
+  const char perc_style[] = "<td style=\"text-align:right;padding:0 0.25em\">"
+                            "%.1f%</td>";
+  const char bar_style[] = "<td><div style=\"width: %.fpx;height:%.fpx;"
                            "background-color:blue\"></div></td>";
-  // Each bucket has same height, 4px.
-  int bar_height_per_bucket = 4;
-  // Each bucket has different width, depends on the bucket value.
-  // Total width of all buckets is set to 100px. The width of a bucket
-  // is bucket_value * bar_width_total / count.
-  int bar_width_total = 100;
-  double count = Count();
-  double sum = 0;
+  double count = CountInternal();
+  double perc = 0;
+  double cumulative_perc = 0;
   // Write prefix of the table.
   writer->Write("<hr><table>", handler);
-  for (int i = 0, n = NumBuckets(); i < n; ++i) {
-    int value = BucketCount(i);
+  for (int i = 0, n = MaxBuckets(); i < n; ++i) {
+    double value = BucketCount(i);
     if (value == 0) {
       // We do not draw empty bucket.
       continue;
     }
     double lower_bound = BucketStart(i);
     double upper_bound = BucketLimit(i);
-    sum += value;
+    perc = value * 100 / count;
+    cumulative_perc += perc;
     GoogleString output = StrCat(
         StringPrintf(bucket_style, lower_bound, upper_bound),
         StringPrintf(value_style, value),
-        StringPrintf(value_style, value / count),
-        StringPrintf(value_style, sum / count),
-        StringPrintf(bar_style, (value * bar_width_total) / count,
-                     bar_height_per_bucket));
+        StringPrintf(perc_style, perc),
+        StringPrintf(perc_style, cumulative_perc),
+        StringPrintf(bar_style, (perc * kBarWidthTotal) / 100,
+                     kBarHeightPerBucket));
     writer->Write(output.c_str(), handler);
   }
   // Write suffix of the table.
@@ -88,6 +95,7 @@ void Histogram::WriteRawHistogramData(Writer* writer, MessageHandler* handler) {
 
 void Histogram::Render(const StringPiece& title,
                        Writer* writer, MessageHandler* handler) {
+  ScopedMutex hold(lock());
   MD5Hasher hasher;
   // Generate an id for the histogram graph.
   GoogleString div_id = hasher.Hash(title);
@@ -99,9 +107,9 @@ void Histogram::Render(const StringPiece& title,
   const GoogleString stat = StringPrintf("<hr/>Count: %.1f | Avg: %.1f "
       "| StdDev: %.1f | Min: %.0f | Median: %.0f | Max: %.0f "
       "| 90%%: %.0f | 95%%: %.0f | 99%%: %.0f",
-      Count(), Average(), StandardDeviation(),
-      Minimum(), Percentile(50), Maximum(), Percentile(90), Percentile(95),
-      Percentile(99));
+      CountInternal(), AverageInternal(), StandardDeviationInternal(),
+      MinimumInternal(), PercentileInternal(50), MaximumInternal(),
+      PercentileInternal(90), PercentileInternal(95), PercentileInternal(99));
 
   const GoogleString raw_data_header = StringPrintf("<div>"
       "<span style='cursor:pointer;' onclick=\"toggleVisible('%s')\">"

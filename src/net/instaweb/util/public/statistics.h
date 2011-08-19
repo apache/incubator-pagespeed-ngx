@@ -21,6 +21,7 @@
 
 #include <map>
 #include "base/logging.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -50,7 +51,10 @@ class Histogram {
   // Throw away all data.
   virtual void Clear() = 0;
   // True if the histogram is empty.
-  virtual bool Empty() = 0;
+  virtual bool Empty() {
+   ScopedMutex hold(lock());
+   return CountInternal() == 0;
+  }
   // Write Histogram Data to the writer.
   // Default implementation does not include histogram graph, but only raw
   // histogram data table. It looks like:
@@ -71,28 +75,52 @@ class Histogram {
   virtual void EnableNegativeBuckets() = 0;
   // Set the minimum value allowed in histogram.
   virtual void SetMinValue(double value) = 0;
-  // Set the maximum value allowed in histogram.
+  // Set the value upper-bound of a histogram,
+  // the value range in histogram is [MinValue, MaxValue) or
+  // (-MaxValue, MaxValue) if enabled negative buckets.
   virtual void SetMaxValue(double value) = 0;
   // Set the maximum number of buckets.
   virtual void SetMaxBuckets(int i) = 0;
   // Record a value in its bucket.
-
- protected:
-  virtual double Average() = 0;
+  virtual double Average() {
+    ScopedMutex hold(lock());
+    return AverageInternal();
+  }
   // Return estimated value that is greater than perc% of all data.
   // e.g. Percentile(20) returns the value which is greater than
   // 20% of data.
-  virtual double Percentile(const double perc) = 0;
-  virtual double StandardDeviation() = 0;
-  virtual double Count() = 0;
-  virtual double Maximum() = 0;
-  virtual double Minimum() = 0;
+  virtual double Percentile(const double perc) {
+    ScopedMutex hold(lock());
+    return PercentileInternal(perc);
+  }
+  virtual double StandardDeviation() {
+    ScopedMutex hold(lock());
+    return StandardDeviationInternal();
+  }
+  virtual double Count() {
+    ScopedMutex hold(lock());
+    return CountInternal();
+  }
+  virtual double Maximum() {
+    ScopedMutex hold(lock());
+    return MaximumInternal();
+  }
+  virtual double Minimum() {
+    ScopedMutex hold(lock());
+    return MinimumInternal();
+  }
   virtual double Median() {
     return Percentile(50);
   }
-  // Number of buckets needs to render, ignore the empty buckets in the front
-  // and at the end.
-  virtual int NumBuckets() = 0;
+
+ protected:
+  virtual AbstractMutex* lock() = 0;
+  virtual double AverageInternal() = 0;
+  virtual double PercentileInternal(const double perc) = 0;
+  virtual double StandardDeviationInternal() = 0;
+  virtual double CountInternal() = 0;
+  virtual double MaximumInternal() = 0;
+  virtual double MinimumInternal() = 0;
   // Lower bound of a bucket. If index == MaxBuckets() + 1, returns the
   // upper bound of the histogram. DCHECK if index is in the range of
   // [0, MaxBuckets()+1].
@@ -126,18 +154,28 @@ class FakeHistogram : public Histogram {
   virtual void SetMaxBuckets(int i) { }
 
  protected:
-  virtual double Average() { return 0.0; }
-  virtual double Percentile(const double perc) { return 0.0; }
-  virtual double StandardDeviation() { return 0.0; }
-  virtual double Count() { return 0.0; }
-  virtual double Maximum() { return 0.0; }
-  virtual double Minimum() { return 0.0; }
-  virtual int NumBuckets() { return 0; }
+  virtual AbstractMutex* lock() { return &mutex_; }
+  virtual double AverageInternal() { return 0.0; }
+  virtual double PercentileInternal(const double perc) { return 0.0; }
+  virtual double StandardDeviationInternal() { return 0.0; }
+  virtual double CountInternal() { return 0.0; }
+  virtual double MaximumInternal() { return 0.0; }
+  virtual double MinimumInternal() { return 0.0; }
   virtual double BucketStart(int index) { return 0.0; }
   virtual double BucketCount(int index) { return 0.0; }
+
+ private:
+  class FakeMutex : public AbstractMutex {
+   public:
+    FakeMutex() {}
+    virtual ~FakeMutex() { }
+    virtual void Lock() { }
+    virtual void Unlock() { }
+  };
+  FakeMutex mutex_;
 };
 
-// TimedVaraible is a statistic class returns the amount added in the
+// TimedVariable is a statistic class returns the amount added in the
 // last interval, which could be last 10 seconds, last minute
 // last one hour and total.
 class TimedVariable {
