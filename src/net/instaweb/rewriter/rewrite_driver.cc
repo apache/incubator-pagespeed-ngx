@@ -1078,7 +1078,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
       message_handler()->Message(kWarning, "Badly formatted data url '%s'",
                                  url_string.as_string().c_str());
     }
-  } else if (url.SchemeIs("http")) {
+  } else if (url.SchemeIs("http") || url.SchemeIs("https")) {
     // Note: type may be NULL if url has an unexpected or malformed extension.
     const ContentType* type = NameExtensionToContentType(url_string);
     GoogleString filename;
@@ -1091,7 +1091,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
     }
   } else {
     // Note: Valid user-content can leave us here.
-    // Specifically, any URLs with scheme other than data: or http:, say https:.
+    // Specifically, any URLs with scheme other than data: or http: or https:.
     // TODO(sligocki): Is this true? Or will such URLs not make it this far?
     message_handler()->Message(kWarning, "Unsupported scheme '%s' for url '%s'",
                                url.Scheme().as_string().c_str(),

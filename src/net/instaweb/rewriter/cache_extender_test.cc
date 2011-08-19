@@ -182,6 +182,20 @@ TEST_P(CacheExtenderTest, ExtendIfSharded) {
                        "http://shard0.com/c.js.pagespeed.ce.0.js"));
 }
 
+TEST_P(CacheExtenderTest, ExtendIfOriginMappedHttps) {
+  InitTest(kShortTtlSec);
+  EXPECT_TRUE(options()->domain_lawyer()->AddOriginDomainMapping(
+      kTestDomain, "https://cdn.com", &message_handler_));
+  ValidateExpected("extend_if_origin_mapped",
+                   GenerateHtml("https://cdn.com/sub/a.css?v=1",
+                                "https://cdn.com/b.jpg",
+                                "https://cdn.com/c.js"),
+                   GenerateHtml(
+                       "https://cdn.com/sub/a.css,qv=1.pagespeed.ce.0.css",
+                       "https://cdn.com/b.jpg.pagespeed.ce.0.jpg",
+                       "https://cdn.com/c.js.pagespeed.ce.0.js"));
+}
+
 TEST_P(CacheExtenderTest, ExtendIfRewritten) {
   InitTest(kLongTtlSec);  // cached for a long time to begin with
 

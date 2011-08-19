@@ -670,16 +670,34 @@ void ResourceManagerTestBase::TestRetainExtraHeaders(
     const StringPiece& filter_id,
     const StringPiece& ext) {
   GoogleString url = AbsolutifyUrl(name);
+
+  // Add some extra headers.
+  AddToResponse(url, HttpAttributes::kEtag, "Custom-Etag");
   AddToResponse(url, "extra", "attribute");
+  AddToResponse(url, HttpAttributes::kSetCookie, "Custom-Cookie");
+
   GoogleString content;
   ResponseHeaders response;
   GoogleString rewritten_url = Encode(kTestDomain, filter_id, "0",
                                       encoded_name, ext);
   ASSERT_TRUE(ServeResourceUrl(rewritten_url, &content, &response));
+
+  // Extra non-blacklisted header is preserved.
   StringStarVector v;
   ASSERT_TRUE(response.Lookup("extra", &v));
   ASSERT_EQ(1U, v.size());
   EXPECT_STREQ("attribute", *v[0]);
+
+  // Note: These tests can fail if ResourceManager::FetchResource failed to
+  // rewrite the resource and instead served the original.
+  // TODO(sligocki): Add a check that we successfully rewrote the resource.
+
+  // Blacklisted headers are stripped (or changed).
+  EXPECT_FALSE(response.Lookup(HttpAttributes::kSetCookie, &v));
+
+  ASSERT_TRUE(response.Lookup(HttpAttributes::kEtag, &v));
+  ASSERT_EQ(1U, v.size());
+  EXPECT_STREQ("W/0", *v[0]);
 }
 
 void ResourceManagerTestBase::ClearStats() {

@@ -110,6 +110,10 @@ const char* kExcludedAttributes[] = {
   HttpAttributes::kEtag,
   HttpAttributes::kExpires,
   HttpAttributes::kLastModified,
+  // Rewritten resources are publicly cached, so we should avoid cookies
+  // which are generally meant for private data.
+  HttpAttributes::kSetCookie,
+  HttpAttributes::kSetCookie2,
   HttpAttributes::kVary
 };
 
@@ -265,7 +269,7 @@ void ResourceManager::SetDefaultLongCacheHeaders(
   // the ETag.
   header->Replace(HttpAttributes::kEtag, kResourceEtagValue);
 
-  // TODO(jmarantz): add date/last-modified headers by default.
+  // TODO(jmarantz): Replace last-modified headers by default?
   StringStarVector v;
   if (!header->Lookup(HttpAttributes::kLastModified, &v)) {
     header->SetLastModified(now_ms);

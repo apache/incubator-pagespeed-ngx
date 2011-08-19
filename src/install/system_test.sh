@@ -324,7 +324,8 @@ check grep '"304 Not Modified"' $WGET_OUTPUT
 
 echo TEST: Legacy format URLs should still work.
 URL=$EXAMPLE_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
-# TODO(sligocki): Do we want to test that we respond as HTTP/1.1?
+# Note: Wget request is HTTP/1.0, so some servers respond back with
+# HTTP/1.0 and some respond back 1.1.
 check "$WGET_DUMP $URL | grep -qe 'HTTP/1\.. 200 OK'"
 
 test_filter move_css_to_head does what it says on the tin.
@@ -358,8 +359,8 @@ echo $JS_HEADERS | grep -qi 'Content-Encoding: gzip'
 check [ $? = 0 ]
 #echo $JS_HEADERS | grep -qi 'Vary: Accept-Encoding'
 #check [ $? = 0 ]
-#echo $JS_HEADERS | grep -qi 'Etag: W/0'
-#check [ $? = 0 ]
+echo $JS_HEADERS | grep -qi 'Etag: W/0'
+check [ $? = 0 ]
 echo $JS_HEADERS | grep -qi 'Last-Modified:'
 check [ $? = 0 ]
 
@@ -413,9 +414,9 @@ echo TEST: Vary is not set for images
 echo "$IMG_HEADERS" | grep -qi 'Vary: Accept-Encoding'
 check [ $? != 0 ]
 # Make sure there is an etag
-#echo TEST: Etags is present
-#echo "$IMG_HEADERS" | grep -qi 'Etag: W/0'
-#check [ $? = 0 ]
+echo TEST: Etags is present
+echo "$IMG_HEADERS" | grep -qi 'Etag: W/0'
+check [ $? = 0 ]
 # TODO(sligocki): Allow setting arbitrary headers in static_server.
 # Make sure an extra header is propagated from input resource to output
 # resource.  X-Extra-Header is added in debug.conf.template.
@@ -496,55 +497,6 @@ check grep -qi "'Expires:'" $WGET_OUTPUT
 # at one point of development.
 echo TEST: regression test for RewriteDriver leak
 $WGET -O /dev/null -o /dev/null $TEST_ROOT/_.pagespeed.jo.3tPymVdi9b.js
-
-# Helper to test directive ModPagespeedForBots
-# By default directive ModPagespeedForBots is off; otherwise image rewriting is
-# disabled for bots while other filters such as inline_css still work.
-function CheckBots() {
-  ON=$1
-  COMPARE=$2
-  BOT=$3
-  FILTER="?ModPagespeedFilters=inline_css,rewrite_images"
-  PARAM="&ModPagespeedDisableForBots=$ON";
-  FILE="bot_test.html"$FILTER
-  # By default ModPagespeedDisableForBots is false, no need to set it in url.
-  # If the test wants to set it explicitly, set it in url.
-  if [[ $ON != "default" ]]; then
-    FILE=$FILE$PARAM
-  fi
-  FETCHED=$OURDIR/$FILE
-  URL=$TEST_ROOT/$FILE
-  # Filters such as inline_css work no matter if ModPagespeedDisable is on
-  # Fetch until CSS is inlined, so that we know rewriting succeeded.
-  if [[ -n $BOT ]]; then
-    fetch_until $URL 'grep -c style' 2 $BOT;
-  else
-    fetch_until $URL 'grep -c style' 2;
-  fi
-  # Check if the images are rewritten
-  rm -f $OUTDIR/*png*
-  rm -f $OUTDIR/*jpg*
-  if [[ -n $BOT ]]; then
-    check `$WGET_PREREQ -U $BOT $URL`;
-  else
-    check `$WGET_PREREQ $URL`;
-  fi
-  check [ `stat -c %s $OUTDIR/*BikeCrashIcn*` $COMPARE 25000 ] # recoded or not
-  check [ `stat -c %s $OUTDIR/*Puzzle*`  $COMPARE 24126  ] # resized or not
-}
-
-echo "Test: UserAgent is a bot; ModPagespeedDisableForBots=off"
-CheckBots 'off' '-lt' 'Googlebot/2.1'
-echo "Test: UserAgent is a bot; ModPagespeedDisableForBots=on"
-CheckBots 'on' '-gt' 'Googlebot/2.1'
-echo "Test: UserAgent is a bot; ModPagespeedDisableForBots is default"
-CheckBots 'default' '-lt' 'Googlebot/2.1'
-echo "Test: UserAgent is not a bot, ModPagespeedDisableForBots=off"
-CheckBots 'off' '-lt'
-echo "Test: UserAgent is not a bot, ModPagespeedDisableForBots=on"
-CheckBots 'on' '-lt'
-echo "Test: UserAgent is not a bot, ModPagespeedDisableForBots is default"
-CheckBots 'default' '-lt'
 
 # Cleanup
 rm -rf $OUTDIR

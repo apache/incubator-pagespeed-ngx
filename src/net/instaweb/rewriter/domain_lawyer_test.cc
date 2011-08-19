@@ -246,6 +246,15 @@ TEST_F(DomainLawyerTest, MapHttpsAcrossPorts) {
   EXPECT_EQ("http://nytimes.com:8181/css/stylesheet.css", mapped);
 }
 
+TEST_F(DomainLawyerTest, MapHttpsAcrossSchemesAndPorts) {
+  ASSERT_TRUE(AddOriginDomainMapping("http://localhost:8080",
+                                     "https://nytimes.com:8443"));
+  GoogleString mapped;
+  ASSERT_TRUE(domain_lawyer_.MapOrigin(
+      "https://nytimes.com:8443/css/stylesheet.css", &mapped));
+  EXPECT_EQ("http://localhost:8080/css/stylesheet.css", mapped);
+}
+
 TEST_F(DomainLawyerTest, RewriteHttpsAcrossHosts) {
   ASSERT_TRUE(AddRewriteDomainMapping("http://insecure.nytimes.com",
                                       "https://secure.nytimes.com"));
@@ -312,6 +321,32 @@ TEST_F(DomainLawyerTest, RewriteHttpsAcrossSchemes) {
                           "https://nytimes.com/css/stylesheet.css",
                           &mapped_domain_name));
   EXPECT_EQ("http://nytimes.com/", mapped_domain_name);
+}
+
+TEST_F(DomainLawyerTest, RewriteHttpsAcrossSchemesAndPorts) {
+  ASSERT_TRUE(AddRewriteDomainMapping("http://localhost:8080",
+                                      "https://nytimes.com:8443"));
+  EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
+  GoogleString mapped_domain_name;
+  ASSERT_TRUE(MapRequest(GoogleUrl("http://localhost:8080/index.html"),
+                         "https://nytimes.com:8443/css/stylesheet.css",
+                         &mapped_domain_name));
+  EXPECT_EQ("http://localhost:8080/", mapped_domain_name);
+  // Succeeds b/c http://localhost:8080/ is authorized and matches the request.
+  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com:8443/index.html"),
+                          "http://localhost:8080/css/stylesheet.css",
+                          &mapped_domain_name));
+  EXPECT_EQ("http://localhost:8080/", mapped_domain_name);
+  // Succeeds because https://nytimes:8443/ maps to http://localhost:8080/.
+  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com:8443/index.html"),
+                          "https://nytimes.com:8443/css/stylesheet.css",
+                          &mapped_domain_name));
+  EXPECT_EQ("http://localhost:8080/", mapped_domain_name);
+  // Relative path also succeeds.
+  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com:8443/index.html"),
+                          "css/stylesheet.css",
+                          &mapped_domain_name));
+  EXPECT_EQ("http://localhost:8080/", mapped_domain_name);
 }
 
 TEST_F(DomainLawyerTest, AddDomainRedundantly) {

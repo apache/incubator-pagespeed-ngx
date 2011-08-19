@@ -529,6 +529,7 @@ TEST_P(ImageRewriteTest, RewriteCacheExtendInteraction) {
 
 // http://code.google.com/p/modpagespeed/issues/detail?id=324
 TEST_P(ImageRewriteTest, RetainExtraHeaders) {
+  options()->EnableFilter(RewriteOptions::kRecompressImages);
   // Store image contents into fetcher.
   AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
