@@ -22,6 +22,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
@@ -72,6 +73,9 @@ class HTTPCache {
     HTTPValue http_value_;
     ResponseHeaders response_headers_;
   };
+
+  // Makes the cache ignore all put requests.
+  void SetReadOnly();
 
   // Non-blocking Find.  Calls callback when done.  'handler' must all
   // stay valid until callback->Done() is called.
@@ -146,6 +150,7 @@ class HTTPCache {
   Variable* cache_misses_;
   Variable* cache_expirations_;
   Variable* cache_inserts_;
+  AtomicBool readonly_;
 
   DISALLOW_COPY_AND_ASSIGN(HTTPCache);
 };

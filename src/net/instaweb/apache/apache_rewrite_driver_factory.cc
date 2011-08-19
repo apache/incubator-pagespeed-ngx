@@ -380,13 +380,31 @@ void ApacheRewriteDriverFactory::DumpRefererStatistics(Writer* writer) {
 }
 
 void ApacheRewriteDriverFactory::ShutDown() {
-  if (serf_url_async_fetcher_ != NULL) {
-    serf_url_async_fetcher_->WaitForActiveFetches(
-        fetcher_time_out_ms_, message_handler(),
-        SerfUrlAsyncFetcher::kThreadedAndMainline);
+  // Make sure we stop cache writes before turning off the fetcher, so any
+  // requests it cancels will not result in RememberNotCacheable entries
+  // getting written out to disk cache.
+  //
+  // Note that we have to be careful not to try creating it now, since it
+  // may involve access to worker initialization.
+  if (http_cache_created()) {
+    http_cache()->SetReadOnly();
   }
+
+  // Similarly stop metadata cache writes.
+  if (resource_manager_created()) {
+    ComputeResourceManager()->set_metadata_cache_readonly();
+  }
+
+  // Next, we shutdown the fetcher before killing the workers in
+  // RewriteDriverFactory::ShutDown; this is so any rewrite jobs in progress
+  // can quickly wrap up.
+  if (serf_url_async_fetcher_ != NULL) {
+    serf_url_async_fetcher_->ShutDown();
+  }
+
   if (is_root_process_) {
     // Cleanup statistics.
+    // TODO(morlovich): This looks dangerous with async.
     if (owns_statistics_ && (shared_mem_statistics_ != NULL)) {
       shared_mem_statistics_->GlobalCleanup(message_handler());
     }

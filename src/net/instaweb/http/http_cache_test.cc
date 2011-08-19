@@ -173,6 +173,20 @@ TEST_F(HTTPCacheTest, RememberNotCacheable) {
             Find("mykey", &value, &meta_data_out, &message_handler_));
 }
 
+// Make sure we don't remember 'non-cacheable' once we've put it into r/o mode.
+// (but do before)
+TEST_F(HTTPCacheTest, ReadOnly) {
+  http_cache_.RememberNotCacheable("mykey", &message_handler_);
+  http_cache_.SetReadOnly();
+  http_cache_.RememberNotCacheable("mykey2", &message_handler_);
+  ResponseHeaders meta_data_out;
+  HTTPValue value_out;
+  EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
+            Find("mykey", &value_out, &meta_data_out, &message_handler_));
+  EXPECT_EQ(HTTPCache::kNotFound,
+            Find("mykey2", &value_out, &meta_data_out, &message_handler_));
+}
+
 TEST_F(HTTPCacheTest, Uncacheable) {
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, NULL);

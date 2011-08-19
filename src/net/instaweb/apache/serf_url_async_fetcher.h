@@ -62,6 +62,11 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
                       Statistics* statistics, Timer* timer, int64 timeout_ms);
   SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent, const char* proxy);
   virtual ~SerfUrlAsyncFetcher();
+
+  // Stops all active fetches and prevents further fetches from starting
+  // (they will instead quickly call back to ->Done(false).
+  virtual void ShutDown();
+
   static void Initialize(Statistics* statistics);
   virtual bool StreamingFetch(const GoogleString& url,
                               const RequestHeaders& request_headers,
@@ -120,7 +125,9 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   // ApproximateNumActiveFetches can under- or over-count and is used only for
   // error reporting.
   int ApproximateNumActiveFetches();
+
   void CancelActiveFetches();
+  void CancelActiveFetchesMutexHeld();
   bool WaitForActiveFetchesHelper(int64 max_ms,
                                   MessageHandler* message_handler);
 
@@ -128,6 +135,10 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   // Must be called only immediately after running the serf event loop.
   // Must be called with mutex_ held.
   void CleanupFetchesWithErrors();
+
+  // These must be accessed with mutex_ held.
+  bool shutdown() const { return shutdown_; }
+  void set_shutdown(bool s) { shutdown_ = s; }
 
   apr_pool_t* pool_;
   ThreadSystem* thread_system_;
@@ -154,6 +165,7 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   Variable* timeout_count_;
   const int64 timeout_ms_;
   bool force_threaded_;
+  bool shutdown_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcher);
 };

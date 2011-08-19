@@ -65,6 +65,10 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Statistics* stats)
 
 HTTPCache::~HTTPCache() {}
 
+void HTTPCache::SetReadOnly() {
+  readonly_.set_value(true);
+}
+
 bool HTTPCache::IsCurrentlyValid(const ResponseHeaders& headers, int64 now_ms) {
   if (force_caching_) {
     return true;
@@ -229,6 +233,10 @@ void HTTPCache::RememberNotCacheable(const GoogleString& key,
 
 void HTTPCache::PutHelper(const GoogleString& key, int64 now_us,
                           HTTPValue* value, MessageHandler* handler) {
+  if (readonly_.value()) {
+    return;
+  }
+
   SharedString* shared_string = value->share();
   cache_->Put(key, shared_string);
   if (cache_time_us_ != NULL) {

@@ -593,6 +593,17 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     }
   }
 
+  void ShutDown() {
+    // See comments in the destructor above.. The big difference is that
+    // because we set shutdown_ to true new jobs can't actually come in.
+    {
+      ScopedMutex hold(mutex_);
+      set_shutdown(true);
+    }
+    TransferFetchesAndCheckDone(false);
+    CancelActiveFetches();
+  }
+
  protected:
   bool AnyPendingFetches() {
     ScopedMutex lock(initiate_mutex_.get());
@@ -811,7 +822,8 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       cancel_count_(NULL),
       timeout_count_(NULL),
       timeout_ms_(timeout_ms),
-      force_threaded_(false) {
+      force_threaded_(false),
+      shutdown_(false) {
   CHECK(statistics != NULL);
   request_count_  =
       statistics->GetVariable(SerfStats::kSerfFetchRequestCount);
@@ -840,7 +852,8 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       cancel_count_(parent->cancel_count_),
       timeout_count_(parent->timeout_count_),
       timeout_ms_(parent->timeout_ms()),
-      force_threaded_(parent->force_threaded_) {
+      force_threaded_(parent->force_threaded_),
+      shutdown_(false) {
   Init(parent->pool(), proxy);
   threaded_fetcher_ = NULL;
 }
@@ -866,6 +879,18 @@ SerfUrlAsyncFetcher::~SerfUrlAsyncFetcher() {
   }
   delete mutex_;
   apr_pool_destroy(pool_);  // also calls apr_allocator_destroy on the allocator
+}
+
+void SerfUrlAsyncFetcher::ShutDown() {
+  // Note that we choose not to delete the threaded_fetcher_ to avoid worrying
+  // about races on its deletion.
+  if (threaded_fetcher_ != NULL) {
+    threaded_fetcher_->ShutDown();
+  }
+
+  ScopedMutex lock(mutex_);
+  shutdown_ = true;
+  CancelActiveFetchesMutexHeld();
 }
 
 void SerfUrlAsyncFetcher::Init(apr_pool_t* parent_pool, const char* proxy) {
@@ -894,20 +919,23 @@ void SerfUrlAsyncFetcher::Init(apr_pool_t* parent_pool, const char* proxy) {
 }
 
 void SerfUrlAsyncFetcher::CancelActiveFetches() {
+  ScopedMutex lock(mutex_);
+  CancelActiveFetchesMutexHeld();
+}
+
+void SerfUrlAsyncFetcher::CancelActiveFetchesMutexHeld() {
   // If there are still active requests, cancel them.
   int num_canceled = 0;
-  {
-    ScopedMutex lock(mutex_);
-    while (!active_fetches_.empty()) {
-      // Cancelling a fetch requires that the fetch reside in active_fetches_,
-      // but can invalidate iterators pointing to the affected fetch.  To avoid
-      // trouble, we simply ask for the oldest element, knowing it will go away.
-      SerfFetch* fetch = active_fetches_.oldest();
-      LOG(WARNING) << "Aborting fetch of " << fetch->str_url();
-      fetch->Cancel();
-      ++num_canceled;
-    }
+  while (!active_fetches_.empty()) {
+    // Cancelling a fetch requires that the fetch reside in active_fetches_,
+    // but can invalidate iterators pointing to the affected fetch.  To avoid
+    // trouble, we simply ask for the oldest element, knowing it will go away.
+    SerfFetch* fetch = active_fetches_.oldest();
+    LOG(WARNING) << "Aborting fetch of " << fetch->str_url();
+    fetch->Cancel();
+    ++num_canceled;
   }
+
   if (num_canceled != 0) {
     if (cancel_count_ != NULL) {
       cancel_count_->Add(num_canceled);
@@ -916,7 +944,7 @@ void SerfUrlAsyncFetcher::CancelActiveFetches() {
 }
 
 bool SerfUrlAsyncFetcher::StartFetch(SerfFetch* fetch) {
-  bool started = fetch->Start(this);
+  bool started = !shutdown_ && fetch->Start(this);
   if (started) {
     active_fetches_.Add(fetch);
     active_count_->Add(1);

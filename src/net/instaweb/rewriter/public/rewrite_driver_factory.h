@@ -199,6 +199,11 @@ class RewriteDriverFactory {
   // Registers the directory as having been created by us.
   void AddCreatedDirectory(const GoogleString& dir);
 
+  bool http_cache_created() const { return http_cache_.get() != NULL; }
+  bool resource_manager_created() const {
+    return resource_manager_.get() != NULL;
+  }
+
  private:
   void SetupSlurpDirectories();
 

@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_FUNCTION_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_FUNCTION_H_
 
-#include "net/instaweb/util/public/atomicops.h"
+#include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
@@ -38,16 +38,16 @@ class Function {
   // Allows an infrastructure (e.g. Worker or Alarm) to request that
   // a running Function stop soon, as it is being shut down.
   bool quit_requested() const {
-    return base::subtle::Acquire_Load(&quit_requested_);
+    return quit_requested_.value();
   }
 
   // Requests that a running closure shut down.
   void set_quit_requested(bool q) {
-    base::subtle::Release_Store(&quit_requested_, q);
+    quit_requested_.set_value(q);
   }
 
  private:
-  base::subtle::AtomicWord quit_requested_;
+  AtomicBool quit_requested_;
   DISALLOW_COPY_AND_ASSIGN(Function);
 };
 

@@ -21,7 +21,7 @@
 namespace net_instaweb {
 
 Function::Function() {
-  base::subtle::Release_Store(&quit_requested_, false);
+  set_quit_requested(false);
 }
 
 Function::~Function() {

@@ -661,8 +661,10 @@ void RewriteContext::WritePartition() {
   }
   Driver()->DeregisterForPartitionKey(partition_key_, this);
 
-  if (ok_to_write_output_partitions_) {
-    CacheInterface* metadata_cache = Manager()->metadata_cache();
+  ResourceManager* manager = Manager();
+  if (ok_to_write_output_partitions_ &&
+      !manager->metadata_cache_readonly()) {
+    CacheInterface* metadata_cache = manager->metadata_cache();
     SharedString buf;
     {
       StringOutputStream sstream(buf.get());

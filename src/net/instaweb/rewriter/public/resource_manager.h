@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -328,6 +329,16 @@ class ResourceManager {
 
   ThreadSystem* thread_system() { return thread_system_; }
 
+  // Calling this method will stop results of rewrites being cached in the
+  // metadata cache. This is meant for the shutdown sequence.
+  void set_metadata_cache_readonly() {
+    metadata_cache_readonly_.set_value(true);
+  }
+
+  bool metadata_cache_readonly() const {
+    return metadata_cache_readonly_.value();
+  }
+
   // Waits for all currently running jobs to complete, and stops accepting
   // new jobs in the workers.  This is meant for use when shutting down
   // processing, so that jobs running in background do not access objects
@@ -459,6 +470,8 @@ class ResourceManager {
   std::vector<QueuedWorker*> rewrite_workers_;
   int max_queued_workers_;
   int queued_worker_index_;
+
+  AtomicBool metadata_cache_readonly_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };
