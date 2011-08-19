@@ -20,8 +20,6 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/http/public/cache_url_async_fetcher.h"
-#include "net/instaweb/http/public/cache_url_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
@@ -359,8 +357,6 @@ void RewriteDriverFactory::ShutDown() {
   resource_manager_.reset(NULL);
   html_parse_message_handler_.reset(NULL);
   http_cache_.reset(NULL);
-  cache_fetcher_.reset(NULL);
-  cache_async_fetcher_.reset(NULL);
 }
 
 // Return a writable RewriteOptions.  If the ResourceManager has

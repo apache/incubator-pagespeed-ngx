@@ -195,8 +195,6 @@
       ],
       'sources': [
         'genfiles/http/bot_checker.cc',
-        'http/cache_url_async_fetcher.cc',
-        'http/cache_url_fetcher.cc',
         'http/dummy_url_fetcher.cc',
         'http/fake_url_async_fetcher.cc',
         'http/http_cache.cc',

@@ -29,8 +29,6 @@
 namespace net_instaweb {
 
 class CacheInterface;
-class CacheUrlAsyncFetcher;
-class CacheUrlFetcher;
 class FileSystem;
 class FilenameEncoder;
 class Hasher;
@@ -236,8 +234,6 @@ class RewriteDriverFactory {
   // Caching support
   scoped_ptr<HTTPCache> http_cache_;
   CacheInterface* http_cache_backend_;  // Pointer owned by http_cache_
-  scoped_ptr<CacheUrlFetcher> cache_fetcher_;
-  scoped_ptr<CacheUrlAsyncFetcher> cache_async_fetcher_;
 
   // Keep track of authorized domains, sharding, and mappings.
   DomainLawyer domain_lawyer_;
