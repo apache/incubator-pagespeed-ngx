@@ -48,6 +48,7 @@ class CssRewriteTestBase : public ResourceManagerTestBase,
         statistics()->GetVariable(CssFilter::kMinifiedBytesSaved);
     num_parse_failures_ = statistics()->GetVariable(CssFilter::kParseFailures);
   }
+  ~CssRewriteTestBase();
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();

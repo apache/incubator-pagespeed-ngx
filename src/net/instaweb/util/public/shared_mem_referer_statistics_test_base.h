@@ -58,6 +58,7 @@ class SharedMemRefererStatisticsTestBase : public testing::Test {
   static const int kNumberOfStrings;
   static const int kStringSize;
   static const char kPrefix[];
+  static const char kSuffix[];
 
   explicit SharedMemRefererStatisticsTestBase(SharedMemTestEnv* test_env);
 
@@ -77,10 +78,10 @@ class SharedMemRefererStatisticsTestBase : public testing::Test {
   // Tests that different Urls with the same div location and vice versa are
   // logged properly
   void TestDivLocation();
+  // Tests DumpFast method
+  void TestDumpFast();
   // Tests DumpSimple method
   void TestDumpSimple();
-  // Tests Dump method
-  void TestDump();
   // Tests DumpOrganized method
   void TestDumpOrganized();
   // Tests accumulation of statistics simultaneously across multiple processes
@@ -150,12 +151,12 @@ TYPED_TEST_P(SharedMemRefererStatisticsTestTemplate, TestDivLocation) {
   SharedMemRefererStatisticsTestBase::TestDivLocation();
 }
 
-TYPED_TEST_P(SharedMemRefererStatisticsTestTemplate, TestDumpSimple) {
-  SharedMemRefererStatisticsTestBase::TestDumpSimple();
+TYPED_TEST_P(SharedMemRefererStatisticsTestTemplate, TestDumpFast) {
+  SharedMemRefererStatisticsTestBase::TestDumpFast();
 }
 
-TYPED_TEST_P(SharedMemRefererStatisticsTestTemplate, TestDump) {
-  SharedMemRefererStatisticsTestBase::TestDump();
+TYPED_TEST_P(SharedMemRefererStatisticsTestTemplate, TestDumpSimple) {
+  SharedMemRefererStatisticsTestBase::TestDumpSimple();
 }
 
 TYPED_TEST_P(SharedMemRefererStatisticsTestTemplate, TestDumpOrganized) {
@@ -172,8 +173,8 @@ REGISTER_TYPED_TEST_CASE_P(SharedMemRefererStatisticsTestTemplate,
                            TestResource,
                            TestIgnoreQueryParams,
                            TestDivLocation,
+                           TestDumpFast,
                            TestDumpSimple,
-                           TestDump,
                            TestDumpOrganized,
                            TestMultiProcess);
 

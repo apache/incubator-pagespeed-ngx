@@ -40,6 +40,8 @@ CssMoveToHeadFilter::CssMoveToHeadFilter(HtmlParse* html_parse,
       counter_(statistics->GetVariable(kCssElements)) {
 }
 
+CssMoveToHeadFilter::~CssMoveToHeadFilter() {}
+
 void CssMoveToHeadFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kCssElements);
 }

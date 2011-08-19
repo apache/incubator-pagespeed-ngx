@@ -28,6 +28,8 @@ StripScriptsFilter::StripScriptsFilter(HtmlParse* html_parse)
     : html_parse_(html_parse) {
 }
 
+StripScriptsFilter::~StripScriptsFilter() {}
+
 void StripScriptsFilter::EndElement(HtmlElement* element) {
   if (element->keyword() == HtmlName::kScript) {
     html_parse_->DeleteElement(element);

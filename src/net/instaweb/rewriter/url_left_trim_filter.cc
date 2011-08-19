@@ -48,6 +48,8 @@ UrlLeftTrimFilter::UrlLeftTrimFilter(RewriteDriver* rewrite_driver,
   tag_scanner_.set_find_a_tags(true);
 }
 
+UrlLeftTrimFilter::~UrlLeftTrimFilter() {}
+
 void UrlLeftTrimFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kUrlTrims);
   statistics->AddVariable(kUrlTrimSavedBytes);

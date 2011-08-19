@@ -42,6 +42,7 @@ class HtmlCharactersNode;
 class CollapseWhitespaceFilter : public EmptyHtmlFilter {
  public:
   explicit CollapseWhitespaceFilter(HtmlParse* html_parse);
+  virtual ~CollapseWhitespaceFilter();
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);

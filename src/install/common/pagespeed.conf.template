@@ -11,8 +11,8 @@
     # ModPagespeedGeneratedFilePrefix directories must exist and be
     # writable by the apache user (as specified by the User
     # directive).
-    ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@/cache/"
-    ModPagespeedGeneratedFilePrefix      "@@MODPAGESPEED_CACHE_ROOT@@/files/"
+    ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@cache/"
+    ModPagespeedGeneratedFilePrefix      "@@MODPAGESPEED_CACHE_ROOT@@files/"
 
     # Override the mod_pagespeed 'rewrite level'. The default level
     # "CoreFilters" uses a set of rewrite filters that are generally
@@ -160,9 +160,43 @@
 
     ModPagespeedMessageBufferSize 100000
 
+    # mod_pagespeed has the ability to collect statistics about page visits as
+    # well as page, resource, and div location (see div_structure_filter)
+    # referrals.  These will eventually be used to speed up pages with at least
+    # resource pre-fetch, if not Chrome's new pre-render, technology.  See
+    # googlewebmastercentral.blogspot.com/2011/06/announcing-instant-pages.html
+    #   We recommend enabling the div_structure filter if turning on statistics
+    # collection below.  Enabling the div_structure filter will increase the
+    # effectiveness of pre-rendering prediction, because it will take into
+    # account both URLs and page locations when aggregating user click through
+    # behavior.  To enable the div_structure filter, uncomment the appropriate
+    # line below or add div_structure to the enabled filters at the top of this
+    # configuration file.
+    #   Page /mod_pagespeed_referer_statistics lets you view the accumulated
+    # referral statistics.
+    #   ModPagespeedCollectRefererStatistics on enables collection (default off)
+    #   ModPagespeedHashRefererStatistics obscures collected info (default off)
+    #   ModPagespeedRefererStatisticsOutputLevel can be changed if the page
+    # /mod_pagespeed_referer_statistics is slow to load:
+    #   - Organized (default) is the most readable and ordered logically, but
+    #       involves computation
+    #   - Simple is readable but unordered
+    #   - Fast is the fastest and contains all necessary information, but is
+    #       fairly unreadable
+
+    # ModPagespeedCollectRefererStatistics on
+    # ModPagespeedHashRefererStatistics on
+    # ModPagespeedRefererStatisticsOutputLevel Simple
+    # ModPagespeedEnableFilters div_structure
+
     <Location /mod_pagespeed_message>
         Allow from localhost
         Allow from 127.0.0.1
         SetHandler mod_pagespeed_message
+    </Location>
+    <Location /mod_pagespeed_referer_statistics>
+        Allow from localhost
+        Allow from 127.0.0.1
+        SetHandler mod_pagespeed_referer_statistics
     </Location>
 </IfModule>

@@ -42,6 +42,7 @@ class RewriteDriver;
 class JsOutlineFilter : public CommonFilter {
  public:
   explicit JsOutlineFilter(RewriteDriver* driver);
+  virtual ~JsOutlineFilter();
   static const char kFilterId[];
 
   virtual void StartDocumentImpl();

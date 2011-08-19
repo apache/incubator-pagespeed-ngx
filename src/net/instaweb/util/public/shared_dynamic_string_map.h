@@ -51,7 +51,8 @@ class SharedDynamicStringMap {
   SharedDynamicStringMap(size_t number_of_strings,
                          size_t average_string_length,
                          AbstractSharedMem* shm_runtime,
-                         const GoogleString& filename_prefix);
+                         const GoogleString& filename_prefix,
+                         const GoogleString& filename_suffix);
 
   // Initialize the shared memory segment.  This method should complete before
   // any other methods are executed.

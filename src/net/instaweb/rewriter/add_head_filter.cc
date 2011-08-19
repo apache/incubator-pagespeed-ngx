@@ -32,6 +32,8 @@ AddHeadFilter::AddHeadFilter(HtmlParse* html_parse, bool combine_multiple_heads)
       head_element_(NULL) {
 }
 
+AddHeadFilter::~AddHeadFilter() {}
+
 void AddHeadFilter::StartDocument() {
   found_head_ = false;
   head_element_ = NULL;

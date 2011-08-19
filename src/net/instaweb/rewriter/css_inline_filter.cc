@@ -76,6 +76,8 @@ CssInlineFilter::CssInlineFilter(RewriteDriver* driver)
 void CssInlineFilter::StartDocumentImpl() {
 }
 
+CssInlineFilter::~CssInlineFilter() {}
+
 void CssInlineFilter::EndElementImpl(HtmlElement* element) {
   if ((element->keyword() == HtmlName::kLink) &&
       !driver_->HasChildrenInFlushWindow(element)) {

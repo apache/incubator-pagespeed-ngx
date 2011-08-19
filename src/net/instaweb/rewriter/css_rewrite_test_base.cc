@@ -32,6 +32,8 @@
 
 namespace net_instaweb {
 
+CssRewriteTestBase::~CssRewriteTestBase() {}
+
 // Check that inline CSS gets rewritten correctly.
 void CssRewriteTestBase::ValidateRewriteInlineCss(
     const StringPiece& id,

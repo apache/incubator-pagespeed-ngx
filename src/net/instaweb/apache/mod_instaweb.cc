@@ -77,6 +77,8 @@ namespace {
 // install/common/pagespeed.conf.template.
 const char* kModPagespeedAllow = "ModPagespeedAllow";
 const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
+const char* kModPagespeedCollectRefererStatistics =
+    "ModPagespeedCollectRefererStatistics";
 const char* kModPagespeedCombineAcrossPaths = "ModPagespeedCombineAcrossPaths";
 const char* kModPagespeedCssOutlineMinBytes = "ModPagespeedCssOutlineMinBytes";
 const char* kModPagespeedDisableFilters = "ModPagespeedDisableFilters";
@@ -93,6 +95,8 @@ const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
 const char* kModPagespeedForceCaching = "ModPagespeedForceCaching";
 const char* kModPagespeedGeneratedFilePrefix =
     "ModPagespeedGeneratedFilePrefix";
+const char* kModPagespeedHashRefererStatistics =
+    "ModPagespeedHashRefererStatistics";
 // The following two are deprecated due to spelling
 const char* kModPagespeedImgInlineMaxBytes = "ModPagespeedImgInlineMaxBytes";
 const char* kModPagespeedImgMaxRewritesAtOnce =
@@ -115,6 +119,8 @@ const char* kModPagespeedMapRewriteDomain = "ModPagespeedMapRewriteDomain";
 const char* kModPagespeedMaxSegmentLength = "ModPagespeedMaxSegmentLength";
 const char* kModPagespeedMessageBufferSize = "ModPagespeedMessageBufferSize";
 const char* kModPagespeedNumShards = "ModPagespeedNumShards";
+const char* kModPagespeedRefererStatisticsOutputLevel =
+    "ModPagespeedRefererStatisticsOutputLevel";
 const char* kModPagespeedRetainComment = "ModPagespeedRetainComment";
 const char* kModPagespeedRewriteLevel = "ModPagespeedRewriteLevel";
 const char* kModPagespeedShardDomain = "ModPagespeedShardDomain";
@@ -908,9 +914,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedBeaconUrl)) {
     options->set_beacon_url(arg);
   } else if (StringCaseEqual(directive,
-                             RewriteQuery::kModPagespeedDisableForBots)) {
-    ret = ParseBoolOption(options, cmd,
-                          &RewriteOptions::set_botdetect_enabled, arg);
+                             kModPagespeedCollectRefererStatistics)) {
+    ret = ParseBoolOption(factory, cmd,
+        &ApacheRewriteDriverFactory::set_collect_referer_statistics, arg);
   } else if (StringCaseEqual(directive, kModPagespeedCombineAcrossPaths)) {
     ret = ParseBoolOption(options, cmd,
                           &RewriteOptions::set_combine_across_paths, arg);
@@ -927,6 +933,10 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     }
   } else if (StringCaseEqual(directive, kModPagespeedDisallow)) {
     options->Disallow(arg);
+  } else if (StringCaseEqual(directive,
+                             RewriteQuery::kModPagespeedDisableForBots)) {
+    ret = ParseBoolOption(options, cmd,
+                          &RewriteOptions::set_botdetect_enabled, arg);
   } else if (StringCaseEqual(directive, kModPagespeedDomain)) {
     options->domain_lawyer()->AddDomain(arg, factory->message_handler());
   } else if (StringCaseEqual(directive, kModPagespeedEnableFilters)) {
@@ -963,6 +973,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
       ret = apr_pstrcat(cmd->pool, "Directory ", arg,
                         " does not exist and can't be created.", NULL);
     }
+  } else if (StringCaseEqual(directive, kModPagespeedHashRefererStatistics)) {
+    ret = ParseBoolOption(factory, cmd,
+         &ApacheRewriteDriverFactory::set_hash_referer_statistics, arg);
   } else if (StringCaseEqual(directive, kModPagespeedImgInlineMaxBytes)) {
     // Deprecated due to spelling
     ret = ParseInt64Option(options,
@@ -1009,6 +1022,16 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
                           &RewriteOptions::set_respect_vary, arg);
   } else if (StringCaseEqual(directive, kModPagespeedNumShards)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
+  } else if (StringCaseEqual(directive,
+                             kModPagespeedRefererStatisticsOutputLevel)) {
+    ApacheRewriteDriverFactory::RefererStatisticsOutputLevel level =
+        ApacheRewriteDriverFactory::kOrganized;
+    if (ApacheRewriteDriverFactory::ParseRefererStatisticsOutputLevel(arg,
+                                                                      &level)) {
+      factory->set_referer_statistics_output_level(level);
+    } else {
+      ret = "Failed to parse RefererStatisticsOutputLevel.";
+    }
   } else if (StringCaseEqual(directive, kModPagespeedRetainComment)) {
     options->RetainComment(arg);
   } else if (StringCaseEqual(directive, kModPagespeedRewriteLevel)) {
@@ -1118,22 +1141,26 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "wildcard_spec for urls"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedBeaconUrl,
         "URL for beacon callback injected by add_instrumentation."),
-  APACHE_CONFIG_DIR_OPTION(RewriteQuery::kModPagespeedDisableForBots,
-        "Disable mod_pagespeed for bots."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedCollectRefererStatistics,
+        "Track page, resource, and div location referrals for prefetching."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCombineAcrossPaths,
         "Allow combining resources from different paths"),
   APACHE_CONFIG_DIR_OPTION(RewriteQuery::kModPagespeedCssInlineMaxBytes,
         "Number of bytes below which stylesheets will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCssOutlineMinBytes,
         "Number of bytes above which inline CSS resources will be outlined."),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedDomain,
-        "Authorize mod_pagespeed to rewrite resources in a domain."),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedEnableFilters,
-        "Comma-separated list of enabled filters"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDisableFilters,
         "Comma-separated list of disabled filters"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDisallow,
         "wildcard_spec for urls"),
+  APACHE_CONFIG_DIR_OPTION(RewriteQuery::kModPagespeedDisableForBots,
+        "Disable mod_pagespeed for bots."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedDomain,
+        "Authorize mod_pagespeed to rewrite resources in a domain."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedEnableFilters,
+        "Comma-separated list of enabled filters"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedHashRefererStatistics,
+        "Hash URLs and div locations in referer statistics."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImgInlineMaxBytes,
         "DEPRECATED, use ModPagespeedImageInlineMaxBytes."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImageInlineMaxBytes,
@@ -1149,6 +1176,13 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Lowercase tag and attribute names for HTML."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedMaxSegmentLength,
         "Maximum size of a URL segment."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedRefererStatisticsOutputLevel,
+        "Set the output level of mod_pagespeed_referer_statistics (Fast, "
+        "Simple, Organized).  There is a trade-off between readability and "
+        "speed."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedRetainComment,
+        "Retain HTML comments matching wildcard, even with remove_comments "
+        "enabled"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRewriteLevel,
         "Base level of rewriting (PassThrough, CoreFilters)"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedStatistics,
@@ -1184,9 +1218,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheKbPerProcess,
         "Set the total size, in KB, of the per-process in-memory LRU cache"),
   APACHE_CONFIG_OPTION(kModPagespeedNumShards, "Set number of shards"),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedRetainComment,
-        "Retain HTML comments matching wildcard, even with remove_comments "
-        "enabled"),
   APACHE_CONFIG_OPTION(kModPagespeedSharedMemoryLocks,
         "Use shared memory for internal named lock service"),
   APACHE_CONFIG_OPTION(kModPagespeedSlurpDirectory,

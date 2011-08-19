@@ -27,11 +27,13 @@ HashedRefererStatistics::HashedRefererStatistics(
     size_t average_string_length,
     AbstractSharedMem* shm_runtime,
     const GoogleString& filename_prefix,
+    const GoogleString& filename_suffix,
     Hasher* hasher)
     : SharedMemRefererStatistics(number_of_strings,
                                  average_string_length,
                                  shm_runtime,
-                                 filename_prefix),
+                                 filename_prefix,
+                                 filename_suffix),
       hasher_(hasher) {
 }
 

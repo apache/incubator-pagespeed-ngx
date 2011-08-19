@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/gflags.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/hashed_referer_statistics.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
@@ -44,9 +45,34 @@
 
 namespace net_instaweb {
 
+namespace {
+
+const size_t kRefererStatisticsNumberOfPages = 1024;
+const size_t kRefererStatisticsAverageUrlLength = 64;
+
+}  // namespace
+
 SharedMemOwnerMap* ApacheRewriteDriverFactory::lock_manager_owners_ = NULL;
 RefCountedOwner<SlowWorker>::Family
     ApacheRewriteDriverFactory::slow_worker_family_;
+
+bool ApacheRewriteDriverFactory::ParseRefererStatisticsOutputLevel(
+    const StringPiece& in, RefererStatisticsOutputLevel* out) {
+  bool ret = false;
+  if (in != NULL) {
+    if (StringCaseEqual(in, "Fast")) {
+      *out = kFast;
+       ret = true;
+    } else if (StringCaseEqual(in, "Simple")) {
+      *out = kSimple;
+       ret = true;
+    } else if (StringCaseEqual(in, "Organized")) {
+      *out = kOrganized;
+       ret = true;
+    }
+  }
+  return ret;
+}
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     server_rec* server, const StringPiece& version)
@@ -57,6 +83,9 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       shared_mem_runtime_(new PthreadSharedMem()),
       shared_circular_buffer_(NULL),
       slow_worker_(&slow_worker_family_),
+      collect_referer_statistics_(false),
+      hash_referer_statistics_(false),
+      referer_statistics_output_level_(kOrganized),
       message_buffer_size_(100000),  // 100k bytes
       lru_cache_kb_per_process_(0),
       lru_cache_byte_limit_(0),
@@ -70,6 +99,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       owns_statistics_(false),
       test_proxy_(false),
       is_root_process_(true),
+      shared_mem_referer_statistics_(NULL),
       use_shared_mem_locking_(false),
       hostname_identifier_(StrCat(server->server_hostname,
                                   ":",
@@ -249,8 +279,51 @@ void ApacheRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
   }
 }
 
-void ApacheRewriteDriverFactory::RootInit() {
+void ApacheRewriteDriverFactory::SharedMemRefererStatisticsInit(bool is_root) {
+  if (shared_mem_runtime_ != NULL && collect_referer_statistics_) {
+    if (hash_referer_statistics_) {
+      // By making the hashes equal roughly to half the expected url length,
+      // entries corresponding to referrals in the
+      // shared_mem_referer_statistics_ map will be roughly the expected size
+      //   The size of the hash might be capped, so we check for this and cap
+      // expected average url length if necessary.
+      //
+      // hostname_identifier() is passed in as a suffix so that the shared
+      // memory segments for different v-hosts have unique identifiers, keeping
+      // the statistics separate.
+      Hasher* hasher =
+          new MD5Hasher(kRefererStatisticsAverageUrlLength / 2);
+      size_t referer_statistics_average_expected_url_length_ =
+          2 * hasher->HashSizeInChars();
+      shared_mem_referer_statistics_.reset(new HashedRefererStatistics(
+          kRefererStatisticsNumberOfPages,
+          referer_statistics_average_expected_url_length_,
+          shared_mem_runtime(),
+          filename_prefix().as_string(),
+          hostname_identifier(),
+          hasher));
+    } else {
+      shared_mem_referer_statistics_.reset(new SharedMemRefererStatistics(
+          kRefererStatisticsNumberOfPages,
+          kRefererStatisticsAverageUrlLength,
+          shared_mem_runtime(),
+          filename_prefix().as_string(),
+          hostname_identifier()));
+    }
+    if (!shared_mem_referer_statistics_->InitSegment(is_root,
+                                                     message_handler())) {
+      shared_mem_referer_statistics_.reset(NULL);
+    }
+  }
+}
+
+void ApacheRewriteDriverFactory::ParentOrChildInit() {
   SharedCircularBufferInit(is_root_process_);
+  SharedMemRefererStatisticsInit(is_root_process_);
+}
+
+void ApacheRewriteDriverFactory::RootInit() {
+  ParentOrChildInit();
   if (use_shared_mem_locking_) {
     shared_mem_lock_manager_lifecycler_.RootInit();
   }
@@ -258,11 +331,11 @@ void ApacheRewriteDriverFactory::RootInit() {
 
 void ApacheRewriteDriverFactory::ChildInit() {
   is_root_process_ = false;
+  ParentOrChildInit();
   // Reinitialize pid for child process.
   apache_message_handler_->SetPidString(static_cast<int64>(getpid()));
   apache_html_parse_message_handler_->SetPidString(
       static_cast<int64>(getpid()));
-  SharedCircularBufferInit(is_root_process_);
   if (!slow_worker_.Attach()) {
     slow_worker_.Initialize(new SlowWorker(thread_system()));
   }
@@ -282,6 +355,27 @@ void ApacheRewriteDriverFactory::ResourceManagerCreatedHook() {
   if ((slow_worker_.Get() != NULL) && !slow_worker_.Get()->StartIfNeeded()) {
     message_handler()->Message(
         kError, "Unable to start background work thread.");
+  }
+}
+
+void ApacheRewriteDriverFactory::DumpRefererStatistics(Writer* writer) {
+  // Note: Referer statistics are only displayed for within the same v-host
+  MessageHandler* handler = message_handler();
+  if (shared_mem_referer_statistics_ == NULL) {
+    writer->Write("mod_pagespeed referer statistics either had an error or "
+                  "are not enabled.", handler);
+  } else {
+    switch (referer_statistics_output_level_) {
+      case kFast:
+        shared_mem_referer_statistics_->DumpFast(writer, handler);
+        break;
+      case kSimple:
+        shared_mem_referer_statistics_->DumpSimple(writer, handler);
+        break;
+      case kOrganized:
+        shared_mem_referer_statistics_->DumpOrganized(writer, handler);
+        break;
+    }
   }
 }
 

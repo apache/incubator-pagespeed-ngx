@@ -35,6 +35,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -49,6 +50,7 @@ namespace net_instaweb {
 namespace {
 
 const char kStatisticsHandler[] = "mod_pagespeed_statistics";
+const char kRefererStatisticsHandler[] = "mod_pagespeed_referer_statistics";
 const char kMessageHandler[] = "mod_pagespeed_message";
 const char kBeaconHandler[] = "mod_pagespeed_beacon";
 const char kResourceUrlNote[] = "mod_pagespeed_resource";
@@ -228,6 +230,28 @@ const char* get_instaweb_resource_url(request_rec* request) {
   return url;
 }
 
+void log_resource_referral(request_rec* request,
+                           ApacheRewriteDriverFactory* factory) {
+  // If all the pieces are in place, we log this request as a resource referral
+  // for future prerender decision-making purposes
+  SharedMemRefererStatistics* referer_stats =
+      factory->shared_mem_referer_statistics();
+  if (referer_stats != NULL) {
+    const char* original_url = apr_table_get(request->notes,
+                                             kPagespeedOriginalUrl);
+    if (original_url != NULL) {
+      const char* referer = apr_table_get(request->headers_in,
+                                          HttpAttributes::kReferer);
+      if (referer != NULL) {
+        GoogleUrl referer_url(referer);
+        GoogleUrl resource_url(original_url);
+        referer_stats->LogResourceRequestWithReferer(resource_url,
+                                                     referer_url);
+      }
+    }
+  }
+}
+
 }  // namespace
 
 apr_status_t instaweb_handler(request_rec* request) {
@@ -235,7 +259,7 @@ apr_status_t instaweb_handler(request_rec* request) {
   const char* url = get_instaweb_resource_url(request);
   ApacheRewriteDriverFactory* factory =
       InstawebContext::Factory(request->server);
-
+  log_resource_referral(request, factory);
   if (strcmp(request->handler, kStatisticsHandler) == 0) {
     GoogleString output;
     StringWriter writer(&output);
@@ -246,6 +270,13 @@ apr_status_t instaweb_handler(request_rec* request) {
       writer.Write("mod_pagespeed statistics is not enabled\n",
                    factory->message_handler());
     }
+    write_handler_response(output, request);
+    ret = OK;
+
+  } else if (strcmp(request->handler, kRefererStatisticsHandler) == 0) {
+    GoogleString output;
+    StringWriter writer(&output);
+    factory->DumpRefererStatistics(&writer);
     write_handler_response(output, request);
     ret = OK;
 
@@ -347,7 +378,9 @@ apr_status_t save_url_hook(request_rec *request) {
   // Note: we must compare against the parsed URL because unparsed_url has
   // ?ets=load:xx at the end for kBeaconHandler.
   if (parsed_url.ends_with(kStatisticsHandler) ||
-      parsed_url.ends_with(kBeaconHandler)) {
+      parsed_url.ends_with(kBeaconHandler) ||
+      parsed_url.ends_with(kMessageHandler) ||
+      parsed_url.ends_with(kRefererStatisticsHandler)) {
     bypass_mod_rewrite = true;
   } else {
     ApacheRewriteDriverFactory* factory =

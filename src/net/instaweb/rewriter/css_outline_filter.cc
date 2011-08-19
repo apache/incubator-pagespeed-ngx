@@ -50,6 +50,8 @@ CssOutlineFilter::CssOutlineFilter(RewriteDriver* driver)
       size_threshold_bytes_(driver->options()->css_outline_min_bytes()) {
 }
 
+CssOutlineFilter::~CssOutlineFilter() {}
+
 void CssOutlineFilter::StartDocumentImpl() {
   inline_element_ = NULL;
   buffer_.clear();

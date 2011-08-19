@@ -32,6 +32,7 @@ class HtmlParse;
 class AddHeadFilter : public EmptyHtmlFilter {
  public:
   explicit AddHeadFilter(HtmlParse* parser, bool combine_multiple_heads);
+  virtual ~AddHeadFilter();
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);

@@ -36,6 +36,7 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
 
   explicit AddInstrumentationFilter(HtmlParse* parser,
                                     const StringPiece& beacon_url);
+  virtual ~AddInstrumentationFilter();
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);

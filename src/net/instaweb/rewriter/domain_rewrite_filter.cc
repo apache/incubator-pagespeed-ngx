@@ -49,6 +49,8 @@ DomainRewriteFilter::DomainRewriteFilter(RewriteDriver* rewrite_driver,
   tag_scanner_.set_find_a_tags(false);
 }
 
+DomainRewriteFilter::~DomainRewriteFilter() {}
+
 void DomainRewriteFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kDomainRewrites);
 }

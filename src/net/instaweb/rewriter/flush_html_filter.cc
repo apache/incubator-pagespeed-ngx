@@ -48,6 +48,8 @@ FlushHtmlFilter::FlushHtmlFilter(RewriteDriver* driver)
       score_(0) {
 }
 
+FlushHtmlFilter::~FlushHtmlFilter() {}
+
 void FlushHtmlFilter::StartDocumentImpl() {
   score_ = 0;
 }

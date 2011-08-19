@@ -18,7 +18,9 @@
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
+#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/stack_buffer.h"
 #include "apr_strings.h"
 #include "http_config.h"
@@ -79,6 +81,20 @@ InstawebContext::InstawebContext(request_rec* request,
     inflater_->Init();
   }
 
+  SharedMemRefererStatistics* referer_stats =
+      factory->shared_mem_referer_statistics();
+  if (referer_stats != NULL && !absolute_url_.empty()) {
+    GoogleUrl target_url(absolute_url_);
+    const char* referer = apr_table_get(request->headers_in,
+                                        HttpAttributes::kReferer);
+    if (referer == NULL) {
+      referer_stats->LogPageRequestWithoutReferer(target_url);
+    } else {
+      GoogleUrl referer_url(referer);
+      referer_stats->LogPageRequestWithReferer(target_url,
+                                               referer_url);
+    }
+  }
 
   const char* user_agent = apr_table_get(request->headers_in,
                                          HttpAttributes::kUserAgent);

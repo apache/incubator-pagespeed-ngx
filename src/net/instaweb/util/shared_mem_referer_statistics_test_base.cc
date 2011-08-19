@@ -29,6 +29,7 @@ namespace net_instaweb {
 const int SharedMemRefererStatisticsTestBase::kNumberOfStrings = 1024;
 const int SharedMemRefererStatisticsTestBase::kStringSize = 64;
 const char SharedMemRefererStatisticsTestBase::kPrefix[] = "/prefix/";
+const char SharedMemRefererStatisticsTestBase::kSuffix[] = "suffix";
 
 namespace {
 
@@ -93,10 +94,11 @@ bool SharedMemRefererStatisticsTestBase::CreateChild(TestMethod method) {
 
 SharedMemRefererStatistics* SharedMemRefererStatisticsTestBase::ChildInit() {
   SharedMemRefererStatistics* stats = new SharedMemRefererStatistics(
-      SharedMemRefererStatisticsTestBase::kNumberOfStrings,
-      SharedMemRefererStatisticsTestBase::kStringSize,
+      kNumberOfStrings,
+      kStringSize,
       shmem_runtime_.get(),
-      SharedMemRefererStatisticsTestBase::kPrefix);
+      kPrefix,
+      kSuffix);
   stats->InitSegment(false, &message_handler_);
   return stats;
 }
@@ -106,7 +108,8 @@ SharedMemRefererStatistics* SharedMemRefererStatisticsTestBase::ParentInit() {
       kNumberOfStrings,
       kStringSize,
       shmem_runtime_.get(),
-      kPrefix);
+      kPrefix,
+      kSuffix);
   stats->InitSegment(true, &message_handler_);
   return stats;
 }
@@ -243,7 +246,7 @@ void SharedMemRefererStatisticsTestBase::TestDivLocation() {
   EXPECT_EQ(0, message_handler_.SeriousMessages());
 }
 
-void SharedMemRefererStatisticsTestBase::TestDumpSimple() {
+void SharedMemRefererStatisticsTestBase::TestDumpFast() {
   scoped_ptr<SharedMemRefererStatistics> stats(ParentInit());
   const GoogleUrl* urls[] = {&kNews.url, &kUSNews.url, &kUSNewsArticle.url};
   LogSequenceOfPageRequests(stats.get(), urls, arraysize(urls));
@@ -260,13 +263,13 @@ void SharedMemRefererStatisticsTestBase::TestDumpSimple() {
       kUSNewsArticleImage.string + " r" + kUSNewsArticle.string + ": 1\n";
   GoogleString string;
   StringWriter writer(&string);
-  stats->DumpSimple(&writer, &message_handler_);
+  stats->DumpFast(&writer, &message_handler_);
   EXPECT_EQ(expected_dump, string);
   stats->GlobalCleanup(&message_handler_);
   EXPECT_EQ(0, message_handler_.SeriousMessages());
 }
 
-void SharedMemRefererStatisticsTestBase::TestDump() {
+void SharedMemRefererStatisticsTestBase::TestDumpSimple() {
   scoped_ptr<SharedMemRefererStatistics> stats(ParentInit());
   const GoogleUrl* urls[] = {&kNews.url, &kUSNews.url, &kUSNewsArticle.url};
   LogSequenceOfPageRequests(stats.get(), urls, arraysize(urls));
@@ -286,7 +289,7 @@ void SharedMemRefererStatisticsTestBase::TestDump() {
       kUSNews.string + " refered page " + kUSNewsArticle.string + " : 1\n";
   GoogleString string;
   StringWriter writer(&string);
-  stats->Dump(&writer, &message_handler_);
+  stats->DumpSimple(&writer, &message_handler_);
   EXPECT_EQ(expected_dump, string);
   stats->GlobalCleanup(&message_handler_);
   EXPECT_EQ(0, message_handler_.SeriousMessages());

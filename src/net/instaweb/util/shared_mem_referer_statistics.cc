@@ -53,12 +53,14 @@ SharedMemRefererStatistics::SharedMemRefererStatistics(
     size_t number_of_strings,
     size_t average_string_length,
     AbstractSharedMem* shm_runtime,
-    const GoogleString& filename_prefix)
+    const GoogleString& filename_prefix,
+    const GoogleString& filename_suffix)
     : shared_dynamic_string_map_(new SharedDynamicStringMap(
           number_of_strings,
           average_string_length,
           shm_runtime,
-          filename_prefix)) {
+          filename_prefix,
+          filename_suffix)) {
 }
 
 SharedMemRefererStatistics::~SharedMemRefererStatistics() {}
@@ -241,13 +243,13 @@ void SharedMemRefererStatistics::GlobalCleanup(
   shared_dynamic_string_map_->GlobalCleanup(message_handler);
 }
 
-void SharedMemRefererStatistics::DumpSimple(Writer* writer,
-                                            MessageHandler* message_handler) {
+void SharedMemRefererStatistics::DumpFast(Writer* writer,
+                                          MessageHandler* message_handler) {
   shared_dynamic_string_map_->Dump(writer, message_handler);
 }
 
-void SharedMemRefererStatistics::Dump(Writer* writer,
-                                      MessageHandler* message_handler) {
+void SharedMemRefererStatistics::DumpSimple(Writer* writer,
+                                            MessageHandler* message_handler) {
   StringSet strings;
   shared_dynamic_string_map_->GetKeys(&strings);
   for (StringSet::iterator i = strings.begin(); i != strings.end(); i++) {

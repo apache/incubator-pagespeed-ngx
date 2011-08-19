@@ -101,6 +101,8 @@ CacheExtender::CacheExtender(RewriteDriver* driver, const char* filter_prefix)
   }
 }
 
+CacheExtender::~CacheExtender() {}
+
 void CacheExtender::Initialize(Statistics* statistics) {
   statistics->AddVariable(kCacheExtensions);
   statistics->AddVariable(kNotCacheable);

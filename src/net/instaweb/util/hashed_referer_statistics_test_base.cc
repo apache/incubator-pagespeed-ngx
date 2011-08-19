@@ -50,6 +50,7 @@ HashedRefererStatistics* HashedRefererStatisticsTestBase::ParentInit() {
       SharedMemRefererStatisticsTestBase::kStringSize,
       shmem_runtime_.get(),
       SharedMemRefererStatisticsTestBase::kPrefix,
+      SharedMemRefererStatisticsTestBase::kSuffix,
       new MD5Hasher());
   stats->InitSegment(true, &message_handler_);
   return stats;
@@ -61,6 +62,7 @@ HashedRefererStatistics* HashedRefererStatisticsTestBase::ChildInit() {
       SharedMemRefererStatisticsTestBase::kStringSize,
       shmem_runtime_.get(),
       SharedMemRefererStatisticsTestBase::kPrefix,
+      SharedMemRefererStatisticsTestBase::kSuffix,
       new MD5Hasher());
   stats->InitSegment(false, &message_handler_);
   return stats;

@@ -48,6 +48,7 @@ class Variable;
 class CacheExtender : public RewriteSingleResourceFilter {
  public:
   CacheExtender(RewriteDriver* driver, const char* path_prefix);
+  virtual ~CacheExtender();
 
   static void Initialize(Statistics* statistics);
 

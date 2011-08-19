@@ -30,6 +30,7 @@ class HtmlParse;
 class StripScriptsFilter : public EmptyHtmlFilter {
  public:
   explicit StripScriptsFilter(HtmlParse* html_parse);
+  virtual ~StripScriptsFilter();
 
   virtual void EndElement(HtmlElement* element);
   virtual const char* Name() const { return "StripScripts"; }

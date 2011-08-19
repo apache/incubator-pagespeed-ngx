@@ -74,7 +74,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   static const char kXhtmlDtd[];    // DOCTYPE string for claming XHTML
 
   ResourceManagerTestBase();
-  ~ResourceManagerTestBase();
+  virtual ~ResourceManagerTestBase();
 
   virtual void SetUp();
   virtual void TearDown();

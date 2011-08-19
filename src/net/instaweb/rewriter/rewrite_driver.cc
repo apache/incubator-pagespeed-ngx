@@ -48,6 +48,7 @@
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
+#include "net/instaweb/rewriter/public/div_structure_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
@@ -630,6 +631,13 @@ void RewriteDriver::AddPostRenderFilters() {
     // CSS files, we rewrite the domains in them whether this filter is
     // specified or not.
     HtmlParse::AddFilter(domain_rewriter_.get());
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kDivStructure)) {
+    // Adds a query parameter to each link roughly designating its position on
+    // the page to be used in target, referer counting, which is then to be
+    // used to augment prefetch/prerender optimizations.  Should happen before
+    // RemoveQuotes.
+    AddOwnedPostRenderFilter(new DivStructureFilter());
   }
   if (rewrite_options->Enabled(RewriteOptions::kLeftTrimUrls)) {
     // Trim extraneous prefixes from urls in attribute values.

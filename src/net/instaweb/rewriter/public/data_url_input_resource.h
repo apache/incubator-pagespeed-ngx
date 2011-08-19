@@ -61,7 +61,7 @@ class DataUrlInputResource : public Resource {
     return resource;
   }
 
-  virtual ~DataUrlInputResource() { }
+  virtual ~DataUrlInputResource();
 
   virtual bool IsValidAndCacheable();
 

@@ -40,6 +40,7 @@ class HashedRefererStatistics : public SharedMemRefererStatistics {
                           size_t average_string_length,
                           AbstractSharedMem* shm_runtime,
                           const GoogleString& filename_prefix,
+                          const GoogleString& filename_suffix,
                           Hasher* hasher);
 
  protected:

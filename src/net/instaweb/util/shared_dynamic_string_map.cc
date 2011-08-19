@@ -41,11 +41,14 @@ SharedDynamicStringMap::SharedDynamicStringMap(
     size_t number_of_strings,
     size_t average_string_length,
     AbstractSharedMem* shm_runtime,
-    const GoogleString& filename_prefix)
+    const GoogleString& filename_prefix,
+    const GoogleString& filename_suffix)
     : number_of_strings_(NextPowerOfTwo(number_of_strings)),
       average_string_length_(average_string_length),
       segment_name_(StrCat(filename_prefix,
-                           kSharedDynamicStringMapSegmentName)),
+                           kSharedDynamicStringMapSegmentName,
+                           ".",
+                           filename_suffix)),
       shm_runtime_(shm_runtime) {
   // Check to make sure number_of_strings_ is a power of 2.
   DCHECK_EQ(static_cast<size_t>(0),

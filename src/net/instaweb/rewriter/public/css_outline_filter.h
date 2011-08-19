@@ -40,8 +40,10 @@ class RewriteDriver;
 // Filter to take explicit <style> and <script> tags and outline them to files.
 class CssOutlineFilter : public CommonFilter {
  public:
-  explicit CssOutlineFilter(RewriteDriver* driver);
   static const char kFilterId[];
+
+  explicit CssOutlineFilter(RewriteDriver* driver);
+  virtual ~CssOutlineFilter();
 
   virtual void StartDocumentImpl();
 

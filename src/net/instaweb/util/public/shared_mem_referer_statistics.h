@@ -43,7 +43,8 @@ class SharedMemRefererStatistics {
   SharedMemRefererStatistics(size_t number_of_strings,
                              size_t average_string_length,
                              AbstractSharedMem* shm_runtime,
-                             const GoogleString& filename_prefix);
+                             const GoogleString& filename_prefix,
+                             const GoogleString& filename_suffix);
   virtual ~SharedMemRefererStatistics();
 
   // All inputs are passed to SharedDynamicStringMap method.
@@ -74,7 +75,7 @@ class SharedMemRefererStatistics {
 
   // Various methods of dumping information, that go from hard to understand and
   // cheap to well-organized and expensive:
-  //   1. DumpSimple writes SharedDynamicStringMap information in the order it
+  //   1. DumpFast writes SharedDynamicStringMap information in the order it
   //      was provided without parsing or decoding string entries (see Dump
   //      method of SharedDynamicStringMap)
   //
@@ -85,8 +86,8 @@ class SharedMemRefererStatistics {
   //          1.1.2.0 dhttp://www.example.com/news: 1
   //          http://img.ex.com/news_us.jpg rhttp://www.example.com/news/us: 1
   //
-  //   2. Dump writes SharedDynamicStringMap information in the order it was
-  //      provided, but it parses and decodes string entries into a more
+  //   2. DumpSimple writes SharedDynamicStringMap information in the order it
+  //      was provided, but it parses and decodes string entries into a more
   //      readable format (see DecodeEntry method below)
   //
   //        Example:
@@ -110,8 +111,8 @@ class SharedMemRefererStatistics {
   //          http://www.example.com/news/us refered:
   //            resource http://img.ex.com/news_us.jpg
   //
+  void DumpFast(Writer* writer, MessageHandler* message_handler);
   void DumpSimple(Writer* writer, MessageHandler* message_handler);
-  void Dump(Writer* writer, MessageHandler* message_handler);
   void DumpOrganized(Writer* writer, MessageHandler* message_handler);
 
   // The name for special div location query parameter

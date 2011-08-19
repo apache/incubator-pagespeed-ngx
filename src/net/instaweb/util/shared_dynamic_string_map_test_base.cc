@@ -35,6 +35,7 @@ const int kTableSize = 1024;
 const int kNumberOfStrings = kTableSize + 1;
 const int kStringSize = 64;
 const char kPrefix[] = "/prefix/";
+const char kSuffix[] = "suffix";
 const char kExampleString1[] = "http://www.example1.com";
 const char kExampleString2[] = "http://www.example2.com";
 
@@ -82,7 +83,8 @@ SharedDynamicStringMap* SharedDynamicStringMapTestBase::ChildInit() {
       new SharedDynamicStringMap(kTableSize,
                                  kStringSize,
                                  shmem_runtime_.get(),
-                                 kPrefix);
+                                 kPrefix,
+                                 kSuffix);
   map->InitSegment(false, &handler_);
   return map;
 }
@@ -92,7 +94,8 @@ SharedDynamicStringMap* SharedDynamicStringMapTestBase::ParentInit() {
       new SharedDynamicStringMap(kTableSize,
                                  kStringSize,
                                  shmem_runtime_.get(),
-                                 kPrefix);
+                                 kPrefix,
+                                 kSuffix);
   map->InitSegment(true, &handler_);
   return map;
 }

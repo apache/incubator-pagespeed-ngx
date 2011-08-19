@@ -47,6 +47,8 @@ JsOutlineFilter::JsOutlineFilter(RewriteDriver* driver)
       size_threshold_bytes_(driver->options()->js_outline_min_bytes()),
       script_tag_scanner_(driver_) { }
 
+JsOutlineFilter::~JsOutlineFilter() {}
+
 void JsOutlineFilter::StartDocumentImpl() {
   inline_element_ = NULL;
   buffer_.clear();
