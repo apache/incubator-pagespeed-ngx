@@ -498,6 +498,55 @@ check grep -qi "'Expires:'" $WGET_OUTPUT
 echo TEST: regression test for RewriteDriver leak
 $WGET -O /dev/null -o /dev/null $TEST_ROOT/_.pagespeed.jo.3tPymVdi9b.js
 
+# Helper to test directive ModPagespeedForBots
+# By default directive ModPagespeedForBots is off; otherwise image rewriting is
+# disabled for bots while other filters such as inline_css still work.
+function CheckBots() {
+  ON=$1
+  COMPARE=$2
+  BOT=$3
+  FILTER="?ModPagespeedFilters=inline_css,rewrite_images"
+  PARAM="&ModPagespeedDisableForBots=$ON";
+  FILE="bot_test.html"$FILTER
+  # By default ModPagespeedDisableForBots is false, no need to set it in url.
+  # If the test wants to set it explicitly, set it in url.
+  if [[ $ON != "default" ]]; then
+    FILE=$FILE$PARAM
+  fi
+  FETCHED=$OURDIR/$FILE
+  URL=$TEST_ROOT/$FILE
+  # Filters such as inline_css work no matter if ModPagespeedDisable is on
+  # Fetch until CSS is inlined, so that we know rewriting succeeded.
+  if [[ -n $BOT ]]; then
+    fetch_until $URL 'grep -c style' 2 $BOT;
+  else
+    fetch_until $URL 'grep -c style' 2;
+  fi
+  # Check if the images are rewritten
+  rm -f $OUTDIR/*png*
+  rm -f $OUTDIR/*jpg*
+  if [[ -n $BOT ]]; then
+    check `$WGET_PREREQ -U $BOT $URL`;
+  else
+    check `$WGET_PREREQ $URL`;
+  fi
+  check [ `stat -c %s $OUTDIR/*BikeCrashIcn*` $COMPARE 25000 ] # recoded or not
+  check [ `stat -c %s $OUTDIR/*Puzzle*`  $COMPARE 24126  ] # resized or not
+}
+
+echo "Test: UserAgent is a bot; ModPagespeedDisableForBots=off"
+CheckBots 'off' '-lt' 'Googlebot/2.1'
+echo "Test: UserAgent is a bot; ModPagespeedDisableForBots=on"
+CheckBots 'on' '-gt' 'Googlebot/2.1'
+echo "Test: UserAgent is a bot; ModPagespeedDisableForBots is default"
+CheckBots 'default' '-lt' 'Googlebot/2.1'
+echo "Test: UserAgent is not a bot, ModPagespeedDisableForBots=off"
+CheckBots 'off' '-lt'
+echo "Test: UserAgent is not a bot, ModPagespeedDisableForBots=on"
+CheckBots 'on' '-lt'
+echo "Test: UserAgent is not a bot, ModPagespeedDisableForBots is default"
+CheckBots 'default' '-lt'
+
 # Cleanup
 rm -rf $OUTDIR
 echo "PASS."
