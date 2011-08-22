@@ -966,7 +966,7 @@ bool RewriteDriver::FetchOutputResource(
   // return a 304 Not Modified, since any representation of the resource
   // that's in the browser's cache must be correct.
   bool queued = false;
-  StringStarVector values;
+  ConstStringStarVector values;
   if (request_headers.Lookup(HttpAttributes::kIfModifiedSince, &values)) {
     response_headers->SetStatusAndReason(HttpStatus::kNotModified);
     callback->Done(true);

@@ -70,7 +70,7 @@ bool WgetUrlFetcher::StreamingFetchUrl(const GoogleString& url,
   GoogleString cmd("/usr/bin/wget --save-headers -q -O -"), escaped_url;
 
   // Use default user-agent if none is set in headers.
-  StringStarVector values;
+  ConstStringStarVector values;
   request_headers.Lookup("user-agent", &values);
   if (values.empty()) {
     cmd += StrCat(" --user-agent=\"", kDefaultUserAgent, "\"");

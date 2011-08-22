@@ -48,7 +48,7 @@ TEST_F(QueryParamsTest, TestParse) {
 }
 
 TEST_F(QueryParamsTest, TestLookup) {
-  StringStarVector v;
+  ConstStringStarVector v;
   ASSERT_TRUE(query_params_.Lookup("a", &v));
   ASSERT_EQ(2, v.size());
   EXPECT_EQ(GoogleString("1"), *(v[0]));

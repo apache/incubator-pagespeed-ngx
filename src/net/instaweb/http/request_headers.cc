@@ -116,7 +116,7 @@ bool RequestHeaders::WriteAsHttp(
 }
 
 bool RequestHeaders::AcceptsGzip() const {
-  StringStarVector v;
+  ConstStringStarVector v;
   if (Lookup(HttpAttributes::kAcceptEncoding, &v)) {
     for (int i = 0, nv = v.size(); i < nv; ++i) {
       StringPieceVector encodings;

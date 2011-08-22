@@ -118,7 +118,7 @@ class ApacheWriter : public Writer {
     }
 
     char* content_type = NULL;
-    StringStarVector v;
+    ConstStringStarVector v;
     CHECK(response_headers_->headers_complete());
     if (response_headers_->Lookup(HttpAttributes::kContentType, &v)) {
       CHECK(!v.empty());
@@ -225,7 +225,7 @@ class ModPagespeedStrippingFetcher : public UrlFetcher {
     bool fetched = fetcher_->StreamingFetchUrl(
         url, request_headers, response_headers, &writer, message_handler);
     if (fetched) {
-      StringStarVector v;
+      ConstStringStarVector v;
       if (response_headers->Lookup(kModPagespeedHeader, &v)) {
         response_headers->Clear();
         GoogleString::size_type question = url.find('?');

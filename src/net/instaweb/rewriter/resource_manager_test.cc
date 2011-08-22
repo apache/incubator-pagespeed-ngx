@@ -941,7 +941,7 @@ TEST_F(ResourceManagerTest, TestMergeNonCachingResponseHeaders) {
   input.Add("X-Extra-Header", "Extra Value");  // should be copied to output
   input.Add(HttpAttributes::kCacheControl, "max-age=300");  // should not be
   resource_manager()->MergeNonCachingResponseHeaders(input, &output);
-  StringStarVector v;
+  ConstStringStarVector v;
   EXPECT_FALSE(output.Lookup(HttpAttributes::kCacheControl, &v));
   ASSERT_TRUE(output.Lookup("X-Extra-Header", &v));
   ASSERT_EQ(1, v.size());

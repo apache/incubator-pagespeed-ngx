@@ -408,7 +408,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     // Supply a default user-agent if none is present, and in any case
     // append on a 'serf' suffix.
     GoogleString user_agent;
-    StringStarVector v;
+    ConstStringStarVector v;
     if (request_headers_.Lookup(HttpAttributes::kUserAgent, &v)) {
       for (int i = 0, n = v.size(); i < n; ++i) {
         if (i != 0) {
@@ -452,7 +452,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     // by hacking source.  We hacked source.
     //
     // See src/third_party/serf/src/instaweb_context.c
-    StringStarVector v;
+    ConstStringStarVector v;
     const char* host = NULL;
     if (fetch->request_headers_.Lookup(HttpAttributes::kHost, &v) &&
         (v.size() == 1) && (v[0] != NULL)) {

@@ -54,7 +54,7 @@ TEST_F(StringMultiMapTest, TestAdd) {
 }
 
 TEST_F(StringMultiMapTest, TestLookup) {
-  StringStarVector v;
+  ConstStringStarVector v;
   ASSERT_TRUE(string_map_.Lookup("a", &v));
   ASSERT_EQ(2, v.size());
   EXPECT_EQ(GoogleString("1"), *(v[0]));
@@ -74,7 +74,7 @@ TEST_F(StringMultiMapTest, TestLookup) {
 }
 
 TEST_F(StringMultiMapTest, TestRemove) {
-  StringStarVector v;
+  ConstStringStarVector v;
   EXPECT_TRUE(string_map_.RemoveAll("e"));
   EXPECT_EQ(4, string_map_.num_names());
   EXPECT_TRUE(string_map_.RemoveAll("a"));

@@ -95,7 +95,7 @@ bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
     if (iter != response_map_.end()) {
       const HttpResponse* response = iter->second;
       // Check if we should return 304 Not Modified or full response.
-      StringStarVector values;
+      ConstStringStarVector values;
       int64 if_modified_since_time;
       if (request_headers.Lookup(HttpAttributes::kIfModifiedSince, &values) &&
           values.size() == 1 &&

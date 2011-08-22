@@ -178,7 +178,7 @@ class SyncFetcherAdapterTest : public testing::Test {
     EXPECT_TRUE(DoFetch(&fetcher, &out_headers, &out_writer));
     EXPECT_EQ(kText, out_str);
 
-    StringStarVector values;
+    ConstStringStarVector values;
     EXPECT_TRUE(out_headers.Lookup(kHeader, &values));
     ASSERT_EQ(1, values.size());
     EXPECT_EQ(GoogleString(kText), *(values[0]));

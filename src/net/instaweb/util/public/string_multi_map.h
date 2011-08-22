@@ -55,7 +55,7 @@ template<class StringCompare> class StringMultiMap {
   // specify a variable multiple times by calling Add multiple times
   // with the same variable, and each of these values will be returned
   // in the vector.
-  bool Lookup(const StringPiece& name, StringStarVector* values) const {
+  bool Lookup(const StringPiece& name, ConstStringStarVector* values) const {
     typename Map::const_iterator p = map_.find(name.as_string());
     bool ret = false;
     if (p != map_.end()) {
@@ -97,12 +97,12 @@ template<class StringCompare> class StringMultiMap {
 
   // Add a new variable.  The value can be null.
   void Add(const StringPiece& var_name, const StringPiece& value) {
-    StringStarVector dummy_values;
+    ConstStringStarVector dummy_values;
     GoogleString name_buf(var_name.data(), var_name.size());
     std::pair<typename Map::iterator, bool> iter_inserted = map_.insert(
         typename Map::value_type(name_buf, dummy_values));
     typename Map::iterator iter = iter_inserted.first;
-    StringStarVector& values = iter->second;
+    ConstStringStarVector& values = iter->second;
     GoogleString* value_copy = NULL;
     if (value.data() != NULL) {
       value_copy = new GoogleString(value.as_string());
@@ -121,7 +121,7 @@ template<class StringCompare> class StringMultiMap {
   // value as an explicitly newed char*.  The risk of using a GoogleString
   // to hold the value is that the pointers will not survive a resize.
   typedef std::pair<const char*, GoogleString*> StringPair;  // owns the value
-  typedef std::map<GoogleString, StringStarVector, StringCompare> Map;
+  typedef std::map<GoogleString, ConstStringStarVector, StringCompare> Map;
   typedef std::vector<StringPair> StringPairVector;
 
   Map map_;

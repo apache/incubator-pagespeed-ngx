@@ -140,7 +140,7 @@ TEST_F(HTTPCacheTest, PutGet) {
   ASSERT_TRUE(meta_data_out.headers_complete());
   StringPiece contents;
   ASSERT_TRUE(value.ExtractContents(&contents));
-  StringStarVector values;
+  ConstStringStarVector values;
   ASSERT_TRUE(meta_data_out.Lookup("name", &values));
   ASSERT_EQ(static_cast<size_t>(1), values.size());
   EXPECT_EQ(GoogleString("value"), *(values[0]));

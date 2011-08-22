@@ -683,7 +683,7 @@ void ResourceManagerTestBase::TestRetainExtraHeaders(
   ASSERT_TRUE(ServeResourceUrl(rewritten_url, &content, &response));
 
   // Extra non-blacklisted header is preserved.
-  StringStarVector v;
+  ConstStringStarVector v;
   ASSERT_TRUE(response.Lookup("extra", &v));
   ASSERT_EQ(1U, v.size());
   EXPECT_STREQ("attribute", *v[0]);

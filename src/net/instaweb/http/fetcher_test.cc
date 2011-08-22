@@ -56,7 +56,7 @@ void FetcherTest::ValidateMockFetcherResponse(
     const ResponseHeaders& response_headers) {
   if (success) {
     EXPECT_EQ(GoogleString(kHtmlContent), content);
-    StringStarVector values;
+    ConstStringStarVector values;
     EXPECT_TRUE(response_headers.Lookup(kHeaderName, &values));
     EXPECT_EQ(1, values.size());
     EXPECT_EQ(GoogleString(kHeaderValue), *(values[0]));

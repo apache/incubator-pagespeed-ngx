@@ -212,7 +212,7 @@ void ResponseHeaders::SetTimeHeader(const StringPiece& header, int64 time_ms) {
 
 bool ResponseHeaders::VaryCacheable() {
   if (IsCacheable()) {
-    StringStarVector values;
+    ConstStringStarVector values;
     Lookup(HttpAttributes::kVary, &values);
     bool vary_uncacheable = false;
     for (int i = 0, n = values.size(); i < n; ++i) {
@@ -236,7 +236,7 @@ void ResponseHeaders::ComputeCaching() {
   }
   resource.SetResponseStatusCode(proto_->status_code());
 
-  StringStarVector values;
+  ConstStringStarVector values;
   int64 date;
   // Compute the timestamp if we can find it
   bool has_date = Lookup(HttpAttributes::kDate, &values) &&
@@ -337,7 +337,7 @@ bool ResponseHeaders::ParseTime(const char* time_str, int64* time_ms) {
 // http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html
 // See Section 3.5
 bool ResponseHeaders::IsGzipped() const {
-  StringStarVector v;
+  ConstStringStarVector v;
   bool found = Lookup(HttpAttributes::kContentEncoding, &v);
   if (found) {
     for (int i = 0, n = v.size(); i < n; ++i) {
@@ -350,7 +350,7 @@ bool ResponseHeaders::IsGzipped() const {
 }
 
 bool ResponseHeaders::WasGzippedLast() const {
-  StringStarVector v;
+  ConstStringStarVector v;
   bool found = Lookup(HttpAttributes::kContentEncoding, &v);
   if (found) {
     int index = v.size() - 1;
@@ -364,7 +364,7 @@ bool ResponseHeaders::WasGzippedLast() const {
 
 bool ResponseHeaders::ParseDateHeader(
     const StringPiece& attr, int64* date_ms) const {
-  StringStarVector values;
+  ConstStringStarVector values;
   return (Lookup(attr, &values) && (values.size() == 1) &&
           (values[0] != NULL) && ConvertStringToTime(*(values[0]), date_ms));
 }

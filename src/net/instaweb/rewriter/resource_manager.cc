@@ -270,7 +270,7 @@ void ResourceManager::SetDefaultLongCacheHeaders(
   header->Replace(HttpAttributes::kEtag, kResourceEtagValue);
 
   // TODO(jmarantz): Replace last-modified headers by default?
-  StringStarVector v;
+  ConstStringStarVector v;
   if (!header->Lookup(HttpAttributes::kLastModified, &v)) {
     header->SetLastModified(now_ms);
   }

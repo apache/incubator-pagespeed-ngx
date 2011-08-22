@@ -152,7 +152,7 @@ GoogleString SharedMemRefererStatistics::GetDivLocationFromUrl(
     const GoogleUrl& url) {
   QueryParams query_params;
   query_params.Parse(url.Query());
-  StringStarVector div_locations;
+  ConstStringStarVector div_locations;
   if ((query_params.Lookup(kParamName, &div_locations)) &&
       (!div_locations.empty())) {
     return *div_locations[0];

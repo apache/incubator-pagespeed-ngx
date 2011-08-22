@@ -85,7 +85,7 @@ void Resource::SetType(const ContentType* type) {
 void Resource::DetermineContentType() {
   // Try to determine the content type from the URL extension, or
   // the response headers.
-  StringStarVector content_types;
+  ConstStringStarVector content_types;
   ResponseHeaders* headers = response_headers();
   const ContentType* content_type = NULL;
   if (headers->Lookup(HttpAttributes::kContentType, &content_types)) {

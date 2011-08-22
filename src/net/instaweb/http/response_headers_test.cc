@@ -43,7 +43,7 @@ class ResponseHeadersTest : public testing::Test {
     EXPECT_EQ(0, response_headers.minor_version());
     EXPECT_EQ(GoogleString("OK"),
               GoogleString(response_headers.reason_phrase()));
-    StringStarVector values;
+    ConstStringStarVector values;
     EXPECT_TRUE(response_headers.Lookup("X-Google-Experiment", &values));
     EXPECT_EQ(GoogleString("23729,24249,24253"), *(values[0]));
     EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
@@ -316,7 +316,7 @@ TEST_F(ResponseHeadersTest, TestSetDate) {
   response_headers_.SetStatusAndReason(HttpStatus::kOK);
   response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
   response_headers_.Add(HttpAttributes::kCacheControl, "max-age=100");
-  StringStarVector date;
+  ConstStringStarVector date;
   ASSERT_TRUE(response_headers_.Lookup("Date", &date));
   EXPECT_EQ(1, date.size());
   response_headers_.ComputeCaching();
@@ -367,11 +367,11 @@ TEST_F(ResponseHeadersTest, TestUpdateFrom) {
   old_headers.UpdateFrom(new_headers);
 
   // Make sure in memory map is updated.
-  StringStarVector date_strings;
+  ConstStringStarVector date_strings;
   EXPECT_TRUE(old_headers.Lookup("Date", &date_strings));
   EXPECT_EQ(1, date_strings.size());
   EXPECT_EQ("Fri, 22 Apr 2011 19:49:59 GMT", *date_strings[0]);
-  StringStarVector set_cookie_strings;
+  ConstStringStarVector set_cookie_strings;
   EXPECT_TRUE(old_headers.Lookup("Set-Cookie", &set_cookie_strings));
   EXPECT_EQ(8, old_headers.NumAttributeNames());
 
@@ -413,7 +413,7 @@ TEST_F(ResponseHeadersTest, TestReserializingCommaValues) {
       "\r\n";
   response_headers_.Clear();
   ParseHeaders(comma_headers);
-  StringStarVector values;
+  ConstStringStarVector values;
   response_headers_.Lookup(HttpAttributes::kVary, &values);
   EXPECT_EQ(2, values.size());
   EXPECT_EQ(comma_headers, response_headers_.ToString());
@@ -429,7 +429,7 @@ TEST_F(ResponseHeadersTest, TestGzipped) {
       "\r\n";
   response_headers_.Clear();
   ParseHeaders(comma_headers);
-  StringStarVector values;
+  ConstStringStarVector values;
   response_headers_.Lookup(HttpAttributes::kContentEncoding, &values);
   EXPECT_EQ(2, values.size());
   EXPECT_TRUE(response_headers_.IsGzipped());
@@ -446,7 +446,7 @@ TEST_F(ResponseHeadersTest, TestGzippedNotLast) {
       "\r\n";
   response_headers_.Clear();
   ParseHeaders(comma_headers);
-  StringStarVector values;
+  ConstStringStarVector values;
   response_headers_.Lookup(HttpAttributes::kContentEncoding, &values);
   EXPECT_EQ(2, values.size());
   EXPECT_TRUE(response_headers_.IsGzipped());
