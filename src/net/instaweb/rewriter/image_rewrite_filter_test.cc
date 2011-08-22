@@ -34,6 +34,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -307,6 +308,9 @@ TEST_P(ImageRewriteTest, ImgTag) {
 }
 
 TEST_P(ImageRewriteTest, ImgTagWebp) {
+  if (RunningOnValgrind()) {
+    return;
+  }
   // We use the webp testing user agent; real webp-capable user agents are
   // tested as part of user_agent_matcher_test and are likely to remain in flux
   // over time.
@@ -319,6 +323,9 @@ TEST_P(ImageRewriteTest, InputTag) {
 }
 
 TEST_P(ImageRewriteTest, InputTagWebp) {
+  if (RunningOnValgrind()) {
+    return;
+  }
   // We use the webp testing user agent; real webp-capable user agents are
   // tested as part of user_agent_matcher_test and are likely to remain in flux
   // over time.
