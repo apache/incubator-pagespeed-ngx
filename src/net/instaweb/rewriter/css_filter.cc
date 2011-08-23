@@ -188,8 +188,8 @@ void CssFilter::Context::RewriteImages(int64 in_text_size,
   in_text_size_ = in_text_size;
   stylesheet_.reset(stylesheet);
 
-  image_rewriter_->RewriteCssImages(css_base_gurl_, stylesheet,
-                                    driver_->message_handler());
+  image_rewriter_->RewriteCssImages(css_base_gurl_, input_resource_->contents(),
+                                    stylesheet, driver_->message_handler());
 }
 
 void CssFilter::Context::RegisterNested(RewriteContext* nested) {

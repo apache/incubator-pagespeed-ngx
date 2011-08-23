@@ -51,6 +51,7 @@ class Hasher;
 class MessageHandler;
 class NamedLockManager;
 class QueuedWorker;
+class QueuedWorkerPool;
 class ResourceContext;
 class ResponseHeaders;
 class RewriteDriver;
@@ -375,6 +376,9 @@ class ResourceManager {
   void MergeNonCachingResponseHeaders(const ResponseHeaders& input_headers,
                                       ResponseHeaders* output_headers);
 
+  // Pool of worker-threads that can be used to handle html-parsing.
+  QueuedWorkerPool* html_workers() { return html_workers_.get(); }
+
  private:
   // Must be called with rewrite_drivers_mutex_ held.
   void AssignRewriteWorker(RewriteDriver* rewrite_driver);
@@ -472,6 +476,7 @@ class ResourceManager {
   int queued_worker_index_;
 
   AtomicBool metadata_cache_readonly_;
+  scoped_ptr<QueuedWorkerPool> html_workers_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

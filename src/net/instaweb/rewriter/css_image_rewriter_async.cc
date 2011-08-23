@@ -102,8 +102,8 @@ void CssImageRewriterAsync::RewriteImage(
 }
 
 void CssImageRewriterAsync::RewriteCssImages(
-    const GoogleUrl& base_url, Css::Stylesheet* stylesheet,
-    MessageHandler* handler) {
+    const GoogleUrl& base_url, const StringPiece& contents,
+    Css::Stylesheet* stylesheet, MessageHandler* handler) {
   const RewriteOptions* options = driver_->options();
   bool spriting_ok = options->Enabled(RewriteOptions::kSpriteImages);
 
@@ -111,7 +111,7 @@ void CssImageRewriterAsync::RewriteCssImages(
     handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
                      base_url.spec_c_str());
     if (spriting_ok) {
-      image_combiner_->Reset(context_);
+      image_combiner_->Reset(context_, base_url, contents);
     }
     Css::Rulesets& rulesets = stylesheet->mutable_rulesets();
     for (Css::Rulesets::iterator ruleset_iter = rulesets.begin();
@@ -156,23 +156,13 @@ void CssImageRewriterAsync::RewriteCssImages(
                   continue;
                 }
                 handler->Message(kInfo, "Found image URL %s", rel_url.c_str());
-                bool result = false;
                 if (spriting_ok) {
-                  result = image_combiner_->AddCssBackgroundContext(
+                  image_combiner_->AddCssBackgroundContext(
                       original_url, values, value_index, context_,
                       &decls, handler);
                 }
-                if (result) {
-                  // TODO(abliss): sharing between spriting and other rewrites.
-                  // For now we assume that spriting subsumes all other rewrites
-                  // -- i.e. cache extending and recompressing.  This is
-                  // particularly bad news if there's exactly one image in the
-                  // CSS, since we'll assume it's going to be sprited, but it
-                  // won't be.
-                } else {
-                  RewriteImage(base_url, original_url, values,
-                               value_index, handler);
-                }
+                RewriteImage(base_url, original_url, values,
+                             value_index, handler);
               }
             }
             break;

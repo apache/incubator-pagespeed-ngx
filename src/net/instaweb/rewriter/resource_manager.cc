@@ -46,6 +46,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/queued_worker.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -98,7 +99,8 @@ const int64 kRefreshExpirePercent = 75;
 // TODO(jmarantz): allow setting the kMaxQueuedWorkers via set_ method so that
 // command-line- or pagespeed.conf-based experiments can be run to see what a
 // good value is.
-const int kMaxQueuedWorkers = 1;
+const int kMaxRewriteWorkers = 1;
+const int kMaxHtmlWorkers = 2;
 
 // Attributes that should not be automatically copied from inputs to outputs
 const char* kExcludedAttributes[] = {
@@ -199,8 +201,11 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       thread_system_(thread_system),
       factory_(factory),
       rewrite_drivers_mutex_(thread_system->NewMutex()),
-      max_queued_workers_(kMaxQueuedWorkers),
-      queued_worker_index_(-1) {
+      max_queued_workers_(kMaxRewriteWorkers),
+      queued_worker_index_(-1),
+      html_workers_(new QueuedWorkerPool(kMaxHtmlWorkers, thread_system)) {
+  // TODO(morlovich): Have RewriteDriverFactory help with setting up thread
+  // pools so we can share them among multiple vhosts under Apache.
   rewrite_thread_queue_depth_.reset(new Waveform(thread_system, timer(), 200));
   decoding_driver_.reset(NewUnmanagedRewriteDriver());
 
@@ -701,6 +706,7 @@ void ResourceManager::ShutDownWorkers() {
     delete rewrite_worker;
   }
   rewrite_workers_.clear();
+  html_workers_->ShutDown();
 }
 
 }  // namespace net_instaweb

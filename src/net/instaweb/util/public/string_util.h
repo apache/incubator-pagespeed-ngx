@@ -48,6 +48,7 @@ typedef std::set<GoogleString> StringSet;
 typedef std::vector<GoogleString> StringVector;
 typedef std::vector<StringPiece> StringPieceVector;
 typedef std::vector<const GoogleString*> ConstStringStarVector;
+typedef std::vector<GoogleString*> StringStarVector;
 typedef std::vector<const char*> CharStarVector;
 
 inline GoogleString IntegerToString(int i) {

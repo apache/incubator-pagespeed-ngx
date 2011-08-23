@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace Css {
 
@@ -76,7 +77,7 @@ class ImageCombineFilter : public RewriteFilter {
   // replaced. Will not actually change anything until you call Realize().
   // This will succeed even in cases when it turns out (later) the image
   // can not be sprited.
-  bool AddCssBackgroundContext(const GoogleUrl& original_url,
+  void AddCssBackgroundContext(const GoogleUrl& original_url,
                                Css::Values* values,
                                int value_index,
                                CssFilter::Context* parent,
@@ -86,9 +87,8 @@ class ImageCombineFilter : public RewriteFilter {
   // Create the combination with the current combiner.
   OutputResourcePtr MakeOutput();
 
-  void Reset();
-  void Reset(CssFilter::Context* context);
-  virtual RewriteContext* MakeRewriteContext();
+  void Reset(CssFilter::Context* context, const GoogleUrl& css_url,
+             const StringPiece& css_text);
   virtual bool HasAsyncFlow() const;
 
  private:
@@ -96,8 +96,9 @@ class ImageCombineFilter : public RewriteFilter {
   class Context;
 
   Context* context_;
-  Context* MakeContext();
-  Context* MakeNestedContext(RewriteContext* parent);
+  virtual RewriteContext* MakeRewriteContext();
+  Context* MakeNestedContext(RewriteContext* parent, const GoogleUrl& css_url,
+                             const StringPiece& css_text);
   bool GetDeclarationDimensions(Css::Declarations* declarations,
                                 int* width, int* height);
 

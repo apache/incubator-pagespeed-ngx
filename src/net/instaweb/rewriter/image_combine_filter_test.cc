@@ -21,6 +21,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
@@ -122,12 +123,27 @@ TEST_P(CssImageCombineTest, SpritesMultiple) {
   ValidateExpected("sprite_2_bikes_1_cuppa", before, after);
 
   // If the second occurrence of the image is unspriteable (e.g. if the div is
-  // larger than the image), the first and third should still sprite correctly.
+  // larger than the image), then don't sprite anything.
   before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 999,
                         kCuppaPngFile, 0);
-  after = StringPrintf(html, sprite.c_str(),
-                       kBikePngFile, 0, 999, sprite.c_str(), -100);
-  ValidateExpected("sprite_first_and_third", before, after);
+  ValidateExpected("sprite_none_dimmensions", before, before);
+}
+
+// Try the last test from SpritesMultiple with a cold cache.
+TEST_P(CssImageCombineTest, NoSpritesMultiple) {
+  CSS_XFAIL_SYNC();
+  const char* html = "<head><style>"
+      "#div1{background:url(%s) 0px 0px;width:10px;height:10px}"
+      "#div2{background:url(%s) 0px %dpx;width:%dpx;height:10px}"
+      "#div3{background:url(%s) 0px %dpx;width:10px;height:10px}"
+      "</style></head>";
+  GoogleString text;
+  // If the second occurence of the image is unspriteable (e.g. if the div is
+  // larger than the image), then don't sprite anything.
+  text = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 999,
+                        kCuppaPngFile, 0);
+  ValidateExpected("no_sprite", text, text);
+
 }
 
 TEST_P(CssImageCombineTest, NoCrashUnknownType) {
@@ -257,9 +273,72 @@ TEST_P(CssImageCombineTest, SpritesMultiSite) {
                        ".pagespeed.is.0.png")));
 }
 
+// TODO(nforman): Add a testcase that synthesizes a spriting situation where
+// the total size of the constructed segment (not including the domain or
+// .pagespeed.* parts) is larger than RewriteOptions::kDefaultMaxUrlSegmentSize
+// (1024).
+TEST_P(CssImageCombineTest, ServeFiles) {
+  CSS_XFAIL_SYNC();
+  GoogleString sprite_str = StrCat(kTestDomain, kCuppaPngFile, "+",
+                                    kBikePngFile, ".pagespeed.is.0.png");
+  GoogleString output;
+  EXPECT_EQ(true, ServeResourceUrl(sprite_str, &output));
+  ServeResourceFromManyContexts(sprite_str, output);
+}
+
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(CssImageCombineTestInstance,
                         CssImageCombineTest,
+                        ::testing::Bool());
+
+class CssImageMultiFilterTest : public CssImageCombineTest {
+  virtual void SetUp() {
+    // We setup the options before the upcall so that the
+    // CSS filter is created aware of these.
+    options()->EnableFilter(RewriteOptions::kExtendCache);
+    CssImageCombineTest::SetUp();
+  }
+};
+
+TEST_P(CssImageMultiFilterTest, SpritesAndNonSprites) {
+  CSS_XFAIL_SYNC();
+  const char* html = "<head><style>"
+      "#div1{background:url(%s) 0px 0px;width:10px;height:10px}"
+      "#div2{background:url(%s) 0px %dpx;width:%dpx;height:10px}"
+      "#div3{background:url(%s) 0px %dpx;width:10px;height:10px}"
+      "</style></head>";
+  GoogleString before, after, encoded, cuppa_encoded, sprite;
+  // With the same image present 3 times, there should be no sprite.
+  before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 10,
+                        kBikePngFile, 0);
+  encoded = Encode(kTestDomain, "ce", "0", kBikePngFile, "png");
+  after = StringPrintf(html, encoded.c_str(), encoded.c_str(), 0, 10,
+                       encoded.c_str(), 0);
+  ValidateExpected("no_sprite_3_bikes", before, after);
+
+  // With 2 of the same and 1 different, there should be a sprite without
+  // duplication.
+  before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 10,
+                        kCuppaPngFile, 0);
+  sprite = StrCat(kTestDomain, kBikePngFile, "+", kCuppaPngFile,
+                  ".pagespeed.is.0.png").c_str();
+  after = StringPrintf(html, sprite.c_str(),
+                       sprite.c_str(), 0, 10, sprite.c_str(), -100);
+  ValidateExpected("sprite_2_bikes_1_cuppa", before, after);
+
+  // If the second occurrence of the image is unspriteable (e.g. if the div is
+  // larger than the image), we shouldn't sprite any of them.
+  before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 999,
+                        kCuppaPngFile, 0);
+  cuppa_encoded = Encode(kTestDomain, "ce", "0", kCuppaPngFile, "png");
+  after = StringPrintf(html, encoded.c_str(), encoded.c_str(), 0, 999,
+                       cuppa_encoded.c_str());
+  ValidateExpected("sprite_none_dimmensions", before, after);
+}
+
+// We test with asynchronous_rewrites() == GetParam() as both true and false.
+INSTANTIATE_TEST_CASE_P(CssImageMultiFilterTestInstance,
+                        CssImageMultiFilterTest,
                         ::testing::Bool());
 
 }  // namespace

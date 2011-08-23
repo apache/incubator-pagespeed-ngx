@@ -238,6 +238,7 @@
         'util/null_statistics.cc',
         'util/null_writer.cc',
         'util/queued_worker.cc',
+        'util/queued_worker_pool.cc',
         'util/ref_counted.cc',
         'util/rolling_hash.cc',
         'util/scheduler.cc',

@@ -147,6 +147,7 @@
         'util/pool_test.cc',
         'util/query_params_test.cc',
         'util/queued_worker_test.cc',
+        'util/queued_worker_pool_test.cc',
         'util/ref_counted_owner_test.cc',
         'util/ref_counted_ptr_test.cc',
         'util/shared_circular_buffer_test_base.cc',

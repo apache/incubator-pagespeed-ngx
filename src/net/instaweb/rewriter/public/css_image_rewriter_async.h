@@ -23,7 +23,7 @@
 
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
-
+#include "net/instaweb/util/public/string_util.h"        // for StringPiece
 namespace Css {
 
 class Values;
@@ -54,6 +54,7 @@ class CssImageRewriterAsync {
 
   // Attempts to rewrite all images in stylesheet, starting nested rewrites.
   void RewriteCssImages(const GoogleUrl& base_url,
+                        const StringPiece& contents,
                         Css::Stylesheet* stylesheet,
                         MessageHandler* handler);
 
