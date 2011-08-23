@@ -17,11 +17,12 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/mock_scheduler.h"
+
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/queued_worker.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -31,12 +32,6 @@ MockScheduler::MockScheduler(ThreadSystem* thread_system, QueuedWorker* worker,
     : Scheduler(thread_system),
       timer_(timer),
       worker_(worker) {
-  // TODO(jmarantz): we currently only support one Scheduler per Worker, which
-  // means that when testing we must have a distinct ResourceManager for every
-  // RewriteDriver.  This does not reflect the behavior of servers so we should
-  // change the idle_callback_ member variable in Worker to be a set.
-  worker_->set_idle_callback(new MemberFunction0<ThreadSystem::Condvar>(
-      &ThreadSystem::Condvar::Signal, condvar()));
 }
 
 MockScheduler::~MockScheduler() {
@@ -53,21 +48,40 @@ void MockScheduler::TimedWait(int64 timeout_ms) {
   // test, but to be executed in the rewrite_thread, removing a variety of
   // confusing race-conditions.
   int64 timeout_us = 1000 * timeout_ms;
+  timer_->AddAlarm(timer_->NowUs() + timeout_us,
+                   new MemberFunction0<MockScheduler>(
+                       &MockScheduler::Wakeup, this));
   worker_->RunInWorkThread(new MemberFunction1<MockTimer, int64>(
       &MockTimer::AdvanceUs, timer_, timeout_us));
 
   // It's possible that the worker thread may complete the timer
   // callback and all subsequent work before the Wait() call, so check
   // whether it is busy first.
-  while (worker_->IsBusy()) {
-    // Do the condition-variable-wait for only one second, to avoid
-    // deadlocking if idle_callback gets called after the IsBusy() call,
-    // but before the TimedWait() call.  The one-second sleep means we just
-    // loop back to "IsBusy()" and fall through.  Most of the time we won't
-    // hit this race-condition and the 1-second slowdown for tests; it's
-    // just to escape from a race.
-    condvar()->TimedWait(Timer::kSecondMs);
+  {
+    mutex()->Unlock();
+
+    // TODO(jmarantz): this code is very squirrely: we are spinning on
+    // worker-IsBusy, rather than spinning on whether we've woken up.
+    // After the revolution, we'll use callbacks rather than TimedWait
+    // and avoid this.  But it works for now.
+    while (worker_->IsBusy()) {
+      // Do the condition-variable-wait for only 100 ms, to avoid
+      // deadlocking if Wakeup() gets called after the IsBusy() call,
+      // but before the TimedWait() call.  The 100 ms sleep means we just
+      // loop back to "IsBusy()" and fall through.  Most of the time we won't
+      // hit this race-condition and the 0.1-second slowdown for tests; it's
+      // just to escape from a race.
+      mutex()->Lock();
+      condvar()->TimedWait(Timer::kSecondMs / 10);
+      mutex()->Unlock();
+    }
+    mutex()->Lock();
   }
+}
+
+void MockScheduler::Wakeup() {
+  ScopedMutex lock(mutex());
+  condvar()->Signal();
 }
 
 }  // namespace net_instaweb

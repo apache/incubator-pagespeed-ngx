@@ -35,12 +35,6 @@
 
 namespace net_instaweb {
 
-void Worker::RunIdleCallback() {
-  if (idle_callback_.get() != NULL) {
-    idle_callback_->Run();
-  }
-}
-
 // The actual thread that does the work.
 class Worker::WorkThread : public ThreadSystem::Thread {
  public:
@@ -60,25 +54,16 @@ class Worker::WorkThread : public ThreadSystem::Thread {
   bool WaitForNextTask() {
     ScopedMutex lock(mutex_.get());
 
-    bool was_running = (current_task_ != NULL);
-
     // Clean any task we were running last iteration
     delete current_task_;
     current_task_ = NULL;
 
     while (!exit_ && tasks_.empty()) {
-      if (was_running) {
-        was_running = false;
-        owner_->RunIdleCallback();
-      }
       state_change_->Wait();
     }
 
     // Handle exit.
     if (exit_) {
-      if (was_running && tasks_.empty()) {
-        owner_->RunIdleCallback();
-      }
       return false;
     }
 

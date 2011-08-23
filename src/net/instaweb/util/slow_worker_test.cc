@@ -111,16 +111,5 @@ TEST_F(SlowWorkerTest, CancelDefaultFalse) {
   start_sync.Wait();
 }
 
-TEST_F(SlowWorkerTest, IdleCallback) {
-  // All the jobs we queued should be run in order
-  int count = 0;
-  SyncPoint sync(thread_runtime_.get());
-  worker_->set_idle_callback(new NotifyRunFunction(&sync));
-  ASSERT_TRUE(worker_->Start());
-  worker_->RunIfNotBusy(new CountFunction(&count));
-  sync.Wait();
-  EXPECT_EQ(1, count);
-}
-
 }  // namespace
 }  // namespace net_instaweb

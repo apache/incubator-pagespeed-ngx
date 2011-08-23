@@ -24,10 +24,10 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
 
 namespace net_instaweb {
 
+class Function;
 class ThreadSystem;
 class Waveform;
 
@@ -47,19 +47,6 @@ class Worker {
   // Tries to start the work thread if it hasn't been started already;
   // returns true if it was started successfully or was previously running.
   bool StartIfNeeded();
-
-  // An Idle callback is called when a worker that is running
-  // a task completes all its tasks, and goes into a wait-state
-  // for more tasks to be queued.
-  //
-  // The idle callback will not be called immediately when a Worker
-  // is started, even if it starts in the idle state.  It is only called
-  // on the completion of all queued tasks.
-  //
-  // The idle-callback is intended only for testing purposes.  If
-  // this is ever used for anything else we should consider making
-  // a vector of callbacks and changing the method to add_idle_callback.
-  void set_idle_callback(Function* cb) { idle_callback_.reset(cb); }
 
   // Returns true if there was a job running or any jobs queued at the time
   // this function was called.
@@ -101,13 +88,10 @@ class Worker {
   class WorkThread;
   friend class WorkThread;
 
-  void RunIdleCallback();
-
   // This is called whenever a task is added or removed from the queue.
   void UpdateQueueSizeStat(int size);
 
   scoped_ptr<WorkThread> thread_;
-  scoped_ptr<Function> idle_callback_;
   Waveform* queue_size_;
 
   DISALLOW_COPY_AND_ASSIGN(Worker);
