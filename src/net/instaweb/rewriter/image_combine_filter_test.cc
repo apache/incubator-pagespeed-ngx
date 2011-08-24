@@ -15,6 +15,7 @@
  */
 
 // Author: sligocki@google.com (Shawn Ligocki)
+#include <algorithm>
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -284,6 +285,56 @@ TEST_P(CssImageCombineTest, ServeFiles) {
   GoogleString output;
   EXPECT_EQ(true, ServeResourceUrl(sprite_str, &output));
   ServeResourceFromManyContexts(sprite_str, output);
+}
+
+TEST_P(CssImageCombineTest, CombineManyFiles) {
+  CSS_XFAIL_SYNC();
+  // Prepare an HTML fragment with too many image files to combine,
+  // exceeding the char limit.
+  const int kNumImages = 100;
+  const int kImagesInCombination = 47;
+  GoogleString html = "<head><style>";
+  for (int i = 0; i < kNumImages; ++i) {
+    GoogleString url = StringPrintf("%s%.02d%s", kTestDomain, i, kBikePngFile);
+    AddFileToMockFetcher(url, kBikePngFile, kContentTypePng, 100);
+    html.append(StringPrintf(
+        "#div%d{background:url(%s) 0px 0px;width:10px;height:10px}",
+        i, url.c_str()));
+  }
+  html.append("</style></head>");
+
+  // We expect 3 combinations: 0-46, 47-93, 94-99
+  StringVector combinations;
+  int image_index = 0;
+  while (image_index < kNumImages) {
+    GoogleString combo = kTestDomain;
+    int end_index = std::min(image_index + kImagesInCombination, kNumImages);
+    while (image_index < end_index) {
+      combo.append(StringPrintf("%.02d%s", image_index, kBikePngFile));
+      combo.append("+");
+      ++image_index;
+    }
+    combo.resize(combo.size() - 1);
+    combo.append(".pagespeed.is.0.png");
+    combinations.push_back(combo);
+  }
+
+  image_index = 0;
+  int combo_index = 0;
+  GoogleString result = "<head><style>";
+  while (image_index < kNumImages) {
+    result.append(StringPrintf(
+        "#div%d{background:url(%s) 0px %dpx;width:10px;height:10px}",
+        image_index, combinations[combo_index].c_str(),
+        (image_index - (combo_index * kImagesInCombination)) * -100));
+    ++image_index;
+    if (image_index % kImagesInCombination == 0) {
+      ++combo_index;
+    }
+  }
+  result.append("</style></head>");
+
+  ValidateExpected("manymanyimages", html, result);
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
