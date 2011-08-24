@@ -45,7 +45,7 @@ class UrlInputResource : public Resource {
   }
   virtual ~UrlInputResource();
 
-  virtual bool IsValidAndCacheable();
+  virtual bool IsValidAndCacheable() const;
   virtual GoogleString url() const { return url_; }
   const RewriteOptions* rewrite_options() const { return rewrite_options_; }
 

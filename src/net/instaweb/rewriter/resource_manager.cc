@@ -632,7 +632,12 @@ bool ResourceManager::HandleBeacon(const StringPiece& unparsed_url) {
 
 RewriteDriver* ResourceManager::NewCustomRewriteDriver(
     RewriteOptions* options) {
-  RewriteDriver* rewrite_driver = NewUnmanagedRewriteDriverHelper(true);
+  RewriteDriver* rewrite_driver = NewUnmanagedRewriteDriverHelper(false);
+  {
+    ScopedMutex lock(rewrite_drivers_mutex_.get());
+    AssignRewriteWorker(rewrite_driver);
+    active_rewrite_drivers_.insert(rewrite_driver);
+  }
   rewrite_driver->set_custom_options(options);
   rewrite_driver->AddFilters();
   return rewrite_driver;
@@ -692,9 +697,14 @@ void ResourceManager::ReleaseRewriteDriver(
   int count = active_rewrite_drivers_.erase(rewrite_driver);
   if (count != 1) {
     LOG(ERROR) << "ReleaseRewriteDriver called with driver not in active set.";
+    DCHECK(false);
   } else {
-    available_rewrite_drivers_.push_back(rewrite_driver);
-    rewrite_driver->Clear();
+    if (rewrite_driver->has_custom_options()) {
+      delete rewrite_driver;
+    } else {
+      available_rewrite_drivers_.push_back(rewrite_driver);
+      rewrite_driver->Clear();
+    }
   }
 }
 

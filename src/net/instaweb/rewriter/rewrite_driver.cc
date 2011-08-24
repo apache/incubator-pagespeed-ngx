@@ -1217,7 +1217,7 @@ void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
     }
   }
   if (ready_to_recycle) {
-    Recycle();
+    resource_manager_->ReleaseRewriteDriver(this);
   }
 }
 
@@ -1247,15 +1247,6 @@ void RewriteDriver::DeregisterForPartitionKey(const GoogleString& partition_key,
   }
 }
 
-void RewriteDriver::Recycle() {
-  if (has_custom_options()) {
-    delete this;
-  } else {
-    Clear();
-    resource_manager_->ReleaseRewriteDriver(this);
-  }
-}
-
 void RewriteDriver::Cleanup() {
   if (!externally_managed_) {
     bool done = false;
@@ -1272,7 +1263,7 @@ void RewriteDriver::Cleanup() {
       }
     }
     if (done) {
-      Recycle();
+      resource_manager_->ReleaseRewriteDriver(this);
     }
   }
 }

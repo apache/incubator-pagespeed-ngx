@@ -249,6 +249,9 @@ class RewriteDriver : public HtmlParse {
     custom_options_.reset(options);
   }
 
+  // Determines whether this RewriteDriver was built with custom options.
+  bool has_custom_options() const { return (custom_options_.get() != NULL); }
+
   // Return the options used for this RewriteDriver.
   const RewriteOptions* options() const {
     return (has_custom_options() ? custom_options_.get()
@@ -495,13 +498,6 @@ class RewriteDriver : public HtmlParse {
 
   // Termination predicate for above; assumes locks held.
   bool IsDone(WaitMode wait_mode, bool deadline_reached);
-
-  // Determines whether this RewriteDriver was built with custom options
-  bool has_custom_options() const { return (custom_options_.get() != NULL); }
-
-  // Determines what to do with a completed RewriteDrive, either deleting it
-  // or releasing it into the ResourceManager's free list.
-  void Recycle();
 
   // Must be called with rewrites_mutex_ held.
   bool RewritesComplete() const;

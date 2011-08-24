@@ -63,7 +63,7 @@ class DataUrlInputResource : public Resource {
 
   virtual ~DataUrlInputResource();
 
-  virtual bool IsValidAndCacheable();
+  virtual bool IsValidAndCacheable() const;
 
   // Set OutputPartition's input info used for expiration validation.
   virtual void FillInPartitionInputInfo(InputInfo* input);

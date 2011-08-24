@@ -313,14 +313,8 @@ class ResourceManager {
   // activites on it have completed, including HTML Parsing
   // (FinishParse) and all pending Rewrites.
   //
-  // This can only be used with RewriteDrivers created with default
-  // options.  RewiteDrivers with custom options cannot be recycled
-  // and must be deleted.
-  //
-  // RewriteDrivers with custom options should not call this function on
-  // themselves.
-  //
-  // TODO(jmarantz): this is a potential performance issue for Apache
+  // TODO(jmarantz): this cannot recycle RewriteDrivers with custom
+  // rewrite options, which is a potential performance issue for Apache
   // installations that set custom options in .htaccess files, where
   // essentially every RewriteDriver will be a custom driver.  To
   // resolve this we need to make a comparator for RewriteOptions

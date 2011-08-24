@@ -37,7 +37,7 @@ FileInputResource::~FileInputResource() {
 
 // File input resources don't have expirations, we assume that the resource
 // is valid as long as the FileInputResource lives.
-bool FileInputResource::IsValidAndCacheable() {
+bool FileInputResource::IsValidAndCacheable() const {
   // TODO(sligocki): Stat the file to make sure it hasn't changed since load.
   // Do we really want to stat it here? We are currently statting it in
   // RewriteContext::OutputPartitionIsValid.

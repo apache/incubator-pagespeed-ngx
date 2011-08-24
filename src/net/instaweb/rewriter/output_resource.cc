@@ -318,6 +318,13 @@ bool OutputResource::LockForCreation(BlockingBehavior block) {
   return locked_;
 }
 
+void OutputResource::DropCreationLock() {
+  if (locked_) {
+    creation_lock_.reset();
+    locked_ = false;
+  }
+}
+
 void OutputResource::SaveCachedResult(const GoogleString& name_key,
                                       MessageHandler* handler) {
   CacheInterface* cache = resource_manager_->metadata_cache();

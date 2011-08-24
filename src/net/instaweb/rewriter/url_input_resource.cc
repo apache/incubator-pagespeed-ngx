@@ -46,7 +46,7 @@ namespace {
 
 bool IsValidAndCacheableImpl(HTTPCache* http_cache,
                              bool respect_vary,
-                             ResponseHeaders* headers) {
+                             const ResponseHeaders* headers) {
   if (headers->status_code() != HttpStatus::kOK) {
     return false;
   }
@@ -236,7 +236,7 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
   DISALLOW_COPY_AND_ASSIGN(UrlReadIfCachedCallback);
 };
 
-bool UrlInputResource::IsValidAndCacheable() {
+bool UrlInputResource::IsValidAndCacheable() const {
   return IsValidAndCacheableImpl(resource_manager()->http_cache(),
                                  respect_vary_,
                                  &response_headers_);

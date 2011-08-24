@@ -147,14 +147,22 @@ class RewriteContext::ResourceReconstructCallback :
  public:
   // Takes ownership of the driver (e.g. will call Cleanup)
   ResourceReconstructCallback(RewriteDriver* driver, RewriteContext* rc,
-                              const ResourcePtr& resource, int slot_index)
-      : driver_(driver), delegate_(rc, resource, slot_index) {
+                              const OutputResourcePtr& resource, int slot_index)
+      : driver_(driver),
+        delegate_(rc, ResourcePtr(resource), slot_index),
+        resource_(resource) {
   }
 
   virtual ~ResourceReconstructCallback() {
   }
 
   virtual void Done(bool success) {
+    // Make sure to release the lock here, as in case of nested reconstructions
+    // that fail it would otherwise only get released on ~OutputResource, which
+    // in turn will only happen once the top-level is done, which may take a
+    // while.
+    resource_->DropCreationLock();
+
     delegate_.Done(success);
     driver_->Cleanup();
     delete this;
@@ -167,6 +175,7 @@ class RewriteContext::ResourceReconstructCallback :
  private:
   RewriteDriver* driver_;
   ResourceCallbackUtils delegate_;
+  OutputResourcePtr resource_;
 
   // We ignore the output here as it's also put into the resource itself.
   NullWriter writer_;
@@ -538,25 +547,20 @@ void RewriteContext::FetchInputs(BlockingBehavior block) {
         // rather than try to fetch them over HTTP.
         bool handled_internally = false;
         if (fetch_.get() != NULL) {
-          RewriteFilter* filter = NULL;
-          OutputResourcePtr output_resource(
-              Driver()->DecodeOutputResource(resource->url(), &filter));
-          if (output_resource.get() != NULL) {
+          if (Manager()->IsPagespeedResource(GoogleUrl(resource->url()))) {
             RewriteDriver* nested_driver = Driver()->Clone();
-            // Re-grab the filter so we get one that's bound to the new
-            // RewriteDriver.
-            // TODO(morlovich): How inefficient. Maybe I should have
-            // DecodeOutputResource return the filter enum as well?
-            output_resource =
+            RewriteFilter* filter = NULL;
+            // We grab the filter now (and not just call DecodeOutputResource
+            // instead of IsPagespeedResource) so we get a filter that's bound
+            // to the new RewriteDriver.
+            OutputResourcePtr output_resource =
                 nested_driver->DecodeOutputResource(resource->url(), &filter);
-            DCHECK(output_resource.get() != NULL);
             if (output_resource.get() != NULL) {
               handled_internally = true;
-              ResourcePtr updated_resource(output_resource);
-              slot->SetResource(updated_resource);
+              slot->SetResource(ResourcePtr(output_resource));
               ResourceReconstructCallback* callback =
                   new ResourceReconstructCallback(
-                      nested_driver, this, updated_resource, i);
+                      nested_driver, this, output_resource, i);
               nested_driver->FetchOutputResource(
                   output_resource, filter,
                   callback->request_headers(),

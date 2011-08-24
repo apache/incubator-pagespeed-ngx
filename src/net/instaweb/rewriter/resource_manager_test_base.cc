@@ -154,10 +154,13 @@ void ResourceManagerTestBase::SetUp() {
 
 void ResourceManagerTestBase::TearDown() {
   rewrite_driver()->WaitForCompletion();
-  rewrite_driver()->Recycle();
+  rewrite_driver()->Clear();
+  delete rewrite_driver();
   other_rewrite_driver()->WaitForCompletion();
   other_resource_manager_.ShutDownWorkers();
-  other_rewrite_driver()->Recycle();
+  other_rewrite_driver()->WaitForCompletion();
+  other_rewrite_driver()->Clear();
+  delete other_rewrite_driver();
   delete resource_manager_;
   HtmlParseTestBaseNoAlloc::TearDown();
 }
@@ -303,7 +306,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   // Make sure to shut the new worker down before we hit ~RewriteDriver for
   // new_rewrite_driver.
   new_resource_manager.ShutDownWorkers();
-  new_rewrite_driver->Recycle();
+  new_resource_manager.ReleaseRewriteDriver(new_rewrite_driver);
 }
 
 GoogleString ResourceManagerTestBase::AbsolutifyUrl(

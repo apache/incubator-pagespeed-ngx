@@ -1047,6 +1047,33 @@ TEST_P(CssFilterWithCombineTest, TestFollowCombine) {
   EXPECT_EQ(StrCat(kCssTextOptimized, kCssTextOptimized), content);
 }
 
+class CssFilterWithOutlineTest : public CssCombineFilterTest {
+ protected:
+  virtual void SetUp() {
+    options()->EnableFilter(RewriteOptions::kOutlineCss);
+    CssCombineFilterTest::SetUp();
+  }
+};
+
+TEST_P(CssFilterWithOutlineTest, RepeatedOutlineNestedReconstruct) {
+  if (!rewrite_driver()->asynchronous_rewrites()) {
+    // Not testing under sync since it doesn't have a nested reconstruction
+    // path in the first place.
+    return;
+  }
+
+  // Fetch a resource that's a combination of two missing outline resources,
+  // and make sure we don't sort-of-deadlock ourselves.
+  file_system()->set_advance_time_on_update(false);
+
+  EXPECT_FALSE(
+    TryFetchResource(StrCat(kTestDomain,
+                            "_,Mco.0.css+_,Mco.0.css.pagespeed.cc.0.css")));
+
+  // The lock must be released immediately on first failure.
+  EXPECT_EQ(0, file_system()->num_failed_locks());
+}
+
 /*
   TODO(jmarantz): cover intervening FLUSH
   TODO(jmarantz): consider converting some of the existing tests to this
@@ -1066,6 +1093,10 @@ INSTANTIATE_TEST_CASE_P(CssCombineFilterTestInstance, CssCombineFilterTest,
 INSTANTIATE_TEST_CASE_P(CssFilterWithCombineTestInstance,
                         CssFilterWithCombineTest,
                         ::testing::Bool());
+
+INSTANTIATE_TEST_CASE_P(CssFilterWithOutlineTestInstance,
+                        CssFilterWithOutlineTest, ::testing::Bool());
+
 
 }  // namespace
 

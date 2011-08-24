@@ -210,7 +210,7 @@ void ResponseHeaders::SetTimeHeader(const StringPiece& header, int64 time_ms) {
   }
 }
 
-bool ResponseHeaders::VaryCacheable() {
+bool ResponseHeaders::VaryCacheable() const {
   if (IsCacheable()) {
     ConstStringStarVector values;
     Lookup(HttpAttributes::kVary, &values);

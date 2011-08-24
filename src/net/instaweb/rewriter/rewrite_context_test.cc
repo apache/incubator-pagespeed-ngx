@@ -1262,6 +1262,17 @@ TEST_F(RewriteContextTest, CombinationFetchMissing) {
   EXPECT_FALSE(TryFetchResource(combined_url));
 }
 
+TEST_F(RewriteContextTest, CombinationFetchNestedMalformed) {
+  // Fetch of a combination where nested URLs look like they were pagespeed-
+  // produced, but actually have invalid filter ids.
+  InitCombiningFilter(0);
+  SetFetchFailOnUnexpected(false);
+  GoogleString combined_url = Encode(
+      kTestDomain, kCombiningFilterId, "0",
+      "a.pagespeed.nosuchfilter.0.css+b.pagespeed.nosuchfilter.0.css", "css");
+  EXPECT_FALSE(TryFetchResource(combined_url));
+}
+
 // Test that rewriting works correctly when input resource is loaded from disk.
 
 TEST_F(RewriteContextTest, LoadFromFileOnTheFly) {

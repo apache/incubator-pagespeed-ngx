@@ -69,9 +69,12 @@ class OutputResource : public Resource {
   // Attempt to obtain a named lock for the resource.  Return true if we do so.
   // If the resource is expensive to create, this lock should be held during
   // its creation to avoid multiple rewrites happening at once.
-  // The lock will be unlocked on destruction or EndWrite (called from
-  // ResourceManager::Write)
+  // The lock will be unlocked on destruction, DropCreationLock, or EndWrite
+  // (called from ResourceManager::Write)
   bool LockForCreation(BlockingBehavior block);
+
+  // Drops the lock created by above, if any.
+  void DropCreationLock();
 
   // Update the passed in CachedResult from the CachedResult in this
   // OutputResource.
@@ -252,7 +255,7 @@ class OutputResource : public Resource {
   ResourceNamer full_name_;
 
   // Lock guarding resource creation.  Lazily initialized by LockForCreation,
-  // unlocked on destruction or EndWrite.
+  // unlocked on destruction, DropCreationLock or EndWrite.
   scoped_ptr<AbstractLock> creation_lock_;
 
   // rewrite_options_ is NULL when we are creating an output resource on

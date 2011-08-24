@@ -60,7 +60,7 @@ class Resource : public RefCounted<Resource> {
   //
   // Checks if the contents are loaded and valid and also if the resource is
   // up-to-date and cacheable enought to be rewritten by us right now.
-  virtual bool IsValidAndCacheable();
+  virtual bool IsValidAndCacheable() const;
 
   // TODO(sligocki): Do we need these or can we just use IsValidAndCacheable
   // everywhere?

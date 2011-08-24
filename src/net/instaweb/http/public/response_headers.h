@@ -154,7 +154,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   // Returns whether or not we can cache these headers if we take into
   // account the Vary: headers.
-  bool VaryCacheable();
+  bool VaryCacheable() const;
 
  private:
   friend class ResponseHeadersTest;

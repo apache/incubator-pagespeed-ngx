@@ -48,7 +48,7 @@ Resource::Resource(ResourceManager* resource_manager, const ContentType* type)
 Resource::~Resource() {
 }
 
-bool Resource::IsValidAndCacheable() {
+bool Resource::IsValidAndCacheable() const {
   return ((response_headers_.status_code() == HttpStatus::kOK) &&
           !resource_manager_->http_cache()->IsAlreadyExpired(
               response_headers_));

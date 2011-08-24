@@ -53,7 +53,7 @@ class FileInputResource : public Resource {
   // Uses default no-op Freshen implementation because file-based resources
   // are fetched each time they are needed.
 
-  virtual bool IsValidAndCacheable();
+  virtual bool IsValidAndCacheable() const;
 
   // Set OutputPartition's input info used for expiration validation.
   virtual void FillInPartitionInputInfo(InputInfo* input);
