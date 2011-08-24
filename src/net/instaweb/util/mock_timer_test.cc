@@ -53,17 +53,36 @@ class ChainedAlarm : public Function {
 
 class MockTimerTest : public testing::Test {
  protected:
-  MockTimerTest() : timer_(0) {}
+  MockTimerTest()
+      : timer_(new MockTimer(0)),
+        was_run_(false),
+        was_cancelled_(false) {}
 
   MockTimer::Alarm* AddTask(int64 wakeup_time_us, char c) {
     Function* append_char = new MemberFunction1<GoogleString, char>(
         &GoogleString::push_back, &string_, c);
-    return timer_.AddAlarm(wakeup_time_us, append_char);
+    return timer_->AddAlarm(wakeup_time_us, append_char);
+  }
+
+  void Run() {
+    was_run_ = true;
+  }
+
+  void Cancel() {
+    was_cancelled_ = true;
+  }
+
+  MockTimer::Alarm* AddRunCancelAlarm(int64 timeout_ms) {
+    MockTimerTest* mock_timer_test = this;  // Implicit upcast.
+    return timer_->AddAlarm(timeout_ms, new MemberFunction0<MockTimerTest>(
+        &MockTimerTest::Run, &MockTimerTest::Cancel, mock_timer_test));
   }
 
  protected:
-  MockTimer timer_;
+  scoped_ptr<MockTimer> timer_;
   GoogleString string_;
+  bool was_run_;
+  bool was_cancelled_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockTimerTest);
@@ -73,7 +92,7 @@ TEST_F(MockTimerTest, ScheduleOrdering) {
   AddTask(1, '1');
   AddTask(3, '3');
   AddTask(2, '2');
-  timer_.AdvanceUs(3);  // runs all 3 tasks
+  timer_->AdvanceUs(3);  // runs all 3 tasks
   EXPECT_EQ("123", string_);
 }
 
@@ -85,10 +104,10 @@ TEST_F(MockTimerTest, SchedulePartial) {
   AddTask(2, '2');
   AddTask(4, '4');
   AddTask(1, '1');
-  timer_.AdvanceUs(3);  // runs first 3 tasks
+  timer_->AdvanceUs(3);  // runs first 3 tasks
   EXPECT_EQ("123", string_);
   string_.clear();
-  timer_.AdvanceUs(3);  // runs next 4 tasks
+  timer_->AdvanceUs(3);  // runs next 4 tasks
   EXPECT_EQ("4567", string_);
 }
 
@@ -97,25 +116,49 @@ TEST_F(MockTimerTest, Cancellation) {
   MockTimer::Alarm* alarm_to_cancel = AddTask(3, '3');
   AddTask(2, '2');
   AddTask(4, '4');
-  timer_.CancelAlarm(alarm_to_cancel);
-  timer_.AdvanceUs(4);  // runs the 3 tasks not canceled.
+  timer_->CancelAlarm(alarm_to_cancel);
+  timer_->AdvanceUs(4);  // runs the 3 tasks not canceled.
   EXPECT_EQ("124", string_);
 }
 
 // Verifies that we can add a new alarm from an Alarm::Run() method.
 TEST_F(MockTimerTest, ChainedAlarms) {
   int count = 10;
-  timer_.AddAlarm(100, new ChainedAlarm(&timer_, &count, false));
-  timer_.AdvanceMs(1000);
+  timer_->AddAlarm(100, new ChainedAlarm(timer_.get(), &count, false));
+  timer_->AdvanceMs(1000);
   EXPECT_EQ(0, count);
 }
 
 // Verifies that we can advance time from an Alarm::Run() method.
 TEST_F(MockTimerTest, AdvanceFromRun) {
   int count = 10;
-  timer_.AddAlarm(100, new ChainedAlarm(&timer_, &count, true));
-  timer_.AdvanceMs(100);
+  timer_->AddAlarm(100, new ChainedAlarm(timer_.get(), &count, true));
+  timer_->AdvanceMs(100);
   EXPECT_EQ(0, count);
+}
+
+TEST_F(MockTimerTest, RunNotCancelled) {
+  // First, let the alarm run normally.
+  AddRunCancelAlarm(100);
+  timer_->AdvanceUs(200);
+  EXPECT_TRUE(was_run_);
+  EXPECT_FALSE(was_cancelled_);
+}
+
+TEST_F(MockTimerTest, CancelledExplicitly) {
+  // Next cancel the alarm explicitly before it runs.
+  MockTimer::Alarm* alarm = AddRunCancelAlarm(500);
+  timer_->CancelAlarm(alarm);
+  EXPECT_FALSE(was_run_);
+  EXPECT_TRUE(was_cancelled_);
+}
+
+TEST_F(MockTimerTest, CancelledDueToMockTimerDestruction) {
+  // Finally, let the alarm be implicitly cancelled by deleting the timer.
+  AddRunCancelAlarm(500);
+  timer_.reset(NULL);
+  EXPECT_FALSE(was_run_);
+  EXPECT_TRUE(was_cancelled_);
 }
 
 }  // namespace net_instaweb

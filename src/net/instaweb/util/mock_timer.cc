@@ -27,7 +27,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/null_mutex.h"
-#include "net/instaweb/util/public/stl_util.h"
 
 namespace net_instaweb {
 
@@ -40,7 +39,13 @@ MockTimer::MockTimer(int64 time_ms)
 }
 
 MockTimer::~MockTimer() {
-  STLDeleteElements(&alarms_);
+  while (!alarms_.empty()) {
+    AlarmOrderedSet::iterator p = alarms_.begin();
+    Alarm* alarm = *p;
+    alarms_.erase(p);
+    alarm->closure()->Cancel();
+    delete alarm;
+  }
 }
 
 MockTimer::Alarm::Alarm(int64 wakeup_time_us, Function* closure)
@@ -98,6 +103,7 @@ void MockTimer::CancelAlarm(Alarm* alarm) {
   ScopedMutex lock(mutex_.get());
   int erased = alarms_.erase(alarm);
   if (erased == 1) {
+    alarm->closure()->Cancel();
     delete alarm;
   } else {
     LOG(DFATAL) << "Canceled alarm not found";
