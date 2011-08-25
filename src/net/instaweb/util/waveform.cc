@@ -167,6 +167,8 @@ const char kChartApiLoad[] =
     "    var chart = new google.visualization.ScatterChart(\n"
     "        document.getElementById(id));\n"
     "    chart.draw(data, {\n"
+    "        lineWidth: 1,\n"
+    "        pointSize: 3,\n"
     "        width: 800, height: 480, title: title, legend: 'none',\n"
     "        hAxis: {title: 'time (ms)', minValue: min_x, "
     "maxValue: 1.1 * max_x},\n"
