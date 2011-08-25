@@ -52,7 +52,7 @@ RewriteDriverFactory::RewriteDriverFactory()
       force_caching_(false),
       slurp_read_only_(false),
       slurp_print_urls_(false),
-      async_rewrites_(false),
+      async_rewrites_(true),
       http_cache_backend_(NULL) {
 }
 

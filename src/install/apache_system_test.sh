@@ -341,9 +341,7 @@ check [ `expr $ERRS` -le $ERR_LIMIT ];
 
 echo TEST: ModPagespeedLoadFromFile
 URL=$TEST_ROOT/load_from_file/index.html?ModPagespeedFilters=inline_css
-echo $WGET_DUMP $URL
-$WGET_DUMP $URL | grep blue
-check [ $? = 0 ]
+fetch_until $URL 'grep -c blue' 1
 
 # Cleanup
 rm -rf $OUTDIR

@@ -457,29 +457,28 @@ fetch_until $URL 'grep -c .pagespeed.ic.' 1  # image rewritten
 check $WGET_PREREQ $URL
 
 # This test is only valid for async.
-# TODO(nforman): Uncomment this test when async is turned on.
-# test_filter inline_css,rewrite_css,sprite_images sprites images in CSS
-# FILE=sprite_images.html?ModPagespeedFilters=$FILTER_NAME
-# URL=$EXAMPLE_ROOT/$FILE
-# FETCHED=$OUTDIR/$FILE
-# echo $WGET_DUMP $URL
-# fetch_until $URL 'grep -c ic.pagespeed.is' 1
+test_filter inline_css,rewrite_css,sprite_images sprites images in CSS
+FILE=sprite_images.html?ModPagespeedFilters=$FILTER_NAME
+URL=$EXAMPLE_ROOT/$FILE
+FETCHED=$OUTDIR/$FILE
+echo $WGET_DUMP $URL
+fetch_until $URL 'grep -c ic.pagespeed.is' 1
 
-# # This test is only valid for async.
-# test_filter rewrite_css,sprite_images sprites images in CSS
-# FILE=sprite_images.html?ModPagespeedFilters=$FILTER_NAME
-# URL=$EXAMPLE_ROOT/$FILE
-# FETCHED=$OUTDIR/$FILE
-# echo $WGET_DUMP $URL
-# fetch_until $URL 'grep -c css.pagespeed.cf' 1
-# echo $WGET_DUMP $URL
-# $WGET_DUMP $URL > $OUTDIR/sprite_output
-# CSS=`grep stylesheet $OUTDIR/sprite_output | cut -d\" -f 6`
-# echo css is $CSS
-# $WGET_DUMP $CSS > $OUTDIR/sprite_css_output
-# cat $OUTDIR/sprite_css_output
-# echo ""
-# check [ `grep -c "ic.pagespeed.is" $OUTDIR/sprite_css_output` -gt 0 ]
+# This test is only valid for async.
+test_filter rewrite_css,sprite_images sprites images in CSS
+FILE=sprite_images.html?ModPagespeedFilters=$FILTER_NAME
+URL=$EXAMPLE_ROOT/$FILE
+FETCHED=$OUTDIR/$FILE
+echo $WGET_DUMP $URL
+fetch_until $URL 'grep -c css.pagespeed.cf' 1
+echo $WGET_DUMP $URL
+$WGET_DUMP $URL > $OUTDIR/sprite_output
+CSS=`grep stylesheet $OUTDIR/sprite_output | cut -d\" -f 6`
+echo css is $CSS
+$WGET_DUMP $CSS > $OUTDIR/sprite_css_output
+cat $OUTDIR/sprite_css_output
+echo ""
+check [ `grep -c "ic.pagespeed.is" $OUTDIR/sprite_css_output` -gt 0 ]
 
 test_filter rewrite_javascript removes comments and saves a bunch of bytes.
 # External scripts rewritten.
