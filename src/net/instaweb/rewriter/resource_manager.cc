@@ -663,7 +663,7 @@ RewriteDriver* ResourceManager::NewUnmanagedRewriteDriverHelper(
   RewriteDriver* rewrite_driver = new RewriteDriver(
       message_handler_, file_system_, url_async_fetcher_);
   rewrite_driver->SetAsynchronousRewrites(async_rewrites_);
-  Scheduler* scheduler = new Scheduler(thread_system_);
+  Scheduler* scheduler = new Scheduler(thread_system_, timer());
   rewrite_driver->SetResourceManagerAndScheduler(this, scheduler);
   if (factory_ != NULL) {
     factory_->AddPlatformSpecificRewritePasses(rewrite_driver);

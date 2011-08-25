@@ -414,7 +414,7 @@ class RewriteDriver : public HtmlParse {
   // Wait the specified number of milliseconds for in-progress renders
   // to complete.  This is intended for testing in simulated time, where
   // the Rewrites don't complete in time for the deadline.
-  void TimedWait(int wait_time_ms);
+  void BlockingTimedWait(int wait_time_ms);
 
   // Explicitly sets the number of milliseconds to wait for Rewrites
   // to complete while HTML parsing, overriding a default value which

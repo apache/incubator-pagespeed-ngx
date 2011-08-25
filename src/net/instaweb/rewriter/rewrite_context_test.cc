@@ -1197,7 +1197,7 @@ TEST_F(RewriteContextTest, CombinationRewriteWithDelay) {
   // also subtract out the simulated delay already added in
   // rewrite_driver.cc, which is dependent on whether running valgrind
   // or compiled for debug.
-  rewrite_driver()->TimedWait(kRewriteDelayMs);  // Allow rewrites to complete
+  rewrite_driver()->BlockingTimedWait(kRewriteDelayMs);  // complete rewrites
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(1, lru_cache()->num_inserts());  // finally we cache the output.

@@ -40,11 +40,10 @@ class MockScheduler : public Scheduler {
                 MockTimer* timer);
   virtual ~MockScheduler();
 
-  virtual void TimedWait(int64 timeout_ms);
+ protected:
+  virtual void AwaitWakeup(int64 wakeup_time_us);
 
  private:
-  void Wakeup();
-
   MockTimer* timer_;
   QueuedWorker* worker_;
 

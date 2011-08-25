@@ -473,4 +473,23 @@ TEST_F(ResponseHeadersTest, TestRemove) {
   response_headers_.Remove(HttpAttributes::kContentEncoding, "chunked");
   EXPECT_EQ(headers_removed, response_headers_.ToString());
 }
+
+TEST_F(ResponseHeadersTest, TestParseFirstLineOk) {
+  response_headers_.ParseFirstLine("HTTP/1.0 200 OK");
+  EXPECT_EQ(1, response_headers_.major_version());
+  EXPECT_EQ(0, response_headers_.minor_version());
+  EXPECT_EQ(200, response_headers_.status_code());
+  EXPECT_EQ(GoogleString("OK"),
+            GoogleString(response_headers_.reason_phrase()));
+}
+
+TEST_F(ResponseHeadersTest, TestParseFirstLinePermanentRedirect) {
+  response_headers_.ParseFirstLine("HTTP/1.1 301 Moved Permanently");
+  EXPECT_EQ(1, response_headers_.major_version());
+  EXPECT_EQ(1, response_headers_.minor_version());
+  EXPECT_EQ(301, response_headers_.status_code());
+  EXPECT_EQ(GoogleString("Moved Permanently"),
+            GoogleString(response_headers_.reason_phrase()));
+}
+
 }  // namespace net_instaweb

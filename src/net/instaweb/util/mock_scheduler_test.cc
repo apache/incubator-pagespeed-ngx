@@ -66,7 +66,7 @@ TEST_F(MockSchedulerTest, WakeupOnAdvancementOfSimulatedTime) {
   timer_.AddAlarm(1000 * kDelayMs, new Alarm());
   {
     ScopedMutex lock(scheduler_.mutex());
-    scheduler_.TimedWait(kWaitMs);
+    scheduler_.BlockingTimedWait(kWaitMs);
 
     // The idle-callback will get run after 50 years, but TimedWait
     // won't actually return until the full 100 years has passed.

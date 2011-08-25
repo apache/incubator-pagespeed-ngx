@@ -383,7 +383,7 @@ void ResponseHeaders::ParseFirstLine(const StringPiece& first_line) {
   // We reserve enough to avoid buffer overflow on sscanf command.
   GoogleString reason_phrase(first_line.size(), '\0');
   char* reason_phrase_cstr = &reason_phrase[0];
-  if (4 == sscanf(first_line.as_string().c_str(), "HTTP/%d.%d %d %s",
+  if (4 == sscanf(first_line.as_string().c_str(), "HTTP/%d.%d %d %[^\n\t]s",
                   &major_version, &minor_version, &status,
                   reason_phrase_cstr)) {
     set_first_line(major_version, minor_version, status, reason_phrase_cstr);

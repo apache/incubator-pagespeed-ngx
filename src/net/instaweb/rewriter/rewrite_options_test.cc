@@ -328,6 +328,43 @@ TEST_F(RewriteOptionsTest, MergeThresholdOverride) {
   EXPECT_EQ(6, options_.css_inline_max_bytes());
 }
 
+TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampDefault) {
+  RewriteOptions one, two;
+  options_.Merge(one, two);
+  EXPECT_EQ(RewriteOptions::kDefaultCacheInvalidationTimestamp,
+            options_.cache_invalidation_timestamp());
+}
+
+TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampOne) {
+  RewriteOptions one, two;
+  one.set_cache_invalidation_timestamp(11111111);
+  options_.Merge(one, two);
+  EXPECT_EQ(11111111, options_.cache_invalidation_timestamp());
+}
+
+TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampTwo) {
+  RewriteOptions one, two;
+  two.set_cache_invalidation_timestamp(22222222);
+  options_.Merge(one, two);
+  EXPECT_EQ(22222222, options_.cache_invalidation_timestamp());
+}
+
+TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampOneLarger) {
+  RewriteOptions one, two;
+  one.set_cache_invalidation_timestamp(33333333);
+  two.set_cache_invalidation_timestamp(22222222);
+  options_.Merge(one, two);
+  EXPECT_EQ(33333333, options_.cache_invalidation_timestamp());
+}
+
+TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampTwoLarger) {
+  RewriteOptions one, two;
+  one.set_cache_invalidation_timestamp(11111111);
+  two.set_cache_invalidation_timestamp(22222222);
+  options_.Merge(one, two);
+  EXPECT_EQ(22222222, options_.cache_invalidation_timestamp());
+}
+
 TEST_F(RewriteOptionsTest, Allow) {
   options_.Allow("*.css");
   EXPECT_TRUE(options_.IsAllowed("abcd.css"));

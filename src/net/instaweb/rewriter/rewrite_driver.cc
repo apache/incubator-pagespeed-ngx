@@ -225,7 +225,7 @@ void RewriteDriver::BoundedWaitForCompletionImpl(WaitMode wait_mode,
     // At this point there are pending_rewrites_ we may still render and
     // detached_rewrites_.size() rewrites which are going on in background.
     int64 start_ms = resource_manager_->timer()->NowMs();
-    scheduler_->TimedWait(timeout_ms > 0 ? timeout_ms : kTestTimeoutMs);
+    scheduler_->BlockingTimedWait(timeout_ms > 0 ? timeout_ms : kTestTimeoutMs);
     int64 end_ms = resource_manager_->timer()->NowMs();
 
     if (timeout_ms > 0) {
@@ -259,9 +259,9 @@ bool RewriteDriver::IsDone(WaitMode wait_mode, bool deadline_reached) {
   }
 }
 
-void RewriteDriver::TimedWait(int wait_time_ms) {
+void RewriteDriver::BlockingTimedWait(int wait_time_ms) {
   ScopedMutex lock(rewrite_mutex());
-  scheduler_->TimedWait(wait_time_ms);
+  scheduler_->BlockingTimedWait(wait_time_ms);
 }
 
 namespace {

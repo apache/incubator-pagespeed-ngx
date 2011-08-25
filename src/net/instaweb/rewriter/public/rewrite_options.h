@@ -99,6 +99,7 @@ class RewriteOptions {
   static const int64 kDefaultJsInlineMaxBytes;
   static const int64 kDefaultCssOutlineMinBytes;
   static const int64 kDefaultJsOutlineMinBytes;
+  static const int64 kDefaultCacheInvalidationTimestamp;
   static const GoogleString kDefaultBeaconUrl;
 
   // IE limits URL size overall to about 2k characters.  See
@@ -256,6 +257,15 @@ class RewriteOptions {
   }
   bool respect_vary() const { return respect_vary_.value(); }
 
+  // Cache invalidation timestamp is in milliseconds since 1970.
+  void set_cache_invalidation_timestamp(int64 x) {
+    modified_ = true;
+    cache_invalidation_timestamp_.set(x);
+  }
+  int64 cache_invalidation_timestamp() const {
+    return cache_invalidation_timestamp_.value();
+  }
+
   // Merge together two source RewriteOptions to populate this.  The order
   // is significant: the second will override the first.  One semantic
   // subject to interpretation is when a core-filter is disabled in the
@@ -392,6 +402,7 @@ class RewriteOptions {
   Option<bool> lowercase_html_names_;
   Option<bool> always_rewrite_css_;  // For tests/debugging.
   Option<bool> respect_vary_;
+  Option<int64> cache_invalidation_timestamp_;
   // Be sure to update Merge() if a new field is added.
 
   DomainLawyer domain_lawyer_;
