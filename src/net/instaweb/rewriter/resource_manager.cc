@@ -199,6 +199,7 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       lock_manager_(lock_manager),
       message_handler_(handler),
       thread_system_(thread_system),
+      trying_to_cleanup_rewrite_drivers_(false),
       factory_(factory),
       rewrite_drivers_mutex_(thread_system->NewMutex()),
       max_queued_workers_(kMaxRewriteWorkers),
@@ -691,9 +692,17 @@ RewriteDriver* ResourceManager::NewRewriteDriver() {
   return rewrite_driver;
 }
 
-void ResourceManager::ReleaseRewriteDriver(
-    RewriteDriver* rewrite_driver) {
+void ResourceManager::ReleaseRewriteDriver(RewriteDriver* rewrite_driver) {
   ScopedMutex lock(rewrite_drivers_mutex_.get());
+  ReleaseRewriteDriverImpl(rewrite_driver);
+}
+
+void ResourceManager::ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver) {
+  if (trying_to_cleanup_rewrite_drivers_) {
+    deferred_release_rewrite_drivers_.insert(rewrite_driver);
+    return;
+  }
+
   int count = active_rewrite_drivers_.erase(rewrite_driver);
   if (count != 1) {
     LOG(ERROR) << "ReleaseRewriteDriver called with driver not in active set.";
@@ -709,7 +718,47 @@ void ResourceManager::ReleaseRewriteDriver(
 }
 
 void ResourceManager::ShutDownWorkers() {
+  // Try to get any outstanding rewrites to complete, one-by-one.
+
+  {
+    ScopedMutex lock(rewrite_drivers_mutex_.get());
+    // Prevent any rewrite completions from directly deleting drivers or
+    // affecting active_rewrite_drivers_. We can now release the lock so
+    // that the rewrites can call ReleaseRewriteDriver. Note that this is
+    // making an assumption that we're not allocating new rewrite drivers
+    // during the shutdown.
+    trying_to_cleanup_rewrite_drivers_ = true;
+  }
+
+  if (!active_rewrite_drivers_.empty()) {
+    message_handler_->Message(kInfo, "%d rewrite(s) still ongoing at exit",
+                              static_cast<int>(active_rewrite_drivers_.size()));
+  }
+
+  for (RewriteDriverSet::iterator i = active_rewrite_drivers_.begin();
+       i != active_rewrite_drivers_.end(); ++i) {
+    // Warning: the driver may already have been mostly cleaned up except for
+    // not getting into ReleaseRewriteDriver before our lock acquisition at
+    // the start of this function; this code is relying on redundant
+    // BoundedWaitForCompletion and Cleanup being safe when
+    // trying_to_cleanup_rewrite_drivers_ is true.
+    // ResourceManagerTest.ShutDownAssumptions() exists to cover this scenario.
+    RewriteDriver* active = *i;
+    active->BoundedWaitForCompletion(Timer::kSecondMs);
+    active->Cleanup();
+  }
+
   ScopedMutex lock(rewrite_drivers_mutex_.get());
+
+  // Actually release anything that got deferred above.
+  trying_to_cleanup_rewrite_drivers_ = false;
+  for (RewriteDriverSet::iterator i = deferred_release_rewrite_drivers_.begin();
+       i != deferred_release_rewrite_drivers_.end(); ++i) {
+    ReleaseRewriteDriverImpl(*i);
+  }
+  deferred_release_rewrite_drivers_.clear();
+
+  // Now we can shut down the worker threads.
   for (int i = 0, n = rewrite_workers_.size(); i < n; ++i) {
     QueuedWorker* rewrite_worker = rewrite_workers_[i];
     rewrite_worker->ShutDown();

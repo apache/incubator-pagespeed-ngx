@@ -374,8 +374,14 @@ class ResourceManager {
   QueuedWorkerPool* html_workers() { return html_workers_.get(); }
 
  private:
+  friend class ResourceManagerTest;
+  typedef std::set<RewriteDriver*> RewriteDriverSet;
+
   // Must be called with rewrite_drivers_mutex_ held.
   void AssignRewriteWorker(RewriteDriver* rewrite_driver);
+
+  // Must be called with rewrite_drivers_mutex_ held.
+  void ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver);
 
   RewriteDriver* NewUnmanagedRewriteDriverHelper(bool assign_worker);
 
@@ -429,13 +435,25 @@ class ResourceManager {
   // RewriteDrivers that were previously allocated, but have
   // been released with ReleaseRewriteDriver, and are ready
   // for re-use with NewRewriteDriver.
+  // Protected by rewrite_drivers_mutex_.
   std::vector<RewriteDriver*> available_rewrite_drivers_;
 
   // RewriteDrivers that are currently in use.  This is retained
   // as a sanity check to make sure our system is coherent,
   // and to facilitate complete cleanup if a Shutdown occurs
   // while a request is in flight.
-  std::set<RewriteDriver*> active_rewrite_drivers_;
+  // Protected by rewrite_drivers_mutex_.
+  RewriteDriverSet active_rewrite_drivers_;
+
+  // If this value is true ReleaseRewriteDriver will just insert its
+  // argument into deferred_release_rewrite_drivers_ rather
+  // than try to delete or recycle it. This is used for shutdown
+  // so that the main thread does not have to worry about rewrite threads
+  // deleting RewriteDrivers or altering active_rewrite_drivers_.
+  //
+  // Protected by rewrite_drivers_mutex_.
+  bool trying_to_cleanup_rewrite_drivers_;
+  RewriteDriverSet deferred_release_rewrite_drivers_;
 
   // If set, a RewriteDriverFactory provides a mechanism to add
   // platform-specific filters to a RewriteDriver.

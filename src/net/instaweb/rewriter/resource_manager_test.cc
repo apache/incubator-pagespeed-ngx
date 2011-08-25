@@ -446,6 +446,13 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     return StrCat("http://", host, "/dir/123/", escaped_abs,
                   ".pagespeed.jm.0.js");
   }
+
+  // Accessor for ResourceManager field; also cleans up
+  // deferred_release_rewrite_drivers_.
+  void EnableRewriteDriverCleanupMode(bool s) {
+    resource_manager()->trying_to_cleanup_rewrite_drivers_ = s;
+    resource_manager()->deferred_release_rewrite_drivers_.clear();
+  }
 };
 
 TEST_F(ResourceManagerTest, TestNamed) {
@@ -948,5 +955,21 @@ TEST_F(ResourceManagerTest, TestMergeNonCachingResponseHeaders) {
   EXPECT_EQ("Extra Value", *v[0]);
 }
 
+TEST_F(ResourceManagerTest, ShutDownAssumptions) {
+  // The code in ResourceManager::ShutDownWorkers assumes that some potential
+  // interleaving of operations are safe. Since they are pretty unlikely
+  // in practice, this test exercises them.
+  RewriteDriver* driver = resource_manager()->NewRewriteDriver();
+  EnableRewriteDriverCleanupMode(true);
+  driver->WaitForCompletion();
+  driver->WaitForCompletion();
+  driver->Cleanup();
+  driver->Cleanup();
+  driver->WaitForCompletion();
+
+  EnableRewriteDriverCleanupMode(false);
+  // Should actually clean it up this time.
+  driver->Cleanup();
+}
 
 }  // namespace net_instaweb
