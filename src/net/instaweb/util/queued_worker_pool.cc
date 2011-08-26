@@ -18,7 +18,6 @@
 
 #include "net/instaweb/util/public/queued_worker_pool.h"
 
-#include <cstddef>                     // for NULL, size_t
 #include <deque>
 #include <set>
 #include <vector>
@@ -49,6 +48,13 @@ void QueuedWorkerPool::ShutDown() {
   // Set the shutdown flag so that no one adds any more groups.
   {
     ScopedMutex lock(mutex_.get());
+    if (shutdown_) {
+      // ShutDown might be called explicitly and also from the destructor.
+      DCHECK(all_sequences_.empty());
+      DCHECK(active_workers_.empty());
+      DCHECK(available_workers_.empty());
+      return;
+    }
     shutdown_ = true;
   }
 
@@ -60,6 +66,7 @@ void QueuedWorkerPool::ShutDown() {
     sequence->WaitForShutDown();
     delete sequence;
   }
+  all_sequences_.clear();
 
   // Wait for all workers to complete whatever they were doing.
   //
@@ -162,43 +169,42 @@ void QueuedWorkerPool::QueueSequence(Sequence* sequence) {
 }
 
 QueuedWorkerPool::Sequence* QueuedWorkerPool::NewSequence() {
+  ScopedMutex lock(mutex_.get());
   Sequence* sequence = NULL;
-  mutex_->Lock();
-  if (shutdown_) {
-    mutex_->Unlock();  // Don't add new sequences if shutting down.
-  } else if (free_sequences_.empty()) {
-    sequence = new Sequence(thread_system_, this);
-    all_sequences_.push_back(sequence);
-    mutex_->Unlock();
-  } else {
-    sequence = free_sequences_.back();
-    free_sequences_.pop_back();
-    mutex_->Unlock();
-    sequence->WaitForShutDown();
-    sequence->Reset();
+  if (!shutdown_) {
+    if (free_sequences_.empty()) {
+      sequence = new Sequence(thread_system_, this);
+      all_sequences_.push_back(sequence);
+    } else {
+      sequence = free_sequences_.back();
+      free_sequences_.pop_back();
+      sequence->Reset();
+    }
   }
   return sequence;
 }
 
 void QueuedWorkerPool::FreeSequence(Sequence* sequence) {
-  ScopedMutex lock(mutex_.get());
   // If the sequence is inactive, then we can immediately
   // recycle it.  But if the sequence was busy, then we must
   // wait until it completes its last function to recycle it.
   // This will happen in QueuedWorkerPool::Sequence::NextFunction,
   // which will then call SequenceNoLongerActive.
   if (sequence->InitiateShutDown()) {
+    ScopedMutex lock(mutex_.get());
     free_sequences_.push_back(sequence);
   }
 }
 
 void QueuedWorkerPool::SequenceNoLongerActive(Sequence* sequence) {
   ScopedMutex lock(mutex_.get());
-  free_sequences_.push_back(sequence);
+  if (!shutdown_) {
+    free_sequences_.push_back(sequence);
+  }
 }
 
 QueuedWorkerPool::Sequence::Sequence(ThreadSystem* thread_system,
-                               QueuedWorkerPool* pool)
+                                     QueuedWorkerPool* pool)
     : sequence_mutex_(thread_system->NewMutex()),
       pool_(pool),
       termination_condvar_(sequence_mutex_->NewCondvar()) {
@@ -218,6 +224,7 @@ QueuedWorkerPool::Sequence::~Sequence() {
 
 bool QueuedWorkerPool::Sequence::InitiateShutDown() {
   ScopedMutex lock(sequence_mutex_.get());
+  DCHECK(!shutdown_);
   shutdown_ = true;
   return !active_;
 }
@@ -225,6 +232,8 @@ bool QueuedWorkerPool::Sequence::InitiateShutDown() {
 void QueuedWorkerPool::Sequence::WaitForShutDown() {
   ScopedMutex lock(sequence_mutex_.get());
   shutdown_ = true;
+  pool_ = NULL;
+
   while (active_) {
     // We use a TimedWait rather than a Wait so that we don't deadlock if
     // active_ turns false after the above check and before the call to
@@ -240,6 +249,8 @@ void QueuedWorkerPool::Sequence::Add(Function* function) {
   {
     ScopedMutex lock(sequence_mutex_.get());
     if (shutdown_) {
+      LOG(WARNING) << "Adding function to sequence " << this
+                   << " after shutdown";
       delete function;
       return;
     }
@@ -253,15 +264,29 @@ void QueuedWorkerPool::Sequence::Add(Function* function) {
 
 Function* QueuedWorkerPool::Sequence::NextFunction() {
   Function* function = NULL;
-  bool release_sequence = false;
+  QueuedWorkerPool* release_to_pool = NULL;
   {
     ScopedMutex lock(sequence_mutex_.get());
     if (shutdown_) {
       if (active_) {
-        STLDeleteElements(&work_queue_);
+        // TODO(jmarantz): call Cancel method on all outstanding elements.
+        if (!work_queue_.empty()) {
+          DCHECK(false) << "Canceling " << work_queue_.size()
+                        << " functions on sequence Shutdown";
+          STLDeleteElements(&work_queue_);
+        }
         active_ = false;
+
+        // Note after the Signal(), the current sequence may be
+        // deleted if we are in the process of shutting down the
+        // entire pool, so no further access to member variables is
+        // allowed.  Hence we copied the pool_ variable to a local
+        // temp so we can return it.  Note also that if the pool is in
+        // the process of shutting down, then pool_ will be NULL so we
+        // won't bother to add the free_sequences_ list.  In any case
+        // this will be cleaned on shutdown via all_sequences_.
+        release_to_pool = pool_;
         termination_condvar_->Signal();
-        release_sequence = true;
       }
     } else if (work_queue_.empty()) {
       active_ = false;
@@ -271,8 +296,12 @@ Function* QueuedWorkerPool::Sequence::NextFunction() {
       active_ = true;
     }
   }
-  if (release_sequence) {
-    pool_->SequenceNoLongerActive(this);
+  if (release_to_pool != NULL) {
+    // If the entire pool is in the process of shutting down when
+    // NextFunction is called, we don't need to add this to the
+    // free list; the pool will directly delete all sequences from
+    // QueuedWorkerPool::ShutDown().
+    release_to_pool->SequenceNoLongerActive(this);
   }
 
   return function;
