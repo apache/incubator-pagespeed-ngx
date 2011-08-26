@@ -37,6 +37,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -55,7 +56,6 @@ class Function;
 class HtmlFilter;
 class HtmlWriterFilter;
 class MessageHandler;
-class QueuedWorker;
 class RequestHeaders;
 class ResourceContext;
 class ResponseHeaders;
@@ -473,8 +473,10 @@ class RewriteDriver : public HtmlParse {
   // Queues up a task to run on the Rewrite thread.
   void AddRewriteTask(Function* task);
 
-  void set_rewrite_worker(QueuedWorker* worker) { rewrite_worker_ = worker; }
-  QueuedWorker* rewrite_worker() { return rewrite_worker_; }
+  void set_rewrite_worker(QueuedWorkerPool::Sequence* x) {
+    rewrite_worker_ = x;
+  }
+  QueuedWorkerPool::Sequence* rewrite_worker() { return rewrite_worker_; }
 
   void set_scheduler(Scheduler* scheduler) { scheduler_.reset(scheduler); }
 
@@ -674,7 +676,7 @@ class RewriteDriver : public HtmlParse {
   // chain owned by HtmlParse.
   FilterVector filters_to_delete_;
 
-  QueuedWorker* rewrite_worker_;
+  QueuedWorkerPool::Sequence* rewrite_worker_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

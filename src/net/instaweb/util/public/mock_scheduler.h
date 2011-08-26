@@ -20,12 +20,12 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_MOCK_SCHEDULER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
 
 namespace net_instaweb {
 
 class MockTimer;
-class QueuedWorker;
 class ThreadSystem;
 
 // Implements a Scheduler where time is virtualized, and TimedWait
@@ -36,7 +36,7 @@ class ThreadSystem;
 // has passed.
 class MockScheduler : public Scheduler {
  public:
-  MockScheduler(ThreadSystem* thread_system, QueuedWorker* worker,
+  MockScheduler(ThreadSystem* thread_system, QueuedWorkerPool::Sequence* worker,
                 MockTimer* timer);
   virtual ~MockScheduler();
 
@@ -45,7 +45,7 @@ class MockScheduler : public Scheduler {
 
  private:
   MockTimer* timer_;
-  QueuedWorker* worker_;
+  QueuedWorkerPool::Sequence* worker_;
 
   DISALLOW_COPY_AND_ASSIGN(MockScheduler);
 };

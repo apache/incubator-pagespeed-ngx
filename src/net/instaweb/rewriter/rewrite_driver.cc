@@ -84,7 +84,6 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/queued_worker.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -162,6 +161,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
 }
 
 RewriteDriver::~RewriteDriver() {
+  resource_manager_->rewrite_workers()->FreeSequence(rewrite_worker_);
   STLDeleteElements(&filters_to_delete_);
   Clear();
 }
@@ -1394,7 +1394,7 @@ bool RewriteDriver::ShouldNotRewriteImages() const {
 }
 
 void RewriteDriver::AddRewriteTask(Function* task) {
-  rewrite_worker_->RunInWorkThread(task);
+  rewrite_worker_->Add(task);
 }
 
 }  // namespace net_instaweb

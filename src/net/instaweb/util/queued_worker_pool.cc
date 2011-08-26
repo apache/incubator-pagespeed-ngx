@@ -42,6 +42,14 @@ QueuedWorkerPool::QueuedWorkerPool(int max_workers, ThreadSystem* thread_system)
 
 QueuedWorkerPool::~QueuedWorkerPool() {
   ShutDown();
+
+  // Final shutdown (in case ShutDown was not called) and deletion of
+  // sequences.
+  for (int i = 0, n = all_sequences_.size(); i < n; ++i) {
+    Sequence* sequence = all_sequences_[i];
+    sequence->WaitForShutDown();
+    delete sequence;
+  }
 }
 
 void QueuedWorkerPool::ShutDown() {
@@ -50,7 +58,9 @@ void QueuedWorkerPool::ShutDown() {
     ScopedMutex lock(mutex_.get());
     if (shutdown_) {
       // ShutDown might be called explicitly and also from the destructor.
-      DCHECK(all_sequences_.empty());
+      // No workers should have magically re-appeared while in shutdown mode,
+      // although the all_sequences_ vector may be non-empty since we don't
+      // delete those till the pool itself is deleted.
       DCHECK(active_workers_.empty());
       DCHECK(available_workers_.empty());
       return;
@@ -64,9 +74,9 @@ void QueuedWorkerPool::ShutDown() {
   for (int i = 0, n = all_sequences_.size(); i < n; ++i) {
     Sequence* sequence = all_sequences_[i];
     sequence->WaitForShutDown();
-    delete sequence;
+    // Do not delete the sequence; just leave it in shutdown-mode so no
+    // further tasks will be started in the thread.
   }
-  all_sequences_.clear();
 
   // Wait for all workers to complete whatever they were doing.
   //
@@ -224,7 +234,6 @@ QueuedWorkerPool::Sequence::~Sequence() {
 
 bool QueuedWorkerPool::Sequence::InitiateShutDown() {
   ScopedMutex lock(sequence_mutex_.get());
-  DCHECK(!shutdown_);
   shutdown_ = true;
   return !active_;
 }
@@ -305,6 +314,11 @@ Function* QueuedWorkerPool::Sequence::NextFunction() {
   }
 
   return function;
+}
+
+bool QueuedWorkerPool::Sequence::IsBusy() {
+  ScopedMutex lock(sequence_mutex_.get());
+  return active_ || !work_queue_.empty();
 }
 
 }  // namespace net_instaweb

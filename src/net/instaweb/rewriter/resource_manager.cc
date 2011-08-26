@@ -45,7 +45,6 @@
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
-#include "net/instaweb/util/public/queued_worker.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scheduler.h"
@@ -202,11 +201,13 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       trying_to_cleanup_rewrite_drivers_(false),
       factory_(factory),
       rewrite_drivers_mutex_(thread_system->NewMutex()),
-      max_queued_workers_(kMaxRewriteWorkers),
-      queued_worker_index_(-1),
-      html_workers_(new QueuedWorkerPool(kMaxHtmlWorkers, thread_system)) {
+      html_workers_(new QueuedWorkerPool(kMaxHtmlWorkers, thread_system)),
+      rewrite_workers_(
+          new QueuedWorkerPool(kMaxRewriteWorkers, thread_system)) {
   // TODO(morlovich): Have RewriteDriverFactory help with setting up thread
   // pools so we can share them among multiple vhosts under Apache.
+
+  // TODO(jmarantz): hook up waveform to rewrite worker pool.
   rewrite_thread_queue_depth_.reset(new Waveform(thread_system, timer(), 200));
   decoding_driver_.reset(NewUnmanagedRewriteDriver());
 
@@ -226,6 +227,7 @@ ResourceManager::~ResourceManager() {
   DCHECK(active_rewrite_drivers_.empty()) << "leaked_rewrite_drivers";
   STLDeleteElements(&active_rewrite_drivers_);
   STLDeleteElements(&available_rewrite_drivers_);
+  decoding_driver_.reset(NULL);
 }
 
 void ResourceManager::Initialize(Statistics* statistics) {
@@ -645,14 +647,7 @@ RewriteDriver* ResourceManager::NewCustomRewriteDriver(
 }
 
 void ResourceManager::AssignRewriteWorker(RewriteDriver* rewrite_driver) {
-  if (rewrite_workers_.size() < static_cast<size_t>(max_queued_workers_)) {
-    QueuedWorker* worker = new QueuedWorker(thread_system_);
-    worker->set_queue_size_stat(rewrite_thread_queue_depth_.get());
-    worker->Start();
-    rewrite_workers_.push_back(worker);
-  }
-  queued_worker_index_ = (queued_worker_index_ + 1) % max_queued_workers_;
-  rewrite_driver->set_rewrite_worker(rewrite_workers_[queued_worker_index_]);
+  rewrite_driver->set_rewrite_worker(rewrite_workers_->NewSequence());
 }
 
 RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver() {
@@ -748,6 +743,13 @@ void ResourceManager::ShutDownWorkers() {
     active->Cleanup();
   }
 
+  // Shut down the worker threads first, to quiesce the system while
+  // leaving the QueuedWorkerPool & QueuedWorkerPool::Sequence objects
+  // live.  The QueuedWorkerPools will be deleted when the ResourceManager
+  // is destructed.
+  rewrite_workers_->ShutDown();
+  html_workers_->ShutDown();
+
   ScopedMutex lock(rewrite_drivers_mutex_.get());
 
   // Actually release anything that got deferred above.
@@ -757,15 +759,6 @@ void ResourceManager::ShutDownWorkers() {
     ReleaseRewriteDriverImpl(*i);
   }
   deferred_release_rewrite_drivers_.clear();
-
-  // Now we can shut down the worker threads.
-  for (int i = 0, n = rewrite_workers_.size(); i < n; ++i) {
-    QueuedWorker* rewrite_worker = rewrite_workers_[i];
-    rewrite_worker->ShutDown();
-    delete rewrite_worker;
-  }
-  rewrite_workers_.clear();
-  html_workers_->ShutDown();
 }
 
 }  // namespace net_instaweb

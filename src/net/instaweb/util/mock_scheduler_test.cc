@@ -21,7 +21,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/queued_worker.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -47,14 +47,14 @@ class MockSchedulerTest : public testing::Test {
   MockSchedulerTest()
       : timer_(0),
         thread_system_(ThreadSystem::CreateThreadSystem()),
-        worker_(thread_system_.get()),
-        scheduler_(thread_system_.get(), &worker_, &timer_) {
+        worker_pool_(1, thread_system_.get()),
+        scheduler_(thread_system_.get(), worker_pool_.NewSequence(), &timer_) {
   }
 
  protected:
   MockTimer timer_;
   scoped_ptr<ThreadSystem> thread_system_;
-  QueuedWorker worker_;
+  QueuedWorkerPool worker_pool_;
   MockScheduler scheduler_;
 
  private:
@@ -62,7 +62,6 @@ class MockSchedulerTest : public testing::Test {
 };
 
 TEST_F(MockSchedulerTest, WakeupOnAdvancementOfSimulatedTime) {
-  ASSERT_TRUE(worker_.Start());
   timer_.AddAlarm(1000 * kDelayMs, new Alarm());
   {
     ScopedMutex lock(scheduler_.mutex());

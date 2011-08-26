@@ -50,7 +50,6 @@ class GoogleUrl;
 class Hasher;
 class MessageHandler;
 class NamedLockManager;
-class QueuedWorker;
 class QueuedWorkerPool;
 class ResourceContext;
 class ResponseHeaders;
@@ -373,6 +372,9 @@ class ResourceManager {
   // Pool of worker-threads that can be used to handle html-parsing.
   QueuedWorkerPool* html_workers() { return html_workers_.get(); }
 
+  // Pool of worker-threads that can be used to handle resource rewriting.
+  QueuedWorkerPool* rewrite_workers() { return rewrite_workers_.get(); }
+
  private:
   friend class ResourceManagerTest;
   typedef std::set<RewriteDriver*> RewriteDriverSet;
@@ -475,20 +477,10 @@ class ResourceManager {
   // configuration must be done by .htaccess.
   scoped_ptr<RewriteDriver> decoding_driver_;
 
-  // These queued workers are assigned to RewriteDrivers in cyclic order.
-  // We are willing to have more than one RewriteDriver share a QueuedWorker
-  // but would like to distribute the load across threads.
-  //
-  // TODO(jmarantz): consider whether cyclic order can yield hot-spots and
-  // we should instead randomize or order based on queue depth.
-
-  // protected by rewrite_drivers_mutex_.
-  std::vector<QueuedWorker*> rewrite_workers_;
-  int max_queued_workers_;
-  int queued_worker_index_;
+  scoped_ptr<QueuedWorkerPool> html_workers_;
+  scoped_ptr<QueuedWorkerPool> rewrite_workers_;
 
   AtomicBool metadata_cache_readonly_;
-  scoped_ptr<QueuedWorkerPool> html_workers_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

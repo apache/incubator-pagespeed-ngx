@@ -22,13 +22,13 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/queued_worker.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
-MockScheduler::MockScheduler(ThreadSystem* thread_system, QueuedWorker* worker,
+MockScheduler::MockScheduler(ThreadSystem* thread_system,
+                             QueuedWorkerPool::Sequence* worker,
                              MockTimer* timer)
     : Scheduler(thread_system, timer),
       timer_(timer),
@@ -49,7 +49,7 @@ void MockScheduler::AwaitWakeup(int64 wakeup_time_us) {
   // test, but to be executed in the rewrite_thread, removing a variety of
   // confusing race-conditions.
   int64 now_us = timer_->NowUs();
-  worker_->RunInWorkThread(new MemberFunction1<MockTimer, int64>(
+  worker_->Add(new MemberFunction1<MockTimer, int64>(
       &MockTimer::AdvanceUs, timer_, wakeup_time_us - now_us));
 
   // It's possible that the worker thread may complete the timer callback and

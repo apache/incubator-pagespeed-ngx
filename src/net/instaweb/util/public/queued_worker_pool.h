@@ -25,6 +25,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_QUEUED_WORKER_POOL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_QUEUED_WORKER_POOL_H_
 
+#include <cstddef>  // for size_t
 #include <deque>
 #include <set>
 #include <vector>
@@ -62,6 +63,9 @@ class QueuedWorkerPool {
     // Ownership of 'function' is transferred to the Sequence, which deletes
     // it after execution or upon cancellation due to shutdown.
     void Add(Function* function);
+
+    // Determines whether the Sequence is currently running, or waiting to run.
+    bool IsBusy();
 
    private:
     // Construct using QueuedWorkerPool::NewSequence().
@@ -111,7 +115,8 @@ class QueuedWorkerPool {
   // for the Sequence to finish.
   void FreeSequence(Sequence* sequence);
 
-  // Shuts down all Sequences and Worker threads.
+  // Shuts down all Sequences and Worker threads, but does not delete the
+  // sequences.  The sequences will be deleted when the pool is destructed.
   void ShutDown();
 
  private:
