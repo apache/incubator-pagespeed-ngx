@@ -204,11 +204,16 @@ echo Checking for absense of Expires
 echo $HTML_HEADERS | grep -qi 'Expires'
 check [ $? != 0 ]
 
+# This tests whether fetching "/" gets you "/index.html".  With async
+# rewriting, it is not deterministic whether inline css gets
+# rewritten.  That's not what this is trying to test, so we use
+# ?ModPagespeed=off.
 echo TEST: directory is mapped to index.html.
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
-check "$WGET -q $EXAMPLE_ROOT/" -O $OUTDIR/mod_pagespeed_example
-check "$WGET -q $EXAMPLE_ROOT/index.html" -O $OUTDIR/index.html
+check "$WGET -q $EXAMPLE_ROOT/?ModPagespeed=off" \
+    -O $OUTDIR/mod_pagespeed_example
+check "$WGET -q $EXAMPLE_ROOT/index.html?ModPagespeed=off" -O $OUTDIR/index.html
 check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
 echo TEST: compression is enabled for HTML.
