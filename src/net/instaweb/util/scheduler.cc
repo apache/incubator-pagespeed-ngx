@@ -23,7 +23,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/atomic_bool.h"
-#include "net/instaweb/util/public/basictypes.h"        // for int64
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/timer.h"
@@ -35,22 +35,73 @@ namespace {
 const int kIndexNotSet = 0;
 const int kMsUs = Timer::kSecondUs / Timer::kSecondMs;
 
+}  // namespace
+
+// Basic Alarm type (forward declared in the .h file).  Note that Alarms are
+// self-cleaning; it is not valid to make use of an Alarm* after Run() or
+// Cancel() has been called.  See note below for AddAlarm.  Note also that
+// Alarms hold the scheduler lock when they are invoked; the alarm drops the
+// lock before invoking its embedded callback and re-takes it afterwards if that
+// is necessary.
+class Scheduler::Alarm : public Function {
+ public:
+  // Compare two alarms, based on wakeup time and insertion order.  Result
+  // like strcmp (<0 for this < that, >0 for this > that), based on wakeup
+  // time and index.
+  int Compare(const Alarm* other) const {
+    int cmp = 0;
+    if (this != other) {
+      if (wakeup_time_us_ < other->wakeup_time_us_) {
+        cmp = -1;
+      } else if (wakeup_time_us_ > other->wakeup_time_us_) {
+        cmp = 1;
+      } else if (index_ < other->index_) {
+        cmp = -1;
+      } else {
+        DCHECK(index_ > other->index_);
+        cmp = 1;
+      }
+    }
+    return cmp;
+  }
+
+ protected:
+  Alarm() : wakeup_time_us_(0),
+            index_(kIndexNotSet) { }
+  virtual ~Alarm() { }
+
+ private:
+  friend class Scheduler;
+  int64 wakeup_time_us_;
+  uint32 index_;  // Set by scheduler to disambiguate equal wakeup times.
+  DISALLOW_COPY_AND_ASSIGN(Alarm);
+};
+
+namespace {
+
 // private class to encapsulate a function being
 // scheduled as an alarm.  Owns passed-in function.
 class FunctionAlarm : public Scheduler::Alarm {
  public:
-  explicit FunctionAlarm(Function* function)
-      : function_(function) { }
+  explicit FunctionAlarm(Function* function, Scheduler* scheduler)
+      : scheduler_(scheduler), function_(function) { }
   virtual ~FunctionAlarm() { }
   virtual void Run() {
-    function_->Run();
-    delete this;
+    DropMutexActAndCleanup(&Function::Run);
   }
   virtual void Cancel() {
-    function_->Cancel();
-    delete this;
+    DropMutexActAndCleanup(&Function::Cancel);
   }
  private:
+  typedef void (Function::*FunctionAction)();
+  void DropMutexActAndCleanup(FunctionAction act) {
+    AbstractMutex* mutex = scheduler_->mutex();  // Save across delete.
+    mutex->Unlock();
+    ((function_.get())->*(act))();
+    delete this;
+    mutex->Lock();
+  }
+  Scheduler* scheduler_;
   scoped_ptr<Function> function_;
   DISALLOW_COPY_AND_ASSIGN(FunctionAlarm);
 };
@@ -108,10 +159,7 @@ class Scheduler::CondVarCallbackTimeout : public Scheduler::Alarm {
     Cancel();
   }
   virtual void Cancel() {
-    {
-      ScopedMutex lock(scheduler_->mutex());
-      callback_->Run();
-    }
+    callback_->Run();
     delete this;
   }
  private:
@@ -119,6 +167,13 @@ class Scheduler::CondVarCallbackTimeout : public Scheduler::Alarm {
   Scheduler* scheduler_;
   DISALLOW_COPY_AND_ASSIGN(CondVarCallbackTimeout);
 };
+
+// Comparison on Alarms.
+bool Scheduler::CompareAlarms::operator()(const Alarm* a,
+                                          const Alarm* b) const {
+  return a->Compare(b) < 0;
+}
+
 
 // This class implements a wrapper around a CondvarCapableMutex to permit
 // checking of lock state on entry and exit.
@@ -133,7 +188,7 @@ class Scheduler::Mutex : public AbstractMutex {
   }
 
   void EnsureLocked() {
-    DCHECK(locked_.value());
+    DCHECK(locked_.value()) << " lock should have been held.";
   }
 
   void DropLockControl() {
@@ -142,7 +197,7 @@ class Scheduler::Mutex : public AbstractMutex {
   }
 
   void TakeLockControl() {
-    DCHECK(!locked_.value());
+    DCHECK(!locked_.value()) << " lock should have been available.";
     locked_.set_value(true);
   }
 
@@ -161,29 +216,6 @@ class Scheduler::Mutex : public AbstractMutex {
   AtomicBool locked_;
   DISALLOW_COPY_AND_ASSIGN(Mutex);
 };
-
-Scheduler::Alarm::Alarm()
-    : wakeup_time_us_(0),
-      index_(kIndexNotSet) { }
-
-Scheduler::Alarm::~Alarm() { }
-
-int Scheduler::Alarm::Compare(const Alarm* other) const {
-  int cmp = 0;
-  if (this != other) {
-    if (wakeup_time_us_ < other->wakeup_time_us_) {
-      cmp = -1;
-    } else if (wakeup_time_us_ > other->wakeup_time_us_) {
-      cmp = 1;
-    } else if (index_ < other->index_) {
-      cmp = -1;
-    } else {
-      DCHECK(index_ > other->index_);
-      cmp = 1;
-    }
-  }
-  return cmp;
-}
 
 Scheduler::Scheduler(ThreadSystem* thread_system, Timer* timer)
     : thread_system_(thread_system),
@@ -237,23 +269,12 @@ void Scheduler::TimedWait(int64 timeout_ms, Function* callback) {
 }
 
 void Scheduler::CancelWaiting(Alarm* alarm) {
-  // Called to clean up a [Blocking]TimedWait that timed out.  This wins races
-  // with a pending Signal, but the erase operation below might find the alarm
-  // already gone.  This happens on timeout due to this sequence of events:
-  //   ... mutex() held when looking for timeouts...
-  //   Remove alarm from outstanding_alarms_ in preparation to run it
-  //   Unlock mutex()
-  //    call Run()
-  //     ... signal operation can run between unlock and lock
-  //     ... it will find alarm missing from outstanding_alarms_ and won't
-  //     signal it.
-  //     ... but it will remove it from waiting_alarms_.
-  //     Lock mutex()
-  //     CancelWaiting()  [ removed from waiting_alarms_, but that's OK. ]
-  // Permitting that harmless race lets us use successful removal from
-  // outstanding_alarms_ as the source of truth about whether timeout will occur
-  // or not.
-  ScopedMutex lock(mutex_.get());
+  // Called to clean up a [Blocking]TimedWait that timed out.  There used to be
+  // a benign race here that meant alarm had been erased from waiting_alarms_ by
+  // a pending Signal operation.  Tighter locking on Alarm objects should have
+  // eliminated this hole, but we continue to use presence / absence in
+  // outstanding_alarms_ to resolve signal/cancel races.
+  mutex_->EnsureLocked();
   waiting_alarms_.erase(alarm);
 }
 
@@ -261,37 +282,13 @@ void Scheduler::Signal() {
   mutex_->EnsureLocked();
   ++signal_count_;
   if (!waiting_alarms_.empty()) {
-    AlarmSet alarms_to_cancel;
-    // Empty the waiting_alarms_ set, calling the Cancel() callback for the ones
-    // that are still waiting to time out in the outstanding_alarms_ set.  We
-    // may drop the lock while running the Cancel() callback, so in order to
-    // guarantee atomicity we first remove all the waiting alarms and *then* we
-    // invoke their callbacks.  Only if we successfully remove them from
-    // outstanding_alarms_ are we responsible for calling Cancel().
     for (AlarmSet::iterator i = waiting_alarms_.begin();
          i != waiting_alarms_.end(); ++i) {
-      Alarm* alarm = *i;
-      if (outstanding_alarms_.erase(alarm) != 0) {
-        alarms_to_cancel.insert(alarm);
-      }
+      // The Cancel() methods for waiting_alarms_ retain the scheduler mutex.
+      CancelAlarm(*i);
     }
     waiting_alarms_.clear();
     condvar_->Broadcast();
-    // TODO(jmaessen): This looks like it may be the wrong locking convention
-    // here.  The question is this: should we require lock hold for Signal?  If
-    // so, is it OK to relinquish the lock within Signal?  For a generic Condvar
-    // it is not, but we're not actually cooking up a generic condvar here.
-    // That said, it might be simplest to hold the lock across the callback.
-    // Can we hold the lock for all alarm operations, requiring them never to
-    // drop it, or is that too pricey?  That would be the simplest invariant to
-    // enforce.
-    mutex()->Unlock();
-    for (AlarmSet::iterator i = alarms_to_cancel.begin();
-         i != alarms_to_cancel.end(); ++i) {
-      Alarm* alarm = *i;
-      alarm->Cancel();
-    }
-    mutex()->Lock();
   }
   RunAlarms(NULL);
 }
@@ -311,34 +308,24 @@ void Scheduler::AddAlarmMutexHeld(int64 wakeup_time_us, Alarm* alarm) {
   outstanding_alarms_.insert(alarm);
 }
 
-void Scheduler::AddAlarm(int64 wakeup_time_us, Alarm* alarm) {
+Scheduler::Alarm* Scheduler::AddAlarm(int64 wakeup_time_us,
+                                      Function* callback) {
+  Alarm* result = new FunctionAlarm(callback, this);
   ScopedMutex lock(mutex_.get());
-  AddAlarmMutexHeld(wakeup_time_us, alarm);
+  AddAlarmMutexHeld(wakeup_time_us, result);
   RunAlarms(NULL);
-}
-
-Scheduler::Alarm* Scheduler::AddAlarmFunction(int64 wakeup_time_us,
-                                              Function* callback) {
-  Alarm* result = new FunctionAlarm(callback);
-  AddAlarm(wakeup_time_us, result);
   return result;
 }
 
-bool Scheduler::CancelAlarmMutexHeld(Alarm* alarm) {
+bool Scheduler::CancelAlarm(Alarm* alarm) {
   mutex_->EnsureLocked();
   if (outstanding_alarms_.erase(alarm) != 0) {
-    mutex_->Unlock();
+    // Note: the following call may drop and re-lock the scheduler mutex.
     alarm->Cancel();
-    mutex_->Lock();
     return true;
   } else {
     return false;
   }
-}
-
-bool Scheduler::CancelAlarm(Alarm* alarm) {
-  ScopedMutex lock(mutex_.get());
-  return CancelAlarmMutexHeld(alarm);
 }
 
 // Run any alarms that have reached their deadline.  Requires that we hold
@@ -363,9 +350,8 @@ int64 Scheduler::RunAlarms(bool* ran_alarms) {
     if (ran_alarms != NULL) {
       *ran_alarms = true;
     }
-    mutex_->Unlock();                     // Don't hold the lock when running.
+    // Note that the following call may drop and re-lock the scheduler lock.
     first_alarm->Run();
-    mutex_->Lock();                       // Continue looking for expired work.
   }
   return 0;
 }

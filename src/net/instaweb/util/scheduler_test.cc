@@ -35,27 +35,17 @@ const int64 kYearUs = Timer::kYearMs * kMsUs;
 // Many tests cribbed from mock_timer_test, only without the mockery.  This
 // actually restricts the timing dependencies we can detect, though not in a
 // terrible way.
-
-class CountAlarm : public Scheduler::Alarm {
- public:
-  explicit CountAlarm(int* variable) : variable_(variable) { }
-  virtual void Run() {
-    ++*variable_;
-  }
-  virtual void Cancel() {
-    *variable_ -= 100;
-  }
- private:
-  int *variable_;
-  DISALLOW_COPY_AND_ASSIGN(CountAlarm);
-};
-
 class SchedulerTest : public WorkerTestBase {
  protected:
   SchedulerTest()
       : thread_system_(ThreadSystem::CreateThreadSystem()),
         timer_(),
         scheduler_(thread_system_.get(), &timer_) { }
+
+  int Compare(const Scheduler::Alarm* a, const Scheduler::Alarm* b) const {
+    Scheduler::CompareAlarms comparator;
+    return comparator(a, b);
+  }
 
   scoped_ptr<ThreadSystem> thread_system_;
   GoogleTimer timer_;
@@ -67,28 +57,31 @@ class SchedulerTest : public WorkerTestBase {
 TEST_F(SchedulerTest, AlarmsGetRun) {
   int64 start_us = timer_.NowUs();
   int counter = 0;
-  CountAlarm alarm1(&counter);
-  CountAlarm alarm2(&counter);
-  CountAlarm alarm3(&counter);
-  scheduler_.AddAlarm(start_us + 2 * kMsUs, &alarm1);
-  scheduler_.AddAlarm(start_us + 4 * kMsUs, &alarm2);
-  scheduler_.AddAlarm(start_us + 3 * kMsUs, &alarm3);
-  EXPECT_EQ(0, alarm1.Compare(&alarm1));
-  EXPECT_EQ(0, alarm2.Compare(&alarm2));
-  EXPECT_EQ(0, alarm3.Compare(&alarm3));
-  EXPECT_GT(0, alarm1.Compare(&alarm2));
-  EXPECT_GT(0, alarm1.Compare(&alarm3));
-  EXPECT_LT(0, alarm2.Compare(&alarm1));
-  EXPECT_LT(0, alarm2.Compare(&alarm3));
-  EXPECT_LT(0, alarm3.Compare(&alarm1));
-  EXPECT_GT(0, alarm3.Compare(&alarm2));
+  // Note that we give this test extra time (50ms) to start up so that
+  // we don't attempt to compare already-run (and thus deleted) alarms
+  // when running under valgrind.
+  Scheduler::Alarm* alarm1 =
+      scheduler_.AddAlarm(start_us + 52 * kMsUs, new CountFunction(&counter));
+  Scheduler::Alarm* alarm2 =
+      scheduler_.AddAlarm(start_us + 54 * kMsUs, new CountFunction(&counter));
+  Scheduler::Alarm* alarm3 =
+      scheduler_.AddAlarm(start_us + 53 * kMsUs, new CountFunction(&counter));
+  EXPECT_FALSE(Compare(alarm1, alarm1));
+  EXPECT_FALSE(Compare(alarm2, alarm2));
+  EXPECT_FALSE(Compare(alarm3, alarm3));
+  EXPECT_TRUE(Compare(alarm1, alarm2));
+  EXPECT_TRUE(Compare(alarm1, alarm3));
+  EXPECT_FALSE(Compare(alarm2, alarm1));
+  EXPECT_FALSE(Compare(alarm2, alarm3));
+  EXPECT_FALSE(Compare(alarm3, alarm1));
+  EXPECT_TRUE(Compare(alarm3, alarm2));
   {
     ScopedMutex lock(scheduler_.mutex());
-    scheduler_.BlockingTimedWait(5);  // Never signaled, should time out.
+    scheduler_.BlockingTimedWait(55);  // Never signaled, should time out.
   }
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(3, counter);
-  EXPECT_LT(start_us + 5 * kMsUs, end_us);
+  EXPECT_LT(start_us + 55 * kMsUs, end_us);
   // Note: we assume this will terminate within 1 min., and will have hung
   // noticeably if it didn't.
   EXPECT_GT(start_us + kMinuteUs, end_us);
@@ -97,12 +90,9 @@ TEST_F(SchedulerTest, AlarmsGetRun) {
 TEST_F(SchedulerTest, MidpointBlock) {
   int64 start_us = timer_.NowUs();
   int counter = 0;
-  CountAlarm alarm1(&counter);
-  CountAlarm alarm2(&counter);
-  CountAlarm alarm3(&counter);
-  scheduler_.AddAlarm(start_us + 2 * kMsUs, &alarm1);
-  scheduler_.AddAlarm(start_us + 6 * kMsUs, &alarm2);
-  scheduler_.AddAlarm(start_us + 3 * kMsUs, &alarm3);
+  scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us + 6 * kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us + 3 * kMsUs, new CountFunction(&counter));
   {
     ScopedMutex lock(scheduler_.mutex());
     scheduler_.BlockingTimedWait(4);  // Never signaled, should time out.
@@ -122,23 +112,27 @@ TEST_F(SchedulerTest, MidpointBlock) {
 TEST_F(SchedulerTest, AlarmInPastRuns) {
   int64 start_us = timer_.NowUs();
   int counter = 0;
-  CountAlarm alarm1(&counter);
-  CountAlarm alarm2(&counter);
-  scheduler_.AddAlarm(start_us - 2 * kMsUs, &alarm1);  // Should run
-  scheduler_.AddAlarm(start_us + kMinuteUs, &alarm2);  // Should not
+  scheduler_.AddAlarm(start_us - 2 * kMsUs, new CountFunction(&counter));
+  Scheduler::Alarm* alarm2 =
+      scheduler_.AddAlarm(start_us + kMinuteUs, new CountFunction(&counter));
   scheduler_.ProcessAlarms(0);  // Don't block!
   EXPECT_EQ(1, counter);
+  {
+    ScopedMutex lock(scheduler_.mutex());
+    scheduler_.CancelAlarm(alarm2);
+  }
+  int64 end_us = timer_.NowUs();
+  EXPECT_LT(start_us, end_us);
+  EXPECT_GT(start_us + kMinuteUs, end_us);
 };
 
 TEST_F(SchedulerTest, MidpointCancellation) {
   int64 start_us = timer_.NowUs();
   int counter = 0;
-  CountAlarm alarm1(&counter);
-  CountAlarm alarm2(&counter);
-  CountAlarm alarm3(&counter);
-  scheduler_.AddAlarm(start_us + 3 * kMsUs, &alarm1);
-  scheduler_.AddAlarm(start_us + 2 * kMsUs, &alarm2);
-  scheduler_.AddAlarm(start_us + kMinuteUs, &alarm3);
+  scheduler_.AddAlarm(start_us + 3 * kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
+  Scheduler::Alarm* alarm3 =
+      scheduler_.AddAlarm(start_us + kMinuteUs, new CountFunction(&counter));
   {
     ScopedMutex lock(scheduler_.mutex());
     scheduler_.BlockingTimedWait(4);  // Never signaled, should time out.
@@ -146,9 +140,11 @@ TEST_F(SchedulerTest, MidpointCancellation) {
   int64 mid_us = timer_.NowUs();
   EXPECT_LT(start_us + 4 * kMsUs, mid_us);
   EXPECT_EQ(2, counter);
-  scheduler_.CancelAlarm(&alarm1);
-  scheduler_.CancelAlarm(&alarm2);
-  scheduler_.CancelAlarm(&alarm3);
+  // No longer safe to cancel first two alarms.
+  {
+    ScopedMutex lock(scheduler_.mutex());
+    scheduler_.CancelAlarm(alarm3);
+  }
   scheduler_.ProcessAlarms(kMinuteUs);
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(-98, counter);
@@ -161,73 +157,13 @@ TEST_F(SchedulerTest, MidpointCancellation) {
 TEST_F(SchedulerTest, SimultaneousAlarms) {
   int64 start_us = timer_.NowUs();
   int counter = 0;
-  CountAlarm alarm1(&counter);
-  CountAlarm alarm2(&counter);
-  CountAlarm alarm3(&counter);
-  scheduler_.AddAlarm(start_us + 4 * kMsUs, &alarm1);
-  scheduler_.AddAlarm(start_us + 4 * kMsUs, &alarm2);
-  scheduler_.AddAlarm(start_us + 4 * kMsUs, &alarm3);
+  scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
   scheduler_.ProcessAlarms(kMinuteUs);
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(3, counter);
-  EXPECT_LT(start_us + 4 * kMsUs, end_us);
-  // Note: we assume this will terminate within 1 min., and will have hung
-  // noticeably if it didn't.
-  EXPECT_GT(start_us + kMinuteUs, end_us);
-};
-
-TEST_F(SchedulerTest, FunctionMidpointBlock) {
-  int64 start_us = timer_.NowUs();
-  int counter = 0;
-  scheduler_.AddAlarmFunction(start_us + 2 * kMsUs,
-                              new CountFunction(&counter));
-  scheduler_.AddAlarmFunction(start_us + 6 * kMsUs,
-                              new CountFunction(&counter));
-  scheduler_.AddAlarmFunction(start_us + 3 * kMsUs,
-                              new CountFunction(&counter));
-  {
-    ScopedMutex lock(scheduler_.mutex());
-    scheduler_.BlockingTimedWait(4);  // Never signaled, should time out.
-  }
-  int64 mid_us = timer_.NowUs();
-  EXPECT_LT(start_us + 4 * kMsUs, mid_us);
-  EXPECT_LE(2, counter);
-  scheduler_.ProcessAlarms(kMinuteUs);
-  int64 end_us = timer_.NowUs();
-  EXPECT_EQ(3, counter);
-  EXPECT_LT(start_us + 6 * kMsUs, end_us);
-  // Note: we assume this will terminate within 1 min., and will have hung
-  // noticeably if it didn't.
-  EXPECT_GT(start_us + kMinuteUs, end_us);
-};
-
-TEST_F(SchedulerTest, FunctionMidpointCancellation) {
-  int64 start_us = timer_.NowUs();
-  int counter = 0;
-  scheduler_.AddAlarmFunction(
-      start_us + 3 * kMsUs, new CountFunction(&counter));
-  scheduler_.AddAlarmFunction(
-      start_us + 2 * kMsUs, new CountFunction(&counter));
-  Scheduler::Alarm* alarm3 = scheduler_.AddAlarmFunction(
-      start_us + kMinuteUs, new CountFunction(&counter));
-  {
-    ScopedMutex lock(scheduler_.mutex());
-    scheduler_.BlockingTimedWait(4);  // Never signaled, should time out.
-  }
-  int64 mid_us = timer_.NowUs();
-  EXPECT_LT(start_us + 4 * kMsUs, mid_us);
-  EXPECT_EQ(2, counter);
-  // This provides a nice view of the distinction between an Alarm and an
-  // ordinary Function used as an alarm.  If we provide our own Alarm, we can
-  // manage our own memory, and thus handle cancellation after invocation.
-  // Here we can't do that, as the alarm is deleted.
-  // scheduler_.CancelAlarm(alarm1);  // Can't safely cancel, it's deleted!
-  // scheduler_.CancelAlarm(alarm2);  // Can't safely cancel, it's deleted!
-  scheduler_.CancelAlarm(alarm3);
-  scheduler_.ProcessAlarms(kMinuteUs);
-  int64 end_us = timer_.NowUs();
-  EXPECT_EQ(2, counter);
-  EXPECT_LT(start_us + 3 * kMsUs, end_us);
+  EXPECT_LT(start_us + 2 * kMsUs, end_us);
   // Note: we assume this will terminate within 1 min., and will have hung
   // noticeably if it didn't.
   EXPECT_GT(start_us + kMinuteUs, end_us);

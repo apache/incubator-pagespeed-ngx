@@ -21,12 +21,12 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
 class AbstractMutex;
+class Function;
 class Timer;
 
 // Implements a simple scheduler that allows a thread to block until either time
@@ -42,41 +42,13 @@ class Scheduler {
  public:
   // A callback for a scheduler alarm, with an associated wakeup time (absolute
   // time after which the callback will be invoked with Run() by the scheduler).
-  // This callback should do short-running, non-blocking work that can run in
-  // any thread at all.  To kick off longer-lived work, the Alarm should enqueue
-  // a task in the worker thread (or some other particular place).  If the alarm
-  // is canceled, the Cancel() method is invoked.  Exactly one of the Run() and
-  // Cancel() methods will be invoked by the scheduler.  Alarms should be
-  // self-cleaning.  This means the Run() path must delete the alarm, and the
-  // Cancel() path may either delete the alarm, or assume the caller of
-  // CancelAlarm(...) is taking ownership.
-  //
-  // Alarms are self-cleaning because they can represent (for example) an
-  // outstanding fetch whose result will be retained after timing out, or whose
-  // state must be accessible after successful cancellation.
-  class Alarm : public Function {
-   public:
-    Alarm();
-    virtual ~Alarm();
-
-    // Compare two alarms, based on wakeup time and insertion order.  Result
-    // like strcmp (<0 for this < that, >0 for this > that), based on wakeup
-    // time and index.
-    int Compare(const Alarm* that) const;
-
-   private:
-    friend class Scheduler;
-    int64 wakeup_time_us_;
-    uint32 index_;  // Set by scheduler to disambiguate equal wakeup times.
-    DISALLOW_COPY_AND_ASSIGN(Alarm);
-  };
+  // Alarm should be treated as an opaque type.
+  class Alarm;
 
   // Sorting comparator for Alarms, so that they can be retrieved in time
   // order.  For use by std::set, thus public.
   struct CompareAlarms {
-    bool operator()(const Alarm* a, const Alarm* b) const {
-      return a->Compare(b) < 0;
-    }
+    bool operator()(const Alarm* a, const Alarm* b) const;
   };
 
   Scheduler(ThreadSystem* thread_system, Timer* timer);
@@ -110,27 +82,23 @@ class Scheduler {
   // semantics.
   void Signal();
 
-  // Alarms.  The following three methods provide a mechanism for scheduling
+  // Alarms.  The following two methods provide a mechanism for scheduling
   // alarm tasks, each run at a particular time.
-
-  // Schedules an alarm for absolute time wakeup_time_us.  Performs outstanding
-  // work.  The alarm is responsible for cleaning itself up on invocation.  This
-  // is exposed to handle alarm use cases where the alarm object contains data
-  // that is needed by a caller that cancels the alarm.
-  void AddAlarm(int64 wakeup_time_us, Alarm* alarm);
 
   // Schedules an alarm for absolute time wakeup_time_us, using the passed-in
   // Function* as the alarm callback.  Returns the created Alarm.  Performs
   // outstanding work.  The returned alarm will own the callback and will clean
-  // itself and the callback when it is run or cancelled.
-  Alarm* AddAlarmFunction(int64 wakeup_time_us, Function* callback);
+  // itself and the callback when it is run or cancelled.  NOTE in particular
+  // that calls to CancelAlarm must ensure the callback has not been invoked
+  // yet.  This is why the scheduler mutex must be held for CancelAlarm.
+  Alarm* AddAlarm(int64 wakeup_time_us, Function* callback);
 
   // Cancels an alarm, calling the Cancel() method and deleting the alarm
-  // object.  Doesn't perform outstanding work.  Returns true if the
-  // cancellation occurred.  If false is returned, the alarm is already being
-  // run / has been run in another thread; if the alarm deletes itself on
-  // Cancel(), it may no longer safely be used.  TODO(jmaessen): No callers yet.
-  // Lock required?
+  // object.  Scheduler mutex must be held before call to ensure that alarm is
+  // not called back before cancellation occurs.  Doesn't perform outstanding
+  // work.  Returns true if the cancellation occurred.  If false is returned,
+  // the alarm is already being run / has been run in another thread; if the
+  // alarm deletes itself on Cancel(), it may no longer safely be used.
   bool CancelAlarm(Alarm* alarm);
 
   // Finally, ProcessAlarms provides a mechanism to ensure that pending alarms
@@ -161,7 +129,6 @@ class Scheduler {
 
   int64 RunAlarms(bool* ran_alarms);
   void AddAlarmMutexHeld(int64 wakeup_time_us, Alarm* alarm);
-  bool CancelAlarmMutexHeld(Alarm* alarm);
   void CancelWaiting(Alarm* alarm);
 
   ThreadSystem* thread_system_;
