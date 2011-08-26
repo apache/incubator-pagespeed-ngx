@@ -59,13 +59,15 @@ void MockScheduler::AwaitWakeup(int64 wakeup_time_us) {
   mutex()->Unlock();
 
   // TODO(jmarantz): this code is very squirrely: we are spinning on
-  // worker-IsBusy, rather than spinning on whether we've woken up.
+  // AreBusy, rather than spinning on whether we've woken up.
   // After the revolution, we'll use callbacks rather than TimedWait
   // and avoid this.  But it works for now.
-  while (worker_->IsBusy()) {
+  QueuedWorkerPool::SequenceVector sequences;
+  sequences.push_back(worker_);
+  while (QueuedWorkerPool::AreBusy(sequences)) {
     // Do the condition-variable-wait for only 100 ms, to avoid deadlocking if
-    // Wakeup() gets called after the IsBusy() call, but before the TimedWait()
-    // call.  The 100 ms sleep means we just loop back to "IsBusy()" and fall
+    // Wakeup() gets called after the AreBusy() call, but before the TimedWait()
+    // call.  The 100 ms sleep means we just loop back to "AreBusy()" and fall
     // through.  We seem to hit this race condition a few times each time we run
     // the tests; crank up the delay to 10s or 30s and it'll be obvious.
     mutex()->Lock();

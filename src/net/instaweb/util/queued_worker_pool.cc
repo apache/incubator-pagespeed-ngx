@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/queued_worker_pool.h"
 
+#include <algorithm>
 #include <deque>
 #include <set>
 #include <vector>
@@ -178,6 +179,32 @@ void QueuedWorkerPool::QueueSequence(Sequence* sequence) {
   }
 }
 
+bool QueuedWorkerPool::AreBusy(const SequenceVector& sequences) {
+  // This is the only operation that accesses multiple workers at once.
+  // We order our lock acquisitions by address comparisons to get
+  // 2-phase locking, and thus avoid deadlock.
+  SequenceVector ordered_sequences(sequences);
+  std::sort(ordered_sequences.begin(), ordered_sequences.end());
+
+  for (int i = 0, n = ordered_sequences.size(); i < n; ++i) {
+    ordered_sequences[i]->sequence_mutex_->Lock();
+  }
+
+  bool busy = false;
+  for (int i = 0, n = ordered_sequences.size(); i < n; ++i) {
+    if (ordered_sequences[i]->IsBusy()) {
+      busy = true;
+      break;
+    }
+  }
+
+  for (int i = 0, n = ordered_sequences.size(); i < n; ++i) {
+    ordered_sequences[i]->sequence_mutex_->Unlock();
+  }
+
+  return busy;
+}
+
 QueuedWorkerPool::Sequence* QueuedWorkerPool::NewSequence() {
   ScopedMutex lock(mutex_.get());
   Sequence* sequence = NULL;
@@ -317,7 +344,6 @@ Function* QueuedWorkerPool::Sequence::NextFunction() {
 }
 
 bool QueuedWorkerPool::Sequence::IsBusy() {
-  ScopedMutex lock(sequence_mutex_.get());
   return active_ || !work_queue_.empty();
 }
 

@@ -64,9 +64,6 @@ class QueuedWorkerPool {
     // it after execution or upon cancellation due to shutdown.
     void Add(Function* function);
 
-    // Determines whether the Sequence is currently running, or waiting to run.
-    bool IsBusy();
-
    private:
     // Construct using QueuedWorkerPool::NewSequence().
     Sequence(ThreadSystem* thread_system, QueuedWorkerPool* pool);
@@ -94,6 +91,9 @@ class QueuedWorkerPool {
     // the the caller.
     Function* NextFunction();
 
+    // Assumes sequence_mutex_ held
+    bool IsBusy();
+
     friend class QueuedWorkerPool;
     std::deque<Function*> work_queue_;
     scoped_ptr<ThreadSystem::CondvarCapableMutex> sequence_mutex_;
@@ -104,6 +104,8 @@ class QueuedWorkerPool {
 
     DISALLOW_COPY_AND_ASSIGN(Sequence);
   };
+
+  typedef std::vector<Sequence*> SequenceVector;
 
   // Sequence is owned by the pool, and will be automatically freed when
   // the pool is finally freed (e.g. on server shutdown).  But the sequence
@@ -118,6 +120,22 @@ class QueuedWorkerPool {
   // Shuts down all Sequences and Worker threads, but does not delete the
   // sequences.  The sequences will be deleted when the pool is destructed.
   void ShutDown();
+
+  // Returns true if any of the given sequences is busy. Note that multiple
+  // sequences are checked atomically; otherwise we could end up missing
+  // work. For example, consider if we had a sequence for main rewrite work,
+  // and an another one for expensive work.
+  // In this case, if we tried to check their busyness independently, the
+  // following could happen:
+  // 1) First portion of inexpensive work is done, so we queue up
+  //    some on expensive work thread.
+  // 2) We check whether inexpensive work sequence is busy. It's not.
+  // 3) The expensive work runs, finishes, and queues up more inexpensive
+  //    work.
+  // 4) We check whether expensive sequence is busy. It's not, so we would
+  //    conclude we quiesced --- while there was still work in the inexpensive
+  //    queue.
+  static bool AreBusy(const SequenceVector& sequences);
 
  private:
   friend class Sequence;
