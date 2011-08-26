@@ -161,7 +161,9 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
 }
 
 RewriteDriver::~RewriteDriver() {
-  resource_manager_->rewrite_workers()->FreeSequence(rewrite_worker_);
+  if (rewrite_worker_ != NULL) {
+    resource_manager_->rewrite_workers()->FreeSequence(rewrite_worker_);
+  }
   STLDeleteElements(&filters_to_delete_);
   Clear();
 }
@@ -409,6 +411,7 @@ void RewriteDriver::SetResourceManagerAndScheduler(
   resource_manager_ = resource_manager;
   scheduler_.reset(scheduler);
   set_timer(resource_manager->timer());
+  rewrite_worker_ = resource_manager_->rewrite_workers()->NewSequence();
 
   DCHECK(resource_filter_map_.empty());
 

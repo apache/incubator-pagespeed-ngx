@@ -380,12 +380,7 @@ class ResourceManager {
   typedef std::set<RewriteDriver*> RewriteDriverSet;
 
   // Must be called with rewrite_drivers_mutex_ held.
-  void AssignRewriteWorker(RewriteDriver* rewrite_driver);
-
-  // Must be called with rewrite_drivers_mutex_ held.
   void ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver);
-
-  RewriteDriver* NewUnmanagedRewriteDriverHelper(bool assign_worker);
 
   GoogleString file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.

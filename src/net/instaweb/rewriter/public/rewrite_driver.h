@@ -473,9 +473,6 @@ class RewriteDriver : public HtmlParse {
   // Queues up a task to run on the Rewrite thread.
   void AddRewriteTask(Function* task);
 
-  void set_rewrite_worker(QueuedWorkerPool::Sequence* x) {
-    rewrite_worker_ = x;
-  }
   QueuedWorkerPool::Sequence* rewrite_worker() { return rewrite_worker_; }
 
   void set_scheduler(Scheduler* scheduler) { scheduler_.reset(scheduler); }

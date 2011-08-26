@@ -635,10 +635,9 @@ bool ResourceManager::HandleBeacon(const StringPiece& unparsed_url) {
 
 RewriteDriver* ResourceManager::NewCustomRewriteDriver(
     RewriteOptions* options) {
-  RewriteDriver* rewrite_driver = NewUnmanagedRewriteDriverHelper(false);
+  RewriteDriver* rewrite_driver = NewUnmanagedRewriteDriver();
   {
     ScopedMutex lock(rewrite_drivers_mutex_.get());
-    AssignRewriteWorker(rewrite_driver);
     active_rewrite_drivers_.insert(rewrite_driver);
   }
   rewrite_driver->set_custom_options(options);
@@ -646,16 +645,7 @@ RewriteDriver* ResourceManager::NewCustomRewriteDriver(
   return rewrite_driver;
 }
 
-void ResourceManager::AssignRewriteWorker(RewriteDriver* rewrite_driver) {
-  rewrite_driver->set_rewrite_worker(rewrite_workers_->NewSequence());
-}
-
 RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver() {
-  return NewUnmanagedRewriteDriverHelper(true);
-}
-
-RewriteDriver* ResourceManager::NewUnmanagedRewriteDriverHelper(
-    bool assign_worker) {
   RewriteDriver* rewrite_driver = new RewriteDriver(
       message_handler_, file_system_, url_async_fetcher_);
   rewrite_driver->SetAsynchronousRewrites(async_rewrites_);
@@ -663,10 +653,6 @@ RewriteDriver* ResourceManager::NewUnmanagedRewriteDriverHelper(
   rewrite_driver->SetResourceManagerAndScheduler(this, scheduler);
   if (factory_ != NULL) {
     factory_->AddPlatformSpecificRewritePasses(rewrite_driver);
-  }
-  if (assign_worker) {
-    ScopedMutex lock(rewrite_drivers_mutex_.get());
-    AssignRewriteWorker(rewrite_driver);
   }
   return rewrite_driver;
 }
@@ -679,9 +665,8 @@ RewriteDriver* ResourceManager::NewRewriteDriver() {
     available_rewrite_drivers_.pop_back();
     rewrite_driver->SetAsynchronousRewrites(async_rewrites_);
   } else {
-    rewrite_driver = NewUnmanagedRewriteDriverHelper(false);
+    rewrite_driver = NewUnmanagedRewriteDriver();
     rewrite_driver->AddFilters();
-    AssignRewriteWorker(rewrite_driver);
   }
   active_rewrite_drivers_.insert(rewrite_driver);
   return rewrite_driver;

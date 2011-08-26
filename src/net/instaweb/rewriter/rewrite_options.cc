@@ -199,7 +199,6 @@ void RewriteOptions::SetUp() {
   // ... and add possibly unsafe filters.
   // TODO(jmarantz): Migrate these over to CoreFilters.
   level_filter_set_map_[kTestingCoreFilters].insert(kConvertJpegToWebp);
-  level_filter_set_map_[kTestingCoreFilters].insert(kDivStructure);
   level_filter_set_map_[kTestingCoreFilters].insert(kFlushHtml);
   level_filter_set_map_[kTestingCoreFilters].insert(kMakeGoogleAnalyticsAsync);
   level_filter_set_map_[kTestingCoreFilters].insert(kRewriteDomains);
