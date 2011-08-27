@@ -503,7 +503,8 @@ void DomainLawyer::Merge(const DomainLawyer& src) {
 bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
                                uint32 hash,
                                GoogleString* shard) const {
-  Domain* domain = FindDomain(GoogleUrl(NormalizeDomainName(domain_name)));
+  GoogleUrl domain_gurl(NormalizeDomainName(domain_name));
+  Domain* domain = FindDomain(domain_gurl);
   bool sharded = false;
   if (domain != NULL) {
     if (domain->num_shards() != 0) {
@@ -517,7 +518,8 @@ bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
 }
 
 bool DomainLawyer::WillDomainChange(const StringPiece& domain_name) const {
-  Domain* domain = FindDomain(GoogleUrl(NormalizeDomainName(domain_name)));
+  GoogleUrl domain_gurl(NormalizeDomainName(domain_name));
+  Domain* domain = FindDomain(domain_gurl);
   if (domain != NULL) {
     if (domain->num_shards() != 0) {
       return true;

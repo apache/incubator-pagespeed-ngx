@@ -260,17 +260,19 @@ TEST_F(DomainLawyerTest, RewriteHttpsAcrossHosts) {
                                       "https://secure.nytimes.com"));
   EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
   GoogleString mapped_domain_name;
-  ASSERT_TRUE(MapRequest(GoogleUrl("http://insecure.nytimes.com/index.html"),
+  GoogleUrl insecure_gurl("http://insecure.nytimes.com/index.html");
+  ASSERT_TRUE(MapRequest(insecure_gurl,
                          "https://secure.nytimes.com/css/stylesheet.css",
                          &mapped_domain_name));
   EXPECT_EQ("http://insecure.nytimes.com/", mapped_domain_name);
   // Succeeds because http://insecure... is authorized and matches the request.
-  ASSERT_TRUE(MapRequest(GoogleUrl("https://secure.nytimes.com/index.html"),
+  GoogleUrl https_gurl("https://secure.nytimes.com/index.html");
+  ASSERT_TRUE(MapRequest(https_gurl,
                          "http://insecure.nytimes.com/css/stylesheet.css",
                          &mapped_domain_name));
   EXPECT_EQ("http://insecure.nytimes.com/", mapped_domain_name);
   // Succeeds because https://secure... maps to http://insecure...
-  ASSERT_TRUE(MapRequest(GoogleUrl("https://secure.nytimes.com/index.html"),
+  ASSERT_TRUE(MapRequest(https_gurl,
                          "https://secure.nytimes.com/css/stylesheet.css",
                          &mapped_domain_name));
   EXPECT_EQ("http://insecure.nytimes.com/", mapped_domain_name);
@@ -282,21 +284,22 @@ TEST_F(DomainLawyerTest, RewriteHttpsAcrossPorts) {
   EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
   GoogleString mapped_domain_name;
   // Succeeds because we map it as specified above.
-  ASSERT_TRUE(MapRequest(GoogleUrl("http://nytimes.com/index.html"),
-                         "https://nytimes.com/css/stylesheet.css",
+  GoogleUrl nyt_gurl("http://nytimes.com/index.html");
+  ASSERT_TRUE(MapRequest(nyt_gurl, "https://nytimes.com/css/stylesheet.css",
                          &mapped_domain_name));
   EXPECT_EQ("http://nytimes.com:8181/", mapped_domain_name);
   // Fails because http://nytimes/ is not authorized.
-  ASSERT_FALSE(MapRequest(GoogleUrl("https://nytimes.com/index.html"),
+  GoogleUrl nyt_https("https://nytimes.com/index.html");
+  ASSERT_FALSE(MapRequest(nyt_https,
                           "http://nytimes.com/css/stylesheet.css",
                           &mapped_domain_name));
   // Succeeds because http://nytimes:8181/ is authorized & matches the request.
-  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com/index.html"),
+  ASSERT_TRUE(MapRequest(nyt_https,
                          "http://nytimes.com:8181/css/stylesheet.css",
                          &mapped_domain_name));
   EXPECT_EQ("http://nytimes.com:8181/", mapped_domain_name);
   // Succeeds because https://nytimes/ maps to http://nytimes:8181/.
-  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com/index.html"),
+  ASSERT_TRUE(MapRequest(nyt_https,
                          "https://nytimes.com/css/stylesheet.css",
                          &mapped_domain_name));
   EXPECT_EQ("http://nytimes.com:8181/", mapped_domain_name);
@@ -307,17 +310,19 @@ TEST_F(DomainLawyerTest, RewriteHttpsAcrossSchemes) {
                                       "https://nytimes.com"));
   EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
   GoogleString mapped_domain_name;
-  ASSERT_TRUE(MapRequest(GoogleUrl("http://nytimes.com/index.html"),
+  GoogleUrl nyt_http("http://nytimes.com/index.html");
+  ASSERT_TRUE(MapRequest(nyt_http,
                          "https://nytimes.com/css/stylesheet.css",
                          &mapped_domain_name));
   EXPECT_EQ("http://nytimes.com/", mapped_domain_name);
   // Succeeds because http://nytimes/ is authorized and matches the request.
-  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com/index.html"),
+  GoogleUrl nyt_https("https://nytimes.com/index.html");
+  ASSERT_TRUE(MapRequest(nyt_https,
                           "http://nytimes.com/css/stylesheet.css",
                           &mapped_domain_name));
   EXPECT_EQ("http://nytimes.com/", mapped_domain_name);
   // Succeeds because https://nytimes/ maps to http://nytimes/.
-  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com/index.html"),
+  ASSERT_TRUE(MapRequest(nyt_https,
                           "https://nytimes.com/css/stylesheet.css",
                           &mapped_domain_name));
   EXPECT_EQ("http://nytimes.com/", mapped_domain_name);
@@ -328,24 +333,25 @@ TEST_F(DomainLawyerTest, RewriteHttpsAcrossSchemesAndPorts) {
                                       "https://nytimes.com:8443"));
   EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
   GoogleString mapped_domain_name;
-  ASSERT_TRUE(MapRequest(GoogleUrl("http://localhost:8080/index.html"),
+  GoogleUrl local_8080("http://localhost:8080/index.html");
+  ASSERT_TRUE(MapRequest(local_8080,
                          "https://nytimes.com:8443/css/stylesheet.css",
                          &mapped_domain_name));
   EXPECT_EQ("http://localhost:8080/", mapped_domain_name);
   // Succeeds b/c http://localhost:8080/ is authorized and matches the request.
-  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com:8443/index.html"),
+  GoogleUrl https_nyt_8443("https://nytimes.com:8443/index.html");
+  ASSERT_TRUE(MapRequest(https_nyt_8443,
                           "http://localhost:8080/css/stylesheet.css",
                           &mapped_domain_name));
   EXPECT_EQ("http://localhost:8080/", mapped_domain_name);
   // Succeeds because https://nytimes:8443/ maps to http://localhost:8080/.
-  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com:8443/index.html"),
+  ASSERT_TRUE(MapRequest(https_nyt_8443,
                           "https://nytimes.com:8443/css/stylesheet.css",
                           &mapped_domain_name));
   EXPECT_EQ("http://localhost:8080/", mapped_domain_name);
   // Relative path also succeeds.
-  ASSERT_TRUE(MapRequest(GoogleUrl("https://nytimes.com:8443/index.html"),
-                          "css/stylesheet.css",
-                          &mapped_domain_name));
+  ASSERT_TRUE(MapRequest(https_nyt_8443, "css/stylesheet.css",
+                         &mapped_domain_name));
   EXPECT_EQ("http://localhost:8080/", mapped_domain_name);
 }
 

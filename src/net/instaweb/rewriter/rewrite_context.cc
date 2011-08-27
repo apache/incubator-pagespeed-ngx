@@ -547,7 +547,8 @@ void RewriteContext::FetchInputs(BlockingBehavior block) {
         // rather than try to fetch them over HTTP.
         bool handled_internally = false;
         if (fetch_.get() != NULL) {
-          if (Manager()->IsPagespeedResource(GoogleUrl(resource->url()))) {
+          GoogleUrl resource_gurl(resource->url());
+          if (Manager()->IsPagespeedResource(resource_gurl)) {
             RewriteDriver* nested_driver = Driver()->Clone();
             RewriteFilter* filter = NULL;
             // We grab the filter now (and not just call DecodeOutputResource
