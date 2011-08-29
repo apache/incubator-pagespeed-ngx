@@ -264,7 +264,8 @@ void ResponseHeaders::ComputeCaching() {
   // that fact that a fetch failed for a resource, and we don't want
   // to try again until some time has passed.
   bool status_cacheable =
-      ((status_code() == HttpStatus::kRememberNotFoundStatusCode) ||
+      ((status_code() ==
+        HttpStatus::kRememberFetchFailedOrNotCacheableStatusCode) ||
        pagespeed::resource_util::IsCacheableResourceStatusCode(status_code()));
   int64 freshness_lifetime_ms;
   bool explicit_cacheable =

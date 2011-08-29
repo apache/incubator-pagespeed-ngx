@@ -159,11 +159,11 @@ TEST_F(HTTPCacheTest, PutGet) {
 
 // Verifies that the cache will 'remember' that a fetch should not be
 // cached for 5 minutes.
-TEST_F(HTTPCacheTest, RememberNotCacheable) {
+TEST_F(HTTPCacheTest, RememberFetchFailedOrNotCacheable) {
   ResponseHeaders meta_data_out;
-  http_cache_.RememberNotCacheable("mykey", &message_handler_);
+  http_cache_.RememberFetchFailedOrNotCacheable("mykey", &message_handler_);
   HTTPValue value;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
+  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
             Find("mykey", &value, &meta_data_out, &message_handler_));
 
   // Now advance time 301 seconds; the cache should allow us to try fetching
@@ -176,12 +176,12 @@ TEST_F(HTTPCacheTest, RememberNotCacheable) {
 // Make sure we don't remember 'non-cacheable' once we've put it into r/o mode.
 // (but do before)
 TEST_F(HTTPCacheTest, ReadOnly) {
-  http_cache_.RememberNotCacheable("mykey", &message_handler_);
+  http_cache_.RememberFetchFailedOrNotCacheable("mykey", &message_handler_);
   http_cache_.SetReadOnly();
-  http_cache_.RememberNotCacheable("mykey2", &message_handler_);
+  http_cache_.RememberFetchFailedOrNotCacheable("mykey2", &message_handler_);
   ResponseHeaders meta_data_out;
   HTTPValue value_out;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
+  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
             Find("mykey", &value_out, &meta_data_out, &message_handler_));
   EXPECT_EQ(HTTPCache::kNotFound,
             Find("mykey2", &value_out, &meta_data_out, &message_handler_));

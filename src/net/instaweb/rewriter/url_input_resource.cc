@@ -154,7 +154,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
       http_cache()->Put(url(), value, message_handler_);
       return true;
     } else {
-      http_cache()->RememberNotCacheable(url(), message_handler_);
+      http_cache()->RememberFetchFailedOrNotCacheable(url(), message_handler_);
       return false;
     }
   }

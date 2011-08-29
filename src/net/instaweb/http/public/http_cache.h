@@ -51,14 +51,13 @@ class HTTPCache {
   HTTPCache(CacheInterface* cache, Timer* timer, Statistics* stats);
   ~HTTPCache();
 
-  // When a lookup is done in the HTTP Cache, it returns one of these
-  // values.  2 of these are obvious, one is used to help avoid
-  // frequently re-fetching the same content that failed to fetch, or
-  // was fetched but was not cacheable.
+  // When a lookup is done in the HTTP Cache, it returns one of these values.
   enum FindResult {
     kFound,
-    kRecentFetchFailedDoNotRefetch,
-    kNotFound
+    kNotFound,
+    // Helps avoid frequent refetching of resources which have error status
+    // codes or are not cacheable.
+    kRecentFetchFailedOrNotCacheable,
   };
 
   class Callback {
@@ -124,7 +123,15 @@ class HTTPCache {
   // TODO(jmarantz): if fetch failed, maybe we should try back soon,
   // but if it is Cache-Control: private, we can probably assume that
   // it still will be in 5 minutes.
-  void RememberNotCacheable(const GoogleString& key, MessageHandler * handler);
+  //
+  // TODO(sligocki): I think we want to distinguish fetch failure from
+  // non-cacheability in general. For example, when caching proxied
+  // resources (say an un-rewritten CSS file), we may want to remember
+  // that the original resource 404'd and not ping the server again.
+  // However, if the resource was not cacheable, we should definitely
+  // refetch it and proxy it.
+  void RememberFetchFailedOrNotCacheable(const GoogleString& key,
+                                         MessageHandler * handler);
 
   // Initialize statistics variables for the cache
   static void Initialize(Statistics* statistics);
@@ -133,6 +140,12 @@ class HTTPCache {
   // and would never be used if inserted into the cache. Otherwise, returns
   // false and increments the cache expirations statistic
   bool IsAlreadyExpired(const ResponseHeaders& headers);
+
+  Variable* cache_time_us()     { return cache_time_us_; }
+  Variable* cache_hits()        { return cache_hits_; }
+  Variable* cache_misses()      { return cache_misses_; }
+  Variable* cache_expirations() { return cache_expirations_; }
+  Variable* cache_inserts()     { return cache_inserts_; }
 
  private:
   friend class HTTPCacheCallback;

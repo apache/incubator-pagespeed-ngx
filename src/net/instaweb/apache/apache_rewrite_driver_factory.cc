@@ -381,8 +381,8 @@ void ApacheRewriteDriverFactory::DumpRefererStatistics(Writer* writer) {
 
 void ApacheRewriteDriverFactory::ShutDown() {
   // Make sure we stop cache writes before turning off the fetcher, so any
-  // requests it cancels will not result in RememberNotCacheable entries
-  // getting written out to disk cache.
+  // requests it cancels will not result in RememberFetchFailedOrNotCacheable
+  // entries getting written out to disk cache.
   //
   // Note that we have to be careful not to try creating it now, since it
   // may involve access to worker initialization.

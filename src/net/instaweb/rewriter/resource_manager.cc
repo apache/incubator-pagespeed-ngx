@@ -458,7 +458,7 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
       resource_manager_->RefreshIfImminentlyExpiring(resource.get(), handler);
       resource_callback_->Done(true);
       break;
-    case HTTPCache::kRecentFetchFailedDoNotRefetch:
+    case HTTPCache::kRecentFetchFailedOrNotCacheable:
       // TODO(jmarantz): in this path, should we try to fetch again
       // sooner than 5 minutes?  The issue is that in this path we are
       // serving for the user, not for a rewrite.  This could get

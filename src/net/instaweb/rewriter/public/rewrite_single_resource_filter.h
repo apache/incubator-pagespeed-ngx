@@ -145,9 +145,6 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   friend class FetchCallback;
   friend class RewriteSingleResourceFilterTest;
 
-  // Metadata key we use to store the input timestamp.
-  static const char kInputTimestampKey[];
-
   // Check and record whether metadata version matches
   // FilterCacheFormatVersion() respectively.
   bool IsValidCacheFormat(const CachedResult* cached);

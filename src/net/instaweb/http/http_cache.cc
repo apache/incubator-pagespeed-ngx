@@ -41,7 +41,7 @@ namespace {
 //
 // TODO(jmarantz): We could handle cc-private a little differently:
 // in this case we could arguably remember it using the original cc-private ttl.
-const char kRememberNotFoundCacheControl[] = "max-age=300";
+const char kRememberFetchFailedOrNotCacheableCacheControl[] = "max-age=300";
 
 }  // namespace
 
@@ -110,7 +110,8 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     if ((state == CacheInterface::kAvailable) &&
         callback_->http_value()->Link(value(), headers, handler_) &&
         http_cache_->IsCurrentlyValid(*headers, now_ms)) {
-      if (headers->status_code() == HttpStatus::kRememberNotFoundStatusCode) {
+      if (headers->status_code() ==
+          HttpStatus::kRememberFetchFailedOrNotCacheableStatusCode) {
         int64 remember_not_found_time_ms = headers->CacheExpirationTimeMs()
             - start_ms_;
         if (handler_ != NULL) {
@@ -119,7 +120,7 @@ class HTTPCacheCallback : public CacheInterface::Callback {
               "HTTPCache: remembering not-found status for %ld seconds",
               static_cast<long>(remember_not_found_time_ms / 1000));  // NOLINT
         }
-        result = HTTPCache::kRecentFetchFailedDoNotRefetch;
+        result = HTTPCache::kRecentFetchFailedOrNotCacheable;
       } else {
         result = HTTPCache::kFound;
       }
@@ -220,11 +221,13 @@ void HTTPCache::UpdateStats(FindResult result, int64 delta_us) {
   }
 }
 
-void HTTPCache::RememberNotCacheable(const GoogleString& key,
-                                     MessageHandler* handler) {
+void HTTPCache::RememberFetchFailedOrNotCacheable(const GoogleString& key,
+                                                  MessageHandler* handler) {
   ResponseHeaders headers;
-  headers.set_status_code(HttpStatus::kRememberNotFoundStatusCode);
-  headers.Add(HttpAttributes::kCacheControl, kRememberNotFoundCacheControl);
+  headers.set_status_code(
+      HttpStatus::kRememberFetchFailedOrNotCacheableStatusCode);
+  headers.Add(HttpAttributes::kCacheControl,
+              kRememberFetchFailedOrNotCacheableCacheControl);
   int64 now_ms = timer_->NowMs();
   headers.UpdateDateHeader(HttpAttributes::kDate, now_ms);
   headers.ComputeCaching();

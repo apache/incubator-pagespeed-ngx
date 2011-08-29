@@ -49,6 +49,50 @@ bool UrlAsyncFetcher::Callback::EnableThreaded() const {
 
 namespace {
 
+class WriterCallbackFetch : public AsyncFetch {
+ public:
+  WriterCallbackFetch(Writer* writer, UrlAsyncFetcher::Callback* callback)
+      : writer_(writer), callback_(callback) {}
+  virtual ~WriterCallbackFetch() {}
+
+  virtual void HeadersComplete() {}
+
+  virtual bool Write(const StringPiece& content, MessageHandler* handler) {
+    return writer_->Write(content, handler);
+  }
+
+  virtual bool Flush(MessageHandler* handler) {
+    return writer_->Flush(handler);
+  }
+
+  virtual void Done(bool success) {
+    callback_->Done(success);
+    delete this;
+  }
+
+ private:
+  Writer* writer_;
+  UrlAsyncFetcher::Callback* callback_;
+
+  DISALLOW_COPY_AND_ASSIGN(WriterCallbackFetch);
+};
+
+}  // namespace
+
+// Default implementation of StreamingFetch uses Fetch.
+bool UrlAsyncFetcher::StreamingFetch(const GoogleString& url,
+                                     const RequestHeaders& request_headers,
+                                     ResponseHeaders* response_headers,
+                                     Writer* response_writer,
+                                     MessageHandler* message_handler,
+                                     Callback* callback) {
+  WriterCallbackFetch* fetch =
+      new WriterCallbackFetch(response_writer, callback);
+  return Fetch(url, request_headers, response_headers, message_handler, fetch);
+}
+
+namespace {
+
 // Thin interface classes to allow FixupAsyncFetch to be used as both
 // a Writer and a Callback.
 class AsyncFetchWriter : public Writer {
@@ -143,6 +187,7 @@ class FixupAsyncFetch : public AsyncFetch {
 
 }  // namespace
 
+// Default implementation of Fetch uses StreamingFetch.
 bool UrlAsyncFetcher::Fetch(const GoogleString& url,
                             const RequestHeaders& request_headers,
                             ResponseHeaders* response_headers,

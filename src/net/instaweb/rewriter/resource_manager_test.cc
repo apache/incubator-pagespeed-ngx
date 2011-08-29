@@ -585,7 +585,7 @@ TEST_F(ResourceManagerTest, TestRemember404) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
+  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
             http_cache()->Find("http://example.com/404", &value_out,
                                &headers_out, message_handler()));
 }
@@ -610,7 +610,7 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
+  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
             http_cache()->Find("http://example.com/", &value_out, &headers_out,
                                message_handler()));
 }
@@ -637,7 +637,7 @@ TEST_F(ResourceManagerTest, TestVaryOption) {
 
   HTTPValue valueOut;
   ResponseHeaders headersOut;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedDoNotRefetch,
+  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
             http_cache()->Find("http://example.com/", &valueOut, &headersOut,
                                message_handler()));
 }

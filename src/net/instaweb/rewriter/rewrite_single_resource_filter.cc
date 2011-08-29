@@ -42,11 +42,7 @@
 
 namespace net_instaweb {
 
-// ... and the input timestamp under this key.
 class RequestHeaders;
-
-const char RewriteSingleResourceFilter::kInputTimestampKey[] =
-    "RewriteSingleResourceFilter_InputTimestamp";
 
 RewriteSingleResourceFilter::~RewriteSingleResourceFilter() {}
 
@@ -301,7 +297,7 @@ CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
     ok = (res == kRewriteOk);
   } else {
     ok = false;
-    if (input_state == HTTPCache::kRecentFetchFailedDoNotRefetch) {
+    if (input_state == HTTPCache::kRecentFetchFailedOrNotCacheable) {
       handler->Message(kInfo, "%s: Couldn't fetch resource %s to rewrite.",
                        base_url().spec_c_str(), input_resource->url().c_str());
     } else {

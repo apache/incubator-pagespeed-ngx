@@ -16,8 +16,10 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 //
-// UrlFetcher is an interface for asynchronously fetching urls.  The
+// UrlAsyncFetcher is an interface for asynchronously fetching urls.  The
 // caller must supply a callback to be called when the fetch is complete.
+//
+// You must implement one of Fetch or StreamingFetch.
 
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_URL_ASYNC_FETCHER_H_
@@ -102,12 +104,15 @@ class UrlAsyncFetcher {
   // In either case, the callback will be called with the completion status,
   // so it's safe to ignore the return value.
   // TODO(sligocki): GoogleString -> GoogleUrl
+  //
+  // Default implementation uses Fetch. So derivative classes only need to
+  // define one of these functions.
   virtual bool StreamingFetch(const GoogleString& url,
                               const RequestHeaders& request_headers,
                               ResponseHeaders* response_headers,
                               Writer* response_writer,
                               MessageHandler* message_handler,
-                              Callback* callback) = 0;
+                              Callback* callback);
 
   // Fetch with AsyncFetch interface.
   //
@@ -142,6 +147,14 @@ class UrlAsyncFetcher {
   // Returns a maximum time that we will allow fetches to take, or
   // kUnspecifiedTimeout (the default) if we don't promise to timeout fetches.
   virtual int64 timeout_ms() { return kUnspecifiedTimeout; }
+
+ protected:
+  // Put this in protected to make sure nobody constructs this class except
+  // for subclasses.
+  UrlAsyncFetcher() {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(UrlAsyncFetcher);
 };
 
 }  // namespace net_instaweb
