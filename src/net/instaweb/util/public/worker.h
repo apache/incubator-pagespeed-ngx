@@ -54,7 +54,7 @@ class Worker {
 
   // Finishes the currently running jobs, and deletes any queued jobs.
   // No further jobs will be accepted after this call either; they will
-  // just be deleted. It is safe to call this method multiple times.
+  // just be canceled. It is safe to call this method multiple times.
   void ShutDown();
 
   // Sets up a timed-variable statistic indicating the current queue depth.

@@ -17,14 +17,43 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/function.h"
+#include "base/logging.h"
 
 namespace net_instaweb {
 
-Function::Function() {
+Function::Function() : delete_after_callback_(true) {
+  Reset();
   set_quit_requested(false);
 }
 
 Function::~Function() {
+  DCHECK((run_called_ != cancel_called_) || !delete_after_callback_)
+      << "Either run or cancel should be called";
+}
+
+void Function::Reset() {
+  run_called_ = false;
+  cancel_called_ = false;
+}
+
+void Function::CallRun() {
+  DCHECK(!cancel_called_);
+  DCHECK(!run_called_);
+  run_called_ = true;
+  Run();
+  if (delete_after_callback_) {
+    delete this;
+  }
+}
+
+void Function::CallCancel() {
+  DCHECK(!cancel_called_);
+  DCHECK(!run_called_);
+  cancel_called_ = true;
+  Cancel();
+  if (delete_after_callback_) {
+    delete this;
+  }
 }
 
 }  // namespace net_instaweb

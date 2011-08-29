@@ -28,7 +28,6 @@
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/queued_worker.h"
-#include "net/instaweb/util/public/stl_util.h"          // for STLDeleteElements
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -119,8 +118,7 @@ void QueuedWorkerPool::Run(Sequence* sequence, QueuedWorker* worker) {
     // avoids locking the pool's central mutex every time we want to
     // run a new task; we need only mutex at the sequence level.
     while (Function* function = sequence->NextFunction()) {
-      function->Run();
-      delete function;
+      function->CallRun();
     }
 
     // Once a sequence is exhausted see if there's another queued sequence,
@@ -277,7 +275,17 @@ void QueuedWorkerPool::Sequence::WaitForShutDown() {
     termination_condvar_->TimedWait(Timer::kSecondMs);
   }
   DCHECK(work_queue_.empty());
-  STLDeleteElements(&work_queue_);
+  CancelTasksOnWorkQueue();
+}
+
+void QueuedWorkerPool::Sequence::CancelTasksOnWorkQueue() {
+  while (!work_queue_.empty()) {
+    Function* function = work_queue_.front();
+    work_queue_.pop_front();
+    sequence_mutex_->Unlock();
+    function->CallCancel();
+    sequence_mutex_->Lock();
+  }
 }
 
 void QueuedWorkerPool::Sequence::Add(Function* function) {
@@ -309,7 +317,7 @@ Function* QueuedWorkerPool::Sequence::NextFunction() {
         if (!work_queue_.empty()) {
           DCHECK(false) << "Canceling " << work_queue_.size()
                         << " functions on sequence Shutdown";
-          STLDeleteElements(&work_queue_);
+          CancelTasksOnWorkQueue();
         }
         active_ = false;
 

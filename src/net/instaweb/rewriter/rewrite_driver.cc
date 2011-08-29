@@ -290,6 +290,7 @@ void RewriteDriver::ExecuteFlushIfRequested() {
 
 void RewriteDriver::Flush() {
   WaitFunction wait;
+  wait.set_delete_after_callback(false);
   FlushAsync(&wait);
   CHECK(wait.done());  // Once FlushAsync is really async we will block here.
   flush_requested_ = false;
@@ -377,7 +378,7 @@ void RewriteDriver::FlushAsync(Function* callback) {
   }
 
   HtmlParse::Flush();
-  callback->Run();
+  callback->CallRun();
 }
 
 const char* RewriteDriver::kPassThroughRequestAttributes[3] = {

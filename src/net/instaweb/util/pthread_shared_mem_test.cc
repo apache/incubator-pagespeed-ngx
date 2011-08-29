@@ -82,8 +82,7 @@ class PthreadSharedMemThreadEnv : public PthreadSharedMemEnvBase {
  private:
   static void* InvokeCallback(void* raw_callback_ptr) {
     Function* callback = static_cast<Function*>(raw_callback_ptr);
-    callback->Run();
-    delete callback;
+    callback->CallRun();
     return NULL;  // Used to denote success
   }
 
@@ -96,17 +95,16 @@ class PthreadSharedMemProcEnv : public PthreadSharedMemEnvBase {
     pid_t ret = fork();
     if (ret == -1) {
       // Failure
-      delete callback;
+      callback->CallCancel();
       return false;
     } else if (ret == 0) {
       // Child.
-      callback->Run();
-      delete callback;
+      callback->CallRun();
       std::exit(0);
     } else {
       // Parent.
       child_processes_.push_back(ret);
-      delete callback;
+      callback->CallCancel();
       return true;
     }
   }

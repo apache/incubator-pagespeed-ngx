@@ -83,10 +83,8 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   virtual ~OutputCacheCallback() {}
   virtual void Done(CacheInterface::KeyState state) {
     RewriteDriver* rewrite_driver = rewrite_context_->Driver();
-    rewrite_driver->AddRewriteTask(
-        new MemberFunction2<RewriteContext, CacheInterface::KeyState,
-            SharedString>(&RewriteContext::OutputCacheDone, rewrite_context_,
-                          state, *value()));
+    rewrite_driver->AddRewriteTask(MakeFunction(
+        rewrite_context_, &RewriteContext::OutputCacheDone, state, *value()));
     delete this;
   }
 

@@ -28,7 +28,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/waveform.h"
@@ -55,7 +54,6 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     ScopedMutex lock(mutex_.get());
 
     // Clean any task we were running last iteration
-    delete current_task_;
     current_task_ = NULL;
 
     while (!exit_ && tasks_.empty()) {
@@ -78,7 +76,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
   virtual void Run() {
     while (WaitForNextTask()) {
       // Run tasks (not holding the lock, so new tasks can be added).
-      current_task_->Run();
+      current_task_->CallRun();
     }
   }
 
@@ -99,8 +97,12 @@ class Worker::WorkThread : public ThreadSystem::Thread {
 
     Join();
     int delta = tasks_.size();
-    STLDeleteElements(&tasks_);
     owner_->UpdateQueueSizeStat(-delta);
+    while (!tasks_.empty()) {
+      Function* closure = tasks_.front();
+      tasks_.pop_front();
+      closure->CallCancel();
+    }
     started_ = false;  // Reject further jobs on explicit shutdown.
   }
 
@@ -118,7 +120,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
 
   bool QueueIfPermitted(Function* closure) {
     if (!started_) {
-      delete closure;
+      closure->CallCancel();
       return true;
     }
 

@@ -36,7 +36,7 @@ SlowWorker::~SlowWorker() {
 void SlowWorker::RunIfNotBusy(Function* closure) {
   bool ok = QueueIfPermitted(closure);
   if (!ok) {
-    delete closure;
+    closure->CallCancel();
   }
 }
 

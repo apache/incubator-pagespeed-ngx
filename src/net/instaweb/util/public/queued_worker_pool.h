@@ -94,6 +94,9 @@ class QueuedWorkerPool {
     // Assumes sequence_mutex_ held
     bool IsBusy();
 
+    // Assumes sequence_mutex_ held
+    void CancelTasksOnWorkQueue();
+
     friend class QueuedWorkerPool;
     std::deque<Function*> work_queue_;
     scoped_ptr<ThreadSystem::CondvarCapableMutex> sequence_mutex_;

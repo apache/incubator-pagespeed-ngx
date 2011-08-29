@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: jmarantz@google.com (Joshua Marantz)
+// Authors: jmarantz@google.com (Joshua Marantz)
+//          jmaessen@google.com (Jan Maessen)
 
 #include "net/instaweb/util/public/scheduler.h"
 
@@ -37,14 +38,17 @@ const int kMsUs = Timer::kSecondUs / Timer::kSecondMs;
 
 }  // namespace
 
-// Basic Alarm type (forward declared in the .h file).  Note that Alarms are
-// self-cleaning; it is not valid to make use of an Alarm* after Run() or
-// Cancel() has been called.  See note below for AddAlarm.  Note also that
-// Alarms hold the scheduler lock when they are invoked; the alarm drops the
-// lock before invoking its embedded callback and re-takes it afterwards if that
-// is necessary.
-class Scheduler::Alarm : public Function {
+// Basic Alarm type (forward declared in the .h file).  Note that
+// Alarms are self-cleaning; it is not valid to make use of an Alarm*
+// after RunAlarm() or CancelAlarm() has been called.  See note below
+// for AddAlarm.  Note also that Alarms hold the scheduler lock when
+// they are invoked; the alarm drops the lock before invoking its
+// embedded callback and re-takes it afterwards if that is necessary.
+class Scheduler::Alarm {
  public:
+  virtual void RunAlarm() = 0;
+  virtual void CancelAlarm() = 0;
+
   // Compare two alarms, based on wakeup time and insertion order.  Result
   // like strcmp (<0 for this < that, >0 for this > that), based on wakeup
   // time and index.
@@ -86,23 +90,24 @@ class FunctionAlarm : public Scheduler::Alarm {
   explicit FunctionAlarm(Function* function, Scheduler* scheduler)
       : scheduler_(scheduler), function_(function) { }
   virtual ~FunctionAlarm() { }
-  virtual void Run() {
-    DropMutexActAndCleanup(&Function::Run);
+
+  virtual void RunAlarm() {
+    DropMutexActAndCleanup(&Function::CallRun);
   }
-  virtual void Cancel() {
-    DropMutexActAndCleanup(&Function::Cancel);
+  virtual void CancelAlarm() {
+    DropMutexActAndCleanup(&Function::CallCancel);
   }
  private:
   typedef void (Function::*FunctionAction)();
   void DropMutexActAndCleanup(FunctionAction act) {
     AbstractMutex* mutex = scheduler_->mutex();  // Save across delete.
     mutex->Unlock();
-    ((function_.get())->*(act))();
+    ((function_)->*(act))();
     delete this;
     mutex->Lock();
   }
   Scheduler* scheduler_;
-  scoped_ptr<Function> function_;
+  Function* function_;
   DISALLOW_COPY_AND_ASSIGN(FunctionAlarm);
 };
 
@@ -132,12 +137,12 @@ class Scheduler::CondVarTimeout : public Scheduler::Alarm {
       : set_on_timeout_(set_on_timeout),
         scheduler_(scheduler) { }
   virtual ~CondVarTimeout() { }
-  virtual void Run() {
+  virtual void RunAlarm() {
     *set_on_timeout_ = true;
     scheduler_->CancelWaiting(this);
     delete this;
   }
-  virtual void Cancel() {
+  virtual void CancelAlarm() {
     delete this;
   }
  private:
@@ -154,16 +159,16 @@ class Scheduler::CondVarCallbackTimeout : public Scheduler::Alarm {
       : callback_(callback),
         scheduler_(scheduler) { }
   virtual ~CondVarCallbackTimeout() { }
-  virtual void Run() {
+  virtual void RunAlarm() {
     scheduler_->CancelWaiting(this);
-    Cancel();
+    CancelAlarm();
   }
-  virtual void Cancel() {
-    callback_->Run();
+  virtual void CancelAlarm() {
+    callback_->CallRun();
     delete this;
   }
  private:
-  scoped_ptr<Function> callback_;
+  Function* callback_;
   Scheduler* scheduler_;
   DISALLOW_COPY_AND_ASSIGN(CondVarCallbackTimeout);
 };
@@ -321,7 +326,7 @@ bool Scheduler::CancelAlarm(Alarm* alarm) {
   mutex_->EnsureLocked();
   if (outstanding_alarms_.erase(alarm) != 0) {
     // Note: the following call may drop and re-lock the scheduler mutex.
-    alarm->Cancel();
+    alarm->CancelAlarm();
     return true;
   } else {
     return false;
@@ -351,7 +356,7 @@ int64 Scheduler::RunAlarms(bool* ran_alarms) {
       *ran_alarms = true;
     }
     // Note that the following call may drop and re-lock the scheduler lock.
-    first_alarm->Run();
+    first_alarm->RunAlarm();
   }
   return 0;
 }
