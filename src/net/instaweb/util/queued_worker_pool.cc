@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/queued_worker.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/waveform.h"
 
 namespace net_instaweb {
 
@@ -37,7 +38,8 @@ QueuedWorkerPool::QueuedWorkerPool(int max_workers, ThreadSystem* thread_system)
     : thread_system_(thread_system),
       mutex_(thread_system_->NewMutex()),
       max_workers_(max_workers),
-      shutdown_(false) {
+      shutdown_(false),
+      queue_size_(NULL) {
 }
 
 QueuedWorkerPool::~QueuedWorkerPool() {
@@ -209,6 +211,7 @@ QueuedWorkerPool::Sequence* QueuedWorkerPool::NewSequence() {
   if (!shutdown_) {
     if (free_sequences_.empty()) {
       sequence = new Sequence(thread_system_, this);
+      sequence->set_queue_size_stat(queue_size_);
       all_sequences_.push_back(sequence);
     } else {
       sequence = free_sequences_.back();
@@ -242,7 +245,8 @@ QueuedWorkerPool::Sequence::Sequence(ThreadSystem* thread_system,
                                      QueuedWorkerPool* pool)
     : sequence_mutex_(thread_system->NewMutex()),
       pool_(pool),
-      termination_condvar_(sequence_mutex_->NewCondvar()) {
+      termination_condvar_(sequence_mutex_->NewCondvar()),
+      queue_size_(NULL) {
   Reset();
 }
 
@@ -264,28 +268,37 @@ bool QueuedWorkerPool::Sequence::InitiateShutDown() {
 }
 
 void QueuedWorkerPool::Sequence::WaitForShutDown() {
-  ScopedMutex lock(sequence_mutex_.get());
-  shutdown_ = true;
-  pool_ = NULL;
+  int num_canceled = 0;
+  {
+    ScopedMutex lock(sequence_mutex_.get());
+    shutdown_ = true;
+    pool_ = NULL;
 
-  while (active_) {
-    // We use a TimedWait rather than a Wait so that we don't deadlock if
-    // active_ turns false after the above check and before the call to
-    // TimedWait.
-    termination_condvar_->TimedWait(Timer::kSecondMs);
+    while (active_) {
+      // We use a TimedWait rather than a Wait so that we don't deadlock if
+      // active_ turns false after the above check and before the call to
+      // TimedWait.
+      termination_condvar_->TimedWait(Timer::kSecondMs);
+    }
+    DCHECK(work_queue_.empty());
+    num_canceled = CancelTasksOnWorkQueue();
   }
-  DCHECK(work_queue_.empty());
-  CancelTasksOnWorkQueue();
+  if ((queue_size_ != NULL) && (num_canceled != 0)) {
+    queue_size_->AddDelta(-num_canceled);
+  }
 }
 
-void QueuedWorkerPool::Sequence::CancelTasksOnWorkQueue() {
+int QueuedWorkerPool::Sequence::CancelTasksOnWorkQueue() {
+  int num_canceled = 0;
   while (!work_queue_.empty()) {
     Function* function = work_queue_.front();
     work_queue_.pop_front();
     sequence_mutex_->Unlock();
     function->CallCancel();
+    ++num_canceled;
     sequence_mutex_->Lock();
   }
+  return num_canceled;
 }
 
 void QueuedWorkerPool::Sequence::Add(Function* function) {
@@ -304,11 +317,15 @@ void QueuedWorkerPool::Sequence::Add(Function* function) {
   if (queue_sequence) {
     pool_->QueueSequence(this);
   }
+  if (queue_size_ != NULL) {
+    queue_size_->AddDelta(1);
+  }
 }
 
 Function* QueuedWorkerPool::Sequence::NextFunction() {
   Function* function = NULL;
   QueuedWorkerPool* release_to_pool = NULL;
+  int queue_size_delta = 0;
   {
     ScopedMutex lock(sequence_mutex_.get());
     if (shutdown_) {
@@ -317,7 +334,7 @@ Function* QueuedWorkerPool::Sequence::NextFunction() {
         if (!work_queue_.empty()) {
           DCHECK(false) << "Canceling " << work_queue_.size()
                         << " functions on sequence Shutdown";
-          CancelTasksOnWorkQueue();
+          queue_size_delta -= CancelTasksOnWorkQueue();
         }
         active_ = false;
 
@@ -338,6 +355,7 @@ Function* QueuedWorkerPool::Sequence::NextFunction() {
       function = work_queue_.front();
       work_queue_.pop_front();
       active_ = true;
+      --queue_size_delta;
     }
   }
   if (release_to_pool != NULL) {
@@ -346,6 +364,9 @@ Function* QueuedWorkerPool::Sequence::NextFunction() {
     // free list; the pool will directly delete all sequences from
     // QueuedWorkerPool::ShutDown().
     release_to_pool->SequenceNoLongerActive(this);
+  }
+  if ((queue_size_ != NULL) && (queue_size_delta != 0)) {
+    queue_size_->AddDelta(queue_size_delta);
   }
 
   return function;

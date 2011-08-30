@@ -209,6 +209,8 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
 
   // TODO(jmarantz): hook up waveform to rewrite worker pool.
   rewrite_thread_queue_depth_.reset(new Waveform(thread_system, timer(), 200));
+  rewrite_workers_->set_queue_size_stat(rewrite_thread_queue_depth_.get());
+  html_workers_->set_queue_size_stat(rewrite_thread_queue_depth_.get());
   decoding_driver_.reset(NewUnmanagedRewriteDriver());
 
   // Make sure the excluded-attributes are in abc order so binary_search works.

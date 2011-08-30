@@ -39,6 +39,7 @@ namespace net_instaweb {
 class AbstractMutex;
 class Function;
 class QueuedWorker;
+class Waveform;
 
 // Maintains a predefined number of worker threads, and dispatches any
 // number of groups of sequential tasks to those threads.
@@ -63,6 +64,8 @@ class QueuedWorkerPool {
     // Ownership of 'function' is transferred to the Sequence, which deletes
     // it after execution or upon cancellation due to shutdown.
     void Add(Function* function);
+
+    void set_queue_size_stat(Waveform* x) { queue_size_ = x; }
 
    private:
     // Construct using QueuedWorkerPool::NewSequence().
@@ -94,8 +97,8 @@ class QueuedWorkerPool {
     // Assumes sequence_mutex_ held
     bool IsBusy();
 
-    // Assumes sequence_mutex_ held
-    void CancelTasksOnWorkQueue();
+    // Assumes sequence_mutex_ held. Returns number of tasks that were canceled.
+    int CancelTasksOnWorkQueue();
 
     friend class QueuedWorkerPool;
     std::deque<Function*> work_queue_;
@@ -104,6 +107,7 @@ class QueuedWorkerPool {
     bool shutdown_;
     bool active_;
     scoped_ptr<ThreadSystem::Condvar> termination_condvar_;
+    Waveform* queue_size_;
 
     DISALLOW_COPY_AND_ASSIGN(Sequence);
   };
@@ -140,6 +144,11 @@ class QueuedWorkerPool {
   //    queue.
   static bool AreBusy(const SequenceVector& sequences);
 
+  // Sets up a timed-variable statistic indicating the current queue depth.
+  //
+  // This must be called prior to creating sequences.
+  void set_queue_size_stat(Waveform* x) { queue_size_ = x; }
+
  private:
   friend class Sequence;
   void Run(Sequence* sequence, QueuedWorker* worker);
@@ -162,6 +171,8 @@ class QueuedWorkerPool {
 
   size_t max_workers_;
   bool shutdown_;
+
+  Waveform* queue_size_;
 
   DISALLOW_COPY_AND_ASSIGN(QueuedWorkerPool);
 };
