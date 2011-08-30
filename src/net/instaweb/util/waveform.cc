@@ -38,6 +38,11 @@ Waveform::Waveform(ThreadSystem* thread_system, Timer* timer, int capacity)
       capacity_(capacity),
       samples_(new TimeValue[capacity]),
       mutex_(thread_system->NewMutex()) {
+
+  // Note that we don't clear previous_value_ in Clear() because that would
+  // get the Waveform out of sync with whatever system is sending it Delta
+  // updates.
+  previous_value_ = 0.0;
   Clear();
 }
 
@@ -49,7 +54,6 @@ void Waveform::Clear() {
   total_since_clear_ = 0.0;
   min_ = 0.0;
   max_ = 0.0;
-  previous_value_ = 0.0;
 }
 
 int Waveform::Size() {
