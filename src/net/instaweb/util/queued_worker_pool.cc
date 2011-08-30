@@ -280,8 +280,8 @@ void QueuedWorkerPool::Sequence::WaitForShutDown() {
       // TimedWait.
       termination_condvar_->TimedWait(Timer::kSecondMs);
     }
-    DCHECK(work_queue_.empty());
     num_canceled = CancelTasksOnWorkQueue();
+    DCHECK(work_queue_.empty());
   }
   if ((queue_size_ != NULL) && (num_canceled != 0)) {
     queue_size_->AddDelta(-num_canceled);
