@@ -295,7 +295,7 @@ void QueuedWorkerPool::Sequence::Add(Function* function) {
     if (shutdown_) {
       LOG(WARNING) << "Adding function to sequence " << this
                    << " after shutdown";
-      delete function;
+      function->CallCancel();
       return;
     }
     work_queue_.push_back(function);

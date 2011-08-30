@@ -139,6 +139,37 @@ TEST_F(QueuedWorkerPoolTest, RestartSequenceFromFunction) {
   sync.Wait();
 }
 
+// Keeps track of whether run or cancel were called.
+class LogOpsFunction : public Function {
+ public:
+  LogOpsFunction() : run_called_(false), cancel_called_(false) {}
+  virtual ~LogOpsFunction() {}
+
+  bool run_called() const { return run_called_; }
+  bool cancel_called() const { return cancel_called_; }
+
+ protected:
+  virtual void Run() { run_called_ = true; }
+  virtual void Cancel() { cancel_called_ = true; }
+
+ private:
+  bool run_called_;
+  bool cancel_called_;
+};
+
+// Make sure calling add after worker was shut down Cancel()s the function
+// properly.
+TEST_F(QueuedWorkerPoolTest, AddAfterShutDown) {
+  QueuedWorkerPool::Sequence* sequence = worker_->NewSequence();
+  worker_->ShutDown();
+  LogOpsFunction f;
+  f.set_delete_after_callback(false);
+  sequence->Add(&f);
+  worker_.reset(NULL);
+  EXPECT_TRUE(f.cancel_called());
+  EXPECT_FALSE(f.run_called());
+}
+
 }  // namespace
 
 }  // namespace net_instaweb
