@@ -391,9 +391,8 @@ class RewriteContext {
   void StartRewrite();
   void FinishFetch();
 
-  // Returns 'true' if the resources are not expired.  Freshens resources
-  // proactively to avoid expiration in the near future.
-  bool FreshenAndCheckExpiration(const CachedResult& group);
+  // Freshens resources proactively to avoid expiration in the near future.
+  void Freshen(const CachedResult& group);
 
   // Determines whether the Context is in a state where it's ready to
   // rewrite.  This requires:
@@ -417,6 +416,10 @@ class RewriteContext {
   // Marks this job and any dependents slow as appropriate, notifying the
   // RewriteDriver of any changes.
   void MarkSlow();
+
+  // Notes that we dropped parts of this rewrite due to system load, so we
+  // should not cache it.
+  void MarkTooBusy();
 
   // Collect all non-nested contexts that depend on this one (including
   // itself). Note that this might exclude some repeated jobs that haven't
@@ -521,8 +524,13 @@ class RewriteContext {
 
   // True if it's valid to write the partition table to the metadata cache.
   // We would *not* want to do that if one of the Rewrites completed
-  // with status kTooBusy.
+  // with status kTooBusy or if we've just read these very partitions from
+  // the metadata cache.
   bool ok_to_write_output_partitions_;
+
+  // True if the rewrite was incomplete due to heavy load; if this is true
+  // ok_to_write_output_partitions_ must be false.
+  bool was_too_busy_;
 
   // We mark a job as "slow" when we cannot render it entirely from the
   // metadata cache (including rendering its predecessors). We only do this

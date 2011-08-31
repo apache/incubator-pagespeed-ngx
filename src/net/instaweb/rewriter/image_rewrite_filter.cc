@@ -70,14 +70,15 @@ const char kImageRewriteSavedBytes[] = "image_rewrite_saved_bytes";
 const char kImageInline[] = "image_inline";
 const char kImageWebpRewrites[] = "image_webp_rewrites";
 
-// name for statistic used to bound rewriting work.
-const char kImageOngoingRewrites[] = "image_ongoing_rewrites";
-
-const char kWidthKey[]  = "ImageRewriteFilter_W";
-const char kHeightKey[] = "ImageRewriteFilter_H";
-const char kDataUrlKey[] = "ImageRewriteFilter_DataUrl";
-
 }  // namespace
+
+// name for statistic used to bound rewriting work.
+const char ImageRewriteFilter::kImageOngoingRewrites[] =
+    "image_ongoing_rewrites";
+
+// Number of image rewrites we dropped lately due to work bound.
+const char ImageRewriteFilter::kImageRewritesDroppedDueToLoad[] =
+    "image_rewrites_dropped_due_to_load";
 
 class ImageRewriteFilter::Context : public SingleRewriteContext {
  public:
@@ -156,6 +157,8 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver,
     inline_count_ = stats->GetVariable(kImageInline);
     ongoing_rewrites = stats->GetVariable(kImageOngoingRewrites);
     webp_count_ = stats->GetVariable(kImageWebpRewrites);
+    image_rewrites_dropped_ =
+        stats->GetTimedVariable(kImageRewritesDroppedDueToLoad);
   }
   work_bound_.reset(
       new StatisticsWorkBound(ongoing_rewrites,
@@ -170,6 +173,8 @@ void ImageRewriteFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kImageRewrites);
   statistics->AddVariable(kImageOngoingRewrites);
   statistics->AddVariable(kImageWebpRewrites);
+  statistics->AddTimedVariable(kImageRewritesDroppedDueToLoad,
+                               ResourceManager::kStatisticsGroup);
 }
 
 RewriteSingleResourceFilter::RewriteResult
@@ -307,6 +312,7 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
     }
     work_bound_->WorkComplete();
   } else {
+    image_rewrites_dropped_->IncBy(1);
     message_handler->Message(kInfo, "%s: Too busy to rewrite image.",
                              input_resource->url().c_str());
   }

@@ -1467,6 +1467,56 @@ TEST_F(RewriteContextTest, RenderCompletesCacheAsync) {
                    CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
 }
 
+TEST_F(RewriteContextTest, TestFreshen) {
+  FetcherUpdateDateHeaders();
+
+  // Note that this must be >= kImplicitCacheTtlMs for freshening.
+  const int kTtlMs = ResponseHeaders::kImplicitCacheTtlMs * 10;
+  const char kPath[] = "test.css";
+  const char kDataIn[] = "   data  ";
+
+  // Start with non-zero time, and init our resource..
+  mock_timer()->AdvanceMs(kTtlMs / 2);
+  InitTrimFilters(kRewrittenResource);
+  InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
+                      kTtlMs / Timer::kSecondMs);
+
+  // First fetch + rewrite
+  ValidateExpected("initial", CssLinkHref(kPath),
+                   CssLinkHref("http://test.com/test.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Advance halfway from TTL. This should be an entire cache hit.
+  mock_timer()->AdvanceMs(kTtlMs * 5 / 10);
+  ValidateExpected("fully_hit", CssLinkHref(kPath),
+                   CssLinkHref("http://test.com/test.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Advance close to TTL and rewrite. We should see an extra fetch.
+  // Also upload a version with a newer timestamp.
+  InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
+                      kTtlMs / Timer::kSecondMs);
+  mock_timer()->AdvanceMs(kTtlMs * 4 / 10);
+  ValidateExpected("freshen", CssLinkHref(kPath),
+                   CssLinkHref("http://test.com/test.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+
+  // Now advance past original expiration. While we cannot avoid trying to
+  // rewrite as of now, we at least don't do an extra fetch at this point,
+  // which hopefully shaves off tons of latency. In this test, we also
+  // ensure this by using a wait fetcher, expecting that it will not be
+  // asked to serve a fetch.
+  SetupWaitFetcher();
+  mock_timer()->AdvanceMs(kTtlMs * 4 / 10);
+  ValidateExpected("freshen2", CssLinkHref(kPath),
+                   CssLinkHref("http://test.com/test.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(2, trim_filter_->num_rewrites());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+}
+
 // Test resource update behavior.
 class ResourceUpdateTest : public RewriteContextTest {
  protected:

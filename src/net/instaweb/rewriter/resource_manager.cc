@@ -91,7 +91,6 @@ const char kNumFlushes[] = "num_flushes";
 const char kTotalPageLoadMs[] = "total_page_load_ms";
 const char kPageLoadCount[] = "page_load_count";
 
-
 const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
 const int64 kRefreshExpirePercent = 75;
 
@@ -125,6 +124,9 @@ bool IsExcludedAttribute(const char* attribute) {
 }
 
 }  // namespace
+
+// Statistics group names.
+const char ResourceManager::kStatisticsGroup[] = "Statistics";
 
 // Our HTTP cache mostly stores full URLs, including the http: prefix,
 // mapping them into the URL contents and HTTP headers.  However, we

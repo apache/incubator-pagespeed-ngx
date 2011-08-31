@@ -67,6 +67,7 @@ void Resource::FillInPartitionInputInfo(InputInfo* input) {
   input->set_type(InputInfo::CACHED);
   input->set_last_modified_time_ms(response_headers_.last_modified_time_ms());
   input->set_expiration_time_ms(response_headers_.CacheExpirationTimeMs());
+  input->set_fetch_time_ms(response_headers_.fetch_time_ms());
 }
 
 int64 Resource::CacheExpirationTimeMs() const {

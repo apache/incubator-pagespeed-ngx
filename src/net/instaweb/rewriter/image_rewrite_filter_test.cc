@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -40,6 +41,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -543,6 +545,65 @@ TEST_P(ImageRewriteTest, RetainExtraHeaders) {
   TestRetainExtraHeaders(kPuzzleJpgFile,
                          StrCat("x", kPuzzleJpgFile),
                          "ic", "jpg");
+}
+
+TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {
+  // Buggy in sync.
+  if (!rewrite_driver()->asynchronous_rewrites()) {
+    return;
+  }
+
+  // Make sure we're limiting # of concurrent rewrites properly even when we're
+  // nested inside another filter, and that we do not cache that outcome
+  // improperly.
+  options()->EnableFilter(RewriteOptions::kRecompressImages);
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->set_image_max_rewrites_at_once(1);
+  options()->set_always_rewrite_css(true);
+  rewrite_driver()->AddFilters();
+
+  const char kPngFile[] = "a.png";
+  const char kCssFile[] = "a.css";
+  const char kCssTemplate[] = "div{background-image:url(%s)}";
+  AddFileToMockFetcher(StrCat(kTestDomain, kPngFile), kBikePngFile,
+                       kContentTypePng, 100);
+  GoogleString in_css = StringPrintf(kCssTemplate, kPngFile);
+  InitResponseHeaders(kCssFile,  kContentTypeCss, in_css, 100);
+
+  GoogleString out_css_url =
+      AbsolutifyUrl(StrCat(kCssFile, ".pagespeed.cf.0.css"));
+  GoogleString out_png_url =
+      AbsolutifyUrl(StrCat("x", kPngFile, ".pagespeed.ic.0.png"));
+
+  // Set the current # of rewrites very high, so we stop doing more
+  // due to "load".
+  Variable* ongoing_rewrites =
+      statistics()->GetVariable(ImageRewriteFilter::kImageOngoingRewrites);
+  ongoing_rewrites->Set(100);
+
+  ValidateExpected("img_in_css", CssLinkHref(kCssFile),
+                   CssLinkHref(out_css_url));
+
+  GoogleString out_css;
+  EXPECT_TRUE(ServeResourceUrl(out_css_url, &out_css));
+  // During this time, the out_css should be unchanged, and a dropped
+  // image rewrite be recorded.
+  EXPECT_EQ(in_css, out_css);
+  TimedVariable* drops = statistics()->GetTimedVariable(
+      ImageRewriteFilter::kImageRewritesDroppedDueToLoad);
+  EXPECT_EQ(1, drops->Get(TimedVariable::START));
+
+  // Now rewrite it again w/o any load. We should get the image link
+  // changed.
+  ongoing_rewrites->Set(0);
+  ValidateExpected("img_in_css", CssLinkHref(kCssFile),
+                   CssLinkHref(out_css_url));
+  GoogleString expected_out_css =
+      StringPrintf(kCssTemplate, out_png_url.c_str());
+  EXPECT_TRUE(ServeResourceUrl(out_css_url, &out_css));
+  // This time, however, CSS should be altered (and the drop count still be 1).
+  EXPECT_EQ(expected_out_css, out_css);
+  EXPECT_EQ(1, drops->Get(TimedVariable::START));
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.

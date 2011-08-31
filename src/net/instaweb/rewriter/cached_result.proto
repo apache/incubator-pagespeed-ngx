@@ -62,6 +62,10 @@ message InputInfo {
   optional int64 last_modified_time_ms = 3;
   optional int64 expiration_time_ms = 4;
 
+  // For CACHED resources, we keep track of the original fetch time so we
+  // can freshen.
+  optional int64 fetch_time_ms = 6;
+
   // For FILE_BASED resources, the file this was loaded from.
   optional string filename = 5;
 }

@@ -77,6 +77,9 @@ class ResourceManager {
   static const char kResourceEtagValue[];
   static const char kCacheKeyResourceNamePrefix[];
 
+  // Default statistics group name.
+  static const char kStatisticsGroup[];
+
   ResourceManager(const StringPiece& file_prefix,
                   FileSystem* file_system,
                   FilenameEncoder* filename_encoder,

@@ -38,6 +38,7 @@ class ImageTagScanner;
 class RewriteContext;
 class RewriteDriver;
 class Statistics;
+class TimedVariable;
 class UrlSegmentEncoder;
 class Variable;
 class WorkBound;
@@ -66,6 +67,13 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
   // The result is not registered with the parent.
   RewriteContext* MakeNestedContext(RewriteContext* parent,
                                     const ResourceSlotPtr& slot);
+
+  // name for statistic used to bound rewriting work.
+  static const char kImageOngoingRewrites[];
+
+  // TimedVariable denoting image rewrites we dropped due to
+  // load (too many concurrent rewrites)
+  static const char kImageRewritesDroppedDueToLoad[];
 
  protected:
   // Interface to RewriteSingleResourceFilter
@@ -102,6 +110,7 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
   Variable* inline_count_;
   Variable* rewrite_saved_bytes_;
   Variable* webp_count_;
+  TimedVariable* image_rewrites_dropped_;
   ImageUrlEncoder encoder_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageRewriteFilter);

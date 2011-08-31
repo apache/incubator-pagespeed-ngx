@@ -257,6 +257,7 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     chained_(false),
     rewrite_done_(false),
     ok_to_write_output_partitions_(true),
+    was_too_busy_(false),
     slow_(false) {
   partitions_.reset(new OutputPartitions);
 }
@@ -449,8 +450,6 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
         const ContentType* content_type = NameExtensionToContentType(
             StrCat(".", partition.extension()));
 
-        // TODO(sligocki): Move this into FreshenAndCheckExpiration or delete
-        // that (currently empty) method.
         if (!IsCachedResultValid(partition)) {
           // If a single output resource is invalid, we update them all.
           state = CacheInterface::kNotFound;
@@ -460,8 +459,8 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
 
         if (partition.optimizable() &&
             CreateOutputResourceForCachedOutput(
-                partition.url(), content_type, &output_resource) &&
-            FreshenAndCheckExpiration(partition)) {
+                partition.url(), content_type, &output_resource)) {
+          Freshen(partition);
           outputs_.push_back(output_resource);
           RenderPartitionOnDetach(i);
         } else {
@@ -489,7 +488,7 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
 
 void RewriteContext::OutputCacheHit() {
   rewrite_done_ = true;
-  ok_to_write_output_partitions_ = false;  // partitions were read succesfully
+  ok_to_write_output_partitions_ = false;  // partitions were read successfully
   Finalize();
 }
 
@@ -730,6 +729,10 @@ void RewriteContext::NestedRewriteDone(const RewriteContext* context) {
     dep->CopyFrom(context->partitions_->other_dependency(p));
   }
 
+  if (context->was_too_busy_) {
+    MarkTooBusy();
+  }
+
   DCHECK_LT(0, num_pending_nested_);
   --num_pending_nested_;
   if (num_pending_nested_ == 0) {
@@ -742,7 +745,7 @@ void RewriteContext::RewriteDone(
     RewriteSingleResourceFilter::RewriteResult result,
     int partition_index) {
   if (result == RewriteSingleResourceFilter::kTooBusy) {
-    ok_to_write_output_partitions_ = false;
+    MarkTooBusy();
   } else {
     CachedResult* partition =
         partitions_->mutable_partition(partition_index);
@@ -880,6 +883,11 @@ void RewriteContext::MarkSlow() {
   Driver()->ReportSlowRewrites(num_new_slow);
 }
 
+void RewriteContext::MarkTooBusy() {
+  ok_to_write_output_partitions_ = false;
+  was_too_busy_ = true;
+}
+
 void RewriteContext::CollectDependentTopLevel(ContextSet* contexts) {
   std::pair<ContextSet::iterator, bool> insert_result = contexts->insert(this);
   if (!insert_result.second) {
@@ -916,9 +924,24 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
   return ret;
 }
 
-bool RewriteContext::FreshenAndCheckExpiration(const CachedResult& group) {
-  // TODO(jmarantz): implement.
-  return true;
+void RewriteContext::Freshen(const CachedResult& partition) {
+  // TODO(morlovich): This isn't quite enough as this doesn't cause us to
+  // update the expiration in the partition tables; it merely makes it
+  // essentially prefetch things in the cache for the future, which might
+  // help the rewrite get in by the deadline.
+  for (int i = 0, m = partition.input_size(); i < m; ++i) {
+    const InputInfo& input_info = partition.input(i);
+    if ((input_info.type() == InputInfo::CACHED) &&
+        input_info.has_expiration_time_ms() &&
+        input_info.has_fetch_time_ms() &&
+        input_info.has_index()) {
+      if (Manager()->IsImminentlyExpiring(input_info.fetch_time_ms(),
+                                          input_info.expiration_time_ms())) {
+        ResourcePtr resource(slots_[input_info.index()]->resource());
+        resource->Freshen(Manager()->message_handler());
+      }
+    }
+  }
 }
 
 const UrlSegmentEncoder* RewriteContext::encoder() const {
