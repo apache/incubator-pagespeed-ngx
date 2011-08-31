@@ -238,11 +238,10 @@ void ResponseHeaders::ComputeCaching() {
 
   ConstStringStarVector values;
   int64 date;
+  bool has_date = ParseDateHeader(HttpAttributes::kDate, &date);
   // Compute the timestamp if we can find it
-  bool has_date = Lookup(HttpAttributes::kDate, &values) &&
-      (values.size() == 1) && ConvertStringToTime(*(values[0]), &date);
   if (has_date) {
-      proto_->set_fetch_time_ms(date);
+    proto_->set_fetch_time_ms(date);
   }
 
   // TODO(jmarantz): Should we consider as cacheable a resource
@@ -365,9 +364,8 @@ bool ResponseHeaders::WasGzippedLast() const {
 
 bool ResponseHeaders::ParseDateHeader(
     const StringPiece& attr, int64* date_ms) const {
-  ConstStringStarVector values;
-  return (Lookup(attr, &values) && (values.size() == 1) &&
-          (values[0] != NULL) && ConvertStringToTime(*(values[0]), date_ms));
+  const char* date_string = Lookup1(attr);
+  return (date_string != NULL) && ConvertStringToTime(date_string, date_ms);
 }
 
 void ResponseHeaders::UpdateDateHeader(const StringPiece& attr, int64 date_ms) {
@@ -416,6 +414,11 @@ void ResponseHeaders::DebugPrint() const {
     fprintf(stderr, "proxy_cacheable_ = %s\n",
             BoolToString(proto_->proxy_cacheable()));
   }
+}
+
+bool ResponseHeaders::FindContentLength(int64* content_length) {
+  const char* val = Lookup1(HttpAttributes::kContentLength);
+  return (val != NULL) && StringToInt64(val, content_length);
 }
 
 }  // namespace net_instaweb

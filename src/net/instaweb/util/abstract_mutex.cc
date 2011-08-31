@@ -23,4 +23,7 @@ namespace net_instaweb {
 AbstractMutex::~AbstractMutex() {
 }
 
+void AbstractMutex::DCheckLocked() {
+}
+
 }  // namespace net_instaweb

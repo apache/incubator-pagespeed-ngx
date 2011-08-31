@@ -100,6 +100,15 @@ template<class Proto> bool Headers<Proto>::Lookup(
   return map_->Lookup(name, values);
 }
 
+template<class Proto> const char* Headers<Proto>::Lookup1(
+    const StringPiece& name) const {
+  ConstStringStarVector v;
+  if (Lookup(name, &v) && (v.size() == 1)) {
+    return v[0]->c_str();
+  }
+  return NULL;
+}
+
 template<class Proto> bool Headers<Proto>::IsCommaSeparatedField(
     const StringPiece& name) const {
   // TODO(nforman): Make this a complete list.  The list of header names

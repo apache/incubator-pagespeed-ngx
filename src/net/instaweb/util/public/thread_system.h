@@ -71,6 +71,7 @@ class ThreadSystem {
  private:
   friend class Thread;
   friend class MockThreadSystem;
+  friend class CheckingThreadSystem;
   virtual ThreadImpl* NewThreadImpl(Thread* wrapper, ThreadFlags flags) = 0;
 
   DISALLOW_COPY_AND_ASSIGN(ThreadSystem);

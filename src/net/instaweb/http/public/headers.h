@@ -57,6 +57,10 @@ template<class Proto> class Headers {
   // be done in a separate CL from the one I'm typing into now.
   bool Lookup(const StringPiece& name, ConstStringStarVector* values) const;
 
+  // Looks up a single attribute value.  Returns NULL if the attribute is
+  // not found, or if more than one attribute is found.
+  const char* Lookup1(const StringPiece& name) const;
+
   // Likewise, NumAttributeNames is const but not thread-safe.
   int NumAttributeNames() const;
 

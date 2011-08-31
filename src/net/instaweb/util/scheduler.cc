@@ -23,7 +23,6 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/function.h"
@@ -179,54 +178,11 @@ bool Scheduler::CompareAlarms::operator()(const Alarm* a,
   return a->Compare(b) < 0;
 }
 
-
-// This class implements a wrapper around a CondvarCapableMutex to permit
-// checking of lock state on entry and exit.
-class Scheduler::Mutex : public AbstractMutex {
- public:
-  explicit Mutex(ThreadSystem::CondvarCapableMutex* mutex)
-      : mutex_(mutex) { }
-  virtual ~Mutex() { }
-
-  ThreadSystem::CondvarCapableMutex* mutex() {
-    return mutex_.get();
-  }
-
-  void EnsureLocked() {
-    DCHECK(locked_.value()) << " lock should have been held.";
-  }
-
-  void DropLockControl() {
-    EnsureLocked();
-    locked_.set_value(false);
-  }
-
-  void TakeLockControl() {
-    DCHECK(!locked_.value()) << " lock should have been available.";
-    locked_.set_value(true);
-  }
-
-  virtual void Lock() {
-    mutex_->Lock();
-    TakeLockControl();
-  }
-
-  virtual void Unlock() {
-    DropLockControl();
-    mutex_->Unlock();
-  }
-
- private:
-  scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
-  AtomicBool locked_;
-  DISALLOW_COPY_AND_ASSIGN(Mutex);
-};
-
 Scheduler::Scheduler(ThreadSystem* thread_system, Timer* timer)
     : thread_system_(thread_system),
       timer_(timer),
-      mutex_(new Mutex(thread_system->NewMutex())),
-      condvar_(mutex_->mutex()->NewCondvar()),
+      mutex_(thread_system->NewMutex()),
+      condvar_(mutex_->NewCondvar()),
       index_(kIndexNotSet),
       signal_count_(0) {
 }
@@ -236,10 +192,10 @@ Scheduler::~Scheduler() {
 
 AbstractMutex* Scheduler::mutex() { return mutex_.get(); }
 
-void Scheduler::EnsureLocked() { mutex_->EnsureLocked(); }
+void Scheduler::DCheckLocked() { mutex_->DCheckLocked(); }
 
 void Scheduler::BlockingTimedWait(int64 timeout_ms) {
-  mutex_->EnsureLocked();
+  mutex_->DCheckLocked();
   int64 now_us = timer_->NowUs();
   int64 wakeup_time_us = now_us + timeout_ms * kMsUs;
   // We block until signal_count_ changes or we time out.
@@ -261,7 +217,7 @@ void Scheduler::BlockingTimedWait(int64 timeout_ms) {
 }
 
 void Scheduler::TimedWait(int64 timeout_ms, Function* callback) {
-  mutex_->EnsureLocked();
+  mutex_->DCheckLocked();
   int64 now_us = timer_->NowUs();
   int64 completion_time_us = now_us + timeout_ms * kMsUs;
   // We create the alarm for this callback, and register it.  We also register
@@ -279,12 +235,12 @@ void Scheduler::CancelWaiting(Alarm* alarm) {
   // a pending Signal operation.  Tighter locking on Alarm objects should have
   // eliminated this hole, but we continue to use presence / absence in
   // outstanding_alarms_ to resolve signal/cancel races.
-  mutex_->EnsureLocked();
+  mutex_->DCheckLocked();
   waiting_alarms_.erase(alarm);
 }
 
 void Scheduler::Signal() {
-  mutex_->EnsureLocked();
+  mutex_->DCheckLocked();
   ++signal_count_;
   if (!waiting_alarms_.empty()) {
     for (AlarmSet::iterator i = waiting_alarms_.begin();
@@ -300,7 +256,7 @@ void Scheduler::Signal() {
 
 // Add alarm while holding mutex.  Don't run any alarms or otherwise drop mutex.
 void Scheduler::AddAlarmMutexHeld(int64 wakeup_time_us, Alarm* alarm) {
-  mutex_->EnsureLocked();
+  mutex_->DCheckLocked();
   alarm->wakeup_time_us_ = wakeup_time_us;
   alarm->index_ = ++index_;
   if (!outstanding_alarms_.empty()) {
@@ -323,7 +279,7 @@ Scheduler::Alarm* Scheduler::AddAlarm(int64 wakeup_time_us,
 }
 
 bool Scheduler::CancelAlarm(Alarm* alarm) {
-  mutex_->EnsureLocked();
+  mutex_->DCheckLocked();
   if (outstanding_alarms_.erase(alarm) != 0) {
     // Note: the following call may drop and re-lock the scheduler mutex.
     alarm->CancelAlarm();
@@ -339,7 +295,7 @@ bool Scheduler::CancelAlarm(Alarm* alarm) {
 // run, otherwise leaves it untouched.
 int64 Scheduler::RunAlarms(bool* ran_alarms) {
   while (!outstanding_alarms_.empty()) {
-    mutex_->EnsureLocked();
+    mutex_->DCheckLocked();
     // We don't use the iterator to go through the set, because we're dropping
     // the lock in mid-loop thus permitting new insertions and cancellations.
     AlarmSet::iterator first_alarm_iterator = outstanding_alarms_.begin();
@@ -362,15 +318,13 @@ int64 Scheduler::RunAlarms(bool* ran_alarms) {
 }
 
 void Scheduler::AwaitWakeup(int64 wakeup_time_us) {
-  mutex_->EnsureLocked();
+  mutex_->DCheckLocked();
   int64 now_us = timer_->NowUs();
   // Compute how long we should wait.  Note: we overshoot, which may lead us
   // to wake a bit later than expected.  We assume the system is likely to
   // round wakeup time off for us in some arbitrary fashion in any case.
   int64 wakeup_interval_ms = (wakeup_time_us - now_us + kMsUs - 1) / kMsUs;
-  mutex_->DropLockControl();
   condvar_->TimedWait(wakeup_interval_ms);
-  mutex_->TakeLockControl();
 }
 
 void Scheduler::Wakeup() {

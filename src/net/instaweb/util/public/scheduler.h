@@ -57,7 +57,7 @@ class Scheduler {
   AbstractMutex* mutex();
 
   // Optionally check that mutex is locked for debugging purposes.
-  void EnsureLocked();
+  void DCheckLocked();
 
   // Condition-style methods: The following three methods provide a simple
   // condition-variable-style interface that can be used to coordinate the
@@ -123,7 +123,6 @@ class Scheduler {
  private:
   class CondVarTimeout;
   class CondVarCallbackTimeout;
-  class Mutex;
 
   typedef std::set<Alarm*, CompareAlarms> AlarmSet;
 
@@ -133,7 +132,7 @@ class Scheduler {
 
   ThreadSystem* thread_system_;
   Timer* timer_;
-  scoped_ptr<Mutex> mutex_;
+  scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
   // condvar_ tracks whether interesting (next-wakeup decreasing or
   // signal_count_ increasing) events occur.
   scoped_ptr<ThreadSystem::Condvar> condvar_;

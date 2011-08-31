@@ -156,6 +156,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // account the Vary: headers.
   bool VaryCacheable() const;
 
+  // Finds Content-Length in the response headers, returning true and putting
+  // it in *content_length if successful.
+  bool FindContentLength(int64* content_length);
+
  private:
   friend class ResponseHeadersTest;
   bool cache_fields_dirty_;

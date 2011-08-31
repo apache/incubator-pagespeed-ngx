@@ -215,6 +215,7 @@
         'util/abstract_mutex.cc',
         'util/abstract_shared_mem.cc',
         'util/cache_interface.cc',
+        'util/checking_thread_system.cc',
         'util/chunking_writer.cc',
         'util/circular_buffer.cc',
         'util/condvar.cc',
