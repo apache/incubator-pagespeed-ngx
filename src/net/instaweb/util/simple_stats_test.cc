@@ -8,6 +8,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -36,6 +37,13 @@ TEST_F(SimpleStatsTest, TestSimpleStats) {
   EXPECT_EQ(0, c0->Get());
   EXPECT_EQ(1, c1->Get());
   EXPECT_EQ(2, c2->Get());
+}
+
+TEST_F(SimpleStatsTest, TestTimedVariable) {
+  SimpleStats ss;
+  TimedVariable* tv = stats_.AddTimedVariable("name", "group");
+  tv->IncBy(1);
+  EXPECT_EQ(1, tv->Get(TimedVariable::START));
 }
 
 }  // namespace net_instaweb

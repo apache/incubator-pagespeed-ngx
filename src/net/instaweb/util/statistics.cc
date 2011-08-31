@@ -132,7 +132,7 @@ Histogram* Statistics::NewHistogram() {
 
 TimedVariable* Statistics::NewTimedVariable(
     const StringPiece& name, int index) {
-  return new FakeTimedVariable(NewVariable(name, index));
+  return new FakeTimedVariable(AddVariable(name));
 }
 
 void Statistics::RenderHistograms(Writer* writer, MessageHandler* handler) {

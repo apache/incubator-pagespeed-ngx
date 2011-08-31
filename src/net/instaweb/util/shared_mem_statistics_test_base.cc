@@ -378,4 +378,21 @@ void SharedMemStatisticsTestBase::TestHistogramRender() {
   EXPECT_TRUE(Contains(html_graph, "37.5%"));
 }
 
+void SharedMemStatisticsTestBase::TestTimedVariableEmulation() {
+  // Simple test of timed variable emulation.
+  scoped_ptr<SharedMemStatistics> stats(
+      new SharedMemStatistics(shmem_runtime_.get(), kPrefix));
+  Variable* a = stats->AddVariable("A");
+  TimedVariable* b = stats->AddTimedVariable("B", "some group");
+  stats->Init(true, &handler_);
+
+  b->IncBy(42);
+  EXPECT_EQ(0, a->Get());
+  EXPECT_EQ(42, b->Get(TimedVariable::START));
+
+  stats->GlobalCleanup(&handler_);
+  EXPECT_EQ(0, handler_.SeriousMessages());
+
+}
+
 }  // namespace net_instaweb

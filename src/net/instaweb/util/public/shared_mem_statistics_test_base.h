@@ -42,6 +42,7 @@ class SharedMemStatisticsTestBase : public testing::Test {
   void TestAdd();
   void TestHistogram();
   void TestHistogramRender();
+  void TestTimedVariableEmulation();
 
  private:
   void TestCreateChild();
@@ -100,9 +101,13 @@ TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestHistogramRender) {
   SharedMemStatisticsTestBase::TestHistogramRender();
 }
 
+TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestTimedVariableEmulation) {
+  SharedMemStatisticsTestBase::TestTimedVariableEmulation();
+}
+
 REGISTER_TYPED_TEST_CASE_P(SharedMemStatisticsTestTemplate, TestCreate,
                            TestSet, TestClear, TestAdd, TestHistogram,
-                           TestHistogramRender);
+                           TestHistogramRender, TestTimedVariableEmulation);
 
 }  // namespace net_instaweb
 
