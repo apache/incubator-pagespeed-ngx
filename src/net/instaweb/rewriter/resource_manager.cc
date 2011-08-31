@@ -114,6 +114,7 @@ const char* kExcludedAttributes[] = {
   // which are generally meant for private data.
   HttpAttributes::kSetCookie,
   HttpAttributes::kSetCookie2,
+  HttpAttributes::kTransferEncoding,
   HttpAttributes::kVary
 };
 
