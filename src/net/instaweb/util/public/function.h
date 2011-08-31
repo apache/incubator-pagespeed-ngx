@@ -49,15 +49,22 @@ class Function {
   Function();
   virtual ~Function();
 
+  // Functions used as Worker tasks can help the system shut down cleanly
+  // by calling quit_requested() periodically.  To support this, Worker
+  // calls set_quit_requested_pointer so the Function object can access
+  // the atomic bool.
+  //
+  // Note that a strategy of allocating the AtomicBool inside the Function
+  // object exposes a shutdown race when the function completes and deletes
+  // itself.
+  void set_quit_requested_pointer(AtomicBool* x) { quit_requested_ = x; }
+
   // Allows an infrastructure (e.g. Worker or Alarm) to request that
   // a running Function stop soon, as it is being shut down.
+  //
+  // This can should only be called during the Run() method.
   bool quit_requested() const {
-    return quit_requested_.value();
-  }
-
-  // Requests that a running closure shut down.
-  void set_quit_requested(bool q) {
-    quit_requested_.set_value(q);
+    return (quit_requested_ != NULL) && quit_requested_->value();
   }
 
   // Implementors of Function interfaces should call via these helper methods
@@ -92,10 +99,11 @@ class Function {
   virtual void Cancel() {}
 
  private:
-  AtomicBool quit_requested_;
+  AtomicBool* quit_requested_;
   bool run_called_;
   bool cancel_called_;
   bool delete_after_callback_;
+
   DISALLOW_COPY_AND_ASSIGN(Function);
 };
 

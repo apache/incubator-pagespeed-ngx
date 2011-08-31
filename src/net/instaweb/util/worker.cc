@@ -25,6 +25,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/function.h"
@@ -45,12 +46,13 @@ class Worker::WorkThread : public ThreadSystem::Thread {
       current_task_(NULL),
       exit_(false),
       started_(false) {
+    quit_requested_.set_value(false);
   }
 
-  // If worker thread exit is requested, returns false.
-  // Returns true and fetches next task into current_task_ otherwise.
-  // Takes care of synchronization, including waiting for next state change.
-  bool WaitForNextTask() {
+  // If worker thread exit is requested, returns NULL.  Returns next
+  // pending task, also setting it in current_task_ otherwise.  Takes
+  // care of synchronization, including waiting for next state change.
+  Function* GetNextTask() {
     ScopedMutex lock(mutex_.get());
 
     // Clean any task we were running last iteration
@@ -62,7 +64,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
 
     // Handle exit.
     if (exit_) {
-      return false;
+      return NULL;
     }
 
     // Get task.
@@ -70,13 +72,15 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     tasks_.pop_front();
     owner_->UpdateQueueSizeStat(-1);
 
-    return true;
+    return current_task_;
   }
 
   virtual void Run() {
-    while (WaitForNextTask()) {
+    Function* task;
+    while ((task = GetNextTask()) != NULL) {
       // Run tasks (not holding the lock, so new tasks can be added).
-      current_task_->CallRun();
+      task->set_quit_requested_pointer(&quit_requested_);
+      task->CallRun();
     }
   }
 
@@ -90,7 +94,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
 
       exit_ = true;
       if (current_task_ != NULL) {
-        current_task_->set_quit_requested(true);
+        quit_requested_.set_value(true);
       }
       state_change_->Signal();
     }
@@ -161,6 +165,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
   std::deque<Function*> tasks_;  // things waiting to be run.
   bool exit_;
   bool started_;
+  AtomicBool quit_requested_;
 
   DISALLOW_COPY_AND_ASSIGN(WorkThread);
 };
