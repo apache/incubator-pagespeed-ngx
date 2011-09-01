@@ -350,13 +350,11 @@ void RewriteDriverFactory::ShutDown() {
   }
   url_fetcher_ = NULL;
 
-  file_system_.reset(NULL);
-  hasher_.reset(NULL);
-  filename_encoder_.reset(NULL);
-  timer_.reset(NULL);
   resource_manager_.reset(NULL);
-  html_parse_message_handler_.reset(NULL);
-  http_cache_.reset(NULL);
+
+  // Do not reset the timer, file_system, hasher, encoder,
+  // html_parse_message_handler, or cache.  Those are deleted when
+  // the factory is deleted.
 }
 
 // Return a writable RewriteOptions.  If the ResourceManager has

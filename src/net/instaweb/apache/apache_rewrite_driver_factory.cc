@@ -149,7 +149,10 @@ SharedMemLockManager* ApacheRewriteDriverFactory::CreateSharedMemLockManager() {
 }
 
 FileSystem* ApacheRewriteDriverFactory::DefaultFileSystem() {
-  return new AprFileSystem(pool_);
+  // Pass in NULL for the pool.  We do not want the file-system to
+  // be auto-destructed based on the factory's pool: we want to follow
+  // C++ destruction semantics.
+  return new AprFileSystem(NULL);
 }
 
 Hasher* ApacheRewriteDriverFactory::NewHasher() {
