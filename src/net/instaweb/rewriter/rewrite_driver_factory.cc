@@ -44,16 +44,25 @@ namespace net_instaweb {
 class RewriteDriver;
 class Statistics;
 
+RewriteDriverFactory::RewriteDriverFactory(ThreadSystem* thread_system)
+    : thread_system_(thread_system) {
+  Init();
+}
+
 RewriteDriverFactory::RewriteDriverFactory()
-    : url_fetcher_(NULL),
-      url_async_fetcher_(NULL),
-      html_parse_(NULL),
-      filename_prefix_(""),
-      force_caching_(false),
-      slurp_read_only_(false),
-      slurp_print_urls_(false),
-      async_rewrites_(true),
-      http_cache_backend_(NULL) {
+    : thread_system_(ThreadSystem::CreateThreadSystem()) {
+  Init();
+}
+
+void RewriteDriverFactory::Init() {
+  url_fetcher_ = NULL;
+  url_async_fetcher_ = NULL;
+  force_caching_ = false;
+  slurp_read_only_ = false;
+  slurp_print_urls_ = false;
+  async_rewrites_ = true;
+  http_cache_backend_ = NULL;
+  resource_manager_mutex_.reset(thread_system_->NewMutex());
 }
 
 RewriteDriverFactory::~RewriteDriverFactory() {
@@ -219,12 +228,14 @@ HTTPCache* RewriteDriverFactory::http_cache() {
 
 void RewriteDriverFactory::SetAsyncRewrites(bool x) {
   async_rewrites_ = x;
+  ScopedMutex lock(resource_manager_mutex_.get());
   if (resource_manager_.get() != NULL) {
     resource_manager_->set_async_rewrites(async_rewrites_);
   }
 }
 
 ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
+  ScopedMutex lock(resource_manager_mutex_.get());
   if (resource_manager_ == NULL) {
     CHECK(!filename_prefix_.empty())
         << "Must specify --filename_prefix or call "
@@ -364,6 +375,7 @@ void RewriteDriverFactory::ShutDown() {
 // those options to be parsed already, we can transfer the temp
 // options to the ResourceManager and get rid of them.
 RewriteOptions* RewriteDriverFactory::options() {
+  ScopedMutex lock(resource_manager_mutex_.get());
   if (resource_manager_.get() == NULL) {
     if (temp_options_.get() == NULL) {
       temp_options_.reset(new RewriteOptions);
@@ -372,13 +384,6 @@ RewriteOptions* RewriteDriverFactory::options() {
   }
   DCHECK(temp_options_.get() == NULL);
   return resource_manager_->options();
-}
-
-ThreadSystem* RewriteDriverFactory::thread_system() {
-  if (thread_system_.get() == NULL) {
-    thread_system_.reset(DefaultThreadSystem());
-  }
-  return thread_system_.get();
 }
 
 void RewriteDriverFactory::AddCreatedDirectory(const GoogleString& dir) {

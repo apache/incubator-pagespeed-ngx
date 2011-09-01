@@ -28,6 +28,9 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#ifndef NDEBUG
+#include "net/instaweb/util/public/checking_thread_system.h"
+#endif
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/gflags.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -76,7 +79,14 @@ bool ApacheRewriteDriverFactory::ParseRefererStatisticsOutputLevel(
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     server_rec* server, const StringPiece& version)
-    : server_rec_(server),
+    : RewriteDriverFactory(
+#ifdef NDEBUG
+        new ApacheThreadSystem
+#else
+        new CheckingThreadSystem(new ApacheThreadSystem)
+#endif
+                           ),
+      server_rec_(server),
       serf_url_fetcher_(NULL),
       serf_url_async_fetcher_(NULL),
       shared_mem_statistics_(NULL),
@@ -122,7 +132,6 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
   // Otherwise may result in leak error in test.
   message_handler();
   html_parse_message_handler();
-
 }
 
 ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
@@ -248,10 +257,6 @@ UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
 
 HtmlParse* ApacheRewriteDriverFactory::DefaultHtmlParse() {
   return new HtmlParse(html_parse_message_handler());
-}
-
-ThreadSystem* ApacheRewriteDriverFactory::DefaultThreadSystem() {
-  return new ApacheThreadSystem;
 }
 
 void ApacheRewriteDriverFactory::SetStatistics(SharedMemStatistics* x) {

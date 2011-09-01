@@ -70,9 +70,6 @@ class FileRewriter : public net_instaweb::RewriteDriverFactory {
   virtual net_instaweb::CacheInterface* DefaultCacheInterface() {
     return new net_instaweb::LRUCache(gflags_->lru_cache_size_bytes());
   }
-  virtual net_instaweb::ThreadSystem* DefaultThreadSystem() {
-    return new net_instaweb::PthreadThreadSystem;
-  }
   virtual net_instaweb::Statistics* statistics() {
     return &simple_stats_;
   }

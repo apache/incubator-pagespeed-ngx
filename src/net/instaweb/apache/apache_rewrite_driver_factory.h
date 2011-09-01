@@ -166,7 +166,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   virtual Timer* DefaultTimer();
   virtual CacheInterface* DefaultCacheInterface();
   virtual NamedLockManager* DefaultLockManager();
-  virtual ThreadSystem* DefaultThreadSystem();
 
   virtual void ResourceManagerCreatedHook();
 
