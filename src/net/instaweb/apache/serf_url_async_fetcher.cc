@@ -247,7 +247,13 @@ class SerfFetch : public PoolElement<SerfFetch> {
   }
 
   static bool MoreDataAvailable(apr_status_t status) {
-    return (APR_STATUS_IS_EAGAIN(status) || APR_STATUS_IS_EINTR(status));
+    // This OR is structured like this to make debugging easier, as it's
+    // not obvious when looking at the status mask which of these conditions
+    // is hit.
+    if (APR_STATUS_IS_EAGAIN(status)) {
+      return true;
+    }
+    return APR_STATUS_IS_EINTR(status);
   }
 
   static bool IsStatusOk(apr_status_t status) {
@@ -278,7 +284,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     while (MoreDataAvailable(status) && (response_headers_ != NULL) &&
             !parser_.headers_complete()) {
       if (!status_line_read_) {
-        ReadStatusLine(response);
+        status = ReadStatusLine(response);
       }
 
       if (status_line_read_ && !one_byte_read_) {
@@ -308,7 +314,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     return status;
   }
 
-  void ReadStatusLine(serf_bucket_t* response) {
+  apr_status_t ReadStatusLine(serf_bucket_t* response) {
     serf_status_line status_line;
     apr_status_t status = serf_bucket_response_status(response, &status_line);
     if (status == APR_SUCCESS) {
@@ -318,6 +324,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
       response_headers_->set_minor_version(status_line.version % 1000);
       status_line_read_ = true;
     }
+    return status;
   }
 
   // Know what's weird?  You have do a body-read to get access to the
