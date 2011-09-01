@@ -288,7 +288,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
       }
 
       if (status_line_read_ && !one_byte_read_) {
-        ReadOneByteFromBody(response);
+        status = ReadOneByteFromBody(response);
       }
 
       if (one_byte_read_ && !parser_.headers_complete()) {
@@ -338,7 +338,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
   // kind of function that needs to know the content-type, then it's
   // really a drag to have to wait till the end of the body to get the
   // content type.
-  void ReadOneByteFromBody(serf_bucket_t* response) {
+  apr_status_t ReadOneByteFromBody(serf_bucket_t* response) {
     apr_size_t len = 0;
     const char* data = NULL;
     apr_status_t status = serf_bucket_read(response, 1, &data, &len);
@@ -349,6 +349,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
         saved_byte_ = data[0];
       }
     }
+    return status;
   }
 
   // Once that one byte is read from the body, we can go ahead and
