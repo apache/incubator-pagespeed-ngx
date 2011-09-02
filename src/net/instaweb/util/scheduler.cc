@@ -242,13 +242,17 @@ void Scheduler::CancelWaiting(Alarm* alarm) {
 void Scheduler::Signal() {
   mutex_->DCheckLocked();
   ++signal_count_;
-  if (!waiting_alarms_.empty()) {
-    for (AlarmSet::iterator i = waiting_alarms_.begin();
-         i != waiting_alarms_.end(); ++i) {
+  // We have to be careful to not just walk over waiting_alarms_ here
+  // as new entries can be added to it by TimedWait invocations from the
+  // callbacks we run.
+  AlarmSet waiting_alarms_to_dispatch;
+  waiting_alarms_to_dispatch.swap(waiting_alarms_);
+  if (!waiting_alarms_to_dispatch.empty()) {
+    for (AlarmSet::iterator i = waiting_alarms_to_dispatch.begin();
+         i != waiting_alarms_to_dispatch.end(); ++i) {
       // The Cancel() methods for waiting_alarms_ retain the scheduler mutex.
       CancelAlarm(*i);
     }
-    waiting_alarms_.clear();
     condvar_->Broadcast();
   }
   RunAlarms(NULL);

@@ -15,8 +15,10 @@
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
 #include "net/instaweb/util/public/scheduler.h"
+
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -222,6 +224,51 @@ TEST_F(SchedulerTest, TimedWaitMidpointSignal) {
   // noticeably if it didn't.
   EXPECT_GT(start_us + kMinuteUs, end_us);
 };
+
+// Function that retries a TimedWait when invoked until 10ms have passed.
+class RetryWaitFunction : public Function {
+ public:
+  RetryWaitFunction(Timer* timer, int64 start_ms, Scheduler* scheduler,
+                    int* counter)
+      : timer_(timer), start_ms_(start_ms),
+        scheduler_(scheduler), counter_(counter) {
+  }
+
+  virtual ~RetryWaitFunction() {}
+
+  virtual void Run() {
+    ++*counter_;
+    if ((timer_->NowMs() - start_ms_) < 10) {
+      // Note that we want the retry delay here to place us later than
+      // the original timeout the first invocation had, as that will
+      // place us later inside the wait queue ordering. In the past,
+      // that would cause Signal() to instantly detect us in the queue
+      // and run us w/o returning control.
+      scheduler_->TimedWait(
+          10, new RetryWaitFunction(timer_, start_ms_, scheduler_, counter_));
+    }
+  }
+
+ private:
+  Timer* timer_;
+  int64 start_ms_;
+  Scheduler* scheduler_;
+  int* counter_;
+  DISALLOW_COPY_AND_ASSIGN(RetryWaitFunction);
+};
+
+TEST_F(SchedulerTest, TimedWaitFromSignalWakeup) {
+  int counter = 0;
+  int64 start_ms = timer_.NowMs();
+  {
+    ScopedMutex lock(scheduler_.mutex());
+    scheduler_.TimedWait(
+        5, new RetryWaitFunction(&timer_, start_ms, &scheduler_, &counter));
+    scheduler_.Signal();
+  }
+  scheduler_.ProcessAlarms(20 * kMsUs);
+  EXPECT_GE(2, counter);
+}
 
 }  // namespace
 
