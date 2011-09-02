@@ -537,6 +537,55 @@ TEST_P(CssCombineFilterTest, CombineCssWithImportInSecond) {
   EXPECT_EQ(2, css_out.size());
 }
 
+TEST_P(CssCombineFilterTest, StripBOM) {
+  GoogleString html_url = StrCat(kDomain, "bom.html");
+  GoogleString a_css_url = StrCat(kDomain, "a.css");
+  GoogleString b_css_url = StrCat(kDomain, "b.css");
+
+  // BOM documentation: http://www.unicode.org/faq/utf_bom.html
+  static const char kBom[] = {0xEF, 0xBB, 0xBF, 0x0};
+  const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
+  const char b_css_body[] = ".c4 {\n color: purple;\n}\n";
+  GoogleString bom_body = StrCat(kBom, b_css_body);
+
+  ResponseHeaders default_header;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_header);
+
+  SetFetchResponse(a_css_url, default_header, a_css_body);
+  SetFetchResponse(b_css_url, default_header, bom_body);
+
+  StringVector css_urls;
+  GoogleString input_buffer(StrCat(
+      "<head>\n"
+      "  ", Link("a.css"), "\n"
+      "  ", Link("b.css"), "\n"
+      "</head>\n"));
+  ParseUrl(html_url, input_buffer);
+
+  CollectCssLinks("combine_css_no_bom", output_buffer_, &css_urls);
+  ASSERT_EQ(1UL, css_urls.size());
+  GoogleString actual_combination;
+  EXPECT_TRUE(ServeResourceUrl(css_urls[0], &actual_combination));
+  int bom_pos = actual_combination.find(kBom);
+  EXPECT_EQ(GoogleString::npos, bom_pos);
+
+  GoogleString input_buffer_reversed(StrCat(
+      "<head>\n"
+      "  ", Link("b.css"), "\n"
+      "  ", Link("a.css"), "\n"
+      "</head>\n"));
+  ParseUrl(html_url, input_buffer_reversed);
+  css_urls.clear();
+  actual_combination.clear();
+  CollectCssLinks("combine_css_beginning_bom", output_buffer_, &css_urls);
+  ASSERT_EQ(1UL, css_urls.size());
+  EXPECT_TRUE(ServeResourceUrl(css_urls[0], &actual_combination));
+  bom_pos = actual_combination.find(kBom);
+  EXPECT_EQ(0, bom_pos);
+  bom_pos = actual_combination.rfind(kBom);
+  EXPECT_EQ(0, bom_pos);
+}
+
 TEST_P(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
   const char noscript_barrier[] =
       "<noscript>\n"

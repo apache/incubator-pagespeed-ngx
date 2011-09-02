@@ -111,6 +111,8 @@ class CssCombineFilter::CssCombiner
   virtual bool WritePiece(const Resource* input, OutputResource* combination,
                           Writer* writer, MessageHandler* handler);
 
+  void StripUTF8BOM(StringPiece* contents) const;
+
   // Returns true iff all elements in current combination can be rewritten.
   bool CanRewrite() const {
     bool ret = (num_urls() > 0);
@@ -434,12 +436,40 @@ void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
   Reset();
 }
 
+// In addition to specifying the encoding in the ContentType header,
+// one can also specify it at the beginning of the file using a Byte Order Mark.
+//
+// Bytes        Encoding Form
+// 00 00 FE FF  UTF-32, big-endian
+// FF FE 00 00  UTF-32, little-endian
+// FE FF        UTF-16, big-endian
+// FF FE        UTF-16, little-endian
+// EF BB BF     UTF-8
+// See: http://www.unicode.org/faq/utf_bom.html
+// TODO(nforman): Possibly handle stripping BOMs from non-utf-8 files.
+// We currently handle only utf-8 BOM because we assume the resources
+// we get are not in utf-16 or utf-32 when we read and parse them, anyway.
+// TODO(nforman): Figure out earlier on (and more rigorously) if a resource
+// is encoded in one of these other formats and cache that fact so we
+// don't continue to try to rewrite it.
+void CssCombineFilter::CssCombiner::StripUTF8BOM(StringPiece* contents) const {
+  static const char kBom[] = {0xEF, 0xBB, 0xBF, 0x0};
+  if (contents->starts_with(kBom)) {
+    contents->remove_prefix(strlen(kBom));
+  }
+}
+
 bool CssCombineFilter::CssCombiner::WritePiece(
     const Resource* input, OutputResource* combination, Writer* writer,
     MessageHandler* handler) {
   StringPiece contents = input->contents();
   GoogleUrl input_url(input->url());
   StringPiece input_dir = input_url.AllExceptLeaf();
+  // Strip the BOM off of the contents (if it's there) if this is not the
+  // first resource.
+  if (resources().size() > 0 && resources()[0].get() != input) {
+    StripUTF8BOM(&contents);
+  }
   if (input_dir == combination->resolved_base()) {
     // We don't need to absolutify URLs if input directory is same as output.
     return writer->Write(contents, handler);

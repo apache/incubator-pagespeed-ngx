@@ -31,15 +31,34 @@ namespace net_instaweb {
 
 MemCleanUp::MemCleanUp() {
   HtmlKeywords::Init();
+
+  // googleurl/src/url_util.cc lazily initializes its
+  // "standard_schemes" table in a thread-unsafe way and so it must be
+  // explicitly initialized prior to thread creation, and explicitly
+  // terminated after thread quiescence.
+  url_util::Initialize();
 }
 
 MemCleanUp::~MemCleanUp() {
   // Clean up statics from third_party code first.
+
+  // The command-line flags structures are lazily initialized, but
+  // they are done so in static constructors resulting from DEFINE_int32
+  // and other similar macros.  So they must happen prior to threads
+  // starting up.
   ShutDownCommandLineFlags();
+
+  // The protobuf shutdown infrastructure is lazily initialized in a threadsafe
+  // manner.  See third_party/protobuf/src/google/protobuf/stubs/common.cc,
+  // function InitShutdownFunctionsOnce.
   google::protobuf::ShutdownProtobufLibrary();
+
   url_util::Shutdown();
 
-  // Then clean up statics net_instaweb code.
+  // Then clean up statics net_instaweb code.  Note that
+  // CssFilter::Initialize(statistics) is called by
+  // ResourceManager::Initialize, which is a static method that is
+  // called before threads are spawned.
   CssFilter::Terminate();
   HtmlKeywords::ShutDown();
 }
