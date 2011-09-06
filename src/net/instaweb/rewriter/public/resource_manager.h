@@ -149,6 +149,7 @@ class ResourceManager {
   // TODO(jmarantz): check thread safety in Apache.
   Hasher* hasher() const { return hasher_; }
   const Hasher* lock_hasher() const { return &lock_hasher_; }
+  const Hasher* contents_hasher() const { return &contents_hasher_; }
   FileSystem* file_system() { return file_system_; }
   FilenameEncoder* filename_encoder() const { return filename_encoder_; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
@@ -391,7 +392,16 @@ class ResourceManager {
   FilenameEncoder* filename_encoder_;
   UrlAsyncFetcher* url_async_fetcher_;
   Hasher* hasher_;
+
+  // hasher_ is often set to a mock within unit tests, but some parts of the
+  // system will not work sensibly if the "hash algorithm" used always returns
+  // constants. For those, we have two separate hashers.
   MD5Hasher lock_hasher_;  // Used to compute named lock names.
+
+  // Used to hash file contents to see if inputs to a rewrites have actually
+  // changed (and didn't just expire).
+  MD5Hasher contents_hasher_;
+
   Statistics* statistics_;
 
   // Counts how many URLs we reject because they come from a domain that

@@ -189,6 +189,8 @@ class RewriteContext {
   bool slow() const { return slow_; }
 
  protected:
+  typedef std::vector<InputInfo*> InputInfoStarVector;
+
   // The following methods are provided for the benefit of subclasses.
 
   // Finds the ResourceManager associated with this context.  Note that
@@ -201,7 +203,14 @@ class RewriteContext {
 
   // Check that an CachedResult is valid, specifically, that all the
   // inputs are still valid/non-expired.
-  bool IsCachedResultValid(const CachedResult& partition);
+  // If return value is false, it will also check to see if we should
+  // re-check validity of the CachedResult based on input contents, and set
+  // *can_revalidate accordingly. If *can_revalidate is true,
+  // *revalidate will contain info on resources to re-check, with the
+  // InputInfo pointers being pointers into the partition.
+  bool IsCachedResultValid(CachedResult* partition,
+                           bool* can_revalidate,
+                           InputInfoStarVector* revalidate);
 
   // Checks whether all the entries in the given partition tables' other
   // dependency table are valid.
@@ -337,6 +346,8 @@ class RewriteContext {
   class ResourceFetchCallback;
   class ResourceReconstructCallback;
   friend class ResourceCallbackUtils;
+  class ResourceRevalidateCallback;
+  friend class ResourceRevalidateCallback;
 
   typedef std::set<RewriteContext*> ContextSet;
 
@@ -345,8 +356,11 @@ class RewriteContext {
   void SetPartitionKey();
   void StartFetch();
   void OutputCacheDone(CacheInterface::KeyState state, SharedString value);
-  void OutputCacheHit();
+  void OutputCacheHit(bool write_partitions);
+  void OutputCacheRevalidate(const InputInfoStarVector& to_revalidate);
+  void OutputCacheMiss();
   void ResourceFetchDone(bool success, ResourcePtr resource, int slot_index);
+  void ResourceRevalidateDone(InputInfo* input_info, bool success);
 
   // When a RewriteContext 'B' discovers that it's doing the exact same rewrite
   // as a previous RewriteContext 'A', B adds itself to A->repeated_, and
@@ -536,6 +550,9 @@ class RewriteContext {
   // metadata cache (including rendering its predecessors). We only do this
   // for top-level jobs.
   bool slow_;
+
+  // Starts at true, set to false if any content-change checks failed.
+  bool revalidate_ok_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };

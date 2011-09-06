@@ -174,7 +174,8 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
       filename_encoder_(filename_encoder),
       url_async_fetcher_(url_async_fetcher),
       hasher_(hasher),
-      lock_hasher_(20),
+      lock_hasher_(21),  // MD5's 128 bits, base-64 encoded = 21 1/3 chars
+      contents_hasher_(21),
       statistics_(statistics),
       resource_url_domain_rejections_(
           statistics_->GetVariable(kResourceUrlDomainRejections)),

@@ -66,6 +66,11 @@ message InputInfo {
   // can freshen.
   optional int64 fetch_time_ms = 6;
 
+  // For CACHED resources, we also store a hash of the input, so that we
+  // we can reuse optimization results if it did not change, even if it
+  // expired from the HTTP cache.
+  optional string input_content_hash = 7;
+
   // For FILE_BASED resources, the file this was loaded from.
   optional string filename = 5;
 }

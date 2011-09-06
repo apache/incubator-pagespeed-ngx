@@ -1509,11 +1509,99 @@ TEST_F(RewriteContextTest, TestFreshen) {
   // which hopefully shaves off tons of latency. In this test, we also
   // ensure this by using a wait fetcher, expecting that it will not be
   // asked to serve a fetch.
+  // As we are also reusing rewrite results when contents did not change,
+  // there is no second rewrite, either.
   SetupWaitFetcher();
   mock_timer()->AdvanceMs(kTtlMs * 4 / 10);
   ValidateExpected("freshen2", CssLinkHref(kPath),
                    CssLinkHref("http://test.com/test.css.pagespeed.tw.0.css"));
-  EXPECT_EQ(2, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+
+  // Make sure we do this or it will leak.
+  CallFetcherCallbacks();
+}
+
+TEST_F(RewriteContextTest, TestReuse) {
+  FetcherUpdateDateHeaders();
+
+  // Test to make sure we are able to avoid rewrites when inputs don't
+  // change even when they expire.
+
+  const int kTtlMs = ResponseHeaders::kImplicitCacheTtlMs;
+  const char kPath[] = "test.css";
+  const char kDataIn[] = "   data  ";
+
+  // Start with non-zero time, and init our resource..
+  mock_timer()->AdvanceMs(kTtlMs / 2);
+  InitTrimFilters(kRewrittenResource);
+  InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
+                      kTtlMs / Timer::kSecondMs);
+
+  // First fetch + rewrite.
+  ValidateExpected("initial", CssLinkHref(kPath),
+                   CssLinkHref("http://test.com/test.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Advance time way past when it was expired, or even when it'd live with
+  // freshening.
+  mock_timer()->AdvanceMs(kTtlMs * 10);
+
+  // This should fetch, but can avoid calling the filter's Rewrite function.
+  ValidateExpected("forward", CssLinkHref(kPath),
+                   CssLinkHref("http://test.com/test.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+
+  // Advance some more --- make sure we fully hit from cache now (which
+  // requires the previous operation to have updated it).
+  mock_timer()->AdvanceMs(kTtlMs / 2);
+  ValidateExpected("forward2", CssLinkHref(kPath),
+                   CssLinkHref("http://test.com/test.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(RewriteContextTest, TestReuseNotFastEnough) {
+  // Make sure we handle deadline passing when trying to reuse properly.
+  FetcherUpdateDateHeaders();
+
+  const int kTtlMs = ResponseHeaders::kImplicitCacheTtlMs;
+  const char kPath[] = "test.css";
+  const char kDataIn[] = "   data  ";
+
+  // Start with non-zero time, and init our resource..
+  mock_timer()->AdvanceMs(kTtlMs / 2);
+  InitTrimFilters(kRewrittenResource);
+  InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
+                      kTtlMs / Timer::kSecondMs);
+
+  // First fetch + rewrite.
+  ValidateExpected("initial", CssLinkHref(kPath),
+                   CssLinkHref("http://test.com/test.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Advance time way past when it was expired, or even when it'd live with
+  // freshening.
+  mock_timer()->AdvanceMs(kTtlMs * 10);
+
+  // Make sure we can't check for freshening fast enough...
+  SetupWaitFetcher();
+  ValidateNoChanges("forward2.slow_fetch", CssLinkHref(kPath));
+
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  CallFetcherCallbacks();
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+
+  // Next time should be fine again, though.
+  mock_timer()->AdvanceMs(kTtlMs / 2);
+  ValidateExpected("forward2", CssLinkHref(kPath),
+                   CssLinkHref("http://test.com/test.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
@@ -1833,8 +1921,9 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());  // One expired.
   EXPECT_EQ(2, file_system()->num_input_file_opens());  // Re-read files.
-  // 2 file reads + stat of b, which we get to as a has long TTL.
-  EXPECT_EQ(3, file_system()->num_input_file_stats());
+  // 2 file reads + stat of b, which we get to as a has long TTL,
+  // as well as as of d (for figuring out revalidation strategy).
+  EXPECT_EQ(4, file_system()->num_input_file_stats());
   ClearStats();
 
   // 5) Advance time so that all inputs have expired and been updated.
@@ -1844,8 +1933,9 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // Both expired.
   EXPECT_EQ(2, file_system()->num_input_file_opens());  // Re-read files.
-  // 2 read-induced stats, no actual checks as a has expired.
-  EXPECT_EQ(2, file_system()->num_input_file_stats());
+  // 2 read-induced stats, 2 stats to figure out how to deal with
+  // c + d for invalidation.
+  EXPECT_EQ(4, file_system()->num_input_file_stats());
   ClearStats();
 }
 
@@ -2004,7 +2094,7 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   EXPECT_EQ(" B2 ", result_vector[1]);
   EXPECT_EQ(" C2 ", result_vector[2]);
   EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
-  EXPECT_EQ(2, nested_filter_->num_sub_rewrites());  // a.css, c.css
+  EXPECT_EQ(1, nested_filter_->num_sub_rewrites());  // a.css (c.css unchanged)
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // a.css, c.css
   EXPECT_EQ(1, file_system()->num_input_file_opens());  // rewritten a.css
   EXPECT_EQ(1, file_system()->num_input_file_stats());  // check b.css (nested)

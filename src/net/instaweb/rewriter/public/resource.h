@@ -70,9 +70,23 @@ class Resource : public RefCounted<Resource> {
     return (response_headers_.status_code() == HttpStatus::kOK);
   }
 
+  // Computes (with non-trivial cost) a hash of contents of a loaded resource.
+  // Precondition: IsValidAndCacheable().
+  // Warning: this uses contents_hasher_ and not the primary hasher,
+  // unlike the hashes computed by OutputResource for naming purposes on
+  // writes.
+  GoogleString ContentsHash() const;
+
   // Adds a new InputInfo object representing this resource to CachedResult,
   // assigning the index supplied.
   void AddInputInfoToPartition(int index, CachedResult* partition);
+
+  // Set CachedResult's input info used for expiration validation.
+  //
+  // Default one sets resource type as CACHED and sets an expiration timestamp.
+  // If a derived class has a different criterion for validity, override
+  // this method.
+  virtual void FillInPartitionInputInfo(InputInfo* input);
 
   // Returns 0 if resource is not cacheable.
   // TODO(sligocki): Look through callsites and make sure this is being
@@ -138,13 +152,6 @@ class Resource : public RefCounted<Resource> {
   friend class RewriteDriver;  // for ReadIfCachedWithStatus
   friend class UrlReadAsyncFetchCallback;
   friend class ResourceManagerHttpCallback;
-
-  // Set CachedResult's input info used for expiration validation.
-  //
-  // Default one sets resource type as CACHED and sets an expiration timestamp.
-  // If a derived class has a different criterion for validity, override
-  // this method.
-  virtual void FillInPartitionInputInfo(InputInfo* input);
 
   // Load the resource asynchronously, storing ResponseHeaders and
   // contents in cache.  Returns true, if the resource is already

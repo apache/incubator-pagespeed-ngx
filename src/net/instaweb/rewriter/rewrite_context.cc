@@ -140,8 +140,8 @@ class RewriteContext::ResourceFetchCallback : public Resource::AsyncCallback {
 
 // Callback used when we need to reconstruct a resource we made to satisfy
 // a fetch (due to rewrites being nested inside each other).
-class RewriteContext::ResourceReconstructCallback :
-    public UrlAsyncFetcher::Callback {
+class RewriteContext::ResourceReconstructCallback
+    : public UrlAsyncFetcher::Callback {
  public:
   // Takes ownership of the driver (e.g. will call Cleanup)
   ResourceReconstructCallback(RewriteDriver* driver, RewriteContext* rc,
@@ -179,6 +179,35 @@ class RewriteContext::ResourceReconstructCallback :
   NullWriter writer_;
   ResponseHeaders response_headers_;
   RequestHeaders request_headers_;
+};
+
+// Callback used when we re-check validity of cached results by contents.
+class RewriteContext::ResourceRevalidateCallback
+    : public Resource::AsyncCallback {
+ public:
+  ResourceRevalidateCallback(RewriteContext* rc, const ResourcePtr& r,
+                             InputInfo* input_info)
+      : Resource::AsyncCallback(r),
+        rewrite_context_(rc),
+        input_info_(input_info) {
+  }
+
+  virtual ~ResourceRevalidateCallback() {
+  }
+
+  virtual void Done(bool success) {
+    RewriteDriver* rewrite_driver = rewrite_context_->Driver();
+    rewrite_driver->AddRewriteTask(
+        MakeFunction(rewrite_context_, &RewriteContext::ResourceRevalidateDone,
+                     input_info_, success));
+    delete this;
+  }
+
+  virtual bool EnableThreaded() const { return true; }
+
+ private:
+  RewriteContext* rewrite_context_;
+  InputInfo* input_info_;
 };
 
 // This class encodes a few data members used for responding to
@@ -258,7 +287,8 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     rewrite_done_(false),
     ok_to_write_output_partitions_(true),
     was_too_busy_(false),
-    slow_(false) {
+    slow_(false),
+    revalidate_ok_(true) {
   partitions_.reset(new OutputPartitions);
 }
 
@@ -322,7 +352,7 @@ void RewriteContext::RemoveLastSlot() {
 
 void RewriteContext::Initiate() {
   CHECK(!started_);
-  DCHECK(num_predecessors_ == 0);
+  DCHECK_EQ(0, num_predecessors_);
   Driver()->AddRewriteTask(new MemberFunction0<RewriteContext>(
       &RewriteContext::Start, this));
 }
@@ -333,7 +363,7 @@ void RewriteContext::Initiate() {
 // to complete before starting this one.
 void RewriteContext::Start() {
   DCHECK(!started_);
-  DCHECK(num_predecessors_ == 0);
+  DCHECK_EQ(0, num_predecessors_);
   started_ = true;
 
   // The best-case scenario for a Rewrite is that we have already done
@@ -370,14 +400,32 @@ void RewriteContext::SetPartitionKey() {
   StrAppend(&partition_key_, ":", id());
 }
 
-// Check if this mapping from input to output URLs is still valid.
-bool RewriteContext::IsCachedResultValid(const CachedResult& partition) {
-  for (int j = 0, m = partition.input_size(); j < m; ++j) {
-    if (!IsInputValid(partition.input(j))) {
-      return false;
+// Check if this mapping from input to output URLs is still valid; and if not
+// if we can re-check based on content.
+bool RewriteContext::IsCachedResultValid(CachedResult* partition,
+                                         bool* can_revalidate,
+                                         InputInfoStarVector* revalidate) {
+  bool valid = true;
+  *can_revalidate = true;
+  for (int j = 0, m = partition->input_size(); j < m; ++j) {
+    const InputInfo& input_info = partition->input(j);
+    if (!IsInputValid(input_info)) {
+      valid = false;
+      // We currently do not attempt to re-check file-based resources
+      // based on contents; as mtime is a lot more reliable than
+      // cache expiration, and permitting 'touch' to force recomputation
+      // is potentially useful.
+      if (input_info.has_input_content_hash() && input_info.has_index() &&
+          (input_info.type() == InputInfo::CACHED)) {
+        revalidate->push_back(partition->mutable_input(j));
+      } else {
+        *can_revalidate = false;
+        // No point in checking further.
+        return false;
+      }
     }
   }
-  return true;
+  return valid;
 }
 
 bool RewriteContext::IsOtherDependencyValid(
@@ -437,6 +485,10 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
                                      SharedString value) {
   DCHECK_LE(0, outstanding_fetches_);
   DCHECK_EQ(static_cast<size_t>(0), outputs_.size());
+
+  bool can_revalidate = true;
+  InputInfoStarVector revalidate;
+
   if (state == CacheInterface::kAvailable) {
     // We've got a hit on the output metadata; the contents should
     // be a protobuf.  Try to parse it.
@@ -444,52 +496,93 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
     ArrayInputStream input(val_str->data(), val_str->size());
     if (partitions_->ParseFromZeroCopyStream(&input) &&
         IsOtherDependencyValid(partitions_.get())) {
+      // Go through and figure out if the cached results for each partition are
+      // valid, and if not it's worth trying to salvage them by re-checking if
+      // the resources have -really- changed.
       for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
-        const CachedResult& partition = partitions_->partition(i);
-        OutputResourcePtr output_resource;
-        const ContentType* content_type = NameExtensionToContentType(
-            StrCat(".", partition.extension()));
-
-        if (!IsCachedResultValid(partition)) {
-          // If a single output resource is invalid, we update them all.
+        CachedResult* partition = partitions_->mutable_partition(i);
+        bool can_revalidate_resource;
+        if (!IsCachedResultValid(partition, &can_revalidate_resource,
+                                 &revalidate)) {
           state = CacheInterface::kNotFound;
-          outputs_.clear();
-          break;
+          can_revalidate = can_revalidate && can_revalidate_resource;
         }
+      }
 
-        if (partition.optimizable() &&
-            CreateOutputResourceForCachedOutput(
-                partition.url(), content_type, &output_resource)) {
-          Freshen(partition);
-          outputs_.push_back(output_resource);
-          RenderPartitionOnDetach(i);
-        } else {
-          outputs_.push_back(OutputResourcePtr(NULL));
+      // If OK or worth rechecking, set things up for the cache hit case.
+      if ((state == CacheInterface::kAvailable) || can_revalidate) {
+        for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
+          const CachedResult& partition = partitions_->partition(i);
+          OutputResourcePtr output_resource;
+          const ContentType* content_type = NameExtensionToContentType(
+              StrCat(".", partition.extension()));
+
+          if (partition.optimizable() &&
+              CreateOutputResourceForCachedOutput(
+                  partition.url(), content_type, &output_resource)) {
+            outputs_.push_back(output_resource);
+          } else {
+            outputs_.push_back(OutputResourcePtr(NULL));
+          }
         }
       }
     } else {
+      // This case includes both corrupt protobufs and the case where
+      // external dependencies are invalid. We do not attempt to reuse
+      // rewrite results by input content hashes even in the second
+      // case as that would require us to try to re-fetch those URLs as well.
+      can_revalidate = false;
       state = CacheInterface::kNotFound;
       // TODO(jmarantz): count cache corruptions in a stat?
     }
   } else {
+    can_revalidate = false;
     Manager()->cached_output_misses()->Add(1);
   }
 
   // If the cache gave a miss, or yielded unparsable data, then acquire a lock
   // and start fetching the input resources.
   if (state == CacheInterface::kAvailable) {
-    OutputCacheHit();
+    OutputCacheHit(false /* no need to write back to cache*/);
   } else {
     MarkSlow();
-    partitions_->Clear();
-    FetchInputs(kNeverBlock);
+    if (can_revalidate) {
+      OutputCacheRevalidate(revalidate);
+    } else {
+      OutputCacheMiss();
+    }
   }
 }
 
-void RewriteContext::OutputCacheHit() {
-  rewrite_done_ = true;
-  ok_to_write_output_partitions_ = false;  // partitions were read successfully
+void RewriteContext::OutputCacheHit(bool write_partitions) {
+  for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
+    if ((outputs_[i].get() != NULL) ) {
+      Freshen(partitions_->partition(i));
+      RenderPartitionOnDetach(i);
+    }
+  }
+
+  ok_to_write_output_partitions_ = write_partitions;
   Finalize();
+}
+
+void RewriteContext::OutputCacheMiss() {
+  outputs_.clear();
+  partitions_->Clear();
+  FetchInputs(kNeverBlock);
+}
+
+void RewriteContext::OutputCacheRevalidate(
+    const InputInfoStarVector& to_revalidate) {
+  DCHECK(!to_revalidate.empty());
+  outstanding_fetches_ = to_revalidate.size();
+
+  for (int i = 0, n = to_revalidate.size(); i < n; ++i) {
+    InputInfo* input_info = to_revalidate[i];
+    ResourcePtr resource = slots_[input_info->index()]->resource();
+    Manager()->ReadAsync(
+        new ResourceRevalidateCallback(this, resource, input_info));
+  }
 }
 
 void RewriteContext::RepeatedSuccess(const RewriteContext* primary) {
@@ -502,11 +595,14 @@ void RewriteContext::RepeatedSuccess(const RewriteContext* primary) {
   for (int i = 0, n = primary->outputs_.size(); i < n; ++i) {
     outputs_.push_back(primary->outputs_[i]);
   }
+
   for (int i = 0, n = primary->num_slots(); i < n; ++i) {
     slot(i)->set_was_optimized(primary->slot(i)->was_optimized());
     render_slots_[i] = primary->render_slots_[i];
   }
-  OutputCacheHit();
+
+  ok_to_write_output_partitions_ = false;
+  Finalize();
 }
 
 void RewriteContext::RepeatedFailure() {
@@ -599,6 +695,32 @@ void RewriteContext::ResourceFetchDone(
     DCHECK_EQ(resource.get(), slot->resource().get());
   }
   Activate();
+}
+
+void RewriteContext::ResourceRevalidateDone(InputInfo* input_info,
+                                            bool success) {
+  bool ok = false;
+  if (success) {
+    ResourcePtr resource = slots_[input_info->index()]->resource();
+    if (resource->IsValidAndCacheable()) {
+      // The reason we check IsValidAndCacheable here is in case someone
+      // added a Vary: header without changing the file itself.
+      ok = (resource->ContentsHash() == input_info->input_content_hash());
+
+      // Patch up the input_info with the latest cache information on resource.
+      resource->FillInPartitionInputInfo(input_info);
+    }
+  }
+
+  revalidate_ok_ = revalidate_ok_ && ok;
+  --outstanding_fetches_;
+  if (outstanding_fetches_ == 0) {
+    if (revalidate_ok_) {
+      OutputCacheHit(true /* update the cache with new timestamps*/);
+    } else {
+      OutputCacheMiss();
+    }
+  }
 }
 
 bool RewriteContext::ReadyToRewrite() const {
@@ -760,7 +882,6 @@ void RewriteContext::RewriteDone(
   }
   --outstanding_rewrites_;
   if (outstanding_rewrites_ == 0) {
-    rewrite_done_ = true;
     if (fetch_.get() != NULL) {
       fetch_->set_success((result == RewriteSingleResourceFilter::kRewriteOk));
     }
@@ -800,7 +921,7 @@ void RewriteContext::Propagate(bool render_slots) {
 }
 
 void RewriteContext::Finalize() {
-  DCHECK(rewrite_done_);
+  rewrite_done_ = true;
   if (num_pending_nested_ == 0) {
     if (fetch_.get() != NULL) {
       fetch_->FetchDone();

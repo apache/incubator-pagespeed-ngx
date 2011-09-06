@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -54,6 +55,11 @@ bool Resource::IsValidAndCacheable() const {
               response_headers_));
 }
 
+GoogleString Resource::ContentsHash() const {
+  DCHECK(IsValidAndCacheable());
+  return resource_manager_->contents_hasher()->Hash(contents());
+}
+
 void Resource::AddInputInfoToPartition(int index, CachedResult* partition) {
   InputInfo* input = partition->add_input();
   input->set_index(index);
@@ -68,6 +74,11 @@ void Resource::FillInPartitionInputInfo(InputInfo* input) {
   input->set_last_modified_time_ms(response_headers_.last_modified_time_ms());
   input->set_expiration_time_ms(response_headers_.CacheExpirationTimeMs());
   input->set_fetch_time_ms(response_headers_.fetch_time_ms());
+  // TODO(morlovich) This is wasteful for the cache extender, is there
+  // a way of avoiding this other than passing a param all over the place?
+  if (IsValidAndCacheable()) {
+    input->set_input_content_hash(ContentsHash());
+  }
 }
 
 int64 Resource::CacheExpirationTimeMs() const {
