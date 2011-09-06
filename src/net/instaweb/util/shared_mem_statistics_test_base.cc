@@ -23,7 +23,6 @@
 #include "net/instaweb/util/public/shared_mem_test_base.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
@@ -41,6 +40,15 @@ SharedMemStatisticsTestBase::SharedMemStatisticsTestBase(
     SharedMemTestEnv* test_env)
     : test_env_(test_env),
       shmem_runtime_(test_env->CreateSharedMemRuntime()) {
+}
+
+void SharedMemStatisticsTestBase::SetUp() {
+  stats_.reset(new SharedMemStatistics(shmem_runtime_.get(), kPrefix));
+}
+
+void SharedMemStatisticsTestBase::TearDown() {
+  stats_->GlobalCleanup(&handler_);
+  EXPECT_EQ(0, handler_.SeriousMessages());
 }
 
 bool SharedMemStatisticsTestBase::CreateChild(TestMethod method) {
@@ -73,33 +81,27 @@ SharedMemStatistics* SharedMemStatisticsTestBase::ChildInit() {
   return stats.release();
 }
 
-SharedMemStatistics* SharedMemStatisticsTestBase::ParentInit() {
-  scoped_ptr<SharedMemStatistics> stats(
-      new SharedMemStatistics(shmem_runtime_.get(), kPrefix));
-  EXPECT_TRUE(AddVars(stats.get()));
-  EXPECT_TRUE(AddHistograms(stats.get()));
-  stats->Init(true, &handler_);
-  return stats.release();
+void SharedMemStatisticsTestBase::ParentInit() {
+  EXPECT_TRUE(AddVars(stats_.get()));
+  EXPECT_TRUE(AddHistograms(stats_.get()));
+  stats_->Init(true, &handler_);
 }
 
 void SharedMemStatisticsTestBase::TestCreate() {
   // Basic initialization/reading/cleanup test
-  scoped_ptr<SharedMemStatistics> stats(ParentInit());
+  ParentInit();
 
-  Variable* v1 = stats->GetVariable(kVar1);
-  Variable* v2 = stats->GetVariable(kVar2);
+  Variable* v1 = stats_->GetVariable(kVar1);
+  Variable* v2 = stats_->GetVariable(kVar2);
   EXPECT_EQ(0, v1->Get());
   EXPECT_EQ(0, v2->Get());
-  Histogram* hist1 = stats->GetHistogram(kHist1);
-  Histogram* hist2 = stats->GetHistogram(kHist2);
+  Histogram* hist1 = stats_->GetHistogram(kHist1);
+  Histogram* hist2 = stats_->GetHistogram(kHist2);
   EXPECT_EQ(0, hist1->Maximum());
   EXPECT_EQ(0, hist2->Maximum());
 
   ASSERT_TRUE(CreateChild(&SharedMemStatisticsTestBase::TestCreateChild));
   test_env_->WaitForChildren();
-
-  stats->GlobalCleanup(&handler_);
-  EXPECT_EQ(0, handler_.SeriousMessages());
 }
 
 void SharedMemStatisticsTestBase::TestCreateChild() {
@@ -123,10 +125,10 @@ void SharedMemStatisticsTestBase::TestCreateChild() {
 
 void SharedMemStatisticsTestBase::TestSet() {
   // -> Set works as well, propagates right
-  scoped_ptr<SharedMemStatistics> stats(ParentInit());
+  ParentInit();
 
-  Variable* v1 = stats->GetVariable(kVar1);
-  Variable* v2 = stats->GetVariable(kVar2);
+  Variable* v1 = stats_->GetVariable(kVar1);
+  Variable* v2 = stats_->GetVariable(kVar2);
   EXPECT_EQ(0, v1->Get());
   EXPECT_EQ(0, v2->Get());
   v1->Set(3);
@@ -138,8 +140,6 @@ void SharedMemStatisticsTestBase::TestSet() {
   test_env_->WaitForChildren();
   EXPECT_EQ(3*3, v1->Get());
   EXPECT_EQ(17*17, v2->Get());
-  stats->GlobalCleanup(&handler_);
-  EXPECT_EQ(0, handler_.SeriousMessages());
 }
 
 void SharedMemStatisticsTestBase::TestSetChild() {
@@ -155,10 +155,10 @@ void SharedMemStatisticsTestBase::TestSetChild() {
 
 void SharedMemStatisticsTestBase::TestClear() {
   // We can clear things from the kid
-  scoped_ptr<SharedMemStatistics> stats(ParentInit());
+  ParentInit();
 
-  Variable* v1 = stats->GetVariable(kVar1);
-  Variable* v2 = stats->GetVariable(kVar2);
+  Variable* v1 = stats_->GetVariable(kVar1);
+  Variable* v2 = stats_->GetVariable(kVar2);
   EXPECT_EQ(0, v1->Get());
   EXPECT_EQ(0, v2->Get());
   v1->Set(3);
@@ -166,8 +166,8 @@ void SharedMemStatisticsTestBase::TestClear() {
   EXPECT_EQ(3, v1->Get());
   EXPECT_EQ(17, v2->Get());
 
-  Histogram* hist1 = stats->GetHistogram(kHist1);
-  Histogram* hist2 = stats->GetHistogram(kHist2);
+  Histogram* hist1 = stats_->GetHistogram(kHist1);
+  Histogram* hist2 = stats_->GetHistogram(kHist2);
   EXPECT_EQ(0, hist1->Count());
   EXPECT_EQ(0, hist2->Count());
   hist1->Add(1);
@@ -186,8 +186,6 @@ void SharedMemStatisticsTestBase::TestClear() {
   EXPECT_EQ(0, hist2->Count());
   EXPECT_EQ(0, hist1->Maximum());
   EXPECT_EQ(0, hist2->Minimum());
-  stats->GlobalCleanup(&handler_);
-  EXPECT_EQ(0, handler_.SeriousMessages());
 }
 
 void SharedMemStatisticsTestBase::TestClearChild() {
@@ -205,12 +203,12 @@ void SharedMemStatisticsTestBase::TestClearChild() {
 }
 
 void SharedMemStatisticsTestBase::TestAdd() {
-  scoped_ptr<SharedMemStatistics> stats(ParentInit());
+  ParentInit();
 
-  Variable* v1 = stats->GetVariable(kVar1);
-  Variable* v2 = stats->GetVariable(kVar2);
-  Histogram* hist1 = stats->GetHistogram(kHist1);
-  Histogram* hist2 = stats->GetHistogram(kHist2);
+  Variable* v1 = stats_->GetVariable(kVar1);
+  Variable* v2 = stats_->GetVariable(kVar2);
+  Histogram* hist1 = stats_->GetHistogram(kHist1);
+  Histogram* hist2 = stats_->GetHistogram(kHist2);
   EXPECT_EQ(0, v1->Get());
   EXPECT_EQ(0, v2->Get());
   EXPECT_EQ(0, hist1->Count());
@@ -237,11 +235,8 @@ void SharedMemStatisticsTestBase::TestAdd() {
 
   GoogleString dump;
   StringWriter writer(&dump);
-  stats->Dump(&writer, &handler_);
+  stats_->Dump(&writer, &handler_);
   EXPECT_EQ("v1: 13\nv2: 37\n", dump);
-
-  stats->GlobalCleanup(&handler_);
-  EXPECT_EQ(0, handler_.SeriousMessages());
 }
 
 void SharedMemStatisticsTestBase::TestAddChild() {
@@ -261,9 +256,8 @@ void SharedMemStatisticsTestBase::TestAddChild() {
 
 // This function tests the Histogram options with multi-processes.
 void SharedMemStatisticsTestBase::TestHistogram() {
-  scoped_ptr<SharedMemStatistics> stats(ParentInit());
-  stats->Init(true, &handler_);
-  Histogram* hist1 = stats->GetHistogram(kHist1);
+  ParentInit();
+  Histogram* hist1 = stats_->GetHistogram(kHist1);
   hist1->SetMaxValue(200);
 
   // Test Avg, Min, Max, Median, Percentile, STD, Count.
@@ -293,8 +287,6 @@ void SharedMemStatisticsTestBase::TestHistogram() {
   EXPECT_EQ(2, hist1->Maximum());
   hist1->Add(-50);
   EXPECT_EQ(-50, hist1->Minimum());
-  stats->GlobalCleanup(&handler_);
-  EXPECT_EQ(0, handler_.SeriousMessages());
 
   // Test overflow.
   // The value range of histogram is [min_value, max_value) or
@@ -340,11 +332,10 @@ void SharedMemStatisticsTestBase::TestHistogramRender() {
   //   Raw Histogram Data ...
   //   Count: 0 ...
   // ParentInit() adds two histograms: H1 and H2.
-  scoped_ptr<SharedMemStatistics> stats(ParentInit());
-  stats->Init(true, &handler_);
+  ParentInit();
   GoogleString html;
   StringWriter writer(&html);
-  stats->RenderHistograms(&writer, &handler_);
+  stats_->RenderHistograms(&writer, &handler_);
   EXPECT_TRUE(Contains(html, "<script>"));
   EXPECT_TRUE(Contains(html, "<h3>H1</h3>"));
   EXPECT_TRUE(Contains(html, "<h3>H2</h3>"));
@@ -352,7 +343,7 @@ void SharedMemStatisticsTestBase::TestHistogramRender() {
   EXPECT_TRUE(Contains(html, "Count: 0"));
 
   // Test basic graph.
-  Histogram* h1 = stats->GetHistogram(kHist1);
+  Histogram* h1 = stats_->GetHistogram(kHist1);
   // Default max_buckets is 500, with max_value = 2500, bucket width is 5.
   h1->SetMaxValue(2500);
   h1->Add(1);
@@ -370,7 +361,7 @@ void SharedMemStatisticsTestBase::TestHistogramRender() {
   // Check if the above number appears.
   GoogleString html_graph;
   StringWriter writer_graph(&html_graph);
-  stats->RenderHistograms(&writer_graph, &handler_);
+  stats_->RenderHistograms(&writer_graph, &handler_);
   EXPECT_TRUE(Contains(html_graph, "5)</td>"));
   EXPECT_TRUE(Contains(html_graph, "25.0%"));
   EXPECT_TRUE(Contains(html_graph, "15)</td>"));
@@ -379,20 +370,15 @@ void SharedMemStatisticsTestBase::TestHistogramRender() {
 }
 
 void SharedMemStatisticsTestBase::TestTimedVariableEmulation() {
-  // Simple test of timed variable emulation.
-  scoped_ptr<SharedMemStatistics> stats(
-      new SharedMemStatistics(shmem_runtime_.get(), kPrefix));
-  Variable* a = stats->AddVariable("A");
-  TimedVariable* b = stats->AddTimedVariable("B", "some group");
-  stats->Init(true, &handler_);
+  // Simple test of timed variable emulation. Not using ParentInit
+  // here since we want to add some custom things.
+  Variable* a = stats_->AddVariable("A");
+  TimedVariable* b = stats_->AddTimedVariable("B", "some group");
+  stats_->Init(true, &handler_);
 
   b->IncBy(42);
   EXPECT_EQ(0, a->Get());
   EXPECT_EQ(42, b->Get(TimedVariable::START));
-
-  stats->GlobalCleanup(&handler_);
-  EXPECT_EQ(0, handler_.SeriousMessages());
-
 }
 
 }  // namespace net_instaweb

@@ -22,6 +22,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -33,6 +34,9 @@ class SharedMemStatisticsTestBase : public testing::Test {
   typedef void (SharedMemStatisticsTestBase::*TestMethod)();
 
   explicit SharedMemStatisticsTestBase(SharedMemTestEnv* test_env);
+
+  virtual void SetUp();
+  virtual void TearDown();
 
   bool CreateChild(TestMethod method);
 
@@ -58,10 +62,11 @@ class SharedMemStatisticsTestBase : public testing::Test {
   bool Contains(const StringPiece& html, const StringPiece& pattern);
 
   SharedMemStatistics* ChildInit();
-  SharedMemStatistics* ParentInit();
+  void ParentInit();
 
   scoped_ptr<SharedMemTestEnv> test_env_;
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
+  scoped_ptr<SharedMemStatistics> stats_;  // (the parent process version)
   MockMessageHandler handler_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemStatisticsTestBase);
