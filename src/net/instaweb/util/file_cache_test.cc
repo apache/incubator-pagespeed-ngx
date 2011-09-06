@@ -68,7 +68,7 @@ class FileCacheTest : public CacheTestBase {
   }
 
   virtual void SetUp() {
-    EXPECT_TRUE(worker_.Start());
+    worker_.Start();
     file_system_.Clear();
     file_system_.set_atime_enabled(true);
   }

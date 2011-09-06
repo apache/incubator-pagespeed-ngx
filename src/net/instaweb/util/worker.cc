@@ -23,6 +23,7 @@
 
 #include <deque>
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/atomic_bool.h"
@@ -85,12 +86,13 @@ class Worker::WorkThread : public ThreadSystem::Thread {
   }
 
   void ShutDown() {
-    if (!started_) {
-      return;
-    }
-
     {
       ScopedMutex lock(mutex_.get());
+
+      if (exit_) {
+        // Already shutdown.
+        return;
+      }
 
       exit_ = true;
       if (current_task_ != NULL) {
@@ -110,16 +112,14 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     started_ = false;  // Reject further jobs on explicit shutdown.
   }
 
-  bool Start() {
-    started_ = Thread::Start();
-    return started_;
-  }
-
-  bool StartIfNeeded() {
-    if (started_) {
-      return true;
+  void Start() {
+    ScopedMutex lock(mutex_.get());
+    if (!started_ && !exit_) {
+      started_ = Thread::Start();
+      if (!started_) {
+        LOG(ERROR) << "Unable to start worker thread";
+      }
     }
-    return Start();
   }
 
   bool QueueIfPermitted(Function* closure) {
@@ -179,12 +179,8 @@ Worker::~Worker() {
   thread_->ShutDown();
 }
 
-bool Worker::Start() {
-  return thread_->Start();
-}
-
-bool Worker::StartIfNeeded() {
-  return thread_->StartIfNeeded();
+void Worker::Start() {
+  thread_->Start();
 }
 
 bool Worker::IsBusy() {

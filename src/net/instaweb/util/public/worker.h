@@ -40,13 +40,8 @@ class Waveform;
 // wrapper around QueueIfPermitted().
 class Worker {
  public:
-  // Tries to start the thread. It will be cleaned up by ~Worker().
-  // Returns whether successful.
-  bool Start();
-
-  // Tries to start the work thread if it hasn't been started already;
-  // returns true if it was started successfully or was previously running.
-  bool StartIfNeeded();
+  // Tries to start the work thread (if it hasn't been started already).
+  void Start();
 
   // Returns true if there was a job running or any jobs queued at the time
   // this function was called.

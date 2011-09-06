@@ -360,9 +360,8 @@ void ApacheRewriteDriverFactory::ResourceManagerCreatedHook() {
   // it forks prior to handling the request, so we need to be sure not to
   // start any threads from normal initialization.
   // See http://code.google.com/p/modpagespeed/issues/detail?id=330
-  if ((slow_worker_.Get() != NULL) && !slow_worker_.Get()->StartIfNeeded()) {
-    message_handler()->Message(
-        kError, "Unable to start background work thread.");
+  if (slow_worker_.Get() != NULL) {
+    slow_worker_.Get()->Start();
   }
 }
 

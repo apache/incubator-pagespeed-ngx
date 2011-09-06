@@ -49,7 +49,7 @@ TEST_F(SlowWorkerTest, BasicOperation) {
   SyncPoint start_sync(thread_runtime_.get());
   SyncPoint delete_sync(thread_runtime_.get());
 
-  ASSERT_TRUE(worker_->Start());
+  worker_->Start();
   worker_->RunIfNotBusy(new WaitRunFunction(&start_sync));
   worker_->RunIfNotBusy(new DeleteNotifyFunction(&delete_sync));
   delete_sync.Wait();
@@ -81,7 +81,7 @@ TEST_F(SlowWorkerTest, Cancellation) {
   // being deleted w/o being started as confirming that exit is working
   SyncPoint start_sync(thread_runtime_.get());
 
-  ASSERT_TRUE(worker_->Start());
+  worker_->Start();
   worker_->RunIfNotBusy(new WaitCancelFunction(&start_sync));
 
   // Wait for the thread to start...
@@ -106,7 +106,7 @@ class CheckDefaultCancelFunction : public WorkerTestBase::NotifyRunFunction {
 TEST_F(SlowWorkerTest, CancelDefaultFalse) {
   SyncPoint start_sync(thread_runtime_.get());
 
-  ASSERT_TRUE(worker_->Start());
+  worker_->Start();
   worker_->RunIfNotBusy(new CheckDefaultCancelFunction(&start_sync));
   start_sync.Wait();
 }

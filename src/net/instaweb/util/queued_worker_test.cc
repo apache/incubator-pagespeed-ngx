@@ -72,7 +72,7 @@ TEST_F(QueuedWorkerTest, BasicOperation) {
   int count = 0;
   SyncPoint sync(thread_runtime_.get());
 
-  ASSERT_TRUE(worker_->Start());
+  worker_->Start();
   for (int i = 0; i < kBound; ++i) {
     worker_->RunInWorkThread(new CountFunction(&count));
   }
@@ -88,7 +88,7 @@ TEST_F(QueuedWorkerTest, ChainedTasks) {
   // point the 'notify' function fires and we can complete the test.
   int count = 11;
   SyncPoint sync(thread_runtime_.get());
-  ASSERT_TRUE(worker_->Start());
+  worker_->Start();
   worker_->RunInWorkThread(new ChainedTask(&count, worker_.get(), &sync));
   sync.Wait();
   EXPECT_EQ(0, count);
@@ -99,14 +99,14 @@ TEST_F(QueuedWorkerTest, TestShutDown) {
   // the job gets deleted (making clean.Wait() return), and doesn't
   // run (which would CHECK(false)).
   SyncPoint clean(thread_runtime_.get());
-  ASSERT_TRUE(worker_->Start());
+  worker_->Start();
   worker_->ShutDown();
   worker_->RunInWorkThread(new DeleteNotifyFunction(&clean));
   clean.Wait();
 }
 
 TEST_F(QueuedWorkerTest, TestIsBusy) {
-  ASSERT_TRUE(worker_->Start());
+  worker_->Start();
   EXPECT_FALSE(worker_->IsBusy());
 
   SyncPoint start_sync(thread_runtime_.get());
