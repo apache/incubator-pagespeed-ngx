@@ -40,14 +40,16 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/util/public/chunking_writer.h"
+#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 // The Apache headers must be after instaweb headers.  Otherwise, the
 // compiler will complain
@@ -149,8 +151,6 @@ class ApacheWriter : public Writer {
   DISALLOW_COPY_AND_ASSIGN(ApacheWriter);
 };
 
-}  // namespace
-
 // Remove any mod-pagespeed-specific modifiers before we go to our slurped
 // fetcher.
 //
@@ -196,59 +196,110 @@ GoogleString RemoveModPageSpeedQueryParams(
 // Some of the sites we are trying to slurp have mod-pagespeed enabled already.
 // We actually want to start with the non-pagespeed-enabled site.  But we'd
 // rather not send ModPagespeed=off to servers that are not expecting it.
-class ModPagespeedStrippingFetcher : public UrlFetcher {
+class StrippingFetch : public UrlAsyncFetcher::Callback {
  public:
-  ModPagespeedStrippingFetcher(UrlFetcher* fetcher, DomainLawyer* lawyer)
+  StrippingFetch(const DomainLawyer* lawyer,
+                 const GoogleString& url_input,
+                 const RequestHeaders& request_headers,
+                 UrlAsyncFetcher* fetcher,
+                 ResponseHeaders* response_headers,
+                 GoogleString* dest_buffer,
+                 ThreadSystem* thread_system,
+                 MessageHandler* message_handler)
       : fetcher_(fetcher),
-        lawyer_(lawyer) {
+        lawyer_(lawyer),
+        url_(url_input),
+        response_headers_(response_headers),
+        dest_buffer_(dest_buffer),
+        writer_(dest_buffer_),
+        message_handler_(message_handler),
+        stripped_(false),
+        success_(false),
+        done_(false),
+        mutex_(thread_system->NewMutex()),
+        condvar_(mutex_->NewCondvar()) {
+    request_headers_.CopyFrom(request_headers);  // we may mutate Host header
   }
-  virtual bool StreamingFetchUrl(const GoogleString& url_input,
-                                 const RequestHeaders& request_headers_input,
-                                 ResponseHeaders* response_headers,
-                                 Writer* fetched_content_writer,
-                                 MessageHandler* message_handler) {
-    GoogleString contents;
-    StringWriter writer(&contents);
 
+  virtual bool EnableThreaded() const { return true; }
+
+  bool Fetch() {
     // To test sharding domains from a slurp of a site that does not support
     // sharded domains, we apply mapping origin domain here.  Simply map all
     // the shards back into the origin domain in pagespeed.conf.
-    GoogleString url(url_input), origin_url;
-    RequestHeaders request_headers;
-    request_headers.CopyFrom(request_headers_input);
-    if (lawyer_->MapOrigin(url, &origin_url)) {
-      url = origin_url;
-      GoogleUrl gurl(url);
-      request_headers.Replace(HttpAttributes::kHost, gurl.Host());
+    GoogleString origin_url;
+    if (lawyer_->MapOrigin(url_, &origin_url)) {
+      url_ = origin_url;
+      GoogleUrl gurl(url_);
+      request_headers_.Replace(HttpAttributes::kHost, gurl.Host());
     }
 
-    bool fetched = fetcher_->StreamingFetchUrl(
-        url, request_headers, response_headers, &writer, message_handler);
-    if (fetched) {
-      ConstStringStarVector v;
-      if (response_headers->Lookup(kModPagespeedHeader, &v)) {
-        response_headers->Clear();
-        GoogleString::size_type question = url.find('?');
-        if (question == GoogleString::npos) {
-          url += "?ModPagespeed=off";
-        } else {
-          url += "&ModPagespeed=off";
-        }
-        fetched = fetcher_->StreamingFetchUrl(
-            url, request_headers, response_headers,
-            fetched_content_writer, message_handler);
-      } else {
-        // It was not mod-pagespeed in the first place; just pass it through
-        // so it can be saved in the slurp directory.
-        fetched = fetched_content_writer->Write(contents, message_handler);
+    fetcher_->StreamingFetch(url_, request_headers_, response_headers_,
+                             &writer_, message_handler_, this);
+    {
+      ScopedMutex lock(mutex_.get());
+      while (!done_) {
+        condvar_->TimedWait(Timer::kSecondMs);
       }
     }
-    return fetched;
+    return success_;
   }
+
+  virtual void Done(bool success) {
+    bool done = true;
+    if (!success) {
+      success_ = false;
+    } else if (stripped_) {
+      // Second pass -- declare completion.
+      success_ = true;
+    } else if (response_headers_->Lookup1(kModPagespeedHeader) != NULL) {
+      // First pass -- the slurped site evidently had mod_pagespeed already
+      // enabled.  Turn it off and re-fetch.
+      LOG(ERROR) << "URL " << url_ << " already has mod_pagespeed.  Stripping.";
+      response_headers_->Clear();
+      GoogleString::size_type question = url_.find('?');
+      if (question == GoogleString::npos) {
+        url_ += "?ModPagespeed=off";
+      } else {
+        url_ += "&ModPagespeed=off";
+      }
+      stripped_ = true;
+      dest_buffer_->clear();
+      fetcher_->StreamingFetch(url_, request_headers_, response_headers_,
+                               &writer_, message_handler_, this);
+      done = false;
+    } else {
+      // First-pass -- the origin site did not have mod_pagespeed so no need
+      // for a second pass.
+      success_ = true;
+    }
+    if (done) {
+      ScopedMutex lock(mutex_.get());
+      done_ = true;
+      condvar_->Signal();
+      // Don't "delete this" -- this is allocated on the stack in ApacheSlurp.
+    }
+  }
+
  private:
-  UrlFetcher* fetcher_;
-  DomainLawyer* lawyer_;
+  UrlAsyncFetcher* fetcher_;
+  const DomainLawyer* lawyer_;
+  GoogleString url_;
+  RequestHeaders request_headers_;
+  ResponseHeaders* response_headers_;
+  GoogleString* dest_buffer_;
+  StringWriter writer_;
+  MessageHandler* message_handler_;
+  bool stripped_;
+  bool success_;
+  bool done_;
+  scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
+  scoped_ptr<ThreadSystem::Condvar> condvar_;
+
+  DISALLOW_COPY_AND_ASSIGN(StrippingFetch);
 };
+
+}  // namespace
 
 void SlurpUrl(ApacheRewriteDriverFactory* factory, request_rec* r) {
   const char* uri = InstawebContext::MakeRequestUrl(r);
@@ -261,16 +312,16 @@ void SlurpUrl(ApacheRewriteDriverFactory* factory, request_rec* r) {
   GoogleString stripped_url = RemoveModPageSpeedQueryParams(
       uri, r->parsed_uri.query);
 
-  UrlFetcher* fetcher = factory->ComputeUrlFetcher();
-  ModPagespeedStrippingFetcher stripping_fetcher(
-      fetcher, factory->options()->domain_lawyer());
-
-  if (stripping_fetcher.StreamingFetchUrl(stripped_url, request_headers,
-                                          &response_headers, &writer,
-                                          factory->message_handler())) {
-    // In the event of empty content, the writer's Write method may not be
-    // called, but we should still emit headers.
+  UrlAsyncFetcher* fetcher = factory->ComputeUrlAsyncFetcher();
+  GoogleString contents;
+  StrippingFetch fetch(factory->options()->domain_lawyer(),
+                       stripped_url, request_headers,
+                       fetcher, &response_headers, &contents,
+                       factory->thread_system(),
+                       factory->message_handler());
+  if (fetch.Fetch()) {
     apache_writer.OutputHeaders();
+    writer.Write(contents, factory->message_handler());
   } else {
     MessageHandler* handler = factory->message_handler();
     handler->Message(kInfo, "mod_pagespeed: slurp of url %s failed.\n"
