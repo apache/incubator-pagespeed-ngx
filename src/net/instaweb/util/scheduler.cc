@@ -211,7 +211,7 @@ void Scheduler::BlockingTimedWait(int64 timeout_ms) {
     // Now we have to block until either we time out, or we are signaled.  We
     // stop when outstanding_alarms_ is empty as a belt and suspenders
     // protection against programmer error; this ought to imply timed_out.
-    AwaitWakeup(wakeup_time_us);
+    AwaitWakeupUntilUs(wakeup_time_us);
     next_wakeup_us = RunAlarms(NULL);
   }
 }
@@ -321,7 +321,7 @@ int64 Scheduler::RunAlarms(bool* ran_alarms) {
   return 0;
 }
 
-void Scheduler::AwaitWakeup(int64 wakeup_time_us) {
+void Scheduler::AwaitWakeupUntilUs(int64 wakeup_time_us) {
   mutex_->DCheckLocked();
   int64 now_us = timer_->NowUs();
   // Compute how long we should wait.  Note: we overshoot, which may lead us
@@ -341,7 +341,7 @@ void Scheduler::ProcessAlarms(int64 timeout_us) {
   int64 finish_us = timer_->NowUs() + timeout_us;
   int64 next_wakeup_us = RunAlarms(&ran_alarms);
   if (timeout_us > 0 && !ran_alarms) {
-    AwaitWakeup(std::min(finish_us, next_wakeup_us));
+    AwaitWakeupUntilUs(std::min(finish_us, next_wakeup_us));
     RunAlarms(&ran_alarms);
   }
 }

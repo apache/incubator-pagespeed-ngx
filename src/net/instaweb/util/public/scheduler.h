@@ -118,7 +118,7 @@ class Scheduler {
   // absolute time since the epoch), or until something interesting (such as a
   // call to Signal) occurs.  This is virtual to permit us to mock it out (the
   // mock simply advances time).
-  virtual void AwaitWakeup(int64 wakeup_time_us);
+  virtual void AwaitWakeupUntilUs(int64 wakeup_time_us);
 
  private:
   class CondVarTimeout;

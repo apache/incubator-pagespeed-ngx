@@ -41,7 +41,7 @@ class MockScheduler : public Scheduler {
   virtual ~MockScheduler();
 
  protected:
-  virtual void AwaitWakeup(int64 wakeup_time_us);
+  virtual void AwaitWakeupUntilUs(int64 wakeup_time_us);
 
  private:
   MockTimer* timer_;

@@ -38,8 +38,8 @@ MockScheduler::MockScheduler(ThreadSystem* thread_system,
 MockScheduler::~MockScheduler() {
 }
 
-void MockScheduler::AwaitWakeup(int64 wakeup_time_us) {
-  // AwaitWakeup is used to effectively move simulated time forward
+void MockScheduler::AwaitWakeupUntilUs(int64 wakeup_time_us) {
+  // AwaitWakeupUntilUs is used to effectively move simulated time forward
   // during unit tests.  Various callbacks in the test infrastructure
   // can be called as a result of Alarms firing, enabling the simulation of
   // cache/http fetches with non-zero delay, compute-bound rewrites, or
@@ -67,11 +67,11 @@ void MockScheduler::AwaitWakeup(int64 wakeup_time_us) {
   while (QueuedWorkerPool::AreBusy(sequences)) {
     // Do the condition-variable-wait for only 100 ms, to avoid deadlocking if
     // Wakeup() gets called after the AreBusy() call, but before the TimedWait()
-    // call.  The 100 ms sleep means we just loop back to "AreBusy()" and fall
-    // through.  We seem to hit this race condition a few times each time we run
-    // the tests; crank up the delay to 10s or 30s and it'll be obvious.
+    // call.  The 10 ms sleep means we just loop back to "AreBusy()" and fall
+    // through.  We seem to hit this race condition quite a few times each time
+    // we run the tests; crank up the delay to 10s or 30s and it'll be obvious.
     mutex()->Lock();
-    Scheduler::AwaitWakeup(Timer::kSecondUs / 10);
+    Scheduler::AwaitWakeupUntilUs(timer_->NowUs() + Timer::kSecondUs / 100);
     mutex()->Unlock();
   }
   mutex()->Lock();
