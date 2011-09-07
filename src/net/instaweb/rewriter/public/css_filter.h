@@ -109,6 +109,7 @@ class CssFilter : public RewriteSingleResourceFilter {
   TimedBool RewriteCssText(Context* context,
                            const GoogleUrl& css_gurl,
                            const StringPiece& in_text,
+                           bool text_is_declarations,
                            GoogleString* out_text,
                            MessageHandler* handler);
   bool RewriteExternalCss(const StringPiece& in_url, GoogleString* out_url);
@@ -120,6 +121,7 @@ class CssFilter : public RewriteSingleResourceFilter {
                     const Css::Stylesheet* stylesheet,
                     const GoogleUrl& css_gurl,
                     bool previously_optimized,
+                    bool stylesheet_is_declarations,
                     GoogleString* out_text,
                     MessageHandler* handler);
 
@@ -168,6 +170,10 @@ class CssFilter::Context : public SingleRewriteContext {
   // Takes over the ownership of 'this'.
   void StartInlineRewrite(HtmlElement* style_element, HtmlCharactersNode* text);
 
+  // Starts the asynchronous rewrite process for inline CSS inside the given
+  // element's given style attribute. Takes over the ownership of 'this'.
+  void StartAttributeRewrite(HtmlElement* element, HtmlElement::Attribute* src);
+
   // Starts the asynchronous rewrite process for external CSS reference to
   // by attribute 'src' of 'link'.
   // Takes over the ownership of 'this'
@@ -193,6 +199,13 @@ class CssFilter::Context : public SingleRewriteContext {
   virtual GoogleString CacheKey() const;
 
  private:
+  // Used by the asynchronous rewrite callbacks (RewriteSingle + Harvest) to
+  // determine if what is being rewritten is a style attribute or a stylesheet,
+  // since an attribute comprises only declarations, unlike a stlyesheet.
+  bool IsInlineAttribute() const {
+    return (rewrite_inline_attribute_ != NULL);
+  }
+
   CssFilter* filter_;
   RewriteDriver* driver_;
   scoped_ptr<CssImageRewriterAsync> image_rewriter_;
@@ -201,12 +214,18 @@ class CssFilter::Context : public SingleRewriteContext {
   // If this is true, the image_rewriter_ has asked us to start nested rewrites.
   bool have_nested_rewrites_;
 
-  // Style element containing inline CSS, or NULL if we're rewriting external
-  // stuff.
+  // Style element containing inline CSS (see StartInlineRewrite) -or-
+  // any element with a style attribute (see StartAttributeRewrite), or
+  // NULL if we're rewriting external stuff.
   HtmlElement* rewrite_inline_element_;
 
   // Node with inline CSS to rewrite, or NULL if we're rewriting external stuff.
   HtmlCharactersNode* rewrite_inline_char_node_;
+
+  // The style attribute associated with rewrite_inline_element_. Mutually
+  // exclusive with rewrite_inline_char_node_ since style elements cannot
+  // have style attributes.
+  HtmlElement::Attribute* rewrite_inline_attribute_;
 
   // Information needed for nested rewrites or finishing up serialization.
   int64 in_text_size_;

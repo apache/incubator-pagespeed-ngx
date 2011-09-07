@@ -28,11 +28,11 @@ class HttpRequestHeaders;
 class MessageHandler;
 class Writer;
 
-// Read/write API for HTTP request headers.
+// Read/write API for HTTP request (RequestHeaders is a misnomer).
 class RequestHeaders : public Headers<HttpRequestHeaders> {
  public:
   enum Method { kOptions, kGet, kHead, kPost, kPut, kDelete, kTrace, kConnect,
-                kError };
+                kPatch, kError };
 
   RequestHeaders();
 
@@ -43,6 +43,12 @@ class RequestHeaders : public Headers<HttpRequestHeaders> {
   Method method() const;
   const char* method_string() const;
   void set_method(Method method);
+
+  // This is encoded message body, a rewriter or fetcher
+  // may opt to translate to entity-body only after removing
+  // header which has encoding information.
+  const GoogleString& message_body() const;
+  void set_message_body(const GoogleString& data);
 
   using Headers<HttpRequestHeaders>::WriteAsHttp;
   bool WriteAsHttp(const StringPiece& url, Writer* writer,

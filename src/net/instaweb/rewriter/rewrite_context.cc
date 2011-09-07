@@ -556,7 +556,7 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
 
 void RewriteContext::OutputCacheHit(bool write_partitions) {
   for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
-    if ((outputs_[i].get() != NULL) ) {
+    if (outputs_[i].get() != NULL) {
       Freshen(partitions_->partition(i));
       RenderPartitionOnDetach(i);
     }
@@ -624,9 +624,12 @@ void RewriteContext::FetchInputs(BlockingBehavior block) {
   // output.  However, in single-resource rewriters, we really only
   // need one of these locks.  So figure out which one we'll go with
   // and use that.
-  GoogleString lock_name = StrCat(kRewriteContextLockPrefix, partition_key_);
+  if (lock_.get() == NULL) {
+    GoogleString lock_name = StrCat(kRewriteContextLockPrefix, partition_key_);
+    lock_.reset(Manager()->MakeCreationLock(lock_name));
+  }
 
-  if (Manager()->LockForCreation(lock_name, block, &lock_)) {
+  if (Manager()->LockForCreation(block, lock_.get())) {
     ++num_predecessors_;
 
     for (int i = 0, n = slots_.size(); i < n; ++i) {

@@ -54,13 +54,14 @@ namespace net_instaweb {
 // base64-bloat-factor before comparing against the threshold.  Then
 // we could use one number if we like that idea.
 //
-
 // jmaessen: For the moment, there's a separate threshold for image inline.
 const int64 RewriteOptions::kDefaultCssInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultImageInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultCssOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
+
+const int64 RewriteOptions::kDefaultHtmlCacheTimeMs = 0;
 const int64 RewriteOptions::kDefaultCacheInvalidationTimestamp = -1;
 
 // Limit on concurrent ongoing image rewrites.
@@ -111,6 +112,7 @@ RewriteOptions::RewriteOptions()
       js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
       css_outline_min_bytes_(kDefaultCssInlineMaxBytes),
       js_outline_min_bytes_(kDefaultJsInlineMaxBytes),
+      html_cache_time_ms_(kDefaultHtmlCacheTimeMs),
       beacon_url_(kDefaultBeaconUrl),
       image_max_rewrites_at_once_(kDefaultImageMaxRewritesAtOnce),
       max_url_segment_size_(kDefaultMaxUrlSegmentSize),
@@ -161,6 +163,9 @@ void RewriteOptions::SetUp() {
   name_filter_map_["rewrite_css"] = kRewriteCss;
   name_filter_map_["rewrite_domains"] = kRewriteDomains;
   name_filter_map_["rewrite_javascript"] = kRewriteJavascript;
+  name_filter_map_["rewrite_style_attributes"] = kRewriteStyleAttributes;
+  name_filter_map_["rewrite_style_attributes_with_url"] =
+      kRewriteStyleAttributesWithUrl;
   name_filter_map_["sprite_images"] = kSpriteImages;
   name_filter_map_["strip_scripts"] = kStripScripts;
   name_filter_map_["trim_urls"] = kLeftTrimUrls;
@@ -331,6 +336,8 @@ void RewriteOptions::Merge(const RewriteOptions& first,
                                second.css_outline_min_bytes_);
   js_outline_min_bytes_.Merge(first.js_outline_min_bytes_,
                               second.js_outline_min_bytes_);
+  html_cache_time_ms_.Merge(first.html_cache_time_ms_,
+                            second.html_cache_time_ms_);
   beacon_url_.Merge(first.beacon_url_,
                     second.beacon_url_);
   max_url_segment_size_.Merge(first.max_url_segment_size_,

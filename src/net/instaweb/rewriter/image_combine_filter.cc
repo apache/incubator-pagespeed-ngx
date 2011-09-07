@@ -108,11 +108,9 @@ class SpriteFuture {
   ~SpriteFuture() {}
 
   // Bind this Future to a particular image.  Owns nothing; the inputs must
-  // outlive this future.  Returns true if this is a viable sprite-future.  If
-  // we return false, Realize must not be called.
-  bool Initialize(Css::Value* url_value) {
+  // outlive this future.
+  void Initialize(Css::Value* url_value) {
     url_value_ = url_value;
-    return FindBackgroundPositionValues();
   }
 
   const GoogleString& old_url() { return old_url_; }
@@ -252,13 +250,14 @@ class SpriteFuture {
     return height_;
   }
 
- private:
   // Attempt to find the background position values, or create them if
   // necessary.  If we return true, we should be all set for a call to
   // Realize().  If we return false, Realize() must never be called.
   // set has_position_ to true if there is already a position declaration.
   // If has_position_ is false, we will create a new declaration when
   // rendering.
+  // Returns true if this is a viable sprite-future.  If
+  // we return false, Realize must not be called.
   bool FindBackgroundPositionValues() {
     // Find the original background offsets (if any) so we can add to them.
     has_position_ = false;
@@ -316,6 +315,7 @@ class SpriteFuture {
     return true;
   }
 
+ private:
   GoogleString old_url_;
   // Pointer to the value where the url of the image is stored.
   Css::Value* url_value_;
@@ -813,6 +813,17 @@ class ImageCombineFilter::Context : public RewriteContext {
   }
 
  private:
+  // Returns true iff declarations were setup properly, and the image
+  // are smaller than the specified div dimensions.
+  bool SetupSpriteDimensions(SpriteFuture* future) {
+    if (!future->FindBackgroundPositionValues()) {
+      return false;
+    }
+    return combiner_.CheckMinImageDimensions(future->old_url(),
+                                             future->width(),
+                                             future->height());
+  }
+
   // Walk through and find any resources that won't be able to be
   // sprited.  If we can't sprite them, add the url to the no-sprite
   // set.
@@ -836,8 +847,7 @@ class ImageCombineFilter::Context : public RewriteContext {
             combiner_.RegisterResource(resource.get());
             seen_urls.insert(resource_url);
           }
-          if (!combiner_.CheckMinImageDimensions(
-                  future->old_url(), future->width(), future->height())) {
+          if (!SetupSpriteDimensions(future)) {
             no_sprite->insert(resource_url);
           }
         }
@@ -1005,11 +1015,7 @@ void ImageCombineFilter::AddCssBackgroundContext(
   StringPiece url_piece(original_url.Spec());
   SpriteFuture* future = new SpriteFuture(url_piece, width, height, decls);
 
-  // Failed to find/handle declaration.
-  if (!future->Initialize(values->at(value_index))) {
-    delete future;
-    return;
-  }
+  future->Initialize(values->at(value_index));
 
   ResourcePtr resource = CreateInputResource(url_piece);
   if (resource.get() != NULL) {

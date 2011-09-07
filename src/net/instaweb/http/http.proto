@@ -21,11 +21,13 @@ option optimize_for = LITE_RUNTIME;
 
 package net_instaweb;
 
+// NEXT ID: 3
 message NameValue {
   required string name = 1;
   required string value = 2;
 };
 
+// NEXT ID: 10
 message HttpResponseHeaders {
   optional int32 status_code = 1;
   optional string reason_phrase = 2;
@@ -34,12 +36,18 @@ message HttpResponseHeaders {
   optional int64 expiration_time_ms = 5;
   optional int64 fetch_time_ms = 6;  // Timestamp from Date header.
   optional int64 last_modified_time_ms = 10;
+  optional int64 cache_ttl_ms = 11;
   optional bool cacheable = 7;
   optional bool proxy_cacheable = 8;
   repeated NameValue header = 9;
 };
 
+// Contains everything in HttpRequest except url itself.
+// The name HttpRequestHeaders is a misnomer.
+// NEXT ID: 6
 message HttpRequestHeaders {
+
+  // NEXT ID: 11
   enum Method {
     OPTIONS = 1;
     GET = 2;
@@ -50,6 +58,7 @@ message HttpRequestHeaders {
     TRACE = 7;
     CONNECT = 8;
     INVALID = 9;  // Originally ERROR, but that is a macro in C++.
+    PATCH = 10;
   };
 
   // Note: the URL is not part of this protobuf, as it's typically kept
@@ -60,4 +69,7 @@ message HttpRequestHeaders {
   optional int32 major_version = 2 [ default = 1 ];
   optional Method method = 3 [ default = GET ];
   repeated NameValue header = 4;
+
+  // RFC 2616 sec 4.3 (encoded message body)
+  optional bytes message_body = 5;
 };

@@ -574,32 +574,32 @@ OutputResourcePtr ResourceManager::CreateOutputResourceWithPath(
   return resource;
 }
 
-bool ResourceManager::LockForCreation(const GoogleString& name,
-                                      BlockingBehavior block,
-                                      scoped_ptr<AbstractLock>* creation_lock) {
-  const int64 kBreakLockMs = 30 * Timer::kSecondMs;
-  const int64 kBlockLockMs = 5 * Timer::kSecondMs;
+AbstractLock* ResourceManager::MakeCreationLock(const GoogleString& name) {
   const char kLockSuffix[] = ".outputlock";
 
+  GoogleString lock_name = StrCat(lock_hasher_.Hash(name), kLockSuffix);
+  return lock_manager_->CreateNamedLock(lock_name);
+}
+
+bool ResourceManager::LockForCreation(BlockingBehavior block,
+                                      AbstractLock* creation_lock) {
+  const int64 kBreakLockMs = 30 * Timer::kSecondMs;
+  const int64 kBlockLockMs = 5 * Timer::kSecondMs;
   bool result = true;
-  if (creation_lock->get() == NULL) {
-    GoogleString lock_name = StrCat(lock_hasher_.Hash(name), kLockSuffix);
-    creation_lock->reset(lock_manager_->CreateNamedLock(lock_name));
-  }
   switch (block) {
     case kNeverBlock:
-      result = (*creation_lock)->TryLockStealOld(kBreakLockMs);
+      result = creation_lock->TryLockStealOld(kBreakLockMs);
       break;
     case kMayBlock:
       // TODO(jmaessen): It occurs to me that we probably ought to be
       // doing something like this if we *really* care about lock aging:
-      // if (!(*creation_lock)->LockTimedWaitStealOld(kBlockLockMs,
-      //                                              kBreakLockMs)) {
-      //   (*creation_lock)->TryLockStealOld(0);  // Force lock steal
+      // if (!creation_lock->LockTimedWaitStealOld(kBlockLockMs,
+      //                                           kBreakLockMs)) {
+      //   creation_lock->TryLockStealOld(0);  // Force lock steal
       // }
       // This updates the lock hold time so that another thread is less likely
       // to steal the lock while we're doing the blocking rewrite.
-      (*creation_lock)->LockTimedWaitStealOld(kBlockLockMs, kBreakLockMs);
+      creation_lock->LockTimedWaitStealOld(kBlockLockMs, kBreakLockMs);
       break;
   }
   return result;

@@ -17,6 +17,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //     and sligocki@google.com (Shawn Ligocki)
 
+#include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
@@ -505,6 +506,47 @@ TEST_P(CssFilterTest, RetainExtraHeaders) {
   GoogleString url = StrCat(kTestDomain, "retain.css");
   InitResponseHeaders(url, kContentTypeCss, kInputStyle, 300);
   TestRetainExtraHeaders("retain.css", "retain.css", "cf", "css");
+}
+
+TEST_P(CssFilterTest, RewriteStyleAttribute) {
+  // Test that nothing happens if rewriting is disabled (default).
+  ValidateNoChanges("RewriteStyleAttribute",
+                    "<div style='background-color: #f00; color: yellow;'/>");
+
+  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
+
+  // Test no rewriting.
+  ValidateNoChanges("no-rewriting",
+                    "<div style='background-color:red;color:#ff0'/>");
+
+  // Test successful rewriting.
+  ValidateExpected("rewrite-simple",
+                   "<div style='background-color: #f00; color: yellow;'/>",
+                   "<div style='background-color:red;color:#ff0'/>");
+
+  SetFetchResponse404("404.css");
+  static const char kMixedInput[] =
+      "<div style=\""
+      "  background-image: url('images/watch-icons.png?1');\n"
+      "  background-position: -19px 60%;\""
+      ">\n"
+      "<link rel=stylesheet href='404.css'>\n"
+      "<span style=\"font-family: Verdana\">Verdana</span>\n"
+      "</div>";
+  static const char kMixedOutput[] =
+      "<div style=\""
+      "background-image:url(images/watch-icons.png?1);"
+      "background-position:-19px 60%\""
+      ">\n"
+      "<link rel=stylesheet href='404.css'>\n"
+      "<span style=\"font-family:Verdana\">Verdana</span>\n"
+      "</div>";
+  ValidateExpected("rewrite-mixed", kMixedInput, kMixedOutput);
+
+  // Test that nothing happens if we have a style attribute on a style element,
+  // which is actually invalid.
+  ValidateNoChanges("rewrite-style-with-style",
+                   "<style style='background-color: #f00; color: yellow;'/>");
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.

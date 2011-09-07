@@ -101,6 +101,12 @@ int64 ResponseHeaders::fetch_time_ms() const {
   return proto_->fetch_time_ms();
 }
 
+int64 ResponseHeaders::cache_ttl_ms() const {
+  DCHECK(!cache_fields_dirty_)
+      << "Call ComputeCaching() before cache_ttl_ms()";
+  return proto_->cache_ttl_ms();
+}
+
 bool ResponseHeaders::has_fetch_time_ms() const {
   return proto_->has_fetch_time_ms();
 }
@@ -266,10 +272,10 @@ void ResponseHeaders::ComputeCaching() {
       ((status_code() ==
         HttpStatus::kRememberFetchFailedOrNotCacheableStatusCode) ||
        pagespeed::resource_util::IsCacheableResourceStatusCode(status_code()));
-  int64 freshness_lifetime_ms;
+  int64 cache_ttl_ms;
   bool explicit_cacheable =
       pagespeed::resource_util::GetFreshnessLifetimeMillis(
-          resource, &freshness_lifetime_ms) && has_fetch_time_ms();
+          resource, &cache_ttl_ms) && has_fetch_time_ms();
 
   proto_->set_cacheable(has_date &&
                         !explicit_no_cache &&
@@ -284,10 +290,10 @@ void ResponseHeaders::ComputeCaching() {
       // implicitly cached items stay alive in our system for 5 minutes
       // TODO(jmarantz): consider making this a flag, or getting some
       // other heuristic value from the PageSpeed libraries.
-      freshness_lifetime_ms = kImplicitCacheTtlMs;
+      cache_ttl_ms = kImplicitCacheTtlMs;
     }
-    proto_->set_expiration_time_ms(proto_->fetch_time_ms() +
-                                   freshness_lifetime_ms);
+    proto_->set_cache_ttl_ms(cache_ttl_ms);
+    proto_->set_expiration_time_ms(proto_->fetch_time_ms() + cache_ttl_ms);
 
     // Assume it's proxy cacheable.  Then iterate over all the headers
     // with key HttpAttributes::kCacheControl, and all the comma-separated

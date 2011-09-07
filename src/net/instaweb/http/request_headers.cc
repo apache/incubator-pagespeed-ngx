@@ -37,12 +37,13 @@ RequestHeaders::RequestHeaders() {
 
 void RequestHeaders::Clear() {
   Headers<HttpRequestHeaders>::Clear();
-  proto_->clear_method();
+  map_.reset(NULL);
+  proto_->Clear();
 }
 
 void RequestHeaders::CopyFrom(const RequestHeaders& other) {
   map_.reset(NULL);
-  *(proto_.get()) = *(other.proto_.get());
+  proto_->CopyFrom(*other.proto_);
 }
 
 GoogleString RequestHeaders::ToString() const {
@@ -67,6 +68,7 @@ void RequestHeaders::set_method(Method method) {
     case kDelete:      proto_->set_method(HttpRequestHeaders::DELETE);  break;
     case kTrace:       proto_->set_method(HttpRequestHeaders::TRACE);   break;
     case kConnect:     proto_->set_method(HttpRequestHeaders::CONNECT); break;
+    case kPatch:       proto_->set_method(HttpRequestHeaders::PATCH);   break;
     case kError:       proto_->set_method(HttpRequestHeaders::INVALID); break;
   }
 }
@@ -81,6 +83,7 @@ RequestHeaders::Method RequestHeaders::method() const {
     case HttpRequestHeaders::DELETE:      return kDelete;
     case HttpRequestHeaders::TRACE:       return kTrace;
     case HttpRequestHeaders::CONNECT:     return kConnect;
+    case HttpRequestHeaders::PATCH:       return kPatch;
     case HttpRequestHeaders::INVALID:     return kError;
   }
   DCHECK(false) << "Invalid method";
@@ -97,10 +100,19 @@ const char* RequestHeaders::method_string() const {
     case HttpRequestHeaders::DELETE:      return "DELETE";
     case HttpRequestHeaders::TRACE:       return "TRACE";
     case HttpRequestHeaders::CONNECT:     return "CONNECT";
+    case HttpRequestHeaders::PATCH:       return "PATCH";
     case HttpRequestHeaders::INVALID:     return "ERROR";
   }
   DCHECK(false) << "Invalid method";
   return NULL;
+}
+
+const GoogleString& RequestHeaders::message_body() const {
+  return proto_->message_body();
+}
+
+void RequestHeaders::set_message_body(const GoogleString& data) {
+  proto_->set_message_body(data);
 }
 
 // Serialize meta-data to a binary stream.

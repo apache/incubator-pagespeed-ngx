@@ -258,13 +258,14 @@ class ResourceManager {
       const ContentType* type, OutputResourceKind kind,
       bool use_async_flow);
 
+  // Allocate an AbstractLock to guard the creation of the given resource.
+  AbstractLock* MakeCreationLock(const GoogleString& name);
+
   // Attempt to obtain a named lock.  Return true if we do so.  If the
   // object is expensive to create, this lock should be held during
   // its creation to avoid multiple rewrites happening at once.  The
   // lock will be unlocked when creation_lock is reset or destructed.
-  bool LockForCreation(const GoogleString& name,
-                       BlockingBehavior block,
-                       scoped_ptr<AbstractLock>* creation_lock);
+  bool LockForCreation(BlockingBehavior block, AbstractLock* creation_lock);
 
   // Setters should probably only be used in testing.
   void set_hasher(Hasher* hasher) { hasher_ = hasher; }

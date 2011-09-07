@@ -62,6 +62,8 @@ class RewriteOptions {
     kRewriteCss,
     kRewriteDomains,
     kRewriteJavascript,
+    kRewriteStyleAttributes,
+    kRewriteStyleAttributesWithUrl,
     kSpriteImages,
     kStripScripts,  // Update kLastFilter if you add something after this.
   };
@@ -99,6 +101,7 @@ class RewriteOptions {
   static const int64 kDefaultJsInlineMaxBytes;
   static const int64 kDefaultCssOutlineMinBytes;
   static const int64 kDefaultJsOutlineMinBytes;
+  static const int64 kDefaultHtmlCacheTimeMs;
   static const int64 kDefaultCacheInvalidationTimestamp;
   static const GoogleString kDefaultBeaconUrl;
 
@@ -187,11 +190,18 @@ class RewriteOptions {
     modified_ = true;
     js_inline_max_bytes_.set(x);
   }
+  int64 html_cache_time_ms() const { return html_cache_time_ms_.value(); }
+  void set_html_cache_time_ms(int64 x) {
+    modified_ = true;
+    html_cache_time_ms_.set(x);
+  }
+
   const GoogleString& beacon_url() const { return beacon_url_.value(); }
   void set_beacon_url(const StringPiece& p) {
     modified_ = true;
     beacon_url_.set(GoogleString(p.data(), p.size()));
   }
+
   // The maximum length of a URL segment.
   // for http://a/b/c.d, this is == strlen("c.d")
   int max_url_segment_size() const { return max_url_segment_size_.value(); }
@@ -391,6 +401,9 @@ class RewriteOptions {
   Option<int64> js_inline_max_bytes_;
   Option<int64> css_outline_min_bytes_;
   Option<int64> js_outline_min_bytes_;
+  // Default Cache-Control TTL for HTML. This will be the max we set HTML TTL
+  // and also the min input resource TTL we allow rewriting for.
+  Option<int64> html_cache_time_ms_;
   Option<GoogleString> beacon_url_;
   Option<int> image_max_rewrites_at_once_;
   Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")

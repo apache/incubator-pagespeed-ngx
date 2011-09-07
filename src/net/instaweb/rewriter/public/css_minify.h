@@ -31,6 +31,7 @@ class Selector;
 class SimpleSelector;
 class SimpleSelectors;
 class Declaration;
+class Declarations;
 class Value;
 class FunctionParameters;
 }
@@ -46,6 +47,11 @@ class CssMinify {
   static bool Stylesheet(const Css::Stylesheet& stylesheet,
                          Writer* writer,
                          MessageHandler* handler);
+
+  // Write minified Declarations (style attribute contents).
+  static bool Declarations(const Css::Declarations& declarations,
+                           Writer* writer,
+                           MessageHandler* handler);
 
  private:
   CssMinify(Writer* writer, MessageHandler* handler);

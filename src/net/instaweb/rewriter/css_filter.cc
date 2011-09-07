@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
 #include "net/instaweb/rewriter/public/css_image_rewriter_async.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -111,6 +112,7 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       have_nested_rewrites_(false),
       rewrite_inline_element_(NULL),
       rewrite_inline_char_node_(NULL),
+      rewrite_inline_attribute_(NULL),
       in_text_size_(-1) {
   css_base_gurl_.Reset(filter_->base_url());
 }
@@ -124,11 +126,15 @@ void CssFilter::Context::Render() {
   }
 
   const CachedResult& result = *output_partition(0);
-  if (rewrite_inline_char_node_ != NULL && result.optimizable()) {
-    HtmlCharactersNode* new_style_char_node =
-        driver_->NewCharactersNode(rewrite_inline_element_,
-                                   result.inlined_data());
-    driver_->ReplaceNode(rewrite_inline_char_node_, new_style_char_node);
+  if (result.optimizable()) {
+    if (rewrite_inline_char_node_ != NULL) {
+      HtmlCharactersNode* new_style_char_node =
+          driver_->NewCharactersNode(rewrite_inline_element_,
+                                     result.inlined_data());
+      driver_->ReplaceNode(rewrite_inline_char_node_, new_style_char_node);
+    } else if (rewrite_inline_attribute_ != NULL) {
+      rewrite_inline_attribute_->SetValue(result.inlined_data());
+    }
   }
 }
 
@@ -142,6 +148,20 @@ void CssFilter::Context::StartInlineRewrite(HtmlElement* style_element,
   // TODO(morlovich): This does a lot of useless conversions and
   // copying. Get rid of them.
   DataUrl(kContentTypeCss, PLAIN, text->contents(), &data_url);
+  ResourcePtr input_resource(DataUrlInputResource::Make(data_url, Manager()));
+  ResourceSlotPtr slot(new InlineCssSlot(input_resource, Driver()->UrlLine()));
+  AddSlot(slot);
+  driver_->InitiateRewrite(this);
+}
+
+void CssFilter::Context::StartAttributeRewrite(HtmlElement* element,
+                                               HtmlElement::Attribute* src) {
+  rewrite_inline_element_ = element;
+  rewrite_inline_attribute_ = src;
+  GoogleString data_url;
+  // TODO(morlovich): This does a lot of useless conversions and
+  // copying. Get rid of them.
+  DataUrl(kContentTypeCss, PLAIN, src->value(), &data_url);
   ResourcePtr input_resource(DataUrlInputResource::Make(data_url, Manager()));
   ResourceSlotPtr slot(new InlineCssSlot(input_resource, Driver()->UrlLine()));
   AddSlot(slot);
@@ -168,6 +188,7 @@ void CssFilter::Context::RewriteSingle(
   output_resource_ = output_resource;
   TimedBool result = filter_->RewriteCssText(
       this, css_base_gurl_, input_resource->contents(),
+      IsInlineAttribute() /* text_is_declarations */,
       NULL /* out_text --- not written in RewriteCssText in async case */,
       driver_->message_handler());
 
@@ -213,10 +234,11 @@ void CssFilter::Context::Harvest() {
 
   bool ok = filter_->SerializeCss(
       this, in_text_size_, stylesheet_.get(), css_base_gurl_,
-      previously_optimized, &out_text, driver_->message_handler());
+      previously_optimized,
+      IsInlineAttribute() /* stylesheet_is_declarations */,
+      &out_text, driver_->message_handler());
   if (ok) {
-    if (rewrite_inline_char_node_ == NULL) {
-      // TODO(morlovich): Incorporate time from nested rewrites.
+    if (rewrite_inline_element_ == NULL) {
       int64 expire_ms = input_resource_->CacheExpirationTimeMs();
       output_resource_->SetType(&kContentTypeCss);
       ResourceManager* manager = Manager();
@@ -239,7 +261,7 @@ void CssFilter::Context::Harvest() {
 
 bool CssFilter::Context::Partition(OutputPartitions* partitions,
                                    OutputResourceVector* outputs) {
-  if (rewrite_inline_char_node_ == NULL) {
+  if (rewrite_inline_element_ == NULL) {
     return SingleRewriteContext::Partition(partitions, outputs);
   } else {
     // In case where we're rewriting inline CSS, we don't want an output
@@ -253,7 +275,7 @@ bool CssFilter::Context::Partition(OutputPartitions* partitions,
 
 GoogleString CssFilter::Context::CacheKey() const {
   GoogleString key;
-  if (rewrite_inline_char_node_ != NULL) {
+  if (rewrite_inline_element_ != NULL) {
     // When rewriting inline CSS we pack all the data inside the URL, which
     // is too long to sensibly use as a cache key; so we shorten it via a hash.
     //
@@ -352,6 +374,38 @@ void CssFilter::StartElementImpl(HtmlElement* element) {
     in_style_element_ = true;
     style_element_ = element;
     style_char_node_ = NULL;
+  } else {
+    bool do_rewrite = false;
+    bool check_for_url = false;
+    if (driver_->options()->Enabled(RewriteOptions::kRewriteStyleAttributes)) {
+      do_rewrite = true;
+    } else if (driver_->options()->Enabled(
+        RewriteOptions::kRewriteStyleAttributesWithUrl)) {
+      check_for_url = true;
+    }
+
+    // Rewrite style attribute, if any, and iff enabled.
+    if (do_rewrite || check_for_url) {
+      // Per http://www.w3.org/TR/CSS21/syndata.html#uri s4.3.4 URLs and URIs:
+      // "The format of a URI value is 'url(' followed by ..."
+      HtmlElement::Attribute* element_style = element->FindAttribute(
+          HtmlName::kStyle);
+      if (element_style != NULL &&
+          (!check_for_url || CssTagScanner::HasUrl(element_style->value()))) {
+        if (HasAsyncFlow()) {
+          Context* context = MakeContext();
+          context->StartAttributeRewrite(element, element_style);
+        } else {
+          GoogleString new_content;
+          if (RewriteCssText(NULL /* no async context*/, driver_->base_url(),
+                             element_style->value(),
+                             true /* text_is_declarations */,
+                             &new_content, driver_->message_handler()).value) {
+            element_style->SetValue(new_content);  // Update the style= value.
+          }
+        }
+      }
+    }
   }
   // We deal with <link> elements in EndElement.
 }
@@ -380,7 +434,9 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
         Context* context = MakeContext();
         context->StartInlineRewrite(element, style_char_node_);
       } else if (RewriteCssText(NULL /* no async context*/, driver_->base_url(),
-                                style_char_node_->contents(), &new_content,
+                                style_char_node_->contents(),
+                                false /* text_is_declarations */,
+                                &new_content,
                                 driver_->message_handler()).value) {
         // Note: Copy of new_content here.
         HtmlCharactersNode* new_style_char_node =
@@ -425,6 +481,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
 TimedBool CssFilter::RewriteCssText(Context* context,
                                     const GoogleUrl& css_gurl,
                                     const StringPiece& in_text,
+                                    bool text_is_declarations,
                                     GoogleString* out_text,
                                     MessageHandler* handler) {
   int64 in_text_size = static_cast<int64>(in_text.size());
@@ -438,7 +495,21 @@ TimedBool CssFilter::RewriteCssText(Context* context,
   if (driver_->doctype().IsXhtml()) {
     parser.set_quirks_mode(false);
   }
-  scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
+  // Create a stylesheet even if given declarations so that we don't need
+  // two versions of everything, though they do need to handle a stylesheet
+  // with no selectors in it, which they currently do.
+  scoped_ptr<Css::Stylesheet> stylesheet(NULL);
+  if (text_is_declarations) {
+    Css::Declarations* declarations = parser.ParseRawDeclarations();
+    if (declarations != NULL) {
+      stylesheet.reset(new Css::Stylesheet());
+      Css::Ruleset* ruleset = new Css::Ruleset();
+      stylesheet.get()->mutable_rulesets().push_back(ruleset);
+      ruleset->set_declarations(declarations);
+    }
+  } else {
+    stylesheet.reset(parser.ParseRawStylesheet());
+  }
 
   TimedBool ret = {kint64max, true};
   if (stylesheet.get() == NULL ||
@@ -461,8 +532,8 @@ TimedBool CssFilter::RewriteCssText(Context* context,
       ret.expiration_ms = result.expiration_ms;
       RewriteContext* no_rewrite_context = NULL;
       ret.value = SerializeCss(no_rewrite_context, in_text_size,
-                               stylesheet.get(), css_gurl,
-                               result.value, out_text, handler);
+                               stylesheet.get(), css_gurl, result.value,
+                               text_is_declarations, out_text, handler);
     }
   }
   return ret;
@@ -473,13 +544,19 @@ bool CssFilter::SerializeCss(RewriteContext* context,
                              const Css::Stylesheet* stylesheet,
                              const GoogleUrl& css_gurl,
                              bool previously_optimized,
+                             bool stylesheet_is_declarations,
                              GoogleString* out_text,
                              MessageHandler* handler) {
   bool ret = true;
 
   // Re-serialize stylesheet.
   StringWriter writer(out_text);
-  CssMinify::Stylesheet(*stylesheet, &writer, handler);
+  if (stylesheet_is_declarations) {
+    CssMinify::Declarations(stylesheet->ruleset(0).declarations(),
+                            &writer, handler);
+  } else {
+    CssMinify::Stylesheet(*stylesheet, &writer, handler);
+  }
 
   // Get signed versions so that we can subtract them.
   int64 out_text_size = static_cast<int64>(out_text->size());
@@ -605,8 +682,9 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
     GoogleUrl css_gurl(input_resource->url());
     if (css_gurl.is_valid()) {
       TimedBool result = RewriteCssText(
-          NULL /* no context*/, css_gurl, in_contents, &out_contents,
-          driver_->message_handler());
+          NULL /* no context*/, css_gurl, in_contents,
+          false /* text_is_declarations -- it's a style element */,
+          &out_contents, driver_->message_handler());
       if (result.value) {
         // Write new stylesheet.
         int64 expire_ms = std::min(result.expiration_ms,

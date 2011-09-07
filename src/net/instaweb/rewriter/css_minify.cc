@@ -76,6 +76,15 @@ bool CssMinify::Stylesheet(const Css::Stylesheet& stylesheet,
   return minifier.ok_;
 }
 
+bool CssMinify::Declarations(const Css::Declarations& declarations,
+                             Writer* writer,
+                             MessageHandler* handler) {
+  // Get an object to encapsulate writing.
+  CssMinify minifier(writer, handler);
+  minifier.JoinMinify(declarations, ";");
+  return minifier.ok_;
+}
+
 CssMinify::CssMinify(Writer* writer, MessageHandler* handler)
     : writer_(writer), handler_(handler), ok_(true) {
 }

@@ -311,9 +311,11 @@ void OutputResource::SetType(const ContentType* content_type) {
 }
 
 bool OutputResource::LockForCreation(BlockingBehavior block) {
-  if (!locked_ &&
-      resource_manager_->LockForCreation(name_key(), block, &creation_lock_)) {
-    locked_ = true;
+  if (!locked_) {
+    if (creation_lock_.get() == NULL) {
+      creation_lock_.reset(resource_manager_->MakeCreationLock(name_key()));
+    }
+    locked_ = resource_manager_->LockForCreation(block, creation_lock_.get());
   }
   return locked_;
 }

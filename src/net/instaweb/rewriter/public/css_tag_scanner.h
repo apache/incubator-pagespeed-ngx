@@ -43,6 +43,7 @@ class CssTagScanner {
   };
 
   static const char kStylesheet[];
+  static const char kUriValue[];
 
   explicit CssTagScanner(HtmlParse* html_parse);
 
@@ -67,6 +68,9 @@ class CssTagScanner {
   // Does this CSS file contain @import? If so, it cannot be combined with
   // previous CSS files. This may give false-positives, but no false-negatives.
   static bool HasImport(const StringPiece& contents, MessageHandler* handler);
+
+  // Detemines whether this CSS contains a URI value (aka URL).
+  static bool HasUrl(const StringPiece& contents);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CssTagScanner);

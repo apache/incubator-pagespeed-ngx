@@ -39,6 +39,7 @@ CssTagScanner::Transformer::~Transformer() {
 }
 
 const char CssTagScanner::kStylesheet[] = "stylesheet";
+const char CssTagScanner::kUriValue[] = "url(";
 
 // Finds CSS files and calls another filter.
 CssTagScanner::CssTagScanner(HtmlParse* html_parse) {
@@ -175,7 +176,7 @@ bool CssTagScanner::TransformUrls(
   //
   // TODO(jmarantz): Consider calling image optimization, if enabled, on any
   // images found.
-  while (ok && ((pos = contents.find("url(", pos)) != StringPiece::npos)) {
+  while (ok && ((pos = contents.find(kUriValue, pos)) != StringPiece::npos)) {
     ok = writer->Write(contents.substr(prev_pos, pos - prev_pos), handler);
     prev_pos = pos;
     pos += 4;
@@ -187,7 +188,7 @@ bool CssTagScanner::TransformUrls(
       char quote;
       bool is_quoted = ExtractQuote(&url, &quote);
       if (transformer->Transform(url, &transformed)) {
-        ok = writer->Write("url(", handler);
+        ok = writer->Write(kUriValue, handler);
         if (is_quoted) {
           writer->Write(StringPiece(&quote, 1), handler);
         }
@@ -219,6 +220,10 @@ bool CssTagScanner::HasImport(const StringPiece& contents,
     }
   }
   return false;
+}
+
+bool CssTagScanner::HasUrl(const StringPiece& contents) {
+  return (contents.find(CssTagScanner::kUriValue) != StringPiece::npos);
 }
 
 }  // namespace net_instaweb

@@ -316,6 +316,85 @@ TEST_P(CssImageRewriterTest, UseCorrectBaseUrl) {
   EXPECT_EQ(css_after, actual_css_after);
 }
 
+TEST_P(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
+  InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
+  InitResponseHeaders("bar.png", kContentTypePng, kImageData, 100);
+  InitResponseHeaders("baz.png", kContentTypePng, kImageData, 100);
+
+  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
+
+  ValidateExpected("cache_extend_images_simple",
+                   "<div style=\""
+                   "  background-image: url(foo.png);\n"
+                   "  list-style-image: url('bar.png');\n"
+                   "\"/>",
+                   "<div style=\""
+                   "background-image:"
+                   "url(http://test.com/foo.png.pagespeed.ce.0.png);"
+                   "list-style-image:"
+                   "url(http://test.com/bar.png.pagespeed.ce.0.png)"
+                   "\"/>");
+
+  ValidateExpected("cache_extend_images",
+                   "<div style=\""
+                   "  background: url(baz.png);\n"
+                   "  list-style: url('foo.png');\n"
+                   "\"/>",
+                   "<div style=\""
+                   "background:url(http://test.com/baz.png.pagespeed.ce.0.png);"
+                   "list-style:url(http://test.com/foo.png.pagespeed.ce.0.png)"
+                   "\"/>");
+
+  ValidateExpected("dont_cache_extend_data_urls",
+                   "<div style=\""
+                   "  background-image:url(data:image/png;base64,"
+                   "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P"
+                   "4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==);"
+                   "  -proprietary-background-property: url(foo.png);\n"
+                   "\"/>",
+                   "<div style=\""
+                   "background-image:url(data:image/png;base64\\,"
+                   "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P"
+                   "4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==);"
+                   "-proprietary-background-property:url(foo.png)"
+                   "\"/>");
+}
+
+TEST_P(CssImageRewriterTest, RecompressImagesInStyleAttributes) {
+  static const char div_before[] =
+      "<div style=\""
+      "background-image:url(foo.png)"
+      "\"/>";
+  static const char div_after[] =
+      "<div style=\""
+      "background-image:url(http://test.com/xfoo.png.pagespeed.ic.0.png)"
+      "\"/>";
+
+  scoped_ptr<RewriteOptions> default_options(new RewriteOptions);
+  default_options.get()->DisableFilter(RewriteOptions::kExtendCache);
+  AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
+                       kContentTypePng, 100);
+
+  // No rewriting if neither option is enabled.
+  ValidateNoChanges("options_disabled", div_before);
+
+  // No rewriting if only one option is enabled.
+  options()->CopyFrom(*default_options.get());
+  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
+  ValidateNoChanges("recompress_images_disabled", div_before);
+
+  // No rewriting if only one option is enabled.
+  options()->CopyFrom(*default_options.get());
+  options()->EnableFilter(RewriteOptions::kRecompressImages);
+  ValidateNoChanges("rewrite_style_attrs_disabled", div_before);
+
+  // Rewrite iff both options are enabled.
+  options()->CopyFrom(*default_options.get());
+  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
+  options()->EnableFilter(RewriteOptions::kRecompressImages);
+  ValidateExpected("options_enabled", div_before, div_after);
+}
+
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(CssImageRewriterTestInstance,
                         CssImageRewriterTest,

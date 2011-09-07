@@ -45,6 +45,7 @@ namespace net_instaweb {
 namespace {
 
 bool IsValidAndCacheableImpl(HTTPCache* http_cache,
+                             int64 html_cache_time_ms,
                              bool respect_vary,
                              const ResponseHeaders* headers) {
   if (headers->status_code() != HttpStatus::kOK) {
@@ -57,6 +58,9 @@ bool IsValidAndCacheableImpl(HTTPCache* http_cache,
   } else {
     cacheable = headers->IsCacheable();
   }
+  // If we are setting a TTL for HTML, we cannot rewrite any resource
+  // with a shorter TTL.
+  cacheable &= (headers->cache_ttl_ms() >= html_cache_time_ms);
 
   if (!cacheable && !http_cache->force_caching()) {
     return false;
@@ -76,9 +80,13 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   UrlResourceFetchCallback(ResourceManager* resource_manager,
                            const RewriteOptions* rewrite_options) :
       resource_manager_(resource_manager),
-      rewrite_options_(rewrite_options),
+      domain_lawyer_(rewrite_options->domain_lawyer()),
       message_handler_(NULL),
-      respect_vary_(rewrite_options_->respect_vary()) { }
+      respect_vary_(rewrite_options->respect_vary()),
+      html_cache_time_ms_(rewrite_options->html_cache_time_ms()) {
+    // We intentionally do *not* keep a pointer to rewrite_options because
+    // the pointer may not be valid at callback time.
+  }
   virtual ~UrlResourceFetchCallback() {}
 
   bool Fetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
@@ -119,13 +127,12 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
 
     GoogleString origin_url;
     bool ret = false;
-    const DomainLawyer* lawyer = rewrite_options_->domain_lawyer();
 
-    // We shouldn't use rewrite_options_ in callbacks (as they could potentially
-    // have been deleted by then), so clear the pointer now to guard against
-    // that.
-    rewrite_options_ = NULL;
-    if (lawyer->MapOrigin(url(), &origin_url)) {
+    if (domain_lawyer_->MapOrigin(url(), &origin_url)) {
+      // We shouldn't use domain_lawyer_ in callbacks (as it
+      // could potentially have been deleted by then), so clear
+      // the pointer now to guard against that.
+      domain_lawyer_ = NULL;
       if (origin_url != url()) {
         // If mapping the URL changes its host, then add a 'Host' header
         // pointing to the origin URL's hostname.
@@ -148,7 +155,8 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   bool AddToCache(bool success) {
     ResponseHeaders* headers = response_headers();
     if (success &&
-        IsValidAndCacheableImpl(http_cache(), respect_vary_, headers)) {
+        IsValidAndCacheableImpl(http_cache(), html_cache_time_ms_,
+                                respect_vary_, headers)) {
       HTTPValue* value = http_value();
       value->SetHeaders(headers);
       http_cache()->Put(url(), value, message_handler_);
@@ -193,12 +201,13 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   }
 
   ResourceManager* resource_manager_;
-  const RewriteOptions* rewrite_options_;
+  const DomainLawyer* domain_lawyer_;
   MessageHandler* message_handler_;
 
  private:
   scoped_ptr<AbstractLock> lock_;
-  bool respect_vary_;
+  const bool respect_vary_;
+  const int64 html_cache_time_ms_;
   DISALLOW_COPY_AND_ASSIGN(UrlResourceFetchCallback);
 };
 
@@ -238,6 +247,7 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
 
 bool UrlInputResource::IsValidAndCacheable() const {
   return IsValidAndCacheableImpl(resource_manager()->http_cache(),
+                                 rewrite_options_->html_cache_time_ms(),
                                  respect_vary_,
                                  &response_headers_);
 }

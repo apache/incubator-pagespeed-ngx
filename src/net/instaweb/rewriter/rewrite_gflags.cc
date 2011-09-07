@@ -60,6 +60,11 @@ DEFINE_int32(image_max_rewrites_at_once,
              net_instaweb::RewriteOptions::kDefaultImageMaxRewritesAtOnce,
              "Maximum number of images that will be rewritten simultaneously.");
 DEFINE_bool(log_rewrite_timing, false, "Log time taken by rewrite filters.");
+DEFINE_int64(html_cache_time_ms,
+             net_instaweb::RewriteOptions::kDefaultHtmlCacheTimeMs,
+             "Default Cache-Control TTL for HTML. This will be the max we "
+             "set HTML TTL and also the min input resource TTL we allow "
+             "rewriting for.");
 
 DEFINE_int32(lru_cache_size_bytes, 10 * 1000 * 1000, "LRU cache size");
 DEFINE_bool(force_caching, false,
@@ -100,6 +105,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory) const {
   }
   if (WasExplicitlySet("log_rewrite_timing")) {
     options->set_log_rewrite_timing(FLAGS_log_rewrite_timing);
+  }
+  if (WasExplicitlySet("html_cache_time_ms")) {
+    options->set_html_cache_time_ms(FLAGS_html_cache_time_ms);
   }
 
   RewriteOptions::RewriteLevel rewrite_level;

@@ -112,6 +112,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   int64 last_modified_time_ms() const;
   int64 fetch_time_ms() const;  // Timestamp from Date header.
   bool has_fetch_time_ms() const;
+  int64 cache_ttl_ms() const;
 
   GoogleString ToString() const;
 
