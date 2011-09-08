@@ -474,6 +474,7 @@ class RewriteDriver : public HtmlParse {
   void AddRewriteTask(Function* task);
 
   QueuedWorkerPool::Sequence* rewrite_worker() { return rewrite_worker_; }
+  QueuedWorkerPool::Sequence* html_worker() { return html_worker_; }
 
   void set_scheduler(Scheduler* scheduler) { scheduler_.reset(scheduler); }
 
@@ -491,12 +492,29 @@ class RewriteDriver : public HtmlParse {
                           // and anything else that finishes within deadline.
   };
 
-  // Implementation of the main loop of BoundedWaitForCompletion; assumes
-  // that the lock is held (and that asynchronous_rewrites_ is true)
-  void BoundedWaitForCompletionImpl(WaitMode wait_mode, int64 timeout_ms);
+  // Checks whether outstanding rewrites are completed in a satisfactory
+  // fashion with respect to given wait_mode and timeout, and invokes
+  // done->Run() when either finished or timed out.
+  // Assumes rewrite_mutex held.
+  void CheckForCompletionAsync(WaitMode wait_mode, int64 timeout_ms,
+                               Function* done);
+
+  // A single check attempt for the above. Will either invoke callback
+  // or ask scheduler to check again.
+  // Assumes rewrite_mutex held.
+  void TryCheckForCompletion(WaitMode wait_mode, int64 end_time_ms,
+                             Function* done);
 
   // Termination predicate for above; assumes locks held.
   bool IsDone(WaitMode wait_mode, bool deadline_reached);
+
+  // Portion of flush that happens asynchronously off the scheduler
+  // once the rendering is complete. Calls back to 'callback' after its
+  // processing, but with the lock released.
+  void FlushAsyncDone(int num_rewrites, Function* callback);
+
+  // Queues up invocation of FlushAsyncDone in our html_workers sequence.
+  void QueueFlushAsyncDone(int num_rewrites, Function* callback);
 
   // Must be called with rewrites_mutex_ held.
   bool RewritesComplete() const;
@@ -674,6 +692,7 @@ class RewriteDriver : public HtmlParse {
   FilterVector filters_to_delete_;
 
   QueuedWorkerPool::Sequence* rewrite_worker_;
+  QueuedWorkerPool::Sequence* html_worker_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

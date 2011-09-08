@@ -93,6 +93,8 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 
+namespace net_instaweb {
+
 namespace {
 
 // TODO(jmarantz): make these changeable from the Factory based on the
@@ -104,9 +106,38 @@ const int kOptWaitForRewriteMsPerFlush = 10;
 const int kValgrindWaitForRewriteMsPerFlush = 1000;
 const int kTestTimeoutMs = 10000;
 
-}  // namespace
+// TODO(morlovich): Should this be made more global?
+// Helper class for making synchronous method on top of non-blocking ones
+// that return control to the scheduler. Expects to be allocated on the
+// stack.
+class SchedulerWaitFunction : public Function {
+ public:
+  SchedulerWaitFunction(Scheduler* scheduler)
+          : scheduler_(scheduler), done_(false) {
+    set_delete_after_callback(false);
+  }
 
-namespace net_instaweb {
+  virtual void Run() {
+    done_ = true;
+    scheduler_->Signal();
+  }
+
+  void Block() {
+    // Holding the lock here before checking ensure that we don't race the check
+    // against the callback invocation.
+    ScopedMutex lock(scheduler_->mutex());
+    while (!done_) {
+      scheduler_->ProcessAlarms(10 * Timer::kSecondUs);
+    }
+  }
+
+ private:
+  Scheduler* scheduler_;
+  bool done_;
+  DISALLOW_COPY_AND_ASSIGN(SchedulerWaitFunction);
+};
+
+}  // namespace
 
 class FileSystem;
 
@@ -142,7 +173,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       add_instrumentation_filter_(NULL),
       scan_filter_(this),
       domain_rewriter_(NULL),
-      rewrite_worker_(NULL) {
+      rewrite_worker_(NULL),
+      html_worker_(NULL) {
 
   // Set up default values for the amount of time an HTML rewrite will wait for
   // Rewrites to complete, based on whether compiled for debug or running on
@@ -164,6 +196,9 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
 RewriteDriver::~RewriteDriver() {
   if (rewrite_worker_ != NULL) {
     resource_manager_->rewrite_workers()->FreeSequence(rewrite_worker_);
+  }
+  if (html_worker_ != NULL) {
+    resource_manager_->rewrite_workers()->FreeSequence(html_worker_);
   }
   STLDeleteElements(&filters_to_delete_);
   Clear();
@@ -210,38 +245,69 @@ void RewriteDriver::WaitForCompletion() {
 
 void RewriteDriver::BoundedWaitForCompletion(int64 timeout_ms) {
   if (asynchronous_rewrites_) {
-    ScopedMutex lock(rewrite_mutex());
-    BoundedWaitForCompletionImpl(kWaitForCompletion, timeout_ms);
+    SchedulerWaitFunction wait(scheduler_.get());
+
+    {
+      ScopedMutex lock(rewrite_mutex());
+      CheckForCompletionAsync(kWaitForCompletion, timeout_ms, &wait);
+    }
+    wait.Block();
   }
 }
 
-void RewriteDriver::BoundedWaitForCompletionImpl(WaitMode wait_mode,
-                                                 int64 timeout_ms) {
+void RewriteDriver::CheckForCompletionAsync(WaitMode wait_mode,
+                                            int64 timeout_ms,
+                                            Function* done) {
+  scheduler_->DCheckLocked();
   if (wait_mode == kWaitForCompletion) {
     waiting_for_completion_ = true;
   } else {
     waiting_for_render_ = true;
   }
 
-  bool deadline_reached = false;
-  while (!IsDone(wait_mode, deadline_reached)) {
-    // At this point there are pending_rewrites_ we may still render and
-    // detached_rewrites_.size() rewrites which are going on in background.
-    int64 start_ms = resource_manager_->timer()->NowMs();
-    scheduler_->BlockingTimedWait(timeout_ms > 0 ? timeout_ms : kTestTimeoutMs);
-    int64 end_ms = resource_manager_->timer()->NowMs();
+  int64 end_time_ms;
+  if (timeout_ms <= 0) {
+    end_time_ms = -1;  // Encodes unlimited
+  } else {
+    end_time_ms = resource_manager()->timer()->NowMs() + timeout_ms;
+  }
 
-    if (timeout_ms > 0) {
-      timeout_ms -= (end_ms - start_ms);
-      if (timeout_ms <= 0) {
-        // Remaining became <=0 => timed out, rather than unbounded.
-        deadline_reached = true;
-      }
+  TryCheckForCompletion(wait_mode, end_time_ms, done);
+}
+
+void RewriteDriver::TryCheckForCompletion(
+    WaitMode wait_mode, int64 end_time_ms, Function* done) {
+  scheduler_->DCheckLocked();
+  bool deadline_reached;
+  int64 now_ms = resource_manager_->timer()->NowMs();
+  int64 sleep_ms;
+  if (end_time_ms < 0) {
+    deadline_reached = false;  // Unlimited wait..
+    sleep_ms = kTestTimeoutMs;
+  } else {
+    deadline_reached = (now_ms >= end_time_ms);
+    if (deadline_reached) {
+      // If deadline is already reached if we keep going we will want to use
+      // long sleeps since we expect to be woken up based on conditions.
+      sleep_ms = kTestTimeoutMs;
+    } else {
+      sleep_ms = end_time_ms - now_ms;
     }
   }
 
-  waiting_for_completion_ = false;
-  waiting_for_render_ = false;
+  // Note that we may end up going past the deadline in order to make sure
+  // that at least the metadata cache lookups have a chance to come in.
+  if (!IsDone(wait_mode, deadline_reached)) {
+    scheduler_->TimedWait(
+        sleep_ms,
+        MakeFunction(this, &RewriteDriver::TryCheckForCompletion,
+                     wait_mode, end_time_ms, done));
+  } else {
+    // Done.
+    waiting_for_completion_ = false;
+    waiting_for_render_ = false;
+    done->CallRun();
+  }
 }
 
 bool RewriteDriver::IsDone(WaitMode wait_mode, bool deadline_reached) {
@@ -267,21 +333,6 @@ void RewriteDriver::BlockingTimedWait(int wait_time_ms) {
   scheduler_->BlockingTimedWait(wait_time_ms);
 }
 
-namespace {
-
-// TODO(jmarantz): replace with real blocking callback once  RunAsync
-// actually runs asynchronously, following new scheduler support.
-class WaitFunction : public Function {
- public:
-  WaitFunction() : done_(false) {}
-  virtual void Run() { done_ = true; }
-  bool done() const { return done_; }
- private:
-  bool done_;
-};
-
-}  // namespace
-
 // TODO(jmarantz): add callback version of this.
 void RewriteDriver::ExecuteFlushIfRequested() {
   if (flush_requested_) {
@@ -290,10 +341,9 @@ void RewriteDriver::ExecuteFlushIfRequested() {
 }
 
 void RewriteDriver::Flush() {
-  WaitFunction wait;
-  wait.set_delete_after_callback(false);
+  SchedulerWaitFunction wait(scheduler_.get());
   FlushAsync(&wait);
-  CHECK(wait.done());  // Once FlushAsync is really async we will block here.
+  wait.Block();
   flush_requested_ = false;
 }
 
@@ -336,48 +386,62 @@ void RewriteDriver::FlushAsync(Function* callback) {
     }
   }
   rewrites_.clear();
+
   {
     ScopedMutex lock(rewrite_mutex());
     DCHECK(!fetch_queued_);
+    Function* flush_async_done =
+        MakeFunction(this, &RewriteDriver::QueueFlushAsyncDone,
+                     num_rewrites, callback);
     if (resource_manager_->block_until_completion_in_render()) {
-      BoundedWaitForCompletionImpl(kWaitForCompletion, -1);
+      CheckForCompletionAsync(kWaitForCompletion, -1, flush_async_done);
     } else {
-      BoundedWaitForCompletionImpl(kWaitForCachedRender, rewrite_deadline_ms_);
+      CheckForCompletionAsync(kWaitForCachedRender, rewrite_deadline_ms_,
+                              flush_async_done);
     }
-    DCHECK_EQ(0, possibly_quick_rewrites_);
-    int completed_rewrites = num_rewrites - pending_rewrites_;
-
-    // If the output cache lookup came as a HIT in after the deadline, that
-    // means that (a) we can't use the result and (b) we don't need
-    // to re-initiate the rewrite since it was in fact in cache.  Hopefully
-    // the cache system will respond to HIT by making the next HIT faster
-    // so it meets our deadline.  In either case we will track with stats.
-    //
-    RewriteStats* stats = resource_manager_->rewrite_stats();
-    stats->cached_output_hits()->Add(completed_rewrites);
-    stats->cached_output_missed_deadline()->Add(pending_rewrites_);
-
-    // While new slots are created for distinct HtmlElements, Resources can be
-    // shared across multiple slots, via resource_map_.  However, to avoid
-    // races between outstanding RewriteContexts, we must create new Resources
-    // after each Flush.  Note that we only need to do this if there are
-    // outstanding rewrites.
-    if (pending_rewrites_ != 0) {
-      resource_map_.clear();
-      for (RewriteContextSet::iterator p = initiated_rewrites_.begin(),
-               e = initiated_rewrites_.end(); p != e; ++p) {
-        RewriteContext* rewrite_context = *p;
-        detached_rewrites_.insert(rewrite_context);
-        --pending_rewrites_;
-      }
-      DCHECK_EQ(0, pending_rewrites_);
-      initiated_rewrites_.clear();
-    } else {
-      DCHECK(initiated_rewrites_.empty());
-    }
-
-    slots_.clear();
   }
+}
+
+void RewriteDriver::QueueFlushAsyncDone(int num_rewrites, Function* callback) {
+  html_worker_->Add(MakeFunction(this, &RewriteDriver::FlushAsyncDone,
+                                 num_rewrites, callback));
+}
+
+void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
+  ScopedMutex lock(rewrite_mutex());
+  DCHECK_EQ(0, possibly_quick_rewrites_);
+  int completed_rewrites = num_rewrites - pending_rewrites_;
+
+  // If the output cache lookup came as a HIT in after the deadline, that
+  // means that (a) we can't use the result and (b) we don't need
+  // to re-initiate the rewrite since it was in fact in cache.  Hopefully
+  // the cache system will respond to HIT by making the next HIT faster
+  // so it meets our deadline.  In either case we will track with stats.
+  //
+  RewriteStats* stats = resource_manager_->rewrite_stats();
+  stats->cached_output_hits()->Add(completed_rewrites);
+  stats->cached_output_missed_deadline()->Add(pending_rewrites_);
+
+  // While new slots are created for distinct HtmlElements, Resources can be
+  // shared across multiple slots, via resource_map_.  However, to avoid
+  // races between outstanding RewriteContexts, we must create new Resources
+  // after each Flush.  Note that we only need to do this if there are
+  // outstanding rewrites.
+  if (pending_rewrites_ != 0) {
+    resource_map_.clear();
+    for (RewriteContextSet::iterator p = initiated_rewrites_.begin(),
+              e = initiated_rewrites_.end(); p != e; ++p) {
+      RewriteContext* rewrite_context = *p;
+      detached_rewrites_.insert(rewrite_context);
+      --pending_rewrites_;
+    }
+    DCHECK_EQ(0, pending_rewrites_);
+    initiated_rewrites_.clear();
+  } else {
+    DCHECK(initiated_rewrites_.empty());
+  }
+
+  slots_.clear();
 
   HtmlParse::Flush();
   callback->CallRun();
@@ -415,6 +479,7 @@ void RewriteDriver::SetResourceManagerAndScheduler(
   scheduler_.reset(scheduler);
   set_timer(resource_manager->timer());
   rewrite_worker_ = resource_manager_->rewrite_workers()->NewSequence();
+  html_worker_ = resource_manager_->rewrite_workers()->NewSequence();
 
   DCHECK(resource_filter_map_.empty());
 

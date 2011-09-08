@@ -106,6 +106,7 @@ class Scheduler {
   // handle outstanding alarms, or if there are none wait until the next wakeup
   // and handle alarms then before relinquishing control.  Idle no longer than
   // timeout_us.  Passing in timeout_us=0 will run without blocking.
+  // mutex() must be held.
   void ProcessAlarms(int64 timeout_us);
 
   // Internal method to kick the system because something of interest to the
@@ -117,8 +118,11 @@ class Scheduler {
   // Internal method to await a wakeup event.  Block until wakeup_time_us (an
   // absolute time since the epoch), or until something interesting (such as a
   // call to Signal) occurs.  This is virtual to permit us to mock it out (the
-  // mock simply advances time).
+  // mock simply advances time). This maybe called with 0 in case where there
+  // are no timers currently active.
   virtual void AwaitWakeupUntilUs(int64 wakeup_time_us);
+
+  bool running_waiting_alarms() const { return running_waiting_alarms_; }
 
  private:
   class CondVarTimeout;
@@ -142,6 +146,8 @@ class Scheduler {
   // outstanding_alarms_.
   int64 signal_count_;           // Number of times Signal has been called
   AlarmSet waiting_alarms_;      // Alarms waiting for signal_count to change
+  bool running_waiting_alarms_;  // True if we're in process of invoking
+                                 // user callbacks...
   DISALLOW_COPY_AND_ASSIGN(Scheduler);
 };
 

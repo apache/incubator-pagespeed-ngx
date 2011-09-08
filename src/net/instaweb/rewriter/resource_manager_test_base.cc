@@ -55,6 +55,7 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_time_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
@@ -582,8 +583,15 @@ RewriteDriver* ResourceManagerTestBase::MakeDriver(
   // standard flow.
   RewriteDriver* rd = rm->NewUnmanagedRewriteDriver();
   rd->set_custom_options(options);
+  QueuedWorkerPool::SequenceVector threads;
+  threads.push_back(rd->rewrite_worker());
+  threads.push_back(rd->html_worker());
   Scheduler* scheduler = new MockScheduler(
-     rm->thread_system(), rd->rewrite_worker(), factory->mock_timer());
+      rm->thread_system(), threads,  factory->mock_timer());
+  // As we are using mock time, we need to set a consistent deadline here,
+  // as otherwise when running under Valgrind some tests will finish
+  // with different HTML headers than expected.
+  rd->set_rewrite_deadline_ms(20);
   rd->set_scheduler(scheduler);
   rd->set_externally_managed(true);
   return rd;

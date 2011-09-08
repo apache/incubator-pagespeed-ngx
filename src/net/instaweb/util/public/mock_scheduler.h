@@ -36,7 +36,8 @@ class ThreadSystem;
 // has passed.
 class MockScheduler : public Scheduler {
  public:
-  MockScheduler(ThreadSystem* thread_system, QueuedWorkerPool::Sequence* worker,
+  MockScheduler(ThreadSystem* thread_system,
+                const QueuedWorkerPool::SequenceVector& workers,
                 MockTimer* timer);
   virtual ~MockScheduler();
 
@@ -45,7 +46,7 @@ class MockScheduler : public Scheduler {
 
  private:
   MockTimer* timer_;
-  QueuedWorkerPool::Sequence* worker_;
+  QueuedWorkerPool::SequenceVector workers_;
 
   DISALLOW_COPY_AND_ASSIGN(MockScheduler);
 };

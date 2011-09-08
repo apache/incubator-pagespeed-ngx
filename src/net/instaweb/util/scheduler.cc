@@ -184,7 +184,8 @@ Scheduler::Scheduler(ThreadSystem* thread_system, Timer* timer)
       mutex_(thread_system->NewMutex()),
       condvar_(mutex_->NewCondvar()),
       index_(kIndexNotSet),
-      signal_count_(0) {
+      signal_count_(0),
+      running_waiting_alarms_(false) {
 }
 
 Scheduler::~Scheduler() {
@@ -247,14 +248,16 @@ void Scheduler::Signal() {
   // callbacks we run.
   AlarmSet waiting_alarms_to_dispatch;
   waiting_alarms_to_dispatch.swap(waiting_alarms_);
+  running_waiting_alarms_ = true;
   if (!waiting_alarms_to_dispatch.empty()) {
     for (AlarmSet::iterator i = waiting_alarms_to_dispatch.begin();
          i != waiting_alarms_to_dispatch.end(); ++i) {
       // The Cancel() methods for waiting_alarms_ retain the scheduler mutex.
       CancelAlarm(*i);
     }
-    condvar_->Broadcast();
   }
+  condvar_->Broadcast();
+  running_waiting_alarms_ = false;
   RunAlarms(NULL);
 }
 
@@ -328,6 +331,11 @@ void Scheduler::AwaitWakeupUntilUs(int64 wakeup_time_us) {
   // to wake a bit later than expected.  We assume the system is likely to
   // round wakeup time off for us in some arbitrary fashion in any case.
   int64 wakeup_interval_ms = (wakeup_time_us - now_us + kMsUs - 1) / kMsUs;
+
+  // If there is no known wake up time, we just use a very large sleep
+  if (wakeup_interval_ms <= 0) {
+    wakeup_interval_ms = 10 * Timer::kSecondMs;
+  }
   condvar_->TimedWait(wakeup_interval_ms);
 }
 
@@ -336,11 +344,13 @@ void Scheduler::Wakeup() {
 }
 
 void Scheduler::ProcessAlarms(int64 timeout_us) {
-  ScopedMutex lock(mutex_.get());
+  mutex_->DCheckLocked();
   bool ran_alarms = false;
   int64 finish_us = timer_->NowUs() + timeout_us;
   int64 next_wakeup_us = RunAlarms(&ran_alarms);
+
   if (timeout_us > 0 && !ran_alarms) {
+    // Note: next_wakeup_us may be 0 here.
     AwaitWakeupUntilUs(std::min(finish_us, next_wakeup_us));
     RunAlarms(&ran_alarms);
   }

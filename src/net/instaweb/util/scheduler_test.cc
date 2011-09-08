@@ -49,6 +49,11 @@ class SchedulerTest : public WorkerTestBase {
     return comparator(a, b);
   }
 
+  void LockAndProcessAlarms(int64 timeout_ms) {
+    ScopedMutex lock(scheduler_.mutex());
+    scheduler_.ProcessAlarms(timeout_ms);
+  }
+
   scoped_ptr<ThreadSystem> thread_system_;
   GoogleTimer timer_;
   Scheduler scheduler_;
@@ -102,7 +107,7 @@ TEST_F(SchedulerTest, MidpointBlock) {
   int64 mid_us = timer_.NowUs();
   EXPECT_LT(start_us + 4 * kMsUs, mid_us);
   EXPECT_LE(2, counter);
-  scheduler_.ProcessAlarms(kMinuteUs);
+  LockAndProcessAlarms(kMinuteUs);
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(3, counter);
   EXPECT_LT(start_us + 6 * kMsUs, end_us);
@@ -117,7 +122,7 @@ TEST_F(SchedulerTest, AlarmInPastRuns) {
   scheduler_.AddAlarm(start_us - 2 * kMsUs, new CountFunction(&counter));
   Scheduler::Alarm* alarm2 =
       scheduler_.AddAlarm(start_us + kMinuteUs, new CountFunction(&counter));
-  scheduler_.ProcessAlarms(0);  // Don't block!
+  LockAndProcessAlarms(0);  // Don't block!
   EXPECT_EQ(1, counter);
   {
     ScopedMutex lock(scheduler_.mutex());
@@ -147,7 +152,7 @@ TEST_F(SchedulerTest, MidpointCancellation) {
     ScopedMutex lock(scheduler_.mutex());
     scheduler_.CancelAlarm(alarm3);
   }
-  scheduler_.ProcessAlarms(kMinuteUs);
+  LockAndProcessAlarms(kMinuteUs);
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(-98, counter);
   EXPECT_LT(start_us + 3 * kMsUs, end_us);
@@ -162,7 +167,7 @@ TEST_F(SchedulerTest, SimultaneousAlarms) {
   scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
   scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
   scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
-  scheduler_.ProcessAlarms(kMinuteUs);
+  LockAndProcessAlarms(kMinuteUs);
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(3, counter);
   EXPECT_LT(start_us + 2 * kMsUs, end_us);
@@ -266,7 +271,7 @@ TEST_F(SchedulerTest, TimedWaitFromSignalWakeup) {
         5, new RetryWaitFunction(&timer_, start_ms, &scheduler_, &counter));
     scheduler_.Signal();
   }
-  scheduler_.ProcessAlarms(20 * kMsUs);
+  LockAndProcessAlarms(20 * kMsUs);
   EXPECT_GE(2, counter);
 }
 

@@ -48,7 +48,10 @@ class MockSchedulerTest : public testing::Test {
       : timer_(0),
         thread_system_(ThreadSystem::CreateThreadSystem()),
         worker_pool_(1, thread_system_.get()),
-        scheduler_(thread_system_.get(), worker_pool_.NewSequence(), &timer_) {
+        scheduler_(thread_system_.get(),
+                   QueuedWorkerPool::SequenceVector(
+                       1, worker_pool_.NewSequence()),
+                   &timer_) {
   }
 
  protected:
