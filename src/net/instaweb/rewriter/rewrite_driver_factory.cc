@@ -27,7 +27,10 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/filename_encoder.h"
@@ -41,7 +44,6 @@
 
 namespace net_instaweb {
 
-class RewriteDriver;
 class Statistics;
 
 RewriteDriverFactory::RewriteDriverFactory(ThreadSystem* thread_system)
@@ -62,6 +64,7 @@ void RewriteDriverFactory::Init() {
   slurp_print_urls_ = false;
   async_rewrites_ = true;
   http_cache_backend_ = NULL;
+  SetStatistics(&null_statistics_);
   resource_manager_mutex_.reset(thread_system_->NewMutex());
 }
 
@@ -130,6 +133,9 @@ void RewriteDriverFactory::set_base_url_async_fetcher(
 
 void RewriteDriverFactory::set_hasher(Hasher* hasher) {
   hasher_.reset(hasher);
+  if (resource_manager_.get() != NULL) {
+    resource_manager_->set_hasher(hasher);
+  }
 }
 
 void RewriteDriverFactory::set_timer(Timer* timer) {
@@ -173,13 +179,6 @@ Hasher* RewriteDriverFactory::hasher() {
     hasher_.reset(NewHasher());
   }
   return hasher_.get();
-}
-
-FilenameEncoder* RewriteDriverFactory::filename_encoder() {
-  if (filename_encoder_ == NULL) {
-    filename_encoder_.reset(new FilenameEncoder);
-  }
-  return filename_encoder_.get();
 }
 
 NamedLockManager* RewriteDriverFactory::DefaultLockManager() {
@@ -234,26 +233,40 @@ void RewriteDriverFactory::SetAsyncRewrites(bool x) {
   }
 }
 
+ResourceManager* RewriteDriverFactory::CreateResourceManager() {
+  CHECK(http_cache_ != NULL) << "http_cache() must be called first";
+  CHECK(!filename_prefix_.empty())
+      << "Must specify --filename_prefix or call "
+      << "RewriteDriverFactory::set_filename_prefix.";
+  ResourceManager* resource_manager = new ResourceManager(thread_system(),
+                                                          statistics(),
+                                                          rewrite_stats(),
+                                                          http_cache());
+  resource_manager->set_filename_encoder(filename_encoder());
+  resource_manager->set_file_system(file_system());
+  resource_manager->set_filename_prefix(filename_prefix_);
+  resource_manager->set_url_async_fetcher(ComputeUrlAsyncFetcher());
+  resource_manager->set_hasher(hasher());
+  resource_manager->set_http_cache(http_cache());
+  resource_manager->set_metadata_cache(http_cache_backend_);
+  resource_manager->set_lock_manager(lock_manager());
+  resource_manager->set_message_handler(message_handler());
+  resource_manager->set_store_outputs_in_file_system(
+      ShouldWriteResourcesToFileSystem());
+  return resource_manager;
+}
+
 ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
   ScopedMutex lock(resource_manager_mutex_.get());
   if (resource_manager_ == NULL) {
-    CHECK(!filename_prefix_.empty())
-        << "Must specify --filename_prefix or call "
-        << "RewriteDriverFactory::set_filename_prefix.";
-    HTTPCache* cache = http_cache();  // Ensure compute http_cache_backend_
-    Statistics* stats = statistics();
-    resource_manager_.reset(new ResourceManager(
-        filename_prefix_, file_system(), filename_encoder(),
-        ComputeUrlAsyncFetcher(), hasher(),
-        cache, http_cache_backend_, lock_manager(),
-        message_handler(),
-        stats, thread_system(), this));
+    // Ensures that we lazily compute http_cache_backend_ and http_cache_.
+    http_cache();
+
+    resource_manager_.reset(CreateResourceManager());
     if (temp_options_.get() != NULL) {
       resource_manager_->options()->CopyFrom(*temp_options_.get());
       temp_options_.reset(NULL);
     }
-    resource_manager_->set_store_outputs_in_file_system(
-        ShouldWriteResourcesToFileSystem());
     ResourceManagerCreatedHook();
   }
   resource_manager_->set_async_rewrites(async_rewrites_);
@@ -388,6 +401,27 @@ RewriteOptions* RewriteDriverFactory::options() {
 
 void RewriteDriverFactory::AddCreatedDirectory(const GoogleString& dir) {
   created_directories_.insert(dir);
+}
+
+void RewriteDriverFactory::Initialize(Statistics* statistics) {
+  if (statistics != NULL) {
+    RewriteStats::Initialize(statistics);
+    HTTPCache::Initialize(statistics);
+    RewriteDriver::Initialize(statistics);
+  }
+}
+
+void RewriteDriverFactory::SetStatistics(Statistics* statistics) {
+  statistics_ = statistics;
+  rewrite_stats_.reset(NULL);
+}
+
+RewriteStats* RewriteDriverFactory::rewrite_stats() {
+  if (rewrite_stats_.get() == NULL) {
+    rewrite_stats_.reset(new RewriteStats(statistics_, thread_system_.get(),
+                                          timer()));
+  }
+  return rewrite_stats_.get();
 }
 
 }  // namespace net_instaweb

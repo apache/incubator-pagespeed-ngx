@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -54,7 +55,7 @@ TEST_F(FlushFilterTest, NoExtraFlushes) {
   html_parse()->ParseText(StrCat(StringPrintf(kCssFormat, "a.css"),
                                  StringPrintf(kImgFormat, "b.png")));
   html_parse()->ExecuteFlushIfRequested();
-  EXPECT_EQ(0, resource_manager()->num_flushes()->Get());
+  EXPECT_EQ(0, resource_manager()->rewrite_stats()->num_flushes()->Get());
 }
 
 TEST_F(FlushFilterTest, InduceFlushes) {
@@ -66,7 +67,7 @@ TEST_F(FlushFilterTest, InduceFlushes) {
   }
   html_parse()->ParseText(lots_of_links);
   html_parse()->ExecuteFlushIfRequested();
-  EXPECT_EQ(1, resource_manager()->num_flushes()->Get());
+  EXPECT_EQ(1, resource_manager()->rewrite_stats()->num_flushes()->Get());
 }
 
 

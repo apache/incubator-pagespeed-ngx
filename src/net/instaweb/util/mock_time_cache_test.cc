@@ -40,13 +40,14 @@ const int64 kStartTime = 3456;
 class MockTimeCacheTest : public CacheTestBase {
  protected:
   MockTimeCacheTest()
-      : timer_(kStartTime), cache_(&timer_, new LRUCache(kMaxSize)) {
+      : timer_(kStartTime), lru_cache_(kMaxSize), cache_(&timer_, &lru_cache_) {
   }
 
   virtual CacheInterface* Cache() { return &cache_; }
 
  protected:
   MockTimer timer_;
+  LRUCache lru_cache_;
   MockTimeCache cache_;
 
  private:

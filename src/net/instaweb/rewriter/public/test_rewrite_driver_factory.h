@@ -1,0 +1,101 @@
+/*
+ * Copyright 2011 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Author: jmarantz@google.com (Joshua Marantz)
+
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_TEST_REWRITE_DRIVER_FACTORY_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_TEST_REWRITE_DRIVER_FACTORY_H_
+
+#include "base/scoped_ptr.h"            // for scoped_ptr
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/util/public/mock_time_cache.h"
+#include "net/instaweb/util/public/simple_stats.h"
+#include "net/instaweb/util/public/string_util.h"        // for StringPiece
+
+namespace net_instaweb {
+
+class CacheInterface;
+class CountingUrlAsyncFetcher;
+class FakeUrlAsyncFetcher;
+class FileSystem;
+class Hasher;
+class LRUCache;
+class MemFileSystem;
+class MessageHandler;
+class MockHasher;
+class MockMessageHandler;
+class MockTimer;
+class MockUrlFetcher;
+class RewriteDriver;
+class Timer;
+class UrlAsyncFetcher;
+class UrlFetcher;
+class WaitUrlAsyncFetcher;
+
+// RewriteDriverFactory implementation for use in tests, using mock time,
+// mock fetchers, and a memory-based file system.
+class TestRewriteDriverFactory : public RewriteDriverFactory {
+ public:
+  TestRewriteDriverFactory(const StringPiece& temp_dir,
+                           MockUrlFetcher* mock_fetcher);
+  virtual ~TestRewriteDriverFactory();
+
+  LRUCache* lru_cache() { return lru_cache_; }
+  MockTimer* mock_timer() { return mock_timer_; }
+  MockHasher* mock_hasher() { return mock_hasher_; }
+  MemFileSystem* mem_file_system() { return mem_file_system_; }
+  WaitUrlAsyncFetcher* wait_url_async_fetcher() {
+    return wait_url_async_fetcher_.get();
+  }
+  CountingUrlAsyncFetcher* counting_url_async_fetcher() {
+    return counting_url_async_fetcher_;
+  }
+  MockTimeCache* mock_time_cache() { return &mock_time_cache_; }
+
+  void SetupWaitFetcher();
+  void CallFetcherCallbacksForDriver(RewriteDriver* driver);
+  MockMessageHandler* mock_message_handler() { return mock_message_handler_; }
+
+ protected:
+  virtual Hasher* NewHasher();
+  virtual MessageHandler* DefaultHtmlParseMessageHandler();
+  virtual MessageHandler* DefaultMessageHandler();
+  virtual UrlFetcher* DefaultUrlFetcher();
+  virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
+  virtual FileSystem* DefaultFileSystem();
+  virtual Timer* DefaultTimer();
+  virtual CacheInterface* DefaultCacheInterface();
+  virtual bool ShouldWriteResourcesToFileSystem() { return true; }
+
+ private:
+  MockTimer* mock_timer_;  // owned by base class timer_.
+  LRUCache* lru_cache_;
+  UrlFetcher* proxy_url_fetcher_;
+  MockUrlFetcher* mock_url_fetcher_;
+  scoped_ptr<FakeUrlAsyncFetcher> mock_url_async_fetcher_;
+  CountingUrlAsyncFetcher* counting_url_async_fetcher_;
+  scoped_ptr<WaitUrlAsyncFetcher> wait_url_async_fetcher_;
+  MockTimeCache mock_time_cache_;
+  MemFileSystem* mem_file_system_;  // owned by base class file_system_.
+  MockHasher* mock_hasher_;
+  SimpleStats simple_stats_;
+  MockMessageHandler* mock_message_handler_;
+  MockMessageHandler* mock_html_message_handler_;
+};
+
+}  // namespace net_instaweb
+
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_TEST_REWRITE_DRIVER_FACTORY_H_

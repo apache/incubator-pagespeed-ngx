@@ -17,7 +17,6 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //     and sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
@@ -88,14 +87,20 @@ TEST_P(CssFilterTest, RewriteRepeated) {
   ValidateRewriteExternalCss("rep", " div { } ", "div{}",
                              kExpectChange | kExpectSuccess);
   int inserts_before = lru_cache()->num_inserts();
+  EXPECT_EQ(2, num_files_minified_->Get());  // for factory_ and new_factory.
+  num_files_minified_->Set(0);
   ValidateRewriteExternalCss("rep", " div { } ", "div{}",
                              kExpectChange | kExpectSuccess | kNoStatCheck);
   int inserts_after = lru_cache()->num_inserts();
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
   EXPECT_EQ(inserts_before, inserts_after);
+
   // We expect num_files_minified_ to be reset to 0 by
-  // ValidateRewriteExternalCss and left there since we should not re-minimize.
-  EXPECT_EQ(0, num_files_minified_->Get());
+  // ValidateRewriteExternalCss and left there since we should not
+  // re-minimize.  But because we don't share lru-cache between
+  // factories, and ServeResourceFromNewContext uses a fresh factory
+  // each call, we will minify once more.
+  EXPECT_EQ(1, num_files_minified_->Get());
 }
 
 // Make sure we do not reparse external CSS when we know it already has

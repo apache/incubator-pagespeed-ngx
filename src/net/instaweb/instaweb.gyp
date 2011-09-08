@@ -539,6 +539,7 @@
         'rewriter/rewrite_filter.cc',
         'rewriter/rewrite_query.cc',
         'rewriter/rewrite_single_resource_filter.cc',
+        'rewriter/rewrite_stats.cc',
         'rewriter/scan_filter.cc',
         'rewriter/script_tag_scanner.cc',
         'rewriter/simple_text_filter.cc',

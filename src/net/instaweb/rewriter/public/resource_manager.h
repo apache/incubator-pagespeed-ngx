@@ -55,13 +55,12 @@ class ResourceContext;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
+class RewriteStats;
 class Statistics;
 class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
 class UrlSegmentEncoder;
-class Variable;
-class Waveform;
 
 typedef RefCountedPtr<OutputResource> OutputResourcePtr;
 typedef std::vector<OutputResourcePtr> OutputResourceVector;
@@ -80,22 +79,11 @@ class ResourceManager {
   // Default statistics group name.
   static const char kStatisticsGroup[];
 
-  ResourceManager(const StringPiece& file_prefix,
-                  FileSystem* file_system,
-                  FilenameEncoder* filename_encoder,
-                  UrlAsyncFetcher* url_async_fetcher,
-                  Hasher* hasher,
-                  HTTPCache* http_cache,
-                  CacheInterface* metadata_cache,
-                  NamedLockManager* lock_manager,
-                  MessageHandler* handler,
+  ResourceManager(ThreadSystem* thread_system,
                   Statistics* statistics,
-                  ThreadSystem* thread_system,
-                  RewriteDriverFactory* factory);
+                  RewriteStats* rewrite_stats,
+                  HTTPCache* http_cache);
   ~ResourceManager();
-
-  // Initialize statistics gathering.
-  static void Initialize(Statistics* statistics);
 
   // Set time and cache headers with long TTL (including Date, Last-Modified,
   // Cache-Control, Etags, Expires).
@@ -108,10 +96,16 @@ class ResourceManager {
   // Changes the content type of a pre-initialized header.
   void SetContentType(const ContentType* content_type, ResponseHeaders* header);
 
-  StringPiece filename_prefix() const { return file_prefix_; }
   void set_filename_prefix(const StringPiece& file_prefix);
-  Statistics* statistics() const { return statistics_; }
+  void set_statistics(Statistics* x) { statistics_ = x; }
   void set_relative_path(bool x) { relative_path_ = x; }
+  void set_lock_manager(NamedLockManager* x) { lock_manager_ = x; }
+  void set_http_cache(HTTPCache* x) { http_cache_ = x; }
+  void set_metadata_cache(CacheInterface* x) { metadata_cache_ = x; }
+  void set_message_handler(MessageHandler* x) { message_handler_ = x; }
+
+  StringPiece filename_prefix() const { return file_prefix_; }
+  Statistics* statistics() const { return statistics_; }
   NamedLockManager* lock_manager() const { return lock_manager_; }
 
   // Writes the specified contents into the output resource, retaining
@@ -151,7 +145,9 @@ class ResourceManager {
   const Hasher* lock_hasher() const { return &lock_hasher_; }
   const Hasher* contents_hasher() const { return &contents_hasher_; }
   FileSystem* file_system() { return file_system_; }
+  void set_file_system(FileSystem* fs ) { file_system_ = fs; }
   FilenameEncoder* filename_encoder() const { return filename_encoder_; }
+  void set_filename_encoder(FilenameEncoder* x) { filename_encoder_ = x; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
   Timer* timer() const { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
@@ -185,32 +181,7 @@ class ResourceManager {
   void RefreshIfImminentlyExpiring(Resource* resource,
                                    MessageHandler* handler) const;
 
-  Variable* resource_url_domain_rejections() {
-    return resource_url_domain_rejections_;
-  }
-  Variable* cached_output_missed_deadline() {
-    return cached_output_missed_deadline_;
-  }
-  Variable* cached_output_hits() {
-    return cached_output_hits_;
-  }
-  Variable* cached_output_misses() {
-    return cached_output_misses_;
-  }
-  Variable* resource_404_count() { return resource_404_count_; }
-  Variable* slurp_404_count() { return slurp_404_count_; }
-  Variable* cached_resource_fetches() { return cached_resource_fetches_; }
-  Variable* succeeded_filter_resource_fetches() {
-    return succeeded_filter_resource_fetches_;
-  }
-  Variable* failed_filter_resource_fetches() {
-    return failed_filter_resource_fetches_;
-  }
-  Variable* num_flushes() { return num_flushes_; }
-  Waveform* rewrite_thread_queue_depth() {
-    return rewrite_thread_queue_depth_.get();
-  }
-
+  RewriteStats* rewrite_stats() const { return rewrite_stats_; }
   MessageHandler* message_handler() const { return message_handler_; }
 
   // Loads contents of resource asynchronously, calling callback when
@@ -387,6 +358,8 @@ class ResourceManager {
   // Must be called with rewrite_drivers_mutex_ held.
   void ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver);
 
+  ThreadSystem* thread_system_;
+  RewriteStats* rewrite_stats_;
   GoogleString file_prefix_;
   int resource_id_;  // Sequential ids for temporary Resource filenames.
   FileSystem* file_system_;
@@ -405,32 +378,6 @@ class ResourceManager {
 
   Statistics* statistics_;
 
-  // Counts how many URLs we reject because they come from a domain that
-  // is not authorized.
-  Variable* resource_url_domain_rejections_;
-  // Counts how many times we had a cache-hit for the output resource
-  // partitioning, but it came too late to be used for the rewrite.
-  Variable* cached_output_missed_deadline_;
-  // Counts how many times we had a successful cache-hit for output
-  // resource partitioning.
-  Variable* cached_output_hits_;
-  // Counts how many times we had a cache-miss for output
-  // resource partitioning.
-  Variable* cached_output_misses_;
-  // Tracks 404s sent to clients for resource requests.
-  Variable* resource_404_count_;
-  // Tracks 404s sent clients to when slurping.
-  Variable* slurp_404_count_;
-  // Used for recording results from beacons from 'add_instrumentation_filter'.
-  Variable* total_page_load_ms_;
-  Variable* page_load_count_;
-
-  Variable* cached_resource_fetches_;
-  Variable* succeeded_filter_resource_fetches_;
-  Variable* failed_filter_resource_fetches_;
-  Variable* num_flushes_;
-  scoped_ptr<Waveform> rewrite_thread_queue_depth_;
-
   HTTPCache* http_cache_;
   CacheInterface* metadata_cache_;
 
@@ -441,7 +388,6 @@ class ResourceManager {
 
   NamedLockManager* lock_manager_;
   MessageHandler* message_handler_;
-  ThreadSystem* thread_system_;
 
   // RewriteDrivers that were previously allocated, but have
   // been released with ReleaseRewriteDriver, and are ready

@@ -34,6 +34,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -166,7 +167,8 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
     } else {
       message_handler->Message(kError, "Fetch failed for %s, status=%d",
                               url.c_str(), response_headers.status_code());
-      rewrite_driver->resource_manager()->resource_404_count()->Add(1);
+      RewriteStats* stats = rewrite_driver->resource_manager()->rewrite_stats();
+      stats->resource_404_count()->Add(1);
       instaweb_default_handler(url, request);
     }
   } else {
@@ -316,7 +318,8 @@ apr_status_t instaweb_handler(request_rec* request) {
   } else if (factory->slurping_enabled() || factory->test_proxy()) {
     SlurpUrl(factory, request);
     if (request->status == HTTP_NOT_FOUND) {
-      factory->ComputeResourceManager()->slurp_404_count()->Add(1);
+      RewriteStats* stats = factory->ComputeResourceManager()->rewrite_stats();
+      stats->slurp_404_count()->Add(1);
     }
     ret = OK;
   }

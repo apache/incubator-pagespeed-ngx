@@ -217,13 +217,13 @@ TEST_P(RewriteDriverTest, BaseTags) {
   // If we then encounter a base tag, that will become the new base.
   rewrite_driver()->ParseText("<base href='http://new.example.com/subdir/'>");
   rewrite_driver()->Flush();
-  EXPECT_EQ(0, message_handler_.TotalMessages());
+  EXPECT_EQ(0, message_handler()->TotalMessages());
   EXPECT_EQ("http://new.example.com/subdir/", BaseUrlSpec());
 
   // A second base tag will be ignored, and an info message will be printed.
   rewrite_driver()->ParseText("<base href=http://second.example.com/subdir2>");
   rewrite_driver()->Flush();
-  EXPECT_EQ(1, message_handler_.TotalMessages());
+  EXPECT_EQ(1, message_handler()->TotalMessages());
   EXPECT_EQ("http://new.example.com/subdir/", BaseUrlSpec());
 
   // Restart the parse with a new URL and we start fresh.
@@ -236,7 +236,7 @@ TEST_P(RewriteDriverTest, BaseTags) {
   // We should be able to reset again.
   rewrite_driver()->ParseText("<base href='http://new.example.com/subdir/'>");
   rewrite_driver()->Flush();
-  EXPECT_EQ(1, message_handler_.TotalMessages());
+  EXPECT_EQ(1, message_handler()->TotalMessages());
   EXPECT_EQ("http://new.example.com/subdir/", BaseUrlSpec());
 }
 
@@ -245,7 +245,7 @@ TEST_P(RewriteDriverTest, RelativeBaseTag) {
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
   rewrite_driver()->ParseText("<base href='subdir/'>");
   rewrite_driver()->Flush();
-  EXPECT_EQ(0, message_handler_.TotalMessages());
+  EXPECT_EQ(0, message_handler()->TotalMessages());
   EXPECT_EQ("http://example.com/subdir/", BaseUrlSpec());
 }
 
@@ -255,7 +255,7 @@ TEST_P(RewriteDriverTest, InvalidBaseTag) {
   rewrite_driver()->ParseText("<base href='subdir_not_allowed_on_slwly/'>");
   rewrite_driver()->Flush();
 
-  EXPECT_EQ(1, message_handler_.TotalMessages());
+  EXPECT_EQ(1, message_handler()->TotalMessages());
   EXPECT_EQ("slwly://example.com/index.html", BaseUrlSpec());
 
   // And we will accept a subsequent base-tag with legal aboslute syntax.

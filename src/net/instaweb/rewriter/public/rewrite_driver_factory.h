@@ -28,17 +28,18 @@
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class CacheInterface;
 class FileSystem;
 class FilenameEncoder;
 class Hasher;
-class HtmlParse;
 class HTTPCache;
 class MessageHandler;
 class NamedLockManager;
 class ResourceManager;
 class RewriteDriver;
 class RewriteOptions;
+class RewriteStats;
 class Statistics;
 class ThreadSystem;
 class Timer;
@@ -111,7 +112,10 @@ class RewriteDriverFactory {
   // TODO(sligocki): Remove hasher() and force people to make a NewHasher when
   // they need one.
   Hasher* hasher();
-  FilenameEncoder* filename_encoder();
+  FilenameEncoder* filename_encoder() { return filename_encoder_.get(); }
+
+  // These accessors are *not* thread-safe.  They must be called once prior
+  // to forking threads, e.g. via ComputeUrlFetcher().
   Timer* timer();
   HTTPCache* http_cache();
   NamedLockManager* lock_manager();
@@ -119,13 +123,17 @@ class RewriteDriverFactory {
   StringPiece filename_prefix();
 
   // Computes URL fetchers using the based fetcher, and optionally,
-  // slurp_directory and slurp_read_only.
+  // slurp_directory and slurp_read_only.  These are not thread-safe;
+  // they must be called once prior to spawning threads, e.g. via
+  // ComputeResourceManager.
   virtual UrlFetcher* ComputeUrlFetcher();
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
-  ResourceManager* ComputeResourceManager();
 
-  // Generates a new hasher.
-  virtual Hasher* NewHasher() = 0;
+  // For now, we have a single ResourceManager per factory, managed by the
+  // factory, which is constructed lazily here.  This is thread-safe,
+  // and will force the non-thread-safe accessors above to be safely
+  // initialized.
+  ResourceManager* ComputeResourceManager();
 
   // See doc in resource_manager.cc.
   RewriteDriver* NewRewriteDriver();
@@ -149,6 +157,21 @@ class RewriteDriverFactory {
   // affect RewriteDrivers that are created after the call is made.
   void SetAsyncRewrites(bool x);
 
+  // Collection of global statistics objects.  This is thread-unsafe:
+  // it must be called prior to spawning threads, and after any calls
+  // to SetStatistics.  Failing that, it will be initialized in the
+  // first call to ComputeResourceManager, which is thread-safe.
+  RewriteStats* rewrite_stats();
+
+  // statistics (default is NullStatistics).  This can be overridden by calling
+  // SetStatistics, either from subclasses or externally.
+  Statistics* statistics() { return statistics_; }
+
+  static void Initialize(Statistics* statistics);
+
+  // Does *not* take ownership of Statistics.
+  void SetStatistics(Statistics* stats);
+
  protected:
   bool FetchersComputed() const;
 
@@ -161,6 +184,7 @@ class RewriteDriverFactory {
   virtual MessageHandler* DefaultMessageHandler() = 0;
   virtual FileSystem* DefaultFileSystem() = 0;
   virtual Timer* DefaultTimer() = 0;
+  virtual Hasher* NewHasher() = 0;
 
     // Note: Returned CacheInterface should be thread-safe.
   virtual CacheInterface* DefaultCacheInterface() = 0;
@@ -168,9 +192,6 @@ class RewriteDriverFactory {
   // They may also supply a custom lock manager. The default implementation
   // will use the file system.
   virtual NamedLockManager* DefaultLockManager();
-
-  // Overridable statistics (default is NullStatistics)
-  virtual Statistics* statistics() { return &null_statistics_; }
 
   // Clean up all the resources. When shutdown Apache, and destroy the process
   // sub-pool.  The RewriteDriverFactory owns some elements that were created
@@ -210,7 +231,14 @@ class RewriteDriverFactory {
 
  private:
   void SetupSlurpDirectories();
-  void Init();
+  void Init();  // helper-method for constructors.
+
+  // In a few refactors, we will allow creating multiple managed resource
+  // managers per factory.  For now, this returns an unmanaged ResourceManager,
+  // and is used as a helper by ComputeResourceManager.  This is not
+  // currently thread-safe; it should only be called by ComputeResourceManager
+  // for now.
+  ResourceManager* CreateResourceManager();
 
   scoped_ptr<MessageHandler> html_parse_message_handler_;
   scoped_ptr<MessageHandler> message_handler_;
@@ -253,10 +281,16 @@ class RewriteDriverFactory {
 
   scoped_ptr<ThreadSystem> thread_system_;
 
-  // Default statistics implementation, which can be overridden by children.
+  // Default statistics implementation which can be overridden by children
+  // by calling SetStatistics().
   NullStatistics null_statistics_;
+  Statistics* statistics_;
 
   StringSet created_directories_;
+
+  // These must be initialized after the RewriteDriverFactory subclass has been
+  // constructed so it can use a the statistics() override.
+  scoped_ptr<RewriteStats> rewrite_stats_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };

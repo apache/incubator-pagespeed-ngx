@@ -290,7 +290,7 @@ class ApacheProcessContext {
       statistics_.reset(
           new SharedMemStatistics(factory->shared_mem_runtime(),
                                   factory->filename_prefix().as_string()));
-      ResourceManager::Initialize(statistics_.get());
+      RewriteDriverFactory::Initialize(statistics_.get());
       SerfUrlAsyncFetcher::Initialize(statistics_.get());
       statistics_->AddVariable(kMergeTimeUs);
       statistics_->AddVariable(kParseTimeUs);
@@ -735,7 +735,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   }
   // Next we do the instance-independent static initialization, once we have
   // established whether *any* of the servers have stats enabled.
-  ResourceManager::Initialize(statistics);
+  RewriteDriverFactory::Initialize(statistics);
   SerfUrlAsyncFetcher::Initialize(statistics);
 
   // Do a final pass over the servers and init the server-specific statistics
@@ -750,7 +750,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       // Each server with default statistics has its own copy of
       // NullStatistics, and so the variable names will have to be
       // established for each one.
-      ResourceManager::Initialize(factory->statistics());
+      RewriteDriverFactory::Initialize(factory->statistics());
       SerfUrlAsyncFetcher::Initialize(factory->statistics());
     }
   }

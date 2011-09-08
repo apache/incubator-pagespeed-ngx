@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -428,12 +429,13 @@ TEST_P(CacheExtenderTest, MadeOnTheFly) {
   ValidateExpected("and_img", "<img src=\"b.jpg\">",
                    StrCat("<img src=\"", b_ext, "\">"));
 
-  EXPECT_EQ(0, resource_manager()->cached_resource_fetches()->Get());
-  EXPECT_EQ(0, resource_manager()->succeeded_filter_resource_fetches()->Get());
+  RewriteStats* stats = resource_manager()->rewrite_stats();
+  EXPECT_EQ(0, stats->cached_resource_fetches()->Get());
+  EXPECT_EQ(0, stats->succeeded_filter_resource_fetches()->Get());
   GoogleString out;
   EXPECT_TRUE(ServeResourceUrl(b_ext, &out));
-  EXPECT_EQ(0, resource_manager()->cached_resource_fetches()->Get());
-  EXPECT_EQ(1, resource_manager()->succeeded_filter_resource_fetches()->Get());
+  EXPECT_EQ(0, stats->cached_resource_fetches()->Get());
+  EXPECT_EQ(1, stats->succeeded_filter_resource_fetches()->Get());
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?id=324

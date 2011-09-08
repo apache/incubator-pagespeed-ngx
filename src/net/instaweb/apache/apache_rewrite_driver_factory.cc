@@ -255,21 +255,11 @@ UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
 }
 
 
-HtmlParse* ApacheRewriteDriverFactory::DefaultHtmlParse() {
-  return new HtmlParse(html_parse_message_handler());
-}
-
 void ApacheRewriteDriverFactory::SetStatistics(SharedMemStatistics* x) {
   DCHECK(!statistics_frozen_);
-  shared_mem_statistics_ = x;
-}
-
-Statistics* ApacheRewriteDriverFactory::statistics() {
   statistics_frozen_ = true;
-  if (shared_mem_statistics_ == NULL) {
-    return RewriteDriverFactory::statistics();  // null implementation
-  }
-  return shared_mem_statistics_;
+  shared_mem_statistics_ = x;
+  RewriteDriverFactory::SetStatistics(x);
 }
 
 void ApacheRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {

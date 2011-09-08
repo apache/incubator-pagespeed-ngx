@@ -43,7 +43,8 @@ class FileRewriter : public net_instaweb::RewriteDriverFactory {
  public:
   explicit FileRewriter(const net_instaweb::RewriteGflags* gflags)
       : gflags_(gflags) {
-    net_instaweb::ResourceManager::Initialize(&simple_stats_);
+    net_instaweb::RewriteDriverFactory::Initialize(&simple_stats_);
+    SetStatistics(&simple_stats_);
   }
 
   virtual net_instaweb::Hasher* NewHasher() {

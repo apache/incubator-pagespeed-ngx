@@ -73,6 +73,7 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
@@ -352,8 +353,9 @@ void RewriteDriver::FlushAsync(Function* callback) {
     // the cache system will respond to HIT by making the next HIT faster
     // so it meets our deadline.  In either case we will track with stats.
     //
-    resource_manager_->cached_output_hits()->Add(completed_rewrites);
-    resource_manager_->cached_output_missed_deadline()->Add(pending_rewrites_);
+    RewriteStats* stats = resource_manager_->rewrite_stats();
+    stats->cached_output_hits()->Add(completed_rewrites);
+    stats->cached_output_missed_deadline()->Add(pending_rewrites_);
 
     // While new slots are created for distinct HtmlElements, Resources can be
     // shared across multiple slots, via resource_map_.  However, to avoid
@@ -798,11 +800,11 @@ class FilterFetch : public UrlAsyncFetcher::Callback {
   }
   virtual ~FilterFetch() {}
   virtual void Done(bool success) {
-    ResourceManager* resource_manager = driver_->resource_manager();
+    RewriteStats* stats = driver_->resource_manager()->rewrite_stats();
     if (success) {
-      resource_manager->succeeded_filter_resource_fetches()->Add(1);
+      stats->succeeded_filter_resource_fetches()->Add(1);
     } else {
-      resource_manager->failed_filter_resource_fetches()->Add(1);
+      stats->failed_filter_resource_fetches()->Add(1);
     }
     callback_->Done(success);
     driver_->FetchComplete();
@@ -831,8 +833,8 @@ class FilterFetch : public UrlAsyncFetcher::Callback {
                              response, handler, cb);
     }
     if (!queued) {
-      ResourceManager* resource_manager = driver->resource_manager();
-      resource_manager->failed_filter_resource_fetches()->Add(1);
+      RewriteStats* stats = driver->resource_manager()->rewrite_stats();
+      stats->failed_filter_resource_fetches()->Add(1);
       callback->Done(false);
       driver->FetchComplete();
       delete cb;
@@ -1052,7 +1054,8 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   } else {
     message_handler()->Message(kInfo, "No permission to rewrite '%s'",
                                input_url.spec_c_str());
-    resource_manager_->resource_url_domain_rejections()->Add(1);
+    RewriteStats* stats = resource_manager_->rewrite_stats();
+    stats->resource_url_domain_rejections()->Add(1);
   }
   return resource;
 }

@@ -22,7 +22,6 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_MOCK_TIME_CACHE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_MOCK_TIME_CACHE_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
@@ -35,7 +34,7 @@ class MockTimer;
 // See file comment
 class MockTimeCache : public CacheInterface {
  public:
-  // Note: takes ownership of the cache, but not the timer.
+  // Note: takes ownership of nothing.
   MockTimeCache(MockTimer* timer, CacheInterface* cache);
   virtual ~MockTimeCache();
 
@@ -54,7 +53,7 @@ class MockTimeCache : public CacheInterface {
   class DelayCallback;
 
   MockTimer* timer_;
-  scoped_ptr<CacheInterface> cache_;
+  CacheInterface* cache_;
   int64 delay_us_;
 
   DISALLOW_COPY_AND_ASSIGN(MockTimeCache);

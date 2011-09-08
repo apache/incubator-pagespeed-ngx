@@ -108,7 +108,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   int64 fetcher_time_out_ms() { return fetcher_time_out_ms_; }
   GoogleString hostname_identifier() { return hostname_identifier_; }
 
-  virtual Statistics* statistics();
   void SetStatistics(SharedMemStatistics* x);
   void set_statistics_enabled(bool x) { statistics_enabled_ = x; }
   void set_owns_statistics(bool o) { owns_statistics_ = o; }
@@ -162,7 +161,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
   virtual MessageHandler* DefaultMessageHandler();
   virtual FileSystem* DefaultFileSystem();
-  virtual HtmlParse* DefaultHtmlParse();
   virtual Timer* DefaultTimer();
   virtual CacheInterface* DefaultCacheInterface();
   virtual NamedLockManager* DefaultLockManager();

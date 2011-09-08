@@ -20,6 +20,7 @@
 
 #include "net/instaweb/rewriter/public/resource_manager.h"
 
+#include <cstddef>                     // for size_t
 #include <cstdlib>
 
 #include "base/logging.h"
@@ -50,6 +51,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -65,6 +67,9 @@ namespace {
 const char kResourceUrl[] = "http://example.com/image.png";
 const char kResourceUrlBase[] = "http://example.com";
 const char kResourceUrlPath[] = "/image.png";
+
+const char kUrlPrefix[] = "http://www.example.com/";
+const size_t kUrlPrefixLength = STATIC_STRLEN(kUrlPrefix);
 
 }  // namespace
 
@@ -142,8 +147,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // Asserts that the given url starts with an appropriate prefix;
   // then cuts off that prefix.
   virtual void RemoveUrlPrefix(GoogleString* url) {
-    EXPECT_TRUE(StringPiece(*url).starts_with(url_prefix()));
-    url->erase(0, url_prefix().length());
+    EXPECT_TRUE(StringPiece(*url).starts_with(kUrlPrefix));
+    url->erase(0, kUrlPrefixLength);
   }
 
   OutputResourcePtr CreateOutputResourceForFetch(const StringPiece& url) {
@@ -177,7 +182,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     bool use_async_flow = false;
     OutputResourcePtr nor(
         rewrite_driver()->CreateOutputResourceWithPath(
-            url_prefix(), filter_prefix, name, content_type,
+            kUrlPrefix, filter_prefix, name, content_type,
             kRewrittenResource, use_async_flow));
     ASSERT_TRUE(nor.get() != NULL);
     // Check name_key against url_prefix/fp.name
@@ -196,7 +201,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       // case since we're just trying to create the resource, not fetch it.
       OutputResourcePtr nor1(
           rewrite_driver()->CreateOutputResourceWithPath(
-              url_prefix(), filter_prefix, name, content_type,
+              kUrlPrefix, filter_prefix, name, content_type,
               kRewrittenResource, use_async_flow));
       ASSERT_TRUE(nor1.get() != NULL);
       EXPECT_FALSE(nor1->LockForCreation(kNeverBlock));
@@ -210,7 +215,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       namer.CopyFrom(nor->full_name());
       namer.set_hash("0");
       namer.set_ext("txt");
-      GoogleString name = StrCat(url_prefix(), namer.Encode());
+      GoogleString name = StrCat(kUrlPrefix, namer.Encode());
       OutputResourcePtr nor1(CreateOutputResourceForFetch(name));
       ASSERT_TRUE(nor1.get() != NULL);
 
@@ -233,7 +238,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     // Retrieve the same NOR from the cache.
     OutputResourcePtr nor2(rewrite_driver()->CreateOutputResourceWithPath(
-        url_prefix(), filter_prefix, name, &kContentTypeText,
+        kUrlPrefix, filter_prefix, name, &kContentTypeText,
         kRewrittenResource, use_async_flow));
     ASSERT_TRUE(nor2.get() != NULL);
     EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor2.get()));
@@ -654,7 +659,7 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   bool use_async_flow = false;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
-          url_prefix(), CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
+          kUrlPrefix, CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
           kOutlinedResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
@@ -674,7 +679,7 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   // Now try fetching again. It should not get a cached_result either.
   output_resource.reset(
       rewrite_driver()->CreateOutputResourceWithPath(
-          url_prefix(), CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
+          kUrlPrefix, CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
           kOutlinedResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
@@ -698,7 +703,7 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   bool use_async_flow = false;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
-          url_prefix(), RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
+          kUrlPrefix, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
           kOnTheFlyResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
@@ -719,7 +724,7 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
 
   // Now try fetching again. Should hit in cache for rname.
   output_resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-      url_prefix(), RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
+      kUrlPrefix, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
       kOnTheFlyResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_TRUE(output_resource->cached_result() != NULL);
@@ -741,7 +746,7 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   bool use_async_flow = false;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
-          url_prefix(), RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
+          kUrlPrefix, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
           kRewrittenResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
@@ -761,7 +766,7 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
 
   // Now try fetching again. Should hit in cache
   output_resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-      url_prefix(), RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
+      kUrlPrefix, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
       kRewrittenResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_TRUE(output_resource->cached_result() != NULL);

@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
@@ -55,15 +56,10 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
-#include "net/instaweb/util/public/waveform.h"
 
 namespace net_instaweb {
 
-class CacheInterface;
-class FileSystem;
-class FilenameEncoder;
-class Hasher;
-class UrlAsyncFetcher;
+class Waveform;
 
 namespace {
 
@@ -83,13 +79,6 @@ const char kResourceFetchConstructSuccesses[] =
 const char kResourceFetchConstructFailures[] =
     "resource_fetch_construct_failures";
 const char kNumFlushes[] = "num_flushes";
-
-// Variables for the beacon to increment.  These are currently handled in
-// mod_pagespeed_handler on apache.  The average load time in milliseconds is
-// total_page_load_ms / page_load_count.  Note that these are not updated
-// together atomically, so you might get a slightly bogus value.
-const char kTotalPageLoadMs[] = "total_page_load_ms";
-const char kPageLoadCount[] = "page_load_count";
 
 const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
 const int64 kRefreshExpirePercent = 75;
@@ -157,53 +146,29 @@ const char ResourceManager::kCacheKeyResourceNamePrefix[] = "rname/";
 // alters them.
 const char ResourceManager::kResourceEtagValue[] = "W/0";
 
-ResourceManager::ResourceManager(const StringPiece& file_prefix,
-                                 FileSystem* file_system,
-                                 FilenameEncoder* filename_encoder,
-                                 UrlAsyncFetcher* url_async_fetcher,
-                                 Hasher* hasher,
-                                 HTTPCache* http_cache,
-                                 CacheInterface* metadata_cache,
-                                 NamedLockManager* lock_manager,
-                                 MessageHandler* handler,
+ResourceManager::ResourceManager(ThreadSystem* thread_system,
                                  Statistics* statistics,
-                                 ThreadSystem* thread_system,
-                                 RewriteDriverFactory* factory)
-    : file_prefix_(file_prefix.data(), file_prefix.size()),
-      file_system_(file_system),
-      filename_encoder_(filename_encoder),
-      url_async_fetcher_(url_async_fetcher),
-      hasher_(hasher),
-      lock_hasher_(21),  // MD5's 128 bits, base-64 encoded = 21 1/3 chars
+                                 RewriteStats* rewrite_stats,
+                                 HTTPCache* http_cache)
+    : thread_system_(thread_system),
+      rewrite_stats_(rewrite_stats),
+      file_system_(NULL),
+      filename_encoder_(NULL),
+      url_async_fetcher_(NULL),
+      hasher_(NULL),
+      lock_hasher_(20),
       contents_hasher_(21),
       statistics_(statistics),
-      resource_url_domain_rejections_(
-          statistics_->GetVariable(kResourceUrlDomainRejections)),
-      cached_output_missed_deadline_(
-          statistics->GetVariable(kCachedOutputMissedDeadline)),
-      cached_output_hits_(statistics->GetVariable(kCachedOutputHits)),
-      cached_output_misses_(statistics->GetVariable(kCachedOutputMisses)),
-      resource_404_count_(statistics->GetVariable(kInstawebResource404Count)),
-      slurp_404_count_(statistics->GetVariable(kInstawebSlurp404Count)),
-      total_page_load_ms_(statistics->GetVariable(kTotalPageLoadMs)),
-      page_load_count_(statistics->GetVariable(kPageLoadCount)),
-      cached_resource_fetches_(statistics->GetVariable(kResourceFetchesCached)),
-      succeeded_filter_resource_fetches_(
-          statistics->GetVariable(kResourceFetchConstructSuccesses)),
-      failed_filter_resource_fetches_(
-          statistics->GetVariable(kResourceFetchConstructFailures)),
-      num_flushes_(statistics->GetVariable(kNumFlushes)),
       http_cache_(http_cache),
-      metadata_cache_(metadata_cache),
+      metadata_cache_(NULL),
       relative_path_(false),
       store_outputs_in_file_system_(true),
       block_until_completion_in_render_(false),
       async_rewrites_(true),
-      lock_manager_(lock_manager),
-      message_handler_(handler),
-      thread_system_(thread_system),
+      lock_manager_(NULL),
+      message_handler_(NULL),
       trying_to_cleanup_rewrite_drivers_(false),
-      factory_(factory),
+      factory_(NULL),
       rewrite_drivers_mutex_(thread_system->NewMutex()),
       html_workers_(new QueuedWorkerPool(kMaxHtmlWorkers, thread_system)),
       rewrite_workers_(
@@ -211,10 +176,9 @@ ResourceManager::ResourceManager(const StringPiece& file_prefix,
   // TODO(morlovich): Have RewriteDriverFactory help with setting up thread
   // pools so we can share them among multiple vhosts under Apache.
 
-  // TODO(jmarantz): hook up waveform to rewrite worker pool.
-  rewrite_thread_queue_depth_.reset(new Waveform(thread_system, timer(), 200));
-  rewrite_workers_->set_queue_size_stat(rewrite_thread_queue_depth_.get());
-  html_workers_->set_queue_size_stat(rewrite_thread_queue_depth_.get());
+  Waveform* queue_depth = rewrite_stats_->rewrite_thread_queue_depth();
+  rewrite_workers_->set_queue_size_stat(queue_depth);
+  html_workers_->set_queue_size_stat(queue_depth);
   decoding_driver_.reset(NewUnmanagedRewriteDriver());
 
   // Make sure the excluded-attributes are in abc order so binary_search works.
@@ -234,25 +198,6 @@ ResourceManager::~ResourceManager() {
   STLDeleteElements(&active_rewrite_drivers_);
   STLDeleteElements(&available_rewrite_drivers_);
   decoding_driver_.reset(NULL);
-}
-
-void ResourceManager::Initialize(Statistics* statistics) {
-  if (statistics != NULL) {
-    statistics->AddVariable(kResourceUrlDomainRejections);
-    statistics->AddVariable(kCachedOutputMissedDeadline);
-    statistics->AddVariable(kCachedOutputHits);
-    statistics->AddVariable(kCachedOutputMisses);
-    statistics->AddVariable(kInstawebResource404Count);
-    statistics->AddVariable(kInstawebSlurp404Count);
-    statistics->AddVariable(kTotalPageLoadMs);
-    statistics->AddVariable(kPageLoadCount);
-    statistics->AddVariable(kResourceFetchesCached);
-    statistics->AddVariable(kResourceFetchConstructSuccesses);
-    statistics->AddVariable(kResourceFetchConstructFailures);
-    statistics->AddVariable(kNumFlushes);
-    HTTPCache::Initialize(statistics);
-    RewriteDriver::Initialize(statistics);
-  }
 }
 
 // TODO(jmarantz): consider moving this method to ResponseHeaders
@@ -606,9 +551,6 @@ bool ResourceManager::LockForCreation(BlockingBehavior block,
 }
 
 bool ResourceManager::HandleBeacon(const StringPiece& unparsed_url) {
-  if ((total_page_load_ms_ == NULL) || (page_load_count_ == NULL)) {
-    return false;
-  }
   GoogleString url = unparsed_url.as_string();
   // TODO(abliss): proper query parsing
   size_t index = url.find(AddInstrumentationFilter::kLoadTag);
@@ -620,8 +562,8 @@ bool ResourceManager::HandleBeacon(const StringPiece& unparsed_url) {
   if (!StringToInt(url, &value)) {
     return false;
   }
-  total_page_load_ms_->Add(value);
-  page_load_count_->Add(1);
+  rewrite_stats_->total_page_load_ms()->Add(value);
+  rewrite_stats_->page_load_count()->Add(1);
   return true;
 }
 

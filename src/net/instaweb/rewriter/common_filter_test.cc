@@ -81,7 +81,7 @@ class CommonFilterTest : public ResourceManagerTestBase {
                            const StringPiece& domain,
                            RewriteOptions* options,
                            RewriteDriver* driver) {
-    options->domain_lawyer()->AddDomain(domain, &message_handler_);
+    options->domain_lawyer()->AddDomain(domain, message_handler());
     CountingFilter* filter = new CountingFilter(driver);
     driver->AddOwnedPostRenderFilter(filter);
     driver->StartParse(base_url);
@@ -143,7 +143,7 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   driver->ParseText(new_base_url);
   driver->ParseText("' />");
   driver->Flush();
-  EXPECT_EQ(1, message_handler_.TotalMessages());
+  EXPECT_EQ(1, message_handler()->TotalMessages());
 
   // Uses old base URL.
   ExpectUrl(base_url, filter_->base_url());

@@ -44,6 +44,7 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -537,7 +538,7 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
     }
   } else {
     can_revalidate = false;
-    Manager()->cached_output_misses()->Add(1);
+    Manager()->rewrite_stats()->cached_output_misses()->Add(1);
   }
 
   // If the cache gave a miss, or yielded unparsable data, then acquire a lock
