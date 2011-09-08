@@ -6,12 +6,13 @@
 #  apache_system_tests
 # Imports:
 #  apache_install_conf (should read OPT_REWRITE_TEST, OPT_PROXY_TEST,
-#                       OPT_SLURP_TEST, OPT_SPELING_TEST,
+#                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_HTTPS_TEST,
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST)
 #  apache_debug_restart
 #  apache_debug_stop
 #  apache_debug_leak_test, apache_debug_proxy_test, apache_debug_slurp_test
 #  APACHE_DEBUG_PORT
+#  APACHE_HTTPS_PORT
 #  APACHE_CTRL_BIN
 #  APACHE_DEBUG_PAGESPEED_CONF
 #  PAGESPEED_ROOT
@@ -48,6 +49,13 @@ ifeq ($(APACHE_DEBUG_PORT),80)
 else
   APACHE_SERVER = localhost:$(APACHE_DEBUG_PORT)
 endif
+ifeq ($(APACHE_HTTPS_PORT),)
+  APACHE_HTTPS_SERVER =
+else ifeq ($(APACHE_HTTPS_PORT),443)
+  APACHE_HTTPS_SERVER = localhost
+else
+  APACHE_HTTPS_SERVER = localhost:$(APACHE_HTTPS_PORT)
+endif
 EXAMPLE = $(APACHE_SERVER)/mod_pagespeed_example
 EXAMPLE_IMAGE = $(EXAMPLE)/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
@@ -61,11 +69,15 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	sleep 2
 	rm -rf $(PAGESPEED_ROOT)/cache
 	$(APACHE_CTRL_BIN) start
-	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER)
-	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER)
+	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER) \
+	                                   $(APACHE_HTTPS_SERVER)
+	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
+	                                          $(APACHE_HTTPS_SERVER)
 	@echo '***' System-test with warm cache
-	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER)
-	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER)
+	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER) \
+	                                   $(APACHE_HTTPS_SERVER)
+	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
+	                                          $(APACHE_HTTPS_SERVER)
 	@echo '***' System-test With statistics off
 	mv $(APACHE_DEBUG_PAGESPEED_CONF) $(APACHE_DEBUG_PAGESPEED_CONF).save
 	sed -e "s/# ModPagespeedStatistics off/ModPagespeedStatistics off/" \
@@ -74,8 +86,10 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	grep ModPagespeedStatistics $(APACHE_DEBUG_PAGESPEED_CONF)
 	-$(APACHE_CTRL_BIN) restart
 	sleep 2
-	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER)
-	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER)
+	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER) \
+	                                   $(APACHE_HTTPS_SERVER)
+	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
+	                                          $(APACHE_HTTPS_SERVER)
 	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
 	grep ModPagespeedStatistics $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_stop

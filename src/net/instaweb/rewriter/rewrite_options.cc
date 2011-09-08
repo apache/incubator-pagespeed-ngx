@@ -128,9 +128,32 @@ RewriteOptions::RewriteOptions()
   // TODO(jmarantz): If we instantiate many RewriteOptions, this should become a
   // public static method called once at startup.
   SetUp();
+
+  all_options_.push_back(&level_);
+  all_options_.push_back(&css_inline_max_bytes_);
+  all_options_.push_back(&image_inline_max_bytes_);
+  all_options_.push_back(&js_inline_max_bytes_);
+  all_options_.push_back(&css_outline_min_bytes_);
+  all_options_.push_back(&js_outline_min_bytes_);
+  all_options_.push_back(&html_cache_time_ms_);
+  all_options_.push_back(&beacon_url_);
+  all_options_.push_back(&image_max_rewrites_at_once_);
+  all_options_.push_back(&max_url_segment_size_);
+  all_options_.push_back(&max_url_size_);
+  all_options_.push_back(&enabled_);
+  all_options_.push_back(&botdetect_enabled_);
+  all_options_.push_back(&combine_across_paths_);
+  all_options_.push_back(&log_rewrite_timing_);
+  all_options_.push_back(&lowercase_html_names_);
+  all_options_.push_back(&always_rewrite_css_);
+  all_options_.push_back(&respect_vary_);
+  all_options_.push_back(&cache_invalidation_timestamp_);
 }
 
 RewriteOptions::~RewriteOptions() {
+}
+
+RewriteOptions::OptionBase::~OptionBase() {
 }
 
 void RewriteOptions::SetUp() {
@@ -316,46 +339,19 @@ void RewriteOptions::Merge(const RewriteOptions& first,
     enabled_filters_.erase(filter);
   }
 
-  // TODO(jmarantz): Use a virtual base class for Option so we can put
-  // this in a loop.  Or something.
-  enabled_.Merge(first.enabled_, second.enabled_);
-  botdetect_enabled_.Merge(first.botdetect_enabled_,
-                           second.botdetect_enabled_);
-  combine_across_paths_.Merge(first.combine_across_paths_,
-                              second.combine_across_paths_);
-  level_.Merge(first.level_, second.level_);
-  css_inline_max_bytes_.Merge(first.css_inline_max_bytes_,
-                              second.css_inline_max_bytes_);
-  image_inline_max_bytes_.Merge(first.image_inline_max_bytes_,
-                                second.image_inline_max_bytes_);
-  image_max_rewrites_at_once_.Merge(first.image_max_rewrites_at_once_,
-                                    second.image_max_rewrites_at_once_);
-  js_inline_max_bytes_.Merge(first.js_inline_max_bytes_,
-                             second.js_inline_max_bytes_);
-  css_outline_min_bytes_.Merge(first.css_outline_min_bytes_,
-                               second.css_outline_min_bytes_);
-  js_outline_min_bytes_.Merge(first.js_outline_min_bytes_,
-                              second.js_outline_min_bytes_);
-  html_cache_time_ms_.Merge(first.html_cache_time_ms_,
-                            second.html_cache_time_ms_);
-  beacon_url_.Merge(first.beacon_url_,
-                    second.beacon_url_);
-  max_url_segment_size_.Merge(first.max_url_segment_size_,
-                              second.max_url_segment_size_);
-  max_url_size_.Merge(first.max_url_size_,
-                      second.max_url_size_);
-  log_rewrite_timing_.Merge(first.log_rewrite_timing_,
-                            second.log_rewrite_timing_);
-  lowercase_html_names_.Merge(first.lowercase_html_names_,
-                              second.lowercase_html_names_);
-  always_rewrite_css_.Merge(first.always_rewrite_css_,
-                            second.always_rewrite_css_);
-  respect_vary_.Merge(first.respect_vary_,
-                      second.respect_vary_);
+  for (int i = 0, n = all_options_.size(); i < n; ++i) {
+    all_options_[i]->Merge(first.all_options_[i], second.all_options_[i]);
+  }
 
   // Pick the larger of the two cache invalidation timestamps. Following
   // calculation assumes the default value of cache invalidation timestamp
   // to be -1.
+  //
+  // Note: this gets merged by order in the above loop, and then this
+  // block of code overrides the merged value.
+  //
+  // TODO(jmarantz): fold this logic into a new OptionBase subclass whose
+  // Merge method does the right thing.
   if (first.cache_invalidation_timestamp_.value() !=
       RewriteOptions::kDefaultCacheInvalidationTimestamp ||
       second.cache_invalidation_timestamp_.value() !=

@@ -59,8 +59,6 @@
 
 namespace net_instaweb {
 
-class Waveform;
-
 namespace {
 
 // resource_url_domain_rejections counts the number of urls on a page that we
@@ -82,12 +80,6 @@ const char kNumFlushes[] = "num_flushes";
 
 const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
 const int64 kRefreshExpirePercent = 75;
-
-// TODO(jmarantz): allow setting the kMaxQueuedWorkers via set_ method so that
-// command-line- or pagespeed.conf-based experiments can be run to see what a
-// good value is.
-const int kMaxRewriteWorkers = 1;
-const int kMaxHtmlWorkers = 2;
 
 // Attributes that should not be automatically copied from inputs to outputs
 const char* kExcludedAttributes[] = {
@@ -146,7 +138,8 @@ const char ResourceManager::kCacheKeyResourceNamePrefix[] = "rname/";
 // alters them.
 const char ResourceManager::kResourceEtagValue[] = "W/0";
 
-ResourceManager::ResourceManager(ThreadSystem* thread_system,
+ResourceManager::ResourceManager(RewriteDriverFactory* factory,
+                                 ThreadSystem* thread_system,
                                  Statistics* statistics,
                                  RewriteStats* rewrite_stats,
                                  HTTPCache* http_cache)
@@ -168,17 +161,11 @@ ResourceManager::ResourceManager(ThreadSystem* thread_system,
       lock_manager_(NULL),
       message_handler_(NULL),
       trying_to_cleanup_rewrite_drivers_(false),
-      factory_(NULL),
+      factory_(factory),
       rewrite_drivers_mutex_(thread_system->NewMutex()),
-      html_workers_(new QueuedWorkerPool(kMaxHtmlWorkers, thread_system)),
+      html_workers_(factory->WorkerPool(RewriteDriverFactory::HtmlWorkers)),
       rewrite_workers_(
-          new QueuedWorkerPool(kMaxRewriteWorkers, thread_system)) {
-  // TODO(morlovich): Have RewriteDriverFactory help with setting up thread
-  // pools so we can share them among multiple vhosts under Apache.
-
-  Waveform* queue_depth = rewrite_stats_->rewrite_thread_queue_depth();
-  rewrite_workers_->set_queue_size_stat(queue_depth);
-  html_workers_->set_queue_size_stat(queue_depth);
+          factory->WorkerPool(RewriteDriverFactory::RewriteWorkers)) {
   decoding_driver_.reset(NewUnmanagedRewriteDriver());
 
   // Make sure the excluded-attributes are in abc order so binary_search works.

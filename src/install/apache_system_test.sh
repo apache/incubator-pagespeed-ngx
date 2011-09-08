@@ -9,10 +9,11 @@
 # Expects APACHE_DEBUG_PAGESPEED_CONF to point to our config file,
 # APACHE_LOG to the log file
 
-if [ $# -lt 1 -o $# -gt 2 ]; then
-  # Note: HOSTNAME should generally be localhost:PORT. Specifically, by default
+if [ $# -lt 1 -o $# -gt 3 ]; then
+  # Note: HOSTNAME and HTTPS_HOST should generally be localhost (when using
+  # the default port) or localhost:PORT (when not). Specifically, by default
   # /mod_pagespeed_statistics is only accessible when accessed as localhost.
-  echo Usage: ./apache_system_test.sh HOSTNAME [PROXY_HOST]
+  echo Usage: ./apache_system_test.sh HOSTNAME [HTTPS_HOST [PROXY_HOST]]
   exit 2
 fi;
 
@@ -45,10 +46,12 @@ STATISTICS_URL=http://$HOSTNAME/mod_pagespeed_statistics
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/bad.pagespeed.cf.hash.css
 MESSAGE_URL=http://$HOSTNAME/mod_pagespeed_message
 
+HTTPS_HOST=$2
+
 # Setup wget proxy information
-export http_proxy=$2
-export https_proxy=$2
-export ftp_proxy=$2
+export http_proxy=$3
+export https_proxy=$3
+export ftp_proxy=$3
 export no_proxy=""
 
 # Version timestamped with nanoseconds, making it extremely unlikely to hit.

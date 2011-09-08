@@ -21,6 +21,7 @@
 
 #include <map>
 #include <set>
+#include <vector>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -328,6 +329,12 @@ class RewriteOptions {
   }
 
  private:
+  class OptionBase {
+   public:
+    virtual ~OptionBase();
+    virtual void Merge(const OptionBase* one, const OptionBase* two) = 0;
+  };
+
   // Helper class to represent an Option, whose value is held in some class T.
   // An option is explicitly initialized with its default value, although the
   // default value can be altered later.  It keeps track of whether a
@@ -337,7 +344,7 @@ class RewriteOptions {
   // It can use this knowledge to intelligently merge a 'base' option value
   // into a 'new' option value, allowing explicitly set values from 'base'
   // to override default values from 'new'.
-  template<class T> class Option {
+  template<class T> class Option : public OptionBase {
    public:
     explicit Option(const T& default_value)
         : value_(default_value),
@@ -357,12 +364,20 @@ class RewriteOptions {
 
     const T& value() const { return value_; }
 
-    void Merge(const Option& one, const Option& two) {
-      if (two.was_set_ || !one.was_set_) {
-        value_ = two.value_;
-        was_set_ = two.was_set_;
+    // The signature of the Merge implementation must match the base-class.
+    // The caller is responsible for ensuring that only the same typed Options
+    // are compared.  In RewriteOptions::Merge this is guaranteed because we
+    // are always comparing options at the same index in a vector<OptionBase*>.
+    virtual void Merge(const OptionBase* a, const OptionBase* b) {
+      MergeHelper(static_cast<const Option*>(a), static_cast<const Option*>(b));
+    }
+
+    void MergeHelper(const Option* one, const Option* two) {
+      if (two->was_set_ || !one->was_set_) {
+        value_ = two->value_;
+        was_set_ = two->was_set_;
       } else {
-        value_ = one.value_;
+        value_ = one->value_;
         was_set_ = true;  // this stmt is reached only if one.was_set_==true
       }
     }
@@ -416,7 +431,11 @@ class RewriteOptions {
   Option<bool> always_rewrite_css_;  // For tests/debugging.
   Option<bool> respect_vary_;
   Option<int64> cache_invalidation_timestamp_;
-  // Be sure to update Merge() if a new field is added.
+  // Be sure to update constructor if when new fields is added so that they
+  // are added to all_options_, which is used for Merge, and eventually,
+  // Compare.
+
+  std::vector<OptionBase*> all_options_;
 
   DomainLawyer domain_lawyer_;
   FileLoadPolicy file_load_policy_;

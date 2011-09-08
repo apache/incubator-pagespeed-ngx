@@ -79,7 +79,8 @@ class ResourceManager {
   // Default statistics group name.
   static const char kStatisticsGroup[];
 
-  ResourceManager(ThreadSystem* thread_system,
+  ResourceManager(RewriteDriverFactory* factory,
+                  ThreadSystem* thread_system,
                   Statistics* statistics,
                   RewriteStats* rewrite_stats,
                   HTTPCache* http_cache);
@@ -346,10 +347,10 @@ class ResourceManager {
                                       ResponseHeaders* output_headers);
 
   // Pool of worker-threads that can be used to handle html-parsing.
-  QueuedWorkerPool* html_workers() { return html_workers_.get(); }
+  QueuedWorkerPool* html_workers() { return html_workers_; }
 
   // Pool of worker-threads that can be used to handle resource rewriting.
-  QueuedWorkerPool* rewrite_workers() { return rewrite_workers_.get(); }
+  QueuedWorkerPool* rewrite_workers() { return rewrite_workers_; }
 
  private:
   friend class ResourceManagerTest;
@@ -432,8 +433,8 @@ class ResourceManager {
   // configuration must be done by .htaccess.
   scoped_ptr<RewriteDriver> decoding_driver_;
 
-  scoped_ptr<QueuedWorkerPool> html_workers_;
-  scoped_ptr<QueuedWorkerPool> rewrite_workers_;
+  QueuedWorkerPool* html_workers_;  // Owned by the factory
+  QueuedWorkerPool* rewrite_workers_;  // Owned by the factory
 
   AtomicBool metadata_cache_readonly_;
 

@@ -37,6 +37,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -66,10 +67,14 @@ void RewriteDriverFactory::Init() {
   http_cache_backend_ = NULL;
   SetStatistics(&null_statistics_);
   resource_manager_mutex_.reset(thread_system_->NewMutex());
+  worker_pools_.assign(NumWorkerPools, NULL);
 }
 
 RewriteDriverFactory::~RewriteDriverFactory() {
   ShutDown();
+  for (int c = 0; c < NumWorkerPools; ++c) {
+    delete worker_pools_[c];
+  }
 }
 
 void RewriteDriverFactory::set_html_parse_message_handler(
@@ -186,11 +191,24 @@ NamedLockManager* RewriteDriverFactory::DefaultLockManager() {
                                    timer(), message_handler());
 }
 
+QueuedWorkerPool* RewriteDriverFactory::CreateWorkerPool(WorkerPoolName pool) {
+  return new QueuedWorkerPool(1, thread_system());
+}
+
 NamedLockManager* RewriteDriverFactory::lock_manager() {
   if (lock_manager_ == NULL) {
     lock_manager_.reset(DefaultLockManager());
   }
   return lock_manager_.get();
+}
+
+QueuedWorkerPool* RewriteDriverFactory::WorkerPool(WorkerPoolName pool) {
+  if (worker_pools_[pool] == NULL) {
+    worker_pools_[pool] = CreateWorkerPool(pool);
+    worker_pools_[pool]->set_queue_size_stat(
+        rewrite_stats()->rewrite_thread_queue_depth());
+  }
+  return worker_pools_[pool];
 }
 
 bool RewriteDriverFactory::set_filename_prefix(StringPiece p) {
@@ -238,7 +256,8 @@ ResourceManager* RewriteDriverFactory::CreateResourceManager() {
   CHECK(!filename_prefix_.empty())
       << "Must specify --filename_prefix or call "
       << "RewriteDriverFactory::set_filename_prefix.";
-  ResourceManager* resource_manager = new ResourceManager(thread_system(),
+  ResourceManager* resource_manager = new ResourceManager(this,
+                                                          thread_system(),
                                                           statistics(),
                                                           rewrite_stats(),
                                                           http_cache());

@@ -44,6 +44,7 @@ APACHE_DOC_ROOT = /var/www
 # The domain Apache is serving from
 #APACHE_DOMAIN = localhost:8080  # For test-server.
 APACHE_DOMAIN = localhost
+APACHE_HTTPS_DOMAIN = localhost
 
 APACHE_CONTROL_PROGRAM = /etc/init.d/apache2
 APACHE_START = $(APACHE_CONTROL_PROGRAM) start
@@ -200,12 +201,21 @@ else
   SPELING_TEST_SED_PATTERN=^\#SPELING.*\n
 endif
 
+ifeq ($(HTTPS_TEST),1)
+  # remove prefix
+  HTTPS_TEST_SED_PATTERN=^\#HTTPS
+else
+  # remove whole line
+  HTTPS_TEST_SED_PATTERN=^\#HTTPS.*\n
+endif
+
 # Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because
 # that might have embedded spaces, and 'sed' is interpreted first by bash.
 
 $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.template
 	sed -e "s!@@APACHE_DOC_ROOT@@!$(APACHE_DOC_ROOT)!g" \
 	    -e "s!@@APACHE_DOMAIN@@!$(APACHE_DOMAIN)!g" \
+	    -e "s!@@APACHE_HTTPS_DOMAIN@@!$(APACHE_HTTPS_DOMAIN)!g" \
 	    -e "s!@@APACHE_MODULES@@!$(APACHE_MODULES)!g" \
 	    -e "s!@@MODPAGESPEED_CACHE_ROOT@@!$(MOD_PAGESPEED_FILE_ROOT)!g" \
 	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
@@ -216,6 +226,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(PROXY_TEST_SED_PATTERN)@@" \
 	    -e "s@$(SLURP_TEST_SED_PATTERN)@@" \
 	    -e "s@$(SPELING_TEST_SED_PATTERN)@@" \
+	    -e "s@$(HTTPS_TEST_SED_PATTERN)@@" \
 		$^ > $@
 	! grep '@@' $@  # Make sure we don't have any remaining @@variables@@
 
@@ -298,10 +309,12 @@ test :
 apache_install_conf:
 	$(MAKE) staging_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
 	                $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
-	                $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST)
+	                $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
+	                $(OPT_HTTPS_TEST)
 	$(MAKE) install_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
 	                $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
-	                $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST)
+	                $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
+	                $(OPT_HTTPS_TEST)
 
 apache_debug_restart:
 	$(APACHE_CONTROL_PROGRAM) restart
@@ -316,6 +329,7 @@ apache_debug_proxy_test:
 apache_debug_slurp_test:
 
 APACHE_DEBUG_PORT=80
+APACHE_HTTPS_PORT=
 APACHE_CTRL_BIN=$(APACHE_CONTROL_PROGRAM)
 APACHE_DEBUG_PAGESPEED_CONF=$(APACHE_CONF)/pagespeed.conf
 PAGESPEED_ROOT=$(MOD_PAGESPEED_FILE_ROOT)

@@ -6,10 +6,11 @@
 # Page Speed Automatic (not just the Apache module).
 # Exits with status 0 if all tests pass.  Exits 1 immediately if any test fails.
 
-if [ $# -lt 1 -o $# -gt 2 ]; then
-  # Note: HOSTNAME should generally be localhost:PORT. Specifically, by default
+if [ $# -lt 1 -o $# -gt 3 ]; then
+  # Note: HOSTNAME and HTTPS_HOST should generally be localhost (when using
+  # the default port) or localhost:PORT (when not). Specifically, by default
   # /mod_pagespeed_statistics is only accessible when accessed as localhost.
-  echo Usage: ./system_test.sh HOSTNAME [PROXY_HOST]
+  echo Usage: ./system_test.sh HOSTNAME [HTTPS_HOST [PROXY_HOST]]
   exit 2
 fi;
 
@@ -45,10 +46,13 @@ STATISTICS_URL=http://$HOSTNAME/mod_pagespeed_statistics
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/bad.pagespeed.cf.hash.css
 MESSAGE_URL=http://$HOSTNAME/mod_pagespeed_message
 
+HTTPS_HOST=$2
+HTTPS_EXAMPLE_ROOT=https://$HTTPS_HOST/mod_pagespeed_example
+
 # Setup wget proxy information
-export http_proxy=$2
-export https_proxy=$2
-export ftp_proxy=$2
+export http_proxy=$3
+export https_proxy=$3
+export ftp_proxy=$3
 export no_proxy=""
 
 # Version timestamped with nanoseconds, making it extremely unlikely to hit.
@@ -94,6 +98,7 @@ rm -rf $OUTDIR
 
 WGET_OUTPUT=$OUTDIR/wget_output.txt
 WGET_DUMP="$WGET -q -O - --save-headers"
+WGET_DUMP_HTTPS="$WGET -q -O - --save-headers --no-check-certificate"
 WGET_PREREQ="$WGET -H -p -S -o $WGET_OUTPUT -nd -P $OUTDIR -e robots=off"
 
 # Call with a command and its args.  Echos the command, then tries to eval it.
@@ -118,6 +123,7 @@ function fetch_until() {
   COMMAND=$2
   RESULT=$3
   USERAGENT=$4
+  WGET_OPTIONS=$5
 
   TIMEOUT=10
   START=`date +%s`
@@ -125,6 +131,9 @@ function fetch_until() {
   WGET_HERE="$WGET -q"
   if [[ -n "$USERAGENT" ]]; then
     WGET_HERE="$WGET -q -U $USERAGENT"
+  fi
+  if [[ -n "$WGET_OPTIONS" ]]; then
+    WGET_HERE="$WGET -q $WGET_OPTIONS"
   fi
   echo "     " Fetching $REQUESTURL until '`'$COMMAND'`' = $RESULT
   while test -t; do
@@ -550,6 +559,36 @@ echo "Test: UserAgent is not a bot, ModPagespeedDisableForBots=on"
 CheckBots 'on' '-lt'
 echo "Test: UserAgent is not a bot, ModPagespeedDisableForBots is default"
 CheckBots 'default' '-lt'
+
+# Simple test that https is working.
+if [ -n "$HTTPS_HOST" ]; then
+  URL="$HTTPS_EXAMPLE_ROOT/combine_css.html"
+  fetch_until $URL 'grep -c css+' 1 '' --no-check-certificate
+
+  echo TEST: https is working.
+  echo $WGET_DUMP_HTTPS $URL
+  HTML_HEADERS=$($WGET_DUMP_HTTPS $URL)
+
+  echo Checking for X-Mod-Pagespeed header
+  echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
+  check [ $? = 0 ]
+
+  echo Checking for combined CSS URL
+  EXPECTED='<link rel="stylesheet" type="text/css" href="'
+  EXPECTED="$EXPECTED"'styles/yellow\.css+blue\.css+big\.css+bold\.css'
+  EXPECTED="$EXPECTED"'\.pagespeed\.cc\..*\.css">'
+  $WGET_DUMP_HTTPS "$URL?ModPagespeedFilters=combine_css,trim_urls" | \
+    grep -qi "$EXPECTED"
+  check [ $? = 0 ]
+
+  echo Checking for combined CSS URL without URL trimming
+  EXPECTED='<link rel="stylesheet" type="text/css" href="'
+  EXPECTED="$EXPECTED""$HTTPS_EXAMPLE_ROOT/"
+  EXPECTED="$EXPECTED"'styles/yellow\.css+blue\.css+big\.css+bold\.css'
+  EXPECTED="$EXPECTED"'\.pagespeed\.cc\..*\.css">'
+  $WGET_DUMP_HTTPS "$URL?ModPagespeedFilters=combine_css" | grep -qi "$EXPECTED"
+  check [ $? = 0 ]
+fi
 
 # Cleanup
 rm -rf $OUTDIR

@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 
+#include <vector>
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -36,6 +38,7 @@ class Hasher;
 class HTTPCache;
 class MessageHandler;
 class NamedLockManager;
+class QueuedWorkerPool;
 class ResourceManager;
 class RewriteDriver;
 class RewriteOptions;
@@ -49,6 +52,13 @@ class UrlFetcher;
 // A base RewriteDriverFactory.
 class RewriteDriverFactory {
  public:
+  enum WorkerPoolName {
+    HtmlWorkers,
+    RewriteWorkers,
+    // Make sure to insert new values above this line.
+    NumWorkerPools
+  };
+
   // Takes ownership of thread_system.
   explicit RewriteDriverFactory(ThreadSystem* thread_system);
 
@@ -119,6 +129,7 @@ class RewriteDriverFactory {
   Timer* timer();
   HTTPCache* http_cache();
   NamedLockManager* lock_manager();
+  QueuedWorkerPool* WorkerPool(WorkerPoolName pool);
 
   StringPiece filename_prefix();
 
@@ -192,6 +203,11 @@ class RewriteDriverFactory {
   // They may also supply a custom lock manager. The default implementation
   // will use the file system.
   virtual NamedLockManager* DefaultLockManager();
+
+  // Subclasses can override this to create an appropriately-sized thread
+  // pool for their environment. The default implementation will always
+  // make one with a single thread.
+  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolName name);
 
   // Clean up all the resources. When shutdown Apache, and destroy the process
   // sub-pool.  The RewriteDriverFactory owns some elements that were created
@@ -287,6 +303,8 @@ class RewriteDriverFactory {
   Statistics* statistics_;
 
   StringSet created_directories_;
+
+  std::vector<QueuedWorkerPool*> worker_pools_;
 
   // These must be initialized after the RewriteDriverFactory subclass has been
   // constructed so it can use a the statistics() override.
