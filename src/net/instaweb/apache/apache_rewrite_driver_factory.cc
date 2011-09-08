@@ -256,10 +256,12 @@ UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
 
 
 void ApacheRewriteDriverFactory::SetStatistics(SharedMemStatistics* x) {
-  DCHECK(!statistics_frozen_);
-  statistics_frozen_ = true;
-  shared_mem_statistics_ = x;
-  RewriteDriverFactory::SetStatistics(x);
+  if (x != shared_mem_statistics_) {
+    DCHECK(!statistics_frozen_);
+    statistics_frozen_ = true;
+    shared_mem_statistics_ = x;
+    RewriteDriverFactory::SetStatistics(x);
+  }
 }
 
 void ApacheRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
