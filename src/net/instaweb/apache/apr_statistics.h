@@ -85,7 +85,7 @@ class AprVariable : public Variable {
 };
 
 class AprStatistics : public StatisticsTemplate<AprVariable,
-                                                FakeHistogram,
+                                                NullHistogram,
                                                 FakeTimedVariable> {
  public:
   AprStatistics(const StringPiece& filename_prefix);

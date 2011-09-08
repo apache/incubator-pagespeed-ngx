@@ -23,6 +23,7 @@
 #include "base/logging.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -139,11 +140,10 @@ class Histogram {
   virtual void WriteRawHistogramData(Writer* writer, MessageHandler* handler);
 };
 
-// FakeHistogram is an empty implemenation of Histogram.
-class FakeHistogram : public Histogram {
+class NullHistogram : public Histogram {
  public:
-  FakeHistogram() {}
-  virtual ~FakeHistogram();
+  NullHistogram() {}
+  virtual ~NullHistogram();
   virtual void Add(const double value) { }
   virtual void Clear() { }
   virtual bool Empty() { return true; }
@@ -165,14 +165,9 @@ class FakeHistogram : public Histogram {
   virtual double BucketCount(int index) { return 0.0; }
 
  private:
-  class FakeMutex : public AbstractMutex {
-   public:
-    FakeMutex() {}
-    virtual ~FakeMutex() { }
-    virtual void Lock() { }
-    virtual void Unlock() { }
-  };
-  FakeMutex mutex_;
+  NullMutex mutex_;
+
+  DISALLOW_COPY_AND_ASSIGN(NullHistogram);
 };
 
 // TimedVariable is a statistic class returns the amount added in the
@@ -192,12 +187,7 @@ class TimedVariable {
   virtual void Clear() = 0;
 };
 
-// FakeTimedVariable is an implementation of abstract class TimedVariable
-// based on class Variable. This class could be derived in AprStatistics,
-// NullStatistics, SpreadSheet, etc. In VarzStatistics, we have class
-// VarzTimedVariable which is implemented based on google class
-// TenSecMinHourStat instead of class Variable, that is derived from
-// TimedVaraible.
+// TimedVariable implementation that only updates a basic Variable.
 class FakeTimedVariable : public TimedVariable {
  public:
   explicit FakeTimedVariable(Variable* var) : var_(var) {

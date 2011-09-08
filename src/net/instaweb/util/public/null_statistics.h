@@ -41,7 +41,7 @@ class NullStatisticsVariable : public Variable {
 
 // Simple name/value pair statistics implementation.
 class NullStatistics : public StatisticsTemplate<NullStatisticsVariable,
-                                                 FakeHistogram,
+                                                 NullHistogram,
                                                  FakeTimedVariable> {
  public:
   static const int kNotFound;

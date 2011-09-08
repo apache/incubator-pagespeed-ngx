@@ -236,6 +236,7 @@
         'util/mock_message_handler.cc',
         'util/named_lock_manager.cc',
         'util/null_message_handler.cc',
+        'util/null_mutex.cc',
         'util/null_statistics.cc',
         'util/null_writer.cc',
         'util/queued_worker.cc',

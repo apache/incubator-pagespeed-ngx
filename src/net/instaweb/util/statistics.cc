@@ -45,7 +45,7 @@ Variable::~Variable() {
 Histogram::~Histogram() {
 }
 
-FakeHistogram::~FakeHistogram() {
+NullHistogram::~NullHistogram() {
 }
 
 TimedVariable::~TimedVariable() {
@@ -127,7 +127,7 @@ Statistics::~Statistics() {
 }
 
 Histogram* Statistics::NewHistogram() {
-  return new FakeHistogram();
+  return new NullHistogram();
 }
 
 TimedVariable* Statistics::NewTimedVariable(
