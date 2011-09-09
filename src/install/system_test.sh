@@ -214,6 +214,10 @@ check [ $? = 0 ]
 #echo $HTML_HEADERS | grep -qi 'Expires'
 #check [ $? != 0 ]
 
+echo Checking for absense of X-Frame-Options: SAMEORIGIN
+echo $HTML_HEADERS | grep -i "X-Frame-Options"
+check [ $? != 0 ]
+
 # This tests whether fetching "/" gets you "/index.html".  With async
 # rewriting, it is not deterministic whether inline css gets
 # rewritten.  That's not what this is trying to test, so we use
