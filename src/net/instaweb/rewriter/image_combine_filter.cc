@@ -147,7 +147,7 @@ class SpriteFuture {
   // Set x_px and y_px to the alignment for this image/div combination
   // before spriting.
   bool SetAlignmentValues(Css::Value* x_value, Css::Value* y_value,
-                          size_t image_width, size_t image_height,
+                          int image_width, int image_height,
                           int* x_px, int* y_px) {
     bool ret = true;
     if (x_value->GetLexicalUnitType() == Css::Value::NUMBER) {

@@ -18,10 +18,10 @@
 
 #include "net/instaweb/util/public/mock_scheduler.h"
 
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/scheduler.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -47,17 +47,18 @@ void MockScheduler::AwaitWakeupUntilUs(int64 wakeup_time_us) {
   //
   // To make things simple and deterministic, we simply advance the
   // time when the work threads quiesce.
-  while (QueuedWorkerPool::AreBusy(workers_) && !running_waiting_alarms()) {
+  if (QueuedWorkerPool::AreBusy(workers_) || running_waiting_alarms()) {
     Scheduler::AwaitWakeupUntilUs(timer_->NowUs() + Timer::kSecondUs / 100);
-  }
+  } else {
+    // Can fire off alarms, so we have to be careful to have the lock
+    // relinquished.
 
-  // Can fire off alarms, so we have to be careful to have the lock
-  // relinquished.
-  mutex()->Unlock();
-  if (wakeup_time_us >= timer_->NowUs()) {
-    timer_->SetTimeUs(wakeup_time_us);
+    mutex()->Unlock();
+    if (wakeup_time_us >= timer_->NowUs()) {
+      timer_->SetTimeUs(wakeup_time_us);
+    }
+    mutex()->Lock();
   }
-  mutex()->Lock();
 }
 
 }  // namespace net_instaweb

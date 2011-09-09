@@ -20,13 +20,13 @@
 #include <set>
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
-class AbstractMutex;
-class Function;
 class Timer;
 
 // Implements a simple scheduler that allows a thread to block until either time
@@ -54,7 +54,7 @@ class Scheduler {
   Scheduler(ThreadSystem* thread_system, Timer* timer);
   virtual ~Scheduler();
 
-  AbstractMutex* mutex();
+  ThreadSystem::CondvarCapableMutex* mutex();
 
   // Optionally check that mutex is locked for debugging purposes.
   void DCheckLocked();
@@ -109,6 +109,10 @@ class Scheduler {
   // mutex() must be held.
   void ProcessAlarms(int64 timeout_us);
 
+  // Obtain the timer that the scheduler is using internally.  Important if you
+  // and the scheduler want to agree on the passage of time.
+  Timer* timer() { return timer_; }
+
   // Internal method to kick the system because something of interest to the
   // overridden AwaitWakeup method has happened.  Exported here because C++
   // naming hates you.
@@ -127,12 +131,14 @@ class Scheduler {
  private:
   class CondVarTimeout;
   class CondVarCallbackTimeout;
+  friend class SchedulerTest;
 
   typedef std::set<Alarm*, CompareAlarms> AlarmSet;
 
   int64 RunAlarms(bool* ran_alarms);
   void AddAlarmMutexHeld(int64 wakeup_time_us, Alarm* alarm);
   void CancelWaiting(Alarm* alarm);
+  bool NoPendingAlarms();
 
   ThreadSystem* thread_system_;
   Timer* timer_;
@@ -149,6 +155,27 @@ class Scheduler {
   bool running_waiting_alarms_;  // True if we're in process of invoking
                                  // user callbacks...
   DISALLOW_COPY_AND_ASSIGN(Scheduler);
+};
+
+// A simple adapter class that permits blocking until an alarm has been run or
+// cancelled.  Designed for stack allocation.
+//
+// Note that success_ is guarded by the acquire/release semantics of
+// atomic_bool and by monotonicity of done_.  Field order (==initialization
+// order) is important here.
+class SchedulerBlockingFunction : public Function {
+ public:
+  explicit SchedulerBlockingFunction(Scheduler* scheduler);
+  virtual ~SchedulerBlockingFunction();
+  virtual void Run();
+  virtual void Cancel();
+  // Block until called back, returning true for Run and false for Cancel.
+  bool Block();
+ private:
+  Scheduler* scheduler_;
+  bool success_;
+  AtomicBool done_;
+  DISALLOW_COPY_AND_ASSIGN(SchedulerBlockingFunction);
 };
 
 }  // namespace net_instaweb

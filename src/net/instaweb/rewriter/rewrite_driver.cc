@@ -106,37 +106,6 @@ const int kOptWaitForRewriteMsPerFlush = 10;
 const int kValgrindWaitForRewriteMsPerFlush = 1000;
 const int kTestTimeoutMs = 10000;
 
-// TODO(morlovich): Should this be made more global?
-// Helper class for making synchronous method on top of non-blocking ones
-// that return control to the scheduler. Expects to be allocated on the
-// stack.
-class SchedulerWaitFunction : public Function {
- public:
-  SchedulerWaitFunction(Scheduler* scheduler)
-          : scheduler_(scheduler), done_(false) {
-    set_delete_after_callback(false);
-  }
-
-  virtual void Run() {
-    done_ = true;
-    scheduler_->Signal();
-  }
-
-  void Block() {
-    // Holding the lock here before checking ensure that we don't race the check
-    // against the callback invocation.
-    ScopedMutex lock(scheduler_->mutex());
-    while (!done_) {
-      scheduler_->ProcessAlarms(10 * Timer::kSecondUs);
-    }
-  }
-
- private:
-  Scheduler* scheduler_;
-  bool done_;
-  DISALLOW_COPY_AND_ASSIGN(SchedulerWaitFunction);
-};
-
 }  // namespace
 
 class FileSystem;
@@ -245,7 +214,7 @@ void RewriteDriver::WaitForCompletion() {
 
 void RewriteDriver::BoundedWaitForCompletion(int64 timeout_ms) {
   if (asynchronous_rewrites_) {
-    SchedulerWaitFunction wait(scheduler_.get());
+    SchedulerBlockingFunction wait(scheduler_.get());
 
     {
       ScopedMutex lock(rewrite_mutex());
@@ -341,7 +310,7 @@ void RewriteDriver::ExecuteFlushIfRequested() {
 }
 
 void RewriteDriver::Flush() {
-  SchedulerWaitFunction wait(scheduler_.get());
+  SchedulerBlockingFunction wait(scheduler_.get());
   FlushAsync(&wait);
   wait.Block();
   flush_requested_ = false;

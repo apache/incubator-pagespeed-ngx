@@ -248,7 +248,9 @@ UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
 UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   if (serf_url_async_fetcher_ == NULL) {
     serf_url_async_fetcher_ = new SerfUrlAsyncFetcher(
-        fetcher_proxy_.c_str(), pool_, thread_system(), statistics(), timer(),
+        fetcher_proxy_.c_str(),
+        NULL,  // Do not use the Factory pool so we can control deletion.
+        thread_system(), statistics(), timer(),
         fetcher_time_out_ms_);
   }
   return serf_url_async_fetcher_;
@@ -401,12 +403,15 @@ void ApacheRewriteDriverFactory::ShutDown() {
     // buffer and passing ApacheMessageHandler here may cause infinite loop.
     GoogleMessageHandler handler;
     if (shared_circular_buffer_ != NULL) {
-        shared_circular_buffer_->GlobalCleanup(&handler);
-      // Reset SharedCircularBuffer to NULL as precaution.
-        apache_message_handler_->set_buffer(NULL);
-        apache_html_parse_message_handler_->set_buffer(NULL);
+      shared_circular_buffer_->GlobalCleanup(&handler);
     }
   }
+
+  // Reset SharedCircularBuffer to NULL, so that any shutdown warnings
+  // (e.g. in ResourceManager::ShutDownDrivers) don't reference
+  // deleted objects as the base-class is deleted.
+  apache_message_handler_->set_buffer(NULL);
+  apache_html_parse_message_handler_->set_buffer(NULL);
   RewriteDriverFactory::ShutDown();
 }
 

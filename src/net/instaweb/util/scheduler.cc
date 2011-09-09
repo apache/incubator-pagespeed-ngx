@@ -17,7 +17,6 @@
 
 #include "net/instaweb/util/public/scheduler.h"
 
-#include <algorithm>
 #include <set>
 
 #include "base/logging.h"
@@ -191,7 +190,9 @@ Scheduler::Scheduler(ThreadSystem* thread_system, Timer* timer)
 Scheduler::~Scheduler() {
 }
 
-AbstractMutex* Scheduler::mutex() { return mutex_.get(); }
+ThreadSystem::CondvarCapableMutex* Scheduler::mutex() {
+  return mutex_.get();
+}
 
 void Scheduler::DCheckLocked() { mutex_->DCheckLocked(); }
 
@@ -266,12 +267,14 @@ void Scheduler::AddAlarmMutexHeld(int64 wakeup_time_us, Alarm* alarm) {
   mutex_->DCheckLocked();
   alarm->wakeup_time_us_ = wakeup_time_us;
   alarm->index_ = ++index_;
+  // Someone may care about changes in wait time.  Broadcast if any occurred.
   if (!outstanding_alarms_.empty()) {
-    // Someone may care about changes in wait time.  Signal if any occurred.
     Alarm* first_alarm = *outstanding_alarms_.begin();
     if (wakeup_time_us < first_alarm->wakeup_time_us_) {
       condvar_->Broadcast();
     }
+  } else {
+    condvar_->Broadcast();
   }
   outstanding_alarms_.insert(alarm);
 }
@@ -327,16 +330,13 @@ int64 Scheduler::RunAlarms(bool* ran_alarms) {
 void Scheduler::AwaitWakeupUntilUs(int64 wakeup_time_us) {
   mutex_->DCheckLocked();
   int64 now_us = timer_->NowUs();
-  // Compute how long we should wait.  Note: we overshoot, which may lead us
-  // to wake a bit later than expected.  We assume the system is likely to
-  // round wakeup time off for us in some arbitrary fashion in any case.
-  int64 wakeup_interval_ms = (wakeup_time_us - now_us + kMsUs - 1) / kMsUs;
-
-  // If there is no known wake up time, we just use a very large sleep
-  if (wakeup_interval_ms <= 0) {
-    wakeup_interval_ms = 10 * Timer::kSecondMs;
+  if (wakeup_time_us > now_us) {
+    // Compute how long we should wait.  Note: we overshoot, which may lead us
+    // to wake a bit later than expected.  We assume the system is likely to
+    // round wakeup time off for us in some arbitrary fashion in any case.
+    int64 wakeup_interval_ms = (wakeup_time_us - now_us + kMsUs - 1) / kMsUs;
+    condvar_->TimedWait(wakeup_interval_ms);
   }
-  condvar_->TimedWait(wakeup_interval_ms);
 }
 
 void Scheduler::Wakeup() {
@@ -351,9 +351,45 @@ void Scheduler::ProcessAlarms(int64 timeout_us) {
 
   if (timeout_us > 0 && !ran_alarms) {
     // Note: next_wakeup_us may be 0 here.
-    AwaitWakeupUntilUs(std::min(finish_us, next_wakeup_us));
+    if (next_wakeup_us == 0 || next_wakeup_us > finish_us) {
+      next_wakeup_us = finish_us;
+    }
+    AwaitWakeupUntilUs(next_wakeup_us);
+
     RunAlarms(&ran_alarms);
   }
+}
+
+// For testing purposes, let a tester know when the scheduler has quiesced.
+bool Scheduler::NoPendingAlarms() {
+  mutex_->DCheckLocked();
+  return (outstanding_alarms_.empty());
+}
+
+SchedulerBlockingFunction::SchedulerBlockingFunction(Scheduler* scheduler)
+    : scheduler_(scheduler), success_(false) {
+  set_delete_after_callback(false);
+}
+
+SchedulerBlockingFunction::~SchedulerBlockingFunction() { }
+
+void SchedulerBlockingFunction::Run() {
+  success_ = true;
+  Cancel();
+}
+
+void SchedulerBlockingFunction::Cancel() {
+  scheduler_->mutex()->DCheckLocked();
+  done_.set_value(true);
+  scheduler_->Signal();
+}
+
+bool SchedulerBlockingFunction::Block() {
+  ScopedMutex lock(scheduler_->mutex());
+  while (!done_.value()) {
+    scheduler_->ProcessAlarms(10 * Timer::kSecondUs);
+  }
+  return success_;
 }
 
 }  // namespace net_instaweb

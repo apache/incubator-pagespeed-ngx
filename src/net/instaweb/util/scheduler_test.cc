@@ -27,13 +27,6 @@
 
 namespace net_instaweb {
 
-namespace {
-
-const int64 kDsUs = Timer::kSecondUs / 10;
-const int64 kMsUs = Timer::kSecondUs / Timer::kSecondMs;
-const int64 kMinuteUs = Timer::kMinuteMs * kMsUs;
-const int64 kYearUs = Timer::kYearMs * kMsUs;
-
 // Many tests cribbed from mock_timer_test, only without the mockery.  This
 // actually restricts the timing dependencies we can detect, though not in a
 // terrible way.
@@ -49,17 +42,35 @@ class SchedulerTest : public WorkerTestBase {
     return comparator(a, b);
   }
 
-  void LockAndProcessAlarms(int64 timeout_ms) {
+  void LockAndProcessAlarms(int64 timeout_us) {
     ScopedMutex lock(scheduler_.mutex());
-    scheduler_.ProcessAlarms(timeout_ms);
+    scheduler_.ProcessAlarms(timeout_us);
+  }
+
+  void QuiesceAlarms(int64 timeout_us) {
+    ScopedMutex lock(scheduler_.mutex());
+    int64 now_us = timer_.NowUs();
+    int64 end_us = now_us + timeout_us;
+    while (now_us < end_us && !scheduler_.NoPendingAlarms()) {
+      scheduler_.ProcessAlarms(end_us - now_us);
+      now_us = timer_.NowUs();
+    }
   }
 
   scoped_ptr<ThreadSystem> thread_system_;
   GoogleTimer timer_;
   Scheduler scheduler_;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(SchedulerTest);
 };
+
+namespace {
+
+const int64 kDsUs = Timer::kSecondUs / 10;
+const int64 kMsUs = Timer::kSecondUs / Timer::kSecondMs;
+const int64 kMinuteUs = Timer::kMinuteMs * kMsUs;
+const int64 kYearUs = Timer::kYearMs * kMsUs;
 
 TEST_F(SchedulerTest, AlarmsGetRun) {
   int64 start_us = timer_.NowUs();
@@ -107,7 +118,7 @@ TEST_F(SchedulerTest, MidpointBlock) {
   int64 mid_us = timer_.NowUs();
   EXPECT_LT(start_us + 4 * kMsUs, mid_us);
   EXPECT_LE(2, counter);
-  LockAndProcessAlarms(kMinuteUs);
+  QuiesceAlarms(kMinuteUs);
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(3, counter);
   EXPECT_LT(start_us + 6 * kMsUs, end_us);
@@ -152,7 +163,7 @@ TEST_F(SchedulerTest, MidpointCancellation) {
     ScopedMutex lock(scheduler_.mutex());
     scheduler_.CancelAlarm(alarm3);
   }
-  LockAndProcessAlarms(kMinuteUs);
+  QuiesceAlarms(kMinuteUs);
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(-98, counter);
   EXPECT_LT(start_us + 3 * kMsUs, end_us);
@@ -167,7 +178,7 @@ TEST_F(SchedulerTest, SimultaneousAlarms) {
   scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
   scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
   scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
-  LockAndProcessAlarms(kMinuteUs);
+  QuiesceAlarms(kMinuteUs);
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(3, counter);
   EXPECT_LT(start_us + 2 * kMsUs, end_us);
@@ -271,7 +282,7 @@ TEST_F(SchedulerTest, TimedWaitFromSignalWakeup) {
         5, new RetryWaitFunction(&timer_, start_ms, &scheduler_, &counter));
     scheduler_.Signal();
   }
-  LockAndProcessAlarms(20 * kMsUs);
+  QuiesceAlarms(20 * kMsUs);
   EXPECT_GE(2, counter);
 }
 
