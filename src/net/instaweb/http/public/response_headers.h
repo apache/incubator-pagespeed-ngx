@@ -91,8 +91,16 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // interpretted correctly.
   int64 CacheExpirationTimeMs() const;
 
-  // Sets Date, Cache-Control and Expires headers appropriately.
-  void SetDateAndCaching(int64 date_ms, int64 ttl_ms);
+  // Set Date, Cache-Control and Expires headers appropriately.
+  // If cache_control_suffix is provided it is appended onto the
+  // Cache-Control: "max-age=%d" string.
+  // For example, cache_control_suffix = ", private" or ", no-cache, no-store".
+  void SetDateAndCaching(int64 date_ms, int64 ttl_ms,
+                         const StringPiece& cache_control_suffix);
+  void SetDateAndCaching(int64 date_ms, int64 ttl_ms) {
+    SetDateAndCaching(date_ms, ttl_ms, "");
+  }
+
   // Set a time-based header, converting ms since epoch to a string.
   void SetTimeHeader(const StringPiece& header, int64 time_ms);
   void SetDate(int64 date_ms) { SetTimeHeader(HttpAttributes::kDate, date_ms); }

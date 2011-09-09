@@ -209,9 +209,10 @@ echo Checking for presence of Cache-Control: max-age=0, no-cache, no-store
 echo $HTML_HEADERS | grep -qi 'Cache-Control: max-age=0, no-cache, no-store'
 check [ $? = 0 ]
 
-echo Checking for absense of Expires
-echo $HTML_HEADERS | grep -qi 'Expires'
-check [ $? != 0 ]
+# TODO(sligocki): We should have Expires headers in HTML just like resources.
+#echo Checking for absense of Expires
+#echo $HTML_HEADERS | grep -qi 'Expires'
+#check [ $? != 0 ]
 
 # This tests whether fetching "/" gets you "/index.html".  With async
 # rewriting, it is not deterministic whether inline css gets
