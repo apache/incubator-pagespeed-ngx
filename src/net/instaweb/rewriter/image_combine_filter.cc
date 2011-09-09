@@ -97,8 +97,8 @@ class SpriteFuture {
         y_value_(NULL),
         declarations_(decls),
         declaration_to_push_(NULL),
-        width_(width),
-        height_(height),
+        div_width_(width),
+        div_height_(height),
         has_position_(false) {
     old_url.CopyToString(&old_url_);
     x_offset_ = 0;
@@ -143,18 +143,75 @@ class SpriteFuture {
         return false;
     }
   }
+
+  // Set x_px and y_px to the alignment for this image/div combination
+  // before spriting.
+  bool SetAlignmentValues(Css::Value* x_value, Css::Value* y_value,
+                          size_t image_width, size_t image_height,
+                          int* x_px, int* y_px) {
+    bool ret = true;
+    if (x_value->GetLexicalUnitType() == Css::Value::NUMBER) {
+        int int_value = x_value->GetIntegerValue();
+        // If the aligment is specified in pixels, or is 0, we can just use it.
+        if ((x_value->GetDimension() == Css::Value::PX) || (int_value == 0)) {
+          *x_px = int_value;
+        } else {
+          ret = false;
+        }
+    } else if (x_value->GetLexicalUnitType() == Css::Value::IDENT) {
+      switch (x_value->GetIdentifier().ident()) {
+        case Css::Identifier::LEFT:
+          *x_px = 0;
+          break;
+        case Css::Identifier::RIGHT:
+          *x_px = div_width_ - image_width;
+          break;
+        case Css::Identifier::CENTER:
+          *x_px = (div_width_ - image_width) / 2;
+          break;
+        default:
+          ret = false;
+          break;
+      }
+    }
+    if (y_value->GetLexicalUnitType() == Css::Value::NUMBER) {
+      int int_value = y_value->GetIntegerValue();
+      if (ret &&
+          (y_value->GetDimension() == Css::Value::PX || int_value == 0)) {
+        *y_px = int_value;
+      } else {
+        ret = false;
+      }
+    } else if (ret && y_value->GetLexicalUnitType() == Css::Value::IDENT) {
+      switch (y_value->GetIdentifier().ident()) {
+        case Css::Identifier::TOP:
+          *y_px = 0;
+          break;
+        case Css::Identifier::BOTTOM:
+          *y_px = div_height_ - image_height;
+          break;
+        case Css::Identifier::CENTER:
+          *y_px = (div_height_ - image_height) / 2;
+          break;
+        default:
+          ret = false;
+          break;
+      }
+    }
+    return ret;
+  }
+
   // Attempts to read the x and y values of the background position.  *values
   // is a value array which includes the background-position at values_offset.
   // new_x and new_y are the coordinates of the image in the sprite.  Returns
   // true, and sets up {x,y}_{value,offset}_ if successful.
-  bool ReadBackgroundPosition(Css::Values* values, int values_offset) {
+  bool ReadBackgroundPosition(Css::Values* values, int values_offset,
+                              int image_width, int image_height) {
     // Parsing these values is trickier than you might think.  If either
     // of the two values is a non-center identifier, it determines which
     // is x and which is y.  So for example, "5px left" means x=0, y=5 but
     // "5px top" means x=5, y=0.
     // See: http://www.w3.org/TR/CSS21/colors.html#propdef-background-position
-    // TODO(abliss): actually this is too permissive; "5px left" is not
-    // allowed by the spec.
     // TODO(abliss): move this to webutil/css?
     Css::Value* x_value = NULL;
     Css::Value* y_value = NULL;
@@ -173,12 +230,36 @@ class SpriteFuture {
             x_value = other_value;
             y_value = value;
             break;
+          case Css::Identifier::CENTER:
+            if (other_value->GetLexicalUnitType() == Css::Value::IDENT) {
+              switch (other_value->GetIdentifier().ident()) {
+                case Css::Identifier::LEFT:
+                case Css::Identifier::RIGHT:
+                  x_value = other_value;
+                  y_value = value;
+                  break;
+                case Css::Identifier::TOP:
+                case Css::Identifier::BOTTOM:
+                case Css::Identifier::CENTER:
+                  x_value = value;
+                  y_value = other_value;
+                  break;
+                default:
+                  return false;
+              }
+            } else {
+              // TODO(nforman): Allow for mixing of alignment types,
+              // i.e. left 2px.
+              return false;
+            }
+            break;
           default:
-            // We do not currently support CENTER
+            // TODO(nforman): Support unspecified alignment.
             return false;
         }
       }
     }
+
     // If there are two values and neither is an identifier, x comes
     // first: e.g. "5px 6px" means x=5, y=6.
     if (x_value == NULL) {
@@ -187,11 +268,15 @@ class SpriteFuture {
     }
     // Now that we know which value is which dimension, we can extract the
     // values in px.
-    int x_px, y_px;
-    if (!GetPixelValue(x_value, &x_px) ||
-        !GetPixelValue(y_value, &y_px)) {
+    int x_px = 0;
+    int y_px = 0;
+    if (!SetAlignmentValues(x_value, y_value, image_width, image_height,
+                            &x_px, &y_px)) {
       return false;
     }
+    // When sprited, these x_value_ and y_value_ will both be replaced
+    // with absolute pixel values (i.e. not center or left), so they need
+    // to be in x-first, y-second order.
     x_value_ = values->at(values_offset);
     x_offset_ = x_px;
     y_value_ = values->at(values_offset + 1);
@@ -243,11 +328,11 @@ class SpriteFuture {
   }
 
   int width() {
-    return width_;
+    return div_width_;
   }
 
   int height() {
-    return height_;
+    return div_height_;
   }
 
   // Attempt to find the background position values, or create them if
@@ -258,7 +343,7 @@ class SpriteFuture {
   // rendering.
   // Returns true if this is a viable sprite-future.  If
   // we return false, Realize must not be called.
-  bool FindBackgroundPositionValues() {
+  bool FindBackgroundPositionValues(int image_width, int image_height) {
     // Find the original background offsets (if any) so we can add to them.
     has_position_ = false;
     for (Css::Declarations::iterator decl_iter = declarations_->begin();
@@ -273,7 +358,8 @@ class SpriteFuture {
             // "center", which we don't currently support.
             return false;
           }
-          if (ReadBackgroundPosition(decl_values, 0)) {
+          if (ReadBackgroundPosition(decl_values, 0,
+                                     image_width, image_height)) {
             has_position_ = true;
           } else {
             // Upon failure here, we abort the sprite.
@@ -295,7 +381,8 @@ class SpriteFuture {
           for (int i = 0, n = decl_values->size() - 1; i < n; ++i) {
             if (IsPositionValue(*(decl_values->at(i))) &&
                 IsPositionValue(*(decl_values->at(i + 1)))) {
-              if (ReadBackgroundPosition(decl_values, i)) {
+              if (ReadBackgroundPosition(decl_values, i,
+                                         image_width, image_height)) {
                 has_position_ = true;
                 break;
               } else {
@@ -333,8 +420,8 @@ class SpriteFuture {
   // Width and height of original div.  We use these to check against
   // the image's dimensions once the image is loaded, so we can determine
   // if the image can be sprited in this context.
-  int width_;
-  int height_;
+  int div_width_;
+  int div_height_;
   bool has_position_;
   DISALLOW_COPY_AND_ASSIGN(SpriteFuture);
 };
@@ -591,16 +678,12 @@ class ImageCombineFilter::Combiner
 
   // Returns true if the image at url has already been added to the collection
   // and is at least as large as the given dimensions.
-  bool CheckMinImageDimensions(const GoogleString& url, int width, int height) {
+  bool GetImageDimensions(const GoogleString& url, int* width, int* height) {
     scoped_ptr<Library::SpriterImage> image(library_.ReadFromFile(url));
     if (image.get() == NULL) {
       return false;
     }
-    int image_width, image_height;
-    if (!image->GetDimensions(&image_width, &image_height)) {
-      return false;
-    }
-    return (image_width >= width) && (image_height >= height);
+    return image->GetDimensions(width, height);
   }
 
   bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
@@ -816,12 +899,15 @@ class ImageCombineFilter::Context : public RewriteContext {
   // Returns true iff declarations were setup properly, and the image
   // are smaller than the specified div dimensions.
   bool SetupSpriteDimensions(SpriteFuture* future) {
-    if (!future->FindBackgroundPositionValues()) {
+    int image_width, image_height;
+    if (!combiner_.GetImageDimensions(future->old_url(),
+                                      &image_width, &image_height)) {
       return false;
     }
-    return combiner_.CheckMinImageDimensions(future->old_url(),
-                                             future->width(),
-                                             future->height());
+    if (image_width < future->width() || image_height < future->height()) {
+      return false;
+    }
+    return future->FindBackgroundPositionValues(image_width, image_height);
   }
 
   // Walk through and find any resources that won't be able to be

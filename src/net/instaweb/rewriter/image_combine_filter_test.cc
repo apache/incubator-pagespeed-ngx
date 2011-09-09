@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -52,7 +53,7 @@ class CssImageCombineTest : public CssRewriteTestBase {
     AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
                          kContentTypeJpeg, 100);
   }
-  void TestSpriting(const char* bikePosition, const char* expectedPosition,
+  void TestSpriting(const char* bike_position, const char* expected_position,
                     bool should_sprite) {
     const GoogleString sprite_string = StrCat(kTestDomain, kCuppaPngFile, "+",
                                               kBikePngFile,
@@ -67,9 +68,9 @@ class CssImageCombineTest : public CssRewriteTestBase {
         "#div3{background-image:url(%s);width:10px;height:10px}"
         "</style></head>";
     GoogleString before = StringPrintf(
-        html, kCuppaPngFile, kBikePngFile, bikePosition, kPuzzleJpgFile);
+        html, kCuppaPngFile, kBikePngFile, bike_position, kPuzzleJpgFile);
     GoogleString after = StringPrintf(
-        html, sprite, sprite, expectedPosition, kPuzzleJpgFile);
+        html, sprite, sprite, expected_position, kPuzzleJpgFile);
 
     ValidateExpected("sprites_images", before, should_sprite ? after : before);
 
@@ -83,9 +84,9 @@ class CssImageCombineTest : public CssRewriteTestBase {
         "</style></head>";
 
     before = StringPrintf(
-        html2, kCuppaPngFile, kBikePngFile, bikePosition, kPuzzleJpgFile);
+        html2, kCuppaPngFile, kBikePngFile, bike_position, kPuzzleJpgFile);
     after = StringPrintf(
-        html2, sprite, sprite, expectedPosition, kPuzzleJpgFile);
+        html2, sprite, sprite, expected_position, kPuzzleJpgFile);
 
     ValidateExpected("sprites_images", before, should_sprite ? after : before);
   }
@@ -93,11 +94,35 @@ class CssImageCombineTest : public CssRewriteTestBase {
 
 TEST_P(CssImageCombineTest, SpritesImages) {
   CSS_XFAIL_SYNC();
+  // For each of these, expect the following:
+  // If spriting is possible, the first image (Cuppa.png)
+  // ends up on top and the second image (BikeCrashIcn.png) ends up on the
+  // bottom.
+  // Cuppa.png 65px wide by 70px high.
+  // BikeCrashIcn.png is 100px wide by 100px high.
+  // Therefore if you want to see just BikeCrashIcn.png, you need to
+  // align the image 70px above the div (i.e. -70px).
+  // All the divs are 10px by 10px (which affects the resulting
+  // alignments).
   TestSpriting("0px 0px", "0px -70px", true);
   TestSpriting("left top", "0px -70px", true);
   TestSpriting("top 10px", "10px -70px", true);
+  // TODO(nforman): Have spriting reject this since the 5px will
+  // display part of the image above this one.
   TestSpriting("-5px 5px", "-5px -65px", true);
-  TestSpriting("center top", "unused", false);
+  // We want pixels 45 to 55 out of the image, therefore align the image
+  // 45 pixels to the left of the div.
+  TestSpriting("center top", "-45px -70px", true);
+  // Same as above, but this time select the middle 10 pixels verically,
+  // as well (45 to 55, but offset by 70 for the image above).
+  TestSpriting("center center", "-45px -115px", true);
+  // We want the bottom, right corner of the image, i.e. pixels
+  // 90 to 100 (both vertically and horizontally), so align the image
+  // 90 pixels to the left and 160 pixels (70 from Cuppa.png) above.
+  TestSpriting("right bottom", "-90px -160px", true);
+  // Here we need the vertical center (45 to 55, plus the 70 offset),
+  // and the horizontal right (90 to 100).
+  TestSpriting("center right", "-90px -115px", true);
 }
 
 TEST_P(CssImageCombineTest, SpritesMultiple) {
@@ -144,7 +169,6 @@ TEST_P(CssImageCombineTest, NoSpritesMultiple) {
   text = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 999,
                         kCuppaPngFile, 0);
   ValidateExpected("no_sprite", text, text);
-
 }
 
 TEST_P(CssImageCombineTest, NoCrashUnknownType) {
