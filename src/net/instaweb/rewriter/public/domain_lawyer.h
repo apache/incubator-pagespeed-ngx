@@ -164,13 +164,15 @@ class DomainLawyer {
 
   static GoogleString NormalizeDomainName(const StringPiece& domain_name);
 
-  static bool IsSchemeHttpOrMissing(const StringPiece& domain_name);
+  static bool IsSchemeSafeToMapTo(const StringPiece& domain_name,
+                                  bool allow_https_scheme);
 
   bool MapDomainHelper(
       const StringPiece& to_domain_name,
       const StringPiece& comma_separated_from_domains,
       SetDomainFn set_domain_fn,
       bool allow_wildcards,
+      bool allow_map_to_https,
       bool authorize,
       MessageHandler* handler);
 

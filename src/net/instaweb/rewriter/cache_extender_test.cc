@@ -187,7 +187,7 @@ TEST_P(CacheExtenderTest, ExtendIfOriginMappedHttps) {
   InitTest(kShortTtlSec);
   EXPECT_TRUE(options()->domain_lawyer()->AddOriginDomainMapping(
       kTestDomain, "https://cdn.com", &message_handler_));
-  ValidateExpected("extend_if_origin_mapped",
+  ValidateExpected("extend_if_origin_mapped_https",
                    GenerateHtml("https://cdn.com/sub/a.css?v=1",
                                 "https://cdn.com/b.jpg",
                                 "https://cdn.com/c.js"),
@@ -227,6 +227,28 @@ TEST_P(CacheExtenderTest, ExtendIfShardedAndRewritten) {
                        "http://shard0.com/sub/a.css,qv=1.pagespeed.ce.0.css",
                        "http://shard0.com/b.jpg.pagespeed.ce.0.jpg",
                        "http://shard0.com/c.js.pagespeed.ce.0.js"));
+}
+
+TEST_P(CacheExtenderTest, ExtendIfShardedToHttps) {
+  InitTest(kLongTtlSec);
+
+  // This Origin Mapping ensures any fetches are converted to http so work.
+  EXPECT_TRUE(options()->domain_lawyer()->AddOriginDomainMapping(
+      kTestDomain, "https://test.com", &message_handler_));
+
+  EXPECT_TRUE(options()->domain_lawyer()->AddShard(
+      "https://test.com", "https://shard0.com,https://shard1.com",
+      &message_handler_));
+  // shard0 is always selected in the test because of our mock hasher
+  // that always returns 0.
+  ValidateExpected("extend_if_sharded_to_https",
+                   GenerateHtml("https://test.com/sub/a.css?v=1",
+                                "https://test.com/b.jpg",
+                                "https://test.com/c.js"),
+                   GenerateHtml(
+                       "https://shard0.com/sub/a.css,qv=1.pagespeed.ce.0.css",
+                       "https://shard0.com/b.jpg.pagespeed.ce.0.jpg",
+                       "https://shard0.com/c.js.pagespeed.ce.0.js"));
 }
 
 // TODO(jmarantz): consider implementing and testing the sharding and

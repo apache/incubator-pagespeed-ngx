@@ -247,7 +247,8 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
 GoogleString ResourceManagerTestBase::AbsolutifyUrl(
     const StringPiece& resource_name) {
   GoogleString name;
-  if (resource_name.starts_with("http://")) {
+  if (resource_name.starts_with("http://") ||
+      resource_name.starts_with("https://")) {
     resource_name.CopyToString(&name);
   } else {
     name = StrCat(kTestDomain, resource_name);

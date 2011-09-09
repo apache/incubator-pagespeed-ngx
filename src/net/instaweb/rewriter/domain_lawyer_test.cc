@@ -355,6 +355,33 @@ TEST_F(DomainLawyerTest, RewriteHttpsAcrossSchemesAndPorts) {
   EXPECT_EQ("http://localhost:8080/", mapped_domain_name);
 }
 
+TEST_F(DomainLawyerTest, RewriteHttpsToHttps) {
+  ASSERT_TRUE(AddRewriteDomainMapping("https://localhost:8443",
+                                      "https://nytimes.com:8443"));
+  EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
+  GoogleString mapped_domain_name;
+  GoogleUrl local_8443("https://localhost:8443/index.html");
+  ASSERT_TRUE(MapRequest(local_8443,
+                         "https://nytimes.com:8443/css/stylesheet.css",
+                         &mapped_domain_name));
+  EXPECT_EQ("https://localhost:8443/", mapped_domain_name);
+  // Succeeds b/c https://localhost:8443/ is authorized and matches the request.
+  GoogleUrl https_nyt_8443("https://nytimes.com:8443/index.html");
+  ASSERT_TRUE(MapRequest(https_nyt_8443,
+                         "https://localhost:8443/css/stylesheet.css",
+                         &mapped_domain_name));
+  EXPECT_EQ("https://localhost:8443/", mapped_domain_name);
+  // Succeeds because https://nytimes:8443/ maps to https://localhost:8443/.
+  ASSERT_TRUE(MapRequest(https_nyt_8443,
+                         "https://nytimes.com:8443/css/stylesheet.css",
+                         &mapped_domain_name));
+  EXPECT_EQ("https://localhost:8443/", mapped_domain_name);
+  // Relative path also succeeds.
+  ASSERT_TRUE(MapRequest(https_nyt_8443, "css/stylesheet.css",
+                         &mapped_domain_name));
+  EXPECT_EQ("https://localhost:8443/", mapped_domain_name);
+}
+
 TEST_F(DomainLawyerTest, AddDomainRedundantly) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.nytimes.com", &message_handler_));
   ASSERT_FALSE(domain_lawyer_.AddDomain("www.nytimes.com", &message_handler_));
@@ -611,6 +638,18 @@ TEST_F(DomainLawyerTest, Shard) {
   ASSERT_TRUE(domain_lawyer_.ShardDomain("http://foo.com/", 1, &shard));
   EXPECT_EQ(GoogleString("http://bar2.com/"), shard);
   EXPECT_FALSE(domain_lawyer_.ShardDomain("http://other.com/", 0, &shard));
+}
+
+TEST_F(DomainLawyerTest, ShardHttps) {
+  EXPECT_FALSE(domain_lawyer_.can_rewrite_domains());
+  ASSERT_TRUE(AddShard("https://foo.com", "https://bar1.com,https://bar2.com"));
+  EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
+  GoogleString shard;
+  ASSERT_TRUE(domain_lawyer_.ShardDomain("https://foo.com/", 0, &shard));
+  EXPECT_EQ(GoogleString("https://bar1.com/"), shard);
+  ASSERT_TRUE(domain_lawyer_.ShardDomain("https://foo.com/", 1, &shard));
+  EXPECT_EQ(GoogleString("https://bar2.com/"), shard);
+  EXPECT_FALSE(domain_lawyer_.ShardDomain("https://other.com/", 0, &shard));
 }
 
 TEST_F(DomainLawyerTest, WillDomainChange) {

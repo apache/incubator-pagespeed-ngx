@@ -295,7 +295,7 @@ bool DomainLawyer::MapRequestToDomain(
     return false;
   }
   bool ret = false;
-  // We can map TO http only (see MapDomainHelper), but FROM http or https.
+  // We can map a request to/from http/https.
   if (resolved_request->is_valid()) {
     GoogleUrl resolved_origin(resolved_request->Origin());
 
@@ -347,7 +347,7 @@ bool DomainLawyer::MapRequestToDomain(
 bool DomainLawyer::MapOrigin(const StringPiece& in, GoogleString* out) const {
   bool ret = false;
   GoogleUrl gurl(in);
-  // We can map TO http only (see MapDomainHelper), but FROM http or https.
+  // We can map an origin TO http only, but FROM http or https.
   if (gurl.is_valid()) {
     ret = true;
     in.CopyToString(out);
@@ -372,7 +372,11 @@ bool DomainLawyer::AddRewriteDomainMapping(
     const StringPiece& comma_separated_from_domains,
     MessageHandler* handler) {
   bool result = MapDomainHelper(to_domain_name, comma_separated_from_domains,
-                                &Domain::SetRewriteDomain, true, true, handler);
+                                &Domain::SetRewriteDomain,
+                                true /* allow_wildcards */,
+                                true /* allow_map_to_https */,
+                                true /* authorize */,
+                                handler);
   can_rewrite_domains_ |= result;
   return result;
 }
@@ -382,7 +386,11 @@ bool DomainLawyer::AddOriginDomainMapping(
     const StringPiece& comma_separated_from_domains,
     MessageHandler* handler) {
   return MapDomainHelper(to_domain_name, comma_separated_from_domains,
-                         &Domain::SetOriginDomain, true, false, handler);
+                         &Domain::SetOriginDomain,
+                         true /* allow_wildcards */,
+                         false /* allow_map_to_https */,
+                         false /* authorize */,
+                         handler);
 }
 
 bool DomainLawyer::AddShard(
@@ -390,15 +398,21 @@ bool DomainLawyer::AddShard(
     const StringPiece& comma_separated_shards,
     MessageHandler* handler) {
   bool result = MapDomainHelper(shard_domain_name, comma_separated_shards,
-                                &Domain::SetShardFrom, false, true, handler);
+                                &Domain::SetShardFrom,
+                                false /* allow_wildcards */,
+                                true /* allow_map_to_https */,
+                                true /* authorize */,
+                                handler);
   can_rewrite_domains_ |= result;
   return result;
 }
 
-bool DomainLawyer::IsSchemeHttpOrMissing(const StringPiece& domain_name) {
+bool DomainLawyer::IsSchemeSafeToMapTo(const StringPiece& domain_name,
+                                       bool allow_https_scheme) {
   // The scheme defaults to http so that's the same as explicitly saying http.
   return (domain_name.find("://") == GoogleString::npos ||
-          domain_name.starts_with("http://"));
+          domain_name.starts_with("http://") ||
+          (allow_https_scheme && domain_name.starts_with("https://")));
 }
 
 bool DomainLawyer::MapDomainHelper(
@@ -406,12 +420,10 @@ bool DomainLawyer::MapDomainHelper(
     const StringPiece& comma_separated_from_domains,
     SetDomainFn set_domain_fn,
     bool allow_wildcards,
+    bool allow_map_to_https,
     bool authorize_to_domain,
     MessageHandler* handler) {
-  // TODO(matterbury): remove this condition once it's 'safe' to do so,
-  // namely we've validated that downstream components (such as the fetcher)
-  // handle https sanely.
-  if (!IsSchemeHttpOrMissing(to_domain_name)) {
+  if (!IsSchemeSafeToMapTo(to_domain_name, allow_map_to_https)) {
     return false;
   }
   Domain* to_domain = AddDomainHelper(to_domain_name, false,
