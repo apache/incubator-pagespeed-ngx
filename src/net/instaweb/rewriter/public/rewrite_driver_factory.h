@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_FACTORY_H_
 
+#include <set>
 #include <vector>
 
 #include "base/scoped_ptr.h"
@@ -115,7 +116,12 @@ class RewriteDriverFactory {
   // Determines whether Slurping is enabled.
   bool slurping_enabled() const { return !slurp_directory_.empty(); }
 
-  RewriteOptions* options();
+  // Deprecated method to get an options structure for the first
+  // ResourceManager.  If a resource maanger has not been not created
+  // yet, an options structure wll be returned anyway and applied
+  // when a ResourceManager is eventually created.
+  RewriteOptions* options();  // thread-safe
+
   MessageHandler* html_parse_message_handler();
   MessageHandler* message_handler();
   FileSystem* file_system();
@@ -136,14 +142,18 @@ class RewriteDriverFactory {
   // Computes URL fetchers using the based fetcher, and optionally,
   // slurp_directory and slurp_read_only.  These are not thread-safe;
   // they must be called once prior to spawning threads, e.g. via
-  // ComputeResourceManager.
+  // CreateResourceManager.
   virtual UrlFetcher* ComputeUrlFetcher();
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
 
-  // For now, we have a single ResourceManager per factory, managed by the
-  // factory, which is constructed lazily here.  This is thread-safe,
-  // and will force the non-thread-safe accessors above to be safely
-  // initialized.
+  // Threadsafe mechanism to create a managed ResourceManager.  The
+  // ResourceManager is owned by the factory, and should not be
+  // deleted directly.  Currently it is not possible to delete a
+  // resource manager except by deleting the entire factory.
+  ResourceManager* CreateResourceManager();
+
+  // Deprecated method that returns the first resource manager, creating one if
+  // needed.  This method is thread-safe.
   ResourceManager* ComputeResourceManager();
 
   // See doc in resource_manager.cc.
@@ -183,8 +193,14 @@ class RewriteDriverFactory {
   // Does *not* take ownership of Statistics.
   void SetStatistics(Statistics* stats);
 
+  // Clean up all the factory-owned resources: fetchers, pools,
+  // Resource Managers, the Drivers owned by the Resource Managers,
+  // and worker threads.
+  virtual void ShutDown();
+
  protected:
   bool FetchersComputed() const;
+  void StopCacheWrites();
 
   // Implementors of RewriteDriverFactory must supply default definitions
   // for each of these methods, although they may be overridden via set_
@@ -209,15 +225,6 @@ class RewriteDriverFactory {
   // make one with a single thread.
   virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolName name);
 
-  // Clean up all the resources. When shutdown Apache, and destroy the process
-  // sub-pool.  The RewriteDriverFactory owns some elements that were created
-  // from that sub-pool. The sub-pool is destroyed in ApacheRewriteFactory,
-  // which happens before the destruction of the base class. When the base class
-  // destroys, the sub-pool has been destroyed, but the elements in base class
-  // are still trying to destroy the sub-pool of the sub-pool. Call this
-  // function before destroying the process sub-pool.
-  void ShutDown();
-
   // Called before creating the url fetchers.
   virtual void FetcherSetupHooks();
 
@@ -240,21 +247,10 @@ class RewriteDriverFactory {
   // Registers the directory as having been created by us.
   void AddCreatedDirectory(const GoogleString& dir);
 
-  bool http_cache_created() const { return http_cache_.get() != NULL; }
-  bool resource_manager_created() const {
-    return resource_manager_.get() != NULL;
-  }
-
  private:
+  ResourceManager* CreateResourceManagerLockHeld();
   void SetupSlurpDirectories();
   void Init();  // helper-method for constructors.
-
-  // In a few refactors, we will allow creating multiple managed resource
-  // managers per factory.  For now, this returns an unmanaged ResourceManager,
-  // and is used as a helper by ComputeResourceManager.  This is not
-  // currently thread-safe; it should only be called by ComputeResourceManager
-  // for now.
-  ResourceManager* CreateResourceManager();
 
   scoped_ptr<MessageHandler> html_parse_message_handler_;
   scoped_ptr<MessageHandler> message_handler_;
@@ -275,7 +271,8 @@ class RewriteDriverFactory {
   bool async_rewrites_;
 
   // protected by resource_manager_mutex_;
-  scoped_ptr<ResourceManager> resource_manager_;
+  typedef std::set<ResourceManager*> ResourceManagerSet;
+  ResourceManagerSet resource_managers_;
   scoped_ptr<AbstractMutex> resource_manager_mutex_;
 
   // Prior to computing the resource manager, which requires some options

@@ -46,7 +46,6 @@
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -177,8 +176,18 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory,
 }
 
 ResourceManager::~ResourceManager() {
-  // stop job traffic before deleting any rewrite drivers.
-  ShutDownWorkers();
+  {
+    ScopedMutex lock(rewrite_drivers_mutex_.get());
+
+    // Actually release anything that got deferred above.
+    trying_to_cleanup_rewrite_drivers_ = false;
+    for (RewriteDriverSet::iterator i =
+             deferred_release_rewrite_drivers_.begin();
+         i != deferred_release_rewrite_drivers_.end(); ++i) {
+      ReleaseRewriteDriverImpl(*i);
+    }
+    deferred_release_rewrite_drivers_.clear();
+  }
 
   // We scan for "leaked_rewrite_drivers" in apache/install/tests.mk.
   DCHECK(active_rewrite_drivers_.empty()) << "leaked_rewrite_drivers";
@@ -632,7 +641,7 @@ void ResourceManager::ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver) {
   }
 }
 
-void ResourceManager::ShutDownWorkers() {
+void ResourceManager::ShutDownDrivers() {
   // Try to get any outstanding rewrites to complete, one-by-one.
 
   {
@@ -660,25 +669,9 @@ void ResourceManager::ShutDownWorkers() {
     // ResourceManagerTest.ShutDownAssumptions() exists to cover this scenario.
     RewriteDriver* active = *i;
     active->BoundedWaitForCompletion(Timer::kSecondMs);
-    active->Cleanup();
+    active->Cleanup();  // Note: only cleans up if the rewrites are complete.
+    // TODO(jmarantz): rename RewriteDriver::Cleanup to CleanupIfDone.
   }
-
-  // Shut down the worker threads first, to quiesce the system while
-  // leaving the QueuedWorkerPool & QueuedWorkerPool::Sequence objects
-  // live.  The QueuedWorkerPools will be deleted when the ResourceManager
-  // is destructed.
-  rewrite_workers_->ShutDown();
-  html_workers_->ShutDown();
-
-  ScopedMutex lock(rewrite_drivers_mutex_.get());
-
-  // Actually release anything that got deferred above.
-  trying_to_cleanup_rewrite_drivers_ = false;
-  for (RewriteDriverSet::iterator i = deferred_release_rewrite_drivers_.begin();
-       i != deferred_release_rewrite_drivers_.end(); ++i) {
-    ReleaseRewriteDriverImpl(*i);
-  }
-  deferred_release_rewrite_drivers_.clear();
 }
 
 }  // namespace net_instaweb

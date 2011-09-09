@@ -105,8 +105,7 @@ void ResourceManagerTestBase::TearDown() {
   rewrite_driver_->Clear();
   delete rewrite_driver_;
   other_rewrite_driver_->WaitForCompletion();
-  other_resource_manager_->ShutDownWorkers();
-  other_rewrite_driver_->WaitForCompletion();
+  other_factory_.ShutDown();
   other_rewrite_driver_->Clear();
   delete other_rewrite_driver_;
   HtmlParseTestBaseNoAlloc::TearDown();
@@ -240,7 +239,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
 
   // Make sure to shut the new worker down before we hit ~RewriteDriver for
   // new_rewrite_driver.
-  new_resource_manager->ShutDownWorkers();
+  new_factory.ShutDown();
   delete new_rewrite_driver;
 }
 

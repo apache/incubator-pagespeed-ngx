@@ -191,7 +191,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   // Release all the resources. It also calls the base class ShutDown to release
   // the base class resources.
-  void ShutDown();
+  virtual void ShutDown();
 
  private:
   apr_pool_t* pool_;

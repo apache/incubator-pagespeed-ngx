@@ -310,11 +310,16 @@ class ResourceManager {
     return metadata_cache_readonly_.value();
   }
 
-  // Waits for all currently running jobs to complete, and stops accepting
-  // new jobs in the workers.  This is meant for use when shutting down
-  // processing, so that jobs running in background do not access objects
-  // that are about to be deleted.
-  void ShutDownWorkers();
+  // Waits a bounded amount of time for all currently running jobs to
+  // complete.  This is meant for use when shutting down processing,
+  // so that jobs running in background do not access objects that are
+  // about to be deleted.  If there are long-running outstanding tasks,
+  // the drivers may stay running past this call.
+  //
+  // TODO(jmarantz): Change New*RewriteDriver() calls to return NULL
+  // when run after shutdown.  This requires changing call-sites to
+  // null-check their drivers and gracefully fail.
+  void ShutDownDrivers();
 
   // Take any headers that are not caching-related, and not otherwise
   // filled in by SetDefaultLongCacheHeaders or SetContentType, but

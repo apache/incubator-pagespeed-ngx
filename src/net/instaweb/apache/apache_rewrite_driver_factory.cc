@@ -379,20 +379,7 @@ void ApacheRewriteDriverFactory::DumpRefererStatistics(Writer* writer) {
 }
 
 void ApacheRewriteDriverFactory::ShutDown() {
-  // Make sure we stop cache writes before turning off the fetcher, so any
-  // requests it cancels will not result in RememberFetchFailedOrNotCacheable
-  // entries getting written out to disk cache.
-  //
-  // Note that we have to be careful not to try creating it now, since it
-  // may involve access to worker initialization.
-  if (http_cache_created()) {
-    http_cache()->SetReadOnly();
-  }
-
-  // Similarly stop metadata cache writes.
-  if (resource_manager_created()) {
-    ComputeResourceManager()->set_metadata_cache_readonly();
-  }
+  StopCacheWrites();
 
   // Next, we shutdown the fetcher before killing the workers in
   // RewriteDriverFactory::ShutDown; this is so any rewrite jobs in progress

@@ -38,6 +38,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -72,9 +73,28 @@ void RewriteDriverFactory::Init() {
 
 RewriteDriverFactory::~RewriteDriverFactory() {
   ShutDown();
+
+  {
+    ScopedMutex lock(resource_manager_mutex_.get());
+    STLDeleteElements(&resource_managers_);
+  }
+
   for (int c = 0; c < NumWorkerPools; ++c) {
     delete worker_pools_[c];
+    worker_pools_[c] = NULL;
   }
+
+  // Avoid double-destructing the url fetchers if they were not overridden
+  // programmatically
+  if ((url_async_fetcher_ != NULL) &&
+      (url_async_fetcher_ != base_url_async_fetcher_.get())) {
+    delete url_async_fetcher_;
+  }
+  url_async_fetcher_ = NULL;
+  if ((url_fetcher_ != NULL) && (url_fetcher_ != base_url_fetcher_.get())) {
+    delete url_fetcher_;
+  }
+  url_fetcher_ = NULL;
 }
 
 void RewriteDriverFactory::set_html_parse_message_handler(
@@ -138,9 +158,7 @@ void RewriteDriverFactory::set_base_url_async_fetcher(
 
 void RewriteDriverFactory::set_hasher(Hasher* hasher) {
   hasher_.reset(hasher);
-  if (resource_manager_.get() != NULL) {
-    resource_manager_->set_hasher(hasher);
-  }
+  DCHECK(resource_managers_.empty());
 }
 
 void RewriteDriverFactory::set_timer(Timer* timer) {
@@ -245,14 +263,26 @@ HTTPCache* RewriteDriverFactory::http_cache() {
 
 void RewriteDriverFactory::SetAsyncRewrites(bool x) {
   async_rewrites_ = x;
+  DCHECK(resource_managers_.empty());
+}
+
+ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
   ScopedMutex lock(resource_manager_mutex_.get());
-  if (resource_manager_.get() != NULL) {
-    resource_manager_->set_async_rewrites(async_rewrites_);
+  if (resource_managers_.empty()) {
+    return CreateResourceManagerLockHeld();
   }
+  return *resource_managers_.begin();
 }
 
 ResourceManager* RewriteDriverFactory::CreateResourceManager() {
-  CHECK(http_cache_ != NULL) << "http_cache() must be called first";
+  ScopedMutex lock(resource_manager_mutex_.get());
+  return CreateResourceManagerLockHeld();
+}
+
+ResourceManager* RewriteDriverFactory::CreateResourceManagerLockHeld() {
+  // Ensures that we lazily compute http_cache_backend_ and http_cache_.
+  http_cache();
+
   CHECK(!filename_prefix_.empty())
       << "Must specify --filename_prefix or call "
       << "RewriteDriverFactory::set_filename_prefix.";
@@ -272,24 +302,18 @@ ResourceManager* RewriteDriverFactory::CreateResourceManager() {
   resource_manager->set_message_handler(message_handler());
   resource_manager->set_store_outputs_in_file_system(
       ShouldWriteResourcesToFileSystem());
-  return resource_manager;
-}
+  resource_manager->set_async_rewrites(async_rewrites_);
+  resource_managers_.insert(resource_manager);
 
-ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
-  ScopedMutex lock(resource_manager_mutex_.get());
-  if (resource_manager_ == NULL) {
-    // Ensures that we lazily compute http_cache_backend_ and http_cache_.
-    http_cache();
-
-    resource_manager_.reset(CreateResourceManager());
-    if (temp_options_.get() != NULL) {
-      resource_manager_->options()->CopyFrom(*temp_options_.get());
-      temp_options_.reset(NULL);
-    }
-    ResourceManagerCreatedHook();
+  // TODO(jmarantz): Refactor this code into something more functional
+  // in the presence of multiple resource managers.
+  if (temp_options_.get() != NULL) {
+    resource_manager->options()->CopyFrom(*temp_options_.get());
+    temp_options_.reset(NULL);
   }
-  resource_manager_->set_async_rewrites(async_rewrites_);
-  return resource_manager_.get();
+  ResourceManagerCreatedHook();
+
+  return resource_manager;
 }
 
 RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
@@ -374,30 +398,48 @@ StringPiece RewriteDriverFactory::LockFilePrefix() {
   return filename_prefix_;
 }
 
+void RewriteDriverFactory::StopCacheWrites() {
+  ScopedMutex lock(resource_manager_mutex_.get());
+
+  // Make sure we stop cache writes before turning off the fetcher, so any
+  // requests it cancels will not result in RememberFetchFailedOrNotCacheable
+  // entries getting written out to disk cache.
+  //
+  // Note that we have to be careful not to try creating it now, since it
+  // may involve access to worker initialization.
+  HTTPCache* cache = http_cache_.get();
+  if (cache != NULL) {
+    cache->SetReadOnly();
+  }
+
+  // Similarly stop metadata cache writes.
+  for (ResourceManagerSet::iterator p = resource_managers_.begin();
+       p != resource_managers_.end(); ++p) {
+    ResourceManager* resource_manager = *p;
+    resource_manager->set_metadata_cache_readonly();
+  }
+}
+
 void RewriteDriverFactory::ShutDown() {
-  // Stop the worker thread first, as it may have outstanding requests
-  // that touch various things we're about to blow up.
-  if (resource_manager_.get() != NULL) {
-    resource_manager_->ShutDownWorkers();
+  StopCacheWrites();  // Maybe already stopped, but no harm stopping them twice.
+
+  // Stop active RewriteDrivers for each manager first.
+  for (ResourceManagerSet::iterator p = resource_managers_.begin();
+       p != resource_managers_.end(); ++p) {
+    ResourceManager* resource_manager = *p;
+    resource_manager->ShutDownDrivers();
   }
 
-  // Avoid double-destructing the url fetchers if they were not overridden
-  // programmatically
-  if ((url_async_fetcher_ != NULL) &&
-      (url_async_fetcher_ != base_url_async_fetcher_.get())) {
-    delete url_async_fetcher_;
+  // Shut down the worker threads first, to quiesce the system while
+  // leaving the QueuedWorkerPool & QueuedWorkerPool::Sequence objects
+  // live.  The QueuedWorkerPools will be deleted when the ResourceManager
+  // is destructed.
+  for (int i = 0, n = worker_pools_.size(); i < n; ++i) {
+    QueuedWorkerPool* worker_pool = worker_pools_[i];
+    if (worker_pool != NULL) {
+      worker_pool->ShutDown();
+    }
   }
-  url_async_fetcher_ = NULL;
-  if ((url_fetcher_ != NULL) && (url_fetcher_ != base_url_fetcher_.get())) {
-    delete url_fetcher_;
-  }
-  url_fetcher_ = NULL;
-
-  resource_manager_.reset(NULL);
-
-  // Do not reset the timer, file_system, hasher, encoder,
-  // html_parse_message_handler, or cache.  Those are deleted when
-  // the factory is deleted.
 }
 
 // Return a writable RewriteOptions.  If the ResourceManager has
@@ -408,14 +450,14 @@ void RewriteDriverFactory::ShutDown() {
 // options to the ResourceManager and get rid of them.
 RewriteOptions* RewriteDriverFactory::options() {
   ScopedMutex lock(resource_manager_mutex_.get());
-  if (resource_manager_.get() == NULL) {
+  if (resource_managers_.empty()) {
     if (temp_options_.get() == NULL) {
       temp_options_.reset(new RewriteOptions);
     }
     return temp_options_.get();
   }
   DCHECK(temp_options_.get() == NULL);
-  return resource_manager_->options();
+  return (*resource_managers_.begin())->options();
 }
 
 void RewriteDriverFactory::AddCreatedDirectory(const GoogleString& dir) {
