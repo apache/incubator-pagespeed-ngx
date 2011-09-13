@@ -41,6 +41,7 @@
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
@@ -411,11 +412,6 @@ class RewriteDriver : public HtmlParse {
   // We expect to this method to be called on the Rewrite thread.
   void DeleteRewriteContext(RewriteContext* rewrite_context);
 
-  // Wait the specified number of milliseconds for in-progress renders
-  // to complete.  This is intended for testing in simulated time, where
-  // the Rewrites don't complete in time for the deadline.
-  void BlockingTimedWait(int wait_time_ms);
-
   // Explicitly sets the number of milliseconds to wait for Rewrites
   // to complete while HTML parsing, overriding a default value which
   // is dependent on whether the system is compiled for debug or
@@ -470,11 +466,18 @@ class RewriteDriver : public HtmlParse {
   // deferred until the callback is called.
   void FlushAsync(Function* done);
 
-  // Queues up a task to run on the Rewrite thread.
+  // Queues up a task to run on the (high-priority) rewrite thread.
   void AddRewriteTask(Function* task);
 
-  QueuedWorkerPool::Sequence* rewrite_worker() { return rewrite_worker_; }
+  // Queues up a task to run on the low-priority rewrite thread.
+  // Such tasks are expected to be safely cancelable.
+  void AddLowPriorityRewriteTask(Function* task);
+
   QueuedWorkerPool::Sequence* html_worker() { return html_worker_; }
+  QueuedWorkerPool::Sequence* rewrite_worker() { return rewrite_worker_; }
+  QueuedWorkerPool::Sequence* low_priority_rewrite_worker() {
+    return low_priority_rewrite_worker_;
+  }
 
   void set_scheduler(Scheduler* scheduler) { scheduler_.reset(scheduler); }
 
@@ -691,8 +694,9 @@ class RewriteDriver : public HtmlParse {
   // chain owned by HtmlParse.
   FilterVector filters_to_delete_;
 
-  QueuedWorkerPool::Sequence* rewrite_worker_;
   QueuedWorkerPool::Sequence* html_worker_;
+  QueuedWorkerPool::Sequence* rewrite_worker_;
+  QueuedWorkerPool::Sequence* low_priority_rewrite_worker_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

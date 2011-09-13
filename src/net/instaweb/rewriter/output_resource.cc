@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -232,31 +233,7 @@ GoogleString OutputResource::name_key() const {
 // TODO(jmarantz): change the name to reflect the fact that it is not
 // just an accessor now.
 GoogleString OutputResource::url() const {
-  GoogleString shard, shard_path;
-  GoogleString encoded(full_name_.Encode());
-  if (rewrite_options_ != NULL) {
-    StringPiece hash = full_name_.hash();
-    DCHECK(!hash.empty());
-    uint32 int_hash = HashString<CasePreserve, uint32>(
-        hash.data(), hash.size());
-    const DomainLawyer* lawyer = rewrite_options_->domain_lawyer();
-    GoogleUrl gurl(resolved_base_);
-    GoogleString domain = StrCat(gurl.Origin(), "/");
-    if (lawyer->ShardDomain(domain, int_hash, &shard)) {
-      // The Path has a leading "/", and shard has a trailing "/".  So
-      // we need to perform some StringPiece substring arithmetic to
-      // make them all fit together.  Note that we could have used
-      // string's substr method but that would have made another temp
-      // copy, which seems like a waste.
-      shard_path = StrCat(shard, gurl.PathAndLeaf().substr(1));
-    }
-  }
-  if (shard_path.empty()) {
-    encoded = StrCat(resolved_base_, encoded);
-  } else {
-    encoded = StrCat(shard_path, encoded);
-  }
-  return encoded;
+  return resource_manager_->url_namer()->Encode(rewrite_options_, *this);
 }
 
 void OutputResource::SetHash(const StringPiece& hash) {

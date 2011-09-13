@@ -146,6 +146,7 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory,
       rewrite_stats_(rewrite_stats),
       file_system_(NULL),
       filename_encoder_(NULL),
+      url_namer_(NULL),
       url_async_fetcher_(NULL),
       hasher_(NULL),
       lock_hasher_(20),
@@ -162,9 +163,12 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory,
       trying_to_cleanup_rewrite_drivers_(false),
       factory_(factory),
       rewrite_drivers_mutex_(thread_system->NewMutex()),
-      html_workers_(factory->WorkerPool(RewriteDriverFactory::HtmlWorkers)),
+      html_workers_(factory->WorkerPool(RewriteDriverFactory::kHtmlWorkers)),
       rewrite_workers_(
-          factory->WorkerPool(RewriteDriverFactory::RewriteWorkers)) {
+          factory->WorkerPool(RewriteDriverFactory::kRewriteWorkers)),
+      low_priority_rewrite_workers_(
+          factory->WorkerPool(
+              RewriteDriverFactory::kLowPriorityRewriteWorkers)) {
   decoding_driver_.reset(NewUnmanagedRewriteDriver());
 
   // Make sure the excluded-attributes are in abc order so binary_search works.
@@ -506,7 +510,7 @@ OutputResourcePtr ResourceManager::CreateOutputResourceWithPath(
     // Determine whether this output resource is still valid by looking
     // up by hash in the http cache.  Note that this cache entry will
     // expire when any of the origin resources expire.
-      if ((kind != kOutlinedResource) && !use_async_flow) {
+    if ((kind != kOutlinedResource) && !use_async_flow) {
       GoogleString name_key = StrCat(
           ResourceManager::kCacheKeyResourceNamePrefix, resource->name_key());
       resource->FetchCachedResult(name_key, message_handler_);
@@ -643,7 +647,6 @@ void ResourceManager::ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver) {
 
 void ResourceManager::ShutDownDrivers() {
   // Try to get any outstanding rewrites to complete, one-by-one.
-
   {
     ScopedMutex lock(rewrite_drivers_mutex_.get());
     // Prevent any rewrite completions from directly deleting drivers or

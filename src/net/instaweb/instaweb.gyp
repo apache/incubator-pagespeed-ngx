@@ -391,6 +391,7 @@
         'rewriter/output_resource.cc',
         'rewriter/resource_namer.cc',
         'rewriter/resource_manager.cc',
+        'rewriter/url_namer.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

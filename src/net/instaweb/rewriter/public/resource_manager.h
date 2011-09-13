@@ -60,6 +60,7 @@ class Statistics;
 class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
+class UrlNamer;
 class UrlSegmentEncoder;
 
 typedef RefCountedPtr<OutputResource> OutputResourcePtr;
@@ -149,6 +150,8 @@ class ResourceManager {
   void set_file_system(FileSystem* fs ) { file_system_ = fs; }
   FilenameEncoder* filename_encoder() const { return filename_encoder_; }
   void set_filename_encoder(FilenameEncoder* x) { filename_encoder_ = x; }
+  UrlNamer* url_namer() const { return url_namer_; }
+  void set_url_namer(UrlNamer* n) { url_namer_ = n; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
   Timer* timer() const { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
@@ -357,6 +360,12 @@ class ResourceManager {
   // Pool of worker-threads that can be used to handle resource rewriting.
   QueuedWorkerPool* rewrite_workers() { return rewrite_workers_; }
 
+  // Pool of worker-threads that can be used to handle low-priority/high CPU
+  // portions of resource rewriting.
+  QueuedWorkerPool* low_priority_rewrite_workers() {
+    return low_priority_rewrite_workers_;
+  }
+
  private:
   friend class ResourceManagerTest;
   typedef std::set<RewriteDriver*> RewriteDriverSet;
@@ -370,6 +379,7 @@ class ResourceManager {
   int resource_id_;  // Sequential ids for temporary Resource filenames.
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
+  UrlNamer* url_namer_;
   UrlAsyncFetcher* url_async_fetcher_;
   Hasher* hasher_;
 
@@ -440,6 +450,7 @@ class ResourceManager {
 
   QueuedWorkerPool* html_workers_;  // Owned by the factory
   QueuedWorkerPool* rewrite_workers_;  // Owned by the factory
+  QueuedWorkerPool* low_priority_rewrite_workers_;  // Owned by the factory
 
   AtomicBool metadata_cache_readonly_;
 

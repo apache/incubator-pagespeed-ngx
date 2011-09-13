@@ -49,15 +49,17 @@ class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
+class UrlNamer;
 
 // A base RewriteDriverFactory.
 class RewriteDriverFactory {
  public:
   enum WorkerPoolName {
-    HtmlWorkers,
-    RewriteWorkers,
+    kHtmlWorkers,
+    kRewriteWorkers,
+    kLowPriorityRewriteWorkers,
     // Make sure to insert new values above this line.
-    NumWorkerPools
+    kNumWorkerPools
   };
 
   // Takes ownership of thread_system.
@@ -77,6 +79,7 @@ class RewriteDriverFactory {
   void set_file_system(FileSystem* file_system);
   void set_hasher(Hasher* hasher);
   void set_filename_encoder(FilenameEncoder* filename_encoder);
+  void set_url_namer(UrlNamer* url_namer);
   void set_timer(Timer* timer);
 
   // Set up a directory for slurped files for HTML and resources.  If
@@ -129,6 +132,7 @@ class RewriteDriverFactory {
   // they need one.
   Hasher* hasher();
   FilenameEncoder* filename_encoder() { return filename_encoder_.get(); }
+  UrlNamer* url_namer();
 
   // These accessors are *not* thread-safe.  They must be called once prior
   // to forking threads, e.g. via ComputeUrlFetcher().
@@ -220,6 +224,10 @@ class RewriteDriverFactory {
   // will use the file system.
   virtual NamedLockManager* DefaultLockManager();
 
+  // They may also supply a custom Url namer. The default implementation
+  // performs sharding and appends '.pagespeed.<filter>.<hash>.<extension>'.
+  virtual UrlNamer* DefaultUrlNamer();
+
   // Subclasses can override this to create an appropriately-sized thread
   // pool for their environment. The default implementation will always
   // make one with a single thread.
@@ -261,6 +269,7 @@ class RewriteDriverFactory {
   scoped_ptr<UrlAsyncFetcher> base_url_async_fetcher_;
   scoped_ptr<Hasher> hasher_;
   scoped_ptr<FilenameEncoder> filename_encoder_;
+  scoped_ptr<UrlNamer> url_namer_;
   scoped_ptr<Timer> timer_;
 
   GoogleString filename_prefix_;

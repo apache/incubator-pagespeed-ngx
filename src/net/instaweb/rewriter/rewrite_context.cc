@@ -107,9 +107,8 @@ class RewriteContext::ResourceCallbackUtils {
   void Done(bool success) {
     RewriteDriver* rewrite_driver = rewrite_context_->Driver();
     rewrite_driver->AddRewriteTask(
-        new MemberFunction3<RewriteContext, bool, ResourcePtr, int>(
-            &RewriteContext::ResourceFetchDone, rewrite_context_,
-            success, resource_, slot_index_));
+        MakeFunction(rewrite_context_, &RewriteContext::ResourceFetchDone,
+                     success, resource_, slot_index_));
   }
 
  private:
@@ -271,6 +270,31 @@ class RewriteContext::FetchContext {
   OutputResourcePtr output_resource_;
   MessageHandler* handler_;
   bool success_;
+};
+
+// Helper for running filter's Rewrite method in low-priority rewrite thread,
+// which deals with cancellation of rewrites due to load shedding or shutdown by
+// introducing a kTooBusy response if the job gets dumped.
+class RewriteContext::InvokeRewriteFunction : public Function {
+ public:
+  InvokeRewriteFunction(RewriteContext* context, int partition)
+      : context_(context), partition_(partition) {}
+
+  virtual ~InvokeRewriteFunction() {}
+
+  virtual void Run() {
+    context_->Rewrite(partition_,
+                      context_->partitions_->mutable_partition(partition_),
+                      context_->outputs_[partition_]);
+  }
+
+  virtual void Cancel() {
+    context_->RewriteDone(RewriteSingleResourceFilter::kTooBusy, partition_);
+  }
+
+ private:
+  RewriteContext* context_;
+  int partition_;
 };
 
 RewriteContext::RewriteContext(RewriteDriver* driver,
@@ -767,9 +791,22 @@ void RewriteContext::StartRewrite() {
     // OutputPartitions, which contain not just the partition table
     // but the content-hashes for the rewritten content.  So we must
     // rewrite before calling WritePartition.
+
+    // Note that we run the actual rewrites in the "low priority" thread except
+    // if we're serving a fetch, since we do not want to fail it due to
+    // load shedding.
+    bool is_fetch = (fetch_.get() != NULL) ||
+                    ((parent_ != NULL) && (parent_->fetch_.get() != NULL));
+
     CHECK_EQ(outstanding_rewrites_, static_cast<int>(outputs_.size()));
     for (int i = 0, n = outstanding_rewrites_; i < n; ++i) {
-      Rewrite(i, partitions_->mutable_partition(i), outputs_[i]);
+      InvokeRewriteFunction* invoke_rewrite =
+          new InvokeRewriteFunction(this, i);
+      if (is_fetch) {
+        Driver()->AddRewriteTask(invoke_rewrite);
+      } else {
+        Driver()->AddLowPriorityRewriteTask(invoke_rewrite);
+      }
     }
   }
 }
@@ -825,6 +862,15 @@ void RewriteContext::AddNestedContext(RewriteContext* context) {
 }
 
 void RewriteContext::StartNestedTasks() {
+  // StartNestedTasks() can be called from the filter, potentially from
+  // a low-priority thread, but we want to run Start() in high-priority
+  // thread as some of the work it does needs to be serialized with respect
+  // to other tasks in that thread.
+  Driver()->AddRewriteTask(
+      MakeFunction(this, &RewriteContext::StartNestedTasksImpl));
+}
+
+void RewriteContext::StartNestedTasksImpl() {
   for (int i = 0, n = nested_.size(); i < n; ++i) {
     if (!nested_[i]->chained()) {
       nested_[i]->Start();
@@ -868,6 +914,16 @@ void RewriteContext::NestedRewriteDone(const RewriteContext* context) {
 }
 
 void RewriteContext::RewriteDone(
+    RewriteSingleResourceFilter::RewriteResult result,
+    int partition_index) {
+  // RewriteDone may be called from a low-priority rewrites thread.
+  // Make sure the rest of the work happens in the high priority rewrite thread.
+  Driver()->AddRewriteTask(
+      MakeFunction(this, &RewriteContext::RewriteDoneImpl,
+                   result, partition_index));
+}
+
+void RewriteContext::RewriteDoneImpl(
     RewriteSingleResourceFilter::RewriteResult result,
     int partition_index) {
   if (result == RewriteSingleResourceFilter::kTooBusy) {

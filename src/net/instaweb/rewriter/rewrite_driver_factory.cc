@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
@@ -68,7 +69,7 @@ void RewriteDriverFactory::Init() {
   http_cache_backend_ = NULL;
   SetStatistics(&null_statistics_);
   resource_manager_mutex_.reset(thread_system_->NewMutex());
-  worker_pools_.assign(NumWorkerPools, NULL);
+  worker_pools_.assign(kNumWorkerPools, NULL);
 }
 
 RewriteDriverFactory::~RewriteDriverFactory() {
@@ -79,7 +80,7 @@ RewriteDriverFactory::~RewriteDriverFactory() {
     STLDeleteElements(&resource_managers_);
   }
 
-  for (int c = 0; c < NumWorkerPools; ++c) {
+  for (int c = 0; c < kNumWorkerPools; ++c) {
     delete worker_pools_[c];
     worker_pools_[c] = NULL;
   }
@@ -169,6 +170,10 @@ void RewriteDriverFactory::set_filename_encoder(FilenameEncoder* e) {
   filename_encoder_.reset(e);
 }
 
+void RewriteDriverFactory::set_url_namer(UrlNamer* url_namer) {
+  url_namer_.reset(url_namer);
+}
+
 MessageHandler* RewriteDriverFactory::html_parse_message_handler() {
   if (html_parse_message_handler_ == NULL) {
     html_parse_message_handler_.reset(DefaultHtmlParseMessageHandler());
@@ -197,6 +202,13 @@ Timer* RewriteDriverFactory::timer() {
   return timer_.get();
 }
 
+UrlNamer* RewriteDriverFactory::url_namer() {
+  if (url_namer_ == NULL) {
+    url_namer_.reset(DefaultUrlNamer());
+  }
+  return url_namer_.get();
+}
+
 Hasher* RewriteDriverFactory::hasher() {
   if (hasher_ == NULL) {
     hasher_.reset(NewHasher());
@@ -207,6 +219,10 @@ Hasher* RewriteDriverFactory::hasher() {
 NamedLockManager* RewriteDriverFactory::DefaultLockManager() {
   return new FileSystemLockManager(file_system(), LockFilePrefix(),
                                    timer(), message_handler());
+}
+
+UrlNamer* RewriteDriverFactory::DefaultUrlNamer() {
+  return new UrlNamer();
 }
 
 QueuedWorkerPool* RewriteDriverFactory::CreateWorkerPool(WorkerPoolName pool) {
@@ -291,6 +307,7 @@ ResourceManager* RewriteDriverFactory::CreateResourceManagerLockHeld() {
                                                           statistics(),
                                                           rewrite_stats(),
                                                           http_cache());
+  resource_manager->set_url_namer(url_namer());
   resource_manager->set_filename_encoder(filename_encoder());
   resource_manager->set_file_system(file_system());
   resource_manager->set_filename_prefix(filename_prefix_);
@@ -423,14 +440,21 @@ void RewriteDriverFactory::StopCacheWrites() {
 void RewriteDriverFactory::ShutDown() {
   StopCacheWrites();  // Maybe already stopped, but no harm stopping them twice.
 
-  // Stop active RewriteDrivers for each manager first.
+  // We first shutdown the low-priority rewrite threads, as they're meant to
+  // be robust against cancellation, and it will make the jobs wrap up
+  // much quicker.
+  if (worker_pools_[kLowPriorityRewriteWorkers] != NULL) {
+    worker_pools_[kLowPriorityRewriteWorkers]->ShutDown();
+  }
+
+  // Now get active RewriteDrivers for each manager to wrap up.
   for (ResourceManagerSet::iterator p = resource_managers_.begin();
        p != resource_managers_.end(); ++p) {
     ResourceManager* resource_manager = *p;
     resource_manager->ShutDownDrivers();
   }
 
-  // Shut down the worker threads first, to quiesce the system while
+  // Shut down the remaining worker threads, to quiesce the system while
   // leaving the QueuedWorkerPool & QueuedWorkerPool::Sequence objects
   // live.  The QueuedWorkerPools will be deleted when the ResourceManager
   // is destructed.

@@ -69,7 +69,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class Scheduler;
 
 const char ResourceManagerTestBase::kTestData[] =
     "/net/instaweb/rewriter/testdata/";
@@ -80,6 +79,7 @@ const char ResourceManagerTestBase::kXhtmlDtd[] =
 ResourceManagerTestBase::ResourceManagerTestBase()
     : factory_(GTestTempDir(), &mock_url_fetcher_),
       other_factory_(GTestTempDir(), &mock_url_fetcher_),
+      mock_scheduler_(NULL),
       options_(new RewriteOptions),
       other_options_(new RewriteOptions) {
   RewriteDriverFactory::Initialize(&statistics_);
@@ -87,7 +87,8 @@ ResourceManagerTestBase::ResourceManagerTestBase()
   other_factory_.SetStatistics(&statistics_);
   resource_manager_ = factory_.ComputeResourceManager();
   other_resource_manager_ = other_factory_.ComputeResourceManager();
-  other_rewrite_driver_ = MakeDriver(&other_factory_, other_options_);
+  MockScheduler* ignore;
+  other_rewrite_driver_ = MakeDriver(&other_factory_, other_options_, &ignore);
 }
 
 ResourceManagerTestBase::~ResourceManagerTestBase() {
@@ -97,11 +98,12 @@ ResourceManagerTestBase::~ResourceManagerTestBase() {
 // add options prior to calling ResourceManagerTestBase::SetUp().
 void ResourceManagerTestBase::SetUp() {
   HtmlParseTestBaseNoAlloc::SetUp();
-  rewrite_driver_ = MakeDriver(&factory_, options_);
+  rewrite_driver_ = MakeDriver(&factory_, options_, &mock_scheduler_);
 }
 
 void ResourceManagerTestBase::TearDown() {
   rewrite_driver_->WaitForCompletion();
+  factory_.ShutDown();
   rewrite_driver_->Clear();
   delete rewrite_driver_;
   other_rewrite_driver_->WaitForCompletion();
@@ -198,7 +200,9 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   new_resource_manager->set_hasher(resource_manager_->hasher());
   RewriteOptions* new_options = new RewriteOptions;
   new_options->CopyFrom(*options_);
-  RewriteDriver* new_rewrite_driver = MakeDriver(&new_factory, new_options);
+  MockScheduler* ignore;
+  RewriteDriver* new_rewrite_driver =
+      MakeDriver(&new_factory, new_options, &ignore);
   new_factory.SetupWaitFetcher();
   new_rewrite_driver->SetAsynchronousRewrites(
       rewrite_driver_->asynchronous_rewrites());
@@ -572,7 +576,8 @@ void ResourceManagerTestBase::CallFetcherCallbacks() {
 }
 
 RewriteDriver* ResourceManagerTestBase::MakeDriver(
-    TestRewriteDriverFactory* factory, RewriteOptions* options) {
+    TestRewriteDriverFactory* factory, RewriteOptions* options,
+    MockScheduler** scheduler_out) {
   ResourceManager* rm = factory->ComputeResourceManager();
 
   // We use unmanaged drivers rather than NewCustomDriver here so
@@ -584,10 +589,12 @@ RewriteDriver* ResourceManagerTestBase::MakeDriver(
   RewriteDriver* rd = rm->NewUnmanagedRewriteDriver();
   rd->set_custom_options(options);
   QueuedWorkerPool::SequenceVector threads;
+  threads.push_back(rd->low_priority_rewrite_worker());
   threads.push_back(rd->rewrite_worker());
   threads.push_back(rd->html_worker());
-  Scheduler* scheduler = new MockScheduler(
+  MockScheduler* scheduler = new MockScheduler(
       rm->thread_system(), threads,  factory->mock_timer());
+  *scheduler_out = scheduler;
   // As we are using mock time, we need to set a consistent deadline here,
   // as otherwise when running under Valgrind some tests will finish
   // with different HTML headers than expected.

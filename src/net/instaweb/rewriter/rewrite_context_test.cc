@@ -56,6 +56,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mem_file_system.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -72,7 +73,12 @@ const char kUpperCaseFilterId[] = "uc";
 const char kNestedFilterId[] = "nf";
 const char kCombiningFilterId[] = "cr";
 const int64 kRewriteDeadlineMs = 20;
-const int64 kRewriteDelayMs = 40;
+
+// This value needs to be bigger than rewrite driver timeout;
+// and it's useful while debugging for it to not be the driver
+// timeout's multiple (so one can easily tell its occurrences
+// from repetitions of the driver's timeout).
+const int64 kRewriteDelayMs = 47;
 
 // For use with NestedFilter constructor
 const bool kExpectNestedRewritesSucceed = true;
@@ -387,10 +393,10 @@ class NestedFilter : public RewriteFilter {
 class CombiningFilter : public RewriteFilter {
  public:
   CombiningFilter(RewriteDriver* driver,
-                  MockTimer* timer,
+                  MockScheduler* scheduler,
                   int64 rewrite_delay_ms)
     : RewriteFilter(driver, kCombiningFilterId),
-      timer_(timer),
+      scheduler_(scheduler),
       rewrite_delay_ms_(rewrite_delay_ms) {
     ClearStats();
   }
@@ -412,11 +418,12 @@ class CombiningFilter : public RewriteFilter {
 
   class Context : public RewriteContext {
    public:
-    Context(RewriteDriver* driver, CombiningFilter* filter, MockTimer* timer)
+    Context(RewriteDriver* driver, CombiningFilter* filter,
+            MockScheduler* scheduler)
         : RewriteContext(driver, NULL, NULL),
           combiner_(driver, filter),
-          timer_(timer),
-          time_at_start_of_rewrite_us_(timer->NowUs()),
+          scheduler_(scheduler),
+          time_at_start_of_rewrite_us_(scheduler_->timer()->NowUs()),
           filter_(filter) {
     }
 
@@ -462,7 +469,7 @@ class CombiningFilter : public RewriteFilter {
                                  const OutputResourcePtr&>(
                 &Context::DoRewrite, this, partition_index,
                 partition, output);
-        timer_->AddAlarm(wakeup_us, closure);
+        scheduler_->AddAlarm(wakeup_us, closure);
       }
     }
 
@@ -507,7 +514,7 @@ class CombiningFilter : public RewriteFilter {
    private:
     Combiner combiner_;
     UrlMultipartEncoder encoder_;
-    MockTimer* timer_;
+    MockScheduler* scheduler_;
     int64 time_at_start_of_rewrite_us_;
     CombiningFilter* filter_;
   };
@@ -520,7 +527,7 @@ class CombiningFilter : public RewriteFilter {
         ResourcePtr resource(CreateInputResource(href->value()));
         if (resource.get() != NULL) {
           if (context_.get() == NULL) {
-            context_.reset(new Context(driver_, this, timer_));
+            context_.reset(new Context(driver_, this, scheduler_));
           }
           context_->AddElement(element, href, resource);
         }
@@ -537,7 +544,7 @@ class CombiningFilter : public RewriteFilter {
   virtual void EndElementImpl(HtmlElement* element) {}
   virtual const char* Name() const { return "Combining"; }
   RewriteContext* MakeRewriteContext() {
-    return new Context(driver_, this, timer_);
+    return new Context(driver_, this, scheduler_);
   }
   virtual bool Fetch(const OutputResourcePtr& resource,
                      Writer* writer,
@@ -560,7 +567,7 @@ class CombiningFilter : public RewriteFilter {
 
   scoped_ptr<Context> context_;
   UrlMultipartEncoder encoder_;
-  MockTimer* timer_;
+  MockScheduler* scheduler_;
   int num_rewrites_;
   int64 rewrite_delay_ms_;
 
@@ -627,7 +634,7 @@ class RewriteContextTest : public ResourceManagerTestBase {
 
   void InitCombiningFilter(int64 rewrite_delay_ms) {
     RewriteDriver* driver = rewrite_driver();
-    combining_filter_ = new CombiningFilter(driver, mock_timer(),
+    combining_filter_ = new CombiningFilter(driver, mock_scheduler(),
                                             rewrite_delay_ms);
     driver->AddRewriteFilter(combining_filter_);
     driver->AddFilters();
@@ -1191,13 +1198,9 @@ TEST_F(RewriteContextTest, CombinationRewriteWithDelay) {
   ClearStats();
 
   // The delay was too large so we were not able to complete the
-  // Rewrite.  Now give it more time so it will complete.  Note that a
-  // delay will automatically be injected by the RewriteDriver, so
-  // this additional delay is more than strictly needed.  We could
-  // also subtract out the simulated delay already added in
-  // rewrite_driver.cc, which is dependent on whether running valgrind
-  // or compiled for debug.
-  rewrite_driver()->BlockingTimedWait(kRewriteDelayMs);  // complete rewrites
+  // Rewrite.  Now give it more time so it will complete.
+
+  rewrite_driver()->BoundedWaitForCompletion(kRewriteDelayMs);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(1, lru_cache()->num_inserts());  // finally we cache the output.

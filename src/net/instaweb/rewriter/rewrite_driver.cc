@@ -142,8 +142,9 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       add_instrumentation_filter_(NULL),
       scan_filter_(this),
       domain_rewriter_(NULL),
+      html_worker_(NULL),
       rewrite_worker_(NULL),
-      html_worker_(NULL) {
+      low_priority_rewrite_worker_(NULL) {
 
   // Set up default values for the amount of time an HTML rewrite will wait for
   // Rewrites to complete, based on whether compiled for debug or running on
@@ -168,6 +169,10 @@ RewriteDriver::~RewriteDriver() {
   }
   if (html_worker_ != NULL) {
     resource_manager_->rewrite_workers()->FreeSequence(html_worker_);
+  }
+  if (low_priority_rewrite_worker_ != NULL) {
+    resource_manager_->low_priority_rewrite_workers()->FreeSequence(
+        low_priority_rewrite_worker_);
   }
   STLDeleteElements(&filters_to_delete_);
   Clear();
@@ -295,11 +300,6 @@ bool RewriteDriver::IsDone(WaitMode wait_mode, bool deadline_reached) {
       return true;
     }
   }
-}
-
-void RewriteDriver::BlockingTimedWait(int wait_time_ms) {
-  ScopedMutex lock(rewrite_mutex());
-  scheduler_->BlockingTimedWait(wait_time_ms);
 }
 
 // TODO(jmarantz): add callback version of this.
@@ -449,6 +449,8 @@ void RewriteDriver::SetResourceManagerAndScheduler(
   set_timer(resource_manager->timer());
   rewrite_worker_ = resource_manager_->rewrite_workers()->NewSequence();
   html_worker_ = resource_manager_->rewrite_workers()->NewSequence();
+  low_priority_rewrite_worker_ =
+      resource_manager_->low_priority_rewrite_workers()->NewSequence();
 
   DCHECK(resource_filter_map_.empty());
 
@@ -1436,6 +1438,10 @@ bool RewriteDriver::ShouldNotRewriteImages() const {
 
 void RewriteDriver::AddRewriteTask(Function* task) {
   rewrite_worker_->Add(task);
+}
+
+void RewriteDriver::AddLowPriorityRewriteTask(Function* task) {
+  low_priority_rewrite_worker_->Add(task);
 }
 
 }  // namespace net_instaweb

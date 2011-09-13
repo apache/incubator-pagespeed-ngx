@@ -330,10 +330,9 @@ Function* QueuedWorkerPool::Sequence::NextFunction() {
     ScopedMutex lock(sequence_mutex_.get());
     if (shutdown_) {
       if (active_) {
-        // TODO(jmarantz): call Cancel method on all outstanding elements.
         if (!work_queue_.empty()) {
-          DCHECK(false) << "Canceling " << work_queue_.size()
-                        << " functions on sequence Shutdown";
+          LOG(WARNING) << "Canceling " << work_queue_.size()
+                       << " functions on sequence Shutdown";
           queue_size_delta -= CancelTasksOnWorkQueue();
         }
         active_ = false;

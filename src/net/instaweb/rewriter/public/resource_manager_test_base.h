@@ -27,7 +27,8 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"  // needed for upcast
+// We need to include rewrite_driver.h due to covariant return of html_parse()
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -48,9 +49,9 @@ class HTTPCache;
 class Hasher;
 class LRUCache;
 class MessageHandler;
+class MockScheduler;
 class MockTimer;
 class ResponseHeaders;
-class RewriteDriver;
 class RewriteDriverFactory;
 class RewriteFilter;
 class Statistics;
@@ -283,6 +284,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   RewriteDriver* rewrite_driver() { return rewrite_driver_; }
   RewriteDriver* other_rewrite_driver() { return other_rewrite_driver_; }
 
+  // The scheduler used by rewrite_driver
+  MockScheduler* mock_scheduler() { return mock_scheduler_; }
+
   bool ReadFile(const char* filename, GoogleString* contents) {
     return file_system()->ReadFile(filename, contents, message_handler());
   }
@@ -306,7 +310,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // files the chance to add filters to the options prior to calling
   // driver->AddFilters().
   RewriteDriver* MakeDriver(TestRewriteDriverFactory* factory,
-                            RewriteOptions* options);
+                            RewriteOptions* options,
+                            MockScheduler** scheduler_out);
 
   // Converts a potentially relative URL off kTestDomain to absolute if needed.
   GoogleString AbsolutifyUrl(const StringPiece& in);
@@ -345,6 +350,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   TestRewriteDriverFactory other_factory_;
   ResourceManager* resource_manager_;
   RewriteDriver* rewrite_driver_;
+  MockScheduler* mock_scheduler_;  // owned by rewrite_driver_
   ResourceManager* other_resource_manager_;
   RewriteDriver* other_rewrite_driver_;
 

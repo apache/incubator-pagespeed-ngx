@@ -73,22 +73,23 @@ struct ContentType;
 //
 // TODO(jmarantz): add support for controlling TTL on failures.
 //
-// A RewriteContext does almost all its work in the RewriteThread, by
-// adding Functions to a worker-thread owned by the ResourceManager.
-// Thus, within a server, there can be at most one Rewrite consuming
-// CPU time (e.g. optimizing images).  However, multiple Rewrites can
-// be in-progres, waiting for HTTP fetches and cache lookups.
+// RewriteContext utilizes two threads (via QueuedThreadPool::Sequence)
+// to do most of its work. The "high priority" thread is used to run the
+// dataflow graph: queue up fetches and cache requests, partition inputs,
+// render results, etc. The actual Rewrite() methods, however, are invoked
+// in the "low priority" thread and can be canceled during extreme load
+// or shutdown.
 //
-// However, top-level RewriteContexts may be initialized from the HTML
+// Top-level RewriteContexts are initialized from the HTML
 // thread.  In particular, from this thread they can be constructed,
 // and AddSlot() and Initiate() can be called.  Once Initiate is
-// called, the RewiteContext runs purely in the RewriteThread, until
+// called, the RewriteContext runs purely in its two threads, until
 // it completes.  At that time it calls
 // RewriteDriver::RewriteComplete.  Once complete, the RewriteDriver
 // can call RewriteContext::Propagate() and finally delete the object.
 //
 // RewriteContexts can also be nested, in which case they are constructed,
-// slotted, and Initated all within the RewriteThread.  However, they
+// slotted, and Initated all within the rewrite threads.  However, they
 // are Propagated and destructed by their parent, which is initiated by the
 // RewriteDriver.
 class RewriteContext {
@@ -229,8 +230,9 @@ class RewriteContext {
   void RenderPartitionOnDetach(int partition_index);
 
   // Called by subclasses when an individual rewrite partition is
-  // done.  Note that RewriteDone may directly 'delete this' so no
+  // done.  Note that RewriteDone may 'delete this' so no
   // further references to 'this' should follow a call to RewriteDone.
+  // This method can run in any thread.
   void RewriteDone(RewriteSingleResourceFilter::RewriteResult result,
                    int partition_index);
 
@@ -246,6 +248,7 @@ class RewriteContext {
 
   // Called on the parent to initiate all nested tasks.  This is so
   // that they can all be added before any of them are started.
+  // May be called from any thread.
   void StartNestedTasks();
 
   // Deconstructs a URL by name and creates an output resource that
@@ -348,6 +351,8 @@ class RewriteContext {
   friend class ResourceCallbackUtils;
   class ResourceRevalidateCallback;
   friend class ResourceRevalidateCallback;
+  class InvokeRewriteFunction;
+  friend class InvokeRewriteFunction;
 
   typedef std::set<RewriteContext*> ContextSet;
 
@@ -439,6 +444,15 @@ class RewriteContext {
   // itself). Note that this might exclude some repeated jobs that haven't
   // gotten far enough to realize that yet.
   void CollectDependentTopLevel(ContextSet* contexts);
+
+  // Actual implementation of RewriteDone that's queued to run in
+  // high-priority rewrite thread.
+  void RewriteDoneImpl(RewriteSingleResourceFilter::RewriteResult result,
+                       int partition_index);
+
+  // Actual implementation of StartNestedTasks that's queued to run in
+  // high-priority rewrite thread.
+  void StartNestedTasksImpl();
 
   // To perform a rewrite, we need to have data for all of its input slots.
   ResourceSlotVector slots_;
