@@ -60,6 +60,9 @@ class ResponseHeaders;
 class HtmlIEDirectiveNode;
 class UrlSegmentEncoder;
 
+// {0xEF, 0xBB, 0xBF, 0x0}
+const char CssCombineFilter::kUtf8Bom[] = "\0357\0273\0277";
+
 namespace {
 
 // names for Statistics variables.
@@ -453,9 +456,8 @@ void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
 // is encoded in one of these other formats and cache that fact so we
 // don't continue to try to rewrite it.
 void CssCombineFilter::CssCombiner::StripUTF8BOM(StringPiece* contents) const {
-  static const char kBom[] = {0xEF, 0xBB, 0xBF, 0x0};
-  if (contents->starts_with(kBom)) {
-    contents->remove_prefix(strlen(kBom));
+  if (contents->starts_with(kUtf8Bom)) {
+    contents->remove_prefix(STATIC_STRLEN(kUtf8Bom));
   }
 }
 

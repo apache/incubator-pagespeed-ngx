@@ -17,6 +17,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //     and sligocki@google.com (Shawn Ligocki)
 
+#include "net/instaweb/rewriter/public/css_combine_filter.h"
+
 #include <vector>
 
 #include "base/logging.h"
@@ -543,10 +545,9 @@ TEST_P(CssCombineFilterTest, StripBOM) {
   GoogleString b_css_url = StrCat(kDomain, "b.css");
 
   // BOM documentation: http://www.unicode.org/faq/utf_bom.html
-  static const char kBom[] = {0xEF, 0xBB, 0xBF, 0x0};
   const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
   const char b_css_body[] = ".c4 {\n color: purple;\n}\n";
-  GoogleString bom_body = StrCat(kBom, b_css_body);
+  GoogleString bom_body = StrCat(CssCombineFilter::kUtf8Bom, b_css_body);
 
   ResponseHeaders default_header;
   SetDefaultLongCacheHeaders(&kContentTypeCss, &default_header);
@@ -566,7 +567,7 @@ TEST_P(CssCombineFilterTest, StripBOM) {
   ASSERT_EQ(1UL, css_urls.size());
   GoogleString actual_combination;
   EXPECT_TRUE(ServeResourceUrl(css_urls[0], &actual_combination));
-  int bom_pos = actual_combination.find(kBom);
+  int bom_pos = actual_combination.find(CssCombineFilter::kUtf8Bom);
   EXPECT_EQ(GoogleString::npos, bom_pos);
 
   GoogleString input_buffer_reversed(StrCat(
@@ -580,9 +581,9 @@ TEST_P(CssCombineFilterTest, StripBOM) {
   CollectCssLinks("combine_css_beginning_bom", output_buffer_, &css_urls);
   ASSERT_EQ(1UL, css_urls.size());
   EXPECT_TRUE(ServeResourceUrl(css_urls[0], &actual_combination));
-  bom_pos = actual_combination.find(kBom);
+  bom_pos = actual_combination.find(CssCombineFilter::kUtf8Bom);
   EXPECT_EQ(0, bom_pos);
-  bom_pos = actual_combination.rfind(kBom);
+  bom_pos = actual_combination.rfind(CssCombineFilter::kUtf8Bom);
   EXPECT_EQ(0, bom_pos);
 }
 

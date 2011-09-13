@@ -42,6 +42,10 @@ class Writer;
 
 class CssCombineFilter : public RewriteFilter {
  public:
+  // TODO(jmarantz): This BOM marker should be in some more central place,
+  // rather than specific to css_combine_filter or even css.
+  static const char kUtf8Bom[];
+
   CssCombineFilter(RewriteDriver* rewrite_driver, const char* path_prefix);
   virtual ~CssCombineFilter();
 
