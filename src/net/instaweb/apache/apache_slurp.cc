@@ -307,7 +307,7 @@ void SlurpUrl(ApacheRewriteDriverFactory* factory, request_rec* r) {
   ResponseHeaders response_headers;
   ApacheRequestToRequestHeaders(*r, &request_headers);
   ApacheWriter apache_writer(r, &response_headers);
-  ChunkingWriter writer(&apache_writer, factory->slurp_flush_limit());
+  ChunkingWriter writer(&apache_writer, factory->config()->slurp_flush_limit());
 
   GoogleString stripped_url = RemoveModPageSpeedQueryParams(
       uri, r->parsed_uri.query);

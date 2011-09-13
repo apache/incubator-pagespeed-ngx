@@ -389,18 +389,18 @@ void MergeOptions(const RewriteOptions& a, const RewriteOptions& b,
 // that we should not handle the request for various reasons.
 // TODO(sligocki): Move most of these checks into non-Apache specific code.
 InstawebContext* build_context_for_request(request_rec* request) {
-  ApacheConfig* config = static_cast<ApacheConfig*>
+  ApacheConfig* directory_options = static_cast<ApacheConfig*>
       ap_get_module_config(request->per_dir_config, &pagespeed_module);
   ApacheRewriteDriverFactory* factory = InstawebContext::Factory(
       request->server);
   scoped_ptr<RewriteOptions> custom_options;
-  const RewriteOptions* options = factory->options();
-  const RewriteOptions* config_options = config->options();
+  const RewriteOptions* host_options = factory->options();
+  const RewriteOptions* options = host_options;
   bool use_custom_options = false;
 
-  if (config_options->modified()) {
+  if ((directory_options != NULL) && directory_options->modified()) {
     custom_options.reset(new RewriteOptions);
-    MergeOptions(*options, *config_options, custom_options.get());
+    MergeOptions(*host_options, *directory_options, custom_options.get());
     options = custom_options.get();
     use_custom_options = true;
   }
@@ -702,17 +702,28 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   for (server_rec* server = server_list; server != NULL;
        server = server->next) {
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
-    if (factory->options()->enabled()) {
+
+    // factory->config() is the ApacheConfig object where we
+    // accumulate settings from the .conf files, and includes Page
+    // Speed Automatic options (in base-class RewriteOptions) and also
+    // apache-specific options, such as file-cache path.
+    // post-configuration, we copy the pagespeed-automatic parts of
+    // those into Factory's RewriteOptions.
+    ApacheConfig* config = factory->config();
+    factory->options()->CopyFrom(*config);
+
+    if (config->enabled()) {
+      GoogleString file_cache_path = config->file_cache_path();
       if (factory->filename_prefix().empty() ||
-          factory->file_cache_path().empty()) {
+          file_cache_path.empty()) {
         GoogleString buf = StrCat(
             "mod_pagespeed is enabled.  "
             "The following directives must not be NULL\n",
             kModPagespeedFileCachePath, "=",
             StrCat(
-                factory->file_cache_path(), "\n",
+                config->file_cache_path(), "\n",
                 kModPagespeedGeneratedFilePrefix, "=",
-                factory->filename_prefix(), "\n"));
+                config->filename_prefix(), "\n"));
         factory->message_handler()->Message(kError, "%s", buf.c_str());
         return HTTP_INTERNAL_SERVER_ERROR;
       }
@@ -720,7 +731,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
 
     // See if we need a statistics object. We may need that even when
     // we are disabled, in case we get turned on via .htaccess or query param.
-    if (factory->statistics_enabled() && (statistics == NULL)) {
+    if (config->statistics_enabled() && (statistics == NULL)) {
       statistics = apache_process_context.InitStatistics(factory);
     }
 
@@ -744,7 +755,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
        server = server->next) {
     ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
     factory->RootInit();
-    if (factory->statistics_enabled()) {
+    if (factory->config()->statistics_enabled()) {
       factory->SetStatistics(statistics);
     } else {
       // Each server with default statistics has its own copy of
@@ -899,14 +910,13 @@ void warn_deprecated(cmd_parms* cmd, const char* remedy) {
 // if this was parsed from a Directory scope or .htaccess file then we will
 // be using the RewriteOptions structure from a tree of ApacheConfig objects
 // that is built up per-request.
-static RewriteOptions* CmdOptions(cmd_parms* cmd, void* data) {
-  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
+static ApacheConfig* CmdOptions(cmd_parms* cmd, void* data) {
   ApacheConfig* config = static_cast<ApacheConfig*>(data);
-  RewriteOptions* options = factory->options();
-  if (!config->description().empty()) {
-    options = config->options();
+  if (config == NULL) {
+    ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
+    config = factory->config();
   }
-  return options;
+  return config;
 }
 
 // Callback function that parses a single-argument directive.  This is called
@@ -917,19 +927,22 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   MessageHandler* handler = factory->message_handler();
   const char* directive = cmd->directive->directive;
   const char* ret = NULL;
-  RewriteOptions* options = CmdOptions(cmd, data);
+  ApacheConfig* config = CmdOptions(cmd, data);
+
+  // Keep an upcast version of 'config' around so that the template methods
+  // resolve properly for options in RewriteOptions for ApacheConfig.
+  RewriteOptions* options = config;
 
   if (StringCaseEqual(directive, RewriteQuery::kModPagespeed)) {
-    ret = ParseBoolOption(options, cmd,
-                          &RewriteOptions::set_enabled, arg);
+    ret = ParseBoolOption(options, cmd, &RewriteOptions::set_enabled, arg);
   } else if (StringCaseEqual(directive, kModPagespeedAllow)) {
     options->Allow(arg);
   } else if (StringCaseEqual(directive, kModPagespeedBeaconUrl)) {
     options->set_beacon_url(arg);
   } else if (StringCaseEqual(directive,
                              kModPagespeedCollectRefererStatistics)) {
-    ret = ParseBoolOption(factory, cmd,
-        &ApacheRewriteDriverFactory::set_collect_referer_statistics, arg);
+    ret = ParseBoolOption(config, cmd,
+        &ApacheConfig::set_collect_referer_statistics, arg);
   } else if (StringCaseEqual(directive, kModPagespeedCombineAcrossPaths)) {
     ret = ParseBoolOption(options, cmd,
                           &RewriteOptions::set_combine_across_paths, arg);
@@ -957,25 +970,26 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
       ret = "Failed to enable some filters.";
     }
   } else if (StringCaseEqual(directive, kModPagespeedFetcherTimeoutMs)) {
-    ret = ParseInt64Option(factory,
-        cmd, &ApacheRewriteDriverFactory::set_fetcher_time_out_ms, arg);
+    ret = ParseInt64Option(config,
+        cmd, &ApacheConfig::set_fetcher_time_out_ms, arg);
   } else if (StringCaseEqual(directive, kModPagespeedFetchProxy)) {
-    factory->set_fetcher_proxy(arg);
+    config->set_fetcher_proxy(arg);
   } else if (StringCaseEqual(directive,
                              kModPagespeedFileCacheCleanIntervalMs)) {
-    ret = ParseInt64Option(factory,
-        cmd, &ApacheRewriteDriverFactory::set_file_cache_clean_interval_ms,
-        arg);
+    ret = ParseInt64Option(config,
+                           cmd, &ApacheConfig::set_file_cache_clean_interval_ms,
+                           arg);
   } else if (StringCaseEqual(directive, kModPagespeedFileCachePath)) {
-    if (factory->set_file_cache_path(arg)) {
+    config->set_file_cache_path(arg);
+    if (factory->InitFileCachePath()) {
       give_apache_user_permissions(factory);
     } else {
       ret = apr_pstrcat(cmd->pool, "Directory ", arg,
                         " does not exist and can't be created.", NULL);
     }
   } else if (StringCaseEqual(directive, kModPagespeedFileCacheSizeKb)) {
-    ret = ParseInt64Option(factory,
-        cmd, &ApacheRewriteDriverFactory::set_file_cache_clean_size_kb, arg);
+    ret = ParseInt64Option(config,
+        cmd, &ApacheConfig::set_file_cache_clean_size_kb, arg);
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
         cmd, &ApacheRewriteDriverFactory::set_force_caching, arg);
@@ -987,8 +1001,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
                         " does not exist and can't be created.", NULL);
     }
   } else if (StringCaseEqual(directive, kModPagespeedHashRefererStatistics)) {
-    ret = ParseBoolOption(factory, cmd,
-         &ApacheRewriteDriverFactory::set_hash_referer_statistics, arg);
+    ret = ParseBoolOption(config, cmd,
+         &ApacheConfig::set_hash_referer_statistics, arg);
   } else if (StringCaseEqual(directive, kModPagespeedImgInlineMaxBytes)) {
     // Deprecated due to spelling
     ret = ParseInt64Option(options,
@@ -1018,18 +1032,18 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseBoolOption(options, cmd,
                           &RewriteOptions::set_lowercase_html_names, arg);
   } else if (StringCaseEqual(directive, kModPagespeedLRUCacheByteLimit)) {
-    ret = ParseInt64Option(factory,
-        cmd, &ApacheRewriteDriverFactory::set_lru_cache_byte_limit, arg);
+    ret = ParseInt64Option(config,
+        cmd, &ApacheConfig::set_lru_cache_byte_limit, arg);
   } else if (StringCaseEqual(directive, kModPagespeedLRUCacheKbPerProcess)) {
-    ret = ParseInt64Option(factory,
-        cmd, &ApacheRewriteDriverFactory::set_lru_cache_kb_per_process, arg);
+    ret = ParseInt64Option(config,
+        cmd, &ApacheConfig::set_lru_cache_kb_per_process, arg);
   } else if (StringCaseEqual(directive, kModPagespeedMaxSegmentLength)) {
     // TODO(sligocki): Convert to ParseInt64Option for consistency?
     ret = ParseIntOption(options,
         cmd, &RewriteOptions::set_max_url_segment_size, arg);
   } else if (StringCaseEqual(directive, kModPagespeedMessageBufferSize)) {
-    ret = ParseIntOption(factory,
-        cmd, &ApacheRewriteDriverFactory::set_message_buffer_size, arg);
+    ret = ParseIntOption(config,
+        cmd, &ApacheConfig::set_message_buffer_size, arg);
   } else if (StringCaseEqual(directive, kModPagespeedRespectVary)) {
     ret = ParseBoolOption(options, cmd,
                           &RewriteOptions::set_respect_vary, arg);
@@ -1037,11 +1051,10 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (StringCaseEqual(directive,
                              kModPagespeedRefererStatisticsOutputLevel)) {
-    ApacheRewriteDriverFactory::RefererStatisticsOutputLevel level =
-        ApacheRewriteDriverFactory::kOrganized;
-    if (ApacheRewriteDriverFactory::ParseRefererStatisticsOutputLevel(arg,
-                                                                      &level)) {
-      factory->set_referer_statistics_output_level(level);
+    ApacheConfig::RefererStatisticsOutputLevel level =
+        ApacheConfig::kOrganized;
+    if (ApacheConfig::ParseRefererStatisticsOutputLevel(arg, &level)) {
+      config->set_referer_statistics_output_level(level);
     } else {
       ret = "Failed to parse RefererStatisticsOutputLevel.";
     }
@@ -1055,22 +1068,22 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
       ret = "Failed to parse RewriteLevel.";
     }
   } else if (StringCaseEqual(directive, kModPagespeedSharedMemoryLocks)) {
-    ret = ParseBoolOption(factory, cmd,
-       &ApacheRewriteDriverFactory::set_use_shared_mem_locking, arg);
+    ret = ParseBoolOption(config, cmd,
+       &ApacheConfig::set_use_shared_mem_locking, arg);
   } else if (StringCaseEqual(directive, kModPagespeedSlurpDirectory)) {
     factory->set_slurp_directory(arg);
   } else if (StringCaseEqual(directive, kModPagespeedSlurpFlushLimit)) {
-    ret = ParseInt64Option(factory,
-        cmd, &ApacheRewriteDriverFactory::set_slurp_flush_limit, arg);
+    ret = ParseInt64Option(config,
+        cmd, &ApacheConfig::set_slurp_flush_limit, arg);
   } else if (StringCaseEqual(directive, kModPagespeedSlurpReadOnly)) {
     ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
         cmd, &ApacheRewriteDriverFactory::set_slurp_read_only, arg);
   } else if (StringCaseEqual(directive, kModPagespeedStatistics)) {
-    ret = ParseBoolOption(factory, cmd,
-        &ApacheRewriteDriverFactory::set_statistics_enabled, arg);
+    ret = ParseBoolOption(config, cmd,
+        &ApacheConfig::set_statistics_enabled, arg);
   } else if (StringCaseEqual(directive, kModPagespeedTestProxy)) {
-    ret = ParseBoolOption(factory,
-        cmd, &ApacheRewriteDriverFactory::set_test_proxy, arg);
+    ret = ParseBoolOption(config,
+        cmd, &ApacheConfig::set_test_proxy, arg);
   } else if (StringCaseEqual(directive, kModPagespeedUrlPrefix)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else {
@@ -1280,8 +1293,11 @@ apr_status_t delete_config(void* data) {
 // dir is the directory currently being processed.
 // Returns the per-directory structure created.
 void* create_dir_config(apr_pool_t* pool, char* dir) {
+  if (dir == NULL) {
+    return NULL;
+  }
   ApacheConfig* config = new ApacheConfig(dir);
-  config->options()->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  config->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   apache_process_context.add_config(config);
   apr_pool_cleanup_register(pool, config, delete_config, apr_pool_cleanup_null);
   apache_process_context.add_config(config);
@@ -1302,7 +1318,7 @@ void* merge_dir_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
   // the merged configuration.
   ApacheConfig* dir3 = new ApacheConfig(StrCat(
       "Combine(", dir1->description(), ", ", dir2->description(), ")"));
-  MergeOptions(*(dir1->options()), *(dir2->options()),  dir3->options());
+  MergeOptions(*dir1, *dir2, dir3);
   apr_pool_cleanup_register(pool, dir3, delete_config, apr_pool_cleanup_null);
   apache_process_context.add_config(dir3);
   return dir3;
@@ -1332,7 +1348,7 @@ module AP_MODULE_DECLARE_DATA pagespeed_module = {
   net_instaweb::create_dir_config,
   net_instaweb::merge_dir_config,
   net_instaweb::mod_pagespeed_create_server_config,
-  NULL,  // merge per-server config structures
+  NULL,  // TODO(jmarantz): merge root/VirtualHost configs via merge_dir_config.
   net_instaweb::mod_pagespeed_filter_cmds,
   net_instaweb::mod_pagespeed_register_hooks,
 };

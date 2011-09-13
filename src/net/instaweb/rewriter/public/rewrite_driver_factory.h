@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -202,6 +201,9 @@ class RewriteDriverFactory {
   // and worker threads.
   virtual void ShutDown();
 
+  // Registers the directory as having been created by us.
+  void AddCreatedDirectory(const GoogleString& dir);
+
  protected:
   bool FetchersComputed() const;
   void StopCacheWrites();
@@ -252,9 +254,6 @@ class RewriteDriverFactory {
   // filename_prefix()
   virtual StringPiece LockFilePrefix();
 
-  // Registers the directory as having been created by us.
-  void AddCreatedDirectory(const GoogleString& dir);
-
  private:
   ResourceManager* CreateResourceManagerLockHeld();
   void SetupSlurpDirectories();
@@ -294,9 +293,6 @@ class RewriteDriverFactory {
   // Caching support
   scoped_ptr<HTTPCache> http_cache_;
   CacheInterface* http_cache_backend_;  // Pointer owned by http_cache_
-
-  // Keep track of authorized domains, sharding, and mappings.
-  DomainLawyer domain_lawyer_;
 
   // Manage locks for output resources.
   scoped_ptr<NamedLockManager> lock_manager_;

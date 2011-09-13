@@ -37,7 +37,6 @@
         '<(DEPTH)',
       ],
       'sources': [
-        'apache/apache_config.cc',
         'apache/instaweb_handler.cc',
         'apache/log_message_handler.cc',
         'util/mem_debug.cc',

@@ -121,7 +121,7 @@ class RewriteOptions {
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
 
   RewriteOptions();
-  ~RewriteOptions();
+  virtual ~RewriteOptions();
 
   bool modified() const { return modified_; }
 
@@ -130,8 +130,7 @@ class RewriteOptions {
     level_.set_default(level);
   }
   void SetRewriteLevel(RewriteLevel level) {
-    modified_ = true;
-    level_.set(level);
+    set_option(level, &level_);
   }
   RewriteLevel level() const { return level_.value();}
 
@@ -166,112 +165,94 @@ class RewriteOptions {
 
   int64 css_outline_min_bytes() const { return css_outline_min_bytes_.value(); }
   void set_css_outline_min_bytes(int64 x) {
-    modified_ = true;
-    css_outline_min_bytes_.set(x);
+    set_option(x, &css_outline_min_bytes_);
   }
   int64 js_outline_min_bytes() const { return js_outline_min_bytes_.value(); }
   void set_js_outline_min_bytes(int64 x) {
-    modified_ = true;
-    js_outline_min_bytes_.set(x);
+    set_option(x, &js_outline_min_bytes_);
   }
   int64 image_inline_max_bytes() const {
     return image_inline_max_bytes_.value();
   }
   void set_image_inline_max_bytes(int64 x) {
-    modified_ = true;
-    image_inline_max_bytes_.set(x);
+    set_option(x, &image_inline_max_bytes_);
   }
   int64 css_inline_max_bytes() const { return css_inline_max_bytes_.value(); }
   void set_css_inline_max_bytes(int64 x) {
-    modified_ = true;
-    css_inline_max_bytes_.set(x);
+    set_option(x, &css_inline_max_bytes_);
   }
   int64 js_inline_max_bytes() const { return js_inline_max_bytes_.value(); }
   void set_js_inline_max_bytes(int64 x) {
-    modified_ = true;
-    js_inline_max_bytes_.set(x);
+    set_option(x, &js_inline_max_bytes_);
   }
   int64 html_cache_time_ms() const { return html_cache_time_ms_.value(); }
   void set_html_cache_time_ms(int64 x) {
-    modified_ = true;
-    html_cache_time_ms_.set(x);
+    set_option(x, &html_cache_time_ms_);
   }
 
   const GoogleString& beacon_url() const { return beacon_url_.value(); }
   void set_beacon_url(const StringPiece& p) {
-    modified_ = true;
-    beacon_url_.set(GoogleString(p.data(), p.size()));
+    set_option(GoogleString(p.data(), p.size()), &beacon_url_);
   }
 
   // The maximum length of a URL segment.
   // for http://a/b/c.d, this is == strlen("c.d")
   int max_url_segment_size() const { return max_url_segment_size_.value(); }
   void set_max_url_segment_size(int x) {
-    modified_ = true;
-    max_url_segment_size_.set(x);
+    set_option(x, &max_url_segment_size_);
   }
 
   int image_max_rewrites_at_once() const {
     return image_max_rewrites_at_once_.value();
   }
   void set_image_max_rewrites_at_once(int x) {
-    modified_ = true;
-    image_max_rewrites_at_once_.set(x);
+    set_option(x, &image_max_rewrites_at_once_);
   }
 
   // The maximum size of the entire URL.  If '0', this is left unlimited.
   int max_url_size() const { return max_url_size_.value(); }
   void set_max_url_size(int x) {
-    modified_ = true;
-    max_url_size_.set(x);
+    set_option(x, &max_url_size_);
   }
 
   void set_enabled(bool x) {
-    modified_ = true;
-    enabled_.set(x);
+    set_option(x, &enabled_);
   }
   bool enabled() const { return enabled_.value(); }
 
   void set_botdetect_enabled(bool x) {
-    modified_ = true;
-    botdetect_enabled_.set(x);
+    set_option(x, &botdetect_enabled_);
   }
   bool botdetect_enabled() const { return botdetect_enabled_.value(); }
 
   void set_combine_across_paths(bool x) {
-    modified_ = true;
-    combine_across_paths_.set(x);
+    set_option(x, &combine_across_paths_);
   }
   bool combine_across_paths() const { return combine_across_paths_.value(); }
 
   void set_log_rewrite_timing(bool x) {
-    modified_ = true;
-    log_rewrite_timing_.set(x);
+    set_option(x, &log_rewrite_timing_);
   }
   bool log_rewrite_timing() const { return log_rewrite_timing_.value(); }
 
   void set_lowercase_html_names(bool x) {
-    modified_ = true;
-    lowercase_html_names_.set(x);
+    set_option(x, &lowercase_html_names_);
   }
   bool lowercase_html_names() const { return lowercase_html_names_.value(); }
 
   void set_always_rewrite_css(bool x) {
-    modified_ = true;
-    always_rewrite_css_.set(x);
+    set_option(x, &always_rewrite_css_);
   }
   bool always_rewrite_css() const { return always_rewrite_css_.value(); }
 
   void set_respect_vary(bool x) {
-    modified_ = true;
-    respect_vary_.set(x);
+    set_option(x, &respect_vary_);
   }
   bool respect_vary() const { return respect_vary_.value(); }
 
   // Cache invalidation timestamp is in milliseconds since 1970.
   void set_cache_invalidation_timestamp(int64 x) {
-    modified_ = true;
-    cache_invalidation_timestamp_.set(x);
+    set_option(x, &cache_invalidation_timestamp_);
   }
   int64 cache_invalidation_timestamp() const {
     return cache_invalidation_timestamp_.value();
@@ -328,7 +309,7 @@ class RewriteOptions {
     Merge(src, src);  // We lack a better implementation of Copy.
   }
 
- private:
+ protected:
   class OptionBase {
    public:
     virtual ~OptionBase();
@@ -346,10 +327,7 @@ class RewriteOptions {
   // to override default values from 'new'.
   template<class T> class Option : public OptionBase {
    public:
-    explicit Option(const T& default_value)
-        : value_(default_value),
-          was_set_(false) {
-    }
+    Option() : was_set_(false) {}
 
     void set(const T& val) {
       was_set_ = true;
@@ -389,6 +367,27 @@ class RewriteOptions {
     DISALLOW_COPY_AND_ASSIGN(Option);
   };
 
+  // When adding an option, we take the default_value by value, not
+  // const-reference.  This is because when calling add_option we may
+  // want to use a compile-time constant (e.g. Timer::kHourMs) which
+  // does not have a linkable address.   https://groups.google.com/forum/
+  // ?hl=en#!topic/comp.lang.c%2B%2B.moderated/rMOrIsyCMl4
+  template<class T, class U>  // U must be assignable to T.
+  void add_option(U default_value, Option<T>* option) {
+    option->set_default(default_value);
+    all_options_.push_back(option);
+  }
+
+  // When setting an option, however, we generally are doing so
+  // with a variable rather than a constant so it makes sense to pass
+  // it by reference.
+  template<class T, class U>  // U must be assignable to T.
+  void set_option(const U& new_value, Option<T>* option) {
+    option->set(new_value);
+    modified_ = true;
+  }
+
+ private:
   typedef std::set<Filter> FilterSet;
   typedef std::map<GoogleString, Filter> NameToFilterMap;
   typedef std::map<GoogleString, FilterSet> NameToFilterSetMap;

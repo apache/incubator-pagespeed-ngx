@@ -59,24 +59,6 @@ SharedMemOwnerMap* ApacheRewriteDriverFactory::lock_manager_owners_ = NULL;
 RefCountedOwner<SlowWorker>::Family
     ApacheRewriteDriverFactory::slow_worker_family_;
 
-bool ApacheRewriteDriverFactory::ParseRefererStatisticsOutputLevel(
-    const StringPiece& in, RefererStatisticsOutputLevel* out) {
-  bool ret = false;
-  if (in != NULL) {
-    if (StringCaseEqual(in, "Fast")) {
-      *out = kFast;
-       ret = true;
-    } else if (StringCaseEqual(in, "Simple")) {
-      *out = kSimple;
-       ret = true;
-    } else if (StringCaseEqual(in, "Organized")) {
-      *out = kOrganized;
-       ret = true;
-    }
-  }
-  return ret;
-}
-
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     server_rec* server, const StringPiece& version)
     : RewriteDriverFactory(
@@ -93,24 +75,11 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       shared_mem_runtime_(new PthreadSharedMem()),
       shared_circular_buffer_(NULL),
       slow_worker_(&slow_worker_family_),
-      collect_referer_statistics_(false),
-      hash_referer_statistics_(false),
-      referer_statistics_output_level_(kOrganized),
-      message_buffer_size_(100000),  // 100k bytes
-      lru_cache_kb_per_process_(0),
-      lru_cache_byte_limit_(0),
-      file_cache_clean_interval_ms_(Timer::kHourMs),
-      file_cache_clean_size_kb_(100 * 1024),  // 100 megabytes
-      fetcher_time_out_ms_(5 * Timer::kSecondMs),
-      slurp_flush_limit_(0),
       version_(version.data(), version.size()),
-      statistics_enabled_(true),
       statistics_frozen_(false),
       owns_statistics_(false),
-      test_proxy_(false),
       is_root_process_(true),
       shared_mem_referer_statistics_(NULL),
-      use_shared_mem_locking_(false),
       hostname_identifier_(StrCat(server->server_hostname,
                                   ":",
                                   IntegerToString(server->port))),
@@ -122,7 +91,8 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
           this,
           &ApacheRewriteDriverFactory::CreateSharedMemLockManager,
           "lock manager",
-          &lock_manager_owners_) {
+          &lock_manager_owners_),
+      config_(new ApacheConfig(hostname_identifier_)) {
   apr_pool_create(&pool_, NULL);
 
   // In Apache, we default to using the "core filters".
@@ -153,7 +123,8 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
 
 SharedMemLockManager* ApacheRewriteDriverFactory::CreateSharedMemLockManager() {
   return new SharedMemLockManager(shared_mem_runtime_.get(),
-                                  StrCat(file_cache_path(), "/named_locks"),
+                                  StrCat(config_->file_cache_path(),
+                                         "/named_locks"),
                                   timer(), hasher(), message_handler());
 }
 
@@ -180,16 +151,15 @@ MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
   return apache_message_handler_;
 }
 
-bool ApacheRewriteDriverFactory::set_file_cache_path(const StringPiece& p) {
-  p.CopyToString(&file_cache_path_);
-  if (file_system()->IsDir(file_cache_path_.c_str(),
+bool ApacheRewriteDriverFactory::InitFileCachePath() {
+  if (file_system()->IsDir(config_->file_cache_path().c_str(),
                            message_handler()).is_true()) {
     return true;
   }
-  bool ok =
-    file_system()->RecursivelyMakeDir(file_cache_path_, message_handler());
+  bool ok = file_system()->RecursivelyMakeDir(config_->file_cache_path(),
+                                              message_handler());
   if (ok) {
-    AddCreatedDirectory(file_cache_path_);
+    AddCreatedDirectory(config_->file_cache_path());
   }
   return ok;
 }
@@ -197,12 +167,15 @@ bool ApacheRewriteDriverFactory::set_file_cache_path(const StringPiece& p) {
 // Note: DefaultCacheInterface should return a thread-safe cache object.
 CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
   FileCache::CachePolicy* policy = new FileCache::CachePolicy(
-      timer(), file_cache_clean_interval_ms_, file_cache_clean_size_kb_);
+      timer(),
+      config_->file_cache_clean_interval_ms(),
+      config_->file_cache_clean_size_kb());
   CacheInterface* cache = new FileCache(
-      file_cache_path_, file_system(), slow_worker_.Get(), filename_encoder(),
-      policy, message_handler());
-  if (lru_cache_kb_per_process_ != 0) {
-    LRUCache* lru_cache = new LRUCache(lru_cache_kb_per_process_ * 1024);
+      config_->file_cache_path(), file_system(), slow_worker_.Get(),
+      filename_encoder(), policy, message_handler());
+  if (config_->lru_cache_kb_per_process() != 0) {
+    LRUCache* lru_cache = new LRUCache(
+        config_->lru_cache_kb_per_process() * 1024);
 
     // We only add the threadsafe-wrapper to the LRUCache.  The FileCache
     // is naturally thread-safe because it's got no writable member variables.
@@ -214,8 +187,8 @@ CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
         new WriteThroughCache(ts_cache, cache);
     // By default, WriteThroughCache does not limit the size of entries going
     // into its front cache.
-    if (lru_cache_byte_limit_ != 0) {
-      write_through_cache->set_cache1_limit(lru_cache_byte_limit_);
+    if (config_->lru_cache_byte_limit() != 0) {
+      write_through_cache->set_cache1_limit(config_->lru_cache_byte_limit());
     }
     cache = write_through_cache;
   }
@@ -223,7 +196,7 @@ CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
 }
 
 NamedLockManager* ApacheRewriteDriverFactory::DefaultLockManager() {
-  if (use_shared_mem_locking_ &&
+  if (config_->use_shared_mem_locking() &&
       (shared_mem_lock_manager_lifecycler_.Get() != NULL)) {
     return shared_mem_lock_manager_lifecycler_.Release();
   }
@@ -239,7 +212,7 @@ UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
   if (serf_url_fetcher_ == NULL) {
     DefaultAsyncUrlFetcher();  // Create async fetcher if necessary.
     serf_url_fetcher_ = new SyncFetcherAdapter(
-        timer(), fetcher_time_out_ms_, serf_url_async_fetcher_,
+        timer(), config_->fetcher_time_out_ms(), serf_url_async_fetcher_,
         thread_system());
   }
   return serf_url_fetcher_;
@@ -248,10 +221,10 @@ UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
 UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   if (serf_url_async_fetcher_ == NULL) {
     serf_url_async_fetcher_ = new SerfUrlAsyncFetcher(
-        fetcher_proxy_.c_str(),
+        config_->fetcher_proxy().c_str(),
         NULL,  // Do not use the Factory pool so we can control deletion.
         thread_system(), statistics(), timer(),
-        fetcher_time_out_ms_);
+        config_->fetcher_time_out_ms());
   }
   return serf_url_async_fetcher_;
 }
@@ -268,10 +241,10 @@ void ApacheRewriteDriverFactory::SetStatistics(SharedMemStatistics* x) {
 
 void ApacheRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
   // Set buffer size to 0 means turning it off
-  if (shared_mem_runtime() != NULL && message_buffer_size_ != 0) {
+  if (shared_mem_runtime() != NULL && config_->message_buffer_size() != 0) {
     shared_circular_buffer_.reset(new SharedCircularBuffer(
         shared_mem_runtime(),
-        message_buffer_size_,
+        config_->message_buffer_size(),
         filename_prefix().as_string(),
         hostname_identifier()));
     shared_circular_buffer_->InitSegment(is_root, message_handler());
@@ -282,8 +255,8 @@ void ApacheRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
 }
 
 void ApacheRewriteDriverFactory::SharedMemRefererStatisticsInit(bool is_root) {
-  if (shared_mem_runtime_ != NULL && collect_referer_statistics_) {
-    if (hash_referer_statistics_) {
+  if (shared_mem_runtime_ != NULL && config_->collect_referer_statistics()) {
+    if (config_->hash_referer_statistics()) {
       // By making the hashes equal roughly to half the expected url length,
       // entries corresponding to referrals in the
       // shared_mem_referer_statistics_ map will be roughly the expected size
@@ -326,7 +299,7 @@ void ApacheRewriteDriverFactory::ParentOrChildInit() {
 
 void ApacheRewriteDriverFactory::RootInit() {
   ParentOrChildInit();
-  if (use_shared_mem_locking_) {
+  if (config_->use_shared_mem_locking()) {
     shared_mem_lock_manager_lifecycler_.RootInit();
   }
 }
@@ -344,7 +317,7 @@ void ApacheRewriteDriverFactory::ChildInit() {
   if (shared_mem_statistics_ != NULL) {
     shared_mem_statistics_->Init(false, message_handler());
   }
-  if (use_shared_mem_locking_) {
+  if (config_->use_shared_mem_locking()) {
     shared_mem_lock_manager_lifecycler_.ChildInit();
   }
 }
@@ -366,14 +339,14 @@ void ApacheRewriteDriverFactory::DumpRefererStatistics(Writer* writer) {
     writer->Write("mod_pagespeed referer statistics either had an error or "
                   "are not enabled.", handler);
   } else {
-    switch (referer_statistics_output_level_) {
-      case kFast:
+    switch (config_->referer_statistics_output_level()) {
+      case ApacheConfig::kFast:
         shared_mem_referer_statistics_->DumpFast(writer, handler);
         break;
-      case kSimple:
+      case ApacheConfig::kSimple:
         shared_mem_referer_statistics_->DumpSimple(writer, handler);
         break;
-      case kOrganized:
+      case ApacheConfig::kOrganized:
         shared_mem_referer_statistics_->DumpOrganized(writer, handler);
         break;
     }

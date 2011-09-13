@@ -141,7 +141,7 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
       UrlPollableAsyncFetcher* sub_resource_fetcher =
           factory->SubResourceFetcher();
       bool sub_resource_fetch_done = (sub_resource_fetcher == NULL);
-      int64 max_ms = factory->fetcher_time_out_ms();
+      int64 max_ms = factory->config()->fetcher_time_out_ms();
       for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
            !callback->done() && now_ms - start_ms < max_ms;
            now_ms = timer.NowMs()) {
@@ -315,7 +315,7 @@ apr_status_t instaweb_handler(request_rec* request) {
       ret = OK;
     }
 
-  } else if (factory->slurping_enabled() || factory->test_proxy()) {
+  } else if (factory->slurping_enabled() || factory->config()->test_proxy()) {
     SlurpUrl(factory, request);
     if (request->status == HTTP_NOT_FOUND) {
       RewriteStats* stats = factory->ComputeResourceManager()->rewrite_stats();

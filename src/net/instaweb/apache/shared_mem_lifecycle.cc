@@ -39,7 +39,7 @@ SharedMemLifecycle<T>::SharedMemLifecycle(
 
 template<typename T>
 void SharedMemLifecycle<T>::RootInit() {
-  GoogleString cache_path = owner_->file_cache_path().as_string();
+  GoogleString cache_path = owner_->config()->file_cache_path();
   value_.reset((owner_->*creator_)());
 
   SharedMemOwnerMap::iterator prev_creator = AccessOwnerMap()->find(cache_path);
@@ -78,7 +78,7 @@ template<typename T>
 void SharedMemLifecycle<T>::GlobalCleanup(MessageHandler* handler) {
   SharedMemOwnerMap* owners = *owner_map_;
   if (owners != NULL) {
-    GoogleString cache_path = owner_->file_cache_path().as_string();
+    GoogleString cache_path = owner_->config()->file_cache_path();
     SharedMemOwnerMap::iterator i = owners->find(cache_path);
     if (i != owners->end() && i->second == owner_) {
       T::GlobalCleanup(owner_->shared_mem_runtime(), cache_path, handler);

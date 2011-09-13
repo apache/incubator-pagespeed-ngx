@@ -43,6 +43,7 @@
         '<(DEPTH)',
       ],
       'sources': [
+        'apache/apache_config.cc',
         'apache/apache_message_handler.cc',
         'apache/apache_rewrite_driver_factory.cc',
         'apache/apache_slurp.cc',

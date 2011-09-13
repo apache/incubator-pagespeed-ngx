@@ -104,50 +104,31 @@ bool RewriteOptions::ParseRewriteLevel(
   return ret;
 }
 
-RewriteOptions::RewriteOptions()
-    : modified_(false),
-      level_(kPassThrough),
-      css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
-      image_inline_max_bytes_(kDefaultImageInlineMaxBytes),
-      js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
-      css_outline_min_bytes_(kDefaultCssInlineMaxBytes),
-      js_outline_min_bytes_(kDefaultJsInlineMaxBytes),
-      html_cache_time_ms_(kDefaultHtmlCacheTimeMs),
-      beacon_url_(kDefaultBeaconUrl),
-      image_max_rewrites_at_once_(kDefaultImageMaxRewritesAtOnce),
-      max_url_segment_size_(kDefaultMaxUrlSegmentSize),
-      max_url_size_(kMaxUrlSize),
-      enabled_(true),
-      botdetect_enabled_(false),
-      combine_across_paths_(true),
-      log_rewrite_timing_(false),
-      lowercase_html_names_(false),
-      always_rewrite_css_(false),
-      respect_vary_(false),
-      cache_invalidation_timestamp_(kDefaultCacheInvalidationTimestamp) {
+RewriteOptions::RewriteOptions() : modified_(false) {
   // TODO(jmarantz): If we instantiate many RewriteOptions, this should become a
   // public static method called once at startup.
   SetUp();
 
-  all_options_.push_back(&level_);
-  all_options_.push_back(&css_inline_max_bytes_);
-  all_options_.push_back(&image_inline_max_bytes_);
-  all_options_.push_back(&js_inline_max_bytes_);
-  all_options_.push_back(&css_outline_min_bytes_);
-  all_options_.push_back(&js_outline_min_bytes_);
-  all_options_.push_back(&html_cache_time_ms_);
-  all_options_.push_back(&beacon_url_);
-  all_options_.push_back(&image_max_rewrites_at_once_);
-  all_options_.push_back(&max_url_segment_size_);
-  all_options_.push_back(&max_url_size_);
-  all_options_.push_back(&enabled_);
-  all_options_.push_back(&botdetect_enabled_);
-  all_options_.push_back(&combine_across_paths_);
-  all_options_.push_back(&log_rewrite_timing_);
-  all_options_.push_back(&lowercase_html_names_);
-  all_options_.push_back(&always_rewrite_css_);
-  all_options_.push_back(&respect_vary_);
-  all_options_.push_back(&cache_invalidation_timestamp_);
+  add_option(kPassThrough, &level_);
+  add_option(kDefaultCssInlineMaxBytes, &css_inline_max_bytes_);
+  add_option(kDefaultImageInlineMaxBytes, &image_inline_max_bytes_);
+  add_option(kDefaultJsInlineMaxBytes, &js_inline_max_bytes_);
+  add_option(kDefaultCssOutlineMinBytes, &css_outline_min_bytes_);
+  add_option(kDefaultJsOutlineMinBytes, &js_outline_min_bytes_);
+  add_option(kDefaultHtmlCacheTimeMs, &html_cache_time_ms_);
+  add_option(kDefaultBeaconUrl, &beacon_url_);
+  add_option(kDefaultImageMaxRewritesAtOnce, &image_max_rewrites_at_once_);
+  add_option(kDefaultMaxUrlSegmentSize, &max_url_segment_size_);
+  add_option(kMaxUrlSize, &max_url_size_);
+  add_option(true, &enabled_);
+  add_option(false, &botdetect_enabled_);
+  add_option(true, &combine_across_paths_);
+  add_option(false, &log_rewrite_timing_);
+  add_option(false, &lowercase_html_names_);
+  add_option(false, &always_rewrite_css_);
+  add_option(false, &respect_vary_);
+  add_option(kDefaultCacheInvalidationTimestamp,
+             &cache_invalidation_timestamp_);
 }
 
 RewriteOptions::~RewriteOptions() {
