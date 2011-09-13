@@ -59,6 +59,7 @@ class HtmlWriterFilter;
 class MessageHandler;
 class RequestHeaders;
 class ResourceContext;
+class ResourceNamer;
 class ResponseHeaders;
 class RewriteContext;
 class RewriteFilter;
@@ -232,8 +233,16 @@ class RewriteDriver : public HtmlParse {
   // resource (which should mean checking the hash to ensure we generated it
   // ourselves).
   // TODO(jmaessen): add url hash & check thereof.
-  OutputResourcePtr DecodeOutputResource(const StringPiece& url,
+  OutputResourcePtr DecodeOutputResource(const GoogleUrl& url,
                                          RewriteFilter** filter);
+
+  // As above, but does not actually create a resource object,
+  // and instead outputs the decoded information into the various out
+  // parameters. Returns whether decoding successful or not.
+  bool DecodeOutputResourceName(const GoogleUrl& url,
+                                ResourceNamer* name_out,
+                                OutputResourceKind* kind_out,
+                                RewriteFilter** filter_out);
 
   FileSystem* file_system() { return file_system_; }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }

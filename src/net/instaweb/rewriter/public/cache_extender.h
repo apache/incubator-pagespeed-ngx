@@ -79,7 +79,6 @@ class CacheExtender : public RewriteSingleResourceFilter {
   class Context;
   friend class Context;
 
-  bool IsRewrittenResource(const StringPiece& url) const;
   bool ShouldRewriteResource(
       const ResponseHeaders* headers, int64 now_ms,
       const ResourcePtr& input_resource, const StringPiece& url) const;

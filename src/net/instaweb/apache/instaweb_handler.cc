@@ -398,8 +398,9 @@ apr_status_t save_url_hook(request_rec *request) {
     ResourceManager* resource_manager = factory->ComputeResourceManager();
     RewriteDriver* rewrite_driver = resource_manager->decoding_driver();
     RewriteFilter* filter;
+    GoogleUrl gurl(url);
     OutputResourcePtr output_resource(
-        rewrite_driver->DecodeOutputResource(url, &filter));
+        rewrite_driver->DecodeOutputResource(gurl, &filter));
     if (output_resource.get() != NULL) {
       bypass_mod_rewrite = true;
     }

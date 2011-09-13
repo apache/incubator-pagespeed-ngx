@@ -676,7 +676,7 @@ void RewriteContext::FetchInputs(BlockingBehavior block) {
             // instead of IsPagespeedResource) so we get a filter that's bound
             // to the new RewriteDriver.
             OutputResourcePtr output_resource =
-                nested_driver->DecodeOutputResource(resource->url(), &filter);
+                nested_driver->DecodeOutputResource(resource_gurl, &filter);
             if (output_resource.get() != NULL) {
               handled_internally = true;
               slot->SetResource(ResourcePtr(output_resource));

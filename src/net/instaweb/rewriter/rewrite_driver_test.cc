@@ -58,17 +58,19 @@ class RewriteDriverTest : public ResourceManagerTestBase,
   }
 
   bool CanDecodeUrl(const StringPiece& url) {
+    GoogleUrl gurl(url);
     RewriteFilter* filter;
     OutputResourcePtr resource(
-        rewrite_driver()->DecodeOutputResource(url, &filter));
+        rewrite_driver()->DecodeOutputResource(gurl, &filter));
     return (resource.get() != NULL);
   }
 
   const ContentType* DecodeContentType(const StringPiece& url) {
+    GoogleUrl gurl(url);
     const ContentType* type = NULL;
     RewriteFilter* filter;
     OutputResourcePtr output_resource(
-        rewrite_driver()->DecodeOutputResource(url, &filter));
+        rewrite_driver()->DecodeOutputResource(gurl, &filter));
     if (output_resource.get() != NULL) {
       type = output_resource->type();
     }

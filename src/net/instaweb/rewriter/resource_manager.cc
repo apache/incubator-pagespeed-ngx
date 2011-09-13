@@ -58,6 +58,8 @@
 
 namespace net_instaweb {
 
+class RewriteFilter;
+
 namespace {
 
 // resource_url_domain_rejections counts the number of urls on a page that we
@@ -352,8 +354,12 @@ void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
 }
 
 bool ResourceManager::IsPagespeedResource(const GoogleUrl& url) {
+  // Various things URL decoding produces which we ignore here.
   ResourceNamer namer;
-  return (url.is_valid() && namer.Decode(url.LeafSansQuery()));
+  OutputResourceKind kind;
+  RewriteFilter* filter;
+  return decoding_driver_->DecodeOutputResourceName(url, &namer, &kind,
+                                                    &filter);
 }
 
 bool ResourceManager::IsImminentlyExpiring(int64 start_date_ms,

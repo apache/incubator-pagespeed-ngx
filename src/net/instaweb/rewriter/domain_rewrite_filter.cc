@@ -39,7 +39,6 @@ const char kDomainRewrites[] = "domain_rewrites";
 }  // namespace
 
 namespace net_instaweb {
-class RewriteFilter;
 
 DomainRewriteFilter::DomainRewriteFilter(RewriteDriver* rewrite_driver,
                                      Statistics *stats)
@@ -90,13 +89,8 @@ bool DomainRewriteFilter::Rewrite(const StringPiece& url_to_rewrite,
   }
 
   // Don't rewrite a domain from an already-rewritten resource.
-  {
-    RewriteFilter* filter;
-    OutputResourcePtr output_resource(driver_->DecodeOutputResource(
-        orig_spec, &filter));
-    if (output_resource.get() != NULL) {
-      return false;
-    }
+  if (resource_manager_->IsPagespeedResource(orig_url)) {
+    return false;
   }
 
   // Apply any domain rewrites.

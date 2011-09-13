@@ -145,7 +145,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       html_worker_(NULL),
       rewrite_worker_(NULL),
       low_priority_rewrite_worker_(NULL) {
-
   // Set up default values for the amount of time an HTML rewrite will wait for
   // Rewrites to complete, based on whether compiled for debug or running on
   // valgrind.  Note that unit-tests can explicitly override this value via
@@ -757,52 +756,62 @@ Statistics* RewriteDriver::statistics() const {
   return (resource_manager_ == NULL) ? NULL : resource_manager_->statistics();
 }
 
-OutputResourcePtr RewriteDriver::DecodeOutputResource(const StringPiece& url,
-                                                      RewriteFilter** filter) {
+bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
+                                             ResourceNamer* namer_out,
+                                             OutputResourceKind* kind_out,
+                                             RewriteFilter** filter_out) {
   // First, we can't handle anything that's not a valid URL nor is named
   // properly as our resource.
-  GoogleUrl gurl(url);
   if (!gurl.is_valid()) {
-    return OutputResourcePtr();
+    return false;
   }
 
   StringPiece name = gurl.LeafSansQuery();
-  ResourceNamer namer;
-  if (!namer.Decode(name)) {
-    return OutputResourcePtr();
+  if (!namer_out->Decode(name)) {
+    return false;
   }
 
   // URLs without any hash are rejected as well, as they do not produce
   // OutputResources with a computable URL. (We do accept 'wrong' hashes since
   // they could come up legitimately under some asynchrony scenarios)
-  if (namer.hash().empty()) {
-    return OutputResourcePtr();
+  if (namer_out->hash().empty()) {
+    return false;
   }
 
   // Now let's reject as mal-formed if the id string is not
   // in the rewrite drivers. Also figure out the filter's preferred
   // resource kind.
-  StringPiece id = namer.id();
-  OutputResourceKind kind = kRewrittenResource;
+  StringPiece id = namer_out->id();
+  *kind_out = kRewrittenResource;
   StringFilterMap::iterator p = resource_filter_map_.find(
       GoogleString(id.data(), id.size()));
-  bool has_async_flow = false;
   if (p != resource_filter_map_.end()) {
-    *filter = p->second;
-    if ((*filter)->ComputeOnTheFly()) {
-      kind = kOnTheFlyResource;
+    *filter_out = p->second;
+    if ((*filter_out)->ComputeOnTheFly()) {
+      *kind_out = kOnTheFlyResource;
     }
-    has_async_flow = (*filter)->HasAsyncFlow();
   } else if ((id == CssOutlineFilter::kFilterId) ||
-              (id == JsOutlineFilter::kFilterId)) {
+             (id == JsOutlineFilter::kFilterId)) {
     // OutlineFilter is special because it's not a RewriteFilter -- it's
     // just an HtmlFilter, but it does encode rewritten resources that
     // must be served from the cache.
     //
     // TODO(jmarantz): figure out a better way to refactor this.
     // TODO(jmarantz): add a unit-test to show serving outline-filter resources.
-    kind = kOutlinedResource;
+    *kind_out = kOutlinedResource;
+    *filter_out = NULL;
   } else {
+    return false;
+  }
+
+  return true;
+}
+
+OutputResourcePtr RewriteDriver::DecodeOutputResource(const GoogleUrl& gurl,
+                                                      RewriteFilter** filter) {
+  ResourceNamer namer;
+  OutputResourceKind kind;
+  if (!DecodeOutputResourceName(gurl, &namer, &kind, filter)) {
     return OutputResourcePtr();
   }
 
@@ -813,6 +822,10 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const StringPiece& url,
   StringPiece base = gurl.AllExceptLeaf();
   OutputResourcePtr output_resource(new OutputResource(
       resource_manager_, base, namer, NULL, NULL, kind));
+  bool has_async_flow = false;
+  if (*filter != NULL) {
+    has_async_flow = (*filter)->HasAsyncFlow();
+  }
   output_resource->set_written_using_rewrite_context_flow(has_async_flow);
 
   // We also reject any unknown extensions, which includes rejecting requests
@@ -983,7 +996,8 @@ bool RewriteDriver::FetchResource(
   // Note that this does permission checking and parsing of the url, but doesn't
   // actually fetch any data until we specifically ask it to.
   RewriteFilter* filter = NULL;
-  OutputResourcePtr output_resource(DecodeOutputResource(url, &filter));
+  GoogleUrl gurl(url);
+  OutputResourcePtr output_resource(DecodeOutputResource(gurl, &filter));
 
   if (output_resource.get() != NULL) {
     handled = true;

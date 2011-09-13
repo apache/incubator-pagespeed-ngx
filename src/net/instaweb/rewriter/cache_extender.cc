@@ -60,7 +60,6 @@ const char kNotCacheable[] = "not_cacheable";
 namespace net_instaweb {
 class MessageHandler;
 class RewriteContext;
-class RewriteFilter;
 
 // We do not want to bother to extend the cache lifetime for any resource
 // that is already cached for a month.
@@ -137,41 +136,30 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
   // resources are non-cacheable or privately cacheable.
   if ((href != NULL) && driver_->IsRewritable(element)) {
     ResourcePtr input_resource(CreateInputResource(href->value()));
-    if ((input_resource.get() != NULL) &&
-        !IsRewrittenResource(input_resource->url())) {
-      if (HasAsyncFlow()) {
-        ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, href));
-        Context* context = new Context(this, driver_, NULL /* not nested */);
-        context->AddSlot(slot);
-        driver_->InitiateRewrite(context);
-      } else {
-        scoped_ptr<CachedResult> rewrite_info(
-            RewriteExternalResource(input_resource, NULL));
-        if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
-          // Rewrite URL to cache-extended version
-          href->SetValue(rewrite_info->url());
-          extension_count_->Add(1);
-        }
+    if (input_resource.get() == NULL) {
+      return;
+    }
+
+    GoogleUrl input_gurl(input_resource->url());
+    if (resource_manager_->IsPagespeedResource(input_gurl)) {
+      return;
+    }
+
+    if (HasAsyncFlow()) {
+      ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, href));
+      Context* context = new Context(this, driver_, NULL /* not nested */);
+      context->AddSlot(slot);
+      driver_->InitiateRewrite(context);
+    } else {
+      scoped_ptr<CachedResult> rewrite_info(
+          RewriteExternalResource(input_resource, NULL));
+      if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
+        // Rewrite URL to cache-extended version
+        href->SetValue(rewrite_info->url());
+        extension_count_->Add(1);
       }
     }
   }
-}
-
-// Just based on the pattern of the URL, see if we think this was
-// already the result of a rewrite.  It should, in general, be
-// functionally correct to apply a new filter to an
-// already-rewritten resoure.  However, in the case of cache
-// extension, there is no benefit because every rewriter generates
-// URLs that are served with long cache lifetimes.  This filter
-// just wants to pick up the scraps.  Note that we would discover
-// this anyway in the cache expiration time below, but it's worth
-// going to the extra trouble to reduce the cache lookups since this
-// happens for basically every resource.
-bool CacheExtender::IsRewrittenResource(const StringPiece& url) const {
-  RewriteFilter* filter;
-  OutputResourcePtr output_resource(driver_->DecodeOutputResource(
-      url, &filter));
-  return (output_resource.get() != NULL);
 }
 
 bool CacheExtender::ComputeOnTheFly() const {

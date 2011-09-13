@@ -154,7 +154,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   OutputResourcePtr CreateOutputResourceForFetch(const StringPiece& url) {
     RewriteFilter* dummy;
     rewrite_driver()->SetBaseUrlForFetch(url);
-    return rewrite_driver()->DecodeOutputResource(url, &dummy);
+    GoogleUrl gurl(url);
+    return rewrite_driver()->DecodeOutputResource(gurl, &dummy);
   }
 
   ResourcePtr CreateInputResourceAndReadIfCached(const StringPiece& url) {
@@ -554,8 +555,9 @@ TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
   GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
   RewriteFilter* dummy;
+  GoogleUrl gurl(StrCat(url, "?query"));
   OutputResourcePtr output_resource(
-      rewrite_driver()->DecodeOutputResource(StrCat(url, "?query"), &dummy));
+      rewrite_driver()->DecodeOutputResource(gurl, &dummy));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(url, output_resource->url());
 }
@@ -975,6 +977,14 @@ TEST_F(ResourceManagerTest, ShutDownAssumptions) {
   EnableRewriteDriverCleanupMode(false);
   // Should actually clean it up this time.
   driver->Cleanup();
+}
+
+TEST_F(ResourceManagerTest, IsPagespeedResource) {
+  GoogleUrl rewritten("http://shard0.com/dir/orig.js.pagespeed.jm.0.js");
+  EXPECT_TRUE(resource_manager()->IsPagespeedResource(rewritten));
+
+  GoogleUrl normal("http://jqueryui.com/jquery-1.6.2.js");
+  EXPECT_FALSE(resource_manager()->IsPagespeedResource(normal));
 }
 
 }  // namespace net_instaweb
