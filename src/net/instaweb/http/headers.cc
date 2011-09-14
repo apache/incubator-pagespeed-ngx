@@ -109,6 +109,19 @@ template<class Proto> const char* Headers<Proto>::Lookup1(
   return NULL;
 }
 
+template<class Proto> bool Headers<Proto>::HasValue(
+    const StringPiece& name, const StringPiece& value) const {
+  ConstStringStarVector values;
+  Lookup(name, &values);
+  for (ConstStringStarVector::const_iterator iter = values.begin();
+       iter != values.end(); ++iter) {
+    if (value == **iter) {
+      return true;
+    }
+  }
+  return false;
+}
+
 template<class Proto> bool Headers<Proto>::IsCommaSeparatedField(
     const StringPiece& name) const {
   // TODO(nforman): Make this a complete list.  The list of header names
