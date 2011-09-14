@@ -17,6 +17,7 @@
 
 #include "net/instaweb/util/public/scheduler.h"
 
+#include <algorithm>
 #include <set>
 
 #include "base/logging.h"
@@ -211,9 +212,10 @@ void Scheduler::BlockingTimedWait(int64 timeout_ms) {
   while (signal_count_ == original_signal_count && !timed_out &&
          next_wakeup_us > 0) {
     // Now we have to block until either we time out, or we are signaled.  We
-    // stop when outstanding_alarms_ is empty as a belt and suspenders
-    // protection against programmer error; this ought to imply timed_out.
-    AwaitWakeupUntilUs(wakeup_time_us);
+    // stop when outstanding_alarms_ is empty (and thus RunAlarms(NULL) == 0) as
+    // a belt and suspenders protection against programmer error; this ought to
+    // imply timed_out.
+    AwaitWakeupUntilUs(std::min(wakeup_time_us, next_wakeup_us));
     next_wakeup_us = RunAlarms(NULL);
   }
 }
@@ -379,9 +381,8 @@ void SchedulerBlockingFunction::Run() {
 }
 
 void SchedulerBlockingFunction::Cancel() {
-  scheduler_->mutex()->DCheckLocked();
   done_.set_value(true);
-  scheduler_->Signal();
+  scheduler_->Wakeup();
 }
 
 bool SchedulerBlockingFunction::Block() {

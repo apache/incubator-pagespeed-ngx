@@ -123,6 +123,10 @@ TEST_P(CssImageCombineTest, SpritesImages) {
   // Here we need the vertical center (45 to 55, plus the 70 offset),
   // and the horizontal right (90 to 100).
   TestSpriting("center right", "-90px -115px", true);
+  // This is equivalent to "center right".
+  TestSpriting("right", "-90px -115px", true);
+  // This is equivalent to "top center".
+  TestSpriting("top", "-45px -70px", true);
 }
 
 TEST_P(CssImageCombineTest, SpritesMultiple) {

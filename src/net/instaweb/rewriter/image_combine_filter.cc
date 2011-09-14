@@ -117,33 +117,6 @@ class SpriteFuture {
 
   Css::Declarations* decls() { return declarations_; }
 
-  // TODO(abliss): support other values like "10%" and "center"
-  static bool GetPixelValue(Css::Value* value, int* out_value_px) {
-    switch (value->GetLexicalUnitType()) {
-      case Css::Value::NUMBER: {
-        int int_value = value->GetIntegerValue();
-        // If the offset is specified in pixels, or is 0, we can just use it.
-        if ((value->GetDimension() == Css::Value::PX) || (int_value == 0)) {
-          *out_value_px = int_value;
-          return true;
-        }
-        // TODO(abliss): handle more fancy values
-        return false;
-      }
-      case  Css::Value::IDENT:
-        switch (value->GetIdentifier().ident()) {
-          case Css::Identifier::LEFT:
-          case Css::Identifier::TOP:
-            *out_value_px = 0;
-            return true;
-          default:
-            return false;
-        }
-      default:
-        return false;
-    }
-  }
-
   // Set x_px and y_px to the alignment for this image/div combination
   // before spriting.
   bool SetAlignmentValues(Css::Value* x_value, Css::Value* y_value,
@@ -151,13 +124,12 @@ class SpriteFuture {
                           int* x_px, int* y_px) {
     bool ret = true;
     if (x_value->GetLexicalUnitType() == Css::Value::NUMBER) {
+      if (IsValidNumberPosition(*x_value)) {
         int int_value = x_value->GetIntegerValue();
-        // If the aligment is specified in pixels, or is 0, we can just use it.
-        if ((x_value->GetDimension() == Css::Value::PX) || (int_value == 0)) {
-          *x_px = int_value;
-        } else {
-          ret = false;
-        }
+        *x_px = int_value;
+      } else {
+        ret = false;
+      }
     } else if (x_value->GetLexicalUnitType() == Css::Value::IDENT) {
       switch (x_value->GetIdentifier().ident()) {
         case Css::Identifier::LEFT:
@@ -175,9 +147,8 @@ class SpriteFuture {
       }
     }
     if (y_value->GetLexicalUnitType() == Css::Value::NUMBER) {
-      int int_value = y_value->GetIntegerValue();
-      if (ret &&
-          (y_value->GetDimension() == Css::Value::PX || int_value == 0)) {
+      if (ret && IsValidNumberPosition(*y_value)) {
+        int int_value = y_value->GetIntegerValue();
         *y_px = int_value;
       } else {
         ret = false;
@@ -201,6 +172,101 @@ class SpriteFuture {
     return ret;
   }
 
+  // (1) Figure out what position declaration we have.
+  // (2) If we have x, create y, and vice versa.
+  // (3) Insert the new value into the values vector.
+  bool ReadSingleValue(Css::Values* values, int values_offset,
+                       Css::Value** x_value, Css::Value** y_value) {
+    Css::Value* extra_value = new Css::Value(Css::Identifier::CENTER);
+    Css::Value* value = values->at(values_offset);
+    if (value->GetLexicalUnitType() == Css::Value::IDENT) {
+      switch (value->GetIdentifier().ident()) {
+        case Css::Identifier::LEFT:
+        case Css::Identifier::RIGHT:
+        case Css::Identifier::CENTER:
+          *x_value = value;
+          *y_value = extra_value;
+          break;
+        case Css::Identifier::TOP:
+        case Css::Identifier::BOTTOM:
+          *y_value = value;
+          *x_value = extra_value;
+          break;
+        default:
+          delete extra_value;
+          return false;
+      }
+    } else {
+      return false;
+    }
+    values->insert(values->begin() + values_offset + 1, extra_value);
+    return true;
+  }
+
+  // (1) Figure out what position declaration we have first.
+  // (2) If horizontal, other is vertical, and vice versa.
+  // (3) If first value is a number, second value is vertical,
+  //     first is horizontal.
+  bool ReadTwoValues(Css::Values* values, int values_offset,
+                     Css::Value**x_value, Css::Value** y_value) {
+    Css::Value* value = values->at(values_offset);
+    Css::Value* other_value = values->at(values_offset + 1);
+    if (value->GetLexicalUnitType() == Css::Value::IDENT) {
+      switch (value->GetIdentifier().ident()) {
+        case Css::Identifier::LEFT:
+        case Css::Identifier::RIGHT:
+          *x_value = value;
+          *y_value = other_value;
+          break;
+        case Css::Identifier::TOP:
+        case Css::Identifier::BOTTOM:
+          *x_value = other_value;
+          *y_value = value;
+          break;
+        case Css::Identifier::CENTER:
+          if (other_value->GetLexicalUnitType() == Css::Value::IDENT) {
+            switch (other_value->GetIdentifier().ident()) {
+              case Css::Identifier::LEFT:
+              case Css::Identifier::RIGHT:
+                *x_value = other_value;
+                *y_value = value;
+                break;
+              case Css::Identifier::TOP:
+              case Css::Identifier::BOTTOM:
+              case Css::Identifier::CENTER:
+                *x_value = value;
+                *y_value = other_value;
+                break;
+              default:
+                return false;
+            }
+          } else {
+            // TODO(nforman): Allow for mixing of alignment types,
+            // i.e. left 2px.
+            return false;
+          }
+          break;
+        default:
+          return false;
+      }
+    } else {
+      // If there are two values and neither is an identifier, x comes
+      // first: e.g. "5px 6px" means x=5, y=6.
+      // TODO(nforman): support % values.
+      for (int i = 0; i < 2; ++i) {
+        Css::Value* val = values->at(values_offset + i);
+        if (val->GetLexicalUnitType() == Css::Value::NUMBER &&
+            IsValidNumberPosition(*val)) {
+          continue;
+        }
+        return false;
+      }
+      *x_value = values->at(values_offset);
+      *y_value = values->at(values_offset + 1);
+    }
+    return true;
+  }
+
   // Attempts to read the x and y values of the background position.  *values
   // is a value array which includes the background-position at values_offset.
   // new_x and new_y are the coordinates of the image in the sprite.  Returns
@@ -215,56 +281,13 @@ class SpriteFuture {
     // TODO(abliss): move this to webutil/css?
     Css::Value* x_value = NULL;
     Css::Value* y_value = NULL;
-    for (int i = 0; (i < 2) && (x_value == NULL); i++) {
-      Css::Value* value = values->at(values_offset + i);
-      Css::Value* other_value = values->at(values_offset + 1 - i);
-      if (value->GetLexicalUnitType() == Css::Value::IDENT) {
-        switch (value->GetIdentifier().ident()) {
-          case Css::Identifier::LEFT:
-          case Css::Identifier::RIGHT:
-            x_value = value;
-            y_value = other_value;
-            break;
-          case Css::Identifier::TOP:
-          case Css::Identifier::BOTTOM:
-            x_value = other_value;
-            y_value = value;
-            break;
-          case Css::Identifier::CENTER:
-            if (other_value->GetLexicalUnitType() == Css::Value::IDENT) {
-              switch (other_value->GetIdentifier().ident()) {
-                case Css::Identifier::LEFT:
-                case Css::Identifier::RIGHT:
-                  x_value = other_value;
-                  y_value = value;
-                  break;
-                case Css::Identifier::TOP:
-                case Css::Identifier::BOTTOM:
-                case Css::Identifier::CENTER:
-                  x_value = value;
-                  y_value = other_value;
-                  break;
-                default:
-                  return false;
-              }
-            } else {
-              // TODO(nforman): Allow for mixing of alignment types,
-              // i.e. left 2px.
-              return false;
-            }
-            break;
-          default:
-            // TODO(nforman): Support unspecified alignment.
-            return false;
-        }
+    if (((int)values->size() - values_offset == 1) ||
+        !IsPositionValue(*(values->at(values_offset + 1)))) {
+      if (!ReadSingleValue(values, values_offset, &x_value, &y_value)) {
+        return false;
       }
-    }
-
-    // If there are two values and neither is an identifier, x comes
-    // first: e.g. "5px 6px" means x=5, y=6.
-    if (x_value == NULL) {
-      x_value = values->at(values_offset);
-      y_value = values->at(values_offset + 1);
+    } else if (!ReadTwoValues(values, values_offset, &x_value, &y_value)) {
+      return false;
     }
     // Now that we know which value is which dimension, we can extract the
     // values in px.
@@ -283,6 +306,18 @@ class SpriteFuture {
     y_offset_ = y_px;
     return true;
   }
+
+  // Returns whether or not this is a number value we can handle.
+  static bool IsValidNumberPosition(const Css::Value& value) {
+    CHECK(value.GetLexicalUnitType() == Css::Value::NUMBER);
+    int int_value = value.GetIntegerValue();
+    // If the aligment is specified in pixels, or is 0, we can just use it.
+    if ((value.GetDimension() == Css::Value::PX) || (int_value == 0)) {
+      return true;
+    }
+    return false;
+  }
+
   // Tries to guess whether this value is an x- or y- position value in the
   // background shorthand value list.
   static bool IsPositionValue(const Css::Value& value) {
@@ -353,9 +388,7 @@ class SpriteFuture {
       switch (decl->prop()) {
         case Css::Property::BACKGROUND_POSITION: {
           Css::Values* decl_values = decl->mutable_values();
-          if (decl_values->size() != 2) {
-            // If only one of the coordinates is specified, the other is
-            // "center", which we don't currently support.
+          if (decl_values->size() > 2 || decl_values->size() < 1) {
             return false;
           }
           if (ReadBackgroundPosition(decl_values, 0,
@@ -378,9 +411,8 @@ class SpriteFuture {
           // We'll look for two consecutive position values.  (If only one
           // position value is present, the other is considered to be CENTER
           // which we don't support.)
-          for (int i = 0, n = decl_values->size() - 1; i < n; ++i) {
-            if (IsPositionValue(*(decl_values->at(i))) &&
-                IsPositionValue(*(decl_values->at(i + 1)))) {
+          for (int i = 0, n = decl_values->size(); i < n; ++i) {
+            if (IsPositionValue(*(decl_values->at(i)))) {
               if (ReadBackgroundPosition(decl_values, i,
                                          image_width, image_height)) {
                 has_position_ = true;
