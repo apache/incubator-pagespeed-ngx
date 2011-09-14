@@ -116,6 +116,7 @@ template<class Proto> bool Headers<Proto>::IsCommaSeparatedField(
   // http://src.chromium.org/viewvc/chrome/trunk/src/net/http/http_util.cc
   // (search for IsNonCoalescingHeader)
   if (StringCaseEqual(name, HttpAttributes::kVary) ||
+      StringCaseEqual(name, HttpAttributes::kCacheControl) ||
       StringCaseEqual(name, HttpAttributes::kContentEncoding)) {
     return true;
   } else {
@@ -205,48 +206,48 @@ template<class Proto> bool Headers<Proto>::Remove(const StringPiece& name,
 }
 
 template<class Proto> bool Headers<Proto>::RemoveAll(const StringPiece& name) {
-  // Protobufs lack a convenient remove method for array elements, so
-  // we copy the data into the map and do the remove there, then
-  // reconstruct the protobuf.
-  PopulateMap();
-  ConstStringStarVector values;
-  bool removed = map_->Lookup(name, &values);
-  if (removed) {
-    proto_->clear_header();
-    map_->RemoveAll(name);
-    for (int i = 0, n = map_->num_values(); i < n; ++i) {
-      NameValue* name_value = proto_->add_header();
-      name_value->set_name(map_->name(i));
-      DCHECK(map_->value(i) != NULL) << "Null-valued header";
-      name_value->set_value(*(map_->value(i)));
-    }
-  }
-  return removed;
+  StringSet names;
+  names.insert(name.as_string());
+  return RemoveAllFromSet(names);
 }
 
-template<class Proto> void Headers<Proto>::RemoveAllFromSet(
+template<class Proto> bool Headers<Proto>::RemoveAllFromSet(
     const StringSet& names) {
-  // Protobufs lack a convenient remove method for array elements, so
-  // we construct a new protobuf and swap them.
-
-  // Copy all headers that aren't slated for removal.
-  Proto temp_proto;
-  for (int i = 0, n = NumAttributes(); i < n; ++i) {
-    if (names.find(Name(i)) == names.end()) {
-      NameValue* name_value = temp_proto.add_header();
-      name_value->set_name(Name(i));
-      name_value->set_value(Value(i));
+  // First, we update the map.
+  PopulateMap();
+  bool removed_anything = false;
+  for (StringSet::const_iterator iter = names.begin();
+       iter != names.end(); ++iter) {
+    if (map_->RemoveAll(*iter)) {
+      removed_anything = true;
     }
   }
 
-  // Copy back to our protobuf.
-  map_.reset(NULL);  // Map must be repopulated before next lookup operation.
-  proto_->clear_header();
-  for (int i = 0, n = temp_proto.header_size(); i < n; ++i) {
-    NameValue* name_value = proto_->add_header();
-    name_value->set_name(temp_proto.header(i).name());
-    name_value->set_value(temp_proto.header(i).value());
+  // If we removed anything, we update the proto as well.
+  if (removed_anything) {
+    // Protobufs lack a convenient remove method for array elements, so
+    // we construct a new protobuf and swap them.
+
+    // Copy all headers that aren't slated for removal.
+    Proto temp_proto;
+    for (int i = 0, n = NumAttributes(); i < n; ++i) {
+      if (names.find(Name(i)) == names.end()) {
+        NameValue* name_value = temp_proto.add_header();
+        name_value->set_name(Name(i));
+        name_value->set_value(Value(i));
+      }
+    }
+
+    // Copy back to our protobuf.
+    proto_->clear_header();
+    for (int i = 0, n = temp_proto.header_size(); i < n; ++i) {
+      NameValue* name_value = proto_->add_header();
+      name_value->set_name(temp_proto.header(i).name());
+      name_value->set_value(temp_proto.header(i).value());
+    }
   }
+
+  return removed_anything;
 }
 
 template<class Proto> void Headers<Proto>::Replace(

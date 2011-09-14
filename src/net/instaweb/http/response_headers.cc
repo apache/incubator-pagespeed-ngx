@@ -133,9 +133,12 @@ bool ResponseHeaders::RemoveAll(const StringPiece& name) {
   return false;
 }
 
-void ResponseHeaders::RemoveAllFromSet(const StringSet& names) {
-  cache_fields_dirty_ = true;
-  Headers<HttpResponseHeaders>::RemoveAllFromSet(names);
+bool ResponseHeaders::RemoveAllFromSet(const StringSet& names) {
+  if (Headers<HttpResponseHeaders>::RemoveAllFromSet(names)) {
+    cache_fields_dirty_ = true;
+    return true;
+  }
+  return false;
 }
 
 void ResponseHeaders::Replace(

@@ -293,16 +293,101 @@ TEST_F(ResponseHeadersTest, TestRemoveAll) {
                "Set-Cookie: LA=1275937193\r\n"
                "Vary: Accept-Encoding\r\n"
                "\r\n");
+  ConstStringStarVector vs;
   ExpectSizes(8, 4);
-  response_headers_.RemoveAll(HttpAttributes::kVary);
+
+  // Removing a header which isn't there removes nothing and returns false.
+  EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kLocation, &vs));
+  EXPECT_FALSE(response_headers_.RemoveAll(HttpAttributes::kLocation));
+  ExpectSizes(8, 4);
+
+  // Removing a headers which is there works.
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kVary, &vs));
+  EXPECT_TRUE(response_headers_.RemoveAll(HttpAttributes::kVary));
+  EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kVary, &vs));
   ExpectSizes(6, 3);
-  response_headers_.RemoveAll(HttpAttributes::kSetCookie);
+
+  // Removing something which has already been removed has no effect.
+  EXPECT_FALSE(response_headers_.RemoveAll(HttpAttributes::kVary));
+  ExpectSizes(6, 3);
+
+  // Remove the rest one-by-one.
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kSetCookie, &vs));
+  EXPECT_TRUE(response_headers_.RemoveAll(HttpAttributes::kSetCookie));
+  EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kSetCookie, &vs));
   ExpectSizes(2, 2);
   EXPECT_EQ(2, response_headers_.NumAttributes());
-  response_headers_.RemoveAll(HttpAttributes::kDate);
+
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kDate, &vs));
+  EXPECT_TRUE(response_headers_.RemoveAll(HttpAttributes::kDate));
+  EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kDate, &vs));
   ExpectSizes(1, 1);
-  response_headers_.RemoveAll(HttpAttributes::kCacheControl);
+
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kCacheControl, &vs));
+  EXPECT_TRUE(response_headers_.RemoveAll(HttpAttributes::kCacheControl));
   ExpectSizes(0, 0);
+  EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kCacheControl, &vs));
+}
+
+TEST_F(ResponseHeadersTest, TestRemoveAllFromSet) {
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Set-Cookie: CG=US:CA:Mountain+View\r\n"
+               "Set-Cookie: UA=chrome\r\n"
+               "Cache-Control: max-age=100\r\n"
+               "Set-Cookie: path=/\r\n"
+               "Vary: User-Agent\r\n"
+               "Set-Cookie: LA=1275937193\r\n"
+               "Vary: Accept-Encoding\r\n"
+               "\r\n");
+  ConstStringStarVector vs;
+  ExpectSizes(8, 4);
+
+  // Empty set means remove nothing and return false.
+  StringSet removes0;
+  EXPECT_FALSE(response_headers_.RemoveAllFromSet(removes0));
+  ExpectSizes(8, 4);
+
+  // Removing headers which aren't there removes nothing and returns false.
+  EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kLocation, &vs));
+  EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kGzip, &vs));
+  removes0.insert(HttpAttributes::kLocation);
+  removes0.insert(HttpAttributes::kGzip);
+  EXPECT_FALSE(response_headers_.RemoveAllFromSet(removes0));
+  ExpectSizes(8, 4);
+
+  // Removing multiple headers works.
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kVary, &vs));
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kSetCookie, &vs));
+  StringSet removes1;
+  removes1.insert(HttpAttributes::kVary);
+  removes1.insert(HttpAttributes::kSetCookie);
+  EXPECT_TRUE(response_headers_.RemoveAllFromSet(removes1));
+  ExpectSizes(2, 2);
+  EXPECT_EQ(2, response_headers_.NumAttributes());
+  EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kVary, &vs));
+  EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kSetCookie, &vs));
+
+  // Removing something which has already been removed has no effect.
+  EXPECT_FALSE(response_headers_.RemoveAllFromSet(removes1));
+  ExpectSizes(2, 2);
+
+  // Removing one header works.
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kDate, &vs));
+  StringSet removes2;
+  removes2.insert(HttpAttributes::kDate);
+  EXPECT_TRUE(response_headers_.RemoveAllFromSet(removes2));
+  ExpectSizes(1, 1);
+  EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kDate, &vs));
+
+  // Removing a header that is there after one that isn't works.
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kCacheControl, &vs));
+  StringSet removes3;
+  removes3.insert("X-Bogus-Attribute");
+  removes3.insert(HttpAttributes::kCacheControl);
+  EXPECT_TRUE(response_headers_.RemoveAllFromSet(removes3));
+  ExpectSizes(0, 0);
+  EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kCacheControl, &vs));
 }
 
 TEST_F(ResponseHeadersTest, TestReasonPhrase) {
@@ -408,15 +493,124 @@ TEST_F(ResponseHeadersTest, TestReserializingCommaValues) {
       "HTTP/1.0 0 (null)\r\n"
       "Date: Mon, 05 Apr 2010 18:51:26 GMT\r\n"
       "Expires: Mon, 05 Apr 2010 18:57:26 GMT\r\n"
-      "Cache-Control: max-age=360\r\n"
+      "Cache-Control: max-age=360, private, must-revalidate\r\n"
       "Vary: Accept-Encoding, User-Agent\r\n"
       "\r\n";
   response_headers_.Clear();
   ParseHeaders(comma_headers);
   ConstStringStarVector values;
+  response_headers_.Lookup(HttpAttributes::kCacheControl, &values);
+  EXPECT_EQ(3, values.size());
+  values.clear();
   response_headers_.Lookup(HttpAttributes::kVary, &values);
   EXPECT_EQ(2, values.size());
   EXPECT_EQ(comma_headers, response_headers_.ToString());
+}
+
+// There was a bug that calling RemoveAll would re-populate the proto from
+// map_ which would separate all comma-separated values.
+TEST_F(ResponseHeadersTest, TestRemoveDoesntSeparateCommaValues) {
+  response_headers_.Add(HttpAttributes::kCacheControl, "max-age=0, no-cache");
+  response_headers_.Add(HttpAttributes::kSetCookie, "blah");
+  response_headers_.Add(HttpAttributes::kVary, "Accept-Encoding, Cookie");
+
+  // 1) RemoveAll
+  EXPECT_TRUE(response_headers_.RemoveAll(HttpAttributes::kSetCookie));
+
+  ConstStringStarVector values;
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kCacheControl, &values));
+  EXPECT_EQ(2, values.size());
+  values.clear();
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kVary, &values));
+  EXPECT_EQ(2, values.size());
+
+  const char expected_headers[] =
+      "HTTP/1.0 0 (null)\r\n"
+      "Cache-Control: max-age=0, no-cache\r\n"
+      "Vary: Accept-Encoding, Cookie\r\n"
+      "\r\n";
+  EXPECT_EQ(expected_headers, response_headers_.ToString());
+
+  // 2) Remove
+  EXPECT_TRUE(response_headers_.Remove(HttpAttributes::kVary, "Cookie"));
+
+  const char expected_headers2[] =
+      "HTTP/1.0 0 (null)\r\n"
+      "Cache-Control: max-age=0, no-cache\r\n"
+      "Vary: Accept-Encoding\r\n"
+      "\r\n";
+  EXPECT_EQ(expected_headers2, response_headers_.ToString());
+
+  // 3) RemoveAllFromSet
+  StringSet set;
+  set.insert(HttpAttributes::kVary);
+  EXPECT_TRUE(response_headers_.RemoveAllFromSet(set));
+
+  const char expected_headers3[] =
+      "HTTP/1.0 0 (null)\r\n"
+      "Cache-Control: max-age=0, no-cache\r\n"
+      "\r\n";
+  EXPECT_EQ(expected_headers3, response_headers_.ToString());
+}
+
+TEST_F(ResponseHeadersTest, TestKeepSeparateCommaValues) {
+  response_headers_.Add(HttpAttributes::kVary, "Accept-Encoding");
+  response_headers_.Add(HttpAttributes::kVary, "User-Agent");
+  response_headers_.Add(HttpAttributes::kVary, "Cookie");
+
+  ConstStringStarVector values;
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kVary, &values));
+  EXPECT_EQ(3, values.size());
+
+  // We keep values separate by default.
+  const char expected_headers[] =
+      "HTTP/1.0 0 (null)\r\n"
+      "Vary: Accept-Encoding\r\n"
+      "Vary: User-Agent\r\n"
+      "Vary: Cookie\r\n"
+      "\r\n";
+  EXPECT_EQ(expected_headers, response_headers_.ToString());
+
+  EXPECT_TRUE(response_headers_.Remove(HttpAttributes::kVary, "User-Agent"));
+
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kVary, &values));
+  EXPECT_EQ(2, values.size());
+
+  // But they are combined after a Remove.
+  //
+  // NOTE: This is mostly to document current behavior. Feel free to re-gold
+  // this if you update the Remove method to not combine headers.
+  const char expected_headers2[] =
+      "HTTP/1.0 0 (null)\r\n"
+      "Vary: Accept-Encoding, Cookie\r\n"
+      "\r\n";
+  EXPECT_EQ(expected_headers2, response_headers_.ToString());
+}
+
+TEST_F(ResponseHeadersTest, TestKeepTogetherCommaValues) {
+  response_headers_.Add(HttpAttributes::kVary,
+                        "Accept-Encoding, User-Agent, Cookie");
+
+  ConstStringStarVector values;
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kVary, &values));
+  EXPECT_EQ(3, values.size());
+
+  const char expected_headers[] =
+      "HTTP/1.0 0 (null)\r\n"
+      "Vary: Accept-Encoding, User-Agent, Cookie\r\n"
+      "\r\n";
+  EXPECT_EQ(expected_headers, response_headers_.ToString());
+
+  EXPECT_TRUE(response_headers_.Remove(HttpAttributes::kVary, "User-Agent"));
+
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kVary, &values));
+  EXPECT_EQ(2, values.size());
+
+  const char expected_headers2[] =
+      "HTTP/1.0 0 (null)\r\n"
+      "Vary: Accept-Encoding, Cookie\r\n"
+      "\r\n";
+  EXPECT_EQ(expected_headers2, response_headers_.ToString());
 }
 
 TEST_F(ResponseHeadersTest, TestGzipped) {
@@ -470,7 +664,8 @@ TEST_F(ResponseHeadersTest, TestRemove) {
       "\r\n";
   response_headers_.Clear();
   ParseHeaders(headers);
-  response_headers_.Remove(HttpAttributes::kContentEncoding, "chunked");
+  EXPECT_TRUE(response_headers_.Remove(HttpAttributes::kContentEncoding,
+                                       "chunked"));
   EXPECT_EQ(headers_removed, response_headers_.ToString());
 }
 

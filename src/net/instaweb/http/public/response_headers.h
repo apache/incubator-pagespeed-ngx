@@ -55,7 +55,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   virtual bool RemoveAll(const StringPiece& name);
 
   // Remove all headers whose name is in |names|.
-  virtual void RemoveAllFromSet(const StringSet& names);
+  virtual bool RemoveAllFromSet(const StringSet& names);
 
   // Similar to RemoveAll followed by Add.  Note that the attribute
   // order may be changed as a side effect of this operation.
