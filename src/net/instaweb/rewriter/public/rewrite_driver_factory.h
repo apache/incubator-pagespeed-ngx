@@ -43,6 +43,7 @@ class ResourceManager;
 class RewriteDriver;
 class RewriteOptions;
 class RewriteStats;
+class Scheduler;
 class Statistics;
 class ThreadSystem;
 class Timer;
@@ -139,6 +140,7 @@ class RewriteDriverFactory {
   HTTPCache* http_cache();
   NamedLockManager* lock_manager();
   QueuedWorkerPool* WorkerPool(WorkerPoolName pool);
+  Scheduler* scheduler();
 
   StringPiece filename_prefix();
 
@@ -235,6 +237,10 @@ class RewriteDriverFactory {
   // make one with a single thread.
   virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolName name);
 
+  // Subclasses can override this to create an appropriate Scheduler
+  // subclass if the default isn't acceptable.
+  virtual Scheduler* CreateScheduler();
+
   // Called before creating the url fetchers.
   virtual void FetcherSetupHooks();
 
@@ -267,6 +273,7 @@ class RewriteDriverFactory {
   scoped_ptr<FilenameEncoder> filename_encoder_;
   scoped_ptr<UrlNamer> url_namer_;
   scoped_ptr<Timer> timer_;
+  scoped_ptr<Scheduler> scheduler_;
 
   GoogleString filename_prefix_;
   GoogleString slurp_directory_;

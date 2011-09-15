@@ -18,7 +18,6 @@
 
 #include "net/instaweb/util/public/queued_worker_pool.h"
 
-#include <algorithm>
 #include <deque>
 #include <set>
 #include <vector>
@@ -179,27 +178,26 @@ void QueuedWorkerPool::QueueSequence(Sequence* sequence) {
   }
 }
 
-bool QueuedWorkerPool::AreBusy(const SequenceVector& sequences) {
+bool QueuedWorkerPool::AreBusy(const SequenceSet& sequences) {
   // This is the only operation that accesses multiple workers at once.
   // We order our lock acquisitions by address comparisons to get
-  // 2-phase locking, and thus avoid deadlock.
-  SequenceVector ordered_sequences(sequences);
-  std::sort(ordered_sequences.begin(), ordered_sequences.end());
+  // 2-phase locking, and thus avoid deadlock... With the ordering
+  // done for us by SequenceSet already.
 
-  for (int i = 0, n = ordered_sequences.size(); i < n; ++i) {
-    ordered_sequences[i]->sequence_mutex_->Lock();
+  for (SequenceSet::iterator i = sequences.begin(); i != sequences.end(); ++i) {
+    (*i)->sequence_mutex_->Lock();
   }
 
   bool busy = false;
-  for (int i = 0, n = ordered_sequences.size(); i < n; ++i) {
-    if (ordered_sequences[i]->IsBusy()) {
+  for (SequenceSet::iterator i = sequences.begin(); i != sequences.end(); ++i) {
+    if ((*i)->IsBusy()) {
       busy = true;
       break;
     }
   }
 
-  for (int i = 0, n = ordered_sequences.size(); i < n; ++i) {
-    ordered_sequences[i]->sequence_mutex_->Unlock();
+  for (SequenceSet::iterator i = sequences.begin(); i != sequences.end(); ++i) {
+    (*i)->sequence_mutex_->Unlock();
   }
 
   return busy;

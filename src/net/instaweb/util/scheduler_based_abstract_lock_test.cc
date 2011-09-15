@@ -26,7 +26,6 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/thread.h"
@@ -44,9 +43,7 @@ class SchedulerBasedAbstractLockTest : public testing::Test {
   SchedulerBasedAbstractLockTest()
       : timer_(0),
         thread_system_(ThreadSystem::CreateThreadSystem()),
-        scheduler_(thread_system_.get(),
-                   QueuedWorkerPool::SequenceVector(),
-                   &timer_) {
+        scheduler_(thread_system_.get(), &timer_) {
   }
 
   MockTimer timer_;

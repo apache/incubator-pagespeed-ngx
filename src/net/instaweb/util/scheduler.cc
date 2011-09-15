@@ -393,4 +393,7 @@ bool SchedulerBlockingFunction::Block() {
   return success_;
 }
 
+void Scheduler::RegisterWorker(QueuedWorkerPool::Sequence* w) {}
+void Scheduler::UnregisterWorker(QueuedWorkerPool::Sequence* w) {}
+
 }  // namespace net_instaweb

@@ -47,7 +47,6 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"          // for STLDeleteElements
 #include "net/instaweb/util/public/string.h"
@@ -132,6 +131,7 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory,
       file_system_(NULL),
       filename_encoder_(NULL),
       url_namer_(NULL),
+      scheduler_(factory->scheduler()),
       url_async_fetcher_(NULL),
       hasher_(NULL),
       lock_hasher_(20),
@@ -586,8 +586,7 @@ RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver() {
   RewriteDriver* rewrite_driver = new RewriteDriver(
       message_handler_, file_system_, url_async_fetcher_);
   rewrite_driver->SetAsynchronousRewrites(async_rewrites_);
-  Scheduler* scheduler = new Scheduler(thread_system_, timer());
-  rewrite_driver->SetResourceManagerAndScheduler(this, scheduler);
+  rewrite_driver->SetResourceManager(this);
   if (factory_ != NULL) {
     factory_->AddPlatformSpecificRewritePasses(rewrite_driver);
   }

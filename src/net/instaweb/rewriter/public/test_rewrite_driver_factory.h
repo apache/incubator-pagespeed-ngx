@@ -37,9 +37,11 @@ class MemFileSystem;
 class MessageHandler;
 class MockHasher;
 class MockMessageHandler;
+class MockScheduler;
 class MockTimer;
 class MockUrlFetcher;
 class RewriteDriver;
+class Scheduler;
 class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
@@ -68,6 +70,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   void SetupWaitFetcher();
   void CallFetcherCallbacksForDriver(RewriteDriver* driver);
   MockMessageHandler* mock_message_handler() { return mock_message_handler_; }
+  MockScheduler* mock_scheduler() { return mock_scheduler_; }
 
  protected:
   virtual Hasher* NewHasher();
@@ -79,9 +82,11 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual Timer* DefaultTimer();
   virtual CacheInterface* DefaultCacheInterface();
   virtual bool ShouldWriteResourcesToFileSystem() { return true; }
+  virtual Scheduler* CreateScheduler();
 
  private:
   MockTimer* mock_timer_;  // owned by base class timer_.
+  MockScheduler* mock_scheduler_;  // owned by base class scheduler_;
   LRUCache* lru_cache_;
   UrlFetcher* proxy_url_fetcher_;
   MockUrlFetcher* mock_url_fetcher_;

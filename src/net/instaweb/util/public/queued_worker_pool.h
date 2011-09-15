@@ -112,7 +112,7 @@ class QueuedWorkerPool {
     DISALLOW_COPY_AND_ASSIGN(Sequence);
   };
 
-  typedef std::vector<Sequence*> SequenceVector;
+  typedef std::set<Sequence*> SequenceSet;
 
   // Sequence is owned by the pool, and will be automatically freed when
   // the pool is finally freed (e.g. on server shutdown).  But the sequence
@@ -142,7 +142,7 @@ class QueuedWorkerPool {
   // 4) We check whether expensive sequence is busy. It's not, so we would
   //    conclude we quiesced --- while there was still work in the inexpensive
   //    queue.
-  static bool AreBusy(const SequenceVector& sequences);
+  static bool AreBusy(const SequenceSet& sequences);
 
   // Sets up a timed-variable statistic indicating the current queue depth.
   //

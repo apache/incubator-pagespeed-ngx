@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
@@ -117,6 +118,12 @@ class Scheduler {
   // overridden AwaitWakeup method has happened.  Exported here because C++
   // naming hates you.
   void Wakeup();
+
+  // These methods notify the scheduler of work sequences that may run work
+  // on it. They are only used for time simulations in MockScheduler and
+  // are no-ops during normal usage.
+  virtual void RegisterWorker(QueuedWorkerPool::Sequence* w);
+  virtual void UnregisterWorker(QueuedWorkerPool::Sequence* w);
 
  protected:
   // Internal method to await a wakeup event.  Block until wakeup_time_us (an

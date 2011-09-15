@@ -39,6 +39,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
+#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -209,6 +210,13 @@ UrlNamer* RewriteDriverFactory::url_namer() {
   return url_namer_.get();
 }
 
+Scheduler* RewriteDriverFactory::scheduler() {
+  if (scheduler_ == NULL) {
+    scheduler_.reset(CreateScheduler());
+  }
+  return scheduler_.get();
+}
+
 Hasher* RewriteDriverFactory::hasher() {
   if (hasher_ == NULL) {
     hasher_.reset(NewHasher());
@@ -227,6 +235,10 @@ UrlNamer* RewriteDriverFactory::DefaultUrlNamer() {
 
 QueuedWorkerPool* RewriteDriverFactory::CreateWorkerPool(WorkerPoolName pool) {
   return new QueuedWorkerPool(1, thread_system());
+}
+
+Scheduler* RewriteDriverFactory::CreateScheduler() {
+  return new Scheduler(thread_system(), timer());
 }
 
 NamedLockManager* RewriteDriverFactory::lock_manager() {
@@ -307,6 +319,7 @@ ResourceManager* RewriteDriverFactory::CreateResourceManagerLockHeld() {
                                                           statistics(),
                                                           rewrite_stats(),
                                                           http_cache());
+  resource_manager->set_scheduler(scheduler());
   resource_manager->set_url_namer(url_namer());
   resource_manager->set_filename_encoder(filename_encoder());
   resource_manager->set_file_system(file_system());

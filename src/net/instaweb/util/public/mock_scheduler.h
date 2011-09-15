@@ -37,16 +37,18 @@ class ThreadSystem;
 class MockScheduler : public Scheduler {
  public:
   MockScheduler(ThreadSystem* thread_system,
-                const QueuedWorkerPool::SequenceVector& workers,
                 MockTimer* timer);
   virtual ~MockScheduler();
+
+  virtual void RegisterWorker(QueuedWorkerPool::Sequence* w);
+  virtual void UnregisterWorker(QueuedWorkerPool::Sequence* w);
 
  protected:
   virtual void AwaitWakeupUntilUs(int64 wakeup_time_us);
 
  private:
   MockTimer* timer_;
-  QueuedWorkerPool::SequenceVector workers_;
+  QueuedWorkerPool::SequenceSet workers_;
 
   DISALLOW_COPY_AND_ASSIGN(MockScheduler);
 };

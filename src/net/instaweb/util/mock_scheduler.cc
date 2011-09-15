@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/mock_scheduler.h"
 
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/scheduler.h"
@@ -27,12 +28,9 @@
 namespace net_instaweb {
 
 MockScheduler::MockScheduler(
-    ThreadSystem* thread_system,
-    const QueuedWorkerPool::SequenceVector& workers,
-    MockTimer* timer)
+    ThreadSystem* thread_system, MockTimer* timer)
     : Scheduler(thread_system, timer),
-      timer_(timer),
-      workers_(workers) {
+      timer_(timer) {
 }
 
 MockScheduler::~MockScheduler() {
@@ -59,6 +57,16 @@ void MockScheduler::AwaitWakeupUntilUs(int64 wakeup_time_us) {
     }
     mutex()->Lock();
   }
+}
+
+void MockScheduler::RegisterWorker(QueuedWorkerPool::Sequence* w) {
+  ScopedMutex lock(mutex());
+  workers_.insert(w);
+}
+
+void MockScheduler::UnregisterWorker(QueuedWorkerPool::Sequence* w) {
+  ScopedMutex lock(mutex());
+  workers_.erase(w);
 }
 
 }  // namespace net_instaweb

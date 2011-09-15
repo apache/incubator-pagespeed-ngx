@@ -21,7 +21,6 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -47,17 +46,12 @@ class MockSchedulerTest : public testing::Test {
   MockSchedulerTest()
       : timer_(0),
         thread_system_(ThreadSystem::CreateThreadSystem()),
-        worker_pool_(1, thread_system_.get()),
-        scheduler_(thread_system_.get(),
-                   QueuedWorkerPool::SequenceVector(
-                       1, worker_pool_.NewSequence()),
-                   &timer_) {
+        scheduler_(thread_system_.get(), &timer_) {
   }
 
  protected:
   MockTimer timer_;
   scoped_ptr<ThreadSystem> thread_system_;
-  QueuedWorkerPool worker_pool_;
   MockScheduler scheduler_;
 
  private:

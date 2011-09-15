@@ -29,6 +29,7 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -37,6 +38,7 @@ namespace net_instaweb {
 
 class RequestHeaders;
 class ResponseHeaders;
+class Scheduler;
 class Writer;
 
 namespace {
@@ -77,6 +79,7 @@ class ProxyUrlFetcher : public UrlFetcher {
 TestRewriteDriverFactory::TestRewriteDriverFactory(
     const StringPiece& temp_dir, MockUrlFetcher* mock_fetcher)
   : mock_timer_(NULL),
+    mock_scheduler_(NULL),
     lru_cache_(NULL),
     proxy_url_fetcher_(NULL),
     mock_url_fetcher_(mock_fetcher),
@@ -167,6 +170,13 @@ MessageHandler* TestRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
   DCHECK(mock_html_message_handler_ == NULL);
   mock_html_message_handler_ = new MockMessageHandler;
   return mock_html_message_handler_;
+}
+
+Scheduler* TestRewriteDriverFactory::CreateScheduler() {
+  DCHECK(mock_scheduler_ == NULL);
+  timer();  // make sure mock_timer_ is created.
+  mock_scheduler_ = new MockScheduler(thread_system(), mock_timer_);
+  return mock_scheduler_;
 }
 
 }  // namespace net_instaweb

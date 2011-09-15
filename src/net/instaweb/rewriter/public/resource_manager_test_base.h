@@ -285,7 +285,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   RewriteDriver* other_rewrite_driver() { return other_rewrite_driver_; }
 
   // The scheduler used by rewrite_driver
-  MockScheduler* mock_scheduler() { return mock_scheduler_; }
+  MockScheduler* mock_scheduler() { return factory_.mock_scheduler(); }
 
   bool ReadFile(const char* filename, GoogleString* contents) {
     return file_system()->ReadFile(filename, contents, message_handler());
@@ -310,8 +310,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // files the chance to add filters to the options prior to calling
   // driver->AddFilters().
   RewriteDriver* MakeDriver(TestRewriteDriverFactory* factory,
-                            RewriteOptions* options,
-                            MockScheduler** scheduler_out);
+                            RewriteOptions* options);
 
   // Converts a potentially relative URL off kTestDomain to absolute if needed.
   GoogleString AbsolutifyUrl(const StringPiece& in);
@@ -350,7 +349,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   TestRewriteDriverFactory other_factory_;
   ResourceManager* resource_manager_;
   RewriteDriver* rewrite_driver_;
-  MockScheduler* mock_scheduler_;  // owned by rewrite_driver_
   ResourceManager* other_resource_manager_;
   RewriteDriver* other_rewrite_driver_;
 

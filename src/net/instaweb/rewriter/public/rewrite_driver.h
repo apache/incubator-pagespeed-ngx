@@ -110,15 +110,9 @@ class RewriteDriver : public HtmlParse {
   // Calls Initialize on all known rewrite_drivers.
   static void Initialize(Statistics* statistics);
 
-  // Adds a resource manager and/or resource_server, enabling the rewriting of
+  // Adds a resource manager enabling the rewriting of
   // resources. This will replace any previous resource managers.
-  //
-  // The Scheduler abstracts the mechanism by which threads are blocked
-  // waiting for time to advance, so time can be mocked during tests.
-  //
-  // The driver takes ownership of the scheduler, but not the resource manager.
-  void SetResourceManagerAndScheduler(ResourceManager* resource_manager,
-                                      Scheduler* scheduler);
+  void SetResourceManager(ResourceManager* resource_manager);
 
   // NULL is returned for resources that:
   //  - were not requested during Scan
@@ -488,8 +482,6 @@ class RewriteDriver : public HtmlParse {
     return low_priority_rewrite_worker_;
   }
 
-  void set_scheduler(Scheduler* scheduler) { scheduler_.reset(scheduler); }
-
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -671,7 +663,7 @@ class RewriteDriver : public HtmlParse {
   FileSystem* file_system_;
   UrlAsyncFetcher* url_async_fetcher_;
   ResourceManager* resource_manager_;
-  scoped_ptr<Scheduler> scheduler_;
+  Scheduler* scheduler_;
 
   AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;

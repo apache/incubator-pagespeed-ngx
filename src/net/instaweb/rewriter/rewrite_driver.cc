@@ -139,6 +139,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),
+      scheduler_(NULL),
       add_instrumentation_filter_(NULL),
       scan_filter_(this),
       domain_rewriter_(NULL),
@@ -164,12 +165,15 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
 
 RewriteDriver::~RewriteDriver() {
   if (rewrite_worker_ != NULL) {
+    scheduler_->UnregisterWorker(rewrite_worker_);
     resource_manager_->rewrite_workers()->FreeSequence(rewrite_worker_);
   }
   if (html_worker_ != NULL) {
+    scheduler_->UnregisterWorker(html_worker_);
     resource_manager_->rewrite_workers()->FreeSequence(html_worker_);
   }
   if (low_priority_rewrite_worker_ != NULL) {
+    scheduler_->UnregisterWorker(low_priority_rewrite_worker_);
     resource_manager_->low_priority_rewrite_workers()->FreeSequence(
         low_priority_rewrite_worker_);
   }
@@ -218,7 +222,7 @@ void RewriteDriver::WaitForCompletion() {
 
 void RewriteDriver::BoundedWaitForCompletion(int64 timeout_ms) {
   if (asynchronous_rewrites_) {
-    SchedulerBlockingFunction wait(scheduler_.get());
+    SchedulerBlockingFunction wait(scheduler_);
 
     {
       ScopedMutex lock(rewrite_mutex());
@@ -309,7 +313,7 @@ void RewriteDriver::ExecuteFlushIfRequested() {
 }
 
 void RewriteDriver::Flush() {
-  SchedulerBlockingFunction wait(scheduler_.get());
+  SchedulerBlockingFunction wait(scheduler_);
   FlushAsync(&wait);
   wait.Block();
   flush_requested_ = false;
@@ -440,16 +444,18 @@ void RewriteDriver::Initialize(Statistics* statistics) {
   CssFilter::Initialize(statistics);
 }
 
-void RewriteDriver::SetResourceManagerAndScheduler(
-    ResourceManager* resource_manager, Scheduler* scheduler) {
+void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   DCHECK(resource_manager_ == NULL);
   resource_manager_ = resource_manager;
-  scheduler_.reset(scheduler);
+  scheduler_ = resource_manager_->scheduler();
   set_timer(resource_manager->timer());
   rewrite_worker_ = resource_manager_->rewrite_workers()->NewSequence();
   html_worker_ = resource_manager_->rewrite_workers()->NewSequence();
   low_priority_rewrite_worker_ =
       resource_manager_->low_priority_rewrite_workers()->NewSequence();
+  scheduler_->RegisterWorker(rewrite_worker_);
+  scheduler_->RegisterWorker(html_worker_);
+  scheduler_->RegisterWorker(low_priority_rewrite_worker_);
 
   DCHECK(resource_filter_map_.empty());
 

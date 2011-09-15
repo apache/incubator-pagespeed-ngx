@@ -56,6 +56,7 @@ class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
 class RewriteStats;
+class Scheduler;
 class Statistics;
 class ThreadSystem;
 class Timer;
@@ -152,6 +153,8 @@ class ResourceManager {
   void set_filename_encoder(FilenameEncoder* x) { filename_encoder_ = x; }
   UrlNamer* url_namer() const { return url_namer_; }
   void set_url_namer(UrlNamer* n) { url_namer_ = n; }
+  Scheduler* scheduler() const { return scheduler_; }
+  void set_scheduler(Scheduler* s) { scheduler_ = s; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
   Timer* timer() const { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
@@ -373,6 +376,7 @@ class ResourceManager {
   // Must be called with rewrite_drivers_mutex_ held.
   void ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver);
 
+  // These are normally owned by the RewriteDriverFactory that made 'this'.
   ThreadSystem* thread_system_;
   RewriteStats* rewrite_stats_;
   GoogleString file_prefix_;
@@ -380,6 +384,7 @@ class ResourceManager {
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
   UrlNamer* url_namer_;
+  Scheduler* scheduler_;
   UrlAsyncFetcher* url_async_fetcher_;
   Hasher* hasher_;
 
