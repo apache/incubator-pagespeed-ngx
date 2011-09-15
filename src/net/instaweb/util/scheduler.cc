@@ -33,7 +33,6 @@ namespace net_instaweb {
 namespace {
 
 const int kIndexNotSet = 0;
-const int kMsUs = Timer::kSecondUs / Timer::kSecondMs;
 
 }  // namespace
 
@@ -200,7 +199,7 @@ void Scheduler::DCheckLocked() { mutex_->DCheckLocked(); }
 void Scheduler::BlockingTimedWait(int64 timeout_ms) {
   mutex_->DCheckLocked();
   int64 now_us = timer_->NowUs();
-  int64 wakeup_time_us = now_us + timeout_ms * kMsUs;
+  int64 wakeup_time_us = now_us + timeout_ms * Timer::kMsUs;
   // We block until signal_count_ changes or we time out.
   int64 original_signal_count = signal_count_;
   bool timed_out = false;
@@ -223,7 +222,7 @@ void Scheduler::BlockingTimedWait(int64 timeout_ms) {
 void Scheduler::TimedWait(int64 timeout_ms, Function* callback) {
   mutex_->DCheckLocked();
   int64 now_us = timer_->NowUs();
-  int64 completion_time_us = now_us + timeout_ms * kMsUs;
+  int64 completion_time_us = now_us + timeout_ms * Timer::kMsUs;
   // We create the alarm for this callback, and register it.  We also register
   // the alarm with the signal queue, where the callback will be run on
   // cancellation.
@@ -336,7 +335,8 @@ void Scheduler::AwaitWakeupUntilUs(int64 wakeup_time_us) {
     // Compute how long we should wait.  Note: we overshoot, which may lead us
     // to wake a bit later than expected.  We assume the system is likely to
     // round wakeup time off for us in some arbitrary fashion in any case.
-    int64 wakeup_interval_ms = (wakeup_time_us - now_us + kMsUs - 1) / kMsUs;
+    int64 wakeup_interval_ms =
+        (wakeup_time_us - now_us + Timer::kMsUs - 1) / Timer::kMsUs;
     condvar_->TimedWait(wakeup_interval_ms);
   }
 }

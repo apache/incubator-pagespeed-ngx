@@ -68,9 +68,7 @@ class SchedulerTest : public WorkerTestBase {
 namespace {
 
 const int64 kDsUs = Timer::kSecondUs / 10;
-const int64 kMsUs = Timer::kSecondUs / Timer::kSecondMs;
-const int64 kMinuteUs = Timer::kMinuteMs * kMsUs;
-const int64 kYearUs = Timer::kYearMs * kMsUs;
+const int64 kYearUs = Timer::kYearMs * Timer::kMsUs;
 
 TEST_F(SchedulerTest, AlarmsGetRun) {
   int64 start_us = timer_.NowUs();
@@ -79,11 +77,14 @@ TEST_F(SchedulerTest, AlarmsGetRun) {
   // we don't attempt to compare already-run (and thus deleted) alarms
   // when running under valgrind.
   Scheduler::Alarm* alarm1 =
-      scheduler_.AddAlarm(start_us + 52 * kMsUs, new CountFunction(&counter));
+      scheduler_.AddAlarm(start_us + 52 * Timer::kMsUs,
+                          new CountFunction(&counter));
   Scheduler::Alarm* alarm2 =
-      scheduler_.AddAlarm(start_us + 54 * kMsUs, new CountFunction(&counter));
+      scheduler_.AddAlarm(start_us + 54 * Timer::kMsUs,
+                          new CountFunction(&counter));
   Scheduler::Alarm* alarm3 =
-      scheduler_.AddAlarm(start_us + 53 * kMsUs, new CountFunction(&counter));
+      scheduler_.AddAlarm(start_us + 53 * Timer::kMsUs,
+                          new CountFunction(&counter));
   EXPECT_FALSE(Compare(alarm1, alarm1));
   EXPECT_FALSE(Compare(alarm2, alarm2));
   EXPECT_FALSE(Compare(alarm3, alarm3));
@@ -99,40 +100,41 @@ TEST_F(SchedulerTest, AlarmsGetRun) {
   }
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(3, counter);
-  EXPECT_LT(start_us + 55 * kMsUs, end_us);
+  EXPECT_LT(start_us + 55 * Timer::kMsUs, end_us);
   // Note: we assume this will terminate within 1 min., and will have hung
   // noticeably if it didn't.
-  EXPECT_GT(start_us + kMinuteUs, end_us);
+  EXPECT_GT(start_us + Timer::kMinuteUs, end_us);
 };
 
 TEST_F(SchedulerTest, MidpointBlock) {
   int64 start_us = timer_.NowUs();
   int counter = 0;
-  scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
-  scheduler_.AddAlarm(start_us + 6 * kMsUs, new CountFunction(&counter));
-  scheduler_.AddAlarm(start_us + 3 * kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us + 2 * Timer::kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us + 6 * Timer::kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us + 3 * Timer::kMsUs, new CountFunction(&counter));
   {
     ScopedMutex lock(scheduler_.mutex());
     scheduler_.BlockingTimedWait(4);  // Never signaled, should time out.
   }
   int64 mid_us = timer_.NowUs();
-  EXPECT_LT(start_us + 4 * kMsUs, mid_us);
+  EXPECT_LT(start_us + 4 * Timer::kMsUs, mid_us);
   EXPECT_LE(2, counter);
-  QuiesceAlarms(kMinuteUs);
+  QuiesceAlarms(Timer::kMinuteUs);
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(3, counter);
-  EXPECT_LT(start_us + 6 * kMsUs, end_us);
+  EXPECT_LT(start_us + 6 * Timer::kMsUs, end_us);
   // Note: we assume this will terminate within 1 min., and will have hung
   // noticeably if it didn't.
-  EXPECT_GT(start_us + kMinuteUs, end_us);
+  EXPECT_GT(start_us + Timer::kMinuteUs, end_us);
 };
 
 TEST_F(SchedulerTest, AlarmInPastRuns) {
   int64 start_us = timer_.NowUs();
   int counter = 0;
-  scheduler_.AddAlarm(start_us - 2 * kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us - 2 * Timer::kMsUs, new CountFunction(&counter));
   Scheduler::Alarm* alarm2 =
-      scheduler_.AddAlarm(start_us + kMinuteUs, new CountFunction(&counter));
+      scheduler_.AddAlarm(start_us + Timer::kMinuteUs,
+                          new CountFunction(&counter));
   LockAndProcessAlarms(0);  // Don't block!
   EXPECT_EQ(1, counter);
   {
@@ -141,50 +143,51 @@ TEST_F(SchedulerTest, AlarmInPastRuns) {
   }
   int64 end_us = timer_.NowUs();
   EXPECT_LT(start_us, end_us);
-  EXPECT_GT(start_us + kMinuteUs, end_us);
+  EXPECT_GT(start_us + Timer::kMinuteUs, end_us);
 };
 
 TEST_F(SchedulerTest, MidpointCancellation) {
   int64 start_us = timer_.NowUs();
   int counter = 0;
-  scheduler_.AddAlarm(start_us + 3 * kMsUs, new CountFunction(&counter));
-  scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us + 3 * Timer::kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us + 2 * Timer::kMsUs, new CountFunction(&counter));
   Scheduler::Alarm* alarm3 =
-      scheduler_.AddAlarm(start_us + kMinuteUs, new CountFunction(&counter));
+      scheduler_.AddAlarm(start_us + Timer::kMinuteUs,
+                          new CountFunction(&counter));
   {
     ScopedMutex lock(scheduler_.mutex());
     scheduler_.BlockingTimedWait(4);  // Never signaled, should time out.
   }
   int64 mid_us = timer_.NowUs();
-  EXPECT_LT(start_us + 4 * kMsUs, mid_us);
+  EXPECT_LT(start_us + 4 * Timer::kMsUs, mid_us);
   EXPECT_EQ(2, counter);
   // No longer safe to cancel first two alarms.
   {
     ScopedMutex lock(scheduler_.mutex());
     scheduler_.CancelAlarm(alarm3);
   }
-  QuiesceAlarms(kMinuteUs);
+  QuiesceAlarms(Timer::kMinuteUs);
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(-98, counter);
-  EXPECT_LT(start_us + 3 * kMsUs, end_us);
+  EXPECT_LT(start_us + 3 * Timer::kMsUs, end_us);
   // Note: we assume this will terminate within 1 min., and will have hung
   // noticeably if it didn't.
-  EXPECT_GT(start_us + kMinuteUs, end_us);
+  EXPECT_GT(start_us + Timer::kMinuteUs, end_us);
 };
 
 TEST_F(SchedulerTest, SimultaneousAlarms) {
   int64 start_us = timer_.NowUs();
   int counter = 0;
-  scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
-  scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
-  scheduler_.AddAlarm(start_us + 2 * kMsUs, new CountFunction(&counter));
-  QuiesceAlarms(kMinuteUs);
+  scheduler_.AddAlarm(start_us + 2 * Timer::kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us + 2 * Timer::kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarm(start_us + 2 * Timer::kMsUs, new CountFunction(&counter));
+  QuiesceAlarms(Timer::kMinuteUs);
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(3, counter);
-  EXPECT_LT(start_us + 2 * kMsUs, end_us);
+  EXPECT_LT(start_us + 2 * Timer::kMsUs, end_us);
   // Note: we assume this will terminate within 1 min., and will have hung
   // noticeably if it didn't.
-  EXPECT_GT(start_us + kMinuteUs, end_us);
+  EXPECT_GT(start_us + Timer::kMinuteUs, end_us);
 };
 
 TEST_F(SchedulerTest, TimedWaitExpire) {
@@ -199,10 +202,10 @@ TEST_F(SchedulerTest, TimedWaitExpire) {
   }
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(3, counter);
-  EXPECT_LT(start_us + 5 * kMsUs, end_us);
+  EXPECT_LT(start_us + 5 * Timer::kMsUs, end_us);
   // Note: we assume this will terminate within 1 min., and will have hung
   // noticeably if it didn't.
-  EXPECT_GT(start_us + kMinuteUs, end_us);
+  EXPECT_GT(start_us + Timer::kMinuteUs, end_us);
 };
 
 TEST_F(SchedulerTest, TimedWaitSignal) {
@@ -219,7 +222,7 @@ TEST_F(SchedulerTest, TimedWaitSignal) {
   EXPECT_EQ(3, counter);
   // Note: we assume this will terminate within 1 min., and will have hung
   // noticeably if it didn't.
-  EXPECT_GT(start_us + kMinuteUs, end_us);
+  EXPECT_GT(start_us + Timer::kMinuteUs, end_us);
 };
 
 TEST_F(SchedulerTest, TimedWaitMidpointSignal) {
@@ -238,7 +241,7 @@ TEST_F(SchedulerTest, TimedWaitMidpointSignal) {
   EXPECT_EQ(3, counter);
   // Note: we assume this will terminate within 1 min., and will have hung
   // noticeably if it didn't.
-  EXPECT_GT(start_us + kMinuteUs, end_us);
+  EXPECT_GT(start_us + Timer::kMinuteUs, end_us);
 };
 
 // Function that retries a TimedWait when invoked until 10ms have passed.
@@ -282,7 +285,7 @@ TEST_F(SchedulerTest, TimedWaitFromSignalWakeup) {
         5, new RetryWaitFunction(&timer_, start_ms, &scheduler_, &counter));
     scheduler_.Signal();
   }
-  QuiesceAlarms(20 * kMsUs);
+  QuiesceAlarms(20 * Timer::kMsUs);
   EXPECT_GE(2, counter);
 }
 

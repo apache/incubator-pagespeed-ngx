@@ -324,16 +324,6 @@ void ApacheRewriteDriverFactory::ChildInit() {
   }
 }
 
-void ApacheRewriteDriverFactory::ResourceManagerCreatedHook() {
-  // We lazily start the slow worker here to avoid problems with ITK MPM:
-  // it forks prior to handling the request, so we need to be sure not to
-  // start any threads from normal initialization.
-  // See http://code.google.com/p/modpagespeed/issues/detail?id=330
-  if (slow_worker_.Get() != NULL) {
-    slow_worker_.Get()->Start();
-  }
-}
-
 void ApacheRewriteDriverFactory::DumpRefererStatistics(Writer* writer) {
   // Note: Referer statistics are only displayed for within the same v-host
   MessageHandler* handler = message_handler();

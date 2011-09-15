@@ -62,23 +62,6 @@ class RewriteFilter;
 
 namespace {
 
-// resource_url_domain_rejections counts the number of urls on a page that we
-// could have rewritten, except that they lay in a domain that did not
-// permit resource rewriting relative to the current page.
-const char kResourceUrlDomainRejections[] = "resource_url_domain_rejections";
-static const char kCachedOutputMissedDeadline[] =
-    "rewrite_cached_output_missed_deadline";
-static const char kCachedOutputHits[] = "rewrite_cached_output_hits";
-static const char kCachedOutputMisses[] = "rewrite_cached_output_misses";
-const char kInstawebResource404Count[] = "resource_404_count";
-const char kInstawebSlurp404Count[] = "slurp_404_count";
-const char kResourceFetchesCached[] = "resource_fetches_cached";
-const char kResourceFetchConstructSuccesses[] =
-    "resource_fetch_construct_successes";
-const char kResourceFetchConstructFailures[] =
-    "resource_fetch_construct_failures";
-const char kNumFlushes[] = "num_flushes";
-
 const int64 kGeneratedMaxAgeMs = Timer::kYearMs;
 const int64 kRefreshExpirePercent = 75;
 
@@ -525,7 +508,7 @@ OutputResourcePtr ResourceManager::CreateOutputResourceWithPath(
   return resource;
 }
 
-AbstractLock* ResourceManager::MakeCreationLock(const GoogleString& name) {
+NamedLock* ResourceManager::MakeCreationLock(const GoogleString& name) {
   const char kLockSuffix[] = ".outputlock";
 
   GoogleString lock_name = StrCat(lock_hasher_.Hash(name), kLockSuffix);
@@ -533,7 +516,7 @@ AbstractLock* ResourceManager::MakeCreationLock(const GoogleString& name) {
 }
 
 bool ResourceManager::LockForCreation(BlockingBehavior block,
-                                      AbstractLock* creation_lock) {
+                                      NamedLock* creation_lock) {
   const int64 kBreakLockMs = 30 * Timer::kSecondMs;
   const int64 kBlockLockMs = 5 * Timer::kSecondMs;
   bool result = true;

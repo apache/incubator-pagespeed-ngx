@@ -123,9 +123,7 @@ class StealOnlyLock : public NeverLock {
 TEST_F(TimerBasedLockTest, AlwaysLock) {
   int64 start = timer_.NowMs();
   AlwaysLock always_lock(&timer_);
-  always_lock.Lock();
   EXPECT_TRUE(always_lock.LockTimedWait(kLongMs));
-  always_lock.LockStealOld(kLongMs);
   EXPECT_TRUE(always_lock.LockTimedWaitStealOld(kLongMs, kLongMs));
   // Nothing should ever have slept.
   int64 end = timer_.NowMs();
@@ -160,17 +158,6 @@ TEST_F(TimerBasedLockTest, TimeoutBeforeSteal) {
   EXPECT_FALSE(steal_only_lock.LockTimedWaitStealOld(kShortMs, kLongMs));
   int64 end = timer_.NowMs();
   // Again at least kShortMs must have elapsed.
-  EXPECT_LE(kShortMs, end - start);
-  // But not more than twice as long.
-  EXPECT_GT(2 * kShortMs, end - start);
-}
-
-TEST_F(TimerBasedLockTest, Steal) {
-  int64 start = timer_.NowMs();
-  StealOnlyLock steal_only_lock(&timer_);
-  steal_only_lock.LockStealOld(kShortMs);
-  int64 end = timer_.NowMs();
-  // At least kShortMs must have elapsed.
   EXPECT_LE(kShortMs, end - start);
   // But not more than twice as long.
   EXPECT_GT(2 * kShortMs, end - start);
@@ -221,6 +208,7 @@ class LockedTimer : public Timer {
       sleep_wakeup_condvar_.Wait();
     }
   }
+
  private:
   Timer* timer_;
   PthreadMutex* mutex_;
@@ -242,13 +230,13 @@ class ThreadedTimerBasedLockTest : public TimerBasedLockTest {
   }
   // Attempt to lock and spin forever
   void LockHelper() {
-    never_lock_.Lock();
+    while (!never_lock_.LockTimedWait(10 * kLongMs)) { }
     CHECK(false) << "Should not lock!";
   }
   // Attempt to Lock with a steal and spin forever.  This used to fail.
   void LockStealHelper() {
-    never_lock_.LockStealOld(kShortMs);
-    CHECK(false) << "Should not lock!";
+    while (!never_lock_.LockTimedWaitStealOld(10 * kLongMs, kShortMs)) { }
+    CHECK(false) << "Shouldn't lock!";
   }
 
  protected:

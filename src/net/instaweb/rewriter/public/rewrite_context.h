@@ -38,10 +38,10 @@
 
 namespace net_instaweb {
 
-class AbstractLock;
 class CachedResult;
 class InputInfo;
 class MessageHandler;
+class NamedLock;
 class OutputPartitions;
 class ResourceContext;
 class ResponseHeaders;
@@ -485,7 +485,7 @@ class RewriteContext {
 
   // Lock guarding output partitioning and rewriting.  Lazily initialized by
   // LockForCreation, unlocked on destruction or the end of Finish().
-  scoped_ptr<AbstractLock> lock_;
+  scoped_ptr<NamedLock> lock_;
 
   // When this rewrite object is created on behalf of a fetch, we must
   // keep the response_writer, request_headers, and callback in the

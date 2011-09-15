@@ -32,9 +32,11 @@ class Timer {
   // to pass it in by a const reference. You can do something like * 1 to
   // sidestep the issue.
   static const int64 kSecondMs = 1000;
-  static const int64 kSecondUs = 1000 * kSecondMs;
+  static const int64 kMsUs     = 1000;
+  static const int64 kSecondUs = kMsUs * kSecondMs;
   static const int64 kSecondNs = 1000 * kSecondUs;
   static const int64 kMinuteMs =   60 * kSecondMs;
+  static const int64 kMinuteUs =   60 * kSecondUs;
   static const int64 kHourMs   =   60 * kMinuteMs;
   static const int64 kDayMs    =   24 * kHourMs;
   static const int64 kWeekMs   =    7 * kDayMs;

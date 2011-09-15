@@ -48,9 +48,8 @@ void AprCondvar::Wait() {
 }
 
 void AprCondvar::TimedWait(int64 timeout_ms) {
-  const int64 kMsUs = Timer::kSecondUs / Timer::kSecondMs;
   apr_thread_cond_timedwait(condvar_, mutex_->thread_mutex_,
-                            timeout_ms * kMsUs);
+                            timeout_ms * Timer::kMsUs);
 }
 
 }  // namespace net_isntaweb

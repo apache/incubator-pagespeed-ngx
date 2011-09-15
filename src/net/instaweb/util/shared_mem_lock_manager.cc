@@ -312,7 +312,7 @@ void SharedMemLockManager::GlobalCleanup(
   shm->DestroySegment(path, handler);
 }
 
-AbstractLock* SharedMemLockManager::CreateNamedLock(const StringPiece& name) {
+NamedLock* SharedMemLockManager::CreateNamedLock(const StringPiece& name) {
   return new SharedMemLock(this, name);
 }
 

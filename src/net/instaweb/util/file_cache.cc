@@ -321,6 +321,7 @@ void FileCache::CleanIfNeeded() {
   int64 suggested_next_clean_time_ms;
   last_conditional_clean_result_ = false;
   if (ShouldClean(&suggested_next_clean_time_ms)) {
+    worker_->Start();
     worker_->RunIfNotBusy(
         new CacheCleanFunction(this, suggested_next_clean_time_ms));
   } else {

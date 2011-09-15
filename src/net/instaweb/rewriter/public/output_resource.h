@@ -37,17 +37,16 @@
 
 namespace net_instaweb {
 
-class AbstractLock;
 class CachedResult;
 class HTTPValue;
 class MessageHandler;
+class NamedLock;
 class ResourceManager;
 class RewriteOptions;
 struct ContentType;
 
 class OutputResource : public Resource {
  public:
-
   // Construct an OutputResource.  For the moment, we pass in type redundantly
   // even though full_name embeds an extension.  This reflects current code
   // structure rather than a principled stand on anything.
@@ -256,7 +255,7 @@ class OutputResource : public Resource {
 
   // Lock guarding resource creation.  Lazily initialized by LockForCreation,
   // unlocked on destruction, DropCreationLock or EndWrite.
-  scoped_ptr<AbstractLock> creation_lock_;
+  scoped_ptr<NamedLock> creation_lock_;
 
   // rewrite_options_ is NULL when we are creating an output resource on
   // behalf of a fetch.  This is because there's no point or need to implement

@@ -51,12 +51,12 @@ class FileSystemLockManager : public NamedLockManager {
   // lock.  Lock names must be legal file names according to file_system.
   //
   // A lock created by CreateNamedLock will be Unlocked when it is destructed if
-  // the AbstractLock object appears to still be locked at destruction time.
+  // the NamedLock object appears to still be locked at destruction time.
   // This attempts to ensure that the file system is not littered with the
-  // remnants of dead locks.  A given AbstractLock object should Lock and Unlock
-  // in matched pairs; DO NOT use separate AbstractLock objects created with the
+  // remnants of dead locks.  A given NamedLock object should Lock and Unlock
+  // in matched pairs; DO NOT use separate NamedLock objects created with the
   // same name to perform a Lock and the corresponding Unlock.
-  virtual AbstractLock* CreateNamedLock(const StringPiece& name);
+  virtual NamedLock* CreateNamedLock(const StringPiece& name);
 
   // Simple accessors for constructor arguments
   FileSystem* file_system() const { return file_system_; }

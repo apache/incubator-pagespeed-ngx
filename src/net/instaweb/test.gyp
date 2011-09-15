@@ -151,6 +151,7 @@
         'util/queued_worker_pool_test.cc',
         'util/ref_counted_owner_test.cc',
         'util/ref_counted_ptr_test.cc',
+        'util/scheduler_based_abstract_lock_test.cc',
         'util/scheduler_test.cc',
         'util/shared_circular_buffer_test_base.cc',
         'util/shared_dynamic_string_map_test_base.cc',

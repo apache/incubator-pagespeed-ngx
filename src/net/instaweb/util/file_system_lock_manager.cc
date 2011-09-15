@@ -98,7 +98,7 @@ FileSystemLockManager::FileSystemLockManager(
 
 FileSystemLockManager::~FileSystemLockManager() { }
 
-AbstractLock* FileSystemLockManager::CreateNamedLock(const StringPiece& name) {
+NamedLock* FileSystemLockManager::CreateNamedLock(const StringPiece& name) {
   return new FileSystemLock(StrCat(base_path_, name), this);
 }
 

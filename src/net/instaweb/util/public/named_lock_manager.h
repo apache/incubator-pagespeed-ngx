@@ -20,40 +20,54 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_NAMED_LOCK_MANAGER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class AbstractLock : public AbstractMutex {
+class Function;
+
+class NamedLock {
  public:
-  virtual ~AbstractLock();
-  // If lock is held, return false, otherwise lock and return true.  Note that
-  // implementations of this and other similar 'try' routines are permitted to
-  // return false conservatively.  TryLock must *eventually* succeed if called
-  // repeatedly on an unheld lock, however.
+  // Destructors of extending classes must unlock the lock if held on destruct.
+  virtual ~NamedLock();
+
+  // If lock is held, return false, otherwise lock and return true.
+  // Non-blocking.  Note that implementations of this and other similar 'try'
+  // routines are permitted to return false conservatively.  TryLock must
+  // *eventually* succeed if called repeatedly on an unheld lock, however.
   virtual bool TryLock() = 0;
+
   // Wait bounded amount of time to take lock, otherwise return false.
   virtual bool LockTimedWait(int64 wait_ms) = 0;
+
+  // Return immediately.  Wait wait_ms to take lock, invoke callback with lock
+  // held.  On timeout, cancel callback.
+  virtual void LockTimedWait(int64 wait_ms, Function* callback) = 0;
 
   // ...StealOld versions of locking routines steal the lock if its current
   // holder has locked it for more than timeout_ms.  *WARNING* If you use
   // any ...StealOld methods, your lock becomes "best-effort" and there may
   // be multiple workers in a critical section! *WARNING*
 
-  // LockStealOld will block until the lock has been locked successfully, either
-  // because it was unlocked by its current holder or because it was stolen from
-  // its current holder.
-  virtual void LockStealOld(int64 timeout_ms) = 0;
-  // TryLockStealOld immediately attempts to lock the lock, succeeding if the
-  // lock is unlocked or the lock can be stolen from the current holder.  The
-  // return value is true if the lock was obtained, and false otherwise.
-  // cf TryLock() for other caveats.
+  // TryLockStealOld immediately attempts to lock the lock, succeeding and
+  // returning true if the lock is unlocked or the lock can be stolen from the
+  // current holder.  Otherwise return false.  cf TryLock() for other caveats.
+  // Non-blocking.
   virtual bool TryLockStealOld(int64 timeout_ms) = 0;
+
   // LockTimedWaitStealOld will block until unlocked, the lock has been held for
   // timeout_ms, or the caller has waited for wait_ms.
   virtual bool LockTimedWaitStealOld(int64 wait_ms, int64 timeout_ms) = 0;
+
+  // Return immeidately.  Run the callback if the lock can be obtained within
+  // wait_ms, seizing the lock if the current holder has held it more than
+  // timeout_ms.  On timeout, cancel callback.
+  virtual void LockTimedWaitStealOld(int64 wait_ms, int64 timeout_ms,
+                                     Function* callback) = 0;
+
+  // Relinquish lock.  Non-blocking.
+  virtual void Unlock() = 0;
 
   // The name the lock was created with, for debugging/logging purposes.
   virtual GoogleString name() = 0;
@@ -65,7 +79,7 @@ class AbstractLock : public AbstractMutex {
 class NamedLockManager {
  public:
   virtual ~NamedLockManager();
-  virtual AbstractLock* CreateNamedLock(const StringPiece& name) = 0;
+  virtual NamedLock* CreateNamedLock(const StringPiece& name) = 0;
 };
 
 }  // namespace net_instaweb

@@ -20,7 +20,7 @@
 
 namespace net_instaweb {
 
-AbstractLock::~AbstractLock() { }
+NamedLock::~NamedLock() { }
 
 NamedLockManager::~NamedLockManager() { }
 

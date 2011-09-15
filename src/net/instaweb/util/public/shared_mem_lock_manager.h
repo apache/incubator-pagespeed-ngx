@@ -70,7 +70,7 @@ class SharedMemLockManager : public NamedLockManager {
   static void GlobalCleanup(AbstractSharedMem* shm, const GoogleString& path,
                             MessageHandler* message_handler);
 
-  virtual AbstractLock* CreateNamedLock(const StringPiece& name);
+  virtual NamedLock* CreateNamedLock(const StringPiece& name);
 
  private:
   friend class SharedMemLock;

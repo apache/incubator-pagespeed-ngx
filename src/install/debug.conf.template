@@ -208,7 +208,9 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 
 #HTTPS # This is used for testing https requests.
 #HTTPS Include conf/extra/httpd-ssl.conf
-#HTTPS LoadModule ssl_module @@APACHE_MODULES@@/mod_ssl.so
+#HTTPS <IfModule !ssl_module>
+#HTTPS   LoadModule ssl_module @@APACHE_MODULES@@/mod_ssl.so
+#HTTPS </IfModule>
 #HTTPS SSLRandomSeed startup builtin
 #HTTPS SSLRandomSeed connect builtin
 #HTTPS ModPagespeedMapOriginDomain http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@

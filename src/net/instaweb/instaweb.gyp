@@ -244,6 +244,7 @@
         'util/ref_counted.cc',
         'util/rolling_hash.cc',
         'util/scheduler.cc',
+        'util/scheduler_based_abstract_lock.cc',
         'util/shared_circular_buffer.cc',
         'util/shared_dynamic_string_map.cc',
         'util/shared_mem_lock_manager.cc',

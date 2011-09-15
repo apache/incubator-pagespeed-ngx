@@ -21,6 +21,7 @@
 #include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/debug.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -68,22 +69,18 @@ int64 IntervalWithEnd(Timer* timer, int64 interval_ms,
 
 TimerBasedAbstractLock::~TimerBasedAbstractLock() { }
 
-void TimerBasedAbstractLock::Lock() {
-  if (!TryLock()) {
-    Spin(&TimerBasedAbstractLock::TryLockIgnoreSteal, 0, kMaxSpinSleepMs);
-  }
-}
-
 bool TimerBasedAbstractLock::LockTimedWait(int64 wait_ms) {
   return (TryLock() ||
           SpinFor(&TimerBasedAbstractLock::TryLockIgnoreSteal,
                   kMinTriesPerSteal * kMaxSpinSleepMs, wait_ms));
 }
 
-void TimerBasedAbstractLock::LockStealOld(int64 steal_ms) {
-  if (!TryLock()) {
-    int64 max_sleep_ms = (steal_ms + 1) / kMinTriesPerSteal;
-    Spin(&TimerBasedAbstractLock::TryLockStealOld, steal_ms, max_sleep_ms);
+void TimerBasedAbstractLock::LockTimedWait(int64 wait_ms, Function* callback) {
+  // NOTE: placeholder implementation to ease transition.
+  if (LockTimedWait(wait_ms)) {
+    callback->CallRun();
+  } else {
+    callback->CallCancel();
   }
 }
 
@@ -92,6 +89,16 @@ bool TimerBasedAbstractLock::LockTimedWaitStealOld(
   return
       (TryLock() ||
        SpinFor(&TimerBasedAbstractLock::TryLockStealOld, steal_ms, wait_ms));
+}
+
+void TimerBasedAbstractLock::LockTimedWaitStealOld(
+    int64 wait_ms, int64 steal_ms, Function* callback) {
+  // NOTE: placeholder implementation to ease transition.
+  if (LockTimedWaitStealOld(wait_ms, steal_ms)) {
+    callback->CallRun();
+  } else {
+    callback->CallCancel();
+  }
 }
 
 // We implement spinning without regard to whether the underlying lock primitive

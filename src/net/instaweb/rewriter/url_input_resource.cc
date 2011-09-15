@@ -205,7 +205,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   MessageHandler* message_handler_;
 
  private:
-  scoped_ptr<AbstractLock> lock_;
+  scoped_ptr<NamedLock> lock_;
   const bool respect_vary_;
   const int64 html_cache_time_ms_;
   DISALLOW_COPY_AND_ASSIGN(UrlResourceFetchCallback);

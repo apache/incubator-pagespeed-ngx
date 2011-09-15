@@ -75,8 +75,8 @@ SharedMemLockManager* SharedMemLockManagerTestBase::AttachDefault() {
 void SharedMemLockManagerTestBase::TestBasic() {
   scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
   ASSERT_TRUE(lock_manager_.get() != NULL);
-  scoped_ptr<AbstractLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
-  scoped_ptr<AbstractLock> lock_b(lock_manager_->CreateNamedLock(kLockB));
+  scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
+  scoped_ptr<NamedLock> lock_b(lock_manager_->CreateNamedLock(kLockB));
 
   ASSERT_TRUE(lock_a.get() != NULL);
   ASSERT_TRUE(lock_b.get() != NULL);
@@ -105,8 +105,8 @@ void SharedMemLockManagerTestBase::TestBasic() {
 
 void SharedMemLockManagerTestBase::TestBasicChild() {
   scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
-  scoped_ptr<AbstractLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
-  scoped_ptr<AbstractLock> lock_b(lock_manager_->CreateNamedLock(kLockB));
+  scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
+  scoped_ptr<NamedLock> lock_b(lock_manager_->CreateNamedLock(kLockB));
 
   if (lock_a.get() == NULL || lock_b.get() == NULL) {
     test_env_->ChildFailed();
@@ -132,12 +132,12 @@ void SharedMemLockManagerTestBase::TestDestructorUnlock() {
   ASSERT_TRUE(lock_manager_.get() != NULL);
 
   {
-    scoped_ptr<AbstractLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
+    scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
     EXPECT_TRUE(lock_a->TryLock());
   }
 
   {
-    scoped_ptr<AbstractLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
+    scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
     EXPECT_TRUE(lock_a->TryLock());
   }
 }
@@ -145,8 +145,8 @@ void SharedMemLockManagerTestBase::TestDestructorUnlock() {
 void SharedMemLockManagerTestBase::TestSteal() {
   scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
   ASSERT_TRUE(lock_manager_.get() != NULL);
-  scoped_ptr<AbstractLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
-  lock_a->Lock();
+  scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
+  EXPECT_TRUE(lock_a->TryLock());
   CreateChild(&SharedMemLockManagerTestBase::TestStealChild);
   test_env_->WaitForChildren();
 }
@@ -156,7 +156,7 @@ void SharedMemLockManagerTestBase::TestStealChild() {
 
   scoped_ptr<SharedMemLockManager> lock_manager_(AttachDefault());
   ASSERT_TRUE(lock_manager_.get() != NULL);
-  scoped_ptr<AbstractLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
+  scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
 
   // First, attempting to steal should fail, as 'time' hasn't moved yet.
   if (lock_a->TryLockStealOld(kStealTimeMs)) {

@@ -121,16 +121,19 @@ void MockTimer::CancelAlarm(Alarm* alarm) {
   }
 }
 
-void MockTimer::SetTimeUs(int64 time_us) {
+void MockTimer::SetTimeUs(int64 new_time_us) {
   mutex_->Lock();
   while (!alarms_.empty()) {
     AlarmOrderedSet::iterator p = alarms_.begin();
     Alarm* alarm = *p;
-    if (time_us < alarm->wakeup_time_us()) {
+    int64 wakeup_us = alarm->wakeup_time_us();
+    if (new_time_us < wakeup_us) {
       break;
     } else {
       alarms_.erase(p);
-      time_us_ = alarm->wakeup_time_us();
+      if (wakeup_us > time_us_) {
+        time_us_ = wakeup_us;
+      }
       mutex_->Unlock();
       alarm->CallRun();
       mutex_->Lock();
@@ -138,8 +141,8 @@ void MockTimer::SetTimeUs(int64 time_us) {
   }
 
   // If an Alarm::Run function moved us forward in time, don't move us back.
-  if (time_us_ < time_us) {
-    time_us_ = time_us;
+  if (time_us_ < new_time_us) {
+    time_us_ = new_time_us;
   }
   mutex_->Unlock();
 }

@@ -89,8 +89,8 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     {
       ScopedMutex lock(mutex_.get());
 
-      if (exit_) {
-        // Already shutdown.
+      if (exit_ || !started_) {
+        // Already shutdown, or was never started in the first place.
         return;
       }
 

@@ -328,8 +328,6 @@ ResourceManager* RewriteDriverFactory::CreateResourceManagerLockHeld() {
     resource_manager->options()->CopyFrom(*temp_options_.get());
     temp_options_.reset(NULL);
   }
-  ResourceManagerCreatedHook();
-
   return resource_manager;
 }
 
@@ -406,9 +404,6 @@ void RewriteDriverFactory::SetupSlurpDirectories() {
 }
 
 void RewriteDriverFactory::FetcherSetupHooks() {
-}
-
-void RewriteDriverFactory::ResourceManagerCreatedHook() {
 }
 
 StringPiece RewriteDriverFactory::LockFilePrefix() {

@@ -48,14 +48,14 @@ class FileSystemLockManagerTest : public testing::Test {
                  file_system_.timer(), &handler_) { }
   virtual ~FileSystemLockManagerTest() { }
 
-  AbstractLock* MakeLock(const StringPiece& name) {
-    AbstractLock* result = manager_.CreateNamedLock(name);
+  NamedLock* MakeLock(const StringPiece& name) {
+    NamedLock* result = manager_.CreateNamedLock(name);
     CHECK(NULL != result) << "Creating lock " << name;
     EXPECT_EQ(StrCat(GTestTempDir(), "/", name), result->name());
     return result;
   }
 
-  void AllLocksFail(AbstractLock* lock) {
+  void AllLocksFail(NamedLock* lock) {
     // Note: we do it in this order to make sure that the timed waits don't
     // cause the lock to time out.
     // Note also that we don't do the blocking lock operations, as they'll block
@@ -74,12 +74,13 @@ class FileSystemLockManagerTest : public testing::Test {
   GoogleMessageHandler handler_;
   MemFileSystem file_system_;
   FileSystemLockManager manager_;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(FileSystemLockManagerTest);
 };
 
 TEST_F(FileSystemLockManagerTest, LockUnlock) {
-  scoped_ptr<AbstractLock> lock1(MakeLock(kLock1));
+  scoped_ptr<NamedLock> lock1(MakeLock(kLock1));
   // Just do pairs of matched lock / unlock, making sure
   // we can't lock while the lock is held.
   EXPECT_TRUE(lock1->TryLock());
@@ -88,13 +89,7 @@ TEST_F(FileSystemLockManagerTest, LockUnlock) {
   EXPECT_TRUE(lock1->TryLock());
   AllLocksFail(lock1.get());
   lock1->Unlock();
-  lock1->Lock();
-  AllLocksFail(lock1.get());
-  lock1->Unlock();
   EXPECT_TRUE(lock1->LockTimedWait(kWaitMs));
-  AllLocksFail(lock1.get());
-  lock1->Unlock();
-  lock1->LockStealOld(kTimeoutMs);
   AllLocksFail(lock1.get());
   lock1->Unlock();
   EXPECT_TRUE(lock1->TryLockStealOld(kTimeoutMs));
@@ -106,8 +101,8 @@ TEST_F(FileSystemLockManagerTest, LockUnlock) {
 }
 
 TEST_F(FileSystemLockManagerTest, DoubleLockUnlock) {
-  scoped_ptr<AbstractLock> lock1(MakeLock(kLock1));
-  scoped_ptr<AbstractLock> lock11(MakeLock(kLock1));
+  scoped_ptr<NamedLock> lock1(MakeLock(kLock1));
+  scoped_ptr<NamedLock> lock11(MakeLock(kLock1));
   // Just do pairs of matched lock / unlock, but make sure
   // we hold a separate lock object with the same lock name.
   EXPECT_TRUE(lock1->TryLock());
@@ -116,13 +111,7 @@ TEST_F(FileSystemLockManagerTest, DoubleLockUnlock) {
   EXPECT_TRUE(lock1->TryLock());
   AllLocksFail(lock11.get());
   lock1->Unlock();
-  lock1->Lock();
-  AllLocksFail(lock11.get());
-  lock1->Unlock();
   EXPECT_TRUE(lock1->LockTimedWait(kWaitMs));
-  AllLocksFail(lock11.get());
-  lock1->Unlock();
-  lock1->LockStealOld(kTimeoutMs);
   AllLocksFail(lock11.get());
   lock1->Unlock();
   EXPECT_TRUE(lock1->TryLockStealOld(kTimeoutMs));
@@ -138,9 +127,9 @@ TEST_F(FileSystemLockManagerTest, DoubleLockUnlock) {
 // their timeout behaviors are correct.
 
 TEST_F(FileSystemLockManagerTest, UnlockOnDestruct) {
-  scoped_ptr<AbstractLock> lock1(MakeLock(kLock1));
+  scoped_ptr<NamedLock> lock1(MakeLock(kLock1));
   {
-    scoped_ptr<AbstractLock> lock11(MakeLock(kLock1));
+    scoped_ptr<NamedLock> lock11(MakeLock(kLock1));
     EXPECT_TRUE(lock11->TryLock());
     EXPECT_FALSE(lock1->TryLock());
     // Should implicitly unlock on lock11 destructor call.
@@ -150,8 +139,8 @@ TEST_F(FileSystemLockManagerTest, UnlockOnDestruct) {
 
 TEST_F(FileSystemLockManagerTest, LockIndependence) {
   // Differently-named locks are different.
-  scoped_ptr<AbstractLock> lock1(MakeLock(kLock1));
-  scoped_ptr<AbstractLock> lock2(MakeLock(kLock2));
+  scoped_ptr<NamedLock> lock1(MakeLock(kLock1));
+  scoped_ptr<NamedLock> lock2(MakeLock(kLock2));
   EXPECT_TRUE(lock1->TryLock());
   EXPECT_TRUE(lock2->TryLock());
   EXPECT_FALSE(lock1->TryLock());
@@ -162,7 +151,7 @@ TEST_F(FileSystemLockManagerTest, LockIndependence) {
 }
 
 TEST_F(FileSystemLockManagerTest, TimeoutFail) {
-  scoped_ptr<AbstractLock> lock1(MakeLock(kLock1));
+  scoped_ptr<NamedLock> lock1(MakeLock(kLock1));
   EXPECT_TRUE(lock1->TryLock());
   int64 start_ms = timer()->NowMs();
   EXPECT_FALSE(lock1->LockTimedWait(kWaitMs));
@@ -171,7 +160,7 @@ TEST_F(FileSystemLockManagerTest, TimeoutFail) {
 }
 
 TEST_F(FileSystemLockManagerTest, StealOld) {
-  scoped_ptr<AbstractLock> lock1(MakeLock(kLock1));
+  scoped_ptr<NamedLock> lock1(MakeLock(kLock1));
   EXPECT_TRUE(lock1->TryLock());
   // Now we can't steal the lock until after >kTimeoutMs has elapsed.
   EXPECT_FALSE(lock1->TryLockStealOld(kTimeoutMs));
@@ -190,13 +179,15 @@ TEST_F(FileSystemLockManagerTest, StealOld) {
 }
 
 TEST_F(FileSystemLockManagerTest, BlockingStealOld) {
-  scoped_ptr<AbstractLock> lock1(MakeLock(kLock1));
+  scoped_ptr<NamedLock> lock1(MakeLock(kLock1));
   EXPECT_TRUE(lock1->TryLock());
-  // Now a call to LockStealOld should block until kTimeoutMs has elapsed.
+  // Now a call to LockTimedWaitStealOld should block until kTimeoutMs has
+  // elapsed.
   int64 start_ms = timer()->NowMs();
-  lock1->LockStealOld(kTimeoutMs);
+  lock1->LockTimedWaitStealOld(kTimeoutMs * 100, kTimeoutMs);
   int64 end_ms = timer()->NowMs();
   EXPECT_LT(start_ms + kTimeoutMs, end_ms);
+  EXPECT_GT(start_ms + kTimeoutMs * 100, end_ms);
   // Again the timer should reset after the lock is obtained.
   EXPECT_FALSE(lock1->TryLockStealOld(kTimeoutMs));
   timer()->AdvanceMs(kTimeoutMs);
@@ -206,7 +197,7 @@ TEST_F(FileSystemLockManagerTest, BlockingStealOld) {
 }
 
 TEST_F(FileSystemLockManagerTest, WaitStealOld) {
-  scoped_ptr<AbstractLock> lock1(MakeLock(kLock1));
+  scoped_ptr<NamedLock> lock1(MakeLock(kLock1));
   EXPECT_TRUE(lock1->TryLock());
   int64 start_ms = timer()->NowMs();
   // If we start now, we'll time out with time to spare.
