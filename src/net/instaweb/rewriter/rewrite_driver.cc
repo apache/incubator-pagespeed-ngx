@@ -1266,7 +1266,7 @@ void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
     --rewrites_to_delete_;
     delete rewrite_context;
     if (RewritesComplete()) {
-      if (waiting_for_completion_) {
+      if (waiting_for_completion_ || waiting_for_render_) {
         scheduler_->Signal();
       } else {
         ready_to_recycle = !externally_managed_ && !parsing_;

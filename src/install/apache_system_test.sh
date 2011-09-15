@@ -25,6 +25,10 @@ if [ -z $APACHE_LOG ]; then
   APACHE_LOG=/usr/local/apache2/logs/error_log
 fi
 
+if [ -z $APACHE_HTDOCS ]; then
+  APACHE_HTDOCS=/usr/local/apache2/htdocs/
+fi
+
 # If the user has specified an alternate WGET as an environment variable, then
 # use that, otherwise use the one in the path.
 if [ "$WGET" == "" ]; then
@@ -182,6 +186,12 @@ function test_resource_ext_corruption() {
 echo TEST: mod_pagespeed is running in Apache and writes the expected header.
 echo $WGET_DUMP $EXAMPLE_ROOT/combine_css.html
 HTML_HEADERS=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
+
+
+echo TEST: mod_pagespeed is defaulting to more than PassThrough
+# Note: this is relying on lack of .htaccess in mod_pagespeed_test
+check [ ! -f $APACHE_HTDOCS/mod_pagespeed_test/.htaccess ]
+fetch_until $TEST_ROOT/bot_test.html 'grep -c \.pagespeed\.' 2
 
 # Determine whether statistics are enabled or not.  If not, don't test them,
 # but do an additional regression test that tries harder to get a cache miss.

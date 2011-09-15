@@ -95,8 +95,10 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       config_(new ApacheConfig(hostname_identifier_)) {
   apr_pool_create(&pool_, NULL);
 
-  // In Apache, we default to using the "core filters".
-  options()->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  // In Apache, we default to using the "core filters". Note that this is not
+  // the only place the default is applied --- for directories with .htaccess
+  // files it is given in create_dir_config in mod_instaweb.cc
+  config_->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   // Make sure the ownership of apache_message_handler_ and
   // apache_html_parse_message_handler_ is given to scoped pointer.
   // Otherwise may result in leak error in test.
