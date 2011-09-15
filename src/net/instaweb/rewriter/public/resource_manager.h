@@ -20,6 +20,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
 
+#include <cstddef>                     // for size_t
 #include <set>
 #include <vector>
 
@@ -368,6 +369,11 @@ class ResourceManager {
   QueuedWorkerPool* low_priority_rewrite_workers() {
     return low_priority_rewrite_workers_;
   }
+
+  // Returns the number of rewrite drivers that we were aware of at the
+  // time of the call. This includes those created via NewCustomRewriteDriver
+  // and NewRewriteDriver, but not via NewUnmanagedRewriteDriver.
+  size_t num_active_rewrite_drivers();
 
  private:
   friend class ResourceManagerTest;

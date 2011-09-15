@@ -665,4 +665,9 @@ void ResourceManager::ShutDownDrivers() {
   }
 }
 
+size_t ResourceManager::num_active_rewrite_drivers() {
+  ScopedMutex lock(rewrite_drivers_mutex_.get());
+  return active_rewrite_drivers_.size();
+}
+
 }  // namespace net_instaweb
