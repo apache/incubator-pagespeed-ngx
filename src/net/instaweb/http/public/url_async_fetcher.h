@@ -148,6 +148,12 @@ class UrlAsyncFetcher {
   // kUnspecifiedTimeout (the default) if we don't promise to timeout fetches.
   virtual int64 timeout_ms() { return kUnspecifiedTimeout; }
 
+  // Stops all active fetches and prevents further fetches from starting,
+  // calling back to ->Done(false).
+  //
+  // Base-class implementation is empty for forward compatibility.
+  virtual void ShutDown();
+
  protected:
   // Put this in protected to make sure nobody constructs this class except
   // for subclasses.

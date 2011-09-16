@@ -18,6 +18,8 @@
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
+#include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -256,6 +258,9 @@ bool UrlAsyncFetcher::ConditionalFetch(const GoogleString& url,
   return StreamingFetch(url, conditional_headers,
                         response_headers, response_writer,
                         message_handler, sub_callback);
+}
+
+void UrlAsyncFetcher::ShutDown() {
 }
 
 }  // namespace instaweb

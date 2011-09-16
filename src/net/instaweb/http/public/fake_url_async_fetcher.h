@@ -24,6 +24,7 @@
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/http/public/url_pollable_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -40,7 +41,7 @@ class Writer;
 // fetcher in a thread, but this does not do that: it blocks.
 //
 // This is intended for functional regression tests only.
-class FakeUrlAsyncFetcher : public UrlAsyncFetcher {
+class FakeUrlAsyncFetcher : public UrlPollableAsyncFetcher {
  public:
   explicit FakeUrlAsyncFetcher(UrlFetcher* url_fetcher)
       : url_fetcher_(url_fetcher) {
@@ -58,6 +59,10 @@ class FakeUrlAsyncFetcher : public UrlAsyncFetcher {
     callback->Done(ret);
     return true;
   }
+
+  // Since the underlying fetcher is blocking, there can never be
+  // any outstanding fetches.
+  virtual int Poll(int64 max_wait_ms) { return 0; }
 
  private:
   UrlFetcher* url_fetcher_;
