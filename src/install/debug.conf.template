@@ -201,10 +201,11 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 #PROXY   ModPagespeedRewriteLevel PassThrough
 #PROXY </VirtualHost>
 
-
 #SLURP # This is used for Slurp testing.
 #SLURP ModPagespeedSlurpDirectory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/slurp"
 #SLURP ModPagespeedSlurpReadOnly on
+
+#SHARED_MEM_LOCKS ModPagespeedSharedMemoryLocks on
 
 #HTTPS # This is used for testing https requests.
 #HTTPS Include conf/extra/httpd-ssl.conf

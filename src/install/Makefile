@@ -95,6 +95,7 @@ echo_vars:
 	@echo "   STAGING_DIR=$(STAGING_DIR)"
 	@echo "   ENABLE_PROXY=${ENABLE_PROXY}"
 	@echo "   SLURP_DIR=${SLURP_DIR}"
+	@echo "   SHARED_MEM_LOCKS=${SHARED_MEM_LOCKS}"
 
 
 # In some Linux distributions, such as Ubuntu, there are two commands
@@ -193,6 +194,14 @@ else
   SLURP_TEST_SED_PATTERN=^\#SLURP.*\n
 endif
 
+ifeq ($(SHARED_MEM_LOCK_TEST),1)
+  # remove prefix
+  SHARED_MEM_LOCK_TEST_SED_PATTERN=^\#SHARED_MEM_LOCKS
+else
+  # remove whole line
+  SLURP_TEST_LOCK_TEST_SED_PATTERN=^\#SHARED_MEM_LOCKS.*\n
+endif
+
 ifeq ($(SPELING_TEST),1)
   # remove prefix
   SPELING_TEST_SED_PATTERN=^\#SPELING
@@ -225,6 +234,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(COVERAGE_TEST_SED_PATTERN)@@" \
 	    -e "s@$(PROXY_TEST_SED_PATTERN)@@" \
 	    -e "s@$(SLURP_TEST_SED_PATTERN)@@" \
+	    -e "s@$(SHARED_MEM_LOCK_TEST_SED_PATTERN)@@" \
 	    -e "s@$(SPELING_TEST_SED_PATTERN)@@" \
 	    -e "s@$(HTTPS_TEST_SED_PATTERN)@@" \
 		$^ > $@
@@ -310,11 +320,11 @@ apache_install_conf:
 	$(MAKE) staging_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
 	                $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
 	                $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
-	                $(OPT_HTTPS_TEST)
+	                $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST)
 	$(MAKE) install_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
 	                $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
 	                $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
-	                $(OPT_HTTPS_TEST)
+	                $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST)
 
 apache_debug_restart:
 	$(APACHE_CONTROL_PROGRAM) restart

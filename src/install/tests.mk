@@ -7,7 +7,8 @@
 # Imports:
 #  apache_install_conf (should read OPT_REWRITE_TEST, OPT_PROXY_TEST,
 #                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_HTTPS_TEST,
-#                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST)
+#                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
+#                       OPT_SHARED_MEM_LOCK_TEST)
 #  apache_debug_restart
 #  apache_debug_stop
 #  apache_debug_leak_test, apache_debug_proxy_test, apache_debug_slurp_test
@@ -38,6 +39,7 @@ apache_system_tests :
 	$(MAKE) apache_debug_speling_test
 	$(MAKE) apache_debug_vhost_only_test
 	$(MAKE) apache_debug_global_off_test
+	$(MAKE) apache_debug_shared_mem_lock_sanity_test
 	$(MAKE) apache_install_conf
 # 'apache_install_conf' should always be last, to leave your debug
 # Apache server in a consistent state.
@@ -155,3 +157,17 @@ apache_debug_global_off_test:
 	$(WGET) -O /dev/null --save-headers $(EXAMPLE)?ModPagespeed=on 2>&1 \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
 
+# Sanity-check that enabling shared-memory locks don't cause the
+# system to crash, and a rewrite does successfully happen.
+apache_debug_shared_mem_lock_sanity_test : shared_mem_lock_test_prepare \
+    apache_install_conf apache_debug_restart
+	$(WGET) -q -O /dev/null \
+	 $(APACHE_SERVER)/mod_pagespeed_example/combine_css.html?ModPagespeedFilters=combine_css
+	sleep 1
+	$(WGET) -q -O - \
+	 $(APACHE_SERVER)/mod_pagespeed_example/combine_css.html?ModPagespeedFilters=combine_css \
+	 | grep "\.pagespeed\.cc\."
+
+shared_mem_lock_test_prepare:
+	$(eval OPT_SLURP_TEST="SHARED_MEM_LOCK_TEST=1")
+	rm -rf $(PAGESPEED_ROOT)/cache/*
