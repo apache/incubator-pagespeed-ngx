@@ -273,10 +273,14 @@ void ResponseHeaders::ComputeCaching() {
   // our system that we want to remember in the cache, such as
   // that fact that a fetch failed for a resource, and we don't want
   // to try again until some time has passed.
+  // 304 Not Modified is not cacheable since as an intermediate server, we have
+  // no context.
   bool status_cacheable =
       ((status_code() ==
         HttpStatus::kRememberFetchFailedOrNotCacheableStatusCode) ||
-       pagespeed::resource_util::IsCacheableResourceStatusCode(status_code()));
+       (status_code() != HttpStatus::kNotModified &&
+        pagespeed::resource_util::IsCacheableResourceStatusCode(
+            status_code())));
   int64 cache_ttl_ms;
   bool explicit_cacheable =
       pagespeed::resource_util::GetFreshnessLifetimeMillis(

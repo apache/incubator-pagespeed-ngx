@@ -262,6 +262,15 @@ TEST_F(ResponseHeadersTest, TestCachingInvalidStatus) {
   EXPECT_FALSE(response_headers_.IsCacheable());
 }
 
+// Test that we don't erroneously cache a 304.
+TEST_F(ResponseHeadersTest, TestCachingNotModified) {
+  ParseHeaders("HTTP/1.0 304 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Cache-control: max-age=300\r\n\r\n");
+  EXPECT_FALSE(response_headers_.IsCacheable());
+  EXPECT_FALSE(response_headers_.IsProxyCacheable());
+}
+
 // Test that we don't cache an HTML file without explicit caching, but
 // that we do cache images, css, and javascript.
 TEST_F(ResponseHeadersTest, TestImplicitCache) {

@@ -17,6 +17,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <map>
 #include <set>
 #include <utility>
@@ -320,8 +321,23 @@ void RewriteOptions::Merge(const RewriteOptions& first,
     enabled_filters_.erase(filter);
   }
 
-  for (int i = 0, n = all_options_.size(); i < n; ++i) {
-    all_options_[i]->Merge(first.all_options_[i], second.all_options_[i]);
+  // Note that we can be merging RewriteOptions subclasses & superclasses,
+  // so don't read anything that doesn't exist.
+  size_t options_to_read = std::max(first.all_options_.size(),
+                                    second.all_options_.size());
+  size_t options_to_merge = std::min(options_to_read, all_options_.size());
+  for (size_t i = 0; i < options_to_merge; ++i) {
+    // Be careful to merge only options that exist in all three.
+    // TODO(jmarantz): this logic is not 100% sound if there are two
+    // different subclasses in play.  We should resolve this at a higher
+    // level and assert that the option subclasses are the same.
+    if (i >= first.all_options_.size()) {
+      all_options_[i]->Merge(second.all_options_[i], second.all_options_[i]);
+    } else if (i >= second.all_options_.size()) {
+      all_options_[i]->Merge(first.all_options_[i], first.all_options_[i]);
+    } else {
+      all_options_[i]->Merge(first.all_options_[i], second.all_options_[i]);
+    }
   }
 
   // Pick the larger of the two cache invalidation timestamps. Following

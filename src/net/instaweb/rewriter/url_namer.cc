@@ -14,10 +14,14 @@
 
 #include "net/instaweb/rewriter/public/url_namer.h"
 
+#include "base/logging.h"               // for COMPACT_GOOGLE_LOG_FATAL, etc
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_hash.h"
+#include "net/instaweb/util/public/string_util.h"  // for StrCat, etc
 
 namespace net_instaweb {
 
@@ -55,6 +59,18 @@ GoogleString UrlNamer::Encode(const RewriteOptions* rewrite_options,
     }
   }
   return StrCat(encoded_path, encoded_leaf);
+}
+
+GoogleString UrlNamer::Decode(const GoogleUrl& request_url,
+                              const RequestHeaders& request_headers,
+                              MessageHandler* handler) {
+  return "";
+}
+
+RewriteOptions* UrlNamer::DecodeOptions(const GoogleUrl& request_url,
+                                        const RequestHeaders& request_headers,
+                                        MessageHandler* handler) {
+  return NULL;
 }
 
 }  // namespace net_instaweb

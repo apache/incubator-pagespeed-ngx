@@ -24,7 +24,10 @@
 
 namespace net_instaweb {
 
+class GoogleUrl;
 class OutputResource;
+class MessageHandler;
+class RequestHeaders;
 class RewriteOptions;
 
 // Provides an overridable URL naming interface. This isolation layer allows
@@ -41,6 +44,16 @@ class UrlNamer {
   // that will be embedded in the rewritten page.
   virtual GoogleString Encode(const RewriteOptions* rewrite_options,
                               const OutputResource& output_resource);
+
+  // Given the request_url and request_headers, generate the orignial url.
+  virtual GoogleString Decode(const GoogleUrl& request_url,
+                              const RequestHeaders& request_headers,
+                              MessageHandler* handler);
+
+  // Given the request url and request headers, generate the rewrite options.
+  virtual RewriteOptions* DecodeOptions(const GoogleUrl& request_url,
+                                        const RequestHeaders& request_headers,
+                                        MessageHandler* handler);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UrlNamer);
