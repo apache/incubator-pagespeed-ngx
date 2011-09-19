@@ -47,6 +47,7 @@ struct SerfStats {
   static const char kSerfFetchCancelCount[];
   static const char kSerfFetchActiveCount[];
   static const char kSerfFetchTimeoutCount[];
+  static const char kSerfFetchFailureCount[];
 };
 
 // TODO(sligocki): Serf does not seem to act appropriately in IPv6
@@ -158,11 +159,14 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   Variable* active_count_;
 
  private:
+  friend class SerfFetch;  // To access stats variables below.
+
   Variable* request_count_;
   Variable* byte_count_;
   Variable* time_duration_ms_;
   Variable* cancel_count_;
   Variable* timeout_count_;
+  Variable* failure_count_;
   const int64 timeout_ms_;
   bool force_threaded_;
   bool shutdown_;

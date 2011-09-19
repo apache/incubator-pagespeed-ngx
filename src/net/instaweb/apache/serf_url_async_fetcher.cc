@@ -79,6 +79,7 @@ const char SerfStats::kSerfFetchCancelCount[] = "serf_fetch_cancel_count";
 const char SerfStats::kSerfFetchActiveCount[] =
     "serf_fetch_active_count";
 const char SerfStats::kSerfFetchTimeoutCount[] = "serf_fetch_timeout_count";
+const char SerfStats::kSerfFetchFailureCount[] = "serf_fetch_failure_count";
 
 GoogleString GetAprErrorString(apr_status_t status) {
   char error_str[1024];
@@ -159,6 +160,10 @@ class SerfFetch : public PoolElement<SerfFetch> {
   }
 
   void CallbackDone(bool success) {
+    // fetcher_==NULL if Start is called during shutdown.
+    if (!success && (fetcher_ != NULL)) {
+      fetcher_->failure_count_->Add(1);
+    }
     callback_->Done(success);
     // We should always NULL the callback_ out after calling otherwise we
     // could get weird double calling errors.
@@ -829,6 +834,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       time_duration_ms_(NULL),
       cancel_count_(NULL),
       timeout_count_(NULL),
+      failure_count_(NULL),
       timeout_ms_(timeout_ms),
       force_threaded_(false),
       shutdown_(false) {
@@ -841,6 +847,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
   cancel_count_ = statistics->GetVariable(SerfStats::kSerfFetchCancelCount);
   active_count_ = statistics->GetVariable(SerfStats::kSerfFetchActiveCount);
   timeout_count_ = statistics->GetVariable(SerfStats::kSerfFetchTimeoutCount);
+  failure_count_ = statistics->GetVariable(SerfStats::kSerfFetchFailureCount);
   Init(pool, proxy);
   threaded_fetcher_ = new SerfThreadedFetcher(this, proxy);
 }
@@ -859,6 +866,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       time_duration_ms_(parent->time_duration_ms_),
       cancel_count_(parent->cancel_count_),
       timeout_count_(parent->timeout_count_),
+      failure_count_(parent->failure_count_),
       timeout_ms_(parent->timeout_ms()),
       force_threaded_(parent->force_threaded_),
       shutdown_(false) {
@@ -1022,7 +1030,9 @@ int SerfUrlAsyncFetcher::Poll(int64 max_wait_ms) {
           // This and subsequent fetches are still active, so we're done.
           break;
         }
-        LOG(WARNING) << "Fetch timed out: " << fetch->str_url();
+        LOG(WARNING) << "Fetch timed out: " << fetch->str_url() << " ("
+                     << active_fetches_.size() << " waiting for " << max_wait_ms
+                     << "ms)";
         timeouts++;
         // Note that cancelling the fetch will ultimately call FetchComplete and
         // delete it from the pool.
@@ -1159,6 +1169,7 @@ void SerfUrlAsyncFetcher::Initialize(Statistics* statistics) {
     statistics->AddVariable(SerfStats::kSerfFetchCancelCount);
     statistics->AddVariable(SerfStats::kSerfFetchActiveCount);
     statistics->AddVariable(SerfStats::kSerfFetchTimeoutCount);
+    statistics->AddVariable(SerfStats::kSerfFetchFailureCount);
   }
 }
 
