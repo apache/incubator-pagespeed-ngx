@@ -168,7 +168,6 @@
         'util/thread_system_test_base.cc',
         'util/threadsafe_cache_test.cc',
         'util/time_util_test.cc',
-        'util/timer_based_lock_test.cc',
         'util/url_escaper_test.cc',
         'util/url_multipart_encoder_test.cc',
         'util/waveform_test.cc',

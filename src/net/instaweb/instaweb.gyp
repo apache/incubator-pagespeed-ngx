@@ -260,7 +260,6 @@
         'util/thread_system.cc',
         'util/threadsafe_cache.cc',
         'util/time_util.cc',
-        'util/timer_based_abstract_lock.cc',
         'util/url_escaper.cc',
         'util/url_multipart_encoder.cc',
         'util/url_segment_encoder.cc',
