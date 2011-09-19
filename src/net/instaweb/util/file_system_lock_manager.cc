@@ -19,16 +19,16 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/timer_based_abstract_lock.h"
+#include "net/instaweb/util/public/scheduler_based_abstract_lock.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
-class Timer;
+class Scheduler;
 
-class FileSystemLock : public TimerBasedAbstractLock {
+class FileSystemLock : public SchedulerBasedAbstractLock {
  public:
   virtual ~FileSystemLock() {
     if (held_) {
@@ -63,8 +63,8 @@ class FileSystemLock : public TimerBasedAbstractLock {
   }
 
  protected:
-  virtual Timer* timer() const {
-    return manager_->timer();
+  virtual Scheduler* scheduler() const {
+    return manager_->scheduler();
   }
 
  private:
@@ -87,11 +87,11 @@ class FileSystemLock : public TimerBasedAbstractLock {
 };
 
 FileSystemLockManager::FileSystemLockManager(
-    FileSystem* file_system, const StringPiece& base_path, Timer* timer,
+    FileSystem* file_system, const StringPiece& base_path, Scheduler* scheduler,
     MessageHandler* handler)
     : file_system_(file_system),
       base_path_(base_path.as_string()),
-      timer_(timer),
+      scheduler_(scheduler),
       handler_(handler) {
   EnsureEndsInSlash(&base_path_);
 }

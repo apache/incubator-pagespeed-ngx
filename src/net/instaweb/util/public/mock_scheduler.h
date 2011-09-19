@@ -43,6 +43,9 @@ class MockScheduler : public Scheduler {
   virtual void RegisterWorker(QueuedWorkerPool::Sequence* w);
   virtual void UnregisterWorker(QueuedWorkerPool::Sequence* w);
 
+  // Blocks until all work in registered workers is done.
+  void AwaitQuiescence();
+
  protected:
   virtual void AwaitWakeupUntilUs(int64 wakeup_time_us);
 

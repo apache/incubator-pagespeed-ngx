@@ -27,8 +27,9 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/scheduler.h"
+#include "net/instaweb/util/public/scheduler_based_abstract_lock.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/timer_based_abstract_lock.h"
 
 namespace net_instaweb {
 
@@ -102,7 +103,7 @@ inline size_t SegmentSize(size_t lock_size) {
 
 namespace Data = SharedMemLockData;
 
-class SharedMemLock : public TimerBasedAbstractLock {
+class SharedMemLock : public SchedulerBasedAbstractLock {
  public:
   virtual ~SharedMemLock() {
     Unlock();
@@ -148,8 +149,8 @@ class SharedMemLock : public TimerBasedAbstractLock {
   }
 
  protected:
-  virtual Timer* timer() const {
-    return manager_->timer_;
+  virtual Scheduler* scheduler() const {
+    return manager_->scheduler_;
   }
 
  private:
@@ -190,7 +191,7 @@ class SharedMemLock : public TimerBasedAbstractLock {
     scoped_ptr<AbstractMutex> lock(AttachMutex());
     ScopedMutex hold_lock(lock.get());
 
-    int64 now_ms = manager_->timer_->NowMs();
+    int64 now_ms = manager_->scheduler_->timer()->NowMs();
     if (now_ms == Data::kNotAcquired) {
       ++now_ms;
     }
@@ -262,11 +263,11 @@ class SharedMemLock : public TimerBasedAbstractLock {
 };
 
 SharedMemLockManager::SharedMemLockManager(
-    AbstractSharedMem* shm, const GoogleString& path, Timer* timer,
+    AbstractSharedMem* shm, const GoogleString& path, Scheduler* scheduler,
     Hasher* hasher, MessageHandler* handler)
     : shm_runtime_(shm),
       path_(path),
-      timer_(timer),
+      scheduler_(scheduler),
       hasher_(hasher),
       handler_(handler),
       lock_size_(shm->SharedMutexSize()) {

@@ -27,13 +27,13 @@
 namespace net_instaweb {
 
 class FileSystem;
-class Timer;
 class MessageHandler;
+class Scheduler;
 
 // Use the locking routines in FileSystem to implement named locks.  Requires a
-// Timer as well because the FileSystem locks are non-blocking and we must use
-// spin+sleep.  A MessageHandler is used to report file system errors during
-// lock creation and cleanup.
+// Scheduler as well because the FileSystem locks are non-blocking and we must
+// deal with blocking until they are available.  A MessageHandler is used to
+// report file system errors during lock creation and cleanup.
 class FileSystemLockManager : public NamedLockManager {
  public:
   // Note: a FileSystemLockManager must outlive
@@ -43,7 +43,7 @@ class FileSystemLockManager : public NamedLockManager {
   // that base_path exists.
   FileSystemLockManager(FileSystem* file_system,
                         const StringPiece& base_path,
-                        Timer* timer,
+                        Scheduler* scheduler,
                         MessageHandler* handler);
   virtual ~FileSystemLockManager();
 
@@ -60,13 +60,13 @@ class FileSystemLockManager : public NamedLockManager {
 
   // Simple accessors for constructor arguments
   FileSystem* file_system() const { return file_system_; }
-  Timer* timer() const { return timer_; }
+  Scheduler* scheduler() const { return scheduler_; }
   MessageHandler* handler() const { return handler_; }
 
  private:
   FileSystem* file_system_;
   GoogleString base_path_;
-  Timer* timer_;
+  Scheduler* scheduler_;
   MessageHandler* handler_;
 
   DISALLOW_COPY_AND_ASSIGN(FileSystemLockManager);

@@ -31,8 +31,8 @@ namespace net_instaweb {
 class AbstractSharedMem;
 class AbstractSharedMemSegment;
 class Hasher;
-class Timer;
 class MessageHandler;
+class Scheduler;
 
 namespace SharedMemLockData {
 
@@ -40,8 +40,8 @@ struct Bucket;
 
 }  // namespace SharedMemLockData
 
-// A simple shared memory named locking manager, which uses timer sleeps
-// (via TimerBasedAbstractLock) when it needs to block.
+// A simple shared memory named locking manager, which uses scheduler alarms
+// (via SchedulerBasedAbstractLock) when it needs to block.
 //
 // TODO(morlovich): Implement condvars?
 class SharedMemLockManager : public NamedLockManager {
@@ -50,8 +50,9 @@ class SharedMemLockManager : public NamedLockManager {
   // child processes to finish the initialization.
   //
   // Locks created by this object must not live after it dies.
-  SharedMemLockManager(AbstractSharedMem* shm, const GoogleString& path,
-                       Timer* timer, Hasher* hasher, MessageHandler* handler);
+  SharedMemLockManager(
+      AbstractSharedMem* shm, const GoogleString& path, Scheduler* scheduler,
+      Hasher* hasher, MessageHandler* handler);
   virtual ~SharedMemLockManager();
 
   // Sets up our shared state for use of all child processes. Returns
@@ -84,7 +85,7 @@ class SharedMemLockManager : public NamedLockManager {
   GoogleString path_;
 
   scoped_ptr<AbstractSharedMemSegment> seg_;
-  Timer* timer_;
+  Scheduler* scheduler_;
   Hasher* hasher_;
   MessageHandler* handler_;
   size_t lock_size_;

@@ -127,7 +127,7 @@ SharedMemLockManager* ApacheRewriteDriverFactory::CreateSharedMemLockManager() {
   return new SharedMemLockManager(shared_mem_runtime_.get(),
                                   StrCat(config_->file_cache_path(),
                                          "/named_locks"),
-                                  timer(), hasher(), message_handler());
+                                  scheduler(), hasher(), message_handler());
 }
 
 FileSystem* ApacheRewriteDriverFactory::DefaultFileSystem() {

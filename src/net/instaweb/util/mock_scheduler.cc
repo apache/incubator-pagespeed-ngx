@@ -46,7 +46,7 @@ void MockScheduler::AwaitWakeupUntilUs(int64 wakeup_time_us) {
   // To make things simple and deterministic, we simply advance the
   // time when the work threads quiesce.
   if (QueuedWorkerPool::AreBusy(workers_) || running_waiting_alarms()) {
-    Scheduler::AwaitWakeupUntilUs(timer_->NowUs() + Timer::kSecondUs / 100);
+    Scheduler::AwaitWakeupUntilUs(timer_->NowUs() + 10 * Timer::kMsUs);
   } else {
     // Can fire off alarms, so we have to be careful to have the lock
     // relinquished.
@@ -56,6 +56,13 @@ void MockScheduler::AwaitWakeupUntilUs(int64 wakeup_time_us) {
       timer_->SetTimeUs(wakeup_time_us);
     }
     mutex()->Lock();
+  }
+}
+
+void MockScheduler::AwaitQuiescence() {
+  ScopedMutex lock(mutex());
+  while (QueuedWorkerPool::AreBusy(workers_) || running_waiting_alarms()) {
+    Scheduler::AwaitWakeupUntilUs(timer_->NowUs() + 10 * Timer::kMsUs);
   }
 }
 

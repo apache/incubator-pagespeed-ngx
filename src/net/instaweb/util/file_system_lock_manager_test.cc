@@ -25,9 +25,11 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mem_file_system.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -43,9 +45,10 @@ class FileSystemLockManagerTest : public testing::Test {
  protected:
   FileSystemLockManagerTest()
       : timer_(0),
+        thread_system_(ThreadSystem::CreateThreadSystem()),
+        scheduler_(thread_system_.get(), &timer_),
         file_system_(&timer_),
-        manager_(&file_system_, GTestTempDir(),
-                 file_system_.timer(), &handler_) { }
+        manager_(&file_system_, GTestTempDir(), &scheduler_, &handler_) { }
   virtual ~FileSystemLockManagerTest() { }
 
   NamedLock* MakeLock(const StringPiece& name) {
@@ -71,6 +74,8 @@ class FileSystemLockManagerTest : public testing::Test {
   }
 
   MockTimer timer_;
+  scoped_ptr<ThreadSystem> thread_system_;
+  MockScheduler scheduler_;
   GoogleMessageHandler handler_;
   MemFileSystem file_system_;
   FileSystemLockManager manager_;

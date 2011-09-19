@@ -226,7 +226,7 @@ Hasher* RewriteDriverFactory::hasher() {
 
 NamedLockManager* RewriteDriverFactory::DefaultLockManager() {
   return new FileSystemLockManager(file_system(), LockFilePrefix(),
-                                   timer(), message_handler());
+                                   scheduler(), message_handler());
 }
 
 UrlNamer* RewriteDriverFactory::DefaultUrlNamer() {

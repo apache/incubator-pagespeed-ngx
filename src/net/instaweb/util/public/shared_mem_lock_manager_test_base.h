@@ -23,9 +23,11 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -57,6 +59,8 @@ class SharedMemLockManagerTestBase : public testing::Test {
                       // a process-based environment it's not shared at all.
                       // Therefore,  all advancement must be done in either
                       // parent or kid but not both.
+  scoped_ptr<ThreadSystem> thread_system_;
+  MockScheduler scheduler_;
   MD5Hasher hasher_;
   scoped_ptr<SharedMemLockManager> root_lock_manager_;  // used for init only.
 

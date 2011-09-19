@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -40,7 +41,9 @@ SharedMemLockManagerTestBase::SharedMemLockManagerTestBase(
     SharedMemTestEnv* test_env)
     : test_env_(test_env),
       shmem_runtime_(test_env->CreateSharedMemRuntime()),
-      timer_(0) {
+      timer_(0),
+      thread_system_(ThreadSystem::CreateThreadSystem()),
+      scheduler_(thread_system_.get(), &timer_) {
 }
 
 void SharedMemLockManagerTestBase::SetUp() {
@@ -59,7 +62,7 @@ bool SharedMemLockManagerTestBase::CreateChild(TestMethod method) {
 }
 
 SharedMemLockManager* SharedMemLockManagerTestBase::CreateLockManager() {
-  return new SharedMemLockManager(shmem_runtime_.get(), kPath, &timer_,
+  return new SharedMemLockManager(shmem_runtime_.get(), kPath, &scheduler_,
                                   &hasher_, &handler_);
 }
 
