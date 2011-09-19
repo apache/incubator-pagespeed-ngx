@@ -87,7 +87,7 @@ template<class Proto> class Headers {
 
   // Remove all headers whose name is in |names|.
   // Return true if anything was removed.
-  virtual bool RemoveAllFromSet(const StringSet& names);
+  virtual bool RemoveAllFromSet(const StringSetInsensitive& names);
 
   // Similar to RemoveAll followed by Add.  Note that the attribute
   // order may be changed as a side effect of this operation.

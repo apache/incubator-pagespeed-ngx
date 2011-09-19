@@ -43,8 +43,11 @@ using base::StringPiece;
 
 namespace net_instaweb {
 
+struct StringCompareInsensitive;
+
 typedef std::map<GoogleString, GoogleString> StringStringMap;
 typedef std::set<GoogleString> StringSet;
+typedef std::set<GoogleString, StringCompareInsensitive> StringSetInsensitive;
 typedef std::vector<GoogleString> StringVector;
 typedef std::vector<StringPiece> StringPieceVector;
 typedef std::vector<const GoogleString*> ConstStringStarVector;

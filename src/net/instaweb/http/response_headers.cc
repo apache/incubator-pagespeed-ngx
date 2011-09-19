@@ -133,7 +133,7 @@ bool ResponseHeaders::RemoveAll(const StringPiece& name) {
   return false;
 }
 
-bool ResponseHeaders::RemoveAllFromSet(const StringSet& names) {
+bool ResponseHeaders::RemoveAllFromSet(const StringSetInsensitive& names) {
   if (Headers<HttpResponseHeaders>::RemoveAllFromSet(names)) {
     cache_fields_dirty_ = true;
     return true;

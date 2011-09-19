@@ -353,7 +353,7 @@ TEST_F(ResponseHeadersTest, TestRemoveAllFromSet) {
   ExpectSizes(8, 4);
 
   // Empty set means remove nothing and return false.
-  StringSet removes0;
+  StringSetInsensitive removes0;
   EXPECT_FALSE(response_headers_.RemoveAllFromSet(removes0));
   ExpectSizes(8, 4);
 
@@ -368,7 +368,7 @@ TEST_F(ResponseHeadersTest, TestRemoveAllFromSet) {
   // Removing multiple headers works.
   EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kVary, &vs));
   EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kSetCookie, &vs));
-  StringSet removes1;
+  StringSetInsensitive removes1;
   removes1.insert(HttpAttributes::kVary);
   removes1.insert(HttpAttributes::kSetCookie);
   EXPECT_TRUE(response_headers_.RemoveAllFromSet(removes1));
@@ -383,7 +383,7 @@ TEST_F(ResponseHeadersTest, TestRemoveAllFromSet) {
 
   // Removing one header works.
   EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kDate, &vs));
-  StringSet removes2;
+  StringSetInsensitive removes2;
   removes2.insert(HttpAttributes::kDate);
   EXPECT_TRUE(response_headers_.RemoveAllFromSet(removes2));
   ExpectSizes(1, 1);
@@ -391,7 +391,7 @@ TEST_F(ResponseHeadersTest, TestRemoveAllFromSet) {
 
   // Removing a header that is there after one that isn't works.
   EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kCacheControl, &vs));
-  StringSet removes3;
+  StringSetInsensitive removes3;
   removes3.insert("X-Bogus-Attribute");
   removes3.insert(HttpAttributes::kCacheControl);
   EXPECT_TRUE(response_headers_.RemoveAllFromSet(removes3));
@@ -551,7 +551,7 @@ TEST_F(ResponseHeadersTest, TestRemoveDoesntSeparateCommaValues) {
   EXPECT_EQ(expected_headers2, response_headers_.ToString());
 
   // 3) RemoveAllFromSet
-  StringSet set;
+  StringSetInsensitive set;
   set.insert(HttpAttributes::kVary);
   EXPECT_TRUE(response_headers_.RemoveAllFromSet(set));
 
@@ -694,6 +694,16 @@ TEST_F(ResponseHeadersTest, TestParseFirstLinePermanentRedirect) {
   EXPECT_EQ(301, response_headers_.status_code());
   EXPECT_EQ(GoogleString("Moved Permanently"),
             GoogleString(response_headers_.reason_phrase()));
+}
+
+TEST_F(ResponseHeadersTest, RemoveAllCaseInsensitivity) {
+  ResponseHeaders headers;
+  headers.Add("content-encoding", "gzip");
+  EXPECT_STREQ("gzip", headers.Lookup1("Content-Encoding"));
+  headers.RemoveAll("Content-Encoding");
+  EXPECT_EQ(NULL, headers.Lookup1("content-encoding"));
+  EXPECT_EQ(NULL, headers.Lookup1("Content-Encoding"));
+  EXPECT_EQ(0, headers.NumAttributes()) << headers.Name(0);
 }
 
 }  // namespace net_instaweb

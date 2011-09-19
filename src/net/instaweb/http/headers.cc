@@ -17,7 +17,8 @@
 #include "net/instaweb/http/public/headers.h"
 
 #include <set>
-#include "base/logging.h"
+#include <vector>
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/http.pb.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -219,17 +220,17 @@ template<class Proto> bool Headers<Proto>::Remove(const StringPiece& name,
 }
 
 template<class Proto> bool Headers<Proto>::RemoveAll(const StringPiece& name) {
-  StringSet names;
+  StringSetInsensitive names;
   names.insert(name.as_string());
   return RemoveAllFromSet(names);
 }
 
 template<class Proto> bool Headers<Proto>::RemoveAllFromSet(
-    const StringSet& names) {
+    const StringSetInsensitive& names) {
   // First, we update the map.
   PopulateMap();
   bool removed_anything = false;
-  for (StringSet::const_iterator iter = names.begin();
+  for (StringSetInsensitive::const_iterator iter = names.begin();
        iter != names.end(); ++iter) {
     if (map_->RemoveAll(*iter)) {
       removed_anything = true;
@@ -273,7 +274,7 @@ template<class Proto> void Headers<Proto>::Replace(
 template<class Proto> void Headers<Proto>::UpdateFrom(
     const Headers<Proto>& other) {
   // Get set of names to remove.
-  StringSet removing_names;
+  StringSetInsensitive removing_names;
   for (int i = 0, n = other.NumAttributes(); i < n; ++i) {
     removing_names.insert(other.Name(i));
   }

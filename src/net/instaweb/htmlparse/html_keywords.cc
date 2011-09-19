@@ -17,10 +17,11 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/htmlparse/public/html_keywords.h"
-#include <set>
+
 #include <cstddef>
 #include <map>
 #include <utility>
+
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/util/public/string.h"
@@ -144,8 +145,7 @@ namespace net_instaweb {
 HtmlKeywords* HtmlKeywords::singleton_ = NULL;
 
 HtmlKeywords::HtmlKeywords() {
-  typedef std::set<GoogleString, StringCompareInsensitive> CaseInsensitiveSet;
-  CaseInsensitiveSet case_sensitive_symbols;
+  StringSetInsensitive case_sensitive_symbols;
   for (size_t i = 0; i < arraysize(kHtmlKeywordsSequences); ++i) {
     // Put all symbols in the case-sensitive map
     const HtmlKeywordsSequence& seq = kHtmlKeywordsSequences[i];
