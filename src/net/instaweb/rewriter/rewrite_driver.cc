@@ -1101,7 +1101,7 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
     // Shouldn't happen?
     message_handler()->Message(
         kFatal, "invalid base_url_ for '%s'", input_url.spec_c_str());
-    DCHECK(false);
+    DLOG(FATAL);
   }
   if (may_rewrite) {
     resource = CreateInputResourceUnchecked(input_url);

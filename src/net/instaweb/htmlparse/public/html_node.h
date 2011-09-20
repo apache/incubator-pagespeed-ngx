@@ -48,7 +48,7 @@ class HtmlNode {
   }
 
   void operator delete(void* ptr, Arena<HtmlNode>* arena) {
-    CHECK(false) << "HtmlNode must not be deleted directly.";
+    LOG(FATAL) << "HtmlNode must not be deleted directly.";
   }
 
  protected:
@@ -74,7 +74,7 @@ class HtmlNode {
 
   // Version that affects visibility of the destructor.
   void operator delete(void* ptr) {
-    CHECK(false) << "HtmlNode must not be deleted directly.";
+    LOG(FATAL) << "HtmlNode must not be deleted directly.";
   }
 
  private:

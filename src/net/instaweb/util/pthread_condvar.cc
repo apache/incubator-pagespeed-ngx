@@ -56,7 +56,7 @@ void PthreadCondvar::TimedWait(int64 timeout_ms) {
   // get *really close* to overflowing a 32-bit tv_nsec here,
   // so this code should be modified with caution.
   if (gettimeofday(&current_time, NULL) != 0) {
-    CHECK(false) << "Could not determine time of day";
+    LOG(FATAL) << "Could not determine time of day";
   }
   timeout.tv_nsec = current_time.tv_usec * 1000 + timeout_ms * kMsNs;
   timeout_sec_incr += timeout.tv_nsec / Timer::kSecondNs;

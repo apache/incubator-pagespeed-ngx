@@ -158,11 +158,11 @@ class FetcherTest : public testing::Test {
   // classes which want to use CountFetchersSync/Async without specifying the
   // fetcher in each call.
   virtual UrlFetcher* sync_fetcher() {
-    CHECK(false) << "sync_fetcher() must be overridden before use.";
+    LOG(FATAL) << "sync_fetcher() must be overridden before use.";
     return NULL;
   };
   virtual UrlAsyncFetcher* async_fetcher() {
-    CHECK(false) << "async_fetcher() must be overridden before use.";
+    LOG(FATAL) << "async_fetcher() must be overridden before use.";
     return NULL;
   };
 

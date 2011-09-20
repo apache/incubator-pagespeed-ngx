@@ -46,7 +46,7 @@ SpriterResult* ImageSpriter::Sprite(
     } break;
 
     default: {
-      DCHECK(0) << "Unhandled case.";
+      DLOG(FATAL) << "Unhandled case.";
       return NULL;  // TODO(skerner): Error call to delegate.
     }
   }

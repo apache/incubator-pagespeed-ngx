@@ -85,15 +85,21 @@ TEST_F(SchedulerTest, AlarmsGetRun) {
   Scheduler::Alarm* alarm3 =
       scheduler_.AddAlarm(start_us + 53 * Timer::kMsUs,
                           new CountFunction(&counter));
-  EXPECT_FALSE(Compare(alarm1, alarm1));
-  EXPECT_FALSE(Compare(alarm2, alarm2));
-  EXPECT_FALSE(Compare(alarm3, alarm3));
-  EXPECT_TRUE(Compare(alarm1, alarm2));
-  EXPECT_TRUE(Compare(alarm1, alarm3));
-  EXPECT_FALSE(Compare(alarm2, alarm1));
-  EXPECT_FALSE(Compare(alarm2, alarm3));
-  EXPECT_FALSE(Compare(alarm3, alarm1));
-  EXPECT_TRUE(Compare(alarm3, alarm2));
+  if (counter == 0) {
+    // In rare cases under Valgrind, we run over the 50ms limit and the
+    // callbacks get run and freed.  We skip these checks in that case.
+    // Ordinarily these can be observed to run (change the above test to true ||
+    // and run under valgrind to observe this).
+    EXPECT_FALSE(Compare(alarm1, alarm1));
+    EXPECT_FALSE(Compare(alarm2, alarm2));
+    EXPECT_FALSE(Compare(alarm3, alarm3));
+    EXPECT_TRUE(Compare(alarm1, alarm2));
+    EXPECT_TRUE(Compare(alarm1, alarm3));
+    EXPECT_FALSE(Compare(alarm2, alarm1));
+    EXPECT_FALSE(Compare(alarm2, alarm3));
+    EXPECT_FALSE(Compare(alarm3, alarm1));
+    EXPECT_TRUE(Compare(alarm3, alarm2));
+  }
   {
     ScopedMutex lock(scheduler_.mutex());
     scheduler_.BlockingTimedWait(55);  // Never signaled, should time out.

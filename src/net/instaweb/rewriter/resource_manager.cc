@@ -622,7 +622,7 @@ void ResourceManager::ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver) {
   int count = active_rewrite_drivers_.erase(rewrite_driver);
   if (count != 1) {
     LOG(ERROR) << "ReleaseRewriteDriver called with driver not in active set.";
-    DCHECK(false);
+    DLOG(FATAL);
   } else {
     if (rewrite_driver->has_custom_options()) {
       delete rewrite_driver;

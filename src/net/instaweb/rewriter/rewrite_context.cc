@@ -502,7 +502,7 @@ bool RewriteContext::IsInputValid(const InputInfo& input_info) {
       return true;
   }
 
-  DCHECK(false) << "Corrupt InputInfo object !?";
+  DLOG(FATAL) << "Corrupt InputInfo object !?";
   return false;
 }
 

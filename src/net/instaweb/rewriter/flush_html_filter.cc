@@ -69,7 +69,7 @@ void FlushHtmlFilter::StartElementImpl(HtmlElement* element) {
     } else if (keyword == HtmlName::kImg) {
       score_ += kFlushScriptScore;
     } else {
-      DCHECK(false) << "expected Link, Script, or Img";
+      DLOG(FATAL) << "expected Link, Script, or Img";
     }
   }
 }

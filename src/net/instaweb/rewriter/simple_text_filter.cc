@@ -99,7 +99,7 @@ bool SimpleTextFilter::Fetch(const OutputResourcePtr& output_resource,
                              ResponseHeaders* response_headers,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
-  DCHECK(false);
+  DLOG(FATAL);
   return false;
 }
 

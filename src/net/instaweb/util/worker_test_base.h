@@ -114,7 +114,7 @@ class DeleteNotifyFunction : public Function {
   }
 
   virtual void Run() {
-    CHECK(false) << "DeleteNotifyFunction ran.";
+    LOG(FATAL) << "DeleteNotifyFunction ran.";
   }
 
  private:

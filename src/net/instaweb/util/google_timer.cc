@@ -38,7 +38,7 @@ int64 GoogleTimer::NowUs() const {
   struct timeval tv;
   struct timezone tz = { 0, 0 };  // UTC
   if (gettimeofday(&tv, &tz) != 0) {
-    CHECK(false) << "Could not determine time of day: " << strerror(errno);
+    LOG(FATAL) << "Could not determine time of day: " << strerror(errno);
   }
   return (tv.tv_sec * 1000000) + tv.tv_usec;
 }

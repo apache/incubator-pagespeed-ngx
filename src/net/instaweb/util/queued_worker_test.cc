@@ -97,7 +97,7 @@ TEST_F(QueuedWorkerTest, ChainedTasks) {
 TEST_F(QueuedWorkerTest, TestShutDown) {
   // Make sure that shutdown cancels jobs put in after it --- that
   // the job gets deleted (making clean.Wait() return), and doesn't
-  // run (which would CHECK(false)).
+  // run (which would LOG(FATAL)).
   SyncPoint clean(thread_runtime_.get());
   worker_->Start();
   worker_->ShutDown();

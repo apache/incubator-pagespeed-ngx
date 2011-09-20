@@ -113,10 +113,16 @@ void InstawebContext::Rewrite(const char* input, int size) {
     inflater_->SetInput(input, size);
     while (inflater_->HasUnconsumedInput()) {
       int num_inflated_bytes = inflater_->InflateBytes(buf, kStackBufferSize);
-      ProcessBytes(buf, num_inflated_bytes);
+      DCHECK_LE(0, num_inflated_bytes) << "Corrupted zip inflation";
+      if (num_inflated_bytes > 0) {
+        ProcessBytes(buf, num_inflated_bytes);
+      }
     }
   } else {
-    ProcessBytes(input, size);
+    DCHECK_LE(0, size) << "negatively sized buffer passed from apache";
+    if (size > 0) {
+      ProcessBytes(input, size);
+    }
   }
 }
 
@@ -136,6 +142,7 @@ inline bool IsByteOrderMarkerCharacter(unsigned char c) {
 }  // namespace
 
 void InstawebContext::ProcessBytes(const char* input, int size) {
+  CHECK_LT(0, size);
   // Try to figure out whether this looks like HTML or not, if we haven't
   // figured it out already.  We just scan past whitespace for '<'.
   for (int i = 0; (content_detection_state_ == kStart) && (i < size); ++i) {
@@ -274,10 +281,10 @@ const char* InstawebContext::MakeRequestUrl(request_rec* request) {
    * prefix twice.
    *
    * TODO(jmarantz): Figure out how to do this correctly at all times.
-   * TODO(sligocki): Make this work when URL starts with "https://".
    */
   if (url == NULL) {
-    if (strncmp(request->unparsed_uri, "http://", 7) == 0) {
+    if ((strncmp(request->unparsed_uri, "http://", 7) == 0) ||
+        (strncmp(request->unparsed_uri, "https://", 8) == 0)) {
       url = apr_pstrdup(request->pool, request->unparsed_uri);
     } else {
       url = ap_construct_url(request->pool, request->unparsed_uri, request);

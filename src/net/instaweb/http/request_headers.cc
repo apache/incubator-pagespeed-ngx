@@ -86,7 +86,7 @@ RequestHeaders::Method RequestHeaders::method() const {
     case HttpRequestHeaders::PATCH:       return kPatch;
     case HttpRequestHeaders::INVALID:     return kError;
   }
-  DCHECK(false) << "Invalid method";
+  DLOG(FATAL) << "Invalid method";
   return kGet;
 }
 
@@ -103,7 +103,7 @@ const char* RequestHeaders::method_string() const {
     case HttpRequestHeaders::PATCH:       return "PATCH";
     case HttpRequestHeaders::INVALID:     return "ERROR";
   }
-  DCHECK(false) << "Invalid method";
+  DLOG(FATAL) << "Invalid method";
   return NULL;
 }
 

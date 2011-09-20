@@ -50,7 +50,7 @@ void ResourceSlot::DetachContext(RewriteContext* context) {
   } else if (contexts_.back() == context) {
     contexts_.pop_back();
   } else {
-    DCHECK(false) << "Can only detach first or last context";
+    DLOG(FATAL) << "Can only detach first or last context";
   }
 }
 
@@ -58,7 +58,7 @@ FetchResourceSlot::~FetchResourceSlot() {
 }
 
 void FetchResourceSlot::Render() {
-  DCHECK(false) << "FetchResourceSlot::Render should never be called";
+  DLOG(FATAL) << "FetchResourceSlot::Render should never be called";
 }
 
 GoogleString FetchResourceSlot::LocationString() {

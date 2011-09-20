@@ -343,7 +343,7 @@ class NestedFilter : public RewriteFilter {
              ResponseHeaders* response_headers,
              MessageHandler* message_handler,
              UrlAsyncFetcher::Callback* callback) {
-    CHECK(false);
+    LOG(FATAL);
   }
 
   RewriteContext* MakeRewriteContext() {
@@ -552,7 +552,7 @@ class CombiningFilter : public RewriteFilter {
                      ResponseHeaders* response,
                      MessageHandler* handler,
                      UrlAsyncFetcher::Callback* callback) {
-    CHECK(false);
+    LOG(FATAL);
     return false;
   }
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }

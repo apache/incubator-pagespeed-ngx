@@ -94,7 +94,7 @@ void InlineRewriteContext::Render() {
 
 // We never create output resources, so methods related to them are stubbed.
 OutputResourceKind InlineRewriteContext::kind() const {
-  CHECK(false);
+  LOG(FATAL);
   return kRewrittenResource;
 }
 

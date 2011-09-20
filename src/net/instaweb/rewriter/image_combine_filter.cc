@@ -868,7 +868,7 @@ class ImageCombineFilter::Context : public RewriteContext {
       if (num_inputs > 1) {
         if (!partition->has_spriter_result()) {
           // TODO(nforman): some error handling here.
-          DCHECK(false) << "spriting failed during Render";
+          DLOG(FATAL) << "spriting failed during Render";
           break;
         }
         const spriter::SpriterResult& spriter_result =
