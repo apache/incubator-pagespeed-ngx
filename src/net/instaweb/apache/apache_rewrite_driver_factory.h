@@ -130,7 +130,10 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // Accumulate in a histogram the amount of time spent rewriting HTML.
   void AddHtmlRewriteTimeUs(int64 rewrite_time_us);
 
-  void PoolDestroyed(ApacheResourceManager* rm);
+  // Notification of apache tearing down a context (vhost or top-level)
+  // corresponding to given ApacheResourceManager. Returns true if it was
+  // the last context.
+  bool PoolDestroyed(ApacheResourceManager* rm);
 
  protected:
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -213,13 +216,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // Size of shared circular buffer for displaying Info messages in
   // /mod_pagespeed_messages.
   int message_buffer_size_;
-
-  // This variable is used to detect us retaining some state from between
-  // the configuration check and configuration parse; if we see all factories
-  // be destroyed while we remain it means Apache proceeded from config check
-  // to actual config parse + startup without ~ApacheProcessContext being
-  // called.
-  bool all_managers_cleared_;
 
   // Caches are expensive.  Just allocate one per distinct file-cache path.
   // At the moment there is no consistency checking for other parameters.

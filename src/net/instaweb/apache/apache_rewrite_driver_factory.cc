@@ -417,12 +417,6 @@ void ApacheRewriteDriverFactory::ShutDown() {
 // help with the settings if needed.
 // Note: does not call set_statistics() on the factory.
 Statistics* ApacheRewriteDriverFactory::MakeSharedMemStatistics() {
-  if (all_managers_cleared_) {
-    // Get rid of stale instance from configuration check.
-    all_managers_cleared_ = false;
-    shared_mem_statistics_.reset(NULL);
-  }
-
   if (shared_mem_statistics_.get() == NULL) {
     // Note that we create the statistics object in the parent process, and
     // it stays around in the kids but gets reinitialized for them
@@ -456,11 +450,11 @@ ApacheResourceManager* ApacheRewriteDriverFactory::MakeApacheResourceManager(
   return rm;
 }
 
-void ApacheRewriteDriverFactory::PoolDestroyed(ApacheResourceManager* rm) {
+bool ApacheRewriteDriverFactory::PoolDestroyed(ApacheResourceManager* rm) {
   int erased = uninitialized_managers_.erase(rm);
   CHECK_EQ(1, erased);
-  all_managers_cleared_ = uninitialized_managers_.empty();
   delete rm;
+  return uninitialized_managers_.empty();
 }
 
 }  // namespace net_instaweb

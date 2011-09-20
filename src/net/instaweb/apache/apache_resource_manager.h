@@ -61,7 +61,9 @@ class ApacheResourceManager : public ResourceManager {
 
   bool initialized() const { return initialized_; }
 
-  void PoolDestroyed();
+  // Called on notification from Apache on child exit. Returns true
+  // if this is the last ResourceManager that exists.
+  bool PoolDestroyed();
 
  private:
   ApacheRewriteDriverFactory* apache_factory_;

@@ -91,9 +91,9 @@ void ApacheResourceManager::ChildInit() {
   }
 }
 
-void ApacheResourceManager::PoolDestroyed() {
+bool ApacheResourceManager::PoolDestroyed() {
   ShutDownDrivers();
-  apache_factory_->PoolDestroyed(this);
+  return apache_factory_->PoolDestroyed(this);
 }
 
 }  // namespace net_instaweb

@@ -699,7 +699,12 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
 
 apr_status_t pagespeed_child_exit(void* data) {
   ApacheResourceManager* manager = static_cast<ApacheResourceManager*>(data);
-  manager->PoolDestroyed();
+  if (manager->PoolDestroyed()) {
+      // When the last manager is destroyed, it's important that we also clean
+      // up the factory, so we don't end up with dangling pointers in case
+      // we are not unloaded fully on a config check (e.g. on Ubuntu 11).
+      apache_process_context.factory_.reset(NULL);
+  }
   return APR_SUCCESS;
 }
 
