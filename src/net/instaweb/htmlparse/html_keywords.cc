@@ -312,7 +312,7 @@ StringPiece HtmlKeywords::EscapeHelper(const StringPiece& unescaped,
       StringStringMapSensitive::const_iterator p =
           escape_map_.find(char_to_escape);
       if (p == escape_map_.end()) {
-        *buf += StringPrintf("&#%02d;", static_cast<int>(ch));
+        StringAppendF(buf, "&#%02d;", static_cast<int>(ch));
       } else {
         *buf += '&';
         *buf += p->second;

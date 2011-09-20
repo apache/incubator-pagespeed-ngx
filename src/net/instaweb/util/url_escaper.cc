@@ -81,8 +81,8 @@ void UrlEscaper::EncodeToUrlSegment(const StringPiece& in,
           !ReplaceSubstring(",", ",,", &src, url_segment) &&
           !ReplaceSubstring("?", ",q", &src, url_segment) &&
           !ReplaceSubstring("&", ",a", &src, url_segment)) {
-        url_segment->append(StringPrintf(",%02X",
-                                         static_cast<unsigned char>(c)));
+        StringAppendF(url_segment, ",%02X",
+                      static_cast<unsigned char>(c));
         src = src.substr(1);
       }
     }
