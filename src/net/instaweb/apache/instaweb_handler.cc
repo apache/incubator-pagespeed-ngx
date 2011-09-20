@@ -40,6 +40,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "http_config.h"
 #include "http_core.h"
@@ -110,10 +111,12 @@ void send_out_headers_and_body(
 // method believed the URL was a mod_pagespeed resource -- it does not
 // imply that it was handled successfully.  That information will be
 // in the status code in the response headers.
-bool handle_as_resource(ApacheRewriteDriverFactory* factory,
+bool handle_as_resource(ApacheResourceManager* manager,
                         request_rec* request,
                         const GoogleString& url) {
-  RewriteDriver* rewrite_driver = factory->NewRewriteDriver();
+  ApacheRewriteDriverFactory* factory = manager->apache_factory();
+  ApacheConfig* config = manager->config();
+  RewriteDriver* rewrite_driver = manager->NewRewriteDriver();
   RequestHeaders request_headers;
   ResponseHeaders response_headers;
   int n = arraysize(RewriteDriver::kPassThroughRequestAttributes);
@@ -128,7 +131,7 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
   }
   GoogleString output;  // TODO(jmarantz): quit buffering resource output
   StringWriter writer(&output);
-  MessageHandler* message_handler = factory->message_handler();
+  MessageHandler* message_handler = manager->message_handler();
   SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
       factory->thread_system(), &response_headers, &writer);
   bool handled = rewrite_driver->FetchResource(
@@ -139,9 +142,9 @@ bool handle_as_resource(ApacheRewriteDriverFactory* factory,
     message_handler->Message(kInfo, "Fetching resource %s...", url.c_str());
     if (!callback->done()) {
       UrlPollableAsyncFetcher* sub_resource_fetcher =
-          factory->SubResourceFetcher();
+          manager->subresource_fetcher();
       bool sub_resource_fetch_done = (sub_resource_fetcher == NULL);
-      int64 max_ms = factory->config()->fetcher_time_out_ms();
+      int64 max_ms = config->fetcher_time_out_ms();
       for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
            !callback->done() && now_ms - start_ms < max_ms;
            now_ms = timer.NowMs()) {
@@ -259,8 +262,9 @@ void log_resource_referral(request_rec* request,
 apr_status_t instaweb_handler(request_rec* request) {
   apr_status_t ret = DECLINED;
   const char* url = get_instaweb_resource_url(request);
-  ApacheRewriteDriverFactory* factory =
-      InstawebContext::Factory(request->server);
+  ApacheResourceManager* manager = InstawebContext::Manager(request->server);
+  ApacheConfig* config = manager->config();
+  ApacheRewriteDriverFactory* factory = manager->apache_factory();
   log_resource_referral(request, factory);
   if (strcmp(request->handler, kStatisticsHandler) == 0) {
     GoogleString output;
@@ -303,22 +307,21 @@ apr_status_t instaweb_handler(request_rec* request) {
     ret = OK;
 
   } else if (strcmp(request->handler, kBeaconHandler) == 0) {
-    ResourceManager* resource_manager = factory->ComputeResourceManager();
-    resource_manager->HandleBeacon(request->unparsed_uri);
+    manager->HandleBeacon(request->unparsed_uri);
     ret = HTTP_NO_CONTENT;
   } else if (url != NULL) {
     // Only handle GET request
     if (request->method_number != M_GET) {
       ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                     "Not GET request: %d.", request->method_number);
-    } else if (handle_as_resource(factory, request, url)) {
+    } else if (handle_as_resource(manager, request, url)) {
       ret = OK;
     }
 
-  } else if (factory->slurping_enabled() || factory->config()->test_proxy()) {
-    SlurpUrl(factory, request);
+  } else if (config->slurping_enabled() || config->test_proxy()) {
+    SlurpUrl(manager, request);
     if (request->status == HTTP_NOT_FOUND) {
-      RewriteStats* stats = factory->ComputeResourceManager()->rewrite_stats();
+      RewriteStats* stats = manager->rewrite_stats();
       stats->slurp_404_count()->Add(1);
     }
     ret = OK;
@@ -393,10 +396,8 @@ apr_status_t save_url_hook(request_rec *request) {
       parsed_url.ends_with(kRefererStatisticsHandler)) {
     bypass_mod_rewrite = true;
   } else {
-    ApacheRewriteDriverFactory* factory =
-        InstawebContext::Factory(request->server);
-    ResourceManager* resource_manager = factory->ComputeResourceManager();
-    RewriteDriver* rewrite_driver = resource_manager->decoding_driver();
+    ApacheResourceManager* manager = InstawebContext::Manager(request->server);
+    RewriteDriver* rewrite_driver = manager->decoding_driver();
     RewriteFilter* filter;
     GoogleUrl gurl(url);
     OutputResourcePtr output_resource(

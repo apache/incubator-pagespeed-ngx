@@ -29,6 +29,7 @@
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/instaweb_handler.h"
+#include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -42,7 +43,6 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/query_params.h"
-#include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -133,19 +133,11 @@ const char* kModPagespeedTestProxy = "ModPagespeedTestProxy";
 const char* kModPagespeedUrlPrefix = "ModPagespeedUrlPrefix";
 const char* kModPagespeedRespectVary = "ModPagespeedRespectVary";
 
-// Statistics variable names.
-const char* kMergeTimeUs = "merge_time_us";
-const char* kParseTimeUs = "parse_time_us";
-const char* kHtmlRewriteTimeUs = "html_rewrite_time_us";
-// Statistics histogram names.
-const char* kMergeTimeUsHistogram = "Merge Time us Histogram";
-
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
     LASTCHANGE_STRING;
 
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
-enum ConfigSwitch {CONFIG_ON, CONFIG_OFF, CONFIG_ERROR};
 
 // Check if pagespeed optimization rules applicable.
 bool check_pagespeed_applicable(request_rec* request,
@@ -232,158 +224,50 @@ apr_bucket* rewrite_html(InstawebContext* context, request_rec* request,
 // as directives-parsing time.
 class ApacheProcessContext {
  public:
-  ApacheProcessContext()
-      : merge_time_us_(NULL),
-        parse_time_us_(NULL),
-        html_rewrite_time_us_(NULL),
-        stored_parse_time_us_(0),
-        all_factories_cleared_(false) {
-  }
-
+  ApacheProcessContext() {}
   ~ApacheProcessContext() {
-    STLDeleteElements(&factories_);
-    STLDeleteElements(&configs_);
-    statistics_.reset(NULL);
     log_message_handler::ShutDown();
   }
 
-  // Delete the specified factory on process exit.
-  void add_factory(ApacheRewriteDriverFactory* factory) {
-    factories_.insert(factory);
-  }
-
-  // Do not delete the specified factory on process exit -- it
-  // is being deleted on a pool hook.
-  void remove_factory(ApacheRewriteDriverFactory* factory) {
-    factories_.erase(factory);
-    if (factories_.empty()) {
-      all_factories_cleared_ = true;
+  ApacheRewriteDriverFactory* factory(server_rec* server) {
+    // We are not mutex-protecting the factory-creation for now as the
+    // server_rec initialization loop appears to be single-threaded in
+    // Apache.
+    if (factory_.get() == NULL) {
+      factory_.reset(new ApacheRewriteDriverFactory(
+          server, kModPagespeedVersion));
     }
+    return factory_.get();
   }
 
-  // Delete the specified config on process exit.
-  void add_config(ApacheConfig* config) {
-    configs_.insert(config);
-  }
-
-  // Do not delete the specified config on process exit -- it
-  // is being deleted on a pool hook.
-  void remove_config(ApacheConfig* config) {
-    configs_.erase(config);
-  }
-
-  // Initializes global statistics object if needed, using factory to
-  // help with the settings if needed.
-  // Note: does not call set_statistics() on the factory.
-  SharedMemStatistics* InitStatistics(ApacheRewriteDriverFactory* factory) {
-    if (all_factories_cleared_) {
-      // Get rid of stale instance from configuration check.
-      all_factories_cleared_ = false;
-      statistics_.reset(NULL);
-    }
-
-    if (statistics_.get() == NULL) {
-      // Note that we create the statistics object in the parent process, and
-      // it stays around in the kids but gets reinitialized for them
-      // with a call to InitVariables(false) inside pagespeed_child_init.
-      factory->set_owns_statistics(true);
-      statistics_.reset(
-          new SharedMemStatistics(factory->shared_mem_runtime(),
-                                  factory->filename_prefix().as_string()));
-      RewriteDriverFactory::Initialize(statistics_.get());
-      SerfUrlAsyncFetcher::Initialize(statistics_.get());
-      statistics_->AddVariable(kMergeTimeUs);
-      statistics_->AddVariable(kParseTimeUs);
-      statistics_->AddVariable(kHtmlRewriteTimeUs);
-      statistics_->AddHistogram(kMergeTimeUsHistogram);
-      statistics_->Init(true, factory->message_handler());
-      merge_time_us_ = statistics_->GetVariable(kMergeTimeUs);
-      parse_time_us_ = statistics_->GetVariable(kParseTimeUs);
-      html_rewrite_time_us_ = statistics_->GetVariable(kHtmlRewriteTimeUs);
-      merge_time_us_histogram_ = statistics_->GetHistogram(
-          kMergeTimeUsHistogram);
-      merge_time_us_histogram_->SetMaxValue(2000);
-      parse_time_us_->Add(stored_parse_time_us_);
-      stored_parse_time_us_ = 0;
-    }
-    return statistics_.get();
-  }
-
-  void AddMergeTimeUs(int64 merge_time_us) {
-    if (statistics_.get() != NULL) {
-      merge_time_us_->Add(merge_time_us);
-      merge_time_us_histogram_->Add(merge_time_us);
-    }
-  }
-
-  void AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
-    if (statistics_.get() != NULL) {
-      html_rewrite_time_us_->Add(rewrite_time_us);
-    }
-  }
-
-  // Accumulating the time spent parsing directives requires special handling,
-  // because the parsing of directives precedes the initialization of the
-  // statistics object, which cannot be created until the file_prefix setting
-  // is parsed.
-  //
-  // Thus we need a place to store the accumulated parsing time, so we
-  // store it hera in the ApacheProcessContext, which gets statically
-  // initialized.
-  void AddParseTimeUs(int64 parse_time_us) {
-    if (parse_time_us_ != NULL) {
-      parse_time_us_->Add(parse_time_us);
-    } else {
-      stored_parse_time_us_ += parse_time_us;
-    }
-  }
-
-  std::set<ApacheRewriteDriverFactory*> factories_;
-  std::set<ApacheConfig*> configs_;
-  scoped_ptr<SharedMemStatistics> statistics_;
-  Variable* merge_time_us_;
-  Variable* parse_time_us_;
-  Variable* html_rewrite_time_us_;
-  Histogram* merge_time_us_histogram_;
-  int64 stored_parse_time_us_;
-
-  // This variable is used to detect us retaining some state from between
-  // the configuration check and configuration parse; if we see all factories
-  // be destroyed while we remain it means Apache proceeded from config check
-  // to actual config parse + startup without ~ApacheProcessContext being
-  // called.
-  bool all_factories_cleared_;
-
+  scoped_ptr<ApacheRewriteDriverFactory> factory_;
   // Process-scoped static variable cleanups, mainly for valgrind.
   MemCleanUp mem_cleanup_;
 };
 ApacheProcessContext apache_process_context;
 
-typedef void (ApacheProcessContext::*AddTimeFn)(int64 delta);
+typedef void (ApacheRewriteDriverFactory::*AddTimeFn)(int64 delta);
 
 class ScopedTimer {
  public:
-  explicit ScopedTimer(AddTimeFn add_time_fn)
-      : add_time_fn_(add_time_fn),
+  explicit ScopedTimer(ApacheRewriteDriverFactory* factory,
+                       AddTimeFn add_time_fn)
+      : factory_(factory),
+        add_time_fn_(add_time_fn),
         start_time_us_(timer_.NowUs()) {
   }
 
   ~ScopedTimer() {
     int64 delta_us = timer_.NowUs() - start_time_us_;
-    (apache_process_context.*add_time_fn_)(delta_us);
+    (factory_->*add_time_fn_)(delta_us);
   }
 
  private:
+  ApacheRewriteDriverFactory* factory_;
   AddTimeFn add_time_fn_;
   AprTimer timer_;
   int64 start_time_us_;
 };
-
-void MergeOptions(const RewriteOptions& a, const RewriteOptions& b,
-                  RewriteOptions* out) {
-  ScopedTimer timer(&ApacheProcessContext::AddMergeTimeUs);
-  out->Merge(a, b);
-}
 
 // Builds a new context for an HTTP request, returning NULL if we decide
 // that we should not handle the request for various reasons.
@@ -391,16 +275,15 @@ void MergeOptions(const RewriteOptions& a, const RewriteOptions& b,
 InstawebContext* build_context_for_request(request_rec* request) {
   ApacheConfig* directory_options = static_cast<ApacheConfig*>
       ap_get_module_config(request->per_dir_config, &pagespeed_module);
-  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(
-      request->server);
+  ApacheResourceManager* manager = InstawebContext::Manager(request->server);
   scoped_ptr<RewriteOptions> custom_options;
-  const RewriteOptions* host_options = factory->options();
+  const RewriteOptions* host_options = manager->options();
   const RewriteOptions* options = host_options;
   bool use_custom_options = false;
 
   if ((directory_options != NULL) && directory_options->modified()) {
     custom_options.reset(new RewriteOptions);
-    MergeOptions(*host_options, *directory_options, custom_options.get());
+    custom_options->Merge(*host_options, *directory_options);
     options = custom_options.get();
     use_custom_options = true;
   }
@@ -474,11 +357,11 @@ InstawebContext* build_context_for_request(request_rec* request) {
   // Determine the absolute URL for this request.
   const char* absolute_url = InstawebContext::MakeRequestUrl(request);
   scoped_ptr<RewriteOptions> query_options(
-      RewriteQuery::Scan(query_params, factory->message_handler()));
+      RewriteQuery::Scan(query_params, manager->message_handler()));
   if (query_options.get() != NULL) {
     use_custom_options = true;
     RewriteOptions* merged_options = new RewriteOptions;
-    MergeOptions(*options, *query_options, merged_options);
+    merged_options->Merge(*options, *query_options);
     query_options.reset(NULL);
     custom_options.reset(merged_options);
     options = merged_options;
@@ -500,7 +383,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   }
 
   InstawebContext* context = new InstawebContext(
-      request, *content_type, factory, absolute_url,
+      request, *content_type, manager, absolute_url,
       use_custom_options, *options);
 
   InstawebContext::ContentEncoding encoding = context->content_encoding();
@@ -603,8 +486,6 @@ bool process_bucket(ap_filter_t *filter, request_rec* request,
 }
 
 apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
-  ScopedTimer timer(&ApacheProcessContext::AddHtmlRewriteTimeUs);
-
   // Do nothing if there is nothing, and stop passing to other filters.
   if (APR_BRIGADE_EMPTY(bb)) {
     return APR_SUCCESS;
@@ -625,6 +506,9 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     filter->ctx = context;
   }
 
+  ApacheRewriteDriverFactory* factory = context->manager()->apache_factory();
+  ScopedTimer timer(factory, &ApacheRewriteDriverFactory::AddHtmlRewriteTimeUs);
+
   apr_status_t return_code = APR_SUCCESS;
   while (!APR_BRIGADE_EMPTY(bb)) {
     apr_bucket* bucket = APR_BRIGADE_FIRST(bb);
@@ -641,20 +525,21 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   // Create PageSpeed context used by instaweb rewrite-driver.  This is
   // per-process, so we initialize all the server's context by iterating the
   // server lists in server->next.
-  server_rec* next_server = server;
-  while (next_server) {
-    ApacheRewriteDriverFactory* factory = InstawebContext::Factory(next_server);
-    factory->ChildInit();
-    next_server = next_server->next;
+  ApacheRewriteDriverFactory* factory = apache_process_context.factory(server);
+  factory->ChildInit();
+  for (; server != NULL; server = server->next) {
+    ApacheResourceManager* resource_manager = InstawebContext::Manager(server);
+    DCHECK(resource_manager != NULL);
+    DCHECK(resource_manager->initialized());
   }
 }
 
-void give_dir_apache_user_permissions(ApacheRewriteDriverFactory* factory,
+bool give_dir_apache_user_permissions(ApacheRewriteDriverFactory* factory,
                                       const GoogleString& path) {
   // (Apache will not switch from current euid if it's not root --- see
   //  http://httpd.apache.org/docs/2.2/mod/mpm_common.html#user).
   if (geteuid() != 0) {
-    return;
+    return true;
   }
 
   // .user_id, .group_id default to -1 if they haven't been parsed yet.
@@ -662,7 +547,7 @@ void give_dir_apache_user_permissions(ApacheRewriteDriverFactory* factory,
       (unixd_config.user_id == static_cast<uid_t>(-1)) ||
       (unixd_config.group_id == 0) ||
       (unixd_config.group_id == static_cast<gid_t>(-1))) {
-    return;
+    return true;
   }
 
   if (chown(path.c_str(), unixd_config.user_id,
@@ -670,23 +555,25 @@ void give_dir_apache_user_permissions(ApacheRewriteDriverFactory* factory,
     factory->message_handler()->Message(
         kError, "Unable to set proper ownership of %s (%s)",
         path.c_str(), strerror(errno));
+    return false;
   }
+  return true;
 }
 
 // If we are running as root, hands over the ownership of data directories
 // we made to the eventual Apache uid/gid.
-void give_apache_user_permissions(ApacheRewriteDriverFactory* factory) {
+bool give_apache_user_permissions(ApacheRewriteDriverFactory* factory) {
   const StringSet& created_dirs = factory->created_directories();
+  bool ret = true;
   for (StringSet::iterator i = created_dirs.begin();
        i != created_dirs.end(); ++i) {
-    give_dir_apache_user_permissions(factory, *i);
+    ret &= give_dir_apache_user_permissions(factory, *i);
   }
+  return ret;
 }
 
 int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                           server_rec *server_list) {
-  SharedMemStatistics* statistics = NULL;
-
   // This routine is complicated by the fact that statistics use inter-process
   // mutexes and have static data, which co-mingles poorly with this otherwise
   // re-entrant module.  The situation that gets interesting is when there are
@@ -696,26 +583,22 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   //
   // TODO(jmarantz): test VirtualHost
 
+  ApacheRewriteDriverFactory* factory = apache_process_context.factory(
+      server_list);
+
   // In the first pass, we see whether any of the servers have
   // statistics enabled, if found, do the static initialization of
   // statistics to establish global memory segments.
+  Statistics* statistics = NULL;
   for (server_rec* server = server_list; server != NULL;
        server = server->next) {
-    ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
-
-    // factory->config() is the ApacheConfig object where we
-    // accumulate settings from the .conf files, and includes Page
-    // Speed Automatic options (in base-class RewriteOptions) and also
-    // apache-specific options, such as file-cache path.
-    // post-configuration, we copy the pagespeed-automatic parts of
-    // those into Factory's RewriteOptions.
-    ApacheConfig* config = factory->config();
-    factory->options()->CopyFrom(*config);
+    ApacheResourceManager* manager = InstawebContext::Manager(server);
+    CHECK(manager);
+    ApacheConfig* config = manager->config();
 
     if (config->enabled()) {
       GoogleString file_cache_path = config->file_cache_path();
-      if (factory->filename_prefix().empty() ||
-          file_cache_path.empty()) {
+      if (config->filename_prefix().empty() || file_cache_path.empty()) {
         GoogleString buf = StrCat(
             "mod_pagespeed is enabled.  "
             "The following directives must not be NULL\n",
@@ -724,58 +607,48 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                 config->file_cache_path(), "\n",
                 kModPagespeedGeneratedFilePrefix, "=",
                 config->filename_prefix(), "\n"));
-        factory->message_handler()->Message(kError, "%s", buf.c_str());
+        manager->message_handler()->Message(kError, "%s", buf.c_str());
         return HTTP_INTERNAL_SERVER_ERROR;
       }
     }
 
-    // See if we need a statistics object. We may need that even when
-    // we are disabled, in case we get turned on via .htaccess or query param.
-    if (config->statistics_enabled() && (statistics == NULL)) {
-      statistics = apache_process_context.InitStatistics(factory);
-    }
-
-    // chown any directories we created. We may have to do it here in
-    // post_config since we may not have our user/group yet during parse
-    // (example: Fedora 11).
-    //
-    // We also have to do it during the parse, however, since if we're started
-    // to /just/ check the config with -t (as opposed to doing it as a
-    // preliminary for a proper startup) we won't get a post_config!
-    give_apache_user_permissions(factory);
-  }
-  // Next we do the instance-independent static initialization, once we have
-  // established whether *any* of the servers have stats enabled.
-  RewriteDriverFactory::Initialize(statistics);
-  SerfUrlAsyncFetcher::Initialize(statistics);
-
-  // Do a final pass over the servers and init the server-specific statistics
-  // and shared memory resources.
-  for (server_rec* server = server_list; server != NULL;
-       server = server->next) {
-    ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
-    factory->RootInit();
-    if (factory->config()->statistics_enabled()) {
-      factory->SetStatistics(statistics);
-    } else {
-      // Each server with default statistics has its own copy of
-      // NullStatistics, and so the variable names will have to be
-      // established for each one.
-      RewriteDriverFactory::Initialize(factory->statistics());
-      SerfUrlAsyncFetcher::Initialize(factory->statistics());
+    // Lazily create shared-memory statistics if enabled in any
+    // config, even when mod_pagespeed is totally disabled.  This
+    // allows statistics to work if mod_pagespeed gets turned on via
+    // .htaccess or query param.
+    if ((statistics == NULL) && config->statistics_enabled()) {
+      statistics = factory->MakeSharedMemStatistics();
     }
   }
+
+  // chown any directories we created. We may have to do it here in
+  // post_config since we may not have our user/group yet during parse
+  // (example: Fedora 11).
+  //
+  // We also have to do it during the parse, however, since if we're started
+  // to /just/ check the config with -t (as opposed to doing it as a
+  // preliminary for a proper startup) we won't get a post_config!
+  give_apache_user_permissions(factory);
+
+  // If no shared-mem statistics are enabled, then init using the default
+  // NullStatistics.
+  if (statistics == NULL) {
+    statistics = factory->statistics();
+
+    // Next we do the instance-independent static initialization, once we have
+    // established whether *any* of the servers have stats enabled.
+    RewriteDriverFactory::Initialize(statistics);
+    SerfUrlAsyncFetcher::Initialize(statistics);
+  }
+
+  factory->RootInit();
+
   return OK;
 }
 
 // Here log transaction will wait for all the asynchronous resource fetchers to
 // finish.
 apr_status_t pagespeed_log_transaction(request_rec *request) {
-  server_rec* server = request->server;
-  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
-  if (factory == NULL) {
-    return DECLINED;
-  }
   return DECLINED;
 }
 
@@ -825,32 +698,21 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
 }
 
 apr_status_t pagespeed_child_exit(void* data) {
-  ApacheRewriteDriverFactory* factory =
-      static_cast<ApacheRewriteDriverFactory*>(data);
-  // avoid double-destructing from the cleanup handler on process exit
-  apache_process_context.remove_factory(factory);
-  delete factory;
+  ApacheResourceManager* manager = static_cast<ApacheResourceManager*>(data);
+  manager->PoolDestroyed();
   return APR_SUCCESS;
 }
 
 void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
-  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(server);
-  if (factory == NULL) {
-    factory = new ApacheRewriteDriverFactory(server, kModPagespeedVersion);
-
-    apr_pool_cleanup_register(pool, factory, pagespeed_child_exit,
+  ApacheResourceManager* manager = InstawebContext::Manager(server);
+  if (manager == NULL) {
+    ApacheRewriteDriverFactory* factory = apache_process_context.factory(
+        server);
+    manager = factory->MakeApacheResourceManager(server);
+    apr_pool_cleanup_register(pool, manager, pagespeed_child_exit,
                               apr_pool_cleanup_null);
-
-    // The pool-based cleanup hooks do not appear to be effective when exiting
-    // the process.  The pagespeed_child_exit will *not* be called when the
-    // apache process is shut down.  However, the static
-    // apache_process_context's destructor will be.
-    //
-    // This approach is needed to clean up our memory so that valgrind can
-    // report real memory leaks.
-    apache_process_context.add_factory(factory);
   }
-  return factory;
+  return manager;
 }
 
 template<class Options>
@@ -913,8 +775,8 @@ void warn_deprecated(cmd_parms* cmd, const char* remedy) {
 static ApacheConfig* CmdOptions(cmd_parms* cmd, void* data) {
   ApacheConfig* config = static_cast<ApacheConfig*>(data);
   if (config == NULL) {
-    ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
-    config = factory->config();
+    ApacheResourceManager* manager = InstawebContext::Manager(cmd->server);
+    config = manager->config();
   }
   return config;
 }
@@ -922,8 +784,8 @@ static ApacheConfig* CmdOptions(cmd_parms* cmd, void* data) {
 // Callback function that parses a single-argument directive.  This is called
 // by the Apache config parser.
 static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
-  ScopedTimer timer(&ApacheProcessContext::AddParseTimeUs);
-  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
+  ApacheResourceManager* manager = InstawebContext::Manager(cmd->server);
+  ApacheRewriteDriverFactory* factory = manager->apache_factory();
   MessageHandler* handler = factory->message_handler();
   const char* directive = cmd->directive->directive;
   const char* ret = NULL;
@@ -981,9 +843,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
                            arg);
   } else if (StringCaseEqual(directive, kModPagespeedFileCachePath)) {
     config->set_file_cache_path(arg);
-    if (factory->InitFileCachePath()) {
-      give_apache_user_permissions(factory);
-    } else {
+    if (!manager->InitFileCachePath() ||
+        !give_apache_user_permissions(factory)) {
       ret = apr_pstrcat(cmd->pool, "Directory ", arg,
                         " does not exist and can't be created.", NULL);
     }
@@ -992,11 +853,10 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
         cmd, &ApacheConfig::set_file_cache_clean_size_kb, arg);
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
-        cmd, &ApacheRewriteDriverFactory::set_force_caching, arg);
+        cmd, &RewriteDriverFactory::set_force_caching, arg);
   } else if (StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix)) {
-    if (factory->set_filename_prefix(arg)) {
-      give_apache_user_permissions(factory);
-    } else {
+    config->set_filename_prefix(arg);
+    if (!give_apache_user_permissions(factory)) {
       ret = apr_pstrcat(cmd->pool, "Directory ", arg,
                         " does not exist and can't be created.", NULL);
     }
@@ -1042,8 +902,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseIntOption(options,
         cmd, &RewriteOptions::set_max_url_segment_size, arg);
   } else if (StringCaseEqual(directive, kModPagespeedMessageBufferSize)) {
-    ret = ParseIntOption(config,
-        cmd, &ApacheConfig::set_message_buffer_size, arg);
+    ret = ParseIntOption(factory,
+        cmd, &ApacheRewriteDriverFactory::set_message_buffer_size, arg);
   } else if (StringCaseEqual(directive, kModPagespeedRespectVary)) {
     ret = ParseBoolOption(options, cmd,
                           &RewriteOptions::set_respect_vary, arg);
@@ -1071,13 +931,12 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseBoolOption(config, cmd,
        &ApacheConfig::set_use_shared_mem_locking, arg);
   } else if (StringCaseEqual(directive, kModPagespeedSlurpDirectory)) {
-    factory->set_slurp_directory(arg);
+    config->set_slurp_directory(arg);
   } else if (StringCaseEqual(directive, kModPagespeedSlurpFlushLimit)) {
     ret = ParseInt64Option(config,
         cmd, &ApacheConfig::set_slurp_flush_limit, arg);
   } else if (StringCaseEqual(directive, kModPagespeedSlurpReadOnly)) {
-    ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
-        cmd, &ApacheRewriteDriverFactory::set_slurp_read_only, arg);
+    ret = ParseBoolOption(config, cmd, &ApacheConfig::set_slurp_read_only, arg);
   } else if (StringCaseEqual(directive, kModPagespeedStatistics)) {
     ret = ParseBoolOption(config, cmd,
         &ApacheConfig::set_statistics_enabled, arg);
@@ -1097,8 +956,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
 // by the Apache config parser.
 static const char* ParseDirective2(cmd_parms* cmd, void* data,
                                    const char* arg1, const char* arg2) {
-  ScopedTimer timer(&ApacheProcessContext::AddParseTimeUs);
-  ApacheRewriteDriverFactory* factory = InstawebContext::Factory(cmd->server);
+  ApacheResourceManager* manager = InstawebContext::Manager(cmd->server);
   RewriteOptions* options = CmdOptions(cmd, data);
   const char* directive = cmd->directive->directive;
   const char* ret = NULL;
@@ -1108,12 +966,12 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
     options->file_load_policy()->Associate(arg1, arg2);
   } else if (StringCaseEqual(directive, kModPagespeedMapRewriteDomain)) {
     options->domain_lawyer()->AddRewriteDomainMapping(
-        arg1, arg2, factory->message_handler());
+        arg1, arg2, manager->message_handler());
   } else if (StringCaseEqual(directive, kModPagespeedMapOriginDomain)) {
     options->domain_lawyer()->AddOriginDomainMapping(
-        arg1, arg2, factory->message_handler());
+        arg1, arg2, manager->message_handler());
   } else if (StringCaseEqual(directive, kModPagespeedShardDomain)) {
-    options->domain_lawyer()->AddShard(arg1, arg2, factory->message_handler());
+    options->domain_lawyer()->AddShard(arg1, arg2, manager->message_handler());
   } else {
     return "Unknown directive.";
   }
@@ -1282,8 +1140,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
 // pool deletion does work.
 apr_status_t delete_config(void* data) {
   ApacheConfig* config = static_cast<ApacheConfig*>(data);
-  // avoid double-destructing from the cleanup handler on process exit
-  apache_process_context.remove_config(config);
   delete config;
   return APR_SUCCESS;
 }
@@ -1298,9 +1154,7 @@ void* create_dir_config(apr_pool_t* pool, char* dir) {
   }
   ApacheConfig* config = new ApacheConfig(dir);
   config->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
-  apache_process_context.add_config(config);
   apr_pool_cleanup_register(pool, config, delete_config, apr_pool_cleanup_null);
-  apache_process_context.add_config(config);
   return config;
 }
 
@@ -1318,9 +1172,8 @@ void* merge_dir_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
   // the merged configuration.
   ApacheConfig* dir3 = new ApacheConfig(StrCat(
       "Combine(", dir1->description(), ", ", dir2->description(), ")"));
-  MergeOptions(*dir1, *dir2, dir3);
+  dir3->Merge(*dir1, *dir2);
   apr_pool_cleanup_register(pool, dir3, delete_config, apr_pool_cleanup_null);
-  apache_process_context.add_config(dir3);
   return dir3;
 }
 

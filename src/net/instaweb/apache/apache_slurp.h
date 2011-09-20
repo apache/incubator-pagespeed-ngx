@@ -23,11 +23,11 @@ struct request_rec;
 
 namespace net_instaweb {
 
-class ApacheRewriteDriverFactory;
+class ApacheResourceManager;
 
 // Loads the URL based on the fetchers and other infrastructure in the
 // factory.
-void SlurpUrl(ApacheRewriteDriverFactory* factory, request_rec* r);
+void SlurpUrl(ApacheResourceManager* manager, request_rec* r);
 
 }  // namespace net_instaweb
 

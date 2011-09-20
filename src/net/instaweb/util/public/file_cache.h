@@ -55,6 +55,7 @@ class FileCache : public CacheInterface {
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
+  void set_worker(SlowWorker* worker) { worker_ = worker; }
 
  private:
   class CacheCleanFunction;

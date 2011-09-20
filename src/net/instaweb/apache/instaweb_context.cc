@@ -15,6 +15,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
+#include "net/instaweb/apache/apache_resource_manager.h"
+#include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -32,24 +34,25 @@ extern module AP_MODULE_DECLARE_DATA pagespeed_module;
 
 namespace net_instaweb {
 
+class ApacheResourceManager;
+
 // Number of times to go down the request->prev chain looking for an
 // absolute url.
 const int kRequestChainLimit = 5;
 
 InstawebContext::InstawebContext(request_rec* request,
                                  const ContentType& content_type,
-                                 ApacheRewriteDriverFactory* factory,
+                                 ApacheResourceManager* manager,
                                  const GoogleString& absolute_url,
                                  bool use_custom_options,
                                  const RewriteOptions& custom_options)
     : content_encoding_(kNone),
       content_type_(content_type),
-      factory_(factory),
+      resource_manager_(manager),
       string_writer_(&output_),
       inflater_(NULL),
       content_detection_state_(kStart),
       absolute_url_(absolute_url) {
-  ResourceManager* resource_manager = factory->ComputeResourceManager();
   if (use_custom_options) {
     // TODO(jmarantz): this is a temporary hack until we sort out better
     // memory management of RewriteOptions.  This will drag on performance.
@@ -58,9 +61,9 @@ InstawebContext::InstawebContext(request_rec* request,
     // domain lawyer and other options.
     RewriteOptions* options = new RewriteOptions;
     options->CopyFrom(custom_options);
-    rewrite_driver_ = resource_manager->NewCustomRewriteDriver(options);
+    rewrite_driver_ = resource_manager_->NewCustomRewriteDriver(options);
   } else {
-    rewrite_driver_ = resource_manager->NewRewriteDriver();
+    rewrite_driver_ = resource_manager_->NewRewriteDriver();
   }
 
   ComputeContentEncoding(request);
@@ -82,7 +85,7 @@ InstawebContext::InstawebContext(request_rec* request,
   }
 
   SharedMemRefererStatistics* referer_stats =
-      factory->shared_mem_referer_statistics();
+      resource_manager_->apache_factory()->shared_mem_referer_statistics();
   if (referer_stats != NULL && !absolute_url_.empty()) {
     GoogleUrl target_url(absolute_url_);
     const char* referer = apr_table_get(request->headers_in,
@@ -231,8 +234,8 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
   }
 }
 
-ApacheRewriteDriverFactory* InstawebContext::Factory(server_rec* server) {
-  return static_cast<ApacheRewriteDriverFactory*>
+ApacheResourceManager* InstawebContext::Manager(server_rec* server) {
+  return static_cast<ApacheResourceManager*>
       ap_get_module_config(server->module_config, &pagespeed_module);
 }
 

@@ -44,7 +44,9 @@
       ],
       'sources': [
         'apache/apache_config.cc',
+        'apache/apache_cache.cc',
         'apache/apache_message_handler.cc',
+        'apache/apache_resource_manager.cc',
         'apache/apache_rewrite_driver_factory.cc',
         'apache/apache_slurp.cc',
         'apache/apache_thread_system.cc',
@@ -57,7 +59,6 @@
         'apache/instaweb_context.cc',
         'apache/log_message_handler.cc',
         'apache/serf_url_async_fetcher.cc',
-        'apache/shared_mem_lifecycle.cc'
       ],
       'export_dependent_settings': [
         '<(instaweb_root)/instaweb.gyp:instaweb_util',

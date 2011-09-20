@@ -35,6 +35,7 @@
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/filename_encoder.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
@@ -97,6 +98,10 @@ RewriteDriverFactory::~RewriteDriverFactory() {
     delete url_fetcher_;
   }
   url_fetcher_ = NULL;
+
+  for (int i = 0, n = deferred_deletes_.size(); i < n; ++i) {
+    deferred_deletes_[i]->CallRun();
+  }
 }
 
 void RewriteDriverFactory::set_html_parse_message_handler(
@@ -295,44 +300,53 @@ void RewriteDriverFactory::SetAsyncRewrites(bool x) {
 }
 
 ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
-  ScopedMutex lock(resource_manager_mutex_.get());
   if (resource_managers_.empty()) {
-    return CreateResourceManagerLockHeld();
+    return CreateResourceManager();
   }
   return *resource_managers_.begin();
 }
 
 ResourceManager* RewriteDriverFactory::CreateResourceManager() {
-  ScopedMutex lock(resource_manager_mutex_.get());
-  return CreateResourceManagerLockHeld();
-}
-
-ResourceManager* RewriteDriverFactory::CreateResourceManagerLockHeld() {
-  // Ensures that we lazily compute http_cache_backend_ and http_cache_.
-  http_cache();
-
   CHECK(!filename_prefix_.empty())
       << "Must specify --filename_prefix or call "
       << "RewriteDriverFactory::set_filename_prefix.";
-  ResourceManager* resource_manager = new ResourceManager(this,
-                                                          thread_system(),
-                                                          statistics(),
-                                                          rewrite_stats(),
-                                                          http_cache());
+
+  ResourceManager* resource_manager = new ResourceManager(this);
+  InitResourceManager(resource_manager);
+  return resource_manager;
+}
+
+void RewriteDriverFactory::InitResourceManager(
+    ResourceManager* resource_manager) {
+  ScopedMutex lock(resource_manager_mutex_.get());
+
   resource_manager->set_scheduler(scheduler());
+  resource_manager->set_statistics(statistics());
+  resource_manager->set_rewrite_stats(rewrite_stats());
+  if (resource_manager->http_cache() == NULL) {
+    // In Apache we can potentially have distinct caches per
+    // VirtualHost, which must be set prior to calling Init.
+    resource_manager->set_http_cache(http_cache());
+  }
+  if (resource_manager->metadata_cache() == NULL) {
+    resource_manager->set_metadata_cache(http_cache_backend_);
+  }
+  if (resource_manager->lock_manager() == NULL) {
+    resource_manager->set_lock_manager(lock_manager());
+  }
+  if (resource_manager->url_async_fetcher() == NULL) {
+    resource_manager->set_url_async_fetcher(ComputeUrlAsyncFetcher());
+  }
   resource_manager->set_url_namer(url_namer());
   resource_manager->set_filename_encoder(filename_encoder());
   resource_manager->set_file_system(file_system());
   resource_manager->set_filename_prefix(filename_prefix_);
-  resource_manager->set_url_async_fetcher(ComputeUrlAsyncFetcher());
   resource_manager->set_hasher(hasher());
-  resource_manager->set_http_cache(http_cache());
-  resource_manager->set_metadata_cache(http_cache_backend_);
-  resource_manager->set_lock_manager(lock_manager());
   resource_manager->set_message_handler(message_handler());
   resource_manager->set_store_outputs_in_file_system(
       ShouldWriteResourcesToFileSystem());
   resource_manager->set_async_rewrites(async_rewrites_);
+  resource_manager->InitWorkersAndDecodingDriver();
   resource_managers_.insert(resource_manager);
 
   // TODO(jmarantz): Refactor this code into something more functional
@@ -341,7 +355,6 @@ ResourceManager* RewriteDriverFactory::CreateResourceManagerLockHeld() {
     resource_manager->options()->CopyFrom(*temp_options_.get());
     temp_options_.reset(NULL);
   }
-  return resource_manager;
 }
 
 RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {

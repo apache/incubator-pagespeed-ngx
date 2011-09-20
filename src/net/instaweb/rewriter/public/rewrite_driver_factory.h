@@ -34,6 +34,7 @@ class AbstractMutex;
 class CacheInterface;
 class FileSystem;
 class FilenameEncoder;
+class Function;
 class Hasher;
 class HTTPCache;
 class MessageHandler;
@@ -157,8 +158,15 @@ class RewriteDriverFactory {
   // resource manager except by deleting the entire factory.
   ResourceManager* CreateResourceManager();
 
+  // Initializes a ResourceManager that has been new'd directly.  This
+  // allows 2-phase initialization if required.  There is no need to
+  // call this if you use CreateResourceManager.
+  void InitResourceManager(ResourceManager* resource_manager);
+
   // Deprecated method that returns the first resource manager, creating one if
-  // needed.  This method is thread-safe.
+  // needed.  This method is *NOT* thread-safe though it used to be.  Soon it
+  // will be gone anyway, and is no longer called in the Apache flow.  The
+  // remaining callers do not require thread-safety.
   ResourceManager* ComputeResourceManager();
 
   // See doc in resource_manager.cc.
@@ -257,8 +265,9 @@ class RewriteDriverFactory {
   // filename_prefix()
   virtual StringPiece LockFilePrefix();
 
+  void defer_delete(Function* f) { deferred_deletes_.push_back(f); }
+
  private:
-  ResourceManager* CreateResourceManagerLockHeld();
   void SetupSlurpDirectories();
   void Init();  // helper-method for constructors.
 
@@ -315,6 +324,10 @@ class RewriteDriverFactory {
   // These must be initialized after the RewriteDriverFactory subclass has been
   // constructed so it can use a the statistics() override.
   scoped_ptr<RewriteStats> rewrite_stats_;
+
+  // To assist with subclass destruction-order, subclasses can register
+  // functions to run late in the destructor.
+  std::vector<Function*> deferred_deletes_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };

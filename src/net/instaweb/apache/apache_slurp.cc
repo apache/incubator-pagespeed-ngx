@@ -37,7 +37,7 @@
 //
 // For now use wget when slurping additional files.
 
-#include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -301,29 +301,28 @@ class StrippingFetch : public UrlAsyncFetcher::Callback {
 
 }  // namespace
 
-void SlurpUrl(ApacheRewriteDriverFactory* factory, request_rec* r) {
+void SlurpUrl(ApacheResourceManager* manager, request_rec* r) {
   const char* uri = InstawebContext::MakeRequestUrl(r);
   RequestHeaders request_headers;
   ResponseHeaders response_headers;
   ApacheRequestToRequestHeaders(*r, &request_headers);
   ApacheWriter apache_writer(r, &response_headers);
-  ChunkingWriter writer(&apache_writer, factory->config()->slurp_flush_limit());
+  ChunkingWriter writer(&apache_writer, manager->config()->slurp_flush_limit());
 
   GoogleString stripped_url = RemoveModPageSpeedQueryParams(
       uri, r->parsed_uri.query);
 
-  UrlAsyncFetcher* fetcher = factory->ComputeUrlAsyncFetcher();
+  UrlAsyncFetcher* fetcher = manager->url_async_fetcher();
   GoogleString contents;
-  StrippingFetch fetch(factory->options()->domain_lawyer(),
+  MessageHandler* handler = manager->message_handler();
+  StrippingFetch fetch(manager->config()->domain_lawyer(),
                        stripped_url, request_headers,
                        fetcher, &response_headers, &contents,
-                       factory->thread_system(),
-                       factory->message_handler());
+                       manager->thread_system(), handler);
   if (fetch.Fetch()) {
     apache_writer.OutputHeaders();
-    writer.Write(contents, factory->message_handler());
+    writer.Write(contents, handler);
   } else {
-    MessageHandler* handler = factory->message_handler();
     handler->Message(kInfo, "mod_pagespeed: slurp of url %s failed.\n"
                      "Request Headers: %s\n\nResponse Headers: %s",
                      stripped_url.c_str(),

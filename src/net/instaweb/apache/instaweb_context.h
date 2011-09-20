@@ -32,6 +32,7 @@
 
 namespace net_instaweb {
 
+class ApacheResourceManager;
 class GzipInflater;
 class RewriteOptions;
 
@@ -48,7 +49,7 @@ class InstawebContext {
 
   InstawebContext(request_rec* request,
                   const ContentType& content_type,
-                  net_instaweb::ApacheRewriteDriverFactory* factory,
+                  ApacheResourceManager* manager,
                   const GoogleString& base_url,
                   bool use_custom_options,
                   const RewriteOptions& custom_options);
@@ -73,10 +74,11 @@ class InstawebContext {
   void clear() { output_.clear(); }  // TODO(jmarantz): needed?
   ContentEncoding content_encoding() const { return  content_encoding_; }
 
-  // Looks up the factory from the server rec.
+  // Looks up the manager from the server rec.
   // TODO(jmarantz): Is there a better place to put this?  It needs to
   // be used by both mod_instaweb.cc and instaweb_handler.cc.
-  static ApacheRewriteDriverFactory* Factory(server_rec* server);
+  static ApacheResourceManager* Manager(server_rec* server);
+  ApacheResourceManager* manager() { return resource_manager_; }
 
   // Returns a fetchable URI from a request, using the request pool.
   static const char* MakeRequestUrl(request_rec* request);
@@ -91,9 +93,9 @@ class InstawebContext {
   ContentEncoding content_encoding_;
   const ContentType content_type_;
 
-  net_instaweb::ApacheRewriteDriverFactory* factory_;
-  net_instaweb::RewriteDriver* rewrite_driver_;
-  net_instaweb::StringWriter string_writer_;
+  ApacheResourceManager* resource_manager_;
+  RewriteDriver* rewrite_driver_;
+  StringWriter string_writer_;
   scoped_ptr<GzipInflater> inflater_;
   GoogleString buffer_;
   ContentDetectionState content_detection_state_;

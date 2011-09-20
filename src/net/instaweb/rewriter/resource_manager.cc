@@ -121,14 +121,10 @@ const char ResourceManager::kCacheKeyResourceNamePrefix[] = "rname/";
 // alters them.
 const char ResourceManager::kResourceEtagValue[] = "W/0";
 
-ResourceManager::ResourceManager(RewriteDriverFactory* factory,
-                                 ThreadSystem* thread_system,
-                                 Statistics* statistics,
-                                 RewriteStats* rewrite_stats,
-                                 HTTPCache* http_cache)
-    : thread_system_(thread_system),
-      rewrite_stats_(rewrite_stats),
-      file_system_(NULL),
+ResourceManager::ResourceManager(RewriteDriverFactory* factory)
+    : thread_system_(factory->thread_system()),
+      rewrite_stats_(NULL),
+      file_system_(factory->file_system()),
       filename_encoder_(NULL),
       url_namer_(NULL),
       scheduler_(factory->scheduler()),
@@ -136,8 +132,8 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory,
       hasher_(NULL),
       lock_hasher_(20),
       contents_hasher_(21),
-      statistics_(statistics),
-      http_cache_(http_cache),
+      statistics_(NULL),
+      http_cache_(NULL),
       metadata_cache_(NULL),
       relative_path_(false),
       store_outputs_in_file_system_(true),
@@ -147,15 +143,10 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory,
       message_handler_(NULL),
       trying_to_cleanup_rewrite_drivers_(false),
       factory_(factory),
-      rewrite_drivers_mutex_(thread_system->NewMutex()),
-      html_workers_(factory->WorkerPool(RewriteDriverFactory::kHtmlWorkers)),
-      rewrite_workers_(
-          factory->WorkerPool(RewriteDriverFactory::kRewriteWorkers)),
-      low_priority_rewrite_workers_(
-          factory->WorkerPool(
-              RewriteDriverFactory::kLowPriorityRewriteWorkers)) {
-  decoding_driver_.reset(NewUnmanagedRewriteDriver());
-
+      rewrite_drivers_mutex_(thread_system_->NewMutex()),
+      html_workers_(NULL),
+      rewrite_workers_(NULL),
+      low_priority_rewrite_workers_(NULL) {
   // Make sure the excluded-attributes are in abc order so binary_search works.
   // Make sure to use the same comparator that we pass to the binary_search.
   for (int i = 1, n = arraysize(kExcludedAttributes); i < n; ++i) {
@@ -183,6 +174,16 @@ ResourceManager::~ResourceManager() {
   STLDeleteElements(&active_rewrite_drivers_);
   STLDeleteElements(&available_rewrite_drivers_);
   decoding_driver_.reset(NULL);
+}
+
+void ResourceManager::InitWorkersAndDecodingDriver() {
+  html_workers_ = factory_->WorkerPool(
+      RewriteDriverFactory::kHtmlWorkers);
+  rewrite_workers_ = factory_->WorkerPool(
+      RewriteDriverFactory::kRewriteWorkers);
+  low_priority_rewrite_workers_ = factory_->WorkerPool(
+      RewriteDriverFactory::kLowPriorityRewriteWorkers);
+  decoding_driver_.reset(NewUnmanagedRewriteDriver());
 }
 
 // TODO(jmarantz): consider moving this method to ResponseHeaders
@@ -668,6 +669,13 @@ void ResourceManager::ShutDownDrivers() {
 size_t ResourceManager::num_active_rewrite_drivers() {
   ScopedMutex lock(rewrite_drivers_mutex_.get());
   return active_rewrite_drivers_.size();
+}
+
+RewriteOptions* ResourceManager::options() {
+  if (base_class_options_.get() == NULL) {
+    base_class_options_.reset(new RewriteOptions);
+  }
+  return base_class_options_.get();
 }
 
 }  // namespace net_instaweb

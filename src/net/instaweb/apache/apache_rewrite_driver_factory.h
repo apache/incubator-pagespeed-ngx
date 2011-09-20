@@ -22,12 +22,11 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_config.h"
-#include "net/instaweb/apache/shared_mem_lifecycle.h"
+#include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_owner.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
-#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 
 struct apr_pool_t;
 struct server_rec;
@@ -35,12 +34,14 @@ struct server_rec;
 namespace net_instaweb {
 
 class AbstractSharedMem;
+class ApacheCache;
 class ApacheConfig;
 class ApacheMessageHandler;
+class ApacheResourceManager;
 class SerfUrlAsyncFetcher;
 class SharedMemLockManager;
-class SharedMemStatistics;
 class SharedMemRefererStatistics;
+class SharedMemStatistics;
 class SlowWorker;
 class SyncFetcherAdapter;
 class UrlPollableAsyncFetcher;
@@ -60,12 +61,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // have been computed
   UrlPollableAsyncFetcher* SubResourceFetcher();
 
-  bool InitFileCachePath();
-
   GoogleString hostname_identifier() { return hostname_identifier_; }
-
-  void SetStatistics(SharedMemStatistics* x);
-  void set_owns_statistics(bool o) { owns_statistics_ = o; }
 
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
@@ -107,7 +103,34 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   void DumpRefererStatistics(Writer* writer);
 
-  ApacheConfig* config() { return config_.get(); }
+  SlowWorker* slow_worker() { return slow_worker_.get(); }
+
+  // Build shared-memory statistics.  This is invoked only if at least
+  // one VirtualHost enables statistics, in which case the shared-mem
+  // statistics is used for VirtualHosts.
+  Statistics* MakeSharedMemStatistics();
+
+  ApacheResourceManager* MakeApacheResourceManager(server_rec* server);
+
+  void set_message_buffer_size(int x) {
+    message_buffer_size_ = x;
+  }
+
+  // Finds a Cache for the file_cache_path in the config.  If none exists,
+  // creates one, using all the other parameters in the ApacheConfig.
+  // Currently, no checking is done that the other parameters (e.g. cache
+  // size, cleanup interval, etc.) are consistent.
+  ApacheCache* GetCache(ApacheConfig* config);
+
+  // Finds a fetcher for the settings in this config, sharing with
+  // existing fetchers if possible, otherwise making a new one (and
+  // its required thread).
+  UrlPollableAsyncFetcher* GetFetcher(ApacheConfig* config);
+
+  // Accumulate in a histogram the amount of time spent rewriting HTML.
+  void AddHtmlRewriteTimeUs(int64 rewrite_time_us);
+
+  void PoolDestroyed(ApacheResourceManager* rm);
 
  protected:
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -124,13 +147,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // Disable the Resource Manager's filesystem since we have a
   // write-through http_cache.
   virtual bool ShouldWriteResourcesToFileSystem() { return false; }
-
-  // As we use the cache for storage, locks should be scoped to it.
-  virtual StringPiece LockFilePrefix() { return config_->file_cache_path(); }
-
-  // Creates a shared memory lock manager for our settings, but doesn't
-  // initialize it.
-  SharedMemLockManager* CreateSharedMemLockManager();
 
   // This helper method contains init procedures invoked by both RootInit()
   // and ChildInit()
@@ -150,14 +166,10 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
  private:
   apr_pool_t* pool_;
   server_rec* server_rec_;
-  SyncFetcherAdapter* serf_url_fetcher_;
-  SerfUrlAsyncFetcher* serf_url_async_fetcher_;
-  SharedMemStatistics* shared_mem_statistics_;
+  scoped_ptr<SharedMemStatistics> shared_mem_statistics_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
   scoped_ptr<SharedCircularBuffer> shared_circular_buffer_;
-
-  static RefCountedOwner<SlowWorker>::Family slow_worker_family_;
-  RefCountedOwner<SlowWorker> slow_worker_;
+  scoped_ptr<SlowWorker> slow_worker_;
 
   // TODO(jmarantz): These options could be consolidated in a protobuf or
   // some other struct, which would keep them distinct from the rest of the
@@ -166,9 +178,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   std::string version_;
 
   bool statistics_frozen_;
-  bool owns_statistics_;  // If true, this particular factory is responsible
-                          // for calling GlobalCleanup on the (global)
-                          // statistics object (but not delete'ing it)
   bool is_root_process_;
 
   scoped_ptr<SharedMemRefererStatistics> shared_mem_referer_statistics_;
@@ -188,17 +197,40 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // Note that apache_message_handler_ and apache_html_parse_message_handler
   // writes to the same shared memory which is owned by the factory.
   ApacheMessageHandler* apache_html_parse_message_handler_;
-  SharedMemLifecycle<SharedMemLockManager> shared_mem_lock_manager_lifecycler_;
 
-  // These maps keeps are used by SharedMemSubsystemLifecycleManager to
-  // keep track of which of ours instance ApacheRewriteDriverFactory
-  // is responsible for cleanup of shared memory segments for given
-  // cache path (the key).
-  //
-  // This map is only used from the root process.
-  static SharedMemOwnerMap* lock_manager_owners_;
+  // Once ResourceManagers are initialized via
+  // RewriteDriverFactory::InitResourceManager, they will be
+  // managed by the RewriteDriverFactory.  But in the root Apache process
+  // the ResourceManagers will never be initialized.  We track these here
+  // so that ApacheRewriteDriverFactory::ChildInit can iterate over all
+  // the managers that need to be ChildInit'd, and so that we can free
+  // the managers in the Root process that were never ChildInit'd.
+  typedef std::set<ApacheResourceManager*> ApacheResourceManagerSet;
+  ApacheResourceManagerSet uninitialized_managers_;
 
-  scoped_ptr<ApacheConfig> config_;
+  Histogram* html_rewrite_time_us_histogram_;
+
+  // Size of shared circular buffer for displaying Info messages in
+  // /mod_pagespeed_messages.
+  int message_buffer_size_;
+
+  // This variable is used to detect us retaining some state from between
+  // the configuration check and configuration parse; if we see all factories
+  // be destroyed while we remain it means Apache proceeded from config check
+  // to actual config parse + startup without ~ApacheProcessContext being
+  // called.
+  bool all_managers_cleared_;
+
+  // Caches are expensive.  Just allocate one per distinct file-cache path.
+  // At the moment there is no consistency checking for other parameters.
+  typedef std::map<GoogleString, ApacheCache*> PathCacheMap;
+  PathCacheMap path_cache_map_;
+
+  // Serf fetchers are expensive -- they each cost a thread. Allocate
+  // one for each proxy/slurp-setting.  Currently there is no
+  // consistency checking for fetcher timeout.
+  typedef std::map<GoogleString, UrlPollableAsyncFetcher*> FetcherMap;
+  FetcherMap fetcher_map_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };

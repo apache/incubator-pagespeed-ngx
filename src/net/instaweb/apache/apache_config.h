@@ -115,25 +115,37 @@ class ApacheConfig : public RewriteOptions {
   void set_statistics_enabled(bool x) {
     set_option(x, &statistics_enabled_);
   }
+  bool slurp_read_only() const {
+    return slurp_read_only_.value();
+  }
+  void set_slurp_read_only(bool x) {
+    set_option(x, &slurp_read_only_);
+  }
   RefererStatisticsOutputLevel referer_statistics_output_level() const {
     return referer_statistics_output_level_.value();
   }
   void set_referer_statistics_output_level(RefererStatisticsOutputLevel x) {
     set_option(x, &referer_statistics_output_level_);
   }
-  GoogleString file_cache_path() const {
+  const GoogleString& file_cache_path() const {
     return file_cache_path_.value();
   }
   void set_file_cache_path(GoogleString x) {
     set_option(x, &file_cache_path_);
   }
-  GoogleString filename_prefix() const {
+  const GoogleString& filename_prefix() const {
     return filename_prefix_.value();
   }
   void set_filename_prefix(GoogleString x) {
     set_option(x, &filename_prefix_);
   }
-  GoogleString fetcher_proxy() const {
+  const GoogleString& slurp_directory() const {
+    return slurp_directory_.value();
+  }
+  void set_slurp_directory(GoogleString x) {
+    set_option(x, &slurp_directory_);
+  }
+  const GoogleString& fetcher_proxy() const {
     return fetcher_proxy_.value();
   }
   void set_fetcher_proxy(GoogleString x) {
@@ -149,6 +161,15 @@ class ApacheConfig : public RewriteOptions {
     set_option(x, &test_proxy_);
   }
 
+  // Helper functions
+  bool slurping_enabled() const {
+    return !slurp_directory().empty();
+  }
+
+  bool slurping_enabled_read_only() const {
+    return slurping_enabled() && slurp_read_only();
+  }
+
  private:
   GoogleString description_;
   RewriteOptions options_;
@@ -156,6 +177,7 @@ class ApacheConfig : public RewriteOptions {
   Option<GoogleString> fetcher_proxy_;
   Option<GoogleString> file_cache_path_;
   Option<GoogleString> filename_prefix_;
+  Option<GoogleString> slurp_directory_;
 
   Option<RefererStatisticsOutputLevel> referer_statistics_output_level_;
 
@@ -164,6 +186,7 @@ class ApacheConfig : public RewriteOptions {
   Option<bool> statistics_enabled_;
   Option<bool> test_proxy_;
   Option<bool> use_shared_mem_locking_;
+  Option<bool> slurp_read_only_;
 
   Option<int64> fetcher_time_out_ms_;
   Option<int64> file_cache_clean_interval_ms_;

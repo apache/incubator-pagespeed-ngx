@@ -31,7 +31,6 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/md5_hasher.h"
@@ -56,6 +55,7 @@ class ResourceContext;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
+class RewriteOptions;
 class RewriteStats;
 class Scheduler;
 class Statistics;
@@ -82,12 +82,8 @@ class ResourceManager {
   // Default statistics group name.
   static const char kStatisticsGroup[];
 
-  ResourceManager(RewriteDriverFactory* factory,
-                  ThreadSystem* thread_system,
-                  Statistics* statistics,
-                  RewriteStats* rewrite_stats,
-                  HTTPCache* http_cache);
-  ~ResourceManager();
+  explicit ResourceManager(RewriteDriverFactory* factory);
+  virtual ~ResourceManager();
 
   // Set time and cache headers with long TTL (including Date, Last-Modified,
   // Cache-Control, Etags, Expires).
@@ -102,6 +98,7 @@ class ResourceManager {
 
   void set_filename_prefix(const StringPiece& file_prefix);
   void set_statistics(Statistics* x) { statistics_ = x; }
+  void set_rewrite_stats(RewriteStats* x) { rewrite_stats_ = x; }
   void set_relative_path(bool x) { relative_path_ = x; }
   void set_lock_manager(NamedLockManager* x) { lock_manager_ = x; }
   void set_http_cache(HTTPCache* x) { http_cache_ = x; }
@@ -260,7 +257,11 @@ class ResourceManager {
 
   RewriteDriver* decoding_driver() const { return decoding_driver_.get(); }
 
-  RewriteOptions* options() { return &options_; }
+  // Note this is overridden by ApacheResourceManager which has
+  // apache-specific options.  In the base-class this is thread-unsafe
+  // in its first call, when it lazily-initializes a RewriteOptions
+  // scoped_ptr.
+  virtual RewriteOptions* options();
 
   // Generates a new managed RewriteDriver using the RewriteOptions
   // managed by this class.  Each RewriteDriver is not thread-safe,
@@ -375,6 +376,11 @@ class ResourceManager {
   // and NewRewriteDriver, but not via NewUnmanagedRewriteDriver.
   size_t num_active_rewrite_drivers();
 
+  // A ResourceManager may be created in one phase, and later populated
+  // with all its dependencies.  This populates the worker threads and
+  // a RewriteDriver used just for quickly decoding (but not serving) URLs.
+  void InitWorkersAndDecodingDriver();
+
  private:
   friend class ResourceManagerTest;
   typedef std::set<RewriteDriver*> RewriteDriverSet;
@@ -446,7 +452,9 @@ class ResourceManager {
   scoped_ptr<AbstractMutex> rewrite_drivers_mutex_;
 
   // Note: this must be before decoding_driver_ since it's needed to init it.
-  RewriteOptions options_;
+  // All access, even internal to the class, should be via options() so
+  // subclasses can override.
+  scoped_ptr<RewriteOptions> base_class_options_;
 
   // Keep around a RewriteDriver just for decoding resource URLs, using
   // the default options.  This is possible because the id->RewriteFilter

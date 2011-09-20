@@ -24,6 +24,7 @@ ApacheConfig::ApacheConfig(const StringPiece& description)
   add_option("", &fetcher_proxy_);
   add_option("", &file_cache_path_);
   add_option("", &filename_prefix_);
+  add_option("", &slurp_directory_);
 
   add_option(kOrganized, &referer_statistics_output_level_);
 
@@ -32,6 +33,7 @@ ApacheConfig::ApacheConfig(const StringPiece& description)
   add_option(true, &statistics_enabled_);
   add_option(false, &test_proxy_);
   add_option(false, &use_shared_mem_locking_);
+  add_option(false, &slurp_read_only_);
 
   add_option(5 * Timer::kSecondMs, &fetcher_time_out_ms_);
   add_option(Timer::kHourMs, &file_cache_clean_interval_ms_);
