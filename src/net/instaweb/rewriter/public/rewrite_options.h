@@ -372,8 +372,7 @@ class RewriteOptions {
   // When adding an option, we take the default_value by value, not
   // const-reference.  This is because when calling add_option we may
   // want to use a compile-time constant (e.g. Timer::kHourMs) which
-  // does not have a linkable address.   https://groups.google.com/forum/
-  // ?hl=en#!topic/comp.lang.c%2B%2B.moderated/rMOrIsyCMl4
+  // does not have a linkable address.
   template<class T, class U>  // U must be assignable to T.
   void add_option(U default_value, Option<T>* option) {
     option->set_default(default_value);
