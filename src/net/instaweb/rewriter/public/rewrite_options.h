@@ -308,6 +308,9 @@ class RewriteOptions {
     Merge(src, src);  // We lack a better implementation of Copy.
   }
 
+  // Make an identical copy of these options and return it.
+  virtual RewriteOptions* Clone() const;
+
  protected:
   class OptionBase {
    public:

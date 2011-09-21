@@ -64,4 +64,10 @@ bool ApacheConfig::ParseRefererStatisticsOutputLevel(
   return ret;
 }
 
+RewriteOptions* ApacheConfig::Clone() const {
+  ApacheConfig* options = new ApacheConfig(description_);
+  options->CopyFrom(*this);
+  return options;
+}
+
 }  // namespace net_instaweb

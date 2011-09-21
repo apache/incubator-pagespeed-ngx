@@ -279,13 +279,14 @@ InstawebContext* build_context_for_request(request_rec* request) {
   ApacheConfig* directory_options = static_cast<ApacheConfig*>
       ap_get_module_config(request->per_dir_config, &pagespeed_module);
   ApacheResourceManager* manager = InstawebContext::Manager(request->server);
+  ApacheRewriteDriverFactory* factory = manager->apache_factory();
   scoped_ptr<RewriteOptions> custom_options;
   const RewriteOptions* host_options = manager->options();
   const RewriteOptions* options = host_options;
   bool use_custom_options = false;
 
   if ((directory_options != NULL) && directory_options->modified()) {
-    custom_options.reset(new RewriteOptions);
+    custom_options.reset(factory->NewRewriteOptions());
     custom_options->Merge(*host_options, *directory_options);
     options = custom_options.get();
     use_custom_options = true;
@@ -363,7 +364,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
       RewriteQuery::Scan(query_params, manager->message_handler()));
   if (query_options.get() != NULL) {
     use_custom_options = true;
-    RewriteOptions* merged_options = new RewriteOptions;
+    RewriteOptions* merged_options = factory->NewRewriteOptions();
     merged_options->Merge(*options, *query_options);
     query_options.reset(NULL);
     custom_options.reset(merged_options);

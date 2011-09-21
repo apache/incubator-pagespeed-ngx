@@ -78,12 +78,12 @@ RewriteGflags::RewriteGflags(const char* progname, int* argc, char*** argv) {
   ParseCommandLineFlags(argc, argv, true);
 }
 
-bool RewriteGflags::SetOptions(RewriteDriverFactory* factory) const {
+bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
+                               RewriteOptions* options) const {
   bool ret = true;
   factory->set_filename_prefix(FLAGS_filename_prefix);
   factory->set_force_caching(FLAGS_force_caching);
 
-  RewriteOptions* options = factory->options();
   if (WasExplicitlySet("css_outline_min_bytes")) {
     options->set_css_outline_min_bytes(FLAGS_css_outline_min_bytes);
   }

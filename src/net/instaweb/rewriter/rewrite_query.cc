@@ -36,6 +36,11 @@ namespace {
 
 RewriteOptions* GetOptions(scoped_ptr<RewriteOptions>* options) {
   if (options->get() == NULL) {
+    // TODO(jmarantz): instead of newing a RewriteOptions here,
+    // require the caller of RewriteQuery::Scan to pass in constructed
+    // RewriteOptions.  This will be a little easier if we make the
+    // RewriteOptions constructor faster by using gperf rather than
+    // constructing maps at construction time.
     options->reset(new RewriteOptions);
     (*options)->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   }

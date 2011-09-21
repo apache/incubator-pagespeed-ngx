@@ -24,6 +24,7 @@
 namespace net_instaweb {
 
 class RewriteDriverFactory;
+class RewriteOptions;
 
 // Implements rewriter options as command-line options, using the
 // Google "gflags" package.
@@ -32,8 +33,11 @@ class RewriteGflags {
   // The constructor parses the options.
   RewriteGflags(const char* progname, int* argc, char*** argv);
 
-  // Apply the parsed options to a factory.
-  bool SetOptions(RewriteDriverFactory* factory) const;
+  // Apply the parsed options to the options and factory.  Note that some of
+  // the command-line flags control how the factory is constructed, whereas
+  // others affect the rewriting options, and should be considered global
+  // defaults.
+  bool SetOptions(RewriteDriverFactory* factory, RewriteOptions* options) const;
 
   // LRU size is potentially needed at factory construction time so it
   // is exposed as a method.

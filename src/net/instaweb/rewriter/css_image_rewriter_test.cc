@@ -16,6 +16,8 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
+#include "base/scoped_ptr.h"
+
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -25,6 +27,7 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -370,7 +373,7 @@ TEST_P(CssImageRewriterTest, RecompressImagesInStyleAttributes) {
       "background-image:url(http://test.com/xfoo.png.pagespeed.ic.0.png)"
       "\"/>";
 
-  scoped_ptr<RewriteOptions> default_options(new RewriteOptions);
+  scoped_ptr<RewriteOptions> default_options(factory()->NewRewriteOptions());
   default_options.get()->DisableFilter(RewriteOptions::kExtendCache);
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
                        kContentTypePng, 100);

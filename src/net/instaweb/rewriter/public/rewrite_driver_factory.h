@@ -120,12 +120,6 @@ class RewriteDriverFactory {
   // Determines whether Slurping is enabled.
   bool slurping_enabled() const { return !slurp_directory_.empty(); }
 
-  // Deprecated method to get an options structure for the first
-  // ResourceManager.  If a resource maanger has not been not created
-  // yet, an options structure wll be returned anyway and applied
-  // when a ResourceManager is eventually created.
-  RewriteOptions* options();  // thread-safe
-
   MessageHandler* html_parse_message_handler();
   MessageHandler* message_handler();
   FileSystem* file_system();
@@ -162,15 +156,6 @@ class RewriteDriverFactory {
   // allows 2-phase initialization if required.  There is no need to
   // call this if you use CreateResourceManager.
   void InitResourceManager(ResourceManager* resource_manager);
-
-  // Deprecated method that returns the first resource manager, creating one if
-  // needed.  This method is *NOT* thread-safe though it used to be.  Soon it
-  // will be gone anyway, and is no longer called in the Apache flow.  The
-  // remaining callers do not require thread-safety.
-  ResourceManager* ComputeResourceManager();
-
-  // See doc in resource_manager.cc.
-  RewriteDriver* NewRewriteDriver();
 
   // Provides an optional hook for adding rewrite passes that are
   // specific to an implementation of RewriteDriverFactory.
@@ -213,6 +198,10 @@ class RewriteDriverFactory {
 
   // Registers the directory as having been created by us.
   void AddCreatedDirectory(const GoogleString& dir);
+
+  // Creates a new RewriteOptions object, potentially populating it with
+  // defaults appropriate to the factory subclass.
+  virtual RewriteOptions* NewRewriteOptions();
 
  protected:
   bool FetchersComputed() const;

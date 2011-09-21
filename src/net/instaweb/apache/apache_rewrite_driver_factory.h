@@ -138,6 +138,10 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // the last context.
   bool PoolDestroyed(ApacheResourceManager* rm);
 
+  // Create a new RewriteOptions.  In this implementation it will be an
+  // ApacheConfig.
+  virtual RewriteOptions* NewRewriteOptions();
+
  protected:
   virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();

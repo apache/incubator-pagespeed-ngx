@@ -184,8 +184,7 @@ RewriteDriver::~RewriteDriver() {
 RewriteDriver* RewriteDriver::Clone() {
   RewriteDriver* result;
   if (has_custom_options()) {
-    RewriteOptions* options_copy = new RewriteOptions();
-    options_copy->CopyFrom(*options());
+    RewriteOptions* options_copy = options()->Clone();
     result = resource_manager_->NewCustomRewriteDriver(options_copy);
   } else {
     result = resource_manager_->NewRewriteDriver();

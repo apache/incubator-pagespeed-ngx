@@ -459,4 +459,8 @@ bool ApacheRewriteDriverFactory::PoolDestroyed(ApacheResourceManager* rm) {
   return uninitialized_managers_.empty();
 }
 
+RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptions() {
+  return new ApacheConfig(hostname_identifier_);
+}
+
 }  // namespace net_instaweb

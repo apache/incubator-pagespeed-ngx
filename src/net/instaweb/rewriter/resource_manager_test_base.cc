@@ -82,9 +82,9 @@ ResourceManagerTestBase::ResourceManagerTestBase()
   RewriteDriverFactory::Initialize(&statistics_);
   factory_.SetStatistics(&statistics_);
   other_factory_.SetStatistics(&statistics_);
-  resource_manager_ = factory_.ComputeResourceManager();
-  other_resource_manager_ = other_factory_.ComputeResourceManager();
-  other_rewrite_driver_ = MakeDriver(&other_factory_, other_options_);
+  resource_manager_ = factory_.CreateResourceManager();
+  other_resource_manager_ = other_factory_.CreateResourceManager();
+  other_rewrite_driver_ = MakeDriver(other_resource_manager_, other_options_);
 }
 
 ResourceManagerTestBase::~ResourceManagerTestBase() {
@@ -94,7 +94,7 @@ ResourceManagerTestBase::~ResourceManagerTestBase() {
 // add options prior to calling ResourceManagerTestBase::SetUp().
 void ResourceManagerTestBase::SetUp() {
   HtmlParseTestBaseNoAlloc::SetUp();
-  rewrite_driver_ = MakeDriver(&factory_, options_);
+  rewrite_driver_ = MakeDriver(resource_manager_, options_);
 }
 
 void ResourceManagerTestBase::TearDown() {
@@ -192,11 +192,11 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   SimpleStats stats;
   TestRewriteDriverFactory new_factory(GTestTempDir(), &mock_url_fetcher_);
   new_factory.SetStatistics(&statistics_);
-  ResourceManager* new_resource_manager = new_factory.ComputeResourceManager();
+  ResourceManager* new_resource_manager = new_factory.CreateResourceManager();
   new_resource_manager->set_hasher(resource_manager_->hasher());
-  RewriteOptions* new_options = new RewriteOptions;
-  new_options->CopyFrom(*options_);
-  RewriteDriver* new_rewrite_driver = MakeDriver(&new_factory, new_options);
+  RewriteOptions* new_options = options_->Clone();
+  RewriteDriver* new_rewrite_driver = MakeDriver(new_resource_manager,
+                                                 new_options);
   new_factory.SetupWaitFetcher();
   new_rewrite_driver->SetAsynchronousRewrites(
       rewrite_driver_->asynchronous_rewrites());
@@ -570,16 +570,14 @@ void ResourceManagerTestBase::CallFetcherCallbacks() {
 }
 
 RewriteDriver* ResourceManagerTestBase::MakeDriver(
-    TestRewriteDriverFactory* factory, RewriteOptions* options) {
-  ResourceManager* rm = factory->ComputeResourceManager();
-
+    ResourceManager* resource_manager, RewriteOptions* options) {
   // We use unmanaged drivers rather than NewCustomDriver here so
   // that _test.cc files can add options after the driver was created
   // and before the filters are added.
   //
   // TODO(jmarantz): change call-sites to make this use a more
   // standard flow.
-  RewriteDriver* rd = rm->NewUnmanagedRewriteDriver();
+  RewriteDriver* rd = resource_manager->NewUnmanagedRewriteDriver();
   rd->set_custom_options(options);
   // As we are using mock time, we need to set a consistent deadline here,
   // as otherwise when running under Valgrind some tests will finish

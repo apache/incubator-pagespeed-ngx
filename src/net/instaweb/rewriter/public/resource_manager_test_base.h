@@ -309,7 +309,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // does *not* finalize the driver.  This gives individual _test.cc
   // files the chance to add filters to the options prior to calling
   // driver->AddFilters().
-  RewriteDriver* MakeDriver(TestRewriteDriverFactory* factory,
+  RewriteDriver* MakeDriver(ResourceManager* resource_manager,
                             RewriteOptions* options);
 
   // Converts a potentially relative URL off kTestDomain to absolute if needed.

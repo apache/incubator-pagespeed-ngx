@@ -170,6 +170,9 @@ class ApacheConfig : public RewriteOptions {
     return slurping_enabled() && slurp_read_only();
   }
 
+  // Make an identical copy of these options and return it.
+  virtual RewriteOptions* Clone() const;
+
  private:
   GoogleString description_;
   RewriteOptions options_;

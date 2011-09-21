@@ -299,13 +299,6 @@ void RewriteDriverFactory::SetAsyncRewrites(bool x) {
   DCHECK(resource_managers_.empty());
 }
 
-ResourceManager* RewriteDriverFactory::ComputeResourceManager() {
-  if (resource_managers_.empty()) {
-    return CreateResourceManager();
-  }
-  return *resource_managers_.begin();
-}
-
 ResourceManager* RewriteDriverFactory::CreateResourceManager() {
   CHECK(!filename_prefix_.empty())
       << "Must specify --filename_prefix or call "
@@ -355,12 +348,6 @@ void RewriteDriverFactory::InitResourceManager(
     resource_manager->options()->CopyFrom(*temp_options_.get());
     temp_options_.reset(NULL);
   }
-}
-
-RewriteDriver* RewriteDriverFactory::NewRewriteDriver() {
-  ResourceManager* resource_manager = ComputeResourceManager();
-  RewriteDriver* driver = resource_manager->NewRewriteDriver();
-  return driver;
 }
 
 void RewriteDriverFactory::AddPlatformSpecificRewritePasses(
@@ -487,24 +474,6 @@ void RewriteDriverFactory::ShutDown() {
   }
 }
 
-// Return a writable RewriteOptions.  If the ResourceManager has
-// not yet been created, we lazily create a temp RewriteOptions to
-// receive any Options changes, e.g. from flags or config-file parsing.
-// Once the ResourceManager is created, which might require some of
-// those options to be parsed already, we can transfer the temp
-// options to the ResourceManager and get rid of them.
-RewriteOptions* RewriteDriverFactory::options() {
-  ScopedMutex lock(resource_manager_mutex_.get());
-  if (resource_managers_.empty()) {
-    if (temp_options_.get() == NULL) {
-      temp_options_.reset(new RewriteOptions);
-    }
-    return temp_options_.get();
-  }
-  DCHECK(temp_options_.get() == NULL);
-  return (*resource_managers_.begin())->options();
-}
-
 void RewriteDriverFactory::AddCreatedDirectory(const GoogleString& dir) {
   created_directories_.insert(dir);
 }
@@ -528,6 +497,10 @@ RewriteStats* RewriteDriverFactory::rewrite_stats() {
                                           timer()));
   }
   return rewrite_stats_.get();
+}
+
+RewriteOptions* RewriteDriverFactory::NewRewriteOptions() {
+  return new RewriteOptions;
 }
 
 }  // namespace net_instaweb

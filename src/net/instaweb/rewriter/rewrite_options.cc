@@ -355,4 +355,10 @@ void RewriteOptions::Merge(const RewriteOptions& first,
   retain_comments_.AppendFrom(second.retain_comments_);
 }
 
+RewriteOptions* RewriteOptions::Clone() const {
+  RewriteOptions* options = new RewriteOptions;
+  options->CopyFrom(*this);
+  return options;
+}
+
 }  // namespace net_instaweb
