@@ -417,4 +417,10 @@ TEST_F(RewriteOptionsTest, DisableAllFiltersOverrideFilterLevel) {
   EXPECT_TRUE(OnlyEnabled(RewriteOptions::kAddHead));
 }
 
+TEST_F(RewriteOptionsTest, AllDoesNotImplyStripScrips) {
+  options_.SetRewriteLevel(RewriteOptions::kAllFilters);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kStripScripts));
+}
+
 }  // namespace
