@@ -11,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Author: jmarantz@google.com (Joshua Marantz)
+//         lsong@google.com (Libo Song)
 
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 
@@ -21,7 +24,6 @@
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apache_thread_system.h"
 #include "net/instaweb/apache/apr_file_system.h"
-#include "net/instaweb/apache/apr_mutex.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -146,7 +148,7 @@ FileSystem* ApacheRewriteDriverFactory::DefaultFileSystem() {
   // Pass in NULL for the pool.  We do not want the file-system to
   // be auto-destructed based on the factory's pool: we want to follow
   // C++ destruction semantics.
-  return new AprFileSystem(NULL);
+  return new AprFileSystem(NULL, thread_system());
 }
 
 Hasher* ApacheRewriteDriverFactory::NewHasher() {

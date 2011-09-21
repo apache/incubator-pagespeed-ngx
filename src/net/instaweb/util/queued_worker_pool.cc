@@ -259,6 +259,9 @@ QueuedWorkerPool::Sequence::~Sequence() {
   DCHECK(work_queue_.empty());
 }
 
+QueuedWorkerPool::Sequence::AddFunction::~AddFunction() {
+}
+
 bool QueuedWorkerPool::Sequence::InitiateShutDown() {
   ScopedMutex lock(sequence_mutex_.get());
   shutdown_ = true;

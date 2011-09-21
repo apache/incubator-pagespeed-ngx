@@ -11,7 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+//
+// Author: jmarantz@google.com (Joshua Marantz)
+//         lsong@google.com (Libo Song)
 
 #ifndef MOD_INSTAWEB_MOD_INSTAWEB_H_
 #define MOD_INSTAWEB_MOD_INSTAWEB_H_

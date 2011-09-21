@@ -11,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Author: lsong@google.com (Libo Song)
 
 #include <string>
 
@@ -23,6 +25,7 @@
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/file_system_test.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace net_instaweb {
@@ -41,7 +44,8 @@ class AprFileSystemTest : public FileSystemTest {
     apr_initialize();
     atexit(apr_terminate);
     apr_pool_create(&pool_, NULL);
-    file_system_.reset(new AprFileSystem(pool_));
+    thread_system_.reset(ThreadSystem::CreateThreadSystem());
+    file_system_.reset(new AprFileSystem(pool_, thread_system_.get()));
     GetAprFileSystemTestDir(&test_tmpdir_);
   }
 
@@ -106,6 +110,7 @@ class AprFileSystemTest : public FileSystemTest {
  protected:
   GoogleMessageHandler handler_;
   AprTimer timer_;
+  scoped_ptr<ThreadSystem> thread_system_;
   scoped_ptr<AprFileSystem> file_system_;
   apr_pool_t* pool_;
   std::string test_tmpdir_;

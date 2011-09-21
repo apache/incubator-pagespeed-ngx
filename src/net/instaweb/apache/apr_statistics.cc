@@ -11,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Author: abliss@google.com (Adam Bliss)
+//         jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/apache/apr_statistics.h"
 

@@ -11,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Author: jmarantz@google.com (Joshua Marantz)
+//         lsong@google.com (Libo Song)
 
 // TODO(jmarantz): Avoid initiating fetches for resources already in flight.
 // The challenge is that we would want to call all the callbacks that indicated

@@ -32,12 +32,12 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
 class AbstractMutex;
-class Function;
 class QueuedWorker;
 class Waveform;
 
@@ -54,6 +54,30 @@ class QueuedWorkerPool {
   // FreeSequence is called.
   class Sequence {
    public:
+    // AddFunction is a callback that when invoked queues another callback on
+    // the given sequence, and when cancelled queues a cancel call to the
+    // sequence instead.  The cancellation behavior is what makes this different
+    // from a simple call to MakeFunction(sequence, &Sequence::Add, callback).
+    class AddFunction : public Function {
+     public:
+      AddFunction(Sequence* sequence, Function* callback)
+          : sequence_(sequence), callback_(callback) { }
+      virtual ~AddFunction();
+
+     protected:
+      virtual void Run() {
+        sequence_->Add(callback_);
+      }
+      virtual void Cancel() {
+        sequence_->Add(MakeFunction(callback_, &Function::CallCancel));
+      }
+
+     private:
+      Sequence* sequence_;
+      Function* callback_;
+      DISALLOW_COPY_AND_ASSIGN(AddFunction);
+    };
+
     // Adds 'function' to a sequence.  Note that this can occur at any time
     // the sequence is live -- you can add functions to a sequence that has
     // already started processing.

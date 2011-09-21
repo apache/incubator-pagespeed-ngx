@@ -209,7 +209,6 @@
         '<(DEPTH)',
       ],
       'sources': [
-        'apache/apr_condvar_test.cc',
         'apache/apr_file_system_test.cc',
         'apache/speed_test.cc',
         'apache/serf_url_async_fetcher_test.cc',

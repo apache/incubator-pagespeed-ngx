@@ -11,11 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Author: lsong@google.com (Libo Song)
 
 #ifndef NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_
 #define NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_
 
 #include "apr.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -25,14 +28,15 @@ struct apr_pool_t;
 
 namespace net_instaweb {
 
-class AprMutex;
+class AbstractMutex;
+class ThreadSystem;
 
 void AprReportError(MessageHandler* message_handler, const char* filename,
                     int line, const char* message, int error_code);
 
 class AprFileSystem : public FileSystem {
  public:
-  explicit AprFileSystem(apr_pool_t* pool);
+  AprFileSystem(apr_pool_t* pool, ThreadSystem* thread_system);
   ~AprFileSystem();
 
   virtual InputFile* OpenInputFile(
@@ -80,8 +84,8 @@ class AprFileSystem : public FileSystem {
 
   // We use a mutex to protect the pool above when calling into apr's file
   // system ops, which might otherwise access it concurrently in an unsafe
-  // way. The mutex is owned here (but deleted manually before pool_).
-  AprMutex* mutex_;
+  // way.
+  scoped_ptr<AbstractMutex> mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(AprFileSystem);
 };

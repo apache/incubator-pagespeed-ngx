@@ -51,8 +51,13 @@ class Increment : public Function {
         count_(count) {
   }
 
+ protected:
   virtual void Run() {
     ++*count_;
+    EXPECT_EQ(expected_value_, *count_);
+  }
+  virtual void Cancel() {
+    *count_ -= 100;
     EXPECT_EQ(expected_value_, *count_);
   }
 
@@ -77,6 +82,32 @@ TEST_F(QueuedWorkerPoolTest, BasicOperation) {
   sequence->Add(new NotifyRunFunction(&sync));
   sync.Wait();
   EXPECT_EQ(kBound, count);
+  worker_->FreeSequence(sequence);
+}
+
+// Test ordinary and cancelled AddFunction callback.
+TEST_F(QueuedWorkerPoolTest, AddFunctionTest) {
+  const int kBound = 5;
+  int count1 = 0;
+  int count2 = 0;
+  SyncPoint sync(thread_runtime_.get());
+
+  QueuedWorkerPool::Sequence* sequence = worker_->NewSequence();
+  for (int i = 0; i < kBound; ++i) {
+    QueuedWorkerPool::Sequence::AddFunction
+        add(sequence, new Increment(i + 1, &count1));
+    add.set_delete_after_callback(false);
+    add.CallRun();
+    QueuedWorkerPool::Sequence::AddFunction
+        cancel(sequence, new Increment(-100 * (i + 1), &count2));
+    cancel.set_delete_after_callback(false);
+    cancel.CallCancel();
+  }
+
+  sequence->Add(new NotifyRunFunction(&sync));
+  sync.Wait();
+  EXPECT_EQ(kBound, count1);
+  EXPECT_EQ(-100 * kBound, count2);
   worker_->FreeSequence(sequence);
 }
 
