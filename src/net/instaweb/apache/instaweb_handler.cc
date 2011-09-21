@@ -29,7 +29,6 @@
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
-#include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -262,7 +261,8 @@ void log_resource_referral(request_rec* request,
 apr_status_t instaweb_handler(request_rec* request) {
   apr_status_t ret = DECLINED;
   const char* url = get_instaweb_resource_url(request);
-  ApacheResourceManager* manager = InstawebContext::Manager(request->server);
+  ApacheResourceManager* manager =
+      InstawebContext::ManagerFromServerRec(request->server);
   ApacheConfig* config = manager->config();
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   log_resource_referral(request, factory);
@@ -396,7 +396,8 @@ apr_status_t save_url_hook(request_rec *request) {
       parsed_url.ends_with(kRefererStatisticsHandler)) {
     bypass_mod_rewrite = true;
   } else {
-    ApacheResourceManager* manager = InstawebContext::Manager(request->server);
+    ApacheResourceManager* manager =
+        InstawebContext::ManagerFromServerRec(request->server);
     RewriteDriver* rewrite_driver = manager->decoding_driver();
     RewriteFilter* filter;
     GoogleUrl gurl(url);

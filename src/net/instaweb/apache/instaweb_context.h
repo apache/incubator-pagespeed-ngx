@@ -38,14 +38,20 @@ class RewriteOptions;
 
 const char kPagespeedOriginalUrl[] = "mod_pagespeed_original_url";
 
-// We use the following structure to keep the instaweb module context. The
-// rewriter will put the rewritten content into the output string when flushed
-// or finished. We call Flush when we see the FLUSH bucket, and call Finish when
-// we see the EOS bucket.
+// Context for an HTML rewrite.
+//
+// One is created for responses that appear to be HTML (although there is
+// a basic sanity check that the first non-space char is '<').
+//
+// The rewriter will put the rewritten content into the output string when
+// flushed or finished. We call Flush when we see the FLUSH bucket, and
+// call Finish when we see the EOS bucket.
+//
+// TODO(sligocki): Factor out similarities between this and ProxyFetch.
 class InstawebContext {
  public:
-  enum ContentEncoding {kNone, kGzip, kDeflate, kOther};
-  enum ContentDetectionState {kStart, kHtml, kNotHtml};
+  enum ContentEncoding { kNone, kGzip, kDeflate, kOther };
+  enum ContentDetectionState { kStart, kHtml, kNotHtml };
 
   InstawebContext(request_rec* request,
                   const ContentType& content_type,
@@ -56,29 +62,20 @@ class InstawebContext {
   ~InstawebContext();
 
   void Rewrite(const char* input, int size);
-  void Flush() {
-    if (content_detection_state_ == kHtml) {
-      rewrite_driver_->Flush();
-    }
-  }
-  void Finish() {
-    if (content_detection_state_ == kHtml) {
-      rewrite_driver_->FinishParse();
-    } else {
-      rewrite_driver_->Cleanup();
-    }
-  }
-  bool empty() const { return output_.empty(); }
+  void Flush();
+  void Finish();
+
   apr_bucket_brigade* bucket_brigade() const { return bucket_brigade_; }
-  const GoogleString& output() { return output_; }
-  void clear() { output_.clear(); }  // TODO(jmarantz): needed?
   ContentEncoding content_encoding() const { return  content_encoding_; }
+  ApacheResourceManager* manager() { return resource_manager_; }
+  const GoogleString& output() { return output_; }
+  bool empty() const { return output_.empty(); }
+  void clear() { output_.clear(); }  // TODO(jmarantz): needed?
 
   // Looks up the manager from the server rec.
   // TODO(jmarantz): Is there a better place to put this?  It needs to
   // be used by both mod_instaweb.cc and instaweb_handler.cc.
-  static ApacheResourceManager* Manager(server_rec* server);
-  ApacheResourceManager* manager() { return resource_manager_; }
+  static ApacheResourceManager* ManagerFromServerRec(server_rec* server);
 
   // Returns a fetchable URI from a request, using the request pool.
   static const char* MakeRequestUrl(request_rec* request);

@@ -14,6 +14,8 @@
 //
 // Author: lsong@google.com (Libo Song)
 //         jmarantz@google.com (Joshua Marantz)
+//
+// The Apache handler for rewriten resources and a couple other Apache hooks.
 
 #ifndef MOD_INSTAWEB_INSTAWEB_HANDLER_H_
 #define MOD_INSTAWEB_INSTAWEB_HANDLER_H_
@@ -26,15 +28,16 @@
 
 namespace net_instaweb {
 
-// The content generator for instaweb generated content, for example, the
-// combined CSS file.  Requests for not-instab generated content will be
+// The content generator for instaweb rewritten resources, for example, a
+// combined CSS file.  Requests for not-instaweb rewritten resources will be
 // declined so that other Apache handlers may operate on them.
+//
+// TODO(sligocki): Use a Page Speed Automatic ResourceFetch here.
 apr_status_t instaweb_handler(request_rec* request);
 
-// We need to save the original URL as a request "note" before
-// mod_rewrite has a chance to corrupt mod_pagespeed's generated URLs,
-// which would prevent instaweb_handler from being able to decode the
-// resource.
+// Save the original URL as a request "note" before mod_rewrite has
+// a chance to corrupt mod_pagespeed's generated URLs, which would
+// prevent instaweb_handler from being able to decode the resource.
 apr_status_t save_url_hook(request_rec *request);
 
 // By default, apache imposes limitations on URL segments of around

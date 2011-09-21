@@ -34,8 +34,8 @@ namespace net_instaweb {
 // logging to emit messsages.
 class ApacheMessageHandler : public MessageHandler {
  public:
+  // version is a string added to each message.
   // Timer is used to generate timestamp for messages in shared memory.
-  // pid is the process writing messages.
   ApacheMessageHandler(const server_rec* server, const StringPiece& version,
                        Timer* timer);
   // When we initialize ApacheMessageHandler in ApacheRewriteDriverFactory,
@@ -47,6 +47,7 @@ class ApacheMessageHandler : public MessageHandler {
   void SetPidString(const int64 pid) {
     pid_string_ = StrCat("[", Integer64ToString(pid), "]");
   }
+  // Dump contents of SharedCircularBuffer.
   bool Dump(Writer* writer);
 
  protected:

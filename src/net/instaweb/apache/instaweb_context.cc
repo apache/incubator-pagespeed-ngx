@@ -128,6 +128,20 @@ void InstawebContext::Rewrite(const char* input, int size) {
   }
 }
 
+void InstawebContext::Flush() {
+  if (content_detection_state_ == kHtml) {
+    rewrite_driver_->Flush();
+  }
+}
+
+void InstawebContext::Finish() {
+  if (content_detection_state_ == kHtml) {
+    rewrite_driver_->FinishParse();
+  } else {
+    rewrite_driver_->Cleanup();
+  }
+}
+
 namespace {
 
 // http://en.wikipedia.org/wiki/Byte_order_mark
@@ -233,7 +247,8 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
   }
 }
 
-ApacheResourceManager* InstawebContext::Manager(server_rec* server) {
+ApacheResourceManager* InstawebContext::ManagerFromServerRec(
+    server_rec* server) {
   return static_cast<ApacheResourceManager*>
       ap_get_module_config(server->module_config, &pagespeed_module);
 }

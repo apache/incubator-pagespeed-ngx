@@ -14,8 +14,9 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
-
-#include "net/instaweb/apache/mod_instaweb.h"
+//
+// Register handlers, define configuration options and set up other things
+// that mod_pagespeed needs to do to be an Apache module.
 
 #include <set>
 #include <string>
@@ -76,6 +77,7 @@ namespace net_instaweb {
 
 namespace {
 
+// TODO(sligocki): Separate options parsing from all the other stuff here.
 // Instaweb directive names -- these must match
 // install/common/pagespeed.conf.template.
 const char* kModPagespeedAllow = "ModPagespeedAllow";
@@ -142,6 +144,7 @@ const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
 
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
 
+// TODO(sligocki): Move inside PSA.
 // Check if pagespeed optimization rules applicable.
 bool check_pagespeed_applicable(request_rec* request,
                                 const ContentType& content_type) {
@@ -278,7 +281,8 @@ class ScopedTimer {
 InstawebContext* build_context_for_request(request_rec* request) {
   ApacheConfig* directory_options = static_cast<ApacheConfig*>
       ap_get_module_config(request->per_dir_config, &pagespeed_module);
-  ApacheResourceManager* manager = InstawebContext::Manager(request->server);
+  ApacheResourceManager* manager =
+      InstawebContext::ManagerFromServerRec(request->server);
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   scoped_ptr<RewriteOptions> custom_options;
   const RewriteOptions* host_options = manager->options();
@@ -321,6 +325,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   // TODO(sligocki): Should we rewrite any other statuses?
   // Maybe 206 Partial Content?
+  // TODO(sligocki): Make this decision inside PSA.
   if (request->status != 200) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Request not rewritten because: request->status != 200 "
@@ -328,13 +333,9 @@ InstawebContext* build_context_for_request(request_rec* request) {
     return NULL;
   }
 
-  QueryParams query_params;
-  if (request->parsed_uri.query != NULL) {
-    query_params.Parse(request->parsed_uri.query);
-  }
-
   const ContentType* content_type =
       MimeTypeToContentType(request->content_type);
+  // TODO(sligocki): Move inside PSA.
   if (content_type == NULL) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Request not rewritten because: request->content_type was "
@@ -352,6 +353,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   // setup as both the original and the proxy server, mod_pagespeed filter may
   // be applied twice. To avoid this, skip the content if it is already
   // optimized by mod_pagespeed.
+  // TODO(sligocki): Move inside PSA.
   if (apr_table_get(request->headers_out, kModPagespeedHeader) != NULL) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Request not rewritten because: X-Mod-Pagespeed header set.");
@@ -360,6 +362,12 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   // Determine the absolute URL for this request.
   const char* absolute_url = InstawebContext::MakeRequestUrl(request);
+
+  // TODO(sligocki): Move inside PSA.
+  QueryParams query_params;
+  if (request->parsed_uri.query != NULL) {
+    query_params.Parse(request->parsed_uri.query);
+  }
   scoped_ptr<RewriteOptions> query_options(
       RewriteQuery::Scan(query_params, manager->message_handler()));
   if (query_options.get() != NULL) {
@@ -371,6 +379,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
     options = merged_options;
   }
 
+  // TODO(sligocki): Move inside PSA.
   // Is ModPagespeed turned off? We check after parsing query params so that
   // they can override .conf settings.
   if (!options->enabled()) {
@@ -379,6 +388,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
     return NULL;
   }
 
+  // TODO(sligocki): Move inside PSA.
   // Do ModPagespeedDisallow statements restrict us from rewriting this URL?
   if (!options->IsAllowed(absolute_url)) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
@@ -390,6 +400,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
       request, *content_type, manager, absolute_url,
       use_custom_options, *options);
 
+  // TODO(sligocki): Move inside PSA.
   InstawebContext::ContentEncoding encoding = context->content_encoding();
   if ((encoding == InstawebContext::kGzip) ||
       (encoding == InstawebContext::kDeflate)) {
@@ -407,9 +418,12 @@ InstawebContext* build_context_for_request(request_rec* request) {
     return NULL;
   }
 
+  // Set X-Mod-Pagespeed header.
+  // TODO(sligocki): Move inside PSA.
   apr_table_setn(request->headers_out, kModPagespeedHeader,
                  kModPagespeedVersion);
 
+  // TODO(sligocki): Move inside PSA.
   // Turn off caching for the HTTP requests, and remove any filters
   // that might run downstream of us and mess up our caching headers.
   apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
@@ -489,6 +503,7 @@ bool process_bucket(ap_filter_t *filter, request_rec* request,
   return true;
 }
 
+// Entry point from Apache for streaming HTML-like content.
 apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
   // Do nothing if there is nothing, and stop passing to other filters.
   if (APR_BRIGADE_EMPTY(bb)) {
@@ -532,7 +547,8 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   ApacheRewriteDriverFactory* factory = apache_process_context.factory(server);
   factory->ChildInit();
   for (; server != NULL; server = server->next) {
-    ApacheResourceManager* resource_manager = InstawebContext::Manager(server);
+    ApacheResourceManager* resource_manager =
+        InstawebContext::ManagerFromServerRec(server);
     DCHECK(resource_manager != NULL);
     DCHECK(resource_manager->initialized());
   }
@@ -576,6 +592,8 @@ bool give_apache_user_permissions(ApacheRewriteDriverFactory* factory) {
   return ret;
 }
 
+// Hook from Apache for initialization after config is read.
+// Initialize statistics, set appropriate directory permissions, etc.
 int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
                           server_rec *server_list) {
   // This routine is complicated by the fact that statistics use inter-process
@@ -596,7 +614,8 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   Statistics* statistics = NULL;
   for (server_rec* server = server_list; server != NULL;
        server = server->next) {
-    ApacheResourceManager* manager = InstawebContext::Manager(server);
+    ApacheResourceManager* manager =
+        InstawebContext::ManagerFromServerRec(server);
     CHECK(manager);
     ApacheConfig* config = manager->config();
 
@@ -713,7 +732,8 @@ apr_status_t pagespeed_child_exit(void* data) {
 }
 
 void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
-  ApacheResourceManager* manager = InstawebContext::Manager(server);
+  ApacheResourceManager* manager =
+      InstawebContext::ManagerFromServerRec(server);
   if (manager == NULL) {
     ApacheRewriteDriverFactory* factory = apache_process_context.factory(
         server);
@@ -784,7 +804,8 @@ void warn_deprecated(cmd_parms* cmd, const char* remedy) {
 static ApacheConfig* CmdOptions(cmd_parms* cmd, void* data) {
   ApacheConfig* config = static_cast<ApacheConfig*>(data);
   if (config == NULL) {
-    ApacheResourceManager* manager = InstawebContext::Manager(cmd->server);
+    ApacheResourceManager* manager =
+        InstawebContext::ManagerFromServerRec(cmd->server);
     config = manager->config();
   }
   return config;
@@ -793,7 +814,8 @@ static ApacheConfig* CmdOptions(cmd_parms* cmd, void* data) {
 // Callback function that parses a single-argument directive.  This is called
 // by the Apache config parser.
 static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
-  ApacheResourceManager* manager = InstawebContext::Manager(cmd->server);
+  ApacheResourceManager* manager =
+      InstawebContext::ManagerFromServerRec(cmd->server);
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   MessageHandler* handler = factory->message_handler();
   const char* directive = cmd->directive->directive;
@@ -965,7 +987,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
 // by the Apache config parser.
 static const char* ParseDirective2(cmd_parms* cmd, void* data,
                                    const char* arg1, const char* arg2) {
-  ApacheResourceManager* manager = InstawebContext::Manager(cmd->server);
+  ApacheResourceManager* manager =
+      InstawebContext::ManagerFromServerRec(cmd->server);
   RewriteOptions* options = CmdOptions(cmd, data);
   const char* directive = cmd->directive->directive;
   const char* ret = NULL;
