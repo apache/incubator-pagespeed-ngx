@@ -1,0 +1,72 @@
+%{
+// rewrite_options_names.cc is automatically generated from
+// rewrite_options_names.gperf.
+// Author: jmarantz@google.com
+
+#include "base/basictypes.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/string_util.h"
+
+namespace net_instaweb {
+%}
+%compare-strncmp
+%define class-name FilterMapper
+%define lookup-function-name Lookup
+%define word-array-name kHtmlNameTable
+%global-table
+%ignore-case
+%includes
+%language=C++
+%readonly-tables
+%struct-type
+
+struct FilterMap {
+  const char* name;
+  net_instaweb::RewriteOptions::Filter filter;
+};
+%%
+"add_head",                          RewriteOptions::kAddHead
+"add_instrumentation",               RewriteOptions::kAddInstrumentation
+"collapse_whitespace",               RewriteOptions::kCollapseWhitespace
+"combine_css",                       RewriteOptions::kCombineCss
+"combine_javascript",                RewriteOptions::kCombineJavascript
+"combine_heads",                     RewriteOptions::kCombineHeads
+"convert_jpeg_to_webp",              RewriteOptions::kConvertJpegToWebp
+"div_structure",                     RewriteOptions::kDivStructure
+"elide_attributes",                  RewriteOptions::kElideAttributes
+"extend_cache",                      RewriteOptions::kExtendCache
+"flush_html",                        RewriteOptions::kFlushHtml
+"inline_css",                        RewriteOptions::kInlineCss
+"inline_images",                     RewriteOptions::kInlineImages
+"inline_javascript",                 RewriteOptions::kInlineJavascript
+"insert_img_dimensions",             RewriteOptions::kInsertImageDimensions
+"insert_image_dimensions",           RewriteOptions::kInsertImageDimensions
+"left_trim_urls",                    RewriteOptions::kLeftTrimUrls
+"make_google_analytics_async",       RewriteOptions::kMakeGoogleAnalyticsAsync
+"move_css_to_head",                  RewriteOptions::kMoveCssToHead
+"outline_css",                       RewriteOptions::kOutlineCss
+"outline_javascript",                RewriteOptions::kOutlineJavascript
+"recompress_images",                 RewriteOptions::kRecompressImages
+"remove_comments",                   RewriteOptions::kRemoveComments
+"remove_quotes",                     RewriteOptions::kRemoveQuotes
+"resize_images",                     RewriteOptions::kResizeImages
+"rewrite_css",                       RewriteOptions::kRewriteCss
+"rewrite_domains",                   RewriteOptions::kRewriteDomains
+"rewrite_javascript",                RewriteOptions::kRewriteJavascript
+"rewrite_style_attributes",          RewriteOptions::kRewriteStyleAttributes
+"rewrite_style_attributes_with_url", RewriteOptions::kRewriteStyleAttributesWithUrl
+"sprite_images",                     RewriteOptions::kSpriteImages
+"strip_scripts",                     RewriteOptions::kStripScripts
+"trim_urls",                         RewriteOptions::kLeftTrimUrls
+%%
+
+RewriteOptions::Filter RewriteOptions::Lookup(const StringPiece& filter_name) {
+  const FilterMap* entry = FilterMapper::Lookup(
+      filter_name.data(), filter_name.size());
+  if (entry != NULL) {
+    return entry->filter;
+  }
+  return RewriteOptions::kEndOfFilters;
+}
+
+}  // namespace net_instaweb

@@ -39,7 +39,7 @@ class RewriteOptionsTest : public ::testing::Test {
   bool OnlyEnabled(const FilterSet& filters) {
     bool ret = true;
     for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
-         ret && (f <= RewriteOptions::kLastFilter);
+         ret && (f < RewriteOptions::kEndOfFilters);
          f = static_cast<RewriteOptions::Filter>(f + 1)) {
       if (filters.find(f) != filters.end()) {
         if (!options_.Enabled(f)) {
@@ -88,7 +88,7 @@ TEST_F(RewriteOptionsTest, InstrumentationDisabled) {
 
   // Now disable all filters and make sure none are enabled.
   for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
-       f <= RewriteOptions::kLastFilter;
+       f < RewriteOptions::kEndOfFilters;
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
     options_.DisableFilter(f);
   }
@@ -97,7 +97,7 @@ TEST_F(RewriteOptionsTest, InstrumentationDisabled) {
 
 TEST_F(RewriteOptionsTest, DisableTrumpsEnable) {
   for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
-       f <= RewriteOptions::kLastFilter;
+       f < RewriteOptions::kEndOfFilters;
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
     options_.DisableFilter(f);
     options_.EnableFilter(f);
@@ -109,7 +109,7 @@ TEST_F(RewriteOptionsTest, CoreFilters) {
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
   FilterSet s;
   for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
-       f <= RewriteOptions::kLastFilter;
+       f < RewriteOptions::kEndOfFilters;
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
     if (options_.Enabled(f)) {
       s.insert(f);
@@ -124,7 +124,7 @@ TEST_F(RewriteOptionsTest, CoreFilters) {
 TEST_F(RewriteOptionsTest, Enable) {
   FilterSet s;
   for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
-       f <= RewriteOptions::kLastFilter;
+       f < RewriteOptions::kEndOfFilters;
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
     s.insert(f);
     options_.EnableFilter(f);
@@ -421,6 +421,21 @@ TEST_F(RewriteOptionsTest, AllDoesNotImplyStripScrips) {
   options_.SetRewriteLevel(RewriteOptions::kAllFilters);
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kCombineCss));
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kStripScripts));
+}
+
+TEST_F(RewriteOptionsTest, ExplicitlyEnabledDangerousFilters) {
+  options_.SetRewriteLevel(RewriteOptions::kAllFilters);
+  options_.EnableFilter(RewriteOptions::kStripScripts);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kDivStructure));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kStripScripts));
+  options_.EnableFilter(RewriteOptions::kDivStructure);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kDivStructure));
+}
+
+TEST_F(RewriteOptionsTest, CoreAndNotDangerous) {
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kAddInstrumentation));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kCombineCss));
 }
 
 }  // namespace

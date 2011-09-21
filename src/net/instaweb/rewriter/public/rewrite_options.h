@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
 
-#include <map>
 #include <set>
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
@@ -66,12 +65,12 @@ class RewriteOptions {
     kRewriteStyleAttributes,
     kRewriteStyleAttributesWithUrl,
     kSpriteImages,
-    kStripScripts,  // Update kLastFilter if you add something after this.
+    kStripScripts,
+    kEndOfFilters
   };
 
   // Used for enumerating over all entries in the Filter enum.
   static const Filter kFirstFilter = kAddHead;
-  static const Filter kLastFilter = kStripScripts;
 
   enum RewriteLevel {
     // Enable no filters. Parse HTML but do not perform any
@@ -389,18 +388,13 @@ class RewriteOptions {
 
  private:
   typedef std::set<Filter> FilterSet;
-  typedef std::map<GoogleString, Filter> NameToFilterMap;
-  typedef std::map<GoogleString, FilterSet> NameToFilterSetMap;
-  typedef std::map<RewriteLevel, FilterSet> RewriteLevelToFilterSetMap;
 
   void SetUp();
   bool AddCommaSeparatedListToFilterSet(
       const StringPiece& filters, MessageHandler* handler, FilterSet* set);
+  static Filter Lookup(const StringPiece& filter_name);
 
   bool modified_;
-  NameToFilterMap name_filter_map_;
-  NameToFilterSetMap name_filter_set_map_;
-  RewriteLevelToFilterSetMap level_filter_set_map_;
   FilterSet enabled_filters_;
   FilterSet disabled_filters_;
 

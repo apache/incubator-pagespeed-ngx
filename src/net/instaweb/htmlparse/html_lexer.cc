@@ -183,6 +183,7 @@ const HtmlName::Keyword kOptionallyClosedTags[] = {
 // position 0 to reduce special-cases.
 const int kStartStack = 1;
 
+#ifndef NDEBUG
 #define CHECK_KEYWORD_SET_ORDERING(keywords) \
     CheckKeywordSetOrdering(keywords, arraysize(keywords))
 void CheckKeywordSetOrdering(const HtmlName::Keyword* keywords, int num) {
@@ -190,6 +191,7 @@ void CheckKeywordSetOrdering(const HtmlName::Keyword* keywords, int num) {
     DCHECK_GT(keywords[i], keywords[i - 1]);
   }
 }
+#endif
 
 bool IsInSet(const HtmlName::Keyword* keywords, int num,
              HtmlName::Keyword keyword) {
@@ -216,10 +218,12 @@ HtmlLexer::HtmlLexer(HtmlParse* html_parse)
       element_(NULL),
       line_(1),
       tag_start_line_(-1) {
+#ifndef NDEBUG
   CHECK_KEYWORD_SET_ORDERING(kImplicitlyClosedHtmlTags);
   CHECK_KEYWORD_SET_ORDERING(kNonBriefTerminatedTags);
   CHECK_KEYWORD_SET_ORDERING(kLiteralTags);
   CHECK_KEYWORD_SET_ORDERING(kOptionallyClosedTags);
+#endif
 }
 
 HtmlLexer::~HtmlLexer() {

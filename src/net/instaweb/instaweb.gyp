@@ -251,6 +251,7 @@
         'util/shared_mem_referer_statistics.cc',
         'util/shared_mem_statistics.cc',
         'util/simple_stats.cc',
+        'util/scheduler_thread.cc',
         'util/slow_worker.cc',
 #        'util/split_writer.cc',                Not currently needed
         'util/statistics.cc',

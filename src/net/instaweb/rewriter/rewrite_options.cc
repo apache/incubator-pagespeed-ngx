@@ -18,10 +18,10 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <map>
 #include <set>
 #include <utility>
 
+#include "base/logging.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -84,6 +84,54 @@ const int RewriteOptions::kDefaultMaxUrlSegmentSize = 1024;
 const GoogleString RewriteOptions::kDefaultBeaconUrl =
     "/mod_pagespeed_beacon?ets=";
 
+namespace {
+
+const RewriteOptions::Filter kCoreFilterSet[] = {
+  RewriteOptions::kAddHead,
+  RewriteOptions::kCombineCss,
+  RewriteOptions::kExtendCache,
+  RewriteOptions::kInlineCss,
+  RewriteOptions::kInlineImages,
+  RewriteOptions::kInlineJavascript,
+  RewriteOptions::kInsertImageDimensions,
+  RewriteOptions::kLeftTrimUrls,
+  RewriteOptions::kRecompressImages,
+  RewriteOptions::kResizeImages,
+  RewriteOptions::kRewriteCss,
+  RewriteOptions::kRewriteJavascript,
+};
+
+// Note: all Core filters are Test filters as well.  For maintainability,
+// this is managed in the c++ switch statement.
+const RewriteOptions::Filter kTestFilterSet[] = {
+  RewriteOptions::kConvertJpegToWebp,
+  RewriteOptions::kFlushHtml,
+  RewriteOptions::kMakeGoogleAnalyticsAsync,
+  RewriteOptions::kRewriteDomains,
+};
+
+// Note: These filters should not be included even if the level is "All".
+const RewriteOptions::Filter kDangerousFilterSet[] = {
+  RewriteOptions::kDivStructure,
+  RewriteOptions::kStripScripts,
+};
+
+#ifndef NDEBUG
+void CheckFilterSetOrdering(const RewriteOptions::Filter* filters, int num) {
+  for (int i = 1; i < num; ++i) {
+    DCHECK_GT(filters[i], filters[i - 1]);
+  }
+}
+#endif
+
+bool IsInSet(const RewriteOptions::Filter* filters, int num,
+             RewriteOptions::Filter filter) {
+  const RewriteOptions::Filter* end = filters + num;
+  return std::binary_search(filters, end, filter);
+}
+
+}  // namespace
+
 bool RewriteOptions::ParseRewriteLevel(
     const StringPiece& in, RewriteLevel* out) {
   bool ret = false;
@@ -106,10 +154,15 @@ bool RewriteOptions::ParseRewriteLevel(
 }
 
 RewriteOptions::RewriteOptions() : modified_(false) {
-  // TODO(jmarantz): If we instantiate many RewriteOptions, this should become a
-  // public static method called once at startup.
-  SetUp();
+  // Sanity-checks -- will be active only when compiled for debug.
+#ifndef NDEBUG
+  CheckFilterSetOrdering(kCoreFilterSet, arraysize(kCoreFilterSet));
+  CheckFilterSetOrdering(kTestFilterSet, arraysize(kTestFilterSet));
+  CheckFilterSetOrdering(kDangerousFilterSet, arraysize(kDangerousFilterSet));
+#endif
 
+  // TODO(jmarantz): consider adding these on demand so that the cost of
+  // initializing an empty RewriteOptions object is closer to zero.
   add_option(kPassThrough, &level_);
   add_option(kDefaultCssInlineMaxBytes, &css_inline_max_bytes_);
   add_option(kDefaultImageInlineMaxBytes, &image_inline_max_bytes_);
@@ -138,86 +191,6 @@ RewriteOptions::~RewriteOptions() {
 RewriteOptions::OptionBase::~OptionBase() {
 }
 
-void RewriteOptions::SetUp() {
-  name_filter_map_["add_head"] = kAddHead;
-  name_filter_map_["add_instrumentation"] = kAddInstrumentation;
-  name_filter_map_["collapse_whitespace"] = kCollapseWhitespace;
-  name_filter_map_["combine_css"] = kCombineCss;
-  name_filter_map_["combine_javascript"] = kCombineJavascript;
-  name_filter_map_["combine_heads"] = kCombineHeads;
-  name_filter_map_["convert_jpeg_to_webp"] = kConvertJpegToWebp;
-  name_filter_map_["div_structure"] = kDivStructure;
-  name_filter_map_["elide_attributes"] = kElideAttributes;
-  name_filter_map_["extend_cache"] = kExtendCache;
-  name_filter_map_["flush_html"] = kFlushHtml;
-  name_filter_map_["inline_css"] = kInlineCss;
-  name_filter_map_["inline_images"] = kInlineImages;
-  name_filter_map_["inline_javascript"] = kInlineJavascript;
-  name_filter_map_["insert_img_dimensions"] =
-      kInsertImageDimensions;  // Deprecated due to spelling.
-  name_filter_map_["insert_image_dimensions"] = kInsertImageDimensions;
-  name_filter_map_["left_trim_urls"] = kLeftTrimUrls;  // Deprecated
-  name_filter_map_["make_google_analytics_async"] = kMakeGoogleAnalyticsAsync;
-  name_filter_map_["move_css_to_head"] = kMoveCssToHead;
-  name_filter_map_["outline_css"] = kOutlineCss;
-  name_filter_map_["outline_javascript"] = kOutlineJavascript;
-  name_filter_map_["recompress_images"] = kRecompressImages;
-  name_filter_map_["remove_comments"] = kRemoveComments;
-  name_filter_map_["remove_quotes"] = kRemoveQuotes;
-  name_filter_map_["resize_images"] = kResizeImages;
-  name_filter_map_["rewrite_css"] = kRewriteCss;
-  name_filter_map_["rewrite_domains"] = kRewriteDomains;
-  name_filter_map_["rewrite_javascript"] = kRewriteJavascript;
-  name_filter_map_["rewrite_style_attributes"] = kRewriteStyleAttributes;
-  name_filter_map_["rewrite_style_attributes_with_url"] =
-      kRewriteStyleAttributesWithUrl;
-  name_filter_map_["sprite_images"] = kSpriteImages;
-  name_filter_map_["strip_scripts"] = kStripScripts;
-  name_filter_map_["trim_urls"] = kLeftTrimUrls;
-
-  // Create filter sets for compound filter flags
-  // (right now this is just rewrite_images)
-  // TODO(jmaessen): add kConvertJpegToWebp here when it becomes part of
-  // rewrite_images.
-  name_filter_set_map_["rewrite_images"].insert(kInlineImages);
-  name_filter_set_map_["rewrite_images"].insert(kInsertImageDimensions);
-  name_filter_set_map_["rewrite_images"].insert(kRecompressImages);
-  name_filter_set_map_["rewrite_images"].insert(kResizeImages);
-
-  // Create an empty set for the pass-through level.
-  level_filter_set_map_[kPassThrough];
-
-  // Core filter level includes the "core" filter set.
-  // TODO(jmaessen): add kConvertJpegToWebp here when it becomes part of
-  // rewrite_images.
-  level_filter_set_map_[kCoreFilters].insert(kAddHead);
-  level_filter_set_map_[kCoreFilters].insert(kCombineCss);
-  level_filter_set_map_[kCoreFilters].insert(kExtendCache);
-  level_filter_set_map_[kCoreFilters].insert(kInlineCss);
-  level_filter_set_map_[kCoreFilters].insert(kInlineImages);
-  level_filter_set_map_[kCoreFilters].insert(kInlineJavascript);
-  level_filter_set_map_[kCoreFilters].insert(kInsertImageDimensions);
-  level_filter_set_map_[kCoreFilters].insert(kLeftTrimUrls);
-  level_filter_set_map_[kCoreFilters].insert(kRecompressImages);
-  level_filter_set_map_[kCoreFilters].insert(kResizeImages);
-  level_filter_set_map_[kCoreFilters].insert(kRewriteCss);
-  level_filter_set_map_[kCoreFilters].insert(kRewriteJavascript);
-
-  // Copy CoreFilters set into TestingCoreFilters set ...
-  level_filter_set_map_[kTestingCoreFilters] =
-      level_filter_set_map_[kCoreFilters];
-  // ... and add possibly unsafe filters.
-  // TODO(jmarantz): Migrate these over to CoreFilters.
-  level_filter_set_map_[kTestingCoreFilters].insert(kConvertJpegToWebp);
-  level_filter_set_map_[kTestingCoreFilters].insert(kFlushHtml);
-  level_filter_set_map_[kTestingCoreFilters].insert(kMakeGoogleAnalyticsAsync);
-  level_filter_set_map_[kTestingCoreFilters].insert(kRewriteDomains);
-
-  // Set complete set for all filters set.
-  for (int f = kFirstFilter; f != kLastFilter; ++f) {
-    level_filter_set_map_[kAllFilters].insert(static_cast<Filter>(f));
-  }
-}
 
 bool RewriteOptions::EnableFiltersByCommaSeparatedList(
     const StringPiece& filters, MessageHandler* handler) {
@@ -232,7 +205,7 @@ bool RewriteOptions::DisableFiltersByCommaSeparatedList(
 }
 
 void RewriteOptions::DisableAllFiltersNotExplicitlyEnabled() {
-  for (int f = kFirstFilter; f != kLastFilter; ++f) {
+  for (int f = kFirstFilter; f != kEndOfFilters; ++f) {
     Filter filter = static_cast<Filter>(f);
     if (enabled_filters_.find(filter) == enabled_filters_.end()) {
       DisableFilter(filter);
@@ -257,29 +230,28 @@ bool RewriteOptions::AddCommaSeparatedListToFilterSet(
   StringPieceVector names;
   SplitStringPieceToVector(filters, ",", &names, true);
   bool ret = true;
+  size_t prev_set_size = set->size();
   for (int i = 0, n = names.size(); i < n; ++i) {
-    GoogleString option(names[i].data(), names[i].size());
-    NameToFilterMap::iterator p = name_filter_map_.find(option);
-    if (p == name_filter_map_.end()) {
-      // Handle a compound filter name.  This is much less common.
-      NameToFilterSetMap::iterator s = name_filter_set_map_.find(option);
-      if (s == name_filter_set_map_.end()) {
-        handler->Message(kWarning, "Invalid filter name: %s", option.c_str());
-        ret = false;
+    const StringPiece& option = names[i];
+    Filter filter = Lookup(option);
+    if (filter == kEndOfFilters) {
+      // Handle a compound filter name.  This is much less common, so we don't
+      // have any special infrastructure for it; just code.
+      if (option == "rewrite_images") {
+        set->insert(kInlineImages);
+        set->insert(kInsertImageDimensions);
+        set->insert(kRecompressImages);
+        set->insert(kResizeImages);
       } else {
-        const FilterSet& new_flags = s->second;
-        // Insert all new_flags into set.
-        FilterSet::const_iterator end = new_flags.end();
-        for (FilterSet::const_iterator j = new_flags.begin(); j != end; ++j) {
-          std::pair<FilterSet::iterator, bool> inserted = set->insert(*j);
-          modified_ |= inserted.second;
-        }
+        handler->Message(kWarning, "Invalid filter name: %s",
+                         option.as_string().c_str());
+        ret = false;
       }
     } else {
-      std::pair<FilterSet::iterator, bool> inserted = set->insert(p->second);
-      modified_ |= inserted.second;
+      set->insert(filter);
     }
   }
+  modified_ |= (set->size() != prev_set_size);
   return ret;
 }
 
@@ -287,17 +259,27 @@ bool RewriteOptions::Enabled(Filter filter) const {
   if (disabled_filters_.find(filter) != disabled_filters_.end()) {
     return false;
   }
-
-  RewriteLevelToFilterSetMap::const_iterator it =
-      level_filter_set_map_.find(level_.value());
-  if (it != level_filter_set_map_.end()) {
-    const FilterSet& filters = it->second;
-    if (filters.find(filter) != filters.end()) {
-      return true;
-    }
+  switch (level_.value()) {
+    case kTestingCoreFilters:
+      if (IsInSet(kTestFilterSet, arraysize(kTestFilterSet), filter)) {
+        return true;
+      }
+      // fall through
+    case kCoreFilters:
+      if (IsInSet(kCoreFilterSet, arraysize(kCoreFilterSet), filter)) {
+        return true;
+      }
+      break;
+    case kAllFilters:
+      if (!IsInSet(kDangerousFilterSet, arraysize(kDangerousFilterSet),
+                   filter)) {
+        return true;
+      }
+      break;
+    case kPassThrough:
+      break;
   }
-
-  return (enabled_filters_.find(filter) != enabled_filters_.end());
+  return enabled_filters_.find(filter) != enabled_filters_.end();
 }
 
 void RewriteOptions::Merge(const RewriteOptions& first,

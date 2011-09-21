@@ -149,10 +149,12 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       low_priority_rewrite_workers_(NULL) {
   // Make sure the excluded-attributes are in abc order so binary_search works.
   // Make sure to use the same comparator that we pass to the binary_search.
+#ifndef NDEBUG
   for (int i = 1, n = arraysize(kExcludedAttributes); i < n; ++i) {
     DCHECK(CharStarCompareInsensitive()(kExcludedAttributes[i - 1],
                                         kExcludedAttributes[i]));
   }
+#endif
 }
 
 ResourceManager::~ResourceManager() {

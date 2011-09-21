@@ -128,6 +128,7 @@
         'rewriter/html_attribute_quote_removal.cc',
         'rewriter/remove_comments_filter.cc',
         'rewriter/rewrite_options.cc',
+        'genfiles/rewriter/rewrite_option_names.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',
