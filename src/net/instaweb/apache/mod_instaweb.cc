@@ -660,8 +660,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
 
     // Next we do the instance-independent static initialization, once we have
     // established whether *any* of the servers have stats enabled.
-    RewriteDriverFactory::Initialize(statistics);
-    SerfUrlAsyncFetcher::Initialize(statistics);
+    ApacheRewriteDriverFactory::Initialize(statistics);
   }
 
   factory->RootInit();

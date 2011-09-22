@@ -425,8 +425,7 @@ Statistics* ApacheRewriteDriverFactory::MakeSharedMemStatistics() {
     // with a call to InitVariables(false) inside pagespeed_child_init.
     shared_mem_statistics_.reset(new SharedMemStatistics(
         shared_mem_runtime(), filename_prefix().as_string()));
-    RewriteDriverFactory::Initialize(shared_mem_statistics_.get());
-    SerfUrlAsyncFetcher::Initialize(shared_mem_statistics_.get());
+    Initialize(shared_mem_statistics_.get());
     shared_mem_statistics_->AddHistogram(kHtmlRewriteTimeHistogram);
     shared_mem_statistics_->Init(true, message_handler());
     html_rewrite_time_us_histogram_ = shared_mem_statistics_->GetHistogram(
@@ -437,6 +436,11 @@ Statistics* ApacheRewriteDriverFactory::MakeSharedMemStatistics() {
   statistics_frozen_ = true;
   SetStatistics(shared_mem_statistics_.get());
   return shared_mem_statistics_.get();
+}
+
+void ApacheRewriteDriverFactory::Initialize(Statistics* statistics) {
+  RewriteDriverFactory::Initialize(statistics);
+  SerfUrlAsyncFetcher::Initialize(statistics);
 }
 
 void ApacheRewriteDriverFactory::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {

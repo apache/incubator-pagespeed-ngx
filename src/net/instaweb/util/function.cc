@@ -38,21 +38,29 @@ void Function::Reset() {
 }
 
 void Function::CallRun() {
+  // Note: we need to capture should_delete in a local, since in cases
+  // where it's false, an another thread may be responsible for deleting
+  // us, so it may be unsafe to access our fields after the callback runs
+  // (for example, a different-thread function with a stack-allocated
+  //  SchedulerBlockingFunction may exit in between our call to Run() and
+  //  where we check for whether to delete or not).
+  bool should_delete = delete_after_callback_;
   DCHECK(!cancel_called_);
   DCHECK(!run_called_);
   run_called_ = true;
   Run();
-  if (delete_after_callback_) {
+  if (should_delete) {
     delete this;
   }
 }
 
 void Function::CallCancel() {
+  bool should_delete = delete_after_callback_;
   DCHECK(!cancel_called_);
   DCHECK(!run_called_);
   cancel_called_ = true;
   Cancel();
-  if (delete_after_callback_) {
+  if (should_delete) {
     delete this;
   }
 }

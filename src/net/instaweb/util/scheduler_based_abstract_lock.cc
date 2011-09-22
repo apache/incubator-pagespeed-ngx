@@ -69,9 +69,9 @@ int64 IntervalWithEnd(Timer* timer, int64 interval_ms,
 
 // This object actually contains the state needed for periodically polling the
 // provided lock using the try_lock method, and for eventually calling or
-// canceling the callback.  There's enough state here that we don't want to
-// allocate a fresh object after each poll, so we just pass a pointer to
-// this->Run() to the scheduler (since alarms are deleted after being run).
+// canceling the callback. While it may feel attractive to reuse this object,
+// it's not actually safe as it runs into races trying to check the
+// delete_after_callback_ bit.
 class TimedWaitPollState : public Function {
  public:
   typedef bool (SchedulerBasedAbstractLock::*TryLockMethod)(int64 steal_ms);
@@ -88,32 +88,34 @@ class TimedWaitPollState : public Function {
         steal_ms_(steal_ms),
         end_time_ms_(end_time_ms),
         max_interval_ms_(max_interval_ms),
-        interval_ms_(0) {
-    // We reuse this callback until we obtain the lock or time out.
-    set_delete_after_callback(false);
-  }
+        interval_ms_(0) {}
   virtual ~TimedWaitPollState() { }
+
+  // Note: doesn't actually clone interval_ms_.
+  TimedWaitPollState* Clone() {
+    return new TimedWaitPollState(scheduler_, callback_, lock_,
+                                  try_lock_, steal_ms_, end_time_ms_,
+                                  max_interval_ms_);
+  }
 
  protected:
   virtual void Run() {
     if ((lock_->*try_lock_)(steal_ms_)) {
       callback_->CallRun();
-      // We obtained the lock, make sure we clean ourself up on return.
-      set_delete_after_callback(true);
       return;
     }
     Timer* timer = scheduler_->timer();
     int64 now_ms = timer->NowMs();
     if (now_ms >= end_time_ms_) {
       callback_->CallCancel();
-      // We timed out, make sure we clean ourself up on return.
-      set_delete_after_callback(true);
       return;
     }
-    Reset();  // Permit reuse
-    interval_ms_ =
+
+    TimedWaitPollState* next_try = Clone();
+    next_try->interval_ms_ =
         IntervalWithEnd(timer, interval_ms_, max_interval_ms_, end_time_ms_);
-    scheduler_->AddAlarm((now_ms + interval_ms_) * Timer::kMsUs, this);
+    scheduler_->AddAlarm((now_ms + next_try->interval_ms_) * Timer::kMsUs,
+                         next_try);
   }
 
  private:

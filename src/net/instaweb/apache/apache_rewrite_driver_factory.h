@@ -142,7 +142,12 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // ApacheConfig.
   virtual RewriteOptions* NewRewriteOptions();
 
- protected:
+  // Initializes all the statistics objects created transitively by
+  // ApacheRewriteDriverFactory, including apache-specific and
+  // platform-independent statistics.
+  static void Initialize(Statistics* statistics);
+
+protected:
   virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
 

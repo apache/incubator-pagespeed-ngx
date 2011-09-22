@@ -75,7 +75,8 @@ class Function {
 
   // By default, Functions delete themselves after being called.  Call
   // this method to override.  If the Function is going to be re-called,
-  // Reset() must be called on it first.
+  // Reset() must be called on it first. Will not take effect if called
+  // within Run() or Cancel().
   void set_delete_after_callback(bool x) { delete_after_callback_ = x; }
 
   // Clears the state of the function so that it can be called or cancelled
