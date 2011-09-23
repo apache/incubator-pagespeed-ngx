@@ -189,9 +189,12 @@ class RewriteOptions {
     set_option(x, &html_cache_time_ms_);
   }
 
-  const GoogleString& beacon_url() const { return beacon_url_.value(); }
-  void set_beacon_url(const StringPiece& p) {
-    set_option(GoogleString(p.data(), p.size()), &beacon_url_);
+  // Cache invalidation timestamp is in milliseconds since 1970.
+  void set_cache_invalidation_timestamp(int64 x) {
+    set_option(x, &cache_invalidation_timestamp_);
+  }
+  int64 cache_invalidation_timestamp() const {
+    return cache_invalidation_timestamp_.value();
   }
 
   // The maximum length of a URL segment.
@@ -249,12 +252,12 @@ class RewriteOptions {
   }
   bool respect_vary() const { return respect_vary_.value(); }
 
-  // Cache invalidation timestamp is in milliseconds since 1970.
-  void set_cache_invalidation_timestamp(int64 x) {
-    set_option(x, &cache_invalidation_timestamp_);
-  }
-  int64 cache_invalidation_timestamp() const {
-    return cache_invalidation_timestamp_.value();
+  void set_flush_html(bool x) { set_option(x, &flush_html_); }
+  bool flush_html() const { return flush_html_.value(); }
+
+  const GoogleString& beacon_url() const { return beacon_url_.value(); }
+  void set_beacon_url(const StringPiece& p) {
+    set_option(GoogleString(p.data(), p.size()), &beacon_url_);
   }
 
   // Merge together two source RewriteOptions to populate this.  The order
@@ -406,6 +409,7 @@ class RewriteOptions {
   // about that, then we would keep the bools in a bitmask.  But since
   // we don't really care we'll try to keep the code structured better.
   Option<RewriteLevel> level_;
+
   Option<int64> css_inline_max_bytes_;
   Option<int64> image_inline_max_bytes_;
   Option<int64> js_inline_max_bytes_;
@@ -414,10 +418,12 @@ class RewriteOptions {
   // Default Cache-Control TTL for HTML. This will be the max we set HTML TTL
   // and also the min input resource TTL we allow rewriting for.
   Option<int64> html_cache_time_ms_;
-  Option<GoogleString> beacon_url_;
+  Option<int64> cache_invalidation_timestamp_;
+
   Option<int> image_max_rewrites_at_once_;
   Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")
   Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")
+
   Option<bool> enabled_;
   Option<bool> botdetect_enabled_;
   Option<bool> combine_across_paths_;
@@ -425,7 +431,9 @@ class RewriteOptions {
   Option<bool> lowercase_html_names_;
   Option<bool> always_rewrite_css_;  // For tests/debugging.
   Option<bool> respect_vary_;
-  Option<int64> cache_invalidation_timestamp_;
+  Option<bool> flush_html_;
+
+  Option<GoogleString> beacon_url_;
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,
   // Compare.

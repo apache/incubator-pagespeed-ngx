@@ -69,6 +69,7 @@ DEFINE_int64(html_cache_time_ms,
 DEFINE_int32(lru_cache_size_bytes, 10 * 1000 * 1000, "LRU cache size");
 DEFINE_bool(force_caching, false,
             "Ignore caching headers and cache everything.");
+DEFINE_bool(flush_html, false, "Pass fetcher-generated flushes through HTML");
 
 namespace net_instaweb {
 
@@ -108,6 +109,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("html_cache_time_ms")) {
     options->set_html_cache_time_ms(FLAGS_html_cache_time_ms);
+  }
+  if (WasExplicitlySet("flush_html")) {
+    options->set_flush_html(FLAGS_flush_html);
   }
 
   RewriteOptions::RewriteLevel rewrite_level;

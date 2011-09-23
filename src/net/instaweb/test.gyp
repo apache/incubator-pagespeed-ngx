@@ -38,6 +38,7 @@
       'type': 'executable',
       'dependencies': [
         'test_infrastructure',
+        'instaweb.gyp:instaweb_automatic',
         'instaweb.gyp:instaweb_spriter_test',
         'instaweb.gyp:instaweb_util_pthread',
         '<(DEPTH)/testing/gmock.gyp:gmock',
@@ -50,6 +51,7 @@
         '<(DEPTH)',
       ],
       'sources': [
+        'automatic/proxy_interface_test.cc',
         'htmlparse/html_keywords_test.cc',
         'htmlparse/html_name_test.cc',
         'htmlparse/html_parse_test.cc',

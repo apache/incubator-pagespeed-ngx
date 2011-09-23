@@ -170,7 +170,8 @@ RewriteOptions::RewriteOptions() : modified_(false) {
   add_option(kDefaultCssOutlineMinBytes, &css_outline_min_bytes_);
   add_option(kDefaultJsOutlineMinBytes, &js_outline_min_bytes_);
   add_option(kDefaultHtmlCacheTimeMs, &html_cache_time_ms_);
-  add_option(kDefaultBeaconUrl, &beacon_url_);
+  add_option(kDefaultCacheInvalidationTimestamp,
+             &cache_invalidation_timestamp_);
   add_option(kDefaultImageMaxRewritesAtOnce, &image_max_rewrites_at_once_);
   add_option(kDefaultMaxUrlSegmentSize, &max_url_segment_size_);
   add_option(kMaxUrlSize, &max_url_size_);
@@ -181,8 +182,8 @@ RewriteOptions::RewriteOptions() : modified_(false) {
   add_option(false, &lowercase_html_names_);
   add_option(false, &always_rewrite_css_);
   add_option(false, &respect_vary_);
-  add_option(kDefaultCacheInvalidationTimestamp,
-             &cache_invalidation_timestamp_);
+  add_option(false, &flush_html_);
+  add_option(kDefaultBeaconUrl, &beacon_url_);
 }
 
 RewriteOptions::~RewriteOptions() {

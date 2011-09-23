@@ -58,7 +58,7 @@ class SyncFetcherAdapterCallback : public UrlAsyncFetcher::Callback {
   // waiting for Done() to be called, and only then will it be deleted.
   //
   // When Release is called prior to Done(), the writer and response_headers
-  // will beo NULLed out in this structure so they will not be updated when
+  // will be NULLed out in this structure so they will not be updated when
   // Done() is finally called.
   void Release();
 
@@ -86,6 +86,6 @@ class SyncFetcherAdapterCallback : public UrlAsyncFetcher::Callback {
   DISALLOW_COPY_AND_ASSIGN(SyncFetcherAdapterCallback);
 };
 
-}  // namespace
+}  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_HTTP_PUBLIC_SYNC_FETCHER_ADAPTER_CALLBACK_H_

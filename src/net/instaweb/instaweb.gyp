@@ -194,7 +194,9 @@
         '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
       ],
       'sources': [
+        # TODO(sligocki): Move http/ files to instaweb_http.
         'genfiles/http/bot_checker.cc',
+        'http/cache_url_async_fetcher.cc',
         'http/dummy_url_fetcher.cc',
         'http/fake_url_async_fetcher.cc',
         'http/http_cache.cc',
@@ -212,6 +214,7 @@
         'http/user_agent_matcher.cc',
         'http/wait_url_async_fetcher.cc',
         'http/wget_url_fetcher.cc',
+
         'util/abstract_mutex.cc',
         'util/abstract_shared_mem.cc',
         'util/cache_interface.cc',
@@ -622,6 +625,22 @@
       }
     },
     {
+      'target_name': 'instaweb_automatic',
+      'type': '<(library)',
+      'dependencies': [
+        'instaweb_http',
+        'instaweb_rewriter',
+        'instaweb_util',
+        '<(DEPTH)/base/base.gyp:base',
+      ],
+      'sources': [
+        'automatic/proxy_fetch.cc',
+        'automatic/proxy_interface.cc',
+        'automatic/resource_fetch.cc',
+      ],
+    },
+    {
+      # TODO(sligocki): Why is this called "automatic" util?
       'target_name': 'automatic_util',
       'type': '<(library)',
       'dependencies': [
